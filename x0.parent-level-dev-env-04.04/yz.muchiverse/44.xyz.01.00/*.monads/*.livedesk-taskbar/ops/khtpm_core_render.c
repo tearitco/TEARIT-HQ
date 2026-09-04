@@ -99,7 +99,7 @@ static void popup_handle_click(int px, int py);
 static void handle_key(KeySym ks, char ch);
 static void history_path(char *out, size_t outsz);
 static void history_unregister(void); /* REAL, NEW 2026-08-29 - see its own real definition/comment near history_path() */
-static void zero_nav_subtree(Elem *e); /* REAL, NEW 2026-08-29 - see its own real definition/comment near evhq_zero_subtree() */
+static void zero_nav_subtree(Elem *e); /* generic: recursively zero nav_index (see its definition) */
 static void redraw(void); /* REAL, forward declaration needed for dispatch()'s OPACITY_MINUS/OPACITY_PLUS handlers (NEW 2026-08-29 TASK 2) */
 #define MAX_ELEMS 1024  /* 2026-09-02: page projection + chrome, was 512 */
 #define MAX_PAGE_STACK 8
@@ -1971,13 +1971,6 @@ static int g_dbhq_selected_event = -1;
  * been selected and its own khtpm_events_hq_manager.+x instance is
  * live, retargeting the SAME g_evhq_* globals/functions events-hq
  * already uses for entities - see dbhq_ce_open() below. */
-static int g_evhq_picker_open; /* real definition (with initializer) is later in the file, near g_evhq_picker_type - this tentative redeclaration just makes it visible to dbhq_handle_click(), which is defined earlier */
-static int g_evhq_picker_type; /* REAL, NEW 2026-08-29 - same tentative-redeclaration pattern as g_evhq_picker_open just above, needed for dbhq_handle_click()'s own real fix (mouse click focus-sync) */
-static int g_evhq_picker_focus;
-static int g_evhq_active_field;
-static int g_dbhq_ce_editing = 0;
-static char g_dbhq_ce_name[128] = "";
-static int g_dbhq_ce_needs_rebuild = 1; /* see dbhq_ce_inject_panel()'s own header comment */
 static char g_dbhq_events_state_path[PATH_BUF];
 static time_t g_dbhq_events_state_mtime = 0;
 static char g_dbhq_action_path[PATH_BUF];
@@ -3722,13 +3715,6 @@ static void assign_palettes_nav(Elem *e) {
 
 static void dbhq_assign_nav_indices(Elem *window) {
     g_n_nav = 0;
-    /* REAL FIX 2026-08-29 - same real fix as evhq_assign_nav_indices()'s
-     * own matching comment (nav-index collision between the modal
-     * picker and the background window). Gated on the exact same
-     * condition db-hq's own picker ownership uses everywhere else
-     * (g_dbhq_ce_editing && g_evhq_picker_open) - plain db-hq/
-     * palettes/bookmarks never open this picker at all. */
-    if (g_dbhq_ce_editing && g_evhq_picker_open) { zero_nav_subtree(window); return; }
     Elem *tabbar = find_by_tag(window, "tabbar");
     if (tabbar) {
         for (int i = 0; i < tabbar->n_children && g_n_nav < MAX_ELEMS; i++) {
@@ -3936,36 +3922,11 @@ static void dbhq_pal_scroll_to_y(int mouse_y) {
     g_pal_scroll = usable > 0 ? (rel * max_scroll) / usable : 0;
 }
 
-/* Forward decls - real definitions live after the g_evhq_* globals
- * they share with events-hq's own entity editing (Task 6, 2026-08-26). */
-static void dbhq_ce_open(const char *ce_name);
-/* Forward decls, real definitions come later (evhq_* section) -
- * dbhq_ce_inject_panel() (Part B, 2026-08-29) needs these before its
- * own definition to build the shared view-mode tabs/Scratch content. */
-static int evhq_measure_text_px(const CssStyle *st, const char *text);
-static void evhq_build_scratch_view(Elem *viewmode_stub, int content_x, int content_y, int content_h, int window_w);
-static int evhq_handle_block_onclick(const char *onclick);
-static int dbhq_ce_inject_panel(Elem *panel);
-static void dbhq_restore_tab_content(void);
-static void dbhq_ce_handle_onclick(const char *onclick);
-static void evhq_dispatch_picker_onclick(const char *onclick);
-static void evhq_redraw_content(void); /* REAL, NEW 2026-08-29 - evhq_dispatch_picker_onclick()'s own new PICKER:DELETE case needs this before its real definition */
 static void nav_tab_register(const char *type, const char *title);
 static void nav_tab_unregister(void);
 static void nav_tab_cycle(void);
 static void nav_tab_poll_active(void);
 static void nav_ledger_publish(void);
- /* Task 7 follow-up (2026-08-26) - shared mouse-click handler for the picker's real Elems, used by both dbhq_activate_elem() and evhq_activate_elem() */
-static void dbhq_ce_draw_overlay_if_needed(void);
-static void dbhq_ce_handle_key_if_needed(KeySym ks, char ch, int *consumed);
-static void evhq_open_edit_picker(int cmd_index); /* Task 7 (2026-08-26) - defined after g_evhq_cmds/registry helpers; EvhqCmdNode itself declared just below */
-static void evhq_load_command_registry(void); /* Task 7 (2026-08-26) - dbhq_ce_inject_panel() needs to call this before its own definition */
-/* Real events-hq functions this Task 6 code reuses verbatim, but which
- * are themselves defined later in the file than db-hq's own redraw/key
- * functions - forward-declared here so the wrappers above can call
- * them regardless of definition order. */
-static void evhq_draw_picker_overlay(void);
-static void evhq_handle_key(KeySym ks, char ch);
 
 /* REAL, requested "once and for all" fix (2026-08-27) - same real
  * frame-history convention as evhq_append_frame_history() (see its own
@@ -4325,12 +4286,6 @@ static void dbhq_redraw_content(void) {
         dbhq_paint_palette_frame_file();
     } else {
         render_tree(g_window, 0);
-        /* Task 6 (2026-08-26) - embedded Common Event editor's Add
-         * Command picker overlay, same real popup events-hq's own
-         * entity editing already uses (evhq_draw_picker_overlay() is
-         * already generic against g_window's own w/h, no changes
-         * needed there). */
-        dbhq_ce_draw_overlay_if_needed();
     }
     /* REAL, ported 2026-08-25 - palette matrix scroll thumb, verbatim
      * from khtpm_hq_render.c's own draw_chrome_bar-adjacent draw call
@@ -4543,6 +4498,26 @@ static int dbhq_rmmv_apply_onclick(const char *onclick) {
     return 0;
 }
 
+/* Rebuild the sidebar+panel for whatever g_dbhq_current_tab now is - the
+ * non-CE remainder of the old dbhq_restore_tab_content() (the Common
+ * Events INLINE editor is gone; db-hq-pal opens the ported events-hq
+ * window for that instead). */
+static void dbhq_show_current_tab(void) {
+    if (g_is_palettes || g_is_bookmarks || g_is_stats_hq) return;
+    if (g_dbhq_current_tab == DB_HQ_ACTORS_TAB) { dbhq_show_actors(); return; }
+    if (dbhq_list_idx_for_tab(g_dbhq_current_tab) >= 0) { dbhq_show_list_tab(); return; }
+    if (g_dbhq_current_tab == DB_HQ_COMMON_EVENTS_TAB || g_dbhq_current_tab == DB_HQ_TERMS_TAB) {
+        dbhq_load_common_events();
+        dbhq_inject_sidebar_items(find_by_tag(g_window, "sidebar"));
+        if (g_dbhq_selected_event < 0 && g_dbhq_n_events > 0) g_dbhq_selected_event = 0;
+        Elem *panel = find_by_tag(g_window, "panel");
+        if (panel) panel->n_children = 0;
+        return;
+    }
+    { Elem *sb = find_by_tag(g_window, "sidebar"); if (sb) sb->n_children = 0;
+      Elem *pn = find_by_tag(g_window, "panel");   if (pn) pn->n_children = 0; }
+}
+
 static void dbhq_activate_elem(Elem *hit) {
     if (!hit) return;
     if (strcmp(hit->tag, "closebtn") == 0) { g_quit = 1; return; }
@@ -4610,30 +4585,12 @@ static void dbhq_activate_elem(Elem *hit) {
              * it - no grab, no polling, in this process or any other.
              * See that file's own header for the full history. */
         }
-        /* Task 6 (2026-08-26) - the embedded Common Event editor's own
-         * buttons (dbhq_ce_inject_panel()), dispatched the same generic
-         * onclick[0] way as every other real verb here. Delegated to a
-         * function defined later in the file (after the g_evhq_* globals
-         * it needs) - see dbhq_ce_handle_onclick()'s own definition. */
-        else if (strncmp(hit->onclick, "CE:", 3) == 0)
-            dbhq_ce_handle_onclick(hit->onclick);
-        /* REAL BUG FIX (2026-08-26, direct live report: "cancel doesn't
-         * work") - db-hq's own embedded editor shows the SAME picker
-         * overlay events-hq does (dbhq_ce_draw_overlay_if_needed() ->
-         * evhq_draw_picker_overlay()), so its real onclick-carrying
-         * Elems need the same PICKER: dispatch here too, or a real mouse
-         * click on them in db-hq mode falls through to nothing, same
-         * bug as events-hq had. Shared with evhq_activate_elem() via
-         * evhq_dispatch_picker_onclick() so the logic isn't duplicated. */
-        else if (strncmp(hit->onclick, "PICKER:", 7) == 0)
-            evhq_dispatch_picker_onclick(hit->onclick);
         dbhq_redraw_content();
         return;
     }
     if (strcmp(hit->tag, "tab") == 0) {
         for (int i = 0; i < DB_HQ_N_TABS; i++) if (strcmp(hit->label, DB_HQ_TAB_LABELS[i]) == 0) { g_dbhq_current_tab = i; break; }
-        g_dbhq_ce_editing = 0;
-        dbhq_restore_tab_content();
+        dbhq_show_current_tab();
         dbhq_redraw_content();
         return;
     }
@@ -4670,11 +4627,6 @@ static void dbhq_activate_elem(Elem *hit) {
         dbhq_inject_sidebar_items(sidebar);
         if (g_is_stats_hq) {
             stats_populate_panel(g_dbhq_selected_event);
-        } else if (g_dbhq_selected_event >= 0) {
-            /* Task 6 (2026-08-26) - real, embedded RPG-Maker-style
-             * Common Events editor: selecting a sidebar item opens it
-             * inline (same window, same panel), no separate app. */
-            dbhq_ce_open(g_dbhq_events[g_dbhq_selected_event]);
         }
         dbhq_redraw_content();
         return;
@@ -4689,29 +4641,6 @@ static void dbhq_handle_click(int px, int py) {
      * directly against g_nav[] (which the picker owns exclusively while
      * open) instead, checked first, same as the other modes do for
      * their own synthetic/off-tree Elems (close button, scroll arrows). */
-    if (g_dbhq_ce_editing && g_evhq_picker_open) {
-        for (int i = 0; i < g_n_nav; i++) {
-            Elem *e = g_nav[i];
-            if (px >= e->x && px < e->x + e->w && py >= e->y && py < e->y + e->h) {
-                if (!click_focus_then_activate(e)) {
-                    /* REAL FIX 2026-08-29 - same root cause as
-                     * evhq_handle_click()'s own matching fix (see its
-                     * comment): evhq_draw_picker_overlay() stomps
-                     * g_focus_nav from g_evhq_picker_focus/
-                     * g_evhq_active_field on every redraw; sync
-                     * whichever is live before redrawing or the click
-                     * that just moved focus gets silently undone. */
-                    if (g_evhq_picker_type < 0) g_evhq_picker_focus = e->nav_index;
-                    else g_evhq_active_field = e->nav_index - 1;
-                    dbhq_redraw_content();
-                    return;
-                }
-                dbhq_activate_elem(e);
-                return;
-            }
-        }
-        return;
-    }
     if (px >= g_dbhq_close_elem->x && px < g_dbhq_close_elem->x + g_dbhq_close_elem->w &&
         py >= g_dbhq_close_elem->y && py < g_dbhq_close_elem->y + g_dbhq_close_elem->h) {
         g_focus_nav = g_dbhq_close_elem->nav_index;
@@ -4745,14 +4674,6 @@ static void dbhq_handle_click(int px, int py) {
 }
 
 static void dbhq_handle_key(KeySym ks, char ch) {
-    /* Task 6 (2026-08-26) - the embedded Common Event Add Command
-     * picker owns keys next, same priority order as events-hq's own
-     * top-level key dispatch gives its picker (checked before the
-     * input-field/nav-digit handling below, since a picker being open
-     * should always win). */
-    int ce_consumed = 0;
-    dbhq_ce_handle_key_if_needed(ks, ch, &ce_consumed);
-    if (ce_consumed) return;
     /* REAL, ported 2026-08-25 (Stage 3 bookmarks port) - armed input
      * field owns every key first, same order/behavior as
      * khtpm_hq_render.c's own handle_key(). First (only) consumer:
@@ -4934,922 +4855,13 @@ static void dbhq_handle_key(KeySym ks, char ch) {
  * own module launch passes 3 args not 1. Harmless, unused, when
  * g_is_events_hq is 0.
  * ====================================================================== */
-static int g_is_events_hq = 0;
+static const int g_is_events_hq = 0; /* events-hq C deleted 2026-09-03 - ported to events-hq.xhtpm + projector; kept as a const 0 so the pure-flag guards below constant-fold */
 /* g_is_chat_hai removed 2026-09-01 - chat-hai's own hardcoded mode is
  * gone (migrated onto the generic sidebar/panel/scrolllist/cli_io
  * path, see chat_hai_projector.sh's own header comment); it now
  * carries no class= at all and is indistinguishable from any other
  * generic default-mode window. */
-#define EVHQ_CHROME_H 26
-static void dump_frame_png(void); /* forward decl - evhq_handle_key()'s own real 'p' case calls the shared one, defined later in this file */
-
-static char g_evhq_pkg_dir[PATH_BUF];
-static char g_evhq_entity_label[128];
-
-static pid_t g_evhq_module_pid = -1;
-static void evhq_cleanup_module(void) {
-    if (g_evhq_module_pid > 0) {
-        kill(g_evhq_module_pid, SIGTERM);
-        waitpid(g_evhq_module_pid, NULL, WNOHANG);
-        g_evhq_module_pid = -1;
-    }
-}
-static void evhq_handle_term_signal(int sig) {
-    (void)sig;
-    evhq_cleanup_module();
-    _exit(0);
-}
-static void evhq_launch_module(const char *src) {
-    if (!src || !src[0]) return;
-    char full_path[PATH_BUF];
-    if (src[0] == '/') snprintf(full_path, sizeof(full_path), "%s", src);
-    else snprintf(full_path, sizeof(full_path), "%s/%s", g_house_root, src);
-    g_evhq_module_pid = fork();
-    if (g_evhq_module_pid == 0) {
-        execl(full_path, full_path, g_house_root, g_evhq_pkg_dir, g_evhq_entity_label, (char *)NULL);
-        _exit(1);
-    } else if (g_evhq_module_pid < 0) {
-        fprintf(stderr, "khtpm_entity_menu_render: events-hq: launch_module: fork failed for %s\n", full_path);
-        g_evhq_module_pid = -1;
-    }
-}
-
-static unsigned char *g_evhq_sprite_pixels = NULL;
-static int g_evhq_sprite_res = 0;
-static void evhq_load_entity_sprite(void) {
-    char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/../sprite.csv", g_evhq_pkg_dir);
-    FILE *f = fopen(path, "r");
-    if (!f) return;
-    char line[256];
-    int res = 0;
-    while (fgets(line, sizeof(line), f)) {
-        if (strncmp(line, "# resolution=", 13) == 0) { res = atoi(line + 13); break; }
-    }
-    if (res <= 0) { fclose(f); return; }
-    unsigned char *pixels = malloc((size_t)res * (size_t)res * 4);
-    if (!pixels) { fclose(f); return; }
-    int count = 0;
-    while (count < res * res && fgets(line, sizeof(line), f)) {
-        int r, g, b, a;
-        if (sscanf(line, "%d,%d,%d,%d", &r, &g, &b, &a) == 4) {
-            pixels[count * 4 + 0] = (unsigned char)r; pixels[count * 4 + 1] = (unsigned char)g;
-            pixels[count * 4 + 2] = (unsigned char)b; pixels[count * 4 + 3] = (unsigned char)a;
-            count++;
-        }
-    }
-    fclose(f);
-    if (count != res * res) { free(pixels); return; }
-    g_evhq_sprite_pixels = pixels;
-    g_evhq_sprite_res = res;
-}
-
-typedef struct {
-    int id;
-    char type[32];
-    char params[512];
-} EvhqCmdNode;
-static void evhq_describe_command(const EvhqCmdNode *cmd, char *out, size_t outsz); /* Task 7 (2026-08-26) - real definition after g_evhq_cmd_defs/registry helpers */
-#define EVHQ_MAX_CMDS 64
-#define EVHQ_MAX_PAGES 16
-static char g_evhq_pages[EVHQ_MAX_PAGES][64];
-static int g_evhq_n_pages = 0;
-static int g_evhq_current_page = 0;
-/* Task 5 (2026-08-27) - Scripting|Scratch|Blueprints view-mode toolbar.
- * 0=Scripting (today's real command list, default/unchanged behavior),
- * 1=Scratch, 2=Blueprints (both real, clickable, nav-reachable STUBS
- * only - see PAL-VISUAL-SCRIPTING-PLAN.md, no block/node rendering
- * built yet). Shared by both events-hq mode and db-hq's embedded
- * Common Events editor (g_is_db_hq/g_is_events_hq are mutually
- * exclusive per process, so one variable is safe for both). */
-static int g_evhq_view_mode = 0;
-static const char *EVHQ_VIEW_STUB_LABELS[3] = { "", "Scratch view - coming soon", "Blueprints view - coming soon" };
-static EvhqCmdNode g_evhq_cmds[EVHQ_MAX_CMDS];
-static int g_evhq_n_cmds = 0;
-/* VS task #2 (2026-08-28) - Scratch view blocks, populated from
- * SCRATCHBLOCK|<key>|<status> rows the manager publishes (switch =
- * ON/OFF, Change Gold/exec-shim op = the real value, e.g. 10/-10).
- * Rendered only in view mode 1 (Scratch). */
-typedef struct { char key[128]; char status[16]; } EvhqBlockNode;
-#define EVHQ_MAX_BLOCKS 16
-static EvhqBlockNode g_evhq_blocks[EVHQ_MAX_BLOCKS];
-static int g_evhq_n_blocks = 0;
-static Elem g_evhq_block_slots[MAX_CHILDREN];
-/* Visual block editor (2026-08-29) - click-to-place, nav-based, no
- * drag/drop: left sidebar of block pieces (click to pick, highlights),
- * then click the "[].<#>" slot to append via evhq_request_append_node().
- * All ops below are real registry commands (see DESIGN NOTE in
- * !.OPEN-2do-events-db-networking-2026-08-28.md); cls1/cls2 are the
- * two class tokens that make the piece look scratch-colored. */
-typedef struct {
-    const char *label;
-    const char *type;
-    const char *params;
-    const char *cls1;
-    const char *cls2;
-} EvhqPaletteItem;
-static const EvhqPaletteItem g_evhq_palette[] = {
-    { "Change Gold",  "change_gold",     "amount=10",                          "scratch-block", "gold"   },
-    { "Take Gold",    "take_gold",       "amount=10",                          "scratch-block", "green"  },
-    { "Switch ON",    "control_switch",  "switch_name=flag_0|switch_value=1",  "scratch-block", "orange" },
-    { "Show Text",    "show_text",       "text=Hello!",                        "scratch-block", "purple" },
-    { "Wait",         "wait",            "ms=100",                             "scratch-block", "pink"   },
-};
-#define EVHQ_PALETTE_MAX 8
-#define EVHQ_PALETTE_N ((int)(sizeof(g_evhq_palette) / sizeof(g_evhq_palette[0])))
-static Elem g_evhq_palette_slots[EVHQ_PALETTE_MAX];
-static Elem g_evhq_place_slots[2];
-static int g_evhq_selected_palette = -1;
-static char g_evhq_selected_type[32] = "";
-static char g_evhq_selected_params[128] = "";
-static const char *evhq_palette_cls_for_type(const char *type) {
-    if (!type || !type[0]) return NULL;
-    for (int i = 0; i < EVHQ_PALETTE_N; i++)
-        if (strcmp(type, g_evhq_palette[i].type) == 0) return g_evhq_palette[i].cls2;
-    return NULL;
-}
-static char g_evhq_trigger[64] = "(unknown)";
-static char g_evhq_switch_name[128] = "";  /* for Common Events: configured switch to watch */
-static char g_evhq_mgr_pages_state_path[PATH_BUF];
-static char g_evhq_mgr_selected_page_path[PATH_BUF];
-static char g_evhq_mgr_page_state_path[PATH_BUF];
-static char g_evhq_mgr_action_path[PATH_BUF];
-static time_t g_evhq_pages_state_mtime = 0;
-static time_t g_evhq_page_state_mtime = 0;
-
-static void evhq_init_manager_paths(void) {
-    char mgr_dir[PATH_BUF];
-    snprintf(mgr_dir, sizeof(mgr_dir), "%s/.hq_manager", g_evhq_pkg_dir);
-    snprintf(g_evhq_mgr_pages_state_path, sizeof(g_evhq_mgr_pages_state_path), "%s/pages.state.txt", mgr_dir);
-    snprintf(g_evhq_mgr_selected_page_path, sizeof(g_evhq_mgr_selected_page_path), "%s/selected_page.txt", mgr_dir);
-    snprintf(g_evhq_mgr_page_state_path, sizeof(g_evhq_mgr_page_state_path), "%s/page.state.txt", mgr_dir);
-    snprintf(g_evhq_mgr_action_path, sizeof(g_evhq_mgr_action_path), "%s/action.txt", mgr_dir);
-}
-/* REAL FIX 2026-08-25 (found live while capturing an H6 proof
- * presentation, not caught by any agent's own self-report): creating a
- * page via "+ New" only ever asked the MANAGER to create it - it never
- * selected the new page on the RENDER side. The new tab looked focused/
- * active in the UI (keyboard nav cursor landed there), but
- * g_evhq_current_page never advanced past whatever was selected before,
- * so evhq_write_selected_page() kept re-confirming the OLD page to the
- * manager every poll tick - Trigger/Commands silently kept showing the
- * old page's real content under the new page's tab. Set by the
- * new-page-btn activate handler; consumed here the first time the page
- * COUNT actually grows, auto-selecting the newest (highest-numbered)
- * page - matches "+ New" always appending, never inserting. */
-static int g_evhq_pending_select_new_page = 0;
-static unsigned long g_evhq_pages_cksum;
-static unsigned long g_evhq_page_state_cksum;
-
-static unsigned long evhq_file_cksum(const char *path) {
-    FILE *f = fopen(path, "r");
-    if (!f) return 0;
-    unsigned long h = 5381;
-    int c;
-    while ((c = fgetc(f)) != EOF) h = ((h << 5) + h) + (unsigned char)c;
-    fclose(f);
-    return h;
-}
-
-static int evhq_load_pages(void) {
-    struct stat st;
-    if (stat(g_evhq_mgr_pages_state_path, &st) != 0) return 0;
-    if (st.st_mtime == g_evhq_pages_state_mtime) return 0;
-    unsigned long ck = evhq_file_cksum(g_evhq_mgr_pages_state_path);
-    g_evhq_pages_state_mtime = st.st_mtime;
-    if (ck == g_evhq_pages_cksum && g_evhq_n_pages >= 0) {
-        /* manager rewrote identical bytes — not a new frame */
-        return 0;
-    }
-    g_evhq_pages_cksum = ck;
-    int prev_n_pages = g_evhq_n_pages;
-    g_evhq_n_pages = 0;
-    FILE *f = fopen(g_evhq_mgr_pages_state_path, "r");
-    if (!f) return 0;
-    char line[128];
-    while (g_evhq_n_pages < EVHQ_MAX_PAGES && fgets(line, sizeof(line), f)) {
-        line[strcspn(line, "\r\n")] = '\0';
-        if (line[0] == '\0') continue;
-        snprintf(g_evhq_pages[g_evhq_n_pages], sizeof(g_evhq_pages[0]), "%s", line);
-        g_evhq_n_pages++;
-    }
-    fclose(f);
-    if (g_evhq_pending_select_new_page && g_evhq_n_pages > prev_n_pages) {
-        g_evhq_current_page = g_evhq_n_pages - 1;
-        g_evhq_pending_select_new_page = 0;
-    }
-    if (g_evhq_current_page >= g_evhq_n_pages) g_evhq_current_page = 0;
-    return 1;
-}
-static void evhq_write_selected_page(void) {
-    if (g_evhq_current_page < 0 || g_evhq_current_page >= g_evhq_n_pages) return;
-    FILE *f = fopen(g_evhq_mgr_selected_page_path, "w");
-    if (!f) return;
-    fprintf(f, "%s\n", g_evhq_pages[g_evhq_current_page]);
-    fclose(f);
-}
-static int evhq_load_page_state(void) {
-    struct stat st;
-    if (stat(g_evhq_mgr_page_state_path, &st) != 0) return 0;
-    if (st.st_mtime == g_evhq_page_state_mtime) return 0;
-    unsigned long ck = evhq_file_cksum(g_evhq_mgr_page_state_path);
-    g_evhq_page_state_mtime = st.st_mtime;
-    if (ck == g_evhq_page_state_cksum) return 0;
-    g_evhq_page_state_cksum = ck;
-    g_evhq_n_cmds = 0;
-    g_evhq_n_blocks = 0;
-    snprintf(g_evhq_trigger, sizeof(g_evhq_trigger), "(unset)");
-    snprintf(g_evhq_switch_name, sizeof(g_evhq_switch_name), "");  /* clear previous switch name */
-    FILE *f = fopen(g_evhq_mgr_page_state_path, "r");
-    if (!f) return 1;
-    char line[600];
-    while (fgets(line, sizeof(line), f)) {
-        line[strcspn(line, "\r\n")] = '\0';
-        if (strncmp(line, "TRIGGER|", 8) == 0) {
-            snprintf(g_evhq_trigger, sizeof(g_evhq_trigger), "%s", line + 8);
-        } else if (strncmp(line, "SWITCH|", 7) == 0) {
-            snprintf(g_evhq_switch_name, sizeof(g_evhq_switch_name), "%s", line + 7);
-        } else if (strncmp(line, "CMD|", 4) == 0 && g_evhq_n_cmds < EVHQ_MAX_CMDS) {
-            char *p = line + 4;
-            char *bar1 = strchr(p, '|');
-            if (!bar1) continue;
-            *bar1 = '\0';
-            g_evhq_cmds[g_evhq_n_cmds].id = atoi(p);
-            char *type_start = bar1 + 1;
-            char *bar2 = strchr(type_start, '|');
-            if (!bar2) continue;
-            *bar2 = '\0';
-            snprintf(g_evhq_cmds[g_evhq_n_cmds].type, sizeof(g_evhq_cmds[0].type), "%s", type_start);
-            snprintf(g_evhq_cmds[g_evhq_n_cmds].params, sizeof(g_evhq_cmds[0].params), "%s", bar2 + 1);
-            g_evhq_n_cmds++;
-        } else if (strncmp(line, "SCRATCHBLOCK|", 13) == 0 && g_evhq_n_blocks < EVHQ_MAX_BLOCKS) {
-            char *p = line + 13;
-            char *bar = strchr(p, '|');
-            if (!bar) continue;
-            *bar = '\0';
-            EvhqBlockNode *b = &g_evhq_blocks[g_evhq_n_blocks];
-            memset(b, 0, sizeof(*b));
-            snprintf(b->key, sizeof(b->key), "%s", p);
-            snprintf(b->status, sizeof(b->status), "%s", bar + 1);
-            g_evhq_n_blocks++;
-        }
-    }
-    fclose(f);
-    return 1;
-}
-
-static void evhq_request_append_node(const char *type, const char *params_line) {
-    FILE *f = fopen(g_evhq_mgr_action_path, "w");
-    if (!f) return;
-    fprintf(f, "append:%s|%s\n", type, params_line);
-    fclose(f);
-}
-/* Task 7 (2026-08-26) - real command editing, sibling to append above.
- * See khtpm_events_hq_manager.c's own "edit:" action handler. */
-static void evhq_request_edit_node(int id, const char *type, const char *params_line) {
-    FILE *f = fopen(g_evhq_mgr_action_path, "w");
-    if (!f) return;
-    fprintf(f, "edit:%d|%s|%s\n", id, type, params_line);
-    fclose(f);
-}
-
-/* REAL, NEW 2026-08-29 (direct instruction: "trigger able from visual
- * nav / index, as usual... just a nav for delete") - sibling to
- * evhq_request_edit_node() above, same real action.txt boundary.
- * See khtpm_events_hq_manager.c's own new "delete:" action handler. */
-static void evhq_request_delete_node(int id) {
-    FILE *f = fopen(g_evhq_mgr_action_path, "w");
-    if (!f) return;
-    fprintf(f, "delete:%d\n", id);
-    fclose(f);
-}
-
-static void evhq_request_trigger_update(const char *new_trigger) {
-    /* Task H7 (2026-08-25) - request the manager rewrite condition.pdl's trigger */
-    FILE *f = fopen(g_evhq_mgr_action_path, "w");
-    if (!f) return;
-    fprintf(f, "trigger:%s\n", new_trigger);
-    fclose(f);
-}
-
-static int g_evhq_has_real_focus = 0;
-static char g_evhq_last_key_label[32] = "";
-static int g_evhq_dragging = 0;
-static int g_evhq_drag_last_x = 0, g_evhq_drag_last_y = 0;
-static int g_evhq_toolbar_y = 0, g_evhq_toolbar_h = 0;
-static Elem g_evhq_close_elem_storage;
-static Elem *g_evhq_close_elem = &g_evhq_close_elem_storage;
-static int g_evhq_close_x, g_evhq_close_y, g_evhq_close_w, g_evhq_close_h;
-static int g_evhq_digit_accum = 0;
-
-static int g_evhq_picker_open = 0;
-static int g_evhq_picker_type = -1;
-static int g_evhq_picker_focus = 1;
-/* REAL, NEW 2026-08-29 (live report: "why don't i see those events in
- * the event editor?") - the Add-Command type list was hardcoded to a
- * flat `i<16` cap with no scroll, from back when the registry had
- * exactly ~16 commands - the registry now has 22 (Task 1 added Select
- * Item/Scrolling Text/all 4 Character commands) and the picker box
- * itself (280px default from picker.chtpm) physically can't show more
- * than ~9 rows at 22px each regardless of any array-size fix, so the
- * last several commands were silently unreachable even by digit-jump.
- * g_evhq_picker_scroll is which real g_evhq_cmd_defs[] index is at the
- * top of the visible window; g_evhq_picker_visible_rows is how many
- * rows the box actually has room for this frame (computed in
- * evhq_draw_picker_overlay(), read back in evhq_handle_key() - same
- * "compute once at draw time, key handling reads the cached value"
- * shape used for other overlay state throughout this file). Digits/
- * arrows still move within the current visible window (same real
- * on-screen-position semantic used everywhere else in this house);
- * Page_Up/Page_Down scroll the window itself, same real keys the
- * command list/palette grid already use for the identical reason. */
-static int g_evhq_picker_scroll = 0;
-static int g_evhq_picker_visible_rows = 9;
-static char g_evhq_field1[256] = "", g_evhq_field2[256] = "";
-static int g_evhq_active_field = 0;
-static int g_evhq_edit_cmd_id = -1; /* Task 7 (2026-08-26): -1 = Add Command flow, >=0 = editing that existing command's real id */
-
-/* Task 6 (2026-08-26) - open a real common event in the SAME embedded
- * db-hq panel (RPG Maker MV/MZ shape: one dialog, sidebar list of
- * event slots + the real command editor together - NOT a separate
- * spawned window, direct instruction). Retargets the exact same
- * g_evhq_pkg_dir/g_evhq_entity_label globals events-hq already uses
- * for entities, then launches a real khtpm_events_hq_manager.+x
- * instance scoped to this common event's own event_pkg dir - the
- * manager doesn't care whether pkg_dir is under an entity or
- * common_events/, it's already generic. */
-static void dbhq_ce_open(const char *ce_name) {
-    if (!ce_name || !ce_name[0]) return;
-    snprintf(g_evhq_pkg_dir, sizeof(g_evhq_pkg_dir), "%s/common_events/%s/event_pkg", g_house_root, ce_name);
-    snprintf(g_evhq_entity_label, sizeof(g_evhq_entity_label), "%s", ce_name);
-    snprintf(g_dbhq_ce_name, sizeof(g_dbhq_ce_name), "%s", ce_name);
-    evhq_init_manager_paths();
-    g_evhq_n_pages = 0; g_evhq_pages_state_mtime = 0;
-    g_evhq_n_cmds = 0; g_evhq_page_state_mtime = 0;
-    g_evhq_current_page = 0; g_evhq_pending_select_new_page = 0;
-    g_evhq_picker_open = 0;
-    snprintf(g_evhq_trigger, sizeof(g_evhq_trigger), "(loading)");
-    evhq_launch_module("&.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x");
-    g_dbhq_ce_editing = 1;
-    g_dbhq_ce_needs_rebuild = 1;
-}
-
-/* Rebuilds the visible content of db-hq's own "panel" Elem to show the
- * selected common event's real trigger + command list, using the SAME
- * generic title/text/button tags db-hq's own panel layout pass
- * (dbhq_layout_pass, ~line 1120) already knows how to flex-stack - no
- * new layout code needed, only new children. Buttons get a real
- * onclick="CE:..." string, dispatched by the generic onclick branch in
- * dbhq_activate_elem() (added alongside this function) - the SAME
- * dispatch mechanism bookmarks' onClick="open:..." already uses. */
-static Elem g_dbhq_panel_slots[MAX_CHILDREN]; /* see reusable_slot()'s own header comment */
-/* REAL FIX 2026-08-29 (Part B) - real slot storage for Common Events'
- * own view-mode tabbar children + its Scratch/Blueprints stub content,
- * same reusable_slot() pattern every other injector in this file uses -
- * NOT part of g_dbhq_panel_slots since that pool is sized/indexed for
- * the flat Scripting-mode child list and this content replaces it
- * entirely in non-Scripting modes. */
-static Elem g_dbhq_ce_viewtab_slots[3];
-static Elem g_dbhq_ce_scratch_stub;
-
-static int dbhq_ce_inject_panel(Elem *panel) {
-    if (!panel) return 0;
-    int pages_changed = evhq_load_pages();
-    int state_changed = evhq_load_page_state();
-    /* REAL BUG FIX 2026-08-26 (found via gdb backtrace, real SIGSEGV,
-     * not guessed): elem_new() allocates from a FIXED-SIZE static pool
-     * with no free/recycle mechanism (see khtpm_render_core.c). This
-     * function used to rebuild panel->children - calling elem_new() for
-     * every title/text/button - on EVERY ~150ms periodic tick
-     * unconditionally, unlike dbhq_inject_sidebar_items()'s own much
-     * rarer mtime-gated refresh. That leaked ~7 pool slots per tick
-     * forever, exhausting the pool and crashing (SIGSEGV in
-     * __vsnprintf_internal, confirmed live via `gdb -batch -ex run -ex
-     * bt`) a few seconds into any real session. Real fix: only rebuild
-     * when the underlying data actually changed (evhq_load_pages()/
-     * evhq_load_page_state() are already self-mtime-gated and report
-     * this), or on the first inject after dbhq_ce_open(). */
-    if (!g_dbhq_ce_needs_rebuild && !pages_changed && !state_changed) return 0;
-    g_dbhq_ce_needs_rebuild = 0;
-    evhq_write_selected_page();
-    /* Task 7 (2026-08-26) - real bug fix: descriptions came out empty
-     * ("change_gold" with no params) because g_evhq_cmd_defs[] was only
-     * ever loaded by the picker overlay's own draw call - if a common
-     * event is opened and never has "+ Add Command" clicked, the
-     * registry was never loaded and evhq_find_cmd_def() always returned
-     * NULL. Load it here unconditionally (self-mtime-gated internally,
-     * cheap to call every rebuild). */
-    evhq_load_command_registry();
-    panel->n_children = 0;
-    int next_slot_index = 0;
-    Elem *title = reusable_slot(g_dbhq_panel_slots, MAX_CHILDREN, next_slot_index++, "title");
-    if (!title) return 0; /* pool exhausted - see elem_new()'s own NULL contract; nothing more we can safely build this pass */
-    snprintf(title->classes[0], sizeof(title->classes[0]), "block-title"); title->n_classes = 1;
-    snprintf(title->label, sizeof(title->label), "Common Event: %s", g_dbhq_ce_name);
-    panel->children[panel->n_children++] = title;
-
-    /* REAL FIX 2026-08-29 (EVENTS-HQ-RENDER-UNIFICATION-PLAN.md Part B)
-     * - the same real Scripting/Scratch/Blueprints view-mode tabs
-     * events-hq has, sharing the SAME g_evhq_view_mode global (already
-     * shared between the two modes - see g_evhq_n_cmds/g_evhq_cmds
-     * reuse just below). Real tabbar Elem, real "tab" children, same
-     * onclick-prefix convention (dbhq_activate_elem()'s existing
-     * generic dispatch already forwards unrecognized onclicks to
-     * dbhq_ce_handle_onclick() while g_dbhq_ce_editing is set - see
-     * that function's own new "CE:VIEWTAB:" case). */
-    Elem *vtabs = reusable_slot(g_dbhq_panel_slots, MAX_CHILDREN, next_slot_index++, "tabbar");
-    if (vtabs) {
-        snprintf(vtabs->classes[0], sizeof(vtabs->classes[0]), "view-tabs"); vtabs->n_classes = 1;
-        static const char *ce_view_labels[3] = { "Scripting", "Scratch", "Blueprints" };
-        int tw = 0;
-        for (int i = 0; i < 3; i++) {
-            Elem *tab = reusable_slot(g_dbhq_ce_viewtab_slots, 3, i, "tab");
-            if (!tab) break;
-            snprintf(tab->classes[0], sizeof(tab->classes[0]), "view-tab"); tab->n_classes = 1;
-            snprintf(tab->label, sizeof(tab->label), "%s", ce_view_labels[i]);
-            char oc[16]; snprintf(oc, sizeof(oc), "CE:VIEWTAB:%d", i);
-            snprintf(tab->onclick, sizeof(tab->onclick), "%s", oc);
-            tab->active = (i == g_evhq_view_mode);
-            css_compute_style(&g_sheet, tab->tag, NULL, tab->classes, tab->n_classes, tab->active, &tab->style);
-            int this_w = evhq_measure_text_px(&tab->style, tab->label) + 34;
-            tab->x = panel->x + tw; tab->y = panel->y + 4; tab->w = this_w; tab->h = 20;
-            tw += this_w + 4;
-            vtabs->children[vtabs->n_children++] = tab;
-        }
-        vtabs->x = panel->x; vtabs->y = panel->y; vtabs->w = tw; vtabs->h = 26;
-        panel->children[panel->n_children++] = vtabs;
-    }
-    if (g_evhq_view_mode == 1) {
-        /* Scratch mode - the real content Trigger/Switch/command-list/
-         * +Add-Command below is Scripting-only; give the Scratch view
-         * its own real stub Elem to build into, same shape events-hq's
-         * own "viewmode-stub" panel gives it. */
-        Elem *stub = reusable_slot(&g_dbhq_ce_scratch_stub, 1, 0, "panel");
-        if (stub) {
-            evhq_build_scratch_view(stub, panel->x, panel->y + 30, panel->h - 30, panel->w > 0 ? panel->w : g_window->w);
-            panel->children[panel->n_children++] = stub;
-        }
-        return 1;
-    }
-    if (g_evhq_view_mode == 2) {
-        Elem *stub = reusable_slot(&g_dbhq_ce_scratch_stub, 1, 0, "text");
-        if (stub) {
-            snprintf(stub->classes[0], sizeof(stub->classes[0]), "empty-msg"); stub->n_classes = 1;
-            snprintf(stub->label, sizeof(stub->label), "Blueprints view - coming soon");
-            stub->x = panel->x + 8; stub->y = panel->y + 40; stub->w = (panel->w > 0 ? panel->w : g_window->w) - 16; stub->h = 20;
-            css_compute_style(&g_sheet, stub->tag, NULL, stub->classes, stub->n_classes, 0, &stub->style);
-            panel->children[panel->n_children++] = stub;
-        }
-        return 1;
-    }
-
-    /* Direct instruction (2026-08-26): a real Trigger field, RPG Maker
-     * MV/MZ shape (Common Events' own "General Settings" - None/Autorun/
-     * Parallel, Switch only when a trigger needs one), positioned above
-     * the command list ("Scripting"). Real, nav-reachable button (not
-     * static text) - activating it cycles None -> Autorun -> Parallel ->
-     * None, writing the new value via the SAME evhq_request_trigger_
-     * update() entity events already use (reused, not reinvented). */
-    Elem *trig = reusable_slot(g_dbhq_panel_slots, MAX_CHILDREN, next_slot_index++, "button");
-    if (trig) {
-        snprintf(trig->classes[0], sizeof(trig->classes[0]), "prop-value"); trig->n_classes = 1;
-        snprintf(trig->id, sizeof(trig->id), "ce-trigger");
-        snprintf(trig->onclick, sizeof(trig->onclick), "CE:TRIGGER");
-        snprintf(trig->label, sizeof(trig->label), "Trigger: %s", g_evhq_trigger);
-        if (panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = trig;
-    }
-
-    /* REAL FIX (2026-08-27): a Switch field for Autorun/Parallel common events.
-     * Uses the same cli-io mechanism bookmarks' "New+" button already uses.
-     * Only relevant when trigger is Autorun or Parallel; greyed/hidden otherwise.
-     * Stores switch name in condition.pdl via khtpm_events_hq_manager.c handler. */
-    int show_switch_field = (strcasecmp(g_evhq_trigger, "Autorun") == 0 ||
-                             strcasecmp(g_evhq_trigger, "Parallel") == 0);
-    if (show_switch_field) {
-        Elem *sw = reusable_slot(g_dbhq_panel_slots, MAX_CHILDREN, next_slot_index++, "button");
-        if (sw) {
-            snprintf(sw->classes[0], sizeof(sw->classes[0]), "prop-value"); sw->n_classes = 1;
-            snprintf(sw->id, sizeof(sw->id), "ce-switch");
-
-            /* cli-io pattern: input:<file>|<post cmd> - reuses existing mechanism */
-            char target[PATH_BUF];
-            snprintf(target, sizeof(target), "%s/#.desktop/.dbhq_ce_switch_name.txt", g_house_root);
-            char post[900];
-            snprintf(post, sizeof(post),
-                "sh -c 'N=$(tail -1 \"%s\" | tr -d \"\\r\\n\"); [ -n \"$N\" ] && echo \"switch:$N\" >> \"%s/#.desktop/events_hq_history.txt\"'",
-                target, g_house_root);
-            snprintf(sw->onclick, sizeof(sw->onclick), "input:%s|%s", target, post);
-
-            /* Display current switch name (read from condition.pdl by the manager) */
-            if (g_evhq_switch_name[0]) {
-                snprintf(sw->label, sizeof(sw->label), "Switch: %s", g_evhq_switch_name);
-            } else {
-                snprintf(sw->label, sizeof(sw->label), "Switch: (unset, using ce_%s)", g_dbhq_ce_name);
-            }
-            if (panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = sw;
-        }
-    }
-
-    if (g_evhq_n_cmds == 0) {
-        Elem *e = reusable_slot(g_dbhq_panel_slots, MAX_CHILDREN, next_slot_index++, "text");
-        if (e) {
-            snprintf(e->classes[0], sizeof(e->classes[0]), "empty-msg"); e->n_classes = 1;
-            snprintf(e->label, sizeof(e->label), "(no commands yet)");
-            if (panel->n_children < MAX_CHILDREN) panel->children[panel->n_children++] = e;
-        }
-    } else {
-        for (int i = 0; i < g_evhq_n_cmds && panel->n_children < MAX_CHILDREN; i++) {
-            /* Task 7 (2026-08-26) - real, nav-reachable, editable row:
-             * button tag (so dbhq_assign_nav_indices()'s existing
-             * button-only panel loop numbers it for free, no separate
-             * nav-assignment change needed), onclick delegates to the
-             * SAME edit-picker events-hq uses, description generated
-             * generically from the registry (never hand-write per-type
-             * strings here). */
-            Elem *e = reusable_slot(g_dbhq_panel_slots, MAX_CHILDREN, next_slot_index++, "button");
-            if (!e) break; /* pool exhausted - stop, don't crash */
-            char cls[48]; snprintf(cls, sizeof(cls), "cmd-%s", g_evhq_cmds[i].type);
-            snprintf(e->classes[0], sizeof(e->classes[0]), "%s", cls); e->n_classes = 1;
-            snprintf(e->id, sizeof(e->id), "cmd-row-%d", g_evhq_cmds[i].id);
-            snprintf(e->onclick, sizeof(e->onclick), "CE:EDITCMD:%d", g_evhq_cmds[i].id);
-            char desc[300]; evhq_describe_command(&g_evhq_cmds[i], desc, sizeof(desc));
-            snprintf(e->label, sizeof(e->label), "%d. %s", g_evhq_cmds[i].id, desc);
-            panel->children[panel->n_children++] = e;
-        }
-    }
-    if (panel->n_children < MAX_CHILDREN) {
-        Elem *add = reusable_slot(g_dbhq_panel_slots, MAX_CHILDREN, next_slot_index++, "button");
-        if (add) {
-            snprintf(add->classes[0], sizeof(add->classes[0]), "btn-primary"); add->n_classes = 1;
-            snprintf(add->id, sizeof(add->id), "ce-add-command");
-            snprintf(add->onclick, sizeof(add->onclick), "CE:ADDCMD");
-            snprintf(add->label, sizeof(add->label), "+ Add Command");
-            panel->children[panel->n_children++] = add;
-        }
-    }
-    /* Direct instruction (2026-08-26): no Play button here either -
-     * removed alongside "Back to list". */
-    /* Direct instruction (2026-08-26): no "Back to list" button - the
-     * sidebar list is always visible alongside this panel (RPG Maker MV/
-     * MZ shape), so there's nothing to "go back" to. */
-    return 1;
-}
-
-
-static void dbhq_restore_tab_content(void) {
-    /* Switching away from Actors must rebuild CE/Terms chrome. Actors
-     * rewrote sidebar+panel in place; without this, nav [12] Common
-     * Events highlighted the tab but left Harold's panel on screen. */
-    if (g_is_palettes || g_is_bookmarks || g_is_stats_hq) return;
-    if (g_dbhq_current_tab == DB_HQ_ACTORS_TAB) {
-        dbhq_show_actors();
-        return;
-    }
-    if (dbhq_list_idx_for_tab(g_dbhq_current_tab) >= 0) {
-        dbhq_show_list_tab();
-        return;
-    }
-    if (g_dbhq_current_tab == DB_HQ_COMMON_EVENTS_TAB) {
-        dbhq_load_common_events();
-        Elem *sidebar = find_by_tag(g_window, "sidebar");
-        dbhq_inject_sidebar_items(sidebar);
-        if (g_dbhq_selected_event < 0 && g_dbhq_n_events > 0)
-            g_dbhq_selected_event = 0;
-        Elem *panel = find_by_tag(g_window, "panel");
-        if (g_dbhq_selected_event >= 0 && g_dbhq_selected_event < g_dbhq_n_events) {
-            dbhq_ce_open(g_dbhq_events[g_dbhq_selected_event]);
-            dbhq_ce_inject_panel(panel);
-        } else if (panel) {
-            panel->n_children = 0;
-        }
-        return;
-    }
-    if (g_dbhq_current_tab == DB_HQ_TERMS_TAB) {
-        dbhq_load_common_events();
-        Elem *sidebar = find_by_tag(g_window, "sidebar");
-        dbhq_inject_sidebar_items(sidebar);
-        return;
-    }
-    /* placeholder tabs: drop actor/CE children so gray message is honest */
-    {
-        Elem *sidebar = find_by_tag(g_window, "sidebar");
-        if (sidebar) sidebar->n_children = 0;
-        Elem *panel = find_by_tag(g_window, "panel");
-        if (panel) panel->n_children = 0;
-    }
-}
-
-/* Real definition of the forward-declared dispatcher (see the prototype
- * above dbhq_activate_elem()) - the embedded Common Event editor's own
- * verbs, reusing the EXACT same picker/action-file state and mechanism
- * events-hq already uses for entities (g_evhq_picker_open/g_evhq_mgr_
- * action_path/etc.), just with g_evhq_pkg_dir retargeted by dbhq_ce_
- * open() to the selected common event instead of an entity. */
-static void dbhq_ce_handle_onclick(const char *onclick) {
-    if (strcmp(onclick, "CE:ADDCMD") == 0) {
-        g_evhq_picker_open = 1; g_evhq_picker_type = -1; g_evhq_picker_focus = 1; g_evhq_picker_scroll = 0;
-        g_evhq_field1[0] = '\0'; g_evhq_field2[0] = '\0'; g_evhq_active_field = 0;
-        g_evhq_edit_cmd_id = -1;
-    } else if (strncmp(onclick, "CE:EDITCMD:", 11) == 0) {
-        /* Task 7 (2026-08-26) - same real edit flow as events-hq's own
-         * "cmd-edit-<id>" rows, just reached via db-hq's onclick-prefix
-         * dispatch convention instead of an id check. */
-        int target_id = atoi(onclick + 11);
-        for (int i = 0; i < g_evhq_n_cmds; i++) if (g_evhq_cmds[i].id == target_id) { evhq_open_edit_picker(i); break; }
-    } else if (strcmp(onclick, "CE:NEWPAGE") == 0) {
-        FILE *af = fopen(g_evhq_mgr_action_path, "w");
-        if (af) { fprintf(af, "new_page"); fclose(af); }
-        g_evhq_pending_select_new_page = 1;
-    } else if (strcmp(onclick, "CE:TRIGGER") == 0) {
-        /* Direct instruction (2026-08-26): RPG Maker MV/MZ-style trigger
-         * field, cycled None -> Autorun -> Parallel -> None on activate
-         * (no free-text typing needed for this closed set). Switch-
-         * condition field is a real, separate follow-up, not built yet -
-         * see dbhq_ce_inject_panel()'s own comment on this field. */
-        const char *next = "None";
-        if (strcasecmp(g_evhq_trigger, "None") == 0) next = "Autorun";
-        else if (strcasecmp(g_evhq_trigger, "Autorun") == 0) next = "Parallel";
-        evhq_request_trigger_update(next);
-    } else if (strncmp(onclick, "CE:VIEWTAB:", 11) == 0) {
-        /* REAL FIX 2026-08-29 (Part B) - Common Events gets the SAME
-         * Scripting/Scratch/Blueprints view modes events-hq has, via
-         * the SAME shared g_evhq_view_mode global (already shared
-         * between the two modes, see dbhq_ce_inject_panel()'s own real
-         * reuse of g_evhq_n_cmds/g_evhq_cmds/etc) - not a second,
-         * db-hq-only view-mode concept. */
-        g_evhq_view_mode = atoi(onclick + 11);
-        g_dbhq_ce_needs_rebuild = 1;
-    } else if (evhq_handle_block_onclick(onclick)) {
-        g_dbhq_ce_needs_rebuild = 1;
-    }
-}
-
-/* Real definitions of the other two forward-declared hooks (see the
- * prototypes above dbhq_activate_elem()) - db-hq's own redraw/key-dispatch
- * functions are defined earlier in the file than these g_evhq_* globals,
- * so they call through these thin, always-safe-to-call wrappers instead
- * of touching the globals directly. */
-static void dbhq_ce_draw_overlay_if_needed(void) {
-    if (g_dbhq_ce_editing && g_evhq_picker_open) evhq_draw_picker_overlay();
-}
-static void dbhq_ce_handle_key_if_needed(KeySym ks, char ch, int *consumed) {
-    *consumed = 0;
-    if (!g_dbhq_ce_editing || !g_evhq_picker_open) return;
-    evhq_handle_key(ks, ch);
-    dbhq_redraw_content();
-    *consumed = 1;
-}
-
-/* REAL, 2026-08-26 (direct instruction: "we never hardcode stuff,
- * always keeping things super modular and abstract" - full rationale
- * in #.ref/menu/EVENT-COMMAND-REGISTRY-ARCHITECTURE.md) - the Add
- * Command picker's type list, field prompts, and field count are now
- * loaded from the SAME registry file khtpm_events_hq_manager.c's
- * compile_page() reads (#.ref/menu/event_commands.registry.pdl), not
- * hardcoded arrays. Adding a new SIMPLE command needs zero changes
- * here - just a new COMMAND block in the registry. */
-#define EVHQ_MAX_CMD_DEFS 48
-typedef struct {
-    char type[48];
-    char label[64];
-    char field1[64];
-    char field2[64];
-    char param_names[4][32];
-    int n_params;
-    char select2_options[8][32];
-    int n_select2;
-} EvhqCommandDef;
-static EvhqCommandDef g_evhq_cmd_defs[EVHQ_MAX_CMD_DEFS];
-static int g_evhq_n_cmd_defs = 0;
-static time_t g_evhq_registry_mtime = 0;
-
-static void evhq_load_command_registry(void) {
-    char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/#.ref/menu/event_commands.registry.pdl", g_house_root);
-    struct stat st;
-    if (stat(path, &st) != 0) return;
-    if (st.st_mtime == g_evhq_registry_mtime && g_evhq_n_cmd_defs > 0) return;
-    g_evhq_registry_mtime = st.st_mtime;
-    g_evhq_n_cmd_defs = 0;
-    FILE *f = fopen(path, "r");
-    if (!f) return;
-    char line[600];
-    EvhqCommandDef *cur = NULL;
-    while (fgets(line, sizeof(line), f)) {
-        line[strcspn(line, "\r\n")] = '\0';
-        char *p = line;
-        while (*p == ' ') p++;
-        if (strncmp(p, "COMMAND ", 8) == 0) {
-            if (g_evhq_n_cmd_defs >= EVHQ_MAX_CMD_DEFS) break;
-            cur = &g_evhq_cmd_defs[g_evhq_n_cmd_defs++];
-            memset(cur, 0, sizeof(*cur));
-            snprintf(cur->type, sizeof(cur->type), "%s", p + 8);
-        } else if (!cur) {
-            continue;
-        } else if (strncmp(p, "LABEL ", 6) == 0) {
-            snprintf(cur->label, sizeof(cur->label), "%s", p + 6);
-        } else if (strncmp(p, "FIELD1 ", 7) == 0) {
-            snprintf(cur->field1, sizeof(cur->field1), "%s", p + 7);
-        } else if (strncmp(p, "FIELD2 ", 7) == 0) {
-            snprintf(cur->field2, sizeof(cur->field2), "%s", p + 7);
-        } else if (strncmp(p, "PARAMS ", 7) == 0) {
-            cur->n_params = 0;
-            char *tok = p + 7, *comma;
-            while (tok && *tok && cur->n_params < 4) {
-                comma = strchr(tok, ',');
-                size_t l = comma ? (size_t)(comma - tok) : strlen(tok);
-                if (l >= sizeof(cur->param_names[0])) l = sizeof(cur->param_names[0]) - 1;
-                memcpy(cur->param_names[cur->n_params], tok, l);
-                cur->param_names[cur->n_params][l] = '\0';
-                cur->n_params++;
-                tok = comma ? comma + 1 : NULL;
-            }
-        } else if (strncmp(p, "SELECT2 ", 8) == 0) {
-            cur->n_select2 = 0;
-            char *tok = p + 8, *colon;
-            while (tok && *tok && cur->n_select2 < 8) {
-                colon = strchr(tok, ':');
-                size_t l = colon ? (size_t)(colon - tok) : strlen(tok);
-                if (l >= sizeof(cur->select2_options[0])) l = sizeof(cur->select2_options[0]) - 1;
-                memcpy(cur->select2_options[cur->n_select2], tok, l);
-                cur->select2_options[cur->n_select2][l] = '\0';
-                cur->n_select2++;
-                tok = colon ? colon + 1 : NULL;
-            }
-        } else if (strcmp(p, "END") == 0) {
-            cur = NULL;
-        }
-        /* TEMPLATE lines are deliberately ignored here - only the
-         * manager's compile_page() needs the template text; the
-         * render side only needs enough to draw the picker and build
-         * the params_line to send. */
-    }
-    fclose(f);
-}
-
-/* Task 7 (2026-08-26, direct instruction: "text description underneath
- * events of how much gold changes, what message is sent etc... when
- * user clicks that nav, they can change it") - a real, human-readable
- * one-line description for a command row, generated GENERICALLY from
- * the registry's own label/param_names + the command's real current
- * values (event_commands.registry.pdl already has everything needed -
- * per this house's own standing rule, never hand-write a per-command-
- * type description string in C, see EVENT-COMMAND-REGISTRY-
- * ARCHITECTURE.md). Params are stored as "key=val|key=val" - split on
- * '|' first, match each segment's key against def->param_names to
- * preserve the registry's own declared field order rather than
- * whatever order the params happened to be stored in. */
-static EvhqCommandDef *evhq_find_cmd_def(const char *type) {
-    for (int i = 0; i < g_evhq_n_cmd_defs; i++)
-        if (strcmp(g_evhq_cmd_defs[i].type, type) == 0) return &g_evhq_cmd_defs[i];
-    return NULL;
-}
-static void evhq_parse_params_line(const char *params_line, char keys[4][32], char vals[4][256], int *n) {
-    *n = 0;
-    char buf[512]; snprintf(buf, sizeof(buf), "%s", params_line ? params_line : "");
-    char *seg = buf;
-    while (seg && *n < 4) {
-        char *bar = strchr(seg, '|');
-        if (bar) *bar = '\0';
-        char *eq = strchr(seg, '=');
-        if (eq) {
-            *eq = '\0';
-            snprintf(keys[*n], sizeof(keys[0]), "%s", seg);
-            snprintf(vals[*n], sizeof(vals[0]), "%s", eq + 1);
-            (*n)++;
-        }
-        seg = bar ? bar + 1 : NULL;
-    }
-}
-static void evhq_describe_command(const EvhqCmdNode *cmd, char *out, size_t outsz) {
-    EvhqCommandDef *def = evhq_find_cmd_def(cmd->type);
-    char keys[4][32], vals[4][256]; int n = 0;
-    evhq_parse_params_line(cmd->params, keys, vals, &n);
-    char body[400] = "";
-    if (def) {
-        for (int i = 0; i < def->n_params; i++) {
-            const char *v = "";
-            for (int j = 0; j < n; j++) if (strcmp(keys[j], def->param_names[i]) == 0) { v = vals[j]; break; }
-            char seg[280]; snprintf(seg, sizeof(seg), "%s%s: %s", i > 0 ? ", " : "", def->param_names[i], (v && v[0]) ? v : "(empty)");
-            strncat(body, seg, sizeof(body) - strlen(body) - 1);
-        }
-        snprintf(out, outsz, "%s (%s)", def->label, body);
-    } else {
-        snprintf(out, outsz, "%s %s", cmd->type, cmd->params);
-    }
-}
-/* Task 7 (2026-08-26) - shared by events-hq (entity editing) and db-hq's
- * embedded common-event editor: arm the SAME Add-Command picker overlay,
- * but pre-filled with an EXISTING command's real current values and
- * jumped straight to its field view (not the type-picker list, since the
- * type is already known and fixed for an edit). g_evhq_edit_cmd_id being
- * >=0 is what evhq_submit_picker() below checks to send "edit:" instead
- * of "append:". */
-static void evhq_open_edit_picker(int cmd_index) {
-    if (cmd_index < 0 || cmd_index >= g_evhq_n_cmds) return;
-    EvhqCmdNode *cmd = &g_evhq_cmds[cmd_index];
-    EvhqCommandDef *def = evhq_find_cmd_def(cmd->type);
-    if (!def) return; /* unknown/legacy type - nothing to edit against */
-    int type_idx = -1;
-    for (int i = 0; i < g_evhq_n_cmd_defs; i++) if (&g_evhq_cmd_defs[i] == def) { type_idx = i; break; }
-    char keys[4][32], vals[4][256]; int n = 0;
-    evhq_parse_params_line(cmd->params, keys, vals, &n);
-    g_evhq_field1[0] = '\0'; g_evhq_field2[0] = '\0';
-    for (int j = 0; j < n; j++) {
-        if (def->n_params >= 1 && strcmp(keys[j], def->param_names[0]) == 0) snprintf(g_evhq_field1, sizeof(g_evhq_field1), "%s", vals[j]);
-        if (def->n_params >= 2 && strcmp(keys[j], def->param_names[1]) == 0) snprintf(g_evhq_field2, sizeof(g_evhq_field2), "%s", vals[j]);
-    }
-    g_evhq_picker_open = 1;
-    g_evhq_picker_type = type_idx;
-    g_evhq_active_field = 0;
-    g_evhq_edit_cmd_id = cmd->id;
-}
-
-/* REAL BUG FIX (2026-08-26, direct live report: "cancel doesn't work.
- * doesn't seem like any of the input does") - real definition of the
- * shared mouse-click handler forward-declared above dbhq_activate_elem().
- * A real click on any picker row (type option, field, or Cancel) used to
- * fall through both dbhq_activate_elem() and evhq_activate_elem() with
- * no matching onclick/id/tag branch at all and silently do nothing -
- * keyboard-driven interaction (already verified live via the real relay)
- * was unaffected, this only fixes the mouse path. Mirrors exactly what
- * evhq_handle_key()'s own g_evhq_picker_open branch already does for the
- * same actions from the keyboard, so behavior is consistent regardless
- * of input method. */
-static void evhq_dispatch_picker_onclick(const char *onclick) {
-    if (strncmp(onclick, "PICKER:FIELD:", 13) == 0) { g_evhq_active_field = atoi(onclick + 13); return; }
-    if (strncmp(onclick, "PICKER:TYPE:", 12) == 0) { g_evhq_picker_type = atoi(onclick + 12); return; }
-    if (strcmp(onclick, "PICKER:CANCEL") == 0) { g_evhq_picker_open = 0; g_evhq_edit_cmd_id = -1; return; }
-    /* REAL, NEW 2026-08-29 - mouse-click parity for the new Delete row,
-     * same real "onclick-first dispatch" reason this whole function
-     * exists (see its own header comment) - keyboard path is in
-     * evhq_handle_key()'s own matching PICKER:DELETE-shaped branch. */
-    if (strcmp(onclick, "PICKER:DELETE") == 0) {
-        if (g_evhq_edit_cmd_id >= 0) evhq_request_delete_node(g_evhq_edit_cmd_id);
-        g_evhq_picker_open = 0; g_evhq_edit_cmd_id = -1;
-        evhq_redraw_content();
-        return;
-    }
-}
-
-/* Trigger editing state (Task H7, 2026-08-25) - reuses the keystroke accumulation pattern */
-static int g_evhq_trigger_edit_mode = 0;
-static char g_evhq_trigger_buffer[64] = "";
-
-static void evhq_apply_css(Elem *e) {
-    css_compute_style(&g_sheet, e->tag, e->id[0] ? e->id : NULL, e->classes, e->n_classes, 0, &e->style);
-}
-static int evhq_measure_text_px(const CssStyle *st, const char *text) {
-    char spec[128];
-    const char *fam = st->has_font_family ? st->font_family : "DejaVu Sans";
-    int size = st->has_font_size ? st->font_size : 11;
-    snprintf(spec, sizeof(spec), "%s:pixelsize=%d%s", fam, size, (st->has_font_weight && st->font_weight_bold) ? ":bold" : "");
-    static char cached_spec[128] = "";
-    static XftFont *cached_font = NULL;
-    XftFont *f;
-    if (cached_font && strcmp(cached_spec, spec) == 0) f = cached_font;
-    else {
-        if (cached_font) XftFontClose(dpy, cached_font);
-        f = XftFontOpenName(dpy, screen, spec);
-        if (!f) f = XftFontOpenName(dpy, screen, "DejaVu Sans:pixelsize=11");
-        cached_font = f;
-        snprintf(cached_spec, sizeof(cached_spec), "%s", spec);
-    }
-    if (!f) return (int)strlen(text) * 7;
-    XGlyphInfo ext;
-    XftTextExtentsUtf8(dpy, f, (const FcChar8 *)text, (int)strlen(text), &ext);
-    return ext.width;
-}
-
-/* Task 5 (2026-08-27) - evhq_render_tree()/hit_test() both recurse into
- * EVERY child regardless of the parent's own w/h (confirmed by reading
- * both directly) - zeroing only a panel's own w/h leaves its children
- * at their last real (nonzero) position, still drawn AND still
- * clickable underneath the stub panel. Recursively zero the whole
- * subtree instead so a hidden panel is genuinely inert, not just
- * invisible-looking at the top level. */
-static void evhq_zero_subtree(Elem *e) {
-    if (!e) return;
-    e->w = 0; e->h = 0;
-    for (int i = 0; i < e->n_children; i++) evhq_zero_subtree(e->children[i]);
-}
-
-/* REAL FIX 2026-08-29 (live report: "nav arrows are still driving both
- * sub menu and parent menu (bad)") - live-reproduced and confirmed:
- * the Add-Command picker's own rows are numbered 1..N (see
- * evhq_draw_picker_overlay()), the SAME low range the background
- * window's own tabbar/sidebar/panel elements use for THEIR nav_index -
- * draw_elem() draws a focus ring purely on `nav_index == g_focus_nav`
- * with no concept of "which modal this belongs to," so a background
- * element and a picker row with the same number both light up at
- * once. `*_assign_nav_indices()` re-running while the picker is
- * closed-then-reopened doesn't help - the STALE nav_index values from
- * before the picker opened are still baked into the background Elems'
- * own structs. Real fix, mirrors evhq_zero_subtree()'s own pattern
- * (same real technique already used to hide Scripting-mode content
- * behind Scratch mode) - recursively zero every background Elem's
- * nav_index while the picker owns g_focus_nav/g_nav[] exclusively, so
- * it can never coincidentally match a picker row's own number. */
+static void dump_frame_png(void); /* forward decl - the 'p' dump shortcut calls the shared one, defined later */
 static void zero_nav_subtree(Elem *e) {
     if (!e) return;
     e->nav_index = 0;
@@ -5869,1277 +4881,6 @@ static void zero_nav_subtree(Elem *e) {
  * action.txt boundary append both modes already share). Parameterized
  * on the target stub + real content geometry + window width - no
  * caller-specific globals reached into directly. */
-static void evhq_build_scratch_view(Elem *viewmode_stub, int content_x, int content_y, int content_h, int window_w) {
-    if (g_evhq_selected_palette < 0) {
-        g_evhq_selected_palette = 0;
-        snprintf(g_evhq_selected_type, sizeof(g_evhq_selected_type), "%s", g_evhq_palette[0].type);
-        snprintf(g_evhq_selected_params, sizeof(g_evhq_selected_params), "%s", g_evhq_palette[0].params);
-    }
-    evhq_zero_subtree(viewmode_stub);
-    /* REAL FIX 2026-08-29 (Part B live report - palette overlapping
-     * db-hq's own real, persistent sidebar): this used to hardcode
-     * x=0, correct for events-hq (nothing real occupies that space in
-     * its own window shape) but WRONG for Common Events, where x=0 is
-     * underneath the real event-list sidebar. Real content_x param so
-     * each caller passes its own real left edge. */
-    viewmode_stub->x = content_x; viewmode_stub->y = content_y; viewmode_stub->w = window_w; viewmode_stub->h = content_h;
-    int pslot = 0, bslot = 0;
-    for (int i = 0; i < EVHQ_PALETTE_N && pslot < EVHQ_PALETTE_MAX; i++) {
-        Elem *it = reusable_slot(g_evhq_palette_slots, EVHQ_PALETTE_MAX, pslot++, "block-item");
-        if (!it) break;
-        snprintf(it->classes[0], sizeof(it->classes[0]), "block-item");
-        it->n_classes = 1;
-        if (g_evhq_palette[i].cls1[0]) {
-            snprintf(it->classes[it->n_classes], sizeof(it->classes[it->n_classes]), "%s", g_evhq_palette[i].cls1);
-            it->n_classes++;
-        }
-        if (g_evhq_palette[i].cls2[0]) {
-            snprintf(it->classes[it->n_classes], sizeof(it->classes[it->n_classes]), "%s", g_evhq_palette[i].cls2);
-            it->n_classes++;
-        }
-        if (i == g_evhq_selected_palette) {
-            snprintf(it->classes[it->n_classes], sizeof(it->classes[it->n_classes]), "selected");
-            it->n_classes++;
-        }
-        snprintf(it->label, sizeof(it->label), "%s", g_evhq_palette[i].label);
-        snprintf(it->onclick, sizeof(it->onclick), "BLOCK:SEL:%d", i);
-        it->x = viewmode_stub->x + 8; it->y = viewmode_stub->y + 8 + i * 26;
-        it->w = 196; it->h = 22;
-        css_compute_style(&g_sheet, it->tag, NULL, it->classes, it->n_classes, 0, &it->style);
-        viewmode_stub->children[viewmode_stub->n_children++] = it;
-    }
-    int bx = viewmode_stub->x + 220;
-    for (int i = 0; i < g_evhq_n_blocks && bslot < MAX_CHILDREN; i++) {
-        Elem *b = reusable_slot(g_evhq_block_slots, MAX_CHILDREN, bslot++, "text");
-        if (!b) break;
-        snprintf(b->classes[0], sizeof(b->classes[0]), "scratch-block"); b->n_classes = 1;
-        const char *cls2 = evhq_palette_cls_for_type(g_evhq_blocks[i].key);
-        if (cls2) { snprintf(b->classes[b->n_classes], sizeof(b->classes[b->n_classes]), "%s", cls2); b->n_classes++; }
-        snprintf(b->label, sizeof(b->label), "%s  [%s]", g_evhq_blocks[i].key, g_evhq_blocks[i].status);
-        b->x = bx; b->y = viewmode_stub->y + 8 + i * 26;
-        b->w = window_w - bx - 12; b->h = 22;
-        css_compute_style(&g_sheet, b->tag, NULL, b->classes, b->n_classes, 0, &b->style);
-        viewmode_stub->children[viewmode_stub->n_children++] = b;
-    }
-    Elem *pl = reusable_slot(g_evhq_place_slots, 2, 0, "block-place");
-    if (pl) {
-        snprintf(pl->classes[0], sizeof(pl->classes[0]), "block-place");
-        pl->n_classes = 1;
-        if (g_evhq_palette[g_evhq_selected_palette].cls1[0]) {
-            snprintf(pl->classes[pl->n_classes], sizeof(pl->classes[pl->n_classes]), "%s", g_evhq_palette[g_evhq_selected_palette].cls1);
-            pl->n_classes++;
-        }
-        if (g_evhq_palette[g_evhq_selected_palette].cls2[0]) {
-            snprintf(pl->classes[pl->n_classes], sizeof(pl->classes[pl->n_classes]), "%s", g_evhq_palette[g_evhq_selected_palette].cls2);
-            pl->n_classes++;
-        }
-        snprintf(pl->label, sizeof(pl->label), "[].%d  new block", g_evhq_n_cmds + 1);
-        snprintf(pl->onclick, sizeof(pl->onclick), "BLOCK:PLACE");
-        pl->x = bx; pl->y = viewmode_stub->y + 8 + g_evhq_n_blocks * 26;
-        pl->w = window_w - bx - 12; pl->h = 22;
-        css_compute_style(&g_sheet, pl->tag, NULL, pl->classes, pl->n_classes, 0, &pl->style);
-        viewmode_stub->children[viewmode_stub->n_children++] = pl;
-    }
-    Elem *cl = reusable_slot(g_evhq_place_slots, 2, 1, "block-clue");
-    if (cl) {
-        snprintf(cl->classes[0], sizeof(cl->classes[0]), "block-clue"); cl->n_classes = 1;
-        snprintf(cl->label, sizeof(cl->label), "sel: %s  ::  %s", g_evhq_selected_type, g_evhq_selected_params);
-        cl->x = viewmode_stub->x + 8; cl->y = viewmode_stub->y + 8 + EVHQ_PALETTE_N * 26 + 4;
-        cl->w = 196; cl->h = 18;
-        css_compute_style(&g_sheet, cl->tag, NULL, cl->classes, cl->n_classes, 0, &cl->style);
-        viewmode_stub->children[viewmode_stub->n_children++] = cl;
-    }
-}
-
-/* REAL FIX 2026-08-29 (Part B) - extracted from events-hq's own click
- * dispatch so Common Events (db-hq) can reuse the SAME real "click-
- * to-place Scratch" onclick handling, not a second copy. Returns 1 if
- * this was a real BLOCK: onclick (caller then does its own mode-
- * appropriate redraw/rebuild), 0 otherwise. */
-static int evhq_handle_block_onclick(const char *onclick) {
-    if (strncmp(onclick, "BLOCK:SEL:", 10) == 0) {
-        int idx = atoi(onclick + 10);
-        if (idx >= 0 && idx < EVHQ_PALETTE_N) {
-            g_evhq_selected_palette = idx;
-            snprintf(g_evhq_selected_type, sizeof(g_evhq_selected_type), "%s", g_evhq_palette[idx].type);
-            snprintf(g_evhq_selected_params, sizeof(g_evhq_selected_params), "%s", g_evhq_palette[idx].params);
-        }
-        return 1;
-    }
-    if (strcmp(onclick, "BLOCK:PLACE") == 0) {
-        if (g_evhq_selected_palette >= 0 && g_evhq_selected_type[0])
-            evhq_request_append_node(g_evhq_selected_type, g_evhq_selected_params);
-        return 1;
-    }
-    return 0;
-}
-
-static void evhq_layout_pass(Elem *window) {
-    evhq_apply_css(window);
-    window->x = 0; window->y = 0;
-    window->w = 720; window->h = 480;
-    g_evhq_close_w = 56; g_evhq_close_h = EVHQ_CHROME_H - 6;
-    g_evhq_close_x = window->w - g_evhq_close_w - 4;
-    g_evhq_close_y = 3;
-    Elem *toolbar = find_by_id(window, "toolbar");
-    Elem *pagetabs = find_by_id(window, "pagetabs");
-    Elem *left = find_by_id(window, "left");
-    Elem *right = find_by_id(window, "right");
-    Elem *footer = find_by_id(window, "footer");
-    int toolbar_h = 46, tabs_h = 26, footer_h = 34;
-    int y = EVHQ_CHROME_H;
-    if (toolbar) {
-        evhq_apply_css(toolbar);
-        toolbar->x = 0; toolbar->y = y; toolbar->w = window->w; toolbar->h = toolbar_h;
-        g_evhq_toolbar_y = toolbar->y; g_evhq_toolbar_h = toolbar->h;
-        for (int i = 0; i < toolbar->n_children; i++) {
-            Elem *c = toolbar->children[i]; evhq_apply_css(c);
-            /* Task 5 (2026-08-27) - toolbar now has 2 real children
-             * (event-name, viewtabs), not 1 - the old "one child, full
-             * width" layout would stack them on top of each other.
-             * event-name stays left as before; viewtabs (real tag
-             * "tabbar") gets laid out to the right of it, same tab-
-             * measuring shape pagetabs already uses below. */
-            if (strcmp(c->tag, "tabbar") == 0) {
-                for (int j = 0; j < c->n_children; j++) {
-                    Elem *tab = c->children[j]; evhq_apply_css(tab);
-                    /* Direct live report (2026-08-27): "the highlight
-                     * square for scripting selector is slightly not as
-                     * big as some of the wording" - real cause: e->w
-                     * only measured the plain label text, but
-                     * evhq_draw_elem() ALSO draws a "[>]N." nav badge
-                     * BEFORE the label (own 9px mono font, ~5 chars +
-                     * 5px gap) that was never counted here, so the
-                     * focus-ring border (sized to e->w) came out
-                     * narrower than the actual visible content. +24 ->
-                     * +34 to cover the badge+gap for these single-digit
-                     * (1/2/3) viewtab indices. */
-                    tab->w = evhq_measure_text_px(&tab->style, tab->label) + 34;
-                }
-                int total_w = 0;
-                for (int j = 0; j < c->n_children; j++) total_w += c->children[j]->w + 4;
-                c->x = window->w - 56 - total_w; c->y = toolbar->y + toolbar_h / 2 - 11; c->w = total_w; c->h = 22;
-                int tx = c->x;
-                for (int j = 0; j < c->n_children; j++) {
-                    Elem *tab = c->children[j];
-                    tab->x = tx; tab->y = c->y; tab->h = c->h;
-                    tx += tab->w + 4;
-                }
-                continue;
-            }
-            c->x = 46; c->y = toolbar->y + toolbar_h / 2 - 9; c->w = window->w - 56 - 260; c->h = 18;
-        }
-        y += toolbar_h;
-    }
-    if (pagetabs) {
-        evhq_apply_css(pagetabs);
-        for (int i = 0; i < pagetabs->n_children; i++) {
-            Elem *tab = pagetabs->children[i]; evhq_apply_css(tab);
-            tab->w = evhq_measure_text_px(&tab->style, tab->label) + 30;
-        }
-        pagetabs->style.has_display = 1; pagetabs->style.display_flex = 1;
-        pagetabs->style.has_flex_direction = 1; pagetabs->style.flex_row = 1;
-        css_layout_pass(pagetabs, 0, y, window->w, tabs_h);
-        for (int i = 0; i < pagetabs->n_children; i++) {
-            Elem *tab = pagetabs->children[i];
-            tab->x += 4 + i;
-            tab->y = y + 2; tab->h = tabs_h - 4;
-        }
-        y += tabs_h;
-    }
-    int content_y = y, content_h = window->h - y - footer_h;
-    int left_w = 220;
-    /* Task 5 (2026-08-27) - Scratch/Blueprints view modes: zero-size
-     * left/right/footer entirely (never drawn, never hit-testable -
-     * draw_elem()/hit_test() both already skip w<=0||h<=0 Elems
-     * elsewhere in this file) instead of touching their real content,
-     * so Scripting's own behavior is provably unchanged when active. */
-    if (left) {
-        if (g_evhq_view_mode != 0) { evhq_zero_subtree(left); }
-        else {
-        evhq_apply_css(left);
-        for (int i = 0; i < left->n_children; i++) {
-            Elem *c = left->children[i]; evhq_apply_css(c);
-            if (strcmp(c->tag, "title") == 0) { c->w = evhq_measure_text_px(&c->style, c->label) + 10; c->h = 14; continue; }
-            c->style.has_height = 1; c->style.height = 18;
-        }
-        left->style.has_display = 1; left->style.display_flex = 1;
-        left->style.has_flex_direction = 1; left->style.flex_row = 0;
-        left->style.has_padding = 1; left->style.padding = 10;
-        left->style.has_gap = 1; left->style.gap = 6;
-        css_layout_pass(left, 4, content_y + 8, left_w, content_h - 12);
-        }
-    }
-    if (right) {
-        if (g_evhq_view_mode != 0) {
-            evhq_zero_subtree(right);
-            /* REAL, NEW 2026-08-28 - a stub view mode hides "right"
-             * entirely (see evhq_zero_subtree() above); without this,
-             * g_pal_has_grid would keep whatever it was left as by the
-             * last real Scripting-mode pass, drawing a scroll track over
-             * a stub view that has no scrollable content at all. */
-            g_pal_has_grid = 0;
-        }
-        else {
-        evhq_apply_css(right);
-        for (int i = 0; i < right->n_children; i++) {
-            Elem *c = right->children[i]; evhq_apply_css(c);
-            if (strcmp(c->tag, "title") == 0) { c->w = evhq_measure_text_px(&c->style, c->label) + 10; c->h = 14; continue; }
-            c->style.has_height = 1; c->style.height = 18;
-        }
-        right->style.has_display = 1; right->style.display_flex = 1;
-        right->style.has_flex_direction = 1; right->style.flex_row = 0;
-        right->style.has_padding = 1; right->style.padding = 12;
-        right->style.has_gap = 1; right->style.gap = 4;
-        css_layout_pass(right, left_w + 8, content_y + 8, window->w - left_w - 16, content_h - 12);
-        /* REAL, GENERALIZED 2026-08-28 (Phase C target #3) - "right"'s
-         * command rows had zero scroll support before this; a long
-         * enough command list ran off the bottom of the panel with no
-         * way to reach it. "cmd-row" is the second class every
-         * evhq_inject_commands() row now carries (see that function's
-         * own comment) - title/empty-msg are left alone. */
-        generic_scroll_layout_pass(right, "cmd-row", content_y + 8, content_h - 12);
-        }
-    }
-    Elem *viewmode_stub = find_by_id(window, "viewmode-stub");
-    if (viewmode_stub) {
-        if (g_evhq_view_mode == 0) { evhq_zero_subtree(viewmode_stub); }
-        else if (g_evhq_view_mode == 1) {
-            evhq_build_scratch_view(viewmode_stub, 0, content_y, content_h, window->w);
-        }
-        else {
-            viewmode_stub->x = 0; viewmode_stub->y = content_y; viewmode_stub->w = window->w; viewmode_stub->h = content_h;
-            for (int i = 0; i < viewmode_stub->n_children; i++) {
-                Elem *c = viewmode_stub->children[i];
-                snprintf(c->label, sizeof(c->label), "%s", EVHQ_VIEW_STUB_LABELS[g_evhq_view_mode]);
-                c->x = viewmode_stub->x + 20; c->y = viewmode_stub->y + 20;
-                c->w = window->w - 40; c->h = 20;
-            }
-        }
-    }
-    if (footer) {
-        if (g_evhq_view_mode != 0) { evhq_zero_subtree(footer); }
-        else {
-        evhq_apply_css(footer);
-        for (int i = 0; i < footer->n_children; i++) {
-            Elem *c = footer->children[i]; evhq_apply_css(c);
-            /* REAL FIX 2026-08-29 (live report: "the colors on the
-             * buttons aren't completely covering the buttons... they
-             * need to stretch to fit the text") - same real bug class
-             * already found+fixed for view-tabs on 2026-08-27 (see that
-             * fix's own comment above, toolbar section): width was
-             * measured from the plain label alone, but draw_elem()
-             * ALSO draws a real "[ ]N." nav badge INSIDE the same box,
-             * before the label - +20 never accounted for that, so the
-             * label text ran past the button's own background/border
-             * on every footer button once real nav numbering reached
-             * them. Same +34 constant that fix established, not a new
-             * number. */
-            c->w = evhq_measure_text_px(&c->style, c->label) + 34;
-        }
-        footer->style.has_display = 1; footer->style.display_flex = 1;
-        footer->style.has_flex_direction = 1; footer->style.flex_row = 1;
-        footer->style.has_gap = 1; footer->style.gap = 8;
-        css_layout_pass(footer, 0, window->h - footer_h, window->w, footer_h);
-        for (int i = 0; i < footer->n_children; i++) {
-            Elem *c = footer->children[i];
-            c->x += 10;
-            c->y = footer->y + 6; c->h = footer_h - 12;
-        }
-        }
-    }
-}
-
-static Elem g_evhq_cmd_slots[MAX_CHILDREN]; /* see reusable_slot()'s own header comment */
-
-static void evhq_inject_commands(Elem *window) {
-    Elem *right = find_by_id(window, "right");
-    if (!right) return;
-    evhq_load_command_registry(); /* Task 7 (2026-08-26) - see dbhq_ce_inject_panel()'s own comment on this same fix */
-    Elem *title = NULL;
-    for (int i = 0; i < right->n_children; i++) if (strcmp(right->children[i]->tag, "title") == 0) title = right->children[i];
-    right->n_children = 0;
-    if (title) right->children[right->n_children++] = title;
-    int next_slot_index = 0;
-    if (g_evhq_n_cmds == 0) {
-        Elem *e = reusable_slot(g_evhq_cmd_slots, MAX_CHILDREN, next_slot_index++, "text");
-        if (!e) return;
-        snprintf(e->classes[0], sizeof(e->classes[0]), "empty-msg"); e->n_classes = 1;
-        snprintf(e->label, sizeof(e->label), "(no commands yet)");
-        right->children[right->n_children++] = e;
-        return;
-    }
-    for (int i = 0; i < g_evhq_n_cmds && right->n_children < MAX_CHILDREN; i++) {
-        /* Task 7 (2026-08-26, direct live report: "did u accidentally
-         * remove the nav from scripted commands list?" - checked: this
-         * was pre-existing, command rows were NEVER nav-reachable/
-         * editable before this fix, in events-hq OR db-hq). Real button
-         * tag (evhq_assign_nav_indices()'s own new "right" panel pass,
-         * added alongside this) + id="cmd-edit-<id>" (evhq_activate_
-         * elem()'s own new handler) + a generic, registry-driven
-         * description (evhq_describe_command() - never hand-write a
-         * per-command-type string here). */
-        Elem *e = reusable_slot(g_evhq_cmd_slots, MAX_CHILDREN, next_slot_index++, "button");
-        if (!e) break; /* pool exhausted - stop, don't crash */
-        char cls[48]; snprintf(cls, sizeof(cls), "cmd-%s", g_evhq_cmds[i].type);
-        snprintf(e->classes[0], sizeof(e->classes[0]), "%s", cls);
-        /* REAL, NEW 2026-08-28 (Phase C, generic scroll wiring) - "right"
-         * also holds a real "title" child (and an "empty-msg" text row
-         * when g_evhq_n_cmds==0), so row_class=NULL would wrongly treat
-         * those as scrollable rows too. Every cmd-<type> variant is
-         * distinct (cmd-say/cmd-wait/...), so there is no existing SHARED
-         * class across all of them for generic_scroll_layout_pass() to
-         * filter on - this second class is added purely so that filter
-         * has something real to match, same role "pal-grid-row"/
-         * "bm-bookmark" already play for their own modes. */
-        snprintf(e->classes[1], sizeof(e->classes[1]), "cmd-row");
-        e->n_classes = 2;
-        snprintf(e->id, sizeof(e->id), "cmd-edit-%d", g_evhq_cmds[i].id);
-        char desc[300]; evhq_describe_command(&g_evhq_cmds[i], desc, sizeof(desc));
-        snprintf(e->label, sizeof(e->label), "%d. %s", g_evhq_cmds[i].id, desc);
-        right->children[right->n_children++] = e;
-    }
-}
-static void evhq_refresh_page_data(Elem *window) {
-    evhq_write_selected_page();
-    evhq_load_page_state();
-    Elem *tv = find_by_id(window, "trigger-value");
-    if (tv) {
-        if (g_evhq_trigger_edit_mode) {
-            snprintf(tv->label, sizeof(tv->label), "%s_", g_evhq_trigger_buffer);
-        } else {
-            snprintf(tv->label, sizeof(tv->label), "%s", g_evhq_trigger);
-        }
-    }
-    evhq_inject_commands(window);
-    Elem *pagetabs = find_by_id(window, "pagetabs");
-    if (pagetabs) {
-        pagetabs->n_children = 0;
-        for (int i = 0; i < g_evhq_n_pages && pagetabs->n_children < MAX_CHILDREN; i++) {
-            Elem *t = elem_new("tab");
-            snprintf(t->label, sizeof(t->label), "%s", g_evhq_pages[i]);
-            t->active = (i == g_evhq_current_page);
-            pagetabs->children[pagetabs->n_children++] = t;
-        }
-        /* Task H6 (2026-08-25) - "New Page" row for creating new pages */
-        if (pagetabs->n_children < MAX_CHILDREN) {
-            Elem *newpage = elem_new("tab");
-            snprintf(newpage->label, sizeof(newpage->label), "+ New");
-            newpage->id[0] = '\0'; snprintf(newpage->id, sizeof(newpage->id), "new-page-btn");
-            newpage->active = 0;
-            pagetabs->children[pagetabs->n_children++] = newpage;
-        }
-    }
-    /* Task 5 (2026-08-27) - viewtabs are statically declared in
-     * dashboard.chtpm (3 fixed tabs, real ids viewtab-0/1/2) - just
-     * sync the active flag here, no elem_new() needed. */
-    Elem *viewtabs = find_by_id(window, "viewtabs");
-    if (viewtabs) for (int i = 0; i < viewtabs->n_children; i++) {
-        viewtabs->children[i]->active = (i == g_evhq_view_mode);
-    }
-    Elem *en = find_by_id(window, "event-name");
-    if (en) snprintf(en->label, sizeof(en->label), "%s", g_evhq_entity_label);
-}
-static void evhq_assign_nav_indices(Elem *window) {
-    g_n_nav = 0;
-    /* REAL FIX 2026-08-29 (live report: "nav arrows are still driving
-     * both sub menu and parent menu (bad)... selecting 8 in the
-     * subwindow will select 8 in parent window") - live-confirmed:
-     * the picker's own rows are numbered 1..N, the SAME low range the
-     * background window's own tabbar/sidebar/panel elements use, and
-     * draw_elem() draws a focus ring purely on `nav_index ==
-     * g_focus_nav` with no concept of which modal/window an element
-     * belongs to - a background element and a picker row with the
-     * same number both light up (and both become the real destination
-     * of nav_index-driven digit-jump) at once. This function runs
-     * BEFORE evhq_draw_picker_overlay() in the redraw sequence
-     * (evhq_redraw_content()), which rebuilds g_n_nav/g_nav[] with the
-     * picker's own real numbers - so zeroing every background
-     * element's nav_index here and returning early, while the picker
-     * is open, guarantees no background element can ever coincide
-     * with whatever number the picker is currently using. */
-    if (g_evhq_picker_open) { zero_nav_subtree(window); return; }
-    /* Task 5 (2026-08-27) - viewtabs nav-reachable first (top of window,
-     * always visible regardless of view mode). */
-    Elem *viewtabs = find_by_id(window, "viewtabs");
-    if (viewtabs) for (int i = 0; i < viewtabs->n_children && g_n_nav < MAX_ELEMS; i++) {
-        viewtabs->children[i]->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = viewtabs->children[i];
-    }
-    Elem *pagetabs = find_by_id(window, "pagetabs");
-    if (pagetabs) for (int i = 0; i < pagetabs->n_children && g_n_nav < MAX_ELEMS; i++) {
-        pagetabs->children[i]->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = pagetabs->children[i];
-    }
-    /* REAL FIX 2026-08-29 (live report: "in the 'scratch' visual
-     * scripting setup, all blocks are supposed to be nav numbered")
-     * - evhq_build_scratch_view()'s real, clickable Elems (the palette
-     * items, onclick "BLOCK:SEL:<i>", and the "[].<#> new block"
-     * place-slot, onclick "BLOCK:PLACE") were never walked here at
-     * all - Scratch mode had zero nav coverage of its own real
-     * interactive content, same class of gap Task 7 already fixed for
-     * events-hq's own "right" command rows. Gate on onclick[0] rather
-     * than tag (viewmode_stub mixes "block-item"/"text"/"block-place"/
-     * "block-clue" tags; only the first and third are real actions -
-     * the placed-block "text" rows and the "sel: ..." clue label have
-     * no onclick and correctly stay non-nav, same as any other
-     * inert-text Elem elsewhere in this file). */
-    if (g_evhq_view_mode == 1) {
-        Elem *stub = find_by_id(window, "viewmode-stub");
-        if (stub) for (int i = 0; i < stub->n_children && g_n_nav < MAX_ELEMS; i++) {
-            Elem *c = stub->children[i];
-            if (!c->onclick[0]) continue;
-            c->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = c;
-        }
-    }
-    /* Task 5 (2026-08-27) - everything below here is Scripting-mode-only
-     * content (trigger/commands/footer) - skip granting nav when a stub
-     * view is showing instead, matching evhq_layout_pass()'s own
-     * evhq_zero_subtree() hiding of the exact same Elems, so nav can
-     * never reach something invisible. */
-    if (g_evhq_view_mode == 0) {
-    /* Task H7 (2026-08-25) - trigger-value nav-reachable for editing */
-    Elem *trigger_val = find_by_id(window, "trigger-value");
-    if (trigger_val && g_n_nav < MAX_ELEMS) {
-        trigger_val->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = trigger_val;
-    }
-    /* Task 7 (2026-08-26) - command rows (evhq_inject_commands()'s own
-     * "right" panel, now real `button`-tagged Elems) were never walked
-     * here at all before this fix - confirmed via direct live report,
-     * the real root cause of "commands aren't nav-reachable/editable". */
-    /* REAL, NEW 2026-08-28 (Phase C target #3) - scroll arrows numbered
-     * BEFORE the rows they control, same order dbhq_assign_nav_indices()
-     * already uses for palettes/db-hq/bookmarks. A disabled arrow's
-     * onclick[0]=='\0' (cleared in generic_scroll_layout_pass()) excludes
-     * it here automatically. */
-    if (g_pal_has_grid) {
-        if (g_pal_arrow_up->onclick[0] && g_n_nav < MAX_ELEMS) {
-            g_pal_arrow_up->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = g_pal_arrow_up;
-        }
-        if (g_pal_arrow_down->onclick[0] && g_n_nav < MAX_ELEMS) {
-            g_pal_arrow_down->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = g_pal_arrow_down;
-        }
-    }
-    Elem *right = find_by_id(window, "right");
-    if (right) for (int i = 0; i < right->n_children && g_n_nav < MAX_ELEMS; i++) {
-        Elem *c = right->children[i];
-        if (strcmp(c->tag, "button") != 0) continue;
-        c->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = c;
-    }
-    Elem *footer = find_by_id(window, "footer");
-    if (footer) for (int i = 0; i < footer->n_children && g_n_nav < MAX_ELEMS; i++) {
-        footer->children[i]->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = footer->children[i];
-    }
-    }
-    if (g_n_nav < MAX_ELEMS) { g_evhq_close_elem->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = g_evhq_close_elem; }
-    if (g_focus_nav < 1) g_focus_nav = 1;
-    if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
-}
-
-static unsigned long evhq_alloc_pixel(const char *spec) {
-    if (!spec || !spec[0]) return BlackPixel(dpy, screen);
-    XColor c;
-    if (spec[0] == '#') { if (XParseColor(dpy, cmap, spec, &c) && XAllocColor(dpy, cmap, &c)) return c.pixel; }
-    else if (XAllocNamedColor(dpy, cmap, spec, &c, &c)) return c.pixel;
-    return BlackPixel(dpy, screen);
-}
-static XftColor evhq_xft_color(const char *spec) {
-    XftColor xc; XRenderColor rc = {0, 0, 0, 0xffff};
-    if (spec && spec[0] == '#' && strlen(spec) >= 7) {
-        unsigned int r, g, b; sscanf(spec + 1, "%02x%02x%02x", &r, &g, &b);
-        rc.red = (unsigned short)(r * 257); rc.green = (unsigned short)(g * 257); rc.blue = (unsigned short)(b * 257);
-    }
-    XftColorAllocValue(dpy, DefaultVisual(dpy, screen), cmap, &rc, &xc); return xc;
-}
-static XftFont *evhq_font_for(const CssStyle *st) {
-    char spec[128];
-    const char *fam = st->has_font_family ? st->font_family : "DejaVu Sans";
-    int size = st->has_font_size ? st->font_size : 11;
-    snprintf(spec, sizeof(spec), "%s:pixelsize=%d%s", fam, size, (st->has_font_weight && st->font_weight_bold) ? ":bold" : "");
-    static char cached_spec[128] = "";
-    static XftFont *cached_font = NULL;
-    if (cached_font && strcmp(cached_spec, spec) == 0) return cached_font;
-    if (cached_font) XftFontClose(dpy, cached_font);
-    XftFont *f = XftFontOpenName(dpy, screen, spec);
-    if (!f) f = XftFontOpenName(dpy, screen, "DejaVu Sans:pixelsize=11");
-    cached_font = f;
-    snprintf(cached_spec, sizeof(cached_spec), "%s", spec);
-    return f;
-}
-/* REAL FIX 2026-08-29 (EVENTS-HQ-RENDER-UNIFICATION-PLAN.md Part A) -
- * evhq_draw_elem()/evhq_render_tree() were a real, hand-copied twin of
- * the shared draw_elem()/render_tree() (khtpm_draw_core.c), drifted
- * since the original binary-merge - missing sprite support, missing
- * the badge-font cache (the exact perf bug already fixed in the
- * shared version, still live here), missing elem_cursor_prefix()/
- * ACTIVATE-scope support (tonight's Gap 5), missing border-width/
- * padding-aware layout, missing item-active highlight, missing
- * contrast-aware badge color, missing badge_align_left. All real
- * call sites (the tree walk + every direct draw_elem-style call for
- * chrome/overlay/scrollbar Elems) now call the shared draw_elem()/
- * render_tree() directly - see this plan doc for the full real diff
- * that justified this, not a guess. */
-static void evhq_draw_entity_glyph(void) {
-    if (!g_evhq_sprite_pixels || g_evhq_sprite_res <= 0) return;
-    int size = 36;
-    int ox = 6, oy = g_evhq_toolbar_y + (g_evhq_toolbar_h - size) / 2;
-    int bg_r = 0x2f, bg_g = 0x2f, bg_b = 0x2f;
-    for (int y = 0; y < size; y++) {
-        int sy = y * g_evhq_sprite_res / size;
-        for (int x = 0; x < size; x++) {
-            int sx = x * g_evhq_sprite_res / size;
-            const unsigned char *px = &g_evhq_sprite_pixels[(sy * g_evhq_sprite_res + sx) * 4];
-            int a = px[3];
-            if (a == 0) continue;
-            int r = (px[0] * a + bg_r * (255 - a)) / 255;
-            int g = (px[1] * a + bg_g * (255 - a)) / 255;
-            int b = (px[2] * a + bg_b * (255 - a)) / 255;
-            char spec[8]; snprintf(spec, sizeof(spec), "#%02x%02x%02x", r, g, b);
-            XSetForeground(dpy, gc, evhq_alloc_pixel(spec));
-            XDrawPoint(dpy, buf, gc, ox + x, oy + y);
-        }
-    }
-}
-static void evhq_draw_chrome_bar(void) {
-    XSetForeground(dpy, gc, evhq_alloc_pixel("#1c1c1c"));
-    XFillRectangle(dpy, buf, gc, 0, 0, g_window->w, EVHQ_CHROME_H);
-    char tspec[48]; snprintf(tspec, sizeof(tspec), "DejaVu Sans:pixelsize=10:bold");
-    XftFont *titlefont = XftFontOpenName(dpy, screen, tspec);
-    if (titlefont) {
-        XftColor titlecol = evhq_xft_color("#eeeeee");
-        char title[48]; snprintf(title, sizeof(title), "events-hq %s", g_evhq_has_real_focus ? "^" : " ");
-        int ty = (EVHQ_CHROME_H + titlefont->ascent - titlefont->descent) / 2;
-        XftDrawStringUtf8(xftdraw_buf, &titlecol, titlefont, 8, ty, (const FcChar8 *)title, (int)strlen(title));
-        XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &titlecol);
-        XftFontClose(dpy, titlefont);
-    }
-    g_evhq_close_elem->x = g_evhq_close_x; g_evhq_close_elem->y = g_evhq_close_y;
-    g_evhq_close_elem->w = g_evhq_close_w; g_evhq_close_elem->h = g_evhq_close_h;
-    snprintf(g_evhq_close_elem->label, sizeof(g_evhq_close_elem->label), "x");
-    css_style_init(&g_evhq_close_elem->style);
-    g_evhq_close_elem->style.has_border_color = 1;
-    snprintf(g_evhq_close_elem->style.border_color, sizeof(g_evhq_close_elem->style.border_color), "%s", g_evhq_close_elem->nav_index == g_focus_nav ? "#ff8c00" : "#888888");
-    g_evhq_close_elem->style.has_fg_color = 1;
-    snprintf(g_evhq_close_elem->style.fg_color, sizeof(g_evhq_close_elem->style.fg_color), "#eeeeee");
-    draw_elem(g_evhq_close_elem, 0);
-}
-/* Task 7 follow-up (2026-08-26, direct live re-test: "still dont see
- * nav on the subs (show choices, change gold? etc)... should be
- * driving by layouts"). Real fix: the picker's rows are now real Elems
- * with a real nav_index, drawn via the SAME generic evhq_draw_elem()
- * every other button in this file already uses - which already knows
- * how to draw a "[>N]" badge + orange focus outline for any Elem with
- * nav_index>0 (see evhq_draw_elem()'s own nav_index handling, ~line
- * 2727-2748), for free, no new drawing code needed. This REPLACES raw
- * XftDrawStringUtf8 line-by-line drawing for the interactive rows only
- * (the header/hint text stay plain drawn text - not interactive,
- * nothing to navigate to). Deliberately does NOT touch the existing,
- * proven-working key-handling logic in evhq_handle_key()'s own
- * g_evhq_picker_open branch (Enter/Backspace/typed-char field editing,
- * digit-jump in the type list) - only g_focus_nav is kept in sync with
- * whichever field/type-option that existing logic already considers
- * "active" (g_evhq_active_field / g_evhq_picker_focus), purely so the
- * SAME visual nav language (numbered brackets, orange outline) used
- * everywhere else in this house also appears here, and so an
- * agent driving this via db_hq_history.txt/events_hq_history.txt can
- * read real nav_index/g_focus_nav state from the debug dump exactly
- * like it already can for every other window in this binary. */
-/* Picker layout: parsed once from picker.chtpm, positions cached for
- * the drawing function. Follows the fo-menu-sys.md pattern: chtpm
- * defines the structural frame (panel + row slots + cancel), C code
- * fills in dynamic content from the in-memory registry. */
-typedef struct {
-    int px, py, pw, ph;
-    int row_x, row_w, row_h, row_spacing;
-    int cancel_nav_index;
-} PickerLayout;
-static PickerLayout g_picker_layout;
-static int g_picker_layout_loaded = 0;
-static void picker_chtpm_load(void) {
-    if (g_picker_layout_loaded) return;
-    char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/&.widgits/events-hq/pieces/picker.chtpm", g_house_root);
-    Elem *root = parse_chtpm(path);
-    if (root) {
-        g_picker_layout.pw = root->w > 0 ? root->w : 360;
-        g_picker_layout.ph = root->h > 0 ? root->h : 280;
-    } else {
-        g_picker_layout.pw = 360; g_picker_layout.ph = 280;
-    }
-    g_picker_layout.px = (g_window->w - g_picker_layout.pw) / 2;
-    g_picker_layout.py = (g_window->h - g_picker_layout.ph) / 2;
-    g_picker_layout.row_x = g_picker_layout.px + 16;
-    g_picker_layout.row_w = g_picker_layout.pw - 32;
-    g_picker_layout.row_h = 20;
-    g_picker_layout.row_spacing = 22;
-    g_picker_layout_loaded = 1;
-}
-static Elem g_picker_slots[16];
-/* REAL, NEW 2026-08-29 (direct instruction: "no hand drawn c tho. we
- * need to fix that... it should be a new created chtpm element or
- * something, like how +- works") - the overlay's own chrome (panel
- * background/border, title, hint text) used to be painted with raw
- * XSetForeground/XFillRectangle/XDrawRectangle/XftDrawStringUtf8 calls
- * carrying hardcoded hex colors, instead of real Elems drawn through
- * the shared draw_elem() + real CSS classes (picker.chtpm already
- * declared "picker-overlay" as this panel's real class - it was just
- * never matched against any actual CSS rule before now, see
- * dashboard.css's own new rules). Same real class of fix as the row/
- * Cancel/Delete/field Elems just below, which already used draw_elem()
- * but still set colors via inline snprintf(style.fg_color,...) instead
- * of css_compute_style() - all of that inline styling is gone now too. */
-static Elem g_picker_chrome_slots[2]; /* 0=overlay panel, 1=title/hint (reused per screen, never both drawn at once) */
-static void evhq_draw_picker_overlay(void) {
-    picker_chtpm_load();
-    PickerLayout *L = &g_picker_layout;
-    Elem *overlay = reusable_slot(g_picker_chrome_slots, 2, 0, "panel");
-    if (overlay) {
-        snprintf(overlay->classes[0], sizeof(overlay->classes[0]), "picker-overlay"); overlay->n_classes = 1;
-        overlay->x = L->px; overlay->y = L->py; overlay->w = L->pw; overlay->h = L->ph;
-        css_compute_style(&g_sheet, overlay->tag, NULL, overlay->classes, overlay->n_classes, 0, &overlay->style);
-        draw_elem(overlay, 0);
-    }
-    int ty = L->py + 20;
-    evhq_load_command_registry();
-    g_n_nav = 0;
-    if (g_evhq_picker_type < 0) {
-        g_focus_nav = g_evhq_picker_focus;
-        Elem *title = reusable_slot(g_picker_chrome_slots, 2, 1, "title");
-        if (title) {
-            snprintf(title->classes[0], sizeof(title->classes[0]), "picker-title"); title->n_classes = 1;
-            snprintf(title->label, sizeof(title->label), "Add Command");
-            title->x = L->row_x; title->y = ty - 12; title->w = L->row_w; title->h = 16;
-            css_compute_style(&g_sheet, title->tag, NULL, title->classes, title->n_classes, 0, &title->style);
-            draw_elem(title, 0);
-        }
-        ty += 26;
-        /* Real visible-row budget for THIS frame - box bottom minus the
-         * hint line minus one row reserved for Cancel, divided by row
-         * pitch. Recomputed every draw so a resize/different picker.
-         * chtpm geometry is never stale. */
-        int content_bottom = L->py + L->ph - 14 - L->row_spacing;
-        g_evhq_picker_visible_rows = (content_bottom - ty) / L->row_spacing;
-        if (g_evhq_picker_visible_rows < 1) g_evhq_picker_visible_rows = 1;
-        if (g_evhq_picker_visible_rows > 14) g_evhq_picker_visible_rows = 14; /* g_picker_slots pool safety margin, slot 15 reserved for Cancel */
-        int max_scroll = g_evhq_n_cmd_defs - g_evhq_picker_visible_rows;
-        if (max_scroll < 0) max_scroll = 0;
-        if (g_evhq_picker_scroll > max_scroll) g_evhq_picker_scroll = max_scroll;
-        if (g_evhq_picker_scroll < 0) g_evhq_picker_scroll = 0;
-        int shown = 0;
-        for (int i = 0; i < g_evhq_picker_visible_rows; i++) {
-            int cmd_idx = g_evhq_picker_scroll + i;
-            if (cmd_idx >= g_evhq_n_cmd_defs) break;
-            Elem *row = reusable_slot(g_picker_slots, 16, i, "button");
-            if (!row) break;
-            snprintf(row->label, sizeof(row->label), "%s", g_evhq_cmd_defs[cmd_idx].label);
-            row->x = L->row_x; row->y = ty - 15; row->w = L->row_w; row->h = L->row_h;
-            snprintf(row->classes[0], sizeof(row->classes[0]), "picker-row"); row->n_classes = 1;
-            css_compute_style(&g_sheet, row->tag, NULL, row->classes, row->n_classes, 0, &row->style);
-            row->nav_index = i + 1;
-            snprintf(row->onclick, sizeof(row->onclick), "PICKER:TYPE:%d", cmd_idx);
-            g_nav[g_n_nav++] = row;
-            draw_elem(row, 0);
-            ty += L->row_spacing;
-            shown++;
-        }
-        {
-            Elem *cancel = reusable_slot(g_picker_slots, 16, 15, "button");
-            if (cancel) {
-                snprintf(cancel->label, sizeof(cancel->label), "Cancel");
-                cancel->x = L->row_x; cancel->y = ty - 15; cancel->w = L->row_w; cancel->h = L->row_h;
-                snprintf(cancel->classes[0], sizeof(cancel->classes[0]), "picker-cancel"); cancel->n_classes = 1;
-                css_compute_style(&g_sheet, cancel->tag, NULL, cancel->classes, cancel->n_classes, 0, &cancel->style);
-                snprintf(cancel->onclick, sizeof(cancel->onclick), "PICKER:CANCEL");
-                cancel->nav_index = shown + 1;
-                g_nav[g_n_nav++] = cancel;
-                draw_elem(cancel, 0);
-                ty += L->row_spacing;
-            }
-        }
-        Elem *hint = reusable_slot(g_picker_chrome_slots, 2, 1, "text");
-        if (hint) {
-            snprintf(hint->classes[0], sizeof(hint->classes[0]), "picker-hint"); hint->n_classes = 1;
-            snprintf(hint->label, sizeof(hint->label), "%s",
-                (max_scroll > 0)
-                    ? "Digits/arrows + Enter select, PageUp/PageDown scroll, Escape cancels"
-                    : "Digits/arrows + Enter select, Escape cancels");
-            hint->x = L->row_x; hint->y = L->py + L->ph - 14 - 11; hint->w = L->row_w; hint->h = 14;
-            css_compute_style(&g_sheet, hint->tag, NULL, hint->classes, hint->n_classes, 0, &hint->style);
-            draw_elem(hint, 0);
-        }
-    } else if (g_evhq_picker_type < g_evhq_n_cmd_defs) {
-        EvhqCommandDef *def = &g_evhq_cmd_defs[g_evhq_picker_type];
-        Elem *title = reusable_slot(g_picker_chrome_slots, 2, 1, "title");
-        if (title) {
-            snprintf(title->classes[0], sizeof(title->classes[0]), "picker-title"); title->n_classes = 1;
-            snprintf(title->label, sizeof(title->label), "%s", def->label);
-            title->x = L->row_x; title->y = ty - 12; title->w = L->row_w; title->h = 16;
-            css_compute_style(&g_sheet, title->tag, NULL, title->classes, title->n_classes, 0, &title->style);
-            draw_elem(title, 0);
-        }
-        ty += 30;
-        g_focus_nav = g_evhq_active_field + 1;
-        int has_field2 = (def->n_params > 1 && strcmp(def->field2, "-") != 0);
-        Elem *f1 = reusable_slot(g_picker_slots, 16, 0, "button");
-        if (f1) {
-            snprintf(f1->label, sizeof(f1->label), "%s %s%s", def->field1, g_evhq_field1, g_evhq_active_field == 0 ? "_" : "");
-            f1->x = L->row_x; f1->y = ty - 15; f1->w = L->row_w; f1->h = L->row_h;
-            snprintf(f1->classes[0], sizeof(f1->classes[0]), "picker-row"); f1->n_classes = 1;
-            css_compute_style(&g_sheet, f1->tag, NULL, f1->classes, f1->n_classes, 0, &f1->style);
-            f1->nav_index = 1;
-            snprintf(f1->onclick, sizeof(f1->onclick), "PICKER:FIELD:0");
-            g_nav[g_n_nav++] = f1;
-            draw_elem(f1, 0);
-            ty += L->row_spacing + 2;
-        }
-        if (has_field2) {
-            Elem *f2 = reusable_slot(g_picker_slots, 16, 1, "button");
-            if (f2) {
-                if (def->n_select2 > 0 && g_evhq_active_field == 1)
-                    snprintf(f2->label, sizeof(f2->label), "%s [%s] < >", def->field2, g_evhq_field2);
-                else if (def->n_select2 > 0)
-                    snprintf(f2->label, sizeof(f2->label), "%s %s", def->field2, g_evhq_field2);
-                else
-                    snprintf(f2->label, sizeof(f2->label), "%s %s%s", def->field2, g_evhq_field2, g_evhq_active_field == 1 ? "_" : "");
-                f2->x = L->row_x; f2->y = ty - 15; f2->w = L->row_w; f2->h = L->row_h;
-                snprintf(f2->classes[0], sizeof(f2->classes[0]), "picker-row"); f2->n_classes = 1;
-                css_compute_style(&g_sheet, f2->tag, NULL, f2->classes, f2->n_classes, 0, &f2->style);
-                f2->nav_index = 2;
-                snprintf(f2->onclick, sizeof(f2->onclick), "PICKER:FIELD:1");
-                g_nav[g_n_nav++] = f2;
-                draw_elem(f2, 0);
-                ty += L->row_spacing + 2;
-            }
-        }
-        {
-            Elem *cancel = reusable_slot(g_picker_slots, 16, 15, "button");
-            if (cancel) {
-                snprintf(cancel->label, sizeof(cancel->label), "Cancel");
-                cancel->x = L->row_x; cancel->y = ty - 15; cancel->w = L->row_w; cancel->h = L->row_h;
-                snprintf(cancel->classes[0], sizeof(cancel->classes[0]), "picker-cancel"); cancel->n_classes = 1;
-                css_compute_style(&g_sheet, cancel->tag, NULL, cancel->classes, cancel->n_classes, 0, &cancel->style);
-                snprintf(cancel->onclick, sizeof(cancel->onclick), "PICKER:CANCEL");
-                cancel->nav_index = def->n_params + 1;
-                g_nav[g_n_nav++] = cancel;
-                draw_elem(cancel, 0);
-                ty += L->row_spacing + 2;
-            }
-        }
-        /* REAL, NEW 2026-08-29 (see evhq_handle_key()'s own matching
-         * comment on this same feature) - a real "Delete" row, only
-         * when editing an existing command (g_evhq_edit_cmd_id >= 0),
-         * right after Cancel. */
-        if (g_evhq_edit_cmd_id >= 0) {
-            Elem *del = reusable_slot(g_picker_slots, 16, 14, "button");
-            if (del) {
-                snprintf(del->label, sizeof(del->label), "Delete");
-                del->x = L->row_x; del->y = ty - 15; del->w = L->row_w; del->h = L->row_h;
-                snprintf(del->classes[0], sizeof(del->classes[0]), "picker-delete"); del->n_classes = 1;
-                css_compute_style(&g_sheet, del->tag, NULL, del->classes, del->n_classes, 0, &del->style);
-                snprintf(del->onclick, sizeof(del->onclick), "PICKER:DELETE");
-                del->nav_index = def->n_params + 2;
-                g_nav[g_n_nav++] = del;
-                draw_elem(del, 0);
-                ty += L->row_spacing + 2;
-            }
-        }
-        Elem *hint2 = reusable_slot(g_picker_chrome_slots, 2, 0, "text");
-        /* REAL: slot 0 is normally the overlay panel, but the panel has
-         * already been drawn for this frame by the time we get here -
-         * safe, deliberate reuse, same "one slot pool, sequenced by
-         * draw order within a single frame" pattern reusable_slot()'s
-         * own header comment documents. */
-        if (hint2) {
-            snprintf(hint2->classes[0], sizeof(hint2->classes[0]), "picker-hint"); hint2->n_classes = 1;
-            snprintf(hint2->label, sizeof(hint2->label), "%s",
-                def->n_select2 > 0 ? "Enter: next/submit  ←→: select  Esc: cancel"
-                                    : "Enter: next/submit  Escape: cancel");
-            hint2->x = L->row_x; hint2->y = L->py + L->ph - 14 - 11; hint2->w = L->row_w; hint2->h = 14;
-            css_compute_style(&g_sheet, hint2->tag, NULL, hint2->classes, hint2->n_classes, 0, &hint2->style);
-            draw_elem(hint2, 0);
-        }
-    }
-}
-/* REAL, requested "once and for all" fix (2026-08-27, direct
- * instruction: "is there a way view can send a signal when it has
- * changed via frame history and is ready to be dumped... we need 2 fix
- * this once and for all") - same real, already-proven convention
- * chai_append_frame_history() uses for chat-hai (2026-08-15, "you
- * should check it with injection and framehistory.txt (we dont need a
- * png dump to see if frames are updating)"), ported to events-hq/db-hq
- * which never had it: one line appended to a real frame-history file
- * EVERY completed redraw, with a monotonic seq number. A harness should
- * now: read the file's last seq, send its input, then POLL this file
- * until seq increases (real signal, not a sleep guess) before sending
- * the PNG-dump relay code - eliminates the whole class of "is the frame
- * actually ready yet" bug this session hit (which turned out to be a
- * separate real draw-guard bug, see evhq_draw_elem()'s own w<=0/h<=0
- * fix above, but this signal is real, general prevention against the
- * NEXT such bug looking the same from a harness's point of view). */
-static long g_evhq_frame_seq = 0;
-static void evhq_append_frame_history(void) {
-    g_evhq_frame_seq++;
-    char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/#.desktop/events_hq_frame_history.txt", g_house_root);
-    FILE *f = fopen(path, "a");
-    if (!f) return;
-    fprintf(f, "seq=%ld focus_nav=%d/%d view_mode=%d page=%d n_cmds=%d entity=%s\n",
-            g_evhq_frame_seq, g_focus_nav, g_n_nav, g_evhq_view_mode, g_evhq_current_page,
-            g_evhq_n_cmds, g_evhq_entity_label);
-    fclose(f);
-    /* REAL, NEW (2026-08-27, HARNESS-AUTHORING-GUIDE.md §3a) - a real
-     * PAL/prisc+x script can already inject relay codes (SYS_OPEN
-     * append + SYS_WRITE_LINE) but SYS_GET_KV_INT only matches a key at
-     * the very START of a line, so it cannot read the multi-key line
-     * above. Small, cheap, zero-VM-change fix: also write single-key
-     * flat files a PAL script CAN poll today via SYS_GET_KV_INT, one
-     * real file per field worth polling. First real consumer: the
-     * proof-of-concept PAL harness for Task 5's view-tab switch. */
-    char vmpath[PATH_BUF];
-    snprintf(vmpath, sizeof(vmpath), "%s/#.desktop/events_hq_view_mode.txt", g_house_root);
-    FILE *vf = fopen(vmpath, "w");
-    if (vf) { fprintf(vf, "view_mode=%d\n", g_evhq_view_mode); fclose(vf); }
-    char seqpath[PATH_BUF];
-    snprintf(seqpath, sizeof(seqpath), "%s/#.desktop/events_hq_seq.txt", g_house_root);
-    FILE *sf = fopen(seqpath, "w");
-    if (sf) { fprintf(sf, "seq=%ld\n", g_evhq_frame_seq); fclose(sf); }
-}
-static void evhq_redraw_content(void) {
-    evhq_layout_pass(g_window);
-    evhq_assign_nav_indices(g_window);
-    XSetForeground(dpy, gc, evhq_alloc_pixel("#252525"));
-    /* REAL FIX 2026-08-28 (live corruption found testing Phase 2's
-     * frame-file paint) - clearing only g_window->w/h leaves stale
-     * pixels visible whenever content SHRINKS between redraws (a
-     * taller previous session's leftover rows) - the backing Pixmap
-     * only ever GROWS (see g_buf_w/g_buf_h's own header comment),
-     * it never shrinks back down, so clearing less than the real
-     * allocated buffer leaves old content sitting below the new,
-     * smaller content. Clear the FULL allocated buffer every time. */
-    XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)(g_buf_w > g_window->w ? g_buf_w : g_window->w), (unsigned)(g_buf_h > g_window->h ? g_buf_h : g_window->h));
-    /* REAL FIX 2026-08-29 (Part A) - was evhq_render_tree(g_window), a
-     * hand-copied twin missing tonight's Gap 5/badge-cache/sprite
-     * fixes (see this function's own draw_elem() replacement comment
-     * above). The shared render_tree() also draws the ROOT element
-     * itself (depth==0), which the old evhq_render_tree() never did -
-     * live-verified harmless: g_window's own root Elem carries no
-     * real bg/border style here, so this is a no-op paint, not a new
-     * visible layer. */
-    render_tree(g_window, 0);
-    /* REAL, NEW 2026-08-28 (Phase C target #3) - events-hq has its OWN
-     * redraw path (evhq_render_tree()/evhq_draw_elem()), entirely
-     * separate from db-hq's dbhq_redraw_content() - the scroll track/
-     * thumb/arrow drawing dbhq_redraw_content() already does for
-     * g_pal_has_grid is NEVER reached from here, so it's replicated here
-     * (same geometry fields generic_scroll_layout_pass() already
-     * computed, same visual shape) rather than assumed shared. */
-    if (g_pal_has_grid && g_pal_track_h > 0) {
-        XSetForeground(dpy, gc, evhq_alloc_pixel("#2a2a2a"));
-        XFillRectangle(dpy, buf, gc, g_pal_track_x, g_pal_track_y, (unsigned)g_pal_track_w, (unsigned)g_pal_track_h);
-        XSetForeground(dpy, gc, evhq_alloc_pixel("#888888"));
-        XFillRectangle(dpy, buf, gc, g_pal_track_x + 1, g_pal_thumb_y,
-                       (unsigned)(g_pal_track_w - 2), (unsigned)g_pal_thumb_h);
-        int ax = g_pal_track_x, aw = g_pal_track_w;
-        int up_y0 = g_pal_track_y - g_pal_arrow_h;
-        int down_y0 = g_pal_track_y + g_pal_track_h;
-        int up_enabled = !g_pal_arrow_up_disabled;
-        int down_enabled = !g_pal_arrow_down_disabled;
-        XSetForeground(dpy, gc, evhq_alloc_pixel("#3a3a3a"));
-        XFillRectangle(dpy, buf, gc, ax, up_y0, (unsigned)aw, (unsigned)g_pal_arrow_h);
-        XFillRectangle(dpy, buf, gc, ax, down_y0, (unsigned)aw, (unsigned)g_pal_arrow_h);
-        XSetForeground(dpy, gc, evhq_alloc_pixel(up_enabled ? "#cccccc" : "#555555"));
-        XPoint up_tri[3] = {
-            { (short)(ax + aw / 2), (short)(up_y0 + 3) },
-            { (short)(ax + 2), (short)(up_y0 + g_pal_arrow_h - 3) },
-            { (short)(ax + aw - 2), (short)(up_y0 + g_pal_arrow_h - 3) },
-        };
-        XFillPolygon(dpy, buf, gc, up_tri, 3, Convex, CoordModeOrigin);
-        XSetForeground(dpy, gc, evhq_alloc_pixel(down_enabled ? "#cccccc" : "#555555"));
-        XPoint down_tri[3] = {
-            { (short)(ax + aw / 2), (short)(down_y0 + g_pal_arrow_h - 3) },
-            { (short)(ax + 2), (short)(down_y0 + 3) },
-            { (short)(ax + aw - 2), (short)(down_y0 + 3) },
-        };
-        XFillPolygon(dpy, buf, gc, down_tri, 3, Convex, CoordModeOrigin);
-        draw_elem(g_pal_arrow_up, 0);
-        draw_elem(g_pal_arrow_down, 0);
-    }
-    evhq_draw_entity_glyph();
-    evhq_draw_chrome_bar();
-    if (g_evhq_picker_open) evhq_draw_picker_overlay();
-    evhq_append_frame_history();
-}
-static void evhq_activate_elem(Elem *hit) {
-    if (!hit) return;
-    /* REAL BUG FIX (2026-08-26, direct live report: "cancel doesn't
-     * work. doesn't seem like any of the input does") - the picker's
-     * real Elems (added earlier the same day for real nav) had a
-     * nav_index but no `onclick`, and this function has never had a
-     * generic onclick-first dispatch the way dbhq_activate_elem() does
-     * (see !.HOUSE_STDS.md §K.3 item 4/5 - the real house convention is
-     * onClick-driven: "EVERY element carrying onClick= is auto-numbered
-     * into the keyboard nav"). A real mouse click on any picker row -
-     * Cancel included - fell through every tag/id check below and did
-     * nothing. Keyboard-driven interaction (Enter/Backspace/typed chars,
-     * handled separately in evhq_handle_key()'s own g_evhq_picker_open
-     * branch) was NOT affected by this bug and was already verified
-     * live via the real relay - this fixes the MOUSE-click path only,
-     * following the same real onclick convention every other real verb
-     * in this house's dispatch chain already uses. */
-    if (hit->onclick[0]) {
-        if (strncmp(hit->onclick, "PICKER:", 7) == 0) evhq_dispatch_picker_onclick(hit->onclick);
-        /* REAL, NEW 2026-08-28 (Phase C target #3) - same generic
-         * scroll:up/down dispatch dbhq_activate_elem() already uses. */
-        else if (strcmp(hit->onclick, "scroll:up") == 0 || strcmp(hit->onclick, "scroll:down") == 0) {
-            g_pal_scroll += (strcmp(hit->onclick, "scroll:down") == 0) ? 1 : -1;
-            evhq_redraw_content();
-        }
-        /* Visual block editor (2026-08-29, Part B: shared with Common
-         * Events via evhq_handle_block_onclick() - see its own header
-         * comment) - click-to-place Scratch: BLOCK:SEL:<i> picks a
-         * palette piece, BLOCK:PLACE appends the chosen op via the
-         * same action.txt boundary append: uses. */
-        else if (evhq_handle_block_onclick(hit->onclick)) {
-            evhq_redraw_content();
-        }
-        return;
-    }
-    if (strcmp(hit->tag, "closebtn") == 0) { g_quit = 1; return; }
-    if (strcmp(hit->id, "new-page-btn") == 0) {
-        /* Task H6 (2026-08-25) - request a new page from the manager.
-         * REAL FIX (same day) - arm the pending-select flag so
-         * evhq_load_pages() actually selects the new page once the
-         * manager republishes it, instead of leaving the old page
-         * silently selected under the new page's tab (see that
-         * function's own header comment for the full bug). */
-        FILE *af = fopen(g_evhq_mgr_action_path, "w");
-        if (af) {
-            fprintf(af, "new_page");
-            fclose(af);
-        }
-        g_evhq_pending_select_new_page = 1;
-        return;
-    }
-    if (strcmp(hit->id, "trigger-value") == 0) {
-        /* Task H7 (2026-08-25) - arm trigger editing, same text-entry pattern as Add Command */
-        g_evhq_trigger_edit_mode = 1;
-        g_evhq_trigger_buffer[0] = '\0';
-        return;
-    }
-    if (strcmp(hit->id, "play-test") == 0) {
-        /* Task H8 (2026-08-25) - run the current event now via play_event.sh,
-         * same real runtime path an entity's own Play METHOD row uses */
-        FILE *af = fopen(g_evhq_mgr_action_path, "w");
-        if (af) {
-            fprintf(af, "play");
-            fclose(af);
-        }
-        return;
-    }
-    /* Task 5 (2026-08-27) - viewtabs (id="viewtab-0/1/2") are also
-     * tag="tab", same as page tabs - MUST be checked first by id, or
-     * the generic page-tab branch below (matches by LABEL against
-     * g_evhq_pages[]) could coincidentally match if a real page is ever
-     * named "Scripting"/"Scratch"/"Blueprints". */
-    if (strncmp(hit->id, "viewtab-", 8) == 0) {
-        g_evhq_view_mode = atoi(hit->id + 8);
-        evhq_refresh_page_data(g_window);
-        return;
-    }
-    if (strcmp(hit->tag, "tab") == 0) {
-        for (int i = 0; i < g_evhq_n_pages; i++) if (strcmp(hit->label, g_evhq_pages[i]) == 0) { g_evhq_current_page = i; break; }
-        evhq_refresh_page_data(g_window);
-        return;
-    }
-    if (strcmp(hit->id, "add-command") == 0) {
-        g_evhq_picker_open = 1; g_evhq_picker_type = -1; g_evhq_picker_focus = 1; g_evhq_picker_scroll = 0;
-        g_evhq_field1[0] = '\0'; g_evhq_field2[0] = '\0'; g_evhq_active_field = 0;
-        g_evhq_edit_cmd_id = -1;
-        return;
-    }
-    /* Task 7 (2026-08-26) - command rows are now real, nav-reachable,
-     * editable Elems (id="cmd-edit-<real node id>"), same real click-to-
-     * edit events-hq was missing entirely before this. */
-    if (strncmp(hit->id, "cmd-edit-", 9) == 0) {
-        int target_id = atoi(hit->id + 9);
-        for (int i = 0; i < g_evhq_n_cmds; i++) if (g_evhq_cmds[i].id == target_id) { evhq_open_edit_picker(i); break; }
-        return;
-    }
-}
-static void evhq_handle_click(int px, int py) {
-    /* REAL BUG FIX (2026-08-26, direct live report: "cancel doesn't
-     * work. doesn't seem like any of the input does") - a SECOND real
-     * bug alongside the missing onclick one: the picker's Elems
-     * (g_picker_slots, built fresh in evhq_draw_picker_overlay()) are
-     * NOT children of g_window at all - hit_test(g_window, ...) below
-     * could never find them no matter what onclick they carry. While
-     * the picker is open it's modal and owns g_nav[]/g_n_nav exclusively
-     * (see evhq_draw_picker_overlay()'s own comment), so hit-test against
-     * THAT array directly instead of the window tree, checked first. */
-    if (g_evhq_picker_open) {
-        for (int i = 0; i < g_n_nav; i++) {
-            Elem *e = g_nav[i];
-            if (px >= e->x && px < e->x + e->w && py >= e->y && py < e->y + e->h) {
-                if (!click_focus_then_activate(e)) {
-                    /* REAL FIX 2026-08-29 (live report: "mouse click
-                     * not working... still no mouse click pickup" -
-                     * root-caused via a temporary debug trace, live-
-                     * reproduced): evhq_draw_picker_overlay() sets
-                     * `g_focus_nav = g_evhq_picker_focus` (type list)
-                     * unconditionally at the top of every redraw -
-                     * click_focus_then_activate() above only updates
-                     * g_focus_nav directly, never g_evhq_picker_focus
-                     * (or g_evhq_active_field, the field-entry
-                     * screen's own equivalent), so the redraw this
-                     * same click triggers immediately stomped the
-                     * mouse's own focus move back to whatever stale
-                     * value those variables still held - keyboard nav
-                     * worked because it updates the real variable
-                     * directly; mouse never did. Sync whichever one
-                     * is live for the current screen before redrawing. */
-                    if (g_evhq_picker_type < 0) g_evhq_picker_focus = e->nav_index;
-                    else g_evhq_active_field = e->nav_index - 1;
-                    evhq_redraw_content();
-                    return;
-                }
-                evhq_activate_elem(e);
-                return;
-            }
-        }
-        return;
-    }
-    if (px >= g_evhq_close_elem->x && px < g_evhq_close_elem->x + g_evhq_close_elem->w &&
-        py >= g_evhq_close_elem->y && py < g_evhq_close_elem->y + g_evhq_close_elem->h) {
-        g_focus_nav = g_evhq_close_elem->nav_index; evhq_activate_elem(g_evhq_close_elem); return;
-    }
-    /* REAL, NEW 2026-08-28 (Phase C target #3) - same synthetic-elem
-     * coordinate check dbhq_handle_click() already uses for the scroll
-     * arrows (they're drawn Elems but not children of g_window's parsed
-     * tree, so hit_test() below would never find them). */
-    if (g_pal_has_grid) {
-        if (px >= g_pal_arrow_up->x && px < g_pal_arrow_up->x + g_pal_arrow_up->w &&
-            py >= g_pal_arrow_up->y && py < g_pal_arrow_up->y + g_pal_arrow_up->h) {
-            if (g_pal_arrow_up->nav_index > 0) g_focus_nav = g_pal_arrow_up->nav_index;
-            evhq_activate_elem(g_pal_arrow_up);
-            return;
-        }
-        if (px >= g_pal_arrow_down->x && px < g_pal_arrow_down->x + g_pal_arrow_down->w &&
-            py >= g_pal_arrow_down->y && py < g_pal_arrow_down->y + g_pal_arrow_down->h) {
-            if (g_pal_arrow_down->nav_index > 0) g_focus_nav = g_pal_arrow_down->nav_index;
-            evhq_activate_elem(g_pal_arrow_down);
-            return;
-        }
-    }
-    Elem *hit = hit_test(g_window, px, py);
-    if (!hit) return;
-    if (!click_focus_then_activate(hit)) { evhq_redraw_content(); return; }
-    evhq_activate_elem(hit);
-}
-static void evhq_submit_picker(void) {
-    if (g_evhq_picker_type < 0 || g_evhq_picker_type >= g_evhq_n_cmd_defs) { g_evhq_picker_open = 0; return; }
-    EvhqCommandDef *def = &g_evhq_cmd_defs[g_evhq_picker_type];
-    /* REAL, 2026-08-26 - generic params_line build, "key=val|key=val"
-     * (pipe-separated - see event_commands.registry.pdl's own header
-     * comment), replacing the old per-type snprintf chain. field1 maps
-     * to param_names[0], field2 (if this command has one) to
-     * param_names[1] - positional, matching the picker's own two-field
-     * UI exactly. An empty field2 still gets its own pipe segment (an
-     * empty value, not an omitted one) so compile_page()'s generic
-     * parser always finds a fixed number of segments per command type.
-     *
-     * Normalizations (control_switch ON/OFF, select2 None) run BEFORE
-     * building the params_line so the normalized values reach the manager. */
-    if (strcmp(def->type, "control_switch") == 0 &&
-        def->n_params >= 2 && g_evhq_field2[0]) {
-        if (strcasecmp(g_evhq_field2, "ON") == 0)
-            snprintf(g_evhq_field2, sizeof(g_evhq_field2), "1");
-        else if (strcasecmp(g_evhq_field2, "OFF") == 0)
-            snprintf(g_evhq_field2, sizeof(g_evhq_field2), "0");
-    }
-    if (def->n_select2 > 0 && g_evhq_field2[0] &&
-        strcasecmp(g_evhq_field2, "None") == 0)
-        g_evhq_field2[0] = '\0';
-    char params[512] = "";
-    if (def->n_params >= 1) snprintf(params, sizeof(params), "%s=%s", def->param_names[0], g_evhq_field1);
-    if (def->n_params >= 2) {
-        char seg[300]; snprintf(seg, sizeof(seg), "|%s=%s", def->param_names[1], g_evhq_field2);
-        strncat(params, seg, sizeof(params) - strlen(params) - 1);
-    }
-    /* Task 7 (2026-08-26) - editing an existing row sends "edit:", not
-     * "append:". g_evhq_edit_cmd_id is armed by evhq_open_edit_picker()
-     * and must always be reset here so the NEXT Add Command (a fresh
-     * -1 picker_type) doesn't accidentally edit the last-edited row. */
-    if (g_evhq_edit_cmd_id >= 0) evhq_request_edit_node(g_evhq_edit_cmd_id, def->type, params);
-    else evhq_request_append_node(def->type, params);
-    g_evhq_edit_cmd_id = -1;
-    g_evhq_picker_open = 0;
-}
-static void evhq_handle_key(KeySym ks, char ch) {
-    /* Task H7 (2026-08-25) - trigger editing, reuses the Add Command picker's
-     * own keystroke-accumulation pattern rather than a second mechanism */
-    if (g_evhq_trigger_edit_mode) {
-        if (ks == XK_Escape) { g_evhq_trigger_edit_mode = 0; return; }
-        if (ks == XK_Return || ks == XK_KP_Enter) {
-            evhq_request_trigger_update(g_evhq_trigger_buffer);
-            g_evhq_trigger_edit_mode = 0;
-            return;
-        }
-        if (ks == XK_BackSpace) { size_t l = strlen(g_evhq_trigger_buffer); if (l > 0) g_evhq_trigger_buffer[l - 1] = '\0'; return; }
-        if (ch >= 32 && ch <= 126) {
-            size_t l = strlen(g_evhq_trigger_buffer);
-            if (l + 1 < sizeof(g_evhq_trigger_buffer)) { g_evhq_trigger_buffer[l] = ch; g_evhq_trigger_buffer[l + 1] = '\0'; }
-            return;
-        }
-        return;
-    }
-
-    if (g_evhq_picker_open) {
-        if (ks == XK_Escape) { g_evhq_picker_open = 0; g_evhq_edit_cmd_id = -1; return; }
-        if (g_evhq_picker_type < 0) {
-            /* Direct instruction (2026-08-26): "they need a cancel" - a
-             * real, nav-reachable Cancel option alongside Escape, not a
-             * replacement for it. Cancel occupies one extra focus
-             * position past the last real VISIBLE row (not past the
-             * full command count - see g_evhq_picker_scroll's own
-             * header comment, the registry now has more commands than
-             * the box can show at once). Digits/arrows move within the
-             * current visible window; Page_Up/Page_Down scroll it. */
-            int last_row_focus = g_evhq_picker_visible_rows;
-            if (g_evhq_picker_scroll + last_row_focus > g_evhq_n_cmd_defs)
-                last_row_focus = g_evhq_n_cmd_defs - g_evhq_picker_scroll;
-            if (ch >= '1' && ch <= '9' && (ch - '0') <= last_row_focus) g_evhq_picker_focus = ch - '0';
-            else if (ks == XK_Up || ks == XK_Left) { if (g_evhq_picker_focus > 1) g_evhq_picker_focus--; }
-            else if (ks == XK_Down || ks == XK_Right || ks == XK_Tab) { if (g_evhq_picker_focus < last_row_focus + 1) g_evhq_picker_focus++; }
-            else if (ks == XK_Page_Up) {
-                if (g_evhq_picker_scroll > 0) g_evhq_picker_scroll -= g_evhq_picker_visible_rows;
-                if (g_evhq_picker_scroll < 0) g_evhq_picker_scroll = 0;
-            }
-            else if (ks == XK_Page_Down) {
-                int max_scroll = g_evhq_n_cmd_defs - g_evhq_picker_visible_rows;
-                if (max_scroll < 0) max_scroll = 0;
-                g_evhq_picker_scroll += g_evhq_picker_visible_rows;
-                if (g_evhq_picker_scroll > max_scroll) g_evhq_picker_scroll = max_scroll;
-            }
-            else if (ks == XK_Return || ks == XK_KP_Enter) {
-                if (g_evhq_picker_focus == last_row_focus + 1) { g_evhq_picker_open = 0; g_evhq_edit_cmd_id = -1; return; }
-                g_evhq_picker_type = g_evhq_picker_scroll + g_evhq_picker_focus - 1;
-                /* Initialize select2 field to first option if empty */
-                if (g_evhq_picker_type >= 0 && g_evhq_picker_type < g_evhq_n_cmd_defs) {
-                    EvhqCommandDef *sel_def = &g_evhq_cmd_defs[g_evhq_picker_type];
-                    if (sel_def->n_select2 > 0 && g_evhq_field2[0] == '\0')
-                        snprintf(g_evhq_field2, sizeof(g_evhq_field2), "%s", sel_def->select2_options[0]);
-                }
-            }
-            return;
-        }
-        if (g_evhq_picker_type >= g_evhq_n_cmd_defs) return;
-        int n_params = g_evhq_cmd_defs[g_evhq_picker_type].n_params;
-        int single_field = (n_params <= 1);
-        /* Check if the active field is a SELECT2 cycle field */
-        EvhqCommandDef *cur_def = &g_evhq_cmd_defs[g_evhq_picker_type];
-        int active_is_select = 0;
-        int active_select_idx = -1;
-        if (g_evhq_active_field == 1 && cur_def->n_select2 > 0) {
-            active_is_select = 1;
-            char *active_val = g_evhq_field2;
-            for (int si = 0; si < cur_def->n_select2; si++) {
-                if (strcmp(active_val, cur_def->select2_options[si]) == 0) { active_select_idx = si; break; }
-            }
-            if (active_select_idx < 0 && active_val[0] == '\0') active_select_idx = 0;
-        }
-        if (active_is_select && (ks == XK_Left || ks == XK_Right)) {
-            if (active_select_idx >= 0) {
-                if (ks == XK_Left) active_select_idx = (active_select_idx - 1 + cur_def->n_select2) % cur_def->n_select2;
-                else active_select_idx = (active_select_idx + 1) % cur_def->n_select2;
-                snprintf(g_evhq_field2, sizeof(g_evhq_field2), "%s", cur_def->select2_options[active_select_idx]);
-            }
-            return;
-        }
-        /* Same real Cancel addition as the type-list above - one extra
-         * focus position past the last real field (index == n_params),
-         * reachable via Left/Right (Tab has no ASCII code so isn't
-         * usable from the plain text relay, but Right/Left already are
-         * via relay codes 202/203 - see dispatch_relay_code()). REAL,
-         * NEW 2026-08-29 (live report: "the placed scratch blocks and
-         * or events may need a 'delete' input button... trigger able
-         * from visual nav / index, as usual") - a SECOND extra slot,
-         * Delete, only when g_evhq_edit_cmd_id >= 0 (editing a real,
-         * existing command - "Add Command" has nothing yet to delete).
-         * Reuses this exact same nav-driven picker flow instead of a
-         * separate focus-tracking mechanism (an earlier attempt at a
-         * standalone "delete whatever's currently focused" footer
-         * button was real but flawed - focus moves TO that button
-         * before Enter, so by the time it activates, focus no longer
-         * points at the row at all; this approach never has that
-         * problem since Delete lives inside the SAME picker session
-         * the row's own Enter already opened). */
-        int last_slot = n_params + (g_evhq_edit_cmd_id >= 0 ? 1 : 0);
-        if (ks == XK_Left) { if (g_evhq_active_field > 0) g_evhq_active_field--; return; }
-        if (ks == XK_Right) { if (g_evhq_active_field < last_slot) g_evhq_active_field++; return; }
-        if (g_evhq_active_field > n_params) {
-            /* Focus is on the Delete slot. */
-            if (ks == XK_Return || ks == XK_KP_Enter) {
-                evhq_request_delete_node(g_evhq_edit_cmd_id);
-                g_evhq_picker_open = 0; g_evhq_edit_cmd_id = -1;
-                evhq_redraw_content();
-            }
-            return;
-        }
-        if (g_evhq_active_field == n_params) {
-            /* Focus is on the Cancel slot - only Enter (handled here) and
-             * Escape (handled above) do anything; typing/backspace are
-             * no-ops here since there's no field buffer at this position. */
-            if (ks == XK_Return || ks == XK_KP_Enter) { g_evhq_picker_open = 0; g_evhq_edit_cmd_id = -1; }
-            return;
-        }
-        char *active = g_evhq_active_field == 0 ? g_evhq_field1 : g_evhq_field2;
-        size_t asz = g_evhq_active_field == 0 ? sizeof(g_evhq_field1) : sizeof(g_evhq_field2);
-        if (ks == XK_Return || ks == XK_KP_Enter) {
-            if (!single_field && g_evhq_active_field == 0) { g_evhq_active_field = 1; return; }
-            evhq_submit_picker();
-            return;
-        }
-        if (ks == XK_BackSpace) { size_t l = strlen(active); if (l > 0) active[l - 1] = '\0'; return; }
-        if (ch >= 32 && ch <= 126) {
-            size_t l = strlen(active);
-            if (l + 1 < asz) { active[l] = ch; active[l + 1] = '\0'; }
-            return;
-        }
-        return;
-    }
-    if (ch == 'p') { dump_frame_png(); return; }
-    if (ks == XK_Return || ks == XK_KP_Enter) {
-        if (g_evhq_digit_accum > 0 && g_evhq_digit_accum <= g_n_nav) g_focus_nav = g_evhq_digit_accum;
-        g_evhq_digit_accum = 0;
-        if (g_focus_nav >= 1 && g_focus_nav <= g_n_nav) evhq_activate_elem(g_nav[g_focus_nav - 1]);
-        return;
-    }
-    if (ks == XK_Escape) { if (g_evhq_digit_accum > 0) { g_evhq_digit_accum = 0; return; } g_quit = 1; return; }
-    if (ch >= '0' && ch <= '9') {
-        int d = ch - '0';
-        int new_val = g_evhq_digit_accum * 10 + d;
-        if (new_val > 0 && new_val <= g_n_nav) { g_evhq_digit_accum = new_val; g_focus_nav = new_val; }
-        else if (d > 0 && d <= g_n_nav) { g_evhq_digit_accum = d; g_focus_nav = d; }
-        else g_evhq_digit_accum = 0;
-        return;
-    }
-    if (ks == XK_Up || ks == XK_Left) { if (g_focus_nav > 1) g_focus_nav--; g_evhq_digit_accum = 0; return; }
-    if (ks == XK_Tab || ks == XK_ISO_Left_Tab) { if (g_evhq_has_real_focus) nav_tab_cycle(); g_evhq_digit_accum = 0; return; }
-    if (ks == XK_Down || ks == XK_Right) { if (g_focus_nav < g_n_nav) g_focus_nav++; g_evhq_digit_accum = 0; return; }
-    /* REAL, NEW 2026-08-28 (Phase C target #3) - same real Page_Up/
-     * Page_Down paging dbhq_handle_key() already uses for any
-     * g_pal_has_grid mode; events-hq's own command list had no keyboard
-     * scroll path at all before this. */
-    if (ks == XK_Page_Up || ks == XK_Page_Down) {
-        if (g_pal_has_grid) {
-            int step = g_pal_visible_rows > 1 ? g_pal_visible_rows - 1 : 1;
-            g_pal_scroll += (ks == XK_Page_Down) ? step : -step;
-            evhq_layout_pass(g_window);
-            evhq_assign_nav_indices(g_window);
-        }
-        g_evhq_digit_accum = 0;
-        return;
-    }
-    g_evhq_digit_accum = 0;
-}
 static int kh_nonfatal_x_error(Display *d, XErrorEvent *e) {
     char ebuf[128]; XGetErrorText(d, e->error_code, ebuf, sizeof(ebuf));
     fprintf(stderr, "khtpm_entity_menu_render: events-hq: X error (non-fatal): %s (request %d.%d)\n", ebuf, e->request_code, e->minor_code);
@@ -7192,11 +4933,6 @@ static void dbhq_dump_debug_state(void) {
     fprintf(f, "g_dbhq_current_tab=%d (%s)\n", g_dbhq_current_tab,
             (g_dbhq_current_tab >= 0 && g_dbhq_current_tab < DB_HQ_N_TABS) ? DB_HQ_TAB_LABELS[g_dbhq_current_tab] : "?");
     fprintf(f, "g_dbhq_selected_event=%d\n", g_dbhq_selected_event);
-    fprintf(f, "g_dbhq_ce_editing=%d name=%s\n", g_dbhq_ce_editing, g_dbhq_ce_name);
-    fprintf(f, "g_evhq_picker_open=%d trigger=%s n_cmds=%d\n", g_evhq_picker_open, g_evhq_trigger, g_evhq_n_cmds);
-    fprintf(f, "g_evhq_picker_type=%d g_evhq_active_field=%d\n", g_evhq_picker_type, g_evhq_active_field);
-    fprintf(f, "g_evhq_field1=[%s]\n", g_evhq_field1);
-    fprintf(f, "g_evhq_field2=[%s]\n", g_evhq_field2);
     fprintf(f, "g_input_elem=%s\n", g_input_elem ? g_input_elem->id : "(null)");
     {
         Elem *panel = find_by_tag(g_window, "panel");
@@ -8758,7 +6494,6 @@ static void assign_nav_and_layout(void) {
      * managed window shape, own layout/nav functions (ported verbatim,
      * not forced into the popup modes' page/item shape below). */
     if (g_is_db_hq) { dbhq_layout_pass(g_window); dbhq_assign_nav_indices(g_window); return; }
-    if (g_is_events_hq) { evhq_layout_pass(g_window); evhq_assign_nav_indices(g_window); return; }
     g_n_nav = 0;
     g_dock_header_nav_hi = 0;
     g_dock_drop_lo = 0;
@@ -9374,8 +7109,8 @@ static void redraw(void) {
     /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode: own real content
      * draw (chrome/tabbar/sidebar/panel), same shared present
      * (XGetImage->XPutImage) below every mode already uses. */
-    if (g_is_db_hq || g_is_events_hq) {
-        if (g_is_db_hq) dbhq_redraw_content(); else evhq_redraw_content();
+    if (g_is_db_hq) {
+        dbhq_redraw_content();
         /* Real fix 2026-08-28 (see g_buf_w/g_buf_h's own header comment)
          * - content just drawn above may have grown g_window->w/h past
          * the Pixmap's real allocated size (palettes' rmmv tab bar +
@@ -9401,7 +7136,7 @@ static void redraw(void) {
              * draw above already ran against the OLD buf, so re-run it
              * now that buf is the right size, or this frame would blit
              * garbage/black instead of the real content. */
-            if (g_is_db_hq) dbhq_redraw_content(); else evhq_redraw_content();
+            dbhq_redraw_content();
         }
         /* REAL FIX 2026-08-28 (live report + real screenshot: switching
          * between rmmv tabs/tilesets with very different real content
@@ -9779,14 +7514,6 @@ static void redraw(void);
 static void dump_frame_png(void) {
     char png[PATH_BUF];
     redraw(); /* REAL FIX above - guarantees `win`'s real on-screen pixels reflect the state as of THIS tick's input, not the previous tick's */
-    if (g_is_events_hq) {
-        snprintf(png, sizeof(png), "/tmp/events-hq-frame.png"); /* real, preserves khtpm_events_hq_render.c's own external contract */
-        char cmd[PATH_BUF * 2];
-        snprintf(cmd, sizeof(cmd), "'%s/&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x' 0x%lx '%s'",
-                 g_house_root, (unsigned long)win, png);
-        system(cmd); /* REAL, existing house-standard op-binary dispatch, reused verbatim - not new dispatch code */
-        return;
-    }
     if (g_is_db_hq) {
         snprintf(png, sizeof(png), "/tmp/db-hq-frame.png"); /* real, preserves khtpm_hq_render.c's own external contract */
         char cmd[PATH_BUF * 2];
@@ -9852,7 +7579,6 @@ static void handle_key(KeySym ks, char ch) {
      * character in the active field, not intercepted as a dump
      * shortcut (its own original handle_key() checked g_picker_open
      * first, 'p' only afterward). */
-    if (g_is_events_hq) { evhq_handle_key(ks, ch); return; }
     /* REAL 2026-08-25 (Stage 3 bookmarks port) - db-hq mode now has its
      * own armed input field (g_input_elem, bookmarks' New+ path entry)
      * and needs the SAME key-order exception as events-hq/chat-hai
@@ -10424,7 +8150,6 @@ static void dispatch_relay_code(int code) {
         handle_key((KeySym)code, 0);
 }
 static int hq_window_has_x_focus(void) {
-    if (g_is_events_hq) return g_evhq_has_real_focus;
     if (g_is_db_hq) return g_dbhq_has_real_focus;
     return 1;
 }
@@ -10469,7 +8194,6 @@ static int poll_agent_history(void) {
                     }
                 } else if (nf >= 3 && is_press && button != 3 && button != 4 && button != 5) {
                     if (g_is_db_hq) dbhq_handle_click(mx, my);
-                    else if (g_is_events_hq) evhq_handle_click(mx, my);
                     else popup_handle_click(mx, my);
                     n++;
                 }
@@ -10636,12 +8360,6 @@ static void hq_idle_tick(void) {
             if (apply && phase >= 2 && fg >= 0) g_quit = 1;
         }
     }
-    if (g_is_events_hq) {
-        if (evhq_load_pages() || evhq_load_page_state()) {
-            evhq_refresh_page_data(g_window);
-            redraw();
-        }
-    }
     /* REAL, NEW 2026-08-31 (xperiments/khtpm-generic-dispatch-design.md
      * §5 - direct instruction: "the renderer/parser should have no
      * need to know the difference [between projects]... why are there
@@ -10780,11 +8498,6 @@ static void hq_idle_tick(void) {
                     snprintf(panel_text->label, sizeof(panel_text->label), "%s", g_dbhq_events[g_dbhq_selected_event]);
             }
             dbhq_loop_request_redraw();
-        }
-        if (g_dbhq_ce_editing) {
-            Elem *panel = find_by_tag(g_window, "panel");
-            if (dbhq_ce_inject_panel(panel))
-                dbhq_loop_request_redraw();
         }
         dbhq_loop_paint_if_dirty();
     }
@@ -11128,71 +8841,26 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                 dbhq_loop_request_redraw();
                 return;
             }
-            /* REAL FIX 2026-08-29 (live report: Common Events' Add-
-             * Command picker had "all very weird behavior" - this
-             * check was missing the same !g_evhq_picker_open guard
-             * events-hq's own analogous drag-start check already has
-             * (see that one's own comment) - a real click meant for
-             * the modal picker, landing in the window's own top chrome
-             * strip by coincidence, could arm a background window-drag
-             * underneath the modal. */
-            if (!g_evhq_picker_open && ev->xbutton.button == 1 && ev->xbutton.y < g_dbhq_chrome_h &&
+            if (ev->xbutton.button == 1 && ev->xbutton.y < g_dbhq_chrome_h &&
                 !(ev->xbutton.x >= g_dbhq_close_elem->x && ev->xbutton.x < g_dbhq_close_elem->x + g_dbhq_close_elem->w &&
                   ev->xbutton.y >= g_dbhq_close_elem->y && ev->xbutton.y < g_dbhq_close_elem->y + g_dbhq_close_elem->h)) {
                 g_dbhq_dragging = 1;
                 g_dbhq_drag_last_x = ev->xbutton.x_root;
                 g_dbhq_drag_last_y = ev->xbutton.y_root;
             }
-            if (!g_evhq_picker_open && g_pal_has_grid && (ev->xbutton.button == 4 || ev->xbutton.button == 5)) {
+            if (g_pal_has_grid && (ev->xbutton.button == 4 || ev->xbutton.button == 5)) {
                 g_pal_scroll += (ev->xbutton.button == 5) ? 2 : -2;
             } else if (ev->xbutton.button != 3 && ev->xbutton.button != 4 && ev->xbutton.button != 5) {
                 dbhq_capture_click(ev->xbutton.x, ev->xbutton.y, (int)ev->xbutton.button);
                 poll_agent_history();
             }
             if (!g_quit) dbhq_loop_request_redraw();
-        } else if (g_is_events_hq) {
-            if (!g_evhq_picker_open && ev->xbutton.button == 1 && ev->xbutton.y < EVHQ_CHROME_H &&
-                !(ev->xbutton.x >= g_evhq_close_elem->x && ev->xbutton.x < g_evhq_close_elem->x + g_evhq_close_elem->w &&
-                  ev->xbutton.y >= g_evhq_close_elem->y && ev->xbutton.y < g_evhq_close_elem->y + g_evhq_close_elem->h)) {
-                g_evhq_dragging = 1;
-                g_evhq_drag_last_x = ev->xbutton.x_root;
-                g_evhq_drag_last_y = ev->xbutton.y_root;
-            }
-            if (!g_evhq_picker_open && g_pal_has_grid && (ev->xbutton.button == 4 || ev->xbutton.button == 5)) {
-                g_pal_scroll += (ev->xbutton.button == 5) ? 2 : -2;
-                evhq_layout_pass(g_window);
-                evhq_assign_nav_indices(g_window);
-            } else if (ev->xbutton.button != 3) {
-                /* REAL FIX 2026-08-29 (live report: "mouse click not
-                 * working in add commands sub window... instead it
-                 * actually changing the tabs") - this used to also
-                 * require `!g_evhq_picker_open`, so a REAL physical
-                 * click while the picker overlay was open never even
-                 * reached dbhq_capture_click()/poll_agent_history() at
-                 * all - silently dropped before evhq_handle_click()'s
-                 * own correct picker-aware hit-test (which checks
-                 * g_evhq_picker_open FIRST and hit-tests g_nav[]
-                 * instead of the main window tree) ever got a chance to
-                 * run. This exact class of bug was invisible to every
-                 * relay-driven test this session, since the file-relay
-                 * MOUSE_EVENT path calls dbhq_capture_click() directly
-                 * and was never subject to this gate - only a REAL
-                 * physical click could ever trigger it. The drag-start
-                 * and scroll-wheel guards just above stay gated (those
-                 * really should be suppressed while modal); only the
-                 * actual click-capture call was wrongly gated too. */
-                g_evhq_has_real_focus = 1;
-                dbhq_capture_click(ev->xbutton.x, ev->xbutton.y, (int)ev->xbutton.button);
-                poll_agent_history();
-            }
-            if (!g_quit) redraw();
         }
         return;
     }
     if (ev->type == ButtonRelease && ev->xbutton.button == 1) {
         g_dbhq_dragging = 0;
         g_pal_thumb_dragging = 0;
-        g_evhq_dragging = 0;
         g_popup_dragging = 0;  /* REAL, NEW 2026-08-29 (TASK 1) */
         return;
     }
@@ -11210,14 +8878,6 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             XMoveWindow(dpy, win, g_win_x, g_win_y);
             g_dbhq_drag_last_x = ev->xmotion.x_root;
             g_dbhq_drag_last_y = ev->xmotion.y_root;
-        } else if (g_is_events_hq && g_evhq_dragging) {
-            int dx = ev->xmotion.x_root - g_evhq_drag_last_x;
-            int dy = ev->xmotion.y_root - g_evhq_drag_last_y;
-            g_win_x += dx; g_win_y += dy;
-            if (g_win_y < WM_MANAGED_DRAG_MIN_Y) g_win_y = WM_MANAGED_DRAG_MIN_Y;
-            XMoveWindow(dpy, win, g_win_x, g_win_y);
-            g_evhq_drag_last_x = ev->xmotion.x_root;
-            g_evhq_drag_last_y = ev->xmotion.y_root;
         } else if (is_popup && g_popup_dragging) {
             /* REAL, NEW 2026-08-29 (TASK 1: popup drag-move) - same pattern
              * as other modes: compute delta from last recorded x_root/y_root,
@@ -11257,12 +8917,6 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             dbhq_capture_key(ks, buf8[0]);
             poll_agent_history();
             if (!g_quit) dbhq_loop_request_redraw();
-        } else if (g_is_events_hq) {
-            snprintf(g_evhq_last_key_label, sizeof(g_evhq_last_key_label), "%s", kname ? kname : (buf8[0] ? buf8 : "?"));
-            g_evhq_has_real_focus = 1;
-            dbhq_capture_key(ks, buf8[0]);
-            poll_agent_history();
-            if (!g_quit) redraw();
         }
         return;
     }
@@ -11293,9 +8947,6 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             { struct stat st; char hp[PATH_BUF]; history_path(hp, sizeof(hp));
               if (stat(hp, &st) == 0) g_history_cursor = st.st_size; }
             dbhq_loop_request_redraw();
-        } else if (g_is_events_hq) {
-            g_evhq_has_real_focus = 1;
-            redraw();
         } else {
             /* REAL FIX 2026-09-03 (direct live report/question: "is
              * there a way to tell if another window gets focus and
@@ -11323,9 +8974,6 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         if (g_is_db_hq && g_dbhq_has_real_focus) {
             g_dbhq_has_real_focus = 0;
             dbhq_loop_request_redraw();
-        } else if (g_is_events_hq) {
-            g_evhq_has_real_focus = 0;
-            redraw();
         } else {
             /* REAL FIX 2026-09-03 - same real default-mode gap as
              * FocusIn right above, same fix. */
@@ -18169,7 +15817,6 @@ int main(int argc, char **argv) {
          * convention, matching its own real existing class attribute
          * (`<window class="events-hq-window">`, unchanged - no new
          * class token needed, this app's own class already existed). */
-        if (strcmp(g_window->classes[i], "events-hq-window") == 0) { g_is_events_hq = 1; break; }
         /* REAL, NEW 2026-08-25 (au11-hq/TPMOS-COMPLIANCE-DEBT.md - full
          * compliant rebuild, direct instruction: "do this completely
          * tpmos compliant"). stats-hq reuses db-hq's ENTIRE proven
@@ -18227,11 +15874,7 @@ int main(int argc, char **argv) {
      * pkg_dir, and never supported explicit x/y anyway - always starts
      * at its own real 120,120 default) - moved this block to AFTER mode
      * detection since it now needs to know which interpretation applies. */
-    if (g_is_events_hq) {
-        if (argc < 5) { fprintf(stderr, "usage: %s <house_root> <chtpm_path> <event_pkg_dir> <entity_label>\n", argv[0]); return 1; }
-        snprintf(g_evhq_pkg_dir, sizeof(g_evhq_pkg_dir), "%s", argv[3]);
-        snprintf(g_evhq_entity_label, sizeof(g_evhq_entity_label), "%s", argv[4]);
-    } else if (argc >= 5 && !g_arg3_dir[0]) {
+    if (argc >= 5 && !g_arg3_dir[0]) {
         /* not the instance-dir hook (g_arg3_dir) -> the legacy popup
          * launch shape where argv[3]/argv[4] are x/y ints. */
         g_win_x = atoi(argv[3]); g_win_y = atoi(argv[4]);
@@ -18470,28 +16113,6 @@ int main(int argc, char **argv) {
      * module launch (3 real args, not 1 - see evhq_launch_module()'s
      * own header comment), signal handlers, real initial page-data
      * refresh. */
-    if (g_is_events_hq) {
-        XSetErrorHandler(kh_nonfatal_x_error);
-        signal(SIGTERM, evhq_handle_term_signal);
-        signal(SIGINT, evhq_handle_term_signal);
-
-        memset(g_evhq_close_elem, 0, sizeof(*g_evhq_close_elem));
-        snprintf(g_evhq_close_elem->tag, sizeof(g_evhq_close_elem->tag), "closebtn");
-
-        if (access(g_evhq_pkg_dir, F_OK) != 0) mkdir(g_evhq_pkg_dir, 0755);
-        evhq_init_manager_paths();
-        evhq_load_pages();
-        evhq_load_entity_sprite();
-
-        g_win_x = 120; g_win_y = 120; /* real events-hq default, distinct from db-hq's 100,100 and the popup modes' 300,300 */
-
-        Elem *evhq_module_elem = find_by_tag(g_window, "module");
-        if (evhq_module_elem && evhq_module_elem->label[0]) evhq_launch_module(evhq_module_elem->label);
-        atexit(evhq_cleanup_module);
-
-        evhq_refresh_page_data(g_window); /* real, populates pagetabs/trigger/commands before the first layout pass */
-    }
-
     if (g_is_swatch_picker) {
         static const char *hex[12] = { "#000000","#ffffff","#1a1a1a","#e5e5e5","#ef4444","#f97316","#eab308","#22c55e","#06b6d4","#3b82f6","#8b5cf6","#ec4899" };
         for (int i = 0; i < 12; i++) { g_palette_hex[i] = hex[i]; g_palette_name[i] = g_palette_name_buf[i]; }
@@ -18706,65 +16327,6 @@ int main(int argc, char **argv) {
      * genuinely separate real implementation (own globals, own close
      * elem, own picker-overlay-aware click gating) - same real
      * per-mode-exception precedent as everywhere else in this file. */
-    if (g_is_events_hq) {
-        int ww = g_window->w, wh = g_window->h;
-
-        XSetWindowAttributes swa;
-        swa.background_pixel = alloc_pixel("#141414");
-        swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | StructureNotifyMask | FocusChangeMask;
-        /* REAL FIX 2026-08-29 - see db-hq branch's own identical
-         * comment above (OPACITY-PIPELINE-INVESTIGATION-2026-08-29.txt
-         * has the full research trail) - same real bug, same fix. */
-        swa.override_redirect = (Bool)g_override_redirect; /* REAL, NEW 2026-09-01 - @ toggle: managed when the shared pdl says false */
-        win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)ww, (unsigned)wh, 0,
-                             CopyFromParent, InputOutput, CopyFromParent,
-                             CWBackPixel | CWEventMask | CWOverrideRedirect, &swa);
-        render_managed_wm_hints(dpy, win, !g_override_redirect); /* REAL, NEW 2026-09-01 - @ "normal" mode: undecorated + no shell chrome when managed */
-        {
-            /* REAL FIX 2026-08-29 - see db-hq branch's own identical
-             * comment above (OPACITY-PIPELINE-INVESTIGATION-2026-08-29.txt
-             * + part2.txt) - _MOTIF_WM_HINTS/WM_DELETE_WINDOW removed
-             * too, same reasoning: root-caused as the actual blocker by
-             * a delegated Haiku subagent's own live xprop diff. */
-        }
-        {
-            XClassHint *ch = XAllocClassHint();
-            if (ch) { ch->res_name = (char *)"MuchiverseLivedesk"; ch->res_class = (char *)"MuchiverseLivedesk"; XSetClassHint(dpy, win, ch); XFree(ch); }
-        }
-        XMapWindow(dpy, win);
-        set_window_opacity(dpy, win, load_theme_opacity());
-        XSync(dpy, False);
-        { XWindowAttributes wa; if (XGetWindowAttributes(dpy, win, &wa)) { g_win_x = wa.x; g_win_y = wa.y; } }
-        render_managed_sink_below(dpy, win); /* REAL, NEW 2026-09-01 - @ "normal" mode: drop this managed window below native apps */
-        nav_tab_register("evhq", "events-hq");
-
-        gc = XCreateGC(dpy, win, 0, NULL);
-        buf = XCreatePixmap(dpy, win, (unsigned)ww, (unsigned)wh, (unsigned)DefaultDepth(dpy, screen));
-        xftdraw_buf = XftDrawCreate(dpy, buf, DefaultVisual(dpy, screen), cmap);
-        g_buf_w = ww; g_buf_h = wh;
-
-        redraw();
-        /* REAL FIX 2026-08-29 part 3 - see db-hq branch's own identical
-         * comment above (OPACITY-PIPELINE-INVESTIGATION-2026-08-29-part3.txt)
-         * - same real "opacity-on-reset" quirk, same fix, ported from
-         * khtpm_strip_parser.c's own already-documented pattern. */
-        XFlush(dpy);
-        usleep(200000);
-        set_window_opacity(dpy, win, load_theme_opacity());
-        XFlush(dpy);
-
-        Atom wm_delete_loop = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
-        hq_run_event_loop(wm_delete_loop, 0);
-
-        nav_tab_unregister();
-    history_unregister();
-        XftDrawDestroy(xftdraw_buf);
-        XFreePixmap(dpy, buf);
-        XFreeGC(dpy, gc);
-        XDestroyWindow(dpy, win);
-        XCloseDisplay(dpy);
-        return 0;
-    }
 
     XSetWindowAttributes swa;
     /* REAL FIX 2026-09-03 (direct live report, still reproducing after
