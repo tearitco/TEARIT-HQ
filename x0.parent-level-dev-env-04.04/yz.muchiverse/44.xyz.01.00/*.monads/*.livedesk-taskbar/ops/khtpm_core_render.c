@@ -2427,6 +2427,24 @@ static Elem g_sbar_up_elem[8], g_sbar_down_elem[8];
 
 static void generic_sbar_reset(void) { g_n_generic_sbars = 0; }
 
+/* REAL, NEW 2026-09-04 (direct instruction: "this should be guarded
+ * against in code, till it works right") - force any synthetic edge
+ * affordance (chrome X/!/_, scrollbar ^/v arrows) fully inside the
+ * window, INSET past the 2px theme frame. Shrinks it if it is wider/
+ * taller than the window, then pulls it in from any edge it crosses. */
+static void kh_clamp_elem_onscreen(Elem *e) {
+    const int M = 6;  /* frame (2px) + a little air */
+    if (!e || e->w <= 0) return;
+    if (e->w > g_win_w - 2 * M) e->w = g_win_w - 2 * M;
+    if (e->x + e->w > g_win_w - M) e->x = g_win_w - M - e->w;
+    if (e->x < M) e->x = M;
+    if (e->h > 0) {
+        if (e->h > g_win_h - 2 * M) e->h = g_win_h - 2 * M;
+        if (e->y + e->h > g_win_h - M) e->y = g_win_h - M - e->h;
+        if (e->y < 2) e->y = 2;
+    }
+}
+
 #define GENERIC_SBAR_ARROW_H 14
 static void generic_sbar_register(int x, int y, int w, int h, int *scroll,
                                   int total, int visible, int max_scroll) {
@@ -2477,8 +2495,18 @@ static void generic_sbar_register(int x, int y, int w, int h, int *scroll,
     snprintf(dn->label, sizeof(dn->label), "v");
     if (sc > 0) snprintf(up->onclick, sizeof(up->onclick), "SCROLLUP:%d", slot);
     if (sc < max_scroll) snprintf(dn->onclick, sizeof(dn->onclick), "SCROLLDOWN:%d", slot);
-    up->x = b->track_x; up->y = y; up->w = b->track_w; up->h = GENERIC_SBAR_ARROW_H;
-    dn->x = b->track_x; dn->y = y + h - GENERIC_SBAR_ARROW_H; dn->w = b->track_w; dn->h = GENERIC_SBAR_ARROW_H;
+    /* draw_elem forces a "[ ]NN. " nav badge on any nav_index>0 element,
+     * so a track-width (8px) box clipped the badge + glyph off the edge
+     * ("cant see the number for the thumb navs"). Give them a real
+     * badge-width box, right-aligned to the track, then hard-clamp fully
+     * inside the window (see kh_clamp_elem_onscreen). */
+    int aw = 54, ah = GENERIC_SBAR_ARROW_H;
+    up->w = aw; up->h = ah; up->y = y;
+    up->x = b->track_x + b->track_w - aw;
+    dn->w = aw; dn->h = ah; dn->y = y + h - ah;
+    dn->x = b->track_x + b->track_w - aw;
+    kh_clamp_elem_onscreen(up);
+    kh_clamp_elem_onscreen(dn);
     css_compute_style(&g_sheet, up->tag, up->id, up->classes, up->n_classes, 0, &up->style);
     css_compute_style(&g_sheet, dn->tag, dn->id, dn->classes, dn->n_classes, 0, &dn->style);
     up->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = up;
@@ -4036,8 +4064,7 @@ static void assign_nav_and_layout(void) {
                 chrome_x -= cw;
                 item->y = 2; item->w = cw; item->h = CHROME_H - 4;
                 item->x = chrome_x;
-                if (item->x + item->w > g_win_w - 4) item->x = g_win_w - 4 - item->w;
-                if (item->x < 4) item->x = 4;
+                kh_clamp_elem_onscreen(item);
                 chrome_x = item->x - 4;
             } else if (is_sw) {
                 if (n_sw < 12) {
