@@ -3935,7 +3935,7 @@ static void evhq_handle_key(KeySym ks, char ch);
  * they all share this one dispatch, not just the plain entity-menu
  * view. */
 static long g_dbhq_frame_seq = 0;
-static void dbhq_append_frame_history(void) {
+static void kh_append_frame_history(void) {
     g_dbhq_frame_seq++;
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/#.desktop/db_hq_frame_history.txt", g_house_root);
@@ -3997,7 +3997,7 @@ static void dbhq_append_frame_history(void) {
  * containing a literal '|' (a real shell pipe is a plausible thing to
  * type into a composer) must not reach fprintf() unescaped, or it would
  * misparse exactly like onclick's own pipes once did (see this file's
- * own 2026-08-28 book-stack fix comment above dbhq_paint_frame_line()).
+ * own 2026-08-28 book-stack fix comment above kh_paint_frame_line()).
  * Onclick solves this by anchoring from BOTH ends of the line; these
  * two fields are simpler (no other data depends on their exact byte
  * count) - a real, byte-safe substitution (0x01, a control byte that
@@ -4015,7 +4015,7 @@ static void frame_field_unescape_pipe(const char *in, char *out, size_t outsz) {
     out[o] = '\0';
 }
 
-static void dbhq_serialize_frame_elem(FILE *f, Elem *e) {
+static void kh_serialize_frame_elem(FILE *f, Elem *e) {
     char classes_joined[CSS_MAX_CLASSES * 33] = "";
     for (int i = 0; i < e->n_classes; i++) {
         if (i > 0) strcat(classes_joined, ",");
@@ -4040,7 +4040,7 @@ static void dbhq_serialize_frame_elem(FILE *f, Elem *e) {
  * uses (non-title children first, in order, title deferred to last at
  * each level) - PRESERVING draw order matters for real visual parity
  * (a later-drawn element can visually overlap an earlier one). */
-static void dbhq_serialize_frame_subtree(FILE *f, Elem *e) {
+static void kh_serialize_frame_subtree(FILE *f, Elem *e) {
     for (int i = 0; i < e->n_children; i++) {
         Elem *c = e->children[i];
         if (strcmp(c->tag, "title") == 0 || strcmp(c->tag, "module") == 0) continue;
@@ -4056,16 +4056,16 @@ static void dbhq_serialize_frame_subtree(FILE *f, Elem *e) {
          * this file, same real reason <title> is deferred below. Same
          * fix, same place, mirrored. */
         if (elem_has_class(c, "dropdown-child")) continue;
-        dbhq_serialize_frame_elem(f, c);
-        dbhq_serialize_frame_subtree(f, c);
+        kh_serialize_frame_elem(f, c);
+        kh_serialize_frame_subtree(f, c);
     }
     for (int i = 0; i < e->n_children; i++) {
         Elem *c = e->children[i];
-        if (strcmp(c->tag, "title") == 0) dbhq_serialize_frame_elem(f, c);
+        if (strcmp(c->tag, "title") == 0) kh_serialize_frame_elem(f, c);
         else if (elem_has_class(c, "dropdown-child")) {
             if (window_is_dock() && !g_dock_in_menu_paint) continue;
-            dbhq_serialize_frame_elem(f, c);
-            dbhq_serialize_frame_subtree(f, c);
+            kh_serialize_frame_elem(f, c);
+            kh_serialize_frame_subtree(f, c);
         }
     }
 }
@@ -4078,7 +4078,7 @@ static void dbhq_write_palette_frame_file(Elem *panel) {
     snprintf(tmp, sizeof(tmp), "%s.tmp", path);
     FILE *f = fopen(tmp, "w");
     if (!f) return;
-    dbhq_serialize_frame_subtree(f, panel);
+    kh_serialize_frame_subtree(f, panel);
     fclose(f);
     rename(tmp, path);
 }
@@ -4094,7 +4094,7 @@ static void dbhq_write_palette_frame_file(Elem *panel) {
  * possible from this function's own code (the only thing it does
  * beyond "call the real, already-correct drawing code" is the file
  * parse itself). */
-static void dbhq_paint_frame_line(const char *line) {
+static void kh_paint_frame_line(const char *line) {
     char buf2[2048];
     snprintf(buf2, sizeof(buf2), "%s", line);
 
@@ -4128,7 +4128,7 @@ static void dbhq_paint_frame_line(const char *line) {
     }
     /* [0]=nav_index [1]=active [2]=x [3]=y [4]=w [5]=h [6]=target_id
      * (pipe-escaped) [7]=input_buffer (pipe-escaped) - the last two are
-     * REAL, NEW 2026-08-31, see dbhq_serialize_frame_elem()'s own
+     * REAL, NEW 2026-08-31, see kh_serialize_frame_elem()'s own
      * comment; a frame file written by an older binary (before these
      * two fields existed) simply has 6 tail fields, not 8 - the loop
      * below returns (honest skip) rather than misparse it, matching
@@ -4180,7 +4180,7 @@ static void dbhq_paint_frame_line(const char *line) {
     tmp.y = atoi(tail[3]);
     tmp.w = atoi(tail[4]);
     tmp.h = atoi(tail[5]);
-    /* REAL, NEW 2026-08-31 - see dbhq_serialize_frame_elem()'s own
+    /* REAL, NEW 2026-08-31 - see kh_serialize_frame_elem()'s own
      * comment. Without this, a cli_io element painted through THIS path
      * (the default/popup mode's real content draw, see redraw()'s own
      * "now the shared, generic render_tree()" comment) always saw an
@@ -4212,7 +4212,7 @@ static void dbhq_paint_palette_frame_file(void) {
         size_t len = strlen(line);
         while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) line[--len] = '\0';
         if (len == 0) continue;
-        dbhq_paint_frame_line(line);
+        kh_paint_frame_line(line);
     }
     fclose(f);
 }
@@ -4306,7 +4306,7 @@ static void dbhq_redraw_content(void) {
         draw_elem(g_pal_arrow_down, 0);
     }
     dbhq_draw_chrome_bar();
-    dbhq_append_frame_history();
+    kh_append_frame_history();
     /* REAL BUG FIX 2026-08-29, direct live report ("it detects your
      * clicks, but only updates when i reclick the window! just need
      * the window to update from when new entry to debug is read, not
@@ -7873,7 +7873,7 @@ static int layout_sidebar_panel(Elem *page) {
      * (entity_menu_default.css's own generic `sidebar`/`cli_io` rules),
      * NOT set programmatically here - this default/popup mode's own
      * real content draw round-trips every frame through a text frame
-     * file (dbhq_serialize_frame_subtree()/dbhq_paint_frame_line(),
+     * file (kh_serialize_frame_subtree()/kh_paint_frame_line(),
      * see reparse_chtpm_if_changed()'s own sibling fix for the same
      * class of bug with input_buffer/target_id) which does NOT carry
      * style fields at all - the paint side always recomputes style
@@ -7882,7 +7882,7 @@ static int layout_sidebar_panel(Elem *page) {
      * reaching the screen. Found live: this exact code used to set
      * has_bg_color/has_border_color right here and never once painted -
      * see entity_menu_default.css's own new `sidebar { ... }` rule for
-     * the real fix (dbhq_paint_frame_line()'s own temp Elem calls
+     * the real fix (kh_paint_frame_line()'s own temp Elem calls
      * css_compute_style() itself, using the SAME real g_sheet, so a
      * real CSS rule DOES survive the round trip - only a programmatic
      * style assignment made directly on the live tree does not). */
@@ -7955,7 +7955,7 @@ static int layout_sidebar_panel(Elem *page) {
          * this, NOT a direct struct assignment here - same real lesson
          * as the dropdown-child bug earlier this session: this element
          * gets serialized to a frame file and repainted from THAT via
-         * dbhq_paint_frame_line() (see redraw()'s own header comment),
+         * kh_paint_frame_line() (see redraw()'s own header comment),
          * which recomputes style fresh from css_compute_style() against
          * tag/id/classes only - any style field set directly on the
          * live struct here never survives that round trip. */
@@ -8475,9 +8475,9 @@ static void dock_paint_peer(void) {
         snprintf(tmpp, sizeof(tmpp), "%s.tmp", fpath);
         FILE *ff = fopen(tmpp, "w");
         if (ff) {
-            dbhq_serialize_frame_subtree(ff, page);
-            if (g_dock_plus_elem.w > 0) dbhq_serialize_frame_elem(ff, &g_dock_plus_elem);
-            if (g_dock_minus_elem.w > 0) dbhq_serialize_frame_elem(ff, &g_dock_minus_elem);
+            kh_serialize_frame_subtree(ff, page);
+            if (g_dock_plus_elem.w > 0) kh_serialize_frame_elem(ff, &g_dock_plus_elem);
+            if (g_dock_minus_elem.w > 0) kh_serialize_frame_elem(ff, &g_dock_minus_elem);
             fclose(ff);
             rename(tmpp, fpath);
         }
@@ -8487,7 +8487,7 @@ static void dock_paint_peer(void) {
             while (fgets(line, sizeof(line), rf)) {
                 size_t len = strlen(line);
                 while (len > 0 && (line[len-1]=='\n' || line[len-1]=='\r')) line[--len] = '\0';
-                if (len) dbhq_paint_frame_line(line);
+                if (len) kh_paint_frame_line(line);
             }
             fclose(rf);
         }
@@ -8582,7 +8582,7 @@ static void dock_paint_menu(void) {
             if (ff) {
                 for (i = g_dock_drop_lo; i <= g_dock_drop_hi; i++) {
                     if (i >= 1 && i <= g_n_nav && g_nav[i - 1])
-                        dbhq_serialize_frame_elem(ff, g_nav[i - 1]);
+                        kh_serialize_frame_elem(ff, g_nav[i - 1]);
                 }
                 fclose(ff);
                 rename(tmpp, fpath);
@@ -8593,7 +8593,7 @@ static void dock_paint_menu(void) {
                 while (fgets(line, sizeof(line), rf)) {
                     size_t len = strlen(line);
                     while (len > 0 && (line[len-1]=='\n' || line[len-1]=='\r')) line[--len] = '\0';
-                    if (len) dbhq_paint_frame_line(line);
+                    if (len) kh_paint_frame_line(line);
                 }
                 fclose(rf);
             }
@@ -9490,7 +9490,7 @@ static void redraw(void) {
         snprintf(tmpp, sizeof(tmpp), "%s.tmp", fpath);
         FILE *ff = fopen(tmpp, "w");
         if (ff) {
-            dbhq_serialize_frame_subtree(ff, page);
+            kh_serialize_frame_subtree(ff, page);
             /* REAL, NEW 2026-09-01 - the sidebar+panel chrome "X"/"!"
              * pair (see their own static-storage declaration comment)
              * live OUTSIDE `page`'s own tree (same real reason db-hq's
@@ -9501,17 +9501,17 @@ static void redraw(void) {
              * harmless no-op (both real-elem's own w/h stay 0) for any
              * OTHER default-mode page, which never touches these two
              * statics at all. */
-            if (g_default_minimize_elem->w > 0) dbhq_serialize_frame_elem(ff, g_default_minimize_elem);
-            if (g_default_close_elem->w > 0) dbhq_serialize_frame_elem(ff, g_default_close_elem);
-            if (g_default_fullscreen_elem->w > 0) dbhq_serialize_frame_elem(ff, g_default_fullscreen_elem);
+            if (g_default_minimize_elem->w > 0) kh_serialize_frame_elem(ff, g_default_minimize_elem);
+            if (g_default_close_elem->w > 0) kh_serialize_frame_elem(ff, g_default_close_elem);
+            if (g_default_fullscreen_elem->w > 0) kh_serialize_frame_elem(ff, g_default_fullscreen_elem);
             /* REAL, NEW 2026-09-03 - generic scrollbar up/down arrows
              * (generic_sbar_register()'s own header comment) live
              * outside the parsed tree too, same real reason/pattern as
              * the close/fullscreen pair right above - serialized
              * explicitly here, once per registered scrollbar slot. */
             for (int sbi = 0; sbi < g_n_generic_sbars; sbi++) {
-                if (g_sbar_up_elem[sbi].w > 0) dbhq_serialize_frame_elem(ff, &g_sbar_up_elem[sbi]);
-                if (g_sbar_down_elem[sbi].w > 0) dbhq_serialize_frame_elem(ff, &g_sbar_down_elem[sbi]);
+                if (g_sbar_up_elem[sbi].w > 0) kh_serialize_frame_elem(ff, &g_sbar_up_elem[sbi]);
+                if (g_sbar_down_elem[sbi].w > 0) kh_serialize_frame_elem(ff, &g_sbar_down_elem[sbi]);
             }
             fclose(ff); rename(tmpp, fpath);
         }
@@ -9522,7 +9522,7 @@ static void redraw(void) {
                 while (fgets(line, sizeof(line), rf)) {
                     size_t len = strlen(line);
                     while (len > 0 && (line[len-1]=='\n' || line[len-1]=='\r')) line[--len] = '\0';
-                    if (len) dbhq_paint_frame_line(line);
+                    if (len) kh_paint_frame_line(line);
                 }
                 fclose(rf);
             }
@@ -9762,8 +9762,8 @@ static void dump_frame_png(void) {
         FILE *ff = fopen(framef, "w");
         if (ff) {
             if (g_window) {
-                dbhq_serialize_frame_elem(ff, g_window);
-                dbhq_serialize_frame_subtree(ff, g_window);
+                kh_serialize_frame_elem(ff, g_window);
+                kh_serialize_frame_subtree(ff, g_window);
             }
             fclose(ff);
         }
