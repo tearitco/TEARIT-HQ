@@ -3888,14 +3888,15 @@ void ktb_hq_activate(KtbState *s, int row) {
          * live today via TB_PROOF touch test - raw row silently ran
          * ".widgits/..." after backgrounding). Prefix length verified:
          * printf '%s' "livedesk:open-palette:" | wc -c = 22. */
-        /* PORT 2026-09-03: emojis / elements are ported to a static
-         * palettes-<cat>.xhtpm + projector - route those at button-pal.sh.
-         * rmmv / piececraft / user-pallet / the generate/paint/etc.
-         * categories are not ported; they stay on palettes_menu.sh
-         * (PROGRESS-palettes-xhtpm.md). */
+        /* PORT 2026-09-03: emojis / elements / piececraft / debug are
+         * ported to a static palettes-<cat>.xhtpm + projector - route
+         * those at button-pal.sh. rmmv / user-pallet / the
+         * generate/paint/etc. categories are not ported; they stay on
+         * palettes_menu.sh (PROGRESS-palettes-xhtpm.md). */
         const char *pcat = m->command + 22;
         char sh[KTB_PATH_BUF * 3];
-        if (strcmp(pcat, "emojis") == 0 || strcmp(pcat, "elements") == 0)
+        if (strcmp(pcat, "emojis") == 0 || strcmp(pcat, "elements") == 0 ||
+            strcmp(pcat, "piececraft") == 0 || strcmp(pcat, "debug") == 0)
             snprintf(sh, sizeof(sh),
                      KTB_SETSID "nohup sh -c 'sh \"%s/&.widgits/palettes/button-pal.sh\" \"%s\" \"%s\"' >/dev/null 2>&1 &",
                      s->house_root, pcat, s->house_root);

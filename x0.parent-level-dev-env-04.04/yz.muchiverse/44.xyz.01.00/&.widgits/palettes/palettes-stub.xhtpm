@@ -1,0 +1,11 @@
+<!-- palettes-stub.xhtpm - STATIC template, no <module>, no projector.
+     Honest placeholder for palette categories whose real picker isn't
+     built yet (user-pallet, cdda, df, kenney, paint, generate).
+     class="palettes-pal database-window" (NOT "palettes") so
+     g_is_palettes stays 0. NOT yet wired into the menu for those 6
+     categories - that wiring is deferred. -->
+<window label="palettes" class="palettes-pal database-window">
+  <page name="main">
+    <text label="This palette category isn't implemented yet." class="quiet"/>
+  </page>
+</window>

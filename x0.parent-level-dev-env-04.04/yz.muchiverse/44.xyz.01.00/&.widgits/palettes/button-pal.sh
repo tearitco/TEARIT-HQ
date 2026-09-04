@@ -8,8 +8,8 @@
 #   palettes_manager.+x args="<cat>"   (unmodified, publishes state)
 #   palettes_projector.+x id="<cat>"   (state -> state/palettes-<cat>_ui.txt)
 set -e
-CAT="${1:?usage: button-pal.sh <emojis|elements> [house_root]}"
-case "$CAT" in emojis|elements) ;; *) echo "button-pal.sh: only emojis|elements ported" >&2; exit 1 ;; esac
+CAT="${1:?usage: button-pal.sh <emojis|elements|piececraft|debug|stub> [house_root]}"
+case "$CAT" in emojis|elements|piececraft|debug|stub) ;; *) echo "button-pal.sh: only emojis|elements|piececraft|debug|stub ported" >&2; exit 1 ;; esac
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 HOUSE="${2:-}"

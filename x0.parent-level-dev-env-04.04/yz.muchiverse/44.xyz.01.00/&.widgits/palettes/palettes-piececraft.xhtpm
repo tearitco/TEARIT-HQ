@@ -1,0 +1,23 @@
+<!-- palettes-piececraft.xhtpm - STATIC template. Replaces
+     khtpm_core_render.c's dead g_is_palettes C path for this category.
+     class="palettes-pal database-window" (NOT "palettes") so
+     g_is_palettes stays 0. Read-only status readout of the running
+     piececraft-hq session.
+       palettes_manager.c has NO "piececraft" branch - the
+       palettes-piececraft-hq_state.txt TSV is published by the
+       piececraft-hq app itself - so this template carries only the
+       projector <module>, not a palettes_manager one.
+       <module>: palettes_projector.+x id="piececraft" - reads
+                 palettes-piececraft-hq_state.txt, writes
+                 state/palettes-piececraft_ui.txt (key=value). -->
+<window label="palettes: Piececraft" class="palettes-pal database-window" vars="state/palettes-piececraft_ui.txt">
+  <module src="&.widgits/palettes/ops/+x/palettes_projector.+x" id="piececraft"/>
+  <page name="main">
+    <scrolllist>
+      <repeat count="${n_rows}" bind="r">
+        <text label="${r.text}"/>
+      </repeat>
+      <text label="(no piececraft session)" class="quiet" show="${empty}"/>
+    </scrolllist>
+  </page>
+</window>

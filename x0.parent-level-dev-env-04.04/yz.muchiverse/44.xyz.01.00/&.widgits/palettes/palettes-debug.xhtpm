@@ -1,0 +1,25 @@
+<!-- palettes-debug.xhtpm - STATIC template. Replaces the checked-in
+     palettes-debug.chtpm (kept as rollback) and the dead g_is_palettes
+     C path. class="palettes-pal database-window" (NOT "palettes") so
+     g_is_palettes stays 0.
+       <module> 1: palettes_manager.+x args="debug" - UNMODIFIED,
+                   publish_debug() writes palettes-debug_state.txt (TSV
+                   <verb>\t<label>\t : toggle:<N>/clear = action rows,
+                   noop = log lines + tail of debug.txt).
+       <module> 2: palettes_projector.+x id="debug" - reads that, writes
+                   state/palettes-debug_ui.txt (key=value) consumed here.
+     Verbs match palettes_menu.sh's existing case labels exactly
+     (debug-toggle <N>, debug-clear). -->
+<window label="palettes: Debug" class="palettes-pal database-window" vars="state/palettes-debug_ui.txt">
+  <module src="*.monads/*.livedesk-taskbar/ops/+x/palettes_manager.+x" args="debug"/>
+  <module src="&.widgits/palettes/ops/+x/palettes_projector.+x" id="debug"/>
+  <page name="main">
+    <scrolllist>
+      <repeat count="${n_rows}" bind="r">
+        <item label="${r.label}" action="${r.action}" show="${r.is_btn}"/>
+        <text label="${r.label}" show="${r.is_log}"/>
+      </repeat>
+      <text label="(no debug rows)" class="quiet" show="${empty}"/>
+    </scrolllist>
+  </page>
+</window>
