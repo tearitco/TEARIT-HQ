@@ -5168,6 +5168,17 @@ static void handle_key(KeySym ks, char ch) {
             FILE *f = fopen(p, "a");
             if (f) { fprintf(f, "%d\n", code); fclose(f); }
         }
+        /* REAL, NEW 2026-09-04, direct request ("add p frame dump to
+         * game then") - 'p' is not on the documented camera/POV key
+         * table (PLAN-pchq-interact-camera-pov.md), so it's safe to
+         * ALSO fire the normal local PNG dump here, in addition to
+         * forwarding it same as every other key above - lets whoever
+         * is debugging a live Interact Mode session get a real frame
+         * (proving reparse/badge/canvas state at that instant)
+         * without ever needing to disarm first. Forward always
+         * happens above regardless, in case some future game module
+         * genuinely does bind 'p'. */
+        if (ch == 'p') dump_frame_png();
         return;
     }
     /* REAL, events-hq mode only - routed BEFORE the shared 'p' dump

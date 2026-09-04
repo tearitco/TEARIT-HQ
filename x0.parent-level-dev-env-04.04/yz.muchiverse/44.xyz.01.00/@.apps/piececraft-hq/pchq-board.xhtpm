@@ -30,6 +30,16 @@
   <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="piececraft-hq"/>
   <page name="main">
     <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
+    <!-- 2026-09-04: restored - the original run_pchq_board_mode()
+         toolbar (khtpm_core_render.c's own PCHQ_ACT_FULLSCREEN, before
+         its 2026-09-04 deletion) had a real "!" fullscreen chrome item
+         next to Close ("we will put '!' for fullscreen next to 'x'").
+         This session's static-template port dropped it by omission
+         when building this file - restoring it here now, wired to the
+         house's own already-generic TOGGLE_FULLSCREEN onclick verb
+         (XHTPM-PARSER-REFERENCE.md §16) rather than the old bespoke
+         pchq_focus/pchq_is_fullscreen local state machine. -->
+    <item id="fullscreen" class="chrome-btn" label="!" onclick="TOGGLE_FULLSCREEN"/>
 
     <!-- toolbar row. tb-in is the generic Interact Mode trigger (see
          khtpm_core_render.c's g_interact_relay_on): relay= names the
@@ -46,6 +56,19 @@
           action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'menu' 'file'"/>
     <item id="tb-desk" class="pchq-tb" label="Desk"
           action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'menu' 'desk'"/>
+    <!-- 2026-09-04: restored - the original toolbar order was
+         In, File, Desk, Menu, Player, Clock (see PCHQ_ACT_MENU/
+         PCHQ_ACT_PLAYER in run_pchq_board_mode() before its
+         2026-09-04 deletion: "real order is now In, File, Desk, Menu,
+         X. Menu is a real, new, currently-stub toolbar Elem (a
+         general game menu; Db will live as a sub-item under it
+         later)" / "Player is a real stub for now (hero HP/position
+         readback is a separate, later pass)"). Both were dropped by
+         omission when this file was first built - restored as the
+         same real stub slots (action="void", present for layout/nav
+         parity only, no dispatch yet), NOT wired to anything new. -->
+    <item id="tb-menu" class="pchq-tb quiet" label="Menu" action="void"/>
+    <item id="tb-player" class="pchq-tb quiet" label="Player" action="void"/>
     <item id="tb-clock" class="pchq-tb quiet" label="${clock}" action="void"/>
 
     <!-- File menu (state-driven view swap, events-hq picker pattern) -->
