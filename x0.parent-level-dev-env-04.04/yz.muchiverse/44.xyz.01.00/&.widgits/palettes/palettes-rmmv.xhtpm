@@ -32,7 +32,7 @@
             action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'set-rmmv-dir' '${PKG}' '${d.key}'"/>
     </repeat>
     <repeat count="${n_tabs}" bind="c">
-      <item id="rmtab-${c.#}" class="pal-sheet ${c.active}" label="${c.label}"
+      <item id="rmtab-${c.#}" class="pal-sheet ${c.active}" label="${c.letter}"
             action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'set-rmmv-tab' '${PKG}' '${c.letter}'"/>
     </repeat>
     <repeat count="${n_tilesets}" bind="s">
