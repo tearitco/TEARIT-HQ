@@ -513,6 +513,64 @@ static int wrap_line_count(XftFont *font, const char *text, int avail_w) {
     return n < 1 ? 1 : n;
 }
 
+/* <canvas sprite="<raw-RGBA-path>"/> - a live pixel framebuffer element.
+ * Reads dims from "<path>.receipt.txt" (overlay_w= / overlay_h=), reads
+ * the raw BGRA/RGBA bytes, and XPutImage-s them at native size clipped
+ * to the element rect. XImage + read buffer cached per (path,w,h). The
+ * board-viewer 2D/3D view for piececraft-hq is the first consumer; some
+ * other process keeps the .raw fresh (this only ever reads it). */
+static void kh_draw_canvas(Elem *e) {
+    static char  c_path[512];
+    static int   c_w, c_h;
+    static XImage *c_img;
+    static unsigned char *c_buf;
+    XSetForeground(dpy, gc, alloc_pixel("#101014"));
+    XFillRectangle(dpy, buf, gc, e->x, e->y, (unsigned)e->w, (unsigned)e->h);
+    if (!e->sprite[0]) return;
+    char rc[512]; snprintf(rc, sizeof(rc), "%s.receipt.txt", e->sprite);
+    int w = 0, h = 0;
+    FILE *rf = fopen(rc, "r");
+    if (rf) {
+        char l[128];
+        while (fgets(l, sizeof(l), rf)) {
+            if (!strncmp(l, "overlay_w=", 10)) w = atoi(l + 10);
+            else if (!strncmp(l, "overlay_h=", 10)) h = atoi(l + 10);
+        }
+        fclose(rf);
+    }
+    if (w <= 0 || h <= 0) return;
+    if (strcmp(c_path, e->sprite) != 0 || c_w != w || c_h != h || !c_img) {
+        snprintf(c_path, sizeof(c_path), "%s", e->sprite);
+        c_w = w; c_h = h;
+        free(c_buf); c_buf = (unsigned char *)malloc((size_t)w * h * 4);
+        if (c_img) { XDestroyImage(c_img); c_img = NULL; }
+        char *data = (char *)malloc((size_t)w * h * 4);
+        c_img = data ? XCreateImage(dpy, DefaultVisual(dpy, screen),
+                                    (unsigned)DefaultDepth(dpy, screen), ZPixmap, 0,
+                                    data, (unsigned)w, (unsigned)h, 32, 0)
+                     : NULL;
+    }
+    if (!c_img || !c_buf) return;
+    FILE *of = fopen(e->sprite, "rb");
+    if (of) {
+        size_t need = (size_t)w * h * 4, got = fread(c_buf, 1, need, of);
+        fclose(of);
+        if (got == need) {
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++) {
+                    size_t o = ((size_t)y * w + x) * 4;
+                    unsigned long px = ((unsigned long)c_buf[o]   << 16) |
+                                       ((unsigned long)c_buf[o+1] <<  8) |
+                                        (unsigned long)c_buf[o+2];
+                    XPutPixel(c_img, x, y, px);
+                }
+        }
+    }
+    int bw = w < e->w ? w : e->w;
+    int bh = h < e->h ? h : e->h;
+    XPutImage(dpy, buf, gc, c_img, 0, 0, e->x, e->y, (unsigned)bw, (unsigned)bh);
+}
+
 static void draw_elem(Elem *e, int hover_id_hash) {
     (void)hover_id_hash;
     /* REAL FIX 2026-08-29 (EVENTS-HQ-RENDER-UNIFICATION-PLAN.md's own
@@ -529,6 +587,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
      * once, fixes every mode that relies on zeroing a subtree to hide
      * it, not just events-hq. */
     if (e->w <= 0 || e->h <= 0) return;
+    if (strcmp(e->tag, "canvas") == 0) { kh_draw_canvas(e); return; }
     /* checkerboard is a PNG-transparency cue for sprite tiles only - the
      * taskbar-settings colour picker (also class="swatch") wants solid
      * full-colour squares, so exclude the swatch-picker window. */

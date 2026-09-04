@@ -4204,6 +4204,18 @@ static void assign_nav_and_layout(void) {
              * it's simply never added to g_nav (it isn't interactive -
              * no real nav_index, can't be focused/clicked/armed). */
             int is_text = strcmp(item->tag, "text") == 0;
+            if (strcmp(item->tag, "canvas") == 0) {
+                /* live pixel framebuffer element (see kh_draw_canvas):
+                 * a big rect from CSS width/height (else fill window
+                 * width x 360), never nav-numbered; window grows to it */
+                int cw = item->style.has_width  ? item->style.width  : (g_win_w - 12);
+                int ch = item->style.has_height ? item->style.height : 360;
+                item->x = 6; item->y = y; item->w = cw; item->h = ch;
+                css_compute_style(&g_sheet, item->tag, item->id, item->classes, item->n_classes, 0, &item->style);
+                if (cw + 12 > g_win_w) { g_win_w = cw + 12; g_window->w = g_win_w; }
+                y += ch + 4;
+                continue;
+            }
             if (strcmp(item->tag, "item") != 0 && strcmp(item->tag, "cli_io") != 0 && !is_text) continue;
             item->x = 0; item->y = y; item->w = g_win_w; item->h = ROW_H;
             if (!is_text) { item->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = item; }
