@@ -527,7 +527,17 @@ static void kh_draw_canvas(Elem *e) {
     XSetForeground(dpy, gc, alloc_pixel("#101014"));
     XFillRectangle(dpy, buf, gc, e->x, e->y, (unsigned)e->w, (unsigned)e->h);
     if (!e->sprite[0]) return;
-    char rc[512]; snprintf(rc, sizeof(rc), "%s.receipt.txt", e->sprite);
+    /* the board-viewer convention is <base>.raw next to <base>.receipt.txt
+     * (sibling, NOT <base>.raw.receipt.txt) - strip a trailing ".raw"
+     * before appending, falling back to the naive append for any other
+     * producer that really does use "<path>.receipt.txt". */
+    char rc[512];
+    { const char *dot = strrchr(e->sprite, '.');
+      if (dot && strcmp(dot, ".raw") == 0)
+          snprintf(rc, sizeof(rc), "%.*s.receipt.txt", (int)(dot - e->sprite), e->sprite);
+      else
+          snprintf(rc, sizeof(rc), "%s.receipt.txt", e->sprite);
+    }
     int w = 0, h = 0;
     FILE *rf = fopen(rc, "r");
     if (rf) {

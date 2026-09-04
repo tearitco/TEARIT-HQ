@@ -4240,7 +4240,15 @@ static void assign_nav_and_layout(void) {
                 int cw = item->style.has_width  ? item->style.width  : 0;
                 int ch = item->style.has_height ? item->style.height : 0;
                 if ((!cw || !ch) && item->sprite[0]) {
-                    char rp[512]; snprintf(rp, sizeof(rp), "%s.receipt.txt", item->sprite);
+                    /* sibling <base>.receipt.txt, not <base>.raw.receipt.txt
+                     * (matches kh_draw_canvas's own fix, same real bug -
+                     * this is why the map never rendered: both guesses
+                     * used the wrong receipt path so w/h stayed 0). */
+                    char rp[512]; const char *dot = strrchr(item->sprite, '.');
+                    if (dot && strcmp(dot, ".raw") == 0)
+                        snprintf(rp, sizeof(rp), "%.*s.receipt.txt", (int)(dot - item->sprite), item->sprite);
+                    else
+                        snprintf(rp, sizeof(rp), "%s.receipt.txt", item->sprite);
                     FILE *rf = fopen(rp, "r");
                     if (rf) { char l[128];
                         while (fgets(l, sizeof(l), rf)) {
