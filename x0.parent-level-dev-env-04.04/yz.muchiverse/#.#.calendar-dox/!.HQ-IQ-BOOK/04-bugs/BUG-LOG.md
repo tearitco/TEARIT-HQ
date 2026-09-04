@@ -6,6 +6,51 @@ note under it — don't silently edit it away.*
 
 ## Open
 
+- **pc-hq board: real keyboard focus vs the taskbar** (found
+  2026-09-04, see `09-appendix/pc-hq-bugs.md` for the full
+  investigation): root cause found and proven once already, by a
+  PRIOR session, in code deleted this session (`run_pchq_board_mode()`,
+  recoverable via `git show 35c1b0b1~1`) - `override_redirect`
+  windows never get real keyboard/mouse focus routed by Mutter
+  ("synthetic XTest input worked, masking the bug" - exact quote from
+  that prior fix). The house-wide `#.desktop/livedesk_override_
+  redirect.pdl` currently reads `override_redirect=false` (flipped
+  2026-09-04 to test this, from its previous `true` default) - the
+  already-existing `render_managed_wm_hints()` managed-window path
+  activates house-wide as a result. Taskbar + a fresh pc-hq window
+  were both relaunched with the new setting; **not yet confirmed
+  fixed by the user with real hardware** as of this entry - the
+  session moved to investigating a second, apparently unrelated issue
+  (toys-menu launch, see below) before that confirmation happened.
+- **"toys" menu launches nothing visible for piececraft-hq** (found
+  2026-09-04, live-confirmed by direct user report: "nothing visible
+  at all"). Traced the real dispatch chain: taskbar's toys dropdown is
+  built by `khtpm_taskbar_manager.c`'s `toys_scan_add()`/`toys_scan_
+  one_root()` (NOT anything in `pc_menu_input.c`, which only handles
+  in-game menu selections like "View Board" AFTER the game is already
+  running - a wrong assumption this session initially chased), reading
+  each toy's own `toy.pdl` for a `launch=` command (defaults to
+  `button.sh`), dispatched as `livedesk:open-toy:<path>` ->
+  `setsid nohup sh -c 'sh "<button.sh>" run' >/dev/null 2>&1 &`
+  (khtpm_taskbar_manager.c ~line 4042). Reproduced the exact same
+  detached invocation directly: the game's own ASCII-UI backend
+  (`system/orchestrator`) DOES start (writes real frame output showing
+  "P I E C E C R A F T - H Q", a live "Nav >" prompt) but creates NO
+  visible window of any kind - confirmed `button.sh`/`orchestrator.c`
+  never spawn a terminal emulator (grepped for xterm/gnome-terminal/
+  konsole - zero hits), so the ASCII UI is headless by design; the
+  ONLY window-producing code path found so far is a "GL/RGB MIRROR"
+  gated on `$DISPLAY` AND `REAL_GAME_STATE=playing` (button.sh
+  ~line 300-373) - meaning nothing visible is expected to appear
+  until some later in-game state transition, not at launch. Unclear
+  whether this is a real regression or a misunderstanding of the
+  intended UX (was "toys > piececraft-hq" ever supposed to show
+  something immediately, or does the user need to separately attach a
+  real terminal to the headless ASCII backend to drive it into a
+  state where the GL mirror activates?). Not yet resolved - needs
+  either a working comparison against another toys-menu app that
+  DOES show something on launch, or direct clarification of the
+  intended UX from the user.
 - **Toys-launch teardown gap** (found ~2026-08-28, still open): the
   taskbar's "toys" menu launches real apps (mutaclysm, my-chara,
   my-lawyer, piececraft) but never records the launched PID anywhere —
