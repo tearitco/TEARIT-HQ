@@ -3944,6 +3944,22 @@ static void kh_apply_scope_confine(void) {
 }
 
 static void assign_nav_and_layout(void) {
+    /* REAL FIX 2026-09-04 - the window-frame block at the end of this
+     * function does `g_win_w/h += 2*KH_WIN_FRAME` every call. Branches
+     * that recompute g_win_w/h from content (sidebar+panel, persistent
+     * swatch grid) are fine, but the flat-list / entity-menu popup
+     * branch leaves g_win_w fixed, so the +frame COMPOUNDED every
+     * redraw (context menu marched off-screen + pegged CPU on the
+     * resize->expose->relayout loop). Undo the previous pass's frame
+     * grow up front so it's idempotent regardless of which branch runs.
+     * g_win_frame_applied guards against undoing what was never added
+     * (dock, first call). */
+    static int g_win_frame_applied = 0;
+    if (g_win_frame_applied) {
+        g_win_w -= 2 * KH_WIN_FRAME;
+        g_win_h -= 2 * KH_WIN_FRAME;
+        g_win_frame_applied = 0;
+    }
     /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode branch, real WM-
      * managed window shape, own layout/nav functions (ported verbatim,
      * not forced into the popup modes' page/item shape below). */
@@ -4248,6 +4264,7 @@ static void assign_nav_and_layout(void) {
         }
         g_win_w += 2 * fb; g_win_h += 2 * fb;
         g_window->w = g_win_w; g_window->h = g_win_h;
+        g_win_frame_applied = 1;   /* the undo at the top of the next pass reads this */
     }
     kh_apply_scope_confine();
     if (g_focus_nav > g_n_nav) g_focus_nav = g_n_nav > 0 ? g_n_nav : 1;
