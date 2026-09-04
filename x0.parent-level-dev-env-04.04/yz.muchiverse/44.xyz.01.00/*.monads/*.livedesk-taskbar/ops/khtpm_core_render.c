@@ -2439,7 +2439,7 @@ static void generic_sbar_register(int x, int y, int w, int h, int *scroll,
     b = &g_generic_sbars[g_n_generic_sbars++];
     b->vx = x; b->vy = y; b->vw = w; b->vh = h;
     b->track_w = GENERIC_SCROLLBAR_W;
-    b->track_x = x + w - GENERIC_SCROLLBAR_W - 6;  /* clear of the 2px window frame */
+    b->track_x = x + w - GENERIC_SCROLLBAR_W - 12;  /* clear of the 2px window frame + screen-edge margin */
     b->scroll = scroll;
     b->total = total;
     b->visible = visible;
@@ -3990,13 +3990,24 @@ static void assign_nav_and_layout(void) {
         /* wide, screen-relative, like the old window - only for a real
          * persistent palette/db window, not a transient swatch popup */
         if (g_default_persistent) {
-            int want = (DisplayWidth(dpy, screen) * 5) / 8;
+            int scr_w = DisplayWidth(dpy, screen);
+            int want = (scr_w * 5) / 8;
             if (want > 1180) want = 1180;
             if (want < 460) want = 460;
+            /* never run off the right of the screen from wherever the
+             * window currently sits (no clamp elsewhere on this path) */
+            if (g_win_x < 0) g_win_x = 0;
+            if (g_win_x + want > scr_w - 16) {
+                g_win_x = scr_w - 16 - want;
+                if (g_win_x < 0) { g_win_x = 0; want = scr_w - 16; }
+            }
             g_win_w = want;
             if (g_window) g_window->w = g_win_w;
         }
-        int cols = (g_win_w - x0 * 2 - GENERIC_SCROLLBAR_W - 6) / pitch;
+        /* scrollbar region right edge kept a comfortable 20px inside the
+         * window so the track + thumb never crowd the frame/screen edge */
+        int sbar_right = g_win_w - 20;
+        int cols = (sbar_right - x0 - GENERIC_SCROLLBAR_W - 4) / pitch;
         if (cols < 1) cols = 1;
         int grid_w = cols * pitch;
         int n_sw = 0;
@@ -4098,7 +4109,7 @@ static void assign_nav_and_layout(void) {
             else { it->x = x0 + col * pitch; it->y = y0 + row * pitch; }
         }
         if (max_scroll > 0)
-            generic_sbar_register(x0, y0, grid_w + GENERIC_SCROLLBAR_W + 4, view_h,
+            generic_sbar_register(x0, y0, sbar_right - x0, view_h,
                                   &g_swatch_grid_scroll, total_rows, visible_rows, max_scroll);
         int max_y = y0 + view_h;
         /* pass 2b: the folder chooser (long list) pinned as a footer below the grid */
@@ -4624,15 +4635,6 @@ static void redraw(void) {
     if (!window_is_dock()) {
     XSetForeground(dpy, gc, alloc_pixel("#2a2a2a"));
     XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)g_win_w, CHROME_H);
-    /* REAL, NEW 2026-09-04 (direct request) - a 2px frame in the theme
-     * SECONDARY colour (livedesk_theme.pdl fg / the swatch picker's
-     * secondary pick) on every non-dock window. Doubles as a visible
-     * guarantee that a right/bottom-edge affordance (scrollbar thumb,
-     * chrome X) that stops short of this frame is fully on-window. */
-    XSetForeground(dpy, gc, alloc_pixel(g_theme_fg[0] ? g_theme_fg : "#888888"));
-    for (int _fb = 0; _fb < 2; _fb++)
-        XDrawRectangle(dpy, buf, gc, _fb, _fb,
-                       (unsigned)(g_win_w - 1 - 2 * _fb), (unsigned)(g_win_h - 1 - 2 * _fb));
     }
 
     /* REAL Stage 5 §5d.3 step 6 (2026-08-16) - real, data-selected
@@ -4913,6 +4915,18 @@ static void redraw(void) {
             g_win_pos_applied_x = g_win_x;
             g_win_pos_applied_y = g_win_y;
         }
+    }
+    /* REAL, NEW 2026-09-04 (direct request) - a 2px frame in the theme
+     * SECONDARY colour (livedesk_theme.pdl fg) around the WHOLE window,
+     * taskbar included. Drawn LAST, after every content paint (sidebar/
+     * panel bg fills would otherwise overpaint the side/bottom edges -
+     * the live "chat-hai only frames the chrome" report). Also a visual
+     * proof that any edge affordance stopping short of it is on-window. */
+    {
+        XSetForeground(dpy, gc, alloc_pixel(g_theme_fg[0] ? g_theme_fg : "#888888"));
+        for (int _fb = 0; _fb < 2; _fb++)
+            XDrawRectangle(dpy, buf, gc, _fb, _fb,
+                           (unsigned)(g_win_w - 1 - 2 * _fb), (unsigned)(g_win_h - 1 - 2 * _fb));
     }
     XSync(dpy, False);
     XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, AllPlanes, ZPixmap);
@@ -13199,7 +13213,7 @@ int main(int argc, char **argv) {
         if (g_win_x < 0) g_win_x = 0;
         if (g_win_y < 0) g_win_y = 0;
     }
-    if (window_is_dock()) load_theme_colors();
+    load_theme_colors();  /* every window, not just dock - the 2px window frame + theme-aware bg need g_theme_fg/bg live */
     swa.background_pixel = alloc_pixel(window_is_dock() ? g_theme_bg : "#1c1c1c"); /* real dark default - no white-flash bug, ai-cell's own proven pattern, not WhitePixel */
     /* REAL FIX 2026-08-16, direct live report ("none of the buttons seem
      * 2 work yet"): this window was a normal WM-managed window, unlike
