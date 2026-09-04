@@ -3756,9 +3756,8 @@ static void dock_paint_peer(void) {
      * dimensions here (swapped in above). */
     {
         XSetForeground(dpy, gc, alloc_pixel(g_theme_fg[0] ? g_theme_fg : "#888888"));
-        for (int _fb = 0; _fb < 2; _fb++)
-            XDrawRectangle(dpy, buf, gc, _fb, _fb,
-                           (unsigned)(g_win_w - 1 - 2 * _fb), (unsigned)(g_win_h - 1 - 2 * _fb));
+        XDrawRectangle(dpy, buf, gc, 0, 0,
+                       (unsigned)(g_win_w - 1), (unsigned)(g_win_h - 1));
     }
     {
         XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, AllPlanes, ZPixmap);
@@ -3855,9 +3854,7 @@ static void dock_paint_menu(void) {
          * window - drawn LAST, right before the present. */
         {
             XSetForeground(dpy, gc, alloc_pixel(g_theme_fg[0] ? g_theme_fg : "#888888"));
-            for (int _fb = 0; _fb < 2; _fb++)
-                XDrawRectangle(dpy, buf, gc, _fb, _fb,
-                               (unsigned)(g_win_w - 1 - 2 * _fb), (unsigned)(g_win_h - 1 - 2 * _fb));
+            XDrawRectangle(dpy, buf, gc, 0, 0, (unsigned)(g_win_w - 1), (unsigned)(g_win_h - 1));
         }
         {
             XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, AllPlanes, ZPixmap);
@@ -4983,9 +4980,8 @@ static void redraw(void) {
      * proof that any edge affordance stopping short of it is on-window. */
     {
         XSetForeground(dpy, gc, alloc_pixel(g_theme_fg[0] ? g_theme_fg : "#888888"));
-        for (int _fb = 0; _fb < 2; _fb++)
-            XDrawRectangle(dpy, buf, gc, _fb, _fb,
-                           (unsigned)(g_win_w - 1 - 2 * _fb), (unsigned)(g_win_h - 1 - 2 * _fb));
+        XDrawRectangle(dpy, buf, gc, 0, 0,
+                       (unsigned)(g_win_w - 1), (unsigned)(g_win_h - 1));
     }
     XSync(dpy, False);
     XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, AllPlanes, ZPixmap);
@@ -7244,9 +7240,7 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
          * window (see redraw()'s own frame draw) - drawn last, over the
          * chrome + canvas, before the present. */
         XSetForeground(dpy, gc, alloc_pixel(g_theme_fg[0] ? g_theme_fg : "#888888"));
-        for (int _fb = 0; _fb < 2; _fb++)
-            XDrawRectangle(dpy, buf, gc, _fb, _fb,
-                           (unsigned)(win_w - 1 - 2 * _fb), (unsigned)(win_h - 1 - 2 * _fb));
+        XDrawRectangle(dpy, buf, gc, 0, 0, (unsigned)(win_w - 1), (unsigned)(win_h - 1));
 
         XCopyArea(dpy, buf, win, gc, 0, 0, (unsigned)win_w, (unsigned)win_h, 0, 0);
         XFlush(dpy);
