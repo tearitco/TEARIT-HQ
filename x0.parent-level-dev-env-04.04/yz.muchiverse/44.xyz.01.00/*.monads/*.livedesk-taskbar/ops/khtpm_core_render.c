@@ -4217,9 +4217,40 @@ static void dbhq_paint_palette_frame_file(void) {
     fclose(f);
 }
 
+/* Palette content signature - drives the layout/serialize cache below.
+ * A palette tile grid is 256+ Elems; re-running dbhq_layout_pass() +
+ * re-serialising the whole grid to palettes_frame.txt on EVERY redraw
+ * (focus move, unrelated tick, ...) is what made palettes "incredibly
+ * slow". Only these inputs change the laid-out grid; when they are
+ * unchanged we repaint straight from the already-written frame file. */
+static unsigned long dbhq_pal_content_sig(void) {
+    unsigned long s = 1469598103934665603UL;
+#define KH_PAL_MIX(v) do { s ^= (unsigned long)(v); s *= 1099511628211UL; } while (0)
+    KH_PAL_MIX(g_pal_scroll);
+    KH_PAL_MIX(g_pal_n_tiles);
+    KH_PAL_MIX(g_dbhq_current_tab);
+    KH_PAL_MIX(g_pal_forced_h);
+    KH_PAL_MIX(g_window ? g_window->w : 0);
+    KH_PAL_MIX(g_window ? g_window->h : 0);
+    for (const char *p = g_pal_active_tileset; *p; p++) KH_PAL_MIX(*p);
+    for (const char *p = g_pal_active_category; *p; p++) KH_PAL_MIX(*p);
+#undef KH_PAL_MIX
+    return s;
+}
+
 static void dbhq_redraw_content(void) {
-    dbhq_layout_pass(g_window);
-    dbhq_assign_nav_indices(g_window);
+    static unsigned long g_pal_cache_sig = 0;
+    static int g_pal_cache_valid = 0;
+    int pal_relayout = 1;
+    if (g_is_palettes) {
+        unsigned long sig = dbhq_pal_content_sig();
+        pal_relayout = (!g_pal_cache_valid || sig != g_pal_cache_sig);
+        if (pal_relayout) { g_pal_cache_sig = sig; g_pal_cache_valid = 1; }
+    }
+    if (pal_relayout) {
+        dbhq_layout_pass(g_window);
+        dbhq_assign_nav_indices(g_window);
+    }
     XSetForeground(dpy, gc, alloc_pixel(g_window->style.has_bg_color ? g_window->style.bg_color : "#141414"));
     /* REAL FIX 2026-08-28 (live corruption found testing Phase 2's
      * frame-file paint) - clearing only g_window->w/h leaves stale
@@ -4246,7 +4277,11 @@ static void dbhq_redraw_content(void) {
          * that still secretly reads the live tree. */
         draw_elem(g_window, 0);
         Elem *panel = find_by_tag(g_window, "panel");
-        dbhq_write_palette_frame_file(panel);
+        /* Only re-serialise the 256-tile grid when the layout actually
+         * changed (see dbhq_pal_content_sig); otherwise the existing
+         * palettes_frame.txt is still current - just repaint from it
+         * (cheap, and keeps the focus ring live). */
+        if (pal_relayout) dbhq_write_palette_frame_file(panel);
         dbhq_paint_palette_frame_file();
     } else {
         render_tree(g_window, 0);

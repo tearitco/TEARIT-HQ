@@ -23,17 +23,38 @@
  * connection/drawable every single frame — real ops/fork-exec doesn't
  * fit here, this isn't a discrete one-shot action. */
 
+/* Colour caches. cmap never changes after startup (DefaultColormap), so a
+ * pixel/XftColor allocated for a given spec stays valid for the process
+ * lifetime. Without this, a palette redraw (256+ tiles, each draw_elem()
+ * calling alloc_pixel()/xft_color() several times) was ~1000+ synchronous
+ * X round-trips = ~0.5s wall time per frame - the "palettes are
+ * incredibly slow" report. A palette frame uses well under 32 distinct
+ * colours. */
+#define KH_COLOR_CACHE_N 64
 static unsigned long alloc_pixel(const char *spec) {
     if (!spec || !spec[0]) return BlackPixel(dpy, screen);
+    static struct { char spec[24]; unsigned long px; } cache[KH_COLOR_CACHE_N];
+    static int ncache = 0;
+    for (int i = 0; i < ncache; i++)
+        if (strcmp(cache[i].spec, spec) == 0) return cache[i].px;
     XColor c;
+    unsigned long px = BlackPixel(dpy, screen);
     if (spec[0] == '#') {
-        if (XParseColor(dpy, cmap, spec, &c) && XAllocColor(dpy, cmap, &c)) return c.pixel;
+        if (XParseColor(dpy, cmap, spec, &c) && XAllocColor(dpy, cmap, &c)) px = c.pixel;
     } else if (XAllocNamedColor(dpy, cmap, spec, &c, &c)) {
-        return c.pixel;
+        px = c.pixel;
     }
-    return BlackPixel(dpy, screen);
+    if (ncache < KH_COLOR_CACHE_N && strlen(spec) < sizeof(cache[0].spec)) {
+        snprintf(cache[ncache].spec, sizeof(cache[0].spec), "%s", spec);
+        cache[ncache].px = px;
+        ncache++;
+    }
+    return px;
 }
 
+/* NOT cached: callers XftColorFree() the result, so a shared/cached
+ * XftColor would be use-after-free. XftColorAllocValue is one round-trip
+ * (vs alloc_pixel's two) so the payoff is smaller anyway. */
 static XftColor xft_color(const char *spec) {
     XftColor xc;
     XRenderColor rc = {0, 0, 0, 0xffff};
@@ -512,17 +533,28 @@ static void draw_elem(Elem *e, int hover_id_hash) {
     if (e->style.has_bg_color && is_grid_tile_bg) {
         /* PNG-style transparency checkerboard behind a sprite cell -
          * reads as "this holds an image with alpha", instead of the flat
-         * tile colour showing through every transparent edge. */
-        int sq = 6;
-        for (int yy = e->y; yy < e->y + e->h; yy += sq) {
-            for (int xx = e->x; xx < e->x + e->w; xx += sq) {
-                int dark = ((((xx - e->x) / sq) + ((yy - e->y) / sq)) & 1);
-                XSetForeground(dpy, gc, alloc_pixel(dark ? "#b8b8b8" : "#ffffff"));
-                int cw = (xx + sq > e->x + e->w) ? (e->x + e->w - xx) : sq;
-                int ch = (yy + sq > e->y + e->h) ? (e->y + e->h - yy) : sq;
-                XFillRectangle(dpy, buf, gc, xx, yy, (unsigned)cw, (unsigned)ch);
-            }
+         * tile colour showing through every transparent edge.
+         * PERF: built ONCE as a 12x12 tile Pixmap and stamped with a
+         * FillTiled GC (one XFillRectangle per cell, zero XAllocColor
+         * round-trips) - the earlier per-6px-square alloc_pixel()+fill
+         * loop was ~13k colour round-trips per palette redraw. */
+        static Pixmap ck_tile = 0;
+        if (!ck_tile) {
+            enum { CK_P = 12, CK_SQ = 6 };
+            ck_tile = XCreatePixmap(dpy, DefaultRootWindow(dpy), CK_P, CK_P, (unsigned)DefaultDepth(dpy, screen));
+            XSetFillStyle(dpy, gc, FillSolid);
+            XSetForeground(dpy, gc, alloc_pixel("#ffffff"));
+            XFillRectangle(dpy, ck_tile, gc, 0, 0, CK_P, CK_P);
+            XSetForeground(dpy, gc, alloc_pixel("#b8b8b8"));
+            XFillRectangle(dpy, ck_tile, gc, 0, 0, CK_SQ, CK_SQ);
+            XFillRectangle(dpy, ck_tile, gc, CK_SQ, CK_SQ, CK_SQ, CK_SQ);
         }
+        XGCValues tv;
+        tv.fill_style = FillTiled; tv.tile = ck_tile;
+        tv.ts_x_origin = e->x; tv.ts_y_origin = e->y;
+        XChangeGC(dpy, gc, GCFillStyle | GCTile | GCTileStipXOrigin | GCTileStipYOrigin, &tv);
+        XFillRectangle(dpy, buf, gc, e->x, e->y, e->w, e->h);
+        XSetFillStyle(dpy, gc, FillSolid);
     } else if (e->style.has_bg_color) {
         XSetForeground(dpy, gc, alloc_pixel(e->style.bg_color));
         XFillRectangle(dpy, buf, gc, e->x, e->y, e->w, e->h);
