@@ -47,11 +47,35 @@ window { background-color: #141414; font-family: Ubuntu; font-size: 10px; }
  * this is what let a live user (and an external reviewer looking at a
  * real screenshot) correctly report "no tabs, no chooser visible" even
  * though the manager+renderer wiring itself was already correct. */
-.pal-tab-row { display: flex; flex-direction: row; gap: 6px; height: 28px; }
-.pal-tab { background-color: #2a2a2a; color: #5ec8f2; font-weight: bold;
-  width: 88px; height: 24px; font-size: 10px; padding: 2px; }
-.pal-tab-active { background-color: #2f5f8f; color: #ffffff; }
-.pal-tileset-row { display: flex; flex-direction: row; gap: 4px; height: 28px; }
-.pal-tileset-opt { background-color: #2a2a2a; color: #cccccc; font-weight: bold;
-  width: 96px; height: 24px; font-size: 10px; padding: 2px; }
-.pal-tileset-active { background-color: #2f5f8f; color: #ffffff; }
+/* Three visually distinct chooser families (laid out as a wrapping strip
+ * above the tile grid; the renderer adds a wider gap between families).
+ * Idle: a tinted flat chip in each family's own hue. Active: solid fill
+ * + white text. Each family reads as a different control at a glance. */
+.pal-dir { background-color: #3a2f1c; color: #e8c07a; font-weight: bold;
+  width: 92px; height: 19px; font-size: 9px; padding: 1px;
+  border: 1px solid #5a4626; border-width: 1; }
+.pal-dir-active { background-color: #b7791f; color: #1a1a1a; border-color: #ffcf7a; }
+
+.pal-sheet { background-color: #1e3345; color: #7fc4ef; font-weight: bold;
+  width: 60px; height: 19px; font-size: 9px; padding: 1px;
+  border: 1px solid #315573; border-width: 1; }
+.pal-sheet-active { background-color: #2f6fb0; color: #ffffff; border-color: #8fd0ff; }
+
+.pal-tileset { background-color: #1c3a30; color: #86d6b4; font-weight: bold;
+  width: 108px; height: 19px; font-size: 9px; padding: 1px;
+  border: 1px solid #2f5f4c; border-width: 1; }
+.pal-tileset-active { background-color: #2e9e73; color: #10221b; border-color: #7fe8bd; }
+
+/* the tile itself - a neutral dark frame so the sprite + its
+ * PNG-transparency checkerboard read cleanly against it */
+.swatch { background-color: #1a1a1a; border: 1px solid #333333; border-width: 1;
+  width: 34px; height: 34px; }
+
+/* window chrome: the close button declared in the template */
+.chrome-btn { background-color: #2b2b2b; color: #eeeeee; font-weight: bold;
+  font-size: 11px; border: 1px solid #888888; border-width: 1; }
+
+/* generic scrollbar arrows (generic_sbar_register) - give them a real
+ * box so the nav-numbered ^/v controls are visibly there */
+.sbar-arrow { background-color: #2a2a2a; color: #cccccc; font-weight: bold;
+  font-size: 10px; border: 1px solid #444444; border-width: 1; }

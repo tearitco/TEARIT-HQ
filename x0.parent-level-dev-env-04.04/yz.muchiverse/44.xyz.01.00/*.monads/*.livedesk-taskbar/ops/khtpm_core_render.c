@@ -3965,15 +3965,19 @@ static void assign_nav_and_layout(void) {
         }
         if (grid) {
         /* Grid is data: any <item class="swatch">. Not g_is_swatch_picker.
-         * Pass 1: nav_index in document order, close button, and COUNT the
-         * swatches. Pass 2: lay the swatch grid clipped to a visible-rows
-         * viewport with a real scrollbar (generic_sbar) when it overflows.
-         * Pass 3: flow every OTHER <item> (opacity buttons; rmmv's dir/tab/
-         * tileset choosers) as wrapping chips BELOW the grid viewport. */
-        int x0 = 16, y0 = CHROME_H + 44;
+         * Pass 1: nav_index in document order, chrome buttons, COUNT the
+         * swatches. Pass 2: flow every OTHER <item> (rmmv's folder / sheet /
+         * tileset choosers) as a wrapping strip ABOVE the grid, with a
+         * wider gap where the class family changes so the three groups
+         * read as visually separate (class string compare - no app names).
+         * Pass 3: lay the swatch grid clipped to a fixed visible-rows
+         * viewport with a real scrollbar (generic_sbar: draggable thumb +
+         * nav-numbered ^/v arrows) when it overflows. */
+        int x0 = 16;
         int pitch = SWATCH + SWATCH_GAP;
         int grid_w = SWATCH_COLS * pitch;               /* nominal grid width */
         int n_sw = 0;
+        int chrome_x = g_win_w - 8;   /* right-to-left cursor for chrome buttons */
         Elem *sw_items[MAX_CHILDREN];
         for (i = 0; i < page->n_children; i++) {
             Elem *item = page->children[i];
@@ -3981,14 +3985,19 @@ static void assign_nav_and_layout(void) {
             if (strcmp(item->tag, "item") != 0) continue;
             for (c = 0; c < item->n_classes; c++) {
                 if (strcmp(item->classes[c], "swatch") == 0) is_sw = 1;
-                if (strcmp(item->classes[c], "close-btn") == 0) is_close = 1;
+                if (strcmp(item->classes[c], "close-btn") == 0 ||
+                    strcmp(item->classes[c], "chrome-btn") == 0) is_close = 1;
             }
             if (strcmp(item->id, "close") == 0) is_close = 1;
             css_compute_style(&g_sheet, item->tag, item->id, item->classes, item->n_classes, 0, &item->style);
             item->nav_index = ++g_n_nav;
             g_nav[g_n_nav - 1] = item;
             if (is_close) {
-                item->x = g_win_w - 60; item->y = 0; item->w = 60; item->h = CHROME_H;
+                int cw = kh_measure_text_px(&item->style, item->label) + 16;
+                if (cw < 26) cw = 26;
+                chrome_x -= cw;
+                item->x = chrome_x; item->y = 2; item->w = cw; item->h = CHROME_H - 4;
+                chrome_x -= 4;
             } else if (is_sw) {
                 if (n_sw < 12) {
                     snprintf(g_palette_name_buf[n_sw], sizeof(g_palette_name_buf[n_sw]), "%s", item->label);
@@ -3999,7 +4008,36 @@ static void assign_nav_and_layout(void) {
                 n_sw++;
             }
         }
-        /* pass 2: scrolled swatch grid */
+        /* pass 2: chooser strip above the grid, grouped by class family */
+        int chips_top = CHROME_H + 6;
+        {
+            int cx = x0, cy = chips_top;
+            const char *prev_fam = NULL;
+            for (i = 0; i < page->n_children; i++) {
+                Elem *item = page->children[i];
+                int is_sw = 0, is_close = 0, c;
+                if (strcmp(item->tag, "item") != 0) continue;
+                for (c = 0; c < item->n_classes; c++) {
+                    if (strcmp(item->classes[c], "swatch") == 0) is_sw = 1;
+                    if (strcmp(item->classes[c], "close-btn") == 0 ||
+                        strcmp(item->classes[c], "chrome-btn") == 0) is_close = 1;
+                }
+                if (strcmp(item->id, "close") == 0) is_close = 1;
+                if (is_sw || is_close) continue;
+                const char *fam = item->n_classes ? item->classes[0] : "";
+                int w = kh_measure_text_px(&item->style, item->label) + 18;
+                if (w < 28) w = 28;
+                int rh = item->style.has_height ? item->style.height : ROW_H;
+                if (cx > x0) cx += (prev_fam && strcmp(prev_fam, fam) != 0) ? 20 : 6;
+                if (cx > x0 && cx + w > g_win_w - 8) { cx = x0; cy += rh + 3; }
+                item->x = cx; item->y = cy; item->w = w; item->h = rh;
+                cx += w;
+                prev_fam = fam;
+            }
+            if (cx > x0 || cy > chips_top) chips_top = cy + ROW_H + 8;
+        }
+        /* pass 3: scrolled swatch grid, below the chooser strip */
+        int y0 = chips_top;
         static int g_swatch_grid_scroll = 0;
         int total_rows = (n_sw + SWATCH_COLS - 1) / SWATCH_COLS;
         /* Fixed ~12-row viewport (not screen-relative) - a tile picker
@@ -4023,27 +4061,6 @@ static void assign_nav_and_layout(void) {
             generic_sbar_register(x0, y0, grid_w + GENERIC_SCROLLBAR_W + 4, view_h,
                                   &g_swatch_grid_scroll, total_rows, visible_rows, max_scroll);
         int max_y = y0 + view_h;
-        /* pass 3: non-swatch chips below the viewport */
-        {
-            int cx = x0, cy = max_y + 12;
-            for (i = 0; i < page->n_children; i++) {
-                Elem *item = page->children[i];
-                int is_sw = 0, is_close = 0, c;
-                if (strcmp(item->tag, "item") != 0) continue;
-                for (c = 0; c < item->n_classes; c++) {
-                    if (strcmp(item->classes[c], "swatch") == 0) is_sw = 1;
-                    if (strcmp(item->classes[c], "close-btn") == 0) is_close = 1;
-                }
-                if (strcmp(item->id, "close") == 0) is_close = 1;
-                if (is_sw || is_close) continue;
-                int w = kh_measure_text_px(&item->style, item->label) + 18;
-                if (w < 28) w = 28;
-                if (cx > x0 && cx + w > g_win_w - 8) { cx = x0; cy += ROW_H + 4; }
-                item->x = cx; item->y = cy; item->w = w; item->h = ROW_H;
-                cx += w + 6;
-                if (cy + ROW_H > max_y) max_y = cy + ROW_H;
-            }
-        }
         g_win_h = max_y + 8;
         } else {
         int y = CHROME_H;

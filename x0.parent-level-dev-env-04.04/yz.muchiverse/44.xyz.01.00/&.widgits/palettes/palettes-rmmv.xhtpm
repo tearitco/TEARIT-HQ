@@ -15,26 +15,28 @@
   <module src="*.monads/*.livedesk-taskbar/ops/+x/palettes_manager.+x" args="rmmv"/>
   <module src="&.widgits/palettes/ops/+x/palettes_projector.+x" id="rmmv"/>
   <page name="main">
-    <!-- LAYOUT NOTE: these three chooser <repeat>s emit bare <item>s, so
-         the generic layout stacks them vertically (each full-width, one
-         per line). A horizontal strip needs a flex-row parent WITH an
-         explicit width AND flex-wrap in the renderer's css_layout_pass -
-         it has neither (grep khtpm_css_parser.c: only display/
-         flex-direction/flex-grow are honoured, and a width-less flex
-         parent lays its children out at w=0). Wrapping each <repeat> in
-         <panel class="pal-tab-row"> was tried and rendered the items at
-         0x0. Vertical stack is the functional fallback; all items are
-         real, nav-reachable, and carry the -active class. -->
+    <!-- Chrome: a close button declared IN the template (generic CLOSE
+         verb), laid into the top strip by the swatch-grid layout - no
+         per-app C. The title text is drawn from <window label=> above. -->
+    <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
+    <!-- Three chooser families, each its own class so the renderer's
+         swatch-grid strip groups them with a wider gap and the CSS
+         below gives each a distinct look:
+           .pal-dir     - which sprite folder  (set-rmmv-dir)
+           .pal-sheet   - which A/B/C/D/E sheet (set-rmmv-tab)
+           .pal-tileset - which tileset in it  (set-rmmv-tileset)
+         The active row in each carries the matching *-active class from
+         the projector's ${*.active} var. -->
     <repeat count="${n_dirs}" bind="d">
-      <item id="rmdir-${d.#}" class="pal-tab ${d.active}" label="${d.label}"
+      <item id="rmdir-${d.#}" class="pal-dir ${d.active}" label="${d.label}"
             action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'set-rmmv-dir' '${PKG}' '${d.key}'"/>
     </repeat>
     <repeat count="${n_tabs}" bind="c">
-      <item id="rmtab-${c.#}" class="pal-tab ${c.active}" label="${c.label}"
+      <item id="rmtab-${c.#}" class="pal-sheet ${c.active}" label="${c.label}"
             action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'set-rmmv-tab' '${PKG}' '${c.letter}'"/>
     </repeat>
     <repeat count="${n_tilesets}" bind="s">
-      <item id="rmts-${s.#}" class="pal-tileset-opt ${s.active}" label="${s.label}"
+      <item id="rmts-${s.#}" class="pal-tileset ${s.active}" label="${s.label}"
             action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'set-rmmv-tileset' '${PKG}' '${s.key}'"/>
     </repeat>
     <repeat count="${n_tiles}" bind="t">

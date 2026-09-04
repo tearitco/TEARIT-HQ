@@ -25,8 +25,8 @@
  *           <pkg>/rmmv_active.txt    tab=<letter> / tileset=<key> / dir=<key>
  *    Writes <pkg>/state/palettes-rmmv_ui.txt :
  *      n_tiles= t_<i>_glyph= t_<i>_sprite= empty=
- *      n_dirs= d_<i>_key= d_<i>_label= d_<i>_active=(pal-tab-active|"")
- *      n_tabs= c_<i>_letter= c_<i>_label= c_<i>_active=(pal-tab-active|"")
+ *      n_dirs= d_<i>_key= d_<i>_label= d_<i>_active=(pal-dir-active|"")
+ *      n_tabs= c_<i>_letter= c_<i>_label= c_<i>_active=(pal-sheet-active|"")
  *      n_tilesets= s_<i>_key= s_<i>_label= s_<i>_active=(pal-tileset-active|"")
  *      active_tileset= active_category=
  *      truncated= (1 when the tile grid was capped to fit the renderer's
@@ -231,14 +231,14 @@ int main(int argc, char **argv) {
                 off += (size_t)snprintf(ui + off, (off < UIBUF) ? UIBUF - off : 0,
                         "d_%d_key=%s\nd_%d_label=%s\nd_%d_active=%s\n",
                         i, dkey[i], i, dlab[i],
-                        i, strcmp(dkey[i], active_dir) == 0 ? "pal-tab-active" : "");
+                        i, strcmp(dkey[i], active_dir) == 0 ? "pal-dir-active" : "");
             off += (size_t)snprintf(ui + off, (off < UIBUF) ? UIBUF - off : 0, "n_dirs=%d\n", nd);
 
             for (int i = 0; i < nc; i++)
                 off += (size_t)snprintf(ui + off, (off < UIBUF) ? UIBUF - off : 0,
                         "c_%d_letter=%s\nc_%d_label=%s\nc_%d_active=%s\n",
                         i, cltr[i], i, clab[i][0] ? clab[i] : cltr[i],
-                        i, strcmp(cltr[i], active_tab) == 0 ? "pal-tab-active" : "");
+                        i, strcmp(cltr[i], active_tab) == 0 ? "pal-sheet-active" : "");
             off += (size_t)snprintf(ui + off, (off < UIBUF) ? UIBUF - off : 0, "n_tabs=%d\n", nc);
 
             for (int i = 0; i < ns; i++)
