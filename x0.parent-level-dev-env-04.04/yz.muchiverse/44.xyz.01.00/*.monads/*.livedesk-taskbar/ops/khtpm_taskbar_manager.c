@@ -3270,16 +3270,19 @@ static int livedesk_build_db_menu(const char *house_root, HQMenuItem *menu, int 
         n++;
     }
     if (n < max) {
-        snprintf(menu[n].label, sizeof(menu[n].label), "db-hq");
+        /* 2026-09-03: the ported static-template window (below) is now
+         * the primary "db-hq" target; this classic C `class="db-hq"`
+         * (g_is_db_hq) row is relabelled "db-hq (classic)" and goes away
+         * with the g_is_db_hq C deletion. */
+        snprintf(menu[n].label, sizeof(menu[n].label), "db-hq (classic)");
         snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:open-common-events-hq:%s", cur);
         n++;
     }
     if (n < max) {
-        /* db-hq (PAL) - the CHTPM-ARCHITECTURE-FIX rebuild: static
-         * dashboard.xhtpm + pal/dbhq_projector.pal. Raw shell row, run
-         * via ktb_hq_activate()'s catch-all (` .` -> house_root). Kept
-         * alongside the classic C db-hq for side-by-side comparison. */
-        snprintf(menu[n].label, sizeof(menu[n].label), "db-hq (PAL)");
+        /* db-hq - the CHTPM-ARCHITECTURE-FIX rebuild: static
+         * dashboard.xhtpm + pal/dbhq_projector.pal, the primary target
+         * now (launcher_db in livedesk_launchers.pdl points here too). */
+        snprintf(menu[n].label, sizeof(menu[n].label), "db-hq");
         snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:open-db-hq-pal");
         n++;
     }
@@ -3885,10 +3888,21 @@ void ktb_hq_activate(KtbState *s, int row) {
          * live today via TB_PROOF touch test - raw row silently ran
          * ".widgits/..." after backgrounding). Prefix length verified:
          * printf '%s' "livedesk:open-palette:" | wc -c = 22. */
+        /* PORT 2026-09-03: emojis / elements are ported to a static
+         * palettes-<cat>.xhtpm + projector - route those at button-pal.sh.
+         * rmmv / piececraft / user-pallet / the generate/paint/etc.
+         * categories are not ported; they stay on palettes_menu.sh
+         * (PROGRESS-palettes-xhtpm.md). */
+        const char *pcat = m->command + 22;
         char sh[KTB_PATH_BUF * 3];
-        snprintf(sh, sizeof(sh),
-                 KTB_SETSID "nohup sh -c 'sh \"%s/&.widgits/palettes/palettes_menu.sh\" \"%s\"' >/dev/null 2>&1 &",
-                 s->house_root, m->command + 22);
+        if (strcmp(pcat, "emojis") == 0 || strcmp(pcat, "elements") == 0)
+            snprintf(sh, sizeof(sh),
+                     KTB_SETSID "nohup sh -c 'sh \"%s/&.widgits/palettes/button-pal.sh\" \"%s\" \"%s\"' >/dev/null 2>&1 &",
+                     s->house_root, pcat, s->house_root);
+        else
+            snprintf(sh, sizeof(sh),
+                     KTB_SETSID "nohup sh -c 'sh \"%s/&.widgits/palettes/palettes_menu.sh\" \"%s\"' >/dev/null 2>&1 &",
+                     s->house_root, pcat);
         int rc = ktb_system_recorded(s->house_root, sh);
         (void)rc;
         ktb_hq_close(s);
