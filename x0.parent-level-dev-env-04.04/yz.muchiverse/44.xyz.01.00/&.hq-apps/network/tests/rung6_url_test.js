@@ -1,0 +1,21 @@
+// rung6_url_test.js — URL + URLSearchParams polyfill (nb_js_eval prelude)
+console.log("typeof URL", typeof URL, "typeof URLSearchParams", typeof URLSearchParams);
+var u = new URL("https://user:pass@example.com:8080/a/b?x=1&y=2&x=3#frag");
+console.log("href", u.href);
+console.log("parts", u.protocol, u.hostname, u.port, u.pathname, u.origin, u.hash);
+console.log("userpass", JSON.stringify(u.username), JSON.stringify(u.password));
+console.log("search", u.search);
+console.log("sp get x", u.searchParams.get("x"));
+console.log("sp getAll x", u.searchParams.getAll("x").join(","));
+console.log("sp has y", u.searchParams.has("y"), "has z", u.searchParams.has("z"));
+console.log("sp set z=9", u.searchParams.set("z","9"), u.searchParams.get("z"));
+console.log("sp append q=a b", u.searchParams.append("q","a b"), u.searchParams.toString());
+console.log("sp delete y", u.searchParams.delete("y"), u.searchParams.toString());
+console.log("u set search", u.search = "?new=1&old=2", u.search, u.searchParams.get("old"));
+var sp2 = new URLSearchParams("a=1&a=2&b=hello%20world");
+console.log("ctor str", sp2.get("a"), sp2.getAll("a").join(","), sp2.get("b"), sp2.toString());
+var rel = new URL("/c?r=1#top", "https://example.com/base/dir/p");
+console.log("relative", rel.href);
+var about = new URL("about:blank");
+console.log("aboutblank", about.href, about.origin, about.pathname);
+console.log("OK_POLYFILL");

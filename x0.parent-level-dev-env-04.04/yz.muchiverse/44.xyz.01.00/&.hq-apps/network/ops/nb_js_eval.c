@@ -207,6 +207,85 @@ static void install_location_parts(duk_context *ctx, const char *href) {
     duk_push_string(ctx, origin);   duk_put_prop_string(ctx, -2, "origin");
 }
 
+/* Rung 6: inject a pure-JS URL + URLSearchParams polyfill (ES5.1-safe).
+ * Roadmap NB-JS-ENGINE-ROADMAP.md §6. Real navigation (history / fetch)
+ * is a later rung; these only PARSE + expose, so an analytics/consent
+ * /router script that does "new URL(location.href)" / ".searchParams"
+ * stops throwing. Evaluated once in main() just before the page script. */
+static const char g_js_prelude[] =
+"/* nb_js_eval prelude: URL + URLSearchParams polyfill (ES5.1) */\n"
+"(function(){\n"
+"var EMPTY_URL='about:blank';\n"
+"function enc(s){ return encodeURIComponent(String(s)); }\n"
+"function dec(s){ try{ return decodeURIComponent(String(s).replace(/\\+/g,' ')); }catch(e){ return String(s); } }\n"
+"function splitParts(urlString, base){\n"
+"  var s=String(urlString||'');\n"
+"  if(s.indexOf('://')<0 && s.charAt(0)!=='/' && s.indexOf('?')!==0 && s.charAt(0)!=='#' && s!==''){\n"
+"    if(base && base!==EMPTY_URL){ var b=splitParts(base,null); var pos=b.pathname.lastIndexOf('/'); s=b.protocol+'//'+b.host+(b.port?':'+b.port:'')+(pos>=0?b.pathname.slice(0,pos+1):'/')+s; }\n"
+"    else { s=EMPTY_URL; }\n"
+"  }\n"
+"if(s===EMPTY_URL) return {protocol:'',authority:'',host:'',hostname:'',port:'',pathname:'',search:'',hash:'',origin:'null'};\n"
+"  var proto='', rest=s, hash='', search='', path='', host='', hostname='', port='';\n"
+"  var m=s.match(/^([a-zA-Z][a-zA-Z0-9+.-]*):\\/\\//);\n"
+"  if(m){ proto=m[1].toLowerCase()+':'; rest=s.slice(m[0].length); }\n"
+"  var hio=rest.indexOf('#'); if(hio>=0){ hash=rest.slice(hio); rest=rest.slice(0,hio); }\n"
+"  var qio=rest.indexOf('?'); if(qio>=0){ search=rest.slice(qio); rest=rest.slice(0,qio); }\n"
+"  var aio=rest.indexOf('/'); var raw=aio<0?rest:rest.slice(0,aio);\n"
+"  var uio=raw.indexOf('@'); var auth=uio>=0?raw.slice(uio+1):raw;\n"
+"  var colon=auth.lastIndexOf(':'); if(colon>0 && auth.charAt(0)!=='['){ hostname=auth.slice(0,colon); port=auth.slice(colon+1); }\n"
+"  else hostname=auth;\n"
+"  host=hostname+(port?(':'+port):'');\n"
+"  path=(aio<0)?'/'+rest:rest.slice(aio); if(path===''||path.charAt(0)!=='/') path='/'+path;\n"
+"  var origin=(proto&&auth)?(proto+'//'+auth):'null';\n"
+"  return {protocol:proto,authority:raw,host:host,hostname:hostname,port:port,pathname:path,search:search,hash:hash,origin:origin};\n"
+"}\n"
+"function URLSearchParams(init){\n"
+"  var self=this; self._p=[];\n"
+"  if(init===undefined||init===null) return;\n"
+"  if(typeof init==='object' && init._p){ self._p=init._p.slice(); return; }\n"
+"  if(typeof init==='string'){\n"
+"    var q=init.replace(/^\\?/,'');\n"
+"    var parts=q?q.split('&'):[];\n"
+"    for(var i=0;i<parts.length;i++){ var kv=parts[i]; var eq=kv.indexOf('='); var k=(eq<0)?kv:kv.slice(0,eq); var v=(eq<0)?'':kv.slice(eq+1); if(!k && !v) continue; self._p.push([dec(k),dec(v)]); }\n"
+"    return;\n"
+"  }\n"
+"  if(typeof init==='object' && init.forEach){ init.forEach(function(k,v){ self._p.push([String(k),String(v)]); }); return; }\n"
+"  throw new Error('URLSearchParams: bad init');\n"
+"}\n"
+"URLSearchParams.prototype.get=function(k){ for(var i=0;i<this._p.length;i++) if(this._p[i][0]===String(k)) return this._p[i][1]; return null; };\n"
+"URLSearchParams.prototype.getAll=function(k){ var r=[]; for(var i=0;i<this._p.length;i++) if(this._p[i][0]===String(k)) r.push(this._p[i][1]); return r; };\n"
+"URLSearchParams.prototype.has=function(k){ return this.get(k)!==null; };\n"
+"URLSearchParams.prototype.append=function(k,v){ this._p.push([String(k),String(v)]); };\n"
+"URLSearchParams.prototype.set=function(k,v){ this.delete(k); this.append(k,v); };\n"
+"URLSearchParams.prototype.delete=function(k){ var s=String(k), out=[]; for(var i=0;i<this._p.length;i++) if(this._p[i][0]!==s) out.push(this._p[i]); this._p=out; };\n"
+"URLSearchParams.prototype.toString=function(){ var out=[]; for(var i=0;i<this._p.length;i++){ if(!this._p[i][0] && !this._p[i][1]) continue; out.push(enc(this._p[i][0])+'='+enc(this._p[i][1])); } return out.join('&'); };\n"
+"URLSearchParams.prototype.forEach=function(fn){ for(var i=0;i<this._p.length;i++) fn.call(this, this._p[i][1], this._p[i][0], i); };\n"
+"URLSearchParams.prototype.keys=function(){ return this._p.map(function(x){ return x[0]; }); };\n"
+"URLSearchParams.prototype.values=function(){ return this._p.map(function(x){ return x[1]; }); };\n"
+"URLSearchParams.prototype.entries=function(){ var a=[]; for(var i=0;i<this._p.length;i++) a.push([this._p[i][0],this._p[i][1]]); return a; };\n"
+"function URL(urlString, base){\n"
+"  var self=this; self._u=splitParts(urlString, base);\n"
+"  self._params=new URLSearchParams(self._u.search.replace(/^\\?/,''));\n"
+"}\n"
+"URL.prototype.toString=function(){ var u=this._u; return (u.protocol?u.protocol:'')+(u.host?('//'+u.host):'')+u.pathname+(u.search?u.search:'')+(u.hash?u.hash:''); };\n"
+"URL.prototype.valueOf=function(){ return this.toString(); };\n"
+"URL.prototype.toJSON=function(){ return this.toString(); };\n"
+"var RW=function(k){ return { get:function(){ return this._u[k]; } }; };\n"
+"var URLWORD=function(k){ return { get:function(){ return this._u[k]; }, set:function(v){ this._u[k]=String(v); } }; };\n"
+"function setHref(v){ this._u=splitParts(String(v)); this._params=new URLSearchParams(this._u.search.replace(/^\\?/,'')); }\n"
+"Object.defineProperties(URL.prototype, {\n"
+"  href: { get:function(){ return this.toString(); }, set:setHref },\n"
+"  protocol: RW('protocol'), origin: RW('origin'), host: RW('host'), hostname: URLWORD('hostname'), port: URLWORD('port'), pathname: URLWORD('pathname'),\n"
+"  search: { get:function(){ return this._u.search; }, set:function(v){ v=String(v||''); this._u.search=(v&&v.charAt(0)!=='?')?('?'+v):v; this._params=new URLSearchParams(this._u.search.replace(/^\\?/,'')); } },\n"
+"  hash: URLWORD('hash'),\n"
+"  searchParams: { get:function(){ return this._params; } },\n"
+"  username: { get:function(){ var a=this._u.authority||''; var at=a.indexOf('@'); var pre=(at>0)?a.slice(0,at):''; var c=pre.indexOf(':'); return c>=0?pre.slice(0,c):pre; } },\n"
+"  password: { get:function(){ var a=this._u.authority||''; var at=a.indexOf('@'); if(at<=0) return ''; var p=a.slice(0,at); var c=p.indexOf(':'); return c>=0?p.slice(c+1):''; } }\n"
+"});\n"
+"Object.defineProperty(window,'URL',{ value:URL, configurable:true, writable:true });\n"
+"Object.defineProperty(window,'URLSearchParams',{ value:URLSearchParams, configurable:true, writable:true });\n"
+"})();\n";
+
 static void install_host(duk_context *ctx) {
     duk_push_global_object(ctx);
     duk_idx_t g = duk_get_top(ctx) - 1;   /* absolute index of the real JS global */
@@ -354,6 +433,14 @@ int main(int argc, char **argv) {
         return 1;
     }
     install_host(ctx);
+
+    /* rung 6 prelude: URL + URLSearchParams polyfill. If it fails the
+     * page script still runs (URL just stays undefined). */
+    if (duk_peval_string(ctx, g_js_prelude) != 0) {
+        /* polyfill hygiene: swallow its own error, page continues */
+        duk_pop(ctx);
+    }
+    duk_pop(ctx);
 
     duk_push_lstring(ctx, src, src_n);
     free(src);
