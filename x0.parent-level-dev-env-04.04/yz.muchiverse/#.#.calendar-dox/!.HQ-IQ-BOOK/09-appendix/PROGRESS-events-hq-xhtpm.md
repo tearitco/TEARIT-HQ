@@ -79,13 +79,23 @@ only runs when argv[3] is NOT a directory.
       positional invocation (one guard line; `EZ_PKG_DIR=... sh button.sh run`
       still hits the old `pieces/dashboard.chtpm` for A/B). Rollback = delete
       the 3-line guard block.
-- [ ] side-by-side parity pass vs the OLD window on a real entity (owner click-through)
-- [ ] per-field command editor (new + edit), delete-command, view-mode content swap
-- [ ] **delete `evhq_*` / `g_is_events_hq` (~676 refs in khtpm_core_render.c)** -
-      deliberately NOT done here. Big surgery on a concurrently-edited file;
-      needs owner sign-off (§8 step 8) and is safest as its own PR (design
-      doc §8 step 10 says follow-up commit). Old `pieces/dashboard.chtpm` +
-      the `evhq_*` C stay as the working rollback until then.
+- [x] per-field command editor (new + edit), delete-command, view-mode
+      content swap — DONE (see the phase-3 Log entry below). `evhq_action.sh`
+      verbs pick/edit/field/commit/cancel-fields/del/play; `evhq_projector.c`
+      emits `picker_open`/`fields_open`/`list_open`, `pk_<i>_*`/`n_picker`,
+      `f_<i>_name/_prompt/_value`/`n_fields`/`editor_type`/`editor_title`.
+      Registry-driven from `#.ref/menu/event_commands.registry.pdl`.
+- [x] **`evhq_*` / `g_is_events_hq` / `dbhq_ce_*` DELETED from
+      `khtpm_core_render.c`** — 2026-09-03, commit `81cedb8f` on
+      `chtpm-delete-per-app-c` (−2465 lines). `g_is_events_hq` kept as
+      `static const int = 0` so pure-flag guards constant-fold. The old
+      embedded Common Events editor (`dbhq_ce_*`) is gone too; db-hq-pal
+      opens `events-hq.xhtpm` for CE editing (two compliant windows).
+      Old `pieces/dashboard.chtpm` + `button.sh` `EZ_PKG_DIR` guard stay
+      as rollback but the `class="events-hq-window"` C path is now dead.
+- [ ] side-by-side parity pass vs the OLD window on a real entity
+      (owner click-through) — the one remaining verify: add a command,
+      edit a field, save, delete, in a live events-hq.xhtpm window.
 
 ## Log
 
