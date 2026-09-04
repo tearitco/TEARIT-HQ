@@ -50,8 +50,8 @@ window { background-color: #141414; font-family: Ubuntu; font-size: 10px; }
 .pal-tab-row { display: flex; flex-direction: row; gap: 6px; height: 28px; }
 .pal-tab { background-color: #2a2a2a; color: #5ec8f2; font-weight: bold;
   width: 88px; height: 24px; font-size: 10px; padding: 2px; }
-.pal-tab-active { background-color: #d9b64a; color: #000000; }
+.pal-tab-active { background-color: #2f5f8f; color: #ffffff; }
 .pal-tileset-row { display: flex; flex-direction: row; gap: 4px; height: 28px; }
 .pal-tileset-opt { background-color: #2a2a2a; color: #cccccc; font-weight: bold;
   width: 96px; height: 24px; font-size: 10px; padding: 2px; }
-.pal-tileset-active { background-color: #d9b64a; color: #000000; }
+.pal-tileset-active { background-color: #2f5f8f; color: #ffffff; }
