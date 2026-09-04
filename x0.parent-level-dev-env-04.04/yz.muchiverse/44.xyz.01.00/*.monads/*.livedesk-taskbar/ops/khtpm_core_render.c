@@ -7140,7 +7140,7 @@ static void evhq_handle_key(KeySym ks, char ch) {
     }
     g_evhq_digit_accum = 0;
 }
-static int evhq_nonfatal_x_error(Display *d, XErrorEvent *e) {
+static int kh_nonfatal_x_error(Display *d, XErrorEvent *e) {
     char ebuf[128]; XGetErrorText(d, e->error_code, ebuf, sizeof(ebuf));
     fprintf(stderr, "khtpm_entity_menu_render: events-hq: X error (non-fatal): %s (request %d.%d)\n", ebuf, e->request_code, e->minor_code);
     return 0;
@@ -11870,12 +11870,12 @@ static int run_pchq_board_mode(const char *house_root, const char *host_project_
     Display *dpy = XOpenDisplay(NULL);
     if (!dpy) { fprintf(stderr, "run_pchq_board_mode: cannot open display\n"); return 1; }
     /* REAL FIX 2026-08-30 - this mode returns before main()'s own
-     * XSetErrorHandler(evhq_nonfatal_x_error) call, so an
+     * XSetErrorHandler(kh_nonfatal_x_error) call, so an
      * XSetInputFocus() landing before the WM finishes reparenting a
      * freshly WM-managed window throws an uncaught BadMatch and crashes
      * the whole process (confirmed live). Same real non-fatal handler
      * already used elsewhere in this file. */
-    XSetErrorHandler(evhq_nonfatal_x_error);
+    XSetErrorHandler(kh_nonfatal_x_error);
     int screen = DefaultScreen(dpy);
     Visual *visual = DefaultVisual(dpy, screen);
     int depth = DefaultDepth(dpy, screen);
@@ -18471,7 +18471,7 @@ int main(int argc, char **argv) {
      * own header comment), signal handlers, real initial page-data
      * refresh. */
     if (g_is_events_hq) {
-        XSetErrorHandler(evhq_nonfatal_x_error);
+        XSetErrorHandler(kh_nonfatal_x_error);
         signal(SIGTERM, evhq_handle_term_signal);
         signal(SIGINT, evhq_handle_term_signal);
 
@@ -18550,14 +18550,14 @@ int main(int argc, char **argv) {
      * (~line 12824, written back when every window here WAS always
      * override_redirect) can now genuinely fire before the window is
      * viewable, and X's default error handler calls exit() on any
-     * unhandled error. evhq_nonfatal_x_error() already existed for
+     * unhandled error. kh_nonfatal_x_error() already existed for
      * exactly this class of "best-effort X call, never worth crashing
      * the whole app over" case, but was only ever installed for
      * events-hq mode - installing it globally here, at the earliest
      * possible point, so EVERY mode gets the same real safety net
      * (this fixes the crash without needing to chase every individual
      * best-effort X call across every mode one at a time). */
-    XSetErrorHandler(evhq_nonfatal_x_error);
+    XSetErrorHandler(kh_nonfatal_x_error);
     screen = DefaultScreen(dpy);
     cmap = DefaultColormap(dpy, screen);
     font_ui = XftFontOpenName(dpy, screen, "Noto Sans CJK SC:pixelsize=13");
