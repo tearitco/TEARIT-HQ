@@ -181,6 +181,14 @@ arm_rmmv() {
     # it - see tp_arm_placer_rmmv.c's own header for why.
     _sdir="$1"; _key="$2"; _cat="$3"; _label="$4"
     _winx="$5"; _winy="$6"; _winw="$7"; _winh="$8"
+    # The renderer's dispatch() appends '<pkg_dir>' '<house_root>' to
+    # every action=, so $5/$6 arrive as PATHS here, not the picker rect.
+    # Only forward $5-$8 to the placer when they are all real integers;
+    # otherwise pass nothing and let tp_arm_placer_rmmv.+x cover the
+    # whole screen (it treats the rect as optional).
+    case "${_winx}:${_winy}:${_winw}:${_winh}" in
+        *[!0-9:]* | *::* | :*:*:* ) _winx=""; _winy=""; _winw=""; _winh="" ;;
+    esac
     mkdir -p "$STATE_DIR" "$DESK_DIR/tiles"
     "$TP_OPS/tp_set_brush_rmmv.+x" "$STATE_DIR" "$_sdir" "$_key" "$_cat" "$_label" >/dev/null 2>&1 || true
     # REAL, NEW 2026-08-29, direct live report ("nothing happened when i
@@ -211,7 +219,11 @@ arm_rmmv() {
     #      here again (was briefly moved in-process for design #2,
     #      wrong call in hindsight - reverted).
     printf '%s ARMED: %s/%s "%s" - click desktop to place, Esc to cancel\n' "$_key" "$_key" "$_cat" "$_label" > "$STATE_DIR/rmmv_armed.txt"
-    setsid "$TP_OPS/tp_arm_placer_rmmv.+x" "$STATE_DIR" "$DESK_DIR" "$_winx" "$_winy" "$_winw" "$_winh" >/dev/null 2>&1 < /dev/null &
+    if [ -n "$_winw" ] && [ -n "$_winh" ]; then
+        setsid "$TP_OPS/tp_arm_placer_rmmv.+x" "$STATE_DIR" "$DESK_DIR" "$_winx" "$_winy" "$_winw" "$_winh" >/dev/null 2>&1 < /dev/null &
+    else
+        setsid "$TP_OPS/tp_arm_placer_rmmv.+x" "$STATE_DIR" "$DESK_DIR" >/dev/null 2>&1 < /dev/null &
+    fi
     log "armed rmmv brush tileset=$_key category=$_cat kind='$_label'"
 }
 
@@ -247,7 +259,7 @@ debug_clear() {
 
 case "${1:-}" in
     place)             shift; place "$@"; exit 0 ;;
-    arm-rmmv)          shift; arm_rmmv "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8"; exit 0 ;;
+    arm-rmmv)          shift; arm_rmmv "${1:-}" "${2:-}" "${3:-}" "${4:-}" "${5:-}" "${6:-}" "${7:-}" "${8:-}"; exit 0 ;;
     debug-toggle)      shift; debug_toggle "$1"; exit 0 ;;
     debug-clear)       debug_clear; exit 0 ;;
     list)              list_cats; exit 0 ;;
