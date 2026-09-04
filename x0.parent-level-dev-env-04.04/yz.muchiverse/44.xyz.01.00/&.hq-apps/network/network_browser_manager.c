@@ -84,6 +84,8 @@
 #include <signal.h>
 #include <errno.h>
 
+#include "nb_dom.h"
+
 #define PATH_BUF 4352
 
 static char g_chtpm_output_path[PATH_BUF];
@@ -124,6 +126,7 @@ static char g_request_path[PATH_BUF];
 static char g_page_state_path[PATH_BUF];
 static char g_status_path[PATH_BUF];
 static char g_tmp_html_path[PATH_BUF];
+static char g_tmp_dom_path[PATH_BUF];
 static char g_current_url[PATH_BUF] = "";
 
 static void path_join(char *out, size_t outsz, const char *a, const char *b) {
@@ -1658,6 +1661,30 @@ static int ingest_4chan_catalog(const char *page_url) {
     return count > 0;
 }
 
+/* Phase 1 step 1 (NB-JS worker plan §3/§7): parse the fetched HTML into
+ * nb_dom.c's tolerant node tree and serialize it out to fetch.dom (the
+ * future worker's input). Produced-but-unused this commit: no behavior
+ * change, the manager still uses its linear extractor for rendering.
+ * Writes atomically like the rest of the manager. Never blocks or fails
+ * a fetch on parse trouble - if serialization fails we just leave the
+ * previous fetch.dom (or none) in place. */
+static void write_fetch_dom(const char *html, size_t n) {
+    char tmp[PATH_BUF];
+    FILE *out = atomic_open(g_tmp_dom_path, tmp, sizeof(tmp));
+    if (!out) return;
+    NbNode *root = nb_parse_html(html, n);
+    if (root) {
+        long nodes = nb_serialize(out, root);
+        fclose(out);
+        if (nodes > 0) atomic_commit(g_tmp_dom_path, tmp);
+        else unlink(tmp);
+        nb_node_free(root);
+    } else {
+        fclose(out);
+        unlink(tmp);
+    }
+}
+
 static void do_fetch(const char *url_in, int record_history) {
     char url[PATH_BUF];
     if (g_current_url[0]) resolve_url(g_current_url, url_in, url, sizeof(url));
@@ -1734,6 +1761,8 @@ static void do_fetch(const char *url_in, int record_history) {
     extract_and_publish(html, url, out);
     fclose(out);
     atomic_commit(g_page_state_path, tmp);
+
+    write_fetch_dom(html, n);
 
     {
         char title[512] = "";
@@ -2409,6 +2438,7 @@ int main(int argc, char **argv) {
     snprintf(tmpdir, sizeof(tmpdir), "%s/&.hq-apps/network/tmp", g_house);
     mkdir_p_local(tmpdir);
     path_join(g_tmp_html_path, sizeof(g_tmp_html_path), tmpdir, "fetch.html");
+    path_join(g_tmp_dom_path, sizeof(g_tmp_dom_path), tmpdir, "fetch.dom");
     path_join(g_curl_url_path, sizeof(g_curl_url_path), tmpdir, "curl.url.cfg");
     path_join(g_fetch_pid_path, sizeof(g_fetch_pid_path), tmpdir, "fetch.pid");
     path_join(g_js_script_path, sizeof(g_js_script_path), tmpdir, "page.js");

@@ -23,7 +23,7 @@ CC=${CC:-gcc}
 JSDIR="$SDIR/../js"
 
 echo "-- network_browser_manager -> +x/network_browser_manager.+x"
-$CC -std=c11 -Wall -O2 -o "$SDIR/+x/network_browser_manager.+x" "$SDIR/network_browser_manager.c" && echo "OK network_browser_manager" || exit 1
+$CC -std=c11 -Wall -O2 -o "$SDIR/+x/network_browser_manager.+x" "$SDIR/network_browser_manager.c" "$SDIR/nb_dom.c" && echo "OK network_browser_manager" || exit 1
 
 # 2026-09-02 (merge-test pass): the two new ops the manager shells out
 # to for JS eval and media->sprite conversion. Duktape is a real,
