@@ -2038,10 +2038,26 @@ static void kh_serialize_frame_elem(FILE *f, Elem *e) {
     char target_id_esc[64 * 2], input_buffer_esc[256 * 2];
     frame_field_escape_pipe(e->target_id, target_id_esc, sizeof(target_id_esc));
     frame_field_escape_pipe(e->input_buffer, input_buffer_esc, sizeof(input_buffer_esc));
-    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s\n",
+    /* REAL FIX 2026-09-04 (pc-hq-bugs.md Bug 3 - "^" badge never shows
+     * for an Interact Mode trigger even though its class/label are
+     * current) - e->relay was never serialized here, same gap
+     * target_id/input_buffer had before 2026-08-31 fixed it for THEM.
+     * Every default/popup-mode window draws through THIS frame-file
+     * round trip (see redraw()'s own header comment - render_tree()
+     * itself is never called for this mode), so kh_paint_frame_line()'s
+     * tmp Elem always had relay[0]=='\0', and draw_core.c's own
+     * is_scope check (`g_interact_relay_on && e->relay[0]`) could
+     * never see it - not a bug in that check itself, a bug in what it
+     * was ever handed. Same escape convention (relay's own value is a
+     * comma-joined absolute-path list - could theoretically collide
+     * with '|' in a wild house_root, escape defensively same as the
+     * other two). */
+    char relay_esc[300 * 2];
+    frame_field_escape_pipe(e->relay, relay_esc, sizeof(relay_esc));
+    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s\n",
             e->tag, e->id, classes_joined, e->label, e->sprite, e->onclick,
             e->nav_index, e->active, e->x, e->y, e->w, e->h,
-            target_id_esc, input_buffer_esc);
+            target_id_esc, input_buffer_esc, relay_esc);
 }
 
 /* Real recursive serializer, same traversal order render_tree() itself
@@ -2122,13 +2138,14 @@ static void kh_paint_frame_line(const char *line) {
         p = bar + 1;
     }
     /* [0]=nav_index [1]=active [2]=x [3]=y [4]=w [5]=h [6]=target_id
-     * (pipe-escaped) [7]=input_buffer (pipe-escaped) - the last two are
-     * REAL, NEW 2026-08-31, see kh_serialize_frame_elem()'s own
-     * comment; a frame file written by an older binary (before these
-     * two fields existed) simply has 6 tail fields, not 8 - the loop
-     * below returns (honest skip) rather than misparse it, matching
-     * this function's existing "malformed line" convention exactly. */
-    char *tail[8];
+     * (pipe-escaped) [7]=input_buffer (pipe-escaped) [8]=relay (pipe-
+     * escaped, REAL, NEW 2026-09-04, see kh_serialize_frame_elem()'s
+     * own comment - pc-hq-bugs.md Bug 3) - a frame file written by an
+     * older binary (before these fields existed) simply has fewer tail
+     * fields - the loop below returns (honest skip) rather than
+     * misparse it, matching this function's existing "malformed line"
+     * convention exactly. */
+    char *tail[9];
     /* REAL FIX 2026-08-28, same-day self-correction (first attempt at
      * this fix broke EVERY entity menu, not just book-stack's - see
      * git blame if this comment ever needs re-deriving why): the front
@@ -2140,7 +2157,7 @@ static void kh_paint_frame_line(const char *line) {
      * onward), so `p + strlen(p)` is the real end - `buf2 +
      * strlen(buf2)` is not. */
     char *scan_end = p + strlen(p);
-    for (int i = 7; i >= 0; i--) {
+    for (int i = 8; i >= 0; i--) {
         char *bar = NULL;
         for (char *q = scan_end - 1; q >= p; q--) { if (*q == '|') { bar = q; break; } }
         if (!bar) return; /* malformed line - honest skip, not a crash */
@@ -2184,6 +2201,7 @@ static void kh_paint_frame_line(const char *line) {
      * a human is actually typing into. */
     frame_field_unescape_pipe(tail[6], tmp.target_id, sizeof(tmp.target_id));
     frame_field_unescape_pipe(tail[7], tmp.input_buffer, sizeof(tmp.input_buffer));
+    frame_field_unescape_pipe(tail[8], tmp.relay, sizeof(tmp.relay));
 
     css_compute_style(&g_sheet, tmp.tag, tmp.id[0] ? tmp.id : NULL, tmp.classes, tmp.n_classes, tmp.active, &tmp.style);
     if (window_is_dock()) {
@@ -3946,8 +3964,29 @@ static void kh_scan_interact_relay(void) {
                 tok = strtok_r(NULL, ",", &save);
             }
         }
+        /* REAL FIX 2026-09-04 (pc-hq-bugs.md Bug 2 - real keyboard
+         * input stops reaching the window after the user clicks away
+         * and comes back, "never a problem before or in mutaclysm").
+         * Root cause, by first-principles comparison against the ONE
+         * other feature in this file that also needs the keyboard for
+         * an extended, focus-independent stretch (cli_io - see
+         * activate_focused()'s own `kh_grab_keyboard_retry()` call and
+         * its header comment: "required, or typing silently breaks
+         * once the pointer leaves the window under this desktop's
+         * focus-follows-mouse policy"): under focus-follows-mouse, X
+         * keyboard focus tracks the POINTER, not the last click -
+         * moving the mouse off this window (even without clicking
+         * anything else) silently hands real X keyboard focus to
+         * whatever the pointer is over next, unless this window holds
+         * an explicit XGrabKeyboard overriding that WM policy for as
+         * long as it needs total keyboard ownership. Interact Mode
+         * needs exactly that for exactly as long as cli_io does - it
+         * just never took the grab. Same helper, same real fix,
+         * applied on the same real off->on transition. */
+        if (!g_interact_relay_on) kh_grab_keyboard_retry();
         g_interact_relay_on = 1;
     } else {
+        if (g_interact_relay_on) XUngrabKeyboard(dpy, CurrentTime);
         g_interact_relay_on = 0;
         g_interact_relay_raw[0] = '\0';
     }

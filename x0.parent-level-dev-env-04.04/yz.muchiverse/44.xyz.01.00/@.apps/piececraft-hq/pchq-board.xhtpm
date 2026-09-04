@@ -40,6 +40,13 @@
          (XHTPM-PARSER-REFERENCE.md §16) rather than the old bespoke
          pchq_focus/pchq_is_fullscreen local state machine. -->
     <item id="fullscreen" class="chrome-btn" label="!" onclick="TOGGLE_FULLSCREEN"/>
+    <!-- 2026-09-04: minimize ("_") - the generic sidebar+panel layout
+         auto-adds this chrome item for its own windows
+         (g_default_minimize_elem, khtpm_core_render.c ~line 3166), but
+         pchq-board uses the flat toolbar-item/canvas layout (has_canvas
+         branch) instead, which never gets it automatically - added
+         explicitly here, same "_"/MINIMIZE convention. -->
+    <item id="minimize" class="chrome-btn" label="_" onclick="MINIMIZE"/>
 
     <!-- toolbar row. tb-in is the generic Interact Mode trigger (see
          khtpm_core_render.c's g_interact_relay_on): relay= names the
