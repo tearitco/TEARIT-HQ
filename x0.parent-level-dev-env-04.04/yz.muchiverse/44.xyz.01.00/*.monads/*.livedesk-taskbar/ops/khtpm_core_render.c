@@ -104,6 +104,7 @@ static void kh_grab_keyboard_retry(void);
 static void kh_capture_click(int x, int y, int button);
 static void kh_capture_key(KeySym ks, char ch);
 static void redraw(void); /* REAL, forward declaration needed for dispatch()'s OPACITY_MINUS/OPACITY_PLUS handlers (NEW 2026-08-29 TASK 2) */
+static void kh_raise_and_focus(Window w); /* fwd - dispatch()'s FOCUSWIN handler uses it, defined near hq_dispatch_xevent */
 #define MAX_ELEMS 1024  /* 2026-09-02: page projection + chrome, was 512 */
 #define MAX_PAGE_STACK 8
 
@@ -4253,8 +4254,7 @@ static void dispatch(const char *action) {
             FILE *wf = fopen(restore_path, "w");
             if (wf) { fprintf(wf, "restore=1\n"); fclose(wf); }
         } else {
-            XRaiseWindow(dpy, (Window)w);
-            XSetInputFocus(dpy, (Window)w, RevertToParent, CurrentTime);
+            kh_raise_and_focus((Window)w);
         }
         return;
     }
@@ -5941,6 +5941,33 @@ static void popup_handle_click(int px, int py) {
  * triggers exactly once, not once per poll tick while held down. */
 static int g_pal_rmmv_button1_was_down = 0;
 
+/* REAL, NEW 2026-09-04 (direct instruction: a taskbar-nav click, or a
+ * click on a buried window, should bring it to the top even with
+ * always-on-top=false). XRaiseWindow alone is only a hint the WM may
+ * ignore under focus-stealing prevention in WM-managed mode; the
+ * EWMH-sanctioned "activate" is a _NET_ACTIVE_WINDOW ClientMessage to
+ * the root with source indication 2 (direct user action), which Mutter
+ * honours. Harmless (redundant with the raise) when override_redirect.
+ * Also focuses. */
+static void kh_raise_and_focus(Window w) {
+    if (!dpy || !w) return;
+    XRaiseWindow(dpy, w);
+    Atom naw = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
+    if (naw != None) {
+        XEvent e; memset(&e, 0, sizeof(e));
+        e.xclient.type = ClientMessage;
+        e.xclient.window = w;
+        e.xclient.message_type = naw;
+        e.xclient.format = 32;
+        e.xclient.data.l[0] = 2;            /* source: pager / direct user action */
+        e.xclient.data.l[1] = CurrentTime;
+        XSendEvent(dpy, RootWindow(dpy, DefaultScreen(dpy)), False,
+                   SubstructureNotifyMask | SubstructureRedirectMask, &e);
+    }
+    XSetInputFocus(dpy, w, RevertToParent, CurrentTime);
+    XFlush(dpy);
+}
+
 static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
 
     if (ev->type == Expose) {
@@ -6026,8 +6053,12 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             if (window_is_dock()) {
                 XRaiseWindow(dpy, cw);
                 dock_grab_keyboard(cw);
+                XSetInputFocus(dpy, cw, RevertToParent, CurrentTime);
+            } else {
+                /* click anywhere in an HQ window -> bring it (and its
+                 * keyboard focus) to the top, WM-managed mode included */
+                kh_raise_and_focus(cw);
             }
-            XSetInputFocus(dpy, cw, RevertToParent, CurrentTime);
             if (window_is_dock() && g_dock_menu_win && cw == g_dock_menu_win &&
                 ev->xbutton.button == 1 && g_dock_drop_lo >= 1) {
                 int row = ev->xbutton.y / DOCK_BAR_H;
