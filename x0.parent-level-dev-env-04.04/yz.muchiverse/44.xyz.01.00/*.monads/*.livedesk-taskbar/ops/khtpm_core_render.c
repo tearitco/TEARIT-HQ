@@ -3748,6 +3748,18 @@ static void dock_paint_peer(void) {
             (wa.width != g_win_w || wa.height != g_win_h || wa.x != g_win_x || wa.y != g_win_y))
             XMoveResizeWindow(dpy, win, g_win_x, g_win_y, (unsigned)g_win_w, (unsigned)g_win_h);
     }
+    /* 2px theme-secondary window frame, same as every other khtpm
+     * window (redraw() / run_pchq_board_mode()) - drawn LAST, right
+     * before the buffer->window present so no content paint can
+     * overpaint it. The bottom taskbar strip (this peer) was the last
+     * window still missing it. g_win_w/g_win_h are the peer's own
+     * dimensions here (swapped in above). */
+    {
+        XSetForeground(dpy, gc, alloc_pixel(g_theme_fg[0] ? g_theme_fg : "#888888"));
+        for (int _fb = 0; _fb < 2; _fb++)
+            XDrawRectangle(dpy, buf, gc, _fb, _fb,
+                           (unsigned)(g_win_w - 1 - 2 * _fb), (unsigned)(g_win_h - 1 - 2 * _fb));
+    }
     {
         XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, AllPlanes, ZPixmap);
         if (frame) {
@@ -3838,6 +3850,14 @@ static void dock_paint_menu(void) {
                 }
                 fclose(rf);
             }
+        }
+        /* 2px theme-secondary window frame, same as every other khtpm
+         * window - drawn LAST, right before the present. */
+        {
+            XSetForeground(dpy, gc, alloc_pixel(g_theme_fg[0] ? g_theme_fg : "#888888"));
+            for (int _fb = 0; _fb < 2; _fb++)
+                XDrawRectangle(dpy, buf, gc, _fb, _fb,
+                               (unsigned)(g_win_w - 1 - 2 * _fb), (unsigned)(g_win_h - 1 - 2 * _fb));
         }
         {
             XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, AllPlanes, ZPixmap);
