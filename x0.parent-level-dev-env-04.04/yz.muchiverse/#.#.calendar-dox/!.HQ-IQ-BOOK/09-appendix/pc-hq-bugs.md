@@ -236,6 +236,62 @@ confirmed so far:
   differentiator either, unless there's a second, not-yet-found
   db-hq-specific focus mechanism this pass missed.
 
+**UPDATE - actual root cause found and fixed (commit `e839d71e`)**:
+not a pc-hq-side bug at all - the TASKBAR's own pre-existing (not
+authored this session) `dock_grab_keyboard()`/`dock_release_keyboard_
+if_left()` pair. The dock takes a real, display-wide `XGrabKeyboard`
+on click (`dock_grab_keyboard()`, ~line 3237); its matching release
+only fires on a genuine `FocusOut` event for the dock's OWN window
+(`dock_release_keyboard_if_left()`, ~line 3246, called from `hq_
+dispatch_xevent()`'s `FocusOut` branch). User's exact report - "tb top
+gets focus (steals it) and wont ever give it back" the instant an
+arrow key is pressed after clicking pc-hq - matches this sequence
+exactly:
+1. Taskbar grabs keyboard at some earlier point (any click on it).
+2. User clicks pc-hq. Real X focus moves there (`XGetInputFocus`
+   confirms it - the `^` indicator is genuinely correct at this
+   point) - but the grab is a SEPARATE mechanism from focus and stays
+   held regardless, unless the dock's own `FocusOut` release fires.
+3. If that release is ever missed for any reason (this file already
+   documents multiple real Mutter/XWayland focus-notification quirks
+   elsewhere - not chased further, the fix below doesn't need to know
+   why), the next real KeyPress still routes to the DOCK (the
+   grabbing window), not pc-hq, regardless of nominal focus.
+4. The dock's own arrow-key nav handler in `handle_key()`
+   (~line 5302-5328, `if (ks == XK_Up || ks == XK_Left) { ...
+   XRaiseWindow(...); XSetInputFocus(...); dock_grab_keyboard(...); }`)
+   then processes that misdirected key as legitimate taskbar-strip
+   navigation - which explicitly re-raises, re-focuses, and RE-GRABS
+   the dock as an ordinary side effect. Self-reinforcing: every
+   subsequent arrow key (meant for pc-hq) keeps landing on the dock,
+   keeps re-triggering this, forever.
+
+Fixed with two live-focus guards (both check real `XGetInputFocus`,
+not the cached/one-tick-stale `g_focus_owned_painted`, before letting
+the dock act as though it legitimately owns keyboard input): the top
+of `handle_key()` releases and bails on any key that arrives at the
+dock without it actually holding real focus; the reparse-triggered
+re-grab in `hq_idle_tick()` (previously an unconditional `if
+(g_dock_kbd_win) dock_grab_keyboard(...)`) does the same check before
+re-asserting.
+
+**This is a long-running process fix - the taskbar itself needs to be
+restarted to pick it up, a rebuild alone does nothing for an already-
+running instance.** Not yet confirmed live (needs the user to restart
+the taskbar and re-test the original click-pc-hq-then-arrow-key
+sequence).
+
+The db-hq-pal vs pc-hq comparison work-so-far (ruled out is_popup,
+g_has_canvas, the position-corrective-move block, and the taskbar-
+registry write) is left in place below for reference, but is likely
+now MOOT for the specific "steals and never gives back" symptom - that
+was the dock's grab, not anything about pc-hq's own window class. If
+a milder focus issue still exists after the taskbar restart, resume
+from where the comparison below left off.
+
+<details>
+<summary>db-hq-pal vs pchq-board comparison (pre-root-cause investigation, likely superseded)</summary>
+
 **Next step**: grep khtpm_core_render.c for every remaining
 `g_default_has_sidebar_panel`-gated block (there may be more the fast
 read above missed) and check each one for a real difference in
@@ -248,6 +304,8 @@ now that the regression is reverted - some of what was attributed to
 been the display-wide grab regression already in effect by the time
 of that comparison, not a real pre-existing difference. Confirm with
 a clean re-test before assuming the difference is real.
+
+</details>
 
 ### Bug 3 — "^" badge glyph never shows — FIXED (commit `2a7968b6`), needs a fresh live re-check once Bug 2 is settled
 
