@@ -8,15 +8,21 @@
 #   palettes_manager.+x args="<cat>"   (unmodified, publishes state)
 #   palettes_projector.+x id="<cat>"   (state -> state/palettes-<cat>_ui.txt)
 set -e
-CAT="${1:?usage: button-pal.sh <emojis|elements|piececraft|debug|rmmv|stub> [house_root]}"
-case "$CAT" in emojis|elements|piececraft|debug|rmmv|stub) ;; *) echo "button-pal.sh: only emojis|elements|piececraft|debug|rmmv|stub ported" >&2; exit 1 ;; esac
+CAT="${1:?usage: button-pal.sh <category> [house_root]}"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 HOUSE="${2:-}"
 if [ -z "$HOUSE" ] || [ ! -d "$HOUSE" ]; then HOUSE="$(cd "$HERE/../.." && pwd)"; fi
 HOUSE="$(cd "$HOUSE" && pwd)"
 
-XHTPM="$HERE/palettes-$CAT.xhtpm"
+# emojis/elements/piececraft/debug/rmmv have real ported templates;
+# every other category (cdda/df/kenney/paint/generate/user-pallet/...)
+# gets the generic "not implemented yet" stub. NOTHING routes to the old
+# palettes_menu.sh g_is_palettes C path any more.
+case "$CAT" in
+    emojis|elements|piececraft|debug|rmmv) XHTPM="$HERE/palettes-$CAT.xhtpm" ;;
+    *)  CAT=stub; XHTPM="$HERE/palettes-stub.xhtpm" ;;
+esac
 OPS="$HOUSE/*.monads/*.livedesk-taskbar/ops"
 BIN="$OPS/+x/khtpm_core_render.+x"
 MGR="$OPS/+x/palettes_manager.+x"

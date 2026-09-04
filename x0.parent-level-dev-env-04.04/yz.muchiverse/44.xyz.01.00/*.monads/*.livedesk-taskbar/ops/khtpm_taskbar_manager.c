@@ -3894,17 +3894,16 @@ void ktb_hq_activate(KtbState *s, int row) {
          * categories are not ported; they stay on palettes_menu.sh
          * (PROGRESS-palettes-xhtpm.md). */
         const char *pcat = m->command + 22;
+        /* PORT 2026-09-04: EVERY palette category now goes to button-pal.sh
+         * - it maps the 5 real ported cats to their palettes-<cat>.xhtpm
+         * and every other cat (cdda/df/kenney/paint/generate/user-pallet)
+         * to the generic palettes-stub.xhtpm. The old palettes_menu.sh
+         * g_is_palettes C path is no longer reachable from this menu
+         * (kept on disk only as rollback). */
         char sh[KTB_PATH_BUF * 3];
-        if (strcmp(pcat, "emojis") == 0 || strcmp(pcat, "elements") == 0 ||
-            strcmp(pcat, "piececraft") == 0 || strcmp(pcat, "debug") == 0 ||
-            strcmp(pcat, "rmmv") == 0)
-            snprintf(sh, sizeof(sh),
-                     KTB_SETSID "nohup sh -c 'sh \"%s/&.widgits/palettes/button-pal.sh\" \"%s\" \"%s\"' >/dev/null 2>&1 &",
-                     s->house_root, pcat, s->house_root);
-        else
-            snprintf(sh, sizeof(sh),
-                     KTB_SETSID "nohup sh -c 'sh \"%s/&.widgits/palettes/palettes_menu.sh\" \"%s\"' >/dev/null 2>&1 &",
-                     s->house_root, pcat);
+        snprintf(sh, sizeof(sh),
+                 KTB_SETSID "nohup sh -c 'sh \"%s/&.widgits/palettes/button-pal.sh\" \"%s\" \"%s\"' >/dev/null 2>&1 &",
+                 s->house_root, pcat, s->house_root);
         int rc = ktb_system_recorded(s->house_root, sh);
         (void)rc;
         ktb_hq_close(s);
