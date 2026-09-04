@@ -777,3 +777,55 @@ feature catalogue (tags, attrs, `${var}`, `<repeat>` v1/v2, `<module>`,
 action verbs, layout modes, nav model, CSS support, frame round-trip,
 the hard-limit table) cross-referenced against tpmos
 `pieces/chtpm/plugins/chtpm_parser.c`.
+
+---
+
+## Rev 11 (2026-09-04) — dbhq_* C deleted (functional); husk cleanup deferred
+
+### DONE
+
+- **`dce0f1f4`** — deleted 62 `dbhq_*`/`stats_*` function bodies + the
+  two `main()` db-hq one-time init blocks. `khtpm_core_render.c`
+  19040 → 14286 lines total this session (events-hq + dbhq),
+  binary 369K → 249K.
+- **`9ce89904`** — class detection for `db-hq`/`stats-hq`/`palettes`/
+  `bookmarks` removed; all four flags now `static const int = 0`, so
+  every `if (g_is_db_hq){...}` husk constant-folds away (GCC drops the
+  dead code; that's why the file still compiles with ~30 husk `if`s and
+  ~128 dead `dbhq_*` refs still textually present).
+- **`90bcbe2c`** — "db-hq (classic)" menu row + `livedesk:open-common-
+  events-hq` handler retired (last live `g_is_db_hq` entry point).
+- KEPT / renamed: `dbhq_marker_pilot` / `dbhq_loop_request_redraw` /
+  `dbhq_loop_paint_if_dirty` (no-ops with const 0),
+  `kh_measure_text_px` / `kh_shift_subtree` (generic, renamed),
+  new `kh_grab_keyboard_retry` / `kh_capture_click` / `kh_capture_key`
+  / `kh_key_history_code` (history-relay + kbd-grab, needed by
+  popup/entity-menu/cli_io). `g_dbhq_active_scope_root` = always-NULL
+  stub (read by `_shared-lib/khtpm_draw_core.c` `[^]` badge).
+- All 7 ported windows + rmmv verified headless `ok=1`.
+
+### DEFERRED — husk cleanup (cosmetic, NOT functional)
+
+The file still carries, all dead-at-runtime:
+- ~30 `if (g_is_db_hq){...}` / `if (g_is_palettes){...}` blocks in
+  `redraw()`, `hq_dispatch_xevent`, `hq_idle_tick`, `handle_key`,
+  `assign_nav_and_layout`, `main()` window-creation.
+- `g_dbhq_*` state decls (`g_dbhq_actors`, `g_dbhq_list_recs`,
+  `g_dbhq_close_elem`, `DbhqActor` / `DbhqListRec` typedefs, …).
+- `? :` chains in `history_path()` / `frame_changed_path()` that pick a
+  never-taken `g_is_stats_hq ? … : g_is_db_hq ? …` branch.
+- `dbhq_marker_pilot()` (`return g_is_db_hq && …` = always 0) - could
+  become `return 0` and its two callers inline the else branch.
+An automated brace-match delete of the husk BLOCKS was attempted and
+reverted (broke `hq_idle_tick`'s nested `if (g_is_bookmarks)` /
+`else if` structure). Do it by hand, block by block, compiling after
+each. Then rename the surviving `dbhq_*` (marker helpers) → `kh_*`.
+
+### BRANCH NOTE
+
+`chtpm-delete-per-app-c` now also carries **oc's browser JS-engine rung
+commits** (`b079f0c9`…`e8d72790`, all under `&.hq-apps/network/`) - a
+stray commit of mine landed on oc's `chtpm-js-rungs` branch and the
+push to `chtpm-delete-per-app-c` fast-forwarded them in. Disjoint files
+(network/ vs the renderer), no conflict, but the branch is now two
+feature streams. Untangle at merge-to-main time if wanted.
