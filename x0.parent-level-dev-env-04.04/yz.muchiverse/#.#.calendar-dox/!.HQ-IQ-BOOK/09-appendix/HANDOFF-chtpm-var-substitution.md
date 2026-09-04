@@ -990,3 +990,172 @@ branch — a docs sync). **Not safe to merge direct to `main`:**
 
 **Path:** `chtpm-delete-per-app-c` → `chtpm-var-substitution`
 (consolidate + noise cleanup) → oc coordinates → `main`.
+
+---
+
+## Rev 14 (2026-09-04) — pc-hq board refactor (steps 1-5 landed); context-menu runaway root-caused; theme bg==fg emergency
+
+**Session ending on low quota — this rev records everything needed to pick pc-hq back up cold.**
+
+### pc-hq refactor — DONE (steps 1-5 all landed)
+
+| step | commit | what |
+|---|---|---|
+| 1 | `e9f52835` | `<canvas sprite="<raw>">` renderer primitive (draw_core, both copies) — blits a raw RGBA framebuffer at native size clipped to the element rect, cached per (path,w,h). |
+| 2-3 | `f961f5c5` | `@.apps/piececraft-hq/pchq-board.xhtpm` + `.css` (class=`pchq-board-pal database-window`, does NOT trip the old `class="pchq-board"` trigger); `ops/pchq_board_projector.c` (ports `pchq_find_board_session` via `ledger_peers.+x widget` + `active_gui_is_typing.txt`/`board_config.txt` reads) + `ops/pchq_board_action.sh` (appends `13`/`'5'`/`'6'` to the bv session's own history files — never reimplements engine key handling). |
+| 4 | `95143804` | flat-list layout grows a horizontal toolbar + chrome-close placement + canvas sizing **only when the page has a `<canvas>` child** — gated so the shared context-menu path is untouched. |
+| 5 (partial) | `2b0aa205` | `@.apps/piececraft-hq/button.sh` auto-boot now launches `pchq-board.xhtpm`; `PCHQ_LEGACY_BOARD=1` env var falls back to the old `.chtpm`→`run_pchq_board_mode` path. |
+| — | `74328dc0` | **THE CANVAS-NOT-RENDERING FIX** — see below. |
+
+### THE CANVAS FIX (was the live "I don't see the map" report)
+
+Root cause: both `kh_draw_canvas()` (draw_core) and the flat-list `<canvas>`
+sizing code (core_render) guessed the framebuffer's dims file as
+`"<sprite>.receipt.txt"` — i.e. `rgb_frame_3d_overlay.raw.receipt.txt`.
+The **real, board-viewer-native convention is a sibling file**:
+`rgb_frame_3d_overlay.raw` next to `rgb_frame_3d_overlay.receipt.txt`
+(no `.raw` in the receipt's own name) — confirmed live against a real
+session (`&.widgits/board-viewer/pieces/sessions/<id>/pieces/display/`).
+The wrong path meant `fopen()` on the receipt always failed, `w`/`h`
+stayed 0, and `kh_draw_canvas` returned before ever reading/blitting
+the real frame — canvas rendered as flat dark fill forever, even though
+the projector correctly resolved the session and `canvas_raw`.
+
+Fixed (`74328dc0`): both now strip a trailing `.raw` before appending
+`.receipt.txt`, falling back to the naive append otherwise. **Verified
+live, before the fix landed**, that the rest of the chain was already
+working end to end:
+- a real board-viewer session was live (`ledger_peers.+x widget` →
+  `board-viewer:piececraft-hq` row found)
+- projector wrote `state/ui.txt` with a real `canvas_raw=` path
+- the live `pchq-board.xhtpm` renderer's own frame file showed
+  `canvas|view|sprite="<real .raw path>"` — `${canvas_raw}` substitution
+  + reparse-on-change both work
+- the `.raw` itself had real, non-zero pixel data (1228800 bytes =
+  640×480×4, confirmed with `xxd`)
+
+**NOT yet re-verified after the fix** (session ended before a fresh
+live check) — next agent: reopen `pchq-board.xhtpm` against a live
+board-viewer session and confirm the 3D view actually paints now that
+the receipt path is fixed. If it still doesn't render, the next things
+to check, in order:
+1. Is the `.raw` file still being written/updated by the board-viewer's
+   raymarch producer? (`stat` its mtime twice, a few seconds apart —
+   in this session it had gone STALE, stuck at one mtime for 7+ minutes,
+   which may be a separate, pre-existing board-viewer-side issue, not
+   a pc-hq regression.)
+2. Re-dump the live window's own frame file
+   (`#.desktop/entity_menu_frame_<pid>.txt`) and confirm the `canvas`
+   line's `w`/`h` are now `640`/`480` (or whatever the receipt says),
+   not the `248x360` fallback.
+3. If `w`/`h` are still the fallback, the receipt read itself may be
+   failing for a different reason (permissions, race with the producer
+   rewriting it) — add a one-line stderr trace in `kh_draw_canvas` and
+   the layout's receipt-read block, gated on an env var, temporarily.
+
+### pc-hq — still open
+
+- **`pc_menu_input.c`'s own "View Board" launch line** still points at
+  the legacy `.chtpm` (compiled C — needs a piececraft-hq rebuild via
+  `@.apps/piececraft-hq/scripts/build.sh`). `button.sh`'s auto-boot is
+  the only launch site cut over so far.
+- **Deleting `run_pchq_board_mode()`** (~800 lines) + the
+  `class="pchq-board"` trigger — hold until the canvas fix is
+  live-verified and `pc_menu_input.c` is cut over too.
+- **User report, NOT investigated this session**: *"pc-hq no longer
+  opening from tb dropdown toys?"* — i.e. the taskbar's toys/palettes
+  dropdown entry for piececraft-hq. Unknown if this is a real
+  regression from the `button.sh` cutover (`2b0aa205`) or unrelated.
+  First things to check: what shell command does that taskbar menu row
+  actually run (grep `livedesk_taskbar.pdl` / `khtpm_taskbar_manager.c`
+  for the piececraft-hq toys entry), whether it calls `button.sh` at
+  all or a different, untouched launch path, and whether it predates
+  this session's changes.
+- File/Desk dropdown + Interact-mode toggle (`pchq_board_action.sh`)
+  not live-tested against a real session yet — only the template
+  layout and canvas plumbing were.
+
+### Context-menu runaway — root-caused, fixed, a memory saved
+
+Two live incidents this rev, both in the **shared** `assign_nav_and_layout()`/
+`redraw()` path (used by every khtpm window including entity right-click
+context menus):
+1. The dedicated-margin frame (`4c622777`) did `g_win_w/h += 2*KH_WIN_FRAME`
+   every call; branches that recompute `g_win_w` from content each pass
+   were fine, but the flat-list/context-menu branch leaves it fixed, so
+   it **compounded every redraw** — menu windows grew 4px/frame off
+   screen and pegged CPU on resize→Expose→relayout. Fixed (`5a88f783`):
+   undo the previous pass's frame grow at the top of the function,
+   guarded by `g_win_frame_applied`, idempotent regardless of branch.
+2. An early pc-hq step-4 attempt rewrote the SAME shared flat-list
+   branch unconditionally and broke every context menu (no text,
+   infinite growth) — reverted, then redone gated on `has_canvas` so
+   only a page with a real `<canvas>` child gets the new toolbar/chrome
+   layout; the context-menu path is byte-for-byte untouched (`95143804`,
+   verified live 40s with flat CPU/RSS).
+
+Saved to persistent memory (`khtpm-shared-layout-caution.md`): any future
+edit to `assign_nav_and_layout`/`redraw` must keep window-size mutations
+idempotent and gate new per-window-class behaviour so it can't leak into
+the generic context-menu case; live-test a `menu.chtpm` popup for several
+seconds after touching that file, headless `ok=1` is not enough.
+
+### Taskbar two-step click — DONE (Haiku subagent, `bfdf3ad9`)
+
+`click_focus_then_activate()`'s dock exemption (`onclick=="ACTIVATE"`
+activating on the first click regardless of `click_two_step`) is now
+gated on `!g_click_two_step`. `dropdown-child` rows still always
+activate immediately (an option in an open dropdown shouldn't need a
+second click). Confirmed dock clicks route through
+`popup_handle_click()` → `click_focus_then_activate()`. Headless
+`ok=1` on 3 windows; not yet live-tested against the real taskbar.
+
+### Theme bg==fg emergency — fixed, live data + code
+
+Live incident: the settings/swatch picker let bg and fg be set to the
+**same colour** — every window's text became invisible against its own
+background, house-wide. Immediate recovery: hand-edited
+`#.desktop/livedesk_theme.pdl` (`fg` `#ef4444`→`#ffffff`) and appended
+to `livedesk_theme_changed.txt` to trigger a live reload. Two follow-up
+code fixes (`bb24498d`):
+1. `apply_theme_op.c` now refuses an equal bg/fg pair — forces `fg` to
+   `#ffffff` (or `#000000` if bg itself is white) instead of writing an
+   unusable theme.
+2. The live theme-changed reload tick only ever called
+   `load_theme_colors()`/`redraw()` for **dock** windows — every other
+   open window (palette/chat-hai/db-hq-pal/entity-menu) kept a stale
+   theme until manually restarted. Now reloads on every window, not
+   just dock.
+
+**Not yet re-verified live** that an already-open palette/chat-hai
+window actually picks up a theme change without restart now — quick
+check for the next agent.
+
+### Also reported, not yet looked at this session
+
+- "settings colors also cant be seen in the tile, only checkered
+  pattern" (the swatch-picker's own colour tiles) — the
+  `!g_is_swatch_picker` checkerboard exclusion (`049a3502`, an earlier
+  rev) should already cover this; if it's still showing checkered, the
+  live swatch-picker window is very likely running a stale binary from
+  before that fix (lots of rebuilds this session) — reopen it fresh
+  before assuming there's a real remaining bug. `taskbar_settings.chtpm`
+  also has a long-standing headless-dump quirk (writes its PNG to
+  `#.desktop/taskbar-settings-audit/`, not `/tmp`) so it can't be
+  checked via the normal `khtpm_png_dump.sh` flow — needs a live check
+  either way.
+- CPU-throttling concern raised mid-session: checked via `ps` at the
+  time, the live `pchq-board.xhtpm` renderer (with the new `g_has_canvas`
+  ~30fps tick) was NOT in the top-CPU list (board-viewer's own
+  `prisc+x` raymarch producer was the highest, at 1.6%) — looked fine,
+  but wasn't re-checked after the canvas fix started actually blitting
+  a real 640×480 frame every tick, which is more work than the
+  dark-fill no-op it was doing before. Worth a fresh `ps -eo pcpu,cmd
+  --sort=-pcpu | grep khtpm_core_render` check once the canvas is
+  confirmed rendering.
+
+### Branch state
+
+`chtpm-delete-per-app-c` head: `bb24498d`. Still not merged anywhere;
+see Rev 13's MERGE STATE section (unchanged: not safe direct-to-main,
+path is → `chtpm-var-substitution` → main via oc).
