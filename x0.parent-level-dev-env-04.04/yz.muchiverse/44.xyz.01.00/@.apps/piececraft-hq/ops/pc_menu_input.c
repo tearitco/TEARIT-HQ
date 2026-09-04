@@ -496,31 +496,33 @@ static void open_board_widget(const char *project_root, char *message, size_t me
         { int _rc = system(cmd_buf); (void)_rc; }
         /* REAL, NEW 2026-08-30, direct live report ("the khtpm
          * piececraft is the one that is supposed to open when
-         * piececraft-hq is clicked. why isn't it there yet?") - the
-         * real khtpm-family board window (khtpm_core_render.c's
-         * own run_pchq_board_mode(), <window class="pchq-board">,
-         * pchq-board.chtpm at this project's own root) was built and
-         * live-verified this same session but never actually wired
-         * into the real "View Board" trigger - only launchable by hand.
-         * Fixed here: launch it right after the legacy board-viewer
-         * widget (still needed - it's the real DATA GENERATOR,
-         * bv_render_3d.c/chtpm_parser_pal.c, not just a display). A
-         * short real sleep first - run_pchq_board_mode()'s own session-
-         * discovery (ledger_peers.+x) needs the widget's real ONLINE
-         * ledger row to exist first, which only happens after its own
-         * real session/ledger_append.c init runs, not instantly at
-         * process spawn. run_pchq_board_mode() itself kills the legacy
-         * x11_mirror.+x DISPLAY process once it successfully attaches
-         * (same real session, same real host_project_id) - the data-
-         * generating processes stay untouched either way. */
-        char khtpm_bin[PATH_BUF], khtpm_chtpm[PATH_BUF];
+         * piececraft-hq is clicked. why isn't it there yet?") - launch
+         * the real khtpm-family board window right after the legacy
+         * board-viewer widget (still needed - it's the real DATA
+         * GENERATOR, bv_render_3d.c/chtpm_parser_pal.c, not just a
+         * display). A short real sleep first - session discovery
+         * (ledger_peers.+x, run by pchq_board_projector.+x) needs the
+         * widget's real ONLINE ledger row to exist first, which only
+         * happens after its own real session/ledger_append.c init
+         * runs, not instantly at process spawn.
+         * 2026-09-04: cut over to pchq-board.xhtpm (static template +
+         * pchq_board_projector.+x, see that file's own header) - the
+         * old khtpm_core_render.c run_pchq_board_mode() / <window
+         * class="pchq-board"> / pchq-board.chtpm path this launched
+         * before is retired (canvas rendering + Interact Mode both
+         * live-verified against the new path this session). */
+        char khtpm_bin[PATH_BUF], khtpm_xhtpm[PATH_BUF];
         snprintf(khtpm_bin, sizeof(khtpm_bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", house_root);
-        snprintf(khtpm_chtpm, sizeof(khtpm_chtpm), "%s/pchq-board.chtpm", real_root);
-        if (access(khtpm_bin, F_OK) == 0 && access(khtpm_chtpm, F_OK) == 0) {
+        snprintf(khtpm_xhtpm, sizeof(khtpm_xhtpm), "%s/pchq-board.xhtpm", real_root);
+        if (access(khtpm_bin, F_OK) == 0 && access(khtpm_xhtpm, F_OK) == 0) {
+            /* generic-mode launch, no argv[3]/[4] - pchq-board.xhtpm's
+             * own <module args="piececraft-hq"/> already carries the
+             * host id, unlike the old run_pchq_board_mode() which took
+             * it as argv[3]. */
             char khtpm_cmd[PATH_BUF * 3];
             snprintf(khtpm_cmd, sizeof(khtpm_cmd),
-                     "( sleep 1.5; setsid '%s' '%s' '%s' 'piececraft-hq' >/dev/null 2>&1 < /dev/null & ) &",
-                     khtpm_bin, house_root, khtpm_chtpm);
+                     "( sleep 1.5; setsid '%s' '%s' '%s' >/dev/null 2>&1 < /dev/null & ) &",
+                     khtpm_bin, house_root, khtpm_xhtpm);
             int _rc2 = system(khtpm_cmd); (void)_rc2;
         }
         snprintf(message, message_sz, "Board widget launching (separate GL window)...");
