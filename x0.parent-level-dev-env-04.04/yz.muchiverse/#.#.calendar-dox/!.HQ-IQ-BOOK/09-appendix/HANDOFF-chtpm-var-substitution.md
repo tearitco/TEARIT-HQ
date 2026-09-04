@@ -655,3 +655,36 @@ cluster → commit → (1) the rest**.
   - `g_dbhq_active_scope_root` is read by `_shared-lib/khtpm_draw_core.c`
     (`[^]` badge scope test) — keep as an always-NULL stub or delete
     that one draw_core use too.
+
+---
+
+## Parked follow-ups (2026-09-04) — do after the dbhq_* deletion
+
+### click_two_step should also govern the taskbar strip
+
+`#.desktop/hq_ui.pdl` `click_two_step=1` (first click moves `[>]`,
+second click activates; `=0` single-click activates) is honored for
+every window via `click_focus_then_activate()` in `khtpm_core_render.c`
+— BUT that function has an explicit bypass:
+`if (window_is_dock() && (onclick=="ACTIVATE" || class "dropdown-child")) { focus; return 1; }`
+so the strip's top-level cells always open on one click. The user's
+intent: `click_two_step` was meant to cover the taskbar too. Fix:
+gate the `onclick=="ACTIVATE"` half of that bypass on
+`!g_click_two_step` (keep `dropdown-child` always-activate — two-step
+inside an already-open menu is wrong). Verify the strip still feels
+right at `=0`.
+
+### hq:settings toggle for click_two_step (live, no relaunch)
+
+- `taskbar-settings-pal.xhtpm`: add `<item id="click-mode" action="…">`
+  (label reflects current state). The action is a shell command
+  (generic `<item action="'script' 'args'">` path, no new dispatch
+  verb) that flips `click_two_step` in `#.desktop/hq_ui.pdl` and
+  appends one byte to `#.desktop/click_mode_changed.txt`.
+- `khtpm_core_render.c` idle tick: poll `click_mode_changed.txt` size
+  (mirror `theme_changed_dirty()` exactly) → on growth re-run
+  `desktop_load_click_two_step()`. One helper + one call, no new
+  parser/layout logic.
+- The projector for taskbar-settings emits the current `click_two_step`
+  value into `taskbar_settings_ui.txt` so the item label can show
+  "click: two-step" / "click: single".
