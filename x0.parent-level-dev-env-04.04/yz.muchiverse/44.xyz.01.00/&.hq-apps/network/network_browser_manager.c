@@ -80,6 +80,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <sys/wait.h>
 #include <signal.h>
 #include <errno.h>
@@ -685,6 +686,7 @@ static void do_fetch(const char *url_in, int record_history);
 
 static char g_curl_url_path[PATH_BUF];
 static char g_js_eval_path[PATH_BUF];
+static char g_js_worker_path[PATH_BUF];
 static char g_js_script_path[PATH_BUF];
 static char g_js_effects_path[PATH_BUF];
 static char g_media_op_path[PATH_BUF];
@@ -973,6 +975,98 @@ static void collect_page_media(const char *html, const char *page_url) {
     atomic_commit(g_page_state_path, tmp);
 }
 
+/* ---- NB-JS persistent worker lifecycle (worker plan §2B) ----
+ * Step 2: the manager can spawn / LOAD / QUIT the resident worker, but
+ * the page still renders through the existing one-shot eval + static
+ * extractor. Spawn is lazy (only when a <script> exists); the worker is
+ * QUIT+reaped on manager shutdown. Effects merge (step 4) later makes the
+ * worker authoritative. RPC framing follows plan §4 (length-prefixed). */
+static int g_worker_fd = -1;
+static pid_t g_worker_pid = -1;
+
+static int worker_send(const char *payload, size_t n) {
+    if (g_worker_fd < 0) return 0;
+    char lb[16];
+    int ln = snprintf(lb, sizeof(lb), "%.6d\n", (int)n);
+    if (write(g_worker_fd, lb, (size_t)ln) != ln) return 0;
+    if (n && write(g_worker_fd, payload, n) != (ssize_t)n) return 0;
+    return write(g_worker_fd, "\n", 1) == 1;
+}
+
+static int worker_recv_line(char *out, size_t cap) {
+    if (g_worker_fd < 0) return 0;
+    char lb[16]; size_t i = 0; char c;
+    while (read(g_worker_fd, &c, 1) == 1) {
+        if (c == '\n') break;
+        if (i < sizeof(lb) - 1) lb[i++] = c;
+    }
+    lb[i] = 0;
+    long n = strtol(lb, NULL, 10);
+    if (n < 0 || (size_t)n >= cap) return 0;
+    size_t got = 0;
+    while (got < (size_t)n) {
+        ssize_t r = read(g_worker_fd, out + got, (size_t)n - got);
+        if (r <= 0) return 0;
+        got += (size_t)r;
+    }
+    out[got] = 0;
+    if (read(g_worker_fd, &c, 1) != 1) return 0;
+    return 1;
+}
+
+static void worker_close(void) {
+    if (g_worker_fd >= 0) { close(g_worker_fd); g_worker_fd = -1; }
+    if (g_worker_pid > 0) { int st; waitpid(g_worker_pid, &st, WNOHANG); g_worker_pid = -1; }
+}
+
+/* Spawn the worker on first need. Child keeps socketpair end as stdin/stdout. */
+static void worker_spawn(void) {
+    if (g_worker_fd >= 0) return;
+    if (!g_js_worker_path[0]) return;
+    FILE *probe = fopen(g_js_worker_path, "r");
+    if (!probe) return;
+    fclose(probe);
+
+    int sv[2];
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) != 0) return;
+    pid_t pid = fork();
+    if (pid == 0) {
+        dup2(sv[1], STDIN_FILENO);
+        dup2(sv[1], STDOUT_FILENO);
+        close(sv[0]); close(sv[1]);
+        execl(g_js_worker_path, g_js_worker_path, (char *)NULL);
+        _exit(127);
+    }
+    if (pid < 0) { close(sv[0]); close(sv[1]); return; }
+    close(sv[1]);
+    g_worker_fd = sv[0];
+    g_worker_pid = pid;
+}
+
+/* Ask the worker to run a page. Returns 1 on "STATUS ok", 0 otherwise.
+ * Step 2: this is plumbing only — the result is not yet merged into the
+ * rendered page (that is step 4). */
+static int worker_load(const char *js_path, const char *dom_path,
+                       const char *href, const char *title) {
+    worker_spawn();
+    if (g_worker_fd < 0) return 0;
+    char payload[8192];
+    int n = snprintf(payload, sizeof(payload), "LOAD\n%s\n%s\n%s\n%s",
+                     js_path ? js_path : "", dom_path ? dom_path : "",
+                     href ? href : "", title ? title : "");
+    if (!worker_send(payload, (size_t)n)) { worker_close(); return 0; }
+    char resp[2048];
+    if (!worker_recv_line(resp, sizeof(resp))) { worker_close(); return 0; }
+    return strncmp(resp, "STATUS ok", 9) == 0;
+}
+
+static void worker_quit(void) {
+    if (g_worker_fd >= 0) {
+        worker_send("QUIT", 4);
+        worker_close();
+    }
+}
+
 static void run_page_scripts(const char *html, const char *url, const char *title) {
     if (!g_js_eval_path[0]) return;
     FILE *probe = fopen(g_js_eval_path, "r");
@@ -985,6 +1079,12 @@ static void run_page_scripts(const char *html, const char *url, const char *titl
     collect_scripts(html, url, js, &n);
     fclose(js);
     if (n <= 0) return;
+
+    /* NB-JS worker plan step 2: spawn on <script> presence + LOAD the
+     * page so the resident worker is exercised. Result is NOT merged yet
+     * (step 4); the one-shot eval below still drives the rendered page so
+     * behavior is unchanged. */
+    worker_load(g_js_script_path, g_tmp_dom_path, url, title);
 
     char cmd[PATH_BUF * 2];
     snprintf(cmd, sizeof(cmd),
@@ -2444,6 +2544,7 @@ int main(int argc, char **argv) {
     path_join(g_js_script_path, sizeof(g_js_script_path), tmpdir, "page.js");
     path_join(g_js_effects_path, sizeof(g_js_effects_path), tmpdir, "js.effects.txt");
     snprintf(g_js_eval_path, sizeof(g_js_eval_path), "%s/ops/+x/nb_js_eval.+x", g_package_dir);
+    snprintf(g_js_worker_path, sizeof(g_js_worker_path), "%s/ops/+x/nb_js_worker.+x", g_package_dir);
     snprintf(g_media_op_path, sizeof(g_media_op_path), "%s/ops/+x/nb_media_to_sprite.+x", g_package_dir);
     path_join(g_media_root, sizeof(g_media_root), desktop, "nb_sprites");
     mkdir_p_local(g_media_root);
@@ -2466,6 +2567,7 @@ int main(int argc, char **argv) {
 
         if (!parent_still_alive()) {
             fprintf(stderr, "network_browser_manager: parent renderer is gone - exiting\n");
+            worker_quit();
             break;
         }
         usleep(300000);

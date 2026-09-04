@@ -33,5 +33,11 @@ $CC -std=c11 -Wall -O2 -o "$SDIR/+x/network_browser_manager.+x" "$SDIR/network_b
 echo "-- nb_js_eval -> ops/+x/nb_js_eval.+x"
 $CC -std=c11 -Wall -O2 -I"$JSDIR" -o "$SDIR/ops/+x/nb_js_eval.+x" "$SDIR/ops/nb_js_eval.c" "$JSDIR/duktape.c" -lm && echo "OK nb_js_eval" || exit 1
 
+# 2026-09-04 (NB-JS worker plan step 2): resident worker owned by the
+# manager, line-RPC over a socketpair dup2'd to stdin/stdout. Shares the
+# rung-1/6 host via ops/nb_host.h with the one-shot nb_js_eval above.
+echo "-- nb_js_worker -> ops/+x/nb_js_worker.+x"
+$CC -std=c11 -Wall -O2 -I"$JSDIR" -o "$SDIR/ops/+x/nb_js_worker.+x" "$SDIR/ops/nb_js_worker.c" "$JSDIR/duktape.c" -lm && echo "OK nb_js_worker" || exit 1
+
 echo "-- nb_media_to_sprite -> ops/+x/nb_media_to_sprite.+x"
 $CC -std=c11 -Wall -O2 -I"$JSDIR" -o "$SDIR/ops/+x/nb_media_to_sprite.+x" "$SDIR/ops/nb_media_to_sprite.c" -lm && echo "OK nb_media_to_sprite" || exit 1
