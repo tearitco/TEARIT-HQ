@@ -2584,8 +2584,17 @@ static Elem g_pal_tile_slots[PAL_MAX_TILES];
 static Elem g_pal_tab_slots[PAL_MAX_OPTS];
 static Elem g_pal_tileset_slots[PAL_MAX_OPTS];
 
+/* Bumped every time the palette tile tree is rebuilt. dbhq_pal_content_sig()
+ * folds it in, so dbhq_redraw_content()'s layout cache always re-lays-out a
+ * freshly-injected tree - several call sites inject then rely on the next
+ * redraw's dbhq_layout_pass() to position the new tiles, and a stale
+ * (0x0) geometry means hit_test() silently misses every click ("mouse
+ * stopped working in palettes after a few clicks"). */
+static unsigned long g_pal_tree_gen = 0;
+
 static void dbhq_inject_palette_tiles(Elem *panel) {
     if (!panel) return;
+    g_pal_tree_gen++;
     int wide = g_pal_layout_wide; /* REAL FIX 2026-08-27 - was hardcoded strcmp(g_pal_category, "elements"), see g_pal_layout_wide's own header comment */
     int cols = dbhq_pal_cols_for(wide);
     g_pal_scroll = 0; /* new content, new scroll - avoids a stale offset past the new max (same habit khtpm_hq_render.c's own reload path used) */
@@ -4233,6 +4242,7 @@ static void dbhq_paint_palette_frame_file(void) {
 static unsigned long dbhq_pal_content_sig(void) {
     unsigned long s = 1469598103934665603UL;
 #define KH_PAL_MIX(v) do { s ^= (unsigned long)(v); s *= 1099511628211UL; } while (0)
+    KH_PAL_MIX(g_pal_tree_gen);
     KH_PAL_MIX(g_pal_scroll);
     KH_PAL_MIX(g_pal_n_tiles);
     KH_PAL_MIX(g_dbhq_current_tab);
