@@ -74,3 +74,83 @@ is kept.*
 - **Doc comments and cross-references go stale** — verify against real
   code/the doc's own latest dated entry before trusting a claim about
   current status, especially anything load-bearing.
+
+---
+
+## 2026-09-03 — khtpm_core_render.c live-debugging session (flicker + palette perf)
+
+*Keep this section until each item has a permanent guard in code and
+has stopped recurring in review.*
+
+- **A khtpm window keeps running the binary it was launched with.**
+  Rebuilding `khtpm_core_render.+x` does NOT change an already-open
+  window — it is a live process. This session lost ~an hour to
+  "arrow nav is broken in db-hq-pal" / "the flicker fix didn't work"
+  / "palettes still slow" that were all just a stale pre-rebuild
+  renderer. After ANY renderer rebuild: kill every
+  `khtpm_core_render.+x` (read pids from
+  `#.desktop/livedesk_hq_windows_*.txt`, or
+  `run_khtpm_strip.sh new` for the whole stack) and reopen the window
+  before concluding anything about a code change. `time <dump>`
+  showing `real` ≈ `user`+`sys` means you ARE on fresh code doing real
+  work; `real` ≫ `user`+`sys` means X round-trip bound (see next).
+
+- **`draw_core.c` `alloc_pixel()` MUST stay cached.** `cmap` never
+  changes after startup, so every distinct colour needs one
+  `XParseColor`+`XAllocColor` round-trip for the process lifetime.
+  Uncached, a palette repaint (256+ tiles × several colours each) is
+  ~1000+ synchronous round-trips ≈ 0.5 s wall per frame — "palettes
+  are incredibly slow". Symptom signature: `time` shows large `real`,
+  tiny `user`/`sys`. A 64-entry spec→pixel cache fixes it. Do not
+  "simplify" it away.
+
+- **`draw_core.c` `xft_color()` must NOT be cached** — its callers
+  (`draw_elem`, and ~9 sites in `khtpm_core_render.c`) `XftColorFree()`
+  the result. A shared/cached `XftColor` would be use-after-free /
+  double-free. It is one round-trip (vs `alloc_pixel`'s two), so the
+  payoff is small anyway. If you ever want it cached, you must remove
+  every `XftColorFree` on its result first.
+
+- **Any per-cell fill pattern in the tile hot path must use a
+  FillTiled GC + a prebuilt Pixmap, not a per-pixel loop.** The first
+  cut of the palette transparency checkerboard did ~49
+  `alloc_pixel()`+`XFillRectangle` per tile × 256 tiles ≈ 13 k colour
+  round-trips per frame. Build the pattern once as a small Pixmap,
+  stamp it with one `XFillRectangle` per cell.
+
+- **The palette grid must not be re-laid-out / re-serialised on every
+  redraw.** `dbhq_redraw_content()`'s palette branch ran
+  `dbhq_layout_pass()` + `dbhq_assign_nav_indices()` +
+  `dbhq_write_palette_frame_file()` (serialise all 256 tiles to
+  `#.desktop/palettes_frame.txt`) on EVERY call — focus move, unrelated
+  tick, expose. Gate all three on a content signature (scroll / tile
+  count / tab / tileset / category / window size); an unrelated redraw
+  repaints straight from the existing frame file. First paint 198 ms →
+  repaint ~22 ms. Do NOT also skip the repaint-from-file itself on a
+  "nothing changed" guess — the armed-tile title feedback and the
+  focus ring both need that repaint, and an over-aggressive early
+  `return` silently swallows them.
+
+- **A short cell (`e->h < 64`) is not automatically a taskbar-strip
+  button.** `32104e91` gave every `h<64` sprite cell the strip layout
+  (sprite capped 24 px, left-anchored past the nav badge, caption
+  beside). Palette / swatch grid tiles are also `h<64` and must keep
+  the centered full-cell sprite. `draw_elem` now gates the strip path
+  on `!is_grid_tile` (class `pal-tile` / `swatch`). Any new short-cell
+  sprite layout must make the same distinction by class, not by height
+  alone.
+
+- **`FocusIn`/`FocusOut` on a focused override-redirect window fire a
+  `NotifyGrab`+`NotifyUngrab` pair every time ANY process grabs the
+  pointer/keyboard anywhere on the desktop.** A handler that repaints
+  (or does any real work) on raw focus events must first ignore
+  `mode` `NotifyGrab`/`NotifyUngrab`/`NotifyWhileGrabbed` and `detail`
+  `NotifyPointer`/`NotifyPointerRoot`/`NotifyInferior` — otherwise the
+  window repaints continuously while the user just mouses around
+  (this was the db-hq-pal "redraws with no change" flicker; full
+  writeup in `09-appendix/forensic-report-flicker.md`).
+
+- **`Expose` arrives one event per damaged rectangle**, and a fresh
+  burst per restack over an override-redirect window. Drain the whole
+  burst (`XCheckTypedWindowEvent(... Expose ...)`) before repainting
+  once; never `redraw()` per `Expose` event.

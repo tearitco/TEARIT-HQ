@@ -596,3 +596,184 @@ round-trips the frame through `#.desktop/entity_menu_frame_<pid>.txt`
 (serialize → disk → read back → paint) every redraw. PID-scoped so not
 a live race, but it should move onto `render_tree()` per
 `CENTROID_GOLD_STD.md` §3.4.
+
+---
+
+## Rev 9 (2026-09-03) — palette polish done; C-deletion is the next big rock
+
+**Branch note:** work has moved to `chtpm-delete-per-app-c` (cut from
+`chtpm-var-substitution` after the flicker forensics commit `639fec5c`).
+It carries: the Rev 8 flicker fixes, the palette work below, the step-2
+launcher rewires, and the keep-list rename. `chtpm-var-substitution`
+still has the flicker + palette-perf commits; everything else is only on
+`chtpm-delete-per-app-c`.
+
+### Palette window — fixed this rev (all on `chtpm-delete-per-app-c`)
+
+| commit | issue |
+|---|---|
+| `a520d223` | "incredibly slow": `draw_core` `alloc_pixel()` was uncached (~1000+ `XAllocColor` round-trips/frame); the first checkerboard cut did ~49 `alloc_pixel`+fill per tile; `dbhq_redraw_content()` re-laid-out + re-serialised all 256 tiles every redraw. Fix: 64-entry colour cache, FillTiled-GC checkerboard, `dbhq_pal_content_sig()` gate (198ms → 22ms). |
+| `0644150c` | tiles off-centre — `32104e91` gave every `h<64` sprite cell the taskbar-strip layout; grid tiles (`pal-tile`/`swatch`) now excluded. |
+| `01daa6b2` | gold `#d9b64a` tile bg → grey/white PNG-transparency checkerboard. |
+| `110844f2` | **clicks going dead after a few clicks** — the content-sig cache skipped `dbhq_layout_pass()` after `dbhq_inject_palette_tiles()` rebuilt the tile Elems (periodic manager republish, rmmv tab clicks), leaving tiles 0×0 so `hit_test` missed. `g_pal_tree_gen` in the sig forces a re-layout on any tree rebuild. |
+| `79aef9f7` | chrome title hardcoded "db-hq" → reads `<window label=…>` (data, no per-app strcmp); added `label=` to palettes/bookmarks/stats/db-hq templates; `^`/`.` focus indicator added to the db-hq chrome bar. |
+| `5b93e572` | `.pal-tab-active`/`.pal-tileset-active` gold+black → house blue `#2f5f8f`+white (was unreadable, esp. the focused-state dark badge). |
+| `47b167f0` | tileset chooser rows flex-stacked below a tall grid → off-screen + thumb couldn't reach last row. Now pinned as a fixed bottom footer; grid scroll box shrunk by footer height. |
+
+### Still open on the palette window (revisit later, NOT blocking)
+
+- **Scroller still not fully right** — footer pin + box-shrink landed
+  (`47b167f0`) but the user reports the thumb/scroll extent still isn't
+  perfect for the largest tilesets. Re-check `generic_scroll_layout_pass`
+  `g_pal_visible_rows`/`max_scroll` math against the new reduced `box_h`,
+  and the `max_h = scaled(600)` window cap in `dbhq_inject_palette_tiles`.
+- Live-confirm the title / active-button / click fixes on a fresh binary
+  (the `--dump-and-exit` PNG lags a frame and gets clobbered by
+  concurrent test runs — not a reliable check; use a real window).
+
+### The next big rock: delete the per-app C (CLEANUP-AND-REWIRE.md "THE TASK")
+
+Ordered plan the user gave: **(2) rewires → commit → (3) evhq+dbhq
+cluster → commit → (1) the rest**.
+
+- **(2) DONE** — `e598a864`: `livedesk:open-palette:` emojis/elements →
+  `palettes/button-pal.sh`; `launcher_db` → `db-hq-pal/button.sh`; db
+  menu "db-hq"/"db-hq (classic)" relabel.
+- **(3-prep) DONE** — `8dc41d8b`: keep-list frame helpers renamed
+  `dbhq_* → kh_*` (`kh_serialize_frame_elem/_subtree`,
+  `kh_paint_frame_line`, `kh_append_frame_history`).
+- **(3-core) NOT STARTED** — the atomic removal of `g_is_events_hq` +
+  `evhq_*` + `g_is_db_hq`/`g_is_stats_hq`/`g_is_palettes`/`g_is_bookmarks`
+  + `dbhq_*` + `dbhq_ce_*`. Must compile as ONE unit (`dbhq_ce_*` calls
+  `evhq_*`; stats/palettes/bookmarks ride `g_is_db_hq=1`). `g_is_swatch_picker`
+  (18 refs) is cleanly separable and stays for step (1). Full function
+  map + call-site list in `CLEANUP-AND-REWIRE.md` §1-§5.
+  - KEEP (already renamed or verified generic): the `kh_*` frame
+    helpers; `frame_field_escape/unescape_pipe`; `zero_nav_subtree`;
+    `evhq_nonfatal_x_error` (→ rename `kh_nonfatal_x_error`, it's the
+    generic `XSetErrorHandler` now); `hq_run_detached`; `input_disarm`.
+  - `g_dbhq_active_scope_root` is read by `_shared-lib/khtpm_draw_core.c`
+    (`[^]` badge scope test) — keep as an always-NULL stub or delete
+    that one draw_core use too.
+
+---
+
+## Parked follow-ups (2026-09-04) — do after the dbhq_* deletion
+
+### click_two_step should also govern the taskbar strip
+
+`#.desktop/hq_ui.pdl` `click_two_step=1` (first click moves `[>]`,
+second click activates; `=0` single-click activates) is honored for
+every window via `click_focus_then_activate()` in `khtpm_core_render.c`
+— BUT that function has an explicit bypass:
+`if (window_is_dock() && (onclick=="ACTIVATE" || class "dropdown-child")) { focus; return 1; }`
+so the strip's top-level cells always open on one click. The user's
+intent: `click_two_step` was meant to cover the taskbar too. Fix:
+gate the `onclick=="ACTIVATE"` half of that bypass on
+`!g_click_two_step` (keep `dropdown-child` always-activate — two-step
+inside an already-open menu is wrong). Verify the strip still feels
+right at `=0`.
+
+### hq:settings toggle for click_two_step (live, no relaunch)
+
+- `taskbar-settings-pal.xhtpm`: add `<item id="click-mode" action="…">`
+  (label reflects current state). The action is a shell command
+  (generic `<item action="'script' 'args'">` path, no new dispatch
+  verb) that flips `click_two_step` in `#.desktop/hq_ui.pdl` and
+  appends one byte to `#.desktop/click_mode_changed.txt`.
+- `khtpm_core_render.c` idle tick: poll `click_mode_changed.txt` size
+  (mirror `theme_changed_dirty()` exactly) → on growth re-run
+  `desktop_load_click_two_step()`. One helper + one call, no new
+  parser/layout logic.
+- The projector for taskbar-settings emits the current `click_two_step`
+  value into `taskbar_settings_ui.txt` so the item label can show
+  "click: two-step" / "click: single".
+
+---
+
+## Rev 10 (2026-09-04) — events-hq C deleted; palettes fully ported; dbhq_* deletion in progress
+
+Active branch is `chtpm-delete-per-app-c` (off `chtpm-var-substitution`
+@ `639fec5c`). Everything below is committed + pushed there.
+
+### DONE
+
+- **events-hq C removed** — `81cedb8f` (−2465 lines). `g_is_events_hq`
+  (now `static const int = 0`), the whole `evhq_*` block, `dbhq_ce_*`
+  (the embedded Common Events editor bridge), `g_evhq_*` state.
+  `evhq_nonfatal_x_error` → `kh_nonfatal_x_error` (`e7a8b19e`).
+  Compliant CE flow: db-hq-pal lists events → `dbhq_action.sh sel`
+  (TAG=CE) opens `events-hq.xhtpm` on that event. events-hq.xhtpm has
+  the full editor (command list / Add-Command picker / per-field
+  editor / delete / Scratch / Blueprints) — `evhq_projector.c` +
+  `evhq_action.sh`; `khtpm_events_hq_manager.c` (compile chain)
+  untouched. `PROGRESS-events-hq-xhtpm.md` boxes ticked.
+- **All palette categories off `g_is_palettes`** — emojis/elements
+  (earlier), **rmmv** (`0b061024` + renderer cap fixes `c6bb981d`),
+  piececraft/debug/stub (`117ee0a8`). Every `livedesk:open-palette:<cat>`
+  now routes through `button-pal.sh` → `palettes-<cat>.xhtpm` or
+  `palettes-stub.xhtpm` (`17fbe7a8`). `palettes_menu.sh` = rollback only.
+- **Renderer caps lifted** (`c6bb981d`) — `KH_MAX_VARS` 256→2048,
+  `MAX_CHILDREN` 64→320 (`khtpm_render_core.c`, both copies),
+  `parse_chtpm()` repeat-expansion buffer `sz*16+128K`→`sz*48+512K` and
+  `${var}` sub buffer `len*2+4K`→`len*4+64K`. A 256-row `<repeat>` grid
+  was being silently cut to ~88. **Other agents: these are the numbers
+  now — a big `<repeat>` no longer truncates.**
+- **Swatch grid scroll** (`c6bb981d`) — the generic `class="swatch"`
+  branch in `assign_nav_and_layout()` was single-pass with non-swatch
+  items pinned at a fixed `y=CHROME_H+180` (overlapped tall grids).
+  Now 3 passes: nav+close → a 12-row scrolled viewport (`generic_sbar`,
+  `SCROLLUP:`/`SCROLLDOWN:` + wheel) → non-swatch items flow as wrapping
+  chips below. A big tileset scrolls instead of a 1700px window.
+- **db-hq chrome title** — reads `<window label="…">`, no per-app
+  strcmp; `^`/`.` focus indicator (`79aef9f7`). Labels added to
+  palettes/bookmarks/stats/db-hq templates.
+- **Flicker** (`bc18c5ad` `2865e2cd` `75d6833c` `639fec5c`) — full
+  writeup `09-appendix/forensic-report-flicker.md`; new standing rule
+  `CENTROID_GOLD_STD.md` §3 rule 8; `03-pitfalls/X11-AND-SESSION-PITFALLS.md`
+  dated section.
+- **Palette polish** — tile centering (`0644150c`), PNG-checkerboard
+  bg (`01daa6b2`), colour cache + grid re-layout gate (`a520d223`),
+  click-dead-after-N-clicks fix (`110844f2`), readable active buttons
+  (`5b93e572`), tileset chooser footer pin (`47b167f0`), tree-gen
+  layout invalidation (`110844f2`).
+
+### IN PROGRESS (this session)
+
+- **The `dbhq_*` / `g_is_db_hq` / `g_is_palettes` / `g_is_stats_hq` /
+  `g_is_bookmarks` deletion** — all four windows have generic
+  replacements now, so this is finally unblocked. Method: same as the
+  events-hq cut — rename any generic-but-`dbhq_`-named keeper to `kh_*`,
+  delete the block + call sites, compile-fix loop, one commit.
+  Notable keepers (already `kh_*` or generic): `kh_serialize_frame_*`,
+  `kh_paint_frame_line`, `kh_append_frame_history`,
+  `frame_field_escape/unescape_pipe`, `zero_nav_subtree`,
+  `hq_run_detached`, `input_disarm`, `generic_sbar_*`, the whole
+  `layout_sidebar_panel` / swatch-grid / dock paths.
+- Before/with it: retire the **"db-hq (classic)"** menu row +
+  `*.monads/*.muchi-pet/ops/open_db_hq.sh` (the last live `g_is_db_hq`
+  entry point) — point at `db-hq-pal/button.sh` or drop.
+
+### PARKED (after the deletion)
+
+- `click_two_step` (`#.desktop/hq_ui.pdl`) should also govern the
+  **taskbar strip** — remove the `window_is_dock() && onclick=="ACTIVATE"`
+  bypass in `click_focus_then_activate()` (gate on `!g_click_two_step`;
+  keep `dropdown-child` always-activate).
+- **hq:settings toggle** for `click_two_step` — item in
+  `taskbar-settings-pal.xhtpm` → shell action writes the pdl + a
+  `click_mode_changed.txt` marker; one idle-tick poll in the renderer
+  (mirror `theme_changed_dirty()`) so open windows pick it up live.
+- db-hq-pal DB record FIELD editing (still read-only — needs the
+  `dbhq_pdl_publish_manager` → RPG-Maker JSON chain).
+- rmmv: live scroll/click/arm verify; scrollbar track/thumb visibility
+  in the swatch grid; chooser-chip label wrapping polish.
+
+### Reference doc (in flight)
+
+A Haiku subagent is writing
+`02-architecture/XHTPM-PARSER-REFERENCE.md` — full xhtpm parser/renderer
+feature catalogue (tags, attrs, `${var}`, `<repeat>` v1/v2, `<module>`,
+action verbs, layout modes, nav model, CSS support, frame round-trip,
+the hard-limit table) cross-referenced against tpmos
+`pieces/chtpm/plugins/chtpm_parser.c`.
