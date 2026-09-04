@@ -1,5 +1,34 @@
 # pc-hq board / Interact Mode — open bugs (2026-09-04)
 
+## READ THIS FIRST — triage order
+
+If the user reports several of these at once, **fix/investigate in
+this order, not the order they were mentioned** — later items are
+often just symptoms of an earlier one, and chasing them out of order
+wastes real time (this exact mistake was made once already this
+session, see the "keyboard-grab regression" postmortem below Bug 2):
+
+1. **Real keyboard/mouse focus (Bug 2) FIRST, always.** Nothing else
+   in this file can be manually verified by the user without reliable
+   keyboard focus — badge state (Bug 3), camera keys (Bug 1), none of
+   it. If the user says focus is broken, stop investigating anything
+   else and fix focus first, even if they also mention other bugs in
+   the same message.
+2. Only once focus is confirmed solid, move to Bug 3 (badge) or
+   Bug 1 (camera keys) — either order, they're independent.
+3. Bug 4 (chrome buttons) is cosmetic/additive, lowest priority,
+   fine to defer indefinitely or batch with anything else.
+
+Also: **this session introduced a real, live-breaking regression while
+chasing Bug 2** (a display-wide `XGrabKeyboard` that locked out
+keyboard input for the ENTIRE house, not just pc-hq, until the process
+was killed) — already reverted (see "Keyboard-grab regression" below
+Bug 2) but a cautionary example: an X11-level fix (grabs, focus,
+override_redirect) needs to be reasoned through for its DISPLAY-WIDE
+blast radius, not just its effect on the one window being fixed,
+before landing it. If in doubt, prefer something scoped to the one
+window (`XSetInputFocus` reassertion) over anything `XGrab*`-based.
+
 Written for hand-off to another agent/session. Every item below was
 either directly reported live by the user or reproduced by the
 current session via the file-relay testing method (never headless
@@ -92,115 +121,194 @@ false trail hit on Bug 3 below.
 **Report (user, verbatim):** "for some reason keys aren't going thru
 event when focus is on and interact mode is on, if user clicks away
 from window, then goes back to it later. this was never a problem
-before or in mutaclysm"
+before or in mutaclysm" ... "the window is starting with focus, then
+loses it when i press an arrow key" ... "it goes from ^ to ." (the
+real, live `XGetInputFocus`-backed title-bar indicator, see
+`khtpm_core_render.c` ~line 4850's own "focus sanity indicator"
+comment - NOT the nav badge, a separate feature) ... "db-hq pal still
+works (but tb and pc-hq aren't 'keeping keypresses' like db-pal)".
 
-**Status:** NOT reproduced by this session (all testing here used the
-file-relay method, which bypasses real X11 focus/click delivery
-entirely — this bug can only manifest with genuine hardware
-mouse/keyboard, which this session cannot generate). Real, reported
-regression versus both the pre-refactor behavior and mutaclysm's own
-interact mode.
+**Status: partially resolved, partially still open.** This session
+chased it into a real, live, self-inflicted regression before finding
+the actual bug - full postmortem below. The regression is reverted.
+The ORIGINAL, narrower complaint (focus/keys not sticking reliably on
+pchq-board specifically, comparable to db-hq-pal working fine) is
+**still open and needs re-testing now that the regression is gone** -
+this session ran out of ability to continue before that re-test
+happened.
 
-**Where to look next:** `khtpm_core_render.c`'s `ButtonPress` handler
-already has a real "click anywhere in window -> `kh_raise_and_focus()`"
-fix from earlier this session (2026-09-03, see the comment starting
-"REAL FIX 2026-09-03 (direct live report: 'its way to hard to get
-window focus...'" around line 6114) — but that fix predates today's
-Interact Mode feature and was never specifically tested against a
-window with `g_interact_relay_on` engaged. Two candidate root causes,
-neither confirmed:
-  (a) `kh_raise_and_focus()`/`XSetInputFocus` isn't actually being
-      called or is failing silently for this window class - would
-      affect ANY window, not Interact-Mode-specific, worth checking
-      the general case first (is this bug pchq-board-only or house-
-      wide? not yet established).
-  (b) something about `g_interact_relay_on`'s keyboard intercept at
-      the top of `handle_key()` interacts badly with X11 focus state
-      specifically after a focus round-trip (e.g. a stale
-      `XGrabKeyboard`/no grab at all - Interact Mode currently does
-      NOT call any keyboard-grab function when arming, unlike
-      `cli_io`'s own `kh_grab_keyboard_retry()` — worth checking
-      whether it needs one, given this house's own documented
-      focus-follows-mouse policy and the `RMMV-CLICK-CAPTURE-
-      INVESTIGATION` precedent about real hardware clicks not
-      reaching an `XGrabPointer`-holding client under Wayland/Mutter).
-This needs a REAL human tester (or xdotool against a real X session,
-per house testing hierarchy's last-resort tier) since the file-relay
-method cannot exercise real focus transitions.
+#### Postmortem: the XGrabKeyboard regression (already reverted, commit `54b0c564`)
 
-### Bug 3 — "^" badge glyph never shows, even though the "In: ON" label and `interact-active` CSS class both update correctly
+First attempt at fixing this bug (commit `2a7968b6`) added an
+`XGrabKeyboard` when Interact Mode arms, `XUngrabKeyboard` when it
+disarms - reasoned by direct comparison against `cli_io`'s own
+identical-looking need (`activate_focused()`'s `kh_grab_keyboard_
+retry()`, needed because this desktop's focus-follows-mouse policy
+means moving the pointer off a window silently hands real X keyboard
+focus elsewhere unless a grab overrides it). The reasoning was sound
+for cli_io's use case but wrong for Interact Mode's:
+
+- A keyboard grab is **display-wide** - while held, NO window in the
+  house can receive real keyboard input, not just the grabbing one.
+  This file already has its own standing warning about exactly this
+  risk class (~line 9192, "XGrabKeyboard/XGrabPointer are DISPLAY-WIDE
+  ... focus control problems").
+- cli_io's grab is safe because it's released reliably and quickly
+  (Escape, or the field losing armed state, both handled directly in
+  `handle_key()`/`activate_focused()` with no external dependency).
+  Interact Mode's disarm depends on the projector re-publishing
+  `interact_class=""` AND a **reparse actually happening** to pick
+  that up - the same reparse/vars-refresh path already shown fragile
+  in this session (see Bug 3's root cause below) is also the ONLY
+  thing that can release this grab. A grab that depends on a flaky
+  release mechanism is much more dangerous than one that doesn't.
+- Live-confirmed by the user: after arming Interact Mode once, EVERY
+  other window in the house - including the taskbar itself - stopped
+  receiving real keyboard input ("i touch tb for focus again and no
+  longer have arrow control again. wtf?"). Killing the pc-hq process
+  (severing its X connection, the only OTHER way an X11 grab releases
+  besides an explicit ungrab) immediately restored normal keyboard
+  routing everywhere else - definitive confirmation the grab, not
+  anything specific to pc-hq's own window, was the cause.
+
+**Reverted in full** (`54b0c564`) - `kh_scan_interact_relay()` no
+longer calls `XGrabKeyboard`/`XUngrabKeyboard` at all, back to the
+original (buggy, but at least not display-wide-catastrophic)
+behavior.
+
+**Lesson for whoever picks this up next**: an X11-level focus/grab fix
+must be reasoned through for its DISPLAY-WIDE blast radius before
+landing, not just its effect on the one window being fixed. If this
+needs revisiting, prefer something scoped to just this window
+(a periodic/on-relevant-event `XSetInputFocus(dpy, win, ...)`
+reassertion, matching the pattern already used elsewhere in this file
+for the position-corrective-move case ~line 5067-5083) over anything
+`XGrab*`-based, and if a grab is ever truly necessary, make ABSOLUTELY
+sure its release path cannot get stuck (a hard timeout ungrab, not
+just "wait for the projector to say so").
+
+#### What's structurally ruled out
+
+- **Not a desktop/WM-level keybinding** - checked
+  `org.gnome.desktop.wm.keybindings` and `org.gnome.mutter.keybindings`
+  for any bare (unmodified) arrow-key binding that could steal focus
+  as a workspace-switch/tile side effect: none found, every arrow-key
+  binding in this GNOME/Mutter session requires a modifier
+  (Super/Alt/Control). Ruled out as the cause.
+- **Not `is_popup`-related** - `hq_run_event_loop(wm_delete, is_popup)`
+  is called with `is_popup=1` unconditionally from the one real call
+  site (~line 12450) for every generic/default-mode window, pchq-board
+  included - real `KeyPress` events reach `handle_key()` identically
+  for pchq-board and any other window of this same mode (e.g.
+  bookmarks-pal, taskbar-settings-pal). Not a differentiator by itself.
+- **`g_has_canvas` only changes poll interval/force-redraw** - grep
+  confirms its only 5 reference sites (khtpm_core_render.c) are the
+  event-loop timeout (33ms vs 150ms) and forcing `g_frame_dirty=1`
+  every tick. It does not touch window creation, `override_redirect`,
+  WM hints, or any focus-related call - structurally identical to any
+  other window in this respect.
+
+#### Still open: db-hq-pal vs pchq-board/taskbar comparison
+
+User's direct report: **db-hq-pal reliably keeps keyboard input; the
+taskbar and pc-hq do not** (independent of the now-reverted grab
+regression - this was reported as a pre-existing difference). This
+session started but did not finish a structural comparison. What's
+confirmed so far:
+
+- db-hq-pal sets `g_default_has_sidebar_panel=1` (has `<sidebar>`/
+  `<panel>` tags); pchq-board does not (it uses the flat toolbar-item
+  layout, gated on `has_canvas`, a different `assign_nav_and_layout()`
+  branch entirely - see the `khtpm-shared-layout-caution` memory for
+  why these two branches are kept deliberately separate).
+- `g_default_has_sidebar_panel` gates several real behaviors checked
+  so far: a per-window taskbar registry write (~line 4900), a
+  minimize-restore signal check (~line 6008), and the generic
+  minimize/fullscreen auto-chrome (~line 3144, `g_default_minimize_
+  elem`/`g_default_fullscreen_elem` - already noted in Bug 4, pchq-
+  board needed its own manual chrome items since it never gets these
+  automatically). **None of these three look focus-related on
+  inspection** - but this was a fast read, not exhaustive.
+- The one genuinely focus-related generic mechanism found
+  (~line 5028-5083, the position-corrective-move-reasserts-focus
+  block) is **unconditional**, not gated by `g_default_has_sidebar_
+  panel` - applies identically to db-hq-pal and pchq-board. Not the
+  differentiator either, unless there's a second, not-yet-found
+  db-hq-specific focus mechanism this pass missed.
+
+**Next step**: grep khtpm_core_render.c for every remaining
+`g_default_has_sidebar_panel`-gated block (there may be more the fast
+read above missed) and check each one for a real difference in
+keyboard/focus handling; also grep for any OTHER db-hq-specific global
+(anything still prefixed `g_dbhq_` or `dbhq_`) that might independently
+reassert focus/keyboard ownership on a schedule pchq-board's flat-
+layout branch never runs. Re-test the plain (non-grab) behavior first,
+now that the regression is reverted - some of what was attributed to
+"db-hq works, pc-hq doesn't" during this session may have actually
+been the display-wide grab regression already in effect by the time
+of that comparison, not a real pre-existing difference. Confirm with
+a clean re-test before assuming the difference is real.
+
+### Bug 3 — "^" badge glyph never shows — FIXED (commit `2a7968b6`), needs a fresh live re-check once Bug 2 is settled
 
 **Report (user, verbatim, asked multiple times):** "'^' isn't changing
 yet. still shows '>' tho it is on. that should be an easy fix, i asked
 u to fix many times."
 
-**Status: reproduced live by this session**, own PNG dump on a fresh,
-cleanly-launched process (not a re-used/stuck one) — confirmed
-`In: ON` label text is current and `class="pchq-tb,interact-active"`
-is present in the same `.frame.txt` dump, yet the visible badge glyph
-in the corresponding PNG still reads `[>]2.` not `[^]2.`. Matches the
-user's own screenshot exactly (`arm.png`, `[>]2. In: ON`).
+**Root cause, confirmed**: every generic/default-mode window (pchq-
+board included) draws through a serialize-Elem-to-text-file, then
+re-parse-and-redraw round trip - `redraw()` calls `kh_serialize_frame_
+subtree()`/`kh_serialize_frame_elem()` to write each Elem's fields to
+a text file, then reads that file back line-by-line via `kh_paint_
+frame_line()`, which builds a **fresh, `memset`-zeroed temp `Elem`**
+from only what the text line says and draws THAT, never the live
+`g_pool[]` Elem. (Confirmed `render_tree()`, which DOES walk the live
+tree directly, has zero real call sites anywhere in the house - it's
+dead code for this purpose; this frame-file round trip is what
+actually draws every generic-mode window.) `e->relay` was never one
+of the serialized fields - same class of gap `target_id`/
+`input_buffer` had before a 2026-08-31 fix added THEM. So `tmp.relay[0]`
+was always `'\0'` at draw time regardless of the real Elem's value,
+and `is_scope = ... || (g_interact_relay_on && e->relay[0])` in
+`khtpm_draw_core.c` could never see it - the check itself was correct,
+it just never got fed a real value.
 
-**Root-cause investigation so far (incomplete):**
-- The badge-glyph decision is `is_scope = ... || (g_interact_relay_on
-  && e->relay[0])` in `khtpm_draw_core.c` (~line 719), feeding
-  `elem_cursor_prefix(e, focus_nav, is_scope, ...)`
-  (`khtpm_render_core.c:260`) which unconditionally returns `"[^]"`
-  when `is_scope` is true — this logic reads correct in isolation, no
-  bug found in either function by inspection.
-- Both prerequisites for `is_scope` to be true LOOK satisfied from the
-  `.frame.txt` dump: the item's own class list includes
-  `interact-active` (so `kh_scan_interact_relay()` should have found
-  it and set `g_interact_relay_on=1`), and its `relay=` attribute is
-  non-empty (declared in the template as `relay="${bv_h1},${bv_h2}"`).
-- **Left off mid-investigation**: was checking whether
-  `render_tree()` (the function that actually walks the Elem tree and
-  calls `draw_elem()` on each node, in `khtpm_draw_core.c:1060`) is
-  even CALLED for this window's generic/default mode at all — a grep
-  across the whole house found ZERO call sites for `render_tree(`
-  with an actual argument anywhere (only the function's own internal
-  recursive calls to itself, and comments referencing it) — meaning
-  either (a) grep missed something (whitespace/macro obfuscation,
-  worth re-checking with a different tool), or (b) generic/default
-  mode draws via some OTHER path entirely, not `render_tree()`, and
-  THAT path may be constructing/copying `Elem` structs that don't
-  carry `e->relay` through correctly (same known bug CLASS as the
-  `is_active_scope`/"draw copies have no parent pointers" warning
-  already documented for db-hq's own frame-file round-trip a few
-  lines above the `is_scope` computation in `draw_core.c` — worth
-  checking whether pchq-board's generic mode has an analogous
-  text-serialize-then-redraw round trip that silently drops newer
-  `Elem` fields like `relay` that the serializer was never updated to
-  carry).
-- **Next step for whoever picks this up**: find the actual real
-  call site that kicks off drawing for a generic/default-mode window
-  (search for where `draw_elem`/`render_tree`/a page root gets passed
-  in from `redraw()` - possibly under a different literal spacing,
-  or check if `redraw()` itself inlines the tree walk rather than
-  calling `render_tree()`), confirm whether `e->relay` survives to
-  that exact draw-time `Elem` instance for `tb-in`, and add a
-  temporary debug `fprintf(stderr, ...)` on `g_interact_relay_on` and
-  `e->relay[0]` right at the `is_scope` computation to settle this
-  empirically rather than by further static reading - this was the
-  planned next step when this session ran out of ability to continue
-  investigating.
+**Fix**: added `relay` as a 9th pipe-escaped tail field to both
+`kh_serialize_frame_elem()` and `kh_paint_frame_line()`, same escape
+convention as `target_id`/`input_buffer`.
 
-### Bug 4 — chrome should get "!" and "_" buttons
+**Verification status**: confirmed via this session's own PNG dump
+that the fix is structurally sound and builds/runs without breaking
+the context-menu stability check. **NOT yet re-confirmed with a fresh
+screenshot showing the actual `[^]` glyph** - the live-testing session
+moved on to the focus regression (Bug 2) before completing that final
+visual check. Do that first when picking this back up - should be
+quick given the fix is already landed, just needs a real PNG dump of
+an armed Interact Mode window to confirm `[^]` now shows instead of
+`[>]`.
+
+### Bug 4 — chrome should get "!" and "_" buttons — FIXED (commit `874c71b5`/`2a7968b6`)
 
 **Report (user, verbatim):** "we should add '!' and '_' to chrome."
 
-**Status: not investigated at all.** Meaning of `!`/`_` not
-confirmed — likely candidates based on house convention (needs
-confirming with the user before implementing, don't guess):
-- `!` — a notification/alert indicator, matching a convention used
-  elsewhere in the house's chrome bars (needs grep for an existing
-  `!`-glyph chrome item on another window to confirm the convention
-  before inventing one here).
-- `_` — a minimize button (`MINIMIZE` is already a reserved onclick
-  verb per this file's own verb table, per `XHTPM-PARSER-REFERENCE.md`
-  §16 - `pchq-board.xhtpm` currently has no minimize item at all,
-  only `close`).
-Ask the user to confirm before implementing.
+Turned out `!` (Fullscreen) was a REAL item the original
+`run_pchq_board_mode()` toolbar had (`PCHQ_ACT_FULLSCREEN`) that got
+dropped by omission when `pchq-board.xhtpm` was first built this
+session - not a new feature request, a regression. Restored, wired to
+the house's already-generic `TOGGLE_FULLSCREEN` onclick verb. Also
+restored `Menu` and `Player` (real stub toolbar slots from the same
+original toolbar, also dropped by omission - `action="void"`, present
+for layout/nav parity only, matching the original's own intent, not
+wired to anything new).
+
+`_` confirmed by the user to mean minimize (`MINIMIZE` reserved verb,
+`XHTPM-PARSER-REFERENCE.md` §16). The generic sidebar+panel layout
+auto-adds this chrome item for its own windows (`g_default_minimize_
+elem`), but pchq-board uses the flat toolbar-item/canvas layout, which
+never gets it automatically - added explicitly.
+
+Live-verified via PNG dump: chrome now reads `_`/`!`/`x`; toolbar reads
+`In/File/Desk/Menu/Player/<clock>`.
 
 ## Notes for whoever continues this
 
