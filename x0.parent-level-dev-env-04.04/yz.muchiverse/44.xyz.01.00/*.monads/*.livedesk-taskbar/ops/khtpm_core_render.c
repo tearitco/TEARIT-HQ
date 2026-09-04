@@ -1699,6 +1699,10 @@ static int g_win_w = 260, g_win_h = 200;
  * XSync + XSetInputFocus storm on every idle redraw = the flicker regression.
  * INT_MIN = "never applied yet". */
 static int g_win_pos_applied_x = INT_MIN, g_win_pos_applied_y = INT_MIN;
+/* Last "^"/"." focus-owned state actually painted into the title bar, so a
+ * genuine but repeated FocusIn/FocusOut (mode NotifyNormal) only repaints
+ * when the indicator would truly change. -1 = nothing painted yet. */
+static int g_focus_owned_painted = -1;
 static int g_quit = 0;
 /* --dump-and-exit (any argv position): paint one frame, write the PNG +
  * .txt receipt via dump_frame_png(), then quit. Set once at startup,
@@ -9354,6 +9358,7 @@ static void redraw(void) {
          * counterpart - not a new visual language, the same one. */
         Window focus_win; int focus_revert;
         XGetInputFocus(dpy, &focus_win, &focus_revert);
+        g_focus_owned_painted = (focus_win == win) ? 1 : 0; /* what the "^"/"." below reflects - the FocusIn/FocusOut redraw guard reads this */
         char title_buf[192];
         const char *title_raw = (g_window->label[0] ? g_window->label : g_current_page);
         snprintf(title_buf, sizeof(title_buf), "%s %s%s",
@@ -10803,6 +10808,16 @@ static void dbhq_rmmv_poll_pointer(void) {
 static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
 
     if (ev->type == Expose) {
+        /* Coalesce the damage burst. X delivers one Expose per rectangle of
+         * a single damaged region (and a fresh burst every time another
+         * window churns stacking above this override-redirect window) -
+         * calling redraw() on each = N full-window XGetImage+XPutImage blits
+         * for one logical repaint, which reads on screen as flicker of the
+         * busy regions (sidebar list, panel fields). Drain every Expose
+         * already queued for this window, then repaint exactly once.
+         * (tpmos PITFALLS #52 spirit: don't full-redraw per raw event.) */
+        XEvent drain;
+        while (XCheckTypedWindowEvent(dpy, ev->xexpose.window, Expose, &drain)) { }
         redraw();
         return;
     }
@@ -11133,6 +11148,27 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         }
         return;
     }
+    if (ev->type == FocusIn || ev->type == FocusOut) {
+        /* FLICKER FIX 2026-09-03 - the new "^"/"." title indicator wired an
+         * unconditional redraw() onto every FocusIn/FocusOut. But a focused
+         * X11 window gets a FocusOut(NotifyGrab)+FocusIn(NotifyUngrab) pair
+         * EVERY time any process takes a pointer/keyboard grab anywhere on
+         * the desktop (passive button grabs, the taskbar's rmmv root grab,
+         * entity drags, menus, alt-tab...) - none of which change what this
+         * window shows. That was two full XGetImage+XPutImage blits per
+         * grab = the "redraws with no change" flicker, worst on db-hq-pal
+         * because it's the window that holds real focus while the user
+         * mouses around triggering grabs. Ignore grab-synthetic and
+         * pointer-derived notifications (the dock branch below already did
+         * this for its own case), and only repaint when the actual
+         * focus-owned state flips. */
+        if (ev->xfocus.mode == NotifyGrab || ev->xfocus.mode == NotifyUngrab ||
+            ev->xfocus.mode == NotifyWhileGrabbed ||
+            ev->xfocus.detail == NotifyPointer || ev->xfocus.detail == NotifyPointerRoot ||
+            ev->xfocus.detail == NotifyInferior) {
+            return;
+        }
+    }
     if (ev->type == FocusIn) {
         if (g_is_db_hq && !g_dbhq_has_real_focus) {
             g_dbhq_has_real_focus = 1;
@@ -11158,7 +11194,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
              * another x11-hq window, an unrelated app, alt-tab - not
              * just whenever this window happens to redraw for some
              * other reason anyway. */
-            redraw();
+            if (g_focus_owned_painted != 1) redraw();
         }
         return;
     }
@@ -11175,7 +11211,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         } else {
             /* REAL FIX 2026-09-03 - same real default-mode gap as
              * FocusIn right above, same fix. */
-            redraw();
+            if (g_focus_owned_painted != 0) redraw();
         }
         return;
     }
@@ -18786,7 +18822,13 @@ int main(int argc, char **argv) {
         kh_launch_window_modules(g_window, g_house_root, g_package_dir);
     }
 
-    gc = XCreateGC(dpy, win, 0, NULL);
+    {
+        /* graphics_exposures=False: the XCopyArea fallback in redraw()
+         * (Pixmap->window blit) otherwise emits a GraphicsExpose/NoExpose
+         * per call with a default GC - noise this loop has no handler for. */
+        XGCValues gcv; gcv.graphics_exposures = False;
+        gc = XCreateGC(dpy, win, GCGraphicsExposures, &gcv);
+    }
     buf = XCreatePixmap(dpy, win, (unsigned)g_win_w, (unsigned)g_win_h, (unsigned)DefaultDepth(dpy, screen));
     xftdraw_buf = XftDrawCreate(dpy, buf, DefaultVisual(dpy, screen), cmap);
     /* REAL FIX 2026-08-31, direct live report ("blank black screen that
