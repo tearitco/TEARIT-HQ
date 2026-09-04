@@ -884,3 +884,109 @@ stray commit of mine landed on oc's `chtpm-js-rungs` branch and the
 push to `chtpm-delete-per-app-c` fast-forwarded them in. Disjoint files
 (network/ vs the renderer), no conflict, but the branch is now two
 feature streams. Untangle at merge-to-main time if wanted.
+
+---
+
+## Rev 13 (2026-09-04) — palette live-parity pass + window-frame polish; z-order + font-scale backlog
+
+### DONE this rev (all on `chtpm-delete-per-app-c`, pushed)
+
+Live-tested via the authoritative frame files
+(`#.desktop/entity_menu_frame_<pid>.txt`) — PNG dumps were repeatedly
+stale this session (documented `dump_frame_png` failure mode: captures
+pre-layout pixels), frame text is the source of truth.
+
+| commit | fix |
+|---|---|
+| `049a3502` | swatch-picker colour squares were getting the palette PNG-transparency checkerboard; now solid (`!g_is_swatch_picker` gate in draw_core, both copies). |
+| `b76f1514` | **palette closed on every tile click** — `dispatch()`'s `g_quit=1` "menus close after an action" tail only spared `g_default_has_sidebar_panel`; a `<page>`-of-`<repeat>` palette isn't that. New `g_default_persistent` flag, set from `class="database-window"`/`"palettes-pal"`, checked at the quit gate. |
+| `ab0ff01d` `1e3afe2c` | chrome **close button declared in the template** (`<item id="close" class="chrome-btn" onclick="CLOSE">`, generic verb — replaces deleted `dbhq_draw_chrome_bar`); 3 distinct chooser classes `.pal-dir`/`.pal-sheet`/`.pal-tileset` + `-active` variants; projector emits family-matched active class; sheet tabs bind `${c.letter}` so they read **A/B/C** not `a2`/`b`/`c`. |
+| `33ae8976` `45c9de48` | swatch-grid layout for a `g_default_persistent` window now mirrors the pre-port `dbhq_layout_pass` picker (git `94d12680`): **wide window** (5/8 screen, cap 1180), column count derived from width; **A/B/C + tileset choosers on top**, **folder list pinned to the footer**; class-family change starts a new chip row; inter-row gap 10px. |
+| `6675ece0` | chooser chips sized `max(CSS width, label + 46)` — `draw_elem` prepends a `[ ]NN. ` badge, so short labels ("A") were clipping to just the badge. |
+| `19b47bd0` | **`palettes_menu.sh arm-rmmv` never ran** — `case arm-rmmv) ... "$7" "$8"` under `set -u` (a real call has 6 args: 4 + the `<pkg>`/`<house>` `dispatch()` appends), and those two paths landed in the `$5-$8` picker-rect slots. Now `${7:-}` + only forwards `$5-$8` to `tp_arm_placer_rmmv.+x` when all four are integers. Verified: writes `rmmv_armed.txt`, spawns the placer. |
+| `fd0fe2eb` | chrome close `x` box widened to `label + 52` and **hard-clamped** so `item->x + item->w <= g_win_w - 4` — never off the right edge regardless of window width / badge digits. |
+| `dec62198` | **sidebar+panel window never wider than the screen** + a 14px margin off the right/bottom edges (was: chat-hai's session scrollbar flush against / past the physical screen edge). Applies to chat-hai / open-hai / db-hq-pal / events-hq / network-browser. |
+| `d16e2ffa` | **2px frame in the theme SECONDARY colour** (`g_theme_fg`) on every non-dock window; `generic_sbar` `track_x` pulled in 6px so the thumb never touches the frame. |
+
+Also: removed dead `tile_rmmv_*` DESK rows + orphan entity dirs from
+`sessions/s1/desks/office.pdl` (test placements + 3 pre-existing dead
+refs) — desktop is clean. `xyzfs/` is untracked so no commit.
+
+### WHERE THE OLD (pre-deletion) CODE IS — for auditing missed features
+
+- **`origin/main` (`2f644c52`) and `origin/chtpm-var-substitution`
+  still contain the complete `g_is_db_hq`/`palettes`/`events_hq`/
+  `stats_hq` + `dbhq_*` / `evhq_*` / `dbhq_ce_*` C.** The deletion is
+  ONLY on `chtpm-delete-per-app-c`. `main` is the reference.
+- On this branch: **`94d12680`** is the last commit with the working
+  old C (before `9ce89904` neuter → `dce0f1f4` bodies → `81cedb8f`
+  events-hq → `5efc32c4` sweep). Extract with
+  `git show 94d12680:44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c`.
+- The **original standalone `khtpm_hq_render.c`** (older, more
+  palette/HQ code — the "recovered from git" one earlier comments cite)
+  was deleted in **`0dbcfccd`** — `0dbcfccd^` has it.
+- No archive branches or tags. Diff feature-by-feature against
+  `origin/main`'s renderer; `dbhq_*` fn names map to per-window
+  behaviour.
+
+### BACKLOG — z-order / raise-on-click (WM-managed / always-on-top=false)
+
+All facets of one gap: in `override_redirect=false` (WM-managed) mode
+nothing re-asserts stacking on our side.
+
+1. **Taskbar window-nav click → raise that window (+ its context /
+   dropdown window if it opens one) to the top.** Works today only when
+   always-on-top=true. Needs `XRaiseWindow(win)` + focus on the
+   `FOCUSWIN:` path regardless of `g_override_redirect`.
+2. **Lower bar (taskbar strip) gaining focus → raise ALL its member
+   windows** to top of view, even with always-on-top=false.
+3. **Click on a window that's under another X11/GL window or an entity
+   window → raise it on top, no data loss** (`XRaiseWindow` is pure
+   stacking; content Pixmap untouched). Raising above a *native
+   Wayland* surface is the known XWayland limit; our own windows/
+   entities are fine.
+4. Likely one shared helper: `kh_raise_and_focus(win)` called from
+   ButtonPress in `hq_dispatch_xevent` + the taskbar's `FOCUSWIN:` /
+   strip-focus paths.
+
+### BACKLOG — hq:settings font family + size ± (scale everything)
+
+- Renderer has `scaled(int base_px)` — currently identity. It *was*
+  `base * g_dbhq_font_scale` (deleted). Generic replacement:
+  `scaled()` returns `base * g_ui_scale`, `g_ui_scale` + `g_ui_font`
+  read once from `#.desktop/hq_ui.pdl` (`ui_scale=1.0`, `ui_font=…`).
+- Every px in the renderer already goes through `scaled()`, so wiring
+  it makes chrome / rows / buttons / fonts grow together.
+- Settings UI: a font `<repeat>` (curated list or `fc-list`) + `[-]`/
+  `[+]` steppers in `taskbar-settings-pal.xhtpm` (or a new hq:settings
+  page) → shell action writes the pdl + a `ui_scale_changed.txt`
+  marker → renderer idle-poll re-reads (mirror `theme_changed_dirty()`).
+
+### BACKLOG — carried from earlier revs (still open)
+
+- `click_two_step` (`hq_ui.pdl`) should also govern the taskbar strip;
+  hq:settings toggle for it.
+- Scope `^` ESC: a click outside the armed scope should de-arm + act
+  (no ESC needed); setting to restore the trap. **[user confirmed the
+  no-trap behaviour is wanted]**
+- Placed-tile right-click context menu: event / cut / copy / paste /
+  delete.
+- `tp_arm_placer_rmmv.+x` is InputOnly (invisible) — wants a visible
+  overlay + nav-grid on the yellow picker surface.
+- db-hq-pal record FIELD editing (currently read-only).
+
+### MERGE STATE
+
+`chtpm-delete-per-app-c` is 63 commits ahead of `origin/main`, 43 ahead
+of `origin/chtpm-var-substitution` (which has only 1 commit not in this
+branch — a docs sync). **Not safe to merge direct to `main`:**
+- oc's `nb_js_eval` rung-6 commits (`b079f0c9`…`2c2af9ad`) are in the
+  delta — oc's to land.
+- 538-file diff, large share is runtime noise (`history.txt`, `*.pid`,
+  `*.state`, `frame_history`, `xyzfs/`) — needs `git rm --cached` +
+  `.gitignore` pass first.
+- −88,837 lines (whole db-hq/palettes/events-hq/stats-hq C removal) —
+  milestone-review merge.
+
+**Path:** `chtpm-delete-per-app-c` → `chtpm-var-substitution`
+(consolidate + noise cleanup) → oc coordinates → `main`.
