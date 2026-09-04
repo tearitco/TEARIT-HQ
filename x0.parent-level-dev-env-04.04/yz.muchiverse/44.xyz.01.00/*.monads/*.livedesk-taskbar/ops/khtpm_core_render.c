@@ -3851,8 +3851,15 @@ static void dbhq_draw_chrome_bar(void) {
     XftFont *titlefont = XftFontOpenName(dpy, screen, tspec);
     if (!titlefont) { snprintf(tspec, sizeof(tspec), "DejaVu Sans:pixelsize=%d", scaled(10)); titlefont = XftFontOpenName(dpy, screen, tspec); }
     XftColor titlecol = xft_color("#eeeeee");
-    char title[16];
-    snprintf(title, sizeof(title), "db-hq %s", g_dbhq_has_real_focus ? "^" : " ");
+    /* Title is DATA, not hardcoded: the window's own <window label="...">
+     * (each app's own .chtpm sets it - itself free to be a ${var} a
+     * projector fills from an app .pdl). No per-app strcmp in the
+     * renderer. "database" is a generic category fallback, not an app
+     * name. "^" when this window really holds X focus, "." when not -
+     * the same sanity indicator the generic sidebar+panel path shows. */
+    const char *tname = (g_window && g_window->label[0]) ? g_window->label : "database";
+    char title[160];
+    snprintf(title, sizeof(title), "%s %s", tname, g_dbhq_has_real_focus ? "^" : ".");
     int ty = (g_dbhq_chrome_h + titlefont->ascent - titlefont->descent) / 2;
     XftDrawStringUtf8(xftdraw_buf, &titlecol, titlefont, scaled(8), ty, (const FcChar8 *)title, (int)strlen(title));
     XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &titlecol);
@@ -18596,8 +18603,11 @@ int main(int argc, char **argv) {
         XSync(dpy, False);
         { XWindowAttributes wa; if (XGetWindowAttributes(dpy, win, &wa)) { g_win_x = wa.x; g_win_y = wa.y; } }
         render_managed_sink_below(dpy, win); /* REAL, NEW 2026-09-01 - @ "normal" mode: drop this managed window below native apps */
+        /* Display name is DATA - the window's own <window label="...">,
+         * not a per-app strcmp here. (The short `type` key is a nav-tab
+         * registry id, like a CSS class, not a user-facing app name.) */
         nav_tab_register(g_is_palettes ? "pal" : g_is_bookmarks ? "bm" : g_is_stats_hq ? "stats" : "dbhq",
-                         g_is_palettes ? "palettes" : g_is_bookmarks ? "bookmarks" : g_is_stats_hq ? "stats-hq" : "db-hq");
+                         (g_window && g_window->label[0]) ? g_window->label : "database");
         if (g_dbhq_focus_grab_enabled) { dbhq_grab_keyboard_retry(); dbhq_soft_focus(); }
         XSync(dpy, False);
         { XEvent stale_ev; while (XCheckWindowEvent(dpy, win, ButtonPressMask | KeyPressMask, &stale_ev)) { } }

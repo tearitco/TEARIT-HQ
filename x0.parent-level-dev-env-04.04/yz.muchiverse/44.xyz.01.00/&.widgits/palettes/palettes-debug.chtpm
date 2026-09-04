@@ -9,7 +9,7 @@
      code, only a new publish_debug() branch in the SAME palettes_
      manager.+x every other category shares, publishing rows in the
      same real label\tlabel\tpath format. -->
-<window class="database-window palettes">
+<window class="database-window palettes" label="palettes: Debug">
   <module src="*.monads/*.livedesk-taskbar/ops/+x/palettes_manager.+x" args="debug" />
   <panel class="settings-block">
     <title class="block-title" label="Debug"/>

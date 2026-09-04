@@ -9,7 +9,7 @@
      shape stats-hq's own dashboard.chtpm already proved out (see that
      file's own header comment). __PAL__/__HOUSE__/__SELF__ are the only
      substituted tokens - everything else here is truly static. -->
-<window class="database-window bookmarks">
+<window class="database-window bookmarks" label="bookmarks">
   <module src="*.monads/*.livedesk-taskbar/ops/+x/bookmarks_manager.+x" />
   <panel class="settings-block">
     <title class="block-title" label="cursword bookmarks"/>

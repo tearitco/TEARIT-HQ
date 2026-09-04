@@ -5,7 +5,7 @@
      plain token substitution + copy, same shape bookmarks.template.chtpm
      uses) into palettes-<key>.chtpm, then left alone. __TITLE__/__DOC__
      are the only substituted tokens. -->
-<window class="database-window palettes">
+<window class="database-window palettes" label="palettes">
   <panel class="settings-block">
     <title class="block-title" label="__TITLE__"/>
     <text class="pal-hint" label="Picker not built yet - design is in the doc below."/>

@@ -23,7 +23,7 @@
      never needed in the first place; the OLD stats-hq's <tabbar> was
      misusing that same tag for what should always have been a session
      LIST, not a category switcher. -->
-<window class="database-window stats-hq">
+<window class="database-window stats-hq" label="stats-hq">
   <module src="*.monads/*.livedesk-taskbar/ops/+x/stats_hq_manager.+x" />
   <sidebar id="sidebar" class="sidebar">
     <item label="(loading)"/>

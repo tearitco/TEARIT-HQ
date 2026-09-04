@@ -8,7 +8,7 @@
      This file previously existed but was empty - filled in now as part
      of actually making the category open a real window instead of
      failing to load. -->
-<window class="database-window palettes">
+<window class="database-window palettes" label="palettes: RPG Maker Tiles">
   <module src="*.monads/*.livedesk-taskbar/ops/+x/palettes_manager.+x" args="rmmv" />
   <panel class="settings-block">
     <title class="block-title" label="palettes: RPG Maker Tiles"/>

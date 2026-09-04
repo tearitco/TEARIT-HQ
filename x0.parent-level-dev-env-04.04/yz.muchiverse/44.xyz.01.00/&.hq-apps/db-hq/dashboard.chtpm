@@ -46,7 +46,7 @@
      khtpm_hq_render.c's own main() finds this tag after parsing and
      fork()+execv()s it itself - open_db_hq.sh no longer launches the
      manager directly. -->
-<window class="database-window db-hq">
+<window class="database-window db-hq" label="db-hq">
   <!-- REAL Stage 5 §5d.10 (2026-08-16, khtpm-merge-how2.md) - added
        "db-hq" class alongside the original "database-window" - real,
        data-driven mode detection for khtpm_core_render.+x's own
