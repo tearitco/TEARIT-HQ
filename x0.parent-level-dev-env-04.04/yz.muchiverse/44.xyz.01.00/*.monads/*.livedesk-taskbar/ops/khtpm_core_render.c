@@ -5983,11 +5983,15 @@ static void hq_idle_tick(void) {
      * with zero per-mode duplication. */
     if (pchq_theme_changed_dirty(g_house_root)) {
         set_window_opacity(dpy, win, load_theme_opacity());
-        if (window_is_dock()) {
-            load_theme_colors();
-            if (g_dock_peer_win) set_window_opacity(dpy, g_dock_peer_win, load_theme_opacity());
-            hq_request_redraw();
-        }
+        /* REAL FIX 2026-09-04 (live incident: bg/fg picked the same
+         * colour, corrected in the pdl, but every already-open
+         * non-dock window - palette/chat-hai/db-hq-pal/entity-menu -
+         * kept showing the broken theme until manually restarted).
+         * load_theme_colors()/redraw() was dock-only here; every
+         * window needs the SAME live reload, not just the taskbar. */
+        load_theme_colors();
+        hq_request_redraw();
+        if (window_is_dock() && g_dock_peer_win) set_window_opacity(dpy, g_dock_peer_win, load_theme_opacity());
     }
     if (poll_agent_history() > 0 && !g_quit) hq_request_redraw();
     if (g_default_has_sidebar_panel && !window_is_dock() && dpy && win) {

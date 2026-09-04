@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 /* macOS leg (2026-08-22): no `setsid` binary on macOS — drop the prefix
  * there (nohup+& already detaches for this pattern); Linux byte-identical. */
@@ -39,7 +40,27 @@ int main(int argc, char **argv) {
     }
     const char *house_root = argv[1];
     const char *bg_hex = argv[2];
-    const char *fg_hex = argv[3];
+    char fg_buf[16];
+    snprintf(fg_buf, sizeof(fg_buf), "%s", argv[3]);
+    const char *fg_hex = fg_buf;
+
+    /* REAL, NEW 2026-09-04 (live incident: bg==fg picked -> every
+     * window's text became invisible against its own background,
+     * house-wide, until the pdl was hand-edited to recover). Same
+     * primary/secondary can never be a usable theme - force fg to a
+     * real, high-contrast fallback instead of writing an unusable
+     * pair. #ffffff unless bg itself IS white, then #000000. */
+    { char a[16], b[16]; size_t i;
+      for (i = 0; bg_hex[i] && i < sizeof(a) - 1; i++) a[i] = (char)tolower((unsigned char)bg_hex[i]);
+      a[i] = '\0';
+      for (i = 0; fg_hex[i] && i < sizeof(b) - 1; i++) b[i] = (char)tolower((unsigned char)fg_hex[i]);
+      b[i] = '\0';
+      if (strcmp(a, b) == 0) {
+          snprintf(fg_buf, sizeof(fg_buf), "%s", strcmp(a, "#ffffff") == 0 ? "#000000" : "#ffffff");
+          fprintf(stderr, "apply_theme_op: bg and fg were the same (%s) - forced fg to %s so text stays visible\n",
+                  bg_hex, fg_hex);
+      }
+    }
 
     char path[PATH_BUF], tmp[PATH_BUF];
     snprintf(path, sizeof(path), "%s/#.desktop/livedesk_theme.pdl", house_root);
