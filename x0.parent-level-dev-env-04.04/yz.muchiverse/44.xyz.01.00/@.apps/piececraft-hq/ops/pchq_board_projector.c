@@ -130,11 +130,28 @@ int main(int argc, char **argv) {
         if (have) {
             snprintf(raw, sizeof(raw), "%s/pieces/display/rgb_frame_3d_overlay.raw", bv);
             snprintf(typing, sizeof(typing), "%s/pieces/display/active_gui_is_typing.txt", bv);
-            /* the SAME two files pchq_append_key() always dual-wrote to
-             * (bv_history1/bv_history2 in the old run_pchq_board_mode) -
-             * published so the template's generic relay= capability can
-             * forward keys here without any renderer-side app knowledge. */
-            snprintf(h1, sizeof(h1), "%s/pieces/apps/player_app/history.txt", bv);
+            /* REAL FIX 2026-09-04 (live debug: relayed keys landed in
+             * player_app/history.txt - confirmed via direct byte-level
+             * test - but the camera never moved). Root cause: THIS
+             * session's actual live board-viewer engine is
+             * pal/main_module.pal, interpreted by prisc+x (confirmed
+             * via `ps` - a real process for every session, not the
+             * older chtpm_parser.c poll loop pchq_append_key() was
+             * modeled on). Its own camera loop
+             * (`read_history pieces/apps/player_app/interact_relay.txt
+             * x2, x1`) reads bare-decimal keys from a DIFFERENT file -
+             * player_app/interact_relay.txt, not history.txt - see
+             * &.widgits/board-viewer/pal/main_module.pal and
+             * &.widgits/_shared-lib/system/prisc+x.c's own
+             * OP_READ_HISTORY handler for the exact read format (same
+             * bare-decimal-int convention khtpm already writes, just
+             * the wrong filename). h2 (keyboard/history.txt) is left
+             * unchanged - chtpm_parser_pal's own separate UI-menu
+             * overlay process (board_viewer.chtpm's INTERACT toggle,
+             * confirmed live via active_gui_is_typing.txt) still reads
+             * that one; camera and UI-menu are two independent
+             * consumers of two independent files. */
+            snprintf(h1, sizeof(h1), "%s/pieces/apps/player_app/interact_relay.txt", bv);
             snprintf(h2, sizeof(h2), "%s/pieces/keyboard/history.txt", bv);
         }
         int interact = have && file_has_nonzero(typing);
