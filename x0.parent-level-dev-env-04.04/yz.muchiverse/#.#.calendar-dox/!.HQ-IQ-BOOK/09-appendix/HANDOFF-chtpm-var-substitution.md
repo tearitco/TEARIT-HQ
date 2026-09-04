@@ -1,6 +1,6 @@
 # HANDOFF — branch `chtpm-var-substitution`
 
-**Last updated:** 2026-09-03 (rev 6)
+**Last updated:** 2026-09-03 (rev 7)
 **Branch:** `chtpm-var-substitution` (off `origin/main` @ `bbf9caf2`), pushed
 **Goal:** restore the tpmos layout/data separation for khtpm windows
 (`CHTPM-ARCHITECTURE-FIX.md`) — static template + a projector that writes
@@ -436,3 +436,133 @@ old manager picks up fixes on relaunch.
   `kh_apply_scope_confine`; read `CENTROID_GOLD_STD.md` +
   `khtpm-generic-dispatch-design.md` (top block, now updated 2026-09-03)
   before adding any mode/dispatch branch to `khtpm_core_render.c`.
+
+---
+
+## Rev 7 (2026-09-03) — live-test #1 done + crash root cause + FLICKER REGRESSION handoff
+
+Handed off to the **next agent (Sonnet): first fix the db-hq-pal flicker
+regression below, then do task #2 (chat-hai)**. This rev documents the
+recovery that was done live, proves #1 is verified on the rebuilt stack,
+and lays out the flicker evidence + the exact code paths to gate.
+
+### Crash during live-testing — ROOT CAUSE (fixed in the rebuilt binary, NOT reproducing)
+
+During the first live-test of db-hq-pal the Return-to-enter-a-tab hit a
+segfault in `khtpm_core_render.c`. **It was NOT a logic bug in the
+tab→scope→Esc path.** It was element-pool exhaustion:
+
+- `elem_new()` (the fixed-size `chai_n_elems_static` pool) returns NULL
+  when exhausted, and the code then dereferences `item->parent` → SEGV.
+  This is documented at `khtpm_core_render.c:7055-7064` (the comment
+  already described the bug) and was already fixed via `chai_n_elems_static`.
+- The **previously-crashed manager + strip were OLD pre-rebuild binaries**
+  running since 14:26. The freshly-rebuilt stack **does not reproduce the
+  crash**. Confirmed by full relaunch + repeat of the #1 test below.
+- `ulimit -c unlimited` is set in this shell; no core was dropped; apport
+  is the `core_pattern` handler. Don't chase the earlier "crash" — it is
+  gone with the rebuild.
+
+**Full stack relaunch + health check** (via
+`44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh new`):
+manager **8953**, strip **8970**, `strip_ui.txt` populated
+(3202→5404→3280 bytes), parser log clean.
+
+### Task #1 — db-hq-pal live-test: PASSED
+
+Verified headlessly on the rebuilt stack (Tab→scope→Esc confinement +
+escape, the exact steps from Rev 3/#1). Injection via
+`#.desktop/entity_menu_history/<pid>.txt` (generic mode;
+`history_dir()` at renderer:9869-9874):
+
+- Fresh launch → focus nav=1, tab 1 "Actors" active.
+- Return(13) on the Actors tab → `state/active.pdl` wrote
+  `FILE=db_hq_actors.state.txt|TAG=ACTOR|TITLE=Actors`; `ui.txt` populated.
+- Down×2(201) → Return → `SEL=2`, `ui.txt` `detail_title=#3 Marsha`; nav
+  stayed confined to sidebar r0-r3 → **scope engaged** (Rev 4 fix live).
+- Escape(27) → scope popped, `active.pdl` untouched. **No crash**; manager/
+  strip/db-hq-pal all survive.
+- `db-hq-pal/toy.pdl` wiring confirmed: manager scans `toy.pdl` per app
+  dir (lines 3520-3544), reads title/launch. `toy.pdl` =
+  `title: Database (PAL)`, `launch: button.sh`. **#1 DONE.**
+
+> NOTE on first-injection skip (noticed during this test): the FIRST
+> injected batch is always skipped as bootstrap-leftover
+> (`g_history_cursor` skips to EOF on first sight of the file). Inject,
+> wait, then write a SECOND batch to actually consume.
+
+### PROBLEM FOR SONNET — db-hq-pal FLICKER regression ("it never did this before")
+
+The db-hq-pal window is **intermittently** redrawing/flickering, and the
+user reports this is a NEW 2026-09-03 regression. Evidence that the
+renderer is NOT continuously repainting (the window is otherwise stable):
+
+- `state/ui.txt` byte-identical across ticks (md5 `118fe121...` on 3/3);
+  layout/reparse fired **0×** in 8s (`kh_files_hash`/`g_vars_hash`,
+  renderer:1004/1412 suppress the reparse loop).
+- `redraw()` fires ~once/5s (registry-mtime probe) with a *0.4s projector
+  tick* (`pal/dbhq_projector.pal`: `sleep 400000; j proj_top`).
+- Two `xwd` captures 0.4s apart are **pixel-identical (0/668,200 changed)**.
+- Only ONE db-hq-pal instance/window `[0x1a00004]`, 1285×520 @ 80,80.
+- Registry `#.desktop/livedesk_hq_windows_65714.txt` shows `focused=0`,
+  stable geometry.
+
+So it is NOT a per-tick full-frame blit. The real culprits are **NEW
+2026-09-03 code in the generic sidebar+panel redraw path**:
+
+1. **`redraw()` corrective `XMoveWindow` + `XSync`** (~line 9568) — fires
+   whenever real `wa.x/y` != `g_win_x/y`. Even one XRoundtrip per redraw
+   can visibly interrupt against a compositor.
+2. **`layout_sidebar_panel()` position clamp** (~line 7740, labeled
+   `REAL NEW 2026-09-03`) — mutates `g_win_x/y` every pass.
+3. Per-tick **`XGetInputFocus`** `^`/`.` title indicator + the
+   `livedesk_hq_windows_<pid>.txt` **registry write on every redraw**.
+
+**Note:** the clamp does NOT fire on this 2496×1664 screen
+(`80+1285=1365 < 2496`), so the residual interrupt is most likely the
+corrective `XMoveWindow`/`XSync` feedback loop or an intermittent
+Expose-driven full-frame blit.
+
+**FIX REQUEST (Sonnet):**
+- Gate / remove the corrective `XMoveWindow`+`XSync` in `redraw()`
+  (~9568): only move when `wa.x/y` genuinely differs from what WE last
+  requested, and skip the `XSync` roundtrip when nothing changed.
+- Gate the `layout_sidebar_panel()` clamp (~7740) so it never rewrites
+  `g_win_x/y` to identical values (the `REAL NEW 2026-09-03` mutation).
+- Defer/cap the `XGetInputFocus` title indicator add and the per-redraw
+  registry write so a quiet repaint does zero X roundtrips / file writes.
+- Rebuild `khtpm_core_render.+x` after the fix and re-run the step-6
+  verification below.
+
+**Verification recipe (10s):**
+```sh
+Xwd both windows with the projector at rest (no input for >1s), compare:
+  for k in 1 2; do xwd -root -out /tmp/f$k.xwd; sleep 0.4; done
+  md5sum /tmp/f1.xwd /tmp/f2.xwd        # want IDENTICAL when idle
+```
+With the regression fixed, two idle captures must match byte-for-byte.
+Before the fix they were already identical in the captured sample — the
+flicker is intermittent, so capture repeatedly (e.g. a 20-frame rapid
+burst) to catch it, and confirm the X-roundtrip count drops to ~0 when
+idle.
+
+### Git-hygiene flag (not yet cleaned — next agent can)
+
+`&.hq-apps/db-hq-pal/state/active.pdl`, `state/ui.txt`, and
+`module_parent.pid` are **wrongly git-tracked** (confirmed by
+`git ls-files`) — these are transient per-tick files. Only
+`state/.gitkeep` should stay. Suggest adding to a `.gitignore` and
+untracking, mirroring the Rev-6 `#.desktop/.gitignore` sweep. Not done
+this rev to avoid a noisy commit mid-flicker-fix.
+
+### Current live state
+
+- Git branch `chtpm-var-substitution`, HEAD `9560c8f8` (docs), working
+  tree clean of source (only runtime `.pid/.state/.history` + the
+  wrongly-tracked `active.pdl`/`ui.txt`/`module_parent.pid` show modified).
+- Live stack: manager **8953**, strip **8970**, db-hq-pal renderer
+  **65714** + prisc+x projector **65715**; window `0x1a00004` 1285×520
+  @ 80,80. Left running for continued testing; do not kill unless needed.
+- Next task after the flicker fix: **#2 chat-hai** — author `chat-hai.xhtpm`
+  + a `.pal`/`.c` projector replacing `ops/chat_hai_projector.sh` (bash);
+  message list = one `<repeat>`. See `PROGRESS-chat-hai-xhtpm.md`.
