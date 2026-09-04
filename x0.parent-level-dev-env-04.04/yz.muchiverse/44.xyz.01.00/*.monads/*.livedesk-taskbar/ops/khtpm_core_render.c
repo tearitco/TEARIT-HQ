@@ -3965,17 +3965,28 @@ static void assign_nav_and_layout(void) {
         }
         if (grid) {
         /* Grid is data: any <item class="swatch">. Not g_is_swatch_picker.
-         * Pass 1: nav_index in document order, chrome buttons, COUNT the
-         * swatches. Pass 2: flow every OTHER <item> (rmmv's folder / sheet /
-         * tileset choosers) as a wrapping strip ABOVE the grid, with a
-         * wider gap where the class family changes so the three groups
-         * read as visually separate (class string compare - no app names).
-         * Pass 3: lay the swatch grid clipped to a fixed visible-rows
-         * viewport with a real scrollbar (generic_sbar: draggable thumb +
-         * nav-numbered ^/v arrows) when it overflows. */
-        int x0 = 16;
+         * Matches the pre-port rmmv picker layout (see git @94d12680
+         * dbhq_layout_pass): a WIDE window whose column count is derived
+         * from its width; folder + sheet choosers wrap in a strip ABOVE
+         * the grid, tileset choosers pinned as a footer BELOW it; the
+         * grid clips to a fixed row count and gets a generic_sbar
+         * (draggable thumb + nav-numbered ^/v arrows) at its right edge.
+         * All keyed on the class STRING (pal-tileset vs. the rest) - no
+         * app names in here. */
+        int x0 = 12;
         int pitch = SWATCH + SWATCH_GAP;
-        int grid_w = SWATCH_COLS * pitch;               /* nominal grid width */
+        /* wide, screen-relative, like the old window - only for a real
+         * persistent palette/db window, not a transient swatch popup */
+        if (g_default_persistent) {
+            int want = (DisplayWidth(dpy, screen) * 5) / 8;
+            if (want > 1180) want = 1180;
+            if (want < 460) want = 460;
+            g_win_w = want;
+            if (g_window) g_window->w = g_win_w;
+        }
+        int cols = (g_win_w - x0 * 2 - GENERIC_SCROLLBAR_W - 6) / pitch;
+        if (cols < 1) cols = 1;
+        int grid_w = cols * pitch;
         int n_sw = 0;
         int chrome_x = g_win_w - 8;   /* right-to-left cursor for chrome buttons */
         Elem *sw_items[MAX_CHILDREN];
@@ -4008,7 +4019,10 @@ static void assign_nav_and_layout(void) {
                 n_sw++;
             }
         }
-        /* pass 2: chooser strip above the grid, grouped by class family */
+        /* helper: does this <item> carry class="pal-tileset" (footer) */
+        #define KH_IS_TILESET_CHIP(it_) ({ int _t = 0; for (int _c = 0; _c < (it_)->n_classes; _c++) \
+            if (strcmp((it_)->classes[_c], "pal-tileset") == 0) { _t = 1; break; } _t; })
+        /* pass 2a: folder + sheet choosers wrap in a strip above the grid */
         int chips_top = CHROME_H + 6;
         {
             int cx = x0, cy = chips_top;
@@ -4023,12 +4037,15 @@ static void assign_nav_and_layout(void) {
                         strcmp(item->classes[c], "chrome-btn") == 0) is_close = 1;
                 }
                 if (strcmp(item->id, "close") == 0) is_close = 1;
-                if (is_sw || is_close) continue;
+                if (is_sw || is_close || KH_IS_TILESET_CHIP(item)) continue;
                 const char *fam = item->n_classes ? item->classes[0] : "";
                 int w = kh_measure_text_px(&item->style, item->label) + 18;
                 if (w < 28) w = 28;
                 int rh = item->style.has_height ? item->style.height : ROW_H;
-                if (cx > x0) cx += (prev_fam && strcmp(prev_fam, fam) != 0) ? 20 : 6;
+                /* new family -> start its own row (folder row, then the
+                 * A/B/C sheet row under it, like the pre-port picker) */
+                if (prev_fam && strcmp(prev_fam, fam) != 0) { cx = x0; cy += rh + 3; }
+                else if (cx > x0) cx += 6;
                 if (cx > x0 && cx + w > g_win_w - 8) { cx = x0; cy += rh + 3; }
                 item->x = cx; item->y = cy; item->w = w; item->h = rh;
                 cx += w;
@@ -4036,12 +4053,10 @@ static void assign_nav_and_layout(void) {
             }
             if (cx > x0 || cy > chips_top) chips_top = cy + ROW_H + 8;
         }
-        /* pass 3: scrolled swatch grid, below the chooser strip */
+        /* pass 3: scrolled swatch grid, below the header strip */
         int y0 = chips_top;
         static int g_swatch_grid_scroll = 0;
-        int total_rows = (n_sw + SWATCH_COLS - 1) / SWATCH_COLS;
-        /* Fixed ~12-row viewport (not screen-relative) - a tile picker
-         * scrolls, it doesn't grow to 1600px. */
+        int total_rows = (n_sw + cols - 1) / cols;
         int visible_rows = 12;
         if (visible_rows > total_rows) visible_rows = total_rows;
         if (visible_rows < 1) visible_rows = 1;
@@ -4052,7 +4067,7 @@ static void assign_nav_and_layout(void) {
         int view_h = visible_rows * pitch;
         for (int s = 0; s < n_sw && s < MAX_CHILDREN; s++) {
             Elem *it = sw_items[s];
-            int col = s % SWATCH_COLS, row = s / SWATCH_COLS - g_swatch_grid_scroll;
+            int col = s % cols, row = s / cols - g_swatch_grid_scroll;
             it->w = SWATCH; it->h = SWATCH;
             if (row < 0 || row >= visible_rows) { it->w = 0; it->h = 0; it->x = 0; it->y = -100000; }
             else { it->x = x0 + col * pitch; it->y = y0 + row * pitch; }
@@ -4061,6 +4076,27 @@ static void assign_nav_and_layout(void) {
             generic_sbar_register(x0, y0, grid_w + GENERIC_SCROLLBAR_W + 4, view_h,
                                   &g_swatch_grid_scroll, total_rows, visible_rows, max_scroll);
         int max_y = y0 + view_h;
+        /* pass 2b: tileset choosers pinned as a footer below the grid */
+        {
+            int cx = x0, cy = max_y + 10;
+            const char *prev_fam = NULL;
+            for (i = 0; i < page->n_children; i++) {
+                Elem *item = page->children[i];
+                if (strcmp(item->tag, "item") != 0) continue;
+                if (!KH_IS_TILESET_CHIP(item)) continue;
+                const char *fam = item->n_classes ? item->classes[0] : "";
+                int w = kh_measure_text_px(&item->style, item->label) + 18;
+                if (w < 28) w = 28;
+                int rh = item->style.has_height ? item->style.height : ROW_H;
+                if (cx > x0) cx += 6;
+                if (cx > x0 && cx + w > g_win_w - 8) { cx = x0; cy += rh + 3; }
+                item->x = cx; item->y = cy; item->w = w; item->h = rh;
+                cx += w;
+                prev_fam = fam; (void)prev_fam;
+            }
+            if (cx > x0 || cy > max_y + 10) max_y = cy + ROW_H;
+        }
+        #undef KH_IS_TILESET_CHIP
         g_win_h = max_y + 8;
         } else {
         int y = CHROME_H;
