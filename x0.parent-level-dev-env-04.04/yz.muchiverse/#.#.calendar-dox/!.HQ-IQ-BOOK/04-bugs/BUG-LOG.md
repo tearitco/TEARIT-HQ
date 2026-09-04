@@ -22,35 +22,43 @@ note under it — don't silently edit it away.*
   fixed by the user with real hardware** as of this entry - the
   session moved to investigating a second, apparently unrelated issue
   (toys-menu launch, see below) before that confirmation happened.
+
+  🔄 CORRECTION (2026-09-04, same day): the `override_redirect=false`
+  house-wide flip described above was tested and made things WORSE,
+  not better - see the very next bug entry below (toys-menu) for what
+  it actually broke, and **REVERTED** back to `override_redirect=true`
+  (baseline, confirmed working again by the user). The root-cause
+  diagnosis above (override_redirect breaks real keyboard focus for a
+  persistent window) is very likely still correct - it's independently
+  documented and already proven once by a prior session - but a
+  BLANKET house-wide flip is the wrong fix. See `03-pitfalls/X11-AND-
+  SESSION-PITFALLS.md`'s 2026-09-04 entry for the full incident
+  writeup and the standing rule going forward (scoped per-window flag
+  only, never the shared global again). This bug is still genuinely
+  open - just not fixed the way this entry originally described.
+
 - **"toys" menu launches nothing visible for piececraft-hq** (found
-  2026-09-04, live-confirmed by direct user report: "nothing visible
-  at all"). Traced the real dispatch chain: taskbar's toys dropdown is
-  built by `khtpm_taskbar_manager.c`'s `toys_scan_add()`/`toys_scan_
-  one_root()` (NOT anything in `pc_menu_input.c`, which only handles
-  in-game menu selections like "View Board" AFTER the game is already
-  running - a wrong assumption this session initially chased), reading
-  each toy's own `toy.pdl` for a `launch=` command (defaults to
-  `button.sh`), dispatched as `livedesk:open-toy:<path>` ->
-  `setsid nohup sh -c 'sh "<button.sh>" run' >/dev/null 2>&1 &`
-  (khtpm_taskbar_manager.c ~line 4042). Reproduced the exact same
-  detached invocation directly: the game's own ASCII-UI backend
-  (`system/orchestrator`) DOES start (writes real frame output showing
-  "P I E C E C R A F T - H Q", a live "Nav >" prompt) but creates NO
-  visible window of any kind - confirmed `button.sh`/`orchestrator.c`
-  never spawn a terminal emulator (grepped for xterm/gnome-terminal/
-  konsole - zero hits), so the ASCII UI is headless by design; the
-  ONLY window-producing code path found so far is a "GL/RGB MIRROR"
-  gated on `$DISPLAY` AND `REAL_GAME_STATE=playing` (button.sh
-  ~line 300-373) - meaning nothing visible is expected to appear
-  until some later in-game state transition, not at launch. Unclear
-  whether this is a real regression or a misunderstanding of the
-  intended UX (was "toys > piececraft-hq" ever supposed to show
-  something immediately, or does the user need to separately attach a
-  real terminal to the headless ASCII backend to drive it into a
-  state where the GL mirror activates?). Not yet resolved - needs
-  either a working comparison against another toys-menu app that
-  DOES show something on launch, or direct clarification of the
-  intended UX from the user.
+  2026-09-04) - **RESOLVED, was a self-inflicted regression, not a
+  pre-existing bug.** Original live-confirmed report: "nothing visible
+  at all." This session initially traced the real dispatch chain
+  (taskbar's toys dropdown, built by `khtpm_taskbar_manager.c`'s
+  `toys_scan_add()`/`toys_scan_one_root()` - NOT `pc_menu_input.c`,
+  which only handles in-game menu selections like "View Board" AFTER
+  the game is already running, a wrong assumption chased first) and
+  theorized the headless ASCII backend + gated GL-mirror activation
+  might be the intended (if confusing) UX. **That theory was wrong.**
+  The user then confirmed directly: "i was able to open the pc-hq from
+  menu before. but it stopped working after we investigated kbd focus
+  issues" - i.e. a real, working feature broken by this SAME session's
+  own `override_redirect=false` house-wide flip (see the pc-hq focus
+  entry above). Confirmed by reverting that flip: toys-menu launches
+  work again. No code fix needed here - the fix was the revert above.
+  Root mechanism still not fully diagnosed (most likely: Mutter takes
+  over click/focus/positioning for WM-managed popups in ways that
+  break the "click a dropdown row" interaction toys-menu items need),
+  but moot unless the override_redirect question is revisited with a
+  properly scoped (per-window, not global) approach - see the pitfalls
+  entry.
 - **Toys-launch teardown gap** (found ~2026-08-28, still open): the
   taskbar's "toys" menu launches real apps (mutaclysm, my-chara,
   my-lawyer, piececraft) but never records the launched PID anywhere —
@@ -73,6 +81,25 @@ note under it — don't silently edit it away.*
 
 ## Recently fixed (kept short — see 03-pitfalls for the general lesson each one produced)
 
+- **2026-09-04 — pc-hq "^" active-scope badge never showed.** Every
+  generic-mode window draws through a serialize-Elem-to-text-then-
+  reparse round trip, not `render_tree()` directly (confirmed zero
+  real call sites for it anywhere in the house); `e->relay` was never
+  one of the serialized fields, so the temp `Elem` `kh_paint_frame_
+  line()` draws from always had `relay[0]=='\0'` regardless of the
+  live tree's real value - the badge check itself was correct, it
+  just never got fed real data. Fixed by adding `relay` as a 9th
+  pipe-escaped field to the serializer/parser pair (same convention
+  `target_id`/`input_buffer` already used). Confirmed fixed live by
+  the user.
+- **2026-09-04 — pc-hq canvas render blanking every ~10 seconds.**
+  `kh_draw_canvas()` filled the canvas dark on EVERY call before
+  attempting to decode that tick's frame, so a single receipt-read
+  landing mid-write by the separate producer process (no atomicity
+  guarantee on that side) blanked the display for one visible tick,
+  however often the collision happened. Fixed: only fill-and-clear
+  when there's no previously-decoded frame cached yet; a bad tick now
+  just leaves the last good frame on screen instead of blanking.
 - **2026-09-01 — stray zombie taskbar processes.** An old, retired
   `khtpm_strip_parser.+x` kept running in the background after the
   2026-09-01 consolidation into `khtpm_core_render.c`, forking and

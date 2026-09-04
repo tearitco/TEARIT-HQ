@@ -456,3 +456,76 @@ Live-verified via PNG dump: chrome now reads `_`/`!`/`x`; toolbar reads
   how this window's live redraw/reparse path handles fields added
   after its original construction, e.g. `relay`) or may be three
   unrelated bugs - don't assume either way going in.
+
+## 2026-09-04 UPDATE - status after the override_redirect incident
+
+- **Bug 3 (`^` badge): CONFIRMED FIXED** by the user live.
+- **Canvas blanking (new, not one of the 4 original bugs)**: FIXED -
+  `kh_draw_canvas()` no longer blanks the display on a single bad
+  receipt-read tick from the producer process. See `04-bugs/BUG-LOG.md`
+  2026-09-04 "recently fixed" for the short version, commit `d9afd258`
+  for the full diff/reasoning.
+- **Bug 2 (real keyboard focus)**: root cause (override_redirect)
+  is very likely correct but the fix attempt (a blanket house-wide
+  flip) was WRONG and had to be reverted - see `03-pitfalls/X11-AND-
+  SESSION-PITFALLS.md`'s 2026-09-04 entry and `04-bugs/BUG-LOG.md`'s
+  🔄 CORRECTION on this same bug for the full incident. Currently back
+  at baseline (`override_redirect=true` house-wide, same as it always
+  was before this session touched it) - Bug 2 itself is UNCHANGED from
+  where it started, still open.
+
+## Design notes for a scoped, per-window override_redirect (NOT YET BUILT - think through carefully before starting)
+
+The house-wide flip broke taskbar dropdowns/popups because `g_override_
+redirect` is a single global, loaded once at startup by EVERY window
+from one shared file (`load_override_redirect()`,
+`#.desktop/livedesk_override_redirect.pdl`), with no way to say
+"this ONE window should be WM-managed, everything else stays
+override_redirect." Rough shape of what a real fix needs, written down
+now while the context is fresh, NOT implemented - a design worth
+scrutiny before committing to it, not a queued task:
+
+1. **A window needs to opt IN to managed mode individually**, not via
+   the shared global. Natural candidate: a new `<window>` attribute
+   (e.g. `managed="true"`, parsed the same way `class=`/`vars=` already
+   are) that pchq-board.xhtpm (and any other future persistent,
+   continuously-interactive window) can set for itself, defaulting to
+   override_redirect for every window that doesn't set it - preserves
+   the current behavior for 100% of existing windows/popups/dropdowns
+   by construction, zero blast radius on anything that doesn't ask for
+   it.
+2. **Every place that currently reads the single global
+   `g_override_redirect`** (window creation's `swa.override_redirect`,
+   `render_managed_wm_hints()`'s `managed` argument, the WM hints/
+   `_NET_WM_STATE` block near the top of the file) would need to read
+   a PER-PROCESS resolved value instead - straightforward in principle
+   (this binary is one process per window already, so "per-window" is
+   really just "per-process," no new IPC needed) - but audit every
+   site, not just the obvious ones, the same "read every g_is_*
+   site" discipline this session already had to relearn for the dead-
+   flag cleanup earlier.
+3. **The taskbar/dock itself must NEVER opt into managed mode** - it's
+   exactly the kind of "short-lived popup/dropdown" this file's own
+   pitfalls entry says must stay `override_redirect`. Whatever
+   mechanism gets built, write a test that explicitly launches the
+   dock and confirms its dropdowns still work BEFORE testing the one
+   window that actually needs managed mode - inverted from what this
+   session did (tested the target window first via `xdotool`, which
+   gave false confidence, then broke the dock without a dedicated
+   check for it until the user reported it live).
+4. **`ktb_toggle_zorder_apply()`/`ktb_toggle_zorder_respawn()`** (the
+   existing "always on top" toggle, currently coupled to this same
+   global via `g_zorder_above`/`g_override_redirect`) would need
+   re-examining once per-window becomes real - right now flipping
+   "always on top" and flipping "managed vs override_redirect" are the
+   same lever; they may need to become independent once a specific
+   window can be managed while the rest of the house stays override_
+   redirect + always-above.
+5. Given `render_managed_wm_hints()` already exists and already does
+   the right thing for the managed case (confirmed live this session -
+   pchq-board rendered correctly, undecorated, when tested under
+   `override_redirect=false`) - the RENDERING side of this is
+   basically done. The real remaining work is entirely in (a) how the
+   per-window opt-in gets threaded through to every `g_override_
+   redirect` read site, and (b) proving the dock is unaffected before
+   calling it done.
