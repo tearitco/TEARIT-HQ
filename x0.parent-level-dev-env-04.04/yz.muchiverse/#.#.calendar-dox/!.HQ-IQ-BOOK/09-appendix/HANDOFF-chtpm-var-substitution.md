@@ -821,6 +821,57 @@ reverted (broke `hq_idle_tick`'s nested `if (g_is_bookmarks)` /
 `else if` structure). Do it by hand, block by block, compiling after
 each. Then rename the surviving `dbhq_*` (marker helpers) → `kh_*`.
 
+## Rev 12 (2026-09-04) — husk hand-removal done
+
+### DONE — `0d23126c`
+
+Every executable `if (g_is_db_hq){...}` husk hand-removed, block by
+block, compiling + `ok=1` headless after the cluster:
+
+- `redraw()` — the 67-line db-hq content/present branch, gone.
+- `assign_nav_and_layout()`, `scaled()`, `handle_key()` (×3),
+  `dump_frame_png()`, `kh_apply_scope_confine()`,
+  `hq_dispatch_xevent()` (ButtonPress `} else if (g_is_db_hq)`,
+  ButtonRelease `g_dbhq_dragging`/`g_pal_thumb_dragging` resets,
+  MotionNotify ×2, KeyPress branch, FocusIn/FocusOut `g_is_db_hq &&
+  g_dbhq_has_real_focus` clauses collapsed to the plain default body),
+  `poll_agent_history()` mouse-relay (`dbhq_handle_click` / scrolllist
+  guard), `hq_idle_tick` reparse guard — all simplified to the generic
+  path.
+- `history_path()` / `frame_changed_path()` ternary chains — the
+  never-taken `g_is_stats_hq ? … : g_is_db_hq ? …` legs removed.
+- `dbhq_marker_pilot()` / `dbhq_loop_request_redraw()` /
+  `dbhq_loop_paint_if_dirty()` — deleted; the two call sites
+  (`hq_request_redraw`, idle-tick tail) now go straight to the
+  `g_frame_dirty` / `redraw()` path.
+- `assign_palettes_nav()` — deleted (was unused and referenced the
+  now-undefined `dbhq_elem_is_navigable`).
+
+`khtpm_core_render.c` −405 lines. All 8 ported windows
+(dashboard/events-hq/rmmv/emojis/elements/piececraft/debug/stub) +
+a plain entity menu verified `ok=1` headless.
+
+### STILL DEFERRED — orphan decl sweep (warnings only)
+
+`-Wunused-variable` / `-Wunused-function` now flags ~90 orphans:
+`g_dbhq_*` (`g_dbhq_actors`, `g_dbhq_list_recs`, `g_dbhq_close_elem`,
+`DbhqActor`/`DbhqListRec` typedefs, `g_dbhq_events*`, …), `g_pal_*`
+(palettes fully ported out), `g_bm_*` (bookmarks), `DB_HQ_TAB_LABELS`.
+Zero runtime effect. Do NOT blanket-delete — the same warning list
+includes generic helpers to KEEP for the taskbar/`click_two_step`
+work (`apply_theme`, `nav_tab_register`/`_unregister`/`_cycle`,
+`nav_ledger_publish`, `history_unregister`, `zero_nav_subtree`,
+`input_disarm`, `hq_run_detached`, `hq_window_has_x_focus`,
+`reusable_slot`, `render_tree`, `hit_test`, `css_layout_pass`,
+`generic_scroll_layout_pass`, `draw_topdown_block_rgb`,
+`kh_append_frame_history`). Sweep the `g_dbhq_*`/`g_pal_*`/`g_bm_*`
+data only, as its own reviewed commit.
+
+Note: `taskbar_settings.chtpm` returns "no PNG" under
+`khtpm_png_dump.sh` — expected, swatch-picker mode writes its frame to
+`#.desktop/taskbar-settings-audit/`, not `/tmp`; pre-existing, not a
+regression. Needs a live check.
+
 ### BRANCH NOTE
 
 `chtpm-delete-per-app-c` now also carries **oc's browser JS-engine rung
