@@ -1771,11 +1771,13 @@ static int click_focus_then_activate(Elem *hit) {
     /* Out-of-scope rows stay numbered and drawn, but a click must not
      * steal focus or fire — same as chtpm_parser.c is_navigable(). */
     if (!kh_elem_in_scope(hit)) return 0;
-    /* Dock menus: a mouse hit on ACTIVATE (HQ/File-style trigger) or a
-     * dropdown-child row opens/runs immediately. Other dock cells still
-     * honor #.desktop/hq_ui.pdl click_two_step. */
+    /* Dock menus: a mouse hit on a dropdown-child row opens/runs
+     * immediately. ACTIVATE (HQ/File-style trigger) on dock cells honors
+     * #.desktop/hq_ui.pdl click_two_step: when click_two_step=0, ACTIVATE
+     * fires on first click; when click_two_step=1, it requires two-step
+     * (first click sets focus, second click activates). */
     if (window_is_dock() &&
-        (strcmp(hit->onclick, "ACTIVATE") == 0 || elem_has_class(hit, "dropdown-child"))) {
+        (elem_has_class(hit, "dropdown-child") || (!g_click_two_step && strcmp(hit->onclick, "ACTIVATE") == 0))) {
         g_focus_nav = hit->nav_index;
         return 1;
     }
