@@ -457,7 +457,6 @@ static void write_theme_opacity(double opacity) {
  * that file's own header comment, "explain to me your plan and why its
  * different from the tpmos/wraith examples"). Harmless when g_is_db_hq
  * is 0 (never called). */
-static pid_t g_dbhq_module_pid = -1;
 
 /* REAL, generic module launcher (xperiments/khtpm-generic-dispatch-
  * design.md §2a, 2026-08-31) - collapses what used to be 3 near-
@@ -1794,7 +1793,6 @@ static int click_focus_then_activate(Elem *hit) {
  * khtpm_draw_core.c's own font_for() (below) references it, and before
  * g_dbhq_font_scale's own declaration below uses it transitively via
  * db-hq's ported layout code - forward-declare the flag/scale here. */
-static const int g_is_db_hq = 0;   /* g_is_db_hq/palettes/stats/bookmarks C deleted 2026-09-04 - ported to *-pal.xhtpm + projectors; const 0 folds the pure-flag guards */
 /* LayDoc Gap 2: NULL = no ACTIVATE scope. Declared before draw_core
  * include so elem_cursor_prefix can show [^] on the scope root. */
 static Elem *g_dbhq_active_scope_root = NULL;
@@ -1852,7 +1850,6 @@ static const int g_is_bookmarks = 0;
  * (pchq_board_view_poc.c, already live-verified with a real
  * screenshot before this port). */
 static int g_is_pchq_board = 0;
-static double g_dbhq_font_scale = 1.0;
 static int scaled(int base_px) {
     return base_px;
 }
@@ -1921,399 +1918,13 @@ static const char *g_palette_hex[12];
 static char g_palette_name_buf[12][32];
 static const char *g_palette_name[12];
 
-/* ======================================================================
- * REAL, db-hq-mode-only state + functions (§5d.10, 2026-08-16) - ported
- * from khtpm_hq_render.c, kept as its own real, documented mode branch
- * per the same precedent as the swatch-picker's own 2-phase pick state
- * above (a genuinely different window shape/interaction model, not
- * forced into the popup modes' shared shape). Harmless, unused, when
- * g_is_db_hq is 0. Reuses this file's own dpy/screen/cmap/gc/buf/
- * xftdraw_buf/win/g_win_x/g_win_y/g_house_root/g_window/g_nav/g_n_nav/
- * g_focus_nav/g_quit globals directly (same real names, same real
- * purpose, no duplication needed).
- * ====================================================================== */
-#define DB_HQ_MAX_EVENTS 128
-static char g_dbhq_events[DB_HQ_MAX_EVENTS][64];
-static int g_dbhq_n_events = 0;
-static int g_dbhq_selected_event = -1;
-/* Task 6 (2026-08-26, direct instruction: Common Events needs a real
- * inline editor, "same as how entities events works... modeled off
- * rpgmaker mv/mz" - one dialog, sidebar list + editor panel together,
- * NOT a separate spawned window). True once a real common event has
- * been selected and its own khtpm_events_hq_manager.+x instance is
- * live, retargeting the SAME g_evhq_* globals/functions events-hq
- * already uses for entities - see dbhq_ce_open() below. */
-static char g_dbhq_events_state_path[PATH_BUF];
-static time_t g_dbhq_events_state_mtime = 0;
-static char g_dbhq_action_path[PATH_BUF];
-
-/* REAL, NEW 2026-08-25 (bookmarks manager port) - bookmarks' own state
- * is name+path PAIRS, not single strings, and paths in this house run
- * well past g_dbhq_events[][64]'s buffer - a separate, correctly-sized
- * pair array, not a reuse of db-hq/stats-hq's own. Per-pal (unlike
- * g_dbhq_events_state_path, which is house-wide), derived from
- * g_package_dir at init. */
-#define BM_MAX_ROWS 64
-static char g_bm_names[BM_MAX_ROWS][256];
-static char g_bm_paths[BM_MAX_ROWS][PATH_BUF];
-static int g_bm_n_rows = 0;
-static char g_bm_state_path[PATH_BUF];
-static time_t g_bm_state_mtime = 0;
-/* the panel's 4 static children (title, hint, New+ button, Open Pal
- * Folder button), captured once at init so dbhq_inject_bookmark_items()
- * can rebuild panel->children[] as [title, hint, ...rows, new+, open]
- * on every reload without losing them - see that function's own header. */
-static Elem *g_bm_static_title = NULL;
-static Elem *g_bm_static_hint = NULL;
-static Elem *g_bm_static_newplus = NULL;
-static Elem *g_bm_static_openfolder = NULL;
-
-/* REAL, NEW 2026-08-25 (palettes manager port, same shape as bookmarks'
- * own g_bm_* block just above) - palettes_manager.c publishes
- * `emoji<TAB>label<TAB>sprite_dir_or_empty` rows; the renderer chunks
- * them into <row class="pal-grid-row"> blocks of PAL_COLS tiles each,
- * same visual shape palettes_menu.sh's own emit_tiles_matrix() used.
- * Column count/wide-class stay a renderer-side presentation constant
- * (not published data) - genuinely a layout decision, not business
- * logic the manager needs to own. */
-#define PAL_MAX_TILES 512
-static char g_pal_emoji[PAL_MAX_TILES][32];
-static char g_pal_label[PAL_MAX_TILES][256];
-static char g_pal_sprite[PAL_MAX_TILES][PATH_BUF];
-static int g_pal_n_tiles = 0;
-static char g_pal_state_path[PATH_BUF];
-static time_t g_pal_state_mtime = 0;
-static off_t g_pal_state_size = -1;
-/* REAL FIX 2026-08-28 (upgrade over the size-only check above) - two
- * different real rmmv tabs (e.g. B and C) can publish the SAME total
- * byte count (256 lines each, "b kind 7,3" and "c kind 7,3" are the
- * identical length) - size alone can miss a real B<->C switch the
- * exact same way raw mtime already missed same-second switches. A
- * real FNV-1a content checksum catches any actual byte difference
- * regardless of length coincidence, still cheap for a file this small
- * (a few KB at most). */
-static unsigned long g_pal_state_checksum = 0;
-static char g_pal_category[64];
-/* REAL FIX 2026-08-27 (direct instruction: "flag hardcoded things in
- * parser... they are supposed to use generic .pdl read functions" -
- * this used to be `strcmp(g_pal_category, "elements") == 0` at the
- * single real call site below. Now a real value read from the
- * manager's own published `palettes-<category>_layout.txt` (a real
- * "wide=0|1" line, sourced from pallets.pdl's own real WIDE column -
- * see palettes_manager.c's publish_layout_flag()) - zero hardcoded
- * category names anywhere in this file for this decision now. Read
- * once per category load (layout rarely changes; not worth mtime-
- * gating on every redraw like the tile content itself). */
-static int g_pal_layout_wide = 0;
-static Elem *g_pal_static_title = NULL;
-static Elem *g_pal_static_hint = NULL;
-static int g_pal_forced_h = 0;
-
-/* REAL, NEW 2026-08-29, direct live report ("nothing happened when i
- * tried it" - the armed-brush flow had zero visible feedback, so a
- * click that only moved nav focus (this house's real two-step click
- * convention, see click_focus_then_activate) looked identical to one
- * that silently did nothing). Polls rmmv_armed.txt (written by
- * palettes_menu.sh's arm_rmmv(), cleared by tp_arm_placer_rmmv.c on
- * exit) and swaps the picker's own hint text between this and the
- * chtpm's real default, so arming state is always visibly true, not
- * assumed. g_pal_default_hint captured once from the real chtpm-parsed
- * label the first time the hint Elem is found - not hardcoded here,
- * so a future wording change to palettes-rmmv.chtpm's own <text> still
- * restores correctly. */
-static char g_pal_default_hint[256] = "";
-static char g_pal_armed_path[PATH_BUF] = "";
-static unsigned long g_pal_armed_checksum = 0;
-/* DEAD CODE, kept inert intentionally 2026-08-29 - this in-process
- * XGrabPointer/XQueryPointer-polling click-capture design was tried
- * and superseded same day (see tp_arm_placer_rmmv.c's own header for
- * the real reason: real hardware clicks were never visible to this
- * process either way, only to a real mapped XWayland surface - the
- * real fix is that file's own full-screen InputOnly window instead).
- * g_pal_rmmv_armed is never set to 1 anywhere anymore, so every branch
- * below gated on it (hq_dispatch_xevent's ButtonPress/KeyPress
- * handling, dbhq_rmmv_poll_pointer(), the shortened select() timeout
- * in hq_run_event_loop()) is real but permanently unreachable - left
- * in place rather than surgically removed under time pressure; safe
- * to delete in a future pass, not load-bearing for anything. */
-static int g_pal_rmmv_armed = 0;
-
-/* Real, generic tab/chooser options for the rmmv tile picker
- * (2026-08-27) - published by palettes_manager.c's own publish_rmmv_
- * options() from the SAME real tileset_registry.pdl, never hardcoded
- * here. Empty (n==0) for every other category - stat() on a path that
- * only rmmv ever writes just fails, no-op, same pattern g_pal_state_path
- * already uses. */
-#define PAL_MAX_OPTS 32
-static char g_pal_opt_tileset_key[PAL_MAX_OPTS][64];
-static char g_pal_opt_tileset_label[PAL_MAX_OPTS][128];
-static int g_pal_n_tilesets = 0;
-/* Real A/B/C/D/E sheet-letter tabs (2026-08-28, per external review
- * correction) - published by the manager's own rmmv_tab_letter_for()
- * as "TAB|<letter>|<default category to switch to>" - the renderer
- * never groups a1..a5 itself, it only shows whatever real letters the
- * manager's own registry scan actually found. */
-static char g_pal_opt_tab_letter[PAL_MAX_OPTS];
-static char g_pal_opt_tab_cat[PAL_MAX_OPTS][16];
-static int g_pal_n_tabs = 0;
-static char g_pal_opt_dir_key[PAL_MAX_OPTS][32];
-static char g_pal_opt_dir_label[PAL_MAX_OPTS][32];
-static int g_pal_n_dirs = 0;
-static char g_pal_active_dir[32] = "tilesets";
-static Elem g_pal_dir_slots[PAL_MAX_OPTS];
-static char g_pal_active_tileset[64] = "";
-static char g_pal_active_category[16] = "";
-static char g_pal_options_path[PATH_BUF];
-static time_t g_pal_options_mtime = 0;
-static off_t g_pal_options_size = -1;
-static unsigned long g_pal_options_checksum = 0;
-
-/* REAL, ported 2026-08-25 (live request: figure out scrolling for the
- * palette grid) - verbatim port of khtpm_hq_render.c's own real,
- * live-verified scroll mechanism (that file is deleted now, recovered
- * from git history at commit 0dbcfcc^ for this port - NOT reinvented).
- * Checked chat-hai's own "scroll" first per direct question - that's a
- * different mechanism entirely (auto-scroll-to-latest-message, no user-
- * controlled position/thumb), not reusable here. This one is a real,
- * user-controlled row-scroll: Page_Up/Page_Down, mouse wheel, and a
- * drawn scrollbar thumb - full-row steps only (no partial-row clipping
- * engine exists), rows outside the visible window get zeroed w/h so
- * they're simply not drawn AND not nav-numbered (assign_palettes_nav()
- * already skips w==0/h==0 elements - no change needed there). */
-static int g_pal_scroll = 0;
-static int g_pal_has_grid = 0;
-static int g_pal_total_rows = 0, g_pal_visible_rows = 1;
-static int g_pal_track_x, g_pal_track_y, g_pal_track_w, g_pal_track_h;
-static int g_pal_thumb_y, g_pal_thumb_h;
-/* REAL, NEW 2026-08-25 (live report: "the thumb for mouse isn't working
- * yet") - the ported khtpm_hq_render.c mechanism only ever DREW the
- * thumb and scrolled via wheel/Page keys; clicking/dragging the thumb
- * itself was never wired to anything in that file either (confirmed by
- * reading its own recovered source before writing this) - a real,
- * separate gap this house never had a fix for, not a porting mistake. */
-static int g_pal_thumb_dragging = 0;
-/* REAL, NEW 2026-08-25 (live report: "no up down nav yet (near thumb)")
- * - real up/down arrow buttons at the track's own two ends. */
-static int g_pal_arrow_h = 0;
-/* REAL, NEW 2026-08-25 (live instruction: "they need to be numbered
- * (1 and 2), with nav feature for accessibility / disabled") - the
- * up/down scroll arrows are now real Elems (synthetic storage, same
- * "outside the parsed tree" pattern g_dbhq_close_elem_storage already
- * uses), not raw pixel draws - they get a real nav_index (and so a real
- * keyboard Enter/digit-jump path) via the SAME draw_elem()/dbhq_
- * activate_elem() machinery every other tile uses, and go through a
- * real disabled state (excluded from nav, dimmed) at the scroll min/max
- * instead of silently doing nothing. */
-static Elem g_pal_arrow_up_storage;
-static Elem g_pal_arrow_down_storage;
-static Elem *g_pal_arrow_up = &g_pal_arrow_up_storage;
-static Elem *g_pal_arrow_down = &g_pal_arrow_down_storage;
-static int g_pal_arrow_up_disabled = 0, g_pal_arrow_down_disabled = 0;
-
 static int elem_has_class(Elem *e, const char *cls) {
     for (int i = 0; i < e->n_classes; i++)
         if (strcmp(e->classes[i], cls) == 0) return 1;
     return 0;
 }
 
-static const char *DB_HQ_TAB_LABELS[] = {
-    "Actors", "Classes", "Skills", "Items", "Weapons", "Armors",
-    "Enemies", "Troops", "States", "Animations", "Tilesets",
-    "Common Events", "System", "Types", "Terms"
-};
-#define DB_HQ_N_TABS 15
-#define DB_HQ_COMMON_EVENTS_TAB 11
-#define DB_HQ_TERMS_TAB 14
-#define DB_HQ_ACTORS_TAB 0
-#define DB_HQ_CLASSES_TAB 1
-#define DB_HQ_SKILLS_TAB 2
-#define DB_HQ_ITEMS_TAB 3
-#define DB_HQ_WEAPONS_TAB 4
-#define DB_HQ_ARMORS_TAB 5
-#define DB_HQ_ENEMIES_TAB 6
-#define DB_HQ_TROOPS_TAB 7
-#define DB_HQ_STATES_TAB 8
-#define DB_HQ_ANIMATIONS_TAB 9
-#define DB_HQ_TILESETS_TAB 10
-#define DB_HQ_SYSTEM_TAB 12
-#define DB_HQ_TYPES_TAB 13
-static int g_dbhq_current_tab = 0; /* Actors — must match nav [1]; CE was a lie */
-static char g_dbhq_terms_state_path[PATH_BUF];
-static char g_dbhq_actors_state_path[PATH_BUF];
-#define DB_HQ_MAX_ACTORS 64
-typedef struct {
-    int id;
-    char name[64];
-    char nickname[64];
-    char class_name[64];
-    int init_lv, max_lv;
-    char profile[160];
-    char face[64], character[64], battler[64];
-    char weapon[64], shield[64], head[64], body[64], accessory[64];
-    int mhp, mmp, atk, defn, mat, mdf, agi, luk;
-    char note[160];
-} DbhqActor;
-static DbhqActor g_dbhq_actors[DB_HQ_MAX_ACTORS];
-static int g_dbhq_n_actors;
-static int g_dbhq_selected_actor;
-static time_t g_dbhq_actors_mtime;
-static Elem g_dbhq_actor_panel_slots[MAX_CHILDREN];
-/* Real, generic "which db-hq tabs actually have real backing data"
- * check (2026-08-28) - replaces 3 separate hardcoded `== DB_HQ_COMMON_
- * EVENTS_TAB` gates (layout, sidebar population, placeholder-vs-real
- * dispatch) with one real registry. Common Events and Terms are both
- * real today (real managers publishing real state files); the other
- * 13 tabs still correctly fall through to the generic "(coming soon)"
- * placeholder. Adding a NEW real tab later (per the events/db/
- * networking delegation doc's own Task 2) means adding ONE line here,
- * not re-finding and editing 3 separate gate sites again. */
-static int g_dbhq_focus_grab_enabled = 0;
-static int g_dbhq_chrome_h = 26;
-static Elem g_dbhq_close_elem_storage;
-static Elem *g_dbhq_close_elem = &g_dbhq_close_elem_storage;
-static int g_dbhq_close_x, g_dbhq_close_y, g_dbhq_close_w, g_dbhq_close_h;
-static int g_dbhq_digit_accum = 0;
-static char g_dbhq_last_key_label[32] = "";
-static int g_dbhq_has_real_focus = 0;
-/* REAL FIX 2026-08-16, direct live report ("moved it up 2 high and one
- * is stuck" - a WM-managed window dragged above the taskbar header strip
- * can end up under/behind it, effectively unreachable/stuck). Clamp
- * drag's y to never go above this, for db-hq/events-hq/chat-hai alike -
- * matches the header strip's own real height + a small margin. */
-/* REAL FIX (2026-08-17, live report: "mutaclysm still not moved 50
- * down (overlaps header still)"): the real taskbar header strip
- * occupies y=50 to y=86 (36px tall, confirmed live via xwininfo) - it
- * STARTS at y=50, it doesn't END there. A floor of 50 put windows
- * right at the header's own top edge, still fully overlapping it. Real
- * floor is the header's own bottom edge + a small margin. */
 #define WM_MANAGED_DRAG_MIN_Y 90
-static int g_dbhq_dragging = 0;
-static int g_dbhq_drag_last_x = 0, g_dbhq_drag_last_y = 0;
-
-/* Returns 1 if the common-events list actually changed (caller should
- * re-inject sidebar items + redraw), 0 if unchanged - real, mtime-gated,
- * ported verbatim. The manager binary (khtpm_hq_manager.c, launched via
- * dbhq_launch_module() from the <module> tag) owns the real directory
- * scan; this only reads its published state file. */
-/* REAL FIX 2026-08-28 (Terms tab wiring, part of the same dbhq_tab_is_
- * real() generalization) - this loader used to always read the ONE
- * hardcoded g_dbhq_events_state_path, correct only while Common Events
- * was the sole real tab. Now picks the real state file for whichever
- * REAL tab is currently active - Terms reuses this exact same generic
- * "one label per line" loader/g_dbhq_events[] array (it was already
- * generic, just never fed a second real source). A tracked "last
- * loaded path" forces one real reload on tab switch even if the two
- * files' mtimes happen to coincide - the mtime-gate alone can't detect
- * "same timestamp, different file". */
-static char g_dbhq_events_last_path[PATH_BUF];
-/* REAL FIX 2026-08-25 (direct live report: "i was hoping it was more
- * human readable like before") - parses just the date/name portion
- * (before the first "|") out of a stats-hq raw data line, for a clean
- * sidebar label. Real db-hq's own g_dbhq_events[] never contains "|" in
- * a common-event NAME, so this is a no-op passthrough for real db-hq. */
-/* REAL, NEW 2026-08-25 (bookmarks manager port) - mtime-gated read of
- * bookmarks_manager.c's own published `name<TAB>path` state file, same
- * convention as dbhq_load_common_events() above. Returns 1 if rows
- * actually changed (caller should re-inject + redraw), 0 if unchanged. */
-/* REAL, NEW 2026-08-25 (bookmarks manager port) - rebuilds panel-
- * >children[] as [title, hint, ...bookmark rows..., New+, Open Folder]
- * from the 4 captured static elems + g_bm_names/g_bm_paths. Same
- * elem_new()-per-row shape dbhq_inject_sidebar_items() already uses for
- * db-hq/stats-hq's own dynamic sidebar - not a new pattern. */
-/* REAL, NEW 2026-08-25 (palettes manager port) - mtime-gated read of
- * palettes_manager.c's own published `emoji<TAB>label<TAB>sprite_dir`
- * state file, same convention as dbhq_load_bookmark_state() above. */
-/* Real, generic loader for rmmv_options.txt (2026-08-27, tile-picker UI
- * pass) - same mtime-gate shape as dbhq_load_palette_state() above.
- * Populates zero hardcoded tilesets/categories - whatever the manager
- * actually published from the real registry, nothing more. */
-/* REAL, NEW 2026-08-25 (live request: "update chemistry view thru
- * layout, not hardcoded") - column count used to be a literal 4/10
- * picked by hand to roughly match what the old bash emit_tiles_matrix()
- * used. Now genuinely layout-driven: derived from the REAL CSS tile
- * width (.pal-tile / .pal-tile.pal-wide, whichever this category uses -
- * so editing palettes-*.css's own width alone reflows the grid, no code
- * change needed) and the real window content width (window's own CSS
- * width if set, else the same default_w formula dbhq_layout_pass() uses
- * - kept in sync with that function on purpose, see its own comment).
- * If a future category's CSS gives tiles a different width, this
- * recomputes cols on its own instead of needing a new hardcoded number
- * added here. */
-/* REAL BUG FIX 2026-08-28 (live crash: SIGSEGV in dbhq_inject_palette_
- * tiles(), confirmed via gdb backtrace after 2-3 real tab/tileset
- * switches) - this function used the SHARED, never-recycled elem_new()/
- * g_pool[MAX_ELEMS=512] for every row AND every tile, exactly the
- * failure mode reusable_slot()'s own header comment already documents
- * ("a long enough real session exhausts it... elem_new() returns NULL,
- * guarded call sites just skip adding content" - except THIS function's
- * call sites were NOT guarded against a NULL return, so it crashed
- * instead of silently going blank). A single real switch to a non-
- * autotile sheet (e.g. World_B.png = 256 real 1x1 tiles) already uses
- * ~290 pool slots in ONE inject; a second switch exhausted the whole
- * 512-slot pool outright. Real fix, same pattern already proven for
- * db-hq's sidebar/panel/event-list (g_dbhq_sidebar_slots/g_dbhq_panel_
- * slots/g_evhq_cmd_slots): dedicated, generously-sized, NEVER-freed
- * arrays reused via reusable_slot() every rebuild instead of
- * allocating fresh Elems from the shared pool each time. */
-static Elem g_pal_row_slots[64];
-static Elem g_pal_tile_slots[PAL_MAX_TILES];
-static Elem g_pal_tab_slots[PAL_MAX_OPTS];
-static Elem g_pal_tileset_slots[PAL_MAX_OPTS];
-
-/* Bumped every time the palette tile tree is rebuilt. dbhq_pal_content_sig()
- * folds it in, so dbhq_redraw_content()'s layout cache always re-lays-out a
- * freshly-injected tree - several call sites inject then rely on the next
- * redraw's dbhq_layout_pass() to position the new tiles, and a stale
- * (0x0) geometry means hit_test() silently misses every click ("mouse
- * stopped working in palettes after a few clicks"). */
-static unsigned long g_pal_tree_gen = 0;
-
-static Elem g_dbhq_sidebar_slots[MAX_CHILDREN]; /* see reusable_slot()'s own header comment */
-
-/* REAL FIX 2026-08-25 (direct live report: "i was hoping it was more
- * human readable like before") - stats-hq's own panel-population,
- * parallel to db-hq's single-text-field update, since stats-hq needs 5
- * separate itemized lines (matching the OLD template exactly: Session/
- * User Messages/AI Responses/Total Turns/Tool Calls+Delegation), not
- * one combined summary. Parses stats_hq_manager.c's own raw pipe-
- * delimited publish format (date|turns|user_msgs|ai_msgs|tools|pct). */
-
-/* Parse house PDL: SECTION | KEY | VALUE  — ACTOR rows. No JSON. */
-#define DBHQ_LIST_MAX 64
-#define DBHQ_KV_MAX 24
-#define DBHQ_N_LIST_TABS 12
-typedef struct {
-    int id;
-    char name[64];
-    char kv_key[DBHQ_KV_MAX][32];
-    char kv_val[DBHQ_KV_MAX][160];
-    int n_kv;
-} DbhqListRec;
-static const struct {
-    int tab;
-    const char *section;
-    const char *title;
-    const char *pdl_name;
-    const char *state_name;
-} g_dbhq_list_cfg[DBHQ_N_LIST_TABS] = {
-    { DB_HQ_CLASSES_TAB, "CLASS",  "Class",  "classes.pdl", "db_hq_classes.state.txt" },
-    { DB_HQ_SKILLS_TAB,  "SKILL",  "Skill",  "skills.pdl",  "db_hq_skills.state.txt" },
-    { DB_HQ_ITEMS_TAB,   "ITEM",   "Item",   "items.pdl",   "db_hq_items.state.txt" },
-    { DB_HQ_WEAPONS_TAB, "WEAPON", "Weapon", "weapons.pdl", "db_hq_weapons.state.txt" },
-    { DB_HQ_ARMORS_TAB,  "ARMOR",  "Armor",  "armors.pdl",  "db_hq_armors.state.txt" },
-    { DB_HQ_ENEMIES_TAB, "ENEMY", "Enemy", "enemies.pdl", "db_hq_enemies.state.txt" },
-    { DB_HQ_TROOPS_TAB, "TROOP", "Troop", "troops.pdl", "db_hq_troops.state.txt" },
-    { DB_HQ_STATES_TAB, "STATE", "State", "states.pdl", "db_hq_states.state.txt" },
-    { DB_HQ_ANIMATIONS_TAB, "ANIMATION", "Animation", "animations.pdl", "db_hq_animations.state.txt" },
-    { DB_HQ_TILESETS_TAB, "TILESET", "Tileset", "tilesets.pdl", "db_hq_tilesets.state.txt" },
-    { DB_HQ_SYSTEM_TAB, "SYSTEM", "System", "system.pdl", "db_hq_system.state.txt" },
-    { DB_HQ_TYPES_TAB, "TYPE", "Type", "types.pdl", "db_hq_types.state.txt" },
-};
-static DbhqListRec g_dbhq_list_recs[DBHQ_N_LIST_TABS][DBHQ_LIST_MAX];
-static int g_dbhq_list_n[DBHQ_N_LIST_TABS];
-static int g_dbhq_list_sel[DBHQ_N_LIST_TABS];
-static time_t g_dbhq_list_mtime[DBHQ_N_LIST_TABS];
-static char g_dbhq_list_state_path[DBHQ_N_LIST_TABS][PATH_BUF];
 
 
 /* Real, single-slot font cache for text measurement, ported verbatim
@@ -2373,152 +1984,14 @@ static void kh_shift_subtree(Elem *e, int dy) {
     for (int i = 0; i < e->n_children; i++) kh_shift_subtree(e->children[i], dy);
 }
 
-/* REAL, GENERALIZED 2026-08-28 (RENDER-FRAME-HISTORY-DRIFT-ASSESSMENT.md
- * Phase C) - this mechanism (scroll clipping + track/thumb/arrow
- * geometry) used to be palettes-only, gated on g_is_palettes, using
- * ONLY "pal-grid-row" as its row selector. A real Phase-A inventory
- * confirmed this is the ONLY scroll mechanism anywhere in this file -
- * db-hq's sidebar (Common Events/Terms/stats-hq), bookmarks, chat-hai's
- * session sidebar, and events-hq's command list all have ZERO scroll
- * support today - long lists silently overflow off-screen with no
- * clipping at all. Since each window MODE runs as its own separate
- * process of this same binary (g_is_palettes etc are set ONCE at
- * startup and never change for that process's lifetime), there is
- * only ever ONE scrollable region active per process - reusing the
- * SAME g_pal_* globals for whichever mode's content is active is
- * completely safe, no cross-mode collision possible. What changes
- * here is WHO calls this and how rows are selected, not the mechanism
- * itself (already real, live-verified for palettes).
- *
- * `container`: the Elem whose children are candidate rows (panel for
- * palettes/bookmarks, sidebar for db-hq/chat-hai).
- * `row_class`: NULL means "every direct child of container is a real
- * row" (db-hq sidebar, chat-hai session sidebar - these containers
- * hold nothing else); a real class name means "only children carrying
- * this class count as rows, others (title/hint/tab-row/static rows)
- * are left alone" (palettes' "pal-grid-row", bookmarks' "bm-bookmark").
- * `panel_y`/`panel_h`: the real bounding box scrolling clips against -
- * passed explicitly since callers differ on whether that's the panel
- * or the sidebar's own box. */
-static void generic_scroll_layout_pass(Elem *container, const char *row_class, int box_y, int box_h) {
-    g_pal_has_grid = 0;
-    g_pal_total_rows = 0;
-    if (!container) return;
-    Elem *grid_rows[MAX_CHILDREN];
-    for (int i = 0; i < container->n_children && i < MAX_CHILDREN; i++) {
-        Elem *c = container->children[i];
-        if (!row_class || elem_has_class(c, row_class))
-            grid_rows[g_pal_total_rows++] = c;
-    }
-    if (g_pal_total_rows == 0) {
-        g_pal_arrow_up->w = 0; g_pal_arrow_up->h = 0; g_pal_arrow_up->onclick[0] = '\0';
-        g_pal_arrow_down->w = 0; g_pal_arrow_down->h = 0; g_pal_arrow_down->onclick[0] = '\0';
-        return;
-    }
-    g_pal_has_grid = 1;
-    int pad12 = scaled(12);
-    int top = box_y + pad12;
-    int bot = box_y + box_h - pad12;
-    int pitch = (g_pal_total_rows > 1)
-        ? grid_rows[1]->y - grid_rows[0]->y
-        : grid_rows[0]->h + scaled(6);
-    if (pitch <= 0) pitch = 1;
-    g_pal_visible_rows = (bot - top) / pitch;
-    if (g_pal_visible_rows < 1) g_pal_visible_rows = 1;
-    int max_scroll = g_pal_total_rows - g_pal_visible_rows;
-    if (max_scroll < 0) max_scroll = 0;
-    if (g_pal_scroll > max_scroll) g_pal_scroll = max_scroll;
-    if (g_pal_scroll < 0) g_pal_scroll = 0;
-    for (int i = 0; i < g_pal_total_rows; i++) {
-        Elem *r = grid_rows[i];
-        int dy = -(g_pal_scroll * pitch);
-        kh_shift_subtree(r, dy);
-        if (r->y < top || r->y + r->h > bot) { r->w = 0; r->h = 0; }
-    }
-    g_pal_arrow_h = scaled(14);
-    g_pal_track_w = scaled(8);
-    g_pal_track_x = container->x + container->w - g_pal_track_w - scaled(2);
-    g_pal_track_y = top + g_pal_arrow_h;
-    g_pal_track_h = (bot - top) - 2 * g_pal_arrow_h;
-    if (g_pal_track_h < 0) g_pal_track_h = 0;
-    if (max_scroll == 0) {
-        g_pal_thumb_y = g_pal_track_y; g_pal_thumb_h = g_pal_track_h;
-    } else {
-        int th = (g_pal_track_h * g_pal_visible_rows) / g_pal_total_rows;
-        if (th < scaled(14)) th = scaled(14);
-        int ty = g_pal_track_y + ((g_pal_track_h - th) * g_pal_scroll) / max_scroll;
-        g_pal_thumb_y = ty; g_pal_thumb_h = th;
-    }
-    memset(g_pal_arrow_up, 0, sizeof(*g_pal_arrow_up));
-    snprintf(g_pal_arrow_up->tag, sizeof(g_pal_arrow_up->tag), "button");
-    g_pal_arrow_up->x = g_pal_track_x; g_pal_arrow_up->y = g_pal_track_y - g_pal_arrow_h;
-    g_pal_arrow_up->w = g_pal_track_w; g_pal_arrow_up->h = g_pal_arrow_h;
-    snprintf(g_pal_arrow_up->onclick, sizeof(g_pal_arrow_up->onclick), "scroll:up");
-    g_pal_arrow_up->badge_align_left = 1;
-    g_pal_arrow_up_disabled = (g_pal_scroll <= 0);
-
-    memset(g_pal_arrow_down, 0, sizeof(*g_pal_arrow_down));
-    snprintf(g_pal_arrow_down->tag, sizeof(g_pal_arrow_down->tag), "button");
-    g_pal_arrow_down->x = g_pal_track_x; g_pal_arrow_down->y = g_pal_track_y + g_pal_track_h;
-    g_pal_arrow_down->w = g_pal_track_w; g_pal_arrow_down->h = g_pal_arrow_h;
-    snprintf(g_pal_arrow_down->onclick, sizeof(g_pal_arrow_down->onclick), "scroll:down");
-    g_pal_arrow_down->badge_align_left = 1;
-    g_pal_arrow_down_disabled = (g_pal_scroll >= max_scroll);
-}
 
 
-/* Real db-hq redraw content (called from the shared redraw()'s
- * g_is_db_hq branch) - chrome fill/tabbar/sidebar/panel/placeholder,
- * ported verbatim. Present (XGetImage->XPutImage) stays in the shared
- * redraw(), not duplicated here. */
-/* REAL, NEW 2026-08-25 (live report: "the thumb for mouse isn't working
- * yet... it needs to start at the top and show lower content as its
- * pulled downwards") - maps a mouse Y coordinate (anywhere in the track)
- * directly to a scroll row, the standard "click/drag jumps the thumb to
- * the cursor" scrollbar behavior - top of track = scroll 0 (first rows
- * visible), dragging down increases scroll (later rows come into view).
- * max_scroll is recomputed the same way dbhq_layout_pass()'s own post-
- * pass does, since this runs from a raw pointer event, before layout. */
 static void nav_tab_register(const char *type, const char *title);
 static void nav_tab_unregister(void);
 static void nav_tab_cycle(void);
 static void nav_tab_poll_active(void);
 static void nav_ledger_publish(void);
 
-/* REAL, requested "once and for all" fix (2026-08-27) - same real
- * frame-history convention as evhq_append_frame_history() (see its own
- * header comment for the full "why"), ported to db-hq too - db-hq mode
- * covers palettes/bookmarks/stats-hq/Common-Events-editor as well since
- * they all share this one dispatch, not just the plain entity-menu
- * view. */
-static long g_dbhq_frame_seq = 0;
-static void kh_append_frame_history(void) {
-    g_dbhq_frame_seq++;
-    char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/#.desktop/db_hq_frame_history.txt", g_house_root);
-    FILE *f = fopen(path, "a");
-    if (!f) return;
-    fprintf(f, "seq=%ld focus_nav=%d/%d tab=%d selected_event=%d\n",
-            g_dbhq_frame_seq, g_focus_nav, g_n_nav, g_dbhq_current_tab, g_dbhq_selected_event);
-    fclose(f);
-    /* REAL, NEW (2026-08-27, HARNESS-AUTHORING-GUIDE.md §3a) - the SAME
-     * single-key flat-file sibling convention evhq_append_frame_history()
-     * already uses (its own header comment explains the full "why"): a
-     * real PAL/prisc+x script can inject relay codes but SYS_GET_KV_INT
-     * only matches a key at the very START of a line, so it cannot read
-     * the multi-key db_hq_frame_history.txt line above. Small, cheap,
-     * zero-VM-change fix: also write single-key flat files a PAL script
-     * CAN poll today via SYS_GET_KV_INT. First real consumer: the db-hq
-     * tab-switch PAL harness (cursword/harnesses/pal/db_hq_tab_switch_demo.pal). */
-    char tabpath[PATH_BUF];
-    snprintf(tabpath, sizeof(tabpath), "%s/#.desktop/db_hq_current_tab.txt", g_house_root);
-    FILE *tf = fopen(tabpath, "w");
-    if (tf) { fprintf(tf, "current_tab=%d\n", g_dbhq_current_tab); fclose(tf); }
-    char seqpath[PATH_BUF];
-    snprintf(seqpath, sizeof(seqpath), "%s/#.desktop/db_hq_seq.txt", g_house_root);
-    FILE *qf = fopen(seqpath, "w");
-    if (qf) { fprintf(qf, "seq=%ld\n", g_dbhq_frame_seq); fclose(qf); }
-}
 /* ============================================================
  * REAL FRAME-HISTORY-DERIVED PAINT (2026-08-28, Phase 2 of
  * RENDER-FRAME-HISTORY-DRIFT-ASSESSMENT.md - see RENDER-REFACTOR-2DO-
@@ -6373,20 +5846,6 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
      * unaffected by this Wayland routing gap) - this event-based path
      * is kept only because it still works for synthetic/XTest testing
      * and costs nothing to leave in. */
-    if (g_pal_rmmv_armed && ev->type == KeyPress) {
-        KeySym ks = XLookupKeysym(&ev->xkey, 0);
-        if (ks == XK_Escape) {
-            XUngrabPointer(dpy, CurrentTime);
-            XUngrabKeyboard(dpy, CurrentTime);
-            g_pal_rmmv_armed = 0;
-            /* Same file the arm/place C ops already use for visible
-             * feedback - clear it so the picker's title reverts. */
-            char armed_path[PATH_BUF];
-            snprintf(armed_path, sizeof(armed_path), "%s/&.widgits/palettes/state/rmmv_armed.txt", g_house_root);
-            unlink(armed_path);
-            return;
-        }
-    }
     if (ev->type == ButtonPress) {
         /* REAL FIX 2026-09-03 (direct live report: "its way to hard to
          * get window focus. i tap click window and it still doesn't
@@ -6710,7 +6169,7 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
          * entirely between press and release. Only shortened while
          * g_pal_rmmv_armed (costs nothing otherwise - every other
          * window/mode never sets this flag at all). */
-        struct timeval tv = g_pal_rmmv_armed ? (struct timeval){ 0, 15000 } : (struct timeval){ 0, 150000 };
+        struct timeval tv = { 0, 150000 };
         select(xfd + 1, &fds, NULL, NULL, &tv);
         while (XPending(dpy)) {
             XEvent ev; XNextEvent(dpy, &ev);
