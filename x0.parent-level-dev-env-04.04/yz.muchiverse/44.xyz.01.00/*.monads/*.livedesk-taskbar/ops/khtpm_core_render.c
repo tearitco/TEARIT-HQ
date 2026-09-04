@@ -266,14 +266,6 @@ static void apply_dock_window_hints(Display *dpy, Window w, int x, int y) {
         XFree(wh);
     }
 }
-/* REAL, NEW 2026-09-01 - remember which modes are real "windows" the
- * user toggles (open-hai, db-hq, events-hq, chat-hai) vs the transient
- * always-on-top chrome (entity-menu popup / taskbar-Settings swatch
- * picker). swatch-picker stays pinned regardless of the pdl - the one
- * dialog where the human IS the foreground actor, same reason the tile
- * popup menu keeps override_redirect=True. */
-static int g_is_swatch_picker = 0;
-
 /* REAL, NEW 2026-08-29, direct instruction ("the tb has a
  * transparency. but that should propagate to 'all entities' and menu
  * screens (including tb dropdowns... context/hq etc) so player can
@@ -1925,32 +1917,22 @@ static CssSheet g_sheet;
 
 /* REAL Stage 5 §5d.3 step 6 (2026-08-16, khtpm-merge-how2.md) - the
  * actual literal binary merge. This binary now serves BOTH the real
- * generic menu shape (entity-menu's own original job) AND taskbar-
- * settings' own real swatch-picker shape, selected by a real, data-
- * driven signal (`<window class="swatch-picker">`), matching wraith-
- * alpha's own real "one binary, behavior selected by loaded data"
- * shape - not zero-app-C, but genuinely ONE compiled binary, no
- * dlopen/plugin indirection. Set once in main() after parse_chtpm(). */
-static pid_t g_swatch_mgr_pid = -1;
-static unsigned g_swatch_action_seq = 0;
-
-/* REAL, swatch-picker-only state - ported verbatim from taskbar-
- * settings' own real g_phase/g_chosen_bg_idx/g_chosen_fg_idx/
- * g_palette_hex/g_palette_name (khtpm_taskbar_settings_render.c,
- * kept as a real, documented per-mode exception - the 2-phase pick
- * is genuinely stateful UI interaction, not something the shared
- * dispatch()/assign_nav_and_layout() can express generically, same
- * real precedent as chat-hai's panel exception in Stage 3). Unused,
- * harmless, when g_is_swatch_picker is 0. */
+ * generic menu shape (entity-menu's own original job). 2026-09-04:
+ * taskbar-settings' own real swatch-picker shape (`<window class=
+ * "swatch-picker">`) was retired - taskbar-settings-pal.xhtpm (the
+ * real, live template since 2026-09-03) is a normal generic-mode
+ * window and never trips this. */
 #define SWATCH 34
 #define SWATCH_GAP 8
 #define SWATCH_COLS 6
-static int g_phase = 0;
-static int g_chosen_bg_idx = -1;
-static int g_chosen_fg_idx = -1;
-static const char *g_palette_hex[12];
 static char g_palette_name_buf[12][32];
 static const char *g_palette_name[12];
+/* "PICK:<n>" is a generic, always-on dispatch() action token (not
+ * gated by any window-class flag) - taskbar-settings-pal.xhtpm's own
+ * swatch items use it, consumed by swatch_picker_manager.+x via
+ * #.desktop/taskbar_settings_action.txt. See dispatch()'s own PICK:
+ * handler below. */
+static unsigned g_swatch_action_seq = 0;
 
 static int elem_has_class(Elem *e, const char *cls) {
     for (int i = 0; i < e->n_classes; i++)
@@ -4936,14 +4918,6 @@ static void redraw(void) {
                 rename(reg_tmp, reg_path);
             }
         }
-        if (g_is_swatch_picker) {
-            const char *status = g_phase == 0 ? "Pick PRIMARY, then Enter"
-                                : g_phase == 1 ? "Pick SECONDARY, then Enter"
-                                : "Applied - closing...";
-            XftColor status_col = xft_color("#ffffff");
-            XftDrawStringUtf8(xftdraw_buf, &status_col, font_ui, 16, CHROME_H + 26, (const FcChar8 *)status, (int)strlen(status));
-            XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &status_col);
-        }
     }
 
     /* REAL Stage 5 (2026-08-16, khtpm-merge-how2.md §5d) - was a manual
@@ -4976,8 +4950,8 @@ static void redraw(void) {
          * renderer, so two windows can never collide on this path
          * again, house-wide, permanently, not just for chat-hai/open-
          * hai's own current pairing. */
-        snprintf(fpath, sizeof(fpath), "%s/#.desktop/%s_%d.txt", g_house_root,
-                 g_is_swatch_picker ? "taskbar_settings_frame" : "entity_menu_frame", (int)getpid());
+        snprintf(fpath, sizeof(fpath), "%s/#.desktop/entity_menu_frame_%d.txt", g_house_root,
+                 (int)getpid());
         snprintf(tmpp, sizeof(tmpp), "%s.tmp", fpath);
         FILE *ff = fopen(tmpp, "w");
         if (ff) {
@@ -5024,38 +4998,6 @@ static void redraw(void) {
     if (g_dock_peer && !g_dock_in_peer_paint) dock_paint_peer();
     if (window_is_dock() && !g_dock_in_peer_paint && !g_dock_in_menu_paint)
         dock_paint_menu();
-
-    /* REAL, swatch-picker-only overlay (ported verbatim from taskbar-
-     * settings' own redraw()) - the "chosen" bg/fg ring + primary/
-     * secondary status lines, real, documented per-mode exceptions
-     * (khtpm_draw_core.c's own draw_elem() has no generic 3rd-state
-     * concept). */
-    if (g_is_swatch_picker && page) {
-        int sw_i = 0;
-        for (int i = 0; i < page->n_children; i++) {
-            Elem *item = page->children[i];
-            if (strcmp(item->tag, "item") != 0 || strcmp(item->id, "close") == 0) continue;
-            int chosen = (sw_i == g_chosen_bg_idx) || (sw_i == g_chosen_fg_idx);
-            if (chosen && item->nav_index != g_focus_nav) {
-                XSetForeground(dpy, gc, 0x22c55e);
-                XDrawRectangle(dpy, buf, gc, item->x - 2, item->y - 2, (unsigned)item->w + 4, (unsigned)item->h + 4);
-            }
-            sw_i++;
-        }
-        int x0 = 16, y0 = CHROME_H + 44;
-        XftColor accent = xft_color("#22c55e");
-        if (g_chosen_bg_idx >= 0) {
-            char line[64];
-            snprintf(line, sizeof(line), "primary: %s", g_palette_name[g_chosen_bg_idx]);
-            XftDrawStringUtf8(xftdraw_buf, &accent, font_ui, x0, y0 + 2 * (SWATCH + SWATCH_GAP) + 20, (const FcChar8 *)line, (int)strlen(line));
-        }
-        if (g_chosen_fg_idx >= 0) {
-            char line[64];
-            snprintf(line, sizeof(line), "secondary: %s", g_palette_name[g_chosen_fg_idx]);
-            XftDrawStringUtf8(xftdraw_buf, &accent, font_ui, x0, y0 + 2 * (SWATCH + SWATCH_GAP) + 38, (const FcChar8 *)line, (int)strlen(line));
-        }
-        XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &accent);
-    }
 
     /* REAL FIX 2026-08-31 (found live, testing generic capability #1 -
      * the .chtpm live-reparse this default/popup mode now also gets,
@@ -5206,29 +5148,12 @@ static void redraw(void);
 static void dump_frame_png(void) {
     char png[PATH_BUF];
     redraw(); /* REAL FIX above - guarantees `win`'s real on-screen pixels reflect the state as of THIS tick's input, not the previous tick's */
-    if (g_is_swatch_picker) {
-        char audit_dir[PATH_BUF];
-        snprintf(audit_dir, sizeof(audit_dir), "%s/#.desktop/taskbar-settings-audit", g_house_root);
-        mkdir(audit_dir, 0755);
-        snprintf(png, sizeof(png), "%s/settings-frame.png", audit_dir);
-    } else {
-        snprintf(png, sizeof(png), "/tmp/entity-menu-frame.png");
-    }
+    snprintf(png, sizeof(png), "/tmp/entity-menu-frame.png");
     char cmd[PATH_BUF * 2];
     snprintf(cmd, sizeof(cmd), "'%s/&.widgits/_shared-lib/ops/+x/dump_frame_png_op.+x' 0x%lx '%s'",
              g_house_root, (unsigned long)win, png);
     int ok = (system(cmd) == 0);
-    if (g_is_swatch_picker) {
-        char audit_dir[PATH_BUF], receipt[PATH_BUF];
-        snprintf(audit_dir, sizeof(audit_dir), "%s/#.desktop/taskbar-settings-audit", g_house_root);
-        snprintf(receipt, sizeof(receipt), "%s/settings-frame.png.receipt.txt", audit_dir);
-        FILE *rf = fopen(receipt, "w");
-        if (rf) {
-            fprintf(rf, "ok=%d w=%d h=%d t=%ld nav=%d n_nav=%d phase=%d bg_idx=%d fg_idx=%d\n",
-                    ok, g_win_w, g_win_h, (long)time(NULL), g_focus_nav, g_n_nav, g_phase, g_chosen_bg_idx, g_chosen_fg_idx);
-            fclose(rf);
-        }
-    } else {
+    {
         /* Generic window: alongside the PNG write (a) a .receipt.txt and
          * (b) a .frame.txt ASCII serialization of the laid-out Elem
          * tree - the tpmos "if it's not in current_frame.txt it's not
@@ -5442,8 +5367,7 @@ static long g_history_cursor = -1;
 static void history_dir(char *out, size_t outsz) {
     snprintf(out, outsz, "%s/#.desktop/%s", g_house_root,
              g_is_stats_hq ? "stats_hq_history" :
-             g_is_events_hq ? "events_hq_history" :
-             g_is_swatch_picker ? "taskbar_settings_history" : "entity_menu_history");
+             g_is_events_hq ? "events_hq_history" : "entity_menu_history");
 }
 static void history_path(char *out, size_t outsz) {
     char dir[PATH_BUF];
@@ -5710,7 +5634,6 @@ static void frame_changed_path(char *out, size_t outsz) {
              g_is_bookmarks ? "bookmarks_frame_changed.txt" :
              g_is_stats_hq ? "stats_hq_frame_changed.txt" :
              g_is_events_hq ? "events_hq_frame_changed.txt" :
-             g_is_swatch_picker ? "taskbar_settings_frame_changed.txt" :
              "entity_menu_frame_changed.txt");
 }
 
@@ -6000,29 +5923,6 @@ static void hq_request_redraw(void) {
 }
 
 static void hq_idle_tick(void) {
-    if (g_is_swatch_picker) {
-        char sp[PATH_BUF];
-        snprintf(sp, sizeof(sp), "%s/#.desktop/taskbar_settings_state.txt", g_house_root);
-        FILE *sf = fopen(sp, "r");
-        if (sf) {
-            char line[64];
-            int phase=g_phase, bg=g_chosen_bg_idx, fg=g_chosen_fg_idx, apply=0;
-            while (fgets(line, sizeof(line), sf)) {
-                if (strncmp(line, "phase=", 6)==0) phase=atoi(line+6);
-                else if (strncmp(line, "bg=", 3)==0) bg=atoi(line+3);
-                else if (strncmp(line, "fg=", 3)==0) fg=atoi(line+3);
-                else if (strncmp(line, "apply=", 6)==0) apply=atoi(line+6);
-            }
-            fclose(sf);
-            if (phase != g_phase || bg != g_chosen_bg_idx || fg != g_chosen_fg_idx) {
-                g_phase = phase; g_chosen_bg_idx = bg; g_chosen_fg_idx = fg;
-                redraw();
-            }
-            /* Only a completed 2-phase pick may close the picker.
-             * Leftover apply=1 from a prior instance must not quit on launch. */
-            if (apply && phase >= 2 && fg >= 0) g_quit = 1;
-        }
-    }
     /* REAL, NEW 2026-08-31 (xperiments/khtpm-generic-dispatch-design.md
      * §5 - direct instruction: "the renderer/parser should have no
      * need to know the difference [between projects]... why are there
@@ -13303,7 +13203,6 @@ int main(int argc, char **argv) {
      * selected by loaded data" shape, not a new attribute/parser
      * change - class= was already fully generic). */
     for (int i = 0; i < g_window->n_classes; i++) {
-        if (strcmp(g_window->classes[i], "swatch-picker") == 0) { g_is_swatch_picker = 1; break; }
         if (strcmp(g_window->classes[i], "database-window") == 0 ||
             strcmp(g_window->classes[i], "palettes-pal") == 0) g_default_persistent = 1;
         /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode, real, data-
@@ -13382,8 +13281,8 @@ int main(int argc, char **argv) {
      * not a fixed ops-dir filename like the other 2 modes. */
     {
         char css_path[PATH_BUF];
-        snprintf(css_path, sizeof(css_path), "%s/*.monads/*.livedesk-taskbar/ops/%s",
-                 g_house_root, g_is_swatch_picker ? "taskbar_settings.css" : "entity_menu_default.css");
+        snprintf(css_path, sizeof(css_path), "%s/*.monads/*.livedesk-taskbar/ops/entity_menu_default.css",
+                 g_house_root);
         memset(&g_sheet, 0, sizeof(g_sheet));
         css_load(css_path, &g_sheet);
         /* REAL, NEW 2026-09-02 - merge the .css sitting next to the
@@ -13397,12 +13296,6 @@ int main(int argc, char **argv) {
             if (dot) snprintf(dot, sizeof(app_css) - (size_t)(dot - app_css), ".css");
             if (strcmp(app_css, css_path) != 0) css_load(app_css, &g_sheet);
         }
-    }
-
-    if (g_is_swatch_picker) {
-        static const char *hex[12] = { "#000000","#ffffff","#1a1a1a","#e5e5e5","#ef4444","#f97316","#eab308","#22c55e","#06b6d4","#3b82f6","#8b5cf6","#ec4899" };
-        for (int i = 0; i < 12; i++) { g_palette_hex[i] = hex[i]; g_palette_name[i] = g_palette_name_buf[i]; }
-        g_win_w = 420;
     }
 
     /* REAL, NEW 2026-09-03 (direct live report: "look at how db hq has
@@ -13422,8 +13315,7 @@ int main(int argc, char **argv) {
      * at all - they stomp it with their own fixed, safe corner anchor
      * right after the one shared load call (dbhq_load_font_scale()) at
      * line ~17761, same real pattern applied here. */
-    if (!g_is_swatch_picker &&
-        find_by_tag(g_window, "sidebar") && find_by_tag(g_window, "panel")) {
+    if (find_by_tag(g_window, "sidebar") && find_by_tag(g_window, "panel")) {
         g_win_x = 80; g_win_y = 80; /* sidebar+panel default, distinct from the small-popup modes' 300,300 */
     }
 
@@ -13526,7 +13418,7 @@ int main(int argc, char **argv) {
      * foreground actor there); open-hai and the transient menus follow
      * the shared pdl's managed=false when "normal" sinks below native
      * apps. Same data-driven rule, same shared #.desktop pdl. */
-    swa.override_redirect = g_is_swatch_picker ? True : (Bool)g_override_redirect;
+    swa.override_redirect = (Bool)g_override_redirect;
     /* REAL FIX 2026-08-29 (live report: "toolbar doesn't allow drag
      * repositioning") - this generic popup window (entity-menu popup AND
      * swatch-picker/Settings) never requested ButtonReleaseMask or
@@ -13543,7 +13435,7 @@ int main(int argc, char **argv) {
     win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)g_win_w, (unsigned)g_win_h, 0,
                          CopyFromParent, InputOutput, CopyFromParent, CWBackPixel | CWOverrideRedirect | CWEventMask, &swa);
     if (window_is_dock()) apply_dock_window_hints(dpy, win, g_win_x, g_win_y);
-    render_managed_wm_hints(dpy, win, g_is_swatch_picker ? 0 : !g_override_redirect); /* REAL, NEW 2026-09-01 - managed branch: undecorated + no shell chrome (post-map sink-below lands after XMapRaised) */
+    render_managed_wm_hints(dpy, win, !g_override_redirect); /* REAL, NEW 2026-09-01 - managed branch: undecorated + no shell chrome (post-map sink-below lands after XMapRaised) */
     Atom motif_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
     long hints[5] = { 2, 0, 0, 0, 0 };
     XChangeProperty(dpy, win, motif_hints, motif_hints, 32, PropModeReplace, (unsigned char *)hints, 5);
@@ -13725,32 +13617,7 @@ int main(int argc, char **argv) {
     set_window_opacity(dpy, win, load_theme_opacity());
     XFlush(dpy);
 
-    if (g_is_swatch_picker) {
-        /* Reset house action/state before the manager starts so a leftover
-         * PICK: from the last session cannot count as the first pick. */
-        {
-            char ap[PATH_BUF], sp[PATH_BUF];
-            snprintf(ap, sizeof(ap), "%s/#.desktop/taskbar_settings_action.txt", g_house_root);
-            snprintf(sp, sizeof(sp), "%s/#.desktop/taskbar_settings_state.txt", g_house_root);
-            FILE *af = fopen(ap, "w");
-            if (af) { fputs("seq=0\n", af); fclose(af); }
-            FILE *sf = fopen(sp, "w");
-            if (sf) { fputs("phase=0\nbg=-1\nfg=-1\napply=0\n", sf); fclose(sf); }
-            g_swatch_action_seq = 0;
-            g_phase = 0;
-            g_chosen_bg_idx = -1;
-            g_chosen_fg_idx = -1;
-        }
-        char mb[PATH_BUF];
-        snprintf(mb, sizeof(mb), "%s/*.monads/*.livedesk-taskbar/ops/+x/swatch_picker_manager.+x", g_house_root);
-        g_swatch_mgr_pid = fork();
-        if (g_swatch_mgr_pid == 0) {
-            execl(mb, mb, g_house_root, (char *)NULL);
-            _exit(1);
-        }
-    }
     hq_run_event_loop(wm_delete, 1);
-    if (g_swatch_mgr_pid > 0) { kill(g_swatch_mgr_pid, SIGTERM); g_swatch_mgr_pid = -1; }
 
     XftDrawDestroy(xftdraw_buf);
     XFreeGC(dpy, gc);

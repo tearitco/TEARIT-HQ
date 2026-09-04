@@ -598,11 +598,16 @@ static void draw_elem(Elem *e, int hover_id_hash) {
      * it, not just events-hq. */
     if (e->w <= 0 || e->h <= 0) return;
     if (strcmp(e->tag, "canvas") == 0) { kh_draw_canvas(e); return; }
-    /* checkerboard is a PNG-transparency cue for sprite tiles only - the
-     * taskbar-settings colour picker (also class="swatch") wants solid
-     * full-colour squares, so exclude the swatch-picker window. */
-    int is_grid_tile_bg = !g_is_swatch_picker &&
-        (elem_has_class(e, "pal-tile") || elem_has_class(e, "swatch"));
+    /* checkerboard is a PNG-transparency cue for sprite tiles only. A
+     * class="swatch" item is by definition a plain filled colour square
+     * (taskbar-settings-pal.xhtpm's colour picker, etc.) - it never
+     * wants the transparency cue, in any window. Only "pal-tile" (real
+     * sprite art) gets it. 2026-09-04: previously gated on the
+     * (permanently unreachable) swatch-picker window-class flag -
+     * root cause of the settings colour picker showing checkerboard
+     * instead of solid colours, since its real live template never set
+     * that class. */
+    int is_grid_tile_bg = elem_has_class(e, "pal-tile");
     if (e->style.has_bg_color && is_grid_tile_bg) {
         /* PNG-style transparency checkerboard behind a sprite cell -
          * reads as "this holds an image with alpha", instead of the flat
@@ -769,8 +774,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                  * surface is g_theme_bg, so every transparent icon sat
                  * on a stale grey square. Follow the theme. */
                 unsigned long bg_pixel =
-                    (e->style.has_bg_color && !g_is_swatch_picker &&
-                     (elem_has_class(e, "pal-tile") || elem_has_class(e, "swatch")))
+                    (e->style.has_bg_color && elem_has_class(e, "pal-tile"))
                         ? alloc_pixel("#dcdcdc")               /* checkerboard mean - matte transparent edges to a light grey */
                     : e->style.has_bg_color
                         ? alloc_pixel(e->style.bg_color)
@@ -973,14 +977,16 @@ static void draw_elem(Elem *e, int hover_id_hash) {
      * khtpm_hq_render.c's own live-verified fix, "i think they should go
      * above the tile, not on it") with a solid backing chip for
      * contrast against any sprite color; non-sprite elements keep the
-     * original inline position. REAL, NEW 2026-09-04 - swatch-picker
-     * tiles (small color squares without sprites) also get the badge
-     * positioned ABOVE the tile, not overlapping it, for readability. */
+     * original inline position. REAL, NEW 2026-09-04 - swatch tiles
+     * (small color squares without sprites, class="swatch") also get
+     * the badge positioned ABOVE the tile, not overlapping it, for
+     * readability - was previously gated on the (permanently
+     * unreachable) swatch-picker window-class flag, so it never fired
+     * for the real live taskbar-settings-pal.xhtpm window. */
     if (e->nav_index > 0 && nav_badge_font) {
         int focused = (e->nav_index == g_focus_nav);
         int numy = e->y + (e->h + nav_badge_font->ascent - nav_badge_font->descent) / 2;
-        int is_swatch_tile = g_is_swatch_picker &&
-                             (elem_has_class(e, "swatch") || elem_has_class(e, "pal-tile"));
+        int is_swatch_tile = elem_has_class(e, "swatch") || elem_has_class(e, "pal-tile");
         if (e->sprite[0] && e->h >= 64) {
             /* REAL FIX 2026-09-02 - tall sprite rows (scrolllist) have
              * room INSIDE the box; drawing the chip above e->y painted
