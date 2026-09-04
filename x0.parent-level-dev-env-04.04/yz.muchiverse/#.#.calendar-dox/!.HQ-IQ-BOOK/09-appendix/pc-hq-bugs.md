@@ -277,9 +277,78 @@ re-asserting.
 
 **This is a long-running process fix - the taskbar itself needs to be
 restarted to pick it up, a rebuild alone does nothing for an already-
-running instance.** Not yet confirmed live (needs the user to restart
-the taskbar and re-test the original click-pc-hq-then-arrow-key
-sequence).
+running instance.** Restarted live this session (`sh run_khtpm_strip.sh
+new`). User re-tested with real hardware: **still broken** - see the
+next update below, this was not the whole story.
+
+#### UPDATE 2 - the real, deeper root cause: `override_redirect` itself, proven once already by a deleted fix
+
+`xdotool` testing (real synthetic X11 events, not file-relay) showed
+the click-taskbar/click-pchq/press-arrow sequence working correctly -
+focus stayed on pc-hq (`XGetInputFocus` confirmed) and pc-hq's own nav
+index moved in response to real arrow keypresses sent this way. But
+the user confirmed **real hardware still fails the exact same way**
+even after the taskbar restart. This is not a contradiction - it's a
+known, ALREADY-DOCUMENTED, ALREADY-FIXED-ONCE bug class in this exact
+house, found by reading the pre-deletion `run_pchq_board_mode()`
+(recovered via `git show 35c1b0b1~1:.../khtpm_core_render.c`):
+
+> "REAL FIX 2026-08-30, direct live report ('its not geting mouse /
+> kbd input') - **override_redirect windows never get real keyboard/
+> mouse focus routed by Mutter** (synthetic XTest input worked, masking
+> the bug) - normal WM-managed window, decorations stripped via
+> `_MOTIF_WM_HINTS` instead, same real shape x11_mirror.c itself uses."
+
+That sentence ("synthetic XTest input worked, masking the bug") is
+EXACTLY why the `xdotool` test above showed success while real
+hardware fails - it's the same distinction, previously found and
+fixed, for this exact same window's own earlier incarnation.
+
+**The fix already exists in the shared renderer, unused by the current
+config.** `render_managed_wm_hints(dpy, win, !g_override_redirect)`
+(khtpm_core_render.c:12308) already implements the "WM-managed,
+decorations stripped via hints instead of override_redirect" pattern
+house-wide, for every generic-mode window - it's called with
+`!g_override_redirect`, so it already activates whenever
+`g_override_redirect` is false. **`#.desktop/livedesk_override_
+redirect.pdl` currently reads `override_redirect=true`** - a single,
+house-wide setting (read once at startup by every window via
+`load_override_redirect()`, no per-window-class override anywhere -
+confirmed by grep, only 3 total assignment sites) - so every window in
+the house, db-hq-pal included, is currently running override_redirect
+mode, the same mode the old pc-hq explicitly proved broken for real
+keyboard/mouse input.
+
+**Open question, not yet resolved**: if override_redirect genuinely
+breaks real keyboard focus, why does db-hq-pal reportedly still work
+for the user? Two honest possibilities, neither confirmed:
+1. db-hq-pal is ALSO subtly affected but tolerates it better (its own
+   periodic per-window registry write / position-corrective-focus-
+   reassert, both already found in this doc's earlier comparison work,
+   might paper over brief focus drops that a continuously-interactive
+   game window like pc-hq can't tolerate).
+2. The bug is real but intermittent/timing-dependent under Mutter,
+   and the user's own db-hq-pal usage pattern hasn't hit the same
+   trigger sequence (click-taskbar-then-click-target-then-key) as
+   thoroughly as pc-hq has been tested this session.
+Worth testing db-hq-pal with the EXACT same click-taskbar/click-
+target/arrow-key sequence before assuming it's genuinely immune.
+
+**Recommended next step - low-risk, no new code, easily reversible**:
+flip `#.desktop/livedesk_override_redirect.pdl` from
+`override_redirect=true` to `override_redirect=false` and re-test the
+exact failing sequence with real hardware. This activates
+`render_managed_wm_hints()`'s already-existing managed branch for
+EVERY window house-wide (not a pc-hq-specific change) - since this
+setting is shared/global and affects the user's entire currently-
+running desktop (taskbar included), get explicit confirmation before
+flipping it, same caution as any other house-wide, live-session-
+affecting change this document already warns about. If it fixes the
+symptom, the real follow-up question becomes whether `override_
+redirect=true` was ever fully correct for this desktop/compositor
+version at all, or whether it should become the new default - a
+bigger decision than one bug fix, flag it back to the user rather
+than deciding unilaterally.
 
 The db-hq-pal vs pc-hq comparison work-so-far (ruled out is_popup,
 g_has_canvas, the position-corrective-move block, and the taskbar-
