@@ -10359,8 +10359,14 @@ static int poll_agent_history(void) {
                     if (g_is_db_hq) dbhq_handle_click(mx, my);
                     else if (g_is_events_hq) evhq_handle_click(mx, my);
                     else popup_handle_click(mx, my);
+                    n++;
                 }
-                if (nf >= 3) n++;
+                /* PITFALL #52 (tpmos: MOUSE MOVE REDRAW SPAM) - do NOT count
+                 * a bare relayed pointer-move (button 0 / not a press / a
+                 * plain release) as consumed input. Only real clicks and
+                 * wheel notches (handled above, each n++'d there) dirty the
+                 * frame. Counting every move here made a focused generic
+                 * window repaint on every mouse twitch over it = flicker. */
             } else if (strncmp(line, "KEY_PRESSED: ", 13) == 0) {
                 int code = atoi(line + 13);
                 if (code > 0) { dispatch_relay_code(code); n++; }
@@ -10489,9 +10495,16 @@ static void xdnd_handle_selection(Display *dpy, Window win) {
     g_xdnd_source = None;
 }
 
+/* Coalescing repaint flag for the generic (non-marker-pilot) window. N
+ * repaint requests inside one event-loop iteration collapse to a single
+ * redraw() at the tick boundary - the tpmos marker/dirty model
+ * (chtpm_parser.c: triggers set the flag, compose_frame() runs once per
+ * loop). Consumed at the bottom of hq_run_event_loop(). */
+static int g_frame_dirty = 0;
+
 static void hq_request_redraw(void) {
-    if (dbhq_marker_pilot()) dbhq_loop_request_redraw();
-    else if (!g_quit) redraw();
+    if (dbhq_marker_pilot()) { dbhq_loop_request_redraw(); return; }
+    if (!g_quit) g_frame_dirty = 1;
 }
 
 static void hq_idle_tick(void) {
@@ -11325,6 +11338,7 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
          * other window's own event loop. */
         dbhq_rmmv_poll_pointer();
         if (dbhq_marker_pilot()) dbhq_loop_paint_if_dirty();
+        else if (g_frame_dirty && !g_quit) { g_frame_dirty = 0; redraw(); }
     }
 }
 
