@@ -50,8 +50,7 @@
       </repeat>
     </sidebar>
     <panel id="panel" class="edit-panel">
-      <text label="${status}" class="quiet"/>
-      <text_area id="editor" content="${content}" rows="19"/>
+      <text_area id="editor" content="${content}" rows="20"/>
     </panel>
   </page>
 </window>
