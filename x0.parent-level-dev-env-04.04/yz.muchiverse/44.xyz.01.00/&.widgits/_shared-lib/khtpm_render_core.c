@@ -177,6 +177,24 @@ typedef struct Elem {
      * real multi-line composer actually gets a real taller box, not
      * just draw_elem()'s own real word-wrap with nowhere to put it. */
     int rows;
+    /* REAL, NEW 2026-09-05 (08-roadmap/design-docs/CLI_IO-CURSOR-AND-
+     * TEXT_AREA-MULTILINE-EDITING-DESIGN.md, direct instruction: "i
+     * think cli-io should still have a cursor") - a real byte offset
+     * into input_buffer, replacing the old append/backspace-at-the-
+     * end-only editing. Set to strlen(input_buffer) when a cli_io is
+     * armed (activate_focused()); moved by Left/Right/Home/End in
+     * default_cli_io_handle_key(); insert/delete happen AT this
+     * offset, not always at the end. This is the same primitive
+     * text_area's own multi-line cursor logic will generalize from
+     * (crossing embedded \n and visual post-wrap rows) - do not
+     * duplicate a second cursor concept there. Threaded through the
+     * frame serialize/reparse round trip (kh_serialize_frame_elem()/
+     * kh_paint_frame_line()) same as every other live-typed field -
+     * see those functions' own header comments for why that's
+     * mandatory, not optional, for a field to actually reach the
+     * screen. Zero effect on any element that isn't cli_io (stays 0,
+     * unused). */
+    int cursor;
     struct Elem *children[MAX_CHILDREN];
     int n_children;
     struct Elem *parent;

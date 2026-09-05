@@ -871,10 +871,18 @@ static void draw_elem(Elem *e, int hover_id_hash) {
     char cli_io_shown[256 + 300];
     char label_decoded[600];
     const char *shown_label = e->label;
+    int cli_io_armed = 0;
     if (strcmp(e->tag, "cli_io") == 0) {
-        snprintf(cli_io_shown, sizeof(cli_io_shown), "%s%s%s", e->label, e->input_buffer,
-                 (e->nav_index > 0 && e->nav_index == g_focus_nav) ? "_" : "");
+        /* REAL, NEW 2026-09-05 (CLI_IO-CURSOR-AND-TEXT_AREA-MULTILINE-
+         * EDITING-DESIGN.md) - the old trailing "_" glyph was a crude
+         * stand-in for a real cursor, always at the very end regardless
+         * of where e->cursor actually was. A real cursor bar is drawn
+         * at its own real position further down (single-line path
+         * only, see that comment) - no fake trailing glyph needed here
+         * anymore. */
+        snprintf(cli_io_shown, sizeof(cli_io_shown), "%s%s", e->label, e->input_buffer);
         shown_label = cli_io_shown;
+        cli_io_armed = (e->nav_index > 0 && e->nav_index == g_focus_nav);
     }
     snprintf(label_decoded, sizeof(label_decoded), "%s", shown_label);
     khtpm_decode_label_entities(label_decoded);
@@ -934,6 +942,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
              * line gets a real "..." ellipsis if there's more text than
              * fits, same real convention the single-line clip path
              * already uses). */
+            Pixmap wrap_target_buf = buf; /* captured BEFORE the local `char buf[600]` below shadows the outer Pixmap `buf` for the rest of this block */
             char buf[600];
             snprintf(buf, sizeof(buf), "%s", shown_label);
             int max_lines = e->h / line_h;
@@ -941,6 +950,25 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             int ty = e->y + font->ascent + 2;
             int line_no = 0;
             char *p = buf;
+            /* REAL, NEW 2026-09-05 (CLI_IO-CURSOR-AND-TEXT_AREA-
+             * MULTILINE-EDITING-DESIGN.md) - a cli_io box tall enough
+             * to take THIS wrap path (h > ~1.5 lines) is still just as
+             * real a cli_io as the single-line one - it needs the same
+             * real cursor bar, not silently none at all. Track which
+             * wrapped visual line contains e->cursor's own offset as
+             * this loop already walks them one at a time; draw the bar
+             * on that specific line once found. This is genuinely
+             * single-line-content cursor math applied per wrapped
+             * row, NOT the harder "cursor moves across rows via real
+             * Up/Down" work - that generalization stays <text_area>'s
+             * own job, per this plan's own scope split. */
+            int cursor_off = -1;
+            if (strcmp(e->tag, "cli_io") == 0 && cli_io_armed) {
+                int label_len = (int)strlen(e->label);
+                cursor_off = label_len + e->cursor;
+                if (cursor_off < 0) cursor_off = 0;
+                if (cursor_off > (int)strlen(buf)) cursor_off = (int)strlen(buf);
+            }
             while (*p && line_no < max_lines) {
                 int last_good_space = -1;
                 int i = 0;
@@ -983,6 +1011,20 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                     snprintf(line_buf, sizeof(line_buf), "%.*s", cut, p);
                 }
                 draw_text_emoji(font, &col, badge_label_x, ty, line_buf);
+                if (cursor_off >= 0) {
+                    int line_start_off = (int)(p - buf);
+                    int line_end_off = line_start_off + cut;
+                    if (cursor_off >= line_start_off && cursor_off <= line_end_off) {
+                        XGlyphInfo pre_ext;
+                        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)p, cursor_off - line_start_off, &pre_ext);
+                        int cx = badge_label_x + pre_ext.width;
+                        int cy0 = ty - font->ascent;
+                        int cy1 = ty + (font->descent > 0 ? font->descent : 2);
+                        XSetForeground(dpy, gc, alloc_pixel(e->style.has_fg_color ? e->style.fg_color : default_fg));
+                        XDrawLine(dpy, wrap_target_buf, gc, cx, cy0, cx, cy1);
+                        cursor_off = -1; /* drawn once - don't redraw on a later line if math ever double-matches a boundary */
+                    }
+                }
                 ty += line_h;
                 line_no++;
                 p += cut;
@@ -1033,6 +1075,35 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                 badge_label_x = e->x + pad;
             }
             draw_text_emoji(font, &col, badge_label_x, ty, draw_label);
+            /* REAL, NEW 2026-09-05 (CLI_IO-CURSOR-AND-TEXT_AREA-
+             * MULTILINE-EDITING-DESIGN.md, direct instruction: "i
+             * think cli-io should still have a cursor") - a real
+             * cursor bar at e->cursor's own actual position, not a
+             * fake trailing glyph always at the end. Scoped to the
+             * single-line (this branch) case only: `draw_label ==
+             * shown_label` means the text was NOT ellipsis-clipped
+             * above, so the substring-width measurement below is
+             * still measuring the real, on-screen string - a clipped
+             * cli_io (rare; only very long typed text in a narrow
+             * box) skips the cursor draw rather than show it at a
+             * wrong position. The word-wrapped (rows>1) case above
+             * does not get a cursor bar yet - real multi-row cursor
+             * positioning is exactly the harder half of work this
+             * plan hands to <text_area>, not silently guessed at
+             * here for cli_io. */
+            if (strcmp(e->tag, "cli_io") == 0 && cli_io_armed && draw_label == shown_label) {
+                int label_len = (int)strlen(e->label);
+                int cursor_off = label_len + e->cursor;
+                if (cursor_off < 0) cursor_off = 0;
+                if (cursor_off > (int)strlen(shown_label)) cursor_off = (int)strlen(shown_label);
+                XGlyphInfo pre_ext;
+                XftTextExtentsUtf8(dpy, font, (const FcChar8 *)shown_label, cursor_off, &pre_ext);
+                int cx = badge_label_x + pre_ext.width;
+                int cy0 = ty - font->ascent;
+                int cy1 = ty + (font->descent > 0 ? font->descent : 2);
+                XSetForeground(dpy, gc, alloc_pixel(e->style.has_fg_color ? e->style.fg_color : default_fg));
+                XDrawLine(dpy, buf, gc, cx, cy0, cx, cy1);
+            }
         }
         XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &col);
     }
@@ -1051,6 +1122,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
         int focused = (e->nav_index == g_focus_nav);
         int numy = e->y + (e->h + nav_badge_font->ascent - nav_badge_font->descent) / 2;
         int is_swatch_tile = elem_has_class(e, "swatch") || elem_has_class(e, "pal-tile");
+        int chip_drawn = 0; /* REAL FIX 2026-09-05, direct live report ("nav on [ ]2 <username> and timestamp proves it") - see this block's final `if (!chip_drawn)` for the real story: the "every badge gets a chip" claim from 2026-09-04 (below) was wrong. A SHORT dock-cell WITH a sprite (a taskbar avatar badge, h<64 so it misses the tall-sprite chip, y<16 so it misses the above-tile chip) fell through all three branches - the general chip was gated `!e->sprite[0]`, so it never ran either. Tracking chip_drawn and falling back to the general inline chip whenever NONE of the special-position branches actually drew one closes that gap for real, instead of re-guessing another special case. */
         if (e->sprite[0] && e->h >= 64) {
             /* REAL FIX 2026-09-02 - tall sprite rows (scrolllist) have
              * room INSIDE the box; drawing the chip above e->y painted
@@ -1066,6 +1138,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             label_x = e->x;
             XSetForeground(dpy, gc, alloc_pixel("#141414"));
             XFillRectangle(dpy, buf, gc, chip_x0, chip_y0, (unsigned)chip_w, (unsigned)chip_h);
+            chip_drawn = 1;
         } else if ((e->sprite[0] || is_swatch_tile) && e->y >= 16) {
             /* Sprite tiles and swatch-picker tiles: draw badge ABOVE the tile
              * with a dark backing chip for contrast. */
@@ -1080,6 +1153,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             label_x = e->x;
             XSetForeground(dpy, gc, alloc_pixel("#141414"));
             XFillRectangle(dpy, buf, gc, chip_x0, chip_y0, (unsigned)chip_w, (unsigned)chip_h);
+            chip_drawn = 1;
         }
         /* Sprite tiles and swatch tiles draw the badge on the dark #141414 backing chip
          * above (not on the tile's own bg), so it always needs the
@@ -1089,7 +1163,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
          * here ate [^]/[>] via contrast-on-same-luma. Chip + fixed
          * glyph colors so the three-state cursor is always readable. */
         int draw_x = e->badge_align_left ? (e->x - (int)nav_badge_ext.width - scaled(4)) : label_x;
-        if (!e->sprite[0] && !is_swatch_tile) {
+        if (!chip_drawn) {
             int chip_pad = 1;
             int chip_h = nav_badge_font->ascent + nav_badge_font->descent + 2 * chip_pad;
             int chip_y0 = numy - nav_badge_font->ascent - chip_pad;

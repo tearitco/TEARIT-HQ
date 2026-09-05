@@ -2075,10 +2075,17 @@ static void kh_serialize_frame_elem(FILE *f, Elem *e) {
      * other field draw_elem() reads. */
     char bg_esc[16 * 2];
     frame_field_escape_pipe(e->bg, bg_esc, sizeof(bg_esc));
-    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s\n",
+    /* REAL, NEW 2026-09-05 (CLI_IO-CURSOR-AND-TEXT_AREA-MULTILINE-
+     * EDITING-DESIGN.md) - e->cursor is a plain int, no escaping
+     * needed, but it hits the EXACT same trap relay/bg already did:
+     * draw_elem() only ever sees the tmp Elem this round trip hands
+     * it, so a cursor that isn't serialized here is a cursor
+     * kh_paint_frame_line() can never reconstruct, no matter how
+     * correct the key-handling logic is. */
+    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s|%d\n",
             e->tag, e->id, classes_joined, e->label, e->sprite, e->onclick,
             e->nav_index, e->active, e->x, e->y, e->w, e->h,
-            target_id_esc, input_buffer_esc, relay_esc, bg_esc);
+            target_id_esc, input_buffer_esc, relay_esc, bg_esc, e->cursor);
 }
 
 /* Real recursive serializer, same traversal order render_tree() itself
@@ -2162,11 +2169,13 @@ static void kh_paint_frame_line(const char *line) {
      * (pipe-escaped) [7]=input_buffer (pipe-escaped) [8]=relay (pipe-
      * escaped, pc-hq-bugs.md Bug 3) [9]=bg (pipe-escaped, REAL, NEW
      * 2026-09-04 - the generic bg= attribute, see Elem.bg's own field
-     * comment) - a frame file written by an older binary (before
-     * these fields existed) simply has fewer tail fields - the loop
-     * below returns (honest skip) rather than misparse it, matching
-     * this function's existing "malformed line" convention exactly. */
-    char *tail[10];
+     * comment) [10]=cursor (plain int, REAL, NEW 2026-09-05 - see
+     * Elem.cursor's own field comment) - a frame file written by an
+     * older binary (before these fields existed) simply has fewer
+     * tail fields - the loop below returns (honest skip) rather than
+     * misparse it, matching this function's existing "malformed line"
+     * convention exactly. */
+    char *tail[11];
     /* REAL FIX 2026-08-28, same-day self-correction (first attempt at
      * this fix broke EVERY entity menu, not just book-stack's - see
      * git blame if this comment ever needs re-deriving why): the front
@@ -2178,7 +2187,7 @@ static void kh_paint_frame_line(const char *line) {
      * onward), so `p + strlen(p)` is the real end - `buf2 +
      * strlen(buf2)` is not. */
     char *scan_end = p + strlen(p);
-    for (int i = 9; i >= 0; i--) {
+    for (int i = 10; i >= 0; i--) {
         char *bar = NULL;
         for (char *q = scan_end - 1; q >= p; q--) { if (*q == '|') { bar = q; break; } }
         if (!bar) return; /* malformed line - honest skip, not a crash */
@@ -2224,6 +2233,7 @@ static void kh_paint_frame_line(const char *line) {
     frame_field_unescape_pipe(tail[7], tmp.input_buffer, sizeof(tmp.input_buffer));
     frame_field_unescape_pipe(tail[8], tmp.relay, sizeof(tmp.relay));
     frame_field_unescape_pipe(tail[9], tmp.bg, sizeof(tmp.bg));
+    tmp.cursor = atoi(tail[10]); /* plain int, no escaping - see Elem.cursor's own field comment */
 
     css_compute_style(&g_sheet, tmp.tag, tmp.id[0] ? tmp.id : NULL, tmp.classes, tmp.n_classes, tmp.active, &tmp.style);
     if (window_is_dock()) {
@@ -4698,6 +4708,46 @@ static void default_cli_io_run_action(const char *action, const char *value) {
     (void)rc;
 }
 
+/* REAL, NEW 2026-09-05 (CLI_IO-CURSOR-AND-TEXT_AREA-MULTILINE-EDITING-
+ * DESIGN.md, direct instruction: "i think cli-io should still have a
+ * cursor") - real cursor-aware editing, replacing the old append/
+ * backspace-at-the-end-only behavior. `e->cursor` is a plain byte
+ * offset (matching the existing printable-char branch below, which is
+ * ASCII-only already - no UTF-8 codepoint-width awareness attempted
+ * here, consistent with the scope this function already had). This is
+ * the SAME primitive text_area's own multi-line cursor logic will
+ * generalize from (crossing embedded \n and visual post-wrap rows,
+ *08-roadmap/design-docs/CLI_IO-CURSOR-AND-TEXT_AREA-MULTILINE-EDITING-
+ * DESIGN.md) - keep insert/delete-at-offset shaped so that reuse stays
+ * possible, don't fold assumptions here that only make sense for a
+ * single line with no real newlines. */
+static void kh_cli_io_clamp_cursor(Elem *e) {
+    int len = (int)strlen(e->input_buffer);
+    if (e->cursor < 0) e->cursor = 0;
+    if (e->cursor > len) e->cursor = len;
+}
+static void kh_cli_io_insert_at_cursor(Elem *e, char ch) {
+    int len = (int)strlen(e->input_buffer);
+    if (len + 1 >= (int)sizeof(e->input_buffer)) return; /* real cap, matches the old append path's own bound */
+    kh_cli_io_clamp_cursor(e);
+    for (int i = len; i >= e->cursor; i--) e->input_buffer[i + 1] = e->input_buffer[i];
+    e->input_buffer[e->cursor] = ch;
+    e->cursor++;
+}
+static void kh_cli_io_delete_before_cursor(Elem *e) {
+    kh_cli_io_clamp_cursor(e);
+    if (e->cursor <= 0) return;
+    int len = (int)strlen(e->input_buffer);
+    for (int i = e->cursor - 1; i < len; i++) e->input_buffer[i] = e->input_buffer[i + 1];
+    e->cursor--;
+}
+static void kh_cli_io_delete_at_cursor(Elem *e) {
+    kh_cli_io_clamp_cursor(e);
+    int len = (int)strlen(e->input_buffer);
+    if (e->cursor >= len) return;
+    for (int i = e->cursor; i < len; i++) e->input_buffer[i] = e->input_buffer[i + 1];
+}
+
 static void default_cli_io_handle_key(KeySym ks, char ch) {
     Elem *e = g_default_input_elem;
     if (!e) return;
@@ -4705,7 +4755,8 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
         default_cli_io_save(e);
         default_cli_io_run_action(e->onclick, e->input_buffer);
         e->input_buffer[0] = '\0';
-        default_cli_io_save(e); /* real, empty value, matching the reference's own "clear after submit, stay active" behavior */
+        e->cursor = 0; /* real, matching the reference's own "clear after submit, stay active" behavior - cursor resets with the now-empty buffer */
+        default_cli_io_save(e);
         return;
     }
     /* REAL FIX 2026-08-31 (live report: armed via a real double-click,
@@ -4729,17 +4780,15 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
      * disarm path (Escape here, reparse_chtpm_if_changed()'s own real
      * safety net). */
     if (ks == XK_Escape) { g_default_input_elem = NULL; XUngrabKeyboard(dpy, CurrentTime); return; }
-    if (ks == XK_BackSpace) {
-        size_t len = strlen(e->input_buffer);
-        if (len > 0) { e->input_buffer[len - 1] = '\0'; default_cli_io_save(e); }
-        return;
-    }
+    if (ks == XK_Left) { kh_cli_io_clamp_cursor(e); if (e->cursor > 0) e->cursor--; return; }
+    if (ks == XK_Right) { kh_cli_io_clamp_cursor(e); if (e->cursor < (int)strlen(e->input_buffer)) e->cursor++; return; }
+    if (ks == XK_Home) { e->cursor = 0; return; }
+    if (ks == XK_End) { e->cursor = (int)strlen(e->input_buffer); return; }
+    if (ks == XK_Delete) { kh_cli_io_delete_at_cursor(e); default_cli_io_save(e); return; }
+    if (ks == XK_BackSpace) { kh_cli_io_delete_before_cursor(e); default_cli_io_save(e); return; }
     if (ch >= 32 && ch < 127) {
-        size_t len = strlen(e->input_buffer);
-        if (len + 1 < sizeof(e->input_buffer)) {
-            e->input_buffer[len] = ch; e->input_buffer[len + 1] = '\0';
-            default_cli_io_save(e);
-        }
+        kh_cli_io_insert_at_cursor(e, ch);
+        default_cli_io_save(e);
     }
 }
 
@@ -4750,7 +4799,12 @@ static void activate_focused(void) {
     /* REAL FIX 2026-08-31 - see default_cli_io_handle_key()'s own
      * Escape-branch comment for the full real diagnosis. Grab taken
      * HERE (arm time), released on every real disarm path. */
-    if (strcmp(item->tag, "cli_io") == 0) { g_default_input_elem = item; kh_grab_keyboard_retry(); return; }
+    if (strcmp(item->tag, "cli_io") == 0) {
+        g_default_input_elem = item;
+        item->cursor = (int)strlen(item->input_buffer); /* REAL, NEW 2026-09-05 - arm at the end of whatever's already typed, matching every normal editor's own re-focus convention, not wherever a stale cursor happened to be left */
+        kh_grab_keyboard_retry();
+        return;
+    }
     /* generic <tab> (spirit of db-hq's tab click): run the tab's own
      * action= (switches the projected content), mark it active, and
      * scope nav into the page's <sidebar> - so after choosing a tab you
