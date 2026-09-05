@@ -12189,13 +12189,23 @@ int main(int argc, char **argv) {
      * window creation - override_redirect is creation-time-only. */
     load_override_redirect(g_house_root);
     load_zorder_mode(g_house_root);
-    /* REAL, NEW 2026-08-29 - dbhq_load_font_scale() also reads the new
-     * click_two_step key (see click_focus_then_activate()'s own
-     * comment); that key applies to EVERY mode's clicks, not just
-     * db-hq, so it's loaded here once, unconditionally, before any
-     * mode-specific branch - the existing db-hq-only call further
-     * down is now a harmless redundant reload, left in place rather
-     * than restructured, since removing it isn't needed for this fix. */
+    /* REAL FIX 2026-09-04 (RENDERER-MODULARITY-AND-PERF-AUDIT.md-
+     * adjacent finding, direct live report "single click vs double
+     * click... was it added to settings yet") - this comment's own
+     * claim ("dbhq_load_font_scale() also reads... click_two_step")
+     * was already stale: dbhq_load_font_scale() no longer exists
+     * anywhere in this file (deleted in an earlier dbhq_* cleanup
+     * pass), and desktop_load_click_two_step() itself was ONLY ever
+     * called from tp_main() (tile mode) - meaning the generic default-
+     * mode path this comment claims to cover (db-hq/events-hq/chat-
+     * hai/open-hai/settings/entity-menus/everything else) NEVER
+     * actually loaded click_two_step at all, silently staying at its
+     * compile-time default (1, two-step) regardless of what
+     * #.desktop/hq_ui.pdl says - a real, previously-undiscovered gap
+     * this comment's own words already promised was fixed. Restored
+     * for real, at the exact spot this comment already said it
+     * belonged. */
+    desktop_load_click_two_step(g_house_root);
     snprintf(g_chtpm_path, sizeof(g_chtpm_path), "%s", argv[2]);
     snprintf(g_package_dir, sizeof(g_package_dir), "%s", g_chtpm_path);
     { char *slash = strrchr(g_package_dir, '/'); if (slash) *slash = '\0'; }
