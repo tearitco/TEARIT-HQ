@@ -39,7 +39,18 @@
      `${filename}` substitution, which would only ever reflect the
      manager's last-published value, not every keystroke.
      show="${show_save_row}" hides the whole row in LOAD mode (manager
-     publishes show_save_row=0/1 based on its own mode=). -->
+     publishes show_save_row=0/1 based on its own mode=).
+
+     REAL FIX 2026-09-05, direct live report ("chrome has 2 exit
+     buttons as a bug? that shouldn't be possible") - it wasn't a
+     rendering bug: EVERY sidebar+panel window already gets a real,
+     free auto-generated chrome "X" (g_default_close_elem, injected
+     outside this template entirely, top-right corner) - the explicit
+     `<item id="cancel" class="close-btn">` below was a genuinely
+     redundant SECOND close button this template added on top of it.
+     Removed - dismissal is the free chrome X, same as every other
+     sidebar+panel window in the house already relies on. -->
+
 <window label="File Explorer - ${mode}" class="file-explorer-pal database-window" vars="file_explorer_ui.txt">
   <!-- REAL, NEW 2026-09-05 - launch_module() passes house_root then
        package_dir automatically, then this <module>'s own id= as a
@@ -64,7 +75,6 @@
       <text label="Pick a file to load." class="quiet" show="${show_load_hint}"/>
       <cli_io id="filename" target_id="filename" label="Save as: " show="${show_save_row}"/>
       <item id="save" class="opacity-btn" show="${show_save_row}" action="FE_SAVEAS" label="Save"/>
-      <item id="cancel" class="close-btn" action="FE_CANCEL" label="Cancel"/>
     </panel>
   </page>
 </window>

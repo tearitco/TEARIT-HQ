@@ -33,9 +33,24 @@ window {
     border: 1px solid #666666;
 }
 
-.close-btn {
-    background-color: #663333;
-    color: #ffffff;
+/* REAL, NEW 2026-09-05 - real <tabbar> (see pdl-read-pal.xhtpm's own
+   header comment) needs its own visible bar/tab styling, same rule
+   names as stats-hq/dashboard.css's own real <tabbar> precedent. */
+.tab-bar {
+    background-color: #1a1a1a;
+    border-color: #444444;
+    border: 1px solid #444444;
+}
+
+.tab {
+    background-color: #1a1a1a;
+    color: #aaaaaa;
+    border: 1px solid #444444;
     padding: 4px 8px;
-    border: 1px solid #884444;
+}
+
+.tab.active {
+    background-color: #2a2a2a;
+    color: #ffffff;
+    font-weight: bold;
 }

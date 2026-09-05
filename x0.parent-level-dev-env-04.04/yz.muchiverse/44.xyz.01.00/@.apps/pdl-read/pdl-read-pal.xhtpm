@@ -15,6 +15,48 @@
      itself right after writing the action file - one xhtpm action=
      string can't invoke two dispatch verbs at once.
 
+     REAL, NEW 2026-09-05, direct live request ("pdl read should read
+     dox from 'dox' in 1.hq, but should have file explorer 'file'
+     button in its header to open other files") - the doc list (both
+     pages' <sidebar>) is now a live scan of <house_root>/#.DOX
+     (pdl_read_manager.c), not a hand-curated docs.pdl. A real "file"
+     button (PDL_OPENFILE, khtpm_core_render.c) on EACH page's own
+     header launches the File Explorer widget and switches to "read" -
+     the manager independently notices the real pick afterward (polls
+     File Explorer's own published result, no new IPC) and republishes
+     page_text as an "ad-hoc" doc, same as any #.DOX-indexed one. Kept
+     as one <row class="toolbar"> specifically so a future, simpler
+     fixed-doc-list reader reusing this same layout can drop the whole
+     row with a one-line removal, per direct instruction ("dox pdl
+     doesn't need a file explorer button... easy to remove 1 button").
+     Moved into a real toolbar row (was a plain sidebar list item,
+     direct live report: "the 'file' should be in tool bar... it looks
+     confusing" otherwise, easy to mistake for one of the real docs).
+
+     REAL FIX 2026-09-05, direct live report ("chrome has 2 exit
+     buttons as a bug?") - "Back to list" was styled class="close-btn",
+     the same class name that (elsewhere, File Explorer) turned out to
+     visually duplicate the real, free auto-generated chrome "X" every
+     sidebar+panel window already gets. This button doesn't even CLOSE
+     the window (it's GOTO:main, a real page switch) - "close-btn" was
+     just the wrong class name for what it does, renamed to
+     "opacity-btn" (a plain button) to avoid the same confusion.
+
+     REAL FIX 2026-09-05, direct live request ("i really wanted file in
+     a top bar like a normal window... a second bar below chrome for
+     file... that way file doesn't dissapear") - the <row class="toolbar">
+     inside <sidebar> was still just scrollable sidebar content, so it
+     could scroll out of view. Replaced with a real <tabbar> (already
+     generic, khtpm_core_render.c's own layout_sidebar_panel()) - laid
+     out at a fixed y just under chrome, spanning the window, ABOVE
+     where <sidebar>/<panel> start - a real always-visible second bar,
+     not sidebar content. <tab> already supports firing an arbitrary
+     action= AND marking itself active (activate_focused(), the exact
+     same mechanism db-hq's own tab strip uses) - PDL_OPENFILE fires
+     exactly as before, just from a structurally different, persistent
+     row. Each <page> gets its own <tabbar> (tabbar is a <page> child,
+     not window-global).
+
      "read" uses a <text_area> for the page content, UNARMED by
      default - a real, working multi-line display surface (this
      session's own new element) reused as a read-only-in-practice
@@ -39,6 +81,9 @@
 <window label="pdl-read - ${doc_title}" class="pdl-read-pal database-window" vars="pdl_read_ui.txt">
   <module src="@.apps/pdl-read/ops/+x/pdl_read_manager.+x" id="_"/>
   <page name="main">
+    <tabbar class="tab-bar">
+      <tab id="filebtn" class="tab" action="PDL_OPENFILE" label="[file] Open..."/>
+    </tabbar>
     <sidebar id="sidebar" class="sidebar">
       <text label="pdl-read - pick a doc" class="quiet"/>
       <scrolllist>
@@ -59,9 +104,12 @@
        static text - "the user should still be able to change pages,
        like pdf." -->
   <page name="read">
+    <tabbar class="tab-bar">
+      <tab id="filebtn2" class="tab" action="PDL_OPENFILE" label="[file] Open..."/>
+      <tab id="back" class="tab" action="GOTO:main" label="Back to list"/>
+    </tabbar>
     <sidebar id="readsidebar" class="sidebar">
       <text label="${doc_title}" class="quiet"/>
-      <item id="back" class="close-btn" action="GOTO:main" label="Back to list"/>
       <scrolllist>
         <repeat count="${page_count}" bind="p">
         <item id="pg${p.#}" class="pdl-page-jump" action="PDL_GOTOPAGE:${p.#}" label="Page ${p.#}"/>

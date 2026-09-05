@@ -4620,6 +4620,27 @@ static void dispatch(const char *action) {
      * contract. Page navigation never quits the window - only real
      * page-switching (GOTO:/BACK, already generic, unrelated to this
      * prefix) leaves the reader view. */
+    /* REAL, NEW 2026-09-05, direct live request ("should have file
+     * explorer 'file' button in its header to open other files") -
+     * launches the File Explorer widget's own real button.sh (a plain
+     * background process - no new IPC needed, pdl_read_manager.c
+     * already independently polls that widget's own real, published
+     * result state once it's running) AND switches to the "read" page
+     * right away, same real reason PDL_OPEN:<n> below also needs a
+     * direct switch_page() call - one xhtpm action= string can't run
+     * two dispatch verbs. The "read" page shows its own real "no
+     * document open" state until the manager notices a pick and
+     * republishes - the same live-reparse-on-vars-change mechanism
+     * every other page_text update already relies on, nothing new. */
+    if (strcmp(action, "PDL_OPENFILE") == 0) {
+        char cmd[PATH_BUF * 2];
+        snprintf(cmd, sizeof(cmd), "sh '%s/&.widgits/file-explorer/button.sh' '%s' >/dev/null 2>&1 &",
+                 g_house_root, g_house_root);
+        int rc = system(cmd);
+        (void)rc;
+        switch_page("read");
+        return;
+    }
     if (strncmp(action, "PDL_", 4) == 0) {
         char ap[PATH_BUF];
         snprintf(ap, sizeof(ap), "%s/pdl_read_action.txt", g_package_dir);
