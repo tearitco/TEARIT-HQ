@@ -119,28 +119,22 @@ static void read_kv_line(const char *path, const char *key, char *out, size_t ou
  * Write the current grid state to the UI file.
  * This is called after every state change.
  */
-/* REAL, NEW 2026-09-05, direct live request ("i expect to see a grid
- * in the right window, even if no file opened. to know that its a
- * spreadsheet editor") - always publish a real, labeled grid (column
- * letters A/B/C.../row numbers, fixed-width padded cells) instead of
- * only ever publishing real data rows - an empty sheet with n_rows=0
- * published nothing at all, which looked like a blank list, not a
- * spreadsheet. row_0_text is now always a real header row ("    | A
- * | B | C ..."), and at least DISPLAY_MIN_ROWS/DISPLAY_MIN_COLS of
- * blank, numbered grid cells are shown even on a freshly-opened/New
- * sheet - a real, cheap fix using the existing generic scrolllist-of-
- * formatted-rows shape, not a new grid/table render primitive (a
- * genuine native <grid> element with clickable cells is a bigger,
- * separate design decision, not attempted here). */
-/* REAL, NEW 2026-09-05, direct live request ("cells shouldn't be in
- * sidebar. they should be in the big space") - the grid moved from
- * <sidebar> to <panel> in csv-hq-pal.xhtpm (panel already supports a
- * nested <scrolllist> via the same layout_fixed_rows_and_scrolllist()
- * helper sidebar uses), so there's real room for wider columns now. */
+/* REAL, NEW 2026-09-05 (08-roadmap/design-docs/GRID-ELEMENT-DESIGN.md,
+ * step 5 - the real <grid> element replacing the old cellref/cellval/
+ * Set-Cell trio, direct live request: "it doesn't allow user editing
+ * the cell live in place like a real spreadsheet"). The grid element
+ * itself now draws all the header/row-number/border chrome and reads
+ * per-cell content on demand via a var-name convention
+ * (cell_<row>_<col>, matching the "cell_" prefix csv-hq-pal.xhtpm's
+ * own <grid target_id="cell_"> declares) - this manager's only real
+ * job is to publish n_rows (how many real rows the grid should size
+ * itself for) and one cell_R_C var per published cell. Always publish
+ * at least DISPLAY_MIN_ROWS so a fresh/empty sheet still sizes as a
+ * real spreadsheet, not a 1-row sliver (same real reason the earlier
+ * formatted-scrolllist version needed this, direct live request: "i
+ * expect to see a grid... even if no file opened"). */
 #define DISPLAY_MIN_ROWS 12
-#define DISPLAY_MIN_COLS 6
-#define CELL_W 7
-#define ROW_LABEL_W 3
+#define DISPLAY_MAX_COLS 26
 
 static void write_ui_file(void) {
     char ui_path[MAX_PATH_LEN];
@@ -155,38 +149,20 @@ static void write_ui_file(void) {
 
     /* Display cap: only publish min(n_rows, 200) real data rows - a
      * deliberate v1 display cap, not a bug. Always show at least
-     * DISPLAY_MIN_ROWS/DISPLAY_MIN_COLS of grid, real or blank, so an
-     * empty sheet still reads as a spreadsheet. */
+     * DISPLAY_MIN_ROWS so an empty sheet still reads as a real
+     * spreadsheet, not a sliver. */
     int real_rows = n_rows > 200 ? 200 : n_rows;
     int show_rows = real_rows > DISPLAY_MIN_ROWS ? real_rows : DISPLAY_MIN_ROWS;
-    int show_cols = n_cols_used > DISPLAY_MIN_COLS ? n_cols_used : DISPLAY_MIN_COLS;
-    if (show_cols > MAX_COLS) show_cols = MAX_COLS;
+    int show_cols = n_cols_used > DISPLAY_MAX_COLS ? DISPLAY_MAX_COLS : n_cols_used;
+    if (show_cols < 1) show_cols = 1;
 
-    /* +1 for the real header row (row_0), so row_1.._show_rows are the
-     * actual/blank data rows, numbered 1-based to match cell refs
-     * (e.g. "B3" - the same row a human would type). */
-    fprintf(f, "n_rows=%d\n", show_rows + 1);
-
-    fprintf(f, "row_0_text=");
-    fprintf(f, "%-*s", ROW_LABEL_W, "");
-    for (int j = 0; j < show_cols; j++) {
-        char letter[2] = { (char)('A' + j), '\0' };
-        fprintf(f, "|%-*s", CELL_W, letter);
-    }
-    fprintf(f, "\n");
+    fprintf(f, "n_rows=%d\n", show_rows);
 
     for (int i = 0; i < show_rows; i++) {
-        fprintf(f, "row_%d_text=", i + 1);
-        char rownum[16];
-        snprintf(rownum, sizeof(rownum), "%d", i + 1);
-        fprintf(f, "%-*s", ROW_LABEL_W, rownum);
         for (int j = 0; j < show_cols; j++) {
             const char *cell = (i < n_rows && j < n_cols_used) ? grid[i][j] : "";
-            char trimmed[CELL_W + 1];
-            snprintf(trimmed, sizeof(trimmed), "%s", cell);
-            fprintf(f, "|%-*s", CELL_W, trimmed);
+            fprintf(f, "cell_%d_%d=%s\n", i, j, cell);
         }
-        fprintf(f, "\n");
     }
 
     fclose(f);

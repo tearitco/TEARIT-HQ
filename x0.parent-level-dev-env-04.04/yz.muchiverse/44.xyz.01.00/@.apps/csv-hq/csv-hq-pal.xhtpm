@@ -15,19 +15,31 @@
      csv_hq_ui.txt; this template only ever renders whatever it
      published, via vars=.
 
-     REAL v1 SCOPE, deliberate: cells are addressed by typed ref
-     (e.g. "B3") into a <cli_io>, not click-to-select - keeps this
-     shape achievable with the house's existing generic tag vocabulary
-     (no new "grid"/"table" element built for this). Up to 26 columns
-     (A-Z, single letter) and a real display cap on visible rows in
-     the sidebar - documented limitations, not bugs. Functions read a
-     column letter from its own <cli_io> and apply over every numeric
-     cell in that column (non-numeric cells skipped, real and honest,
-     not a parse error). Save writes back to whatever path is already
-     open (from Open); Save As is not built this pass, same real,
-     deliberately deferred v2 as text-edit-hq's own Save As limitation
-     doc'd in its own header (a real SAVE mode for the shared File
-     Explorer widget is the one dependency both would want).
+     REAL, NEW 2026-09-05 - cells are now edited IN PLACE via a real
+     <grid> element (08-roadmap/design-docs/GRID-ELEMENT-DESIGN.md),
+     replacing the original cellref/cellval/Set-Cell <cli_io> trio
+     (direct live feedback: "it doesn't allow user editing the cell
+     live in place like a real spreadsheet"). One nav item for the
+     WHOLE grid; arrow keys move a real 2D cursor, letters/digits
+     accumulate into a jump buffer (either order, "a11" or "11a")
+     resolved on Enter, a second Enter enters the cell for real typed
+     editing (# badge = navigating, ^ badge = editing - see the design
+     doc's own "Decided" section for why two symbols). target_id="cell_"
+     is the per-cell var-name prefix the grid reads live cell content
+     from on entering edit mode (cell_<row>_<col>, published by
+     csv_hq_manager.c's own write_ui_file()); action="CSVH_GRIDCOMMIT"
+     fires on Escape-out-of-a-cell, reusing the SAME manager-side
+     SETCELL command the old trio used - the grid is purely a richer
+     input surface, zero manager protocol change. colref stays a plain
+     <cli_io> for the SUM/AVG/MIN/MAX/COUNT functions below (those need
+     a column selection independent of wherever the grid's own cursor
+     happens to be). Up to 26 columns (A-Z) and a real display cap on
+     published rows - documented limitations, not bugs. Save writes
+     back to whatever path is already open (from Open); Save As is not
+     built this pass, same real, deliberately deferred v2 as text-
+     edit-hq's own Save As limitation doc'd in its own header (a real
+     SAVE mode for the shared File Explorer widget is the one
+     dependency both would want).
 
      Persistent <tabbar> under chrome for New/Open/Save (same real,
      always-visible mechanism just added to pdl-read/text-edit-hq).
@@ -46,11 +58,6 @@
     <sidebar id="sidebar" class="sidebar">
       <text label="${file_path}" class="quiet"/>
       <text label="${status}" class="quiet"/>
-      <text label="Cell ref (e.g. B3):" class="quiet"/>
-      <cli_io id="cellref" target_id="cellref" label=""/>
-      <text label="Value:" class="quiet"/>
-      <cli_io id="cellval" target_id="cellval" label=""/>
-      <item id="setcell" class="opacity-btn" action="CSVH_SETCELL" label="Set Cell"/>
       <text label="Column letter for functions below:" class="quiet"/>
       <cli_io id="colref" target_id="colref" label=""/>
       <row class="toolbar">
@@ -65,11 +72,7 @@
       <text label="Result: ${func_result}" class="quiet"/>
     </sidebar>
     <panel id="panel" class="csv-panel">
-      <scrolllist>
-        <repeat count="${n_rows}" bind="row">
-        <item id="row${row.#}" class="csv-row" label="${row.text}"/>
-        </repeat>
-      </scrolllist>
+      <grid id="sheet" rows="${n_rows}" target_id="cell_" action="CSVH_GRIDCOMMIT"/>
     </panel>
   </page>
 </window>

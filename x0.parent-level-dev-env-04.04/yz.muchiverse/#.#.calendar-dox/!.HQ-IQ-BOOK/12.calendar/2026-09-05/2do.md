@@ -2,6 +2,30 @@
 
 ## Done today
 
+- **text-edit-hq and csv-hq — BUILT, verified, registered as real
+  toys.** `@.apps/text-edit-hq/` (plain-text editor: New/Open/Save/
+  Save As) and `@.apps/csv-hq/` (small CSV/spreadsheet editor:
+  New/Open/Save + SUM/AVG/MIN/MAX/COUNT over a named column, cells
+  addressed by typed ref like "B3"). Both managers delegated whole to
+  a fresh Haiku agent each (parallel), both compiled clean first try
+  against a complete spec. Verified directly by driving each
+  manager's action/UI files (not X11 click simulation, which is
+  unreliable in this sandbox per earlier notes) - SAVE/SAVEAS/NEW/
+  SETCELL/FUNC and the shared File Explorer pick-poll path all produce
+  exactly the expected published state and on-disk file changes. Real
+  v1 scope, documented in each app's own xhtpm header: Save As has no
+  File-Explorer SAVE-mode (typed path only, File Explorer is LOAD-only
+  today); csv-hq caps at 26 cols (A-Z)/500 rows, plain-comma CSV (no
+  quoted-comma support). Checked the external CSV ops tree pointer
+  first (see prior todo below) - reused its 2D-grid + function-bank
+  shape as built-in functions rather than porting its code directly.
+  Also fixed a real regression from earlier today: `PDL_OPENFILE`'s
+  own File Explorer launch call still passed `house_root` as argv[1]
+  after button.sh was rewritten to the toy.pdl `run`-only convention,
+  so clicking "file" in pdl-read silently launched nothing (live
+  report: "opened a mess within same window, didn't see any files") -
+  fixed the call site, confirmed live that File Explorer now opens as
+  its own separate real X11 window as originally designed.
 - **pdl-read — BUILT, live-verified, registered as a real toy.**
   `@.apps/pdl-read/` — a real paginated document reader, demonstrated
   reading the house book's own docs (`docs.pdl` lists 9 real book
@@ -119,6 +143,15 @@
   `agy-text-editor` loader → editor → FILE MENU → Save As flow). Its
   own Save/Load wiring now has the File Explorer widget to use, once
   the editor itself gets built.
+- **New toy: CSV/spreadsheet editor** — brainstormed, not scheduled,
+  direct request ("while we do the text editor, we also want to make
+  a spreadsheet/csv editor with some functions"). Build alongside the
+  `toys` text editor above (same File Explorer Save/Load wiring should
+  apply). Direct pointer to reuse: an existing external CSV app/ops
+  tree already has "some existing conventions/ops that maybe helpful"
+  — no nav yet, but other useful pieces — at
+  `/media/no/b7ced73c-5231-4462-b98d-64e38fe2df9e/home/jbez/Desktop/^.📶️.SHARE]/^.🦾️]fullsharezip/💪🏾️].no-desk.sharezip/📲️📵️.GTFO.flxbx.📦️arcbit♏️/0.arc.bit.📲️📵️(✳️📳️)]a2/🧿️✳️.HALO:A*STD.MODS📍️/♍️]csv.irgo]🇬🇮️📠️]a0/`
+  — check it before starting from scratch.
 - **New desktop entity type: `FLEXFOLDER`/`FLEXBOX`** — brainstormed,
   not scheduled, direct request. A real, droppable-into desktop
   container entity (📁 2D "FLEXFOLDER", 🗄️ 3D "FLEXBOX" in 3D mode) that

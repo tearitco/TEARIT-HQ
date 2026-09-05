@@ -97,3 +97,64 @@ Read
 or nav badges. Edit `&.widgits/_shared-lib/khtpm_draw_core.c` (the
 ops copy is overwritten on build). Running windows do not pick up a
 rebuild until relaunch.
+
+## Driving/testing a khtpm_core_render.c window: use the relay, not xdotool
+
+**Direct instruction, real incident (2026-09-05)**: an agent (this same
+house) drove pdl-read/text-edit-hq/File-Explorer test windows this
+session almost entirely via `xdotool key`/`xdotool click` — repeatedly
+flaky (clicks not landing, keys not registering) — when a real,
+reliable, house-standard input mechanism was already built into
+`khtpm_core_render.c` itself and just never used. Full history of why
+this convention exists (and three real testing-methodology bugs a past
+agent made before finding it) is in
+`#.#.calendar-dox/1.^V-hq/_.0.aigent-testing-k9.txt`, but do not wait
+to discover it 900 lines in — read this section first.
+
+**The mechanism, already live in every khtpm_core_render.c window**
+(`poll_agent_history()`/`history_path()`, ~line 5885 as of 2026-09-05):
+every running instance polls its own **per-process** relay file every
+tick, real X11 input or agent writes both land through the exact same
+path:
+```
+#.desktop/entity_menu_history/<pid>.txt
+```
+One line per event, appended (never truncate this file yourself —
+it's cursor-based, append-only):
+- `KEY_PRESSED: <decimal>` — printable ASCII 32-126 as the literal
+  character; `13`=Enter, `27`=Escape, `8`=Backspace, `9`=Tab;
+  `200`/`201`/`202`/`203`=Up/Down/Left/Right, `204`/`205`=PageUp/Down
+  (arrow keysyms have no ASCII code, hence the reserved 200+ band).
+- `MOUSE_EVENT: <button> <x> <y> <is_press>` — real clicks/wheel.
+- A line starting with `#` is a no-op audit comment (still consumes
+  the cursor past it, never dispatched) — use it to leave a "why" note
+  inline in the file.
+
+Find the PID from `ps aux | grep khtpm_core_render` (it's argv-visible
+in the process list, or read it back from the window's own
+`module_parent.pid` file next to its package dir).
+
+**Before sending ANY digit for nav-jump, dump the frame first and read
+the ACTUAL rendered nav numbers.** Nav numbering in this family is
+**global/unified across every concurrently-open khtpm window**, not
+reset to 1 per window — a freshly-launched window can legitimately
+start at nav 11, 19, whatever other windows already claimed. Assuming
+nav starts at 1, or that a single-digit code always means "item N," is
+a real, confirmed mistake (see k9 doc's own "Rule 7" and the
+h-ai digit-accumulator incident) — always verify against a live dump,
+never hardcode an index across more than one action.
+
+Order of preference, strict (matches k9 doc's own gate for this
+binary family):
+1. The relay file above, driving real dispatch/nav exactly like a
+   human keypress would.
+2. A cheap **text** state read (this app family's own published
+   `<name>_ui.txt`, or a manager's action/UI files) to confirm what
+   actually changed — cheaper and less ambiguous than decoding a PNG.
+3. `dump_frame_png_op.+x <window-id> <out.png>` (direct binary
+   invocation, not the in-window `'p'` key relay — an ARMED cli_io/
+   text_area field consumes `'p'` as literal typed input instead) for
+   real pixel-level/layout proof.
+4. `xdotool`/XTest — **last resort only**, e.g. real mouse-drag physics
+   the relay can't express. Reaching for it first is the exact mistake
+   this section exists to prevent.

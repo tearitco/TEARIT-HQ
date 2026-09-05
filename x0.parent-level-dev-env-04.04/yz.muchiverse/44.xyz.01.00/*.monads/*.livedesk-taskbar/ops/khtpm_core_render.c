@@ -97,6 +97,7 @@ static void nav_tab_unregister(void);
 static void nav_ledger_publish(void);
 static void popup_handle_click(int px, int py);
 static void handle_key(KeySym ks, char ch);
+static void grid_col_to_letters(int col, char *out, size_t outsz); /* defined near default_grid_handle_key() - needed earlier by dispatch()'s own CSVH_GRIDCOMMIT-style handlers */
 static void history_path(char *out, size_t outsz);
 static void history_unregister(void); /* REAL, NEW 2026-08-29 - see its own real definition/comment near history_path() */
 static void zero_nav_subtree(Elem *e); /* generic: recursively zero nav_index (see its definition) */
@@ -3031,6 +3032,39 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
             }
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
             c->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = c;
+        } else if (strcmp(c->tag, "grid") == 0) {
+            /* REAL, NEW 2026-09-05 (GRID-ELEMENT-DESIGN.md). Always a
+             * fixed, always-visible row (like cli_io/text_area's own
+             * class="top" case) - a grid doesn't glue to the bottom the
+             * way a single composer field does. rows= reused verbatim
+             * from cli_io/text_area's own attribute (defaults to 8 real
+             * visible rows if unset, an arbitrary but reasonable v1
+             * placeholder height).
+             * REAL FIX 2026-09-05, direct live report ("the orange
+             * highligh for grid goes offscreen. nothing should go
+             * offscreen") - this height MUST exactly match what
+             * khtpm_draw_core.c's own grid branch actually consumes
+             * (its STATUS_H_PX + (rows+1)*CELL_H_PX), or the generic
+             * nav-focus rectangle (drawn earlier in draw_elem(), sized
+             * from THIS c->h) ends up taller than the real drawn table,
+             * leaving a floating, disconnected-looking orange line past
+             * the last real row. This was using the unrelated generic
+             * ROW_H (24px, ~every other element's row height) instead -
+             * a real, deliberately duplicated copy of draw_core.c's own
+             * two constants (same reason grid_col_to_letters() is also
+             * duplicated there: the two files can't share a single
+             * #define across their real translation-unit split at this
+             * house's own build boundary). Keep these three numbers
+             * (18, 22, and the +1 for the header row) in exact sync
+             * with khtpm_draw_core.c's STATUS_H_PX/CELL_H_PX if either
+             * ever changes. */
+            enum { GRID_STATUS_H_PX = 18, GRID_CELL_H_PX = 22 };
+            int rows = c->rows > 0 ? c->rows : 8;
+            int this_h = GRID_STATUS_H_PX + (rows + 1) * GRID_CELL_H_PX;
+            c->x = x; c->y = y_cursor; c->w = w; c->h = this_h;
+            css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
+            c->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = c;
+            y_cursor += this_h;
         }
         /* scrolllist itself is positioned in its own real pass below,
          * once the fixed-row total (y_cursor's own final advance) is
@@ -4775,6 +4809,32 @@ static void dispatch(const char *action) {
         (void)rc;
         return;
     }
+    /* REAL, NEW 2026-09-05 (GRID-ELEMENT-DESIGN.md, step 5 - the real
+     * <grid> element replacing csv-hq's old cellref/cellval/Set-Cell
+     * trio). Fired from default_grid_handle_key()'s own Escape-commit
+     * branch via the grid's own action=/onclick= attribute - reads the
+     * LIVE grid element's own grid_cur_row/col + grid_cell_buffer
+     * (the manager's last-published state can't reflect a mid-edit
+     * keystroke), dumps the edited value to the SAME scratch file
+     * CSVH_SETCELL already uses, and issues the SAME SETCELL command -
+     * zero manager-side protocol change, per the design doc's own
+     * "the grid is purely a richer input surface" decision. */
+    if (strcmp(action, "CSVH_GRIDCOMMIT") == 0) {
+        Elem *g = find_by_id(g_window, "sheet");
+        if (g) {
+            char bufpath[PATH_BUF];
+            snprintf(bufpath, sizeof(bufpath), "%s/csv_setcell_buffer.txt", g_package_dir);
+            FILE *bf = fopen(bufpath, "wb");
+            if (bf) { fputs(g->grid_cell_buffer, bf); fclose(bf); }
+            char colletters[8];
+            grid_col_to_letters(g->grid_cur_col, colletters, sizeof(colletters));
+            char ap[PATH_BUF];
+            snprintf(ap, sizeof(ap), "%s/csv_hq_action.txt", g_package_dir);
+            FILE *af = fopen(ap, "w");
+            if (af) { fprintf(af, "seq=%u\ncmd=SETCELL:%s%d\n", ++g_swatch_action_seq, colletters, g->grid_cur_row + 1); fclose(af); }
+        }
+        return;
+    }
     if (strcmp(action, "CSVH_SETCELL") == 0) {
         Elem *rf = find_by_id(g_window, "cellref");
         Elem *vf = find_by_id(g_window, "cellval");
@@ -5192,6 +5252,153 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
     }
 }
 
+/* REAL, NEW 2026-09-05 (GRID-ELEMENT-DESIGN.md) - base-26 multi-letter
+ * column codec (A=0..Z=25, AA=26..AZ=51, ...), the same "bijective
+ * base-26" scheme spreadsheet column letters always use. Shared by the
+ * jump-buffer parser below and by draw_elem()'s own grid header-row
+ * rendering (step 3, not yet built). */
+static void grid_col_to_letters(int col, char *out, size_t outsz) {
+    char tmp[8]; int n = 0;
+    long v = col + 1; /* 1-based for this algorithm */
+    while (v > 0 && n < (int)sizeof(tmp)) {
+        long rem = (v - 1) % 26;
+        tmp[n++] = (char)('A' + rem);
+        v = (v - 1) / 26;
+    }
+    int i = 0;
+    for (; i < n && (size_t)i < outsz - 1; i++) out[i] = tmp[n - 1 - i];
+    out[i] = '\0';
+}
+static int grid_letters_to_col(const char *s, int len) {
+    long col = 0;
+    for (int i = 0; i < len; i++) {
+        char c = (char)toupper((unsigned char)s[i]);
+        if (c < 'A' || c > 'Z') return -1;
+        col = col * 26 + (c - 'A' + 1);
+        if (col > 1000000) return -1; /* sane runaway guard, not a real cap */
+    }
+    return (int)(col - 1);
+}
+/* Real jump-buffer resolver - letters and digits may arrive in EITHER
+ * order ("a11" or "11a", direct instruction) since a human doesn't
+ * reliably type a spreadsheet ref in one fixed order under pressure;
+ * parsed as a whole on Enter, not position-sensitively. Returns 1 and
+ * fills *row_out/*col_out on success (0-based); 0 on anything
+ * unparseable (empty/no letters/no digits/bad letters) - caller treats
+ * this as a no-op, matching the design doc's own "clears the buffer,
+ * doesn't crash/move" rule. */
+static int grid_parse_jump(const char *buf, int *row_out, int *col_out) {
+    char letters[16]; int nl = 0;
+    char digits[16]; int nd = 0;
+    for (const char *p = buf; *p; p++) {
+        if (isalpha((unsigned char)*p) && nl < (int)sizeof(letters) - 1) letters[nl++] = *p;
+        else if (isdigit((unsigned char)*p) && nd < (int)sizeof(digits) - 1) digits[nd++] = *p;
+    }
+    if (nl == 0 || nd == 0) return 0;
+    int col = grid_letters_to_col(letters, nl);
+    if (col < 0) return 0;
+    int row = atoi(digits) - 1; /* refs are 1-based, same as csv_hq_manager.c's own parse_cell_ref() */
+    if (row < 0) return 0;
+    *row_out = row; *col_out = col;
+    return 1;
+}
+
+/* REAL, NEW 2026-09-05 (GRID-ELEMENT-DESIGN.md) - the grid's own key
+ * handler, routed to from the same armed-field call site cli_io/
+ * text_area use, but with genuinely different semantics (a 2D cursor
+ * plus a nested cell-edit sub-state, not one text cursor). Two real
+ * sub-states, both scoped to grid_edit_mode:
+ *   0 = navigating (# badge) - arrows move the cursor; letters/digits
+ *       accumulate into grid_jump_buffer; Enter resolves a pending
+ *       jump, or (buffer already empty) ENTERS the cell under the
+ *       cursor; Escape disarms the whole grid.
+ *   1 = editing one cell (^ badge) - grid_cell_buffer is a real,
+ *       live-typed single-line buffer, reusing cli_io's own text-
+ *       editing primitives (kh_text_insert_at_cursor/kh_text_delete_*)
+ *       directly rather than re-implementing them; Escape COMMITS
+ *       (fires the grid's own action=/onclick=, the same generic
+ *       dispatch() verb mechanism <tab>/<item> already use - NOT
+ *       default_cli_io_run_action()'s raw-shell-command path, since a
+ *       commit needs the full in-process dispatch() table, e.g.
+ *       CSVH_GRIDCOMMIT) and returns to state 0 - a SECOND Escape from
+ *       state 0 is what actually disarms the grid, matching the
+ *       design doc's "activating that cell '^' till esc is pressed"
+ *       (one Escape ends the cell, a second ends the grid). */
+static void default_grid_handle_key(KeySym ks, char ch) {
+    Elem *e = g_default_input_elem;
+    if (!e) return;
+    if (e->grid_edit_mode) {
+        /* State 1: editing one cell - same single-line primitives
+         * cli_io's own input_buffer editing already uses, pointed at
+         * grid_cell_buffer instead. */
+        if (ks == XK_Escape) {
+            if (e->onclick[0]) dispatch(e->onclick);
+            e->grid_edit_mode = 0;
+            return;
+        }
+        if (ks == XK_Return || ks == XK_KP_Enter) return; /* single-line cell - Enter does nothing, same as cli_io has no multi-line concept */
+        if (ks == XK_Left) { kh_text_clamp_cursor(e->grid_cell_buffer, &e->cursor); if (e->cursor > 0) e->cursor--; return; }
+        if (ks == XK_Right) { kh_text_clamp_cursor(e->grid_cell_buffer, &e->cursor); if (e->cursor < (int)strlen(e->grid_cell_buffer)) e->cursor++; return; }
+        if (ks == XK_Home) { e->cursor = 0; return; }
+        if (ks == XK_End) { e->cursor = (int)strlen(e->grid_cell_buffer); return; }
+        if (ks == XK_Delete) { kh_text_delete_at_cursor(e->grid_cell_buffer, &e->cursor); return; }
+        if (ks == XK_BackSpace) { kh_text_delete_before_cursor(e->grid_cell_buffer, &e->cursor); return; }
+        if (ch >= 32 && ch < 127) kh_text_insert_at_cursor(e->grid_cell_buffer, sizeof(e->grid_cell_buffer), &e->cursor, ch);
+        return;
+    }
+    /* State 0: navigating. */
+    if (ks == XK_Escape) { g_default_input_elem = NULL; XUngrabKeyboard(dpy, CurrentTime); return; }
+    if (ks == XK_Up)    { if (e->grid_cur_row > 0) e->grid_cur_row--; return; }
+    if (ks == XK_Down)  { e->grid_cur_row++; return; } /* no hard upper cap here - the MANAGER is the real bounds authority (SETCELL already rejects out-of-range refs), same as csv_hq_manager.c's own parse_cell_ref() */
+    if (ks == XK_Left)  { if (e->grid_cur_col > 0) e->grid_cur_col--; return; }
+    if (ks == XK_Right) { e->grid_cur_col++; return; }
+    if (ks == XK_BackSpace) {
+        size_t len = strlen(e->grid_jump_buffer);
+        if (len > 0) e->grid_jump_buffer[len - 1] = '\0';
+        return;
+    }
+    if (ks == XK_Return || ks == XK_KP_Enter) {
+        if (e->grid_jump_buffer[0]) {
+            int row, col;
+            if (grid_parse_jump(e->grid_jump_buffer, &row, &col)) {
+                e->grid_cur_row = row;
+                e->grid_cur_col = col;
+            }
+            e->grid_jump_buffer[0] = '\0';
+        } else {
+            /* Nothing pending - a second real Enter ENTERS the cell
+             * under the cursor (state 0 -> state 1), matching the
+             * design doc's own disambiguation (two different "Enter
+             * does something" cases, not two different keys).
+             * REAL, NEW 2026-09-05 (step 5, GRID-ELEMENT-DESIGN.md's
+             * own build order) - grid_cell_buffer is SEEDED here with
+             * the cursor's current real cell value (published by the
+             * app's own manager as a per-cell var, e.g. "cell_2_1"),
+             * same as activate_focused()'s own cli_io/text_area arm
+             * already seeds the cursor from the real current buffer.
+             * The var-name PREFIX is read from this grid's own
+             * target_id= attribute (reusing that existing generic
+             * field rather than adding a new one just for this -
+             * defaults to "cell_" if unset) - keeps the element itself
+             * generic (any consumer picks its own prefix), matching
+             * commit_action already reusing onclick= the same way. */
+            char varname[80];
+            snprintf(varname, sizeof(varname), "%s%d_%d", e->target_id[0] ? e->target_id : "cell_", e->grid_cur_row, e->grid_cur_col);
+            snprintf(e->grid_cell_buffer, sizeof(e->grid_cell_buffer), "%s", kh_get_var(varname));
+            e->grid_edit_mode = 1;
+            e->cursor = (int)strlen(e->grid_cell_buffer);
+        }
+        return;
+    }
+    if ((isalnum((unsigned char)ch)) && ch >= 32 && ch < 127) {
+        size_t len = strlen(e->grid_jump_buffer);
+        if (len + 1 < sizeof(e->grid_jump_buffer)) {
+            e->grid_jump_buffer[len] = ch;
+            e->grid_jump_buffer[len + 1] = '\0';
+        }
+    }
+}
+
 static void activate_focused(void) {
     if (g_focus_nav < 1 || g_focus_nav > g_n_nav) return;
     Elem *item = g_nav[g_focus_nav - 1];
@@ -5207,6 +5414,21 @@ static void activate_focused(void) {
          * text_area added alongside cli_io here (same real armed-field
          * mechanism, same ^ indicator, same Escape-disarm path). */
         item->cursor = (int)strlen(strcmp(item->tag, "text_area") == 0 ? item->text_area_buffer : item->input_buffer);
+        kh_grab_keyboard_retry();
+        return;
+    }
+    /* REAL, NEW 2026-09-05 (GRID-ELEMENT-DESIGN.md) - <grid> arms into
+     * its own state 0 (navigating, # badge) - grid_cur_row/col are
+     * deliberately NOT reset here, so re-entering an already-used grid
+     * resumes where the cursor last was, same "pick up where you left
+     * off" spirit cli_io/text_area's own end-of-buffer cursor seed
+     * has. grid_jump_buffer/grid_edit_mode DO reset - a stale pending
+     * jump or a still-"editing" flag from a previous arm would be a
+     * real, confusing leftover state to resume into. */
+    if (strcmp(item->tag, "grid") == 0) {
+        g_default_input_elem = item;
+        item->grid_jump_buffer[0] = '\0';
+        item->grid_edit_mode = 0;
         kh_grab_keyboard_retry();
         return;
     }
@@ -5768,6 +5990,15 @@ static void handle_key(KeySym ks, char ch) {
      * own armed input field (g_input_elem, bookmarks' New+ path entry)
      * and needs the SAME key-order exception as events-hq/chat-hai
      * above: 'p' must type into an armed field, not trigger a dump. */
+    /* REAL, NEW 2026-09-05 (GRID-ELEMENT-DESIGN.md) - <grid> shares the
+     * same g_default_input_elem armed-field slot (same 'p'-swallowed-
+     * as-a-literal-character exception, same single active-field-at-a-
+     * time invariant every other armed element already relies on), but
+     * its own key semantics (2D cursor / jump buffer / nested cell-edit
+     * sub-state) are different enough from cli_io/text_area's single
+     * text-cursor model to need a dedicated handler rather than another
+     * is_area-style branch inside default_cli_io_handle_key(). */
+    if (g_default_input_elem && strcmp(g_default_input_elem->tag, "grid") == 0) { default_grid_handle_key(ks, ch); return; }
     if (g_default_input_elem) { default_cli_io_handle_key(ks, ch); return; } /* same real key-order exception - a real cli_io field needs 'p' as a literal typed character */
     if (ch == 'p') { dump_frame_png(); return; }
     if (ks == XK_Return || ks == XK_KP_Enter) {

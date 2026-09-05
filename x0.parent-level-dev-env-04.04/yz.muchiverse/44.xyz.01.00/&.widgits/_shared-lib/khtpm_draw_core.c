@@ -711,6 +711,166 @@ static void draw_elem(Elem *e, int hover_id_hash) {
         XSetForeground(dpy, gc, alloc_pixel("#ff8c00"));
         XDrawRectangle(dpy, buf, gc, e->x - 1, e->y - 1, e->w + 1, e->h + 1);
     }
+    /* REAL, NEW 2026-09-05 (08-roadmap/design-docs/GRID-ELEMENT-DESIGN.md,
+     * direct live request: "truly expecting cross hatch lines, like
+     * tic-tac-toe") - a real, self-contained draw branch, returning
+     * before the generic label-drawing chain below (same early-return
+     * shape "canvas" already uses above) since a grid's content is a
+     * genuine 2D table, not one wrappable string. Real, deliberate v1
+     * scope: cell BORDERS/header row/row numbers/cursor highlight are
+     * real and drawn here; actual cell VALUES are NOT wired yet (step 5
+     * of the design doc's own build order - a consumer's per-cell vars
+     * aren't published/read yet) - every data cell draws empty except
+     * the one currently being edited, which shows its own live
+     * grid_cell_buffer text + cursor bar. Fixed pixel cell sizing
+     * (CELL_W_PX/CELL_H_PX) rather than measuring real content width -
+     * a real, working table now, real column-width-fits-content sizing
+     * is a future refinement, not attempted here. */
+    if (strcmp(e->tag, "grid") == 0) {
+        enum { CELL_W_PX = 64, CELL_H_PX = 22, ROWLABEL_W_PX = 32, STATUS_H_PX = 18 };
+        int visible_cols = (e->w - ROWLABEL_W_PX) / CELL_W_PX;
+        if (visible_cols < 1) visible_cols = 1;
+        int table_y = e->y + STATUS_H_PX; /* real status row reserved above the table itself */
+        int visible_rows = (e->h - STATUS_H_PX) / CELL_H_PX - 1; /* -1 for the header row */
+        if (visible_rows < 1) visible_rows = 1;
+        int armed = (g_default_input_elem && e->id[0] && strcmp(e->id, g_default_input_elem->id) == 0);
+        int cur_row = armed ? g_default_input_elem->grid_cur_row : e->grid_cur_row;
+        int cur_col = armed ? g_default_input_elem->grid_cur_col : e->grid_cur_col;
+        int edit_mode = armed ? g_default_input_elem->grid_edit_mode : 0;
+        XftFont *gfont = font_for(&e->style);
+        const char *default_fg = (window_is_dock() && kh_hex_luma(g_theme_bg) > 140) ? "#1c1c1c" : "#cccccc";
+        XftColor gcol = xft_color(e->style.has_fg_color ? e->style.fg_color : default_fg);
+        /* REAL FIX 2026-09-05, direct live report ("i still dont see
+         * its nav button for human entry") - this branch `return`s
+         * before the generic "[ ]N."/"[>]N." nav-badge draw further
+         * down in this function (the same real gap every early-return
+         * tag, e.g. canvas, already has to solve for itself) - a human
+         * had no visible way to tell the grid was even a real,
+         * clickable/nav-reachable element. elem_cursor_prefix() only
+         * knows "[ ]"/"[>]"/"[^]" (2-3 states); grid needs a real 4th
+         * (# = armed-navigating vs ^ = armed-editing, see the design
+         * doc's own "Decided" section), so this is a small, deliberate
+         * duplicate of that function's own logic rather than a forced
+         * generalization of a house-wide helper for one new tag.
+         * REAL, NEW 2026-09-05 (direct live follow-up: "it should have
+         * space to show digit combo jump accumulation") - the badge AND
+         * the pending jump buffer now share a real, dedicated status
+         * row reserved above the table itself (STATUS_H_PX), instead of
+         * either cramming into the small corner cell or overlapping a
+         * data cell's own real content (which would be confusable with
+         * actually-typed cell text). */
+        {
+            const char *prefix = "[ ]";
+            if (armed) prefix = edit_mode ? "[^]" : "[#]";
+            else if (e->nav_index > 0 && e->nav_index == g_focus_nav) prefix = "[>]";
+            char status_line[48];
+            /* REAL, NEW 2026-09-05, direct live follow-up ("it should
+             * echo input, can have a cursor, would that help?") - a
+             * real, always-visible cursor glyph right after the jump
+             * buffer text (even when the buffer is still empty) while
+             * armed-navigating, so a human watching this exact spot can
+             * tell at a glance whether a keypress reached this process
+             * at all - real diagnostic value on top of real UX, not
+             * either/or. */
+            if (armed && !edit_mode)
+                snprintf(status_line, sizeof(status_line), "%s%d. jump: %s_", prefix, e->nav_index, g_default_input_elem->grid_jump_buffer);
+            else
+                snprintf(status_line, sizeof(status_line), "%s%d.", prefix, e->nav_index);
+            const char *badge_fg = armed ? (edit_mode ? "#ffcc00" : "#ff8c00") :
+                                    (e->nav_index == g_focus_nav ? "#ff8c00" : "#888888");
+            XftColor bcol = xft_color(badge_fg);
+            draw_text_emoji(gfont, &bcol, e->x + 2, e->y + gfont->ascent + 1, status_line);
+            XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &bcol);
+        }
+        XSetForeground(dpy, gc, alloc_pixel("#444444"));
+        for (int r = 0; r <= visible_rows + 1; r++) {
+            int ly = table_y + r * CELL_H_PX;
+            XDrawLine(dpy, buf, gc, e->x, ly, e->x + ROWLABEL_W_PX + visible_cols * CELL_W_PX, ly);
+        }
+        for (int c = 0; c <= visible_cols + 1; c++) {
+            int lx = e->x + (c == 0 ? 0 : ROWLABEL_W_PX + (c - 1) * CELL_W_PX);
+            XDrawLine(dpy, buf, gc, lx, table_y, lx, table_y + (visible_rows + 1) * CELL_H_PX);
+        }
+        for (int c = 0; c < visible_cols; c++) {
+            /* Base-26 column letter (A=0..Z=25, AA=26...) - a small,
+             * deliberately duplicated inline version of
+             * grid_col_to_letters() (khtpm_core_render.c): that helper
+             * is defined LATER in this same translation unit (this
+             * file is #included before it), so it isn't callable here
+             * yet - the algorithm is tiny enough that duplicating it is
+             * simpler and safer than reordering the whole file. */
+            char letters[8]; int nl = 0; long v = c + 1;
+            while (v > 0 && nl < (int)sizeof(letters)) { long rem = (v - 1) % 26; letters[nl++] = (char)('A' + rem); v = (v - 1) / 26; }
+            char colbuf[9]; int li = 0;
+            for (int k = nl - 1; k >= 0; k--) colbuf[li++] = letters[k];
+            colbuf[li] = '\0';
+            int cx = e->x + ROWLABEL_W_PX + c * CELL_W_PX + 4;
+            int cy = table_y + gfont->ascent + 2;
+            draw_text_emoji(gfont, &gcol, cx, cy, colbuf);
+        }
+        for (int r = 0; r < visible_rows; r++) {
+            char rowbuf[8];
+            snprintf(rowbuf, sizeof(rowbuf), "%d", r + 1);
+            int rx = e->x + 4;
+            int ry = table_y + (r + 1) * CELL_H_PX + gfont->ascent + 2;
+            draw_text_emoji(gfont, &gcol, rx, ry, rowbuf);
+        }
+        /* REAL FIX 2026-09-05, direct live follow-up ("does it remember
+         * input?") - step 5's own edit-SEED wiring (default_grid_handle_
+         * key()'s Enter-into-edit branch) only ever populated
+         * grid_cell_buffer for the ONE cell being actively edited; every
+         * OTHER cell's real published value (cell_<r>_<c>, the same var
+         * a consumer's manager writes) was never actually drawn - a
+         * committed edit really did reach the manager (confirmed via
+         * status="Set A2." + cell_1_0=42 in the real UI file) but had no
+         * visible way back onto the screen once the cursor moved off
+         * it. Skips the cell currently mid-edit (drawn separately,
+         * below, from the LIVE grid_cell_buffer - the manager's last-
+         * published value there is one tick stale by definition while
+         * a human is actively typing). */
+        for (int r = 0; r < visible_rows; r++) {
+            for (int c = 0; c < visible_cols; c++) {
+                if (armed && edit_mode && r == cur_row && c == cur_col) continue;
+                char varname[80];
+                snprintf(varname, sizeof(varname), "%s%d_%d", e->target_id[0] ? e->target_id : "cell_", r, c);
+                const char *val = kh_get_var(varname);
+                if (!val[0]) continue;
+                int vx = e->x + ROWLABEL_W_PX + c * CELL_W_PX + 4;
+                int vy = table_y + (r + 1) * CELL_H_PX + gfont->ascent + 2;
+                draw_text_emoji(gfont, &gcol, vx, vy, val);
+            }
+        }
+        /* Current-cell highlight - only meaningful while this exact
+         * grid is the armed element (g_default_input_elem); an
+         * unarmed grid still draws its real border/header lines above,
+         * just no cursor. */
+        if (armed && cur_row >= 0 && cur_row < visible_rows && cur_col >= 0 && cur_col < visible_cols) {
+            int hx = e->x + ROWLABEL_W_PX + cur_col * CELL_W_PX;
+            int hy = table_y + (cur_row + 1) * CELL_H_PX;
+            /* # = navigating (state 0), ^ = editing (state 1) - see the
+             * design doc's own "Decided" section for why these two
+             * badges, not one. The pending jump buffer (state 0) is
+             * shown in the real status row above, not here - see that
+             * row's own comment for why. */
+            XSetForeground(dpy, gc, alloc_pixel(edit_mode ? "#ffcc00" : "#ff8c00"));
+            XDrawRectangle(dpy, buf, gc, hx, hy, CELL_W_PX, CELL_H_PX);
+            if (edit_mode) {
+                /* The one real cell being edited shows its own live
+                 * grid_cell_buffer text (real per-cell VALUE display
+                 * for every other cell is step 5, not this pass) plus
+                 * a real cursor bar at e->cursor's byte offset. */
+                draw_text_emoji(gfont, &gcol, hx + 4, hy + gfont->ascent + 2, g_default_input_elem->grid_cell_buffer);
+                XGlyphInfo pre_ext;
+                XftTextExtentsUtf8(dpy, gfont, (const FcChar8 *)g_default_input_elem->grid_cell_buffer,
+                                    g_default_input_elem->cursor, &pre_ext);
+                int ccx = hx + 4 + pre_ext.width;
+                XSetForeground(dpy, gc, alloc_pixel(e->style.has_fg_color ? e->style.fg_color : default_fg));
+                XDrawLine(dpy, buf, gc, ccx, hy + 2, ccx, hy + CELL_H_PX - 2);
+            }
+        }
+        XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &gcol);
+        return;
+    }
     int pad = e->style.has_padding ? e->style.padding : 4;
     int label_x = e->x + pad;
     /* REAL FIX 2026-08-25 (Stage 2 palettes port, direct carry-over from
