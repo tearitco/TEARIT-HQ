@@ -6,7 +6,9 @@ network-browser JS engine work — a distinct, separate job from the master
 handoff's khtpm C-deletion/xhtpm pass (that work is tracked in the master;
 this job touches only the `&.hq-apps/network` cell and the design docs).
 
-**Last updated:** 2026-09-05 (step 4 fully verified end-to-end — build + regression + DOM test + live manager merge all green; step-4 files uncommitted, ready to commit & push)
+**Last updated:** 2026-09-05 (step 4 committed + pushed; next up: step 5 CPU/node-cap/restart guards)
+
+**Status snapshot (step 4 pushed):** `68df5763`, `1cb67da3`, `6d32cf64`, `ea864cea` all on `origin/chtpm-js-rungs`. Docs (roadmap, worker plan, this handoff) updated in the step-4 commit.
 **Branch:** `chtpm-delete-per-app-c` → pushed to `origin/chtpm-js-rungs`
 **Plan doc:** `08-roadmap/design-docs/NB-JS-ENGINE-WORKER-PLAN.md` (§7 = Phase 1, §8 = Phase 2)
 **Roadmap:** `08-roadmap/design-docs/NB-JS-ENGINE-ROADMAP.md` (rung map)
@@ -39,7 +41,7 @@ stays byte-identical; a script-less page never spawns the worker. Never
 | **1** | `nb_dom.c/.h` tolerant HTML parser + pre-order serializer; `do_fetch` writes `fetch.dom` (produced-but-unused) | **DONE** | `68df5763` |
 | **2** | `nb_js_worker.c` skeleton + shared `nb_host.h`; manager lazy-spawn on `<script>`, LOAD plumbing, QUIT on exit (no behavior change) | **DONE** | `1cb67da3` |
 | 3 | DOM tree in the worker + native accessors (getElementById/getElementsByTagName/querySelector, textContent, children, tagName, getAttribute/setAttribute, classList, appendChild, innerHTML); `tests/worker_dom_test.*` | **DONE** | `6d32cf64` (pushed) |
-| 4 | RENDER merge → page.state.txt (visible payoff) | **DONE (uncommitted)** — full-cell `build.sh` OK; 5 rung tests PASS through eval AND worker; DOM test PASS vs O2 worker; live end-to-end merge verified via real manager + local HTTP server; ready to commit | — |
+| 4 | RENDER merge → page.state.txt (visible payoff) | **DONE** | `ea864cea` (pushed) |
 | 5 | CPU budget + node cap + SIGKILL/restart guards | pending | — |
 | 6 | Docs: mark rungs done in roadmap | pending | — |
 
