@@ -1061,8 +1061,24 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             const char *badge_fg = "#cccccc";
             if (nav_badge[1] == '^') badge_fg = "#ffd24a";
             else if (nav_badge[1] == '>') badge_fg = "#ff8c00";
-            else if (focused) badge_fg = e->sprite[0] ? "#ff8c00" : badge_focus_color(&e->style);
-            else if (e->sprite[0]) badge_fg = "#cccccc";
+            else if (focused) badge_fg = (e->sprite[0] || is_swatch_tile) ? "#ff8c00" : badge_focus_color(&e->style);
+            /* REAL FIX 2026-09-04, direct live report ("some nav
+             * numbers get blacked out... 2,4,6&7") - confirmed root
+             * cause: this file's own comment a few lines up already
+             * says badges on the dark #141414 backing chip "always
+             * needs the light color... badge_contrast_color() would
+             * otherwise read the tile's own bg and (wrongly) pick an
+             * unreadable color" - but the code only ever actually
+             * forced that for `e->sprite[0]` (real sprite tiles).
+             * class="swatch" tiles have NO sprite (they're a plain
+             * CSS fill, not an image), so they fell through to the
+             * final `else` and got badge_contrast_color() computed
+             * against the SWATCH'S OWN bright fill color (white/
+             * silver/orange/yellow) - a dark text color chosen to
+             * contrast against a light swatch, then drawn on the same
+             * dark chip every OTHER badge already uses, so it read as
+             * missing. Same fixed light color as sprite tiles now. */
+            else if (e->sprite[0] || is_swatch_tile) badge_fg = "#cccccc";
             else badge_fg = badge_contrast_color(&e->style);
             XftColor numcol = xft_color(badge_fg);
             XftDrawStringUtf8(xftdraw_buf, &numcol, nav_badge_font, draw_x, numy, (const FcChar8 *)nav_badge, (int)strlen(nav_badge));
