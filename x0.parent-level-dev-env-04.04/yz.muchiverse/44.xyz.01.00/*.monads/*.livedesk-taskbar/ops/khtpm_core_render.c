@@ -4205,7 +4205,30 @@ static void assign_nav_and_layout(void) {
             if (cx > x0 || cy > chips_top) chips_top = cy + ROW_H + KH_CHIP_ROW_GAP;
         }
         /* pass 3: scrolled swatch grid, below the header strip */
-        int y0 = chips_top;
+        /* REAL FIX 2026-09-04, direct live report ("settings buttons
+         * overlap the color buttons") - confirmed via frame-dump
+         * coordinates, not guessed: a header chip row (e.g. taskbar-
+         * settings-pal's own Opacity -/+ buttons) sits at y=[32,56),
+         * chips_top pushed the grid's own tile boxes down to y=66 -
+         * the TILE rects themselves never touched (10px clear) - but
+         * each swatch tile's own nav badge is drawn ABOVE the tile
+         * (khtpm_draw_core.c's `is_swatch_tile` branch: `numy_above =
+         * e->y - 2 - descent`, chip spanning roughly 16-18px above
+         * e->y), landing at y=[50,65] - a real ~6px visual collision
+         * with the chip row's own bottom edge that chips_top's own
+         * ROW_H+KH_CHIP_ROW_GAP spacing never accounted for. Real fix:
+         * reserve that same badge headroom before the grid starts,
+         * not just row-height + gap - same constant the badge draw
+         * itself effectively uses (ascent+descent+padding), rounded
+         * up. Swatch grids with no header chips are unaffected
+         * (chips_top == CHROME_H+6 either way; this headroom is
+         * needed either way since row 1's own badges always draw
+         * above the first tile row too - matches the pre-existing
+         * fixed 12px top margin that already worked fine when nothing
+         * shared this space, just wasn't enough once a header row
+         * pushed the grid down to a tighter starting position). */
+        #define KH_SWATCH_BADGE_HEADROOM 18
+        int y0 = chips_top + KH_SWATCH_BADGE_HEADROOM;
         static int g_swatch_grid_scroll = 0;
         int total_rows = (n_sw + cols - 1) / cols;
         int visible_rows = 12;
