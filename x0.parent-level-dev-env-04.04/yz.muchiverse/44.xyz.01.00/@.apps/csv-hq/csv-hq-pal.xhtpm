@@ -1,0 +1,73 @@
+<!-- csv-hq-pal.xhtpm - real, standalone CSV/spreadsheet editor with a
+     few real functions (direct request, 2026-09-05: "while we do the
+     text editor, we also want to make a spreadsheet/csv editor with
+     some functions"). See 12.calendar/2026-09-05/2do.md for the
+     pointer to an existing external CSV ops tree checked before
+     starting this (real precedent worth reusing conceptually: a 2D
+     grid data model + a "function bank" of small reducer functions
+     over a column - reused here as SUM/AVG/MIN/MAX/COUNT built
+     directly into the manager rather than shelling out to separate
+     per-function binaries, a real, deliberate simplification for v1).
+
+     Static template + real manager (csv_hq_manager.+x, a <module>),
+     same house convention as every other app this session built. The
+     manager owns the actual grid/file state and publishes it as
+     csv_hq_ui.txt; this template only ever renders whatever it
+     published, via vars=.
+
+     REAL v1 SCOPE, deliberate: cells are addressed by typed ref
+     (e.g. "B3") into a <cli_io>, not click-to-select - keeps this
+     shape achievable with the house's existing generic tag vocabulary
+     (no new "grid"/"table" element built for this). Up to 26 columns
+     (A-Z, single letter) and a real display cap on visible rows in
+     the sidebar - documented limitations, not bugs. Functions read a
+     column letter from its own <cli_io> and apply over every numeric
+     cell in that column (non-numeric cells skipped, real and honest,
+     not a parse error). Save writes back to whatever path is already
+     open (from Open); Save As is not built this pass, same real,
+     deliberately deferred v2 as text-edit-hq's own Save As limitation
+     doc'd in its own header (a real SAVE mode for the shared File
+     Explorer widget is the one dependency both would want).
+
+     Persistent <tabbar> under chrome for New/Open/Save (same real,
+     always-visible mechanism just added to pdl-read/text-edit-hq).
+     Open reuses the shared File Explorer widget exactly like the
+     other two apps (CSVH_OPENFILE, khtpm_core_render.c) - its own
+     separate real X11 window; this manager polls File Explorer's own
+     published result the same way pdl_read_manager.c already does. -->
+<window label="csv-hq - ${file_path}" class="csv-hq-pal database-window" vars="csv_hq_ui.txt">
+  <module src="@.apps/csv-hq/ops/+x/csv_hq_manager.+x" id="_"/>
+  <page name="main">
+    <tabbar class="tab-bar">
+      <tab id="newbtn" class="tab" action="CSVH_NEW" label="New"/>
+      <tab id="openbtn" class="tab" action="CSVH_OPENFILE" label="[file] Open..."/>
+      <tab id="savebtn" class="tab" action="CSVH_SAVE" label="Save"/>
+    </tabbar>
+    <sidebar id="sidebar" class="sidebar">
+      <text label="${file_path}" class="quiet"/>
+      <text label="${status}" class="quiet"/>
+      <scrolllist>
+        <repeat count="${n_rows}" bind="row">
+        <item id="row${row.#}" class="csv-row" label="${row.text}"/>
+        </repeat>
+      </scrolllist>
+    </sidebar>
+    <panel id="panel" class="csv-panel">
+      <text label="Cell ref (e.g. B3):" class="quiet"/>
+      <cli_io id="cellref" target_id="cellref" label=""/>
+      <text label="Value:" class="quiet"/>
+      <cli_io id="cellval" target_id="cellval" label=""/>
+      <item id="setcell" class="opacity-btn" action="CSVH_SETCELL" label="Set Cell"/>
+      <text label="Column letter for functions:" class="quiet"/>
+      <cli_io id="colref" target_id="colref" label=""/>
+      <row class="toolbar">
+        <item id="sumbtn" class="opacity-btn" action="CSVH_FUNC:SUM" label="SUM"/>
+        <item id="avgbtn" class="opacity-btn" action="CSVH_FUNC:AVG" label="AVG"/>
+        <item id="minbtn" class="opacity-btn" action="CSVH_FUNC:MIN" label="MIN"/>
+        <item id="maxbtn" class="opacity-btn" action="CSVH_FUNC:MAX" label="MAX"/>
+        <item id="countbtn" class="opacity-btn" action="CSVH_FUNC:COUNT" label="COUNT"/>
+      </row>
+      <text label="${func_result}" class="quiet"/>
+    </panel>
+  </page>
+</window>

@@ -4666,6 +4666,104 @@ static void dispatch(const char *action) {
         if (strncmp(action + 4, "OPEN:", 5) == 0) switch_page("read");
         return;
     }
+    /* REAL, NEW 2026-09-05 - text-edit-hq (@.apps/text-edit-hq), same
+     * real toys-menu batch as csv-hq below. TXT_OPENFILE launches the
+     * shared File Explorer widget exactly like PDL_OPENFILE (own real
+     * window, LOAD mode, no page switch needed - text-edit-hq is a
+     * single-page app); the manager polls File Explorer's own
+     * published result itself, same poll_file_explorer_pick() pattern
+     * pdl_read_manager.c already uses - no new IPC. TXT_SAVE/
+     * TXT_SAVEAS both need the LIVE <text_area id="editor"> buffer,
+     * which only this render process holds (the manager's own last-
+     * published `content` var is stale the instant a human types
+     * anything) - dumped RAW (this file's own private scratch buffer,
+     * both ends agree on the format, no escaping needed) to
+     * text_edit_save_buffer.txt, same real "dump live element, THEN
+     * write the actual action" two-step FE_SAVEAS already established
+     * for its own live "filename" cli_io. TXT_SAVEAS also reads the
+     * live "pathfield" cli_io the same way. */
+    if (strcmp(action, "TXT_OPENFILE") == 0) {
+        char cmd[PATH_BUF * 2];
+        snprintf(cmd, sizeof(cmd), "sh '%s/&.widgits/file-explorer/button.sh' run >/dev/null 2>&1 &",
+                 g_house_root);
+        int rc = system(cmd);
+        (void)rc;
+        return;
+    }
+    if (strcmp(action, "TXT_NEW") == 0) {
+        char ap[PATH_BUF];
+        snprintf(ap, sizeof(ap), "%s/text_edit_action.txt", g_package_dir);
+        FILE *af = fopen(ap, "w");
+        if (af) { fprintf(af, "seq=%u\ncmd=NEW\n", ++g_swatch_action_seq); fclose(af); }
+        return;
+    }
+    if (strcmp(action, "TXT_SAVE") == 0 || strcmp(action, "TXT_SAVEAS") == 0) {
+        Elem *ed = find_by_id(g_window, "editor");
+        char bufpath[PATH_BUF];
+        snprintf(bufpath, sizeof(bufpath), "%s/text_edit_save_buffer.txt", g_package_dir);
+        FILE *bf = fopen(bufpath, "wb");
+        if (bf) { if (ed) fputs(ed->text_area_buffer, bf); fclose(bf); }
+        char ap[PATH_BUF];
+        snprintf(ap, sizeof(ap), "%s/text_edit_action.txt", g_package_dir);
+        FILE *af = fopen(ap, "w");
+        if (strcmp(action, "TXT_SAVE") == 0) {
+            if (af) { fprintf(af, "seq=%u\ncmd=SAVE\n", ++g_swatch_action_seq); fclose(af); }
+        } else {
+            Elem *pf = find_by_id(g_window, "pathfield");
+            if (af) { fprintf(af, "seq=%u\ncmd=SAVEAS:%s\n", ++g_swatch_action_seq, pf ? pf->input_buffer : ""); fclose(af); }
+        }
+        return;
+    }
+    /* REAL, NEW 2026-09-05 - csv-hq (@.apps/csv-hq). Same real shape as
+     * text-edit-hq just above - CSVH_OPENFILE launches the shared File
+     * Explorer widget; CSVH_SETCELL/CSVH_FUNC:<name> need a live
+     * <cli_io> value (cellval/colref) the manager's own last-published
+     * state can't reflect mid-keystroke, dumped/embedded the same real
+     * way FE_SAVEAS and TXT_SAVE already do. Column refs and function
+     * names are short, house-controlled tokens (typed into a small
+     * cli_io, or a fixed action= suffix) - safe to embed directly in
+     * the single-line cmd=... the manager parses, no scratch-file
+     * needed there (unlike cellval, which could contain arbitrary
+     * text). CSVH_NEW/CSVH_SAVE fall through to the generic CSVH_
+     * prefix at the end - the grid itself is entirely manager-owned
+     * (edited only via real SETCELL calls, never a giant live text
+     * buffer), so no live-dump is needed for either. */
+    if (strcmp(action, "CSVH_OPENFILE") == 0) {
+        char cmd[PATH_BUF * 2];
+        snprintf(cmd, sizeof(cmd), "sh '%s/&.widgits/file-explorer/button.sh' run >/dev/null 2>&1 &",
+                 g_house_root);
+        int rc = system(cmd);
+        (void)rc;
+        return;
+    }
+    if (strcmp(action, "CSVH_SETCELL") == 0) {
+        Elem *rf = find_by_id(g_window, "cellref");
+        Elem *vf = find_by_id(g_window, "cellval");
+        char bufpath[PATH_BUF];
+        snprintf(bufpath, sizeof(bufpath), "%s/csv_setcell_buffer.txt", g_package_dir);
+        FILE *bf = fopen(bufpath, "wb");
+        if (bf) { if (vf) fputs(vf->input_buffer, bf); fclose(bf); }
+        char ap[PATH_BUF];
+        snprintf(ap, sizeof(ap), "%s/csv_hq_action.txt", g_package_dir);
+        FILE *af = fopen(ap, "w");
+        if (af) { fprintf(af, "seq=%u\ncmd=SETCELL:%s\n", ++g_swatch_action_seq, rf ? rf->input_buffer : ""); fclose(af); }
+        return;
+    }
+    if (strncmp(action, "CSVH_FUNC:", 10) == 0) {
+        Elem *cf = find_by_id(g_window, "colref");
+        char ap[PATH_BUF];
+        snprintf(ap, sizeof(ap), "%s/csv_hq_action.txt", g_package_dir);
+        FILE *af = fopen(ap, "w");
+        if (af) { fprintf(af, "seq=%u\ncmd=FUNC:%s:%s\n", ++g_swatch_action_seq, action + 10, cf ? cf->input_buffer : ""); fclose(af); }
+        return;
+    }
+    if (strncmp(action, "CSVH_", 5) == 0) {
+        char ap[PATH_BUF];
+        snprintf(ap, sizeof(ap), "%s/csv_hq_action.txt", g_package_dir);
+        FILE *af = fopen(ap, "w");
+        if (af) { fprintf(af, "seq=%u\ncmd=%s\n", ++g_swatch_action_seq, action + 5); fclose(af); }
+        return;
+    }
     /* REAL, NEW 2026-08-29 (TASK 2: opacity control) - OPACITY_MINUS/OPACITY_PLUS
      * handlers. Read current opacity from theme, adjust by ±0.05, write back,
      * and apply to the window immediately for live visual feedback. */

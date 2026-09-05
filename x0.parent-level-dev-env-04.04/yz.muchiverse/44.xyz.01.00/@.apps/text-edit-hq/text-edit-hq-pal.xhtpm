@@ -1,0 +1,56 @@
+<!-- text-edit-hq-pal.xhtpm - real, standalone plain-text editor, the
+     `toys` text-editor from 11.brainstorm/2026-09-05/
+     PDL-READER-AND-FILE-EXPLORER-WIDGET.md §5, using tpmos's own
+     agy-text-editor (captured live in that doc's §2.1) as the UX
+     reference only - not ported code.
+
+     Static template + real manager (text_edit_manager.+x, a <module>),
+     same house convention as pdl-read/File Explorer. The manager owns
+     the actual file/content state and publishes it as text_edit_ui.txt;
+     this template only ever renders whatever it published, via vars=.
+
+     Persistent <tabbar> for New/Open/Save/Save-As (same real, always-
+     visible-under-chrome mechanism just added to pdl-read, direct live
+     request - "a second bar below chrome... that way file doesn't
+     dissapear"), not sidebar content.
+
+     Open reuses the shared File Explorer widget exactly like pdl-read's
+     own "file" button (TXT_OPENFILE, khtpm_core_render.c) - launches
+     it as its own separate real X11 window; this manager independently
+     polls File Explorer's own published result (file_explorer_ui.txt)
+     the same way pdl_read_manager.c already does, no new IPC.
+
+     REAL v1 SCOPE, deliberate: Save writes back to whatever path is
+     already open (from Open, or a prior Save As); Save As reads the
+     "pathfield" <cli_io> (typed by hand) rather than reusing File
+     Explorer in a SAVE mode, since that widget is LOAD-only today -
+     wiring a real SAVE mode into File Explorer (typed filename +
+     directory nav, matching the agy-text-editor reference's own Save
+     As screen) is a real, deliberately deferred v2, not attempted here.
+
+     <text_area content="${content}"> is this session's own real,
+     newline-safe multi-line surface (content=, not label= - label
+     isn't newline-safe through the frame round trip, see pdl-read-
+     pal.xhtpm's own header for the full diagnosis) - armed by clicking
+     in and typing, same ^-cursor convention as every other cli_io/
+     text_area in the house. -->
+<window label="text-edit-hq - ${file_path}" class="text-edit-hq-pal database-window" vars="text_edit_ui.txt">
+  <module src="@.apps/text-edit-hq/ops/+x/text_edit_manager.+x" id="_"/>
+  <page name="main">
+    <tabbar class="tab-bar">
+      <tab id="newbtn" class="tab" action="TXT_NEW" label="New"/>
+      <tab id="openbtn" class="tab" action="TXT_OPENFILE" label="[file] Open..."/>
+      <tab id="savebtn" class="tab" action="TXT_SAVE" label="Save"/>
+      <tab id="saveasbtn" class="tab" action="TXT_SAVEAS" label="Save As"/>
+    </tabbar>
+    <sidebar id="sidebar" class="sidebar">
+      <text label="${file_path}" class="quiet"/>
+      <text label="${status}" class="quiet"/>
+      <text label="Save As path:" class="quiet"/>
+      <cli_io id="pathfield" target_id="pathfield" label=""/>
+    </sidebar>
+    <panel id="panel" class="edit-panel">
+      <text_area id="editor" content="${content}" rows="20"/>
+    </panel>
+  </page>
+</window>
