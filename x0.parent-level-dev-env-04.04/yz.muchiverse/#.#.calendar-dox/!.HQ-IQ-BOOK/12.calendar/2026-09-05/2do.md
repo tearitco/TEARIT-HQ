@@ -38,15 +38,52 @@
   entry. Loud "never remove" comment at the fix site in
   `khtpm_core_render.c` (search `dock_managed`).
 - Started `11.brainstorm/` and this `12.calendar/` chapter themselves.
+  **Convention update, same day**: `11.brainstorm/` is now ALSO
+  organized by dated (`YYYY-MM-DD/`) subdirectories, same as
+  `12.calendar/` — the font-size doc below already lives under
+  `11.brainstorm/2026-09-05/`, not loose in the chapter root.
 
 ## Not started / open
 
 - **Font size + UI scale in Settings** — brainstormed, not scheduled.
-  See `11.brainstorm/FONT-SIZE-AND-UI-SCALE-BRAINSTORM.md`. Real
-  finding from today: the existing `font_scale` PDL key and `scaled()`
-  choke-point function are NOT wired together — `scaled()` is
-  currently a plain identity function, and the `g_dbhq_font_scale`
+  See `11.brainstorm/2026-09-05/FONT-SIZE-AND-UI-SCALE-BRAINSTORM.md`.
+  Real finding from today: the existing `font_scale` PDL key and
+  `scaled()` choke-point function are NOT wired together — `scaled()`
+  is currently a plain identity function, and the `g_dbhq_font_scale`
   variable its own comment describes doesn't exist in the file at all.
+- **`pdl-reader` + a shared File Explorer widget** — brainstormed, not
+  scheduled. See `11.brainstorm/2026-09-05/PDL-READER-AND-FILE-EXPLORER-WIDGET.md`.
+  A PDF-style document reader driven by a `.pdl` doc list, blocked on a
+  not-yet-built, reusable File Explorer widget that should ALSO back
+  every window's own Save As/Load flow house-wide (the taskbar's own
+  `[ ]3.file:` cell currently has nowhere real to route to for this).
+  Captured tpmos's own `agy-text-editor` file-browser UX live as a
+  reference spec (search field + save-target field + suggestions +
+  directory browse with human-readable sizes) — real, existing prior
+  art at `&.widgits/file-menu/` and `102.agy-txt/manager/
+  agy_browser_manager.c` worth reading before designing the khtpm-side
+  version from scratch.
+- **`toys` text-editor refactor** — brainstormed, not scheduled, same
+  doc as above (§5). Real UX reference captured (tpmos's
+  `agy-text-editor` loader → editor → FILE MENU → Save As flow);
+  biggest open design question is whether khtpm's existing single-line
+  `<cli_io>` element gets extended for multi-line text or a new
+  element type is needed. Depends on the File Explorer widget above
+  for its own Save As/Load, so building that first is the efficient
+  order.
+- **`102.agy-txt`'s legacy launcher bug — root-caused, not yet fixed.**
+  `sh button.sh r` fails with `./system/renderer: not found` /
+  `./system/keyboard_input: not found`. The binaries are completely
+  fine (confirmed via `file` + reading them directly); the bug is a
+  real cwd/path mismatch in `button.sh` itself — it `cd`s into a
+  per-session directory, then still invokes `./system/renderer` etc.
+  as RELATIVE paths left over from before a real refactor removed the
+  old symlink-into-session approach (see the doc above, §4, for the
+  exact lines and the one-line-per-call fix). Not a "mark this binary
+  legacy" situation — flagged explicitly in the doc why that framing
+  doesn't fit this specific bug, though a genuine legacy-binary-marker
+  house convention might still be worth its own separate brainstorm
+  later.
 - Taskbar instance-count guard / "x&lt;N&gt;" sanity indicator next to
   the PID (requested earlier this week, never started).
 - The bigger, deliberate pass considered (but not attempted today) of
