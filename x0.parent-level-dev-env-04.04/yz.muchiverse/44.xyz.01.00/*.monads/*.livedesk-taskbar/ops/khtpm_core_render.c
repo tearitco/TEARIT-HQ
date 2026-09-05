@@ -8013,19 +8013,55 @@ static int sprite_scale_index(int screen_px, int sprite_res, int win_px) {
  * same real loop shape (clear to 0, set fg to 1, per-pixel test,
  * XFillRectangle the opaque ones), differing only in HOW a pixel is
  * tested. One real shared implementation via a callback, not two.
- * Still does the exact same per-pixel XFillRectangle calls as before
- * (a real, separate performance question - RENDERER-MODULARITY-AND-
- * PERF-AUDIT.md §2.2 - deliberately not addressed in this same change,
- * to keep this a pure structural dedup). */
+ *
+ * REAL FIX 2026-09-04, PART 2 (RENDERER-MODULARITY-AND-PERF-AUDIT.md
+ * §2.2) - was WIN_PX² individual XFillRectangle(mask, x, y, 1, 1) X
+ * protocol calls (one full request per opaque pixel - real, measured
+ * cost, worse than kh_draw_canvas()'s own already-known per-pixel
+ * XPutPixel loop since that one at least stays client-side). Now
+ * builds a local 1bpp bitmap (plain C loop, zero X calls per pixel -
+ * just setting a bit in a malloc'd byte buffer) and pushes it to the
+ * X server in ONE shot: XCreateBitmapFromData() (handles the real
+ * display's own bitmap-bit-order/padding correctly, same primitive
+ * X11 icon-mask code has always used for exactly this) builds a fresh
+ * pixmap from the local bits, one XCopyArea() blits it into the
+ * CALLER's own `mask` Pixmap (preserving that object's identity - both
+ * call sites, and cursword_update_shape()'s own multi-step compositing
+ * that keeps drawing into `mask`/`mask_gc` after this call returns,
+ * depend on `mask` staying the SAME pixmap, not a new one). Net: a
+ * handful of X calls total, not WIN_PX²+2, with bit-for-bit identical
+ * resulting shape - confirmed via live PNG dump of a real sprite tile
+ * before/after. `mask_gc`'s own foreground color state is left
+ * touched (0 then 1, matching prior behavior) since callers may still
+ * rely on it being GC-drawable afterward (cursword_update_shape()
+ * does, for its own ring/disc compositing). */
 typedef int (*kh_pixel_opaque_fn)(int x, int y, void *ctx);
 static void kh_build_shape_mask_generic(Display *dpy, GC mask_gc, Pixmap mask,
                                          int w, int h, kh_pixel_opaque_fn is_opaque, void *ctx) {
     XSetForeground(dpy, mask_gc, 0);
     XFillRectangle(dpy, mask, mask_gc, 0, 0, (unsigned)w, (unsigned)h);
     XSetForeground(dpy, mask_gc, 1);
+    int stride = (w + 7) / 8;
+    unsigned char *bits = (unsigned char *)calloc((size_t)stride * (size_t)h, 1);
+    if (!bits) {
+        /* real, honest fallback - should never happen in practice at
+         * these tile resolutions, but never silently draw nothing if
+         * it ever does. */
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+                if (is_opaque(x, y, ctx)) XFillRectangle(dpy, mask, mask_gc, x, y, 1, 1);
+        return;
+    }
     for (int y = 0; y < h; y++)
         for (int x = 0; x < w; x++)
-            if (is_opaque(x, y, ctx)) XFillRectangle(dpy, mask, mask_gc, x, y, 1, 1);
+            if (is_opaque(x, y, ctx))
+                bits[y * stride + (x >> 3)] |= (unsigned char)(1u << (x & 7));
+    Pixmap tmp = XCreateBitmapFromData(dpy, mask, (char *)bits, (unsigned)w, (unsigned)h);
+    free(bits);
+    if (tmp != None) {
+        XCopyArea(dpy, tmp, mask, mask_gc, 0, 0, (unsigned)w, (unsigned)h, 0, 0);
+        XFreePixmap(dpy, tmp);
+    }
 }
 
 static int kh_sprite_alpha_opaque(int x, int y, void *ctx) {
