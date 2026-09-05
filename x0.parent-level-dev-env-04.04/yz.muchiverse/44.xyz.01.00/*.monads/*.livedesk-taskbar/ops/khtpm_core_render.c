@@ -5151,6 +5151,74 @@ static void kh_text_delete_at_cursor(char *buf, int *cursor) {
     for (int i = *cursor; i < len; i++) buf[i] = buf[i + 1];
 }
 
+/* ---------- REAL, NEW 2026-09-05 (08-roadmap/design-docs/
+ * CLIPBOARD-COPY-PASTE-DESIGN.md, direct instruction "lets build it in
+ * text editor") - real X11 CLIPBOARD selection copy/paste. Works
+ * window <-> window (any two khtpm processes) AND window <-> any other
+ * real X11 app (terminal, browser), because it speaks the actual X11
+ * selection protocol rather than a house-private channel. v1 scope:
+ * whole-buffer copy, paste-at-cursor - no text-range SELECTION yet
+ * (that's a real, separate, larger feature, see the design doc's own
+ * v2 note).
+ *
+ * Copy = XSetSelectionOwner(CLIPBOARD, win); we then answer
+ * SelectionRequest events (hq_dispatch_xevent()) with g_clipboard_text
+ * for as long as we own it. Paste = XConvertSelection request, then
+ * the text arrives asynchronously via a SelectionNotify event, which
+ * inserts it at g_default_input_elem's cursor. ---------- */
+static char g_clipboard_text[65536];
+static int  g_paste_pending = 0;
+static Atom g_atom_clipboard = 0, g_atom_utf8 = 0, g_atom_targets = 0, g_atom_paste_prop = 0;
+
+static void kh_clipboard_init_atoms(void) {
+    if (g_atom_clipboard) return;
+    g_atom_clipboard  = XInternAtom(dpy, "CLIPBOARD", False);
+    g_atom_utf8       = XInternAtom(dpy, "UTF8_STRING", False);
+    g_atom_targets    = XInternAtom(dpy, "TARGETS", False);
+    g_atom_paste_prop = XInternAtom(dpy, "KH_CLIP_PASTE", False);
+}
+
+static void kh_clipboard_copy(const char *text) {
+    kh_clipboard_init_atoms();
+    snprintf(g_clipboard_text, sizeof(g_clipboard_text), "%s", text ? text : "");
+    XSetSelectionOwner(dpy, g_atom_clipboard, win, CurrentTime);
+    /* also seed PRIMARY - some real X apps (xterm middle-click) only
+     * read that one; costs nothing to own both. */
+    XSetSelectionOwner(dpy, XA_PRIMARY, win, CurrentTime);
+    XFlush(dpy);
+}
+
+static void kh_clipboard_request_paste(void) {
+    kh_clipboard_init_atoms();
+    g_paste_pending = 1;
+    /* Ask the current CLIPBOARD owner to write UTF8_STRING into our own
+     * KH_CLIP_PASTE property - answered async by a SelectionNotify. */
+    XConvertSelection(dpy, g_atom_clipboard, g_atom_utf8, g_atom_paste_prop, win, CurrentTime);
+    XFlush(dpy);
+}
+
+/* Insert an arbitrary run of bytes at an armed field's cursor, reusing
+ * the same one-char insert primitive typing already goes through.
+ * cli_io (single line, and its input_buffer is NOT newline-escaped
+ * through the frame round trip) drops '\n' -> ' '; text_area keeps
+ * real newlines (its buffer IS newline-safe). '\r' is always stripped
+ * (CRLF normalisation for text pasted from other platforms/apps). */
+static void kh_clipboard_insert_text(Elem *e, const char *text) {
+    if (!e || !text) return;
+    int is_area = (strcmp(e->tag, "text_area") == 0);
+    char *buf = is_area ? e->text_area_buffer : e->input_buffer;
+    size_t cap = is_area ? sizeof(e->text_area_buffer) : sizeof(e->input_buffer);
+    for (const unsigned char *p = (const unsigned char *)text; *p; p++) {
+        char c = (char)*p;
+        if (c == '\r') continue;
+        if (c == '\n' && !is_area) c = ' ';
+        if (c == '\n') { kh_text_insert_at_cursor(buf, cap, &e->cursor, '\n'); continue; }
+        if (c < 32 || c > 126) continue; /* v1: ASCII-only, same scope the typed-char path already has */
+        kh_text_insert_at_cursor(buf, cap, &e->cursor, c);
+    }
+    if (is_area) default_text_area_save(e); else default_cli_io_save(e);
+}
+
 /* REAL, NEW 2026-09-05 - this function now handles BOTH cli_io and
  * text_area (kept the cli_io name - every existing call site already
  * says "cli_io" and this IS still that same function, just widened,
@@ -5199,6 +5267,17 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
      * XUngrabKeyboard on every real disarm path (Escape here, reparse_
      * chtpm_if_changed()'s own real safety net). */
     if (ks == XK_Escape) { g_default_input_elem = NULL; XUngrabKeyboard(dpy, CurrentTime); return; }
+    /* REAL, NEW 2026-09-05 (CLIPBOARD-COPY-PASTE-DESIGN.md) - Ctrl+C /
+     * Ctrl+V / Ctrl+X arrive as plain control characters through
+     * XLookupString (ASCII 3 / 22 / 24) on a standard X keyboard, and
+     * the relay can send those same bare codes with no format change.
+     * v1: copy/cut act on the WHOLE buffer (no text-range selection
+     * yet); paste inserts at the cursor once the async SelectionNotify
+     * comes back. */
+    if (ch == 3)  { kh_clipboard_copy(buf); return; }                 /* Ctrl+C */
+    if (ch == 24) { kh_clipboard_copy(buf); buf[0] = '\0'; e->cursor = 0;
+                    if (is_area) default_text_area_save(e); else default_cli_io_save(e); return; } /* Ctrl+X */
+    if (ch == 22) { kh_clipboard_request_paste(); return; }           /* Ctrl+V */
     if (ks == XK_Left) { kh_text_clamp_cursor(buf, &e->cursor); if (e->cursor > 0) e->cursor--; return; }
     if (ks == XK_Right) { kh_text_clamp_cursor(buf, &e->cursor); if (e->cursor < (int)strlen(buf)) e->cursor++; return; }
     /* REAL, NEW 2026-09-05 - line-aware (real \n, not display-wrap)
@@ -6468,6 +6547,13 @@ static void dispatch_relay_code(int code) {
     else if (code == 203) handle_key(XK_Right, 0);
     else if (code == 204) handle_key(XK_Page_Up, 0);
     else if (code == 205) handle_key(XK_Page_Down, 0);
+    /* REAL, NEW 2026-09-05 (CLIPBOARD-COPY-PASTE-DESIGN.md) - Ctrl+C/
+     * Ctrl+X/Ctrl+V as their real ASCII control codes (3/24/22), so
+     * the relay can drive clipboard copy/paste headlessly for testing,
+     * exactly the same bytes a physical Ctrl+letter produces through
+     * XLookupString. Handled as `ch`, not a keysym - default_cli_io_
+     * handle_key()'s own `ch == 3/22/24` checks pick them up. */
+    else if (code == 3 || code == 22 || code == 24) handle_key(0, (char)code);
     /* Task 6/7 (2026-08-26) - db-hq-only cheap text state dump for
      * agent testing, see dbhq_dump_debug_state()'s own header comment.
      * Code 210 (not a real keypress; 206-209 left free for any future
@@ -7192,6 +7278,56 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             ev->xfocus.mode != NotifyGrab && ev->xfocus.mode != NotifyUngrab)
             dock_release_keyboard_if_left();
         if (g_focus_owned_painted != 0) redraw();
+        return;
+    }
+    /* REAL, NEW 2026-09-05 (CLIPBOARD-COPY-PASTE-DESIGN.md) - real X11
+     * CLIPBOARD selection protocol. SelectionRequest: another client
+     * (another khtpm window, a terminal, a browser) asked us for the
+     * clipboard content we own - answer with g_clipboard_text.
+     * SelectionClear: we lost ownership (someone else copied) - nothing
+     * to do, the new owner answers from here on. SelectionNotify (with
+     * g_paste_pending, NOT the XDND g_xdnd_awaiting path below): a paste
+     * we requested has arrived - read the property, insert at the armed
+     * field's cursor. These three event types are delivered regardless
+     * of this window's event mask, so no XSelectInput change is needed. */
+    if (ev->type == SelectionRequest) {
+        XSelectionRequestEvent *rq = &ev->xselectionrequest;
+        XSelectionEvent nt;
+        nt.type = SelectionNotify; nt.display = rq->display; nt.requestor = rq->requestor;
+        nt.selection = rq->selection; nt.target = rq->target; nt.time = rq->time;
+        nt.property = None;
+        if (!g_atom_targets) kh_clipboard_init_atoms();
+        if (rq->target == g_atom_targets) {
+            Atom offer[] = { g_atom_targets, g_atom_utf8, XA_STRING };
+            XChangeProperty(dpy, rq->requestor, rq->property, XA_ATOM, 32,
+                            PropModeReplace, (unsigned char *)offer, 3);
+            nt.property = rq->property;
+        } else if (rq->target == g_atom_utf8 || rq->target == XA_STRING) {
+            XChangeProperty(dpy, rq->requestor, rq->property, rq->target, 8,
+                            PropModeReplace, (unsigned char *)g_clipboard_text,
+                            (int)strlen(g_clipboard_text));
+            nt.property = rq->property;
+        }
+        XSendEvent(dpy, rq->requestor, True, NoEventMask, (XEvent *)&nt);
+        XFlush(dpy);
+        return;
+    }
+    if (ev->type == SelectionClear) {
+        return; /* lost CLIPBOARD/PRIMARY ownership - real, expected, nothing to do */
+    }
+    if (ev->type == SelectionNotify && g_paste_pending) {
+        g_paste_pending = 0;
+        XSelectionEvent *se = &ev->xselection;
+        if (se->property != None && g_default_input_elem) {
+            Atom got_type; int got_fmt; unsigned long nitems, after; unsigned char *data = NULL;
+            if (XGetWindowProperty(dpy, win, g_atom_paste_prop, 0, (long)(sizeof(g_clipboard_text) / 4),
+                                   True, AnyPropertyType, &got_type, &got_fmt,
+                                   &nitems, &after, &data) == Success && data) {
+                kh_clipboard_insert_text(g_default_input_elem, (const char *)data);
+                XFree(data);
+                if (!g_quit) redraw();
+            }
+        }
         return;
     }
     /* XDND was popup-only because is_popup returned before HQ handlers.
