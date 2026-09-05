@@ -1,0 +1,4 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+SECTION      | title              | pdl-read
+SECTION      | launch             | button.sh

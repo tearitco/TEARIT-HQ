@@ -1,0 +1,80 @@
+<!-- pdl-read-pal.xhtpm - real, standalone doc reader ("pdl-read", per
+     direct instruction - "read/er" -> shorter "read").
+     11.brainstorm/2026-09-05/PDL-READER-AND-FILE-EXPLORER-WIDGET.md.
+
+     Static template + real manager (pdl_read_manager.+x, a <module>),
+     same house convention as every other widget/app this session
+     built. The manager owns the actual doc-list/pagination state and
+     publishes it as pdl_read_ui.txt; this template only ever renders
+     whatever it published, via vars=.
+
+     Two real <page>s. "Back to list" uses the already-generic
+     GOTO:<page> dispatch verb (khtpm_core_render.c) directly; opening
+     a doc (PDL_OPEN:<n>) needs BOTH the manager notified AND a page
+     switch, so dispatch()'s own PDL_ handler calls switch_page("read")
+     itself right after writing the action file - one xhtpm action=
+     string can't invoke two dispatch verbs at once.
+
+     "read" uses a <text_area> for the page content, UNARMED by
+     default - a real, working multi-line display surface (this
+     session's own new element) reused as a read-only-in-practice
+     viewer rather than building a second display-only text widget;
+     a human COULD click in and "edit" the shown page, but nothing
+     ever saves that back to the real file, so it's harmless, just not
+     a hard read-only lock (a real v2 concern, not attempted here).
+
+     REAL FIX 2026-09-05, found live testing: content="${page_text}"
+     (NOT label=) - a real, NEW generic attribute (apply_attr(),
+     khtpm_core_render.c) that sets a <text_area>'s buffer directly.
+     label= looked right at first (the manager's own real newlines
+     arrive pre-escaped as literal "\n", which kh_substitute_vars()
+     already converts back to a real newline on substitution - the
+     same tpmos convention this file's own header comment already
+     documented) but label is NEVER escaped for a real embedded
+     newline through the later frame serialize/reparse round trip
+     every generic window draws through (only text_area_buffer has
+     that escaping) - a multi-line label silently corrupted the whole
+     frame file past that point. content= sets text_area_buffer
+     directly, which already has the real escaping this needed. -->
+<window label="pdl-read - ${doc_title}" class="pdl-read-pal database-window" vars="pdl_read_ui.txt">
+  <module src="@.apps/pdl-read/ops/+x/pdl_read_manager.+x" id="_"/>
+  <page name="main">
+    <sidebar id="sidebar" class="sidebar">
+      <text label="pdl-read - pick a doc" class="quiet"/>
+      <scrolllist>
+        <repeat count="${n_docs}" bind="doc">
+        <item id="doc${doc.#}" class="pdl-doc" action="PDL_OPEN:${doc.#}" label="${doc.title}"/>
+        </repeat>
+      </scrolllist>
+    </sidebar>
+    <panel id="listpanel" class="pdl-panel">
+      <text label="Pick a document to read." class="quiet"/>
+    </panel>
+  </page>
+  <!-- REAL, NEW 2026-09-05, direct live request: page indicator moved
+       ABOVE the content (was crowded into the sidebar); Prev/Next
+       moved BELOW the content (was in the sidebar's own panel);
+       sidebar repurposed into a real, PDF-style page-jump list
+       (PDL_GOTOPAGE:<n>, new manager command) instead of just holding
+       static text - "the user should still be able to change pages,
+       like pdf." -->
+  <page name="read">
+    <sidebar id="readsidebar" class="sidebar">
+      <text label="${doc_title}" class="quiet"/>
+      <item id="back" class="close-btn" action="GOTO:main" label="Back to list"/>
+      <scrolllist>
+        <repeat count="${page_count}" bind="p">
+        <item id="pg${p.#}" class="pdl-page-jump" action="PDL_GOTOPAGE:${p.#}" label="Page ${p.#}"/>
+        </repeat>
+      </scrolllist>
+    </sidebar>
+    <panel id="readpanel" class="pdl-panel">
+      <text label="${doc_title} - page ${page_num} / ${page_count}" class="quiet"/>
+      <text_area id="pagetext" content="${page_text}" rows="18"/>
+      <row class="toolbar">
+        <item id="prev" class="opacity-btn" action="PDL_PREV" label="&lt; Prev"/>
+        <item id="next" class="opacity-btn" action="PDL_NEXT" label="Next &gt;"/>
+      </row>
+    </panel>
+  </page>
+</window>

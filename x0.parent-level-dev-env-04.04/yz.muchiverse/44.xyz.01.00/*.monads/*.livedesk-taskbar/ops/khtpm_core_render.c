@@ -765,6 +765,21 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
         /* REAL, NEW 2026-09-01 - see Elem's own rows field comment in
          * khtpm_render_core.c. */
         e->rows = atoi(val);
+    } else if (strcmp(name, "content") == 0) {
+        /* REAL, NEW 2026-09-05 (pdl-read's own real "display a data-
+         * driven page of text" need, found live: putting multi-line
+         * content in label= broke the frame round-trip - label is
+         * never escaped for real newlines the way text_area_buffer
+         * is). A real, generic way to set a <text_area>'s initial
+         * buffer content from a template var - unlike live-typed
+         * content, `val` here has ALREADY had kh_substitute_vars()'s
+         * own "\n" -> real-newline conversion applied (this attribute
+         * value is substituted before the XML re-parse that calls
+         * apply_attr()), so a direct copy is correct. Only meaningful
+         * for text_area (cli_io stays single-line, unused by
+         * anything else) - harmless no-op attribute for any other tag. */
+        if (strcmp(e->tag, "text_area") == 0)
+            snprintf(e->text_area_buffer, sizeof(e->text_area_buffer), "%s", val);
     } else if (strcmp(name, "bg") == 0) {
         /* REAL, NEW 2026-09-04, direct live request ("can we add grey
          * and brown to swatch colors... that shouldn't be hardcoded,
@@ -4593,6 +4608,32 @@ static void dispatch(const char *action) {
         FILE *af = fopen(ap, "w");
         if (af) { fprintf(af, "seq=%u\ncmd=%s\n", ++g_swatch_action_seq, cmd_buf); fclose(af); }
         if (strcmp(action, "FE_SAVEAS") == 0 || strcmp(action, "FE_CANCEL") == 0) g_quit = 1;
+        return;
+    }
+    /* REAL, NEW 2026-09-05 (same brainstorm doc, pdl-read - the second
+     * real app off today's cli_io/text_area/File-Explorer work) - same
+     * in-process action-file-write convention as FE_ above, but
+     * written to g_package_dir directly (pdl-read's own manager lives
+     * in the SAME package_dir as this window's xhtpm, unlike the File
+     * Explorer widget's fixed &.widgits/ location) - see pdl_read_
+     * manager.c's own header for the full OPEN:<n>/NEXT/PREV command
+     * contract. Page navigation never quits the window - only real
+     * page-switching (GOTO:/BACK, already generic, unrelated to this
+     * prefix) leaves the reader view. */
+    if (strncmp(action, "PDL_", 4) == 0) {
+        char ap[PATH_BUF];
+        snprintf(ap, sizeof(ap), "%s/pdl_read_action.txt", g_package_dir);
+        FILE *af = fopen(ap, "w");
+        if (af) { fprintf(af, "seq=%u\ncmd=%s\n", ++g_swatch_action_seq, action + 4); fclose(af); }
+        /* REAL, NEW 2026-09-05 - a single dispatch() call only ever
+         * runs ONE action string; PDL_OPEN:<n> needs BOTH the manager
+         * notified (above) AND the window to actually switch to the
+         * "read" page - done directly here rather than trying to
+         * encode two actions into one xhtpm action= string (dispatch()
+         * has no such combinator, and inventing one for just this case
+         * isn't worth it when a real generic switch_page() call is
+         * right here already). */
+        if (strncmp(action + 4, "OPEN:", 5) == 0) switch_page("read");
         return;
     }
     /* REAL, NEW 2026-08-29 (TASK 2: opacity control) - OPACITY_MINUS/OPACITY_PLUS

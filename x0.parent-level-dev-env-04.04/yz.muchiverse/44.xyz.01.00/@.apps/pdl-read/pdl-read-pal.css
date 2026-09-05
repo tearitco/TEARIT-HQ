@@ -1,0 +1,41 @@
+/* pdl-read-pal.css - merged on top of entity_menu_default.css for the
+   pdl-read-pal window (same convention as bookmarks-pal.css/file-
+   explorer-pal.css: this loads because the renderer merges the .css
+   sitting next to the loaded .xhtpm, same stem). */
+
+window {
+    width: 560px;
+    height: 480px;
+}
+
+.sidebar {
+    background-color: #161616;
+    border-color: #333333;
+}
+
+.pdl-panel {
+    background-color: #181818;
+    border: 1px solid #2a2a2a;
+}
+
+.pdl-doc {
+    color: #cccccc;
+}
+
+.pdl-page-jump {
+    color: #cccccc;
+}
+
+.opacity-btn {
+    background-color: #444444;
+    color: #ffffff;
+    padding: 4px 8px;
+    border: 1px solid #666666;
+}
+
+.close-btn {
+    background-color: #663333;
+    color: #ffffff;
+    padding: 4px 8px;
+    border: 1px solid #884444;
+}

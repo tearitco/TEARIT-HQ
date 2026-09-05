@@ -1,0 +1,16 @@
+# docs.pdl - the real, editable doc list pdl-read's own manager reads
+# at startup (11.brainstorm/2026-09-05/PDL-READER-AND-FILE-EXPLORER-
+# WIDGET.md). One doc per line, "title|absolute_path" - order is
+# significant (a doc's line number IS its OPEN:<n> index). The book
+# lives OUTSIDE this house's own tree (a sibling of 44.xyz.01.00 under
+# yz.muchiverse/), so absolute paths are used here rather than
+# resolving relative to house_root.
+House Book - Orientation|/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/01-orientation/00-INDEX.md
+CENTROID_GOLD_STD (rendering standard)|/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/CENTROID_GOLD_STD.md
+XHTPM Parser Reference|/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/02-architecture/XHTPM-PARSER-REFERENCE.md
+Pitfalls: X11 and Session|/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/03-pitfalls/X11-AND-SESSION-PITFALLS.md
+Bug Log|/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/04-bugs/BUG-LOG.md
+Roadmap Overview|/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/00-INDEX.md
+Plan: cli_io cursor + text_area|/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/design-docs/CLI_IO-CURSOR-AND-TEXT_AREA-MULTILINE-EDITING-DESIGN.md
+Brainstorm: pdl-read + File Explorer|/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/11.brainstorm/2026-09-05/PDL-READER-AND-FILE-EXPLORER-WIDGET.md
+Today's Log (2026-09-05)|/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/12.calendar/2026-09-05/2do.md
