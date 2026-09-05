@@ -66,6 +66,26 @@
   the same real armed-state check the `^` badge already used
   correctly — a tabbed-past-but-not-armed field could show a
   misleading cursor. Fixed before commit.
+- **File Explorer widget — BUILT, live-verified.** First real app off
+  today's `text_area`/`cli_io` work:
+  `&.widgits/file-explorer/` (manager, static `.xhtpm`+CSS, `button.sh`).
+  Directory scanner manager delegated to a fresh agent against a
+  complete, self-contained protocol spec (no house context needed);
+  argv contract adjusted afterward to match `launch_module()`'s real
+  convention. New `FE_ENTRY:<n>`/`FE_SAVEAS`/`FE_CANCEL` dispatch verbs
+  in `khtpm_core_render.c`, same in-process convention `PICK:<n>`
+  already uses. Two real bugs found and fixed while live-verifying: a
+  `vars=` path that doubled this widget's own directory (silently
+  expanded every `${var}` to nothing), and `<scrolllist>` needing a
+  real `<sidebar>`+`<panel>` pair to be laid out at all (a bare
+  top-level one just sits at 0×0 forever). Verified end to end via
+  real X11 clicks: navigate into a real directory, pick a real file,
+  manager writes the correct absolute path and exits on its own. `pdl-
+  reader` and the `toys` editor's own Save/Load still depend on this
+  but aren't built yet - see the brainstorm doc's own updated status.
+  A v2 idea came up live while testing: use the widget's right-hand
+  panel (currently just a hint + Cancel) for a file preview or a
+  visual directory-tree view - real, not implemented this pass.
 
 ## Not started / open
 
@@ -75,21 +95,26 @@
   `scaled()` choke-point function are NOT wired together — `scaled()`
   is currently a plain identity function, and the `g_dbhq_font_scale`
   variable its own comment describes doesn't exist in the file at all.
-- **`pdl-reader` + a shared File Explorer widget** — brainstormed, not
-  scheduled. See `11.brainstorm/2026-09-05/PDL-READER-AND-FILE-EXPLORER-WIDGET.md`.
-  A PDF-style document reader driven by a `.pdl` doc list, blocked on a
-  not-yet-built, reusable File Explorer widget that should ALSO back
-  every window's own Save As/Load flow house-wide (the taskbar's own
-  `[ ]3.file:` cell currently has nowhere real to route to for this).
-  Captured tpmos's own `agy-text-editor` file-browser UX live as a
-  reference spec (search field + save-target field + suggestions +
-  directory browse with human-readable sizes) — real, existing prior
-  art at `&.widgits/file-menu/` and `102.agy-txt/manager/
-  agy_browser_manager.c` worth reading before designing the khtpm-side
-  version from scratch.
+- **`pdl-reader`** — brainstormed, not scheduled (its one real
+  blocking dependency, the File Explorer widget, is done - see above).
+  See `11.brainstorm/2026-09-05/PDL-READER-AND-FILE-EXPLORER-WIDGET.md`.
 - **`toys` text-editor refactor** — brainstormed, not scheduled, same
   doc as above (§5). Real UX reference captured (tpmos's
-  `agy-text-editor` loader → editor → FILE MENU → Save As flow).
+  `agy-text-editor` loader → editor → FILE MENU → Save As flow). Its
+  own Save/Load wiring now has the File Explorer widget to use, once
+  the editor itself gets built.
+- **New desktop entity type: `FLEXFOLDER`/`FLEXBOX`** — brainstormed,
+  not scheduled, direct request. A real, droppable-into desktop
+  container entity (📁 2D "FLEXFOLDER", 🗄️ 3D "FLEXBOX" in 3D mode) that
+  other entities/windows/dirs can be dropped into, itself openable as
+  a 2D view, a 3D view, or a file-explorer-style listing later. Noted
+  here for now - no design doc yet; needs its own real brainstorm
+  before this graduates past a one-line idea (real questions: how does
+  "drop an entity into it" actually work given the house's existing
+  desktop-entity/tile conventions, does it reuse the File Explorer
+  widget built today for its own "open as file explorer" mode, is
+  FLEXBOX a real 3D mode or FLEXFOLDER's own icon just changing while
+  2D/3D camera mode toggles house-wide).
   Depends on the File Explorer widget above for its own Save As/Load.
 - Taskbar instance-count guard / "x&lt;N&gt;" sanity indicator next to
   the PID (requested earlier this week, never started).

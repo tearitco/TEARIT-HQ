@@ -1,6 +1,23 @@
 # Brainstorm: pdl-reader, a shared File Explorer widget, the agy-txt legacy-launcher bug, and a toys text-editor refactor
 
-**Status: brainstorm only, not scheduled, no code written.**
+**Status update, same day**: the File Explorer widget (§1) is now
+**built and live-verified** — `&.widgits/file-explorer/` (manager +
+static template + CSS + `button.sh`), real LOAD-mode browsing and
+picking confirmed end to end via real X11 clicks. `pdl-reader` (§1)
+and the `toys` text editor's own Save/Load wiring (§5) are still not
+built, but their one real blocking dependency now exists. See
+`12.calendar/2026-09-05/2do.md` for the full commit/verification
+writeup and two real bugs found while building it (a `vars=` path
+doubling bug, and `<scrolllist>` requiring a `<sidebar>`+`<panel>`
+pair to be laid out at all).
+
+**Real v2 idea, raised live while testing** (not built): the widget's
+`<panel>` (currently just a "Pick a file to load." hint + Cancel in
+LOAD mode) is real, unused screen space well suited to a file preview
+or a visual directory-tree view once a real consumer needs it — not
+attempted this pass, flagging it here so it isn't lost.
+
+**Original brainstorm below, kept for context.**
 Started 2026-09-05, direct request covering four related things in one
 go — kept together here because they share one dependency (the File
 Explorer widget) and one reference implementation (tpmos's own
