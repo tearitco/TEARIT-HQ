@@ -6755,7 +6755,18 @@ static int GRID_CELL_PX = 80;
  * (rmmv_armed.txt/.pal-hint-armed). This is step 1 of that doc's own
  * scoped rollout (arm+halo only) - arrow-key movement, click-to-place,
  * and the 2D/3D camera switch are explicitly deferred to a later pass,
- * per the doc's own §8/§10 sequencing. */
+ * per the doc's own §8/§10 sequencing.
+ * REAL FIX 2026-09-04 (RENDERER-MODULARITY-AND-PERF-AUDIT.md §1.1) -
+ * set from a data-driven "STATE | log_mode | 1" row in the entity's
+ * own meta.pdl now (read_log_mode()), not a hardcoded
+ * `basename(package_dir) == "cursword"` identity check - the exact
+ * project-name-in-shared-renderer pattern CENTROID_GOLD_STD.md rule 7
+ * forbids for top-level modes, just nested inside tp_main() instead
+ * of main(). The taller "log" window / arm-on-click behavior this
+ * flag gates is unchanged and still lives inline here (that's the
+ * larger, deferred tp_main()-extraction work in the same audit doc's
+ * Part 3) - only HOW the flag gets set is now generic; any entity can
+ * opt into this variant via its own meta.pdl, not just cursword. */
 static int g_is_cursword = 0;
 static int g_cursword_armed = 0;
 
@@ -7584,6 +7595,47 @@ static FILE *pdl_open(const char *path) {
     return f;
 }
 
+/* REAL FIX 2026-09-04 (RENDERER-MODULARITY-AND-PERF-AUDIT.md §1.1) -
+ * reads an optional "STATE | log_mode | 1" row from the package's own
+ * meta.pdl, same SECTION|KEY|VALUE parse shape as read_footprint_
+ * tiles() above. Replaces the old g_is_cursword identity check
+ * (`strcmp(basename(pkgcopy), "cursword") == 0`) - a hardcoded
+ * project name living in the shared renderer is exactly the
+ * CENTROID_GOLD_STD.md rule 7 pattern this house's own standard
+ * forbids for top-level modes, just one level deeper (inside tp_main()
+ * instead of main()). Any entity can now opt into the taller "log"
+ * window variant by publishing this one row in its own meta.pdl - no
+ * renderer change needed to add a second one. Defaults to 0 (every
+ * existing entity's own meta.pdl lacks this row, so behavior is
+ * unchanged for all of them except cursword, which now carries the
+ * row itself instead of being named in code). */
+static int read_log_mode(const char *package_dir) {
+    char path[TP_PATH_BUF];
+    snprintf(path, sizeof(path), "%s/meta.pdl", package_dir);
+    FILE *f = pdl_open(path);
+    if (!f) return 0;
+    char line[TP_PATH_BUF];
+    int result = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "STATE", 5) != 0) continue;
+        char *p = strchr(line, '|');
+        if (!p) continue;
+        p++;
+        while (*p == ' ') p++;
+        char *end = strchr(p, '|');
+        if (!end) continue;
+        char *label_end = end;
+        while (label_end > p && label_end[-1] == ' ') label_end--;
+        const char *key = "log_mode";
+        size_t klen = strlen(key);
+        if ((size_t)(label_end - p) != klen || strncmp(p, key, klen) != 0) continue;
+        result = atoi(end + 1) != 0;
+        break;
+    }
+    fclose(f);
+    return result;
+}
+
 static int read_footprint_tiles(const char *package_dir) {
     char path[TP_PATH_BUF];
     snprintf(path, sizeof(path), "%s/meta.pdl", package_dir);
@@ -7940,28 +7992,61 @@ static int load_sprite_csv(const char *csv_path) {
     return 1;
 }
 
+/* REAL FIX 2026-09-04 (RENDERER-MODULARITY-AND-PERF-AUDIT.md §1.3) -
+ * the nearest-neighbor sprite-downscale index math (`(screen_px *
+ * sprite_res) / win_px`, clamped to `sprite_res - 1`) was copy-pasted
+ * verbatim at 3 separate sites (build_shape_mask() below, draw_sprite_
+ * rgb(), and the top-strip sprite sampler further down) - one real
+ * shared helper now, not three. Behavior is bit-for-bit identical
+ * (same integer math, same clamp), this is a pure dedup, not a
+ * functional change. */
+static int sprite_scale_index(int screen_px, int sprite_res, int win_px) {
+    int idx = (screen_px * sprite_res) / win_px;
+    if (idx >= sprite_res) idx = sprite_res - 1;
+    return idx;
+}
+
+/* REAL FIX 2026-09-04 (RENDERER-MODULARITY-AND-PERF-AUDIT.md §1.3) -
+ * generic replacement for what used to be two separate, near-identical
+ * mask-builder functions (this one's own sprite-alpha-driven test, and
+ * update_entity_shape_from_3d()'s own buffer-vs-background-diff test) -
+ * same real loop shape (clear to 0, set fg to 1, per-pixel test,
+ * XFillRectangle the opaque ones), differing only in HOW a pixel is
+ * tested. One real shared implementation via a callback, not two.
+ * Still does the exact same per-pixel XFillRectangle calls as before
+ * (a real, separate performance question - RENDERER-MODULARITY-AND-
+ * PERF-AUDIT.md §2.2 - deliberately not addressed in this same change,
+ * to keep this a pure structural dedup). */
+typedef int (*kh_pixel_opaque_fn)(int x, int y, void *ctx);
+static void kh_build_shape_mask_generic(Display *dpy, GC mask_gc, Pixmap mask,
+                                         int w, int h, kh_pixel_opaque_fn is_opaque, void *ctx) {
+    XSetForeground(dpy, mask_gc, 0);
+    XFillRectangle(dpy, mask, mask_gc, 0, 0, (unsigned)w, (unsigned)h);
+    XSetForeground(dpy, mask_gc, 1);
+    for (int y = 0; y < h; y++)
+        for (int x = 0; x < w; x++)
+            if (is_opaque(x, y, ctx)) XFillRectangle(dpy, mask, mask_gc, x, y, 1, 1);
+}
+
+static int kh_sprite_alpha_opaque(int x, int y, void *ctx) {
+    (void)ctx;
+    int sy = sprite_scale_index(y, g_sprite_res, WIN_PX);
+    int sx = sprite_scale_index(x, g_sprite_res, WIN_PX);
+    return g_sprite_pixels[(sy * g_sprite_res + sx) * 4 + 3] > 127;
+}
+
 /* Verbatim port of egg_window.c's own build_shape_mask() (POSIX/X11
  * branch) - builds the window's real clip shape from the sprite's own
  * alpha channel (upscaled nearest-neighbor to the window's pixel size),
  * so the desktop genuinely shows through transparent pixels instead of
  * this window's own opaque background fill. */
 static void build_shape_mask(Display *dpy, Window win, GC mask_gc, Pixmap mask) {
-    XSetForeground(dpy, mask_gc, 0);
-    XFillRectangle(dpy, mask, mask_gc, 0, 0, WIN_PX, WIN_PX);
-    XSetForeground(dpy, mask_gc, 1);
     if (g_sprite_pixels) {
-        for (int y = 0; y < WIN_PX; y++) {
-            int sy = (y * g_sprite_res) / WIN_PX;
-            if (sy >= g_sprite_res) sy = g_sprite_res - 1;
-            for (int x = 0; x < WIN_PX; x++) {
-                int sx = (x * g_sprite_res) / WIN_PX;
-                if (sx >= g_sprite_res) sx = g_sprite_res - 1;
-                if (g_sprite_pixels[(sy * g_sprite_res + sx) * 4 + 3] > 127) {
-                    XFillRectangle(dpy, mask, mask_gc, x, y, 1, 1);
-                }
-            }
-        }
+        kh_build_shape_mask_generic(dpy, mask_gc, mask, WIN_PX, WIN_PX, kh_sprite_alpha_opaque, NULL);
     } else {
+        XSetForeground(dpy, mask_gc, 0);
+        XFillRectangle(dpy, mask, mask_gc, 0, 0, WIN_PX, WIN_PX);
+        XSetForeground(dpy, mask_gc, 1);
         XFillArc(dpy, mask, mask_gc, 0, 0, WIN_PX, WIN_PX, 0, 360 * 64);
     }
     XShapeCombineMask(dpy, win, ShapeBounding, 0, 0, mask, ShapeSet);
@@ -7995,22 +8080,23 @@ static void build_shape_mask(Display *dpy, Window win, GC mask_gc, Pixmap mask) 
  * (the halo's wider click surface) and real ARGB alpha for its own
  * background, so this generic path would just be redundant/
  * conflicting there. */
+struct kh_bg_diff_ctx { XImage *img; unsigned long bg_pixel; };
+static int kh_bg_diff_opaque(int x, int y, void *ctxp) {
+    struct kh_bg_diff_ctx *ctx = (struct kh_bg_diff_ctx *)ctxp;
+    unsigned long px = XGetPixel(ctx->img, x, y) & 0xFFFFFFUL; /* real, deliberate - ignore the alpha byte, meaningless on this non-ARGB visual */
+    return px != ctx->bg_pixel;
+}
+
 static void update_entity_shape_from_3d(Display *dpy, Window win, Drawable buf,
                                          int bg_r, int bg_g, int bg_b) {
     XImage *img = XGetImage(dpy, buf, 0, 0, WIN_PX, WIN_PX, AllPlanes, ZPixmap);
     if (!img) return;
     Pixmap mask = XCreatePixmap(dpy, win, WIN_PX, WIN_PX, 1);
     GC mask_gc = XCreateGC(dpy, mask, 0, NULL);
-    XSetForeground(dpy, mask_gc, 0);
-    XFillRectangle(dpy, mask, mask_gc, 0, 0, WIN_PX, WIN_PX);
-    XSetForeground(dpy, mask_gc, 1);
-    unsigned long bg_pixel = ((unsigned long)bg_r << 16) | ((unsigned long)bg_g << 8) | (unsigned long)bg_b;
-    for (int y = 0; y < WIN_PX; y++) {
-        for (int x = 0; x < WIN_PX; x++) {
-            unsigned long px = XGetPixel(img, x, y) & 0xFFFFFFUL; /* real, deliberate - ignore the alpha byte, meaningless on this non-ARGB visual */
-            if (px != bg_pixel) XFillRectangle(dpy, mask, mask_gc, x, y, 1, 1);
-        }
-    }
+    struct kh_bg_diff_ctx ctx;
+    ctx.img = img;
+    ctx.bg_pixel = ((unsigned long)bg_r << 16) | ((unsigned long)bg_g << 8) | (unsigned long)bg_b;
+    kh_build_shape_mask_generic(dpy, mask_gc, mask, WIN_PX, WIN_PX, kh_bg_diff_opaque, &ctx);
     XDestroyImage(img);
     XShapeCombineMask(dpy, win, ShapeBounding, 0, 0, mask, ShapeSet);
     XFreeGC(dpy, mask_gc);
@@ -8125,11 +8211,9 @@ static void cursword_update_shape(Display *dpy, Window win) {
 static void draw_sprite_rgb(Display *dpy, Drawable buf, GC gc, int bg_r, int bg_g, int bg_b) {
     if (!g_sprite_pixels || g_sprite_res <= 0) return;
     for (int y = 0; y < WIN_PX; y++) {
-        int sy = (y * g_sprite_res) / WIN_PX;
-        if (sy >= g_sprite_res) sy = g_sprite_res - 1;
+        int sy = sprite_scale_index(y, g_sprite_res, WIN_PX);
         for (int x = 0; x < WIN_PX; x++) {
-            int sx = (x * g_sprite_res) / WIN_PX;
-            if (sx >= g_sprite_res) sx = g_sprite_res - 1;
+            int sx = sprite_scale_index(x, g_sprite_res, WIN_PX);
             unsigned char *p = &g_sprite_pixels[(sy * g_sprite_res + sx) * 4];
             int a = p[3];
             if (a <= 0) continue;
@@ -8918,8 +9002,7 @@ static void draw_topdown_block_rgb(Display *dpy, Drawable buf, GC gc, int bg_r, 
         int srow = v0 + (y * (v1 - v0 + 1)) / top_h_scaled;
         if (srow > v1) srow = v1;
         for (int x = 0; x < WIN_PX; x++) {
-            int scol = (x * g_sprite_res) / WIN_PX;
-            if (scol >= g_sprite_res) scol = g_sprite_res - 1;
+            int scol = sprite_scale_index(x, g_sprite_res, WIN_PX);
             unsigned char *p = &g_sprite_pixels[(srow * g_sprite_res + scol) * 4];
             int a = p[3];
             if (a <= 0) continue;
@@ -9747,14 +9830,14 @@ static int tp_main(int argc, char **argv) {
     win_package_rel(package_buf);
 #endif
     const char *package_dir = package_buf;
-    /* Real, one-time identity check - see g_is_cursword's own
-     * declaration comment for why this is scoped to cursword only,
-     * not every desktop entity. */
-    {
-        char pkgcopy[TP_PATH_BUF];
-        snprintf(pkgcopy, sizeof(pkgcopy), "%s", package_dir);
-        g_is_cursword = (strcmp(basename(pkgcopy), "cursword") == 0);
-    }
+    /* REAL FIX 2026-09-04 (RENDERER-MODULARITY-AND-PERF-AUDIT.md §1.1) -
+     * data-driven now (see read_log_mode()'s own header comment) -
+     * was a hardcoded `strcmp(basename(pkgcopy), "cursword")` identity
+     * check; any entity can opt in via its own meta.pdl now, not just
+     * this one hardcoded name. g_is_cursword's own name is kept as-is
+     * (24 real call sites already read it) - only how it gets set
+     * changed. */
+    g_is_cursword = read_log_mode(package_dir);
     snprintf(g_history_path, sizeof(g_history_path), "%s/history.txt", package_dir);
     snprintf(g_relay_path, sizeof(g_relay_path), "%s/interact_relay.txt", package_dir);
     append_history("WINDOW_OPEN");
