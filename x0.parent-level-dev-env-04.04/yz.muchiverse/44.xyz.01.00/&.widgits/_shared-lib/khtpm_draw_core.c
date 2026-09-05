@@ -67,6 +67,28 @@ static XftColor xft_color(const char *spec) {
     return xc;
 }
 
+/* REAL FIX 2026-09-04, direct live report ("white text doesn't have
+ * black background... not readable") - a real, DIFFERENT bug from the
+ * badge-blackout fix earlier this same day. Badges always sit on their
+ * own fixed dark #141414 chip (that fix correctly stopped computing
+ * contrast against the wrong surface, the element's own bg). Plain
+ * dock-cell LABEL text has no such chip at all - it draws straight
+ * onto the dock window's real fill, which for a dock window specifically
+ * is g_theme_bg (redraw()'s own `window_is_dock() ? g_theme_bg :
+ * "#1c1c1c"` fill), a user-changeable theme color, NOT the CSS's
+ * hardcoded dark `window.dock-header { background: #1c1c1c }` the
+ * .dock-cell text color (#cccccc) was tuned against. A light/tan theme
+ * (this house's current default) makes light-on-light text unreadable.
+ * This time the surface being tested really is the one the text sits
+ * on - not the same mistake. Scoped to window_is_dock() only; every
+ * other window's plain text keeps its existing, unrelated color. */
+static int kh_hex_luma(const char *hex) {
+    if (!hex || hex[0] != '#' || strlen(hex) < 7) return 255; /* honest default: assume light, matches this house's own light-theme default */
+    unsigned int r, g, b;
+    if (sscanf(hex + 1, "%02x%02x%02x", &r, &g, &b) != 3) return 255;
+    return (int)(r * 299 + g * 587 + b * 114) / 1000;
+}
+
 /* Real font cache, same pattern as chat-hai/db-hq's own real
  * measure_text_px() fix (khtpm-merge-how2.md §3.2). Caller must NOT
  * XftFontClose() the returned font - shared, cached handle. */
@@ -862,7 +884,15 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                               !elem_has_class(e, "pal-tile") && !elem_has_class(e, "swatch");
     if ((!drew_sprite || sprite_under_label || sprite_beside_label) && shown_label[0]) {
         XftFont *font = font_for(&e->style);
-        XftColor col = xft_color(e->style.has_fg_color ? e->style.fg_color : "#cccccc");
+        /* See kh_hex_luma()'s own header comment - dock windows fill
+         * with the real, user-changeable g_theme_bg, not the CSS's
+         * fixed dark window background, so the default label color
+         * needs to track it for readability, not stay hardcoded. Only
+         * when the item has no explicit CSS fg_color of its own -
+         * an explicit fg_color is a deliberate per-element choice,
+         * left alone. */
+        const char *default_fg = (window_is_dock() && kh_hex_luma(g_theme_bg) > 140) ? "#1c1c1c" : "#cccccc";
+        XftColor col = xft_color(e->style.has_fg_color ? e->style.fg_color : default_fg);
         XGlyphInfo extents;
         XftTextExtentsUtf8(dpy, font, (const FcChar8 *)shown_label, (int)strlen(shown_label), &extents);
         int avail_w = e->w > 0 ? (e->x + e->w) - badge_label_x : -1;
