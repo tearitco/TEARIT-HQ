@@ -10,8 +10,15 @@
   `onclick` verb, the 4 layout modes, nav/focus model, CSS subset, a
   hard-limits table (buffer sizes + overflow symptoms), and a
   feature-gap matrix vs. tpmos chtpm. Does NOT cover performance/
-  optimization — that's out of scope for this doc, not yet documented
-  anywhere as its own topic.
+  optimization — see `RENDERER-MODULARITY-AND-PERF-AUDIT.md` for that.
+- `RENDERER-MODULARITY-AND-PERF-AUDIT.md` — audit of
+  `khtpm_core_render.c` + the shared-lib files against
+  `CENTROID_GOLD_STD.md`'s own rules AND a plain readability/reuse bar
+  (not just the letter of the no-per-app-C rule): remaining `g_is_*`
+  globals, copy-pasted logic, per-pixel/per-tick performance waste, and
+  a concrete "could this convert to the ops/manager+projector pattern
+  events-hq and pchq-board already prove out" assessment for `tp_main()`
+  (TILE MODE). Audit only, nothing fixed as part of it.
 - `RENDERING-ORIENTATION.md` — how the khtpm merged binary actually
   works today (the "current, not-yet-ideal" companion to the gold
   standard).
