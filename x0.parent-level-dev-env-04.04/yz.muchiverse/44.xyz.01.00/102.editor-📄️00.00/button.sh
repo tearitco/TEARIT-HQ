@@ -75,15 +75,22 @@ EOSTATE
         export PRISC_PROJECT_ROOT="$SCRIPT_DIR"
         export PRISC_PROJECT_ID="agy-editor"
 
-        if [ -x "./ops/+x/editor_compose_frame.+x" ]; then
-            ./ops/+x/editor_compose_frame.+x >/dev/null 2>&1 || true
-        elif [ -x "$SCRIPT_DIR/ops/+x/editor_compose_frame.+x" ]; then
+        # REAL FIX 2026-09-05, same real bug as 102.agy-txt/button.sh
+        # (its own header comment has the full root-cause writeup) -
+        # everything below runs AFTER `cd "$SESSION_DIR"` above, so any
+        # bare relative `./system/X` / `./ops/+x/X` resolves against
+        # the session dir (which has neither), not $SCRIPT_DIR where
+        # these binaries actually live. Made absolute throughout. The
+        # `pieces/chtpm/layouts/editor.chtpm` DATA-file argument stays
+        # relative - resolved by the C program itself via
+        # PRISC_PROJECT_ROOT, not shell/cwd lookup.
+        if [ -x "$SCRIPT_DIR/ops/+x/editor_compose_frame.+x" ]; then
             "$SCRIPT_DIR/ops/+x/editor_compose_frame.+x" >/dev/null 2>&1 || true
         fi
 
-        ./system/renderer &
+        "$SCRIPT_DIR/system/renderer" &
         RENDERER_PID=$!
-        ./system/chtpm_parser_pal pieces/chtpm/layouts/editor.chtpm >/dev/null 2>&1 &
+        "$SCRIPT_DIR/system/chtpm_parser_pal" pieces/chtpm/layouts/editor.chtpm >/dev/null 2>&1 &
         CHTPM_PID=$!
 
         # §35 GL IS PRIMARY UI: same generic pipeline every project uses
@@ -122,12 +129,12 @@ EOSTATE
                 sleep 0.1
                 waited=$((waited + 1))
             done
-            if [ -z "$NO_GL" ] && [ -x ./system/gl_mirror ]; then
-                ./system/gl_mirror >/dev/null 2>&1 &
+            if [ -z "$NO_GL" ] && [ -x "$SCRIPT_DIR/system/gl_mirror" ]; then
+                "$SCRIPT_DIR/system/gl_mirror" >/dev/null 2>&1 &
                 GL_PID=$!
             fi
-            if [ -z "$NO_GL" ] && [ -x ./system/chtpm_rgb_render ]; then
-                ./system/chtpm_rgb_render >/dev/null 2>&1 &
+            if [ -z "$NO_GL" ] && [ -x "$SCRIPT_DIR/system/chtpm_rgb_render" ]; then
+                "$SCRIPT_DIR/system/chtpm_rgb_render" >/dev/null 2>&1 &
                 RGB_PID=$!
             fi
         fi
@@ -142,18 +149,18 @@ EOSTATE
             done
         }
 
-        trap 'if [ -x ./ops/+x/ledger_append.+x ]; then PRISC_PROJECT_ROOT="$SCRIPT_DIR" ./ops/+x/ledger_append.+x OFFLINE editor agy-editor "$SESSION_DIR" $$ "XYZ Editor" pieces/system/widget_cmds/inbox.txt >/dev/null 2>&1 || true; fi; kill "$RENDERER_PID" "$CHTPM_PID" "$GL_PID" "$RGB_PID" 2>/dev/null; kill_own_module; rm -rf "$SESSION_DIR"' EXIT INT TERM
+        trap 'if [ -x "$SCRIPT_DIR/ops/+x/ledger_append.+x" ]; then PRISC_PROJECT_ROOT="$SCRIPT_DIR" "$SCRIPT_DIR/ops/+x/ledger_append.+x" OFFLINE editor agy-editor "$SESSION_DIR" $$ "XYZ Editor" pieces/system/widget_cmds/inbox.txt >/dev/null 2>&1 || true; fi; kill "$RENDERER_PID" "$CHTPM_PID" "$GL_PID" "$RGB_PID" 2>/dev/null; kill_own_module; rm -rf "$SESSION_DIR"' EXIT INT TERM
 
         : > pieces/apps/player_app/history.txt
 
         # Register in xyzfs runtime ledger
-        if [ -x ./ops/+x/ledger_append.+x ]; then
+        if [ -x "$SCRIPT_DIR/ops/+x/ledger_append.+x" ]; then
             PRISC_PROJECT_ROOT="$SCRIPT_DIR" \
-                ./ops/+x/ledger_append.+x ONLINE editor agy-editor "$SESSION_DIR" $$ \
+                "$SCRIPT_DIR/ops/+x/ledger_append.+x" ONLINE editor agy-editor "$SESSION_DIR" $$ \
                 "XYZ Editor" pieces/system/widget_cmds/inbox.txt >/dev/null 2>&1 || true
         fi
 
-        ./system/keyboard_input
+        "$SCRIPT_DIR/system/keyboard_input"
 
         kill "$RENDERER_PID" "$CHTPM_PID" "$GL_PID" "$RGB_PID" 2>/dev/null
         kill_own_module

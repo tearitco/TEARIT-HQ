@@ -71,7 +71,12 @@
   element type is needed. Depends on the File Explorer widget above
   for its own Save As/Load, so building that first is the efficient
   order.
-- **`102.agy-txt`'s legacy launcher bug — root-caused, not yet fixed.**
+- **`102.agy-txt`'s legacy launcher bug — FIXED.** See
+  `102.agy-txt/LEGACY-LAUNCHER-PATH-FIX-2026-09-05.md` for the checked
+  list of every house-level project with its own `button.sh` (only
+  `102.agy-txt` and `102.editor-📄️00.00` had this bug), the exact
+  fix, and live verification of both. Original finding kept below for
+  context.
   `sh button.sh r` fails with `./system/renderer: not found` /
   `./system/keyboard_input: not found`. The binaries are completely
   fine (confirmed via `file` + reading them directly); the bug is a

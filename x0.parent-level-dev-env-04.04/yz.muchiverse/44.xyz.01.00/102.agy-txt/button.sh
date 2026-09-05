@@ -108,15 +108,30 @@ EOSTATE
         export PRISC_PROJECT_ROOT="$SCRIPT_DIR"
         export PRISC_PROJECT_ID="agy-txt"
 
-        if [ -x "./ops/+x/agy_compose_view.+x" ]; then
-            ./ops/+x/agy_compose_view.+x >/dev/null 2>&1 || true
-        elif [ -x "./ops/+x/agy_compose_stub.+x" ]; then
-            ./ops/+x/agy_compose_stub.+x >/dev/null 2>&1 || true
+        # REAL FIX 2026-09-05, direct live report ("./system/renderer:
+        # not found" / "./system/keyboard_input: not found" running
+        # `sh button.sh r`) - this block runs AFTER `cd "$SESSION_DIR"`
+        # above, so every one of these was a RELATIVE path resolving
+        # against the session dir (which has no system/ or ops/ of its
+        # own - see the "No symlinks" comment above: a real refactor
+        # moved DATA-file resolution to PRISC_PROJECT_ROOT but never
+        # updated these BINARY exec paths to match, since the shell
+        # looks up an exec target itself, before the program ever runs,
+        # with no knowledge of that env var). Made absolute via
+        # $SCRIPT_DIR, where these binaries actually live. The
+        # `pieces/chtpm/layouts/editor.chtpm` DATA-file argument on the
+        # chtpm_parser_pal line below is deliberately left relative -
+        # that's read by the C program itself, which resolves it via
+        # PRISC_PROJECT_ROOT (exported above), not by shell/cwd lookup.
+        if [ -x "$SCRIPT_DIR/ops/+x/agy_compose_view.+x" ]; then
+            "$SCRIPT_DIR/ops/+x/agy_compose_view.+x" >/dev/null 2>&1 || true
+        elif [ -x "$SCRIPT_DIR/ops/+x/agy_compose_stub.+x" ]; then
+            "$SCRIPT_DIR/ops/+x/agy_compose_stub.+x" >/dev/null 2>&1 || true
         fi
 
-        ./system/renderer &
+        "$SCRIPT_DIR/system/renderer" &
         RENDERER_PID=$!
-        ./system/chtpm_parser_pal pieces/chtpm/layouts/editor.chtpm >/dev/null 2>&1 &
+        "$SCRIPT_DIR/system/chtpm_parser_pal" pieces/chtpm/layouts/editor.chtpm >/dev/null 2>&1 &
         CHTPM_PID=$!
 
         GL_PID=""
@@ -129,12 +144,12 @@ EOSTATE
                 sleep 0.1
                 waited=$((waited + 1))
             done
-            if [ -z "$NO_GL" ] && [ -x ./system/gl_mirror ]; then
-                ./system/gl_mirror >/dev/null 2>&1 &
+            if [ -z "$NO_GL" ] && [ -x "$SCRIPT_DIR/system/gl_mirror" ]; then
+                "$SCRIPT_DIR/system/gl_mirror" >/dev/null 2>&1 &
                 GL_PID=$!
             fi
-            if [ -z "$NO_GL" ] && [ -x ./system/chtpm_rgb_render ]; then
-                ./system/chtpm_rgb_render >/dev/null 2>&1 &
+            if [ -z "$NO_GL" ] && [ -x "$SCRIPT_DIR/system/chtpm_rgb_render" ]; then
+                "$SCRIPT_DIR/system/chtpm_rgb_render" >/dev/null 2>&1 &
                 RGB_PID=$!
             fi
         fi
@@ -163,7 +178,7 @@ EOSTATE
 
         : > pieces/apps/player_app/history.txt
 
-        ./system/keyboard_input
+        "$SCRIPT_DIR/system/keyboard_input"
 
         kill "$RENDERER_PID" "$CHTPM_PID" "$GL_PID" "$RGB_PID" 2>/dev/null
         kill_own_module
