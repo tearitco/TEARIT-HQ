@@ -73,11 +73,15 @@ note under it — don't silently edit it away.*
   bottom bar can show an entity as "open" when it's a zombie with no
   real window. Structural fix not yet done: also check
   `/proc/<pid>/stat`'s state field and treat `Z` as not-alive.
-- **`khtpm_core_render.c`'s `dbhq_load_actors()` loads real PDL data
-  inline in the shared parser/renderer file** instead of via a
-  separate manager process (violates `CENTROID_GOLD_STD.md` §3 rule
-  2). An audit pass for sibling inline loaders (Classes/Skills/Items
-  etc.) has not been done.
+- ~~**`khtpm_core_render.c`'s `dbhq_load_actors()` loads real PDL data
+  inline...**~~ 🔄 CORRECTION (2026-09-04): `dbhq_load_actors()` no
+  longer exists anywhere in the code - confirmed by direct grep during
+  `02-architecture/RENDERER-MODULARITY-AND-PERF-AUDIT.md`'s own pass.
+  Already removed/migrated at some point after this entry was written;
+  the entry itself was never updated. See that audit doc for the
+  current, fuller modularity/reuse-compliance picture (its own real
+  finding: `g_is_cursword`, nested inside `tp_main()`, is the live
+  analog of what this entry was worried about).
 
 ## Recently fixed (kept short — see 03-pitfalls for the general lesson each one produced)
 
