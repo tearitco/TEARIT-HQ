@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <stdint.h>
 #include <strings.h>
+#include <signal.h>
 
 #define MAX_MSG (1024 * 1024)
 
@@ -127,10 +128,13 @@ static NbNode *g_orphans = NULL;   /* detached createElement() nodes still to fr
  * survives across multiple lazily-created wrappers for the same node. */
 static NbNode **g_nodeindex = NULL;
 static int g_nodecount = 0, g_nodecap = 0;
+#define NODE_HANDLE_CAP 250000   /* plan step 5: bound JS-created wrappers */
 static int node_index(NbNode *n) {
     for (int i = 0; i < g_nodecount; i++) if (g_nodeindex[i] == n) return i;
+    if (g_nodecount >= NODE_HANDLE_CAP) return -1;   /* cap: fail the wrapper */
     if (g_nodecount >= g_nodecap) {
         int nc = g_nodecap ? g_nodecap * 2 : 64;
+        if (nc > NODE_HANDLE_CAP) nc = NODE_HANDLE_CAP;
         NbNode **na = realloc(g_nodeindex, (size_t)nc * sizeof(*na));
         if (!na) return -1;
         g_nodeindex = na; g_nodecap = nc;
@@ -807,6 +811,21 @@ static void install_dom(duk_context *ctx) {
     duk_pop(ctx);
 }
 
+#define EVAL_BUDGET_SEC 2   /* plan step 5: watchdog for runaway page.js */
+
+/* plan step 5: CPU budget for script eval. If page.js burns through
+ * EVAL_BUDGET_SEC of CPU (while(true) {} and friends) SIGALRM fires while
+ * Duktape is running; the deadly default _exit kills the worker mid-eval, the
+ * manager sees the socket close and respawns on the next LOAD. */
+static void sigalrm(int sig) { _exit(128 + sig); }
+static int peval_budget(duk_context *ctx, const char *src) {
+    signal(SIGALRM, sigalrm);
+    alarm(EVAL_BUDGET_SEC);
+    int rc = src ? duk_peval_string(ctx, src) : duk_peval(ctx);
+    alarm(0);
+    return rc;
+}
+
 /* Run the page script; sends STATUS ok|err across the wire. */
 static void dom_teardown(void) {
     /* free detached createElement() nodes, then the main tree */
@@ -838,7 +857,7 @@ static void run_page(void) {
     install_host(ctx);
 
     /* rung-6 prelude: swallow its own failure, page continues */
-    if (duk_peval_string(ctx, g_js_prelude) != 0) duk_pop(ctx);
+    if (peval_budget(ctx, g_js_prelude) != 0) duk_pop(ctx);
     duk_pop(ctx);
 
     install_dom(ctx);
@@ -856,7 +875,7 @@ static void run_page(void) {
 
     duk_push_lstring(ctx, src, src_n);
     free(src);
-    int rc = duk_peval(ctx);
+    int rc = peval_budget(ctx, NULL);
     if (rc != 0) {
         const char *m = duk_safe_to_string(ctx, -1);
         char msg[1024];

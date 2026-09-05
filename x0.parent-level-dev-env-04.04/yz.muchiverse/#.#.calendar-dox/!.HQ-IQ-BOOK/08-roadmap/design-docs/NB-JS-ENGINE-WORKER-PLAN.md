@@ -231,6 +231,24 @@ before (worker not even spawned unless a `<script>` exists).
    > RENDER frame (and to drain frames exactly, trailing `\n` included).
 5. **CPU budget + node cap** harden + `usleep` idle-loop discipline +
    manager SIGKILL/restart guards. *Commit 5.*
+   > **DONE — 2026-09-05, branch `chtpm-js-rungs`** (step-5 commit; see
+   > slave handoff). The DOM-node cap was **already** in `nb_dom.c`
+   > (`DOM_MAX_NODES` 50000 at the parser/serializer); what was missing was
+   > the script side. The worker now (a) caps JS-created element wrappers at
+   > `NODE_HANDLE_CAP` 250000 (index table simply returns -1 → the wrapper's
+   > natives no-op via the existing bounds check), and (b) runs every eval
+   > under a **CPU budget**: `alarm(EVAL_BUDGET_SEC=2)` + a deadly-default
+   > `SIGALRM` handler that `_exit`s the worker mid-eval — a
+   > `while(true){}` page.js kills the worker, not the browser. The manager
+   > gained `WORKER_RECV_TIMEOUT_MS` 3000 (`poll()` before each frame read),
+   > `worker_close()` now `SIGKILL`s + `waitpid`s the child, and main
+   > `SIG_IGN`s `SIGPIPE` so a dying worker's write can't take the manager
+   > down. Worker death ⇒ `worker_load` fails ⇒ static-raster rows stay
+   > (degrade-without-blanking invariant); next `<script>` page respawns a
+   > fresh worker. Verified end-to-end with a hostile `while(true){}` page:
+   > manager survives, `page.state.txt` keeps the static rows, no hang, no
+   > zombie workers; the following scripted page still RENDER-merges through
+   > a respawned worker.
 6. **Docs**: mark rung 2 (+ rung 5 glue + §3 worker plumbing) done in
    the roadmap; note what rungs 3/4/7 remain. *Commit 6.*
 

@@ -84,6 +84,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <errno.h>
+#include <poll.h>
 
 #include "nb_dom.h"
 
@@ -1019,6 +1020,8 @@ static void collect_page_media(const char *html, const char *page_url) {
     atomic_commit(g_page_state_path, tmp);
 }
 
+#define WORKER_RECV_TIMEOUT_MS 3000   /* plan step 5: stall watchdog */
+
 static int worker_send(const char *payload, size_t n) {
     if (g_worker_fd < 0) return 0;
     char lb[16];
@@ -1030,6 +1033,9 @@ static int worker_send(const char *payload, size_t n) {
 
 static int worker_recv_line(char *out, size_t cap) {
     if (g_worker_fd < 0) return 0;
+    struct pollfd p = { g_worker_fd, POLLIN, 0 };
+    int pr = poll(&p, 1, WORKER_RECV_TIMEOUT_MS);
+    if (pr <= 0) return 0;   /* worker stalled: caller closes + respawns */
     char lb[16]; size_t i = 0; char c;
     while (read(g_worker_fd, &c, 1) == 1) {
         if (c == '\n') break;
@@ -1051,7 +1057,11 @@ static int worker_recv_line(char *out, size_t cap) {
 
 static void worker_close(void) {
     if (g_worker_fd >= 0) { close(g_worker_fd); g_worker_fd = -1; }
-    if (g_worker_pid > 0) { int st; waitpid(g_worker_pid, &st, WNOHANG); g_worker_pid = -1; }
+    if (g_worker_pid > 0) {
+        kill(g_worker_pid, SIGKILL);          /* plan step 5: no strays */
+        int st; waitpid(g_worker_pid, &st, 0);
+        g_worker_pid = -1;
+    }
 }
 
 /* Spawn the worker on first need. Child keeps socketpair end as stdin/stdout. */
@@ -2548,6 +2558,7 @@ static int parent_still_alive(void) {
 
 int main(int argc, char **argv) {
     if (argc < 2) { fprintf(stderr, "usage: %s <house_root> [pkg_dir] [ui]\n", argv[0]); return 1; }
+    signal(SIGPIPE, SIG_IGN);   /* plan step 5: dying worker writes must not kill us */
     snprintf(g_house, sizeof(g_house), "%s", argv[1]);
     snprintf(g_package_dir, sizeof(g_package_dir), "%s/&.hq-apps/network", g_house);
     for (int ai = 2; ai < argc; ai++)

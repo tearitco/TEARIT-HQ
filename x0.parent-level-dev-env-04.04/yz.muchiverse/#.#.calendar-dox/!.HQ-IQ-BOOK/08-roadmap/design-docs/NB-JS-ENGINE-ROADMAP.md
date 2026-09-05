@@ -115,6 +115,14 @@ Minimum node API to implement:
 > (`document.title=`, `el.textContent=`, `appendChild`, `innerHTML=`) is
 > now authoritative for scripted pages. A page with no `<script>` never
 > spawns the worker and renders byte-identically as before. Same commit.
+> **Step 5 guards landed (plan phase-1 step 5):** runaway scripts can no
+> longer take the browser down. Worker evals run under a 2 s CPU budget
+> (`alarm`/`SIGALRM` → `_exit`), JS-created element wrappers are capped at
+> 250000 handles, the manager time-bounds every worker read
+> (`poll`, 3 s) and `SIGKILL`s + reaps its child on close, and `SIGPIPE`
+> is ignored so a dying worker can't kill the manager. A `while(true){}`
+> page kills only the worker; the static rows stay and the next scripted
+> page gets a fresh worker. Same commit.
 > **Still pending within rung 2:** `head`, `createTextNode`,
 > `getElementsByClassName`, `removeChild`/`insertBefore`/`replaceChild`,
 > `removeAttribute`, `style.*`, `value` (form fields) — natural follow-ons

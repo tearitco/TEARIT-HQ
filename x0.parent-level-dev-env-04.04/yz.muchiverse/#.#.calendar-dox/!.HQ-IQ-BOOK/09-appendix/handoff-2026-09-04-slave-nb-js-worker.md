@@ -6,9 +6,9 @@ network-browser JS engine work — a distinct, separate job from the master
 handoff's khtpm C-deletion/xhtpm pass (that work is tracked in the master;
 this job touches only the `&.hq-apps/network` cell and the design docs).
 
-**Last updated:** 2026-09-05 (step 4 committed + pushed; next up: step 5 CPU/node-cap/restart guards)
+**Last updated:** 2026-09-05 (step 5 committed + pushed; next up: step 6 docs)
 
-**Status snapshot (step 4 pushed):** `68df5763`, `1cb67da3`, `6d32cf64`, `ea864cea` all on `origin/chtpm-js-rungs`. Docs (roadmap, worker plan, this handoff) updated in the step-4 commit.
+**Status snapshot (step 5 pushed):** `68df5763`, `1cb67da3`, `6d32cf64`, `ea864cea` (step 4) and the step-5 guard commit all on `origin/chtpm-js-rungs`. Docs updated in each step's commit.
 **Branch:** `chtpm-delete-per-app-c` → pushed to `origin/chtpm-js-rungs`
 **Plan doc:** `08-roadmap/design-docs/NB-JS-ENGINE-WORKER-PLAN.md` (§7 = Phase 1, §8 = Phase 2)
 **Roadmap:** `08-roadmap/design-docs/NB-JS-ENGINE-ROADMAP.md` (rung map)
@@ -42,7 +42,7 @@ stays byte-identical; a script-less page never spawns the worker. Never
 | **2** | `nb_js_worker.c` skeleton + shared `nb_host.h`; manager lazy-spawn on `<script>`, LOAD plumbing, QUIT on exit (no behavior change) | **DONE** | `1cb67da3` |
 | 3 | DOM tree in the worker + native accessors (getElementById/getElementsByTagName/querySelector, textContent, children, tagName, getAttribute/setAttribute, classList, appendChild, innerHTML); `tests/worker_dom_test.*` | **DONE** | `6d32cf64` (pushed) |
 | 4 | RENDER merge → page.state.txt (visible payoff) | **DONE** | `ea864cea` (pushed) |
-| 5 | CPU budget + node cap + SIGKILL/restart guards | pending | — |
+| 5 | CPU budget + node cap + SIGKILL/restart guards | **DONE** | step-5 commit (pushed) |
 | 6 | Docs: mark rungs done in roadmap | pending | — |
 
 ## What's built (steps 1-2)
@@ -90,10 +90,47 @@ stays byte-identical; a script-less page never spawns the worker. Never
   merge); until then one-shot eval + static extractor keep the window live.
 - Phase 2 (rungs 3/4/5 + real BOM) is queued and hand-off-ready in plan §8.
 
-## Remaining (steps 5-6)
+## Remaining (step 6)
 
-1. Step 5 — CPU budget + node cap + SIGKILL/restart guards.
-2. Step 6 — Docs: mark rungs done in roadmap.
+1. Step 6 — Docs: mark rungs done in roadmap (final Phase-1 step).
+
+## Step 5 — DONE (guards: CPU budget, node cap, SIGKILL/restart)
+
+The DOM-node cap was already present (`nb_dom.c` `DOM_MAX_NODES` 50 k at
+the parser + serializer); what was missing was the **script side**. Trusting
+`while(true){}` page.js to "behave" is not a plan — two layers now bound it:
+
+- **Worker CPU budget.** Every eval runs under `alarm(EVAL_BUDGET_SEC=2)`
+  with a deadly-default `SIGALRM` handler (`_exit(128+SIGALRM)`). A runaway
+  `while(true){}` kills the worker mid-eval, not the browser. Wrapped both
+  the prelude and the page script via `peval_budget()` in `ops/nb_js_worker.c`.
+- **Worker node-handle cap.** JS `createElement`/`document.createElement`
+  wrappers registered in `g_nodeindex[]` are capped at `NODE_HANDLE_CAP`
+  250000 — past that, `node_index()` returns -1 and the wrapper's natives
+  no-op through the existing bounds check (`get_this`/`get_node` already
+  reject out-of-range handles), so one runaway can't grow the table forever.
+- **Manager read timeout.** `worker_recv_line()` now `poll()`s with
+  `WORKER_RECV_TIMEOUT_MS` 3000 before every read; a stalled worker makes
+  `worker_load` fail instead of hanging the manager forever.
+- **Manager SIGKILL + reap.** `worker_close()` (new swift) sends `SIGKILL`
+  and blocks on `waitpid` — no leftover or zombie workers. On a dead/
+  stalled worker, `worker_load` returns 0 and the next `<script>` page
+  respawns a fresh worker.
+- **SIGPIPE ignored** at `main` top, so a dying worker's write can't take
+  the manager down.
+
+**Verified end-to-end** (real worker + manager binaries in a scratch house,
+local HTTP server): a `while(true){}` page — manager survives, no hang, no
+zombie workers, `page.state.txt` keeps the static rows
+(degrade-without-blanking preserved). The **following** scripted page
+(`document.getElementById().textContent=` + `appendChild`) still
+RENDER-merges through a respawned worker: `TEXT|after-js`, `TEXT|appended`.
+`worker_dom_test` PASS vs the debug worker; all 5 rung suites green through
+both eval and worker; full `build.sh` (O2) exits 0. Note: during testing an
+earlier manager instance that had picked up the worker path only *after*
+the house already lacked the worker binary silently downgraded to the
+legacy eval — the house must contain `&.hq-apps/network/ops/+x/nb_js_worker.+x`
+for the worker path to engage.
 
 ## Step 3 — DONE (uncommitted; bug found & fixed)
 
@@ -142,7 +179,7 @@ paths repo-wide, staged explicit paths only, never `git add -A`).
 wrapper+index are fine and the accessors read the wrong stack slot — recheck
 `this` handling, not the index binding. Duktape arg 0 is the FIRST ARG.
 
-## Step 4 — DONE (uncommitted; RENDER merge → page.state.txt)
+## Step 4 — DONE (committed; RENDER merge → page.state.txt)
 
 The visible payoff: the worker's post-JS DOM now drives the rendered page.
 
