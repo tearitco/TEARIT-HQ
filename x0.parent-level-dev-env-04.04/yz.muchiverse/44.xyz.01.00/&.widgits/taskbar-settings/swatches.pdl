@@ -1,0 +1,27 @@
+# swatches.pdl - the real, editable color list for taskbar-settings'
+# background/text swatch picker. Read by BOTH swatch_picker_manager.c
+# (owns the actual PICK:<n> -> hex mapping when a theme gets applied)
+# and taskbar_settings_projector.c (publishes name/hex per row for the
+# <repeat> in taskbar-settings-pal.xhtpm). Neither hardcodes the color
+# list anymore - add or remove a row here and both processes plus the
+# rendered grid pick it up on their next run.
+#
+# Format: one swatch per line, "name|#rrggbb". Order is significant -
+# a swatch's line number (0-indexed) IS its PICK:<n> index, so
+# reordering existing rows changes what index an existing choice
+# means; adding new rows at the END is always safe.
+black|#000000
+white|#ffffff
+charcoal|#1a1a1a
+silver|#e5e5e5
+red|#ef4444
+orange|#f97316
+yellow|#eab308
+green|#22c55e
+cyan|#06b6d4
+blue|#3b82f6
+purple|#8b5cf6
+pink|#ec4899
+grey|#6b7280
+brown|#78350f
+tan|#d2b48c

@@ -148,6 +148,16 @@ typedef struct Elem {
      * arms/disarms it, not the click that requested engagement). Empty
      * for every item that isn't an Interact Mode trigger. */
     char relay[300];
+    /* REAL, NEW 2026-09-04, direct live request ("can we add grey and
+     * brown to swatch colors... that shouldn't be hardcoded, should
+     * be from layout/module") - a generic `bg="${var}"` attribute
+     * (apply_attr(), khtpm_core_render.c): a hex color string a
+     * manager/projector can publish per-element, applied in draw_elem()
+     * (khtpm_draw_core.c) as an override on top of whatever CSS already
+     * computed - lets a real DATA-DRIVEN color (not a fixed compile-
+     * time CSS class) drive an element's background. Empty for every
+     * element that doesn't set it - zero effect on anything existing. */
+    char bg[16];
     /* REAL, NEW 2026-09-01 (live report: a long list of one-item-plus-
      * its-own-separate-delete-row pairs is real visual clutter - direct
      * instruction: "id like to add backspace to delete if possible,

@@ -764,6 +764,16 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
         /* REAL, NEW 2026-09-01 - see Elem's own rows field comment in
          * khtpm_render_core.c. */
         e->rows = atoi(val);
+    } else if (strcmp(name, "bg") == 0) {
+        /* REAL, NEW 2026-09-04, direct live request ("can we add grey
+         * and brown to swatch colors... that shouldn't be hardcoded,
+         * should be from layout/module") - see Elem.bg's own field
+         * comment (khtpm_render_core.c) and draw_elem()'s own
+         * consuming comment (khtpm_draw_core.c) for the full generic-
+         * capability rationale. `val` is typically a `${var}`-
+         * substituted hex string from a real manager/projector, same
+         * substitution pass every other attribute already gets. */
+        snprintf(e->bg, sizeof(e->bg), "%s", val);
     } else if (strcmp(name, "drop_action") == 0) {
         /* 2026-08-24 - see the g_drop_action block comment above.
          * Window-level attr; decoded through the SAME entity decoder
@@ -2055,10 +2065,19 @@ static void kh_serialize_frame_elem(FILE *f, Elem *e) {
      * other two). */
     char relay_esc[300 * 2];
     frame_field_escape_pipe(e->relay, relay_esc, sizeof(relay_esc));
-    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s\n",
+    /* REAL, NEW 2026-09-04 (same class of gap as relay's own fix just
+     * above, caught proactively this time before it became a repeat
+     * of that same debugging saga) - e->bg (the new generic bg=
+     * attribute, see its own field/apply_attr/draw_elem comments) is
+     * ALSO consumed by draw_elem() on the tmp Elem this round trip
+     * hands it, so it needs to survive the trip too, same as every
+     * other field draw_elem() reads. */
+    char bg_esc[16 * 2];
+    frame_field_escape_pipe(e->bg, bg_esc, sizeof(bg_esc));
+    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s\n",
             e->tag, e->id, classes_joined, e->label, e->sprite, e->onclick,
             e->nav_index, e->active, e->x, e->y, e->w, e->h,
-            target_id_esc, input_buffer_esc, relay_esc);
+            target_id_esc, input_buffer_esc, relay_esc, bg_esc);
 }
 
 /* Real recursive serializer, same traversal order render_tree() itself
@@ -2140,13 +2159,13 @@ static void kh_paint_frame_line(const char *line) {
     }
     /* [0]=nav_index [1]=active [2]=x [3]=y [4]=w [5]=h [6]=target_id
      * (pipe-escaped) [7]=input_buffer (pipe-escaped) [8]=relay (pipe-
-     * escaped, REAL, NEW 2026-09-04, see kh_serialize_frame_elem()'s
-     * own comment - pc-hq-bugs.md Bug 3) - a frame file written by an
-     * older binary (before these fields existed) simply has fewer tail
-     * fields - the loop below returns (honest skip) rather than
-     * misparse it, matching this function's existing "malformed line"
-     * convention exactly. */
-    char *tail[9];
+     * escaped, pc-hq-bugs.md Bug 3) [9]=bg (pipe-escaped, REAL, NEW
+     * 2026-09-04 - the generic bg= attribute, see Elem.bg's own field
+     * comment) - a frame file written by an older binary (before
+     * these fields existed) simply has fewer tail fields - the loop
+     * below returns (honest skip) rather than misparse it, matching
+     * this function's existing "malformed line" convention exactly. */
+    char *tail[10];
     /* REAL FIX 2026-08-28, same-day self-correction (first attempt at
      * this fix broke EVERY entity menu, not just book-stack's - see
      * git blame if this comment ever needs re-deriving why): the front
@@ -2158,7 +2177,7 @@ static void kh_paint_frame_line(const char *line) {
      * onward), so `p + strlen(p)` is the real end - `buf2 +
      * strlen(buf2)` is not. */
     char *scan_end = p + strlen(p);
-    for (int i = 8; i >= 0; i--) {
+    for (int i = 9; i >= 0; i--) {
         char *bar = NULL;
         for (char *q = scan_end - 1; q >= p; q--) { if (*q == '|') { bar = q; break; } }
         if (!bar) return; /* malformed line - honest skip, not a crash */
@@ -2203,6 +2222,7 @@ static void kh_paint_frame_line(const char *line) {
     frame_field_unescape_pipe(tail[6], tmp.target_id, sizeof(tmp.target_id));
     frame_field_unescape_pipe(tail[7], tmp.input_buffer, sizeof(tmp.input_buffer));
     frame_field_unescape_pipe(tail[8], tmp.relay, sizeof(tmp.relay));
+    frame_field_unescape_pipe(tail[9], tmp.bg, sizeof(tmp.bg));
 
     css_compute_style(&g_sheet, tmp.tag, tmp.id[0] ? tmp.id : NULL, tmp.classes, tmp.n_classes, tmp.active, &tmp.style);
     if (window_is_dock()) {

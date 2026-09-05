@@ -7,10 +7,43 @@
 #include <unistd.h>
 
 #define PATH_BUF 4096
-static const char *g_hex[12] = {
-    "#000000","#ffffff","#1a1a1a","#e5e5e5","#ef4444","#f97316",
-    "#eab308","#22c55e","#06b6d4","#3b82f6","#8b5cf6","#ec4899"
-};
+#define MAX_SWATCHES 64
+
+/* REAL, NEW 2026-09-04, direct live request ("can we add grey and
+ * brown to swatch colors... that shouldn't be hardcoded, should be
+ * from layout/module") - the color list itself is no longer a
+ * compiled-in array. Read once at startup from the house's own
+ * swatches.pdl (next to this manager's own launcher, same real
+ * "static template + real manager, no hardcoding" rule this whole
+ * house is built on, applied to color DATA this time instead of
+ * window layout). taskbar_settings_projector.c reads the SAME file
+ * independently, for the same reason - one shared data source, two
+ * real consumers, matching the house's own PICK:<n> convention
+ * (a swatch's line number IS its index, unchanged from the old
+ * hardcoded array's own ordering). */
+static char g_hex_buf[MAX_SWATCHES][8];
+static const char *g_hex[MAX_SWATCHES];
+static int g_n_swatches = 0;
+
+static void load_swatches(const char *house) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/&.widgits/taskbar-settings/swatches.pdl", house);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[256];
+    while (g_n_swatches < MAX_SWATCHES && fgets(line, sizeof(line), f)) {
+        if (line[0] == '#' || line[0] == '\n' || line[0] == '\r') continue;
+        char *bar = strchr(line, '|');
+        if (!bar) continue;
+        char *hex = bar + 1;
+        hex[strcspn(hex, "\r\n")] = '\0';
+        if (hex[0] != '#' || strlen(hex) != 7) continue; /* honest skip - malformed row */
+        snprintf(g_hex_buf[g_n_swatches], sizeof(g_hex_buf[0]), "%s", hex);
+        g_hex[g_n_swatches] = g_hex_buf[g_n_swatches];
+        g_n_swatches++;
+    }
+    fclose(f);
+}
 
 static void write_state(const char *state_path, int phase, int bg, int fg, int apply) {
     FILE *out = fopen(state_path, "w");
@@ -22,6 +55,7 @@ static void write_state(const char *state_path, int phase, int bg, int fg, int a
 int main(int argc, char **argv) {
     if (argc < 2) return 1;
     const char *house = argv[1];
+    load_swatches(house);
     char action_path[PATH_BUF], state_path[PATH_BUF];
     snprintf(action_path, sizeof(action_path), "%s/#.desktop/taskbar_settings_action.txt", house);
     snprintf(state_path, sizeof(state_path), "%s/#.desktop/taskbar_settings_state.txt", house);
@@ -64,7 +98,7 @@ int main(int argc, char **argv) {
                 if (cls && (!pick || cls < pick)) return 0;
                 if (pick) {
                     int idx = atoi(pick + 5);
-                    if (idx >= 0 && idx < 12) {
+                    if (idx >= 0 && idx < g_n_swatches) {
                         if (phase == 0) { bg = idx; phase = 1; }
                         else if (phase == 1) { fg = idx; phase = 2; }
                     }

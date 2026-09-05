@@ -43,18 +43,22 @@
 <window label="taskbar settings - ${prompt}" class="taskbar-settings-pal database-window" vars="#.desktop/taskbar_settings_ui.txt">
   <module src="&.widgits/taskbar-settings/ops/+x/taskbar_settings_projector.+x"/>
   <page name="main">
-    <item id="sw0"  action="PICK:0"  class="swatch sw-black ${sw_0_ring}"    label="black"/>
-    <item id="sw1"  action="PICK:1"  class="swatch sw-white ${sw_1_ring}"    label="white"/>
-    <item id="sw2"  action="PICK:2"  class="swatch sw-charcoal ${sw_2_ring}" label="charcoal"/>
-    <item id="sw3"  action="PICK:3"  class="swatch sw-silver ${sw_3_ring}"   label="silver"/>
-    <item id="sw4"  action="PICK:4"  class="swatch sw-red ${sw_4_ring}"      label="red"/>
-    <item id="sw5"  action="PICK:5"  class="swatch sw-orange ${sw_5_ring}"   label="orange"/>
-    <item id="sw6"  action="PICK:6"  class="swatch sw-yellow ${sw_6_ring}"   label="yellow"/>
-    <item id="sw7"  action="PICK:7"  class="swatch sw-green ${sw_7_ring}"    label="green"/>
-    <item id="sw8"  action="PICK:8"  class="swatch sw-cyan ${sw_8_ring}"     label="cyan"/>
-    <item id="sw9"  action="PICK:9"  class="swatch sw-blue ${sw_9_ring}"     label="blue"/>
-    <item id="sw10" action="PICK:10" class="swatch sw-purple ${sw_10_ring}"  label="purple"/>
-    <item id="sw11" action="PICK:11" class="swatch sw-pink ${sw_11_ring}"    label="pink"/>
+    <!-- REAL, NEW 2026-09-04, direct live request ("can we add grey and
+         brown to swatch colors... that shouldn't be hardcoded, should
+         be from layout/module") - the swatch list is now a real
+         <repeat> over what taskbar_settings_projector.c publishes
+         (n_swatches / sw_<i>_name / sw_<i>_hex / sw_<i>_ring), itself
+         read from &.widgits/taskbar-settings/swatches.pdl - not a
+         fixed set of 12 hardcoded <item class="sw-<name>"> tags +
+         matching compile-time CSS rules. Color comes from the new,
+         generic bg="${...}" attribute (apply_attr()/draw_elem()) -
+         an arbitrary hex a manager/projector can publish per element -
+         instead of a class name. Add/remove a row in swatches.pdl and
+         this grid (plus swatch_picker_manager.c's own PICK:<n> -> hex
+         mapping) picks it up on next launch, no template/CSS edit. -->
+    <repeat count="${n_swatches}" bind="sw">
+    <item id="sw${sw.#}" action="PICK:${sw.#}" class="swatch ${sw.ring}" bg="${sw.hex}" label="${sw.name}"/>
+    </repeat>
     <item id="opacity-minus" action="OPACITY_MINUS" class="opacity-btn" label="Opacity -"/>
     <item id="opacity-plus"  action="OPACITY_PLUS"  class="opacity-btn" label="Opacity +"/>
     <!-- 2026-09-04, direct live request ("single click vs double
