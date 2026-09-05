@@ -195,6 +195,23 @@ typedef struct Elem {
      * screen. Zero effect on any element that isn't cli_io (stays 0,
      * unused). */
     int cursor;
+    /* REAL, NEW 2026-09-05 (08-roadmap/design-docs/CLI_IO-CURSOR-AND-
+     * TEXT_AREA-MULTILINE-EDITING-DESIGN.md) - a real, generic
+     * `<text_area>` element: a genuinely multi-line, cursor-addressable
+     * text buffer, unlike cli_io (single-line, Enter submits). Real
+     * `\n` characters are preserved exactly as typed - the renderer
+     * word-wraps for DISPLAY only, at draw time, never mutating this
+     * buffer to bake in a wrap break (see draw_elem()'s own text_area
+     * branch). Much bigger than cli_io's input_buffer (256B, fine for
+     * a chat line) since this is meant to hold real document content -
+     * a large fixed cap, not dynamic, matching this codebase's general
+     * style (see the design doc's own "explicitly not decided yet"
+     * list for why fixed-vs-dynamic wasn't settled harder than this).
+     * e->cursor (above) is shared with cli_io - same primitive,
+     * generalized here to cross embedded \n and visual (post-wrap)
+     * rows, not a second cursor concept. Empty for every element that
+     * isn't text_area - zero effect on anything else. */
+    char text_area_buffer[4096];
     struct Elem *children[MAX_CHILDREN];
     int n_children;
     struct Elem *parent;

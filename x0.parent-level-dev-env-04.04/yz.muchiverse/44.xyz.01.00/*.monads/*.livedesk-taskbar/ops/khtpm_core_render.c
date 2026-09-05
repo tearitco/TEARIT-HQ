@@ -2034,6 +2034,30 @@ static void frame_field_unescape_pipe(const char *in, char *out, size_t outsz) {
         out[o++] = (*p == '\x01') ? '|' : (char)*p;
     out[o] = '\0';
 }
+/* REAL, NEW 2026-09-05 (CLI_IO-CURSOR-AND-TEXT_AREA-MULTILINE-EDITING-
+ * DESIGN.md) - text_area_buffer needs the SAME pipe-escape as every
+ * other frame field above, PLUS a real newline escape: this frame
+ * format is fundamentally line-oriented (kh_paint_frame_line() is
+ * called once per fgets()-read line), so a real, literal `\n` a user
+ * actually typed into a text_area would otherwise split ONE element's
+ * serialized line into two - one truncated, one garbage with no
+ * leading fields - the exact "malformed line" case this file's own
+ * honest-skip convention exists for, except here it would happen on
+ * EVERY real multi-line document instead of never. 0x02 is the same
+ * real "control byte that can never appear in real typed text"
+ * substitution trick 0x01 already uses for '|' above. */
+static void frame_field_escape_text(const char *in, char *out, size_t outsz) {
+    size_t o = 0;
+    for (const unsigned char *p = (const unsigned char *)in; *p && o + 1 < outsz; p++)
+        out[o++] = (*p == '|') ? '\x01' : (*p == '\n') ? '\x02' : (char)*p;
+    out[o] = '\0';
+}
+static void frame_field_unescape_text(const char *in, char *out, size_t outsz) {
+    size_t o = 0;
+    for (const unsigned char *p = (const unsigned char *)in; *p && o + 1 < outsz; p++)
+        out[o++] = (*p == '\x01') ? '|' : (*p == '\x02') ? '\n' : (char)*p;
+    out[o] = '\0';
+}
 
 static void kh_serialize_frame_elem(FILE *f, Elem *e) {
     char classes_joined[CSS_MAX_CLASSES * 33] = "";
@@ -2082,10 +2106,16 @@ static void kh_serialize_frame_elem(FILE *f, Elem *e) {
      * it, so a cursor that isn't serialized here is a cursor
      * kh_paint_frame_line() can never reconstruct, no matter how
      * correct the key-handling logic is. */
-    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s|%d\n",
+    /* REAL, NEW 2026-09-05 - text_area_buffer, same exact trap as
+     * every field above (draw_elem() only ever sees this round trip's
+     * own tmp Elem) - see frame_field_escape_text()'s own comment for
+     * why this one needs a REAL newline escape too, not just pipe. */
+    char text_area_esc[4096 * 2];
+    frame_field_escape_text(e->text_area_buffer, text_area_esc, sizeof(text_area_esc));
+    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s|%d|%s\n",
             e->tag, e->id, classes_joined, e->label, e->sprite, e->onclick,
             e->nav_index, e->active, e->x, e->y, e->w, e->h,
-            target_id_esc, input_buffer_esc, relay_esc, bg_esc, e->cursor);
+            target_id_esc, input_buffer_esc, relay_esc, bg_esc, e->cursor, text_area_esc);
 }
 
 /* Real recursive serializer, same traversal order render_tree() itself
@@ -2134,7 +2164,14 @@ static void kh_serialize_frame_subtree(FILE *f, Elem *e) {
  * beyond "call the real, already-correct drawing code" is the file
  * parse itself). */
 static void kh_paint_frame_line(const char *line) {
-    char buf2[2048];
+    /* REAL, NEW 2026-09-05 - bumped from 2048: text_area_buffer alone
+     * can be up to 4096 bytes, escaped (worst case ~2x if every byte
+     * needs escaping) - 2048 silently truncated any real document
+     * anywhere near that size, corrupting the parse (not just for
+     * text_area's own field - a truncated line desyncs every FIELD
+     * after it too, tail-anchored or not). Sized with real headroom,
+     * not just barely enough. */
+    char buf2[9000];
     snprintf(buf2, sizeof(buf2), "%s", line);
 
     /* REAL FIX 2026-08-28, live bug (book-stack's entity-menu: first
@@ -2170,12 +2207,14 @@ static void kh_paint_frame_line(const char *line) {
      * escaped, pc-hq-bugs.md Bug 3) [9]=bg (pipe-escaped, REAL, NEW
      * 2026-09-04 - the generic bg= attribute, see Elem.bg's own field
      * comment) [10]=cursor (plain int, REAL, NEW 2026-09-05 - see
-     * Elem.cursor's own field comment) - a frame file written by an
-     * older binary (before these fields existed) simply has fewer
-     * tail fields - the loop below returns (honest skip) rather than
-     * misparse it, matching this function's existing "malformed line"
-     * convention exactly. */
-    char *tail[11];
+     * Elem.cursor's own field comment) [11]=text_area_buffer
+     * (pipe-AND-newline-escaped, REAL, NEW 2026-09-05 - see
+     * frame_field_escape_text()'s own comment) - a frame file written
+     * by an older binary (before these fields existed) simply has
+     * fewer tail fields - the loop below returns (honest skip) rather
+     * than misparse it, matching this function's existing "malformed
+     * line" convention exactly. */
+    char *tail[12];
     /* REAL FIX 2026-08-28, same-day self-correction (first attempt at
      * this fix broke EVERY entity menu, not just book-stack's - see
      * git blame if this comment ever needs re-deriving why): the front
@@ -2187,7 +2226,7 @@ static void kh_paint_frame_line(const char *line) {
      * onward), so `p + strlen(p)` is the real end - `buf2 +
      * strlen(buf2)` is not. */
     char *scan_end = p + strlen(p);
-    for (int i = 10; i >= 0; i--) {
+    for (int i = 11; i >= 0; i--) {
         char *bar = NULL;
         for (char *q = scan_end - 1; q >= p; q--) { if (*q == '|') { bar = q; break; } }
         if (!bar) return; /* malformed line - honest skip, not a crash */
@@ -2234,6 +2273,7 @@ static void kh_paint_frame_line(const char *line) {
     frame_field_unescape_pipe(tail[8], tmp.relay, sizeof(tmp.relay));
     frame_field_unescape_pipe(tail[9], tmp.bg, sizeof(tmp.bg));
     tmp.cursor = atoi(tail[10]); /* plain int, no escaping - see Elem.cursor's own field comment */
+    frame_field_unescape_text(tail[11], tmp.text_area_buffer, sizeof(tmp.text_area_buffer));
 
     css_compute_style(&g_sheet, tmp.tag, tmp.id[0] ? tmp.id : NULL, tmp.classes, tmp.n_classes, tmp.active, &tmp.style);
     if (window_is_dock()) {
@@ -2774,7 +2814,7 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
         if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0 ||
-            strcmp(c->tag, "cli_io") == 0 || scroll_is_sprite_grid_row(c))
+            strcmp(c->tag, "cli_io") == 0 || strcmp(c->tag, "text_area") == 0 || scroll_is_sprite_grid_row(c))
             total += scroll_row_span(c, w);
     }
     int max_scroll = total > visible_rows ? total - visible_rows : 0;
@@ -2811,7 +2851,7 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
         Elem *c = container->children[i];
         int is_grid = scroll_is_sprite_grid_row(c);
         if (!is_grid && strcmp(c->tag, "item") != 0 && strcmp(c->tag, "text") != 0 &&
-            strcmp(c->tag, "cli_io") != 0) continue;
+            strcmp(c->tag, "cli_io") != 0 && strcmp(c->tag, "text_area") != 0) continue;
         int span = scroll_row_span(c, inner_w);
         int visible = (row + span > *scroll && row < *scroll + visible_rows);
         if (is_grid) {
@@ -2819,7 +2859,7 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
         } else if (visible) {
             c->x = x; c->y = content_y + (row - *scroll) * ROW_H; c->w = inner_w; c->h = span * ROW_H;
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
-            if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "cli_io") == 0) {
+            if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "cli_io") == 0 || strcmp(c->tag, "text_area") == 0) {
                 c->nav_index = ++g_n_nav;
                 g_nav[g_n_nav - 1] = c;
                 if (*out_lo == 0) *out_lo = c->nav_index;
@@ -2894,7 +2934,7 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
          * own real composer included, is completely unaffected).
          * REAL FIX 2026-09-02 - only BOTTOM (unclassed) cli_io reserves
          * the trailing strip. class=top is laid at y_cursor below. */
-        if (strcmp(c->tag, "cli_io") == 0 && !elem_has_class(c, "top"))
+        if ((strcmp(c->tag, "cli_io") == 0 || strcmp(c->tag, "text_area") == 0) && !elem_has_class(c, "top"))
             composer_rows = c->rows > 0 ? c->rows : 1;
         if (strcmp(c->tag, "scrolllist") == 0) scrolllist = c;
     }
@@ -2927,7 +2967,7 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
         } else if (strcmp(c->tag, "row") == 0 && elem_has_class(c, "toolbar") && !elem_has_class(c, "pal-grid-row")) {
             layout_toolbar_row(c, x, y_cursor, w);
             y_cursor += ROW_H;
-        } else if (strcmp(c->tag, "cli_io") == 0) {
+        } else if (strcmp(c->tag, "cli_io") == 0 || strcmp(c->tag, "text_area") == 0) {
             int this_h = (c->rows > 0 ? c->rows : 1) * ROW_H;
             if (elem_has_class(c, "top")) {
                 c->x = x; c->y = y_cursor; c->w = w; c->h = this_h;
@@ -3751,7 +3791,7 @@ static void dock_paint_peer(void) {
         }
         FILE *rf = fopen(fpath, "r");
         if (rf) {
-            char line[2048];
+            char line[9000]; /* REAL, NEW 2026-09-05 - see kh_paint_frame_line()'s own buf2 comment: must be big enough for a real text_area line */
             while (fgets(line, sizeof(line), rf)) {
                 size_t len = strlen(line);
                 while (len > 0 && (line[len-1]=='\n' || line[len-1]=='\r')) line[--len] = '\0';
@@ -3868,7 +3908,7 @@ static void dock_paint_menu(void) {
             }
             FILE *rf = fopen(fpath, "r");
             if (rf) {
-                char line[2048];
+                char line[9000]; /* REAL, NEW 2026-09-05 - see kh_paint_frame_line()'s own buf2 comment: must be big enough for a real text_area line */
                 while (fgets(line, sizeof(line), rf)) {
                     size_t len = strlen(line);
                     while (len > 0 && (line[len-1]=='\n' || line[len-1]=='\r')) line[--len] = '\0';
@@ -4362,7 +4402,7 @@ static void assign_nav_and_layout(void) {
                 y += ch + 4;
                 continue;
             }
-            if (strcmp(item->tag, "item") != 0 && strcmp(item->tag, "cli_io") != 0 && !is_text) continue;
+            if (strcmp(item->tag, "item") != 0 && strcmp(item->tag, "cli_io") != 0 && strcmp(item->tag, "text_area") != 0 && !is_text) continue;
             css_compute_style(&g_sheet, item->tag, item->id, item->classes, item->n_classes, 0, &item->style);
 
             if (has_canvas && !is_text) {
@@ -4394,9 +4434,20 @@ static void assign_nav_and_layout(void) {
                 if (row_x) { y += row_h + 4; row_x = 0; row_h = 0; }
             }
 
-            item->x = 0; item->y = y; item->w = g_win_w; item->h = ROW_H;
+            /* REAL FIX 2026-09-05 (found live testing <text_area>'s
+             * own first real window) - this fallback ignored rows="N"
+             * entirely for BOTH cli_io and text_area, always giving a
+             * single ROW_H regardless - a pre-existing gap that never
+             * surfaced for cli_io because every real cli_io consumer so
+             * far (open-hai's composer) happens to live inside a
+             * sidebar+panel window, which goes through layout_fixed_
+             * rows_and_scrolllist()'s OWN, correct rows= handling
+             * instead of this flat-list fallback path. */
+            int is_multirow_field = (strcmp(item->tag, "cli_io") == 0 || strcmp(item->tag, "text_area") == 0);
+            int item_h = is_multirow_field ? (item->rows > 0 ? item->rows : 1) * ROW_H : ROW_H;
+            item->x = 0; item->y = y; item->w = g_win_w; item->h = item_h;
             if (!is_text) { item->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = item; }
-            y += ROW_H;
+            y += item_h;
         }
         if (row_x) y += row_h + 4;
         g_win_h = y + 8;
@@ -4709,6 +4760,44 @@ static void default_cli_io_run_action(const char *action, const char *value) {
 }
 
 /* REAL, NEW 2026-09-05 (CLI_IO-CURSOR-AND-TEXT_AREA-MULTILINE-EDITING-
+ * DESIGN.md) - text_area's own live-save. cli_io_state.txt's key=value-
+ * per-line format can't hold a value containing real newlines, so this
+ * is a real, separate, dedicated file per field (named by its own
+ * target_id/id) holding the raw buffer as the WHOLE file content - no
+ * escaping needed here (unlike the frame round-trip file below, this
+ * one is read as one big blob by any real consumer, never line-by-
+ * line). */
+static void default_text_area_state_path(const char *key, char *out, size_t outsz) {
+    snprintf(out, outsz, "%s/text_area_%s.txt", g_package_dir, key);
+}
+static void default_text_area_save(Elem *e) {
+    const char *key = e->target_id[0] ? e->target_id : e->id;
+    if (!key[0]) return;
+    char path[PATH_BUF];
+    default_text_area_state_path(key, path, sizeof(path));
+    FILE *f = fopen(path, "w");
+    if (!f) return;
+    fputs(e->text_area_buffer, f);
+    fclose(f);
+}
+
+/* REAL, NEW 2026-09-05 - real logical-line (delimited by actual `\n`
+ * bytes the user typed, NOT the renderer's own display-only word-wrap
+ * breaks) boundary helpers, shared by Home/End/Up/Down below. For
+ * cli_io (never contains a real `\n`) these are always a no-op past
+ * "the whole buffer is one line" - correctly reducing to cli_io's
+ * original whole-buffer Home/End behavior for free. */
+static int kh_text_line_start(const char *buf, int pos) {
+    while (pos > 0 && buf[pos - 1] != '\n') pos--;
+    return pos;
+}
+static int kh_text_line_end(const char *buf, int pos) {
+    int len = (int)strlen(buf);
+    while (pos < len && buf[pos] != '\n') pos++;
+    return pos;
+}
+
+/* REAL, NEW 2026-09-05 (CLI_IO-CURSOR-AND-TEXT_AREA-MULTILINE-EDITING-
  * DESIGN.md, direct instruction: "i think cli-io should still have a
  * cursor") - real cursor-aware editing, replacing the old append/
  * backspace-at-the-end-only behavior. `e->cursor` is a plain byte
@@ -4721,42 +4810,65 @@ static void default_cli_io_run_action(const char *action, const char *value) {
  * DESIGN.md) - keep insert/delete-at-offset shaped so that reuse stays
  * possible, don't fold assumptions here that only make sense for a
  * single line with no real newlines. */
-static void kh_cli_io_clamp_cursor(Elem *e) {
-    int len = (int)strlen(e->input_buffer);
-    if (e->cursor < 0) e->cursor = 0;
-    if (e->cursor > len) e->cursor = len;
+/* REAL, NEW 2026-09-05 - generalized to (buffer, capacity, *cursor)
+ * instead of hardcoding e->input_buffer, so <text_area> (its own much
+ * bigger text_area_buffer, same shared cursor field) reuses these
+ * verbatim instead of a second, duplicate implementation - exactly
+ * the reuse this plan's own design doc called for. default_cli_io_
+ * handle_key() below picks buf/cap based on e->tag and calls these
+ * directly - no separate cli_io-named wrapper layer anymore. */
+static void kh_text_clamp_cursor(char *buf, int *cursor) {
+    int len = (int)strlen(buf);
+    if (*cursor < 0) *cursor = 0;
+    if (*cursor > len) *cursor = len;
 }
-static void kh_cli_io_insert_at_cursor(Elem *e, char ch) {
-    int len = (int)strlen(e->input_buffer);
-    if (len + 1 >= (int)sizeof(e->input_buffer)) return; /* real cap, matches the old append path's own bound */
-    kh_cli_io_clamp_cursor(e);
-    for (int i = len; i >= e->cursor; i--) e->input_buffer[i + 1] = e->input_buffer[i];
-    e->input_buffer[e->cursor] = ch;
-    e->cursor++;
+static void kh_text_insert_at_cursor(char *buf, size_t cap, int *cursor, char ch) {
+    int len = (int)strlen(buf);
+    if (len + 1 >= (int)cap) return; /* real cap, matches the old append path's own bound */
+    kh_text_clamp_cursor(buf, cursor);
+    for (int i = len; i >= *cursor; i--) buf[i + 1] = buf[i];
+    buf[*cursor] = ch;
+    (*cursor)++;
 }
-static void kh_cli_io_delete_before_cursor(Elem *e) {
-    kh_cli_io_clamp_cursor(e);
-    if (e->cursor <= 0) return;
-    int len = (int)strlen(e->input_buffer);
-    for (int i = e->cursor - 1; i < len; i++) e->input_buffer[i] = e->input_buffer[i + 1];
-    e->cursor--;
+static void kh_text_delete_before_cursor(char *buf, int *cursor) {
+    kh_text_clamp_cursor(buf, cursor);
+    if (*cursor <= 0) return;
+    int len = (int)strlen(buf);
+    for (int i = *cursor - 1; i < len; i++) buf[i] = buf[i + 1];
+    (*cursor)--;
 }
-static void kh_cli_io_delete_at_cursor(Elem *e) {
-    kh_cli_io_clamp_cursor(e);
-    int len = (int)strlen(e->input_buffer);
-    if (e->cursor >= len) return;
-    for (int i = e->cursor; i < len; i++) e->input_buffer[i] = e->input_buffer[i + 1];
+static void kh_text_delete_at_cursor(char *buf, int *cursor) {
+    kh_text_clamp_cursor(buf, cursor);
+    int len = (int)strlen(buf);
+    if (*cursor >= len) return;
+    for (int i = *cursor; i < len; i++) buf[i] = buf[i + 1];
 }
 
+/* REAL, NEW 2026-09-05 - this function now handles BOTH cli_io and
+ * text_area (kept the cli_io name - every existing call site already
+ * says "cli_io" and this IS still that same function, just widened,
+ * not a rename-everything exercise). Shared: Escape/Left/Right/Home/
+ * End/Delete/Backspace/printable-insert, all through the generalized
+ * kh_text_*() primitives above. Different: Enter (submit-and-clear for
+ * cli_io, insert-a-real-newline for text_area) and Up/Down (text_area
+ * only - cli_io is single-line, nothing to move to). */
 static void default_cli_io_handle_key(KeySym ks, char ch) {
     Elem *e = g_default_input_elem;
     if (!e) return;
+    int is_area = (strcmp(e->tag, "text_area") == 0);
+    char *buf = is_area ? e->text_area_buffer : e->input_buffer;
+    size_t cap = is_area ? sizeof(e->text_area_buffer) : sizeof(e->input_buffer);
     if (ks == XK_Return || ks == XK_KP_Enter) {
-        default_cli_io_save(e);
-        default_cli_io_run_action(e->onclick, e->input_buffer);
-        e->input_buffer[0] = '\0';
-        e->cursor = 0; /* real, matching the reference's own "clear after submit, stay active" behavior - cursor resets with the now-empty buffer */
-        default_cli_io_save(e);
+        if (is_area) {
+            kh_text_insert_at_cursor(buf, cap, &e->cursor, '\n');
+            default_text_area_save(e);
+        } else {
+            default_cli_io_save(e);
+            default_cli_io_run_action(e->onclick, e->input_buffer);
+            e->input_buffer[0] = '\0';
+            e->cursor = 0; /* real, matching the reference's own "clear after submit, stay active" behavior - cursor resets with the now-empty buffer */
+            default_cli_io_save(e);
+        }
         return;
     }
     /* REAL FIX 2026-08-31 (live report: armed via a real double-click,
@@ -4771,24 +4883,65 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
      * kh_grab_keyboard_retry() (db-hq's own real XGrabKeyboard retry,
      * currently gated behind its own g_dbhq_focus_grab_enabled .pdl
      * flag for THAT mode) - reused verbatim, unconditionally, scoped to
-     * exactly a cli_io field's own armed lifetime. An exclusive
-     * keyboard grab routes KeyPress to `win` regardless of pointer
-     * position or window-manager focus policy, so this is immune to
-     * the exact failure just diagnosed. Safe to make unconditional
-     * here (no existing popup uses cli_io yet, so this can't regress
-     * any of them) - see the matching XUngrabKeyboard on every real
-     * disarm path (Escape here, reparse_chtpm_if_changed()'s own real
-     * safety net). */
+     * exactly an armed field's own lifetime (cli_io originally, now
+     * text_area too). An exclusive keyboard grab routes KeyPress to
+     * `win` regardless of pointer position or window-manager focus
+     * policy, so this is immune to the exact failure just diagnosed.
+     * Safe to make unconditional here (no existing popup uses cli_io
+     * yet, so this can't regress any of them) - see the matching
+     * XUngrabKeyboard on every real disarm path (Escape here, reparse_
+     * chtpm_if_changed()'s own real safety net). */
     if (ks == XK_Escape) { g_default_input_elem = NULL; XUngrabKeyboard(dpy, CurrentTime); return; }
-    if (ks == XK_Left) { kh_cli_io_clamp_cursor(e); if (e->cursor > 0) e->cursor--; return; }
-    if (ks == XK_Right) { kh_cli_io_clamp_cursor(e); if (e->cursor < (int)strlen(e->input_buffer)) e->cursor++; return; }
-    if (ks == XK_Home) { e->cursor = 0; return; }
-    if (ks == XK_End) { e->cursor = (int)strlen(e->input_buffer); return; }
-    if (ks == XK_Delete) { kh_cli_io_delete_at_cursor(e); default_cli_io_save(e); return; }
-    if (ks == XK_BackSpace) { kh_cli_io_delete_before_cursor(e); default_cli_io_save(e); return; }
+    if (ks == XK_Left) { kh_text_clamp_cursor(buf, &e->cursor); if (e->cursor > 0) e->cursor--; return; }
+    if (ks == XK_Right) { kh_text_clamp_cursor(buf, &e->cursor); if (e->cursor < (int)strlen(buf)) e->cursor++; return; }
+    /* REAL, NEW 2026-09-05 - line-aware (real \n, not display-wrap)
+     * Home/End via kh_text_line_start/end() - for cli_io (never
+     * contains a real \n) these reduce to the exact same whole-buffer
+     * Home/End behavior it always had; for text_area this is the real,
+     * expected "jump to start/end of the current line" behavior. */
+    if (ks == XK_Home) { e->cursor = kh_text_line_start(buf, e->cursor); return; }
+    if (ks == XK_End) { e->cursor = kh_text_line_end(buf, e->cursor); return; }
+    /* REAL, NEW 2026-09-05 - text_area only: real LOGICAL-line Up/Down
+     * (crosses actual \n boundaries, preserving column position best-
+     * effort). Real VISUAL (word-wrapped) row Up/Down - i.e. moving
+     * within one long logical line that wraps across several on-screen
+     * rows - is explicitly NOT attempted here; see this plan's own
+     * design doc for why that's real, separate, harder work, not
+     * silently guessed at in this first pass. cli_io has no real \n
+     * ever, so Up/Down simply does nothing for it - correct, since a
+     * single-line composer has nowhere to move to. */
+    if (is_area && (ks == XK_Up || ks == XK_Down)) {
+        int line_start = kh_text_line_start(buf, e->cursor);
+        int col = e->cursor - line_start;
+        if (ks == XK_Up) {
+            if (line_start == 0) return;
+            int prev_end = line_start - 1; /* the real \n immediately before this line */
+            int prev_start = kh_text_line_start(buf, prev_end);
+            int prev_len = prev_end - prev_start;
+            e->cursor = prev_start + (col < prev_len ? col : prev_len);
+        } else {
+            int line_end = kh_text_line_end(buf, e->cursor);
+            if (buf[line_end] == '\0') return; /* already the last real line */
+            int next_start = line_end + 1;
+            int next_end = kh_text_line_end(buf, next_start);
+            int next_len = next_end - next_start;
+            e->cursor = next_start + (col < next_len ? col : next_len);
+        }
+        return;
+    }
+    if (ks == XK_Delete) {
+        kh_text_delete_at_cursor(buf, &e->cursor);
+        if (is_area) default_text_area_save(e); else default_cli_io_save(e);
+        return;
+    }
+    if (ks == XK_BackSpace) {
+        kh_text_delete_before_cursor(buf, &e->cursor);
+        if (is_area) default_text_area_save(e); else default_cli_io_save(e);
+        return;
+    }
     if (ch >= 32 && ch < 127) {
-        kh_cli_io_insert_at_cursor(e, ch);
-        default_cli_io_save(e);
+        kh_text_insert_at_cursor(buf, cap, &e->cursor, ch);
+        if (is_area) default_text_area_save(e); else default_cli_io_save(e);
     }
 }
 
@@ -4799,9 +4952,14 @@ static void activate_focused(void) {
     /* REAL FIX 2026-08-31 - see default_cli_io_handle_key()'s own
      * Escape-branch comment for the full real diagnosis. Grab taken
      * HERE (arm time), released on every real disarm path. */
-    if (strcmp(item->tag, "cli_io") == 0) {
+    if (strcmp(item->tag, "cli_io") == 0 || strcmp(item->tag, "text_area") == 0) {
         g_default_input_elem = item;
-        item->cursor = (int)strlen(item->input_buffer); /* REAL, NEW 2026-09-05 - arm at the end of whatever's already typed, matching every normal editor's own re-focus convention, not wherever a stale cursor happened to be left */
+        /* REAL, NEW 2026-09-05 - arm at the end of whatever's already
+         * typed, matching every normal editor's own re-focus
+         * convention, not wherever a stale cursor happened to be left.
+         * text_area added alongside cli_io here (same real armed-field
+         * mechanism, same ^ indicator, same Escape-disarm path). */
+        item->cursor = (int)strlen(strcmp(item->tag, "text_area") == 0 ? item->text_area_buffer : item->input_buffer);
         kh_grab_keyboard_retry();
         return;
     }
@@ -5079,7 +5237,7 @@ static void redraw(void) {
         {
             FILE *rf = fopen(fpath, "r");
             if (rf) {
-                char line[2048];
+                char line[9000]; /* REAL, NEW 2026-09-05 - see kh_paint_frame_line()'s own buf2 comment: must be big enough for a real text_area line */
                 while (fgets(line, sizeof(line), rf)) {
                     size_t len = strlen(line);
                     while (len > 0 && (line[len-1]=='\n' || line[len-1]=='\r')) line[--len] = '\0';

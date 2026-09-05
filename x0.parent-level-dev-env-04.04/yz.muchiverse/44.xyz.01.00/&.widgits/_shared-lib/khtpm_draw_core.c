@@ -869,10 +869,25 @@ static void draw_elem(Elem *e, int hover_id_hash) {
      * field - zero per-app code needed for any consumer of this shared
      * draw path. */
     char cli_io_shown[256 + 300];
+    static char text_area_shown[4096 + 300]; /* static: too big for this function's own stack budget alongside everything else already declared here */
     char label_decoded[600];
     const char *shown_label = e->label;
     int cli_io_armed = 0;
-    if (strcmp(e->tag, "cli_io") == 0) {
+    if (strcmp(e->tag, "text_area") == 0) {
+        /* REAL, NEW 2026-09-05 - same label+buffer convention as
+         * cli_io just below, own (much bigger) buffer. label_decoded
+         * (600B) can't hold this - the text_area draw branch further
+         * down reads `shown_label` directly, never through
+         * label_decoded, so HTML-entity decoding is intentionally
+         * skipped for text_area's own content this pass (a real
+         * document is far more likely to contain a literal `&` the
+         * user typed than an intentional entity reference - decoding
+         * it would corrupt real typed content, unlike cli_io's short
+         * composer strings where entities are the more common real
+         * case). */
+        snprintf(text_area_shown, sizeof(text_area_shown), "%s%s", e->label, e->text_area_buffer);
+        shown_label = text_area_shown;
+    } else if (strcmp(e->tag, "cli_io") == 0) {
         /* REAL, NEW 2026-09-05 (CLI_IO-CURSOR-AND-TEXT_AREA-MULTILINE-
          * EDITING-DESIGN.md) - the old trailing "_" glyph was a crude
          * stand-in for a real cursor, always at the very end regardless
@@ -882,14 +897,139 @@ static void draw_elem(Elem *e, int hover_id_hash) {
          * anymore. */
         snprintf(cli_io_shown, sizeof(cli_io_shown), "%s%s", e->label, e->input_buffer);
         shown_label = cli_io_shown;
-        cli_io_armed = (e->nav_index > 0 && e->nav_index == g_focus_nav);
+        /* REAL FIX 2026-09-05, direct live report ("i noticed that
+         * interact mode... was not enabled '^' nor was nav even on
+         * 'text input' area") - found while re-verifying: this was
+         * checking nav-FOCUS equality, not real armed state, so the
+         * cursor bar could render on a field a human just tabbed past
+         * without ever arming it for typing - misleading, and NOT the
+         * same real check the "^" badge just above already uses
+         * correctly (g_default_input_elem, matched by id, since this
+         * is a fresh frame-round-trip tmp Elem, never the same pointer
+         * as the live one). Use that exact same real armed-state check
+         * here too, instead of a second, looser, home-grown one. */
+        cli_io_armed = (g_default_input_elem && e->id[0] && strcmp(e->id, g_default_input_elem->id) == 0);
     }
-    snprintf(label_decoded, sizeof(label_decoded), "%s", shown_label);
-    khtpm_decode_label_entities(label_decoded);
-    shown_label = label_decoded;
+    if (strcmp(e->tag, "text_area") != 0) {
+        /* REAL, NEW 2026-09-05 - text_area's own shown_label (up to
+         * ~4400 bytes) skips this: label_decoded is only 600B, and
+         * would silently truncate a real document every single draw.
+         * See text_area_shown's own declaration comment for why entity
+         * decoding is skipped for it anyway, not just this buffer-size
+         * mechanics. */
+        snprintf(label_decoded, sizeof(label_decoded), "%s", shown_label);
+        khtpm_decode_label_entities(label_decoded);
+        shown_label = label_decoded;
+    }
     int sprite_under_label = drew_sprite && e->h >= 64 && shown_label[0] && !(shown_label[0] == ' ' && shown_label[1] == '\0');
     int sprite_beside_label = drew_sprite && e->h < 64 && shown_label[0] &&
                               !elem_has_class(e, "pal-tile") && !elem_has_class(e, "swatch");
+    /* REAL, NEW 2026-09-05 (CLI_IO-CURSOR-AND-TEXT_AREA-MULTILINE-
+     * EDITING-DESIGN.md) - text_area gets its own real, separate draw
+     * path rather than folding into cli_io's word-wrap loop below:
+     * that loop treats its whole string as ONE continuously-wrappable
+     * stream with no concept of a real `\n` - exactly the thing
+     * text_area exists to have. Real logical lines (split on actual
+     * `\n` bytes) are wrapped independently here, each starting a
+     * fresh visual row regardless of how much of its own width budget
+     * the previous logical line used - the real distinction this
+     * whole feature is about. No ellipsis-on-overflow handling yet
+     * (cli_io's single-line/wrap paths both have it) - real, deliberate
+     * v1 scope note, not an oversight: text overflowing the box's
+     * visible rows is simply not drawn past the last one, matching the
+     * word-wrap loop's own max_lines clamp without ellipsis's added
+     * real complexity of computing this per REAL logical line boundary
+     * too. */
+    if (strcmp(e->tag, "text_area") == 0) {
+        XftFont *font = font_for(&e->style);
+        const char *default_fg = (window_is_dock() && kh_hex_luma(g_theme_bg) > 140) ? "#1c1c1c" : "#cccccc";
+        XftColor col = xft_color(e->style.has_fg_color ? e->style.fg_color : default_fg);
+        int avail_w = e->w > 0 ? (e->x + e->w) - (e->x + 4) : -1;
+        int line_h = font->ascent - font->descent > 0 ? font->ascent - font->descent : 12;
+        line_h += 4;
+        int max_lines = e->h / line_h;
+        if (max_lines < 1) max_lines = 1;
+        int text_x = e->x + 4;
+        int ty = e->y + font->ascent + 2;
+        /* REAL FIX 2026-09-05 - same real armed-state check as cli_io's
+         * own cli_io_armed just above (see its own comment) - not
+         * nav-focus equality, which would show a cursor bar on a
+         * text_area a human just tabbed past without ever arming it. */
+        int armed = (g_default_input_elem && e->id[0] && strcmp(e->id, g_default_input_elem->id) == 0);
+        int cursor_off = -1;
+        if (armed) {
+            int label_len = (int)strlen(shown_label) - (int)strlen(e->text_area_buffer);
+            if (label_len < 0) label_len = 0; /* honest guard - shouldn't happen, shown_label is always label+buffer below */
+            cursor_off = label_len + e->cursor;
+        }
+        int consumed = 0; /* absolute offset into `shown_label` already drawn */
+        int line_no = 0;
+        const char *lp = shown_label; /* walks one REAL logical line at a time */
+        while (line_no < max_lines) {
+            const char *nl = strchr(lp, '\n');
+            int logical_len = nl ? (int)(nl - lp) : (int)strlen(lp);
+            /* Word-wrap THIS logical line only - a manual newline
+             * always starts a fresh visual row, independent of the
+             * greedy width-wrap below. */
+            const char *sp = lp;
+            int remaining = logical_len;
+            do {
+                int last_good_space = -1, i = 0;
+                XGlyphInfo lw;
+                for (;;) {
+                    if (i >= remaining) break;
+                    if (sp[i] == ' ') last_good_space = i;
+                    XftTextExtentsUtf8(dpy, font, (const FcChar8 *)sp, i + 1, &lw);
+                    if (avail_w > 0 && lw.width > avail_w) break;
+                    i++;
+                }
+                int cut = i;
+                int more_in_logical = (i < remaining);
+                if (more_in_logical && last_good_space >= 0) cut = last_good_space;
+                if (cut == 0 && more_in_logical) cut = 1; /* single glyph wider than the box - take it anyway, avoid an infinite loop */
+                char row_buf[600];
+                snprintf(row_buf, sizeof(row_buf), "%.*s", cut, sp);
+                draw_text_emoji(font, &col, text_x, ty, row_buf);
+                if (cursor_off >= 0) {
+                    int row_start_off = (int)(sp - shown_label);
+                    int row_end_off = row_start_off + cut;
+                    if (cursor_off >= row_start_off && cursor_off <= row_end_off) {
+                        XGlyphInfo pre_ext;
+                        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)sp, cursor_off - row_start_off, &pre_ext);
+                        int cx = text_x + pre_ext.width;
+                        int cy0 = ty - font->ascent, cy1 = ty + (font->descent > 0 ? font->descent : 2);
+                        XSetForeground(dpy, gc, alloc_pixel(e->style.has_fg_color ? e->style.fg_color : default_fg));
+                        XDrawLine(dpy, buf, gc, cx, cy0, cx, cy1);
+                        cursor_off = -1;
+                    }
+                }
+                ty += line_h;
+                line_no++;
+                sp += cut;
+                remaining -= cut;
+                while (remaining > 0 && *sp == ' ') { sp++; remaining--; } /* consumed break space never starts the next visual row */
+            } while (remaining > 0 && line_no < max_lines);
+            consumed = (int)(lp - shown_label) + logical_len;
+            if (!nl) break; /* no more real logical lines */
+            lp = nl + 1;
+            /* An armed field whose cursor sits exactly ON the real \n
+             * itself (end of a logical line, before the one below)
+             * needs the bar drawn here - the per-visual-row check above
+             * only ever sees offsets strictly inside a drawn row's own
+             * span, never the boundary character itself when it's the
+             * `\n` consumed by advancing to the next logical line. */
+            if (cursor_off == consumed) {
+                XGlyphInfo pre_ext;
+                XftTextExtentsUtf8(dpy, font, (const FcChar8 *)sp, 0, &pre_ext); /* honest zero-width - bar lands at row start */
+                (void)pre_ext;
+                int cy0 = ty - font->ascent, cy1 = ty + (font->descent > 0 ? font->descent : 2);
+                XSetForeground(dpy, gc, alloc_pixel(e->style.has_fg_color ? e->style.fg_color : default_fg));
+                XDrawLine(dpy, buf, gc, text_x, cy0, text_x, cy1);
+                cursor_off = -1;
+            }
+        }
+        XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &col);
+    } else
     if ((!drew_sprite || sprite_under_label || sprite_beside_label) && shown_label[0]) {
         XftFont *font = font_for(&e->style);
         /* See kh_hex_luma()'s own header comment - dock windows fill
