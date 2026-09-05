@@ -1,13 +1,37 @@
-# HANDOFF — branch `chtpm-var-substitution`
+# HANDOFF MASTER — khtpm C-deletion / xhtpm-conversion / UX pass
 
-**Last updated:** 2026-09-03 (rev 7)
-**Branch:** `chtpm-var-substitution` (off `origin/main` @ `bbf9caf2`), pushed
-**Goal:** restore the tpmos layout/data separation for khtpm windows
-(`CHTPM-ARCHITECTURE-FIX.md`) — static template + a projector that writes
-`state/ui.txt`, instead of a manager that regenerates markup or C that
-builds the tree.
+**File renamed 2026-09-04** (was `HANDOFF-chtpm-var-substitution.md` —
+kept a branch-specific name long after work moved past that branch;
+inbound references in `XHTPM-PARSER-REFERENCE.md`,
+`forensic-report-flicker.md`, `khtpm-generic-dispatch-design.md`, and
+`HANDOFF-scope-nav-and-chtpm-port.md` updated to match). Naming
+convention going forward: this file is the **master** handoff
+(`handoff-<date>-master.md`); a narrower, single-topic handoff that
+hangs off it is a **slave** doc (`handoff-<date>-slave-<topic>.md`),
+cross-linked from here rather than merged in.
+
+**Last updated:** 2026-09-04 (rev 14)
+**Branch:** `chtpm-delete-per-app-c` (off `chtpm-var-substitution`), pushed
+**Goal (current):** delete the per-app `g_is_db_hq`/`palettes`/
+`events_hq`/`stats_hq` C from `khtpm_core_render.c` in favor of static
+`.xhtpm` templates + projectors (the original `chtpm-var-substitution`
+goal below is DONE and folded into this); port piececraft-hq's board
+view onto the same shared Elem/CSS path; house-wide window-chrome/UX
+pass (theme frame, raise-to-top, click_two_step, edge clamps).
+
+**Original goal (chtpm-var-substitution, DONE):** restore the tpmos
+layout/data separation for khtpm windows (`CHTPM-ARCHITECTURE-FIX.md`)
+— static template + a projector that writes `state/ui.txt`, instead of
+a manager that regenerates markup or C that builds the tree.
 
 Session: https://claude.ai/code/session_01P4rAhi6a7TzLBZdcaqfHXN
+
+**Slave docs:**
+- `handoff-2026-09-05-slave-apps-editors-clipboard.md` — the 2026-09-05
+  session: File Explorer widget, pdl-read / text-edit-hq / csv-hq toys,
+  the real `<grid>` element, X11 clipboard copy/paste, text selection +
+  partial copy-out, and the remaining text_area scroll/gutter roadmap.
+  Emergency-resume snapshot; all its work is pushed to `main`.
 
 ---
 
@@ -1158,4 +1182,139 @@ check for the next agent.
 
 `chtpm-delete-per-app-c` head: `bb24498d`. Still not merged anywhere;
 see Rev 13's MERGE STATE section (unchanged: not safe direct-to-main,
+per that section's own reasoning — this file trails off here in the
+prior rev, unrelated to this append).
+
+## Rev 15 (2026-09-04) — renderer dead-code/redundancy audit
+
+Triggered by the `g_is_swatch_picker`/`run_pchq_board_mode()` incident
+(see this session's own commits `2cec56a0`/`8d32a842`/`35c1b0b1`): a
+subagent spent effort "fixing" a code path that was permanently
+unreachable, because the real launcher had silently redirected to a
+newer template months earlier. User asked: is there more of this?
+Audited `khtpm_core_render.c` (~12.4k lines) + the three shared-lib
+files (`khtpm_render_core.c`/`khtpm_draw_core.c`/`khtpm_css_parser.c`)
+for (1) more dead mode-flags/orphaned functions, (2) redundant logic
+that could be one shared helper, (3) remaining per-mode C blocks that
+are candidates for the ops/projector treatment. Audit only — nothing
+in this Rev was deleted or edited; that's follow-up work.
+
+### 1. Confirmed dead code found (beyond today's already-fixed g_is_swatch_picker/g_is_pchq_board)
+
+**`g_is_stats_hq`, `g_is_palettes`, `g_is_bookmarks` are ALL `static
+const int ... = 0`** (khtpm_core_render.c:1835/1851/1861) — the same
+"kept as a const 0 so guards constant-fold away" pattern
+`g_is_events_hq` (line 2303) already documents for itself ("events-hq
+C deleted 2026-09-03 - ported to events-hq.xhtpm + projector"). Every
+branch gated on these three is dead by construction, not just
+unreachable-in-practice like the swatch-picker case was — the compiler
+already folds them out. Confirmed all four apps have real live
+`button-pal.sh` launchers (no rollback-shim ambiguity — unlike
+taskbar-settings, these dirs don't even have a separate outer
+`button.sh`, `button-pal.sh` IS the only launcher) pointing at their
+own already-live `.xhtpm` templates:
+- `&.hq-apps/stats-hq/stats-hq-pal.xhtpm` (+ `button-pal.sh`)
+- `&.widgits/palettes/palettes-{debug,elements,emojis,piececraft,rmmv,stub}.xhtpm` (+ `button-pal.sh`)
+- `&.widgits/bookmarks/bookmarks-pal.xhtpm` (+ `button-pal.sh`)
+
+Reference counts still live in khtpm_core_render.c: `g_is_stats_hq` ×5,
+`g_is_palettes` ×9, `g_is_bookmarks` ×2 — small compared to the ~20
+swatch-picker sites, but real, confirmed-dead C, same class of bug.
+**Not yet deleted** — flagging for a follow-up pass, same treatment as
+this session's `g_is_swatch_picker` cleanup (find each site, fold to
+the always-taken branch, rebuild, live-test a context-menu popup for
+CPU/RSS stability before committing, per `[[khtpm-shared-layout-caution]]`).
+One open question before deleting: `&.widgits/palettes/palettes_menu.sh`
+still exists alongside `button-pal.sh` — read it first to confirm it's
+really superseded (same "read the launcher in full" rule that caused
+today's incident) before assuming `g_is_palettes` is safe to strip.
+
+**`g_is_db_hq` doesn't exist as a variable at all anymore** — 6 grep
+hits in khtpm_core_render.c, all in *comments* (lines 452, 1831, 1840,
+5617, 12042, 12322), zero `static`/assignment. This matches Rev 11/12's
+own "dbhq_* C deleted (functional); husk cleanup deferred" →
+"husk hand-removal done" history — the variable is already gone, but
+six comments still talk about "g_is_db_hq=1 too" / "bake g_is_db_hq
+into mark/consume" as if it's live logic. Harmless (comments don't
+compile) but actively misleading to the next reader/agent — worth a
+quick pass to reword or delete these six stale comments so nobody goes
+looking for a flag that isn't there.
+
+**`g_is_cursword`** (khtpm_core_render.c:6696, set at :9693 by
+`basename(pkgcopy) == "cursword"`) is a real, live, non-const flag —
+NOT dead. Not investigated further (out of scope: this is TILE MODE's
+own per-package flag inside `tp_main()`, see §3 below).
+
+No other orphaned static functions found beyond what's already listed
+above — every other `static` function checked either has real callers
+elsewhere in the file or was already caught by today's two deletions.
+
+### 2. Redundancy / reuse audit
+
+Given the dead-flag finding above, the highest-value redundancy fix
+*is* deleting the three dead flags — most of their branches are
+literally `g_is_palettes || <other-condition>` ORs into otherwise-live
+generic code, so removing them mostly just deletes a few dead
+`||`-clauses rather than duplicated logic. Beyond that:
+
+- `history_dir()` (khtpm_core_render.c, ~line 5354 as of this session)
+  is already the single generic path-construction helper — it takes no
+  args and ternary-chains on `g_is_stats_hq`/`g_is_events_hq` (the
+  latter also dead per above) else falls to `entity_menu_history`. Once
+  the dead flags are stripped this collapses to a one-line function —
+  good, no further redundancy here, this is already the "one helper,
+  not N near-duplicates" pattern the house wants; it just has two dead
+  ternary arms to trim.
+- `frame_changed_path()` (~line 5649, same file) is the same shape:
+  one shared helper, ternary-chained on `g_is_palettes`/`g_is_bookmarks`/
+  `g_is_stats_hq`/`g_is_events_hq` (three of four dead) plus one real
+  live arm. Same fix, same file.
+- No 3+-way copy-pasted X11/GC/color helper blocks found outside what
+  the file's own comments already call out and consolidate (e.g.
+  `kh_clamp_elem_onscreen()`, `generic_sbar_register()` — both already
+  single shared helpers per this session's own earlier work, not
+  duplicated).
+- Did not find additional `assign_nav_and_layout()`/`redraw()`/
+  `dispatch()`/`draw_elem()` branches duplicating another mode's logic
+  under a different flag name, beyond the dead-flag ORs above — the
+  house's "shared generic tag vocabulary" convention looks genuinely
+  followed for everything that's still live.
+
+### 3. "Could more ops be used?" — remaining large per-mode blocks
+
+Only one large block still lives directly in `khtpm_core_render.c`
+rather than being factored into its own ops/projector binary:
+
+**`tp_main()`** (khtpm_core_render.c:9674–~11915, ~2240 lines) — "TILE
+MODE", the real entity/tile-window renderer, folded in verbatim from
+the former `tp_desktop_window_rgb.c` (2026-09-01 consolidation, per
+that block's own big header comment: "no linkers... relocated VERBATIM
+into this one file/binary, dispatched by argv shape"). This is
+**correctly characterized as intentional architecture, not tech
+debt** — the house's own standing rule is real per-mode logic folded
+into one binary dispatched by argv shape rather than separate linked
+binaries, and this mode is inherently a live, per-tick interactive
+window (entity desktop tiles), not something a static template +
+projector could replace the way taskbar-settings/pchq-board/events-hq
+were. Flagging only because it's by far the largest remaining chunk
+(~18% of the file) if a future audit wants to look for internal
+redundancy *within* it (not attempted here - out of scope for this
+pass) — not recommending extraction.
+
+No other per-mode block over a few hundred lines was found still
+living in the shared renderer; the four now-confirmed-dead flags above
+were each already ported out (matching `g_is_events_hq`'s precedent),
+they just left their guard code behind.
+
+### Recommended next step
+
+A follow-up pass, same shape as today's `g_is_swatch_picker` cleanup:
+strip `g_is_stats_hq`/`g_is_palettes`/`g_is_bookmarks` and their ~16
+combined dead sites (after confirming `palettes_menu.sh` is really
+superseded), reword/remove the 6 stale `g_is_db_hq` comments, collapse
+`history_dir()`/`frame_changed_path()` to their now-single live arm,
+rebuild, and run the standard context-menu live-stability check before
+committing. Small in scope (nowhere near the ~1200-line
+swatch-picker/pchq-board cleanup), but same bug class and worth
+closing out while the pattern is fresh.
 path is → `chtpm-var-substitution` → main via oc).
