@@ -1,15 +1,22 @@
 # Brainstorm: pdl-reader, a shared File Explorer widget, the agy-txt legacy-launcher bug, and a toys text-editor refactor
 
-**Status update, same day**: the File Explorer widget (§1) is now
-**built and live-verified** — `&.widgits/file-explorer/` (manager +
-static template + CSS + `button.sh`), real LOAD-mode browsing and
-picking confirmed end to end via real X11 clicks. `pdl-reader` (§1)
-and the `toys` text editor's own Save/Load wiring (§5) are still not
-built, but their one real blocking dependency now exists. See
-`12.calendar/2026-09-05/2do.md` for the full commit/verification
-writeup and two real bugs found while building it (a `vars=` path
-doubling bug, and `<scrolllist>` requiring a `<sidebar>`+`<panel>`
-pair to be laid out at all).
+**Status update, same day**: the File Explorer widget (§1) AND
+`pdl-read` (renamed from `pdl-reader` per direct instruction - shorter
+entry) are now **both built and live-verified**. `&.widgits/
+file-explorer/` — real LOAD-mode browsing and picking confirmed end to
+end via real X11 clicks. `@.apps/pdl-read/` — a real paginated
+document reader, demonstrated live reading the house book's own docs,
+registered as a real toy (`toy.pdl`, picked up by the "toys" dock cell
+automatically). Only the `toys` text editor's own Save/Load wiring
+(§5) is still not built, but its one real blocking dependency now
+exists. See `12.calendar/2026-09-05/2do.md` for the full commit/
+verification writeup, including a real new house-wide capability that
+came out of building pdl-read (a generic `content="${var}"` attribute
+for `<text_area>`, since `label=` isn't newline-safe through the frame
+round trip) and several real bugs found while building both (a
+`vars=` path doubling bug, `<scrolllist>` requiring a `<sidebar>`+
+`<panel>` pair to be laid out at all, and `g_current_page` defaulting
+to `"main"` rather than a template's own first `<page>`).
 
 **Real v2 idea, raised live while testing** (not built): the widget's
 `<panel>` (currently just a "Pick a file to load." hint + Cancel in

@@ -2,6 +2,25 @@
 
 ## Done today
 
+- **pdl-read — BUILT, live-verified, registered as a real toy.**
+  `@.apps/pdl-read/` — a real paginated document reader, demonstrated
+  reading the house book's own docs (`docs.pdl` lists 9 real book
+  pages). Manager delegated to a fresh agent against a complete spec;
+  `GOTOPAGE:<n>` added directly afterward for a real PDF-style page-
+  jump sidebar (per direct live feedback, along with moving the page
+  indicator above the content and Prev/Next below it - the first
+  layout was crowded into a side panel). Registered via a real
+  `toy.pdl` (title/launch keys) - the "toys" dock cell already scans
+  for these live, no taskbar rebuild needed. New house-wide capability
+  that came out of building this: a generic `content="${var}"`
+  attribute for `<text_area>`, since its `label=` turned out NOT to be
+  newline-safe through the frame round trip (only `text_area_buffer`
+  has that escaping) - found live when a multi-line label corrupted
+  the frame file past that element. Also re-learned a real gotcha
+  already hit once today: `g_current_page` defaults to `"main"`, not a
+  template's own first `<page>` - naming a first page anything else
+  silently produces a 0×0 window.
+
 - **Swatch picker made data-driven** (`&.widgits/taskbar-settings/`):
   new shared `swatches.pdl`, a generic `bg="${var}"` xhtpm attribute
   (`Elem.bg` → `apply_attr()` → `draw_elem()` override), and a
@@ -95,9 +114,6 @@
   `scaled()` choke-point function are NOT wired together — `scaled()`
   is currently a plain identity function, and the `g_dbhq_font_scale`
   variable its own comment describes doesn't exist in the file at all.
-- **`pdl-reader`** — brainstormed, not scheduled (its one real
-  blocking dependency, the File Explorer widget, is done - see above).
-  See `11.brainstorm/2026-09-05/PDL-READER-AND-FILE-EXPLORER-WIDGET.md`.
 - **`toys` text-editor refactor** — brainstormed, not scheduled, same
   doc as above (§5). Real UX reference captured (tpmos's
   `agy-text-editor` loader → editor → FILE MENU → Save As flow). Its
