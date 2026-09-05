@@ -836,6 +836,50 @@ static void apply_js_effects(const char *page_title) {
     atomic_commit(g_page_state_path, tmp);
 }
 
+/* ---- NB-JS persistent worker lifecycle (worker plan §2B) ----
+ * Step 2: the manager can spawn / LOAD / QUIT the resident worker, but
+ * the page still renders through the existing one-shot eval + static
+ * extractor. Spawn is lazy (only when a <script> exists); the worker is
+ * QUIT+reaped on manager shutdown. Effects merge (step 4) later makes the
+ * worker authoritative. RPC framing follows plan §4 (length-prefixed). */
+static int g_worker_fd = -1;
+static pid_t g_worker_pid = -1;
+static char g_worker_render[65536];   /* step 4: last RENDER rows, or "" */
+
+/* Step 4: overlay the worker's RENDER rows onto page.state.txt. The
+ * post-JS DOM is authoritative, so content rows (TITLE/TEXT/LINK/IMG) are
+ * replaced wholesale; non-content rows (URL|...) pass through unchanged.
+ * A script with no DOM output leaves the static file intact. Returns 1
+ * when the RENDER rows were actually merged. */
+static int merge_render_rows(void) {
+    if (!g_worker_render[0]) return 0;
+
+    char tmp[PATH_BUF];
+    FILE *pf = fopen(g_page_state_path, "r");
+    FILE *wf = atomic_open(g_page_state_path, tmp, sizeof(tmp));
+    if (!wf) {
+        if (pf) fclose(pf);
+        return 0;
+    }
+    if (pf) {
+        char row[PATH_BUF];
+        while (fgets(row, sizeof(row), pf)) {
+            size_t L = strlen(row);
+            while (L > 0 && (row[L-1]=='\n' || row[L-1]=='\r')) row[--L] = 0;
+            if (strncmp(row, "TITLE|", 6) == 0 || strncmp(row, "TEXT|", 5) == 0 ||
+                strncmp(row, "LINK|", 5) == 0 || strncmp(row, "IMG|", 4) == 0)
+                continue;
+            fprintf(wf, "%s\n", row);
+        }
+        fclose(pf);
+    }
+    fputs(g_worker_render, wf);
+    if (g_worker_render[strlen(g_worker_render) - 1] != '\n') fputc('\n', wf);
+    fclose(wf);
+    atomic_commit(g_page_state_path, tmp);
+    return 1;
+}
+
 
 #define MAX_MEDIA 24
 
@@ -975,15 +1019,6 @@ static void collect_page_media(const char *html, const char *page_url) {
     atomic_commit(g_page_state_path, tmp);
 }
 
-/* ---- NB-JS persistent worker lifecycle (worker plan §2B) ----
- * Step 2: the manager can spawn / LOAD / QUIT the resident worker, but
- * the page still renders through the existing one-shot eval + static
- * extractor. Spawn is lazy (only when a <script> exists); the worker is
- * QUIT+reaped on manager shutdown. Effects merge (step 4) later makes the
- * worker authoritative. RPC framing follows plan §4 (length-prefixed). */
-static int g_worker_fd = -1;
-static pid_t g_worker_pid = -1;
-
 static int worker_send(const char *payload, size_t n) {
     if (g_worker_fd < 0) return 0;
     char lb[16];
@@ -1043,9 +1078,8 @@ static void worker_spawn(void) {
     g_worker_pid = pid;
 }
 
-/* Ask the worker to run a page. Returns 1 on "STATUS ok", 0 otherwise.
- * Step 2: this is plumbing only — the result is not yet merged into the
- * rendered page (that is step 4). */
+/* Ask the worker to run a page. Reads the optional RENDER frame (step 4)
+ * into g_worker_render[] then the STATUS frame. Returns 1 on "STATUS ok". */
 static int worker_load(const char *js_path, const char *dom_path,
                        const char *href, const char *title) {
     worker_spawn();
@@ -1055,9 +1089,19 @@ static int worker_load(const char *js_path, const char *dom_path,
                      js_path ? js_path : "", dom_path ? dom_path : "",
                      href ? href : "", title ? title : "");
     if (!worker_send(payload, (size_t)n)) { worker_close(); return 0; }
-    char resp[2048];
-    if (!worker_recv_line(resp, sizeof(resp))) { worker_close(); return 0; }
-    return strncmp(resp, "STATUS ok", 9) == 0;
+
+    g_worker_render[0] = 0;
+    char resp[65536];
+    for (;;) {
+        if (!worker_recv_line(resp, sizeof(resp))) { worker_close(); return 0; }
+        if (strncmp(resp, "RENDER\n", 7) == 0) {
+            size_t rn = strlen(resp + 7);
+            if (rn + 1 < sizeof(g_worker_render))
+                memcpy(g_worker_render, resp + 7, rn + 1);
+            continue;   /* wait for STATUS next */
+        }
+        return strncmp(resp, "STATUS ok", 9) == 0;
+    }
 }
 
 static void worker_quit(void) {
@@ -1080,11 +1124,14 @@ static void run_page_scripts(const char *html, const char *url, const char *titl
     fclose(js);
     if (n <= 0) return;
 
-    /* NB-JS worker plan step 2: spawn on <script> presence + LOAD the
-     * page so the resident worker is exercised. Result is NOT merged yet
-     * (step 4); the one-shot eval below still drives the rendered page so
-     * behavior is unchanged. */
-    worker_load(g_js_script_path, g_tmp_dom_path, url, title);
+    /* NB-JS worker plan step 4: LOAD the page into the resident worker and,
+     * when it reports RENDER rows, overlay them onto page.state.txt so the
+     * post-JS DOM (document.title=, el.textContent=, appendChild, ...) shows.
+     * In that case the worker is authoritative and the legacy one-shot
+     * effects merge is skipped (its DOM-less eval would add noise). */
+    if (worker_load(g_js_script_path, g_tmp_dom_path, url, title)) {
+        if (merge_render_rows()) return;
+    }
 
     char cmd[PATH_BUF * 2];
     snprintf(cmd, sizeof(cmd),

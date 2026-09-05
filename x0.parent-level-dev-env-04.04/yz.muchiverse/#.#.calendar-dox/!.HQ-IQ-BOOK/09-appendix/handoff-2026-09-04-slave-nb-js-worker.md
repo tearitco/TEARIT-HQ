@@ -6,7 +6,7 @@ network-browser JS engine work — a distinct, separate job from the master
 handoff's khtpm C-deletion/xhtpm pass (that work is tracked in the master;
 this job touches only the `&.hq-apps/network` cell and the design docs).
 
-**Last updated:** 2026-09-04 (step 3 fully verified — build + regression + DOM test all green; step-3 files uncommitted, ready to commit & push)
+**Last updated:** 2026-09-05 (step 4 fully verified end-to-end — build + regression + DOM test + live manager merge all green; step-4 files uncommitted, ready to commit & push)
 **Branch:** `chtpm-delete-per-app-c` → pushed to `origin/chtpm-js-rungs`
 **Plan doc:** `08-roadmap/design-docs/NB-JS-ENGINE-WORKER-PLAN.md` (§7 = Phase 1, §8 = Phase 2)
 **Roadmap:** `08-roadmap/design-docs/NB-JS-ENGINE-ROADMAP.md` (rung map)
@@ -38,8 +38,8 @@ stays byte-identical; a script-less page never spawns the worker. Never
 | — | dbhq_* C deletion (other agent; same branch) | DONE | `dce0f1f4` rev 11 |
 | **1** | `nb_dom.c/.h` tolerant HTML parser + pre-order serializer; `do_fetch` writes `fetch.dom` (produced-but-unused) | **DONE** | `68df5763` |
 | **2** | `nb_js_worker.c` skeleton + shared `nb_host.h`; manager lazy-spawn on `<script>`, LOAD plumbing, QUIT on exit (no behavior change) | **DONE** | `1cb67da3` |
-| 3 | DOM tree in the worker + native accessors (getElementById/getElementsByTagName/querySelector, textContent, children, tagName, getAttribute/setAttribute, classList, appendChild, innerHTML); `tests/worker_dom_test.*` | **DONE (uncommitted)** — full-cell `build.sh` OK; all 5 rung tests PASS through eval AND worker; DOM test PASS vs O2 worker; ready to commit | — |
-| 4 | RENDER merge → page.state.txt (visible payoff) | pending | — |
+| 3 | DOM tree in the worker + native accessors (getElementById/getElementsByTagName/querySelector, textContent, children, tagName, getAttribute/setAttribute, classList, appendChild, innerHTML); `tests/worker_dom_test.*` | **DONE** | `6d32cf64` (pushed) |
+| 4 | RENDER merge → page.state.txt (visible payoff) | **DONE (uncommitted)** — full-cell `build.sh` OK; 5 rung tests PASS through eval AND worker; DOM test PASS vs O2 worker; live end-to-end merge verified via real manager + local HTTP server; ready to commit | — |
 | 5 | CPU budget + node cap + SIGKILL/restart guards | pending | — |
 | 6 | Docs: mark rungs done in roadmap | pending | — |
 
@@ -88,14 +88,10 @@ stays byte-identical; a script-less page never spawns the worker. Never
   merge); until then one-shot eval + static extractor keep the window live.
 - Phase 2 (rungs 3/4/5 + real BOM) is queued and hand-off-ready in plan §8.
 
-## Remaining (steps 4-6)
+## Remaining (steps 5-6)
 
-After step 3 (worker DOM) is committed:
-1. Step 4 — RENDER merge → `page.state.txt` (visible payoff): worker sends
-   the merged page state; manager writes it; renderer contract stays
-   byte-identical.
-2. Step 5 — CPU budget + node cap + SIGKILL/restart guards.
-3. Step 6 — Docs: mark rungs done in roadmap.
+1. Step 5 — CPU budget + node cap + SIGKILL/restart guards.
+2. Step 6 — Docs: mark rungs done in roadmap.
 
 ## Step 3 — DONE (uncommitted; bug found & fixed)
 
@@ -143,6 +139,63 @@ paths repo-wide, staged explicit paths only, never `git add -A`).
 `STATUS err:OBS null=false node=div id= ga=null` with `_nbnode`=0 means the
 wrapper+index are fine and the accessors read the wrong stack slot — recheck
 `this` handling, not the index binding. Duktape arg 0 is the FIRST ARG.
+
+## Step 4 — DONE (uncommitted; RENDER merge → page.state.txt)
+
+The visible payoff: the worker's post-JS DOM now drives the rendered page.
+
+**Wire contract (implemented).** After `duk_peval` succeeds the worker
+builds `page.state.txt`-format rows from its DOM and sends a **single
+frame** `RENDER\n<rows>` (rows = `TITLE|`, `TEXT|`, `LINK|`, `IMG|`;
+`TITLE` first) and only then `STATUS ok`. Rows are budget-capped at 60 k
+bytes so the frame always fits both sides' buffers. The manager's
+`worker_load()` (in `network_browser_manager.c`) now loops frames: a
+`RENDER` payload lands in `g_worker_render[]`, a `STATUS` ends the call.
+
+**Merge (`merge_render_rows()`).** Overlays the RENDER rows onto
+`page.state.txt` using the `apply_js_effects` atomic pattern:
+non-content rows (`URL|` …) pass through, content rows (TITLE/TEXT/LINK/IMG)
+are replaced wholesale, commit is atomic. When RENDER rows merge, the
+legacy one-shot effects merge is **skipped** — the DOM-less eval would
+otherwise inject a `TEXT|js: script error …` noise line on
+DOM-touching scripts. A script that errors in the worker sends no RENDER,
+so the static rows stay (degrade-without-blanking preserved).
+
+**Serializer.** `dom_render_rows()` walks the `fetch.dom` C tree in
+document order. The fetch.dom wire form carries each element's **direct
+text inline on the element node**, so element text is emitted directly
+(whitespace-only runs skipped, 88-col wrap like the static extractor).
+`TITLE` comes from `g_title` (the LOAD title / `document.title` setter via
+`nb_host.h`) since the parser drops `<title>`; `LINK|<href> <label>` for
+`<a href>`; `IMG|<src> <alt>`.
+
+**Bug caught during step 4:** `nb_attr_get()` returns a **shared static**
+decoded buffer — calling it twice in one statement
+(`src`, then `alt`) clobbered the first result (worker printed
+`IMG|pic pic` for `src="http://e/i.png" alt="pic"`). Fixed by copying each
+attribute into its own local buffer before the next call. (`nb_attr_get`
+itself is correct; only the two-call-per-statement usage bit us.)
+
+**Verified end-to-end (real manager binary + local HTTP server):**
+- scripted page (`document.title="JSTitle"`, `el.textContent="after-js-mutation"`,
+  `createElement`+`appendChild`) → `page.state.txt` shows
+  `TITLE|JSTitle`, `TEXT|after-js-mutation`, `TEXT|three-appended`,
+  `URL|...` header preserved, no whitespace rows, no `js:` noise.
+- no-script page → unchanged static output (worker never spawned).
+- log-only script page → worker-authored rows, clean title/text.
+- Script-error page → `STATUS err` only, static rows kept.
+
+**Regression (all green):** full-cell `build.sh` (O2) exit 0; all 5 rung
+tests PASS through both eval AND new worker; `worker_dom_test` PASS vs the
+new worker (`tests/worker_dom_test.c` now skips the RENDER frame and
+reads frames exactly — the trailing `\n` after each payload must be
+dragged or the next frame parses as length 0).
+
+**Remaining before commit:** commit step 4 (files:
+`network_browser_manager.c`, `ops/nb_js_worker.c`,
+`tests/worker_dom_test.c`, roadmap, worker plan, this handoff) with the
+house footer, then push `origin/chtpm-js-rungs`. Do NOT touch the other
+modified docs; stage explicit paths only, never `git add -A`.
 
 ## Cross-links
 

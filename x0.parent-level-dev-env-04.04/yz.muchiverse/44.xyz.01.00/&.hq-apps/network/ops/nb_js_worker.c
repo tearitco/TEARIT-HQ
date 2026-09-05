@@ -15,10 +15,8 @@
  *   recv:  read a %06d length line, then that many payload bytes.
  *
  * manager -> worker: LOAD\n<path page.js>\n<path fetch.dom>\n<href>\n<title>
- *                    (this step uses only page.js; fetch.dom is read in
- *                     step 3 once the DOM tree lands in the worker)
- * worker  -> manager: STATUS ok
- * worker  -> manager: STATUS err:<message>
+ * worker  -> manager: RENDER\n<len>\n<page.state rows>   (post-JS DOM, step 4)
+ * worker  -> manager: STATUS ok|err:<message>
  * manager -> worker: QUIT            (shut down cleanly)
  */
 #include "nb_host.h"
@@ -315,6 +313,95 @@ static NbNode *find_tag_first(const NbNode *n, const char *tag) {
         if (r) return r;
     }
     return NULL;
+}
+
+/* ---- step 4: RENDER — serialize the (post-JS) DOM into page.state.txt
+ * rows exactly as the manager's projector consumes them (TITLE/TEXT/LINK/IMG).
+ * Only the worker's own tree is authoritative here, so JS mutations
+ * (document.title, el.textContent, innerHTML=, appendChild) become visible. */
+#define RWS_TEXT 88
+#define RENDER_MAX 60000        /* keep the RENDER frame inside every buffer */
+static void rw_row(SB *b, const char *key, const char *val) {
+    if (b->len >= RENDER_MAX) return;
+    size_t o = 0;
+    char buf[4096];
+    for (size_t i = 0; val && val[i] && o + 1 < sizeof(buf); i++) {
+        unsigned char c = (unsigned char)val[i];
+        if (c == '\r') continue;
+        if (c == '\n' || c == '|') buf[o++] = ' ';
+        else buf[o++] = (char)c;
+    }
+    buf[o] = 0;
+    if (o) { sb_put(b, key); sb_put(b, "|"); sb_put(b, buf); sb_put(b, "\n"); }
+}
+static void rw_wrap(SB *b, char *s) {
+    while (s && *s) {
+        size_t L = strlen(s);
+        if (L <= RWS_TEXT) { rw_row(b, "TEXT", s); break; }
+        size_t cut = RWS_TEXT;
+        while (cut > RWS_TEXT / 2 && s[cut] && s[cut] != ' ') cut--;
+        if (s[cut] == ' ') { char save = s[cut]; s[cut] = 0; rw_row(b, "TEXT", s); s[cut] = save; s += cut + 1; }
+        else { char save = s[RWS_TEXT]; s[RWS_TEXT] = 0; rw_row(b, "TEXT", s); s[RWS_TEXT] = save; s += RWS_TEXT; }
+    }
+}
+static void dom_walk_render(const NbNode *n, int *titled, SB *b) {
+    if (!n) return;
+    const char *tg = n->tag;
+    int caption_used = 0;   /* element's own text already surfaced as TITLE/LINK/IMG */
+    if (tg && !strcasecmp(tg, "title") && !*titled) {
+        SB t = {0, 0, 0};
+        node_text_content(n, &t);
+        rw_row(b, "TITLE", t.s ? t.s : "");
+        free(t.s);
+        *titled = 1;
+        caption_used = 1;
+    } else if (tg && !strcasecmp(tg, "a")) {
+        const char *href = nb_attr_get(n, "href");
+        if (href && *href) {
+            SB t = {0, 0, 0};
+            node_text_content(n, &t);
+            char linkbuf[2048];
+            snprintf(linkbuf, sizeof(linkbuf), "%s|%s", href, t.s && t.s[0] ? t.s : href);
+            rw_row(b, "LINK", linkbuf);
+            free(t.s);
+            caption_used = 1;
+        }
+    } else if (tg && !strcasecmp(tg, "img")) {
+        char srcbuf[1024] = "", altbuf[1024] = "";
+        snprintf(srcbuf, sizeof(srcbuf), "%s", nb_attr_get(n, "src"));
+        snprintf(altbuf, sizeof(altbuf), "%s", nb_attr_get(n, "alt"));
+        if (srcbuf[0]) {
+            char imgbuf[2048];
+            snprintf(imgbuf, sizeof(imgbuf), "%s|%s", srcbuf, altbuf);
+            rw_row(b, "IMG", imgbuf);
+            caption_used = 1;
+        }
+    }
+    /* the fetch.dom wire form carries an element's direct text inline on
+     * the element node, so surface n->text itself (skip captions above and
+     * whitespace-only runs, matching the static extractor) */
+    if (!caption_used && n->text && n->text[0] && strspn(n->text, " \t\r\n") < strlen(n->text)) {
+        size_t L = strlen(n->text);
+        char *copy = malloc(L + 1);
+        if (copy) { memcpy(copy, n->text, L + 1); rw_wrap(b, copy); free(copy); }
+    }
+    for (const NbNode *c = n->first_child; c; c = c->next_sibling)
+        dom_walk_render(c, titled, b);
+}
+static void dom_render_rows(SB *b) {
+    /* TITLE first, like the static extractor: from the <title> element if the
+     * parser kept one, else document.title / the LOAD title (g_title). */
+    NbNode *te = g_dom_root ? find_tag_first(g_dom_root, "title") : NULL;
+    if (te) {
+        SB t = {0, 0, 0};
+        node_text_content(te, &t);
+        rw_row(b, "TITLE", t.s ? t.s : "");
+        free(t.s);
+    } else if (g_title[0]) {
+        rw_row(b, "TITLE", g_title);
+    }
+    int titled = 1;                 /* <title> already handled above */
+    dom_walk_render(g_dom_root, &titled, b);
 }
 
 /* ---- JS <-> C node binding ---- */
@@ -781,6 +868,29 @@ static void run_page(void) {
     }
     duk_pop(ctx);
     duk_destroy_heap(ctx);
+
+    /* step 4: emit RENDER rows from the post-JS DOM, then STATUS. The
+     * manager merges these into page.state.txt so JS mutations show. */
+    SB r = {0, 0, 0};
+    dom_render_rows(&r);
+    if (r.s && r.s[0]) {
+        size_t rn = strlen(r.s);
+        char *pay = NULL;
+        size_t pn = 0;
+        if (rn < RENDER_MAX) {
+            pn = 7 + rn;                       /* "RENDER\n" + rows */
+            pay = malloc(pn + 1);
+            if (pay) {
+                memcpy(pay, "RENDER\n", 7);
+                memcpy(pay + 7, r.s, rn);
+                pay[pn] = 0;
+                send_payload(pay, pn);
+            }
+        }
+        free(pay);
+    }
+    free(r.s);
+
     dom_teardown();
     send_status("STATUS ok");
 }

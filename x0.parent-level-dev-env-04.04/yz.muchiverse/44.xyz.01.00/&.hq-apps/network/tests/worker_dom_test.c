@@ -6,8 +6,9 @@
  * binary (ops/+x/nb_js_worker.+x) over a socketpair-style stdin/stdout and
  * speaks the plan §4 line-RPC: LOAD<page.js><fetch.dom><href><title> then
  * QUIT. Passes iff the worker answers STATUS ok (the JS throws on any
- * failed assertion, which the worker reports as STATUS err:...). No real
- * network is touched.
+ * failed assertion, which the worker reports as STATUS err:...). Since
+ * step 4 the worker may emit a RENDER frame before STATUS; it is skipped.
+ * No real network is touched.
  *
  * Usage: worker_dom_test <worker-binary> <worker_dom_test.js> <tmpdir>
  * Exit 0 on pass, 1 on any failure.
@@ -60,7 +61,9 @@ static int wreply(int fd, char *buf, size_t cap) {
     lenbuf[i] = 0;
     long n = strtol(lenbuf, NULL, 10);
     if (n < 0 || (size_t)n >= cap) return 0;
-    return rread(fd, buf, (size_t)n);
+    if (!rread(fd, buf, (size_t)n)) return 0;
+    char t; if (read(fd, &t, 1) != 1) return 0;   /* trailing '\n' */
+    return 1;
 }
 
 int main(int argc, char **argv) {
@@ -106,17 +109,22 @@ int main(int argc, char **argv) {
     }
     close(to_child[0]); close(from_child[1]);
 
-    /* 4. LOAD then QUIT */
+    /* 4. LOAD then QUIT. Skip any RENDER frame (step 4) until STATUS. */
     char load[2048];
     snprintf(load, sizeof(load), "LOAD\n%s\n%s\nhttp://localhost/a\nTest Page",
              page_path, dom_path);
     wsend(to_child[1], load);
     char reply[4096];
-    if (!wreply(from_child[0], reply, sizeof(reply))) {
-        fprintf(stderr, "FAIL: no reply from worker\n");
-        int st; waitpid(pid, &st, 0); return 1;
+    char *status = NULL;
+    for (;;) {
+        if (!wreply(from_child[0], reply, sizeof(reply))) {
+            fprintf(stderr, "FAIL: no reply from worker\n");
+            int st; waitpid(pid, &st, 0); return 1;
+        }
+        if (strncmp(reply, "RENDER\n", 7) == 0) continue;  /* step 4 rows */
+        status = reply;
+        break;
     }
-    char *status = reply;
     int pass = (strncmp(status, "STATUS ok", 9) == 0);
     if (!pass) printf("WORKER said: %s\n", status);
     wsend(to_child[1], "QUIT");

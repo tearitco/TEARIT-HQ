@@ -215,6 +215,20 @@ before (worker not even spawned unless a `<script>` exists).
 4. **`RENDER` merge** back into `page.state.txt` (rung 5 glue) —
    mutated DOM now visibly changes the window. Verify with a real
    `innerHTML=`-style fixture + live window. *Commit 4.*
+   > **DONE — 2026-09-05, branch `chtpm-js-rungs`** (step-4 commit; see
+   > slave handoff `09-appendix/handoff-2026-09-04-slave-nb-js-worker.md`).
+   > Worker sends a **single frame `RENDER\n<rows>`** (rows =
+   > `page.state.txt` format, TITLE first, budget-capped at 60 k rows)
+   > before `STATUS ok`; manager's `worker_load()` skips it into
+   > `g_worker_render[]`, then `merge_render_rows()` overlays it onto
+   > `page.state.txt` under `merge_render_rows()` — worker DOM is
+   > authoritative when RENDER rows exist (legacy one-shot effects merge
+   > skipped so the DOM-less eval can't inject noise). Verified end-to-end
+   > through the real manager binary + local HTTP server: `document.title`,
+   > `el.textContent=`, `createElement`+`appendChild` all show in
+   > `page.state.txt`; no-script pages byte-identical; script-error pages
+   > keep the static rows. `tests/worker_dom_test.c` taught to skip the
+   > RENDER frame (and to drain frames exactly, trailing `\n` included).
 5. **CPU budget + node cap** harden + `usleep` idle-loop discipline +
    manager SIGKILL/restart guards. *Commit 5.*
 6. **Docs**: mark rung 2 (+ rung 5 glue + §3 worker plumbing) done in

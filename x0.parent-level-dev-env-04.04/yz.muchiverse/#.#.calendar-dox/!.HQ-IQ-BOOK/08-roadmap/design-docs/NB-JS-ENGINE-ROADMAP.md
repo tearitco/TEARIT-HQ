@@ -108,6 +108,13 @@ Minimum node API to implement:
 > `tests/worker_dom_test.*` (81 assertions) PASS through the real O2
 > worker; 5 rung suites green through both eval AND worker. Details:
 > `09-appendix/handoff-2026-09-04-slave-nb-js-worker.md`.
+> **RENDER merge landed (plan phase-1 step 4, rung-5 glue):** the worker
+> now sends a `RENDER\n<rows>` frame (TITLE/TEXT/LINK/IMG, TITLE first)
+> after the page script quiesces, and the manager overlays those rows onto
+> `page.state.txt` via `merge_render_rows()` — the post-JS DOM
+> (`document.title=`, `el.textContent=`, `appendChild`, `innerHTML=`) is
+> now authoritative for scripted pages. A page with no `<script>` never
+> spawns the worker and renders byte-identically as before. Same commit.
 > **Still pending within rung 2:** `head`, `createTextNode`,
 > `getElementsByClassName`, `removeChild`/`insertBefore`/`replaceChild`,
 > `removeAttribute`, `style.*`, `value` (form fields) — natural follow-ons
