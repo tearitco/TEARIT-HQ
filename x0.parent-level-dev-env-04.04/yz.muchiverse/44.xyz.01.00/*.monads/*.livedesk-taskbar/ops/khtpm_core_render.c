@@ -107,6 +107,7 @@ static void redraw(void); /* REAL, forward declaration needed for dispatch()'s O
 static void kh_raise_and_focus(Window w); /* fwd - dispatch()'s FOCUSWIN handler uses it, defined near hq_dispatch_xevent */
 static int kh_key_history_code(KeySym ks, char ch); /* fwd - handle_key()'s interact-relay forward uses it before its real definition, near kh_capture_key */
 static void desktop_toggle_click_two_step(const char *house_root); /* fwd - dispatch()'s CLICK_TWOSTEP_TOGGLE handler uses it before its real definition, near desktop_load_click_two_step */
+static void desktop_load_click_two_step(const char *house_root); /* fwd - hq_ui_pdl_reload_if_changed() (hq_idle_tick(), long-running dock strip) uses it before its real definition */
 #define MAX_ELEMS 1024  /* 2026-09-02: page projection + chrome, was 512 */
 #define MAX_PAGE_STACK 8
 
@@ -6027,6 +6028,27 @@ static int pchq_theme_changed_dirty(const char *house_root) {
     return 0;
 }
 
+/* REAL FIX 2026-09-04, direct live report ("clicking changing to
+ * 2step doesn't change tb yet") - desktop_load_click_two_step() was
+ * only ever called once, at startup (main()/tp_main()). Every OTHER
+ * window is short-lived (a fresh launch already sees a just-toggled
+ * setting), but the taskbar/dock strip is long-running - it never
+ * saw a toggle made in Settings without a manual restart. Same real
+ * mtime-gate convention as pchq_theme_changed_dirty() above (avoid a
+ * needless fopen+read every tick for every window in the house);
+ * called every tick in hq_idle_tick(), same shared every-mode spot. */
+static time_t g_hq_ui_pdl_mtime = 0;
+static void hq_ui_pdl_reload_if_changed(const char *house_root) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
+    struct stat st;
+    if (stat(path, &st) != 0) return;
+    if (st.st_mtime != g_hq_ui_pdl_mtime) {
+        g_hq_ui_pdl_mtime = st.st_mtime;
+        desktop_load_click_two_step(house_root);
+    }
+}
+
 static void hq_idle_tick(void) {
     /* REAL, NEW 2026-08-31 (xperiments/khtpm-generic-dispatch-design.md
      * §5 - direct instruction: "the renderer/parser should have no
@@ -6085,6 +6107,7 @@ static void hq_idle_tick(void) {
      * string + a shared dirty-marker file, nothing pchq-specific) so
      * every window gets the same live behavior entities already have,
      * with zero per-mode duplication. */
+    hq_ui_pdl_reload_if_changed(g_house_root);
     if (pchq_theme_changed_dirty(g_house_root)) {
         set_window_opacity(dpy, win, load_theme_opacity());
         /* REAL FIX 2026-09-04 (live incident: bg/fg picked the same
