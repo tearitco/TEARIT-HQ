@@ -4633,9 +4633,18 @@ static void dispatch(const char *action) {
      * republishes - the same live-reparse-on-vars-change mechanism
      * every other page_text update already relies on, nothing new. */
     if (strcmp(action, "PDL_OPENFILE") == 0) {
+        /* REAL FIX 2026-09-05, direct live report ("opened a mess
+         * within same window, didn't see any files") - button.sh was
+         * rewritten to the real toy.pdl launch convention (`sh
+         * button.sh run`, deriving house_root itself) so it could be
+         * added to the "toys" menu; this call site still passed
+         * house_root as argv[1], which is no longer "run", so the
+         * script silently exited 0 without launching anything - the
+         * switch_page("read") below still fired regardless, which is
+         * exactly the "mess in the same window, no files" symptom. */
         char cmd[PATH_BUF * 2];
-        snprintf(cmd, sizeof(cmd), "sh '%s/&.widgits/file-explorer/button.sh' '%s' >/dev/null 2>&1 &",
-                 g_house_root, g_house_root);
+        snprintf(cmd, sizeof(cmd), "sh '%s/&.widgits/file-explorer/button.sh' run >/dev/null 2>&1 &",
+                 g_house_root);
         int rc = system(cmd);
         (void)rc;
         switch_page("read");
