@@ -1356,6 +1356,13 @@ static Elem *find_page(const char *name) {
  * a stale armed-field pointer from the old tree is not just wrong, it
  * aliases whatever the new parse happens to write at that pool slot). */
 static Elem *g_default_input_elem;
+/* REAL, NEW 2026-09-05 (TEXT_AREA-SCROLL-GUTTER-SELECTION-DESIGN.md) -
+ * Shift-held state for the CURRENT key being dispatched. Set from
+ * ev->xkey.state at the physical KeyPress site and per-code in
+ * dispatch_relay_code() (relay codes 220-225 = shifted arrows/Home/
+ * End). default_cli_io_handle_key() reads it: Shift+move extends the
+ * text selection, an unshifted move collapses it. */
+static int g_key_shift = 0;
 /* REAL, NEW 2026-09-03 (direct request: "make menu dropdown... work for
  * all layouts", after live-checking that piececraft-hq's own File/Desk
  * dropdown is hand-built, mode-specific C predating CENTROID_GOLD_STD,
@@ -2156,11 +2163,12 @@ static void kh_serialize_frame_elem(FILE *f, Elem *e) {
     char grid_jump_esc[16 * 2], grid_cell_esc[256 * 2];
     frame_field_escape_pipe(e->grid_jump_buffer, grid_jump_esc, sizeof(grid_jump_esc));
     frame_field_escape_pipe(e->grid_cell_buffer, grid_cell_esc, sizeof(grid_cell_esc));
-    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s|%d|%s|%d|%d|%d|%s|%s\n",
+    fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s|%d|%s|%d|%d|%d|%s|%s|%d\n",
             e->tag, e->id, classes_joined, label_esc, e->sprite, e->onclick,
             e->nav_index, e->active, e->x, e->y, e->w, e->h,
             target_id_esc, input_buffer_esc, relay_esc, bg_esc, e->cursor, text_area_esc,
-            e->grid_cur_row, e->grid_cur_col, e->grid_edit_mode, grid_jump_esc, grid_cell_esc);
+            e->grid_cur_row, e->grid_cur_col, e->grid_edit_mode, grid_jump_esc, grid_cell_esc,
+            e->sel_anchor);
 }
 
 /* Real recursive serializer, same traversal order render_tree() itself
@@ -2257,12 +2265,13 @@ static void kh_paint_frame_line(const char *line) {
      * frame_field_escape_text()'s own comment) [12]=grid_cur_row
      * [13]=grid_cur_col [14]=grid_edit_mode (plain ints, REAL, NEW
      * 2026-09-05, GRID-ELEMENT-DESIGN.md) [15]=grid_jump_buffer
-     * [16]=grid_cell_buffer (pipe-escaped) - a frame file written
-     * by an older binary (before these fields existed) simply has
-     * fewer tail fields - the loop below returns (honest skip) rather
-     * than misparse it, matching this function's existing "malformed
-     * line" convention exactly. */
-    char *tail[17];
+     * [16]=grid_cell_buffer (pipe-escaped) [17]=sel_anchor (plain int,
+     * REAL, NEW 2026-09-05, TEXT_AREA-SCROLL-GUTTER-SELECTION-DESIGN.md)
+     * - a frame file written by an older binary (before these fields
+     * existed) simply has fewer tail fields - the loop below returns
+     * (honest skip) rather than misparse it, matching this function's
+     * existing "malformed line" convention exactly. */
+    char *tail[18];
     /* REAL FIX 2026-08-28, same-day self-correction (first attempt at
      * this fix broke EVERY entity menu, not just book-stack's - see
      * git blame if this comment ever needs re-deriving why): the front
@@ -2274,7 +2283,7 @@ static void kh_paint_frame_line(const char *line) {
      * onward), so `p + strlen(p)` is the real end - `buf2 +
      * strlen(buf2)` is not. */
     char *scan_end = p + strlen(p);
-    for (int i = 16; i >= 0; i--) {
+    for (int i = 17; i >= 0; i--) {
         char *bar = NULL;
         for (char *q = scan_end - 1; q >= p; q--) { if (*q == '|') { bar = q; break; } }
         if (!bar) return; /* malformed line - honest skip, not a crash */
@@ -2334,6 +2343,7 @@ static void kh_paint_frame_line(const char *line) {
     tmp.grid_edit_mode = atoi(tail[14]);
     frame_field_unescape_pipe(tail[15], tmp.grid_jump_buffer, sizeof(tmp.grid_jump_buffer));
     frame_field_unescape_pipe(tail[16], tmp.grid_cell_buffer, sizeof(tmp.grid_cell_buffer));
+    tmp.sel_anchor = atoi(tail[17]); /* plain int - see Elem.sel_anchor's own field comment */
 
     css_compute_style(&g_sheet, tmp.tag, tmp.id[0] ? tmp.id : NULL, tmp.classes, tmp.n_classes, tmp.active, &tmp.style);
     if (window_is_dock()) {
@@ -5166,6 +5176,36 @@ static void kh_text_delete_at_cursor(char *buf, int *cursor) {
     for (int i = *cursor; i < len; i++) buf[i] = buf[i + 1];
 }
 
+/* REAL, NEW 2026-09-05 (TEXT_AREA-SCROLL-GUTTER-SELECTION-DESIGN.md) -
+ * if [sel_anchor,cursor) is a real (non-collapsed) range, delete it,
+ * leave the cursor at the range start with the selection collapsed.
+ * Returns 1 if it deleted something. This is the "typing / paste /
+ * Backspace replaces the selection" primitive. */
+static int kh_text_delete_selection(Elem *e, char *buf) {
+    if (e->sel_anchor == e->cursor) return 0;
+    int lo = e->sel_anchor < e->cursor ? e->sel_anchor : e->cursor;
+    int hi = e->sel_anchor < e->cursor ? e->cursor : e->sel_anchor;
+    int len = (int)strlen(buf);
+    if (lo < 0) lo = 0;
+    if (hi > len) hi = len;
+    memmove(buf + lo, buf + hi, (size_t)(len - hi) + 1);
+    e->cursor = lo;
+    e->sel_anchor = lo;
+    return 1;
+}
+/* Selection bounds into *lo/*hi (clamped to the real buffer). Returns
+ * 1 if there is a real selection, 0 if collapsed. */
+static int kh_text_selection_range(const Elem *e, const char *buf, int *lo, int *hi) {
+    if (e->sel_anchor == e->cursor) return 0;
+    int a = e->sel_anchor < e->cursor ? e->sel_anchor : e->cursor;
+    int b = e->sel_anchor < e->cursor ? e->cursor : e->sel_anchor;
+    int len = (int)strlen(buf);
+    if (a < 0) a = 0;
+    if (b > len) b = len;
+    *lo = a; *hi = b;
+    return b > a;
+}
+
 /* ---------- REAL, NEW 2026-09-05 (08-roadmap/design-docs/
  * CLIPBOARD-COPY-PASTE-DESIGN.md, direct instruction "lets build it in
  * text editor") - real X11 CLIPBOARD selection copy/paste. Works
@@ -5238,6 +5278,7 @@ static void kh_clipboard_insert_text(Elem *e, const char *text) {
         if (c < 32 || c > 126) continue; /* v1: ASCII-only, same scope the typed-char path already has */
         kh_text_insert_at_cursor(buf, cap, &e->cursor, c);
     }
+    e->sel_anchor = e->cursor; /* a paste lands as a plain cursor, no selection */
     if (is_area) default_text_area_save(e); else default_cli_io_save(e);
 }
 
@@ -5257,13 +5298,16 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
     size_t cap = is_area ? sizeof(e->text_area_buffer) : sizeof(e->input_buffer);
     if (ks == XK_Return || ks == XK_KP_Enter) {
         if (is_area) {
+            kh_text_delete_selection(e, buf); /* Enter over a selection replaces it, same as typing */
             kh_text_insert_at_cursor(buf, cap, &e->cursor, '\n');
+            e->sel_anchor = e->cursor;
             default_text_area_save(e);
         } else {
             default_cli_io_save(e);
             default_cli_io_run_action(e->onclick, e->input_buffer);
             e->input_buffer[0] = '\0';
             e->cursor = 0; /* real, matching the reference's own "clear after submit, stay active" behavior - cursor resets with the now-empty buffer */
+            e->sel_anchor = 0;
             default_cli_io_save(e);
         }
         return;
@@ -5289,26 +5333,65 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
      * XUngrabKeyboard on every real disarm path (Escape here, reparse_
      * chtpm_if_changed()'s own real safety net). */
     if (ks == XK_Escape) { g_default_input_elem = NULL; XUngrabKeyboard(dpy, CurrentTime); return; }
-    /* REAL, NEW 2026-09-05 (CLIPBOARD-COPY-PASTE-DESIGN.md) - Ctrl+C /
-     * Ctrl+V / Ctrl+X arrive as plain control characters through
-     * XLookupString (ASCII 3 / 22 / 24) on a standard X keyboard, and
-     * the relay can send those same bare codes with no format change.
-     * v1: copy/cut act on the WHOLE buffer (no text-range selection
-     * yet); paste inserts at the cursor once the async SelectionNotify
-     * comes back. */
-    if (ch == 3)  { kh_clipboard_copy(buf); return; }                 /* Ctrl+C */
-    if (ch == 24) { kh_clipboard_copy(buf); buf[0] = '\0'; e->cursor = 0;
-                    if (is_area) default_text_area_save(e); else default_cli_io_save(e); return; } /* Ctrl+X */
-    if (ch == 22) { kh_clipboard_request_paste(); return; }           /* Ctrl+V */
-    if (ks == XK_Left) { kh_text_clamp_cursor(buf, &e->cursor); if (e->cursor > 0) e->cursor--; return; }
-    if (ks == XK_Right) { kh_text_clamp_cursor(buf, &e->cursor); if (e->cursor < (int)strlen(buf)) e->cursor++; return; }
+    /* REAL, NEW 2026-09-05 (CLIPBOARD-COPY-PASTE-DESIGN.md +
+     * TEXT_AREA-SCROLL-GUTTER-SELECTION-DESIGN.md) - Ctrl+C / Ctrl+V /
+     * Ctrl+X arrive as plain control characters through XLookupString
+     * (ASCII 3 / 22 / 24) on a standard X keyboard; the relay sends the
+     * same bare codes. When a real text SELECTION exists, copy/cut act
+     * on just the selected substring ("partial copy out" - direct
+     * request); with no selection they fall back to the whole buffer
+     * (still a genuinely useful "copy the whole doc" shortcut). Paste
+     * replaces the selection if any, then inserts at the cursor once
+     * the async SelectionNotify comes back. */
+    if (ch == 3 || ch == 24) { /* Ctrl+C / Ctrl+X */
+        int lo, hi;
+        if (kh_text_selection_range(e, buf, &lo, &hi)) {
+            char saved = buf[hi];
+            buf[hi] = '\0';
+            kh_clipboard_copy(buf + lo);
+            buf[hi] = saved;
+            if (ch == 24) { /* cut: remove the selection */
+                kh_text_delete_selection(e, buf);
+                if (is_area) default_text_area_save(e); else default_cli_io_save(e);
+            }
+        } else {
+            kh_clipboard_copy(buf);
+            if (ch == 24) {
+                buf[0] = '\0'; e->cursor = 0; e->sel_anchor = 0;
+                if (is_area) default_text_area_save(e); else default_cli_io_save(e);
+            }
+        }
+        return;
+    }
+    if (ch == 22) { /* Ctrl+V */
+        if (kh_text_delete_selection(e, buf)) {
+            if (is_area) default_text_area_save(e); else default_cli_io_save(e);
+        }
+        kh_clipboard_request_paste();
+        return;
+    }
+    /* --- cursor movement, selection-aware. Shift+move keeps
+     * sel_anchor where it is (so [sel_anchor,cursor) grows/shrinks); an
+     * unshifted move collapses the selection to the new cursor. --- */
+    if (ks == XK_Left) {
+        kh_text_clamp_cursor(buf, &e->cursor);
+        if (e->cursor > 0) e->cursor--;
+        if (!g_key_shift) e->sel_anchor = e->cursor;
+        return;
+    }
+    if (ks == XK_Right) {
+        kh_text_clamp_cursor(buf, &e->cursor);
+        if (e->cursor < (int)strlen(buf)) e->cursor++;
+        if (!g_key_shift) e->sel_anchor = e->cursor;
+        return;
+    }
     /* REAL, NEW 2026-09-05 - line-aware (real \n, not display-wrap)
      * Home/End via kh_text_line_start/end() - for cli_io (never
      * contains a real \n) these reduce to the exact same whole-buffer
      * Home/End behavior it always had; for text_area this is the real,
      * expected "jump to start/end of the current line" behavior. */
-    if (ks == XK_Home) { e->cursor = kh_text_line_start(buf, e->cursor); return; }
-    if (ks == XK_End) { e->cursor = kh_text_line_end(buf, e->cursor); return; }
+    if (ks == XK_Home) { e->cursor = kh_text_line_start(buf, e->cursor); if (!g_key_shift) e->sel_anchor = e->cursor; return; }
+    if (ks == XK_End) { e->cursor = kh_text_line_end(buf, e->cursor); if (!g_key_shift) e->sel_anchor = e->cursor; return; }
     /* REAL, NEW 2026-09-05 - text_area only: real LOGICAL-line Up/Down
      * (crosses actual \n boundaries, preserving column position best-
      * effort). Real VISUAL (word-wrapped) row Up/Down - i.e. moving
@@ -5322,33 +5405,38 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
         int line_start = kh_text_line_start(buf, e->cursor);
         int col = e->cursor - line_start;
         if (ks == XK_Up) {
-            if (line_start == 0) return;
-            int prev_end = line_start - 1; /* the real \n immediately before this line */
-            int prev_start = kh_text_line_start(buf, prev_end);
-            int prev_len = prev_end - prev_start;
-            e->cursor = prev_start + (col < prev_len ? col : prev_len);
+            if (line_start > 0) {
+                int prev_end = line_start - 1; /* the real \n immediately before this line */
+                int prev_start = kh_text_line_start(buf, prev_end);
+                int prev_len = prev_end - prev_start;
+                e->cursor = prev_start + (col < prev_len ? col : prev_len);
+            }
         } else {
             int line_end = kh_text_line_end(buf, e->cursor);
-            if (buf[line_end] == '\0') return; /* already the last real line */
-            int next_start = line_end + 1;
-            int next_end = kh_text_line_end(buf, next_start);
-            int next_len = next_end - next_start;
-            e->cursor = next_start + (col < next_len ? col : next_len);
+            if (buf[line_end] != '\0') { /* not already the last real line */
+                int next_start = line_end + 1;
+                int next_end = kh_text_line_end(buf, next_start);
+                int next_len = next_end - next_start;
+                e->cursor = next_start + (col < next_len ? col : next_len);
+            }
         }
+        if (!g_key_shift) e->sel_anchor = e->cursor;
         return;
     }
     if (ks == XK_Delete) {
-        kh_text_delete_at_cursor(buf, &e->cursor);
+        if (!kh_text_delete_selection(e, buf)) kh_text_delete_at_cursor(buf, &e->cursor);
         if (is_area) default_text_area_save(e); else default_cli_io_save(e);
         return;
     }
     if (ks == XK_BackSpace) {
-        kh_text_delete_before_cursor(buf, &e->cursor);
+        if (!kh_text_delete_selection(e, buf)) kh_text_delete_before_cursor(buf, &e->cursor);
         if (is_area) default_text_area_save(e); else default_cli_io_save(e);
         return;
     }
     if (ch >= 32 && ch < 127) {
+        kh_text_delete_selection(e, buf); /* typing over a selection replaces it */
         kh_text_insert_at_cursor(buf, cap, &e->cursor, ch);
+        e->sel_anchor = e->cursor;
         if (is_area) default_text_area_save(e); else default_cli_io_save(e);
     }
 }
@@ -5515,6 +5603,7 @@ static void activate_focused(void) {
          * text_area added alongside cli_io here (same real armed-field
          * mechanism, same ^ indicator, same Escape-disarm path). */
         item->cursor = (int)strlen(strcmp(item->tag, "text_area") == 0 ? item->text_area_buffer : item->input_buffer);
+        item->sel_anchor = item->cursor; /* arm with no stale selection */
         kh_grab_keyboard_retry();
         return;
     }
@@ -6575,6 +6664,13 @@ static int consume_frame_changed(void) {
 
 
 static void dispatch_relay_code(int code) {
+    /* REAL, NEW 2026-09-05 - a relay-driven key is Shift-held only if
+     * it's one of the explicit shifted-selection codes (220-225 below).
+     * Reset first so a stale g_key_shift left by a prior PHYSICAL
+     * Shift+key (the KeyPress site sets it from ev->xkey.state) can't
+     * leak into an unshifted relay arrow and silently extend a
+     * selection instead of collapsing it. */
+    if (code < 220 || code > 225) g_key_shift = 0;
     if (code == 13) handle_key(XK_Return, 0);
     else if (code == 27) handle_key(XK_Escape, 0);
     else if (code == 8) handle_key(XK_BackSpace, 0); /* real, db-hq's own extra code - harmless no-op for other modes */
@@ -6598,6 +6694,19 @@ static void dispatch_relay_code(int code) {
      * XLookupString. Handled as `ch`, not a keysym - default_cli_io_
      * handle_key()'s own `ch == 3/22/24` checks pick them up. */
     else if (code == 3 || code == 22 || code == 24) handle_key(0, (char)code);
+    /* REAL, NEW 2026-09-05 (TEXT_AREA-SCROLL-GUTTER-SELECTION-DESIGN.md)
+     * - Shift+arrow / Shift+Home / Shift+End for text selection, which
+     * the relay had no way to express (Shift is a modifier, not a
+     * key). 220-225, same reserved-band idea as the 200-205 plain
+     * arrows. g_key_shift is set for exactly the one dispatched key. */
+    else if (code >= 220 && code <= 225) {
+        KeySym sk = (code == 220) ? XK_Left : (code == 221) ? XK_Right :
+                    (code == 222) ? XK_Up   : (code == 223) ? XK_Down  :
+                    (code == 224) ? XK_Home : XK_End;
+        g_key_shift = 1;
+        handle_key(sk, 0);
+        g_key_shift = 0;
+    }
     /* Task 6/7 (2026-08-26) - db-hq-only cheap text state dump for
      * agent testing, see dbhq_dump_debug_state()'s own header comment.
      * Code 210 (not a real keypress; 206-209 left free for any future
@@ -7265,6 +7374,9 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         int n = XLookupString(&ev->xkey, buf8, sizeof(buf8) - 1, &ks, NULL);
         buf8[n > 0 ? n : 0] = '\0';
         const char *kname = XKeysymToString(ks);
+        /* REAL, NEW 2026-09-05 - real Shift state for this key, read by
+         * default_cli_io_handle_key()'s selection logic. */
+        g_key_shift = (ev->xkey.state & ShiftMask) ? 1 : 0;
         if (is_popup) {
             /* Physical keys must move dock/popup nav in-process.
              * Capture+poll is for agent replay; idle tick still consumes

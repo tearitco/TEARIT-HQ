@@ -1146,10 +1146,24 @@ static void draw_elem(Elem *e, int hover_id_hash) {
          * text_area a human just tabbed past without ever arming it. */
         int armed = (g_default_input_elem && e->id[0] && strcmp(e->id, g_default_input_elem->id) == 0);
         int cursor_off = -1;
+        /* REAL, NEW 2026-09-05 (TEXT_AREA-SCROLL-GUTTER-SELECTION-
+         * DESIGN.md, step 4) - selection highlight range, in shown_label
+         * space (label prefix + buffer). Drawn per visual row below,
+         * BEFORE the row's glyphs, as a solid band behind the selected
+         * span. Only when this text_area is the live armed field and
+         * its selection is a real (non-collapsed) range. */
+        int sel_lo = -1, sel_hi = -1;
         if (armed) {
             int label_len = (int)strlen(shown_label) - (int)strlen(e->text_area_buffer);
-            if (label_len < 0) label_len = 0; /* honest guard - shouldn't happen, shown_label is always label+buffer below */
+            if (label_len < 0) label_len = 0; /* honest guard - shown_label is always label+buffer below */
             cursor_off = label_len + e->cursor;
+            Elem *live = g_default_input_elem;
+            if (live && live->sel_anchor != live->cursor) {
+                int a = live->sel_anchor < live->cursor ? live->sel_anchor : live->cursor;
+                int b = live->sel_anchor < live->cursor ? live->cursor : live->sel_anchor;
+                sel_lo = label_len + a;
+                sel_hi = label_len + b;
+            }
         }
         int consumed = 0; /* absolute offset into `shown_label` already drawn */
         int line_no = 0;
@@ -1178,6 +1192,24 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                 if (cut == 0 && more_in_logical) cut = 1; /* single glyph wider than the box - take it anyway, avoid an infinite loop */
                 char row_buf[600];
                 snprintf(row_buf, sizeof(row_buf), "%.*s", cut, sp);
+                /* selection band for the part of [sel_lo,sel_hi) that
+                 * falls on THIS visual row - drawn before the glyphs */
+                if (sel_hi > sel_lo) {
+                    int row_start = (int)(sp - shown_label);
+                    int row_end = row_start + cut;
+                    int hl_lo = sel_lo > row_start ? sel_lo : row_start;
+                    int hl_hi = sel_hi < row_end ? sel_hi : row_end;
+                    if (hl_hi > hl_lo) {
+                        XGlyphInfo pre, span;
+                        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)sp, hl_lo - row_start, &pre);
+                        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)sp, hl_hi - row_start, &span);
+                        int hx = text_x + pre.width;
+                        int hw = span.width - pre.width;
+                        if (hw < 2) hw = 2; /* a caret-width sliver for a zero-glyph edge (selecting past EOL) */
+                        XSetForeground(dpy, gc, alloc_pixel("#2f5f8f"));
+                        XFillRectangle(dpy, buf, gc, hx, ty - font->ascent, (unsigned)hw, (unsigned)line_h);
+                    }
+                }
                 draw_text_emoji(font, &col, text_x, ty, row_buf);
                 if (cursor_off >= 0) {
                     int row_start_off = (int)(sp - shown_label);

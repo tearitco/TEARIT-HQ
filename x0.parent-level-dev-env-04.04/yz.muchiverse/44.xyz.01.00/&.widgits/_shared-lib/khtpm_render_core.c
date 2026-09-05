@@ -195,6 +195,20 @@ typedef struct Elem {
      * screen. Zero effect on any element that isn't cli_io (stays 0,
      * unused). */
     int cursor;
+    /* REAL, NEW 2026-09-05 (08-roadmap/design-docs/TEXT_AREA-SCROLL-
+     * GUTTER-SELECTION-DESIGN.md, step 4/5 - "lets do the partial copy
+     * out") - the fixed end of a text selection; `cursor` is the moving
+     * end. Selection is [min(sel_anchor,cursor), max(...)).
+     * `sel_anchor == cursor` means NO selection (a collapsed range,
+     * the common bare-cursor case - works with the zero-init every
+     * Elem already gets, no -1 sentinel needed). Shift+move sets
+     * sel_anchor = cursor once (if not already selecting) then moves
+     * cursor; any unshifted move collapses it (sel_anchor = cursor);
+     * typing/paste/Backspace with a live selection replaces it;
+     * Ctrl+C/X copy just the selected substring when one exists (else
+     * fall back to the whole buffer). Threaded through the frame round
+     * trip same as cursor - a plain int, no escaping. */
+    int sel_anchor;
     /* REAL, NEW 2026-09-05 (08-roadmap/design-docs/CLI_IO-CURSOR-AND-
      * TEXT_AREA-MULTILINE-EDITING-DESIGN.md) - a real, generic
      * `<text_area>` element: a genuinely multi-line, cursor-addressable
