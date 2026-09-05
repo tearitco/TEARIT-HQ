@@ -5,6 +5,7 @@
 | What the house is, PIECE/MODULE/OS shape | `01-orientation/WHAT-IS-THIS-HOUSE.md` |
 | Glossary | `01-orientation/GLOSSARY.md` |
 | The gold-standard rendering architecture | `02-architecture/CENTROID_GOLD_STD.md` |
+| xhtpm/khtpm complete tag/attribute/verb/CSS/layout reference, hard limits table | `02-architecture/XHTPM-PARSER-REFERENCE.md` |
 | How khtpm's merged binary actually works today | `02-architecture/RENDERING-ORIENTATION.md` |
 | chtpm_parser_pal vs khtpm | `02-architecture/TWO-PARSER-FAMILIES.md` |
 | Input/relay/dispatch pipeline, nav_index | `02-architecture/INPUT-RELAY-PIPELINE.md` |

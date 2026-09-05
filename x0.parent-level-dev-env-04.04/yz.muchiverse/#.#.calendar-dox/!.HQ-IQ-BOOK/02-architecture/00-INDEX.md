@@ -4,6 +4,14 @@
   architecture.** Read this before touching any khtpm-family
   renderer/manager code. Moved verbatim (`git mv`) from
   `44.xyz.01.00/CENTROID_GOLD_STD.md`.
+- `XHTPM-PARSER-REFERENCE.md` — **complete xhtpm/khtpm feature
+  inventory**: every tag/attribute, the `${var}`/`<repeat>`/`show=`
+  template pipeline, `<module>` projector contract, every reserved
+  `onclick` verb, the 4 layout modes, nav/focus model, CSS subset, a
+  hard-limits table (buffer sizes + overflow symptoms), and a
+  feature-gap matrix vs. tpmos chtpm. Does NOT cover performance/
+  optimization — that's out of scope for this doc, not yet documented
+  anywhere as its own topic.
 - `RENDERING-ORIENTATION.md` — how the khtpm merged binary actually
   works today (the "current, not-yet-ideal" companion to the gold
   standard).

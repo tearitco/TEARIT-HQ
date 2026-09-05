@@ -545,7 +545,7 @@ See `09-appendix/forensic-report-flicker.md` for detailed render timing analysis
 **Design docs:**
 - `#.#.calendar-dox/!.HQ-IQ-BOOK/02-architecture/CENTROID_GOLD_STD.md` — renderer patterns (partially outdated; update pending 2026-09-04)
 - `#.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/design-docs/CHTPM-ARCHITECTURE-FIX.md` — static template + projector philosophy, `<repeat>` v2 sketch
-- `#.#.calendar-dox/!.HQ-IQ-BOOK/09-appendix/HANDOFF-chtpm-var-substitution.md` — v1/v2/v3/v4 handoff notes, converted apps table, remaining work
+- `#.#.calendar-dox/!.HQ-IQ-BOOK/09-appendix/handoff-2026-09-04-master.md` — v1/v2/v3/v4 handoff notes, converted apps table, remaining work
 - `#.#.calendar-dox/!.HQ-IQ-BOOK/09-appendix/forensic-report-flicker.md` — render timing, dirty-coalescing rationale
 - `#.#.calendar-dox/!.HQ-IQ-BOOK/03-pitfalls/X11-AND-SESSION-PITFALLS.md` — X11 quirks (grabs, events, window manage)
 
@@ -555,8 +555,13 @@ See `09-appendix/forensic-report-flicker.md` for detailed render timing analysis
 
 Cross-cutting behaviours the renderer applies to every window it draws,
 regardless of layout mode. All live in `khtpm_core_render.c` unless
-noted; the raw-pixel modes (`run_pchq_board_mode`, `strip_main`) each
-carry their own copy where they've been brought to parity.
+noted; the taskbar's own raw-pixel strip mode (`strip_main`) carries
+its own copy where it's been brought to parity. (`run_pchq_board_mode`,
+the OTHER raw-pixel mode this note originally referred to, was fully
+deleted 2026-09-04 — piececraft-hq's board window is now a normal
+generic-mode window, `pchq-board.xhtpm`, on the same shared Elem/CSS
+path as everything else in this document; see `09-appendix/pc-hq-
+bugs.md` and `04-bugs/BUG-LOG.md` for that migration's own history.)
 
 ### Theme frame
 
