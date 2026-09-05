@@ -212,6 +212,30 @@ typedef struct Elem {
      * rows, not a second cursor concept. Empty for every element that
      * isn't text_area - zero effect on anything else. */
     char text_area_buffer[4096];
+    /* REAL, NEW 2026-09-05 (08-roadmap/design-docs/GRID-ELEMENT-DESIGN.md)
+     * - a real `<grid>` element: one nav item for a whole spreadsheet-
+     * shaped table, with its own internal 2D cursor instead of one nav
+     * index per cell. Three real states: unarmed (plain nav item, all
+     * four fields below unused/0), armed-navigating (`#` badge -
+     * grid_cur_row/col move via arrows; grid_jump_buffer accumulates
+     * letters/digits in either order, e.g. "a11" or "11a", resolved on
+     * Enter), armed-editing (`^` badge - grid_edit_mode=1, the current
+     * cell's text lives in grid_cell_buffer and is typed into using the
+     * exact same single-line editing default_cli_io_handle_key() already
+     * implements, just pointed at this buffer instead of input_buffer).
+     * See the design doc's own "Decided" section for why `^` keeps its
+     * existing house-wide "real text input is live here" meaning
+     * (reserved for editing) while `#` is the new symbol for pure 2D
+     * navigation. Threaded through the frame serialize/reparse round
+     * trip (kh_serialize_frame_elem()/kh_paint_frame_line()) same as
+     * every other live-typed field - grid_jump_buffer/grid_cell_buffer
+     * need the same pipe escaping label just got (2026-09-05 fix) since
+     * either could plausibly contain a literal '|'. Zero effect on any
+     * element that isn't `<grid>`. */
+    int grid_cur_row, grid_cur_col;
+    int grid_edit_mode;
+    char grid_jump_buffer[16];
+    char grid_cell_buffer[256];
     struct Elem *children[MAX_CHILDREN];
     int n_children;
     struct Elem *parent;
