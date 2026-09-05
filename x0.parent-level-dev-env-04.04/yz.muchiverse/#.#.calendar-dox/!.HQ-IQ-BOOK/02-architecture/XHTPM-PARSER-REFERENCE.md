@@ -412,9 +412,32 @@ Specificity: element-tag tier (1) < class tier (2) < ID tier (3). Later rules wi
 
 `parse_declaration()` silently ignores unrecognized properties (e.g., `animation`, `transform`).
 
----
+### Comparison: xhtpm vs. real HTML/CSS (added 2026-09-04, direct request — never compared against a real web stack anywhere else in this book, only against tpmos chtpm)
 
-## 12. Frame Round-Trip (IPC serialization)
+| aspect | real HTML/CSS | xhtpm/khtpm |
+|---|---|---|
+| **Tag vocabulary** | Open-ended (custom elements, arbitrary attributes) | Fixed, closed set (§2's own table) — no way to author a new tag without a C change to `parse_element()` |
+| **Layout models** | Block flow (default), inline flow, flex, grid, table, positioned | Flex only (`display:flex`) — no block/inline flow at all; a non-flex parent's children are laid out by mode-specific C (`assign_nav_and_layout()`), not CSS |
+| **Box model** | Full box model: `margin`/`border`/`padding`/`box-sizing`, collapsing margins | No `margin` at all (use `gap` + `padding`); no `box-sizing` — `width`/`height` are always the drawn size, no border/padding-inclusive vs -exclusive distinction |
+| **Selectors** | Full CSS selector spec: attribute selectors (`[href]`), combinators (`>`, `+`, `~`), pseudo-classes/elements (`:nth-child`, `::before`), specificity via a 4-part (inline, ID, class, element) count | Element/class/ID/descendant/`:hover` only (§11 §Selectors); one pseudo-class total; 3-tier specificity, no `!important` |
+| **Cascade/inheritance** | Full cascade (origin + specificity + source order) + property inheritance (`color`, `font-*` inherit by default down the tree) | Cascade exists (3-tier specificity, later rule wins at same tier) but **no inheritance** — every element's style is computed independently from its own matched rules; a `color` on `<window>` does not propagate to children |
+| **Positioning** | `static`/`relative`/`absolute`/`fixed`/`sticky`, stacking contexts, `z-index` scoped per context | `position:absolute` only (offset from parent origin via `top`/`left`) or the flow default; `z-index` is a flat draw-order number, no stacking-context nesting |
+| **Units** | `px`, `%`, `em`/`rem`, `vh`/`vw`, `ch`, etc. | `px` (bare number) and `%` of parent only — no relative/viewport units |
+| **Events/scripting** | DOM event listeners (`addEventListener`), full JS execution in the render process itself | A single `onclick`/`action=` string per element, run as a **shell command** (`sh -c "... &"`) — no DOM, no event bubbling/capturing, no in-renderer scripting at all. Real JS (Duktape) is a deliberate, documented exception: it runs ONLY in a manager/op-tier process, never the shared renderer itself (`HTML-MEDIA-AND-SCRIPTING.md`'s own standing decision) |
+| **Reflow model** | Automatic reflow on any DOM/style mutation; the browser owns when/how often | Explicit: a full reparse + `assign_nav_and_layout()` re-run, gated by `reparse_chtpm_if_changed()`'s own content-hash/mtime check (§13) — never implicit, never partial |
+| **Images/media** | `<img>`/`<video>`/`<canvas>` as distinct elements with their own APIs | One generic `sprite=` attribute (any `<item>`/tile) plus the dedicated `<canvas sprite=...>` live-framebuffer primitive (§2's own table) — deliberately NOT a new tag per media type (`HTML-MEDIA-AND-SCRIPTING.md`'s own "reuse sprite=, no new tags" decision) |
+| **Accessibility/semantics** | Semantic tags (`<nav>`, `<button>`, ARIA roles) carry real meaning to assistive tech | None — `nav_index`/`[^]`/`[>]`/`[ ]` badges are this house's own from-scratch keyboard-nav convention (§10), not a screen-reader-compatible one |
+
+**Net read**: xhtpm is not "HTML/CSS with fewer features" so much as a
+**different kind of thing wearing CSS-shaped syntax** — a fixed-tag,
+flex-only, non-inheriting, shell-dispatching UI description format,
+deliberately narrow (per `CENTROID_GOLD_STD.md`'s own "generic, not
+exhaustive" philosophy) rather than an incomplete web engine. The
+gaps in §11's own "Known gaps" list above (no margin, no grid, no
+min/max-width) read very differently once framed this way — they're
+not omissions from an in-progress HTML clone, they're features a
+shell-dispatching, non-inheriting layout format was never going to
+need in the first place.
 
 ### Pipe format: `#.desktop/entity_menu_frame_<pid>.txt`
 
