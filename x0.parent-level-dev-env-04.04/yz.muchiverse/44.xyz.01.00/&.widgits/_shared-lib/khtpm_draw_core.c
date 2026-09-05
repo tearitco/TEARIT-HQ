@@ -397,36 +397,25 @@ static void draw_text_emoji(XftFont *f, XftColor *c, int x, int y, const char *s
     }
 }
 
-/* REAL FIX 2026-08-25 (live report: "green on gold isn't readable" - the
- * nav badge's fixed #cccccc unfocused color read as a muddy green-ish
- * smear against bright #ffd700 gold tiles/bookmark rows). Picks black or
- * light gray by the element's own background luminance instead of a
- * single hardcoded color - readable on both the dark #141414 chrome AND
- * any light/gold tile bg, without a per-mode special case. */
-static const char *badge_contrast_color(const CssStyle *st) {
-    if (!st->has_bg_color || st->bg_color[0] != '#' || strlen(st->bg_color) < 7) return "#cccccc";
-    unsigned int r, g, b;
-    sscanf(st->bg_color + 1, "%02x%02x%02x", &r, &g, &b);
-    double luma = 0.299 * r + 0.587 * g + 0.114 * b;
-    return luma > 140 ? "#000000" : "#cccccc";
-}
-/* REAL FIX 2026-08-25 (live report: "bright yellow highlight and orange
- * nav text" unreadable on cursword's bookmark rows) - the FOCUSED badge
- * used a single hardcoded #ff8c00 unconditionally, the exact same bug
- * class badge_contrast_color() above already fixed for the UNFOCUSED
- * case, just never ported to the focused branch. On the dark #141414
- * chrome, orange-on-dark is fine (matches the focus rectangle); on a
- * light/gold row background (e.g. bookmarks' own #d9b64a), orange-on-
- * gold has almost no contrast. Same luma test as badge_contrast_color(),
- * just a different pair of colors so focus stays visually distinct from
- * the plain unfocused badge even on a light bg. */
-static const char *badge_focus_color(const CssStyle *st) {
-    if (!st->has_bg_color || st->bg_color[0] != '#' || strlen(st->bg_color) < 7) return "#ff8c00";
-    unsigned int r, g, b;
-    sscanf(st->bg_color + 1, "%02x%02x%02x", &r, &g, &b);
-    double luma = 0.299 * r + 0.587 * g + 0.114 * b;
-    return luma > 140 ? "#7a1a00" : "#ff8c00";
-}
+/* REMOVED 2026-09-04 (RENDERER-MODULARITY-AND-PERF-AUDIT.md-adjacent
+ * finding - live report: "nav numbers get blacked out... this also
+ * happens in tb and other windows"). badge_contrast_color()/badge_
+ * focus_color() used to live here, picking a color by the ELEMENT'S
+ * OWN background luminance (dark text for a light element bg). That
+ * made sense in 2026-08-25 when they were written - at the time, a
+ * badge could be drawn directly on an element's own bg with no
+ * backing chip. Some time after that, drawing a fixed dark #141414
+ * backing chip behind EVERY badge (sprite tiles, swatch tiles, and -
+ * unconditionally, no gate at all - every other element via this same
+ * function's own general branch) became universal, but nobody removed
+ * the now-obsolete contrast-vs-own-bg logic when that happened - so
+ * any element anywhere in the house with a light/bright own bg-color
+ * (a themed dock cell, a light row, a bright swatch) got a DARK badge
+ * color chosen to contrast against ITS OWN bg, rendered on the
+ * ALWAYS-dark chip instead, and read as invisible. Confirmed by direct
+ * grep this was their only 2 call sites, both replaced with the same
+ * fixed colors every other case already used correctly - see the
+ * badge-color block below. */
 
 /* Generic XML/HTML entity decode for on-screen labels. chtpm attribute
  * values must stay escaped in the file (`&amp;` `&gt;` for well-formed
@@ -1058,28 +1047,37 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                            (unsigned)(nav_badge_ext.width + 2 * chip_pad), (unsigned)chip_h);
         }
         {
+            /* REAL FIX 2026-09-04, direct live report ("some nav
+             * numbers get blacked out... 2,4,6&7... this also
+             * happens in tb and other windows"). Confirmed the bug is
+             * systemic, not swatch-specific: EVERY badge in this
+             * function is drawn on a fixed dark #141414 backing chip -
+             * the tall-sprite branch draws its own chip, the sprite/
+             * swatch-tile branch draws its own chip, and this
+             * function's own FINAL, GENERAL branch (right above, `if
+             * (!e->sprite[0] && !is_swatch_tile) { ... XFillRectangle
+             * ... }`) draws the identical chip UNCONDITIONALLY for
+             * every other element - a plain <item>/<tab>/dock-cell,
+             * no position or style gate at all. There is no code path
+             * left where a badge is drawn WITHOUT this chip. So
+             * badge_contrast_color()/badge_focus_color() - which pick
+             * a DARK color specifically for a LIGHT element background
+             * (`luma > 140 -> "#000000"`/`"#7a1a00"`) - were always
+             * computing contrast against the wrong surface: the
+             * element's own bg, never the dark chip the text actually
+             * sits on. Any element anywhere in the house with a
+             * light/bright own bg-color (a themed dock cell, a light
+             * row, etc.) hit the exact same invisible-badge bug the
+             * swatch tiles did, just via the general branch instead of
+             * the swatch-specific one. Fix: since a dark chip is now
+             * confirmed universal, every badge (focused or not, sprite
+             * or not, swatch or not) uses the same two fixed colors
+             * every other branch already used correctly - no per-
+             * element contrast calculation needed anywhere. */
             const char *badge_fg = "#cccccc";
             if (nav_badge[1] == '^') badge_fg = "#ffd24a";
             else if (nav_badge[1] == '>') badge_fg = "#ff8c00";
-            else if (focused) badge_fg = (e->sprite[0] || is_swatch_tile) ? "#ff8c00" : badge_focus_color(&e->style);
-            /* REAL FIX 2026-09-04, direct live report ("some nav
-             * numbers get blacked out... 2,4,6&7") - confirmed root
-             * cause: this file's own comment a few lines up already
-             * says badges on the dark #141414 backing chip "always
-             * needs the light color... badge_contrast_color() would
-             * otherwise read the tile's own bg and (wrongly) pick an
-             * unreadable color" - but the code only ever actually
-             * forced that for `e->sprite[0]` (real sprite tiles).
-             * class="swatch" tiles have NO sprite (they're a plain
-             * CSS fill, not an image), so they fell through to the
-             * final `else` and got badge_contrast_color() computed
-             * against the SWATCH'S OWN bright fill color (white/
-             * silver/orange/yellow) - a dark text color chosen to
-             * contrast against a light swatch, then drawn on the same
-             * dark chip every OTHER badge already uses, so it read as
-             * missing. Same fixed light color as sprite tiles now. */
-            else if (e->sprite[0] || is_swatch_tile) badge_fg = "#cccccc";
-            else badge_fg = badge_contrast_color(&e->style);
+            else if (focused) badge_fg = "#ff8c00";
             XftColor numcol = xft_color(badge_fg);
             XftDrawStringUtf8(xftdraw_buf, &numcol, nav_badge_font, draw_x, numy, (const FcChar8 *)nav_badge, (int)strlen(nav_badge));
             XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &numcol);
