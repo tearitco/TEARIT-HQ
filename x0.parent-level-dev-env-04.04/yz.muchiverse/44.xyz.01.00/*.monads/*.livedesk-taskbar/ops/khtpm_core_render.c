@@ -12532,7 +12532,53 @@ int main(int argc, char **argv) {
      * foreground actor there); open-hai and the transient menus follow
      * the shared pdl's managed=false when "normal" sinks below native
      * apps. Same data-driven rule, same shared #.desktop pdl. */
-    swa.override_redirect = (Bool)g_override_redirect;
+    /* !!! NEVER REMOVE THIS COMMENT OR THE `dock_managed` LOGIC BELOW
+     * WITHOUT READING IT FIRST !!! (direct user instruction, 2026-09-05)
+     * Full incident writeup, alternatives considered, and standing
+     * rule: 03-pitfalls/X11-AND-SESSION-PITFALLS.md, 2026-09-05 entry.
+     * One-line version: this exact bug (dock arrow-key nav dying) was
+     * ALREADY fixed once (eb74b733, 2026-08-30) in the taskbar's THEN
+     * implementation, khtpm_strip_parser.c - that file was later fully
+     * replaced by this file's own dock mode, which never inherited the
+     * fix and just followed the shared `g_override_redirect` PDL like
+     * every other window. The very next unrelated revert of that PDL
+     * (fixing a DIFFERENT bug, the toys-dropdown regression) silently
+     * undid this fix as a side effect. If you are refactoring dock
+     * window creation, or ever tempted to make this follow
+     * `g_override_redirect` "for consistency" - don't. That is
+     * literally the regression. The dock strip windows (this one and
+     * g_dock_peer_win below) must stay unconditionally WM-managed,
+     * independent of any global override_redirect setting, forever. */
+    /* REAL FIX 2026-09-05, direct live report ("when i click tb, i
+     * expect arrows to control nav, this broke again... same problem
+     * as last time") - this is the SAME real bug class eb74b733
+     * (2026-08-30, "Fix taskbar's own intermittent click failures:
+     * WM-managed, not override_redirect") already found and fixed
+     * once, for the taskbar's OLD implementation (khtpm_strip_parser.c,
+     * since replaced by this file's own dock mode) - Mutter's real
+     * XWayland focus/key routing never reaches an override_redirect
+     * surface at all (XSetInputFocus/XGetInputFocus report success at
+     * the raw X11-protocol level regardless - why every xdotool/
+     * synthetic-event test this session looked fine while real
+     * hardware kept failing). That old fix's target file no longer
+     * exists; this file's own dock windows inherited the house-wide
+     * `g_override_redirect` PDL setting instead, which the 217d97eb
+     * revert (same day, different bug - the toys dropdown menu breaking
+     * once EVERY window went WM-managed) put back to `true` - silently
+     * undoing eb74b733's fix for the dock strip specifically as a side
+     * effect of fixing something else. Scoped fix this time so a
+     * future revert of the global PDL can't do this again: the
+     * persistent dock strip windows (this one, window_is_dock(), and
+     * g_dock_peer_win below) are unconditionally WM-managed, completely
+     * independent of the global `g_override_redirect` PDL - matching
+     * apply_dock_window_hints()'s own already-unconditional EWMH dock
+     * hints just below. g_dock_menu_win (the toys dropdown, ~line 3802)
+     * deliberately keeps its own hardcoded `override_redirect = True` -
+     * that IS the 217d97eb regression's real fix already in place
+     * (short-lived popups/submenus correctly stay override_redirect,
+     * per 03-pitfalls/X11-AND-SESSION-PITFALLS.md) - not touched here. */
+    int dock_managed = window_is_dock();
+    swa.override_redirect = dock_managed ? False : (Bool)g_override_redirect;
     /* REAL FIX 2026-08-29 (live report: "toolbar doesn't allow drag
      * repositioning") - this generic popup window (entity-menu popup AND
      * swatch-picker/Settings) never requested ButtonReleaseMask or
@@ -12549,7 +12595,7 @@ int main(int argc, char **argv) {
     win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)g_win_w, (unsigned)g_win_h, 0,
                          CopyFromParent, InputOutput, CopyFromParent, CWBackPixel | CWOverrideRedirect | CWEventMask, &swa);
     if (window_is_dock()) apply_dock_window_hints(dpy, win, g_win_x, g_win_y);
-    render_managed_wm_hints(dpy, win, !g_override_redirect); /* REAL, NEW 2026-09-01 - managed branch: undecorated + no shell chrome (post-map sink-below lands after XMapRaised) */
+    render_managed_wm_hints(dpy, win, dock_managed || !g_override_redirect); /* REAL, NEW 2026-09-01 - managed branch: undecorated + no shell chrome (post-map sink-below lands after XMapRaised) */
     Atom motif_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
     long hints[5] = { 2, 0, 0, 0, 0 };
     XChangeProperty(dpy, win, motif_hints, motif_hints, 32, PropModeReplace, (unsigned char *)hints, 5);
@@ -12700,7 +12746,13 @@ int main(int argc, char **argv) {
     if (g_dock_peer) {
         XSetWindowAttributes pswa;
         pswa.background_pixel = alloc_pixel(g_theme_bg);
-        pswa.override_redirect = (Bool)g_override_redirect;
+        /* REAL FIX 2026-09-05 - see the main dock window's own
+         * `dock_managed` fix above (same header comment) for the full
+         * story. g_dock_peer_win is the bottom "pals" row - just as
+         * persistent as the main strip, needs the exact same
+         * unconditional WM-managed treatment for real arrow-key/click
+         * routing, independent of the global override_redirect PDL. */
+        pswa.override_redirect = False;
         pswa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | StructureNotifyMask | FocusChangeMask;
         g_dock_peer_win = XCreateWindow(dpy, RootWindow(dpy, screen),
             g_dock_peer_x, g_dock_peer_y,
@@ -12709,6 +12761,7 @@ int main(int argc, char **argv) {
             0, CopyFromParent, InputOutput, CopyFromParent,
             CWBackPixel | CWOverrideRedirect | CWEventMask, &pswa);
         apply_dock_window_hints(dpy, g_dock_peer_win, g_dock_peer_x, g_dock_peer_y);
+        render_managed_wm_hints(dpy, g_dock_peer_win, 1);
         XMapRaised(dpy, g_dock_peer_win);
         set_window_opacity(dpy, g_dock_peer_win, load_theme_opacity());
         XMoveWindow(dpy, g_dock_peer_win, g_dock_peer_x, g_dock_peer_y);

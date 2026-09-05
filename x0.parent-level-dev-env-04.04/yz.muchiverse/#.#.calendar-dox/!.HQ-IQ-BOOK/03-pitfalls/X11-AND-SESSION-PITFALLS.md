@@ -101,6 +101,68 @@ is kept.*
   (2) test the ONE target window in isolation, (3) explicitly verify
   the taskbar's own dropdowns/popups still work before calling it
   fixed, not after.
+- **2026-09-05 — this exact bug came back, in the taskbar itself this
+  time, because the scoped fix above never actually got written.**
+  Direct live report: "when i click tb, i expect arrows to control
+  'nav', this broke again. remember it broke before? remember the
+  fix? make sure it never happens again. is a bad bug." This is a
+  REPEAT of a bug that was already found and fixed ONCE before, for an
+  OLDER file (`eb74b733`, 2026-08-30, "Fix taskbar's own intermittent
+  click failures: WM-managed, not override_redirect" — targeted
+  `khtpm_strip_parser.c`, the taskbar's implementation at the time).
+  That file was later fully replaced by `khtpm_core_render.c`'s own
+  dock mode (this file), which never inherited the fix — it just read
+  the shared `g_override_redirect` PDL like every other window, so the
+  very next time that PDL got reverted to `true` for an UNRELATED
+  reason (the toys-menu regression two bullets up), the taskbar's own
+  arrow-key/click reliability silently broke again as a side effect,
+  with nobody realizing the two bugs were connected until this report.
+  **This is exactly the failure mode this file exists to prevent — a
+  known, already-fixed bug returning because the fix lived in a file
+  that got deleted/replaced, not in a place a future refactor would
+  see.** Real fix this time (commit history around 2026-09-05,
+  `khtpm_core_render.c` — search `dock_managed` in that file, comment
+  begins "REAL FIX 2026-09-05... never remove this comment"): the two
+  PERSISTENT dock windows (`win` when `window_is_dock()`, and
+  `g_dock_peer_win`, the bottom "pals" row) are now unconditionally
+  WM-managed (`override_redirect = False` + `render_managed_wm_hints`)
+  — hardcoded, independent of the shared `g_override_redirect` PDL, so
+  a future revert of that PDL for some other window class cannot ever
+  silently undo this again. `g_dock_menu_win` (the toys dropdown, a
+  genuine short-lived popup) deliberately keeps its own separate,
+  already-hardcoded `override_redirect = True` — untouched, since that
+  IS the correct fix for the toys-menu regression bullet above.
+  **Known alternative approaches, for the record** (not chosen, but
+  worth knowing if this resurfaces in a different shape):
+  1. *Per-window opt-in via the `<window>` tag itself* (e.g.
+     `managed="true"` read at parse time into the Elem tree) — more
+     general than hardcoding `window_is_dock()`, but adds a new xhtpm
+     attribute for something so far needed by exactly one window
+     class; not worth the surface area yet.
+  2. *A second, separate PDL key scoped to just the dock* (e.g.
+     `dock_override_redirect=false` alongside the existing house-wide
+     key) — keeps the "data file controls it" convention this house
+     prefers over hardcoding, at the cost of one more setting a future
+     session has to know to check. Rejected mainly because the
+     hardcoded fix cannot regress via a stray PDL edit at all, which
+     is the actual property being optimized for here.
+  3. *Give every persistent top-level window (not just the dock) the
+     same unconditional treatment*, removing `g_override_redirect`
+     entirely — the most thorough fix, matching this file's own
+     standing rule above ("a persistent top-level window must be
+     WM-managed, not override_redirect") to the letter. Not attempted
+     this pass because it re-opens the exact toys-menu regression risk
+     without the isolated single-window testing that bullet's own
+     "before attempting this again" steps call for — a real candidate
+     for a FUTURE, deliberate, isolated pass, not a same-session
+     follow-on to an urgent live bug report.
+  **Standing rule, addition to the one above**: when a fix like this
+  one lives in a specific window-creation code path, and that code
+  path is ever rewritten/replaced/merged into another file, the fix
+  must be explicitly re-verified against the new code, not assumed to
+  have carried over - add a code comment at the fix site strong enough
+  that a future refactor cannot miss it (see `dock_managed` in
+  `khtpm_core_render.c`, marked "never remove this comment").
 
 ---
 
