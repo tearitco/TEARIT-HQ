@@ -32,7 +32,18 @@ micro-level findings are reported separately.
 
 ### 1.1 Remaining `g_is_*` globals
 
-Only two left in the whole file (grep-confirmed exhaustive):
+**FIXED 2026-09-04 (commit `ebd0f289`)**: `g_is_cursword` is now set by
+`read_log_mode()`, a generic reader (mirrors `read_footprint_tiles()`)
+of an optional `"STATE | log_mode | 1"` row in the entity's own
+`meta.pdl`, instead of the hardcoded identity check below. The row was
+added to cursword's own `meta.pdl` to preserve its existing behavior;
+any other entity can now opt into the same "taller log window" variant
+by publishing the same row. The 24 call sites reading `g_is_cursword`
+itself are unchanged - only how the flag gets set moved off a
+project-name string literal.
+
+Only two left in the whole file before this fix (grep-confirmed
+exhaustive) - now one real one (`g_is_events_hq`, already dead):
 
 - **`g_is_events_hq`** (`khtpm_core_render.c:2289`) — already `static
   const int ... = 0`, dead by construction, already documented by its
@@ -80,7 +91,19 @@ and the bug-log entry describing it was never updated to reflect that.
 
 ### 1.3 Copy-pasted logic inside `tp_main()`'s own tile mode (real redundancy, found under the corrected higher bar)
 
-Two window-shape-mask builders exist ~50 lines apart doing the
+**FIXED 2026-09-04 (commit `ebd0f289`)**: both mask builders now share
+one `kh_build_shape_mask_generic(dpy, mask_gc, mask, w, h, is_opaque,
+ctx)` (callback-driven), and the sprite-scale index math is one
+`sprite_scale_index()` helper used at all THREE sites it was
+duplicated at (a third copy at `khtpm_core_render.c` ~9004, in a
+top-strip sprite sampler, was found while fixing the two below - this
+audit's own original pass missed it). Pure dedup, same per-pixel
+`XFillRectangle` behavior as before (the perf question below in §2.2
+is still open, deliberately not addressed in the same change) -
+confirmed bit-for-bit via a live PNG dump of a real sprite tile
+showing its correct shape mask post-change.
+
+Two window-shape-mask builders existed ~50 lines apart doing the
 functionally same job (build a 1-bit `XShapeCombineMask` mask from a
 per-pixel test) with near-identical loop *structure*, driven by two
 different pixel sources, and NEITHER shares a helper with the other:
@@ -294,26 +317,22 @@ they're structural classification of an already-parsed tree.
 
 ## Recommended next steps (ordered by real risk/value)
 
-1. **Correct `04-bugs/BUG-LOG.md`'s stale `dbhq_load_actors()` entry**
-   (§1.2) — lowest effort, purely a documentation accuracy fix, and
-   currently misleads anyone who reads the open-bugs list into
-   thinking there's live code to audit/fix that no longer exists.
+1. ~~**Correct `04-bugs/BUG-LOG.md`'s stale `dbhq_load_actors()`
+   entry**~~ **DONE** (`f2f36656`).
 2. **Fix the two `XFillRectangle`-per-pixel shape-mask builders**
-   (§2.2) — highest real perf value found in this pass: every non-
-   circular entity tile on the desktop pays this cost on every shape
-   recompute, and the fix (build a local bitmap, blit once) is
-   well-precedented by `kh_draw_canvas()`'s own existing `XImage`
-   cache pattern in the same file.
-3. **Extract the shared shape-mask-builder helper** (§1.3) while fixing
-   #2 above — the redundancy and the perf fix live in the exact same
-   two functions, so this is naturally one real changeset, not two.
-4. **Decide g_is_cursword's fate** (§1.1) — either document a real,
-   specific reason tile-mode entity special-cases are exempt from rule
-   7's own reasoning (if one exists and simply hasn't been written
-   down), or treat it as a real migration candidate the same way rule
-   7 already prescribes for top-level `g_is_<project>` modes. This is
-   a judgment call for whoever owns the standard, not something to
-   silently leave ambiguous.
+   (§2.2) — **still open, deliberately not done alongside #3 below**
+   (direct instruction: dedup first as its own clean changeset, discuss
+   the actual XFillRectangle-vs-XPutImage/bulk-blit approach
+   separately before touching it) — highest real perf value found in
+   this pass: every non-circular entity tile on the desktop pays this
+   cost on every shape recompute.
+3. ~~**Extract the shared shape-mask-builder helper**~~ **DONE**
+   (`ebd0f289`) — `kh_build_shape_mask_generic()` + `sprite_scale_
+   index()`, see §1.3. Kept deliberately separate from #2's perf fix
+   per direct instruction (pure structural dedup first, perf fix as
+   its own follow-up).
+4. ~~**Decide g_is_cursword's fate**~~ **DONE** (`ebd0f289`) — now
+   data-driven via `read_log_mode()`, see §1.1.
 5. **Reconcile the two poll-interval constants** (§2.3) — lower
    urgency, but a one-line decision (keep both with a documented
    reason, or collapse to one) closes a real, if minor, drift.
