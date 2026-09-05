@@ -1,0 +1,1172 @@
+J2 Testing Guide (Existing + New Features)
+Date: 2026-03-18
+Purpose: Standardize how agents test features (especially via key injection + frame review) to prevent regressions.
+
+SCOPE - which family this applies to (added 2026-08-09, real deviation
+found live, not hypothetical)
+------------------------------------------------------------------------
+Everything below (pieces/keyboard/history.txt key injection) is written
+for the chtpm_parser_pal/prisc+x family - programs that run their own
+file-polling loop reading pieces/keyboard/history.txt for input. It does
+NOT apply to raw-Xlib programs that read real X11 events directly via
+XNextEvent() (e.g. &.widgits/livedesk-taskbar/ops/tp_taskbar.c,
+tp_desktop_window.c) - those have no history.txt to poll at all; writing
+KEY_PRESSED lines to a file does nothing for them.
+
+For that second family, the equivalent black-box test interface is a
+small, standalone XTest-based injector (XTestFakeKeyEvent/
+XTestFakeButtonEvent/XTestFakeMotionEvent) that tails a plain text file
+and translates each line into a REAL X11 event targeted at the running
+program - genuinely indistinguishable from physical input to the
+receiving client, since XTest injects at the X server level. First real
+use: diagnosing/fixing a popup-keyboard-focus bug in tp_taskbar.c, see
+!.HOUSE_STDS.md §F-19 for the full writeup (root cause: bare
+XSetInputFocus on a fresh override-redirect window wasn't reliably
+delivering input under this house's Mutter/XWayland environment, despite
+XGetInputFocus reporting success - only found by building this injector
+and testing empirically, not by reading code harder).
+
+Before choosing an injection method for a NEW testing task: check
+whether the target program has a pieces/keyboard/history.txt-reading
+main loop (chtpm_parser_pal family - use the file-injection method
+below) or is a raw Xlib/other-toolkit program reading real OS-level
+events directly (use an XTest-style injector instead, or that toolkit's
+own equivalent synthetic-event API). Don't assume file-injection
+"should" work everywhere just because it's documented first/most often
+in this house - verify which family the target actually is.
+
+UPDATE 2026-08-10 - a real third option now exists for raw-Xlib programs:
+give the program its OWN file-relay polling loop, additive alongside its
+existing XNextEvent() loop, rather than reaching for an XTest injector.
+First real instance: &.widgits/livedesk-taskbar/ops/tp_taskbar.c grew
+poll_agent_relay()/agent_relay_dispatch(), polling
+#.desktop/livedesk_agent_relay.txt on its normal ~300ms tick (see the
+big comment above poll_agent_relay()'s definition in that file for the
+exact contract). Direct instruction: built BEFORE any khtpm port of that
+program, specifically so a rollback still has working agent access.
+
+WHY THIS IS NOW PREFERRED OVER THE XTEST INJECTOR FOR THIS PROGRAM:
+XTest-injected events (XTestFakeKeyEvent/XTestFakeButtonEvent) are
+GLOBAL - they go to whichever window currently holds real X input focus,
+which taskbar_soft_focus() (XRaiseWindow -> XSetInputFocus -> XFlush,
+see !.HOUSE_STDS.md §F-19) has to forcibly steal to make injection land
+reliably. That focus-stealing conflicts with a real human using the SAME
+display at the same time - their mouse click/window switch mid-sequence
+silently redirects the next injected key to the wrong window. A
+real, live instance of exactly this cost significant debugging time
+before being identified as a test-hygiene/environment issue, not a
+tp_taskbar.c bug (see the "cell_for_nav mismatch" investigation,
+2026-08-10, provisionally attributed to an index bug before this focus-
+contention explanation was found).
+
+The relay sidesteps this entirely: it's a plain file append (`echo "51"
+>> #.desktop/livedesk_agent_relay.txt`), consumed by the SAME contextual
+dispatch logic a real KeyPress already uses (local popup-row-digit vs
+global-nav-digit semantics preserved exactly, see popup_digit()'s own
+header comment in tp_taskbar.c). No XTest, no XSendEvent, no window IDs,
+no shared input focus - a human can be actively using the browser or any
+other window on the SAME display at the same moment an agent is driving
+the taskbar via relay, with zero interference either direction. Format:
+one bare decimal ASCII code per line (48-57 = digits, 13 = Enter, 27 =
+Escape, 8 = Backspace, 32-126 = other printable ASCII for cli-io typed
+text) - same bare-decimal convention chtpm_parser.c's own
+inject_raw_key() already uses for pieces/apps/player_app/history.txt
+(NOT the `[TIMESTAMP] KEY_PRESSED: N` format that's specific to
+pieces/keyboard/history.txt/wraith-alpha - don't conflate the two, they
+are different target files with different readers and different format
+contracts even within the SAME chtpm_parser.c).
+
+The house-standard harness for this program
+(#.desktop/harnesses/livedesk-taskbar/) was updated 2026-08-10 to use
+this relay by default; its old XTest key_injector.c is kept only as a
+documented fallback for testing tp_taskbar.c's OWN real-human-input
+handling (the XNextEvent path itself), not as the default agent-testing
+method anymore. Any other raw-Xlib program in this house that grows an
+equivalent relay should follow the same bare-decimal-per-line contract
+for consistency, and should keep it truly additive (a new poll call site
+plus new functions, zero changes to the existing XNextEvent KeyPress
+handling) so existing real-human-input behavior can never regress from
+adding agent support.
+
+SCOPE ADDENDUM 2026-08-26 - khtpm_entity_menu_render.c (db-hq/events-hq/
+taskbar-settings/bookmarks/palettes/stats-hq/chat-hai, the merged
+khtpm-family binary): direct instruction after this exact mistake was
+made live - "u should always try that before using xdo tool", "yes
+always favor cheap text based audit... u always jump to xdo tool/png
+dump way to quick. thats for emergency when text audit failed".
+
+**Order of preference for testing/driving this binary, strict:**
+1. **The file relay** (real, working, added 2026-08-26 for db-hq mode:
+   `#.desktop/db_hq_history.txt`, bare-decimal-ASCII-per-line, same
+   contract as tp_taskbar.c's/khtpm_strip_parser.c's own relay above -
+   `poll_dbhq_agent_relay()` in khtpm_entity_menu_render.c). This was
+   ALREADY documented as a plan in this binary (a dangling comment
+   describing `db_hq_history.txt` existed for months) but never actually
+   implemented until a real agent went looking for it and found nothing
+   - don't repeat that gap for other modes; port the same real function
+   shape (not just the comment) before claiming a mode "has" agent
+   input.
+2. **A cheap TEXT state dump**, not a PNG frame dump, for verifying what
+   happened - `dbhq_dump_debug_state()` (relay code 200, writes
+   `/tmp/db-hq-state.txt`: focus_nav, digit_accum, current tab, every
+   nav-reachable element's tag/id/label with a `<-- FOCUS` marker on the
+   focused one). Read this file directly - it answers "did my keypress
+   land on the right element" without decoding an image. Add the
+   equivalent for any OTHER mode before testing it, rather than falling
+   back to step 3 out of impatience.
+3. **PNG frame dump** (`dump_frame_png()`, real 'p' key / relay code
+   112) - LAST resort only, when the text state dump genuinely can't
+   answer the question (e.g. verifying actual pixel layout/color, not
+   program state). In this house's own sandboxed desktop this was also
+   observed to be unreliable for confirming timing-sensitive UI changes
+   (a real dump was seen showing stale content while the text state dump
+   read moments later showed the true, updated state) - treat a PNG
+   dump's apparent staleness as inconclusive, not as evidence a change
+   didn't happen; re-confirm via the text dump before concluding a bug.
+4. **xdotool/XTest/external tools** - only if 1-3 are genuinely
+   insufficient (e.g. testing real mouse drag physics, or a mode with no
+   relay yet and no time to add one). Reaching for this FIRST, before
+   trying the relay, is the exact mistake this addendum documents -
+   don't repeat it. Installing xdotool ad hoc (`sudo apt-get install`)
+   mid-task is itself a signal step 1 wasn't tried first.
+
+**CORRECTION / ADDENDUM 2026-08-28 (same binary, live-verified):**
+- Per-mode history files are the drive path (`db_hq_history.txt`,
+  `chat_hai_history.txt`, `taskbar_settings_history.txt`,
+  `entity_menu_history.txt`) — `KEY_PRESSED:` / `MOUSE_EVENT:` like
+  wraith-alpha. `poll_dbhq_agent_relay()` is not the only name;
+  do not require X focus to poll (that stole the human when agents
+  used xdotool to satisfy the old gate).
+- Map: override_redirect popups = `XMapRaised`, no SetInputFocus on
+  map. WM-managed HQ = `XMapWindow` (not Raised). Cite
+  `HQ-WINDOW-MAP-AND-AGENT-INPUT.md`.
+- Strip **arrows for unified nav**: `#.desktop/livedesk_agent_relay.txt`
+  codes **1002 / 1001** (KSC_FOCUS_RIGHT/LEFT). Writing
+  `strip_input_history.txt` `KEY_PRESSED:1002` did **not** move
+  `unified_nav_focus` in the 2026-08-28 re-prove.
+
+Principles
+----------
+1) Test existing behavior first (regression baseline), then test new behavior.
+2) Test at three levels:
+   - black-box runtime (key injection + frame review)
+   - module/op level (direct state/op assertions)
+   - end-to-end user flow (play full project, create/edit/save/load, script, and replay)
+3) Record evidence in text (commands + observed output snippets).
+4) In no-git mode, create manual backups before risky changes.
+5) After each test pass, publish a frame-history report in repo root (`./`) before making code changes.
+
+High-Value Test Interfaces
+--------------------------
+1) Key injection file:
+- `pieces/keyboard/history.txt`
+- **EXACT FORMAT REQUIRED:** `[YYYY-MM-DD HH:MM:SS] KEY_PRESSED: <code>`
+- Example: `echo "[$(date '+%Y-%m-%d %H:%M:%S')] KEY_PRESSED: 10" >> pieces/keyboard/history.txt`
+- *Note:* The parser strictly looks for the `KEY_PRESSED: ` prefix. Raw integers or malformed lines are ignored.
+- **Timestamp Issues:** Dynamic generation of timestamps using the `date` command in the shell environment can be problematic due to parsing errors or command availability. If issues arise, using a fixed, valid timestamp (e.g., `[2026-04-21 08:08:15]`) is a reliable workaround.
+- **Specific Key Codes:** Common key codes include 'Enter' (decimal code: `13`).
+- **Behavioral Note:** Observed behavior indicates that some key presses, such as '1' on the main menu, might not consistently register or may require specific context. Further investigation may be needed for such cases.
+
+2) Routed app input:
+- `pieces/apps/player_app/history.txt`
+
+3) Frame artifacts:
+- `pieces/display/current_frame.txt`
+- `pieces/display/current_layout.txt`
+- `pieces/display/frame_changed.txt`
+- `pieces/master_ledger/frame_changed.txt`
+
+4) Runtime process checks:
+- orchestrator / parser / renderer / clock daemon process presence
+
+5) Project/runtime artifacts:
+- `projects/<project>/...` piece/state trees
+- project metadata (`project.pdl` and related fields)
+- event/script files and bindings
+
+Regression Test Matrix (Existing Features)
+-----------------------------------------
+R1) Stack launch + process health
+- Launch runtime.
+- Verify expected core processes are live.
+- Verify frame file exists and is rendering.
+
+R2) Key injection ingestion
+- Inject key lines to `pieces/keyboard/history.txt` using the `[TIMESTAMP] KEY_PRESSED: <code>` format.
+- Confirm new entries append and are consumed over time.
+- Confirm frame updates continue after key injections.
+
+R3) Layout/frame validity
+- Confirm `current_layout.txt` points to a valid layout path.
+- Confirm `current_frame.txt` is non-empty and structurally valid.
+
+R4) Local app state integrity
+- Confirm active status line in frame remains coherent (`ACTIVE`, `KEY`, `Z-LEVEL`).
+- Confirm no broken placeholders in frame output.
+
+R5) Op-level smoke checks
+- Run `render_map.+x` and verify `view.txt` updates.
+- For move/state ops, verify expected state deltas (or document if blocked by mode/context).
+
+R6) Compile regression
+- Run `./compile_all.sh` for touched areas before merge.
+
+Nuanced Full-Project Test Matrix (Required)
+-------------------------------------------
+These are required for tester-grade confidence, not optional.
+
+P1) Full project playthrough smoke (existing project)
+- Enter project loader.
+- Launch at least one target project (e.g., fuzz-op/op-ed-related flow).
+- Perform nuanced interactions (nav, mode switches, map control, action menu paths).
+- Verify frame + state coherence after each interaction cluster.
+
+P2) Editor-driven project creation
+- Enter editor flow.
+- Create a new project or project-like playable state.
+- Add pieces/entities and map content.
+- Verify piece placement appears in rendered frame and corresponding state files.
+
+P3) Save / load roundtrip (editor-created content)
+- Save created project.
+- Exit/re-enter flow.
+- Load same project.
+- Verify parity:
+  - piece positions/states
+  - map association
+  - active layout/metadata sanity
+
+P4) Script/event authoring and execution
+- Create script/event definitions for the created project.
+- Bind scripts/events to target pieces/actions.
+- Trigger in runtime play.
+- Verify expected state/result changes and response text.
+
+P5) Local play from created/saved project
+- Launch local play using saved project artifacts.
+- Confirm no manual file edits required.
+- Confirm project boots into expected layout/context.
+
+P6) Metadata correctness checks
+- Validate `entry_layout`, `player_piece`, and related metadata are resolved correctly.
+- Ensure values are scan/registry-derived where appropriate (no stale hardcoded defaults).
+
+P7) Cross-project sanity
+- Ensure testing one project does not corrupt another project's states/layout pointers.
+- Check at least one untouched project still launches normally.
+
+New Feature Test Plan (Template)
+--------------------------------
+For each new feature F:
+1) Define expected behavior in one sentence.
+2) Add deterministic setup steps (files/paths/state).
+3) Add key-injection path (if UI/input relevant).
+4) Add frame assertions (what text/layout must change).
+5) Add state-file assertions (which keys/values must change).
+6) Add project artifact assertions (save/load/script binding persistence).
+7) Add rollback/cleanup steps.
+8) Add failure signatures (what indicates miswire/hardcode regression).
+
+Recommended command skeleton:
+- Baseline capture:
+  - copy `current_frame.txt` and key state files to `/tmp/*before*`
+- Inject/trigger:
+  - append key/event inputs
+- Post capture:
+  - copy `current_frame.txt` and state files to `/tmp/*after*`
+- Diff:
+  - `diff -u before after`
+- Log:
+  - save key evidence lines in test report text file
+
+Mandatory Post-Test Report Gate (Root `./`)
+-------------------------------------------
+This is required so review does not depend on hunting under nested folders.
+
+Rule:
+1) After every test cycle, create a root report file in `./` with:
+- test scope
+- key injections/actions performed
+- frame evidence lines (timestamps + relevant frame snippets)
+- PASS/FAIL/INCONCLUSIVE verdicts
+- explicit "safe to proceed with code changes" line
+
+2) Source evidence from:
+- `pieces/debug/frames/session_frame_history.txt`
+
+3) Report filename convention (root dir):
+- `FRAME_REPORT_<YYYYMMDD-HHMM>_<topic>.txt`
+- Example: `FRAME_REPORT_20260318-0950_scroller.txt`
+
+4) Review gate:
+- Do not begin implementation edits until this root report is written and reviewed.
+
+**System Startup and Frame Viewing:**
+- **System Startup:** The CHTPM orchestrator is launched using the `./button.sh run` command. This initializes the system and presents a text-based main menu.
+- **Frame Viewing:** Frame updates are logged chronologically in `pieces/debug/frames/session_frame_history.txt`. This file is crucial for evidence gathering and post-test review.
+
+Suggested command pattern:
+- `cp pieces/debug/frames/session_frame_history.txt ./FRAME_HISTORY_RAW_<YYYYMMDD-HHMM>.txt`
+- Create concise reviewed summary in:
+  - `./FRAME_REPORT_<YYYYMMDD-HHMM>_<topic>.txt`
+- Keep both raw copy and concise summary for traceability.
+
+M18 Smoke Pass Performed (This Session)
+---------------------------------------
+Executed:
+1) Started stack via background `run_chtpm.sh`.
+2) Verified live processes: orchestrator, chtpm_parser, renderer, clock_daemon.
+3) Injected keys into `pieces/keyboard/history.txt`.
+4) Verified frame output present in `pieces/display/current_frame.txt`.
+5) Captured runtime frame evidence from `/tmp/chtpm_m18.log`.
+6) Stopped stack cleanly via `kill_all.sh`.
+
+Observed:
+- PASS: runtime stack launches and renders frames.
+- PASS: keyboard history accepts injected keys.
+- PASS: frame artifacts are generated and readable.
+- PASS: process cleanup completed after `kill_all.sh`.
+- INCONCLUSIVE: selector movement via direct injection was not proven in this smoke run context; requires controlled active-mode test harness.
+- INCONCLUSIVE: direct `move_entity.+x` delta not observed in current context; requires dedicated fixture state and mode-aware harness.
+
+Known Testing Pitfalls
+----------------------
+1) Mode/context sensitivity:
+- Same key can do nothing if active mode/context is not correct. Check the current layout and focused element.
+
+2) Metadata/default traps:
+- Missing `entry_layout` / `player_piece` guessed defaults can misroute tests.
+
+3) Hardcoded-path drift:
+- Tests may pass in one layout/project but fail in another if pathing is not canonical/world-map-first.
+
+4) Cancellation sequence confusion:
+- Multi-key injections can net-zero movement and hide real behavior.
+
+5) False confidence from op-only tests:
+- Direct op passes do not prove end-to-end editor/save/load/script/play behavior.
+
+6) **INJECTION FORMAT ERROR & UNRELIABLE INPUT:**
+- Key injection MUST strictly follow the `[TIMESTAMP] KEY_PRESSED: <code>` format. Raw integers, malformed lines, incorrect timestamps, or missing prefixes will be ignored by the parser. Issues with the shell's `date` command may necessitate using fixed timestamps.
+- **Specific Key Codes:** Common key codes include 'Enter' (decimal code: `13`).
+- **Behavioral Note:** Observed behavior indicates that some key presses, such as '1' on the main menu, might not consistently register or may require specific context. Further investigation may be needed for such cases.
+
+7) **GHOST BUG HUNTING**: 
+- If key injection is visible in the frame (e.g., in the `[KEY]:` status line), the input pipeline is functional. **Do not investigate "broken input" if the frame reflects the key.** If the application doesn't respond, check the application module's logic, active layout mode (Nav vs Active), or focus state.
+
+8) **RACE CONDITION FALSE POSITIVES**:
+- Sometimes a frame update happens just before an injection is processed. Always allow 1-2 seconds for the parser/module cycle to complete before capturing evidence.
+
+9) **MENU NAVIGATION INCONSISTENCIES:**
+- On certain menus, specific key presses (e.g., '1' on the main menu) may not appear to register or navigate as expected. This could be due to context sensitivity, an incorrect key code being used, or the need for a different action (like 'Enter'). Always verify frame updates and system state after injection.
+
+10) **LINUX VS WINDOWS .+x BINARY DRIFT:**
+- If `./button.sh run` fails with `cannot execute binary file: Exec format error`, inspect the target with `file`.
+- A common cause is that `pieces/chtpm/plugins/+x/orchestrator.+x` or other `.+x` files are Windows PE binaries while the current agent/session is on Linux.
+- Approved Linux recovery path:
+  1. `sh #.dev-storage/#.tools/remove_binaries.sh`
+  2. `./button.sh compile`
+  3. Verify compile summary reports zero failed binaries and required binary check passes.
+- This removes generated `*.+x` binaries and rebuilds Linux versions. It should not be treated as source-code deletion.
+
+11) **API SANDBOX / NO `/dev/tty` HEADLESS TESTING:**
+- Some agent/API shells do not expose `/dev/tty`. In that environment, normal `./button.sh run` may get past compilation but exit when `keyboard_input_linux.c` reports `open /dev/tty: No such device or address`.
+- This does not prove TPMOS is broken on a real terminal; it means the API shell cannot run the terminal keyboard muscle.
+- For frame-driven agent testing in this environment, use a headless subset:
+  - Start parser: `./pieces/chtpm/plugins/+x/chtpm_parser.+x pieces/chtpm/layouts/os.chtpm`
+  - Start renderer: `./pieces/display/plugins/+x/renderer.+x`
+  - Inject keys by appending valid `KEY_PRESSED` lines to `pieces/keyboard/history.txt`.
+  - If needed, append a marker such as `M\n` to `pieces/display/frame_changed.txt`.
+  - Inspect `pieces/display/current_frame.txt` and `pieces/debug/frames/session_frame_history.txt`.
+- Stop any manually launched parser/renderer processes after the test cycle and verify no `chtpm_parser`, `renderer`, `orchestrator`, `keyboard_input`, or `joystick_input` process remains.
+
+12) **HEADLESS TEST CAN STILL PROVE KEY INGESTION:**
+- In the API headless smoke test, starting only `chtpm_parser.+x` and `renderer.+x`, then injecting:
+  `[2026-06-02 22:33:15] KEY_PRESSED: 13`
+  moved the frame from the CHTPM main menu to `PIECEMARK LOADER` / `playrm/loader.chtpm`.
+- This proves the file-based input parser and frame renderer can be tested without live keyboard capture.
+- Use this pattern for Codex/agent validation when a real terminal is unavailable.
+
+Best-Practice Additions for Future
+----------------------------------
+1) Build deterministic end-to-end harness scripts for P1-P7.
+2) Add per-feature test fixtures under `#.tools/`:
+- setup fixture
+- run test
+- verify expectations
+- cleanup fixture
+
+3) Keep an append-only session test report per day.
+4) Require at least one full create->save->load->script->play cycle before accepting major feature work.
+
+Minimal Daily Regression Checklist
+----------------------------------
+1) Runtime launches (processes alive)
+2) Frame renders (non-empty current_frame)
+3) Key injection path alive (history updates)
+4) Layout resolution valid (current_layout points to existing file)
+5) Compile check for touched code
+6) High-risk changes get before/after evidence
+7) At least one end-to-end project flow is validated (create/play or load/play)
+8) Root frame report created in `./` and reviewed before edits
+
+SCOPE ADDENDUM 2026-08-11 - khtpm_strip_parser.c / khtpm_taskbar_manager
+family (split-process taskbar), + a real self-correction worth reading
+------------------------------------------------------------------------
+FIRST: a mistake made and caught live this session, kept here on purpose
+so the next agent doesn't repeat it. An agent tested `nav.sh nav 2`
+(digit-jump to header cell 2/USER) once, got a confusing result (focus
+landed inside an unrelated already-open HQ popup), and from that ONE
+result built an elaborate theory that the relay's digit-nav targets a
+different "nav claim" numbering unrelated to header cells at all - and
+was about to write that theory into this file as fact. The real cause of
+the confusing result: a human was interacting with the SAME live desktop
+at the same moment (an accidental Enter keypress), colliding with the
+agent's own relay sequence. Retried clean (fresh Escape first, no
+overlapping human input) and `nav.sh nav 2` worked exactly as designed
+the whole time - opened the USER header cell's submenu correctly. LESSON:
+one failed/confusing result on a live, shared, interactive desktop is not
+proof of a code-level gap - retry clean before concluding a mechanism is
+broken, especially when a real human might be touching the same display.
+
+Two real, verified-true things about this family, confirmed by clean
+retest (not superseded by the correction above):
+
+1) TWO relay files exist for this family, not one:
+   - #.desktop/livedesk_agent_relay.txt - agent -> PARSER (khtpm_strip_
+     parser.c's poll_agent_relay()). Accepts digits 48-57, Enter=13,
+     Escape=27, Backspace=8, printable 32-126. This is nav.sh's `nav`/
+     `row`/`key`/`esc`/`type` commands - and `nav <n>` DOES correctly
+     reach header cells (confirmed: `nav.sh nav 2` opens the USER cell's
+     real submenu, digit N jumping working exactly as intended). Once a
+     submenu IS open, further single digits (e.g. `nav.sh key 3`) select
+     a ROW within it (ktb_hq_digit() on the manager side), then `key
+     Return` activates that row - this is the correct, confirmed way to
+     drive multi-step submenu flows (verified end-to-end: opened USER
+     cell, activated "New User...", typed a user id, submitted, typed a
+     display name, submitted, and a real account + xyzfs home was
+     created and auto-logged-in, purely via this relay - see
+     au11-hq/USER_CREATION.md for the full trace).
+   - #.desktop/strip_history.txt - PARSER -> MANAGER (resolved decimal
+     action codes, khtpm_strip_codes.h). Normally parser-written after it
+     resolves a click/key locally; ALSO usable as a direct second
+     injection point (nav.sh's `hqcell`/`mgrcode`, added 2026-08-11) for
+     manager-side-only verification (does hq_open/hq_menu[] build
+     correctly) when you specifically want to isolate manager logic from
+     parser rendering — but prefer relay #1 (`nav`/`key`/`type`) for full
+     round-trip testing per the correction above; it works.
+
+2) Real X11 arrow-key stepping of header-cell focus (g_nav_focus in
+   khtpm_strip_parser.c) is still genuinely local-only to the parser's
+   real XNextEvent loop, with no relay equivalent - but this does NOT
+   matter in practice for THIS TASKBAR because digit-jump (relay #1)
+   reaches the same header cells directly by number, which is the
+   harness's actual, proven day-to-day method (see point 1). Don't reach
+   for arrow-key simulation for taskbar header-cell/submenu-row nav; you
+   don't need it there.
+   CAVEAT (direct note, 2026-08-11): this is scoped to the TASKBAR's own
+   header-cell nav specifically, not a blanket "arrows are never needed"
+   claim. Entity/desk-game movement (tp_desktop_window.c, and the demo
+   games under active development - desk-shop/desk-civ/muchipal-desk) is
+   a DIFFERENT input surface and will very likely need real directional
+   movement testing (player walking around a map, etc.) - if/when that
+   comes up, check whether tp_desktop_window.c's own relay (if any) already
+   supports directional codes before assuming it needs the same "digit-jump
+   is enough" treatment as this taskbar. Don't generalize this taskbar's
+   specific finding onto a different program without checking first.
+
+SCOPE ADDENDUM 2026-08-12 - external screen capture (xwd/PIL) is NOT
+reliable once a real human may be USING the desktop concurrently
+------------------------------------------------------------------------
+Real bug hit live testing ai-cell (&.widgits/ai-cell/): an xwd capture
+of a specific window ID returned ANOTHER real window's content
+entirely (bleed-through), because the target window had been dragged
+by the real user and was partially occluded at the exact moment of
+capture. xwd captures what's window-stacking-composited at that
+instant, not a guaranteed snapshot of one window's own content -
+this is fine for solo agent-only testing (the pattern used all session
+for db-hq/events-hq/taskbar/entities, no problems there) but breaks
+the moment a real human is ALSO actively using the same display.
+
+REAL FIX (direct instruction: "u should use png dump not pil capture.
+from now on (or receipt) learn 2 rely on receipts"): any khtpm/-hq
+window app should dump ITS OWN compose buffer directly (same
+`dump_frame_png()` pattern db-hq/ai-cell both use - `XGetImage` on the
+app's own offscreen Pixmap, standard 0xRRGGBB byte layout, not the
+zeroed mask fields a bare Pixmap returns) instead of relying on an
+external xwd/PIL capture of the mapped window. This can never race
+with window stacking/occlusion because it reads what the process
+itself drew, not what's visually on screen at capture time.
+
+Write a RECEIPT file alongside the PNG (`<name>.png.receipt.txt`,
+plain key=value line: ok/w/h/timestamp + whatever app-state fields are
+useful to confirm, e.g. ai-cell's own `nav=... n_sessions=... n_msgs=...`)
+- poll/trust the RECEIPT, not just the PNG's existence, since a
+partially-written PNG file existing doesn't prove the write finished.
+See `&.widgits/ai-cell/ops/khtpm_ai_cell_render.c`'s own
+`dump_frame_png()` for a complete real example (bound to 'p' when not
+in a text-entry context, plus a `--dump-and-exit` headless mode).
+
+Any NEW khtpm/-hq window built after this point should get this from
+day one, not bolted on after hitting the same bug live again.
+
+SCOPE ADDENDUM 2026-08-13 — three real bugs found testing h-ai's model
+selector, ALL caused by broken TEST METHODOLOGY, not (mostly) the app
+------------------------------------------------------------------------
+Real session, live: implemented a model-selector nav item for h-ai
+(&.widgits/ai-cell/), code compiled clean, but ~2 hours of relay
+testing produced totally inconsistent, unreproducible results ("works
+sometimes, model.txt sometimes appears, sometimes doesn't"). Root
+cause was NOT the feature code — it was three stacked testing mistakes
+that any future agent WILL make again if this isn't read first.
+
+MISTAKE #1 — `--dump-and-exit` is a SEPARATE PROCESS, not a peek into
+the live one you're relay-testing.
+  `khtpm_ai_cell_render.+x <house_root> --dump-and-exit` spawns a
+  brand-new, disposable process: fresh X window, fresh
+  `load_model_choice()`, `g_focus_nav` reset to 1, zero knowledge of
+  anything you've relay-injected into a DIFFERENT already-running
+  instance. Using it to "verify" whether relay codes landed on the
+  live process proves NOTHING about that live process — you're just
+  reading a brand-new process's default startup state every time,
+  which is why the receipt kept showing `nav=1`/`nav=3` no matter what
+  you'd actually injected.
+  REAL FIX: to inspect a LIVE process's actual current state without
+  killing/replacing it, send the `'p'` key THROUGH THE RELAY FILE
+  (ASCII 112, one line, same file as everything else) — this calls
+  `dump_frame_png()` from inside the SAME process you've been
+  injecting into, so the receipt actually reflects your prior codes.
+  `--dump-and-exit` is only useful for confirming "does this binary
+  render without crashing," never for checking live relay-driven state.
+
+MISTAKE #2 — nav item indices are NOT stable, and a test loop that
+presses "New Chat" (usually nav item 1) will keep moving its own
+target out from under itself.
+  This is directly documented in README.md ("Nav numbers are NOT
+  fixed... no static map you can hardcode into a test script") and was
+  read and even quoted back to the user earlier THIS SAME SESSION —
+  and still got violated by a brute-force "try digits 1 through 15"
+  test loop. Every pass through that loop hit digit '1' first
+  (New Chat), which calls `start_new_session()` and grows
+  `g_n_sessions` immediately, permanently shifting every nav index
+  after it on every single iteration. The loop could never land on a
+  fixed target because the target kept moving. 26 stray empty session
+  dirs were created this way before the mistake was caught.
+  REAL FIX: before injecting ANY digit-jump, first send `'p'` via
+  relay and READ THE RECEIPT'S `n_sessions`/`n_nav` fields to compute
+  the CURRENT correct index right before every navigation attempt —
+  never assume a fixed index across more than one action, and never
+  run a test loop that itself performs an action (like New Chat) which
+  changes the nav layout it's trying to test against.
+
+MISTAKE #3 — repeated `sh button.sh` calls without confirming the
+prior instance actually died first launches MULTIPLE CONCURRENT
+PROCESSES, all racing on the same relay file and session directory.
+  `pkill -9 khtpm_ai_cell_render` does not reliably match this
+  binary's process (the emoji-laden house-root path passed as argv[1]
+  appears to interfere with simple name-based pkill matching in some
+  shells/environments — not fully root-caused, but consistently
+  observed). Calling `button.sh` again without verifying zero prior
+  processes launches a NEW instance on top of still-living ones.
+  `ps aux | grep khtpm_ai_cell` during this session found FIVE
+  simultaneously-alive processes, all independently polling the exact
+  same `#.desktop/ai_cell_agent_relay.txt`, each with its own
+  independent `g_relay_cursor`/`g_focus_nav`/session state, all racing
+  each other to consume relay codes and all writing to the same
+  `sessions/` dir and PNG receipt path. This alone explains most of
+  the "flaky, unreproducible" behavior — there was never ONE
+  ground truth to check against.
+  REAL FIX: before starting a fresh instance for testing, always run
+  `ps aux | grep khtpm_ai_cell_render | grep -v grep` and confirm ZERO
+  results (kill any remaining PIDs individually by number, don't trust
+  a single `pkill` call to have worked) — THEN launch — THEN
+  re-confirm exactly ONE process exists — before injecting anything.
+  `button.sh` itself has no built-in single-instance guard; don't add
+  one to production code for this (multiple real windows may be a
+  legitimate future use case), but ALWAYS enforce it manually in test
+  procedure.
+
+A REAL APP BUG found (not a testing mistake) once the above three were
+controlled for: multi-digit nav-index accumulation is DEAD CODE once
+`n_nav >= 9` (true almost immediately in normal use — a handful of
+saved chats is enough). `handle_key()`'s digit branch checks
+`if (d >= 1 && d <= g_n_nav) g_focus_nav = d;` BEFORE the multi-digit
+accumulation branch, and since single digits 1-9 are almost always
+`<= g_n_nav`, that branch always wins first — pressing '2' then '6'
+sequentially jumps focus to item 2, then item 6, NEVER item 26. This
+was confirmed live: with `n_nav=30`, sending '2' then '6' via relay
+left `g_focus_nav=6`, not 26. Combined with relay's own ASCII-only
+protocol (digits/Enter/Escape/Backspace/printable — no arrow-key
+codes), this means **any h-ai nav item beyond index 9 is currently
+UNREACHABLE via relay once several sessions exist** — real keyboard
+arrow-key stepping still works (untested via relay, since relay can't
+send arrow keysyms at all), but a pure-relay agent session cannot
+reach deep sidebar items once session count grows. Flagged in
+`&.widgits/ai-cell/ops/khtpm_ai_cell_render.c`'s own
+`handle_key()` (~line 1717) for a future fix (needs a real digit
+accumulator with an explicit "commit" trigger — e.g. only jump on
+Enter, or use a short input-timeout window — not a same-session
+priority fix, but real and worth tracking, NOT re-discovering from
+scratch next time this area is touched).
+
+PROCEDURE — going forward, testing ANY nav-indexed khtpm/-hq window
+via relay should follow this order every time, not ad hoc:
+  1. Confirm zero stray processes (`ps aux | grep <binary> | grep -v grep`).
+  2. Launch exactly one instance, confirm exactly one PID exists.
+  3. Send `'p'` (or the app's own live-dump key) via relay BEFORE every
+     navigation attempt — read the receipt's live nav/session/focus
+     fields, don't assume from a prior state or a spawned dump-and-exit
+     process.
+  4. Compute the CURRENT correct nav index from the receipt you just
+     read, not from a hardcoded number or an earlier session's count.
+  5. If `n_nav >= 9` and the target index is >9, single-digit relay
+     jump CANNOT reach it (see the accumulator bug above) — don't loop
+     digits hoping it'll work; this is a known, real, confirmed dead
+     end until the accumulator itself is fixed.
+  6. Clean up any test-created state (stray sessions, temp files)
+     afterward so the next test starts from a small, predictable
+     `n_nav` — don't leave debris that makes the NEXT session's nav
+     math harder.
+
+SCOPE ADDENDUM 2026-08-13 (later) — the digit-accumulator bug above
+IS FIXED (ported the real `chtpm_parser.c` `digit_accum` standard into
+`khtpm_ai_cell_render.c`'s `handle_key()`), relay-verified live: grew
+a real instance to `n_nav=12`, confirmed `'1'` then `'2'` reaches item
+12 (not item 2), confirmed overflow fallback (`'9'` then `'9'` → falls
+back to item 9). Rule 5 above is now historical for ai-cell
+specifically — multi-digit jump past index 9 works there. Still a
+valid general caution for any OTHER khtpm/-hq window that hasn't had
+this same fix ported yet — check whether the target window's own
+`handle_key()` uses a real accumulator before assuming multi-digit
+jump works.
+
+A NEW real gotcha found while verifying the fix, worth its own rule:
+**nav index order follows the CALL order of a window's `draw_*()`
+functions inside its `redraw()` (or equivalent), NOT the textual/line
+order those functions appear in the source file.** Concretely in
+ai-cell: `draw_close_button()` is defined early in the file (so its
+`nav_add(NAV_CLOSE, ...)` call is one of the textually-first nav_add
+sites you'll grep to), but `redraw()` invokes it LAST — so Close
+actually gets the highest nav index at runtime, and whatever nav item
+is added by the SECOND-called `draw_*()` function gets index 1, not
+whatever textually appears second in the file. Assuming file order equals
+nav order sent a test digit at the wrong nav item (no crash — it just
+silently activated a different, valid nav item than intended, which
+is a worse failure mode than an error because it looks like it
+"worked"). **Rule 7, added to the procedure above**: before computing
+target nav indices for ANY khtpm/-hq window, grep that window's own
+`redraw()` (or equivalent per-frame draw dispatcher) for the ACTUAL
+call order of its `draw_*()` functions, and read each one's `nav_add()`
+calls in that call order — never infer nav index from where `nav_add()`
+happens to appear textually in the file.
+
+**Rule 8, added to the procedure above (2026-08-13)**: "confirm zero
+stray processes before launching" (Rule 3) applies to a window you are
+ACTIVELY BUILDING and smoke-testing in the same session just as much
+as to an existing one you're re-testing — no "just this once, quick
+check" exception. If launching a binary a second time for any reason
+without explicitly killing the prior instance first, check `pgrep -f`
+before sending anything. Doubly true for any window whose actions
+write to SHARED, non-disposable state (a real config another live
+process reads) rather than its own private session dir. Real incident
++ full narrative: see PITFALL 71-adjacent entry in
+`#.haiku+/!.xyzos-pitfalls+1.txt` (app-bug/incident writeups belong
+there, not in this file — this file stays scoped to injection/nav
+testing procedure only, per direct correction 2026-08-13).
+
+SCOPE ADDENDUM 2026-08-20 — testing "interact mode"-gated 2D/3D map
+systems (mutaclysm-family: real camera state updates correctly in a
+state file but the render never visibly follows). Full incident +
+root-cause writeup lives in `101.mutaclsym🧟‍♂️️19.00/SIMLINK_PITFALL.md`;
+this entry is the PROCEDURE distilled from it, for any future
+interact-mode/camera testing on this or a sibling project.
+
+**Rule 9 — a state-file diff is NOT proof a render pipeline picked
+something up.** `grep`-confirming `camera_mode=3` changed in a hero
+state file only proves the INPUT side worked. Multiple independent
+processes (a dispatcher, a 3D renderer, an RGB compositor, a window
+mirror) can each read/write "the same" relative filename while
+actually resolving to DIFFERENT real files if their working
+directories or root-env vars diverge even slightly — this produces
+a confirmed-changing state file next to a genuinely-frozen visible
+window, with zero errors anywhere. Always finish a camera/render test
+with a REAL pixel-level proof (`dump_rgb_png.+x`, which reads the raw
+frame buffer file directly — no window-capture race, no reliance on
+the GUI actually being visible on a shared desktop) and compare it
+against the PRIOR dump, not just against a text description of what
+"should" have changed.
+
+**Rule 10 — "interact mode" is usually a real, separate engagement
+gate, not just a label.** In this family, pressing a menu item's Enter
+(e.g. "Control Hero") sets a real `interact_mode=1`/`active_index`
+state that subsequent keys are checked against — some input ops (e.g.
+`camera_control.c`'s pan/look) hard-return no-op if that gate isn't
+genuinely on, while OTHER ops for the same game (e.g. plain movement)
+may respond regardless of the gate's state, which LOOKS like "input is
+working fine" even when the specific feature under test (camera) is
+silently blocked. Before concluding a specific control doesn't work,
+confirm via a fresh read of the actual gate field (`interact_mode`,
+`active_index`, whatever the project calls it) at the moment you send
+the test key — don't infer the gate state from whether an unrelated
+control (movement) responded.
+
+**Rule 11 — verify with the REAL capture path, not just a raw file
+write, when input capture itself is in question.** A bare file-append
+test (writing directly into a relay/history file) can produce a false
+PASS if it bypasses a real, separate bug in the actual X11-capture →
+relay-write chain (wrong keycode mapping, wrong window focus, a
+WM/global-hotkey interception). When the capture path itself is
+uncertain, prefer a REAL synthetic X11 keypress via an XTest injector
+(`&.widgits/tile-picker/ops/+x/tp_test_send_key.+x <window-name-
+substring> <keysym>` — confirmed working here against a live
+`x11_mirror`-family window by exact title-substring match) over a raw
+file write, so the test exercises the same code path a real human
+keypress would.
+
+**Rule 12 — a persistent (project-root) vs. session-local (CWD) file
+split, once introduced (e.g. by a symlink-elimination pass), silently
+breaks any writer/reader PAIR that doesn't agree on the same base.**
+Before trusting that a fix for one half of a pipeline (e.g. the
+dispatcher) is sufficient, explicitly check `/proc/<pid>/cwd` for
+EVERY long-lived process in the chain (dispatcher, renderer,
+compositor, mirror) — a library-level `chdir()` call you don't control
+(e.g. inside a shared parser before launching a persistent module) can
+silently move one process's own "relative path" resolution out from
+under an otherwise-correct fix, and this never produces an error, only
+a stale/frozen visible output next to correctly-updating state files.
+
+UPDATE 2026-08-25 - PRESENTATIONS: proof-of-feature videos, real standing
+convention (direct instruction: "be very careful deliberate and make
+examples and test them and prove harnesses as we go... presentations
+being made when we are done of proof each major feature is working")
+------------------------------------------------------------------------
+**GATING RULE, direct instruction (2026-08-25), read this BEFORE building
+one:**
+  1. Only build a presentation when there is a genuinely MEANINGFUL
+     DELIVERABLE behind it - a real feature landed and verified, a real
+     bug found and fixed, a real architectural change proven live. NOT
+     for a small tweak, a doc edit, a one-line config change, or routine
+     verification that was already going to happen anyway. If you're
+     unsure whether tonight's work clears that bar, that's itself a
+     signal to ask rather than assume yes.
+  2. **ALWAYS ask the user first before building one - never just do it.**
+     This applies even when a presentation would obviously be warranted;
+     "obviously warranted" is not the same as "asked and confirmed."
+  3. DO proactively SUGGEST making one once a lot of real work has
+     landed in a session (a batch of features, a significant bugfix
+     chain, a completed migration) - surfacing the suggestion is
+     encouraged and expected; silently deciding FOR the user and
+     building it is not.
+This is a stricter gate than "whenever a feature works" - the rest of
+this section describes HOW to build one once the user has said yes, not
+a standing license to build one on your own judgment.
+
+When a major feature is verified live (not just "compiled clean") AND
+the user has said yes, build a presentation - a short, human-watchable
+MP4 of real screenshots + a spoken-for-you caption per frame, plus real
+reproduction steps. This is NOT optional polish for big features; it's
+the actual deliverable of "proof it works," same spirit as the root
+FRAME_REPORT convention above but for a human audience instead of the
+next agent.
+
+Location: `<pal>/presentations/<feature-name>/` (cursword's own copy of
+the real, reusable script lives at
+`xyzfs/users/<uuid>/home/livedesk/pals/cursword/presentations/
+make_presentation_video.py` - copy or reference it, don't rewrite it).
+
+Directory shape:
+    presentations/<feature-name>/
+        snapshots/NN_description.png   real frame dumps (dump_frame_png()
+                                        style, never an external xwd/PIL
+                                        capture - see this doc's own
+                                        SCOPE ADDENDUM 2026-08-12 on why)
+        manifest.txt                    `file | seconds | caption` rows,
+                                         playback order, see the script's
+                                         own header for the exact format
+        REPRODUCE.md                    real, copy-pasteable steps a
+                                         human can run to redo the exact
+                                         test themselves
+        presentation.mp4                 OUTPUT of the script - the actual
+                                          proof artifact
+
+Pacing is real, not a suggestion: pick seconds-per-frame a human could
+actually read the caption in (5-8s for one sentence is normal) - "make
+sure the video is paced so a human can watch, not at light speed" was
+the direct instruction; don't default to 1-2s frames.
+
+Working real example (verified 2026-08-25, watch it to see the format
+before building your first one): `presentations/bookmark-badge-contrast-
+fix/` - the badge-contrast bugfix from the same day, 4 frames, ~25s.
+
+UPDATE 2026-08-25 (same day) - TTS narration + reusable harnesses, both
+real, both verified live
+------------------------------------------------------------------------
+**TTS narration**: `make_presentation_video.py` now speaks each caption
+aloud via edge_tts by default (same engine as `1-1.HARNECIENT.SMOL/
+convert_one_session.py` elsewhere in this house) - a frame's real hold
+duration becomes `max(manifest_seconds, narration_length + 0.6s)`, so a
+long caption is never cut short. `--no-tts` renders silent like before.
+All intermediate per-clip audio is deleted after muxing - only
+`presentation.mp4` (with its own audio track) survives, per direct
+instruction "delete audio after its in video."
+
+REAL BUG hit and fixed building this: a two-pass "render silent video,
+then mux narration onto it with `-c:v copy`" approach silently mangled
+the video - stream-copying the concat demuxer's vfr output into a fresh
+container dropped all but a handful of frames, with ZERO ffmpeg error
+(confirmed: a real 90s/4-frame video came out 5 frames /~35s). Fixed by
+doing it in ONE ffmpeg invocation (images + narration audio as two
+inputs to a single pass, `-shortest`) instead of two chained passes -
+verified via real frame extraction at multiple timestamps, not just
+trusting `ffprobe`'s (sometimes cosmetic, per-stream) duration field.
+
+**Reusable harnesses**: `cursword/harnesses/presentation_harness.py` is
+the shared library (relay/history-file driving, frame dumping, manifest
+building, zero-stray-process checks, video build) - a per-feature
+harness script imports it and supplies only the feature-specific
+sequence. Real, complete example:
+`cursword/harnesses/bookmark_badge_contrast_fix_harness.py` - launches
+the real window, drives it via relay, captures real frames, cleans up,
+and calls `Harness.build_video()`, all with zero manual steps. Verified
+by actually running it and independently checking its OUTPUT (container
+duration, frame content at multiple timestamps, zero stray processes
+after) - don't just trust a harness script ran without error, check
+what it actually produced, same rule as everything else in this guide.
+
+When building the NEXT feature's presentation: write a harness script
+using this library rather than hand-running relay commands - that's the
+whole point of it being reusable.
+
+UPDATE 2026-08-25 (same day, correction) - harnesses are BASH, not
+Python - matches the house's REAL, pre-existing convention
+------------------------------------------------------------------------
+Direct correction: "the harnesses aren't supposed to be in python (they
+should be in bash/pal c like the other harnesses)... we should use a
+typical harness of the kind that already exist." The `presentation_
+harness.py`/`*.py` harness files above are kept (direct: "u can keep the
+python harnesses") but are NOT the house convention going forward - the
+real one, confirmed by reading `#.desktop/harnesses/db-hq/nav.sh` and
+`#.desktop/harnesses/khtpm-livedesk-taskbar/nav.sh` in full, is:
+  - a single self-contained bash script per feature/app (send_code/
+    send_digits/send_char appending decimal ASCII lines, same shape
+    every time)
+  - NOT a sourced shared library - every harness under `%.harnesses/`
+    and `#.desktop/harnesses/` checked tonight is copy-paste-and-adapt
+    from the closest existing one ("ported not reinvented"), not an
+    import. The "reusable" part is having a good example to copy, not a
+    `source`d dependency.
+Real working example: `cursword/harnesses/bookmark_badge_contrast_fix_
+harness.sh` - launches the real window, drives it via send_code/
+send_digits, dumps+crops a real frame, cleans up via a bash `trap`
+(always runs, even on failure), then calls `make_presentation_video.py`
+(still Python - only the TEST-DRIVING harness moved to bash, not the
+video-assembly tool) for the final render. Verified by actually running
+it and checking output frame content/timing/zero-stray-processes after,
+same as every other presentation.
+
+**Also 2026-08-25**: presentation output files are no longer generically
+named. `make_presentation_video.py` now writes a real, YouTube-ready
+title (e.g. `Bookmark-Badge-Contrast-Fix.mp4`, derived from the feature
+dir name or `--title`) instead of `presentation.mp4`, plus a
+`<title>-yt-summary.txt` (chapters with real timestamps matching the
+manifest, a reproduce pointer) alongside it - a human-readable summary
+of what the video shows, not just the raw video file.
+
+**Old-harness audit, direct answer to "do these still work" (2026-08-25,
+after tonight's relay->history rename pass)**: checked every harness
+under `%.harnesses/` and `#.desktop/harnesses/` that drives a target via
+a relay/history file (by grepping for `RELAY=`/`_agent_relay`):
+  - `#.desktop/harnesses/db-hq/nav.sh` - fixed by this same rename pass,
+    confirmed working (already re-verified live earlier tonight).
+  - `#.desktop/harnesses/khtpm-livedesk-taskbar/nav.sh` (targets
+    `livedesk_agent_relay.txt`) - confirmed STILL LIVE by reading
+    `khtpm_strip_parser.c` directly: `poll_agent_relay()` reading that
+    exact file is unconditionally called every main-loop tick (not dead
+    code, not superseded) - this directly CONTRADICTS an earlier
+    session's migration doc claiming it was "fully retired" in favor of
+    `strip_input_history.txt`. Both mechanisms coexist live in the
+    binary today. NOT live-tested by injection tonight (a real taskbar
+    process was already running - this house's own process, not a test
+    fixture - and deliberately not touched to avoid disrupting an
+    actual live session); confirmed via source read instead.
+  - `%.harnesses/harnecient-fsm/run_plan.sh` (targets
+    `open_hai_agent_relay.txt`) - open-hai was NOT touched by tonight's
+    rename pass (explicitly out of scope, different owner) - confirmed
+    its C source (`khtpm_open_hai_render.c`) still reads that exact
+    filename, unchanged. Still working.
+  - No other harness script under either directory references a
+    relay/history file by a hardcoded `RELAY=` path.
+
+End of testing guide.
+
+UPDATE 2026-08-24 - PER-ENTITY RELAYS (tp_desktop_window_rgb.+x entity windows)
+-------------------------------------------------------------------------------
+The taskbar relay above is not the only agent surface anymore. Every entity
+window spawned by the taskbar (ops/+x/tp_desktop_window_rgb.+x, one process
+per <pal>) polls its OWN relay file on its main tick:
+
+    <package_dir>/interact_relay.txt        (i.e. <pal>/interact_relay.txt)
+
+Same write-once/consumed-and-truncated contract as every other house relay
+(one command per line; first line wins per poll; file truncated after read;
+every consumption logs "INJECTED: <cmd>" to that pal's own history.txt).
+Find a live entity's package_dir via #.desktop/livedesk_open.txt
+(PID=..|INDEX=..|ENTITY=..|PATH=..).
+
+Command vocabulary is WIDER than the taskbar's bare-decimal codes - these are
+string commands (case-sensitive):
+    OPEN_CONTEXT          open the entity's right-click METHOD menu
+    RUN_METHOD:<label>    dispatch meta.pdl row by LABEL directly (no menu
+                          needed; e.g. RUN_METHOD:Dir, RUN_METHOD:Chat)
+    CLOSE                 clean window close (removes DESK row + registry entry)
+    RAISE                 XRaiseWindow only - raise-to-top IS the whole
+                          observable focus model for these override_redirect
+                          windows (see big comment at the RAISE branch)
+    FOCUS_NAV:<n>         move [>] highlight inside an OPEN menu, no activate
+    ACTIVATE_NAV:<n>      activate row claimed as nav number n in the OPEN menu
+    (bare decimal codes also work where the entity reads keys itself)
+
+HANDS-FREE MENU WORKFLOW (proved live 2026-08-24 driving cursword's Dir row
+end-to-end without any mouse/XTest):
+    1. echo "OPEN_CONTEXT" > <pal>/interact_relay.txt ; sleep ~1s
+    2. read #.desktop/livedesk-nav-claims/livedesk_nav_claims.txt - each open
+       menu claims a contiguous NAV range: KIND=row|PID=<pid>|NAV=<n>|ROW=<i>|
+       LABEL=<label>|PATH=<pal>. Base = min NAV for that PID.
+    3. echo "ACTIVATE_NAV:<base+row>" > <pal>/interact_relay.txt
+    Prefer RUN_METHOD:<label> when you just want an action without caring
+    about menu visuals - no claims-file step needed.
+
+FAMILY MAP (all three coexist; they do NOT substitute for each other):
+    - pieces/keyboard/history.txt   chtpm_parser_pal family ONLY, and ONLY in
+      the [TIMESTAMP] KEY_PRESSED: N format (wraith-alpha flavor)
+    - player_app-style history.txt  bare-decimal inject_raw_key() convention
+    - interact_relay.txt / livedesk_agent_relay.txt   raw-Xlib programs grown
+      their own polling loop (taskbar + all entity windows); strings or
+      decimals per that program's dispatcher
+Rule unchanged: before picking an injection method for a NEW target, verify
+which family the target actually belongs to - don't assume.
+
+UPDATE 2026-08-25 - "*_agent_relay.txt" renamed to "*_history.txt" for the
+khtpm_entity_menu_render.c family (db-hq/palettes/bookmarks/stats-hq/
+events-hq/chat-hai/taskbar-settings/entity-menu) + a real "#" audit-comment
+convention documented (nothing built - it already worked)
+------------------------------------------------------------------------
+Direct question this session: "did we ever figure out if we can inject
+into history.txt instead of relay... is there a problem or can we
+deprecate relay?" Verified by direct code read of poll_agent_relay()
+(now poll_agent_history()) in khtpm_entity_menu_render.c: this function
+was ALREADY append-only and cursor-based - no truncation logic ever
+existed there (`g_relay_cursor`/now `g_history_cursor` only ever moves
+forward; the whole-history-file-truncated-on-consume mental model some
+of this doc's older entries imply does NOT apply to this family). There
+was no separate "old" relay mechanism to deprecate - only the filename
+was stale relative to the rest of the house's TPMOS history.txt naming.
+
+Renamed (file + in-code function/var names, verified rebuild + zero
+stray processes before/after):
+    entity_menu_agent_relay.txt      -> entity_menu_history.txt
+    taskbar_settings_agent_relay.txt -> taskbar_settings_history.txt
+    db_hq_agent_relay.txt            -> db_hq_history.txt
+    events_hq_agent_relay.txt        -> events_hq_history.txt
+    chat_hai_agent_relay.txt         -> chat_hai_history.txt
+    stats_hq_agent_relay.txt         -> stats_hq_history.txt
+relay_path() -> history_path(), poll_agent_relay() -> poll_agent_history(),
+g_relay_cursor -> g_history_cursor, all in khtpm_entity_menu_render.c.
+dispatch_relay_code() kept its name (it dispatches a code, not a file).
+nav.sh (#.desktop/harnesses/db-hq/) updated to the new filename + a
+corrected note that db-hq now runs via the merged khtpm_entity_menu_
+render.c, not the archived standalone khtpm_hq_render.c.
+
+NOT renamed, explicitly out of scope for this pass (different owner/
+program, never verified): livedesk_agent_relay.txt (already a different,
+separate file from this family - see the taskbar's own strip_input_
+history.txt migration above, a genuinely different subsystem),
+open_hai_agent_relay.txt, lc_reminder_relay.txt. Interact_relay.txt
+(per-entity-window family, UPDATE 2026-08-24 above) is ALSO explicitly
+NOT part of this rename - it has a real, different, write-once/
+consumed-and-truncated contract, so calling it a "history" file would be
+actively misleading; it stays named "relay" on purpose.
+
+Human/agent auditability - real, already-working, nothing built:
+`poll_agent_history()` now explicitly skips (but still consumes/advances
+the cursor past) any line whose first character is `#` before that line
+ever reaches atoi()/dispatch. This was ALREADY the de facto behavior
+(atoi() on a non-digit-leading string silently returns 0, which the
+existing `if (code > 0)` guard already treated as a no-op) - the change
+made here only makes that behavior explicit/intentional in the code
+instead of an accidental side effect of atoi()'s parsing rules. Use it
+to leave a plain-text audit note inline in any of the renamed history
+files, e.g.:
+    # jbrooks manual test 2026-08-25 - verifying sidebar click dispatch
+    3
+    13
+No separate marker syntax for "agent-authored" vs "human-authored" was
+built - every line in these files has always been agent/script-authored
+in practice (real human interaction with these windows goes through
+live X11 events, not this file), so there was nothing real to
+distinguish yet. If a genuine mixed-authorship need shows up later,
+extend the same `#`-prefix convention (e.g. `#AGENT` / `#HUMAN` prefixes)
+rather than inventing a new file or format - don't build ahead of a
+real, live need.
+
+PRESENTATION-VIDEO ARCHIVE CONVENTION (added 2026-08-27, direct
+instruction) - a real presentation video (built via any harness's own
+`make_presentation_video.py` call, MP4 + PNG snapshots + manifest.txt +
+summary.txt) is REAL EVIDENCE for a human to review, but it's also real
+file weight this house does NOT want carried into every `git push`.
+Real convention:
+
+1. Build the presentation locally as normal (whatever pal's own
+   `presentations/<test-name>-<timestamp>/` dir the harness already
+   uses - unchanged, no harness script needs editing for this).
+2. Move the WHOLE presentation folder to:
+   `/home/no/Desktop/🧩️Piecemark-IT/中.SP_00.00/🗡️.crswrd.media-archive/
+   <Month-DD>/<test-name>-<timestamp>/` (a real, already-existing
+   archive directory OUTSIDE any git repo - `Month-DD` folders already
+   exist there, e.g. `August-26/`, `August-27/` - create the day's
+   folder if it doesn't exist yet, don't invent a different date format).
+3. In the presentation's OLD local location, leave a single small
+   POINTER file instead - `<test-name>-<timestamp>.pointer.txt` (plain
+   text, a few lines: which test, when archived, the real archive path,
+   what it contains, and any note about whether it's still current
+   evidence or superseded by a later run). This is what actually gets
+   committed/pushed - a few hundred bytes instead of a multi-hundred-KB
+   MP4 + PNGs.
+4. If a presentation directly proves/disproves something load-bearing
+   (a bug fix, a KPI), reference the pointer file's real archive path
+   in whatever handoff doc/KPI table cites that evidence, so a reader
+   can go find the real video without it needing to live in git.
+
+Real, first example of this convention in use: Task 3's Conditional
+Branch presentations (`events-hq-task3-test-*`) - see
+`COMMON-EVENTS-MANAGER-HANDOFF.md`'s own Task 3 section for how the
+pointer/archive split reads in practice, including a note on an EARLIER
+run being superseded by a later one after a real bug fix (kept in the
+archive for history, the pointer says so explicitly rather than silently
+deleting it).
+
+UPDATE 2026-08-27 - a presentation that only shows BEFORE/AFTER STATE
+looks "dead" to a human viewer; SHOW THE ACTUAL NAVIGATION/TYPING
+------------------------------------------------------------------------
+Direct feedback after reviewing the owner-report and marketing videos
+this session: "i didn't see evidence of u clicking / naving thru the
+options or inputing text cli-io key by key like a human would expect
+so it just looks kinda dead." Real gap, not a nitpick - every snapshot
+built this session was a state dump or a final-result PNG (a compiled
+`.pal` file's contents, a ledger's final line, a rendered panel AFTER
+the click already landed), never the actual moment of navigating a
+sidebar, pressing digits to jump nav focus, or watching cli-io echo
+typed characters one at a time with a live caret. A human watching a
+feature-proof video wants to SEE the interaction happen, not just be
+told "and then this changed."
+
+**Real fix, going forward, for any feature that has visible UI (not a
+headless manager/ledger)**: capture MULTIPLE frames across a single
+navigation sequence, not just a before/after pair -
+  1. A frame showing the sidebar/menu with nothing yet focused.
+  2. A frame (or several) showing focus/highlight moving as each digit-
+     jump or arrow-key lands - e.g. dump_frame_png() after EACH relay
+     code sent, not just after the whole sequence finishes, so the
+     `[>N]` nav badge or highlighted row visibly steps through options
+     across consecutive snapshots.
+  3. For cli-io typed text specifically: capture at least one
+     mid-typing frame showing the PARTIAL string with its live caret
+     (e.g. after sending only the first few characters via relay,
+     before Enter), not just empty-field-then-final-committed-value.
+     This is the single most "looks alive" detail available - a caret
+     mid-word reads as a human typing, an instantly-complete field
+     reads as fake/scripted.
+  4. Space these out in manifest.txt as their own rows with short holds
+     (3-4s each is fine for a fast nav step) rather than collapsing a
+     whole interaction into one caption - the POINT is showing the
+     steps, not just narrating that steps happened.
+
+This applies to any UI-visible feature; it does NOT apply to headless/
+no-window processes (e.g. common_events_manager.+x, whose real proof is
+ledger-text-to-PNG, already correctly disclosed as a different capture
+route in this session's owner-report pointer file) - there is no
+"navigation" to show for those, don't force it.
+
+Rule of thumb before calling a feature-proof presentation done: if
+every snapshot in it could have been produced by manually editing a
+state file with a text editor (no real UI interaction required to get
+that exact frame), the presentation hasn't actually proven the UI
+works, only that the underlying state is correct - add the missing
+interaction frames before considering it finished.
+
+UPDATE 2026-08-27 (same day) - real frame-history signal added for
+events-hq/db-hq, ending the "sleep-then-dump-and-hope" pattern
+------------------------------------------------------------------------
+Direct instruction: "is there a way view can send a signal when it has
+changed via frame history and is ready to be dumped, from now on.
+otherwise when u make ur reports they are always using lagged png. we
+need 2 fix this once and for all."
+
+**What was actually wrong** (found investigating this report, NOT a
+PNG-capture timing race as first suspected): `evhq_draw_elem()`
+(`khtpm_entity_menu_render.c`) had no `w<=0||h<=0` guard at all - Task
+5's Scratch/Blueprints stub view zeroed a hidden panel's own w/h
+(`evhq_zero_subtree()`), but the nav-badge/label text draw calls
+further down ran regardless of size, using only `e->x`/`e->y` (never
+touched by the zeroing), so old content kept rendering at its last real
+position. Proof this was a real render bug, not staleness: a second PNG
+dump 2+ seconds after the first came back byte-identical - genuinely
+stale-forever, not "hasn't caught up yet." Fixed by adding the missing
+`if (e->w <= 0 || e->h <= 0) return;` guard at the top of
+`evhq_draw_elem()` - `hit_test()` already had the equivalent behavior
+naturally (an empty coordinate range can never match), only drawing was
+missing it.
+
+**The real signal mechanism requested, now built** (ported from chat-
+hai's own proven `chai_append_frame_history()`, which already existed
+for exactly this reason - "we dont need a png dump to see if frames are
+updating"): `evhq_append_frame_history()` and `dbhq_append_frame_
+history()` now append one real line per completed redraw to
+`#.desktop/events_hq_frame_history.txt` / `#.desktop/db_hq_frame_
+history.txt` respectively - `seq=N` plus real state fields (focus_nav,
+view_mode, current tab/page, n_cmds, entity). `dump_frame_png()` was
+ALSO changed to force a real `redraw()` immediately before invoking the
+external PNG-dump op (previously the op captured whatever the LAST
+tick's redraw left on the visible window, which could be one full
+action behind if a relay code triggered a state change and a dump in
+the same poll cycle) - `chai_dump_frame_png()` got the matching fix
+(forces `chai_redraw()` first).
+
+**New required harness procedure, going forward, for db-hq/events-hq**
+(matches chat-hai's own pattern, now real everywhere in this binary):
+1. Read the frame-history file's last line, note its `seq=`.
+2. Send your input via the relay.
+3. Poll the frame-history file until a NEW line appears - **check its
+   STATE FIELDS match what you expect (e.g. `view_mode=1`), not just
+   that `seq` increased** - the file appends on every idle redraw tick
+   too (confirmed live: 6 lines appended in 2s with zero input sent),
+   so a bare seq-increase alone does not prove your specific action
+   landed, only that some redraw happened. The content of the new
+   line is the real proof.
+4. Only THEN send the PNG-dump relay code (112) if you need a pixel-
+   level check - by this point `dump_frame_png()`'s own forced-redraw
+   fix guarantees the window shows exactly this state anyway, so this
+   step is now a formality/pixel-appearance check, not a race.
+5. For a pure DATA question ("did the value change"), skip the PNG
+   entirely and just read the frame-history file's latest line - faster
+   and cannot be stale, same reasoning chat-hai's own convention
+   already established.
+
+This does not replace the text-state dump (`dbhq_dump_debug_state()`,
+code 210) - that's still the right tool for a full nav-tree snapshot.
+The frame-history file is for "did a redraw happen and what did it
+show," continuously, without having to explicitly request a dump.
+
+UPDATE 2026-08-27 (same day) - broader harness-BUILDING guidance moved
+to its own doc, per this file's own stated scope
+------------------------------------------------------------------------
+This file stays scoped to injection/nav testing PROCEDURE (per the
+2026-08-13 correction above: "this file stays scoped to injection/nav
+testing procedure only"). Broader guidance on how to actually DESIGN/
+BUILD a harness - the real bash convention, the PAL/events direction
+for future harness authoring, camera/POV director guidance for
+anything with real camera control, and a per-feature launch-mechanism
+reference table - now lives in `HARNESS-AUTHORING-GUIDE.md` (indexed in
+`INDEX.md`). Read that BEFORE designing any new harness, single-feature
+or multi-feature; this file remains the reference for the low-level
+injection/dump/frame-history mechanics themselves.
