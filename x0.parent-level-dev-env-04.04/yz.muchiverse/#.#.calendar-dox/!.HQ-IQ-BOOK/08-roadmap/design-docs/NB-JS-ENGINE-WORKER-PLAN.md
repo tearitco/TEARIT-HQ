@@ -251,6 +251,12 @@ before (worker not even spawned unless a `<script>` exists).
    > a respawned worker.
 6. **Docs**: mark rung 2 (+ rung 5 glue + §3 worker plumbing) done in
    the roadmap; note what rungs 3/4/7 remain. *Commit 6.*
+   > **DONE — 2026-09-05, branch `chtpm-js-rungs`** (step-6 doc commit):
+   > roadmap §0 refreshed to the worker pipeline, rung 5 marked DONE
+   > (glue), §2 CPU-safety "enforced as of step 5" block, §3 marked BUILT,
+   > rung-2 block gained the `duk_push_this` catch line, session report
+   > added (`PROGRESS-nb-js-worker-phase1.md`). Phase 1 complete — rungs
+   > 3/4 remain, rung 7 deferred (this §8 + roadmap rung headers).
 
 ## 8. PHASE 2 — rungs 3, 4, 5 + the rung-6 remainder (the "what's next" / hand-off)
 

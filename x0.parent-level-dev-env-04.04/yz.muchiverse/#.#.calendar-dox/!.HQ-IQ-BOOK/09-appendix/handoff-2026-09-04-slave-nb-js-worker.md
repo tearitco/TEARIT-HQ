@@ -6,9 +6,9 @@ network-browser JS engine work — a distinct, separate job from the master
 handoff's khtpm C-deletion/xhtpm pass (that work is tracked in the master;
 this job touches only the `&.hq-apps/network` cell and the design docs).
 
-**Last updated:** 2026-09-05 (step 5 committed + pushed; next up: step 6 docs)
+**Last updated:** 2026-09-05 (**Phase 1 complete** — steps 1-6 committed + pushed; next job: Phase 2, hand-off-ready in plan §8)
 
-**Status snapshot (step 5 pushed):** `68df5763`, `1cb67da3`, `6d32cf64`, `ea864cea` (step 4) and the step-5 guard commit all on `origin/chtpm-js-rungs`. Docs updated in each step's commit.
+**Status snapshot (Phase 1 shipped):** `68df5763`, `1cb67da3`, `6d32cf64`, `ea864cea`, `bba458ec`, the session report `4bb45dfa`, and the step-6 doc commit all on `origin/chtpm-js-rungs`. Docs updated in each step's commit.
 **Branch:** `chtpm-delete-per-app-c` → pushed to `origin/chtpm-js-rungs`
 **Plan doc:** `08-roadmap/design-docs/NB-JS-ENGINE-WORKER-PLAN.md` (§7 = Phase 1, §8 = Phase 2)
 **Roadmap:** `08-roadmap/design-docs/NB-JS-ENGINE-ROADMAP.md` (rung map)
@@ -42,7 +42,9 @@ stays byte-identical; a script-less page never spawns the worker. Never
 | **2** | `nb_js_worker.c` skeleton + shared `nb_host.h`; manager lazy-spawn on `<script>`, LOAD plumbing, QUIT on exit (no behavior change) | **DONE** | `1cb67da3` |
 | 3 | DOM tree in the worker + native accessors (getElementById/getElementsByTagName/querySelector, textContent, children, tagName, getAttribute/setAttribute, classList, appendChild, innerHTML); `tests/worker_dom_test.*` | **DONE** | `6d32cf64` (pushed) |
 | 4 | RENDER merge → page.state.txt (visible payoff) | **DONE** | `ea864cea` (pushed) |
-| 5 | CPU budget + node cap + SIGKILL/restart guards | **DONE** | step-5 commit (pushed) |
+| 5 | CPU budget + node cap + SIGKILL/restart guards | **DONE** | `bba458ec` (pushed) |
+| 6 | Docs: mark rungs done in roadmap + session report | **DONE** | step-6 commit + `4bb45dfa` (pushed) |
+| — | **Phase 1 complete** — Phase 2 queued (plan §8) | ✔ | — |
 | 6 | Docs: mark rungs done in roadmap | pending | — |
 
 ## What's built (steps 1-2)
@@ -90,9 +92,27 @@ stays byte-identical; a script-less page never spawns the worker. Never
   merge); until then one-shot eval + static extractor keep the window live.
 - Phase 2 (rungs 3/4/5 + real BOM) is queued and hand-off-ready in plan §8.
 
-## Remaining (step 6)
+## Remaining (Phase 1 complete)
 
-1. Step 6 — Docs: mark rungs done in roadmap (final Phase-1 step).
+Phase 1 is done — steps 1-6 committed + pushed. The next job is **Phase 2**
+(rungs 3/4/5 + the rung-6 BOM remainder), written hand-off-ready in
+`NB-JS-ENGINE-WORKER-PLAN.md` §8. Session report for the whole arc:
+`09-appendix/PROGRESS-nb-js-worker-phase1.md`.
+
+## Step 6 — DONE (docs: roadmap marks rungs)
+
+- Roadmap §0 now describes the **worker pipeline** (spawn on `<script>`,
+  RENDER overlay) instead of the stale one-shot paragraph; the old table is
+  kept as a pre-Phase-1 snapshot.
+- Rung 5 marked **DONE (glue)**; rung-2 block gained the `duk_push_this`
+  `this`-above-args catch line; rung 6 note says the shared host carries
+  the stubs into the worker too.
+- §2 CPU safety: "Enforced as of Phase-1 step 5" block (2 s budget, 50 k
+  node cap, 250 k handles, 3 s manager poll, SIGKILL+reap, SIGPIPE).
+- §3 architecture: persistent worker marked **BUILT** (steps 1-5);
+  one-shot eval kept for tests/rollback; rungs 3/4 remain, 7 deferred.
+- New `09-appendix/PROGRESS-nb-js-worker-phase1.md` — the full-session
+  report from one-shot Duktape (rung 1) through Phase-1 steps 1-5.
 
 ## Step 5 — DONE (guards: CPU budget, node cap, SIGKILL/restart)
 
