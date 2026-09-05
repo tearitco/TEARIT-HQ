@@ -2089,6 +2089,20 @@ static void kh_serialize_frame_elem(FILE *f, Elem *e) {
     char target_id_esc[64 * 2], input_buffer_esc[256 * 2];
     frame_field_escape_pipe(e->target_id, target_id_esc, sizeof(target_id_esc));
     frame_field_escape_pipe(e->input_buffer, input_buffer_esc, sizeof(input_buffer_esc));
+    /* REAL FIX 2026-09-05, live bug (csv-hq's own real grid: a row
+     * label like "1  |       |       |..." genuinely needs literal '|'
+     * characters to look like spreadsheet columns) - label is one of
+     * the FRONT-anchored fields (kh_paint_frame_line() splits fields
+     * 0-4 sequentially via strchr('|'), on the documented assumption
+     * "they never contain a real pipe in practice" - exactly the same
+     * class of bug book-stack's onclick hit in 2026-08-28, just in a
+     * front-anchored field instead of the middle one). Escaping label
+     * the same proven way target_id/input_buffer/relay/bg already are
+     * is simpler than re-anchoring the front split (unlike onclick,
+     * label has other real fields BOTH before and after it, so it
+     * can't just become "whatever's left in the middle"). */
+    char label_esc[256 * 2];
+    frame_field_escape_pipe(e->label, label_esc, sizeof(label_esc));
     /* REAL FIX 2026-09-04 (pc-hq-bugs.md Bug 3 - "^" badge never shows
      * for an Interact Mode trigger even though its class/label are
      * current) - e->relay was never serialized here, same gap
@@ -2128,7 +2142,7 @@ static void kh_serialize_frame_elem(FILE *f, Elem *e) {
     char text_area_esc[4096 * 2];
     frame_field_escape_text(e->text_area_buffer, text_area_esc, sizeof(text_area_esc));
     fprintf(f, "%s|%s|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s|%d|%s\n",
-            e->tag, e->id, classes_joined, e->label, e->sprite, e->onclick,
+            e->tag, e->id, classes_joined, label_esc, e->sprite, e->onclick,
             e->nav_index, e->active, e->x, e->y, e->w, e->h,
             target_id_esc, input_buffer_esc, relay_esc, bg_esc, e->cursor, text_area_esc);
 }
@@ -2267,7 +2281,8 @@ static void kh_paint_frame_line(const char *line) {
             cp = comma ? comma + 1 : NULL;
         }
     }
-    snprintf(tmp.label, sizeof(tmp.label), "%s", front[3]);
+    { char label_unesc[256]; frame_field_unescape_pipe(front[3], label_unesc, sizeof(label_unesc));
+      snprintf(tmp.label, sizeof(tmp.label), "%s", label_unesc); }
     snprintf(tmp.sprite, sizeof(tmp.sprite), "%s", front[4]);
     snprintf(tmp.onclick, sizeof(tmp.onclick), "%s", onclick_field);
     tmp.nav_index = atoi(tail[0]);

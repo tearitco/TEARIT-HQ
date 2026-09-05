@@ -46,28 +46,30 @@
     <sidebar id="sidebar" class="sidebar">
       <text label="${file_path}" class="quiet"/>
       <text label="${status}" class="quiet"/>
-      <scrolllist>
-        <repeat count="${n_rows}" bind="row">
-        <item id="row${row.#}" class="csv-row" label="${row.text}"/>
-        </repeat>
-      </scrolllist>
-    </sidebar>
-    <panel id="panel" class="csv-panel">
       <text label="Cell ref (e.g. B3):" class="quiet"/>
       <cli_io id="cellref" target_id="cellref" label=""/>
       <text label="Value:" class="quiet"/>
       <cli_io id="cellval" target_id="cellval" label=""/>
       <item id="setcell" class="opacity-btn" action="CSVH_SETCELL" label="Set Cell"/>
-      <text label="Column letter for functions:" class="quiet"/>
+      <text label="Column letter for functions below:" class="quiet"/>
       <cli_io id="colref" target_id="colref" label=""/>
       <row class="toolbar">
         <item id="sumbtn" class="opacity-btn" action="CSVH_FUNC:SUM" label="SUM"/>
         <item id="avgbtn" class="opacity-btn" action="CSVH_FUNC:AVG" label="AVG"/>
+      </row>
+      <row class="toolbar">
         <item id="minbtn" class="opacity-btn" action="CSVH_FUNC:MIN" label="MIN"/>
         <item id="maxbtn" class="opacity-btn" action="CSVH_FUNC:MAX" label="MAX"/>
-        <item id="countbtn" class="opacity-btn" action="CSVH_FUNC:COUNT" label="COUNT"/>
       </row>
-      <text label="${func_result}" class="quiet"/>
+      <item id="countbtn" class="opacity-btn" action="CSVH_FUNC:COUNT" label="COUNT"/>
+      <text label="Result: ${func_result}" class="quiet"/>
+    </sidebar>
+    <panel id="panel" class="csv-panel">
+      <scrolllist>
+        <repeat count="${n_rows}" bind="row">
+        <item id="row${row.#}" class="csv-row" label="${row.text}"/>
+        </repeat>
+      </scrolllist>
     </panel>
   </page>
 </window>
