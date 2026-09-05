@@ -217,10 +217,13 @@ answered here, flagging for when this gets scheduled):
 - Text editing itself needs a genuinely multi-line, cursor-addressable
   input surface — the house's existing generic `<cli_io>` element is
   single-line/armed-field shaped (per `khtpm-house-standards`'s own
-  description: "armed/typed/committed"). Does `cli_io` get extended to
-  support multi-line text, or does the editor need its own new
-  element type? This is probably the single biggest open design
-  question for this feature.
+  description: "armed/typed/committed"). **Decided 2026-09-05**: a new
+  `<text_area>` element, sharing code with `cli_io` where it stays
+  legible (its existing word-wrap-for-width calc) but with its own
+  real cursor/newline handling, using the exact same `^`-armed /
+  Escape-disarmed activation convention `cli_io` already has. Full
+  real plan (still not implemented):
+  `08-roadmap/design-docs/TEXT-AREA-MULTILINE-EDITING-DESIGN.md`.
 - Save As / Load reuses the File Explorer widget from §1/§3 once it
   exists — another real reason that widget should land before (or
   alongside) this, not after, so the editor doesn't end up building
