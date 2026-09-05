@@ -221,9 +221,12 @@ answered here, flagging for when this gets scheduled):
   `<text_area>` element, sharing code with `cli_io` where it stays
   legible (its existing word-wrap-for-width calc) but with its own
   real cursor/newline handling, using the exact same `^`-armed /
-  Escape-disarmed activation convention `cli_io` already has. Full
-  real plan (still not implemented):
-  `08-roadmap/design-docs/TEXT-AREA-MULTILINE-EDITING-DESIGN.md`.
+  Escape-disarmed activation convention `cli_io` already has.
+  **Updated same day**: `cli_io` itself is also getting a real cursor
+  (decoupled from `text_area`, the shared primitive `text_area`'s own
+  multi-line cursor logic generalizes from). Full real plan (still not
+  implemented):
+  `08-roadmap/design-docs/CLI_IO-CURSOR-AND-TEXT_AREA-MULTILINE-EDITING-DESIGN.md`.
 - Save As / Load reuses the File Explorer widget from §1/§3 once it
   exists — another real reason that widget should land before (or
   alongside) this, not after, so the editor doesn't end up building

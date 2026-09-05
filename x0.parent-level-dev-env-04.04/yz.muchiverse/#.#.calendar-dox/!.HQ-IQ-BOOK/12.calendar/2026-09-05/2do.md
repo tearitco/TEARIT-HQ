@@ -67,13 +67,18 @@
   doc as above (§5). Real UX reference captured (tpmos's
   `agy-text-editor` loader → editor → FILE MENU → Save As flow).
   Depends on the File Explorer widget above for its own Save As/Load.
-- **New `<text_area>` element, real plan written, not implemented.**
-  The "does `cli_io` get extended, or does the editor need its own
-  element?" question is decided: a new `<text_area>` tag, sharing
-  `cli_io`'s existing word-wrap-for-width helper where legible, with
-  its own real cursor/newline handling, same `^`-armed/Escape-disarmed
-  activation `cli_io` already uses. Full plan:
-  `08-roadmap/design-docs/TEXT-AREA-MULTILINE-EDITING-DESIGN.md`.
+- **`cli_io` cursor + new `<text_area>` element, real plan written,
+  not implemented.** The "does `cli_io` get extended, or does the
+  editor need its own element?" question is decided: a new
+  `<text_area>` tag for real multi-line/newline editing, sharing
+  `cli_io`'s word-wrap helper where legible, same `^`-armed/
+  Escape-disarmed activation `cli_io` already uses. **Updated same
+  day**: `cli_io` itself is also getting a real cursor (left/right/
+  home/end, insert/delete-at-cursor) — decoupled from `text_area`,
+  real value on its own for every existing chat/search composer, and
+  becomes the actual shared primitive `text_area`'s own multi-line
+  cursor logic generalizes from. Full plan:
+  `08-roadmap/design-docs/CLI_IO-CURSOR-AND-TEXT_AREA-MULTILINE-EDITING-DESIGN.md`.
 - **`102.agy-txt`'s legacy launcher bug — FIXED.** See
   `102.agy-txt/LEGACY-LAUNCHER-PATH-FIX-2026-09-05.md` for the checked
   list of every house-level project with its own `button.sh` (only
