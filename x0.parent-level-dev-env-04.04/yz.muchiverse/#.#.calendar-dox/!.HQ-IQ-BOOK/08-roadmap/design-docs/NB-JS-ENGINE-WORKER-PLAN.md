@@ -204,6 +204,14 @@ before (worker not even spawned unless a `<script>` exists).
    `textContent`, `children`, `tagName`, `getAttribute`, `setAttribute`,
    `classList`, `appendChild`, `innerHTML` get/set). Verify with
    `tests/worker_dom_test.*`. *Commit 3.*
+   > **DONE — 2026-09-04, branch `chtpm-js-rungs`** (commit: step-3 DOM
+   > commit; see slave handoff `09-appendix/handoff-2026-09-04-slave-nb-js-worker.md`).
+   > Worker links `nb_dom.c`; `nb_dom_load()` rebuilds the tree in its
+   > heap; index-based node handles; `install_dom()` natives; several
+   > accessors shipped as real `duk_def_prop` getters with `this`-binding
+   > via `duk_push_this` (Duktape 2.7 puts args at 0..n-1, `this` above —
+   > the step-3 debug catch). `tests/worker_dom_test.*` green (81
+   > assertions); 5 rung suites pass through both eval AND worker.
 4. **`RENDER` merge** back into `page.state.txt` (rung 5 glue) —
    mutated DOM now visibly changes the window. Verify with a real
    `innerHTML=`-style fixture + live window. *Commit 4.*

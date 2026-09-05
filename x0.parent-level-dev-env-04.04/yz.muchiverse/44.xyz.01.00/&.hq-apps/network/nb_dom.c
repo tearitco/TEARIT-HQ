@@ -279,6 +279,120 @@ long nb_serialize(FILE *out, const NbNode *root) {
     return cnt;
 }
 
+/* ---- load: rebuild a tree from nb_serialize's fetch.dom stream ----
+ * The stream is character-based: N records are length-prefixed so text
+ * and attr blobs may contain '|' and '\n', so D/U markers and field
+ * delimiters are read byte-by-byte, never line-by-line. Mirrors
+ * serialize_rec() exactly (wire format must read what we write). */
+
+static int load_field_until(FILE *in, char **out, int delim) {
+    size_t cap = 64, n = 0;
+    char *buf = xmalloc(cap);
+    int c;
+    while ((c = getc(in)) != EOF && c != delim) {
+        if (n + 1 >= cap) { cap *= 2; char *nb = realloc(buf, cap); if (!nb) abort(); buf = nb; }
+        buf[n++] = (char)c;
+    }
+    if (c == EOF) { free(buf); return 0; }
+    buf[n] = 0;
+    *out = buf;
+    return 1;
+}
+
+static long load_num_until(FILE *in, int *ok) {
+    long v = 0; int c;
+    while ((c = getc(in)) != EOF && c != '|') {
+        if (c < '0' || c > '9') { *ok = 0; return 0; }
+        v = v * 10 + (c - '0');
+    }
+    if (c == EOF) *ok = 0;
+    return v;
+}
+
+static char *load_n_bytes(FILE *in, size_t n) {
+    char *buf = xmalloc(n + 1);
+    size_t got = 0;
+    while (got < n) {
+        int c = getc(in);
+        if (c == EOF) { free(buf); return NULL; }
+        buf[got++] = (char)c;
+    }
+    buf[got] = 0;
+    return buf;
+}
+
+static NbNode *load_node(FILE *in, long *cnt, int *err) {
+    if (*cnt >= DOM_MAX_NODES) { *err = 1; return NULL; }
+    int c = getc(in);
+    if (c == EOF) return NULL;
+    if (c != 'N' || getc(in) != '|') { *err = 1; return NULL; }
+
+    char *tag=NULL, *id=NULL, *cls=NULL, *text=NULL, *attrs=NULL;
+    if (!load_field_until(in, &tag, '|')) { *err = 1; goto fail; }
+    if (!load_field_until(in, &id,  '|')) { *err = 1; goto fail; }
+    if (!load_field_until(in, &cls, '|')) { *err = 1; goto fail; }
+    int ok = 1;
+    long tlen = load_num_until(in, &ok);
+    if (!ok) { *err = 1; goto fail; }
+    text = load_n_bytes(in, (size_t)tlen);
+    if (!text) { *err = 1; goto fail; }
+    if (getc(in) != '|') { *err = 1; goto fail; }
+    long alen = load_num_until(in, &ok);
+    if (!ok) { *err = 1; goto fail; }
+    attrs = load_n_bytes(in, (size_t)alen);
+    if (!attrs) { *err = 1; goto fail; }
+    if (getc(in) != '\n') { *err = 1; goto fail; }
+
+    NbNode *n = xmalloc(sizeof(*n));
+    memset(n, 0, sizeof(*n));
+    n->tag = tag;
+    if (id[0]) n->id = id; else { free(id); id = NULL; }
+    if (cls[0]) n->cls = cls; else { free(cls); cls = NULL; }
+    n->text = text;   /* keep even if empty string — null vs empty is
+                         intentionally preserved for textContent */
+    n->attrs = attrs;  /* empty raw blob is fine */
+    (*cnt)++;
+
+    /* children: 'D\n' ... 'U\n' */
+    c = getc(in);
+    if (c == 'D') {
+        if (getc(in) != '\n') { *err = 1; goto fail; }
+        for (;;) {
+            c = getc(in);
+            if (c == EOF) { *err = 1; goto fail; }
+            if (c == 'U') { getc(in); break; }   /* consume '\n' after U */
+            if (c == 'N') { ungetc(c, in); }
+            else { *err = 1; goto fail; }
+            NbNode *child = load_node(in, cnt, err);
+            if (*err) goto fail;
+            append_child(n, child);
+        }
+    } else {
+        ungetc(c, in);   /* next sibling 'N', a closing 'U', or EOF */
+    }
+    return n;
+
+fail:
+    free(tag); free(id); free(cls); free(text); free(attrs);
+    return NULL;
+}
+
+NbNode *nb_dom_load(FILE *in) {
+    if (!in) return NULL;
+    long cnt = 0;
+    int err = 0;
+    int c = getc(in);
+    if (c == EOF) return NULL;
+    if (c != 'N') return NULL;
+    ungetc(c, in);
+    /* The stream's first record is the root (the #document node the
+     * serializer emitted from serialize_rec) — load it as-is; no extra
+     * synthetic wrapper (would double the root). */
+    NbNode *root = load_node(in, &cnt, &err);
+    if (err || !root) { if (root) nb_node_free(root); return NULL; }
+    return root;
+}
+
 const char *nb_attr_get(const NbNode *n, const char *name) {
     if (!n || !n->attrs || !name) return "";
     /* parse raw exactly like parse_open did */

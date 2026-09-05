@@ -92,6 +92,27 @@ Minimum node API to implement:
   (start with: `#id`, `.class`, `tag`, `tag.class`, descendant combos;
   punt on `:nth-child`, attribute selectors, `>` etc. at first)
 
+> **DONE (subset) — 2026-09-04, branch `chtpm-js-rungs`** (NB-JS worker
+> plan Phase 1, steps 1-3: `68df5763`, `1cb67da3`, + the step-3 DOM
+> commit). The tree lives in the **worker**, not the manager: `nb_dom.c`
+> parses/serializes to `fetch.dom`, `nb_dom_load()` rebuilds it in the
+> worker heap, and native Duktape accessors walk the C tree on demand
+> (numeric `_nbnode` index → `g_nodeindex[]`, reset per page). Shipped:
+> `getElementById`, `getElementsByTagName`, `querySelector(All)`
+> (`#id` / `.class` / `tag` / `tag.class` / descendant combos),
+> `textContent`, `children` (element-only), `childNodes`, `parentNode`,
+> `firstChild`, `nextSibling`, `tagName`/`nodeName`,
+> `getAttribute`/`setAttribute`, `classList.add/remove/toggle/contains`,
+> `createElement`/`appendChild`, `innerHTML` get/set (set re-parses a
+> fragment into the tree), `document.documentElement`/`body`. Verified:
+> `tests/worker_dom_test.*` (81 assertions) PASS through the real O2
+> worker; 5 rung suites green through both eval AND worker. Details:
+> `09-appendix/handoff-2026-09-04-slave-nb-js-worker.md`.
+> **Still pending within rung 2:** `head`, `createTextNode`,
+> `getElementsByClassName`, `removeChild`/`insertBefore`/`replaceChild`,
+> `removeAttribute`, `style.*`, `value` (form fields) — natural follow-ons
+> to the worker's step-3 chunk; cued in Phase 2.
+
 ### Rung 3 — events + the event loop  *(1 pass, needs care for CPU)*
 - `EventTarget`: `addEventListener` / `removeEventListener` /
   `dispatchEvent`; an `Event` object (`type`, `target`,

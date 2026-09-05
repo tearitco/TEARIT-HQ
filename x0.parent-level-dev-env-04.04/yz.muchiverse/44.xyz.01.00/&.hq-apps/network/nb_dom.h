@@ -44,6 +44,13 @@ NbNode *nb_parse_html(const char *html, size_t len);
  * and '|'. Returns number of nodes written, or -1 on error. */
 long nb_serialize(FILE *out, const NbNode *root);
 
+/* Deserialize a tree written by nb_serialize back into a fresh NbNode
+ * tree (the worker rebuilds the manager's fetch.dom in its own heap —
+ * no shared memory / ABI coupling). Returns a root NbNode* (a synthetic
+ * <#document> node) or NULL on malformed input / hitting the node cap.
+ * Caller frees with nb_node_free. */
+NbNode *nb_dom_load(FILE *in);
+
 /* Value (decoded) of a single named attribute, or "" if absent. */
 const char *nb_attr_get(const NbNode *n, const char *name);
 
