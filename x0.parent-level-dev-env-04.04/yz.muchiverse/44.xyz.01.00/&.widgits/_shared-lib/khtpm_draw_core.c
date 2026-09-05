@@ -709,7 +709,30 @@ static void draw_elem(Elem *e, int hover_id_hash) {
     }
     if (e->nav_index > 0 && e->nav_index == g_focus_nav) {
         XSetForeground(dpy, gc, alloc_pixel("#ff8c00"));
-        XDrawRectangle(dpy, buf, gc, e->x - 1, e->y - 1, e->w + 1, e->h + 1);
+        /* REAL FIX 2026-09-05, direct live report ("window highlight is
+         * intruding over things... its not showing right or bottom
+         * highlight") - the focus box was drawn 1px OUTSIDE the element
+         * (x-1..x+w, y-1..y+h). Fine as a small halo on a compact
+         * <item>, but for a big element that fills most of the window
+         * (a full-panel <text_area>, a <grid>) the right/bottom edges
+         * land at or past the window boundary and get clipped away,
+         * while the top/left edges read as stray lines cutting across
+         * neighbouring UI. Big elements now get an INSET box (fully
+         * inside their own bounds, all four edges visible, nothing
+         * bleeding onto anything else); small ones keep the halo. */
+        if (e->w > scaled(120) || e->h > scaled(60)) {
+            /* REAL FIX 2026-09-05, direct live report ("the top of
+             * square is too high... it should be right below [the
+             * badge], below the header bar") - a badged tall element
+             * (a <text_area>) draws its "[^]N." on its own reserved
+             * top row; the focus box should START below that row, not
+             * cut across it. Same one-row reserve the text_area draw
+             * itself already uses for badge_reserve. */
+            int top_pad = (e->nav_index > 0) ? scaled(18) : 1;
+            XDrawRectangle(dpy, buf, gc, e->x + 1, e->y + top_pad, e->w - 3, e->h - top_pad - 2);
+        } else {
+            XDrawRectangle(dpy, buf, gc, e->x - 1, e->y - 1, e->w + 1, e->h + 1);
+        }
     }
     /* REAL, NEW 2026-09-05 (08-roadmap/design-docs/GRID-ELEMENT-DESIGN.md,
      * direct live request: "truly expecting cross hatch lines, like

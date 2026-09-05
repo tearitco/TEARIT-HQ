@@ -4775,23 +4775,6 @@ static void dispatch(const char *action) {
         if (af) { fprintf(af, "seq=%u\ncmd=NEW\n", ++g_swatch_action_seq); fclose(af); }
         return;
     }
-    /* REAL, NEW 2026-09-05, direct live request ("put 'in' before 'new'
-     * in <tab>") - a leading "in" tab that ARMS the editor <text_area>
-     * directly, so entering the editor is a real, obvious click (or
-     * nav-to-tab + Enter), not "nav to the text_area itself and press
-     * Enter" with an overlapping badge. The <tab> activate path already
-     * set g_default_active_tab_id = "inmode" and dispatched this - so
-     * the "in" tab shows .active for as long as the editor stays armed;
-     * default_cli_io_handle_key()'s Escape branch clears it back. */
-    if (strcmp(action, "TXT_ENTER") == 0) {
-        Elem *ed = find_by_id(g_window, "editor");
-        if (ed) {
-            g_default_input_elem = ed;
-            ed->cursor = (int)strlen(ed->text_area_buffer);
-            kh_grab_keyboard_retry();
-        }
-        return;
-    }
     if (strcmp(action, "TXT_SAVE") == 0 || strcmp(action, "TXT_SAVEAS") == 0) {
         Elem *ed = find_by_id(g_window, "editor");
         char bufpath[PATH_BUF];
@@ -5201,6 +5184,12 @@ static void kh_text_delete_at_cursor(char *buf, int *cursor) {
 static char g_clipboard_text[65536];
 static int  g_paste_pending = 0;
 static Atom g_atom_clipboard = 0, g_atom_utf8 = 0, g_atom_targets = 0, g_atom_paste_prop = 0;
+/* REAL, NEW 2026-09-05, direct live request ("is there a way, in top
+ * right to show var 'copied' when ctrl+c is pressed?") - set on every
+ * copy/cut; redraw()'s own chrome-strip block draws a small "copied"
+ * tag top-right while this is within ~2s of now, and hq_idle_tick()
+ * clears it (one final repaint) once it ages out. */
+static time_t g_clip_copied_at = 0;
 
 static void kh_clipboard_init_atoms(void) {
     if (g_atom_clipboard) return;
@@ -5218,6 +5207,7 @@ static void kh_clipboard_copy(const char *text) {
      * read that one; costs nothing to own both. */
     XSetSelectionOwner(dpy, XA_PRIMARY, win, CurrentTime);
     XFlush(dpy);
+    g_clip_copied_at = time(NULL);
 }
 
 static void kh_clipboard_request_paste(void) {
@@ -5298,16 +5288,7 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
      * yet, so this can't regress any of them) - see the matching
      * XUngrabKeyboard on every real disarm path (Escape here, reparse_
      * chtpm_if_changed()'s own real safety net). */
-    if (ks == XK_Escape) {
-        /* REAL, NEW 2026-09-05 - if this field was entered via a "["
-         * mode tab (text-edit-hq's "in" -> TXT_ENTER), clear that tab's
-         * .active so it stops showing "you are in the editor" once you
-         * leave. Harmless for a field armed any other way (the id just
-         * won't match a real tab). */
-        if (g_default_active_tab_id[0] && strcmp(g_default_active_tab_id, "inmode") == 0)
-            g_default_active_tab_id[0] = '\0';
-        g_default_input_elem = NULL; XUngrabKeyboard(dpy, CurrentTime); return;
-    }
+    if (ks == XK_Escape) { g_default_input_elem = NULL; XUngrabKeyboard(dpy, CurrentTime); return; }
     /* REAL, NEW 2026-09-05 (CLIPBOARD-COPY-PASTE-DESIGN.md) - Ctrl+C /
      * Ctrl+V / Ctrl+X arrive as plain control characters through
      * XLookupString (ASCII 3 / 22 / 24) on a standard X keyboard, and
@@ -5740,6 +5721,21 @@ static void redraw(void) {
         XftDrawStringUtf8(xftdraw_buf, &title_col, font_ui, 8, 16,
                            (const FcChar8 *)title, (int)strlen(title));
         XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &title_col);
+        /* REAL, NEW 2026-09-05 - "copied" tag top-right (left of the
+         * chrome minimize/fullscreen/close buttons, which start around
+         * g_win_w-190) for ~2s after any Ctrl+C/Ctrl+X. Event-driven:
+         * the copy keypress already redraws once to show it;
+         * hq_idle_tick() redraws once more to clear it when it ages. */
+        if (g_clip_copied_at && (time(NULL) - g_clip_copied_at) <= 2) {
+            XftColor cc = xft_color("#ff8c00");
+            const char *tag = "copied";
+            XGlyphInfo ge;
+            XftTextExtentsUtf8(dpy, font_ui, (const FcChar8 *)tag, (int)strlen(tag), &ge);
+            XftDrawStringUtf8(xftdraw_buf, &cc, font_ui,
+                               g_win_w - 200 - ge.width, 16,
+                               (const FcChar8 *)tag, (int)strlen(tag));
+            XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &cc);
+        }
         }
         /* REAL, NEW 2026-09-03 (HQ-WINDOW-TASKBAR-ENTRIES-AND-MINIMIZE-
          * 2026-09-03.md §2.1) - real per-window taskbar registry, one
@@ -6874,6 +6870,13 @@ static void hq_ui_pdl_reload_if_changed(const char *house_root) {
 }
 
 static void hq_idle_tick(void) {
+    /* REAL, NEW 2026-09-05 - age out the top-right "copied" tag: one
+     * last repaint the moment it crosses ~2s old, then it stays cleared
+     * (this block is a no-op once g_clip_copied_at is back to 0). */
+    if (g_clip_copied_at && (time(NULL) - g_clip_copied_at) > 2) {
+        g_clip_copied_at = 0;
+        if (!g_quit) redraw();
+    }
     /* REAL, NEW 2026-08-31 (xperiments/khtpm-generic-dispatch-design.md
      * §5 - direct instruction: "the renderer/parser should have no
      * need to know the difference [between projects]... why are there

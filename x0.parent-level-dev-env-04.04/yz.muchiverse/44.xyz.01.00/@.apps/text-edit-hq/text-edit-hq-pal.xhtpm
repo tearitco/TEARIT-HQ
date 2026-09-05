@@ -38,7 +38,6 @@
   <module src="@.apps/text-edit-hq/ops/+x/text_edit_manager.+x" id="_"/>
   <page name="main">
     <tabbar class="tab-bar">
-      <tab id="inmode" class="tab" action="TXT_ENTER" label="in"/>
       <tab id="newbtn" class="tab" action="TXT_NEW" label="New"/>
       <tab id="openbtn" class="tab" action="TXT_OPENFILE" label="[file] Open..."/>
       <tab id="savebtn" class="tab" action="TXT_SAVE" label="Save"/>
