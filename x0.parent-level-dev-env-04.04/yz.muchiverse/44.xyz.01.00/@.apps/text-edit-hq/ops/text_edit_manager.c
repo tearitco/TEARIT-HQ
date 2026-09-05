@@ -69,6 +69,19 @@ static void write_ui_file(void) {
 
 	fprintf(f, "file_path=%s\n", file_path);
 	fprintf(f, "status=%s\n", status);
+	/* REAL, NEW 2026-09-05, direct live request ("we dont need the left
+	 * sidebar in editor anymore. we can have line numbers tho") - the
+	 * sidebar became a plain line-number gutter (<repeat count=
+	 * "${n_lines}">). Real newline count + 1; always at least a screen's
+	 * worth so a short/empty file still shows a gutter, not one lonely
+	 * "1". This is a v1 static gutter - it does NOT scroll-sync with the
+	 * text_area's own word-wrap yet (that needs the renderer to expose
+	 * the text_area's scroll offset + real line height; flagged for the
+	 * right-scrollbar work). */
+	int n_lines = 1;
+	for (int i = 0; i < content_size; i++) if (content_buffer[i] == '\n') n_lines++;
+	if (n_lines < 20) n_lines = 20;
+	fprintf(f, "n_lines=%d\n", n_lines);
 	fprintf(f, "content=");
 	write_escaped_content(f, content_buffer, content_size);
 	fprintf(f, "\n");

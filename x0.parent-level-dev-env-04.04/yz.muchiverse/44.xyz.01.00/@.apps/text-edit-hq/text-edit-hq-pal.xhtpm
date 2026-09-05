@@ -38,17 +38,19 @@
   <module src="@.apps/text-edit-hq/ops/+x/text_edit_manager.+x" id="_"/>
   <page name="main">
     <tabbar class="tab-bar">
+      <tab id="inmode" class="tab" action="TXT_ENTER" label="in"/>
       <tab id="newbtn" class="tab" action="TXT_NEW" label="New"/>
       <tab id="openbtn" class="tab" action="TXT_OPENFILE" label="[file] Open..."/>
       <tab id="savebtn" class="tab" action="TXT_SAVE" label="Save"/>
       <tab id="saveasbtn" class="tab" action="TXT_SAVEAS" label="Save As"/>
     </tabbar>
-    <sidebar id="sidebar" class="sidebar">
-      <text label="${file_path}" class="quiet"/>
-      <text label="${status}" class="quiet"/>
+    <sidebar id="gutter" class="lineno-gutter">
+      <repeat count="${n_lines}" bind="ln">
+      <text label="${ln.##}" class="lineno"/>
+      </repeat>
     </sidebar>
     <panel id="panel" class="edit-panel">
-      <text label="Editor — nav here (its own [ ]N.), Enter to type, Esc when done" class="quiet"/>
+      <text label="${status}" class="quiet"/>
       <text_area id="editor" content="${content}" rows="19"/>
     </panel>
   </page>

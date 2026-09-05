@@ -1107,10 +1107,16 @@ static void draw_elem(Elem *e, int hover_id_hash) {
         int avail_w = e->w > 0 ? (e->x + e->w) - (e->x + 4) : -1;
         int line_h = font->ascent - font->descent > 0 ? font->ascent - font->descent : 12;
         line_h += 4;
-        int max_lines = e->h / line_h;
+        /* REAL FIX 2026-09-05, direct live report ("interact nav is
+         * overlapping first line. maybe have that not happen?") - the
+         * top-pinned "[^]N." badge sits at e->y; reserve one row for it
+         * so the first line of real text starts below it, not under it.
+         * Only when the element actually has a badge (nav_index > 0). */
+        int badge_reserve = (e->nav_index > 0) ? line_h : 0;
+        int max_lines = (e->h - badge_reserve) / line_h;
         if (max_lines < 1) max_lines = 1;
         int text_x = e->x + 4;
-        int ty = e->y + font->ascent + 2;
+        int ty = e->y + badge_reserve + font->ascent + 2;
         /* REAL FIX 2026-09-05 - same real armed-state check as cli_io's
          * own cli_io_armed just above (see its own comment) - not
          * nav-focus equality, which would show a cursor bar on a

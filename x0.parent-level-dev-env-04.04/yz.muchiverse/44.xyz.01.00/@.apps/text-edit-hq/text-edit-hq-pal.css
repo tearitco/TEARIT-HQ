@@ -13,6 +13,20 @@ window {
     border-color: #333333;
 }
 
+/* REAL, NEW 2026-09-05, direct live request ("we dont need the left
+   sidebar in editor anymore. we can have line numbers tho") - the
+   sidebar is now a narrow line-number gutter, one <text> per line,
+   none nav-focusable. */
+.lineno-gutter {
+    width: 46px;
+    background-color: #141414;
+    border-color: #2a2a2a;
+}
+
+.lineno {
+    color: #666666;
+}
+
 .edit-panel {
     background-color: #181818;
     border: 1px solid #2a2a2a;

@@ -1131,6 +1131,11 @@ static size_t kh_emit_repeat_body(const char *body, size_t blen,
                 int n;
                 if (strcmp(field, "#") == 0)
                     n = snprintf(o, (size_t)(oend - o), "%d", idx);
+                else if (strcmp(field, "##") == 0)
+                    /* REAL, NEW 2026-09-05 - 1-based index, for
+                     * human-facing counters (line numbers, "Page N")
+                     * where ${bind.#}'s 0-based value reads wrong. */
+                    n = snprintf(o, (size_t)(oend - o), "%d", idx + 1);
                 else
                     n = snprintf(o, (size_t)(oend - o), "${%s_%d_%s}", bind, idx, field);
                 if (n > 0) o += (n < (int)(oend - o) ? n : (int)(oend - o));
@@ -4770,6 +4775,23 @@ static void dispatch(const char *action) {
         if (af) { fprintf(af, "seq=%u\ncmd=NEW\n", ++g_swatch_action_seq); fclose(af); }
         return;
     }
+    /* REAL, NEW 2026-09-05, direct live request ("put 'in' before 'new'
+     * in <tab>") - a leading "in" tab that ARMS the editor <text_area>
+     * directly, so entering the editor is a real, obvious click (or
+     * nav-to-tab + Enter), not "nav to the text_area itself and press
+     * Enter" with an overlapping badge. The <tab> activate path already
+     * set g_default_active_tab_id = "inmode" and dispatched this - so
+     * the "in" tab shows .active for as long as the editor stays armed;
+     * default_cli_io_handle_key()'s Escape branch clears it back. */
+    if (strcmp(action, "TXT_ENTER") == 0) {
+        Elem *ed = find_by_id(g_window, "editor");
+        if (ed) {
+            g_default_input_elem = ed;
+            ed->cursor = (int)strlen(ed->text_area_buffer);
+            kh_grab_keyboard_retry();
+        }
+        return;
+    }
     if (strcmp(action, "TXT_SAVE") == 0 || strcmp(action, "TXT_SAVEAS") == 0) {
         Elem *ed = find_by_id(g_window, "editor");
         char bufpath[PATH_BUF];
@@ -5276,7 +5298,16 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
      * yet, so this can't regress any of them) - see the matching
      * XUngrabKeyboard on every real disarm path (Escape here, reparse_
      * chtpm_if_changed()'s own real safety net). */
-    if (ks == XK_Escape) { g_default_input_elem = NULL; XUngrabKeyboard(dpy, CurrentTime); return; }
+    if (ks == XK_Escape) {
+        /* REAL, NEW 2026-09-05 - if this field was entered via a "["
+         * mode tab (text-edit-hq's "in" -> TXT_ENTER), clear that tab's
+         * .active so it stops showing "you are in the editor" once you
+         * leave. Harmless for a field armed any other way (the id just
+         * won't match a real tab). */
+        if (g_default_active_tab_id[0] && strcmp(g_default_active_tab_id, "inmode") == 0)
+            g_default_active_tab_id[0] = '\0';
+        g_default_input_elem = NULL; XUngrabKeyboard(dpy, CurrentTime); return;
+    }
     /* REAL, NEW 2026-09-05 (CLIPBOARD-COPY-PASTE-DESIGN.md) - Ctrl+C /
      * Ctrl+V / Ctrl+X arrive as plain control characters through
      * XLookupString (ASCII 3 / 22 / 24) on a standard X keyboard, and
