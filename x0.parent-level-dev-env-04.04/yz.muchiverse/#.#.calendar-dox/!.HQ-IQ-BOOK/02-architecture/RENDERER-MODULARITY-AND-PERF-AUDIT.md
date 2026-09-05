@@ -176,6 +176,17 @@ completeness since it's the same class of issue as 2.2 below.
 
 ### 2.2 Tile-mode's window-shape-mask builders do `XFillRectangle` PER PIXEL — new finding, likely more impactful than 2.1
 
+**FIXED 2026-09-04 (commit `7e4a9f20`)**: `kh_build_shape_mask_generic()`
+(the shared helper §1.3's dedup created) now builds a local 1bpp
+bitmap in a plain C loop (zero X calls per pixel) and pushes it in one
+`XCreateBitmapFromData()` + one `XCopyArea()` into the caller's own
+`mask` Pixmap - object identity preserved deliberately, since
+`cursword_update_shape()` keeps drawing into the same `mask`/`mask_gc`
+with further GC calls after this function returns. External signature
+unchanged, no caller edits needed. Live-verified via PNG dump on both
+real consumers (a plain sprite tile, and cursword's own multi-step
+ring/disc/strip compositing) - bit-for-bit identical rendering.
+
 The same two functions cited in 1.3 above (`khtpm_core_render.c`
 ~7953-7967 and ~8006-8016) each issue one `XFillRectangle(dpy, mask,
 mask_gc, x, y, 1, 1)` **X protocol call per opaque/foreground pixel**
@@ -319,13 +330,11 @@ they're structural classification of an already-parsed tree.
 
 1. ~~**Correct `04-bugs/BUG-LOG.md`'s stale `dbhq_load_actors()`
    entry**~~ **DONE** (`f2f36656`).
-2. **Fix the two `XFillRectangle`-per-pixel shape-mask builders**
-   (§2.2) — **still open, deliberately not done alongside #3 below**
-   (direct instruction: dedup first as its own clean changeset, discuss
-   the actual XFillRectangle-vs-XPutImage/bulk-blit approach
-   separately before touching it) — highest real perf value found in
-   this pass: every non-circular entity tile on the desktop pays this
-   cost on every shape recompute.
+2. ~~**Fix the two `XFillRectangle`-per-pixel shape-mask builders**~~
+   **DONE** (`7e4a9f20`) — local-bitmap-build + one `XCreateBitmapFromData`/
+   `XCopyArea` pair, see §2.2. Done as its own change after #3 landed
+   first, per direct instruction (dedup, then discuss the actual
+   bulk-blit approach, then fix) rather than combined into one commit.
 3. ~~**Extract the shared shape-mask-builder helper**~~ **DONE**
    (`ebd0f289`) — `kh_build_shape_mask_generic()` + `sprite_scale_
    index()`, see §1.3. Kept deliberately separate from #2's perf fix
