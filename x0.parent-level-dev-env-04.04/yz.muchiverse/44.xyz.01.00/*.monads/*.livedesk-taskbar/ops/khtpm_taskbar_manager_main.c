@@ -303,9 +303,19 @@ static void publish_var_fragments(const KtbState *s, const char *house_root) {
      * "never a crash" contract, so no existence check is needed here. */
     off = 0;
     for (int i = 0; i < s->n_tabs && off < sizeof(frag); i++) {
+        /* REAL FIX 2026-09-04 - same "N. " label-baking bug fixed just
+         * above in the live tab_%d_label path (see that fix's own
+         * header comment). khtpm_strip_parser.c (the Linux consumer
+         * this comment block's own header references) doesn't exist in
+         * this tree anymore - only khtpm_strip_parser_win.c (Windows)
+         * does, confirming this whole publish_var_fragments() fragment
+         * is dead on Linux today. Left in place (not this fix's scope
+         * to remove dead code), but changed for consistency so it
+         * doesn't silently reintroduce the same duplicate-number bug
+         * if it's ever revived. */
         int n = snprintf(frag + off, sizeof(frag) - off,
-                          "<button label=\"%d. %s\" onClick=\"TAB:%d\" sprite=\"%s\"/>",
-                          s->tabs[i].nav, s->tabs[i].entity, i, s->tabs[i].path);
+                          "<button label=\"%s\" onClick=\"TAB:%d\" sprite=\"%s\"/>",
+                          s->tabs[i].entity, i, s->tabs[i].path);
         if (n < 0) break;
         off += (size_t)n;
     }
@@ -554,7 +564,23 @@ static void publish_strip_ui(const KtbState *s, const char *house_root) {
     }
     for (i = 0; i < s->n_tabs; i++) {
         char lab[KTB_PATH_BUF];
-        snprintf(lab, sizeof(lab), "%d. %s", s->tabs[i].nav, s->tabs[i].entity);
+        /* REAL FIX 2026-09-04, direct live report ("tb still has issues
+         * with nav color... navs are white but no black background")
+         * - root cause was NOT a color/chip bug at all: this row baked
+         * "N. " into the label TEXT itself (plain, unchipped label
+         * text), while khtpm_core_render.c's generic nav-badge system
+         * ALSO independently numbers this same item (confirmed via a
+         * live frame dump - nav_index was already correctly 16, 17...
+         * for these exact items) and draws ITS OWN numbered badge, with
+         * the real dark #141414 chip, right next to it. The visible
+         * "16. cursword" the report describes was the plain baked-in
+         * label text, not the (correctly chipped, just easy to miss
+         * next to its own duplicate) real badge. Fix: stop duplicating
+         * the number here - publish the plain entity name, exactly like
+         * the hqwin row above (hi_%d_label, never number-prefixed) that
+         * already renders its badges correctly - and let the one real,
+         * generic badge mechanism be the only place a number appears. */
+        snprintf(lab, sizeof(lab), "%s", s->tabs[i].entity);
         snprintf(key, sizeof(key), "tab_%d_label", i);
         ui_put(body, &off, sizeof(body), key, lab);
         snprintf(key, sizeof(key), "tab_%d_sprite", i);
