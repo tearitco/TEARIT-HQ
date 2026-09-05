@@ -46,6 +46,26 @@ static const char *g_name[12] = {
     "yellow","green","cyan","blue","purple","pink"
 };
 
+/* REAL, NEW 2026-09-04, direct live request ("single click vs double
+ * click... was it added to settings yet") - reads the same house-wide
+ * click_two_step key khtpm_core_render.c's own desktop_load_click_
+ * two_step() reads, purely to publish a real, current-state label for
+ * the new CLICK_TWOSTEP_TOGGLE toggle button - never writes it (the
+ * renderer's own desktop_toggle_click_two_step() owns writing). */
+static int read_click_two_step(const char *house) {
+    char path[PATH_MAX];
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house);
+    FILE *f = fopen(path, "r");
+    if (!f) return 1; /* same real compile-time default the renderer itself uses */
+    char line[128];
+    int val = 1;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "click_two_step=", 15) == 0) { val = atoi(line + 15) != 0; break; }
+    }
+    fclose(f);
+    return val;
+}
+
 static void read_state(const char *path, int *phase, int *bg, int *fg, int *apply) {
     *phase = 0; *bg = -1; *fg = -1; *apply = 0;
     FILE *f = fopen(path, "r");
@@ -60,7 +80,7 @@ static void read_state(const char *path, int *phase, int *bg, int *fg, int *appl
     fclose(f);
 }
 
-static void build_ui(char *ui, size_t cap, int phase, int bg, int fg) {
+static void build_ui(char *ui, size_t cap, int phase, int bg, int fg, int click_two_step) {
     const char *prompt =
         phase <= 0 ? "pick a background swatch" :
         phase == 1 ? "pick a text swatch"       :
@@ -76,6 +96,8 @@ static void build_ui(char *ui, size_t cap, int phase, int bg, int fg) {
         const char *ring = (i == bg) ? "ring-bg" : (i == fg) ? "ring-fg" : "";
         off += (size_t)snprintf(ui + off, cap - off, "sw_%d_ring=%s\n", i, ring);
     }
+    off += (size_t)snprintf(ui + off, cap - off, "click_two_step_label=%s\n",
+                            click_two_step ? "Click: 2-step" : "Click: 1-step");
 }
 
 int main(int argc, char **argv) {
@@ -93,8 +115,9 @@ int main(int argc, char **argv) {
     for (;;) {
         int phase, bg, fg, apply;
         read_state(in_path, &phase, &bg, &fg, &apply);
+        int click_two_step = read_click_two_step(house);
         ui[0] = '\0';
-        build_ui(ui, sizeof(ui), phase, bg, fg);
+        build_ui(ui, sizeof(ui), phase, bg, fg, click_two_step);
 
         if (strcmp(ui, last) != 0) {              /* content-gated write */
             FILE *f = fopen(tmp_path, "w");

@@ -106,6 +106,7 @@ static void kh_capture_key(KeySym ks, char ch);
 static void redraw(void); /* REAL, forward declaration needed for dispatch()'s OPACITY_MINUS/OPACITY_PLUS handlers (NEW 2026-08-29 TASK 2) */
 static void kh_raise_and_focus(Window w); /* fwd - dispatch()'s FOCUSWIN handler uses it, defined near hq_dispatch_xevent */
 static int kh_key_history_code(KeySym ks, char ch); /* fwd - handle_key()'s interact-relay forward uses it before its real definition, near kh_capture_key */
+static void desktop_toggle_click_two_step(const char *house_root); /* fwd - dispatch()'s CLICK_TWOSTEP_TOGGLE handler uses it before its real definition, near desktop_load_click_two_step */
 #define MAX_ELEMS 1024  /* 2026-09-02: page projection + chrome, was 512 */
 #define MAX_PAGE_STACK 8
 
@@ -4494,6 +4495,11 @@ static void dispatch(const char *action) {
         redraw();
         return;
     }
+    if (strcmp(action, "CLICK_TWOSTEP_TOGGLE") == 0) {
+        desktop_toggle_click_two_step(g_house_root);
+        redraw();
+        return;
+    }
     if (strcmp(action, "MINIMIZE") == 0) {
         if (!window_is_dock() && g_default_has_sidebar_panel) {
             g_hq_minimized = 1;
@@ -6703,6 +6709,49 @@ static void bump_camera_changed(const char *house_root) {
  * real, named alternative for later camera work, not deleted. */
 static int g_emoji_sprite_view_top = 0; /* 0 = front (default), 1 = top */
 
+
+/* REAL, NEW 2026-09-04, direct live request ("single click vs double
+ * click. it was added to settings yet[?]") - real, generic toggle for
+ * the same house-wide click_two_step key desktop_load_click_two_step()
+ * reads, exposed via a reserved onclick verb (CLICK_TWOSTEP_TOGGLE,
+ * same real shape as OPACITY_MINUS/PLUS above: read current value,
+ * flip, write back, apply locally, redraw) so it's settable from a
+ * real Settings UI item instead of hand-editing hq_ui.pdl. Multi-key
+ * file (comments + emoji_sprite_view live in the same file) - can't
+ * just overwrite the whole thing like the single-key zorder-mode
+ * file; rewrites in place, replacing the one matching line (or
+ * appending it if somehow absent), leaving every other line
+ * untouched. Only takes effect for THIS process immediately
+ * (g_click_two_step updated in place) and any future launch that
+ * reads the file fresh - does NOT live-propagate to other already-
+ * open windows (that would need the same respawn-all-processes
+ * mechanism ktb_toggle_zorder_respawn() uses for override_redirect;
+ * deliberately not built here, scope kept to "settable at all"). */
+static void desktop_toggle_click_two_step(const char *house_root) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
+    char lines[128][256];
+    int n = 0;
+    FILE *f = fopen(path, "r");
+    if (f) {
+        while (n < 128 && fgets(lines[n], sizeof(lines[n]), f)) n++;
+        fclose(f);
+    }
+    int new_val = !g_click_two_step;
+    int replaced = 0;
+    for (int i = 0; i < n; i++) {
+        if (strncmp(lines[i], "click_two_step=", 15) == 0) {
+            snprintf(lines[i], sizeof(lines[i]), "click_two_step=%d\n", new_val);
+            replaced = 1;
+        }
+    }
+    FILE *wf = fopen(path, "w");
+    if (!wf) return;
+    for (int i = 0; i < n; i++) fputs(lines[i], wf);
+    if (!replaced) fprintf(wf, "click_two_step=%d\n", new_val);
+    fclose(wf);
+    g_click_two_step = new_val;
+}
 
 static void desktop_load_click_two_step(const char *house_root) {
     char path[4352]; /* matches this file's own later TP_PATH_BUF (not yet declared at this point) */

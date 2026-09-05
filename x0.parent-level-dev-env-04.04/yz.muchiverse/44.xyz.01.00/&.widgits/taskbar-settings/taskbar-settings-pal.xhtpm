@@ -57,6 +57,15 @@
     <item id="sw11" action="PICK:11" class="swatch sw-pink ${sw_11_ring}"    label="pink"/>
     <item id="opacity-minus" action="OPACITY_MINUS" class="opacity-btn" label="Opacity -"/>
     <item id="opacity-plus"  action="OPACITY_PLUS"  class="opacity-btn" label="Opacity +"/>
+    <!-- 2026-09-04, direct live request ("single click vs double
+         click. it was added to settings yet?") - toggles the same
+         house-wide click_two_step key every window's own click
+         handling reads (khtpm_core_render.c's desktop_load_click_
+         two_step()/click_focus_then_activate()). Only takes effect
+         for THIS window immediately + any future launch - does not
+         live-propagate to other already-open windows (see
+         CLICK_TWOSTEP_TOGGLE's own dispatch()-side comment). -->
+    <item id="click-twostep-toggle" action="CLICK_TWOSTEP_TOGGLE" class="opacity-btn" label="${click_two_step_label}"/>
     <item id="close" action="CLOSE" class="close-btn" label="x"/>
   </page>
 </window>
