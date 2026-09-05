@@ -1420,7 +1420,20 @@ static void draw_elem(Elem *e, int hover_id_hash) {
      * for the real live taskbar-settings-pal.xhtpm window. */
     if (e->nav_index > 0 && nav_badge_font) {
         int focused = (e->nav_index == g_focus_nav);
-        int numy = e->y + (e->h + nav_badge_font->ascent - nav_badge_font->descent) / 2;
+        /* REAL FIX 2026-09-05, direct live report ("[the text_area
+         * nav badge] is in middle of page and not top") - the badge y
+         * is vertically CENTERED in the element, which reads fine for a
+         * ~24px row (<item>, a label) but for a TALL box (a <text_area>
+         * editor, h can be hundreds of px) dumps "[ ]6." dead-center
+         * over the empty content area. Top-pin the badge for any box
+         * clearly taller than a couple of text rows - a multi-line
+         * field's nav marker belongs at its top-left corner, like every
+         * real editor's own "you are here" cue. */
+        int numy;
+        if (strcmp(e->tag, "text_area") == 0 || e->h > scaled(48))
+            numy = e->y + nav_badge_font->ascent + 3;
+        else
+            numy = e->y + (e->h + nav_badge_font->ascent - nav_badge_font->descent) / 2;
         int is_swatch_tile = elem_has_class(e, "swatch") || elem_has_class(e, "pal-tile");
         int chip_drawn = 0; /* REAL FIX 2026-09-05, direct live report ("nav on [ ]2 <username> and timestamp proves it") - see this block's final `if (!chip_drawn)` for the real story: the "every badge gets a chip" claim from 2026-09-04 (below) was wrong. A SHORT dock-cell WITH a sprite (a taskbar avatar badge, h<64 so it misses the tall-sprite chip, y<16 so it misses the above-tile chip) fell through all three branches - the general chip was gated `!e->sprite[0]`, so it never ran either. Tracking chip_drawn and falling back to the general inline chip whenever NONE of the special-position branches actually drew one closes that gap for real, instead of re-guessing another special case. */
         if (e->sprite[0] && e->h >= 64) {

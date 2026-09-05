@@ -28,6 +28,11 @@ static char content_buffer[CONTENT_BUFFER_SIZE];
 static int content_size = 0;
 static char status[STATUS_SIZE];
 static char last_fe_result[PATH_MAX_LOCAL];
+/* REAL, NEW 2026-09-05 - Save As no longer uses a typed <cli_io> path
+ * (removed from the sidebar, direct live request). SAVEAS_ARM sets
+ * this; the next File Explorer pick is then treated as a save TARGET
+ * (write the buffer to it) rather than a file to load. */
+static int save_as_armed = 0;
 
 /*
  * write_escaped_content: Write buffer to file with escaping.
@@ -121,7 +126,7 @@ static void handle_action(const char *cmd) {
 	}
 	else if (strcmp(cmd, "SAVE") == 0) {
 		if (file_path[0] == '\0') {
-			strncpy(status, "No file open — type a path and Save As, or Open first.", sizeof(status) - 1);
+			strncpy(status, "No file yet — use Save As (or Open) first.", sizeof(status) - 1);
 			status[sizeof(status) - 1] = '\0';
 		} else {
 			char save_buffer_path[PATH_MAX_LOCAL];
@@ -153,6 +158,12 @@ static void handle_action(const char *cmd) {
 
 			snprintf(status, sizeof(status), "Saved: %s", file_path);
 		}
+		write_ui_file();
+	}
+	else if (strcmp(cmd, "SAVEAS_ARM") == 0) {
+		save_as_armed = 1;
+		strncpy(status, "Save As: pick a location in the File Explorer window.", sizeof(status) - 1);
+		status[sizeof(status) - 1] = '\0';
 		write_ui_file();
 	}
 	else if (strncmp(cmd, "SAVEAS:", 7) == 0) {
@@ -268,22 +279,49 @@ int main(int argc, char *argv[]) {
 				strncpy(last_fe_result, result, sizeof(last_fe_result) - 1);
 				last_fe_result[sizeof(last_fe_result) - 1] = '\0';
 
-				FILE *file = fopen(result, "rb");
-				if (file) {
-					int bytes_read = fread(content_buffer, 1, sizeof(content_buffer) - 1, file);
-					fclose(file);
-					content_buffer[bytes_read] = '\0';
-					content_size = bytes_read;
-
-					strncpy(file_path, result, sizeof(file_path) - 1);
-					file_path[sizeof(file_path) - 1] = '\0';
-
-					snprintf(status, sizeof(status), "Opened: %s", result);
+				if (save_as_armed) {
+					/* Save As: the pick is a save TARGET, not a file to
+					 * load. Write the current buffer (dumped to
+					 * text_edit_save_buffer.txt by TXT_SAVEAS) to it. */
+					save_as_armed = 0;
+					char save_buffer_path[PATH_MAX_LOCAL];
+					snprintf(save_buffer_path, sizeof(save_buffer_path), "%s/text_edit_save_buffer.txt", package_dir);
+					FILE *src = fopen(save_buffer_path, "rb");
+					if (src) {
+						int n = fread(content_buffer, 1, sizeof(content_buffer) - 1, src);
+						fclose(src);
+						content_buffer[n] = '\0';
+						content_size = n;
+					}
+					FILE *dst = fopen(result, "wb");
+					if (dst) {
+						fwrite(content_buffer, 1, content_size, dst);
+						fclose(dst);
+						strncpy(file_path, result, sizeof(file_path) - 1);
+						file_path[sizeof(file_path) - 1] = '\0';
+						snprintf(status, sizeof(status), "Saved as: %s", result);
+					} else {
+						snprintf(status, sizeof(status), "Save As failed: %s", result);
+					}
+					write_ui_file();
 				} else {
-					snprintf(status, sizeof(status), "Failed to open: %s", result);
-				}
+					FILE *file = fopen(result, "rb");
+					if (file) {
+						int bytes_read = fread(content_buffer, 1, sizeof(content_buffer) - 1, file);
+						fclose(file);
+						content_buffer[bytes_read] = '\0';
+						content_size = bytes_read;
 
-				write_ui_file();
+						strncpy(file_path, result, sizeof(file_path) - 1);
+						file_path[sizeof(file_path) - 1] = '\0';
+
+						snprintf(status, sizeof(status), "Opened: %s", result);
+					} else {
+						snprintf(status, sizeof(status), "Failed to open: %s", result);
+					}
+
+					write_ui_file();
+				}
 			}
 		}
 	}

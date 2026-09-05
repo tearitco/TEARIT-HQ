@@ -4782,8 +4782,18 @@ static void dispatch(const char *action) {
         if (strcmp(action, "TXT_SAVE") == 0) {
             if (af) { fprintf(af, "seq=%u\ncmd=SAVE\n", ++g_swatch_action_seq); fclose(af); }
         } else {
-            Elem *pf = find_by_id(g_window, "pathfield");
-            if (af) { fprintf(af, "seq=%u\ncmd=SAVEAS:%s\n", ++g_swatch_action_seq, pf ? pf->input_buffer : ""); fclose(af); }
+            /* REAL, NEW 2026-09-05, direct live report ("we dont need
+             * that save as path cli_io thing. we have seperate save
+             * menu 2 handle that") - Save As no longer reads a typed
+             * <cli_io> path from the sidebar (removed). It arms the
+             * manager for a save-as (buffer already dumped above) and
+             * launches the shared File Explorer widget - the manager
+             * then treats the NEXT File Explorer pick as the save
+             * target, not a file to load (SAVEAS_ARM). */
+            if (af) { fprintf(af, "seq=%u\ncmd=SAVEAS_ARM\n", ++g_swatch_action_seq); fclose(af); }
+            char cmd[PATH_BUF * 2];
+            snprintf(cmd, sizeof(cmd), "sh '%s/&.widgits/file-explorer/button.sh' run >/dev/null 2>&1 &", g_house_root);
+            int rc = system(cmd); (void)rc;
         }
         return;
     }
@@ -5511,23 +5521,30 @@ static void activate_focused(void) {
         kh_grab_keyboard_retry();
         return;
     }
-    /* generic <tab> (spirit of db-hq's tab click): run the tab's own
-     * action= (switches the projected content), mark it active, and
-     * scope nav into the page's <sidebar> - so after choosing a tab you
-     * navigate its record list, [^] shows, Esc returns to the tab row. */
+    /* generic <tab>: run the tab's own action=, mark it active for CSS.
+     *
+     * REAL FIX 2026-09-05, direct live report ("nav has to work for
+     * entire window... [text_area at nav 6] unreachable by mouse or
+     * nav arrows"): a <tab> only scope-confines nav into a container
+     * when it has an EXPLICIT target_id= (db-hq/events-hq's real
+     * content-switching tabs - "pick a tab, then navigate its record
+     * list"). A <tab> with NO target_id= is a plain menu-bar action
+     * button (text-edit-hq/csv-hq/pdl-read/media-* New/Open/Save/etc) -
+     * it must NOT trap nav anywhere, or the app's MAIN content (a
+     * <text_area> or <grid> in the <panel>, not the <sidebar>) becomes
+     * permanently unreachable the moment you press one. The old
+     * fallback (`if (!sb) sb = find_by_tag(pg,"sidebar")`) confined
+     * every no-target_id tab to whatever sidebar the page happened to
+     * have - the exact bug. Every real content-switching tab in the
+     * house already sets target_id= explicitly, so dropping the
+     * fallback changes behavior only for the plain action tabs, which
+     * is the fix. */
     if (strcmp(item->tag, "tab") == 0) {
         if (item->id[0])
             snprintf(g_default_active_tab_id, sizeof(g_default_active_tab_id), "%s", item->id);
         if (item->onclick[0]) dispatch(item->onclick);
-        {
-            /* scope target: the tab's target_id= container, else the
-             * page <sidebar>. Same path the reparse re-resolve below
-             * uses, so the scope survives the projector's every-tick
-             * state write (which triggers a full reparse). */
-            Elem *pg = find_page(g_current_page);
-            Elem *sb = NULL;
-            if (item->target_id[0]) sb = find_by_id(g_window, item->target_id);
-            if (!sb && pg) sb = find_by_tag(pg, "sidebar");
+        if (item->target_id[0]) {
+            Elem *sb = find_by_id(g_window, item->target_id);
             if (sb) {
                 g_default_active_scope_root = sb;
                 g_default_scope_confine = 1;

@@ -46,11 +46,10 @@
     <sidebar id="sidebar" class="sidebar">
       <text label="${file_path}" class="quiet"/>
       <text label="${status}" class="quiet"/>
-      <text label="Save As path:" class="quiet"/>
-      <cli_io id="pathfield" target_id="pathfield" label=""/>
     </sidebar>
     <panel id="panel" class="edit-panel">
-      <text_area id="editor" content="${content}" rows="20"/>
+      <text label="Editor — nav here (its own [ ]N.), Enter to type, Esc when done" class="quiet"/>
+      <text_area id="editor" content="${content}" rows="19"/>
     </panel>
   </page>
 </window>
