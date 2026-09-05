@@ -1,0 +1,70 @@
+<!-- file-explorer-pal.xhtpm - real, shared File Explorer widget.
+     11.brainstorm/2026-09-05/PDL-READER-AND-FILE-EXPLORER-WIDGET.md.
+
+     Static template + real manager (file_explorer_manager.+x, a
+     <module>), same house convention every other widget this session
+     touched already uses (taskbar-settings, swatch-picker, open-hai).
+     The manager owns the actual directory scan/navigation/pick state
+     and publishes it as file_explorer_ui.txt; this template only
+     ever renders whatever it published, via vars=.
+
+     REAL FIX 2026-09-05, found live testing this exact window twice:
+     (1) vars= resolves a relative token against g_package_dir (this
+     widget's OWN directory, since that's where this file lives) -
+     just the bare filename is correct here, not a path repeating
+     this widget's own directory a second time. (2) <scrolllist> is
+     ONLY ever laid out by layout_sidebar_panel() (khtpm_core_render.c),
+     which requires BOTH a <sidebar> AND a <panel> child of <page> -
+     a bare top-level <scrolllist> with neither never gets sized at
+     all (confirmed live: x/y stuck at a default, w/h stayed 0).
+     Restructured to match bookmarks-pal.xhtpm's own real, working
+     shape - <sidebar> holds the directory listing, <panel> holds the
+     Save-As controls (LOAD mode's panel just shows the current path).
+
+     FE_ENTRY:<n> / FE_SAVEAS / FE_CANCEL are real, generic dispatch
+     verbs khtpm_core_render.c's own dispatch() handles in-process
+     (same exact "write an incrementing-seq action file the manager
+     polls" convention PICK:<n> already uses for taskbar-settings) -
+     not a launched shell relay script, which would have no reliable
+     way to know its own absolute install path from inside a static
+     template. `${entry.type} ${entry.name} ${entry.size}` is a plain,
+     honest label (no icons/formatting yet - real v1 scope, not a
+     placeholder left unfinished).
+
+     SAVE mode's filename field is a real, generic <cli_io> - typing
+     into it is handled entirely by the shared renderer itself
+     (default_cli_io_handle_key(), this session's own real cursor
+     work). FE_SAVEAS reads this field's LIVE value directly off the
+     tree (dispatch()'s own find_by_id("filename")) rather than a
+     `${filename}` substitution, which would only ever reflect the
+     manager's last-published value, not every keystroke.
+     show="${show_save_row}" hides the whole row in LOAD mode (manager
+     publishes show_save_row=0/1 based on its own mode=). -->
+<window label="File Explorer - ${mode}" class="file-explorer-pal database-window" vars="file_explorer_ui.txt">
+  <!-- REAL, NEW 2026-09-05 - launch_module() passes house_root then
+       package_dir automatically, then this <module>'s own id= as a
+       THIRD, single extra argv slot (kh_collect_and_launch_modules()'s
+       own real convention - id doubles as extra_arg when set, same as
+       every other module-launching widget in the house). That extra
+       slot carries the browse mode; the manager always starts
+       browsing at house_root itself (a real, honest v1 default - see
+       file_explorer_manager.c's own header for why a configurable
+       start_dir isn't wired up yet). -->
+  <module src="&.widgits/file-explorer/ops/+x/file_explorer_manager.+x" id="LOAD"/>
+  <page name="main">
+    <sidebar id="sidebar" class="sidebar">
+      <text label="${dir}" class="dir-label"/>
+      <scrolllist>
+        <repeat count="${n_entries}" bind="entry">
+        <item id="entry${entry.#}" class="fe-entry" action="FE_ENTRY:${entry.#}" label="${entry.type} ${entry.name} ${entry.size}"/>
+        </repeat>
+      </scrolllist>
+    </sidebar>
+    <panel id="panel" class="fe-panel">
+      <text label="Pick a file to load." class="quiet" show="${show_load_hint}"/>
+      <cli_io id="filename" target_id="filename" label="Save as: " show="${show_save_row}"/>
+      <item id="save" class="opacity-btn" show="${show_save_row}" action="FE_SAVEAS" label="Save"/>
+      <item id="cancel" class="close-btn" action="FE_CANCEL" label="Cancel"/>
+    </panel>
+  </page>
+</window>

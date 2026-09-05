@@ -4556,6 +4556,45 @@ static void dispatch(const char *action) {
         if (af) { fprintf(af, "seq=%u\n%s\n", ++g_swatch_action_seq, action); fclose(af); }
         return;
     }
+    /* REAL, NEW 2026-09-05 (11.brainstorm/2026-09-05/PDL-READER-AND-
+     * FILE-EXPLORER-WIDGET.md) - the File Explorer widget's own
+     * dispatch verbs, same exact real "renderer writes an
+     * incrementing-seq action file in-process, manager polls it"
+     * convention PICK:<n> just above already uses - not a shell-
+     * command relay (a static xhtpm template has no reliable way to
+     * embed its own absolute install path for a relay script to call
+     * with plain argv, which is why PICK:<n> is handled here instead
+     * of via a launched process too). FE_ENTRY:<n> keeps browsing
+     * (window stays open); FE_SAVEAS:<name> and FE_CANCEL both finish
+     * the dialog, so the window closes the same way CLOSE already
+     * does elsewhere - the manager (a separate, independent process)
+     * keeps running just long enough on its own to notice the write,
+     * commit result/result_action, and exit itself; closing this
+     * window early never kills it. See file_explorer_manager.c's own
+     * header comment for the full real command contract. */
+    if (strncmp(action, "FE_", 3) == 0) {
+        char ap[PATH_BUF];
+        snprintf(ap, sizeof(ap), "%s/&.widgits/file-explorer/file_explorer_action.txt", g_house_root);
+        char cmd_buf[600];
+        if (strcmp(action, "FE_SAVEAS") == 0) {
+            /* REAL, NEW 2026-09-05 - the filename field is a real,
+             * live <cli_io> (id="filename") the shared renderer itself
+             * already owns the typed value for - read it directly off
+             * the live tree here rather than trusting a `${filename}`
+             * template substitution, which only ever reflects the
+             * MANAGER's last-published value (updated on an ENTRY pick,
+             * not on every keystroke) and would go stale the moment a
+             * human types something different afterward. */
+            Elem *fld = find_by_id(g_window, "filename");
+            snprintf(cmd_buf, sizeof(cmd_buf), "SAVEAS:%s", fld ? fld->input_buffer : "");
+        } else {
+            snprintf(cmd_buf, sizeof(cmd_buf), "%s", action + 3);
+        }
+        FILE *af = fopen(ap, "w");
+        if (af) { fprintf(af, "seq=%u\ncmd=%s\n", ++g_swatch_action_seq, cmd_buf); fclose(af); }
+        if (strcmp(action, "FE_SAVEAS") == 0 || strcmp(action, "FE_CANCEL") == 0) g_quit = 1;
+        return;
+    }
     /* REAL, NEW 2026-08-29 (TASK 2: opacity control) - OPACITY_MINUS/OPACITY_PLUS
      * handlers. Read current opacity from theme, adjust by ±0.05, write back,
      * and apply to the window immediately for live visual feedback. */

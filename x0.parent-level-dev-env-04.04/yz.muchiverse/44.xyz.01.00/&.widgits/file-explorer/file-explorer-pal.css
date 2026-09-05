@@ -1,0 +1,46 @@
+/* file-explorer-pal.css - merged on top of entity_menu_default.css for
+   the file-explorer-pal window (same convention as taskbar-settings-
+   pal.css: this loads because the renderer merges the .css sitting
+   next to the loaded .xhtpm, same stem). Window size + .sidebar
+   background match bookmarks-pal.css's own real, working sidebar+
+   panel window - geometry itself is owned by layout_sidebar_panel(),
+   not CSS, but a window needs a real declared size same as every
+   other sidebar+panel consumer already provides. */
+
+window {
+    width: 480px;
+    height: 420px;
+}
+
+.sidebar {
+    background-color: #161616;
+    border-color: #333333;
+}
+
+.fe-panel {
+    background-color: #181818;
+    border: 1px solid #2a2a2a;
+}
+
+.dir-label {
+    color: #ffd24a;
+    padding: 4px 8px;
+}
+
+.fe-entry {
+    color: #cccccc;
+}
+
+.opacity-btn {
+    background-color: #444444;
+    color: #ffffff;
+    padding: 4px 8px;
+    border: 1px solid #666666;
+}
+
+.close-btn {
+    background-color: #663333;
+    color: #ffffff;
+    padding: 4px 8px;
+    border: 1px solid #884444;
+}
