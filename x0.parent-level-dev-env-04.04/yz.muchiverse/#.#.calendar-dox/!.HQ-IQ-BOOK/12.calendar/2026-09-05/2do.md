@@ -42,6 +42,30 @@
   organized by dated (`YYYY-MM-DD/`) subdirectories, same as
   `12.calendar/` — the font-size doc below already lives under
   `11.brainstorm/2026-09-05/`, not loose in the chapter root.
+- **`102.agy-txt`'s legacy launcher bug — FIXED.** Root cause: `button.sh`
+  `cd`s into a per-session directory, then still invoked
+  `./system/renderer` etc. as RELATIVE paths left over from before a
+  refactor removed the old symlink-into-session approach. Checked every
+  house-level project with its own `button.sh` — only `102.agy-txt` and
+  `102.editor-📄️00.00` had this bug; both fixed and live-verified. Not
+  a "mark this binary legacy" situation (the binaries were always
+  fine) — full list and reasoning: `102.agy-txt/
+  LEGACY-LAUNCHER-PATH-FIX-2026-09-05.md`.
+- **`cli_io` real cursor + new `<text_area>` element — IMPLEMENTED.**
+  Both built and live-verified same day as planned (see
+  `08-roadmap/design-docs/CLI_IO-CURSOR-AND-TEXT_AREA-MULTILINE-EDITING-DESIGN.md`,
+  now marked implemented). `cli_io` gained real left/right/home/end/
+  insert/delete-at-cursor editing (was append/backspace-at-the-end
+  only). `<text_area>` is a real, working multi-line element: actual
+  `\n` preserved, Enter inserts a newline instead of submitting,
+  logical-line Home/End/Up/Down, its own save file and frame
+  round-trip field. Found and fixed a real related bug while verifying
+  visually (via `dump_frame_png_op` invoked directly by window ID, so
+  an armed field's true state could be checked without disarming it
+  first): the cursor bar was gated on nav-focus equality instead of
+  the same real armed-state check the `^` badge already used
+  correctly — a tabbed-past-but-not-armed field could show a
+  misleading cursor. Fixed before commit.
 
 ## Not started / open
 
@@ -67,36 +91,6 @@
   doc as above (§5). Real UX reference captured (tpmos's
   `agy-text-editor` loader → editor → FILE MENU → Save As flow).
   Depends on the File Explorer widget above for its own Save As/Load.
-- **`cli_io` cursor + new `<text_area>` element, real plan written,
-  not implemented.** The "does `cli_io` get extended, or does the
-  editor need its own element?" question is decided: a new
-  `<text_area>` tag for real multi-line/newline editing, sharing
-  `cli_io`'s word-wrap helper where legible, same `^`-armed/
-  Escape-disarmed activation `cli_io` already uses. **Updated same
-  day**: `cli_io` itself is also getting a real cursor (left/right/
-  home/end, insert/delete-at-cursor) — decoupled from `text_area`,
-  real value on its own for every existing chat/search composer, and
-  becomes the actual shared primitive `text_area`'s own multi-line
-  cursor logic generalizes from. Full plan:
-  `08-roadmap/design-docs/CLI_IO-CURSOR-AND-TEXT_AREA-MULTILINE-EDITING-DESIGN.md`.
-- **`102.agy-txt`'s legacy launcher bug — FIXED.** See
-  `102.agy-txt/LEGACY-LAUNCHER-PATH-FIX-2026-09-05.md` for the checked
-  list of every house-level project with its own `button.sh` (only
-  `102.agy-txt` and `102.editor-📄️00.00` had this bug), the exact
-  fix, and live verification of both. Original finding kept below for
-  context.
-  `sh button.sh r` fails with `./system/renderer: not found` /
-  `./system/keyboard_input: not found`. The binaries are completely
-  fine (confirmed via `file` + reading them directly); the bug is a
-  real cwd/path mismatch in `button.sh` itself — it `cd`s into a
-  per-session directory, then still invokes `./system/renderer` etc.
-  as RELATIVE paths left over from before a real refactor removed the
-  old symlink-into-session approach (see the doc above, §4, for the
-  exact lines and the one-line-per-call fix). Not a "mark this binary
-  legacy" situation — flagged explicitly in the doc why that framing
-  doesn't fit this specific bug, though a genuine legacy-binary-marker
-  house convention might still be worth its own separate brainstorm
-  later.
 - Taskbar instance-count guard / "x&lt;N&gt;" sanity indicator next to
   the PID (requested earlier this week, never started).
 - The bigger, deliberate pass considered (but not attempted today) of

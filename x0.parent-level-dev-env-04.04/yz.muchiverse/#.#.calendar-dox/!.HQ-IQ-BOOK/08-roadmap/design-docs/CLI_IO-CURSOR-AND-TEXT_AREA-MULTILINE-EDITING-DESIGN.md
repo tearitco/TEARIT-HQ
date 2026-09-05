@@ -1,10 +1,30 @@
-# Plan: a real `<text_area>` element for multi-line editing
+# Plan: a real cursor for `cli_io`, and a new `<text_area>` element for multi-line editing
 
-**Status: real plan, decided direction, NO CODE WRITTEN YET.**
-2026-09-05. Grew out of `11.brainstorm/2026-09-05/
-PDL-READER-AND-FILE-EXPLORER-WIDGET.md` §5's open question ("does
-`cli_io` get extended, or does the editor need its own element?") —
-answered directly this session, see Decisions below.
+**Status: IMPLEMENTED and live-verified, 2026-09-05.** Grew out of
+`11.brainstorm/2026-09-05/PDL-READER-AND-FILE-EXPLORER-WIDGET.md` §5's
+open question ("does `cli_io` get extended, or does the editor need
+its own element?") — answered directly this session, see Decisions
+below, then built the same day.
+
+**What actually shipped** (commits `f3ba7629` cli_io cursor,
+`c6eaa24c` text_area + an armed-state bug fix found while verifying
+it): everything in this doc's own "Decisions" and "What cli_io gains"
+sections below, real and working. Verified live via real X11 key
+events (not synthetic relay) against a standalone test window AND
+open-hai's own real, unmodified composer, with `dump_frame_png_op`
+invoked directly by window ID (bypassing the app's own keyboard input)
+so an ARMED field's true on-screen state could be checked without
+disarming it first — this is how a real bug got caught: the cursor-bar
+draw gate was checking nav-focus equality, not the same real armed
+check the `^` badge already used correctly, so a merely-tabbed-to
+field could show a misleading cursor. Fixed before commit.
+
+**Left for later, exactly as scoped below**: real VISUAL (word-wrapped)
+row Up/Down within one long logical line — text_area's Up/Down today
+is real but LOGICAL-line-only (crosses actual `\n` boundaries, not
+wrap breaks). The File Explorer widget and the actual `toys` text
+editor app are still not built — this doc only covers the underlying
+`cli_io`/`text_area` element capability they'll be built on top of.
 
 ## Why this exists
 
@@ -17,7 +37,9 @@ editor:
 
 1. **No cursor.** `input_buffer` is append/backspace-at-the-end only —
    no left/right/up/down movement, no clicking into the middle of
-   text.
+   text. (**Update, 2026-09-05**: this is now being fixed for `cli_io`
+   itself too, not just worked around inside a new element — see
+   Decisions below.)
 2. **Enter submits, not inserts.** `default_cli_io_handle_key()`:
    `XK_Return` runs the field's `action=` and clears the buffer —
    correct for a one-line chat/search composer, wrong for an editor.
@@ -40,11 +62,28 @@ editor:
   as a hard requirement. Concretely: the existing word-wrap-for-width
   calculation `cli_io` already has is real, working, and tag-agnostic
   logic — factor it into a shared helper both tags call, rather than
-  duplicating it in `text_area`. Anything that's genuinely
-  `text_area`-only (cursor math, real newline handling) stays
-  `text_area`-only; don't force a shared abstraction where the two
-  controls' needs actually diverge (that's how `cli_io` itself would
-  end up half-broken for its own existing single-line consumers).
+  duplicating it in `text_area`. Don't force a shared abstraction
+  where the two controls' needs genuinely diverge (that's how `cli_io`
+  itself would end up half-broken for its own existing single-line
+  consumers).
+- **`cli_io` itself gets a real cursor too** (direct instruction,
+  2026-09-05, added after the rest of this doc was first written):
+  `cli_io` staying append/backspace-at-the-end-only was never actually
+  desirable on its own merits — a one-line chat/search composer
+  benefits from Left/Right/Home/End and click-to-position exactly as
+  much as a multi-line editor does; it just never got done because
+  nothing needed it badly enough yet. This is now real, in-scope work
+  for `cli_io` itself, independent of `text_area` existing — NOT
+  gated on `text_area` being built first. Practical effect: the
+  cursor-position + insert-at-cursor/delete-at-cursor primitive
+  becomes the ACTUAL shared code between the two elements (more so
+  than just the word-wrap calc originally called out above) —
+  `text_area`'s own multi-line cursor logic (§ below) is this same
+  single-line primitive generalized to move across embedded `\n`
+  characters and visual (post-wrap) rows, not a separate
+  implementation. `cli_io` itself stays single-line — Enter still
+  submits there, exactly as today; only the CURSOR gets real, not the
+  multi-line/newline behavior, which stays `text_area`-exclusive.
 - **Activation matches the house's existing armed-field convention,
   not a new one.** `activate_focused()` already special-cases
   `cli_io` (arm it, `kh_grab_keyboard_retry()`, real X keyboard grab)
@@ -59,12 +98,22 @@ editor:
   `XK_Escape → g_default_input_elem = NULL; XUngrabKeyboard(...)` path
   — reused, not reinvented.
 
-## What `text_area` needs that `cli_io` doesn't
+## What `cli_io` gains (shared with `text_area`) vs. what stays `text_area`-only
 
-- **A real cursor**: at minimum a byte/char offset into the buffer;
-  Left/Right move it by one character, Up/Down move it by one
-  *visual* line (post-wrap), Home/End jump to line start/end. This is
-  real, non-trivial logic — the biggest single chunk of new work here.
+**Shared (built once, used by both)**: a real cursor position + real
+insert-at-cursor/delete-at-cursor editing, replacing today's
+append/backspace-at-the-end-only behavior. For `cli_io` (single-line):
+Left/Right move by one character, Home/End jump to start/end,
+click-to-position if/when this renderer gets real click-to-cursor
+support for text (not yet confirmed to exist anywhere in the house —
+worth checking before assuming it's free). For `text_area`
+(multi-line): the SAME primitive, generalized so Up/Down move by one
+*visual* line (post-wrap) and the cursor correctly crosses embedded
+`\n` boundaries — real, non-trivial logic, the biggest single chunk of
+new work in this whole plan, but now framed as extending one shared
+cursor model rather than building a second one from nothing.
+
+**`text_area`-only**:
 - **Enter inserts `\n`** into the buffer at the cursor position while
   armed. Saving/submitting is a SEPARATE action — matching the tpmos
   reference's own FILE MENU shape (`[ ] 2. [SAVE FILE]` as its own
@@ -112,6 +161,12 @@ discovered as a bug afterward a second time.
 
 ## Explicitly not decided yet (implementation-time calls)
 
+- Whether `cli_io`'s own cursor fix ships as its own independent,
+  earlier piece of work (it's fully decoupled from `text_area`
+  existing at all, and is real value on its own for every existing
+  chat/search composer) or lands together with `text_area` since
+  they'd share the same new primitive — an efficiency-vs-shippable-
+  increments call to make when this is actually picked up, not here.
 - Exact buffer size / fixed-vs-dynamic (above).
 - Exact relay/save-state file format and write cadence.
 - Whether Up/Down at the very first/last visual line should do
