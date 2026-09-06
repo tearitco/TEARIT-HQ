@@ -177,14 +177,53 @@ video surface (FFmpeg video decode → a `<canvas>` frame blit, or a
 separate GL path), its own transport chrome, fullscreen. Its own
 design doc when it's next.
 
-## Open questions to settle before starting
+## Decisions locked (2026-09-05, direct: "KISS. use existing stds for
+## now b4 we get fancy")
 
-1. Engine: `mpg123 -R` for v1 (recommended) vs. go straight to the
-   FFmpeg engine. Speed vs. "visualizer works in v1".
-2. Library root config: one path, or a list, in `library.pdl`? (List
-   is barely more work and matches "ADD" later.)
-3. Visualizer box in v1: idle placeholder, or a cheap non-FFT
-   pos-driven animation, or omit the box until v2?
-4. Scrubber in v1: ASCII bar + arrow-seek + click-to-seek (no drag),
-   OR build the real `<slider>` now (it's wanted for volume too, and
-   the text_area mouse-drag work needs the same pointer-polling).
+1. **Engine:** `mpg123 -R` child process, `.mp3` only for v1. FFmpeg
+   engine is the v2 upgrade (unlocks other formats + raw PCM for the
+   real visualizer). The manager's own command/status protocol stays
+   identical across the swap.
+2. **Library root config:** a *list* of `root=/abs/path` lines in
+   `library.pdl` (barely more work than one, matches "ADD to library"
+   later). `nftw()` each, skip AppleDouble `._*`.
+3. **Visualizer box in v1:** keep the box; cheap pos-driven sweep
+   animation (NOT a fake FFT), drawn with a `<repeat>` of thin
+   `<item>`s whose height/`bg=` the manager publishes from a simple
+   function of `pos_sec`. Header text on it: "visualizer — GL soon".
+4. **Scrubber / volume in v1:** NO new `<slider>` element. Use existing
+   conventions only:
+   - seek: Left/Right arrow while the transport row is nav-focused →
+     `MUS_SEEK:-5` / `MUS_SEEK:+5` (seconds). The ASCII progress bar is
+     a display-only `<text>` whose width tracks `${pos_pct}`. No
+     click-to-seek, no drag in v1.
+   - volume: `MUS_VOL_UP` / `MUS_VOL_DN` `<item>` buttons (step 5),
+     manager clamps 0–100.
+   A real draggable `<slider>` (thumb + track, reused for both) is a
+   later shared-element task — flagged, not built.
+
+## FFT as a reusable op (documented seam, NOT built in v1)
+
+v1's `mpg123 -R` engine exposes no PCM, so there is nothing to FFT yet
+and no v1 code for this. But the visualizer's real data source should
+be a **standalone, reusable primitive**, not something buried in the
+music player — direct: "we can have fft hooks/op that can be reused in
+daw and other things".
+
+Spec (build it with its first real consumer — the v2 FFmpeg engine, or
+a DAW/scope task, whichever lands first):
+
+- **`fft_op.+x`** (house `ops/` binary, its own `build_fft_op.sh`).
+- **In:** interleaved S16LE PCM frames on `stdin` (or a named fifo path
+  as argv[1]) — sample rate + channel count as argv, e.g.
+  `fft_op 44100 2 1024` (rate, channels, FFT size).
+- **Out:** one line per hop to `stdout` (or to `argv[2]` rewritten
+  atomically, marker-debounced like every other state file here):
+  `<t_sec> <b0> <b1> ... <bN-1>` — N log-spaced band magnitudes
+  normalised 0–100 (N from argv, default 24).
+- **No X11, no house deps** — pure `read()` → windowed real FFT (a
+  ~150-line radix-2 Cooley–Tukey, or link `libfftw3` which is already
+  present) → band-sum → print. Testable in isolation with a WAV piped
+  through `sox`/`ffmpeg -f s16le`.
+- Consumers: music-player-hq v2 visualizer, a future DAW meter/scope,
+  `pc-hq` audio-reactive modes. Each just reads the `.dat`/stdout.

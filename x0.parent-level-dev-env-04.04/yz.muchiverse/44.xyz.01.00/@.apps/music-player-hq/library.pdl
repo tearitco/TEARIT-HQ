@@ -1,0 +1,10 @@
+# music-player-hq library roots. One "root=<abs path>" per line;
+# recursive .mp3 scan, AppleDouble ._* skipped, missing dirs ignored.
+# Lines starting with '#' and blank lines are ignored. File Explorer
+# "ADD to library" (v2) will append here; for now edit by hand.
+#
+# Keep roots LOCAL and reasonably sized - the scan is a blocking nftw()
+# at startup (capped at 300 tracks). A slow network/USB mount here will
+# stall the first render.
+root=/home/no/Downloads
+# root=/media/no/b7ced73c-5231-4462-b98d-64e38fe2df9e/home/jbez/Music

@@ -4833,6 +4833,22 @@ static void dispatch(const char *action) {
         if (strncmp(action + 4, "OPEN:", 5) == 0) switch_page("read");
         return;
     }
+    /* REAL, NEW 2026-09-05 - music-player-hq (@.apps/music-player-hq),
+     * same shape as PDL_* / CSVH_*: just relay the verb (everything
+     * after "MUS_") to the app's own action file. The backend
+     * (music_player_manager.+x) owns all playback state and drives an
+     * mpg123 -R child; it's a single <page> app so no switch_page()
+     * pairing is needed. Verbs: PLAY_INDEX:<n>, PLAYPAUSE, STOP,
+     * NEXT, PREV, SEEK:<+/-secs>, VOL_UP, VOL_DN, SHUFFLE_TOGGLE,
+     * RESCAN. None need a live element value (unlike FE_SAVEAS /
+     * CSVH_SETCELL), so a plain seq/cmd write is the whole job. */
+    if (strncmp(action, "MUS_", 4) == 0) {
+        char ap[PATH_BUF];
+        snprintf(ap, sizeof(ap), "%s/music_player_action.txt", g_package_dir);
+        FILE *af = fopen(ap, "w");
+        if (af) { fprintf(af, "seq=%u\ncmd=%s\n", ++g_swatch_action_seq, action + 4); fclose(af); }
+        return;
+    }
     /* REAL, NEW 2026-09-05 - text-edit-hq (@.apps/text-edit-hq), same
      * real toys-menu batch as csv-hq below. TXT_OPENFILE launches the
      * shared File Explorer widget exactly like PDL_OPENFILE (own real

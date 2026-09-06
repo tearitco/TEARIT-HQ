@@ -1,0 +1,55 @@
+<!-- music-player-hq-pal.xhtpm - iTunes-inspired X11-HQ music player,
+     v1 (KISS). 08-roadmap/design-docs/MUSIC-PLAYER-HQ-DESIGN.md.
+
+     Static template + real backend (music_player_manager.+x, a
+     <module>) - same house convention as pdl-read / csv-hq /
+     text-edit-hq. The manager owns ALL state: it scans library.pdl's
+     roots for .mp3s, drives an `mpg123 -R` child, and publishes
+     music_player_ui.txt (plain key=value). This template only ever
+     renders what it published, via vars=. It polls
+     music_player_action.txt (seq/cmd) written by dispatch()'s MUS_*
+     block in khtpm_core_render.c.
+
+     v1 deliberately-bounded scope (see the design doc): .mp3 only
+     (mpg123 -R engine), whole library published (cap ~300, no
+     scrolling window yet), NO <slider> element - seek is +/- buttons
+     (MUS_SEEK:-5 / MUS_SEEK:+5) and the bar is display-only, volume is
+     +/- buttons. Visualizer is a single ASCII block-bar line driven
+     by playback position (placeholder until the v2 FFmpeg engine +
+     fft_op feed real magnitudes). One <page>. -->
+<window label="music-player-hq - ${track_name}" class="music-player-pal database-window" vars="music_player_ui.txt">
+  <module src="@.apps/music-player-hq/ops/+x/music_player_manager.+x" id="_"/>
+  <page name="main">
+    <tabbar class="tab-bar">
+      <tab id="rescanbtn" class="tab" action="MUS_RESCAN" label="[rescan library]"/>
+    </tabbar>
+    <sidebar id="sidebar" class="sidebar">
+      <text label="library - ${n_tracks} tracks" class="quiet"/>
+      <scrolllist>
+        <repeat count="${n_tracks}" bind="t">
+        <item id="trk${t.#}" class="track-row ${t.cls}" action="MUS_PLAY_INDEX:${t.#}" label="${t.name}"/>
+        </repeat>
+      </scrolllist>
+    </sidebar>
+    <panel id="nowplaying" class="np-panel">
+      <text label="${track_name}" class="np-title"/>
+      <text label="${pos_mmss} / ${dur_mmss}   [${state}]" class="np-time"/>
+      <text label="${bar}" class="np-bar"/>
+      <text label="${viz}" class="viz"/>
+      <text label="vol ${volume}%     shuffle: ${shuffle_label}" class="np-vol"/>
+      <row class="toolbar transport">
+        <item id="prev" class="tp-btn" action="MUS_PREV" label="|&lt;"/>
+        <item id="playpause" class="tp-btn" action="MUS_PLAYPAUSE" label="${playpause}"/>
+        <item id="next" class="tp-btn" action="MUS_NEXT" label="&gt;|"/>
+        <item id="seekback" class="tp-btn" action="MUS_SEEK:-5" label="&lt;&lt; 5s"/>
+        <item id="seekfwd" class="tp-btn" action="MUS_SEEK:+5" label="5s &gt;&gt;"/>
+      </row>
+      <row class="toolbar ctlrow">
+        <item id="voldn" class="tp-btn" action="MUS_VOL_DN" label="vol -"/>
+        <item id="volup" class="tp-btn" action="MUS_VOL_UP" label="vol +"/>
+        <item id="shuffle" class="tp-btn ${shuffle_cls}" action="MUS_SHUFFLE_TOGGLE" label="shuffle"/>
+        <item id="stop" class="tp-btn" action="MUS_STOP" label="stop"/>
+      </row>
+    </panel>
+  </page>
+</window>
