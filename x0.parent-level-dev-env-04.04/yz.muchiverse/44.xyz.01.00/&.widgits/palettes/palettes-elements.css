@@ -36,7 +36,7 @@ window { width: 1000px; height: 620px; background-color: #121212;
 .poe-detail { flex-grow: 1; background-color: #171717;
   border: 1px solid #2a2a2a; border-width: 1; }
 .poe-quiet { color: #777777; padding: 12px; }
-.poe-sym  { color: #ffffff; font-weight: bold; font-size: 30px; padding: 12px 14px 0 14px; }
+.poe-sym  { color: #ffffff; font-weight: bold; font-size: 20px; padding: 12px 14px 2px 14px; }
 .poe-name { color: #d9d9d9; font-size: 14px; padding: 0 14px 8px 14px; }
 .poe-line { color: #b9b9b9; font-size: 11px; padding: 2px 14px; }
 .poe-place { color: #7c8; font-size: 10px; padding: 10px 14px 2px 14px; }
