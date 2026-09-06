@@ -39,14 +39,14 @@
             label="${sel_tier}   -   ${sel_pne}" show="${sel_show}"/>
       <text id="ing-hdr" class="cc-ing-hdr"
             label="Ingredients (highest common denominator):" show="${sel_show}"/>
-      <scrolllist class="from-top">
-        <repeat count="${n_ing}" bind="ing">
-          <text id="ing${ing.#}" class="cc-ing"
-                label="${ing.have} / ${ing.need}   ${ing.name}   ${ing.bar}"/>
-        </repeat>
-      </scrolllist>
+      <repeat count="${n_ing}" bind="ing">
+        <text id="ing${ing.#}" class="cc-ing"
+              label="${ing.have} / ${ing.need}   ${ing.name}   ${ing.bar}"/>
+      </repeat>
       <text id="sel-note" class="cc-note" label="${sel_note}" show="${sel_note}"/>
-      <text id="craft-btn" class="cc-craft" label="[  CRAFT  ]" show="${sel_show}"/>
+      <item id="craft-btn" class="cc-craft" label="CRAFT" show="${sel_show}"
+            action="'${PKG}/ops/cc_item.sh' 'CRAFT'"/>
+      <text id="craft-msg" class="cc-craftmsg" label="${craft_msg}" show="${craft_msg}"/>
     </panel>
 
     <panel id="inventory" class="cc-invpanel">

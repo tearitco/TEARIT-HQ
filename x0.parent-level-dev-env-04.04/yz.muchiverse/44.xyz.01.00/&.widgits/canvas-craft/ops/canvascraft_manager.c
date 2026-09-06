@@ -227,6 +227,31 @@ static void bar10(long have, long need, char *out, size_t osz) {
     out[o] = '\0';
 }
 
+/* Direct ingredients of recipe sx (design §3): fills ridx[]/need[],
+ * returns the count (0..4). *flagged set if the resolver guessed. */
+typedef struct { long need; int ridx; } Ing;
+static int compute_ings(int sx, Ing *ig, int *flagged) {
+    *flagged = 0;
+    if (sx < 0 || sx >= n_rec) return 0;
+    Recipe *X = &rec[sx];
+    if (X->a < 0 || X->b < 0) return 0;   /* primitive - not crafted */
+    long na, nb;
+    resolve_qty(sx, &na, &nb, flagged);
+    int ni = 0;
+    if (X->a == X->b) {
+        if (na + nb > 0) { ig[ni].ridx = X->a; ig[ni].need = na + nb; ni++; }
+    } else {
+        if (na > 0) { ig[ni].ridx = X->a; ig[ni].need = na; ni++; }
+        if (nb > 0) { ig[ni].ridx = X->b; ig[ni].need = nb; ni++; }
+    }
+    long ee = (strcmp(X->tier, "element") == 0 && X->e > 0) ? X->e : 0;
+    if (ee > 0) { ig[ni].ridx = rec_by_id("electron"); ig[ni].need = ee; ni++; }
+    if (ni == 0) { ig[0].ridx = X->a; ig[0].need = 1; ni = 1; }
+    return ni;
+}
+
+static char g_craft_msg[96] = "";   /* last CRAFT result - shown in the bench */
+
 static void write_ui(void) {
     char tmp[PL], dst[PL];
     snprintf(dst, sizeof(dst), "%s/canvas-craft_ui.txt", pkg_dir);
@@ -251,18 +276,13 @@ static void write_ui(void) {
         if (X->a < 0 || X->b < 0) {
             snprintf(sel_note, sizeof(sel_note), "primitive - mined / spawned, not crafted");
         } else {
-            long na, nb; int flagged;
-            resolve_qty(sel, &na, &nb, &flagged);
-            int elec = rec_by_id("electron");
-            if (X->a == X->b) {
-                if (na + nb > 0) { snprintf(ig[ni].nm, sizeof(ig[ni].nm), "%s", rec[X->a].name); ig[ni].need = na + nb; ig[ni].ridx = X->a; ni++; }
-            } else {
-                if (na > 0) { snprintf(ig[ni].nm, sizeof(ig[ni].nm), "%s", rec[X->a].name); ig[ni].need = na; ig[ni].ridx = X->a; ni++; }
-                if (nb > 0) { snprintf(ig[ni].nm, sizeof(ig[ni].nm), "%s", rec[X->b].name); ig[ni].need = nb; ig[ni].ridx = X->b; ni++; }
+            Ing g[4]; int flagged;
+            ni = compute_ings(sel, g, &flagged);
+            for (int i = 0; i < ni; i++) {
+                ig[i].ridx = g[i].ridx; ig[i].need = g[i].need;
+                snprintf(ig[i].nm, sizeof(ig[i].nm), "%s",
+                         (g[i].ridx >= 0 && g[i].ridx < n_rec) ? rec[g[i].ridx].name : "?");
             }
-            long ee = (strcmp(X->tier, "element") == 0 && X->e > 0) ? X->e : 0;
-            if (ee > 0) { snprintf(ig[ni].nm, sizeof(ig[ni].nm), "Electron"); ig[ni].need = ee; ig[ni].ridx = elec; ni++; }
-            if (ni == 0) { snprintf(ig[0].nm, sizeof(ig[0].nm), "%s", rec[X->a].name); ig[0].need = 1; ig[0].ridx = X->a; ni = 1; }
             if (flagged) snprintf(sel_note, sizeof(sel_note), "counts are an estimate (recipe data is approximate)");
         }
     }
@@ -279,6 +299,7 @@ static void write_ui(void) {
     fprintf(f, "sel_yield=%s\n", sel_show ? "1" : "");
     fprintf(f, "sel_pne=%s\n",  sel_pne);
     fprintf(f, "sel_note=%s\n", sel_note);
+    fprintf(f, "craft_msg=%s\n", g_craft_msg);
 
     fprintf(f, "n_ing=%d\n", ni);
     char bar[16];
@@ -320,12 +341,50 @@ static void write_ui(void) {
 
 /* ---- action relay ------------------------------------------------------ */
 
+static void do_craft(void) {
+    g_craft_msg[0] = '\0';
+    if (sel < 0 || sel >= n_rec) { snprintf(g_craft_msg, sizeof(g_craft_msg), "Pick a recipe first."); return; }
+    Recipe *X = &rec[sel];
+    if (X->a < 0 || X->b < 0) {
+        snprintf(g_craft_msg, sizeof(g_craft_msg), "%s is a primitive - can't craft it.", X->name);
+        return;
+    }
+    Ing g[4]; int flagged;
+    int ni = compute_ings(sel, g, &flagged);
+
+    /* enough of everything? */
+    for (int i = 0; i < ni; i++) {
+        long have = inv_count(g[i].ridx);
+        if (have < g[i].need) {
+            const char *nm = (g[i].ridx >= 0) ? rec[g[i].ridx].name : "?";
+            snprintf(g_craft_msg, sizeof(g_craft_msg),
+                     "Not enough %s - need %ld more (have %ld / %ld).",
+                     nm, g[i].need - have, have, g[i].need);
+            return;
+        }
+    }
+    /* consume + produce */
+    for (int i = 0; i < ni; i++) {
+        for (int s = 0; s < n_inv; s++)
+            if (inv[s].ridx == g[i].ridx) { inv[s].count -= g[i].need; break; }
+    }
+    /* drop empty stacks (keep handles off the free list simple: just compact) */
+    int w = 0;
+    for (int s = 0; s < n_inv; s++) if (inv[s].count > 0) inv[w++] = inv[s];
+    n_inv = w;
+
+    inv_add(sel, 1);   /* yield 1 for now */
+    snprintf(g_craft_msg, sizeof(g_craft_msg), "Crafted 1 %s.  (+1 to inventory)", X->name);
+}
+
 static void do_cmd(const char *cmd) {
     if (strncmp(cmd, "SELECT_RECIPE:", 14) == 0) {
         int i = rec_by_id(cmd + 14);
-        if (i >= 0) sel = i;
+        if (i >= 0) { sel = i; g_craft_msg[0] = '\0'; }
+    } else if (strcmp(cmd, "CRAFT") == 0) {
+        do_craft();
     }
-    /* CRAFT / BENCH_* / SEARCH_* land in later phases */
+    /* BENCH_* / SEARCH_* / FILTER_* land in later phases */
     write_ui();
 }
 
