@@ -212,17 +212,22 @@ int main(int argc, char **argv) {
      * in the parser, breaking arrow-key submenu navigation. */
     build_path(pulse_path, sizeof(pulse_path), "#.desktop/strip_ascii_current_frame.txt");
     struct stat st;
-    long last_sz = -1; long last_mt = 0;
-    if (stat(pulse_path, &st) == 0) { last_sz = st.st_size; last_mt = (long)st.st_mtime; }
+    long last_sz = -1; long long last_mt = 0;
+    /* NANOSECOND mtime - khtpm_core_render.c rewrites this frame file
+     * several times per second on an arrow-key burst, and consecutive
+     * frames are often the same byte length (single-digit nav number),
+     * so a seconds-only or size-only compare drops redraws. */
+#define STRIP_MT(s) ((long long)(s).st_mtim.tv_sec * 1000000000LL + (s).st_mtim.tv_nsec)
+    if (stat(pulse_path, &st) == 0) { last_sz = st.st_size; last_mt = STRIP_MT(st); }
 
     while (1) {
         if (stat(pulse_path, &st) == 0) {
-            if (st.st_size != last_sz || (long)st.st_mtime != last_mt) {
+            if (st.st_size != last_sz || STRIP_MT(st) != last_mt) {
                 render_display();
-                last_sz = st.st_size; last_mt = (long)st.st_mtime;
+                last_sz = st.st_size; last_mt = STRIP_MT(st);
             }
         }
-        usleep(50000);
+        usleep(16667);   /* 60Hz, matching TPMOS renderer.c's own marker-poll cadence exactly */
     }
     return 0;
 }

@@ -5893,12 +5893,18 @@ static int g_dock_tab_focus  = 0;
  * Cheap: a single stat() per tick, redraw() only on an actual change. */
 static void dock_poll_strip_state(void) {
     if (!window_is_dock()) return;
-    static long s_mtime = 0;
+    static long long s_mtime = 0;
     char sp[PATH_BUF];
     snprintf(sp, sizeof(sp), "%s/#.desktop/strip_state.txt", g_house_root);
     struct stat st;
     if (stat(sp, &st) != 0) return;
-    long m = (long)st.st_mtime;
+    /* NANOSECOND precision - st_mtime is seconds only, and the manager
+     * routinely republishes several times within one wall-clock second
+     * (a burst of arrow keys). A seconds-only compare silently drops
+     * every republish after the first in a given second, which showed up
+     * as the mirror trailing the taskbar by one step on alternate
+     * presses. */
+    long long m = (long long)st.st_mtim.tv_sec * 1000000000LL + st.st_mtim.tv_nsec;
     if (s_mtime == 0) { s_mtime = m; return; }   /* first sight - don't repaint */
     if (m == s_mtime) return;
     s_mtime = m;
@@ -7953,7 +7959,16 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
          * entirely between press and release. Only shortened while
          * g_pal_rmmv_armed (costs nothing otherwise - every other
          * window/mode never sets this flag at all). */
-        struct timeval tv = g_has_canvas ? (struct timeval){ 0, 33000 } : (struct timeval){ 0, 150000 };
+        /* Dock strip: tick at ~30Hz like a canvas, not 150ms. hq_idle_tick()
+         * is where dock_poll_strip_state() notices the manager's
+         * strip_state.txt republish and mirrors terminal-driven focus into
+         * the ASCII frame - a 150ms tick there was the visible "cli" lag
+         * the user reported. TPMOS's own reference renderer.c polls its
+         * pulse marker at 60Hz (usleep(16667)); 33ms here is the same
+         * marker/dirty idea, one cheap stat() per tick, no extra file. */
+        struct timeval tv = (g_has_canvas || window_is_dock())
+                                ? (struct timeval){ 0, 33000 }
+                                : (struct timeval){ 0, 150000 };
         select(xfd + 1, &fds, NULL, NULL, &tv);
         while (XPending(dpy)) {
             XEvent ev; XNextEvent(dpy, &ev);
