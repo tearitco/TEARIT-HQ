@@ -2698,6 +2698,10 @@ static int g_default_scrolllist_nav_lo = 0, g_default_scrolllist_nav_hi = 0;
  * column). Shared scroll cursor across all extras. */
 static int g_default_panel2_scroll = 0;
 static int g_default_panel2_nav_lo = 0, g_default_panel2_nav_hi = 0;
+/* columns in a flex-wrap sidebar grid (periodic table) - so Up/Down
+ * step a whole row and PageUp/Down scroll one screen. Set by
+ * layout_sidebar_panel()'s flex branch. */
+static int g_default_poe_cols = 1;
 
 /* REAL, NEW 2026-09-02 - generic visible scrollbar for ANY <scrolllist>
  * that overflows its viewport. Palette-grid already had its own track
@@ -3511,6 +3515,39 @@ static int layout_sidebar_panel(Elem *page) {
         kh_assign_nav_subtree(sidebar);     /* number the grid tiles (mouse hit-test + digit-jump need this) */
         g_default_sidebar_nav_lo = lo;
         g_default_sidebar_nav_hi = g_n_nav;
+
+        /* Scroll + thumb + nav ^/v arrows, reusing the SAME
+         * generic_sbar_register() every other scroll region uses.
+         * g_default_sidebar_scroll is in "rows" (tile height + gap).
+         * css_layout_pass laid the whole grid out; we clip by shifting
+         * the subtree up by scroll*row_h. */
+        int gh = 0, first_h = 0, first_y = sidebar->y, tw = 0;
+        for (int i = 0; i < sidebar->n_children; i++) {
+            Elem *c = sidebar->children[i];
+            if (strcmp(c->tag, "item") != 0) continue;
+            if (!first_h) { first_h = c->h; first_y = c->y; tw = c->w; }
+            if (c->y + c->h > gh) gh = c->y + c->h;
+        }
+        int cgap = sidebar->style.has_gap ? sidebar->style.gap : 0;
+        int cpad = sidebar->style.has_padding ? sidebar->style.padding : 0;
+        int row_h  = (first_h > 0 ? first_h : 40) + cgap;
+        int grid_h = gh - first_y + cpad;
+        g_default_poe_cols = (tw > 0) ? (sidebar->w - 2 * cpad + cgap) / (tw + cgap) : 1;
+        if (g_default_poe_cols < 1) g_default_poe_cols = 1;
+
+        int total_rows   = row_h > 0 ? (grid_h + row_h - 1) / row_h : 1;
+        int visible_rows = row_h > 0 ? sidebar->h / row_h : 1;
+        if (visible_rows < 1) visible_rows = 1;
+        int max_scroll   = total_rows > visible_rows ? total_rows - visible_rows : 0;
+        if (g_default_sidebar_scroll < 0) g_default_sidebar_scroll = 0;
+        if (g_default_sidebar_scroll > max_scroll) g_default_sidebar_scroll = max_scroll;
+        if (g_default_sidebar_scroll > 0)
+            kh_shift_subtree(sidebar, -g_default_sidebar_scroll * row_h);
+        /* same call shape as layout_fixed_rows_and_scrolllist()'s own:
+         * pass the FULL region width/height - the helper carves the
+         * thumb + arrows off the right edge itself. */
+        generic_sbar_register(sidebar->x, sidebar->y, sidebar->w, sidebar->h,
+                              &g_default_sidebar_scroll, total_rows, visible_rows, max_scroll);
     } else {
         layout_fixed_rows_and_scrolllist(sidebar, sidebar->x, sidebar->y, sidebar->w, sidebar->h,
                                           &g_default_sidebar_scroll, &g_default_sidebar_nav_lo, &g_default_sidebar_nav_hi);
@@ -4526,6 +4563,7 @@ static void assign_nav_and_layout(void) {
         int grid_w = cols * pitch;
         int n_sw = 0;
         int chrome_x = g_win_w - 8;   /* right-to-left cursor for chrome buttons */
+        int found_close = 0;
         Elem *sw_items[MAX_CHILDREN];
         for (i = 0; i < page->n_children; i++) {
             Elem *item = page->children[i];
@@ -4537,6 +4575,7 @@ static void assign_nav_and_layout(void) {
                     strcmp(item->classes[c], "chrome-btn") == 0) is_close = 1;
             }
             if (strcmp(item->id, "close") == 0) is_close = 1;
+            if (is_close) found_close = 1;
             css_compute_style(&g_sheet, item->tag, item->id, item->classes, item->n_classes, 0, &item->style);
             item->nav_index = ++g_n_nav;
             g_nav[g_n_nav - 1] = item;
@@ -4561,6 +4600,31 @@ static void assign_nav_and_layout(void) {
                 if (n_sw < MAX_CHILDREN) sw_items[n_sw] = item;
                 n_sw++;
             }
+        }
+        /* Every real HQ/picker window MUST have a way out (direct
+         * instruction: "make sure x11-hq windows all have a default x
+         * button so they don't get stuck on screen"). If the template
+         * declared none, synthesise the same g_default_close_elem the
+         * sidebar+panel path uses - drawn/clicked/serialised through the
+         * exact machinery that already exists for it. */
+        if (!found_close) {
+            memset(g_default_close_elem, 0, sizeof(*g_default_close_elem));
+            snprintf(g_default_close_elem->tag, sizeof(g_default_close_elem->tag), "item");
+            snprintf(g_default_close_elem->id, sizeof(g_default_close_elem->id), "chrome-close");
+            snprintf(g_default_close_elem->label, sizeof(g_default_close_elem->label), "X");
+            snprintf(g_default_close_elem->onclick, sizeof(g_default_close_elem->onclick), "CLOSE");
+            css_compute_style(&g_sheet, "item", "chrome-close", NULL, 0, 0, &g_default_close_elem->style);
+            int cw = kh_measure_text_px(&g_default_close_elem->style, "X") + 52;
+            if (cw < 48) cw = 48;
+            chrome_x -= cw;
+            g_default_close_elem->x = chrome_x; g_default_close_elem->y = 2;
+            g_default_close_elem->w = cw; g_default_close_elem->h = CHROME_H - 4;
+            kh_clamp_elem_onscreen(g_default_close_elem);
+            chrome_x = g_default_close_elem->x - 4;
+            g_default_close_elem->nav_index = ++g_n_nav;
+            g_nav[g_n_nav - 1] = g_default_close_elem;
+        } else {
+            g_default_close_elem->w = 0;   /* template has its own; keep the synth one inert */
         }
         /* helper: does this <item> carry class="pal-dir" (the long folder
          * list - pinned to the FOOTER; sheet A/B/C + tileset choosers go
@@ -6844,6 +6908,19 @@ static void handle_key(KeySym ks, char ch) {
     if (ks == XK_BackSpace && g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
         Elem *focused = g_nav[g_focus_nav - 1];
         if (focused->backspace_action[0]) { dispatch_no_quit(focused->backspace_action); return; }
+    }
+    /* flex-wrap grid (periodic table): Up/Down jump a whole row,
+     * Left/Right step one tile, and scroll follows the focus. */
+    if ((ks == XK_Up || ks == XK_Down) &&
+        g_default_poe_cols > 1 &&
+        g_focus_nav >= g_default_sidebar_nav_lo && g_focus_nav <= g_default_sidebar_nav_hi) {
+        int step = (ks == XK_Down ? 1 : -1) * g_default_poe_cols;
+        int nv = g_focus_nav + step;
+        if (nv >= g_default_sidebar_nav_lo && nv <= g_default_sidebar_nav_hi) g_focus_nav = nv;
+        /* keep the focused tile in the visible band */
+        int row = (g_focus_nav - g_default_sidebar_nav_lo) / g_default_poe_cols;
+        if (row < g_default_sidebar_scroll) g_default_sidebar_scroll = row;
+        return;
     }
     if (ks == XK_Up || ks == XK_Left) {
         if (g_dock_drop_lo && g_default_active_scope_id[0]) {
