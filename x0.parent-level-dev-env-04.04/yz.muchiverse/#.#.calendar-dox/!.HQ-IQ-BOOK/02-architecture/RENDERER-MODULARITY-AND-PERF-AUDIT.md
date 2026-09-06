@@ -359,6 +359,50 @@ they're structural classification of an already-parsed tree.
 
 ---
 
+## Addendum 2026-09-06 — periodic-picker: a new layout branch that should have been a reuse
+
+**Trigger:** live bug report — Down-arrow in the "Chemicals+Compounds"
+periodic-table picker scrolled the window chrome off-screen and moved
+the scrollbar thumb the wrong way. Full root-cause writeup:
+`03-pitfalls/HOUSE_CODE_PITFALLS.md` #14.
+
+**Finding (confirms this audit's thesis at a new site):** the picker
+was built on brand-new machinery in `khtpm_core_render.c` —
+`layout_sidebar_panel()`'s `<sidebar style="display:flex">` scroll
+block (using `kh_shift_subtree()` to translate the whole grid),
+a bespoke `XK_Up`/`XK_Down` handler, and a `g_default_poe_cols` global
+— when the **generic swatch-grid path** (~line 4669, `<item
+class="swatch">`, already used by `palettes-rmmv.xhtpm` for the exact
+same "wide scrolling tile grid + chrome" shape) already provided
+width-derived columns, a clipped scrolled grid, one
+`generic_sbar_register()` thumb + `^`/`v` nav arrows, untouched chrome,
+and a function-local `static` scroll cursor. The new branch also
+diverged from every existing scroll path on three load-bearing details
+(translate vs. clip; direct `g_*_scroll` mutation vs. the sbar clamp;
+nav-numbering invisible rows) — each one a real bug.
+
+**Fixed in this pass** (not audit-only): the `flex-wrap` support in
+`css_layout_pass()` was kept (a legitimate reusable flexbox-engine
+capability), the `<sidebar display:flex>` scroll block was rewritten to
+the existing clip-not-translate + visible-only-nav pattern, and the
+bespoke arrow handler + `g_default_poe_cols` were deleted. Scroll is
+now `Page_Up`/`Page_Down` + sbar arrows + wheel, identical to every
+other region.
+
+**New standing audit item (add to the ordered list above, high value,
+low effort):** a `layout_*` reuse-check reflex — before any *layout*
+branch is added to `khtpm_core_render.c`, grep for a sibling rendering
+the same shape (`class="swatch"`, `sprite-grid-row`,
+`layout_scroll_region`, `layout_fixed_rows_and_scrolllist`) and route
+through it. Any branch that does get added must clip by parking
+off-screen children at `y = -100000` (never translate a subtree that
+re-lays every frame), must not add key handling or write a scroll
+cursor directly, and must nav-number only visible rows. This is the
+same "check the real convention before adding to the pile" discipline
+as pitfall #11, applied to layout rather than data-loading.
+
+---
+
 ## Document Info
 
 - **Author:** Claude (audit pass, 2026-09-04), extending Rev 15's own

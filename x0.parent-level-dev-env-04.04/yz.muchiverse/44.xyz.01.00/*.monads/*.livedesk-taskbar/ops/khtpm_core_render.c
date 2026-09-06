@@ -2698,10 +2698,6 @@ static int g_default_scrolllist_nav_lo = 0, g_default_scrolllist_nav_hi = 0;
  * column). Shared scroll cursor across all extras. */
 static int g_default_panel2_scroll = 0;
 static int g_default_panel2_nav_lo = 0, g_default_panel2_nav_hi = 0;
-/* columns in a flex-wrap sidebar grid (periodic table) - so Up/Down
- * step a whole row and PageUp/Down scroll one screen. Set by
- * layout_sidebar_panel()'s flex branch. */
-static int g_default_poe_cols = 1;
 
 /* REAL, NEW 2026-09-02 - generic visible scrollbar for ANY <scrolllist>
  * that overflows its viewport. Palette-grid already had its own track
@@ -3508,41 +3504,64 @@ static int layout_sidebar_panel(Elem *page) {
      * number its items after. Otherwise the classic vertical
      * fixed-rows + scroll pass. */
     if (sidebar->style.has_display && sidebar->style.display_flex) {
-        zero_nav_subtree(sidebar);          /* clear stale per-Elem indices first */
+        /* Flex-wrap tile grid (e.g. the periodic-table element picker).
+         * The shared HTML flex engine (css_layout_pass) lays every tile
+         * out fresh from sidebar->y every frame; it assigns no nav.
+         * SCROLL exactly the way every other region in this file does
+         * (layout_scroll_region / the swatch-grid path): do NOT
+         * translate the whole subtree - off-fold rows then paint up
+         * into the pinned chrome band, nothing clips a region to its
+         * box on the paint side - instead HIDE off-fold tiles at
+         * y=-100000 and nav-number only the visible ones. Scroll input
+         * is the generic Page_Up/Down + the generic_sbar ^/v arrows +
+         * wheel; no bespoke key handling. See HOUSE_CODE_PITFALLS.md #14. */
+        zero_nav_subtree(sidebar);
         kh_css_deep(sidebar);
         css_layout_pass(sidebar, sidebar->x, sidebar->y, sidebar->w, sidebar->h);
-        int lo = g_n_nav + 1;
-        kh_assign_nav_subtree(sidebar);     /* number the grid tiles (mouse hit-test + digit-jump need this) */
-        g_default_sidebar_nav_lo = lo;
-        g_default_sidebar_nav_hi = g_n_nav;
 
-        /* Scroll + thumb + nav ^/v arrows, reusing the SAME
-         * generic_sbar_register() every other scroll region uses.
-         * g_default_sidebar_scroll is in "rows" (tile height + gap).
-         * css_layout_pass laid the whole grid out; we clip by shifting
-         * the subtree up by scroll*row_h. */
-        int gh = 0, first_h = 0, first_y = sidebar->y, tw = 0;
+        int grid_bottom = 0, first_h = 0, first_y = sidebar->y;
         for (int i = 0; i < sidebar->n_children; i++) {
             Elem *c = sidebar->children[i];
             if (strcmp(c->tag, "item") != 0) continue;
-            if (!first_h) { first_h = c->h; first_y = c->y; tw = c->w; }
-            if (c->y + c->h > gh) gh = c->y + c->h;
+            if (!first_h) { first_h = c->h; first_y = c->y; }
+            if (c->y + c->h > grid_bottom) grid_bottom = c->y + c->h;
         }
         int cgap = sidebar->style.has_gap ? sidebar->style.gap : 0;
         int cpad = sidebar->style.has_padding ? sidebar->style.padding : 0;
         int row_h  = (first_h > 0 ? first_h : 40) + cgap;
-        int grid_h = gh - first_y + cpad;
-        g_default_poe_cols = (tw > 0) ? (sidebar->w - 2 * cpad + cgap) / (tw + cgap) : 1;
-        if (g_default_poe_cols < 1) g_default_poe_cols = 1;
-
+        int grid_h = grid_bottom - first_y + cpad;
         int total_rows   = row_h > 0 ? (grid_h + row_h - 1) / row_h : 1;
         int visible_rows = row_h > 0 ? sidebar->h / row_h : 1;
         if (visible_rows < 1) visible_rows = 1;
         int max_scroll   = total_rows > visible_rows ? total_rows - visible_rows : 0;
         if (g_default_sidebar_scroll < 0) g_default_sidebar_scroll = 0;
         if (g_default_sidebar_scroll > max_scroll) g_default_sidebar_scroll = max_scroll;
-        if (g_default_sidebar_scroll > 0)
-            kh_shift_subtree(sidebar, -g_default_sidebar_scroll * row_h);
+
+        int shift = g_default_sidebar_scroll * row_h;
+        int lo = g_n_nav + 1;
+        for (int i = 0; i < sidebar->n_children; i++) {
+            Elem *c = sidebar->children[i];
+            if (strcmp(c->tag, "item") != 0) {
+                if (shift) kh_shift_subtree(c, -shift);   /* headers etc. scroll with the grid */
+                continue;
+            }
+            int r = row_h > 0 ? (c->y - first_y + row_h / 2) / row_h : 0;
+            if (r < g_default_sidebar_scroll || r >= g_default_sidebar_scroll + visible_rows) {
+                kh_shift_subtree(c, -100000 - c->y);      /* park the whole tile subtree off-screen */
+                c->nav_index = 0;
+            } else {
+                if (shift) kh_shift_subtree(c, -shift);
+                if (c->onclick[0] || c->label[0]) {
+                    c->nav_index = ++g_n_nav;
+                    g_nav[g_n_nav - 1] = c;
+                } else {
+                    c->nav_index = 0;
+                }
+            }
+        }
+        g_default_sidebar_nav_lo = (g_n_nav >= lo) ? lo : 0;
+        g_default_sidebar_nav_hi = g_n_nav;
+
         /* same call shape as layout_fixed_rows_and_scrolllist()'s own:
          * pass the FULL region width/height - the helper carves the
          * thumb + arrows off the right edge itself. */
@@ -6908,19 +6927,6 @@ static void handle_key(KeySym ks, char ch) {
     if (ks == XK_BackSpace && g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
         Elem *focused = g_nav[g_focus_nav - 1];
         if (focused->backspace_action[0]) { dispatch_no_quit(focused->backspace_action); return; }
-    }
-    /* flex-wrap grid (periodic table): Up/Down jump a whole row,
-     * Left/Right step one tile, and scroll follows the focus. */
-    if ((ks == XK_Up || ks == XK_Down) &&
-        g_default_poe_cols > 1 &&
-        g_focus_nav >= g_default_sidebar_nav_lo && g_focus_nav <= g_default_sidebar_nav_hi) {
-        int step = (ks == XK_Down ? 1 : -1) * g_default_poe_cols;
-        int nv = g_focus_nav + step;
-        if (nv >= g_default_sidebar_nav_lo && nv <= g_default_sidebar_nav_hi) g_focus_nav = nv;
-        /* keep the focused tile in the visible band */
-        int row = (g_focus_nav - g_default_sidebar_nav_lo) / g_default_poe_cols;
-        if (row < g_default_sidebar_scroll) g_default_sidebar_scroll = row;
-        return;
     }
     if (ks == XK_Up || ks == XK_Left) {
         if (g_dock_drop_lo && g_default_active_scope_id[0]) {

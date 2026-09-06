@@ -465,5 +465,90 @@ for one malformed byte.
 
 ---
 
+## 14. A new scroll/grid/nav "branch" in the shared renderer that TRANSLATES a laid-out subtree (instead of clipping it) breaks header-pinning and thumb direction — reuse the existing scroll path
+
+**Symptom (live report, 2026-09-06, periodic-table element picker):**
+pressing **Down** in a scrollable tile grid (a) scrolled the window's
+own chrome/header row off the top of the window ("header should always
+stay pinned"), and (b) moved the scrollbar thumb the **wrong**
+direction (up). "This bug has never happened before" — correct: it was
+new code.
+
+**Real cause — three separate house-standard violations in one new
+branch** (`layout_sidebar_panel()`'s `<sidebar style="display:flex">`
+path + a bespoke `XK_Up/XK_Down` handler + a new `g_default_poe_cols`
+global, all added to `khtpm_core_render.c` for this one picker):
+
+1. **Translate, not clip.** The branch laid the whole 118-tile grid
+   with `css_layout_pass()` and then did
+   `kh_shift_subtree(sidebar, -scroll * row_h)` to "scroll" it. Nothing
+   in the default/popup paint path (`kh_serialize_frame_subtree()` /
+   `kh_paint_frame_line()`) clips a region to its own box — it draws
+   each `Elem` at whatever `y` it carries. Rows scrolled above the fold
+   got small/negative `y` values that land **inside the chrome strip
+   band** (`content_top`-relative) and painted right over the pinned
+   close/minimise/fullscreen chrome. Every *existing* scroll path
+   (`layout_scroll_region()`, the swatch-grid path at ~line 4669,
+   `layout_scroll_sprite_grid_row()`) instead **positions only the
+   visible rows** and parks the rest at `y = -100000` — the chrome is
+   drawn in its own later pass and is never touched. `kh_shift_subtree`
+   is for a one-shot transient (a dropdown offset), not for a region
+   that re-lays every frame.
+
+2. **Direct cursor mutation outside the clamp, one direction only.**
+   The bespoke arrow handler did
+   `if (row < g_default_sidebar_scroll) g_default_sidebar_scroll = row;`
+   — it can only ever *decrease* the scroll cursor, and it writes the
+   global directly instead of going through `generic_sbar_register()`'s
+   own clamp. Pressing Down moved focus to a lower row; when that row
+   index came out `< scroll` (focus outside `[nav_lo,nav_hi]` makes
+   `row` negative) the cursor was yanked toward/below zero → thumb
+   jumps up. There was no code path that ever scrolled the grid
+   *down*. The house already has the right input: `Page_Up`/`Page_Down`
+   (handled generically at ~line 6961, adjusting whichever region's
+   cursor `g_focus_nav` sits in) plus the `generic_sbar` `^`/`v` nav
+   arrows + wheel. A new grid needs **zero** new key handling.
+
+3. **Nav-numbering invisible items.** `kh_assign_nav_subtree()` numbers
+   *every* actionable descendant regardless of visibility. Every other
+   scroll path only assigns `nav_index` to rows that are actually on
+   screen (off-screen → `nav_index = 0`, out of `g_nav[]`, not
+   focusable). Numbering all 118 let `kh_nav_step()` walk focus onto
+   tiles scrolled out of view — "navigation broke."
+
+**The reuse that was already there and already used by a sibling app:**
+the RPG-Maker-Tiles palette (`&.widgits/palettes/palettes-rmmv.xhtpm`)
+is the *same shape of thing* — a wide scrolling tile grid with chrome —
+and it renders through the **generic swatch-grid path**
+(`<window class="palettes-pal database-window">`, tiles as
+`<item class="swatch">`), which already gives: width-derived column
+count, a clipped scrolled grid, one `generic_sbar_register()` thumb +
+nav `^`/`v` arrows, chrome in its own untouched pass, and a
+function-local `static` scroll cursor. Nothing new in the shared file.
+
+**Real fix applied:** kept the generic `flex-wrap` support in
+`css_layout_pass()` (that *is* a legitimate, reusable flexbox-engine
+capability), but rewrote the `<sidebar display:flex>` scroll block to
+follow the existing pattern — **clip by hiding off-fold tiles at
+`y = -100000`**, shift only the visible band, and **nav-number only
+visible tiles** — and **deleted the bespoke `XK_Up/XK_Down` handler and
+the `g_default_poe_cols` global** entirely (scroll is `Page_Up/Down` +
+sbar arrows + wheel, exactly like every other region).
+
+**Rule (add to the reflexes in pitfall #11):** before adding a *layout*
+branch to `khtpm_core_render.c`, grep for an existing sibling that
+renders the same shape (`grep -n 'class="swatch"' ; grep -rn
+sprite-grid-row ; layout_scroll_region`) and route through it. If you
+genuinely must add a branch: it MUST (a) clip by hiding off-screen
+children at `-100000`, never translate a subtree that re-lays every
+frame; (b) leave every scroll cursor owned by `generic_sbar_register()`
++ the generic `Page_Up/Down` handler — no new key handling, no direct
+`g_*_scroll =` writes; (c) nav-number only visible rows. `khtpm-shared-
+layout-caution` (auto-memory) already says it: `assign_nav_and_layout()`
+runs many times per frame — every mutation it makes must be idempotent,
+and a translate-on-top-of-a-fresh-layout is not.
+
+---
+
 *Append new entries here as they're found — this file exists so the
 next session doesn't re-discover the same mistake from scratch.*
