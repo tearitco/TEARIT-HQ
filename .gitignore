@@ -67,3 +67,23 @@ palettes-*_state.txt
 **/&.widgits/palettes/state/
 **/#.#.calendar-dox/BOOK.7z
 **/44.xyz.01.00/103.media-studio.7z
+
+# ---------------------------------------------------------------------
+# 2026-09-06 - khtpm/HQ per-app runtime scratch. These are written by a
+# running app/manager every launch and every tick; they are never
+# "work" and re-appear the moment an app runs. .gitignore stops the
+# UNTRACKED ones from cluttering `git status`; the small set that was
+# already committed is untracked in the same commit that adds this
+# block (files stay on disk, `git rm --cached` only).
+# ---------------------------------------------------------------------
+**/module_parent.pid
+**/*.pid
+**/*_ui.txt
+**/*_action.txt
+**/*_buffer.txt
+**/cli_io_state.txt
+**/text_area_*.txt
+**/.hq_manager/ui.txt
+**/.hq_manager/label.txt
+**/music_player_ui.txt
+**/music_player_action.txt

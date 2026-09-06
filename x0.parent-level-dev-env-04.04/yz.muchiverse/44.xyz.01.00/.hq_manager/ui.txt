@@ -1,3 +1,0 @@
-bm_count=0
-title=cursword bookmarks (0)
-empty=1
