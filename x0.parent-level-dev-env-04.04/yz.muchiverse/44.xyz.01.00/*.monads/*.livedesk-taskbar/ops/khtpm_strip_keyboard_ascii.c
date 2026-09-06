@@ -8,9 +8,16 @@
  * direct user report, 2026-08-18).
  *
  * Writes:
- *   - #.desktop/livedesk_agent_relay.txt (bare decimal code per line, the
- *     real, existing external input relay - confirmed via direct read of
- *     poll_agent_relay() in khtpm_strip_parser.c)
+ *   - #.desktop/strip_history.txt (bare decimal code per line). RETARGET
+ *     2026-09-06: khtpm_strip_parser.+x was folded into
+ *     khtpm_core_render.c on 2026-09-01; its poll_agent_relay() (which
+ *     consumed livedesk_agent_relay.txt) went with it. The current
+ *     input path is khtpm_taskbar_manager_main.c's poll_strip_history()
+ *     -> dispatch_code(), reading #.desktop/strip_history.txt. Every
+ *     code this file emits (KSC_ENTER 13, KSC_ESCAPE 27, ASCII digits
+ *     48-57, KSC_FOCUS_LEFT/RIGHT 1001/1002, KSC_HQ_HEADER_BASE 4000+)
+ *     is exactly what dispatch_code() still handles - only the target
+ *     filename was stale.
  *
  * Reads: nothing but its own stdin.
  */
@@ -33,7 +40,7 @@ static void resolve_root(int argc, char **argv) {
 static void relay_send(int code) {
     if (code <= 0) return;
     char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/#.desktop/livedesk_agent_relay.txt", house_root);
+    snprintf(path, sizeof(path), "%s/#.desktop/strip_history.txt", house_root);
     FILE *f = fopen(path, "a");
     if (f) { fprintf(f, "%d\n", code); fclose(f); }
 }

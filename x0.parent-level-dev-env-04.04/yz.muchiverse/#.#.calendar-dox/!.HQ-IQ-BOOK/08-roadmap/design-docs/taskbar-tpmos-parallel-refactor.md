@@ -9,6 +9,24 @@ metadata:
 
 ## CURRENT STATUS (2026-08-18, updated as of the "cli" ASCII mirror build-out)
 
+> **REGRESSED 2026-09-01, FIXED 2026-09-06.** The 2026-09-01 fold-in
+> of `khtpm_strip_parser.+x` into `khtpm_core_render.c` dropped the
+> `strip_frame.cells.pdl` emission and the `livedesk_agent_relay.txt`
+> consumer, so both halves of the `cli` mirror died silently (last
+> `cells.pdl` write: Sep 3). Fix: `khtpm_core_render.c` now writes
+> `#.desktop/strip_ascii_current_frame.txt` directly from `redraw()`
+> in dock mode (`dock_write_ascii_frame()` - walks the live Elem tree +
+> folds in `strip_state.txt` for the open HQ menu / focus);
+> `khtpm_strip_keyboard_ascii.c` retargeted from the dead
+> `livedesk_agent_relay.txt` to `strip_history.txt` (what the manager's
+> `poll_strip_history()` actually consumes now - every code it emits
+> was already understood by `dispatch_code()`); `open_cli.sh` now
+> `tail -F`s the frame file instead of running a second renderer.
+> Verified: relaying `4001` opens the HQ menu in the terminal mirror.
+> Still to do: arbitrary HQ windows (not just the strip) - the
+> `khtpm_core_render --render-text` design in FEATURE-CATALOG.md.
+
+
 **Working, verified live:**
 - HQ menu's "cli" row opens a real terminal running the taskbar's ASCII mirror
   (`khtpm_strip_render_ascii.+x` + `khtpm_strip_keyboard_ascii.+x`, launched via `open_cli.sh`).

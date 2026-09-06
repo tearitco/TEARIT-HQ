@@ -5842,6 +5842,109 @@ static void activate_focused(void) {
     if (item->onclick[0]) dispatch(item->onclick);
 }
 
+/* REAL, NEW 2026-09-06 - restore the HQ-menu "cli" terminal mirror.
+ * khtpm_strip_render_ascii.+x read #.desktop/strip_frame.cells.pdl, which
+ * the retired khtpm_strip_parser.+x wrote; both went away 2026-09-01 when
+ * the strip folded into this binary, so the mirror froze (last cells.pdl
+ * write Sep 3). This walks the LIVE laid-out Elem tree and writes the
+ * same readable frame file straight from redraw(), so a terminal
+ * `tail -F #.desktop/strip_ascii_current_frame.txt` IS the live strip.
+ * Dock mode only; a no-op for every other window. Cheap: two small
+ * fopen("w")+tree-walk per repaint, and the strip only repaints on a
+ * real state change. */
+static void dock_ascii_walk(FILE *f, Elem *e, int depth) {
+    if (!e) return;
+    int has_label = e->label[0] != '\0';
+    int is_container = (strcmp(e->tag, "window") == 0 || strcmp(e->tag, "page") == 0 ||
+                        strcmp(e->tag, "sidebar") == 0 || strcmp(e->tag, "panel") == 0 ||
+                        strcmp(e->tag, "row") == 0 || strcmp(e->tag, "tabbar") == 0 ||
+                        strcmp(e->tag, "scrolllist") == 0 || strcmp(e->tag, "module") == 0);
+    if ((has_label || (!is_container && e->nav_index > 0)) && strcmp(e->tag, "module") != 0) {
+        for (int i = 0; i < depth; i++) fputs("  ", f);
+        if (e->nav_index > 0)
+            fprintf(f, "%s%d. ", (e->nav_index == g_focus_nav) ? "[>] " : "[ ] ", e->nav_index);
+        else if (!is_container)
+            fputs("    ", f);
+        int active = 0;
+        for (int i = 0; i < e->n_classes; i++)
+            if (strcmp(e->classes[i], "active") == 0 || strcmp(e->classes[i], "tab-active") == 0 ||
+                strcmp(e->classes[i], "room-active") == 0) active = 1;
+        fprintf(f, "%s%s%s\n", active ? "* " : "",
+                has_label ? e->label : e->tag,
+                (e->y < -1000) ? "  (hidden)" : "");
+    }
+    for (int i = 0; i < e->n_children; i++)
+        dock_ascii_walk(f, e->children[i], depth + (is_container ? 1 : 0));
+}
+
+/* The dynamic strip bits (which header cell is focused, whether the HQ
+ * popup menu is open + its rows + focus) live in the MANAGER's
+ * strip_state.txt, not this renderer's g_window tree - the popup is a
+ * separate window. Fold them into the mirror by reading that file. */
+static void dock_ascii_append_state(FILE *f) {
+    char sp[PATH_BUF];
+    snprintf(sp, sizeof(sp), "%s/#.desktop/strip_state.txt", g_house_root);
+    FILE *s = fopen(sp, "r");
+    if (!s) return;
+    char line[1024];
+    int hq_open = 0, hq_focus = -1, tab_focus = -1;
+    int n_hqitems = 0;
+    char hqitems[24][160];
+    while (fgets(line, sizeof(line), s)) {
+        line[strcspn(line, "\r\n")] = '\0';
+        if (strncmp(line, "KEY | hq_open | ", 16) == 0)      hq_open  = atoi(line + 16);
+        else if (strncmp(line, "KEY | hq_focus | ", 17) == 0) hq_focus = atoi(line + 17);
+        else if (strncmp(line, "KEY | tab_focus_idx | ", 22) == 0) tab_focus = atoi(line + 22);
+        else if (strncmp(line, "HQITEM | ", 9) == 0 && n_hqitems < 24) {
+            const char *p = line + 9;
+            const char *bar = strchr(p, '|');
+            size_t len = bar ? (size_t)(bar - p) : strlen(p);
+            while (len > 0 && p[len - 1] == ' ') len--;
+            if (len >= sizeof(hqitems[0])) len = sizeof(hqitems[0]) - 1;
+            memcpy(hqitems[n_hqitems], p, len);
+            hqitems[n_hqitems][len] = '\0';
+            n_hqitems++;
+        }
+    }
+    fclose(s);
+    if (tab_focus >= 0)
+        fprintf(f, "  (header focus cell: %d)\n", tab_focus);
+    if (hq_open && n_hqitems > 0) {
+        fprintf(f, "--- HQ menu (open) ---\n");
+        for (int i = 0; i < n_hqitems; i++)
+            fprintf(f, "  %s%d. %s\n", (i == hq_focus) ? "[>] " : "[ ] ", i + 1, hqitems[i]);
+    }
+}
+
+static void dock_write_ascii_frame(void) {
+    if (!window_is_dock() || !g_window) return;
+    char path[PATH_BUF], hpath[PATH_BUF];
+    snprintf(path,  sizeof(path),  "%s/#.desktop/strip_ascii_current_frame.txt", g_house_root);
+    snprintf(hpath, sizeof(hpath), "%s/#.desktop/strip_ascii_frame_history.txt", g_house_root);
+    char ts[32];
+    time_t now = time(NULL);
+    strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", localtime(&now));
+
+    FILE *f = fopen(path, "w");
+    if (f) {
+        fprintf(f, "--- TASKBAR FRAME  %s ---\n", ts);
+        dock_ascii_walk(f, g_window, 0);
+        if (g_dock_peer) { fprintf(f, "--- bottom bar ---\n"); dock_ascii_walk(f, g_dock_peer, 0); }
+        dock_ascii_append_state(f);
+        fclose(f);
+    }
+    FILE *h = fopen(hpath, "a");
+    if (h) {
+        struct stat hst;
+        if (fstat(fileno(h), &hst) == 0 && hst.st_size > 512 * 1024) { fclose(h); h = fopen(hpath, "w"); }
+    }
+    if (h) {
+        fprintf(h, "\n=== %s ===\n", ts);
+        dock_ascii_walk(h, g_window, 0);
+        fclose(h);
+    }
+}
+
 static void redraw(void) {
     if (getenv("KH_REDRAW_TRACE")) {
         static int rc = 0; struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -6175,6 +6278,7 @@ static void redraw(void) {
         XCopyArea(dpy, buf, win, gc, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, 0, 0);
     }
     XFlush(dpy);
+    dock_write_ascii_frame();   /* keeps the "cli" terminal mirror live (dock only, else no-op) */
 }
 
 /* on-demand debug PNG dump, same real convention every other khtpm app

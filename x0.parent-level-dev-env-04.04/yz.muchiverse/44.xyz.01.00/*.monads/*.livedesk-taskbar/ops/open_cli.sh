@@ -35,13 +35,23 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # keyboard-fg split, hosted by Terminal.app via a throwaway .command
 # wrapper (Terminal executes .command files directly; a temp copy keeps
 # star-names and quoting out of the osascript/Tell layer entirely).
+# 2026-09-06: the render half is no longer a separate binary. The live
+# strip process (khtpm_core_render.+x, dock mode) now writes
+# #.desktop/strip_ascii_current_frame.txt itself on every repaint
+# (dock_write_ascii_frame() in redraw()) - so a plain `tail -F` of that
+# file IS the live mirror, always current, no second renderer to drift.
+# The keyboard half stays: khtpm_strip_keyboard_ascii.+x (raw termios,
+# retargeted 2026-09-06 to strip_history.txt, the relay the manager's
+# poll_strip_history() actually consumes now).
+FRAME="$KHTPM_HOUSE/#.desktop/strip_ascii_current_frame.txt"
+KBD="$SCRIPT_DIR/+x/khtpm_strip_keyboard_ascii.+x"
 if [ "$(uname -s)" = "Darwin" ]; then
     TMP_SH="${TMPDIR:-/tmp}/khtpm_cli_$$.command"
     printf '%s\n' '#!/bin/sh' \
-        "\"$SCRIPT_DIR/+x/khtpm_strip_render_ascii.+x\" \"$KHTPM_HOUSE\" &" \
-        "\"$SCRIPT_DIR/+x/khtpm_strip_keyboard_ascii.+x\" \"$KHTPM_HOUSE\"" > "$TMP_SH"
+        "( tail -n +1 -F \"$FRAME\" & ) " \
+        "\"$KBD\" \"$KHTPM_HOUSE\"" > "$TMP_SH"
     chmod +x "$TMP_SH"
     open -a Terminal "$TMP_SH"
     exit 0
 fi
-exec gnome-terminal -- sh -c "\"$SCRIPT_DIR/+x/khtpm_strip_render_ascii.+x\" \"$KHTPM_HOUSE\" & \"$SCRIPT_DIR/+x/khtpm_strip_keyboard_ascii.+x\" \"$KHTPM_HOUSE\""
+exec gnome-terminal -- sh -c "( tail -n +1 -F \"$FRAME\" & ) ; \"$KBD\" \"$KHTPM_HOUSE\""
