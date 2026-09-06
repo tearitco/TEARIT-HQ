@@ -78,7 +78,7 @@ on branch `chtpm-var-substitution` that a next agent should know
 - **Delta B — the branch's own operating handoff.** Environment,
   kill/relaunch discipline, relay-injection/history verify recipe, and
   the chtpm-var-substitution refactor state live in
-  `HANDOFF-chtpm-var-substitution.md` (Rev 3-5). Read that alongside
+  `handoff-2026-09-04-master.md` (Rev 3-5). Read that alongside
   this doc before editing `khtpm_core_render.c`; the §3 §2b work does
   not restart there — it is the pre-existing `g_is_*` migration this
   doc specifies.

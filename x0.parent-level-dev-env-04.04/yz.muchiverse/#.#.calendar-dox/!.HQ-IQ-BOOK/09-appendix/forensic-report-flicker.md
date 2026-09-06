@@ -187,4 +187,4 @@ the window is idle.
   discipline (marker/dirty model; one writer; never a full redraw per
   raw X event; the specific anti-patterns A–E above named).
 - This report linked from `CENTROID_GOLD_STD.md` §5 cross-references
-  and the branch `HANDOFF-chtpm-var-substitution.md`.
+  and the branch `handoff-2026-09-04-master.md`.

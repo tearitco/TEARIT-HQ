@@ -401,16 +401,18 @@ EOSTATE
             # real ledger row exists first (run_pchq_board_mode()'s own
             # session-discovery needs it), then launch the khtpm window,
             # which kills the legacy display once it attaches.
-            # 2026-09-04 - prefer the compliant static template
-            # (pchq-board.xhtpm: <canvas> + toolbar/<item>s + a
-            # pchq_board_projector.+x module, all on the shared
-            # Elem/CSS path). Falls back to pchq-board.chtpm
-            # (class="pchq-board" -> run_pchq_board_mode's hardcoded C)
-            # when the new template is absent or PCHQ_LEGACY_BOARD=1.
+            # 2026-09-04 - the compliant static template (pchq-board.
+            # xhtpm: <canvas> + toolbar/<item>s + a pchq_board_
+            # projector.+x module, all on the shared Elem/CSS path) is
+            # the only path now - the old class="pchq-board" ->
+            # run_pchq_board_mode() hardcoded-C path (and its
+            # PCHQ_LEGACY_BOARD fallback here) was removed 2026-09-04;
+            # run_pchq_board_mode() itself no longer exists in
+            # khtpm_core_render.c, so that fallback stopped actually
+            # working the moment it was deleted, whether or not this
+            # script still offered it.
             KHTPM_BIN="$HOUSE_DIR/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
             BOARD_TPL="$SCRIPT_DIR/pchq-board.xhtpm"
-            [ -n "${PCHQ_LEGACY_BOARD:-}" ] && BOARD_TPL="$SCRIPT_DIR/pchq-board.chtpm"
-            [ -f "$BOARD_TPL" ] || BOARD_TPL="$SCRIPT_DIR/pchq-board.chtpm"
             if [ -x "$KHTPM_BIN" ] && [ -f "$BOARD_TPL" ]; then
                 # projector build-on-demand
                 [ -x "$SCRIPT_DIR/ops/+x/pchq_board_projector.+x" ] || \

@@ -1,24 +1,31 @@
 #!/bin/bash
 # button.sh - launch the File Explorer widget as its own detached X11
-# window. Usage: button.sh <house_root>
+# window, standalone (browsing house_root, LOAD mode) for direct
+# testing/checking - not the normal way apps embed it (they use the
+# real <module> tag directly), but real toy.pdl convention needs a
+# standalone entry point same as every other checkable toy.
+#
+# REAL FIX 2026-09-05, direct live request ("add them to tb sub menus
+# so i can check them") - was argv[1]=house_root (only usable when
+# launched by hand); real toy.pdl convention (khtpm_taskbar_manager.c's
+# own livedesk_build_toys_menu()) invokes `sh button.sh run`, argv[1]
+# only, no house_root passed - derived here the same way pdl-read's
+# own button.sh already does (two levels up, since this file lives at
+# house_root/&.widgits/file-explorer/).
 #
 # 11.brainstorm/2026-09-05/PDL-READER-AND-FILE-EXPLORER-WIDGET.md.
-# Same real shape as open-hai/button.sh: the shared renderer
+# Same real shape as @.apps/pdl-read/button.sh: the shared renderer
 # (khtpm_core_render.+x) renders a static file-explorer-pal.xhtpm,
 # whose own <module> tag launch_module()'s the real manager
 # (file_explorer_manager.+x) as its child - closing the window stops
 # the manager too, no separate PID for this script to track.
 set -e
-HOUSE_ROOT="${1:-}"
-if [ -z "$HOUSE_ROOT" ] || [ ! -d "$HOUSE_ROOT" ]; then
-    echo "file-explorer button.sh: need house_root as argv[1]" >&2
-    exit 1
-fi
-HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
+ACTION="${1:-run}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+HOUSE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-HERE="$(cd "$(dirname "$0")" && pwd)"
-OPS_DIR="$HERE/ops"
-XHTPM="$HERE/file-explorer-pal.xhtpm"
+OPS_DIR="$SCRIPT_DIR/ops"
+XHTPM="$SCRIPT_DIR/file-explorer-pal.xhtpm"
 
 RENDER_OPS_DIR="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
 BIN="$RENDER_OPS_DIR/+x/khtpm_core_render.+x"
@@ -43,9 +50,11 @@ if [ ! -f "$XHTPM" ]; then
     exit 1
 fi
 
-# Same real "set -e safe pgrep" convention as open-hai/button.sh -
-# pgrep exits 1 when it finds nothing, which would abort this script
-# under set -e without the || true guards.
+if [ "$ACTION" != "run" ]; then
+    exit 0
+fi
+
+# Same real "set -e safe pgrep" convention as pdl-read/button.sh.
 fe_pids() {
     pgrep -f "khtpm_core_render\.\+x.*file-explorer-pal\.xhtpm" 2>/dev/null || true
 }

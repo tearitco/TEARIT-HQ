@@ -3596,6 +3596,14 @@ static int livedesk_build_toys_menu(const char *house_root, HQMenuItem *menu, in
     char apps_root[KTB_PATH_BUF];
     snprintf(apps_root, sizeof(apps_root), "%s/@.apps", house_root);
     toys_scan_one_root(apps_root, menu, max, &n);
+    /* REAL, NEW 2026-09-05, direct live request ("add them to tb sub
+     * menus so i can check them") - &.widgits/ toys (e.g. File
+     * Explorer's own standalone check entry point) weren't scanned at
+     * all, only house_root itself and @.apps/ - same opt-in-by-
+     * toy.pdl-presence convention, third root. */
+    char widgits_root[KTB_PATH_BUF];
+    snprintf(widgits_root, sizeof(widgits_root), "%s/&.widgits", house_root);
+    toys_scan_one_root(widgits_root, menu, max, &n);
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Cancel"); menu[n].command[0] = '\0'; n++; }
     return n;
 }

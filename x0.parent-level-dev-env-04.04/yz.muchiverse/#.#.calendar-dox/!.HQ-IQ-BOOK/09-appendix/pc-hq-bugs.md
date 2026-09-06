@@ -473,6 +473,82 @@ Live-verified via PNG dump: chrome now reads `_`/`!`/`x`; toolbar reads
   at baseline (`override_redirect=true` house-wide, same as it always
   was before this session touched it) - Bug 2 itself is UNCHANGED from
   where it started, still open.
+- **Canvas STILL blanks sometimes even after the `d9afd258` fix**
+  (live user report, same day). Ran a follow-up comparison against
+  mutaclysm (see below) - see also: at the exact time this was
+  reported, 4 leftover `khtpm_core_render` test processes from this
+  session's own earlier debugging (pchq-board.xhtpm instances, PIDs
+  1548668/1590649/1613698/1691214) were found still running canvas-
+  mode 30fps ticks, burning ~35-42% CPU EACH (~150% combined) - killed
+  before the comparison below ran. Real system contention from those
+  stray processes is a very plausible DIRECT contributor to blanking
+  reports made while they were alive, independent of any code issue -
+  not yet confirmed whether blanking still recurs now that they're
+  gone (needs a fresh re-test).
+
+## Canvas render pipeline: board-viewer (2 process spawns/tick) vs mutaclysm (1) vs tpmos (none) — comparison, 2026-09-04
+
+User asked to compare pc-hq's render pipeline against tpmos's own
+(the "golden older standard") and mutaclysm's, and to adopt whichever
+is the real reference pattern, refactoring if needed. Findings:
+
+- **tpmos has no equivalent pipeline at all** - `1.TPMOS_c_+rmmp.
+  0103.0001/button.sh` -> `pieces/buttons/linux/run.sh` -> `pieces/
+  buttons/shared/run_orchestrator.sh`; grepped all three for render/
+  3d/compose - zero hits. tpmos is a pure 2D/ASCII engine
+  (`chtpm_parser.c`-driven), no 3D board/canvas concept exists there
+  to compare against. Not a usable reference for this specific
+  question.
+- **Board-viewer's own driver** (`&.widgits/board-viewer/pal/
+  main_module.pal`) calls `bv_render_3d` THEN `bv_compose_frame` as
+  two separate pal-script instructions, each one dispatched via
+  `prisc+x.c`'s `exec_custom_op()` as a full, synchronous `system()`
+  fork+exec of a FRESH, non-persistent binary (`prisc+x.c` line
+  936-990) - no daemon, no in-process call, complete process startup/
+  teardown including reloading board/texture data from scratch, TWICE
+  per render tick.
+- **Mutaclysm's own driver** (`101.mutaclsym🧟‍♂️️19.00/pal/main_
+  module.pal`) calls only `mua_compose_frame` - ONE instruction, not
+  two. Initially read as "mutaclysm avoids the double-spawn overhead
+  through a better design" - **this was WRONG, corrected same day**:
+  direct read of `muta_compose_frame_3d.c:735` found `"Camera: 2D flat
+  (press 0 for 3D raymarch - not yet rendered)"` - mutaclysm's own 3D
+  raymarch is an UNFINISHED STUB. Its pal script never calls a render
+  step because there is no working 3D renderer to call - it only
+  opportunistically reads a stale `rgb_frame_3d_overlay.raw` if one
+  happens to already exist from some other source. Mutaclysm is not
+  "more efficient at the same job" - it simply isn't doing the 3D
+  rendering work at all. **Not a valid apples-to-apples reference for
+  "why doesn't mutaclysm blank."**
+- Both `bv_render_3d.c` and mutaclysm's own `muta_render_3d.c` DO
+  write their receipt/raw output atomically (`write_file_atomic()` -
+  temp file + `remove()` + `rename()`, confirmed by direct read,
+  identical in both files) - the original file-race hypothesis behind
+  the `d9afd258` fix was never actually confirmed as the true root
+  cause of a PRODUCER-side race; that fix is still correct/safe to
+  keep (a reader-side "don't blank on any bad tick" guard is good
+  practice regardless), but it may not have been fixing a real,
+  reachable bug on the producer side.
+
+**Conclusion**: pc-hq's board is doing genuinely more/different work
+than either reference (tpmos doesn't have 3D at all; mutaclysm's 3D is
+unbuilt) - it isn't regressed relative to a working precedent, it's
+the most complete implementation of this feature in the house. The
+real, still-valid optimization opportunity found along the way: board-
+viewer's own 2-spawn-per-tick pattern (`bv_render_3d` then `bv_compose_
+frame`, each a full fresh fork+exec with full reinit) is real,
+measurable overhead worth removing on ITS OWN merits (any persistent-
+process/merged-single-spawn design would cut real fork/exec + reinit
+cost per frame), independent of what mutaclysm does. **Not yet
+implemented** - a real refactor (merging `bv_render_3d.c`'s render
+logic to run in-process inside `bv_compose_frame.c`, eliminating one
+of the two spawns) is a bigger, riskier change than anything else
+fixed this session and needs its own dedicated pass, not a quick
+patch. Given the strong stray-process CPU confound found alongside
+this investigation, **re-test blanking frequency on a clean system
+first** before deciding whether this refactor is still worth the risk
+- if blanking was mostly/entirely the stray processes, this may not
+be urgent.
 
 ## Design notes for a scoped, per-window override_redirect (NOT YET BUILT - think through carefully before starting)
 

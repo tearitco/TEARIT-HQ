@@ -406,7 +406,7 @@ c36f077b taskbar: restore the pid cell after the clock
 
 All under `#.#.calendar-dox/!.HQ-IQ-BOOK/`:
 
-- `09-appendix/HANDOFF-chtpm-var-substitution.md` — the incremental
+- `09-appendix/handoff-2026-09-04-master.md` — the incremental
   session log, revs 1–5 (rev 5 = the §2/§3 material, condensed here).
 - `08-roadmap/design-docs/CHTPM-ARCHITECTURE-FIX.md` — original spec:
   static template + `${var}` + projector-writes-state.
