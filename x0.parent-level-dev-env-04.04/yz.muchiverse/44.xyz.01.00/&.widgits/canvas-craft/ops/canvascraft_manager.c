@@ -28,7 +28,9 @@
 
 #define PL        4096
 #define MAX_REC   512
+#define MAX_INV   256
 #define RECIPE_FILE "#.ref/menu/palletes/elements]new=RECIPEZ+]z2🏆.txt"
+#define ITEMS_PDL   "canvascraft_items.pdl"   /* relative to pkg_dir */
 
 typedef struct {
     char id[48];       /* slug: lowercase name, non-alnum -> _        */
@@ -36,7 +38,14 @@ typedef struct {
     int  p, n, e;      /* totals (-1 == primitive)                    */
     int  a, b;         /* parent 0-based line indices (-1 == none)    */
     char tier[12];     /* quark | subatomic | element | compound      */
+    int  price;        /* generic placeholder price (design §2 / .pdl) */
 } Recipe;
+
+typedef struct {
+    int  handle;       /* stable []N badge - never renumbered (design §6.1) */
+    int  ridx;         /* index into rec[]                                  */
+    long count;
+} Stack;
 
 static char house_root[PL];
 static char pkg_dir[PL];
@@ -44,6 +53,10 @@ static char pkg_dir[PL];
 static Recipe rec[MAX_REC];
 static int    n_rec = 0;
 static int    sel   = -1;   /* selected recipe index, -1 = none */
+
+static Stack  inv[MAX_INV];
+static int    n_inv = 0;
+static int    max_handle = 0;
 
 /* ---- helpers ------------------------------------------------------- */
 
@@ -89,7 +102,64 @@ static void load_recipes(void) {
         else if (ln <= 7)   snprintf(r->tier, sizeof(r->tier), "subatomic");
         else if (ln <= 125) snprintf(r->tier, sizeof(r->tier), "element");
         else                snprintf(r->tier, sizeof(r->tier), "compound");
+        r->price = 0;                             /* filled by load_items() */
         n_rec++;
+    }
+    fclose(f);
+}
+
+/* ---- items / prices / starting inventory (design §2, §6.1) ---------- */
+
+/* placeholder economy: unlisted items get a computed price. */
+static int default_price(const Recipe *r) {
+    if (strcmp(r->tier, "quark") == 0)     return 1;
+    if (strcmp(r->tier, "subatomic") == 0) return 5;
+    if (strcmp(r->tier, "element") == 0)   return r->p > 0 ? r->p : 1;   /* ~ atomic number */
+    return (r->p > 0 ? r->p : 0) + (r->n > 0 ? r->n : 0);               /* compound */
+}
+
+static long inv_count(int ridx) {
+    if (ridx < 0) return 0;
+    for (int i = 0; i < n_inv; i++) if (inv[i].ridx == ridx) return inv[i].count;
+    return 0;
+}
+
+static void inv_add(int ridx, long count) {   /* merge or new stack */
+    if (ridx < 0 || count <= 0) return;
+    for (int i = 0; i < n_inv; i++)
+        if (inv[i].ridx == ridx) { inv[i].count += count; return; }
+    if (n_inv >= MAX_INV) return;
+    inv[n_inv].handle = ++max_handle;
+    inv[n_inv].ridx   = ridx;
+    inv[n_inv].count  = count;
+    n_inv++;
+}
+
+static void load_items(void) {
+    /* every recipe first gets its computed default price */
+    for (int i = 0; i < n_rec; i++) rec[i].price = default_price(&rec[i]);
+
+    char path[PL];
+    snprintf(path, sizeof(path), "%s/%s", pkg_dir, ITEMS_PDL);
+    FILE *f = fopen(path, "r");
+    if (!f) { fprintf(stderr, "canvascraft: no %s (using default prices, empty inventory)\n", path); return; }
+
+    char line[512];
+    while (fgets(line, sizeof(line), f)) {
+        char *p = line;
+        while (*p == ' ' || *p == '\t') p++;
+        if (strncmp(p, "ITEM", 4) != 0) continue;
+        /* ITEM | id | price | start_count */
+        char id[48] = ""; int price = -1; long start = 0;
+        char *tok = strtok(p, "|");                      /* "ITEM " */
+        tok = strtok(NULL, "|"); if (tok) sscanf(tok, " %47s", id);
+        tok = strtok(NULL, "|"); if (tok) price = atoi(tok);
+        tok = strtok(NULL, "|"); if (tok) start = atol(tok);
+        if (!id[0]) continue;
+        int ri = rec_by_id(id);
+        if (ri < 0) continue;
+        if (price >= 0) rec[ri].price = price;
+        if (start > 0)  inv_add(ri, start);
     }
     fclose(f);
 }
@@ -166,7 +236,7 @@ static void write_ui(void) {
     char sel_id[48] = "", sel_name[48] = "", sel_tier[16] = "";
     char sel_pne[64] = "", sel_note[80] = "";
     int  sel_show = 0;
-    struct { char nm[48]; long need; } ig[4];
+    struct { char nm[48]; long need; int ridx; } ig[4];
     int ni = 0;
 
     if (sel >= 0 && sel < n_rec) {
@@ -183,16 +253,16 @@ static void write_ui(void) {
         } else {
             long na, nb; int flagged;
             resolve_qty(sel, &na, &nb, &flagged);
-            Recipe *A = &rec[X->a], *B = &rec[X->b];
+            int elec = rec_by_id("electron");
             if (X->a == X->b) {
-                if (na + nb > 0) { snprintf(ig[ni].nm, sizeof(ig[ni].nm), "%s", A->name); ig[ni].need = na + nb; ni++; }
+                if (na + nb > 0) { snprintf(ig[ni].nm, sizeof(ig[ni].nm), "%s", rec[X->a].name); ig[ni].need = na + nb; ig[ni].ridx = X->a; ni++; }
             } else {
-                if (na > 0) { snprintf(ig[ni].nm, sizeof(ig[ni].nm), "%s", A->name); ig[ni].need = na; ni++; }
-                if (nb > 0) { snprintf(ig[ni].nm, sizeof(ig[ni].nm), "%s", B->name); ig[ni].need = nb; ni++; }
+                if (na > 0) { snprintf(ig[ni].nm, sizeof(ig[ni].nm), "%s", rec[X->a].name); ig[ni].need = na; ig[ni].ridx = X->a; ni++; }
+                if (nb > 0) { snprintf(ig[ni].nm, sizeof(ig[ni].nm), "%s", rec[X->b].name); ig[ni].need = nb; ig[ni].ridx = X->b; ni++; }
             }
             long ee = (strcmp(X->tier, "element") == 0 && X->e > 0) ? X->e : 0;
-            if (ee > 0) { snprintf(ig[ni].nm, sizeof(ig[ni].nm), "Electron"); ig[ni].need = ee; ni++; }
-            if (ni == 0) { snprintf(ig[0].nm, sizeof(ig[0].nm), "%s", A->name); ig[0].need = 1; ni = 1; }
+            if (ee > 0) { snprintf(ig[ni].nm, sizeof(ig[ni].nm), "Electron"); ig[ni].need = ee; ig[ni].ridx = elec; ni++; }
+            if (ni == 0) { snprintf(ig[0].nm, sizeof(ig[0].nm), "%s", rec[X->a].name); ig[0].need = 1; ig[0].ridx = X->a; ni = 1; }
             if (flagged) snprintf(sel_note, sizeof(sel_note), "counts are an estimate (recipe data is approximate)");
         }
     }
@@ -213,9 +283,23 @@ static void write_ui(void) {
     fprintf(f, "n_ing=%d\n", ni);
     char bar[16];
     for (int i = 0; i < ni; i++) {
-        bar10(0, ig[i].need, bar, sizeof(bar));
-        fprintf(f, "ing_%d_name=%s\ning_%d_have=0\ning_%d_need=%ld\ning_%d_bar=%s\n",
-                i, ig[i].nm, i, i, ig[i].need, i, bar);
+        long have = inv_count(ig[i].ridx);
+        bar10(have, ig[i].need, bar, sizeof(bar));
+        fprintf(f, "ing_%d_name=%s\ning_%d_have=%ld\ning_%d_need=%ld\ning_%d_bar=%s\n",
+                i, ig[i].nm, i, have, i, ig[i].need, i, bar);
+    }
+
+    /* right column: inventory (design §6.1 - stable []handle, priced) */
+    fprintf(f, "n_inv=%d\n", n_inv);
+    fprintf(f, "inv_empty=%s\n", n_inv ? "" : "1");
+    for (int i = 0; i < n_inv; i++) {
+        Recipe *r = &rec[inv[i].ridx];
+        fprintf(f, "iv_%d_handle=%d\n", i, inv[i].handle);
+        fprintf(f, "iv_%d_id=%s\n",     i, r->id);
+        fprintf(f, "iv_%d_name=%s\n",   i, r->name);
+        fprintf(f, "iv_%d_count=%ld\n", i, inv[i].count);
+        fprintf(f, "iv_%d_price=%d\n",  i, r->price);
+        fprintf(f, "iv_%d_cls=%s\n",    i, (inv[i].ridx == sel) ? "cc-active" : "");
     }
 
     fprintf(f, "n_recipes=%d\n", n_rec);
@@ -292,6 +376,7 @@ int main(int argc, char *argv[]) {
     signal(SIGHUP,  bye);
 
     load_recipes();
+    load_items();
     clear_action_file();
     write_ui();
 

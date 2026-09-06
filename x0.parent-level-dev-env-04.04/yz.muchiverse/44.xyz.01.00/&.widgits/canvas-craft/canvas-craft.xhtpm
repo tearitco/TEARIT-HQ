@@ -1,23 +1,26 @@
-<!-- canvas-craft.xhtpm - PHASE 1 (CANVAS-CRAFT-DESIGN.md).
+<!-- canvas-craft.xhtpm - PHASE 2 (CANVAS-CRAFT-DESIGN.md).
      Static layout only, rendered by the shared khtpm_core_render.+x.
      class="canvas-craft-window database-window": neither token hits a
-     g_is_* strcmp trigger, so this rides the generic sidebar/panel/
-     scrolllist path - zero new renderer C ("database-window" is
-     CSS-only, same trick chat-hai / events-hq / irc-chat-hq use).
+     g_is_* strcmp trigger -> generic sidebar/panel path, zero new
+     renderer C.
+
+     3 columns, authored the HTML way: <page class="cc-cols"> is
+     display:flex; flex-direction:row (see .css), so the shared flexbox
+     engine (css_layout_pass) sizes the three regions from their own
+     width / flex-grow:
+        <sidebar>  fixed 220px   - recipe list (+ POE tab, later)
+        <panel>    flex-grow:2   - the bench: recipe card + ingredients
+        <panel>    flex-grow:1   - inventory (numbered []N, priced)
 
      One <module>: ops/+x/canvascraft_manager.+x - parses the recipe
-     registry, runs the quantity resolver, publishes canvas-craft_ui.txt
-     (consumed here via vars=), polls canvas-craft_action.txt written by
-     ops/cc_item.sh.
-
-     Phase 1 = LEFT recipe list + MIDDLE recipe card, read-only (have=0).
-     RIGHT inventory panel, the POE tab, the formula bar, drag-to-place
-     and the atom inspector are later phases. -->
+     registry + canvascraft_items.pdl, runs the quantity resolver,
+     owns the (seeded) inventory, publishes canvas-craft_ui.txt; polls
+     canvas-craft_action.txt written by ops/cc_item.sh. -->
 <window label="Canvas-Craft" class="canvas-craft-window database-window" vars="canvas-craft_ui.txt">
   <module src="&.widgits/canvas-craft/ops/+x/canvascraft_manager.+x"/>
-  <page name="main">
+  <page name="main" class="cc-cols">
 
-    <sidebar id="sidebar" class="cc-sidebar">
+    <sidebar id="recipes" class="cc-sidebar">
       <text id="side-hdr" label="Recipes" class="cc-side-hdr"/>
       <scrolllist class="from-top">
         <repeat count="${n_recipes}" bind="rc">
@@ -27,15 +30,13 @@
       </scrolllist>
     </sidebar>
 
-    <panel id="content" class="cc-panel">
+    <panel id="bench" class="cc-panel">
       <text id="pick-hint" class="cc-quiet"
             label="Pick a recipe on the left." show="${sel_empty}"/>
-
       <text id="sel-name" class="cc-sel-name"
             label="${sel_name}   x${sel_yield}" show="${sel_show}"/>
       <text id="sel-sub" class="cc-sel-sub"
             label="${sel_tier}   -   ${sel_pne}" show="${sel_show}"/>
-
       <text id="ing-hdr" class="cc-ing-hdr"
             label="Ingredients (highest common denominator):" show="${sel_show}"/>
       <scrolllist class="from-top">
@@ -44,9 +45,20 @@
                 label="${ing.have} / ${ing.need}   ${ing.name}   ${ing.bar}"/>
         </repeat>
       </scrolllist>
-
       <text id="sel-note" class="cc-note" label="${sel_note}" show="${sel_note}"/>
       <text id="craft-btn" class="cc-craft" label="[  CRAFT  ]" show="${sel_show}"/>
+    </panel>
+
+    <panel id="inventory" class="cc-invpanel">
+      <text id="inv-hdr" class="cc-side-hdr" label="Inventory"/>
+      <scrolllist class="from-top">
+        <repeat count="${n_inv}" bind="iv">
+          <item id="iv${iv.#}" class="cc-inv ${iv.cls}"
+                label="[]${iv.handle}  ${iv.name}  x${iv.count}   $${iv.price}"
+                action="'${PKG}/ops/cc_item.sh' 'SELECT ${iv.id}'"/>
+        </repeat>
+        <text id="inv-empty" class="cc-quiet" label="Inventory empty." show="${inv_empty}"/>
+      </scrolllist>
     </panel>
 
   </page>

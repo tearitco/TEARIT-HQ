@@ -1,0 +1,37 @@
+# canvascraft_items.pdl - Canvas-Craft item table (PHASE 2, placeholder
+# economy). CANVAS-CRAFT-DESIGN.md.
+#
+# One row per item that gets an explicit price and/or a starting stack
+# in a fresh inventory. Any recipe id NOT listed here still shows up as
+# craftable; its price falls back to a computed default in
+# canvascraft_manager.c (primitive=1, subatomic=5, element=Z,
+# compound=protons+neutrons) and its start count is 0.
+#
+# ITEM  | id              | price | start_count
+------------------------------------------------
+ITEM    | up_quark        | 1     | 999
+ITEM    | down_quark      | 1     | 999
+ITEM    | electron        | 2     | 999
+ITEM    | pair_up_quarks  | 3     | 0
+ITEM    | pair_down_quarks| 3     | 0
+ITEM    | proton          | 12    | 400
+ITEM    | neutron         | 14    | 400
+ITEM    | hydrogen        | 25    | 60
+ITEM    | helium          | 40    | 10
+ITEM    | carbon          | 90    | 24
+ITEM    | nitrogen        | 95    | 12
+ITEM    | oxygen          | 110   | 20
+ITEM    | sodium          | 130   | 6
+ITEM    | silicon         | 140   | 8
+ITEM    | sulfur          | 150   | 6
+ITEM    | iron            | 260   | 8
+ITEM    | copper          | 290   | 6
+ITEM    | silver          | 610   | 2
+ITEM    | gold            | 1180  | 0
+ITEM    | water           | 30    | 8
+ITEM    | methane         | 55    | 2
+ITEM    | ammonia         | 60    | 2
+ITEM    | co2             | 70    | 4
+ITEM    | glucose         | 240   | 2
+ITEM    | steel           | 320   | 0
+ITEM    | diamond         | 400   | 0

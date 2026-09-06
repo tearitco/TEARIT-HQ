@@ -161,14 +161,20 @@ in the renderer). All generic tags.
   needs (Satisfactory's top strip).
 - **All Items**: full inventory grid, `Sort`, trash.
 
-**Layout-engine note.** `layout_sidebar_panel()` today lays out
-`<sidebar>` + exactly **one** `<panel>`. Two clean options:
-- **(a)** extend it to `<sidebar>` + N `<panel>` in a flex row — the
-  proper fix, benefits every future 3-pane window.
-- **(b)** keep one `<panel>` whose child is a flex `<row>` of two
-  `<scrolllist>`s (middle + right). `css_layout_pass()` already recurses
-  into nested flex rows, so **(b) needs zero engine change** — use it
-  for Phase 1, do (a) when a second 3-pane window wants it.
+**Layout-engine note — BUILT 2026-09-06, "parrot HTML" (owner
+instruction).** The shared renderer already has a real flexbox engine
+(`css_layout_pass()` in `khtpm_render_core.c`: `display:flex`,
+`flex-direction:row`, `flex-grow`, `padding`, `gap`,
+`position:absolute`). `layout_sidebar_panel()` just wasn't using it for
+region sizing. Now: if `<page style="display:flex; flex-direction:row">`
+(a class, `.cc-cols`), `css_layout_pass()` sizes **every** region child
+(`<sidebar>` + N `<panel>`) from its own `width` / `flex-grow` — exactly
+like a CSS flex row — and each region's *content* still runs the classic
+vertical fixed-rows + scroll + nav pass. No `<panel>`-count magic, no
+per-app code: any window authors 2/3/N columns the HTML way. Canvas-
+Craft: `.cc-sidebar {width:220px}`, `.cc-panel {flex-grow:2}` (bench),
+`.cc-invpanel {flex-grow:1}` (inventory). Windows that don't set
+`display:flex` on `<page>` are byte-identical to before.
 
 ### 2.2 Interaction (direct instruction)
 
@@ -413,7 +419,9 @@ already consumes markers this way. No `mtime`.
    `canvascraft_recipes.pdl` (§1.3) in Phase 2. Proposed: migrate.
 5. **Electrons in element recipes** — free `Electron`s vs. explicit
    `parentC`. Proposed: `parentC`, so ions become a mechanic.
-6. **3-pane layout** — extend `layout_sidebar_panel()` to N panels
+6. **3-pane layout** — RESOLVED 2026-09-06: `<page display:flex>` +
+   the existing `css_layout_pass()` flexbox engine (see §2.1). Left
+   below for history: extend `layout_sidebar_panel()` to N panels
    (engine change, reusable) vs. flex-wrap two `<scrolllist>`s in one
    `<panel>` (zero engine change). Proposed: flex-wrap for P1, engine
    change when a 2nd 3-pane window needs it.

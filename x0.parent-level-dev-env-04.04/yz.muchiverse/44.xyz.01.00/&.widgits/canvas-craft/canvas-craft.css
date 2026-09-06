@@ -4,23 +4,51 @@
    combinators. Only background/border/color/font/padding apply. */
 
 window {
-    width: 940px;
+    width: 1040px;
     height: 640px;
     background-color: #15171d;
     font-family: DejaVu Sans;
     font-size: 11px;
 }
 
+/* 3 columns, HTML flexbox: page is a flex row; regions size from
+   width / flex-grow (css_layout_pass in the shared renderer). */
+.cc-cols {
+    display: flex;
+    flex-direction: row;
+}
+
 .cc-sidebar {
+    width: 220px;
     background-color: #0d0e12;
     border: 1px solid #2a2d3a;
     border-color: #2a2d3a;
 }
 
 .cc-panel {
+    flex-grow: 2;
     background-color: #1c1f28;
     border: 1px solid #3a3f52;
     border-color: #3a3f52;
+}
+
+.cc-invpanel {
+    flex-grow: 1;
+    background-color: #14161d;
+    border: 1px solid #2a2d3a;
+    border-color: #2a2d3a;
+}
+
+.cc-inv {
+    color: #cfd3df;
+    font-family: DejaVu Sans Mono;
+    font-size: 10px;
+    padding: 2px 8px;
+}
+
+.cc-inv.cc-active {
+    background-color: #2d4059;
+    color: #ffffff;
 }
 
 .cc-side-hdr {

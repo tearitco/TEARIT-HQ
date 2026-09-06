@@ -2658,6 +2658,10 @@ static int g_default_sidebar_scroll = 0;
  * nothing to scroll" (a fresh page/an empty sidebar). */
 static int g_default_sidebar_nav_lo = 0, g_default_sidebar_nav_hi = 0;
 static int g_default_scrolllist_nav_lo = 0, g_default_scrolllist_nav_hi = 0;
+/* extra <panel> regions (flex-row page, e.g. Canvas-Craft's inventory
+ * column). Shared scroll cursor across all extras. */
+static int g_default_panel2_scroll = 0;
+static int g_default_panel2_nav_lo = 0, g_default_panel2_nav_hi = 0;
 
 /* REAL, NEW 2026-09-02 - generic visible scrollbar for ANY <scrolllist>
  * that overflows its viewport. Palette-grid already had its own track
@@ -3404,7 +3408,23 @@ static int layout_sidebar_panel(Elem *page) {
     }
     int content_top = CHROME_H + tabbar_h;
 
-    {
+    /* Region boxes. Two ways, HTML-shaped:
+     *  - default: the classic fixed sidebar + one panel takes the rest.
+     *  - if <page style="display:flex; flex-direction:row"> the shared
+     *    flexbox engine (css_layout_pass, khtpm_render_core.c) sizes
+     *    every region child (sidebar + N panels) from its own
+     *    width / flex-grow - exactly like a CSS flex row. This is how a
+     *    3-column (recipes | bench | inventory) window is authored, no
+     *    per-app renderer code. */
+    css_compute_style(&g_sheet, page->tag, page->id, page->classes, page->n_classes, 0, &page->style);
+    int page_is_flex = page->style.has_display && page->style.display_flex;
+    if (page_is_flex) {
+        for (int i = 0; i < page->n_children; i++) {
+            Elem *c = page->children[i];
+            css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
+        }
+        css_layout_pass(page, 0, content_top, g_win_w, g_win_h - content_top);
+    } else {
         int sidebar_w = SIDEBAR_W;
         if (sidebar->style.has_width && !sidebar->style.width_is_pct) sidebar_w = sidebar->style.width;
         sidebar->x = 0; sidebar->y = content_top; sidebar->w = sidebar_w; sidebar->h = g_win_h - content_top;
@@ -3446,6 +3466,20 @@ static int layout_sidebar_panel(Elem *page) {
                                       &g_default_sidebar_scroll, &g_default_sidebar_nav_lo, &g_default_sidebar_nav_hi);
     layout_fixed_rows_and_scrolllist(panel, panel->x, panel->y, panel->w, panel->h,
                                       &g_default_scrolllist_scroll, &g_default_scrolllist_nav_lo, &g_default_scrolllist_nav_hi);
+    /* flex mode: css_layout_pass() sized every region above; run the
+     * classic vertical fixed-rows+scroll+nav pass inside EACH extra
+     * <panel> too (its box is already set). One shared scroll cursor
+     * for all extras - fine while there's one; give it its own if a
+     * window ever needs two independently-scrolling right columns. */
+    if (page_is_flex) {
+        for (int i = 0; i < page->n_children; i++) {
+            Elem *c = page->children[i];
+            if (c == panel || strcmp(c->tag, "panel") != 0) continue;
+            layout_fixed_rows_and_scrolllist(c, c->x, c->y, c->w, c->h,
+                                              &g_default_panel2_scroll,
+                                              &g_default_panel2_nav_lo, &g_default_panel2_nav_hi);
+        }
+    }
 
     /* REAL, NEW 2026-09-01 - the real "X"/"!" chrome pair (see these
      * statics' own header comment). Positioned in the chrome strip's
