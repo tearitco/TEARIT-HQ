@@ -5887,27 +5887,30 @@ static int g_dock_tab_focus  = 0;
  * The X11 strip repaints on its own X events, but a state change driven
  * purely from the terminal produces NO X event here, so redraw() (and
  * with it dock_write_ascii_frame()) never ran and the ASCII mirror
- * lagged - it only caught up on the next unrelated repaint. This polls
- * strip_state.txt's mtime every idle tick (dock only) and forces one
- * redraw when it moves, so terminal-driven nav is mirrored promptly.
- * Cheap: a single stat() per tick, redraw() only on an actual change. */
+ * lagged - it only caught up on the next unrelated repaint.
+ *
+ * MARKER-DRIVEN (DIAMOND standard, 2026-09-06 - see
+ * 02-architecture/reference/TPMOS-DIAMOND-render-chain.md): the manager
+ * already appends one byte to #.desktop/strip_frame_changed.txt on every
+ * publish_state() (touch_frame_changed(), modelled on chtpm_parser.c's
+ * frame_changed.txt). We watch that marker's SIZE growth - never mtime -
+ * so there is no wall-clock-resolution race and no "same second"
+ * dropped republish. On growth: re-read strip_state.txt, map the
+ * manager's focus cursor onto g_focus_nav, redraw once. */
 static void dock_poll_strip_state(void) {
     if (!window_is_dock()) return;
-    static long long s_mtime = 0;
+    static long s_marker = -1;
+    char mp[PATH_BUF];
+    snprintf(mp, sizeof(mp), "%s/#.desktop/strip_frame_changed.txt", g_house_root);
+    struct stat mst;
+    if (stat(mp, &mst) != 0) return;
+    if (s_marker < 0)               { s_marker = mst.st_size; return; }  /* first sight */
+    if (mst.st_size < s_marker)     { s_marker = mst.st_size; return; }  /* truncated/rotated - resync */
+    if (mst.st_size == s_marker)      return;                            /* nothing new */
+    s_marker = mst.st_size;
+
     char sp[PATH_BUF];
     snprintf(sp, sizeof(sp), "%s/#.desktop/strip_state.txt", g_house_root);
-    struct stat st;
-    if (stat(sp, &st) != 0) return;
-    /* NANOSECOND precision - st_mtime is seconds only, and the manager
-     * routinely republishes several times within one wall-clock second
-     * (a burst of arrow keys). A seconds-only compare silently drops
-     * every republish after the first in a given second, which showed up
-     * as the mirror trailing the taskbar by one step on alternate
-     * presses. */
-    long long m = (long long)st.st_mtim.tv_sec * 1000000000LL + st.st_mtim.tv_nsec;
-    if (s_mtime == 0) { s_mtime = m; return; }   /* first sight - don't repaint */
-    if (m == s_mtime) return;
-    s_mtime = m;
 
     /* The manager just republished. Pull its focus cursor
      * (strip_focus_cell: 0-based header cell, or -1 = a bottom tab at
@@ -6044,6 +6047,22 @@ static void dock_write_ascii_frame(void) {
         if (g_dock_peer) { fprintf(f, "--- bottom bar ---\n"); dock_ascii_walk(f, g_dock_peer, 0); }
         dock_ascii_append_state(f);
         fclose(f);
+        /* DIAMOND: the compose->present marker, exactly like
+         * chtpm_parser.c appends "P\n" to renderer_pulse.txt after
+         * writing current_frame.txt. khtpm_strip_render_ascii.+x (the
+         * terminal presenter) watches THIS file's size growth - not the
+         * frame file's mtime - so a frame that is byte-identical in
+         * length (a single-digit nav number moving) still triggers a
+         * repaint. */
+        char pp[PATH_BUF];
+        snprintf(pp, sizeof(pp), "%s/#.desktop/strip_ascii_pulse.txt", g_house_root);
+        struct stat pst;
+        /* size IS the signal, so rotate (not append) once it gets big -
+         * the presenter's `size < last` branch treats the shrink as a
+         * resync, never a missed frame. */
+        const char *mode = (stat(pp, &pst) == 0 && pst.st_size > 64 * 1024) ? "w" : "a";
+        FILE *pf = fopen(pp, mode);
+        if (pf) { fputc('P', pf); fclose(pf); }
     }
     FILE *h = fopen(hpath, "a");
     if (h) {
@@ -7336,14 +7355,20 @@ static int pchq_theme_changed_dirty(const char *house_root) {
  * mtime-gate convention as pchq_theme_changed_dirty() above (avoid a
  * needless fopen+read every tick for every window in the house);
  * called every tick in hq_idle_tick(), same shared every-mode spot. */
-static time_t g_hq_ui_pdl_mtime = 0;
+/* hq_ui.pdl is a Settings-window config file rewritten in place (not
+ * appended), so a size cursor can't see an equal-length rewrite - this
+ * is the one spot that must key off mtime. NANOSECOND, never
+ * st_mtime-seconds: two Settings saves inside one wall-clock second
+ * must not collapse into one. */
+static struct timespec g_hq_ui_pdl_mtime = {0, 0};
 static void hq_ui_pdl_reload_if_changed(const char *house_root) {
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
     struct stat st;
     if (stat(path, &st) != 0) return;
-    if (st.st_mtime != g_hq_ui_pdl_mtime) {
-        g_hq_ui_pdl_mtime = st.st_mtime;
+    if (st.st_mtim.tv_sec != g_hq_ui_pdl_mtime.tv_sec ||
+        st.st_mtim.tv_nsec != g_hq_ui_pdl_mtime.tv_nsec) {
+        g_hq_ui_pdl_mtime = st.st_mtim;
         desktop_load_click_two_step(house_root);
     }
 }

@@ -205,26 +205,25 @@ int main(int argc, char **argv) {
     render_display();
 
     char pulse_path[PATH_BUF];
-    /* BUG FIX 2026-08-19: renamed from strip_frame_changed.txt, which
-     * collided with khtpm_strip_parser.c's own manager-state dirty signal
-     * of the same name (see khtpm_strip_parser.c's flush_cells_pdl() for
-     * the full story) — that collision was firing a doc-reload every tick
-     * in the parser, breaking arrow-key submenu navigation. */
-    build_path(pulse_path, sizeof(pulse_path), "#.desktop/strip_ascii_current_frame.txt");
+    /* DIAMOND standard (see 02-architecture/reference/
+     * TPMOS-DIAMOND-render-chain.md): this is TPMOS renderer.c's
+     * renderer_pulse.txt exactly - khtpm_core_render.c appends one byte
+     * to strip_ascii_pulse.txt after every write of the frame file. We
+     * watch this marker's SIZE (monotonic, append-only) - never mtime,
+     * never the frame file itself - so a frame that is byte-identical in
+     * length still repaints, and there is no wall-clock-resolution race. */
+    build_path(pulse_path, sizeof(pulse_path), "#.desktop/strip_ascii_pulse.txt");
     struct stat st;
-    long last_sz = -1; long long last_mt = 0;
-    /* NANOSECOND mtime - khtpm_core_render.c rewrites this frame file
-     * several times per second on an arrow-key burst, and consecutive
-     * frames are often the same byte length (single-digit nav number),
-     * so a seconds-only or size-only compare drops redraws. */
-#define STRIP_MT(s) ((long long)(s).st_mtim.tv_sec * 1000000000LL + (s).st_mtim.tv_nsec)
-    if (stat(pulse_path, &st) == 0) { last_sz = st.st_size; last_mt = STRIP_MT(st); }
+    long last_marker = -1;
+    if (stat(pulse_path, &st) == 0) last_marker = st.st_size;
 
     while (1) {
         if (stat(pulse_path, &st) == 0) {
-            if (st.st_size != last_sz || STRIP_MT(st) != last_mt) {
+            if (st.st_size < last_marker) {           /* truncated/rotated - resync */
+                last_marker = st.st_size;
+            } else if (st.st_size > last_marker) {
+                last_marker = st.st_size;
                 render_display();
-                last_sz = st.st_size; last_mt = STRIP_MT(st);
             }
         }
         usleep(16667);   /* 60Hz, matching TPMOS renderer.c's own marker-poll cadence exactly */
