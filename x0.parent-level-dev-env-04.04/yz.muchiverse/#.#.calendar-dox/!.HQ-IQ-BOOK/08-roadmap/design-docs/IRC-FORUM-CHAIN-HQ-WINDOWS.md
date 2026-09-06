@@ -84,14 +84,36 @@ music-player-hq all do exactly this). No bash projector.
   back to cwd). The manager exports it = the real
   `044.pal-chat-irc👥️+2/` abs path.
 
-### Forum — `041.pal-forum👥️/`
-- **Schema (per NETWORK-CELL §12, verify at build):** `POST|<post_id>|
-  <user_id>|<ts>|<text>|<image_id>`. Per-user `users/<u>/wall.txt`,
-  `users/<u>/feed_cache.txt`.
-- **Ops:** `forum_post.+x`, `forum_like.+x`, `forum_retweet.+x`,
-  `forum_follow.+x`, `forum_dm.+x`, `forum_compute_feed.+x` (feed
-  output), `forum_create_user.+x`, `forum_switch_user.+x`,
-  `forum_inbox_watcher.+x`, `palnet_peer.+x`.
+### Forum — `041.pal-forum👥️/` (Twitter-shaped: posts, likes, retweets, media, DMs)
+- **Schema (read 2026-09-06):**
+  - `users/<u>/wall.txt` rows: `POST|<post_id>|<author>|<ts>|<text>|<image_id>`
+    (`post_id` = `<author>-<epoch>-<seq>`; `image_id` = `-` when none).
+  - `users/<u>/feed_cache.txt` (what `forum_compute_feed.+x` writes):
+    same but with a trailing like count —
+    `POST|<post_id>|<author>|<ts>|<text>|<image_id>|<like_count>`.
+  - `users/<u>/{likes.txt, following.txt, followers.txt}`.
+  - DMs: `forum_dm.c`'s own per-pair thread files (verify path at build).
+- **Ops** (`ops/+x/`, all built): `forum_post.+x <user> <text> [image_id]`,
+  `forum_like.+x`, `forum_retweet.+x`, `forum_follow.+x`,
+  `forum_dm.+x <from> <to> <text>`, `forum_compute_feed.+x <user>`
+  (rebuilds that user's `feed_cache.txt`), `forum_create_user.+x`,
+  `forum_switch_user.+x`, `forum_inbox_watcher.+x`, `palnet_peer.+x`.
+  `forum_compose_frame.+x` = legacy TUI, NOT used.
+- **Media reality:** forum stores `image_id` as an **opaque string** —
+  there is NO image storage/decode op in the forum project. So media
+  support is a WINDOW-side concern:
+  - **Attach:** a "media" button on the compose row launches the shared
+    File Explorer widget (`poll_file_explorer_pick` pattern pdl-read /
+    text-edit-hq already use); the picked absolute path becomes the
+    `image_id` argv to `forum_post.+x`.
+  - **Display:** the manager, for any feed row whose `image_id != "-"`,
+    resolves it to a sprite (reuse `&.hq-apps/network/ops/
+    nb_media_to_sprite.c`, or a trimmed copy) and publishes
+    `p_<i>_sprite=<path>` + `p_<i>_has_media=1`; the template row shows
+    `<item sprite="${p.sprite}" show="${p.has_media}"/>` under the text.
+  - v1 may ship display-only (render existing `image_id` paths) and add
+    the attach button in the same pass if cheap; both are window-side,
+    no forum-project change.
 
 ### Chain — `041.pal-chain⛓️/`
 - **Schema:** `data/blockchain.txt` rows
@@ -126,12 +148,32 @@ music-player-hq all do exactly this). No bash projector.
   (`chain_miner.+x`); History = `${n_rows}` `<repeat>` of TX/BLOCK
   rows, newest first.
 
-### Forum (`forum-window`)
-- sidebar tabs: Home / Following / DMs / Notifications.
-- panel: compose box at top (`<cli_io>` → `forum_post.+x`); feed of
-  `${n_posts}` `<repeat bind="p">` rows (user / text / ts + Like /
-  Retweet `<item>`s → `forum_like.+x` / `forum_retweet.+x`). DMs tab
-  reuses the row shape sourced from `forum_dm.+x`.
+### Forum (`forum-window`) — Twitter-shaped
+- **sidebar**: current user + switch/create; then tabs (`<item action
+  ="'…/forum_item.sh' 'TAB home'">` …) — **Home** (own wall + follows'
+  posts via `forum_compute_feed`), **Following** (manage follows;
+  `forum_follow.+x`), **DMs** (per-user threads, `forum_dm.+x`),
+  **Notifications** (likes/retweets/follows on your posts — derived by
+  the manager from `likes.txt` / retweet rows / `followers.txt`).
+- **panel**, `show=`-gated by `${cur_tab}`:
+  - **Home**: compose row at top — `<cli_io id="composer" action="'…
+    /forum_send.sh'">` → `POST:<text>`; a `[media]` `<item action="'…
+    /forum_item.sh' 'MEDIA'">` next to it launches File Explorer, the
+    picked path rides along as `forum_post.+x <user> <text>
+    <image_id>`. Below: feed `<repeat count="${n_posts}" bind="p">` of
+    rows — `<text label="${p.author} · ${p.age}"/>`, `<text
+    label="${p.text}"/>`, `<item sprite="${p.sprite}"
+    show="${p.has_media}"/>`, then a control line `<item action="'…'
+    'LIKE ${p.id}'" label="♥ ${p.likes}"/>` + `<item action="'…'
+    'RETWEET ${p.id}'" label="⟲ ${p.rts}"/>` + `<item action="'…'
+    'FOLLOW ${p.author}'" label="+follow" show="${p.can_follow}"/>`.
+  - **DMs**: left = thread list (one per correspondent), right = that
+    thread's messages + a `<cli_io>` → `DM:<to>|<text>` →
+    `forum_dm.+x`. (Same two-pane shape as IRC rooms.)
+  - **Following / Notifications**: plain `<repeat>` lists.
+- Manager runs `forum_compute_feed.+x ${cur_user}` on open / post /
+  RESCAN, then reads `users/${cur_user}/feed_cache.txt` for the Home
+  feed; reads `wall.txt` for a profile view.
 
 ## 4. `<app>_ui.txt` schema (IRC shown; forum/chain analogous)
 
