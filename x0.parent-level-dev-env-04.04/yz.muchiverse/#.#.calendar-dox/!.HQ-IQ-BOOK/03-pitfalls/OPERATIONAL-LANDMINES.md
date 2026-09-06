@@ -47,10 +47,19 @@ involving live windows or shared files.*
    already has the right context, not a separate control referencing
    global focus state.
 9. **Kill child processes, not just the window process.** A rendered
-   window often forks a real backend manager
-   (`khtpm_events_hq_manager.+x`, etc.) as a child. After any test
-   session, `ps aux | grep` for manager names too, and confirm zero
-   strays.
+    window often forks a real backend manager
+    (`khtpm_events_hq_manager.+x`, etc.) as a child. After any test
+    session, `ps aux | grep` for manager names too, and confirm zero
+    strays.
+10. **Never end a work block with uncommitted code.** Uncommitted work
+    is fire-able: it literally died once here (the whole nb-js-worker
+    step-6/7 set was lost when its only copy lived in the working tree
+    and the tree got reset — re-derived at cost 2026-09-05). Default is
+    to commit scoped to exactly the files you changed, on the current
+    branch, at the end of every session, unprompted (mid-work snapshots
+    may use `wip: ...`). Sweep nothing extra — do NOT `git add -A`
+    across the tree; runtime state files (`module_parent.pid`, `.pdl`,
+    logs) drown the real diff. Leave pushing to the user unless asked.
 
 ## Verification discipline (non-negotiable)
 
