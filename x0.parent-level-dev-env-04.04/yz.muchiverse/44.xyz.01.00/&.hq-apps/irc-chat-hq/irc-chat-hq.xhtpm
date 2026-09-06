@@ -1,0 +1,51 @@
+<!-- irc-chat-hq.xhtpm - X11-HQ window for 044.pal-chat-irc👥️+2.
+     Static layout only. Rendered by the shared khtpm_core_render.+x.
+     08-roadmap/design-docs/IRC-FORUM-CHAIN-HQ-WINDOWS.md.
+
+     class="irc-chat-window database-window": neither token hits the
+     renderer's exact-strcmp g_is_* triggers, so this rides the generic
+     sidebar/panel/scrolllist/cli_io path - ZERO new renderer C.
+     ("database-window" is CSS-only, same trick chat-hai.xhtpm /
+     events-hq.xhtpm use.)
+
+     One <module>: ops/+x/irc_chat_manager.+x - reads the real
+     044.pal-chat-irc👥️+2/data/master_ledger.txt, publishes
+     irc_chat_ui.txt (consumed here via vars=), polls
+     irc_chat_action.txt written by the thin action shims below.
+     Compose/room/user actions call chat_post_message.+x /
+     chat_create_user.+x with their real PRISC_PROJECT_ROOT contract.
+
+     v1 = local ledger only. v2 adds palnet_peer + chat_inbox_watcher
+     for real P2P (a manager change, not a template change). -->
+<window label="IRC  ·  ${cur_user}  :${port}  ·  #${cur_room}" class="irc-chat-window database-window" vars="irc_chat_ui.txt">
+  <module src="&.hq-apps/irc-chat-hq/ops/+x/irc_chat_manager.+x"/>
+  <page name="main">
+
+    <sidebar id="sidebar" class="irc-sidebar">
+      <text id="side-hdr" label="Rooms" class="irc-side-hdr"/>
+      <cli_io id="newroom" target_id="newroom" rows="1" class="irc-newroom top"
+              label="join/new #" action="'${PKG}/ops/irc_room_new.sh'"/>
+      <scrolllist class="from-top">
+        <repeat count="${n_rooms}" bind="r">
+          <item id="rm${r.#}" class="irc-room ${r.cls}" label="# ${r.name}"
+                action="'${PKG}/ops/irc_item.sh' 'ROOM ${r.name}'"/>
+        </repeat>
+      </scrolllist>
+    </sidebar>
+
+    <panel id="content" class="irc-panel">
+      <text id="status" class="irc-status" label="${status}"/>
+      <cli_io id="userfield" target_id="userfield" rows="1" class="irc-userfield top"
+              label="you" action="'${PKG}/ops/irc_user_set.sh'"/>
+      <scrolllist class="from-top">
+        <repeat count="${n_msgs}" bind="m">
+          <text id="m${m.#}" class="${m.cls}" label="${m.text}"/>
+        </repeat>
+        <text id="empty-hint" class="irc-quiet" label="${empty_hint}" show="${empty_hint}"/>
+      </scrolllist>
+      <cli_io id="composer" target_id="composer" rows="3" class="irc-composer"
+              label="&gt; " action="'${PKG}/ops/irc_send.sh'"/>
+    </panel>
+
+  </page>
+</window>

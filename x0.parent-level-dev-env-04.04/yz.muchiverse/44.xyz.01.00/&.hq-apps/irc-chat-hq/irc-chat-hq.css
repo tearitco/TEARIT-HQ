@@ -1,162 +1,88 @@
-/* dashboard.css — db-hq styling, load-bearing subset only (see
-   au11-hq/HQML-DESIGN+PLANS.md's own "start small" note). Ported from
-   au11-hq/rpg-maker-database.html's .tab-bar / .sidebar / .settings-block
-   / .block-title / .stat-bar rules, minus anything needing flex/grid
-   (out of scope until a section that needs it gets built).
-
-   REAL, DELIBERATE 2026-08-16: dark theme, direct instruction ("yes"
-   after being asked to confirm this as a real design change, not a
-   bug fix - db-hq's own light theme was intentional/matching the real
-   rpg-maker-database.html mockup until this point). Real palette
-   matches the same dark convention already used across open-hai/
-   chat-hai/khtpm_core_render.c/taskbar-settings this same
-   session (#141414 base / #1a1a1a-#2a2a2a panels / #eeeeee-#cccccc
-   text) - not a new, unrelated color scheme. */
+/* irc-chat-hq.css - merged on top of the renderer default. Same
+   constraints as chat-hai.css: khtpm_css_parser.c supports ONLY a bare
+   tag, a single-element compound class chain (.a.b), or an #id - NO
+   descendant combinators (".a .b" matches nothing). Every styled row
+   gets its own distinct class. Only background/border/color/font/
+   padding actually apply. */
 
 window {
-  background-color: #141414;
-  font-family: Ubuntu;
-  font-size: 10px;
+    width: 900px;
+    height: 640px;
+    background-color: #16181f;
+    font-family: DejaVu Sans;
+    font-size: 11px;
 }
 
-.tab-bar {
-  background-color: #1a1a1a;
-  border-color: #444444;
-  border: 1px solid #444444;
+.irc-sidebar {
+    background-color: #0d0e12;
+    border: 1px solid #2a2d3a;
+    border-color: #2a2d3a;
 }
 
-.tab {
-  background-color: #1a1a1a;
-  color: #aaaaaa;
-  border: 1px solid #444444;
-  font-size: 9px;
+.irc-panel {
+    background-color: #1e2130;
+    border: 1px solid #3a3f52;
+    border-color: #3a3f52;
 }
 
-.tab.active {
-  background-color: #2a2a2a;
-  color: #ffffff;
-  font-weight: bold;
+.irc-side-hdr {
+    color: #7c8399;
+    font-size: 10px;
+    padding: 6px 8px 2px 8px;
 }
 
-.sidebar {
-  background-color: #181818;
-  border: 1px solid #333333;
+.irc-newroom {
+    color: #00ff00;
+    background-color: #11141b;
+    border: 1px solid #2a2d3a;
+    padding: 3px 6px;
 }
 
-.data-item {
-  color: #cccccc;
-  font-size: 10px;
+.irc-userfield {
+    color: #9fd0a0;
+    background-color: #171a24;
+    border: 1px solid #3a3f52;
+    padding: 3px 6px;
 }
 
-.data-item.active {
-  background-color: #2f5f8f;
-  color: #ffffff;
+.irc-room {
+    color: #00ff00;
+    font-size: 10px;
+    padding: 5px 8px;
 }
 
-.settings-block {
-  background-color: #1c1c1c;
-  border: 1px solid #333333;
-  border-width: 1;
+.irc-room.room-active {
+    background-color: #2d4059;
+    color: #ffffff;
 }
 
-.block-title {
-  background-color: #2a2a2a;
-  color: #eeeeee;
-  font-weight: bold;
-  font-size: 9px;
-  position: absolute;
-  top: -8px;
-  left: 10px;
+.irc-status {
+    color: #8a93a8;
+    font-size: 10px;
+    padding: 4px 8px;
 }
 
-.event-name {
-  color: #dddddd;
-  font-size: 12px;
+.irc-quiet {
+    color: #5a6072;
+    padding: 6px 8px;
 }
 
-.btn-primary {
-  background-color: #4a9eff;
-  color: #ffffff;
-  font-size: 10px;
+.msg-other {
+    color: #d6d9e3;
+    font-size: 10px;
+    padding: 2px 6px;
 }
 
-button:hover {
-  background-color: #2a7eff;
+.msg-self {
+    color: #ffd7a6;
+    font-size: 10px;
+    padding: 2px 6px;
 }
 
-/* Part B (2026-08-29) - Common Events' new Scripting/Scratch/Blueprints
- * view-mode tabs share evhq_build_scratch_view()'s real Elems with
- * events-hq (see EVENTS-HQ-RENDER-UNIFICATION-PLAN.md), but db-hq's own
- * dashboard.css never had these rules - ported verbatim from
- * &.widgits/events-hq/pieces/dashboard.css so the Scratch view actually
- * shows real color here instead of falling through to zero-style. */
-.scratch-block {
-  background-color: #7ea7e0;
-  color: #0a0a0a;
-  border: 1px solid #3a5a8a;
-  font-size: 11px;
-}
-.scratch-block.gold     { background-color: #e5b93e; border-color: #9a7a10; }
-.scratch-block.green    { background-color: #5cb85c; border-color: #2f7a2f; }
-.scratch-block.orange   { background-color: #e8853d; border-color: #9a5510; }
-.scratch-block.purple   { background-color: #b07cc6; border-color: #6f3f85; }
-.scratch-block.pink     { background-color: #e0618a; border-color: #993560; }
-.block-item {
-  color: #101016;
-  border: 1px solid #30303a;
-  font-size: 11px;
-}
-.block-item.selected {
-  border: 2px solid #ffffff;
-}
-.block-place {
-  background-color: #ffffff;
-  color: #1a5c1a;
-  border: 1px dashed #8f8f9a;
-  font-size: 11px;
-}
-.block-clue {
-  color: #8f8f9a;
-  font-size: 10px;
-}
-
-/* REAL FIX 2026-08-29 (live report: Common Events' own Add-Command
- * picker had "no solid background/window outline" and other weird
- * behavior) - root cause: evhq_draw_picker_overlay() was converted
- * from hand-drawn C to real CSS-driven Elems (see khtpm_entity_menu_
- * render.c's own comment on that change), but that CSS-ification only
- * ported the new .picker-* rules into events-hq's own dashboard.css -
- * db-hq's Common Events editor shares the SAME picker function
- * (g_dbhq_ce_editing && g_evhq_picker_open) but loads THIS separate
- * CSS file, which never had these rules at all, so the overlay had
- * zero style here: no background, no border, no text color - reads as
- * "missing" even though it was really drawing, just invisibly. Ported
- * verbatim from events-hq's own dashboard.css, same as every other
- * shared-Elem CSS port this session (.scratch-block/.block-item/etc
- * above got the same treatment). */
-.picker-overlay {
-  background-color: #2a2a2a;
-  border: 1px solid #4a9eff;
-}
-.picker-title {
-  color: #eeeeee;
-  font-size: 11px;
-  font-weight: bold;
-}
-.picker-row {
-  color: #eeeeee;
-  font-size: 11px;
-}
-.picker-cancel {
-  color: #ff8080;
-  font-size: 11px;
-}
-.picker-delete {
-  background-color: #cc4444;
-  color: #ffffff;
-  font-size: 11px;
-}
-.picker-hint {
-  color: #999999;
-  font-size: 11px;
+.irc-composer {
+    color: #ffffff;
+    background-color: #12141c;
+    border: 1px solid #3a3f52;
+    border-color: #3a3f52;
+    padding: 4px 6px;
 }

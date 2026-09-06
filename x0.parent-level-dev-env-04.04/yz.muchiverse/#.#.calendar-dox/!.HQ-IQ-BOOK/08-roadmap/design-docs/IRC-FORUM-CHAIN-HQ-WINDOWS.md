@@ -204,21 +204,43 @@ Repeat binds: rooms `r`, msgs `m`, users `u` — key prefix MUST match
 `TAB:<name>`, `POST:<text>`, `LIKE:<post_id>`, `RETWEET:<post_id>`,
 `FOLLOW:<user>`.
 
-## 6. Scope — honest small v1, then v2
+## 6. Scope — real identity + real P2P from v1 (revised 2026-09-06)
 
-**v1 (build + verify first): local ledger, no mesh.**
-The manager reads/writes the app's own local ledger via its real ops
-and publishes the UI. Messages/txns/posts made in the window
-round-trip through the real ledger file and reappear. NO
-`palnet_peer` / `*_inbox_watcher` started yet. This is exactly the
-"wire each panel's action to its real op binary" step NETWORK-CELL §12
-ends on.
+Original plan was "local ledger only for v1". Direct correction:
+*"it should have my user name and port number. since we can test with
+same user multiports"* — the whole point of these windows is P2P
+testing, so identity + mesh are v1, not deferred.
 
-**v2: P2P.** Manager also starts `palnet_peer.+x` (correct own_kind) +
-`<app>_inbox_watcher.+x` as children (SIGTERM'd on window close), so a
-second instance / a real peer sees the messages. Run each app's
-`button.sh` standalone first to confirm exactly which daemons/env it
-needs; add only those.
+**What each `<app>_manager.c` does on start:**
+1. **Identity** — read the house login
+   `0.user-pal👤️/00.login-signup/current_login.txt` → `current_user_id`
+   (real value: `jb`); write it into this instance's own
+   `net/session.txt` as `current_user_id=` (same file/format
+   `chat_switch_user.+x` writes). Live-switchable in-window.
+2. **Per-instance session dir** —
+   `<app>/pieces/sessions/hq-<ts>-<pid>/` with `net/ data/ rooms/
+   users/<user>/`, seeded from the real project's
+   `data/master_ledger.txt`. This dir is the child ops'
+   `PRISC_PROJECT_ROOT`, so two windows as the same user have
+   independent ledgers and genuinely exercise P2P.
+3. **Mesh** — `spawn_daemon()`:
+   `palnet_peer.+x <own_kind> <project_id> <piece_tag> <sess>/net/
+   outbox.txt <sess>/net/inbox.txt <own_kind>` (env
+   `PRISC_PROJECT_ROOT`=session, `PRISC_NET_ROOT`=`<house>/net/presence`
+   — the SHARED presence dir), plus `<app>_inbox_watcher.+x` (no args).
+   Both SIGTERM'd from the manager's own SIGTERM/INT/HUP handler.
+4. **Port** — `palnet_peer` auto-allocates from base 9950 (`irc_node`)
+   and writes `port=<n>` to `<house>/net/presence/<project_id>-<piece_
+   tag>-<peerpid>.txt`; the manager globs that prefix, reads the port,
+   publishes it. Header shows `<user>  ·  :<port>  ·  #<room>`.
+
+**Verified 2026-09-06 (IRC):** two manager instances → `cur_user=jb`
+for both, ports `:9950` / `:9951`, each its own session; instance A
+posts to `#lobby` → instance B's feed shows it within ~5 s via real
+P2P (`palnet_peer` mesh + `chat_inbox_watcher` merge).
+
+Chain/Forum follow the identical bring-up (their own `own_kind`,
+`*_inbox_watcher`, login seeds `net/session.txt` the same way).
 
 ## 7. Order
 
