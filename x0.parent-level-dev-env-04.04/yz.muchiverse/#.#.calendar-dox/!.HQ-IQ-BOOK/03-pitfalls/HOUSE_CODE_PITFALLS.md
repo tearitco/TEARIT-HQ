@@ -372,6 +372,97 @@ re-detects real content on every tick / every live reparse
 (`layout_sidebar_panel()`'s own `g_default_has_sidebar_panel` latch,
 here), never inside the one-shot `main()` startup sequence.
 
+## 13. A `${var}` value with a bare `"` hangs the xhtpm parser at 100% CPU — the window never maps, looks "WM-related"
+
+**Symptom (2026-09-05, direct live report "some x11-hq windows
+(pdl-read) wont open from the tb-sub menu anymore ... WM related?"):**
+pdl-read launched from the taskbar toys submenu but no window ever
+appeared. The `khtpm_core_render.+x` process was alive, pinned at
+**100% CPU** (`ps` state `Rs`), `/tmp/pdl-read-pal.log` empty, and
+**plain `kill`/SIGTERM did not stop it** (needs `kill -9` - the loop
+never reaches a signal check). Every OTHER X11-HQ window launched
+fine, and pdl-read's own template/manager/`button.sh` had no recent
+commits - so it read as WM / environment / "an old bug resurfaced".
+It is a parser bug, and it is deterministic given the input.
+
+**Do not chase the wrong layer.** Reverting the recent fullscreen fix
+(`bb8ac63d`) changed nothing. Bisecting the shared renderer back
+several commits changed nothing. The hang reproduces at every renderer
+revision - it is driven purely by what pdl-read's manager publishes.
+
+**Root cause (gdb-traced):** infinite loop in `parse_element()`'s
+child loop in `khtpm_core_render.c`, hit during `parse_chtpm()` in
+`main()`, **before `XMapRaised`** (hence: process alive, no window):
+
+```c
+for (;;) {
+    skip_ws(&p);
+    if (!*p) return p;
+    if (p[0]=='<' && p[1]=='/') { ... return ...; }
+    p = parse_element(p, e);        /* never advances */
+}
+```
+
+`parse_element()`'s first line is `if (*p != '<') return p;` - it
+returns `p` **unchanged** for any byte that isn't a tag opener. The
+loop then calls it again on the same byte, forever.
+
+**How non-`<` text ends up mid-stream:** `kh_substitute_vars()`
+splices a `${var}` value straight into the raw template text *before*
+parsing (`parse_chtpm()`, ~line 1293). pdl-read's manager publishes a
+doc page into `content="${page_text}"`. That page body contains a bare
+`"` (e.g. a Markdown  `"(CORRECT)"`  quote). `parse_attr_value()`
+(which just scans `"` ... `"`) ends the value at that inner `"`; the
+rest of the page body spills into the stream as raw text; the first
+`>` in it (a Markdown `> ` blockquote) closes the mangled tag - and
+now there is prose where a child element is expected. Pages with no
+`>` after the stray `"` happened to parse (the tail got eaten as junk
+attributes up to EOF), which is exactly why it looked intermittent -
+short doc pages hid it, one long one exposed it.
+
+**Fix (committed, branch `fix/xhtpm-parser-infinite-loop`):**
+guarantee forward progress in the child loop - if `parse_element()`
+returns without consuming a byte, skip that byte. The parser is then
+robust to any not-well-formed input instead of spinning. The deeper
+correctness fix (escape `"`/`<`/`>`/`&` in a `${var}` value spliced
+into a quoted attribute, so `content=` text isn't truncated at the
+first `"`) is a separate change.
+
+**Rule:** any hand-rolled recursive-descent parser whose input can be
+influenced by external data (a manager's published `${var}` values,
+here) must guarantee the cursor advances every iteration of every
+scan/child loop - a "return unchanged on unexpected byte" leaf plus a
+"call until it returns a close tag" loop is an infinite loop waiting
+for one malformed byte.
+
+**Diagnostic notes that cost real time (worth their own reflex):**
+1. `pkill -f pdl-read-pal.xhtpm` (or `pkill -f pdl_read_manager`) run
+   from an interactive shell **kills the shell running the command** -
+   the pattern string is in that shell's own `argv`, so `pkill -f`
+   matches it. A command that "cannot time out" exiting 143/144 is
+   this. Put the launch+kill in a **script file** invoked by name, or
+   build the pattern so the literal isn't on the command line
+   (`P=$(printf 'pdl%s' '-read-pal')`), or match the binary
+   (`pkill -f 'khtpm_core_render[.][+]x .*pdl-read'`).
+2. Backgrounding a never-exiting render as `( "$BIN" ... & )` with a
+   pipe keeps the calling harness blocked on the inherited stdout fd
+   until *its own* timeout. Use
+   `setsid "$BIN" ... </dev/null >log 2>&1 & disown`.
+3. `ptrace_scope=1` (the default here) blocks `gdb -p` on a process
+   that isn't your descendant, and there's no passwordless sudo to
+   lower it. Workaround: run the target **as gdb's own child** -
+   `gdb -batch -ex 'set startup-with-shell on' -ex 'run <args>' BIN`,
+   with a `( sleep 7; pkill -INT -x gdb ) &` beside it to break in and
+   dump `bt`. `set startup-with-shell off` made the render fail to
+   find its own template - leave shell startup **on**.
+4. `<window>` here has no `WM_NAME`, so `xwininfo -root -tree | grep`
+   for the app title finds nothing even when the window is mapped -
+   grep the expected **geometry** (`560x480`) instead.
+5. `<module>`-spawned managers are orphaned when you `kill -9` their
+   parent render; repeated test launches pile up dozens of idle
+   `pdl_read_manager.+x`. Sweep them (`pkill -9 -f pdl_read_manager`)
+   between test rounds, same as pitfall #1's "confirm zero first".
+
 ---
 
 *Append new entries here as they're found — this file exists so the
