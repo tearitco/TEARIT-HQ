@@ -43,8 +43,16 @@ in `khtpm_taskbar_manager.c` builds each; rows come from
 | **h-ai** | chat-hai / open-hai / co-lab-hai | ✅ chat-hai, open-hai; co-lab-hai 🟡 |
 
 The **HQ button** (top-left of a window) submenu: always-on-top,
-restart, hide/show, dir, quit, settings, stats, cli, cursword, kill,
-debug — all ✅ (window-chrome actions).
+restart, hide/show, dir, quit, settings, stats, **cli**, cursword,
+kill, debug — mostly ✅ window-chrome actions. Note **`cli`**:
+`open_cli.sh` opens a gnome-terminal running
+`khtpm_strip_render_ascii.+x` + `khtpm_strip_keyboard_ascii.+x` — a
+**terminal ASCII mirror of the taskbar strip** (TPMOS renderer/
+keyboard split: no termios, reads `#.desktop/strip_frame.cells.pdl`,
+writes `strip_ascii_current_frame.txt` + a timestamped history). It is
+the right *pattern* for a headless text view — but **scoped to the
+strip only**; there is no equivalent for an arbitrary HQ window (see
+"Missing" below).
 
 ---
 
@@ -120,6 +128,25 @@ _shared-lib = the shared renderer core (not a widget)
   polls `<name>_action.txt`.
 - Clipboard (window↔window↔OS) ✅ · text selection ✅ · multi-digit
   nav-jump ✅.
-- **Missing / would help:** a headless *text* render of a window's
-  view-state (only `--dump-and-exit` PNG + the `*_ui.txt` files exist
-  today; a `strip_render_ascii` exists but for the taskbar strip only).
+- **Missing / would help:** a headless *text* render of an HQ window's
+  view-state. Today: `--dump-and-exit` (PNG + a wire-format frame
+  file), the `*_ui.txt` files (readable semantic state — what the test
+  harnesses grep), and `khtpm_strip_render_ascii` (strip only). The
+  right build is a **`khtpm_core_render --render-text`** flag: parse +
+  `${var}`-substitute + layout as normal, then emit the laid-out Elem
+  tree as indented text (labels, nav numbers, tab/active state) and
+  exit — fully headless, no X needed. Directly useful for CI and for
+  testing IRC/chain across ports without a display. Not built yet.
+
+### Verified: chain P2P sync across ports (2026-09-06)
+
+Two isolated chain nodes (own `data/`+`net/`, shared presence dir):
+`palnet_peer` bound **:9950** (node A) and **:9951** (node B); node A
+mined 16 blocks; **node B's `blockchain.txt` grew by all 16** via the
+mesh + `chain_inbox_watcher` merge. So: distinct ports work, and the
+"one global ledger reconciled over P2P" model holds. On a single
+machine, all `chain-hq` windows share the one real
+`041.pal-chain⛓️/data/blockchain.txt` directly (one node); cross-node
+sync is the P2P path just verified. Harness:
+scratch `chain_2node_sync.sh` (not committed - regenerate from this
+description).
