@@ -1,0 +1,23 @@
+I am building a science voxel game with an aggressive level-of-detail (LOD) zoom mechanic utilizing raymarching depth hacks (similar to nested sparse voxel octrees). 
+
+When zoomed out, an element occupies exactly 1 macro-voxel. When a ray/camera passes a certain proximity threshold, the macro-voxel subdivides into a micro-grid (Protons, Neutrons, Electrons). Zooming in even closer breaks the nucleons down further into their constituent Quarks. The engine conditionally renders these layers based on depth, so deeper sub-grids are only unpacked when active.
+
+Please write a Python script that generates a comprehensive `.csv` file mapping this nested structure for Gold, Silver, Copper, and Iron. 
+
+### 1. Data Schema
+The CSV must contain the following columns:
+`x,y,z,depth_layer,element,symbol,sub_x,sub_y,sub_z,particle_type,quark_type,color`
+
+### 2. Multi-Depth LOD Structure
+For every macro-coordinate (x,y,z), the script must output rows matching 3 specific depth_layer tags:
+- **Layer 0 (Element Macro):** A single row representing the whole atom. `sub_x/y/z` and `quark_type` should be 'none'. The `particle_type` is 'Element'.
+- **Layer 1 (Subatomic Micro):** Rows representing the individual Protons, Neutrons, and Electrons. Protons and Neutrons should cluster programmatically in a central sphere (the nucleus). Electrons should map to outer relative coordinates representing their shell configurations. `quark_type` should be 'none'.
+- **Layer 2 (Quantum Quark):** Rows mapping the internal quarks *inside* those Layer 1 nucleons. For every Proton, generate 2 Up Quarks and 1 Down Quark. For every Neutron, generate 1 Up Quark and 2 Down Quarks, offset slightly within that nucleon's sub-space.
+
+### 3. Mathematical Drude-Model Color Generator
+Do not hardcode elemental colors. Implement a physics-based function in Python to derive the hex codes:
+- **For Layer 0 (Elements):** Estimate atomic volume using nucleon count (protons + neutrons), find pseudo-electron density using valence electrons, and use a simplified Drude-model plasma frequency equation (ω_p ∝ √n) to determine visible light cutoff. Factor in a heavy-proton relativistic shift for Gold and Copper to absorb high-energy blue/violet wavelengths (lowering the Blue channel), while allowing lighter or balanced elements (Iron, Silver) to default to a highly reflective, balanced metallic gray/silver.
+- **For Layer 1 & 2 (Particles):** Assign distinct, highly visible emissive/neon hex colors so they stand out during raymarching (e.g., Proton = Neon Red, Neutron = Neutral Gray, Electron = Electric Blue, Up Quark = Glowing Magenta, Down Quark = Glowing Cyan).
+
+Ensure the script outputs a clean, well-formatted CSV that can be parsed instantly into my game's raymarching depth pipeline.
+

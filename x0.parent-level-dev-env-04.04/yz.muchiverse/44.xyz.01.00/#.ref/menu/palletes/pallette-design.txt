@@ -1,17 +1,17 @@
-FUTURE TODO, 2026-08-25 (not started, deliberately deferred - direct
-instruction "we can skip that and mark it as a later todo"): a more
-advanced chemistry layout - either SELECT premade "large compounds"
-(cars, worlds, people, animals, medicine/tools, etc) as pre-built
-tiles, OR CRAFT them via little-alchemy/Minecraft/CDDA-style
-combination (combine two items -> a result), matching this doc's own
-existing element recipe-tree seed data (`elements]new=RECIPEZ+]z2🏆.txt`
-- a real 2-parent combination chain already goes quark -> proton/neutron
--> hydrogen -> helium -> ... -> heavier elements, unused by any renderer
-yet). When this gets built, the compliant shape is the same manager
-pattern palettes_manager.c now uses (2026-08-25 TPMOS-compliant
-rebuild, see au11-hq/TPMOS-COMPLIANCE-DEBT.md) - a real manager owns
-the combination-recipe lookup/crafting-state, not bash or renderer-side
-logic. Scope not designed yet beyond this note.
+FUTURE TODO, 2026-08-25 (deferred) -> NOW DESIGNED, 2026-09-06:
+#.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/design-docs/CANVAS-CRAFT-DESIGN.md
+
+The advanced chemistry layout is a full 3-panel crafting bench
+("Canvas-Craft", Satisfactory-style) driven by the existing 2-parent
+recipe tree (elements]new=RECIPEZ+]z2🏆.txt: quark -> proton/neutron ->
+H -> He -> ... -> 118 elements -> compounds -> bio), plus a POE
+(periodic-table) view and a 3D-in-2D atom/quark inspector
+(chem-viz.txt). A real canvascraft_manager.c owns the recipe lookup +
+quantity resolver + bench state + inventory + craft loop (the same
+manager pattern this dir already uses). It replaces the broken
+palettes-elements.* swatch grid (no sprites, wrong label binding,
+column width - all documented in the new doc). Build phases + open
+questions live in CANVAS-CRAFT-DESIGN.md; nothing built yet.
 
 PALETTES SYSTEM DESIGN
 ======================
