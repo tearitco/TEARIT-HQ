@@ -7,9 +7,11 @@ short version.*
 2. Cross-platform (Windows/Mac) work: pending.
 3. Generic khtpm dispatch table (replace `g_is_<mode>` flags):
    designed, not built.
-4. ASCII/headless khtpm renderer: strip half BUILT (`cli`, DIAMOND
-   marker-driven). All-windows + headless: planned in
-   `design-docs/TERMINAL-MIRROR-PARITY-all-windows.md`, not started.
+4. ASCII/headless khtpm renderer: DONE (2026-09-06). `cli` strip
+   mirror + per-window text frames + `khtpm_core_render.+x --headless`
+   (no X at all). See `design-docs/TERMINAL-MIRROR-PARITY-all-
+   windows.md`. Remaining: entity manipulation from the text view
+   (separate design).
 5. LayDoc → Elem/CSS taskbar retarget: not started.
 6. Audit `khtpm_core_render.c` for sibling inline data-loaders like
    `dbhq_load_actors()`: not done.

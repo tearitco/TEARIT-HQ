@@ -150,20 +150,22 @@ _shared-lib = the shared renderer core (not a widget)
   polls `<name>_action.txt`.
 - Clipboard (window↔window↔OS) ✅ · text selection ✅ · multi-digit
   nav-jump ✅.
-- **Terminal mirror for arbitrary HQ windows** — 🟡 steps 1-3 BUILT
-  (2026-09-06), step 4 (true no-X) pending. Every non-dock window now
-  writes `#.desktop/ascii_frames/<pid>.frame.txt` + `<pid>.pulse.txt`
-  (DIAMOND marker) on every repaint; `khtpm_render_ascii.+x <house>
-  <pid>` presents it and `khtpm_kbd_ascii.+x <house> <pid>` relays keys
-  into the per-PID `entity_menu_history/<pid>.txt` the renderer already
+- **Terminal mirror for arbitrary HQ windows** — ✅ steps 1-4 BUILT
+  (2026-09-06). Every non-dock window writes
+  `#.desktop/ascii_frames/<pid>.frame.txt` + `<pid>.pulse.txt` (DIAMOND
+  marker) on every repaint; `khtpm_render_ascii.+x <house> <pid>`
+  presents it and `khtpm_kbd_ascii.+x <house> <pid>` relays keys into
+  the per-PID `entity_menu_history/<pid>.txt` the renderer already
   polls. `ops/open_window_cli.sh <pid>` attaches a terminal to a
-  running window; `$.crypts/scrypts/headless/window_headless.sh`
-  launches one headless (uses `$DISPLAY` if set, else `xvfb-run` if
-  installed). No layout logic duplicated — same `dock_ascii_walk()`
-  the strip uses. Design + how-to:
+  running window. **`khtpm_core_render.+x --headless <house>
+  <window.xhtpm>` runs with NO X connection at all** (real
+  `assign_nav_and_layout()` with estimated text metrics), so
+  `$.crypts/scrypts/headless/window_headless.sh` works over plain SSH /
+  in CI with no `DISPLAY` and no Xvfb — verified on taskbar-settings,
+  events-hq, irc-chat-hq, and strip mode. No layout logic duplicated —
+  same `dock_ascii_walk()` the strip uses. Design + how-to:
   `08-roadmap/design-docs/TERMINAL-MIRROR-PARITY-all-windows.md`.
-  Still design-only: `--headless` (drop the X/xvfb requirement) and
-  entity manipulation from the text view.
+  Deferred: entity manipulation from the text view (its own design).
 
 ### Verified: chain P2P sync across ports (2026-09-06)
 

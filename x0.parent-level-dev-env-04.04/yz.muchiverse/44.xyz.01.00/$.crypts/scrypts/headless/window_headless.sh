@@ -8,19 +8,15 @@
 # (open_cli.sh / open_window_cli.sh) stay in the taskbar ops/ dir; this
 # is the headless *entry point* that ties them together.
 #
-# HOW HEADLESS ACTUALLY WORKS RIGHT NOW
-#   khtpm_core_render.+x still needs an X connection to build its window
-#   (a true no-X `--headless` build is designed but NOT done - see
-#   TERMINAL-MIRROR-PARITY-all-windows.md step 4). So "headless" here is
-#   one of:
-#     a) a real DISPLAY is set (e.g. :0)  -> the window is drawn on it
-#        but you never look at it; you read/drive it purely via files.
-#     b) no DISPLAY, `xvfb-run` present   -> we wrap in a throwaway
-#        virtual X server; genuinely no screen needed (SSH / CI).
-#        Install once:  sudo apt-get install -y xvfb
-#     c) no DISPLAY, no xvfb              -> we stop and tell you (b).
+# HOW HEADLESS WORKS
+#   khtpm_core_render.+x --headless opens NO X connection at all: it
+#   parses, runs the real assign_nav_and_layout() (text metrics
+#   estimated, screen size a constant), and loops writing the per-PID
+#   ascii frame while consuming the per-PID input relay. No DISPLAY, no
+#   Xvfb, works over plain SSH / in CI. (TERMINAL-MIRROR-PARITY-all-
+#   windows.md step 4.)
 #
-# WHAT YOU GET (whichever path)
+# WHAT YOU GET
 #   frame : #.desktop/ascii_frames/<pid>.frame.txt      (cat it)
 #   pulse : #.desktop/ascii_frames/<pid>.pulse.txt      (size grows/frame)
 #   input : #.desktop/entity_menu_history/<pid>.txt     (append to drive)
@@ -82,33 +78,12 @@ OPS="$HOUSE/*.monads/*.livedesk-taskbar/ops"
 BIN="$OPS/+x/khtpm_core_render.+x"
 [ -x "$BIN" ] || { echo "$0: missing $BIN (run build_khtpm_strip.sh)" >&2; exit 1; }
 
-# --- pick the X strategy ----------------------------------------------
-WRAP=""
-if [ -n "${DISPLAY:-}" ]; then
-    MODE="DISPLAY=$DISPLAY (window drawn there, ignore it; drive via files)"
-elif command -v xvfb-run >/dev/null 2>&1; then
-    WRAP="xvfb-run -a"
-    MODE="xvfb-run (virtual X server, no screen)"
-else
-    cat >&2 <<EOF
-$0: no DISPLAY and no xvfb-run.
-  Either:  export DISPLAY=:0    (use the running desktop's X server)
-  Or:      sudo apt-get install -y xvfb   (then re-run; genuinely screenless)
-EOF
-    exit 2
-fi
-
-# --- launch ----------------------------------------------------------
-# shellcheck disable=SC2086
-$WRAP "$BIN" "$HOUSE" "$CHTPM" "$X" "$Y" &
+# --- launch (true no-X) --------------------------------------------
+MODE="--headless (no X connection)"
+env -u DISPLAY "$BIN" --headless "$HOUSE" "$CHTPM" "$X" "$Y" &
 PID=$!
-# under xvfb-run, $! is the wrapper; the real renderer is its child.
 sleep 1
 REAL_PID="$PID"
-if [ -n "$WRAP" ]; then
-    REAL_PID="$(pgrep -P "$PID" -f 'khtpm_core_render' | head -1)"
-    [ -n "$REAL_PID" ] || REAL_PID="$PID"
-fi
 
 FRAME="$HOUSE/#.desktop/ascii_frames/$REAL_PID.frame.txt"
 RELAY="$HOUSE/#.desktop/entity_menu_history/$REAL_PID.txt"

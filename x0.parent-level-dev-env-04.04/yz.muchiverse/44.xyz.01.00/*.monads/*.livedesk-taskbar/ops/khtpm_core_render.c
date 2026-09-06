@@ -1477,6 +1477,11 @@ static int g_dock_drop_lo, g_dock_drop_hi;
  * ALL keyboard input house-wide to this one (now non-typing) window
  * until it closes, a real, much worse bug than the one being fixed. */
 static Display *dpy;
+static int g_headless;  /* fwd (real def near g_dump_and_exit) - referenced by the guards below */
+/* Every XUngrabKeyboard(dpy,...) in this file goes through here so a
+ * --headless run (dpy == NULL) can't segfault Xlib on a NULL Display,
+ * and so the call is a clean no-op before any display is open. */
+static void kh_ungrab_kbd(void) { if (dpy) XUngrabKeyboard(dpy, CurrentTime); }
 /* Forward declaration - real definition (with its own header comment)
  * lives in the generic sidebar+panel scroll section further down.
  * Needed here so a reparse (new manager content) can auto-scroll the
@@ -1552,7 +1557,7 @@ static int reparse_chtpm_if_changed(void) {
      * `dpy` above for why leaving it held would be a much worse bug
      * than the one this whole block fixes. A harmless no-op when
      * nothing was actually armed/grabbed. */
-    if (g_default_input_elem) XUngrabKeyboard(dpy, CurrentTime);
+    if (g_default_input_elem) kh_ungrab_kbd();
     g_default_input_elem = NULL;
     /* Same real dangling-pointer reasoning as g_default_input_elem just
      * above - a stale dropdown-open pointer into a freed/reused pool
@@ -1854,6 +1859,13 @@ static int g_quit = 0;
  * dump_frame_png() itself before entering the loop. */
 static int g_dump_and_exit = 0;
 static int g_dumped = 0;
+/* --headless (any argv position): run with NO X connection at all -
+ * parse, ${var}-sub, the real assign_nav_and_layout() (text metrics
+ * estimated, screen size a constant), then loop writing the per-PID
+ * ascii frame + consuming the per-PID input relay. For agents / CI /
+ * driving many IRC+chain windows from different ports with no display
+ * and no Xvfb. See TERMINAL-MIRROR-PARITY-all-windows.md step 4. */
+static int g_headless = 0;
 /* REAL FIX 2026-08-16, direct live report ("it breaks on events or just
  * when right clicking sometimes" - intermittent): the stale-event drain
  * right after XMapRaised only discards events already sitting in the X
@@ -1975,6 +1987,12 @@ static Elem *g_dbhq_active_scope_root = NULL;
 static int scaled(int base_px) {
     return base_px;
 }
+
+/* Screen dimensions - a constant under --headless (no dpy to ask), the
+ * real X value otherwise. Every layout-path DisplayWidth/Height call
+ * goes through these two so headless layout has a sane viewport. */
+static int kh_screen_w(void) { return g_headless ? 1920 : DisplayWidth(dpy, screen); }
+static int kh_screen_h(void) { return g_headless ? 1080 : DisplayHeight(dpy, screen); }
 /* REAL Stage 5 (2026-08-16, khtpm-merge-how2.md §5d) - shared, generic
  * draw_elem()/render_tree()/font_for() (was hand-rolled, per-app pixel
  * drawing - see khtpm_draw_core.c's own header comment). Included here
@@ -2043,6 +2061,18 @@ static int elem_has_class(Elem *e, const char *cls) {
 /* Real, single-slot font cache for text measurement, ported verbatim
  * (khtpm-merge-how2.md §3.2's own cache pattern, already proven). */
 static int kh_measure_text_px(const CssStyle *st, const char *text) {
+    if (g_headless) {
+        /* no Xft without a display - estimate: ~0.55em advance per
+         * UTF-8 codepoint (bytes with (b & 0xC0) != 0x80). Good enough
+         * for layout width decisions; the text mirror doesn't render
+         * pixels anyway. */
+        int size = scaled(st->has_font_size ? st->font_size : 12);
+        int adv = (size * 55) / 100; if (adv < 5) adv = 5;
+        int n = 0;
+        for (const char *p = text ? text : ""; *p; p++)
+            if (((unsigned char)*p & 0xC0) != 0x80) n++;
+        return n * adv;
+    }
     char spec[128];
     const char *fam = st->has_font_family ? st->font_family : "DejaVu Sans";
     int size = scaled(st->has_font_size ? st->font_size : 12);
@@ -2917,6 +2947,7 @@ static int scroll_row_span(const Elem *c, int w) {
      * at this font) is subtracted here so this stays a real, honest
      * upper-bound measurement, not an undercount that reintroduces the
      * exact same overlap for a differently-worded label later. */
+    if (g_headless) return 1;   /* no Xft to measure wrapping; the text mirror ignores visual row spans */
     if (c && (strcmp(c->tag, "text") == 0 || strcmp(c->tag, "item") == 0) && c->label[0]) {
         CssStyle tmp_style;
         css_compute_style(&g_sheet, c->tag, c->id, (char (*)[32])(void *)c->classes, c->n_classes, 0, &tmp_style);
@@ -3261,8 +3292,8 @@ static int layout_sidebar_panel(Elem *page) {
     css_compute_style(&g_sheet, panel->tag, panel->id, panel->classes, panel->n_classes, 0, &panel->style);
 
     if (g_default_is_fullscreen) {
-        g_win_w = DisplayWidth(dpy, screen);
-        g_win_h = DisplayHeight(dpy, screen);
+        g_win_w = kh_screen_w();
+        g_win_h = kh_screen_h();
     } else {
         g_win_w = g_window->style.has_width ? g_window->style.width : DEFAULT_WIN_W;
         g_win_h = g_window->style.has_height ? g_window->style.height : DEFAULT_WIN_H;
@@ -3287,7 +3318,7 @@ static int layout_sidebar_panel(Elem *page) {
      * never re-centers a window the human deliberately dragged
      * partway off - a real position clamp, not a real recenter. */
     if (!g_default_is_fullscreen) {
-        int sw = DisplayWidth(dpy, screen), sh = DisplayHeight(dpy, screen);
+        int sw = kh_screen_w(), sh = kh_screen_h();
         /* REAL, NEW 2026-09-04 (live report: chat-hai's session-list
          * scrollbar sat flush against / past the screen's right edge,
          * unusable). A window WIDER than the screen leaves g_win_x
@@ -3528,7 +3559,7 @@ static void dock_release_keyboard_if_left(void) {
         return;
     }
     if (g_dock_kbd_win) {
-        XUngrabKeyboard(dpy, CurrentTime);
+        kh_ungrab_kbd();
         g_dock_kbd_win = None;
     }
 }
@@ -3720,8 +3751,8 @@ static int layout_dock_bar(Elem *page) {
     is_bottom = elem_has_class(g_window, "dock-bottom");
     g_default_has_sidebar_panel = 1; /* persistent: dispatch must not quit */
     generic_sbar_reset();
-    sw = DisplayWidth(dpy, screen);
-    sh = DisplayHeight(dpy, screen);
+    sw = kh_screen_w();
+    sh = kh_screen_h();
     load_theme_colors();
     load_dock_strip_offset(&ox, &oy);
     if (is_bottom) {
@@ -4381,7 +4412,7 @@ static void assign_nav_and_layout(void) {
         /* wide, screen-relative, like the old window - only for a real
          * persistent palette/db window, not a transient swatch popup */
         if (g_default_persistent) {
-            int scr_w = DisplayWidth(dpy, screen);
+            int scr_w = kh_screen_w();
             int want = (scr_w * 5) / 8;
             if (want > 1180) want = 1180;
             if (want < 460) want = 460;
@@ -5454,7 +5485,7 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
      * yet, so this can't regress any of them) - see the matching
      * XUngrabKeyboard on every real disarm path (Escape here, reparse_
      * chtpm_if_changed()'s own real safety net). */
-    if (ks == XK_Escape) { g_default_input_elem = NULL; XUngrabKeyboard(dpy, CurrentTime); return; }
+    if (ks == XK_Escape) { g_default_input_elem = NULL; kh_ungrab_kbd(); return; }
     /* REAL, NEW 2026-09-05 (CLIPBOARD-COPY-PASTE-DESIGN.md +
      * TEXT_AREA-SCROLL-GUTTER-SELECTION-DESIGN.md) - Ctrl+C / Ctrl+V /
      * Ctrl+X arrive as plain control characters through XLookupString
@@ -5658,7 +5689,7 @@ static void default_grid_handle_key(KeySym ks, char ch) {
         return;
     }
     /* State 0: navigating. */
-    if (ks == XK_Escape) { g_default_input_elem = NULL; XUngrabKeyboard(dpy, CurrentTime); return; }
+    if (ks == XK_Escape) { g_default_input_elem = NULL; kh_ungrab_kbd(); return; }
     if (ks == XK_Up)    { if (e->grid_cur_row > 0) e->grid_cur_row--; return; }
     if (ks == XK_Down)  { e->grid_cur_row++; return; } /* no hard upper cap here - the MANAGER is the real bounds authority (SETCELL already rejects out-of-range refs), same as csv_hq_manager.c's own parse_cell_ref() */
     if (ks == XK_Left)  { if (e->grid_cur_col > 0) e->grid_cur_col--; return; }
@@ -6129,6 +6160,18 @@ static void kh_ascii_frame_unregister(void) {
 }
 
 static void redraw(void) {
+    /* --headless: there is no window to blit to. redraw() is the one
+     * choke point every "something changed, repaint" path funnels
+     * through, so intercept it here - run the real layout, then write
+     * the text frame + DIAMOND pulse instead of drawing pixels. Every
+     * caller (idle tick, reparse, dispatch verbs, dock nav) then just
+     * works headless with no per-caller guard. */
+    if (g_headless) {
+        assign_nav_and_layout();
+        if (window_is_dock()) dock_write_ascii_frame();
+        else kh_write_ascii_frame();
+        return;
+    }
     if (getenv("KH_REDRAW_TRACE")) {
         static int rc = 0; struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
         void *ra = __builtin_return_address(0);
@@ -6567,7 +6610,7 @@ static void handle_key(KeySym ks, char ch) {
         Window fw = None; int rev = 0;
         XGetInputFocus(dpy, &fw, &rev);
         if (!dock_is_our_win(fw)) {
-            XUngrabKeyboard(dpy, CurrentTime);
+            kh_ungrab_kbd();
             g_dock_kbd_win = None;
             return;
         }
@@ -7032,7 +7075,7 @@ static void nav_tab_poll_active(void) {
     if (seq && seq == last_seq) return;
     last_seq = seq;
     if (tab != g_nav_tab_ordinal && pid != (int)getpid()) return;
-    XUngrabKeyboard(dpy, CurrentTime);
+    kh_ungrab_kbd();
     XRaiseWindow(dpy, win);
     XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
     XFlush(dpy);
@@ -7190,6 +7233,7 @@ static int hq_window_has_x_focus(void) {
  * popup/entity-menu + cli_io paths still need them after the dbhq_*
  * deletion). */
 static void kh_grab_keyboard_retry(void) {
+    if (!dpy) return;   /* --headless: no display, nothing to grab */
     for (int a = 0; a < 5; a++) {
         if (XGrabKeyboard(dpy, win, True, GrabModeAsync, GrabModeAsync, CurrentTime) == GrabSuccess) break;
         XSync(dpy, False); usleep(5000);
@@ -7479,7 +7523,7 @@ static void hq_idle_tick(void) {
                 Window fw = None; int rev = 0;
                 if (dpy) XGetInputFocus(dpy, &fw, &rev);
                 if (dock_is_our_win(fw)) dock_grab_keyboard(g_dock_kbd_win);
-                else { XUngrabKeyboard(dpy, CurrentTime); g_dock_kbd_win = None; }
+                else { kh_ungrab_kbd(); g_dock_kbd_win = None; }
             }
             /* real content growth may have just recreated buf as a
              * blank Pixmap (see redraw()'s own resize-safety comment) -
@@ -11287,7 +11331,7 @@ static void draw_context_menu(Display *dpy, Window popup, GC gc, MethodItem *ite
 
 static void close_context_menu(Display *dpy, Window popup) {
     if (g_grab_pointer) XUngrabPointer(dpy, CurrentTime);
-    if (g_grab_keyboard) XUngrabKeyboard(dpy, CurrentTime);
+    if (g_grab_keyboard) kh_ungrab_kbd();
     XDestroyWindow(dpy, popup);
     popup_lock_release();
 }
@@ -12948,7 +12992,7 @@ static int tp_main(int argc, char **argv) {
                 XMoveWindow(dpy, win, win_x, win_y);
                 write_pos(package_dir, win_x, win_y);
                 XUngrabPointer(dpy, CurrentTime);
-                XUngrabKeyboard(dpy, CurrentTime);
+                kh_ungrab_kbd();
                 g_cursword_awaiting_place = 0;
                 g_cursword_armed = 0;
                 cursword_write_armed(g_house_root, 0);
@@ -13050,7 +13094,7 @@ static int tp_main(int argc, char **argv) {
                          * reach here, see the NOTE below). The keyboard
                          * grab taken on arm above must be released
                          * here too, same as the real Escape path. */
-                        XUngrabKeyboard(dpy, CurrentTime);
+                        kh_ungrab_kbd();
                     }
                     if (g_cursword_armed && g_cursword_click_place) {
                         /* REAL, NEW 2026-08-30 - real click-to-place
@@ -13179,7 +13223,7 @@ static int tp_main(int argc, char **argv) {
                     XUngrabPointer(dpy, CurrentTime);
                     g_cursword_awaiting_place = 0;
                 }
-                XUngrabKeyboard(dpy, CurrentTime);
+                kh_ungrab_kbd();
                 g_cursword_armed = 0;
                 cursword_write_armed(g_house_root, 0);
                 append_history("CURSWORD_DISARMED_FOCUS_LOST");
@@ -13225,7 +13269,7 @@ static int tp_main(int argc, char **argv) {
                             XUngrabPointer(dpy, CurrentTime);
                             g_cursword_awaiting_place = 0;
                         }
-                        XUngrabKeyboard(dpy, CurrentTime);
+                        kh_ungrab_kbd();
                         g_cursword_armed = 0;
                         cursword_write_armed(g_house_root, 0);
                         append_history("CURSWORD_DISARMED");
@@ -13678,9 +13722,45 @@ static void cleanup_hq_window_registry(void) {
     unlink(path);
 }
 
+/* --headless main loop. Entered from main() just before it would
+ * XOpenDisplay(). g_window is parsed, CSS loaded, g_current_page set,
+ * the per-PID relay + atexit hooks are in place. No X, ever. redraw()
+ * itself is intercepted for headless (writes the text frame), so this
+ * loop just drives the same change signals hq_idle_tick() does. */
+static int headless_run(void) {
+    fprintf(stderr, "[khtpm --headless] %s  pid %d\n",
+            g_chtpm_path[0] ? g_chtpm_path : "(dock)", (int)getpid());
+    g_win_x = 0; g_win_y = 0;
+    g_win_w = window_is_dock() ? kh_screen_w() : 960;
+    g_win_h = window_is_dock() ? 40 : 640;
+
+    redraw();   /* first frame (headless redraw() == layout + write text frame) */
+
+    while (!g_quit && !g_shutdown_requested) {
+        int dirty = 0;
+        if (reparse_chtpm_if_changed()) dirty = 1;
+        hq_ui_pdl_reload_if_changed(g_house_root);
+        if (poll_agent_history() > 0) dirty = 1;
+        if (dirty && !g_quit) redraw();
+        usleep(16667);   /* 60Hz, DIAMOND cadence */
+    }
+    return 0;
+}
+
 int main(int argc, char **argv) {
-    for (int ai = 1; ai < argc; ai++)
-        if (strcmp(argv[ai], "--dump-and-exit") == 0) g_dump_and_exit = 1;
+    /* Scan + strip the flag tokens so the positional parsing below sees
+     * a clean <house_root> <chtpm_path> [x] [y] regardless of where the
+     * flag was placed. */
+    {
+        int w = 1;
+        for (int ai = 1; ai < argc; ai++) {
+            if (strcmp(argv[ai], "--dump-and-exit") == 0) { g_dump_and_exit = 1; continue; }
+            if (strcmp(argv[ai], "--headless") == 0)      { g_headless = 1;      continue; }
+            argv[w++] = argv[ai];
+        }
+        argc = w;
+        argv[argc] = NULL;
+    }
     /* REAL, NEW 2026-09-01 - taskbar strip mode AND tile mode dispatch,
      * checked FIRST, before any of the shared .chtpm-parsing setup below
      * - NEITHER mode takes a .chtpm path at all, so both share the same
@@ -13912,6 +13992,8 @@ int main(int argc, char **argv) {
      * rows which never needed dpy this early. Harmless reorder for
      * popup modes - dpy/screen/cmap weren't used before this point
      * either way. */
+    if (g_headless) return headless_run();   /* no display, ever - text-frame loop */
+
     dpy = XOpenDisplay(NULL);
     if (!dpy) { fprintf(stderr, "khtpm_entity_menu_render: cannot open display\n"); return 1; }
     /* REAL FIX 2026-09-01 (found live: open-hai/chat-hai/network-browser
@@ -13972,7 +14054,7 @@ int main(int argc, char **argv) {
      * DisplayHeight this file already uses for fullscreen; only pulls
      * IN from an off-screen edge, never re-centers. */
     {
-        int sw = DisplayWidth(dpy, screen), sh = DisplayHeight(dpy, screen);
+        int sw = kh_screen_w(), sh = kh_screen_h();
         if (g_win_x + g_win_w > sw) g_win_x = sw - g_win_w;
         if (g_win_y + g_win_h > sh) g_win_y = sh - g_win_h;
         if (g_win_x < 0) g_win_x = 0;

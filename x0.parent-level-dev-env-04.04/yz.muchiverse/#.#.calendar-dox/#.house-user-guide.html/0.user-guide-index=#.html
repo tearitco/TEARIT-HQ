@@ -268,13 +268,18 @@ $.crypts/button.sh run          # or:  ./^.START_BUTTON_4.sh</code></pre>
   <pre><code>$.crypts/scrypts/headless/window_headless.sh \
     &lt;house_root&gt; &lt;window.xhtpm&gt; [x] [y] [--attach]</code></pre>
   <ul>
-    <li>If <code>$DISPLAY</code> is set, the window draws there — ignore it,
-      drive it via files.</li>
-    <li>If not, and <code>xvfb-run</code> is installed, it wraps in a
-      virtual X server — genuinely screenless (SSH / CI).
-      <code>sudo apt-get install -y xvfb</code> once.</li>
+    <li><strong>No <code>DISPLAY</code>, no Xvfb.</strong>
+      <code>--headless</code> opens no X connection at all — it runs the
+      real layout with estimated text metrics and loops writing the text
+      frame. Works over plain SSH / in CI.</li>
+    <li>Run the binary directly with
+      <code>env -u DISPLAY khtpm_core_render.+x --headless &lt;house&gt; &lt;window.xhtpm&gt;</code>.</li>
     <li><code>--attach</code> also runs the live viewer + keyboard in your
       current terminal.</li>
+    <li>Verified on taskbar-settings, events-hq, irc-chat-hq and strip
+      mode. Text widths are estimates, so a pixel-exact wrap point can
+      differ from the windowed path — the mirror shows structure and
+      nav, not geometry.</li>
   </ul>
   <p>It prints <code>PID=&lt;n&gt;</code> and the two paths:</p>
   <pre><code>frame : #.desktop/ascii_frames/&lt;pid&gt;.frame.txt     # cat it — the live window as text

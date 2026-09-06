@@ -1,7 +1,34 @@
 # Terminal-mirror parity — every khtpm window, not just the strip
 
-**Status:** steps 1-3 BUILT + verified 2026-09-06 · step 4 (true no-X)
-still design-only · **Momentum doc** — deliberately not exhaustive.
+**Status:** steps 1-4 BUILT + verified 2026-09-06. `--headless` (true
+no-X) landed same day. **Momentum doc** — deliberately not exhaustive.
+
+## BUILT (2026-09-06) — step 4, `--headless`
+
+`khtpm_core_render.+x --headless <house> <window.xhtpm> [x] [y]` opens
+**no X connection at all**:
+- `main()` strips the flag, and just before `XOpenDisplay()` branches to
+  `headless_run()`.
+- `redraw()` itself is intercepted for `g_headless`: it runs the real
+  `assign_nav_and_layout()` then writes the text frame (+ DIAMOND pulse)
+  instead of blitting — so every "something changed, repaint" caller
+  (idle reparse, relay dispatch, dock nav) works headless with no
+  per-caller guard.
+- The X surface that layout actually touches was small and is now
+  shimmed: `kh_screen_w()/kh_screen_h()` (constant 1920×1080 headless),
+  `kh_measure_text_px()` (≈0.55em/char estimate headless — layout only,
+  the mirror renders no pixels), `kh_ungrab_kbd()` wrapper (NULL-`dpy`
+  safe) over every `XUngrabKeyboard`, `kh_grab_keyboard_retry()` /
+  `dock_grab_keyboard()` early-return on `!dpy`, `wrap_line_count()`
+  returns 1.
+- `khtpm_render_core.c` (shared layout) has **zero** X calls — text
+  measurement was always the caller's job — so no change there.
+
+Verified with `DISPLAY` unset: taskbar-settings, events-hq (tabs +
+list), irc-chat-hq (room sidebar + feed + composer, survives typing +
+Enter + Tab), and strip mode all render and take relay nav. Windowed
+path re-tested unaffected. `window_headless.sh` now just passes
+`--headless` — no more `$DISPLAY` / `xvfb` branching.
 
 ## BUILT (2026-09-06) — steps 1, 2, 3
 
@@ -148,37 +175,45 @@ relay. This is the IRC/chain-from-many-ports test surface.
 - `khtpm_draw_core.c`'s sprite-cache `st_mtime` — unrelated (asset
   cache coherency, not a render trigger); leave as-is.
 
-## 5. Order of attack
+## 5. Order of attack — ALL DONE (2026-09-06)
 
-Steps 1-3 DONE. Step 4 (`--headless`, true no-X) is next and on its own
-branch — it touches the X-call surface and wants careful live-
-verification that the windowed path is byte-identical after.
+Steps 1-4 built and verified in one session. No branch split was needed
+— the X surface layout actually touches turned out small (see the
+step-4 block up top).
 
-## 6. Running headless (today, before step 4)
-
-`khtpm_core_render.+x` still needs an X connection to build its window,
-so "headless" right now is one of:
-
-| you have | how |
-|---|---|
-| a real `DISPLAY` (`:0`) | the window draws there; ignore it, drive via files. `window_headless.sh` uses it automatically. |
-| no display, `xvfb-run` installed | `window_headless.sh` wraps it in a throwaway virtual X server — genuinely screenless (SSH/CI). `sudo apt-get install -y xvfb` once. |
-| no display, no xvfb | script stops and tells you to do one of the above. |
+## 6. Running headless
 
 ```
 $.crypts/scrypts/headless/window_headless.sh <house> <window.xhtpm> [x] [y] [--attach]
 ```
-Prints `PID=<n>`, the `frame:` path (`cat` it), and the `relay:` path
+No `DISPLAY`, no Xvfb. It runs `khtpm_core_render.+x --headless …`,
+prints `PID=<n>`, the `frame:` path (`cat` it) and the `relay:` path
 (`printf 'KEY_PRESSED: 201\n' >> …` to drive). `--attach` also runs the
-presenter+keyboard in the current terminal. PID is also written to
+presenter+keyboard in the current terminal. PID also lands in
 `#.desktop/ascii_frames/last_headless.pid`.
 
-For **many windows at once** (IRC + chain from different ports): call
-`window_headless.sh` once per window; each gets its own PID-keyed
-frame/pulse/relay triple, fully independent.
+Or call the binary directly:
+```
+env -u DISPLAY khtpm_core_render.+x --headless <house> <window.xhtpm>
+```
 
-Step 4 will add `khtpm_core_render.+x --headless …` so the DISPLAY /
-xvfb requirement goes away entirely.
+For **many windows at once** (IRC + chain from different ports): call it
+once per window; each gets its own PID-keyed frame/pulse/relay triple,
+fully independent.
+
+## 7. Known headless edges (not blockers)
+
+- Text widths are estimates, so any layout decision keyed on exact
+  pixel width (a label that wraps at N px) may differ from the X path.
+  The mirror shows structure/labels/nav, not pixel geometry, so this
+  doesn't affect what an agent reads or drives.
+- Activating a window-chrome nav item that does real X window
+  management (minimize/fullscreen) headless is a no-op at best — those
+  paths still call X directly. Nav/activate of ordinary content items
+  is fine.
+- Strip mode headless writes the shared `strip_ascii_current_frame.txt`
+  (not a per-PID file), so don't run it alongside the live desktop
+  strip. Non-dock windows are per-PID and safe to run in bulk.
 
 ## See also
 - `reference/TPMOS-DIAMOND-render-chain.md` — the marker discipline all
