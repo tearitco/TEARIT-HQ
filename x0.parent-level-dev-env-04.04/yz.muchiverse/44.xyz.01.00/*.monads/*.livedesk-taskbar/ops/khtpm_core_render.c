@@ -4969,6 +4969,12 @@ static void dispatch(const char *action) {
             g_win_x = g_default_pre_fullscreen_x; g_win_y = g_default_pre_fullscreen_y;
         }
         XMoveWindow(dpy, win, g_win_x, g_win_y);
+        /* REAL FIX 2026-09-05 - force a real relayout+repaint now (this
+         * handler previously relied on some later redraw() that never
+         * came for a plain app window). redraw() itself does the
+         * grow-buf + XResizeWindow to the new fullscreen size before it
+         * draws (moved early this same fix). */
+        if (!g_quit) { assign_nav_and_layout(); redraw(); }
         return;
     }
     /* REAL FIX 2026-08-16, direct live report ("cancel doesn't work
@@ -5773,6 +5779,39 @@ static void redraw(void) {
      * draw (chrome/tabbar/sidebar/panel), same shared present
      * (XGetImage->XPutImage) below every mode already uses. */
     assign_nav_and_layout();
+    /* REAL FIX 2026-09-05, direct live report ("fullscreen breaks
+     * pdl-read layout - content stays squished bottom-left, most of
+     * the window black"). Root cause (found by a parallel
+     * investigation): the grow-buf + XResizeWindow blocks near the end
+     * of redraw() ran AFTER this frame was already drawn into the
+     * still-SMALL Pixmap - everything past the old bounds got clipped,
+     * then the buffer/window grew, and that comment's promised "NEXT
+     * redraw() repaints it" never came (TOGGLE_FULLSCREEN's handler
+     * only did XMoveWindow + a single popup_handle_click redraw, no
+     * hq_request_redraw()). Fix: do the essential grow+resize HERE,
+     * right after assign_nav_and_layout() has set g_win_w/g_win_h to
+     * the fullscreen size, BEFORE the first XFillRectangle - so this
+     * very frame draws into a correctly-sized buffer and window. The
+     * every-frame safety-net block near the end stays (it's a cheap
+     * no-op read when nothing changed). Position-move logic is left
+     * where it is - only the size half needs to be early. */
+    if (g_win_w > g_buf_w || g_win_h > g_buf_h) {
+        int nw = g_win_w > g_buf_w ? g_win_w : g_buf_w;
+        int nh = g_win_h > g_buf_h ? g_win_h : g_buf_h;
+        if (xftdraw_buf) { XftDrawDestroy(xftdraw_buf); xftdraw_buf = NULL; }
+        if (buf) XFreePixmap(dpy, buf);
+        buf = XCreatePixmap(dpy, win, (unsigned)nw, (unsigned)nh, (unsigned)DefaultDepth(dpy, screen));
+        xftdraw_buf = XftDrawCreate(dpy, buf, DefaultVisual(dpy, screen), cmap);
+        g_buf_w = nw; g_buf_h = nh;
+        XSync(dpy, False);
+    }
+    {
+        XWindowAttributes wa;
+        if (XGetWindowAttributes(dpy, win, &wa) && (wa.width != g_win_w || wa.height != g_win_h)) {
+            XResizeWindow(dpy, win, (unsigned)g_win_w, (unsigned)g_win_h);
+            XSync(dpy, False);
+        }
+    }
     XSetForeground(dpy, gc, alloc_pixel(window_is_dock() ? g_theme_bg : "#1c1c1c"));
     XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h);
     if (!window_is_dock()) {
