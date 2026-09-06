@@ -1,0 +1,381 @@
+<title>Muchiverse House — User Guide</title>
+
+<style>
+  :root {
+    --bg:#f4f3ef; --surface:#ffffff; --surface-2:#ececE6; --border:#dcdad2;
+    --text:#1c1c1a; --text-dim:#6b6a63; --accent:#1a8a4a; --accent-warm:#b5720a;
+    --wip:#2563a8; --code-bg:#ececE6; --code-text:#2b2b28;
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Consolas,"Liberation Mono",monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  :root:not([data-theme="light"]) { @media (prefers-color-scheme: dark) {
+    --bg:#14161a; --surface:#1b1e24; --surface-2:#21252c; --border:#2b2f37;
+    --text:#e9e7e2; --text-dim:#9599a1; --accent:#22c55e; --accent-warm:#f0a63f;
+    --wip:#5b9dd9; --code-bg:#16181c; --code-text:#dcdad4;
+  }}
+  :root[data-theme="dark"] {
+    --bg:#14161a; --surface:#1b1e24; --surface-2:#21252c; --border:#2b2f37;
+    --text:#e9e7e2; --text-dim:#9599a1; --accent:#22c55e; --accent-warm:#f0a63f;
+    --wip:#5b9dd9; --code-bg:#16181c; --code-text:#dcdad4;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); line-height:1.65; -webkit-font-smoothing:antialiased; }
+  a { color:var(--accent); }
+  .wrap { display:grid; grid-template-columns:240px 1fr; max-width:1180px; margin:0 auto; }
+  nav.side { position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto; padding:32px 16px 40px 28px; border-right:1px solid var(--border); font-size:.9rem; }
+  nav.side .brand { font-weight:800; letter-spacing:-.01em; margin-bottom:4px; }
+  nav.side .brand-sub { font-family:var(--mono); font-size:.7rem; text-transform:uppercase; letter-spacing:.08em; color:var(--text-dim); margin-bottom:20px; }
+  nav.side a { display:block; padding:5px 0; color:var(--text-dim); text-decoration:none; }
+  nav.side a:hover { color:var(--accent); }
+  main { padding:44px 48px 120px; min-width:0; }
+  .col { max-width:780px; }
+  .eyebrow { font-family:var(--mono); font-size:.76rem; text-transform:uppercase; letter-spacing:.1em; color:var(--accent); margin-bottom:10px; }
+  h1 { font-size:2.25rem; font-weight:800; letter-spacing:-.02em; margin:0 0 14px; text-wrap:balance; }
+  .lede { font-size:1.06rem; color:var(--text-dim); margin:0 0 36px; }
+  h2 { font-size:1.32rem; font-weight:800; letter-spacing:-.01em; margin:52px 0 8px; padding-top:8px; border-top:1px solid var(--border); }
+  h2:first-of-type { border-top:0; }
+  h3 { font-size:1.02rem; font-weight:700; margin:26px 0 6px; }
+  p { margin:0 0 14px; }
+  ul,ol { margin:0 0 16px; padding-left:22px; }
+  li { margin:4px 0; }
+  code { font-family:var(--mono); font-size:.85em; background:var(--code-bg); color:var(--code-text); padding:.12em .4em; border-radius:4px; }
+  pre { background:var(--code-bg); color:var(--code-text); border:1px solid var(--border); border-radius:8px; padding:14px 16px; overflow-x:auto; font-family:var(--mono); font-size:.83rem; line-height:1.5; margin:0 0 18px; }
+  pre code { background:none; padding:0; font-size:1em; }
+  table { border-collapse:collapse; width:100%; margin:0 0 20px; font-size:.9rem; }
+  th,td { border:1px solid var(--border); padding:7px 10px; text-align:left; vertical-align:top; }
+  th { background:var(--surface-2); font-weight:700; }
+  .callout { border:1px solid var(--border); border-left:3px solid var(--accent); background:var(--surface); border-radius:6px; padding:13px 17px; margin:0 0 22px; }
+  .callout.warm { border-left-color:var(--accent-warm); }
+  .callout .lbl { font-family:var(--mono); font-size:.7rem; text-transform:uppercase; letter-spacing:.08em; color:var(--accent); display:block; margin-bottom:5px; }
+  .callout.warm .lbl { color:var(--accent-warm); }
+  .callout p:last-child { margin-bottom:0; }
+  .pill { font-family:var(--mono); font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; padding:2px 8px; border-radius:999px; border:1px solid var(--border); color:var(--text-dim); white-space:nowrap; }
+  .pill.done { color:var(--accent); border-color:color-mix(in srgb,var(--accent) 45%,var(--border)); }
+  .pill.wip { color:var(--wip); border-color:color-mix(in srgb,var(--wip) 45%,var(--border)); }
+  footer { max-width:780px; margin-top:60px; padding-top:22px; border-top:1px solid var(--border); color:var(--text-dim); font-size:.85rem; }
+  @media (max-width:900px) {
+    .wrap { grid-template-columns:1fr; }
+    nav.side { position:static; height:auto; border-right:0; border-bottom:1px solid var(--border); padding:20px 24px; }
+    main { padding:28px 24px 80px; }
+  }
+</style>
+
+<div class="wrap">
+<nav class="side">
+  <div class="brand">Muchiverse House</div>
+  <div class="brand-sub">User Guide</div>
+  <a href="#first-run">1 · First run</a>
+  <a href="#desktop">2 · The desktop</a>
+  <a href="#cli">3 · The cli terminal mirror</a>
+  <a href="#apps">4 · Toys &amp; apps</a>
+  <a href="#network">5 · Networking</a>
+  <a href="#headless">6 · Headless / dev testing</a>
+  <a href="#agents">7 · Prompting an AI agent for dev</a>
+  <a href="#docs">8 · Where the docs live</a>
+</nav>
+
+<main>
+<div class="col">
+  <div class="eyebrow">How to actually use the house</div>
+  <h1>Muchiverse House — User Guide</h1>
+  <p class="lede">
+    Start the desktop, use every taskbar feature, run a window headless for
+    testing, and hand scoped dev work to an AI agent without re-explaining
+    the house each time. The niche stuff is here too — the <code>cli</code>
+    terminal mirror, running IRC/chain from many ports, the marker-file
+    rule. Companion to the <a href="../%23.browser-prompting.html/0.browser-p-index=%23.html">Browser Prompting Guide</a>
+    (agent-delegation focused) and the <a href="../1.%5EV-hq/%23.house-docs.html/1.index-house=solo.html">House Docs</a>
+    (architecture).
+  </p>
+
+  <div class="callout">
+    <span class="lbl">Two paths through this</span>
+    <p><strong>Using the house:</strong> sections 1–5.
+       <strong>Developing it (yourself or via an agent):</strong> sections 6–7.
+       Everything is file-driven — no hidden state — so the same
+       mechanisms serve both.</p>
+  </div>
+
+  <h2 id="first-run">1 · First run</h2>
+
+  <p>The house is a real X11 desktop shell. You need a running X server
+  (a Linux desktop session; <code>DISPLAY</code> defaults to <code>:0</code>).
+  macOS and Windows have their own start scripts (<code>$.crypts/mac-start-livedesk.command</code>,
+  <code>$.crypts/win-start-livedesk.ps1</code>).</p>
+
+  <h3>Build &amp; start</h3>
+  <p>From the house root
+  (<code>…/yz.muchiverse/44.xyz.01.00/</code>):</p>
+  <pre><code># build the launcher + the taskbar/renderer binaries
+$.crypts/button.sh compile
+sh "*.monads/*.livedesk-taskbar/ops/build_khtpm_strip.sh"
+
+# start the taskbar + autostart entities
+$.crypts/button.sh run          # or:  ./^.START_BUTTON_4.sh</code></pre>
+
+  <table>
+    <tr><th><code>button.sh</code> verb</th><th>what it does</th></tr>
+    <tr><td><code>run</code> (aka <code>r</code>, <code>start</code>, <code>restart</code>)</td><td>launch the taskbar + everything in <code>$.crypts/autostart.pdl</code>. Safe to re-run.</td></tr>
+    <tr><td><code>reset</code></td><td>hard kill every house process, rebuild the renderer, relaunch. Use when something is stuck/orphaned.</td></tr>
+    <tr><td><code>quit</code> / <code>close</code></td><td>kill all taskbars + entities, no relaunch.</td></tr>
+    <tr><td><code>on</code> / <code>off</code></td><td>toggle whether autostart runs at all (edits <code>autostart.pdl</code>).</td></tr>
+    <tr><td><code>install-xdg</code></td><td>register <code>button.sh run</code> as a GNOME login autostart.</td></tr>
+    <tr><td><code>status</code> / <code>check</code></td><td>show enabled state + running house PIDs / verify the launcher built.</td></tr>
+  </table>
+
+  <div class="callout warm">
+    <span class="lbl">If a window won't open after a code change</span>
+    <p>Running khtpm windows do <em>not</em> hot-reload a rebuilt binary —
+    relaunch them (or <code>button.sh reset</code>). A rebuild only affects
+    windows opened afterward.</p>
+  </div>
+
+  <h3>First login</h3>
+  <p>The house has real per-user state under <code>xyzfs/users/&lt;uuid&gt;/</code>
+  (home, avatars, livedesk layout, pals). The <strong>User</strong> taskbar
+  cell → <em>New User / Switch / Logout</em>; <strong>signup-hq</strong>
+  (<span class="pill wip">first-cut</span>) is the fuller flow. Your
+  private key lives at <code>xyzfs/users/&lt;uuid&gt;/…/priv.*.txt</code> and
+  is git-ignored — never commit it.</p>
+
+  <h2 id="desktop">2 · The desktop</h2>
+
+  <p>A bottom <strong>taskbar strip</strong> of cells; each cell opens a
+  submenu. Entities (pals) live on the desk surface and can be played,
+  moved, and right-clicked for a context menu.</p>
+
+  <h3>Taskbar cells</h3>
+  <table>
+    <tr><th>cell</th><th>opens</th><th></th></tr>
+    <tr><td><strong>file</strong></td><td>new / open / save / save-as for the desk layout</td><td><span class="pill done">ok</span></td></tr>
+    <tr><td><strong>desks</strong></td><td>switch / new / save named desktop layouts</td><td><span class="pill done">ok</span></td></tr>
+    <tr><td><strong>pals</strong></td><td>place a pal entity on the desk</td><td><span class="pill done">ok</span></td></tr>
+    <tr><td><strong>palettes</strong></td><td>emoji / elements / rmmv / paint pickers</td><td><span class="pill wip">emoji+elements</span></td></tr>
+    <tr><td><strong>edit</strong></td><td>text-edit-hq</td><td><span class="pill done">ok</span></td></tr>
+    <tr><td><strong>player</strong></td><td>play / pause / reset entities</td><td><span class="pill done">ok</span></td></tr>
+    <tr><td><strong>db</strong></td><td>db-hq-pal record browser</td><td><span class="pill wip">read-only</span></td></tr>
+    <tr><td><strong>network</strong></td><td>IRC Chat / Forum / Chain / Browser — see §5</td><td><span class="pill wip">mixed</span></td></tr>
+    <tr><td><strong>menus</strong></td><td>context-menu editor</td><td><span class="pill wip">wip</span></td></tr>
+    <tr><td><strong>datetime</strong></td><td>livedesk-clock widget</td><td><span class="pill done">ok</span></td></tr>
+    <tr><td><strong>tools</strong></td><td>proc-monitor &amp; misc</td><td><span class="pill wip">wip</span></td></tr>
+    <tr><td><strong>h-ai</strong></td><td>chat-hai / open-hai / co-lab-hai</td><td><span class="pill done">chat+open</span></td></tr>
+    <tr><td><strong>plugins / store</strong></td><td>—</td><td><span class="pill">placeholder</span></td></tr>
+  </table>
+
+  <h3>The HQ button menu</h3>
+  <p>Every window has an <strong>HQ button</strong> (top-left). Its menu:
+  always-on-top, restart, hide/show, dir, quit, <strong>settings</strong>,
+  stats, <strong>cli</strong> (§3), cursword, kill, debug. Mostly
+  window-chrome actions.</p>
+
+  <h3>Driving nav</h3>
+  <p>Arrow keys move focus; typing a number jumps to that nav index
+  (multi-digit accumulates); Enter activates; Esc closes a dropdown or
+  clears the digit buffer. Nav numbers are <em>global across all open
+  khtpm windows</em> — a fresh window can start at nav 11, not 1. Always
+  read the actual rendered number before relying on it.</p>
+
+  <h2 id="cli">3 · The <code>cli</code> terminal mirror</h2>
+
+  <p><strong>HQ button → cli</strong> opens a terminal that is a live,
+  bidirectional ASCII render of the taskbar strip. Drive the strip with
+  the mouse and the terminal follows; press arrows / digits / Enter in the
+  terminal and the real strip follows. Useful for testing and for driving
+  the house over SSH.</p>
+
+  <ul>
+    <li>It runs two small binaries (a presenter and a raw-keyboard relay) —
+      never combined, because raw terminal mode would staircase the output.</li>
+    <li>Updates are <strong>marker-driven</strong> at 60&nbsp;Hz (a file whose
+      size grows one byte per frame) — the same discipline as the original
+      TPMOS renderer. No polling on timestamps.</li>
+    <li>The same treatment for <em>any</em> window (not just the strip) is
+      §6.</li>
+  </ul>
+
+  <h2 id="apps">4 · Toys &amp; apps</h2>
+
+  <h3>Toys menu <span class="pill">auto-scanned from <code>@.apps/*/toy.pdl</code></span></h3>
+  <table>
+    <tr><th>toy</th><th>what</th><th></th></tr>
+    <tr><td><strong>pdl-read</strong></td><td>paginated doc reader; scans <code>#.DOX</code>; "open other file" via File Explorer</td><td><span class="pill done">ok</span></td></tr>
+    <tr><td><strong>text-edit-hq</strong></td><td>multi-line editor: gutter, selection, real clipboard, Save-As</td><td><span class="pill done">ok</span></td></tr>
+    <tr><td><strong>csv-hq</strong></td><td>spreadsheet: in-place cell edit, SUM/AVG/MIN/MAX/COUNT, 26 cols</td><td><span class="pill done">v1</span></td></tr>
+    <tr><td><strong>music-player-hq</strong></td><td>iTunes-style: <code>.pal</code>-dir library, <code>mpg123 -R</code> playback, transport</td><td><span class="pill done">v1</span></td></tr>
+    <tr><td><strong>piececraft-hq / -xyz</strong></td><td>piece-craft board + world manager</td><td><span class="pill wip">wip</span></td></tr>
+    <tr><td>media-canvas / -daw / -vid</td><td>media-studio family</td><td><span class="pill">template</span></td></tr>
+  </table>
+
+  <h3>HQ apps <span class="pill">launched by their own <code>button.sh</code></span></h3>
+  <table>
+    <tr><th>app</th><th></th><th>note</th></tr>
+    <tr><td><strong>chat-hai</strong></td><td><span class="pill done">ok</span></td><td>persona round-robin chat; the template all HQ windows model on</td></tr>
+    <tr><td><strong>open-hai</strong></td><td><span class="pill done">ok</span></td><td>prompt composer (free-AI backends — see Browser Prompting Guide)</td></tr>
+    <tr><td><strong>co-lab-hai</strong></td><td><span class="pill wip">wip</span></td><td>agent-collaboration surface</td></tr>
+    <tr><td><strong>db-hq-pal</strong></td><td><span class="pill wip">wip</span></td><td>record browser; field edit still read-only</td></tr>
+    <tr><td><strong>events-hq</strong></td><td><span class="pill done">ok</span></td><td>event / command list (RPG-Maker-style command registry)</td></tr>
+    <tr><td><strong>stats-hq</strong></td><td><span class="pill done">ok</span></td><td>dashboard</td></tr>
+    <tr><td><strong>irc-chat-hq / chain-hq</strong></td><td><span class="pill done">v1</span></td><td>see §5</td></tr>
+  </table>
+
+  <p>All of these render through <strong>one</strong> shared binary
+  (<code>khtpm_core_render.+x</code>) from a static <code>.xhtpm</code> +
+  CSS, with a compiled per-app <em>manager</em> process publishing state as
+  plain text. There is no per-app rendering code.</p>
+
+  <h2 id="network">5 · Networking</h2>
+
+  <p>The <strong>network</strong> taskbar cell → IRC Chat, Forum, Chain,
+  Browser. Dispatch is data-driven (add an app with zero C).</p>
+
+  <table>
+    <tr><th>app</th><th></th><th>notes</th></tr>
+    <tr><td><strong>IRC Chat</strong> (<code>irc-chat-hq</code>)</td><td><span class="pill done">v1</span></td><td>room-list sidebar, message feed, composer. Real house identity, per-window peer port, P2P delivery. Junk test-rooms filtered.</td></tr>
+    <tr><td><strong>Chain</strong> (<code>chain-hq</code>)</td><td><span class="pill done">v1</span></td><td>Wallet / Send / Mine / History. <strong>One global shared ledger</strong> (<code>041.pal-chain⛓️/data/blockchain.txt</code>) across all local users <em>and</em> P2P. One shared peer per node.</td></tr>
+    <tr><td><strong>Forum</strong></td><td><span class="pill wip">cli</span></td><td>legacy CLI app in a terminal tab; HQ window not built yet</td></tr>
+    <tr><td><strong>Browser</strong></td><td><span class="pill wip">wip</span></td><td>network-browser-hq with its own JS engine (separate effort)</td></tr>
+  </table>
+
+  <h3>Ports &amp; P2P</h3>
+  <p>Peers (<code>palnet_peer.+x</code>) bind from base port <strong>9950</strong>
+  and scan forward, so multiple nodes on one machine each get a distinct
+  port automatically. Presence files under <code>$PRISC_NET_ROOT/</code>
+  advertise <code>port=</code>. Verified: two chain nodes on <code>:9950</code>
+  / <code>:9951</code> reconciled a 16-block mine A→B over the mesh. To test
+  many nodes, launch each with its own <code>PRISC_PROJECT_ROOT</code> /
+  <code>PRISC_NET_ROOT</code> and read each one's state files (§6).</p>
+
+  <h2 id="headless">6 · Headless / dev testing</h2>
+
+  <p>Every khtpm window — the strip and every other window — writes a
+  live text mirror of itself and reads keystrokes from a plain file. That
+  is the whole test surface: no screenshots, no <code>xdotool</code>.</p>
+
+  <h3>The strip: <code>open_cli.sh</code></h3>
+  <p><code>*.monads/*.livedesk-taskbar/ops/open_cli.sh</code> — the
+  <code>cli</code> HQ-menu row (§3) as a standalone script.</p>
+
+  <h3>Any window: <code>open_window_cli.sh &lt;pid&gt;</code></h3>
+  <p>Same dir. Attaches a presenter + keyboard terminal to an
+  already-running window by its renderer PID
+  (<code>pgrep -f khtpm_core_render</code>).</p>
+
+  <h3>Headless: <code>window_headless.sh</code></h3>
+  <p><code>$.crypts/scrypts/headless/window_headless.sh</code> — the
+  headless entry point. (<code>$.crypts</code> is the house's
+  session-script area; per-window helpers stay in the taskbar
+  <code>ops/</code> dir.)</p>
+  <pre><code>$.crypts/scrypts/headless/window_headless.sh \
+    &lt;house_root&gt; &lt;window.xhtpm&gt; [x] [y] [--attach]</code></pre>
+  <ul>
+    <li>If <code>$DISPLAY</code> is set, the window draws there — ignore it,
+      drive it via files.</li>
+    <li>If not, and <code>xvfb-run</code> is installed, it wraps in a
+      virtual X server — genuinely screenless (SSH / CI).
+      <code>sudo apt-get install -y xvfb</code> once.</li>
+    <li><code>--attach</code> also runs the live viewer + keyboard in your
+      current terminal.</li>
+  </ul>
+  <p>It prints <code>PID=&lt;n&gt;</code> and the two paths:</p>
+  <pre><code>frame : #.desktop/ascii_frames/&lt;pid&gt;.frame.txt     # cat it — the live window as text
+relay : #.desktop/entity_menu_history/&lt;pid&gt;.txt   # append one line per event
+
+# examples
+cat "#.desktop/ascii_frames/$PID.frame.txt"
+printf 'KEY_PRESSED: 201\n'      &gt;&gt; "$RELAY"   # Down   (200 Up, 202 Left, 203 Right)
+printf 'KEY_PRESSED: 13\n'       &gt;&gt; "$RELAY"   # Enter  (27 Esc, 8 Backspace, 9 Tab)
+printf 'KEY_PRESSED: 65\n'       &gt;&gt; "$RELAY"   # a literal 'A' (any 32–126)
+printf 'MOUSE_EVENT: 1 40 12 1\n'&gt;&gt; "$RELAY"   # left-click at x=40 y=12</code></pre>
+  <div class="callout">
+    <span class="lbl">Many windows at once</span>
+    <p>Call <code>window_headless.sh</code> once per window. Each gets its
+    own PID-keyed <code>frame</code> / <code>pulse</code> / <code>relay</code>
+    triple, fully independent — this is how you run IRC + chain from
+    several ports and watch them all.</p>
+  </div>
+  <p>The relay file is append-only and cursor-based — <strong>never
+  truncate it</strong>; a line starting <code>#</code> is an ignored audit
+  comment. The <code>&lt;pid&gt;.pulse.txt</code> marker grows one byte per
+  repaint; that is the change signal (never the frame file's timestamp).</p>
+
+  <h2 id="agents">7 · Prompting an AI agent for house dev</h2>
+
+  <p>Hand an agent (Claude Code, Grok, a browser window) a scoped task
+  without it re-deriving the house. Attach the right doc, state the rule,
+  point at the sibling that already works.</p>
+
+  <h3>Always attach / state</h3>
+  <ul>
+    <li><strong><code>02-architecture/CENTROID_GOLD_STD.md</code></strong> —
+      the rendering architecture. Non-negotiable: one shared renderer, a
+      compiled manager per app publishing plain text, <em>zero new
+      per-app C</em>, static <code>.xhtpm</code> parsed through the real
+      pipeline (never hand-build the element tree).</li>
+    <li><strong><code>02-architecture/reference/TPMOS-DIAMOND-render-chain.md</code></strong> —
+      the "DIAMOND standard": change-detection is an <em>append-only marker
+      file's size growth</em>, never <code>mtime</code>. Input handlers
+      write the marker; they never call the composer directly.</li>
+    <li><strong><code>10-user-docs/FEATURE-CATALOG.md</code></strong> —
+      what already exists and its status, so nobody rebuilds a shipped
+      thing.</li>
+    <li><strong>Testing:</strong> drive windows through the per-PID relay
+      file (§6), <em>not</em> <code>xdotool</code>/XTest. Dump/read the
+      text frame or a manager's <code>*_ui.txt</code> to verify.</li>
+    <li><strong>Git:</strong> commit only to your own branch; stage explicit
+      paths (never <code>git add -A</code>); don't touch <code>main</code> or
+      another agent's branch; runtime state files are never committed.</li>
+  </ul>
+
+  <h3>By task type</h3>
+  <table>
+    <tr><th>task</th><th>attach + point at</th><th>the shape</th></tr>
+    <tr>
+      <td><strong>Entity / pal dev</strong><br>(a new desk entity, its context menu, a window it opens)</td>
+      <td><code>08-roadmap/design-docs/HQ-WINDOW-MAP-AND-AGENT-INPUT.md</code>, <code>TASKBAR-MENU-ARCHITECTURE.md</code>; sibling: an existing <code>@.apps/&lt;x&gt;/</code> with a <code>toy.pdl</code></td>
+      <td>a <code>toy.pdl</code> descriptor + a static <code>.xhtpm</code> + a manager; the context menu is data, and any window it opens is just another <code>khtpm_core_render</code> window (its own PID → its own text frame).</td>
+    </tr>
+    <tr>
+      <td><strong>Event / command dev</strong><br>(a new RPG-Maker-style event command)</td>
+      <td><code>design-docs/EVENT-COMMAND-REGISTRY-ARCHITECTURE.md</code>, <code>EVENTS_AND_DB_GUIDE_🎪.md</code> (real-bugs-hit guide), <code>EVENT_AI_VISION.md</code> (intent — don't scope past it)</td>
+      <td>register the command in the data-driven registry; the engine (<code>play_event.sh</code> + the events manager) picks it up. No renderer change.</td>
+    </tr>
+    <tr>
+      <td><strong>Toy / HQ-app dev</strong><br>(a whole new window)</td>
+      <td><code>CENTROID_GOLD_STD.md</code> + <code>XHTPM-PARSER-REFERENCE.md</code>; sibling: <code>&amp;.hq-apps/chat-hai/</code> (the model every HQ window copies)</td>
+      <td>static <code>&lt;name&gt;.xhtpm</code> + CSS, a compiled <code>&lt;name&gt;_manager.c</code> that publishes <code>&lt;name&gt;_ui.txt</code> and polls <code>&lt;name&gt;_action.txt</code>, an <code>open_&lt;name&gt;.sh</code>. Generic tags only (<code>sidebar/panel/scrolllist/repeat/tab/grid/cli_io/…</code>).</td>
+    </tr>
+    <tr>
+      <td><strong>Renderer / marker / terminal-mirror work</strong></td>
+      <td><code>TPMOS-DIAMOND-render-chain.md</code> + <code>08-roadmap/design-docs/TERMINAL-MIRROR-PARITY-all-windows.md</code></td>
+      <td>reuse <code>dock_ascii_walk()</code> / the marker helpers; never introduce an <code>mtime</code> compare or a per-app branch in the shared renderer.</td>
+    </tr>
+  </table>
+
+  <div class="callout warm">
+    <span class="lbl">The single most common failure</span>
+    <p>An agent rebuilds something that already exists (a hand-rolled
+    parser, a duplicate window renderer) because it read one standards doc
+    once and then improvised. Make it grep for the app's own
+    <code>button.sh</code> / <code>open_*.sh</code> and read that first —
+    the launcher header often says "this replaces the old X".</p>
+  </div>
+
+  <h2 id="docs">8 · Where the docs live</h2>
+
+  <table>
+    <tr><th>path</th><th>what</th></tr>
+    <tr><td><code>#.#.calendar-dox/!.HQ-IQ-BOOK/</code></td><td>the book — numbered sections: <code>02-architecture</code>, <code>03-pitfalls</code>, <code>07-install-and-ship</code>, <code>08-roadmap/design-docs</code>, <code>10-user-docs</code> (<code>FEATURE-CATALOG.md</code>), …</td></tr>
+    <tr><td><code>#.#.calendar-dox/#.browser-prompting.html/</code></td><td>agent-delegation maps: what to attach + prompt shapes per topic</td></tr>
+    <tr><td><code>#.#.calendar-dox/#.house-user-guide.html/</code></td><td>this guide</td></tr>
+    <tr><td><code>#.#.calendar-dox/1.^V-hq/#.house-docs.html/</code></td><td>the architecture reference (single long page)</td></tr>
+    <tr><td><code>&lt;house&gt;/#.DOX/</code></td><td>in-house docs surfaced by the <strong>pdl-read</strong> toy</td></tr>
+  </table>
+
+  <footer>
+    Built 2026-09-06. Snapshot, not a live mirror — update it when the
+    features move. Source of truth for status is
+    <code>!.HQ-IQ-BOOK/10-user-docs/FEATURE-CATALOG.md</code>.
+  </footer>
+</div>
+</main>
+</div>
