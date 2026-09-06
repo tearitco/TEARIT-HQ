@@ -55,11 +55,12 @@ involving live windows or shared files.*
     is fire-able: it literally died once here (the whole nb-js-worker
     step-6/7 set was lost when its only copy lived in the working tree
     and the tree got reset — re-derived at cost 2026-09-05). Default is
-    to commit scoped to exactly the files you changed, on the current
-    branch, at the end of every session, unprompted (mid-work snapshots
-    may use `wip: ...`). Sweep nothing extra — do NOT `git add -A`
-    across the tree; runtime state files (`module_parent.pid`, `.pdl`,
-    logs) drown the real diff. Leave pushing to the user unless asked.
+    to commit scoped to exactly the files you changed, to your own
+    per-tool branch (see `01-orientation/BRANCH-STRATEGY.md`), at the
+    end of every session, unprompted (mid-work snapshots may use
+    `wip: ...`). Sweep nothing extra — do NOT `git add -A` across the
+    tree; runtime state files (`module_parent.pid`, `.pdl`, logs) drown
+    the real diff. Push only when the user asks.
 
 ## Verification discipline (non-negotiable)
 

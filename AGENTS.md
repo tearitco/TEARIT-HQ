@@ -13,8 +13,13 @@ starting work.
   state files (`module_parent.pid`, `*.pdl`, logs, `cli_io_state.txt`)
   are noise — never sweep them into a code commit.
 - Mid-work snapshots may use `wip: <what>` as the message.
-- Commit on the current branch; never create/push branches or push
-  unprompted — leave pushing to the user.
+- Each tool commits to its OWN named branch (`opencode` for this agent,
+  `claude` for Sonnet, `grok`/`kilo`/`hai` for theirs). Never commit
+  to another tool's branch, `main`, or the old all-agents branch
+  `chtpm-delete-per-app-c`. See HQ-IQ-BOOK `01-orientation/
+  BRANCH-STRATEGY.md`.
+- Never merge, cherry-pick across branches, push, or force-delete
+  unprompted — leave that to the user.
 - Match the repo's commit-message style (full thoughts in "Explain tracked code" tone:
   `fix:`, `docs:`, `scoped feature: ...`).
 

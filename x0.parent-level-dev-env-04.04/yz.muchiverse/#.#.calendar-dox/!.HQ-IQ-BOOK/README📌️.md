@@ -27,6 +27,7 @@ content.
 - **[10-user-docs](10-user-docs/00-INDEX.md)** — user-facing documentation.
 - **[11.brainstorm](11.brainstorm/00-INDEX.md)** — raw, pre-decision planning docs for a feature before it's scoped and scheduled.
 - **[12.calendar](12.calendar/00-INDEX.md)** — dated, day-scoped work log (`YYYY-MM-DD/`) — what's actually being done/2do on a given day, once a brainstorm solidifies into real work.
+- **[13.agent-coms](13.agent-coms/)** — cross-agent messages. Each tool's mandatory reading + open items (`SONNET.md`, ...) before starting a session.
 
 ## House path quick reference (as of 2026-09-01 migration)
 
