@@ -868,7 +868,34 @@ static const char *parse_element(const char *p, Elem *parent) {
             const char *end = strchr(p, '>');
             return end ? end + 1 : p + strlen(p);
         }
+        /* REAL FIX 2026-09-05, direct live report ("pdl-read window
+         * won't open from the tb-sub menu anymore ... WM related?").
+         * gdb-traced to a hard 100%-CPU infinite loop right here,
+         * BEFORE the window ever maps: parse_element()'s own first line
+         * is `if (*p != '<') return p;` - it returns p UNCHANGED for
+         * any byte that isn't a tag opener. This loop then calls it
+         * again on the same byte, forever.
+         *
+         * How stray non-'<' text ends up mid-stream: kh_substitute_vars()
+         * splices a ${var} value straight into the raw template text
+         * BEFORE parsing. pdl-read's manager publishes a doc page into
+         * `content="${page_text}"`, and that page text contains a bare
+         * `"` (e.g. a Markdown  "(CORRECT)"  quote). parse_attr_value()
+         * stops at that inner `"`, the rest of the page body spills out
+         * as raw inter-element text, and the first `>` in it (a Markdown
+         * `> ` blockquote) closes the mangled tag - leaving prose where
+         * a child element should be. Short pages happened not to contain
+         * a `>` after the break, which is why it looked intermittent.
+         *
+         * Guaranteeing forward progress here makes the parser robust to
+         * ANY malformed / not-well-formed input instead of spinning:
+         * a byte parse_element() can't consume is skipped. (The deeper
+         * correctness fix - escaping ${var} values spliced into quoted
+         * attributes so the content isn't truncated at the first `"` -
+         * is a separate change.) */
+        const char *before = p;
         p = parse_element(p, e);
+        if (p == before) p++;
     }
 }
 
