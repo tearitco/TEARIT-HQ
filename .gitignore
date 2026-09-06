@@ -87,3 +87,9 @@ palettes-*_state.txt
 **/.hq_manager/label.txt
 **/music_player_ui.txt
 **/music_player_action.txt
+
+# 2026-09-06 - more khtpm/HQ runtime scratch trees (pieces/* under the
+# newer @.apps projects, piececraft-hq's per-session state dir).
+**/102.agy-txt/pieces/
+**/102.editor-*/pieces/
+**/@.apps/piececraft-hq/state/

@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hai — GUI Reference</title>
+  <style>
+    :root {
+      --bg: #1a1a1a;
+      --bg-sidebar: #141414;
+      --bg-elevated: #242424;
+      --bg-hover: #2a2a2a;
+      --bg-active: #2f2f2f;
+      --border: #333;
+      --border-subtle: #2a2a2a;
+      --text: #ececec;
+      --text-muted: #a0a0a0;
+      --text-dim: #6b6b6b;
+      --accent: #22c55e;          /* Hai green accent */
+      --accent-soft: rgba(34, 197, 94, 0.15);
+      --user-bubble: #2a2a2a;
+      --assistant-bg: transparent;
+      --input-bg: #242424;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --font: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      --mono: "SF Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
+      --sidebar-w: 280px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.5;
+      overflow: hidden;
+    }
+
+    /* ---------- App shell ---------- */
+    .app {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* ---------- Sidebar ---------- */
+    .sidebar {
+      width: var(--sidebar-w);
+      min-width: var(--sidebar-w);
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      transition: width 0.2s ease, min-width 0.2s ease;
+    }
+
+    .sidebar.collapsed {
+      width: 0;
+      min-width: 0;
+      overflow: hidden;
+      border-right: none;
+    }
+
+    .sidebar-header {
+      padding: 14px 12px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-new {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 13.5px;
+      font-weight: 500;
+      transition: background 0.15s;
+    }
+    .btn-new:hover { background: var(--bg-hover); }
+
+    .btn-icon {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+    .btn-icon:hover { background: var(--bg-hover); color: var(--text); }
+
+    .sidebar-nav {
+      padding: 4px 8px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 13.5px;
+      border: none;
+      background: transparent;
+      width: 100%;
+      text-align: left;
+    }
+    .nav-item:hover { background: var(--bg-hover); color: var(--text); }
+    .nav-item.active { background: var(--bg-active); color: var(--text); }
+
+    .nav-item svg { flex-shrink: 0; opacity: 0.85; }
+
+    .section-label {
+      padding: 12px 14px 6px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    .chat-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 8px 12px;
+    }
+
+    .chat-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 13.5px;
+      border: none;
+      background: transparent;
+      width: 100%;
+      text-align: left;
+    }
+    .chat-item:hover { background: var(--bg-hover); color: var(--text); }
+    .chat-item.active { background: var(--bg-active); color: var(--text); }
+
+    .chat-item .title {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sidebar-footer {
+      padding: 10px 12px 14px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .user-meta { flex: 1; min-width: 0; }
+    .user-name { font-size: 13px; font-weight: 500; }
+    .user-plan { font-size: 11px; color: var(--text-dim); }
+
+    /* ---------- Main ---------- */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background: var(--bg);
+    }
+
+    .topbar {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .topbar-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .model-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .model-pill:hover { background: var(--bg-hover); color: var(--text); }
+    .model-pill .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent);
+    }
+
+    /* Messages */
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 0 40px;
+      scroll-behavior: smooth;
+    }
+
+    .messages-inner {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    .msg {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+
+    .msg-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .msg.user .msg-avatar {
+      background: #3a3a3a;
+      color: var(--text);
+    }
+
+    .msg.assistant .msg-avatar {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: #fff;
+    }
+
+    .msg-body { flex: 1; min-width: 0; }
+
+    .msg-role {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .msg-content {
+      font-size: 15px;
+      line-height: 1.65;
+      color: var(--text);
+    }
+
+    .msg-content p { margin-bottom: 0.75em; }
+    .msg-content p:last-child { margin-bottom: 0; }
+
+    .msg-content code {
+      font-family: var(--mono);
+      font-size: 0.9em;
+      background: var(--bg-elevated);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    .msg-content pre {
+      background: #0f0f0f;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      overflow-x: auto;
+      margin: 10px 0;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .msg-content pre code {
+      background: none;
+      padding: 0;
+    }
+
+    .msg-actions {
+      display: flex;
+      gap: 4px;
+      margin-top: 8px;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .msg:hover .msg-actions { opacity: 1; }
+
+    .msg-actions button {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      padding: 4px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .msg-actions button:hover { background: var(--bg-hover); color: var(--text); }
+
+    /* Empty state */
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      color: var(--text-muted);
+      padding: 40px;
+      text-align: center;
+    }
+
+    .empty-logo {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .empty-state h2 {
+      font-size: 22px;
+      font-weight: 560;
+      color: var(--text);
+    }
+
+    .empty-state p { max-width: 360px; font-size: 14px; }
+
+    .suggestions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      max-width: 520px;
+      margin-top: 12px;
+      width: 100%;
+    }
+
+    .suggestion {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      text-align: left;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 13px;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .suggestion:hover {
+      background: var(--bg-hover);
+      border-color: #444;
+      color: var(--text);
+    }
+
+    /* Composer */
+    .composer-wrap {
+      padding: 0 24px 20px;
+      flex-shrink: 0;
+    }
+
+    .composer {
+      max-width: 760px;
+      margin: 0 auto;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 10px 12px 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+      transition: border-color 0.15s;
+    }
+    .composer:focus-within { border-color: #555; }
+
+    .composer textarea {
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      resize: none;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 15px;
+      line-height: 1.5;
+      max-height: 200px;
+      min-height: 24px;
+    }
+    .composer textarea::placeholder { color: var(--text-dim); }
+
+    .composer-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .composer-toolbar .spacer { flex: 1; }
+
+    .tool-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+    }
+    .tool-btn:hover { background: var(--bg-hover); color: var(--text); }
+
+    .send-btn {
+      background: var(--accent);
+      border: none;
+      color: #fff;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .send-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    .send-btn:not(:disabled):hover { background: #4ade80; }
+
+    .composer-hint {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 10px;
+    }
+
+    /* Typing indicator */
+    .typing {
+      display: flex;
+      gap: 4px;
+      padding: 4px 0;
+    }
+    .typing span {
+      width: 6px; height: 6px;
+      background: var(--text-dim);
+      border-radius: 50%;
+      animation: bounce 1.2s infinite ease-in-out;
+    }
+    .typing span:nth-child(2) { animation-delay: 0.15s; }
+    .typing span:nth-child(3) { animation-delay: 0.3s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40% { transform: translateY(-5px); opacity: 1; }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover { background: #444; }
+
+    /* Responsive-ish */
+    @media (max-width: 720px) {
+      .sidebar { position: absolute; z-index: 20; height: 100%; }
+      .suggestions { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <button class="btn-new" id="btnNewChat" title="New chat">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          New chat
+        </button>
+        <button class="btn-icon" id="btnToggleSidebar" title="Collapse sidebar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 6h16M4 12h10M4 18h16"/>
+          </svg>
+        </button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-view="chats">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          Chats
+        </button>
+        <button class="nav-item" data-view="projects">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+          </svg>
+          Projects
+        </button>
+        <button class="nav-item" data-view="artifacts">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M3 9h18M9 21V9"/>
+          </svg>
+          Artifacts
+        </button>
+      </nav>
+
+      <div class="section-label">Recent</div>
+      <div class="chat-list" id="chatList">
+        <!-- filled by JS -->
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="avatar">U</div>
+        <div class="user-meta">
+          <div class="user-name">You</div>
+          <div class="user-plan">Pro plan · API reference</div>
+        </div>
+        <button class="btn-icon" title="Settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <header class="topbar">
+        <button class="btn-icon" id="btnOpenSidebar" title="Open sidebar" style="display:none">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+        <div class="topbar-title" id="chatTitle">New chat</div>
+        <button class="model-pill" id="modelPill" title="Model">
+          <span class="dot"></span>
+          <span id="modelName">Hai Pro</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </button>
+      </header>
+
+      <div class="messages" id="messages">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-logo">H</div>
+          <h2>How can Hai help you today?</h2>
+          <p>This is a static HTML/JS GUI reference of the Hai chat experience for your API integration project.</p>
+          <div class="suggestions">
+            <button class="suggestion" data-prompt="Explain quantum computing in simple terms">Explain quantum computing simply</button>
+            <button class="suggestion" data-prompt="Write a short Python function that validates an email address">Python email validator</button>
+            <button class="suggestion" data-prompt="Help me outline a REST API for a todo app">Outline a todo REST API</button>
+            <button class="suggestion" data-prompt="Summarize the key differences between REST and GraphQL">REST vs GraphQL</button>
+          </div>
+        </div>
+        <div class="messages-inner" id="messagesInner" style="display:none"></div>
+      </div>
+
+      <div class="composer-wrap">
+        <div class="composer">
+          <textarea id="input" rows="1" placeholder="Message Hai…" autofocus></textarea>
+          <div class="composer-toolbar">
+            <button class="tool-btn" title="Attach file">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+              </svg>
+            </button>
+            <button class="tool-btn" title="Tools / connectors">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+              </svg>
+            </button>
+            <div class="spacer"></div>
+            <button class="send-btn" id="sendBtn" disabled title="Send">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="composer-hint">Hai can make mistakes. Check important info. · GUI reference only</div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // ============================================================
+    // Hai-style GUI reference
+    // Mock conversation store + simple "API" stub for integration
+    // ============================================================
+
+    const state = {
+      chats: [
+        { id: 'c1', title: 'REST API design notes', updated: Date.now() - 3600000 },
+        { id: 'c2', title: 'Python async patterns', updated: Date.now() - 86400000 },
+        { id: 'c3', title: 'Project brainstorm', updated: Date.now() - 172800000 },
+      ],
+      activeChatId: null,
+      messages: {},          // chatId -> [{role, content}]
+      model: 'Hai Pro',
+      isStreaming: false,
+    };
+
+    // ---- DOM ----
+    const $ = (sel) => document.querySelector(sel);
+    const chatList = $('#chatList');
+    const messagesEl = $('#messages');
+    const messagesInner = $('#messagesInner');
+    const emptyState = $('#emptyState');
+    const input = $('#input');
+    const sendBtn = $('#sendBtn');
+    const chatTitle = $('#chatTitle');
+    const sidebar = $('#sidebar');
+    const btnToggleSidebar = $('#btnToggleSidebar');
+    const btnOpenSidebar = $('#btnOpenSidebar');
+
+    // ---- Render helpers ----
+    function renderChatList() {
+      chatList.innerHTML = state.chats
+        .sort((a, b) => b.updated - a.updated)
+        .map(c => `
+          <button class="chat-item ${c.id === state.activeChatId ? 'active' : ''}" data-id="${c.id}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:.6;flex-shrink:0">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span class="title">${escapeHtml(c.title)}</span>
+          </button>
+        `).join('');
+    }
+
+    function renderMessages() {
+      const msgs = state.messages[state.activeChatId] || [];
+      if (!state.activeChatId || msgs.length === 0) {
+        emptyState.style.display = 'flex';
+        messagesInner.style.display = 'none';
+        messagesInner.innerHTML = '';
+        return;
+      }
+      emptyState.style.display = 'none';
+      messagesInner.style.display = 'flex';
+      messagesInner.innerHTML = msgs.map(m => {
+        const isUser = m.role === 'user';
+        return `
+          <div class="msg ${m.role}">
+            <div class="msg-avatar">${isUser ? 'U' : 'H'}</div>
+            <div class="msg-body">
+              <div class="msg-role">${isUser ? 'You' : 'Hai'}</div>
+              <div class="msg-content">${formatContent(m.content)}</div>
+              ${!isUser ? `
+                <div class="msg-actions">
+                  <button title="Copy">Copy</button>
+                  <button title="Retry">Retry</button>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function formatContent(text) {
+      // very light markdown: code blocks + inline code + paragraphs
+      let html = escapeHtml(text);
+      html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) =>
+        `<pre><code>${code.trim()}</code></pre>`
+      );
+      html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+      html = html.split(/\n\n+/).map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
+      return html;
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function setActiveChat(id) {
+      state.activeChatId = id;
+      const chat = state.chats.find(c => c.id === id);
+      chatTitle.textContent = chat ? chat.title : 'New chat';
+      renderChatList();
+      renderMessages();
+    }
+
+    // ---- Actions ----
+    function newChat() {
+      const id = 'c' + Date.now();
+      state.chats.unshift({ id, title: 'New chat', updated: Date.now() });
+      state.messages[id] = [];
+      setActiveChat(id);
+      input.focus();
+    }
+
+    function addMessage(role, content) {
+      if (!state.activeChatId) newChat();
+      if (!state.messages[state.activeChatId]) state.messages[state.activeChatId] = [];
+      state.messages[state.activeChatId].push({ role, content });
+      // update title from first user message
+      if (role === 'user') {
+        const chat = state.chats.find(c => c.id === state.activeChatId);
+        if (chat && chat.title === 'New chat') {
+          chat.title = content.slice(0, 42) + (content.length > 42 ? '…' : '');
+        }
+        chat.updated = Date.now();
+      }
+      renderChatList();
+      renderMessages();
+    }
+
+    // Simulated streaming reply — replace this with your real API call
+    async function mockClaudeReply(userText) {
+      state.isStreaming = true;
+      sendBtn.disabled = true;
+
+      // Show typing indicator
+      const typingHtml = `
+        <div class="msg assistant" id="typingMsg">
+          <div class="msg-avatar">H</div>
+          <div class="msg-body">
+            <div class="msg-role">Hai</div>
+            <div class="typing"><span></span><span></span><span></span></div>
+          </div>
+        </div>`;
+      messagesInner.insertAdjacentHTML('beforeend', typingHtml);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      // Fake delay + canned response based on keywords
+      await sleep(600 + Math.random() * 800);
+
+      let reply = buildMockReply(userText);
+
+      // Remove typing, stream text character-by-character for polish
+      const typingEl = document.getElementById('typingMsg');
+      if (typingEl) typingEl.remove();
+
+      addMessage('assistant', ''); // placeholder
+      const msgs = state.messages[state.activeChatId];
+      const last = msgs[msgs.length - 1];
+
+      for (let i = 0; i < reply.length; i++) {
+        last.content = reply.slice(0, i + 1);
+        renderMessages();
+        await sleep(8 + Math.random() * 12);
+      }
+
+      state.isStreaming = false;
+      updateSendState();
+    }
+
+    function buildMockReply(q) {
+      const lower = q.toLowerCase();
+      if (lower.includes('quantum')) {
+        return `Quantum computing uses quantum bits (qubits) that can exist in superposition — both 0 and 1 at the same time — unlike classical bits.\n\nKey ideas:\n\n• **Superposition** — a qubit holds multiple states until measured\n• **Entanglement** — qubits can be correlated so measuring one instantly affects the other\n• **Interference** — algorithms amplify correct answers and cancel wrong ones\n\nThis lets certain problems (factoring large numbers, simulating molecules, some optimization tasks) be solved far faster than on classical machines, though practical large-scale quantum computers are still emerging.`;
+      }
+      if (lower.includes('email') || lower.includes('python')) {
+        return `Here's a concise Python email validator using the standard library:\n\n\`\`\`python\nimport re\n\ndef is_valid_email(email: str) -> bool:\n    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$'\n    return re.match(pattern, email) is not None\n\n# Examples\nprint(is_valid_email("user@example.com"))  # True\nprint(is_valid_email("bad@"))              # False\n\`\`\`\n\nFor production you may also want to check MX records or use a library such as \`email-validator\`.`;
+      }
+      if (lower.includes('rest') && lower.includes('api')) {
+        return `A minimal REST API outline for a todo app:\n\n| Method | Path | Description |\n|--------|------|-------------|\n| GET | \`/todos\` | List all todos |\n| POST | \`/todos\` | Create a todo |\n| GET | \`/todos/{id}\` | Get one todo |\n| PATCH | \`/todos/{id}\` | Update a todo |\n| DELETE | \`/todos/{id}\` | Delete a todo |\n\nTypical JSON body for create/update:\n\`\`\`json\n{\n  "title": "Buy milk",\n  "completed": false\n}\n\`\`\`\n\nAdd auth (Bearer token), pagination on the list endpoint, and filtering (\`?completed=true\`) as next steps.`;
+      }
+      if (lower.includes('graphql')) {
+        return `**REST** exposes multiple resource-oriented endpoints; the client often over-fetches or under-fetches data and may need several round-trips.\n\n**GraphQL** exposes a single endpoint with a flexible query language. The client asks exactly for the fields it needs in one request.\n\n| | REST | GraphQL |\n|---|---|---|\n| Endpoints | Many | One |\n| Over/under-fetching | Common | Avoided |\n| Caching | HTTP cache friendly | More complex |\n| Schema | Informal / OpenAPI | Strongly typed |\n\nChoose REST for simple CRUD and strong HTTP caching; choose GraphQL when clients need varied shapes of data or you want a strongly typed schema.`;
+      }
+      return `Thanks for the message. This is a **GUI reference** of the Hai chat surface.\n\nIn a real integration you would replace \`mockClaudeReply()\` with a call to your Hai / Anthropic-compatible API (or your proxy), stream the response tokens, and render them here.\n\nYour prompt was:\n\n> ${q.slice(0, 200)}${q.length > 200 ? '…' : ''}\n\nWire your API key / backend into the send handler and you have a working desktop-style client.`;
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    function updateSendState() {
+      const hasText = input.value.trim().length > 0;
+      sendBtn.disabled = !hasText || state.isStreaming;
+    }
+
+    async function send() {
+      const text = input.value.trim();
+      if (!text || state.isStreaming) return;
+      input.value = '';
+      input.style.height = 'auto';
+      updateSendState();
+      addMessage('user', text);
+      await mockClaudeReply(text);
+    }
+
+    // ---- Events ----
+    input.addEventListener('input', () => {
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 200) + 'px';
+      updateSendState();
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        send();
+      }
+    });
+
+    sendBtn.addEventListener('click', send);
+
+    $('#btnNewChat').addEventListener('click', newChat);
+
+    chatList.addEventListener('click', (e) => {
+      const item = e.target.closest('.chat-item');
+      if (item) setActiveChat(item.dataset.id);
+    });
+
+    document.querySelectorAll('.suggestion').forEach(btn => {
+      btn.addEventListener('click', () => {
+        input.value = btn.dataset.prompt;
+        updateSendState();
+        send();
+      });
+    });
+
+    btnToggleSidebar.addEventListener('click', () => {
+      sidebar.classList.add('collapsed');
+      btnOpenSidebar.style.display = 'grid';
+    });
+    btnOpenSidebar.addEventListener('click', () => {
+      sidebar.classList.remove('collapsed');
+      btnOpenSidebar.style.display = 'none';
+    });
+
+    // Model cycle (demo)
+    const models = ['Hai Pro', 'Hai Ultra', 'Hai Fast'];
+    let modelIdx = 0;
+    $('#modelPill').addEventListener('click', () => {
+      modelIdx = (modelIdx + 1) % models.length;
+      state.model = models[modelIdx];
+      $('#modelName').textContent = state.model;
+    });
+
+    // Seed one empty active chat so the empty state shows
+    newChat();
+    // Clear the auto-created empty messages so empty state is visible
+    state.messages[state.activeChatId] = [];
+    renderMessages();
+  </script>
+</body>
+</html>
