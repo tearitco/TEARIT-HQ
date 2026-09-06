@@ -95,6 +95,16 @@
  * exactly like the bottom bar's own nav digit buffer):
  * 5000 + row_idx (idx in [0, KTB_LIVEDESK_DYN_MAX) ). */
 #define KSC_HQ_ITEM_BASE   5000
+/* Absolute focus set (2026-09-06): 6000 + nav_index. The X11 strip
+ * renderer (khtpm_core_render.c dock mode) owns its own on-screen
+ * highlight cursor g_focus_nav; whenever a mouse click or arrow key
+ * moves it, it relays 6000+g_focus_nav here so this manager's
+ * strip_focus_cell / tab_focus_idx snap to the exact same cell with no
+ * drift (relative FOCUS_LEFT/RIGHT could accumulate an offset once the
+ * two cursors ever disagreed - the split-brain a user hit where the
+ * taskbar showed cell 14 and the ASCII mirror showed cell 6). nav
+ * 1..KTB_STRIP_N_CELLS = header cells; above that = a bottom-bar tab. */
+#define KSC_SET_FOCUS_BASE 6000
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -794,6 +804,17 @@ static void dispatch_code(KtbState *s, int code) {
     if (code >= KSC_HQ_HEADER_BASE && code < KSC_HQ_HEADER_BASE + KTB_STRIP_N_CELLS + 1) {
         int which = code - KSC_HQ_HEADER_BASE;
         ktb_hq_open(s, which);
+        return;
+    }
+
+    if (code >= KSC_SET_FOCUS_BASE && code < KSC_SET_FOCUS_BASE + 128) {
+        int nav_n = code - KSC_SET_FOCUS_BASE;
+        if (nav_n >= 1 && nav_n <= KTB_STRIP_N_CELLS) {
+            s->strip_focus_cell = nav_n - 1;
+        } else if (nav_n > KTB_STRIP_N_CELLS) {
+            int t = nav_n - KTB_STRIP_N_CELLS - 1;
+            if (t >= 0 && t < s->n_tabs) { s->strip_focus_cell = -1; s->tab_focus_idx = t; }
+        }
         return;
     }
 

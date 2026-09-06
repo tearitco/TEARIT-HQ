@@ -1906,6 +1906,19 @@ static int g_click_two_step = 1;
 static int window_is_dock(void);
 static int elem_has_class(Elem *e, const char *cls);
 static int kh_elem_in_scope(Elem *e);
+/* Append one decimal code to the strip's input relay (the same file the
+ * terminal keyboard binary and agents write, that the manager's
+ * poll_strip_history() consumes). Used to tell the manager "the on-screen
+ * highlight just moved to nav N" (6000+N) so its strip_focus_cell - and
+ * with it the ASCII mirror - stays in exact lockstep with what the X11
+ * strip is showing. Dock only. 2026-09-06. */
+static void dock_relay_focus_code(int code) {
+    if (!window_is_dock() || code <= 0) return;
+    char hist[PATH_BUF];
+    snprintf(hist, sizeof(hist), "%s/#.desktop/strip_history.txt", g_house_root);
+    FILE *hf = fopen(hist, "a");
+    if (hf) { fprintf(hf, "%d\n", code); fclose(hf); }
+}
 static int click_focus_then_activate(Elem *hit) {
     if (!hit) return 0;
     /* Out-of-scope rows stay numbered and drawn, but a click must not
@@ -1926,7 +1939,15 @@ static int click_focus_then_activate(Elem *hit) {
         return 1;
     }
     if (hit->nav_index <= 0) return 1;
-    if (g_focus_nav != hit->nav_index) { g_focus_nav = hit->nav_index; return 0; }
+    if (g_focus_nav != hit->nav_index) {
+        g_focus_nav = hit->nav_index;
+        /* first click of a two-step: focus moved but nothing fired yet -
+         * tell the manager so the ASCII mirror + strip_focus_cell follow
+         * the click, not just arrow keys (dock, header/tab cells only). */
+        if (window_is_dock() && !elem_has_class(hit, "dropdown-child"))
+            dock_relay_focus_code(6000 + hit->nav_index);
+        return 0;
+    }
     return 1;
 }
 /* REAL Stage 5 §5d.10 (2026-08-16) - scaled() is now mode-aware: db-hq
@@ -5879,7 +5900,33 @@ static void dock_poll_strip_state(void) {
     if (stat(sp, &st) != 0) return;
     long m = (long)st.st_mtime;
     if (s_mtime == 0) { s_mtime = m; return; }   /* first sight - don't repaint */
-    if (m != s_mtime) { s_mtime = m; if (!g_quit) redraw(); }
+    if (m == s_mtime) return;
+    s_mtime = m;
+
+    /* The manager just republished. Pull its focus cursor
+     * (strip_focus_cell: 0-based header cell, or -1 = a bottom tab at
+     * tab_focus_idx) and map it onto THIS renderer's g_focus_nav so a
+     * key driven from the terminal moves the real on-screen highlight,
+     * not just the ASCII mirror. Header cells are g_focus_nav
+     * 1..g_dock_header_nav_hi; bottom-bar tabs continue above that. */
+    int sfc = -2, tfi = 0;
+    FILE *s = fopen(sp, "r");
+    if (s) {
+        char line[512];
+        while (fgets(line, sizeof(line), s)) {
+            if (strncmp(line, "KEY | strip_focus_cell | ", 25) == 0) sfc = atoi(line + 25);
+            else if (strncmp(line, "KEY | tab_focus_idx | ", 22) == 0) tfi = atoi(line + 22);
+        }
+        fclose(s);
+    }
+    if (sfc >= 0) {
+        int nv = sfc + 1;
+        if (nv >= 1 && nv <= g_n_nav) g_focus_nav = nv;
+    } else if (sfc == -1) {
+        int nv = g_dock_header_nav_hi + 1 + tfi;
+        if (nv >= 1 && nv <= g_n_nav) g_focus_nav = nv;
+    }
+    if (!g_quit) redraw();
 }
 
 static void dock_ascii_walk(FILE *f, Elem *e, int depth) {
@@ -5893,14 +5940,18 @@ static void dock_ascii_walk(FILE *f, Elem *e, int depth) {
     if ((has_label || (!is_container && e->nav_index > 0)) && strcmp(e->tag, "module") != 0) {
         for (int i = 0; i < depth; i++) fputs("  ", f);
         if (e->nav_index > 0) {
-            /* header cells are nav 1..15 (strip_focus_cell is 0-based);
-             * bottom-bar tabs are nav 16+ (focused when strip_focus_cell
-             * == -1, at 16 + tab_focus_idx). */
-            int focused =
-                (g_dock_focus_cell >= 0)
-                    ? (e->nav_index == g_dock_focus_cell + 1)      /* a header cell */
-                    : (e->nav_index == 16 + g_dock_tab_focus);     /* focus is on a bottom tab */
-            fprintf(f, "%s%d. ", focused ? "[>] " : "[ ] ", e->nav_index);
+            /* Mark the ONE cell this renderer is actually highlighting on
+             * screen: g_focus_nav (1-based, unified across header cells
+             * 1..g_dock_header_nav_hi then bottom-bar tabs above that).
+             * 2026-09-06 fix for the split-brain the user hit: this used
+             * to read the MANAGER's strip_focus_cell, which is a separate
+             * cursor the manager only moves for terminal-relay input - so
+             * driving the X11 strip with the mouse/keys moved g_focus_nav
+             * (what you see) but not strip_focus_cell (what the mirror
+             * drew), and the two disagreed. Now the mirror always shows
+             * the real highlight; terminal input reaches g_focus_nav via
+             * dock_poll_strip_state() below, so both stay in lockstep. */
+            fprintf(f, "%s%d. ", (e->nav_index == g_focus_nav) ? "[>] " : "[ ] ", e->nav_index);
         } else if (!is_container)
             fputs("    ", f);
         int active = 0;
@@ -6587,6 +6638,7 @@ static void handle_key(KeySym ks, char ch) {
             return;
         }
         kh_nav_step(-1);
+        if (window_is_dock()) dock_relay_focus_code(6000 + g_focus_nav);  /* snap the manager's strip_focus_cell to the new highlight (absolute, no drift) */
         if (window_is_dock() && g_dock_peer_win && g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
             Window want = (g_focus_nav > g_dock_header_nav_hi) ? g_dock_peer_win : win;
             XRaiseWindow(dpy, want);
@@ -6601,6 +6653,7 @@ static void handle_key(KeySym ks, char ch) {
             return;
         }
         kh_nav_step(1);
+        if (window_is_dock()) dock_relay_focus_code(6000 + g_focus_nav);
         if (window_is_dock() && g_dock_peer_win && g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
             Window want = (g_focus_nav > g_dock_header_nav_hi) ? g_dock_peer_win : win;
             XRaiseWindow(dpy, want);
