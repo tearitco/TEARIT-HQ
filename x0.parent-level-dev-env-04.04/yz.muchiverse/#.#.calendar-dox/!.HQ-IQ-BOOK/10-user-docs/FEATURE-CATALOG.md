@@ -44,15 +44,37 @@ in `khtpm_taskbar_manager.c` builds each; rows come from
 
 The **HQ button** (top-left of a window) submenu: always-on-top,
 restart, hide/show, dir, quit, settings, stats, **cli**, cursword,
-kill, debug — mostly ✅ window-chrome actions. Note **`cli`**:
-`open_cli.sh` opens a gnome-terminal running
-`khtpm_strip_render_ascii.+x` + `khtpm_strip_keyboard_ascii.+x` — a
-**terminal ASCII mirror of the taskbar strip** (TPMOS renderer/
-keyboard split: no termios, reads `#.desktop/strip_frame.cells.pdl`,
-writes `strip_ascii_current_frame.txt` + a timestamped history). It is
-the right *pattern* for a headless text view — but **scoped to the
-strip only**; there is no equivalent for an arbitrary HQ window (see
-"Missing" below).
+kill, debug — mostly ✅ window-chrome actions.
+
+**`cli` — the terminal mirror of the taskbar strip (real, bidirectional).**
+`open_cli.sh` opens a gnome-terminal running TWO binaries (TPMOS's
+`renderer.c` / `keyboard_input.c` split — never combined, because raw
+termios breaks `\n`→`\r\n`):
+- `khtpm_strip_render_ascii.+x` — no termios, reads the parser's
+  composed frame (`#.desktop/strip_frame.cells.pdl` + `strip_state.txt`
+  for `strip_focus_cell`), writes `strip_ascii_current_frame.txt`
+  (readable text: `[>] 1. HQ`, `[ ] 2. jb`, …) + a timestamped
+  `strip_ascii_frame_history.txt`.
+- `khtpm_strip_keyboard_ascii.+x` — raw termios, never prints; relays
+  terminal keys (arrows as `ESC[A/B/C/D` → `KSC_FOCUS_LEFT/RIGHT`,
+  digits, Enter) through `khtpm_strip_parser.c`'s `dispatch_key_code()`
+  into the SAME manager the X11 strip uses.
+
+So it is genuinely **bidirectional**: X11 clicks and terminal keys
+both drive `khtpm_taskbar_manager`, both renderers read its published
+state. Live-verified 2026-08-18: relay-driven HQ-open → digit-select →
+Enter-activate end to end; arrows move the `[>]` focus. Runs headless
+(the render binary alone produces the text frame with no terminal).
+
+**Docs** (these are the ones a `grep cli`/`terminal`/`headless` misses
+— they're under `08-roadmap/design-docs/` and named `taskbar-*`):
+`taskbar-tpmos-parallel-refactor.md` (the built + verified mirror,
+current status + still-open items), `taskbar-keyboard-relay-and-
+terminal-render.md` (superseded origin), `taskbar-history-txt-
+migration-investigation.md` (the X11-capture→relay cutover).
+
+**Not built:** the same for an arbitrary **HQ window** (the "open a
+terminal render of any window" vision). See "Missing" below.
 
 ---
 
@@ -128,15 +150,20 @@ _shared-lib = the shared renderer core (not a widget)
   polls `<name>_action.txt`.
 - Clipboard (window↔window↔OS) ✅ · text selection ✅ · multi-digit
   nav-jump ✅.
-- **Missing / would help:** a headless *text* render of an HQ window's
-  view-state. Today: `--dump-and-exit` (PNG + a wire-format frame
-  file), the `*_ui.txt` files (readable semantic state — what the test
-  harnesses grep), and `khtpm_strip_render_ascii` (strip only). The
-  right build is a **`khtpm_core_render --render-text`** flag: parse +
-  `${var}`-substitute + layout as normal, then emit the laid-out Elem
-  tree as indented text (labels, nav numbers, tab/active state) and
-  exit — fully headless, no X needed. Directly useful for CI and for
-  testing IRC/chain across ports without a display. Not built yet.
+- **Missing / would help:** the taskbar-strip terminal mirror (`cli`,
+  above) extended to **arbitrary HQ windows** — "the taskbar can open a
+  terminal render of any open window", headless, agent-startable for
+  testing, later with entity manipulation. The strip half is real and
+  bidirectional; the window half is not built. Right approach (matches
+  "use the same logic that's already there"): a
+  **`khtpm_core_render --render-text`** mode — parse + `${var}`-sub +
+  layout exactly as the X11 path does, then emit the laid-out Elem
+  tree as indented text (labels, nav numbers, tab/active/list state)
+  and either exit or loop writing a `*_ascii_frame.txt`, with a
+  keyboard-relay sibling reusing the existing per-PID
+  `<mode>_history/<pid>.txt` relay. No layout logic duplicated.
+  Today's stopgaps: `--dump-and-exit` (PNG + wire-format frame file)
+  and each manager's readable `*_ui.txt` (what the test harnesses grep).
 
 ### Verified: chain P2P sync across ports (2026-09-06)
 
