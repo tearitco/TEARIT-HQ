@@ -251,7 +251,12 @@ parser, zero new IR to invent.
    unless a `dirty` flag is set, and `dirty` is set **only** when an
    append-only marker file *grows* (`st.st_size > last_size`) — not on
    mtime, not on a hash, not per input event. Input handlers *write
-   the marker*; they do not call the composer. This binary already
+   the marker*; they do not call the composer. **The full worked
+   dissection of that reference chain — the two-process / two-marker /
+   one-frame-file "DIAMOND standard" (user's term, 2026-09-06), with
+   verbatim source doctrine and a gap table vs. khtpm's current `cli` —
+   is `reference/TPMOS-DIAMOND-render-chain.md`. Read it before
+   reworking any terminal-mirror or marker path.** This binary already
    does exactly that for the real `g_is_db_hq` window
    (`dbhq_marker_pilot()` / `mark_frame_changed()` /
    `consume_frame_changed()`), and now for the generic default-mode

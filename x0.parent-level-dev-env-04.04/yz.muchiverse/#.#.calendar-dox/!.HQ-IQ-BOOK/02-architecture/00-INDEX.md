@@ -39,6 +39,16 @@
   `07-install-and-ship/SECURITY.md` for the sandbox questions that
   raises.
 
+- `reference/TPMOS-DIAMOND-render-chain.md` — **the "DIAMOND
+  standard"**: a line-by-line dissection of the original 1.TPMOS render
+  chain (`chtpm_parser.c` + `renderer.c`) — two processes, two
+  append-only **size-growth** markers, one frame file, 60Hz both loops,
+  input handlers write the marker and never call the composer. GOLD §8
+  is the rule distilled from this; this is the worked example with real
+  file+line citations and a gap table vs. khtpm's current `cli`
+  terminal mirror. Read before reworking any marker / terminal-mirror
+  path.
+
 Condensed from: `44.xyz.01.00/CENTROID_GOLD_STD.md` (moved),
 `#.#.calendar-dox/1.^V-hq/SKILLS.md` §2, `HOUSE_FAQ.md` (Architecture/
 Files-Compliance/Nav-Input/Assets sections), `44.xyz.01.00/
