@@ -1,6 +1,42 @@
 # Branch strategy
 
-How work is organized in this repo (2026-09-05).
+How work is organized in this repo (2026-09-05; worktree section added
+2026-09-06).
+
+> **New to git, or want the "why nothing is lost" explanation?** Read
+> `GIT-WORKFLOW-FOR-BEGINNERS.md` (same folder) first — it covers what
+> git is doing here, the agent-collision that keeps happening, and the
+> fix below in plain language.
+
+## THE FIX (2026-09-06): one folder per agent — `git worktree`
+
+Per-tool *branches* alone did NOT stop agents stepping on each other,
+because every agent runs in the **same folder**
+(`/home/no/Desktop/github/work/NNEST-12.00/`) which has one shared
+`HEAD` — so one agent's `git checkout` swaps files and moves refs for
+the other. Recovered every time via `git reflog`; zero code lost; hours
+wasted.
+
+Real fix — give each agent its own folder locked to its own branch.
+Run once, all agents idle:
+
+```sh
+cd /home/no/Desktop/github/work/NNEST-12.00
+git worktree add ../NNEST-12.00-claude   claude
+git worktree add ../NNEST-12.00-opencode opencode
+```
+
+- Claude sessions run in `../NNEST-12.00-claude/`, opencode in
+  `../NNEST-12.00-opencode/`, etc.
+- Original `NNEST-12.00/` stays on `main` (reference only, don't edit
+  code there).
+- `git checkout <other agent's branch>` from your worktree is then
+  **refused by git** — collision impossible.
+- `git worktree list` / `git worktree remove <path>` to inspect/clean.
+
+Until that's set up, follow the discipline rule in
+`GIT-WORKFLOW-FOR-BEGINNERS.md` §4 (know your branch; commit + push
+ONLY your own; never touch another branch or `main`).
 
 ## One working branch per tool
 
