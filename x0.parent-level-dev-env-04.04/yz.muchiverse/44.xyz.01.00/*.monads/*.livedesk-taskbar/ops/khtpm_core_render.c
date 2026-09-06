@@ -1946,7 +1946,11 @@ static int click_focus_then_activate(Elem *hit) {
         g_focus_nav = hit->nav_index;
         return 1;
     }
-    if (!g_click_two_step) {
+    /* A window can opt every click into single-click-activate with
+     * class="single-click" on <window> - regardless of the house-wide
+     * click_two_step. For pickers where one click == pick (the periodic
+     * table: click a tile -> inspect/place, no "focus first" step). */
+    if (!g_click_two_step || (g_window && elem_has_class(g_window, "single-click"))) {
         g_focus_nav = hit->nav_index;
         return 1;
     }
@@ -2569,6 +2573,38 @@ static void zero_nav_subtree(Elem *e) {
     if (!e) return;
     e->nav_index = 0;
     for (int i = 0; i < e->n_children; i++) zero_nav_subtree(e->children[i]);
+}
+
+/* Recursively resolve CSS for every Elem in a subtree. css_layout_pass()
+ * reads e->style but never fills it, and the classic layout helpers only
+ * CSS their direct children - a flex subtree needs every node styled
+ * first. */
+static void kh_css_deep(Elem *e) {
+    if (!e) return;
+    css_compute_style(&g_sheet, e->tag, e->id[0] ? e->id : NULL,
+                      e->classes, e->n_classes, 0, &e->style);
+    for (int i = 0; i < e->n_children; i++) kh_css_deep(e->children[i]);
+}
+
+/* Number every actionable <item>/<cli_io> in a subtree in document
+ * order (g_nav[]/g_n_nav). Used for a region laid out by css_layout_pass
+ * (flex), which sizes/positions boxes but assigns no nav. */
+static void kh_assign_nav_subtree(Elem *e) {
+    if (!e) return;
+    int actionable = (strcmp(e->tag, "item") == 0 || strcmp(e->tag, "cli_io") == 0) &&
+                     (e->onclick[0] || e->label[0]);
+    /* Renumber unconditionally every call, like every other layout pass
+     * (++g_n_nav). A stale nav_index left on the Elem from the previous
+     * frame must NOT be kept - assign_nav_and_layout() resets g_n_nav to
+     * 0 but not the per-Elem field, so keeping it produced two items
+     * sharing an index (a tile stuck at 1, chrome also at 1). */
+    if (actionable && g_n_nav < MAX_ELEMS) {
+        e->nav_index = ++g_n_nav;
+        g_nav[g_n_nav - 1] = e;
+    } else if (!actionable) {
+        e->nav_index = 0;
+    }
+    for (int i = 0; i < e->n_children; i++) kh_assign_nav_subtree(e->children[i]);
 }
 
 /* REAL FIX 2026-08-29 (EVENTS-HQ-RENDER-UNIFICATION-PLAN.md Part B) -
@@ -3462,10 +3498,32 @@ static int layout_sidebar_panel(Elem *page) {
      * and scrolls independently - same real per-region scroll variable
      * as before, just no longer required to be sidebar's OWN direct
      * children. */
-    layout_fixed_rows_and_scrolllist(sidebar, sidebar->x, sidebar->y, sidebar->w, sidebar->h,
-                                      &g_default_sidebar_scroll, &g_default_sidebar_nav_lo, &g_default_sidebar_nav_hi);
-    layout_fixed_rows_and_scrolllist(panel, panel->x, panel->y, panel->w, panel->h,
-                                      &g_default_scrolllist_scroll, &g_default_scrolllist_nav_lo, &g_default_scrolllist_nav_hi);
+    /* A region that opts into flexbox (display:flex, incl.
+     * flex-wrap:wrap for a tile grid / periodic table) is laid out by
+     * the shared HTML flex engine; css_layout_pass assigns no nav, so
+     * number its items after. Otherwise the classic vertical
+     * fixed-rows + scroll pass. */
+    if (sidebar->style.has_display && sidebar->style.display_flex) {
+        zero_nav_subtree(sidebar);          /* clear stale per-Elem indices first */
+        kh_css_deep(sidebar);
+        css_layout_pass(sidebar, sidebar->x, sidebar->y, sidebar->w, sidebar->h);
+        int lo = g_n_nav + 1;
+        kh_assign_nav_subtree(sidebar);     /* number the grid tiles (mouse hit-test + digit-jump need this) */
+        g_default_sidebar_nav_lo = lo;
+        g_default_sidebar_nav_hi = g_n_nav;
+    } else {
+        layout_fixed_rows_and_scrolllist(sidebar, sidebar->x, sidebar->y, sidebar->w, sidebar->h,
+                                          &g_default_sidebar_scroll, &g_default_sidebar_nav_lo, &g_default_sidebar_nav_hi);
+    }
+    if (panel->style.has_display && panel->style.display_flex) {
+        zero_nav_subtree(panel);
+        kh_css_deep(panel);
+        css_layout_pass(panel, panel->x, panel->y, panel->w, panel->h);
+        kh_assign_nav_subtree(panel);       /* detail-panel buttons: few, after the grid, before chrome */
+    } else {
+        layout_fixed_rows_and_scrolllist(panel, panel->x, panel->y, panel->w, panel->h,
+                                          &g_default_scrolllist_scroll, &g_default_scrolllist_nav_lo, &g_default_scrolllist_nav_hi);
+    }
     /* flex mode: css_layout_pass() sized every region above; run the
      * classic vertical fixed-rows+scroll+nav pass inside EACH extra
      * <panel> too (its box is already set). One shared scroll cursor

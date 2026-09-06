@@ -148,6 +148,16 @@ typedef struct Elem {
      * arms/disarms it, not the click that requested engagement). Empty
      * for every item that isn't an Interact Mode trigger. */
     char relay[300];
+    /* REAL, NEW 2026-09-04, direct live request ("can we add grey and
+     * brown to swatch colors... that shouldn't be hardcoded, should
+     * be from layout/module") - a generic `bg="${var}"` attribute
+     * (apply_attr(), khtpm_core_render.c): a hex color string a
+     * manager/projector can publish per-element, applied in draw_elem()
+     * (khtpm_draw_core.c) as an override on top of whatever CSS already
+     * computed - lets a real DATA-DRIVEN color (not a fixed compile-
+     * time CSS class) drive an element's background. Empty for every
+     * element that doesn't set it - zero effect on anything existing. */
+    char bg[16];
     /* REAL, NEW 2026-09-01 (live report: a long list of one-item-plus-
      * its-own-separate-delete-row pairs is real visual clutter - direct
      * instruction: "id like to add backspace to delete if possible,
@@ -167,6 +177,79 @@ typedef struct Elem {
      * real multi-line composer actually gets a real taller box, not
      * just draw_elem()'s own real word-wrap with nowhere to put it. */
     int rows;
+    /* REAL, NEW 2026-09-05 (08-roadmap/design-docs/CLI_IO-CURSOR-AND-
+     * TEXT_AREA-MULTILINE-EDITING-DESIGN.md, direct instruction: "i
+     * think cli-io should still have a cursor") - a real byte offset
+     * into input_buffer, replacing the old append/backspace-at-the-
+     * end-only editing. Set to strlen(input_buffer) when a cli_io is
+     * armed (activate_focused()); moved by Left/Right/Home/End in
+     * default_cli_io_handle_key(); insert/delete happen AT this
+     * offset, not always at the end. This is the same primitive
+     * text_area's own multi-line cursor logic will generalize from
+     * (crossing embedded \n and visual post-wrap rows) - do not
+     * duplicate a second cursor concept there. Threaded through the
+     * frame serialize/reparse round trip (kh_serialize_frame_elem()/
+     * kh_paint_frame_line()) same as every other live-typed field -
+     * see those functions' own header comments for why that's
+     * mandatory, not optional, for a field to actually reach the
+     * screen. Zero effect on any element that isn't cli_io (stays 0,
+     * unused). */
+    int cursor;
+    /* REAL, NEW 2026-09-05 (08-roadmap/design-docs/TEXT_AREA-SCROLL-
+     * GUTTER-SELECTION-DESIGN.md, step 4/5 - "lets do the partial copy
+     * out") - the fixed end of a text selection; `cursor` is the moving
+     * end. Selection is [min(sel_anchor,cursor), max(...)).
+     * `sel_anchor == cursor` means NO selection (a collapsed range,
+     * the common bare-cursor case - works with the zero-init every
+     * Elem already gets, no -1 sentinel needed). Shift+move sets
+     * sel_anchor = cursor once (if not already selecting) then moves
+     * cursor; any unshifted move collapses it (sel_anchor = cursor);
+     * typing/paste/Backspace with a live selection replaces it;
+     * Ctrl+C/X copy just the selected substring when one exists (else
+     * fall back to the whole buffer). Threaded through the frame round
+     * trip same as cursor - a plain int, no escaping. */
+    int sel_anchor;
+    /* REAL, NEW 2026-09-05 (08-roadmap/design-docs/CLI_IO-CURSOR-AND-
+     * TEXT_AREA-MULTILINE-EDITING-DESIGN.md) - a real, generic
+     * `<text_area>` element: a genuinely multi-line, cursor-addressable
+     * text buffer, unlike cli_io (single-line, Enter submits). Real
+     * `\n` characters are preserved exactly as typed - the renderer
+     * word-wraps for DISPLAY only, at draw time, never mutating this
+     * buffer to bake in a wrap break (see draw_elem()'s own text_area
+     * branch). Much bigger than cli_io's input_buffer (256B, fine for
+     * a chat line) since this is meant to hold real document content -
+     * a large fixed cap, not dynamic, matching this codebase's general
+     * style (see the design doc's own "explicitly not decided yet"
+     * list for why fixed-vs-dynamic wasn't settled harder than this).
+     * e->cursor (above) is shared with cli_io - same primitive,
+     * generalized here to cross embedded \n and visual (post-wrap)
+     * rows, not a second cursor concept. Empty for every element that
+     * isn't text_area - zero effect on anything else. */
+    char text_area_buffer[4096];
+    /* REAL, NEW 2026-09-05 (08-roadmap/design-docs/GRID-ELEMENT-DESIGN.md)
+     * - a real `<grid>` element: one nav item for a whole spreadsheet-
+     * shaped table, with its own internal 2D cursor instead of one nav
+     * index per cell. Three real states: unarmed (plain nav item, all
+     * four fields below unused/0), armed-navigating (`#` badge -
+     * grid_cur_row/col move via arrows; grid_jump_buffer accumulates
+     * letters/digits in either order, e.g. "a11" or "11a", resolved on
+     * Enter), armed-editing (`^` badge - grid_edit_mode=1, the current
+     * cell's text lives in grid_cell_buffer and is typed into using the
+     * exact same single-line editing default_cli_io_handle_key() already
+     * implements, just pointed at this buffer instead of input_buffer).
+     * See the design doc's own "Decided" section for why `^` keeps its
+     * existing house-wide "real text input is live here" meaning
+     * (reserved for editing) while `#` is the new symbol for pure 2D
+     * navigation. Threaded through the frame serialize/reparse round
+     * trip (kh_serialize_frame_elem()/kh_paint_frame_line()) same as
+     * every other live-typed field - grid_jump_buffer/grid_cell_buffer
+     * need the same pipe escaping label just got (2026-09-05 fix) since
+     * either could plausibly contain a literal '|'. Zero effect on any
+     * element that isn't `<grid>`. */
+    int grid_cur_row, grid_cur_col;
+    int grid_edit_mode;
+    char grid_jump_buffer[16];
+    char grid_cell_buffer[256];
     struct Elem *children[MAX_CHILDREN];
     int n_children;
     struct Elem *parent;
@@ -339,6 +422,36 @@ static void css_layout_pass(Elem *e, int x, int y, int avail_w, int avail_h) {
 
     int is_row = e->style.has_flex_direction ? e->style.flex_row : 0;
     int n = e->n_children;
+
+    /* flex-wrap:wrap on a row container = a wrapping grid (periodic
+     * table, tile pickers). Children flow left-to-right at their own
+     * width; when the next one would overflow the container's content
+     * width, it starts a fresh line one (tallest-so-far + gap) below.
+     * flex-grow is ignored in this mode (a wrapped grid has fixed
+     * cells); nowrap / column keep the original path below. */
+    if (e->style.has_flex_wrap && e->style.flex_wrap && is_row) {
+        int wpad = e->style.has_padding ? e->style.padding : 0;
+        int wgap = e->style.has_gap ? e->style.gap : 0;
+        int x0 = e->x + wpad, y0 = e->y + wpad;
+        int right = e->x + e->w - wpad;
+        int cx = x0, cy = y0, line_h = 0;
+        for (int i = 0; i < n; i++) {
+            Elem *c = e->children[i];
+            if (c->style.has_position && c->style.position_absolute) {
+                int t = c->style.has_top ? c->style.top : 0;
+                int l = c->style.has_left ? c->style.left : 0;
+                css_layout_pass(c, e->x + l, e->y + t, c->w, c->h);
+                continue;
+            }
+            int cw = c->style.has_width  ? c->style.width  : (c->w > 0 ? c->w : 40);
+            int chh = c->style.has_height ? c->style.height : (c->h > 0 ? c->h : 24);
+            if (cx != x0 && cx + cw > right) { cx = x0; cy += line_h + wgap; line_h = 0; }
+            css_layout_pass(c, cx, cy, cw, chh);
+            cx += cw + wgap;
+            if (chh > line_h) line_h = chh;
+        }
+        return;
+    }
     /* REAL 2026-08-16, added after db-hq's own real live tabbar port
      * found the gap (see khtpm_css_parser.h's own header comment on
      * these 2 fields for the full real story) - `padding` insets flow

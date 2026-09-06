@@ -22,6 +22,8 @@
 #include <unistd.h>
 #include <signal.h>
 #include <math.h>
+#include <time.h>
+#include <sys/stat.h>
 
 #define PL 4096
 #define NEL 118
@@ -115,6 +117,51 @@ static void load_recipe_pn(void) {
     fclose(f);
 }
 
+/* period (1..7) and group (1..18, 0 = f-block/lanthanide-actinide) */
+static int period_of(int z) {
+    static const int endz[] = { 0, 2, 10, 18, 36, 54, 86, 118 };
+    int p = 1; while (p < 7 && z > endz[p]) p++;
+    return p;
+}
+static int group_of(int z) {
+    static const int endz[] = { 0, 2, 10, 18, 36, 54, 86, 118 };
+    int p = period_of(z);
+    int within = z - endz[p - 1];                  /* 1.. */
+    if (p == 1) return within == 1 ? 1 : 18;       /* H=1, He=18 */
+    if (p == 2 || p == 3) return within <= 2 ? within : within + 10;   /* 1,2 then 13..18 */
+    if (p == 4 || p == 5) return within;           /* 1..18 straight */
+    /* p 6/7: 1,2 | La/Ac (3) | 14 f-block (group 0) | 3..18 */
+    if (within <= 3) return within;
+    if (within <= 17) return 0;                    /* lanthanide / actinide */
+    return within - 14;                            /* 4..18 -> 4..18 */
+}
+
+static int   g_sel = 0;              /* selected Z, 0 = none */
+static char  g_msg[96] = "";
+static char  g_last_sym[8] = "";
+static long long g_last_ms = 0;
+
+static long long now_ms(void) {
+    struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
+static int z_of_sym(const char *s) {
+    for (int z = 1; z <= NEL; z++) if (strcmp(SYM[z], s) == 0) return z;
+    return 0;
+}
+
+static void do_place(int z) {
+    if (z < 1 || z > NEL) return;
+    char cmd[PL];
+    snprintf(cmd, sizeof(cmd),
+             "sh '%s/&.widgits/palettes/palettes_menu.sh' 'place' '%s' >/dev/null 2>&1",
+             house_root, SYM[z]);
+    int rc = system(cmd); (void)rc;
+    snprintf(g_msg, sizeof(g_msg), "Placed %s (%s) on the desktop.",
+             g_name[z][0] ? g_name[z] : SYM[z], SYM[z]);
+}
+
 static void write_ui(void) {
     char dir[PL], tmp[PL], dst[PL];
     snprintf(dir, sizeof(dir), "%s/state", pkg_dir);
@@ -133,9 +180,72 @@ static void write_ui(void) {
         fprintf(f, "t_%d_z=%d\n",     z - 1, z);
         fprintf(f, "t_%d_name=%s\n",  z - 1, g_name[z][0] ? g_name[z] : SYM[z]);
         fprintf(f, "t_%d_color=%s\n", z - 1, col);
+        fprintf(f, "t_%d_cls=%s\n",   z - 1, (z == g_sel) ? "sel" : "");
     }
+
+    /* detail card */
+    if (g_sel >= 1 && g_sel <= NEL) {
+        int z = g_sel;
+        char col[8]; drude_color(z, col, sizeof(col));
+        int g = group_of(z);
+        fprintf(f, "sel_show=1\nsel_empty=\n");
+        fprintf(f, "sel_sym=%s\n",   SYM[z]);
+        fprintf(f, "sel_name=%s\n",  g_name[z][0] ? g_name[z] : SYM[z]);
+        fprintf(f, "sel_z=%d\n",     z);
+        fprintf(f, "sel_pne=%d protons  /  %d neutrons  /  %d electrons\n", g_prot[z], g_neut[z], z);
+        fprintf(f, "sel_mass=%d\n",  g_prot[z] + g_neut[z]);
+        fprintf(f, "sel_period=%d\n", period_of(z));
+        if (g) fprintf(f, "sel_group=%d\n", g);
+        else   fprintf(f, "sel_group=f-block\n");
+        fprintf(f, "sel_color=%s\n", col);
+    } else {
+        fprintf(f, "sel_show=\nsel_empty=1\nsel_sym=\nsel_name=\nsel_z=\nsel_pne=\n"
+                   "sel_mass=\nsel_period=\nsel_group=\nsel_color=\n");
+    }
+    fprintf(f, "msg=%s\n", g_msg);
+
     fclose(f);
     rename(tmp, dst);
+}
+
+static void do_click(const char *sym) {
+    int z = z_of_sym(sym);
+    if (!z) return;
+    long long t = now_ms();
+    if (strcmp(sym, g_last_sym) == 0 && t - g_last_ms < 500) {
+        do_place(z);                 /* double-click */
+        g_last_sym[0] = '\0';
+    } else {
+        g_sel = z;                   /* single click -> inspect */
+        g_msg[0] = '\0';
+        snprintf(g_last_sym, sizeof(g_last_sym), "%s", sym);
+        g_last_ms = t;
+    }
+}
+
+static void poll_action(int *last_seq) {
+    char p[PL];
+    snprintf(p, sizeof(p), "%s/state/palettes-elements_action.txt", pkg_dir);
+    FILE *f = fopen(p, "r");
+    if (!f) return;
+    char buf[PL]; size_t n = fread(buf, 1, sizeof(buf) - 1, f); fclose(f);
+    buf[n] = '\0';
+    int seq = 0; char cmd[64] = "";
+    for (char *ls = buf; *ls; ) {
+        char *le = strchr(ls, '\n');
+        if (strncmp(ls, "seq=", 4) == 0) seq = atoi(ls + 4);
+        else if (strncmp(ls, "cmd=", 4) == 0) {
+            size_t cl = (le ? (size_t)(le - ls) : strlen(ls)) - 4;
+            if (cl >= sizeof(cmd)) cl = sizeof(cmd) - 1;
+            memcpy(cmd, ls + 4, cl); cmd[cl] = '\0';
+        }
+        if (!le) break; ls = le + 1;
+    }
+    if (seq > *last_seq && cmd[0]) {
+        *last_seq = seq;
+        if (strncmp(cmd, "CLICK:", 6) == 0) do_click(cmd + 6);
+        write_ui();
+    }
 }
 
 static void bye(int s) { (void)s; _exit(0); }
@@ -147,11 +257,11 @@ int main(int argc, char *argv[]) {
     signal(SIGTERM, bye); signal(SIGINT, bye); signal(SIGHUP, bye);
 
     load_recipe_pn();
+    { char ap[PL]; snprintf(ap, sizeof(ap), "%s/state/palettes-elements_action.txt", pkg_dir);
+      FILE *a = fopen(ap, "w"); if (a) { fputs("seq=0\ncmd=\n", a); fclose(a); } }
     write_ui();
 
-    /* static content - just stay alive so the renderer's module-cleanup
-     * has something to SIGTERM, and re-publish rarely in case the recipe
-     * file changes on disk. */
-    for (;;) { sleep(30); write_ui(); }
+    int last_seq = 0;
+    for (;;) { usleep(60000); poll_action(&last_seq); }
     return 0;
 }

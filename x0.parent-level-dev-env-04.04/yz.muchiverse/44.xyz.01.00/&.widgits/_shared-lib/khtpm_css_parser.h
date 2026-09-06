@@ -39,6 +39,7 @@ typedef struct {
     int has_display;         int display_flex; /* 0=block (default), 1=flex */
     int has_flex_direction;  int flex_row;      /* 0=column, 1=row - only meaningful if display_flex */
     int has_flex_grow;       int flex_grow;     /* real weight; a child with this set consumes remaining space on the main axis */
+    int has_flex_wrap;       int flex_wrap;     /* 0=nowrap (default), 1=wrap - flow children onto new cross-axis lines when the main axis fills (css_layout_pass) */
     /* REAL 2026-08-16, added AFTER the first real live port (db-hq's
      * own tabbar) found a real, genuine gap in the original §5.1b
      * scope: `padding` (existing field above, already real/used

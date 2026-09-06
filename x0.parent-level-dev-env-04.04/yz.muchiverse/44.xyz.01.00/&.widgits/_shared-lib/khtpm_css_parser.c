@@ -34,6 +34,7 @@ static void css_style_merge(CssStyle *dst, const CssStyle *src) {
     if (src->has_display)        { dst->has_display = 1; dst->display_flex = src->display_flex; }
     if (src->has_flex_direction) { dst->has_flex_direction = 1; dst->flex_row = src->flex_row; }
     if (src->has_flex_grow)      { dst->has_flex_grow = 1; dst->flex_grow = src->flex_grow; }
+    if (src->has_flex_wrap)      { dst->has_flex_wrap = 1; dst->flex_wrap = src->flex_wrap; }
     if (src->has_gap)            { dst->has_gap = 1; dst->gap = src->gap; }
 }
 
@@ -105,6 +106,8 @@ static void parse_declaration(const char *prop, const char *val, CssStyle *out) 
         out->has_flex_direction = 1; out->flex_row = (strcmp(v, "row") == 0);
     } else if (strcmp(prop, "flex-grow") == 0) {
         out->has_flex_grow = 1; out->flex_grow = atoi(v);
+    } else if (strcmp(prop, "flex-wrap") == 0) {
+        out->has_flex_wrap = 1; out->flex_wrap = (strcmp(v, "wrap") == 0);
     } else if (strcmp(prop, "gap") == 0) {
         out->has_gap = 1; out->gap = atoi(v);
     }

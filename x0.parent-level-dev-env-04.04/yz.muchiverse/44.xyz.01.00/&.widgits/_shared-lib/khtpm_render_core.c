@@ -422,6 +422,36 @@ static void css_layout_pass(Elem *e, int x, int y, int avail_w, int avail_h) {
 
     int is_row = e->style.has_flex_direction ? e->style.flex_row : 0;
     int n = e->n_children;
+
+    /* flex-wrap:wrap on a row container = a wrapping grid (periodic
+     * table, tile pickers). Children flow left-to-right at their own
+     * width; when the next one would overflow the container's content
+     * width, it starts a fresh line one (tallest-so-far + gap) below.
+     * flex-grow is ignored in this mode (a wrapped grid has fixed
+     * cells); nowrap / column keep the original path below. */
+    if (e->style.has_flex_wrap && e->style.flex_wrap && is_row) {
+        int wpad = e->style.has_padding ? e->style.padding : 0;
+        int wgap = e->style.has_gap ? e->style.gap : 0;
+        int x0 = e->x + wpad, y0 = e->y + wpad;
+        int right = e->x + e->w - wpad;
+        int cx = x0, cy = y0, line_h = 0;
+        for (int i = 0; i < n; i++) {
+            Elem *c = e->children[i];
+            if (c->style.has_position && c->style.position_absolute) {
+                int t = c->style.has_top ? c->style.top : 0;
+                int l = c->style.has_left ? c->style.left : 0;
+                css_layout_pass(c, e->x + l, e->y + t, c->w, c->h);
+                continue;
+            }
+            int cw = c->style.has_width  ? c->style.width  : (c->w > 0 ? c->w : 40);
+            int chh = c->style.has_height ? c->style.height : (c->h > 0 ? c->h : 24);
+            if (cx != x0 && cx + cw > right) { cx = x0; cy += line_h + wgap; line_h = 0; }
+            css_layout_pass(c, cx, cy, cw, chh);
+            cx += cw + wgap;
+            if (chh > line_h) line_h = chh;
+        }
+        return;
+    }
     /* REAL 2026-08-16, added after db-hq's own real live tabbar port
      * found the gap (see khtpm_css_parser.h's own header comment on
      * these 2 fields for the full real story) - `padding` insets flow

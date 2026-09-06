@@ -1,28 +1,44 @@
-<!-- palettes-elements.xhtpm - the "Chemicals+Compounds" palette, now a
-     PERIODIC-TABLE element picker (drag/click a tile -> stamp that
-     element onto the desktop). Rendered by the shared khtpm_core_render.+x.
+<!-- palettes-elements.xhtpm - the "Chemicals+Compounds" palette: a
+     periodic-table element picker. Rendered by the shared
+     khtpm_core_render.+x.
 
-     class="palettes-pal database-window" -> generic <item class="swatch">
-     grid layout (keyed on the class, not a g_is_* flag). The grid
-     auto-fits its column count to the window width, so a wide window
-     gives ~18 columns = periodic-table width.
+     Layout = <sidebar> + <panel> (this mode auto-adds window chrome).
+       <sidebar class="poe-grid">  display:flex; flex-wrap:wrap  -> the
+         shared HTML flexbox engine (css_layout_pass) flows the 118
+         element tiles into a wrapping grid; tile size + gap are CSS,
+         not a renderer constant.
+       <panel class="poe-detail">  the selected element's card.
+     class="... single-click": one click == pick (no "focus first" step).
 
-     <module>: ops/+x/elements_palette_manager.+x - publishes
-     state/palettes-elements_ui.txt: n_tiles + per-tile sym / z / name /
-     color (Drude-model, chem-viz.txt sec.3). Static.
-
-     Chrome: the <item class="chrome-btn" onclick="CLOSE"> below is laid
-     into the top strip by the swatch-grid layout (same as
-     palettes-rmmv.xhtpm) - the old template had none, hence "no chrome
-     to exit". -->
-<window label="palettes: Elements (periodic table)" class="palettes-pal database-window" vars="state/palettes-elements_ui.txt">
+     <module>: ops/+x/elements_palette_manager.+x
+       publishes state/palettes-elements_ui.txt (n_tiles + per-tile
+         sym/z/name/color, and sel_* for the detail card)
+       polls  state/palettes-elements_action.txt  (CLICK:<sym> from
+         ops/elem_click.sh - 1st click inspects, a 2nd on the same tile
+         within ~0.5s places it on the desktop). -->
+<window label="Periodic Table - element picker" class="database-window single-click" vars="state/palettes-elements_ui.txt">
   <module src="&.widgits/palettes/ops/+x/elements_palette_manager.+x" id="elements"/>
   <page name="main">
-    <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
-    <repeat count="${n_tiles}" bind="t">
-      <item id="pt${t.#}" class="swatch" bg="${t.color}" label="${t.sym}"
-            action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'place' '${t.sym}'"/>
-    </repeat>
-    <text label="Loading the periodic table..." class="quiet" show="${empty}"/>
+
+    <sidebar id="grid" class="poe-grid">
+      <repeat count="${n_tiles}" bind="t">
+        <item id="et${t.#}" class="etile ${t.cls}" bg="${t.color}" label="${t.sym}"
+              action="'${HOUSE}/&.widgits/palettes/ops/elem_click.sh' '${t.sym}'"/>
+      </repeat>
+    </sidebar>
+
+    <panel id="detail" class="poe-detail">
+      <text id="d-hint" class="poe-quiet" label="Click an element." show="${sel_empty}"/>
+      <text id="d-sym"  class="poe-sym"  label="${sel_sym}" show="${sel_show}"/>
+      <text id="d-name" class="poe-name" label="${sel_name}" show="${sel_show}"/>
+      <text id="d-z"    class="poe-line" label="atomic number  Z = ${sel_z}" show="${sel_show}"/>
+      <text id="d-pne"  class="poe-line" label="${sel_pne}" show="${sel_show}"/>
+      <text id="d-mass" class="poe-line" label="mass number  ~ ${sel_mass}" show="${sel_show}"/>
+      <text id="d-pos"  class="poe-line" label="period ${sel_period}   -   group ${sel_group}" show="${sel_show}"/>
+      <text id="d-col"  class="poe-line" label="Drude colour  ${sel_color}" show="${sel_show}"/>
+      <text id="d-place" class="poe-place" label="double-click the tile to place it on the desktop" show="${sel_show}"/>
+      <text id="d-msg"  class="poe-msg"  label="${msg}" show="${msg}"/>
+    </panel>
+
   </page>
 </window>

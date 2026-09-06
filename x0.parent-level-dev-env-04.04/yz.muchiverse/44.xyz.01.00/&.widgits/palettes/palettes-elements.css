@@ -1,22 +1,43 @@
 /* palettes-elements.css - the periodic-table element picker.
- * db-hq/stats-hq dark subset. Only background/border/color/font/padding
- * apply (khtpm_css_parser.c). */
+ * Only background/border/color/font/padding/width/height/flex apply. */
 
-/* wide enough for ~18 swatch columns (periodic-table width):
-   18 * (SWATCH 34 + GAP 8) + margins ~= 800 */
-window { width: 812px; height: 560px; background-color: #141414;
+window { width: 1000px; height: 620px; background-color: #121212;
   font-family: DejaVu Sans; font-size: 10px; }
 
-.quiet { color: #888888; font-size: 10px; padding: 8px; }
+/* LEFT: the wrapping element grid. flex-wrap flows the tiles; each tile
+   is a fixed box with a margin so there's real air between rows. */
+.poe-grid {
+  width: 720px;
+  background-color: #0d0d0d;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  padding: 10px;
+  gap: 8px;
+}
 
-/* each element tile - the per-tile fill comes from the item's bg=
-   attribute (the Drude colour), NOT this class. Keep the class fill
-   dark so an un-filled tile isn't a white flash. */
-.swatch { background-color: #1c1c1c; color: #000000; font-weight: bold;
-  font-size: 11px; }
+/* one element tile. Fill comes from the item's bg= (the Drude colour). */
+.etile {
+  width: 66px;
+  height: 58px;
+  color: #000000;
+  font-weight: bold;
+  font-size: 12px;
+  background-color: #1c1c1c;
+  border: 1px solid #000000;
+  border-width: 1;
+}
+.etile.sel {
+  border: 2px solid #ffffff;
+  border-width: 2;
+}
 
-.chrome-btn { background-color: #2b2b2b; color: #eeeeee; font-weight: bold;
-  font-size: 11px; border: 1px solid #888888; border-width: 1; }
-
-.pal-thumbtrack { background-color: #2a2a2a; }
-.sbar-arrow { background-color: #2a2a2a; color: #cccccc; font-weight: bold; }
+/* RIGHT: the detail card */
+.poe-detail { flex-grow: 1; background-color: #171717;
+  border: 1px solid #2a2a2a; border-width: 1; }
+.poe-quiet { color: #777777; padding: 12px; }
+.poe-sym  { color: #ffffff; font-weight: bold; font-size: 30px; padding: 12px 14px 0 14px; }
+.poe-name { color: #d9d9d9; font-size: 14px; padding: 0 14px 8px 14px; }
+.poe-line { color: #b9b9b9; font-size: 11px; padding: 2px 14px; }
+.poe-place { color: #7c8; font-size: 10px; padding: 10px 14px 2px 14px; }
+.poe-msg  { color: #ffd54a; font-size: 11px; padding: 6px 14px; }
