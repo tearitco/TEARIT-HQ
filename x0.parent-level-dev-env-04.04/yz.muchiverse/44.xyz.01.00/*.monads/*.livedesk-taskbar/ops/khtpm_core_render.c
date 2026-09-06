@@ -5852,6 +5852,13 @@ static void activate_focused(void) {
  * Dock mode only; a no-op for every other window. Cheap: two small
  * fopen("w")+tree-walk per repaint, and the strip only repaints on a
  * real state change. */
+/* Header-cell / bottom-tab focus lives in the MANAGER's strip_state.txt
+ * (strip_focus_cell: 0-based cell, or -1 meaning focus is on a bottom
+ * tab at index tab_focus_idx). Read once per frame; used by the walk so
+ * arrow-key nav is actually visible in the terminal mirror. */
+static int g_dock_focus_cell = -1;   /* 0-based, -1 = on a tab */
+static int g_dock_tab_focus  = 0;
+
 static void dock_ascii_walk(FILE *f, Elem *e, int depth) {
     if (!e) return;
     int has_label = e->label[0] != '\0';
@@ -5861,9 +5868,16 @@ static void dock_ascii_walk(FILE *f, Elem *e, int depth) {
                         strcmp(e->tag, "scrolllist") == 0 || strcmp(e->tag, "module") == 0);
     if ((has_label || (!is_container && e->nav_index > 0)) && strcmp(e->tag, "module") != 0) {
         for (int i = 0; i < depth; i++) fputs("  ", f);
-        if (e->nav_index > 0)
-            fprintf(f, "%s%d. ", (e->nav_index == g_focus_nav) ? "[>] " : "[ ] ", e->nav_index);
-        else if (!is_container)
+        if (e->nav_index > 0) {
+            /* header cells are nav 1..15 (strip_focus_cell is 0-based);
+             * bottom-bar tabs are nav 16+ (focused when strip_focus_cell
+             * == -1, at 16 + tab_focus_idx). */
+            int focused =
+                (g_dock_focus_cell >= 0)
+                    ? (e->nav_index == g_dock_focus_cell + 1)      /* a header cell */
+                    : (e->nav_index == 16 + g_dock_tab_focus);     /* focus is on a bottom tab */
+            fprintf(f, "%s%d. ", focused ? "[>] " : "[ ] ", e->nav_index);
+        } else if (!is_container)
             fputs("    ", f);
         int active = 0;
         for (int i = 0; i < e->n_classes; i++)
@@ -5907,8 +5921,7 @@ static void dock_ascii_append_state(FILE *f) {
         }
     }
     fclose(s);
-    if (tab_focus >= 0)
-        fprintf(f, "  (header focus cell: %d)\n", tab_focus);
+    (void)tab_focus;
     if (hq_open && n_hqitems > 0) {
         fprintf(f, "--- HQ menu (open) ---\n");
         for (int i = 0; i < n_hqitems; i++)
@@ -5918,6 +5931,24 @@ static void dock_ascii_append_state(FILE *f) {
 
 static void dock_write_ascii_frame(void) {
     if (!window_is_dock() || !g_window) return;
+
+    /* pull the manager's focus cursor before walking the tree */
+    g_dock_focus_cell = -1;
+    g_dock_tab_focus  = 0;
+    {
+        char sp[PATH_BUF];
+        snprintf(sp, sizeof(sp), "%s/#.desktop/strip_state.txt", g_house_root);
+        FILE *s = fopen(sp, "r");
+        if (s) {
+            char line[512];
+            while (fgets(line, sizeof(line), s)) {
+                if (strncmp(line, "KEY | strip_focus_cell | ", 25) == 0) g_dock_focus_cell = atoi(line + 25);
+                else if (strncmp(line, "KEY | tab_focus_idx | ", 22) == 0) g_dock_tab_focus = atoi(line + 22);
+            }
+            fclose(s);
+        }
+    }
+
     char path[PATH_BUF], hpath[PATH_BUF];
     snprintf(path,  sizeof(path),  "%s/#.desktop/strip_ascii_current_frame.txt", g_house_root);
     snprintf(hpath, sizeof(hpath), "%s/#.desktop/strip_ascii_frame_history.txt", g_house_root);

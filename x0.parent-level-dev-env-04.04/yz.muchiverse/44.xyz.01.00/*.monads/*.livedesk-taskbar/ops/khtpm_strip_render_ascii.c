@@ -129,97 +129,31 @@ static void emit(const char *fmt, ...) {
  * focused=1 are printed with [>] instead of [ ]. */
 static void compose_frame(const char *ts) {
     g_len = 0;
-    char pdl_path[PATH_BUF];
-    build_path(pdl_path, sizeof(pdl_path), "#.desktop/strip_frame.cells.pdl");
+    char fp[PATH_BUF];
+    build_path(fp, sizeof(fp), "#.desktop/strip_ascii_current_frame.txt");
 
-    emit("\r\n\r\n\r\n\r\n\r\n--- TASKBAR FRAME UPDATE at %s ---\r\n", ts);
-
-    FILE *f = fopen(pdl_path, "r");
-    if (!f) {
-        emit("(no cells.pdl — parser not producing frame yet)\r\n");
-        return;
-    }
-
-    int last_region = -1; /* 0=header, 1=bottom, 2=popup */
+    /* 2026-09-06: the frame is now composed by khtpm_core_render.c
+     * (dock_write_ascii_frame(), called from redraw()) - this binary is
+     * just the terminal PRESENTER: read that readable text file and
+     * re-emit every line with an explicit "\r\n" (raw-mode tty
+     * insurance, this file's whole reason to exist), preceded by a
+     * cursor-home + clear so the terminal doesn't scroll forever. */
+    emit("\033[H\033[2J");
+    FILE *f = fopen(fp, "r");
+    if (!f) { emit("(waiting for the taskbar strip to paint...)\r\n"); (void)ts; return; }
     char line[MAX_LINE];
     while (fgets(line, sizeof(line), f)) {
-        /* Parse: CELL | idx=N region=xxx | ch=... fg=... bg=... focused=N */
-        char *p = line;
-        char *seg1 = strtok(p, "|");
-        char *seg2 = strtok(NULL, "|");
-        char *seg3 = strtok(NULL, "\n");
-        if (!seg1 || !seg2 || !seg3) continue;
-        char *t = seg1; while (*t == ' ') t++;
-        if (strncmp(t, "CELL", 4) != 0) continue;
-
-        /* Parse seg2: "idx=N region=xxx" */
-        int focused = 0, region = 0;
-        char region_str[16] = "";
-        {
-            char *kv = seg2;
-            while (*kv == ' ') kv++;
-            char *eq = strchr(kv, '=');
-            if (eq) eq = strchr(eq + 1, ' '); /* skip idx=N */
-            if (eq) {
-                kv = eq + 1;
-                while (*kv == ' ') kv++;
-                eq = strchr(kv, '=');
-                if (eq) { snprintf(region_str, sizeof(region_str), "%s", eq + 1); }
-            }
-            if (strcmp(region_str, "header") == 0) region = 0;
-            else if (strcmp(region_str, "bottom") == 0) region = 1;
-            else if (strcmp(region_str, "popup") == 0) region = 2;
-            else region = 0;
-        }
-
-        /* Parse seg3: "ch=... fg=... bg=... focused=N" */
-        char ch_buf[CELL_CH_MAX] = "";
-        focused = 0;
-        {
-            char *kv = seg3;
-            while (*kv == ' ') kv++;
-            /* ch= field: everything up to next " fg=" or end */
-            char *fg_mark = strstr(kv, " fg=");
-            if (fg_mark) {
-                size_t ch_len = (size_t)(fg_mark - kv);
-                if (ch_len > 4) { /* skip "ch=" prefix */
-                    snprintf(ch_buf, sizeof(ch_buf), "%.*s", (int)(ch_len - 3), kv + 3);
-                }
-            }
-            /* focused= field */
-            char *foc = strstr(kv, " focused=");
-            if (foc) focused = atoi(foc + 9);
-        }
-
-        /* Region dividers */
-        if (region != last_region) {
-            if (last_region != -1) emit("\r\n");
-            last_region = region;
-        }
-
-        /* Print the cell. BUG FIX 2026-08-19 (direct live report:
-         * "double rendering the [] nav brackets"): ch_buf ALREADY has
-         * its own "[>]"/"[ ]" cursor prefix baked in by the parser's
-         * format_cell()/lay_cursor_prefix() - the SAME string the X11
-         * render draws. This function used to ALSO wrap its own
-         * "[%s] "/focused-based bracket around it, doubling up. The
-         * `focused` field is still parsed above (kept for any future
-         * consumer that wants it separately) but is no longer used to
-         * print a second bracket here - ch_buf is already correct and
-         * complete on its own. */
-        (void)focused;
-        emit("%s\r\n", ch_buf);
+        size_t n = strlen(line);
+        while (n > 0 && (line[n-1] == '\n' || line[n-1] == '\r')) line[--n] = '\0';
+        emit("%s\r\n", line);
     }
     fclose(f);
+    (void)ts;
 }
 
 static void write_frame_file(void) {
-    char path[PATH_BUF];
-    build_path(path, sizeof(path), "#.desktop/strip_ascii_current_frame.txt");
-    FILE *f = fopen(path, "w");
-    if (!f) return;
-    fwrite(g_buf, 1, g_len, f);
-    fclose(f);
+    /* no-op since 2026-09-06: khtpm_core_render.c is the sole writer of
+     * strip_ascii_current_frame.txt now; this presenter must not race it. */
 }
 
 static void append_history(const char *ts) {
@@ -276,19 +210,19 @@ int main(int argc, char **argv) {
      * of the same name (see khtpm_strip_parser.c's flush_cells_pdl() for
      * the full story) — that collision was firing a doc-reload every tick
      * in the parser, breaking arrow-key submenu navigation. */
-    build_path(pulse_path, sizeof(pulse_path), "#.desktop/strip_cells_changed.txt");
+    build_path(pulse_path, sizeof(pulse_path), "#.desktop/strip_ascii_current_frame.txt");
     struct stat st;
-    long last_marker_size = 0;
-    if (stat(pulse_path, &st) == 0) last_marker_size = st.st_size;
+    long last_sz = -1; long last_mt = 0;
+    if (stat(pulse_path, &st) == 0) { last_sz = st.st_size; last_mt = (long)st.st_mtime; }
 
     while (1) {
         if (stat(pulse_path, &st) == 0) {
-            if (st.st_size != last_marker_size) {
+            if (st.st_size != last_sz || (long)st.st_mtime != last_mt) {
                 render_display();
-                last_marker_size = st.st_size;
+                last_sz = st.st_size; last_mt = (long)st.st_mtime;
             }
         }
-        usleep(16667);
+        usleep(50000);
     }
     return 0;
 }
