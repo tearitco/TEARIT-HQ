@@ -7,7 +7,9 @@ short version.*
 2. Cross-platform (Windows/Mac) work: pending.
 3. Generic khtpm dispatch table (replace `g_is_<mode>` flags):
    designed, not built.
-4. ASCII/headless khtpm renderer: designed, not built.
+4. ASCII/headless khtpm renderer: strip half BUILT (`cli`, DIAMOND
+   marker-driven). All-windows + headless: planned in
+   `design-docs/TERMINAL-MIRROR-PARITY-all-windows.md`, not started.
 5. LayDoc → Elem/CSS taskbar retarget: not started.
 6. Audit `khtpm_core_render.c` for sibling inline data-loaders like
    `dbhq_load_actors()`: not done.

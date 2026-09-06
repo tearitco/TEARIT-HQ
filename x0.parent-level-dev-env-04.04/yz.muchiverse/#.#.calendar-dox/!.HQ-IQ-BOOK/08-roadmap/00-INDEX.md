@@ -75,9 +75,13 @@ pointers were the only outright deletions.
   design in `02-architecture/xperiments/khtpm-generic-dispatch-
   design.md`, not yet implemented — see `CENTROID_GOLD_STD.md` §3
   rule 7 for the ordered migration plan.
-- **ASCII/headless khtpm renderer** (`ascii_draw_elem()`): designed,
-  not yet built — `02-architecture/xperiments/chtpmx11-refactor.md`
-  §8.
+- **ASCII/headless khtpm renderer** (`ascii_draw_elem()`): the strip
+  half is **BUILT + verified** (`cli`, bidirectional, DIAMOND
+  marker-driven, 2026-09-06). Extending it to every window (entity
+  menus, sub-menus, HQ windows, headless) is planned in
+  `design-docs/TERMINAL-MIRROR-PARITY-all-windows.md` (4 shippable
+  steps). Older sketch: `02-architecture/xperiments/chtpmx11-
+  refactor.md` §8.
 - **LayDoc → Elem/CSS taskbar retarget**: not started — see
   `design-docs/LAYDOC-ELEM-PORT-IMPLEMENTATION-PLAN.md`.
 - **`dbhq_load_actors()` and sibling inline loaders**: audit pass not
