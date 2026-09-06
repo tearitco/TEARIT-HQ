@@ -21,14 +21,12 @@ read this list before touching **anything** in git. (2026-09-05)
    `HANDOFF-2026-09-04-slave-nb-js-worker.md` and
    `PROGRESS-nb-js-worker-phase1.md`.
 
-## Your open item (do NOT re-drop this)
+## Your open item — RESOLVED 2026-09-06
 
-`experiment/xhtpm-attr-var-escaping` has unique, **local-only**, unmerged
-commits (tip `01aee649` — "XML-escape \${var} values spliced into quoted
-xhtpm attributes"). Deliberately left undeleted (2026-09-05). Next
-session: **push it to origin as a backup OR fold its content into your
-branch, then delete it.** Never force-delete branches; never leave
-uncommitted work scoped to your branch.
+`experiment/xhtpm-attr-var-escaping` was folded into the `claude`
+branch (parser infinite-loop fix, pitfall #13, and the `${var}`
+attr-XML-escaping commit all live on `claude` now) and the branch was
+deleted. Nothing outstanding here.
 
 ## Standing rules so we stop paying for lost work
 

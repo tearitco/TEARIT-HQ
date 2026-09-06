@@ -35,11 +35,11 @@ or push — the exact failure that cost the nb-js-worker step-6/7 set
   force-delete a branch with unique, unmerged, local-only commits** —
   push it to origin first or leave it alone.
 
-## Open item for Claude Sonnet
+## Open item for Claude Sonnet — RESOLVED 2026-09-06
 
-`experiment/xhtpm-attr-var-escaping` (tip `01aee649`, local-only) holds
-unmerged experiment commits: "XML-escape \${var} values spliced into
-quoted xhtpm attributes" on top of the docs commit `0ea2e326`. It is
-NOT on origin and was deliberately NOT deleted (2026-09-05). Next
-session: either push it to origin or fold its content into your branch,
-then delete it. Do not leave it orphaned a second time.
+`experiment/xhtpm-attr-var-escaping` was folded into `claude` (the
+parser infinite-loop fix, pitfall #13, and the `${var}` attr-XML-
+escaping commit are all on `claude`) and the branch was deleted.
+`chtpm-delete-per-app-c` was also reset back to `d91b1798` to drop a
+stray merge, and this branch (`opencode`) was rebased off it. Nothing
+outstanding.
