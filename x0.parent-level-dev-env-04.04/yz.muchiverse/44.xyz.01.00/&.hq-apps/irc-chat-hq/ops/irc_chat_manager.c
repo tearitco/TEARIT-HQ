@@ -251,8 +251,19 @@ static void read_bound_port(void) {
 
 /* ------------------------------------------------------------------ */
 
+/* Auto-generated test-harness rooms clutter the list (direct: "can we
+ * get rid of some of the old rooms"). Hide them from the sidebar - a
+ * pure DISPLAY filter, the ledger is untouched, and cur_room is always
+ * shown even if it matches (so a deliberate visit still works). */
+static int room_is_junk(const char *r) {
+    return strncmp(r, "harness_room_", 13) == 0
+        || strncmp(r, "p2p_test_room_", 14) == 0
+        || strncmp(r, "uxtest_", 7) == 0;
+}
+
 static void add_room(const char *r) {
     if (!r || !r[0]) return;
+    if (room_is_junk(r) && strcmp(r, cur_room) != 0) return;
     for (int i = 0; i < n_rooms; i++) if (strcmp(rooms[i], r) == 0) return;
     if (n_rooms < MAX_ROOMS) { snprintf(rooms[n_rooms], 128, "%s", r); n_rooms++; }
 }
@@ -260,10 +271,12 @@ static void add_room(const char *r) {
 static void read_ledger(void) {
     n_rooms = 0;
     n_msgs = 0;
+    add_room("lobby");        /* always-present defaults, listed first */
+    add_room("general");
     char p[PL];
     snprintf(p, sizeof(p), "%s/data/master_ledger.txt", session_root);
     FILE *f = fopen(p, "r");
-    if (!f) { add_room("lobby"); add_room(cur_room); return; }
+    if (!f) { add_room(cur_room); return; }
     char line[4096];
     while (fgets(line, sizeof(line), f)) {
         line[strcspn(line, "\r\n")] = '\0';

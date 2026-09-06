@@ -14,3 +14,10 @@ SECTION | launcher_ai       | &.widgits/open-hai/button.sh
 #   *.monads/*.muchi-pet/ops/open_db_hq.sh
 SECTION | launcher_db       | &.hq-apps/db-hq-pal/button.sh
 SECTION | launcher_signup   | &.hq-apps/signup-hq/button.sh
+# 2026-09-06: network cell (13.network) rows - data-driven, one per
+# menu key. Every network launcher takes just <house_root> as argv[1].
+# Repoint an app by editing its path here; add one by adding a row
+# here + a network_menu_N_* pair in livedesk_taskbar.pdl. No C change.
+SECTION | launcher_network_irc     | &.hq-apps/irc-chat-hq/open_irc_chat_hq.sh
+SECTION | launcher_network_forum   | &.hq-apps/network/open_forum_cli.sh
+SECTION | launcher_network_browser | &.hq-apps/network/button.sh

@@ -3908,44 +3908,28 @@ void ktb_hq_activate(KtbState *s, int row) {
         (void)rc;
         ktb_hq_close(s);
     } else if (strncmp(m->command, "livedesk:open-network:", 22) == 0) {
-        /* network cell rows (2026-08-31, "13.network" dropdown, see
-         * livedesk_build_network_menu()'s own header comment) - SAME
-         * real reason as livedesk:open-palette: right above: the real
-         * launcher scripts live under the house's literal "&.hq-apps/"
-         * dir, which cannot survive unquoted in the generic sh -c
-         * fallback ('&' is a control operator). Dispatch string +
-         * C-side quoted absolute path, not a raw PDL shell command.
-         * "browser" opens the REAL, current, CENTROID_GOLD_STD-
-         * compliant window (button.sh - the shared khtpm_core_render.c
-         * generic default path + a real manager, per xperiments/
-         * khtpm-generic-dispatch-design.md's own "REAL, adopted answer"
-         * section, live-tested standalone but never actually wired to
-         * this menu until now, direct live report 2026-09-01: "so ur
-         * telling me we havent wired up the real browser to toolbar
-         * yet?"). The OLD standalone stub (open_network_browser.sh ->
-         * network_browser_render.c, its own separate hand-rolled X11
-         * app) is retired - button.sh's own header comment already
-         * documents killing any leftover instance of it as a one-time
-         * transition safeguard. irc/forum/chain still open the matching
-         * app via open_network_app.sh's own real <app> key, untouched.
-         * Prefix length verified: printf '%s'
-         * "livedesk:open-network:" | wc -c = 22. */
+        /* network cell rows ("13.network" dropdown). FULLY data-driven
+         * (2026-09-06, direct: "we shouldnt have to change parser code
+         * to add more apps"): the row's <key> maps to a
+         * `launcher_network_<key>` line in livedesk_launchers.pdl,
+         * resolved against house_root exactly like settings/stats/db/ai
+         * already are (ktb_hq_launcher_path()). Every network launcher
+         * takes just `<house_root>` as argv[1]. Adding or repointing a
+         * network app = one menu row (livedesk_taskbar.pdl) + one
+         * launcher row (livedesk_launchers.pdl) - zero C, zero
+         * recompile, no per-key strcmp chain here anymore. */
         const char *key = m->command + 22;
-        char sh[KTB_PATH_BUF * 3];
-        if (strcmp(key, "browser") == 0) {
+        char app[80];
+        snprintf(app, sizeof(app), "network_%s", key);
+        char launcher[KTB_PATH_BUF];
+        if (ktb_hq_launcher_path(s->house_root, app, launcher, sizeof(launcher))) {
+            char sh[KTB_PATH_BUF * 3];
             snprintf(sh, sizeof(sh),
-                     KTB_SETSID "nohup sh \"%s/&.hq-apps/network/button.sh\" \"%s\" >/dev/null 2>&1 &",
-                     s->house_root, s->house_root);
-        } else {
-            const char *title = strcmp(key, "irc") == 0 ? "IRC Chat"
-                               : strcmp(key, "forum") == 0 ? "Forum"
-                               : strcmp(key, "chain") == 0 ? "Chain" : key;
-            snprintf(sh, sizeof(sh),
-                     KTB_SETSID "nohup sh \"%s/&.hq-apps/network/open_network_app.sh\" \"%s\" \"%s\" \"%s\" >/dev/null 2>&1 &",
-                     s->house_root, s->house_root, key, title);
+                     KTB_SETSID "nohup sh -c 'bash \"%s\" \"%s\"' >/dev/null 2>&1 &",
+                     launcher, s->house_root);
+            int rc = ktb_system_recorded(s->house_root, sh);
+            (void)rc;
         }
-        int rc = ktb_system_recorded(s->house_root, sh);
-        (void)rc;
         ktb_hq_close(s);
     } else if (strcmp(m->command, "livedesk:spawn-cursword") == 0) {
         /* CURSword personal-assistant entity (AU24-oc-handon.md §4.4),
