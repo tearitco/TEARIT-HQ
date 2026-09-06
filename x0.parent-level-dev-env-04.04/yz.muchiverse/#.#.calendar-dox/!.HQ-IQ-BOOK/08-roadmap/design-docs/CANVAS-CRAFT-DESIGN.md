@@ -112,27 +112,31 @@ in the renderer). All generic tags.
 
 ```
 ┌── LEFT: RECIPES ──────┬── MIDDLE: BENCH ─────────────┬── RIGHT: INVENTORY ──┐
-│ [search recipe…]      │  ╔═ Gold ══════════════╗     │ Relevant Items       │
-│ ▸ Quarks              │  ║ output ⬛ Gold  ×1   ║     │  ⬛79 ⬛118            │
-│ ▸ Subatomic           │  ╚═════════════════════╝     │                      │
+│ [ search recipe…  🔍] │  ╔═ Gold ══════════════╗     │ [ filter items…  🔍] │
+│ ▸ Quarks              │  ║ output ⬛ Gold  ×1   ║     │ Relevant Items       │
+│ ▸ Subatomic           │  ╚═════════════════════╝     │  ⬛79 ⬛118            │
 │ ▾ Elements   ← POE tab│   0 / 79   Proton  ▓▓░░░     │ All Items            │
 │    [>] Hydrogen       │   0 / 118  Neutron ▓░░░░     │  ⬛ ⬛ ⬛ ⬛ ⬛ ⬛      │
 │    [ ] Helium         │  ┌ crafting bench ─────────┐ │  ⬛ ⬛ ⬛ ⬛ ⬛ ⬛      │
 │    [ ] …  Gold        │  │ ·  ·  ·   ·  ·  ·        │ │  ⬛ ⬛ …               │
 │ ▸ Compounds           │  └─────────────────────────┘ │                      │
-│ ▸ Materials · Bio …   │        [  CRAFT  ]           │  [Sort]      [🗑]     │
+│ ▸ Materials · Bio …   │  ƒ( oxygen*5 + tree*2      ) │  [Sort]      [🗑]     │
+│                       │        [  CRAFT  ]           │                      │
 └───────────────────────┴─────────────────────────────┴──────────────────────┘
 ```
 
 **LEFT — `<sidebar>`**, two tabs:
-- **Recipes**: a search box (`<cli_io>`), then a `<scrolllist>` of
+- **Recipes**: a **search bar** (`<cli_io>`, armed on click / a nav
+  digit) that filters the list live — substring on name, symbol,
+  formula, or `tier`; empty = full list. Below it, a `<scrolllist>` of
   recipes grouped by `tier` with collapsible headers. Real thumb +
   wheel + PageUp/Down (the palettes VIEW SPECS scroll contract).
 - **POE**: the 118 elements in true periodic-table geometry — period
   rows, group columns, the lanthanide/actinide strip pulled out below.
   Each cell = symbol + Z, background = Drude colour (§5). Click → selects
   that element in the middle panel. Non-nav geometry cells; only the
-  focused row/cell gets a nav index.
+  focused row/cell gets a nav index. (The search bar also filters POE —
+  a match highlights its cell and scrolls it into view.)
 
 **MIDDLE — `<panel>`**: the selected recipe.
 - Output card: emoji/sprite + name + `yield` ("× 16" like Satisfactory).
@@ -143,12 +147,16 @@ in the renderer). All generic tags.
 - **Crafting bench**: a small fixed grid of slots, itself a nav target.
   Items you add from inventory land here; the ingredient rows fill as
   matching items arrive.
+- **Formula bar** (`ƒ(…)`): a `<cli_io>` for loading the bench by typed
+  expression instead of double-clicking — see §2.3.
 - **CRAFT** button — enabled only when every `have ≥ need`. Fires
   `CRAFT`.
 - Optional **Inspect** toggle → the 3D-in-2D atom view (§4) in a
   `<canvas>` in this same panel, or a spawned inspector window.
 
 **RIGHT — `<panel>`**: inventory.
+- A **filter bar** (`<cli_io>`), same behaviour as the left search but
+  over inventory — substring on item name / symbol; empty = show all.
 - **Relevant Items**: the subset you hold that the selected recipe
   needs (Satisfactory's top strip).
 - **All Items**: full inventory grid, `Sort`, trash.
@@ -166,16 +174,69 @@ in the renderer). All generic tags.
 
 | action | result |
 |---|---|
-| click a recipe (LEFT) / a POE cell | `SELECT_RECIPE:<id>` — middle panel repopulates |
+| type in the LEFT search bar | `SEARCH_RECIPES:<text>` — recipe list + POE filter live |
+| type in the RIGHT filter bar | `FILTER_INV:<text>` — inventory grid filters live |
+| click a recipe (LEFT) / a POE cell | `SELECT_RECIPE:<id>` / `POE_SELECT:<Z>` — middle panel repopulates |
 | **double-click** an item in inventory (RIGHT) | selects that inventory slot |
 | **double-click** the crafting-bench nav (MIDDLE) | `BENCH_ADD:<slot>` — moves 1 of the selected item onto the bench; ingredient rows refill |
 | click a bench item, press **Backspace** | `BENCH_REMOVE:<slot>` — item returns to inventory |
+| type + Enter in the **formula bar** (MIDDLE) | `BENCH_FORMULA:<raw text>` — stages the whole expression onto the bench (§2.3) |
 | **CRAFT** (all rows satisfied) | consume the bench inputs, add `yield ×` output to inventory, clear the bench |
 | Inspect | `INSPECT:<id>` — opens the atom view (§4) |
 
 Keyboard-only path (for the terminal mirror / headless): arrows +
 digits select; Enter on a bench slot = add focused inventory item;
 Backspace = remove; a nav-numbered CRAFT row.
+
+### 2.3 The formula bar (center panel)
+
+A `<cli_io>` under the bench for **loading the bench by typed
+expression** — the fast path for anyone who knows what they want, and
+the only practical path for large stacks (nobody double-clicks 118
+times to build Gold).
+
+**Grammar**
+
+```
+formula := term ( '+' term )*
+term    := ref ( '*' count )?          ; count defaults to 1
+ref     := name                        ; item name / id slug, case-insensitive,
+                                       ;   spaces or '-' → '_'  ("Up quark" == up_quark)
+         | '[]' int                    ; inventory slot number (the []N in the grid)
+count   := int                         ; may be a bare number or  x5 / X5 / *5
+```
+
+Examples (all equivalent ways to stage the same bench):
+```
+oxygen * 5 + tree * 2
+oxygen x5 + tree x2
+[]1 * 5 + []100 * 2                     ; []1 holds oxygen, []100 holds tree
+oxygen*5 + []100*2                      ; names and slot refs mix freely
+```
+
+**On submit (Enter):**
+1. Parse to `[(item, count), …]`. Unknown name / empty slot / bad
+   number → the whole line is rejected, the offending token echoed
+   under the bar, bench unchanged.
+2. For each term, move `count` of `item` from inventory to the bench
+   (top up an existing bench stack of the same item). If inventory is
+   short, stage what's available and report `oxygen: staged 3/5 (short 2)`.
+3. Ingredient `have/need` rows and CRAFT-enabled recompute (§3).
+4. The bar clears; the raw text is kept in a small history (Up-arrow to
+   recall), so `+ nitrogen*2` style follow-ups are quick.
+
+**`CLEAR` / `-`**: a leading `-` on a term (`-oxygen*2`) or the word
+`clear` empties matching bench stacks back to inventory — the typed
+inverse of the per-item Backspace.
+
+**Verb:** `BENCH_FORMULA:<raw text>` → `canvascraft_manager.c` does the
+parse + inventory math and republishes. The manager is the only thing
+that understands the grammar; the renderer just ships the `<cli_io>`
+buffer through on submit (same path every other `<cli_io>` uses).
+
+**Not** a recipe-definition language (yet). It only fills the current
+bench for the currently-selected recipe. Using it to define a *custom*
+multi-output recipe is a later idea — noted in §7.
 
 ---
 
@@ -272,16 +333,21 @@ logic").
 
 **`canvascraft_manager.c`** owns:
 - parse the recipe registry (legacy `.txt` in P1, `canvascraft_recipes.pdl` after)
-- category/tier grouping + search filter
+- category/tier grouping + the left/right **search-filter** strings
 - the quantity resolver (§3)
+- the **formula-bar grammar** (§2.3) — parse + inventory math
 - **bench state** — slots + contents
 - **inventory** — see persistence below
 - `CRAFT` execution — validate, consume, produce, append to inventory
 
 Publishes `&.widgits/canvas-craft/state/canvas-craft_ui.txt`
 (`key=value` + `<repeat>` rows: recipe list, selected-recipe ingredient
-rows with `have`/`need`, bench slots, inventory grid). Polls
-`state/canvas-craft_action.txt` for the §2.2 verbs.
+rows with `have`/`need`, bench slots, inventory grid, `formula_error`).
+Polls `state/canvas-craft_action.txt` for the verbs:
+`SELECT_RECIPE:<id>` · `POE_SELECT:<Z>` · `SEARCH_RECIPES:<text>` ·
+`FILTER_INV:<text>` · `BENCH_ADD:<inv_slot>` · `BENCH_REMOVE:<bench_slot>` ·
+`BENCH_FORMULA:<raw text>` · `CRAFT` · `INSPECT:<id>` · `SORT_INV` ·
+`TAB:<left_tab>`.
 
 **Inventory persistence** — open question §7. Default proposal:
 per-user `xyzfs/users/<uuid>/…/canvascraft_inventory.txt`
@@ -322,6 +388,17 @@ already consumes markers this way. No `mtime`.
    piececraft or mutaclysm map via the existing palette placement +
    XDND `drop_action` protocol (`pallette-design.txt` PLACEMENT
    PROTOCOL). Confirm the crafted-item → tile mapping.
+10. **Formula bar reach** (§2.3) — stays a bench-loader, or grows into
+    a recipe-definition language (`define waterbatch = hydrogen*20 +
+    oxygen*10` → a saved custom recipe / macro)? Proposed: bench-loader
+    only for now; revisit once `user-pallet` fold-in (Q1) is decided —
+    saved formulas are a natural fit for that "favourites / saved
+    builds" tab.
+11. **Name collisions** — `oxygen` vs `O2` vs `Ozone`; `tree` isn't in
+    the current recipe file at all. The formula parser needs a
+    canonical name/alias table and a clear "unknown item" error.
+    Proposed: exact slug match first, then a small alias map
+    (`o2 → dioxygen`, plurals), else reject the token.
 
 ---
 
@@ -330,7 +407,8 @@ already consumes markers this way. No `mtime`.
 | phase | deliverable |
 |---|---|
 | **1** | `canvascraft_manager.c` parses the legacy recipe file, groups by tier, runs the resolver. Static 3-panel xhtpm (flex-wrap layout). LEFT recipe list + MIDDLE recipe card with `have/need` rows. **Read-only** — no inventory yet, `have` hardcoded 0. Proves the data + layout + resolver. |
-| **2** | Inventory model + bench state + `BENCH_ADD/REMOVE/CRAFT`. RIGHT panel (Relevant / All / Sort / trash). Seed a starter inventory (a stack of quarks, protons, neutrons, electrons + a few common elements). Per-user persistence. Craft loop end to end. |
+| **2** | Inventory model + bench state + `BENCH_ADD/REMOVE/CRAFT`. RIGHT panel (Relevant / All / Sort / trash). Seed a starter inventory (a stack of quarks, protons, neutrons, electrons + a few common elements). Per-user persistence. Craft loop end to end. The **left search bar + right filter bar** (`SEARCH_RECIPES` / `FILTER_INV`) land here — they're just a substring filter over the `<repeat>` the manager already builds. |
+| **2.5** | The **formula bar** (§2.3): `BENCH_FORMULA` grammar + parser in the manager, `<cli_io>` + `formula_error` line in the middle panel, Up-arrow history. Small and self-contained once Phase 2's inventory math exists. |
 | **3** | POE tab — periodic-table geometry grid, Drude colours, `POE_SELECT`. `chem_color.c`. |
 | **4** | 3D-in-2D inspector — `voxel_gen.c` + `<canvas>` projection + zoom/LOD; ASCII fallback for the terminal mirror. |
 | **5** | `canvascraft_recipes.pdl` migration (§1.3); `parentC`/ions; reactive pairs (Water+Sodium); gameplay gating (§7.8). |
