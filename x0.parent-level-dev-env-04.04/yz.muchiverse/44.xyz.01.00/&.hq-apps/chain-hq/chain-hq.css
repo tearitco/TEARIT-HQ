@@ -1,162 +1,86 @@
-/* dashboard.css — db-hq styling, load-bearing subset only (see
-   au11-hq/HQML-DESIGN+PLANS.md's own "start small" note). Ported from
-   au11-hq/rpg-maker-database.html's .tab-bar / .sidebar / .settings-block
-   / .block-title / .stat-bar rules, minus anything needing flex/grid
-   (out of scope until a section that needs it gets built).
-
-   REAL, DELIBERATE 2026-08-16: dark theme, direct instruction ("yes"
-   after being asked to confirm this as a real design change, not a
-   bug fix - db-hq's own light theme was intentional/matching the real
-   rpg-maker-database.html mockup until this point). Real palette
-   matches the same dark convention already used across open-hai/
-   chat-hai/khtpm_core_render.c/taskbar-settings this same
-   session (#141414 base / #1a1a1a-#2a2a2a panels / #eeeeee-#cccccc
-   text) - not a new, unrelated color scheme. */
+/* chain-hq.css - merged on the renderer default. khtpm_css_parser.c:
+   bare tag / single compound class chain / #id only, no descendant
+   combinators. Only background/border/color/font/padding apply. */
 
 window {
-  background-color: #141414;
-  font-family: Ubuntu;
-  font-size: 10px;
+    width: 760px;
+    height: 560px;
+    background-color: #14161c;
+    font-family: DejaVu Sans;
+    font-size: 11px;
 }
 
-.tab-bar {
-  background-color: #1a1a1a;
-  border-color: #444444;
-  border: 1px solid #444444;
+.chain-sidebar {
+    background-color: #0d0f14;
+    border: 1px solid #262a33;
+    border-color: #262a33;
 }
 
-.tab {
-  background-color: #1a1a1a;
-  color: #aaaaaa;
-  border: 1px solid #444444;
-  font-size: 9px;
+.chain-panel {
+    background-color: #1b1e26;
+    border: 1px solid #333846;
+    border-color: #333846;
 }
 
-.tab.active {
-  background-color: #2a2a2a;
-  color: #ffffff;
-  font-weight: bold;
+.chain-who {
+    color: #7c8399;
+    font-size: 10px;
+    padding: 6px 8px 4px 8px;
 }
 
-.sidebar {
-  background-color: #181818;
-  border: 1px solid #333333;
+.chain-tab {
+    color: #cfd3de;
+    font-size: 11px;
+    padding: 6px 10px;
 }
 
-.data-item {
-  color: #cccccc;
-  font-size: 10px;
+.chain-tab.tab-active {
+    background-color: #2d4059;
+    color: #ffffff;
 }
 
-.data-item.active {
-  background-color: #2f5f8f;
-  color: #ffffff;
+.chain-status {
+    color: #8a93a8;
+    font-size: 10px;
+    padding: 4px 8px;
 }
 
-.settings-block {
-  background-color: #1c1c1c;
-  border: 1px solid #333333;
-  border-width: 1;
+.chain-big {
+    color: #7ee0a0;
+    font-size: 16px;
+    padding: 12px 10px 4px 10px;
 }
 
-.block-title {
-  background-color: #2a2a2a;
-  color: #eeeeee;
-  font-weight: bold;
-  font-size: 9px;
-  position: absolute;
-  top: -8px;
-  left: 10px;
+.chain-kv {
+    color: #d6d9e3;
+    font-size: 11px;
+    padding: 2px 10px;
 }
 
-.event-name {
-  color: #dddddd;
-  font-size: 12px;
+.chain-quiet {
+    color: #5a6072;
+    font-size: 10px;
+    padding: 6px 10px;
 }
 
-.btn-primary {
-  background-color: #4a9eff;
-  color: #ffffff;
-  font-size: 10px;
+.chain-send {
+    color: #ffffff;
+    background-color: #11141b;
+    border: 1px solid #333846;
+    border-color: #333846;
+    padding: 4px 6px;
 }
 
-button:hover {
-  background-color: #2a7eff;
+.chain-btn {
+    color: #ffffff;
+    background-color: #3a5f8a;
+    border: 1px solid #4a7fbf;
+    border-color: #4a7fbf;
+    padding: 6px 12px;
 }
 
-/* Part B (2026-08-29) - Common Events' new Scripting/Scratch/Blueprints
- * view-mode tabs share evhq_build_scratch_view()'s real Elems with
- * events-hq (see EVENTS-HQ-RENDER-UNIFICATION-PLAN.md), but db-hq's own
- * dashboard.css never had these rules - ported verbatim from
- * &.widgits/events-hq/pieces/dashboard.css so the Scratch view actually
- * shows real color here instead of falling through to zero-style. */
-.scratch-block {
-  background-color: #7ea7e0;
-  color: #0a0a0a;
-  border: 1px solid #3a5a8a;
-  font-size: 11px;
-}
-.scratch-block.gold     { background-color: #e5b93e; border-color: #9a7a10; }
-.scratch-block.green    { background-color: #5cb85c; border-color: #2f7a2f; }
-.scratch-block.orange   { background-color: #e8853d; border-color: #9a5510; }
-.scratch-block.purple   { background-color: #b07cc6; border-color: #6f3f85; }
-.scratch-block.pink     { background-color: #e0618a; border-color: #993560; }
-.block-item {
-  color: #101016;
-  border: 1px solid #30303a;
-  font-size: 11px;
-}
-.block-item.selected {
-  border: 2px solid #ffffff;
-}
-.block-place {
-  background-color: #ffffff;
-  color: #1a5c1a;
-  border: 1px dashed #8f8f9a;
-  font-size: 11px;
-}
-.block-clue {
-  color: #8f8f9a;
-  font-size: 10px;
-}
-
-/* REAL FIX 2026-08-29 (live report: Common Events' own Add-Command
- * picker had "no solid background/window outline" and other weird
- * behavior) - root cause: evhq_draw_picker_overlay() was converted
- * from hand-drawn C to real CSS-driven Elems (see khtpm_entity_menu_
- * render.c's own comment on that change), but that CSS-ification only
- * ported the new .picker-* rules into events-hq's own dashboard.css -
- * db-hq's Common Events editor shares the SAME picker function
- * (g_dbhq_ce_editing && g_evhq_picker_open) but loads THIS separate
- * CSS file, which never had these rules at all, so the overlay had
- * zero style here: no background, no border, no text color - reads as
- * "missing" even though it was really drawing, just invisibly. Ported
- * verbatim from events-hq's own dashboard.css, same as every other
- * shared-Elem CSS port this session (.scratch-block/.block-item/etc
- * above got the same treatment). */
-.picker-overlay {
-  background-color: #2a2a2a;
-  border: 1px solid #4a9eff;
-}
-.picker-title {
-  color: #eeeeee;
-  font-size: 11px;
-  font-weight: bold;
-}
-.picker-row {
-  color: #eeeeee;
-  font-size: 11px;
-}
-.picker-cancel {
-  color: #ff8080;
-  font-size: 11px;
-}
-.picker-delete {
-  background-color: #cc4444;
-  color: #ffffff;
-  font-size: 11px;
-}
-.picker-hint {
-  color: #999999;
-  font-size: 11px;
+.chain-hrow {
+    color: #9aa3b8;
+    font-size: 9px;
+    padding: 1px 8px;
 }

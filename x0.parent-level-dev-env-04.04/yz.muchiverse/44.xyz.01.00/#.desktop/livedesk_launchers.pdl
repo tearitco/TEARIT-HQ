@@ -21,3 +21,4 @@ SECTION | launcher_signup   | &.hq-apps/signup-hq/button.sh
 SECTION | launcher_network_irc     | &.hq-apps/irc-chat-hq/open_irc_chat_hq.sh
 SECTION | launcher_network_forum   | &.hq-apps/network/open_forum_cli.sh
 SECTION | launcher_network_browser | &.hq-apps/network/button.sh
+SECTION | launcher_network_chain   | &.hq-apps/chain-hq/open_chain_hq.sh

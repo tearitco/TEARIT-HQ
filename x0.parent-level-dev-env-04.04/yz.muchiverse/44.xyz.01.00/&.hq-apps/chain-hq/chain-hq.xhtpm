@@ -1,0 +1,55 @@
+<!-- chain-hq.xhtpm - X11-HQ wallet dashboard for 041.pal-chain⛓️.
+     Static layout. Shared khtpm_core_render.+x. class="chain-window
+     database-window" - no g_is_* trigger, generic sidebar/panel path,
+     ZERO renderer C. 08-roadmap/design-docs/IRC-FORUM-CHAIN-HQ-
+     WINDOWS.md.
+
+     One <module>: ops/+x/chain_manager.+x - seeds a per-instance
+     session dir, auto-creates+logs-in the login-name wallet ("jb"),
+     starts palnet_peer (chain_node) + chain_inbox_watcher, publishes
+     chain_ui.txt, polls chain_action.txt.  Tabs are show=-gated by
+     ${tab_*}. -->
+<window label="chain  ·  ${wallet_id}  :${port}  ·  ${balance} mc" class="chain-window database-window" vars="chain_ui.txt">
+  <module src="&.hq-apps/chain-hq/ops/+x/chain_manager.+x"/>
+  <page name="main">
+
+    <sidebar id="sidebar" class="chain-sidebar">
+      <text id="who" label="wallet: ${wallet_id}" class="chain-who"/>
+      <item id="tw" class="chain-tab ${cls_wallet}"  label="Wallet"  action="'${PKG}/ops/chain_item.sh' 'TAB wallet'"/>
+      <item id="ts" class="chain-tab ${cls_send}"    label="Send"    action="'${PKG}/ops/chain_item.sh' 'TAB send'"/>
+      <item id="tm" class="chain-tab ${cls_mine}"    label="Mine"    action="'${PKG}/ops/chain_item.sh' 'TAB mine'"/>
+      <item id="th" class="chain-tab ${cls_history}" label="History" action="'${PKG}/ops/chain_item.sh' 'TAB history'"/>
+      <item id="rf" class="chain-tab" label="↻ refresh" action="'${PKG}/ops/chain_item.sh' 'REFRESH'"/>
+    </sidebar>
+
+    <panel id="content" class="chain-panel">
+      <text id="status" class="chain-status" label="${status}"/>
+
+      <!-- Wallet -->
+      <text id="w-bal"  class="chain-big"  label="${balance} millicones"           show="${tab_wallet}"/>
+      <text id="w-id"   class="chain-kv"   label="wallet id:  ${wallet_id}"        show="${tab_wallet}"/>
+      <text id="w-hint" class="chain-quiet" label="This session's wallet is auto-created + logged in. Mine on the Mine tab to earn." show="${tab_wallet}"/>
+
+      <!-- Send -->
+      <text id="s-hint" class="chain-quiet" label="Send millicones. Type:  &lt;to-wallet-id&gt; &lt;amount&gt;  then Enter." show="${tab_send}"/>
+      <cli_io id="sendline" target_id="sendline" rows="1" class="chain-send top"
+              label="to  amount" action="'${PKG}/ops/chain_send.sh'" show="${tab_send}"/>
+      <text id="s-bal" class="chain-kv" label="balance: ${balance} mc" show="${tab_send}"/>
+
+      <!-- Mine -->
+      <item id="m-toggle" class="chain-btn" label="${mine_toggle}" action="'${PKG}/ops/chain_item.sh' 'MINE_TOGGLE'" show="${tab_mine}"/>
+      <text id="m-blk"  class="chain-kv" label="blocks this session:  ${mine_blocks}"  show="${tab_mine}"/>
+      <text id="m-idx"  class="chain-kv" label="last block index:     ${mine_lastidx}" show="${tab_mine}"/>
+      <text id="m-sup"  class="chain-kv" label="total supply minted:  ${mine_supply}"  show="${tab_mine}"/>
+
+      <!-- History -->
+      <scrolllist class="from-top" show="${tab_history}">
+        <repeat count="${n_hist}" bind="h">
+          <text id="h${h.#}" class="chain-hrow" label="${h.text}"/>
+        </repeat>
+        <text id="h-empty" class="chain-quiet" label="${hist_empty}" show="${hist_empty}"/>
+      </scrolllist>
+
+    </panel>
+  </page>
+</window>
