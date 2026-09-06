@@ -27,6 +27,8 @@
 #include <stdint.h>
 #include <strings.h>
 #include <signal.h>
+#include <string.h>
+#include <time.h>
 
 #define MAX_MSG (1024 * 1024)
 
@@ -430,6 +432,8 @@ static NbNode *get_this(duk_context *ctx) {
     return g_nodeindex[i];
 }
 static void push_node(duk_context *ctx, NbNode *n);
+static duk_ret_t nb_el_addEventListener(duk_context *ctx);
+static duk_ret_t nb_el_removeEventListener(duk_context *ctx);
 
 /* ---- document natives ---- */
 static duk_ret_t nb_dom_getElementById(duk_context *ctx) {
@@ -747,6 +751,8 @@ static void push_node(duk_context *ctx, NbNode *n) {
     duk_push_c_function(ctx, nb_el_getAttribute, 1);  duk_put_prop_string(ctx, -2, "getAttribute");
     duk_push_c_function(ctx, nb_el_setAttribute, 2);  duk_put_prop_string(ctx, -2, "setAttribute");
     duk_push_c_function(ctx, nb_el_appendChild, 1);   duk_put_prop_string(ctx, -2, "appendChild");
+    duk_push_c_function(ctx, nb_el_addEventListener, 2);    duk_put_prop_string(ctx, -2, "addEventListener");
+    duk_push_c_function(ctx, nb_el_removeEventListener, 2); duk_put_prop_string(ctx, -2, "removeEventListener");
 
     /* read-only accessor properties: children, childNodes, parentNode, firstChild, nextSibling */
     duk_push_string(ctx, "children");
@@ -812,6 +818,309 @@ static void install_dom(duk_context *ctx) {
 }
 
 #define EVAL_BUDGET_SEC 2   /* plan step 5: watchdog for runaway page.js */
+#define MAX_DRAIN_MS 800    /* commit 7: bounded wait so short timers fire pre-RENDER */
+static void sigalrm(int sig);   /* used by run_event_loop below */
+
+/* ===================== Phase 2 (commit 7): timers + microtasks + events ================ */
+
+#define MAX_TIMERS 2048
+#define MAX_MICRO  2048
+#define MAX_EVENTS 4096
+#define MAX_TIMER_INVOCATIONS 5000   /* plan §2 CPU safety */
+#define MAX_RAF_FRAMES 120           /* plan §2: ~2s of rAF */
+#define RAF_MS 16
+
+typedef struct { int id, active; long interval; uint64_t due; int slot; } Timer;
+typedef struct { int kind; NbNode *node; char type[48]; int slot, active; } EvL;
+
+#define STASH_TIMER 0     /* stash index base per table (fixed, non-overlapping) */
+#define STASH_MICRO 10000
+#define STASH_EVT   20000
+#define EVT_NODE 1
+#define EVT_WIN  2
+#define EVT_DOC  3
+
+static Timer g_timers[MAX_TIMERS];
+static int g_timer_count = 0;
+static int g_micro_n = 0, g_micro_head = 0;   /* microtask FIFO lives in the global stash */
+static EvL g_evl[MAX_EVENTS];
+static int g_evl_count = 0;
+static int g_next_id = 1;
+static int g_invocations = 0;
+static int g_raf_fires = 0;
+static int g_pending_err = 0;   /* set when an event-loop callback throws */
+static char g_pending_errmsg[512];
+
+static uint64_t now_ms(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000 + (uint64_t)(ts.tv_nsec / 1000000);
+}
+static void stash_set(duk_context *ctx, int base, int slot, duk_idx_t fn) {
+    duk_push_global_stash(ctx);
+    duk_dup(ctx, fn);
+    duk_put_prop_index(ctx, -2, (duk_uarridx_t)(base + slot));
+    duk_pop(ctx);
+}
+static void stash_del(duk_context *ctx, int base, int slot) {
+    duk_push_global_stash(ctx);
+    duk_del_prop_index(ctx, -1, (duk_uarridx_t)(base + slot));
+    duk_pop(ctx);
+}
+static void stash_push(duk_context *ctx, int base, int slot) {
+    duk_push_global_stash(ctx);
+    duk_get_prop_index(ctx, -1, (duk_uarridx_t)(base + slot));
+    duk_remove(ctx, -2);
+}
+
+/* Run the callback currently on the stack (below the top) with this=globalThis,
+ * 0 args. Duktape pcall_method layout is [args][func][this], this ON TOP: func
+ * at top-2, this at top-1. Caller pushes the cb, we push global on top.
+ * Returns 0 on success, 1 on thrown error (message captured, stack popped). */
+static int invoke_cb0(duk_context *ctx) {
+    duk_push_global_object(ctx);   /* [cb][global], global on top = the this */
+    if (duk_pcall_method(ctx, 0) != 0) {
+        if (!g_pending_err) {
+            g_pending_err = 1;
+            snprintf(g_pending_errmsg, sizeof(g_pending_errmsg), "%s",
+                     duk_safe_to_string(ctx, -1));
+        }
+        duk_pop(ctx);
+        return 1;
+    }
+    duk_pop(ctx);
+    return 0;
+}
+
+/* ---- timers ---- */
+static void timer_schedule(duk_context *ctx, long interval, int repeat) {
+    if (!duk_is_callable(ctx, 0) || g_timer_count >= MAX_TIMERS) { duk_push_int(ctx, 0); return; }
+    int slot = g_timer_count++;
+    g_timers[slot].id = g_next_id++;
+    g_timers[slot].active = 1;
+    g_timers[slot].interval = repeat ? (interval > 0 ? interval : 1) : 0;
+    g_timers[slot].due = now_ms() + (uint64_t)(interval > 0 ? interval : 1);
+    g_timers[slot].slot = slot;
+    stash_set(ctx, STASH_TIMER, slot, 0);
+    duk_push_int(ctx, g_timers[slot].id);
+}
+static duk_ret_t nb_timer_setTimeout(duk_context *ctx) {
+    double ms = duk_is_number(ctx, 1) ? duk_get_number(ctx, 1) : 0;
+    if (ms < 0) ms = 0;
+    timer_schedule(ctx, (long)ms, 0);
+    return 1;
+}
+static duk_ret_t nb_timer_setInterval(duk_context *ctx) {
+    double ms = duk_is_number(ctx, 1) ? duk_get_number(ctx, 1) : 0;
+    if (ms < 1) ms = 1;
+    timer_schedule(ctx, (long)ms, 1);
+    return 1;
+}
+static void timer_clear(duk_context *ctx, int want_oneshot) {
+    int id = (int)duk_get_int(ctx, 0);
+    for (int i = 0; i < g_timer_count; i++)
+        if (g_timers[i].active && g_timers[i].id == id &&
+            (want_oneshot ? g_timers[i].interval == 0 : g_timers[i].interval > 0)) {
+            g_timers[i].active = 0;
+            stash_del(ctx, STASH_TIMER, i);
+            break;
+        }
+}
+static duk_ret_t nb_timer_clearTimeout(duk_context *ctx) { timer_clear(ctx, 1); return 0; }
+static duk_ret_t nb_timer_clearInterval(duk_context *ctx) { timer_clear(ctx, 0); return 0; }
+
+/* ---- microtasks + rAF ---- */
+static duk_ret_t nb_queueMicrotask(duk_context *ctx) {
+    if (duk_is_callable(ctx, 0) && g_micro_n < MAX_MICRO)
+        stash_set(ctx, STASH_MICRO, g_micro_n++, 0);
+    return 0;
+}
+static duk_ret_t nb_raf(duk_context *ctx) {
+    if (duk_is_callable(ctx, 0) && g_raf_fires < MAX_RAF_FRAMES) {
+        g_raf_fires++;
+        timer_schedule(ctx, RAF_MS, 0);
+    }
+    return 0;
+}
+static int drain_microtasks(duk_context *ctx) {
+    int ran = 0;
+    while (g_micro_head < g_micro_n) {
+        if (g_invocations >= MAX_TIMER_INVOCATIONS) break;
+        int slot = g_micro_head++;
+        stash_push(ctx, STASH_MICRO, slot);
+        if (duk_is_callable(ctx, -1)) {
+            if (invoke_cb0(ctx)) { g_invocations++; break; }
+            g_invocations++; ran = 1;
+        } else duk_pop(ctx);
+    }
+    return ran;
+}
+static uint64_t timer_min_due(void) {
+    uint64_t m = 0; int have = 0;
+    for (int i = 0; i < g_timer_count; i++)
+        if (g_timers[i].active) { if (!have || g_timers[i].due < m) { m = g_timers[i].due; have = 1; } }
+    return have ? m : 0;
+}
+static int run_due_timers(duk_context *ctx, uint64_t now) {
+    int ran = 0;
+    for (int i = 0; i < g_timer_count; i++) {
+        if (!g_timers[i].active || g_timers[i].due > now) continue;
+        if (g_invocations >= MAX_TIMER_INVOCATIONS) break;
+        long iv = g_timers[i].interval;
+        stash_push(ctx, STASH_TIMER, i);          /* callback on stack */
+        if (duk_is_callable(ctx, -1)) {
+            if (invoke_cb0(ctx)) { g_invocations++; break; }
+            g_invocations++; ran = 1;
+        } else duk_pop(ctx);
+        if (iv > 0) g_timers[i].due = now + (uint64_t)iv;   /* repeating — re-arm */
+        else { g_timers[i].active = 0; stash_del(ctx, STASH_TIMER, i); } /* oneshot */
+    }
+    return ran;
+}
+
+/* ---- events (EventTarget add/removeEventListener; dispatch is commit 8) ---- */
+static void evl_add(duk_context *ctx, int kind, NbNode *n) {
+    const char *type = duk_get_string(ctx, 0);
+    if (!type || !type[0] || !duk_is_callable(ctx, 1) || g_evl_count >= MAX_EVENTS) return;
+    int slot = g_evl_count++;
+    g_evl[slot].kind = kind; g_evl[slot].node = n; g_evl[slot].slot = slot; g_evl[slot].active = 1;
+    snprintf(g_evl[slot].type, sizeof(g_evl[slot].type), "%s", type);
+    stash_set(ctx, STASH_EVT, slot, 1);
+}
+static void evl_del(duk_context *ctx, int kind, NbNode *n) {
+    const char *type = duk_get_string(ctx, 0);
+    for (int i = 0; i < g_evl_count; i++)
+        if (g_evl[i].active && g_evl[i].kind == kind && g_evl[i].node == n &&
+            (!type || !type[0] || !strcmp(g_evl[i].type, type))) {
+            g_evl[i].active = 0;
+            stash_del(ctx, STASH_EVT, i);
+            break;
+        }
+}
+static duk_ret_t nb_el_addEventListener(duk_context *ctx)  { evl_add(ctx, EVT_NODE, get_this(ctx)); return 0; }
+static duk_ret_t nb_el_removeEventListener(duk_context *ctx) { evl_del(ctx, EVT_NODE, get_this(ctx)); return 0; }
+static duk_ret_t nb_doc_addEventListener(duk_context *ctx)  { evl_add(ctx, EVT_DOC, NULL); return 0; }
+static duk_ret_t nb_doc_removeEventListener(duk_context *ctx) { evl_del(ctx, EVT_DOC, NULL); return 0; }
+static duk_ret_t nb_win_addEventListener(duk_context *ctx)  { evl_add(ctx, EVT_WIN, NULL); return 0; }
+static duk_ret_t nb_win_removeEventListener(duk_context *ctx) { evl_del(ctx, EVT_WIN, NULL); return 0; }
+static duk_ret_t nb_event_preventDefault(duk_context *ctx) {
+    duk_push_this(ctx);
+    if (duk_is_object(ctx, -1)) { duk_push_boolean(ctx, 1); duk_put_prop_string(ctx, -2, "defaultPrevented"); }
+    duk_pop(ctx);
+    return 0;
+}
+static duk_ret_t nb_event_stopPropagation(duk_context *ctx) {
+    duk_push_this(ctx);
+    if (duk_is_object(ctx, -1)) { duk_push_boolean(ctx, 1); duk_put_prop_string(ctx, -2, "propagationStopped"); }
+    duk_pop(ctx);
+    return 0;
+}
+static void fire_event(duk_context *ctx, int kind, NbNode *n, const char *type) {
+    for (int i = 0; i < g_evl_count; i++) {
+        if (!g_evl[i].active || g_evl[i].kind != kind || g_evl[i].node != n) continue;
+        if (strcmp(g_evl[i].type, type)) continue;
+        if (g_invocations >= MAX_TIMER_INVOCATIONS) break;
+        /* duk_pcall_method layout is [func][args...][this], this ON TOP:
+         * func at top-nargs-2, args above it, this on top. So push the cb
+         * first (bottom), then the Event argument, then global on top —
+         * [cb][Event][global]. */
+        stash_push(ctx, STASH_EVT, i);              /* cb (func) at bottom */
+        duk_push_object(ctx);                       /* minimal Event (argument) */
+        duk_push_string(ctx, type);      duk_put_prop_string(ctx, -2, "type");
+        duk_push_boolean(ctx, 0);        duk_put_prop_string(ctx, -2, "defaultPrevented");
+        duk_push_boolean(ctx, 0);        duk_put_prop_string(ctx, -2, "cancelable");
+        if (kind == EVT_NODE && n) { push_node(ctx, n); duk_put_prop_string(ctx, -2, "target"); }
+        else { duk_get_global_string(ctx, kind == EVT_WIN ? "window" : "document");
+               duk_put_prop_string(ctx, -2, "target"); }
+        duk_push_c_function(ctx, nb_event_preventDefault, 0); duk_put_prop_string(ctx, -2, "preventDefault");
+        duk_push_c_function(ctx, nb_event_stopPropagation, 0); duk_put_prop_string(ctx, -2, "stopPropagation");
+        duk_push_global_object(ctx);                /* this ON TOP */
+        if (duk_pcall_method(ctx, 1) != 0) {
+            if (!g_pending_err) {
+                g_pending_err = 1;
+                snprintf(g_pending_errmsg, sizeof(g_pending_errmsg), "%s",
+                         duk_safe_to_string(ctx, -1));
+            }
+            duk_pop(ctx);
+            g_invocations++;
+            break;
+        }
+        duk_pop(ctx);
+        g_invocations++;
+    }
+    /* lifecycle on-* props (element on-props are commit 8) */
+    if (kind == EVT_WIN && !strcmp(type, "load")) {
+        duk_get_global_string(ctx, "onload");
+        if (duk_is_callable(ctx, -1)) {
+            if (duk_pcall(ctx, 0) != 0 && !g_pending_err) {
+                g_pending_err = 1;
+                snprintf(g_pending_errmsg, sizeof(g_pending_errmsg), "%s",
+                         duk_safe_to_string(ctx, -1));
+            }
+            duk_pop(ctx);
+        } else duk_pop(ctx);
+    } else if (kind == EVT_DOC && !strcmp(type, "DOMContentLoaded")) {
+        duk_get_global_string(ctx, "onDOMContentLoaded");
+        if (duk_is_callable(ctx, -1)) {
+            if (duk_pcall(ctx, 0) != 0 && !g_pending_err) {
+                g_pending_err = 1;
+                snprintf(g_pending_errmsg, sizeof(g_pending_errmsg), "%s",
+                         duk_safe_to_string(ctx, -1));
+            }
+            duk_pop(ctx);
+        } else duk_pop(ctx);
+    }
+}
+
+/* ---- the loop: lifecycle -> microtask/timer drain until quiescent or budget ---- */
+/* returns nonzero if an event-loop callback threw (caller -> STATUS err) */
+static int run_event_loop(duk_context *ctx) {
+    signal(SIGALRM, sigalrm);
+    alarm(EVAL_BUDGET_SEC);   /* phase-1 backstop also covers timer/microtask callbacks */
+    drain_microtasks(ctx);
+    if (!g_pending_err) fire_event(ctx, EVT_DOC, NULL, "DOMContentLoaded");
+    drain_microtasks(ctx);
+    if (!g_pending_err) fire_event(ctx, EVT_WIN, NULL, "load");
+    drain_microtasks(ctx);
+    uint64_t start = now_ms();
+    for (int guard = 0; guard < 100000 && !g_pending_err; guard++) {
+        if (g_invocations >= MAX_TIMER_INVOCATIONS) break;
+        if (now_ms() - start > MAX_DRAIN_MS) break;   /* bound page_load wait */
+        uint64_t now = now_ms();
+        int ran = run_due_timers(ctx, now);
+        if (drain_microtasks(ctx)) ran = 1;
+        if (!ran) {
+            uint64_t m = timer_min_due();
+            if (!m) break;                    /* nothing scheduled — quiescent */
+            if (m <= now) continue;           /* due but callback skipped? re-drain */
+            /* next timer in the future — sleep up to it (bounded by MAX_DRAIN_MS) */
+            uint64_t d = m - now;
+            if (d > 5) d = 5;
+            struct timespec ts = { (time_t)(d / 1000), (long)((d % 1000) * 1000000L) };
+            nanosleep(&ts, NULL);
+            continue;
+        }
+    }
+    alarm(0);
+    return g_pending_err;
+}
+
+static void install_events_timers(duk_context *ctx) {
+    duk_get_global_string(ctx, "document");
+    duk_push_c_function(ctx, nb_doc_addEventListener, 2);    duk_put_prop_string(ctx, -2, "addEventListener");
+    duk_push_c_function(ctx, nb_doc_removeEventListener, 2); duk_put_prop_string(ctx, -2, "removeEventListener");
+    duk_pop(ctx);
+    duk_push_global_object(ctx);
+    duk_push_c_function(ctx, nb_timer_setTimeout, 2);    duk_put_prop_string(ctx, -2, "setTimeout");
+    duk_push_c_function(ctx, nb_timer_setInterval, 2);   duk_put_prop_string(ctx, -2, "setInterval");
+    duk_push_c_function(ctx, nb_timer_clearTimeout, 1);  duk_put_prop_string(ctx, -2, "clearTimeout");
+    duk_push_c_function(ctx, nb_timer_clearInterval, 1); duk_put_prop_string(ctx, -2, "clearInterval");
+    duk_push_c_function(ctx, nb_queueMicrotask, 1);      duk_put_prop_string(ctx, -2, "queueMicrotask");
+    duk_push_c_function(ctx, nb_raf, 1);                 duk_put_prop_string(ctx, -2, "requestAnimationFrame");
+    duk_push_c_function(ctx, nb_win_addEventListener, 2);    duk_put_prop_string(ctx, -2, "addEventListener");
+    duk_push_c_function(ctx, nb_win_removeEventListener, 2); duk_put_prop_string(ctx, -2, "removeEventListener");
+    duk_pop(ctx);
+}
 
 /* plan step 5: CPU budget for script eval. If page.js burns through
  * EVAL_BUDGET_SEC of CPU (while(true) {} and friends) SIGALRM fires while
@@ -838,7 +1147,13 @@ static void dom_teardown(void) {
     nb_node_free(g_dom_root);
     g_dom_root = NULL;
 }
+
 static void run_page(void) {
+    /* phase-2 (commit 7): per-page event/timer/microtask state */
+    g_timer_count = 0; g_micro_n = 0; g_micro_head = 0; g_evl_count = 0;
+    g_next_id = 1; g_invocations = 0; g_raf_fires = 0;
+    g_pending_err = 0; g_pending_errmsg[0] = 0;
+
     g_dom_root = NULL;
     g_orphans = NULL;
     node_index_reset();
@@ -861,6 +1176,7 @@ static void run_page(void) {
     duk_pop(ctx);
 
     install_dom(ctx);
+    install_events_timers(ctx);
 
     char *src = NULL;
     size_t src_n = 0;
@@ -886,6 +1202,17 @@ static void run_page(void) {
         return;
     }
     duk_pop(ctx);
+    /* phase-2 (commit 7): lifecycle + event loop — timers/microtasks now fire */
+    int ev_err = run_event_loop(ctx);
+    if (ev_err) {
+        char msg[1100];
+        snprintf(msg, sizeof(msg), "STATUS err:%s",
+                 g_pending_errmsg[0] ? g_pending_errmsg : "event loop error");
+        duk_destroy_heap(ctx);
+        dom_teardown();
+        send_status(msg);
+        return;
+    }
     duk_destroy_heap(ctx);
 
     /* step 4: emit RENDER rows from the post-JS DOM, then STATUS. The
