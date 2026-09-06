@@ -1,20 +1,28 @@
-<!-- palettes-elements.xhtpm - STATIC template. Replaces khtpm_core_render.c's
-     g_is_palettes dbhq_inject_palette_tiles() C path for this category.
-     class="palettes-pal" (NOT "palettes") so g_is_palettes stays 0; the
-     generic <item class="swatch"> grid layout (khtpm_core_render.c ~8722,
-     keyed on the class, not the flag) lays the tiles out 6-wide.
-       <module> 1: palettes_manager.+x args="elements" - UNMODIFIED, publishes
-                   palettes-.txt (glyph<TAB>label<TAB>sprite_dir)
-       <module> 2: palettes_projector.+x id="elements" - reads that, writes
-                   state/palettes-.txt (key=value) consumed here.
-     Old palettes-elements.chtpm + palettes_menu.sh stay as rollback. -->
-<window label="palettes: Elements" class="palettes-pal database-window" vars="state/palettes-elements_ui.txt">
-  <module src="*.monads/*.livedesk-taskbar/ops/+x/palettes_manager.+x" args="elements"/>
-  <module src="&.widgits/palettes/ops/+x/palettes_projector.+x" id="elements"/>
+<!-- palettes-elements.xhtpm - the "Chemicals+Compounds" palette, now a
+     PERIODIC-TABLE element picker (drag/click a tile -> stamp that
+     element onto the desktop). Rendered by the shared khtpm_core_render.+x.
+
+     class="palettes-pal database-window" -> generic <item class="swatch">
+     grid layout (keyed on the class, not a g_is_* flag). The grid
+     auto-fits its column count to the window width, so a wide window
+     gives ~18 columns = periodic-table width.
+
+     <module>: ops/+x/elements_palette_manager.+x - publishes
+     state/palettes-elements_ui.txt: n_tiles + per-tile sym / z / name /
+     color (Drude-model, chem-viz.txt sec.3). Static.
+
+     Chrome: the <item class="chrome-btn" onclick="CLOSE"> below is laid
+     into the top strip by the swatch-grid layout (same as
+     palettes-rmmv.xhtpm) - the old template had none, hence "no chrome
+     to exit". -->
+<window label="palettes: Elements (periodic table)" class="palettes-pal database-window" vars="state/palettes-elements_ui.txt">
+  <module src="&.widgits/palettes/ops/+x/elements_palette_manager.+x" id="elements"/>
   <page name="main">
+    <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
     <repeat count="${n_tiles}" bind="t">
-      <item id="pt${t.#}" class="swatch" sprite="${t.sprite}" label="${t.glyph}" action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'place' '${t.glyph}'"/>
+      <item id="pt${t.#}" class="swatch" bg="${t.color}" label="${t.sym}"
+            action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'place' '${t.sym}'"/>
     </repeat>
-    <text label="No tiles yet - the palette manager is still generating sprites." class="quiet" show="${empty}"/>
+    <text label="Loading the periodic table..." class="quiet" show="${empty}"/>
   </page>
 </window>
