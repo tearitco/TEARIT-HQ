@@ -42,7 +42,8 @@
       <text id="m-idx"  class="chain-kv" label="last block index:     ${mine_lastidx}" show="${tab_mine}"/>
       <text id="m-sup"  class="chain-kv" label="total supply minted:  ${mine_supply}"  show="${tab_mine}"/>
 
-      <!-- History -->
+      <!-- History / full chain -->
+      <text id="h-hdr" class="chain-kv" label="${hist_hdr}" show="${tab_history}"/>
       <scrolllist class="from-top" show="${tab_history}">
         <repeat count="${n_hist}" bind="h">
           <text id="h${h.#}" class="chain-hrow" label="${h.text}"/>

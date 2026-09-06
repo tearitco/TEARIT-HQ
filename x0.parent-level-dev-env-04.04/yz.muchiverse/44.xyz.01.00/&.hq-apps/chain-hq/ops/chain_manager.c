@@ -35,7 +35,7 @@
 
 #define PL      4096
 #define ACT_BUF 4096
-#define MAX_HIST 200
+#define MAX_HIST 600
 
 static char house_root[PL], pkg_dir[PL], chain_app[PL], session_root[PL], net_root[PL];
 static char piece_tag[64];
@@ -49,6 +49,7 @@ static pid_t peer_pid = -1, watcher_pid = -1, miner_pid = -1;
 
 static char hist[MAX_HIST][512];
 static int  n_hist = 0;
+static long chain_len = 0;   /* total BLOCK lines on disk */
 
 /* miner_status.txt fields */
 static char m_running[8] = "0", m_blocks[24] = "0", m_lastidx[24] = "0",
@@ -149,10 +150,32 @@ static void session_setup(void) {
       snprintf(f, sizeof(f), "%s/net/inbox.txt",  session_root); fclose(fopen(f, "a"));
       snprintf(f, sizeof(f), "%s/net/outbox.txt", session_root); fclose(fopen(f, "a")); }
 
-    /* seed blockchain from the real project history */
+    /* seed blockchain from the real project history. The live
+     * data/blockchain.txt is often 0 bytes (a fresh project) - fall
+     * back to the newest data/blockchain.txt.pre-harness-run-* snapshot
+     * so the History / full-chain view isn't empty on first open. */
     char rb[PL], sb[PL];
     snprintf(rb, sizeof(rb), "%s/data/blockchain.txt", chain_app);
     snprintf(sb, sizeof(sb), "%s/data/blockchain.txt", session_root);
+    struct stat rst;
+    if (stat(rb, &rst) != 0 || rst.st_size == 0) {
+        char ddir[PL]; snprintf(ddir, sizeof(ddir), "%s/data", chain_app);
+        DIR *dd = opendir(ddir);
+        char best[PL] = ""; long best_sz = 0;
+        if (dd) {
+            struct dirent *e;
+            while ((e = readdir(dd))) {
+                if (strncmp(e->d_name, "blockchain.txt.pre-harness-run-", 30) != 0) continue;
+                char fp[PL]; snprintf(fp, sizeof(fp), "%s/%s", ddir, e->d_name);
+                struct stat fs;
+                if (stat(fp, &fs) == 0 && fs.st_size > best_sz) {
+                    best_sz = fs.st_size; snprintf(best, sizeof(best), "%s", fp);
+                }
+            }
+            closedir(dd);
+        }
+        if (best[0]) snprintf(rb, sizeof(rb), "%s", best);
+    }
     copy_file(rb, sb);
     { char f[PL]; snprintf(f, sizeof(f), "%s/data/pending_tx.txt", session_root); fclose(fopen(f, "a")); }
 
@@ -225,24 +248,44 @@ static void refresh_miner_status(void) {
 
 static void read_history(void) {
     n_hist = 0;
+    chain_len = 0;
+    static char ring[MAX_HIST][512];   /* static: too big for the stack */
+    int rn = 0, rs = 0;
+    char line[512];
+
+    /* pending TX first (not yet mined) - shown at the very top */
+    char pp[PL]; snprintf(pp, sizeof(pp), "%s/data/pending_tx.txt", session_root);
+    FILE *pf = fopen(pp, "r");
+    if (pf) {
+        while (fgets(line, sizeof(line), pf)) {
+            line[strcspn(line, "\r\n")] = '\0';
+            if (!line[0]) continue;
+            if (n_hist < MAX_HIST) {
+                snprintf(hist[n_hist], 512, "PENDING  %s", line);
+                sanitize(hist[n_hist]); n_hist++;
+            }
+        }
+        fclose(pf);
+    }
+
+    /* chain: newest-last on disk; show newest-first, ring-buffered */
     char p[PL]; snprintf(p, sizeof(p), "%s/data/blockchain.txt", session_root);
-    /* newest-last file; show newest-first, cap MAX_HIST */
-    FILE *f = fopen(p, "r"); if (!f) return;
-    char line[512]; char ring[MAX_HIST][512]; int rn = 0, rs = 0;
-    while (fgets(line, sizeof(line), f)) {
-        line[strcspn(line, "\r\n")] = '\0';
-        if (!line[0]) continue;
-        snprintf(ring[(rs + rn) % MAX_HIST], 512, "%s", line);
-        if (rn < MAX_HIST) rn++; else rs = (rs + 1) % MAX_HIST;
+    FILE *f = fopen(p, "r");
+    if (f) {
+        while (fgets(line, sizeof(line), f)) {
+            line[strcspn(line, "\r\n")] = '\0';
+            if (strncmp(line, "BLOCK|", 6) != 0 && strncmp(line, "TX|", 3) != 0) continue;
+            chain_len++;
+            snprintf(ring[(rs + rn) % MAX_HIST], 512, "%s", line);
+            if (rn < MAX_HIST) rn++; else rs = (rs + 1) % MAX_HIST;
+        }
+        fclose(f);
     }
-    fclose(f);
-    for (int i = 0; i < rn; i++) {
-        const char *src = ring[(rs + rn - 1 - i) % MAX_HIST];
-        snprintf(hist[i], 512, "%s", src);
-        sanitize(hist[i]);
+    for (int i = 0; i < rn && n_hist < MAX_HIST; i++) {
+        snprintf(hist[n_hist], 512, "%s", ring[(rs + rn - 1 - i) % MAX_HIST]);
+        sanitize(hist[n_hist]);
+        n_hist++;
     }
-    n_hist = rn;
-    /* also fold in pending TX (not yet mined) at the top */
 }
 
 /* ------------------------------------------------------------------ */
@@ -288,11 +331,13 @@ static void write_ui(void) {
      * doesn't rely on show= working on a <scrolllist> */
     int show_hist = (strcmp(cur_tab, "history") == 0);
     int nh = show_hist ? n_hist : 0;
+    fprintf(f, "chain_len=%ld\n", chain_len);
+    fprintf(f, "hist_hdr=chain: %ld blocks/tx   ·   showing latest %d\n", chain_len, nh);
     fprintf(f, "n_hist=%d\n", nh);
     for (int i = 0; i < nh; i++)
         fprintf(f, "h_%d_text=%s\n", i, hist[i]);
     fprintf(f, "hist_empty=%s\n",
-            (show_hist && n_hist == 0) ? "No blocks yet - mine some on the Mine tab." : "");
+            (show_hist && n_hist == 0) ? "Chain is empty - mine some blocks on the Mine tab." : "");
 
     fclose(f);
     rename(tmp, dst);
