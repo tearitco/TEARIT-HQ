@@ -1,0 +1,85 @@
+/* canvas-craft.css - merged on top of the renderer default. Same
+   khtpm_css_parser.c constraints as irc-chat-hq.css: bare tag, a
+   single compound class chain (.a.b), or #id only - no descendant
+   combinators. Only background/border/color/font/padding apply. */
+
+window {
+    width: 940px;
+    height: 640px;
+    background-color: #15171d;
+    font-family: DejaVu Sans;
+    font-size: 11px;
+}
+
+.cc-sidebar {
+    background-color: #0d0e12;
+    border: 1px solid #2a2d3a;
+    border-color: #2a2d3a;
+}
+
+.cc-panel {
+    background-color: #1c1f28;
+    border: 1px solid #3a3f52;
+    border-color: #3a3f52;
+}
+
+.cc-side-hdr {
+    color: #7c8399;
+    font-size: 10px;
+    padding: 6px 8px 2px 8px;
+}
+
+.cc-recipe {
+    color: #c9cdda;
+    font-size: 10px;
+    padding: 3px 8px;
+}
+
+.cc-recipe.cc-active {
+    background-color: #2d4059;
+    color: #ffffff;
+}
+
+.cc-quiet {
+    color: #5a6072;
+    padding: 10px;
+}
+
+.cc-sel-name {
+    color: #ffd7a6;
+    font-weight: bold;
+    font-size: 13px;
+    padding: 8px 10px 0px 10px;
+}
+
+.cc-sel-sub {
+    color: #8a93a8;
+    font-size: 10px;
+    padding: 0px 10px 6px 10px;
+}
+
+.cc-ing-hdr {
+    color: #7c8399;
+    font-size: 10px;
+    padding: 6px 10px 2px 10px;
+}
+
+.cc-ing {
+    color: #d6d9e3;
+    font-family: DejaVu Sans Mono;
+    font-size: 11px;
+    padding: 2px 12px;
+}
+
+.cc-note {
+    color: #d98b5f;
+    font-size: 10px;
+    padding: 4px 10px;
+}
+
+.cc-craft {
+    color: #000000;
+    background-color: #ffd54a;
+    font-weight: bold;
+    padding: 6px 12px;
+}

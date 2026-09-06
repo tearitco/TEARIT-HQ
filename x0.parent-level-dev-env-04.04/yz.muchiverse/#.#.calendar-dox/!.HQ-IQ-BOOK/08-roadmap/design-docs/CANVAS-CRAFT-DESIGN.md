@@ -202,7 +202,8 @@ formula := term ( '+' term )*
 term    := ref ( '*' count )?          ; count defaults to 1
 ref     := name                        ; item name / id slug, case-insensitive,
                                        ;   spaces or '-' → '_'  ("Up quark" == up_quark)
-         | '[]' int                    ; inventory slot number (the []N in the grid)
+         | '[]' int                    ; a stack's STABLE handle (§6.1) - NOT its
+                                       ;   row position. Survives Sort / filter.
 count   := int                         ; may be a bare number or  x5 / X5 / *5
 ```
 
@@ -210,9 +211,19 @@ Examples (all equivalent ways to stage the same bench):
 ```
 oxygen * 5 + tree * 2
 oxygen x5 + tree x2
-[]1 * 5 + []100 * 2                     ; []1 holds oxygen, []100 holds tree
-oxygen*5 + []100*2                      ; names and slot refs mix freely
+[]1 * 5 + []100 * 2                     ; []1 and []100 are whichever stacks own
+                                       ;   handle 1 and 100 - see §6.1
+oxygen*5 + []100*2                      ; names and handles mix freely
 ```
+
+> **`[]N` must be stable across a Sort.** `N` is a **stable per-stack
+> handle** the manager assigns when a stack first enters the inventory,
+> shown as a small `[]N` badge on the cell. Sort and the filter bar
+> only reorder / hide *rows*; a stack keeps its handle for its whole
+> life, and a freed handle is never immediately reused. So a formula
+> you typed (or memorised) before sorting still resolves. Merging two
+> stacks of the same item keeps the **lower** handle. See §6.1 for the
+> inventory model.
 
 **On submit (Enter):**
 1. Parse to `[(item, count), …]`. Unknown name / empty slot / bad
@@ -349,10 +360,38 @@ Polls `state/canvas-craft_action.txt` for the verbs:
 `BENCH_FORMULA:<raw text>` · `CRAFT` · `INSPECT:<id>` · `SORT_INV` ·
 `TAB:<left_tab>`.
 
-**Inventory persistence** — open question §7. Default proposal:
-per-user `xyzfs/users/<uuid>/…/canvascraft_inventory.txt`
-(`item_id <TAB> count` lines), written atomically (tmp+rename). A shared
-"world" inventory (like the chain ledger) is a later mode.
+### 6.1 Inventory model
+
+The inventory is a list of **stacks**. Each stack:
+
+```
+handle   int    stable id, assigned at first insert, shown as []N,
+                never renumbered by Sort, not immediately reused when freed
+item_id  slug   canonical recipe/element id  (gold, up_quark, water)
+count    int
+```
+
+- **Insert** an item you don't hold → new stack, `handle = ++max_handle`.
+- **Insert** an item you already hold → merge into the existing stack
+  (its `count += n`); the **lower** of the two handles wins if a merge
+  ever unifies two stacks.
+- **Sort** (`SORT_INV`) reorders the *published rows* (by name / tier /
+  count — cycles) and never touches `handle`.
+- **Filter bar** hides rows; handles unaffected.
+- A stack that hits `count == 0` is removed; its handle goes on a
+  free-list and is only reissued once `max_handle` would otherwise
+  exceed a cap, so a just-typed `[]N` doesn't silently point at a new
+  item.
+
+Persistence — open question §7.2. Default proposal: per-user
+`xyzfs/users/<uuid>/…/canvascraft_inventory.txt`, one stack per line
+`handle <TAB> item_id <TAB> count`, plus a `max_handle` header line,
+written atomically (tmp + rename). A shared "world" inventory (like the
+chain ledger) is a later mode.
+
+**Bench slots** carry the same `{handle, item_id, count}` shape so an
+item keeps its handle while staged and `BENCH_REMOVE` puts it back with
+the same badge.
 
 **Change signalling**: DIAMOND — the manager appends to a
 `canvas-craft_frame_changed.txt` marker on every publish; the renderer

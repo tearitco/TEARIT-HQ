@@ -13734,6 +13734,26 @@ static int headless_run(void) {
     g_win_w = window_is_dock() ? kh_screen_w() : 960;
     g_win_h = window_is_dock() ? 40 : 640;
 
+    /* If this window has <module>s that publish its vars= file, give
+     * them a beat to write it before the first layout. The windowed
+     * path gets this for free from its slower event loop; without it a
+     * headless run can race a missing -> fully-populated vars file into
+     * its very first reparse and (with a large generated list) trip a
+     * layout crash. Bounded ~1.5s; a window with no vars= file or a
+     * fast module just falls straight through. */
+    if (g_vars_path[0]) {
+        for (int w = 0; w < 90; w++) {
+            struct stat vst;
+            if (stat(g_vars_path, &vst) == 0 && vst.st_size > 0) {
+                unsigned long h1 = kh_files_hash(g_vars_path);
+                usleep(16667);
+                if (kh_files_hash(g_vars_path) == h1) break;   /* stable */
+            }
+            usleep(16667);
+        }
+        reparse_chtpm_if_changed();   /* pick the file up before the first paint */
+    }
+
     redraw();   /* first frame (headless redraw() == layout + write text frame) */
 
     while (!g_quit && !g_shutdown_requested) {
@@ -13992,7 +14012,15 @@ int main(int argc, char **argv) {
      * rows which never needed dpy this early. Harmless reorder for
      * popup modes - dpy/screen/cmap weren't used before this point
      * either way. */
-    if (g_headless) return headless_run();   /* no display, ever - text-frame loop */
+    if (g_headless) {
+        /* the normal path forks the window's <module>s ~250 lines below,
+         * after XOpenDisplay - headless returns before that, so do it
+         * here. Same generic call, same cleanup (atexit kh_cleanup_
+         * modules, registered inside). Without this a headless window
+         * shows only its static skeleton, its manager never running. */
+        kh_launch_window_modules(g_window, g_house_root, g_package_dir);
+        return headless_run();
+    }
 
     dpy = XOpenDisplay(NULL);
     if (!dpy) { fprintf(stderr, "khtpm_entity_menu_render: cannot open display\n"); return 1; }
