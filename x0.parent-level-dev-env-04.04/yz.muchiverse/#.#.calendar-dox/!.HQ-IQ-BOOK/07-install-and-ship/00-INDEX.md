@@ -29,3 +29,9 @@ scope. Worth checking directly if install/ship work resumes.
   Duktape JS eval op as a real, concrete case needing this exact
   analysis. See `02-architecture/HTML-MEDIA-AND-SCRIPTING.md` for the
   rendering-side design its §4 concerns apply to.
+- `USER-PROJECT-GIT-SYNC.md` — **exploration (2026-09-06)**: shipped
+  products let a user push their own game/project to their own GitHub
+  from inside the app (a GUI "Save to GitHub", git underneath, hidden).
+  Key inversion from this repo's rules: the dev house `.gitignore`s
+  per-app runtime/state as scratch; a user's *save state IS the work*,
+  so the in-app sync needs its own per-toy include/exclude policy.
