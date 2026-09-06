@@ -93,8 +93,32 @@ provision_stub() {
     fi
 }
 
+# picker_for <key> - column 4 (PICKER) of pallets.pdl. Same IFS='|'
+# parse shape as title_for().
+picker_for() {
+    grep '^CATEGORY' "$SELF_DIR/pallets.pdl" | while IFS='|' read -r _s _k _l _picker _rest; do
+        _k=$(printf '%s' "$_k" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        [ "$_k" = "$1" ] || continue
+        printf '%s' "$_picker" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+        break
+    done
+}
+
 launch_cat() {  # launch_cat <house> <key>
     _h="$1"; _k="$2"
+
+    # A category whose PICKER is a real standalone HQ app just execs that
+    # app's own launcher (it forks the shared renderer + its <module>
+    # itself). 2026-09-06: the `user-pallet` row is now "canvas-craft"
+    # (PICKER canvascraft) and opens the Canvas-Craft crafting window
+    # (CANVAS-CRAFT-DESIGN.md). The `elements` / Chemicals+Compounds row
+    # is unchanged.
+    case "$(picker_for "$_k")" in
+        canvascraft)
+            exec sh "$_h/&.widgits/canvas-craft/open_canvas_craft.sh" "$_h"
+            ;;
+    esac
+
     _CHTPM="$SELF_DIR/palettes-$_k.chtpm"
     if [ ! -f "$_CHTPM" ]; then
         provision_stub "$_k"

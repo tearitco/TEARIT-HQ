@@ -45,7 +45,7 @@ SECTION      | desk_menu_action_2_label | +new-desk
 SECTION      | desk_menu_action_2_cmd   | livedesk:new-desk
 SECTION      | desk_menu_action_3_label | cancel
 
-SECTION      | palettes_menu_1_label  | my pallet
+SECTION      | palettes_menu_1_label  | canvas-craft
 SECTION      | palettes_menu_1_cmd    | livedesk:open-palette:user-pallet
 SECTION      | palettes_menu_2_label  | emojis
 SECTION      | palettes_menu_2_cmd    | livedesk:open-palette:emojis

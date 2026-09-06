@@ -1,6 +1,6 @@
 SECTION      | KEY                | LABEL              | PICKER      | WIDE
 ---------------------------------------------------------------------------
-CATEGORY     | user-pallet        | My Pallet          | stub        | 0
+CATEGORY     | user-pallet        | Canvas-Craft       | canvascraft | 0
 CATEGORY     | emojis             | Emojis             | tile-picker | 0
 CATEGORY     | elements           | Chemicals+Compounds| chemistry   | 1
 CATEGORY     | rmmv               | RPG Maker Tiles    | rmmv        | 0
