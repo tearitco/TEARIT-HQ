@@ -150,20 +150,20 @@ _shared-lib = the shared renderer core (not a widget)
   polls `<name>_action.txt`.
 - Clipboard (window↔window↔OS) ✅ · text selection ✅ · multi-digit
   nav-jump ✅.
-- **Missing / would help:** the taskbar-strip terminal mirror (`cli`,
-  above) extended to **arbitrary HQ windows** — "the taskbar can open a
-  terminal render of any open window", headless, agent-startable for
-  testing, later with entity manipulation. The strip half is real and
-  bidirectional; the window half is not built. Right approach (matches
-  "use the same logic that's already there"): a
-  **`khtpm_core_render --render-text`** mode — parse + `${var}`-sub +
-  layout exactly as the X11 path does, then emit the laid-out Elem
-  tree as indented text (labels, nav numbers, tab/active/list state)
-  and either exit or loop writing a `*_ascii_frame.txt`, with a
-  keyboard-relay sibling reusing the existing per-PID
-  `<mode>_history/<pid>.txt` relay. No layout logic duplicated.
-  Today's stopgaps: `--dump-and-exit` (PNG + wire-format frame file)
-  and each manager's readable `*_ui.txt` (what the test harnesses grep).
+- **Terminal mirror for arbitrary HQ windows** — 🟡 steps 1-3 BUILT
+  (2026-09-06), step 4 (true no-X) pending. Every non-dock window now
+  writes `#.desktop/ascii_frames/<pid>.frame.txt` + `<pid>.pulse.txt`
+  (DIAMOND marker) on every repaint; `khtpm_render_ascii.+x <house>
+  <pid>` presents it and `khtpm_kbd_ascii.+x <house> <pid>` relays keys
+  into the per-PID `entity_menu_history/<pid>.txt` the renderer already
+  polls. `ops/open_window_cli.sh <pid>` attaches a terminal to a
+  running window; `$.crypts/scrypts/headless/window_headless.sh`
+  launches one headless (uses `$DISPLAY` if set, else `xvfb-run` if
+  installed). No layout logic duplicated — same `dock_ascii_walk()`
+  the strip uses. Design + how-to:
+  `08-roadmap/design-docs/TERMINAL-MIRROR-PARITY-all-windows.md`.
+  Still design-only: `--headless` (drop the X/xvfb requirement) and
+  entity manipulation from the text view.
 
 ### Verified: chain P2P sync across ports (2026-09-06)
 

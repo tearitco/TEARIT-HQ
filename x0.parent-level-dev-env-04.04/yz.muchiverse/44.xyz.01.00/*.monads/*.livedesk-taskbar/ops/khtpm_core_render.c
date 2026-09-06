@@ -6076,6 +6076,58 @@ static void dock_write_ascii_frame(void) {
     }
 }
 
+/* Mode-agnostic sibling of dock_write_ascii_frame() (TERMINAL-MIRROR-
+ * PARITY-all-windows.md step 1). Every NON-dock window this binary
+ * renders drops a live text mirror of its laid-out Elem tree, keyed by
+ * PID, next to the per-PID input relay that poll_agent_history() already
+ * consumes:
+ *   #.desktop/ascii_frames/<pid>.frame.txt   - the readable frame
+ *   #.desktop/ascii_frames/<pid>.pulse.txt   - DIAMOND marker (size grows
+ *                                              per frame, rotates >64KB)
+ * A generic presenter (khtpm_render_ascii.+x <house> <pid>) tails the
+ * pulse and prints the frame; a generic keyboard relay writes
+ * KEY_PRESSED lines into #.desktop/entity_menu_history/<pid>.txt. The
+ * dock keeps its own strip_ascii_* filenames (the cli launcher + docs
+ * point at them) - it's the already-shipped special case. */
+static void kh_write_ascii_frame(void) {
+    if (!g_window || window_is_dock()) return;
+
+    char dir[PATH_BUF], fpath[PATH_BUF], ppath[PATH_BUF];
+    snprintf(dir, sizeof(dir), "%s/#.desktop/ascii_frames", g_house_root);
+    mkdir(dir, 0777);
+    snprintf(fpath, sizeof(fpath), "%s/%d.frame.txt", dir, (int)getpid());
+    snprintf(ppath, sizeof(ppath), "%s/%d.pulse.txt", dir, (int)getpid());
+
+    const char *base = g_chtpm_path;
+    { const char *sl = strrchr(base, '/'); if (sl) base = sl + 1; }
+    char ts[32];
+    time_t now = time(NULL);
+    strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", localtime(&now));
+
+    FILE *f = fopen(fpath, "w");
+    if (!f) return;
+    fprintf(f, "--- %s  pid %d  %s ---\n", base, (int)getpid(), ts);
+    if (g_current_page[0]) fprintf(f, "--- page: %s ---\n", g_current_page);
+    dock_ascii_walk(f, g_window, 0);
+    fclose(f);
+
+    struct stat pst;
+    const char *mode = (stat(ppath, &pst) == 0 && pst.st_size > 64 * 1024) ? "w" : "a";
+    FILE *pf = fopen(ppath, mode);
+    if (pf) { fputc('P', pf); fclose(pf); }
+}
+
+/* Real cleanup counterpart - a closed window's frame/pulse pair
+ * shouldn't linger. Called from the same quit paths as
+ * history_unregister(). */
+static void kh_ascii_frame_unregister(void) {
+    char p[PATH_BUF];
+    snprintf(p, sizeof(p), "%s/#.desktop/ascii_frames/%d.frame.txt", g_house_root, (int)getpid());
+    unlink(p);
+    snprintf(p, sizeof(p), "%s/#.desktop/ascii_frames/%d.pulse.txt", g_house_root, (int)getpid());
+    unlink(p);
+}
+
 static void redraw(void) {
     if (getenv("KH_REDRAW_TRACE")) {
         static int rc = 0; struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -6409,7 +6461,8 @@ static void redraw(void) {
         XCopyArea(dpy, buf, win, gc, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, 0, 0);
     }
     XFlush(dpy);
-    dock_write_ascii_frame();   /* keeps the "cli" terminal mirror live (dock only, else no-op) */
+    dock_write_ascii_frame();   /* strip: the "cli" mirror (dock only, else no-op) */
+    kh_write_ascii_frame();     /* every other window: per-PID text mirror */
 }
 
 /* on-demand debug PNG dump, same real convention every other khtpm app
@@ -6769,6 +6822,21 @@ static void history_unregister(void) {
     char path[PATH_BUF];
     history_path(path, sizeof(path));
     unlink(path);
+}
+
+/* Create this process's relay file empty at startup and seed the cursor
+ * to 0, so the FIRST keystroke a generic terminal keyboard
+ * (khtpm_kbd_ascii.+x) sends into a brand-new relay isn't mistaken for
+ * pre-existing backlog and swallowed by poll_agent_history()'s
+ * first-sight seed (g_history_cursor < 0 -> = st.st_size). Truncates a
+ * stale file left by a crashed same-PID predecessor, which is correct -
+ * nothing should replay across process lifetimes. */
+static void history_init_empty(void) {
+    char path[PATH_BUF];
+    history_path(path, sizeof(path));
+    FILE *f = fopen(path, "w");
+    if (f) fclose(f);
+    g_history_cursor = 0;
 }
 
 /* Phase 3a: capture-only. House format from pieces/keyboard/history.txt:
@@ -13655,6 +13723,8 @@ int main(int argc, char **argv) {
      * convention ktb_pid_alive() already uses) when it polls, same
      * real second-safety-net shape as this design doc's own §2.1. */
     atexit(cleanup_hq_window_registry);
+    atexit(kh_ascii_frame_unregister);   /* per-PID text-mirror frame/pulse pair */
+    history_init_empty();                /* per-PID input relay exists from tick 0 - no swallowed first keystroke */
     /* REAL, NEW 2026-09-03 - default/HQ-window SIGTERM cleanup hook.
      * tp_main() (entity/tile path) installs handle_shutdown_signal() and
      * honors g_shutdown_requested, but the shared default/HQ path that

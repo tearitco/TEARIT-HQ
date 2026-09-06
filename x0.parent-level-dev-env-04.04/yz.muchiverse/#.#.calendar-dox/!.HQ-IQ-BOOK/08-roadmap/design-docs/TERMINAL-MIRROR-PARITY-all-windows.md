@@ -1,8 +1,31 @@
 # Terminal-mirror parity — every khtpm window, not just the strip
 
-**Status:** design · **Date:** 2026-09-06 · **Not built past the strip**
-**Momentum doc** — deliberately not exhaustive. Enough to start and to
-not re-derive the shape next session. Refine in place.
+**Status:** steps 1-3 BUILT + verified 2026-09-06 · step 4 (true no-X)
+still design-only · **Momentum doc** — deliberately not exhaustive.
+
+## BUILT (2026-09-06) — steps 1, 2, 3
+
+- `khtpm_core_render.c` `kh_write_ascii_frame()` — every non-dock window
+  drops `#.desktop/ascii_frames/<pid>.frame.txt` + `<pid>.pulse.txt`
+  (DIAMOND size-growth marker, rotates >64KB) on every `redraw()`.
+  Cleaned up via `atexit(kh_ascii_frame_unregister)`.
+- `history_init_empty()` — the per-PID input relay is now created empty
+  at startup so a generic keyboard's FIRST keystroke isn't eaten by
+  `poll_agent_history()`'s first-sight cursor seed.
+- `khtpm_render_ascii.+x <house> <pid>` — generic presenter (60Hz pulse
+  poll, explicit `\r\n`, exits ~2s after the frame file disappears).
+- `khtpm_kbd_ascii.+x <house> <pid>` — generic raw-termios keyboard
+  relay → `KEY_PRESSED:` lines into `entity_menu_history/<pid>.txt`.
+- `ops/open_window_cli.sh <pid>` — attach presenter+keyboard terminal
+  to a running window.
+- `$.crypts/scrypts/headless/window_headless.sh` — the headless entry
+  point (see "Running headless" at the bottom).
+
+Verified: taskbar-settings window launched, `cat <pid>.frame.txt`
+showed its live tree, `khtpm_kbd_ascii.+x` Down×4/Up×2 moved `[>]`
+focus exactly, strip `cli` unaffected.
+
+---
 
 ## 0. What we have vs. what we want
 
@@ -127,10 +150,35 @@ relay. This is the IRC/chain-from-many-ports test surface.
 
 ## 5. Order of attack
 
-Step 1 first (self-contained, no risk to X path, immediately useful
-for testing). Then 2+3 together (small, mechanical). Step 4 last and on
-its own branch — it touches the X-call surface and wants careful
-live-verification that the windowed path is byte-identical after.
+Steps 1-3 DONE. Step 4 (`--headless`, true no-X) is next and on its own
+branch — it touches the X-call surface and wants careful live-
+verification that the windowed path is byte-identical after.
+
+## 6. Running headless (today, before step 4)
+
+`khtpm_core_render.+x` still needs an X connection to build its window,
+so "headless" right now is one of:
+
+| you have | how |
+|---|---|
+| a real `DISPLAY` (`:0`) | the window draws there; ignore it, drive via files. `window_headless.sh` uses it automatically. |
+| no display, `xvfb-run` installed | `window_headless.sh` wraps it in a throwaway virtual X server — genuinely screenless (SSH/CI). `sudo apt-get install -y xvfb` once. |
+| no display, no xvfb | script stops and tells you to do one of the above. |
+
+```
+$.crypts/scrypts/headless/window_headless.sh <house> <window.xhtpm> [x] [y] [--attach]
+```
+Prints `PID=<n>`, the `frame:` path (`cat` it), and the `relay:` path
+(`printf 'KEY_PRESSED: 201\n' >> …` to drive). `--attach` also runs the
+presenter+keyboard in the current terminal. PID is also written to
+`#.desktop/ascii_frames/last_headless.pid`.
+
+For **many windows at once** (IRC + chain from different ports): call
+`window_headless.sh` once per window; each gets its own PID-keyed
+frame/pulse/relay triple, fully independent.
+
+Step 4 will add `khtpm_core_render.+x --headless …` so the DISPLAY /
+xvfb requirement goes away entirely.
 
 ## See also
 - `reference/TPMOS-DIAMOND-render-chain.md` — the marker discipline all
