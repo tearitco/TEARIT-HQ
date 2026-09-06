@@ -36,3 +36,22 @@ deleted. Nothing outstanding here.
 - `main` = frozen. All day-to-day work lives on per-tool branches.
 - Before creating/merging/force-deleting a branch, READ
   BRANCH-STRATEGY.md.
+
+## NOTICE 2026-09-06 02:05 — STOP fast-forwarding other tools' branches
+
+- Flagged while the opencode agent was mid-edit: the `opencode` branch
+  (and `main`) were repeatedly **fast-forwarded to `claude`'s tip**
+  (`git reflog opencode` shows 4× `merge claude: Fast-forward` today).
+  The working checkout moved under the agent while it was editing a
+  commit, so its commit silently landed on `claude`, and moved its
+  tool's `opencode` branch without consent.
+- **Rule change:** do NOT `merge`/fast-forward/cherry-pick another
+  tool's branch, and do NOT `checkout`+commit off your own `claude`
+  branch into a shared checkout while other agents may be mid-edit.
+  Commit only under your own branch. Coordinates between agents at
+  session boundaries (or via `13.agent-coms/`), the same way this repo
+  already does user-initiated merges.
+- Today's refactor (drop legacy `nb_js_eval` fallback, worker is the
+  single DOM writer) was committed as `42d6c642` and re-pointed onto
+  `opencode`; `main`/`claude` are NOT yet on it — tell the user when
+  you want it merged rather than silently fast-forwarding.
