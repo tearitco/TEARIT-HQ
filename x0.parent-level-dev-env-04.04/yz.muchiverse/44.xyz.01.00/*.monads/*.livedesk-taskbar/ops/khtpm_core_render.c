@@ -5859,8 +5859,32 @@ static void activate_focused(void) {
 static int g_dock_focus_cell = -1;   /* 0-based, -1 = on a tab */
 static int g_dock_tab_focus  = 0;
 
+/* REAL, NEW 2026-09-06 - the terminal-input half of the mirror.
+ * khtpm_strip_keyboard_ascii.+x relays arrow/digit/Enter keys to
+ * #.desktop/strip_history.txt; the manager consumes them and republishes
+ * strip_state.txt (strip_focus_cell / tab_focus_idx / hq_open / ...).
+ * The X11 strip repaints on its own X events, but a state change driven
+ * purely from the terminal produces NO X event here, so redraw() (and
+ * with it dock_write_ascii_frame()) never ran and the ASCII mirror
+ * lagged - it only caught up on the next unrelated repaint. This polls
+ * strip_state.txt's mtime every idle tick (dock only) and forces one
+ * redraw when it moves, so terminal-driven nav is mirrored promptly.
+ * Cheap: a single stat() per tick, redraw() only on an actual change. */
+static void dock_poll_strip_state(void) {
+    if (!window_is_dock()) return;
+    static long s_mtime = 0;
+    char sp[PATH_BUF];
+    snprintf(sp, sizeof(sp), "%s/#.desktop/strip_state.txt", g_house_root);
+    struct stat st;
+    if (stat(sp, &st) != 0) return;
+    long m = (long)st.st_mtime;
+    if (s_mtime == 0) { s_mtime = m; return; }   /* first sight - don't repaint */
+    if (m != s_mtime) { s_mtime = m; if (!g_quit) redraw(); }
+}
+
 static void dock_ascii_walk(FILE *f, Elem *e, int depth) {
     if (!e) return;
+    if (e->y < -1000) { return; }   /* parked offscreen (a closed menu's rows etc.) - not on screen, not in the mirror */
     int has_label = e->label[0] != '\0';
     int is_container = (strcmp(e->tag, "window") == 0 || strcmp(e->tag, "page") == 0 ||
                         strcmp(e->tag, "sidebar") == 0 || strcmp(e->tag, "panel") == 0 ||
@@ -7344,6 +7368,7 @@ static void hq_idle_tick(void) {
         if (window_is_dock() && g_dock_peer_win) set_window_opacity(dpy, g_dock_peer_win, load_theme_opacity());
     }
     if (poll_agent_history() > 0 && !g_quit) hq_request_redraw();
+    dock_poll_strip_state();   /* mirror terminal-driven nav into strip_ascii_current_frame.txt promptly */
     if (g_default_has_sidebar_panel && !window_is_dock() && dpy && win) {
         char restore_path[PATH_BUF];
         snprintf(restore_path, sizeof(restore_path),
