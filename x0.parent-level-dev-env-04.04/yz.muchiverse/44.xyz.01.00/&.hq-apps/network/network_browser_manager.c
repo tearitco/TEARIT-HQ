@@ -686,10 +686,8 @@ static void load_page_title(char *out, size_t outsz);
 static void do_fetch(const char *url_in, int record_history);
 
 static char g_curl_url_path[PATH_BUF];
-static char g_js_eval_path[PATH_BUF];
 static char g_js_worker_path[PATH_BUF];
 static char g_js_script_path[PATH_BUF];
-static char g_js_effects_path[PATH_BUF];
 static char g_media_op_path[PATH_BUF];
 static char g_media_root[PATH_BUF];
 
@@ -786,55 +784,6 @@ static void collect_scripts(const char *html, const char *page_url, FILE *js_out
         p = close + 9;
     }
     *n_scripts = n;
-}
-
-static void apply_js_effects(const char *page_title) {
-    FILE *ef = fopen(g_js_effects_path, "r");
-    if (!ef) return;
-    char line[PATH_BUF];
-    char new_title[512] = "";
-    char extras[16][2048];
-    int n_extra = 0;
-    int ok = 0;
-    while (fgets(line, sizeof(line), ef)) {
-        size_t L = strlen(line);
-        while (L > 0 && (line[L-1]=='\n' || line[L-1]=='\r')) line[--L] = 0;
-        if (strncmp(line, "OK|1", 4) == 0) ok = 1;
-        else if (strncmp(line, "TITLE|", 6) == 0) {
-            snprintf(new_title, sizeof(new_title), "%s", line + 6);
-        } else if ((strncmp(line, "LOG|", 4) == 0 || strncmp(line, "TEXT|", 5) == 0) && n_extra < 16) {
-            const char *payload = strchr(line, '|');
-            if (payload) {
-                snprintf(extras[n_extra], sizeof(extras[0]), "TEXT|js: %s", payload + 1);
-                n_extra++;
-            }
-        }
-    }
-    fclose(ef);
-    if (!ok && !new_title[0] && n_extra == 0) return;
-
-    (void)page_title;
-    char tmp[PATH_BUF];
-    FILE *pf = fopen(g_page_state_path, "r");
-    FILE *wf = atomic_open(g_page_state_path, tmp, sizeof(tmp));
-    if (!pf || !wf) {
-        if (pf) fclose(pf);
-        if (wf) fclose(wf);
-        return;
-    }
-    char row[PATH_BUF];
-    while (fgets(row, sizeof(row), pf)) {
-        size_t L = strlen(row);
-        while (L > 0 && (row[L-1]=='\n' || row[L-1]=='\r')) row[--L] = 0;
-        if (new_title[0] && strncmp(row, "TITLE|", 6) == 0)
-            fprintf(wf, "TITLE|%s\n", new_title);
-        else
-            fprintf(wf, "%s\n", row);
-    }
-    fclose(pf);
-    for (int i = 0; i < n_extra; i++) fprintf(wf, "%s\n", extras[i]);
-    fclose(wf);
-    atomic_commit(g_page_state_path, tmp);
 }
 
 /* ---- NB-JS persistent worker lifecycle (worker plan §2B) ----
@@ -1122,8 +1071,8 @@ static void worker_quit(void) {
 }
 
 static void run_page_scripts(const char *html, const char *url, const char *title) {
-    if (!g_js_eval_path[0]) return;
-    FILE *probe = fopen(g_js_eval_path, "r");
+    if (!g_js_worker_path[0]) return;
+    FILE *probe = fopen(g_js_worker_path, "r");
     if (!probe) return;
     fclose(probe);
 
@@ -1134,22 +1083,13 @@ static void run_page_scripts(const char *html, const char *url, const char *titl
     fclose(js);
     if (n <= 0) return;
 
-    /* NB-JS worker plan step 4: LOAD the page into the resident worker and,
-     * when it reports RENDER rows, overlay them onto page.state.txt so the
-     * post-JS DOM (document.title=, el.textContent=, appendChild, ...) shows.
-     * In that case the worker is authoritative and the legacy one-shot
-     * effects merge is skipped (its DOM-less eval would add noise). */
-    if (worker_load(g_js_script_path, g_tmp_dom_path, url, title)) {
-        if (merge_render_rows()) return;
-    }
-
-    char cmd[PATH_BUF * 2];
-    snprintf(cmd, sizeof(cmd),
-        "timeout 3 '%s' '%s' '%s' '%s' '%s'",
-        g_js_eval_path, g_js_script_path, g_js_effects_path, url, title ? title : "");
-    int rc = system(cmd);
-    (void)rc;
-    apply_js_effects(title);
+    /* NB-JS worker authoritative: LOAD the page into the resident worker
+     * and, when it reports RENDER rows, overlay them onto page.state.txt
+     * (document.title=, el.textContent=, appendChild, ...). The legacy
+     * one-shot nb_js_eval effects path is gone — the worker is the single
+     * DOM writer. A worker that fails leaves the static DOM in place. */
+    worker_load(g_js_script_path, g_tmp_dom_path, url, title);
+    (void)merge_render_rows();
 }
 
 
@@ -2600,8 +2540,6 @@ int main(int argc, char **argv) {
     path_join(g_curl_url_path, sizeof(g_curl_url_path), tmpdir, "curl.url.cfg");
     path_join(g_fetch_pid_path, sizeof(g_fetch_pid_path), tmpdir, "fetch.pid");
     path_join(g_js_script_path, sizeof(g_js_script_path), tmpdir, "page.js");
-    path_join(g_js_effects_path, sizeof(g_js_effects_path), tmpdir, "js.effects.txt");
-    snprintf(g_js_eval_path, sizeof(g_js_eval_path), "%s/ops/+x/nb_js_eval.+x", g_package_dir);
     snprintf(g_js_worker_path, sizeof(g_js_worker_path), "%s/ops/+x/nb_js_worker.+x", g_package_dir);
     snprintf(g_media_op_path, sizeof(g_media_op_path), "%s/ops/+x/nb_media_to_sprite.+x", g_package_dir);
     path_join(g_media_root, sizeof(g_media_root), desktop, "nb_sprites");
