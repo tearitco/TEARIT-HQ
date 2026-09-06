@@ -15,9 +15,19 @@ HOUSE="${2:-}"
 if [ -z "$HOUSE" ] || [ ! -d "$HOUSE" ]; then HOUSE="$(cd "$HERE/../.." && pwd)"; fi
 HOUSE="$(cd "$HOUSE" && pwd)"
 
+# A category can hand off to a standalone HQ app that has its own
+# launcher (which forks the shared renderer + its <module> itself, same
+# shape as below). 2026-09-06: the `user-pallet` row is "canvas-craft"
+# and opens the Canvas-Craft crafting window.
+case "$CAT" in
+    user-pallet)
+        exec sh "$HOUSE/&.widgits/canvas-craft/open_canvas_craft.sh" "$HOUSE"
+        ;;
+esac
+
 # emojis/elements/piececraft/debug/rmmv have real ported templates;
-# every other category (cdda/df/kenney/paint/generate/user-pallet/...)
-# gets the generic "not implemented yet" stub. NOTHING routes to the old
+# every other category (cdda/df/kenney/paint/generate/...) gets the
+# generic "not implemented yet" stub. NOTHING routes to the old
 # palettes_menu.sh g_is_palettes C path any more.
 case "$CAT" in
     emojis|elements|piececraft|debug|rmmv) XHTPM="$HERE/palettes-$CAT.xhtpm" ;;
