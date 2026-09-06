@@ -132,6 +132,22 @@
 
 ## Not started / open
 
+- **New toy: music-player-hq** — DESIGN DOC WRITTEN, not built.
+  `08-roadmap/design-docs/MUSIC-PLAYER-HQ-DESIGN.md`. iTunes-inspired
+  X11-HQ music player: scrolling library list (populated from a
+  `.pal`-listed dir first, File Explorer "ADD" later), now-playing +
+  playhead/scrubber + transport, a visualizer section (ASCII v1, GL
+  modes when gl-os lands). Real prior art on the external drive
+  (`.../home/jbez/Music/0.mu.playr.APP🫕️📻️i15/` and
+  `.../mp3gui-69-player-2-tpm_1.0/`) - both already use this house's
+  own decoupled backend-CLI + frontend split. Port = static
+  `.xhtpm`+CSS on the shared renderer + a real `music_player_manager.c`
+  `<module>`. All audio deps present (libav*, libpulse-dev, mpg123,
+  ffmpeg). v1 engine recommendation: `mpg123 -R` (fast, real, .mp3
+  only, no FFT); v2 = FFmpeg decode + PulseAudio + real FFT
+  visualizer. v3 = music videos with their own chrome/playheads
+  (separate doc). Four open questions to settle before starting - see
+  the doc's own list.
 - **Font size + UI scale in Settings** — brainstormed, not scheduled.
   See `11.brainstorm/2026-09-05/FONT-SIZE-AND-UI-SCALE-BRAINSTORM.md`.
   Real finding from today: the existing `font_scale` PDL key and
