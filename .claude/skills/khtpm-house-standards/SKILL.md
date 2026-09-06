@@ -90,6 +90,46 @@ loop, or armed-input-state logic by hand: stop and check whether
 `khtpm_render_core.c`/`khtpm_draw_core.c` (the shared, text-included
 core files) already provide it. They usually do.
 
+## Adding a *layout* branch to `khtpm_core_render.c` (2026-09-06 incident)
+
+**Real, concrete incident**: the "Chemicals+Compounds" periodic-table
+picker was built on a brand-new `<sidebar style="display:flex">` scroll
+branch in `layout_sidebar_panel()` — plus a bespoke `XK_Up/XK_Down`
+handler and a new `g_default_poe_cols` global — when the generic
+**swatch-grid path** (`<window class="palettes-pal database-window">`,
+`<item class="swatch">`, ~line 4669) already rendered the exact same
+shape (a wide scrolling tile grid + chrome) and is what the sibling
+`palettes-rmmv.xhtpm` uses. The new branch also got three load-bearing
+details wrong, each a real bug: it **translated** the whole laid-out
+subtree to scroll (`kh_shift_subtree(sidebar, -scroll*row_h)`) instead
+of clipping, so off-fold rows painted up over the pinned chrome; it
+mutated the scroll cursor directly (one direction only) from a custom
+key handler; and it nav-numbered invisible rows.
+
+**Before adding any `layout_*` branch to this file:**
+1. Grep for a sibling that already renders the same shape and route
+   through it: `grep -n 'class="swatch"'`, `grep -rn sprite-grid-row`,
+   `layout_scroll_region`, `layout_fixed_rows_and_scrolllist`.
+2. If you genuinely must add a branch, it MUST:
+   - **clip, never translate** — park off-screen children at
+     `y = -100000` (every existing scroll path does this); a subtree
+     that re-lays every frame must not be `kh_shift_subtree`'d as the
+     scroll mechanism (that's for one-shot transients like a dropdown
+     offset).
+   - **not add key handling and not write a `g_*_scroll` directly** —
+     every scroll cursor is owned by `generic_sbar_register()` + the
+     generic `Page_Up`/`Page_Down` handler. A new grid needs zero new
+     key code.
+   - **nav-number only visible rows** (off-screen → `nav_index = 0`,
+     out of `g_nav[]`).
+3. `assign_nav_and_layout()` runs many times per frame — every mutation
+   it makes must be idempotent (see the `khtpm-shared-layout-caution`
+   auto-memory). A translate applied on top of a fresh layout is not.
+
+Full writeup: `03-pitfalls/HOUSE_CODE_PITFALLS.md` #14 +
+`02-architecture/RENDERER-MODULARITY-AND-PERF-AUDIT.md` addendum
+2026-09-06.
+
 **Scoped nav / `[^]` `[>]` (2026-09-03):** do not compact `g_nav[]`.
 Read
 `yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/09-appendix/HANDOFF-scope-nav-and-chtpm-port.md`
