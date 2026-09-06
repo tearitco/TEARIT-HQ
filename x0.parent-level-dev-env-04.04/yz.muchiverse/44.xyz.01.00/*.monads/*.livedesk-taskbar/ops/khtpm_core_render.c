@@ -1363,6 +1363,19 @@ static Elem *g_default_input_elem;
  * End). default_cli_io_handle_key() reads it: Shift+move extends the
  * text selection, an unshifted move collapses it. */
 static int g_key_shift = 0;
+/* REAL FIX 2026-09-05, direct live report ("tb and x11-hq windows no
+ * longer do double digit accumulation jump, ie 15 jumps to 5") -
+ * multi-digit nav-jump accumulator for the generic default-mode
+ * digit-jump (handle_key()'s own `ch >= '1'` branch), ported from
+ * tpmos chtpm_parser.c.bak's `digit_accum` (~line 1996): a pressed
+ * digit is `accum*10 + d`; take it if 1..g_n_nav, else restart the
+ * accumulator with just `d`. Reset to 0 on any arrow-nav, Enter, or
+ * any non-digit key (that last one is done once, at the top of the
+ * post-armed-field section of handle_key). Popup/entity-menu mode
+ * already has its own `popup_digit_accum`; the taskbar's own
+ * digit-jump is in khtpm_strip_parser.c / khtpm_taskbar_manager.c -
+ * a separate fix if it regressed there too. */
+static int g_nav_digit_accum = 0;
 /* REAL, NEW 2026-09-03 (direct request: "make menu dropdown... work for
  * all layouts", after live-checking that piececraft-hq's own File/Desk
  * dropdown is hand-built, mode-specific C predating CENTROID_GOLD_STD,
@@ -6213,6 +6226,10 @@ static void handle_key(KeySym ks, char ch) {
     if (g_default_input_elem && strcmp(g_default_input_elem->tag, "grid") == 0) { default_grid_handle_key(ks, ch); return; }
     if (g_default_input_elem) { default_cli_io_handle_key(ks, ch); return; } /* same real key-order exception - a real cli_io field needs 'p' as a literal typed character */
     if (ch == 'p') { dump_frame_png(); return; }
+    /* Anything past this point that isn't a bare digit ends a
+     * pending multi-digit nav jump (tpmos digit_accum "reset on
+     * non-digit keys"). */
+    if (!(ch >= '0' && ch <= '9')) g_nav_digit_accum = 0;
     if (ks == XK_Return || ks == XK_KP_Enter) {
         activate_focused();
         /* activate_focused() may have just entered/left a scope (<tab>,
@@ -6325,14 +6342,28 @@ static void handle_key(KeySym ks, char ch) {
             g_default_scrolllist_scroll += dir;
         return;
     }
-    if (ch >= '1' && ch <= '9') {
+    if (ch >= '0' && ch <= '9') {
         int d = ch - '0';
         if (g_dock_drop_lo && g_default_active_scope_id[0]) {
+            /* dock drop-zone: single-digit only, unchanged */
+            g_nav_digit_accum = 0;
             int idx = g_dock_drop_lo + d - 1;
             if (idx >= g_dock_drop_lo && idx <= g_dock_drop_hi) g_focus_nav = idx;
             return;
         }
-        if (d <= g_n_nav && kh_elem_in_scope(g_nav[d - 1])) g_focus_nav = d;
+        /* multi-digit accumulate: "15" jumps to 15, not 5 (tpmos
+         * chtpm_parser.c.bak digit_accum). Take accum*10+d when it's a
+         * real nav index; else restart the accumulator with just d. */
+        int nv = g_nav_digit_accum * 10 + d;
+        if (nv >= 1 && nv <= g_n_nav && kh_elem_in_scope(g_nav[nv - 1])) {
+            g_focus_nav = nv;
+            g_nav_digit_accum = nv;
+        } else if (d >= 1 && d <= g_n_nav && kh_elem_in_scope(g_nav[d - 1])) {
+            g_focus_nav = d;
+            g_nav_digit_accum = d;
+        } else {
+            g_nav_digit_accum = 0;
+        }
         return;
     }
 }

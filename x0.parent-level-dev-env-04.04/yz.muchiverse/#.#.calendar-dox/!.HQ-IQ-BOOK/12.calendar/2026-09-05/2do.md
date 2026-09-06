@@ -1,5 +1,31 @@
 # 2026-09-05
 
+## Bugs found (live report 2026-09-05 evening)
+
+- **Multi-digit nav-jump accumulator gone for tb + x11-hq windows** —
+  "15 jumps to 5". FIXING: ported tpmos `chtpm_parser.c.bak`'s
+  `digit_accum` (~line 1996) into `khtpm_core_render.c`'s generic
+  default-mode digit branch (`g_nav_digit_accum`: `accum*10+d` if a
+  real nav index, else restart with `d`; reset on arrow-nav / Enter /
+  any non-digit key). Popup/entity-menu mode already had its own
+  `popup_digit_accum` and is unaffected. **STILL TO CHECK**: whether
+  the taskbar's own digit-jump (`khtpm_strip_parser.c` /
+  `khtpm_taskbar_manager.c`) regressed the same way — separate fix if
+  so.
+- **Fullscreen breaks pdl-read layout** — before fullscreen: fine.
+  After toggling fullscreen (`TOGGLE_FULLSCREEN` / the `!` chrome
+  button): the panel/`<text_area>` content does NOT re-fill to the new
+  window size — it stays squished into a small band at the
+  bottom-left, most of the (now huge) window is black, the sidebar
+  page list also doesn't grow. Screenshots on file. Open question the
+  user raised alongside: does the doc content overflow the page on a
+  small screen, and if so is there no side-scroll yet? (there isn't —
+  see `TEXT_AREA-SCROLL-GUTTER-SELECTION-DESIGN.md` step 2). Likely a
+  missing `assign_nav_and_layout()` re-run after the fullscreen
+  resize, or `g_win_w`/`g_win_h` updated but the sidebar/panel/
+  text_area layout not recomputed against them. NOT yet fixed —
+  investigation delegated in parallel.
+
 ## Done today
 
 - **text-edit-hq and csv-hq — BUILT, verified, registered as real
