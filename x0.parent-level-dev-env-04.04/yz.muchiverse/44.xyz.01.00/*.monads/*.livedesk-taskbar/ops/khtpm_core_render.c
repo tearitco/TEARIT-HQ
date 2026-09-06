@@ -779,8 +779,17 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
          * apply_attr()), so a direct copy is correct. Only meaningful
          * for text_area (cli_io stays single-line, unused by
          * anything else) - harmless no-op attribute for any other tag. */
-        if (strcmp(e->tag, "text_area") == 0)
-            snprintf(e->text_area_buffer, sizeof(e->text_area_buffer), "%s", val);
+        /* EXPERIMENT 2026-09-05 (experiment/xhtpm-attr-var-escaping):
+         * kh_substitute_vars() now XML-escapes a ${var} value spliced
+         * inside a quoted attribute, so a `"`/`<`/`>`/`&` in the doc
+         * page no longer breaks the re-parse. Undo that here, same as
+         * label=/action= already do. */
+        if (strcmp(e->tag, "text_area") == 0) {
+            char decoded[sizeof(e->text_area_buffer)];
+            snprintf(decoded, sizeof(decoded), "%s", val);
+            decode_entities(decoded);
+            snprintf(e->text_area_buffer, sizeof(e->text_area_buffer), "%s", decoded);
+        }
     } else if (strcmp(name, "bg") == 0) {
         /* REAL, NEW 2026-09-04, direct live request ("can we add grey
          * and brown to swatch colors... that shouldn't be hardcoded,
@@ -1092,11 +1101,40 @@ static int kh_find_vars_attr(const char *buf, char *out, size_t outsz) {
 
 /* ${name} -> value; \$ \{ \\ pass the next char literally; a "\n"
  * sequence inside a value becomes a real newline (tpmos convention).
- * An unknown ${name} expands to nothing. */
+ * An unknown ${name} expands to nothing.
+ *
+ * EXPERIMENT 2026-09-05 (branch experiment/xhtpm-attr-var-escaping,
+ * follow-up to fix ea384825): substitution splices the value straight
+ * into the raw template text that parse_element() then re-parses. If
+ * the splice lands inside a double-quoted attribute value (`content=
+ * "${page_text}"`, `label="${x}"`, ...) and the value contains a
+ * literal `"` (or `<` `>` `&`), it breaks parse_attr_value() and the
+ * rest of the value corrupts the tag stream (the infinite loop
+ * ea384825 now merely survives, at the cost of truncating the value
+ * at the first `"`). Fix: track whether `o` is currently inside a
+ * template-level `"..."` and, when so, emit each char of a ${var}
+ * value XML-escaped - `decode_entities()` on the apply_attr() side
+ * (already run for label=/action=/...; content= gets it here too)
+ * restores the real text. Template-literal `"` chars still toggle the
+ * state; a ${var} value's own emitted `"` does not. */
+static void kh_sv_emit(char **o, char *end, char c, int esc) {
+    if (!esc) { if (*o < end) *(*o)++ = c; return; }
+    const char *rep = NULL;
+    switch (c) {
+        case '&': rep = "&amp;"; break;
+        case '"': rep = "&quot;"; break;
+        case '<': rep = "&lt;"; break;
+        case '>': rep = "&gt;"; break;
+        default:  if (*o < end) *(*o)++ = c; return;
+    }
+    while (*rep && *o < end) *(*o)++ = *rep++;
+}
+
 static void kh_substitute_vars(const char *src, char *dst, size_t max_len) {
     const char *p = src;
     char *o = dst;
     char *end = dst + max_len - 1;
+    int in_attr_quote = 0; /* o is inside a template-level "..." */
     while (*p && o < end) {
         if (strncmp(p, "<!--", 4) == 0) {
             const char *e = strstr(p, "-->");
@@ -1117,13 +1155,14 @@ static void kh_substitute_vars(const char *src, char *dst, size_t max_len) {
                 memcpy(name, p + 2, n); name[n] = '\0';
                 const char *v = kh_get_var(name);
                 while (*v && o < end) {
-                    if (v[0] == '\\' && v[1] == 'n') { *o++ = '\n'; v += 2; }
-                    else *o++ = *v++;
+                    if (v[0] == '\\' && v[1] == 'n') { kh_sv_emit(&o, end, '\n', 0); v += 2; }
+                    else kh_sv_emit(&o, end, *v++, in_attr_quote);
                 }
                 p = close + 1;
                 continue;
             }
         }
+        if (*p == '"') in_attr_quote = !in_attr_quote;
         *o++ = *p++;
     }
     *o = '\0';
