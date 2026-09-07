@@ -1658,6 +1658,73 @@ static void run_page(void) {
     send_status("STATUS ok");
 }
 
+/* bare `duk` on a terminal: a tiny stateful REPL (no page/lifecycle events).
+ * Exits on EOF or exit/quit/.exit. Non-tty stdin stays the framed daemon. */
+static int repl_main(void) {
+    duk_context *ctx = duk_create_heap(NULL, NULL, NULL, NULL, fatal_handler);
+    if (!ctx) return 1;
+    g_cli = 1; g_cli_log = 1;
+    g_out = stdout; setvbuf(g_out, NULL, _IONBF, 0);
+    install_host(ctx);
+    if (peval_budget(ctx, g_js_prelude) != 0) duk_pop(ctx);
+    duk_pop(ctx);
+    static const char empty_html[] = "<html><body></body></html>";
+    g_dom_root = nb_parse_html(empty_html, sizeof(empty_html) - 1);
+    install_dom(ctx);
+    install_events_timers(ctx);
+
+    int tty_out = isatty(STDOUT_FILENO);
+    char line[8192];
+    if (tty_out) { printf("nbjs (duk) — type JS; Ctrl-D or 'exit' to quit\n"); fflush(stdout); }
+    for (;;) {
+        if (tty_out) { fputs("> ", stdout); fflush(stdout); }
+        if (!fgets(line, sizeof(line), stdin)) break;
+        size_t ln = strlen(line);
+        while (ln && (line[ln - 1] == '\n' || line[ln - 1] == '\r')) line[--ln] = 0;
+        if (!ln) continue;
+        if (!strcmp(line, "exit") || !strcmp(line, "quit") || !strcmp(line, ".exit")) break;
+
+        /* don't leak listeners/timers across lines */
+        g_timer_count = 0; g_micro_n = 0; g_micro_head = 0; g_evl_count = 0;
+        g_onprop_count = 0; g_invocations = 0; g_raf_fires = 0;
+        g_pending_err = 0; g_pending_errmsg[0] = 0;
+
+        int rc = peval_budget(ctx, line);
+        if (rc != 0) {
+            const char *m = duk_safe_to_string(ctx, -1);
+            printf("err:%s\n", m ? m : "script error");
+        } else if (duk_get_type(ctx, -1) != DUK_TYPE_UNDEFINED) {
+            const char *s = duk_safe_to_string(ctx, -1);
+            printf("%s\n", s ? s : "");
+        }
+        duk_pop(ctx);
+        fflush(stdout);
+
+        /* drain microtasks + timers (no lifecycle events), CPU-bounded */
+        signal(SIGALRM, sigalrm);
+        alarm(EVAL_BUDGET_SEC);
+        uint64_t start = now_ms();
+        for (int guard = 0; guard < 10000 && !g_pending_err; guard++) {
+            if (now_ms() - start > 200) break;
+            uint64_t now = now_ms();
+            int ran = run_due_timers(ctx, now);
+            if (drain_microtasks(ctx)) ran = 1;
+            if (!ran) {
+                uint64_t m = timer_min_due();
+                if (!m) break;
+                if (m <= now) continue;
+                uint64_t d = m - now; if (d > 5) d = 5;
+                struct timespec ts = { (time_t)(d / 1000), (long)((d % 1000) * 1000000L) };
+                nanosleep(&ts, NULL);
+            }
+        }
+        alarm(0);
+    }
+    duk_destroy_heap(ctx);
+    dom_teardown();
+    return 0;
+}
+
 int main(int argc, char **argv) {
     g_out = NULL;   /* step 2: no effects file yet; console goes nowhere */
     {
@@ -1692,6 +1759,10 @@ int main(int argc, char **argv) {
         run_page();
         return g_cli_status_ok ? 0 : 1;
     }
+
+    /* bare `duk` with a terminal as stdin: interactive REPL instead of the
+     * framed daemon (the manager spawns over a socketpair -> not a tty). */
+    if (isatty(STDIN_FILENO)) return repl_main();
 
     for (;;) {
         if (!recv_frame()) break;
