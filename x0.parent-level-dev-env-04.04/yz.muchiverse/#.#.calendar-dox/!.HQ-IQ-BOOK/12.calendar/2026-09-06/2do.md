@@ -124,6 +124,41 @@ handoff (no plan to build/test other platforms now).
      read-first doc; add today's picker + this renderer change to its
      item #3 list so it isn't missed.
 
+## Cross-platform infra — design doc written + Linux piece shipped
+
+Decision (user): write the scoped design doc AND do the Linux-verifiable
+piece now; put the Windows seam guidance somewhere the porter will
+actually read.
+
+- **`08-roadmap/design-docs/CROSS-PLATFORM-SEAM-AND-SHARED-INFRA.md`** —
+  new. Three parts: (1) `kh_plat` shared manager module, (2) renderer
+  platform seam = **guidance only** for the eventual Win/Mac porter
+  (Part 2 is written *to* them, top of the doc points there), (3)
+  generic manager runtime idea. Bakes in the cautionary tale: the
+  house already built a renderer seam once (`khtpm_core.c` /
+  `khtpm_plat_x11.c`, orphaned header still in `tile-picker/ops/`) and
+  it **rotted because nothing consumed it** — so Part 2 is explicitly
+  not-yet-built.
+- **`&.widgits/_shared-lib/kh_plat.h`** — new, header-only
+  (`#define KH_PLAT_IMPL` in one TU). v1 API: `kh_plat_sleep_ms`,
+  `kh_plat_mono_ms`, `kh_plat_mkdir_p`, `kh_plat_run_house_script`,
+  `kh_plat_on_terminate`. POSIX backend real; Windows backend real
+  where trivial (`Sleep`/`GetTickCount64`/`_mkdir`/`SetConsoleCtrlHandler`)
+  + one documented stub (`run_house_script`, pending the house's
+  bundled-`sh.exe`-vs-`.ps1` call — spelled out in the doc's PORTER
+  NOTE).
+- **`elements_palette_manager.c`** migrated onto `kh_plat` as the proof
+  consumer — removed its raw `usleep` / `clock_gettime` / `mkdir` /
+  `signal` / `system("sh …")`. Rebuilt clean; headless-verified: picker
+  still renders, inspect click still populates the detail pane, and a
+  rapid double-click still fires the place action
+  (`msg=Placed Silver (Ag) on the desktop.`) through
+  `kh_plat_run_house_script`. **Taskbar manager left untouched** (its 49
+  inline `#ifdef _WIN32`s are the v2 migration).
+- Not done, by design: renderer seam (no consumer yet), `kh_plat` v2
+  (`listdir` + `fopen_utf8`), taskbar-manager migration, `.sh`/`.ps1`
+  policy decision, generic manager runtime. All sequenced in the doc.
+
 ## Not started / next
 
 - Fun gaming work (user flagged as the next thing after the opencode
