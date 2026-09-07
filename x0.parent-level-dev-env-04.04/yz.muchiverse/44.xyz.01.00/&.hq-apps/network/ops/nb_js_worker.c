@@ -41,7 +41,18 @@ static char g_fetch_dom[4096];
 static char g_href[4096];
 static char g_title[512];
 
+static int g_cli = 0;            /* argv mode: plain text out, no RPC framing */
+static int g_cli_status_ok = 0;  /* CLI exit-status latch set by send_status */
+
 static void send_payload(const char *payload, size_t n) {
+    if (g_cli) {
+        /* plain text: drop the "RENDER\n" frame header, then the rows */
+        size_t off = (strncmp(payload, "RENDER\n", 7) == 0 && n >= 7) ? 7 : 0;
+        (void)!write(STDOUT_FILENO, payload + off, n - off);
+        if (n - off == 0 || payload[n - 1] != '\n')
+            (void)!write(STDOUT_FILENO, "\n", 1);
+        return;
+    }
     char lenbuf[16];
     int ln = snprintf(lenbuf, sizeof(lenbuf), "%.6d\n", (int)n);
     (void)!write(STDOUT_FILENO, lenbuf, (size_t)ln);
@@ -50,6 +61,13 @@ static void send_payload(const char *payload, size_t n) {
 }
 
 static void send_status(const char *status) {
+    if (g_cli) {
+        g_cli_status_ok = (strncmp(status, "STATUS ok", 9) == 0);
+        if (strncmp(status, "STATUS ", 7) == 0) status += 7;
+        (void)!write(STDOUT_FILENO, status, strlen(status));
+        (void)!write(STDOUT_FILENO, "\n", 1);
+        return;
+    }
     send_payload(status, strlen(status));
 }
 
@@ -1560,6 +1578,10 @@ static void run_page(void) {
             g_dom_root = nb_dom_load(df);
             fclose(df);
         }
+    } else if (g_cli) {
+        /* standalone nbjs: give the page an empty document/body */
+        static const char empty_html[] = "<html><body></body></html>";
+        g_dom_root = nb_parse_html(empty_html, sizeof(empty_html) - 1);
     }
 
     duk_context *ctx = duk_create_heap(NULL, NULL, NULL, NULL, fatal_handler);
@@ -1637,7 +1659,6 @@ static void run_page(void) {
 }
 
 int main(int argc, char **argv) {
-    (void)argc; (void)argv;
     g_out = NULL;   /* step 2: no effects file yet; console goes nowhere */
     {
         const char *nbw_out = getenv("NBW_CONSOLE");
@@ -1645,6 +1666,31 @@ int main(int argc, char **argv) {
             g_out = fopen(nbw_out, "w");
             if (g_out) setvbuf(g_out, NULL, _IOLBF, 0);   /* console capture (debug/tests) */
         }
+    }
+
+    if (argc > 1) {
+        /* standalone CLI (node-ish): nbjs <page.js> [fetch.dom] — run once,
+         * console.* -> stdout, rendered rows -> stdout, exit 0 ok / 1 err.
+         * No RPC framing, no khtpm/chtpm dependency. */
+        g_cli = 1;
+        g_cli_log = 1;   /* bare console lines, no LOG| prefix */
+        const char *pg = argv[1];
+        if (strcmp(pg, "-h") == 0 || strcmp(pg, "--help") == 0) {
+            fprintf(stderr, "usage: nbjs <page.js> [fetch.dom]\n");
+            return 2;
+        }
+        if (!g_out) { g_out = stdout; setvbuf(g_out, NULL, _IONBF, 0); }
+        const char *base = strrchr(pg, '/');
+        snprintf(g_title, sizeof(g_title), "%s", base ? base + 1 : pg);
+        snprintf(g_href, sizeof(g_href), "file://%s", pg);
+        snprintf(g_page_js, sizeof(g_page_js), "%s", pg);
+        if (argc > 2) snprintf(g_fetch_dom, sizeof(g_fetch_dom), "%s", argv[2]);
+        if (access(pg, R_OK) != 0) {
+            fprintf(stderr, "nbjs: cannot read %s\n", pg);
+            return 2;
+        }
+        run_page();
+        return g_cli_status_ok ? 0 : 1;
     }
 
     for (;;) {

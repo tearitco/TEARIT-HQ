@@ -29,7 +29,8 @@
     static FILE *g_out; \
     static char g_title[512]; \
     static int  g_title_set; \
-    static char g_href[4096];
+    static char g_href[4096]; \
+    static int  g_cli_log;      /* CLI mode: bare console lines, no prefix */
 #endif
 
 #define LINE_CAP 2048
@@ -66,7 +67,8 @@ static duk_ret_t native_log(duk_context *ctx) {
         o += sl;
         line[o] = 0;
     }
-    pipe_one("LOG", line);
+    if (g_cli_log) fprintf(g_out, "%s\n", line);
+    else pipe_one("LOG", line);
     return 0;
 }
 
