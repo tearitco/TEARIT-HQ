@@ -22,3 +22,9 @@ short version.*
 9. Joystick/controller support: not started.
 10. `ktb_pid_alive()` zombie-PID false-positive: structural fix not
     done (workaround documented in `04-bugs/BUG-LOG.md`).
+11. NB-JS engine as a node/bun-like CLI runner (require/process/fs,
+    exit codes, stderr): **not started — scoped, not too late.** The
+    `install_host()`/prelude seam makes it additive; a primitive CLI
+    (`ops/nb_js_eval <file> <out>`) already exists. Brief:
+    `design-docs/NB-JS-CLI-NODE-LIKE-MODE.md`; ladder queued behind the
+    rung-4 XHR/fetch delivery (in flight on `opencode`).

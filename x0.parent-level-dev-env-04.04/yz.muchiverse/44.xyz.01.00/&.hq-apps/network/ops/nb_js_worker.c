@@ -942,6 +942,133 @@ static duk_ret_t nb_raf(duk_context *ctx) {
     }
     return 0;
 }
+/* ---- rung 4: fetch / XHR transport — blocking curl child, Promise-shaped ---- */
+/* The JS prelude (nb_host.h) wraps this in a Promise polyfill + fetch() +
+ * XMLHttpRequest. Blocking is fine: the drain loop afterwards exhausts the
+ * microtask queue, so .then() chains render before RENDER. The manager stays
+ * parse-time network owner; the worker is JS-time network owner. */
+static void cfg_put(FILE *f, const char *val) {
+    for (const char *p = val; *p; p++) {
+        if (*p == '"' || *p == '\\') fputc('\\', f);
+        fputc(*p, f);
+    }
+}
+static void cfg_line(FILE *f, const char *key, const char *val) {
+    fputs(key, f); fputs(" = \"", f); cfg_put(f, val); fputs("\"\n", f);
+}
+static void cfg_data(FILE *f, const char *val) {
+    fputs("data = \"", f);
+    for (const char *p = val; *p; p++) {
+        unsigned char c = (unsigned char)*p;
+        if (c < 0x20 && c != '\t') { fputc(' ', f); continue; }  /* curl config is single-line */
+        if (c == '"') fputs("\\\"", f);
+        else if (c == '\\') fputs("\\\\", f);
+        else fputc(c, f);
+    }
+    fputs("\"\n", f);
+}
+
+static duk_ret_t nb_fetch_sync(duk_context *ctx) {
+    const char *method = duk_require_string(ctx, 0);
+    const char *url = duk_require_string(ctx, 1);
+    const char *headers = duk_get_string(ctx, 2); if (!headers) headers = "";
+    const char *body = duk_get_string(ctx, 3); if (!body) body = "";
+
+    char *rb = NULL; size_t rn = 0; int status = 0; char errbuf[256] = "";
+
+    alarm(0);   /* a blocking curl must never trip the EVAL_BUDGET_SEC watchdog */
+
+    if (strncmp(url, "file:", 5) == 0) {
+        /* normalize file://host/path, file:///path, file:/path -> /path */
+        const char *p = url + 5;
+        while (*p == '/') p++;
+        if (strncmp(p, "localhost", 9) == 0 && p[9] == '/') p += 10;
+        char abspath[2048];
+        snprintf(abspath, sizeof(abspath), "/%s", p);
+        if (read_file(abspath, &rb, &rn)) status = 200;
+        else snprintf(errbuf, sizeof(errbuf), "cannot read %s", abspath);
+    } else if (strncmp(url, "http:", 5) == 0 || strncmp(url, "https:", 6) == 0) {
+        char cfgpath[1024] = "", bodypath[1024] = "";
+        char t1[] = "/tmp/nbfetch.XXXXXX", t2[] = "/tmp/nbfetchbody.XXXXXX";
+        int fd1 = mkstemp(t1), fd2 = mkstemp(t2);
+        if (fd1 < 0 || fd2 < 0) { snprintf(errbuf, sizeof(errbuf), "mkstemp failed"); }
+        else {
+            close(fd1); close(fd2);
+            snprintf(cfgpath, sizeof(cfgpath), "%s", t1);
+            snprintf(bodypath, sizeof(bodypath), "%s", t2);
+            FILE *cf = fopen(cfgpath, "w");
+            if (!cf) snprintf(errbuf, sizeof(errbuf), "cannot write curl config");
+            else {
+                cfg_line(cf, "url", url);
+                cfg_line(cf, "user-agent", "Mozilla/5.0 (NNEST network-browser-hq nb-js-worker rung4)");
+                cfg_line(cf, "max-time", "8");
+                fputs("silent\nlocation\nfail\n", cf);
+                /* one header = line per raw "Name: value" line (no strtok_r) */
+                for (const char *p = headers; *p; ) {
+                    const char *nl = strchr(p, '\n');
+                    size_t n = nl ? (size_t)(nl - p) : strlen(p);
+                    while (n && (p[n-1] == '\r' || p[n-1] == ' ')) n--;
+                    if (n && memchr(p, ':', n)) {
+                        char hb[512];
+                        if (n >= sizeof(hb)) n = sizeof(hb) - 1;
+                        memcpy(hb, p, n); hb[n] = 0;
+                        cfg_line(cf, "header", hb);
+                    }
+                    p += n + (nl ? 1 : 0);
+                }
+                if (body[0]) cfg_data(cf, body);
+                cfg_line(cf, "request", method);
+                fputs("output = \"", cf); cfg_put(cf, bodypath); fputs("\"\n", cf);
+                fputs("write-out = \"%{http_code}\"\n", cf);
+                fclose(cf);
+                char cmd[2048];
+                snprintf(cmd, sizeof(cmd), "curl -sS -K '%s' 2>/dev/null", cfgpath);
+                FILE *po = popen(cmd, "r");
+                if (po) {
+                    char code[16] = ""; size_t got = 0;
+                    while (got + 1 < sizeof(code)) {
+                        int c = fgetc(po);
+                        if (c == EOF) break;
+                        code[got++] = (char)c;
+                    }
+                    code[got] = 0;
+                    int rc = pclose(po);
+                    status = (int)strtol(code, NULL, 10);
+                    if (status <= 0) status = 0;
+                    if (status > 0 && read_file(bodypath, &rb, &rn)) {
+                        /* treats zero-byte bodies as a successful empty read */
+                    }
+                    if (!rb) snprintf(errbuf, sizeof(errbuf), "curl rc=%d status=%d", rc, status);
+                } else snprintf(errbuf, sizeof(errbuf), "popen curl failed");
+                unlink(cfgpath);
+                unlink(bodypath);
+            }
+        }
+    } else {
+        /* data: URLs can carry small inline blobs; everything else is refused */
+        if (strncmp(url, "data:", 5) == 0) {
+            const char *c = strchr(url, ',');
+            rb = strdup(c ? c + 1 : "");
+            rn = rb ? strlen(rb) : 0;
+            status = 200;
+        } else snprintf(errbuf, sizeof(errbuf), "unsupported scheme in %s", url);
+    }
+
+    alarm(EVAL_BUDGET_SEC);   /* re-arm the budget for the rest of the drain */
+
+    duk_push_object(ctx);
+    duk_push_boolean(ctx, status >= 200 && status < 300 && rb != NULL);
+    duk_put_prop_string(ctx, -2, "ok");
+    duk_push_int(ctx, status);
+    duk_put_prop_string(ctx, -2, "status");
+    duk_push_string(ctx, rb ? rb : "");
+    duk_put_prop_string(ctx, -2, "body");
+    duk_push_string(ctx, errbuf[0] ? errbuf : "");
+    duk_put_prop_string(ctx, -2, "error");
+    free(rb);
+    return 1;
+}
+
 static int drain_microtasks(duk_context *ctx) {
     int ran = 0;
     while (g_micro_head < g_micro_n) {
@@ -1117,6 +1244,7 @@ static void install_events_timers(duk_context *ctx) {
     duk_push_c_function(ctx, nb_timer_clearInterval, 1); duk_put_prop_string(ctx, -2, "clearInterval");
     duk_push_c_function(ctx, nb_queueMicrotask, 1);      duk_put_prop_string(ctx, -2, "queueMicrotask");
     duk_push_c_function(ctx, nb_raf, 1);                 duk_put_prop_string(ctx, -2, "requestAnimationFrame");
+    duk_push_c_function(ctx, nb_fetch_sync, 4);          duk_put_prop_string(ctx, -2, "nbFetchSync");
     duk_push_c_function(ctx, nb_win_addEventListener, 2);    duk_put_prop_string(ctx, -2, "addEventListener");
     duk_push_c_function(ctx, nb_win_removeEventListener, 2); duk_put_prop_string(ctx, -2, "removeEventListener");
     duk_pop(ctx);
@@ -1244,6 +1372,13 @@ static void run_page(void) {
 int main(int argc, char **argv) {
     (void)argc; (void)argv;
     g_out = NULL;   /* step 2: no effects file yet; console goes nowhere */
+    {
+        const char *nbw_out = getenv("NBW_CONSOLE");
+        if (nbw_out && nbw_out[0]) {
+            g_out = fopen(nbw_out, "w");
+            if (g_out) setvbuf(g_out, NULL, _IOLBF, 0);   /* console capture (debug/tests) */
+        }
+    }
 
     for (;;) {
         if (!recv_frame()) break;

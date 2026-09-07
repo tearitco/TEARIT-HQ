@@ -158,6 +158,19 @@ Minimum node API to implement:
 - CORS/same-origin: keep permissive for a local browser; just note it.
 **Payoff:** SPAs that fetch JSON then render become usable.
 
+> **DONE (sync-first delivery) — 2026-09-06, branch `opencode`**:
+> worker-native blocking transport (`nb_fetch_sync` in
+> `ops/nb_js_worker.c`: curl child `--max-time 8`, body ≤512 kB,
+> `file:/file://` local reads, alarm-safed) + a prelude Promise polyfill
+> (this duktape build has no Promise builtin) driven by the real
+> `queueMicrotask`, `fetch()` and a minimal `XMLHttpRequest`. E2E on a
+> `file://` fixture gated on async data: `TEXT|fetched:hello-rung4` and
+> `TEXT|xhr:xhr-ok` merged into `page.state.txt`; http curl leg verified
+> (`httpStatus=200`, 559 B). All 5 rung suites still green through both
+> eval and worker. Plan + evidence: `design-docs/NB-JS-ENGINE-RUNG4-
+> NETWORK-XHR-FETCH.md`. **Follow-on:** async relay through the manager
+> (FETCH/FRESP frames) when a site needs slow-network tolerance.
+
 ### Rung 5 — render feedback loop  *(glue, ~1 pass)*
 After scripts + the event loop go quiescent, **re-serialize the
 mutated DOM tree** → `page.state.txt` (TITLE / TEXT / LINK / IMG rows),
@@ -454,6 +467,22 @@ of work once you pick an engine, and most browsing never needs it.
   engine.
 - The ceiling is a *choice*, not a law: option B/C removes it entirely
   at the cost of one large dependency.
+
+---
+
+## 9. Bonus door: the engine as a node/bun-like CLI *(queued, OPEN-ITEMS #11)*
+
+None of the above rules out using the *same* engine outside the browser
+window. duktape is a standalone evaluator; `opa/nb_js_eval
+<file> <out>` already is a one-shot CLI, and the `install_host()` +
+prelude seam is the hook for a node-like mode (process/require/fs-‑lite,
+real exit codes + stderr) without touching the worker or manager.
+
+- Not too late: node mode is a *different* prelude installed on the
+  same host seam — additive, like the worker was.
+- Hard tail: ESM syntax (duktape has no `import`) → loader must
+  transpile; defer, CJS first.
+- Full scope/ladder: `design-docs/NB-JS-CLI-NODE-LIKE-MODE.md`.
 
 ---
 
