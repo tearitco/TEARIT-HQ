@@ -114,6 +114,8 @@ them; the sync protocol above stays open until the user says otherwise).
 
 Gotcha for page authors: this Duktape is 2.7.0 and has **no arrow
 functions** (`(() => 1)()` → `SyntaxError: empty expression not
-allowed`) in both CLI and REPL — use `function(){}` callbacks.
-Edition is Duktape 2.7.0 with DUK_USE_ES6 on, but arrow syntax is
-simply not present in the parser.
+allowed`) in both CLI and REPL — use `function(){}` callbacks. It also
+has **no `let`** (`let x = 1` → `unterminated statement`) although
+`const`/`var` work. Edition is Duktape 2.7.0 with DUK_USE_ES6 on, but
+arrow syntax and block-scoped `let` are simply not present in the
+parser.

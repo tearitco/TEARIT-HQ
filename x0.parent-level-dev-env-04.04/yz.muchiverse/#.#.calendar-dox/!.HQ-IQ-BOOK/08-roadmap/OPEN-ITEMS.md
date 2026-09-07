@@ -30,5 +30,7 @@ short version.*
      a REPL (non-tty stdin stays the framed daemon, manager-safe). `make
      check` green (dom/fetch/events). Remaining note: Duktape 2.7.0 has NO
      arrow functions (`(() => 1)()` parses "empty expression not allowed")
-     — engine limitation, document for page authors. Farther out: require/
+     and NO `let` (`let x = 1` → "unterminated statement") — `const` and
+     `var` work; use `function(){}` callbacks and `var`/`const` — engine
+     limitations, documented for page authors. Farther out: require/
      process/fs, `NB-JS-CLI-NODE-LIKE-MODE.md` ladder.
