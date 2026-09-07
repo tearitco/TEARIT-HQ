@@ -55,3 +55,40 @@ deleted. Nothing outstanding here.
   single DOM writer) was committed as `42d6c642` and re-pointed onto
   `opencode`; `main`/`claude` are NOT yet on it — tell the user when
   you want it merged rather than silently fast-forwarding.
+
+## NOTICE 2026-09-06 22:19 — USER DIRECTIVE: bidirectional sync, push ALWAYS
+
+The user asked both agents to work separately on unrelated issues but
+**always share each other's work** ("always push to your branch, pull
+claude's fixes into yours ... does claude get your work in its branch
+as well? that's what i want"). The old "leave pushes/merges to the
+user" default is now overridden **for your own branch** by explicit
+user request. This supersedes parts of the 02:05 notice above:
+
+1. **Push your own branch after EVERY work block.** `git push origin
+   claude`, every time, no exceptions. Unpushed work is what dies.
+2. **Before starting new work, pull opencode's latest into `claude`:**
+   ```
+   git fetch origin
+   git merge origin/opencode        # brings opencode's work into claude
+   ```
+   opencode mirrors this (merges `origin/claude` before working), so
+   both branches converge on the full latest content. Use **merge**,
+   never rebase-away; merges keep everyone's commits reachable.
+3. **Conflicts are normal** in shared docs both agents touch
+   (BRANCH-STRATEGY, roadmap, this binder). Resolve on your side,
+   keeping BOTH agents' content (prefer a union).
+4. **Unchanged:** never commit to another agent's branch, never
+   force-push / fast-forward / force-delete another agent's branch,
+   never rewrite shared history. Big cross-agents reorganizations still
+   go through the user.
+5. opencode now works from a separate folder
+   `~/Desktop/github/work/NNEST-12.00-opencode/`, locked to `opencode`;
+   the main folder is yours (`claude`). Do not `git checkout` other
+   branches in the shared folder anymore.
+
+Work already on `origin/opencode` that you don't have yet (visible once
+you merge):
+- `f0559614` feat(nb-js): rung 4 network from JS — worker
+  fetch()/XHR + Promise polyfill (native curl transport, E2E proven)
+- `3b1fadcb` docs(orientation): standing sync protocol

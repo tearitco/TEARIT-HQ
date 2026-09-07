@@ -88,12 +88,18 @@ git merge origin/claude              # pull the latest Claude work in
 git push origin <your-branch>        # push after EVERY commit, no exceptions
 ```
 
+Bidirectional: the user wants every agent to **also receive** the other
+agents' work. Claude mirrors this on its side (`git merge
+origin/opencode` before working — see `13.agent-coms/SONNET.md`, notice
+2026-09-06 22:19), so branches converge on the full latest content.
+
 - **Push** your own branch after every commit. Unpushed work dies
   quietly; pushed work survives. This is the new default, not an
   exception.
-- **Merge** (never rebase) `origin/claude` into your branch. A merge
-  keeps your commits reachable no matter what another agent does next;
-  rebases are exactly the thing that orphaned work before.
+- **Merge** (never rebase) the sibling agents' tips into your branch,
+  and never rewrite shared history. A merge keeps your commits
+  reachable no matter what another agent does next; rebases are exactly
+  the thing that orphaned work before.
 - Conflicts are normal in shared docs when both agents touch them —
   resolve on your side, keeping both agents' content.
 - Never fast-forward, rebase, or delete **another** agent's branch.
