@@ -56,6 +56,9 @@ demographic.
     JB-BLOCKROACH-EZ/        founder's pentest / bug-bounty / red+blue-team services co.
     JBM/                     academic account (BS:CySec + MBA-ITM), politics / academia
     LUCKY-SOL-PEN/           founder-as-celebrity lore extreme; most game lore derives here
+    CONSULTING/              paid advisory + build for law firms / biotech;
+                             incl. the file-lineage-blockchain offer + a
+                             tech-readiness assessment against 041.pal-chain
 ```
 
 ## Sub-division convention

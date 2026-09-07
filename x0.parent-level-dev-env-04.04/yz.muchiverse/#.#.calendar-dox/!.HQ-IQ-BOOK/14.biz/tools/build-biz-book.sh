@@ -32,9 +32,15 @@ order = [
     "OUTLETS/_ALL-cross-cutting.md",
 ]
 for d in sorted(os.listdir(os.path.join(BIZ, "OUTLETS"))):
-    p = os.path.join("OUTLETS", d, "00-INDEX.md")
-    if os.path.isfile(os.path.join(BIZ, p)):
-        order.append(p)
+    dd = os.path.join(BIZ, "OUTLETS", d)
+    if not os.path.isdir(dd):
+        continue
+    idx = os.path.join("OUTLETS", d, "00-INDEX.md")
+    if os.path.isfile(os.path.join(BIZ, idx)):
+        order.append(idx)
+    for extra in sorted(os.listdir(dd)):          # any other .md in the outlet dir
+        if extra.endswith(".md") and extra != "00-INDEX.md":
+            order.append(os.path.join("OUTLETS", d, extra))
 
 # ---- tiny markdown subset -> html ---------------------------------
 def inline(s):

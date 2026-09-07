@@ -59,6 +59,26 @@
 - `tidy-runtime.sh` extended with that dead-PID reap so it self-
   maintains going forward.
 
+## 14.biz/OUTLETS/CONSULTING wired in
+
+- Founder added 2 consulting docs (X.com authority plan + the
+  file-lineage-blockchain "Executive Blueprint" with tier pricing) —
+  committed `73b824a2`.
+- Added `CONSULTING/00-INDEX.md` (nav) + **`HOUSE-TECH-INTEGRATION.md`**
+  — a grounded assessment (read the real `041.pal-chain⛓️` code:
+  ~2,400 LOC, working plaintext SHA-256 PoW chain + `palnet_peer` P2P
+  gossip + `chain_inbox_watcher` file-watcher daemon). Conclusion:
+  ~70% of the blueprint already exists; gap to a deployable v1
+  (`ANCHOR` tx type + `file_anchor_watcher` + `verify_file --receipt`
+  + `validators.txt` permissioning + ed25519 signing + install script)
+  is **~2–3 weeks** — independently matches the blueprint's own
+  "2–4 weeks / zero disruption" claim. Honest caveats included (static
+  peer set, no formal crypto audit, wallet IDs not yet real
+  signatures).
+- `build-biz-book.sh` now includes every `.md` in an outlet dir (not
+  just `00-INDEX.md`); `BIZ-BOOK.html` regenerated → 27 sections.
+- Line added to `14.biz/00-INDEX.md` outlet list.
+
 ## Open / next
 
 - Everything still open in `2026-09-05/` and `2026-09-06/` 2do.
