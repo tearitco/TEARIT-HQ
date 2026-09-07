@@ -12,6 +12,10 @@
 #                   -> DELETED outright IF their owning session/app has
 #                      no live process (regenerated on next launch).
 #   - #.desktop/ascii_frames/*        -> emptied (headless render mirror)
+#   - #.desktop/entity_menu_frame_<pid>.txt and
+#     #.desktop/entity_menu_history/<pid>.txt  -> per-PID context-menu
+#                      scratch + input-relay files; DELETED when that PID
+#                      is dead (a live window's relay is left alone).
 #   - *frame_history.txt / *.log / gl_cli_out.txt  -> truncated to the
 #                      last 250 KB (keep the tail).
 # Skips any path git knows about (`git ls-files`) — a tracked file is
@@ -47,6 +51,24 @@ fi
 if [ -d "#.desktop/ascii_frames" ]; then
     act "find \"#.desktop/ascii_frames\" -type f -delete"
 fi
+
+# --- per-PID entity-menu scratch + input-relay: reap dead PIDs ------
+# entity_menu_frame_<pid>.txt / entity_menu_history/<pid>.txt accumulate
+# one pair per context-menu render and never self-clean. Keep only the
+# ones whose PID is still alive (that history file is a live relay).
+dead=0; live=0
+for f in "#.desktop"/entity_menu_frame_*.txt "#.desktop"/entity_menu_history/*.txt; do
+    [ -e "$f" ] || continue
+    pid=$(printf '%s\n' "$f" | grep -oE '[0-9]{2,}' | head -1)
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+        live=$((live + 1))
+    else
+        dead=$((dead + 1))
+        [ "$DRY" = 1 ] || rm -f "$f"
+    fi
+done
+if [ "$DRY" = 1 ]; then say "would reap $dead dead-PID entity-menu files (keep $live live)"
+else say "reaped $dead dead-PID entity-menu files (kept $live live)"; fi
 
 # --- logs / frame-history: keep the last 250 KB --------------------
 find . -type f \( -name '*frame_history.txt' -o -name '*.log' \

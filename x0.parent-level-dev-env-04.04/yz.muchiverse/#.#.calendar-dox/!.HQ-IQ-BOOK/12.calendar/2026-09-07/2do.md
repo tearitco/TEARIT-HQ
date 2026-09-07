@@ -41,6 +41,24 @@
   `blockchain.txt.pre-harness-run-*` July backups (~10 MB), a handful
   of tracked `rgb_frame_3d_overlay.raw`.
 
+## CPU-throttling check (founder reported lag)
+
+- **Not thermal** (40 / 53 °C), **not the house.** Load avg ~14 on 8
+  cores = contention. Top consumers: **Chrome ~225% (22 procs)**,
+  Firefox ~40%, Claude Code ~15%, opencode + its 400%+ `git` snapshot
+  bursts on the 561 MB tree. **The whole house = ~6%.**
+- The "7 idle khtpm procs" first flagged as strays are **not strays** —
+  they're the livedesk pals (asa/ava/book-stack/cursword/m1_ninjadragon/
+  m8_redhorned/self) + one placed tile, one renderer each, **0.7% CPU
+  total, parked/idle.** No duplicate or orphaned house processes.
+  Nothing to kill or prevent there.
+- **Real cruft found + cleaned:** `#.desktop/entity_menu_frame_<pid>.txt`
+  (760) + `entity_menu_history/<pid>.txt` (807) — per-PID context-menu
+  scratch + input-relay files that never self-clean. Reaped the
+  1560 whose PID is dead (kept 4 live). `#.desktop/` 19 MB → 6 MB.
+- `tidy-runtime.sh` extended with that dead-PID reap so it self-
+  maintains going forward.
+
 ## Open / next
 
 - Everything still open in `2026-09-05/` and `2026-09-06/` 2do.
