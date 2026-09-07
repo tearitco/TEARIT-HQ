@@ -550,5 +550,59 @@ and a translate-on-top-of-a-fresh-layout is not.
 
 ---
 
+## 15. `kill(getppid(), SIGTERM)` to "end the session" actually kills `systemd --user` and logs the whole desktop out
+
+**Symptom (live report, 2026-09-07):** clicking **HQ → `X.quit`** logged
+the user out of the entire graphical session, back to the display
+manager. They only wanted it to close the house tabs + desktop
+entities.
+
+**Real cause:** `khtpm_taskbar_manager_main.c`'s `hq_quit_requested`
+handler (the only caller — `#.desktop/livedesk_taskbar.pdl`
+`hq_menu_5_cmd = quit`) did, on top of the correct
+`ktb_quit_and_save(s)` (close entities + unlink pidfile):
+
+```c
+#ifndef _WIN32
+pid_t ppid = getppid();
+if (ppid > 1) kill(ppid, SIGTERM);   /* <-- */
+#endif
+exit(0);
+```
+
+The comment claimed it "mirrors tp_taskbar.c's quit branch", but
+legacy's spec is only *"CLOSE relays + pid unlink"*
+(`#.livedesk/livedesk-editor-design.md` line 149) — nothing about
+killing a parent. And **`getppid()` is not a house session
+supervisor.** This house launches the taskbar manager with
+`setsid`/`nohup … &`, so it is reparented — verified live, its parent
+is **`systemd --user`** (or `init`). `kill(getppid(), SIGTERM)` there
+SIGTERMs `systemd --user` → the whole user session ends. The
+`ppid > 1` guard only spares PID 1; it does nothing for the session
+manager, a login shell, a terminal, or anything else that happens to
+be the parent — so the "polite" path this code was written for
+basically never happens, and the destructive one always can.
+
+The sibling quit path already did it right: `KSC_CLOSE_QUIT` (the
+strip's own `[X]` button) is just `ktb_quit_and_save(s); g_running = 0;`
+— no parent kill, exits cleanly through `main()`'s tail.
+
+**Fix (2026-09-07):** both `hq_quit_requested` blocks in
+`khtpm_taskbar_manager_main.c` now do `ktb_quit_and_save(s);
+g_running = 0;` — identical to `KSC_CLOSE_QUIT`. `X.quit` closes
+everything and stops the strip; the user stays logged in. Logout stays
+its own explicit, labelled action (USER menu → Logout → `user:logout`
+→ `userpal_logout.+x`).
+
+**Rule:** never `kill(getppid())` (or `kill` any pid you did not
+`fork()` yourself) to "tidy up" or "end a session". A process does not
+own its parent, and under `setsid`/`nohup` the parent is whatever the
+OS reparented it to. To stop your own event loop, clear your own run
+flag (`g_running = 0`) and let normal teardown run. Session lifecycle
+(logout, session-end) belongs to the explicit, named action for it —
+never as a side effect of a "quit"/"close" button.
+
+---
+
 *Append new entries here as they're found — this file exists so the
 next session doesn't re-discover the same mistake from scratch.*

@@ -737,15 +737,25 @@ static void dispatch_code(KtbState *s, int code) {
      * the hq_open block because ktb_hq_close() sets hq_open=0, so if the
      * check stayed inside the hq_open block, it would be unreachable.
      * This is the one place that actually stops the event loop, mirroring
-     * tp_taskbar.c's own "quit" command branch in agent_relay_dispatch(). */
+     * tp_taskbar.c's own "quit" command branch in agent_relay_dispatch().
+     *
+     * DO NOT kill(getppid()) here (removed 2026-09-07, direct live
+     * report: "i clicked quit in hq and it actually logged me out. i
+     * just wanted it to close the house tabs & entities"). Under this
+     * house's setsid/nohup launch the taskbar manager's parent is
+     * `systemd --user` (or init) — SIGTERMing it ends the whole login
+     * session. The `ppid > 1` guard only spares init, not the session
+     * manager. Legacy's spec is "CLOSE relays + pid unlink" only
+     * (#.livedesk/livedesk-editor-design.md line 149); logout is a
+     * separate, explicitly-labelled action (USER menu -> Logout ->
+     * user:logout). X.quit now behaves exactly like the strip's own
+     * [X] close button (KSC_CLOSE_QUIT below): close everything, stop
+     * the strip, stay logged in. See HOUSE_CODE_PITFALLS.md. */
     if (s->hq_quit_requested) {
         s->hq_quit_requested = 0;
         ktb_quit_and_save(s);
-        #ifndef _WIN32
-        pid_t ppid = getppid();
-        if (ppid > 1) kill(ppid, SIGTERM);
-        #endif
-        exit(0);
+        g_running = 0;
+        return;
     }
     if (s->hq_open) {
         if (code == KSC_ESCAPE) {
@@ -782,13 +792,11 @@ static void dispatch_code(KtbState *s, int code) {
             ktb_hq_open(s, code - KSC_HQ_HEADER_BASE);
         }
         if (s->hq_quit_requested) {
+            /* see the identical block above for why this no longer
+             * kill()s getppid() (2026-09-07 logout regression fix). */
             s->hq_quit_requested = 0;
             ktb_quit_and_save(s);
-            #ifndef _WIN32
-            pid_t ppid = getppid();
-            if (ppid > 1) kill(ppid, SIGTERM);
-            #endif
-            exit(0);
+            g_running = 0;
         }
         return;
     }

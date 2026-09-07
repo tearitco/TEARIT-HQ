@@ -79,6 +79,36 @@
   just `00-INDEX.md`); `BIZ-BOOK.html` regenerated → 27 sections.
 - Line added to `14.biz/00-INDEX.md` outlet list.
 
+## HQ "X.quit" logged the user out — FIXED
+
+Live report: clicking **HQ → X.quit** ended the whole graphical
+session (back to the login screen); user only wanted "close the house
+tabs & entities."
+
+- **Cause:** `khtpm_taskbar_manager_main.c`'s `hq_quit_requested`
+  handler did `ktb_quit_and_save(s)` (correct: close entities + unlink
+  pidfile) **and then** `kill(getppid(), SIGTERM); exit(0)`. This house
+  launches the taskbar manager via `setsid`/`nohup`, so — verified
+  live — its parent is **`systemd --user`** (pid 155057). SIGTERMing
+  that ends the login session. The `ppid > 1` guard only spares init.
+  Not in the legacy spec (`#.livedesk/livedesk-editor-design.md` line
+  149 = "CLOSE relays + pid unlink" only).
+- **Fix:** both `hq_quit_requested` blocks now do
+  `ktb_quit_and_save(s); g_running = 0;` — byte-for-byte the same as
+  the strip's own `[X]` button (`KSC_CLOSE_QUIT`). Closes everything,
+  stops the strip, stays logged in. Logout stays the USER menu's own
+  labelled action.
+- **Proof:** source no longer contains `getppid`/`kill(ppid`; diff
+  shows both blocks converted; live `PPid` of the running manager =
+  `systemd --user` (what the old code would have killed). Binary
+  rebuilt (`build_khtpm_strip.sh`).
+- **Pitfall:** `03-pitfalls/HOUSE_CODE_PITFALLS.md` #15 — never
+  `kill(getppid())` to tidy up; session lifecycle belongs to its own
+  named action.
+- **Note:** a running strip won't pick up the fix until relaunched
+  (`$.restart`, or `run_khtpm_strip.sh new`). Until then X.quit still
+  logs out.
+
 ## Open / next
 
 - Everything still open in `2026-09-05/` and `2026-09-06/` 2do.
