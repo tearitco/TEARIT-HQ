@@ -93,3 +93,6 @@ palettes-*_state.txt
 **/102.agy-txt/pieces/
 **/102.editor-*/pieces/
 **/@.apps/piececraft-hq/state/
+
+# house backup archives (large binaries — keep only on disk)
+x0.parent-level-dev-env-04.04_*.7z

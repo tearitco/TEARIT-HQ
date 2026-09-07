@@ -437,6 +437,44 @@ never gets it automatically - added explicitly.
 Live-verified via PNG dump: chrome now reads `_`/`!`/`x`; toolbar reads
 `In/File/Desk/Menu/Player/<clock>`.
 
+### Bug 5 — clicking `File` (or `Desk`) traps you in Interact Mode — FIXED (`pchq_board_action.sh`, 2026-09-07)
+
+**Report (user, verbatim):** "i was messing around with `[]3.file`, and
+now theres a bug where arrow/nav focus keeps jumping back to `3.file`."
+
+**Not a nav bug.** `pchq_board_action.sh`'s `file` and `desk` verbs did
+`interact_on || append_key 13` — i.e. they **auto-engage Interact Mode**
+(send `13` to the board-viewer to flip `active_gui_is_typing.txt`) so
+the engine reads the following `5`/`6` as a menu key — but they **never
+turned it back off**. If you clicked File/Desk while NOT already in
+Interact Mode, you were left in it. While `g_interact_relay_on` is set,
+`khtpm_core_render.c`'s `handle_key()` takes the
+`if (g_interact_relay_on)` branch *before any local nav*, forwards every
+key (arrows remapped to 1000–1003) to the relay, and `return`s — so
+local arrow/nav does nothing and the highlight sits frozen on whatever
+was last focused (the File item = looked like "focus keeps jumping back
+to 3.file"). It stayed stuck because the projector re-publishes
+`interact-active` every tick, so `kh_scan_interact_relay()` re-arms it
+every reparse. Escape is deliberately forwarded too, so you can't Esc
+out. The only exit was clicking `In: ON` (toggles) — invisible.
+
+**Fix:** `file`/`desk` now only auto-engage if Interact Mode was OFF,
+and afterward restore it: `engage_if_needed` sets `ENGAGED=1` only when
+this call did the engaging; `restore_interact` waits briefly for our own
+`13` to register, then toggles OFF **iff it is still on** (live
+re-checked, so an engine-side exit — a menu key or a `6` board reload
+that drops typing mode by itself — is never double-toggled back on).
+Net: board is left nav-usable; a user who was *already* in Interact
+Mode is left in it (only the menu key is sent). Verified with a
+fake-engine harness: not-engaged→File sends `13,53,13` ending typing=0;
+already-engaged→File sends only `53`, typing left as found.
+
+**If it ever recurs / another auto-engage path appears:** consider a
+renderer-side local escape hatch from Interact Mode that does not
+depend on the external `active_gui_is_typing.txt` (right now the only
+disengage is a forwarded key). Not built — the action-script fix covers
+the reported path.
+
 ## Notes for whoever continues this
 
 - The house's own testing-hierarchy rule applies doubly hard here:

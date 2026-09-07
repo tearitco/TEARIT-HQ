@@ -22,3 +22,16 @@ every chat log.
   documented in `03-pitfalls/`), swatch-picker data-driven color list,
   dock label/badge contrast fixes; font-size/UI-scale brainstorm
   started, not yet scheduled.
+- `2026-09-07/` — pc-hq board: clicking File/Desk trapped the user in
+  Interact Mode (auto-engaged, never released) → arrows forwarded to the
+  game, local nav frozen on the File item. Fixed in `pchq_board_action.sh`
+  (engage-if-off + restore); `09-appendix/pc-hq-bugs.md` Bug 5.
+- `2026-09-06/` — periodic-picker Down-arrow bug fixed by reusing the
+  existing scroll path (pitfall #14 + skill update); `main` unified to
+  both agents' work (`git push origin opencode:main`, FF to
+  `4290b4a0`) + git-for-newbies walkthrough; cross-platform (Win/Mac)
+  handoff-friendliness concern captured — docs still live under
+  `07-install-and-ship/windows-mac/`, `khtpm_core_render.c` still has
+  no Windows twin (CROSS-PLATFORM-PENDING #1), today's change is
+  port-positive (removed bespoke code, routed through OS-free shared
+  helpers).

@@ -1,0 +1,938 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>14.biz — HQ business book</title>
+<style>
+:root{--bg:#faf9f7;--fg:#1c1a17;--mut:#6b6459;--line:#e2ddd4;--card:#fff;--acc:#7a5c2e;--code:#f0ece4}
+@media (prefers-color-scheme:dark){:root{--bg:#141312;--fg:#e7e3db;--mut:#9a9184;--line:#2c2a27;--card:#1b1a18;--acc:#d7b070;--code:#221f1b}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);
+font:15px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Ubuntu,sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:34px 22px 90px}
+h1{font-size:1.5rem;margin:2.2em 0 .5em;padding-top:.3em;border-top:2px solid var(--line)}
+section:first-of-type h1{border-top:0;margin-top:0}
+h2{font-size:1.16rem;margin:1.5em 0 .4em}h3{font-size:1rem;margin:1.3em 0 .3em;color:var(--mut)}
+h4{font-size:.92rem;margin:1.1em 0 .2em;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+a{color:var(--acc)}code{background:var(--code);padding:.08em .35em;border-radius:3px;font-size:.86em}
+pre{background:var(--code);padding:14px 16px;border-radius:7px;overflow:auto;font-size:.83rem;line-height:1.5}
+pre.raw{white-space:pre-wrap}
+blockquote{margin:.6em 0;padding:.3em 0 .3em 14px;border-left:3px solid var(--acc);color:var(--mut)}
+table{border-collapse:collapse;width:100%;margin:.7em 0;font-size:.92rem}
+th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+th{background:var(--code)}
+hr{border:0;border-top:1px solid var(--line);margin:1.4em 0}
+.src{color:var(--mut);font-size:.8rem}
+.masthead{padding:8px 0 4px}.masthead .k{color:var(--mut);font-size:.82rem}
+nav.toc{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:14px 18px;margin:18px 0 6px}
+nav.toc ol{margin:.2em 0;padding-left:1.4em}nav.toc li{margin:.15em 0}
+nav.toc li.d1{list-style:circle}nav.toc li.d2{list-style:square}
+nav.toc .src{margin-left:.5em}
+section{scroll-margin-top:14px}
+.note{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:7px;padding:10px 14px;margin:14px 0;font-size:.9rem;color:var(--mut)}
+</style></head><body><div class="wrap">
+<div class="masthead"><h1 style="border:0;margin:0">14.biz — HQ business book</h1>
+<div class="k">Generated 2026-09-07 from the .md files in <code>14.biz/</code> · one-page view · re-run <code>tools/build-biz-book.sh</code> after edits</div></div>
+<div class="note">Founder-owned, internal. Every section below is a <code>DRAFT</code> stub capturing stated intent — no business claims have been invented. For a compact tech+biz brief to hand another agent, use <code>../HQ-BRIEF.md</code>.</div>
+<nav class="toc"><strong>Contents</strong><ol><li class="d0"><a href="#00-index-md">14 — Biz</a> <span class="src">00-INDEX.md</span></li>
+<li class="d0"><a href="#elevator-pitch-md">THE HOUSE / HQ — elevator pitch  (DRAFT — founder to refine)</a> <span class="src">ELEVATOR-PITCH.md</span></li>
+<li class="d0"><a href="#holdings-structure-md">Entity / holdings structure  (DRAFT — founder to confirm exact legal shape)</a> <span class="src">HOLDINGS-STRUCTURE.md</span></li>
+<li class="d0"><a href="#future-goals-md">Future goals  (DRAFT — founder intake, verbatim intent)</a> <span class="src">FUTURE-GOALS.md</span></li>
+<li class="d1"><a href="#strategy-00-index-md">STRATEGY — company-wide</a> <span class="src">STRATEGY/00-INDEX.md</span></li>
+<li class="d1"><a href="#strategy-strategy-md">STRATEGY — company-wide  (DRAFT stub)</a> <span class="src">STRATEGY/strategy.md</span></li>
+<li class="d1"><a href="#strategy-sales-md">SALES — company-wide  (DRAFT stub)</a> <span class="src">STRATEGY/sales.md</span></li>
+<li class="d1"><a href="#strategy-marketing-md">MARKETING — company-wide  (DRAFT stub)</a> <span class="src">STRATEGY/marketing.md</span></li>
+<li class="d1"><a href="#strategy-pricing-md">PRICING — company-wide  (DRAFT stub)</a> <span class="src">STRATEGY/pricing.md</span></li>
+<li class="d1"><a href="#strategy-networking-md">NETWORKING — company-wide  (DRAFT stub)</a> <span class="src">STRATEGY/networking.md</span></li>
+<li class="d1"><a href="#strategy-legal-md">LEGAL — company-wide  (DRAFT stub)</a> <span class="src">STRATEGY/legal.md</span></li>
+<li class="d1"><a href="#strategy-ethics-md">ETHICS — company-wide  (DRAFT stub)</a> <span class="src">STRATEGY/ethics.md</span></li>
+<li class="d1"><a href="#outlets-all-cross-cutting-md">OUTLETS — shared branding, lore, and lean-in / lean-out rules  (DRAFT)</a> <span class="src">OUTLETS/_ALL-cross-cutting.md</span></li>
+<li class="d2"><a href="#outlets-consulting-00-index-md">CONSULTING — outlet  (founder docs + tech-readiness assessment)</a> <span class="src">OUTLETS/CONSULTING/00-INDEX.md</span></li>
+<li class="d2"><a href="#outlets-consulting-executive-consultation-md">OUTLETS/CONSULTING/!.executive-consultation.md</a> <span class="src">OUTLETS/CONSULTING/!.executive-consultation.md</span></li>
+<li class="d2"><a href="#outlets-consulting-house-tech-integration-md">Making the File-Lineage Blockchain offer real, ASAP — house-tech integration</a> <span class="src">OUTLETS/CONSULTING/HOUSE-TECH-INTEGRATION.md</span></li>
+<li class="d2"><a href="#outlets-consulting-executive-blueprint-non-invasive-file-lineage-blockchain-solution-v2-md">**Executive Solution Blueprint: Lightweight Blockchain File Lineage &amp; Integrity**</a> <span class="src">OUTLETS/CONSULTING/^.Executive Blueprint - Non-Invasive File Lineage Blockchain Solution V2.md</span></li>
+<li class="d2"><a href="#outlets-harnecient-00-index-md">Harnecient — outlet  (DRAFT)</a> <span class="src">OUTLETS/HARNECIENT/00-INDEX.md</span></li>
+<li class="d2"><a href="#outlets-jb-blockroach-ez-00-index-md">JB.BLOCKROACH.EZ — outlet  (DRAFT)</a> <span class="src">OUTLETS/JB-BLOCKROACH-EZ/00-INDEX.md</span></li>
+<li class="d2"><a href="#outlets-jb-ez-00-index-md">JB.EZ — outlet  (DRAFT)</a> <span class="src">OUTLETS/JB-EZ/00-INDEX.md</span></li>
+<li class="d2"><a href="#outlets-jbm-00-index-md">JBM — outlet  (DRAFT)</a> <span class="src">OUTLETS/JBM/00-INDEX.md</span></li>
+<li class="d2"><a href="#outlets-lucky-sol-pen-00-index-md">LUCKY_SOL_PEN — outlet  (DRAFT)</a> <span class="src">OUTLETS/LUCKY-SOL-PEN/00-INDEX.md</span></li>
+<li class="d2"><a href="#outlets-robot-trap-house-00-index-md">Robot Trap House — outlet  (DRAFT)</a> <span class="src">OUTLETS/ROBOT-TRAP-HOUSE/00-INDEX.md</span></li>
+<li class="d2"><a href="#outlets-tear-it-co-00-index-md">Tear-it co — outlet  (DRAFT)</a> <span class="src">OUTLETS/TEAR-IT-CO/00-INDEX.md</span></li>
+<li class="d2"><a href="#outlets-tempt-00-index-md">TEMPT — outlet  (DRAFT)</a> <span class="src">OUTLETS/TEMPT/00-INDEX.md</span></li>
+<li class="d2"><a href="#outlets-tsots-00-index-md">TSOTS — outlet  (DRAFT)</a> <span class="src">OUTLETS/TSOTS/00-INDEX.md</span></li>
+<li class="d0"><a href="#founder-intake">Founder intake (raw)</a> <span class="src">user-biz-request.txt</span></li></ol></nav>
+<section><a class="anchor" id="00-index-md"></a>
+<h1 id="00-index-md">14 — Biz</h1>
+<p>Business, strategy, and outreach. Deliberately kept OUT of the engineering chapters: everything here is <strong>founder-owned</strong>, market-facing, and moves on a different clock than the code. Agents organize and draft; the founder decides. Do not invent pricing, legal posture, financials, or traction numbers — capture what the founder actually said and mark the rest <code>DRAFT</code> / <code>TBD</code>.</p>
+<p><strong>Raw intent lives in <code>user-biz-request.txt</code></strong> — the founder&#x27;s intake note. Append new asks there; then fold them into the structured docs below.</p>
+<hr>
+<h2>How to read this section (start shallow, go deeper only as needed)</h2>
+<table><thead><tr><th>You want…</th><th>Go to</th></tr></thead><tbody><tr><td>the one-liner / 30-sec pitch for <strong>THE HOUSE / HQ</strong></td><td><code>ELEVATOR-PITCH.md</code> — nothing deeper needed</td></tr><tr><td>who owns what (entity stack)</td><td><code>HOLDINGS-STRUCTURE.md</code></td></tr><tr><td>to pitch <strong>one specific audience</strong></td><td><code>OUTLETS/&lt;NAME&gt;/00-INDEX.md</code> — that outlet&#x27;s persona, audience, tone, follower state, and its tailored pitch</td></tr><tr><td>the <strong>shared</strong> founder-lore + when to lean in vs. pull back</td><td><code>OUTLETS/_ALL-cross-cutting.md</code></td></tr><tr><td>company-wide <strong>sales / marketing / pricing / networking / legal / ethics / strategy</strong></td><td><code>STRATEGY/00-INDEX.md</code> → the per-area file</td></tr></tbody></table>
+<p>&quot;HOUSE&quot; and &quot;HQ&quot; are used as the all-encompassing umbrella term for the whole technology + product + lore stack. Use them for general pitches; use an <strong>OUTLET</strong> name when talking to that outlet&#x27;s specific demographic.</p>
+<hr>
+<h2>Layout</h2>
+<pre><code>14.biz/
+  ELEVATOR-PITCH.md         HOUSE / HQ — short, and shorter (top-level, easy grab)
+  HOLDINGS-STRUCTURE.md     JBM-HOLDINGS -&gt; mgmt entity -&gt; HQ -&gt; subsidiaries/outlets
+  FUTURE-GOALS.md           long-horizon founder ambitions (north star, not commitments)
+  BIZ-BOOK.html             the WHOLE of 14.biz rendered as one readable page (regenerate after edits)
+  user-biz-request.txt      founder intake — RAW, append-only, do not restructure
+
+  STRATEGY/
+    00-INDEX.md
+    sales.md      marketing.md   pricing.md     networking.md
+    legal.md      ethics.md      strategy.md
+
+  OUTLETS/
+    _ALL-cross-cutting.md   shared SF/NY/Japan founder-lore; lean-in / lean-out rules
+    TSOTS/                   bible / spiritual + gamified bible (&quot;cursword&quot;)
+    TEAR-IT-CO/              RPG Maker players &amp; devs, EN otaku + JP-speaking games
+    HARNECIENT/              cutting-edge AI tools / harness users / investors
+    ROBOT-TRAP-HOUSE/        mainstream lowbrow gaming+tech news, retro, 90s nostalgia
+    TEMPT/                   asian / female / occult fashion / aspirational spaces / scifi-fantasy
+    JB-EZ/                   founder/dev persona, &quot;mr. robot&quot; flavor, personal + networking
+    JB-BLOCKROACH-EZ/        founder&#x27;s pentest / bug-bounty / red+blue-team services co.
+    JBM/                     academic account (BS:CySec + MBA-ITM), politics / academia
+    LUCKY-SOL-PEN/           founder-as-celebrity lore extreme; most game lore derives here
+    CONSULTING/              paid advisory + build for law firms / biotech;
+                             incl. the file-lineage-blockchain offer + a
+                             tech-readiness assessment against 041.pal-chain</code></pre>
+<h2>Sub-division convention</h2>
+<p>Each <code>OUTLETS/&lt;NAME&gt;/</code> starts as a single <code>00-INDEX.md</code> (persona + audience + tone + follower state + cross-promo notes + a <code>## Tailored pitch (DRAFT)</code> section). Split out <code>tailored-pitch.md</code>, <code>content-strategy.md</code>, or an outlet-level <code>pricing.md</code> / <code>networking.md</code> <strong>only when that outlet&#x27;s answer actually diverges</strong> from the company-wide <code>STRATEGY/</code> default. Company-wide doc is the default; outlet files are overrides.</p>
+<h2>One-file views</h2>
+<ul>
+<li><strong>Human, whole biz section:</strong> <code>BIZ-BOOK.html</code> — open in a browser.</li>
+</ul>
+<p>It is generated from the <code>.md</code> files here; after editing any of them, regenerate it (<code>../tools/build-biz-book.sh</code>, or ask an agent).</p>
+<ul>
+<li><strong>Agent, whole HQ (tech + biz) in one compact page:</strong></li>
+</ul>
+<p><code>../HQ-BRIEF.md</code> at the book root — the thing to paste to another agent when strategizing.</p>
+<h2>Status</h2>
+<p>Scaffold created 2026-09-06 (see <code>12.calendar/2026-09-06/</code>). Every doc below is a stub carrying the founder&#x27;s stated intent verbatim, marked <code>DRAFT</code>. No business claims have been invented.</p>
+<h2>Related (engineering side, feeds marketing copy)</h2>
+<ul>
+<li><code>08-roadmap/design-docs/MARKETING-PRESENTATION-OUTLINE.md</code></li>
+<li><code>10-user-docs/</code> — user-facing product docs</li>
+<li><code>01-orientation/</code> — what the house actually is, technically</li>
+<li><code>LUCKY-SOL-PEN</code> lore source (external drive, not in repo):</li>
+</ul>
+<p><code>…/4.🎓️capstone…/13.Soul_Pen_FulPitch]….md</code> — path in <code>user-biz-request.txt</code></p>
+<p class="src">— 00-INDEX.md</p></section>
+<section><a class="anchor" id="elevator-pitch-md"></a>
+<h1 id="elevator-pitch-md">THE HOUSE / HQ — elevator pitch  (DRAFT — founder to refine)</h1>
+<p>Kept at the top of <code>14.biz/</code> on purpose: grab-and-go copy for a quick pitch without digging. Longer, audience-specific versions live in <code>OUTLETS/&lt;NAME&gt;/</code>.</p>
+<hr>
+<h2>One line</h2>
+<p><strong>THE HOUSE is a plain-text, file-driven desktop + app platform you can read, script, and build games on — where every window, menu, and piece of state is a file, and an AI agent is a first-class user.</strong></p>
+<h2>~15 seconds</h2>
+<p>THE HOUSE (a.k.a. HQ) is a self-contained desktop environment where the whole UI — windows, taskbar, menus, palettes — is rendered from declarative text files by one shared engine, and every bit of app state is a flat file you (or an AI, or another program) can read and write. That makes it scriptable end to end, easy to automate, and a natural base for tools and games.</p>
+<h2>~30 seconds</h2>
+<p>Most software hides its state inside a binary. THE HOUSE turns it inside out: menus and layouts are declarative markup + CSS, app logic runs as small separate &quot;manager&quot; processes that just publish and poll text files, and one generic renderer draws all of it. The payoff — every workflow is inspectable and automatable, an AI harness can drive any window through the same input path a human uses, and new apps or games are assembled from a shared vocabulary instead of built from scratch. On top of that platform we ship tools (RPG-Maker-style tile and crafting tooling, editors) and games (a gamified Bible RPG, plus original lore-driven titles).</p>
+<h2>The umbrella</h2>
+<p>&quot;HOUSE&quot; / &quot;HQ&quot; = the whole stack: the platform + the tooling + the games + the lore. When the audience is specific — RPG Maker devs, AI / harness users, Bible-game players, etc. — lead with the matching <strong>OUTLET</strong> instead (see <code>OUTLETS/</code>).</p>
+<h2>What it is NOT (keep pitches honest)</h2>
+<ul>
+<li>Not shipping at scale yet — pre-traction; outlets are small (see each</li>
+</ul>
+<p><code>OUTLETS/&lt;NAME&gt;/00-INDEX.md</code> for real follower counts).</p>
+<ul>
+<li>Not a cloud service — it&#x27;s a local-first environment.</li>
+<li>Cross-platform (Windows / macOS) is designed-for, Linux-first today</li>
+</ul>
+<p>(<code>07-install-and-ship/windows-mac/</code>).</p>
+<hr>
+<h3>TODO (founder)</h3>
+<ul>
+<li>Pick the single sharpest one-liner; the rest hang off it.</li>
+<li>Decide how much lore (<code>LUCKY-SOL-PEN</code>, the &quot;familiar female</li>
+</ul>
+<p>assistants&quot; branding) belongs in a cold pitch vs. warm/insider contexts — cross-ref <code>OUTLETS/_ALL-cross-cutting.md</code>.</p>
+<ul>
+<li>A dollars-and-cents &quot;why this matters to a buyer/investor&quot; line per</li>
+</ul>
+<p>audience → <code>STRATEGY/sales.md</code>.</p>
+<p class="src">— ELEVATOR-PITCH.md</p></section>
+<section><a class="anchor" id="holdings-structure-md"></a>
+<h1 id="holdings-structure-md">Entity / holdings structure  (DRAFT — founder to confirm exact legal shape)</h1>
+<p>Captured from <code>user-biz-request.txt</code>. This is the founder&#x27;s stated mental model, not verified legal structure — confirm entity names, jurisdictions, and which are real registered entities vs. brands/DBAs before using in anything legal or investor-facing (<code>STRATEGY/legal.md</code>).</p>
+<pre><code>JBM-HOLDINGS
+  └─ (abstract holding entity — &quot;MTENT&quot; / MANAGEMENT layer)
+       └─ HQ  =  &quot;HOLDINGS QOMPANY&quot;   (stacked subsidiary; the tech + product house)
+            ├─ OUTLETS  (public-facing brand &quot;entities&quot; — each its own persona / channel)
+            │    ├─ TSOTS
+            │    ├─ Tear-it co
+            │    ├─ Harnecient
+            │    ├─ Robot Trap House
+            │    ├─ TEMPT
+            │    ├─ JB.EZ
+            │    ├─ JB.BLOCKROACH.EZ   (founder&#x27;s services co: pentest / bug bounty / red+blue team)
+            │    ├─ JBM                (academic persona)
+            │    └─ LUCKY_SOL_PEN      (founder-as-celebrity lore extreme; game-lore source)
+            └─ PLATFORM + GAMES  (THE HOUSE tech, tooling, titles)</code></pre>
+<h2>Notes from intake</h2>
+<ul>
+<li>Outlets are presented publicly as <strong>independent entities</strong>; a few</li>
+</ul>
+<p>cross-promote when relevant.</p>
+<ul>
+<li><code>JB.BLOCKROACH.EZ</code> is a real services line (pentesting, bug bounties,</li>
+</ul>
+<p>red/blue teaming; focus: microservices, cybersec, IoT, emerging tech, FOSS) — it has revenue potential independent of the platform.</p>
+<ul>
+<li><code>JBM</code> is the founder&#x27;s academic account (BS: CySec, MBA: IT</li>
+</ul>
+<p>Management).</p>
+<ul>
+<li><code>LUCKY_SOL_PEN</code> is a lore/branding vehicle, not an operating unit —</li>
+</ul>
+<p>but most game lore derives from it.</p>
+<h2>TODO (founder)</h2>
+<ul>
+<li>Confirm which names are registered entities vs. brands.</li>
+<li>Where does <code>JB.BLOCKROACH.EZ</code> sit — under HQ, or a sibling of HQ</li>
+</ul>
+<p>under JBM-HOLDINGS?</p>
+<ul>
+<li>Ownership / cap-table notes → keep in a founder-private file, not</li>
+</ul>
+<p>here, if this repo is ever shared.</p>
+<p class="src">— HOLDINGS-STRUCTURE.md</p></section>
+<section><a class="anchor" id="future-goals-md"></a>
+<h1 id="future-goals-md">Future goals  (DRAFT — founder intake, verbatim intent)</h1>
+<p>From the appended section of <code>user-biz-request.txt</code> (2026-09-06). Big, long-horizon, not scoped — kept here so strategy work has the north star, not as commitments.</p>
+<ul>
+<li>Founder may pursue <strong>law school</strong> or an <strong>MD</strong>.</li>
+<li>Aim: be as <strong>effective as possible — rich, futuristic</strong>.</li>
+<li>Much of the operation <strong>driven by AI bots</strong>.</li>
+<li>The social platform may grow <strong>character bots</strong> (ties to the</li>
+</ul>
+<p>&quot;familiar female assistants&quot; lore — see <code>OUTLETS/_ALL-cross-cutting.md</code>).</p>
+<ul>
+<li>Open to <strong>selling or licensing</strong> individual pieces **without selling</li>
+</ul>
+<p>the whole house**.</p>
+<ul>
+<li>Comfortable running <strong>multiple businesses</strong> — cloud / enterprise /</li>
+</ul>
+<p>cybersec — &quot;whatever catches&quot;. Multi-biz is fine.</p>
+<ul>
+<li>Stated ambition: <strong>&quot;bigger than Elon&quot;</strong> — follow a similar path,</li>
+</ul>
+<p>push harder.</p>
+<ul>
+<li>Someday: <strong>biotech</strong> and <strong>space exploration</strong>.</li>
+</ul>
+<h2>How this maps to near-term work (agent note)</h2>
+<ul>
+<li>&quot;Sell/license pieces without selling the house&quot; → this is exactly why</li>
+</ul>
+<p>the platform is being kept modular (shared renderer, <code>kh_plat</code>, manager processes, <code>08-roadmap/design-docs/CROSS-PLATFORM-SEAM-AND- SHARED-INFRA.md</code>). A clean seam = a licensable unit.</p>
+<ul>
+<li>&quot;AI-bot-driven&quot; → the file-based-state + relay-input design already</li>
+</ul>
+<p>makes every window agent-drivable; that&#x27;s a sellable property, note it in <code>STRATEGY/sales.md</code>.</p>
+<ul>
+<li>Biotech / space / law / MD are <strong>not</strong> near-term; don&#x27;t let them</li>
+</ul>
+<p>pull scope. Revisit at each <code>STRATEGY/strategy.md</code> review.</p>
+<p class="src">— FUTURE-GOALS.md</p></section>
+<section><a class="anchor" id="strategy-00-index-md"></a>
+<h1 id="strategy-00-index-md">STRATEGY — company-wide</h1>
+<p>The default answer for each area. An OUTLET only gets its own <code>pricing.md</code> / <code>networking.md</code> / etc. when its answer actually diverges from what&#x27;s here.</p>
+<p>All files are <code>DRAFT</code> stubs — founder-owned. Agents may draft options and structure; the founder decides. Nothing here is a commitment.</p>
+<table><thead><tr><th>File</th><th>Scope</th></tr></thead><tbody><tr><td><code>sales.md</code></td><td>who buys, the buyer&#x27;s &quot;why now&quot;, pipeline, call structure, when lore helps vs. hurts a call</td></tr><tr><td><code>marketing.md</code></td><td>positioning, channels, the A/B demographic tests across outlets, content cadence</td></tr><tr><td><code>pricing.md</code></td><td>model options (free / paid tiers / services / game sales), not set</td></tr><tr><td><code>networking.md</code></td><td>target people/orgs/communities, warm-intro paths, event plan</td></tr><tr><td><code>legal.md</code></td><td>entity shape, IP/trademark, licensing (FOSS vs. proprietary split), privacy, contracts — needs real counsel</td></tr><tr><td><code>ethics.md</code></td><td>data use, AI use, marketing-lore boundaries, audience-targeting lines the founder will/won&#x27;t cross</td></tr><tr><td><code>strategy.md</code></td><td>6–18 month priorities, sequencing outlets vs. platform vs. games, kill/keep criteria</td></tr></tbody></table>
+<h2>Related</h2>
+<ul>
+<li><code>../ELEVATOR-PITCH.md</code></li>
+<li><code>../OUTLETS/_ALL-cross-cutting.md</code> — the branding-lore lean-in/out question shows up in <code>sales.md</code>, <code>marketing.md</code>, and <code>ethics.md</code></li>
+<li><code>../../08-roadmap/design-docs/MARKETING-PRESENTATION-OUTLINE.md</code></li>
+</ul>
+<p class="src">— STRATEGY/00-INDEX.md</p></section>
+<section><a class="anchor" id="strategy-strategy-md"></a>
+<h1 id="strategy-strategy-md">STRATEGY — company-wide  (DRAFT stub)</h1>
+<p>Founder-owned. Not yet written. See <code>00-INDEX.md</code> for scope.</p>
+<h2>Intent (from <code>../user-biz-request.txt</code>)</h2>
+<p>The founder asked for strategic docs covering sales / marketing / pricing / networking / legal / ethics / strategy, per outlet where the answer differs. This file is the company-wide default for <strong>strategy</strong>.</p>
+<h2>TODO</h2>
+<ul>
+<li>[ ] founder: draft the real content or delegate a first pass</li>
+<li>[ ] link any outlet-level override docs that get created</li>
+</ul>
+<p class="src">— STRATEGY/strategy.md</p></section>
+<section><a class="anchor" id="strategy-sales-md"></a>
+<h1 id="strategy-sales-md">SALES — company-wide  (DRAFT stub)</h1>
+<p>Founder-owned. Not yet written. See <code>00-INDEX.md</code> for scope.</p>
+<h2>Intent (from <code>../user-biz-request.txt</code>)</h2>
+<p>The founder asked for strategic docs covering sales / marketing / pricing / networking / legal / ethics / strategy, per outlet where the answer differs. This file is the company-wide default for <strong>sales</strong>.</p>
+<h2>TODO</h2>
+<ul>
+<li>[ ] founder: draft the real content or delegate a first pass</li>
+<li>[ ] link any outlet-level override docs that get created</li>
+</ul>
+<p class="src">— STRATEGY/sales.md</p></section>
+<section><a class="anchor" id="strategy-marketing-md"></a>
+<h1 id="strategy-marketing-md">MARKETING — company-wide  (DRAFT stub)</h1>
+<p>Founder-owned. Not yet written. See <code>00-INDEX.md</code> for scope.</p>
+<h2>Intent (from <code>../user-biz-request.txt</code>)</h2>
+<p>The founder asked for strategic docs covering sales / marketing / pricing / networking / legal / ethics / strategy, per outlet where the answer differs. This file is the company-wide default for <strong>marketing</strong>.</p>
+<h2>TODO</h2>
+<ul>
+<li>[ ] founder: draft the real content or delegate a first pass</li>
+<li>[ ] link any outlet-level override docs that get created</li>
+</ul>
+<p class="src">— STRATEGY/marketing.md</p></section>
+<section><a class="anchor" id="strategy-pricing-md"></a>
+<h1 id="strategy-pricing-md">PRICING — company-wide  (DRAFT stub)</h1>
+<p>Founder-owned. Not yet written. See <code>00-INDEX.md</code> for scope.</p>
+<h2>Intent (from <code>../user-biz-request.txt</code>)</h2>
+<p>The founder asked for strategic docs covering sales / marketing / pricing / networking / legal / ethics / strategy, per outlet where the answer differs. This file is the company-wide default for <strong>pricing</strong>.</p>
+<h2>TODO</h2>
+<ul>
+<li>[ ] founder: draft the real content or delegate a first pass</li>
+<li>[ ] link any outlet-level override docs that get created</li>
+</ul>
+<p class="src">— STRATEGY/pricing.md</p></section>
+<section><a class="anchor" id="strategy-networking-md"></a>
+<h1 id="strategy-networking-md">NETWORKING — company-wide  (DRAFT stub)</h1>
+<p>Founder-owned. Not yet written. See <code>00-INDEX.md</code> for scope.</p>
+<h2>Intent (from <code>../user-biz-request.txt</code>)</h2>
+<p>The founder asked for strategic docs covering sales / marketing / pricing / networking / legal / ethics / strategy, per outlet where the answer differs. This file is the company-wide default for <strong>networking</strong>.</p>
+<h2>TODO</h2>
+<ul>
+<li>[ ] founder: draft the real content or delegate a first pass</li>
+<li>[ ] link any outlet-level override docs that get created</li>
+</ul>
+<p class="src">— STRATEGY/networking.md</p></section>
+<section><a class="anchor" id="strategy-legal-md"></a>
+<h1 id="strategy-legal-md">LEGAL — company-wide  (DRAFT stub)</h1>
+<p>Founder-owned. Not yet written. See <code>00-INDEX.md</code> for scope.</p>
+<h2>Intent (from <code>../user-biz-request.txt</code>)</h2>
+<p>The founder asked for strategic docs covering sales / marketing / pricing / networking / legal / ethics / strategy, per outlet where the answer differs. This file is the company-wide default for <strong>legal</strong>.</p>
+<h2>TODO</h2>
+<ul>
+<li>[ ] founder: draft the real content or delegate a first pass</li>
+<li>[ ] link any outlet-level override docs that get created</li>
+</ul>
+<p class="src">— STRATEGY/legal.md</p></section>
+<section><a class="anchor" id="strategy-ethics-md"></a>
+<h1 id="strategy-ethics-md">ETHICS — company-wide  (DRAFT stub)</h1>
+<p>Founder-owned. Not yet written. See <code>00-INDEX.md</code> for scope.</p>
+<h2>Intent (from <code>../user-biz-request.txt</code>)</h2>
+<p>The founder asked for strategic docs covering sales / marketing / pricing / networking / legal / ethics / strategy, per outlet where the answer differs. This file is the company-wide default for <strong>ethics</strong>.</p>
+<h2>TODO</h2>
+<ul>
+<li>[ ] founder: draft the real content or delegate a first pass</li>
+<li>[ ] link any outlet-level override docs that get created</li>
+</ul>
+<p class="src">— STRATEGY/ethics.md</p></section>
+<section><a class="anchor" id="outlets-all-cross-cutting-md"></a>
+<h1 id="outlets-all-cross-cutting-md">OUTLETS — shared branding, lore, and lean-in / lean-out rules  (DRAFT)</h1>
+<p>From <code>../user-biz-request.txt</code>. This is founder marketing/branding intent, captured for strategy work — not a style guide to execute blindly.</p>
+<h2>The shared founder-lore (spans most outlets)</h2>
+<ul>
+<li>Overarching flavor: <strong>SF / NY / (Japan) founders &amp; devs</strong>, targeting</li>
+</ul>
+<p>single asian females, cyberpunks, and &quot;redheads&quot; (ties to a &quot;red-head vampire clone&quot; lore thread).</p>
+<ul>
+<li>The founder appears across outlets as a recurring character — a</li>
+</ul>
+<p>&quot;Tenchi Muyo&quot;-style ensemble of familiar, friendly female-assistant characters around him. This is <strong>branding and marketing</strong>, not a product claim.</p>
+<ul>
+<li>Persona ladder for the founder himself:</li>
+<li><code>JB.EZ</code> — grounded &quot;mr. robot&quot; flavor (hacker alter-ego, fights</li>
+</ul>
+<p>crime, humble-brag, real networking).</p>
+<ul>
+<li><code>LUCKY_SOL_PEN</code> — the same person taken to the lore extreme:</li>
+</ul>
+<p>celebrity/rapper energy, space travel, time travel, Mars clone army, &quot;man of mystery&quot;. Most game lore derives from here (<code>LUCKY-SOL-PEN/</code>).</p>
+<h2>The strategic question the founder wants answered</h2>
+<p><strong>When to lean INTO the branding/lore, and when to distance from it.</strong> Examples the founder raised:</p>
+<ul>
+<li>On a sales call — lore on or off?</li>
+<li>Depends on the demographic / which outlet the lead came through?</li>
+<li>Warm/insider vs. cold audiences?</li>
+</ul>
+<p>→ This feeds <code>../STRATEGY/sales.md</code>, <code>../STRATEGY/marketing.md</code>, and <code>../STRATEGY/ethics.md</code>. Draft a simple decision table: <code>context × audience → lore level (none / light / full)</code>.</p>
+<h2>Cross-promotion</h2>
+<p>Outlets are public-facing as <strong>independent entities</strong>. Only a few cross-promote, and only when relevant. Keep a short &quot;who may reference whom&quot; list here once decided.</p>
+<h2>Ethics flags to think through (not judgments — just the open questions)</h2>
+<ul>
+<li>Demographic targeting language (&quot;single asian females&quot;, occult</li>
+</ul>
+<p>fashion, etc.) — where&#x27;s the line between audience focus and something the founder won&#x27;t put his name to? → <code>../STRATEGY/ethics.md</code></p>
+<ul>
+<li>&quot;Slop posting&quot; / high-volume low-effort gif posting (<code>ROBOT-TRAP-HOUSE</code>,</li>
+</ul>
+<p><code>TEMPT</code>) as a growth tactic — acceptable on which accounts, never on which (e.g. <code>JBM</code> academic, <code>JB.BLOCKROACH.EZ</code> services)?</p>
+<ul>
+<li>Secret / impersonal accounts vs. accounts tied to the founder&#x27;s real</li>
+</ul>
+<p>name and services — keep the separation explicit.</p>
+<p class="src">— OUTLETS/_ALL-cross-cutting.md</p></section>
+<section><a class="anchor" id="outlets-consulting-00-index-md"></a>
+<h1 id="outlets-consulting-00-index-md">CONSULTING — outlet  (founder docs + tech-readiness assessment)</h1>
+<p>The paid-services arm: architecture / security / data-lineage consulting for law firms and biotech leadership. Sits alongside <code>../JB-BLOCKROACH-EZ/</code> (the pentest/red-team services co) — same buyer, different offer (advisory + build, not offensive testing).</p>
+<h2>Contents</h2>
+<table><thead><tr><th>File</th><th>What it is</th><th>Author</th></tr></thead><tbody><tr><td><code>!.executive-consultation.md</code></td><td>&quot;X.com Authority Engine&quot; — positioning, network plan, biotech + legal-tech verticals, project ($10–30k) vs. retainer ($3–10k/mo) ladder</td><td>founder</td></tr><tr><td><code>^.Executive Blueprint - Non-Invasive File Lineage Blockchain Solution V2.md</code></td><td>the productized offer: hash-anchor existing flat files onto a permissioned ledger; tiered pricing ($5–10k audit / $25–50k build / $3–7.5k/mo retainer)</td><td>founder</td></tr><tr><td><code>HOUSE-TECH-INTEGRATION.md</code></td><td><strong>how the house&#x27;s own <code>041.pal-chain</code> + file-based OS already cover ~70% of that blueprint, and the ~2–3 week gap to a deployable v1</strong></td><td>Claude (assessment, grounded in the real code)</td></tr></tbody></table>
+<h2>The point</h2>
+<p>The blueprint is not vaporware. The house already runs a working plain-text blockchain (SHA-256, PoW, chain-linked, peer-gossiped, on-receipt validation — ~2,400 LOC of C) plus a whole &quot;everything is a readable file, non-invasive by construction&quot; platform. That is the exact substrate the blueprint sells. <code>HOUSE-TECH-INTEGRATION.md</code> maps what exists to each blueprint deliverable and scopes the remainder — it independently lands on the blueprint&#x27;s own &quot;2–4 weeks / zero disruption&quot; claims.</p>
+<h2>TODO (founder)</h2>
+<ul>
+<li>Decide: is CONSULTING its own public persona/handle, or delivered</li>
+</ul>
+<p>under <code>JB.BLOCKROACH.EZ</code> / <code>JB.EZ</code>? (<code>../_ALL-cross-cutting.md</code> — lore stays OFF here regardless.)</p>
+<ul>
+<li>First reference client / pilot (the house&#x27;s own <code>proof/harness-*</code></li>
+</ul>
+<p>snapshot history is a ready-made demo of file-lineage proof).</p>
+<ul>
+<li>Rate card + MSA/SOW templates → <code>../STRATEGY/legal.md</code>, <code>pricing.md</code>.</li>
+</ul>
+<p class="src">— OUTLETS/CONSULTING/00-INDEX.md</p></section>
+<section><a class="anchor" id="outlets-consulting-executive-consultation-md"></a>
+<p>------------ You&#x27;re exactly right. Transitioning to the executive role is what scales a freelance operation into a business. To go fast, you should focus on building a network of decision-makers and establishing a strong professional brand that highlights your authority in the biotech sector. Networking should be strategic and targeted towards those who can hire you. ------------ we dont have to sell/give the house away. we ask about &quot;THIER LEGACY SYSTEMS&quot; and provide advice based on that. (non compete) ------------</p>
+<h2>Executive Plan: X.com Authority Engine</h2>
+<pre><code>                                  AUTHORITY &amp; LEAD ENGINE
+                                             │
+                       ┌─────────────────────┴─────────────────────┐
+                       ▼                                           ▼
+             BIOTECH VERTICAL                             LEGAL TECH VERTICAL
+    ┌─────────────────────────────────┐         ┌─────────────────────────────────┐
+    │ • Genomic / Multi-Omics Pipelines│         │ • IP Protection &amp; Litigation    │
+    │ • Zero-Trust Compliance         │         │ • Secure Client Portals         │
+    │ • Complex Data Visualization    │         │ • AI Governance &amp; Audit Trails  │
+    └─────────────────────────────────┘         └─────────────────────────────────┘
+                       │                                           │
+                       └─────────────────────┬─────────────────────┘
+                                             ▼
+                                  CONVERSION &amp; MONETIZATION
+                                             │
+                       ┌─────────────────────┴─────────────────────┐
+                       ▼                                           ▼
+             PROJECTS ($10k–$30k)                      RETAINERS ($3k–$10k/mo)
+    (Custom Architecture &amp; Security Builds)     (Fractional Security &amp; Infrastructure)
+</code></pre>
+<hr>
+<h2>Phase 1: Profile Architecture &amp; Position</h2>
+<p>Your profile must immediately signal technical execution capacity and high-level strategic authority.</p>
+<ul>
+<li><strong>Profile Banner:</strong> Clean, dark-mode visual depicting a data pipeline flow connected to a dashboard node with an end-to-end encryption shield icon.</li>
+<li><strong>Name / Title:</strong> Your Name | Executive Data &amp; Security Strategist</li>
+<li><strong>Bio:</strong></li>
+</ul>
+<blockquote>Architecting secure data pipelines &amp; advanced visualization frameworks for high-stakes environments.<br>🧬 BioTech Data Infrastructure | ⚖️ Legal Practice Security &amp; AI Governance.<br>Fractional Tech Advisor for Growth-Stage Firms.</blockquote>
+<ul>
+<li><strong>Pinned Post:</strong> A long-form post breakdown (or technical breakdown thread) detailing a hypothetical architecture build: *&quot;How to build a zero-trust, HIPAA-compliant genomic data pipeline with real-time visualization—without locking your data into proprietary vendor silos.&quot;*</li>
+</ul>
+<hr>
+<h2>Phase 2: Content Engine (3-Tier Pillar System)</h2>
+<p>Publish 1 to 2 times daily, alternating between high-level executive insights and deep-dive technical teardowns.</p>
+<pre><code>                     ┌─────────────────────────────────────────┐
+                     │   TIER 1: High-Level Strategy (30%)     │
+                     │  (Targeting Managing Partners/Founders) │
+                     └────────────────────┬────────────────────┘
+                                          │
+                     ┌────────────────────┴────────────────────┐
+                     │   TIER 2: Deep Technical Proof (50%)    │
+                     │ (Targeting CTOs, VPs of R&amp;D, Tech Leads)│
+                     └────────────────────┬────────────────────┘
+                                          │
+                     ┌────────────────────┴────────────────────┐
+                     │   TIER 3: Contrarian / Trend (20%)      │
+                     │  (Driving Virality &amp; Industry Authority)│
+                     └─────────────────────────────────────────┘
+</code></pre>
+<h3>Pillar 1: BioTech Data Infrastructure &amp; Visualization (50%)</h3>
+<ul>
+<li><strong>Topic Focus:</strong> Handling massive multi-omics datasets, cloud pipeline automation, raw-data-to-visual dashboard workflows, and data protection.</li>
+<li><strong>Sample Hook:</strong> *&quot;Most biotech startups bleed 15+ developer hours a week because their computational biology team manually formats raw genomic output for board presentations. Here’s how automated visualization pipelines fix this.&quot;*</li>
+</ul>
+<h3>Pillar 2: Legal Tech Security &amp; AI Governance (30%)</h3>
+<ul>
+<li><strong>Topic Focus:</strong> Protecting litigation discovery datasets, SOC 2/HIPAA compliance for law firms, secure client portals, and governance frameworks for legal AI tools.</li>
+<li><strong>Sample Hook:</strong> *&quot;If your law firm uses AI agents for document discovery without strict data lineage controls, you are exposed during client compliance audits. Here is the 4-layer security stack every firm needs.&quot;*</li>
+</ul>
+<h3>Pillar 3: Executive Infrastructure &amp; Strategy (20%)</h3>
+<ul>
+<li><strong>Topic Focus:</strong> Buy vs. build software decisions, managing technical risk, and transitioning from ad-hoc IT to enterprise-grade security.</li>
+<li><strong>Sample Hook:</strong> *&quot;Outsourcing your core infrastructure code without a dedicated fractional supervisor is how technical debt turns into a $200k refactoring bill later.&quot;*</li>
+</ul>
+<hr>
+<h2>Phase 3: Targeted Outreach &amp; Network Scaling</h2>
+<p>To build the network rapidly, bypass passive posting and execute systematic outbound interaction.</p>
+<pre><code> Daily Target List ──► Engaged Interaction ──► High-Value DM ──► 15-Min Discovery Call
+ (Founders/Partners)   (Substantive Quotes)   (Free Audit Offer)  (Qualify &amp; Proposal)
+</code></pre>
+<ol>
+<li><strong>Daily Identification (10 Accounts/Day):</strong></li>
+<li><strong>BioTech:</strong> Search terms like <code>Biotech Founder</code>, <code>Head of Computational Biology</code>, <code>VP R&amp;D</code>, <code>Genomics Startup</code>.</li>
+<li><strong>Legal:</strong> Search terms like <code>LegalTech Founder</code>, <code>Managing Partner IP Law</code>, <code>Head of Legal Ops</code>.</li>
+</ol>
+<ol>
+<li><strong>Public Engagement Rule (The 3x3 Rule):</strong></li>
+<li>Leave 3 substantive, high-value comments daily under posts from industry leaders, venture builders, or target founders. Add technical clarity or ask strategic questions; avoid generic praise.</li>
+</ol>
+<ol>
+<li><strong>Direct Message Conversion Script:</strong></li>
+</ol>
+<blockquote>&quot;Hey [Name], enjoyed your recent thoughts on [specific topic they posted about].<br>I’ve been analyzing how early-stage [biotech / litigation support] firms structure their pipeline security and visualization workflows.<br>I put together a brief checklist detailing the 3 biggest security bottlenecks teams face when scaling their data architecture. Happy to send over a quick visual outline if you&#x27;re interested.&quot;</blockquote>
+<hr>
+<h2>Phase 4: Offer Ladder &amp; Monetization Flow</h2>
+<p>Structure your engagement so prospects can enter at low risk and scale into long-term retainers.</p>
+<pre><code>┌─────────────────────────────────────────────────────────────────────────┐
+│ ENTRY OFFER: Security &amp; Pipeline Audit ($1,500 - $3,500)                 │
+│ • 48-hour assessment of data flows, access management, &amp; visuals       │
+│ • Deliverable: Strategic Blueprint &amp; Architecture Roadmap               │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│ BUILD PROJECT: Pipeline &amp; Visualization Build ($10,000 - $30,000)       │
+│ • Complete custom pipeline, dashboard build, or security overhaul       │
+│ • Deliverable: Production-ready code, documentation, &amp; team onboarding │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│ EXECUTIVE RETAINER: Fractional Tech &amp; Security Advisory ($4,000 - $8,000/mo)│
+│ • 10–15 hours/month for architectural review, compliance, &amp; oversight   │
+│ • Ongoing maintenance, team delegation, and strategic technical guidance│
+└─────────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<p>How would you like to start? We can draft your first 3 authority threads or write out the exact audit framework to pitch during DMs.</p>
+<p class="src">— OUTLETS/CONSULTING/!.executive-consultation.md</p></section>
+<section><a class="anchor" id="outlets-consulting-house-tech-integration-md"></a>
+<h1 id="outlets-consulting-house-tech-integration-md">Making the File-Lineage Blockchain offer real, ASAP — house-tech integration</h1>
+<p><strong>Author:</strong> Claude (technical assessment), 2026-09-07. Grounded in the actual code under <code>44.xyz.01.00/041.pal-chain⛓️/</code> and the house&#x27;s file-based-state architecture — not aspirational. Pairs with the founder&#x27;s <code>^.Executive Blueprint - Non-Invasive File Lineage Blockchain Solution V2.md</code>.</p>
+<p><strong>Bottom line:</strong> ~70% of the blueprint already exists and runs. A deployable v1 (watch a client&#x27;s files → anchor hashes on a permissioned ledger → verify + produce a court-style receipt) is <strong>~2–3 focused weeks</strong>, which independently confirms the blueprint&#x27;s own &quot;2–4 weeks / zero disruption&quot; claims.</p>
+<hr>
+<h2>1. What already exists in <code>041.pal-chain⛓️</code> (verified in code)</h2>
+<table><thead><tr><th>Capability</th><th>Where</th><th>State</th></tr></thead><tbody><tr><td>Plain-text blockchain, one line per block: `BLOCK\</td><td>height\</td><td>prev_hash\</td><td>value\</td><td>hash\</td><td>ts\</td><td>wallet\</td><td>`</td><td><code>data/blockchain.txt</code> (14,000 blocks live)</td><td>working</td></tr><tr><td>SHA-256 hashing + hex-zero-prefix Proof-of-Work difficulty</td><td><code>ops/chain_miner.c</code>, <code>ops/chain_inbox_watcher.c</code></td><td>working</td></tr><tr><td>Prev-hash chain linking + <strong>on-receipt block validation</strong> (&quot;never trusted verbatim&quot;)</td><td><code>ops/chain_inbox_watcher.c</code></td><td>working</td></tr><tr><td>Pending-tx pool + dedup by tx_id against pool *and* chain</td><td><code>data/pending_tx.txt</code>, <code>chain_inbox_watcher.c</code></td><td>working</td></tr><tr><td>Wallets / identity (SHA-256-derived IDs), login</td><td><code>ops/chain_create_wallet.c</code>, <code>chain_login.c</code></td><td>working</td></tr><tr><td><strong>Peer-to-peer block/tx gossip</strong> — HELLO handshake, node-id tracking, dedup, non-blocking sockets, append-only outbox/inbox</td><td><code>ops/palnet_peer.c</code> (~540 LOC)</td><td>working (v1, static peer set)</td></tr><tr><td><strong>Persistent file-watcher daemon</strong> — tails an append-only file by line-cursor, validates + applies new lines, tracks its own read position</td><td><code>ops/chain_inbox_watcher.c</code> (~330 LOC)</td><td>working — *this is the skeleton of the file-anchor watcher*</td></tr><tr><td>Snapshot-before-change lineage pattern (<code>blockchain.txt.pre-harness-run-&lt;ts&gt;</code> + <code>proof/harness-&lt;ts&gt;/</code>)</td><td>repo history</td><td>already a working demo of file-lineage proof</td></tr></tbody></table>
+<p>Plus the platform itself: <strong>every artifact is a human-readable flat file, append-only, cursor-tracked.</strong> &quot;Non-invasive, works alongside your existing file system, raw data never moves&quot; is not a feature to build — it is the house&#x27;s architecture.</p>
+<h2>2. Gap analysis — blueprint deliverable → what&#x27;s missing</h2>
+<table><thead><tr><th>Blueprint asks for</th><th>Gap</th><th>Effort</th></tr></thead><tbody><tr><td>Anchor a <strong>file&#x27;s</strong> hash + metadata (not a currency amount)</td><td>Add an <code>ANCHOR</code> tx type: `ANCHOR\</td><td>tx_id\</td><td>file_sha256\</td><td>size\</td><td>mtime\</td><td>rel_path\</td><td>prev_file_hash\</td><td>actor\</td><td>sig\</td><td>ts\</td><td>`, mined into a block like any tx. Block hash already covers contents → immutable + chain-linked once mined.</td><td>~1 day</td></tr><tr><td><strong>&quot;Custom local hash watcher&quot;</strong> (Tier 2 deliverable)</td><td>Fork <code>chain_inbox_watcher.c</code> → <code>file_anchor_watcher.c</code>: poll/inotify a client directory tree, SHA-256 each new/changed file, emit an <code>ANCHOR</code> tx to <code>outbox.txt</code> (peer gossips it to the permissioned nodes). Reuses the cursor / dedup / sha256 / signal-handling code verbatim.</td><td>~2–3 days</td></tr><tr><td><strong>Verify lineage / audit trail</strong></td><td><code>verify_file.+x &lt;path&gt; [--receipt]</code>: hash the file, scan <code>blockchain.txt</code> for matching <code>ANCHOR</code>(s), re-validate the chain from genesis, print <code>{first_seen_height, timestamp_utc, all_versions[], chain_valid}</code>. <code>--receipt</code> → signed JSON + a rendered one-page PDF (reuse the house&#x27;s own frame→PNG/PDF render path).</td><td>~3–4 days</td></tr><tr><td><strong>Permissioned</strong> (not open mining)</td><td><code>validators.txt</code> allowlist of wallet IDs; <code>palnet_peer</code> HELLO already carries node_id — gate block acceptance in <code>chain_inbox_watcher.c</code> on &quot;mined/signed by an allowed validator&quot;. Client runs 1 node; we run 1–2 witness nodes.</td><td>~1–2 days</td></tr><tr><td><strong>Non-invasive install</strong> (Tier 2)</td><td>One script that drops <code>file_anchor_watcher</code> + <code>palnet_peer</code> + a read-only CLI/tiny local web audit view next to the client&#x27;s files and touches nothing else. <code>systemd --user</code> unit or a <code>nohup</code> supervisor.</td><td>~2–3 days</td></tr><tr><td><strong>Architectural Audit &amp; Blueprint</strong> (Tier 1, $5–10k)</td><td>No build needed — it&#x27;s discovery + a written report. The <code>verify_file</code> + watcher become the pilot artifact that closes Tier 1 → Tier 2.</td><td>0 (services)</td></tr></tbody></table>
+<p><strong>Total to deployable v1: ~9–13 working days → 2–3 calendar weeks</strong> with testing and a client pilot. Matches the blueprint&#x27;s &quot;2–4 weeks.&quot;</p>
+<h2>3. Why the &quot;non-invasive / zero-disruption&quot; claims hold up</h2>
+<ul>
+<li>Raw files never move or open — only <code>sha256(file_bytes)</code> + <code>stat()</code></li>
+</ul>
+<p>metadata are read. The client&#x27;s storage, permissions, and apps are untouched.</p>
+<ul>
+<li>The ledger is append-only plain text the client can read, <code>grep</code>,</li>
+</ul>
+<p>back up, and audit with no special tooling — and can walk away from (the receipts stay verifiable with nothing but <code>sha256sum</code> + the exported chain file).</p>
+<ul>
+<li>No database migration, no schema, no agent in the data path. The</li>
+</ul>
+<p>watcher is a sidecar; if it stops, nothing breaks — it just resumes from its line-cursor.</p>
+<ul>
+<li>Court-admissibility story: each version&#x27;s hash is fixed in a block</li>
+</ul>
+<p>whose own hash chains to every later block; tampering with block N invalidates N+1…tip, which the witness node(s) reject on gossip.</p>
+<h2>4. Ready-made demo / pilot assets</h2>
+<ul>
+<li><strong>The house&#x27;s own history</strong>: <code>blockchain.txt.pre-harness-run-&lt;ts&gt;</code></li>
+</ul>
+<p>snapshots + <code>proof/harness-&lt;ts&gt;/</code> dirs are a real, dated, before/after file-lineage record — screen-record <code>verify_file</code> against them.</p>
+<ul>
+<li>A 5-minute live demo: drop 3 PDFs in a watched folder → show the 3</li>
+</ul>
+<p><code>ANCHOR</code> blocks appear → edit one PDF → show a new version block → hand-edit <code>blockchain.txt</code> → show the witness node rejecting it and <code>verify_file</code> reporting <code>chain_valid: false</code>.</p>
+<h2>5. Honest caveats (say these on a sales call)</h2>
+<ul>
+<li><code>palnet_peer</code> v1 has a <strong>static peer set</strong> and no dynamic discovery —</li>
+</ul>
+<p>fine for a 2–3 node permissioned witness setup, not a public network.</p>
+<ul>
+<li>PoW difficulty is currently a <strong>documented target, loosely enforced</strong></li>
+</ul>
+<p>— for a permissioned ledger, switch to &quot;valid iff signed by an allowed validator&quot; and drop PoW entirely (simpler, faster, correct for this trust model).</p>
+<ul>
+<li>No formal third-party security audit of the crypto code yet — budget</li>
+</ul>
+<p>one before a regulated-industry production deployment (and price it into Tier 2 / a Tier-1 finding).</p>
+<ul>
+<li>Signature scheme: wallet IDs are SHA-256-derived, not full public-key</li>
+</ul>
+<p>signatures yet — add ed25519 signing of <code>ANCHOR</code> txs before &quot;court- admissible&quot; is a claim rather than a goal (~2–3 extra days; do it).</p>
+<h2>6. Suggested sequencing</h2>
+<ol>
+<li><strong>Week 0 (services, no code):</strong> land one Tier-1 Architectural Audit.</li>
+</ol>
+<p>Use it to spec the exact watched paths + validator topology.</p>
+<ol>
+<li><strong>Weeks 1–2:</strong> <code>ANCHOR</code> tx type + <code>file_anchor_watcher</code> +</li>
+</ol>
+<p><code>verify_file --receipt</code> + <code>validators.txt</code> gating + install script. Ed25519 signing folded in here.</p>
+<ol>
+<li><strong>Week 3:</strong> pilot on the audit client&#x27;s real (non-sensitive)</li>
+</ol>
+<p>directory; produce the first signed receipts; convert to a Tier-3 retainer.</p>
+<ol>
+<li>Only then generalize (multi-tenant, dashboard polish, dynamic peer</li>
+</ol>
+<p>discovery) as retainer-funded work.</p>
+<h2>Related</h2>
+<ul>
+<li><code>../../STRATEGY/pricing.md</code> (map the effort above to the tiers)</li>
+<li><code>../../STRATEGY/legal.md</code> (&quot;court-admissible&quot; needs the ed25519 +</li>
+</ul>
+<p>audit caveats resolved first)</p>
+<ul>
+<li><code>44.xyz.01.00/041.pal-chain⛓️/walkthru-j30.txt</code>,</li>
+</ul>
+<p><code>phase2-module-split-report.txt</code> — the chain&#x27;s own current state</p>
+<p class="src">— OUTLETS/CONSULTING/HOUSE-TECH-INTEGRATION.md</p></section>
+<section><a class="anchor" id="outlets-consulting-executive-blueprint-non-invasive-file-lineage-blockchain-solution-v2-md"></a>
+<h1 id="outlets-consulting-executive-blueprint-non-invasive-file-lineage-blockchain-solution-v2-md"><strong>Executive Solution Blueprint: Lightweight Blockchain File Lineage &amp; Integrity</strong></h1>
+<p><strong>Prepared for:</strong> Law Firms &amp; Biotech Enterprise Leadership <strong>Prepared by:</strong> Technical Strategy &amp; Cybersecurity Practice <strong>Focus Area:</strong> File-Level Integrity, Immutable Audit Trails, and Non-Invasive Compliance</p>
+<h2>---</h2>
+<p><strong>1\. Executive Summary</strong></p>
+<p>Modern law firms and biotech organizations frequently handle high-stakes digital assets—including patent filings, litigation discovery documents, clinical trial results, and proprietary research outputs. A critical operational vulnerability is proving the <strong>authenticity, timestamp, and lineage</strong> of these files without undergoing costly, intrusive database overhauls or exposing raw data to third parties. This architecture provides a <strong>non-invasive, file-level blockchain lineage solution</strong>. Instead of migrating legacy storage structures or connecting directly to core databases, our framework anchors cryptographic hashes (digital fingerprints) of existing flat files (PDFs, DOCX, CSVs, TXTs) directly onto a private/permissioned blockchain. This provides an unalterable, court-admissible audit trail while keeping all underlying confidential data safely on your existing local drives or cloud storage.</p>
+<h2>---</h2>
+<p><strong>2\. The Problem vs. The Non-Invasive Solution</strong></p>
+<table><thead><tr><th>Challenge</th><th>Traditional Database Overhaul</th><th>Non-Invasive File-Lineage Model</th></tr></thead><tbody><tr><td><strong>System Disruption</strong></td><td>High (requires migrating databases &amp; retraining staff)</td><td><strong>Zero</strong> (works alongside existing file systems)</td></tr><tr><td><strong>Data Privacy Risk</strong></td><td>High (centralizes or exposes sensitive raw records)</td><td><strong>Zero</strong> (raw files never leave your environment; only hashes are stored)</td></tr><tr><td><strong>Implementation Speed</strong></td><td>6–18 months</td><td><strong>2–4 weeks</strong></td></tr><tr><td><strong>Audit Compliance</strong></td><td>Dependent on internal logs (vulnerable to modification)</td><td><strong>Immutable</strong> (cryptographically proven via blockchain)</td></tr></tbody></table>
+<h2>---</h2>
+<p><strong>3\. Pricing &amp; Service Engagement Options</strong></p>
+<p>We structure our engagements around a clear <strong>&quot;Consulting-to-Product&quot; Value Ladder</strong>. Clients can engage at the level that best matches their scale, technical readiness, and operational needs.</p>
+<table><thead><tr><th>Engagement Tier</th><th>Scope &amp; Deliverables</th><th>Investment Tier</th></tr></thead><tbody><tr><td><strong>Tier 1: Architectural Audit &amp; Blueprint</strong></td><td>Complete file system discovery, data flow assessment, security gap analysis, and tailored deployment blueprint.</td><td><strong>$5,000 – $10,000</strong> (Fixed Fee)</td></tr><tr><td><strong>Tier 2: Core Implementation &amp; Deployment</strong></td><td>Custom local hash watcher scripting, node configuration, API integration with permissioned ledger, and audit dashboard setup.</td><td><strong>$25,000 – $50,000</strong> (Fixed Project)</td></tr><tr><td><strong>Tier 3: Ongoing Governance &amp; Support Retainer</strong></td><td>Quarterly integrity audits, automated node health monitoring, protocol updates, and priority technical escalation.</td><td><strong>$3,000 – $7,500 / month</strong> (Monthly Retainer)</td></tr></tbody></table>
+<h2>---</h2>
+<p><strong>4\. Technical Architecture &amp; Workflow</strong></p>
+<p>The system operates entirely around your existing documents, using lightweight automated scripts to generate cryptographic proofs.</p>
+<h3><strong>Step 1: Local File Ingestion &amp; Hashing</strong></h3>
+<p>When a document is created, updated, or finalized in a target directory:</p>
+<blockquote>* A SHA-256 cryptographic hash is generated locally for the file.<br>* The original file remains in its native directory (e.g., SharePoint, AWS S3, local drive).</blockquote>
+<h3><strong>Step 2: Blockchain Anchoring</strong></h3>
+<p>The generated hash, along with relevant metadata (author ID, file creation timestamp, version tag), is recorded to a private/permissioned blockchain node. { &quot;file\_name&quot;: &quot;clinical\_trial\_phase2\_results.csv&quot;, &quot;file\_hash\_sha256&quot;: &quot;e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855&quot;, &quot;timestamp\_utc&quot;: &quot;2026-09-07T12:41:00Z&quot;, &quot;author\_id&quot;: &quot;usr\_9921\_biotech&quot;, &quot;version&quot;: &quot;v1.2&quot;, &quot;blockchain\_tx\_id&quot;: &quot;0x8f3c...b12a&quot; }</p>
+<h3><strong>Step 3: Automated Verification &amp; Audit</strong></h3>
+<p>Any party with access to the file can re-hash it locally and compare it to the blockchain ledger. If a single character or metadata tag was altered, the hash will not match, immediately exposing tampering.</p>
+<h2>---</h2>
+<p><strong>5\. Industry-Specific Use Cases</strong></p>
+<h3><strong>Biotech &amp; Life Sciences</strong></h3>
+<blockquote>* <strong>Lab Notebook &amp; Research Lineage:</strong> Prove exact timestamp and content state for patent filing priority without exposing raw proprietary formulas.<br>* <strong>Clinical Trial Raw Exports:</strong> Guarantee regulators that CSV/Excel data exports have not been modified post-experimentation.</blockquote>
+<h3><strong>Legal &amp; IP Practice</strong></h3>
+<blockquote>* <strong>Evidence Chain of Custody:</strong> Maintain an immutable log for litigation discovery documents from receipt to courtroom presentation.<br>* <strong>Contract Version Control:</strong> Ensure all signing parties are executing the exact agreed-upon PDF document version.</blockquote>
+<h2>---</h2>
+<p><strong>6\. 30-Day Implementation Roadmap</strong></p>
+<blockquote>1. <strong>Week 1: Directory &amp; File Audit</strong> — Identify target folder paths, key file formats, and access permissions.<br>2. <strong>Week 2: Node Setup &amp; Hash Scripting</strong> — Deploy lightweight local hash watcher scripts and configure permissioned ledger access.<br>3. <strong>Week 3: Testing &amp; Verification Integration</strong> — Verify real-time timestamping and build a simple internal audit dashboard.<br>4. <strong>Week 4: Hand-Off &amp; Team Onboarding</strong> — Deliver documentation, operational protocols, and executive verification procedures.</blockquote>
+<p class="src">— OUTLETS/CONSULTING/^.Executive Blueprint - Non-Invasive File Lineage Blockchain Solution V2.md</p></section>
+<section><a class="anchor" id="outlets-harnecient-00-index-md"></a>
+<h1 id="outlets-harnecient-00-index-md">Harnecient — outlet  (DRAFT)</h1>
+<p>Source: <code>../../user-biz-request.txt</code>.</p>
+<h2>Audience</h2>
+<p>Cutting-edge <strong>AI tools / AI-harness users</strong>; investors interested in that space.</p>
+<h2>House angle it leads with</h2>
+<p>The house as an <strong>agent-native environment</strong>: file-based state + relay-input means any window is drivable by an AI harness through the same path a human uses. This is the strongest investor-facing technical story.</p>
+<h2>Voice / tone</h2>
+<p>Technical, forward-looking, credible. Lore: OFF for cold/investor contexts.</p>
+<h2>Channel state (founder-reported)</h2>
+<ul>
+<li>X/Twitter: <strong>under 25 followers</strong>.</li>
+</ul>
+<h2>Tailored pitch (DRAFT — founder to write)</h2>
+<blockquote>TBD — lead with the agent-drivable-everything property.</blockquote>
+<h2>TODO</h2>
+<ul>
+<li>[ ] founder: investor one-pager pitch; proof-demo list</li>
+<li>[ ] cross-ref <code>../STRATEGY/sales.md</code> (investor track)</li>
+</ul>
+<p class="src">— OUTLETS/HARNECIENT/00-INDEX.md</p></section>
+<section><a class="anchor" id="outlets-jb-blockroach-ez-00-index-md"></a>
+<h1 id="outlets-jb-blockroach-ez-00-index-md">JB.BLOCKROACH.EZ — outlet  (DRAFT)</h1>
+<p>Source: <code>../../user-biz-request.txt</code>.</p>
+<h2>What it is</h2>
+<p>The founder&#x27;s <strong>services company</strong>: pentesting, bug bounties, red-team / blue-team engagements.</p>
+<h2>Focus areas</h2>
+<p>Microservices, cybersecurity, IoT, emerging tech, FOSS.</p>
+<h2>Audience</h2>
+<p>Companies needing security services; security community; potential clients &amp; collaborators.</p>
+<h2>Voice / tone</h2>
+<p>Professional, credible, no slop, no lore. Real-name-attached.</p>
+<h2>Channel state (founder-reported)</h2>
+<ul>
+<li>X/Twitter: <strong>under 25 followers</strong>; personal.</li>
+</ul>
+<h2>Notes</h2>
+<ul>
+<li>This is a <strong>revenue line independent of the platform</strong> — treat its</li>
+</ul>
+<p>pricing/sales as its own track (<code>pricing.md</code> / <code>sales.md</code> overrides likely).</p>
+<h2>Tailored pitch (DRAFT — founder to write)</h2>
+<blockquote>TBD — services one-liner + proof (engagements, disclosures, CVEs).</blockquote>
+<h2>TODO</h2>
+<ul>
+<li>[ ] founder: service catalog + rate card (private) + case studies</li>
+</ul>
+<p class="src">— OUTLETS/JB-BLOCKROACH-EZ/00-INDEX.md</p></section>
+<section><a class="anchor" id="outlets-jb-ez-00-index-md"></a>
+<h1 id="outlets-jb-ez-00-index-md">JB.EZ — outlet  (DRAFT)</h1>
+<p>Source: <code>../../user-biz-request.txt</code>.</p>
+<h2>Audience</h2>
+<p>Founder / developer personal account. Personal connections, warm network.</p>
+<h2>Voice / tone</h2>
+<p><strong>&quot;Mr. Robot&quot;</strong> flavor: personal news, personal development, AI usage, humble-brag, networking. Light <strong>superhero / crime-fighting hacker alter-ego</strong> lore.</p>
+<h2>House angle it leads with</h2>
+<p>Founder credibility + build-in-public. The grounded end of the founder-persona ladder (<code>LUCKY-SOL-PEN</code> is the extreme end).</p>
+<h2>Channel state (founder-reported)</h2>
+<ul>
+<li>X/Twitter: <strong>under 25 followers</strong>; but real connections land here.</li>
+</ul>
+<h2>Tailored pitch (DRAFT — founder to write)</h2>
+<blockquote>TBD — a person, not a product; the pitch is &quot;worth knowing / worth<br>working with&quot;.</blockquote>
+<h2>TODO</h2>
+<ul>
+<li>[ ] founder: define the lean-in/out rule for lore on this account</li>
+</ul>
+<p class="src">— OUTLETS/JB-EZ/00-INDEX.md</p></section>
+<section><a class="anchor" id="outlets-jbm-00-index-md"></a>
+<h1 id="outlets-jbm-00-index-md">JBM — outlet  (DRAFT)</h1>
+<p>Source: <code>../../user-biz-request.txt</code>.</p>
+<h2>What it is</h2>
+<p>The founder&#x27;s <strong>academic account</strong>. Credentials: <strong>BS: CyberSecurity</strong>, <strong>MBA: IT Management</strong>.</p>
+<h2>Content</h2>
+<p>Democratic politics; academia — &quot;strict, and sometimes playful&quot;.</p>
+<h2>Voice / tone</h2>
+<p>Scholarly. No slop, no marketing lore.</p>
+<h2>Channel state (founder-reported)</h2>
+<ul>
+<li>X/Twitter: no count given; academic peer audience.</li>
+</ul>
+<h2>Notes</h2>
+<ul>
+<li>Keep firewalled from the slop/lore accounts. Credibility asset.</li>
+</ul>
+<h2>Tailored pitch (DRAFT — founder to write)</h2>
+<blockquote>TBD — not a product account; thought-leadership / credibility.</blockquote>
+<h2>TODO</h2>
+<ul>
+<li>[ ] founder: topic lanes; how (if at all) it references the company</li>
+</ul>
+<p class="src">— OUTLETS/JBM/00-INDEX.md</p></section>
+<section><a class="anchor" id="outlets-lucky-sol-pen-00-index-md"></a>
+<h1 id="outlets-lucky-sol-pen-00-index-md">LUCKY_SOL_PEN — outlet  (DRAFT)</h1>
+<p>Source: <code>../../user-biz-request.txt</code>.</p>
+<h2>What it is</h2>
+<p>The founder <strong>taken to the lore extreme</strong> — celebrity/rapper energy, not &quot;tech guy&quot;: glamorous, extreme sports, extreme AI-lore art creation. Space travel, time travel, a secret Mars clone army, &quot;international player and man of mystery&quot;.</p>
+<h2>Role</h2>
+<p>Primary <strong>game-lore source</strong>. Most house game lore derives from here; generic / tangent games also ship. Its game plays like TSOTS but is <strong>post-&quot;revelations&quot;, following Lucky-Sol</strong>.</p>
+<h2>Voice / tone</h2>
+<p>Maximal, mythic, cinematic. Founder calls it <strong>secret / cringe</strong> — insider audience, not cold outreach.</p>
+<h2>Channel state (founder-reported)</h2>
+<ul>
+<li>X/Twitter: <strong>under 25 followers</strong>; secret.</li>
+</ul>
+<h2>Lore source (external, not in repo)</h2>
+<p><code>…/4.🎓️capstone…/!.…TSOTS.SOLPEN.JB…/…/13.Soul_Pen_FulPitch]….md</code> (full path in <code>../../user-biz-request.txt</code>). Read before writing lore docs or the SP game design.</p>
+<h2>Tailored pitch (DRAFT — founder to write)</h2>
+<blockquote>TBD — a character/universe pitch, not a product pitch.</blockquote>
+<h2>TODO</h2>
+<ul>
+<li>[ ] founder: decide canon boundary (what&#x27;s shared with TSOTS game</li>
+</ul>
+<p>lore vs. SP-only)</p>
+<p class="src">— OUTLETS/LUCKY-SOL-PEN/00-INDEX.md</p></section>
+<section><a class="anchor" id="outlets-robot-trap-house-00-index-md"></a>
+<h1 id="outlets-robot-trap-house-00-index-md">Robot Trap House — outlet  (DRAFT)</h1>
+<p>Source: <code>../../user-biz-request.txt</code>.</p>
+<h2>Audience</h2>
+<p>Mainstream, lowbrow <strong>gaming-dev &amp; tech news</strong>; retro; &quot;chilling&quot;; 90s nostalgia.</p>
+<h2>Voice / tone</h2>
+<p>Casual, meme-forward. Sometimes just <strong>gif &quot;slop posts&quot;</strong> riffing on a vibe. <strong>Impersonal / secret account</strong> — NOT tied to the founder&#x27;s real name.</p>
+<h2>Channel state (founder-reported)</h2>
+<ul>
+<li>X/Twitter: <strong>~50 followers</strong> — the <strong>most</strong> of any outlet;</li>
+</ul>
+<p>&quot;actually pretty popular&quot;.</p>
+<h2>Notes / flags</h2>
+<ul>
+<li>&quot;Slop posting&quot; is an accepted growth tactic *here*. Keep it OFF</li>
+</ul>
+<p><code>JBM</code> and <code>JB.BLOCKROACH.EZ</code>. See <code>_ALL-cross-cutting.md</code> + <code>../STRATEGY/ethics.md</code>.</p>
+<h2>Tailored pitch (DRAFT — founder to write)</h2>
+<blockquote>TBD — probably not a &quot;pitch&quot; account; a top-of-funnel awareness play.</blockquote>
+<h2>TODO</h2>
+<ul>
+<li>[ ] founder: decide if/how this ever routes attention to the real</li>
+</ul>
+<p>product without breaking the &quot;impersonal&quot; separation</p>
+<p class="src">— OUTLETS/ROBOT-TRAP-HOUSE/00-INDEX.md</p></section>
+<section><a class="anchor" id="outlets-tear-it-co-00-index-md"></a>
+<h1 id="outlets-tear-it-co-00-index-md">Tear-it co — outlet  (DRAFT)</h1>
+<p>Source: <code>../../user-biz-request.txt</code>.</p>
+<h2>Audience</h2>
+<p>RPG Maker <strong>players &amp; devs</strong>; English-speaking otaku; Japanese-speaking games audience.</p>
+<h2>House angle it leads with</h2>
+<p>2D/3D <strong>tactical, menu-heavy role-playing</strong>; plugin/tooling story (RPG-Maker-style tile + crafting tooling in the house).</p>
+<h2>Voice / tone</h2>
+<p>Dev-to-dev, otaku-fluent, bilingual-friendly. Lore: light.</p>
+<h2>Channel state (founder-reported)</h2>
+<ul>
+<li>X/Twitter: <strong>~30 followers</strong>, described as <strong>loyal</strong>.</li>
+</ul>
+<h2>Cross-promotion</h2>
+<p>Natural pair with <code>LUCKY-SOL-PEN</code> / <code>TSOTS</code> on game content.</p>
+<h2>Tailored pitch (DRAFT — founder to write)</h2>
+<blockquote>TBD.</blockquote>
+<h2>TODO</h2>
+<ul>
+<li>[ ] founder: tailored pitch; JP-language posting plan; which house</li>
+</ul>
+<p>tooling to demo first</p>
+<p class="src">— OUTLETS/TEAR-IT-CO/00-INDEX.md</p></section>
+<section><a class="anchor" id="outlets-tempt-00-index-md"></a>
+<h1 id="outlets-tempt-00-index-md">TEMPT — outlet  (DRAFT)</h1>
+<p>Source: <code>../../user-biz-request.txt</code>.</p>
+<h2>Audience</h2>
+<p>Asian; female; <strong>occult fashion</strong>; aspirational real-estate / spaces; sci-fi / fantasy.</p>
+<h2>Voice / tone</h2>
+<p>Aesthetic-led, aspirational. High-engagement from <strong>&quot;slop posts&quot;</strong>.</p>
+<h2>Channel state (founder-reported)</h2>
+<ul>
+<li>X/Twitter: <strong>under 25 followers</strong>, but <strong>huge engagement</strong> on slop</li>
+</ul>
+<p>posts.</p>
+<h2>Notes / flags</h2>
+<ul>
+<li>Demographic-targeting language here is broad; the &quot;where&#x27;s the line&quot;</li>
+</ul>
+<p>question is explicitly <code>../STRATEGY/ethics.md</code>.</p>
+<h2>Tailored pitch (DRAFT — founder to write)</h2>
+<blockquote>TBD — likely a mood/brand vehicle feeding <code>LUCKY-SOL-PEN</code> / game lore<br>aesthetics rather than a direct product pitch.</blockquote>
+<h2>TODO</h2>
+<ul>
+<li>[ ] founder: define what TEMPT is actually *for* in the funnel</li>
+</ul>
+<p class="src">— OUTLETS/TEMPT/00-INDEX.md</p></section>
+<section><a class="anchor" id="outlets-tsots-00-index-md"></a>
+<h1 id="outlets-tsots-00-index-md">TSOTS — outlet  (DRAFT)</h1>
+<p>Source: <code>../../user-biz-request.txt</code>.</p>
+<h2>Audience</h2>
+<p>Bible / spiritual readers; players open to a <strong>gamified Bible</strong>. Possible adjacent lanes: sports, politics, national security.</p>
+<h2>House angle it leads with</h2>
+<p>The house&#x27;s Bible / spiritual <strong>book capabilities</strong>, plus the flagship gamified-Bible RPG: play <strong>good or evil (&quot;cursword&quot;)</strong>, possess Bible characters and progress them through Bible stories like a game; <strong>collect / trade</strong> the characters.</p>
+<h2>Voice / tone</h2>
+<p>Reverent-but-playful; scripture-literate. Keep founder-lore LOW here unless the audience is insider (see <code>_ALL-cross-cutting.md</code>).</p>
+<h2>Channel state (founder-reported)</h2>
+<ul>
+<li>X/Twitter: small; no count given.</li>
+</ul>
+<h2>Tailored pitch (DRAFT — founder to write)</h2>
+<blockquote>TBD — one line, in TSOTS&#x27;s voice.</blockquote>
+<h2>TODO</h2>
+<ul>
+<li>[ ] founder: tailored pitch, posting cadence, which adjacent lane</li>
+</ul>
+<p>(sports/politics/natsec) is actually worth testing</p>
+<ul>
+<li>[ ] map to <code>../../10-user-docs/</code> Bible-feature docs when they exist</li>
+</ul>
+<p class="src">— OUTLETS/TSOTS/00-INDEX.md</p></section>
+<section><a class="anchor" id="founder-intake"></a><h1>Founder intake (raw, verbatim)</h1><pre class="raw">
+
+i want a section on biz: 
+
+i want a : elevator pitch of what &quot;THE HOUSE&quot; HQ does. 
+
+think of HQ / HOUSE as &quot;all ecompassing all these things
+HOUSE/HQ when we want general elevator pitches etc, in main top 
+dir ez  2access w/o going deepr: 
+
+
+and i also a more strategic, sales/marketing/pricing/networking/legal/ethics / strategy documents in here and divisions. 
+
+maybe each &quot;OUTLET_DIVISION&quot; could have its own subDIVISIONs of each
+
+OUTLET_DIVISIONS: i wanted taoilerd pitches for each of our outlets. 
+(i run different twitters where i attempt to generate interest
+in the house technology by a/b testing targeting different demo graphics)
+[they are all presented as independant &quot;entities&quot; but a few cross promote when relevant. ]
+
+
+HQ : HOLDINGS QOMPANY &#x27;stacked subsidiary of 
+JBM-HOLDINGS (complete abstract holding MTENT) -&gt; MANAGENETENT: 
+(HOLDING ALL THESE SUBSIDIARIES) 
+
+TSOTS: outlet geared at the bible/ spirital 
+book capabilities of our app . 
+but also gamified bible. u play good or evil &quot;cursword&quot; 
+posessing bible characters , making them progress thru bibles stories
+like a game, and collecting / trading the characters
+but may also delve into sports/ politics/ national security
+
+Tear-it co : outlet geared towards rpg maker players &amp; devs
+english otakus and japanese speaking games .
+2d/3d tactical menu heavy, role playing, plugins etc. 
+[30 followers, but &#x27;loyal&#x27; ]
+
+Harnecient : outlet geared towards cutting edge ai tools &amp; harness users
+and investors interested in such things.
+[under 25 followers]
+
+Robot Trap house : outlet geared towards mainstream , lowbrow gaming
+dev and tech news, retro, chilling, 90&#x27;s nostalgia etc. 
+(sometimes just spams gifs &#x27;slop posts&#x27; on x.com related 2 vibe (some other
+accounts do this 2 , but not as much as this actually pretty popular
+most followers 50; impersonal secret account)
+
+TEMPT : outlet geared towards asian, females, occult fashion, 
+aspirational real estate spaces, and scifi/fantasy
+[under 25 followers; but huge engagement from &#x27;slop posts&#x27;]
+
+
+JB.EZ :
+&quot;egyptian&quot;: founder/ developer account in flavor of &quot;mr.robot&quot; style vibes
+for personal news, personal development. ai usage , humble bragging
+networking (super hero , fights crime hacker alter ego lore) etc. 
+[under 25 followers; but personal connections can come here ]
+
+JB.BLOCKROACH.EZ :
+The founders company, that does pentesting/bugbounties, red|blue teaming
+services etc. 
+focuses on microservices, cysec, iot , emerging tech , foss etc. 
+[under 25 followers ; personal]
+
+JBM : academic acount
+shows my bs:cysec &amp; mba-itmanagement : 
+talks democratic politics, academia strict and sometimes playful.
+
+LUCKY_SOL_PEN : 
+The founder but taken to the lore extreme. 
+super cool , glamourous extreme sports, extreme ai lore art creation
+more like a celebrity than tech guy but is the same tech guy 
+just elevated/pedastalized made more cool . more &quot;RAPPER&quot; than &quot;Mr.robot&quot;here...
+he goes 2 space, hes a time traveler, he has a secret clone army on mars
+hes an international player and man of mystery.
+
+read : sol-pen lore : /media/no/b7ced73c-5231-4462-b98d-64e38fe2df9e/home/jbez/Desktop/#🦉️.WGU-WORK]🦉️/4.🎓️capstone]🛸️📌️/!.TASK3📌️]DONE!-1Q🎓️🥳️/!.♻️t3.re+]TSOTS.SOLPEN.JB💰️/2.ϕ.SP.ART-i=FACTX]💰️/13.Soul_Pen_FulPitch]🤑️📚🎵🎬🎮.md
+(most of our game lore will be based on this
+but we will also release generic and tangent games]
+sp game play is like tsots, but post revalations following lucky-sol
+[under 25 followers, secret/cringe]
+
+ALL : many of these have overarching &quot;sf,ny [japan] founders/devs 
+especially targetting single asian females , cyber punks, and 
+&quot;red-heads : ties in with &quot;red head vampire clone lore&quot;
+who would like to work with the founder and be part of his
+&quot;tenchi muyo&quot; like lore of fun familiar female assistants.
+this is all branding and marketing. 
+but we want to strategize how it can tie in with sales/outreach etc. 
+when to lean in, when to distance from branding/marketing lore
+(ie on sales call? or depending on demo ? etc? ) 
+
+
+FUTURE GOALS : i may go to law school or get md. 
+id like to be as effective as possible , rich, futuristic etc. 
+
+these may be driven by ai bots
+
+we may have more in our social platofrm (character bots)
+
+we may opt to sell or lisence some of thse
+w/o selling whole house
+
+or try 2 run multiple cloud/ent / cysec businesses
+w/e catches. multi biz is fine. we wanna be biger than elon
+so we follow his footsteps but try to go harder. 
+
+we want to do biotech and space exploration oneday soon even!
+</pre></section>
+</div></body></html>

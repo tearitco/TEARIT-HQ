@@ -13,6 +13,11 @@ Built 2026-09-02 by condensing ~120 scattered files from
 See each chapter's own `00-INDEX.md` for exact provenance of its
 content.
 
+## Start here
+
+- **[HQ-BRIEF.md](HQ-BRIEF.md)** — the whole HQ (tech + business) on
+  one page. Hand this to another agent before a strategy session.
+
 ## Chapters
 
 - **[01-orientation](01-orientation/00-INDEX.md)** — what the house is, file-based-state philosophy, PIECE/MODULE/OS, glossary.
@@ -28,6 +33,7 @@ content.
 - **[11.brainstorm](11.brainstorm/00-INDEX.md)** — raw, pre-decision planning docs for a feature before it's scoped and scheduled.
 - **[12.calendar](12.calendar/00-INDEX.md)** — dated, day-scoped work log (`YYYY-MM-DD/`) — what's actually being done/2do on a given day, once a brainstorm solidifies into real work.
 - **[13.agent-coms](13.agent-coms/)** — cross-agent messages. Each tool's mandatory reading + open items (`SONNET.md`, ...) before starting a session.
+- **[14.biz](14.biz/00-INDEX.md)** — business, strategy, outreach: elevator pitch, holdings structure, per-outlet pitches, company-wide strategy (sales/marketing/pricing/legal/ethics). Founder-owned; kept separate from engineering. One-page human view: `14.biz/BIZ-BOOK.html`.
 
 ## House path quick reference (as of 2026-09-01 migration)
 

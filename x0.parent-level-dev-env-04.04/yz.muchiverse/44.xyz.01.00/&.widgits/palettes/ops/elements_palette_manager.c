@@ -25,6 +25,12 @@
 #include <time.h>
 #include <sys/stat.h>
 
+/* portable platform glue (sleep / monotonic clock / mkdir -p / script
+ * spawn / terminate signals) - so this manager carries no #ifdef _WIN32.
+ * See _shared-lib/kh_plat.h + the CROSS-PLATFORM-SEAM design doc. */
+#define KH_PLAT_IMPL
+#include "../../_shared-lib/kh_plat.h"
+
 #define PL 4096
 #define NEL 118
 #define RECIPE_FILE "#.ref/menu/palletes/elements]new=RECIPEZ+]z2🏆.txt"
@@ -141,10 +147,7 @@ static char  g_msg[96] = "";
 static char  g_last_sym[8] = "";
 static long long g_last_ms = 0;
 
-static long long now_ms(void) {
-    struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
-}
+static long long now_ms(void) { return kh_plat_mono_ms(); }
 
 static int z_of_sym(const char *s) {
     for (int z = 1; z <= NEL; z++) if (strcmp(SYM[z], s) == 0) return z;
@@ -153,11 +156,9 @@ static int z_of_sym(const char *s) {
 
 static void do_place(int z) {
     if (z < 1 || z > NEL) return;
-    char cmd[PL];
-    snprintf(cmd, sizeof(cmd),
-             "sh '%s/&.widgits/palettes/palettes_menu.sh' 'place' '%s' >/dev/null 2>&1",
-             house_root, SYM[z]);
-    int rc = system(cmd); (void)rc;
+    const char *args[2] = { "place", SYM[z] };
+    int rc = kh_plat_run_house_script(house_root,
+             "&.widgits/palettes/palettes_menu.sh", args, 2); (void)rc;
     snprintf(g_msg, sizeof(g_msg), "Placed %s (%s) on the desktop.",
              g_name[z][0] ? g_name[z] : SYM[z], SYM[z]);
 }
@@ -165,7 +166,7 @@ static void do_place(int z) {
 static void write_ui(void) {
     char dir[PL], tmp[PL], dst[PL];
     snprintf(dir, sizeof(dir), "%s/state", pkg_dir);
-    mkdir(dir, 0777);
+    kh_plat_mkdir_p(dir);
     snprintf(dst, sizeof(dst), "%s/palettes-elements_ui.txt", dir);
     snprintf(tmp, sizeof(tmp), "%s/palettes-elements_ui.txt.tmp", dir);
     FILE *f = fopen(tmp, "w");
@@ -254,7 +255,7 @@ int main(int argc, char *argv[]) {
     if (argc < 3) { fprintf(stderr, "usage: %s <house_root> <package_dir> [id]\n", argv[0]); return 1; }
     snprintf(house_root, sizeof(house_root), "%s", argv[1]);
     snprintf(pkg_dir,    sizeof(pkg_dir),    "%s", argv[2]);
-    signal(SIGTERM, bye); signal(SIGINT, bye); signal(SIGHUP, bye);
+    kh_plat_on_terminate(bye);
 
     load_recipe_pn();
     { char ap[PL]; snprintf(ap, sizeof(ap), "%s/state/palettes-elements_action.txt", pkg_dir);
@@ -262,6 +263,6 @@ int main(int argc, char *argv[]) {
     write_ui();
 
     int last_seq = 0;
-    for (;;) { usleep(60000); poll_action(&last_seq); }
+    for (;;) { kh_plat_sleep_ms(60); poll_action(&last_seq); }
     return 0;
 }
