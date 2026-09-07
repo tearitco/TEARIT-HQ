@@ -42,6 +42,10 @@ for d in sorted(os.listdir(os.path.join(BIZ, "OUTLETS"))):
         if extra.endswith(".md") and extra != "00-INDEX.md":
             order.append(os.path.join("OUTLETS", d, extra))
 
+for nf in sorted(os.listdir(os.path.join(BIZ, "news"))):   # external release files
+    if nf.endswith(".md"):
+        order.append(os.path.join("news", nf))
+
 # ---- tiny markdown subset -> html ---------------------------------
 def inline(s):
     s = html.escape(s)

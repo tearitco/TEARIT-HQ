@@ -57,6 +57,8 @@ section{scroll-margin-top:14px}
 <li class="d2"><a href="#outlets-tear-it-co-00-index-md">Tear-it co — outlet  (DRAFT)</a> <span class="src">OUTLETS/TEAR-IT-CO/00-INDEX.md</span></li>
 <li class="d2"><a href="#outlets-tempt-00-index-md">TEMPT — outlet  (DRAFT)</a> <span class="src">OUTLETS/TEMPT/00-INDEX.md</span></li>
 <li class="d2"><a href="#outlets-tsots-00-index-md">TSOTS — outlet  (DRAFT)</a> <span class="src">OUTLETS/TSOTS/00-INDEX.md</span></li>
+<li class="d1"><a href="#news-00-index-md">news — external-facing announcements</a> <span class="src">news/00-INDEX.md</span></li>
+<li class="d1"><a href="#news-press-release-nbjs-duk-2026-09-07-md">PRESS RELEASE — &quot;duk&quot;: a real JavaScript engine you can install and type into</a> <span class="src">news/PRESS-RELEASE-NBJS-DUK-2026-09-07.md</span></li>
 <li class="d0"><a href="#founder-intake">Founder intake (raw)</a> <span class="src">user-biz-request.txt</span></li></ol></nav>
 <section><a class="anchor" id="00-index-md"></a>
 <h1 id="00-index-md">14 — Biz</h1>
@@ -64,7 +66,7 @@ section{scroll-margin-top:14px}
 <p><strong>Raw intent lives in <code>user-biz-request.txt</code></strong> — the founder&#x27;s intake note. Append new asks there; then fold them into the structured docs below.</p>
 <hr>
 <h2>How to read this section (start shallow, go deeper only as needed)</h2>
-<table><thead><tr><th>You want…</th><th>Go to</th></tr></thead><tbody><tr><td>the one-liner / 30-sec pitch for <strong>THE HOUSE / HQ</strong></td><td><code>ELEVATOR-PITCH.md</code> — nothing deeper needed</td></tr><tr><td>who owns what (entity stack)</td><td><code>HOLDINGS-STRUCTURE.md</code></td></tr><tr><td>to pitch <strong>one specific audience</strong></td><td><code>OUTLETS/&lt;NAME&gt;/00-INDEX.md</code> — that outlet&#x27;s persona, audience, tone, follower state, and its tailored pitch</td></tr><tr><td>the <strong>shared</strong> founder-lore + when to lean in vs. pull back</td><td><code>OUTLETS/_ALL-cross-cutting.md</code></td></tr><tr><td>company-wide <strong>sales / marketing / pricing / networking / legal / ethics / strategy</strong></td><td><code>STRATEGY/00-INDEX.md</code> → the per-area file</td></tr></tbody></table>
+<table><thead><tr><th>You want…</th><th>Go to</th></tr></thead><tbody><tr><td>the one-liner / 30-sec pitch for <strong>THE HOUSE / HQ</strong></td><td><code>ELEVATOR-PITCH.md</code> — nothing deeper needed</td></tr><tr><td>who owns what (entity stack)</td><td><code>HOLDINGS-STRUCTURE.md</code></td></tr><tr><td>to pitch <strong>one specific audience</strong></td><td><code>OUTLETS/&lt;NAME&gt;/00-INDEX.md</code> — that outlet&#x27;s persona, audience, tone, follower state, and its tailored pitch</td></tr><tr><td><strong>shared</strong> founder-lore + when to lean in vs. pull back</td><td><code>OUTLETS/_ALL-cross-cutting.md</code></td></tr><tr><td>to <strong>announce / release / tweet</strong> a feature or ship</td><td><code>news/</code> — press releases, launch posts, tweet packs per outlet</td></tr><tr><td>company-wide <strong>sales / marketing / pricing / networking / legal / ethics / strategy</strong></td><td><code>STRATEGY/00-INDEX.md</code> → the per-area file</td></tr></tbody></table>
 <p>&quot;HOUSE&quot; and &quot;HQ&quot; are used as the all-encompassing umbrella term for the whole technology + product + lore stack. Use them for general pitches; use an <strong>OUTLET</strong> name when talking to that outlet&#x27;s specific demographic.</p>
 <hr>
 <h2>Layout</h2>
@@ -74,6 +76,10 @@ section{scroll-margin-top:14px}
   FUTURE-GOALS.md           long-horizon founder ambitions (north star, not commitments)
   BIZ-BOOK.html             the WHOLE of 14.biz rendered as one readable page (regenerate after edits)
   user-biz-request.txt      founder intake — RAW, append-only, do not restructure
+
+  news/
+    00-INDEX.md            external-facing releases: press + launch post + tweet packs per outlet
+    PRESS-RELEASE-NBJS-DUK-2026-09-07.md   the NB-JS / `duk` engine launch pack (DRAFT)
 
   STRATEGY/
     00-INDEX.md
@@ -826,6 +832,195 @@ section{scroll-margin-top:14px}
 <li>[ ] map to <code>../../10-user-docs/</code> Bible-feature docs when they exist</li>
 </ul>
 <p class="src">— OUTLETS/TSOTS/00-INDEX.md</p></section>
+<section><a class="anchor" id="news-00-index-md"></a>
+<h1 id="news-00-index-md">news — external-facing announcements</h1>
+<p>Outbound, publish-ready copy: press releases, launch posts, and tweet packs. Flat list of release files here; each release is a single file that works for multiple outlets (classic release + dev post + a few tweets per audience).</p>
+<p>Reading order:</p>
+<ol>
+<li><code>PRESS-RELEASE-NBJS-DUK-2026-09-07.md</code> — the NB-JS engine / <code>duk</code></li>
+</ol>
+<p>CLI launch (the only release so far).</p>
+<ol>
+<li><code>press-release-template.md</code> — TBD (template + facts-lock header to</li>
+</ol>
+<p>copy for the next release).</p>
+<p>Rules (from <code>../00-INDEX.md</code>, apply here):</p>
+<ul>
+<li>Everything is <strong>founder-owned and DRAFT</strong> until the founder says</li>
+</ul>
+<p>otherwise. Agents draft; the founder decides.</p>
+<ul>
+<li>No invented pricing, legal posture, financials, or traction numbers.</li>
+<li>Every claim in a release should trace to a checked-in fact (the</li>
+</ul>
+<p>release file&#x27;s &quot;Facts lock&quot; section does this); update both if the product changes.</p>
+<p class="src">— news/00-INDEX.md</p></section>
+<section><a class="anchor" id="news-press-release-nbjs-duk-2026-09-07-md"></a>
+<h1 id="news-press-release-nbjs-duk-2026-09-07-md">PRESS RELEASE — &quot;duk&quot;: a real JavaScript engine you can install and type into</h1>
+<p><strong>Status:</strong> DRAFT — founder-owned (see <code>../00-INDEX.md</code>). Not for distribution until the founder edits and approves. <strong>Date:</strong> 2026-09-07 <strong>Engine:</strong> NB-JS (embedded Duktape 2.7.0 + hand-built host in house C) <strong>Command hook:</strong> <code>duk</code> <strong>Works for:</strong> one-page release (§1), dev-tool launch post (§2), and a few tweets per outlet (§3).</p>
+<blockquote>## Facts lock (update when the product changes)<br>Ground truth used by every claim below — keep the release in sync:<br>- Rung ladder done 2026-09-03 → 09-07 (roadmap `08-roadmap/<br>design-docs/NB-JS-ENGINE-ROADMAP.md`): globals/DOM/events+loop/<br>fetch+XHR/RENDER-feedback/BOM odds+ends.<br>- <code>make</code> → <code>nbjs</code>; <code>./install-duk.sh</code> → <code>duk</code> command + <code>$duk</code> env<br>var (commits <code>d7797d74</code>, <code>1588f1fd</code>); bare <code>duk</code> on a terminal →<br>REPL (<code>cee6e587</code>); <code>make check</code> three suites green (dom/fetch/<br>events).<br>- CPU safety (roadmap §2 + phase-1 step 5): 2 s eval budget,<br><code>MAX_TIMER_INVOCATIONS 5000</code>, <code>MAX_RAF_FRAMES 120</code>, 50 k DOM node<br>cap, 250 k wrapper cap, worker kill-and-respawn.<br>- Honest limits: Duktape 2.7.0 edition — no arrow functions, no<br><code>let</code> (use <code>var</code>/<code>const</code>); Linux-first today (macOS/Windows are<br>designed-for, not shipped); pre-traction project.</blockquote>
+<hr>
+<h2>§1 — One-page press release (classic)</h2>
+<h3>Headline options</h3>
+<ol>
+<li>**House ships <code>duk</code>: a from-scratch JavaScript engine for the</li>
+</ol>
+<p>terminal, born inside a hand-built browser**</p>
+<ol>
+<li><code>duk</code> — a real JS engine you can install, run a page against, or</li>
+</ol>
+<p>just type into</p>
+<ol>
+<li>The muchiverse house opens its JS engine to developers — node-style</li>
+</ol>
+<p>CLI, REPL, no browser required</p>
+<h3>Body</h3>
+<p><strong>DATE — CITY —</strong> The house behind the muchiverse desktop environment today released <strong><code>duk</code></strong>, a standalone JavaScript engine that runs pages and scripts from a terminal without a browser, a window, or any other dependency. Type <code>duk</code> bare and it drops into an interactive REPL; <code>duk page.js</code> runs a script the way <code>node</code> does — console output to stdout, real exit codes, silence on success.</p>
+<p><code>duk</code> is the engine the house has been building since 2026-09-03 for its own hand-built network browser. Rather than embed a browser kit (&quot;don&#x27;t pull all the chromium&quot;), the team embedded the small Duktape language core and wrote the rest of the host environment by hand, one shippable piece at a time:</p>
+<ul>
+<li>a real <strong>DOM tree</strong> — <code>getElementById</code>, <code>querySelector</code>,</li>
+</ul>
+<p><code>innerHTML</code>, <code>classList</code>, tree walking;</p>
+<ul>
+<li>an <strong>event system + event loop</strong> — <code>addEventListener</code>,</li>
+</ul>
+<p><code>dispatchEvent</code>, <code>Event</code>, <code>el.onclick = fn</code>, <code>setTimeout</code> / <code>setInterval</code> / <code>queueMicrotask</code>, DOMContentLoaded/load lifecycle;</p>
+<ul>
+<li><strong>network from JS</strong> — <code>fetch()</code> and a minimal <code>XMLHttpRequest</code>, with</li>
+</ul>
+<p>a Promise polyfill, over a native curl transport (verified against real <code>file://</code> and <code>http</code> endpoints);</p>
+<ul>
+<li>a <strong>render feedback loop</strong> — after scripts and events quiesce, the</li>
+</ul>
+<p>mutated DOM serializes back into the window&#x27;s state rows.</p>
+<p>The same run of code is CPU-budgeted end to end: a 2-second eval alarm, caps on timer invocations, animation frames, DOM nodes, and object handles, and a kill-and-respawn worker model so no misbehaving script can stall the machine — properties that make <code>duk</code> agent- and CI-friendly.</p>
+<p><code>duk</code> installs with one script (<code>./install-duk.sh</code>) that puts the binary on PATH and exports a <code>$duk</code> variable the current shell can use immediately. A <code>make check</code> suite runs the headless DOM / network / events test sets green.</p>
+<p><strong>Roadmap:</strong> a fuller node/bun-like mode (<code>require</code>, <code>fs</code>, <code>process</code>; CommonJS first), async network so slow sites don&#x27;t stall, layout/CSS awareness for real-page rendering, and macOS/Windows builds. The browser it grew up inside keeps consuming it.</p>
+<blockquote>Quote — placeholder, founder to write:<br>&quot;We keep our platform file-driven and AI-drivable. <code>duk</code> is that<br>same engine with the browser pane taken away — something you can<br>install, script, and hand to an agent without a GUI in the way.&quot;<br>— [founder name], [title]</blockquote>
+<p><strong>Availability:</strong> source-first, built and runnable on Linux today. Project pages and docs are in-repo; a public link is TBD before distribution.</p>
+<p><strong>About the house:</strong> muchiverse / &quot;THE HOUSE&quot; is a file-driven desktop and app platform — every window, menu, and slice of state is a plain text file, and an AI agent is a first-class user.</p>
+<p><strong>Contact / boilerplate:</strong> [founder contact — TBD] — do not publish until filled in.</p>
+<hr>
+<h2>§2 — Dev-tool launch post (blog style)</h2>
+<p><strong>Led</strong> <code>duk</code> — real JS engine for your terminal, from the from-scratch browser.</p>
+<p>Quick install:</p>
+<pre><code>git clone …                      # the house repo
+cd …/network &amp;&amp; make             # builds nbjs
+./install-duk.sh                 # → ~/.local/bin/duk, $duk exported</code></pre>
+<p>Then:</p>
+<pre><code>$ duk
+nbjs (duk) — type JS; Ctrl-D or &#x27;exit&#x27; to quit
+&gt; 8-8
+0
+&gt; var j = 9
+&gt; j * 2
+18
+&gt; setTimeout(function(){ console.log(&quot;tick after eval&quot;); }, 5)
+1
+tick after eval
+&gt; exit</code></pre>
+<p>Or run a page (same engine the browser uses, minus the window):</p>
+<pre><code>$ duk page.js
+console output → stdout · renders → stdout · exit 0 ok / 1 err / 2 usage</code></pre>
+<p>What&#x27;s inside — the honest list:</p>
+<ul>
+<li>Duktape 2.7.0 (real language: closures, regex, JSON, prototypes) with</li>
+</ul>
+<p>a hand-built host: DOM tree, events + event loop, timers, microtasks, <code>fetch</code>/XHR + Promise, <code>URL</code>/<code>URLSearchParams</code>, <code>history</code> stubs, Base64, and a DOM→rows render-back so scripted pages actually redraw.</p>
+<ul>
+<li>CPU-safe by design: 2 s eval budget, timers/rAF/DOM/wrapper caps,</li>
+</ul>
+<p>worker kill-and-respawn. A <code>while(true){}</code> page can&#x27;t hurt you.</p>
+<ul>
+<li>Zero GUI/desktop dependency for the CLI; <code>make check</code> runs three</li>
+</ul>
+<p>headless suites green.</p>
+<p>Two engine gotchas users hit day one (we&#x27;ll keep them listed here, not hidden): <strong>no arrow functions</strong> (<code>function(){}</code> works) and <strong>no <code>let</code></strong> (<code>var</code>/<code>const</code> work). It&#x27;s an ES5.1-era language core dressed up with <code>const</code> — if a transpiled-style snippet fails, it&#x27;s a language-level gap, not a bug in your code.</p>
+<p>What&#x27;s next: <code>require</code>/<code>fs</code>/<code>process</code> for real node-style scripting, async network for slow responses, layout awareness so real sites look like real sites, and macOS/Windows builds.</p>
+<hr>
+<h2>§3 — Tweets per outlet</h2>
+<p>Voice rules for this release (cross-ref <code>OUTLETS/_ALL-cross-cutting.md</code>):</p>
+<ul>
+<li>Lore OFF everywhere — this is a cold, product-first announcement.</li>
+<li>Only factual claims from the Facts lock. No fake screenshots, no</li>
+</ul>
+<p>invented traction.</p>
+<ul>
+<li>Who may NOT tweet this: <code>JBM</code> (academic), <code>JB.BLOCKROACH.EZ</code></li>
+</ul>
+<p>(services), <code>CONSULTING</code> — wrong audiences.</p>
+<h3>HARNECIENT — AI tools / AI-harness users / investors</h3>
+<p>Technical, forward-looking, credible. (Lore OFF per chart.)</p>
+<ol>
+<li><code>duk</code> is out of the muchiverse browser and into your terminal: a</li>
+</ol>
+<p>real JS engine you can <code>duk page.js</code> like node or just <code>duk</code> into a REPL. Same code that runs scripted pages, minus the window. Agent-ready by design — CPU-budgeted, capped, kill-and-respawn.</p>
+<ol>
+<li>We build the JS engine for our hand-built browser instead of</li>
+</ol>
+<p>&quot;pulling all the chromium&quot;. Today it&#x27;s also a node-style CLI with real exit codes + <code>$duk</code> env var. <code>make check</code> = dom/fetch/events suites green. Everything is a file; anything can drive it.</p>
+<ol>
+<li>Roadmap: <code>require</code>/<code>fs</code>/<code>process</code>, async fetch, layout awareness,</li>
+</ol>
+<p>macOS/Windows. The browser it grew inside keeps consuming it. — a scar-less day-one: bash history has regex, JSON, prototypes.</p>
+<p>(3 is over-stuffed — trim before posting.)</p>
+<h3>ROBOT-TRAP-HOUSE — mainstream gaming/tech news, retro, casual</h3>
+<p>Casual, meme-forward, 90s nostalgia; impersonal account.</p>
+<ol>
+<li>we wrote our own javascript engine this week. it was supposed to be</li>
+</ol>
+<p>for our weird homemade browser. then we realized you could just … install it and type JS into a terminal. it&#x27;s called <code>duk</code>.</p>
+<ol>
+<li><code>8-8</code> → <code>0</code>. <code>var j = 9</code> → <code>j*2</code> → <code>18</code>. timers fire. fetch works.</li>
+</ol>
+<p>all from a terminal, no electron, no &quot;we ship 200MB of chromium so you can have a popup&quot;. small machine energy. it&#x27;s fine.</p>
+<ol>
+<li>honest part: it&#x27;s an old-school language core. no <code>=&gt;</code>, no <code>let</code>.</li>
+</ol>
+<p>we post the gotchas in the readme instead of pretending. Cred. roadmap has node-ish <code>require</code>, layout so pages actually look like pages, and windows/mac builds.</p>
+<h3>JB-EZ — founder&#x27;s dev/personal build-in-public</h3>
+<p>Mr. Robot flavor, personal, humble-brag, warm.</p>
+<ol>
+<li>New thing I shipped this week: <code>duk</code> — the JS engine from our</li>
+</ol>
+<p>homebrew browser, now standalone. <code>duk</code> on a terminal = REPL, <code>duk file.js</code> = node-like run, real exit codes, no GUI. build in public, shipping daily.</p>
+<ol>
+<li>The part I&#x27;m proudest of is the safety work: every eval runs under</li>
+</ol>
+<p>a 2s alarm, timers/rAF/DOM are all capped, and a runaway worker gets killed and respawned, not the machine. A page can&#x27;t DoS anyone, including itself.</p>
+<ol>
+<li>Gotchas are in the open: this language core predates arrow</li>
+</ol>
+<p>functions and <code>let</code> — use <code>var</code>/<code>const</code>, <code>function(){}</code>. If code fails, the error is honest about it. next: node-style <code>require</code>/<code>fs</code>/<code>process</code> + non-Linux builds.</p>
+<h3>TEAR-IT-CO — RPG Maker devs/players, otaku, bilingual-friendly</h3>
+<p>Dev-to-dev, otaku-fluent, light lore.</p>
+<ol>
+<li><code>duk</code> — a JS engine in a box. Install it, type JS into it, or</li>
+</ol>
+<p><code>duk script.js</code> like node. It came out of our house browser&#x27;s script runner, so the DOM + events + timers are all real, not stubs.</p>
+<ol>
+<li>For game tooling this is nice: a tiny embedded JS you can drive</li>
+</ol>
+<p>headless in your build loop — <code>make check</code> proves dom/fetch/events without a window. CPU-budgeted so a misbehaving script never freezes your tools.</p>
+<ol>
+<li>JP-friendly note coming when we ship docs/ローカライズ. Today:</li>
+</ol>
+<p>Duktape-based, so old-school JS — no <code>=&gt;</code>, no <code>let</code>, use <code>var</code>/<code>const</code>. Roadmap: <code>require</code>/<code>fs</code>/<code>process</code>, layout, mac/win.</p>
+<hr>
+<h2>Notes</h2>
+<ul>
+<li>Tweets are meant as *starting points*, not a paste-list. Read each</li>
+</ul>
+<p>outlet&#x27;s <code>00-INDEX.md</code> for channel state before posting (<code>RTH</code> trolls a bit; <code>HARNECIENT</code> is cold/investor).</p>
+<ul>
+<li>Every tweet stays inside the Facts lock. Anything beyond it — public</li>
+</ul>
+<p>repo link, pricing, team names, founder photo — waits for founder approval (see <code>../STRATEGY/marketing.md</code>).</p>
+<ul>
+<li>The two headline values that make this story: **&quot;we did not embed a</li>
+</ul>
+<p>browser&quot;<strong> and </strong>&quot;installable/agent-drivable/CPU-safe&quot;**. Everything else is texture.</p>
+<p class="src">— news/PRESS-RELEASE-NBJS-DUK-2026-09-07.md</p></section>
 <section><a class="anchor" id="founder-intake"></a><h1>Founder intake (raw, verbatim)</h1><pre class="raw">
 
 i want a section on biz: 

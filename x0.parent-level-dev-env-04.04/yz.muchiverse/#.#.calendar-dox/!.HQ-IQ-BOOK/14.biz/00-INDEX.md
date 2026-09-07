@@ -20,7 +20,8 @@ below.
 | the one-liner / 30-sec pitch for **THE HOUSE / HQ** | `ELEVATOR-PITCH.md` — nothing deeper needed |
 | who owns what (entity stack) | `HOLDINGS-STRUCTURE.md` |
 | to pitch **one specific audience** | `OUTLETS/<NAME>/00-INDEX.md` — that outlet's persona, audience, tone, follower state, and its tailored pitch |
-| the **shared** founder-lore + when to lean in vs. pull back | `OUTLETS/_ALL-cross-cutting.md` |
+| **shared** founder-lore + when to lean in vs. pull back | `OUTLETS/_ALL-cross-cutting.md` |
+| to **announce / release / tweet** a feature or ship | `news/` — press releases, launch posts, tweet packs per outlet |
 | company-wide **sales / marketing / pricing / networking / legal / ethics / strategy** | `STRATEGY/00-INDEX.md` → the per-area file |
 
 "HOUSE" and "HQ" are used as the all-encompassing umbrella term for the
@@ -39,6 +40,10 @@ demographic.
   FUTURE-GOALS.md           long-horizon founder ambitions (north star, not commitments)
   BIZ-BOOK.html             the WHOLE of 14.biz rendered as one readable page (regenerate after edits)
   user-biz-request.txt      founder intake — RAW, append-only, do not restructure
+
+  news/
+    00-INDEX.md            external-facing releases: press + launch post + tweet packs per outlet
+    PRESS-RELEASE-NBJS-DUK-2026-09-07.md   the NB-JS / `duk` engine launch pack (DRAFT)
 
   STRATEGY/
     00-INDEX.md
