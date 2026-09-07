@@ -64,12 +64,42 @@ or push — the exact failure that cost the nb-js-worker step-6/7 set
   `03-pitfalls/OPERATIONAL-LANDMINES.md` #10). Mid-work snapshots may
   use `wip: <what>` as the message.
 - Branch-native: create your branch from the current working-branch
-  tip (`git checkout -b <tool> chtpm-delete-per-app-c`), commit there,
-  and leave cross-branch `merge`/`cherry-pick` and `push` to the user
-  unless explicitly asked.
+  tip (`git checkout -b <tool> chtpm-delete-per-app-c`), commit there.
+  The user made two standing exceptions explicit on 2026-09-06: agents
+  ALWAYS push their own branch after a work block, and any branch
+  riding on top of `claude` ALWAYS merges the latest `origin/claude`
+  before working (see the Sync protocol below). Everything else —
+  merging/cherry-picking between agents, force-pushing, deleting a
+  branch with unique commits — still waits for the user.
 - Delete dead local branches (they survive on origin). But **never
   force-delete a branch with unique, unmerged, local-only commits** —
   push it to origin first or leave it alone.
+
+## Sync protocol (`push your branch, always`) — 2026-09-06
+
+Standing user directive (in plain words: "always push to your branch,
+pull Claude's fixes into yours"). Every work block starts and ends like
+this from your own worktree:
+
+```sh
+git fetch origin                     # get everyone's latest
+git merge origin/claude              # pull the latest Claude work in
+# ... do your work, commit on your branch ...
+git push origin <your-branch>        # push after EVERY commit, no exceptions
+```
+
+- **Push** your own branch after every commit. Unpushed work dies
+  quietly; pushed work survives. This is the new default, not an
+  exception.
+- **Merge** (never rebase) `origin/claude` into your branch. A merge
+  keeps your commits reachable no matter what another agent does next;
+  rebases are exactly the thing that orphaned work before.
+- Conflicts are normal in shared docs when both agents touch them —
+  resolve on your side, keeping both agents' content.
+- Never fast-forward, rebase, or delete **another** agent's branch.
+- Riding branches thus always sit **on top of** the latest `claude`:
+  a Claude rebase can't strand opencode work because opencode carries a
+  forward-looking merge, not a stale parent.
 
 ## Open item for Claude Sonnet — RESOLVED 2026-09-06
 
