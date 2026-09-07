@@ -159,6 +159,48 @@ actually read.
   (`listdir` + `fopen_utf8`), taskbar-manager migration, `.sh`/`.ps1`
   policy decision, generic manager runtime. All sequenced in the doc.
 
+## New section: `14.biz` (founder request)
+
+Founder started `14.biz/user-biz-request.txt` (raw intake, append-only)
+and asked for the section scaffolded + an index before more feature
+work. Built:
+
+- **`14.biz/00-INDEX.md`** — how to read the section (start shallow:
+  pitch → holdings → per-outlet → cross-cutting lore → company
+  strategy). Sub-division convention: outlet gets its own
+  pricing/networking/etc. file only when it diverges from the
+  company-wide default.
+- **`ELEVATOR-PITCH.md`** — HOUSE/HQ one-liner + 15s + 30s + "what it
+  is NOT" (kept honest: pre-traction, local-first, Linux-first).
+- **`HOLDINGS-STRUCTURE.md`** — JBM-HOLDINGS → mgmt layer → HQ →
+  outlets + platform; `JB.BLOCKROACH.EZ` flagged as its own revenue
+  line. Marked "confirm legal shape".
+- **`FUTURE-GOALS.md`** — long-horizon north star (AI-bot ops,
+  character bots, license-pieces-not-the-house, multi-biz, "bigger
+  than Elon", biotech/space, maybe law/MD). Explicitly "don't let
+  this pull scope".
+- **`STRATEGY/`** — `00-INDEX.md` + 7 stubs (sales, marketing,
+  pricing, networking, legal, ethics, strategy). All `DRAFT`, no
+  invented business claims.
+- **`OUTLETS/`** — `_ALL-cross-cutting.md` (shared SF/NY/Japan
+  founder-lore; the "when to lean into lore vs. distance" strategic
+  question; ethics flags around targeting language + "slop posting" +
+  secret accounts) + one `00-INDEX.md` per outlet (TSOTS, Tear-it co,
+  Harnecient, Robot Trap House, TEMPT, JB.EZ, JB.BLOCKROACH.EZ, JBM,
+  LUCKY_SOL_PEN) capturing the founder's stated audience / tone /
+  follower state / cross-promo notes verbatim.
+- **`tools/build-biz-book.sh`** — no-dep (small embedded python md
+  subset) generator → **`BIZ-BOOK.html`**, the whole section as one
+  readable page. Re-run after editing any `.md`.
+- **`HQ-BRIEF.md`** at the book root — compact tech + biz snapshot on
+  one page, meant to paste to another agent before a strategy session.
+  Linked from `README📌️.md` "Start here" + a new `14.biz` chapter
+  line.
+
+All founder-owned content is `DRAFT` / `TBD` — agents organized and
+drafted structure, no business facts (pricing, legal, traction)
+invented.
+
 ## Not started / next
 
 - Fun gaming work (user flagged as the next thing after the opencode
