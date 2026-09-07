@@ -488,8 +488,21 @@ static const char g_js_prelude[] =
 "      this.get=function(k){ return h[String(k)]===undefined?null:h[String(k)]; };\n"
 "      this.has=function(k){ return h[String(k)]!==undefined; };\n"
 "      this.forEach=function(f){ for(var k in h) if(Object.prototype.hasOwnProperty.call(h,k)) f(h[k],k); };\n"
-"      this.keys=function(){ var a=[]; for(var k in h) a.push(k); return a; }; }, configurable:true, writable:true });\n"
+"    this.keys=function(){ var a=[]; for(var k in h) a.push(k); return a; }; }, configurable:true, writable:true });\n"
 "  }catch(e){}\n"
+"})();\n"
+"/* ---- rung 3: Event constructor (ES5.1; dispatchEvent/on-* live in the worker) ---- */\n"
+"(function(){\n"
+"  function Event(type, opts){\n"
+"    opts=opts||{};\n"
+"    this.type=String(type||''); this.bubbles=!!opts.bubbles; this.cancelable=!!opts.cancelable;\n"
+"    this.defaultPrevented=false; this.propagationStopped=false;\n"
+"    this.target=null; this.currentTarget=null;\n"
+"  }\n"
+"  Event.prototype.preventDefault=function(){ if(this.cancelable) this.defaultPrevented=true; };\n"
+"  Event.prototype.stopPropagation=function(){ this.propagationStopped=true; };\n"
+"  Event.prototype.stopImmediatePropagation=function(){ this.propagationStopped=true; this.immediatePropagationStopped=true; };\n"
+"  Object.defineProperty(window,'Event',{ value:Event, configurable:true, writable:true });\n"
 "})();\n";
 
 static void install_host(duk_context *ctx) {

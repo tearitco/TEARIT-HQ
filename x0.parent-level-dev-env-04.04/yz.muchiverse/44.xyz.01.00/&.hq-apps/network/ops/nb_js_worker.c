@@ -431,9 +431,21 @@ static NbNode *get_this(duk_context *ctx) {
     if (i < 0 || i >= g_nodecount) return NULL;
     return g_nodeindex[i];
 }
+/* el.on<name> accessor names (also parsed from property arg0 of the natives) */
+static const char *const ONPROPS[] = {
+    "click", "dblclick", "change", "input", "submit", "keydown", "keyup",
+    "keypress", "mouseover", "mouseout", "mouseenter", "mouseleave",
+    "mousedown", "mouseup", "mousemove", "focus", "blur", "load", "error",
+    "resize", "scroll", "contextmenu", NULL
+};
+
 static void push_node(duk_context *ctx, NbNode *n);
 static duk_ret_t nb_el_addEventListener(duk_context *ctx);
 static duk_ret_t nb_el_removeEventListener(duk_context *ctx);
+static duk_ret_t nb_el_dispatchEvent(duk_context *ctx);
+static duk_ret_t nb_el_click(duk_context *ctx);
+static duk_ret_t nb_el_onprop_get(duk_context *ctx);
+static duk_ret_t nb_el_onprop_set(duk_context *ctx);
 
 /* ---- document natives ---- */
 static duk_ret_t nb_dom_getElementById(duk_context *ctx) {
@@ -737,9 +749,27 @@ static duk_ret_t nb_cl_contains(duk_context *ctx) {
     return 1;
 }
 
+#define STASH_NODE_MAP 40000   /* single object: node index -> JS wrapper (identity) */
+
 /* Build a JS element object wrapping a C NbNode. */
 static void push_node(duk_context *ctx, NbNode *n) {
     int nidx = node_index(n);
+    /* wrapper identity: one JS object per C node (heap is fresh per page).
+     * stack: [stash][map]; the wrapper is built on top of both. */
+    duk_push_global_stash(ctx);
+    duk_get_prop_index(ctx, -1, STASH_NODE_MAP);
+    if (!duk_is_object(ctx, -1)) {
+        duk_pop(ctx);
+        duk_push_object(ctx);
+        duk_dup(ctx, -1);
+        duk_put_prop_index(ctx, -3, STASH_NODE_MAP);
+    }
+    if (duk_has_prop_index(ctx, -1, nidx)) {
+        duk_get_prop_index(ctx, -1, nidx);   /* existing wrapper */
+        duk_remove(ctx, -3);                 /* drop stash, then map */
+        duk_remove(ctx, -2);
+        return;
+    }
     duk_push_object(ctx);                            /* el */
     duk_push_int(ctx, nidx);
     duk_put_prop_string(ctx, -2, NODEKEY);
@@ -753,6 +783,20 @@ static void push_node(duk_context *ctx, NbNode *n) {
     duk_push_c_function(ctx, nb_el_appendChild, 1);   duk_put_prop_string(ctx, -2, "appendChild");
     duk_push_c_function(ctx, nb_el_addEventListener, 2);    duk_put_prop_string(ctx, -2, "addEventListener");
     duk_push_c_function(ctx, nb_el_removeEventListener, 2); duk_put_prop_string(ctx, -2, "removeEventListener");
+    duk_push_c_function(ctx, nb_el_dispatchEvent, 1);       duk_put_prop_string(ctx, -2, "dispatchEvent");
+    duk_push_c_function(ctx, nb_el_click, 0);               duk_put_prop_string(ctx, -2, "click");
+
+    /* el.on<type> = cb accessors; native magic carries the ONPROPS index
+     * (Duktape accessors pass no property name — setters receive the value,
+     * getters receive nothing). */
+    for (int i = 0; ONPROPS[i]; i++) {
+        char onname[64];
+        snprintf(onname, sizeof(onname), "on%s", ONPROPS[i]);
+        duk_push_string(ctx, onname);
+        duk_push_c_function(ctx, nb_el_onprop_get, 0); duk_set_magic(ctx, -1, i);
+        duk_push_c_function(ctx, nb_el_onprop_set, 1); duk_set_magic(ctx, -1, i);
+        duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
+    }
 
     /* read-only accessor properties: children, childNodes, parentNode, firstChild, nextSibling */
     duk_push_string(ctx, "children");
@@ -798,6 +842,12 @@ static void push_node(duk_context *ctx, NbNode *n) {
     duk_push_c_function(ctx, nb_cl_toggle, 1);       duk_put_prop_string(ctx, -2, "toggle");
     duk_push_c_function(ctx, nb_cl_contains, 1);     duk_put_prop_string(ctx, -2, "contains");
     duk_put_prop_string(ctx, -2, "classList");
+
+    /* cache wrapper in the identity map, then drop stash+map, leaving [wrapper] */
+    duk_dup(ctx, -1);
+    duk_put_prop_index(ctx, -2, nidx);
+    duk_remove(ctx, -2);
+    duk_remove(ctx, -2);
 }
 
 /* Attach the DOM natives to the global `document` object. */
@@ -826,16 +876,22 @@ static void sigalrm(int sig);   /* used by run_event_loop below */
 #define MAX_TIMERS 2048
 #define MAX_MICRO  2048
 #define MAX_EVENTS 4096
+#define MAX_ONPROPS 1024
 #define MAX_TIMER_INVOCATIONS 5000   /* plan §2 CPU safety */
 #define MAX_RAF_FRAMES 120           /* plan §2: ~2s of rAF */
 #define RAF_MS 16
 
 typedef struct { int id, active; long interval; uint64_t due; int slot; } Timer;
 typedef struct { int kind; NbNode *node; char type[48]; int slot, active; } EvL;
+/* el.on<type> handlers CANNOT live as data props on the wrapper objects:
+ * push_node() creates a fresh JS object per wrap, so the C side must own the
+ * callback (stashed, keyed by node+kind+type). */
+typedef struct { int kind; NbNode *node; char type[48]; int slot, active; } OnProp;
 
 #define STASH_TIMER 0     /* stash index base per table (fixed, non-overlapping) */
 #define STASH_MICRO 10000
 #define STASH_EVT   20000
+#define STASH_ONPROP 30000
 #define EVT_NODE 1
 #define EVT_WIN  2
 #define EVT_DOC  3
@@ -845,6 +901,8 @@ static int g_timer_count = 0;
 static int g_micro_n = 0, g_micro_head = 0;   /* microtask FIFO lives in the global stash */
 static EvL g_evl[MAX_EVENTS];
 static int g_evl_count = 0;
+static OnProp g_onprop[MAX_ONPROPS];
+static int g_onprop_count = 0;
 static int g_next_id = 1;
 static int g_invocations = 0;
 static int g_raf_fires = 0;
@@ -1132,7 +1190,11 @@ static duk_ret_t nb_win_addEventListener(duk_context *ctx)  { evl_add(ctx, EVT_W
 static duk_ret_t nb_win_removeEventListener(duk_context *ctx) { evl_del(ctx, EVT_WIN, NULL); return 0; }
 static duk_ret_t nb_event_preventDefault(duk_context *ctx) {
     duk_push_this(ctx);
-    if (duk_is_object(ctx, -1)) { duk_push_boolean(ctx, 1); duk_put_prop_string(ctx, -2, "defaultPrevented"); }
+    if (duk_is_object(ctx, -1)) {
+        duk_get_prop_string(ctx, -1, "cancelable");
+        int can = duk_to_boolean(ctx, -1); duk_pop(ctx);
+        if (can) { duk_push_boolean(ctx, 1); duk_put_prop_string(ctx, -2, "defaultPrevented"); }
+    }
     duk_pop(ctx);
     return 0;
 }
@@ -1142,17 +1204,198 @@ static duk_ret_t nb_event_stopPropagation(duk_context *ctx) {
     duk_pop(ctx);
     return 0;
 }
+/* ---- on-* handlers: el.onclick = fn (C-side registry, per kind+node+type).
+ * Duktape passes the property key as arg0 to getter/setter natives. */
+static int onprop_find(int kind, NbNode *n, const char *type) {
+    for (int i = 0; i < g_onprop_count; i++) {
+        if (!g_onprop[i].active) continue;
+        if (g_onprop[i].kind != kind || g_onprop[i].node != n) continue;
+        if (strcmp(g_onprop[i].type, type)) continue;
+        return i;
+    }
+    return -1;
+}
+static const char *onprop_type_from_magic(duk_context *ctx) {
+    int idx = duk_get_current_magic(ctx);
+    if (idx < 0 || !ONPROPS[idx]) return NULL;
+    return ONPROPS[idx];
+}
+static int onprop_set_core(duk_context *ctx, int kind, NbNode *n) {
+    const char *type = onprop_type_from_magic(ctx);
+    if (!type || !duk_is_callable(ctx, 0)) return 0;
+    int i = onprop_find(kind, n, type);
+    if (i < 0) {
+        if (g_onprop_count >= MAX_ONPROPS) return 0;
+        i = g_onprop_count++;
+        g_onprop[i].kind = kind; g_onprop[i].node = n;
+        snprintf(g_onprop[i].type, sizeof(g_onprop[i].type), "%s", type);
+    }
+    g_onprop[i].active = 1;
+    g_onprop[i].slot = i;
+    stash_set(ctx, STASH_ONPROP, i, 0);
+    return 0;
+}
+static duk_ret_t nb_el_onprop_set(duk_context *ctx)   { return onprop_set_core(ctx, EVT_NODE, get_this(ctx)); }
+static duk_ret_t nb_doc_onprop_set(duk_context *ctx)   { return onprop_set_core(ctx, EVT_DOC, NULL); }
+static duk_ret_t nb_win_onprop_set(duk_context *ctx)   { return onprop_set_core(ctx, EVT_WIN, NULL); }
+static duk_ret_t nb_onprop_get_core(duk_context *ctx, int kind, NbNode *n) {
+    const char *type = onprop_type_from_magic(ctx);
+    if (!type) { duk_push_undefined(ctx); return 1; }
+    int i = onprop_find(kind, n, type);
+    if (i < 0 || !g_onprop[i].active) { duk_push_undefined(ctx); return 1; }
+    stash_push(ctx, STASH_ONPROP, g_onprop[i].slot);
+    return 1;
+}
+static duk_ret_t nb_el_onprop_get(duk_context *ctx)   { return nb_onprop_get_core(ctx, EVT_NODE, get_this(ctx)); }
+static duk_ret_t nb_doc_onprop_get(duk_context *ctx)   { return nb_onprop_get_core(ctx, EVT_DOC, NULL); }
+static duk_ret_t nb_win_onprop_get(duk_context *ctx)   { return nb_onprop_get_core(ctx, EVT_WIN, NULL); }
+/* one dispatch level for a single node/window/document: exact evl registrations,
+ * then the on-* callback. Each target scans the registers from scratch (an
+ * entry's kind+node binds it to exactly one target), so bubbling reaches the
+ * document/window levels without a shared cursor skipping their listeners. */
+static void dispatch_level(duk_context *ctx, int kind, NbNode *node, duk_idx_t ev,
+                           const char *type, int *stopped) {
+    ev = duk_normalize_index(ctx, ev);
+    for (int i = 0; i < g_evl_count; i++) {
+        if (!g_evl[i].active || g_evl[i].kind != kind || g_evl[i].node != node) continue;
+        if (strcmp(g_evl[i].type, type)) continue;
+        if (g_invocations >= MAX_TIMER_INVOCATIONS) return;
+        /* Duktape 2.x pcall_method layout: [func][this][arg1..argN], arg ON TOP */
+        stash_push(ctx, STASH_EVT, i);                /* cb */
+        if (kind == EVT_NODE && node) push_node(ctx, node);
+        else duk_get_global_string(ctx, kind == EVT_WIN ? "window" : "document");   /* this */
+        duk_dup(ctx, ev);                             /* event arg on top */
+        if (duk_pcall_method(ctx, 1) != 0) {
+            if (!g_pending_err) {
+                g_pending_err = 1;
+                snprintf(g_pending_errmsg, sizeof(g_pending_errmsg), "%s",
+                         duk_safe_to_string(ctx, -1));
+            }
+            duk_pop(ctx); g_invocations++; return;
+        }
+        duk_pop(ctx); g_invocations++;
+        duk_get_prop_string(ctx, ev, "propagationStopped");
+        *stopped = duk_to_boolean(ctx, -1); duk_pop(ctx);
+        if (*stopped) return;
+    }
+    for (int oi = 0; oi < g_onprop_count; oi++) {
+        OnProp *o = &g_onprop[oi];
+        if (!o->active || o->kind != kind || o->node != node) continue;
+        if (strcmp(o->type, type)) continue;
+        if (g_invocations >= MAX_TIMER_INVOCATIONS) return;
+        stash_push(ctx, STASH_ONPROP, o->slot);       /* cb */
+        if (kind == EVT_NODE && node) push_node(ctx, node);
+        else duk_get_global_string(ctx, kind == EVT_WIN ? "window" : "document");   /* this */
+        duk_dup(ctx, ev);                             /* event arg on top */
+        if (duk_pcall_method(ctx, 1) != 0) {
+            if (!g_pending_err) {
+                g_pending_err = 1;
+                snprintf(g_pending_errmsg, sizeof(g_pending_errmsg), "%s",
+                         duk_safe_to_string(ctx, -1));
+            }
+            duk_pop(ctx); g_invocations++; return;
+        }
+        duk_pop(ctx); g_invocations++;
+        duk_get_prop_string(ctx, ev, "propagationStopped");
+        *stopped = duk_to_boolean(ctx, -1); duk_pop(ctx);
+        if (*stopped) return;
+    }
+}
+static int dispatch_event(duk_context *ctx, int kind, NbNode *node, duk_idx_t ev, int bubbles) {
+    ev = duk_normalize_index(ctx, ev);
+    duk_get_prop_string(ctx, ev, "type");
+    const char *type = duk_get_string(ctx, -1);
+    duk_pop(ctx);
+    if (!type) return 1;
+    int stopped = 0;
+
+    if (kind == EVT_NODE && node) {
+        push_node(ctx, node);        duk_put_prop_string(ctx, ev, "target");
+        push_node(ctx, node);        duk_put_prop_string(ctx, ev, "currentTarget");
+        dispatch_level(ctx, EVT_NODE, node, ev, type, &stopped);
+        if (!stopped && bubbles) {               /* bubble node->...->root->document->window */
+            NbNode *a = node->parent;
+            while (a) {
+                if (g_invocations >= MAX_TIMER_INVOCATIONS) break;
+                push_node(ctx, a);   duk_put_prop_string(ctx, ev, "currentTarget");
+                dispatch_level(ctx, EVT_NODE, a, ev, type, &stopped);
+                if (stopped) break;
+                a = a->parent;
+            }
+            if (!stopped) {
+                duk_get_global_string(ctx, "document"); duk_put_prop_string(ctx, ev, "currentTarget");
+                dispatch_level(ctx, EVT_DOC, NULL, ev, type, &stopped);
+            }
+            if (!stopped) {
+                duk_get_global_string(ctx, "window");   duk_put_prop_string(ctx, ev, "currentTarget");
+                dispatch_level(ctx, EVT_WIN, NULL, ev, type, &stopped);
+            }
+        }
+    } else if (kind == EVT_DOC) {
+        duk_get_global_string(ctx, "document"); duk_put_prop_string(ctx, ev, "target");
+        duk_get_global_string(ctx, "document"); duk_put_prop_string(ctx, ev, "currentTarget");
+        dispatch_level(ctx, EVT_DOC, NULL, ev, type, &stopped);
+        if (!stopped) {
+            duk_get_global_string(ctx, "window"); duk_put_prop_string(ctx, ev, "currentTarget");
+            dispatch_level(ctx, EVT_WIN, NULL, ev, type, &stopped);
+        }
+    } else {                                       /* EVT_WIN */
+        duk_get_global_string(ctx, "window");   duk_put_prop_string(ctx, ev, "target");
+        duk_get_global_string(ctx, "window");   duk_put_prop_string(ctx, ev, "currentTarget");
+        dispatch_level(ctx, EVT_WIN, NULL, ev, type, &stopped);
+    }
+    duk_get_prop_string(ctx, ev, "defaultPrevented");
+    int dp = duk_to_boolean(ctx, -1); duk_pop(ctx);
+    return !dp;
+}
+static duk_ret_t nb_el_dispatchEvent(duk_context *ctx) {
+    NbNode *n = get_this(ctx);
+    if (!n) { duk_push_boolean(ctx, 0); return 1; }
+    duk_get_prop_string(ctx, 0, "bubbles");
+    int bubbles = duk_to_boolean(ctx, -1); duk_pop(ctx);
+    duk_push_boolean(ctx, dispatch_event(ctx, EVT_NODE, n, 0, bubbles));
+    return 1;
+}
+static duk_ret_t nb_doc_dispatchEvent(duk_context *ctx) {
+    duk_get_prop_string(ctx, 0, "bubbles");
+    int bubbles = duk_to_boolean(ctx, -1); duk_pop(ctx);
+    duk_push_boolean(ctx, dispatch_event(ctx, EVT_DOC, NULL, 0, bubbles));
+    return 1;
+}
+static duk_ret_t nb_win_dispatchEvent(duk_context *ctx) {
+    duk_get_prop_string(ctx, 0, "bubbles");
+    int bubbles = duk_to_boolean(ctx, -1); duk_pop(ctx);
+    duk_push_boolean(ctx, dispatch_event(ctx, EVT_WIN, NULL, 0, bubbles));
+    return 1;
+}
+static duk_ret_t nb_el_click(duk_context *ctx) {
+    NbNode *n = get_this(ctx);
+    if (!n) { duk_push_undefined(ctx); return 1; }
+    duk_get_global_string(ctx, "Event");
+    if (!duk_is_callable(ctx, -1)) { duk_pop(ctx); duk_push_undefined(ctx); return 1; }
+    duk_push_string(ctx, "click");
+    duk_push_object(ctx);
+    duk_push_boolean(ctx, 1); duk_put_prop_string(ctx, -2, "bubbles");
+    duk_push_boolean(ctx, 1); duk_put_prop_string(ctx, -2, "cancelable");
+    if (duk_pnew(ctx, 2) == 0) {
+        duk_push_boolean(ctx, dispatch_event(ctx, EVT_NODE, n, -1, 1));
+        return 1;
+    }
+    duk_pop(ctx); duk_push_undefined(ctx);
+    return 1;
+}
 static void fire_event(duk_context *ctx, int kind, NbNode *n, const char *type) {
     for (int i = 0; i < g_evl_count; i++) {
         if (!g_evl[i].active || g_evl[i].kind != kind || g_evl[i].node != n) continue;
         if (strcmp(g_evl[i].type, type)) continue;
         if (g_invocations >= MAX_TIMER_INVOCATIONS) break;
-        /* duk_pcall_method layout is [func][args...][this], this ON TOP:
-         * func at top-nargs-2, args above it, this on top. So push the cb
-         * first (bottom), then the Event argument, then global on top —
-         * [cb][Event][global]. */
+        /* Duktape 2.x pcall_method layout is [func][this][arg1..argN], arg ON TOP.
+         * Push the cb first (bottom), then `this` (element/document/window), then
+         * the Event argument on top -> [cb][this][Event]. */
         stash_push(ctx, STASH_EVT, i);              /* cb (func) at bottom */
-        duk_push_object(ctx);                       /* minimal Event (argument) */
+        if (kind == EVT_NODE && n) push_node(ctx, n);
+        else duk_get_global_string(ctx, kind == EVT_WIN ? "window" : "document");
+        duk_push_object(ctx);                       /* minimal Event (argument) on top */
         duk_push_string(ctx, type);      duk_put_prop_string(ctx, -2, "type");
         duk_push_boolean(ctx, 0);        duk_put_prop_string(ctx, -2, "defaultPrevented");
         duk_push_boolean(ctx, 0);        duk_put_prop_string(ctx, -2, "cancelable");
@@ -1161,7 +1404,6 @@ static void fire_event(duk_context *ctx, int kind, NbNode *n, const char *type) 
                duk_put_prop_string(ctx, -2, "target"); }
         duk_push_c_function(ctx, nb_event_preventDefault, 0); duk_put_prop_string(ctx, -2, "preventDefault");
         duk_push_c_function(ctx, nb_event_stopPropagation, 0); duk_put_prop_string(ctx, -2, "stopPropagation");
-        duk_push_global_object(ctx);                /* this ON TOP */
         if (duk_pcall_method(ctx, 1) != 0) {
             if (!g_pending_err) {
                 g_pending_err = 1;
@@ -1175,27 +1417,33 @@ static void fire_event(duk_context *ctx, int kind, NbNode *n, const char *type) 
         duk_pop(ctx);
         g_invocations++;
     }
-    /* lifecycle on-* props (element on-props are commit 8) */
-    if (kind == EVT_WIN && !strcmp(type, "load")) {
-        duk_get_global_string(ctx, "onload");
-        if (duk_is_callable(ctx, -1)) {
-            if (duk_pcall(ctx, 0) != 0 && !g_pending_err) {
+    /* lifecycle on-* props: window.onload, document.onDOMContentLoaded (commit 8) */
+    for (int oi = 0; oi < g_onprop_count; oi++) {
+        OnProp *o = &g_onprop[oi];
+        if (!o->active || o->kind != kind || o->node != n) continue;
+        if (strcmp(o->type, type)) continue;
+        if (g_invocations >= MAX_TIMER_INVOCATIONS) break;
+        stash_push(ctx, STASH_ONPROP, o->slot);               /* cb at bottom */
+        if (kind == EVT_NODE && n) push_node(ctx, n);
+        else duk_get_global_string(ctx, kind == EVT_WIN ? "window" : "document"); /* this */
+        duk_push_object(ctx);                       /* minimal Event (arg) on top */
+        duk_push_string(ctx, type);      duk_put_prop_string(ctx, -2, "type");
+        duk_push_boolean(ctx, 0);        duk_put_prop_string(ctx, -2, "defaultPrevented");
+        duk_push_boolean(ctx, 0);        duk_put_prop_string(ctx, -2, "cancelable");
+        duk_push_c_function(ctx, nb_event_preventDefault, 0); duk_put_prop_string(ctx, -2, "preventDefault");
+        duk_push_c_function(ctx, nb_event_stopPropagation, 0); duk_put_prop_string(ctx, -2, "stopPropagation");
+        if (duk_pcall_method(ctx, 1) != 0) {
+            if (!g_pending_err) {
                 g_pending_err = 1;
                 snprintf(g_pending_errmsg, sizeof(g_pending_errmsg), "%s",
                          duk_safe_to_string(ctx, -1));
             }
             duk_pop(ctx);
-        } else duk_pop(ctx);
-    } else if (kind == EVT_DOC && !strcmp(type, "DOMContentLoaded")) {
-        duk_get_global_string(ctx, "onDOMContentLoaded");
-        if (duk_is_callable(ctx, -1)) {
-            if (duk_pcall(ctx, 0) != 0 && !g_pending_err) {
-                g_pending_err = 1;
-                snprintf(g_pending_errmsg, sizeof(g_pending_errmsg), "%s",
-                         duk_safe_to_string(ctx, -1));
-            }
-            duk_pop(ctx);
-        } else duk_pop(ctx);
+            g_invocations++;
+            break;
+        }
+        duk_pop(ctx);
+        g_invocations++;
     }
 }
 
@@ -1236,6 +1484,15 @@ static void install_events_timers(duk_context *ctx) {
     duk_get_global_string(ctx, "document");
     duk_push_c_function(ctx, nb_doc_addEventListener, 2);    duk_put_prop_string(ctx, -2, "addEventListener");
     duk_push_c_function(ctx, nb_doc_removeEventListener, 2); duk_put_prop_string(ctx, -2, "removeEventListener");
+    duk_push_c_function(ctx, nb_doc_dispatchEvent, 1);       duk_put_prop_string(ctx, -2, "dispatchEvent");
+    for (int i = 0; ONPROPS[i]; i++) {
+        char onname[64];
+        snprintf(onname, sizeof(onname), "on%s", ONPROPS[i]);
+        duk_push_string(ctx, onname);
+        duk_push_c_function(ctx, nb_doc_onprop_get, 0); duk_set_magic(ctx, -1, i);
+        duk_push_c_function(ctx, nb_doc_onprop_set, 1); duk_set_magic(ctx, -1, i);
+        duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
+    }
     duk_pop(ctx);
     duk_push_global_object(ctx);
     duk_push_c_function(ctx, nb_timer_setTimeout, 2);    duk_put_prop_string(ctx, -2, "setTimeout");
@@ -1247,6 +1504,15 @@ static void install_events_timers(duk_context *ctx) {
     duk_push_c_function(ctx, nb_fetch_sync, 4);          duk_put_prop_string(ctx, -2, "nbFetchSync");
     duk_push_c_function(ctx, nb_win_addEventListener, 2);    duk_put_prop_string(ctx, -2, "addEventListener");
     duk_push_c_function(ctx, nb_win_removeEventListener, 2); duk_put_prop_string(ctx, -2, "removeEventListener");
+    duk_push_c_function(ctx, nb_win_dispatchEvent, 1);       duk_put_prop_string(ctx, -2, "dispatchEvent");
+    for (int i = 0; ONPROPS[i]; i++) {
+        char onname[64];
+        snprintf(onname, sizeof(onname), "on%s", ONPROPS[i]);
+        duk_push_string(ctx, onname);
+        duk_push_c_function(ctx, nb_win_onprop_get, 0); duk_set_magic(ctx, -1, i);
+        duk_push_c_function(ctx, nb_win_onprop_set, 1); duk_set_magic(ctx, -1, i);
+        duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
+    }
     duk_pop(ctx);
 }
 
@@ -1279,6 +1545,7 @@ static void dom_teardown(void) {
 static void run_page(void) {
     /* phase-2 (commit 7): per-page event/timer/microtask state */
     g_timer_count = 0; g_micro_n = 0; g_micro_head = 0; g_evl_count = 0;
+    g_onprop_count = 0;
     g_next_id = 1; g_invocations = 0; g_raf_fires = 0;
     g_pending_err = 0; g_pending_errmsg[0] = 0;
 
