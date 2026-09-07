@@ -92,3 +92,28 @@ you merge):
 - `f0559614` feat(nb-js): rung 4 network from JS — worker
   fetch()/XHR + Promise polyfill (native curl transport, E2E proven)
 - `3b1fadcb` docs(orientation): standing sync protocol
+
+## NOTICE 2026-09-07 — NB-JS standalone CLI + REPL on `opencode`
+
+More `opencode` commits past `3b1fadcb` (merge origin/opencode to get
+them; the sync protocol above stays open until the user says otherwise).
+
+- `d7797d74` **nbjs CLI**: same worker binary, `nbjs <page.js>
+  [fetch.dom]` runs a page headless like node — console.* → stdout,
+  bare exit codes 0 ok / 1 err / 2 usage, **zero khtpm/chtpm/GUI
+  dependency**. Makefile: `make` → nbjs, `make check`, `make install`
+  (PREFIX/DESTDIR). Daemon RPC mode untouched.
+- `1588f1fd` **install-duk.sh**: installs as a `duk` command
+  (`~/.local/bin/duk`, PREFIX-honoring) + `export duk='...'` written to
+  `~/.bashrc` and `~/.profile`; sourceable.
+- `cee6e587` **REPL**: bare `duk` on a terminal now starts an
+  interactive REPL (prompt, per-line eval, prints non-undefined values,
+  drains microtasks/timers without firing DCL/load per line). Non-tty
+  stdin stays the framed daemon, so network_browser_manager spawning is
+  byte-for-byte unchanged. `make check` all three suites PASS.
+
+Gotcha for page authors: this Duktape is 2.7.0 and has **no arrow
+functions** (`(() => 1)()` → `SyntaxError: empty expression not
+allowed`) in both CLI and REPL — use `function(){}` callbacks.
+Edition is Duktape 2.7.0 with DUK_USE_ES6 on, but arrow syntax is
+simply not present in the parser.

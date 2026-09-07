@@ -22,9 +22,13 @@ short version.*
 9. Joystick/controller support: not started.
 10. `ktb_pid_alive()` zombie-PID false-positive: structural fix not
     done (workaround documented in `04-bugs/BUG-LOG.md`).
-11. NB-JS engine as a node/bun-like CLI runner (require/process/fs,
-    exit codes, stderr): **not started — scoped, not too late.** The
-    `install_host()`/prelude seam makes it additive; a primitive CLI
-    (`ops/nb_js_eval <file> <out>`) already exists. Brief:
-    `design-docs/NB-JS-CLI-NODE-LIKE-MODE.md`; ladder queued behind the
-    rung-4 XHR/fetch delivery (in flight on `opencode`).
+11. NB-JS engine as a node/bun-like CLI runner: **v0 landed on `opencode`
+     (d7797d74, 1588f1fd, cee6e587)** — `make` → `nbjs`; `nbjs <page.js>
+     [fetch.dom]` runs a page headless like node (console.* → stdout, plain
+     exit 0/1/2, no khtpm/chtpm/GUI dependency); `./install-duk.sh` exposes
+     it as a `duk` command + `$duk` env var; bare `duk` on a terminal starts
+     a REPL (non-tty stdin stays the framed daemon, manager-safe). `make
+     check` green (dom/fetch/events). Remaining note: Duktape 2.7.0 has NO
+     arrow functions (`(() => 1)()` parses "empty expression not allowed")
+     — engine limitation, document for page authors. Farther out: require/
+     process/fs, `NB-JS-CLI-NODE-LIKE-MODE.md` ladder.
