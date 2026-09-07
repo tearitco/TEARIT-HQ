@@ -9,8 +9,17 @@
 #   interact         engage/toggle Interact Mode          -> 13
 #   menu file|desk|close                                  -> state/menu.txt only
 #   file <row>       pick File row (default-pdl / default-legacy)
-#                    engage if needed (13) then '5' if row != active
-#   desk <row>       reload the board: engage if needed then '6'
+#                    engage if needed, '5' if row != active, then RESTORE
+#   desk <row>       reload the board: engage if needed, '6', then RESTORE
+#
+# RESTORE (2026-09-07 fix): file/desk used to engage Interact Mode and
+# never turn it back off - if you clicked File/Desk while NOT already in
+# Interact Mode you were left trapped in it (the renderer forwards every
+# key, incl. arrows, to the game while it's on, so khtpm nav appears
+# frozen/stuck on the File item). Now: only auto-engage if it was off,
+# and afterward toggle it back off iff this call turned it on and it is
+# still on (live re-checked, so an engine-side exit is never
+# double-toggled). Board is left in a nav-usable state either way.
 #
 # The renderer's dispatch() appends '<pkg_dir>' '<house_root>' as two
 # trailing args - ignored here.
@@ -47,22 +56,48 @@ interact_on() {
         && [ "$(head -c 8 "$TYPING" 2>/dev/null | tr -dc 0-9)" != "0" ]
 }
 
+ENGAGED=0
+# Turn Interact Mode ON only if it is currently OFF. Sets ENGAGED=1 when
+# THIS call did the engaging (so restore_interact knows to undo it).
+engage_if_needed() {
+    if interact_on; then
+        ENGAGED=0
+    else
+        append_key 13
+        ENGAGED=1
+    fi
+}
+# Undo an engage this call made. Waits briefly for our own '13' to
+# register (so we don't "restore" before the engine even turned it on),
+# then toggles OFF iff it is still on - a menu key or board reload that
+# dropped typing mode by itself is left alone, never double-toggled.
+restore_interact() {
+    [ "$ENGAGED" = 1 ] || return 0
+    i=0
+    while [ "$i" -lt 12 ] && ! interact_on; do sleep 0.05; i=$((i + 1)); done
+    interact_on && append_key 13
+    return 0
+}
+
 case "$VERB" in
     interact)
         append_key 13
         ;;
     file)
-        interact_on || append_key 13
+        engage_if_needed
         # active row: default-legacy = 1, else 0
         LVL_FILE="$(cd "$SELF_DIR/../.." >/dev/null 2>&1 && pwd)/@.apps/piececraft-hq/pieces/system/board_config.txt"
         CUR=0
         [ -f "$LVL_FILE" ] && grep -q 'active_level=default-legacy' "$LVL_FILE" && CUR=1
-        [ "${ARG:-0}" != "$CUR" ] && append_key 53   # '5' - FILE_MENU cycle
+        [ "${ARG:-0}" != "$CUR" ] && { append_key 53; sleep 0.15; }   # '5' - FILE_MENU cycle
+        restore_interact
         printf 'open=\n' > "$PKG_STATE/menu.txt"
         ;;
     desk)
-        interact_on || append_key 13
+        engage_if_needed
         append_key 54                                 # '6' - DESK_MENU reload
+        sleep 0.15
+        restore_interact
         printf 'open=\n' > "$PKG_STATE/menu.txt"
         ;;
 esac
