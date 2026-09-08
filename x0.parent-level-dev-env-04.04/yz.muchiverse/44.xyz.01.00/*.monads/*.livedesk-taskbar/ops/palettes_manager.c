@@ -1048,6 +1048,176 @@ static void publish_debug(void) {
     rename(tmp_path, g_state_path);
 }
 
+/* ===== Piececraft Blocks (Mineclonia) — RMMV-shaped choosers =====
+ * DIR  = mods pack (ITEMS / ENTITIES / …)
+ * TILESET = mod folder (mcl_core, mcl_wool, …)
+ * Grid = 16×16 (or scaled) PNG thumbs → sprite.csv like rmmv. */
+static int pc_img_root(char *out, size_t outsz) {
+    char pdl[PATH_BUF];
+    snprintf(pdl, sizeof(pdl), "%s/../#.#.calendar-dox/1.^V-hq/MINECLONIA-ASSET-SOURCE-LOCATION.pdl", g_house_root);
+    FILE *f = fopen(pdl, "r");
+    if (!f) return 0;
+    char line[PATH_BUF];
+    int ok = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "SOURCE", 6) != 0) continue;
+        char *k = strstr(line, "img_root");
+        if (!k) continue;
+        char *bar = strrchr(line, '|');
+        if (!bar) continue;
+        char *v = bar + 1;
+        while (*v == ' ' || *v == '\t') v++;
+        size_t n = strlen(v);
+        while (n > 0 && (v[n-1] == '\n' || v[n-1] == '\r' || v[n-1] == ' ')) v[--n] = 0;
+        if (n > 0) { snprintf(out, outsz, "%s", v); ok = 1; break; }
+    }
+    fclose(f);
+    return ok && access(out, F_OK) == 0;
+}
+
+static int pc_skip_tex(const char *name) {
+    if (strstr(name, "_normal")) return 1;
+    if (strstr(name, "_n.png")) return 1;
+    if (strstr(name, "_e.png")) return 1;
+    if (strstr(name, "gui_")) return 1;
+    return 0;
+}
+
+static void publish_piececraft(void) {
+    char root[PATH_BUF];
+    if (!pc_img_root(root, sizeof(root))) return;
+    char active_path[PATH_BUF];
+    snprintf(active_path, sizeof(active_path), "%s/piececraft_active.txt", g_package_dir);
+    char active_pack[64] = "ITEMS", active_mod[64] = "mcl_core";
+    FILE *af = fopen(active_path, "r");
+    if (af) {
+        char line[128];
+        while (fgets(line, sizeof(line), af)) {
+            char *eq = strchr(line, '='); if (!eq) continue;
+            *eq = 0; char *v = eq + 1;
+            size_t vn = strlen(v);
+            while (vn > 0 && (v[vn-1]=='\n'||v[vn-1]=='\r')) v[--vn]=0;
+            if (!strcmp(line, "dir") || !strcmp(line, "pack")) snprintf(active_pack, sizeof(active_pack), "%s", v);
+            else if (!strcmp(line, "tileset") || !strcmp(line, "mod")) snprintf(active_mod, sizeof(active_mod), "%s", v);
+        }
+        fclose(af);
+    }
+
+    char opt_path[PATH_BUF], opt_tmp[PATH_BUF];
+    snprintf(opt_path, sizeof(opt_path), "%s/piececraft_options.txt", g_package_dir);
+    snprintf(opt_tmp, sizeof(opt_tmp), "%s.tmp", opt_path);
+    FILE *opt = fopen(opt_tmp, "w");
+    if (!opt) return;
+    fprintf(opt, "ACTIVE_DIR|%s\n", active_pack);
+    fprintf(opt, "ACTIVE_TILESET|%s\n", active_mod);
+    fprintf(opt, "ACTIVE_CATEGORY|%s\n", active_mod);
+
+    DIR *pd = opendir(root);
+    if (pd) {
+        struct dirent *de;
+        char packs[16][64]; int np = 0;
+        while ((de = readdir(pd)) != NULL && np < 16) {
+            if (de->d_name[0] == '.') continue;
+            char pth[PATH_BUF];
+            snprintf(pth, sizeof(pth), "%s/%s", root, de->d_name);
+            struct stat st;
+            if (stat(pth, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
+            snprintf(packs[np++], 64, "%s", de->d_name);
+        }
+        closedir(pd);
+        for (int i = 1; i < np; i++) {
+            char k[64]; snprintf(k, 64, "%s", packs[i]);
+            int j = i - 1;
+            while (j >= 0 && strcmp(packs[j], k) > 0) { snprintf(packs[j+1], 64, "%s", packs[j]); j--; }
+            snprintf(packs[j+1], 64, "%s", k);
+        }
+        int pack_ok = 0;
+        for (int i = 0; i < np; i++) {
+            fprintf(opt, "DIR|%s|%s\n", packs[i], packs[i]);
+            if (!strcmp(packs[i], active_pack)) pack_ok = 1;
+        }
+        if (!pack_ok && np > 0) snprintf(active_pack, sizeof(active_pack), "%s", packs[0]);
+    }
+
+    char pack_path[PATH_BUF];
+    snprintf(pack_path, sizeof(pack_path), "%s/%s", root, active_pack);
+    DIR *md = opendir(pack_path);
+    char mods[128][64]; int nm = 0;
+    if (md) {
+        struct dirent *de;
+        while ((de = readdir(md)) != NULL && nm < 128) {
+            if (de->d_name[0] == '.' || de->d_name[0] == '_') continue;
+            char tex[PATH_BUF];
+            snprintf(tex, sizeof(tex), "%s/%s/textures", pack_path, de->d_name);
+            struct stat st;
+            if (stat(tex, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
+            snprintf(mods[nm++], 64, "%s", de->d_name);
+        }
+        closedir(md);
+        for (int i = 1; i < nm; i++) {
+            char k[64]; snprintf(k, 64, "%s", mods[i]);
+            int j = i - 1;
+            while (j >= 0 && strcmp(mods[j], k) > 0) { snprintf(mods[j+1], 64, "%s", mods[j]); j--; }
+            snprintf(mods[j+1], 64, "%s", k);
+        }
+        int mod_ok = 0;
+        for (int i = 0; i < nm; i++) {
+            fprintf(opt, "TILESET|%s|%s\n", mods[i], mods[i]);
+            if (!strcmp(mods[i], active_mod)) mod_ok = 1;
+        }
+        if (!mod_ok && nm > 0) snprintf(active_mod, sizeof(active_mod), "%s", mods[0]);
+    }
+    fclose(opt);
+    rename(opt_tmp, opt_path);
+
+    char tmp_path[PATH_BUF];
+    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", g_state_path);
+    FILE *out = fopen(tmp_path, "w");
+    if (!out) return;
+    char texdir[PATH_BUF];
+    snprintf(texdir, sizeof(texdir), "%s/%s/%s/textures", root, active_pack, active_mod);
+    DIR *td = opendir(texdir);
+    int n = 0;
+    if (td) {
+        char names[MAX_TILES][256]; int nn = 0;
+        struct dirent *de;
+        while (nn < MAX_TILES && (de = readdir(td)) != NULL) {
+            size_t len = strlen(de->d_name);
+            if (len < 5 || strcasecmp(de->d_name + len - 4, ".png") != 0) continue;
+            if (pc_skip_tex(de->d_name)) continue;
+            snprintf(names[nn++], 256, "%s", de->d_name);
+        }
+        closedir(td);
+        for (int i = 1; i < nn; i++) {
+            char k[256]; snprintf(k, 256, "%s", names[i]);
+            int j = i - 1;
+            while (j >= 0 && strcmp(names[j], k) > 0) { snprintf(names[j+1], 256, "%s", names[j]); j--; }
+            snprintf(names[j+1], 256, "%s", k);
+        }
+        char sprite_root[PATH_BUF];
+        snprintf(sprite_root, sizeof(sprite_root), "%s/sprites/pc/%s/%s", g_package_dir, active_pack, active_mod);
+        for (int i = 0; i < nn && n < MAX_TILES; i++) {
+            n++;
+            char dir[PATH_BUF], csv[PATH_BUF], png[PATH_BUF], stem[256];
+            snprintf(dir, sizeof(dir), "%s/%03d", sprite_root, n);
+            snprintf(csv, sizeof(csv), "%s/sprite.csv", dir);
+            snprintf(png, sizeof(png), "%s/%s", texdir, names[i]);
+            snprintf(stem, sizeof(stem), "%s", names[i]);
+            char *dot = strrchr(stem, '.'); if (dot) *dot = 0;
+            struct stat st;
+            if (stat(csv, &st) != 0) {
+                char mk[PATH_BUF * 2];
+                snprintf(mk, sizeof(mk), "mkdir -p '%s'", dir);
+                system(mk);
+                write_png_thumb_csv(png, csv);
+            }
+            fprintf(out, "%s\t%s\t%s\n", stem, stem, dir);
+        }
+    }
+    fclose(out);
+    rename(tmp_path, g_state_path);
+}
+
 static void publish(void) {
     if (strcmp(g_category, "debug") == 0) { publish_debug(); return; }
     struct stat st;
@@ -1106,6 +1276,24 @@ static void publish(void) {
         publish_rmmv();
         return;
     }
+    if (strcmp(g_category, "piececraft") == 0) {
+        static char s_last_pc[256] = "";
+        char active_path[PATH_BUF];
+        snprintf(active_path, sizeof(active_path), "%s/piececraft_active.txt", g_package_dir);
+        char active_content[256] = "";
+        FILE *af_check = fopen(active_path, "r");
+        if (af_check) {
+            size_t n = fread(active_content, 1, sizeof(active_content) - 1, af_check);
+            active_content[n] = '\0';
+            fclose(af_check);
+        }
+        int changed = strcmp(active_content, s_last_pc) != 0;
+        snprintf(s_last_pc, sizeof(s_last_pc), "%s", active_content);
+        if (!changed && g_source_mtime != 0) return;
+        g_source_mtime = 1;
+        publish_piececraft();
+        return;
+    }
     if (stat(g_source_path, &st) != 0) return;
     if (st.st_mtime == g_source_mtime) return;
     g_source_mtime = st.st_mtime;
@@ -1121,8 +1309,8 @@ int main(int argc, char **argv) {
 
     if (strcmp(g_category, "elements") == 0) {
         snprintf(g_source_path, sizeof(g_source_path), "%s/#.ref/menu/palletes/chemistry_tiles_expanded🏆.csv", g_house_root);
-    } else if (strcmp(g_category, "rmmv") == 0) {
-        g_source_path[0] = '\0'; /* unused for rmmv - publish()'s own dedicated mtime-gate handles it */
+    } else if (strcmp(g_category, "rmmv") == 0 || strcmp(g_category, "piececraft") == 0) {
+        g_source_path[0] = '\0';
     } else {
         snprintf(g_source_path, sizeof(g_source_path), "%s/#.ref/menu/palletes/emoji-pallet-00.00.txt", g_house_root);
     }
@@ -1136,7 +1324,7 @@ int main(int argc, char **argv) {
         /* rmmv tab/chooser clicks must land on press 1. 1s sleep made
          * A/B/C and Dungeon/Inside need 2-3 presses (live). Other
          * palettes still 1s. */
-        usleep(strcmp(g_category, "debug") == 0 ? 300000 : strcmp(g_category, "rmmv") == 0 ? 100000 : 1000000);
+        usleep(strcmp(g_category, "debug") == 0 ? 300000 : (strcmp(g_category, "rmmv") == 0 || strcmp(g_category, "piececraft") == 0) ? 100000 : 1000000);
     }
     return 0;
 }

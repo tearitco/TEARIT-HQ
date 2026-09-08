@@ -74,12 +74,10 @@ int main(int argc, char **argv) {
     int is_piececraft = (strcmp(cat, "piececraft") == 0);
     int is_debug = (strcmp(cat, "debug") == 0);
     int is_rmmv = (strcmp(cat, "rmmv") == 0);
+    int is_chooser_grid = is_rmmv || is_piececraft;
 
     char in_path[PATH_MAX], out_path[PATH_MAX], tmp_path[PATH_MAX];
-    if (is_piececraft)
-        snprintf(in_path, sizeof(in_path), "%s/palettes-piececraft-hq_state.txt", pkg);
-    else
-        snprintf(in_path, sizeof(in_path), "%s/palettes-%s_state.txt", pkg, cat);
+    snprintf(in_path, sizeof(in_path), "%s/palettes-%s_state.txt", pkg, cat);
     snprintf(out_path, sizeof(out_path), "%s/state/palettes-%s_ui.txt", pkg, cat);
     snprintf(tmp_path, sizeof(tmp_path), "%s/state/palettes-%s_ui.txt.tmp", pkg, cat);
     { char d[PATH_MAX]; snprintf(d, sizeof(d), "%s/state", pkg);
@@ -93,26 +91,7 @@ int main(int argc, char **argv) {
         int n = 0;
         FILE *f = fopen(in_path, "r");
 
-        if (is_piececraft) {
-            if (f) {
-                char line[PATH_MAX + 256];
-                while (n < MAXROWS && fgets(line, sizeof(line), f)) {
-                    char *t1 = strchr(line, '\t');
-                    if (!t1) continue;
-                    char *rest = t1 + 1;                 /* line = verb (noop) */
-                    char *t2 = strchr(rest, '\t');
-                    if (t2) *t2 = 0;
-                    sanitize(rest);
-                    if (!rest[0]) continue;
-                    off += (size_t)snprintf(ui + off, (off < UIBUF) ? UIBUF - off : 0,
-                                            "r_%d_text=%s\n", n, rest);
-                    n++;
-                }
-            }
-            off += (size_t)snprintf(ui + off, (off < UIBUF) ? UIBUF - off : 0, "n_rows=%d\n", n);
-            off += (size_t)snprintf(ui + off, (off < UIBUF) ? UIBUF - off : 0,
-                                    "empty=%d\n", n == 0 ? 1 : 0);
-        } else if (is_debug) {
+        if (is_debug) {
             if (f) {
                 char line[PATH_MAX + 256];
                 while (n < MAXROWS && fgets(line, sizeof(line), f)) {
@@ -155,7 +134,7 @@ int main(int argc, char **argv) {
             off += (size_t)snprintf(ui + off, (off < UIBUF) ? UIBUF - off : 0, "n_rows=%d\n", n);
             off += (size_t)snprintf(ui + off, (off < UIBUF) ? UIBUF - off : 0,
                                     "empty=%d\n", n == 0 ? 1 : 0);
-        } else if (is_rmmv) {
+        } else if (is_chooser_grid) {
             /* CAP NOTE: khtpm_core_render.c's var table is a fixed
              * KH_MAX_VARS=256 slots, silently truncating the rest (grep
              * kh_set_var). rmmv's "b"/"c" categories are 256 tiles x
@@ -172,7 +151,7 @@ int main(int argc, char **argv) {
 
             /* --- active tab letter from rmmv_active.txt --- */
             char active_tab[64] = "";
-            { char p[PATH_MAX]; snprintf(p, sizeof(p), "%s/rmmv_active.txt", pkg);
+            { char p[PATH_MAX]; snprintf(p, sizeof(p), "%s/%s_active.txt", pkg, is_piececraft ? "piececraft" : "rmmv");
               FILE *af = fopen(p, "r");
               if (af) { char l[256];
                   while (fgets(l, sizeof(l), af)) {
@@ -190,7 +169,7 @@ int main(int argc, char **argv) {
             static char dkey[64][128], dlab[64][128]; int nd = 0;
             static char skey[64][128], slab[64][128]; int ns = 0;
             static char cltr[64][32], clab[64][128]; int nc = 0;
-            { char p[PATH_MAX]; snprintf(p, sizeof(p), "%s/rmmv_options.txt", pkg);
+            { char p[PATH_MAX]; snprintf(p, sizeof(p), "%s/%s_options.txt", pkg, is_piececraft ? "piececraft" : "rmmv");
               FILE *of = fopen(p, "r");
               if (of) { char l[512];
                   while (fgets(l, sizeof(l), of)) {

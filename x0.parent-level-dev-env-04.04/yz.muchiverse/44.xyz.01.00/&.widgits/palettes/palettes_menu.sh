@@ -149,6 +149,35 @@ list_cats() {
     done
 }
 
+
+set_pc() {
+    _field="$1"; _pkg="$2"; _val="$3"
+    _f="$_pkg/piececraft_active.txt"
+    mkdir -p "$_pkg"
+    _dir="ITEMS"; _tileset="mcl_core"
+    if [ -f "$_f" ]; then
+        _dir=$(grep "^dir=" "$_f" | head -1 | cut -d= -f2-)
+        _tileset=$(grep "^tileset=" "$_f" | head -1 | cut -d= -f2-)
+        [ -n "$_dir" ] || _dir="ITEMS"
+        [ -n "$_tileset" ] || _tileset="mcl_core"
+    fi
+    case "$_field" in
+        dir) _dir="$_val" ;;
+        tileset) _tileset="$_val" ;;
+    esac
+    {
+        printf 'dir=%s\n' "$_dir"
+        printf 'tileset=%s\n' "$_tileset"
+    } > "$_f"
+    log "piececraft active $_field=$_val pack=$_dir mod=$_tileset"
+}
+
+arm_pc() {
+    _sdir="$1"; _label="$2"
+    printf '%s\n' "$_sdir" > "$STATE_DIR/pc_brush.txt"
+    log "armed piececraft block $_label $_sdir"
+}
+
 # set_rmmv <field> <pkg_dir> <value> - real 2026-08-27/28 (tile-picker
 # UI pass): writes rmmv_active.txt into the SAME live package dir
 # palettes_manager.c's own publish_rmmv() reads it from (passed as a
@@ -290,6 +319,9 @@ case "${1:-}" in
     set-rmmv-tab)      shift; set_rmmv tab "$1" "$2"; exit 0 ;;
     set-rmmv-tileset)  shift; set_rmmv tileset "$1" "$2"; exit 0 ;;
     set-rmmv-dir)      shift; set_rmmv dir "$1" "$2"; exit 0 ;;
+    set-pc-dir)        shift; set_pc dir "$1" "$2"; exit 0 ;;
+    set-pc-mod)        shift; set_pc tileset "$1" "$2"; exit 0 ;;
+    arm-pc)            shift; arm_pc "${1:-}" "${2:-}"; exit 0 ;;
 esac
 
 # Arg forms:
