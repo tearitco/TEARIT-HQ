@@ -8,8 +8,10 @@ belongs only here; reuse piececraft Interact-Mode later, do not invent
 a second camera stack in the renderer.
 
 ## Works now
-Demo Cube/Sphere/Ground wireframe, Sel/Grab/Rot/Scl, orbit/zoom/frame,
-outliner pick/delete, +cube/+sphere. `canvas.raw` blit. No renderer C.
+Loads **cursword 3D voxels** at start (`media/cursword.voxels.csv`,
+house `x,y,z,r,g,b` phymoji format). Also `LOAD:` **`.obj`** (parsed
+here) and **`.fbx`** (via `assimp export` → obj). Orbit/tools/gutter.
+No renderer C.
 
 ## Still vs HOW2
 MMB orbit, Assimp import, real mesh pick, wireframe toggle Z.

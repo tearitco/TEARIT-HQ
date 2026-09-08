@@ -7,8 +7,9 @@ Split from the short-lived `media-img3d-hq` hybrid. Source:
 framebuffer, no shared camera.
 
 ## Works now
-Layers 1–6, vis, B/E/G/R/I/H, brush +/−, fg/bg, pan/zoom state,
-STROKE at canvas center, `canvas.raw` blit. No renderer C.
+Loads **cursword 2D** at start (`media/cursword.sprite.csv`, house
+`r,g,b,a` 64²; png via ffmpeg as fallback). Layers, tools, gutter,
+STROKE. `LOAD:<path>` for another png/csv. No renderer C.
 
 ## Still vs HOW2
 Canvas drag-paint, PNG drop, ffmpeg export, undo.

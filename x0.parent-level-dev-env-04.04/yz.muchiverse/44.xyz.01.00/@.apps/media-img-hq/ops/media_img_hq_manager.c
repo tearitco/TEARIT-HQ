@@ -6,7 +6,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
+#include <strings.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #define KH_PLAT_IMPL
 #include "../../../&.widgits/_shared-lib/kh_plat.h"
 
@@ -17,6 +20,7 @@
 
 static char pkg_dir[PL];
 static char g_msg[160] = "";
+static char g_loaded[256] = "";
 static char tool = 'B';
 static int brush = 8;
 static unsigned char fg[4] = {220, 60, 60, 255};
@@ -86,14 +90,98 @@ static void rect_demo(void) {
             put_px(L, x, y, fg[0], fg[1], fg[2], 220);
 }
 
+static void blit_rgba(const unsigned char *src, int sw, int sh, int scale) {
+    if (scale < 1) scale = 1;
+    int dw = sw * scale, dh = sh * scale;
+    int ox = (CW - dw) / 2, oy = (CH - dh) / 2;
+    unsigned char *L = layer[active_lay];
+    for (int y = 0; y < dh; y++) for (int x = 0; x < dw; x++) {
+        int sx = x / scale, sy = y / scale;
+        const unsigned char *p = src + ((size_t)sy * sw + (size_t)sx) * 4;
+        put_px(L, ox + x, oy + y, p[0], p[1], p[2], p[3]);
+    }
+}
+
+static int load_sprite_csv(const char *path) {
+    FILE *f = fopen(path, "r"); if (!f) return 0;
+    int res = 64;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        if (line[0] == '#') {
+            if (sscanf(line, "# resolution=%d", &res) == 1 && res > 0 && res <= 512) continue;
+            continue;
+        }
+        if (!strncmp(line, "r,g,b,a", 7) || !strncmp(line, "r,g,b", 5)) break;
+        break;
+    }
+    size_t n = (size_t)res * (size_t)res;
+    unsigned char *buf = calloc(n * 4, 1);
+    if (!buf) { fclose(f); return 0; }
+    int i = 0, r,g,b,a;
+    while (i < (int)n && fgets(line, sizeof(line), f)) {
+        if (line[0] == '#' || line[0] == '\n') continue;
+        a = 255;
+        if (sscanf(line, "%d,%d,%d,%d", &r, &g, &b, &a) < 3) continue;
+        buf[i*4]=(unsigned char)r; buf[i*4+1]=(unsigned char)g;
+        buf[i*4+2]=(unsigned char)b; buf[i*4+3]=(unsigned char)a;
+        i++;
+    }
+    fclose(f);
+    if (i < 8) { free(buf); return 0; }
+    int scale = 3; if (res * scale > CW) scale = CW / res; if (scale < 1) scale = 1;
+    blit_rgba(buf, res, res, scale);
+    free(buf);
+    return 1;
+}
+
+static int load_png(const char *path) {
+    char cmd[PL], rawp[PL], dim[64];
+    snprintf(rawp, sizeof(rawp), "%s/state/import.rgba", pkg_dir);
+    snprintf(cmd, sizeof(cmd),
+             "ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 \"%s\"", path);
+    FILE *p = popen(cmd, "r"); if (!p) return 0;
+    if (!fgets(dim, sizeof(dim), p)) { pclose(p); return 0; }
+    pclose(p);
+    int w=0,h=0; if (sscanf(dim, "%d,%d", &w, &h) != 2 || w<=0 || h<=0 || w>2048 || h>2048) return 0;
+    snprintf(cmd, sizeof(cmd),
+             "ffmpeg -v error -y -i \"%s\" -f rawvideo -pix_fmt rgba \"%s\"", path, rawp);
+    if (system(cmd) != 0) return 0;
+    FILE *f = fopen(rawp, "rb"); if (!f) return 0;
+    size_t n = (size_t)w * (size_t)h * 4;
+    unsigned char *buf = malloc(n); if (!buf) { fclose(f); return 0; }
+    if (fread(buf, 1, n, f) != n) { free(buf); fclose(f); return 0; }
+    fclose(f);
+    int scale = 1;
+    while (w * (scale+1) <= CW && h * (scale+1) <= CH) scale++;
+    blit_rgba(buf, w, h, scale);
+    free(buf);
+    return 1;
+}
+
+static int load_image(const char *path) {
+    const char *dot = strrchr(path, '.');
+    int ok = 0;
+    if (dot && (!strcasecmp(dot, ".csv") || !strcasecmp(dot, ".sprite.csv")))
+        ok = load_sprite_csv(path);
+    else
+        ok = load_png(path);
+    if (ok) {
+        const char *base = strrchr(path, '/');
+        snprintf(g_loaded, sizeof(g_loaded), "%s", base ? base+1 : path);
+        snprintf(g_msg, sizeof(g_msg), "loaded %s", g_loaded);
+    } else snprintf(g_msg, sizeof(g_msg), "load failed: %s", path);
+    return ok;
+}
+
 static void demo_2d(void) {
-    n_lay = 3; active_lay = 0;
-    for (int i = 0; i < MAX_LAY; i++) { clear_layer(i); vis[i] = (i < 3); }
-    for (int y = 30; y < 120; y++)
-        for (int x = 30; x < 160; x++) put_px(layer[0], x, y, 200, 70, 70, 255);
-    for (int y = 80; y < 180; y++)
-        for (int x = 100; x < 230; x++) put_px(layer[1], x, y, 70, 160, 90, 200);
-    int save = active_lay; active_lay = 2; stamp(220, 70, 28, 0); active_lay = save;
+    n_lay = 1; active_lay = 0;
+    for (int i = 0; i < MAX_LAY; i++) { clear_layer(i); vis[i] = (i == 0); }
+    char p[PL];
+    snprintf(p, sizeof(p), "%s/media/cursword.sprite.csv", pkg_dir);
+    if (load_sprite_csv(p)) { snprintf(g_loaded, sizeof(g_loaded), "cursword.sprite.csv"); return; }
+    snprintf(p, sizeof(p), "%s/media/cursword.png", pkg_dir);
+    if (load_png(p)) { snprintf(g_loaded, sizeof(g_loaded), "cursword.png"); return; }
+    snprintf(g_loaded, sizeof(g_loaded), "(empty)");
 }
 
 static void composite_2d(unsigned char *D) {
@@ -144,8 +232,8 @@ static void write_ui(void) {
         fprintf(f, "it_%d_name=%c L%d%s\n", i, vis[i]?'*':'-', i+1, i==active_lay?"  (active)":"");
         fprintf(f, "it_%d_cls=%s\n", i, i==active_lay ? "active" : "");
     }
-    fprintf(f, "status_line=2D  tool=%c  brush=%d  zoom=%d%%  pan=%d,%d  fg=%d,%d,%d\n",
-            tool, brush, zoom, panx, pany, fg[0], fg[1], fg[2]);
+    fprintf(f, "status_line=2D  %s  tool=%c  brush=%d  zoom=%d%%  pan=%d,%d  fg=%d,%d,%d\n",
+            g_loaded, tool, brush, zoom, panx, pany, fg[0], fg[1], fg[2]);
     {
         const char *now = "brush";
         if (tool=='E') now = "eraser";
@@ -175,8 +263,12 @@ static void apply_stroke(void) {
 static void handle(const char *cmd) {
     if (!cmd[0]) return;
     snprintf(g_msg, sizeof(g_msg), "%s", cmd);
-    if (!strcmp(cmd, "NEW")) { n_lay=1; active_lay=0; clear_layer(0); vis[0]=1; dirty=1; }
+    if (!strcmp(cmd, "NEW")) { n_lay=1; active_lay=0; clear_layer(0); vis[0]=1; g_loaded[0]=0; dirty=1; }
     else if (!strcmp(cmd, "DEMO")) { demo_2d(); dirty=1; }
+    else if (!strncmp(cmd, "LOAD:", 5)) {
+        if (n_lay < 1) { n_lay=1; active_lay=0; vis[0]=1; }
+        load_image(cmd+5); dirty=1;
+    }
     else if (!strcmp(cmd, "EXPORT"))
         snprintf(g_msg, sizeof(g_msg), "export: state/canvas.raw (ffmpeg png later)");
     else if (!strncmp(cmd, "TOOL:", 5) && cmd[5] && !cmd[6]) tool = cmd[5];
@@ -198,7 +290,7 @@ static void handle(const char *cmd) {
 static void poll_action(int *last) {
     char p[PL]; snprintf(p, sizeof(p), "%s/state/media_img_hq_action.txt", pkg_dir);
     FILE *f = fopen(p, "r"); if (!f) return;
-    char line[PL], cmd[160]=""; int seq=0;
+    char line[PL], cmd[1024]=""; int seq=0;
     while (fgets(line, sizeof(line), f)) {
         if (sscanf(line, "seq=%d", &seq)==1) continue;
         if (!strncmp(line, "cmd=", 4)) { snprintf(cmd, sizeof(cmd), "%s", line+4); char *n=strchr(cmd,'\n'); if(n)*n=0; }
