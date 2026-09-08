@@ -1,24 +1,47 @@
-<!-- media-daw-hq.xhtpm - CONVERSION SKELETON 2026-09-08.
-     Logic/GarageBand-shaped DAW: arrangement lanes on top, piano roll below, transport + BPM, mixer drawer.
-     Source: 44.xyz.01.00/103.media-studio/103.daw/ (+ its HOW2_DAW.md).
-     Target layout is described in ../media-daw-hq/README.md - build it here
-     with generic <sidebar>/<panel>/<item>/<text>/<canvas>, house spec,
-     NO per-app renderer C. -->
-<window label="Muchi DAW - ${msg}" class="database-window" vars="state/media_daw_hq_ui.txt">
+<!-- media-daw-hq — HOW2_DAW pass-2. Page-level canvas (nested canvas in
+     panel is not laid out). Tabbar like csv-hq; chrome like pchq. -->
+<window label="Muchi DAW - ${lcd}" class="database-window" vars="state/media_daw_hq_ui.txt">
   <module src="@.apps/media-daw-hq/ops/+x/media_daw_hq_manager.+x" id="_"/>
   <page name="main">
-    <sidebar id="side" class="ms-side">
-      <text label="${title}" class="ms-title"/>
-      <text label="${banner}" class="ms-banner"/>
-      <text label="src: ${source}" class="ms-quiet"/>
-    </sidebar>
-    <panel id="main" class="ms-main">
-      <text label="This toy is a conversion skeleton. Real layout TBD - see README.md." class="ms-quiet"/>
-      <row class="toolbar">        <item id="ping" class="ms-btn" label="[ ping ]"
-              action="'${HOUSE}/@.apps/media-daw-hq/ops/media_daw_hq_action.sh' 'PING'"/>
-      </row>
-      <text label="${msg}" class="ms-msg" show="${msg}"/>
-      <canvas id="view" class="ms-canvas"/>
-    </panel>
+    <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
+    <item id="fullscreen" class="chrome-btn" label="!" onclick="TOGGLE_FULLSCREEN"/>
+    <item id="minimize" class="chrome-btn" label="_" onclick="MINIMIZE"/>
+    <tabbar class="tab-bar">
+      <tab id="new" class="tab" label="New"
+           action="'${HOUSE}/@.apps/media-daw-hq/ops/media_daw_hq_action.sh' 'NEW'"/>
+      <tab id="demo" class="tab" label="Demo"
+           action="'${HOUSE}/@.apps/media-daw-hq/ops/media_daw_hq_action.sh' 'DEMO'"/>
+      <tab id="addtrk" class="tab" label="+ Track"
+           action="'${HOUSE}/@.apps/media-daw-hq/ops/media_daw_hq_action.sh' 'ADD_TRACK'"/>
+      <tab id="mixtgl" class="tab" label="Mixer"
+           action="'${HOUSE}/@.apps/media-daw-hq/ops/media_daw_hq_action.sh' 'MIX_TOGGLE'"/>
+    </tabbar>
+    <tabbar class="tab-bar">
+      <tab id="rew" class="tab" label="|&lt;"
+           action="'${HOUSE}/@.apps/media-daw-hq/ops/media_daw_hq_action.sh' 'REW'"/>
+      <tab id="stop" class="tab" label="[]"
+           action="'${HOUSE}/@.apps/media-daw-hq/ops/media_daw_hq_action.sh' 'STOP'"/>
+      <tab id="play" class="tab ${play_cls}" label="${play_label}"
+           action="'${HOUSE}/@.apps/media-daw-hq/ops/media_daw_hq_action.sh' 'PLAY'"/>
+      <tab id="rec" class="tab ${rec_cls}" label="(o) rec"
+           action="'${HOUSE}/@.apps/media-daw-hq/ops/media_daw_hq_action.sh' 'REC'"/>
+      <tab id="cyc" class="tab ${cycle_cls}" label="cyc"
+           action="'${HOUSE}/@.apps/media-daw-hq/ops/media_daw_hq_action.sh' 'CYCLE'"/>
+      <tab id="bpmdn" class="tab" label="BPM -"
+           action="'${HOUSE}/@.apps/media-daw-hq/ops/media_daw_hq_action.sh' 'BPM:-'"/>
+      <tab id="bpmup" class="tab" label="BPM +"
+           action="'${HOUSE}/@.apps/media-daw-hq/ops/media_daw_hq_action.sh' 'BPM:+'"/>
+    </tabbar>
+    <canvas id="view" class="ms-canvas" sprite="${canvas_raw}"/>
+    <text label="${gutter}" class="ms-gutter"/>
+    <repeat count="${n_tracks}" bind="t">
+      <item id="trk${t.#}" class="daw-trk ${t.cls}" label="${t.hdr}"
+            action="'${HOUSE}/@.apps/media-daw-hq/ops/media_daw_hq_action.sh' 'SEL_TRACK:${t.#}'"
+            backspace_action="'${HOUSE}/@.apps/media-daw-hq/ops/media_daw_hq_action.sh' 'MUTE:${t.#}'"/>
+    </repeat>
+    <repeat count="${n_mix}" bind="m">
+      <item id="mx${m.#}" class="daw-mx" label="${m.fader}"
+            action="'${HOUSE}/@.apps/media-daw-hq/ops/media_daw_hq_action.sh' 'FADER:${m.#}'"/>
+    </repeat>
   </page>
 </window>

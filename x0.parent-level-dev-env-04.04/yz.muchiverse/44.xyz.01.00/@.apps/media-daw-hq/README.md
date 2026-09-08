@@ -1,20 +1,17 @@
-# media-daw-hq — conversion skeleton (2026-09-08)
+# media-daw-hq — house-spec DAW (HOW2_DAW pass-2)
 
-## Source
-`44.xyz.01.00/103.media-studio/103.daw/` — read `HOW2_DAW.md` (it has a
-"pass 1 vs pass 2" table — pass 2 is the target: looks like Logic/
-GarageBand, not a MIDI toy).
+Source: `103.media-studio/103.daw/`. Page-level `<canvas>` + tabbars +
+pchq chrome (`_` `!` `X`). Nested canvas-in-panel is not laid out.
 
-## Target layout (house spec — build in `media-daw-hq.xhtpm`)
-- **Transport**: `|<  Stop  Play  Rec  Cycle` + LCD `bars.beats.ticks` + BPM
-- **Bar ruler** with beat ticks + cycle highlight
-- **Arrangement** (top): horizontal track lanes + colored MIDI region blocks
-- **Track headers**: color chip, icon, M/S/R, mini fader ; `+ Track` button (`=` key)
-- **Piano roll editor** underneath the arrangement
-- **Mixer/inserts drawer** toggled by `B` (bottom strip)
+## Works now
+- Demo 4 tracks (Drums/Bass/Keys/Lead) with MIDI-ish clip blocks
+- Transport: rew / stop / play / rec / cycle / BPM +/-
+- Arrangement lanes + playhead + piano roll for the selected track
+- Track list (click select, backspace mute), Mixer toggle → fader chips
+- File-backed actions only. No renderer verbs. Visual playhead; no WAV/VST yet.
 
-## Skeleton status
-Compiles, launches, shows in HQ toys, round-trips one action. Real
-layout + audio engine: TODO(grok). Migration, not redesign — keep
-every `HOW2_DAW.md` feature. Retire `103.media-studio/103.daw/` (leave
-a pointer) at parity.
+## Test
+```
+bash 44.xyz.01.00/@.apps/media-daw-hq/button.sh run
+dump_frame_png_op.+x 0xWINDOW /tmp/daw.png
+```

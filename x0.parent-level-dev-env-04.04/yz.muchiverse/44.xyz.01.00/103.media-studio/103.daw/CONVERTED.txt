@@ -1,0 +1,3 @@
+Converted house-spec toy:
+  44.xyz.01.00/@.apps/media-daw-hq/
+Glut binary is the source/reference until HOW2_DAW audio/VST parity.
