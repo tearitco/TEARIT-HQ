@@ -8120,14 +8120,21 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             }
             if (window_is_dock() && g_dock_menu_win && cw == g_dock_menu_win &&
                 ev->xbutton.button == 1 && g_dock_drop_lo >= 1) {
-                int row = ev->xbutton.y / DOCK_BAR_H;
-                int nav = g_dock_drop_lo + row;
-                if (row >= 0 && nav >= g_dock_drop_lo && nav <= g_dock_drop_hi &&
-                    nav <= g_n_nav && g_nav[nav - 1]) {
-                    g_focus_nav = nav;
-                    activate_focused();
-                    if (!g_quit) redraw();
-                    return;
+                /* Hit-test laid-out row boxes. y/DOCK_BAR_H was off-by-one
+                 * on the long toys list (Piececraft-HQ vs Piececraft). */
+                int px = ev->xbutton.x, py = ev->xbutton.y;
+                int i0 = g_dock_drop_lo - 1, i1 = g_dock_drop_hi;
+                if (i1 > g_n_nav) i1 = g_n_nav;
+                for (int i = i0; i < i1; i++) {
+                    Elem *it = g_nav[i];
+                    if (!it) continue;
+                    if (px >= it->x && px < it->x + it->w &&
+                        py >= it->y && py < it->y + it->h) {
+                        g_focus_nav = it->nav_index;
+                        activate_focused();
+                        if (!g_quit) redraw();
+                        return;
+                    }
                 }
             }
         }

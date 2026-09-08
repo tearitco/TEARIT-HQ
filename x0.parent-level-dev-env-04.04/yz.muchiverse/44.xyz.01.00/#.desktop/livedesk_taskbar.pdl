@@ -27,7 +27,9 @@ SECTION      | hq_menu_10_label    | !kill hq
 SECTION      | hq_menu_10_cmd      | sh *.monads/*.livedesk-taskbar/ops/kill_hq_windows.sh .
 SECTION      | hq_menu_11_label    | debug
 SECTION      | hq_menu_11_cmd      | livedesk:open-palette:debug
-SECTION      | hq_menu_12_label    | cancel
+SECTION      | hq_menu_12_label    | piececraft-hq
+SECTION      | hq_menu_12_cmd      | livedesk:open-piececraft-hq
+SECTION      | hq_menu_13_label    | cancel
 
 SECTION      | file_menu_1_label   | new-desk
 SECTION      | file_menu_1_cmd     | livedesk:new-desk

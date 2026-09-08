@@ -4377,6 +4377,22 @@ void ktb_hq_activate(KtbState *s, int row) {
         (void)rc;
 #endif
         ktb_hq_close(s);
+    } else if (strcmp(m->command, "livedesk:open-piececraft-hq") == 0) {
+        /* HQ-menu pin: toys list is 17+ rows; click y/row used to hit
+         * piececraft-xyz instead of piececraft-hq. Same button.sh run
+         * as livedesk:open-toy. */
+#ifdef _WIN32
+        char launch[KTB_PATH_BUF];
+        snprintf(launch, sizeof(launch), "%s/@.apps/piececraft-hq/button.sh", s->house_root);
+        (void)launch;
+#else
+        char sh[KTB_PATH_BUF * 3];
+        snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c 'sh \"%s/@.apps/piececraft-hq/button.sh\" run' >/dev/null 2>&1 &",
+                 s->house_root);
+        int rc = ktb_system_recorded(s->house_root, sh);
+        (void)rc;
+#endif
+        ktb_hq_close(s);
     } else if (strncmp(m->command, "livedesk:clock:", 15) == 0) {
         /* Cell 15 clock menu dispatch (15.clock-design.md §5.3). All
          * writers shell out to lc_clock (control plane) which does the
