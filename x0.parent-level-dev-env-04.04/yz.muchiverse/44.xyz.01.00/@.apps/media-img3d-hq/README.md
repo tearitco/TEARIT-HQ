@@ -1,31 +1,36 @@
-# media-img3d-hq — conversion skeleton (2026-09-08)
+# media-img3d-hq — combined 2D image + 3D viewport (house-spec)
 
-**Owner's call:** the image editor and the 3D/Blender-clone become
-**ONE app** — a 2D view and a 3D view of the same project, sharing
-**piececraft-hq-style camera controls** (mode toggle, drag-look,
-scroll-zoom, WASD/arrow pan). They were only separate for build ease.
+**Owner's call:** one toy, 2D and 3D views, shared camera. Source glut
+apps stay under `103.media-studio/` until this reaches full HOW2 parity.
 
-## Source (out-of-house-spec, unchanged for now)
-- `44.xyz.01.00/103.media-studio/103.img-editor/`  — `HOW2_IMAGE.md`
-- `44.xyz.01.00/103.media-studio/103.3d=blender-clone/` — `HOW2_BLEND.md`
+## Layout (skeleton 2)
 
-## Target layout (house spec — build in `media-img3d-hq.xhtpm`)
-- **File** menu row (New / Demo / open / save)
-- **Mode toggle**: 2D | 3D (one button, camera + tool set swap)
-- **Tool strip** (sidebar): 2D = B/E/G/R/I/H ; 3D = Select/Grab/Rotate/Scale
-- **Canvas** (`<canvas>`): 2D = paint surface w/ transparency checker ;
-  3D = viewport (grid, axes, meshes). Reuse `kh_draw_canvas` + a
-  manager-fed framebuffer, same as the piececraft board.
-- **Layers / Outliner** (right): 2D layers 1–6 + visibility ; 3D object list
-- **Status** bar: tool, brush size / transform, zoom, fps
+Sidebar: File tabs (New/Demo/Export), 2D|3D mode, tool strip, camera
+row, layers/outliner. Panel: status + `<canvas sprite="${canvas_raw}">`.
 
-## Camera
-Reuse the Interact-Mode relay + `&.widgits/board-viewer/ops/bv_menu_input.c`
-camera dispatch (`ARROW_*=1000..1003`). See
-`09-appendix/PLAN-pchq-interact-camera-pov.md`.
+## What works now
 
-## Skeleton status
-Compiles, launches, shows in HQ toys, round-trips one action. Real
-layout + engine wiring: TODO(grok). Keep every `HOW2_*` feature.
-Retire the two `103.media-studio/` source dirs (leave a pointer) once
-this reaches parity.
+- Manager publishes `_ui.txt` and writes `state/canvas.raw` + receipt
+  (`overlay_w/h=320x240`).
+- 2D: checker composite, 6 layers, vis toggle (backspace on row),
+  tools B/E/G/R/I/H, brush +/-, fg/bg swap, **STROKE** applies the
+  active tool at canvas center (file-backed stand-in for drag-paint).
+- 3D: software wireframe cube/sphere/ground, orbit/pan/zoom via CAM:*,
+  select in outliner, Grab/Rot/Scl nudge with camera keys while that
+  tool is active, +cube/+sphere.
+- Actions only through `ops/media_img3d_hq_action.sh`. **Zero**
+  `khtpm_core_render.c` changes.
+
+## Still open vs HOW2
+
+- Real canvas pointer paint / MMB orbit (needs a **generic** canvas
+  click/drag attribute — do not add `g_is_media`).
+- PNG/JPG drop import, ffmpeg export PNG, Assimp `.obj` import.
+- Undo stack, eyedrop from true canvas coords.
+
+## Test
+
+```
+bash 44.xyz.01.00/@.apps/media-img3d-hq/button.sh run
+# read state/media_img3d_hq_ui.txt ; inject via entity_menu_history/<pid>.txt
+```

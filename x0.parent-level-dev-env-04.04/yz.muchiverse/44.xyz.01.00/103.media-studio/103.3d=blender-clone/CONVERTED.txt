@@ -1,0 +1,4 @@
+Converted house-spec toy lives at:
+  44.xyz.01.00/@.apps/media-img3d-hq/
+(img-editor + this blender-clone merged into one 2D/3D app.)
+This glut binary is the source/reference until HOW2_BLEND.md parity is complete.
