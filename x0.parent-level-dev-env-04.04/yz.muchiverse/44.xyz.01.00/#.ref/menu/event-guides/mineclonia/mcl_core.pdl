@@ -1,0 +1,26 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+SHEET        | world              | mineclonia
+SHEET        | pack               | ITEMS
+SHEET        | mod                | mcl_core
+SHEET        | img_root           | (MINECLONIA-ASSET-SOURCE-LOCATION.pdl img_root)/ITEMS/mcl_core/textures
+TILE         | id=dirt            | tex=default_dirt.png | trigger=none | db=Tilesets | cmds=- | need=- | note=passable floor
+TILE         | id=stone           | tex=default_stone.png | trigger=none | db=Tilesets | cmds=- | need=- | note=solid; mine → change_items
+TILE         | id=wood            | tex=default_wood.png | trigger=none | db=Tilesets | cmds=- | need=- | note=planks
+TILE         | id=sand            | tex=default_sand.png | trigger=none | db=Tilesets | cmds=- | need=- | note=falling block (no gravity cmd yet)
+TILE         | id=gravel          | tex=default_gravel.png | trigger=none | db=Tilesets | cmds=- | need=- | note=falling block
+TILE         | id=obsidian        | tex=default_obsidian.png | trigger=none | db=Tilesets | cmds=- | need=- | note=portal frame
+TILE         | id=bedrock         | tex=mcl_core_bedrock.png | trigger=none | db=Tilesets | cmds=- | need=- | note=unbreakable
+TILE         | id=coal_ore        | tex=mcl_core_coal_ore.png | trigger=on-click | db=Items | cmds=change_items,change_exp | need=- | note=mine drop coal
+TILE         | id=iron_hint       | tex=default_stone.png | trigger=on-click | db=Items | cmds=change_items,change_exp | need=- | note=iron ore texture is often default_mineral_iron; treat as change_items
+TILE         | id=gold_block      | tex=default_gold_block.png | trigger=on-click | db=Items | cmds=change_gold | need=- | note=storage block; or change_items gold_ingot
+TILE         | id=diamond_ore     | tex=mcl_core_diamond_ore.png | trigger=on-click | db=Items | cmds=change_items,change_exp | need=- | note=mine drop diamond
+TILE         | id=emerald_ore     | tex=mcl_core_emerald_ore.png | trigger=on-click | db=Items | cmds=change_items,change_exp | need=- | note=mine drop emerald
+TILE         | id=water           | tex=default_water_source_animated.png | trigger=player-touch | db=Tilesets | cmds=change_hp | need=transfer_player | note=swim / drown; no map move cmd
+TILE         | id=lava            | tex=default_lava_source_animated.png | trigger=player-touch | db=Tilesets | cmds=change_hp,change_state | need=- | note=damage + burn state
+TILE         | id=ladder          | tex=default_ladder.png | trigger=player-touch | db=Tilesets | cmds=- | need=set_move_route | note=climb; movement route missing
+TILE         | id=apple           | tex=default_apple.png | trigger=on-click | db=Items | cmds=change_items,change_hp,recover_all | need=- | note=food
+TILE         | id=golden_apple    | tex=mcl_core_apple_golden.png | trigger=on-click | db=Items | cmds=change_items,recover_all,change_state | need=- | note=food + buff
+TILE         | id=sapling         | tex=default_sapling.png | trigger=on-click | db=Items | cmds=control_switch,wait | need=- | note=grow tree (switch + wait stand-in)
+TILE         | id=cactus          | tex=mcl_core_cactus_side.png | trigger=player-touch | db=Tilesets | cmds=change_hp | need=- | note=contact damage
+TILE         | id=barrier         | tex=mcl_core_barrier.png | trigger=none | db=Tilesets | cmds=- | need=- | note=invisible wall

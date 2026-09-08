@@ -1,0 +1,16 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+SHEET        | world              | cdda
+SHEET        | dir                | pngs_normal_32x32
+SHEET        | tileset            | furniture
+SHEET        | img_root           | (CDDA-ASSET-SOURCE-LOCATION.pdl img_root)/pngs_normal_32x32/furniture
+TILE         | id=f_bed           | tex=f_bed/f_bed_edge_ns.png | trigger=on-click | db=System | cmds=show_choices,wait,recover_all | need=fadeout | note=sleep
+TILE         | id=f_chair         | tex=f_chair | trigger=on-click | db=Tilesets | cmds=wait | need=set_move_route | note=sit
+TILE         | id=f_armchair      | tex=f_armchair | trigger=on-click | db=Tilesets | cmds=wait | need=- | note=sit
+TILE         | id=f_sofa          | tex=f_sofa | trigger=on-click | db=Tilesets | cmds=wait | need=- | note=sit
+TILE         | id=f_desk          | tex=f_desk | trigger=on-click | db=Items | cmds=select_item,show_text | need=- | note=search drawers
+TILE         | id=f_table         | tex=f_table | trigger=none | db=Tilesets | cmds=- | need=- | note=blocker
+TILE         | id=f_metal_crate   | tex=f_metal_crate | trigger=on-click | db=Items | cmds=select_item,change_items | need=- | note=loot crate
+TILE         | id=f_toilet        | tex=f_toilet | trigger=on-click | db=States | cmds=show_text,change_hp,change_state | need=- | note=morale / dirty
+TILE         | id=f_bathtub       | tex=f_bathtub | trigger=on-click | db=States | cmds=wait,recover_all | need=- | note=wash
+TILE         | id=f_pool_table    | tex=f_pool_table | trigger=on-click | db=System | cmds=show_text,wait,change_exp | need=- | note=idle minigame stand-in

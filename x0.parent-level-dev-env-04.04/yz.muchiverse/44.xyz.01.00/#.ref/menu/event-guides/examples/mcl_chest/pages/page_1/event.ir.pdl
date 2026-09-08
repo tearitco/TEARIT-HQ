@@ -1,0 +1,10 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | mcl_chest
+STATE        | source             | events-hq
+STATE        | graphic            | ITEMS/mcl_chests/textures/mcl_chests_ender.png
+STATE        | trigger            | on-click
+STATE        | guide              | event-guides/mineclonia/interact.pdl TILE id=chest
+NODE         | id=1 type=show_text | text=You open the chest.
+NODE         | id=2 type=select_item | 
+NODE         | id=3 type=change_items | 

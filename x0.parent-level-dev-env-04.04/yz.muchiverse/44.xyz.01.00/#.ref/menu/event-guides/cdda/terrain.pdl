@@ -1,0 +1,15 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+SHEET        | world              | cdda
+SHEET        | dir                | pngs_normal_32x32
+SHEET        | tileset            | terrain
+SHEET        | img_root           | (CDDA-ASSET-SOURCE-LOCATION.pdl img_root)/pngs_normal_32x32/terrain
+TILE         | id=t_door          | tex=t_door/t_door_c.png | trigger=on-click | db=Tilesets | cmds=control_switch,show_text | need=transfer_player | note=closed door; open graphic t_door_o.png; example examples/cdda_door
+TILE         | id=t_door_locked   | tex=t_door/t_door_locked.png | trigger=on-click | db=Tilesets | cmds=if,show_text,control_switch | need=- | note=needs key item (select_item) then unlock
+TILE         | id=t_door_metal    | tex=t_door_metal | trigger=on-click | db=Tilesets | cmds=control_switch | need=- | note=metal door folder
+TILE         | id=t_door_bar      | tex=t_door_bar | trigger=on-click | db=Tilesets | cmds=control_switch,show_text | need=- | note=jail bars
+TILE         | id=t_door_glass    | tex=t_door_glass | trigger=on-click | db=Tilesets | cmds=control_switch | need=- | note=see-through
+TILE         | id=stairs          | tex=stairs | trigger=on-click | db=Tilesets | cmds=show_choices | need=transfer_player | note=up/down; Transfer Player missing so choices only
+TILE         | id=t_dirtfloor     | tex=t_dirtfloor | trigger=none | db=Tilesets | cmds=- | need=- | note=passable
+TILE         | id=t_brick_wall    | tex=t_brick_wall | trigger=none | db=Tilesets | cmds=- | need=- | note=impassable
+TILE         | id=t_concrete_wall | tex=t_concrete_wall | trigger=none | db=Tilesets | cmds=- | need=- | note=impassable

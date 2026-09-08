@@ -1,0 +1,11 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | cdda_door
+STATE        | source             | events-hq
+STATE        | graphic            | pngs_normal_32x32/terrain/t_door/t_door_c.png
+STATE        | graphic_open       | pngs_normal_32x32/terrain/t_door/t_door_o.png
+STATE        | trigger            | on-click
+STATE        | guide              | event-guides/cdda/terrain.pdl TILE id=t_door
+NODE         | id=1 type=show_text | text=The door creaks.
+NODE         | id=2 type=control_switch | switch_name=door_t_door|switch_value=1
+NODE         | id=3 type=comment | text=Transfer Player would go here when map coords exist.

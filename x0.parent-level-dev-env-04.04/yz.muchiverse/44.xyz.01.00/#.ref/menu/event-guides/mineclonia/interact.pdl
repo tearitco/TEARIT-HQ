@@ -1,0 +1,19 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+SHEET        | world              | mineclonia
+SHEET        | pack               | ITEMS
+SHEET        | note               | Interactables that should become map events (graphic = tex, page trigger below)
+TILE         | id=chest           | tex=mcl_chests/textures/mcl_chests_ender.png | trigger=on-click | db=Items | cmds=show_text,select_item,change_items | need=shop_processing | note=container; example event_pkg in examples/mcl_chest
+TILE         | id=trapped_chest   | tex=mcl_chests/textures/mcl_chests_trapped.png | trigger=on-click | db=Items | cmds=select_item,change_hp,show_animation | need=- | note=loot + trap
+TILE         | id=door_wood       | tex=mcl_doors/textures/mcl_doors_door_acacia.png | trigger=on-click | db=Tilesets | cmds=control_switch,show_text | need=transfer_player | note=toggle open; room change needs Transfer Player
+TILE         | id=door_steel      | tex=mcl_doors/textures/doors_item_steel.png | trigger=on-click | db=Tilesets | cmds=control_switch,if,show_text | need=- | note=locked unless switch
+TILE         | id=trapdoor        | tex=mcl_doors/textures/doors_trapdoor.png | trigger=on-click | db=Tilesets | cmds=control_switch | need=set_move_route | note=vertical hatch
+TILE         | id=furnace         | tex=mcl_furnaces/textures/default_furnace_front.png | trigger=on-click | db=Items | cmds=select_item,wait,change_items | need=- | note=smelt: wait then swap item
+TILE         | id=furnace_on      | tex=mcl_furnaces/textures/default_furnace_front_active.png | trigger=parallel | db=Items | cmds=wait,show_animation | need=play_se | note=active loop
+TILE         | id=bed             | tex=mcl_beds/textures/mcl_beds_bed_red.png | trigger=on-click | db=System | cmds=show_choices,wait,recover_all | need=fadeout,fadein | note=sleep; fade cmds missing so wait stands in
+TILE         | id=tnt             | tex=mcl_tnt/textures/default_tnt_side.png | trigger=on-click | db=Animations | cmds=wait,show_animation,erase_event,change_hp | need=play_se | note=fuse then remove
+TILE         | id=sign            | tex=mcl_signs/textures/_0.png | trigger=on-click | db=Terms | cmds=show_text,scrolling_text | need=- | note=read sign
+TILE         | id=crafting_table  | tex=mcl_crafting_table/textures/crafting_workbench_top.png | trigger=on-click | db=Items | cmds=call_common_event,select_item,change_items | need=shop_processing | note=recipe UI not built; common event stub
+TILE         | id=hopper          | tex=mcl_hoppers/textures/mcl_hoppers_item.png | trigger=parallel | db=Items | cmds=change_items,wait | need=set_move_route | note=item pipe
+TILE         | id=carrot          | tex=mcl_farming/textures/farming_carrot.png | trigger=on-click | db=Items | cmds=change_items,change_hp | need=- | note=crop harvest
+TILE         | id=bread           | tex=mcl_farming/textures/farming_bread.png | trigger=on-click | db=Items | cmds=change_items,change_hp | need=- | note=food

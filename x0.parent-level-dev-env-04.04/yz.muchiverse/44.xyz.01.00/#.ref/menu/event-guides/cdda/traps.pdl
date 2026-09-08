@@ -1,0 +1,13 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+SHEET        | world              | cdda
+SHEET        | dir                | pngs_normal_32x32
+SHEET        | tileset            | traps
+SHEET        | img_root           | (CDDA-ASSET-SOURCE-LOCATION.pdl img_root)/pngs_normal_32x32/traps
+TILE         | id=tr_beartrap     | tex=tr_beartrap/tr_beartrap.png | trigger=player-touch | db=States | cmds=change_hp,change_state,show_text | need=play_se | note=leg damage + immobilize state
+TILE         | id=tr_landmine     | tex=tr_landmine | trigger=player-touch | db=Animations | cmds=show_animation,change_hp,erase_event | need=play_se | note=explode once
+TILE         | id=tr_landmine_buried | tex=tr_landmine_buried | trigger=player-touch | db=Animations | cmds=if,show_text,change_hp | need=- | note=hidden; Perception check = if switch
+TILE         | id=tr_tripwire     | tex=tr_tripwire | trigger=player-touch | db=Tilesets | cmds=control_switch,show_text | need=- | note=sets alarm switch
+TILE         | id=tr_goo          | tex=tr_goo | trigger=player-touch | db=States | cmds=change_state,change_hp | need=- | note=acid / goo
+TILE         | id=tr_portal       | tex=tr_portal | trigger=on-click | db=System | cmds=show_choices,show_text | need=transfer_player,battle_processing | note=nether portal analog
+TILE         | id=armed_trap      | tex=armed_trap | trigger=player-touch | db=States | cmds=change_hp | need=- | note=generic armed

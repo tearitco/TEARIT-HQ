@@ -1,0 +1,17 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+SHEET        | world              | cdda
+SHEET        | dir                | pngs_normal_32x32
+SHEET        | tileset            | items
+SHEET        | img_root           | (CDDA-ASSET-SOURCE-LOCATION.pdl img_root)/pngs_normal_32x32/items
+SHEET        | note               | Sample of folders, not the full 1k+ item tree. Pickup = on-click change_items then erase_event.
+TILE         | id=1st_aid_box     | tex=1st_aid_box/1st_aid_box.png | trigger=on-click | db=Items | cmds=change_items,recover_all,erase_event | need=- | note=heal kit
+TILE         | id=2x4             | tex=2x4 | trigger=on-click | db=Items | cmds=change_items,erase_event | need=- | note=construction mat
+TILE         | id=arming_sword    | tex=arming_sword | trigger=on-click | db=Weapons | cmds=change_weapons,erase_event | need=- | note=equip later via change_equipment
+TILE         | id=armor_riot      | tex=armor_riot | trigger=on-click | db=Armors | cmds=change_armors,erase_event | need=- | note=db Armors tab still placeholder
+TILE         | id=axes            | tex=axes | trigger=on-click | db=Weapons | cmds=change_weapons,erase_event | need=- | note=tool/weapon
+TILE         | id=backpacks       | tex=backpacks | trigger=on-click | db=Armors | cmds=change_armors,erase_event | need=- | note=container slot
+TILE         | id=ammunition      | tex=ammunition | trigger=on-click | db=Items | cmds=change_items,erase_event | need=- | note=ammo stack
+TILE         | id=anvil           | tex=anvil | trigger=on-click | db=Items | cmds=call_common_event | need=shop_processing | note=crafting station as furniture-item
+TILE         | id=bat             | tex=bat | trigger=on-click | db=Weapons | cmds=change_weapons,erase_event | need=- | note=melee
+TILE         | id=aluminum_stepladder | tex=aluminum_stepladder | trigger=on-click | db=Items | cmds=change_items | need=set_move_route | note=climb aid

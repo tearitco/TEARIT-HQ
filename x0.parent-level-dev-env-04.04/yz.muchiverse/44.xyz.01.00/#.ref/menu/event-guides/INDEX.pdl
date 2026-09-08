@@ -1,0 +1,19 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+SHEET        | mineclonia/mcl_core.pdl     | terrain + ores + fluids (ITEMS/mcl_core)
+SHEET        | mineclonia/interact.pdl     | doors, chests, furnace, bed, tnt, signs, craft, hopper
+SHEET        | cdda/terrain.pdl            | UltiCa pngs_normal_32x32/terrain (doors, stairs, water)
+SHEET        | cdda/furniture.pdl          | beds, chairs, crates, toilet, table
+SHEET        | cdda/traps.pdl              | beartrap, landmine, tripwire, portal
+SHEET        | cdda/items.pdl              | sample item folders that map to Change Items / Recover
+EXAMPLE      | examples/mcl_chest/pages/page_1/event.ir.pdl | on-click chest → show_text + select_item
+EXAMPLE      | examples/cdda_door/pages/page_1/event.ir.pdl | on-click door → control_switch + show_text
+NOTE         | registry            | #.ref/menu/event_commands.registry.pdl is the live command list
+NOTE         | remaining_stale     | #.ref/menu/event.commands.remaining.txt still lists Show Choices / Control Switch as missing; those ARE in the registry + have mr_* ops. Trust the registry, not remaining.txt.
+GAP          | db_tabs             | db-hq-pal has all 15 RMMV tabs in the tabbar; only Common Events is a real editable settings panel. Actors/Items/Weapons/… are sidebar lists / placeholders (db-tabs-remaining.txt ladder 1–14).
+GAP          | tile_persist        | Placed picker tiles write #.desktop/tiles/ and do NOT append DESK rows (TILE-PLACEMENT-DESK-PERSISTENCE-GAP-2026-08-29.txt).
+GAP          | map_move            | Transfer Player / Set Movement Route / Scroll Map have no position state file yet (sep-1-events-SOS.md Tier 4).
+GAP          | battle_shop         | Battle Processing + Shop Processing not started (shop_open common event is a NAME-only stub).
+GAP          | audio_screen        | Play SE/BGM/ME and Fade/Tint/Flash/Shake are not in the registry (SOS Tier 2–3).
+GAP          | self_switch_timer   | Control Self Switch + Control Timer listed in remaining.txt, not in registry.
+GAP          | change_items_state  | change_items/weapons/armors ARE in the registry, but db-hq Items/Weapons/Armors tabs are not live, so those commands have nowhere canonical to read item defs from.

@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+NOTE         | why                | Event-guide sheets map a palettes tile (Mineclonia / CDDA / later DF) onto the house events-hq registry (`#.ref/menu/event_commands.registry.pdl`) the same way an RMMV map event points at a character graphic + a page of commands.
+NOTE         | not_runtime        | These sheets are AUTHORING DATA, not compiled event.pal. events-hq still authors NODE rows in event.ir.pdl; a placed tile does not auto-run anything until a real event_pkg is attached (desktop place-from-armed-block is still unwired).
+NOTE         | sheet_layout       | One .pdl per pack/mod (or CDDA category). INDEX.pdl lists sheets. Worked event.ir.pdl examples live under examples/.
+FIELD        | TILE.id            | picker stem / node id (no spaces)
+FIELD        | TILE.tex           | path under the world's img_root (Mineclonia mods/ or UltiCa pngs_normal_32x32/)
+FIELD        | TILE.trigger       | none | on-click | player-touch | autorun | parallel   (RMMV page trigger names)
+FIELD        | TILE.db            | db-hq tab this tile would populate if that tab were live (Items / Tilesets / Enemies / …)
+FIELD        | TILE.cmds          | comma list of COMMAND types from event_commands.registry.pdl that already exist
+FIELD        | TILE.need          | comma list of RMMV commands this tile wants that are NOT in the registry yet
+FIELD        | TILE.note          | one-line designer hint
