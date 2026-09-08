@@ -1121,6 +1121,333 @@ static void push_node(duk_context *ctx, NbNode *n) {
     duk_remove(ctx, -2);
 }
 
+/* ============================= rung 6: file-backed document.cookie jar =====
+ * document.cookie getter/setter as C natives (the prelude in nb_host.h leaves
+ * a configurable stub; install_dom redefines it with these). The jar lives on
+ * disk at $NB_COOKIES_FILE (fallback $HOME/.config/nbjs/nb_cookies.txt), so
+ * cookies survive across LOADs — each LOAD runs in a fresh Duktape heap, so
+ * the file is the only persistence. Jar line format (TAB-separated legend):
+ *   host<TAB>path<TAB>name<TAB>value<TAB>expires_epoch<TAB>secure
+ * host "*" = set from a URI with no host. expires 0 = session cookie.
+ * RFC 6265 subset: name=value + Domain/Path/Expires/Max-Age/Secure.
+ * Reads tolerate damage: junk lines are skipped, not fatal. */
+#define COOKIE_MAX_ENT 512
+
+typedef struct {
+    char host[128];
+    char path[256];
+    char name[128];
+    char value[1024];
+    time_t expires;
+    int secure;
+} CookieEnt;
+
+static char g_cookie_path[PATH_MAX];
+static int  g_cookie_path_set = 0;
+
+static void mkdir_p(const char *path) {
+    char tmp[PATH_MAX];
+    snprintf(tmp, sizeof(tmp), "%s", path);
+    for (char *p = tmp + 1; *p; p++) {
+        if (*p == '/') { *p = 0; mkdir(tmp, 0755); *p = '/'; }
+    }
+    mkdir(tmp, 0755);
+}
+
+static void cookie_jar_init(void) {
+    g_cookie_path_set = 1;
+    const char *env = getenv("NB_COOKIES_FILE");
+    if (env && env[0]) { snprintf(g_cookie_path, sizeof(g_cookie_path), "%s", env); return; }
+    const char *home = getenv("HOME");
+    if (home && home[0])
+        snprintf(g_cookie_path, sizeof(g_cookie_path), "%s/.config/nbjs/nb_cookies.txt", home);
+    else
+        g_cookie_path[0] = 0;   /* no writable location: reads '', writes no-op */
+}
+
+/* Split the current g_href into host + request path (bare host/port dropped).
+ * Port numbers are skipped (cookie scoping ignores ports, RFC 6265 §1). */
+static int href_parts(char *hostb, size_t hl, char *pathb, size_t pl) {
+    const char *p = g_href;
+    const char *a = strstr(p, "://");
+    const char *s = a ? a + 3 : p;
+    const char *q = s;
+    int port = 0;
+    while (*q) {
+        if (*q == ':' && !port) { port = 1; q++; continue; }
+        if (port && *q >= '0' && *q <= '9') { q++; continue; }
+        port = 0;
+        if (*q == '/' || *q == '?' || *q == '#') break;
+        q++;
+    }
+    size_t hn = (size_t)(q - s);
+    if (hn >= hl) hn = hl - 1;
+    memcpy(hostb, s, hn); hostb[hn] = 0;
+    const char *ph = q;
+    while (*ph && *ph != '?' && *ph != '#') ph++;
+    size_t pn = (size_t)(ph - q);
+    if (pn >= pl) pn = pl - 1;
+    memcpy(pathb, q, pn); pathb[pn] = 0;
+    if (!pathb[0]) snprintf(pathb, pl, "/");
+    return 1;
+}
+
+/* RFC 6265 §5.1.4 default-path for a Set-Cookie with no explicit Path. */
+static void default_cookie_path(const char *rp, char *out, size_t olen) {
+    if (!rp || rp[0] != '/') { snprintf(out, olen, "/"); return; }
+    const char *r = strrchr(rp, '/');
+    if (!r || r == rp) { snprintf(out, olen, "/"); return; }
+    size_t n = (size_t)(r - rp);
+    if (n >= olen) n = olen - 1;
+    memcpy(out, rp, n); out[n] = 0;
+    if (!out[0]) snprintf(out, olen, "/");
+}
+
+/* RFC 6265 §5.1.4 path-match: `cp` is the cookie path, `rp` the request path. */
+static int cookie_path_match(const char *cp, const char *rp) {
+    if (!cp || !rp) return 0;
+    if (!strcmp(cp, rp)) return 1;
+    size_t n = strlen(cp);
+    if (n == 0) return 1;
+    if (strncmp(rp, cp, n) != 0) return 0;
+    if (cp[n - 1] == '/') return 1;
+    return rp[n] == '/';
+}
+
+static char *trim_c(char *s) {
+    while (*s == ' ' || *s == '\t') s++;
+    size_t n = strlen(s);
+    while (n && (s[n - 1] == ' ' || s[n - 1] == '\t' || s[n - 1] == '\r' || s[n - 1] == '\n'))
+        s[--n] = 0;
+    return s;
+}
+
+static void sanitize_cookie_value(const char *in, char *out, size_t olen) {
+    size_t o = 0;
+    for (const unsigned char *c = (const unsigned char *)in; *c && o + 1 < olen; c++) {
+        if (*c < 0x20 || *c == 0x7f) continue;   /* drop CR/LF/controls (line-injection) */
+        out[o++] = (char)*c;
+    }
+    out[o] = 0;
+}
+
+/* days-from-civil -> UNIX epoch (no TZ dependence; glibc timegm macro-gated). */
+static time_t epoch_from_ymd(int y, int m, int d, int hh, int mi, int ss) {
+    if (m < 3) { m += 12; y--; }
+    int era = (y >= 0 ? y : y - 399) / 400;
+    unsigned yoe = (unsigned)(y - era * 400);
+    unsigned doy = (153u * (unsigned)(m > 2 ? m - 3 : m + 9) + 2) / 5 + (unsigned)d - 1u;
+    unsigned doe = yoe * 365u + yoe / 4u - yoe / 100u + doy;
+    long days = (long)(era * 146097) + (long)doe - 719468L;
+    return (time_t)days * 86400L + hh * 3600L + mi * 60L + ss;
+}
+
+static const char *const COOKIE_MONTHS[12] =
+    { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+
+/* IMF-fixdate ("Sun, 06 Nov 1994 08:49:37 GMT"); (time_t)-1 = unparseable.
+ * Note a real "01 Jan 1970" parses to epoch 0 (a valid instant, NOT the
+ * "no expiry" sentinel — that distinction is handled in the setter). */
+static time_t cookie_datetime(const char *s) {
+    if (!s || !*s) return (time_t)-1;
+    int d = 0, y = 0, hh = 0, mi = 0, ss = 0, mon = -1;
+    char monname[8] = {0};
+    if (sscanf(s, "%*[^,], %d %7s %d %d:%d:%d",
+               &d, monname, &y, &hh, &mi, &ss) == 6) {
+        for (int i = 0; i < 12 && mon < 0; i++)
+            if (!strncasecmp(COOKIE_MONTHS[i], monname, 3)) mon = i;
+        if (mon >= 0 && y >= 1970 && y <= 9999)
+            return epoch_from_ymd(y, mon + 1, d, hh, mi, ss);
+    }
+    return (time_t)-1;
+}
+
+static int cookie_parse_line(char *line, CookieEnt *e) {
+    memset(e, 0, sizeof(*e));
+    char *f[6];
+    int nf = 0;
+    char *q = line;
+    while (nf < 6 && *q) {
+        f[nf] = q;
+        char *t = strchr(q, '\t');
+        if (t) { *t = 0; q = t + 1; }
+        else { q += strlen(q); }
+        nf++;
+    }
+    if (nf < 5) return 0;
+    snprintf(e->host, sizeof(e->host), "%s", f[0]);
+    snprintf(e->path, sizeof(e->path), "%s", f[1]);
+    snprintf(e->name, sizeof(e->name), "%s", f[2]);
+    snprintf(e->value, sizeof(e->value), "%s", f[3]);
+    e->expires = (time_t)atol(f[4]);
+    if (nf >= 6) e->secure = atoi(f[5]) ? 1 : 0;
+    return 1;
+}
+
+static int cookie_load_file(CookieEnt *ents, int maxn) {
+    char *buf = NULL;
+    size_t bl = 0;
+    if (!read_file(g_cookie_path, &buf, &bl)) return 0;
+    int n = 0;
+    char *p = buf;
+    while (p && *p && n < maxn) {
+        char *nl = strchr(p, '\n');
+        if (nl) { *nl = 0; }
+        if (cookie_parse_line(p, &ents[n])) n++;
+        p = nl ? nl + 1 : NULL;
+    }
+    free(buf);
+    return n;
+}
+
+static void cookie_save_file(const CookieEnt *ents, int n) {
+    if (!g_cookie_path[0]) return;
+    char dirbuf[PATH_MAX];
+    snprintf(dirbuf, sizeof(dirbuf), "%s", g_cookie_path);
+    char *slash = strrchr(dirbuf, '/');
+    if (slash) { *slash = 0; if (slash != dirbuf) mkdir_p(dirbuf); }
+    SB b = {0, 0, 0};
+    for (int i = 0; i < n; i++) {
+        sb_put(&b, ents[i].host); sb_put(&b, "\t");
+        sb_put(&b, ents[i].path); sb_put(&b, "\t");
+        sb_put(&b, ents[i].name); sb_put(&b, "\t");
+        sb_put(&b, ents[i].value);
+        char tail[64];
+        snprintf(tail, sizeof(tail), "\t%ld\t%d\n",
+                 (long)ents[i].expires, ents[i].secure ? 1 : 0);
+        sb_put(&b, tail);
+    }
+    char tmp[PATH_MAX];
+    snprintf(tmp, sizeof(tmp), "%s.tmp", g_cookie_path);
+    FILE *f = fopen(tmp, "wb");
+    if (f) {
+        if (b.s && b.len) fwrite(b.s, 1, b.len, f);
+        fclose(f);
+        rename(tmp, g_cookie_path);
+    }
+    free(b.s);
+}
+
+static duk_ret_t nb_dom_cookie_get(duk_context *ctx) {
+    if (!g_cookie_path_set) cookie_jar_init();
+    if (!g_cookie_path[0]) { duk_push_string(ctx, ""); return 1; }
+    char host[128], rp[512];
+    if (!href_parts(host, sizeof(host), rp, sizeof(rp))) { duk_push_string(ctx, ""); return 1; }
+    for (char *c = host; *c; c++) *c = (char)tolower((unsigned char)*c);
+    CookieEnt ents[COOKIE_MAX_ENT];
+    int n = cookie_load_file(ents, COOKIE_MAX_ENT);
+    time_t now = time(NULL);
+    SB b = {0, 0, 0};
+    for (int i = 0; i < n; i++) {
+        if (ents[i].expires && ents[i].expires <= now) continue;   /* expired */
+        if (strcmp(ents[i].host, "*") != 0 &&
+            strcasecmp(ents[i].host, host) != 0) continue;          /* other host */
+        if (!cookie_path_match(ents[i].path, rp)) continue;         /* other path */
+        if (ents[i].name[0] == 0) continue;
+        if (b.len) sb_put(&b, "; ");
+        sb_put(&b, ents[i].name);
+        sb_put(&b, "=");
+        sb_put(&b, ents[i].value);
+    }
+    duk_push_lstring(ctx, b.s ? b.s : "", b.len);
+    free(b.s);
+    return 1;
+}
+
+static duk_ret_t nb_dom_cookie_set(duk_context *ctx) {
+    const char *spec = duk_safe_to_string(ctx, 0);
+    if (!g_cookie_path_set) cookie_jar_init();
+    if (!spec || !*spec || !g_cookie_path[0]) return 0;
+    char host[128], rp[512];
+    if (!href_parts(host, sizeof(host), rp, sizeof(rp))) return 0;
+
+    char buf[4096];
+    snprintf(buf, sizeof(buf), "%s", spec);
+    char name[128] = "", value[1024] = "";
+    char scope_host[128] = "", scope_path[256] = "";
+    char expire_s[256] = "";
+    long maxage = -1;
+    int secure = 0;
+
+    char *tok = strtok(buf, ";");
+    if (!tok) return 0;
+    tok = trim_c(tok);
+    char *eq = strchr(tok, '=');
+    if (!eq || eq == tok) return 0;
+    *eq = 0;
+    snprintf(name, sizeof(name), "%s", tok);
+    sanitize_cookie_value(eq + 1, value, sizeof(value));
+    if (!name[0]) return 0;
+
+    while ((tok = strtok(NULL, ";")) != NULL) {
+        tok = trim_c(tok);
+        if (!strncasecmp(tok, "path=", 5))            snprintf(scope_path, sizeof(scope_path), "%s", tok + 5);
+        else if (!strncasecmp(tok, "domain=", 7))     snprintf(scope_host, sizeof(scope_host), "%s", tok + 7);
+        else if (!strncasecmp(tok, "max-age=", 8))    { maxage = atol(tok + 8); }
+        else if (!strncasecmp(tok, "expires=", 8))    snprintf(expire_s, sizeof(expire_s), "%s", tok + 8);
+        else if (!strcasecmp(tok, "secure"))          secure = 1;
+        /* HttpOnly / SameSite / unknown attrs are accepted and ignored. */
+    }
+
+    if (scope_host[0]) {
+        char *sh = scope_host;
+        while (*sh == '.') sh++;              /* strip leading dots */
+        snprintf(scope_host, sizeof(scope_host), "%s", sh);
+    }
+    if (!scope_host[0]) snprintf(scope_host, sizeof(scope_host), "%s", host);
+    if (!scope_path[0]) default_cookie_path(rp, scope_path, sizeof(scope_path));
+
+    time_t exp = 0;
+    int delete = 0;
+    time_t nowt = time(NULL);
+    if (maxage >= 0) {
+        if (maxage == 0) delete = 1;               /* max-age=0 -> remove */
+        else exp = nowt + maxage;
+    } else if (expire_s[0]) {
+        exp = cookie_datetime(trim_c(expire_s));
+        if (exp == (time_t)-1) exp = 0;            /* unparseable -> session cookie */
+        else if (exp <= nowt) delete = 1;          /* expired date -> remove */
+    }
+
+    CookieEnt ents[COOKIE_MAX_ENT];
+    int n = cookie_load_file(ents, COOKIE_MAX_ENT);
+
+    int found = -1;
+    for (int i = 0; i < n; i++) {
+        if (strcasecmp(ents[i].host, scope_host) != 0) continue;
+        if (ents[i].path[0] && strcmp(ents[i].path, scope_path) != 0) continue;
+        if (strcmp(ents[i].name, name) != 0) continue;
+        found = i;
+        break;
+    }
+    if (delete) {
+        if (found >= 0) {
+            for (int i = found; i + 1 < n; i++) ents[i] = ents[i + 1];
+            n--;
+        }
+    } else {
+        if (found >= 0) {
+            snprintf(ents[found].host, sizeof(ents[found].host), "%s", scope_host);
+            snprintf(ents[found].path, sizeof(ents[found].path), "%s", scope_path);
+            snprintf(ents[found].value, sizeof(ents[found].value), "%s", value);
+            ents[found].expires = exp;
+            ents[found].secure = secure;
+        } else if (n < COOKIE_MAX_ENT) {
+            CookieEnt *e = &ents[n++];
+            memset(e, 0, sizeof(*e));
+            snprintf(e->host, sizeof(e->host), "%s", scope_host);
+            snprintf(e->path, sizeof(e->path), "%s", scope_path);
+            snprintf(e->name, sizeof(e->name), "%s", name);
+            snprintf(e->value, sizeof(e->value), "%s", value);
+            e->expires = exp;
+            e->secure = secure;
+        }
+    }
+    cookie_save_file(ents, n);
+    return 0;
+}
+
 /* Attach the DOM natives to the global `document` object. */
 static void install_dom(duk_context *ctx) {
     duk_get_global_string(ctx, "document");
@@ -1140,6 +1467,13 @@ static void install_dom(duk_context *ctx) {
     duk_push_string(ctx, "head");
     duk_push_c_function(ctx, nb_dom_head, 0);
     duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
+    /* rung-6: document.cookie — file-backed jar. The prelude's configurable
+     * empty-jar stub is replaced by real C natives (survive across LOADs
+     * because the jar is on disk; each LOAD runs a fresh heap). */
+    duk_push_string(ctx, "cookie");
+    duk_push_c_function(ctx, nb_dom_cookie_get, 0);
+    duk_push_c_function(ctx, nb_dom_cookie_set, 1);
+    duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
     duk_pop(ctx);
 }
 
