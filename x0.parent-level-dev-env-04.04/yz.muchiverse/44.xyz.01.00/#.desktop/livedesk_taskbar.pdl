@@ -73,7 +73,11 @@ SECTION      | db_menu_1_label       | db-ez
 SECTION      | db_menu_1_cmd         | livedesk:db-ez-sections
 SECTION      | db_menu_2_label       | db-hq
 SECTION      | db_menu_2_cmd         | livedesk:open-db-hq-pal
-SECTION      | db_menu_3_label       | Cancel
+# sql-hq: placeholder row (2026-09-08) - no _cmd, so it's an inert stub
+# (label-only rows just close the menu on click, same as Menu/Player in
+# the player cell). Wire db_menu_3_cmd once an sql-hq app exists.
+SECTION      | db_menu_3_label       | sql-hq
+SECTION      | db_menu_4_label       | Cancel
 
 SECTION      | palettes_menu_1_label  | canvas-craft
 SECTION      | palettes_menu_1_cmd    | livedesk:open-palette:user-pallet
