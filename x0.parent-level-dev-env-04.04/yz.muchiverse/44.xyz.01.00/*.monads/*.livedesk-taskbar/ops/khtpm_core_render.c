@@ -4787,7 +4787,40 @@ static void assign_nav_and_layout(void) {
         for (int _i = 0; _i < page->n_children; _i++)
             if (strcmp(page->children[_i]->tag, "canvas") == 0) { has_canvas = 1; break; }
 
-        int y = CHROME_H;
+        /* Same <tabbar> strip layout_sidebar_panel() uses (db-hq /
+         * csv-hq). Canvas pages used to skip it, so a skeleton-3 toy
+         * could not put New/Demo/tools on a horizontal tab row. */
+        int canvas_tabbar_h = 0;
+        if (has_canvas) {
+            int row_h_tb = scaled(28);
+            int th = row_h_tb - scaled(4);
+            for (int ci = 0; ci < page->n_children; ci++) {
+                Elem *tabbar = page->children[ci];
+                if (strcmp(tabbar->tag, "tabbar") != 0 || tabbar->n_children <= 0) continue;
+                int ty = CHROME_H + canvas_tabbar_h + scaled(2);
+                int tx = scaled(6);
+                for (int i = 0; i < tabbar->n_children; i++) {
+                    Elem *tab = tabbar->children[i];
+                    if (strcmp(tab->tag, "tab") != 0) continue;
+                    css_compute_style(&g_sheet, tab->tag, tab->id, tab->classes, tab->n_classes, 0, &tab->style);
+                    int tw = scaled(34);
+                    if (font_ui && tab->label[0]) {
+                        XGlyphInfo gi;
+                        XftTextExtentsUtf8(dpy, font_ui, (const FcChar8 *)tab->label, (int)strlen(tab->label), &gi);
+                        tw += gi.xOff;
+                    }
+                    tab->x = tx; tab->y = ty; tab->w = tw; tab->h = th;
+                    tab->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = tab;
+                    tx += tw + scaled(3);
+                }
+                if (tx + scaled(6) > g_win_w) { g_win_w = tx + scaled(6); g_window->w = g_win_w; }
+                tabbar->x = 0; tabbar->y = CHROME_H + canvas_tabbar_h; tabbar->w = g_win_w; tabbar->h = row_h_tb;
+                css_compute_style(&g_sheet, tabbar->tag, tabbar->id, tabbar->classes, tabbar->n_classes, 0, &tabbar->style);
+                canvas_tabbar_h += row_h_tb;
+            }
+        }
+
+        int y = CHROME_H + canvas_tabbar_h;
         int chrome_x = g_win_w - 8;      /* has_canvas only */
         int row_x = 0, row_h = 0;        /* has_canvas horizontal-row cursor */
         for (int i = 0; i < page->n_children; i++) {

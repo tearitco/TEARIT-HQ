@@ -1,30 +1,38 @@
-<!-- media-3d-hq — skeleton 3 (page-level canvas). Nested canvas in a
-     <panel> is not laid out by the shared renderer. -->
+<!-- media-3d-hq — page-level canvas + tabbar + pchq chrome. -->
 <window label="Muchi Blend - ${status_line}" class="database-window" vars="state/media_3d_hq_ui.txt">
   <module src="@.apps/media-3d-hq/ops/+x/media_3d_hq_manager.+x" id="_"/>
   <page name="main">
-    <item id="new" class="ms-btn" label="New"
-          action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'NEW'"/>
-    <item id="demo" class="ms-btn" label="Demo"
-          action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'DEMO'"/>
-    <item id="tsel" class="ms-btn ${tSEL}" label="Sel"
-          action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'TOOL:SEL'"/>
-    <item id="tgr" class="ms-btn ${tGRAB}" label="Grab"
-          action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'TOOL:GRAB'"/>
-    <item id="trot" class="ms-btn ${tROT}" label="Rot"
-          action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'TOOL:ROT'"/>
-    <item id="tscl" class="ms-btn ${tSCL}" label="Scl"
-          action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'TOOL:SCL'"/>
-    <item id="cL" class="ms-btn" label="orb&lt;"
-          action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'CAM:L'"/>
-    <item id="cR" class="ms-btn" label="orb&gt;"
-          action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'CAM:R'"/>
-    <item id="zin" class="ms-btn" label="z+"
-          action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'CAM:IN'"/>
-    <item id="zout" class="ms-btn" label="z-"
-          action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'CAM:OUT'"/>
-    <item id="addc" class="ms-btn" label="+cube"
-          action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'ADD:CUBE'"/>
+    <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
+    <item id="fullscreen" class="chrome-btn" label="!" onclick="TOGGLE_FULLSCREEN"/>
+    <item id="minimize" class="chrome-btn" label="_" onclick="MINIMIZE"/>
+    <tabbar class="tab-bar">
+      <tab id="new" class="tab" label="New"
+           action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'NEW'"/>
+      <tab id="demo" class="tab" label="Demo"
+           action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'DEMO'"/>
+      <tab id="addc" class="tab" label="+ Cube"
+           action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'ADD:CUBE'"/>
+      <tab id="adds" class="tab" label="+ Sph"
+           action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'ADD:SPHERE'"/>
+    </tabbar>
+    <tabbar class="tab-bar">
+      <tab id="tsel" class="tab ${tSEL}" label="Sel"
+           action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'TOOL:SEL'"/>
+      <tab id="tgr" class="tab ${tGRAB}" label="Grab"
+           action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'TOOL:GRAB'"/>
+      <tab id="trot" class="tab ${tROT}" label="Rot"
+           action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'TOOL:ROT'"/>
+      <tab id="tscl" class="tab ${tSCL}" label="Scl"
+           action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'TOOL:SCL'"/>
+      <tab id="cL" class="tab" label="orb &lt;"
+           action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'CAM:L'"/>
+      <tab id="cR" class="tab" label="orb &gt;"
+           action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'CAM:R'"/>
+      <tab id="zin" class="tab" label="z+"
+           action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'CAM:IN'"/>
+      <tab id="zout" class="tab" label="z-"
+           action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'CAM:OUT'"/>
+    </tabbar>
     <canvas id="view" class="ms-canvas" sprite="${canvas_raw}"/>
     <text label="${gutter}" class="ms-gutter"/>
     <repeat count="${n_items}" bind="it">

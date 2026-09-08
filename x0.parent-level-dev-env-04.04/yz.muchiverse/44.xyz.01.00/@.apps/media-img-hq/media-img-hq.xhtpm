@@ -1,31 +1,36 @@
-<!-- media-img-hq — skeleton 3 (page-level canvas). Sidebar+panel does
-     not size a nested <canvas> (khtpm_core_render.c only lays canvas
-     out as a direct <page> child). -->
+<!-- media-img-hq — page-level canvas + tabbar (db-hq/csv-hq) + pchq chrome. -->
 <window label="Muchi Image - ${status_line}" class="database-window" vars="state/media_img_hq_ui.txt">
   <module src="@.apps/media-img-hq/ops/+x/media_img_hq_manager.+x" id="_"/>
   <page name="main">
-    <item id="new" class="ms-btn" label="New"
-          action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'NEW'"/>
-    <item id="demo" class="ms-btn" label="Demo"
-          action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'DEMO'"/>
-    <item id="tb" class="ms-btn ${tB}" label="B"
-          action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:B'"/>
-    <item id="te" class="ms-btn ${tE}" label="E"
-          action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:E'"/>
-    <item id="tg" class="ms-btn ${tG}" label="G"
-          action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:G'"/>
-    <item id="tr" class="ms-btn ${tR}" label="R"
-          action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:R'"/>
-    <item id="ti" class="ms-btn ${tI}" label="I"
-          action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:I'"/>
-    <item id="th" class="ms-btn ${tH}" label="H"
-          action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:H'"/>
-    <item id="bsz-" class="ms-btn" label="[ -"
-          action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'BRUSH:-'"/>
-    <item id="bsz+" class="ms-btn" label="] +"
-          action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'BRUSH:+'"/>
-    <item id="nlayer" class="ms-btn" label="+L"
-          action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'NEW_LAYER'"/>
+    <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
+    <item id="fullscreen" class="chrome-btn" label="!" onclick="TOGGLE_FULLSCREEN"/>
+    <item id="minimize" class="chrome-btn" label="_" onclick="MINIMIZE"/>
+    <tabbar class="tab-bar">
+      <tab id="new" class="tab" label="New"
+           action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'NEW'"/>
+      <tab id="demo" class="tab" label="Demo"
+           action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'DEMO'"/>
+    </tabbar>
+    <tabbar class="tab-bar">
+      <tab id="tb" class="tab ${tB}" label="B brush"
+           action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:B'"/>
+      <tab id="te" class="tab ${tE}" label="E eraser"
+           action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:E'"/>
+      <tab id="tg" class="tab ${tG}" label="G fill"
+           action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:G'"/>
+      <tab id="tr" class="tab ${tR}" label="R rect"
+           action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:R'"/>
+      <tab id="ti" class="tab ${tI}" label="I eyedrop"
+           action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:I'"/>
+      <tab id="th" class="tab ${tH}" label="H hand"
+           action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:H'"/>
+      <tab id="bsz-" class="tab" label="[ -"
+           action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'BRUSH:-'"/>
+      <tab id="bsz+" class="tab" label="] +"
+           action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'BRUSH:+'"/>
+      <tab id="nlayer" class="tab" label="+ layer"
+           action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'NEW_LAYER'"/>
+    </tabbar>
     <canvas id="view" class="ms-canvas" sprite="${canvas_raw}"/>
     <text label="${gutter}" class="ms-gutter"/>
     <repeat count="${n_items}" bind="it">
