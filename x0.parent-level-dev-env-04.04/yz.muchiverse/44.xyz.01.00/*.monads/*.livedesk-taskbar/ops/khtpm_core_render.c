@@ -163,6 +163,29 @@ static int g_dock_menu_sx, g_dock_menu_sy, g_dock_menu_w, g_dock_menu_h;
  * living window via /proc (ktb_toggle_zorder_respawn in
  * khtpm_strip_parser.c) - this loader only has to be right at startup. */
 static int g_override_redirect = 1;
+/* REAL, NEW 2026-09-08 (pc-hq-bugs.md Bug 2 - the scoped per-window
+ * override_redirect fix, finally built). Both default OFF: the live
+ * desktop is byte-identical until #.desktop/livedesk_override_redirect.pdl
+ * flips a key, so this is safe to land and test incrementally.
+ *   managed_windows=1  -> a <window managed="true"> window (only
+ *                         pchq-board sets the attr) is created
+ *                         WM-managed, exactly like window_is_dock()
+ *                         already forces, INDEPENDENT of the global
+ *                         override_redirect setting. Every other window
+ *                         (no attr) is untouched.
+ *   interact_kbd_grab=1 -> while Interact Mode is armed, take a real
+ *                          XGrabKeyboard (like cli_io's), but RELEASE
+ *                          it on any genuine FocusOut (NotifyNormal) and
+ *                          re-grab on FocusIn - so clicking away can
+ *                          never leave the house keyboard-locked (the
+ *                          failure mode of the 2026-09-04 reverted
+ *                          attempt, which only released on a fragile
+ *                          projector/reparse cycle). */
+static int g_managed_windows_enabled = 0;
+static int g_interact_kbd_grab = 0;
+static int g_window_wants_managed = 0;       /* this window's <window> has managed="true" */
+static int g_interact_grab_held = 0;         /* we currently hold the bounded interact grab */
+static int g_interact_grab_want_regrab = 0;  /* released on FocusOut; re-grab on next real FocusIn while still armed */
 static int g_zorder_above = 0;
 static void load_zorder_mode(const char *house_root) {
     g_zorder_above = 0;
@@ -181,7 +204,14 @@ static void save_zorder_mode(const char *house_root, int above) {
     if (f) { fprintf(f, "mode=%s\n", above ? "above" : "normal"); fclose(f); }
     snprintf(path, sizeof(path), "%s/#.desktop/livedesk_override_redirect.pdl", house_root);
     f = fopen(path, "w");
-    if (f) { fprintf(f, "override_redirect=%s\n", above ? "true" : "false"); fclose(f); }
+    if (f) {
+        fprintf(f, "override_redirect=%s\n", above ? "true" : "false");
+        /* preserve the 2026-09-08 scoped-fix keys across a @ z-order
+         * toggle (this writer used to blow the whole file away) */
+        if (g_managed_windows_enabled) fprintf(f, "managed_windows=1\n");
+        if (g_interact_kbd_grab)       fprintf(f, "interact_kbd_grab=1\n");
+        fclose(f);
+    }
 }
 static void load_override_redirect(const char *house_root) {
     char path[PATH_BUF];
@@ -197,6 +227,10 @@ static void load_override_redirect(const char *house_root) {
         val[strcspn(val, "\r\n")] = '\0';
         if (strcmp(line, "override_redirect") == 0)
             g_override_redirect = (strcmp(val, "true") == 0);
+        else if (strcmp(line, "managed_windows") == 0)
+            g_managed_windows_enabled = (strcmp(val, "1") == 0 || strcmp(val, "true") == 0);
+        else if (strcmp(line, "interact_kbd_grab") == 0)
+            g_interact_kbd_grab = (strcmp(val, "1") == 0 || strcmp(val, "true") == 0);
     }
     fclose(f);
 }
@@ -687,6 +721,20 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
             e->n_classes++;
             tok = strtok(NULL, " ");
         }
+    } else if (strcmp(name, "managed") == 0) {
+        /* REAL, NEW 2026-09-08 (pc-hq-bugs.md Bug 2). A <window
+         * managed="true"> asks to be created WM-managed instead of
+         * override_redirect - Mutter/XWayland only routes real
+         * keyboard/mouse focus to WM-managed surfaces (an
+         * override_redirect window looks focused at the X11 protocol
+         * level - XGetInputFocus succeeds - but never actually
+         * receives real hardware input under this compositor). Gated
+         * at window-creation by g_managed_windows_enabled
+         * (livedesk_override_redirect.pdl managed_windows=1) so the
+         * attribute is inert until the pdl opts in - zero blast radius
+         * on any other window, which never sets it. */
+        if (strcmp(e->tag, "window") == 0 && strcmp(val, "true") == 0)
+            g_window_wants_managed = 1;
     } else if (strcmp(name, "label") == 0) {
         /* REAL FIX 2026-08-31 (found live testing open-hai's own real
          * projection: a real session snippet containing "&.widgits"
@@ -4454,9 +4502,25 @@ static void kh_scan_interact_relay(void) {
          * bug it was meant to fix. Do not re-add this without solving
          * the disarm-reliability problem FIRST, and prefer a per-
          * window `XSetInputFocus` reassertion over a display-wide
-         * grab if it needs revisiting at all. */
+         * grab if it needs revisiting at all.
+         *
+         * RE-ADDED 2026-09-08 as a BOUNDED grab (pc-hq-bugs.md Bug 2):
+         * gated behind pdl interact_kbd_grab=1 (off by default), and -
+         * the fix for the reverted version's fatal flaw - released on
+         * any genuine FocusOut (NotifyNormal) in hq_dispatch_xevent(),
+         * re-grabbed on FocusIn. Clicking away therefore CANNOT leave
+         * the house keyboard-locked; the grab's lifetime is tied to
+         * this window actually holding focus, not to a projector
+         * reparse. */
+        if (!g_interact_relay_on && g_interact_kbd_grab && !window_is_dock() && dpy) {
+            kh_grab_keyboard_retry();
+            g_interact_grab_held = 1;
+            g_interact_grab_want_regrab = 0;
+        }
         g_interact_relay_on = 1;
     } else {
+        if (g_interact_grab_held) { kh_ungrab_kbd(); g_interact_grab_held = 0; }
+        g_interact_grab_want_regrab = 0;
         g_interact_relay_on = 0;
         g_interact_relay_raw[0] = '\0';
     }
@@ -8168,6 +8232,18 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
              * another x11-hq window, an unrelated app, alt-tab - not
              * just whenever this window happens to redraw for some
              * other reason anyway. */
+            /* Bounded interact grab (pc-hq-bugs.md Bug 2): if we
+             * released the grab on an earlier FocusOut and Interact
+             * Mode is still armed, re-take it now that real focus is
+             * back on this window. Grab-synthetic FocusIn (NotifyGrab/
+             * NotifyUngrab, NotifyPointer*) already returned above, so
+             * reaching here means a genuine NotifyNormal focus gain. */
+            if (g_interact_grab_want_regrab && g_interact_relay_on &&
+                g_interact_kbd_grab && dpy) {
+                kh_grab_keyboard_retry();
+                g_interact_grab_held = 1;
+                g_interact_grab_want_regrab = 0;
+            }
             if (g_focus_owned_painted != 1) redraw();
         }
         return;
@@ -8176,6 +8252,15 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         if (window_is_dock() &&
             ev->xfocus.mode != NotifyGrab && ev->xfocus.mode != NotifyUngrab)
             dock_release_keyboard_if_left();
+        /* Bounded interact grab: user genuinely clicked away (grab-
+         * synthetic FocusOut already returned above). Release so the
+         * desktop can never be left keyboard-locked; re-grabbed on the
+         * next real FocusIn if still armed. */
+        if (g_interact_grab_held) {
+            kh_ungrab_kbd();
+            g_interact_grab_held = 0;
+            g_interact_grab_want_regrab = 1;
+        }
         if (g_focus_owned_painted != 0) redraw();
         return;
     }
@@ -14380,7 +14465,13 @@ int main(int argc, char **argv) {
      * (short-lived popups/submenus correctly stay override_redirect,
      * per 03-pitfalls/X11-AND-SESSION-PITFALLS.md) - not touched here. */
     int dock_managed = window_is_dock();
-    swa.override_redirect = dock_managed ? False : (Bool)g_override_redirect;
+    /* REAL, NEW 2026-09-08 (pc-hq-bugs.md Bug 2) - same scoped, per-
+     * window WM-managed opt-in dock_managed already is, but keyed off
+     * a <window managed="true"> attribute + the pdl managed_windows=1
+     * enable instead of the dock class. Both default off -> win_managed
+     * == dock_managed for every existing window until the pdl opts in. */
+    int win_managed = dock_managed || (g_managed_windows_enabled && g_window_wants_managed);
+    swa.override_redirect = win_managed ? False : (Bool)g_override_redirect;
     /* REAL FIX 2026-08-29 (live report: "toolbar doesn't allow drag
      * repositioning") - this generic popup window (entity-menu popup AND
      * swatch-picker/Settings) never requested ButtonReleaseMask or
@@ -14397,7 +14488,7 @@ int main(int argc, char **argv) {
     win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)g_win_w, (unsigned)g_win_h, 0,
                          CopyFromParent, InputOutput, CopyFromParent, CWBackPixel | CWOverrideRedirect | CWEventMask, &swa);
     if (window_is_dock()) apply_dock_window_hints(dpy, win, g_win_x, g_win_y);
-    render_managed_wm_hints(dpy, win, dock_managed || !g_override_redirect); /* REAL, NEW 2026-09-01 - managed branch: undecorated + no shell chrome (post-map sink-below lands after XMapRaised) */
+    render_managed_wm_hints(dpy, win, win_managed || !g_override_redirect); /* REAL, NEW 2026-09-01 - managed branch: undecorated + no shell chrome (post-map sink-below lands after XMapRaised); win_managed adds the <window managed="true"> case 2026-09-08 */
     Atom motif_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
     long hints[5] = { 2, 0, 0, 0, 0 };
     XChangeProperty(dpy, win, motif_hints, motif_hints, 32, PropModeReplace, (unsigned char *)hints, 5);
