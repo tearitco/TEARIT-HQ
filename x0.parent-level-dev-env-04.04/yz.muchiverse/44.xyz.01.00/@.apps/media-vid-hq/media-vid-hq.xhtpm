@@ -1,24 +1,39 @@
-<!-- media-vid-hq.xhtpm - CONVERSION SKELETON 2026-09-08.
-     iMovie-shaped video editor: transport + timecode, preview + inspector, V1/V2/A1/A2 timeline.
-     Source: 44.xyz.01.00/103.media-studio/103.vid-edit/ (+ its HOW2_VIDEO.md).
-     Target layout is described in ../media-vid-hq/README.md - build it here
-     with generic <sidebar>/<panel>/<item>/<text>/<canvas>, house spec,
-     NO per-app renderer C. -->
-<window label="Muchi Video - ${msg}" class="database-window" vars="state/media_vid_hq_ui.txt">
+<!-- media-vid-hq — HOW2_VIDEO iMovie shell. Page-level canvas + tabbar + chrome. -->
+<window label="Muchi Video - ${tc}" class="database-window" vars="state/media_vid_hq_ui.txt">
   <module src="@.apps/media-vid-hq/ops/+x/media_vid_hq_manager.+x" id="_"/>
   <page name="main">
-    <sidebar id="side" class="ms-side">
-      <text label="${title}" class="ms-title"/>
-      <text label="${banner}" class="ms-banner"/>
-      <text label="src: ${source}" class="ms-quiet"/>
-    </sidebar>
-    <panel id="main" class="ms-main">
-      <text label="This toy is a conversion skeleton. Real layout TBD - see README.md." class="ms-quiet"/>
-      <row class="toolbar">        <item id="ping" class="ms-btn" label="[ ping ]"
-              action="'${HOUSE}/@.apps/media-vid-hq/ops/media_vid_hq_action.sh' 'PING'"/>
-      </row>
-      <text label="${msg}" class="ms-msg" show="${msg}"/>
-      <canvas id="view" class="ms-canvas"/>
-    </panel>
+    <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
+    <item id="fullscreen" class="chrome-btn" label="!" onclick="TOGGLE_FULLSCREEN"/>
+    <item id="minimize" class="chrome-btn" label="_" onclick="MINIMIZE"/>
+    <tabbar class="tab-bar">
+      <tab id="new" class="tab" label="New"
+           action="'${HOUSE}/@.apps/media-vid-hq/ops/media_vid_hq_action.sh' 'NEW'"/>
+      <tab id="demo" class="tab" label="Demo"
+           action="'${HOUSE}/@.apps/media-vid-hq/ops/media_vid_hq_action.sh' 'DEMO'"/>
+      <tab id="split" class="tab" label="Split"
+           action="'${HOUSE}/@.apps/media-vid-hq/ops/media_vid_hq_action.sh' 'SPLIT'"/>
+      <tab id="del" class="tab" label="Del"
+           action="'${HOUSE}/@.apps/media-vid-hq/ops/media_vid_hq_action.sh' 'DEL'"/>
+    </tabbar>
+    <tabbar class="tab-bar">
+      <tab id="rew" class="tab" label="|&lt;"
+           action="'${HOUSE}/@.apps/media-vid-hq/ops/media_vid_hq_action.sh' 'REW'"/>
+      <tab id="back" class="tab" label=","
+           action="'${HOUSE}/@.apps/media-vid-hq/ops/media_vid_hq_action.sh' 'STEP:-'"/>
+      <tab id="stop" class="tab" label="[]"
+           action="'${HOUSE}/@.apps/media-vid-hq/ops/media_vid_hq_action.sh' 'STOP'"/>
+      <tab id="play" class="tab ${play_cls}" label="${play_label}"
+           action="'${HOUSE}/@.apps/media-vid-hq/ops/media_vid_hq_action.sh' 'PLAY'"/>
+      <tab id="fwd" class="tab" label="."
+           action="'${HOUSE}/@.apps/media-vid-hq/ops/media_vid_hq_action.sh' 'STEP:+'"/>
+      <tab id="end" class="tab" label="&gt;|"
+           action="'${HOUSE}/@.apps/media-vid-hq/ops/media_vid_hq_action.sh' 'END'"/>
+    </tabbar>
+    <canvas id="view" class="ms-canvas" sprite="${canvas_raw}"/>
+    <text label="${gutter}" class="ms-gutter"/>
+    <repeat count="${n_clips}" bind="c">
+      <item id="cl${c.#}" class="vid-clip ${c.cls}" label="${c.hdr}"
+            action="'${HOUSE}/@.apps/media-vid-hq/ops/media_vid_hq_action.sh' 'SEL:${c.#}'"/>
+    </repeat>
   </page>
 </window>
