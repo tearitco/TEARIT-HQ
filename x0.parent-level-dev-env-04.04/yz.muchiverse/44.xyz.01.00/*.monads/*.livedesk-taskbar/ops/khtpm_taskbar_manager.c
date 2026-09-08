@@ -4335,11 +4335,31 @@ void ktb_hq_activate(KtbState *s, int row) {
          * ktb_cliio_open_save_as()). */
         ktb_cliio_open_save_as(s);
     } else if (strcmp(m->command, "livedesk:load") == 0) {
-        /* file cell's "load" row - mirrors livedesk_dispatch()'s
-         * `livedesk_open_sessions_popup()` branch: replaces the current
-         * (file) row list in place with the session picker, same
-         * "keep_open" shape run_popup_row() uses for load->sessions. */
-        ktb_hq_open(s, 100); /* session picker (13 is an inert cell and would close the popup) */
+        /* file cell's "load" row.
+         *
+         * REAL FIX 2026-09-08 (direct live report: "when i click load
+         * in []3. it gets stuck instead of opening the filebrowser
+         * widget"). The old path was `ktb_hq_open(s, 100)` - it swapped
+         * this menu IN PLACE for the "session picker" sub-dropdown, a
+         * which>15 pseudo-cell with no real header cell behind it. That
+         * nested/replaced-popup shape has no clean way out (the code's
+         * own comment: "13 is an inert cell and would close the popup")
+         * and its nav could latch, freezing the strip focus on cell 3.
+         *
+         * Now: close the menu and open the real File Explorer widget as
+         * its own X11 window (`&.widgits/file-explorer/`, which the user
+         * can navigate normally and close with its own [X]) - same
+         * setsid/button-script launch shape as livedesk:open-settings
+         * above. NOTE: standalone the widget just browses; wiring
+         * "pick a saved desk session -> restore it" through it is a
+         * follow-up (see notes-hq 2026-09-08). */
+        char fx[KTB_PATH_BUF * 3];
+        snprintf(fx, sizeof(fx),
+                 KTB_SETSID "nohup sh -c 'sh \"%s/&.widgits/file-explorer/button.sh\" run' >/dev/null 2>&1 &",
+                 s->house_root);
+        int rc = ktb_system_recorded(s->house_root, fx);
+        (void)rc;
+        ktb_hq_close(s);
     } else if (strcmp(m->command, "quit") == 0) {
         /* Real HQ menu's "X.quit" row (which==1, see ktb_hq_open()) -
          * mirrors tp_taskbar.c's agent_relay_dispatch() "quit" branch. Can't

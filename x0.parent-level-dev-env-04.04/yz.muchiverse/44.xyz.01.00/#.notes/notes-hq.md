@@ -67,3 +67,26 @@ If it's still stuck: the stuck window may NOT be pc-hq. Confirm which
 window (strip? a specific app? the board?). If the board: open it, look
 at the `In:` toolbar badge - `[^]` = engaged/trapped, click `In:` once
 to release.
+
+## 2026-09-08 (later²) — "stuck on 3" root cause: file cell → "load"
+
+The strip's file cell (`[ ]3.`) menu → **"load"** row (`livedesk:load`)
+called `ktb_hq_open(s, 100)`, which swapped the open menu IN PLACE for
+the "session picker" sub-dropdown — a `which>15` pseudo-cell with no
+real header cell behind it. That nested/replaced-popup shape has no
+clean exit (its own comment: "13 is an inert cell and would close the
+popup"); its nav latched and froze the strip focus on cell 3.
+
+**Fixed:** `livedesk:load` now closes the menu and launches the real
+**File Explorer widget** (`&.widgits/file-explorer/`) as its own X11
+window (same setsid/button-script shape as `livedesk:open-settings`).
+Navigable normally, closes with its own `[X]`.
+
+**Follow-up (not done):** standalone the File Explorer widget just
+browses — "pick a saved desk session → restore it" is not wired
+through it. If "load" should restore a desk layout, that needs the
+widget to return a pick and the manager to act on it. Or keep the
+session picker but open it as its own window, not an in-place menu
+swap. Same applies to the other `which` 100/101/102 internal sub-lists
+(session picker, db-ez sections, common-events) — they're all the
+fragile "replace the menu in place" pattern.
