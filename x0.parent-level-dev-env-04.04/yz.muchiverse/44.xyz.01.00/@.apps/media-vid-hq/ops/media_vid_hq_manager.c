@@ -12,12 +12,18 @@
 #define CW 680
 #define CH 360
 #define MAX_CL 16
-#define PX_PER_SEC 80
-#define DUR 8.0f
+#define PW 320
+#define PH 180
+#define PX_PER_SEC 60
+#define DUR 10.0f
 
 static char pkg_dir[PL];
+static char house_root[PL];
 static char g_msg[160] = "";
 static unsigned char *comp;
+static unsigned char poster[PW * PH * 4];
+static int poster_ok;
+static float last_decode = -99;
 static int dirty = 1, playing, sel;
 static float playhead;
 static const char *LANE[] = {"V1","V2","A1","A2"};
@@ -27,6 +33,7 @@ typedef struct {
     float t0, t1;
     unsigned char r,g,b;
     char name[24];
+    char path[PL];
 } Clip;
 static Clip cl[MAX_CL];
 static int n_cl;
@@ -60,15 +67,54 @@ static Clip *under_playhead(void){
     return best;
 }
 
+static int decode_poster(Clip *c, float t, int force){
+    if(!c || !c->path[0]) { poster_ok=0; return 0; }
+    float src = t - c->t0;
+    if(src < 0) src = 0;
+    if(!force && poster_ok && src - last_decode < 0.45f && last_decode - src < 0.45f) return 1;
+    char out[PL], cmd[PL*2];
+    snprintf(out, sizeof(out), "%s/state/poster.rgba", pkg_dir);
+    snprintf(cmd, sizeof(cmd),
+             "ffmpeg -v error -y -ss %.3f -i \"%s\" -frames:v 1 -an "
+             "-f rawvideo -pix_fmt rgba -s %dx%d \"%s\"",
+             src, c->path, PW, PH, out);
+    if(system(cmd) != 0) { poster_ok=0; return 0; }
+    FILE *f=fopen(out,"rb"); if(!f) { poster_ok=0; return 0; }
+    size_t n=fread(poster,1,sizeof(poster),f); fclose(f);
+    poster_ok = (n == sizeof(poster));
+    if(poster_ok) last_decode = src;
+    return poster_ok;
+}
+
+static void blit_poster(int dx, int dy){
+    if(!poster_ok) return;
+    for(int y=0;y<PH;y++) for(int x=0;x<PW;x++){
+        size_t o=((size_t)y*PW+(size_t)x)*4;
+        put(dx+x, dy+y, poster[o], poster[o+1], poster[o+2]);
+    }
+}
+
 static void demo(void){
-    memset(cl,0,sizeof(cl)); n_cl=3; sel=0; playhead=0; playing=0;
-    cl[0].used=1; cl[0].lane=0; cl[0].t0=0; cl[0].t1=3;
-    cl[0].r=220; cl[0].g=120; cl[0].b=40; snprintf(cl[0].name,sizeof(cl[0].name),"orange");
-    cl[1].used=1; cl[1].lane=0; cl[1].t0=3; cl[1].t1=6;
-    cl[1].r=50; cl[1].g=90; cl[1].b=210; snprintf(cl[1].name,sizeof(cl[1].name),"blue");
-    cl[2].used=1; cl[2].lane=1; cl[2].t0=1; cl[2].t1=4;
-    cl[2].r=50; cl[2].g=170; cl[2].b=70; snprintf(cl[2].name,sizeof(cl[2].name),"green");
-    snprintf(g_msg,sizeof(g_msg),"demo 3 clips V1/V2");
+    memset(cl,0,sizeof(cl)); n_cl=1; sel=0; playhead=0; playing=0;
+    poster_ok=0; last_decode=-99;
+    cl[0].used=1; cl[0].lane=0; cl[0].t0=0; cl[0].t1=DUR;
+    cl[0].r=80; cl[0].g=140; cl[0].b=200;
+    snprintf(cl[0].name,sizeof(cl[0].name),"sample-10s");
+    /* x0.parent-level-dev-env-04.04/#.media-library — two levels up from house */
+    {
+        const char *cands[] = {
+            "%s/../../#.media-library/sample-10s-vp9.mp4",
+            "%s/../#.media-library/sample-10s-vp9.mp4",
+            NULL
+        };
+        cl[0].path[0]=0;
+        for(int i=0;cands[i];i++){
+            char p[PL]; snprintf(p,sizeof(p),cands[i], house_root);
+            if(access(p,R_OK)==0){ snprintf(cl[0].path,sizeof(cl[0].path),"%s",p); break; }
+        }
+    }
+    decode_poster(&cl[0], 0, 1);
+    snprintf(g_msg,sizeof(g_msg), poster_ok ? "loaded sample-10s-vp9.mp4" : "ffmpeg poster failed");
     dirty=1;
 }
 
@@ -77,11 +123,12 @@ static void draw(void){
     memset(comp, 16, (size_t)CW*CH*4);
     for(int i=0;i<CW*CH;i++) comp[i*4+3]=255;
     int prev_h = 200, tl_top = prev_h + 8, lane_h = 32;
-    /* preview poster: color of clip under playhead (HOW2: no per-frame decode) */
     Clip *u = under_playhead();
-    if(u) fill(40, 16, CW-80, prev_h-24, u->r, u->g, u->b);
-    else fill(40, 16, CW-80, prev_h-24, 24,24,28);
-    /* letterbox */
+    fill(40, 16, CW-80, prev_h-24, 24,24,28);
+    if(u && u->path[0]){
+        decode_poster(u, playhead, 0);
+        blit_poster(40 + (CW-80-PW)/2, 16 + (prev_h-24-PH)/2);
+    } else if(u) fill(40, 16, CW-80, prev_h-24, u->r, u->g, u->b);
     hline(40, CW-41, 16, 80,80,90);
     hline(40, CW-41, prev_h-9, 80,80,90);
     /* timeline */
@@ -171,8 +218,8 @@ static void handle(const char *cmd){
     else if(!strcmp(cmd,"STOP")){ playing=0; dirty=1; }
     else if(!strcmp(cmd,"REW")){ playhead=0; dirty=1; }
     else if(!strcmp(cmd,"END")){ playhead=DUR; playing=0; dirty=1; }
-    else if(!strcmp(cmd,"STEP:+")){ playhead+=1.0f/30.0f; if(playhead>DUR) playhead=DUR; dirty=1; }
-    else if(!strcmp(cmd,"STEP:-")){ playhead-=1.0f/30.0f; if(playhead<0) playhead=0; dirty=1; }
+    else if(!strcmp(cmd,"STEP:+")){ playhead+=0.2f; if(playhead>DUR) playhead=DUR; last_decode=-99; dirty=1; }
+    else if(!strcmp(cmd,"STEP:-")){ playhead-=0.2f; if(playhead<0) playhead=0; last_decode=-99; dirty=1; }
     else if(!strncmp(cmd,"SEL:",4)){ int i=clip_at_k(atoi(cmd+4)); if(i>=0){ sel=i; dirty=1; } }
     else if(!strcmp(cmd,"DEL") && sel>=0 && sel<n_cl){ cl[sel].used=0; sel=-1; dirty=1; }
     else if(!strcmp(cmd,"SPLIT") && sel>=0 && sel<n_cl && cl[sel].used){
@@ -198,6 +245,7 @@ static void poll_action(int *last){
 
 int main(int argc,char**argv){
     if(argc<3){ fprintf(stderr,"usage: media_vid_hq_manager <house> <pkg> [id]\n"); return 1; }
+    snprintf(house_root,sizeof(house_root),"%s",argv[1]);
     snprintf(pkg_dir,sizeof(pkg_dir),"%s",argv[2]);
     kh_plat_on_terminate(bye);
     comp=calloc((size_t)CW*CH*4,1);
