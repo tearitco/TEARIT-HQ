@@ -1,19 +1,1 @@
 override_redirect=true
-# --- pc-hq-bugs.md Bug 2 scoped fix (added 2026-09-08) ---
-# Both OFF by default: the live desktop is unchanged until you flip one.
-# Restart the affected window(s) after editing (read once at startup).
-#
-# managed_windows=1  : windows whose <window> tag sets managed="true"
-#                      (only pchq-board today) are created WM-managed
-#                      instead of override_redirect, so Mutter/XWayland
-#                      actually routes real keyboard/mouse input to them.
-#                      Every other window is untouched.
-# interact_kbd_grab=1: while pc-hq Interact Mode is armed, hold a real
-#                      XGrabKeyboard, released on FocusOut / re-taken on
-#                      FocusIn (cannot lock the desktop the way the
-#                      2026-09-04 reverted attempt did).
-#
-# Try managed_windows first; add interact_kbd_grab only if focus is
-# solid but keys still drop mid-interact.
-#managed_windows=1
-#interact_kbd_grab=1
