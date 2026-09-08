@@ -44,6 +44,44 @@ ok(q2 === null || q2.id === "list", "querySelector descendant ul #list");
 var all = document.querySelectorAll(".item");
 okEq(all.length, 2, "querySelectorAll .item count");
 
+// --- rung-2 remainder (A): head, createTextNode, getElementsByClassName,
+// removeAttribute, style.*, value — run before the classList block mutates
+// the first .item li, so getElementsByClassName still sees both items ---
+ok(document.head !== null, "document.head exists");
+okEq(document.head.tagName, "head", "document.head tagName");
+
+var tn = document.createTextNode("alpha");
+okEq(tn.nodeName, "#text", "text node nodeName");
+var host = document.createElement("div");
+host.appendChild(tn);
+okEq(host.childNodes.length, 1, "childNodes includes a text node");
+okEq(host.children.length, 0, "children skips text nodes");
+ok(host.textContent.indexOf("alpha") >= 0, "textContent includes text node");
+ok(host.innerHTML.indexOf("alpha") >= 0, "innerHTML includes text node");
+
+var items = document.getElementsByClassName("item");
+okEq(items.length, 2, "getElementsByClassName .item count");
+okEq(items[0].textContent, "one", "getElementsByClassName first item");
+okEq(!document.getElementsByClassName("zzz").length, true, "getElementsByClassName miss");
+
+var banner = document.getElementById("banner");
+banner.removeAttribute("data-x");
+ok(banner.getAttribute("data-x") === null, "removeAttribute data-x");
+banner.removeAttribute("class");
+okEq(banner.className, "", "removeAttribute class clears className");
+banner.classList.add("top");
+
+banner.style.color = "red";
+okEq(banner.style.color, "red", "style set/read");
+okEq(document.getElementById("banner").style.color, "red", "style persists across re-fetch");
+
+var field = document.getElementById("field");
+okEq(field.value, "abc", "input default value from attribute");
+field.value = "xyz";
+okEq(field.value, "xyz", "input value set");
+okEq(document.getElementById("field").value, "xyz", "input value persists via wrapper");
+okEq(document.getElementById("ta").value, "", "textarea default empty");
+
 // --- classList ---
 var c = q.classList;
 ok(!c.contains("zzz"), "classList not contains zzz");
@@ -77,5 +115,31 @@ ok(zone.textContent.indexOf("hi") >= 0, "innerHTML set textContent");
 ok(document.body !== null, "document.body");
 ok(document.documentElement !== null, "document.documentElement");
 okEq(document.documentElement.tagName, "html", "documentElement tagName");
+
+// --- rung-2 remainder (B): tree mutators — require the appends above —---
+var ul = document.getElementById("list");
+var beforeN = ul.children.length;
+var tmp = ul.children[beforeN - 1];
+var ret = ul.removeChild(tmp);
+ok(ret === tmp, "removeChild returns the removed node");
+okEq(ul.children.length, beforeN - 1, "removeChild shrinks children");
+ok(tmp.parentNode === null, "removed node parentNode null");
+document.getElementById("banner").appendChild(tmp);
+okEq(tmp.parentNode.id, "banner", "removed node re-appends elsewhere");
+
+var ins = document.createElement("li");
+ins.textContent = "inserted";
+ul.insertBefore(ins, ul.children[0]);
+ok(ul.children[0] === ins, "insertBefore places node first");
+
+var thediv = null;
+for (var k = 0; k < ul.children.length; k++) if (ul.children[k].tagName === "div") thediv = ul.children[k];
+var sub = document.createElement("span");
+sub.textContent = "replacement";
+var oldret = ul.replaceChild(sub, thediv);
+ok(oldret === thediv, "replaceChild returns the old node");
+ok(thediv.parentNode === null, "replaced node detached");
+okEq(ul.children[ul.children.length - 1].textContent, "replacement", "replaceChild swaps in");
+ok(sub.parentNode === ul, "new child parented");
 
 console.log("OK_DOM_TEST");

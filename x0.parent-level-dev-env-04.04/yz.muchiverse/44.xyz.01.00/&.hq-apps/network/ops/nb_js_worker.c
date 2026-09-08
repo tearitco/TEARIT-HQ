@@ -201,6 +201,26 @@ static void local_append(NbNode *parent, NbNode *child) {
     else parent->first_child = child;
     parent->last_child = child;
 }
+/* rung-2 remainder: insert `newn` before `refn` (a child of `parent`, or
+ * NULL to append), like DOM insertBefore. Local append when refn is NULL. */
+static void local_insert_before(NbNode *parent, NbNode *newn, NbNode *refn) {
+    newn->parent = parent;
+    if (!refn) { local_append(parent, newn); return; }
+    newn->next_sibling = refn;
+    NbNode *prev = NULL;
+    for (NbNode *c = parent->first_child; c; c = c->next_sibling) {
+        if (c == refn) break;
+        prev = c;
+    }
+    if (prev) prev->next_sibling = newn;
+    else parent->first_child = newn;
+}
+static int is_child_of(NbNode *parent, NbNode *ch) {
+    if (!parent || !ch) return 0;
+    for (NbNode *c = parent->first_child; c; c = c->next_sibling)
+        if (c == ch) return 1;
+    return 0;
+}
 static void node_detach(NbNode *n) {
     if (!n || !n->parent) return;
     NbNode *p = n->parent, *prev = NULL;
@@ -249,6 +269,7 @@ static void node_text_content(const NbNode *n, SB *b) {
 }
 static void node_outer_html(const NbNode *n, SB *b) {
     if (!n) return;
+    if (!n->tag || !n->tag[0]) { sb_put(b, n->text); return; }   /* #text node */
     sb_put(b, "<");
     sb_put(b, n->attrs ? n->attrs : n->tag);
     sb_put(b, ">");
@@ -544,6 +565,50 @@ static duk_ret_t nb_dom_body(duk_context *ctx) {
     if (el) push_node(ctx, el); else duk_push_null(ctx);
     return 1;
 }
+/* rung-2 remainder: document.createTextNode / getElementsByClassName /
+ * document.head. The parser skips <head> wholesale, so browsers' implicit
+ * empty <head> is created on first access (stays out of the render path). */
+static duk_ret_t nb_dom_createTextNode(duk_context *ctx) {
+    const char *v = duk_get_string(ctx, 0) ? duk_get_string(ctx, 0) : "";
+    NbNode *n = calloc(1, sizeof(*n));
+    if (!n) { duk_push_null(ctx); return 1; }
+    n->text = strdup(v);
+    orphan_add(n);
+    push_node(ctx, n);
+    return 1;
+}
+static void collect_cls_into(duk_context *ctx, NbNode *n, const char *tok, duk_idx_t arr, int *i) {
+    if (!n) return;
+    if (n->tag && n->tag[0] && has_class(n, tok)) {
+        push_node(ctx, n);
+        duk_put_prop_index(ctx, arr, (*i)++);
+    }
+    for (const NbNode *c = n->first_child; c; c = c->next_sibling)
+        collect_cls_into(ctx, (NbNode *)c, tok, arr, i);
+}
+static duk_ret_t nb_dom_getElementsByClassName(duk_context *ctx) {
+    const char *tok = duk_get_string(ctx, 0);
+    duk_idx_t arr = duk_push_array(ctx);
+    if (!g_dom_root || !tok || !*tok) return 1;
+    int i = 0;
+    for (const NbNode *c = g_dom_root->first_child; c; c = c->next_sibling)
+        collect_cls_into(ctx, (NbNode *)c, tok, arr, &i);
+    return 1;
+}
+static duk_ret_t nb_dom_head(duk_context *ctx) {
+    if (!g_dom_root) { duk_push_null(ctx); return 1; }
+    NbNode *head = find_tag_first(g_dom_root, "head");
+    if (!head) {
+        head = calloc(1, sizeof(*head));
+        if (!head) { duk_push_null(ctx); return 1; }
+        head->tag = strdup("head");
+        NbNode *html = find_tag_first(g_dom_root, "html");
+        if (html) local_insert_before(html, head, html->first_child);
+        else local_insert_before(g_dom_root, head, NULL);
+    }
+    push_node(ctx, head);
+    return 1;
+}
 
 /* ---- element natives (this = element object) ---- */
 static duk_ret_t nb_el_getAttribute(duk_context *ctx) {
@@ -616,6 +681,74 @@ static duk_ret_t nb_el_setAttribute(duk_context *ctx) {
     if (!strcasecmp(name, "id")) { free(n->id); n->id = strdup(val); }
     else if (!strcasecmp(name, "class")) { free(n->cls); n->cls = strdup(val); }
     char *na = attrs_set(n, name, val);
+    free(n->attrs);
+    n->attrs = na;
+    return 0;
+}
+/* rung-2 remainder: element.removeAttribute(name) — rebuild the raw attrs
+ * blob without the named attribute (attrs_set's loop, skipping the match). */
+static int attrs_has(const NbNode *n, const char *name) {
+    if (!n || !n->attrs || !name) return 0;
+    const char *p = n->attrs;
+    size_t nl = strlen(name);
+    while (*p) {
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (!*p) break;
+        const char *ks = p;
+        while (*p && !isspace((unsigned char)*p) && *p != '=' && *p != '>') p++;
+        size_t kl = (size_t)(p - ks);
+        if (kl == nl && !strncasecmp(ks, name, nl)) return 1;
+        while (*p && !isspace((unsigned char)*p)) p++;
+    }
+    return 0;
+}
+static char *attrs_del(const NbNode *n, const char *name) {
+    SB b = {0, 0, 0};
+    const char *p = n->attrs ? n->attrs : "";
+    size_t nl = strlen(name);
+    int first = 1;
+    while (*p) {
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (!*p) break;
+        const char *ks = p;
+        while (*p && !isspace((unsigned char)*p) && *p != '=' && *p != '>') p++;
+        size_t kl = (size_t)(p - ks);
+        char kbuf[64]; size_t kc = kl < 63 ? kl : 63; memcpy(kbuf, ks, kc); kbuf[kc] = 0;
+        int is_target = kl == nl && !strncasecmp(ks, name, nl);
+        char vtmp[1200]; int hasv = 0;
+        const char *savep = p;
+        if (*p == '=') {
+            p++;
+            while (*p && isspace((unsigned char)*p)) p++;
+            char qc = 0;
+            if (*p == '"' || *p == '\'') { qc = *p; p++; }
+            const char *vs = p;
+            while (*p && !(qc ? (*p == qc) : (isspace((unsigned char)*p) || *p == '>'))) p++;
+            size_t vl = (size_t)(p - vs);
+            if (qc && *p) p++;
+            size_t vc = vl < 1199 ? vl : 1199; memcpy(vtmp, vs, vc); vtmp[vc] = 0;
+            hasv = 1;
+        }
+        if (!is_target) {   /* keep the attribute (attrs doesn't reorder) */
+            const char *after = hasv ? p : savep;
+            size_t ll = (size_t)(after - ks);
+            if (!first) sb_put(&b, " ");
+            char tmp[8196]; size_t lc = ll < 8191 ? ll : 8191;
+            memcpy(tmp, ks, lc); tmp[lc] = 0;
+            sb_put(&b, tmp);
+        }
+        while (*p && !isspace((unsigned char)*p)) p++;
+        first = 0;
+    }
+    return b.s ? b.s : strdup("");
+}
+static duk_ret_t nb_el_removeAttribute(duk_context *ctx) {
+    NbNode *n = get_this(ctx);
+    const char *name = duk_get_string(ctx, 0);
+    if (!n || !name || !attrs_has(n, name)) return 0;
+    if (!strcasecmp(name, "id")) { free(n->id); n->id = NULL; }
+    else if (!strcasecmp(name, "class")) { free(n->cls); n->cls = NULL; }
+    char *na = attrs_del(n, name);
     free(n->attrs);
     n->attrs = na;
     return 0;
@@ -694,13 +827,23 @@ static duk_ret_t nb_el_children(duk_context *ctx) {
     if (!n) return 1;
     int i = 0;
     for (const NbNode *c = n->first_child; c; c = c->next_sibling) {
-        if (!c->tag) continue;   /* children is element-only (childNodes keeps text) */
+        if (!c->tag || !c->tag[0]) continue;   /* children is element-only (childNodes keeps text) */
         push_node(ctx, (NbNode *)c);
         duk_put_prop_index(ctx, arr, i++);
     }
     return 1;
 }
-static duk_ret_t nb_el_childNodes(duk_context *ctx) { return nb_el_children(ctx); }
+static duk_ret_t nb_el_childNodes(duk_context *ctx) {
+    NbNode *n = get_this(ctx);
+    duk_idx_t arr = duk_push_array(ctx);
+    if (!n) return 1;
+    int i = 0;
+    for (const NbNode *c = n->first_child; c; c = c->next_sibling) {
+        push_node(ctx, (NbNode *)c);           /* everything, text nodes incl. */
+        duk_put_prop_index(ctx, arr, i++);
+    }
+    return 1;
+}
 static duk_ret_t nb_el_parentNode(duk_context *ctx) {
     NbNode *n = get_this(ctx);
     NbNode *p = n ? n->parent : NULL;
@@ -726,6 +869,86 @@ static duk_ret_t nb_el_appendChild(duk_context *ctx) {
     local_append(n, ch);
     push_node(ctx, ch);
     return 1;
+}
+/* rung-2 remainder: the tree mutators. A removed node is orphaned, not
+ * freed, so a JS wrapper still referencing it stays valid (teardown frees
+ * the orphan list). Mirrors DOM errors for the wrong parent/child cases. */
+static duk_ret_t nb_el_removeChild(duk_context *ctx) {
+    NbNode *n = get_this(ctx);
+    NbNode *ch = duk_is_object(ctx, 0) ? get_node(ctx, 0) : NULL;
+    if (!n || !ch)
+        return duk_error(ctx, DUK_ERR_ERROR, "NotFoundError: removeChild needs an element child");
+    if (!is_child_of(n, ch))
+        return duk_error(ctx, DUK_ERR_ERROR, "NotFoundError: the node is not a child of this element");
+    node_detach(ch);
+    orphan_add(ch);
+    push_node(ctx, ch);
+    return 1;
+}
+static duk_ret_t nb_el_insertBefore(duk_context *ctx) {
+    NbNode *n = get_this(ctx);
+    NbNode *nn = duk_is_object(ctx, 0) ? get_node(ctx, 0) : NULL;
+    NbNode *rn = (duk_get_top(ctx) > 1 && duk_is_object(ctx, 1)) ? get_node(ctx, 1) : NULL;
+    if (!n || !nn || nn == n)
+        return duk_error(ctx, DUK_ERR_ERROR, "HierarchyRequestError: insertBefore needs a real new node");
+    if (rn && !is_child_of(n, rn))
+        return duk_error(ctx, DUK_ERR_ERROR, "NotFoundError: the reference node is not a child of this element");
+    node_detach(nn);
+    orphan_remove(nn);
+    local_insert_before(n, nn, rn);
+    push_node(ctx, nn);
+    return 1;
+}
+static duk_ret_t nb_el_replaceChild(duk_context *ctx) {
+    NbNode *n = get_this(ctx);
+    NbNode *nn = duk_is_object(ctx, 0) ? get_node(ctx, 0) : NULL;
+    NbNode *on = (duk_get_top(ctx) > 1 && duk_is_object(ctx, 1)) ? get_node(ctx, 1) : NULL;
+    if (!n || !nn || !on || nn == on || nn == n)
+        return duk_error(ctx, DUK_ERR_ERROR, "HierarchyRequestError: replaceChild needs two distinct real nodes");
+    if (!is_child_of(n, on))
+        return duk_error(ctx, DUK_ERR_ERROR, "NotFoundError: the old child is not a child of this element");
+    node_detach(nn);                    /* newChild may live in this same list */
+    orphan_remove(nn);
+    NbNode *after = on->next_sibling;   /* correct after nn's detach relinks */
+    node_detach(on);
+    orphan_add(on);
+    local_insert_before(n, nn, after);
+    push_node(ctx, on);                 /* DOM returns the replaced child */
+    return 1;
+}
+/* rung-2 remainder: el.value for form fields — a get/set pair; the set
+ * string is held on the wrapper (identity-cached per node) under a hidden
+ * \xff key, and an unsets element falls back to its `value` attribute. */
+static int is_form_field(const char *tag) {
+    if (!tag) return 0;
+    return !strcmp(tag, "input") || !strcmp(tag, "textarea")
+        || !strcmp(tag, "select") || !strcmp(tag, "button")
+        || !strcmp(tag, "option");
+}
+static duk_ret_t nb_el_value_get(duk_context *ctx) {
+    NbNode *n = get_this(ctx);
+    if (!n) { duk_push_string(ctx, ""); return 1; }
+    duk_push_this(ctx);
+    if (duk_has_prop_string(ctx, -1, "\xffvalue")) {
+        duk_get_prop_string(ctx, -1, "\xffvalue");
+        duk_remove(ctx, -2);
+        return 1;
+    }
+    duk_pop(ctx);
+    const char *v = nb_attr_get(n, "value");
+    if (v && v[0]) { duk_push_string(ctx, v); return 1; }
+    duk_push_string(ctx, "");
+    return 1;
+}
+static duk_ret_t nb_el_value_set(duk_context *ctx) {
+    NbNode *n = get_this(ctx);
+    if (!n) return 0;
+    const char *v = duk_get_string(ctx, 0) ? duk_get_string(ctx, 0) : "";
+    duk_push_this(ctx);
+    duk_push_string(ctx, v);
+    duk_put_prop_string(ctx, -2, "\xffvalue");
+    duk_pop(ctx);
+    return 0;
 }
 /* ---- classList natives (this = the classList object, shares \xffnode) ---- */
 static duk_ret_t nb_cl_add(duk_context *ctx) {
@@ -796,14 +1019,23 @@ static void push_node(duk_context *ctx, NbNode *n) {
     duk_push_object(ctx);                            /* el */
     duk_push_int(ctx, nidx);
     duk_put_prop_string(ctx, -2, NODEKEY);
-    duk_push_string(ctx, n->tag ? n->tag : "");
-    duk_put_prop_string(ctx, -2, "nodeName");
-    duk_push_string(ctx, n->tag ? n->tag : "");
-    duk_put_prop_string(ctx, -2, "tagName");
+    {
+        const char *label = (n->tag && n->tag[0]) ? n->tag : "#text";
+        duk_push_string(ctx, label);
+        duk_put_prop_string(ctx, -2, "nodeName");
+        if (n->tag && n->tag[0]) {
+            duk_push_string(ctx, label);
+            duk_put_prop_string(ctx, -2, "tagName");
+        }
+    }
 
     duk_push_c_function(ctx, nb_el_getAttribute, 1);  duk_put_prop_string(ctx, -2, "getAttribute");
     duk_push_c_function(ctx, nb_el_setAttribute, 2);  duk_put_prop_string(ctx, -2, "setAttribute");
+    duk_push_c_function(ctx, nb_el_removeAttribute, 1); duk_put_prop_string(ctx, -2, "removeAttribute");
     duk_push_c_function(ctx, nb_el_appendChild, 1);   duk_put_prop_string(ctx, -2, "appendChild");
+    duk_push_c_function(ctx, nb_el_removeChild, 1);   duk_put_prop_string(ctx, -2, "removeChild");
+    duk_push_c_function(ctx, nb_el_insertBefore, 2);  duk_put_prop_string(ctx, -2, "insertBefore");
+    duk_push_c_function(ctx, nb_el_replaceChild, 2);  duk_put_prop_string(ctx, -2, "replaceChild");
     duk_push_c_function(ctx, nb_el_addEventListener, 2);    duk_put_prop_string(ctx, -2, "addEventListener");
     duk_push_c_function(ctx, nb_el_removeEventListener, 2); duk_put_prop_string(ctx, -2, "removeEventListener");
     duk_push_c_function(ctx, nb_el_dispatchEvent, 1);       duk_put_prop_string(ctx, -2, "dispatchEvent");
@@ -856,6 +1088,20 @@ static void push_node(duk_context *ctx, NbNode *n) {
     duk_push_c_function(ctx, nb_el_innerHTML_set, 1);
     duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
 
+    /* rung-2 remainder: el.style — a plain per-node object (wrappers are
+     * identity-cached, so mutations persist). Style never reaches the
+     * render path (roadmap §2: store on a per-node map; no layout). */
+    duk_push_object(ctx);
+    duk_put_prop_string(ctx, -2, "style");
+
+    /* rung-2 remainder: el.value get/set for form fields. */
+    if (is_form_field(n->tag)) {
+        duk_push_string(ctx, "value");
+        duk_push_c_function(ctx, nb_el_value_get, 0);
+        duk_push_c_function(ctx, nb_el_value_set, 1);
+        duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
+    }
+
     /* classList */
     duk_push_object(ctx);                            /* classList */
     duk_push_int(ctx, nidx);
@@ -866,9 +1112,11 @@ static void push_node(duk_context *ctx, NbNode *n) {
     duk_push_c_function(ctx, nb_cl_contains, 1);     duk_put_prop_string(ctx, -2, "contains");
     duk_put_prop_string(ctx, -2, "classList");
 
-    /* cache wrapper in the identity map, then drop stash+map, leaving [wrapper] */
+    /* cache wrapper in the identity map, then drop stash+map, leaving [wrapper].
+     * stack: [stash][map][el]; el is at -1, map at -3. */
     duk_dup(ctx, -1);
-    duk_put_prop_index(ctx, -2, nidx);
+    duk_put_prop_index(ctx, -3, nidx);   /* map[nidx] = el (was -2: the wrapper
+                                            stored into itself → identity broke) */
     duk_remove(ctx, -2);
     duk_remove(ctx, -2);
 }
@@ -881,11 +1129,16 @@ static void install_dom(duk_context *ctx) {
     duk_push_c_function(ctx, nb_dom_querySelector, 1);         duk_put_prop_string(ctx, -2, "querySelector");
     duk_push_c_function(ctx, nb_dom_querySelectorAll, 1);      duk_put_prop_string(ctx, -2, "querySelectorAll");
     duk_push_c_function(ctx, nb_dom_createElement, 1);         duk_put_prop_string(ctx, -2, "createElement");
+    duk_push_c_function(ctx, nb_dom_createTextNode, 1);        duk_put_prop_string(ctx, -2, "createTextNode");
+    duk_push_c_function(ctx, nb_dom_getElementsByClassName, 1); duk_put_prop_string(ctx, -2, "getElementsByClassName");
     duk_push_string(ctx, "documentElement");
     duk_push_c_function(ctx, nb_dom_documentElement, 0);
     duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
     duk_push_string(ctx, "body");
     duk_push_c_function(ctx, nb_dom_body, 0);
+    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
+    duk_push_string(ctx, "head");
+    duk_push_c_function(ctx, nb_dom_head, 0);
     duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
     duk_pop(ctx);
 }

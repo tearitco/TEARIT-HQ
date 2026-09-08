@@ -27,6 +27,8 @@ static const char *canned_html =
     "<ul id=\"list\"><li class=\"item\">one</li>"
     "<li class=\"item two\">two</li><li>three</li></ul>"
     "<p data-k=\"v\">para</p>"
+    "<form id=\"form1\"><input id=\"field\" value=\"abc\">"
+    "<textarea id=\"ta\"></textarea><button id=\"btn\"></button></form>"
     "</body></html>";
 
 /* ---- tiny line-RPC client (mirrors the worker's framing) ---- */
