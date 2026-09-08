@@ -25,6 +25,7 @@ Launcher: `&.widgits/palettes/button-pal.sh <category> "$HOUSE"`
 | `emojis` | `palettes-emojis.xhtpm` | Unicode group | subgroup | fully-qualified glyphs (no skin-tone variants) | `button-pal.sh emojis "$HOUSE"` |
 | `elements` | `palettes-elements.xhtpm` | — | — | chemistry swatches | `button-pal.sh elements "$HOUSE"` |
 | `df` / `kenney` / `paint` / `generate` | stub | — | — | not built | stub window |
+| `tiled` / `ohrrpgce` / `my-palettes` / `tile-editor` | **not built** | see design | see design | — | `design-docs/MY-PALETTES-TILED-OHR-TILE-EDITOR-DESIGN.md` |
 
 Chooser CSS families (same for rmmv / piececraft / cdda / emojis):
 `.pal-dir` / `.pal-tileset` / `.swatch`. Active files:

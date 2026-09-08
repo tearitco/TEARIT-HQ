@@ -38,3 +38,6 @@ short version.*
     + event-guide PDLs + sample maps exist; **not** drop-on-board,
     voxel→events-hq, desk persistence, or battle/shop UI. See
     `TILESETS-EVENTS-AND-GAME-CLONES.md` §6.
+13. Tiled + OHRRPGCE palettes, My Palettes library, tile-editor:
+    **design only** — `design-docs/MY-PALETTES-TILED-OHR-TILE-EDITOR-DESIGN.md`.
+    Local demos already exist under `#.potential-assets/#.hampster-tiles…`.

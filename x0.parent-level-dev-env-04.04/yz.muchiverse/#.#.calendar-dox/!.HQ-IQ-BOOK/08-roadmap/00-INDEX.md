@@ -10,6 +10,11 @@
   handoff (stale filenames, predates `CENTROID_GOLD_STD.md` and
   everything since). Read this before tasking Grok with anything.
 - `OPEN-ITEMS.md` — the current, real open-item summary (start here).
+- `design-docs/MY-PALETTES-TILED-OHR-TILE-EDITOR-DESIGN.md` — **2026-09-08
+  DESIGN ONLY**: Tiled + OHRRPGCE pickers, restore My Palettes library
+  (not Canvas-Craft), Tiled-like tile-editor. Local examples already on
+  disk (Sprout Lands, OHR 320×200 wiki sheets). Do not implement until
+  owner answers §7.
 - `TILESETS-EVENTS-AND-GAME-CLONES.md` — **2026-09-08 find-it-later map**:
   palettes categories (RMMV / Mineclonia / CDDA / emoji), outside-zip
   asset PDLs, event-guide sheets, registry + `mr_world`, sample
