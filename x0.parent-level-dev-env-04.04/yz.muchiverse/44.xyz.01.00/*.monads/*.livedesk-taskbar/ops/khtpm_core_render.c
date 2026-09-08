@@ -3445,7 +3445,8 @@ static int layout_sidebar_panel(Elem *page) {
                     tab->n_classes = w2;
                 }
                 css_compute_style(&g_sheet, tab->tag, tab->id, tab->classes, tab->n_classes, 0, &tab->style);
-                int tw = scaled(34);
+                /* [ ]N. badge is ~46px (playbook); 34 left labels clipped. */
+                int tw = scaled(52);
                 if (font_ui && tab->label[0]) {
                     XGlyphInfo gi;
                     XftTextExtentsUtf8(dpy, font_ui, (const FcChar8 *)tab->label, (int)strlen(tab->label), &gi);
@@ -4803,7 +4804,7 @@ static void assign_nav_and_layout(void) {
                     Elem *tab = tabbar->children[i];
                     if (strcmp(tab->tag, "tab") != 0) continue;
                     css_compute_style(&g_sheet, tab->tag, tab->id, tab->classes, tab->n_classes, 0, &tab->style);
-                    int tw = scaled(34);
+                    int tw = scaled(52);
                     if (font_ui && tab->label[0]) {
                         XGlyphInfo gi;
                         XftTextExtentsUtf8(dpy, font_ui, (const FcChar8 *)tab->label, (int)strlen(tab->label), &gi);
