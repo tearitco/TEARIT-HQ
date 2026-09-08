@@ -721,14 +721,33 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
         /* REAL FIX 2026-08-25 (Stage 2 palettes migration) - ported from
          * khtpm_hq_render.c's own apply_attr() (attr_ci_eq(name,
          * "sprite")) - was entirely missing here, so e->sprite never got
-         * set regardless of draw_elem()'s own sprite-blit support. */
-        snprintf(e->sprite, sizeof(e->sprite), "%s", val);
+         * set regardless of draw_elem()'s own sprite-blit support.
+         * REAL FIX 2026-09-08 (live report: "palettes tile sets no
+         * longer rendering"): sprite= is a filesystem path fed from a
+         * projector's ${t.sprite}, and this house's own dirs are named
+         * `&.widgits/` `&.hq-apps/`. Since experiment/xhtpm-attr-var-
+         * escaping, kh_substitute_vars() XML-escapes a ${var} spliced
+         * inside a quoted attribute, so that `&` arrives here as
+         * `&amp;` - `.../&amp;.widgits/...`, a path that does not exist,
+         * so every sprite blit silently failed. decode_entities() the
+         * same as label=/onclick=/action= already do; the escaping was
+         * artificial, undoing it restores the real path. */
+        char decoded[sizeof(e->sprite)];
+        snprintf(decoded, sizeof(decoded), "%s", val);
+        decode_entities(decoded);
+        snprintf(e->sprite, sizeof(e->sprite), "%s", decoded);
     } else if (strcmp(name, "src") == 0) {
         /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode only, ported
          * from khtpm_hq_render.c's own apply_attr(): <module src="..."/>
          * real, wraith_parser_alpha.c convention. Reused e->label to
-         * hold it - <module> elements are never drawn, safe reuse. */
-        snprintf(e->label, sizeof(e->label), "%s", val);
+         * hold it - <module> elements are never drawn, safe reuse.
+         * 2026-09-08 - decode_entities() for the same reason sprite=
+         * does above (a ${var}-fed src path under &.widgits/ arrives
+         * XML-escaped since experiment/xhtpm-attr-var-escaping). */
+        char decoded[sizeof(e->label)];
+        snprintf(decoded, sizeof(decoded), "%s", val);
+        decode_entities(decoded);
+        snprintf(e->label, sizeof(e->label), "%s", decoded);
     } else if (strcmp(name, "args") == 0) {
         /* REAL, NEW 2026-08-25 (palettes manager port) - optional extra
          * static argv for a <module>, e.g. <module src="palettes_
