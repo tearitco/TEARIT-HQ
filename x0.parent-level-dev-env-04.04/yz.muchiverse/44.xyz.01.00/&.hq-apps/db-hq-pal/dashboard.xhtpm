@@ -13,14 +13,12 @@
      state/ui.txt.
 
      class="db-hq-pal" (NOT "db-hq") so the renderer's built-in
-     g_is_db_hq C path stays dormant. On the Common Events tab a row
-     click opens the ported events-hq editor on common_events/<name>
-     (dbhq_action.sh 'sel' detects TAG=CE). DB record FIELD EDITING
-     (Actors/Items/...) is still read-only - it needs the old db-hq
-     persistence chain (dbhq_pdl_publish_manager -> RPG-Maker JSON),
-     tracked as a follow-up. -->
-<window label="DB (PAL)" class="db-hq-pal database-window" vars="state/ui.txt">
+     g_is_db_hq C path stays dormant. Common Events tab embeds the
+     same events-hq command editor (compile chain unchanged). Other
+     tabs show per-field tiles (cli_io + graphic swatches). -->
+<window label="DB (PAL)" class="db-hq-pal database-window" vars="state/ui.txt state/ui_ce.txt">
   <module src="&.widgits/_shared-lib/system/+x/prisc+x.+x pal/dbhq_projector.pal"/>
+  <module src="&.hq-apps/db-hq-pal/ops/+x/dbhq_ce_bridge.+x"/>
   <page name="main">
     <tabbar class="tab-bar">
       <tab id="tab-actors"     class="active" label="Actors"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_actors.state.txt' 'ACTOR' 'Actors'"/>
@@ -48,12 +46,46 @@
       </scrolllist>
     </sidebar>
     <panel id="detail" class="settings-block">
-      <text label="${detail_title}" class="block-title"/>
-      <scrolllist class="from-top">
+      <!-- RPG Maker field tiles (Actors/Items/…) -->
+      <text label="${detail_title}" class="block-title" show="${is_db}"/>
+      <scrolllist class="from-top" show="${is_db}">
         <repeat count="${kv_count}" bind="kv">
-          <text label="${kv.text}"/>
+          <item class="swatch db-field-tile" sprite="${kv.sprite}" label="${kv.key}" show="${kv.has_sprite}"/>
+          <cli_io id="fld_${kv.key}" target_id="fld_${kv.key}" class="data-item" label="${kv.key}  [${kv.value}]  " action="'${PKG}/ops/dbhq_action.sh' 'field' '${kv.key}'"/>
         </repeat>
-        <text label="Click a Common Event in the list to open it in the events editor." class="quiet" show="${is_ce}"/>
+      </scrolllist>
+
+      <!-- Common Events: same editor as events-hq for entities -->
+      <text label="Trigger" class="block-title" show="${is_ce}"/>
+      <text label="${trigger}" show="${is_ce}"/>
+      <item id="ce-add" class="data-item" label="+ Add Command" show="${is_ce}" action="'${HOUSE}/&.widgits/events-hq/ops/evhq_action.sh' 'picker' 'open' '${ce_pkg}'"/>
+      <item id="ce-play" class="data-item" label="Play" show="${is_ce}" action="'${HOUSE}/&.widgits/events-hq/ops/evhq_action.sh' 'play' '-' '${ce_pkg}'"/>
+      <text label="${detail_hint}" class="quiet" show="${is_ce}"/>
+
+      <text label="${ce_list_title}" class="block-title" show="${list_open}"/>
+      <scrolllist class="from-top" show="${list_open}">
+        <repeat count="${n_cmds}" bind="cmd">
+          <item id="c${cmd.#}" class="data-item" label="${cmd.text}" action="'${HOUSE}/&.widgits/events-hq/ops/evhq_action.sh' 'edit' '${cmd.id}' '${ce_pkg}'"/>
+          <item id="cd${cmd.#}" class="quiet" label="   - delete #${cmd.id}" action="'${HOUSE}/&.widgits/events-hq/ops/evhq_action.sh' 'del' '${cmd.id}' '${ce_pkg}'"/>
+        </repeat>
+        <text label="(no commands on this event yet)" class="quiet" show="${empty_list}"/>
+      </scrolllist>
+
+      <text label="Add Command  -  pick a type" class="block-title" show="${picker_open}"/>
+      <scrolllist class="from-top" show="${picker_open}">
+        <item id="ce-picker-cancel" class="data-item" label="&lt; Cancel" action="'${HOUSE}/&.widgits/events-hq/ops/evhq_action.sh' 'picker' 'close' '${ce_pkg}'"/>
+        <repeat count="${n_picker}" bind="pk">
+          <item id="cpk${pk.#}" class="data-item" label="${pk.label}" action="'${HOUSE}/&.widgits/events-hq/ops/evhq_action.sh' 'pick' '${pk.type}' '${ce_pkg}'"/>
+        </repeat>
+      </scrolllist>
+
+      <text label="${editor_title}  -  fields" class="block-title" show="${fields_open}"/>
+      <scrolllist class="from-top" show="${fields_open}">
+        <item id="ce-fld-cancel" class="data-item" label="&lt; Cancel" action="'${HOUSE}/&.widgits/events-hq/ops/evhq_action.sh' 'cancel-fields' '-' '${ce_pkg}'"/>
+        <repeat count="${n_fields}" bind="f">
+          <cli_io id="cefld_${f.name}" target_id="cefld_${f.name}" label="${f.prompt}  [${f.value}]  " action="'${HOUSE}/&.widgits/events-hq/ops/evhq_action.sh' 'field' '${editor_type}' '${f.name}' '${ce_pkg}'"/>
+        </repeat>
+        <item id="ce-fld-save" class="data-item" label="Save command" action="'${HOUSE}/&.widgits/events-hq/ops/evhq_action.sh' 'commit' '-' '${ce_pkg}'"/>
       </scrolllist>
     </panel>
   </page>

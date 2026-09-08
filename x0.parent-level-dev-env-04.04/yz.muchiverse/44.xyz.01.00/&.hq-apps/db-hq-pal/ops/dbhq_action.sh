@@ -49,19 +49,38 @@ case "$VERB" in
         FILE="$(read_field "$PKG" file)"
         TAG="$(read_field "$PKG" tag)"
         TITLE="$(read_field "$PKG" title)"
-        # Common Events tab: a row IS an event. Clicking it opens the
-        # real events-hq editor pointed at common_events/<name>, instead
-        # of just moving the read-only selection. (Replaces the old
-        # "Open the Common Events editor" item that launched the whole
-        # pre-port db-hq window.)
-        if [ "$TAG" = "CE" ] && [ -n "$HOUSE" ] && [ -d "$HOUSE" ]; then
-            CE_LIST="$HOUSE/#.desktop/db_hq_common_events.state.txt"
-            NAME="$(awk -v n="$N" 'NF{ if (i==n){print; exit} i++ }' "$CE_LIST" 2>/dev/null | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-            if [ -n "$NAME" ] && [ -d "$HOUSE/common_events/$NAME" ]; then
-                setsid nohup sh "$HOUSE/&.widgits/events-hq/button.sh" "$HOUSE/common_events/$NAME" "$HOUSE" >/dev/null 2>&1 < /dev/null &
-            fi
-        fi
+        # Common Events: selection is enough — dbhq_ce_bridge starts the
+        # events-hq manager+projector on common_events/<name>/event_pkg
+        # inside this window (same editor as entity events-hq).
         write_active "$PKG" "$FILE" "$TAG" "$TITLE" "$N"
+        ;;
+    field)
+        # argv: field <key> <pkg> <house> <typed_value>
+        KEY="${2:-}"; PKG="${3:-}"; HOUSE="${4:-}"; VALUE="${5:-}"
+        [ -n "$PKG" ] || { echo "dbhq_action: field needs pkg" >&2; exit 1; }
+        FILE="$(read_field "$PKG" file)"
+        TAG="$(read_field "$PKG" tag)"
+        SEL="$(read_field "$PKG" sel)"
+        [ -n "$FILE" ] && [ -n "$TAG" ] && [ -n "$KEY" ] || exit 0
+        ST="$HOUSE/#.desktop/$FILE"
+        [ -f "$ST" ] || exit 0
+        python3 - "$ST" "$TAG" "$SEL" "$KEY" "$VALUE" <<'PY'
+import sys
+path, tag, sel_s, key, value = sys.argv[1:6]
+sel = int(sel_s or "0")
+lines = open(path).read().splitlines()
+rec = -1
+out = []
+for line in lines:
+    parts = [p.strip() for p in line.split("|")]
+    if len(parts) >= 3 and parts[0] == tag and parts[1] == "id":
+        rec += 1
+    if rec == sel and len(parts) >= 3 and parts[0] == tag and parts[1] == key:
+        pad = " " * max(1, 17 - len(key))
+        line = "%-12s | %-18s | %s" % (tag, key, value)
+    out.append(line)
+open(path, "w").write("\n".join(out) + "\n")
+PY
         ;;
     open-ce)
         HOUSE="${3:-}"

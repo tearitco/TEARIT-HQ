@@ -9,7 +9,8 @@
 # Writes <pkg>/state/ui.txt:
 #   tab_title=   rows_count=   row_<n>_text=      (the record list)
 #   detail_title=  kv_count=  kv_<n>_text=        (the selected record)
-#   is_ce=       (1 for the Common Events tab)
+#   is_ce= is_db=   (CE tab vs the 14 list tabs)
+#   kv_<n>_key/_value/_has_sprite/_sprite   (field tiles)
 # The static template turns those into the sidebar list + panel via
 # ${...} and two <repeat> blocks. No compiled C.
 #
@@ -37,6 +38,9 @@ slit s16, "sel"
 slit s17, "id"                                    # record key: id
 slit s18, "name"                                  # record key: name
 slit s19, "CE"                                    # the Common Events tag
+slit s30, "face"
+slit s31, "character"
+slit s32, "battler"
 
 proj_top:                                         # ================= one projection pass =================
 
@@ -84,8 +88,14 @@ not_ce:
 
 # ---- open the output file (truncate) and write the header keys ----
 sfopen x9, s25                                    # x9 = fd for state/ui.txt
-sfmt s0, "is_ce=%d", x11                          # 0 or 1, gates the CE read-only note in the template
+sfmt s0, "is_ce=%d", x11                          # 0 or 1, gates the CE editor pane
 swrite x9, s0
+sfmt s0, "is_db=1"
+swrite x9, s0
+beq x11, x0, db_flag_done
+sfmt s0, "is_db=0"
+swrite x9, s0
+db_flag_done:
 
 # ---- Common Events tab: the state file is a plain name-per-line list
 #      (not TAG|key|value), so list it read-only and skip the two-pass
@@ -111,9 +121,9 @@ sfmt s0, "rows_count=%d", x2
 swrite x9, s0
 sfmt s0, "tab_title=Common Events (%d)", x2
 swrite x9, s0
-sfmt s0, "kv_count=%d", x0                        # x0 is always 0 - no field list
+sfmt s0, "kv_count=%d", x0                        # x0 is always 0 - editor is ui_ce.txt
 swrite x9, s0
-slit s0, "detail_title=(command editor not ported yet - list is read-only)"
+slit s0, "detail_title=Common Events"
 swrite x9, s0
 sfclose x9
 sleep 400000
@@ -194,6 +204,44 @@ p2_emit:                                          # a non-id field of some recor
 bne x2, x4, p2_next                               # ...only the selected one
 sfmt s0, "kv_%d_text=%s: %s", x3, s3, s4          # "<key>: <value>"
 swrite x9, s0
+sfmt s0, "kv_%d_key=%s", x3, s3
+swrite x9, s0
+sfmt s0, "kv_%d_value=%s", x3, s4
+swrite x9, s0
+sfmt s0, "kv_%d_has_sprite=0", x3
+swrite x9, s0
+sfmt s0, "kv_%d_sprite=", x3
+swrite x9, s0
+sbeq s3, s30, p2_face
+sbeq s3, s31, p2_char
+sbeq s3, s32, p2_batt
+j p2_after_spr
+p2_face:
+slen x8, s4
+beq x8, x0, p2_after_spr
+ssplit s4, "_", s13, s15
+sfmt s0, "kv_%d_has_sprite=1", x3
+swrite x9, s0
+sfmt s0, "kv_%d_sprite=%s/&.widgits/palettes/sprites/rmmv/dir_faces/%s/001", x3, s26, s13
+swrite x9, s0
+j p2_after_spr
+p2_char:
+slen x8, s4
+beq x8, x0, p2_after_spr
+sfmt s0, "kv_%d_has_sprite=1", x3
+swrite x9, s0
+sfmt s0, "kv_%d_sprite=%s/&.widgits/palettes/sprites/rmmv/dir_characters/%s/001", x3, s26, s4
+swrite x9, s0
+j p2_after_spr
+p2_batt:
+slen x8, s4
+beq x8, x0, p2_after_spr
+ssplit s4, "_", s13, s15
+sfmt s0, "kv_%d_has_sprite=1", x3
+swrite x9, s0
+sfmt s0, "kv_%d_sprite=%s/&.widgits/palettes/sprites/rmmv/dir_sv_actors/%s/001", x3, s26, s13
+swrite x9, s0
+p2_after_spr:
 addi x3, x3, 1
 sbne s3, s18, p2_next                             # if this field was "name", stash it for the title
 scpy s5, s4

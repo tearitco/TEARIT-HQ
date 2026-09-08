@@ -15,10 +15,17 @@ RENDER_OPS="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
 BIN="$RENDER_OPS/+x/khtpm_core_render.+x"
 PRISC="$HOUSE_ROOT/&.widgits/_shared-lib/system/+x/prisc+x.+x"
 
+BRIDGE="$HERE/ops/+x/dbhq_ce_bridge.+x"
+PROJ="$HOUSE_ROOT/&.widgits/events-hq/ops/+x/evhq_projector.+x"
+MGR="$HOUSE_ROOT/&.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x"
 [ -x "$BIN" ]   || (cd "$RENDER_OPS" && sh build_core_render.sh) || true
 [ -x "$PRISC" ] || sh "$HOUSE_ROOT/&.widgits/_shared-lib/ops/build_prisc.sh" || true
+[ -x "$BRIDGE" ] || sh "$HERE/ops/build_dbhq_ce_bridge.sh" || true
+[ -x "$PROJ" ] || (cd "$HOUSE_ROOT/&.widgits/events-hq/ops" && sh build_evhq_projector.sh) || true
+[ -x "$MGR" ] || (cd "$HOUSE_ROOT/&.widgits/events-hq/ops" && sh build_events_hq_manager.sh) || true
 [ -x "$BIN" ]   || { echo "db-hq-pal: missing $BIN" >&2; exit 1; }
 [ -x "$PRISC" ] || { echo "db-hq-pal: missing $PRISC" >&2; exit 1; }
+[ -x "$BRIDGE" ] || { echo "db-hq-pal: missing $BRIDGE" >&2; exit 1; }
 [ -f "$XHTPM" ] || { echo "db-hq-pal: missing $XHTPM" >&2; exit 1; }
 mkdir -p "$HERE/state"
 
