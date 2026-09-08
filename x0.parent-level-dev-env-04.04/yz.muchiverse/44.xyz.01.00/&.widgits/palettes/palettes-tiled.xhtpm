@@ -1,0 +1,21 @@
+<!-- palettes-tiled.xhtpm — Tiled-style atlas slices (Sprout Lands demo). -->
+<window label="palettes: Tiled Tiles" class="palettes-pal database-window" vars="state/palettes-tiled_ui.txt">
+  <module src="*.monads/*.livedesk-taskbar/ops/+x/palettes_manager.+x" args="tiled"/>
+  <module src="&.widgits/palettes/ops/+x/palettes_projector.+x" id="tiled"/>
+  <page name="main">
+    <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
+    <repeat count="${n_dirs}" bind="d">
+      <item id="tddir-${d.#}" class="pal-dir ${d.active}" label="${d.label}"
+            action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'set-tiled-dir' '${PKG}' '${d.key}'"/>
+    </repeat>
+    <repeat count="${n_tilesets}" bind="s">
+      <item id="tdset-${s.#}" class="pal-tileset ${s.active}" label="${s.label}"
+            action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'set-tiled-mod' '${PKG}' '${s.key}'"/>
+    </repeat>
+    <repeat count="${n_tiles}" bind="t">
+      <item id="pt${t.#}" class="swatch" sprite="${t.sprite}" label="${t.glyph}"
+            action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'arm-pc' '${t.sprite}' '${t.glyph}'"/>
+    </repeat>
+    <text label="No Tiled atlases — TILED-ASSET-SOURCE-LOCATION.pdl" class="quiet" show="${empty}"/>
+  </page>
+</window>

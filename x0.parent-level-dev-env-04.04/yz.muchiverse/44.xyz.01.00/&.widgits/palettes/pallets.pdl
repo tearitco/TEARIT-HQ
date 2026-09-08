@@ -1,6 +1,10 @@
 SECTION      | KEY                | LABEL              | PICKER      | WIDE
 ---------------------------------------------------------------------------
 CATEGORY     | user-pallet        | Canvas-Craft       | canvascraft | 0
+CATEGORY     | my-palettes        | My Palettes        | mypal       | 0
+CATEGORY     | tiled              | Tiled Tiles        | tiled       | 0
+CATEGORY     | ohrrpgce           | OHR Tiles          | ohr         | 0
+CATEGORY     | tile-editor        | Tile Editor        | tedit       | 0
 CATEGORY     | emojis             | Emojis             | tile-picker | 0
 CATEGORY     | elements           | Chemicals+Compounds| chemistry   | 1
 CATEGORY     | rmmv               | RPG Maker Tiles    | rmmv        | 0

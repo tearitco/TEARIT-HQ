@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+SOURCE       | img_root           | /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/#.NNEST_ASSETS/tiled-sprout-lands
+NOTE         | why                | Tiled-style PNG atlases for palettes category tiled. Sprout Lands Basic pack (Cup Nooble) copied 2026-09-08 from #.potential-assets hamster tiles. Not official mapeditor/tiled/examples (optional later).
+NOTE         | layout             | DIR = Tilesets / Objects / Characters   TILESET = PNG stem   grid = flexible cell size (16/20/32/…)
+NOTE         | license            | see pack read_me.txt / itch.io Sprout Lands

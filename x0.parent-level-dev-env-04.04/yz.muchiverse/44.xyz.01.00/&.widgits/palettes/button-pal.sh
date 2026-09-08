@@ -30,7 +30,7 @@ esac
 # generic "not implemented yet" stub. NOTHING routes to the old
 # palettes_menu.sh g_is_palettes C path any more.
 case "$CAT" in
-    emojis|elements|piececraft|cdda|debug|rmmv) XHTPM="$HERE/palettes-$CAT.xhtpm" ;;
+    emojis|elements|piececraft|cdda|debug|rmmv|tiled|ohrrpgce|my-palettes|tile-editor) XHTPM="$HERE/palettes-$CAT.xhtpm" ;;
     *)  CAT=stub; XHTPM="$HERE/palettes-stub.xhtpm" ;;
 esac
 OPS="$HOUSE/*.monads/*.livedesk-taskbar/ops"

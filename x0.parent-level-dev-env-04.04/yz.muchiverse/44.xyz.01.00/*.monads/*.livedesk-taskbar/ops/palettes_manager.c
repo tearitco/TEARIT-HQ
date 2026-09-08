@@ -1536,6 +1536,375 @@ static void publish_cdda(void) {
     rename(tmp_path, g_state_path);
 }
 
+static int pdl_img_root_named(const char *pdl_name, char *out, size_t outsz) {
+    char pdl[PATH_BUF];
+    snprintf(pdl, sizeof(pdl), "%s/../#.#.calendar-dox/1.^V-hq/%s", g_house_root, pdl_name);
+    FILE *f = fopen(pdl, "r");
+    if (!f) return 0;
+    char line[PATH_BUF];
+    int ok = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "SOURCE", 6) != 0) continue;
+        if (!strstr(line, "img_root")) continue;
+        char *bar = strrchr(line, '|');
+        if (!bar) continue;
+        char *v = bar + 1;
+        while (*v == ' ' || *v == '\t') v++;
+        size_t n = strlen(v);
+        while (n > 0 && (v[n-1]=='\n'||v[n-1]=='\r'||v[n-1]==' ')) v[--n]=0;
+        if (n > 0) { snprintf(out, outsz, "%s", v); ok = 1; break; }
+    }
+    fclose(f);
+    return ok && access(out, F_OK) == 0;
+}
+
+static int guess_cell_px(int w, int h) {
+    static const int t[] = { 16, 20, 32, 48, 8, 64 };
+    for (int i = 0; i < 6; i++)
+        if (t[i] <= w && t[i] <= h && (w % t[i]) == 0 && (h % t[i]) == 0)
+            return t[i];
+    return w < h ? w : h;
+}
+
+static void read_active_kv(const char *stem, char *dir, size_t dsz, char *set, size_t ssz,
+                           const char *def_dir, const char *def_set) {
+    snprintf(dir, dsz, "%s", def_dir);
+    snprintf(set, ssz, "%s", def_set);
+    char p[PATH_BUF];
+    snprintf(p, sizeof(p), "%s/%s_active.txt", g_package_dir, stem);
+    FILE *af = fopen(p, "r");
+    if (!af) return;
+    char line[256];
+    while (fgets(line, sizeof(line), af)) {
+        char *eq = strchr(line, '='); if (!eq) continue;
+        *eq = 0; char *v = eq + 1;
+        size_t vn = strlen(v);
+        while (vn > 0 && (v[vn-1]=='\n'||v[vn-1]=='\r')) v[--vn]=0;
+        if (!strcmp(line, "dir")) snprintf(dir, dsz, "%s", v);
+        else if (!strcmp(line, "tileset")) snprintf(set, ssz, "%s", v);
+    }
+    fclose(af);
+}
+
+static void publish_grid_from_png(const char *png, int force_tw, int force_th, int ohr_scale,
+                                  const char *sprite_root, FILE *out) {
+    int w, h, ch;
+    unsigned char *px = stbi_load(png, &w, &h, &ch, 4);
+    if (!px) return;
+    unsigned char *use = px;
+    int uw = w, uh = h;
+    unsigned char *scaled = NULL;
+    if (ohr_scale && (w != 320 || h != 200)) {
+        uw = 320; uh = 200;
+        scaled = (unsigned char *)malloc((size_t)uw * uh * 4);
+        if (scaled) {
+            for (int y = 0; y < uh; y++)
+                for (int x = 0; x < uw; x++) {
+                    int sx = x * w / uw, sy = y * h / uh;
+                    if (sx >= w) sx = w - 1;
+                    if (sy >= h) sy = h - 1;
+                    memcpy(&scaled[((size_t)y * uw + x) * 4],
+                           &px[((size_t)sy * w + sx) * 4], 4);
+                }
+            use = scaled;
+        }
+    }
+    int tw = force_tw > 0 ? force_tw : guess_cell_px(uw, uh);
+    int th = force_th > 0 ? force_th : tw;
+    if (tw < 1) tw = 1;
+    if (th < 1) th = 1;
+    int cols = uw / tw, rows = uh / th;
+    if (cols < 1) cols = 1;
+    if (rows < 1) rows = 1;
+    int n = 0;
+    for (int r = 0; r < rows && n < MAX_TILES; r++) {
+        for (int c = 0; c < cols && n < MAX_TILES; c++) {
+            n++;
+            char dir[PATH_BUF], csv[PATH_BUF];
+            snprintf(dir, sizeof(dir), "%s/%03d", sprite_root, n);
+            snprintf(csv, sizeof(csv), "%s/sprite.csv", dir);
+            struct stat st;
+            if (stat(csv, &st) != 0) {
+                char mk[PATH_BUF * 2];
+                snprintf(mk, sizeof(mk), "mkdir -p '%s'", dir);
+                int ign = system(mk); (void)ign;
+                FILE *f = fopen(csv, "w");
+                if (f) {
+                    fprintf(f, "# resolution=%d\n# scale=1.0\n# transform=0,0,0\nr,g,b,a\n", RMMV_TILE_PX);
+                    for (int y = 0; y < RMMV_TILE_PX; y++) {
+                        for (int x = 0; x < RMMV_TILE_PX; x++) {
+                            int ax = c * tw + x * tw / RMMV_TILE_PX;
+                            int ay = r * th + y * th / RMMV_TILE_PX;
+                            if (ax >= uw) ax = uw - 1;
+                            if (ay >= uh) ay = uh - 1;
+                            const unsigned char *p = &use[((size_t)ay * uw + ax) * 4];
+                            fprintf(f, "%d,%d,%d,%d\n", p[0], p[1], p[2], p[3]);
+                        }
+                    }
+                    fclose(f);
+                }
+            }
+            char lab[64];
+            snprintf(lab, sizeof(lab), "%d_%d", r, c);
+            fprintf(out, "%s\t%s\t%s\n", lab, lab, dir);
+        }
+    }
+    if (scaled) free(scaled);
+    stbi_image_free(px);
+}
+
+static int png_or_bmp(const char *name) {
+    size_t len = strlen(name);
+    if (len < 5) return 0;
+    const char *e = name + len - 4;
+    return !strcasecmp(e, ".png") || !strcasecmp(e, ".bmp") || !strcasecmp(e, ".jpg")
+        || (len >= 5 && !strcasecmp(name + len - 5, ".jpeg"));
+}
+
+static void publish_tiled(void) {
+    char root[PATH_BUF];
+    if (!pdl_img_root_named("TILED-ASSET-SOURCE-LOCATION.pdl", root, sizeof(root))) return;
+    char active_dir[64], active_set[64];
+    read_active_kv("tiled", active_dir, sizeof(active_dir), active_set, sizeof(active_set), "Tilesets", "Grass");
+    char opt_path[PATH_BUF], opt_tmp[PATH_BUF];
+    snprintf(opt_path, sizeof(opt_path), "%s/tiled_options.txt", g_package_dir);
+    snprintf(opt_tmp, sizeof(opt_tmp), "%s.tmp", opt_path);
+    FILE *opt = fopen(opt_tmp, "w");
+    if (!opt) return;
+    fprintf(opt, "ACTIVE_DIR|%s\nACTIVE_TILESET|%s\nACTIVE_CATEGORY|%s\n", active_dir, active_set, active_set);
+    DIR *pd = opendir(root);
+    char dirs[32][64]; int nd = 0;
+    if (pd) {
+        struct dirent *de;
+        while ((de = readdir(pd)) != NULL && nd < 32) {
+            if (de->d_name[0] == '.') continue;
+            char pth[PATH_BUF];
+            snprintf(pth, sizeof(pth), "%s/%s", root, de->d_name);
+            struct stat st;
+            if (stat(pth, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
+            snprintf(dirs[nd++], 64, "%s", de->d_name);
+        }
+        closedir(pd);
+    }
+    int dir_ok = 0;
+    for (int i = 0; i < nd; i++) {
+        fprintf(opt, "DIR|%s|%s\n", dirs[i], dirs[i]);
+        if (!strcmp(dirs[i], active_dir)) dir_ok = 1;
+    }
+    if (!dir_ok && nd > 0) snprintf(active_dir, sizeof(active_dir), "%s", dirs[0]);
+    char folder[PATH_BUF];
+    snprintf(folder, sizeof(folder), "%s/%s", root, active_dir);
+    DIR *sd = opendir(folder);
+    char sets[64][64]; int ns = 0;
+    if (sd) {
+        struct dirent *de;
+        while ((de = readdir(sd)) != NULL && ns < 64) {
+            if (!png_or_bmp(de->d_name)) continue;
+            char stem[64];
+            snprintf(stem, sizeof(stem), "%s", de->d_name);
+            char *dot = strrchr(stem, '.'); if (dot) *dot = 0;
+            snprintf(sets[ns++], 64, "%s", stem);
+        }
+        closedir(sd);
+    }
+    int set_ok = 0;
+    for (int i = 0; i < ns; i++) {
+        fprintf(opt, "TILESET|%s|%s\n", sets[i], sets[i]);
+        if (!strcmp(sets[i], active_set)) set_ok = 1;
+    }
+    if (!set_ok && ns > 0) snprintf(active_set, sizeof(active_set), "%s", sets[0]);
+    fclose(opt);
+    rename(opt_tmp, opt_path);
+    char tmp_path[PATH_BUF];
+    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", g_state_path);
+    FILE *out = fopen(tmp_path, "w");
+    if (!out) return;
+    char png[PATH_BUF];
+    snprintf(png, sizeof(png), "%s/%s/%s.png", folder, "", active_set);
+    /* try png then bmp */
+    char try[PATH_BUF];
+    const char *exts[] = { ".png", ".bmp", ".jpg", NULL };
+    png[0] = 0;
+    for (int i = 0; exts[i]; i++) {
+        snprintf(try, sizeof(try), "%s/%s%s", folder, active_set, exts[i]);
+        if (access(try, R_OK) == 0) { snprintf(png, sizeof(png), "%s", try); break; }
+    }
+    char sprite_root[PATH_BUF];
+    snprintf(sprite_root, sizeof(sprite_root), "%s/sprites/tiled/%s/%s", g_package_dir, active_dir, active_set);
+    if (png[0]) publish_grid_from_png(png, 0, 0, 0, sprite_root, out);
+    fclose(out);
+    rename(tmp_path, g_state_path);
+}
+
+static void publish_ohr(void) {
+    char root[PATH_BUF];
+    if (!pdl_img_root_named("OHRRPGCE-ASSET-SOURCE-LOCATION.pdl", root, sizeof(root))) return;
+    char active_dir[64], active_set[64];
+    read_active_kv("ohrrpgce", active_dir, sizeof(active_dir), active_set, sizeof(active_set), "stock", "320px-TS02_town.bmp");
+    char opt_path[PATH_BUF], opt_tmp[PATH_BUF];
+    snprintf(opt_path, sizeof(opt_path), "%s/ohrrpgce_options.txt", g_package_dir);
+    snprintf(opt_tmp, sizeof(opt_tmp), "%s.tmp", opt_path);
+    FILE *opt = fopen(opt_tmp, "w");
+    if (!opt) return;
+    fprintf(opt, "ACTIVE_DIR|stock\nACTIVE_TILESET|%s\nACTIVE_CATEGORY|%s\n", active_set, active_set);
+    fprintf(opt, "DIR|stock|stock\n");
+    DIR *sd = opendir(root);
+    char sets[64][128]; int ns = 0;
+    if (sd) {
+        struct dirent *de;
+        while ((de = readdir(sd)) != NULL && ns < 64) {
+            if (!png_or_bmp(de->d_name)) continue;
+            char stem[128];
+            snprintf(stem, sizeof(stem), "%s", de->d_name);
+            char *dot = strrchr(stem, '.');
+            /* keep .bmp in 320px-foo.bmp.png stems: strip last ext only */
+            if (dot) *dot = 0;
+            snprintf(sets[ns++], 128, "%s", stem);
+        }
+        closedir(sd);
+    }
+    int set_ok = 0;
+    for (int i = 0; i < ns; i++) {
+        fprintf(opt, "TILESET|%s|%s\n", sets[i], sets[i]);
+        if (!strcmp(sets[i], active_set)) set_ok = 1;
+    }
+    if (!set_ok && ns > 0) snprintf(active_set, sizeof(active_set), "%s", sets[0]);
+    fclose(opt);
+    rename(opt_tmp, opt_path);
+    char tmp_path[PATH_BUF];
+    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", g_state_path);
+    FILE *out = fopen(tmp_path, "w");
+    if (!out) return;
+    char png[PATH_BUF] = "";
+    char try[PATH_BUF];
+    const char *exts[] = { ".png", ".bmp", NULL };
+    for (int i = 0; exts[i]; i++) {
+        snprintf(try, sizeof(try), "%s/%s%s", root, active_set, exts[i]);
+        if (access(try, R_OK) == 0) { snprintf(png, sizeof(png), "%s", try); break; }
+    }
+    /* 320px-foo.bmp.png */
+    if (!png[0]) {
+        snprintf(try, sizeof(try), "%s/%s.png", root, active_set);
+        if (access(try, R_OK) == 0) snprintf(png, sizeof(png), "%s", try);
+    }
+    char sprite_root[PATH_BUF];
+    snprintf(sprite_root, sizeof(sprite_root), "%s/sprites/ohr/%s", g_package_dir, active_set);
+    if (png[0]) publish_grid_from_png(png, 20, 20, 1, sprite_root, out);
+    fclose(out);
+    rename(tmp_path, g_state_path);
+}
+
+static void mypal_maybe_import(void) {
+    char uip[PATH_BUF];
+    snprintf(uip, sizeof(uip), "%s/&.widgits/file-explorer/file_explorer_ui.txt", g_house_root);
+    FILE *f = fopen(uip, "r");
+    if (!f) return;
+    char line[PATH_BUF], result[PATH_BUF] = "";
+    while (fgets(line, sizeof(line), f)) {
+        if (!strncmp(line, "result=", 7)) {
+            snprintf(result, sizeof(result), "%s", line + 7);
+            char *nl = strpbrk(result, "\r\n"); if (nl) *nl = 0;
+        }
+    }
+    fclose(f);
+    if (!result[0] || access(result, R_OK) != 0) return;
+    static char last[PATH_BUF];
+    if (!strcmp(last, result)) return;
+    snprintf(last, sizeof(last), "%s", result);
+    const char *base = strrchr(result, '/');
+    base = base ? base + 1 : result;
+    char stem[128];
+    snprintf(stem, sizeof(stem), "%s", base);
+    char *dot = strrchr(stem, '.'); if (dot) *dot = 0;
+    char dest_dir[PATH_BUF];
+    snprintf(dest_dir, sizeof(dest_dir), "%s/my-library/%s", g_package_dir, stem);
+    char mk[PATH_BUF * 2];
+    snprintf(mk, sizeof(mk), "mkdir -p '%s'", dest_dir);
+    int ign = system(mk); (void)ign;
+    char dest[PATH_BUF];
+    snprintf(dest, sizeof(dest), "%s/%s", dest_dir, base);
+    snprintf(mk, sizeof(mk), "cp -f '%s' '%s'", result, dest);
+    ign = system(mk); (void)ign;
+    char meta[PATH_BUF];
+    snprintf(meta, sizeof(meta), "%s/meta.pdl", dest_dir);
+    FILE *mf = fopen(meta, "w");
+    if (mf) {
+        fprintf(mf, "style=other\nsource_path=%s\nlabel=%s\n", result, stem);
+        fclose(mf);
+    }
+}
+
+static void publish_mypal(void) {
+    mypal_maybe_import();
+    char lib[PATH_BUF];
+    snprintf(lib, sizeof(lib), "%s/my-library", g_package_dir);
+    char mk[PATH_BUF * 2];
+    snprintf(mk, sizeof(mk), "mkdir -p '%s'", lib);
+    int ign = system(mk); (void)ign;
+    char active_dir[64], active_set[64];
+    read_active_kv("my-palettes", active_dir, sizeof(active_dir), active_set, sizeof(active_set), "", "");
+    char opt_path[PATH_BUF], opt_tmp[PATH_BUF];
+    snprintf(opt_path, sizeof(opt_path), "%s/my-palettes_options.txt", g_package_dir);
+    snprintf(opt_tmp, sizeof(opt_tmp), "%s.tmp", opt_path);
+    FILE *opt = fopen(opt_tmp, "w");
+    if (!opt) return;
+    DIR *pd = opendir(lib);
+    char dirs[64][64]; int nd = 0;
+    if (pd) {
+        struct dirent *de;
+        while ((de = readdir(pd)) != NULL && nd < 64) {
+            if (de->d_name[0] == '.') continue;
+            char pth[PATH_BUF];
+            snprintf(pth, sizeof(pth), "%s/%s", lib, de->d_name);
+            struct stat st;
+            if (stat(pth, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
+            snprintf(dirs[nd++], 64, "%s", de->d_name);
+        }
+        closedir(pd);
+    }
+    if (!active_dir[0] && nd > 0) snprintf(active_dir, sizeof(active_dir), "%s", dirs[0]);
+    fprintf(opt, "ACTIVE_DIR|%s\nACTIVE_TILESET|%s\nACTIVE_CATEGORY|%s\n", active_dir, active_set[0]?active_set:active_dir, active_dir);
+    for (int i = 0; i < nd; i++) fprintf(opt, "DIR|%s|%s\n", dirs[i], dirs[i]);
+    char folder[PATH_BUF];
+    snprintf(folder, sizeof(folder), "%s/%s", lib, active_dir);
+    DIR *sd = opendir(folder);
+    char sets[32][64]; int ns = 0;
+    if (sd) {
+        struct dirent *de;
+        while ((de = readdir(sd)) != NULL && ns < 32) {
+            if (!png_or_bmp(de->d_name)) continue;
+            char stem[64];
+            snprintf(stem, sizeof(stem), "%s", de->d_name);
+            char *dot = strrchr(stem, '.'); if (dot) *dot = 0;
+            snprintf(sets[ns++], 64, "%s", stem);
+        }
+        closedir(sd);
+    }
+    int set_ok = 0;
+    for (int i = 0; i < ns; i++) {
+        fprintf(opt, "TILESET|%s|%s\n", sets[i], sets[i]);
+        if (!strcmp(sets[i], active_set)) set_ok = 1;
+    }
+    if (!set_ok && ns > 0) snprintf(active_set, sizeof(active_set), "%s", sets[0]);
+    fclose(opt);
+    rename(opt_tmp, opt_path);
+    char tmp_path[PATH_BUF];
+    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", g_state_path);
+    FILE *out = fopen(tmp_path, "w");
+    if (!out) return;
+    char png[PATH_BUF] = "", try[PATH_BUF];
+    const char *exts[] = { ".png", ".bmp", ".jpg", NULL };
+    for (int i = 0; exts[i]; i++) {
+        snprintf(try, sizeof(try), "%s/%s%s", folder, active_set, exts[i]);
+        if (access(try, R_OK) == 0) { snprintf(png, sizeof(png), "%s", try); break; }
+    }
+    char sprite_root[PATH_BUF];
+    snprintf(sprite_root, sizeof(sprite_root), "%s/sprites/mypal/%s/%s", g_package_dir, active_dir, active_set);
+    if (png[0]) publish_grid_from_png(png, 0, 0, 0, sprite_root, out);
+    fclose(out);
+    rename(tmp_path, g_state_path);
+}
+
 static void publish(void) {
     if (strcmp(g_category, "debug") == 0) { publish_debug(); return; }
     struct stat st;
@@ -1630,6 +1999,27 @@ static void publish(void) {
         publish_cdda();
         return;
     }
+    if (strcmp(g_category, "tiled") == 0 || strcmp(g_category, "ohrrpgce") == 0
+        || strcmp(g_category, "my-palettes") == 0) {
+        static char s_last_atlas[256] = "";
+        char active_path[PATH_BUF];
+        snprintf(active_path, sizeof(active_path), "%s/%s_active.txt", g_package_dir, g_category);
+        char active_content[256] = "";
+        FILE *af_check = fopen(active_path, "r");
+        if (af_check) {
+            size_t n = fread(active_content, 1, sizeof(active_content) - 1, af_check);
+            active_content[n] = '\0';
+            fclose(af_check);
+        }
+        int changed = strcmp(active_content, s_last_atlas) != 0;
+        snprintf(s_last_atlas, sizeof(s_last_atlas), "%s", active_content);
+        if (!changed && g_source_mtime != 0 && strcmp(g_category, "my-palettes") != 0) return;
+        g_source_mtime = 1;
+        if (!strcmp(g_category, "tiled")) publish_tiled();
+        else if (!strcmp(g_category, "ohrrpgce")) publish_ohr();
+        else publish_mypal();
+        return;
+    }
     if (strcmp(g_category, "emojis") == 0) {
         static char s_last_emo[256] = "";
         char active_path[PATH_BUF];
@@ -1663,7 +2053,8 @@ int main(int argc, char **argv) {
 
     if (strcmp(g_category, "elements") == 0) {
         snprintf(g_source_path, sizeof(g_source_path), "%s/#.ref/menu/palletes/chemistry_tiles_expanded🏆.csv", g_house_root);
-    } else if (strcmp(g_category, "rmmv") == 0 || strcmp(g_category, "piececraft") == 0 || strcmp(g_category, "cdda") == 0) {
+    } else if (strcmp(g_category, "rmmv") == 0 || strcmp(g_category, "piececraft") == 0 || strcmp(g_category, "cdda") == 0
+            || strcmp(g_category, "tiled") == 0 || strcmp(g_category, "ohrrpgce") == 0 || strcmp(g_category, "my-palettes") == 0) {
         g_source_path[0] = '\0';
     } else if (strcmp(g_category, "emojis") == 0) {
         char pdl[PATH_BUF];
@@ -1701,7 +2092,7 @@ int main(int argc, char **argv) {
         /* rmmv tab/chooser clicks must land on press 1. 1s sleep made
          * A/B/C and Dungeon/Inside need 2-3 presses (live). Other
          * palettes still 1s. */
-        usleep(strcmp(g_category, "debug") == 0 ? 300000 : (strcmp(g_category, "rmmv") == 0 || strcmp(g_category, "piececraft") == 0 || strcmp(g_category, "cdda") == 0 || strcmp(g_category, "emojis") == 0) ? 100000 : 1000000);
+        usleep(strcmp(g_category, "debug") == 0 ? 300000 : (strcmp(g_category, "rmmv") == 0 || strcmp(g_category, "piececraft") == 0 || strcmp(g_category, "cdda") == 0 || strcmp(g_category, "emojis") == 0 || strcmp(g_category, "tiled") == 0 || strcmp(g_category, "ohrrpgce") == 0 || strcmp(g_category, "my-palettes") == 0) ? 100000 : 1000000);
     }
     return 0;
 }

@@ -1,0 +1,21 @@
+<!-- palettes-ohrrpgce.xhtpm — 20x20 / 320x200 pages (scaled if needed). -->
+<window label="palettes: OHR Tiles" class="palettes-pal database-window" vars="state/palettes-ohrrpgce_ui.txt">
+  <module src="*.monads/*.livedesk-taskbar/ops/+x/palettes_manager.+x" args="ohrrpgce"/>
+  <module src="&.widgits/palettes/ops/+x/palettes_projector.+x" id="ohrrpgce"/>
+  <page name="main">
+    <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
+    <repeat count="${n_dirs}" bind="d">
+      <item id="ohrdir-${d.#}" class="pal-dir ${d.active}" label="${d.label}"
+            action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'set-ohr-dir' '${PKG}' '${d.key}'"/>
+    </repeat>
+    <repeat count="${n_tilesets}" bind="s">
+      <item id="ohrset-${s.#}" class="pal-tileset ${s.active}" label="${s.label}"
+            action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'set-ohr-mod' '${PKG}' '${s.key}'"/>
+    </repeat>
+    <repeat count="${n_tiles}" bind="t">
+      <item id="pt${t.#}" class="swatch" sprite="${t.sprite}" label="${t.glyph}"
+            action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'arm-pc' '${t.sprite}' '${t.glyph}'"/>
+    </repeat>
+    <text label="No OHR pages — OHRRPGCE-ASSET-SOURCE-LOCATION.pdl" class="quiet" show="${empty}"/>
+  </page>
+</window>

@@ -206,6 +206,32 @@ arm_cdda() {
     log "armed cdda tile $_label $_sdir"
 }
 
+set_stem() {
+    _stem="$1"; _field="$2"; _pkg="$3"; _val="$4"
+    _f="$_pkg/${_stem}_active.txt"
+    mkdir -p "$_pkg"
+    _dir=""; _tileset=""
+    if [ -f "$_f" ]; then
+        _dir=$(grep "^dir=" "$_f" | head -1 | cut -d= -f2-)
+        _tileset=$(grep "^tileset=" "$_f" | head -1 | cut -d= -f2-)
+    fi
+    case "$_field" in
+        dir) _dir="$_val" ;;
+        tileset) _tileset="$_val" ;;
+    esac
+    {
+        printf 'dir=%s\n' "$_dir"
+        printf 'tileset=%s\n' "$_tileset"
+    } > "$_f"
+    log "$_stem active $_field=$_val"
+}
+
+mypal_file() {
+    _h="$HOUSE_DEFAULT"
+    setsid sh "$_h/&.widgits/file-explorer/button.sh" run >/tmp/mypal-file-hq.log 2>&1 < /dev/null &
+    log "my-palettes launched file-explorer"
+}
+
 set_emoji() {
     _field="$1"; _pkg="$2"; _val="$3"
     _f="$_pkg/emojis_active.txt"
@@ -375,6 +401,13 @@ case "${1:-}" in
     set-cdda-dir)      shift; set_cdda dir "$1" "$2"; exit 0 ;;
     set-cdda-mod)      shift; set_cdda tileset "$1" "$2"; exit 0 ;;
     arm-cdda)          shift; arm_cdda "${1:-}" "${2:-}"; exit 0 ;;
+    set-tiled-dir)     shift; set_stem tiled dir "$1" "$2"; exit 0 ;;
+    set-tiled-mod)     shift; set_stem tiled tileset "$1" "$2"; exit 0 ;;
+    set-ohr-dir)       shift; set_stem ohrrpgce dir "$1" "$2"; exit 0 ;;
+    set-ohr-mod)       shift; set_stem ohrrpgce tileset "$1" "$2"; exit 0 ;;
+    set-mypal-dir)     shift; set_stem my-palettes dir "$1" "$2"; exit 0 ;;
+    set-mypal-mod)     shift; set_stem my-palettes tileset "$1" "$2"; exit 0 ;;
+    mypal-file)        shift; mypal_file; exit 0 ;;
     set-emoji-dir)     shift; set_emoji dir "$1" "$2"; exit 0 ;;
     set-emoji-mod)     shift; set_emoji tileset "$1" "$2"; exit 0 ;;
 esac

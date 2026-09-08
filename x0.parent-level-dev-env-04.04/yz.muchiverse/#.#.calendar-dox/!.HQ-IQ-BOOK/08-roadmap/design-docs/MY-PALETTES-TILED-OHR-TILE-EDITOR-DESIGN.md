@@ -209,15 +209,18 @@ stamp on a cell.
 
 ---
 
-## 7. Open questions (need owner)
+## 7. Open questions — RESOLVED 2026-09-08 (owner)
 
-1. Default Tiled cell size when PNG has no TSX — guess 16 (Sprout) vs
-   prompt every import?
-2. Tile-editor lives under palettes vs `@.apps/tile-editor-hq`?
-3. Import wiki 320px thumbs that are **not** exactly 320×200 — scale
-   or skip?
-4. Should My Palettes also list **read-only stock** rmmv/cdda/piececraft
-   entries, or only user imports + tiled/ohr demos?
+1. **No-TSX size:** be flexible. Try TSX if present; else try 16, 20,
+   32, 48, 8, 64 that evenly divide both axes (first hit); sidecar
+   `sheet.pdl` / import `tile_w` overrides. Do not hard-require 16.
+2. **Tile-editor location:** under palettes (`palettes-tile-editor.xhtpm`
+   + manager next to palettes). Not a separate `@.apps` toy for v1.
+3. **OHR wiki thumbs ≠ 320×200:** **scale** to 320×200 (nearest), then
+   slice 20×20. Prefer usability over rejecting.
+4. **My Palettes contents:** **imports only** for MVP. Stock Tiled and
+   OHR stay on their **own** categories so the unproven user library
+   stays simple.
 
 ---
 

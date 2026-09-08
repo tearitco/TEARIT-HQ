@@ -1,0 +1,7 @@
+<!-- palettes-tile-editor.xhtpm — v1 stub. Canvas editor is PR4 in the design doc. -->
+<window label="palettes: Tile Editor" class="palettes-pal database-window">
+  <page name="main">
+    <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
+    <text label="Tile editor canvas is next. Use Tiled Tiles / OHR Tiles to pick, My Palettes to import your own sheets." class="quiet"/>
+  </page>
+</window>

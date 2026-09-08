@@ -76,7 +76,9 @@ int main(int argc, char **argv) {
     int is_rmmv = (strcmp(cat, "rmmv") == 0);
     int is_cdda = (strcmp(cat, "cdda") == 0);
     int is_emojis = (strcmp(cat, "emojis") == 0);
-    int is_chooser_grid = is_rmmv || is_piececraft || is_cdda || is_emojis;
+    int is_chooser_grid = is_rmmv || is_piececraft || is_cdda || is_emojis
+        || strcmp(cat, "tiled") == 0 || strcmp(cat, "ohrrpgce") == 0
+        || strcmp(cat, "my-palettes") == 0;
     const char *opt_stem = cat;
 
     char in_path[PATH_MAX], out_path[PATH_MAX], tmp_path[PATH_MAX];
