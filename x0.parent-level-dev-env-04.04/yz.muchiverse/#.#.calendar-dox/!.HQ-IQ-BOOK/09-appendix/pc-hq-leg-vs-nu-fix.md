@@ -237,6 +237,19 @@ reverted `01f2dbef`. Results:
   Either way: **§5-A (WM-managed window) AND this reparse/arm bug both
   have to be fixed** for Interact Mode to work. Neither alone is enough.
 
+## 6c. 2026-09-08 — grok landed both halves (needs hardware confirm)
+
+- **§5-A-ii + §5-B** restored as in `fb2678ae`: `class="managed"` on
+  `pchq-board.xhtpm`; `win_managed = dock_managed || elem_has_class(...,
+  "managed")`; per-tick `XSetInputFocus` while pointer is over the window.
+- **§6b arm:** `hq_idle_tick()` reloads `vars=` every tick and
+  `kh_scan_interact_relay()` arms from `interact_class` /
+  `interact_armed` / `bv_h1` projector keys, not from a reparsed Elem
+  class. Projector also publishes `interact_armed=0|1`.
+- Running windows must be **relaunched** to pick up the renderer rebuild.
+- Real-keyboard click-away / click-back / arrows / `13` is still the
+  owner's check — synthetic XTest is not evidence.
+
 ## 7. Suggested sequencing for grok
 
 1. **Confirm the window maps at all** on baseline (`pchq-board.xhtpm`,

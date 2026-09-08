@@ -177,11 +177,11 @@ int main(int argc, char **argv) {
         size_t off = 0;
         off += (size_t)snprintf(ui + off, UIBUF - off,
             "bv_session=%s\ncanvas_raw=%s\nno_session=%s\n"
-            "bv_h1=%s\nbv_h2=%s\ninteract_class=%s\n"
+            "bv_h1=%s\nbv_h2=%s\ninteract_class=%s\ninteract_armed=%d\n"
             "interact_label=%s\nclock=%s\n"
             "menu_open=%s\nfile_menu_open=%s\ndesk_menu_open=%s\n",
             bv, raw, have ? "" : "1",
-            h1, h2, interact ? "interact-active" : "",
+            h1, h2, interact ? "interact-active" : "", interact ? 1 : 0,
             interact ? "ON" : "off", clock_s,
             menu_open,
             strcmp(menu_open, "file") == 0 ? "1" : "",

@@ -1844,6 +1844,11 @@ static int g_win_pos_applied_x = INT_MIN, g_win_pos_applied_y = INT_MIN;
  * genuine but repeated FocusIn/FocusOut (mode NotifyNormal) only repaints
  * when the indicator would truly change. -1 = nothing painted yet. */
 static int g_focus_owned_painted = -1;
+/* Set at window-create for a <window class="managed"> non-dock window
+ * (pchq-board). hq_idle_tick() re-asserts XSetInputFocus while the
+ * pointer is over the window (legacy run_pchq_board_mode pchq_focus_ok).
+ * Not set for override_redirect windows (2026-09-03 flicker). */
+static int g_win_managed_focus = 0;
 /* Coalescing repaint flag for the generic (non-marker-pilot) window. N
  * repaint requests inside one event-loop iteration collapse to a single
  * redraw() at the tick boundary - the tpmos marker/dirty model
@@ -4419,19 +4424,43 @@ static void kh_apply_scope_confine(void) {
 static void kh_scan_interact_relay(void) {
     Elem *pg = find_page(g_current_page);
     Elem *found = NULL;
+    Elem *any_relay = NULL;
     if (pg) {
         for (int i = 0; i < pg->n_children; i++) {
             Elem *it = pg->children[i];
             if (strcmp(it->tag, "item") != 0 || !it->relay[0]) continue;
+            if (!any_relay) any_relay = it;
             if (elem_has_class(it, "interact-active")) { found = it; break; }
         }
     }
-    if (found) {
-        if (!g_interact_relay_on || strcmp(g_interact_relay_raw, found->relay) != 0) {
-            snprintf(g_interact_relay_raw, sizeof(g_interact_relay_raw), "%s", found->relay);
-            char paths[300]; snprintf(paths, sizeof(paths), "%s", found->relay);
+    if (!found) found = any_relay;
+    /* Arm from projector vars even when the Elem class is stale
+     * (vars-hash reparse not firing — pc-hq-leg-vs-nu-fix.md §6b). */
+    const char *ic = kh_get_var("interact_class");
+    const char *ia = kh_get_var("interact_armed");
+    int var_armed = (ic && strstr(ic, "interact-active")) ||
+                    (ia && ia[0] == '1');
+    int class_armed = found && elem_has_class(found, "interact-active");
+    const char *h1 = kh_get_var("bv_h1");
+    const char *h2 = kh_get_var("bv_h2");
+    if (class_armed || var_armed) {
+        char paths[PATH_BUF * 2];
+        if (h1 && h1[0]) {
+            if (h2 && h2[0]) snprintf(paths, sizeof(paths), "%s,%s", h1, h2);
+            else snprintf(paths, sizeof(paths), "%s", h1);
+        } else if (found) {
+            snprintf(paths, sizeof(paths), "%s", found->relay);
+        } else {
+            g_interact_relay_on = 0;
+            g_interact_relay_raw[0] = '\0';
+            return;
+        }
+        if (!g_interact_relay_on || strcmp(g_interact_relay_raw, paths) != 0) {
+            snprintf(g_interact_relay_raw, sizeof(g_interact_relay_raw), "%s", paths);
             g_interact_relay_n = 0;
-            char *save = NULL, *tok = strtok_r(paths, ",", &save);
+            char work[PATH_BUF * 2];
+            snprintf(work, sizeof(work), "%s", paths);
+            char *save = NULL, *tok = strtok_r(work, ",", &save);
             while (tok && g_interact_relay_n < 2) {
                 snprintf(g_interact_relay_paths[g_interact_relay_n], sizeof(g_interact_relay_paths[0]), "%s", tok);
                 g_interact_relay_n++;
@@ -7714,6 +7743,25 @@ static void hq_ui_pdl_reload_if_changed(const char *house_root) {
 }
 
 static void hq_idle_tick(void) {
+    /* pc-hq-leg-vs-nu-fix.md §5-B: WM-managed continuously-interactive
+     * window re-asserts X keyboard focus while the pointer is over it.
+     * Gated on g_win_managed_focus so override_redirect never hits this. */
+    if (g_win_managed_focus && dpy && win) {
+        Window fw = None; int frev = 0;
+        XGetInputFocus(dpy, &fw, &frev);
+        if (fw != win) {
+            Window rr, cr; int rx, ry, wx, wy; unsigned mb;
+            if (XQueryPointer(dpy, win, &rr, &cr, &rx, &ry, &wx, &wy, &mb) &&
+                wx >= 0 && wy >= 0 && wx < g_win_w && wy < g_win_h) {
+                XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
+            }
+        }
+    }
+    /* pc-hq-leg-vs-nu-fix.md §6b: Interact Mode arm must not wait on
+     * a vars-hash reparse. Reload projector vars and rescan every tick
+     * (legacy read active_gui_is_typing.txt once per frame). */
+    if (g_vars_path[0]) kh_load_vars_multi(g_vars_path);
+    kh_scan_interact_relay();
     /* REAL, NEW 2026-09-05 - age out the top-right "copied" tag: one
      * last repaint the moment it crosses ~2s old, then it stays cleared
      * (this block is a no-op once g_clip_copied_at is back to 0). */
@@ -14380,7 +14428,11 @@ int main(int argc, char **argv) {
      * (short-lived popups/submenus correctly stay override_redirect,
      * per 03-pitfalls/X11-AND-SESSION-PITFALLS.md) - not touched here. */
     int dock_managed = window_is_dock();
-    swa.override_redirect = dock_managed ? False : (Bool)g_override_redirect;
+    /* pc-hq-leg-vs-nu-fix.md §5-A-ii: <window class="managed"> is
+     * WM-managed like the dock. Only pchq-board sets the class. */
+    int win_managed = dock_managed || elem_has_class(g_window, "managed");
+    g_win_managed_focus = win_managed && !dock_managed;
+    swa.override_redirect = win_managed ? False : (Bool)g_override_redirect;
     /* REAL FIX 2026-08-29 (live report: "toolbar doesn't allow drag
      * repositioning") - this generic popup window (entity-menu popup AND
      * swatch-picker/Settings) never requested ButtonReleaseMask or
@@ -14397,7 +14449,7 @@ int main(int argc, char **argv) {
     win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)g_win_w, (unsigned)g_win_h, 0,
                          CopyFromParent, InputOutput, CopyFromParent, CWBackPixel | CWOverrideRedirect | CWEventMask, &swa);
     if (window_is_dock()) apply_dock_window_hints(dpy, win, g_win_x, g_win_y);
-    render_managed_wm_hints(dpy, win, dock_managed || !g_override_redirect); /* REAL, NEW 2026-09-01 - managed branch: undecorated + no shell chrome (post-map sink-below lands after XMapRaised) */
+    render_managed_wm_hints(dpy, win, win_managed || !g_override_redirect); /* REAL, NEW 2026-09-01 - managed branch; win_managed adds class="managed" 2026-09-08 */
     Atom motif_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
     long hints[5] = { 2, 0, 0, 0, 0 };
     XChangeProperty(dpy, win, motif_hints, motif_hints, 32, PropModeReplace, (unsigned char *)hints, 5);
