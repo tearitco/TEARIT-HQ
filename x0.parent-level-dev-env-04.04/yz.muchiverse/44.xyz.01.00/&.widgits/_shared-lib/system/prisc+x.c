@@ -43,54 +43,10 @@
 #else
 #include <unistd.h>
 #include <dirent.h>
-#include <sys/wait.h>
-#include <fcntl.h>
-#include <time.h>
 #define REALPATH(path, resolved) realpath(path, resolved)
 #define SETENV(name, value, overwrite) setenv(name, value, overwrite)
 #endif
 #include <sys/stat.h>
-
-#ifndef _WIN32
-/* REAL FIX 2026-09-08 (pc-hq board-viewer freeze, diagnosed against
- * mutaclsym 19.00 "neo"): exec_custom_op() used to run every `+x/`
- * custom op via popen(cmd,"r") + fgets-to-EOF + pclose(). If the child
- * hangs, or any descendant it spawns keeps the stdout write-end open,
- * fgets() never sees EOF and the ENTIRE pal VM blocks forever
- * (observed live: prisc+x stuck in wchan=pipe_read, board's frames
- * frozen). mutaclsym-neo's own game_dispatch.c run_op() avoids this
- * exactly: fork + child stdout/stderr -> /dev/null + execl + waitpid,
- * no pipe. This helper is that pattern PLUS a hard watchdog for a
- * genuinely infinite child: kill the whole process group and let the
- * pal loop continue with the last good frame. Custom ops in this
- * house all communicate through files/receipts - their stdout is log
- * chatter, so dropping the pipe loses nothing. */
-static void run_custom_bin(const char *cmd) {
-    pid_t pid = fork();
-    if (pid == 0) {
-        setsid(); /* own process group so a timeout can kill the whole tree */
-        int devnull = open("/dev/null", O_WRONLY);
-        if (devnull >= 0) { dup2(devnull, 1); dup2(devnull, 2); if (devnull > 2) close(devnull); }
-        execl("/bin/sh", "sh", "-c", cmd, (char *)NULL);
-        _exit(127);
-    }
-    if (pid < 0) return;
-    const int cap_ms = 4000, step_ms = 20;
-    int waited = 0, status = 0;
-    for (;;) {
-        pid_t r = waitpid(pid, &status, WNOHANG);
-        if (r == pid || r < 0) break;
-        if (waited >= cap_ms) {
-            kill(-pid, SIGKILL);
-            waitpid(pid, &status, 0);
-            break;
-        }
-        struct timespec ts = { 0, (long)step_ms * 1000000L };
-        nanosleep(&ts, NULL);
-        waited += step_ms;
-    }
-}
-#endif
 
 #ifndef MAX_PATH
 #define MAX_PATH 4096
@@ -1045,31 +1001,23 @@ void exec_custom_op(Inst *i) {
                 if (strlen(i->literal_arg) > 0) {
                     if (asprintf(&cmd, "'%s' \"%s\"",
                              full_script_path, i->literal_arg) != -1) {
-#ifdef _WIN32
                         FILE *pipe = popen(cmd, "r");
                         if (pipe) {
                             char result[256];
                             while (fgets(result, sizeof(result), pipe)) printf("%s", result);
                             pclose(pipe);
                         }
-#else
-                        run_custom_bin(cmd); /* fork+exec+waitpid, watchdog - see run_custom_bin() */
-#endif
                         free(cmd);
                     }
                 } else {
                     if (asprintf(&cmd, "'%s' %d",
                              full_script_path, regs[i->rs1]) != -1) {
-#ifdef _WIN32
                         FILE *pipe = popen(cmd, "r");
                         if (pipe) {
                             char result[256];
                             while (fgets(result, sizeof(result), pipe)) printf("%s", result);
                             pclose(pipe);
                         }
-#else
-                        run_custom_bin(cmd);
-#endif
                         free(cmd);
                     }
                 }

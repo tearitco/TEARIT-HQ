@@ -62,50 +62,11 @@ static int wsr_asprintf(char **strp, const char *fmt, ...) {
 #else
 #include <unistd.h>
 #include <dirent.h>
-#include <sys/wait.h>
-#include <fcntl.h>
-#include <time.h>
 #define REALPATH(path, resolved) realpath(path, resolved)
 #define SETENV(name, value, overwrite) setenv(name, value, overwrite)
 #endif
 #include <sys/stat.h>
 #include <stdarg.h>
-
-#ifndef _WIN32
-/* REAL FIX 2026-09-08 (pc-hq board-viewer freeze, diagnosed against
- * mutaclsym 19.00 "neo"). See the identical block in
- * &.widgits/_shared-lib/system/prisc+x.c for the full rationale. Short
- * version: exec_custom_op()'s popen(cmd,"r") + fgets-to-EOF blocks the
- * whole pal VM forever if a custom-op child (e.g. bv_render_3d) hangs
- * or leaks its stdout fd to a descendant. mutaclsym-neo's run_op()
- * (fork + stdout/stderr -> /dev/null + execl + waitpid, no pipe)
- * doesn't have this. This is that, plus a hard watchdog. */
-static void run_custom_bin(const char *cmd) {
-    pid_t pid = fork();
-    if (pid == 0) {
-        setsid();
-        int devnull = open("/dev/null", O_WRONLY);
-        if (devnull >= 0) { dup2(devnull, 1); dup2(devnull, 2); if (devnull > 2) close(devnull); }
-        execl("/bin/sh", "sh", "-c", cmd, (char *)NULL);
-        _exit(127);
-    }
-    if (pid < 0) return;
-    const int cap_ms = 4000, step_ms = 20;
-    int waited = 0, status = 0;
-    for (;;) {
-        pid_t r = waitpid(pid, &status, WNOHANG);
-        if (r == pid || r < 0) break;
-        if (waited >= cap_ms) {
-            kill(-pid, SIGKILL);
-            waitpid(pid, &status, 0);
-            break;
-        }
-        struct timespec ts = { 0, (long)step_ms * 1000000L };
-        nanosleep(&ts, NULL);
-        waited += step_ms;
-    }
-}
-#endif
 
 #ifndef MAX_PATH
 #define MAX_PATH 4096
@@ -993,31 +954,23 @@ void exec_custom_op(Inst *i) {
                 if (strlen(i->literal_arg) > 0) {
                     if (asprintf(&cmd, "%s \"%s\"",
                              quoted_script_path, i->literal_arg) != -1) {
-#ifdef _WIN32
                         FILE *pipe = popen(cmd, "r");
                         if (pipe) {
                             char result[256];
                             while (fgets(result, sizeof(result), pipe)) printf("%s", result);
                             pclose(pipe);
                         }
-#else
-                        run_custom_bin(cmd); /* fork+exec+waitpid, watchdog - see run_custom_bin() */
-#endif
                         free(cmd);
                     }
                 } else {
                     if (asprintf(&cmd, "%s %d",
                              quoted_script_path, regs[i->rs1]) != -1) {
-#ifdef _WIN32
                         FILE *pipe = popen(cmd, "r");
                         if (pipe) {
                             char result[256];
                             while (fgets(result, sizeof(result), pipe)) printf("%s", result);
                             pclose(pipe);
                         }
-#else
-                        run_custom_bin(cmd);
-#endif
                         free(cmd);
                     }
                 }
