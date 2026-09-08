@@ -1127,10 +1127,27 @@ void ktb_quit_and_save(KtbState *s) {
     livedesk_close_all(s->house_root);
 #ifndef _WIN32
     livedesk_kill_stray_entities(s->house_root);
-    livedesk_kill_strip_renderers(s->house_root);
 #endif
     ktb_unlink_pidfile(s);
+    /* NOTE: the strip renderer is NOT stopped here. ktb_quit_and_save()
+     * also runs on a plain SIGTERM exit (main() bottom), and
+     * run_khtpm_strip.sh's own restart already SIGTERMs the old pair
+     * then launches a fresh one - a renderer kill here would race that
+     * and leave the new strip with no window. The strip renderer is
+     * stopped ONLY on an explicit user quit, via
+     * ktb_stop_strip_renderers() called from the KSC_CLOSE_QUIT /
+     * hq_quit_requested paths in khtpm_taskbar_manager_main.c. */
 }
+
+#ifndef _WIN32
+/* Public entry for the explicit-user-quit paths in _main.c. See
+ * livedesk_kill_strip_renderers()'s header for what/why. */
+void ktb_stop_strip_renderers(const char *house_root) {
+    livedesk_kill_strip_renderers(house_root);
+}
+#else
+void ktb_stop_strip_renderers(const char *house_root) { (void)house_root; }
+#endif
 
 int ktb_close_x0(int screen_w) {
     return screen_w - KTB_CLOSE_W;

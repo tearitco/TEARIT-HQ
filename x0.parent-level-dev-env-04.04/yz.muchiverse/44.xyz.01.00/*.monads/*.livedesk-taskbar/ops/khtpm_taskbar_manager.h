@@ -201,6 +201,10 @@ void ktb_focus_delta(KtbState *s, int delta);
 
 /* Quit+save: rewrite autostart LAUNCH rows from open tabs (portable paths) */
 void ktb_quit_and_save(KtbState *s);
+/* Stop the strip's own renderer window process(es). Call ONLY from an
+ * explicit user quit (KSC_CLOSE_QUIT / X.quit) - NOT from a plain exit,
+ * or it races run_khtpm_strip.sh's restart. See khtpm_taskbar_manager.c. */
+void ktb_stop_strip_renderers(const char *house_root);
 
 /* Layout helpers for plat drawing */
 int ktb_close_x0(int screen_w);
