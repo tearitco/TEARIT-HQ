@@ -1,0 +1,23 @@
+<!-- palettes-cdda.xhtpm — CDDA Tiles (UltiCa). Same chooser families as
+     palettes-rmmv: pal-dir = pngs_* sheet, pal-tileset = category folder. -->
+<window label="palettes: CDDA Tiles" class="palettes-pal database-window" vars="state/palettes-cdda_ui.txt">
+  <module src="*.monads/*.livedesk-taskbar/ops/+x/palettes_manager.+x" args="cdda"/>
+  <module src="&.widgits/palettes/ops/+x/palettes_projector.+x" id="cdda"/>
+  <page name="main">
+    <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
+    <repeat count="${n_dirs}" bind="d">
+      <item id="cddadir-${d.#}" class="pal-dir ${d.active}" label="${d.label}"
+            action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'set-cdda-dir' '${PKG}' '${d.key}'"/>
+    </repeat>
+    <repeat count="${n_tilesets}" bind="s">
+      <item id="cddamod-${s.#}" class="pal-tileset ${s.active}" label="${s.label}"
+            action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'set-cdda-mod' '${PKG}' '${s.key}'"/>
+    </repeat>
+    <repeat count="${n_tiles}" bind="t">
+      <item id="pt${t.#}" class="swatch" sprite="${t.sprite}" label="${t.glyph}"
+            action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'arm-cdda' '${t.sprite}' '${t.glyph}'"/>
+    </repeat>
+    <text label="No CDDA textures — check CDDA-ASSET-SOURCE-LOCATION.pdl img_root." class="quiet" show="${empty}"/>
+    <text label="Grid truncated — pick a smaller category tab." class="quiet" show="${truncated}"/>
+  </page>
+</window>

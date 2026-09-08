@@ -12,9 +12,19 @@
   <module src="*.monads/*.livedesk-taskbar/ops/+x/palettes_manager.+x" args="emojis"/>
   <module src="&.widgits/palettes/ops/+x/palettes_projector.+x" id="emojis"/>
   <page name="main">
+    <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
+    <repeat count="${n_dirs}" bind="d">
+      <item id="emogrp-${d.#}" class="pal-dir ${d.active}" label="${d.label}"
+            action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'set-emoji-dir' '${PKG}' '${d.key}'"/>
+    </repeat>
+    <repeat count="${n_tilesets}" bind="s">
+      <item id="emosub-${s.#}" class="pal-tileset ${s.active}" label="${s.label}"
+            action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'set-emoji-mod' '${PKG}' '${s.key}'"/>
+    </repeat>
     <repeat count="${n_tiles}" bind="t">
       <item id="pt${t.#}" class="swatch" sprite="${t.sprite}" label="${t.glyph}" action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'place' '${t.glyph}'"/>
     </repeat>
     <text label="No tiles yet - the palette manager is still generating sprites." class="quiet" show="${empty}"/>
+    <text label="Grid truncated — pick a smaller subgroup tab." class="quiet" show="${truncated}"/>
   </page>
 </window>

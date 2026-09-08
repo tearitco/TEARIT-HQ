@@ -210,28 +210,160 @@ static void ensure_registry_entry(const char *glyph) {
     remove(atlas); /* registry entries don't keep the intermediate atlas.png (checked: existing entries don't have one) */
 }
 
+static void slug_key(const char *in, char *out, size_t n) {
+    size_t j = 0;
+    for (; *in && j + 1 < n; in++) {
+        unsigned char c = (unsigned char)*in;
+        if (isalnum(c)) out[j++] = (char)c;
+        else if (c == '-') out[j++] = '-';
+        else if (c == ' ' || c == '&' || c == '/') {
+            if (j && out[j - 1] != '_') out[j++] = '_';
+        }
+    }
+    while (j > 0 && out[j - 1] == '_') j--;
+    out[j] = 0;
+}
+
+static int emoji_is_skin(const char *hexline) {
+    return strstr(hexline, "1F3FB") || strstr(hexline, "1F3FC")
+        || strstr(hexline, "1F3FD") || strstr(hexline, "1F3FE")
+        || strstr(hexline, "1F3FF");
+}
+
 static void publish_emojis(void) {
     FILE *in = fopen(g_source_path, "r");
     if (!in) return;
+
+    char active_path[PATH_BUF];
+    snprintf(active_path, sizeof(active_path), "%s/emojis_active.txt", g_package_dir);
+    char active_grp[64] = "Smileys_Emotion", active_sub[64] = "face-smiling";
+    FILE *af = fopen(active_path, "r");
+    if (af) {
+        char line[128];
+        while (fgets(line, sizeof(line), af)) {
+            char *eq = strchr(line, '='); if (!eq) continue;
+            *eq = 0; char *v = eq + 1;
+            size_t vn = strlen(v);
+            while (vn > 0 && (v[vn-1]=='\n'||v[vn-1]=='\r')) v[--vn]=0;
+            if (!strcmp(line, "dir")) snprintf(active_grp, sizeof(active_grp), "%s", v);
+            else if (!strcmp(line, "tileset")) snprintf(active_sub, sizeof(active_sub), "%s", v);
+        }
+        fclose(af);
+    }
+
+    char gkey[16][64], glab[16][128]; int ng = 0;
+    char skey[64][64], slab[64][128]; int ns = 0;
+    char cur_gk[64] = "", cur_gl[128] = "", cur_sk[64] = "", cur_sl[128] = "";
+    char line[512];
+    while (fgets(line, sizeof(line), in)) {
+        if (!strncmp(line, "# group:", 8)) {
+            char *g = trim(line + 8);
+            if (!strcmp(g, "Component")) { cur_gk[0] = 0; continue; }
+            slug_key(g, cur_gk, sizeof(cur_gk));
+            snprintf(cur_gl, sizeof(cur_gl), "%s", g);
+            int found = 0;
+            for (int i = 0; i < ng; i++) if (!strcmp(gkey[i], cur_gk)) found = 1;
+            if (!found && ng < 16) {
+                snprintf(gkey[ng], 64, "%s", cur_gk);
+                snprintf(glab[ng], 128, "%s", cur_gl);
+                ng++;
+            }
+            continue;
+        }
+        if (!strncmp(line, "# subgroup:", 11)) {
+            char *s = trim(line + 11);
+            slug_key(s, cur_sk, sizeof(cur_sk));
+            snprintf(cur_sl, sizeof(cur_sl), "%s", s);
+            if (cur_gk[0] && !strcmp(cur_gk, active_grp) && ns < 64) {
+                int found = 0;
+                for (int i = 0; i < ns; i++) if (!strcmp(skey[i], cur_sk)) found = 1;
+                if (!found) {
+                    snprintf(skey[ns], 64, "%s", cur_sk);
+                    snprintf(slab[ns], 128, "%s", cur_sl);
+                    ns++;
+                }
+            }
+        }
+    }
+    int grp_ok = 0;
+    for (int i = 0; i < ng; i++) if (!strcmp(gkey[i], active_grp)) grp_ok = 1;
+    if (!grp_ok && ng > 0) snprintf(active_grp, sizeof(active_grp), "%s", gkey[0]);
+    if (ns == 0) {
+        rewind(in);
+        cur_gk[0] = 0;
+        while (fgets(line, sizeof(line), in)) {
+            if (!strncmp(line, "# group:", 8)) {
+                char *g = trim(line + 8);
+                slug_key(g, cur_gk, sizeof(cur_gk));
+                continue;
+            }
+            if (!strncmp(line, "# subgroup:", 11)) {
+                char *s = trim(line + 11);
+                slug_key(s, cur_sk, sizeof(cur_sk));
+                snprintf(cur_sl, sizeof(cur_sl), "%s", s);
+                if (cur_gk[0] && !strcmp(cur_gk, active_grp) && ns < 64) {
+                    snprintf(skey[ns], 64, "%s", cur_sk);
+                    snprintf(slab[ns], 128, "%s", cur_sl);
+                    ns++;
+                }
+            }
+        }
+    }
+    int sub_ok = 0;
+    for (int i = 0; i < ns; i++) if (!strcmp(skey[i], active_sub)) sub_ok = 1;
+    if (!sub_ok && ns > 0) snprintf(active_sub, sizeof(active_sub), "%s", skey[0]);
+
+    char opt_path[PATH_BUF], opt_tmp[PATH_BUF];
+    snprintf(opt_path, sizeof(opt_path), "%s/emojis_options.txt", g_package_dir);
+    snprintf(opt_tmp, sizeof(opt_tmp), "%s.tmp", opt_path);
+    FILE *opt = fopen(opt_tmp, "w");
+    if (opt) {
+        fprintf(opt, "ACTIVE_DIR|%s\n", active_grp);
+        fprintf(opt, "ACTIVE_TILESET|%s\n", active_sub);
+        fprintf(opt, "ACTIVE_CATEGORY|%s\n", active_sub);
+        for (int i = 0; i < ng; i++) fprintf(opt, "DIR|%s|%s\n", gkey[i], glab[i]);
+        for (int i = 0; i < ns; i++) fprintf(opt, "TILESET|%s|%s\n", skey[i], slab[i]);
+        fclose(opt);
+        rename(opt_tmp, opt_path);
+    }
+
     char tmp_path[PATH_BUF];
     snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", g_state_path);
     FILE *out = fopen(tmp_path, "w");
     if (!out) { fclose(in); return; }
-
-    char line[256];
+    rewind(in);
+    cur_gk[0] = 0; cur_sk[0] = 0;
     int n = 0;
     while (n < MAX_TILES && fgets(line, sizeof(line), in)) {
-        char *g = trim(line);
-        if (!g[0]) continue;
+        if (!strncmp(line, "# group:", 8)) {
+            slug_key(trim(line + 8), cur_gk, sizeof(cur_gk));
+            continue;
+        }
+        if (!strncmp(line, "# subgroup:", 11)) {
+            slug_key(trim(line + 11), cur_sk, sizeof(cur_sk));
+            continue;
+        }
+        if (!strstr(line, "; fully-qualified")) continue;
+        if (emoji_is_skin(line)) continue;
+        if (strcmp(cur_gk, active_grp) || strcmp(cur_sk, active_sub)) continue;
+        char *hash = strstr(line, "# ");
+        if (!hash) continue;
+        hash += 2;
+        while (*hash == ' ') hash++;
+        char glyph[64]; size_t gi = 0;
+        while (*hash && *hash != ' ' && *hash != '\t' && gi + 1 < sizeof(glyph))
+            glyph[gi++] = *hash++;
+        glyph[gi] = 0;
+        if (!glyph[0]) continue;
         n++;
-        ensure_emoji_sprite(g, n);
+        ensure_emoji_sprite(glyph, n);
         char sprite_dir[PATH_BUF];
         snprintf(sprite_dir, sizeof(sprite_dir), "%s/%03d", g_sprite_root, n);
         char csv[PATH_BUF];
         snprintf(csv, sizeof(csv), "%s/sprite.csv", sprite_dir);
         struct stat st;
         int has_sprite = (stat(csv, &st) == 0);
-        fprintf(out, "%s\t%s\t%s\n", g, g, has_sprite ? sprite_dir : "");
+        fprintf(out, "%s\t%s\t%s\n", glyph, glyph, has_sprite ? sprite_dir : "");
     }
     fclose(in);
     fclose(out);
@@ -1218,6 +1350,192 @@ static void publish_piececraft(void) {
     rename(tmp_path, g_state_path);
 }
 
+static int cdda_img_root(char *out, size_t outsz) {
+    char pdl[PATH_BUF];
+    snprintf(pdl, sizeof(pdl), "%s/../#.#.calendar-dox/1.^V-hq/CDDA-ASSET-SOURCE-LOCATION.pdl", g_house_root);
+    FILE *f = fopen(pdl, "r");
+    if (!f) return 0;
+    char line[PATH_BUF];
+    int ok = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "SOURCE", 6) != 0) continue;
+        if (!strstr(line, "img_root")) continue;
+        char *bar = strrchr(line, '|');
+        if (!bar) continue;
+        char *v = bar + 1;
+        while (*v == ' ' || *v == '\t') v++;
+        size_t n = strlen(v);
+        while (n > 0 && (v[n-1] == '\n' || v[n-1] == '\r' || v[n-1] == ' ')) v[--n] = 0;
+        if (n > 0) { snprintf(out, outsz, "%s", v); ok = 1; break; }
+    }
+    fclose(f);
+    return ok && access(out, F_OK) == 0;
+}
+
+static int cdda_skip_sheet(const char *name) {
+    if (strstr(name, "filler")) return 1;
+    if (strstr(name, "incomplete")) return 1;
+    return 0;
+}
+
+static void collect_pngs(const char *dir, char names[][256], char paths[][PATH_BUF], int *nn, int cap) {
+    DIR *d = opendir(dir);
+    if (!d) return;
+    struct dirent *de;
+    while (*nn < cap && (de = readdir(d)) != NULL) {
+        if (de->d_name[0] == '.') continue;
+        char pth[PATH_BUF];
+        snprintf(pth, sizeof(pth), "%s/%s", dir, de->d_name);
+        struct stat st;
+        if (stat(pth, &st) != 0) continue;
+        if (S_ISDIR(st.st_mode)) {
+            collect_pngs(pth, names, paths, nn, cap);
+            continue;
+        }
+        size_t len = strlen(de->d_name);
+        if (len < 5 || strcasecmp(de->d_name + len - 4, ".png") != 0) continue;
+        snprintf(names[*nn], 256, "%s", de->d_name);
+        char *dot = strrchr(names[*nn], '.'); if (dot) *dot = 0;
+        snprintf(paths[*nn], PATH_BUF, "%s", pth);
+        (*nn)++;
+    }
+    closedir(d);
+}
+
+static void publish_cdda(void) {
+    char root[PATH_BUF];
+    if (!cdda_img_root(root, sizeof(root))) return;
+    char active_path[PATH_BUF];
+    snprintf(active_path, sizeof(active_path), "%s/cdda_active.txt", g_package_dir);
+    char active_sheet[64] = "pngs_normal_32x32", active_cat[64] = "terrain";
+    FILE *af = fopen(active_path, "r");
+    if (af) {
+        char line[128];
+        while (fgets(line, sizeof(line), af)) {
+            char *eq = strchr(line, '='); if (!eq) continue;
+            *eq = 0; char *v = eq + 1;
+            size_t vn = strlen(v);
+            while (vn > 0 && (v[vn-1]=='\n'||v[vn-1]=='\r')) v[--vn]=0;
+            if (!strcmp(line, "dir")) snprintf(active_sheet, sizeof(active_sheet), "%s", v);
+            else if (!strcmp(line, "tileset")) snprintf(active_cat, sizeof(active_cat), "%s", v);
+        }
+        fclose(af);
+    }
+
+    char opt_path[PATH_BUF], opt_tmp[PATH_BUF];
+    snprintf(opt_path, sizeof(opt_path), "%s/cdda_options.txt", g_package_dir);
+    snprintf(opt_tmp, sizeof(opt_tmp), "%s.tmp", opt_path);
+    FILE *opt = fopen(opt_tmp, "w");
+    if (!opt) return;
+    fprintf(opt, "ACTIVE_DIR|%s\n", active_sheet);
+    fprintf(opt, "ACTIVE_TILESET|%s\n", active_cat);
+    fprintf(opt, "ACTIVE_CATEGORY|%s\n", active_cat);
+
+    DIR *pd = opendir(root);
+    char sheets[32][64]; int nsh = 0;
+    if (pd) {
+        struct dirent *de;
+        while ((de = readdir(pd)) != NULL && nsh < 32) {
+            if (strncmp(de->d_name, "pngs_", 5) != 0) continue;
+            if (cdda_skip_sheet(de->d_name)) continue;
+            char pth[PATH_BUF];
+            snprintf(pth, sizeof(pth), "%s/%s", root, de->d_name);
+            struct stat st;
+            if (stat(pth, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
+            snprintf(sheets[nsh++], 64, "%s", de->d_name);
+        }
+        closedir(pd);
+        for (int i = 1; i < nsh; i++) {
+            char k[64]; snprintf(k, 64, "%s", sheets[i]);
+            int j = i - 1;
+            while (j >= 0 && strcmp(sheets[j], k) > 0) { snprintf(sheets[j+1], 64, "%s", sheets[j]); j--; }
+            snprintf(sheets[j+1], 64, "%s", k);
+        }
+        int sheet_ok = 0;
+        for (int i = 0; i < nsh; i++) {
+            const char *lab = sheets[i];
+            if (!strncmp(lab, "pngs_", 5)) lab += 5;
+            fprintf(opt, "DIR|%s|%s\n", sheets[i], lab);
+            if (!strcmp(sheets[i], active_sheet)) sheet_ok = 1;
+        }
+        if (!sheet_ok && nsh > 0) snprintf(active_sheet, sizeof(active_sheet), "%s", sheets[0]);
+    }
+
+    char sheet_path[PATH_BUF];
+    snprintf(sheet_path, sizeof(sheet_path), "%s/%s", root, active_sheet);
+    DIR *cd = opendir(sheet_path);
+    char cats[64][64]; int nc = 0;
+    if (cd) {
+        struct dirent *de;
+        while ((de = readdir(cd)) != NULL && nc < 64) {
+            if (de->d_name[0] == '.') continue;
+            char pth[PATH_BUF];
+            snprintf(pth, sizeof(pth), "%s/%s", sheet_path, de->d_name);
+            struct stat st;
+            if (stat(pth, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
+            snprintf(cats[nc++], 64, "%s", de->d_name);
+        }
+        closedir(cd);
+        for (int i = 1; i < nc; i++) {
+            char k[64]; snprintf(k, 64, "%s", cats[i]);
+            int j = i - 1;
+            while (j >= 0 && strcmp(cats[j], k) > 0) { snprintf(cats[j+1], 64, "%s", cats[j]); j--; }
+            snprintf(cats[j+1], 64, "%s", k);
+        }
+        int cat_ok = 0;
+        for (int i = 0; i < nc; i++) {
+            fprintf(opt, "TILESET|%s|%s\n", cats[i], cats[i]);
+            if (!strcmp(cats[i], active_cat)) cat_ok = 1;
+        }
+        if (!cat_ok && nc > 0) snprintf(active_cat, sizeof(active_cat), "%s", cats[0]);
+    }
+    fclose(opt);
+    rename(opt_tmp, opt_path);
+
+    char tmp_path[PATH_BUF];
+    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", g_state_path);
+    FILE *out = fopen(tmp_path, "w");
+    if (!out) return;
+    char catdir[PATH_BUF];
+    snprintf(catdir, sizeof(catdir), "%s/%s/%s", root, active_sheet, active_cat);
+    static char names[MAX_TILES][256];
+    static char paths[MAX_TILES][PATH_BUF];
+    int nn = 0;
+    collect_pngs(catdir, names, paths, &nn, MAX_TILES);
+    for (int i = 1; i < nn; i++) {
+        char kn[256], kp[PATH_BUF];
+        snprintf(kn, 256, "%s", names[i]);
+        snprintf(kp, PATH_BUF, "%s", paths[i]);
+        int j = i - 1;
+        while (j >= 0 && strcmp(names[j], kn) > 0) {
+            snprintf(names[j+1], 256, "%s", names[j]);
+            snprintf(paths[j+1], PATH_BUF, "%s", paths[j]);
+            j--;
+        }
+        snprintf(names[j+1], 256, "%s", kn);
+        snprintf(paths[j+1], PATH_BUF, "%s", kp);
+    }
+    char sprite_root[PATH_BUF];
+    snprintf(sprite_root, sizeof(sprite_root), "%s/sprites/cdda/%s/%s", g_package_dir, active_sheet, active_cat);
+    int n = 0;
+    for (int i = 0; i < nn && n < MAX_TILES; i++) {
+        n++;
+        char dir[PATH_BUF], csv[PATH_BUF];
+        snprintf(dir, sizeof(dir), "%s/%03d", sprite_root, n);
+        snprintf(csv, sizeof(csv), "%s/sprite.csv", dir);
+        struct stat st;
+        if (stat(csv, &st) != 0) {
+            char mk[PATH_BUF * 2];
+            snprintf(mk, sizeof(mk), "mkdir -p '%s'", dir);
+            system(mk);
+            write_png_thumb_csv(paths[i], csv);
+        }
+        fprintf(out, "%s\t%s\t%s\n", names[i], names[i], dir);
+    }
+    fclose(out);
+    rename(tmp_path, g_state_path);
+}
+
 static void publish(void) {
     if (strcmp(g_category, "debug") == 0) { publish_debug(); return; }
     struct stat st;
@@ -1294,6 +1612,42 @@ static void publish(void) {
         publish_piececraft();
         return;
     }
+    if (strcmp(g_category, "cdda") == 0) {
+        static char s_last_cdda[256] = "";
+        char active_path[PATH_BUF];
+        snprintf(active_path, sizeof(active_path), "%s/cdda_active.txt", g_package_dir);
+        char active_content[256] = "";
+        FILE *af_check = fopen(active_path, "r");
+        if (af_check) {
+            size_t n = fread(active_content, 1, sizeof(active_content) - 1, af_check);
+            active_content[n] = '\0';
+            fclose(af_check);
+        }
+        int changed = strcmp(active_content, s_last_cdda) != 0;
+        snprintf(s_last_cdda, sizeof(s_last_cdda), "%s", active_content);
+        if (!changed && g_source_mtime != 0) return;
+        g_source_mtime = 1;
+        publish_cdda();
+        return;
+    }
+    if (strcmp(g_category, "emojis") == 0) {
+        static char s_last_emo[256] = "";
+        char active_path[PATH_BUF];
+        snprintf(active_path, sizeof(active_path), "%s/emojis_active.txt", g_package_dir);
+        char active_content[256] = "";
+        FILE *af_check = fopen(active_path, "r");
+        if (af_check) {
+            size_t n = fread(active_content, 1, sizeof(active_content) - 1, af_check);
+            active_content[n] = '\0';
+            fclose(af_check);
+        }
+        int changed = strcmp(active_content, s_last_emo) != 0;
+        snprintf(s_last_emo, sizeof(s_last_emo), "%s", active_content);
+        if (!changed && g_source_mtime != 0) return;
+        g_source_mtime = 1;
+        publish_emojis();
+        return;
+    }
     if (stat(g_source_path, &st) != 0) return;
     if (st.st_mtime == g_source_mtime) return;
     g_source_mtime = st.st_mtime;
@@ -1309,8 +1663,31 @@ int main(int argc, char **argv) {
 
     if (strcmp(g_category, "elements") == 0) {
         snprintf(g_source_path, sizeof(g_source_path), "%s/#.ref/menu/palletes/chemistry_tiles_expanded🏆.csv", g_house_root);
-    } else if (strcmp(g_category, "rmmv") == 0 || strcmp(g_category, "piececraft") == 0) {
+    } else if (strcmp(g_category, "rmmv") == 0 || strcmp(g_category, "piececraft") == 0 || strcmp(g_category, "cdda") == 0) {
         g_source_path[0] = '\0';
+    } else if (strcmp(g_category, "emojis") == 0) {
+        char pdl[PATH_BUF];
+        snprintf(pdl, sizeof(pdl), "%s/../#.#.calendar-dox/1.^V-hq/UNICODE-EMOJI-SOURCE-LOCATION.pdl", g_house_root);
+        g_source_path[0] = '\0';
+        FILE *pf = fopen(pdl, "r");
+        if (pf) {
+            char line[PATH_BUF];
+            while (fgets(line, sizeof(line), pf)) {
+                if (strncmp(line, "SOURCE", 6) != 0) continue;
+                if (!strstr(line, "source_file")) continue;
+                char *bar = strrchr(line, '|');
+                if (!bar) continue;
+                char *v = bar + 1;
+                while (*v == ' ' || *v == '\t') v++;
+                size_t n = strlen(v);
+                while (n > 0 && (v[n-1]=='\n'||v[n-1]=='\r'||v[n-1]==' ')) v[--n]=0;
+                snprintf(g_source_path, sizeof(g_source_path), "%s", v);
+                break;
+            }
+            fclose(pf);
+        }
+        if (!g_source_path[0])
+            snprintf(g_source_path, sizeof(g_source_path), "%s/#.ref/menu/palletes/emoji-pallet-00.00.txt", g_house_root);
     } else {
         snprintf(g_source_path, sizeof(g_source_path), "%s/#.ref/menu/palletes/emoji-pallet-00.00.txt", g_house_root);
     }
@@ -1324,7 +1701,7 @@ int main(int argc, char **argv) {
         /* rmmv tab/chooser clicks must land on press 1. 1s sleep made
          * A/B/C and Dungeon/Inside need 2-3 presses (live). Other
          * palettes still 1s. */
-        usleep(strcmp(g_category, "debug") == 0 ? 300000 : (strcmp(g_category, "rmmv") == 0 || strcmp(g_category, "piececraft") == 0) ? 100000 : 1000000);
+        usleep(strcmp(g_category, "debug") == 0 ? 300000 : (strcmp(g_category, "rmmv") == 0 || strcmp(g_category, "piececraft") == 0 || strcmp(g_category, "cdda") == 0 || strcmp(g_category, "emojis") == 0) ? 100000 : 1000000);
     }
     return 0;
 }

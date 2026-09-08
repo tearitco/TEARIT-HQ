@@ -178,6 +178,56 @@ arm_pc() {
     log "armed piececraft block $_label $_sdir"
 }
 
+set_cdda() {
+    _field="$1"; _pkg="$2"; _val="$3"
+    _f="$_pkg/cdda_active.txt"
+    mkdir -p "$_pkg"
+    _dir="pngs_normal_32x32"; _tileset="terrain"
+    if [ -f "$_f" ]; then
+        _dir=$(grep "^dir=" "$_f" | head -1 | cut -d= -f2-)
+        _tileset=$(grep "^tileset=" "$_f" | head -1 | cut -d= -f2-)
+        [ -n "$_dir" ] || _dir="pngs_normal_32x32"
+        [ -n "$_tileset" ] || _tileset="terrain"
+    fi
+    case "$_field" in
+        dir) _dir="$_val" ;;
+        tileset) _tileset="$_val" ;;
+    esac
+    {
+        printf 'dir=%s\n' "$_dir"
+        printf 'tileset=%s\n' "$_tileset"
+    } > "$_f"
+    log "cdda active $_field=$_val sheet=$_dir cat=$_tileset"
+}
+
+arm_cdda() {
+    _sdir="$1"; _label="$2"
+    printf '%s\n' "$_sdir" > "$STATE_DIR/cdda_brush.txt"
+    log "armed cdda tile $_label $_sdir"
+}
+
+set_emoji() {
+    _field="$1"; _pkg="$2"; _val="$3"
+    _f="$_pkg/emojis_active.txt"
+    mkdir -p "$_pkg"
+    _dir="Smileys_Emotion"; _tileset="face-smiling"
+    if [ -f "$_f" ]; then
+        _dir=$(grep "^dir=" "$_f" | head -1 | cut -d= -f2-)
+        _tileset=$(grep "^tileset=" "$_f" | head -1 | cut -d= -f2-)
+        [ -n "$_dir" ] || _dir="Smileys_Emotion"
+        [ -n "$_tileset" ] || _tileset="face-smiling"
+    fi
+    case "$_field" in
+        dir) _dir="$_val" ;;
+        tileset) _tileset="$_val" ;;
+    esac
+    {
+        printf 'dir=%s\n' "$_dir"
+        printf 'tileset=%s\n' "$_tileset"
+    } > "$_f"
+    log "emojis active $_field=$_val group=$_dir sub=$_tileset"
+}
+
 # set_rmmv <field> <pkg_dir> <value> - real 2026-08-27/28 (tile-picker
 # UI pass): writes rmmv_active.txt into the SAME live package dir
 # palettes_manager.c's own publish_rmmv() reads it from (passed as a
@@ -322,6 +372,11 @@ case "${1:-}" in
     set-pc-dir)        shift; set_pc dir "$1" "$2"; exit 0 ;;
     set-pc-mod)        shift; set_pc tileset "$1" "$2"; exit 0 ;;
     arm-pc)            shift; arm_pc "${1:-}" "${2:-}"; exit 0 ;;
+    set-cdda-dir)      shift; set_cdda dir "$1" "$2"; exit 0 ;;
+    set-cdda-mod)      shift; set_cdda tileset "$1" "$2"; exit 0 ;;
+    arm-cdda)          shift; arm_cdda "${1:-}" "${2:-}"; exit 0 ;;
+    set-emoji-dir)     shift; set_emoji dir "$1" "$2"; exit 0 ;;
+    set-emoji-mod)     shift; set_emoji tileset "$1" "$2"; exit 0 ;;
 esac
 
 # Arg forms:

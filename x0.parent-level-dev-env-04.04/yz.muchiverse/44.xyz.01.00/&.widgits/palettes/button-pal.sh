@@ -25,12 +25,12 @@ case "$CAT" in
         ;;
 esac
 
-# emojis/elements/piececraft/debug/rmmv have real ported templates;
-# every other category (cdda/df/kenney/paint/generate/...) gets the
+# emojis/elements/piececraft/cdda/debug/rmmv have real ported templates;
+# every other category (df/kenney/paint/generate/...) gets the
 # generic "not implemented yet" stub. NOTHING routes to the old
 # palettes_menu.sh g_is_palettes C path any more.
 case "$CAT" in
-    emojis|elements|piececraft|debug|rmmv) XHTPM="$HERE/palettes-$CAT.xhtpm" ;;
+    emojis|elements|piececraft|cdda|debug|rmmv) XHTPM="$HERE/palettes-$CAT.xhtpm" ;;
     *)  CAT=stub; XHTPM="$HERE/palettes-stub.xhtpm" ;;
 esac
 OPS="$HOUSE/*.monads/*.livedesk-taskbar/ops"

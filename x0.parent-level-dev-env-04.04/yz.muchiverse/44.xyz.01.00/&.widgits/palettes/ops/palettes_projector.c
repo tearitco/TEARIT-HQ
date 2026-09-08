@@ -74,7 +74,10 @@ int main(int argc, char **argv) {
     int is_piececraft = (strcmp(cat, "piececraft") == 0);
     int is_debug = (strcmp(cat, "debug") == 0);
     int is_rmmv = (strcmp(cat, "rmmv") == 0);
-    int is_chooser_grid = is_rmmv || is_piececraft;
+    int is_cdda = (strcmp(cat, "cdda") == 0);
+    int is_emojis = (strcmp(cat, "emojis") == 0);
+    int is_chooser_grid = is_rmmv || is_piececraft || is_cdda || is_emojis;
+    const char *opt_stem = cat;
 
     char in_path[PATH_MAX], out_path[PATH_MAX], tmp_path[PATH_MAX];
     snprintf(in_path, sizeof(in_path), "%s/palettes-%s_state.txt", pkg, cat);
@@ -151,7 +154,7 @@ int main(int argc, char **argv) {
 
             /* --- active tab letter from rmmv_active.txt --- */
             char active_tab[64] = "";
-            { char p[PATH_MAX]; snprintf(p, sizeof(p), "%s/%s_active.txt", pkg, is_piececraft ? "piececraft" : "rmmv");
+            { char p[PATH_MAX]; snprintf(p, sizeof(p), "%s/%s_active.txt", pkg, opt_stem);
               FILE *af = fopen(p, "r");
               if (af) { char l[256];
                   while (fgets(l, sizeof(l), af)) {
@@ -169,7 +172,7 @@ int main(int argc, char **argv) {
             static char dkey[64][128], dlab[64][128]; int nd = 0;
             static char skey[64][128], slab[64][128]; int ns = 0;
             static char cltr[64][32], clab[64][128]; int nc = 0;
-            { char p[PATH_MAX]; snprintf(p, sizeof(p), "%s/%s_options.txt", pkg, is_piececraft ? "piececraft" : "rmmv");
+            { char p[PATH_MAX]; snprintf(p, sizeof(p), "%s/%s_options.txt", pkg, opt_stem);
               FILE *of = fopen(p, "r");
               if (of) { char l[512];
                   while (fgets(l, sizeof(l), of)) {
