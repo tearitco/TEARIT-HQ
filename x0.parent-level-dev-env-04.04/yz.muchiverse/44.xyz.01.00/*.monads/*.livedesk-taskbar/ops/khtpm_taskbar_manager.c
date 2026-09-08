@@ -3663,6 +3663,38 @@ void ktb_hq_open(KtbState *s, int which) {
         s->hq_menu[0].command[0] = '\0';
         n = 1;
     }
+    /* REAL, NEW 2026-09-08 (direct request) - a generic "notes-<cell>"
+     * row on every real header-cell menu, one slot above the trailing
+     * cancel/(empty). Opens (creating if needed) a per-subsystem dev-
+     * note file in the most relevant dir, exactly the way the HQ
+     * menu's own "dir" row shells out (#.desktop/scripts/notes.sh does
+     * the dir map + `xdg-open`). Real header cells only (which 1..15);
+     * the internal session/db-ez/common-events sub-lists (100/101/102)
+     * are skipped. Idempotent - never doubles the row on re-open. */
+    if (which >= 1 && which <= 15 && n >= 1 && n < KTB_LIVEDESK_DYN_MAX - 1 &&
+        strncmp(s->hq_menu[n - 1].label, "notes-", 6) != 0) {
+        const char *cell = ktb_cell_id(s, which);
+        char cellname[32];
+        if (cell && cell[0]) {
+            snprintf(cellname, sizeof(cellname), "%s", cell);
+        } else {
+            const char *nm = "hq";
+            switch (which) {
+                case 1: nm = "hq"; break;      case 2: nm = "user"; break;
+                case 3: nm = "file"; break;    case 4: nm = "desk"; break;
+                case 5: nm = "pals"; break;    case 6: nm = "palettes"; break;
+                case 8: nm = "player"; break;  case 9: nm = "db"; break;
+                case 13: nm = "network"; break; case 14: nm = "ai"; break;
+                case 15: nm = "clock"; break;  default: nm = "hq"; break;
+            }
+            snprintf(cellname, sizeof(cellname), "%s", nm);
+        }
+        s->hq_menu[n] = s->hq_menu[n - 1];  /* push the trailing cancel/(empty) down one */
+        snprintf(s->hq_menu[n - 1].label, sizeof(s->hq_menu[n - 1].label), "notes-%s", cellname);
+        snprintf(s->hq_menu[n - 1].command, sizeof(s->hq_menu[n - 1].command),
+                 "sh '%s/#.desktop/scripts/notes.sh' '%s'", s->house_root, cellname);
+        n++;
+    }
     s->hq_n_menu = n;
     s->hq_open = which;
     s->hq_focus = 0;
