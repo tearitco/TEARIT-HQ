@@ -27,7 +27,7 @@ content.
 - **[05-faq](05-faq/00-INDEX.md)** — user-askable FAQ, append-only.
 - **[06-testing](06-testing/00-INDEX.md)** — relay-only testing rule, harness-authoring guide.
 - **[07-install-and-ship](07-install-and-ship/00-INDEX.md)** — install/versioning/store/CLI-bootstrap/security material.
-- **[08-roadmap](08-roadmap/00-INDEX.md)** — open todo/gaps/future games, what's blocking them.
+- **[08-roadmap](08-roadmap/00-INDEX.md)** — open todo/gaps/future games, what's blocking them. Tilesets + event guides + clone map: `08-roadmap/TILESETS-EVENTS-AND-GAME-CLONES.md`.
 - **[09-appendix](09-appendix/00-INDEX.md)** — daily calendar log, cross-reference index, glossary appendix.
 - **[10-user-docs](10-user-docs/00-INDEX.md)** — user-facing documentation.
 - **[11.brainstorm](11.brainstorm/00-INDEX.md)** — raw, pre-decision planning docs for a feature before it's scoped and scheduled.

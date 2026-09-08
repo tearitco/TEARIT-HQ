@@ -25,6 +25,10 @@
 | CPU-safety / headless testing | `06-testing/CPU-AND-SESSION-SAFETY.md` |
 | Install/versioning/store ideas | `07-install-and-ship/PHONDO_INSTALL_IDEAS.md` |
 | Open roadmap items | `08-roadmap/OPEN-ITEMS.md` |
+| Tilesets, palettes, event guides, MC/CDDA/Civ/GTA/RPG Maker clone map | `08-roadmap/TILESETS-EVENTS-AND-GAME-CLONES.md` |
+| Asset location PDLs (RMMV, Mineclonia, CDDA, emoji 17, video clip) | `#.#.calendar-dox/1.^V-hq/*-ASSET-SOURCE-LOCATION.pdl` + `UNICODE-EMOJI-SOURCE-LOCATION.pdl` + `VIDEO-ASSET-SOURCE-LOCATION.pdl` |
+| Per-tile event guides (Mineclonia / CDDA) | `44.xyz.01.00/#.ref/menu/event-guides/` |
+| Event command registry (live) | `44.xyz.01.00/#.ref/menu/event_commands.registry.pdl` |
 | 2026-08-31 in-progress network-HQ work | `08-roadmap/au-31/` |
 | 63 bulk-moved design/plan/handoff docs | `08-roadmap/design-docs/` |
 | Browser-prompting delegation prompts | `08-roadmap/browser-prompting/` |

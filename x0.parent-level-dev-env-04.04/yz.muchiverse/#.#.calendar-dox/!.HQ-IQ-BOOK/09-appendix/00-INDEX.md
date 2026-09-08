@@ -6,7 +6,8 @@
   network-browser branch review, 3 new architecture/security docs),
   and an in-progress, not-yet-verified login-menu label fix with exact
   next steps to finish it.
-- `CROSS-REFERENCE-INDEX.md` — slim "topic X → chapter/file Y" map.
+- `CROSS-REFERENCE-INDEX.md` — slim "topic X → chapter/file Y" map
+  (includes 2026-09-08 tilesets/events/clone pointers).
 - `S1_HOUSE_PATH_MIGRATION.md` — the 2026-09-01 house-path migration
   record (both phases done). Moved verbatim.
 - `CALENDAR-LOG-ARCHIVE.md` — the historical daily log/todo/progress

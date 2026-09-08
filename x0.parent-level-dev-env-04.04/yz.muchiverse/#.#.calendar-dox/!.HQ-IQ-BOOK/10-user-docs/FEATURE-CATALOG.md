@@ -30,7 +30,7 @@ in `khtpm_taskbar_manager.c` builds each; rows come from
 | **file** | new/open/save/save-as (desk file ops) | ✅ |
 | **desks** | switch / new / save desktop layouts | ✅ |
 | **pals** | place a pal entity on the desk | ✅ |
-| **palettes** | emoji / elements / rmmv / paint pickers | 🟡 emojis+elements ported (`palettes_manager.c`); rmmv/paint on the old path (`PROGRESS-palettes-xhtpm.md`) |
+| **palettes** | emoji / elements / rmmv / piececraft (Mineclonia) / cdda pickers | 🟡 chooser-grid live for rmmv+piececraft+cdda+emojis (`08-roadmap/TILESETS-EVENTS-AND-GAME-CLONES.md`); paint/df/kenney still stub |
 | **edit** | text-edit-hq (below) | ✅ |
 | **player** | entity player: play/pause/reset entities | ✅ |
 | **db** | db-hq-pal record browser (below) | 🟡 read-only fields |
@@ -104,9 +104,9 @@ driven from the GUI): 📋 hooks planned, not built.
 | **text-edit-hq** | multi-line editor: line-number gutter, selection, real clipboard, Save-As via File Explorer | ✅ |
 | **csv-hq** | spreadsheet: `<grid>` in-place cell edit, 5 named functions (SUM/AVG/MIN/MAX/COUNT), 26 cols, plain-comma | ✅ v1 |
 | **music-player-hq** | iTunes-style player: `.pal`-dir library, `mpg123 -R` playback, transport, ASCII visualizer placeholder | ✅ v1 (`MUSIC-PLAYER-HQ-DESIGN.md`) |
-| **piececraft-hq** | piece-craft board (`<canvas>` + toolbar); `pchq_board_projector` | 🟡 (canvas blank bug notes in `09-appendix/pc-hq-bugs.md`) |
+| **piececraft-hq** | piece-craft board (`<canvas>` + toolbar); File menu → file-explorer + `mineclonia_sample`/`cdda_sample` maps | 🟡 maps load to chunk files; 3D drop-from-picker and voxel→events-hq not wired (`TILESETS-EVENTS-AND-GAME-CLONES.md` §4–6) |
 | **piececraft-xyz** | world manager | 🟡 |
-| **media-canvas / media-daw / media-vid** | media-studio family | 🔶 templates present, `PROGRESS-media-studio.md` / `MEDIA-STUDIO-XHTPM-PORT.md` |
+| **media-img-hq / media-3d-hq / media-daw-hq / media-vid-hq** | house-spec media toys | 🟡 vid demo clip is `NNEST-12.00/#.NNEST_ASSETS/video/sample-10s-vp9.mp4` (`VIDEO-ASSET-SOURCE-LOCATION.pdl`); see `PROGRESS-media-studio.md` |
 | **my-chara-txt / my-lawyer** | `toy.pdl` only, no template yet | 📋 |
 | the rest of `@.apps/*` (civ-*, genesis-*, tactics-txt, pets, …) | no `toy.pdl` | 📋 / concept dirs |
 

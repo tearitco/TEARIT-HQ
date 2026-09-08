@@ -10,6 +10,11 @@
   handoff (stale filenames, predates `CENTROID_GOLD_STD.md` and
   everything since). Read this before tasking Grok with anything.
 - `OPEN-ITEMS.md` — the current, real open-item summary (start here).
+- `TILESETS-EVENTS-AND-GAME-CLONES.md` — **2026-09-08 find-it-later map**:
+  palettes categories (RMMV / Mineclonia / CDDA / emoji), outside-zip
+  asset PDLs, event-guide sheets, registry + `mr_world`, sample
+  piececraft maps, and how those attach to MC / CDDA / Civ / GTA /
+  RPG Maker clones. Start here before hunting tileset or event paths.
 - `au-31/` — 2026-08-31's live in-progress work directory (`00-todo.md`
   real todo list, `01-manager-design.md`/`02-network-browser-...md`
   design docs). Moved verbatim from `1.^V-hq/au-31/`.

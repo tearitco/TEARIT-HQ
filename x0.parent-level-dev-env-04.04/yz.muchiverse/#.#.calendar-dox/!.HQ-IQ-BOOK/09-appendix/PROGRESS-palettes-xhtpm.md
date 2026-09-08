@@ -4,6 +4,12 @@
 **Status:** emojis + elements categories done (parallel); rmmv / debug /
 piececraft / user-pallet NOT ported.
 
+**🔄 CORRECTION 2026-09-08:** rmmv, piececraft (Mineclonia), cdda, and
+emojis-as-group-tabs **are** ported chooser-grids. Stub leftovers:
+df / kenney / paint / generate. Current map:
+`08-roadmap/TILESETS-EVENTS-AND-GAME-CLONES.md`. Leave the 2026-09-03
+body below as historical.
+
 ## What changed
 
 `khtpm_core_render.c`'s `g_is_palettes` path (`dbhq_inject_palette_tiles()`,

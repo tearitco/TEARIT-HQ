@@ -3,7 +3,7 @@
 *See `00-INDEX.md` for the fuller list with file pointers. This is the
 short version.*
 
-1. Events/db-hq: low-risk next steps identified, not started.
+1. Events/db-hq: registry grew 2026-09-08 (`mr_world` — transfer/shop/battle/fade are **kv only**). db-hq still only Common Events is an editable tab. Catalog: `TILESETS-EVENTS-AND-GAME-CLONES.md`.
 2. Cross-platform (Windows/Mac) work: pending.
 3. Generic khtpm dispatch table (replace `g_is_<mode>` flags):
    designed, not built.
@@ -34,3 +34,7 @@ short version.*
      `var` work; use `function(){}` callbacks and `var`/`const` — engine
      limitations, documented for page authors. Farther out: require/
      process/fs, `NB-JS-CLI-NODE-LIKE-MODE.md` ladder.
+12. Game-clone tiles/events (MC / CDDA / Civ / GTA / RPG Maker): pickers
+    + event-guide PDLs + sample maps exist; **not** drop-on-board,
+    voxel→events-hq, desk persistence, or battle/shop UI. See
+    `TILESETS-EVENTS-AND-GAME-CLONES.md` §6.

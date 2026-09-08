@@ -41,6 +41,19 @@ hardcoded in C?** So the path can change (drive letter, OS, files
 physically moved) without a C rewrite — see
 `02-architecture/STATE-AND-PDL-CONVENTIONS.md`.
 
+**Where are Mineclonia / CDDA / RMMV tilesets, their event guides, and
+the sample maps?** One catalog:
+`08-roadmap/TILESETS-EVENTS-AND-GAME-CLONES.md`. Asset PDLs live in
+`#.#.calendar-dox/1.^V-hq/` (`MINECLONIA-` / `CDDA-` / `RMMV-ASSET-SOURCE-LOCATION.pdl`).
+Per-tile event sheets: `44.xyz.01.00/#.ref/menu/event-guides/`. Live
+event commands: `#.ref/menu/event_commands.registry.pdl`. Sample
+piececraft maps: `@.apps/piececraft-hq/pieces/system/maps/`.
+
+**Is the 14.0 emoji-test file the complete emoji source?** No. Palettes
+emojis now read Unicode **17.0** `emoji-test.txt`
+(`UNICODE-EMOJI-SOURCE-LOCATION.pdl`). Groups/subgroups are DIR/TILESET
+tabs.
+
 **Does mutaclysm-neo need the render/input refactor too?** No — it's
 the reference implementation the refactor has been copying FROM (its
 `pieces/keyboard/history.txt` format is what every hq window's input
