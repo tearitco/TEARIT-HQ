@@ -129,10 +129,12 @@ Minimum node API to implement:
 > is ignored so a dying worker can't kill the manager. A `while(true){}`
 > page kills only the worker; the static rows stay and the next scripted
 > page gets a fresh worker. Same commit.
-> **Still pending within rung 2:** `head`, `createTextNode`,
+> **Rung 2 remainder: LANDED 2026-09-07** — `head`, `createTextNode`,
 > `getElementsByClassName`, `removeChild`/`insertBefore`/`replaceChild`,
-> `removeAttribute`, `style.*`, `value` (form fields) — natural follow-ons
-> to the worker's step-3 chunk; cued in Phase 2.
+> `removeAttribute`, `style.*`, `value` (form fields), plus a latched
+> wrapper-identity bug (`push_node` cached into the object instead of the
+> stash map, so per-node state like `style`/`value` never survived a
+> re-fetch). Rung 2 is now complete.
 
 ### Rung 3 — events + the event loop  *(1 pass, needs care for CPU)*
 - `EventTarget`: `addEventListener` / `removeEventListener` /
@@ -476,18 +478,19 @@ None of the above rules out using the *same* engine outside the browser
 window. `duk file.js [args...]` is now the node-style runner (no browser
 globals, `process.argv/cwd/env/stdout/stderr.write/exit`, real exit codes
 0/1/2, 2 s CPU guard) with CommonJS `require()`/`module`/`exports`
-incl. JSON + circular-require handling (CLI-2) and fs-lite
-`require('fs')` plus a piped-capable `-i` REPL (CLI-3); `duk --browser
-page.js [fetch.dom]` keeps the released DOM page runner (console +
-rendered rows to stdout), and bare `duk` on a terminal is the REPL. All
-modes are one binary; the manager daemon (no args, non-tty) is
-unchanged and `make check` covers dom/fetch/events + a 12-case
+incl. JSON + circular-require handling (CLI-2), fs-lite `require('fs')`
+plus a piped-capable `-i` REPL (CLI-3), and source-level ESM
+(CLI-4): `import`/`export` → CJS transpile for entries, `require()`d
+files, and single REPL lines (default/named/namespace/side-effect
+imports, named/default/brace/from/star exports, `__esModule` interop).
+`duk --browser page.js [fetch.dom]` keeps the released DOM page runner
+(console + rendered rows to stdout), and bare `duk` on a terminal is the
+REPL. All modes are one binary; the manager daemon (no args, non-tty)
+is unchanged and `make check` covers dom/fetch/events + an 18-case
 `cli_test` suite.
 
 - Not too late: node mode was a *different* prelude installed on the
   same host seam — additive, exactly the way the worker was.
-- Hard tail: ESM syntax (duktape has no `import`) → loader must
-  transpile; defer, CJS first.
 - Full scope/ladder: `design-docs/NB-JS-CLI-NODE-LIKE-MODE.md`.
 
 ---

@@ -2,12 +2,12 @@
 
 **Status:** CLI-1 landed 2026-09-07 (in the worker, `cli_main()`); CLI-2
 (CommonJS) landed 2026-09-07; CLI-3 (fs-lite + `-i`) landed 2026-09-07;
-the ESM rung (CLI-4) stays a hard tail. The node runner shares the binary
-with the REPL and the daemon: `duk` (no args) + tty → REPL, `duk file.js`
-→ node mode, `duk --browser page.js` → the released DOM page runner,
-`duk -i` → REPL even with piped stdin. Trigger for any future rung:
-guard-railed functionality exercised by `tests/cli_*.js` runners with
-expected exit codes.
+CLI-4 (source-level ESM) landed 2026-09-07 (the full ladder is done). The
+node runner shares the binary with the REPL and the daemon: `duk` (no
+args) + tty → REPL, `duk file.js` → node mode, `duk --browser page.js` →
+the released DOM page runner, `duk -i` → REPL even with piped stdin.
+Trigger for any future rung: guard-railed functionality exercised by
+`tests/cli_*.js` runners with expected exit codes.
 
 **Why the moment is right:** rung 4 (XHR/fetch) just made the worker a
 real JS-time runtime. The host installation seam (`install_host()` +
@@ -79,10 +79,28 @@ more assumptions.
 - Tests: `cli_test` cases 10-12 (fs read/write/append/exists/mkdir,
   `-i` piped REPL eval, REPL require/fs), all green.
 
-### CLI-4 — ESM (defer; explicit non-goal until asked)
-- duktape has no `import` syntax support; ESM = a loader that rewrites
-  or source-parses `import`/`export` → CJS. Do NOT promise this; note it
-  as the hard tail.
+### CLI-4 — source-level ESM *(landed 2026-09-07)*
+- duktape has no `import` syntax support, so ESM is a loader rewrite:
+  the CJS prelude (`g_cjs_prelude`) now carries `__nb_esm_transpile`, a
+  line-based `import`/`export` → CJS converter (pure ES5 output, `var`
+  only). A top-level `import`/`export` line triggers the rewrite.
+- Imports: default (node interop — unwraps `.default` when the module
+  sets `__esModule`, else yields the whole `module.exports`), named with
+  rename, `import * as ns`, side-effect `import "mod"`. Exports:
+  function/var/const, `export default` (named + anonymous, emitted as a
+  real declaration so multi-line bodies keep flowing), brace lists with
+  rename, `export { x as y } from`, `export * from` (skips
+  `default`/`__esModule`). Transpiled modules get the `__esModule` marker.
+- Entry hook: `cli_main` feeds the entry source through
+  `__nb_esm_prepare` before compiling, so an ESM *entry* file works;
+  `__nb_install_cjs` also installs global `module`/`exports` for it. The
+  REPL transpiles single-line import/export as well. CJS `require()` of
+  an ESM module returns `module.exports` and reads `.default` — standard
+  node interop. Multi-line statements, dynamic `import()`, decorators,
+  and type annotations are out of scope (documented in the code).
+- Tests: `cli_test` cases 13-18 (default+named entry, namespace import,
+  re-export + `__esModule`, CJS-requires-ESM interop, side-effect import,
+  REPL ESM line), all green.
 
 ## Seam hygiene this depends on (cheap, do now)
 
@@ -104,5 +122,5 @@ more assumptions.
 
 ## Entry point into tracking
 - OPEN-ITEMS.md #11 (this doc). Roadmap §9 in `NB-JS-ENGINE-ROADMAP.md`.
-- The node-mode ladder is done through CLI-3; anything further
-  (fs depth, `path`, ESM transpile) is user-requested, not queued.
+- The node-mode ladder is done. Anything further (fs depth, `path`,
+  dynamic `import()`, packages) is user-requested, not queued.

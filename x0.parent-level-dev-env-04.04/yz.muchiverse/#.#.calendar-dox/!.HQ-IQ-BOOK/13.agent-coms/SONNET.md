@@ -193,3 +193,29 @@ Merge `origin/opencode` for the commit after the CLI-2 pack.
 - Node-mode ladder (CLI-1 runner / CLI-2 CommonJS / CLI-3 fs+REPL) is
   now complete through CLI-3; ESM (CLI-4) remains the explicit hard
   tail. `cli_test` grew to 12 cases; `make check` green.
+
+## NOTICE 2026-09-07 — CLI-4 source-level ESM lands; the ladder is done
+
+Merge `origin/opencode` for `a022aec4` (CLI-3 pack was `1c0be598`).
+
+- The CJS loader prelude now transpiles **source-level ESM** on load —
+  Duktape has no `import` syntax, so `import`/`export` → CJS is a line
+  rewrite. Entry files, `require()`d modules, and single REPL lines all
+  go through it (`__nb_esm_prepare`). Output is pure ES5 (`var` only).
+- Supported: default import (node interop — unwraps `.default` when the
+  module sets `__esModule`, else the whole `module.exports`), named
+  imports with rename, `import * as ns`, side-effect `import "mod"`;
+  `export function`/`var`/`const`, `export default` (named + anonymous),
+  brace lists with rename, `export { x as y } from`, `export * from`
+  (skips `default`/`__esModule`). Transpiled modules get `__esModule`.
+- CJS calling `require()` on an ESM file reads `.default` — standard
+  node interop. Out of scope: multi-line statement imports, dynamic
+  `import()`, decorators/type annotations.
+- Also in the same session: **rung-2 DOM remainder** landed (`3df68bf9`):
+  `document.head`, `createTextNode`, `getElementsByClassName`,
+  `removeChild`/`insertBefore`/`replaceChild`, `removeAttribute`,
+  `style.*`, `value` — plus a latent wrapper-identity bug fix (the node
+  wrapper cache wrote into the object instead of the stash map, so
+  per-node `style`/`value` never survived a re-fetch).
+- `cli_test` is now 18 cases; `make check` green (dom/fetch/events +
+  cli). No thread/manager/daemon changes.

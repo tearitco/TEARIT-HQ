@@ -5,7 +5,7 @@
 #   make check      -> build + run the three headless worker suites
 #
 # To run:   ./nbjs file.js [args...]              # node mode (no DOM) — like node,
-#                                                 #   + require()/require('fs')
+#                                                 #   + require()/require('fs') + ESM
 #           ./nbjs --browser page.js [fetch.dom]  # DOM page runner + render-back
 #           ./nbjs -i                             # interactive REPL, even when piped
 #           ./nbjs                                # tty: REPL / pipes: daemon RPC
