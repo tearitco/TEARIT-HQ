@@ -1,12 +1,12 @@
 # NB-JS engine as a node/bun-like CLI runner — scope + plan
 
 **Status:** CLI-1 landed 2026-09-07 (in the worker, `cli_main()`); CLI-2
-(CommonJS) and CLI-3 (fs-lite + `-i`) queued behind it. The node runner
-shares the binary with the REPL and the daemon: `duk` (no args) + tty →
-REPL, `duk file.js` → node mode, `duk --browser page.js` → the released
-DOM page runner. Trigger for CLI-2: a guard-railed `require('./x.js')` +
-`process.argv` used by a new `tests/cli_*.js` runner with expected exit
-codes.
+(CommonJS) landed 2026-09-07; CLI-3 (fs-lite + `-i`) and CLI-4 (ESM, hard
+tail) queued behind it. The node runner shares the binary with the REPL
+and the daemon: `duk` (no args) + tty → REPL, `duk file.js` → node mode,
+`duk --browser page.js` → the released DOM page runner. Trigger for
+CLI-3: `fs`-lite sync natives + a `-i` stdin REPL exercised by
+`tests/cli_*.js` with expected exit codes.
 
 **Why the moment is right:** rung 4 (XHR/fetch) just made the worker a
 real JS-time runtime. The host installation seam (`install_host()` +
@@ -39,14 +39,25 @@ more assumptions.
   stay uninstalled (`window`/`document`/`location` absent — a feature, not
   a bug).
 
-### CLI-2 — CommonJS
-- `require(path)`: compile file, wrap as a `module` object, cache by
-  resolved absolute path, resolve relative paths via `cwd`, no
-  `node_modules`/packages (out of scope for a browser-house tool).
-- Circular requires: partially-initialized module export served on the
-  second visit (standard CJS behavior, easy in duktape).
-- `module.exports`/`exports` globals per-file via wrapper.
-- JSON require: `JSON.parse` of the file.
+### CLI-2 — CommonJS *(landed 2026-09-07)*
+- `require(path)` global in node mode (entry base = the script's own
+  directory, absolute or `./`/`../` relative; absolute paths OK).
+- Pure-JS loader prelude (`g_cjs_prelude` in the worker) over one host
+  hook — `__nb_read_file` (the same 512 kB-capped `read_file`). Module
+  files are wrapped `(function(exports, require, module, __filename,
+  __dirname){...})` so module-local `var`s do not leak, `this` ===
+  `module.exports` like node, and top-level `#!` lines are stripped.
+- `module.exports`/`exports` per file; cache keyed by resolved absolute
+  path; circular requires serve the partially-initialized `exports`
+  (standard CJS, cache entry inserted before eval).
+- JSON require: any path ending `.json` → `JSON.parse` of the file.
+- No `node_modules`/packages/builtins — a bare specifier throws
+  `Cannot find module '<name>' (nbjs has no packages/builtins)`. A
+  relative path that misses throws with the resolved path. Both exit 1.
+- `console.error` now routes to stderr in node mode (lives on
+  `nb_cli_error`); `log`/`info`/`warn` stay on stdout.
+- Tests: `cli_test` cases 8-9 (require chain incl. JSON/nested `../`/
+  cycle/var-scoping + missing-module error), all green.
 
 ### CLI-3 — filesystem lite + REPL
 - `fs`-lite natives over `read_file` + a write/append pair: `readFileSync`,
@@ -79,5 +90,5 @@ more assumptions.
 
 ## Entry point into tracking
 - OPEN-ITEMS.md #11 (this doc). Roadmap §9 in `NB-JS-ENGINE-ROADMAP.md`.
-- Trigger for CLI-1: a guard-railed `require('./x.js')` + `process.argv`
-  used by a new `tests/cli_*.js` runner with expected exit codes.
+- Trigger for CLI-3: guard-railed `fs`-lite sync natives + a `-i` stdin
+  REPL used by `tests/cli_*.js` runners with expected exit codes.

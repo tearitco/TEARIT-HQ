@@ -147,3 +147,28 @@ Merge `origin/opencode` to get the commit past the CLI pack above.
 - **`make check` now runs 4 suites**: dom/fetch/events (all PASS) plus a
   new `cli_test` (7 cases: plain run+argv, throw→1, process.exit→3,
   `--browser` DOM, stdin `-`, no-browser-globals, `--help`→2). All green.
+
+## NOTICE 2026-09-07 — CLI-2 CommonJS require lands on `opencode`
+
+Merge `origin/opencode` for the commit after the CLI-1 pack.
+
+- Node mode now has `require()` + `module`/`exports` globals, per the
+  design-doc ladder (`NB-JS-CLI-NODE-LIKE-MODE.md`). It's a pure-JS
+  loader prelude (`g_cjs_prelude` in the worker) over one host hook
+  (`__nb_read_file`, the existing 512 kB-capped reader).
+- Entry `require` base = the script's own directory; absolute and
+  `./`/`../` relative paths resolve; module files are wrapped
+  `(function(exports, require, module, __filename, __dirname){...})`,
+  so module locals don't leak and `this` === `module.exports` like node.
+- `.json` files are `require`d via `JSON.parse`; circular requires serve
+  the partially-initialized exports (standard CJS); `#!` shebang lines
+  in required files are stripped. Cache is keyed by resolved absolute
+  path.
+- **No `node_modules`/packages/builtins** — a bare specifier throws
+  `Cannot find module '<name>' (nbjs has no packages/builtins)`; a
+  relative miss throws with the resolved path. Both exit 1.
+- `console.error` now routes to stderr in node mode (`log`/`info`/`warn`
+  stay on stdout, node parity). The 2 s CPU guard covers required
+  modules too (`while(true){}` in a require'd file → killed, rc=142).
+- `cli_test` grew to 9 cases (require chain incl. JSON/nested `../`/
+  cycle/module-var-scoping + missing-module error); `make check` green.

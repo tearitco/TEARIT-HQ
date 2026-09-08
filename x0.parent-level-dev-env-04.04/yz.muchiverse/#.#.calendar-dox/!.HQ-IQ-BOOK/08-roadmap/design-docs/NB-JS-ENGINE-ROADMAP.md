@@ -470,16 +470,18 @@ of work once you pick an engine, and most browsing never needs it.
 
 ---
 
-## 9. Bonus door: the engine as a node/bun-like CLI *(CLI-1 landed, OPEN-ITEMS #11)*
+## 9. Bonus door: the engine as a node/bun-like CLI *(CLI-1 + CLI-2 landed, OPEN-ITEMS #11)*
 
 None of the above rules out using the *same* engine outside the browser
 window. `duk file.js [args...]` is now the node-style runner (no browser
 globals, `process.argv/cwd/env/stdout/stderr.write/exit`, real exit codes
-0/1/2, 2 s CPU guard); `duk --browser page.js [fetch.dom]` keeps the
-released DOM page runner (console + rendered rows to stdout), and bare
-`duk` on a terminal is the REPL. All three modes are one binary; the
-manager daemon (no args, non-tty) is unchanged and `make check` covers
-dom/fetch/events + a 7-case `cli_test` suite.
+0/1/2, 2 s CPU guard) with CommonJS `require()`/`module`/`exports`
+incl. JSON require + circular-require handling (CLI-2); `duk --browser
+page.js [fetch.dom]` keeps the released DOM page runner (console +
+rendered rows to stdout), and bare `duk` on a terminal is the REPL. All
+three modes are one binary; the manager daemon (no args, non-tty) is
+unchanged and `make check` covers dom/fetch/events + a 9-case `cli_test`
+suite.
 
 - Not too late: node mode was a *different* prelude installed on the
   same host seam — additive, exactly the way the worker was.

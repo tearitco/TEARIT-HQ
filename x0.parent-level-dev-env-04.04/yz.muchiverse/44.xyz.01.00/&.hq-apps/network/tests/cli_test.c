@@ -150,6 +150,27 @@ int main(int argc, char **argv) {
         const char *const want[] = { "usage" };
         check("cli --help exit 2", 2, want, 1, 0, NULL, 0, a, NULL);
     }
+    /* 8. CommonJS (CLI-2): require chain, JSON require, cycles, '../'
+     * nested resolution, module-local var scoping, per-file exports */
+    {
+        char cjs[2048];
+        snprintf(cjs, sizeof(cjs), "%s/cli_cjs_main.js", dir);
+        char *a[] = { (char *)w, (char *)cjs, NULL };
+        const char *const want[] = {
+            "cjs-hello", "math-add=5", "same-module=true",
+            "json-ping=pong", "nested-up=42", "circ=true",
+            "lex-true=true", "filenames=truetrue"
+        };
+        check("cli cjs require chain", 0, want, 8, 0, NULL, 0, a, NULL);
+    }
+    /* 9. missing module -> "Cannot find module", exit 1 (CLI-2) */
+    {
+        char ms[2048];
+        snprintf(ms, sizeof(ms), "%s/cli_cjs_missing.js", dir);
+        char *a[] = { (char *)w, (char *)ms, NULL };
+        const char *const want[] = { "Cannot find module" };
+        check("cli cjs missing module exit 1", 1, want, 1, 0, NULL, 0, a, NULL);
+    }
 
     if (failures) { printf("cli_test: %d FAILURES\n", failures); return 1; }
     printf("cli_test: all cases pass\n");

@@ -1741,6 +1741,32 @@ static duk_ret_t nb_cli_stderr(duk_context *ctx) {
     if (s) { fputs(s, stderr); fflush(stderr); }
     return 0;
 }
+/* console.error -> stderr (node parity; log/info/warn stay on stdout) */
+static duk_ret_t nb_cli_error(duk_context *ctx) {
+    duk_idx_t n = duk_get_top(ctx);
+    for (duk_idx_t i = 0; i < n; i++) {
+        const char *s = duk_safe_to_string(ctx, i);
+        if (s) fputs(s, stderr);
+        if (i + 1 < n) fputs(" ", stderr);
+    }
+    fputs("\n", stderr);
+    fflush(stderr);
+    return 0;
+}
+/* CLI-2: read a module file for require(). Returns the source string, or
+ * undefined if the path is missing/unreadable (loader turns that into a
+ * "Cannot find module" error). Same 512 kB cap as the page loader. */
+static duk_ret_t nb_cjs_read_file(duk_context *ctx) {
+    const char *p = duk_safe_to_string(ctx, 0);
+    char *s = NULL; size_t n = 0;
+    if (p && p[0] && read_file(p, &s, &n)) {
+        duk_push_lstring(ctx, s, n);
+        free(s);
+        return 1;
+    }
+    duk_push_undefined(ctx);
+    return 1;
+}
 static duk_ret_t nb_cli_exit(duk_context *ctx) {
     int code = 0;
     if (duk_get_top(ctx) > 0 && duk_is_number(ctx, 0)) code = (int)duk_get_int(ctx, 0);
@@ -1824,6 +1850,71 @@ static int browser_cli_main(int argc, char **argv) {
     return g_cli_status_ok ? 0 : 1;
 }
 
+/* CLI-2: CommonJS module loader, installed in node mode before the entry
+ * script runs. Pure ES5.1 JS so it works on Duktape 2.7.0 (no arrows/let):
+ * relative/absolute resolution against the caller's directory, per-file
+ * module/exports wrapper (module-local var scoping), JSON require, and the
+ * standard circular-require rule (partial exports served on re-entry via
+ * the pre-populated cache). The only host hook is `__nb_read_file` (see
+ * nb_cjs_read_file). `this` is the global object by design. */
+static const char g_cjs_prelude[] =
+"/* NB-JS CJS loader (CLI-2): require/module/exports, JSON, cycles. */\n"
+"(function(){\n"
+"var cache = {};\n"
+"function dirname(p){\n"
+"  var i = p.lastIndexOf('/');\n"
+"  if (i <= 0) return '/';\n"
+"  return p.slice(0, i);\n"
+"}\n"
+"function resolve(req, dir){\n"
+"  if (req.charAt(0) === '/') return req;\n"
+"  var two = req.slice(0, 2);\n"
+"  if (two !== './' && two !== '..' && req.slice(0, 3) !== '../') return null;\n"
+"  var base = (dir === '/' ? '' : dir).replace(/\\/+$/, '');\n"
+"  var parts = (base + '/' + req).split('/');\n"
+"  var out = [];\n"
+"  for (var i = 0; i < parts.length; i++){\n"
+"    var p = parts[i];\n"
+"    if (p === '' || p === '.') continue;\n"
+"    if (p === '..'){ if (out.length) out.pop(); else return null; continue; }\n"
+"    out.push(p);\n"
+"  }\n"
+"  return '/' + out.join('/');\n"
+"}\n"
+"function makeRequire(dir){\n"
+"  return function(request){\n"
+"    var abs = resolve(request, dir);\n"
+"    if (abs === null)\n"
+"      throw new Error(\"Cannot find module '\" + request + \"' (nbjs has no packages/builtins)\");\n"
+"    if (abs in cache) return cache[abs].exports;\n"
+"    var src = __nb_read_file(abs);\n"
+"    if (src === undefined || src === null)\n"
+"      throw new Error(\"Cannot find module '\" + request + \"' (resolved to \" + abs + \")\");\n"
+"    var mod = { id: abs, filename: abs, exports: {}, loaded: false };\n"
+"    cache[abs] = mod;\n"
+"    if (abs.slice(-5) === '.json'){\n"
+"      mod.exports = JSON.parse(src);\n"
+"      mod.loaded = true;\n"
+"      return mod.exports;\n"
+"    }\n"
+"    if (src.charAt(0) === '#'){\n"
+"      var nl = src.indexOf('\\n');\n"
+"      if (nl >= 0) src = src.slice(nl + 1); else src = '';\n"
+"    }\n"
+"    var rd = dirname(abs);\n"
+"    var fn = new Function('exports', 'require', 'module', '__filename', '__dirname', src);\n"
+"    fn.call(mod.exports, mod.exports, makeRequire(rd), mod, abs, rd);\n"
+"    mod.loaded = true;\n"
+"    return mod.exports;\n"
+"  };\n"
+"}\n"
+"this.__nb_install_cjs = function(entryDir, entryFile){\n"
+"  this.require = makeRequire(entryDir);\n"
+"  this.__dirname = entryDir;\n"
+"  this.__filename = entryFile;\n"
+"};\n"
+"})();\n";
+
 static int cli_main(int argc, char **argv) {
     g_cli = 1; g_cli_log = 1;         /* bare console lines -> stdout */
     g_out = stdout; setvbuf(g_out, NULL, _IONBF, 0);
@@ -1860,12 +1951,12 @@ static int cli_main(int argc, char **argv) {
     duk_put_prop_string(ctx, -2, "print");
     duk_push_object(ctx);
     duk_push_c_function(ctx, native_log, DUK_VARARGS);
-    duk_dup(ctx, -1);
-    duk_put_prop_string(ctx, -3, "log");
-    duk_dup(ctx, -1);
-    duk_put_prop_string(ctx, -3, "info");
-    duk_dup(ctx, -1);
-    duk_put_prop_string(ctx, -3, "warn");
+    duk_put_prop_string(ctx, -2, "log");
+    duk_push_c_function(ctx, native_log, DUK_VARARGS);
+    duk_put_prop_string(ctx, -2, "info");
+    duk_push_c_function(ctx, native_log, DUK_VARARGS);
+    duk_put_prop_string(ctx, -2, "warn");
+    duk_push_c_function(ctx, nb_cli_error, DUK_VARARGS);
     duk_put_prop_string(ctx, -2, "error");
     duk_put_prop_string(ctx, -2, "console");
     duk_pop(ctx);
@@ -1880,6 +1971,51 @@ static int cli_main(int argc, char **argv) {
         nb_cli_install(ctx, nargv, a);
         free(a);
     }
+
+    /* CLI-2 CommonJS: the only host hook the JS loader needs is a module
+     * file reader; it defines `require`/`__dirname`/`__filename` itself. */
+    duk_push_c_function(ctx, nb_cjs_read_file, 1);
+    duk_put_global_string(ctx, "__nb_read_file");
+
+    /* Entry directory/file, absolute, for the entry script's require base. */
+    static char entry_dir[PATH_MAX], entry_file[PATH_MAX];
+    {
+        if (strcmp(pg, "-") == 0) {
+            if (!getcwd(entry_dir, sizeof(entry_dir))) snprintf(entry_dir, sizeof(entry_dir), ".");
+            snprintf(entry_file, sizeof(entry_file), "[stdin]");
+        } else {
+            static char rp[PATH_MAX];
+            if (!realpath(pg, rp)) snprintf(rp, sizeof(rp), "%s", pg);
+            const char *abs = (rp[0] == '/' ? rp : pg);
+            snprintf(entry_file, sizeof(entry_file), "%s", abs);
+            const char *sl = strrchr(abs, '/');
+            if (sl == abs) snprintf(entry_dir, sizeof(entry_dir), "/");
+            else if (sl) { size_t d = (size_t)(sl - abs); memcpy(entry_dir, abs, d); entry_dir[d] = 0; }
+            else if (!getcwd(entry_dir, sizeof(entry_dir))) snprintf(entry_dir, sizeof(entry_dir), ".");
+        }
+    }
+    if (peval_budget(ctx, g_cjs_prelude) != 0) {
+        const char *m = duk_safe_to_string(ctx, -1);
+        fprintf(stderr, "%s\n", m ? m : "loader error");
+        duk_destroy_heap(ctx);
+        return 1;
+    }
+    duk_pop(ctx);
+    duk_get_global_string(ctx, "__nb_install_cjs");
+    duk_push_string(ctx, entry_dir);
+    duk_push_string(ctx, entry_file);
+    int lrc;
+    signal(SIGALRM, sigalrm);
+    alarm(EVAL_BUDGET_SEC);
+    lrc = duk_pcall(ctx, 2);
+    alarm(0);
+    if (lrc != 0) {
+        const char *m = duk_safe_to_string(ctx, -1);
+        fprintf(stderr, "%s\n", m ? m : "loader error");
+        duk_destroy_heap(ctx);
+        return 1;
+    }
+    duk_pop(ctx);
 
     char *src = NULL; size_t n = 0;
     if (strcmp(pg, "-") == 0) {
