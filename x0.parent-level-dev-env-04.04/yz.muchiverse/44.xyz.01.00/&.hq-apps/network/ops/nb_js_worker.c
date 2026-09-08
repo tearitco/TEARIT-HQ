@@ -29,6 +29,11 @@
 #include <signal.h>
 #include <string.h>
 #include <time.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <limits.h>
+
+extern char **environ;
 
 #define MAX_MSG (1024 * 1024)
 
@@ -196,6 +201,26 @@ static void local_append(NbNode *parent, NbNode *child) {
     else parent->first_child = child;
     parent->last_child = child;
 }
+/* rung-2 remainder: insert `newn` before `refn` (a child of `parent`, or
+ * NULL to append), like DOM insertBefore. Local append when refn is NULL. */
+static void local_insert_before(NbNode *parent, NbNode *newn, NbNode *refn) {
+    newn->parent = parent;
+    if (!refn) { local_append(parent, newn); return; }
+    newn->next_sibling = refn;
+    NbNode *prev = NULL;
+    for (NbNode *c = parent->first_child; c; c = c->next_sibling) {
+        if (c == refn) break;
+        prev = c;
+    }
+    if (prev) prev->next_sibling = newn;
+    else parent->first_child = newn;
+}
+static int is_child_of(NbNode *parent, NbNode *ch) {
+    if (!parent || !ch) return 0;
+    for (NbNode *c = parent->first_child; c; c = c->next_sibling)
+        if (c == ch) return 1;
+    return 0;
+}
 static void node_detach(NbNode *n) {
     if (!n || !n->parent) return;
     NbNode *p = n->parent, *prev = NULL;
@@ -244,6 +269,7 @@ static void node_text_content(const NbNode *n, SB *b) {
 }
 static void node_outer_html(const NbNode *n, SB *b) {
     if (!n) return;
+    if (!n->tag || !n->tag[0]) { sb_put(b, n->text); return; }   /* #text node */
     sb_put(b, "<");
     sb_put(b, n->attrs ? n->attrs : n->tag);
     sb_put(b, ">");
@@ -539,6 +565,50 @@ static duk_ret_t nb_dom_body(duk_context *ctx) {
     if (el) push_node(ctx, el); else duk_push_null(ctx);
     return 1;
 }
+/* rung-2 remainder: document.createTextNode / getElementsByClassName /
+ * document.head. The parser skips <head> wholesale, so browsers' implicit
+ * empty <head> is created on first access (stays out of the render path). */
+static duk_ret_t nb_dom_createTextNode(duk_context *ctx) {
+    const char *v = duk_get_string(ctx, 0) ? duk_get_string(ctx, 0) : "";
+    NbNode *n = calloc(1, sizeof(*n));
+    if (!n) { duk_push_null(ctx); return 1; }
+    n->text = strdup(v);
+    orphan_add(n);
+    push_node(ctx, n);
+    return 1;
+}
+static void collect_cls_into(duk_context *ctx, NbNode *n, const char *tok, duk_idx_t arr, int *i) {
+    if (!n) return;
+    if (n->tag && n->tag[0] && has_class(n, tok)) {
+        push_node(ctx, n);
+        duk_put_prop_index(ctx, arr, (*i)++);
+    }
+    for (const NbNode *c = n->first_child; c; c = c->next_sibling)
+        collect_cls_into(ctx, (NbNode *)c, tok, arr, i);
+}
+static duk_ret_t nb_dom_getElementsByClassName(duk_context *ctx) {
+    const char *tok = duk_get_string(ctx, 0);
+    duk_idx_t arr = duk_push_array(ctx);
+    if (!g_dom_root || !tok || !*tok) return 1;
+    int i = 0;
+    for (const NbNode *c = g_dom_root->first_child; c; c = c->next_sibling)
+        collect_cls_into(ctx, (NbNode *)c, tok, arr, &i);
+    return 1;
+}
+static duk_ret_t nb_dom_head(duk_context *ctx) {
+    if (!g_dom_root) { duk_push_null(ctx); return 1; }
+    NbNode *head = find_tag_first(g_dom_root, "head");
+    if (!head) {
+        head = calloc(1, sizeof(*head));
+        if (!head) { duk_push_null(ctx); return 1; }
+        head->tag = strdup("head");
+        NbNode *html = find_tag_first(g_dom_root, "html");
+        if (html) local_insert_before(html, head, html->first_child);
+        else local_insert_before(g_dom_root, head, NULL);
+    }
+    push_node(ctx, head);
+    return 1;
+}
 
 /* ---- element natives (this = element object) ---- */
 static duk_ret_t nb_el_getAttribute(duk_context *ctx) {
@@ -611,6 +681,74 @@ static duk_ret_t nb_el_setAttribute(duk_context *ctx) {
     if (!strcasecmp(name, "id")) { free(n->id); n->id = strdup(val); }
     else if (!strcasecmp(name, "class")) { free(n->cls); n->cls = strdup(val); }
     char *na = attrs_set(n, name, val);
+    free(n->attrs);
+    n->attrs = na;
+    return 0;
+}
+/* rung-2 remainder: element.removeAttribute(name) — rebuild the raw attrs
+ * blob without the named attribute (attrs_set's loop, skipping the match). */
+static int attrs_has(const NbNode *n, const char *name) {
+    if (!n || !n->attrs || !name) return 0;
+    const char *p = n->attrs;
+    size_t nl = strlen(name);
+    while (*p) {
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (!*p) break;
+        const char *ks = p;
+        while (*p && !isspace((unsigned char)*p) && *p != '=' && *p != '>') p++;
+        size_t kl = (size_t)(p - ks);
+        if (kl == nl && !strncasecmp(ks, name, nl)) return 1;
+        while (*p && !isspace((unsigned char)*p)) p++;
+    }
+    return 0;
+}
+static char *attrs_del(const NbNode *n, const char *name) {
+    SB b = {0, 0, 0};
+    const char *p = n->attrs ? n->attrs : "";
+    size_t nl = strlen(name);
+    int first = 1;
+    while (*p) {
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (!*p) break;
+        const char *ks = p;
+        while (*p && !isspace((unsigned char)*p) && *p != '=' && *p != '>') p++;
+        size_t kl = (size_t)(p - ks);
+        char kbuf[64]; size_t kc = kl < 63 ? kl : 63; memcpy(kbuf, ks, kc); kbuf[kc] = 0;
+        int is_target = kl == nl && !strncasecmp(ks, name, nl);
+        char vtmp[1200]; int hasv = 0;
+        const char *savep = p;
+        if (*p == '=') {
+            p++;
+            while (*p && isspace((unsigned char)*p)) p++;
+            char qc = 0;
+            if (*p == '"' || *p == '\'') { qc = *p; p++; }
+            const char *vs = p;
+            while (*p && !(qc ? (*p == qc) : (isspace((unsigned char)*p) || *p == '>'))) p++;
+            size_t vl = (size_t)(p - vs);
+            if (qc && *p) p++;
+            size_t vc = vl < 1199 ? vl : 1199; memcpy(vtmp, vs, vc); vtmp[vc] = 0;
+            hasv = 1;
+        }
+        if (!is_target) {   /* keep the attribute (attrs doesn't reorder) */
+            const char *after = hasv ? p : savep;
+            size_t ll = (size_t)(after - ks);
+            if (!first) sb_put(&b, " ");
+            char tmp[8196]; size_t lc = ll < 8191 ? ll : 8191;
+            memcpy(tmp, ks, lc); tmp[lc] = 0;
+            sb_put(&b, tmp);
+        }
+        while (*p && !isspace((unsigned char)*p)) p++;
+        first = 0;
+    }
+    return b.s ? b.s : strdup("");
+}
+static duk_ret_t nb_el_removeAttribute(duk_context *ctx) {
+    NbNode *n = get_this(ctx);
+    const char *name = duk_get_string(ctx, 0);
+    if (!n || !name || !attrs_has(n, name)) return 0;
+    if (!strcasecmp(name, "id")) { free(n->id); n->id = NULL; }
+    else if (!strcasecmp(name, "class")) { free(n->cls); n->cls = NULL; }
+    char *na = attrs_del(n, name);
     free(n->attrs);
     n->attrs = na;
     return 0;
@@ -689,13 +827,23 @@ static duk_ret_t nb_el_children(duk_context *ctx) {
     if (!n) return 1;
     int i = 0;
     for (const NbNode *c = n->first_child; c; c = c->next_sibling) {
-        if (!c->tag) continue;   /* children is element-only (childNodes keeps text) */
+        if (!c->tag || !c->tag[0]) continue;   /* children is element-only (childNodes keeps text) */
         push_node(ctx, (NbNode *)c);
         duk_put_prop_index(ctx, arr, i++);
     }
     return 1;
 }
-static duk_ret_t nb_el_childNodes(duk_context *ctx) { return nb_el_children(ctx); }
+static duk_ret_t nb_el_childNodes(duk_context *ctx) {
+    NbNode *n = get_this(ctx);
+    duk_idx_t arr = duk_push_array(ctx);
+    if (!n) return 1;
+    int i = 0;
+    for (const NbNode *c = n->first_child; c; c = c->next_sibling) {
+        push_node(ctx, (NbNode *)c);           /* everything, text nodes incl. */
+        duk_put_prop_index(ctx, arr, i++);
+    }
+    return 1;
+}
 static duk_ret_t nb_el_parentNode(duk_context *ctx) {
     NbNode *n = get_this(ctx);
     NbNode *p = n ? n->parent : NULL;
@@ -721,6 +869,86 @@ static duk_ret_t nb_el_appendChild(duk_context *ctx) {
     local_append(n, ch);
     push_node(ctx, ch);
     return 1;
+}
+/* rung-2 remainder: the tree mutators. A removed node is orphaned, not
+ * freed, so a JS wrapper still referencing it stays valid (teardown frees
+ * the orphan list). Mirrors DOM errors for the wrong parent/child cases. */
+static duk_ret_t nb_el_removeChild(duk_context *ctx) {
+    NbNode *n = get_this(ctx);
+    NbNode *ch = duk_is_object(ctx, 0) ? get_node(ctx, 0) : NULL;
+    if (!n || !ch)
+        return duk_error(ctx, DUK_ERR_ERROR, "NotFoundError: removeChild needs an element child");
+    if (!is_child_of(n, ch))
+        return duk_error(ctx, DUK_ERR_ERROR, "NotFoundError: the node is not a child of this element");
+    node_detach(ch);
+    orphan_add(ch);
+    push_node(ctx, ch);
+    return 1;
+}
+static duk_ret_t nb_el_insertBefore(duk_context *ctx) {
+    NbNode *n = get_this(ctx);
+    NbNode *nn = duk_is_object(ctx, 0) ? get_node(ctx, 0) : NULL;
+    NbNode *rn = (duk_get_top(ctx) > 1 && duk_is_object(ctx, 1)) ? get_node(ctx, 1) : NULL;
+    if (!n || !nn || nn == n)
+        return duk_error(ctx, DUK_ERR_ERROR, "HierarchyRequestError: insertBefore needs a real new node");
+    if (rn && !is_child_of(n, rn))
+        return duk_error(ctx, DUK_ERR_ERROR, "NotFoundError: the reference node is not a child of this element");
+    node_detach(nn);
+    orphan_remove(nn);
+    local_insert_before(n, nn, rn);
+    push_node(ctx, nn);
+    return 1;
+}
+static duk_ret_t nb_el_replaceChild(duk_context *ctx) {
+    NbNode *n = get_this(ctx);
+    NbNode *nn = duk_is_object(ctx, 0) ? get_node(ctx, 0) : NULL;
+    NbNode *on = (duk_get_top(ctx) > 1 && duk_is_object(ctx, 1)) ? get_node(ctx, 1) : NULL;
+    if (!n || !nn || !on || nn == on || nn == n)
+        return duk_error(ctx, DUK_ERR_ERROR, "HierarchyRequestError: replaceChild needs two distinct real nodes");
+    if (!is_child_of(n, on))
+        return duk_error(ctx, DUK_ERR_ERROR, "NotFoundError: the old child is not a child of this element");
+    node_detach(nn);                    /* newChild may live in this same list */
+    orphan_remove(nn);
+    NbNode *after = on->next_sibling;   /* correct after nn's detach relinks */
+    node_detach(on);
+    orphan_add(on);
+    local_insert_before(n, nn, after);
+    push_node(ctx, on);                 /* DOM returns the replaced child */
+    return 1;
+}
+/* rung-2 remainder: el.value for form fields — a get/set pair; the set
+ * string is held on the wrapper (identity-cached per node) under a hidden
+ * \xff key, and an unsets element falls back to its `value` attribute. */
+static int is_form_field(const char *tag) {
+    if (!tag) return 0;
+    return !strcmp(tag, "input") || !strcmp(tag, "textarea")
+        || !strcmp(tag, "select") || !strcmp(tag, "button")
+        || !strcmp(tag, "option");
+}
+static duk_ret_t nb_el_value_get(duk_context *ctx) {
+    NbNode *n = get_this(ctx);
+    if (!n) { duk_push_string(ctx, ""); return 1; }
+    duk_push_this(ctx);
+    if (duk_has_prop_string(ctx, -1, "\xffvalue")) {
+        duk_get_prop_string(ctx, -1, "\xffvalue");
+        duk_remove(ctx, -2);
+        return 1;
+    }
+    duk_pop(ctx);
+    const char *v = nb_attr_get(n, "value");
+    if (v && v[0]) { duk_push_string(ctx, v); return 1; }
+    duk_push_string(ctx, "");
+    return 1;
+}
+static duk_ret_t nb_el_value_set(duk_context *ctx) {
+    NbNode *n = get_this(ctx);
+    if (!n) return 0;
+    const char *v = duk_get_string(ctx, 0) ? duk_get_string(ctx, 0) : "";
+    duk_push_this(ctx);
+    duk_push_string(ctx, v);
+    duk_put_prop_string(ctx, -2, "\xffvalue");
+    duk_pop(ctx);
+    return 0;
 }
 /* ---- classList natives (this = the classList object, shares \xffnode) ---- */
 static duk_ret_t nb_cl_add(duk_context *ctx) {
@@ -791,14 +1019,23 @@ static void push_node(duk_context *ctx, NbNode *n) {
     duk_push_object(ctx);                            /* el */
     duk_push_int(ctx, nidx);
     duk_put_prop_string(ctx, -2, NODEKEY);
-    duk_push_string(ctx, n->tag ? n->tag : "");
-    duk_put_prop_string(ctx, -2, "nodeName");
-    duk_push_string(ctx, n->tag ? n->tag : "");
-    duk_put_prop_string(ctx, -2, "tagName");
+    {
+        const char *label = (n->tag && n->tag[0]) ? n->tag : "#text";
+        duk_push_string(ctx, label);
+        duk_put_prop_string(ctx, -2, "nodeName");
+        if (n->tag && n->tag[0]) {
+            duk_push_string(ctx, label);
+            duk_put_prop_string(ctx, -2, "tagName");
+        }
+    }
 
     duk_push_c_function(ctx, nb_el_getAttribute, 1);  duk_put_prop_string(ctx, -2, "getAttribute");
     duk_push_c_function(ctx, nb_el_setAttribute, 2);  duk_put_prop_string(ctx, -2, "setAttribute");
+    duk_push_c_function(ctx, nb_el_removeAttribute, 1); duk_put_prop_string(ctx, -2, "removeAttribute");
     duk_push_c_function(ctx, nb_el_appendChild, 1);   duk_put_prop_string(ctx, -2, "appendChild");
+    duk_push_c_function(ctx, nb_el_removeChild, 1);   duk_put_prop_string(ctx, -2, "removeChild");
+    duk_push_c_function(ctx, nb_el_insertBefore, 2);  duk_put_prop_string(ctx, -2, "insertBefore");
+    duk_push_c_function(ctx, nb_el_replaceChild, 2);  duk_put_prop_string(ctx, -2, "replaceChild");
     duk_push_c_function(ctx, nb_el_addEventListener, 2);    duk_put_prop_string(ctx, -2, "addEventListener");
     duk_push_c_function(ctx, nb_el_removeEventListener, 2); duk_put_prop_string(ctx, -2, "removeEventListener");
     duk_push_c_function(ctx, nb_el_dispatchEvent, 1);       duk_put_prop_string(ctx, -2, "dispatchEvent");
@@ -851,6 +1088,20 @@ static void push_node(duk_context *ctx, NbNode *n) {
     duk_push_c_function(ctx, nb_el_innerHTML_set, 1);
     duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
 
+    /* rung-2 remainder: el.style — a plain per-node object (wrappers are
+     * identity-cached, so mutations persist). Style never reaches the
+     * render path (roadmap §2: store on a per-node map; no layout). */
+    duk_push_object(ctx);
+    duk_put_prop_string(ctx, -2, "style");
+
+    /* rung-2 remainder: el.value get/set for form fields. */
+    if (is_form_field(n->tag)) {
+        duk_push_string(ctx, "value");
+        duk_push_c_function(ctx, nb_el_value_get, 0);
+        duk_push_c_function(ctx, nb_el_value_set, 1);
+        duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
+    }
+
     /* classList */
     duk_push_object(ctx);                            /* classList */
     duk_push_int(ctx, nidx);
@@ -861,11 +1112,340 @@ static void push_node(duk_context *ctx, NbNode *n) {
     duk_push_c_function(ctx, nb_cl_contains, 1);     duk_put_prop_string(ctx, -2, "contains");
     duk_put_prop_string(ctx, -2, "classList");
 
-    /* cache wrapper in the identity map, then drop stash+map, leaving [wrapper] */
+    /* cache wrapper in the identity map, then drop stash+map, leaving [wrapper].
+     * stack: [stash][map][el]; el is at -1, map at -3. */
     duk_dup(ctx, -1);
-    duk_put_prop_index(ctx, -2, nidx);
+    duk_put_prop_index(ctx, -3, nidx);   /* map[nidx] = el (was -2: the wrapper
+                                            stored into itself → identity broke) */
     duk_remove(ctx, -2);
     duk_remove(ctx, -2);
+}
+
+/* ============================= rung 6: file-backed document.cookie jar =====
+ * document.cookie getter/setter as C natives (the prelude in nb_host.h leaves
+ * a configurable stub; install_dom redefines it with these). The jar lives on
+ * disk at $NB_COOKIES_FILE (fallback $HOME/.config/nbjs/nb_cookies.txt), so
+ * cookies survive across LOADs — each LOAD runs in a fresh Duktape heap, so
+ * the file is the only persistence. Jar line format (TAB-separated legend):
+ *   host<TAB>path<TAB>name<TAB>value<TAB>expires_epoch<TAB>secure
+ * host "*" = set from a URI with no host. expires 0 = session cookie.
+ * RFC 6265 subset: name=value + Domain/Path/Expires/Max-Age/Secure.
+ * Reads tolerate damage: junk lines are skipped, not fatal. */
+#define COOKIE_MAX_ENT 512
+
+typedef struct {
+    char host[128];
+    char path[256];
+    char name[128];
+    char value[1024];
+    time_t expires;
+    int secure;
+} CookieEnt;
+
+static char g_cookie_path[PATH_MAX];
+static int  g_cookie_path_set = 0;
+
+static void mkdir_p(const char *path) {
+    char tmp[PATH_MAX];
+    snprintf(tmp, sizeof(tmp), "%s", path);
+    for (char *p = tmp + 1; *p; p++) {
+        if (*p == '/') { *p = 0; mkdir(tmp, 0755); *p = '/'; }
+    }
+    mkdir(tmp, 0755);
+}
+
+static void cookie_jar_init(void) {
+    g_cookie_path_set = 1;
+    const char *env = getenv("NB_COOKIES_FILE");
+    if (env && env[0]) { snprintf(g_cookie_path, sizeof(g_cookie_path), "%s", env); return; }
+    const char *home = getenv("HOME");
+    if (home && home[0])
+        snprintf(g_cookie_path, sizeof(g_cookie_path), "%s/.config/nbjs/nb_cookies.txt", home);
+    else
+        g_cookie_path[0] = 0;   /* no writable location: reads '', writes no-op */
+}
+
+/* Split the current g_href into host + request path (bare host/port dropped).
+ * Port numbers are skipped (cookie scoping ignores ports, RFC 6265 §1). */
+static int href_parts(char *hostb, size_t hl, char *pathb, size_t pl) {
+    const char *p = g_href;
+    const char *a = strstr(p, "://");
+    const char *s = a ? a + 3 : p;
+    const char *q = s;
+    int port = 0;
+    while (*q) {
+        if (*q == ':' && !port) { port = 1; q++; continue; }
+        if (port && *q >= '0' && *q <= '9') { q++; continue; }
+        port = 0;
+        if (*q == '/' || *q == '?' || *q == '#') break;
+        q++;
+    }
+    size_t hn = (size_t)(q - s);
+    if (hn >= hl) hn = hl - 1;
+    memcpy(hostb, s, hn); hostb[hn] = 0;
+    const char *ph = q;
+    while (*ph && *ph != '?' && *ph != '#') ph++;
+    size_t pn = (size_t)(ph - q);
+    if (pn >= pl) pn = pl - 1;
+    memcpy(pathb, q, pn); pathb[pn] = 0;
+    if (!pathb[0]) snprintf(pathb, pl, "/");
+    return 1;
+}
+
+/* RFC 6265 §5.1.4 default-path for a Set-Cookie with no explicit Path. */
+static void default_cookie_path(const char *rp, char *out, size_t olen) {
+    if (!rp || rp[0] != '/') { snprintf(out, olen, "/"); return; }
+    const char *r = strrchr(rp, '/');
+    if (!r || r == rp) { snprintf(out, olen, "/"); return; }
+    size_t n = (size_t)(r - rp);
+    if (n >= olen) n = olen - 1;
+    memcpy(out, rp, n); out[n] = 0;
+    if (!out[0]) snprintf(out, olen, "/");
+}
+
+/* RFC 6265 §5.1.4 path-match: `cp` is the cookie path, `rp` the request path. */
+static int cookie_path_match(const char *cp, const char *rp) {
+    if (!cp || !rp) return 0;
+    if (!strcmp(cp, rp)) return 1;
+    size_t n = strlen(cp);
+    if (n == 0) return 1;
+    if (strncmp(rp, cp, n) != 0) return 0;
+    if (cp[n - 1] == '/') return 1;
+    return rp[n] == '/';
+}
+
+static char *trim_c(char *s) {
+    while (*s == ' ' || *s == '\t') s++;
+    size_t n = strlen(s);
+    while (n && (s[n - 1] == ' ' || s[n - 1] == '\t' || s[n - 1] == '\r' || s[n - 1] == '\n'))
+        s[--n] = 0;
+    return s;
+}
+
+static void sanitize_cookie_value(const char *in, char *out, size_t olen) {
+    size_t o = 0;
+    for (const unsigned char *c = (const unsigned char *)in; *c && o + 1 < olen; c++) {
+        if (*c < 0x20 || *c == 0x7f) continue;   /* drop CR/LF/controls (line-injection) */
+        out[o++] = (char)*c;
+    }
+    out[o] = 0;
+}
+
+/* days-from-civil -> UNIX epoch (no TZ dependence; glibc timegm macro-gated). */
+static time_t epoch_from_ymd(int y, int m, int d, int hh, int mi, int ss) {
+    if (m < 3) { m += 12; y--; }
+    int era = (y >= 0 ? y : y - 399) / 400;
+    unsigned yoe = (unsigned)(y - era * 400);
+    unsigned doy = (153u * (unsigned)(m > 2 ? m - 3 : m + 9) + 2) / 5 + (unsigned)d - 1u;
+    unsigned doe = yoe * 365u + yoe / 4u - yoe / 100u + doy;
+    long days = (long)(era * 146097) + (long)doe - 719468L;
+    return (time_t)days * 86400L + hh * 3600L + mi * 60L + ss;
+}
+
+static const char *const COOKIE_MONTHS[12] =
+    { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+
+/* IMF-fixdate ("Sun, 06 Nov 1994 08:49:37 GMT"); (time_t)-1 = unparseable.
+ * Note a real "01 Jan 1970" parses to epoch 0 (a valid instant, NOT the
+ * "no expiry" sentinel — that distinction is handled in the setter). */
+static time_t cookie_datetime(const char *s) {
+    if (!s || !*s) return (time_t)-1;
+    int d = 0, y = 0, hh = 0, mi = 0, ss = 0, mon = -1;
+    char monname[8] = {0};
+    if (sscanf(s, "%*[^,], %d %7s %d %d:%d:%d",
+               &d, monname, &y, &hh, &mi, &ss) == 6) {
+        for (int i = 0; i < 12 && mon < 0; i++)
+            if (!strncasecmp(COOKIE_MONTHS[i], monname, 3)) mon = i;
+        if (mon >= 0 && y >= 1970 && y <= 9999)
+            return epoch_from_ymd(y, mon + 1, d, hh, mi, ss);
+    }
+    return (time_t)-1;
+}
+
+static int cookie_parse_line(char *line, CookieEnt *e) {
+    memset(e, 0, sizeof(*e));
+    char *f[6];
+    int nf = 0;
+    char *q = line;
+    while (nf < 6 && *q) {
+        f[nf] = q;
+        char *t = strchr(q, '\t');
+        if (t) { *t = 0; q = t + 1; }
+        else { q += strlen(q); }
+        nf++;
+    }
+    if (nf < 5) return 0;
+    snprintf(e->host, sizeof(e->host), "%s", f[0]);
+    snprintf(e->path, sizeof(e->path), "%s", f[1]);
+    snprintf(e->name, sizeof(e->name), "%s", f[2]);
+    snprintf(e->value, sizeof(e->value), "%s", f[3]);
+    e->expires = (time_t)atol(f[4]);
+    if (nf >= 6) e->secure = atoi(f[5]) ? 1 : 0;
+    return 1;
+}
+
+static int cookie_load_file(CookieEnt *ents, int maxn) {
+    char *buf = NULL;
+    size_t bl = 0;
+    if (!read_file(g_cookie_path, &buf, &bl)) return 0;
+    int n = 0;
+    char *p = buf;
+    while (p && *p && n < maxn) {
+        char *nl = strchr(p, '\n');
+        if (nl) { *nl = 0; }
+        if (cookie_parse_line(p, &ents[n])) n++;
+        p = nl ? nl + 1 : NULL;
+    }
+    free(buf);
+    return n;
+}
+
+static void cookie_save_file(const CookieEnt *ents, int n) {
+    if (!g_cookie_path[0]) return;
+    char dirbuf[PATH_MAX];
+    snprintf(dirbuf, sizeof(dirbuf), "%s", g_cookie_path);
+    char *slash = strrchr(dirbuf, '/');
+    if (slash) { *slash = 0; if (slash != dirbuf) mkdir_p(dirbuf); }
+    SB b = {0, 0, 0};
+    for (int i = 0; i < n; i++) {
+        sb_put(&b, ents[i].host); sb_put(&b, "\t");
+        sb_put(&b, ents[i].path); sb_put(&b, "\t");
+        sb_put(&b, ents[i].name); sb_put(&b, "\t");
+        sb_put(&b, ents[i].value);
+        char tail[64];
+        snprintf(tail, sizeof(tail), "\t%ld\t%d\n",
+                 (long)ents[i].expires, ents[i].secure ? 1 : 0);
+        sb_put(&b, tail);
+    }
+    char tmp[PATH_MAX];
+    snprintf(tmp, sizeof(tmp), "%s.tmp", g_cookie_path);
+    FILE *f = fopen(tmp, "wb");
+    if (f) {
+        if (b.s && b.len) fwrite(b.s, 1, b.len, f);
+        fclose(f);
+        rename(tmp, g_cookie_path);
+    }
+    free(b.s);
+}
+
+static duk_ret_t nb_dom_cookie_get(duk_context *ctx) {
+    if (!g_cookie_path_set) cookie_jar_init();
+    if (!g_cookie_path[0]) { duk_push_string(ctx, ""); return 1; }
+    char host[128], rp[512];
+    if (!href_parts(host, sizeof(host), rp, sizeof(rp))) { duk_push_string(ctx, ""); return 1; }
+    for (char *c = host; *c; c++) *c = (char)tolower((unsigned char)*c);
+    CookieEnt ents[COOKIE_MAX_ENT];
+    int n = cookie_load_file(ents, COOKIE_MAX_ENT);
+    time_t now = time(NULL);
+    SB b = {0, 0, 0};
+    for (int i = 0; i < n; i++) {
+        if (ents[i].expires && ents[i].expires <= now) continue;   /* expired */
+        if (strcmp(ents[i].host, "*") != 0 &&
+            strcasecmp(ents[i].host, host) != 0) continue;          /* other host */
+        if (!cookie_path_match(ents[i].path, rp)) continue;         /* other path */
+        if (ents[i].name[0] == 0) continue;
+        if (b.len) sb_put(&b, "; ");
+        sb_put(&b, ents[i].name);
+        sb_put(&b, "=");
+        sb_put(&b, ents[i].value);
+    }
+    duk_push_lstring(ctx, b.s ? b.s : "", b.len);
+    free(b.s);
+    return 1;
+}
+
+static duk_ret_t nb_dom_cookie_set(duk_context *ctx) {
+    const char *spec = duk_safe_to_string(ctx, 0);
+    if (!g_cookie_path_set) cookie_jar_init();
+    if (!spec || !*spec || !g_cookie_path[0]) return 0;
+    char host[128], rp[512];
+    if (!href_parts(host, sizeof(host), rp, sizeof(rp))) return 0;
+
+    char buf[4096];
+    snprintf(buf, sizeof(buf), "%s", spec);
+    char name[128] = "", value[1024] = "";
+    char scope_host[128] = "", scope_path[256] = "";
+    char expire_s[256] = "";
+    long maxage = -1;
+    int secure = 0;
+
+    char *tok = strtok(buf, ";");
+    if (!tok) return 0;
+    tok = trim_c(tok);
+    char *eq = strchr(tok, '=');
+    if (!eq || eq == tok) return 0;
+    *eq = 0;
+    snprintf(name, sizeof(name), "%s", tok);
+    sanitize_cookie_value(eq + 1, value, sizeof(value));
+    if (!name[0]) return 0;
+
+    while ((tok = strtok(NULL, ";")) != NULL) {
+        tok = trim_c(tok);
+        if (!strncasecmp(tok, "path=", 5))            snprintf(scope_path, sizeof(scope_path), "%s", tok + 5);
+        else if (!strncasecmp(tok, "domain=", 7))     snprintf(scope_host, sizeof(scope_host), "%s", tok + 7);
+        else if (!strncasecmp(tok, "max-age=", 8))    { maxage = atol(tok + 8); }
+        else if (!strncasecmp(tok, "expires=", 8))    snprintf(expire_s, sizeof(expire_s), "%s", tok + 8);
+        else if (!strcasecmp(tok, "secure"))          secure = 1;
+        /* HttpOnly / SameSite / unknown attrs are accepted and ignored. */
+    }
+
+    if (scope_host[0]) {
+        char *sh = scope_host;
+        while (*sh == '.') sh++;              /* strip leading dots */
+        snprintf(scope_host, sizeof(scope_host), "%s", sh);
+    }
+    if (!scope_host[0]) snprintf(scope_host, sizeof(scope_host), "%s", host);
+    if (!scope_path[0]) default_cookie_path(rp, scope_path, sizeof(scope_path));
+
+    time_t exp = 0;
+    int delete = 0;
+    time_t nowt = time(NULL);
+    if (maxage >= 0) {
+        if (maxage == 0) delete = 1;               /* max-age=0 -> remove */
+        else exp = nowt + maxage;
+    } else if (expire_s[0]) {
+        exp = cookie_datetime(trim_c(expire_s));
+        if (exp == (time_t)-1) exp = 0;            /* unparseable -> session cookie */
+        else if (exp <= nowt) delete = 1;          /* expired date -> remove */
+    }
+
+    CookieEnt ents[COOKIE_MAX_ENT];
+    int n = cookie_load_file(ents, COOKIE_MAX_ENT);
+
+    int found = -1;
+    for (int i = 0; i < n; i++) {
+        if (strcasecmp(ents[i].host, scope_host) != 0) continue;
+        if (ents[i].path[0] && strcmp(ents[i].path, scope_path) != 0) continue;
+        if (strcmp(ents[i].name, name) != 0) continue;
+        found = i;
+        break;
+    }
+    if (delete) {
+        if (found >= 0) {
+            for (int i = found; i + 1 < n; i++) ents[i] = ents[i + 1];
+            n--;
+        }
+    } else {
+        if (found >= 0) {
+            snprintf(ents[found].host, sizeof(ents[found].host), "%s", scope_host);
+            snprintf(ents[found].path, sizeof(ents[found].path), "%s", scope_path);
+            snprintf(ents[found].value, sizeof(ents[found].value), "%s", value);
+            ents[found].expires = exp;
+            ents[found].secure = secure;
+        } else if (n < COOKIE_MAX_ENT) {
+            CookieEnt *e = &ents[n++];
+            memset(e, 0, sizeof(*e));
+            snprintf(e->host, sizeof(e->host), "%s", scope_host);
+            snprintf(e->path, sizeof(e->path), "%s", scope_path);
+            snprintf(e->name, sizeof(e->name), "%s", name);
+            snprintf(e->value, sizeof(e->value), "%s", value);
+            e->expires = exp;
+            e->secure = secure;
+        }
+    }
+    cookie_save_file(ents, n);
+    return 0;
 }
 
 /* Attach the DOM natives to the global `document` object. */
@@ -876,12 +1456,24 @@ static void install_dom(duk_context *ctx) {
     duk_push_c_function(ctx, nb_dom_querySelector, 1);         duk_put_prop_string(ctx, -2, "querySelector");
     duk_push_c_function(ctx, nb_dom_querySelectorAll, 1);      duk_put_prop_string(ctx, -2, "querySelectorAll");
     duk_push_c_function(ctx, nb_dom_createElement, 1);         duk_put_prop_string(ctx, -2, "createElement");
+    duk_push_c_function(ctx, nb_dom_createTextNode, 1);        duk_put_prop_string(ctx, -2, "createTextNode");
+    duk_push_c_function(ctx, nb_dom_getElementsByClassName, 1); duk_put_prop_string(ctx, -2, "getElementsByClassName");
     duk_push_string(ctx, "documentElement");
     duk_push_c_function(ctx, nb_dom_documentElement, 0);
     duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
     duk_push_string(ctx, "body");
     duk_push_c_function(ctx, nb_dom_body, 0);
     duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
+    duk_push_string(ctx, "head");
+    duk_push_c_function(ctx, nb_dom_head, 0);
+    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
+    /* rung-6: document.cookie — file-backed jar. The prelude's configurable
+     * empty-jar stub is replaced by real C natives (survive across LOADs
+     * because the jar is on disk; each LOAD runs a fresh heap). */
+    duk_push_string(ctx, "cookie");
+    duk_push_c_function(ctx, nb_dom_cookie_get, 0);
+    duk_push_c_function(ctx, nb_dom_cookie_set, 1);
+    duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
     duk_pop(ctx);
 }
 
@@ -1660,6 +2252,13 @@ static void run_page(void) {
 
 /* bare `duk` on a terminal: a tiny stateful REPL (no page/lifecycle events).
  * Exits on EOF or exit/quit/.exit. Non-tty stdin stays the framed daemon. */
+/* bare `duk` on a terminal: a tiny stateful REPL (no page/lifecycle events).
+ * Exits on EOF or exit/quit/.exit. Non-tty stdin stays the framed daemon, but
+ * `duk -i` forces the REPL even when stdin is piped. */
+/* CLI-2/CLI-3 native hook used by both the REPL and node mode. */
+static duk_ret_t nb_cjs_read_file(duk_context *ctx);
+static void      nb_install_fs(duk_context *ctx);
+static const char g_cjs_prelude[];
 static int repl_main(void) {
     duk_context *ctx = duk_create_heap(NULL, NULL, NULL, NULL, fatal_handler);
     if (!ctx) return 1;
@@ -1667,6 +2266,32 @@ static int repl_main(void) {
     g_out = stdout; setvbuf(g_out, NULL, _IONBF, 0);
     install_host(ctx);
     if (peval_budget(ctx, g_js_prelude) != 0) duk_pop(ctx);
+    duk_pop(ctx);
+    /* CLI-2/CLI-3 in the REPL too: require() + fs work line-by-line,
+     * sharing the browser prelude above (window/document still present). */
+    duk_push_c_function(ctx, nb_cjs_read_file, 1);
+    duk_put_global_string(ctx, "__nb_read_file");
+    nb_install_fs(ctx);
+    if (peval_budget(ctx, g_cjs_prelude) != 0) {
+        const char *m = duk_safe_to_string(ctx, -1);
+        fprintf(stderr, "err:%s\n", m ? m : "loader error");
+        duk_pop(ctx); duk_destroy_heap(ctx); dom_teardown(); return 1;
+    }
+    duk_pop(ctx);
+    duk_get_global_string(ctx, "__nb_install_cjs");
+    char cwd_buf[PATH_MAX];
+    if (!getcwd(cwd_buf, sizeof(cwd_buf))) snprintf(cwd_buf, sizeof(cwd_buf), ".");
+    duk_push_string(ctx, cwd_buf);
+    duk_push_string(ctx, "[repl]");
+    int cinc = 0;
+    signal(SIGALRM, sigalrm);
+    alarm(EVAL_BUDGET_SEC);
+    cinc = duk_pcall(ctx, 2);
+    alarm(0);
+    if (cinc != 0) {
+        fprintf(stderr, "err:%s\n", duk_safe_to_string(ctx, -1));
+        duk_pop(ctx); duk_destroy_heap(ctx); dom_teardown(); return 1;
+    }
     duk_pop(ctx);
     static const char empty_html[] = "<html><body></body></html>";
     g_dom_root = nb_parse_html(empty_html, sizeof(empty_html) - 1);
@@ -1688,6 +2313,20 @@ static int repl_main(void) {
         g_timer_count = 0; g_micro_n = 0; g_micro_head = 0; g_evl_count = 0;
         g_onprop_count = 0; g_invocations = 0; g_raf_fires = 0;
         g_pending_err = 0; g_pending_errmsg[0] = 0;
+
+        /* CLI-4: single-line ESM (import/export) → CJS in the REPL too.
+         * Multi-line import/export statements are out of scope here. */
+        duk_get_global_string(ctx, "__nb_esm_prepare");
+        if (duk_is_callable(ctx, -1)) {
+            duk_push_string(ctx, line);
+            int epc = duk_pcall(ctx, 1);
+            if (epc == 0 && duk_is_string(ctx, -1)) {
+                size_t sl;
+                const char *ps = duk_safe_to_lstring(ctx, -1, &sl);
+                if (sl < sizeof(line)) { memcpy(line, ps, sl); line[sl] = 0; }
+            }
+            duk_pop(ctx);
+        } else { duk_pop(ctx); }
 
         int rc = peval_budget(ctx, line);
         if (rc != 0) {
@@ -1725,6 +2364,567 @@ static int repl_main(void) {
     return 0;
 }
 
+/* ---- CLI-1: node-like runner (nbjs file.js [args...]) ---- */
+static duk_ret_t nb_cli_stdout(duk_context *ctx) {
+    const char *s = duk_safe_to_string(ctx, 0);
+    if (g_out) { fputs(s ? s : "", g_out); fflush(g_out); }
+    return 0;
+}
+static duk_ret_t nb_cli_stderr(duk_context *ctx) {
+    const char *s = duk_safe_to_string(ctx, 0);
+    if (s) { fputs(s, stderr); fflush(stderr); }
+    return 0;
+}
+/* console.error -> stderr (node parity; log/info/warn stay on stdout) */
+static duk_ret_t nb_cli_error(duk_context *ctx) {
+    duk_idx_t n = duk_get_top(ctx);
+    for (duk_idx_t i = 0; i < n; i++) {
+        const char *s = duk_safe_to_string(ctx, i);
+        if (s) fputs(s, stderr);
+        if (i + 1 < n) fputs(" ", stderr);
+    }
+    fputs("\n", stderr);
+    fflush(stderr);
+    return 0;
+}
+/* CLI-2: read a module file for require(). Returns the source string, or
+ * undefined if the path is missing/unreadable (loader turns that into a
+ * "Cannot find module" error). Same 512 kB cap as the page loader. */
+static duk_ret_t nb_cjs_read_file(duk_context *ctx) {
+    const char *p = duk_safe_to_string(ctx, 0);
+    char *s = NULL; size_t n = 0;
+    if (p && p[0] && read_file(p, &s, &n)) {
+        duk_push_lstring(ctx, s, n);
+        free(s);
+        return 1;
+    }
+    duk_push_undefined(ctx);
+    return 1;
+}
+static duk_ret_t nb_cli_exit(duk_context *ctx) {
+    int code = 0;
+    if (duk_get_top(ctx) > 0 && duk_is_number(ctx, 0)) code = (int)duk_get_int(ctx, 0);
+    if (g_out) fflush(g_out);
+    duk_destroy_heap(ctx);
+    exit(code);
+    return 0;
+}
+static duk_ret_t nb_cli_cwd(duk_context *ctx) {
+    char buf[PATH_MAX];
+    if (getcwd(buf, sizeof(buf))) duk_push_string(ctx, buf);
+    else duk_push_string(ctx, "/");
+    return 1;
+}
+/* ---- CLI-3: fs-lite natives (sync-only, over the same read_file cap).
+ * String-only payloads (no Buffer type in this Duktape); an optional
+ * encoding arg is accepted so node-style call sites keep working. */
+static duk_ret_t nb_fs_readfile(duk_context *ctx) {
+    const char *p = duk_safe_to_string(ctx, 0);
+    char *s = NULL; size_t n = 0;
+    if (!p || !p[0] || !read_file(p, &s, &n))
+        return duk_error(ctx, DUK_ERR_ERROR, "ENOENT: cannot read '%s'", p ? p : "(empty)");
+    duk_push_lstring(ctx, s, n);
+    free(s);
+    return 1;
+}
+static duk_ret_t nb_fs_writefile(duk_context *ctx) {
+    const char *p = duk_safe_to_string(ctx, 0);
+    const char *d = duk_safe_to_string(ctx, 1);
+    FILE *f = fopen(p, "wb");
+    if (!f) return duk_error(ctx, DUK_ERR_ERROR, "EIO: cannot write '%s'", p ? p : "(empty)");
+    if (d) fwrite(d, 1, strlen(d), f);
+    fclose(f);
+    return 0;
+}
+static duk_ret_t nb_fs_appendfile(duk_context *ctx) {
+    const char *p = duk_safe_to_string(ctx, 0);
+    const char *d = duk_safe_to_string(ctx, 1);
+    FILE *f = fopen(p, "ab");
+    if (!f) return duk_error(ctx, DUK_ERR_ERROR, "EIO: cannot append '%s'", p ? p : "(empty)");
+    if (d) fwrite(d, 1, strlen(d), f);
+    fclose(f);
+    return 0;
+}
+static duk_ret_t nb_fs_exists(duk_context *ctx) {
+    const char *p = duk_safe_to_string(ctx, 0);
+    duk_push_boolean(ctx, p && p[0] && access(p, F_OK) == 0);
+    return 1;
+}
+static duk_ret_t nb_fs_mkdir(duk_context *ctx) {
+    const char *p = duk_safe_to_string(ctx, 0);
+    if (!p || !p[0]) return duk_error(ctx, DUK_ERR_ERROR, "EINVAL: empty mkdir path");
+    char tmp[PATH_MAX];
+    snprintf(tmp, sizeof(tmp), "%s", p);
+    for (char *q = tmp + 1; *q; q++) {
+        if (*q == '/') { *q = '\0'; mkdir(tmp, 0755); *q = '/'; }
+    }
+    mkdir(tmp, 0755);
+    return 0;
+}
+static void nb_install_fs(duk_context *ctx) {
+    duk_push_object(ctx);                     /* fs (abs index 0) */
+    duk_push_c_function(ctx, nb_fs_readfile, 1);
+    duk_put_prop_string(ctx, 0, "readFileSync");
+    duk_push_c_function(ctx, nb_fs_writefile, 2);
+    duk_put_prop_string(ctx, 0, "writeFileSync");
+    duk_push_c_function(ctx, nb_fs_appendfile, 2);
+    duk_put_prop_string(ctx, 0, "appendFileSync");
+    duk_push_c_function(ctx, nb_fs_exists, 1);
+    duk_put_prop_string(ctx, 0, "existsSync");
+    duk_push_c_function(ctx, nb_fs_mkdir, 1);
+    duk_put_prop_string(ctx, 0, "mkdirSync");
+    duk_push_global_object(ctx);              /* [fs, G] */
+    duk_dup(ctx, -2);                         /* [fs, G, fs] */
+    duk_put_prop_string(ctx, -2, "__nb_fs");  /* G.__nb_fs = fs; -> [fs, G] */
+    duk_pop_2(ctx);
+}
+/* build a JS object from the process environment (not the full sys env —
+ * see getenv below). Env exposure is opt-in via require('os')-free helper;
+ * CLI-1 keeps it simple: expose a snapshot under process.env. */
+static void nb_cli_install(duk_context *ctx, int argc, char **argv) {
+    duk_push_object(ctx);                    /* process (abs index 0) */
+    /* argv — node convention: [interpreter, script, args...] */
+    duk_idx_t argv_arr = duk_push_array(ctx);
+    for (int i = 0; i < argc; i++) {
+        duk_push_string(ctx, argv[i]);
+        duk_put_prop_index(ctx, argv_arr, (duk_uarridx_t)i);
+    }
+    duk_put_prop_string(ctx, 0, "argv");     /* process.argv = [strings] */
+
+    /* env (snapshot of environ, ENAME="value" pairs) */
+    duk_idx_t env_obj = duk_push_object(ctx);   /* abs index 1 */
+    for (char **e = environ; e && *e; e++) {
+        const char *eq = strchr(*e, '=');
+        if (!eq) continue;
+        char *k = strndup(*e, (size_t)(eq - *e));
+        if (k) { duk_push_string(ctx, k); duk_push_string(ctx, eq + 1); duk_put_prop(ctx, env_obj); free(k); }
+    }
+    duk_put_prop_string(ctx, 0, "env");      /* process.env = {...} */
+    duk_push_c_function(ctx, nb_cli_cwd, 0);
+    duk_put_prop_string(ctx, 0, "cwd");      /* process.cwd = fn */
+    /* stdout / stderr — each a small object with write() */
+    duk_push_object(ctx);                    /* abs index 1 */
+    duk_push_c_function(ctx, nb_cli_stdout, DUK_VARARGS);
+    duk_put_prop_string(ctx, 1, "write");
+    duk_put_prop_string(ctx, 0, "stdout");
+    duk_push_object(ctx);                    /* abs index 1 */
+    duk_push_c_function(ctx, nb_cli_stderr, DUK_VARARGS);
+    duk_put_prop_string(ctx, 1, "write");
+    duk_put_prop_string(ctx, 0, "stderr");
+    duk_push_c_function(ctx, nb_cli_exit, DUK_VARARGS);
+    duk_put_prop_string(ctx, 0, "exit");     /* process.exit = fn */
+
+    /* expose as global `process` */
+    duk_push_global_object(ctx);
+    duk_dup(ctx, -2);
+    duk_put_prop_string(ctx, -2, "process");
+    duk_pop_2(ctx);
+}
+
+/* The released browser page runner: duk --browser page.js [fetch.dom]
+ * runs the full DOM engine (tree, events+timer loop, fetch/XHR+Promise,
+ * render-back) with rendered rows -> stdout. exit 0 ok / 1 js err / 2 usage.
+ * Same code path the old `duk page.js` default took before --node/--browser. */
+static int browser_cli_main(int argc, char **argv) {
+    g_cli = 1;
+    g_cli_log = 1;   /* bare console lines, no LOG| prefix */
+    if (!g_out) { g_out = stdout; setvbuf(g_out, NULL, _IONBF, 0); }
+    const char *pg = argv[1];
+    if (argc < 2 || strcmp(pg, "-h") == 0 || strcmp(pg, "--help") == 0) {
+        fprintf(stderr, "usage: duk --browser <page.js> [fetch.dom]\n");
+        return 2;
+    }
+    const char *base = strrchr(pg, '/');
+    snprintf(g_title, sizeof(g_title), "%s", base ? base + 1 : pg);
+    snprintf(g_href, sizeof(g_href), "file://%s", pg);
+    snprintf(g_page_js, sizeof(g_page_js), "%s", pg);
+    if (argc > 2) snprintf(g_fetch_dom, sizeof(g_fetch_dom), "%s", argv[2]);
+    if (access(pg, R_OK) != 0) {
+        fprintf(stderr, "nbjs: cannot read %s\n", pg);
+        return 2;
+    }
+    run_page();
+    return g_cli_status_ok ? 0 : 1;
+}
+
+/* CLI-2 CommonJS loader + CLI-4 source-level ESM transpiler. Pure ES5.1
+ * JS so it works on Duktape 2.7.0 (no arrows/let): relative/absolute
+ * resolution, module/exports wrapper, JSON require, cycles, and a line-
+ * based import/export → CJS rewrite. Exposes `require`/`__dirname`/`__filename`
+ * plus `__nb_esm_prepare(src)` for the C entry hook and REPL. */
+static const char g_cjs_prelude[] =
+"/* NB-JS loader (CLI-2 CJS + CLI-4 ESM transpile). */\n"
+"(function(){\n"
+"var cache = {};\n"
+"function dirname(p){\n"
+"  var i = p.lastIndexOf('/');\n"
+"  if (i <= 0) return '/';\n"
+"  return p.slice(0, i);\n"
+"}\n"
+"function resolve(req, dir){\n"
+"  if (req.charAt(0) === '/') return req;\n"
+"  var two = req.slice(0, 2);\n"
+"  if (two !== './' && two !== '..' && req.slice(0, 3) !== '../') return null;\n"
+"  var base = (dir === '/' ? '' : dir).replace(/\\/+$/, '');\n"
+"  var parts = (base + '/' + req).split('/');\n"
+"  var out = [];\n"
+"  for (var i = 0; i < parts.length; i++){\n"
+"    var p = parts[i];\n"
+"    if (p === '' || p === '.') continue;\n"
+"    if (p === '..'){ if (out.length) out.pop(); else return null; continue; }\n"
+"    out.push(p);\n"
+"  }\n"
+"  return '/' + out.join('/');\n"
+"}\n"
+"\n"
+"/* --- CLI-4: ESM source-level transpile ---\n"
+" * Heuristic: a line starting (after ws) with `import` or `export` triggers\n"
+" * transpile. Handles: default/named/namespace/side-effect imports,\n"
+" * function/variable/const/default/named/re-export/export-star-from.\n"
+" * Output uses `var` (Duktape-safe). Does NOT support multi-line imports,\n"
+" * decorators, type annotations, or dynamic `import()`. */\n"
+"function esmLooks(s){\n"
+"  return /(^|\\n)\\s*(import|export)\\b/.test(s);\n"
+"}\n"
+"\n"
+"function esmTranspile(src){\n"
+"  var lines = src.split('\\n');\n"
+"  var out = [];\n"
+"  var eq = [];     /* deferred: exports.X = expr; at end */\n"
+"  var nsc = [];    /* export * from copy-loops */\n"
+"  out.push(\"Object.defineProperty(exports,'__esModule',{value:true});\");\n"
+"  function tr(s){ return s.replace(/^\\s+|\\s+$/g, ''); }\n"
+"  for (var i = 0; i < lines.length; i++){\n"
+"    var line = lines[i];\n"
+"    var t = tr(line);\n"
+"    var lead = line.slice(0, line.length - line.replace(/^\\s+/, '').length);\n"
+"    var m;\n"
+"    /* import * as ns from '...'; */\n"
+"    m = t.match(/^import\\s*\\*\\s*as\\s+([A-Za-z_$][\\w$]*)\\s+from\\s+(['\"])([^'\"]+)\\2;?$/);\n"
+"    if (m){ out.push(lead+'var '+m[1]+' = require('+m[2]+m[3]+m[2]+');'); continue; }\n"
+"    /* import { a, b as c } from '...'; */\n"
+"    m = t.match(/^import\\s*\\{([^}]+)\\}\\s*from\\s+(['\"])([^'\"]+)\\2;?$/);\n"
+"    if (m){\n"
+"      var specs = m[1].split(',');\n"
+"      for (var si = 0; si < specs.length; si++){\n"
+"        var s = tr(specs[si]); if (!s) continue;\n"
+"        var am = s.match(/^([A-Za-z_$][\\w$]*)\\s+as\\s+([A-Za-z_$][\\w$]*)$/);\n"
+"        var nm = am ? am : s.match(/^([A-Za-z_$][\\w$]*)$/);\n"
+"        if (!nm) throw new Error('nbjs ESM: bad import spec at line '+(i+1));\n"
+"        var loc = nm[1], al = am ? am[2] : nm[1];\n"
+"        out.push(lead+'var '+al+' = require('+m[2]+m[3]+m[2]+').'+loc+';');\n"
+"      }\n"
+"      continue;\n"
+"    }\n"
+"    /* import X from '...'; — node interop: unwrap .default if __esModule */\n"
+"    m = t.match(/^import\\s+([A-Za-z_$][\\w$]*)\\s+from\\s+(['\"])([^'\"]+)\\2;?$/);\n"
+"    if (m){\n"
+"      out.push(lead+'var '+m[1]+' = (function(__nb_m){ return (__nb_m && __nb_m.__esModule) ? __nb_m.default : __nb_m; })(require('+m[2]+m[3]+m[2]+'));');\n"
+"      continue;\n"
+"    }\n"
+"    /* import '...'; */\n"
+"    m = t.match(/^import\\s+(['\"])([^'\"]+)\\1;?$/);\n"
+"    if (m){ out.push(lead+'require('+m[1]+m[2]+m[1]+');'); continue; }\n"
+"    /* export * from '...'; */\n"
+"    m = t.match(/^export\\s*\\*\\s*from\\s+(['\"])([^'\"]+)\\1;?$/);\n"
+"    if (m){\n"
+"      var v = '__nb_ns_'+i;\n"
+"      nsc.push({lead:lead,pkg:m[2],v:v});\n"
+"      out.push(lead+'var '+v+' = require('+m[1]+m[2]+m[1]+');');\n"
+"      continue;\n"
+"    }\n"
+"    /* export { x, y as z } from '...'; */\n"
+"    m = t.match(/^export\\s*\\{([^}]+)\\}\\s*from\\s+(['\"])([^'\"]+)\\2;?$/);\n"
+"    if (m){\n"
+"      var specs = m[1].split(',');\n"
+"      for (var si = 0; si < specs.length; si++){\n"
+"        var s = tr(specs[si]); if (!s) continue;\n"
+"        var am = s.match(/^([A-Za-z_$][\\w$]*)\\s+as\\s+([A-Za-z_$][\\w$]*)$/);\n"
+"        var nm = am ? am : s.match(/^([A-Za-z_$][\\w$]*)$/);\n"
+"        if (!nm) throw new Error('nbjs ESM: bad re-export spec at line '+(i+1));\n"
+"        var loc = nm[1], al = am ? am[2] : nm[1];\n"
+"        eq.push({l:al, r:'require('+m[2]+m[3]+m[2]+').'+loc});\n"
+"      }\n"
+"      continue;\n"
+"    }\n"
+"    /* export { a, b as c }; */\n"
+"    m = t.match(/^export\\s*\\{([^}]+)\\};?$/);\n"
+"    if (m){\n"
+"      var specs = m[1].split(',');\n"
+"      for (var si = 0; si < specs.length; si++){\n"
+"        var s = tr(specs[si]); if (!s) continue;\n"
+"        var am = s.match(/^([A-Za-z_$][\\w$]*)\\s+as\\s+([A-Za-z_$][\\w$]*)$/);\n"
+"        var nm = am ? am : s.match(/^([A-Za-z_$][\\w$]*)$/);\n"
+"        if (!nm) throw new Error('nbjs ESM: bad export spec at line '+(i+1));\n"
+"        var al = am ? am[2] : nm[1], loc = nm[1];\n"
+"        eq.push({l:al, r:loc});\n"
+"      }\n"
+"      continue;\n"
+"    }\n"
+"    /* export default function name(...) { ... } — keep the body flowing */\n"
+"    m = t.match(/^export\\s+default\\s+function\\s+([A-Za-z_$][\\w$]*)/);\n"
+"    if (m){\n"
+"      out.push(lead+line.replace(/^export\\s+default\\s+/, ''));\n"
+"      eq.push({l:'default', r:m[1]});\n"
+"      continue;\n"
+"    }\n"
+"    /* export default function (...) { ... } — anonymous, name it */\n"
+"    m = t.match(/^export\\s+default\\s+function\\b/);\n"
+"    if (m){\n"
+"      var dname = '__nb_default_'+i;\n"
+"      out.push(lead+line.replace(/^export\\s+default\\s+function/, 'function '+dname));\n"
+"      eq.push({l:'default', r:dname});\n"
+"      continue;\n"
+"    }\n"
+"    /* export default expr */\n"
+"    m = t.match(/^export\\s+default\\s+(.+)$/);\n"
+"    if (m){ eq.push({l:'default', r:'('+m[1]+')'}); continue; }\n"
+"    /* export function f(...)... */\n"
+"    m = t.match(/^export\\s+function\\s+([A-Za-z_$][\\w$]*)/);\n"
+"    if (m){\n"
+"      out.push(lead+line.replace(/^export\\s+function/, 'function'));\n"
+"      eq.push({l:m[1], r:m[1]});\n"
+"      continue;\n"
+"    }\n"
+"    /* export var/const f = ... */\n"
+"    m = t.match(/^export\\s+(var|const)\\s+([A-Za-z_$][\\w$]*)/);\n"
+"    if (m){\n"
+"      out.push(lead+line.replace(/^export\\s+(var|const)/, '$1'));\n"
+"      eq.push({l:m[2], r:m[2]});\n"
+"      continue;\n"
+"    }\n"
+"    out.push(line);\n"
+"  }\n"
+"  for (var ei = 0; ei < eq.length; ei++)\n"
+"    out.push('exports.'+eq[ei].l+' = '+eq[ei].r+';');\n"
+"  for (var ci = 0; ci < nsc.length; ci++){\n"
+"    var c = nsc[ci];\n"
+"    out.push(c.lead+'var __nb_keys_'+ci+' = Object.keys('+c.v+');');\n"
+"    out.push(c.lead+'for(var __nb_j_'+ci+'=0; __nb_j_'+ci+'<__nb_keys_'+ci+'.length; __nb_j_'+ci+'++){');\n"
+"    out.push(c.lead+'  var __nb_k = __nb_keys_'+ci+'[__nb_j_'+ci+'];');\n"
+"    out.push(c.lead+'  if(!(__nb_k in exports) && __nb_k !== \\'default\\' && __nb_k !== \\'__esModule\\') exports[__nb_k] = '+c.v+'[__nb_k];');\n"
+"    out.push(c.lead+'}');\n"
+"  }\n"
+"  return out.join('\\n');\n"
+"}\n"
+"\n"
+"function esmPrepare(src){\n"
+"  if (esmLooks(src)) return esmTranspile(src);\n"
+"  return src;\n"
+"}\n"
+"\n"
+"function makeRequire(dir){\n"
+"  return function(request){\n"
+"    if (request === 'fs'){ if (typeof __nb_fs !== 'undefined') return __nb_fs; }\n"
+"    var abs = resolve(request, dir);\n"
+"    if (abs === null)\n"
+"      throw new Error(\"Cannot find module '\" + request + \"' (nbjs has no packages/builtins)\");\n"
+"    if (abs in cache) return cache[abs].exports;\n"
+"    var src = __nb_read_file(abs);\n"
+"    if (src === undefined || src === null)\n"
+"      throw new Error(\"Cannot find module '\" + request + \"' (resolved to \" + abs + \")\");\n"
+"    var mod = { id: abs, filename: abs, exports: {}, loaded: false };\n"
+"    cache[abs] = mod;\n"
+"    if (abs.slice(-5) === '.json'){\n"
+"      mod.exports = JSON.parse(src);\n"
+"      mod.loaded = true;\n"
+"      return mod.exports;\n"
+"    }\n"
+"    if (src.charAt(0) === '#'){\n"
+"      var nl = src.indexOf('\\n');\n"
+"      if (nl >= 0) src = src.slice(nl + 1); else src = '';\n"
+"    }\n"
+"    src = esmPrepare(src);\n"
+"    var rd = dirname(abs);\n"
+"    var fn = new Function('exports', 'require', 'module', '__filename', '__dirname', src);\n"
+"    fn.call(mod.exports, mod.exports, makeRequire(rd), mod, abs, rd);\n"
+"    mod.loaded = true;\n"
+"    return mod.exports;\n"
+"  };\n"
+"}\n"
+"this.__nb_install_cjs = function(entryDir, entryFile){\n"
+"  this.require = makeRequire(entryDir);\n"
+"  this.__dirname = entryDir;\n"
+"  this.__filename = entryFile;\n"
+"  this.module = { id: entryFile, filename: entryFile, exports: {} };\n"
+"  this.exports = this.module.exports;\n"
+"};\n"
+"this.__nb_esm_prepare = esmPrepare;\n"
+"})();\n";
+
+static int cli_main(int argc, char **argv) {
+    g_cli = 1; g_cli_log = 1;         /* bare console lines -> stdout */
+    g_out = stdout; setvbuf(g_out, NULL, _IONBF, 0);
+
+    /* parse: duk [--node] file.js|-- [args...] */
+    int script_i = -1;
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
+            fprintf(stderr, "usage: duk <file.js|-> [args...]   (node mode; require()+fs, ESM import/export)\n");
+            fprintf(stderr, "       duk --browser <page.js> [fetch.dom]   (DOM page mode)\n");
+            fprintf(stderr, "       duk -i                        (interactive REPL, even piped)\n");
+            return 2;
+        }
+        if (argv[i][0] == '-' && strcmp(argv[i], "-") != 0) continue;
+        script_i = i; break;
+    }
+    if (script_i < 0) {
+        fprintf(stderr, "usage: duk <file.js|-> [args...]   (node mode; require()+fs, ESM import/export)\n");
+        fprintf(stderr, "       duk --browser <page.js> [fetch.dom]   (DOM page mode)\n");
+        fprintf(stderr, "       duk -i                        (interactive REPL, even piped)\n");
+        return 2;
+    }
+    const char *pg = argv[script_i];
+    if (strcmp(pg, "-") != 0 && access(pg, R_OK) != 0) {
+        fprintf(stderr, "nbjs: cannot read %s\n", pg);
+        return 2;
+    }
+
+    duk_context *ctx = duk_create_heap(NULL, NULL, NULL, NULL, fatal_handler);
+    if (!ctx) return 1;
+
+    /* node-like host: console/print only, plus process. No DOM, no events,
+     * no timers, no browser prelude — window/document/location are absent. */
+    duk_push_global_object(ctx);
+    duk_push_c_function(ctx, native_log, DUK_VARARGS);
+    duk_put_prop_string(ctx, -2, "print");
+    duk_push_object(ctx);
+    duk_push_c_function(ctx, native_log, DUK_VARARGS);
+    duk_put_prop_string(ctx, -2, "log");
+    duk_push_c_function(ctx, native_log, DUK_VARARGS);
+    duk_put_prop_string(ctx, -2, "info");
+    duk_push_c_function(ctx, native_log, DUK_VARARGS);
+    duk_put_prop_string(ctx, -2, "warn");
+    duk_push_c_function(ctx, nb_cli_error, DUK_VARARGS);
+    duk_put_prop_string(ctx, -2, "error");
+    duk_put_prop_string(ctx, -2, "console");
+    duk_pop(ctx);
+
+    /* process.argv = [interp, script, args...] (node convention) */
+    {
+        int nargv = 1 + (argc - script_i);
+        char **a = calloc((size_t)nargv, sizeof(char *));
+        if (!a) { duk_destroy_heap(ctx); return 1; }
+        a[0] = argv[0];
+        for (int i = 0; i + script_i < argc; i++) a[i + 1] = argv[script_i + i];
+        nb_cli_install(ctx, nargv, a);
+        free(a);
+    }
+
+    /* CLI-2 CommonJS + CLI-3 fs: the only host hook the JS loader needs is
+     * a module file reader; it defines `require`/`__dirname`/`__filename`
+     * itself. `require('fs')` resolves to the fs-lite natives below. */
+    duk_push_c_function(ctx, nb_cjs_read_file, 1);
+    duk_put_global_string(ctx, "__nb_read_file");
+    nb_install_fs(ctx);
+
+    /* Entry directory/file, absolute, for the entry script's require base. */
+    static char entry_dir[PATH_MAX], entry_file[PATH_MAX];
+    {
+        if (strcmp(pg, "-") == 0) {
+            if (!getcwd(entry_dir, sizeof(entry_dir))) snprintf(entry_dir, sizeof(entry_dir), ".");
+            snprintf(entry_file, sizeof(entry_file), "[stdin]");
+        } else {
+            static char rp[PATH_MAX];
+            if (!realpath(pg, rp)) snprintf(rp, sizeof(rp), "%s", pg);
+            const char *abs = (rp[0] == '/' ? rp : pg);
+            snprintf(entry_file, sizeof(entry_file), "%s", abs);
+            const char *sl = strrchr(abs, '/');
+            if (sl == abs) snprintf(entry_dir, sizeof(entry_dir), "/");
+            else if (sl) { size_t d = (size_t)(sl - abs); memcpy(entry_dir, abs, d); entry_dir[d] = 0; }
+            else if (!getcwd(entry_dir, sizeof(entry_dir))) snprintf(entry_dir, sizeof(entry_dir), ".");
+        }
+    }
+    if (peval_budget(ctx, g_cjs_prelude) != 0) {
+        const char *m = duk_safe_to_string(ctx, -1);
+        fprintf(stderr, "%s\n", m ? m : "loader error");
+        duk_destroy_heap(ctx);
+        return 1;
+    }
+    duk_pop(ctx);
+    duk_get_global_string(ctx, "__nb_install_cjs");
+    duk_push_string(ctx, entry_dir);
+    duk_push_string(ctx, entry_file);
+    int lrc;
+    signal(SIGALRM, sigalrm);
+    alarm(EVAL_BUDGET_SEC);
+    lrc = duk_pcall(ctx, 2);
+    alarm(0);
+    if (lrc != 0) {
+        const char *m = duk_safe_to_string(ctx, -1);
+        fprintf(stderr, "%s\n", m ? m : "loader error");
+        duk_destroy_heap(ctx);
+        return 1;
+    }
+    duk_pop(ctx);
+
+    char *src = NULL; size_t n = 0;
+    if (strcmp(pg, "-") == 0) {
+        /* read the whole script from stdin */
+        {
+            size_t cap = 1 << 16, len = 0;
+            char *b = malloc(cap);
+            if (!b) { duk_destroy_heap(ctx); return 1; }
+            for (;;) {
+                size_t got = fread(b + len, 1, cap - len, stdin);
+                len += got;
+                if (len == cap) { cap *= 2; b = realloc(b, cap); if (!b) { duk_destroy_heap(ctx); return 1; } }
+                if (feof(stdin) || got == 0) break;
+            }
+            b[len] = 0; src = b; n = len;
+        }
+    } else if (!read_file(pg, &src, &n)) {
+        fprintf(stderr, "nbjs: cannot read %s\n", pg);
+        duk_destroy_heap(ctx);
+        return 2;
+    }
+
+    /* CLI-4: source-level ESM — ask the loader's __nb_esm_prepare for
+     * transpiled source (or the original unchanged). The loader prelude
+     * must have run already (__nb_install_cjs installs it). */
+    duk_get_global_string(ctx, "__nb_esm_prepare");
+    if (duk_is_callable(ctx, -1)) {
+        duk_push_lstring(ctx, src, n);
+        int epc = duk_pcall(ctx, 1);
+        if (epc == 0 && duk_is_string(ctx, -1)) {
+            size_t sl;
+            const char *ps = duk_safe_to_lstring(ctx, -1, &sl);
+            char *ns = malloc(sl + 1);
+            if (ns) { memcpy(ns, ps, sl + 1); free(src); src = ns; n = sl; }
+        }
+        duk_pop(ctx);
+    } else { duk_pop(ctx); }
+
+    /* Compile with shebang support, then call the module body. */
+    duk_push_string(ctx, pg);   /* filename arg (stack shape: [filename]) */
+    int rc = duk_pcompile_lstring_filename(ctx, DUK_COMPILE_SHEBANG, src, n);
+    free(src);
+    if (rc != 0) {
+        const char *m = duk_safe_to_string(ctx, -1);
+        fprintf(stderr, "%s\n", m ? m : "script error");
+        duk_destroy_heap(ctx);
+        return 1;
+    }
+    /* CPU guard: a while(true){} script must be killed, same guarantee as
+     * the page runner. sigalrm() hard-exits the worker; in CLI mode that's
+     * a clean-enough "runaway script" stop (exit via signal). */
+    int rc2;
+    signal(SIGALRM, sigalrm);
+    alarm(EVAL_BUDGET_SEC);
+    rc2 = duk_pcall(ctx, 0);
+    alarm(0);
+    if (rc2 != 0) {
+        const char *m = duk_safe_to_string(ctx, -1);
+        fprintf(stderr, "%s\n", m ? m : "script error");
+        duk_destroy_heap(ctx);
+        return 1;
+    }
+    duk_pop(ctx);
+    if (g_out) fflush(g_out);
+    duk_destroy_heap(ctx);
+    return 0;
+}
+
 int main(int argc, char **argv) {
     g_out = NULL;   /* step 2: no effects file yet; console goes nowhere */
     {
@@ -1735,29 +2935,20 @@ int main(int argc, char **argv) {
         }
     }
 
+    /* duk -i / --interactive: force the REPL even when stdin is piped
+     * (bare `duk` also reaches it on a tty via the isatty check below). */
+    if (argc > 1 && (strcmp(argv[1], "-i") == 0 || strcmp(argv[1], "--interactive") == 0))
+        return repl_main();
+
     if (argc > 1) {
-        /* standalone CLI (node-ish): nbjs <page.js> [fetch.dom] — run once,
-         * console.* -> stdout, rendered rows -> stdout, exit 0 ok / 1 err.
-         * No RPC framing, no khtpm/chtpm dependency. */
-        g_cli = 1;
-        g_cli_log = 1;   /* bare console lines, no LOG| prefix */
-        const char *pg = argv[1];
-        if (strcmp(pg, "-h") == 0 || strcmp(pg, "--help") == 0) {
-            fprintf(stderr, "usage: nbjs <page.js> [fetch.dom]\n");
-            return 2;
-        }
-        if (!g_out) { g_out = stdout; setvbuf(g_out, NULL, _IONBF, 0); }
-        const char *base = strrchr(pg, '/');
-        snprintf(g_title, sizeof(g_title), "%s", base ? base + 1 : pg);
-        snprintf(g_href, sizeof(g_href), "file://%s", pg);
-        snprintf(g_page_js, sizeof(g_page_js), "%s", pg);
-        if (argc > 2) snprintf(g_fetch_dom, sizeof(g_fetch_dom), "%s", argv[2]);
-        if (access(pg, R_OK) != 0) {
-            fprintf(stderr, "nbjs: cannot read %s\n", pg);
-            return 2;
-        }
-        run_page();
-        return g_cli_status_ok ? 0 : 1;
+        /* duk --browser page.js [fetch.dom] — the released DOM page runner
+         * (full DOM engine + render-back). duk file.js — node mode, no
+         * browser globals, process/console + require()/fs host. Either way:
+         * exit 0 clean / 1 thrown error / 2 usage. No RPC framing, no khtpm
+         * dependency. */
+        if (strcmp(argv[1], "--browser") == 0 || strcmp(argv[1], "-b") == 0)
+            return browser_cli_main(argc - 1, argv + 1);
+        return cli_main(argc, argv);
     }
 
     /* bare `duk` with a terminal as stdin: interactive REPL instead of the

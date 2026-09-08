@@ -129,10 +129,12 @@ Minimum node API to implement:
 > is ignored so a dying worker can't kill the manager. A `while(true){}`
 > page kills only the worker; the static rows stay and the next scripted
 > page gets a fresh worker. Same commit.
-> **Still pending within rung 2:** `head`, `createTextNode`,
+> **Rung 2 remainder: LANDED 2026-09-07** — `head`, `createTextNode`,
 > `getElementsByClassName`, `removeChild`/`insertBefore`/`replaceChild`,
-> `removeAttribute`, `style.*`, `value` (form fields) — natural follow-ons
-> to the worker's step-3 chunk; cued in Phase 2.
+> `removeAttribute`, `style.*`, `value` (form fields), plus a latched
+> wrapper-identity bug (`push_node` cached into the object instead of the
+> stash map, so per-node state like `style`/`value` never survived a
+> re-fetch). Rung 2 is now complete.
 
 ### Rung 3 — events + the event loop  *(1 pass, needs care for CPU)*
 - `EventTarget`: `addEventListener` / `removeEventListener` /
@@ -210,11 +212,26 @@ plausible stub, `MutationObserver` (can no-op then improve),
 > - `document.cookie` empty-jar getter/setter (no throw; file jar still
 >   a C job later) — `f5f86b4d`
 > **Still to do (needs C or the worker):** real `history`/`location`
-> navigation pushed to the manager, file-backed `document.cookie` jar,
-> a real timer/event loop (rung 3). Tests under `network/tests/rung6_*.js`
+> navigation pushed to the manager, a real timer/event loop (rung 3).
+> Tests under `network/tests/rung6_*.js`
 > all +OK|1; 5 suites green. Since phase-1 step 2 the shared `nb_host.h`
 > carries these stubs into the resident worker too, so eval AND worker
 > both pass all 5 rung suites.
+>
+> **LANDED 2026-09-07 — file-backed `document.cookie` jar.** The resident
+> worker's `install_dom()` redefines the prelude's configurable cookie stub
+> with real C natives backed by a disk jar at `$NB_COOKIES_FILE` (fallback
+> `$HOME/.config/nbjs/nb_cookies.txt`). RFC 6265 subset: name=value +
+> Domain/Path/Expires/Max-Age/Secure; host-scoping + path-match on read;
+> max-age=0 and past Expires delete; IMF-fixdate parsing via days-from-civil
+> (no TZ deps); atomic tmp+rename writes; damage-tolerant reads. Each LOAD
+> runs a fresh heap, so the jar file is the ONLY cross-LOAD persistence.
+> Live in `ops/nb_js_worker.c`, new `make check` suite `wck`
+> (`tests/worker_cookie_test.c`, 3-LOAD set / fresh-heap get / cross-host
+> scope, + jar-content verification) — commit `1f943aba`. The manager will
+> later point the worker at its own `#.desktop/nb_cookies.txt` via
+> `NB_COOKIES_FILE`; **remaining rung-6 C piece:** real `history`/
+> `location` navigation to the manager.
 
 
 ### Rung 7 — CSS/layout awareness  *(optional, large, defer)*
@@ -470,18 +487,25 @@ of work once you pick an engine, and most browsing never needs it.
 
 ---
 
-## 9. Bonus door: the engine as a node/bun-like CLI *(queued, OPEN-ITEMS #11)*
+## 9. Bonus door: the engine as a node/bun-like CLI *(CLI-1/2/3 landed, OPEN-ITEMS #11)*
 
 None of the above rules out using the *same* engine outside the browser
-window. duktape is a standalone evaluator; `opa/nb_js_eval
-<file> <out>` already is a one-shot CLI, and the `install_host()` +
-prelude seam is the hook for a node-like mode (process/require/fs-‑lite,
-real exit codes + stderr) without touching the worker or manager.
+window. `duk file.js [args...]` is now the node-style runner (no browser
+globals, `process.argv/cwd/env/stdout/stderr.write/exit`, real exit codes
+0/1/2, 2 s CPU guard) with CommonJS `require()`/`module`/`exports`
+incl. JSON + circular-require handling (CLI-2), fs-lite `require('fs')`
+plus a piped-capable `-i` REPL (CLI-3), and source-level ESM
+(CLI-4): `import`/`export` → CJS transpile for entries, `require()`d
+files, and single REPL lines (default/named/namespace/side-effect
+imports, named/default/brace/from/star exports, `__esModule` interop).
+`duk --browser page.js [fetch.dom]` keeps the released DOM page runner
+(console + rendered rows to stdout), and bare `duk` on a terminal is the
+REPL. All modes are one binary; the manager daemon (no args, non-tty)
+is unchanged and `make check` covers dom/fetch/events + an 18-case
+`cli_test` suite.
 
-- Not too late: node mode is a *different* prelude installed on the
-  same host seam — additive, like the worker was.
-- Hard tail: ESM syntax (duktape has no `import`) → loader must
-  transpile; defer, CJS first.
+- Not too late: node mode was a *different* prelude installed on the
+  same host seam — additive, exactly the way the worker was.
 - Full scope/ladder: `design-docs/NB-JS-CLI-NODE-LIKE-MODE.md`.
 
 ---

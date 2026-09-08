@@ -1,8 +1,13 @@
 # NB-JS engine as a node/bun-like CLI runner — scope + plan
 
-**Status:** queued (OPEN-ITEMS #11). Proposed 2026-09-06. Not too late:
-the engine is a standalone vendored duktape + two host seams; a CLI form
-is additive in exactly the same way the resident worker was.
+**Status:** CLI-1 landed 2026-09-07 (in the worker, `cli_main()`); CLI-2
+(CommonJS) landed 2026-09-07; CLI-3 (fs-lite + `-i`) landed 2026-09-07;
+CLI-4 (source-level ESM) landed 2026-09-07 (the full ladder is done). The
+node runner shares the binary with the REPL and the daemon: `duk` (no
+args) + tty → REPL, `duk file.js` → node mode, `duk --browser page.js` →
+the released DOM page runner, `duk -i` → REPL even with piped stdin.
+Trigger for any future rung: guard-railed functionality exercised by
+`tests/cli_*.js` runners with expected exit codes.
 
 **Why the moment is right:** rung 4 (XHR/fetch) just made the worker a
 real JS-time runtime. The host installation seam (`install_host()` +
@@ -35,25 +40,67 @@ more assumptions.
   stay uninstalled (`window`/`document`/`location` absent — a feature, not
   a bug).
 
-### CLI-2 — CommonJS
-- `require(path)`: compile file, wrap as a `module` object, cache by
-  resolved absolute path, resolve relative paths via `cwd`, no
-  `node_modules`/packages (out of scope for a browser-house tool).
-- Circular requires: partially-initialized module export served on the
-  second visit (standard CJS behavior, easy in duktape).
-- `module.exports`/`exports` globals per-file via wrapper.
-- JSON require: `JSON.parse` of the file.
+### CLI-2 — CommonJS *(landed 2026-09-07)*
+- `require(path)` global in node mode (entry base = the script's own
+  directory, absolute or `./`/`../` relative; absolute paths OK).
+- Pure-JS loader prelude (`g_cjs_prelude` in the worker) over one host
+  hook — `__nb_read_file` (the same 512 kB-capped `read_file`). Module
+  files are wrapped `(function(exports, require, module, __filename,
+  __dirname){...})` so module-local `var`s do not leak, `this` ===
+  `module.exports` like node, and top-level `#!` lines are stripped.
+- `module.exports`/`exports` per file; cache keyed by resolved absolute
+  path; circular requires serve the partially-initialized `exports`
+  (standard CJS, cache entry inserted before eval).
+- JSON require: any path ending `.json` → `JSON.parse` of the file.
+- No `node_modules`/packages/builtins — a bare specifier throws
+  `Cannot find module '<name>' (nbjs has no packages/builtins)`. A
+  relative path that misses throws with the resolved path. Both exit 1.
+- `console.error` now routes to stderr in node mode (lives on
+  `nb_cli_error`); `log`/`info`/`warn` stay on stdout.
+- Tests: `cli_test` cases 8-9 (require chain incl. JSON/nested `../`/
+  cycle/var-scoping + missing-module error), all green.
 
-### CLI-3 — filesystem lite + REPL
-- `fs`-lite natives over `read_file` + a write/append pair: `readFileSync`,
-  `writeFileSync`, `existsSync`, `mkdirSync` (mirror `mkdir_p_local`).
-- `-i` REPL over stdin (evaluate line, print result via `console`/`print`).
-- `#!` shebang stripping on entry.
+### CLI-3 — filesystem lite + REPL *(landed 2026-09-07)*
+- `fs`-lite natives over `read_file` + a write/append pair:
+  readFileSync / writeFileSync / appendFileSync / existsSync / mkdirSync
+  (recursive `mkdir -p` walk, mirroring the manager's `mkdir_p_local`).
+  Exposed node-idiomatically as `require('fs')` — a builtin registered in
+  the CJS loader (the only builtin; still no node_modules/packages).
+- String-only payloads (no Buffer in this Duktape); an encoding arg is
+  accepted but ignored so node-style call sites keep working. Reads keep
+  the 512 kB cap; miss → `ENOENT`-style error, exit 1.
+- REPL: `duk -i` / `--interactive` forces the REPL even when stdin is
+  piped (useful for `echo '1+2' | duk -i`). The REPL now also carries
+  `require()` + `require('fs')` (added on top of the existing browser
+  prelude, so `document` etc. stay available line-by-line).
+- `#!` shebang stripping on entry — already handled by
+  `DUK_COMPILE_SHEBANG` on the entry compile and by the CJS loader for
+  required files.
+- Tests: `cli_test` cases 10-12 (fs read/write/append/exists/mkdir,
+  `-i` piped REPL eval, REPL require/fs), all green.
 
-### CLI-4 — ESM (defer; explicit non-goal until asked)
-- duktape has no `import` syntax support; ESM = a loader that rewrites
-  or source-parses `import`/`export` → CJS. Do NOT promise this; note it
-  as the hard tail.
+### CLI-4 — source-level ESM *(landed 2026-09-07)*
+- duktape has no `import` syntax support, so ESM is a loader rewrite:
+  the CJS prelude (`g_cjs_prelude`) now carries `__nb_esm_transpile`, a
+  line-based `import`/`export` → CJS converter (pure ES5 output, `var`
+  only). A top-level `import`/`export` line triggers the rewrite.
+- Imports: default (node interop — unwraps `.default` when the module
+  sets `__esModule`, else yields the whole `module.exports`), named with
+  rename, `import * as ns`, side-effect `import "mod"`. Exports:
+  function/var/const, `export default` (named + anonymous, emitted as a
+  real declaration so multi-line bodies keep flowing), brace lists with
+  rename, `export { x as y } from`, `export * from` (skips
+  `default`/`__esModule`). Transpiled modules get the `__esModule` marker.
+- Entry hook: `cli_main` feeds the entry source through
+  `__nb_esm_prepare` before compiling, so an ESM *entry* file works;
+  `__nb_install_cjs` also installs global `module`/`exports` for it. The
+  REPL transpiles single-line import/export as well. CJS `require()` of
+  an ESM module returns `module.exports` and reads `.default` — standard
+  node interop. Multi-line statements, dynamic `import()`, decorators,
+  and type annotations are out of scope (documented in the code).
+- Tests: `cli_test` cases 13-18 (default+named entry, namespace import,
+  re-export + `__esModule`, CJS-requires-ESM interop, side-effect import,
+  REPL ESM line), all green.
 
 ## Seam hygiene this depends on (cheap, do now)
 
@@ -75,5 +122,5 @@ more assumptions.
 
 ## Entry point into tracking
 - OPEN-ITEMS.md #11 (this doc). Roadmap §9 in `NB-JS-ENGINE-ROADMAP.md`.
-- Trigger for CLI-1: a guard-railed `require('./x.js')` + `process.argv`
-  used by a new `tests/cli_*.js` runner with expected exit codes.
+- The node-mode ladder is done. Anything further (fs depth, `path`,
+  dynamic `import()`, packages) is user-requested, not queued.

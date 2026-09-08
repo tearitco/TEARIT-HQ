@@ -127,12 +127,16 @@ tick after eval
 > exit
 ```
 
-Or run a page (same engine the browser uses, minus the window):
+Or run a page with the DOM engine (the browser it powers, minus the
+window):
 
 ```
-$ duk page.js
+$ duk --browser page.js
 console output → stdout · renders → stdout · exit 0 ok / 1 err / 2 usage
 ```
+
+Plain `duk script.js` is the node-style mode — script args, `process`,
+no browser globals, silence on success.
 
 What's inside — the honest list:
 

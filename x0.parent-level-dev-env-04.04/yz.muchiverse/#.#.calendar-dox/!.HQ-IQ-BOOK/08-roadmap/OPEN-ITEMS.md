@@ -22,18 +22,41 @@ short version.*
 9. Joystick/controller support: not started.
 10. `ktb_pid_alive()` zombie-PID false-positive: structural fix not
     done (workaround documented in `04-bugs/BUG-LOG.md`).
-11. NB-JS engine as a node/bun-like CLI runner: **v0 landed on `opencode`
-     (d7797d74, 1588f1fd, cee6e587)** — `make` → `nbjs`; `nbjs <page.js>
-     [fetch.dom]` runs a page headless like node (console.* → stdout, plain
-     exit 0/1/2, no khtpm/chtpm/GUI dependency); `./install-duk.sh` exposes
-     it as a `duk` command + `$duk` env var; bare `duk` on a terminal starts
-     a REPL (non-tty stdin stays the framed daemon, manager-safe). `make
-     check` green (dom/fetch/events). Remaining note: Duktape 2.7.0 has NO
-     arrow functions (`(() => 1)()` parses "empty expression not allowed")
-     and NO `let` (`let x = 1` → "unterminated statement") — `const` and
-     `var` work; use `function(){}` callbacks and `var`/`const` — engine
-     limitations, documented for page authors. Farther out: require/
-     process/fs, `NB-JS-CLI-NODE-LIKE-MODE.md` ladder.
+11. NB-JS engine as a node/bun-like CLI runner: **v0 + CLI-1 node runner
+     + CLI-2 CommonJS + CLI-3 fs/REPL + CLI-4 ESM landed on `opencode`
+     (d7797d74, 1588f1fd, cee6e587, cli-1..cli-4 commits)** —
+     `make` → `nbjs`; `nbjs file.js [args...]` runs node-style (no
+     browser globals, `process.argv/cwd/env/stdout/stderr.write/exit`,
+     exit 0/1/2, CPU-guarded by the 2 s eval budget); `require()`/
+     `module`/`exports` with JSON require + circular-require handling
+     (CLI-2); fs-lite `require('fs')` (readFileSync/writeFileSync/
+     appendFileSync/existsSync, recursive mkdirSync, CLI-3) and `duk -i`
+     REPL (works piped; the REPL also has require/fs) CLI-3; source-level
+     ESM (CLI-4): line-based `import`/`export` → CJS transpile for entry
+     files, required modules, and single REPL lines (default/named/
+     namespace/side-effect imports; named/default/brace/from/star
+     exports; `__esModule` interop);
+     `nbjs --browser page.js [fetch.dom]` is the released DOM page runner
+     (console.* → stdout, rendered rows → stdout, no khtpm/chtpm/GUI
+     dependency); `./install-duk.sh` exposes it as a `duk` command +
+     `$duk` env var; bare `duk` on a terminal starts a REPL (non-tty
+     stdin stays the framed daemon, manager-safe). `make check` green
+     (dom/fetch/events + `cli_test` 18-case suite). Remaining note:
+     Duktape 2.7.0 has NO arrow functions (`(() => 1)()` parses "empty
+     expression not allowed") and NO `let` (`let x = 1` →
+     "unterminated statement") — `const` and `var` work; use
+`function(){}` callbacks and `var`/`const` — engine limitations,
+      documented for page authors. Multi-line ESM statements, dynamic
+      `import()`, and decorators/type annotations are out of scope;
+      any further fs/path depth is user-requested
+      (`NB-JS-CLI-NODE-LIKE-MODE.md`). Engine roadmap rung 6: file-backed
+      `document.cookie` jar LANDED (2026-09-07, `1f943aba`, new `wck`
+      make-check suite — C natives with RFC-6265 host/path/expiry-
+      max-age scope, jar at `$NB_COOKIES_FILE`, survives LOADs via disk);
+      remaining rung-6 piece is real `history`/`location` navigation to
+      the manager (before touching `network_browser_manager.c`, the
+      khtpm-house-standards lock requires reading INDEX tier-1 docs +
+      `CENTROID_GOLD_STD.md` first).
 12. Game-clone tiles/events (MC / CDDA / Civ / GTA / RPG Maker): pickers
     + event-guide PDLs + sample maps exist; **not** drop-on-board,
     voxel→events-hq, desk persistence, or battle/shop UI. See
