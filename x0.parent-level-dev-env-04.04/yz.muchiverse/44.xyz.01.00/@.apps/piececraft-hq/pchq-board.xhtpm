@@ -4,7 +4,7 @@
      everything else is a normal hq window" architecture the 2026-08-30
      rewrite was aiming at - now actually on the shared Elem/CSS path.
 
-       class="pchq-board-pal database-window managed"  - neither token trips the
+       class="pchq-board-pal database-window"  - neither token trips the
          renderer's exact-strcmp g_is_* / pchq-board mode triggers;
          "database-window" is CSS-only.
        <module> pchq_board_projector.+x args="piececraft-hq" - finds the
@@ -26,7 +26,7 @@
      Old pchq-board.chtpm (class="pchq-board" -> run_pchq_board_mode)
      stays as rollback; button.sh still launches THAT until this path is
      proven. -->
-<window label="piececraft-hq board" class="pchq-board-pal database-window managed" vars="state/ui.txt">
+<window label="piececraft-hq board" class="pchq-board-pal database-window" vars="state/ui.txt">
   <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="piececraft-hq"/>
   <page name="main">
     <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
