@@ -2751,6 +2751,34 @@ static int livedesk_build_palettes_menu(const char *house_root, HQMenuItem *menu
     return count;
 }
 
+/* Shared row reader for the data-driven strip menus (TASKBAR-MENU-
+ * ARCHITECTURE.md): reads `<prefix>_menu_<N>_label` / `_cmd` rows
+ * (1-based N) from #.desktop/livedesk_taskbar.pdl into menu[0..],
+ * returns the count. A builder calls this first and falls back to its
+ * own hardcoded rows only when it returns 0 (the `count==0` fallback
+ * shape livedesk_build_hq_menu()/_file_menu() already use). Extracted
+ * 2026-09-08 so the remaining C-hardcoded builders (player/ai/db/...)
+ * can convert with one line each instead of a copy-pasted loop. */
+static int livedesk_pdl_menu_rows(const char *house_root, const char *prefix,
+                                  HQMenuItem *menu, int max) {
+    char pdl[KTB_PATH_BUF];
+    snprintf(pdl, sizeof(pdl), "%s/#.desktop/livedesk_taskbar.pdl", house_root);
+    int count = 0;
+    for (int i = 1; i <= max; i++) {
+        char lkey[48], ckey[48];
+        snprintf(lkey, sizeof(lkey), "%s_menu_%d_label", prefix, i);
+        snprintf(ckey, sizeof(ckey), "%s_menu_%d_cmd", prefix, i);
+        char lab[64] = "", cmd[KTB_PATH_BUF] = "";
+        read_key_value(pdl, lkey, lab, sizeof(lab));
+        read_key_value(pdl, ckey, cmd, sizeof(cmd));
+        if (!lab[0]) continue;
+        snprintf(menu[count].label, sizeof(menu[count].label), "%s", lab);
+        snprintf(menu[count].command, sizeof(menu[count].command), "%s", cmd);
+        count++;
+    }
+    return count;
+}
+
 /* REAL, NEW 2026-08-31 - the "network" cell (positional 13, click code
  * 4000+13 per NETWORK-CELL-HQ-WINDOWS-DESIGN.md §2), wiring the real
  * next step that doc's own "REAL HANDOFF STATUS" section documents:
@@ -3107,8 +3135,11 @@ static int livedesk_build_file_menu(const char *house_root, HQMenuItem *menu, in
  * then relaunch them fresh") — real, new functionality added here, not
  * present in legacy at all. See livedesk_reset_entities() for what it
  * does. */
-static int livedesk_build_player_menu(HQMenuItem *menu, int max) {
-    int n = 0;
+static int livedesk_build_player_menu(const char *house_root, HQMenuItem *menu, int max) {
+    int n = livedesk_pdl_menu_rows(house_root, "player", menu, max);
+    if (n > 0) return n;
+    /* fallback: hardcoded rows (used only when the .pdl defines no
+     * player_menu_N_* rows) */
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "play"); menu[n].command[0] = '\0'; n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "pause"); menu[n].command[0] = '\0'; n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "reset"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:reset-entities"); n++; }
@@ -3133,8 +3164,11 @@ static int livedesk_build_player_menu(HQMenuItem *menu, int max) {
  * The 2-row shape (Open h-ai + Cancel) is INTENTIONAL, not a workaround.
  * Cancel row provides standard close-without-action UX, matching other
  * menus that need to be dismissible. */
-static int livedesk_build_ai_menu(HQMenuItem *menu, int max) {
-    int n = 0;
+static int livedesk_build_ai_menu(const char *house_root, HQMenuItem *menu, int max) {
+    int n = livedesk_pdl_menu_rows(house_root, "ai", menu, max);
+    if (n > 0) return n;
+    /* fallback: hardcoded rows (used only when the .pdl defines no
+     * ai_menu_N_* rows) */
     if (n < max) {
         snprintf(menu[n].label, sizeof(menu[n].label), "Open h-ai");
         snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:open-open-hai");
@@ -3697,7 +3731,7 @@ void ktb_hq_open(KtbState *s, int which) {
     else if (which == 5) n = livedesk_build_pals_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     else if (which == 1) n = livedesk_build_hq_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     else if (which == 3) n = livedesk_build_file_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    else if (which == 8) n = livedesk_build_player_menu(s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else if (which == 8) n = livedesk_build_player_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     /* db (9) restored 2026-08-12 - was parked as an inert placeholder
      * while the real bug (header-click codes swallowed whenever ANY
      * cell's menu was already open, see dispatch_code()'s hq_open branch
@@ -3708,7 +3742,7 @@ void ktb_hq_open(KtbState *s, int which) {
     /* ai (14) - real, wired 2026-08-12, see livedesk_build_ai_menu()'s
      * own header comment. Was one of the bare inert cells (6/7/10/11/
      * 12/13/14) this same catch-all comment below used to include. */
-    else if (which == 14) n = livedesk_build_ai_menu(s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else if (which == 14) n = livedesk_build_ai_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     /* date/time (15) - clock menu, wired 2026-08-13 (au11-hq/15.clock-
      * design.md §5.2): root + internal sublevels 151 (clocks&cals) / 152
      * (reminders) / 153 (game-clock controls) / 154 (calendar view). The

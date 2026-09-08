@@ -45,6 +45,26 @@ SECTION      | desk_menu_action_2_label | +new-desk
 SECTION      | desk_menu_action_2_cmd   | livedesk:new-desk
 SECTION      | desk_menu_action_3_label | cancel
 
+# player cell (8.player) - converted from C-hardcoded 2026-09-08
+# (TASKBAR-MENU-ARCHITECTURE.md debt list). play/pause are inert
+# placeholders (empty cmd = just close); reset closes all entities and
+# respawns the current desk fresh (livedesk_reset_entities()).
+SECTION      | player_menu_1_label   | play
+SECTION      | player_menu_2_label   | pause
+SECTION      | player_menu_3_label   | reset
+SECTION      | player_menu_3_cmd     | livedesk:reset-entities
+SECTION      | player_menu_4_label   | Cancel
+
+# ai cell (14.h-ai) - converted from C-hardcoded 2026-09-08. Was the
+# original anti-pattern TASKBAR-MENU-ARCHITECTURE.md called out.
+SECTION      | ai_menu_1_label       | Open h-ai
+SECTION      | ai_menu_1_cmd         | livedesk:open-open-hai
+SECTION      | ai_menu_2_label       | Chat-h-ai
+SECTION      | ai_menu_2_cmd         | livedesk:open-chat-hai
+SECTION      | ai_menu_3_label       | Co-lab-h-ai
+SECTION      | ai_menu_3_cmd         | livedesk:open-colab-hai
+SECTION      | ai_menu_4_label       | Cancel
+
 SECTION      | palettes_menu_1_label  | canvas-craft
 SECTION      | palettes_menu_1_cmd    | livedesk:open-palette:user-pallet
 SECTION      | palettes_menu_2_label  | emojis
