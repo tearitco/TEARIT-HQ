@@ -212,11 +212,26 @@ plausible stub, `MutationObserver` (can no-op then improve),
 > - `document.cookie` empty-jar getter/setter (no throw; file jar still
 >   a C job later) — `f5f86b4d`
 > **Still to do (needs C or the worker):** real `history`/`location`
-> navigation pushed to the manager, file-backed `document.cookie` jar,
-> a real timer/event loop (rung 3). Tests under `network/tests/rung6_*.js`
+> navigation pushed to the manager, a real timer/event loop (rung 3).
+> Tests under `network/tests/rung6_*.js`
 > all +OK|1; 5 suites green. Since phase-1 step 2 the shared `nb_host.h`
 > carries these stubs into the resident worker too, so eval AND worker
 > both pass all 5 rung suites.
+>
+> **LANDED 2026-09-07 — file-backed `document.cookie` jar.** The resident
+> worker's `install_dom()` redefines the prelude's configurable cookie stub
+> with real C natives backed by a disk jar at `$NB_COOKIES_FILE` (fallback
+> `$HOME/.config/nbjs/nb_cookies.txt`). RFC 6265 subset: name=value +
+> Domain/Path/Expires/Max-Age/Secure; host-scoping + path-match on read;
+> max-age=0 and past Expires delete; IMF-fixdate parsing via days-from-civil
+> (no TZ deps); atomic tmp+rename writes; damage-tolerant reads. Each LOAD
+> runs a fresh heap, so the jar file is the ONLY cross-LOAD persistence.
+> Live in `ops/nb_js_worker.c`, new `make check` suite `wck`
+> (`tests/worker_cookie_test.c`, 3-LOAD set / fresh-heap get / cross-host
+> scope, + jar-content verification) — commit `1f943aba`. The manager will
+> later point the worker at its own `#.desktop/nb_cookies.txt` via
+> `NB_COOKIES_FILE`; **remaining rung-6 C piece:** real `history`/
+> `location` navigation to the manager.
 
 
 ### Rung 7 — CSS/layout awareness  *(optional, large, defer)*

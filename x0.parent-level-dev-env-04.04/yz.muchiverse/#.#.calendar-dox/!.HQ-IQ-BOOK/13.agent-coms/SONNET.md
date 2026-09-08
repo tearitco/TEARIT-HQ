@@ -219,3 +219,31 @@ Merge `origin/opencode` for `a022aec4` (CLI-3 pack was `1c0be598`).
   per-node `style`/`value` never survived a re-fetch).
 - `cli_test` is now 18 cases; `make check` green (dom/fetch/events +
   cli). No thread/manager/daemon changes.
+
+## NOTICE 2026-09-07 — rung-6 file-backed `document.cookie` jar lands
+
+Merge `origin/opencode` for `1f943aba`.
+
+- The resident worker's `install_dom()` now redefines the prelude's
+  configurable `document.cookie` stub with **real C natives** backed by a
+  disk jar at `$NB_COOKIES_FILE` (fallback `~/.config/nbjs/nb_cookies.txt`).
+  Each LOAD runs a fresh Duktape heap, so the jar file is the only
+  cross-LOAD persistence — cookies now survive paging.
+- RFC-6265 subset: `name=value` + `Domain`/`Path`/`Expires`/`Max-Age`/
+  `Secure`; host-scoping + path-match enforced on read; `max-age=0` and
+  past `Expires` delete; IMF-fixdate parse via days-from-civil (no TZ
+  deps); atomic tmp+rename writes; damage-tolerant reads. Jar lines are
+  TAB-separated `host\tpath\tname\tvalue\texpires\tesecure`.
+- New `make check` suite **`wck`** (`tests/worker_cookie_test.c`): one
+  worker, THREE LOADs — set+read-back on `http://example.com/dir/`,
+  fresh-heap GET (persistence across LOADs), and a cross-host page on
+  `other.test` that must see nothing; C verifies the literal jar-file
+  content afterward. All suites green.
+- Notes: the old rung6 eval fixture `tests/rung6_cookie_test.js` still
+  exercises the prelude fallback (reads `''`, drops writes). Default
+  path is `$HOME`-based; the manager is expected to pass
+  `NB_COOKIES_FILE="$APPDIR/#.desktop/nb_cookies.txt"` when it spawns
+  the worker.
+- Still open on rung 6: real `history`/`location` navigation to the
+  manager (house-standard lock applies before editing
+  `network_browser_manager.c`). No thread/manager/daemon changes.

@@ -2,7 +2,7 @@
 #
 #   make            -> ./nbjs
 #   make install    -> $(PREFIX)/bin/nbjs  (default PREFIX=/usr/local)
-#   make check      -> build + run the three headless worker suites
+#   make check      -> build + run the four worker suites + cli_test
 #
 # To run:   ./nbjs file.js [args...]              # node mode (no DOM) — like node,
 #                                                 #   + require()/require('fs') + ESM

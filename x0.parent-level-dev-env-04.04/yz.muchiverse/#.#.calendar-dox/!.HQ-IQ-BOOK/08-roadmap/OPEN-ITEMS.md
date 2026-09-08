@@ -49,4 +49,11 @@ short version.*
       documented for page authors. Multi-line ESM statements, dynamic
       `import()`, and decorators/type annotations are out of scope;
       any further fs/path depth is user-requested
-      (`NB-JS-CLI-NODE-LIKE-MODE.md`).
+      (`NB-JS-CLI-NODE-LIKE-MODE.md`). Engine roadmap rung 6: file-backed
+      `document.cookie` jar LANDED (2026-09-07, `1f943aba`, new `wck`
+      make-check suite — C natives with RFC-6265 host/path/expiry-
+      max-age scope, jar at `$NB_COOKIES_FILE`, survives LOADs via disk);
+      remaining rung-6 piece is real `history`/`location` navigation to
+      the manager (before touching `network_browser_manager.c`, the
+      khtpm-house-standards lock requires reading INDEX tier-1 docs +
+      `CENTROID_GOLD_STD.md` first).
