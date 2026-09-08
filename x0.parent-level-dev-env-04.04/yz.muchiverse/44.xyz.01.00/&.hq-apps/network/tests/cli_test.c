@@ -189,12 +189,60 @@ int main(int argc, char **argv) {
         check("cli -i piped REPL", 0, want, 2, 0, NULL, 0, a,
               "1+2\nvar fs=require(\"fs\"); typeof fs.readFileSync\nexit\n");
     }
-    /* 12. REPL require + fs are live over a pty-like piped session (CLI-3) */
+/* 12. REPL require + fs are live over a pty-like piped session (CLI-3) */
     {
         char *a[] = { (char *)w, (char *)"-i", NULL };
         const char *const want[] = { "true" };
         check("cli -i REPL require/fs", 0, want, 1, 0, NULL, 0, a,
               "require(\"fs\").existsSync(\"/tmp\")\nexit\n");
+    }
+    /* 13. ESM entry: default + named imports (CLI-4) */
+    {
+        char esm[2048];
+        snprintf(esm, sizeof(esm), "%s/cli_esm_main.js", dir);
+        char *a[] = { (char *)w, (char *)esm, NULL };
+        const char *const want[] = { "esm-main-ok", "esm-named-loaded", "esm-default-loaded" };
+        check("cli esm default+named entry", 0, want, 3, 0, NULL, 0, a, NULL);
+    }
+    /* 14. ESM namespace import * as ns (CLI-4) */
+    {
+        char esm[2048];
+        snprintf(esm, sizeof(esm), "%s/cli_esm_ns.js", dir);
+        char *a[] = { (char *)w, (char *)esm, NULL };
+        const char *const want[] = { "esm-ns-ok" };
+        check("cli esm namespace import", 0, want, 1, 0, NULL, 0, a, NULL);
+    }
+    /* 15. ESM re-export + export * + __esModule marker (CLI-4) */
+    {
+        char esm[2048];
+        snprintf(esm, sizeof(esm), "%s/cli_esm_use_reexport.js", dir);
+        char *a[] = { (char *)w, (char *)esm, NULL };
+        const char *const want[] = { "esm-rx-ok", "esModule=true" };
+        check("cli esm re-export + __esModule", 0, want, 2, 0, NULL, 0, a, NULL);
+    }
+    /* 16. CJS entry requiring an ESM module: .default interop (CLI-4) */
+    {
+        char esm[2048];
+        snprintf(esm, sizeof(esm), "%s/cli_esm_from_cjs.js", dir);
+        char *a[] = { (char *)w, (char *)esm, NULL };
+        const char *const want[] = { "esm-cjs-ok" };
+        check("cli cjs requires esm interop", 0, want, 1, 0, NULL, 0, a, NULL);
+    }
+    /* 17. ESM side-effect import (CLI-4) */
+    {
+        char esm[2048];
+        snprintf(esm, sizeof(esm), "%s/cli_esm_sideeffect.js", dir);
+        char *a[] = { (char *)w, (char *)esm, NULL };
+        const char *const want[] = { "esm-side-ok" };
+        check("cli esm side-effect import", 0, want, 1, 0, NULL, 0, a, NULL);
+    }
+    /* 18. REPL single-line ESM import/export (CLI-4) */
+    {
+        char *a[] = { (char *)w, (char *)"-i", NULL };
+        const char *const want[] = { "5", "30" };
+        check("cli -i REPL esm line", 0, want, 2, 0, NULL, 0, a,
+              "import * as m from \"./tests/cli_esm_named.js\"\nm.A\n"
+              "import x from \"./tests/cli_esm_default.js\"\nx(3)\nexit\n");
     }
 
     if (failures) { printf("cli_test: %d FAILURES\n", failures); return 1; }

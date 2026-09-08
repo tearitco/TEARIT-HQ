@@ -1980,6 +1980,20 @@ static int repl_main(void) {
         g_onprop_count = 0; g_invocations = 0; g_raf_fires = 0;
         g_pending_err = 0; g_pending_errmsg[0] = 0;
 
+        /* CLI-4: single-line ESM (import/export) → CJS in the REPL too.
+         * Multi-line import/export statements are out of scope here. */
+        duk_get_global_string(ctx, "__nb_esm_prepare");
+        if (duk_is_callable(ctx, -1)) {
+            duk_push_string(ctx, line);
+            int epc = duk_pcall(ctx, 1);
+            if (epc == 0 && duk_is_string(ctx, -1)) {
+                size_t sl;
+                const char *ps = duk_safe_to_lstring(ctx, -1, &sl);
+                if (sl < sizeof(line)) { memcpy(line, ps, sl); line[sl] = 0; }
+            }
+            duk_pop(ctx);
+        } else { duk_pop(ctx); }
+
         int rc = peval_budget(ctx, line);
         if (rc != 0) {
             const char *m = duk_safe_to_string(ctx, -1);
@@ -2199,15 +2213,13 @@ static int browser_cli_main(int argc, char **argv) {
     return g_cli_status_ok ? 0 : 1;
 }
 
-/* CLI-2: CommonJS module loader, installed in node mode before the entry
- * script runs. Pure ES5.1 JS so it works on Duktape 2.7.0 (no arrows/let):
- * relative/absolute resolution against the caller's directory, per-file
- * module/exports wrapper (module-local var scoping), JSON require, and the
- * standard circular-require rule (partial exports served on re-entry via
- * the pre-populated cache). The only host hook is `__nb_read_file` (see
- * nb_cjs_read_file). `this` is the global object by design. */
+/* CLI-2 CommonJS loader + CLI-4 source-level ESM transpiler. Pure ES5.1
+ * JS so it works on Duktape 2.7.0 (no arrows/let): relative/absolute
+ * resolution, module/exports wrapper, JSON require, cycles, and a line-
+ * based import/export → CJS rewrite. Exposes `require`/`__dirname`/`__filename`
+ * plus `__nb_esm_prepare(src)` for the C entry hook and REPL. */
 static const char g_cjs_prelude[] =
-"/* NB-JS CJS loader (CLI-2): require/module/exports, JSON, cycles. */\n"
+"/* NB-JS loader (CLI-2 CJS + CLI-4 ESM transpile). */\n"
 "(function(){\n"
 "var cache = {};\n"
 "function dirname(p){\n"
@@ -2230,6 +2242,143 @@ static const char g_cjs_prelude[] =
 "  }\n"
 "  return '/' + out.join('/');\n"
 "}\n"
+"\n"
+"/* --- CLI-4: ESM source-level transpile ---\n"
+" * Heuristic: a line starting (after ws) with `import` or `export` triggers\n"
+" * transpile. Handles: default/named/namespace/side-effect imports,\n"
+" * function/variable/const/default/named/re-export/export-star-from.\n"
+" * Output uses `var` (Duktape-safe). Does NOT support multi-line imports,\n"
+" * decorators, type annotations, or dynamic `import()`. */\n"
+"function esmLooks(s){\n"
+"  return /(^|\\n)\\s*(import|export)\\b/.test(s);\n"
+"}\n"
+"\n"
+"function esmTranspile(src){\n"
+"  var lines = src.split('\\n');\n"
+"  var out = [];\n"
+"  var eq = [];     /* deferred: exports.X = expr; at end */\n"
+"  var nsc = [];    /* export * from copy-loops */\n"
+"  out.push(\"Object.defineProperty(exports,'__esModule',{value:true});\");\n"
+"  function tr(s){ return s.replace(/^\\s+|\\s+$/g, ''); }\n"
+"  for (var i = 0; i < lines.length; i++){\n"
+"    var line = lines[i];\n"
+"    var t = tr(line);\n"
+"    var lead = line.slice(0, line.length - line.replace(/^\\s+/, '').length);\n"
+"    var m;\n"
+"    /* import * as ns from '...'; */\n"
+"    m = t.match(/^import\\s*\\*\\s*as\\s+([A-Za-z_$][\\w$]*)\\s+from\\s+(['\"])([^'\"]+)\\2;?$/);\n"
+"    if (m){ out.push(lead+'var '+m[1]+' = require('+m[2]+m[3]+m[2]+');'); continue; }\n"
+"    /* import { a, b as c } from '...'; */\n"
+"    m = t.match(/^import\\s*\\{([^}]+)\\}\\s*from\\s+(['\"])([^'\"]+)\\2;?$/);\n"
+"    if (m){\n"
+"      var specs = m[1].split(',');\n"
+"      for (var si = 0; si < specs.length; si++){\n"
+"        var s = tr(specs[si]); if (!s) continue;\n"
+"        var am = s.match(/^([A-Za-z_$][\\w$]*)\\s+as\\s+([A-Za-z_$][\\w$]*)$/);\n"
+"        var nm = am ? am : s.match(/^([A-Za-z_$][\\w$]*)$/);\n"
+"        if (!nm) throw new Error('nbjs ESM: bad import spec at line '+(i+1));\n"
+"        var loc = nm[1], al = am ? am[2] : nm[1];\n"
+"        out.push(lead+'var '+al+' = require('+m[2]+m[3]+m[2]+').'+loc+';');\n"
+"      }\n"
+"      continue;\n"
+"    }\n"
+"    /* import X from '...'; — node interop: unwrap .default if __esModule */\n"
+"    m = t.match(/^import\\s+([A-Za-z_$][\\w$]*)\\s+from\\s+(['\"])([^'\"]+)\\2;?$/);\n"
+"    if (m){\n"
+"      out.push(lead+'var '+m[1]+' = (function(__nb_m){ return (__nb_m && __nb_m.__esModule) ? __nb_m.default : __nb_m; })(require('+m[2]+m[3]+m[2]+'));');\n"
+"      continue;\n"
+"    }\n"
+"    /* import '...'; */\n"
+"    m = t.match(/^import\\s+(['\"])([^'\"]+)\\1;?$/);\n"
+"    if (m){ out.push(lead+'require('+m[1]+m[2]+m[1]+');'); continue; }\n"
+"    /* export * from '...'; */\n"
+"    m = t.match(/^export\\s*\\*\\s*from\\s+(['\"])([^'\"]+)\\1;?$/);\n"
+"    if (m){\n"
+"      var v = '__nb_ns_'+i;\n"
+"      nsc.push({lead:lead,pkg:m[2],v:v});\n"
+"      out.push(lead+'var '+v+' = require('+m[1]+m[2]+m[1]+');');\n"
+"      continue;\n"
+"    }\n"
+"    /* export { x, y as z } from '...'; */\n"
+"    m = t.match(/^export\\s*\\{([^}]+)\\}\\s*from\\s+(['\"])([^'\"]+)\\2;?$/);\n"
+"    if (m){\n"
+"      var specs = m[1].split(',');\n"
+"      for (var si = 0; si < specs.length; si++){\n"
+"        var s = tr(specs[si]); if (!s) continue;\n"
+"        var am = s.match(/^([A-Za-z_$][\\w$]*)\\s+as\\s+([A-Za-z_$][\\w$]*)$/);\n"
+"        var nm = am ? am : s.match(/^([A-Za-z_$][\\w$]*)$/);\n"
+"        if (!nm) throw new Error('nbjs ESM: bad re-export spec at line '+(i+1));\n"
+"        var loc = nm[1], al = am ? am[2] : nm[1];\n"
+"        eq.push({l:al, r:'require('+m[2]+m[3]+m[2]+').'+loc});\n"
+"      }\n"
+"      continue;\n"
+"    }\n"
+"    /* export { a, b as c }; */\n"
+"    m = t.match(/^export\\s*\\{([^}]+)\\};?$/);\n"
+"    if (m){\n"
+"      var specs = m[1].split(',');\n"
+"      for (var si = 0; si < specs.length; si++){\n"
+"        var s = tr(specs[si]); if (!s) continue;\n"
+"        var am = s.match(/^([A-Za-z_$][\\w$]*)\\s+as\\s+([A-Za-z_$][\\w$]*)$/);\n"
+"        var nm = am ? am : s.match(/^([A-Za-z_$][\\w$]*)$/);\n"
+"        if (!nm) throw new Error('nbjs ESM: bad export spec at line '+(i+1));\n"
+"        var al = am ? am[2] : nm[1], loc = nm[1];\n"
+"        eq.push({l:al, r:loc});\n"
+"      }\n"
+"      continue;\n"
+"    }\n"
+"    /* export default function name(...) { ... } — keep the body flowing */\n"
+"    m = t.match(/^export\\s+default\\s+function\\s+([A-Za-z_$][\\w$]*)/);\n"
+"    if (m){\n"
+"      out.push(lead+line.replace(/^export\\s+default\\s+/, ''));\n"
+"      eq.push({l:'default', r:m[1]});\n"
+"      continue;\n"
+"    }\n"
+"    /* export default function (...) { ... } — anonymous, name it */\n"
+"    m = t.match(/^export\\s+default\\s+function\\b/);\n"
+"    if (m){\n"
+"      var dname = '__nb_default_'+i;\n"
+"      out.push(lead+line.replace(/^export\\s+default\\s+function/, 'function '+dname));\n"
+"      eq.push({l:'default', r:dname});\n"
+"      continue;\n"
+"    }\n"
+"    /* export default expr */\n"
+"    m = t.match(/^export\\s+default\\s+(.+)$/);\n"
+"    if (m){ eq.push({l:'default', r:'('+m[1]+')'}); continue; }\n"
+"    /* export function f(...)... */\n"
+"    m = t.match(/^export\\s+function\\s+([A-Za-z_$][\\w$]*)/);\n"
+"    if (m){\n"
+"      out.push(lead+line.replace(/^export\\s+function/, 'function'));\n"
+"      eq.push({l:m[1], r:m[1]});\n"
+"      continue;\n"
+"    }\n"
+"    /* export var/const f = ... */\n"
+"    m = t.match(/^export\\s+(var|const)\\s+([A-Za-z_$][\\w$]*)/);\n"
+"    if (m){\n"
+"      out.push(lead+line.replace(/^export\\s+(var|const)/, '$1'));\n"
+"      eq.push({l:m[2], r:m[2]});\n"
+"      continue;\n"
+"    }\n"
+"    out.push(line);\n"
+"  }\n"
+"  for (var ei = 0; ei < eq.length; ei++)\n"
+"    out.push('exports.'+eq[ei].l+' = '+eq[ei].r+';');\n"
+"  for (var ci = 0; ci < nsc.length; ci++){\n"
+"    var c = nsc[ci];\n"
+"    out.push(c.lead+'var __nb_keys_'+ci+' = Object.keys('+c.v+');');\n"
+"    out.push(c.lead+'for(var __nb_j_'+ci+'=0; __nb_j_'+ci+'<__nb_keys_'+ci+'.length; __nb_j_'+ci+'++){');\n"
+"    out.push(c.lead+'  var __nb_k = __nb_keys_'+ci+'[__nb_j_'+ci+'];');\n"
+"    out.push(c.lead+'  if(!(__nb_k in exports) && __nb_k !== \\'default\\' && __nb_k !== \\'__esModule\\') exports[__nb_k] = '+c.v+'[__nb_k];');\n"
+"    out.push(c.lead+'}');\n"
+"  }\n"
+"  return out.join('\\n');\n"
+"}\n"
+"\n"
+"function esmPrepare(src){\n"
+"  if (esmLooks(src)) return esmTranspile(src);\n"
+"  return src;\n"
+"}\n"
+"\n"
 "function makeRequire(dir){\n"
 "  return function(request){\n"
 "    if (request === 'fs'){ if (typeof __nb_fs !== 'undefined') return __nb_fs; }\n"
@@ -2251,6 +2400,7 @@ static const char g_cjs_prelude[] =
 "      var nl = src.indexOf('\\n');\n"
 "      if (nl >= 0) src = src.slice(nl + 1); else src = '';\n"
 "    }\n"
+"    src = esmPrepare(src);\n"
 "    var rd = dirname(abs);\n"
 "    var fn = new Function('exports', 'require', 'module', '__filename', '__dirname', src);\n"
 "    fn.call(mod.exports, mod.exports, makeRequire(rd), mod, abs, rd);\n"
@@ -2262,7 +2412,10 @@ static const char g_cjs_prelude[] =
 "  this.require = makeRequire(entryDir);\n"
 "  this.__dirname = entryDir;\n"
 "  this.__filename = entryFile;\n"
+"  this.module = { id: entryFile, filename: entryFile, exports: {} };\n"
+"  this.exports = this.module.exports;\n"
 "};\n"
+"this.__nb_esm_prepare = esmPrepare;\n"
 "})();\n";
 
 static int cli_main(int argc, char **argv) {
@@ -2273,7 +2426,7 @@ static int cli_main(int argc, char **argv) {
     int script_i = -1;
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
-            fprintf(stderr, "usage: duk <file.js|-> [args...]   (node mode; require() + fs)\n");
+            fprintf(stderr, "usage: duk <file.js|-> [args...]   (node mode; require()+fs, ESM import/export)\n");
             fprintf(stderr, "       duk --browser <page.js> [fetch.dom]   (DOM page mode)\n");
             fprintf(stderr, "       duk -i                        (interactive REPL, even piped)\n");
             return 2;
@@ -2282,7 +2435,7 @@ static int cli_main(int argc, char **argv) {
         script_i = i; break;
     }
     if (script_i < 0) {
-        fprintf(stderr, "usage: duk <file.js|-> [args...]   (node mode; require() + fs)\n");
+        fprintf(stderr, "usage: duk <file.js|-> [args...]   (node mode; require()+fs, ESM import/export)\n");
         fprintf(stderr, "       duk --browser <page.js> [fetch.dom]   (DOM page mode)\n");
         fprintf(stderr, "       duk -i                        (interactive REPL, even piped)\n");
         return 2;
@@ -2391,6 +2544,22 @@ static int cli_main(int argc, char **argv) {
         duk_destroy_heap(ctx);
         return 2;
     }
+
+    /* CLI-4: source-level ESM — ask the loader's __nb_esm_prepare for
+     * transpiled source (or the original unchanged). The loader prelude
+     * must have run already (__nb_install_cjs installs it). */
+    duk_get_global_string(ctx, "__nb_esm_prepare");
+    if (duk_is_callable(ctx, -1)) {
+        duk_push_lstring(ctx, src, n);
+        int epc = duk_pcall(ctx, 1);
+        if (epc == 0 && duk_is_string(ctx, -1)) {
+            size_t sl;
+            const char *ps = duk_safe_to_lstring(ctx, -1, &sl);
+            char *ns = malloc(sl + 1);
+            if (ns) { memcpy(ns, ps, sl + 1); free(src); src = ns; n = sl; }
+        }
+        duk_pop(ctx);
+    } else { duk_pop(ctx); }
 
     /* Compile with shebang support, then call the module body. */
     duk_push_string(ctx, pg);   /* filename arg (stack shape: [filename]) */
