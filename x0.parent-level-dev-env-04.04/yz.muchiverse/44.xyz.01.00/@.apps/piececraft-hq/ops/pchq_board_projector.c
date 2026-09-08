@@ -188,10 +188,13 @@ int main(int argc, char **argv) {
             strcmp(menu_open, "desk") == 0 ? "1" : "");
 
         off += (size_t)snprintf(ui + off, UIBUF - off,
-            "n_file_opts=2\n"
-            "f_0_label=default-pdl\nf_0_active=%s\n"
-            "f_1_label=default-legacy\nf_1_active=%s\n",
-            is_legacy ? "" : "pchq-menu-active",
+            "n_file_opts=4\n"
+            "f_0_label=Open File Explorer\nf_0_verb=file-hq\nf_0_arg=\nf_0_active=\n"
+            "f_1_label=mineclonia_sample\nf_1_verb=load-map\nf_1_arg=mineclonia_sample\nf_1_active=%s\n"
+            "f_2_label=cdda_sample\nf_2_verb=load-map\nf_2_arg=cdda_sample\nf_2_active=%s\n"
+            "f_3_label=default-legacy\nf_3_verb=file\nf_3_arg=1\nf_3_active=%s\n",
+            strcmp(active_level, "mineclonia_sample") == 0 ? "pchq-menu-active" : "",
+            strcmp(active_level, "cdda_sample") == 0 ? "pchq-menu-active" : "",
             is_legacy ? "pchq-menu-active" : "");
 
         off += (size_t)snprintf(ui + off, UIBUF - off,

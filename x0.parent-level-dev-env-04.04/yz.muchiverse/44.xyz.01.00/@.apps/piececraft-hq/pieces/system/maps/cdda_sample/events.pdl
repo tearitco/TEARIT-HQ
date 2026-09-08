@@ -1,0 +1,14 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+MAP          | id                 | cdda_sample
+MAP          | tileset            | cdda / UltiCa
+EVENT        | x=8 y=8 glyph=D    | event-guides/examples/cdda_door/pages/page_1/event.ir.pdl
+EVENT        | x=11 y=5 glyph=C   | trigger=on-click cmds=select_item,change_items
+EVENT        | x=6 y=5 glyph=t    | trigger=player-touch cmds=change_hp,change_state
+NOTE         | W                  | wall
+NOTE         | f                  | floor
+NOTE         | D                  | door
+NOTE         | C                  | crate / chest
+NOTE         | t                  | beartrap
+NOTE         | b                  | indoor wall
+NOTE         | x                  | rubble / dirt

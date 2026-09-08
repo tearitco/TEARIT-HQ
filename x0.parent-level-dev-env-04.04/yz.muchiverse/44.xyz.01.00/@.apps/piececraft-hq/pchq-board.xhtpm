@@ -83,7 +83,7 @@
           action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'menu' 'close'"/>
     <repeat count="${n_file_opts}" bind="f">
       <item id="fo-${f.#}" class="pchq-menu-row ${f.active}" label="${f.label}" show="${file_menu_open}"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'file' '${f.#}'"/>
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' '${f.verb}' '${f.arg}'"/>
     </repeat>
 
     <!-- Desk menu -->

@@ -1,0 +1,5 @@
+SECTION      | KEY                | PATH
+----------------------------------------------------------------------
+MAP          | default            | pieces/system/chunks/chunk_0_0/chunk_0_0_z0.txt
+MAP          | mineclonia_sample  | pieces/system/maps/mineclonia_sample/map.txt
+MAP          | cdda_sample        | pieces/system/maps/cdda_sample/map.txt

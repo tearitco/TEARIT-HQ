@@ -604,3 +604,144 @@ COMMAND change_profile
   PARAMS actor_id,profile
   TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_actor_string.+x" "$ENT" '{actor_id}' profile '{profile}'
 END
+
+# 2026-09-08 — remaining RMMV commands as STATE writes (mr_world.+x).
+# Transfer/Move/Scroll write map_state.pdl; they do not yet move a camera.
+COMMAND control_self_switch
+  LABEL Control Self Switch
+  FIELD1 Letter (A/B/C/D):
+  FIELD2 Value (1/0):
+  SELECT2 1:0
+  PARAMS letter,value
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_world.+x" "$ENT" self_switch '{letter}' '{value}'
+END
+
+COMMAND control_timer
+  LABEL Control Timer
+  FIELD1 Running (1/0):
+  FIELD2 Seconds:
+  PARAMS running,seconds
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_world.+x" "$ENT" timer '{running}' '{seconds}'
+END
+
+COMMAND fadeout_screen
+  LABEL Fadeout Screen
+  FIELD1 Frames:
+  FIELD2 -
+  PARAMS frames
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_world.+x" "$ENT" fadeout '{frames}'
+END
+
+COMMAND fadein_screen
+  LABEL Fadein Screen
+  FIELD1 Frames:
+  FIELD2 -
+  PARAMS frames
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_world.+x" "$ENT" fadein '{frames}'
+END
+
+COMMAND tint_screen
+  LABEL Tint Screen
+  FIELD1 Tint:
+  FIELD2 Frames:
+  PARAMS tint,frames
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_world.+x" "$ENT" tint '{tint}' '{frames}'
+END
+
+COMMAND flash_screen
+  LABEL Flash Screen
+  FIELD1 Color:
+  FIELD2 Frames:
+  PARAMS color,frames
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_world.+x" "$ENT" flash '{color}' '{frames}'
+END
+
+COMMAND shake_screen
+  LABEL Shake Screen
+  FIELD1 Power:
+  FIELD2 Frames:
+  PARAMS power,frames
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_world.+x" "$ENT" shake '{power}' '{frames}'
+END
+
+COMMAND transfer_player
+  LABEL Transfer Player
+  FIELD1 Map id:
+  FIELD2 X,Y:
+  PARAMS map,xy
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_world.+x" "$ENT" transfer '{map}' '{xy}' ''
+END
+
+COMMAND scroll_map
+  LABEL Scroll Map
+  FIELD1 dx:
+  FIELD2 dy:
+  PARAMS dx,dy
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_world.+x" "$ENT" scroll '{dx}' '{dy}'
+END
+
+COMMAND set_move_route
+  LABEL Set Movement Route
+  FIELD1 Target:
+  FIELD2 Route:
+  PARAMS target,route
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_world.+x" "$ENT" move_route '{target}' '{route}'
+END
+
+COMMAND shop_processing
+  LABEL Shop Processing
+  FIELD1 Goods (comma ids):
+  FIELD2 -
+  PARAMS goods
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_world.+x" "$ENT" shop '{goods}'
+END
+
+COMMAND battle_processing
+  LABEL Battle Processing
+  FIELD1 Troop id:
+  FIELD2 Can escape (1/0):
+  SELECT2 1:0
+  PARAMS troop,can_escape
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_world.+x" "$ENT" battle '{troop}' '{can_escape}'
+END
+
+COMMAND play_se
+  LABEL Play SE
+  FIELD1 Path:
+  FIELD2 -
+  PARAMS path
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_world.+x" "$ENT" play_se '{path}'
+END
+
+COMMAND change_menu_access
+  LABEL Change Menu Access
+  FIELD1 Enabled (1/0):
+  FIELD2 -
+  SELECT2 1:0
+  PARAMS enabled
+  PAL li x15, 7
+  PAL li x12, {enabled}
+  PAL ecall "{STATE_DIR}/system_flags.txt" "menu_enabled"
+END
+
+COMMAND change_save_access
+  LABEL Change Save Access
+  FIELD1 Enabled (1/0):
+  FIELD2 -
+  SELECT2 1:0
+  PARAMS enabled
+  PAL li x15, 7
+  PAL li x12, {enabled}
+  PAL ecall "{STATE_DIR}/system_flags.txt" "save_enabled"
+END
+
+COMMAND change_encounter
+  LABEL Change Encounter
+  FIELD1 Enabled (1/0):
+  FIELD2 -
+  SELECT2 1:0
+  PARAMS enabled
+  PAL li x15, 7
+  PAL li x12, {enabled}
+  PAL ecall "{STATE_DIR}/system_flags.txt" "encounter_enabled"
+END

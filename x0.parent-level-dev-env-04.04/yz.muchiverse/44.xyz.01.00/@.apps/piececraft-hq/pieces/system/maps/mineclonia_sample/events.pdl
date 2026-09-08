@@ -1,0 +1,11 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+MAP          | id                 | mineclonia_sample
+MAP          | tileset            | piececraft / Mineclonia
+EVENT        | x=11 y=5 glyph=C   | event-guides/examples/mcl_chest/pages/page_1/event.ir.pdl
+EVENT        | x=8 y=8 glyph=D    | trigger=on-click cmds=control_switch,show_text,transfer_player
+NOTE         | C                  | chest (select_item)
+NOTE         | D                  | wood door
+NOTE         | ~                  | water
+NOTE         | *                  | ore
+NOTE         | T                  | wood / craft table stand-in

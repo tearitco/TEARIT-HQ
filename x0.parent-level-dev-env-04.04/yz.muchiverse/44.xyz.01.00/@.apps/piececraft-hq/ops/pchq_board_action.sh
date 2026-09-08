@@ -41,10 +41,21 @@ if [ "$VERB" = "menu" ]; then
     exit 0
 fi
 
-[ -n "$BV" ] && [ -d "$BV" ] || exit 0
-H1="$BV/pieces/apps/player_app/history.txt"
-H2="$BV/pieces/keyboard/history.txt"
-TYPING="$BV/pieces/display/active_gui_is_typing.txt"
+HAVE_BV=0
+if [ -n "$BV" ] && [ -d "$BV" ]; then
+    HAVE_BV=1
+    H1="$BV/pieces/apps/player_app/history.txt"
+    H2="$BV/pieces/keyboard/history.txt"
+    TYPING="$BV/pieces/display/active_gui_is_typing.txt"
+fi
+# file-hq / load-map / open-events do not need a live board-viewer session
+if [ "$HAVE_BV" != 1 ]; then
+    case "$VERB" in
+        file-hq|load-map|open-events) ;;
+        *) exit 0 ;;
+    esac
+    H1="/dev/null"; H2="/dev/null"; TYPING="/dev/null"
+fi
 
 append_key() {
     printf '%s\n' "$1" >> "$H1"
@@ -82,6 +93,39 @@ restore_interact() {
 case "$VERB" in
     interact)
         append_key 13
+        ;;
+    file-hq)
+        HOUSE="$(cd "$SELF_DIR/../../.." && pwd)"
+        setsid sh "$HOUSE/&.widgits/file-explorer/button.sh" run >/tmp/pchq-file-hq.log 2>&1 < /dev/null &
+        printf 'open=\n' > "$PKG_STATE/menu.txt"
+        ;;
+    load-map)
+        HOUSE="$(cd "$SELF_DIR/../../.." && pwd)"
+        PCHQ="$(cd "$SELF_DIR/.." && pwd)"
+        SRC="$PCHQ/pieces/system/maps/${ARG}/map.txt"
+        DST="$PCHQ/pieces/system/chunks/chunk_0_0/chunk_0_0_z0.txt"
+        if [ -f "$SRC" ]; then
+            cp "$SRC" "$DST"
+            mkdir -p "$PCHQ/pieces/system"
+            {
+                echo "active_level=${ARG}"
+                echo "active_board=${ARG}"
+            } > "$PCHQ/pieces/system/board_config.txt"
+        fi
+        engage_if_needed
+        append_key 54
+        sleep 0.15
+        restore_interact
+        printf 'open=\n' > "$PKG_STATE/menu.txt"
+        ;;
+    open-events)
+        HOUSE="$(cd "$SELF_DIR/../../.." && pwd)"
+        IR="$HOUSE/@.apps/piececraft-hq/pieces/system/maps/${ARG}/events.pdl"
+        [ -f "$IR" ] || IR="$HOUSE/#.ref/menu/event-guides/examples/${ARG}/pages/page_1/event.ir.pdl"
+        if [ -f "$IR" ]; then
+            setsid sh "$HOUSE/&.widgits/events-hq/button.sh" "$HOUSE/@.apps/piececraft-hq" "$HOUSE" >/tmp/pchq-events-hq.log 2>&1 < /dev/null &
+        fi
+        printf 'open=\n' > "$PKG_STATE/menu.txt"
         ;;
     file)
         engage_if_needed
