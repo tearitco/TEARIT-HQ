@@ -14,8 +14,8 @@
 #include "../../../&.widgits/_shared-lib/kh_plat.h"
 
 #define PL 4096
-#define CW 320
-#define CH 240
+#define CW 640
+#define CH 480
 #define MAX_LAY 6
 
 static char pkg_dir[PL];
@@ -128,7 +128,9 @@ static int load_sprite_csv(const char *path) {
     }
     fclose(f);
     if (i < 8) { free(buf); return 0; }
-    int scale = 3; if (res * scale > CW) scale = CW / res; if (scale < 1) scale = 1;
+    int scale = 1;
+    while (res * (scale + 1) <= CW && res * (scale + 1) <= CH) scale++;
+    if (scale < 1) scale = 1;
     blit_rgba(buf, res, res, scale);
     free(buf);
     return 1;

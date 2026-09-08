@@ -12,8 +12,8 @@
 #include "../../../&.widgits/_shared-lib/kh_plat.h"
 
 #define PL 4096
-#define CW 320
-#define CH 240
+#define CW 640
+#define CH 480
 #define MAX_OBJ 9
 #define MAX_VOX 2048
 #define MAX_MV  4096
@@ -188,7 +188,7 @@ static void project(float x, float y, float z, int *ox, int *oy) {
     float y1 = y * cp - z1 * sp;
     float z2 = y * sp + z1 * cp + cam_dist;
     if (z2 < 0.2f) z2 = 0.2f;
-    float s = 140.0f / z2;
+    float s = 220.0f / z2;
     *ox = (int)(CW/2 + (x1 + cam_panx) * s);
     *oy = (int)(CH/2 - (y1 + cam_pany) * s);
 }
@@ -222,18 +222,15 @@ static void render_3d(unsigned char *D) {
         unsigned char r=180,g=180,b=190;
         if (i==sel_obj) { r=255; g=210; b=80; }
         if (o->kind==3) {
-            float hs = 0.08f * o->s;
             for (int k=0;k<o->nvox;k++) {
                 Vox *v = &voxs[o->vox0 + k];
                 float px = o->x + v->x * o->s, py = o->y + v->y * o->s, pz = o->z + v->z * o->s;
+                int sx, sy; project(px, py, pz, &sx, &sy);
                 unsigned char vr=v->r, vg=v->g, vb=v->b;
                 if (i==sel_obj) { vr = (unsigned char)((vr+255)/2); vg = (unsigned char)((vg+210)/2); }
-                float xs[2]={px-hs,px+hs}, ys[2]={py-hs,py+hs}, zs[2]={pz-hs,pz+hs};
-                for (int a=0;a<2;a++) for (int b=0;b<2;b++) {
-                    line3(D, xs[0], ys[a], zs[b], xs[1], ys[a], zs[b], vr,vg,vb);
-                    line3(D, xs[a], ys[0], zs[b], xs[a], ys[1], zs[b], vr,vg,vb);
-                    line3(D, xs[a], ys[b], zs[0], xs[a], ys[b], zs[1], vr,vg,vb);
-                }
+                for (int dy=-3; dy<=3; dy++)
+                    for (int dx=-3; dx<=3; dx++)
+                        if (dx*dx+dy*dy <= 10) put_px(D, sx+dx, sy+dy, vr, vg, vb);
             }
         } else if (o->kind==4) {
             unsigned char vr=r, vg=g, vb=b;
