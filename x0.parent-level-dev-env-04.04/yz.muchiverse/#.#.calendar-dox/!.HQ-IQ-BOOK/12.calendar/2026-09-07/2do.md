@@ -169,3 +169,21 @@ generic manager runtime = idea. Windows/Mac delegation itself:
   is only right for B/C/D/E tiles. Task: research real per-category
   sprite geometry, fix the crop/view per category — LOW priority,
   skip if it's more than ~a day or needs RMMV-runtime knowledge.
+
+## (2026-09-08) screen-rec-hq skeleton + stray dir cleanup
+
+- Deleted `44.xyz.01.00/e8bf229a-62d3-4d6f-810e-e2aaf031cd73/` — empty
+  `home/games` tree, untracked, a wrong-cwd install artifact. The
+  legit `xyzfs/users/e8bf229a-.../` user dir is untouched.
+- **`@.apps/screen-rec-hq/` — conversion skeleton committed.** The
+  "streaming"/screen-recorder toy, house x11-HQ spec, forum/irc-style
+  (WRAP the existing `151.screen-rec+01.02/system/screen_rec` engine,
+  don't rewrite). Has: `button.sh`, `screen-rec-hq.xhtpm`/`.css`,
+  `ops/screen_rec_manager.c` (compiles, publishes `screen_rec_ui.txt`,
+  START/STOP → `record_command.txt`), `srec_action.sh`, `toy.pdl`,
+  `README.md` (status + 6-item TODO). Manager smoke-tested. Not wired
+  yet: daemon-only launch verb, `<canvas>` live preview.
+- Grok media-studio delegation doc (`13.grok-...`) — ADDENDUM: point
+  media apps at `@.apps/music-player-hq/` (completed media conversion,
+  better model than co-lab-hai); note screen-rec-hq skeleton; the
+  "scaffold each app first, then flesh out one at a time" approach.

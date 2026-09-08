@@ -1,0 +1,51 @@
+<!-- screen-rec-hq.xhtpm - "streaming"/screen-recorder toy, house
+     x11-HQ spec. Conversion SKELETON (2026-09-08) - see README.md.
+
+     Same shape as @.apps/music-player-hq / @.apps/pdl-read: a static
+     template + a real backend <module> (screen_rec_manager.+x) that
+     owns all state. The manager WRAPS the existing engine daemon
+     (44.xyz.01.00/151.screen-rec+01.02/system/screen_rec, unchanged)
+     the same way the forum/irc conversions wrapped their engines.
+
+     Buttons dispatch through ops/srec_action.sh (writes seq/cmd to
+     state/screen_rec_action.txt) - NO per-app verb in the renderer.
+     Manager publishes state/screen_rec_ui.txt, consumed via vars=.
+
+     TODO(grok): the <canvas> preview below currently has no source;
+     wire it to the engine's pieces/display/rgb_frame.raw once a
+     `daemon-only` launch verb exists (see README.md). -->
+<window label="screen-rec-hq - ${state}" class="database-window" vars="state/screen_rec_ui.txt">
+  <module src="@.apps/screen-rec-hq/ops/+x/screen_rec_manager.+x" id="_"/>
+  <page name="main">
+
+    <sidebar id="recs" class="srec-side">
+      <text label="recordings - ${n_recordings}" class="quiet"/>
+      <scrolllist>
+        <repeat count="${n_recordings}" bind="r">
+          <item id="rec${r.#}" class="srec-rec" label="${r.name}"
+                action="'${HOUSE}/@.apps/screen-rec-hq/ops/srec_action.sh' 'RESCAN'"/>
+        </repeat>
+      </scrolllist>
+    </sidebar>
+
+    <panel id="main" class="srec-main">
+      <text label="${engine_label}" class="srec-eng"/>
+      <text label="state:  ${state}     frames: ${frames_encoded}" class="srec-state"/>
+      <text label="out:  ${output_path}" class="srec-quiet"/>
+
+      <canvas id="preview" class="srec-preview"/>
+
+      <row class="toolbar srec-transport">
+        <item id="recbtn" class="srec-btn srec-rec-btn" label="${rec_label}"
+              action="'${HOUSE}/@.apps/screen-rec-hq/ops/srec_action.sh' '${rec_cmd}'"/>
+        <item id="engbtn" class="srec-btn" label="[ start engine ]" show="${engine_up}"
+              action="'${HOUSE}/@.apps/screen-rec-hq/ops/srec_action.sh' 'ENGINE_START'"/>
+        <item id="rescanbtn" class="srec-btn" label="[ rescan ]"
+              action="'${HOUSE}/@.apps/screen-rec-hq/ops/srec_action.sh' 'RESCAN'"/>
+      </row>
+
+      <text label="${msg}" class="srec-msg" show="${msg}"/>
+      <text label="Wayland: the compositor's screen-picker dialog may appear once when the engine first starts." class="srec-quiet"/>
+    </panel>
+  </page>
+</window>

@@ -1,0 +1,25 @@
+/* screen-rec-hq.css - only background/border/color/font/padding/
+   width/height apply (khtpm CSS subset). */
+
+window { width: 860px; height: 560px; background-color: #121214;
+  font-family: DejaVu Sans; font-size: 11px; }
+
+.srec-side { width: 240px; background-color: #0e0e10;
+  border: 1px solid #262629; border-width: 1; }
+.srec-rec { color: #cfd3da; padding: 3px 8px; }
+.quiet { color: #7b7f88; padding: 6px 8px; }
+
+.srec-main { background-color: #161619; }
+.srec-eng   { color: #86d6b4; font-weight: bold; padding: 8px 12px 2px 12px; }
+.srec-state { color: #d7dae0; padding: 2px 12px; }
+.srec-quiet { color: #7b7f88; font-size: 10px; padding: 2px 12px; }
+
+.srec-preview { width: 560px; height: 315px; background-color: #000000;
+  border: 1px solid #2a2a2e; border-width: 1; }
+
+.srec-btn { background-color: #24242a; color: #e6e6ea; font-weight: bold;
+  border: 1px solid #3a3a42; border-width: 1; padding: 4px 10px; }
+.srec-rec-btn { background-color: #7a1f1f; color: #ffffff;
+  border-color: #b23a3a; }
+
+.srec-msg  { color: #ffd54a; font-size: 11px; padding: 6px 12px; }
