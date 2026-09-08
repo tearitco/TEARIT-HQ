@@ -11,7 +11,11 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 HOUSE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 TPWIN="$HOUSE_DIR/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
-PRISC="$HOUSE_DIR/101.mutaclsym🧟‍♂️️+18.01/system/prisc+x"
+# 2026-09-08: the hardcoded "+18.01" was renamed to "19.00" (see
+# 19.00-VOXEL-3D-ARCHITECTURE.md) - resolve the prisc runner by a
+# cheap maxdepth-1 glob instead, matching entities/book-stack/menu.chtpm's
+# own "Read" action. Survives the next rename too.
+PRISC="$(find "$HOUSE_DIR" -maxdepth 1 -name '101.mutaclsym🧟‍♂️️*' -type d 2>/dev/null | head -1)/system/prisc+x"
 ENTITY_DIR="$HOUSE_DIR/*.monads/*.book-stack/entities/book-stack"
 EVENT_PAL="$SCRIPT_DIR/pieces/reader/event_pkg/pages/page_1/event.pal"
 
