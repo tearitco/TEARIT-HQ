@@ -78,15 +78,22 @@ engage_if_needed() {
         ENGAGED=1
     fi
 }
-# Undo an engage this call made. Waits briefly for our own '13' to
-# register (so we don't "restore" before the engine even turned it on),
-# then toggles OFF iff it is still on - a menu key or board reload that
-# dropped typing mode by itself is left alone, never double-toggled.
+# Undo an engage this call made. (1) wait for our own '13' to register
+# (so we don't "restore" before the engine even turned it on), (2)
+# toggle OFF, (3) VERIFY it went off and retry once. The verify step
+# matters: under heavy CPU load the board-viewer engine can be seconds
+# behind, and the old 0.6s cap timed out -> no restore -> Interact Mode
+# left ON -> khtpm nav frozen on the File item ("stuck on 3"). Waits
+# are ~2s each now, and the outcome is checked, not assumed.
 restore_interact() {
     [ "$ENGAGED" = 1 ] || return 0
     i=0
-    while [ "$i" -lt 12 ] && ! interact_on; do sleep 0.05; i=$((i + 1)); done
-    interact_on && append_key 13
+    while [ "$i" -lt 40 ] && ! interact_on; do sleep 0.05; i=$((i + 1)); done
+    interact_on || return 0            # engine never engaged / already exited - nothing to undo
+    append_key 13                      # toggle back off
+    i=0
+    while [ "$i" -lt 40 ] && interact_on; do sleep 0.05; i=$((i + 1)); done
+    interact_on && append_key 13       # toggle was missed under load - one retry
     return 0
 }
 

@@ -42,3 +42,28 @@ visible (good), but the taskbar strip is covered.
 - (event-driven) watch other windows' `_NET_WM_STATE` /
   `_NET_ACTIVE_WINDOW` and re-raise the strip when a fullscreen
   appears.
+
+## 2026-09-08 (later) — "nav stuck on 3" recurred
+
+Same class as pc-hq-bugs.md Bug 5 (Interact Mode left armed -> renderer
+forwards arrows to the game -> khtpm nav frozen on the File item).
+Original fix commit: ccfed11a (engage_if_needed / restore_interact in
+pchq_board_action.sh).
+
+This recurrence, checked live: no pc-hq board window was even open; the
+live board session's active_gui_is_typing.txt was already 0; grok's
+6cf14364 kept the engage/restore pattern in file/desk/load-map. The
+weak point that likely bit under load: restore_interact's wait for the
+engine to reflect our engage was capped at 0.6s, and the box is at
+~load 14 (Chrome ~225%), so the engine lags past that -> restore
+skipped -> Interact left ON.
+
+Done now: (a) hardened restore_interact - ~2s waits + VERIFY the toggle
+took, retry once (uncommitted -> committed same day); (b) reset 3
+stale active_gui_is_typing.txt=[1] on dead board-viewer sessions so a
+relaunch can't inherit a trapped state.
+
+If it's still stuck: the stuck window may NOT be pc-hq. Confirm which
+window (strip? a specific app? the board?). If the board: open it, look
+at the `In:` toolbar badge - `[^]` = engaged/trapped, click `In:` once
+to release.
