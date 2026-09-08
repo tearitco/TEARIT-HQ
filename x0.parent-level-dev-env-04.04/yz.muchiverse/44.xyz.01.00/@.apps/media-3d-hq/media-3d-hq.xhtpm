@@ -1,64 +1,36 @@
-<!-- media-3d-hq.xhtpm — 3D viewport. Skeleton 2. HOW2_BLEND.md.
-     Camera is this app's job (orbit/pan/zoom), not shared with the 2D editor. -->
+<!-- media-3d-hq — skeleton 3 (page-level canvas). Nested canvas in a
+     <panel> is not laid out by the shared renderer. -->
 <window label="Muchi Blend - ${status_line}" class="database-window" vars="state/media_3d_hq_ui.txt">
   <module src="@.apps/media-3d-hq/ops/+x/media_3d_hq_manager.+x" id="_"/>
   <page name="main">
-    <sidebar id="side" class="ms-side">
-      <tabbar class="tab-bar">
-        <tab id="new" class="tab" label="New"
-             action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'NEW'"/>
-        <tab id="demo" class="tab" label="Demo"
-             action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'DEMO'"/>
-        <tab id="addc" class="tab" label="+ Cube"
-             action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'ADD:CUBE'"/>
-        <tab id="adds" class="tab" label="+ Sph"
-             action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'ADD:SPHERE'"/>
-      </tabbar>
-      <text label="tools" class="ms-quiet"/>
-      <row class="toolbar">
-        <item id="tsel" class="ms-btn ${tSEL}" label="Sel"
-              action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'TOOL:SEL'"/>
-        <item id="tgr" class="ms-btn ${tGRAB}" label="Grab"
-              action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'TOOL:GRAB'"/>
-        <item id="trot" class="ms-btn ${tROT}" label="Rot"
-              action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'TOOL:ROT'"/>
-        <item id="tscl" class="ms-btn ${tSCL}" label="Scl"
-              action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'TOOL:SCL'"/>
-      </row>
-      <row class="toolbar">
-        <item id="cL" class="ms-btn" label="orbit &lt;"
-              action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'CAM:L'"/>
-        <item id="cR" class="ms-btn" label="orbit &gt;"
-              action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'CAM:R'"/>
-        <item id="cU" class="ms-btn" label="orbit ^"
-              action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'CAM:U'"/>
-        <item id="cD" class="ms-btn" label="orbit v"
-              action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'CAM:D'"/>
-      </row>
-      <row class="toolbar">
-        <item id="zin" class="ms-btn" label="zoom +"
-              action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'CAM:IN'"/>
-        <item id="zout" class="ms-btn" label="zoom -"
-              action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'CAM:OUT'"/>
-        <item id="cframe" class="ms-btn" label="frame"
-              action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'CAM:FRAME'"/>
-        <item id="nudge" class="ms-btn" label="nudge"
-              action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'NUDGE'"/>
-      </row>
-      <text label="outliner" class="ms-quiet"/>
-      <scrolllist>
-        <repeat count="${n_items}" bind="it">
-          <item id="row${it.#}" class="ms-row ${it.cls}" label="${it.name}"
-                action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'PICK:${it.#}'"
-                backspace_action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'DEL:${it.#}'"/>
-        </repeat>
-      </scrolllist>
-    </sidebar>
-    <panel id="main" class="ms-main">
-      <text label="${status_line}" class="ms-status"/>
-      <canvas id="view" class="ms-canvas" sprite="${canvas_raw}"/>
-      <text label="${msg}" class="ms-msg" show="${msg}"/>
-      <text label="${gutter}" class="ms-gutter"/>
-    </panel>
+    <item id="new" class="ms-btn" label="New"
+          action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'NEW'"/>
+    <item id="demo" class="ms-btn" label="Demo"
+          action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'DEMO'"/>
+    <item id="tsel" class="ms-btn ${tSEL}" label="Sel"
+          action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'TOOL:SEL'"/>
+    <item id="tgr" class="ms-btn ${tGRAB}" label="Grab"
+          action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'TOOL:GRAB'"/>
+    <item id="trot" class="ms-btn ${tROT}" label="Rot"
+          action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'TOOL:ROT'"/>
+    <item id="tscl" class="ms-btn ${tSCL}" label="Scl"
+          action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'TOOL:SCL'"/>
+    <item id="cL" class="ms-btn" label="orb&lt;"
+          action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'CAM:L'"/>
+    <item id="cR" class="ms-btn" label="orb&gt;"
+          action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'CAM:R'"/>
+    <item id="zin" class="ms-btn" label="z+"
+          action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'CAM:IN'"/>
+    <item id="zout" class="ms-btn" label="z-"
+          action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'CAM:OUT'"/>
+    <item id="addc" class="ms-btn" label="+cube"
+          action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'ADD:CUBE'"/>
+    <canvas id="view" class="ms-canvas" sprite="${canvas_raw}"/>
+    <text label="${gutter}" class="ms-gutter"/>
+    <repeat count="${n_items}" bind="it">
+      <item id="row${it.#}" class="ms-row ${it.cls}" label="${it.name}"
+            action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'PICK:${it.#}'"
+            backspace_action="'${HOUSE}/@.apps/media-3d-hq/ops/media_3d_hq_action.sh' 'DEL:${it.#}'"/>
+    </repeat>
   </page>
 </window>

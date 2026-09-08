@@ -1,71 +1,37 @@
-<!-- media-img-hq.xhtpm — 2D image editor. Skeleton 2. HOW2_IMAGE.md. -->
+<!-- media-img-hq — skeleton 3 (page-level canvas). Sidebar+panel does
+     not size a nested <canvas> (khtpm_core_render.c only lays canvas
+     out as a direct <page> child). -->
 <window label="Muchi Image - ${status_line}" class="database-window" vars="state/media_img_hq_ui.txt">
   <module src="@.apps/media-img-hq/ops/+x/media_img_hq_manager.+x" id="_"/>
   <page name="main">
-    <sidebar id="side" class="ms-side">
-      <tabbar class="tab-bar">
-        <tab id="new" class="tab" label="New"
-             action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'NEW'"/>
-        <tab id="demo" class="tab" label="Demo"
-             action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'DEMO'"/>
-        <tab id="export" class="tab" label="Export"
-             action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'EXPORT'"/>
-      </tabbar>
-      <text label="tools" class="ms-quiet"/>
-      <row class="toolbar">
-        <item id="tb" class="ms-btn ${tB}" label="B"
-              action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:B'"/>
-        <item id="te" class="ms-btn ${tE}" label="E"
-              action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:E'"/>
-        <item id="tg" class="ms-btn ${tG}" label="G"
-              action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:G'"/>
-        <item id="tr" class="ms-btn ${tR}" label="R"
-              action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:R'"/>
-        <item id="ti" class="ms-btn ${tI}" label="I"
-              action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:I'"/>
-        <item id="th" class="ms-btn ${tH}" label="H"
-              action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:H'"/>
-      </row>
-      <row class="toolbar">
-        <item id="bsz-" class="ms-btn" label="[ -"
-              action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'BRUSH:-'"/>
-        <item id="bsz+" class="ms-btn" label="] +"
-              action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'BRUSH:+'"/>
-        <item id="swap" class="ms-btn" label="X fg/bg"
-              action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'SWAP_FG'"/>
-        <item id="blob" class="ms-btn" label="stroke"
-              action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'STROKE'"/>
-      </row>
-      <row class="toolbar">
-        <item id="cL" class="ms-btn" label="pan &lt;"
-              action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'PAN:L'"/>
-        <item id="cR" class="ms-btn" label="pan &gt;"
-              action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'PAN:R'"/>
-        <item id="zin" class="ms-btn" label="zoom +"
-              action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'ZOOM:+'"/>
-        <item id="zout" class="ms-btn" label="zoom -"
-              action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'ZOOM:-'"/>
-      </row>
-      <text label="layers" class="ms-quiet"/>
-      <scrolllist>
-        <repeat count="${n_items}" bind="it">
-          <item id="row${it.#}" class="ms-row ${it.cls}" label="${it.name}"
-                action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'PICK:${it.#}'"
-                backspace_action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'VIS:${it.#}'"/>
-        </repeat>
-      </scrolllist>
-      <row class="toolbar">
-        <item id="nlayer" class="ms-btn" label="+ layer"
-              action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'NEW_LAYER'"/>
-        <item id="clayer" class="ms-btn" label="clear"
-              action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'CLEAR_LAYER'"/>
-      </row>
-    </sidebar>
-    <panel id="main" class="ms-main">
-      <text label="${status_line}" class="ms-status"/>
-      <canvas id="view" class="ms-canvas" sprite="${canvas_raw}"/>
-      <text label="${msg}" class="ms-msg" show="${msg}"/>
-      <text label="${gutter}" class="ms-gutter"/>
-    </panel>
+    <item id="new" class="ms-btn" label="New"
+          action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'NEW'"/>
+    <item id="demo" class="ms-btn" label="Demo"
+          action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'DEMO'"/>
+    <item id="tb" class="ms-btn ${tB}" label="B"
+          action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:B'"/>
+    <item id="te" class="ms-btn ${tE}" label="E"
+          action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:E'"/>
+    <item id="tg" class="ms-btn ${tG}" label="G"
+          action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:G'"/>
+    <item id="tr" class="ms-btn ${tR}" label="R"
+          action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:R'"/>
+    <item id="ti" class="ms-btn ${tI}" label="I"
+          action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:I'"/>
+    <item id="th" class="ms-btn ${tH}" label="H"
+          action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'TOOL:H'"/>
+    <item id="bsz-" class="ms-btn" label="[ -"
+          action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'BRUSH:-'"/>
+    <item id="bsz+" class="ms-btn" label="] +"
+          action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'BRUSH:+'"/>
+    <item id="nlayer" class="ms-btn" label="+L"
+          action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'NEW_LAYER'"/>
+    <canvas id="view" class="ms-canvas" sprite="${canvas_raw}"/>
+    <text label="${gutter}" class="ms-gutter"/>
+    <repeat count="${n_items}" bind="it">
+      <item id="row${it.#}" class="ms-row ${it.cls}" label="${it.name}"
+            action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'PICK:${it.#}'"
+            backspace_action="'${HOUSE}/@.apps/media-img-hq/ops/media_img_hq_action.sh' 'VIS:${it.#}'"/>
+    </repeat>
   </page>
 </window>
