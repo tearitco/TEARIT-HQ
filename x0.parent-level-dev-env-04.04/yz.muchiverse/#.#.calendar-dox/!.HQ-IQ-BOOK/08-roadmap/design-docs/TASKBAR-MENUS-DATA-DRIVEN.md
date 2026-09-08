@@ -162,10 +162,20 @@ pc-hq's `file-hq` verb keeps its own tiny consumer but calls the shared
    "port isn't finished" stub). Drop it only after that CE-tab port
    lands (delegated to grok 2026-09-08, `DB-EVENTS-HQ-PORT-DESIGN.md`;
    see `13.agent-coms/2026-09-08/GROK.md`).
-3. **Convert the debt-list builders** one at a time to the
-   `<cell>_menu_N_*` read loop: `user`, then `player`, `db`, `pals`,
-   `toys`, `clock`, `ai`. Each = add PDL rows + swap the builder body,
-   hardcoded rows kept as `count==0` fallback. Build + click-test each.
+3. **Convert the debt-list builders** to the `<cell>_menu_N_*` read
+   loop. Shared helper `livedesk_pdl_menu_rows(house_root, prefix,
+   menu, max)` added; builder calls it first, hardcoded rows are the
+   `count==0` fallback.
+   - **DONE** (static builders): `player` (3a), `ai` (3a), `db` (3b)
+     — `2026-09-08`, commits `e23dea05` / `2d7c1ae7`, verified live.
+   - **REMAINING** (directory-scanning builders): `user`, `pals`,
+     `toys`, `clock`. These enumerate accounts / pals / toy projects /
+     clocks, so the conversion is: read static *prefix* rows from the
+     pdl (`<cell>_menu_pre_N_*`), append the scanned rows, then static
+     *suffix* rows (`<cell>_menu_post_N_*`). Higher regression risk
+     (account switching, pal placement, toy launch, clock control) —
+     do each with a live click-test of the scanned action, not just
+     the menu render.
 4. **`03-pitfalls/HOUSE_CODE_PITFALLS.md`**: new entry — "strip menu
    behavior is `livedesk_taskbar.pdl` data; a fresh
    `strcmp(m->command, "livedesk:…")` branch for a *launch* is the
