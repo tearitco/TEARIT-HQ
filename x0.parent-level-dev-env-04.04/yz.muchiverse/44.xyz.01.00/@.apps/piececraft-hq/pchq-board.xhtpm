@@ -95,7 +95,8 @@
             action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'desk' '${d.#}'"/>
     </repeat>
 
-    <!-- the live 3D raymarch view -->
+    <!-- Play screen. No action=interact (that verb is toggle-off).
+         Renderer: canvas bbox click + managed+relay -> engage-if-needed. -->
     <canvas id="view" sprite="${canvas_raw}"/>
 
     <text label="No live board-viewer session - open 'View Board' from the game first." class="quiet" show="${no_session}"/>

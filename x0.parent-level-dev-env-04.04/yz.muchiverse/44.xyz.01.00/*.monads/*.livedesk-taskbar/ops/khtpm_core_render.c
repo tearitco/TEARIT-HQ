@@ -1875,6 +1875,11 @@ static int g_interact_relay_on = 0;
 static char g_interact_relay_paths[2][PATH_BUF];
 static int g_interact_relay_n = 0;
 static char g_interact_relay_raw[300] = "";  /* last-armed relay= string, for the re-arm check only */
+/* PC-HQ-FOCUS-AND-INTERACT-ACTIVATE.md: X11 focus vs Interact arm.
+ * handle_key forwards only when both are 1. Init 1 so first In works
+ * before the first FocusIn. */
+static int g_x11_window_focused = 1;
+static int g_interact_disengage_sent = 0;
 static int g_quit = 0;
 /* --dump-and-exit (any argv position): paint one frame, write the PNG +
  * .txt receipt via dump_frame_png(), then quit. Set once at startup,
@@ -4488,7 +4493,68 @@ static void kh_scan_interact_relay(void) {
     } else {
         g_interact_relay_on = 0;
         g_interact_relay_raw[0] = '\0';
+        g_interact_disengage_sent = 0;
     }
+}
+
+static int kh_interact_vars_on(void) {
+    const char *ic = kh_get_var("interact_class");
+    const char *ia = kh_get_var("interact_armed");
+    return (ic && strstr(ic, "interact-active")) || (ia && ia[0] == '1');
+}
+
+static void kh_interact_append_13(void) {
+    int n = g_interact_relay_n;
+    const char *paths[2];
+    char h1buf[PATH_BUF], h2buf[PATH_BUF];
+    if (n > 0) {
+        for (int i = 0; i < n; i++) paths[i] = g_interact_relay_paths[i];
+    } else {
+        const char *h1 = kh_get_var("bv_h1");
+        const char *h2 = kh_get_var("bv_h2");
+        n = 0;
+        if (h1 && h1[0]) { snprintf(h1buf, sizeof(h1buf), "%s", h1); paths[n++] = h1buf; }
+        if (h2 && h2[0]) { snprintf(h2buf, sizeof(h2buf), "%s", h2); paths[n++] = h2buf; }
+    }
+    for (int i = 0; i < n; i++) {
+        if (!paths[i] || !paths[i][0]) continue;
+        FILE *f = fopen(paths[i], "a");
+        if (f) { fprintf(f, "13\n"); fclose(f); }
+    }
+}
+
+static void kh_interact_disengage_engine_if_on(void) {
+    if (g_interact_disengage_sent) return;
+    if (!kh_interact_vars_on() && !g_interact_relay_on) return;
+    kh_interact_append_13();
+    g_interact_disengage_sent = 1;
+}
+
+static void kh_interact_engage_if_needed(void) {
+    if (kh_interact_vars_on() || g_interact_relay_on) return;
+    kh_interact_append_13();
+}
+
+static int kh_page_has_relay_item(void) {
+    Elem *pg = find_page(g_current_page);
+    if (!pg) return 0;
+    for (int i = 0; i < pg->n_children; i++) {
+        Elem *it = pg->children[i];
+        if (strcmp(it->tag, "item") == 0 && it->relay[0]) return 1;
+    }
+    return 0;
+}
+
+static int kh_canvas_hit(int px, int py) {
+    Elem *pg = find_page(g_current_page);
+    if (!pg) return 0;
+    for (int i = 0; i < pg->n_children; i++) {
+        Elem *it = pg->children[i];
+        if (strcmp(it->tag, "canvas") != 0) continue;
+        if (px >= it->x && px < it->x + it->w && py >= it->y && py < it->y + it->h)
+            return 1;
+    }
+    return 0;
 }
 
 static void assign_nav_and_layout(void) {
@@ -6881,7 +6947,7 @@ static void handle_key(KeySym ks, char ch) {
      * never intercepted locally) and 'p' (never a local dump shortcut
      * while engaged). kh_key_history_code() is the SAME decimal-code
      * resolver history capture already uses - reused, not reinvented. */
-    if (g_interact_relay_on) {
+    if (g_interact_relay_on && g_x11_window_focused) {
         int code = kh_key_history_code(ks, ch);
         /* REAL FIX 2026-09-04 (see PLAN-pchq-interact-camera-pov.md
          * Part A for the full citation trail) - tpmos/board-viewer's
@@ -7743,21 +7809,10 @@ static void hq_ui_pdl_reload_if_changed(const char *house_root) {
 }
 
 static void hq_idle_tick(void) {
-    /* pc-hq-leg-vs-nu-fix.md §5-B: WM-managed continuously-interactive
-     * window re-asserts X keyboard focus while the pointer is over it.
-     * Gated on g_win_managed_focus so override_redirect never hits this. */
-    if (g_win_managed_focus && dpy && win) {
-        Window fw = None; int frev = 0;
-        XGetInputFocus(dpy, &fw, &frev);
-        if (fw != win) {
-            Window rr, cr; int rx, ry, wx, wy; unsigned mb;
-            if (XQueryPointer(dpy, win, &rr, &cr, &rx, &ry, &wx, &wy, &mb) &&
-                wx >= 0 && wy >= 0 && wx < g_win_w && wy < g_win_h) {
-                XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
-            }
-        }
-    }
-    /* pc-hq-leg-vs-nu-fix.md §6b: Interact Mode arm must not wait on
+    /* PC-HQ-FOCUS-AND-INTERACT-ACTIVATE.md: idle pointer-over
+     * XSetInputFocus deleted (that was the focus hog). One-shot
+     * take-focus is ButtonPress / post-map only.
+     * pc-hq-leg-vs-nu-fix.md §6b: Interact Mode arm must not wait on
      * a vars-hash reparse. Reload projector vars and rescan every tick
      * (legacy read active_gui_is_typing.txt once per frame). */
     if (g_vars_path[0]) kh_load_vars_multi(g_vars_path);
@@ -8040,6 +8095,12 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                 /* click anywhere in an HQ window -> bring it (and its
                  * keyboard focus) to the top, WM-managed mode included */
                 kh_raise_and_focus(cw);
+                g_x11_window_focused = 1;
+                /* Play-screen engage: canvas bbox, not g_nav. Never
+                 * verb interact (toggle-off). */
+                if (g_win_managed_focus && kh_page_has_relay_item() &&
+                    kh_canvas_hit(ev->xbutton.x, ev->xbutton.y))
+                    kh_interact_engage_if_needed();
             }
             if (window_is_dock() && g_dock_menu_win && cw == g_dock_menu_win &&
                 ev->xbutton.button == 1 && g_dock_drop_lo >= 1) {
@@ -8218,12 +8279,18 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
              * other reason anyway. */
             if (g_focus_owned_painted != 1) redraw();
         }
+        g_x11_window_focused = 1;
+        g_interact_disengage_sent = 0;
         return;
     }
     if (ev->type == FocusOut) {
         if (window_is_dock() &&
             ev->xfocus.mode != NotifyGrab && ev->xfocus.mode != NotifyUngrab)
             dock_release_keyboard_if_left();
+        if (g_win_managed_focus) {
+            g_x11_window_focused = 0;
+            kh_interact_disengage_engine_if_on();
+        }
         if (g_focus_owned_painted != 0) redraw();
         return;
     }
