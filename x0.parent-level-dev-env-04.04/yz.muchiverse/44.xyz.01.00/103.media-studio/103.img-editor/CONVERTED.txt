@@ -1,3 +1,3 @@
-Converted house-spec toy lives at:
-  44.xyz.01.00/@.apps/media-img3d-hq/
-This glut binary is the source/reference until HOW2_IMAGE.md parity is complete.
+Converted house-spec toy:
+  44.xyz.01.00/@.apps/media-img-hq/
+(The combined media-img3d-hq hybrid was split; 3D is media-3d-hq.)
