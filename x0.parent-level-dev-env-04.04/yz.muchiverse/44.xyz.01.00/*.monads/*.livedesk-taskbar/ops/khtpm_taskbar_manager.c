@@ -4377,6 +4377,24 @@ void ktb_hq_activate(KtbState *s, int row) {
         (void)rc;
 #endif
         ktb_hq_close(s);
+    } else if (strcmp(m->command, "livedesk:open-sql-hq") == 0) {
+        /* db cell's "sql-hq" row - SQL over .csv/.pdl. Same launch
+         * shape as db-hq-pal above (single-quoted sh -c makes the
+         * &.hq-apps path safe). SQL-HQ-DESIGN.md. */
+#ifdef _WIN32
+        char bin[KTB_PATH_BUF], chtpm[KTB_PATH_BUF];
+        snprintf(bin, sizeof(bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", s->house_root);
+        snprintf(chtpm, sizeof(chtpm), "%s/&.hq-apps/sql-hq/sql-hq.xhtpm", s->house_root);
+        const char *aa[2] = { s->house_root, chtpm };
+        win_spawn_n(bin, aa, 2);
+#else
+        char sh[KTB_PATH_BUF * 3];
+        snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c 'sh \"%s/&.hq-apps/sql-hq/button.sh\" \"%s\"' >/dev/null 2>&1 &",
+                 s->house_root, s->house_root);
+        int rc = ktb_system_recorded(s->house_root, sh);
+        (void)rc;
+#endif
+        ktb_hq_close(s);
     } else if (strcmp(m->command, "livedesk:open-piececraft-hq") == 0) {
         /* HQ-menu pin: toys list is 17+ rows; click y/row used to hit
          * piececraft-xyz instead of piececraft-hq. Same button.sh run
