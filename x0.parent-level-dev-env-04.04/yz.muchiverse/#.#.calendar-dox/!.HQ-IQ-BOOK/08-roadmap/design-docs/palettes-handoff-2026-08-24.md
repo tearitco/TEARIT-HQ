@@ -199,3 +199,14 @@ plus maybe a per-category tile aspect the palette CSS respects.
 **If it's more than ~a day of work or needs RMMV-runtime knowledge we
 don't have: leave it. Tilesets working is the 80% case; the rest is
 polish.** Note in the handoff which categories you fixed vs. left.
+
+**Done 2026-09-08 (palettes_manager.c `publish_rmmv_asset_dir`):**
+non-tileset dirs no longer squash the whole PNG to 48².
+- `characters`: 4×2 chars, down-idle frame (`$` prefix = 3×4 one char)
+- `faces`: 4×2 of sheet_w/4 × sheet_h/2 (144²)
+- `sv_actors`: 9×6 poses
+- `animations`: 5-col × (h/cell) frames
+- `sv_enemies`, battlebacks, pictures, titles, parallaxes, system:
+  still one thumbnail per file (correct: one image each)
+Cache under `sprites/rmmv/dir_<cat>/<stem>/`. Click **characters** in
+the dir chooser to see it; tilesets path unchanged.

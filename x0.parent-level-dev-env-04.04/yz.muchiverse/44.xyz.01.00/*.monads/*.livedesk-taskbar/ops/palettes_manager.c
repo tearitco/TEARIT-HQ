@@ -485,35 +485,157 @@ static void write_png_thumb_csv(const char *png_path, const char *csv_path) {
     stbi_image_free(px);
 }
 
+/* Scale a source rectangle into a dest×dest sprite.csv (nearest). */
+static void write_scaled_crop(const unsigned char *px, int w, int h,
+                              int x0, int y0, int cw, int ch,
+                              const char *out_path, int dest) {
+    FILE *f = fopen(out_path, "w");
+    if (!f) return;
+    if (cw < 1) cw = 1;
+    if (ch < 1) ch = 1;
+    if (dest < 1) dest = RMMV_TILE_PX;
+    fprintf(f, "# resolution=%d\n# scale=1.0\n# transform=0,0,0\nr,g,b,a\n", dest);
+    for (int y = 0; y < dest; y++) {
+        for (int x = 0; x < dest; x++) {
+            int sx = x0 + x * cw / dest;
+            int sy = y0 + y * ch / dest;
+            if (sx >= w) sx = w - 1;
+            if (sy >= h) sy = h - 1;
+            if (sx < 0) sx = 0;
+            if (sy < 0) sy = 0;
+            const unsigned char *p = &px[((size_t)sy * (size_t)w + (size_t)sx) * 4];
+            fprintf(f, "%d,%d,%d,%d\n", p[0], p[1], p[2], p[3]);
+        }
+    }
+    fclose(f);
+}
+
+static int rmmv_emit_cell(FILE *out, int *n, const char *sprite_root, const char *label,
+                          const unsigned char *px, int w, int h,
+                          int x0, int y0, int cw, int ch) {
+    if (*n >= MAX_TILES) return 0;
+    (*n)++;
+    char dir[PATH_BUF], csv[PATH_BUF];
+    snprintf(dir, sizeof(dir), "%s/%03d", sprite_root, *n);
+    snprintf(csv, sizeof(csv), "%s/sprite.csv", dir);
+    struct stat st;
+    if (stat(csv, &st) != 0) {
+        char mk[PATH_BUF * 2];
+        snprintf(mk, sizeof(mk), "mkdir -p '%s'", dir);
+        system(mk);
+        write_scaled_crop(px, w, h, x0, y0, cw, ch, csv, RMMV_TILE_PX);
+    }
+    fprintf(out, "%s\t%s\t%s\n", label, label, dir);
+    return 1;
+}
+
+/* Non-tileset img/ dirs. Tilesets stay on the A1–E sheet path.
+ * characters/faces/sv_actors/animations are real grids; the rest are
+ * one thumbnail per file (whole image, aspect-squashed to 48²). */
 static void publish_rmmv_asset_dir(const char *dirname, FILE *out) {
     char abs[PATH_BUF];
     if (!rmmv_resolve_img_dir(dirname, abs, sizeof(abs))) return;
     DIR *d = opendir(abs);
     if (!d) return;
-    char sprite_root[PATH_BUF];
-    snprintf(sprite_root, sizeof(sprite_root), "%s/sprites/rmmv/dir_%s", g_package_dir, dirname);
-    int n = 0;
+    char names[MAX_TILES][256];
+    int n_names = 0;
     struct dirent *de;
-    while (n < MAX_TILES && (de = readdir(d)) != NULL) {
+    while (n_names < MAX_TILES && (de = readdir(d)) != NULL) {
         const char *name = de->d_name;
         size_t len = strlen(name);
-        if (len < 5) continue;
+        if (len < 5 || len >= 255) continue;
         if (strcasecmp(name + len - 4, ".png") != 0) continue;
-        n++;
-        char dir[PATH_BUF], csv[PATH_BUF], png[PATH_BUF];
-        snprintf(dir, sizeof(dir), "%s/%03d", sprite_root, n);
-        snprintf(csv, sizeof(csv), "%s/sprite.csv", dir);
-        snprintf(png, sizeof(png), "%s/%s", abs, name);
-        struct stat st;
-        if (stat(csv, &st) != 0) {
-            char mk[PATH_BUF * 2];
-            snprintf(mk, sizeof(mk), "mkdir -p '%s'", dir);
-            system(mk);
-            write_png_thumb_csv(png, csv);
-        }
-        fprintf(out, "%s\t%s\t%s\n", name, name, dir);
+        snprintf(names[n_names++], sizeof(names[0]), "%s", name);
     }
     closedir(d);
+    for (int i = 1; i < n_names; i++) {
+        char key[256]; snprintf(key, sizeof(key), "%s", names[i]);
+        int j = i - 1;
+        while (j >= 0 && strcmp(names[j], key) > 0) {
+            snprintf(names[j + 1], sizeof(names[0]), "%s", names[j]);
+            j--;
+        }
+        snprintf(names[j + 1], sizeof(names[0]), "%s", key);
+    }
+    int n = 0;
+    for (int fi = 0; fi < n_names && n < MAX_TILES; fi++) {
+        const char *name = names[fi];
+        char png[PATH_BUF], stem[256];
+        snprintf(png, sizeof(png), "%s/%s", abs, name);
+        snprintf(stem, sizeof(stem), "%s", name);
+        char *dot = strrchr(stem, '.'); if (dot) *dot = 0;
+        char sprite_root[PATH_BUF];
+        snprintf(sprite_root, sizeof(sprite_root), "%s/sprites/rmmv/dir_%s/%s", g_package_dir, dirname, stem);
+        int w = 0, h = 0, ch = 0;
+        unsigned char *px = stbi_load(png, &w, &h, &ch, 4);
+        if (!px) continue;
+        int sliced = 0;
+        if (!strcmp(dirname, "characters") && w >= 48 && h >= 48) {
+            if (name[0] == '$') {
+                int cw = w / 3, chh = h / 4;
+                if (cw > 0 && chh > 0) {
+                    char lab[128];
+                    snprintf(lab, sizeof(lab), "%s", stem);
+                    rmmv_emit_cell(out, &n, sprite_root, lab, px, w, h, cw, 0, cw, chh);
+                    sliced = 1;
+                }
+            } else if (w % 12 == 0 && h % 8 == 0) {
+                int cw = w / 12, chh = h / 8;
+                for (int cy = 0; cy < 2 && n < MAX_TILES; cy++)
+                    for (int cx = 0; cx < 4 && n < MAX_TILES; cx++) {
+                        char lab[128];
+                        snprintf(lab, sizeof(lab), "%s %d", stem, cy * 4 + cx + 1);
+                        int x0 = (cx * 3 + 1) * cw, y0 = cy * 4 * chh;
+                        rmmv_emit_cell(out, &n, sprite_root, lab, px, w, h, x0, y0, cw, chh);
+                    }
+                sliced = 1;
+            }
+        } else if (!strcmp(dirname, "faces") && w % 4 == 0 && h % 2 == 0 && w >= 4 && h >= 2) {
+            int cw = w / 4, chh = h / 2;
+            for (int row = 0; row < 2 && n < MAX_TILES; row++)
+                for (int col = 0; col < 4 && n < MAX_TILES; col++) {
+                    char lab[128];
+                    snprintf(lab, sizeof(lab), "%s %d", stem, row * 4 + col + 1);
+                    rmmv_emit_cell(out, &n, sprite_root, lab, px, w, h, col * cw, row * chh, cw, chh);
+                }
+            sliced = 1;
+        } else if (!strcmp(dirname, "sv_actors") && w % 9 == 0 && h % 6 == 0 && w >= 9 && h >= 6) {
+            int cw = w / 9, chh = h / 6;
+            for (int row = 0; row < 6 && n < MAX_TILES; row++)
+                for (int col = 0; col < 9 && n < MAX_TILES; col++) {
+                    char lab[128];
+                    snprintf(lab, sizeof(lab), "%s r%dc%d", stem, row, col);
+                    rmmv_emit_cell(out, &n, sprite_root, lab, px, w, h, col * cw, row * chh, cw, chh);
+                }
+            sliced = 1;
+        } else if (!strcmp(dirname, "animations") && w % 5 == 0 && w >= 5) {
+            int cw = w / 5, chh = cw;
+            int rows = h / chh;
+            if (rows < 1) rows = 1;
+            for (int row = 0; row < rows && n < MAX_TILES; row++)
+                for (int col = 0; col < 5 && n < MAX_TILES; col++) {
+                    char lab[128];
+                    snprintf(lab, sizeof(lab), "%s %d", stem, row * 5 + col + 1);
+                    rmmv_emit_cell(out, &n, sprite_root, lab, px, w, h, col * cw, row * chh, cw, chh);
+                }
+            sliced = 1;
+        }
+        if (!sliced) {
+            char dir[PATH_BUF], csv[PATH_BUF];
+            n++;
+            snprintf(dir, sizeof(dir), "%s/%03d", sprite_root, 1);
+            snprintf(csv, sizeof(csv), "%s/sprite.csv", dir);
+            struct stat st;
+            if (stat(csv, &st) != 0) {
+                char mk[PATH_BUF * 2];
+                snprintf(mk, sizeof(mk), "mkdir -p '%s'", dir);
+                system(mk);
+                write_png_thumb_csv(png, csv);
+            }
+            fprintf(out, "%s\t%s\t%s\n", stem, stem, dir);
+        }
+        stbi_image_free(px);
+    }
 }
 
 static void publish_rmmv_options(const char *house_root, const char *active_key,
