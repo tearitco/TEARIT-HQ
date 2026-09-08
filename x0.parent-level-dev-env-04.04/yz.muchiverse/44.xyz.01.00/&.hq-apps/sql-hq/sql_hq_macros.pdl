@@ -1,0 +1,33 @@
+# sql_hq_macros.pdl - the sidebar macro bank. One row per snippet:
+#   SECTION | macro:<name> | <sidebar label> | <snippet appended to the editor>
+# ${table} in a snippet is left literal - it's a hint, not substituted.
+# Reorder / add freely; the projector re-reads this every tick, no rebuild.
+SECTION | macro:select        | SELECT              | SELECT * FROM ${table};
+SECTION | macro:select-cols   | SELECT cols         | SELECT col1, col2 FROM ${table};
+SECTION | macro:distinct      | SELECT DISTINCT     | SELECT DISTINCT col FROM ${table};
+SECTION | macro:where         | WHERE               | SELECT * FROM ${table} WHERE col = 'x';
+SECTION | macro:orderby       | ORDER BY            | SELECT * FROM ${table} ORDER BY col DESC;
+SECTION | macro:limit         | LIMIT               | SELECT * FROM ${table} LIMIT 20 OFFSET 0;
+SECTION | macro:like          | LIKE                | SELECT * FROM ${table} WHERE col LIKE '%x%';
+SECTION | macro:between       | BETWEEN             | SELECT * FROM ${table} WHERE col BETWEEN 1 AND 10;
+SECTION | macro:in            | IN                  | SELECT * FROM ${table} WHERE col IN ('a','b','c');
+SECTION | macro:isnull        | IS NULL             | SELECT * FROM ${table} WHERE col IS NULL;
+SECTION | macro:count         | COUNT / AVG / SUM   | SELECT COUNT(*), AVG(col), SUM(col) FROM ${table};
+SECTION | macro:minmax        | MIN / MAX           | SELECT MIN(col), MAX(col) FROM ${table};
+SECTION | macro:groupby       | GROUP BY / HAVING   | SELECT col, COUNT(*) n FROM ${table} GROUP BY col HAVING n > 1;
+SECTION | macro:innerjoin     | INNER JOIN          | SELECT a.*, b.* FROM ${table} a JOIN other b ON a.k = b.k;
+SECTION | macro:leftjoin      | LEFT JOIN           | SELECT a.*, b.* FROM ${table} a LEFT JOIN other b ON a.k = b.k;
+SECTION | macro:union         | UNION               | SELECT col FROM ${table} UNION SELECT col FROM other;
+SECTION | macro:case          | CASE WHEN           | SELECT col, CASE WHEN col > 0 THEN 'pos' ELSE 'nonpos' END AS bucket FROM ${table};
+SECTION | macro:cast          | CAST                | SELECT CAST(col AS INTEGER) FROM ${table};
+SECTION | macro:createtable   | CREATE TABLE        | CREATE TABLE newt (id INTEGER PRIMARY KEY, name TEXT);
+SECTION | macro:createview    | CREATE VIEW         | CREATE VIEW v AS SELECT * FROM ${table} WHERE col = 'x';
+SECTION | macro:altertable    | ALTER TABLE         | ALTER TABLE ${table} ADD COLUMN newcol TEXT;
+SECTION | macro:renametable   | RENAME TABLE        | ALTER TABLE ${table} RENAME TO ${table}_2;
+SECTION | macro:droptable     | DROP TABLE          | DROP TABLE IF EXISTS ${table};
+SECTION | macro:insert        | INSERT INTO         | INSERT INTO ${table} (col1, col2) VALUES ('a', 'b');
+SECTION | macro:insertselect  | INSERT ... SELECT   | INSERT INTO ${table} SELECT * FROM other;
+SECTION | macro:update        | UPDATE              | UPDATE ${table} SET col = 'x' WHERE id = 1;
+SECTION | macro:delete        | DELETE              | DELETE FROM ${table} WHERE id = 1;
+SECTION | macro:showtables    | .Show Tables        | SELECT name FROM sqlite_master WHERE type='table';
+SECTION | macro:describe      | .Describe Table     | PRAGMA table_info(${table});

@@ -109,6 +109,7 @@ static void kh_raise_and_focus(Window w); /* fwd - dispatch()'s FOCUSWIN handler
 static int kh_key_history_code(KeySym ks, char ch); /* fwd - handle_key()'s interact-relay forward uses it before its real definition, near kh_capture_key */
 static void desktop_toggle_click_two_step(const char *house_root); /* fwd - dispatch()'s CLICK_TWOSTEP_TOGGLE handler uses it before its real definition, near desktop_load_click_two_step */
 static void desktop_load_click_two_step(const char *house_root); /* fwd - hq_ui_pdl_reload_if_changed() (hq_idle_tick(), long-running dock strip) uses it before its real definition */
+static void kh_text_areas_reload(Elem *root); /* fwd - reparse_chtpm_if_changed() re-hydrates <text_area> buffers, defined near default_text_area_save */
 #define MAX_ELEMS 1024  /* 2026-09-02: page projection + chrome, was 512 */
 #define MAX_PAGE_STACK 8
 
@@ -1587,6 +1588,16 @@ static int reparse_chtpm_if_changed(void) {
     Elem *new_window = parse_chtpm(g_chtpm_path);
     if (!new_window) return 0;
     g_window = new_window;
+    /* REAL, NEW 2026-09-08 (sql-hq) - a <text_area> auto-saves its
+     * buffer to <pkg>/text_area_<id>.txt (default_text_area_save), but
+     * the fresh parse above resets every buffer to its content="" attr.
+     * For an app whose projector republishes state/ui.txt on Run
+     * (sql-hq: results grid changes -> reparse), that would wipe the
+     * user's in-progress SQL every time they hit Run. Re-hydrate any
+     * text_area from its saved file here, exactly the way the scope
+     * re-resolve just below restores nav state across the same reparse.
+     * No-op for any text_area whose save file doesn't exist yet. */
+    kh_text_areas_reload(new_window);
     if (g_dock_peer_path[0]) {
         g_dock_peer = parse_chtpm(g_dock_peer_path);
         { struct stat pst; if (g_dock_peer && stat(g_dock_peer_path, &pst) == 0) g_dock_peer_mtime = pst.st_mtim; }
@@ -5603,6 +5614,30 @@ static void default_text_area_save(Elem *e) {
     if (!f) return;
     fputs(e->text_area_buffer, f);
     fclose(f);
+}
+
+/* Re-hydrate a <text_area> from its own text_area_<id>.txt (written by
+ * default_text_area_save). Called once per reparse so a projector's
+ * every-Run state rewrite doesn't wipe the user's in-progress buffer.
+ * If the save file is absent the elem keeps its content="" attr value. */
+static void kh_text_areas_reload(Elem *root) {
+    if (!root || !g_package_dir[0]) return;
+    if (strcmp(root->tag, "text_area") == 0) {
+        const char *key = root->target_id[0] ? root->target_id : root->id;
+        if (key[0]) {
+            char path[PATH_BUF];
+            default_text_area_state_path(key, path, sizeof(path));
+            FILE *f = fopen(path, "rb");
+            if (f) {
+                size_t n = fread(root->text_area_buffer, 1,
+                                 sizeof(root->text_area_buffer) - 1, f);
+                root->text_area_buffer[n] = '\0';
+                fclose(f);
+            }
+        }
+    }
+    for (int i = 0; i < root->n_children; i++)
+        kh_text_areas_reload(root->children[i]);
 }
 
 /* REAL, NEW 2026-09-05 - real logical-line (delimited by actual `\n`
@@ -14248,6 +14283,7 @@ int main(int argc, char **argv) {
     g_window = parse_chtpm(g_chtpm_path);
     if (!g_window) { fprintf(stderr, "khtpm_core_render: failed to parse %s\n", g_chtpm_path); return 1; }
     { struct stat gcst; if (stat(g_chtpm_path, &gcst) == 0) g_chtpm_mtime = gcst.st_mtim; }
+    kh_text_areas_reload(g_window); /* 2026-09-08 - restore a persisted <text_area> (sql-hq editor) on launch too, not only across reparse */
     if (elem_has_class(g_window, "dock-header")) {
         /* peer is the static bottom template beside the header, never
          * a generated #.desktop/strip_bottom.chtpm (layout-update). */

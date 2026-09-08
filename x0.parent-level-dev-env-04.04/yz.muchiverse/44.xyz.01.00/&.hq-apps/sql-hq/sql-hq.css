@@ -1,0 +1,11 @@
+/* sql-hq.css - colours/spacing only (khtpm CSS has no real box model). */
+window        { background-color: #14161b; }
+.quiet        { color: #8b93a7; }
+.toolbar      { }
+.data-item    { color: #d6d9e0; }
+.sql-active   { color: #f5b642; font-weight: bold; }
+.grid-head    { color: #f5b642; font-weight: bold; }
+.grid-sep     { color: #3a3f4b; }
+.grid-row     { color: #d6d9e0; }
+.grid-err     { color: #ff6b6b; }
+#editor       { background-color: #0f1013; color: #e8eaf0; }

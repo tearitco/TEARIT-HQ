@@ -34,3 +34,7 @@ echo "-- adapters self-test --"
 $CC -std=c11 -Wall -Wextra -O2 -DSH_ADAPTERS_TEST \
     sql_hq_adapters.c -o +x/sh_adapt.+x
 echo "OK +x/sh_adapt.+x"
+
+echo "-- projector --"
+$CC -std=c11 -Wall -Wextra -O2 sql_hq_projector.c -o +x/sql_hq_projector.+x
+echo "OK +x/sql_hq_projector.+x"

@@ -1,0 +1,62 @@
+<!-- sql-hq.xhtpm - static x11-hq template. sql_hq_projector.+x (module)
+     polls state/ and writes state/ui.txt; the shared khtpm_core_render.+x
+     substitutes ${var} + expands the <repeat>s. class="sql-hq
+     database-window" - CSS + persistent-window only, no g_is_* path.
+
+     - editor is a <text_area> - auto-persists to text_area_editor.txt,
+       re-hydrated across the reparse the projector triggers on Run
+       (renderer capability, 2026-09-08). No projector var seeds it.
+     - sidebar body is a <scrolllist> so the macro list gets the
+       generic [^]/[v] scroll thumbs when it overflows the window.
+     - open / export use the shared file-explorer widget (fe-pick.sh),
+       LOAD + SAVE. ${A} = the action script's abs path (projector). -->
+<window label="SQL-HQ" class="sql-hq database-window" vars="state/ui.txt">
+  <module src="&.hq-apps/sql-hq/ops/+x/sql_hq_projector.+x" args="sql-hq"/>
+  <page name="main">
+    <sidebar>
+      <scrolllist class="from-top">
+        <text label="SOURCE" class="quiet"/>
+        <item id="sql-open"     label="+ Open CSV / PDL" action="'${A}' 'open'"/>
+        <item id="sql-open-dir" label="+ Open Folder"    action="'${A}' 'open-folder'"/>
+        <item id="sql-close"    label="- Close Table"     action="'${A}' 'close' '${active_table}'"/>
+
+        <text label="TABLES" class="quiet"/>
+        <repeat count="${n_tables}" bind="tb">
+          <item id="sql-tb-${tb.#}" class="data-item ${tb.active}" label="${tb.label}"
+                action="'${A}' 'set-table' '${tb.name}'"/>
+        </repeat>
+        <text label="(none - Open a file)" class="quiet" show="${no_tables}"/>
+
+        <text label="MACROS" class="quiet"/>
+        <repeat count="${n_macros}" bind="m">
+          <item id="sql-mac-${m.#}" class="data-item" label="${m.label}"
+                action="'${A}' 'macro' '${m.name}'"/>
+        </repeat>
+      </scrolllist>
+    </sidebar>
+
+    <panel>
+      <row class="toolbar">
+        <item id="sql-run"      label="Run"      action="'${A}' 'run'"/>
+        <item id="sql-commit"   label="Commit"   action="'${A}' 'commit'"/>
+        <item id="sql-rollback" label="Rollback" action="'${A}' 'rollback'"/>
+        <item id="sql-export"   label="Export"   action="'${A}' 'export'"/>
+        <item id="sql-clear"    label="Clear"    action="'${A}' 'clear'"/>
+      </row>
+
+      <!-- class="top" -> laid inline below the toolbar (not bottom-
+           anchored like a chat composer); rows="7" -> editor height. -->
+      <text_area id="editor" target_id="editor" class="top sql-editor" rows="7"
+                 content="-- Open a file from the sidebar, write SQL, hit Run"
+                 action="'${A}' 'run'"/>
+
+      <text label="${status}" class="sql-status"/>
+
+      <scrolllist class="from-top sql-grid">
+        <repeat count="${n_grid}" bind="g">
+          <text label="${g.text}" class="${g.class}"/>
+        </repeat>
+      </scrolllist>
+    </panel>
+  </page>
+</window>
