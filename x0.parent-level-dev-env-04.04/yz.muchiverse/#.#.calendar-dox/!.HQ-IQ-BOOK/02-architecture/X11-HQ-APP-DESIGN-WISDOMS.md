@@ -147,3 +147,23 @@ choice - not an apology, not a TODO that rots.
 generated, none tracked. A `git status` full of them is normal. When
 archiving the house, exclude them (or use `git archive`, which only
 sees tracked files and can't race a live writer - the safe snapshot).
+
+## 11. Translating a GUI mockup → the generic vocabulary (the "playbook")
+
+When the task is *convert an existing GUI app* (or build a new one from
+a visual mockup) and you're unsure which tags to use, whether a "new
+HTML category" is needed, or how to order the nav `[ ]` items — there
+is a concrete recipe:
+
+**`08-roadmap/browser-prompting/platform-passes/13.grok-media-studio-continuation-delegation.md`
+→ section "🎨 DESIGN / LAYOUT PLAYBOOK".**
+
+It has: the 4 window skeletons (pick one, don't hybridise), a
+mockup-widget → generic-tag table (menu bar, transport, LCD, track
+lanes, piano roll, canvas, inspector, mixer drawer, sliders/checkboxes
+/dropdowns — none of which exist as elements), the nav-ordering rules
+(document order = run order; `<text>` never numbered; chrome `[X]`
+auto-last; `target_id` scoping; scroll regions number only visible
+rows), the CSS-subset reality (explicit px widths or it renders 0),
+and a fully worked DAW example with annotated nav numbers. Written for
+Grok, useful for any conversion.

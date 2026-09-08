@@ -187,3 +187,21 @@ generic manager runtime = idea. Windows/Mac delegation itself:
   media apps at `@.apps/music-player-hq/` (completed media conversion,
   better model than co-lab-hai); note screen-rec-hq skeleton; the
   "scaffold each app first, then flesh out one at a time" approach.
+
+## (2026-09-08) design/layout playbook for conversions
+
+Owner: "grok isn't good with making up new html-like categories or
+knowing how to arrange the nav [] items." Added a **DESIGN / LAYOUT
+PLAYBOOK** section to `13.grok-media-studio-continuation-delegation.md`:
+- 4 window skeletons (pick one) + a copy-paste stub
+- mockup-widget → generic-tag table (transport / LCD / lanes / piano
+  roll / canvas / inspector / mixer drawer / sliders-checkboxes-
+  dropdowns don't exist as elements → how to fake each)
+- nav `[ ]` ordering rules (document order = run order; `<text>` never
+  numbered; chrome `[X]` auto-last; `target_id` scoping; scroll regions
+  number only visible rows; ~20 per screen)
+- CSS-subset reality (explicit px or renders 0)
+- fully worked DAW example with annotated nav numbers
+- per-screen checklist
+Pointer added from `02-architecture/X11-HQ-APP-DESIGN-WISDOMS.md` §11
+so it's findable for any conversion (network apps, new toys).
