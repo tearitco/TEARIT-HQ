@@ -3365,8 +3365,14 @@ static int livedesk_build_db_menu(const char *house_root, HQMenuItem *menu, int 
     if (!livedesk_sessions_root(house_root, sroot, sizeof(sroot))) return 0;
     char cur[KTB_PATH_BUF] = "";
     livedesk_root_read(sroot, cur, sizeof(cur), NULL, 0);
-    if (!cur[0]) return 0;
+    if (!cur[0]) return 0;   /* no active session -> no db menu (gate kept) */
 
+    n = livedesk_pdl_menu_rows(house_root, "db", menu, max);
+    if (n > 0) return n;
+    /* fallback: hardcoded rows (used only when the .pdl defines no
+     * db_menu_N_* rows). db-ez -> the 101/102 sub-lists (kept until
+     * db-hq-pal's Common Events tab port lands, see
+     * TASKBAR-MENUS-DATA-DRIVEN.md); db-hq -> the pal dashboard window. */
     if (n < max) {
         snprintf(menu[n].label, sizeof(menu[n].label), "db-ez");
         snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:db-ez-sections");

@@ -65,6 +65,16 @@ SECTION      | ai_menu_3_label       | Co-lab-h-ai
 SECTION      | ai_menu_3_cmd         | livedesk:open-colab-hai
 SECTION      | ai_menu_4_label       | Cancel
 
+# db cell (9.db) - converted from C-hardcoded 2026-09-08. The builder
+# still gates on an active livedesk session (no session -> no menu).
+# db-ez opens the 101/102 Common Events sub-lists (kept until
+# db-hq-pal's CE tab port lands); db-hq opens the pal dashboard window.
+SECTION      | db_menu_1_label       | db-ez
+SECTION      | db_menu_1_cmd         | livedesk:db-ez-sections
+SECTION      | db_menu_2_label       | db-hq
+SECTION      | db_menu_2_cmd         | livedesk:open-db-hq-pal
+SECTION      | db_menu_3_label       | Cancel
+
 SECTION      | palettes_menu_1_label  | canvas-craft
 SECTION      | palettes_menu_1_cmd    | livedesk:open-palette:user-pallet
 SECTION      | palettes_menu_2_label  | emojis
