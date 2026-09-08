@@ -495,36 +495,6 @@ the reported path.
   after its original construction, e.g. `relay`) or may be three
   unrelated bugs - don't assume either way going in.
 
-## 2026-09-08 UPDATE - scoped fix BUILT (both mechanisms, pdl-toggled, default OFF)
-
-Commit on `claude`. Implements BOTH options discussed, each behind its
-own key in `#.desktop/livedesk_override_redirect.pdl`, both default OFF
-so the live desktop is unchanged until flipped:
-
-- **`managed_windows=1`** - the scoped per-window WM-managed opt-in the
-  "Design notes" section below sketched. New `apply_attr()` `managed`
-  branch reads `managed="true"` off a `<window>` tag (only
-  `pchq-board.xhtpm` sets it); `win_managed` at the `XCreateWindow`
-  site mirrors the existing `dock_managed` exactly - WM-managed,
-  decorations via `_MOTIF_WM_HINTS`, independent of the global
-  `override_redirect`. Zero effect on any window that doesn't set the
-  attr (dropdowns/popups/other apps untouched - this is what the
-  2026-09-04 house-wide flip got wrong).
-- **`interact_kbd_grab=1`** - re-adds the reverted `XGrabKeyboard` on
-  Interact-Mode arm, but **bounded**: released on any genuine
-  `FocusOut` (`NotifyNormal`) in `hq_dispatch_xevent()`, re-grabbed on
-  `FocusIn`. The reverted version only released on a fragile
-  projector/reparse cycle; tying the grab to this window actually
-  holding focus makes a house-wide keyboard lock impossible. Same
-  `FocusOut`+`NotifyNormal` filter `g_is_cursword` already uses.
-  `save_zorder_mode()` now preserves both keys across a `@` toggle.
-
-**Test order:** flip `managed_windows=1`, restart pc-hq only, retest
-the click-away/click-back/arrow sequence with REAL hardware (synthetic
-input still masks it). If focus is now solid but keys still drop
-*mid-interact*, also flip `interact_kbd_grab=1` and restart pc-hq.
-Report which combination works so the winning default can be baked in.
-
 ## 2026-09-04 UPDATE - status after the override_redirect incident
 
 - **Bug 3 (`^` badge): CONFIRMED FIXED** by the user live.
