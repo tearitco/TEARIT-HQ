@@ -143,6 +143,13 @@ static void write_ui(void) {
     }
     fprintf(f, "status_line=3D  tool=%s  sel=%s  yaw=%.2f pit=%.2f dist=%.1f\n",
             tool, n_obj?objs[sel_obj].name:"-", cam_yaw, cam_pit, cam_dist);
+    {
+        const char *now = "select";
+        if (!strcmp(tool,"GRAB")) now = "grab";
+        else if (!strcmp(tool,"ROT")) now = "rotate";
+        else if (!strcmp(tool,"SCL")) now = "scale";
+        fprintf(f, "gutter=Sel select   Grab grab   Rot rotate   Scl scale     now: %s\n", now);
+    }
     fprintf(f, "msg=%s\n", g_msg);
     fclose(f); rename(tmp, dst);
 }

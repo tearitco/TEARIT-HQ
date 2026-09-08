@@ -65,6 +65,7 @@
       <text label="${status_line}" class="ms-status"/>
       <canvas id="view" class="ms-canvas" sprite="${canvas_raw}"/>
       <text label="${msg}" class="ms-msg" show="${msg}"/>
+      <text label="${gutter}" class="ms-gutter"/>
     </panel>
   </page>
 </window>

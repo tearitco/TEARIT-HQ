@@ -146,6 +146,15 @@ static void write_ui(void) {
     }
     fprintf(f, "status_line=2D  tool=%c  brush=%d  zoom=%d%%  pan=%d,%d  fg=%d,%d,%d\n",
             tool, brush, zoom, panx, pany, fg[0], fg[1], fg[2]);
+    {
+        const char *now = "brush";
+        if (tool=='E') now = "eraser";
+        else if (tool=='G') now = "fill";
+        else if (tool=='R') now = "rect";
+        else if (tool=='I') now = "eyedrop";
+        else if (tool=='H') now = "hand";
+        fprintf(f, "gutter=B brush   E eraser   G fill   R rect   I eyedrop   H hand     now: %s\n", now);
+    }
     fprintf(f, "msg=%s\n", g_msg);
     fclose(f); rename(tmp, dst);
 }

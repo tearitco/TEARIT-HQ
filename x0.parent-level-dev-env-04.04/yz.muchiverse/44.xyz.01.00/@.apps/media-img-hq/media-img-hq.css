@@ -1,4 +1,4 @@
-window { width: 960px; height: 600px; background-color: #121214;
+window { width: 960px; height: 640px; background-color: #121214;
   font-family: DejaVu Sans; font-size: 11px; }
 .ms-side { width: 280px; background-color: #0e0e10; border: 1px solid #262629; border-width: 1; }
 .ms-quiet { color: #7b7f88; font-size: 10px; padding: 4px 8px; width: 260px; height: 16px; }
@@ -9,6 +9,8 @@ window { width: 960px; height: 600px; background-color: #121214;
 .active { background-color: #24384a; color: #7ec8ff; }
 .ms-status { color: #9fd0a0; padding: 4px 8px; width: 640px; height: 18px; }
 .ms-msg { color: #ffd54a; padding: 4px 8px; width: 640px; height: 16px; }
-.ms-canvas { width: 640px; height: 480px; background-color: #000000;
+.ms-canvas { width: 640px; height: 440px; background-color: #000000;
   border: 1px solid #2a2a2e; border-width: 1; }
+.ms-gutter { color: #c8c8ce; background-color: #0a0a0c; padding: 6px 10px;
+  width: 640px; height: 36px; font-size: 11px; }
 .tab { width: 80px; height: 22px; }
