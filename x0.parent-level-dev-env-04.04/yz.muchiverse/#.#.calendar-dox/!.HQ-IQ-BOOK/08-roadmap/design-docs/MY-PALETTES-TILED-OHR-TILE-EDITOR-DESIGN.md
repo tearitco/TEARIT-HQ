@@ -48,7 +48,7 @@ Sprout Lands Basic pack (Cup Nooble, itch.io) at
 - Also `Characters/`, `Objects/` — DIR tabs like RMMV non-tileset dirs.
 
 House copy target (same outside-zip rule):  
-`NNEST-12.00/x0.parent-level-dev-env-04.04/#.NNEST_ASSETS/tiled-sprout-lands/`  
+`NNEST-12.00/#.NNEST_ASSETS/tiled-sprout-lands/`  
 plus optional later clone of Tiled `examples/` as `tiled-official-examples/`.
 
 PDL: `1.^V-hq/TILED-ASSET-SOURCE-LOCATION.pdl`.

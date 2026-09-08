@@ -1,7 +1,22 @@
-<!-- palettes-tile-editor.xhtpm — v1 stub. Canvas editor is PR4 in the design doc. -->
-<window label="palettes: Tile Editor" class="palettes-pal database-window">
+<!-- palettes-tile-editor.xhtpm — 16x16 stamp canvas (composed .raw). -->
+<window label="palettes: Tile Editor  ${gutter}" class="database-window" vars="state/tile_editor_ui.txt">
+  <module src="&.widgits/palettes/ops/+x/tile_editor_manager.+x"/>
   <page name="main">
     <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>
-    <text label="Tile editor canvas is next. Use Tiled Tiles / OHR Tiles to pick, My Palettes to import your own sheets." class="quiet"/>
+    <item id="fullscreen" class="chrome-btn" label="!" onclick="TOGGLE_FULLSCREEN"/>
+    <item id="minimize" class="chrome-btn" label="_" onclick="MINIMIZE"/>
+    <tabbar class="tab-bar">
+      <tab id="l" class="tab" label="&lt;" action="'${HOUSE}/&.widgits/palettes/ops/tile_editor_action.sh' 'CUR:L' '${PKG}'"/>
+      <tab id="r" class="tab" label="&gt;" action="'${HOUSE}/&.widgits/palettes/ops/tile_editor_action.sh' 'CUR:R' '${PKG}'"/>
+      <tab id="u" class="tab" label="^" action="'${HOUSE}/&.widgits/palettes/ops/tile_editor_action.sh' 'CUR:U' '${PKG}'"/>
+      <tab id="d" class="tab" label="v" action="'${HOUSE}/&.widgits/palettes/ops/tile_editor_action.sh' 'CUR:D' '${PKG}'"/>
+      <tab id="pm" class="tab" label="tile-" action="'${HOUSE}/&.widgits/palettes/ops/tile_editor_action.sh' 'PAL:-' '${PKG}'"/>
+      <tab id="pp" class="tab" label="tile+" action="'${HOUSE}/&.widgits/palettes/ops/tile_editor_action.sh' 'PAL:+' '${PKG}'"/>
+      <tab id="plot" class="tab" label="Plot" action="'${HOUSE}/&.widgits/palettes/ops/tile_editor_action.sh' 'PLOT' '${PKG}'"/>
+      <tab id="fill" class="tab" label="Fill" action="'${HOUSE}/&.widgits/palettes/ops/tile_editor_action.sh' 'FILL' '${PKG}'"/>
+      <tab id="er" class="tab" label="Erase" action="'${HOUSE}/&.widgits/palettes/ops/tile_editor_action.sh' 'ERASE' '${PKG}'"/>
+    </tabbar>
+    <canvas id="view" class="ms-canvas" sprite="${canvas_raw}"/>
+    <text label="${gutter}" class="quiet"/>
   </page>
 </window>

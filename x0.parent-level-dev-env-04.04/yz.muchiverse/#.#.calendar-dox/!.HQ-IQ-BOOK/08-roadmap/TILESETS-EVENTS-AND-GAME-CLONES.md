@@ -50,11 +50,13 @@ Same rule as RMMV: PNGs do not live inside `44.xyz.01.00`. Pointers:
 
 | What | PDL (`#.#.calendar-dox/1.^V-hq/`) | On-disk root |
 |---|---|---|
-| RPG Maker MV img | `RMMV-ASSET-SOURCE-LOCATION.pdl` `img_root` | `NNEST-11.17/#.NNEST_ASSETS/rmmv-www-img` (USB-sourced copy) |
-| Mineclonia / MC-like | `MINECLONIA-ASSET-SOURCE-LOCATION.pdl` `img_root` | `x0.parent-level-dev-env-04.04/#.NNEST_ASSETS/mineclonia/mods` (Codeberg clone, Pixel Perfection, **not** Mojang) |
-| CDDA UltiCa | `CDDA-ASSET-SOURCE-LOCATION.pdl` `img_root` | `x0.parent-level-dev-env-04.04/#.NNEST_ASSETS/cdda-tilesets/gfx/UltimateCataclysm` (sparse `I-am-Erk/CDDA-Tilesets`) |
-| Unicode emoji 17.0 | `UNICODE-EMOJI-SOURCE-LOCATION.pdl` `source_file` | `x0.parent-level-dev-env-04.04/#.NNEST_ASSETS/unicode-emoji/emoji-test-17.0.txt` (official UTS #51; 14.0 copy is stale) |
-| Video demo clip | `VIDEO-ASSET-SOURCE-LOCATION.pdl` `sample_mp4` | `NNEST-12.00/#.NNEST_ASSETS/video/sample-10s-vp9.mp4` (moved 2026-09-08 off `#.media-library`) |
+| RPG Maker MV img | `RMMV-ASSET-SOURCE-LOCATION.pdl` `img_root` | `NNEST-12.00/#.NNEST_ASSETS/rmmv-www-img` |
+| Mineclonia / MC-like | `MINECLONIA-ASSET-SOURCE-LOCATION.pdl` `img_root` | `NNEST-12.00/#.NNEST_ASSETS/mineclonia/mods` |
+| CDDA UltiCa | `CDDA-ASSET-SOURCE-LOCATION.pdl` `img_root` | `NNEST-12.00/#.NNEST_ASSETS/cdda-tilesets/gfx/UltimateCataclysm` |
+| Tiled / Sprout Lands | `TILED-ASSET-SOURCE-LOCATION.pdl` `img_root` | `NNEST-12.00/#.NNEST_ASSETS/tiled-sprout-lands` |
+| OHRRPGCE pages | `OHRRPGCE-ASSET-SOURCE-LOCATION.pdl` `img_root` | `NNEST-12.00/#.NNEST_ASSETS/ohrrpgce-tiles` |
+| Unicode emoji 17.0 | `UNICODE-EMOJI-SOURCE-LOCATION.pdl` `source_file` | `NNEST-12.00/#.NNEST_ASSETS/unicode-emoji/emoji-test-17.0.txt` |
+| Video demo clip | `VIDEO-ASSET-SOURCE-LOCATION.pdl` `sample_mp4` | `NNEST-12.00/#.NNEST_ASSETS/video/sample-10s-vp9.mp4` |
 
 Do not commit clones or generated sprite.csv. License: Mineclonia LEGAL.md;
 CDDA CC-BY-SA 3.0 in the tileset repo.

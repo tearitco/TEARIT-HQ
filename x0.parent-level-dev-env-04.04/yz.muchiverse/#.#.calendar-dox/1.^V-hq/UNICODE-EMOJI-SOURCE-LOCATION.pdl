@@ -1,6 +1,6 @@
 SECTION      | KEY                | VALUE
 ----------------------------------------------------------------------
-SOURCE       | source_file        | /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/#.NNEST_ASSETS/unicode-emoji/emoji-test-17.0.txt
+SOURCE       | source_file        | /home/no/Desktop/github/work/NNEST-12.00/#.NNEST_ASSETS/unicode-emoji/emoji-test-17.0.txt
 NOTE         | why                | Official Unicode emoji-test.txt (UTS #51). Version 17.0 is the current complete RGI keyboard set. The local 14.0 copy at /home/no/Desktop/github/work/#.potential-assets/emoji-test_14.0=BEST.txt is three versions behind (missing E15–E17).
 NOTE         | layout             | DIR = Unicode group (Smileys & Emotion, …)  TILESET = subgroup (face-smiling, …)  grid = fully-qualified glyphs, skin-tone variants omitted so a subgroup fits the picker
 NOTE         | url                | https://unicode.org/Public/emoji/latest/emoji-test.txt
