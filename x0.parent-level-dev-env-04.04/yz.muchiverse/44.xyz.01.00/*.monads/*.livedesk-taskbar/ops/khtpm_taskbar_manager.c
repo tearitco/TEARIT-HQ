@@ -1040,6 +1040,56 @@ void ktb_action_portable(const char *in, char *out, size_t out_sz) {
 static void livedesk_close_all(const char *house_root);
 #ifndef _WIN32
 static void livedesk_kill_stray_entities(const char *house_root);
+
+/* REAL, NEW 2026-09-08 (direct live report: "i used quit to quit tb but
+ * it's still on screen"). X.quit / [X]-close stop the manager loop
+ * (g_running = 0) and close entities, but the strip's own RENDERER is a
+ * separate process (khtpm_core_render.+x <house>
+ * .../khtpm_strip_header.xhtpm, + the bottom peer) launched as a
+ * sibling by run_khtpm_strip.sh - nothing was signalling it, so the bar
+ * stayed on screen orphaned after the manager exited. This is the
+ * narrow /proc sweep run_khtpm_strip.sh's own strip_parser_pids() does,
+ * ported to C: ONLY khtpm_core_render.+x processes for THIS house_root
+ * whose argv also names the strip header/bottom template - never a pal,
+ * an hq window, or the manager itself. SIGTERM then SIGKILL after 1s,
+ * same shape as livedesk_kill_stray_entities(). */
+static void livedesk_kill_strip_renderers(const char *house_root) {
+    DIR *pd = opendir("/proc");
+    if (!pd) return;
+    pid_t pids[16];
+    int n = 0;
+    struct dirent *ent;
+    while ((ent = readdir(pd)) != NULL) {
+        if (ent->d_name[0] < '0' || ent->d_name[0] > '9') continue;
+        char cpath[64];
+        snprintf(cpath, sizeof(cpath), "/proc/%s/cmdline", ent->d_name);
+        FILE *cf = fopen(cpath, "r");
+        if (!cf) continue;
+        char cmdbuf[KTB_PATH_BUF * 2];
+        size_t nb = fread(cmdbuf, 1, sizeof(cmdbuf) - 1, cf);
+        fclose(cf);
+        if (nb == 0) continue;
+        cmdbuf[nb] = '\0';
+        for (size_t i = 0; i < nb; i++) if (cmdbuf[i] == '\0') cmdbuf[i] = ' ';
+        if (strstr(cmdbuf, house_root) &&
+            strstr(cmdbuf, "khtpm_core_render.+x") &&
+            (strstr(cmdbuf, "khtpm_strip_header.xhtpm") ||
+             strstr(cmdbuf, "khtpm_strip_bottom.xhtpm") ||
+             strstr(cmdbuf, "strip_header.chtpm") ||
+             strstr(cmdbuf, "strip_bottom.chtpm"))) {
+            int pid = atoi(ent->d_name);
+            if (pid > 0 && n < (int)(sizeof(pids) / sizeof(pids[0]))) pids[n++] = (pid_t)pid;
+        }
+    }
+    closedir(pd);
+    if (n == 0) return;
+    for (int i = 0; i < n; i++) kill(pids[i], SIGTERM);
+    struct timespec ts = {1, 0};
+    nanosleep(&ts, NULL);
+    for (int i = 0; i < n; i++) {
+        if (kill(pids[i], 0) == 0) kill(pids[i], SIGKILL);
+    }
+}
 #endif
 
 void ktb_quit_and_save(KtbState *s) {
@@ -1077,6 +1127,7 @@ void ktb_quit_and_save(KtbState *s) {
     livedesk_close_all(s->house_root);
 #ifndef _WIN32
     livedesk_kill_stray_entities(s->house_root);
+    livedesk_kill_strip_renderers(s->house_root);
 #endif
     ktb_unlink_pidfile(s);
 }
