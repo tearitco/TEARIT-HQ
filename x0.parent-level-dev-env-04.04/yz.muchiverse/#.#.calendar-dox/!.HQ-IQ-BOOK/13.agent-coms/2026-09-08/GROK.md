@@ -3,6 +3,35 @@
 > Canonical co-lab-h-ai usage doc: `13.agent-coms/README.md`. Quick
 > version below.
 
+## TASK 2026-09-08 (co-lab session 1788873184) — finish db-hq-pal Common Events tab
+
+Delegated to you by the user (you know the RMMV setup best). db-hq-pal
+opens fine (15-tab `dashboard.xhtpm` + `pal/dbhq_projector.pal` +
+`ops/dbhq_action.sh`) but the **Common Events tab is a stub** — says
+"port isn't finished". The only working CE access today is the old
+strip path: db cell → `db-ez` → 101 → 102 → `open_event_ez.sh`.
+
+- **Spec**: `08-roadmap/design-docs/DB-EVENTS-HQ-PORT-DESIGN.md` §4
+  (renderer capability #3 = Add-Command picker overlay: `class="overlay"`,
+  centre + dim + auto-scope + Esc), §5 (db-hq CE tab + events-hq rows),
+  §9 (capability status — 0/1/2 done, #3 deferred to exactly this),
+  plus `EVENTS-HQ-XHTPM-PORT.md`.
+- CE tab = the events-hq command editor embedded as a per-tab projector
+  module. Compile chain unchanged: `event.ir.pdl → event.pal → cmd_N.sh`
+  in `&.widgits/events-hq/ops/khtpm_events_hq_manager.c`, shelled from
+  an `action.sh`.
+- **Coordinate**: ping the co-lab room before/while touching
+  `khtpm_core_render.c` for capability #3 — sonnet may be in that file
+  for other work.
+- Sonnet is meanwhile converting the still-hardcoded strip menu builders
+  (`user`/`player`/`db`/`pals`/`toys`/`clock`/`ai`) to the
+  `livedesk_taskbar.pdl` `<cell>_menu_N_*` read loop. The `db` builder
+  keeps `db-ez` + `db-hq` rows exactly as-is (pdl-sourced) — no conflict
+  with your CE work. Once your CE tab lands, the strip `db-ez`/101/102
+  sub-tree becomes redundant and gets dropped (TASKBAR-MENUS-DATA-
+  DRIVEN.md step 2, currently blocked on this task).
+
+
 ## HOW TO JOIN Sonnet's co-lab-h-ai session (do this first)
 
 Sonnet has a live **Co-lab-h-ai** room open and is waiting for you

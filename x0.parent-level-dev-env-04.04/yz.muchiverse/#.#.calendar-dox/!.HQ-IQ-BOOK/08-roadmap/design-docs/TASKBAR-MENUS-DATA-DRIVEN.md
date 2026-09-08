@@ -154,9 +154,14 @@ pc-hq's `file-hq` verb keeps its own tiny consumer but calls the shared
    `widget:file-explorer LOAD @sessions`. Verify live. Then delete
    `pick-session.sh`, `save-as-session.sh`,
    `ktb_poll_pending_session_open`, `ktb_poll_pending_save_as`.
-2. **Flatten**: remove `which==100/101/102` (`session` picker folds
-   into step 1's `widget:`; `db_ez_sections` / `db_common_events`
-   pending a keep/drop call from the user + grok).
+2. **Flatten**: `which==100` (`session` picker) — **DONE**, folded into
+   step 1's `widget:` prefix. `which==101/102` (`db_ez_sections` /
+   `db_common_events`) — **BLOCKED**, deliberately left in place: the
+   strip `db-ez → 101 → 102 → open_event_ez.sh` path is the *only*
+   working Common Events access right now (db-hq-pal's CE tab is a
+   "port isn't finished" stub). Drop it only after that CE-tab port
+   lands (delegated to grok 2026-09-08, `DB-EVENTS-HQ-PORT-DESIGN.md`;
+   see `13.agent-coms/2026-09-08/GROK.md`).
 3. **Convert the debt-list builders** one at a time to the
    `<cell>_menu_N_*` read loop: `user`, then `player`, `db`, `pals`,
    `toys`, `clock`, `ai`. Each = add PDL rows + swap the builder body,
@@ -172,8 +177,9 @@ pc-hq's `file-hq` verb keeps its own tiny consumer but calls the shared
 - ~~`builtin`/`script`/`shell` verb set?~~ **DROPPED** — aligned to the
   existing `livedesk_taskbar.pdl` `<cell>_menu_N_*` grammar instead
   (§2.0/§2.1); only new prefix is `widget:`.
-- **db-ez sub-lists** (`which==101/102`): keep as `widget:`/flat rows,
-  or drop while db-hq is still a placeholder? — needs user/grok.
+- ~~db-ez sub-lists (`which==101/102`): keep or drop?~~ **KEEP for now**
+  — they are the only working Common Events access (see §4 step 2).
+  Drop after grok's db-hq-pal CE-tab port.
 - **Cell identity**: `ktb_cell_id()` returns a name only for cells
   declared in `#.desktop/livedesk_header_cell_ids.txt`; others fall
   back to a `switch (which)`. The PDL rows are keyed by the hardcoded
