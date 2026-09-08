@@ -109,6 +109,41 @@ tabs & entities."
   (`$.restart`, or `run_khtpm_strip.sh new`). Until then X.quit still
   logs out.
 
+## Grok handoff updated: finish 103.media-studio → x11-HQ
+
+`08-roadmap/browser-prompting/platform-passes/13.grok-media-studio-
+continuation-delegation.md` rewritten from "weighing the decision" to a
+completion handoff.
+
+- Confirmed state: **none of the 4 sub-apps converted** (img-editor,
+  3d=blender-clone, daw, vid-edit — all still `button.sh` + `*_main.c`
+  pile). The prior Grok attempt (`grok-frozen-s3.md`) froze mid-edit;
+  nothing landed. tts = skip.
+- Decision locked: **Option B, house-spec x11-HQ toy** per app (thin
+  manager + `.xhtpm`/`.css` + shared `khtpm_core_render.+x` + `toy.pdl`,
+  generic nav, file-backed state). Structural template = `&.hq-apps/
+  co-lab-hai/`. Migration, not redesign — keep every `HOW2_*.md`
+  feature.
+- Order (owner's call): **img + 3d=blender-clone MERGED into one 2D/3D
+  app with piececraft-hq camera controls** (reuse Interact-Mode relay +
+  `bv_menu_input` camera dispatch, `PLAN-pchq-interact-camera-pov.md`)
+  → then daw → then vid-edit.
+- Toys menu = `toy.pdl` opt-in, scanned one level deep under
+  `house_root/` `@.apps/` `&.widgits/`; recommend converted apps move
+  to `@.apps/media-<name>/`.
+- Gates spelled out: CENTROID_GOLD_STD, pitfalls #11/#14/#15, relay
+  testing, no `g_is_*` / no bespoke layout branch, `kh_plat.h` for the
+  manager. Framed as Windows-handoff prep (house-spec rides the shared
+  renderer seam).
+
+## Pre-Windows work still queued (context)
+
+`08-roadmap/design-docs/CROSS-PLATFORM-SEAM-AND-SHARED-INFRA.md`:
+Part 1 `kh_plat` shipped (elements manager migrated); Part 2 renderer
+platform seam = **guidance-only for the porter, not pre-built**; Part 3
+generic manager runtime = idea. Windows/Mac delegation itself:
+`browser-prompting/platform-passes/12.grok-windows-mac-compat-delegation.md`.
+
 ## Open / next
 
 - Everything still open in `2026-09-05/` and `2026-09-06/` 2do.
