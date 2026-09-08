@@ -237,12 +237,11 @@ void ktb_hq_digit(KtbState *s, int d);
  * session / pal placement / cancel), mirroring run_popup_row()'s dispatch. */
 void ktb_hq_activate(KtbState *s, int row);
 
-/* poll #.desktop/livedesk_pending_open_session.txt (dropped by
- * #.desktop/scripts/pick-session.sh after the File Explorer widget
- * returns a pick) and load that session once. Call every main-loop
- * tick. No-op when the file is absent. */
-void ktb_poll_pending_session_open(KtbState *s);
-void ktb_poll_pending_save_as(KtbState *s);
+/* Consume a `widget:` menu row's result: #.desktop/scripts/menu-widget.sh
+ * writes #.desktop/livedesk_widget_result.txt (verb= / value=); this
+ * routes on verb (open-session -> load, save-as -> save-as, ...). Call
+ * every main-loop tick; no-op when the file is absent. */
+void ktb_poll_widget_result(KtbState *s);
 
 void ktb_cliio_open_save_as(KtbState *s);
 void ktb_cliio_open_rename_desk(KtbState *s); /* seeds buffer with the current active desk's name */

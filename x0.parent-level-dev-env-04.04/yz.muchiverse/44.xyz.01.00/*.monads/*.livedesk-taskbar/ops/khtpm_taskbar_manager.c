@@ -2416,35 +2416,10 @@ static void livedesk_load_session(const char *house_root, const char *sroot, con
     livedesk_root_write(sroot, id, cur[0] ? cur : id);
 }
 
-/* REAL, NEW 2026-09-08 - the file cell's "load" row now opens the real
- * File Explorer widget (a separate window) instead of an in-place
- * session-picker sub-dropdown that could freeze the strip nav. The
- * widget can't call back into this process, so #.desktop/scripts/
- * pick-session.sh drops the picked session id here; this is polled
- * from the main loop and consumed once. `id` is a bare session dir
- * name (basename of what the user picked under the sessions root). */
-void ktb_poll_pending_session_open(KtbState *s) {
-    char path[KTB_PATH_BUF];
-    path_join(path, sizeof(path), s->house_root,
-              "#.desktop/livedesk_pending_open_session.txt");
-    FILE *f = ktb_fopen(path, "r");
-    if (!f) return;
-    char id[64] = "";
-    if (fgets(id, sizeof(id), f)) {
-        char *nl = strpbrk(id, "\r\n"); if (nl) *nl = '\0';
-    }
-    fclose(f);
-    remove(path);
-    if (!id[0]) return;
-    /* reject anything with a path separator - id is a bare dir name */
-    if (strchr(id, '/') || strchr(id, '\\') || strcmp(id, "..") == 0) return;
-    char sroot[KTB_PATH_BUF];
-    if (!livedesk_sessions_root(s->house_root, sroot, sizeof(sroot))) return;
-    char sp[KTB_PATH_BUF];
-    snprintf(sp, sizeof(sp), "%s/%s/session.pdl", sroot, id);
-    if (access(sp, F_OK) != 0) return;   /* not a real session */
-    livedesk_load_session(s->house_root, sroot, id);
-}
+/* (2026-09-08) ktb_poll_pending_session_open + ktb_poll_pending_save_as
+ * were merged into the single generic ktb_poll_widget_result(), defined
+ * below after livedesk_save_as_with_name(). See
+ * 08-roadmap/design-docs/TASKBAR-MENUS-DATA-DRIVEN.md step 1. */
 
 static void livedesk_new_session(const char *house_root) {
     char sroot[KTB_PATH_BUF];
@@ -2513,31 +2488,68 @@ static void livedesk_save_as_with_name(const char *house_root, const char *sroot
     livedesk_root_write(sroot, nid, "");
 }
 
-/* Symmetric with ktb_poll_pending_session_open (2026-09-08). The file
- * cell's "save-as" row used to call ktb_cliio_open_save_as() - the
- * in-place cli_io name prompt - which, reached from the file sub-menu
- * (an already-replaced popup), latched the strip nav on cell 3 exactly
- * like the old "load" path did. Now "save-as" launches
- * #.desktop/scripts/save-as-session.sh, which opens the File Explorer
- * widget in SAVE mode at the sessions root and drops the typed name
- * here; this is polled from the main loop and consumed once. */
-void ktb_poll_pending_save_as(KtbState *s) {
+/* Generic consumer for a `widget:` menu row's result (2026-09-08, the
+ * TASKBAR-MENUS-DATA-DRIVEN.md step-1 replacement for the two per-feature
+ * pollers ktb_poll_pending_session_open / ktb_poll_pending_save_as).
+ *
+ * #.desktop/scripts/menu-widget.sh runs the widget (File Explorer),
+ * resolves the pick, and writes #.desktop/livedesk_widget_result.txt:
+ *   verb=<routing key>
+ *   value=<picked absolute path, or empty on cancel>
+ * This is polled once per main-loop tick and consumed (file removed).
+ *
+ * verbs handled here:
+ *   open-session : `value` is a path at/under the sessions root -> the
+ *                  session dir name -> livedesk_load_session().
+ *   save-as      : `value`'s basename is the new session name ->
+ *                  livedesk_save_as_with_name().
+ * An unknown/empty verb, or empty value, is a harmless no-op. */
+void ktb_poll_widget_result(KtbState *s) {
     char path[KTB_PATH_BUF];
     path_join(path, sizeof(path), s->house_root,
-              "#.desktop/livedesk_pending_save_as.txt");
+              "#.desktop/livedesk_widget_result.txt");
     FILE *f = ktb_fopen(path, "r");
     if (!f) return;
-    char name[64] = "";
-    if (fgets(name, sizeof(name), f)) {
-        char *nl = strpbrk(name, "\r\n"); if (nl) *nl = '\0';
+    char verb[32] = "", value[KTB_PATH_BUF] = "";
+    char line[KTB_PATH_BUF];
+    while (fgets(line, sizeof(line), f)) {
+        line[strcspn(line, "\r\n")] = '\0';
+        if (strncmp(line, "verb=", 5) == 0)
+            snprintf(verb, sizeof(verb), "%s", line + 5);
+        else if (strncmp(line, "value=", 6) == 0)
+            snprintf(value, sizeof(value), "%s", line + 6);
     }
     fclose(f);
     remove(path);
-    if (!name[0]) return;
-    if (strchr(name, '/') || strchr(name, '\\') || strcmp(name, "..") == 0) return;
+    if (!verb[0] || !value[0]) return;
+
     char sroot[KTB_PATH_BUF];
     if (!livedesk_sessions_root(s->house_root, sroot, sizeof(sroot))) return;
-    livedesk_save_as_with_name(s->house_root, sroot, name);
+
+    if (strcmp(verb, "open-session") == 0) {
+        /* map the picked path -> a bare session dir name under sroot */
+        char id[64] = "";
+        size_t rl = strlen(sroot);
+        if (strncmp(value, sroot, rl) == 0 && value[rl] == '/') {
+            const char *rel = value + rl + 1;
+            const char *slash = strchr(rel, '/');
+            size_t n = slash ? (size_t)(slash - rel) : strlen(rel);
+            if (n > 0 && n < sizeof(id)) { memcpy(id, rel, n); id[n] = '\0'; }
+        } else {
+            const char *base = strrchr(value, '/');
+            snprintf(id, sizeof(id), "%s", base ? base + 1 : value);
+        }
+        if (!id[0] || strcmp(id, "..") == 0) return;
+        char sp[KTB_PATH_BUF];
+        snprintf(sp, sizeof(sp), "%s/%s/session.pdl", sroot, id);
+        if (access(sp, F_OK) != 0) return;
+        livedesk_load_session(s->house_root, sroot, id);
+    } else if (strcmp(verb, "save-as") == 0) {
+        const char *base = strrchr(value, '/');
+        const char *name = base ? base + 1 : value;
+        if (!name[0] || strcmp(name, "..") == 0) return;
+        livedesk_save_as_with_name(s->house_root, sroot, name);
+    }
 }
 
 static int livedesk_build_session_menu(const char *house_root, HQMenuItem *menu, int max) {
@@ -3080,8 +3092,8 @@ static int livedesk_build_file_menu(const char *house_root, HQMenuItem *menu, in
     int n = 0;
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "new-desk"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:new-desk"); n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "save"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:save"); n++; }
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "save-as"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:save-as"); n++; }
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "load"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:load"); n++; }
+    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "save-as"); snprintf(menu[n].command, sizeof(menu[n].command), "widget:file-explorer SAVE @sessions save-as"); n++; }
+    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "load"); snprintf(menu[n].command, sizeof(menu[n].command), "widget:file-explorer LOAD @sessions open-session"); n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Cancel"); menu[n].command[0] = '\0'; n++; }
     return n;
 }
@@ -3833,6 +3845,30 @@ void ktb_hq_activate(KtbState *s, int row) {
          * undo the renderer's toggle on the same click. */
         return;
     }
+    if (strncmp(m->command, "widget:", 7) == 0) {
+        /* Generic "open a helper window and act on its result" menu row
+         * (2026-09-08, TASKBAR-MENUS-DATA-DRIVEN.md step 1). _cmd form:
+         *   widget:<name> <MODE> <start-token> <result-verb>
+         * e.g. `widget:file-explorer LOAD @sessions open-session`.
+         * menu-widget.sh runs the widget modally and drops the pick in
+         * #.desktop/livedesk_widget_result.txt for ktb_poll_widget_
+         * result() (main loop). No in-place menu swap -> can't latch
+         * strip nav the way the old livedesk:load / :save-as did. */
+        char wname[32] = "", wmode[16] = "", wstart[64] = "", wverb[32] = "";
+        sscanf(m->command + 7, "%31s %15s %63s %31s", wname, wmode, wstart, wverb);
+        if (wname[0] && wverb[0]) {
+            char fx[KTB_PATH_BUF * 3];
+            snprintf(fx, sizeof(fx),
+                     KTB_SETSID "nohup sh -c 'sh \"%s/#.desktop/scripts/menu-widget.sh\" \"%s\" \"%s\" \"%s\" \"%s\" \"%s\"' >/dev/null 2>&1 &",
+                     s->house_root, s->house_root, wname,
+                     wmode[0] ? wmode : "LOAD",
+                     wstart[0] ? wstart : "@house", wverb);
+            int rc = ktb_system_recorded(s->house_root, fx);
+            (void)rc;
+        }
+        ktb_hq_close(s);
+        return;
+    }
     if (strcmp(m->command, "user:new") == 0) {
         /* 2026-09-03: "New User..." now opens the real signup-hq window
          * (a proper CENTROID_GOLD_STD x11-hq window - own manager +
@@ -4384,56 +4420,13 @@ void ktb_hq_activate(KtbState *s, int row) {
          * replacement popup). */
         livedesk_save(s->house_root);
         ktb_hq_close(s);
-    } else if (strcmp(m->command, "livedesk:save-as") == 0) {
-        /* file cell's "save-as" row - mirrors livedesk_dispatch()'s
-         * `livedesk_save_as()` branch, which opens the cli-io text-input
-         * modal (same real target as the standalone which==4 header used
-         * to be before this pass's 12-cell renumbering - see
-         * ktb_cliio_open_save_as()).
-         *
-         * REAL FIX 2026-09-08 (live report: "save as didn't open picker
-         * and gets stuck on 3 like load did b4"). Reached from the file
-         * sub-menu, ktb_cliio_open_save_as()'s in-place cli_io prompt
-         * latched the strip nav on cell 3. Same cure as "load": close
-         * the menu, launch save-as-session.sh -> File Explorer widget in
-         * SAVE mode at the sessions root -> drops the typed name in
-         * #.desktop/livedesk_pending_save_as.txt for
-         * ktb_poll_pending_save_as() (main loop). */
-        {
-            char fx[KTB_PATH_BUF * 3];
-            snprintf(fx, sizeof(fx),
-                     KTB_SETSID "nohup sh -c 'sh \"%s/#.desktop/scripts/save-as-session.sh\" \"%s\"' >/dev/null 2>&1 &",
-                     s->house_root, s->house_root);
-            int rc = ktb_system_recorded(s->house_root, fx);
-            (void)rc;
-        }
-        ktb_hq_close(s);
-    } else if (strcmp(m->command, "livedesk:load") == 0) {
-        /* file cell's "load" row.
-         *
-         * REAL FIX 2026-09-08 (direct live report: "when i click load
-         * in []3. it gets stuck instead of opening the filebrowser
-         * widget"). The old path was `ktb_hq_open(s, 100)` - it swapped
-         * this menu IN PLACE for the "session picker" sub-dropdown, a
-         * which>15 pseudo-cell with no real header cell behind it. That
-         * nested/replaced-popup shape has no clean way out (the code's
-         * own comment: "13 is an inert cell and would close the popup")
-         * and its nav could latch, freezing the strip focus on cell 3.
-         *
-         * Now (2026-09-08): close the menu and run pick-session.sh - it
-         * opens the real File Explorer widget (its own window, its own
-         * [X]) started at the sessions root, waits for the pick, and
-         * drops the chosen session id in
-         * #.desktop/livedesk_pending_open_session.txt, which
-         * ktb_poll_pending_session_open() (main loop) consumes and hands
-         * to livedesk_load_session(). */
-        char fx[KTB_PATH_BUF * 3];
-        snprintf(fx, sizeof(fx),
-                 KTB_SETSID "nohup sh -c 'sh \"%s/#.desktop/scripts/pick-session.sh\" \"%s\"' >/dev/null 2>&1 &",
-                 s->house_root, s->house_root);
-        int rc = ktb_system_recorded(s->house_root, fx);
-        (void)rc;
-        ktb_hq_close(s);
+    /* file cell's "save-as" / "load" rows are now `widget:` _cmd rows
+     * (livedesk_taskbar.pdl file_menu_*), handled by the generic
+     * strncmp(m->command, "widget:", 7) branch near the top of this
+     * function -> menu-widget.sh -> ktb_poll_widget_result(). The old
+     * livedesk:save-as / livedesk:load branches (and pick-session.sh /
+     * save-as-session.sh) were deleted 2026-09-08, TASKBAR-MENUS-DATA-
+     * DRIVEN.md step 1. */
     } else if (strcmp(m->command, "quit") == 0) {
         /* Real HQ menu's "X.quit" row (which==1, see ktb_hq_open()) -
          * mirrors tp_taskbar.c's agent_relay_dispatch() "quit" branch. Can't

@@ -34,9 +34,9 @@ SECTION      | file_menu_1_cmd     | livedesk:new-desk
 SECTION      | file_menu_2_label   | save
 SECTION      | file_menu_2_cmd     | livedesk:save
 SECTION      | file_menu_3_label   | save-as
-SECTION      | file_menu_3_cmd     | livedesk:save-as
+SECTION      | file_menu_3_cmd     | widget:file-explorer SAVE @sessions save-as
 SECTION      | file_menu_4_label   | load
-SECTION      | file_menu_4_cmd     | livedesk:load
+SECTION      | file_menu_4_cmd     | widget:file-explorer LOAD @sessions open-session
 SECTION      | file_menu_5_label   | Cancel
 
 SECTION      | desk_menu_action_1_label | edit
