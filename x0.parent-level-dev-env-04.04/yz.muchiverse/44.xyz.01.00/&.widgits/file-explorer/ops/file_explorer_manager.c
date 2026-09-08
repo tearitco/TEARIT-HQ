@@ -207,6 +207,51 @@ void read_action_file(const char *package_dir, int *seq, char *cmd) {
     }
 }
 
+/* REAL, NEW 2026-09-08 - the "make it a real picker" contract. A
+ * caller that wants a modal file pick writes <package_dir>/fe_request.txt
+ * BEFORE launching this widget:
+ *     mode=LOAD|SAVE
+ *     start_dir=/abs/path        (where to start browsing)
+ *     result_file=/abs/path.txt  (where to write the chosen path)
+ * We read it on startup, then UNLINK it (so a stale request can't leak
+ * into the next standalone launch). On a pick / saveas / cancel we write
+ * the chosen absolute path (empty on cancel) to result_file, atomically
+ * (tmp + rename), in addition to the existing file_explorer_ui.txt
+ * result= key. No request file  ->  the original argv[3]=mode + start
+ * at house_root behavior, byte-for-byte. */
+static void fe_read_request(const char *package_dir, char *mode_out, size_t mode_sz,
+                            char *start_out, size_t start_sz,
+                            char *result_out, size_t result_sz) {
+    char rp[MAX_PATH];
+    snprintf(rp, MAX_PATH, "%s/fe_request.txt", package_dir);
+    FILE *f = fopen(rp, "r");
+    if (!f) return;
+    char line[MAX_PATH];
+    while (fgets(line, sizeof(line), f)) {
+        char *nl = strchr(line, '\n'); if (nl) *nl = '\0';
+        if (!strncmp(line, "mode=", 5))             snprintf(mode_out, mode_sz, "%s", line + 5);
+        else if (!strncmp(line, "start_dir=", 10))  snprintf(start_out, start_sz, "%s", line + 10);
+        else if (!strncmp(line, "result_file=", 12)) snprintf(result_out, result_sz, "%s", line + 12);
+    }
+    fclose(f);
+    unlink(rp);
+}
+
+static void fe_write_result_file(const char *result_file, const char *path) {
+    if (!result_file || !result_file[0]) return;
+    char tmp[MAX_PATH];
+    snprintf(tmp, MAX_PATH, "%s.tmp", result_file);
+    FILE *f = fopen(tmp, "w");
+    if (!f) return;
+    fprintf(f, "%s\n", path ? path : "");
+    fclose(f);
+    rename(tmp, result_file);
+}
+
+/* result_file is filled by fe_read_request(); file scope so the pick
+ * handlers in the loop can see it without threading it through. */
+static char g_fe_result_file[MAX_PATH] = "";
+
 int main(int argc, char *argv[]) {
     if (argc != 4) {
         fprintf(stderr, "Usage: %s <house_root> <package_dir> <mode>\n", argv[0]);
@@ -215,8 +260,16 @@ int main(int argc, char *argv[]) {
 
     const char *house_root = argv[1];
     const char *package_dir = argv[2];
-    const char *mode = argv[3];
-    const char *start_dir = house_root; /* real v1 default - see this file's own top-of-file comment */
+    char mode_buf[10];
+    snprintf(mode_buf, sizeof(mode_buf), "%s", argv[3]);
+    char start_buf[MAX_PATH] = "";
+
+    fe_read_request(package_dir, mode_buf, sizeof(mode_buf),
+                    start_buf, sizeof(start_buf),
+                    g_fe_result_file, sizeof(g_fe_result_file));
+
+    const char *mode = mode_buf;
+    const char *start_dir = start_buf[0] ? start_buf : house_root;
 
     State state;
     memset(&state, 0, sizeof(state));
@@ -286,6 +339,7 @@ int main(int argc, char *argv[]) {
                     char result[MAX_PATH];
                     snprintf(result, MAX_PATH, "%s/%s", state.current_dir, e->name);
                     write_ui_file(package_dir, &state, result, "LOAD");
+                    fe_write_result_file(g_fe_result_file, result);
                     return 0;
                 } else if (strcmp(state.mode, "SAVE") == 0) {
                     strncpy(state.pending_filename, e->name, MAX_NAME - 1);
@@ -299,10 +353,12 @@ int main(int argc, char *argv[]) {
                 char result[MAX_PATH];
                 snprintf(result, MAX_PATH, "%s/%s", state.current_dir, name);
                 write_ui_file(package_dir, &state, result, "SAVE");
+                fe_write_result_file(g_fe_result_file, result);
                 return 0;
             }
         } else if (strcmp(cmd, "CANCEL") == 0) {
             write_ui_file(package_dir, &state, "", "CANCEL");
+            fe_write_result_file(g_fe_result_file, "");
             return 0;
         }
     }

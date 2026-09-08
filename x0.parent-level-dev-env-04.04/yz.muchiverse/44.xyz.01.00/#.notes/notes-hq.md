@@ -90,3 +90,27 @@ session picker but open it as its own window, not an in-place menu
 swap. Same applies to the other `which` 100/101/102 internal sub-lists
 (session picker, db-ez sections, common-events) — they're all the
 fragile "replace the menu in place" pattern.
+
+## 2026-09-08 (later³) — File Explorer is now a real picker
+
+The widget was browse-only (published `result=` to its own state file,
+nothing consumed it, couldn't set a start dir). Made real:
+
+- **`file_explorer_manager.c`**: reads `<pkg>/fe_request.txt`
+  (`mode=` / `start_dir=` / `result_file=`) on startup, unlinks it, and
+  on pick/saveas/cancel writes the chosen absolute path (atomic) to
+  `result_file`. No request file -> unchanged standalone behavior.
+- **`&.widgits/file-explorer/fe-pick.sh <LOAD|SAVE> <start_dir>`**:
+  modal helper - writes the request, launches the widget, waits for the
+  pick (or window close), prints the path.
+- **strip "load"** -> `#.desktop/scripts/pick-session.sh` -> fe-pick at
+  the sessions root -> drops the session id in
+  `#.desktop/livedesk_pending_open_session.txt` ->
+  `ktb_poll_pending_session_open()` (new, called every main-loop tick)
+  -> `livedesk_load_session()`. Real "load a saved desk session" now.
+- **pc-hq board File -> "Open File Explorer"** (`file-hq` verb): now
+  fe-pick at `pieces/system/maps`, then loads whatever `map.txt` was
+  picked onto `chunk_0_0_z0` (same steps as the `load-map` verb).
+
+Save As (strip) left as-is - it's an inline name field, not the picker,
+and that's the right pattern for "name a new save".

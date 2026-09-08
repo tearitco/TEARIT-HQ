@@ -981,6 +981,9 @@ int main(int argc, char **argv) {
     int active_ticks = ACTIVE_HOLD_TICKS; /* start hot - matches TPMOS's own "layout in focus" active default right after launch */
     while (g_running) {
         int mutated = poll_strip_history(&st, house_root);
+        /* file cell "load" -> File Explorer widget -> pick-session.sh
+         * drops the chosen session id in #.desktop/; consume it here. */
+        ktb_poll_pending_session_open(&st);
         /* also periodically reload so external tab/shortcut/theme file
          * changes (livedesk_open.txt, livedesk_shortcuts.pdl, etc.) are
          * picked up, matching ktb_plat_run()'s own per-tick ktb_reload(). */

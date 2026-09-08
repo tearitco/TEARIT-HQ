@@ -2416,6 +2416,36 @@ static void livedesk_load_session(const char *house_root, const char *sroot, con
     livedesk_root_write(sroot, id, cur[0] ? cur : id);
 }
 
+/* REAL, NEW 2026-09-08 - the file cell's "load" row now opens the real
+ * File Explorer widget (a separate window) instead of an in-place
+ * session-picker sub-dropdown that could freeze the strip nav. The
+ * widget can't call back into this process, so #.desktop/scripts/
+ * pick-session.sh drops the picked session id here; this is polled
+ * from the main loop and consumed once. `id` is a bare session dir
+ * name (basename of what the user picked under the sessions root). */
+void ktb_poll_pending_session_open(KtbState *s) {
+    char path[KTB_PATH_BUF];
+    path_join(path, sizeof(path), s->house_root,
+              "#.desktop/livedesk_pending_open_session.txt");
+    FILE *f = ktb_fopen(path, "r");
+    if (!f) return;
+    char id[64] = "";
+    if (fgets(id, sizeof(id), f)) {
+        char *nl = strpbrk(id, "\r\n"); if (nl) *nl = '\0';
+    }
+    fclose(f);
+    remove(path);
+    if (!id[0]) return;
+    /* reject anything with a path separator - id is a bare dir name */
+    if (strchr(id, '/') || strchr(id, '\\') || strcmp(id, "..") == 0) return;
+    char sroot[KTB_PATH_BUF];
+    if (!livedesk_sessions_root(s->house_root, sroot, sizeof(sroot))) return;
+    char sp[KTB_PATH_BUF];
+    snprintf(sp, sizeof(sp), "%s/%s/session.pdl", sroot, id);
+    if (access(sp, F_OK) != 0) return;   /* not a real session */
+    livedesk_load_session(s->house_root, sroot, id);
+}
+
 static void livedesk_new_session(const char *house_root) {
     char sroot[KTB_PATH_BUF];
     if (!livedesk_sessions_root(house_root, sroot, sizeof(sroot))) return;
@@ -4346,17 +4376,17 @@ void ktb_hq_activate(KtbState *s, int row) {
          * own comment: "13 is an inert cell and would close the popup")
          * and its nav could latch, freezing the strip focus on cell 3.
          *
-         * Now: close the menu and open the real File Explorer widget as
-         * its own X11 window (`&.widgits/file-explorer/`, which the user
-         * can navigate normally and close with its own [X]) - same
-         * setsid/button-script launch shape as livedesk:open-settings
-         * above. NOTE: standalone the widget just browses; wiring
-         * "pick a saved desk session -> restore it" through it is a
-         * follow-up (see notes-hq 2026-09-08). */
+         * Now (2026-09-08): close the menu and run pick-session.sh - it
+         * opens the real File Explorer widget (its own window, its own
+         * [X]) started at the sessions root, waits for the pick, and
+         * drops the chosen session id in
+         * #.desktop/livedesk_pending_open_session.txt, which
+         * ktb_poll_pending_session_open() (main loop) consumes and hands
+         * to livedesk_load_session(). */
         char fx[KTB_PATH_BUF * 3];
         snprintf(fx, sizeof(fx),
-                 KTB_SETSID "nohup sh -c 'sh \"%s/&.widgits/file-explorer/button.sh\" run' >/dev/null 2>&1 &",
-                 s->house_root);
+                 KTB_SETSID "nohup sh -c 'sh \"%s/#.desktop/scripts/pick-session.sh\" \"%s\"' >/dev/null 2>&1 &",
+                 s->house_root, s->house_root);
         int rc = ktb_system_recorded(s->house_root, fx);
         (void)rc;
         ktb_hq_close(s);

@@ -102,9 +102,30 @@ case "$VERB" in
         append_key 13
         ;;
     file-hq)
+        # modal pick a map with the real File Explorer widget, then load
+        # whatever map.txt was chosen onto chunk_0_0_z0 (same steps as
+        # the load-map verb). 2026-09-08: this used to only open a
+        # browse-only window; now it actually loads the pick.
         HOUSE="$(cd "$SELF_DIR/../../.." && pwd)"
-        setsid sh "$HOUSE/&.widgits/file-explorer/button.sh" run >/tmp/pchq-file-hq.log 2>&1 < /dev/null &
+        PCHQ="$(cd "$SELF_DIR/.." && pwd)"
         printf 'open=\n' > "$PKG_STATE/menu.txt"
+        PICK="$(sh "$HOUSE/&.widgits/file-explorer/fe-pick.sh" LOAD "$PCHQ/pieces/system/maps")"
+        [ -n "$PICK" ] || exit 0
+        case "$PICK" in
+            */map.txt) MAPDIR="$(dirname "$PICK")" ;;
+            *)         MAPDIR="$PICK" ;;
+        esac
+        SRC="$MAPDIR/map.txt"
+        [ -f "$SRC" ] || exit 0
+        NAME="$(basename "$MAPDIR")"
+        DST="$PCHQ/pieces/system/chunks/chunk_0_0/chunk_0_0_z0.txt"
+        mkdir -p "$(dirname "$DST")" "$PCHQ/pieces/system"
+        cp "$SRC" "$DST"
+        { echo "active_level=${NAME}"; echo "active_board=${NAME}"; } > "$PCHQ/pieces/system/board_config.txt"
+        engage_if_needed
+        append_key 54
+        sleep 0.15
+        restore_interact
         ;;
     load-map)
         HOUSE="$(cd "$SELF_DIR/../../.." && pwd)"

@@ -237,6 +237,12 @@ void ktb_hq_digit(KtbState *s, int d);
  * session / pal placement / cancel), mirroring run_popup_row()'s dispatch. */
 void ktb_hq_activate(KtbState *s, int row);
 
+/* poll #.desktop/livedesk_pending_open_session.txt (dropped by
+ * #.desktop/scripts/pick-session.sh after the File Explorer widget
+ * returns a pick) and load that session once. Call every main-loop
+ * tick. No-op when the file is absent. */
+void ktb_poll_pending_session_open(KtbState *s);
+
 void ktb_cliio_open_save_as(KtbState *s);
 void ktb_cliio_open_rename_desk(KtbState *s); /* seeds buffer with the current active desk's name */
 void ktb_cliio_open_new_user(KtbState *s); /* stage 1 of 2 (user_id) - see khtpm_taskbar_manager.c header comment */
