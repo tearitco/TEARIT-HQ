@@ -172,3 +172,24 @@ Merge `origin/opencode` for the commit after the CLI-1 pack.
   modules too (`while(true){}` in a require'd file → killed, rc=142).
 - `cli_test` grew to 9 cases (require chain incl. JSON/nested `../`/
   cycle/module-var-scoping + missing-module error); `make check` green.
+
+## NOTICE 2026-09-07 — CLI-3 fs-lite + `-i` REPL closes the node-mode ladder
+
+Merge `origin/opencode` for the commit after the CLI-2 pack.
+
+- **`require('fs')`** now resolves to fs-lite natives in node mode and
+  the REPL: `readFileSync` / `writeFileSync` / `appendFileSync` /
+  `existsSync` / `mkdirSync` (recursive, mirroring the manager's
+  `mkdir_p_local`). String-only payloads (no Buffer), optional encoding
+  arg accepted+ignored, reads keep the 512 kB cap, miss → `ENOENT`-style
+  error exit 1. `fs` is a builtin registered in the CJS loader — still
+  no node_modules/packages.
+- **`duk -i`** / `--interactive` forces the REPL even when stdin is
+  piped: `printf '1+2\nexit\n' | duk -i` → `3`. The REPL now also ships
+  `require()` + `require('fs')` on top of its browser prelude, so
+  `document` stays available interactively.
+- `#!` shebang stripping was already handled at entry
+  (`DUK_COMPILE_SHEBANG`) and by the CJS loader for required files.
+- Node-mode ladder (CLI-1 runner / CLI-2 CommonJS / CLI-3 fs+REPL) is
+  now complete through CLI-3; ESM (CLI-4) remains the explicit hard
+  tail. `cli_test` grew to 12 cases; `make check` green.

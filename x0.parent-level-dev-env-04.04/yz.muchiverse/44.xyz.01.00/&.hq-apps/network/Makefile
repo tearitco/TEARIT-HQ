@@ -4,8 +4,10 @@
 #   make install    -> $(PREFIX)/bin/nbjs  (default PREFIX=/usr/local)
 #   make check      -> build + run the three headless worker suites
 #
-# To run:   ./nbjs file.js [args...]              # node mode (no DOM) — like node
+# To run:   ./nbjs file.js [args...]              # node mode (no DOM) — like node,
+#                                                 #   + require()/require('fs')
 #           ./nbjs --browser page.js [fetch.dom]  # DOM page runner + render-back
+#           ./nbjs -i                             # interactive REPL, even when piped
 #           ./nbjs                                # tty: REPL / pipes: daemon RPC
 # Exit codes (both CLI modes): 0 ok / 1 js error / 2 usage. The daemon RPC
 # mode (manager back-end) is the same binary with no arguments.

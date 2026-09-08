@@ -1665,6 +1665,13 @@ static void run_page(void) {
 
 /* bare `duk` on a terminal: a tiny stateful REPL (no page/lifecycle events).
  * Exits on EOF or exit/quit/.exit. Non-tty stdin stays the framed daemon. */
+/* bare `duk` on a terminal: a tiny stateful REPL (no page/lifecycle events).
+ * Exits on EOF or exit/quit/.exit. Non-tty stdin stays the framed daemon, but
+ * `duk -i` forces the REPL even when stdin is piped. */
+/* CLI-2/CLI-3 native hook used by both the REPL and node mode. */
+static duk_ret_t nb_cjs_read_file(duk_context *ctx);
+static void      nb_install_fs(duk_context *ctx);
+static const char g_cjs_prelude[];
 static int repl_main(void) {
     duk_context *ctx = duk_create_heap(NULL, NULL, NULL, NULL, fatal_handler);
     if (!ctx) return 1;
@@ -1672,6 +1679,32 @@ static int repl_main(void) {
     g_out = stdout; setvbuf(g_out, NULL, _IONBF, 0);
     install_host(ctx);
     if (peval_budget(ctx, g_js_prelude) != 0) duk_pop(ctx);
+    duk_pop(ctx);
+    /* CLI-2/CLI-3 in the REPL too: require() + fs work line-by-line,
+     * sharing the browser prelude above (window/document still present). */
+    duk_push_c_function(ctx, nb_cjs_read_file, 1);
+    duk_put_global_string(ctx, "__nb_read_file");
+    nb_install_fs(ctx);
+    if (peval_budget(ctx, g_cjs_prelude) != 0) {
+        const char *m = duk_safe_to_string(ctx, -1);
+        fprintf(stderr, "err:%s\n", m ? m : "loader error");
+        duk_pop(ctx); duk_destroy_heap(ctx); dom_teardown(); return 1;
+    }
+    duk_pop(ctx);
+    duk_get_global_string(ctx, "__nb_install_cjs");
+    char cwd_buf[PATH_MAX];
+    if (!getcwd(cwd_buf, sizeof(cwd_buf))) snprintf(cwd_buf, sizeof(cwd_buf), ".");
+    duk_push_string(ctx, cwd_buf);
+    duk_push_string(ctx, "[repl]");
+    int cinc = 0;
+    signal(SIGALRM, sigalrm);
+    alarm(EVAL_BUDGET_SEC);
+    cinc = duk_pcall(ctx, 2);
+    alarm(0);
+    if (cinc != 0) {
+        fprintf(stderr, "err:%s\n", duk_safe_to_string(ctx, -1));
+        duk_pop(ctx); duk_destroy_heap(ctx); dom_teardown(); return 1;
+    }
     duk_pop(ctx);
     static const char empty_html[] = "<html><body></body></html>";
     g_dom_root = nb_parse_html(empty_html, sizeof(empty_html) - 1);
@@ -1781,6 +1814,69 @@ static duk_ret_t nb_cli_cwd(duk_context *ctx) {
     else duk_push_string(ctx, "/");
     return 1;
 }
+/* ---- CLI-3: fs-lite natives (sync-only, over the same read_file cap).
+ * String-only payloads (no Buffer type in this Duktape); an optional
+ * encoding arg is accepted so node-style call sites keep working. */
+static duk_ret_t nb_fs_readfile(duk_context *ctx) {
+    const char *p = duk_safe_to_string(ctx, 0);
+    char *s = NULL; size_t n = 0;
+    if (!p || !p[0] || !read_file(p, &s, &n))
+        return duk_error(ctx, DUK_ERR_ERROR, "ENOENT: cannot read '%s'", p ? p : "(empty)");
+    duk_push_lstring(ctx, s, n);
+    free(s);
+    return 1;
+}
+static duk_ret_t nb_fs_writefile(duk_context *ctx) {
+    const char *p = duk_safe_to_string(ctx, 0);
+    const char *d = duk_safe_to_string(ctx, 1);
+    FILE *f = fopen(p, "wb");
+    if (!f) return duk_error(ctx, DUK_ERR_ERROR, "EIO: cannot write '%s'", p ? p : "(empty)");
+    if (d) fwrite(d, 1, strlen(d), f);
+    fclose(f);
+    return 0;
+}
+static duk_ret_t nb_fs_appendfile(duk_context *ctx) {
+    const char *p = duk_safe_to_string(ctx, 0);
+    const char *d = duk_safe_to_string(ctx, 1);
+    FILE *f = fopen(p, "ab");
+    if (!f) return duk_error(ctx, DUK_ERR_ERROR, "EIO: cannot append '%s'", p ? p : "(empty)");
+    if (d) fwrite(d, 1, strlen(d), f);
+    fclose(f);
+    return 0;
+}
+static duk_ret_t nb_fs_exists(duk_context *ctx) {
+    const char *p = duk_safe_to_string(ctx, 0);
+    duk_push_boolean(ctx, p && p[0] && access(p, F_OK) == 0);
+    return 1;
+}
+static duk_ret_t nb_fs_mkdir(duk_context *ctx) {
+    const char *p = duk_safe_to_string(ctx, 0);
+    if (!p || !p[0]) return duk_error(ctx, DUK_ERR_ERROR, "EINVAL: empty mkdir path");
+    char tmp[PATH_MAX];
+    snprintf(tmp, sizeof(tmp), "%s", p);
+    for (char *q = tmp + 1; *q; q++) {
+        if (*q == '/') { *q = '\0'; mkdir(tmp, 0755); *q = '/'; }
+    }
+    mkdir(tmp, 0755);
+    return 0;
+}
+static void nb_install_fs(duk_context *ctx) {
+    duk_push_object(ctx);                     /* fs (abs index 0) */
+    duk_push_c_function(ctx, nb_fs_readfile, 1);
+    duk_put_prop_string(ctx, 0, "readFileSync");
+    duk_push_c_function(ctx, nb_fs_writefile, 2);
+    duk_put_prop_string(ctx, 0, "writeFileSync");
+    duk_push_c_function(ctx, nb_fs_appendfile, 2);
+    duk_put_prop_string(ctx, 0, "appendFileSync");
+    duk_push_c_function(ctx, nb_fs_exists, 1);
+    duk_put_prop_string(ctx, 0, "existsSync");
+    duk_push_c_function(ctx, nb_fs_mkdir, 1);
+    duk_put_prop_string(ctx, 0, "mkdirSync");
+    duk_push_global_object(ctx);              /* [fs, G] */
+    duk_dup(ctx, -2);                         /* [fs, G, fs] */
+    duk_put_prop_string(ctx, -2, "__nb_fs");  /* G.__nb_fs = fs; -> [fs, G] */
+    duk_pop_2(ctx);
+}
 /* build a JS object from the process environment (not the full sys env —
  * see getenv below). Env exposure is opt-in via require('os')-free helper;
  * CLI-1 keeps it simple: expose a snapshot under process.env. */
@@ -1883,6 +1979,7 @@ static const char g_cjs_prelude[] =
 "}\n"
 "function makeRequire(dir){\n"
 "  return function(request){\n"
+"    if (request === 'fs'){ if (typeof __nb_fs !== 'undefined') return __nb_fs; }\n"
 "    var abs = resolve(request, dir);\n"
 "    if (abs === null)\n"
 "      throw new Error(\"Cannot find module '\" + request + \"' (nbjs has no packages/builtins)\");\n"
@@ -1923,16 +2020,18 @@ static int cli_main(int argc, char **argv) {
     int script_i = -1;
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
-            fprintf(stderr, "usage: duk <file.js|-> [args...]   (node mode)\n");
+            fprintf(stderr, "usage: duk <file.js|-> [args...]   (node mode; require() + fs)\n");
             fprintf(stderr, "       duk --browser <page.js> [fetch.dom]   (DOM page mode)\n");
+            fprintf(stderr, "       duk -i                        (interactive REPL, even piped)\n");
             return 2;
         }
         if (argv[i][0] == '-' && strcmp(argv[i], "-") != 0) continue;
         script_i = i; break;
     }
     if (script_i < 0) {
-        fprintf(stderr, "usage: duk <file.js|-> [args...]   (node mode)\n");
+        fprintf(stderr, "usage: duk <file.js|-> [args...]   (node mode; require() + fs)\n");
         fprintf(stderr, "       duk --browser <page.js> [fetch.dom]   (DOM page mode)\n");
+        fprintf(stderr, "       duk -i                        (interactive REPL, even piped)\n");
         return 2;
     }
     const char *pg = argv[script_i];
@@ -1972,10 +2071,12 @@ static int cli_main(int argc, char **argv) {
         free(a);
     }
 
-    /* CLI-2 CommonJS: the only host hook the JS loader needs is a module
-     * file reader; it defines `require`/`__dirname`/`__filename` itself. */
+    /* CLI-2 CommonJS + CLI-3 fs: the only host hook the JS loader needs is
+     * a module file reader; it defines `require`/`__dirname`/`__filename`
+     * itself. `require('fs')` resolves to the fs-lite natives below. */
     duk_push_c_function(ctx, nb_cjs_read_file, 1);
     duk_put_global_string(ctx, "__nb_read_file");
+    nb_install_fs(ctx);
 
     /* Entry directory/file, absolute, for the entry script's require base. */
     static char entry_dir[PATH_MAX], entry_file[PATH_MAX];
@@ -2078,11 +2179,17 @@ int main(int argc, char **argv) {
         }
     }
 
+    /* duk -i / --interactive: force the REPL even when stdin is piped
+     * (bare `duk` also reaches it on a tty via the isatty check below). */
+    if (argc > 1 && (strcmp(argv[1], "-i") == 0 || strcmp(argv[1], "--interactive") == 0))
+        return repl_main();
+
     if (argc > 1) {
         /* duk --browser page.js [fetch.dom] — the released DOM page runner
          * (full DOM engine + render-back). duk file.js — node mode, no
-         * browser globals, process/console host. Either way: exit 0 clean /
-         * 1 thrown error / 2 usage. No RPC framing, no khtpm dependency. */
+         * browser globals, process/console + require()/fs host. Either way:
+         * exit 0 clean / 1 thrown error / 2 usage. No RPC framing, no khtpm
+         * dependency. */
         if (strcmp(argv[1], "--browser") == 0 || strcmp(argv[1], "-b") == 0)
             return browser_cli_main(argc - 1, argv + 1);
         return cli_main(argc, argv);

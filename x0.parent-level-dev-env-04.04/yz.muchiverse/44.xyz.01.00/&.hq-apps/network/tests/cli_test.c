@@ -171,6 +171,31 @@ int main(int argc, char **argv) {
         const char *const want[] = { "Cannot find module" };
         check("cli cjs missing module exit 1", 1, want, 1, 0, NULL, 0, a, NULL);
     }
+    /* 10. fs-lite (CLI-3): require('fs') read/write/append/exists/mkdir */
+    {
+        char fss[2048];
+        snprintf(fss, sizeof(fss), "%s/cli_fs.js", dir);
+        char *a[] = { (char *)w, (char *)fss, (char *)argv[3], NULL };
+        const char *const want[] = {
+            "fs-rw=beta-gamma", "fs-ex=true=true",
+            "fs-miss=false=false", "fs-mkdir=true=true"
+        };
+        check("cli fs-lite read/write/mkdir", 0, want, 4, 0, NULL, 0, a, NULL);
+    }
+    /* 11. `-i` forces the REPL even when stdin is piped (CLI-3) */
+    {
+        char *a[] = { (char *)w, (char *)"-i", NULL };
+        const char *const want[] = { "3", "function" };
+        check("cli -i piped REPL", 0, want, 2, 0, NULL, 0, a,
+              "1+2\nvar fs=require(\"fs\"); typeof fs.readFileSync\nexit\n");
+    }
+    /* 12. REPL require + fs are live over a pty-like piped session (CLI-3) */
+    {
+        char *a[] = { (char *)w, (char *)"-i", NULL };
+        const char *const want[] = { "true" };
+        check("cli -i REPL require/fs", 0, want, 1, 0, NULL, 0, a,
+              "require(\"fs\").existsSync(\"/tmp\")\nexit\n");
+    }
 
     if (failures) { printf("cli_test: %d FAILURES\n", failures); return 1; }
     printf("cli_test: all cases pass\n");

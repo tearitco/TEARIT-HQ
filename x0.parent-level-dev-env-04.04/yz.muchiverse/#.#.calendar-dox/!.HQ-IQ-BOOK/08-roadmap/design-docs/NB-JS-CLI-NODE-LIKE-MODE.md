@@ -1,12 +1,13 @@
 # NB-JS engine as a node/bun-like CLI runner — scope + plan
 
 **Status:** CLI-1 landed 2026-09-07 (in the worker, `cli_main()`); CLI-2
-(CommonJS) landed 2026-09-07; CLI-3 (fs-lite + `-i`) and CLI-4 (ESM, hard
-tail) queued behind it. The node runner shares the binary with the REPL
-and the daemon: `duk` (no args) + tty → REPL, `duk file.js` → node mode,
-`duk --browser page.js` → the released DOM page runner. Trigger for
-CLI-3: `fs`-lite sync natives + a `-i` stdin REPL exercised by
-`tests/cli_*.js` with expected exit codes.
+(CommonJS) landed 2026-09-07; CLI-3 (fs-lite + `-i`) landed 2026-09-07;
+the ESM rung (CLI-4) stays a hard tail. The node runner shares the binary
+with the REPL and the daemon: `duk` (no args) + tty → REPL, `duk file.js`
+→ node mode, `duk --browser page.js` → the released DOM page runner,
+`duk -i` → REPL even with piped stdin. Trigger for any future rung:
+guard-railed functionality exercised by `tests/cli_*.js` runners with
+expected exit codes.
 
 **Why the moment is right:** rung 4 (XHR/fetch) just made the worker a
 real JS-time runtime. The host installation seam (`install_host()` +
@@ -59,11 +60,24 @@ more assumptions.
 - Tests: `cli_test` cases 8-9 (require chain incl. JSON/nested `../`/
   cycle/var-scoping + missing-module error), all green.
 
-### CLI-3 — filesystem lite + REPL
-- `fs`-lite natives over `read_file` + a write/append pair: `readFileSync`,
-  `writeFileSync`, `existsSync`, `mkdirSync` (mirror `mkdir_p_local`).
-- `-i` REPL over stdin (evaluate line, print result via `console`/`print`).
-- `#!` shebang stripping on entry.
+### CLI-3 — filesystem lite + REPL *(landed 2026-09-07)*
+- `fs`-lite natives over `read_file` + a write/append pair:
+  readFileSync / writeFileSync / appendFileSync / existsSync / mkdirSync
+  (recursive `mkdir -p` walk, mirroring the manager's `mkdir_p_local`).
+  Exposed node-idiomatically as `require('fs')` — a builtin registered in
+  the CJS loader (the only builtin; still no node_modules/packages).
+- String-only payloads (no Buffer in this Duktape); an encoding arg is
+  accepted but ignored so node-style call sites keep working. Reads keep
+  the 512 kB cap; miss → `ENOENT`-style error, exit 1.
+- REPL: `duk -i` / `--interactive` forces the REPL even when stdin is
+  piped (useful for `echo '1+2' | duk -i`). The REPL now also carries
+  `require()` + `require('fs')` (added on top of the existing browser
+  prelude, so `document` etc. stay available line-by-line).
+- `#!` shebang stripping on entry — already handled by
+  `DUK_COMPILE_SHEBANG` on the entry compile and by the CJS loader for
+  required files.
+- Tests: `cli_test` cases 10-12 (fs read/write/append/exists/mkdir,
+  `-i` piped REPL eval, REPL require/fs), all green.
 
 ### CLI-4 — ESM (defer; explicit non-goal until asked)
 - duktape has no `import` syntax support; ESM = a loader that rewrites
@@ -90,5 +104,5 @@ more assumptions.
 
 ## Entry point into tracking
 - OPEN-ITEMS.md #11 (this doc). Roadmap §9 in `NB-JS-ENGINE-ROADMAP.md`.
-- Trigger for CLI-3: guard-railed `fs`-lite sync natives + a `-i` stdin
-  REPL used by `tests/cli_*.js` runners with expected exit codes.
+- The node-mode ladder is done through CLI-3; anything further
+  (fs depth, `path`, ESM transpile) is user-requested, not queued.

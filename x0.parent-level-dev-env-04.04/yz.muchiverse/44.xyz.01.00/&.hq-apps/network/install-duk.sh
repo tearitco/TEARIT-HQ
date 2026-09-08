@@ -8,8 +8,10 @@
 #   RC_FILE=~/.zshrc ./install-duk.sh
 #
 # After it runs: open a new shell (or `source ~/.bashrc`) and run
-#   duk /tmp/script.js              (node mode — like node, no browser)
+#   duk /tmp/script.js              (node mode — like node, no browser;
+#                                    require() + require('fs') available)
 #   duk --browser /tmp/page.js      (DOM page runner + render-back)
+#   duk -i                          (interactive REPL, even when piped)
 #   $duk /tmp/script.js             (always works via the env var)
 #
 # Exit codes: 0 installed, 1 build/install failure.
@@ -54,8 +56,9 @@ if [ "${BASH_SOURCE[0]}" != "$0" ]; then
 fi
 
 echo
-echo "Run it as:  duk /tmp/script.js [args...]       # node mode (like node)"
+echo "Run it as:  duk /tmp/script.js [args...]       # node mode (require() + fs)"
 echo "             duk --browser /tmp/page.js         # DOM page runner + render-back"
+echo "             duk -i                              # interactive REPL, even piped"
 echo "             duk                                 # bare on a terminal: REPL"
 echo "             \$duk /tmp/script.js                 # the env var works identically"
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
