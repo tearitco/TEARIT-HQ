@@ -94,28 +94,45 @@ static void blit_poster(int dx, int dy){
     }
 }
 
+/* Path comes from VIDEO-ASSET-SOURCE-LOCATION.pdl SOURCE sample_mp4
+ * (same pattern as palettes img_root). No hardcoded NNEST_ASSETS. */
+static int pdl_source_value(const char *pdl_name, const char *key, char *out, size_t outsz){
+    char pdl[PL];
+    snprintf(pdl, sizeof(pdl), "%s/../#.#.calendar-dox/1.^V-hq/%s", house_root, pdl_name);
+    FILE *f = fopen(pdl, "r");
+    if(!f) return 0;
+    char line[PL];
+    int ok = 0;
+    while(fgets(line, sizeof(line), f)){
+        if(strncmp(line, "SOURCE", 6) != 0) continue;
+        if(!strstr(line, key)) continue;
+        char *bar = strrchr(line, '|');
+        if(!bar) continue;
+        char *v = bar + 1;
+        while(*v == ' ' || *v == '\t') v++;
+        size_t n = strlen(v);
+        while(n > 0 && (v[n-1]=='\n' || v[n-1]=='\r' || v[n-1]==' ')) v[--n] = 0;
+        if(n > 0){ snprintf(out, outsz, "%s", v); ok = 1; break; }
+    }
+    fclose(f);
+    return ok;
+}
+
 static void demo(void){
     memset(cl,0,sizeof(cl)); n_cl=1; sel=0; playhead=0; playing=0;
     poster_ok=0; last_decode=-99;
     cl[0].used=1; cl[0].lane=0; cl[0].t0=0; cl[0].t1=DUR;
     cl[0].r=80; cl[0].g=140; cl[0].b=200;
     snprintf(cl[0].name,sizeof(cl[0].name),"sample-10s");
-    /* NNEST-12.00/#.NNEST_ASSETS/video — three levels up from house
-     * (44.xyz → yz.muchiverse → x0.parent → NNEST-12.00). */
-    {
-        const char *cands[] = {
-            "%s/../../../#.NNEST_ASSETS/video/sample-10s-vp9.mp4",
-            "%s/../../#.NNEST_ASSETS/video/sample-10s-vp9.mp4",
-            NULL
-        };
-        cl[0].path[0]=0;
-        for(int i=0;cands[i];i++){
-            char p[PL]; snprintf(p,sizeof(p),cands[i], house_root);
-            if(access(p,R_OK)==0){ snprintf(cl[0].path,sizeof(cl[0].path),"%s",p); break; }
-        }
+    cl[0].path[0]=0;
+    if(pdl_source_value("VIDEO-ASSET-SOURCE-LOCATION.pdl", "sample_mp4",
+                        cl[0].path, sizeof(cl[0].path))){
+        if(access(cl[0].path, R_OK) != 0) cl[0].path[0] = 0;
     }
     decode_poster(&cl[0], 0, 1);
-    snprintf(g_msg,sizeof(g_msg), poster_ok ? "loaded sample-10s-vp9.mp4" : "ffmpeg poster failed");
+    snprintf(g_msg,sizeof(g_msg), cl[0].path[0]
+             ? (poster_ok ? "loaded sample-10s-vp9.mp4" : "ffmpeg poster failed")
+             : "VIDEO-ASSET-SOURCE-LOCATION.pdl sample_mp4 missing");
     dirty=1;
 }
 
