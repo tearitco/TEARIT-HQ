@@ -1966,12 +1966,19 @@ static int click_focus_then_activate(Elem *hit) {
      * steal focus or fire — same as chtpm_parser.c is_navigable(). */
     if (!kh_elem_in_scope(hit)) return 0;
     /* Dock menus: a mouse hit on a dropdown-child row opens/runs
-     * immediately. ACTIVATE (HQ/File-style trigger) on dock cells honors
+     * immediately. Bottom-strip HQ window cells (class hqwin /
+     * onclick FOCUSWIN:) are the same shape as a taskbar button —
+     * first click must raise/restore, not merely focus (Enter already
+     * activated; click_two_step made pc-hq look like it "only opens
+     * from nav"). ACTIVATE (HQ/File-style trigger) on dock cells honors
      * #.desktop/hq_ui.pdl click_two_step: when click_two_step=0, ACTIVATE
      * fires on first click; when click_two_step=1, it requires two-step
      * (first click sets focus, second click activates). */
     if (window_is_dock() &&
-        (elem_has_class(hit, "dropdown-child") || (!g_click_two_step && strcmp(hit->onclick, "ACTIVATE") == 0))) {
+        (elem_has_class(hit, "dropdown-child") ||
+         elem_has_class(hit, "hqwin") ||
+         (hit->onclick[0] && strncmp(hit->onclick, "FOCUSWIN:", 9) == 0) ||
+         (!g_click_two_step && strcmp(hit->onclick, "ACTIVATE") == 0))) {
         g_focus_nav = hit->nav_index;
         return 1;
     }
