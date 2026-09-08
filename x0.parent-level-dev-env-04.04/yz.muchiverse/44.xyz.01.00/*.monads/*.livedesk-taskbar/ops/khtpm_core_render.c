@@ -1844,6 +1844,13 @@ static int g_win_pos_applied_x = INT_MIN, g_win_pos_applied_y = INT_MIN;
  * genuine but repeated FocusIn/FocusOut (mode NotifyNormal) only repaints
  * when the indicator would truly change. -1 = nothing painted yet. */
 static int g_focus_owned_painted = -1;
+/* Set at window-create for a <window class="managed"> non-dock window
+ * (pchq-board). hq_idle_tick() re-asserts XSetInputFocus while the
+ * pointer is over the window, the way legacy run_pchq_board_mode()'s
+ * per-frame pchq_focus_ok loop did - see pc-hq-leg-vs-nu-fix.md §5-B.
+ * Deliberately NOT set for override_redirect windows (that path was
+ * the 2026-09-03 idle XSetInputFocus flicker regression). */
+static int g_win_managed_focus = 0;
 /* Coalescing repaint flag for the generic (non-marker-pilot) window. N
  * repaint requests inside one event-loop iteration collapse to a single
  * redraw() at the tick boundary - the tpmos marker/dirty model
@@ -7714,6 +7721,28 @@ static void hq_ui_pdl_reload_if_changed(const char *house_root) {
 }
 
 static void hq_idle_tick(void) {
+    /* pc-hq-leg-vs-nu-fix.md §5-B: a WM-managed, continuously-
+     * interactive window (<window class="managed">, e.g. pchq-board)
+     * needs its X keyboard focus re-asserted the way legacy
+     * run_pchq_board_mode() did every frame - Mutter/XWayland can hand
+     * real focus elsewhere on a click-away under focus-follows-mouse
+     * and not give it back on click-return. Only re-take while the
+     * pointer is actually over our window, so a deliberate switch to
+     * another app is never fought. One XGetInputFocus per tick; the
+     * XSetInputFocus fires only on real drift. Gated on
+     * g_win_managed_focus so override_redirect windows never hit this
+     * (that was the 2026-09-03 flicker regression). */
+    if (g_win_managed_focus && dpy && win) {
+        Window fw = None; int frev = 0;
+        XGetInputFocus(dpy, &fw, &frev);
+        if (fw != win) {
+            Window rr, cr; int rx, ry, wx, wy; unsigned mb;
+            if (XQueryPointer(dpy, win, &rr, &cr, &rx, &ry, &wx, &wy, &mb) &&
+                wx >= 0 && wy >= 0 && wx < g_win_w && wy < g_win_h) {
+                XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
+            }
+        }
+    }
     /* REAL, NEW 2026-09-05 - age out the top-right "copied" tag: one
      * last repaint the moment it crosses ~2s old, then it stays cleared
      * (this block is a no-op once g_clip_copied_at is back to 0). */
@@ -14380,7 +14409,21 @@ int main(int argc, char **argv) {
      * (short-lived popups/submenus correctly stay override_redirect,
      * per 03-pitfalls/X11-AND-SESSION-PITFALLS.md) - not touched here. */
     int dock_managed = window_is_dock();
-    swa.override_redirect = dock_managed ? False : (Bool)g_override_redirect;
+    /* REAL, NEW 2026-09-08 (pc-hq-leg-vs-nu-fix.md §5-A-ii). A window
+     * whose <window> tag carries the "managed" class is created
+     * WM-managed instead of override_redirect - EXACTLY the scoped
+     * opt-out window_is_dock() already does, keyed off a class the same
+     * way (elem_has_class), independent of the global
+     * override_redirect setting. Only pchq-board.xhtpm sets it, so
+     * every other window (dropdowns, db-hq, chat-hai, co-lab-hai) is
+     * byte-identical - none of the 2026-09-04 house-wide-flip blast
+     * radius. The legacy run_pchq_board_mode() proved WM-managed is the
+     * only way Mutter/XWayland routes real hardware keyboard to a
+     * continuously-interactive window (XGetInputFocus lies for
+     * override_redirect surfaces). */
+    int win_managed = dock_managed || elem_has_class(g_window, "managed");
+    g_win_managed_focus = win_managed && !dock_managed; /* per-tick focus re-assert, §5-B */
+    swa.override_redirect = win_managed ? False : (Bool)g_override_redirect;
     /* REAL FIX 2026-08-29 (live report: "toolbar doesn't allow drag
      * repositioning") - this generic popup window (entity-menu popup AND
      * swatch-picker/Settings) never requested ButtonReleaseMask or
@@ -14397,7 +14440,7 @@ int main(int argc, char **argv) {
     win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)g_win_w, (unsigned)g_win_h, 0,
                          CopyFromParent, InputOutput, CopyFromParent, CWBackPixel | CWOverrideRedirect | CWEventMask, &swa);
     if (window_is_dock()) apply_dock_window_hints(dpy, win, g_win_x, g_win_y);
-    render_managed_wm_hints(dpy, win, dock_managed || !g_override_redirect); /* REAL, NEW 2026-09-01 - managed branch: undecorated + no shell chrome (post-map sink-below lands after XMapRaised) */
+    render_managed_wm_hints(dpy, win, win_managed || !g_override_redirect); /* REAL, NEW 2026-09-01 - managed branch: undecorated + no shell chrome (post-map sink-below lands after XMapRaised); win_managed adds the <window class="managed"> case 2026-09-08 */
     Atom motif_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
     long hints[5] = { 2, 0, 0, 0, 0 };
     XChangeProperty(dpy, win, motif_hints, motif_hints, 32, PropModeReplace, (unsigned char *)hints, 5);
