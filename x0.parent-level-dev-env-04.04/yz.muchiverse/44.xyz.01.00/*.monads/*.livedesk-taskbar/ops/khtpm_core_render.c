@@ -4938,6 +4938,15 @@ static void assign_nav_and_layout(void) {
                 g_has_canvas = 1;
                 if (row_x) { y += row_h + 4; row_x = 0; row_h = 0; }
                 css_compute_style(&g_sheet, item->tag, item->id, item->classes, item->n_classes, 0, &item->style);
+                /* Live canvas_raw from projector vars — first parse can
+                 * happen before ui.txt exists (click-open vs Enter after
+                 * 1.5s). Without this the Elem sprite stays empty and
+                 * kh_draw_canvas fills dark every tick. */
+                {
+                    const char *cr = kh_get_var("canvas_raw");
+                    if (cr && cr[0])
+                        snprintf(item->sprite, sizeof(item->sprite), "%s", cr);
+                }
                 int cw = item->style.has_width  ? item->style.width  : 0;
                 int ch = item->style.has_height ? item->style.height : 0;
                 if ((!cw || !ch) && item->sprite[0]) {

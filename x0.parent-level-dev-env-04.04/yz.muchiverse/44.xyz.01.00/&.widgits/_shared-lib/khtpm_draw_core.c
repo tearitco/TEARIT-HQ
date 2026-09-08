@@ -535,7 +535,12 @@ static void kh_draw_canvas(Elem *e) {
     static int   c_w, c_h;
     static XImage *c_img;
     static unsigned char *c_buf;
-    if (!e->sprite[0]) {
+    const char *spr = e->sprite;
+    {
+        const char *cr = kh_get_var("canvas_raw");
+        if (cr && cr[0]) spr = cr;
+    }
+    if (!spr[0]) {
         XSetForeground(dpy, gc, alloc_pixel("#101014"));
         XFillRectangle(dpy, buf, gc, e->x, e->y, (unsigned)e->w, (unsigned)e->h);
         return;
@@ -545,11 +550,11 @@ static void kh_draw_canvas(Elem *e) {
      * before appending, falling back to the naive append for any other
      * producer that really does use "<path>.receipt.txt". */
     char rc[512];
-    { const char *dot = strrchr(e->sprite, '.');
+    { const char *dot = strrchr(spr, '.');
       if (dot && strcmp(dot, ".raw") == 0)
-          snprintf(rc, sizeof(rc), "%.*s.receipt.txt", (int)(dot - e->sprite), e->sprite);
+          snprintf(rc, sizeof(rc), "%.*s.receipt.txt", (int)(dot - spr), spr);
       else
-          snprintf(rc, sizeof(rc), "%s.receipt.txt", e->sprite);
+          snprintf(rc, sizeof(rc), "%s.receipt.txt", spr);
     }
     int w = 0, h = 0;
     FILE *rf = fopen(rc, "r");
@@ -584,8 +589,8 @@ static void kh_draw_canvas(Elem *e) {
         }
         return;
     }
-    if (strcmp(c_path, e->sprite) != 0 || c_w != w || c_h != h || !c_img) {
-        snprintf(c_path, sizeof(c_path), "%s", e->sprite);
+    if (strcmp(c_path, spr) != 0 || c_w != w || c_h != h || !c_img) {
+        snprintf(c_path, sizeof(c_path), "%s", spr);
         c_w = w; c_h = h;
         free(c_buf); c_buf = (unsigned char *)malloc((size_t)w * h * 4);
         if (c_img) { XDestroyImage(c_img); c_img = NULL; }
@@ -596,7 +601,7 @@ static void kh_draw_canvas(Elem *e) {
                      : NULL;
     }
     if (!c_img || !c_buf) return;
-    FILE *of = fopen(e->sprite, "rb");
+    FILE *of = fopen(spr, "rb");
     if (of) {
         size_t need = (size_t)w * h * 4, got = fread(c_buf, 1, need, of);
         fclose(of);
