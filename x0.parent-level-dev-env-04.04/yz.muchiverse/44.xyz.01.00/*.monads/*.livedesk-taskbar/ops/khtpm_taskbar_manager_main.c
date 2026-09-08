@@ -984,6 +984,9 @@ int main(int argc, char **argv) {
         /* file cell "load" -> File Explorer widget -> pick-session.sh
          * drops the chosen session id in #.desktop/; consume it here. */
         ktb_poll_pending_session_open(&st);
+        /* file cell "save-as" -> File Explorer widget (SAVE mode) ->
+         * save-as-session.sh drops the typed name in #.desktop/. */
+        ktb_poll_pending_save_as(&st);
         /* also periodically reload so external tab/shortcut/theme file
          * changes (livedesk_open.txt, livedesk_shortcuts.pdl, etc.) are
          * picked up, matching ktb_plat_run()'s own per-tick ktb_reload(). */

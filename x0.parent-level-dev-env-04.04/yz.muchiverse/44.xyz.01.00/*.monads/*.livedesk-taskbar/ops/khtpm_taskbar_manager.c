@@ -2513,6 +2513,33 @@ static void livedesk_save_as_with_name(const char *house_root, const char *sroot
     livedesk_root_write(sroot, nid, "");
 }
 
+/* Symmetric with ktb_poll_pending_session_open (2026-09-08). The file
+ * cell's "save-as" row used to call ktb_cliio_open_save_as() - the
+ * in-place cli_io name prompt - which, reached from the file sub-menu
+ * (an already-replaced popup), latched the strip nav on cell 3 exactly
+ * like the old "load" path did. Now "save-as" launches
+ * #.desktop/scripts/save-as-session.sh, which opens the File Explorer
+ * widget in SAVE mode at the sessions root and drops the typed name
+ * here; this is polled from the main loop and consumed once. */
+void ktb_poll_pending_save_as(KtbState *s) {
+    char path[KTB_PATH_BUF];
+    path_join(path, sizeof(path), s->house_root,
+              "#.desktop/livedesk_pending_save_as.txt");
+    FILE *f = ktb_fopen(path, "r");
+    if (!f) return;
+    char name[64] = "";
+    if (fgets(name, sizeof(name), f)) {
+        char *nl = strpbrk(name, "\r\n"); if (nl) *nl = '\0';
+    }
+    fclose(f);
+    remove(path);
+    if (!name[0]) return;
+    if (strchr(name, '/') || strchr(name, '\\') || strcmp(name, "..") == 0) return;
+    char sroot[KTB_PATH_BUF];
+    if (!livedesk_sessions_root(s->house_root, sroot, sizeof(sroot))) return;
+    livedesk_save_as_with_name(s->house_root, sroot, name);
+}
+
 static int livedesk_build_session_menu(const char *house_root, HQMenuItem *menu, int max) {
     char sroot[KTB_PATH_BUF];
     if (!livedesk_sessions_root(house_root, sroot, sizeof(sroot))) return 0;
@@ -4362,8 +4389,25 @@ void ktb_hq_activate(KtbState *s, int row) {
          * `livedesk_save_as()` branch, which opens the cli-io text-input
          * modal (same real target as the standalone which==4 header used
          * to be before this pass's 12-cell renumbering - see
-         * ktb_cliio_open_save_as()). */
-        ktb_cliio_open_save_as(s);
+         * ktb_cliio_open_save_as()).
+         *
+         * REAL FIX 2026-09-08 (live report: "save as didn't open picker
+         * and gets stuck on 3 like load did b4"). Reached from the file
+         * sub-menu, ktb_cliio_open_save_as()'s in-place cli_io prompt
+         * latched the strip nav on cell 3. Same cure as "load": close
+         * the menu, launch save-as-session.sh -> File Explorer widget in
+         * SAVE mode at the sessions root -> drops the typed name in
+         * #.desktop/livedesk_pending_save_as.txt for
+         * ktb_poll_pending_save_as() (main loop). */
+        {
+            char fx[KTB_PATH_BUF * 3];
+            snprintf(fx, sizeof(fx),
+                     KTB_SETSID "nohup sh -c 'sh \"%s/#.desktop/scripts/save-as-session.sh\" \"%s\"' >/dev/null 2>&1 &",
+                     s->house_root, s->house_root);
+            int rc = ktb_system_recorded(s->house_root, fx);
+            (void)rc;
+        }
+        ktb_hq_close(s);
     } else if (strcmp(m->command, "livedesk:load") == 0) {
         /* file cell's "load" row.
          *

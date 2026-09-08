@@ -242,6 +242,7 @@ void ktb_hq_activate(KtbState *s, int row);
  * returns a pick) and load that session once. Call every main-loop
  * tick. No-op when the file is absent. */
 void ktb_poll_pending_session_open(KtbState *s);
+void ktb_poll_pending_save_as(KtbState *s);
 
 void ktb_cliio_open_save_as(KtbState *s);
 void ktb_cliio_open_rename_desk(KtbState *s); /* seeds buffer with the current active desk's name */
