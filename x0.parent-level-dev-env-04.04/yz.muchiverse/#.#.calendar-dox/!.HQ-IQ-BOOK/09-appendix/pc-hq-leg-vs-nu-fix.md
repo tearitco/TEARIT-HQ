@@ -167,6 +167,76 @@ house the way the 2026-09-04 unbounded grab did. Only reach for it if
 
 ---
 
+## 6b. 2026-09-08 — §5-A/§5-B attempted by Sonnet, reverted, SECOND bug found
+
+Landed `fb2678ae` (class-gated WM-managed via a `managed` class on
+`<window>` + a per-tick `XSetInputFocus` re-assert in `hq_idle_tick()`),
+reverted `01f2dbef`. Results:
+
+- **§5-A worked.** With `class="… managed"`, `elem_has_class(g_window,
+  "managed")` at the `dock_managed` site, the pchq-board window is
+  created WM-managed: `_NET_CLIENT_LIST` includes it, `xwininfo` reports
+  `Override Redirect State: no`, `IsViewable`. Strip + dropdowns
+  unaffected. **This half of the plan is correct — grok should redo it.**
+- **§5-B (focus re-assert) built fine**, no regression observed, but
+  couldn't be validated because of the second bug below.
+- **The window keeps focus but keys still don't reach Interact Mode.**
+  Root cause, isolated live: **`g_interact_relay_on` never arms.**
+  `kh_scan_interact_relay()` (renderer ~4430) arms only when a page
+  `<item>` has `relay[0]` set AND `elem_has_class(it, "interact-active")`.
+  The `tb-in` item's class is `pchq-tb ${interact_class}`, and the
+  projector *does* publish `interact_class=interact-active` into
+  `state/ui.txt` the moment `active_gui_is_typing.txt` flips to 1
+  (verified). **But the live Elem tree keeps `tb-in` = `pchq-tb`
+  (no `interact-active`), label `In: off`, indefinitely** — a frame
+  dump shows the stale class even 10-20 s after `ui.txt` changed.
+  Doing `touch @.apps/piececraft-hq/pchq-board.xhtpm` (forcing a full
+  reparse) *immediately* makes the dump show `tb-in` =
+  `pchq-tb,interact-active`, `In: ON` — i.e. the render path is fine,
+  it's the **live-reparse-on-vars-change that isn't firing** for this
+  window.
+
+  `reparse_chtpm_if_changed()` (renderer ~1511) has a `g_vars_path`
+  content-hash branch with a two-consecutive-polls debounce
+  (`g_vars_hash` / `g_vars_hash_pending`) that is *supposed* to trigger
+  a reparse when `state/ui.txt` changes. It is called unconditionally
+  from `hq_idle_tick()` (~7771). Consecutive reads of `ui.txt` were
+  byte-stable (not per-tick churn defeating the debounce). So one of:
+  1. `g_vars_path` isn't actually set to `state/ui.txt` for this window
+     (check `kh_find_vars_attr` vs the `vars="state/ui.txt"` attr and
+     the `${var}`/`<repeat>` gate in `parse_chtpm` — if the template
+     has neither `${` nor `<repeat` at parse time the whole vars
+     pipeline is skipped; pchq-board.xhtpm DOES use both, so this
+     should be fine — verify).
+  2. `database-window` in the class list sets `g_default_persistent=1`
+     (~14157) — check whether that (or another db-hq/persistent flag)
+     gates the vars-hash reparse OFF anywhere. The reparse comment says
+     it's "scoped OFF for db-hq/events-hq/chat-hai"; pchq-board carries
+     the `database-window` class and may be catching that exclusion.
+  3. The debounce never completes because `g_vars_hash` was seeded
+     wrong at startup, or `kh_files_hash` intermittently fails to open
+     the file mid-projector-write and the pending hash never matches
+     twice.
+  4. `pchq_board_projector.c` writes `ui.txt` non-atomically (in-place,
+     not tmp+rename) — the debounce exists precisely for that, but if
+     the write is *also* changing another field every tick the hash
+     never stabilises. (Consecutive reads looked stable in the test,
+     but re-check under real interact toggling.)
+
+  **Cheapest correct fix is probably**: make `kh_scan_interact_relay()`
+  read the arm signal from the **projector-published var directly**
+  (e.g. a `g_vars`-table lookup of `interact_class` /
+  `active_gui_is_typing`, or have the projector publish a dedicated
+  `interact_armed=1` line) instead of depending on `${interact_class}`
+  having been re-substituted into an Elem class by a reparse that isn't
+  happening. That decouples "is Interact Mode engaged" from the
+  reparse cycle entirely — which is also what legacy did (it read
+  `active_gui_is_typing.txt` directly, once per frame, in
+  `pchq_is_interact_on()`).
+
+  Either way: **§5-A (WM-managed window) AND this reparse/arm bug both
+  have to be fixed** for Interact Mode to work. Neither alone is enough.
+
 ## 7. Suggested sequencing for grok
 
 1. **Confirm the window maps at all** on baseline (`pchq-board.xhtpm`,
