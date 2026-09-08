@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+SOURCE       | sample_mp4         | /home/no/Desktop/github/work/NNEST-12.00/#.NNEST_ASSETS/video/sample-10s-vp9.mp4
+NOTE         | why                | Demo clip for media-vid-hq. Moved 2026-09-08 from x0.parent-level-dev-env-04.04/#.media-library/sample-10s-vp9.mp4 (same outside-house-zip rule as RMMV / Mineclonia / CDDA).
+NOTE         | from_house         | 44.xyz.01.00/../../../#.NNEST_ASSETS/video/sample-10s-vp9.mp4

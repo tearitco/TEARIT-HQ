@@ -3,7 +3,7 @@
 Source: `103.media-studio/103.vid-edit/` (`HOW2_VIDEO.md`).
 
 ## Works now
-Demo loads `x0.parent-level-dev-env-04.04/#.media-library/sample-10s-vp9.mp4`
+Demo loads `NNEST-12.00/#.NNEST_ASSETS/video/sample-10s-vp9.mp4`
 onto V1 (10s). Preview is an ffmpeg poster frame (320×180 RGBA),
 throttled ~2/sec while playing (HOW2: no per-frame decode). Chrome,
 tabbars, timeline, split/del.

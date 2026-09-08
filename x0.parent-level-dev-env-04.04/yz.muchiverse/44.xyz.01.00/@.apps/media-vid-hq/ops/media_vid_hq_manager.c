@@ -100,11 +100,12 @@ static void demo(void){
     cl[0].used=1; cl[0].lane=0; cl[0].t0=0; cl[0].t1=DUR;
     cl[0].r=80; cl[0].g=140; cl[0].b=200;
     snprintf(cl[0].name,sizeof(cl[0].name),"sample-10s");
-    /* x0.parent-level-dev-env-04.04/#.media-library — two levels up from house */
+    /* NNEST-12.00/#.NNEST_ASSETS/video — three levels up from house
+     * (44.xyz → yz.muchiverse → x0.parent → NNEST-12.00). */
     {
         const char *cands[] = {
-            "%s/../../#.media-library/sample-10s-vp9.mp4",
-            "%s/../#.media-library/sample-10s-vp9.mp4",
+            "%s/../../../#.NNEST_ASSETS/video/sample-10s-vp9.mp4",
+            "%s/../../#.NNEST_ASSETS/video/sample-10s-vp9.mp4",
             NULL
         };
         cl[0].path[0]=0;
