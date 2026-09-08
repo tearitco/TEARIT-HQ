@@ -4,8 +4,11 @@
 #   make install    -> $(PREFIX)/bin/nbjs  (default PREFIX=/usr/local)
 #   make check      -> build + run the three headless worker suites
 #
-# To run:   ./nbjs page.js [fetch.dom]      # exit 0 ok / 1 js error / 2 usage
-# Daemon RPC mode (manager back-end) is the same binary with no arguments.
+# To run:   ./nbjs file.js [args...]              # node mode (no DOM) — like node
+#           ./nbjs --browser page.js [fetch.dom]  # DOM page runner + render-back
+#           ./nbjs                                # tty: REPL / pipes: daemon RPC
+# Exit codes (both CLI modes): 0 ok / 1 js error / 2 usage. The daemon RPC
+# mode (manager back-end) is the same binary with no arguments.
 
 CC      ?= cc
 CFLAGS  ?= -std=c11 -Wall -O2
@@ -31,17 +34,21 @@ wft: tests/worker_fetch_test.c nb_dom.c
 wet: tests/worker_events_test.c nb_dom.c
 	$(CC) $(CFLAGS) -o $@ tests/worker_events_test.c nb_dom.c
 
-check: nbjs wdt wft wet
+wcl: tests/cli_test.c
+	$(CC) $(CFLAGS) -o $@ tests/cli_test.c
+
+check: nbjs wdt wft wet wcl
 	rm -rf /tmp/nbjs-check ; mkdir -p /tmp/nbjs-check
 	./wdt ./nbjs tests/worker_dom_test.js /tmp/nbjs-check
 	./wft ./nbjs tests/worker_fetch_test.js /tmp/nbjs-check
 	NBW_CONSOLE=/tmp/nbjs-check/console.out ./wet ./nbjs tests/worker_events_test.js /tmp/nbjs-check
+	./wcl ./nbjs tests /tmp/nbjs-check
 
 install: nbjs
 	install -d $(DESTDIR)$(BINDIR)
 	install -m 0755 nbjs $(DESTDIR)$(BINDIR)/nbjs
 
 clean:
-	rm -f nbjs nbw wdt wft wet
+	rm -f nbjs nbw wdt wft wet wcl
 
 .PHONY: check install clean

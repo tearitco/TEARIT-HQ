@@ -29,6 +29,11 @@
 #include <signal.h>
 #include <string.h>
 #include <time.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <limits.h>
+
+extern char **environ;
 
 #define MAX_MSG (1024 * 1024)
 
@@ -1725,6 +1730,208 @@ static int repl_main(void) {
     return 0;
 }
 
+/* ---- CLI-1: node-like runner (nbjs file.js [args...]) ---- */
+static duk_ret_t nb_cli_stdout(duk_context *ctx) {
+    const char *s = duk_safe_to_string(ctx, 0);
+    if (g_out) { fputs(s ? s : "", g_out); fflush(g_out); }
+    return 0;
+}
+static duk_ret_t nb_cli_stderr(duk_context *ctx) {
+    const char *s = duk_safe_to_string(ctx, 0);
+    if (s) { fputs(s, stderr); fflush(stderr); }
+    return 0;
+}
+static duk_ret_t nb_cli_exit(duk_context *ctx) {
+    int code = 0;
+    if (duk_get_top(ctx) > 0 && duk_is_number(ctx, 0)) code = (int)duk_get_int(ctx, 0);
+    if (g_out) fflush(g_out);
+    duk_destroy_heap(ctx);
+    exit(code);
+    return 0;
+}
+static duk_ret_t nb_cli_cwd(duk_context *ctx) {
+    char buf[PATH_MAX];
+    if (getcwd(buf, sizeof(buf))) duk_push_string(ctx, buf);
+    else duk_push_string(ctx, "/");
+    return 1;
+}
+/* build a JS object from the process environment (not the full sys env —
+ * see getenv below). Env exposure is opt-in via require('os')-free helper;
+ * CLI-1 keeps it simple: expose a snapshot under process.env. */
+static void nb_cli_install(duk_context *ctx, int argc, char **argv) {
+    duk_push_object(ctx);                    /* process (abs index 0) */
+    /* argv — node convention: [interpreter, script, args...] */
+    duk_idx_t argv_arr = duk_push_array(ctx);
+    for (int i = 0; i < argc; i++) {
+        duk_push_string(ctx, argv[i]);
+        duk_put_prop_index(ctx, argv_arr, (duk_uarridx_t)i);
+    }
+    duk_put_prop_string(ctx, 0, "argv");     /* process.argv = [strings] */
+
+    /* env (snapshot of environ, ENAME="value" pairs) */
+    duk_idx_t env_obj = duk_push_object(ctx);   /* abs index 1 */
+    for (char **e = environ; e && *e; e++) {
+        const char *eq = strchr(*e, '=');
+        if (!eq) continue;
+        char *k = strndup(*e, (size_t)(eq - *e));
+        if (k) { duk_push_string(ctx, k); duk_push_string(ctx, eq + 1); duk_put_prop(ctx, env_obj); free(k); }
+    }
+    duk_put_prop_string(ctx, 0, "env");      /* process.env = {...} */
+    duk_push_c_function(ctx, nb_cli_cwd, 0);
+    duk_put_prop_string(ctx, 0, "cwd");      /* process.cwd = fn */
+    /* stdout / stderr — each a small object with write() */
+    duk_push_object(ctx);                    /* abs index 1 */
+    duk_push_c_function(ctx, nb_cli_stdout, DUK_VARARGS);
+    duk_put_prop_string(ctx, 1, "write");
+    duk_put_prop_string(ctx, 0, "stdout");
+    duk_push_object(ctx);                    /* abs index 1 */
+    duk_push_c_function(ctx, nb_cli_stderr, DUK_VARARGS);
+    duk_put_prop_string(ctx, 1, "write");
+    duk_put_prop_string(ctx, 0, "stderr");
+    duk_push_c_function(ctx, nb_cli_exit, DUK_VARARGS);
+    duk_put_prop_string(ctx, 0, "exit");     /* process.exit = fn */
+
+    /* expose as global `process` */
+    duk_push_global_object(ctx);
+    duk_dup(ctx, -2);
+    duk_put_prop_string(ctx, -2, "process");
+    duk_pop_2(ctx);
+}
+
+/* The released browser page runner: duk --browser page.js [fetch.dom]
+ * runs the full DOM engine (tree, events+timer loop, fetch/XHR+Promise,
+ * render-back) with rendered rows -> stdout. exit 0 ok / 1 js err / 2 usage.
+ * Same code path the old `duk page.js` default took before --node/--browser. */
+static int browser_cli_main(int argc, char **argv) {
+    g_cli = 1;
+    g_cli_log = 1;   /* bare console lines, no LOG| prefix */
+    if (!g_out) { g_out = stdout; setvbuf(g_out, NULL, _IONBF, 0); }
+    const char *pg = argv[1];
+    if (argc < 2 || strcmp(pg, "-h") == 0 || strcmp(pg, "--help") == 0) {
+        fprintf(stderr, "usage: duk --browser <page.js> [fetch.dom]\n");
+        return 2;
+    }
+    const char *base = strrchr(pg, '/');
+    snprintf(g_title, sizeof(g_title), "%s", base ? base + 1 : pg);
+    snprintf(g_href, sizeof(g_href), "file://%s", pg);
+    snprintf(g_page_js, sizeof(g_page_js), "%s", pg);
+    if (argc > 2) snprintf(g_fetch_dom, sizeof(g_fetch_dom), "%s", argv[2]);
+    if (access(pg, R_OK) != 0) {
+        fprintf(stderr, "nbjs: cannot read %s\n", pg);
+        return 2;
+    }
+    run_page();
+    return g_cli_status_ok ? 0 : 1;
+}
+
+static int cli_main(int argc, char **argv) {
+    g_cli = 1; g_cli_log = 1;         /* bare console lines -> stdout */
+    g_out = stdout; setvbuf(g_out, NULL, _IONBF, 0);
+
+    /* parse: duk [--node] file.js|-- [args...] */
+    int script_i = -1;
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
+            fprintf(stderr, "usage: duk <file.js|-> [args...]   (node mode)\n");
+            fprintf(stderr, "       duk --browser <page.js> [fetch.dom]   (DOM page mode)\n");
+            return 2;
+        }
+        if (argv[i][0] == '-' && strcmp(argv[i], "-") != 0) continue;
+        script_i = i; break;
+    }
+    if (script_i < 0) {
+        fprintf(stderr, "usage: duk <file.js|-> [args...]   (node mode)\n");
+        fprintf(stderr, "       duk --browser <page.js> [fetch.dom]   (DOM page mode)\n");
+        return 2;
+    }
+    const char *pg = argv[script_i];
+    if (strcmp(pg, "-") != 0 && access(pg, R_OK) != 0) {
+        fprintf(stderr, "nbjs: cannot read %s\n", pg);
+        return 2;
+    }
+
+    duk_context *ctx = duk_create_heap(NULL, NULL, NULL, NULL, fatal_handler);
+    if (!ctx) return 1;
+
+    /* node-like host: console/print only, plus process. No DOM, no events,
+     * no timers, no browser prelude — window/document/location are absent. */
+    duk_push_global_object(ctx);
+    duk_push_c_function(ctx, native_log, DUK_VARARGS);
+    duk_put_prop_string(ctx, -2, "print");
+    duk_push_object(ctx);
+    duk_push_c_function(ctx, native_log, DUK_VARARGS);
+    duk_dup(ctx, -1);
+    duk_put_prop_string(ctx, -3, "log");
+    duk_dup(ctx, -1);
+    duk_put_prop_string(ctx, -3, "info");
+    duk_dup(ctx, -1);
+    duk_put_prop_string(ctx, -3, "warn");
+    duk_put_prop_string(ctx, -2, "error");
+    duk_put_prop_string(ctx, -2, "console");
+    duk_pop(ctx);
+
+    /* process.argv = [interp, script, args...] (node convention) */
+    {
+        int nargv = 1 + (argc - script_i);
+        char **a = calloc((size_t)nargv, sizeof(char *));
+        if (!a) { duk_destroy_heap(ctx); return 1; }
+        a[0] = argv[0];
+        for (int i = 0; i + script_i < argc; i++) a[i + 1] = argv[script_i + i];
+        nb_cli_install(ctx, nargv, a);
+        free(a);
+    }
+
+    char *src = NULL; size_t n = 0;
+    if (strcmp(pg, "-") == 0) {
+        /* read the whole script from stdin */
+        {
+            size_t cap = 1 << 16, len = 0;
+            char *b = malloc(cap);
+            if (!b) { duk_destroy_heap(ctx); return 1; }
+            for (;;) {
+                size_t got = fread(b + len, 1, cap - len, stdin);
+                len += got;
+                if (len == cap) { cap *= 2; b = realloc(b, cap); if (!b) { duk_destroy_heap(ctx); return 1; } }
+                if (feof(stdin) || got == 0) break;
+            }
+            b[len] = 0; src = b; n = len;
+        }
+    } else if (!read_file(pg, &src, &n)) {
+        fprintf(stderr, "nbjs: cannot read %s\n", pg);
+        duk_destroy_heap(ctx);
+        return 2;
+    }
+
+    /* Compile with shebang support, then call the module body. */
+    duk_push_string(ctx, pg);   /* filename arg (stack shape: [filename]) */
+    int rc = duk_pcompile_lstring_filename(ctx, DUK_COMPILE_SHEBANG, src, n);
+    free(src);
+    if (rc != 0) {
+        const char *m = duk_safe_to_string(ctx, -1);
+        fprintf(stderr, "%s\n", m ? m : "script error");
+        duk_destroy_heap(ctx);
+        return 1;
+    }
+    /* CPU guard: a while(true){} script must be killed, same guarantee as
+     * the page runner. sigalrm() hard-exits the worker; in CLI mode that's
+     * a clean-enough "runaway script" stop (exit via signal). */
+    int rc2;
+    signal(SIGALRM, sigalrm);
+    alarm(EVAL_BUDGET_SEC);
+    rc2 = duk_pcall(ctx, 0);
+    alarm(0);
+    if (rc2 != 0) {
+        const char *m = duk_safe_to_string(ctx, -1);
+        fprintf(stderr, "%s\n", m ? m : "script error");
+        duk_destroy_heap(ctx);
+        return 1;
+    }
+    duk_pop(ctx);
+    if (g_out) fflush(g_out);
+    duk_destroy_heap(ctx);
+    return 0;
+}
+
 int main(int argc, char **argv) {
     g_out = NULL;   /* step 2: no effects file yet; console goes nowhere */
     {
@@ -1736,28 +1943,13 @@ int main(int argc, char **argv) {
     }
 
     if (argc > 1) {
-        /* standalone CLI (node-ish): nbjs <page.js> [fetch.dom] — run once,
-         * console.* -> stdout, rendered rows -> stdout, exit 0 ok / 1 err.
-         * No RPC framing, no khtpm/chtpm dependency. */
-        g_cli = 1;
-        g_cli_log = 1;   /* bare console lines, no LOG| prefix */
-        const char *pg = argv[1];
-        if (strcmp(pg, "-h") == 0 || strcmp(pg, "--help") == 0) {
-            fprintf(stderr, "usage: nbjs <page.js> [fetch.dom]\n");
-            return 2;
-        }
-        if (!g_out) { g_out = stdout; setvbuf(g_out, NULL, _IONBF, 0); }
-        const char *base = strrchr(pg, '/');
-        snprintf(g_title, sizeof(g_title), "%s", base ? base + 1 : pg);
-        snprintf(g_href, sizeof(g_href), "file://%s", pg);
-        snprintf(g_page_js, sizeof(g_page_js), "%s", pg);
-        if (argc > 2) snprintf(g_fetch_dom, sizeof(g_fetch_dom), "%s", argv[2]);
-        if (access(pg, R_OK) != 0) {
-            fprintf(stderr, "nbjs: cannot read %s\n", pg);
-            return 2;
-        }
-        run_page();
-        return g_cli_status_ok ? 0 : 1;
+        /* duk --browser page.js [fetch.dom] — the released DOM page runner
+         * (full DOM engine + render-back). duk file.js — node mode, no
+         * browser globals, process/console host. Either way: exit 0 clean /
+         * 1 thrown error / 2 usage. No RPC framing, no khtpm dependency. */
+        if (strcmp(argv[1], "--browser") == 0 || strcmp(argv[1], "-b") == 0)
+            return browser_cli_main(argc - 1, argv + 1);
+        return cli_main(argc, argv);
     }
 
     /* bare `duk` with a terminal as stdin: interactive REPL instead of the

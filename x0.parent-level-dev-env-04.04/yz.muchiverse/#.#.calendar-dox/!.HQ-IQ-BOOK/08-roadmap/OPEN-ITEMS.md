@@ -22,15 +22,19 @@ short version.*
 9. Joystick/controller support: not started.
 10. `ktb_pid_alive()` zombie-PID false-positive: structural fix not
     done (workaround documented in `04-bugs/BUG-LOG.md`).
-11. NB-JS engine as a node/bun-like CLI runner: **v0 landed on `opencode`
-     (d7797d74, 1588f1fd, cee6e587)** — `make` → `nbjs`; `nbjs <page.js>
-     [fetch.dom]` runs a page headless like node (console.* → stdout, plain
-     exit 0/1/2, no khtpm/chtpm/GUI dependency); `./install-duk.sh` exposes
-     it as a `duk` command + `$duk` env var; bare `duk` on a terminal starts
-     a REPL (non-tty stdin stays the framed daemon, manager-safe). `make
-     check` green (dom/fetch/events). Remaining note: Duktape 2.7.0 has NO
-     arrow functions (`(() => 1)()` parses "empty expression not allowed")
-     and NO `let` (`let x = 1` → "unterminated statement") — `const` and
-     `var` work; use `function(){}` callbacks and `var`/`const` — engine
-     limitations, documented for page authors. Farther out: require/
-     process/fs, `NB-JS-CLI-NODE-LIKE-MODE.md` ladder.
+11. NB-JS engine as a node/bun-like CLI runner: **v0 + CLI-1 node runner
+     landed on `opencode` (d7797d74, 1588f1fd, cee6e587, cli-1 commit)** —
+     `make` → `nbjs`; `nbjs file.js [args...]` runs node-style (no browser
+     globals, `process.argv/cwd/env/stdout/stderr.write/exit`, exit 0/1/2,
+     CPU-guarded by the 2 s eval budget); `nbjs --browser page.js
+     [fetch.dom]` is the released DOM page runner (console.* → stdout,
+     rendered rows → stdout, no khtpm/chtpm/GUI dependency);
+     `./install-duk.sh` exposes it as a `duk` command + `$duk` env var;
+     bare `duk` on a terminal starts a REPL (non-tty stdin stays the framed
+     daemon, manager-safe). `make check` green (dom/fetch/events + new
+     `cli_test` 7-case suite). Remaining note: Duktape 2.7.0 has NO arrow
+     functions (`(() => 1)()` parses "empty expression not allowed") and NO
+     `let` (`let x = 1` → "unterminated statement") — `const` and `var`
+     work; use `function(){}` callbacks and `var`/`const` — engine
+     limitations, documented for page authors. Farther out: require/fs,
+     `NB-JS-CLI-NODE-LIKE-MODE.md` ladder.

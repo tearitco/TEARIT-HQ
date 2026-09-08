@@ -8,8 +8,9 @@
 #   RC_FILE=~/.zshrc ./install-duk.sh
 #
 # After it runs: open a new shell (or `source ~/.bashrc`) and run
-#   duk /path/to/page.js         (command on PATH, when ~/.local/bin is there)
-#   $duk /path/to/page.js        (always works via the env var)
+#   duk /tmp/script.js              (node mode — like node, no browser)
+#   duk --browser /tmp/page.js      (DOM page runner + render-back)
+#   $duk /tmp/script.js             (always works via the env var)
 #
 # Exit codes: 0 installed, 1 build/install failure.
 set -euo pipefail
@@ -53,7 +54,10 @@ if [ "${BASH_SOURCE[0]}" != "$0" ]; then
 fi
 
 echo
-echo "Run it as:  duk /tmp/page.js     or     \$duk /tmp/page.js"
+echo "Run it as:  duk /tmp/script.js [args...]       # node mode (like node)"
+echo "             duk --browser /tmp/page.js         # DOM page runner + render-back"
+echo "             duk                                 # bare on a terminal: REPL"
+echo "             \$duk /tmp/script.js                 # the env var works identically"
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
   echo "Then open a new shell (or run: source ~/$(basename "$rcfile"))"
 fi

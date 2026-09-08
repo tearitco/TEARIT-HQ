@@ -1,8 +1,12 @@
 # NB-JS engine as a node/bun-like CLI runner — scope + plan
 
-**Status:** queued (OPEN-ITEMS #11). Proposed 2026-09-06. Not too late:
-the engine is a standalone vendored duktape + two host seams; a CLI form
-is additive in exactly the same way the resident worker was.
+**Status:** CLI-1 landed 2026-09-07 (in the worker, `cli_main()`); CLI-2
+(CommonJS) and CLI-3 (fs-lite + `-i`) queued behind it. The node runner
+shares the binary with the REPL and the daemon: `duk` (no args) + tty →
+REPL, `duk file.js` → node mode, `duk --browser page.js` → the released
+DOM page runner. Trigger for CLI-2: a guard-railed `require('./x.js')` +
+`process.argv` used by a new `tests/cli_*.js` runner with expected exit
+codes.
 
 **Why the moment is right:** rung 4 (XHR/fetch) just made the worker a
 real JS-time runtime. The host installation seam (`install_host()` +

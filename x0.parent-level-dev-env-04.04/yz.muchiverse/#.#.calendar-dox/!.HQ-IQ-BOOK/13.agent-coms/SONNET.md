@@ -119,3 +119,31 @@ has **no `let`** (`let x = 1` → `unterminated statement`) although
 `const`/`var` work. Edition is Duktape 2.7.0 with DUK_USE_ES6 on, but
 arrow syntax and block-scoped `let` are simply not present in the
 parser.
+
+## NOTICE 2026-09-07 — CLI-1 node runner lands; `duk` gains two modes
+
+Merge `origin/opencode` to get the commit past the CLI pack above.
+
+- **`duk file.js [args...]` is now a node-style runner** (CLI-1):
+  `process.argv` (interpreter, script, args), `process.cwd`, a
+  `process.env` snapshot, `process.stdout`/`process.stderr.write`,
+  `process.exit(code)`. **No browser globals by design** (`window`,
+  `document`, `location` are absent — a feature). Errors → stderr,
+  exit 1; clean run → exit 0; `-` reads the script from stdin; `#!`
+  shebangs are stripped. The whole body runs under the same 2 s
+  SIGALRM CPU guard as pages, so `while(true){}` dies rather than hangs.
+- **`duk --browser page.js [fetch.dom]` is the released DOM page
+  runner** (full DOM engine, events+timer loop, fetch/XHR+Promise,
+  render-back → stdout). This is the behavior the old default
+  `duk page.js` had, kept reachable and explicit.
+- REPL (bare `duk` on a terminal) and the framed manager daemon (no
+  args, non-tty) are unchanged.
+- House question answered along the way: node/v8's model is REPL with
+  no args, run-the-file with an arg, and *no DOM at all* — we chose the
+  better-than-node shape: node semantics by default plus an explicit
+  `--browser` flag, so both are one command away. Docs updated
+  (`14.biz/news` press pack, `install-duk.sh` usage, OPEN-ITEMS #11,
+  roadmap §9, `NB-JS-CLI-NODE-LIKE-MODE.md` status).
+- **`make check` now runs 4 suites**: dom/fetch/events (all PASS) plus a
+  new `cli_test` (7 cases: plain run+argv, throw→1, process.exit→3,
+  `--browser` DOM, stdin `-`, no-browser-globals, `--help`→2). All green.
