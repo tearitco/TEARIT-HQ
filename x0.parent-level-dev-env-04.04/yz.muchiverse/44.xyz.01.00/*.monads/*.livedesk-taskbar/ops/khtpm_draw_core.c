@@ -67,6 +67,28 @@ static XftColor xft_color(const char *spec) {
     return xc;
 }
 
+/* REAL FIX 2026-09-04, direct live report ("white text doesn't have
+ * black background... not readable") - a real, DIFFERENT bug from the
+ * badge-blackout fix earlier this same day. Badges always sit on their
+ * own fixed dark #141414 chip (that fix correctly stopped computing
+ * contrast against the wrong surface, the element's own bg). Plain
+ * dock-cell LABEL text has no such chip at all - it draws straight
+ * onto the dock window's real fill, which for a dock window specifically
+ * is g_theme_bg (redraw()'s own `window_is_dock() ? g_theme_bg :
+ * "#1c1c1c"` fill), a user-changeable theme color, NOT the CSS's
+ * hardcoded dark `window.dock-header { background: #1c1c1c }` the
+ * .dock-cell text color (#cccccc) was tuned against. A light/tan theme
+ * (this house's current default) makes light-on-light text unreadable.
+ * This time the surface being tested really is the one the text sits
+ * on - not the same mistake. Scoped to window_is_dock() only; every
+ * other window's plain text keeps its existing, unrelated color. */
+static int kh_hex_luma(const char *hex) {
+    if (!hex || hex[0] != '#' || strlen(hex) < 7) return 255; /* honest default: assume light, matches this house's own light-theme default */
+    unsigned int r, g, b;
+    if (sscanf(hex + 1, "%02x%02x%02x", &r, &g, &b) != 3) return 255;
+    return (int)(r * 299 + g * 587 + b * 114) / 1000;
+}
+
 /* Real font cache, same pattern as chat-hai/db-hq's own real
  * measure_text_px() fix (khtpm-merge-how2.md §3.2). Caller must NOT
  * XftFontClose() the returned font - shared, cached handle. */
@@ -397,36 +419,25 @@ static void draw_text_emoji(XftFont *f, XftColor *c, int x, int y, const char *s
     }
 }
 
-/* REAL FIX 2026-08-25 (live report: "green on gold isn't readable" - the
- * nav badge's fixed #cccccc unfocused color read as a muddy green-ish
- * smear against bright #ffd700 gold tiles/bookmark rows). Picks black or
- * light gray by the element's own background luminance instead of a
- * single hardcoded color - readable on both the dark #141414 chrome AND
- * any light/gold tile bg, without a per-mode special case. */
-static const char *badge_contrast_color(const CssStyle *st) {
-    if (!st->has_bg_color || st->bg_color[0] != '#' || strlen(st->bg_color) < 7) return "#cccccc";
-    unsigned int r, g, b;
-    sscanf(st->bg_color + 1, "%02x%02x%02x", &r, &g, &b);
-    double luma = 0.299 * r + 0.587 * g + 0.114 * b;
-    return luma > 140 ? "#000000" : "#cccccc";
-}
-/* REAL FIX 2026-08-25 (live report: "bright yellow highlight and orange
- * nav text" unreadable on cursword's bookmark rows) - the FOCUSED badge
- * used a single hardcoded #ff8c00 unconditionally, the exact same bug
- * class badge_contrast_color() above already fixed for the UNFOCUSED
- * case, just never ported to the focused branch. On the dark #141414
- * chrome, orange-on-dark is fine (matches the focus rectangle); on a
- * light/gold row background (e.g. bookmarks' own #d9b64a), orange-on-
- * gold has almost no contrast. Same luma test as badge_contrast_color(),
- * just a different pair of colors so focus stays visually distinct from
- * the plain unfocused badge even on a light bg. */
-static const char *badge_focus_color(const CssStyle *st) {
-    if (!st->has_bg_color || st->bg_color[0] != '#' || strlen(st->bg_color) < 7) return "#ff8c00";
-    unsigned int r, g, b;
-    sscanf(st->bg_color + 1, "%02x%02x%02x", &r, &g, &b);
-    double luma = 0.299 * r + 0.587 * g + 0.114 * b;
-    return luma > 140 ? "#7a1a00" : "#ff8c00";
-}
+/* REMOVED 2026-09-04 (RENDERER-MODULARITY-AND-PERF-AUDIT.md-adjacent
+ * finding - live report: "nav numbers get blacked out... this also
+ * happens in tb and other windows"). badge_contrast_color()/badge_
+ * focus_color() used to live here, picking a color by the ELEMENT'S
+ * OWN background luminance (dark text for a light element bg). That
+ * made sense in 2026-08-25 when they were written - at the time, a
+ * badge could be drawn directly on an element's own bg with no
+ * backing chip. Some time after that, drawing a fixed dark #141414
+ * backing chip behind EVERY badge (sprite tiles, swatch tiles, and -
+ * unconditionally, no gate at all - every other element via this same
+ * function's own general branch) became universal, but nobody removed
+ * the now-obsolete contrast-vs-own-bg logic when that happened - so
+ * any element anywhere in the house with a light/bright own bg-color
+ * (a themed dock cell, a light row, a bright swatch) got a DARK badge
+ * color chosen to contrast against ITS OWN bg, rendered on the
+ * ALWAYS-dark chip instead, and read as invisible. Confirmed by direct
+ * grep this was their only 2 call sites, both replaced with the same
+ * fixed colors every other case already used correctly - see the
+ * badge-color block below. */
 
 /* Generic XML/HTML entity decode for on-screen labels. chtpm attribute
  * values must stay escaped in the file (`&amp;` `&gt;` for well-formed
@@ -524,9 +535,11 @@ static void kh_draw_canvas(Elem *e) {
     static int   c_w, c_h;
     static XImage *c_img;
     static unsigned char *c_buf;
-    XSetForeground(dpy, gc, alloc_pixel("#101014"));
-    XFillRectangle(dpy, buf, gc, e->x, e->y, (unsigned)e->w, (unsigned)e->h);
-    if (!e->sprite[0]) return;
+    if (!e->sprite[0]) {
+        XSetForeground(dpy, gc, alloc_pixel("#101014"));
+        XFillRectangle(dpy, buf, gc, e->x, e->y, (unsigned)e->w, (unsigned)e->h);
+        return;
+    }
     /* the board-viewer convention is <base>.raw next to <base>.receipt.txt
      * (sibling, NOT <base>.raw.receipt.txt) - strip a trailing ".raw"
      * before appending, falling back to the naive append for any other
@@ -548,7 +561,29 @@ static void kh_draw_canvas(Elem *e) {
         }
         fclose(rf);
     }
-    if (w <= 0 || h <= 0) return;
+    /* REAL FIX 2026-09-04, live report ("render for pc-hq is sometimes
+     * blanking, maybe every 10 seconds - the old one didn't do this") -
+     * the receipt/raw pair is written by a SEPARATE producer process
+     * (bv_render_3d.c) with no atomicity guarantee visible from this
+     * side; a read landing mid-write can see w/h==0 for one tick, or
+     * (below) a short/partial .raw read. This used to unconditionally
+     * XFillRectangle a dark background FIRST, every call, then only
+     * overpaint it with the real frame if that tick's read succeeded -
+     * so a single bad tick (out of ~30/sec) blanked the canvas for one
+     * visible frame, repeating however often the producer's own write
+     * cycle collides with our read. Real fix: only fill-and-clear when
+     * there is no previous good frame cached yet (c_img == NULL, i.e.
+     * genuinely nothing to show); once a real frame has been decoded
+     * once, a bad tick simply leaves the LAST good frame's XImage
+     * on screen (below) instead of blanking - no visible flicker, same
+     * spirit as the old implementation apparently already had. */
+    if (w <= 0 || h <= 0) {
+        if (!c_img) {
+            XSetForeground(dpy, gc, alloc_pixel("#101014"));
+            XFillRectangle(dpy, buf, gc, e->x, e->y, (unsigned)e->w, (unsigned)e->h);
+        }
+        return;
+    }
     if (strcmp(c_path, e->sprite) != 0 || c_w != w || c_h != h || !c_img) {
         snprintf(c_path, sizeof(c_path), "%s", e->sprite);
         c_w = w; c_h = h;
@@ -598,6 +633,27 @@ static void draw_elem(Elem *e, int hover_id_hash) {
      * it, not just events-hq. */
     if (e->w <= 0 || e->h <= 0) return;
     if (strcmp(e->tag, "canvas") == 0) { kh_draw_canvas(e); return; }
+    /* REAL, NEW 2026-09-04, direct live request ("can we add grey and
+     * brown to swatch colors... that shouldn't be hardcoded, should
+     * be from layout/module") - a real, generic `bg="${var}"`
+     * attribute (parsed in apply_attr(), khtpm_core_render.c), letting
+     * a manager/projector publish a genuinely arbitrary hex color per
+     * element - not just a fixed set of compile-time CSS classes.
+     * Applied once, here, at the top of the ONE shared draw function
+     * every element already funnels through, so it overrides whatever
+     * `css_compute_style()` (35 call sites, one per layout mode) may
+     * have already computed for this element's style.bg_color - no
+     * changes needed at any of those call sites. First real consumer:
+     * taskbar-settings-pal.xhtpm's own swatch grid, generated by a
+     * <repeat> over a manager-owned color list instead of a fixed set
+     * of hardcoded <item class="sw-<name>"> tags + matching compile-
+     * time CSS rules (khtpm-house-standards's own "static template +
+     * real manager, no hardcoding" rule, applied to color DATA, not
+     * just item count). */
+    if (e->bg[0]) {
+        snprintf(e->style.bg_color, sizeof(e->style.bg_color), "%s", e->bg);
+        e->style.has_bg_color = 1;
+    }
     /* checkerboard is a PNG-transparency cue for sprite tiles only. A
      * class="swatch" item is by definition a plain filled colour square
      * (taskbar-settings-pal.xhtpm's colour picker, etc.) - it never
@@ -653,7 +709,190 @@ static void draw_elem(Elem *e, int hover_id_hash) {
     }
     if (e->nav_index > 0 && e->nav_index == g_focus_nav) {
         XSetForeground(dpy, gc, alloc_pixel("#ff8c00"));
-        XDrawRectangle(dpy, buf, gc, e->x - 1, e->y - 1, e->w + 1, e->h + 1);
+        /* The focus box is a 1px halo drawn just OUTSIDE the element
+         * (x-1..x+w, y-1..y+h) - correct for every compact <item>,
+         * dropdown row, strip cell, etc., and how it has always
+         * worked. REAL FIX 2026-09-05, direct live report ("moving
+         * that orange selector rectangle seemed to make it 'off' on
+         * other screens where it was working fine... maybe give a
+         * special case for text_area instead") - the earlier attempt
+         * gated the inset-box variant on a SIZE heuristic (w>120 ||
+         * h>60), which also caught menu rows / strip cells that were
+         * fine, drawing their halo detached/clipped. Now ONLY a
+         * <text_area> (a genuinely window-filling editor whose halo
+         * really does clip at the window edge and cut across the
+         * header) gets the inset box; <grid> already returns before
+         * this on its own draw path. Everything else keeps the halo,
+         * unchanged. */
+        if (strcmp(e->tag, "text_area") == 0) {
+            /* Inset, and start one badge-row down so the box sits
+             * BELOW the "[^]N." line (see the text_area draw's own
+             * badge_reserve). */
+            int top_pad = (e->nav_index > 0) ? scaled(18) : 1;
+            XDrawRectangle(dpy, buf, gc, e->x + 1, e->y + top_pad, e->w - 3, e->h - top_pad - 2);
+        } else {
+            XDrawRectangle(dpy, buf, gc, e->x - 1, e->y - 1, e->w + 1, e->h + 1);
+        }
+    }
+    /* REAL, NEW 2026-09-05 (08-roadmap/design-docs/GRID-ELEMENT-DESIGN.md,
+     * direct live request: "truly expecting cross hatch lines, like
+     * tic-tac-toe") - a real, self-contained draw branch, returning
+     * before the generic label-drawing chain below (same early-return
+     * shape "canvas" already uses above) since a grid's content is a
+     * genuine 2D table, not one wrappable string. Real, deliberate v1
+     * scope: cell BORDERS/header row/row numbers/cursor highlight are
+     * real and drawn here; actual cell VALUES are NOT wired yet (step 5
+     * of the design doc's own build order - a consumer's per-cell vars
+     * aren't published/read yet) - every data cell draws empty except
+     * the one currently being edited, which shows its own live
+     * grid_cell_buffer text + cursor bar. Fixed pixel cell sizing
+     * (CELL_W_PX/CELL_H_PX) rather than measuring real content width -
+     * a real, working table now, real column-width-fits-content sizing
+     * is a future refinement, not attempted here. */
+    if (strcmp(e->tag, "grid") == 0) {
+        enum { CELL_W_PX = 64, CELL_H_PX = 22, ROWLABEL_W_PX = 32, STATUS_H_PX = 18 };
+        int visible_cols = (e->w - ROWLABEL_W_PX) / CELL_W_PX;
+        if (visible_cols < 1) visible_cols = 1;
+        int table_y = e->y + STATUS_H_PX; /* real status row reserved above the table itself */
+        int visible_rows = (e->h - STATUS_H_PX) / CELL_H_PX - 1; /* -1 for the header row */
+        if (visible_rows < 1) visible_rows = 1;
+        int armed = (g_default_input_elem && e->id[0] && strcmp(e->id, g_default_input_elem->id) == 0);
+        int cur_row = armed ? g_default_input_elem->grid_cur_row : e->grid_cur_row;
+        int cur_col = armed ? g_default_input_elem->grid_cur_col : e->grid_cur_col;
+        int edit_mode = armed ? g_default_input_elem->grid_edit_mode : 0;
+        XftFont *gfont = font_for(&e->style);
+        const char *default_fg = (window_is_dock() && kh_hex_luma(g_theme_bg) > 140) ? "#1c1c1c" : "#cccccc";
+        XftColor gcol = xft_color(e->style.has_fg_color ? e->style.fg_color : default_fg);
+        /* REAL FIX 2026-09-05, direct live report ("i still dont see
+         * its nav button for human entry") - this branch `return`s
+         * before the generic "[ ]N."/"[>]N." nav-badge draw further
+         * down in this function (the same real gap every early-return
+         * tag, e.g. canvas, already has to solve for itself) - a human
+         * had no visible way to tell the grid was even a real,
+         * clickable/nav-reachable element. elem_cursor_prefix() only
+         * knows "[ ]"/"[>]"/"[^]" (2-3 states); grid needs a real 4th
+         * (# = armed-navigating vs ^ = armed-editing, see the design
+         * doc's own "Decided" section), so this is a small, deliberate
+         * duplicate of that function's own logic rather than a forced
+         * generalization of a house-wide helper for one new tag.
+         * REAL, NEW 2026-09-05 (direct live follow-up: "it should have
+         * space to show digit combo jump accumulation") - the badge AND
+         * the pending jump buffer now share a real, dedicated status
+         * row reserved above the table itself (STATUS_H_PX), instead of
+         * either cramming into the small corner cell or overlapping a
+         * data cell's own real content (which would be confusable with
+         * actually-typed cell text). */
+        {
+            const char *prefix = "[ ]";
+            if (armed) prefix = edit_mode ? "[^]" : "[#]";
+            else if (e->nav_index > 0 && e->nav_index == g_focus_nav) prefix = "[>]";
+            char status_line[48];
+            /* REAL, NEW 2026-09-05, direct live follow-up ("it should
+             * echo input, can have a cursor, would that help?") - a
+             * real, always-visible cursor glyph right after the jump
+             * buffer text (even when the buffer is still empty) while
+             * armed-navigating, so a human watching this exact spot can
+             * tell at a glance whether a keypress reached this process
+             * at all - real diagnostic value on top of real UX, not
+             * either/or. */
+            if (armed && !edit_mode)
+                snprintf(status_line, sizeof(status_line), "%s%d. jump: %s_", prefix, e->nav_index, g_default_input_elem->grid_jump_buffer);
+            else
+                snprintf(status_line, sizeof(status_line), "%s%d.", prefix, e->nav_index);
+            const char *badge_fg = armed ? (edit_mode ? "#ffcc00" : "#ff8c00") :
+                                    (e->nav_index == g_focus_nav ? "#ff8c00" : "#888888");
+            XftColor bcol = xft_color(badge_fg);
+            draw_text_emoji(gfont, &bcol, e->x + 2, e->y + gfont->ascent + 1, status_line);
+            XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &bcol);
+        }
+        XSetForeground(dpy, gc, alloc_pixel("#444444"));
+        for (int r = 0; r <= visible_rows + 1; r++) {
+            int ly = table_y + r * CELL_H_PX;
+            XDrawLine(dpy, buf, gc, e->x, ly, e->x + ROWLABEL_W_PX + visible_cols * CELL_W_PX, ly);
+        }
+        for (int c = 0; c <= visible_cols + 1; c++) {
+            int lx = e->x + (c == 0 ? 0 : ROWLABEL_W_PX + (c - 1) * CELL_W_PX);
+            XDrawLine(dpy, buf, gc, lx, table_y, lx, table_y + (visible_rows + 1) * CELL_H_PX);
+        }
+        for (int c = 0; c < visible_cols; c++) {
+            /* Base-26 column letter (A=0..Z=25, AA=26...) - a small,
+             * deliberately duplicated inline version of
+             * grid_col_to_letters() (khtpm_core_render.c): that helper
+             * is defined LATER in this same translation unit (this
+             * file is #included before it), so it isn't callable here
+             * yet - the algorithm is tiny enough that duplicating it is
+             * simpler and safer than reordering the whole file. */
+            char letters[8]; int nl = 0; long v = c + 1;
+            while (v > 0 && nl < (int)sizeof(letters)) { long rem = (v - 1) % 26; letters[nl++] = (char)('A' + rem); v = (v - 1) / 26; }
+            char colbuf[9]; int li = 0;
+            for (int k = nl - 1; k >= 0; k--) colbuf[li++] = letters[k];
+            colbuf[li] = '\0';
+            int cx = e->x + ROWLABEL_W_PX + c * CELL_W_PX + 4;
+            int cy = table_y + gfont->ascent + 2;
+            draw_text_emoji(gfont, &gcol, cx, cy, colbuf);
+        }
+        for (int r = 0; r < visible_rows; r++) {
+            char rowbuf[8];
+            snprintf(rowbuf, sizeof(rowbuf), "%d", r + 1);
+            int rx = e->x + 4;
+            int ry = table_y + (r + 1) * CELL_H_PX + gfont->ascent + 2;
+            draw_text_emoji(gfont, &gcol, rx, ry, rowbuf);
+        }
+        /* REAL FIX 2026-09-05, direct live follow-up ("does it remember
+         * input?") - step 5's own edit-SEED wiring (default_grid_handle_
+         * key()'s Enter-into-edit branch) only ever populated
+         * grid_cell_buffer for the ONE cell being actively edited; every
+         * OTHER cell's real published value (cell_<r>_<c>, the same var
+         * a consumer's manager writes) was never actually drawn - a
+         * committed edit really did reach the manager (confirmed via
+         * status="Set A2." + cell_1_0=42 in the real UI file) but had no
+         * visible way back onto the screen once the cursor moved off
+         * it. Skips the cell currently mid-edit (drawn separately,
+         * below, from the LIVE grid_cell_buffer - the manager's last-
+         * published value there is one tick stale by definition while
+         * a human is actively typing). */
+        for (int r = 0; r < visible_rows; r++) {
+            for (int c = 0; c < visible_cols; c++) {
+                if (armed && edit_mode && r == cur_row && c == cur_col) continue;
+                char varname[80];
+                snprintf(varname, sizeof(varname), "%s%d_%d", e->target_id[0] ? e->target_id : "cell_", r, c);
+                const char *val = kh_get_var(varname);
+                if (!val[0]) continue;
+                int vx = e->x + ROWLABEL_W_PX + c * CELL_W_PX + 4;
+                int vy = table_y + (r + 1) * CELL_H_PX + gfont->ascent + 2;
+                draw_text_emoji(gfont, &gcol, vx, vy, val);
+            }
+        }
+        /* Current-cell highlight - only meaningful while this exact
+         * grid is the armed element (g_default_input_elem); an
+         * unarmed grid still draws its real border/header lines above,
+         * just no cursor. */
+        if (armed && cur_row >= 0 && cur_row < visible_rows && cur_col >= 0 && cur_col < visible_cols) {
+            int hx = e->x + ROWLABEL_W_PX + cur_col * CELL_W_PX;
+            int hy = table_y + (cur_row + 1) * CELL_H_PX;
+            /* # = navigating (state 0), ^ = editing (state 1) - see the
+             * design doc's own "Decided" section for why these two
+             * badges, not one. The pending jump buffer (state 0) is
+             * shown in the real status row above, not here - see that
+             * row's own comment for why. */
+            XSetForeground(dpy, gc, alloc_pixel(edit_mode ? "#ffcc00" : "#ff8c00"));
+            XDrawRectangle(dpy, buf, gc, hx, hy, CELL_W_PX, CELL_H_PX);
+            if (edit_mode) {
+                /* The one real cell being edited shows its own live
+                 * grid_cell_buffer text (real per-cell VALUE display
+                 * for every other cell is step 5, not this pass) plus
+                 * a real cursor bar at e->cursor's byte offset. */
+                draw_text_emoji(gfont, &gcol, hx + 4, hy + gfont->ascent + 2, g_default_input_elem->grid_cell_buffer);
+                XGlyphInfo pre_ext;
+                XftTextExtentsUtf8(dpy, gfont, (const FcChar8 *)g_default_input_elem->grid_cell_buffer,
+                                    g_default_input_elem->cursor, &pre_ext);
+                int ccx = hx + 4 + pre_ext.width;
+                XSetForeground(dpy, gc, alloc_pixel(e->style.has_fg_color ? e->style.fg_color : default_fg));
+                XDrawLine(dpy, buf, gc, ccx, hy + 2, ccx, hy + CELL_H_PX - 2);
+            }
+        }
+        XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &gcol);
+        return;
     }
     int pad = e->style.has_padding ? e->style.padding : 4;
     int label_x = e->x + pad;
@@ -813,22 +1052,216 @@ static void draw_elem(Elem *e, int hover_id_hash) {
      * field - zero per-app code needed for any consumer of this shared
      * draw path. */
     char cli_io_shown[256 + 300];
+    static char text_area_shown[4096 + 300]; /* static: too big for this function's own stack budget alongside everything else already declared here */
     char label_decoded[600];
     const char *shown_label = e->label;
-    if (strcmp(e->tag, "cli_io") == 0) {
-        snprintf(cli_io_shown, sizeof(cli_io_shown), "%s%s%s", e->label, e->input_buffer,
-                 (e->nav_index > 0 && e->nav_index == g_focus_nav) ? "_" : "");
+    int cli_io_armed = 0;
+    if (strcmp(e->tag, "text_area") == 0) {
+        /* REAL, NEW 2026-09-05 - same label+buffer convention as
+         * cli_io just below, own (much bigger) buffer. label_decoded
+         * (600B) can't hold this - the text_area draw branch further
+         * down reads `shown_label` directly, never through
+         * label_decoded, so HTML-entity decoding is intentionally
+         * skipped for text_area's own content this pass (a real
+         * document is far more likely to contain a literal `&` the
+         * user typed than an intentional entity reference - decoding
+         * it would corrupt real typed content, unlike cli_io's short
+         * composer strings where entities are the more common real
+         * case). */
+        snprintf(text_area_shown, sizeof(text_area_shown), "%s%s", e->label, e->text_area_buffer);
+        shown_label = text_area_shown;
+    } else if (strcmp(e->tag, "cli_io") == 0) {
+        /* REAL, NEW 2026-09-05 (CLI_IO-CURSOR-AND-TEXT_AREA-MULTILINE-
+         * EDITING-DESIGN.md) - the old trailing "_" glyph was a crude
+         * stand-in for a real cursor, always at the very end regardless
+         * of where e->cursor actually was. A real cursor bar is drawn
+         * at its own real position further down (single-line path
+         * only, see that comment) - no fake trailing glyph needed here
+         * anymore. */
+        snprintf(cli_io_shown, sizeof(cli_io_shown), "%s%s", e->label, e->input_buffer);
         shown_label = cli_io_shown;
+        /* REAL FIX 2026-09-05, direct live report ("i noticed that
+         * interact mode... was not enabled '^' nor was nav even on
+         * 'text input' area") - found while re-verifying: this was
+         * checking nav-FOCUS equality, not real armed state, so the
+         * cursor bar could render on a field a human just tabbed past
+         * without ever arming it for typing - misleading, and NOT the
+         * same real check the "^" badge just above already uses
+         * correctly (g_default_input_elem, matched by id, since this
+         * is a fresh frame-round-trip tmp Elem, never the same pointer
+         * as the live one). Use that exact same real armed-state check
+         * here too, instead of a second, looser, home-grown one. */
+        cli_io_armed = (g_default_input_elem && e->id[0] && strcmp(e->id, g_default_input_elem->id) == 0);
     }
-    snprintf(label_decoded, sizeof(label_decoded), "%s", shown_label);
-    khtpm_decode_label_entities(label_decoded);
-    shown_label = label_decoded;
+    if (strcmp(e->tag, "text_area") != 0) {
+        /* REAL, NEW 2026-09-05 - text_area's own shown_label (up to
+         * ~4400 bytes) skips this: label_decoded is only 600B, and
+         * would silently truncate a real document every single draw.
+         * See text_area_shown's own declaration comment for why entity
+         * decoding is skipped for it anyway, not just this buffer-size
+         * mechanics. */
+        snprintf(label_decoded, sizeof(label_decoded), "%s", shown_label);
+        khtpm_decode_label_entities(label_decoded);
+        shown_label = label_decoded;
+    }
     int sprite_under_label = drew_sprite && e->h >= 64 && shown_label[0] && !(shown_label[0] == ' ' && shown_label[1] == '\0');
     int sprite_beside_label = drew_sprite && e->h < 64 && shown_label[0] &&
                               !elem_has_class(e, "pal-tile") && !elem_has_class(e, "swatch");
+    /* REAL, NEW 2026-09-05 (CLI_IO-CURSOR-AND-TEXT_AREA-MULTILINE-
+     * EDITING-DESIGN.md) - text_area gets its own real, separate draw
+     * path rather than folding into cli_io's word-wrap loop below:
+     * that loop treats its whole string as ONE continuously-wrappable
+     * stream with no concept of a real `\n` - exactly the thing
+     * text_area exists to have. Real logical lines (split on actual
+     * `\n` bytes) are wrapped independently here, each starting a
+     * fresh visual row regardless of how much of its own width budget
+     * the previous logical line used - the real distinction this
+     * whole feature is about. No ellipsis-on-overflow handling yet
+     * (cli_io's single-line/wrap paths both have it) - real, deliberate
+     * v1 scope note, not an oversight: text overflowing the box's
+     * visible rows is simply not drawn past the last one, matching the
+     * word-wrap loop's own max_lines clamp without ellipsis's added
+     * real complexity of computing this per REAL logical line boundary
+     * too. */
+    if (strcmp(e->tag, "text_area") == 0) {
+        XftFont *font = font_for(&e->style);
+        const char *default_fg = (window_is_dock() && kh_hex_luma(g_theme_bg) > 140) ? "#1c1c1c" : "#cccccc";
+        XftColor col = xft_color(e->style.has_fg_color ? e->style.fg_color : default_fg);
+        int avail_w = e->w > 0 ? (e->x + e->w) - (e->x + 4) : -1;
+        int line_h = font->ascent - font->descent > 0 ? font->ascent - font->descent : 12;
+        line_h += 4;
+        /* REAL FIX 2026-09-05, direct live report ("interact nav is
+         * overlapping first line. maybe have that not happen?") - the
+         * top-pinned "[^]N." badge sits at e->y; reserve one row for it
+         * so the first line of real text starts below it, not under it.
+         * Only when the element actually has a badge (nav_index > 0). */
+        int badge_reserve = (e->nav_index > 0) ? line_h : 0;
+        int max_lines = (e->h - badge_reserve) / line_h;
+        if (max_lines < 1) max_lines = 1;
+        int text_x = e->x + 4;
+        int ty = e->y + badge_reserve + font->ascent + 2;
+        /* REAL FIX 2026-09-05 - same real armed-state check as cli_io's
+         * own cli_io_armed just above (see its own comment) - not
+         * nav-focus equality, which would show a cursor bar on a
+         * text_area a human just tabbed past without ever arming it. */
+        int armed = (g_default_input_elem && e->id[0] && strcmp(e->id, g_default_input_elem->id) == 0);
+        int cursor_off = -1;
+        /* REAL, NEW 2026-09-05 (TEXT_AREA-SCROLL-GUTTER-SELECTION-
+         * DESIGN.md, step 4) - selection highlight range, in shown_label
+         * space (label prefix + buffer). Drawn per visual row below,
+         * BEFORE the row's glyphs, as a solid band behind the selected
+         * span. Only when this text_area is the live armed field and
+         * its selection is a real (non-collapsed) range. */
+        int sel_lo = -1, sel_hi = -1;
+        if (armed) {
+            int label_len = (int)strlen(shown_label) - (int)strlen(e->text_area_buffer);
+            if (label_len < 0) label_len = 0; /* honest guard - shown_label is always label+buffer below */
+            cursor_off = label_len + e->cursor;
+            Elem *live = g_default_input_elem;
+            if (live && live->sel_anchor != live->cursor) {
+                int a = live->sel_anchor < live->cursor ? live->sel_anchor : live->cursor;
+                int b = live->sel_anchor < live->cursor ? live->cursor : live->sel_anchor;
+                sel_lo = label_len + a;
+                sel_hi = label_len + b;
+            }
+        }
+        int consumed = 0; /* absolute offset into `shown_label` already drawn */
+        int line_no = 0;
+        const char *lp = shown_label; /* walks one REAL logical line at a time */
+        while (line_no < max_lines) {
+            const char *nl = strchr(lp, '\n');
+            int logical_len = nl ? (int)(nl - lp) : (int)strlen(lp);
+            /* Word-wrap THIS logical line only - a manual newline
+             * always starts a fresh visual row, independent of the
+             * greedy width-wrap below. */
+            const char *sp = lp;
+            int remaining = logical_len;
+            do {
+                int last_good_space = -1, i = 0;
+                XGlyphInfo lw;
+                for (;;) {
+                    if (i >= remaining) break;
+                    if (sp[i] == ' ') last_good_space = i;
+                    XftTextExtentsUtf8(dpy, font, (const FcChar8 *)sp, i + 1, &lw);
+                    if (avail_w > 0 && lw.width > avail_w) break;
+                    i++;
+                }
+                int cut = i;
+                int more_in_logical = (i < remaining);
+                if (more_in_logical && last_good_space >= 0) cut = last_good_space;
+                if (cut == 0 && more_in_logical) cut = 1; /* single glyph wider than the box - take it anyway, avoid an infinite loop */
+                char row_buf[600];
+                snprintf(row_buf, sizeof(row_buf), "%.*s", cut, sp);
+                /* selection band for the part of [sel_lo,sel_hi) that
+                 * falls on THIS visual row - drawn before the glyphs */
+                if (sel_hi > sel_lo) {
+                    int row_start = (int)(sp - shown_label);
+                    int row_end = row_start + cut;
+                    int hl_lo = sel_lo > row_start ? sel_lo : row_start;
+                    int hl_hi = sel_hi < row_end ? sel_hi : row_end;
+                    if (hl_hi > hl_lo) {
+                        XGlyphInfo pre, span;
+                        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)sp, hl_lo - row_start, &pre);
+                        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)sp, hl_hi - row_start, &span);
+                        int hx = text_x + pre.width;
+                        int hw = span.width - pre.width;
+                        if (hw < 2) hw = 2; /* a caret-width sliver for a zero-glyph edge (selecting past EOL) */
+                        XSetForeground(dpy, gc, alloc_pixel("#2f5f8f"));
+                        XFillRectangle(dpy, buf, gc, hx, ty - font->ascent, (unsigned)hw, (unsigned)line_h);
+                    }
+                }
+                draw_text_emoji(font, &col, text_x, ty, row_buf);
+                if (cursor_off >= 0) {
+                    int row_start_off = (int)(sp - shown_label);
+                    int row_end_off = row_start_off + cut;
+                    if (cursor_off >= row_start_off && cursor_off <= row_end_off) {
+                        XGlyphInfo pre_ext;
+                        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)sp, cursor_off - row_start_off, &pre_ext);
+                        int cx = text_x + pre_ext.width;
+                        int cy0 = ty - font->ascent, cy1 = ty + (font->descent > 0 ? font->descent : 2);
+                        XSetForeground(dpy, gc, alloc_pixel(e->style.has_fg_color ? e->style.fg_color : default_fg));
+                        XDrawLine(dpy, buf, gc, cx, cy0, cx, cy1);
+                        cursor_off = -1;
+                    }
+                }
+                ty += line_h;
+                line_no++;
+                sp += cut;
+                remaining -= cut;
+                while (remaining > 0 && *sp == ' ') { sp++; remaining--; } /* consumed break space never starts the next visual row */
+            } while (remaining > 0 && line_no < max_lines);
+            consumed = (int)(lp - shown_label) + logical_len;
+            if (!nl) break; /* no more real logical lines */
+            lp = nl + 1;
+            /* An armed field whose cursor sits exactly ON the real \n
+             * itself (end of a logical line, before the one below)
+             * needs the bar drawn here - the per-visual-row check above
+             * only ever sees offsets strictly inside a drawn row's own
+             * span, never the boundary character itself when it's the
+             * `\n` consumed by advancing to the next logical line. */
+            if (cursor_off == consumed) {
+                XGlyphInfo pre_ext;
+                XftTextExtentsUtf8(dpy, font, (const FcChar8 *)sp, 0, &pre_ext); /* honest zero-width - bar lands at row start */
+                (void)pre_ext;
+                int cy0 = ty - font->ascent, cy1 = ty + (font->descent > 0 ? font->descent : 2);
+                XSetForeground(dpy, gc, alloc_pixel(e->style.has_fg_color ? e->style.fg_color : default_fg));
+                XDrawLine(dpy, buf, gc, text_x, cy0, text_x, cy1);
+                cursor_off = -1;
+            }
+        }
+        XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &col);
+    } else
     if ((!drew_sprite || sprite_under_label || sprite_beside_label) && shown_label[0]) {
         XftFont *font = font_for(&e->style);
-        XftColor col = xft_color(e->style.has_fg_color ? e->style.fg_color : "#cccccc");
+        /* See kh_hex_luma()'s own header comment - dock windows fill
+         * with the real, user-changeable g_theme_bg, not the CSS's
+         * fixed dark window background, so the default label color
+         * needs to track it for readability, not stay hardcoded. Only
+         * when the item has no explicit CSS fg_color of its own -
+         * an explicit fg_color is a deliberate per-element choice,
+         * left alone. */
+        const char *default_fg = (window_is_dock() && kh_hex_luma(g_theme_bg) > 140) ? "#1c1c1c" : "#cccccc";
+        XftColor col = xft_color(e->style.has_fg_color ? e->style.fg_color : default_fg);
         XGlyphInfo extents;
         XftTextExtentsUtf8(dpy, font, (const FcChar8 *)shown_label, (int)strlen(shown_label), &extents);
         int avail_w = e->w > 0 ? (e->x + e->w) - badge_label_x : -1;
@@ -870,6 +1303,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
              * line gets a real "..." ellipsis if there's more text than
              * fits, same real convention the single-line clip path
              * already uses). */
+            Pixmap wrap_target_buf = buf; /* captured BEFORE the local `char buf[600]` below shadows the outer Pixmap `buf` for the rest of this block */
             char buf[600];
             snprintf(buf, sizeof(buf), "%s", shown_label);
             int max_lines = e->h / line_h;
@@ -877,6 +1311,25 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             int ty = e->y + font->ascent + 2;
             int line_no = 0;
             char *p = buf;
+            /* REAL, NEW 2026-09-05 (CLI_IO-CURSOR-AND-TEXT_AREA-
+             * MULTILINE-EDITING-DESIGN.md) - a cli_io box tall enough
+             * to take THIS wrap path (h > ~1.5 lines) is still just as
+             * real a cli_io as the single-line one - it needs the same
+             * real cursor bar, not silently none at all. Track which
+             * wrapped visual line contains e->cursor's own offset as
+             * this loop already walks them one at a time; draw the bar
+             * on that specific line once found. This is genuinely
+             * single-line-content cursor math applied per wrapped
+             * row, NOT the harder "cursor moves across rows via real
+             * Up/Down" work - that generalization stays <text_area>'s
+             * own job, per this plan's own scope split. */
+            int cursor_off = -1;
+            if (strcmp(e->tag, "cli_io") == 0 && cli_io_armed) {
+                int label_len = (int)strlen(e->label);
+                cursor_off = label_len + e->cursor;
+                if (cursor_off < 0) cursor_off = 0;
+                if (cursor_off > (int)strlen(buf)) cursor_off = (int)strlen(buf);
+            }
             while (*p && line_no < max_lines) {
                 int last_good_space = -1;
                 int i = 0;
@@ -919,6 +1372,20 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                     snprintf(line_buf, sizeof(line_buf), "%.*s", cut, p);
                 }
                 draw_text_emoji(font, &col, badge_label_x, ty, line_buf);
+                if (cursor_off >= 0) {
+                    int line_start_off = (int)(p - buf);
+                    int line_end_off = line_start_off + cut;
+                    if (cursor_off >= line_start_off && cursor_off <= line_end_off) {
+                        XGlyphInfo pre_ext;
+                        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)p, cursor_off - line_start_off, &pre_ext);
+                        int cx = badge_label_x + pre_ext.width;
+                        int cy0 = ty - font->ascent;
+                        int cy1 = ty + (font->descent > 0 ? font->descent : 2);
+                        XSetForeground(dpy, gc, alloc_pixel(e->style.has_fg_color ? e->style.fg_color : default_fg));
+                        XDrawLine(dpy, wrap_target_buf, gc, cx, cy0, cx, cy1);
+                        cursor_off = -1; /* drawn once - don't redraw on a later line if math ever double-matches a boundary */
+                    }
+                }
                 ty += line_h;
                 line_no++;
                 p += cut;
@@ -969,6 +1436,35 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                 badge_label_x = e->x + pad;
             }
             draw_text_emoji(font, &col, badge_label_x, ty, draw_label);
+            /* REAL, NEW 2026-09-05 (CLI_IO-CURSOR-AND-TEXT_AREA-
+             * MULTILINE-EDITING-DESIGN.md, direct instruction: "i
+             * think cli-io should still have a cursor") - a real
+             * cursor bar at e->cursor's own actual position, not a
+             * fake trailing glyph always at the end. Scoped to the
+             * single-line (this branch) case only: `draw_label ==
+             * shown_label` means the text was NOT ellipsis-clipped
+             * above, so the substring-width measurement below is
+             * still measuring the real, on-screen string - a clipped
+             * cli_io (rare; only very long typed text in a narrow
+             * box) skips the cursor draw rather than show it at a
+             * wrong position. The word-wrapped (rows>1) case above
+             * does not get a cursor bar yet - real multi-row cursor
+             * positioning is exactly the harder half of work this
+             * plan hands to <text_area>, not silently guessed at
+             * here for cli_io. */
+            if (strcmp(e->tag, "cli_io") == 0 && cli_io_armed && draw_label == shown_label) {
+                int label_len = (int)strlen(e->label);
+                int cursor_off = label_len + e->cursor;
+                if (cursor_off < 0) cursor_off = 0;
+                if (cursor_off > (int)strlen(shown_label)) cursor_off = (int)strlen(shown_label);
+                XGlyphInfo pre_ext;
+                XftTextExtentsUtf8(dpy, font, (const FcChar8 *)shown_label, cursor_off, &pre_ext);
+                int cx = badge_label_x + pre_ext.width;
+                int cy0 = ty - font->ascent;
+                int cy1 = ty + (font->descent > 0 ? font->descent : 2);
+                XSetForeground(dpy, gc, alloc_pixel(e->style.has_fg_color ? e->style.fg_color : default_fg));
+                XDrawLine(dpy, buf, gc, cx, cy0, cx, cy1);
+            }
         }
         XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &col);
     }
@@ -985,8 +1481,22 @@ static void draw_elem(Elem *e, int hover_id_hash) {
      * for the real live taskbar-settings-pal.xhtpm window. */
     if (e->nav_index > 0 && nav_badge_font) {
         int focused = (e->nav_index == g_focus_nav);
-        int numy = e->y + (e->h + nav_badge_font->ascent - nav_badge_font->descent) / 2;
+        /* REAL FIX 2026-09-05, direct live report ("[the text_area
+         * nav badge] is in middle of page and not top") - the badge y
+         * is vertically CENTERED in the element, which reads fine for a
+         * ~24px row (<item>, a label) but for a TALL box (a <text_area>
+         * editor, h can be hundreds of px) dumps "[ ]6." dead-center
+         * over the empty content area. Top-pin the badge for any box
+         * clearly taller than a couple of text rows - a multi-line
+         * field's nav marker belongs at its top-left corner, like every
+         * real editor's own "you are here" cue. */
+        int numy;
+        if (strcmp(e->tag, "text_area") == 0 || e->h > scaled(48))
+            numy = e->y + nav_badge_font->ascent + 3;
+        else
+            numy = e->y + (e->h + nav_badge_font->ascent - nav_badge_font->descent) / 2;
         int is_swatch_tile = elem_has_class(e, "swatch") || elem_has_class(e, "pal-tile");
+        int chip_drawn = 0; /* REAL FIX 2026-09-05, direct live report ("nav on [ ]2 <username> and timestamp proves it") - see this block's final `if (!chip_drawn)` for the real story: the "every badge gets a chip" claim from 2026-09-04 (below) was wrong. A SHORT dock-cell WITH a sprite (a taskbar avatar badge, h<64 so it misses the tall-sprite chip, y<16 so it misses the above-tile chip) fell through all three branches - the general chip was gated `!e->sprite[0]`, so it never ran either. Tracking chip_drawn and falling back to the general inline chip whenever NONE of the special-position branches actually drew one closes that gap for real, instead of re-guessing another special case. */
         if (e->sprite[0] && e->h >= 64) {
             /* REAL FIX 2026-09-02 - tall sprite rows (scrolllist) have
              * room INSIDE the box; drawing the chip above e->y painted
@@ -1002,6 +1512,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             label_x = e->x;
             XSetForeground(dpy, gc, alloc_pixel("#141414"));
             XFillRectangle(dpy, buf, gc, chip_x0, chip_y0, (unsigned)chip_w, (unsigned)chip_h);
+            chip_drawn = 1;
         } else if ((e->sprite[0] || is_swatch_tile) && e->y >= 16) {
             /* Sprite tiles and swatch-picker tiles: draw badge ABOVE the tile
              * with a dark backing chip for contrast. */
@@ -1016,6 +1527,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             label_x = e->x;
             XSetForeground(dpy, gc, alloc_pixel("#141414"));
             XFillRectangle(dpy, buf, gc, chip_x0, chip_y0, (unsigned)chip_w, (unsigned)chip_h);
+            chip_drawn = 1;
         }
         /* Sprite tiles and swatch tiles draw the badge on the dark #141414 backing chip
          * above (not on the tile's own bg), so it always needs the
@@ -1025,7 +1537,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
          * here ate [^]/[>] via contrast-on-same-luma. Chip + fixed
          * glyph colors so the three-state cursor is always readable. */
         int draw_x = e->badge_align_left ? (e->x - (int)nav_badge_ext.width - scaled(4)) : label_x;
-        if (!e->sprite[0] && !is_swatch_tile) {
+        if (!chip_drawn) {
             int chip_pad = 1;
             int chip_h = nav_badge_font->ascent + nav_badge_font->descent + 2 * chip_pad;
             int chip_y0 = numy - nav_badge_font->ascent - chip_pad;
@@ -1034,12 +1546,37 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                            (unsigned)(nav_badge_ext.width + 2 * chip_pad), (unsigned)chip_h);
         }
         {
+            /* REAL FIX 2026-09-04, direct live report ("some nav
+             * numbers get blacked out... 2,4,6&7... this also
+             * happens in tb and other windows"). Confirmed the bug is
+             * systemic, not swatch-specific: EVERY badge in this
+             * function is drawn on a fixed dark #141414 backing chip -
+             * the tall-sprite branch draws its own chip, the sprite/
+             * swatch-tile branch draws its own chip, and this
+             * function's own FINAL, GENERAL branch (right above, `if
+             * (!e->sprite[0] && !is_swatch_tile) { ... XFillRectangle
+             * ... }`) draws the identical chip UNCONDITIONALLY for
+             * every other element - a plain <item>/<tab>/dock-cell,
+             * no position or style gate at all. There is no code path
+             * left where a badge is drawn WITHOUT this chip. So
+             * badge_contrast_color()/badge_focus_color() - which pick
+             * a DARK color specifically for a LIGHT element background
+             * (`luma > 140 -> "#000000"`/`"#7a1a00"`) - were always
+             * computing contrast against the wrong surface: the
+             * element's own bg, never the dark chip the text actually
+             * sits on. Any element anywhere in the house with a
+             * light/bright own bg-color (a themed dock cell, a light
+             * row, etc.) hit the exact same invisible-badge bug the
+             * swatch tiles did, just via the general branch instead of
+             * the swatch-specific one. Fix: since a dark chip is now
+             * confirmed universal, every badge (focused or not, sprite
+             * or not, swatch or not) uses the same two fixed colors
+             * every other branch already used correctly - no per-
+             * element contrast calculation needed anywhere. */
             const char *badge_fg = "#cccccc";
             if (nav_badge[1] == '^') badge_fg = "#ffd24a";
             else if (nav_badge[1] == '>') badge_fg = "#ff8c00";
-            else if (focused) badge_fg = e->sprite[0] ? "#ff8c00" : badge_focus_color(&e->style);
-            else if (e->sprite[0]) badge_fg = "#cccccc";
-            else badge_fg = badge_contrast_color(&e->style);
+            else if (focused) badge_fg = "#ff8c00";
             XftColor numcol = xft_color(badge_fg);
             XftDrawStringUtf8(xftdraw_buf, &numcol, nav_badge_font, draw_x, numy, (const FcChar8 *)nav_badge, (int)strlen(nav_badge));
             XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &numcol);
