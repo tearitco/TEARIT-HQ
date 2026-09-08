@@ -148,3 +148,24 @@ generic manager runtime = idea. Windows/Mac delegation itself:
 
 - Everything still open in `2026-09-05/` and `2026-09-06/` 2do.
 - Back to gameplay work.
+
+## (2026-09-08) palettes: tilesets blank in picker — FIXED + grok note
+
+- **Cause:** `sprite=` (and `src=`) attribute values were left
+  XML-escaped. `kh_substitute_vars()` escapes every `${var}` spliced
+  into a quoted attr (`&`→`&amp;`, correct — pitfall #13 fix), but
+  `apply_attr()` only `decode_entities()` a hand-maintained list
+  (label/onclick/action/…) — `sprite`/`src` weren't on it. House dirs
+  are `&.widgits/`, so `${t.sprite}` → `e->sprite` = `.../&amp;.widgits/…`
+  → path not found → every blit silently blank.
+- **Fix `d71f73e9`:** decode_entities() sprite= and src=. Verified:
+  rmmv palette blits all 32 Dungeon_a2 tiles; user confirms "they are
+  back". Strip relaunched (`run_khtpm_strip.sh new`).
+- **Pitfall #16** added (escape ↔ decode must stay in lockstep; better
+  long-term = decode once generically for all attrs).
+- **Grok note** appended to `08-roadmap/design-docs/palettes-handoff-
+  2026-08-24.md`: the non-tileset RMMV categories (characters, faces,
+  sv_actors, sv_enemies, …) still render with one uniform grid, which
+  is only right for B/C/D/E tiles. Task: research real per-category
+  sprite geometry, fix the crop/view per category — LOW priority,
+  skip if it's more than ~a day or needs RMMV-runtime knowledge.

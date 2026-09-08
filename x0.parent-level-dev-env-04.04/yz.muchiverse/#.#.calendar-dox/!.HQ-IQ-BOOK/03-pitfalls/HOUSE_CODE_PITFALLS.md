@@ -604,5 +604,45 @@ never as a side effect of a "quit"/"close" button.
 
 ---
 
+## 16. `kh_substitute_vars()` XML-escapes every `${var}` in a quoted attribute — but `apply_attr()` only *decodes* a hand-maintained list, so a new attribute silently gets `&amp;`
+
+**Symptom (live report, 2026-09-08):** the RPG-Maker-Tiles palette
+(and any sprite-grid palette) rendered an **empty grid** — layout
+correct, all 32 tiles positioned, but no image blitted.
+
+**Real cause:** since `experiment/xhtpm-attr-var-escaping`,
+`kh_substitute_vars()` XML-escapes (`&`→`&amp;`, `"`→`&quot;`, `<`/`>`)
+any `${var}` value it splices **inside a template-level `"..."`** — a
+correct fix for pitfall #13 ("a bare `"` in a `${var}` hangs the
+parser"). The re-parse then stores the escaped text verbatim, and
+`apply_attr()` is expected to `decode_entities()` it back. But
+`apply_attr()` only decodes an **explicit, hand-maintained list**:
+`label`, `onclick`/`action`, `backspace_action`, `content`,
+`drop_action`. `sprite=` and `src=` were never added.
+
+This house's own directories are literally `&.widgits/` and
+`&.hq-apps/`. A projector feeds `sprite="${t.sprite}"` where
+`${t.sprite}` = `".../&.widgits/palettes/sprites/..."`, so `e->sprite`
+ends up `".../&amp;.widgits/..."` — a path that does not exist. Every
+`hq_sprite()` blit silently fails (no error, blank tile). `label=` on
+the same element was fine (it's on the decode list), which is exactly
+why it looks like "only the sprites broke".
+
+**Fix (`d71f73e9`):** `decode_entities()` the `sprite=` and `src=`
+values in `apply_attr()`, same as `label=`/`action=` already do.
+
+**Rule:** any time you add a new attribute to `apply_attr()` whose
+value can come from a `${var}` (i.e. basically any attribute a
+projector or `<repeat>` fills), it MUST `decode_entities()` the value
+— or accept that a `&`, `"`, `<`, `>` in that value will arrive
+XML-escaped. The two sides (`kh_substitute_vars` escape ↔
+`apply_attr` decode) must be kept in lockstep. Better long-term:
+decode once, generically, for every attribute value at the top of
+`apply_attr()` and drop the per-attribute calls — deferred as too
+broad a change to make while chasing a live bug, but it's the real
+fix for this whole class.
+
+---
+
 *Append new entries here as they're found — this file exists so the
 next session doesn't re-discover the same mistake from scratch.*

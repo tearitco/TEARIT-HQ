@@ -156,3 +156,46 @@ tail "$H/&.widgits/palettes/audit/palettes.log"
 ⚠️ Bash-tool gotcha hit repeatedly this session: launching X apps with plain `&`
 in the tool call can hang it to timeout even when detached — wrap launches in
 `( setsid … >/dev/null 2>&1 & )` and never rely on that call's output.
+
+---
+
+## 📌 NOTE FOR GROK — 2026-09-08 — per-category sprite dimensions (LOW PRIORITY, ignore if hard)
+
+**Context:** the RPG-Maker-Tiles (`rmmv`) palette was blank for a while
+(unrelated renderer bug, fixed `d71f73e9` — `sprite=` paths were left
+XML-escaped). Now that tiles blit again, the **tilesets** category
+(Dungeon/Inside/Outside/... → A1/A2/B/C/D/E sheets) looks roughly
+right. But the **other categories do NOT render at their proper
+placement** — the palette currently slices every RMMV asset with one
+uniform grid, and that's only correct for B/C/D/E object tiles (48×48)
+and A5.
+
+**The task (only if genuinely tractable — otherwise skip and say so):**
+research the real per-category sprite geometry and make the palette
+`view` slice each category with its own dimensions. Reference: RPG
+Maker MV/MZ asset spec (the `#.NNEST_ASSETS/rmmv-www-img/` source
+sheets + the `sprites/rmmv/dir_<category>/` crop dirs already on disk).
+
+Rough map (verify against the real sheets, don't trust this blindly):
+
+| Category | Real layout of a source sheet |
+|---|---|
+| `characters` | 4×2 char blocks per sheet; each char = 3 cols × 4 rows (walk frames × facing). `$`-prefixed filename = 1 char, full sheet. Cell ≈ sheet_w/12 × sheet_h/8 (commonly 48×48). |
+| `faces` | 4 cols × 2 rows per sheet, 144×144 each |
+| `sv_actors` | one actor per file, 9 cols × 6 rows of battle poses |
+| `sv_enemies`, `enemies` | one whole image per file (no grid) |
+| `tilesets` A1/A2 | animated / ground **autotiles** — sampled, not a plain grid (each 96×72 autotile block → representative 48×48) |
+| `tilesets` A3/A4 | wall autotiles |
+| `tilesets` A5, B/C/D/E | plain 48×48 object-tile grid (what the current view already assumes) |
+| `battlebacks1/2`, `parallaxes`, `pictures`, `titles1/2`, `system`, `animations` | full images / effect strips — show whole, or 1 thumbnail per file |
+
+**Where the geometry decision lives:** the projector
+(`&.widgits/palettes/ops/palettes_projector.c`) emits `t_<i>_sprite`
+paths + `n_tiles`; the manager (`palettes_manager.+x args=rmmv`) does
+the actual PNG cropping into `sprites/rmmv/dir_<category>/`. Fixing
+placement is mostly a manager-side crop-geometry change per category,
+plus maybe a per-category tile aspect the palette CSS respects.
+
+**If it's more than ~a day of work or needs RMMV-runtime knowledge we
+don't have: leave it. Tilesets working is the 80% case; the rest is
+polish.** Note in the handoff which categories you fixed vs. left.
