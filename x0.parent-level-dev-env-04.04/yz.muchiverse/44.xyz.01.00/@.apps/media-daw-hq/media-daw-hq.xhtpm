@@ -1,0 +1,24 @@
+<!-- media-daw-hq.xhtpm - CONVERSION SKELETON 2026-09-08.
+     Logic/GarageBand-shaped DAW: arrangement lanes on top, piano roll below, transport + BPM, mixer drawer.
+     Source: 44.xyz.01.00/103.media-studio/103.daw/ (+ its HOW2_DAW.md).
+     Target layout is described in ../media-daw-hq/README.md - build it here
+     with generic <sidebar>/<panel>/<item>/<text>/<canvas>, house spec,
+     NO per-app renderer C. -->
+<window label="Muchi DAW - ${msg}" class="database-window" vars="state/media_daw_hq_ui.txt">
+  <module src="@.apps/media-daw-hq/ops/+x/media_daw_hq_manager.+x" id="_"/>
+  <page name="main">
+    <sidebar id="side" class="ms-side">
+      <text label="${title}" class="ms-title"/>
+      <text label="${banner}" class="ms-banner"/>
+      <text label="src: ${source}" class="ms-quiet"/>
+    </sidebar>
+    <panel id="main" class="ms-main">
+      <text label="This toy is a conversion skeleton. Real layout TBD - see README.md." class="ms-quiet"/>
+      <row class="toolbar">        <item id="ping" class="ms-btn" label="[ ping ]"
+              action="'${HOUSE}/@.apps/media-daw-hq/ops/media_daw_hq_action.sh' 'PING'"/>
+      </row>
+      <text label="${msg}" class="ms-msg" show="${msg}"/>
+      <canvas id="view" class="ms-canvas"/>
+    </panel>
+  </page>
+</window>

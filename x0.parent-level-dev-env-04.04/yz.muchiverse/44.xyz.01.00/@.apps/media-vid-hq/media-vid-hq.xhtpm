@@ -1,0 +1,24 @@
+<!-- media-vid-hq.xhtpm - CONVERSION SKELETON 2026-09-08.
+     iMovie-shaped video editor: transport + timecode, preview + inspector, V1/V2/A1/A2 timeline.
+     Source: 44.xyz.01.00/103.media-studio/103.vid-edit/ (+ its HOW2_VIDEO.md).
+     Target layout is described in ../media-vid-hq/README.md - build it here
+     with generic <sidebar>/<panel>/<item>/<text>/<canvas>, house spec,
+     NO per-app renderer C. -->
+<window label="Muchi Video - ${msg}" class="database-window" vars="state/media_vid_hq_ui.txt">
+  <module src="@.apps/media-vid-hq/ops/+x/media_vid_hq_manager.+x" id="_"/>
+  <page name="main">
+    <sidebar id="side" class="ms-side">
+      <text label="${title}" class="ms-title"/>
+      <text label="${banner}" class="ms-banner"/>
+      <text label="src: ${source}" class="ms-quiet"/>
+    </sidebar>
+    <panel id="main" class="ms-main">
+      <text label="This toy is a conversion skeleton. Real layout TBD - see README.md." class="ms-quiet"/>
+      <row class="toolbar">        <item id="ping" class="ms-btn" label="[ ping ]"
+              action="'${HOUSE}/@.apps/media-vid-hq/ops/media_vid_hq_action.sh' 'PING'"/>
+      </row>
+      <text label="${msg}" class="ms-msg" show="${msg}"/>
+      <canvas id="view" class="ms-canvas"/>
+    </panel>
+  </page>
+</window>

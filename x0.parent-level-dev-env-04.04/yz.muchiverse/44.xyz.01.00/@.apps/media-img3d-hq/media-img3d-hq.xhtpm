@@ -1,0 +1,24 @@
+<!-- media-img3d-hq.xhtpm - CONVERSION SKELETON 2026-09-08.
+     Combined 2D image editor + 3D (Blender-shaped) viewport, one app, piececraft-hq-style camera (owner's explicit call).
+     Source: 44.xyz.01.00/103.media-studio/103.img-editor + 103.3d=blender-clone/ (+ its HOW2_IMAGE.md / HOW2_BLEND.md).
+     Target layout is described in ../media-img3d-hq/README.md - build it here
+     with generic <sidebar>/<panel>/<item>/<text>/<canvas>, house spec,
+     NO per-app renderer C. -->
+<window label="Muchi Image + 3D - ${msg}" class="database-window" vars="state/media_img3d_hq_ui.txt">
+  <module src="@.apps/media-img3d-hq/ops/+x/media_img3d_hq_manager.+x" id="_"/>
+  <page name="main">
+    <sidebar id="side" class="ms-side">
+      <text label="${title}" class="ms-title"/>
+      <text label="${banner}" class="ms-banner"/>
+      <text label="src: ${source}" class="ms-quiet"/>
+    </sidebar>
+    <panel id="main" class="ms-main">
+      <text label="This toy is a conversion skeleton. Real layout TBD - see README.md." class="ms-quiet"/>
+      <row class="toolbar">        <item id="ping" class="ms-btn" label="[ ping ]"
+              action="'${HOUSE}/@.apps/media-img3d-hq/ops/media_img3d_hq_action.sh' 'PING'"/>
+      </row>
+      <text label="${msg}" class="ms-msg" show="${msg}"/>
+      <canvas id="view" class="ms-canvas"/>
+    </panel>
+  </page>
+</window>
