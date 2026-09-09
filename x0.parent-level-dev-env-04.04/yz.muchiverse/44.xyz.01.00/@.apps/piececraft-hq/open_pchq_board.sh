@@ -11,16 +11,29 @@
 # the taskbar entry point (dispatch: livedesk:open-piececraft-hq).
 # `button.sh run` stays the terminal/dev path.
 #
-# Usage: open_pchq_board.sh <house_root>
+# Usage: open_pchq_board.sh [<house_root>]
+#   - HQ-menu dispatch (livedesk:open-piececraft-hq) passes <house_root>.
+#   - toys-menu dispatch (livedesk:open-toy:.../open_pchq_board.sh)
+#     passes the literal "run" - in that case walk up to the house root.
 set -u
+
+PKG="$(cd "$(dirname "$0")" && pwd)"
 
 HOUSE_ROOT="${1:-}"
 if [ -z "$HOUSE_ROOT" ] || [ ! -d "$HOUSE_ROOT" ]; then
-    echo "open_pchq_board: need house_root as argv[1]" >&2
+    # not a directory (e.g. "run" from the toys menu, or nothing) -
+    # walk up from this script to the dir holding #.desktop + &.widgits.
+    _d="$PKG"
+    while [ "$_d" != "/" ] && { [ ! -d "$_d/#.desktop" ] || [ ! -d "$_d/&.widgits" ]; }; do
+        _d="$(dirname "$_d")"
+    done
+    HOUSE_ROOT="$_d"
+fi
+if [ ! -d "$HOUSE_ROOT/#.desktop" ]; then
+    echo "open_pchq_board: could not resolve house root (arg='${1:-}')" >&2
     exit 1
 fi
 HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
-PKG="$(cd "$(dirname "$0")" && pwd)"
 
 OPS_DIR="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
 BIN="$OPS_DIR/+x/khtpm_core_render.+x"
