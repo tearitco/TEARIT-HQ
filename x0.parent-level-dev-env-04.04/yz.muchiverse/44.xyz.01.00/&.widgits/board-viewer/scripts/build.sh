@@ -18,7 +18,7 @@ echo "--- Building board-viewer ops ---"
 gcc $CFLAGS -o "ops/+x/bv_compose_frame.+x" "ops/bv_compose_frame.c"
 gcc $CFLAGS -o "ops/+x/bv_menu_input.+x" "ops/bv_menu_input.c" -lm
 gcc $CFLAGS -fopenmp -o "ops/+x/bv_render_3d.+x" "ops/bv_render_3d.c" -lm
-gcc $CFLAGS -o "ops/+x/bv_render_2d.+x" "ops/bv_render_2d.c"   # PCHQ-2D-TILE-VIEW.md - flat tile grid for render_mode==0
+gcc $CFLAGS -o "ops/+x/bv_render_2d.+x" "ops/bv_render_2d.c" "ops/bv_cjk_glyph.c" $(pkg-config --cflags freetype2) $(pkg-config --libs freetype2)   # PCHQ-2D-TILE-VIEW.md - flat tile grid + ascii/CJK view for render_mode==0
 # TPMOS-diamond game loop (pchq-vs-tpmos.md P-5): pal/main_module.pal is
 # `loop: exec ./ops/+x/bv_dispatch ; sleep 16667`. bv_dispatch drains
 # ALL of interact_relay.txt then renders once (was 1 key + 4 fork-ops +

@@ -624,13 +624,14 @@ static int handle_one_key(int key) {
         return 0;
     }
 
-    /* '`' (backtick, 96) - the 2D style toggle (PCHQ-2D-TILE-VIEW):
-     * tiles <-> emoji. Only meaningful while render_mode==0; a no-op in
+    /* '`' (backtick, 96) - the 2D style toggle (PCHQ-2D-TILE-VIEW
+     * P2c): tiles <-> ascii (the DF/CDDA-style coloured-CJK-glyph
+     * terminal view). Only meaningful while render_mode==0; a no-op in
      * 3D. */
     if (key == 96) {
         if (read_kv_int(state_path, "render_mode", 1) == 0) {
             char cur[16] = ""; read_kv_str(state_path, "view_2d_style", cur, sizeof(cur));
-            write_kv(state_path, "view_2d_style", strcmp(cur, "emoji") == 0 ? "tiles" : "emoji");
+            write_kv(state_path, "view_2d_style", strcmp(cur, "ascii") == 0 ? "tiles" : "ascii");
             bump_screen_changed(project_root);
         }
         return 0;

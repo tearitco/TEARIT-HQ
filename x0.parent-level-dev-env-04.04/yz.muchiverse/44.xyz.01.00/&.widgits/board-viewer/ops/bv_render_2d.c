@@ -32,6 +32,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+#include "bv_cjk_glyph.h"   /* view_2d_style=ascii: coloured CJK glyph per cell */
+
 #define MAX_LINE     1024
 #define PATH_BUF     4096
 #define MAX_DIM      256          /* board cells per side, hard ceiling */
@@ -99,6 +101,7 @@ typedef struct { char glyph; unsigned char r, g, b; } Leg;
 static Leg  g_leg[MAX_LEGEND];
 static int  g_nleg = 0;
 static char g_leg_hex[MAX_LEGEND][16];   /* asset_hex column, parallel to g_leg */
+static char g_leg_cjk[MAX_LEGEND][8];    /* optional cjk glyph column (view_2d_style=ascii) */
 static void load_legend(void) {
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/pieces/system/terrain_legend.txt", focused_root);
@@ -115,6 +118,9 @@ static void load_legend(void) {
         char *gt = strtok_r(NULL, "|", &sv);
         char *bt = strtok_r(NULL, "|", &sv);
         char *at = strtok_r(NULL, "|", &sv);        /* asset_hex ("-" = none) */
+        char *nt = strtok_r(NULL, "|", &sv);        /* name (unused in 2D) */
+        char *ct = strtok_r(NULL, "|", &sv);        /* cjk glyph (optional, "-"/empty = none) */
+        (void)nt;
         if (!g || !g[0] || !rt || !gt || !bt) continue;
         g_leg[g_nleg].glyph = g[0];
         g_leg[g_nleg].r = (unsigned char)atoi(rt);
@@ -123,6 +129,9 @@ static void load_legend(void) {
         g_leg_hex[g_nleg][0] = '\0';
         if (at && at[0] && strcmp(at, "-") != 0)
             snprintf(g_leg_hex[g_nleg], sizeof(g_leg_hex[0]), "%s", at);
+        g_leg_cjk[g_nleg][0] = '\0';
+        if (ct && ct[0] && strcmp(ct, "-") != 0)
+            snprintf(g_leg_cjk[g_nleg], sizeof(g_leg_cjk[0]), "%s", ct);
         g_nleg++;
     }
     fclose(f);
@@ -195,10 +204,42 @@ static void blit_emoji(unsigned char *frame, int W, int dx, int dy, int cell, co
     }
 }
 
+/* ---- ascii/CJK view: one tinted coverage glyph filling the cell ---- */
+static void blit_cjk(unsigned char *frame, int W, int dx, int dy, int cell,
+                     unsigned int cp, unsigned char r, unsigned char g, unsigned char b) {
+    const unsigned char *cov = bv_cjk_coverage(cp, cell);
+    if (!cov) return;
+    for (int yy = 0; yy < cell; yy++) {
+        for (int xx = 0; xx < cell; xx++) {
+            unsigned int a = cov[yy * cell + xx];
+            if (!a) continue;
+            unsigned char *d = frame + ((size_t)(dy + yy) * W + (dx + xx)) * 4;
+            d[0] = (unsigned char)((r * a + d[0] * (255 - a)) / 255);
+            d[1] = (unsigned char)((g * a + d[1] * (255 - a)) / 255);
+            d[2] = (unsigned char)((b * a + d[2] * (255 - a)) / 255);
+            d[3] = 255;
+        }
+    }
+}
+
 /* ---- entities: pos + colour ---- */
-typedef struct { int x, y; unsigned char r, g, b; } Ent;
+typedef struct { int x, y, z; unsigned char r, g, b; char hex[16]; char cjk[8]; } Ent;
 static Ent g_ent[MAX_ENT];
 static int g_nent = 0;
+
+/* first UTF-8 scalar of s -> uppercase hex codepoint string (for
+ * phymoji emoji.txt sidecars, which store the raw emoji char). */
+static void utf8_first_hex(const char *s, char *out, size_t osz) {
+    out[0] = '\0';
+    const unsigned char *p = (const unsigned char *)s;
+    unsigned cp = 0;
+    if (p[0] < 0x80) cp = p[0];
+    else if ((p[0] & 0xE0) == 0xC0 && p[1]) cp = ((p[0] & 0x1F) << 6) | (p[1] & 0x3F);
+    else if ((p[0] & 0xF0) == 0xE0 && p[1] && p[2]) cp = ((p[0] & 0x0F) << 12) | ((p[1] & 0x3F) << 6) | (p[2] & 0x3F);
+    else if ((p[0] & 0xF8) == 0xF0 && p[1] && p[2] && p[3])
+        cp = ((p[0] & 0x07) << 18) | ((p[1] & 0x3F) << 12) | ((p[2] & 0x3F) << 6) | (p[3] & 0x3F);
+    if (cp) snprintf(out, osz, "%X", cp);
+}
 static void hex_to_rgb(const char *hx, unsigned char *r, unsigned char *g, unsigned char *b) {
     if (hx[0] == '#') hx++;
     unsigned v = (unsigned)strtoul(hx, NULL, 16);
@@ -229,6 +270,61 @@ static void load_entities(void) {
     }
     if (have) g_ent[g_nent++] = cur;
     fclose(f);
+}
+
+/* hero (pieces/hero_01/state.txt) + world animals
+ * (pieces/world_01/animals.txt: "name,x,y,z"), each shown only on its
+ * own z-slice - same as bv_compose_frame.c's load_hero_as_2d /
+ * load_phymoji_entities_as_2d. Emoji from the phymoji_assets/<id>/
+ * emoji.txt sidecar. */
+static void read_first_line(const char *path, char *out, size_t osz) {
+    out[0] = '\0';
+    FILE *f = host_fopen(path, "r");
+    if (!f) return;
+    if (fgets(out, osz, f)) out[strcspn(out, "\r\n")] = '\0';
+    fclose(f);
+}
+static void load_actors(int cur_z) {
+    char p[PATH_BUF], emo[PATH_BUF], glyph[16];
+    /* hero */
+    if (g_nent < MAX_ENT) {
+        snprintf(p, sizeof(p), "%s/pieces/hero_01/state.txt", focused_root);
+        int hx = -1, hy = -1, hz = -999;
+        char b[32];
+        read_kv_str(p, "pos_x", b, sizeof(b)); if (b[0]) hx = atoi(b);
+        read_kv_str(p, "pos_y", b, sizeof(b)); if (b[0]) hy = atoi(b);
+        read_kv_str(p, "pos_z", b, sizeof(b)); if (b[0]) hz = atoi(b);
+        if (hx >= 0 && hy >= 0 && hz == cur_z) {
+            snprintf(emo, sizeof(emo), "%s/pieces/registry/phymoji_assets/hero_humanoid/emoji.txt", focused_root);
+            read_first_line(emo, glyph, sizeof(glyph));
+            Ent *e = &g_ent[g_nent++];
+            memset(e, 0, sizeof(*e));
+            e->x = hx; e->y = hy; e->z = hz; e->r = e->g = e->b = 90;
+            utf8_first_hex(glyph, e->hex, sizeof(e->hex));
+            snprintf(emo, sizeof(emo), "%s/pieces/registry/phymoji_assets/hero_humanoid/cjk.txt", focused_root);
+            read_first_line(emo, e->cjk, sizeof(e->cjk));
+        }
+    }
+    /* animals */
+    snprintf(p, sizeof(p), "%s/pieces/world_01/animals.txt", focused_root);
+    FILE *f = host_fopen(p, "r");
+    if (f) {
+        char line[MAX_LINE], name[64];
+        int x, y, z;
+        while (g_nent < MAX_ENT && fgets(line, sizeof(line), f)) {
+            if (sscanf(line, "%63[^,],%d,%d,%d", name, &x, &y, &z) != 4) continue;
+            if (z != cur_z) continue;
+            snprintf(emo, sizeof(emo), "%s/pieces/registry/phymoji_assets/%s/emoji.txt", focused_root, name);
+            read_first_line(emo, glyph, sizeof(glyph));
+            Ent *e = &g_ent[g_nent++];
+            memset(e, 0, sizeof(*e));
+            e->x = x; e->y = y; e->z = z; e->r = e->g = e->b = 90;
+            utf8_first_hex(glyph, e->hex, sizeof(e->hex));
+            snprintf(emo, sizeof(emo), "%s/pieces/registry/phymoji_assets/%s/cjk.txt", focused_root, name);
+            read_first_line(emo, e->cjk, sizeof(e->cjk));
+        }
+        fclose(f);
+    }
 }
 
 /* ---- board glyphs (one z-slice) ---- */
@@ -296,6 +392,7 @@ int main(void) {
 
     load_legend();
     load_entities();
+    load_actors(cur_z);          /* hero_01 + world_01 animals, this z-slice */
     load_board(cur_z);
 
     /* Empty / not-yet-generated board -> still show a grid so `0` isn't blank. */
@@ -355,11 +452,13 @@ int main(void) {
     }
 
     #define VP_PXR(SX,SY) (px + ((size_t)(SY) * W + (SX)) * 4)
-    /* view_2d_style (` toggle): "emoji" -> fill cells with the emoji
-     * sprite over the terrain colour; "tiles" (default) -> the flat
-     * colour grid (P1). Real palette tilesets are P2b. */
+    /* view_2d_style (` toggle): "ascii" -> DF/CDDA-style: one coloured
+     * CJK glyph per cell (bg dimmed to a terrain hint); "emoji" -> the
+     * emoji sprite over the terrain colour; "tiles" (default) -> the
+     * flat colour grid (P1). Real palette tilesets are P2b. */
     char style[16] = ""; read_kv_str(st, "view_2d_style", style, sizeof(style));
     int want_emoji = (strcmp(style, "emoji") == 0);
+    int want_ascii = (strcmp(style, "ascii") == 0);
 
     /* --- ground tiles --- */
     for (int scy = 0; scy < rows; scy++) {
@@ -368,14 +467,24 @@ int main(void) {
             if (bx < 0 || by < 0 || bx >= bw || by >= bh) continue;
             unsigned char r = air_r, g = air_g, b = air_b;
             const unsigned char *e16 = NULL;
+            unsigned int cjk_cp = 0;
+            unsigned char gr = 0, gg = 0, gb = 0;   /* ascii glyph colour */
             if (by < g_bh && bx < g_bw) {
                 char gch = g_board[by][bx];
                 if (gch && gch != '_' && gch != ' ') {
                     int li = legend_idx(gch);
                     if (li >= 0) { r = g_leg[li].r; g = g_leg[li].g; b = g_leg[li].b;
-                                   if (want_emoji) e16 = load_emoji16(g_leg_hex[li]); }
+                                   if (want_emoji) e16 = load_emoji16(g_leg_hex[li]);
+                                   if (want_ascii && g_leg_cjk[li][0]) cjk_cp = bv_cjk_utf8_first(g_leg_cjk[li]); }
                     else { r = 90; g = 90; b = 96; }
                 }
+            }
+            if (cjk_cp) {
+                /* bright glyph in the terrain hue, cell bg dimmed to a hint */
+                gr = (unsigned char)(r + (255 - r) * 3 / 5);
+                gg = (unsigned char)(g + (255 - g) * 3 / 5);
+                gb = (unsigned char)(b + (255 - b) * 3 / 5);
+                r /= 4; g /= 4; b /= 4;
             }
             int dx = scx*cell, dy = scy*cell;
             for (int yy = 0; yy < cell; yy++)
@@ -384,19 +493,30 @@ int main(void) {
                     p[0]=r; p[1]=g; p[2]=b; p[3]=255;
                 }
             if (e16) blit_emoji(px, W, dx, dy, cell, e16);
+            if (cjk_cp) blit_cjk(px, W, dx, dy, cell, cjk_cp, gr, gg, gb);
         }
     }
 
-    /* --- entities (inner 60% square) --- */
+    /* --- entities / hero / animals: emoji sprite if we have one, else
+     * a solid colour square (inner 60%) --- */
     for (int i = 0; i < g_nent; i++) {
         int scx = g_ent[i].x - ox, scy = g_ent[i].y - oy;
         if (scx < 0 || scy < 0 || scx >= cols || scy >= rows) continue;
-        int m = cell / 5;
-        for (int yy = m; yy < cell - m; yy++)
-            for (int xx = m; xx < cell - m; xx++) {
-                unsigned char *p = VP_PXR(scx*cell + xx, scy*cell + yy);
-                p[0]=g_ent[i].r; p[1]=g_ent[i].g; p[2]=g_ent[i].b; p[3]=255;
-            }
+        if (want_ascii && g_ent[i].cjk[0]) {
+            unsigned int cp = bv_cjk_utf8_first(g_ent[i].cjk);
+            if (cp) { blit_cjk(px, W, scx*cell, scy*cell, cell, cp, 245, 240, 210); continue; }
+        }
+        const unsigned char *e16 = g_ent[i].hex[0] ? load_emoji16(g_ent[i].hex) : NULL;
+        if (e16) {
+            blit_emoji(px, W, scx*cell, scy*cell, cell, e16);
+        } else {
+            int m = cell / 5;
+            for (int yy = m; yy < cell - m; yy++)
+                for (int xx = m; xx < cell - m; xx++) {
+                    unsigned char *p = VP_PXR(scx*cell + xx, scy*cell + yy);
+                    p[0]=g_ent[i].r; p[1]=g_ent[i].g; p[2]=g_ent[i].b; p[3]=255;
+                }
+        }
     }
 
     /* --- the manual matrix grid (viewport-relative cell boundaries) --- */

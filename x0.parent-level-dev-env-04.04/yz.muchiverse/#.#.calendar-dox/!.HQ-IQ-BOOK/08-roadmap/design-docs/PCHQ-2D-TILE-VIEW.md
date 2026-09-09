@@ -35,14 +35,43 @@ board-viewer engine itself are untouched.
 
 | Key | From → to | Renderer |
 |---|---|---|
-| `0` | **3D raymarch ⇄ 2D tile grid** (this doc) | `bv_render_3d.c` ⇄ `bv_render_2d.c` (new) |
-| `` ` `` | within 2D: **tile grid ⇄ emoji view** | `bv_render_2d.c` tile mode ⇄ emoji mode |
+| `0` | **3D raymarch ⇄ 2D tile grid** | `bv_render_3d.c` ⇄ `bv_render_2d.c` (new) |
+| `` ` `` | **2D tile grid ⇄ ASCII/CJK terminal view** | `bv_render_2d.c` `tiles` ⇄ `ascii` |
 
 `0` owns *dimensionality* (`render_mode` 1/0). `` ` `` owns *2D style*
-(new key `view_2d_style` in `bv_state.txt`: `tiles` | `emoji`, default
-`tiles`). `` ` `` is a no-op while `render_mode==1`. The emoji view is
-board-viewer's existing 2D emoji rendering, kept as-is but drawn onto
-the same clean grid surface (§4) — no legend, no status text.
+(key `view_2d_style` in `bv_state.txt`: `tiles` | `ascii`, default
+`tiles`). `` ` `` is a no-op while `render_mode==1`.
+
+**`` ` `` = the ASCII/CJK terminal view** (direct request, 2026-09-09).
+This is the "how it would look in an ASCII-only terminal" picture —
+Dwarf-Fortress / ASCII-CDDA style: every terrain cell and every
+entity is one **coloured glyph** on the flat grid, no raymarch, no
+sprite sheets. Because a plain Latin letter per tile is ambiguous, the
+glyph is a **CJK (Chinese) character** substitute per legend entry
+(e.g. grass → 艹, stone → 石, water → 水, air → blank, hero → 人,
+chicken → 鶏), rendered in a CJK font and tinted with the terrain /
+entity colour. Cell size stays the tile-grid cell (see §4a) — the
+glyph is scaled to fill it; it does **not** have to be tiny.
+
+The old `chtpm_rgb_render` / `bv_compose_frame` path is **not** this
+view — it was never a real CJK renderer (8×13 Latin bitmap font +
+16px emoji voxel sprites), it is legacy-only, and it stays untouched
+for `civ-txt` / `piececraft-xyz`. The CJK view is a new `style` inside
+`bv_render_2d.c`.
+
+### 2a. Glyph source
+
+`terrain_legend.txt` gains an optional `cjk` column (or a sidecar
+`cjk_legend.txt: <glyph_char>|<CJK>` per host project) mapping each
+terrain glyph to a Chinese character; entities map via a
+`phymoji_assets/<id>/cjk.txt` sidecar next to the existing
+`emoji.txt`. Rendering reuses the existing house FreeType pipeline
+(`emoji_gen_atlas.+x` — already used for emoji voxel CSVs) pointed at
+`NotoSansCJK-Regular.ttc` instead of `NotoColorEmoji.ttf`, producing a
+per-`(codepoint, size)` greyscale-coverage voxel CSV cached on disk
+(`pieces/registry/cjk_assets/<HEX>_<px>/voxels.csv`); `bv_render_2d`
+blits it tinted by the cell's terrain/entity colour. No new font code
+in `bv_render_2d.c` itself.
 
 There is **no separate "2D interact"**. INTERACT is permanently on (see
 §6). All three views are live pictures of the one board state; the keys
@@ -99,6 +128,17 @@ Rejected:
 Input: `<bv_session>` (its own dir), `bv_state.txt`, the chunk, the
 active tileset/emoji binding. Output: `pieces/display/rgb_frame_2d.raw`
 (+ `rgb_frame_2d.receipt.txt` with `frame_w=`/`frame_h=`).
+
+### 4a. Cell size — configurable (planned)
+
+Today `bv_render_2d.c` takes its cell from the house grid
+(`#.desktop/desk_grid.pdl` `GRID | cell_px | N`, currently **80**) so a
+board cell matches a desk cell. **TODO (not yet built):** a per-view
+"2D tile size" override — `bv_state.txt` key `view_2d_cell_px` ∈ {16,
+32, 38, 48, 64, …}, cycled by a key / set from a menu, applied by both
+the `tiles` and `ascii` styles (the CJK glyph / sprite scales to the
+chosen cell — `bv_cjk_coverage()` already takes a `px` arg). Until
+then the cell is whatever `desk_grid.pdl` says.
 
 Per frame:
 1. **Board dims.** `load_voxel_chunk()` gives `board_w × board_h`
@@ -279,11 +319,22 @@ Guidance for the later menu work — build it once, mode-agnostic:
    e.g. 12×12), grid lines, no chrome. `bv_dispatch` routes `0`.
    Projector points at `rgb_frame_2d.raw`. Verify: `0` shows a clean
    flat emoji grid, no legend/status text; `0` again → 3D unchanged.
-2. **P2 — real tilesets + `` ` ``.** `view_2d_style` toggle, the
-   `tile_family`/`tile_set` binding, `tp_asset_to_sprite` path, emoji
-   fallback.
-3. **P3 — 38×38 + viewport.** `pc_generate_chunk` size, render only the
-   visible window, follow-xelector / arrow-pan.
+2. **P2a — emoji tiles.** `view_2d_style` key, emoji-sheet fill over
+   the terrain colour (`emoji_gen_atlas` voxel CSVs). *(landed
+   `71486241`; `` ` `` temporarily toggled `tiles`⇄`emoji` — superseded
+   by P2c.)*
+2b. **P2b — real tilesets.** `tile_family`/`tile_set` binding,
+   `tp_asset_to_sprite` path, emoji fallback.
+2c. **P2c — ASCII/CJK terminal view (`` ` ``).** §2/§2a: `view_2d_style`
+   becomes `tiles` ⇄ `ascii`; per-legend `cjk` glyph mapping +
+   `phymoji_assets/<id>/cjk.txt`; `emoji_gen_atlas` against
+   `NotoSansCJK` → cached coverage CSV → tinted blit. Remove the
+   interim `tiles`⇄`emoji` meaning of `` ` `` (emoji stays reachable
+   only if a later 4-way cycle is wanted). Verify: `` ` `` in 2D → a
+   clean grid of coloured Chinese glyphs, `` ` `` again → flat tiles.
+3. **P3 — 38×38 + viewport + cell size.** `pc_generate_chunk` size,
+   render only the visible window, follow-xelector / arrow-pan,
+   `view_2d_cell_px` control (§4a).
 4. **P4 — always-on interact.** Drop the arm step (§6); fold in
    `pchq-vs-tpmos.md` PR-2..4 as far as this reaches.
 5. **P5 — shared context menu** (§9) — likely its own doc once the menu
