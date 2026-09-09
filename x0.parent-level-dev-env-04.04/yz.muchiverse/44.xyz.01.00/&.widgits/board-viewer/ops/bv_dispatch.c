@@ -39,6 +39,18 @@
 #define PATH_BUF 4096
 #define RELAY_BUF (MAX_LINE * 64)   /* plenty for a frame's worth of held-key input */
 
+/* held-vs-released key handling (mc-speed-algos.md §7). khtpm writes
+ * each relay line as "<code> <monotonic_ms>". A line older than
+ * RELAY_STALE_MS means the user has already let go and this is just
+ * backlog that piled up behind a slow render - drop it so movement
+ * stops promptly on release instead of coasting through the queue.
+ * A bare "<code>" line (older khtpm) has no timestamp -> treated as
+ * fresh, exactly as before (reverse compatible). */
+#define RELAY_STALE_MS 120
+/* also cap a backlog RUN of the same arrow key to a few moves/tick so
+ * a deep queue can't teleport the xelector. */
+#define BVD_ARROW_RUN_CAP 3
+
 static char project_root[PATH_BUF] = "";
 
 static void resolve_root(void) {
@@ -140,23 +152,48 @@ int main(void) {
      * (P-6: was fork+exec+wait per key). argv = [path, k1, k2, ..., NULL] --- */
 #define BVD_MAX_KEYS 512
     int any_key = 0;
+    int dropped_stale = 0;
     pj(op_path, sizeof(op_path), "ops/+x/bv_menu_input.+x");
     char keystr[BVD_MAX_KEYS][16];
     char *av[BVD_MAX_KEYS + 2];
     int nk = 0;
     av[0] = op_path;
+    long long drain_now_ms;
+    { struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
+      drain_now_ms = (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000; }
+    int arrow_run_code = 0, arrow_run_n = 0;   /* collapse a run of the same arrow key */
     for (char *p = buf; *p && nk < BVD_MAX_KEYS; ) {
         int keycode = 0;
-        if (sscanf(p, "%d", &keycode) == 1 && keycode != 0) {
-            snprintf(keystr[nk], sizeof(keystr[0]), "%d", keycode);
-            av[1 + nk] = keystr[nk];
-            nk++;
-            any_key = 1;
-        }
+        long long ts_ms = 0;
         char *nl = strchr(p, '\n');
+        if (nl) *nl = '\0';                 /* isolate THIS line - %lld skips newlines otherwise */
+        int got = sscanf(p, "%d %lld", &keycode, &ts_ms);
+        if (got >= 1 && keycode != 0) {
+            /* got==2 -> timestamped: drop if the user already let go.
+             * got==1 -> old bare format: always fresh. */
+            if (got == 2 && (drain_now_ms - ts_ms) > RELAY_STALE_MS) {
+                dropped_stale++;
+            } else {
+                int is_arrow = (keycode >= 1000 && keycode <= 1003);
+                if (is_arrow && keycode == arrow_run_code) {
+                    arrow_run_n++;
+                    if (arrow_run_n > BVD_ARROW_RUN_CAP) goto next_line; /* cap the run */
+                } else {
+                    arrow_run_code = is_arrow ? keycode : 0;
+                    arrow_run_n = is_arrow ? 1 : 0;
+                }
+                snprintf(keystr[nk], sizeof(keystr[0]), "%d", keycode);
+                av[1 + nk] = keystr[nk];
+                nk++;
+                any_key = 1;
+            }
+        }
+    next_line:;
         if (!nl) break;
         p = nl + 1;
     }
+    if (getenv("BVD_DEBUG"))
+        fprintf(stderr, "bvd: kept=%d stale_dropped=%d any_key=%d\n", nk, dropped_stale, any_key);
     if (nk > 0) { av[1 + nk] = NULL; run_argv(av); }
 
     /* --- 4. render --- (pchq-vs-tpmos.md P-6/P-7)
@@ -173,7 +210,11 @@ int main(void) {
      *     instead of a 0.3s-blocked ~3 fps, and you get one crisp final
      *     3D frame the instant you let go. */
 #define BV3D_MIN_MS 150
-    if (any_key || external_change) {
+    /* dropped_stale>0 with no fresh key == the user just released mid-
+     * render and we dropped the backlog: still render once, so a
+     * lingering coarse motion frame gets replaced by a crisp full one
+     * (burst_ongoing will be 0 below -> full res). */
+    if (any_key || external_change || dropped_stale) {
         /* PCHQ-2D-TILE-VIEW.md: render_mode==0 -> the flat tile grid
          * (bv_render_2d), NOT the raymarch and NOT bv_compose_frame
          * (that's the legend/status text chrome we're dropping). It's a

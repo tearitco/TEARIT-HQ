@@ -7343,8 +7343,19 @@ static void handle_key(KeySym ks, char ch) {
             if (to_parser != is_kbd) continue;      /* route by consumer */
             FILE *f = fopen(p, "a");
             if (!f) continue;
-            if (is_kbd) fprintf(f, "KEY_PRESSED: %d\n", code);
-            else        fprintf(f, "%d\n", code);
+            if (is_kbd) {
+                fprintf(f, "KEY_PRESSED: %d\n", code);
+            } else {
+                /* "<code> <monotonic_ms>" - bv_dispatch drops a queued
+                 * key older than its stale threshold, so a held key
+                 * that piles up behind a slow render stops promptly on
+                 * release instead of coasting. A bare "<code>" (this
+                 * line without the timestamp) still parses - reverse
+                 * compatible. */
+                struct timespec rts; clock_gettime(CLOCK_MONOTONIC, &rts);
+                long long rms = (long long)rts.tv_sec * 1000 + rts.tv_nsec / 1000000;
+                fprintf(f, "%d %lld\n", code, rms);
+            }
             fclose(f);
         }
         /* REAL, NEW 2026-09-04, direct request ("add p frame dump to
