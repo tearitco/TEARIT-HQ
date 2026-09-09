@@ -45,6 +45,15 @@ VERB         | 47                 | END_TURN
 VERB         | 46                 | TOGGLE_AUTOTICK
 VERB         | 44                 | CYCLE_TICK_SPEED
 
+# ── input options ──
+# multipress_compensator: 1 = bv_dispatch drops stale queued keys (a
+#   held key that piled up behind a slow 3D render) so movement stops
+#   promptly on release, and caps a same-arrow run to 3 moves/tick.
+#   0 = process every queued key as-is. Added while the CPU raymarch
+#   was ~4fps; try 0 now that the GPU daemon renders at ~17fps
+#   (mc-speed-algos.md §7, BV-GPU-RENDER-DESIGN.md).
+OPT          | multipress_compensator | 1
+
 # ── arrow-key on-screen direction (flip a sign if it feels backwards) ──
 AXIS         | left_dx            | -1
 AXIS         | right_dx           | 1

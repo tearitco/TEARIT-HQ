@@ -123,9 +123,73 @@ static int read_state_int(const char *key, int def) {
     return v;
 }
 
+static void read_state_str(const char *key, char *out, size_t osz) {
+    out[0] = '\0';
+    char path[PATH_BUF];
+    pj(path, sizeof(path), "pieces/system/bv_state.txt");
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    size_t kl = strlen(key);
+    char line[MAX_LINE];
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, key, kl) == 0 && line[kl] == '=') {
+            char *v = line + kl + 1;
+            v[strcspn(v, "\r\n")] = '\0';
+            snprintf(out, osz, "%s", v);
+            break;
+        }
+    }
+    fclose(f);
+}
+
+/* pipe-delimited pdl OPT lookup: a line "<any> | <name> | <val>"
+ * (spaces around the pipes optional) -> atoi(<val>); else `def`.
+ * Used for keybinds.pdl's "OPT | multipress_compensator | 0|1". */
+static int read_pdl_opt(const char *pdl_path, const char *name, int def) {
+    FILE *f = fopen(pdl_path, "r");
+    if (!f) return def;
+    char line[MAX_LINE];
+    int val = def;
+    while (fgets(line, sizeof(line), f)) {
+        if (line[0] == '#') continue;
+        /* split on '|' into up to 3 trimmed fields */
+        char *bar1 = strchr(line, '|'); if (!bar1) continue;
+        char *bar2 = strchr(bar1 + 1, '|'); if (!bar2) continue;
+        char field[128], vbuf[64];
+        char *ns = bar1 + 1, *ne = bar2;
+        while (*ns == ' ' || *ns == '\t') ns++;
+        while (ne > ns && (ne[-1] == ' ' || ne[-1] == '\t')) ne--;
+        size_t fl = (size_t)(ne - ns); if (fl >= sizeof(field)) fl = sizeof(field) - 1;
+        memcpy(field, ns, fl); field[fl] = '\0';
+        if (strcmp(field, name) != 0) continue;
+        char *vs = bar2 + 1;
+        while (*vs == ' ' || *vs == '\t') vs++;
+        snprintf(vbuf, sizeof(vbuf), "%s", vs);
+        val = atoi(vbuf);
+        break;
+    }
+    fclose(f);
+    return val;
+}
+
 int main(void) {
     resolve_root();
     if (!project_root[0]) return 0;
+
+    /* "multipress compensator" (stale-key drop + arrow-run cap,
+     * mc-speed-algos.md §7). Toggle in the focused host's
+     * keybinds.pdl: `OPT | multipress_compensator | 0` disables it.
+     * Default on. Cheap to re-read every tick. */
+    int compensator = 1;
+    {
+        char froot[PATH_BUF] = "";
+        read_state_str("focused_project_root", froot, sizeof(froot));
+        if (froot[0] == '/') {
+            char kbp[PATH_BUF];
+            snprintf(kbp, sizeof(kbp), "%s/pieces/system/keybinds.pdl", froot);
+            compensator = read_pdl_opt(kbp, "multipress_compensator", 1);
+        }
+    }
 
     char relay_path[PATH_BUF], screen_path[PATH_BUF], pos_path[PATH_BUF],
          marker_path[PATH_BUF], op_path[PATH_BUF];
@@ -191,11 +255,11 @@ int main(void) {
         if (got >= 1 && keycode != 0) {
             /* got==2 -> timestamped: drop if the user already let go.
              * got==1 -> old bare format: always fresh. */
-            if (got == 2 && (drain_now_ms - ts_ms) > stale_ms) {
+            if (compensator && got == 2 && (drain_now_ms - ts_ms) > stale_ms) {
                 dropped_stale++;
             } else {
                 int is_arrow = (keycode >= 1000 && keycode <= 1003);
-                if (is_arrow && keycode == arrow_run_code) {
+                if (compensator && is_arrow && keycode == arrow_run_code) {
                     arrow_run_n++;
                     if (arrow_run_n > BVD_ARROW_RUN_CAP) goto next_line; /* cap the run */
                 } else {
