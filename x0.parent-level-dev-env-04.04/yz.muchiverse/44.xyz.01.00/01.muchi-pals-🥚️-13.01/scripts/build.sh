@@ -6,6 +6,13 @@
 set -e
 cd "$(dirname "$0")/.."
 
+# PRISC-X-FORK-CONSOLIDATION.md (2026-09-09): prisc+x is the PAL VM and
+# it is OURS — build the ONE canonical &.widgits/_shared-lib/system/
+# prisc+x.c (which now carries this project's old _WIN32/MinGW shims,
+# folded in). Walk up from here to the dir holding &.widgits/.
+_pcd="$(pwd)"; while [ "$_pcd" != "/" ] && [ ! -d "$_pcd/&.widgits/_shared-lib" ]; do _pcd="$(dirname "$_pcd")"; done
+PRISC_CANON_SHARED_LIB="$_pcd/&.widgits/_shared-lib"
+
 CC=${CC:-gcc}
 CFLAGS="-std=c11 -Wall -Wextra -O2"
 
@@ -41,8 +48,8 @@ case "$(uname -s)" in
         ;;
 esac
 
-echo "-- prisc+x (VM)"
-$CC $CFLAGS -o system/prisc+x system/prisc+x.c
+echo "-- prisc+x (VM, from the canonical)"
+$CC $CFLAGS -o system/prisc+x "$PRISC_CANON_SHARED_LIB/system/prisc+x.c"
 
 echo "-- emoji_gen_atlas (FreeType color-bitmap emoji -> PNG)"
 $CC $CFLAGS $WIN_UNICODE_FLAGS -o system/emoji_gen_atlas system/emoji_gen_atlas.c $(pkg-config --cflags --libs freetype2) -lm
