@@ -2592,7 +2592,9 @@ int main(int argc, char **argv) {
 
     signal(SIGTERM, bv_daemon_on_term);
     signal(SIGINT,  bv_daemon_on_term);
-    signal(SIGHUP,  bv_daemon_on_term);
+    signal(SIGHUP,  SIG_IGN);      /* survive the spawning bv_dispatch tick exiting */
+    signal(SIGPIPE, SIG_IGN);
+    setsid();                      /* detach from the spawner's session/pgrp */
     bv_gpu_set_persistent(1);
 
     resolve_root();                       /* sets project_root */

@@ -34,6 +34,7 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <signal.h>
+#include <fcntl.h>
 #include <time.h>
 
 #define MAX_LINE 512
@@ -361,10 +362,20 @@ int main(void) {
                 if (gpu_enabled && !daemon_live) {
                     pid_t dp = fork();
                     if (dp == 0) {
+                        /* double-fork + detach so the daemon outlives this
+                         * per-tick bv_dispatch process cleanly */
                         setsid();
+                        signal(SIGHUP, SIG_IGN);
+                        pid_t dp2 = fork();
+                        if (dp2 > 0) _exit(0);
+                        int devnull = open("/dev/null", O_RDWR);
+                        if (devnull >= 0) { dup2(devnull, 0); dup2(devnull, 1); dup2(devnull, 2);
+                                            if (devnull > 2) close(devnull); }
                         char *av[] = { (char *)"ops/+x/bv_render_3d.+x", (char *)"--daemon", NULL };
                         execv(av[0], av);
                         _exit(127);
+                    } else if (dp > 0) {
+                        waitpid(dp, NULL, 0);   /* reap the immediate child (it _exit(0)s after its own fork) */
                     }
                 }
                 pj(op_path, sizeof(op_path), "ops/+x/bv_render_3d.+x");
