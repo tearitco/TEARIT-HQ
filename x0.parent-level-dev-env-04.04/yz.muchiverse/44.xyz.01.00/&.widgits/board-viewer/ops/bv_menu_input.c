@@ -622,6 +622,11 @@ static int handle_one_key(int key) {
     if (key == key_toggle_render_mode) {
         int render_mode = read_kv_int(state_path, "render_mode", default_render_mode(focused_project_root));
         write_kv_int(state_path, "render_mode", !render_mode);
+        /* '0' is the 2D *tile grid* <-> 3D toggle; entering 2D always
+         * lands on tiles, never the Chinese/ascii view (that's '`').
+         * Without this, once '`' has set view_2d_style=ascii it stays
+         * ascii on every later '0' -> 2D. */
+        if (render_mode) write_kv(state_path, "view_2d_style", "tiles");
         bump_screen_changed(project_root);
         return 0;
     }

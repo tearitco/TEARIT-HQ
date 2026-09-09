@@ -47,7 +47,13 @@ typedef struct {
     /* legend: glyph byte -> colour + solidity. Bytes not listed = air. */
     int   legend_n;
     unsigned char legend_glyph[BV_GPU_MAX_LEGEND];
-    float legend_rgb[BV_GPU_MAX_LEGEND][3];   /* 0..1 */
+    float legend_rgb[BV_GPU_MAX_LEGEND][3];   /* 0..1 flat fallback colour */
+    /* per-legend terrain texture: a 16x16 RGBA slice (from the glyph's
+     * emoji_assets/<hex>/voxels_16.csv) + the opaque bounding box to
+     * crop to (0..1). has_tex=0 -> slice is ignored, flat colour used. */
+    int   legend_has_tex[BV_GPU_MAX_LEGEND];
+    unsigned char legend_tex[BV_GPU_MAX_LEGEND][16 * 16 * 4];
+    float legend_bbox[BV_GPU_MAX_LEGEND][4];  /* u0,v0,u1,v1 in 0..1 */
 
     float light_level;           /* ground light 0..1 (ambient floor already applied) */
     float sky[3];                /* 0..1 */

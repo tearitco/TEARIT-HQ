@@ -39,13 +39,18 @@ static const char *FS_SRC =
 "precision highp float;\n"
 "precision highp int;\n"
 "precision highp usampler3D;\n"
+"precision highp sampler3D;\n"
+"precision highp sampler2D;\n"
+"precision highp sampler2DArray;\n"
 "out vec4 o_col;\n"
 "uniform vec3  u_eye, u_fwd, u_right, u_up;\n"
 "uniform float u_focal;\n"
 "uniform vec2  u_res;\n"
 "uniform vec3  u_wext;\n"          /* world extents: (board_w, z_count, board_h) */
 "uniform highp usampler3D u_grid;\n"
-"uniform sampler2D u_leg;\n"       /* 256x1 RGBA8: .rgb colour, .a>0.5 = solid */
+"uniform sampler2D u_leg;\n"       /* 256x1 RGBA8: .rgb flat colour, .a*255 = 0 air / layer+1 solid */
+"uniform sampler2DArray u_terr;\n" /* 16x16xN terrain emoji slices, layer per legend entry */
+"uniform vec4  u_lbbox[64];\n"     /* per-layer opaque bbox (u0,v0,u1,v1) in 0..1 */
 "uniform float u_light;\n"
 "uniform vec3  u_sky;\n"
 "uniform int   u_nbox;\n"
@@ -108,10 +113,23 @@ static const char *FS_SRC =
 "          c.x >= int(u_wext.x) || c.y >= int(u_wext.y) || c.z >= int(u_wext.z)) break;\n"
 "      uint g = texelFetch(u_grid, ivec3(c.x, c.z, c.y), 0).r;\n"   /* (col,row,lvl) */
 "      vec4 L = texelFetch(u_leg, ivec2(int(g), 0), 0);\n"
-"      if (L.a > 0.5) {\n"
+"      int lay = int(L.a * 255.0 + 0.5) - 1;\n"                     /* -1 = air */
+"      if (lay >= 0) {\n"
 "        if (tcur < bestT) {\n"
-"          bestT = tcur; col = L.rgb; hit = true; self_lit = false;\n"
-"          face = ax * 2 + ((st[ax] > 0) ? 0 : 1);\n"
+"          bestT = tcur; hit = true; self_lit = false;\n"
+"          int fc = ax * 2 + ((st[ax] > 0) ? 0 : 1);\n"
+"          face = fc;\n"
+"          vec3 wp = ro + rd * tcur;\n"
+"          vec2 uv;\n"
+"          if (fc == 2 || fc == 3)      uv = vec2(fract(wp.x), fract(wp.z));\n"
+"          else if (fc == 4 || fc == 5) uv = vec2(fract(wp.x), 1.0 - fract(wp.y));\n"
+"          else                         uv = vec2(fract(wp.z), 1.0 - fract(wp.y));\n"
+"          vec4 bb = u_lbbox[lay];\n"
+"          if (bb.z <= bb.x) bb = vec4(0.0, 0.0, 1.0, 1.0);\n"
+"          vec2 tuv = bb.xy + clamp(uv, 0.0, 0.999) * (bb.zw - bb.xy);\n"
+"          ivec2 ti = clamp(ivec2(tuv * 16.0), ivec2(0), ivec2(15));\n"
+"          vec4 tx = texelFetch(u_terr, ivec3(ti, lay), 0);\n"
+"          col = (tx.a > 0.04) ? tx.rgb : L.rgb;\n"
 "        }\n"
 "        break;\n"
 "      }\n"
@@ -134,13 +152,14 @@ static const char *FS_SRC =
 static int        s_persist = 0;
 static EGLDisplay s_dpy = EGL_NO_DISPLAY;
 static EGLContext s_ctx = EGL_NO_CONTEXT;
-static GLuint     s_prog = 0, s_vao = 0, s_fbo = 0, s_rbo = 0, s_tex_grid = 0, s_tex_leg = 0;
+static GLuint     s_prog = 0, s_vao = 0, s_fbo = 0, s_rbo = 0, s_tex_grid = 0, s_tex_leg = 0, s_tex_terr = 0;
 static int        s_fw = 0, s_fh = 0;          /* current FBO size */
 static int        s_gw = 0, s_gh = 0, s_gd = 0; /* current grid-tex dims */
 static int        s_leg_alloc = 0;            /* legend tex storage created */
+static int        s_terr_alloc = 0;           /* terrain-array storage created */
 /* cached uniform locations (glGetUniformLocation is a string lookup) */
 static struct {
-    GLint eye, fwd, right, up, focal, res, wext, grid, leg, light, sky, nbox, bmin, bmax, bcol;
+    GLint eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, nbox, bmin, bmax, bcol;
 } s_u;
 
 static GLuint compile(GLenum type, const char *src) {
@@ -150,10 +169,10 @@ static GLuint compile(GLenum type, const char *src) {
     GLint ok = 0;
     glGetShaderiv(sh, GL_COMPILE_STATUS, &ok);
     if (!ok) {
-        char log[2048]; GLsizei n = 0;
-        glGetShaderInfoLog(sh, sizeof(log), &n, log);
-        fprintf(stderr, "bv_gpu: %s shader compile failed:\n%.*s\n",
-                type == GL_VERTEX_SHADER ? "vertex" : "fragment", (int)n, log);
+        char log[4096]; log[0] = '\0';
+        glGetShaderInfoLog(sh, sizeof(log), NULL, log);
+        fprintf(stderr, "bv_gpu: %s shader compile failed: %s\n",
+                type == GL_VERTEX_SHADER ? "vertex" : "fragment", log);
         glDeleteShader(sh);
         return 0;
     }
@@ -224,13 +243,24 @@ static int gl_ensure_context(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    s_dpy = dpy; s_ctx = ctx; s_prog = prog; s_vao = vao; s_tex_leg = leg;
-    s_leg_alloc = 0;
+    /* terrain emoji atlas: 16x16 x up-to-64 layers, one per legend entry */
+    GLuint terr = 0;
+    glGenTextures(1, &terr);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, terr);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    s_dpy = dpy; s_ctx = ctx; s_prog = prog; s_vao = vao; s_tex_leg = leg; s_tex_terr = terr;
+    s_leg_alloc = 0; s_terr_alloc = 0;
 
     #define UL(n) glGetUniformLocation(prog, n)
     s_u.eye=UL("u_eye"); s_u.fwd=UL("u_fwd"); s_u.right=UL("u_right"); s_u.up=UL("u_up");
     s_u.focal=UL("u_focal"); s_u.res=UL("u_res"); s_u.wext=UL("u_wext");
-    s_u.grid=UL("u_grid"); s_u.leg=UL("u_leg"); s_u.light=UL("u_light"); s_u.sky=UL("u_sky");
+    s_u.grid=UL("u_grid"); s_u.leg=UL("u_leg"); s_u.terr=UL("u_terr"); s_u.lbbox=UL("u_lbbox");
+    s_u.light=UL("u_light"); s_u.sky=UL("u_sky");
     s_u.nbox=UL("u_nbox"); s_u.bmin=UL("u_bmin"); s_u.bmax=UL("u_bmax"); s_u.bcol=UL("u_bcol");
     #undef UL
     return 0;
@@ -283,15 +313,17 @@ void bv_gpu_shutdown(void) {
     if (s_prog) glDeleteProgram(s_prog);
     if (s_tex_grid) glDeleteTextures(1, &s_tex_grid);
     if (s_tex_leg) glDeleteTextures(1, &s_tex_leg);
+    if (s_tex_terr) glDeleteTextures(1, &s_tex_terr);
     if (s_rbo) glDeleteRenderbuffers(1, &s_rbo);
     if (s_fbo) glDeleteFramebuffers(1, &s_fbo);
     eglMakeCurrent(s_dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     if (s_ctx != EGL_NO_CONTEXT) eglDestroyContext(s_dpy, s_ctx);
     eglTerminate(s_dpy);
     s_dpy = EGL_NO_DISPLAY; s_ctx = EGL_NO_CONTEXT;
-    s_prog = s_vao = s_fbo = s_rbo = s_tex_grid = s_tex_leg = 0;
+    s_prog = s_vao = s_fbo = s_rbo = s_tex_grid = s_tex_leg = s_tex_terr = 0;
     s_fw = s_fh = s_gw = s_gh = s_gd = 0;
     s_leg_alloc = 0;
+    s_terr_alloc = 0;
     s_persist = 0;
 }
 
@@ -330,16 +362,19 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
     glTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, s->board_w, s->board_h, s->z_count,
                     GL_RED_INTEGER, GL_UNSIGNED_BYTE, s->grid);
 
-    /* legend LUT */
+    int nlay = s->legend_n; if (nlay > BV_GPU_MAX_LEGEND) nlay = BV_GPU_MAX_LEGEND;
+    if (nlay < 1) nlay = 1;
+
+    /* legend LUT: .rgb = flat colour, .a*255 = 0 (air) or layer+1 (solid) */
     {
         unsigned char lut[256 * 4];
         memset(lut, 0, sizeof(lut));
-        for (int i = 0; i < s->legend_n && i < BV_GPU_MAX_LEGEND; i++) {
+        for (int i = 0; i < nlay; i++) {
             unsigned bb = s->legend_glyph[i];
             lut[bb*4+0] = (unsigned char)(s->legend_rgb[i][0] * 255.0f + 0.5f);
             lut[bb*4+1] = (unsigned char)(s->legend_rgb[i][1] * 255.0f + 0.5f);
             lut[bb*4+2] = (unsigned char)(s->legend_rgb[i][2] * 255.0f + 0.5f);
-            lut[bb*4+3] = 255;
+            lut[bb*4+3] = (unsigned char)(i + 1);
         }
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, s_tex_leg);
@@ -351,6 +386,28 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
         }
     }
 
+    /* terrain emoji atlas + per-layer bbox */
+    {
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, s_tex_terr);
+        /* legend_tex[64][1024] is contiguous -> one upload of nlay layers */
+        if (!s_terr_alloc) {
+            glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_RGBA8, 16, 16, BV_GPU_MAX_LEGEND);
+            s_terr_alloc = 1;
+        }
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, 16, 16, nlay,
+                        GL_RGBA, GL_UNSIGNED_BYTE, s->legend_tex);
+        float lbb[BV_GPU_MAX_LEGEND * 4];
+        for (int i = 0; i < nlay; i++) {
+            if (s->legend_has_tex[i]) {
+                lbb[i*4+0]=s->legend_bbox[i][0]; lbb[i*4+1]=s->legend_bbox[i][1];
+                lbb[i*4+2]=s->legend_bbox[i][2]; lbb[i*4+3]=s->legend_bbox[i][3];
+            } else { lbb[i*4+0]=0; lbb[i*4+1]=0; lbb[i*4+2]=1; lbb[i*4+3]=1; }
+        }
+        glUniform4fv(s_u.lbbox, nlay, lbb);
+    }
+
     glUniform3fv(s_u.eye,   1, s->eye);
     glUniform3fv(s_u.fwd,   1, s->fwd);
     glUniform3fv(s_u.right, 1, s->right);
@@ -360,6 +417,7 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
     glUniform3f (s_u.wext,  (float)s->board_w, (float)s->z_count, (float)s->board_h);
     glUniform1i (s_u.grid,  0);
     glUniform1i (s_u.leg,   1);
+    glUniform1i (s_u.terr,  2);
     glUniform1f (s_u.light, s->light_level);
     glUniform3fv(s_u.sky,   1, s->sky);
     {

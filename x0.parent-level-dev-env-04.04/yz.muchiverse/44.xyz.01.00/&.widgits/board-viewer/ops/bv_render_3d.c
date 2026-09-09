@@ -1921,14 +1921,40 @@ static int render_one_frame(void) {
               gpu_grid[col + row*board_w + lvl*board_w*board_h] =
                   (unsigned char)board3d[lvl][row][col];
         sc.grid = gpu_grid;
-        /* legend: SOLID glyphs only (air -> not in the LUT -> no hit) */
+        /* legend: SOLID glyphs only (air -> not in the LUT -> no hit).
+         * Each gets a 16x16 emoji-texture slice from its asset_hex so
+         * the GPU terrain looks like the CPU's per-voxel-face texturing,
+         * not a flat colour plane. */
         sc.legend_n = 0;
         for (int i=0; i<g_terrain_legend_count && sc.legend_n<BV_GPU_MAX_LEGEND; i++) {
             if (voxel_is_air(g_terrain_legend[i].glyph)) continue;
-            sc.legend_glyph[sc.legend_n] = (unsigned char)g_terrain_legend[i].glyph;
-            sc.legend_rgb[sc.legend_n][0] = g_terrain_legend[i].r / 255.0f;
-            sc.legend_rgb[sc.legend_n][1] = g_terrain_legend[i].g / 255.0f;
-            sc.legend_rgb[sc.legend_n][2] = g_terrain_legend[i].b / 255.0f;
+            int L = sc.legend_n;
+            sc.legend_glyph[L] = (unsigned char)g_terrain_legend[i].glyph;
+            sc.legend_rgb[L][0] = g_terrain_legend[i].r / 255.0f;
+            sc.legend_rgb[L][1] = g_terrain_legend[i].g / 255.0f;
+            sc.legend_rgb[L][2] = g_terrain_legend[i].b / 255.0f;
+            sc.legend_has_tex[L] = 0;
+            sc.legend_bbox[L][0]=0; sc.legend_bbox[L][1]=0; sc.legend_bbox[L][2]=1; sc.legend_bbox[L][3]=1;
+            if (g_terrain_legend[i].asset_hex[0]) {
+                char ap[PATH_BUF];
+                snprintf(ap, sizeof(ap), "%s/pieces/registry/emoji_assets/%s/voxels_16.csv",
+                         project_root, g_terrain_legend[i].asset_hex);
+                Voxel8Cache *vc = get_voxel8_cached(ap);
+                if (vc && vc->loaded && vc->resolution == 16) {
+                    for (int p = 0; p < 256; p++) {
+                        int src = (p < vc->count) ? p : 0;
+                        sc.legend_tex[L][p*4+0] = vc->pixels[src][0];
+                        sc.legend_tex[L][p*4+1] = vc->pixels[src][1];
+                        sc.legend_tex[L][p*4+2] = vc->pixels[src][2];
+                        sc.legend_tex[L][p*4+3] = vc->pixels[src][3];
+                    }
+                    sc.legend_has_tex[L] = 1;
+                    sc.legend_bbox[L][0] = vc->bbox_u0 / 16.0f;
+                    sc.legend_bbox[L][1] = vc->bbox_v0 / 16.0f;
+                    sc.legend_bbox[L][2] = vc->bbox_u1 / 16.0f;
+                    sc.legend_bbox[L][3] = vc->bbox_v1 / 16.0f;
+                }
+            }
             sc.legend_n++;
         }
         double ll = lighting_enabled ? game_light_level_sky : 1.0;
