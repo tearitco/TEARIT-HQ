@@ -622,39 +622,24 @@ static void kh_draw_canvas(Elem *e) {
                 }
         }
     }
+    /* A frame the exact size of its canvas box blits 1:1 (bv_render_2d).
+     * A smaller frame (bv_render_3d's fixed 640x480) is CENTRED, never
+     * up-scaled - direct instruction 2026-09-09: "don't resize voxels
+     * on screen, camera should be wider". A larger frame is cropped. */
     if (w == e->w && h == e->h) {
         XPutImage(dpy, buf, gc, c_img, 0, 0, e->x, e->y, (unsigned)w, (unsigned)h);
     } else {
-        /* raw dims != canvas box -> nearest-neighbour scale to fill
-         * (2026-09-09: the pc-hq board canvas now fills a resizable
-         * window; bv_render_2d renders at the exact size so it lands
-         * here 1:1, bv_render_3d still emits 640x480 and gets scaled up
-         * instead of sitting cut-off in the corner). */
-        static XImage *s_img; static int s_w, s_h;
-        if (!s_img || s_w != e->w || s_h != e->h) {
-            if (s_img) { XDestroyImage(s_img); s_img = NULL; }
-            char *sd = (char *)malloc((size_t)e->w * e->h * 4);
-            s_img = sd ? XCreateImage(dpy, DefaultVisual(dpy, screen),
-                                      (unsigned)DefaultDepth(dpy, screen), ZPixmap, 0,
-                                      sd, (unsigned)e->w, (unsigned)e->h, 32, 0) : NULL;
-            s_w = e->w; s_h = e->h;
-        }
-        if (s_img) {
-            for (int dy = 0; dy < e->h; dy++) {
-                int sy = (int)((long)dy * h / e->h); if (sy >= h) sy = h - 1;
-                const unsigned char *srow = c_buf + (size_t)sy * w * 4;
-                for (int dx = 0; dx < e->w; dx++) {
-                    int sx = (int)((long)dx * w / e->w); if (sx >= w) sx = w - 1;
-                    const unsigned char *sp = srow + (size_t)sx * 4;
-                    XPutPixel(s_img, dx, dy,
-                              ((unsigned long)sp[0] << 16) | ((unsigned long)sp[1] << 8) | sp[2]);
-                }
-            }
-            XPutImage(dpy, buf, gc, s_img, 0, 0, e->x, e->y, (unsigned)e->w, (unsigned)e->h);
-        } else {
-            int bw = w < e->w ? w : e->w, bh = h < e->h ? h : e->h;
-            XPutImage(dpy, buf, gc, c_img, 0, 0, e->x, e->y, (unsigned)bw, (unsigned)bh);
-        }
+        int bw = w < e->w ? w : e->w;
+        int bh = h < e->h ? h : e->h;
+        int offx = (e->w - bw) / 2; if (offx < 0) offx = 0;
+        int offy = (e->h - bh) / 2; if (offy < 0) offy = 0;
+        int srcx = w > e->w ? (w - e->w) / 2 : 0;
+        int srcy = h > e->h ? (h - e->h) / 2 : 0;
+        /* fill the letterbox so an old frame doesn't ghost around it */
+        XSetForeground(dpy, gc, alloc_pixel("#0c0c0c"));
+        XFillRectangle(dpy, buf, gc, e->x, e->y, (unsigned)e->w, (unsigned)e->h);
+        XPutImage(dpy, buf, gc, c_img, srcx, srcy, e->x + offx, e->y + offy,
+                  (unsigned)bw, (unsigned)bh);
     }
 }
 

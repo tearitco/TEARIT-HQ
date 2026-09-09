@@ -59,6 +59,11 @@ typedef struct { double x, y, z; } Vec3;
 
 static char project_root[MAX_PATH] = ".";
 static char house_root[MAX_PATH] = "";
+/* vertical FOV, degrees. Wider default (was 60) so the sky / sun /
+ * horizon are in frame, not tunnel-visioned onto the board - direct
+ * instruction 2026-09-09 ("camera should be wider"). Override with
+ * `fov_deg` in the host's pieces/system/arrow_config.txt. */
+static double g_fov_deg = 82.0;
 
 #ifdef _WIN32
 #include <windows.h>
@@ -1343,7 +1348,7 @@ static Camera build_camera(int camera_mode, double yaw_deg, double pitch_deg,
     cam.right = right;
     cam.up = up;
 
-    double fov_rad = 60.0 * M_PI_LOCAL / 180.0;
+    double fov_rad = g_fov_deg * M_PI_LOCAL / 180.0;
     cam.focal = (FRAME_H / 2.0) / tan(fov_rad / 2.0);
     return cam;
 }
@@ -1572,6 +1577,9 @@ int main(void) {
     double tp_distance = read_kv_double(cam_cfg_path, "tp_distance", 3.0);
     double tp_height = read_kv_double(cam_cfg_path, "tp_height", 4.0);
     double tp_look_down_deg = read_kv_double(cam_cfg_path, "tp_look_down_deg", 20.0);
+    g_fov_deg = read_kv_double(cam_cfg_path, "fov_deg", 82.0);
+    if (g_fov_deg < 40.0) g_fov_deg = 40.0;
+    if (g_fov_deg > 120.0) g_fov_deg = 120.0;
 
     Camera cam = build_camera(camera_mode, cam_yaw, cam_pitch, pan_x, pan_y, cam_pan_z, cam_z_level,
                                anchor_x, anchor_z, anchor_h,
