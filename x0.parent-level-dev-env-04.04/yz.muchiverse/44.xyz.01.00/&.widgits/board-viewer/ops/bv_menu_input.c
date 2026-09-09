@@ -103,6 +103,80 @@ static int read_kv_int(const char *path, const char *key, int def) {
     return buf[0] ? atoi(buf) : def;
 }
 
+/* --- unified keybinds.pdl (2026-09-09, direct instruction: "all of
+ * these keys should be set by pdl, not hardcoded ... unify into one
+ * keybind file"). House `.pdl` line shape, `|`-separated:
+ *   KEY  | <name>    | <ascii keycode>   camera / POV / menu bindings
+ *   VERB | <keycode> | <ACTION>          key -> host inbox verb
+ *   AXIS | <name>    | <-1|1>            arrow on-screen direction
+ * Read from <focused_host>/pieces/system/keybinds.pdl. Fallback chain
+ * everywhere: keybinds.pdl -> arrow_config.txt / keybinds.txt -> the
+ * hardcoded char default, so a host that ships neither is unchanged. */
+static void pdl_field(const char *line, int idx, char *out, size_t outsz) {
+    out[0] = '\0';
+    const char *p = line; int f = 0;
+    while (f < idx) { const char *bar = strchr(p, '|'); if (!bar) return; p = bar + 1; f++; }
+    const char *end = strchr(p, '|'); size_t n = end ? (size_t)(end - p) : strlen(p);
+    while (n && (*p == ' ' || *p == '\t')) { p++; n--; }
+    while (n && (p[n-1] == ' ' || p[n-1] == '\t' || p[n-1] == '\r' || p[n-1] == '\n')) n--;
+    if (n >= outsz) n = outsz - 1;
+    memcpy(out, p, n); out[n] = '\0';
+}
+/* KEY / AXIS lookup by name -> int (returns def if absent). */
+static int pdl_bind_int(const char *pdl_path, const char *tag, const char *name, int def) {
+    FILE *f = fopen(pdl_path, "r");
+    if (!f) return def;
+    char l[MAX_LINE], t[16], k[64], v[64]; int r = def;
+    while (fgets(l, sizeof(l), f)) {
+        if (l[0] == '#') continue;
+        pdl_field(l, 0, t, sizeof(t));
+        if (strcmp(t, tag) != 0) continue;
+        pdl_field(l, 1, k, sizeof(k));
+        if (strcmp(k, name) != 0) continue;
+        pdl_field(l, 2, v, sizeof(v));
+        if (v[0]) r = atoi(v);
+        break;
+    }
+    fclose(f);
+    return r;
+}
+/* VERB lookup by keycode -> ACTION name (out[0]='\0' if none). */
+static void pdl_verb_lookup(const char *pdl_path, int keycode, char *out, size_t outsz) {
+    out[0] = '\0';
+    FILE *f = fopen(pdl_path, "r");
+    if (!f) return;
+    char l[MAX_LINE], t[16], k[64];
+    while (fgets(l, sizeof(l), f)) {
+        if (l[0] == '#') continue;
+        pdl_field(l, 0, t, sizeof(t));
+        if (strcmp(t, "VERB") != 0) continue;
+        pdl_field(l, 1, k, sizeof(k));
+        if (atoi(k) != keycode) continue;
+        pdl_field(l, 2, out, outsz);
+        break;
+    }
+    fclose(f);
+}
+/* Read a boolean-ish flag from an entity's piece.pdl (muta parity for
+ * possess). Matches "<key>" appearing with "true"/"1" on the same line,
+ * house `SECTION | possessable | 1` OR a bare `possessable=1`. */
+static int piece_pdl_flag(const char *host_root, const char *entity_id,
+                          const char *flag, int def) {
+    char p[PATH_BUF];
+    snprintf(p, sizeof(p), "%s/pieces/%s/piece.pdl", host_root, entity_id);
+    FILE *f = fopen(p, "r");
+    if (!f) return def;
+    int r = def; char l[MAX_LINE];
+    while (fgets(l, sizeof(l), f)) {
+        if (!strstr(l, flag)) continue;
+        if (strstr(l, "true") || strstr(l, " 1") || strstr(l, "=1")) r = 1;
+        else if (strstr(l, "false") || strstr(l, " 0") || strstr(l, "=0")) r = 0;
+        break;
+    }
+    fclose(f);
+    return r;
+}
+
 /* Forward declaration - has_z_manifest() is defined further down this
  * same file, needed here by default_render_mode() below. */
 static int has_z_manifest(const char *root, char *z_base_out, size_t z_base_sz, int *z_count_out);
@@ -313,8 +387,10 @@ static int handle_one_key(int key) {
      * TURN/etc) were ALREADY this same real pattern via keybinds.txt -
      * this closes the same gap for board-viewer's own camera keys. */
     char arrow_cfg_path[PATH_BUF] = "";
+    char kb_pdl_path[PATH_BUF] = "";
     int key_toggle_render_mode = '0';
     int key_possess = '9';
+    int key_possess_commit = 13;    /* Enter - possess entity under the xlector (muta parity) */
     int key_reset_xelector = '8';
     int key_z_down = 'z', key_z_up = 'x';
     int key_reset_view = 'f';
@@ -322,6 +398,8 @@ static int handle_one_key(int key) {
     int key_pitch_down = 'r', key_pitch_up = 't';
     int key_pan_forward = 'w', key_pan_back = 's', key_pan_left = 'a', key_pan_right = 'd';
     int key_cam_down = 'c', key_cam_up = 'v';
+    int key_pov_1 = '1', key_pov_2 = '2', key_pov_3 = '3', key_pov_4 = '4';
+    int key_file_menu = '5', key_desk_menu = '6';
     if (focused_project_root[0]) {
         snprintf(arrow_cfg_path, sizeof(arrow_cfg_path), "%s/pieces/system/arrow_config.txt", focused_project_root);
         left_dx = read_kv_int(arrow_cfg_path, "left_dx", left_dx);
@@ -344,6 +422,38 @@ static int handle_one_key(int key) {
         key_pan_right = read_kv_int(arrow_cfg_path, "key_pan_right", key_pan_right);
         key_cam_down = read_kv_int(arrow_cfg_path, "key_cam_down", key_cam_down);
         key_cam_up = read_kv_int(arrow_cfg_path, "key_cam_up", key_cam_up);
+
+        /* keybinds.pdl overrides arrow_config.txt if present (2026-09-09
+         * unified keybind file). Every binding, camera + POV + menu +
+         * possess-commit. */
+        snprintf(kb_pdl_path, sizeof(kb_pdl_path), "%s/pieces/system/keybinds.pdl", focused_project_root);
+        left_dx  = pdl_bind_int(kb_pdl_path, "AXIS", "left_dx",  left_dx);
+        right_dx = pdl_bind_int(kb_pdl_path, "AXIS", "right_dx", right_dx);
+        up_dy    = pdl_bind_int(kb_pdl_path, "AXIS", "up_dy",    up_dy);
+        down_dy  = pdl_bind_int(kb_pdl_path, "AXIS", "down_dy",  down_dy);
+        key_toggle_render_mode = pdl_bind_int(kb_pdl_path, "KEY", "render_mode_toggle", key_toggle_render_mode);
+        key_possess        = pdl_bind_int(kb_pdl_path, "KEY", "possess",         key_possess);
+        key_possess_commit = pdl_bind_int(kb_pdl_path, "KEY", "possess_commit",  key_possess_commit);
+        key_reset_xelector = pdl_bind_int(kb_pdl_path, "KEY", "reset_xelector",  key_reset_xelector);
+        key_z_down = pdl_bind_int(kb_pdl_path, "KEY", "xelector_z_down", key_z_down);
+        key_z_up   = pdl_bind_int(kb_pdl_path, "KEY", "xelector_z_up",   key_z_up);
+        key_reset_view = pdl_bind_int(kb_pdl_path, "KEY", "reset_view", key_reset_view);
+        key_yaw_left  = pdl_bind_int(kb_pdl_path, "KEY", "yaw_left",  key_yaw_left);
+        key_yaw_right = pdl_bind_int(kb_pdl_path, "KEY", "yaw_right", key_yaw_right);
+        key_pitch_down = pdl_bind_int(kb_pdl_path, "KEY", "pitch_down", key_pitch_down);
+        key_pitch_up   = pdl_bind_int(kb_pdl_path, "KEY", "pitch_up",   key_pitch_up);
+        key_pan_forward = pdl_bind_int(kb_pdl_path, "KEY", "pan_forward", key_pan_forward);
+        key_pan_back    = pdl_bind_int(kb_pdl_path, "KEY", "pan_back",    key_pan_back);
+        key_pan_left    = pdl_bind_int(kb_pdl_path, "KEY", "pan_left",    key_pan_left);
+        key_pan_right   = pdl_bind_int(kb_pdl_path, "KEY", "pan_right",   key_pan_right);
+        key_cam_down = pdl_bind_int(kb_pdl_path, "KEY", "cam_height_down", key_cam_down);
+        key_cam_up   = pdl_bind_int(kb_pdl_path, "KEY", "cam_height_up",   key_cam_up);
+        key_pov_1 = pdl_bind_int(kb_pdl_path, "KEY", "pov_mode_1", key_pov_1);
+        key_pov_2 = pdl_bind_int(kb_pdl_path, "KEY", "pov_mode_2", key_pov_2);
+        key_pov_3 = pdl_bind_int(kb_pdl_path, "KEY", "pov_mode_3", key_pov_3);
+        key_pov_4 = pdl_bind_int(kb_pdl_path, "KEY", "pov_mode_4", key_pov_4);
+        key_file_menu = pdl_bind_int(kb_pdl_path, "KEY", "file_menu", key_file_menu);
+        key_desk_menu = pdl_bind_int(kb_pdl_path, "KEY", "desk_menu", key_desk_menu);
     }
     int dx = 0, dy = 0;
     if (key == ARROW_LEFT) dx = left_dx;
@@ -524,70 +634,77 @@ static int handle_one_key(int key) {
      * target, the natural inverse). A host with no xelector_01/hero_01
      * pieces (civ-txt/tactics-txt) silently no-ops (fopen fails,
      * write_kv/read_kv_str return gracefully). */
-    if (key == key_possess && focused_project_root[0]) {
-        char xelector_state_path[PATH_BUF];
-        snprintf(xelector_state_path, sizeof(xelector_state_path), "%s/pieces/xelector_01/state.txt", focused_project_root);
-        char possessed_id[64] = "";
-        read_kv_str(xelector_state_path, "possessed_id", possessed_id, sizeof(possessed_id));
+    /* ── possession, full mutaclysm parity (ops/choice.c) ──────────────
+     * - Enter (key_possess_commit): possess the entity the xlector is
+     *   standing on, if that entity's piece.pdl `possessable` is set
+     *   (default 1). v1: hero_01 is the one possessable target.
+     * - '9' (key_possess): RELEASE only (never possess). Blocked if the
+     *   possessed entity's piece.pdl `de_possessible` is "true". On
+     *   release: record last_possessed_id, step the xlector out onto
+     *   the entity's current cell, clear possessed_id.
+     * - '9' while NOT possessing but last_possessed_id is set: reverse-
+     *   jump - snap to that entity and re-possess it. */
+    if (focused_project_root[0] && (key == key_possess_commit || key == key_possess)) {
+        char xs[PATH_BUF], hs[PATH_BUF];
+        snprintf(xs, sizeof(xs), "%s/pieces/xelector_01/state.txt", focused_project_root);
+        snprintf(hs, sizeof(hs), "%s/pieces/hero_01/state.txt", focused_project_root);
+        char possessed_id[64] = "", last_possessed_id[64] = "";
+        read_kv_str(xs, "possessed_id", possessed_id, sizeof(possessed_id));
+        read_kv_str(xs, "last_possessed_id", last_possessed_id, sizeof(last_possessed_id));
+        int possessing = (possessed_id[0] && strcmp(possessed_id, "none") != 0);
 
-        if (strcmp(possessed_id, "hero_01") == 0) {
-            /* REAL FIX 2026-08-04, direct user report ("1st/3rd person
-             * won't unposses for some reason??"): this branch used to
-             * ONLY clear possessed_id - the header comment above always
-             * PROMISED a real "reverse-jump" (release direction jumps
-             * BACK) but never actually implemented one, so the
-             * xelector's own position (and this file's own local
-             * selector_x/y camera mirror, which modes 1/2's own anchor
-             * is built from) never changed - release genuinely worked
-             * (possession state DID clear, movement stopped dragging
-             * the hero/costing a tick), it just LOOKED like nothing
-             * happened, since the camera never moved. Real fix: restore
-             * the xelector to wherever it real was BEFORE this same
-             * possess (pre_possess_x/y/z, saved by the possess branch
-             * below), matching the promised real reverse-jump. */
-            int cur_sel_x = read_kv_int(state_path, "selector_x", 0);
-            int cur_sel_y = read_kv_int(state_path, "selector_y", 0);
-            int px = read_kv_int(xelector_state_path, "pre_possess_x", cur_sel_x);
-            int py = read_kv_int(xelector_state_path, "pre_possess_y", cur_sel_y);
-            int pz = read_kv_int(xelector_state_path, "pre_possess_z", 0);
-            write_kv(xelector_state_path, "possessed_id", "none");
-            write_kv_int(xelector_state_path, "pos_x", px);
-            write_kv_int(xelector_state_path, "pos_y", py);
-            write_kv_int(xelector_state_path, "pos_z", pz);
-            write_kv_int(state_path, "selector_x", px);
-            write_kv_int(state_path, "selector_y", py);
-            write_kv_int(state_path, "current_z", pz);
-        } else {
-            /* Possess - jump xelector to hero's own real position,
-             * matching precedent's own "reverse-jump" naming (the
-             * inverse direction: jump TO the target on entry). Real,
-             * NEW 2026-08-04: saves the xelector's own CURRENT position
-             * first (pre_possess_x/y/z) so the release branch above has
-             * somewhere real to jump back to. */
-            int prev_x = read_kv_int(xelector_state_path, "pos_x", read_kv_int(state_path, "selector_x", 0));
-            int prev_y = read_kv_int(xelector_state_path, "pos_y", read_kv_int(state_path, "selector_y", 0));
-            int prev_z = read_kv_int(xelector_state_path, "pos_z", 0);
-            write_kv_int(xelector_state_path, "pre_possess_x", prev_x);
-            write_kv_int(xelector_state_path, "pre_possess_y", prev_y);
-            write_kv_int(xelector_state_path, "pre_possess_z", prev_z);
+        int hx = read_kv_int(hs, "pos_x", 0);
+        int hy = read_kv_int(hs, "pos_y", 0);
+        int hz = read_kv_int(hs, "pos_z", 0);
+        int xx = read_kv_int(xs, "pos_x", read_kv_int(state_path, "selector_x", 0));
+        int xy = read_kv_int(xs, "pos_y", read_kv_int(state_path, "selector_y", 0));
 
-            char hero_state_path[PATH_BUF];
-            snprintf(hero_state_path, sizeof(hero_state_path), "%s/pieces/hero_01/state.txt", focused_project_root);
-            int hx = read_kv_int(hero_state_path, "pos_x", 0);
-            int hy = read_kv_int(hero_state_path, "pos_y", 0);
-            int hz = read_kv_int(hero_state_path, "pos_z", 0);
-            write_kv_int(xelector_state_path, "pos_x", hx);
-            write_kv_int(xelector_state_path, "pos_y", hy);
-            write_kv_int(xelector_state_path, "pos_z", hz);
-            write_kv(xelector_state_path, "possessed_id", "hero_01");
-            /* Mirror into board-viewer's own local display state so
-             * the camera/selector snap to the hero immediately, same
-             * real pattern z/x's own current_z mirror already uses. */
+        if (key == key_possess_commit) {
+            /* Enter = possess entity under the xlector. */
+            if (!possessing && xx == hx && xy == hy &&
+                piece_pdl_flag(focused_project_root, "hero_01", "possessable", 1)) {
+                write_kv(xs, "possessed_id", "hero_01");
+                write_kv(xs, "last_possessed_id", "hero_01");
+                write_kv_int(state_path, "selector_x", hx);
+                write_kv_int(state_path, "selector_y", hy);
+                write_kv_int(state_path, "current_z", hz);
+                bump_screen_changed(project_root);
+            }
+            return 0;
+        }
+        /* key_possess ('9') */
+        if (possessing) {
+            if (piece_pdl_flag(focused_project_root, possessed_id, "de_possessible", 0)) {
+                /* locked in - no-op (muta: "You cannot release this entity.") */
+                return 0;
+            }
+            write_kv(xs, "last_possessed_id", possessed_id);
+            write_kv(xs, "possessed_id", "none");
+            /* step the xlector out onto the entity's own current cell */
+            write_kv_int(xs, "pos_x", hx);
+            write_kv_int(xs, "pos_y", hy);
+            write_kv_int(xs, "pos_z", hz);
             write_kv_int(state_path, "selector_x", hx);
             write_kv_int(state_path, "selector_y", hy);
             write_kv_int(state_path, "current_z", hz);
+            bump_screen_changed(project_root);
+        } else if (last_possessed_id[0] && strcmp(last_possessed_id, "none") != 0 &&
+                   piece_pdl_flag(focused_project_root, last_possessed_id, "possessable", 1)) {
+            /* reverse-jump: snap to last entity and re-possess */
+            char le[PATH_BUF];
+            snprintf(le, sizeof(le), "%s/pieces/%s/state.txt", focused_project_root, last_possessed_id);
+            int lx = read_kv_int(le, "pos_x", hx);
+            int ly = read_kv_int(le, "pos_y", hy);
+            int lz = read_kv_int(le, "pos_z", hz);
+            write_kv(xs, "possessed_id", last_possessed_id);
+            write_kv_int(xs, "pos_x", lx);
+            write_kv_int(xs, "pos_y", ly);
+            write_kv_int(xs, "pos_z", lz);
+            write_kv_int(state_path, "selector_x", lx);
+            write_kv_int(state_path, "selector_y", ly);
+            write_kv_int(state_path, "current_z", lz);
+            bump_screen_changed(project_root);
         }
-        bump_screen_changed(project_root);
         return 0;
     }
 
@@ -710,8 +827,9 @@ static int handle_one_key(int key) {
      * separately (no real 3D on the desktop). This also un-shadows the
      * '5'/'6' FILE_MENU/DESK_MENU dispatch further down (it was dead
      * code while '5'-'8' returned first). */
-    if (key >= '1' && key <= '4') {
-        int camera_mode = key - '0';
+    if (key == key_pov_1 || key == key_pov_2 || key == key_pov_3 || key == key_pov_4) {
+        int camera_mode = (key == key_pov_1) ? 1 : (key == key_pov_2) ? 2
+                        : (key == key_pov_3) ? 3 : 4;
         write_kv_int(state_path, "camera_mode", camera_mode);
         if (camera_mode == 1 || camera_mode == 2) {
             write_kv_int(state_path, "cam_yaw", 180);
@@ -813,19 +931,22 @@ static int handle_one_key(int key) {
         if (camera_mode == 3) {
             int pan_z = read_kv_int(state_path, "cam_pan_z", 0);
             int pan_x = read_kv_int(state_path, "cam_pan_x", 0);
-            if (key == 'w') pan_z += PAN_STEP;
-            else if (key == 's') pan_z -= PAN_STEP;
-            else if (key == 'a') pan_x -= PAN_STEP;
-            else if (key == 'd') pan_x += PAN_STEP;
+            /* was hardcoded 'w'/'a'/'s'/'d' - a real bug: the gate above
+             * used the remappable key_pan_* vars but the dispatch here
+             * ignored them, so rebinding pan keys silently did nothing. */
+            if (key == key_pan_forward) pan_z += PAN_STEP;
+            else if (key == key_pan_back) pan_z -= PAN_STEP;
+            else if (key == key_pan_left) pan_x -= PAN_STEP;
+            else if (key == key_pan_right) pan_x += PAN_STEP;
             write_kv_int(state_path, "cam_pan_z", pan_z);
             write_kv_int(state_path, "cam_pan_x", pan_x);
         } else {
             int pan_y = read_kv_int(state_path, "cam_pan_y", 0);
             int pan_x = read_kv_int(state_path, "cam_pan_x", 0);
-            if (key == 'w') pan_y -= PAN_STEP;
-            else if (key == 's') pan_y += PAN_STEP;
-            else if (key == 'a') pan_x -= PAN_STEP;
-            else if (key == 'd') pan_x += PAN_STEP;
+            if (key == key_pan_forward) pan_y -= PAN_STEP;
+            else if (key == key_pan_back) pan_y += PAN_STEP;
+            else if (key == key_pan_left) pan_x -= PAN_STEP;
+            else if (key == key_pan_right) pan_x += PAN_STEP;
             write_kv_int(state_path, "cam_pan_y", pan_y);
             write_kv_int(state_path, "cam_pan_x", pan_x);
         }
@@ -877,12 +998,12 @@ static int handle_one_key(int key) {
      * pure local khtpm action (no cross-process relay needed at all,
      * since closing the khtpm chrome window is 100% local to that
      * process) - the real flag-file mechanism this used is gone. */
-    if (focused_project_root[0] && key == '5') {
+    if (focused_project_root[0] && key == key_file_menu) {
         send_action_to_host(focused_project_root, "FILE_MENU");
         bump_screen_changed(project_root);
         return 0;
     }
-    if (focused_project_root[0] && key == '6') {
+    if (focused_project_root[0] && key == key_desk_menu) {
         send_action_to_host(focused_project_root, "DESK_MENU");
         bump_screen_changed(project_root);
         return 0;
@@ -910,28 +1031,31 @@ static int handle_one_key(int key) {
         read_kv_str(xelector_state_path_verb, "possessed_id", possessed_id_verb, sizeof(possessed_id_verb));
     }
     if (focused_project_root[0] && strcmp(possessed_id_verb, "hero_01") == 0) {
-        char keybinds_path[PATH_BUF];
-        snprintf(keybinds_path, sizeof(keybinds_path), "%s/pieces/system/keybinds.txt", focused_project_root);
-        FILE *kf = fopen(keybinds_path, "r");
-        if (kf) {
-            char kline[MAX_LINE];
-            char action[64] = "";
-            while (fgets(kline, sizeof(kline), kf)) {
-                kline[strcspn(kline, "\r\n")] = '\0';
-                if (!kline[0] || kline[0] == '#') continue;
-                char *eq = strchr(kline, '=');
-                if (!eq) continue;
-                *eq = '\0';
-                if (atoi(kline) == key) {
-                    snprintf(action, sizeof(action), "%s", eq + 1);
-                    break;
+        char action[64] = "";
+        /* unified keybinds.pdl VERB lines first, then legacy keybinds.txt */
+        pdl_verb_lookup(kb_pdl_path, key, action, sizeof(action));
+        if (!action[0]) {
+            char keybinds_path[PATH_BUF];
+            snprintf(keybinds_path, sizeof(keybinds_path), "%s/pieces/system/keybinds.txt", focused_project_root);
+            FILE *kf = fopen(keybinds_path, "r");
+            if (kf) {
+                char kline[MAX_LINE];
+                while (fgets(kline, sizeof(kline), kf)) {
+                    kline[strcspn(kline, "\r\n")] = '\0';
+                    if (!kline[0] || kline[0] == '#') continue;
+                    char *eq = strchr(kline, '=');
+                    if (!eq) continue;
+                    *eq = '\0';
+                    if (atoi(kline) == key) {
+                        snprintf(action, sizeof(action), "%s", eq + 1);
+                        break;
+                    }
                 }
+                fclose(kf);
             }
-            fclose(kf);
-
-            if (action[0]) {
-                send_action_to_host(focused_project_root, action);
-            }
+        }
+        if (action[0]) {
+            send_action_to_host(focused_project_root, action);
         }
     }
 

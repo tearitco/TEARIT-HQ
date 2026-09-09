@@ -1,0 +1,47 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | file_id            | keybinds
+META         | note               | Unified board-viewer keybinds. Read by &.widgits/board-viewer/ops/bv_menu_input.c. Edit + relaunch (no rebuild). Values on KEY/VERB rows are RAW ASCII KEYCODES (python3 -c "print(ord('w'))" or man ascii). Missing a row -> the built-in default (shown in the comment). This file overrides pieces/system/arrow_config.txt's key_* section and pieces/system/keybinds.txt.
+
+# ── camera / POV / view (only while render_mode==1 unless noted) ──
+KEY          | render_mode_toggle | 48        # '0'  toggle 2D <-> 3D  (works in both modes)
+KEY          | pov_mode_1         | 49        # '1'  first person
+KEY          | pov_mode_2         | 50        # '2'  third person
+KEY          | pov_mode_3         | 51        # '3'  free roam  (wasd pan)
+KEY          | pov_mode_4         | 52        # '4'  bird's eye  (wasd pan, no rotate)
+KEY          | yaw_left           | 113       # 'q'  turn left   (modes 1/2/3)
+KEY          | yaw_right          | 101       # 'e'  turn right  (modes 1/2/3)
+KEY          | pitch_down         | 114       # 'r'  look down   (modes 1/2/3)
+KEY          | pitch_up           | 116       # 't'  look up     (modes 1/2/3)
+KEY          | pan_forward        | 119       # 'w'  pan forward (modes 3/4)
+KEY          | pan_back           | 115       # 's'  pan back    (modes 3/4)
+KEY          | pan_left           | 97        # 'a'  pan left    (modes 3/4)
+KEY          | pan_right          | 100       # 'd'  pan right   (modes 3/4)
+KEY          | cam_height_down    | 99        # 'c'  camera Z -1 (modes 3/4)
+KEY          | cam_height_up      | 118       # 'v'  camera Z +1 (modes 3/4)
+KEY          | reset_view         | 102       # 'f'  reset camera to this mode's default
+
+# ── xelector cursor / possession (muta ops/choice.c parity) ──
+KEY          | xelector_z_down    | 122       # 'z'  xelector Z -1
+KEY          | xelector_z_up      | 120       # 'x'  xelector Z +1
+KEY          | reset_xelector     | 56        # '8'  snap xelector back to the hero
+KEY          | possess_commit     | 13        # Enter  possess the entity the xelector is standing on (if piece.pdl possessable)
+KEY          | possess            | 57        # '9'  release possession (blocked if piece.pdl de_possessible=true); if unpossessed, reverse-jump to last_possessed_id
+
+# ── host menu actions (relayed to the game's inbox) ──
+KEY          | file_menu          | 53        # '5'  -> FILE_MENU
+KEY          | desk_menu          | 54        # '6'  -> DESK_MENU
+
+# ── game verbs: <keycode> -> ACTION (only while possessing hero) ──
+VERB         | 32                 | JUMP
+VERB         | 103                | MINE
+VERB         | 104                | BUILD
+VERB         | 47                 | END_TURN
+VERB         | 46                 | TOGGLE_AUTOTICK
+VERB         | 44                 | CYCLE_TICK_SPEED
+
+# ── arrow-key on-screen direction (flip a sign if it feels backwards) ──
+AXIS         | left_dx            | -1
+AXIS         | right_dx           | 1
+AXIS         | up_dy              | -1
+AXIS         | down_dy            | 1

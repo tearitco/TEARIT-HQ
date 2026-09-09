@@ -242,3 +242,64 @@ scan/panel system — a documented deliberate simplification. It saves
 Enter-on-hero-tile. To reach full muta parity: add the flag checks +
 the Enter-on-tile possess path (needs the xlector-on-hero-tile test,
 which board-viewer already tracks via `selector_x/y` vs `hero pos_x/y`).
+
+---
+
+## 7. Unified keybinds + full `9` possession parity (2026-09-09)
+
+Direct instruction: "all of these keys should be set by pdl, not
+hardcoded ... unify into one keybind file ... we also want all the same
+`9` possession stuff, and Enter-to-possess."
+
+### `pieces/system/keybinds.pdl` (new, per host)
+One authoritative data file. House `.pdl` line shapes:
+```
+KEY  | <name>    | <ascii keycode>   camera / POV / menu / possess
+VERB | <keycode> | <ACTION>          key -> host inbox verb (JUMP/MINE/…)
+AXIS | <name>    | <-1|1>            arrow on-screen direction
+```
+`bv_menu_input.c` resolution order for every binding:
+**`keybinds.pdl` → `arrow_config.txt` (`key_*`) / `keybinds.txt` →
+built-in char default.** A host that ships none is byte-identical to
+before. `arrow_config.txt` keeps the 3D *geometry* tunables
+(`fp_*`/`tp_*`/`lighting_*`/`default_render_mode`/`default_camera_mode`);
+only the `key_*` bindings moved.
+
+Shipped `@.apps/piececraft-hq/pieces/system/keybinds.pdl` with every
+binding (POV `1`-`4`, `0`, wasd/qert/cv, `z`/`x`, `f`, `8`, `9`, Enter,
+`5`/`6`, JUMP/MINE/BUILD/…, arrow axes). Newly-remappable that weren't
+before: `pov_mode_1..4`, `file_menu`, `desk_menu`, `possess_commit`.
+civ-txt / piececraft-xyz are untouched (no `keybinds.pdl` → fallback).
+
+### Fixed: wasd dispatch ignored its own config
+The pan block gated on the remappable `key_pan_*` vars but then
+dispatched on hardcoded `'w'/'a'/'s'/'d'` — rebinding a pan key silently
+did nothing. Now `if (key == key_pan_forward)` etc. Verified: `3` →
+`camera_mode=3`, then `w`×2 → `cam_pan_z=2`.
+
+### `9` possession — full mutaclysm `ops/choice.c` parity
+`bv_menu_input.c`'s `9` was a simplified both-ways toggle. Now:
+- **Enter (`possess_commit`, default 13)** — possess the entity the
+  xlector is standing on, gated on that entity's `piece.pdl`
+  `possessable` (default 1). Reachable because the engaged
+  board_viewer.chtpm parser injects Enter into `interact_relay.txt`.
+- **`9` = release only.** Blocked if the possessed entity's `piece.pdl`
+  `de_possessible` is `true`. On release: write `last_possessed_id`,
+  step the xlector out onto the entity's current cell, clear
+  `possessed_id`.
+- **`9` while unpossessed + `last_possessed_id` set** → reverse-jump:
+  snap to that entity and re-possess (gated on its `possessable`).
+- New `piece_pdl_flag(host, entity_id, flag, def)` reads
+  `<host>/pieces/<entity>/piece.pdl` (`SECTION | flag | 1` or bare
+  `flag=1` / `true`); absent file → default.
+
+Verified live (fresh session): Enter on hero tile → `possessed_id=
+hero_01`; `9` → `none` + `last_possessed_id=hero_01`; `9` again →
+re-possess.
+
+### Still open
+- Chrome-free 2D pixel path for `0` (B1 caveat, §6).
+- cursword's own `5-8` remap in `tp_desktop_window_rgb.c` is now moot —
+  revert separately.
+- `possessable`/`de_possessible` only meaningful once a `hero_01/
+  piece.pdl` is shipped (defaults are permissive today).
