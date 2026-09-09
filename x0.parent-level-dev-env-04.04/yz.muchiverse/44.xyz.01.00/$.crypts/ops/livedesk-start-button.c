@@ -63,8 +63,15 @@ int main(void) {
     char build_dir[PATH_MAX];
     snprintf(build_dir, sizeof(build_dir), "%s/*.monads/*.livedesk-taskbar/ops", house_root);
 
+    /* build_khtpm_strip.sh has a freshness gate (skips in ~0.02s when the
+     * binaries are already newer than every source), so this is cheap on
+     * a normal start. LIVEDESK_START_SPLASH=1 tells it to pop a
+     * "Building livedesk…" window IFF it actually has to compile (~30s
+     * the first time / after a code change). */
     char build_cmd[PATH_MAX * 2];
-    snprintf(build_cmd, sizeof(build_cmd), "cd '%s' && bash build_khtpm_strip.sh >/dev/null 2>&1", build_dir);
+    snprintf(build_cmd, sizeof(build_cmd),
+             "cd '%s' && LIVEDESK_START_SPLASH=1 bash build_khtpm_strip.sh >/dev/null 2>&1",
+             build_dir);
     system(build_cmd);
 
     char *args[] = { "sh", button_sh, "run", NULL };

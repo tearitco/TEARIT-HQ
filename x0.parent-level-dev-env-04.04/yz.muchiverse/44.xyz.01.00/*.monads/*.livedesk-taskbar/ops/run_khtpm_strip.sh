@@ -103,11 +103,13 @@ kill_khtpm() {
 case "$ACTION" in
     boot|new|test|run)
         # `boot` = launch-only, NO rebuild - for $.crypts/autostart.pdl so
-        # the desktop start button is snappy (a full build_khtpm_strip.sh
-        # is ~20s and blocked every start-temp click). `new`/`run`/`test`
-        # still build fresh first.
+        # the desktop start button is snappy. `new`/`run`/`test` are an
+        # explicit "build fresh" verb, so FORCE past build_khtpm_strip.sh's
+        # freshness gate (2026-09-09) - the desktop start button relies on
+        # that gate for speed, but a dev typing `new` wants an unconditional
+        # rebuild.
         if [ "$ACTION" != "boot" ]; then
-            sh "$SCRIPT_DIR/build_khtpm_strip.sh" || { echo "BUILD FAILED — not launching"; exit 1; }
+            KHTPM_FORCE_BUILD=1 sh "$SCRIPT_DIR/build_khtpm_strip.sh" || { echo "BUILD FAILED — not launching"; exit 1; }
         elif [ ! -x "$SCRIPT_DIR/+x/khtpm_core_render.+x" ] || [ ! -x "$SCRIPT_DIR/+x/khtpm_taskbar_manager_main.+x" ]; then
             # first-ever boot with no binaries: fall back to a build
             sh "$SCRIPT_DIR/build_khtpm_strip.sh" || { echo "BUILD FAILED — not launching"; exit 1; }
@@ -152,7 +154,7 @@ case "$ACTION" in
         fi
         ;;
     build)
-        sh "$SCRIPT_DIR/build_khtpm_strip.sh"
+        KHTPM_FORCE_BUILD=1 sh "$SCRIPT_DIR/build_khtpm_strip.sh"
         ;;
     help|h|-h|--help|*)
         cat <<EOF

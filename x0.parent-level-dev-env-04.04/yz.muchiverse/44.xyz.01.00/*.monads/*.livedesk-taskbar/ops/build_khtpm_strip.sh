@@ -14,6 +14,54 @@
 set -e
 cd "$(dirname "$0")"
 mkdir -p +x
+
+# ── freshness gate (2026-09-09) ───────────────────────────────────────
+# A full build is ~28s and it was run unconditionally on every desktop
+# start-button click (livedesk-start-button.c) and every `$.crypts/
+# button.sh run`. Skip it when the two binaries that actually matter are
+# already newer than every source that feeds them. `KHTPM_FORCE_BUILD=1`
+# overrides (used by `run_khtpm_strip.sh new`). Helpers (emoji atlas,
+# ascii mirrors) are cheap and rebuilt below only when we don't skip.
+SHARED_DIR="$(cd "$(dirname "$0")/../../../&.widgits/_shared-lib" 2>/dev/null && pwd || echo /nonexistent)"
+_bins="+x/khtpm_core_render.+x +x/khtpm_taskbar_manager_main.+x"
+_fresh=1
+for _b in $_bins; do [ -x "$_b" ] || _fresh=0; done
+if [ "$_fresh" = 1 ] && [ -z "${KHTPM_FORCE_BUILD:-}" ]; then
+    _oldest_bin="$(ls -t $_bins 2>/dev/null | tail -1)"
+    # Our own first-party sources only: the ops *.c/*.h (NOT the vendored
+    # lib/ third-party headers, whose mtime the emoji-atlas step bumps
+    # every run) + the shared-lib *.c/*.h + the build scripts.
+    _newer="$( { find . -maxdepth 1 \( -name '*.c' -o -name '*.h' -o -name 'build_*.sh' \) \
+                     -newer "$_oldest_bin" -print;
+                 [ -d "$SHARED_DIR" ] && find "$SHARED_DIR" \( -name '*.c' -o -name '*.h' \) \
+                     -newer "$_oldest_bin" -print; } 2>/dev/null | head -1 )"
+    if [ -z "$_newer" ]; then
+        echo "build_khtpm_strip.sh: binaries up to date — skipping (KHTPM_FORCE_BUILD=1 to force)"
+        exit 0
+    fi
+fi
+
+# ── "Building livedesk…" splash ───────────────────────────────────────
+# Only when invoked from the desktop start button (which exports
+# LIVEDESK_START_SPLASH=1) AND we actually got past the freshness gate,
+# so a normal snappy start shows nothing.
+if [ -n "${LIVEDESK_START_SPLASH:-}" ]; then
+    if command -v zenity >/dev/null 2>&1; then
+        # --info (not --progress): --progress with a closed stdin + --auto-
+        # close would vanish on immediate EOF. --timeout is just a safety
+        # net; the EXIT trap below closes it the moment the build ends.
+        zenity --info --width=320 --timeout=180 \
+               --title="livedesk" \
+               --text="Building livedesk…  (~30s the first time)" >/dev/null 2>&1 &
+        _splash_pid=$!
+    elif command -v xmessage >/dev/null 2>&1; then
+        xmessage -center -timeout 120 "Building livedesk…  (~30s)" >/dev/null 2>&1 &
+        _splash_pid=$!
+    fi
+    [ -n "${_splash_pid:-}" ] && trap 'kill "$_splash_pid" 2>/dev/null || true' EXIT INT TERM
+fi
+
+set -e
 CC=${CC:-gcc}
 CFLAGS="-std=c11 -Wall -O2"
 
