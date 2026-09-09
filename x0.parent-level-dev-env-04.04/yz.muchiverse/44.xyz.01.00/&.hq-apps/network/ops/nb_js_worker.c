@@ -48,6 +48,8 @@ static char g_title[512];
 
 static int g_cli = 0;            /* argv mode: plain text out, no RPC framing */
 static int g_cli_status_ok = 0;  /* CLI exit-status latch set by send_status */
+static int g_nav_emit = 0;       /* rung-6 slice 2: daemon only (!g_cli, set */
+                                 /* per run_page) - NAV frames go to manager */
 
 static void send_payload(const char *payload, size_t n) {
     if (g_cli) {
@@ -2159,6 +2161,10 @@ static void run_page(void) {
     g_next_id = 1; g_invocations = 0; g_raf_fires = 0;
     g_pending_err = 0; g_pending_errmsg[0] = 0;
 
+    /* rung-6 slice 2: only the daemon (manager) can act on navigation. */
+    g_nav_kind[0] = 0; g_nav_url[0] = 0; g_nav_count = 1;
+    g_nav_emit = !g_cli;
+
     g_dom_root = NULL;
     g_orphans = NULL;
     node_index_reset();
@@ -2245,6 +2251,27 @@ static void run_page(void) {
         free(pay);
     }
     free(r.s);
+
+    /* rung-6 slice 2: if the page asked to navigate, ship a NAV frame so the
+     * manager follows it through its own fetch/stack machinery (manager
+     * worker_load captures it, the main loop consumes it next tick). */
+    if (g_nav_emit && g_nav_kind[0]) {
+        char pay[4600];
+        int pn = 0;
+        if (g_nav_kind[0] == 'B' || g_nav_kind[0] == 'F')  /* BACK/FORWARD: step count */
+            pn = snprintf(pay, sizeof(pay), "NAV\n%s\n%d\n", g_nav_kind,
+                          g_nav_count > 0 ? g_nav_count : 1);
+        else
+            pn = snprintf(pay, sizeof(pay), "NAV\n%s\n%s\n", g_nav_kind, g_nav_url);
+        if (pn > 0 && pn < (int)sizeof(pay)) {
+            char *ppay = malloc((size_t)pn + 1);
+            if (ppay) {
+                memcpy(ppay, pay, (size_t)pn); ppay[pn] = 0;
+                send_payload(ppay, (size_t)pn);
+                free(ppay);
+            }
+        }
+    }
 
     dom_teardown();
     send_status("STATUS ok");
