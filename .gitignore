@@ -109,3 +109,7 @@ x0.parent-level-dev-env-04.04_*.7z
 
 # proc-lifecycle registry (runtime, PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md)
 **/#.desktop/livedesk_proc_list.txt
+
+# PRISC-X-FORK-CONSOLIDATION.md — pal VM built from the ONE canonical
+# &.widgits/_shared-lib/system/prisc+x.c; no vendored per-project copy.
+**/system/prisc+x.c

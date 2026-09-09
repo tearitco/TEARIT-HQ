@@ -19,7 +19,14 @@ mkdir -p ops/+x system
 CFLAGS="-Wall -Wextra -O2"
 
 echo "--- Building system processes ---"
-gcc $CFLAGS "system/prisc+x.c" -o "system/prisc+x"
+# PRISC-X-FORK-CONSOLIDATION.md (2026-09-09): prisc+x is the PAL VM and
+# it is OURS (not a minimal-diff TPMOS fork) — build the ONE canonical
+# copy at &.widgits/_shared-lib/system/prisc+x.c, don't keep a vendored
+# copy here. The canonical is a strict superset of this project's old
+# fork (opcode coverage verified; no string-op / trailing-# usage in
+# this project's .pal). Only the binary lands local.
+SHARED_LIB="$(cd "$SCRIPT_DIR/../&.widgits/_shared-lib" && pwd)"
+gcc $CFLAGS "$SHARED_LIB/system/prisc+x.c" -o "system/prisc+x"
 gcc $CFLAGS "system/keyboard_input.c" -o "system/keyboard_input"
 gcc $CFLAGS "system/renderer.c" -o "system/renderer"
 
