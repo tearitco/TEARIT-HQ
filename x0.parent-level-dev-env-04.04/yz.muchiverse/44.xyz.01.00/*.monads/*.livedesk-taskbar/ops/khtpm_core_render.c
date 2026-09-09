@@ -5044,8 +5044,13 @@ static void assign_nav_and_layout(void) {
                     FILE *rf = fopen(rp, "r");
                     if (rf) { char l[128];
                         while (fgets(l, sizeof(l), rf)) {
+                            /* bv_render_3d overlay receipt: overlay_w/h.
+                             * chtpm_rgb_render composited receipt
+                             * (pchq-vs-muta.md B1): frame_w/h. */
                             if (!cw && !strncmp(l, "overlay_w=", 10)) cw = atoi(l + 10);
                             if (!ch && !strncmp(l, "overlay_h=", 10)) ch = atoi(l + 10);
+                            if (!cw && !strncmp(l, "frame_w=", 8))    cw = atoi(l + 8);
+                            if (!ch && !strncmp(l, "frame_h=", 8))    ch = atoi(l + 8);
                         }
                         fclose(rf);
                     }
@@ -7080,15 +7085,15 @@ static void handle_key(KeySym ks, char ch) {
      * process_key(27) ESC-exit runs even if a spurious Mutter FocusOut
      * left the flag at 0. */
     if (g_interact_relay_on && ks == XK_Escape) {
+        /* 27 goes ONLY to keyboard/history.txt - see the double-arrow
+         * comment in the general branch below. */
         g_x11_window_focused = 1;
         for (int i = 0; i < g_interact_relay_n; i++) {
             const char *p = g_interact_relay_paths[i];
-            if (!p[0]) continue;
-            FILE *f = fopen(p, "a");
-            if (!f) continue;
-            if (strstr(p, "keyboard/history.txt")) fprintf(f, "KEY_PRESSED: 27\n");
-            else                                   fprintf(f, "27\n");
-            fclose(f);
+            if (p[0] && strstr(p, "keyboard/history.txt")) {
+                FILE *f = fopen(p, "a");
+                if (f) { fprintf(f, "KEY_PRESSED: 27\n"); fclose(f); }
+            }
         }
         return;
     }
@@ -7106,22 +7111,31 @@ static void handle_key(KeySym ks, char ch) {
         else if (code == 201) code = 1003; /* Down  -> ARROW_DOWN  */
         else if (code == 202) code = 1000; /* Left  -> ARROW_LEFT  */
         else if (code == 203) code = 1001; /* Right -> ARROW_RIGHT */
-        /* REAL FIX 2026-09-09 (pchq-vw-tpmos.md D2 - the bug behind
-         * "esc dead / starts armed / stuck"): the two relay targets take
-         * DIFFERENT formats, exactly like run_pchq_board_mode()'s own
-         * pchq_append_key(). keyboard/history.txt is read by the
-         * board_viewer.chtpm PARSER, whose main loop only parses
-         * `KEY_PRESSED: <n>` lines - a bare `27`/`13` there is silently
-         * ignored, so the parser's process_key() ESC-exit never runs and
-         * active_gui_is_typing.txt sticks at 1 forever. interact_relay
-         * .txt is read bare by the pal-VM camera loop. */
+        /* REAL FIX 2026-09-09 (pchq-vs-muta.md - the "double arrow"
+         * bug). The two relay targets have DIFFERENT consumers:
+         *   - keyboard/history.txt -> the board_viewer.chtpm PARSER's
+         *     process_key() (KEY_PRESSED: <n> format only). While the
+         *     parser is engaged in INTERACT it ALSO re-injects every key
+         *     it reads there into interact_relay.txt (inject_raw_key) -
+         *     so a key written to BOTH files reaches the pal-VM camera
+         *     TWICE = one keypress moves the xelector two cells.
+         *   - interact_relay.txt -> the pal-VM camera loop (bare <n>).
+         * Fix: 13/27 (engage-toggle / ESC-exit - the parser's state
+         * machine) go ONLY to keyboard/history.txt; every other key
+         * (arrows 1000-1003, wasd, 0, 1-4, q/e/r/t/c/v, digits) goes
+         * ONLY to interact_relay.txt. The parser stays engaged (its
+         * active_index never changes on a camera key) and never
+         * double-injects. */
+        int to_parser = (code == 13 || code == 27);
         for (int i = 0; i < g_interact_relay_n; i++) {
             const char *p = g_interact_relay_paths[i];
             if (!p[0]) continue;
+            int is_kbd = (strstr(p, "keyboard/history.txt") != NULL);
+            if (to_parser != is_kbd) continue;      /* route by consumer */
             FILE *f = fopen(p, "a");
             if (!f) continue;
-            if (strstr(p, "keyboard/history.txt")) fprintf(f, "KEY_PRESSED: %d\n", code);
-            else                                   fprintf(f, "%d\n", code);
+            if (is_kbd) fprintf(f, "KEY_PRESSED: %d\n", code);
+            else        fprintf(f, "%d\n", code);
             fclose(f);
         }
         /* REAL, NEW 2026-09-04, direct request ("add p frame dump to

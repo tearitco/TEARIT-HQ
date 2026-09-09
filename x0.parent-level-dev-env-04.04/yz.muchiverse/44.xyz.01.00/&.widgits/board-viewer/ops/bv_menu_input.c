@@ -699,25 +699,19 @@ static int handle_one_key(int key) {
         return 0;
     }
 
-    /* is_pov_key equivalent: '5'-'8' only reinterpreted as camera_mode
-     * switches while render_mode==1 (ops/choice.c:915's real gate).
-     * REAL, NEW 2026-08-31, direct instruction ("we are going to move
-     * the current camera controls to 5,6,7,8 ... use 1,2,3,4 for if we
-     * ever do 'one map' perspective style 3d ... that will be our
-     * final trick", followed by: "we will beable to do the same with
-     * camera with piececraft for 5,6,7,8 get it?" and "the camera keys
-     * stay the same, they will work in 'piecemode' as well" - see
-     * CURSWORD-DESKTOP-3D-AND-PIECECRAFT-INSCENE-DESKS-DESIGN.md §13):
-     * moved from '1'-'4' to match cursword's own identical remap in
-     * tp_desktop_window_rgb.c's cursword_handle_camera_key() - ONE real
-     * shared control layer (5-8 mode switch, same camera_mode values
-     * 1-4 underneath) works identically in board-viewer's own
-     * "piecemode" and cursword's desktop 3D view, keeping '1'-'4'
-     * reserved everywhere for the same future one-map mode. camera_mode
-     * VALUES below (1-4) are completely unchanged - only the physical
-     * keys that reach this switch moved. */
-    if (key >= '5' && key <= '8') {
-        int camera_mode = key - '4';
+    /* is_pov_key: '1'-'4' switch camera_mode while render_mode==1,
+     * matching mutaclysm's ops/choice.c exactly.
+     * REVERTED 2026-09-09, direct instruction ("we decided to use 1234,
+     * and got rid of that cursword thing cuz we aren't doing real 3d on
+     * desk"): the 2026-08-31 remap to '5'-'8' (to reserve '1'-'4' for a
+     * future "one map" desktop-3D mode shared with cursword) is undone -
+     * pc-hq/board-viewer uses '1'-'4' for POV, same as muta. cursword's
+     * own tp_desktop_window_rgb.c remap is now moot and can be reverted
+     * separately (no real 3D on the desktop). This also un-shadows the
+     * '5'/'6' FILE_MENU/DESK_MENU dispatch further down (it was dead
+     * code while '5'-'8' returned first). */
+    if (key >= '1' && key <= '4') {
+        int camera_mode = key - '0';
         write_kv_int(state_path, "camera_mode", camera_mode);
         if (camera_mode == 1 || camera_mode == 2) {
             write_kv_int(state_path, "cam_yaw", 180);

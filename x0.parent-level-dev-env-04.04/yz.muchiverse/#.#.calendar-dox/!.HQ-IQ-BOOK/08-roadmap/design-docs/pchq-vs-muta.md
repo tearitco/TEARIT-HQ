@@ -176,3 +176,69 @@ implemented and (post the format/launcher fixes) reachable.
 - Related: `pchq-vs-tpmos.md` (§A.4 compositor bypass), `pc-hq-INDEX.md`,
   `CURSWORD-DESKTOP-3D-AND-PIECECRAFT-INSCENE-DESKS-DESIGN.md` (the
   `5-8` shared-layer instruction).
+
+---
+
+## 6. Landed 2026-09-09 + the `9`-possession research
+
+### Decisions applied
+- **POV keys restored to `1`–`4`** (`bv_menu_input.c`) — the 2026-08-31
+  `5`–`8` remap (to reserve `1`–`4` for a cursword-shared desktop-3D
+  mode) is reverted; "we aren't doing real 3D on desk." cursword's own
+  `tp_desktop_window_rgb.c` remap is now moot — revert it separately if
+  desired, it doesn't affect pc-hq. Restoring `1`–`4` also un-shadows
+  the `5`/`6` → FILE_MENU/DESK_MENU dispatch (was dead code).
+- **`0` toggle fixed (B1).** `pchq_board_projector.c` now reads
+  `render_mode` from `bv_state.txt` and publishes `canvas_raw` by mode:
+  `render_mode==1` → `rgb_frame_3d_overlay.raw` (clean 3D); `==0` →
+  `rgb_frame.raw` (chtpm_rgb_render's composited frame — the only
+  surface carrying the 2D emoji map). `kh_draw_canvas` /
+  `khtpm_core_render`'s receipt parser learned `frame_w=`/`frame_h=`
+  (the composited receipt's keys) alongside `overlay_w=`/`overlay_h=`.
+  Verified live: `0` flips `render_mode` 1⇄0 and `canvas_raw` swaps
+  `rgb_frame_3d_overlay.raw` ⇄ `rgb_frame.raw`.
+  *Caveat:* the composited 2D frame still carries board-viewer's own
+  text chrome (border/title/status). A chrome-free 2D pixel path
+  (`bv_render_3d` rendering a flat top-down emoji frame into the overlay
+  when `render_mode==0`, instead of `if(!render_mode) return 0`) is the
+  clean follow-up.
+- **Double-arrow fixed.** `khtpm_core_render.c`'s interact-forward now
+  routes by keycode: `13`/`27` (parser state machine) → `keyboard/
+  history.txt` only; every camera key → `interact_relay.txt` only. The
+  bug: the engaged `board_viewer.chtpm` parser re-injects every key it
+  reads from `keyboard/history.txt` into `interact_relay.txt`
+  (`inject_raw_key`), so a key written to BOTH files reached the pal-VM
+  camera twice = one press → two cells. Verified: one relay key → one
+  `selector_x` step; three → three.
+
+### `9` possession — where it lives in mutaclysm
+**In `ops/choice.c` — a prisc op, NOT the manager, NOT hardcoded in the
+pal or renderer.** `choice.c` "runs unconditionally every tick
+(self-filtering)", `exec`'d from `main_loop.pal` / drained by
+`game_dispatch.c`.
+
+- **Enter possession:** `try_possess_at(hero_x,hero_y, xlector_x,xlector_y)`
+  — press **Enter** while the xlector cursor sits on the hero's tile AND
+  `hero/piece.pdl` has `possessable` (default 1). Not a dedicated key —
+  it's the panel/Enter commit path. v1 = one target (hero); "functionally
+  identical to exiting interact_mode."
+- **`9` = release only.** If `possessed_id != "none"`: read the entity's
+  `piece.pdl` `de_possessible` — if false, save `last_possessed_id`,
+  snap the xlector to the entity's pos, set `possessed_id="none"`, log
+  "You release control."; if true, no-op ("You cannot release this
+  entity.").
+- **`9` reverse-jump:** if `possessed_id=="none"` and
+  `last_possessed_id!="none"` → snap xlector to that entity and
+  re-possess.
+- State: the piece's `state.txt` (`possessed_id`, `last_possessed_id`) +
+  `piece.pdl` flags (`possessable`, `de_possessible`).
+
+**board-viewer's `bv_menu_input.c` equivalent:** already a `9` handler
+(also an op, no manager) that **toggles both ways** (possess ⇄ release)
+because there is exactly one possessable target (`hero_01`) and no
+scan/panel system — a documented deliberate simplification. It saves
+`pre_possess_x/y/z` for reverse-jump-on-release. It does NOT read the
+`possessable` / `de_possessible` piece.pdl flags and does NOT support
+Enter-on-hero-tile. To reach full muta parity: add the flag checks +
+the Enter-on-tile possess path (needs the xlector-on-hero-tile test,
+which board-viewer already tracks via `selector_x/y` vs `hero pos_x/y`).

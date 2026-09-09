@@ -561,8 +561,14 @@ static void kh_draw_canvas(Elem *e) {
     if (rf) {
         char l[128];
         while (fgets(l, sizeof(l), rf)) {
+            /* bv_render_3d overlay receipt uses overlay_w/h;
+             * chtpm_rgb_render's composited rgb_frame.receipt.txt uses
+             * frame_w/h (pchq-vs-muta.md B1 - the <canvas> now blits the
+             * composited frame so 2D mode isn't blank). */
             if (!strncmp(l, "overlay_w=", 10)) w = atoi(l + 10);
             else if (!strncmp(l, "overlay_h=", 10)) h = atoi(l + 10);
+            else if (!w && !strncmp(l, "frame_w=", 8)) w = atoi(l + 8);
+            else if (!h && !strncmp(l, "frame_h=", 8)) h = atoi(l + 8);
         }
         fclose(rf);
     }
