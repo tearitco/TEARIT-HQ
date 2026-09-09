@@ -40,6 +40,11 @@ cp "$SHARED/stb_image_write.h" lib/stb_image_write.h
 # once, centrally, if missing.
 echo "-- swatch_picker_manager -> +x/swatch_picker_manager.+x"
 $CC -std=c11 -Wall -O2 -o +x/swatch_picker_manager.+x swatch_picker_manager.c
+# apply_theme_op.+x - the standalone op swatch_picker_manager exec()s on a
+# swatch pick. Had no build hook (built by hand once); added here so
+# $.restart keeps it fresh alongside its only caller.
+echo "-- apply_theme_op -> +x/apply_theme_op.+x"
+$CC -std=c11 -Wall -O2 -o +x/apply_theme_op.+x apply_theme_op.c
 OPS_BIN="$SHARED/ops/+x/dump_frame_png_op.+x"
 if [ ! -x "$OPS_BIN" ]; then
   (cd "$SHARED/ops" && sh build_dump_frame_png_op.sh)

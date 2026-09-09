@@ -13,10 +13,21 @@
  *
  * Usage: apply_theme_op <house_root> <bg_hex> <fg_hex>
  *
- * Real behavior, unchanged from the original in-process version:
- * writes ONLY the bg/fg COLOR keys into livedesk_theme.pdl, preserving
- * any other COLOR rows already there, then spawns
- * `run_khtpm_strip.sh new` to restart the taskbar with the new theme. */
+ * Real behavior: writes ONLY the bg/fg COLOR keys into
+ * livedesk_theme.pdl, preserving any other COLOR rows already there,
+ * then appends to #.desktop/livedesk_theme_changed.txt.
+ *
+ * 2026-09-09, direct report ("change of colour in settings is
+ * compiling before changing colour settings, but colour isn't
+ * hardcoded so this isn't necessary"): this used to spawn
+ * `run_khtpm_strip.sh new`, which does a full KHTPM_FORCE_BUILD gcc of
+ * khtpm_core_render.c + a kill/relaunch of the whole taskbar - a
+ * ~30-second rebuild for a data-only change. Every running khtpm
+ * window already polls livedesk_theme_changed.txt every idle tick
+ * (theme_changed_dirty() / hq_idle_tick's pchq_theme_changed_dirty(),
+ * both -> load_theme_colors() + repaint), so a one-byte marker append
+ * delivers the new colours live to every window with no build and no
+ * restart. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -102,12 +113,14 @@ int main(int argc, char **argv) {
     remove(path);
     rename(tmp, path);
 
-    char cmd[PATH_BUF * 2];
-    snprintf(cmd, sizeof(cmd), KTB_SETSID "nohup sh '%s/*.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh' new >/dev/null 2>&1 &",
-             house_root);
-    int rc = system(cmd);
-    (void)rc;
+    /* Live delivery: bump the marker every running khtpm window already
+     * polls. No rebuild, no restart. */
+    char marker[PATH_BUF];
+    snprintf(marker, sizeof(marker), "%s/#.desktop/livedesk_theme_changed.txt", house_root);
+    FILE *mf = fopen(marker, "a");
+    if (mf) { fprintf(mf, "%s %s\n", bg_hex, fg_hex); fclose(mf); }
+    else fprintf(stderr, "apply_theme_op: WARN cannot append %s\n", marker);
 
-    fprintf(stderr, "apply_theme_op: wrote %s (bg=%s fg=%s)\n", path, bg_hex, fg_hex);
+    fprintf(stderr, "apply_theme_op: wrote %s (bg=%s fg=%s), bumped theme-changed marker\n", path, bg_hex, fg_hex);
     return 0;
 }
