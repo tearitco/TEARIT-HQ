@@ -241,9 +241,10 @@ Merge `origin/opencode` for `1f943aba`.
   content afterward. All suites green.
 - Notes: the old rung6 eval fixture `tests/rung6_cookie_test.js` still
   exercises the prelude fallback (reads `''`, drops writes). Default
-  path is `$HOME`-based; the manager is expected to pass
-  `NB_COOKIES_FILE="$APPDIR/#.desktop/nb_cookies.txt"` when it spawns
-  the worker.
+  path is `$HOME`-based; since 2026-09-08 the manager's `worker_spawn`
+  passes `NB_COOKIES_FILE="<house>/#.desktop/nb_cookies.txt"` to its
+  resident worker (live-verified: page A set `sid=abc123`, navigated via
+  `location.assign` to page B which read it back — jar landed per-house).
 - Still open on rung 6: real `history`/`location` navigation to the
   manager (house-standard lock applies before editing
   `network_browser_manager.c`). No thread/manager/daemon changes.

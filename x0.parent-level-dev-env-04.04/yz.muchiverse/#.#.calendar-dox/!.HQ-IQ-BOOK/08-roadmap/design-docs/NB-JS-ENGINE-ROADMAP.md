@@ -20,10 +20,10 @@ String/Object/Math, try/catch, prototypes). What is missing is the
 | `console.log/info/warn/error`, `print` | real (→ `LOG\|` rows) |
 | `document.title` get/set | real (→ `TITLE\|`) |
 | `document.write/writeln` | real (→ `TEXT\|` rows) |
-| `document.getElementById` / `querySelector` | **stub → null** |
+| `document.getElementById` / `querySelector` | real — walks the worker's C DOM tree (phase-1 steps 3-5) |
 | `location.href` | get/set; assign/replace/reload navigate (rung 6 slice 2) |
 | `localStorage` / `sessionStorage` | no-op stubs |
-| `window` / `self` / `globalThis` | **BUG: alias the storage stub, not the JS global** |
+| `window` / `self` / `globalThis` | real — the Duktape global object (no bug; verified 2026-09-08) |
 
 **Pipeline (as of Phase 1, 2026-09-05):** the manager's `do_fetch()`
 strips `<script>` bodies, concatenates them into `tmp/page.js`, and — when
@@ -38,7 +38,13 @@ rung-2/6 BOM remainder.
 
 > The table above is the *pre*-Phase-1 snapshot; `getElementById` /
 > `querySelector` and the rest became real accessors walking the worker's
-> C DOM tree in phase-1 steps 3-5.
+> C DOM tree in phase-1 steps 3-5. Reconciled 2026-09-08: the `window` /
+> `self` / `globalThis` "BUG" row and the `getElementById`/`querySelector`
+> "stub → null" row were both stale — code has been correct since `1cb67da3`
+> (window/self/globalThis = the Duktape global object) and the phase-1
+> worker gate (`wdt` `worker_dom_test.c`, incl. a CLI-mode re-verify with a
+> real `fetch.dom`) exercises the real accessors; `localStorage`/
+> `sessionStorage` remain intentional no-op stubs (no disk behind them).
 
 ---
 
@@ -228,9 +234,11 @@ plausible stub, `MutationObserver` (can no-op then improve),
 > runs a fresh heap, so the jar file is the ONLY cross-LOAD persistence.
 > Live in `ops/nb_js_worker.c`, new `make check` suite `wck`
 > (`tests/worker_cookie_test.c`, 3-LOAD set / fresh-heap get / cross-host
-> scope, + jar-content verification) — commit `1f943aba`. The manager will
-> later point the worker at its own `#.desktop/nb_cookies.txt` via
-> `NB_COOKIES_FILE`.
+> scope, + jar-content verification) — commit `1f943aba`. The manager now
+> (2026-09-08) points its resident worker at this house's
+> `<house>/#.desktop/nb_cookies.txt` via `NB_COOKIES_FILE` in
+> `worker_spawn`, live-verified: page set cookie + `location.assign` to a
+> second page which read it back through the per-house jar.
 >
 > **LANDED 2026-09-08 — real `history`/`location` navigation to the
 > manager** (last rung-6 C piece). The page's `location.*` (assign/`href=`
