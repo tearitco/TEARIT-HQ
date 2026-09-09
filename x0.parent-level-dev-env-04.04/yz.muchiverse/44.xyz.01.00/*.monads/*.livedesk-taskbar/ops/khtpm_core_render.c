@@ -2989,6 +2989,15 @@ static int g_default_has_sidebar_panel = 0;
  * needing the <sidebar>+<panel> structure that flag is tied to. Set
  * once from the window class in main(). */
 static int g_default_persistent = 0;
+/* REAL, NEW 2026-09-09 - leftmost x of the has_canvas layout's template
+ * chrome trio (x / ! / _), captured during layout (post window-frame
+ * shift). The ButtonPress drag-start zone uses it to know which part of
+ * the top strip is real chrome (must take a click) vs draggable margin -
+ * the sidebar+panel layout has g_default_*_elem for this, the flat
+ * toolbar/canvas layout did not, so a mouse click on "!" or "_" was
+ * eaten as a window drag ("worked from nav, not mouse"). 0 = no canvas
+ * chrome this frame (fall back to the old g_win_w-60 constant). */
+static int g_canvas_chrome_left_x = 0;
 static Elem g_default_close_elem_storage;
 static Elem *g_default_close_elem = &g_default_close_elem_storage;
 static Elem g_default_fullscreen_elem_storage;
@@ -4648,6 +4657,7 @@ static int kh_canvas_hit(int px, int py) {
 
 static void assign_nav_and_layout(void) {
     g_has_canvas = 0;
+    g_canvas_chrome_left_x = 0;
     /* REAL FIX 2026-09-04 - the window-frame block at the end of this
      * function does `g_win_w/h += 2*KH_WIN_FRAME` every call. Branches
      * that recompute g_win_w/h from content (sidebar+panel, persistent
@@ -5077,6 +5087,8 @@ static void assign_nav_and_layout(void) {
                     item->y = 2; item->w = cw; item->h = CHROME_H - 4; item->x = chrome_x;
                     kh_clamp_elem_onscreen(item);
                     chrome_x = item->x - 4;
+                    if (!g_canvas_chrome_left_x || item->x < g_canvas_chrome_left_x)
+                        g_canvas_chrome_left_x = item->x;
                     item->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = item;
                     continue;
                 }
@@ -5121,6 +5133,7 @@ static void assign_nav_and_layout(void) {
         if (g_default_close_elem && g_default_close_elem->w > 0)      { g_default_close_elem->x += fb;      g_default_close_elem->y += fb; }
         if (g_default_minimize_elem && g_default_minimize_elem->w > 0) { g_default_minimize_elem->x += fb;   g_default_minimize_elem->y += fb; }
         if (g_default_fullscreen_elem && g_default_fullscreen_elem->w > 0) { g_default_fullscreen_elem->x += fb; g_default_fullscreen_elem->y += fb; }
+        if (g_canvas_chrome_left_x) g_canvas_chrome_left_x += fb;  /* keep it in the same post-shift coords the ButtonPress handler sees */
         /* generic scrollbar geometry + its ^/v arrow elems */
         for (int i = 0; i < g_n_generic_sbars; i++) {
             g_generic_sbars[i].vx += fb; g_generic_sbars[i].vy += fb;
@@ -5543,7 +5556,22 @@ static void dispatch(const char *action) {
      * action - "void" only skips running a shell command, it still
      * closes the menu. This copy returned without setting g_quit, so
      * Cancel/Stop silently left the window open. */
-    if (strcmp(action, "void") == 0) { g_quit = 1; return; }
+    if (strcmp(action, "void") == 0) {
+        /* A context-menu Cancel/Stop row is `action="void"` and SHOULD
+         * close its (transient) menu - the legacy tp_desktop_window_
+         * rgb.c behavior. But a persistent window (class="database-
+         * window"/"palettes-pal"), a sidebar+panel app, or a live
+         * canvas window (the pchq board) uses `action="void"` for
+         * genuine no-op chrome (the board's clock / Menu / Player
+         * stubs) - there, "void" must mean nothing, not "close the
+         * whole window". REAL FIX 2026-09-09, direct live report
+         * ("clicking toolbar clock ... actually closes the window").
+         * Same guard the shell-command fallthrough at the end of this
+         * function already uses. */
+        if (!g_default_has_sidebar_panel && !g_default_persistent && !g_has_canvas)
+            g_quit = 1;
+        return;
+    }
     if (strncmp(action, "GOTO:", 5) == 0) { switch_page(action + 5); return; }
     if (strcmp(action, "BACK") == 0) {
         if (g_page_stack_n > 0) { switch_page(g_page_stack[--g_page_stack_n]); }
@@ -8327,10 +8355,17 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
              * (g_default_has_sidebar_panel), else keep the original
              * 60px for any other popup that has just a plain close
              * corner and no chrome trio of its own. */
+            /* 2026-09-09: the has_canvas / flat-toolbar layout (pchq
+             * board) has its own template chrome trio, not the
+             * g_default_*_elem synth ones - use its captured leftmost x
+             * so a mouse click on "!" / "_" hit-tests instead of being
+             * swallowed as a window drag. */
             int chrome_zone_x = (g_default_has_sidebar_panel && g_default_minimize_elem->w > 0)
                                  ? g_default_minimize_elem->x
                                  : ((g_default_has_sidebar_panel && g_default_fullscreen_elem->w > 0)
-                                    ? g_default_fullscreen_elem->x : g_win_w - 60);
+                                    ? g_default_fullscreen_elem->x
+                                    : (g_canvas_chrome_left_x ? g_canvas_chrome_left_x - 4
+                                                              : g_win_w - 60));
             if (!window_is_dock() && ev->xbutton.button == 1 && ev->xbutton.y >= KH_WIN_FRAME && ev->xbutton.y < CHROME_H + KH_WIN_FRAME &&
                 !(ev->xbutton.x >= chrome_zone_x && ev->xbutton.x < g_win_w)) {
                 g_popup_dragging = 1;
