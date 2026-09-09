@@ -76,3 +76,15 @@ short version.*
     per-frame focus re-assert + fix "Interact Mode never arms" (reparse
     -on-vars-change not firing for the pchq board). `09-appendix/
     pc-hq-leg-vs-nu-fix.md` §5/§6/§6b, `pc-hq-bugs.md` Bug 2.
+17. Process-lifecycle teardown (TPMOS parity): orchestrator-owned,
+    PID-tracked reap on taskbar exit so devs/agents never kill children
+    by hand. Shared `kh_proc_registry.h` + passing standalone test
+    landed; NOT wired into the taskbar yet. `design-docs/
+    PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md` §5 steps 2–7.
+18. Shared source compiled by copy-into-`ops/` (drift + silent-clobber):
+    switch every `build_*.sh` to compile the canonical
+    `&.widgits/_shared-lib/*.c` in place with `-I` (binary stays local),
+    delete the ~5 stale `ops/` copies (6 already drifted), packaging
+    keeps self-contained subtrees via one `vendor-into.sh`.
+    `design-docs/SHARED-SOURCE-COMPILE-IN-PLACE.md`. Follow-on: the ~26
+    `prisc+x.c` forks.
