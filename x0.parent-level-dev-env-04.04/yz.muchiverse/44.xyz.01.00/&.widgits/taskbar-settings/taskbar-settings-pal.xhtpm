@@ -61,6 +61,14 @@
     </repeat>
     <item id="opacity-minus" action="OPACITY_MINUS" class="opacity-btn" label="Opacity -"/>
     <item id="opacity-plus"  action="OPACITY_PLUS"  class="opacity-btn" label="Opacity +"/>
+    <!-- 2026-09-09, direct request ("settings should have size + & -
+         button that will increase font size and button/bar sizes").
+         Steps hq_ui.pdl's font_scale by 0.25 (0.75..2.0). dispatch()'s
+         UI_SCALE_MINUS/PLUS re-sizes the chrome font, relayouts and
+         repaints; every other open window follows via
+         hq_ui_pdl_reload_if_changed(). See LIVEDESK-UI-SCALE.md. -->
+    <item id="ui-scale-minus" action="UI_SCALE_MINUS" class="opacity-btn" label="Size -"/>
+    <item id="ui-scale-plus"  action="UI_SCALE_PLUS"  class="opacity-btn" label="Size +"/>
     <!-- 2026-09-04, direct live request ("single click vs double
          click. it was added to settings yet?") - toggles the same
          house-wide click_two_step key every window's own click

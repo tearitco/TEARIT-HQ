@@ -116,7 +116,9 @@ static void redraw(void); /* REAL, forward declaration needed for dispatch()'s O
 static void kh_raise_and_focus(Window w); /* fwd - dispatch()'s FOCUSWIN handler uses it, defined near hq_dispatch_xevent */
 static int kh_key_history_code(KeySym ks, char ch); /* fwd - handle_key()'s interact-relay forward uses it before its real definition, near kh_capture_key */
 static void desktop_toggle_click_two_step(const char *house_root); /* fwd - dispatch()'s CLICK_TWOSTEP_TOGGLE handler uses it before its real definition, near desktop_load_click_two_step */
+static void desktop_set_font_scale(const char *house_root, int pct); /* fwd - dispatch()'s UI_SCALE_MINUS/PLUS handlers */
 static void desktop_load_click_two_step(const char *house_root); /* fwd - hq_ui_pdl_reload_if_changed() (hq_idle_tick(), long-running dock strip) uses it before its real definition */
+static void reload_font_ui(void); /* fwd - hq_ui_pdl_reload_if_changed() re-sizes the chrome font on a live font_scale change */
 static void kh_text_areas_reload(Elem *root); /* fwd - reparse_chtpm_if_changed() re-hydrates <text_area> buffers, defined near default_text_area_save */
 #define MAX_ELEMS 1024  /* 2026-09-02: page projection + chrome, was 512 */
 #define MAX_PAGE_STACK 8
@@ -2053,6 +2055,14 @@ static Elem *g_nav[MAX_ELEMS];
  * (1); set `click_two_step=0` in #.desktop/hq_ui.pdl to restore the
  * old single-click-activates "auto" behavior house-wide. */
 static int g_click_two_step = 1;
+/* UI scale (2026-09-09, LIVEDESK-UI-SCALE.md). Percent; 100 = 1.0x.
+ * Loaded from #.desktop/hq_ui.pdl's `font_scale` key (which already
+ * shipped 1.25 and was read by nothing) in desktop_load_click_two_step()
+ * and live-reloaded via hq_ui_pdl_reload_if_changed(). Every font-size
+ * and layout-box call site that goes through scaled() (font_for()'s CSS
+ * font-size, row heights, paddings) picks this up for free. Settings
+ * 'Size -'/'Size +' step it via the UI_SCALE_MINUS/PLUS verbs. */
+static int g_ui_scale_pct = 100;
 static int window_is_dock(void);
 static int elem_has_class(Elem *e, const char *cls);
 static int kh_elem_in_scope(Elem *e);
@@ -2134,7 +2144,11 @@ static Elem *g_dbhq_active_scope_root = NULL;
  * + <canvas> primitive + generic Interact Mode relay) replaced it,
  * live-verified end to end this session. */
 static int scaled(int base_px) {
-    return base_px;
+    if (g_ui_scale_pct == 100) return base_px;
+    /* round to nearest; keep a 1px floor for anything that was >=1 */
+    int v = (base_px * g_ui_scale_pct + 50) / 100;
+    if (base_px > 0 && v < 1) v = 1;
+    return v;
 }
 
 /* Screen dimensions - a constant under --headless (no dpy to ask), the
@@ -2173,8 +2187,13 @@ static int kh_elem_in_scope(Elem *e) {
     return 0;
 }
 #include "khtpm_draw_core.c"
-#define ROW_H 24
-#define CHROME_H 24
+/* ROW_H / CHROME_H are UI-scaled (LIVEDESK-UI-SCALE.md): scaled() is a
+ * pure int fn of g_ui_scale_pct (100 = identity), so these stay a
+ * single consistent value within any one expression / layout pass and
+ * grow the row + titlebar height with the Settings font_scale. Base:
+ * 24 / 24. */
+#define ROW_H    scaled(24)
+#define CHROME_H scaled(24)
 #define KH_WIN_FRAME 2
 
 static CssSheet g_sheet;
@@ -3826,7 +3845,7 @@ static int layout_sidebar_panel(Elem *page) {
 }
 /* ============ end generic sidebar+panel scroll ============ */
 
-#define DOCK_BAR_H 36
+#define DOCK_BAR_H scaled(36)  /* UI-scaled, LIVEDESK-UI-SCALE.md (base 36) */
 #define DOCK_SPRITE_PX 24
 #define DOCK_CELL_GAP 16
 #define DOCK_NAV_BADGE_PX 36
@@ -5526,6 +5545,18 @@ static void dispatch(const char *action) {
         write_theme_opacity(opacity);
         set_window_opacity(dpy, win, opacity);
         redraw();
+        return;
+    }
+    if (strcmp(action, "UI_SCALE_MINUS") == 0 || strcmp(action, "UI_SCALE_PLUS") == 0) {
+        /* LIVEDESK-UI-SCALE.md - step font_scale in hq_ui.pdl by 0.25,
+         * clamp 0.75..2.0, re-size the chrome font, relayout, repaint.
+         * Other open windows follow via hq_ui_pdl_reload_if_changed(). */
+        int s = g_ui_scale_pct + (action[9] == 'P' ? 25 : -25);
+        if (s < 75) s = 75;
+        if (s > 200) s = 200;
+        desktop_set_font_scale(g_house_root, s);
+        reload_font_ui();
+        if (!g_quit) { assign_nav_and_layout(); redraw(); }
         return;
     }
     if (strcmp(action, "CLICK_TWOSTEP_TOGGLE") == 0) {
@@ -8044,7 +8075,16 @@ static void hq_ui_pdl_reload_if_changed(const char *house_root) {
     if (st.st_mtim.tv_sec != g_hq_ui_pdl_mtime.tv_sec ||
         st.st_mtim.tv_nsec != g_hq_ui_pdl_mtime.tv_nsec) {
         g_hq_ui_pdl_mtime = st.st_mtim;
+        int old_scale = g_ui_scale_pct;
         desktop_load_click_two_step(house_root);
+        if (g_ui_scale_pct != old_scale) {
+            /* font_scale changed in Settings while this window is open:
+             * re-size the chrome font, relayout (box metrics changed,
+             * not just a colour), repaint. */
+            reload_font_ui();
+            assign_nav_and_layout();
+            hq_request_redraw();
+        }
     }
 }
 
@@ -8923,6 +8963,34 @@ static void desktop_toggle_click_two_step(const char *house_root) {
     g_click_two_step = new_val;
 }
 
+/* Rewrite hq_ui.pdl's font_scale row in place (same shape as
+ * desktop_toggle_click_two_step). pct is 75..200; stored as a decimal
+ * multiplier. Updates g_ui_scale_pct in this process; other open
+ * windows pick it up via hq_ui_pdl_reload_if_changed()'s mtime check. */
+static void desktop_set_font_scale(const char *house_root, int pct) {
+    if (pct < 75) pct = 75;
+    if (pct > 200) pct = 200;
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
+    char lines[128][256];
+    int n = 0;
+    FILE *f = fopen(path, "r");
+    if (f) { while (n < 128 && fgets(lines[n], sizeof(lines[n]), f)) n++; fclose(f); }
+    int replaced = 0;
+    for (int i = 0; i < n; i++) {
+        if (strncmp(lines[i], "font_scale=", 11) == 0) {
+            snprintf(lines[i], sizeof(lines[i]), "font_scale=%.2f\n", pct / 100.0);
+            replaced = 1;
+        }
+    }
+    FILE *wf = fopen(path, "w");
+    if (!wf) return;
+    for (int i = 0; i < n; i++) fputs(lines[i], wf);
+    if (!replaced) fprintf(wf, "font_scale=%.2f\n", pct / 100.0);
+    fclose(wf);
+    g_ui_scale_pct = pct;
+}
+
 static void desktop_load_click_two_step(const char *house_root) {
     char path[4352]; /* matches this file's own later TP_PATH_BUF (not yet declared at this point) */
     snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
@@ -8938,8 +9006,31 @@ static void desktop_load_click_two_step(const char *house_root) {
         if (nl) *nl = '\0';
         if (strcmp(line, "click_two_step") == 0) g_click_two_step = atoi(val) != 0;
         else if (strcmp(line, "emoji_sprite_view") == 0) g_emoji_sprite_view_top = (strcmp(val, "top") == 0);
+        else if (strcmp(line, "font_scale") == 0) {
+            int p = (int)(atof(val) * 100.0 + 0.5);
+            if (p < 50) p = 50;      /* the hq_ui.pdl comment's own 0.5-3.0 range */
+            if (p > 300) p = 300;
+            g_ui_scale_pct = p;
+        }
     }
     fclose(f);
+}
+
+/* Reopen font_ui at the current UI scale. font_ui is the shared chrome/
+ * title/dock/tab font (drawn directly, not via font_for()), loaded once
+ * in main(); this lets a live scale change re-size it too. Safe to call
+ * whenever dpy/screen are valid. */
+static void reload_font_ui(void) {
+    if (!dpy) return;
+    XftFont *old = font_ui;
+    char spec[64];
+    snprintf(spec, sizeof(spec), "Noto Sans CJK SC:pixelsize=%d", scaled(13));
+    XftFont *nf = XftFontOpenName(dpy, screen, spec);
+    if (!nf) {
+        snprintf(spec, sizeof(spec), "DejaVu Sans:pixelsize=%d", scaled(12));
+        nf = XftFontOpenName(dpy, screen, spec);
+    }
+    if (nf) { font_ui = nf; if (old && old != nf) XftFontClose(dpy, old); }
 }
 static int g_grab_pointer = LIVEDESK_USE_XGRAB_POINTER;
 static int g_grab_keyboard = LIVEDESK_USE_XGRAB_KEYBOARD;
@@ -11365,7 +11456,7 @@ static int read_initial_pos(const char *package_dir, int *out_x, int *out_y) {
  * MAX_METHODS with no error, so a 9th row would have been invisible
  * with zero warning. Bumped with real headroom, not just +1. */
 #define MAX_METHODS 12
-#define POPUP_ROW_H 28
+#define POPUP_ROW_H scaled(28)  /* UI-scaled, LIVEDESK-UI-SCALE.md (base 28) */
 /* REAL FIX 2026-08-06, user: "menu screen is too thin i cant see everything"
  * — fixed 160px clipped RPG Menu rows (XP / qolq / Level lines with nav
  * prefixes). Width is now content-measured (see measure_context_popup_w /
@@ -14675,8 +14766,7 @@ int main(int argc, char **argv) {
     XSetErrorHandler(kh_nonfatal_x_error);
     screen = DefaultScreen(dpy);
     cmap = DefaultColormap(dpy, screen);
-    font_ui = XftFontOpenName(dpy, screen, "Noto Sans CJK SC:pixelsize=13");
-    if (!font_ui) font_ui = XftFontOpenName(dpy, screen, "DejaVu Sans:pixelsize=12");
+    reload_font_ui();  /* "Noto Sans CJK SC" / "DejaVu Sans" at pixelsize scaled(13)/scaled(12) - honours hq_ui.pdl font_scale, loaded just above */
     /* REAL, NEW 2026-08-25 (live report: bookmarks' own path labels
      * carry real emoji dir names, rendered as tofu boxes - "open-hai
      * has an implementation for this we can steal") - loads once, here,

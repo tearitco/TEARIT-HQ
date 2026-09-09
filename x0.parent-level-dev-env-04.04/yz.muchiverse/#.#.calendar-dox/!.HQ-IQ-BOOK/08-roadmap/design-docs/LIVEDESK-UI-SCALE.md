@@ -1,6 +1,17 @@
 # LIVEDESK-UI-SCALE — a settings size +/- (font + button/bar scale)
 
-Status: **design** (2026-09-09). Not implemented.
+Status: **P1 LANDED** (2026-09-09). P2/P3 open (see §6).
+
+P1 shipped: `g_ui_scale_pct` + real `scaled()`; `font_scale` read from
+`hq_ui.pdl` at startup + live via `hq_ui_pdl_reload_if_changed()`;
+`ROW_H` / `CHROME_H` / `DOCK_BAR_H` / `POPUP_ROW_H` macros are now
+`scaled(...)`; `reload_font_ui()` re-sizes the chrome font;
+`UI_SCALE_MINUS`/`PLUS` verbs + `desktop_set_font_scale()` writer;
+`Size -` / `Size +` items in `taskbar-settings-pal.xhtpm`. Verified via
+frame dump: at `font_scale=1.5` row height 24→36, chrome y 32→44,
+button widths grew with the font. **Note:** `hq_ui.pdl` ships
+`font_scale=1.25`, previously read by nothing — so every window is now
+1.25× by default; `Size -` steps it down.
 
 Direct request: "settings should have size + & - button that will
 increase font size and button/bar sizes."
