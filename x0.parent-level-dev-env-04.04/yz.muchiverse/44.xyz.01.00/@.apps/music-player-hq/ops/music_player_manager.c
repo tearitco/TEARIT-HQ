@@ -16,6 +16,14 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+/* PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md §5 5b: register the `mpg123 -R`
+ * grandchild in the master-ledger (owned by this manager) so a taskbar
+ * quit / prune reaches it — mpg123 -R detaches into its own process
+ * group, so the taskbar's render-group kill would miss it. This .c is
+ * its own binary; build_music_player_manager.sh passes -I "$SHARED". */
+#define KH_PROC_REGISTRY_IMPL
+#include "kh_proc_registry.h"
+
 /* music_player_manager: music-player-hq's real backend.
  * Invocation: music_player_manager <house_root> <package_dir> <unused>
  *
@@ -99,6 +107,9 @@ static void mpg_start(void) {
     close(to_child[0]);
     close(from_child[1]);
     mpg_pid = pid;
+    if (house_root[0])
+        kh_proc_register_owned(house_root, (long)pid, (long)pid,
+                               (long)getpid(), "mpg123");
     mpg_in  = to_child[1];
     mpg_out = from_child[0];
     fcntl(mpg_out, F_SETFL, O_NONBLOCK);
@@ -418,12 +429,26 @@ static void poll_action(int *last_seq) {
 
 /* ------------------------------------------------------------------ */
 
+/* On SIGTERM/SIGINT (taskbar quit, <module> cleanup), take mpg123 down
+ * with us and drop its ledger row — mpg123 -R is its own group leader,
+ * so it does NOT die with the manager's group otherwise. */
+static void mp_on_term(int sig) {
+    (void)sig;
+    if (mpg_pid > 0) {
+        kill(mpg_pid, SIGKILL);
+        if (house_root[0]) kh_proc_reap_one(house_root, (long)mpg_pid, 1);
+    }
+    _exit(0);
+}
+
 int main(int argc, char *argv[]) {
     if (argc != 4) {
         fprintf(stderr, "Usage: %s <house_root> <package_dir> <unused>\n", argv[0]);
         return 1;
     }
     signal(SIGPIPE, SIG_IGN);
+    signal(SIGTERM, mp_on_term);
+    signal(SIGINT,  mp_on_term);
     snprintf(house_root, sizeof(house_root), "%s", argv[1]);
     snprintf(package_dir, sizeof(package_dir), "%s", argv[2]);
     srand((unsigned)time(NULL));
@@ -446,6 +471,7 @@ int main(int argc, char *argv[]) {
         if (mpg_pid > 0) {
             int status;
             if (waitpid(mpg_pid, &status, WNOHANG) == mpg_pid) {
+                if (house_root[0]) kh_proc_reap_one(house_root, (long)mpg_pid, 1);
                 mpg_pid = -1; mpg_ok = 0;
                 if (mpg_in >= 0)  { close(mpg_in);  mpg_in  = -1; }
                 if (mpg_out >= 0) { close(mpg_out); mpg_out = -1; }

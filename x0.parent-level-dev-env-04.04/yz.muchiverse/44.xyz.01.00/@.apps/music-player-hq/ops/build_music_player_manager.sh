@@ -5,6 +5,10 @@
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "$HERE/+x"
-gcc -std=c11 -Wall -Wextra -Wno-format-truncation -O2 \
+# -I "$SHARED": music_player_manager.c #includes kh_proc_registry.h
+# (PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md §5 5b - track the mpg123 child).
+_pcd="$HERE"; while [ "$_pcd" != "/" ] && [ ! -d "$_pcd/&.widgits/_shared-lib" ]; do _pcd="$(dirname "$_pcd")"; done
+SHARED="$_pcd/&.widgits/_shared-lib"
+gcc -std=c11 -Wall -Wextra -Wno-format-truncation -O2 -I "$SHARED" \
     -o "$HERE/+x/music_player_manager.+x" "$HERE/music_player_manager.c"
 echo "OK $HERE/+x/music_player_manager.+x"

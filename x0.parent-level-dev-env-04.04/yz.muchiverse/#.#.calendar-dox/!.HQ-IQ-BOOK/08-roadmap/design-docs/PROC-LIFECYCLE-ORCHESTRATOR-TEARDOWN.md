@@ -368,12 +368,15 @@ after it, quietly.
      the projector was `setsid`-detached (own pgid) so a plain
      group-kill would have missed it; SIGTERM the render → the row is
      gone AND the detached projector reaped. Fixes pitfall #13.5.
-   - **`music-player-hq`** — `mpg_start()` in `music_player_manager.c`
-     forks `mpg123 -R` (stays in the manager's group today, but
-     registering makes prune/`reap_subtree` honest): add
-     `kh_proc_register_owned(house_root, mpg_pid, mpg_pid, getpid(),
-     "mpg123")` after the fork, `kh_proc_reap_one` in `mpg_stop`.
-     Needs `-I "$SHARED"` + `KH_PROC_REGISTRY_IMPL` in its build. TODO.
+   - ✅ **`music-player-hq` DONE 2026-09-09.** `music_player_manager.c`
+     `#include`s `kh_proc_registry.h` (own IMPL; build_music_player_
+     manager.sh gained `-I "$SHARED"`). `mpg_start()`
+     `kh_proc_register_owned(...,getpid(),"mpg123")`; the dead-reap
+     path `kh_proc_reap_one`s it; a new SIGTERM/SIGINT handler
+     (`mp_on_term`) SIGKILLs mpg123 + drops its row + `_exit(0)` — mpg123
+     -R is its own group leader so it does NOT die with the manager's
+     group otherwise. Compiles clean; not runtime-smoked (needs a track
+     playing).
    - **prisc-hosting `button.sh`s** (board-viewer + ~20 pal projects) —
      move `setsid nohup system/prisc+x … &` to `kh_spawn.sh`. Pairs
      with `PRISC-X-FORK-CONSOLIDATION.md` Phase B (same file set). TODO.
