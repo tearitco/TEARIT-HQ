@@ -150,10 +150,10 @@ $.crypts/button.sh run          # or:  ./^.START_BUTTON_4.sh</code></pre>
     <tr><td><strong>file</strong></td><td>new / open / save / save-as for the desk layout</td><td><span class="pill done">ok</span></td></tr>
     <tr><td><strong>desks</strong></td><td>switch / new / save named desktop layouts</td><td><span class="pill done">ok</span></td></tr>
     <tr><td><strong>pals</strong></td><td>place a pal entity on the desk</td><td><span class="pill done">ok</span></td></tr>
-    <tr><td><strong>palettes</strong></td><td>emoji / elements / rmmv / paint pickers</td><td><span class="pill wip">emoji+elements</span></td></tr>
+    <tr><td><strong>palettes</strong></td><td>emoji / elements / rmmv / piececraft / cdda / tiled / ohr pickers</td><td><span class="pill wip">chooser-grid live; paint/df/kenney stub</span></td></tr>
     <tr><td><strong>edit</strong></td><td>text-edit-hq</td><td><span class="pill done">ok</span></td></tr>
     <tr><td><strong>player</strong></td><td>play / pause / reset entities</td><td><span class="pill done">ok</span></td></tr>
-    <tr><td><strong>db</strong></td><td>db-hq-pal record browser</td><td><span class="pill wip">read-only</span></td></tr>
+    <tr><td><strong>db</strong></td><td>db-ez / db-hq-pal record browser / sql-hq (SQL over csv &amp; pdl)</td><td><span class="pill wip">db-hq-pal read-only; sql-hq live</span></td></tr>
     <tr><td><strong>network</strong></td><td>IRC Chat / Forum / Chain / Browser — see §5</td><td><span class="pill wip">mixed</span></td></tr>
     <tr><td><strong>menus</strong></td><td>context-menu editor</td><td><span class="pill wip">wip</span></td></tr>
     <tr><td><strong>datetime</strong></td><td>livedesk-clock widget</td><td><span class="pill done">ok</span></td></tr>
@@ -216,6 +216,7 @@ $.crypts/button.sh run          # or:  ./^.START_BUTTON_4.sh</code></pre>
     <tr><td><strong>events-hq</strong></td><td><span class="pill done">ok</span></td><td>event / command list (RPG-Maker-style command registry)</td></tr>
     <tr><td><strong>stats-hq</strong></td><td><span class="pill done">ok</span></td><td>dashboard</td></tr>
     <tr><td><strong>irc-chat-hq / chain-hq</strong></td><td><span class="pill done">v1</span></td><td>see §5</td></tr>
+    <tr><td><strong>sql-hq</strong></td><td><span class="pill wip">v1</span></td><td>SQL over <code>.csv</code> / <code>.pdl</code> (vendored sqlite3). Macro sidebar + editor + results grid; also a <code>sql_hq repl</code> CLI. Open from <code>[ ]db → sql-hq</code>. Staged Commit/Rollback + Export/History still WIP.</td></tr>
   </table>
 
   <p>All of these render through <strong>one</strong> shared binary
@@ -233,7 +234,7 @@ $.crypts/button.sh run          # or:  ./^.START_BUTTON_4.sh</code></pre>
     <tr><td><strong>IRC Chat</strong> (<code>irc-chat-hq</code>)</td><td><span class="pill done">v1</span></td><td>room-list sidebar, message feed, composer. Real house identity, per-window peer port, P2P delivery. Junk test-rooms filtered.</td></tr>
     <tr><td><strong>Chain</strong> (<code>chain-hq</code>)</td><td><span class="pill done">v1</span></td><td>Wallet / Send / Mine / History. <strong>One global shared ledger</strong> (<code>041.pal-chain⛓️/data/blockchain.txt</code>) across all local users <em>and</em> P2P. One shared peer per node.</td></tr>
     <tr><td><strong>Forum</strong></td><td><span class="pill wip">cli</span></td><td>legacy CLI app in a terminal tab; HQ window not built yet</td></tr>
-    <tr><td><strong>Browser</strong></td><td><span class="pill wip">wip</span></td><td>network-browser-hq with its own JS engine (separate effort)</td></tr>
+    <tr><td><strong>Browser</strong></td><td><span class="pill wip">wip</span></td><td>network-browser-hq with its own JS engine (NB-JS). The engine also runs standalone node-style: <code>nbjs file.js</code> / <code>duk</code> REPL — require/CommonJS, fs-lite, source-level ESM (<code>NB-JS-CLI-NODE-LIKE-MODE.md</code>).</td></tr>
   </table>
 
   <h3>Ports &amp; P2P</h3>
