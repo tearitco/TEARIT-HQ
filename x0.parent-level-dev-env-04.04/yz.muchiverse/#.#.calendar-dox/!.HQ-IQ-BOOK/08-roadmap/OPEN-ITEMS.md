@@ -76,11 +76,11 @@ short version.*
     per-frame focus re-assert + fix "Interact Mode never arms" (reparse
     -on-vars-change not firing for the pchq board). `09-appendix/
     pc-hq-leg-vs-nu-fix.md` §5/§6/§6b, `pc-hq-bugs.md` Bug 2.
-17. Process-lifecycle teardown (TPMOS parity): **WIRED 2026-09-09** —
-    `ktb_system_recorded` registers every launch, `ktb_reap_launched`
-    (kh_proc_reap_all) fires at the 3 explicit-quit sites, `ktb_init`
-    prunes. Unit + integration tests pass. Left: one isolated live-
-    desktop verify (quit → zero strays) + app-fork funnelling (§5 4–7).
+17. Process-lifecycle teardown (TPMOS parity): **WIRED + LIVE-VERIFIED
+    2026-09-09** — restart→register→quit→reap→truncate confirmed on the
+    running desktop; dropdowns unaffected; legacy pidfile still written.
+    Left: app-fork funnelling — a window/manager NOT launched by the
+    taskbar still doesn't register (§5 steps 4–7).
     `design-docs/PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md`.
 18. ~~Shared source compiled by copy-into-`ops/`~~ **DONE 2026-09-09**:
     switch every `build_*.sh` to compile the canonical

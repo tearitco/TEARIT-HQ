@@ -106,3 +106,6 @@ x0.parent-level-dev-env-04.04_*.7z
 **/ops/khtpm_css_parser.h
 **/ops/khtpm_render_core.c
 **/ops/khtpm_draw_core.c
+
+# proc-lifecycle registry (runtime, PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md)
+**/#.desktop/livedesk_proc_list.txt

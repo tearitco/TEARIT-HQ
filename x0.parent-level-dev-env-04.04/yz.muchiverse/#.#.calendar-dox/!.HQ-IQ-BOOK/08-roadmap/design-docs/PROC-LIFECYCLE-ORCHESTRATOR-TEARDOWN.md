@@ -1,13 +1,30 @@
 # Process lifecycle — orchestrator-owned, PID-tracked teardown
 
-**Status: WIRED INTO THE TASKBAR (2026-09-09) — awaiting one live
-end-to-end check.** Steps 1–3 of §5 landed; unit + integration tests
-pass. The only thing left before "done" is the isolated live-desktop
-verification in step 3 (quit the real taskbar → `ps` shows zero house
-processes; confirm a normal `run_khtpm_strip.sh new` restart and the
-toys/HQ dropdowns still work) — deliberately left for the owner to run,
-per `03-pitfalls/X11-AND-SESSION-PITFALLS.md`'s "test the ONE target in
-isolation, verify dropdowns still work" rule.
+**Status: WIRED + LIVE-VERIFIED (2026-09-09).** Steps 1–3 of §5 done;
+unit + integration + a real live-desktop run all pass. Remaining is the
+app-fork funnelling (§5 steps 4–7) — a window/manager NOT launched by
+the taskbar (its own `button.sh` from a terminal, a `<module>`-spawned
+manager, an engine child) still does **not** register.
+
+Live run (2026-09-09, on the running desktop):
+1. `run_khtpm_strip.sh new` → new manager (fresh binary) came up clean;
+   `ktb_init`'s `kh_proc_registry_prune()` created
+   `#.desktop/livedesk_proc_list.txt`; the 6 autostart desk entities
+   each registered via `ktb_system_recorded` with real `pgid` +
+   `/proc` start-time.
+2. `echo 1003 >> strip_history.txt` (KSC_CLOSE_QUIT) → all 6 registered
+   entities + the manager + the strip renderer **reaped**;
+   `livedesk_proc_list.txt` **truncated to 0**. A pre-registry orphan
+   `khtpm_core_render.+x` (from a run before the registry existed) was
+   correctly **left alone** — that's the `kill_hq_windows.sh`
+   name-pattern backstop's job.
+3. `run_khtpm_strip.sh new` again → desktop fully restored (7 tabs,
+   entities respawned).
+4. Header-cell dropdowns still dispatch: `4006` (db) →
+   `n_hqitems=12`, `4008` → `n_hqitems=5`. No override_redirect path
+   was touched; no regression.
+5. Legacy `livedesk_launched_pids.txt` is still written in parallel, so
+   `kill_hq_windows.sh` keeps working unaided.
 
 What landed:
 - `khtpm_taskbar_manager.c` — `#define KH_PROC_REGISTRY_IMPL` +
