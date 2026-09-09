@@ -22,6 +22,11 @@ content.
   rules, the relay, build/restart, the gotcha wall, guiding a weak
   agent, and compaction wisdom. Read this first; it has one pointer (to
   the rest of the book) at the very bottom, for high-context agents only.
+- **[00-compact/!.HQ-IQ-BOOK-MAP🗺️v0.1.md](00-compact/!.HQ-IQ-BOOK-MAP🗺️v0.1.md)**
+  — the whole book compacted **chapter by chapter**: every file in every
+  chapter squeezed to the one line that says whether to open it, plus
+  the 107 `08-roadmap/design-docs/` clustered by subsystem. The map to
+  everything the compact file doesn't inline.
 - **[HQ-BRIEF.md](HQ-BRIEF.md)** — the whole HQ (tech + business) on
   one page. Hand this to another agent before a strategy session.
 

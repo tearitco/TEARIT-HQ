@@ -5,6 +5,10 @@ Status: **design** (2026-09-09). Not implemented.
 Direct request: "settings should have size + & - button that will
 increase font size and button/bar sizes."
 
+Precursor: `11.brainstorm/2026-09-05/FONT-SIZE-AND-UI-SCALE-BRAINSTORM.md`
+(current-state findings + options — read it; this doc promotes it to a
+plan and picks Option 1 + a fonts-first phasing).
+
 ---
 
 ## 1. Goal
@@ -24,14 +28,27 @@ concern); reflowing text content.
 ## 2. What exists today
 
 - **`scaled(int base_px)`** in `khtpm_core_render.c` (~line 2170) is an
-  **identity stub**: `return base_px;`. It was mode-aware once
-  (`g_dbhq_font_scale`, read from `#.desktop/hq_ui.pdl`), but that was
-  removed in the 2026-09-04 `g_is_*` cleanup. The hook is still called
-  in **21 places**, including the important one:
+  **identity stub**: `return base_px;`. Its own comment still describes a
+  `g_dbhq_font_scale` "read from `#.desktop/hq_ui.pdl`" that **does not
+  exist** (grep-confirmed — stale comment, same class as the
+  `click_two_step` / `dbhq_load_font_scale()` stale comments). The hook
+  is still called in **~21 places**, including the important one:
   `font_for()` (~2218/2227) already does
   `int size = scaled(st->has_font_size ? st->font_size : 12);`
-  → **font-size is already routed through `scaled()`**. Make `scaled()`
-  non-identity and CSS-driven text scales for free.
+  → **CSS font-size is already routed through `scaled()`**. Make
+  `scaled()` non-identity and CSS-driven text scales for free.
+- **`#.desktop/hq_ui.pdl` already ships `font_scale=1.25`** — documented
+  in that file ("multiplier applied to both font sizes and layout box
+  sizes … Range 0.5-3.0") and **read by nothing**. `hq_ui.pdl` is the
+  house-wide UI-knobs file (`click_two_step`, `focus_grab`,
+  `emoji_sprite_view`) and already has a live-reload path,
+  `hq_ui_pdl_reload_if_changed()`, called each `hq_idle_tick()`. **Use
+  this key and this path** — do not add a new file or a
+  `livedesk_theme.pdl` row.
+- **Font sizes that are NOT CSS-driven**: several hardcoded specs
+  (`"DejaVu Sans:pixelsize=12"`, `=10`, `=9`, the `font_ui` load, the
+  popup fontset, the splash) bypass `font_for()` → they will not scale
+  unless each is made scale-aware or switched to `font_for()`.
 - Fixed `#define`s that do **not** go through `scaled()`:
   `ROW_H 24`, `CHROME_H 24`, `DOCK_BAR_H 36`, `POPUP_ROW_H 28`,
   `GRID_CELL_PX` (tile mode), `WIN_PX` (tile mode), `KH_WIN_FRAME 2`.
@@ -50,20 +67,21 @@ concern); reflowing text content.
 
 ## 3. Storage
 
-Reuse `#.desktop/livedesk_theme.pdl` — it is already the live-reloaded,
-marker-backed settings file. Add one row:
+**`#.desktop/hq_ui.pdl`, key `font_scale`** — the key that already
+exists and ships `1.25` (see §2). It is the house-wide UI-knobs file
+and already has `hq_ui_pdl_reload_if_changed()` wired into
+`hq_idle_tick()`. No new file, no `livedesk_theme.pdl` row, no
+`apply_theme_op` change.
 
-```
-SCALE        | ui                   | 100
-```
+Value is a **decimal multiplier** (the existing convention: `1.00`,
+`1.25`, …). Absent / unparseable → `1.00`. Store internally as an int
+percent (`g_ui_scale_pct`, 100 = 1.0) to keep `scaled()` integer-only.
 
-Integer percent. Absent row → `100`. `apply_theme_op.c`'s
-"preserve other COLOR rows" loop already carries unknown rows through;
-extend it to also carry a `SCALE` row (or generalise to "carry every
-non-bg/fg line").
-
-Bounds **75–200**, step **25** (`75 100 125 150 175 200` — six stops,
-matches the coarse feel of Opacity ±0.05). Clamp in the handler.
+Bounds: the file comment says **0.5–3.0**; for the +/- stepper use a
+sane sub-range **0.75–2.0** in steps of **0.25**
+(`0.75 1.0 1.25 1.5 1.75 2.0` — six stops, matches the coarse feel of
+Opacity ±0.05). A hand-edit of `hq_ui.pdl` can still go to the full
+0.5–3.0; clamp only in the stepper handler, not on load.
 
 ---
 
@@ -86,20 +104,24 @@ memory). Reading a plain int global is fine; never fopen inside it.
 
 ### 4.2 Load / live-reload
 
-Add `load_ui_scale(void)` (reads the `SCALE|ui` row, clamps to
-75..200, sets `g_ui_scale_pct`) and call it from **exactly the same
-sites** `load_theme_colors()` is called:
-- `main()` startup + `tp_main()` startup (next to the `bac09d24`
-  `load_theme_colors()` call),
-- `hq_idle_tick()`'s `pchq_theme_changed_dirty` block,
-- `tp_main()`'s `theme_changed_dirty` block.
+`hq_ui.pdl` already has a reader (`hq_ui_pdl_reload_if_changed()`,
+mtime/marker-gated, called every `hq_idle_tick()`) that parses
+`click_two_step` etc. **Extend that same parser** to also read
+`font_scale` → `g_ui_scale_pct` (round `atof(v) * 100`). Then:
 
-Simplest: call it *inside* `load_theme_colors()` so there is one
-function and one call list. On a change, the existing
-`hq_request_redraw()` / `need_redraw = 1` in those blocks already
-forces a repaint; add an `assign_nav_and_layout()` there too (layout
-metrics changed, not just colours) — the fullscreen-toggle handler
-already shows the safe `assign_nav_and_layout(); redraw();` pair.
+- On the reload path, after the value changes: `assign_nav_and_layout();
+  redraw();` **and** the `font_ui` reload (§4.4). The fullscreen-toggle
+  handler already models the safe `assign_nav_and_layout(); redraw();`
+  pair. Layout metrics changed, not just a colour, so a plain
+  `need_redraw` is not enough — a relayout is required.
+- Startup: `hq_ui.pdl` is already read once at launch for
+  `click_two_step`; `font_scale` rides that same initial read in
+  `main()`. For `tp_main()` (tile/entity mode — which has its own event
+  loop and does **not** call `hq_idle_tick()`; see
+  `khtpm-tp_main-globals-footgun` memory), add a `font_scale` read next
+  to `bac09d24`'s `load_theme_colors()` call, and re-read it in
+  `tp_main()`'s `theme_changed_dirty` block (or give `tp_main` its own
+  cheap `hq_ui.pdl` mtime check).
 
 ### 4.3 The fixed `#define`s
 
@@ -143,21 +165,25 @@ opacity buttons:
 
 ```c
 if (strcmp(action, "UI_SCALE_MINUS") == 0 || strcmp(action, "UI_SCALE_PLUS") == 0) {
-    int s = load_ui_scale_pct_from_file();          /* fresh read */
-    s += (action[8] == 'P') ? 25 : -25;             /* PLUS vs MINUS */
-    if (s < 75) s = 75; if (s > 200) s = 200;
-    write_ui_scale_pct(s);                          /* rewrites SCALE|ui row in livedesk_theme.pdl */
-    bump_theme_changed_marker();                    /* the shared append */
-    load_theme_colors();                            /* picks up scale too (§4.2) */
+    int s = ui_scale_pct_from_hq_ui_pdl();          /* fresh read of font_scale */
+    s += (action[9] == 'P') ? 25 : -25;             /* MINU[S] vs PLU[S] */
+    if (s < 75) s = 75;
+    if (s > 200) s = 200;
+    write_hq_ui_pdl_key("font_scale", s / 100.0);   /* rewrite one row, keep the rest */
+    g_ui_scale_pct = s;
     if (font_ui) { XftFontClose(dpy, font_ui); font_ui = load_font_ui(); }
     assign_nav_and_layout(); redraw();
     return;
 }
 ```
 
-`write_ui_scale_pct()` = same rewrite-one-row shape as
-`write_theme_opacity()`. The marker bump means *other* windows also
-re-read and relayout on their next tick.
+`write_hq_ui_pdl_key()` = the rewrite-one-row shape
+`write_theme_opacity()` already uses, pointed at `hq_ui.pdl`. Its mtime
+change is what makes *other* windows' `hq_ui_pdl_reload_if_changed()`
+pick up the new scale and relayout on their next tick — no extra
+marker needed (`hq_ui.pdl` reload is mtime-gated, not marker-gated;
+acceptable here since the writer touches the file exactly once per
+click).
 
 Optionally show the current value: projector
 (`taskbar_settings_projector.c`) publishes `${ui_scale}` and the xhtpm
@@ -208,11 +234,10 @@ one exists).
 
 | File | Change |
 |---|---|
-| `*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c` | `g_ui_scale_pct`, real `scaled()`, `load_ui_scale()` (in `load_theme_colors()`), `load_font_ui()` + reload, wrap `ROW_H`/`POPUP_ROW_H`, `UI_SCALE_±` in `dispatch()` |
-| `*.monads/*.livedesk-taskbar/ops/apply_theme_op.c` | carry a `SCALE` row through the rewrite |
+| `*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c` | `g_ui_scale_pct`, real `scaled()`, read `font_scale` in `hq_ui_pdl_reload_if_changed()` + tp_main, `load_font_ui()` + reload, wrap `ROW_H`/`POPUP_ROW_H`(/`DOCK_BAR_H`), `write_hq_ui_pdl_key()`, `UI_SCALE_±` in `dispatch()` |
 | `&.widgits/taskbar-settings/taskbar-settings-pal.xhtpm` | `Size -` / `Size +` items |
-| `&.widgits/taskbar-settings/ops/taskbar_settings_projector.c` | (optional) publish `${ui_scale}` |
-| `#.desktop/livedesk_theme.pdl` | new `SCALE | ui | 100` row (runtime data, not committed) |
+| `&.widgits/taskbar-settings/ops/taskbar_settings_projector.c` | (optional) publish `${ui_scale}` readout |
+| `#.desktop/hq_ui.pdl` | the `font_scale` key already exists (ships `1.25`); the stepper rewrites its value (runtime data, not committed) |
 
 Related: `[[khtpm-tp_main-globals-footgun]]`,
 `khtpm-shared-layout-caution` memory, `70a5c1a5` (colour = marker, no
