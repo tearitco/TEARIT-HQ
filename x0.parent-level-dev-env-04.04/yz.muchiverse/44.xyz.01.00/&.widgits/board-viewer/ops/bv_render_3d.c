@@ -1827,6 +1827,32 @@ int main(void) {
                 }
             }
 
+            /* Coarse board-bbox test, hoisted ABOVE the board-adjacent
+             * foreground tests (xelector / hero / world entities /
+             * generic entities). Those objects all sit inside the
+             * board's own bounding box, so a ray that misses the board
+             * bbox misses all of them too - gating them here skips
+             * ~8-10 per-pixel ray/AABB tests for every sky ray (~40%
+             * of this loop's cost, profiled 2026-09-09). Sun/moon (sky
+             * objects) and the legend cube (at -1..0, outside the
+             * board) stay unconditional. Also yields board_exit_t for
+             * the DDA's A&W volume clamp below. */
+            int board_bbox_hit = 0;
+            double board_exit_t = 1e18;
+            {
+                double t; int face;
+                if (ray_aabb_hit_3d(ox, oy, oz, dirx, diry, dirz,
+                                     0.0, (double)board_w, board_bbox_y0, board_bbox_y1, 0.0, (double)board_h,
+                                     &t, &face)) {
+                    board_bbox_hit = 1;
+                    double ex = 1e18;
+                    if (fabs(dirx) > 1e-12) { double a0=(0.0-ox)/dirx, a1=((double)board_w-ox)/dirx; double m=(a0>a1)?a0:a1; if (m<ex) ex=m; }
+                    if (fabs(diry) > 1e-12) { double a0=(board_bbox_y0-oy)/diry, a1=(board_bbox_y1-oy)/diry; double m=(a0>a1)?a0:a1; if (m<ex) ex=m; }
+                    if (fabs(dirz) > 1e-12) { double a0=(0.0-oz)/dirz, a1=((double)board_h-oz)/dirz; double m=(a0>a1)?a0:a1; if (m<ex) ex=m; }
+                    board_exit_t = ex;
+                }
+            }
+
             /* Xelector marker - see load_xelector()'s own header
              * comment (2026-08-03 fix). Tested unconditionally, same
              * cost class as the entity-box test just below - at most
@@ -1845,7 +1871,7 @@ int main(void) {
              * in mode 1 (you ARE it, seeing it from outside makes no
              * sense there) - modes 2/3/4 are real external views and
              * correctly keep showing it. */
-            if (g_xelector_present && camera_mode != 1) {
+            if (board_bbox_hit && g_xelector_present && camera_mode != 1) {
                 double xx0 = g_xelector_x + 0.15, xx1 = g_xelector_x + 0.85;
                 double xz0 = g_xelector_y + 0.15, xz1 = g_xelector_y + 0.85;
                 double xy0 = g_xelector_z + 0.15, xy1 = g_xelector_z + 0.85;
@@ -1871,7 +1897,7 @@ int main(void) {
              * xelector marker just above - the hero's own phymoji box
              * is centered on the exact same anchor position mode 1's
              * eye sits at. */
-            if (g_hero_present && hero_phymoji_count > 0 && camera_mode != 1) {
+            if (board_bbox_hit && g_hero_present && hero_phymoji_count > 0 && camera_mode != 1) {
                 double world_size = 0.9;
                 double wx0 = g_hero_x + 0.5 - world_size / 2.0;
                 double wy0 = g_hero_z + 0.0;
@@ -1904,7 +1930,7 @@ int main(void) {
                         hero_phy_r = pr; hero_phy_g = pg; hero_phy_b = pb;
                     }
                 }
-            } else if (g_hero_present && camera_mode != 1) {
+            } else if (board_bbox_hit && g_hero_present && camera_mode != 1) {
                 /* Real, honest fallback - see this block's own header
                  * comment. Same flat marker box as before phymoji
                  * existed. */
@@ -1930,7 +1956,7 @@ int main(void) {
              * spans roughly 3 vertical blocks - trunk + canopy - not a
              * single hero-sized cube), standing on the ground at the
              * entity's own real placed z. */
-            for (int wi = 0; wi < g_phymoji_world_entity_count; wi++) {
+            if (board_bbox_hit) for (int wi = 0; wi < g_phymoji_world_entity_count; wi++) {
                 PhymojiWorldEntity *we = &g_phymoji_world_entities[wi];
                 PhymojiTemplate *wt = &g_phymoji_templates[we->template_idx];
                 /* REAL FIX 2026-08-04: world footprint now varies by
@@ -1982,7 +2008,7 @@ int main(void) {
              * not just another full-cell block. Cheap - at most a
              * handful of entities exist (6 units today), a fixed-size
              * loop here costs far less than the per-cell DDA itself. */
-            for (int ei = 0; ei < g_entity_count; ei++) {
+            if (board_bbox_hit) for (int ei = 0; ei < g_entity_count; ei++) {
                 double ex0 = g_entities[ei].pos_x + 0.25, ex1 = g_entities[ei].pos_x + 0.75;
                 double ez0 = g_entities[ei].pos_y + 0.25, ez1 = g_entities[ei].pos_y + 0.75;
                 double t; int face;
@@ -1993,30 +2019,8 @@ int main(void) {
                 }
             }
 
-            /* Coarse rejection FIRST - one cheap slab test against the
-             * board's own OUTER bounding box. If a ray can't possibly
-             * hit the board at all, skip the whole per-cell DDA below
-             * entirely (matches the same primitive/cost as the legend-
-             * cube test above - one ray_aabb_hit_3d call, not a loop).
-             * This is what actually makes far-away/shallow-angle rays
-             * cheap again, regardless of camera distance - see this
-             * file's own header note + PITFALLS.txt pitfall 1. */
-            int board_bbox_hit = 0;
-            double board_exit_t = 1e18;   /* ray's exit t from the board bbox - the DDA can stop here (A&W volume clamp) */
-            {
-                double t; int face;
-                if (ray_aabb_hit_3d(ox, oy, oz, dirx, diry, dirz,
-                                     0.0, (double)board_w, board_bbox_y0, board_bbox_y1, 0.0, (double)board_h,
-                                     &t, &face)) {
-                    board_bbox_hit = 1;
-                    /* exit t = nearest far-slab crossing (min over axes of max(t0,t1)). */
-                    double ex = 1e18;
-                    if (fabs(dirx) > 1e-12) { double a0=(0.0-ox)/dirx, a1=((double)board_w-ox)/dirx; double m=(a0>a1)?a0:a1; if (m<ex) ex=m; }
-                    if (fabs(diry) > 1e-12) { double a0=(board_bbox_y0-oy)/diry, a1=(board_bbox_y1-oy)/diry; double m=(a0>a1)?a0:a1; if (m<ex) ex=m; }
-                    if (fabs(dirz) > 1e-12) { double a0=(0.0-oz)/dirz, a1=((double)board_h-oz)/dirz; double m=(a0>a1)?a0:a1; if (m<ex) ex=m; }
-                    board_exit_t = ex;
-                }
-            }
+            /* (board_bbox_hit + board_exit_t computed above, hoisted so
+             * the board-adjacent foreground tests can gate on it too.) */
 
             /* Board cells - REAL 2-AXIS grid DDA over (col,row), same
              * real Amanatides-Woo structure/cost as the ORIGINAL
