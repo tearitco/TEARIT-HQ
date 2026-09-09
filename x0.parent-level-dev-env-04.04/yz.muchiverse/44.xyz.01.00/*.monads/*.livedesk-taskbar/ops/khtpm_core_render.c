@@ -12103,6 +12103,18 @@ static int tp_main(int argc, char **argv) {
     if (!g_house_root[0]) snprintf(g_house_root, sizeof(g_house_root), ".");
 #endif
     snprintf(g_house_root_for_lock, sizeof(g_house_root_for_lock), "%s", g_house_root);
+    /* REAL FIX 2026-09-09, direct report ("bookstack ... its this part
+     * that hasn't changed color ... look deeper"): tile/entity mode
+     * (tp_main) - which hosts every desktop entity incl. book-stack and
+     * its Show Text popup - NEVER loaded #.desktop/livedesk_theme.pdl.
+     * main()/hq_run_event_loop() do (startup + every hq_idle_tick), but
+     * tp_main() has its own event loop and only ever reapplied theme
+     * OPACITY on a change, never the bg/fg colours - so g_theme_bg/fg
+     * stayed at their compile-time #1c1c1c/#cccccc defaults here and
+     * every "use g_theme_bg" draw site was themed in name only. Load it
+     * now (before the window is created below) and again on every
+     * livedesk_theme_changed marker (see the tp_main event loop). */
+    if (g_house_root[0]) load_theme_colors();
     if (g_house_root[0]) desktop_load_click_two_step(g_house_root);
     if (g_house_root[0]) load_override_redirect(g_house_root);
     if (g_house_root[0] && g_is_cursword) cursword_load_move_mode(g_house_root);
@@ -12207,6 +12219,10 @@ static int tp_main(int argc, char **argv) {
      * the FocusOut handler in the main event loop below). */
     swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | FocusChangeMask;
     swa.override_redirect = g_override_redirect; /* real X11 requirement whenever a window's own depth differs from its parent's (root's) - harmless to set unconditionally */
+    /* left as 0 (black) - alloc_pixel() needs the shared dpy/cmap/screen
+     * globals which tp_main() has not set up at this point (it uses a
+     * local dpy here); redraw()'s own first pass repaints the whole
+     * window with alloc_pixel(g_theme_bg) a frame later anyway. */
     swa.background_pixel = 0;
 
     Window win = XCreateWindow(dpy, RootWindow(dpy, screen_num), 3 * GRID_CELL_PX, 3 * GRID_CELL_PX, WIN_PX, WIN_PX,
@@ -12570,6 +12586,8 @@ static int tp_main(int argc, char **argv) {
          * theme_changed_dirty()'s own declaration comment. */
         if (theme_changed_dirty(g_house_root)) {
             set_window_opacity(dpy, win, tp_load_theme_opacity(g_house_root));
+            load_theme_colors();   /* bg/fg too, not just opacity - see the load_theme_colors() call in tp_main()'s setup */
+            need_redraw = 1;
         }
 
         /* Real, cheap, event-driven camera pan/tilt/mode reapply - see
