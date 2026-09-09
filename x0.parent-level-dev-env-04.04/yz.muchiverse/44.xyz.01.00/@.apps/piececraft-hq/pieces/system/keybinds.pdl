@@ -3,12 +3,17 @@ SECTION      | KEY                | VALUE
 META         | file_id            | keybinds
 META         | note               | Unified board-viewer keybinds. Read by &.widgits/board-viewer/ops/bv_menu_input.c. Edit + relaunch (no rebuild). Values on KEY/VERB rows are RAW ASCII KEYCODES (python3 -c "print(ord('w'))" or man ascii). Missing a row -> the built-in default (shown in the comment). This file overrides pieces/system/arrow_config.txt's key_* section and pieces/system/keybinds.txt.
 
-# ── camera / POV / view (only while render_mode==1 unless noted) ──
-KEY          | render_mode_toggle | 48        # '0'  toggle 2D <-> 3D  (works in both modes)
-KEY          | pov_mode_1         | 49        # '1'  first person
-KEY          | pov_mode_2         | 50        # '2'  third person
-KEY          | pov_mode_3         | 51        # '3'  free roam  (wasd pan)
-KEY          | pov_mode_4         | 52        # '4'  bird's eye  (wasd pan, no rotate)
+# ── camera / POV / view ──
+# render_mode_toggle, the pov_mode_* keys and cjk_view are NON-modal:
+# they work from any mode. pov_mode_* switch you into 3D; cjk_view
+# switches you into the 2D Chinese/ASCII view. The rotate/pan/height
+# keys below stay 3D-only.
+KEY          | render_mode_toggle | 48        # '0'  toggle 2D <-> 3D
+KEY          | cjk_view           | 96        # '`'  always -> 2D Chinese / ASCII terminal view
+KEY          | pov_mode_1         | 49        # '1'  first person   (-> 3D)
+KEY          | pov_mode_2         | 50        # '2'  third person   (-> 3D)
+KEY          | pov_mode_3         | 51        # '3'  free roam      (-> 3D, wasd pan)
+KEY          | pov_mode_4         | 52        # '4'  bird's eye     (-> 3D, wasd pan, no rotate)
 KEY          | yaw_left           | 113       # 'q'  turn left   (modes 1/2/3)
 KEY          | yaw_right          | 101       # 'e'  turn right  (modes 1/2/3)
 KEY          | pitch_down         | 114       # 'r'  look down   (modes 1/2/3)

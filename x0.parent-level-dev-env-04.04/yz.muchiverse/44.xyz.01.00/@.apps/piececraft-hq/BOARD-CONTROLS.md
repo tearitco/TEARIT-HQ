@@ -51,13 +51,15 @@ everything else to only the relay) is what fixed the old
 ## 3. Camera / POV / cursor keys
 
 Bindings resolve **`pieces/system/keybinds.pdl` → `pieces/system/arrow_config.txt` (`key_*`) → built-in default**.
-Edit `keybinds.pdl` and relaunch — no rebuild. Camera keys act only
-while `render_mode == 1` (3D).
+Edit `keybinds.pdl` and relaunch — no rebuild. `0`, `` ` `` and `1`–`4`
+are **non-modal** (work from any view); the rotate / pan / height keys
+act only while `render_mode == 1` (3D).
 
 | Key | Action | Modes |
 |---|---|---|
-| `0` | toggle 2D (flat emoji + z-level) ⇄ 3D | both |
-| `1` `2` `3` `4` | POV: first-person / third-person / free-roam / bird's-eye | — |
+| `0` | toggle 2D ⇄ 3D | any |
+| `` ` `` | always → 2D Chinese / ASCII terminal view (`view_2d_style=ascii`) | any |
+| `1` `2` `3` `4` | POV: first-person / third-person / free-roam / bird's-eye — **switches to 3D** | any |
 | `q` `e` | yaw left / right | 1·2·3 |
 | `r` `t` | pitch down / up | 1·2·3 |
 | `w` `a` `s` `d` | pan | 3·4 |

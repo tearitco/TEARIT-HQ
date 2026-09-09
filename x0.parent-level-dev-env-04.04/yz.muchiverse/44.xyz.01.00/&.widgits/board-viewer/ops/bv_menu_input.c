@@ -399,6 +399,7 @@ static int handle_one_key(int key) {
     int key_pan_forward = 'w', key_pan_back = 's', key_pan_left = 'a', key_pan_right = 'd';
     int key_cam_down = 'c', key_cam_up = 'v';
     int key_pov_1 = '1', key_pov_2 = '2', key_pov_3 = '3', key_pov_4 = '4';
+    int key_cjk_view = '`';   /* 96 - always -> 2D Chinese/ASCII view */
     int key_file_menu = '5', key_desk_menu = '6';
     if (focused_project_root[0]) {
         snprintf(arrow_cfg_path, sizeof(arrow_cfg_path), "%s/pieces/system/arrow_config.txt", focused_project_root);
@@ -452,6 +453,7 @@ static int handle_one_key(int key) {
         key_pov_2 = pdl_bind_int(kb_pdl_path, "KEY", "pov_mode_2", key_pov_2);
         key_pov_3 = pdl_bind_int(kb_pdl_path, "KEY", "pov_mode_3", key_pov_3);
         key_pov_4 = pdl_bind_int(kb_pdl_path, "KEY", "pov_mode_4", key_pov_4);
+        key_cjk_view = pdl_bind_int(kb_pdl_path, "KEY", "cjk_view", key_cjk_view);
         key_file_menu = pdl_bind_int(kb_pdl_path, "KEY", "file_menu", key_file_menu);
         key_desk_menu = pdl_bind_int(kb_pdl_path, "KEY", "desk_menu", key_desk_menu);
     }
@@ -624,16 +626,16 @@ static int handle_one_key(int key) {
         return 0;
     }
 
-    /* '`' (backtick, 96) - the 2D style toggle (PCHQ-2D-TILE-VIEW
-     * P2c): tiles <-> ascii (the DF/CDDA-style coloured-CJK-glyph
-     * terminal view). Only meaningful while render_mode==0; a no-op in
-     * 3D. */
-    if (key == 96) {
-        if (read_kv_int(state_path, "render_mode", 1) == 0) {
-            char cur[16] = ""; read_kv_str(state_path, "view_2d_style", cur, sizeof(cur));
-            write_kv(state_path, "view_2d_style", strcmp(cur, "ascii") == 0 ? "tiles" : "ascii");
-            bump_screen_changed(project_root);
-        }
+    /* '`' (backtick, 96) - ALWAYS jump to the Chinese / ASCII terminal
+     * view (PCHQ-2D-TILE-VIEW P2c), from any mode. Not a toggle and
+     * not gated: pressing it drops into 2D (render_mode=0) and sets
+     * view_2d_style=ascii unconditionally. To leave it: '0' (-> 3D) or
+     * '1'-'4' (-> 3D POV). Direct instruction 2026-09-09 ("` should
+     * always go to chinese ... currently they are blocking"). */
+    if (key == key_cjk_view) {
+        write_kv_int(state_path, "render_mode", 0);
+        write_kv(state_path, "view_2d_style", "ascii");
+        bump_screen_changed(project_root);
         return 0;
     }
 
@@ -825,12 +827,15 @@ static int handle_one_key(int key) {
     }
 
     int render_mode = read_kv_int(state_path, "render_mode", default_render_mode(focused_project_root));
-    if (!render_mode) {
-        /* Camera controls are a no-op unless render_mode==1 - matches
-         * mutaclysm's own ops/camera_control.c exactly (whole dispatch
-         * gated on render_mode==1 there too). Selector movement above
-         * already handled arrows unconditionally (2D mode still needs
-         * cursor movement regardless of render_mode). */
+    if (!render_mode &&
+        key != key_pov_1 && key != key_pov_2 && key != key_pov_3 && key != key_pov_4) {
+        /* Most camera controls are a no-op unless render_mode==1 -
+         * matches mutaclysm's own ops/camera_control.c. EXCEPTION
+         * (direct instruction 2026-09-09, "1234 should always change
+         * ... currently they are blocking"): the '1'-'4' POV keys fall
+         * through even in 2D - the handler below switches to 3D and
+         * applies the POV, so they always do something. Selector
+         * movement above already ran unconditionally. */
         bump_screen_changed(project_root);
         return 0;
     }
@@ -850,6 +855,7 @@ static int handle_one_key(int key) {
     if (key == key_pov_1 || key == key_pov_2 || key == key_pov_3 || key == key_pov_4) {
         int camera_mode = (key == key_pov_1) ? 1 : (key == key_pov_2) ? 2
                         : (key == key_pov_3) ? 3 : 4;
+        write_kv_int(state_path, "render_mode", 1);   /* POV keys always land you in 3D */
         write_kv_int(state_path, "camera_mode", camera_mode);
         if (camera_mode == 1 || camera_mode == 2) {
             write_kv_int(state_path, "cam_yaw", 180);
