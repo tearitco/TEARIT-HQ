@@ -50,8 +50,10 @@
  * skip line count (OVERLAY_H/GLYPH_H must divide evenly, kept in sync
  * manually between the two files, no shared header convention). */
 #define GLYPH_H 16
-#define FRAME_W 640
+#define FRAME_W 640      /* default / fallback frame size */
 #define FRAME_H 480
+#define FRAME_MAX_W 1280 /* raymarch cost ceiling (~4x the 640x480 default = ~0.5s/frame with omp on 8 cores); a larger canvas letterboxes (kh_draw_canvas centres) */
+#define FRAME_MAX_H 960
 
 #define M_PI_LOCAL 3.14159265358979323846
 
@@ -1169,8 +1171,16 @@ static void box_face_uv(double wx, double wy, double wz,
     }
 }
 
-/* --- framebuffer --- */
-static unsigned char fb[FRAME_H][FRAME_W][4];
+/* --- framebuffer ---
+ * Sized to the board window's live canvas (g_fw x g_fh, set in main()
+ * from #.desktop/pchq_board_view.txt) so the 3D view fills the window
+ * instead of a fixed 640x480 letterboxed in a corner - direct
+ * instruction 2026-09-09 ("open its view, show more of the 3D map, do
+ * NOT stretch"). This is a genuinely larger native raymarch, capped at
+ * FRAME_MAX_* for responsiveness. FB(x,y) -> that pixel's 4-byte RGBA. */
+static int g_fw = FRAME_W, g_fh = FRAME_H;
+static unsigned char *g_fbuf = NULL;
+#define FB(X,Y) (g_fbuf + ((size_t)(Y) * (size_t)g_fw + (size_t)(X)) * 4)
 
 /* REAL, NEW 2026-08-04, xyz-ngn-plan.md §2/§2b (piececraft-xyz's own
  * real day/night orbital plan, Step 1) - the sun's own real ELLIPTICAL
@@ -1239,9 +1249,10 @@ static void clear_sky(double sun_light_level) {
         g = (unsigned char)(15 * f);
         b = (unsigned char)(40 * f);
     }
-    for (int y = 0; y < FRAME_H; y++)
-        for (int x = 0; x < FRAME_W; x++) {
-            fb[y][x][0] = r; fb[y][x][1] = g; fb[y][x][2] = b; fb[y][x][3] = 255;
+    for (int y = 0; y < g_fh; y++)
+        for (int x = 0; x < g_fw; x++) {
+            unsigned char *p = FB(x, y);
+            p[0] = r; p[1] = g; p[2] = b; p[3] = 255;
         }
 }
 
@@ -1349,7 +1360,7 @@ static Camera build_camera(int camera_mode, double yaw_deg, double pitch_deg,
     cam.up = up;
 
     double fov_rad = g_fov_deg * M_PI_LOCAL / 180.0;
-    cam.focal = (FRAME_H / 2.0) / tan(fov_rad / 2.0);
+    cam.focal = (g_fh / 2.0) / tan(fov_rad / 2.0);
     return cam;
 }
 
@@ -1380,6 +1391,28 @@ static void write_overlay_receipt(const char *path, int ov_w, int ov_h) {
 int main(void) {
     resolve_root();
     load_house_root();
+
+    /* frame size = the board window's live canvas px, which the khtpm
+     * renderer writes to #.desktop/pchq_board_view.txt every layout.
+     * Resize the window -> the 3D view resizes with it. Falls back to
+     * 640x480; capped at FRAME_MAX_* so the raymarch stays responsive
+     * (a bigger canvas letterboxes the rest - kh_draw_canvas centres). */
+    {
+        char vsz[PATH_BUF];
+        snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", house_root);
+        FILE *vf = host_fopen(vsz, "r");
+        if (vf) {
+            int a = 0, b = 0;
+            if (fscanf(vf, "%d %d", &a, &b) == 2) { if (a > 0) g_fw = a; if (b > 0) g_fh = b; }
+            fclose(vf);
+        }
+        if (g_fw < 160) g_fw = 160;
+        if (g_fw > FRAME_MAX_W) g_fw = FRAME_MAX_W;
+        if (g_fh < 120) g_fh = 120;
+        if (g_fh > FRAME_MAX_H) g_fh = FRAME_MAX_H;
+    }
+    g_fbuf = (unsigned char *)calloc((size_t)g_fw * (size_t)g_fh, 4);
+    if (!g_fbuf) return 1;
 
     char state_path[PATH_BUF];
     snprintf(state_path, sizeof(state_path), "%s/pieces/system/bv_state.txt", project_root);
@@ -1605,7 +1638,7 @@ int main(void) {
     long long game_epoch_sky = read_kv_ll(world_state_path_sky, "game_time_epoch_sec", 0);
     double game_light_level_sky = lighting_enabled ? compute_sun_light_level(game_epoch_sky) : 1.0;
     if (lighting_enabled) clear_sky(game_light_level_sky);
-    else { for (int yy = 0; yy < FRAME_H; yy++) for (int xx = 0; xx < FRAME_W; xx++) { fb[yy][xx][0]=135; fb[yy][xx][1]=180; fb[yy][xx][2]=220; fb[yy][xx][3]=255; } }
+    else { for (int yy = 0; yy < g_fh; yy++) for (int xx = 0; xx < g_fw; xx++) { unsigned char *p = FB(xx, yy); p[0]=135; p[1]=180; p[2]=220; p[3]=255; } }
 
     CelestialBody sun_body = lighting_enabled ? load_celestial_body(focused_project_root, "sun_01") : (CelestialBody){0,0,0,0};
     CelestialBody moon_body = lighting_enabled ? load_celestial_body(focused_project_root, "moon_01") : (CelestialBody){0,0,0,0};
@@ -1731,10 +1764,10 @@ int main(void) {
      * required fixing first (a shared mutable texture cache). See
      * mc-speed-algos.md for the full writeup. */
     #pragma omp parallel for schedule(dynamic, 4)
-    for (int sy = 0; sy < FRAME_H; sy++) {
-        for (int sx = 0; sx < FRAME_W; sx++) {
-            double a = (sx - FRAME_W / 2.0) / cam.focal;
-            double b = (FRAME_H / 2.0 - sy) / cam.focal;
+    for (int sy = 0; sy < g_fh; sy++) {
+        for (int sx = 0; sx < g_fw; sx++) {
+            double a = (sx - g_fw / 2.0) / cam.focal;
+            double b = (g_fh / 2.0 - sy) / cam.focal;
             Vec3 ray_dir = v3_norm(v3_add(cam.forward, v3_add(v3_scale(cam.right, a), v3_scale(cam.up, b))));
 
             double ox = cam.eye.x, oy = cam.eye.y, oz = cam.eye.z;
@@ -2271,7 +2304,8 @@ int main(void) {
             r = (unsigned char)(r * light_level);
             g = (unsigned char)(g * light_level);
             bl = (unsigned char)(bl * light_level);
-            fb[sy][sx][0] = r; fb[sy][sx][1] = g; fb[sy][sx][2] = bl; fb[sy][sx][3] = 255;
+            unsigned char *pdst = FB(sx, sy);
+            pdst[0] = r; pdst[1] = g; pdst[2] = bl; pdst[3] = 255;
         }
     }
 
@@ -2284,9 +2318,10 @@ int main(void) {
     snprintf(overlay_path, sizeof(overlay_path), "%s/pieces/display/rgb_frame_3d_overlay.raw", project_root);
     snprintf(overlay_receipt_path, sizeof(overlay_receipt_path), "%s/pieces/display/rgb_frame_3d_overlay.receipt.txt", project_root);
 
-    size_t byte_count = (size_t)FRAME_W * FRAME_H * 4;
-    write_file_atomic(overlay_path, fb, byte_count);
-    write_overlay_receipt(overlay_receipt_path, FRAME_W, FRAME_H);
+    size_t byte_count = (size_t)g_fw * (size_t)g_fh * 4;
+    write_file_atomic(overlay_path, g_fbuf, byte_count);
+    write_overlay_receipt(overlay_receipt_path, g_fw, g_fh);
 
+    free(g_fbuf); g_fbuf = NULL;
     return 0;
 }
