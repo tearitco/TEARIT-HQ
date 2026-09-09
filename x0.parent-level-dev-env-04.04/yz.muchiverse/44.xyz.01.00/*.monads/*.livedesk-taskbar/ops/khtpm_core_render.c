@@ -5266,10 +5266,13 @@ static void assign_nav_and_layout(void) {
             y += item_h;
         }
         if (row_x) y += row_h + 4;
-        /* user owns the height when class="user-resizable" - don't
-         * shrink-wrap the window to the canvas/toolbar content. */
+        /* user owns the height when class="user-resizable". No
+         * "never clip content" fallback here: the canvas is sized to
+         * fill exactly the space left below the toolbar
+         * (item->h = g_win_h - item->y - 8), so content height always
+         * ~= g_win_h and a `g_win_h < y+8 -> g_win_h = y+8` guard is a
+         * +4/pass feedback loop (window crept to the screen edge). */
         if (!g_user_resizable) g_win_h = y + 8;
-        else if (g_win_h < y + 8) g_win_h = y + 8;   /* but never clip content */
         }
     }
     if (!window_is_dock() && g_window) {
