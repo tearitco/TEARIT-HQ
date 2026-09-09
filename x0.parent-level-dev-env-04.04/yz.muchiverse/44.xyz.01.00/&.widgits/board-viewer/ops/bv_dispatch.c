@@ -201,6 +201,15 @@ int main(void) {
                  || (now_ms - last_ms) >= BV3D_MIN_MS;    /* or rate-limit tick */
 
         if (do_3d) {
+            /* adaptive resolution (mc-speed-algos.md §7): a mid-burst
+             * rate-limited refresh (camera still moving) renders
+             * coarse; the settled / host-driven frame renders full. */
+            int motion_frame = burst_ongoing && !external_change;
+            char lod_path[PATH_BUF];
+            pj(lod_path, sizeof(lod_path), "pieces/display/.bv_render_lod");
+            FILE *lf = fopen(lod_path, "w");
+            if (lf) { fprintf(lf, "%d\n", motion_frame ? 1 : 0); fclose(lf); }
+
             pj(op_path, sizeof(op_path), "ops/+x/bv_render_3d.+x");
             run_op(op_path, NULL);
             FILE *tf = fopen(t_path, "w");

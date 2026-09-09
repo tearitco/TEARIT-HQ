@@ -262,8 +262,12 @@ no letterbox, no FOV change.
   byte-identical at the same speed. The FP slab math is not the
   bottleneck; memory-bound array access + the (now-fixed) phymoji
   march were.
-- Adaptive resolution (render at ~0.6x while the camera is moving,
-  full res when it settles) is the only remaining lever that keeps
-  1:1 + FOV and would get sustained-motion 3D toward 30 fps. Not
-  attempted - it's a real feature, and coalescing already covers the
-  common "nudge then stop" case.
+- Adaptive resolution - **DONE** (commit after this doc). `bv_dispatch`
+  writes `pieces/display/.bv_render_lod` = 1 for a mid-burst coalesced
+  refresh (camera still moving), 0 for the settled / host-driven frame.
+  A "moving" frame raymarches a `1/motion_lod_step` grid (host
+  `arrow_config.txt`, default 2) and block-fills; the settled frame is
+  full res. Measured: full 0.18s -> motion 0.06s (~3x) at 1108x656,
+  ~9% of pixels differ (silhouette blocks only), full-res path
+  byte-identical to before. Sustained 3D camera motion ~16 fps, snaps
+  crisp the instant you stop.

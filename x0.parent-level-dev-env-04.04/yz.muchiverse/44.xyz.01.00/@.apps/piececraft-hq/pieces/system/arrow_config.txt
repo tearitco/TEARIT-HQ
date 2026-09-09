@@ -66,6 +66,15 @@ tp_look_down_deg=20.0
 #   behavior), sun/moon objects hidden. Toggle without a rebuild.
 lighting_enabled=1
 
+# --- Adaptive resolution (mc-speed-algos.md §7) ---
+# motion_lod_step: while the CAMERA IS STILL MOVING, bv_render_3d
+#   raymarches a 1/N grid and block-fills, then snaps to a crisp
+#   full-res frame the instant you stop. N=1 disables it (always full
+#   res); 2 = quarter the rays while moving (recommended); 3-4 =
+#   coarser/faster but blockier during motion. The settled frame and
+#   any host-driven redraw are always full res regardless.
+motion_lod_step=2
+
 # --- Camera/movement keys (all values are the KEY'S OWN ASCII CODE,
 #     not a character - e.g. 'w' is 119, 'q' is 113. Use `python3 -c
 #     "print(ord('x'))"` to find any key's code, or man ascii.) ---

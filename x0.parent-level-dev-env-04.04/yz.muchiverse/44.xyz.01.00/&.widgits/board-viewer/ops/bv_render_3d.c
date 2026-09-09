@@ -1252,6 +1252,12 @@ static void box_face_uv(double wx, double wy, double wz,
  * NOT stretch"). This is a genuinely larger native raymarch, capped at
  * FRAME_MAX_* for responsiveness. FB(x,y) -> that pixel's 4-byte RGBA. */
 static int g_fw = FRAME_W, g_fh = FRAME_H;
+/* adaptive resolution (mc-speed-algos.md §7): 1 = full res; >1 = a
+ * mid-motion "coarse" frame - raymarch a 1/step grid and block-fill.
+ * Set from pieces/display/.bv_render_lod (bv_dispatch writes it) x
+ * motion_lod_step (host arrow_config.txt). step==1 is byte-for-byte
+ * the old single-pixel path. */
+static int g_lod_step = 1;
 static unsigned char *g_fbuf = NULL;
 #define FB(X,Y) (g_fbuf + ((size_t)(Y) * (size_t)g_fw + (size_t)(X)) * 4)
 
@@ -1689,6 +1695,24 @@ int main(void) {
     if (g_fov_deg < 40.0) g_fov_deg = 40.0;
     if (g_fov_deg > 120.0) g_fov_deg = 120.0;
 
+    /* adaptive resolution: bv_dispatch writes "1" to .bv_render_lod for
+     * a mid-burst coalesced refresh (camera still moving), "0"/absent
+     * for the settled or host-driven frame. A "moving" frame raymarches
+     * a 1/motion_lod_step grid and block-fills - blockier while you
+     * move, one crisp full-res frame the instant the burst ends. */
+    {
+        char lodp[PATH_BUF]; int moving = 0;
+        snprintf(lodp, sizeof(lodp), "%s/pieces/display/.bv_render_lod", project_root);
+        FILE *lf = host_fopen(lodp, "r");
+        if (lf) { if (fscanf(lf, "%d", &moving) != 1) moving = 0; fclose(lf); }
+        if (moving > 0) {
+            int step = read_kv_int(cam_cfg_path, "motion_lod_step", 2);
+            if (step < 1) step = 1;
+            if (step > 4) step = 4;
+            g_lod_step = step;
+        }
+    }
+
     Camera cam = build_camera(camera_mode, cam_yaw, cam_pitch, pan_x, pan_y, cam_pan_z, cam_z_level,
                                anchor_x, anchor_z, anchor_h,
                                fp_face_dist, fp_eye_height, tp_distance, tp_height,
@@ -1839,10 +1863,12 @@ int main(void) {
      * required fixing first (a shared mutable texture cache). See
      * mc-speed-algos.md for the full writeup. */
     #pragma omp parallel for schedule(dynamic, 4)
-    for (int sy = 0; sy < g_fh; sy++) {
-        for (int sx = 0; sx < g_fw; sx++) {
-            double a = (sx - g_fw / 2.0) / cam.focal;
-            double b = (g_fh / 2.0 - sy) / cam.focal;
+    for (int sy = 0; sy < g_fh; sy += g_lod_step) {
+        for (int sx = 0; sx < g_fw; sx += g_lod_step) {
+            /* sample the block centre so the coarse frame keeps the
+             * same field of view (no-op when g_lod_step == 1) */
+            double a = (sx + (g_lod_step - 1) * 0.5 - g_fw / 2.0) / cam.focal;
+            double b = (g_fh / 2.0 - (sy + (g_lod_step - 1) * 0.5)) / cam.focal;
             Vec3 ray_dir = v3_norm(v3_add(cam.forward, v3_add(v3_scale(cam.right, a), v3_scale(cam.up, b))));
 
             double ox = cam.eye.x, oy = cam.eye.y, oz = cam.eye.z;
@@ -2392,8 +2418,17 @@ int main(void) {
             r = (unsigned char)(r * light_level);
             g = (unsigned char)(g * light_level);
             bl = (unsigned char)(bl * light_level);
-            unsigned char *pdst = FB(sx, sy);
-            pdst[0] = r; pdst[1] = g; pdst[2] = bl; pdst[3] = 255;
+            /* block-fill the g_lod_step x g_lod_step cell this sample
+             * covers (exactly one pixel when g_lod_step == 1). Sky
+             * samples hit the `continue` above and keep the full-res
+             * clear_sky fill. */
+            int bxe = sx + g_lod_step; if (bxe > g_fw) bxe = g_fw;
+            int bye = sy + g_lod_step; if (bye > g_fh) bye = g_fh;
+            for (int by = sy; by < bye; by++)
+                for (int bx = sx; bx < bxe; bx++) {
+                    unsigned char *pdst = FB(bx, by);
+                    pdst[0] = r; pdst[1] = g; pdst[2] = bl; pdst[3] = 255;
+                }
         }
     }
 
