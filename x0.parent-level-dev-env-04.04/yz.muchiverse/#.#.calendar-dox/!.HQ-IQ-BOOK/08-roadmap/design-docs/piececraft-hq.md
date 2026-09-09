@@ -1,5 +1,11 @@
 # Piececraft-HQ progress report (2026-08-30)
 
+**2026-09-08:** this file is the *board window* history (managed
+chrome, File/Desk). The **studio vision** (edit vs play, palettes drop,
+events, 2D/3D, next loops) is
+`PIECECRAFT-HQ-GAME-EDITOR-AND-PLAY.md`. Launch: HQ menu
+`piececraft-hq` or Toys → **Piececraft-HQ**.
+
 Consolidated status of the khtpm board-window work this session. See
 `PIECECRAFT-HQ-BOARD-KHTPM-CONVERSION-2026-08-30.md` and
 `CURSWORD-DESKTOP-3D-AND-PIECECRAFT-INSCENE-DESKS-DESIGN.md` for the

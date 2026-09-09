@@ -19,16 +19,18 @@
   submenu rows moved to `livedesk_taskbar.pdl` `<cell>_menu_N_label/_cmd`
   read at open time. player/ai/db converted; user/pals/toys/clock
   (directory-scanning) still hardcoded.
-- `design-docs/MY-PALETTES-TILED-OHR-TILE-EDITOR-DESIGN.md` — **2026-09-08
-  DESIGN ONLY**: Tiled + OHRRPGCE pickers, restore My Palettes library
-  (not Canvas-Craft), Tiled-like tile-editor. Local examples already on
-  disk (Sprout Lands, OHR 320×200 wiki sheets). Do not implement until
-  owner answers §7.
+- `design-docs/MY-PALETTES-TILED-OHR-TILE-EDITOR-DESIGN.md` — Tiled +
+  OHR pickers + import-only My Palettes + tile-editor v1 **landed
+  2026-09-08** (MVP). Design still the contract for TMX/TSX and saver.
+- `design-docs/PIECECRAFT-HQ-GAME-EDITOR-AND-PLAY.md` — **2026-09-08
+  studio vision**: piececraft-hq is where games get made (palettes drop
+  + events in edit, RM-like play, 2D/3D camera, next loops A–D).
 - `TILESETS-EVENTS-AND-GAME-CLONES.md` — **2026-09-08 find-it-later map**:
-  palettes categories (RMMV / Mineclonia / CDDA / emoji), outside-zip
-  asset PDLs, event-guide sheets, registry + `mr_world`, sample
-  piececraft maps, and how those attach to MC / CDDA / Civ / GTA /
-  RPG Maker clones. Start here before hunting tileset or event paths.
+  palettes categories (RMMV / Mineclonia / CDDA / emoji / tiled / ohr),
+  outside-zip asset PDLs, event-guide sheets, registry + `mr_world`,
+  sample piececraft maps, and how those attach to MC / CDDA / Civ /
+  GTA / RPG Maker clones. Start here before hunting tileset or event
+  paths.
 - `au-31/` — 2026-08-31's live in-progress work directory (`00-todo.md`
   real todo list, `01-manager-design.md`/`02-network-browser-...md`
   design docs). Moved verbatim from `1.^V-hq/au-31/`.

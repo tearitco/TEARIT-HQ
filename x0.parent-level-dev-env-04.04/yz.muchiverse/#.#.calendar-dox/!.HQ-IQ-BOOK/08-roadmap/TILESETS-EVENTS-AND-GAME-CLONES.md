@@ -5,6 +5,9 @@ outside-zip assets, event-command registry, per-tile event guides, and
 how those pieces attach to the clones we actually want (Minecraft /
 Mineclonia, CDDA, Civ, GTA-shaped, RPG Maker). Pointers, not dumps.
 
+**Studio / edit-vs-play vision** (piececraft-hq as the room you make
+games in): `design-docs/PIECECRAFT-HQ-GAME-EDITOR-AND-PLAY.md`.
+
 If a path moves, update the matching `*.pdl` under
 `#.#.calendar-dox/1.^V-hq/` first, then this file.
 
@@ -25,7 +28,7 @@ Launcher: `&.widgits/palettes/button-pal.sh <category> "$HOUSE"`
 | `emojis` | `palettes-emojis.xhtpm` | Unicode group | subgroup | fully-qualified glyphs (no skin-tone variants) | `button-pal.sh emojis "$HOUSE"` |
 | `elements` | `palettes-elements.xhtpm` | — | — | chemistry swatches | `button-pal.sh elements "$HOUSE"` |
 | `df` / `kenney` / `paint` / `generate` | stub | — | — | not built | stub window |
-| `tiled` / `ohrrpgce` / `my-palettes` / `tile-editor` | **not built** | see design | see design | — | `design-docs/MY-PALETTES-TILED-OHR-TILE-EDITOR-DESIGN.md` |
+| `tiled` / `ohrrpgce` / `my-palettes` / `tile-editor` | pickers + import-only library + tile-editor v1 | Tiled folders / OHR sheets / my-library | atlas cells | 16/20px thumbs | `button-pal.sh tiled\|ohrrpgce\|my-palettes\|tile-editor "$HOUSE"`; design `MY-PALETTES-TILED-OHR-TILE-EDITOR-DESIGN.md` |
 
 Chooser CSS families (same for rmmv / piececraft / cdda / emojis):
 `.pal-dir` / `.pal-tileset` / `.swatch`. Active files:
