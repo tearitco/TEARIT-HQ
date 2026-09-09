@@ -2002,12 +2002,19 @@ int main(void) {
              * cheap again, regardless of camera distance - see this
              * file's own header note + PITFALLS.txt pitfall 1. */
             int board_bbox_hit = 0;
+            double board_exit_t = 1e18;   /* ray's exit t from the board bbox - the DDA can stop here (A&W volume clamp) */
             {
                 double t; int face;
                 if (ray_aabb_hit_3d(ox, oy, oz, dirx, diry, dirz,
                                      0.0, (double)board_w, board_bbox_y0, board_bbox_y1, 0.0, (double)board_h,
                                      &t, &face)) {
                     board_bbox_hit = 1;
+                    /* exit t = nearest far-slab crossing (min over axes of max(t0,t1)). */
+                    double ex = 1e18;
+                    if (fabs(dirx) > 1e-12) { double a0=(0.0-ox)/dirx, a1=((double)board_w-ox)/dirx; double m=(a0>a1)?a0:a1; if (m<ex) ex=m; }
+                    if (fabs(diry) > 1e-12) { double a0=(board_bbox_y0-oy)/diry, a1=(board_bbox_y1-oy)/diry; double m=(a0>a1)?a0:a1; if (m<ex) ex=m; }
+                    if (fabs(dirz) > 1e-12) { double a0=(0.0-oz)/dirz, a1=((double)board_h-oz)/dirz; double m=(a0>a1)?a0:a1; if (m<ex) ex=m; }
+                    board_exit_t = ex;
                 }
             }
 
@@ -2089,16 +2096,18 @@ int main(void) {
                  * once the DDA's own next step distance exceeds it. */
                 double next_t = (t_max_x < t_max_z) ? t_max_x : t_max_z;
                 if (best_t < 1e17 && next_t > best_t) break;
+                /* A&W volume clamp: once the ray has crossed the board
+                 * bbox's far side, no remaining (col,row) cell can be a
+                 * real hit - stop. This is the EXIT t (always >= the
+                 * entry t), so a ray approaching from far outside the
+                 * board still traverses the whole interior first - it
+                 * does NOT have the "disappearing at distance" bug the
+                 * old margin-check had (that one broke on the ENTRY
+                 * side). Kills the ~90-step empty tail-walk that every
+                 * grazing/sky ray used to pay. */
+                if (next_t > board_exit_t) break;
                 if (t_max_x < t_max_z) { col += step_col; t_max_x += t_delta_x; }
                 else { row += step_row; t_max_z += t_delta_z; }
-                /* No bounds-check-triggered early break - see the real
-                 * root-cause writeup this file used to carry here
-                 * (&.widgits/board-viewer/PITFALLS.txt "raymarch
-                 * disappearing at distance"): a ray approaching the
-                 * board from far outside it is legitimately out of
-                 * bounds for its first several steps - max_steps alone
-                 * (distance-aware, set above) is what safely bounds
-                 * this loop, not a margin check. */
             }
             } /* end if (board_bbox_hit) */
 

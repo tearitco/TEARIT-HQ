@@ -13,11 +13,17 @@ cd "$SCRIPT_DIR"
 mkdir -p ops/+x
 
 CFLAGS="-Wall -Wextra -O2"
+# bv_render_3d is the one hot per-pixel raymarch loop (profiled 2026-09-09:
+# ~57% board DDA + ~40% foreground AABB tests, per-pixel, FP-heavy). It
+# gets -O3 + native arch so the compiler can vectorise the slab tests.
+# NOT -ffast-math: the loop uses 1e17/1e18 as finite "no hit" sentinels
+# and -ffinite-math-only reasoning around them is a footgun for ~10%.
+RAYFLAGS="-Wall -Wextra -O3 -march=native -funroll-loops"
 
 echo "--- Building board-viewer ops ---"
 gcc $CFLAGS -o "ops/+x/bv_compose_frame.+x" "ops/bv_compose_frame.c"
 gcc $CFLAGS -o "ops/+x/bv_menu_input.+x" "ops/bv_menu_input.c" -lm
-gcc $CFLAGS -fopenmp -o "ops/+x/bv_render_3d.+x" "ops/bv_render_3d.c" -lm
+gcc $RAYFLAGS -fopenmp -o "ops/+x/bv_render_3d.+x" "ops/bv_render_3d.c" -lm
 gcc $CFLAGS -o "ops/+x/bv_render_2d.+x" "ops/bv_render_2d.c" "ops/bv_cjk_glyph.c" $(pkg-config --cflags freetype2) $(pkg-config --libs freetype2)   # PCHQ-2D-TILE-VIEW.md - flat tile grid + ascii/CJK view for render_mode==0
 # TPMOS-diamond game loop (pchq-vs-tpmos.md P-5): pal/main_module.pal is
 # `loop: exec ./ops/+x/bv_dispatch ; sleep 16667`. bv_dispatch drains
