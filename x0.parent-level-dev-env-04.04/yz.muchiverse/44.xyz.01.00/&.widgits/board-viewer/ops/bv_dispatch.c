@@ -33,6 +33,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <signal.h>
 #include <time.h>
 
 #define MAX_LINE 512
@@ -269,9 +270,42 @@ int main(void) {
             FILE *lf = fopen(lod_path, "w");
             if (lf) { fprintf(lf, "%d\n", motion_frame ? 1 : 0); fclose(lf); }
 
-            pj(op_path, sizeof(op_path), "ops/+x/bv_render_3d.+x");
+            /* Path A v2 (BV-GPU-RENDER-DESIGN.md): if the resident GPU
+             * daemon is up, ask IT for the frame (append to
+             * .gpu_render_req) instead of exec'ing a fresh renderer -
+             * ~40ms vs ~230ms. .gpu_enabled is the flag bv_render_3d
+             * drops when arrow_config.txt use_gpu_render=1. If enabled
+             * but the daemon isn't running, spawn it detached and do a
+             * one-shot this frame. */
+            char gflag[PATH_BUF], gpid[PATH_BUF], greq[PATH_BUF];
+            pj(gflag, sizeof(gflag), "pieces/display/.gpu_enabled");
+            pj(gpid,  sizeof(gpid),  "pieces/display/.gpu_render.pid");
+            pj(greq,  sizeof(greq),  "pieces/display/.gpu_render_req");
+            int gpu_enabled = (file_size(gflag) >= 0);
+            int daemon_pid = 0;
+            { FILE *pf = fopen(gpid, "r"); if (pf) { if (fscanf(pf, "%d", &daemon_pid) != 1) daemon_pid = 0; fclose(pf); } }
+            int daemon_live = (daemon_pid > 0 && kill(daemon_pid, 0) == 0);
+
             long long r0 = mono_ms();
-            run_op(op_path, NULL);
+            if (gpu_enabled && daemon_live) {
+                FILE *rf = fopen(greq, "a");    /* one byte = "render a frame" */
+                if (rf) { fputc('x', rf); fclose(rf); }
+                /* daemon renders async + appends frame_changed itself;
+                 * the bv_compose_frame + marker below still fire so the
+                 * window repaints even if the daemon is a beat behind. */
+            } else {
+                if (gpu_enabled && !daemon_live) {
+                    pid_t dp = fork();
+                    if (dp == 0) {
+                        setsid();
+                        char *av[] = { (char *)"ops/+x/bv_render_3d.+x", (char *)"--daemon", NULL };
+                        execv(av[0], av);
+                        _exit(127);
+                    }
+                }
+                pj(op_path, sizeof(op_path), "ops/+x/bv_render_3d.+x");
+                run_op(op_path, NULL);
+            }
             long long r1 = mono_ms();
             FILE *tf = fopen(t_path, "w");
             if (tf) { fprintf(tf, "%lld\n", now_ms); fclose(tf); }

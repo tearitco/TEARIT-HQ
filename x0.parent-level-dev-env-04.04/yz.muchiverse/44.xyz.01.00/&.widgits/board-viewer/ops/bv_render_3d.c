@@ -41,6 +41,14 @@
 #include <math.h>
 #include <omp.h>
 
+#ifdef BV_HAVE_GPU
+#include "bv_gpu_raymarch.h"   /* Path A - GPU raymarch backend (BV-GPU-RENDER-DESIGN.md) */
+#include <signal.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <time.h>
+#endif
+
 #define MAX_LINE 512
 #define MAX_PATH 4096
 #define PATH_BUF (MAX_PATH + 256)
@@ -1467,7 +1475,11 @@ static void write_overlay_receipt(const char *path, int ov_w, int ov_h) {
     if (n > 0) write_file_atomic(path, buf, (size_t)n);
 }
 
-int main(void) {
+/* One 3D frame. Returns 0 = rendered (overlay written), 1 = hard
+ * error (alloc), 2 = nothing to do (2D mode / session not ready).
+ * bv_render_3d.+x runs this once; bv_render_3d.+x --daemon runs it in
+ * a loop with the GPU context kept resident (Path A v2). */
+static int render_one_frame(void) {
     resolve_root();
     load_house_root();
 
@@ -1499,7 +1511,7 @@ int main(void) {
     char focused_raw[PATH_BUF] = "", focused_project_root[PATH_BUF] = "";
     read_kv_str(state_path, "focused_project_root", focused_raw, sizeof(focused_raw));
     resolve_host_root(focused_raw, focused_project_root, sizeof(focused_project_root));
-    if (!focused_project_root[0]) return 0;
+    if (!focused_project_root[0]) { free(g_fbuf); g_fbuf = NULL; return 2; }
 
     /* REAL FIX 2026-08-04, direct user report ("still blank - map
      * screens are black"): this file's own render_mode default used to
@@ -1514,7 +1526,7 @@ int main(void) {
      * default here too, so both files agree without either one having
      * to write a real key to disk first. */
     int render_mode = read_kv_int(state_path, "render_mode", default_render_mode(focused_project_root));
-    if (!render_mode) return 0; /* fast no-op - 2D mode is chtpm_rgb_render's own job */
+    if (!render_mode) { free(g_fbuf); g_fbuf = NULL; return 2; } /* 2D mode is chtpm_rgb_render's job */
 
     /* Real unified voxel grid - see load_voxel_chunk()'s own header
      * comment for the full writeup. static: MAX_VOXEL_Z(64) *
@@ -1523,7 +1535,7 @@ int main(void) {
     static char board3d[MAX_VOXEL_Z][MAX_BOARD_DIM][MAX_BOARD_DIM];
     int board_w = 0, board_h = 0;
     int z_count = load_voxel_chunk(focused_project_root, board3d, &board_w, &board_h);
-    if (z_count == 0) return 0;
+    if (z_count == 0) { free(g_fbuf); g_fbuf = NULL; return 2; }
 
     /* Real empty-space-skipping precompute - see mc-speed-algos.md for
      * the full writeup (real perf fix, 2026-08-03, direct user report:
@@ -1691,6 +1703,16 @@ int main(void) {
     double tp_distance = read_kv_double(cam_cfg_path, "tp_distance", 3.0);
     double tp_height = read_kv_double(cam_cfg_path, "tp_height", 4.0);
     double tp_look_down_deg = read_kv_double(cam_cfg_path, "tp_look_down_deg", 20.0);
+    int use_gpu_render = read_kv_int(cam_cfg_path, "use_gpu_render", 0);
+    /* leave a flag bv_dispatch can cheaply stat, so it knows whether to
+     * route 3D frames to the resident GPU daemon (no config parsing in
+     * bv_dispatch). */
+    {
+        char gflag[PATH_BUF];
+        snprintf(gflag, sizeof(gflag), "%s/pieces/display/.gpu_enabled", project_root);
+        if (use_gpu_render) { FILE *gf = fopen(gflag, "w"); if (gf) fclose(gf); }
+        else remove(gflag);
+    }
     g_fov_deg = read_kv_double(cam_cfg_path, "fov_deg", 82.0);
     if (g_fov_deg < 40.0) g_fov_deg = 40.0;
     if (g_fov_deg > 120.0) g_fov_deg = 120.0;
@@ -1705,6 +1727,7 @@ int main(void) {
         snprintf(lodp, sizeof(lodp), "%s/pieces/display/.bv_render_lod", project_root);
         FILE *lf = host_fopen(lodp, "r");
         if (lf) { if (fscanf(lf, "%d", &moving) != 1) moving = 0; fclose(lf); }
+        g_lod_step = 1;   /* reset each frame (daemon mode reuses the global) */
         if (moving > 0) {
             int step = read_kv_int(cam_cfg_path, "motion_lod_step", 2);
             if (step < 1) step = 1;
@@ -1862,6 +1885,83 @@ int main(void) {
      * loop just above for the ONE real thread-safety hazard this
      * required fixing first (a shared mutable texture cache). See
      * mc-speed-algos.md for the full writeup. */
+    /* ---- Path A: GPU raymarch backend (BV-GPU-RENDER-DESIGN.md).
+     * arrow_config.txt use_gpu_render=1. On any GL/EGL failure the
+     * call returns non-zero and we fall through to the CPU loop
+     * below, so this is a pure opt-in accelerator - nothing regresses
+     * if the box has no working EGL. v1: terrain + flat-colour AABBs
+     * (no phymoji voxel detail, no shadow rays). ---- */
+    int gpu_done = 0;
+#ifdef BV_HAVE_GPU
+    if (use_gpu_render) {
+        static BvGpuScene sc;            /* static: ~7KB of box arrays */
+        static unsigned char gpu_grid[MAX_BOARD_DIM * MAX_BOARD_DIM * MAX_VOXEL_Z];
+        memset(&sc, 0, sizeof(sc));
+        sc.w = g_fw; sc.h = g_fh; sc.focal = (float)cam.focal;
+        sc.eye[0]=(float)cam.eye.x;   sc.eye[1]=(float)cam.eye.y;   sc.eye[2]=(float)cam.eye.z;
+        sc.fwd[0]=(float)cam.forward.x; sc.fwd[1]=(float)cam.forward.y; sc.fwd[2]=(float)cam.forward.z;
+        sc.right[0]=(float)cam.right.x; sc.right[1]=(float)cam.right.y; sc.right[2]=(float)cam.right.z;
+        sc.up[0]=(float)cam.up.x;     sc.up[1]=(float)cam.up.y;     sc.up[2]=(float)cam.up.z;
+        sc.board_w=board_w; sc.board_h=board_h; sc.z_count=z_count;
+        for (int lvl=0; lvl<z_count; lvl++)
+          for (int row=0; row<board_h; row++)
+            for (int col=0; col<board_w; col++)
+              gpu_grid[col + row*board_w + lvl*board_w*board_h] =
+                  (unsigned char)board3d[lvl][row][col];
+        sc.grid = gpu_grid;
+        /* legend: SOLID glyphs only (air -> not in the LUT -> no hit) */
+        sc.legend_n = 0;
+        for (int i=0; i<g_terrain_legend_count && sc.legend_n<BV_GPU_MAX_LEGEND; i++) {
+            if (voxel_is_air(g_terrain_legend[i].glyph)) continue;
+            sc.legend_glyph[sc.legend_n] = (unsigned char)g_terrain_legend[i].glyph;
+            sc.legend_rgb[sc.legend_n][0] = g_terrain_legend[i].r / 255.0f;
+            sc.legend_rgb[sc.legend_n][1] = g_terrain_legend[i].g / 255.0f;
+            sc.legend_rgb[sc.legend_n][2] = g_terrain_legend[i].b / 255.0f;
+            sc.legend_n++;
+        }
+        double ll = lighting_enabled ? game_light_level_sky : 1.0;
+        if (ll < 0.15) ll = 0.15;
+        sc.light_level = (float)ll;
+        { unsigned char *cp = FB(g_fw/2, g_fh/2);   /* clear_sky already ran */
+          sc.sky[0]=cp[0]/255.0f; sc.sky[1]=cp[1]/255.0f; sc.sky[2]=cp[2]/255.0f; }
+        /* boxes: xelector, sun, moon, entities, hero, world phymoji.
+         * world (X,Y,Z) = (grid_x, grid_z, grid_y) - see bv_render_3d
+         * CPU box tests. */
+        #define ADDBOX(x0,y0,z0,x1,y1,z1,cr,cg,cb,slit) do { \
+            if (sc.box_n < BV_GPU_MAX_BOX) { BvGpuBox *B=&sc.box[sc.box_n++]; \
+              B->min_x=(float)(x0); B->min_y=(float)(y0); B->min_z=(float)(z0); \
+              B->max_x=(float)(x1); B->max_y=(float)(y1); B->max_z=(float)(z1); \
+              B->r=(float)(cr)/255.0f; B->g=(float)(cg)/255.0f; B->b=(float)(cb)/255.0f; \
+              B->self_lit=(slit); } } while (0)
+        if (sun_body.present)
+            ADDBOX(sun_body.x-2.0, sun_body.y-2.0, sun_body.z-2.0,
+                   sun_body.x+2.0, sun_body.y+2.0, sun_body.z+2.0, 255,220,120, 1);
+        if (moon_body.present)
+            ADDBOX(moon_body.x-1.2, moon_body.y-1.2, moon_body.z-1.2,
+                   moon_body.x+1.2, moon_body.y+1.2, moon_body.z+1.2, 210,210,225, 1);
+        if (g_xelector_present && camera_mode != 1)
+            ADDBOX(g_xelector_x+0.15, g_xelector_z+0.15, g_xelector_y+0.15,
+                   g_xelector_x+0.85, g_xelector_z+0.85, g_xelector_y+0.85, 60,220,220, 0);
+        for (int i=0; i<g_entity_count; i++)
+            ADDBOX(g_entities[i].pos_x+0.25, 0.0, g_entities[i].pos_y+0.25,
+                   g_entities[i].pos_x+0.75, 1.0, g_entities[i].pos_y+0.75,
+                   g_entities[i].r, g_entities[i].g, g_entities[i].b, 0);
+        if (g_hero_present && camera_mode != 1)
+            ADDBOX(g_hero_x+0.2, g_hero_z+0.0, g_hero_y+0.2,
+                   g_hero_x+0.8, g_hero_z+0.9, g_hero_y+0.8, 200,90,60, 0);
+        for (int wi=0; wi<g_phymoji_world_entity_count; wi++) {
+            PhymojiWorldEntity *we = &g_phymoji_world_entities[wi];
+            double wsx=1.0, wsy=3.0, wsz=1.0; int cr=60,cg=140,cb=50;
+            if (strcmp(we->entity_id, "chicken")==0) { wsx=wsy=wsz=0.6; cr=cg=cb=210; }
+            ADDBOX(we->x+0.5-wsx/2.0, we->z+0.0, we->y+0.5-wsz/2.0,
+                   we->x+0.5+wsx/2.0, we->z+wsy, we->y+0.5+wsz/2.0, cr,cg,cb, 0);
+        }
+        #undef ADDBOX
+        if (bv_gpu_raymarch(&sc, g_fbuf) == 0) gpu_done = 1;
+        else fprintf(stderr, "bv_render_3d: GPU backend failed, using CPU\n");
+    }
+#endif
+    if (!gpu_done) {
     #pragma omp parallel for schedule(dynamic, 4)
     for (int sy = 0; sy < g_fh; sy += g_lod_step) {
         for (int sx = 0; sx < g_fw; sx += g_lod_step) {
@@ -2431,6 +2531,7 @@ int main(void) {
                 }
         }
     }
+    } /* end if (!gpu_done) - CPU raymarch loop */
 
     /* Writes ONLY the overlay file - never rgb_frame.raw itself (see
      * this file's own header comment + view-vs-muta.md). system/
@@ -2448,3 +2549,77 @@ int main(void) {
     free(g_fbuf); g_fbuf = NULL;
     return 0;
 }
+
+#ifdef BV_HAVE_GPU
+static volatile sig_atomic_t g_daemon_stop = 0;
+static void bv_daemon_on_term(int sig) { (void)sig; g_daemon_stop = 1; }
+
+static long long bv_file_size(const char *p) {
+    struct stat st;
+    return (stat(p, &st) == 0) ? (long long)st.st_size : -1;
+}
+
+/* Path A v2 - resident GPU renderer. EGL context + shader + textures
+ * are created once; each frame is a bv_state re-read + grid upload +
+ * draw + readback (~1-5ms). bv_dispatch bumps .gpu_render_req (append)
+ * to ask for a frame; we write .gpu_render_ack and append
+ * frame_changed when done. SIGTERM -> clean exit. */
+int main(int argc, char **argv) {
+    int daemon_mode = (argc >= 2 && strcmp(argv[1], "--daemon") == 0);
+    if (!daemon_mode) {
+        int rc = render_one_frame();
+        return rc == 1 ? 1 : 0;
+    }
+
+    signal(SIGTERM, bv_daemon_on_term);
+    signal(SIGINT,  bv_daemon_on_term);
+    signal(SIGHUP,  bv_daemon_on_term);
+    bv_gpu_set_persistent(1);
+
+    resolve_root();                       /* sets project_root */
+    char reqp[PATH_BUF], ackp[PATH_BUF], pidp[PATH_BUF], mkp[PATH_BUF];
+    snprintf(reqp, sizeof(reqp), "%s/pieces/display/.gpu_render_req", project_root);
+    snprintf(ackp, sizeof(ackp), "%s/pieces/display/.gpu_render_ack", project_root);
+    snprintf(pidp, sizeof(pidp), "%s/pieces/display/.gpu_render.pid", project_root);
+    snprintf(mkp,  sizeof(mkp),  "%s/pieces/display/frame_changed.txt", project_root);
+
+    { FILE *pf = fopen(pidp, "w"); if (pf) { fprintf(pf, "%d\n", (int)getpid()); fclose(pf); } }
+    fprintf(stderr, "bv_render_3d --daemon: pid %d, req=%s\n", (int)getpid(), reqp);
+
+    long long last_req = bv_file_size(reqp);
+    long long served = 0;
+    /* one render at start so the overlay exists before the first request */
+    render_one_frame();
+
+    int idle_ticks = 0;                 /* 3ms each; ~90000 = 270s with no request -> exit (orphan cleanup) */
+    while (!g_daemon_stop) {
+        long long now = bv_file_size(reqp);
+        if (now != last_req) {
+            idle_ticks = 0;
+            last_req = now;
+            struct timespec ta, tb;
+            clock_gettime(CLOCK_MONOTONIC, &ta);
+            int rc = render_one_frame();
+            clock_gettime(CLOCK_MONOTONIC, &tb);
+            if (getenv("BV_GPU_DEBUG"))
+                fprintf(stderr, "bv_gpu daemon frame %lld: %.1f ms (rc=%d)\n", served + 1,
+                        (tb.tv_sec - ta.tv_sec) * 1e3 + (tb.tv_nsec - ta.tv_nsec) / 1e6, rc);
+            served++;
+            { FILE *af = fopen(ackp, "w"); if (af) { fprintf(af, "%lld\n", served); fclose(af); } }
+            if (rc == 0) { FILE *mf = fopen(mkp, "a"); if (mf) { fputc('F', mf); fputc('\n', mf); fclose(mf); } }
+        } else {
+            usleep(3000);
+            if (++idle_ticks > 90000) { fprintf(stderr, "bv_gpu daemon: idle timeout, exiting\n"); break; }
+        }
+    }
+
+    remove(pidp);
+    bv_gpu_shutdown();
+    return 0;
+}
+#else
+int main(void) {
+    int rc = render_one_frame();
+    return rc == 1 ? 1 : 0;
+}
+#endif

@@ -1,0 +1,426 @@
+/* bv_gpu_raymarch.c - see bv_gpu_raymarch.h + BV-GPU-RENDER-DESIGN.md.
+ *
+ * Headless EGL (surfaceless) + GLES 3.0. A fullscreen triangle runs a
+ * fragment-shader Amanatides-Woo DDA over a GL_R8UI 3D texture of the
+ * voxel grid, plus flat-colour AABB slab tests for entities/sky
+ * bodies. Renders to an RGBA8 FBO; glReadPixels -> the caller's
+ * buffer (rows flipped to top-left origin).
+ *
+ * One-shot mode (default): build + tear down per call. Persistent mode
+ * (bv_gpu_set_persistent(1), used by bv_render_3d --daemon): context,
+ * program and textures stay resident; each call is uniform updates +
+ * a grid re-upload + draw + readback. */
+
+#define _GNU_SOURCE
+#include "bv_gpu_raymarch.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+#include <GLES3/gl3.h>
+
+static int g_dbg = 0;
+#define DBG(...) do { if (g_dbg) fprintf(stderr, "bv_gpu: " __VA_ARGS__); } while (0)
+
+/* ---- shaders ---- */
+static const char *VS_SRC =
+"#version 300 es\n"
+"void main() {\n"
+"  vec2 p = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));\n"
+"  gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);\n"
+"}\n";
+
+static const char *FS_SRC =
+"#version 300 es\n"
+"precision highp float;\n"
+"precision highp int;\n"
+"precision highp usampler3D;\n"
+"out vec4 o_col;\n"
+"uniform vec3  u_eye, u_fwd, u_right, u_up;\n"
+"uniform float u_focal;\n"
+"uniform vec2  u_res;\n"
+"uniform vec3  u_wext;\n"          /* world extents: (board_w, z_count, board_h) */
+"uniform highp usampler3D u_grid;\n"
+"uniform sampler2D u_leg;\n"       /* 256x1 RGBA8: .rgb colour, .a>0.5 = solid */
+"uniform float u_light;\n"
+"uniform vec3  u_sky;\n"
+"uniform int   u_nbox;\n"
+"uniform vec3  u_bmin[128];\n"
+"uniform vec3  u_bmax[128];\n"
+"uniform vec4  u_bcol[128];\n"     /* .rgb colour, .a: 1 = apply light, 0 = self-lit */
+"\n"
+"bool slab(vec3 ro, vec3 rd, vec3 bn, vec3 bx, out float t, out int face) {\n"
+"  float tmin = -1e30, tmax = 1e30; face = -1;\n"
+"  for (int i = 0; i < 3; i++) {\n"
+"    float o = ro[i], d = rd[i];\n"
+"    if (abs(d) < 1e-9) { if (o < bn[i] || o > bx[i]) return false; }\n"
+"    else {\n"
+"      float t0 = (bn[i]-o)/d, t1 = (bx[i]-o)/d; int f0 = i*2;\n"
+"      if (t0 > t1) { float tt=t0; t0=t1; t1=tt; f0 = i*2+1; }\n"
+"      if (t0 > tmin) { tmin = t0; face = f0; }\n"
+"      if (t1 < tmax) tmax = t1;\n"
+"      if (tmin > tmax) return false;\n"
+"    }\n"
+"  }\n"
+"  if (tmax < 0.0) return false;\n"
+"  t = tmin < 0.0 ? 0.0 : tmin;\n"
+"  return true;\n"
+"}\n"
+"\n"
+"void main() {\n"
+"  float a = (gl_FragCoord.x - u_res.x * 0.5) / u_focal;\n"
+"  float b = (gl_FragCoord.y - u_res.y * 0.5) / u_focal;\n"
+"  vec3 rd = normalize(u_fwd + a * u_right + b * u_up);\n"
+"  vec3 ro = u_eye;\n"
+"\n"
+"  float bestT = 1e30;\n"
+"  vec3  col   = u_sky;\n"
+"  bool  hit = false, self_lit = false;\n"
+"  int   face = -1;\n"
+"\n"
+"  for (int i = 0; i < u_nbox; i++) {\n"
+"    float t; int f;\n"
+"    if (slab(ro, rd, u_bmin[i], u_bmax[i], t, f) && t < bestT) {\n"
+"      bestT = t; col = u_bcol[i].rgb; hit = true;\n"
+"      self_lit = (u_bcol[i].a < 0.5); face = f;\n"
+"    }\n"
+"  }\n"
+"\n"
+"  float bt; int bf;\n"
+"  if (slab(ro, rd, vec3(-1e-3), u_wext + vec3(1e-3), bt, bf)) {\n"
+"    float tcur = max(bt, 0.0);\n"
+"    vec3  p = ro + rd * (tcur + 1e-4);\n"
+"    ivec3 c = clamp(ivec3(floor(p)), ivec3(0), ivec3(u_wext) - 1);\n"
+"    ivec3 st = ivec3(sign(rd));\n"
+"    vec3  tdelta = abs(1.0 / rd);\n"
+"    vec3  tmax;\n"
+"    for (int i = 0; i < 3; i++) {\n"
+"      float nb = (st[i] > 0) ? float(c[i] + 1) : float(c[i]);\n"
+"      tmax[i] = (abs(rd[i]) < 1e-9) ? 1e30 : (nb - ro[i]) / rd[i];\n"
+"    }\n"
+"    int ax = bf / 2;\n"
+"    for (int it = 0; it < 320; it++) {\n"
+"      if (c.x < 0 || c.y < 0 || c.z < 0 ||\n"
+"          c.x >= int(u_wext.x) || c.y >= int(u_wext.y) || c.z >= int(u_wext.z)) break;\n"
+"      uint g = texelFetch(u_grid, ivec3(c.x, c.z, c.y), 0).r;\n"   /* (col,row,lvl) */
+"      vec4 L = texelFetch(u_leg, ivec2(int(g), 0), 0);\n"
+"      if (L.a > 0.5) {\n"
+"        if (tcur < bestT) {\n"
+"          bestT = tcur; col = L.rgb; hit = true; self_lit = false;\n"
+"          face = ax * 2 + ((st[ax] > 0) ? 0 : 1);\n"
+"        }\n"
+"        break;\n"
+"      }\n"
+"      if (tmax.x < tmax.y) { if (tmax.x < tmax.z) ax = 0; else ax = 2; }\n"
+"      else               { if (tmax.y < tmax.z) ax = 1; else ax = 2; }\n"
+"      tcur = tmax[ax];\n"
+"      c[ax]   += st[ax];\n"
+"      tmax[ax] += tdelta[ax];\n"
+"    }\n"
+"  }\n"
+"\n"
+"  if (hit && !self_lit) {\n"
+"    if (face != 2) col *= 0.75;\n"   /* +Y (top) = axis 1, positive = face 2 */
+"    col *= u_light;\n"
+"  }\n"
+"  o_col = vec4(clamp(col, 0.0, 1.0), 1.0);\n"
+"}\n";
+
+/* ---- resident state (persistent mode) ---- */
+static int        s_persist = 0;
+static EGLDisplay s_dpy = EGL_NO_DISPLAY;
+static EGLContext s_ctx = EGL_NO_CONTEXT;
+static GLuint     s_prog = 0, s_vao = 0, s_fbo = 0, s_rbo = 0, s_tex_grid = 0, s_tex_leg = 0;
+static int        s_fw = 0, s_fh = 0;          /* current FBO size */
+static int        s_gw = 0, s_gh = 0, s_gd = 0; /* current grid-tex dims */
+
+static GLuint compile(GLenum type, const char *src) {
+    GLuint sh = glCreateShader(type);
+    glShaderSource(sh, 1, &src, NULL);
+    glCompileShader(sh);
+    GLint ok = 0;
+    glGetShaderiv(sh, GL_COMPILE_STATUS, &ok);
+    if (!ok) {
+        char log[2048]; GLsizei n = 0;
+        glGetShaderInfoLog(sh, sizeof(log), &n, log);
+        fprintf(stderr, "bv_gpu: %s shader compile failed:\n%.*s\n",
+                type == GL_VERTEX_SHADER ? "vertex" : "fragment", (int)n, log);
+        glDeleteShader(sh);
+        return 0;
+    }
+    return sh;
+}
+
+/* create EGL display+context+program+VAO if not already present */
+static int gl_ensure_context(void) {
+    if (s_ctx != EGL_NO_CONTEXT) return 0;
+    if (getenv("BV_GPU_DEBUG")) g_dbg = 1;
+
+    EGLDisplay dpy = EGL_NO_DISPLAY;
+    PFNEGLGETPLATFORMDISPLAYEXTPROC getPlatformDisplay =
+        (PFNEGLGETPLATFORMDISPLAYEXTPROC)eglGetProcAddress("eglGetPlatformDisplayEXT");
+    if (getPlatformDisplay)
+        dpy = getPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA, EGL_DEFAULT_DISPLAY, NULL);
+    if (dpy == EGL_NO_DISPLAY) dpy = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    if (dpy == EGL_NO_DISPLAY) { DBG("no EGL display\n"); return 1; }
+
+    EGLint emaj = 0, emin = 0;
+    if (!eglInitialize(dpy, &emaj, &emin)) { DBG("eglInitialize 0x%x\n", eglGetError()); return 1; }
+    DBG("EGL %d.%d %s\n", emaj, emin, eglQueryString(dpy, EGL_VENDOR));
+    if (!eglBindAPI(EGL_OPENGL_ES_API)) { DBG("bindAPI failed\n"); eglTerminate(dpy); return 1; }
+
+    EGLint cfg_attr[] = {
+        EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+        EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8, EGL_ALPHA_SIZE, 8,
+        EGL_NONE
+    };
+    EGLConfig cfg; EGLint ncfg = 0;
+    if (!eglChooseConfig(dpy, cfg_attr, &cfg, 1, &ncfg) || ncfg < 1) {
+        DBG("chooseConfig failed\n"); eglTerminate(dpy); return 1;
+    }
+    EGLint ctx_attr[] = { EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE };
+    EGLContext ctx = eglCreateContext(dpy, cfg, EGL_NO_CONTEXT, ctx_attr);
+    if (ctx == EGL_NO_CONTEXT) { DBG("createContext 0x%x\n", eglGetError()); eglTerminate(dpy); return 1; }
+    if (!eglMakeCurrent(dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, ctx)) {
+        DBG("makeCurrent 0x%x\n", eglGetError());
+        eglDestroyContext(dpy, ctx); eglTerminate(dpy); return 1;
+    }
+
+    GLuint vs = compile(GL_VERTEX_SHADER, VS_SRC);
+    GLuint fs = compile(GL_FRAGMENT_SHADER, FS_SRC);
+    if (!vs || !fs) { eglMakeCurrent(dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+                      eglDestroyContext(dpy, ctx); eglTerminate(dpy); return 1; }
+    GLuint prog = glCreateProgram();
+    glAttachShader(prog, vs); glAttachShader(prog, fs);
+    glLinkProgram(prog);
+    glDeleteShader(vs); glDeleteShader(fs);
+    GLint ok = 0; glGetProgramiv(prog, GL_LINK_STATUS, &ok);
+    if (!ok) { char log[2048]; GLsizei n=0; glGetProgramInfoLog(prog, sizeof(log), &n, log);
+               fprintf(stderr, "bv_gpu: link failed:\n%.*s\n", (int)n, log);
+               glDeleteProgram(prog);
+               eglMakeCurrent(dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+               eglDestroyContext(dpy, ctx); eglTerminate(dpy); return 1; }
+
+    GLuint vao = 0;
+    glGenVertexArrays(1, &vao);
+
+    /* legend texture (contents re-uploaded per frame) */
+    GLuint leg = 0;
+    glGenTextures(1, &leg);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, leg);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    s_dpy = dpy; s_ctx = ctx; s_prog = prog; s_vao = vao; s_tex_leg = leg;
+    return 0;
+}
+
+static int gl_ensure_targets(int w, int h) {
+    if (s_fbo && s_fw == w && s_fh == h) return 0;
+    if (s_rbo) { glDeleteRenderbuffers(1, &s_rbo); s_rbo = 0; }
+    if (s_fbo) { glDeleteFramebuffers(1, &s_fbo); s_fbo = 0; }
+    glGenFramebuffers(1, &s_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, s_fbo);
+    glGenRenderbuffers(1, &s_rbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, s_rbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, w, h);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, s_rbo);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        fprintf(stderr, "bv_gpu: FBO incomplete %dx%d\n", w, h);
+        return 1;
+    }
+    s_fw = w; s_fh = h;
+    return 0;
+}
+
+static void gl_ensure_grid_tex(int gw, int gh, int gd) {
+    glActiveTexture(GL_TEXTURE0);
+    if (!s_tex_grid) {
+        glGenTextures(1, &s_tex_grid);
+        glBindTexture(GL_TEXTURE_3D, s_tex_grid);
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        s_gw = s_gh = s_gd = 0;
+    } else {
+        glBindTexture(GL_TEXTURE_3D, s_tex_grid);
+    }
+    if (s_gw != gw || s_gh != gh || s_gd != gd) {
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glTexImage3D(GL_TEXTURE_3D, 0, GL_R8UI, gw, gh, gd, 0,
+                     GL_RED_INTEGER, GL_UNSIGNED_BYTE, NULL);
+        s_gw = gw; s_gh = gh; s_gd = gd;
+    }
+}
+
+void bv_gpu_shutdown(void) {
+    if (s_dpy == EGL_NO_DISPLAY) { s_persist = 0; return; }
+    eglMakeCurrent(s_dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, s_ctx);
+    if (s_vao) glDeleteVertexArrays(1, &s_vao);
+    if (s_prog) glDeleteProgram(s_prog);
+    if (s_tex_grid) glDeleteTextures(1, &s_tex_grid);
+    if (s_tex_leg) glDeleteTextures(1, &s_tex_leg);
+    if (s_rbo) glDeleteRenderbuffers(1, &s_rbo);
+    if (s_fbo) glDeleteFramebuffers(1, &s_fbo);
+    eglMakeCurrent(s_dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    if (s_ctx != EGL_NO_CONTEXT) eglDestroyContext(s_dpy, s_ctx);
+    eglTerminate(s_dpy);
+    s_dpy = EGL_NO_DISPLAY; s_ctx = EGL_NO_CONTEXT;
+    s_prog = s_vao = s_fbo = s_rbo = s_tex_grid = s_tex_leg = 0;
+    s_fw = s_fh = s_gw = s_gh = s_gd = 0;
+    s_persist = 0;
+}
+
+void bv_gpu_set_persistent(int on) {
+    if (on) { s_persist = 1; return; }
+    bv_gpu_shutdown();   /* clears s_persist */
+}
+
+int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
+    if (getenv("BV_GPU_DEBUG")) g_dbg = 1;
+    if (!s || !out || s->w <= 0 || s->h <= 0) return 1;
+    if (s->board_w <= 0 || s->board_h <= 0 || s->z_count <= 0 || !s->grid) return 1;
+
+    if (gl_ensure_context() != 0) { if (!s_persist) bv_gpu_shutdown(); return 1; }
+    if (gl_ensure_targets(s->w, s->h) != 0) { if (!s_persist) bv_gpu_shutdown(); return 1; }
+    gl_ensure_grid_tex(s->board_w, s->board_h, s->z_count);
+
+    int rc = 1;
+    unsigned char *flip = NULL;
+
+    glBindFramebuffer(GL_FRAMEBUFFER, s_fbo);
+    glBindVertexArray(s_vao);
+    glUseProgram(s_prog);
+
+    /* grid upload */
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_3D, s_tex_grid);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, s->board_w, s->board_h, s->z_count,
+                    GL_RED_INTEGER, GL_UNSIGNED_BYTE, s->grid);
+
+    /* legend LUT */
+    {
+        unsigned char lut[256 * 4];
+        memset(lut, 0, sizeof(lut));
+        for (int i = 0; i < s->legend_n && i < BV_GPU_MAX_LEGEND; i++) {
+            unsigned bb = s->legend_glyph[i];
+            lut[bb*4+0] = (unsigned char)(s->legend_rgb[i][0] * 255.0f + 0.5f);
+            lut[bb*4+1] = (unsigned char)(s->legend_rgb[i][1] * 255.0f + 0.5f);
+            lut[bb*4+2] = (unsigned char)(s->legend_rgb[i][2] * 255.0f + 0.5f);
+            lut[bb*4+3] = 255;
+        }
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, s_tex_leg);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, lut);
+    }
+
+    #define U(n) glGetUniformLocation(s_prog, n)
+    glUniform3fv(U("u_eye"),   1, s->eye);
+    glUniform3fv(U("u_fwd"),   1, s->fwd);
+    glUniform3fv(U("u_right"), 1, s->right);
+    glUniform3fv(U("u_up"),    1, s->up);
+    glUniform1f (U("u_focal"), s->focal);
+    glUniform2f (U("u_res"),   (float)s->w, (float)s->h);
+    glUniform3f (U("u_wext"),  (float)s->board_w, (float)s->z_count, (float)s->board_h);
+    glUniform1i (U("u_grid"),  0);
+    glUniform1i (U("u_leg"),   1);
+    glUniform1f (U("u_light"), s->light_level);
+    glUniform3fv(U("u_sky"),   1, s->sky);
+    {
+        int nb = s->box_n; if (nb > BV_GPU_MAX_BOX) nb = BV_GPU_MAX_BOX; if (nb > 128) nb = 128;
+        glUniform1i(U("u_nbox"), nb);
+        if (nb > 0) {
+            float bmin[128*3], bmax[128*3], bcol[128*4];
+            for (int i = 0; i < nb; i++) {
+                bmin[i*3+0]=s->box[i].min_x; bmin[i*3+1]=s->box[i].min_y; bmin[i*3+2]=s->box[i].min_z;
+                bmax[i*3+0]=s->box[i].max_x; bmax[i*3+1]=s->box[i].max_y; bmax[i*3+2]=s->box[i].max_z;
+                bcol[i*4+0]=s->box[i].r; bcol[i*4+1]=s->box[i].g; bcol[i*4+2]=s->box[i].b;
+                bcol[i*4+3]=s->box[i].self_lit ? 0.0f : 1.0f;
+            }
+            glUniform3fv(U("u_bmin"), nb, bmin);
+            glUniform3fv(U("u_bmax"), nb, bmax);
+            glUniform4fv(U("u_bcol"), nb, bcol);
+        }
+    }
+    #undef U
+
+    glViewport(0, 0, s->w, s->h);
+    glDisable(GL_DEPTH_TEST);
+    glClearColor(s->sky[0], s->sky[1], s->sky[2], 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    {
+        GLenum e = glGetError();
+        if (e != GL_NO_ERROR) { fprintf(stderr, "bv_gpu: GL error 0x%x after draw\n", e); goto done; }
+    }
+
+    flip = (unsigned char *)malloc((size_t)s->w * s->h * 4);
+    if (!flip) goto done;
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(0, 0, s->w, s->h, GL_RGBA, GL_UNSIGNED_BYTE, flip);
+    for (int y = 0; y < s->h; y++)
+        memcpy(out + (size_t)y * s->w * 4,
+               flip + (size_t)(s->h - 1 - y) * s->w * 4,
+               (size_t)s->w * 4);
+    rc = 0;
+
+done:
+    free(flip);
+    if (!s_persist) bv_gpu_shutdown();
+    return rc;
+}
+
+#ifdef BV_GPU_STANDALONE_TEST
+int main(void) {
+    g_dbg = 1;
+    int W = 400, H = 300;
+    BvGpuScene s; memset(&s, 0, sizeof(s));
+    s.w = W; s.h = H;
+    s.focal = (H / 2.0f) / 0.8391f;
+    s.board_w = 8; s.board_h = 8; s.z_count = 4;
+    static unsigned char grid[8*8*4];
+    for (int lvl = 0; lvl < 2; lvl++)
+      for (int row = 0; row < 8; row++)
+        for (int col = 0; col < 8; col++)
+          grid[col + row*8 + lvl*64] = 's';
+    s.grid = grid;
+    s.legend_n = 1; s.legend_glyph[0] = 's';
+    s.legend_rgb[0][0]=0.47f; s.legend_rgb[0][1]=0.47f; s.legend_rgb[0][2]=0.47f;
+    s.light_level = 1.0f;
+    s.sky[0]=0.53f; s.sky[1]=0.81f; s.sky[2]=0.92f;
+    s.eye[0]=4; s.eye[1]=8; s.eye[2]=-6;
+    float fl = 1.0f/1.118f;
+    s.fwd[0]=0; s.fwd[1]=-0.5f*fl; s.fwd[2]=1.0f*fl;
+    s.right[0]=1; s.right[1]=0; s.right[2]=0;
+    s.up[0]=s.right[1]*s.fwd[2]-s.right[2]*s.fwd[1];
+    s.up[1]=s.right[2]*s.fwd[0]-s.right[0]*s.fwd[2];
+    s.up[2]=s.right[0]*s.fwd[1]-s.right[1]*s.fwd[0];
+    unsigned char *out = malloc((size_t)W*H*4);
+    /* exercise persistent mode: two renders, one context */
+    bv_gpu_set_persistent(1);
+    int rc = bv_gpu_raymarch(&s, out);
+    rc |= bv_gpu_raymarch(&s, out);
+    bv_gpu_shutdown();
+    fprintf(stderr, "rc=%d\n", rc);
+    if (rc == 0) {
+        FILE *f = fopen("/tmp/bv_gpu_test.ppm", "wb");
+        fprintf(f, "P6\n%d %d\n255\n", W, H);
+        for (int i = 0; i < W*H; i++) fwrite(out + i*4, 1, 3, f);
+        fclose(f);
+        fprintf(stderr, "wrote /tmp/bv_gpu_test.ppm\n");
+    }
+    free(out);
+    return rc;
+}
+#endif

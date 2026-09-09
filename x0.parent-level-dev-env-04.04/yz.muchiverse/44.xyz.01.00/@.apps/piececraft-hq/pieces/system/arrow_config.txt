@@ -104,3 +104,4 @@ key_cam_up=118              # 'v' - free camera height up (modes 3/4)
 # keybinds.txt, then the built-in char default. Edit keybinds.pdl for
 # pov_mode_1..4 / render_mode_toggle / possess / possess_commit /
 # file_menu / desk_menu and the JUMP/MINE/BUILD/END_TURN verbs.
+use_gpu_render=1

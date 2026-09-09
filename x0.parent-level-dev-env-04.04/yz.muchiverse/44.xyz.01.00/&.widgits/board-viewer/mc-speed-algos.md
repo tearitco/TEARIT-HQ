@@ -287,3 +287,12 @@ stack is present and unused. Full analysis, the four paths (GPU
 raymarch / CPU mesh+raster / persistent CPU / make-2D-default), and the
 recommendation are in
 `#.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/design-docs/BOARD-VIEWER-3D-PERF-CEILING.md`.
+
+**2026-09-09: Path A v1+v2 landed.** `bv_render_3d --daemon` is a
+resident EGL/GLES3 process that raymarches the voxel grid in a
+fragment shader (`ops/bv_gpu_raymarch.c`, GLSL DDA ported from this
+file). arrow_config.txt `use_gpu_render=1`; `bv_dispatch` bumps
+`.gpu_render_req` instead of exec'ing a renderer. ~40 ms/frame
+internal (~17 fps live during a held arrow, vs ~4 fps CPU),
+CPU-fallback on any GL failure. v3 = cache the per-frame chunk parse +
+PBO readback -> 100+ fps. See `BV-GPU-RENDER-DESIGN.md`.

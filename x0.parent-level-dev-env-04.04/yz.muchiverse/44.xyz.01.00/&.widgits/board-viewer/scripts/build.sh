@@ -20,10 +20,27 @@ CFLAGS="-Wall -Wextra -O2"
 # and -ffinite-math-only reasoning around them is a footgun for ~10%.
 RAYFLAGS="-Wall -Wextra -O3 -march=native -funroll-loops"
 
+# Path A - GPU raymarch backend (BV-GPU-RENDER-DESIGN.md). Compiled in
+# only when EGL + GLES3 dev libs are present; otherwise bv_render_3d is
+# CPU-only exactly as before (the runtime is also gated on
+# arrow_config.txt use_gpu_render=1, default 0).
+GPU_SRC=""; GPU_DEF=""; GPU_LIB=""
+if gcc -x c -c -o /dev/null - <<'PROBE' 2>/dev/null
+#include <EGL/egl.h>
+#include <GLES3/gl3.h>
+int main(void){return 0;}
+PROBE
+then
+    GPU_SRC="ops/bv_gpu_raymarch.c"; GPU_DEF="-DBV_HAVE_GPU"; GPU_LIB="-lEGL -lGLESv2"
+    echo "-- GPU backend: EGL/GLES3 found, bv_render_3d gets the GPU raymarch"
+else
+    echo "-- GPU backend: no EGL/GLES3 headers, bv_render_3d stays CPU-only"
+fi
+
 echo "--- Building board-viewer ops ---"
 gcc $CFLAGS -o "ops/+x/bv_compose_frame.+x" "ops/bv_compose_frame.c"
 gcc $CFLAGS -o "ops/+x/bv_menu_input.+x" "ops/bv_menu_input.c" -lm
-gcc $RAYFLAGS -fopenmp -o "ops/+x/bv_render_3d.+x" "ops/bv_render_3d.c" -lm
+gcc $RAYFLAGS $GPU_DEF -fopenmp -o "ops/+x/bv_render_3d.+x" "ops/bv_render_3d.c" $GPU_SRC -lm $GPU_LIB
 gcc $CFLAGS -o "ops/+x/bv_render_2d.+x" "ops/bv_render_2d.c" "ops/bv_cjk_glyph.c" $(pkg-config --cflags freetype2) $(pkg-config --libs freetype2)   # PCHQ-2D-TILE-VIEW.md - flat tile grid + ascii/CJK view for render_mode==0
 # TPMOS-diamond game loop (pchq-vs-tpmos.md P-5): pal/main_module.pal is
 # `loop: exec ./ops/+x/bv_dispatch ; sleep 16667`. bv_dispatch drains
