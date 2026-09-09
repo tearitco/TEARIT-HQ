@@ -264,13 +264,12 @@ static void send_action_to_host(const char *focused_project_root, const char *ac
     if (ibf) { fprintf(ibf, "%s\n", action); fclose(ibf); }
 }
 
-int main(int argc, char **argv) {
-    if (argc < 2) return 1;
-    resolve_root();
-
-    int key = atoi(argv[1]);
-    if (key == 0) return 0;
-
+/* P-6 (pchq-vs-tpmos.md): apply ONE key. Was the body of main(); split
+ * out so bv_dispatch can pass a whole frame's worth of drained keys in
+ * ONE process (bv_menu_input.+x <k1> <k2> ...) instead of fork+exec+wait
+ * per key. Each key is applied in sequence exactly as before - state is
+ * re-read/re-written per key, same as when this ran once per process. */
+static int handle_one_key(int key) {
     char state_path[PATH_BUF];
     snprintf(state_path, sizeof(state_path), "%s/pieces/system/bv_state.txt", project_root);
 
@@ -943,5 +942,16 @@ int main(int argc, char **argv) {
     }
 
     bump_screen_changed(project_root);
+    return 0;
+}
+
+int main(int argc, char **argv) {
+    if (argc < 2) return 1;
+    resolve_root();
+    /* One process, N keys (P-6). key==0 = no-op tick, skip. */
+    for (int ai = 1; ai < argc; ai++) {
+        int key = atoi(argv[ai]);
+        if (key != 0) handle_one_key(key);
+    }
     return 0;
 }

@@ -8625,7 +8625,31 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
          * grabbing process. No-op (returns immediately) whenever not
          * armed, so this costs nothing on every other tick of every
          * other window's own event loop. */
-        if (g_has_canvas && !g_quit) g_frame_dirty = 1;  /* live framebuffer: repaint every tick */
+        /* P-7 (pchq-vs-tpmos.md): a <canvas> window used to force
+         * g_frame_dirty=1 EVERY tick -> ~33 redraw()s/s (re-read the
+         * .raw + XPutImage) whether or not the framebuffer changed.
+         * TPMOS's renderer.c only repaints on its pulse marker growing.
+         * Marker-drive it: stat the live canvas_raw file and only repaint
+         * when its size/mtime moved, plus a slow ~2Hz safety repaint
+         * (late-appearing var, window resize, receipt swap). */
+        if (g_has_canvas && !g_quit) {
+            static off_t  s_last_sz = -1;
+            static time_t s_last_mt = 0;
+            static time_t s_last_force = 0;
+            const char *cr = kh_get_var("canvas_raw");
+            struct stat cst;
+            if (cr && cr[0] && stat(cr, &cst) == 0) {
+                if (cst.st_size != s_last_sz || cst.st_mtime != s_last_mt) {
+                    s_last_sz = cst.st_size;
+                    s_last_mt = cst.st_mtime;
+                    g_frame_dirty = 1;
+                }
+            } else {
+                g_frame_dirty = 1;  /* no file/var yet: keep painting the dark bootstrap */
+            }
+            time_t nowt = time(NULL);
+            if (nowt - s_last_force >= 1) { s_last_force = nowt; g_frame_dirty = 1; }
+        }
         if (g_frame_dirty && !g_quit) { g_frame_dirty = 0; redraw(); }
     }
 }

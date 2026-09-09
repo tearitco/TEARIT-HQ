@@ -431,3 +431,30 @@ End-to-end held-key xelector A/B in the live pc-hq window is pending the
 — the current `button.sh run` chain is too flaky under the detached
 taskbar launch to bring the full game+board stack up reliably for a
 clean measurement.
+
+### P-6 + P-7 landed (2026-09-09)
+
+- **P-6** — `bv_menu_input.c` main body extracted to `handle_one_key(int)`;
+  new `main()` loops `argv`. `bv_dispatch` now calls
+  `bv_menu_input.+x <k1> <k2> ...` **once per tick** (one process for a
+  whole frame's keys, was fork+exec+wait per key).
+- **P-6b/P-7 in `bv_dispatch`** — `bv_render_3d.+x` measured at **~0.29 s**
+  (640×480 DDA raymarch) — the real remaining cost. Now COALESCED:
+  `bv_compose_frame` (cheap 2D/state + marker) runs on every change tick
+  so xelector position stays live and immediate; `bv_render_3d` runs only
+  when the input burst has settled (relay empty after the drain) OR at
+  most once per 150 ms (`.bv_dispatch_3d_ms` sidecar). Holding an arrow:
+  smooth 2D + a 3D refresh ~7 fps + one crisp final frame on release,
+  instead of ~3 fps with the whole loop blocked 0.29 s at a time.
+- **P-7 in `khtpm_core_render.c`** — the `<canvas>` window forced
+  `g_frame_dirty=1` every 33 ms tick (~33 redraw()s/s regardless of
+  change). Now marker-driven: stat the live `canvas_raw` .raw and repaint
+  only on size/mtime change, + a 1 Hz safety repaint. Idle canvas window
+  redraw()s ≈ 1/s (was ~33/s).
+
+Measured (held-key sim, ~1 s of input): 15 compose markers/s, relay fully
+drained, 3D rate-limited via the sidecar. Old loop under the same load
+was ~3 fps with input backing up.
+
+Still open: end-to-end live pc-hq A/B (button.sh engine split); porting
+civ-txt / piececraft-xyz's own `pal/main_module.pal` to `bv_dispatch`.
