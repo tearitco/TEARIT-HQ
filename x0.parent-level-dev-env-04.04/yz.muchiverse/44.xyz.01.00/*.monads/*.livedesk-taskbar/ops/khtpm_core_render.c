@@ -342,6 +342,22 @@ static void set_window_opacity(Display *d, Window w, double opacity) {
 static char g_theme_bg[16] = "#1c1c1c";
 static char g_theme_fg[16] = "#cccccc";
 
+/* Nudge a "#rrggbb" toward white (delta>0) or black (delta<0) by delta
+ * per channel, clamped. Used for the small chrome-strip accent over the
+ * themed base fill so it tracks the theme instead of a hardcoded grey.
+ * Returns a pointer to a static buffer - one call per use site. */
+static const char *kh_shade_hex(const char *hex, int delta) {
+    static char out[8];
+    int r = 0, g = 0, b = 0;
+    if (!hex || sscanf(hex, "#%2x%2x%2x", &r, &g, &b) != 3) return hex ? hex : "#2a2a2a";
+    r += delta; g += delta; b += delta;
+    if (r < 0) r = 0; if (r > 255) r = 255;
+    if (g < 0) g = 0; if (g > 255) g = 255;
+    if (b < 0) b = 0; if (b > 255) b = 255;
+    snprintf(out, sizeof(out), "#%02x%02x%02x", r, g, b);
+    return out;
+}
+
 static void load_theme_colors(void) {
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/#.desktop/livedesk_theme.pdl", g_house_root);
@@ -6701,10 +6717,18 @@ static void redraw(void) {
             XSync(dpy, False);
         }
     }
-    XSetForeground(dpy, gc, alloc_pixel(window_is_dock() ? g_theme_bg : "#1c1c1c"));
+    /* 2026-09-09, direct report ("bookstack doesn't take on the settings
+     * colors from the verse popup"): the base window fill + chrome strip
+     * were hardcoded #1c1c1c/#2a2a2a for every non-dock window, so an
+     * entity window like book-stack (minimal CSS - nothing repaints over
+     * this base) ignored #.desktop/livedesk_theme.pdl entirely.
+     * g_theme_bg/fg are already loaded (load_theme_colors() in main() +
+     * live on the theme-changed marker) and always hold a valid value
+     * (static #1c1c1c/#cccccc defaults), so just use them. */
+    XSetForeground(dpy, gc, alloc_pixel(g_theme_bg));
     XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h);
     if (!window_is_dock()) {
-    XSetForeground(dpy, gc, alloc_pixel("#2a2a2a"));
+    XSetForeground(dpy, gc, alloc_pixel(kh_shade_hex(g_theme_bg, 14)));
     XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)g_win_w, CHROME_H);
     }
 
@@ -6751,7 +6775,7 @@ static void redraw(void) {
             XSetForeground(dpy, gc, alloc_pixel("#4a4a4a"));
             XDrawLine(dpy, buf, gc, DOCK_FOCUS_BOX_W, 0, DOCK_FOCUS_BOX_W, g_win_h);
         } else {
-        XftColor title_col = xft_color("#eeeeee");
+        XftColor title_col = xft_color(g_theme_fg);  /* themed (was hardcoded #eeeeee) - see the base-fill comment above */
         XftDrawStringUtf8(xftdraw_buf, &title_col, font_ui, 8, 16,
                            (const FcChar8 *)title, (int)strlen(title));
         XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &title_col);
@@ -14636,7 +14660,7 @@ int main(int argc, char **argv) {
         if (g_win_y < 0) g_win_y = 0;
     }
     load_theme_colors();  /* every window, not just dock - the 2px window frame + theme-aware bg need g_theme_fg/bg live */
-    swa.background_pixel = alloc_pixel(window_is_dock() ? g_theme_bg : "#1c1c1c"); /* real dark default - no white-flash bug, ai-cell's own proven pattern, not WhitePixel */
+    swa.background_pixel = alloc_pixel(g_theme_bg); /* themed base (load_theme_colors() ran just above); static #1c1c1c default keeps the no-white-flash guarantee */
     /* REAL FIX 2026-08-16, direct live report ("none of the buttons seem
      * 2 work yet"): this window was a normal WM-managed window, unlike
      * the legacy popup (override_redirect=True, open_context_menu() near
