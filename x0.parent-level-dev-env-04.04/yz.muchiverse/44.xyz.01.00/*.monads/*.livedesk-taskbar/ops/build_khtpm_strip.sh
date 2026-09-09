@@ -42,20 +42,35 @@ if [ "$_fresh" = 1 ] && [ -z "${KHTPM_FORCE_BUILD:-}" ]; then
 fi
 
 # ── "Building livedesk…" splash ───────────────────────────────────────
-# Only when invoked from the desktop start button (which exports
-# LIVEDESK_START_SPLASH=1) AND we actually got past the freshness gate,
-# so a normal snappy start shows nothing.
+# Only when invoked from the desktop start button / $.restart (which
+# export LIVEDESK_START_SPLASH=1) AND we got past the freshness gate, so
+# a normal snappy start shows nothing.
+#
+# 2026-09-09, direct instruction ("the popup should be x11 layout style,
+# not gl ... watching compile is most accurate"): a house-style X11
+# window (livedesk_splash.c) that themes off livedesk_theme.pdl and
+# fills a real progress bar as each build output binary lands in +x/.
+# zenity/xmessage stay only as the fallback for the first-ever build
+# (before livedesk_splash.+x itself exists) or a headless box.
 if [ -n "${LIVEDESK_START_SPLASH:-}" ]; then
-    if command -v zenity >/dev/null 2>&1; then
-        # --info (not --progress): --progress with a closed stdin + --auto-
-        # close would vanish on immediate EOF. --timeout is just a safety
-        # net; the EXIT trap below closes it the moment the build ends.
-        zenity --info --width=320 --timeout=180 \
-               --title="livedesk" \
-               --text="Building livedesk…  (~30s the first time)" >/dev/null 2>&1 &
+    _HOUSE_DIR="$(cd ../../.. 2>/dev/null && pwd || echo .)"
+    _XDIR="$(pwd)/+x"
+    # build the splash binary itself first (tiny, ~1s, X11+Xft only) so
+    # it exists for THIS build and every later one.
+    if [ ! -x "+x/livedesk_splash.+x" ]; then
+        _sx="$(pkg-config --cflags --libs x11 xft 2>/dev/null)"
+        [ -n "$_sx" ] || _sx="-I/usr/include/freetype2 -lX11 -lXft"
+        "${CC:-gcc}" -std=c11 -O2 -o "+x/livedesk_splash.+x" livedesk_splash.c $_sx >/dev/null 2>&1 || true
+    fi
+    if [ -x "+x/livedesk_splash.+x" ] && [ -n "${DISPLAY:-}" ]; then
+        "+x/livedesk_splash.+x" "$_HOUSE_DIR" "$_XDIR" >/dev/null 2>&1 &
         _splash_pid=$!
     elif command -v xmessage >/dev/null 2>&1; then
         xmessage -center -timeout 120 "Building livedesk…  (~30s)" >/dev/null 2>&1 &
+        _splash_pid=$!
+    elif command -v zenity >/dev/null 2>&1; then
+        zenity --info --width=320 --timeout=180 --title="livedesk" \
+               --text="Building livedesk…  (~30s the first time)" >/dev/null 2>&1 &
         _splash_pid=$!
     fi
     [ -n "${_splash_pid:-}" ] && trap 'kill "$_splash_pid" 2>/dev/null || true' EXIT INT TERM
@@ -180,5 +195,10 @@ echo "-- generic window ASCII presenter -> +x/khtpm_render_ascii.+x"
 $CC $CFLAGS -o +x/khtpm_render_ascii.+x khtpm_render_ascii.c
 echo "-- generic window ASCII keyboard relay -> +x/khtpm_kbd_ascii.+x"
 $CC $CFLAGS -o +x/khtpm_kbd_ascii.+x khtpm_kbd_ascii.c
+
+echo "-- build/restart splash (X11) -> +x/livedesk_splash.+x"
+_sx="$(pkg-config --cflags --libs x11 xft 2>/dev/null)"
+[ -n "$_sx" ] || _sx="-I/usr/include/freetype2 -lX11 -lXft"
+$CC $CFLAGS -o +x/livedesk_splash.+x livedesk_splash.c $_sx
 
 echo "OK +x/khtpm_taskbar_manager_main.+x and +x/khtpm_core_render.+x (strip mode + entity/tile mode, plus helpers)"
