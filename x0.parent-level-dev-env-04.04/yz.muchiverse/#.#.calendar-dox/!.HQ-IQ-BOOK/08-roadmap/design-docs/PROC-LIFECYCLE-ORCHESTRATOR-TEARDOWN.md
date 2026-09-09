@@ -145,51 +145,120 @@ Related open items this closes / shrinks: `OPEN-ITEMS.md` #7
 
 ## 3. Target design
 
-### 3.1 One canonical registry
-`#.desktop/livedesk_proc_list.txt`, one line per tracked process:
-```
-<pid> <pgid> <starttime> <name>
-```
-- `pgid` — the process-group id to signal (`kill(-pgid, …)`). For a
-  `setsid` launch, `pgid == pid` (group leader). Recorded explicitly so
-  the reaper never has to assume.
-- `starttime` — field 22 of `/proc/<pid>/stat` (clock ticks since
-  boot). This is the **PID-reuse guard**: before signalling, re-read
-  `/proc/<pid>/stat`; if the process no longer exists *or its
-  `starttime` differs*, the line is stale — skip it. Cheap, no new
-  dependency, defeats the whole `ktb_pid_alive()` zombie/reuse bug
-  class.
-- `name` — a human label for logs (`sql-hq`, `db-hq-pal`, `mpg123`…).
-- Written under `flock(LOCK_EX)` + `fsync` (TPMOS's `log_pid` shape).
-- **Truncated once at taskbar startup**, before any launch.
+### 3.0 Is this a "master-pid + child-pid master-ledger", and is it the default?
 
-Keep `livedesk_hq_windows_<pid>.txt` as-is for now (it also carries the
-X11 window id, used elsewhere); the new file is the *teardown* source of
-truth. A later pass can fold them.
+**That is the target, yes** — and it's the right shape for this house
+(it's what `master_ledger.txt` already is elsewhere: a flat,
+append-only, cursor-read text ledger; no DB, no daemon). As of
+2026-09-09 the *implemented* v1 is a **subset**: a flat registry with
+**no master-pid column** and registration that is an **explicit
+opt-in call** (`kh_proc_register`) made only by `ktb_system_recorded`
+(taskbar-initiated launches). The rest of this section is the full
+target; §5 steps 4–7 close the gap.
+
+### 3.1 One canonical master-ledger
+`#.desktop/livedesk_proc_list.txt`, one append-only line per tracked
+process — **TARGET shape**:
+```
+<child_pid> <child_pgid> <master_pid> <starttime> <name> [k=v ...]
+```
+(v1 shipped without the `<master_pid>` column — the loader must accept
+both the 4-field and 5-field forms.)
+- `master_pid` — **the new column.** The PID of the process that
+  "owns" this child for teardown purposes: the taskbar manager for a
+  tb-launched HQ window/toy; the app's own root process for a child it
+  forked itself (an engine daemon, a prisc VM, a `<module>` manager).
+  This is what turns "reap everything" into **scoped teardown**: close
+  one app → `kh_proc_reap_subtree(master = that app's pid)` reaps only
+  its line + its descendants, not the whole desktop. Fixes
+  `OPEN-ITEMS.md` #7 (toys) *properly* and lets `kill_hq_windows.sh`'s
+  name-pattern list finally retire.
+- `child_pgid` — the process-group to signal (`kill(-pgid, …)`). For a
+  `setsid` launch `pgid == pid` (group leader). Recorded explicitly so
+  the reaper never assumes.
+- `starttime` — field 22 of `/proc/<pid>/stat`. The **PID-reuse
+  guard**: re-read before signalling; gone or start-time changed ⇒
+  stale line ⇒ skip. Defeats the whole `ktb_pid_alive()` zombie/reuse
+  bug class.
+- `name` — human label (`sql-hq`, `mpg123`, `prisc+x` …).
+- optional trailing `k=v` — lets `livedesk_hq_windows_<pid>.txt`'s
+  `win=/title=/x=/y=/minimized=/focused=` fields fold onto the same
+  line (§5 step 7), collapsing the house's *two* registry shapes into
+  one.
+- Written `flock(LOCK_EX)` + `fsync` (TPMOS `log_pid` shape). Pruned on
+  every manager start and on a slow idle tick (not blindly truncated —
+  a strip-only restart leaves prior windows alive).
+
+### 3.1a Why a flat text ledger IS the efficient architecture here
+Not a compromise — the house-correct answer: append is O(1) + one
+`fsync`; readers `stat()` the size to detect growth and do
+cursor-incremental reads (`strip_input_history.txt` pattern); teardown
+reads the whole file once — **dozens of lines, never thousands** — so a
+full scan is trivial; the `starttime` column is an O(1) reuse guard, no
+lookup table. A DB / long-running supervisor daemon would add a
+failure mode (the supervisor itself) for zero real gain at this scale,
+and violates "if it's not in a file, it's a lie" less cleanly.
 
 ### 3.2 The shared helper — `&.widgits/_shared-lib/kh_proc_registry.h`
 Single header, C, POSIX + `_WIN32` guards, same house style as
-`kh_plat.h`. API:
+`kh_plat.h`.
 
+**v1 API (shipped 2026-09-09):** `kh_proc_registry_path`,
+`kh_proc_registry_reset`, `kh_proc_register(house_root, pid, pgid,
+name)`, `kh_proc_reap_all`, `kh_proc_reap_one`, `kh_proc_registry_prune`.
+
+**TARGET API additions (§5 step 4):**
 ```c
-void kh_proc_registry_path(const char *house_root, char *buf, size_t n);
+/* the master-ledger register: `master_pid` is the owning process
+ * (getpid() of whoever is doing the spawn). 5-field line. */
+int  kh_proc_register_owned(const char *house_root, long pid, long pgid,
+                            long master_pid, const char *name);
 
-/* append one tracked entry; call right after a successful spawn.
- * pgid<=0 means "use pid". name may be NULL. */
+/* reap only the entries owned by `master_pid` (its line + any line
+ * whose master_pid is that pid, one level; deep chains rely on each
+ * intermediate having registered its own children). Same
+ * TERM->grace->KILL + starttime guard. Rewrites the ledger without the
+ * removed lines. This is "close one app", not "quit the desktop". */
+int  kh_proc_reap_subtree(const char *house_root, long master_pid,
+                          int grace_ms, int verbose);
+
+/* a house binary that was exec'd outside a kh_spawn funnel registers
+ * itself in main() and unregisters via atexit. Line:
+ *   getpid() getpgrp() getppid() starttime <name> self=1            */
+int  kh_proc_self_register(const char *house_root, const char *name);
+int  kh_proc_self_unregister(const char *house_root);
+```
+The v1 4-field loader stays; it just treats a missing `master_pid` as
+`0` ("owned by the orchestrator / reaped only by `reap_all`").
+
+### 3.2b Making it the DEFAULT (not per-call opt-in)
+Two mechanisms, belt + braces:
+
+1. **`kh_spawn()` — the one funnel.** A shared
+   `&.widgits/_shared-lib/kh_spawn.h` (`kh_spawn(house_root,
+   master_pid, name, argv, flags)` = `fork` + optional `setsid` +
+   optional `chdir(house_root)` + `execv` + `kh_proc_register_owned`
+   in the parent), plus `kh_spawn.sh` for the shell launch sites
+   (`setsid nohup "$@" & echo "$! $! $$ …" >> …`). House convention
+   becomes: **spawn a long-lived child only via `kh_spawn` — never a
+   raw `fork`/`setsid nohup … &`.** Same status as `kh_plat.h` (the
+   one blessed platform surface). "Default" = the blessed primitive
+   everyone reaches for; a raw `fork` that skips it is then a review
+   smell, and the name-pattern backstop covers the slips.
+2. **`kh_proc_self_register()` in `main()`** for the deep children the
+   funnel can't wrap — an engine daemon started by a vendor script, a
+   `<module>` binary re-exec'd by the renderer. It writes its own line
+   (`master = getppid()`), `atexit`-removes it. This is exactly what
+   `livedesk_hq_windows_<pid>.txt` already does per-window — fold that
+   write into `kh_proc_self_register` and the two registries become
+   one.
+
+### 3.3-old (v1) API sketch, for reference
+```c
 int  kh_proc_register(const char *house_root, long pid, long pgid,
-                      const char *name);
-
-/* the TPMOS teardown, ported: for each live+matching entry
- *   TERM(-pgid), TERM(pid)  ->  grace_ms  ->  KILL(-pgid), KILL(pid)
- *   -> waitpid(WNOHANG)  ->  truncate the file.
- * never signals getpid()/getpgrp(). returns processes signalled. */
+                      const char *name);          /* 4-field line */
 int  kh_proc_reap_all(const char *house_root, int grace_ms, int verbose);
-
-/* rewrite the file keeping only entries whose pid+starttime still
- * match a live process. call periodically / on a menu open. */
 int  kh_proc_registry_prune(const char *house_root);
-
-/* one entry, for a targeted "close this window" path. */
 int  kh_proc_reap_one(const char *house_root, long pid, int grace_ms);
 ```
 
@@ -262,28 +331,38 @@ after it, quietly.
      group is ignored;
    - `kh_proc_reap_one` kills one entry and leaves the other running
      with its registry line intact.
-2. Taskbar startup truncates `livedesk_proc_list.txt`; every
-   `ktb_system_recorded()` call also `kh_proc_register()`s the launched
-   PID with a name. (Keep writing `livedesk_launched_pids.txt` too for
-   one release so `kill_hq_windows.sh` still works unaided.)
-3. Wire `kh_proc_reap_all()` into the taskbar's SIGTERM/SIGINT handler
-   and `ktb_quit_and_save()`; keep the `kill_hq_windows.sh` call after
-   it. Verify against a real desktop **in isolation** (§X11 pitfalls
-   "before attempting this again" steps): start taskbar, open 3 HQ
-   windows + 1 toy, quit taskbar, confirm `ps` shows zero house
-   processes and the registry is empty — and that a normal
-   `run_khtpm_strip.sh new` restart is unaffected.
-4. `kh_proc_registry_prune()` on the HQ-menu open + every ~60 s idle
-   tick.
-5. App-level: `music-player-hq` registers its `mpg123 -R` child;
-   `<module>` managers register themselves; prisc-hosting launchers
-   register the VM. One app per commit.
+2. ✅ **DONE 2026-09-09.** `ktb_init()` prunes `livedesk_proc_list.txt`
+   (not truncate — a strip-only restart leaves windows alive); every
+   `ktb_system_recorded()` also `kh_proc_register()`s the launched PID.
+   Legacy `livedesk_launched_pids.txt` still written for one release.
+3. ✅ **DONE + LIVE-VERIFIED 2026-09-09.** `ktb_reap_launched()` =
+   `kh_proc_reap_all(hr, 200, 0)` at the 3 explicit-quit sites. Live
+   run confirmed register→quit→reap→truncate; dropdowns unaffected;
+   restart unaffected (see the status block up top).
+4. **Master-ledger column + `kh_spawn` funnel + self-register**
+   (§3.1 / §3.2 / §3.2b). Add the `<master_pid>` column
+   (loader accepts 4- and 5-field lines); add
+   `kh_proc_register_owned` / `kh_proc_reap_subtree` /
+   `kh_proc_self_register`. Add `&.widgits/_shared-lib/kh_spawn.h` +
+   `kh_spawn.sh`. `ktb_system_recorded` → `kh_proc_register_owned(…,
+   getpid(), …)`. Unit-test the subtree reap (master A's children die,
+   master B's don't) before any app change.
+5. Make it the default, app by app (one commit each, pal-script /
+   window smoke per app): `music-player-hq` registers its `mpg123 -R`
+   child via `kh_spawn`; `<module>` manager binaries call
+   `kh_proc_self_register()` in `main()`; prisc-hosting launchers
+   register the VM; every remaining `setsid nohup … &` launch site in
+   `khtpm_taskbar_manager.c` moves to `kh_spawn.sh`.
 6. Retire the "kill your own children" note in
    `OPERATIONAL-LANDMINES.md` #9 / the compact doc — replace with "the
-   taskbar reaps every registered process on quit; register long-lived
-   forks via `kh_proc_register`."
-7. Fold `livedesk_hq_windows_<pid>.txt` into the canonical registry
-   (adds the X11 window id column); drop `livedesk_launched_pids.txt`.
+   taskbar reaps every registered process on quit; spawn long-lived
+   children via `kh_spawn`, or call `kh_proc_self_register()` in
+   `main()`."
+7. Fold `livedesk_hq_windows_<pid>.txt` into the ledger (its
+   `win=/title=/x=/y=/minimized=/focused=` become trailing `k=v` on the
+   process's own line via `kh_proc_self_register`); drop
+   `livedesk_launched_pids.txt` and retire `kill_hq_windows.sh`'s
+   name-pattern list to `EMERGENCY_*`-only.
 
 ## 6. KPIs
 
