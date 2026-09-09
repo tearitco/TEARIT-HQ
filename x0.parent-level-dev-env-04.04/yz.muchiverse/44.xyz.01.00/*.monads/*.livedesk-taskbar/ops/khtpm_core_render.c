@@ -14918,18 +14918,21 @@ int main(int argc, char **argv) {
     XSetErrorHandler(kh_nonfatal_x_error);
     screen = DefaultScreen(dpy);
     cmap = DefaultColormap(dpy, screen);
-    /* class="user-resizable" opens filling the screen work area (never
-     * wider than the display - direct report 2026-09-09), pinned to the
-     * top-left below the taskbar. Layout leaves g_win_w/h alone (see the
-     * !g_user_resizable guards); the ⌟ drag and the canvas both track
-     * this. */
+    /* class="user-resizable" opens at a modest fixed size, offset from
+     * the corner so the chrome (x / ! / _) is always reachable. NOT
+     * derived from DisplayWidth/Height - those read the framebuffer,
+     * which under HiDPI / a virtual desktop can be much larger than the
+     * visible monitor (direct report 2026-09-09: full-screen put the
+     * close button off the right edge). Only clamped DOWN to the
+     * display. The ⌟ drag + the canvas take it from here. */
     if (g_user_resizable) {
         int sw = DisplayWidth(dpy, screen), sh = DisplayHeight(dpy, screen);
-        int top = WM_MANAGED_DRAG_MIN_Y;          /* clear the taskbar strip */
-        g_win_x = 0;
-        g_win_y = top;
-        g_win_w = sw;
-        g_win_h = sh - top;
+        g_win_x = 90;
+        g_win_y = WM_MANAGED_DRAG_MIN_Y;
+        g_win_w = 1120;
+        g_win_h = 720;
+        if (g_win_w > sw - g_win_x - 60)  g_win_w = sw - g_win_x - 60;
+        if (g_win_h > sh - g_win_y - 40)  g_win_h = sh - g_win_y - 40;
         if (g_win_w < KH_WIN_MIN_W) g_win_w = KH_WIN_MIN_W;
         if (g_win_h < KH_WIN_MIN_H) g_win_h = KH_WIN_MIN_H;
     }
