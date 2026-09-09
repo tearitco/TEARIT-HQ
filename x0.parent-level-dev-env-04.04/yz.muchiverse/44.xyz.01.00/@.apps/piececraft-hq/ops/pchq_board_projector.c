@@ -219,10 +219,22 @@ int main(int argc, char **argv) {
         char menu_open[16] = "";
         read_kv(menu_path, "open", menu_open, sizeof(menu_open));
 
-        time_t now = time(NULL);
-        struct tm *tmv = localtime(&now);
+        /* 2026-09-09, direct instruction ("time on display should show
+         * clock time, not real time"): the toolbar clock is the GAME
+         * clock (world_01/state.txt game_time_epoch_sec, the same value
+         * bv_render_3d.c drives the sun/sky from), not the wall clock.
+         * Falls back to "--:--" if the world file has no epoch yet. */
+        char world_state[PATH_MAX], epoch_s[32] = "";
+        snprintf(world_state, sizeof(world_state),
+                 "%s/@.apps/%s/pieces/world_01/state.txt", house, host_id);
+        read_kv(world_state, "game_time_epoch_sec", epoch_s, sizeof(epoch_s));
         char clock_s[8] = "--:--";
-        if (tmv) strftime(clock_s, sizeof(clock_s), "%H:%M", tmv);
+        if (epoch_s[0]) {
+            long long ep = atoll(epoch_s);
+            long long tod = ep % 86400; if (tod < 0) tod += 86400;
+            snprintf(clock_s, sizeof(clock_s), "%02lld:%02lld",
+                     tod / 3600, (tod % 3600) / 60);
+        }
 
         size_t off = 0;
         off += (size_t)snprintf(ui + off, UIBUF - off,

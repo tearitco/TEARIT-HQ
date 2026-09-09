@@ -824,7 +824,22 @@ int main(int argc, char **argv) {
             int enabled = read_kv_int(world_state_path, "autotick_enabled", 0);
             enabled = !enabled;
             write_kv_int(world_state_path, "autotick_enabled", enabled);
-            if (enabled) write_kv_int(world_state_path, "autotick_last_real_ms", 0); /* real, fresh baseline - see advance_game_clock()'s own header comment on why 0 means "just starting" */
+            if (enabled) {
+                write_kv_int(world_state_path, "autotick_last_real_ms", 0); /* real, fresh baseline - see advance_game_clock()'s own header comment on why 0 means "just starting" */
+                /* REAL FIX 2026-09-09, direct live report ("dont see sun
+                 * even after pressing '.'"): clock ADVANCEMENT is
+                 * exclusively pc_clock_daemon.c's job now (see
+                 * pc_compose_frame.c read_game_clock_ms()'s header -
+                 * this file no longer advances anything). The daemon is
+                 * only launched at CONFIRM_START/CONFIRM_START_DEBUG, so
+                 * toggling autotick on for an already-"playing" world
+                 * (engine-mode board launch, no fresh world-gen) flipped
+                 * the flag with nothing running to act on it - clock
+                 * frozen, sun/sky frozen. Same launch guard the
+                 * world-gen paths use; no-op if the daemon is already
+                 * alive (pid-file + kill(pid,0) check). */
+                launch_clock_daemon_if_needed(project_root);
+            }
             snprintf(message, sizeof(message), "Autotick %s.", enabled ? "ON" : "off");
         } else if (strcmp(cmd, "CYCLE_TICK_SPEED") == 0) {
             /* REAL, NEW 2026-08-04, direct instruction ("[" cycles time
