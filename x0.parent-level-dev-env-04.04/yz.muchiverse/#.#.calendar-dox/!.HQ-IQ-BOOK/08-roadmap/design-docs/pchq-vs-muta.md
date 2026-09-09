@@ -299,7 +299,15 @@ re-possess.
 
 ### Still open
 - Chrome-free 2D pixel path for `0` (B1 caveat, §6).
-- cursword's own `5-8` remap in `tp_desktop_window_rgb.c` is now moot —
-  revert separately.
 - `possessable`/`de_possessible` only meaningful once a `hero_01/
   piece.pdl` is shipped (defaults are permissive today).
+
+### Resolved `d565c6e2` (2026-09-09, FF'd to main)
+Comment/config-text cleanup, no behaviour change:
+- Confirmed `cursword_handle_camera_key()` in `khtpm_core_render.c` has
+  **no numeric mode keys** — only the `0` 2D/3D toggle. The 2026-08-31
+  `1-4`→`5-8` idea never landed in cursword; nothing to revert.
+- Purged stale `5-8` / "one map" comments from `khtpm_core_render.c` +
+  `bv_menu_input.c`; fixed `pchq-vw-tpmos.md`→`pchq-vs-tpmos.md` refs.
+- `arrow_config.txt` (pc-hq + piececraft-xyz) NOTE now points at
+  `keybinds.pdl` as the real remap surface.
