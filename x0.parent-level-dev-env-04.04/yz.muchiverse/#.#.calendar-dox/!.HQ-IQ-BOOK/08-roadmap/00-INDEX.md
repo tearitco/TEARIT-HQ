@@ -23,8 +23,9 @@
   OHR pickers + import-only My Palettes + tile-editor v1 **landed
   2026-09-08** (MVP). Design still the contract for TMX/TSX and saver.
 - `design-docs/PIECECRAFT-HQ-GAME-EDITOR-AND-PLAY.md` — **2026-09-08
-  studio vision**: piececraft-hq is where games get made (palettes drop
-  + events in edit, RM-like play, 2D/3D camera, next loops A–D).
+  studio vision + implementer briefing**: desktop is an RM map too;
+  play does not hide chrome; Transfer/Shop/Battle/db guidance; CDDA /
+  MC / Civ / Pokemon as event skins (§§6–9).
 - `TILESETS-EVENTS-AND-GAME-CLONES.md` — **2026-09-08 find-it-later map**:
   palettes categories (RMMV / Mineclonia / CDDA / emoji / tiled / ohr),
   outside-zip asset PDLs, event-guide sheets, registry + `mr_world`,

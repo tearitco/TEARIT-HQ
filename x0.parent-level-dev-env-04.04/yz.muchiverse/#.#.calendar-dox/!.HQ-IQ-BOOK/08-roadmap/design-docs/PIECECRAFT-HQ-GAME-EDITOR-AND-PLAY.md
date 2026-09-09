@@ -1,12 +1,14 @@
 # Piececraft-HQ — the studio: edit maps, script events, play like RPG Maker
 
-**Status:** living vision + next-steps (not a build ticket)  
+**Status:** living vision + implementer briefing (not a build ticket)  
 **Date:** 2026-09-08  
 **Supersedes as the “where do games get made?” map:** scattered notes in
 `piececraft-hq.md` (2026-08-30 board-window progress),
 `TILESETS-EVENTS-AND-GAME-CLONES.md` (find-it-later paths),
-`CURSWORD-DESKTOP-3D-AND-PIECECRAFT-INSCENE-DESKS-DESIGN.md` (desktop 3D,
-still design-only). Those files stay; this one is the product story.
+`CURSWORD-DESKTOP-3D-AND-PIECECRAFT-INSCENE-DESKS-DESIGN.md` (desktop 3D).
+Those files stay; this one is the product story **and** the briefing a
+lesser model should read before writing Transfer / Shop / Battle / db
+consumers or clone skins.
 
 House root: `44.xyz.01.00`.
 
@@ -14,157 +16,139 @@ House root: `44.xyz.01.00`.
 
 ## 0. One sentence
 
-**Piececraft-HQ is the game-making room:** you drop tiles from palettes
-onto a 2D/3D board, you attach RPG Maker–shaped events in **edit**
-mode, and **play** mode runs those events with no editor chrome — same
-split RPG Maker uses between the map editor and Test Play.
-
-It is **not** a second engine. Palettes, db-hq, events-hq, board-viewer,
-and the event registry already exist. The missing work is **wiring them
-into one loop** (place → script → play) and then **making play actually
-play** (transfer/shop/battle are still kv files).
+**Two map rooms, one event engine.** Piececraft-HQ is the 2D/3D voxel
+board. The **livedesk desktop is also an RPG Maker–shaped map** (pals =
+events/characters, tiles = tileset, z layers, transfers between desks,
+session save/load). Edit vs Play is **input routing** (Interact), not
+hiding chrome. Palettes / db-hq / events-hq / registry already exist;
+play still needs real consumers for kv-only cmds.
 
 ---
 
-## 1. Product split: Edit vs Play (RPG Maker-shaped)
+## 1. Product split: Edit vs Play (do not hide chrome)
 
-| | **Edit** | **Play** (Interact ON) |
+| | **Edit** (Interact OFF) | **Play** (Interact ON) |
 |---|---|---|
 | Who | you / an agent | the player (or you testing) |
-| Camera | 2D top / 3D voxel (board-viewer `1`–`4`) | same cameras, no editor overlays |
-| Tiles | palettes brush → drop/stamp onto chunks | tiles are the world; no stamp UI |
-| Events | visible markers, click voxel → events-hq | pages fire (Autorun / Parallel / Action / Touch) |
-| DB | db-hq-pal Actors/Items/CE while paused | game reads the same files; no db window unless you open it |
-| Keys | strip / In toggle / File / Desk | 100% game input (legacy `run_pchq_board_mode` contract; NU Interact Mode) |
+| Chrome | strip, palettes, db-hq, File/Desk, event editor — **stay visible** | **same chrome stays.** You can still open palettes or db while testing. |
+| Input | strip / In toggle / File / Desk / click-to-stamp / click-to-edit event | arrows/WASD/Action go to the map (board **or** desktop). Keys that belong to the game do not steal the strip unless FocusOut disengages. |
+| Tiles | palettes brush → drop/stamp | tiles are the world; stamp still *can* work if you click a picker — do not special-case hide |
+| Events | markers optional; click cell → events-hq | pages fire (Autorun / Parallel / Action Button / Player Touch / Event Touch) |
+| DB | db-hq-pal while paused or not | game **reads the same files**; opening db mid-play is allowed |
 
-**Rule:** edit-only chrome (event balloons, collision ghosts, “this
-tile has a page”) must not draw in play. Play should feel like RM Test
-Play, not like a CAD tool with the hero running around.
+**House rule (owner, 2026-09-08):** we do **not** hide chrome in play.
+Do not add `play_mode` that `show=`s the toolbar, palettes, or window
+chrome off. Optional later: a *thin* overlay flag for collision ghosts
+or event balloons only — never the livedesk strip, never the board
+window frame.
 
 **Today:** Interact Mode is the play *input* path (WM-managed board +
-var-arm, 2026-09-08). There is **no** first-class Edit/Play *mode flag*
-that hides event chrome — because voxel→events-hq and drop-from-picker
-are not live yet. When those land, add one projector key
-(`play_mode=0|1`) driven by Interact / a toolbar Play, and `show=` the
-editor overlays off.
+var-arm). There is no hide-chrome flag and there must not be.
+
+**Do not revive** `run_pchq_board_mode()`. NU Interact + WM-managed is
+the contract.
+
+---
+
+## 1b. The desktop IS a map (first-class, not a later 3D toy)
+
+RPG Maker’s map editor is: tiles on layers, events on cells, player
+spawn, transfers to other maps, save files. Livedesk already is that
+shape:
+
+| RM map concept | Livedesk analog | Notes for implementers |
+|---|---|---|
+| Map | a **desk** (`xyzfs/.../livedesk/sessions/s1/desks/<name>.pdl`) | `office.pdl` etc. `DESK` rows are placed objects |
+| Tileset | palettes + `#.desktop/tiles/` packages + rmmv/cdda/mineclonia pickers | stamp onto desktop **or** pchq chunks |
+| Characters / events | **pals** (`pals/<id>/pal.pdl`, `desktop_pos.txt`) | a pal is an RM event: graphic + position + (later) `event_pkg` |
+| Z layers | board-viewer z (`chunk_*_zN`, camera `c`/`v`, hero `x`/`z`) **and** desk stacking | RM has A1–A5 + B/C/D/E; we have z files. Do not invent a second z system. |
+| Transfer Player | change desk **or** change pchq map/chunk + move hero | same command, two consumers |
+| Vehicles / followers | extra pals parented to the player pal | RM boat/ship/airship = pals with `through` + `move_route` |
+| Save / Load | session desks + `runtime/ledger.txt` + File menu | RM `SaveN.rvdata2` ≈ snapshot of desks + switches + gold + party |
+| Common Events | db-hq CE tab → `common_events/<name>/event_pkg` | autorun/parallel CE still run on the **desktop** in play |
+| Map properties | `board_config.txt` / desk header | encounter steps, BGM, tileset id — System tab + per-map kv |
+
+Cursword-as-3D-halo (`CURSWORD-DESKTOP-3D-…`) is camera/controller
+chrome on **this same map**, not a different world. Do not block
+transfers/shops on that design.
+
+**Implication:** when you implement Transfer Player, Shop, Battle, you
+implement them against **map identity** (`map_id` that can be a desk
+name **or** a pchq `maps/<id>`), not against “the 3D window only.”
 
 ---
 
 ## 2. What is already in the room (2026-09-08)
 
-Launch: **HQ → piececraft-hq** (`livedesk:open-piececraft-hq`) or Toys →
-**Piececraft-HQ** (not **Piececraft**, which is `piececraft-xyz`).
+Launch board: **HQ → piececraft-hq** (`livedesk:open-piececraft-hq`) or
+Toys → **Piececraft-HQ** (not **Piececraft** / `piececraft-xyz`).
 
 | Piece | Where | Honest status |
 |---|---|---|
 | Board window | `@.apps/piececraft-hq/pchq-board.xhtpm` + projector + `pchq_board_action.sh` | 🟡 opens, WM-managed, Interact arms from vars; canvas reads live `canvas_raw` |
-| 3D/2D view | `&.widgits/board-viewer` (`bv_render_3d`, `bv_menu_input` POV `1`–`4`) | ✅ engine; pc-hq is the chrome around it |
-| Palettes | `button-pal.sh <cat> "$HOUSE"` — rmmv, piececraft (Mineclonia), cdda, emojis, tiled, ohrrpgce, my-palettes, tile-editor | 🟡 pickers live; **no drop onto the board** |
-| Assets | `NNEST-12.00/#.NNEST_ASSETS/` via `1.^V-hq/*-ASSET-SOURCE-LOCATION.pdl` | ✅ outside zip; C must not hardcode |
-| Sample maps | `pieces/system/maps/{mineclonia_sample,cdda_sample}/` | 🟡 File menu load copies `map.txt` → chunk |
-| Events editor | `&.widgits/events-hq` (entity `event_pkg`) | ✅ IR → pal → `cmd_N.sh` |
-| Common Events | db-hq-pal CE tab embeds the same editor | 🟡 in-tab; 14 other tabs are field tiles, Terms INI not parsed |
-| Event registry | `#.ref/menu/event_commands.registry.pdl` + `mr_*.+x` | 🟡 many cmds **kv-only** (transfer/shop/battle/fade) |
-| Tile → event guides | `#.ref/menu/event-guides/` | ✅ authoring sheets; not auto-attached on place |
-| Desk persistence | xyzfs `desks/<name>.pdl` `DESK` rows | 🟡 pals persist; `#.desktop/tiles/` packages still vanish |
-
-Older “done” list for the *window* (managed, File/Desk, close):
-`design-docs/piececraft-hq.md`. Do not treat that file as the studio
-vision — it predates palettes/CE/asset unification.
+| 3D/2D view | `&.widgits/board-viewer` POV `1`–`4` | ✅ engine |
+| Palettes | `button-pal.sh` cats | 🟡 pickers live; **no drop onto board or desk** |
+| Assets | `NNEST-12.00/#.NNEST_ASSETS/` via `1.^V-hq/*-ASSET-SOURCE-LOCATION.pdl` | ✅ C must not hardcode |
+| Sample maps | `pieces/system/maps/{mineclonia_sample,cdda_sample}/` | 🟡 File load copies `map.txt` → chunk |
+| Events editor | `&.widgits/events-hq` | ✅ IR → pal → `cmd_N.sh` |
+| Common Events | db-hq-pal CE tab | 🟡 in-tab; other tabs are field tiles |
+| Event registry | `#.ref/menu/event_commands.registry.pdl` + `mr_world.+x` | 🟡 transfer/shop/battle/fade **kv-only** |
+| Event guides | `#.ref/menu/event-guides/` | ✅ authoring; not auto-attached |
+| Desk persistence | `desks/<name>.pdl` `DESK` rows | 🟡 pals persist; `#.desktop/tiles/` still vanish |
 
 ---
 
-## 3. Long-term vision (2D / 3D editor + playable games)
-
-Think **one studio, many skins**, not five engines.
+## 3. Long-term vision (one engine, many skins)
 
 ```
  palettes (rmmv / mineclonia / cdda / tiled / ohr / emoji)
-        \  drop / stamp
-         \                    db-hq (actors, items, CE, …)
+        \  drop / stamp onto DESK or pchq CHUNK (same brush files)
+         \                    db-hq (actors, items, troops, CE, terms)
           \                      |
-           +--> piececraft-hq board (chunks + camera 2D/3D)
-          /         |
- events-hq <--------+  click voxel in EDIT
- (same IR as RM map events)
+           +--> MAP = livedesk desk  OR  piececraft-hq chunks
+          /         |                    (same z, same events)
+ events-hq <--------+  click cell in EDIT
           |
           v
-     PLAY = Interact + event pages + db
-     (no editor chrome)
+     PLAY = Interact ON + event pages + db files play actually reads
+     chrome stays
 ```
 
-**2D** is the RM map / Tiled / CDDA top-down sheet. **3D** is the same
-chunk extruded (emoji/voxel pipeline already in `bv_render_3d`). Switching
-POV is a camera, not a second map format.
+POV `1`–`4` is a camera, not a second map format.
 
-**Playable games we actually want** (same table as
-`TILESETS-EVENTS-AND-GAME-CLONES.md` §5, product wording):
-
-1. **RPG Maker–like** — rmmv tiles + events-hq + db-hq. Play = transfer,
-   shop, battle, show text, gold. *Blocker:* those cmds are still files;
-   palettes do not stamp the board; voxel does not open events-hq.
-2. **Minecraft-like** — Mineclonia picker + `mineclonia_sample` + chest/
-   door/furnace guides. Play = place/break, inventory, gravity. *Blocker:*
-   no voxel hit-test, no move-route/gravity, shop/craft UI missing.
-3. **CDDA-like** — UltiCa picker + `cdda_sample` + doors/traps/loot.
-   Play = time, loot, combat. *Blocker:* `battle_processing` is kv;
-   no map transfer; monsters not on guide sheets.
-4. **Later:** Civ (terrain glyphs + gold/turns), GTA-shaped (needs a
-   tileset PDL first — do not start without one).
-
-The **desktop itself** (pals on the livedesk, cursword as interact
-controller) is a *related* long track
-(`CURSWORD-DESKTOP-3D-AND-PIECECRAFT-INSCENE-DESKS-DESIGN.md`). It is
-**not** required to ship RM-like Test Play inside piececraft-hq. Do not
-block studio work on desktop-3D.
+**Do not start GTA** until a tileset PDL exists. Civ/Pokemon/CDDA/MC
+are **skins** of this loop (see §9).
 
 ---
 
-## 4. Next steps (ordered, smallest loop first)
+## 4. Next steps (ordered)
 
-Do **not** start Civ/GTA. Do **not** revive `run_pchq_board_mode()`.
+Do **not** hide chrome. Do **not** revive `run_pchq_board_mode()`.
 Do **not** hardcode `#.NNEST_ASSETS` in C.
 
-### Loop A — Edit: put a tile on the board (unblocks everything visual)
+### Loop A — stamp
 
-1. **Drop / stamp from palettes onto the pchq canvas.** Palettes already
-   write `arm-rmmv` / `arm-pc` / `arm-cdda` brush files. Board must
-   accept that brush (click-to-stamp is enough; XDND is bonus). Mutaclysm
-   `101.drag-drop-test=ON` is a **different** window — do not wait on it.
-   Stand-in today: `pchq_place_cell.sh`.
-2. **Persist placed cells** into chunk files **and** desk `DESK` rows so
-   reset does not wipe `#.desktop/tiles/` packages
+1. Palettes `arm-*` → click-to-stamp on pchq canvas **and** desktop.
+   `pchq_place_cell.sh` is the stand-in.
+2. Persist into chunk files **and** `DESK` rows
    (`TILE-PLACEMENT-DESK-PERSISTENCE-GAP-2026-08-29.txt`).
-3. Optional: tile-editor under palettes stays a *sheet* editor; the
-   *map* editor is the board.
 
-### Loop B — Edit: attach an event (RM map event)
+### Loop B — attach event
 
-4. **Click voxel in edit → open events-hq** on that cell’s `event_pkg`
-   (create if missing). Same editor as entity events and db-hq CE.
-5. **On place, optionally seed** from `event-guides/` (chest → open
-   inventory cmds, door → transfer, etc.). Guides are data; do not
-   special-case C per game.
-6. **Edit overlay:** marker on cells that have pages. Hidden when
-   `play_mode=1`.
+3. Click cell → events-hq `event_pkg` (create if missing).
+4. Optionally seed from `event-guides/` (data, not per-game C).
 
-### Loop C — Play: RM Test Play
+### Loop C — play consumers (this briefing)
 
-7. **Play = Interact ON** (already) **plus** hide edit overlay **plus**
-   common-events manager + map-event pages actually running.
-8. **Promote kv cmds to gameplay**, one at a time, starting with what
-   a 5-minute RM demo needs: Show Text, Change Gold, Transfer Player
-   (camera + chunk), then shop UI, then battle. Until then, calling
-   them “done” in the registry is a lie for play.
-9. **db-hq** field edits must write the files play reads (not only
-   `#.desktop/db_hq_*.state.txt`). Terms tab needs an INI/list projector
-   (`db-tabs-remaining.txt` — Terms is last on the ladder on purpose).
+5. Play = Interact ON + pages running. Chrome stays.
+6. Promote kv cmds: Show Text → Change Gold → **Transfer Player** →
+   **Shop** → **Battle** (order below).
+7. db-hq field edits must write **play-readable** files, not only
+   `#.desktop/db_hq_*.state.txt`. Terms is INI `[Basic Terms]`.
 
-### Loop D — 2D/3D as one map
+### Loop D — cameras
 
-10. Keep one chunk format; POV keys stay engine-side (`1`–`4`).
-11. Desktop 3D + cursword halo is **after** Loops A–C unless the owner
-    explicitly pulls it forward.
+8. One chunk/desk format; POV stays engine-side.
 
 ---
 
@@ -172,35 +156,464 @@ Do **not** hardcode `#.NNEST_ASSETS` in C.
 
 A stranger can:
 
-1. HQ → piececraft-hq (or Toys → Piececraft-HQ).
-2. Palettes → rmmv or piececraft → stamp a floor and a door.
-3. Click the door in edit → events-hq → Transfer or Show Text → save.
-4. Press **In** (play). Walk (arrows). Door runs. No event balloons.
-5. Quit / reset; map and event are still there.
+1. HQ → piececraft-hq **or** stamp on the desktop.
+2. Palettes → stamp a floor and a door.
+3. Click the door → events-hq → Transfer or Show Text → save.
+4. Press **In**. Walk. Door transfers (desk or map). Chrome still there.
+5. Talk to a pal → shop. Step on a troop region → battle. Gold changes.
+6. File save / load restores map, gold, switches, party.
 
-Until (2)–(4) work on hardware, piececraft-hq is a **viewer with File
+Until stamp + transfer work on hardware, this is a **viewer with File
 load**, not a studio.
 
 ---
 
-## 6. Pointers (do not duplicate)
+## 6. Implementer briefing — RPG Maker guts a coder may not know
 
-| Need | File |
-|---|---|
-| Palettes / asset PDLs / sample maps / clone blockers | `08-roadmap/TILESETS-EVENTS-AND-GAME-CLONES.md` |
-| Board window history (managed, File/Desk) | `design-docs/piececraft-hq.md` |
-| Interact / focus (WM-managed, no idle steal, canvas engage) | `09-appendix/pc-hq-leg-vs-nu-fix.md`, `design-docs/PC-HQ-FOCUS-AND-INTERACT-ACTIVATE.md` |
-| Event registry / IR | `EVENT-COMMAND-REGISTRY-ARCHITECTURE.md`, `#.ref/menu/event_commands.registry.pdl` |
-| db-hq remaining tabs | `#.ref/menu/db-tabs-remaining.txt` |
-| Tiled / OHR / My Palettes / tile-editor | `MY-PALETTES-TILED-OHR-TILE-EDITOR-DESIGN.md` |
-| Desktop 3D + cursword (later) | `CURSWORD-DESKTOP-3D-AND-PIECECRAFT-INSCENE-DESKS-DESIGN.md` |
-| Feature catalog row | `10-user-docs/FEATURE-CATALOG.md` piececraft-hq |
+Audience: a competent coder who has **not** lived in RPG Maker VX Ace /
+MV. Do **not** invent a new opcode list. The registry
+(`event_commands.registry.pdl`) **is** the opcode list. `mr_world.+x`
+already writes kv. Your job is **consumers** that change the live
+world.
+
+RM mental model (keep this or you will overbuild):
+
+- **Map** = tiles + **events** (each event = graphic + 1..N **pages**).
+- **Page** = conditions (switches/variables/self-switch/item/actor) +
+  **trigger** + **command list**. Highest matching page wins.
+- **Triggers:** Action Button (face + confirm), Player Touch (hero
+  walks onto event), Event Touch (event walks onto hero), Autorun
+  (blocks player until page ends or page conditions fail), Parallel
+  (runs alongside player; must yield).
+- **Interpreter:** one stack per map event that is running; Common
+  Events have their own. Autorun occupies the map interpreter.
+  Nested `call_common_event` pushes a frame. **Wait** and **Show Text**
+  pause that interpreter, not the whole engine (Parallel still ticks).
+- **Self switches** A–D are **per event instance**, not global. Global
+  switches/variables are the db System / event Control Switch/Variable.
+- **Player** is not an event, but followers and vehicles behave like
+  events with a follow route.
+
+House already has: events-hq pages, IR, `cmd_N.sh`, registry templates,
+gold/switch/variable cmds, CE tab, desk save of pals. Missing: the
+**interpreter loop in play** and the **three heavy cmds** below.
+
+### 6.1 Transfer Player (`COMMAND transfer_player`)
+
+**Registry today:** `mr_world.+x` `"$ENT" transfer '{map}' '{xy}' ''`
+→ kv in `map_state.pdl`. Camera does not move. Desk does not change.
+
+**What RM actually does (order matters — get this wrong and you leak
+Autoruns):**
+
+1. **Freeze** the current map interpreter (finish the *current* command
+   only; do not run the rest of the page after the fade in a new map
+   unless the designer put commands after Transfer — RM **does** run
+   them *after* arrival if they exist, but most events Transfer as last
+   cmd). Safer house rule: **Transfer is last-on-page** in guides;
+   still support leftover cmds on the *new* map’s interpreter, not the
+   old.
+2. **Fadeout** (`fadeout_screen`) unless fade type is “none”. Registry
+   already has fadeout/fadein kv. Consumer: actually dim the canvas /
+   desk (tint is enough; do not hide windows).
+3. **Unload** old map events (stop Parallel/Autorun). **Keep** party,
+   gold, items, global switches/variables, self-switches **keyed by
+   (map_id, event_id)** so a door on map A does not clobber door B.
+4. **Load** target:
+   - If `map` is a pchq sample / chunk id → `load-map` path already
+     copies `map.txt` → `chunk_0_0_z0.txt`. Extend: load **all z**
+     files if present; load `events.pdl` into live event instances.
+   - If `map` is a **desk name** → switch `desks/<name>.pdl` (session
+     already has multiple desks). Place hero pal at `xy`.
+5. **Place party** at `x,y` facing `d` (registry PARAMS are `map,xy`
+   only — **add a third field for direction** when you touch the
+   registry: `2/4/6/8` RM numpad, or `down/left/right/up`). Default
+   retain facing if empty.
+6. **Center camera** on party (board-viewer already has hero vs camera
+   keys). Do not teleport camera without the hero.
+7. **Fadein**. Then start Autorun/Parallel on the **new** map.
+
+**RM gotchas you will hit:**
+
+- **Same-map transfer** (stairs on one map to another cell): do not
+  unload events if map_id unchanged; do move the player; **do** re-eval
+  page conditions (walking onto a region that flips a switch).
+- **Vehicles:** if player is in a boat, Transfer onto land must
+  **leave the vehicle** or you trap them. House: if vehicle pal exists,
+  Transfer sets `through=0` and unparents.
+- **Followers:** snap to player tile, then let move_route catch up.
+  Do not Transfer each follower with its own fade.
+- **Looping maps / wrapping:** RM optional; we can skip. CDDA overmap
+  transfer is a *different* consumer of the same cmd (see §9).
+- **Z:** RM maps are one z. We have z layers. Transfer PARAMS should
+  allow `x,y,z` (third number optional, default 0). Put z in `xy` as
+  `8,8,1` until FIELD3 exists — document it in the template comment.
+- **Encounter flash / map BGM:** System + map properties. After
+  transfer, play map BGM unless a vehicle BGM is active.
+
+**Files to read/write (do not invent parallel state):**
+
+- `map_state.pdl` (already written by `mr_world`)
+- pchq `board_config.txt`, `chunks/chunk_*_z*.txt`, `maps/<id>/events.pdl`
+- desk `desks/<name>.pdl` + player pal `desktop_pos.txt`
+- `self_switches.txt` already in `mr_world` family — **key by map+event**
+
+**Acceptance:** door on `cdda_sample` with `transfer_player` to
+`mineclonia_sample` (or desk `office` → another desk) actually changes
+what you see, hero at target xy, fade kv honored, old Autorun stopped.
+
+### 6.2 Shop Processing (`COMMAND shop_processing`)
+
+**Registry today:** goods = comma item ids → `shop_state.pdl`. No UI.
+
+**What RM actually does:**
+
+- Opens a **modal buy/sell** (purchase-only flag exists in Ace; MV
+  shop can disable sell). Party gold in the corner. List of goods from
+  **Items / Weapons / Armors** db rows, **price** from db (not from the
+  event — the event only lists **which ids** are sold). Some RM shops
+  pass a custom price override; we can skip override v1.
+- Buy: `gold >= price` and inventory not full → `change_gold -price`,
+  `change_items +1`. Sell: usually 50% of db price (System term
+  “Sell Rate” if you add it; default half).
+- Cancel / OK closes; event continues.
+
+**House mapping (reuse, do not write a second inventory):**
+
+- **Gold:** already a cmd / piece. Shop must call the same gold file
+  play reads.
+- **Items:** db-hq Items tab must emit a play file
+  `id | name | price | icon | consumable | …`. Until that tab writes
+  play JSON/pdl, shop can read `#.desktop/db_hq_items.state.txt` **only
+  if** you also write a canonical `db/Items.pdl` from the same save
+  path. **Do not** have shop parse the dashboard `.xhtpm`.
+- **UI:** a khtpm toy or overlay list is enough (Show Choices is a
+  legal v0: “Buy Potion 50G / Buy Hi-Potion 150G / Sell / Leave”).
+  Real shop window is Loop C polish. **Do not** block on a pretty UI.
+- **Minecraft crafting / CDDA crafting / Pokemon mart / Civ luxuries**
+  are **the same command** with different goods lists and maybe a
+  `mode=buy|craft|barter` later. v1 = buy/sell against gold.
+
+**RM gotchas:**
+
+- Shop during Autorun blocks the map; Parallel shops are rare and
+  cursed — ignore Parallel shops.
+- Empty goods list = sell-only dump shop (RM allows this).
+- Items with price 0 are not sold (hidden) unless the event listed
+  them — still show if listed.
+- Stack vs unique: RM items stack; weapons/armor often unique
+  instances. v1: everything stacks. Pokemon held items / MC tools
+  with durability come later as extra fields, not a new cmd.
+
+**Acceptance:** pal with `shop_processing` goods=`1,2,3`, gold 100,
+buy one, gold and inventory files change, event resumes with Show Text.
+
+### 6.3 Battle Processing (`COMMAND battle_processing`)
+
+**Registry today:** troop id + can_escape → `battle_state.pdl`. No fight.
+
+**What RM actually does (you need this sequence, not a Unity combat
+framework):**
+
+1. Optionally **fade + battle-start SE** (System sounds).
+2. Switch to **troop** layout: enemies from db Troops → list of Enemies
+   rows (hp/mp/atk/skills/drop/gold/exp). Party = Actors in the
+   party (not all Actors in db).
+3. **Turn loop:** for each battler, AGI order (or ATB if you are insane
+   — **do not** do ATB in v1). Command: Fight / Escape / Item / Skill /
+   Guard. Skills cost MP, hit formula `a.atk * 4 - b.def * 2` is the
+   RM default — copy it; do not invent.
+4. **Victory:** gain exp/gold/drops, death of all enemies. **Abort /
+   escape:** if `can_escape=1` and luck/agi check. **Defeat:** if
+   `can_lose` (registry FIELD2 is only escape today — **add can_lose**
+   as FIELD3 or pack `can_escape,can_lose`). RM “If Win / If Escape /
+   If Lose” are **event branch commands after Battle Processing**.
+   House: after battle, set a variable `last_battle=win|escape|lose`
+   so the same page can `conditional_branch` on it. That is how RM
+   event pages do post-battle without a special interpreter opcode
+   beyond the built-in battle result branches.
+5. Return to map; fadein; continue event.
+
+**House mapping:**
+
+- **Troop / Enemy / Actor / Skill** tabs in db-hq must write play
+  files. Placeholder field tiles are **not** enough. Minimum viable
+  battle: 1 actor (hp/atk/def), 1 enemy, Fight + Escape, gold on win.
+- **UI:** Show Choices “Fight / Escape” + Show Text for damage is a
+  valid v0. Side-view battlers (RMMV `$sv_actors`) are palettes you
+  already have — draw later.
+- **CDDA melee, Pokemon, Civ combat** are **skins of this cmd** (see
+  §9). Do not fork `battle_processing`.
+
+**RM gotchas:**
+
+- **Preemptive / surprise** from map encounter steps — skip for event
+  battles v1.
+- **Troop events** (RM troops have their own pages: “at turn 3, extra
+  slime”). v1 skip; v2 is a nested events-hq pkg on the troop id.
+- **Death state** vs HP=0: RM uses States. v1: HP<=0 = dead, remove
+  from turn order.
+- **Escape from event battle** often disabled (`can_escape=0`) for
+  bosses. Honor the flag.
+- **Do not** pause the whole livedesk OS. Battle can be a **modal
+  khtpm** on top of chrome (chrome stays). Interpreter waits.
+
+**Acceptance:** event `battle_processing` troop=1 can_escape=1, Fight
+reduces enemy hp in a file, win writes gold+exp, map event continues.
+
+### 6.4 Remaining db plumbing (play cannot read the dashboard)
+
+db-hq-pal has 15 RMMV tabs. **Only Common Events is a real editor.**
+`#.#.calendar-dox` and `#.ref/menu/db-tabs-remaining.txt` are the
+ladder. Terms is **INI** (`[Basic Terms]` in `db_hq_terms.state.txt`),
+not `TAG|id|name` — a list projector that assumes TAG will show empty
+(already happened).
+
+**Rule:** every tab that play needs must **emit a canonical pdl/json
+under a stable path** (suggest `44.xyz.01.00/#.desktop/db/play/` or
+xyzfs `home/db/`) **on save**, in addition to whatever `state.txt` the
+UI uses. Play **never** greps `.xhtpm`.
+
+| Tab | Play needs | RM meaning (short) | v1 columns |
+|---|---|---|---|
+| Actors | party members | class, slots, start level, battler graphic | id, name, hp, mp, atk, def, face, character |
+| Classes | optional v2 | features + learnset | skip v1 (fold stats onto Actor) |
+| Skills | battle + field | skill type, mp cost, scope, formula | id, name, mp, formula, scope=1 enemy |
+| Items | shop + battle item | consumable, price, effects | id, name, price, effect=recover_hp |
+| Weapons / Armors | equip | etype, params | skip v1 or treat as items |
+| Enemies | battle | params, actions, drop, gold, exp | id, name, hp, atk, def, gold, exp |
+| Troops | battle | list of enemies + coords | id, enemy_ids |
+| States | poison etc | skip v1 | — |
+| Animations | flash | skip v1 | use `flash_screen` |
+| Tilesets | passability | A/B mode, passage, bush, counter | **needed for walk**; can hardcode passage on glyph until tab writes |
+| Common Events | already | trigger + switch | keep events-hq pkg |
+| System | start party, start map, gold, BGM, boat/ship/airship, terms pointers, battle opts | start_map, start_xy, start_gold, party_actor_ids, title | **do this early** — Transfer’s default dest |
+| Terms | vocab | INI sections Basic / Commands / Params / Messages | parse INI; do not TAG-split |
+| Types | skill/equip/element | skip v1 | — |
+
+**System tab is the silent blocker.** RM “New Game” reads System:
+party, start map, start xy, gold. Without that file, Transfer has
+nothing to default to and battle has no party.
+
+**Passability:** RM tileset flags (○/×/☆, 4-dir arrows, bush, ladder,
+counter, damage floor). House glyphs in `terrain_legend.txt` can carry
+a `pass=0|1` column **now** so you are not blocked on the Tilesets tab.
+
+**Do not** store play state only in `#.desktop/db_hq_*.state.txt`.
+That path is a **form buffer**. Duplicate on write.
+
+### 6.5 Interpreter / fade / move route (do not skip)
+
+These are already registry cmds; consumers:
+
+- **Show Text / Show Choices:** must block the interpreter. You already
+  have message-ish toys; wire them as the wait point.
+- **Fadeout/in, tint, flash, shake:** `screen_state.pdl` — board-viewer
+  and desk compositor should **read** that each frame (tint multiply).
+- **set_move_route:** RM routes are lists (`Move Down, Wait 10, Turn
+  Left, Switch ON A`). v1: parse a tiny DSL in the FIELD2 string.
+  Needed for MC gravity? No — gravity is a Parallel CE. Needed for
+  NPC patrols and Pokemon wandering: yes.
+- **scroll_map:** camera without moving hero (cutscenes). Board already
+  distinguishes hero `x/z` vs camera `c/v`.
+- **change_menu/save/encounter access:** flags files exist. File menu
+  Save should **no-op** when save_access=0 (RM grayed menu).
+
+### 6.6 Save / Load (desktop + board)
+
+RM save blob: map_id, xyz, party, items, gold, switches, variables,
+self-switches, screen tint, vehicles, save count.
+
+House already: desk pdl, pal history, ledger, pchq chunks. **Unify
+into one snapshot dir** per slot (`saves/slotN/`) that copies:
+
+- current desk name + all `DESK` rows + pal `desktop_pos` + `pal.pdl`
+- pchq chunks + `board_config` + `map_state.pdl`
+- gold, items, party, switches, variables, self_switches, timer
+- System start is **not** overwritten (New Game reads System; Continue
+  reads slot)
+
+Load = copy back + Transfer-without-fade to saved map_id/xy. **Do not**
+re-run Autoruns that already completed unless their page conditions
+still match (self-switch A on a chest must stay ON).
 
 ---
 
-## 7. Non-goals
+## 7. How a lesser model should sequence the work
 
-- New renderer `g_is_pchq` / bringing back 810-line `run_pchq_board_mode`.
+Do **not** build a combat engine before Transfer. Suggested PRs:
+
+1. **Play interpreter** that runs `cmd_N.sh` / registry templates in
+   order, honors Wait/Text, on the **focused map** (desk or pchq).
+2. **System.pdl + Items.pdl + Actors.pdl** writers from db-hq save
+   (even if the UI stays field tiles — a “flush to play files” script
+   is enough).
+3. **Transfer consumer** (desk and pchq).
+4. **Shop v0** (choices + gold + items).
+5. **Battle v0** (choices + one enemy hp file).
+6. **Save slot** as directory copy.
+
+Guides (`event-guides/`) already list `need=transfer_player` etc.
+When a consumer lands, **remove that id from TILE.need** and add it to
+TILE.cmds — that is the honest status board.
+
+---
+
+## 8. Pointers
+
+| Need | File |
+|---|---|
+| Palettes / samples / clone table | `08-roadmap/TILESETS-EVENTS-AND-GAME-CLONES.md` |
+| Board window history | `design-docs/piececraft-hq.md` |
+| Interact / focus | `09-appendix/pc-hq-leg-vs-nu-fix.md`, `PC-HQ-FOCUS-AND-INTERACT-ACTIVATE.md` |
+| Registry / IR | `EVENT-COMMAND-REGISTRY-ARCHITECTURE.md`, `event_commands.registry.pdl` |
+| db tabs | `#.ref/menu/db-tabs-remaining.txt` |
+| Guides schema | `#.ref/menu/event-guides/SCHEMA.pdl` |
+| Desktop 3D camera (later) | `CURSWORD-DESKTOP-3D-AND-PIECECRAFT-INSCENE-DESKS-DESIGN.md` |
+
+---
+
+## 9. Clone skins — CDDA, Minecraft, Civilization, Pokemon
+
+**One event system. Four data packs.** Do not fork events-hq, do not
+fork `mr_world`, do not add `g_is_cdda`. Each clone is: a **palette
+category**, **event-guide sheets**, **sample map**, **db rows**
+(items/enemies/actors), and **which existing cmds you fill in**.
+
+Shared chunks (reuse everywhere):
+
+| Chunk | Why every clone uses it |
+|---|---|
+| events-hq IR / pages / triggers | doors, signs, NPCs, wild encounters, end-turn buttons |
+| registry cmds | transfer, shop, battle, gold, switch, variable, text, choices, move_route, fade, CE call |
+| palettes + guides | TILE.tex + trigger + cmds; seed `event_pkg` on stamp |
+| desk `DESK` + session save | overmap / world / town persistence |
+| pchq chunks + z + POV 1–4 | local map (CDDA reality bubble, MC chunk, Civ city view, Poke route) |
+| gold / items / party files | currency, inventory, squad |
+| Common Events | clocks, hunger, wild-grass, gravity, end-of-turn |
+| board-viewer passability + hero | walking; z for MC/CDDA stairs |
+
+### 9.1 CDDA-like (Cataclysm)
+
+**Feel:** top-down survival, time, loot, doors, stairs, traps, simple
+combat, overmap travel.
+
+**Already:** `cdda` picker (UltiCa), `event-guides/cdda/{terrain,furniture,traps,items}.pdl`,
+`cdda_sample`, door example pkg.
+
+| CDDA thing | House reuse | Implement notes (RM-savvy) |
+|---|---|---|
+| Reality bubble map | pchq chunk + z | One RM map = one bubble. Do not simulate the whole overmap in the interpreter. |
+| Overmap travel | **Transfer Player** between maps/desks | Stairs already `need=transfer_player`. Portal trap same. Desk-per-overmap-tile is valid v0. |
+| Closed/open door | Control Switch + **page graphic change** | RM door = two pages (page1 closed graphic + Action → switch A; page2 open + through). Example `examples/cdda_door`. Do **not** write door C. |
+| Stairs | Transfer + z | `xy` includes z. Fade none for in-building stairs. |
+| Traps | Player Touch + `change_hp` / Battle | Beartrap: touch → hp; landmine: Battle or hp+switch. `tr_portal`: Transfer. |
+| Loot / examine | Action + `change_items` / Shop sell-only | Crate = shop with goods=loot table **or** CE that rolls a variable and gives item. |
+| Craft / anvil | `shop_processing` as craft | Goods = recipes; “price” = ingredient check (v1: gold as stand-in; v2: consume items). Guide already `need=shop_processing`. |
+| Sleep / time | CE Parallel + `control_timer` | Timer already kv. CE: every N ticks hunger variable++. Bed: Action → wait + timer jump. |
+| Zeds | Troop on **Player Touch** region **or** Parallel CE encounter | RM random encounter = System encounter steps. CDDA: CE checks “zombie density” variable, then `battle_processing`. |
+| Melee | Battle v0 | One actor, one enemy, Fight/Escape. Skills later = bite/bash as Skills db. |
+| Light / night | `tint_screen` | CE at timer thresholds. |
+| Save | §6.6 | CDDA save is just RM save + extra variables (hunger, hour). |
+
+**Do not build:** full CDDA JSON mods, vehicle physics, 3D overmap.
+**Do build:** door pages, stair Transfer, loot Action, trap Touch,
+battle v0, timer CE.
+
+### 9.2 Minecraft-like (Mineclonia tiles)
+
+**Feel:** place/break, inventory, chests, doors, furnace, gravity,
+day/night, craft.
+
+**Already:** `piececraft` picker, `event-guides/mineclonia/{mcl_core,interact}.pdl`,
+`mineclonia_sample`, chest example pkg.
+
+| MC thing | House reuse | Implement notes |
+|---|---|---|
+| Block place/break | palettes stamp **in play** + `change_items` | RM has no “break tile” opcode. House: play-mode stamp/erase **is** the MC verb. Optionally event on break (coal → give item). |
+| Chunks / height | pchq z layers | Each z file is a slice. Transfer `x,y,z` for ladders (`mcl_core` ladder). Water `need=transfer` was wrong — water is `change_hp` + passability, not map change. |
+| Chest | Action + Shop or `select_item`/`change_items` | Guide: `need=shop_processing`. Chest inventory = shop with price 0 (deposit/withdraw). Better v1: CE + item counts in variables named `chest_<map>_<id>_<item>`. |
+| Door | same as CDDA two-page switch | `interact.pdl` door_wood. Room change = Transfer if the door is a portal; else just through-flag. |
+| Furnace / craft table | Shop as recipe list **or** CE | Crafting table guide already `call_common_event`. Put recipes in CE, not C. |
+| Bed | Transfer (set spawn in System) + timer | RM “inn” is Show Text + recover HP + gold. MC bed = set System start_xy + skip timer. |
+| Gravity / falling | Parallel CE **or** move_route Down while cell below empty | Do not put gravity in the renderer. CE: if passability below hero, move_route down. |
+| TNT | Action / Touch → `change_hp` AoE + erase cells | Switch + wait + flash + shake (cmds exist) then script erases glyphs. |
+| Mobs | Battle or map events with move_route | Creepers = event with Parallel move_route toward player + Touch battle. |
+| Day/night | `tint_screen` + timer CE | Same as CDDA. |
+| Inventory hotbar | Items db + gold unused | MC has no gold; use items only. Shop still works as chest/craft. |
+
+**Reuse with CDDA:** door pages, Transfer, shop-as-container, timer CE,
+tint, battle for mobs. **Unique:** play-mode stamp/break, z gravity CE.
+
+### 9.3 Civilization-like
+
+**Feel:** grid terrain, cities, gold per turn, simple combat, end turn.
+Not a full 4X sim.
+
+| Civ thing | House reuse | Implement notes |
+|---|---|---|
+| World map | desktop **or** pchq 2D POV | One cell = one tile. Palettes terrain glyphs (piececraft / emoji / civ-txt). **Desktop as map** is the right Civ board — pals = units/cities. |
+| Cities | pal with Autorun/Parallel CE | City pal: graphic = city; CE each **End Turn** adds gold (Change Gold). |
+| Units | pals with move_route + Action | RM events that the **player** “possesses” is awkward. v0: one unit = the hero; other units = events you Action to “select” (switch) then Transfer-in-place as that pal. v1 later: party = army list in Actors. |
+| End turn | Common Event called from a **desk pal** “Next Turn” or Show Choices | CE: gold income, city growth variable, AI move_route, encounter check. |
+| Combat | `battle_processing` | Troop = the other unit’s enemy row. Win → erase loser event (self-switch + graphic none). |
+| Diplomacy / tech | switches + variables + Show Choices | “Open borders” = switch. Tech tree = variables; CE gates units. **Do not** build a tech UI; a list of choices is RM-correct. |
+| Fog | skip v1 **or** tint cells | Not a new engine. |
+| Save | desk snapshot | Civ save **is** the desktop save. |
+
+**Reuse:** gold, CE, pals-as-events, battle, switches. **Unique:** End
+Turn CE as the clock (instead of CDDA timer). **Do not** start until
+Loop A stamp works on the **desktop** (Civ is a desk game more than a
+pchq voxel game).
+
+### 9.4 Pokemon-like
+
+**Feel:** overworld + grass encounters + party of 6 + turn battle + mart
++ PC box + gym doors.
+
+| Poke thing | House reuse | Implement notes |
+|---|---|---|
+| Routes / towns | maps + **Transfer** on doors/ledges | Classic RM. Ledges = Transfer same-map + 1 tile hop (move_route). Doors = Transfer other map. |
+| Player sprite | Actors character graphic / rmmv characters picker | Followers = party pals optional (RM followers). |
+| Wild grass | Parallel CE **or** Player Touch on grass tiles | RM encounter steps live in System. House: CE on step count variable → `battle_processing` with random troop from a table (variable). **This is the RM random encounter system.** Do not write a Pokemon engine. |
+| Trainers | event page: Player Touch in line of sight | RM trainer = Autorun after `set_move_route` toward player + Show Text + Battle + self-switch A (won’t retrigger). LOS v0: skip; use Touch. |
+| Party of 6 | Actors db + party list in System | Battle uses first living Actor; Items “Pokeball” later. |
+| Types / STAB | skip v1 **or** Skills element field | v1 Fight = tackle formula. Types are db Types tab (skip until battle v0 works). |
+| Mart | **shop_processing** | Goods = pokeballs/potions from Items. |
+| PC / storage | Shop-as-container **or** CE moving items | Same as MC chest. |
+| Gym / badge | switches + Transfer | Badge = switch; gym door page condition = switch. |
+| Evolution | CE after battle if exp variable ≥ n | Change Actor graphic (db) — can wait. |
+| Legendaries | map event, `can_escape=0` | Standard RM boss. |
+
+**Reuse with RM demo:** Transfer, Shop, Battle, Text, Choices, self-switch,
+CE, System start map. Pokemon **is** the RM template with grass CE.
+**Do not** invent a second battle cmd for “pokemon battle.”
+
+### 9.5 What not to share / not to build
+
+- **No per-clone renderer flags.** Skins are data.
+- **No GTA** until a tileset PDL exists (cars/peds pack).
+- **Do not** hide chrome to “feel more like the game.”
+- **Do not** implement DF, Kenney, or new palettes before Loop C
+  consumers — guides already outrun play.
+
+### 9.6 Suggested first demo per skin (honest, small)
+
+| Skin | 5-minute demo once consumers exist |
+|---|---|
+| RM | Town desk + door Transfer + mart Shop + one Battle troop |
+| CDDA | `cdda_sample` door page + stairs Transfer + trap hp + loot Action |
+| MC | stamp dirt, chest shop, door page, ladder z Transfer |
+| Civ | desktop grid, city pal CE gold/turn, one unit Battle |
+| Pokemon | route map, grass CE → Battle, door Transfer, mart Shop |
+
+---
+
+## 10. Non-goals
+
+- Hiding livedesk / board chrome in play.
+- New renderer `g_is_pchq` / bringing back `run_pchq_board_mode`.
 - Hardcoded asset paths in C.
-- Playable GTA/Civ before a tileset PDL and Loop A.
+- Playable GTA before a tileset PDL.
 - Using `event.commands.remaining.txt` as truth.
+- Forking the interpreter per clone.

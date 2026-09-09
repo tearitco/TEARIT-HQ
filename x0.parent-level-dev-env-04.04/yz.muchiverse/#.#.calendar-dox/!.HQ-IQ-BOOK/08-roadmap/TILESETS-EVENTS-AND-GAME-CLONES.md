@@ -141,8 +141,13 @@ Test log: `#.#.calendar-dox/1.^V-hq/PIECECRAFT-CDDA-MINECLONIA-BOARD-TEST.md`.
 | **RPG Maker** | `rmmv` picker + `RMMV-ASSET-SOURCE-LOCATION.pdl` | registry + events-hq + Common Events tab | desktop tiles / mutaclysm import | db-hq Actors/Items/… tabs placeholder; Transfer Player state-only; desk persistence gap (`TILE-PLACEMENT-DESK-PERSISTENCE-GAP-2026-08-29.txt`) |
 | **Minecraft clone** | `piececraft` picker + Mineclonia mods | `event-guides/mineclonia/*` (chest/door/furnace/bed/tnt) | piececraft-hq chunks + `mineclonia_sample` | no voxel hit-test → events-hq; no gravity/move-route; shop/craft UI missing |
 | **CDDA clone** | `cdda` picker + UltiCa | `event-guides/cdda/*` (doors, traps, loot, sleep) | `cdda_sample` | battle_processing is kv only; no map transfer; monsters not on guide sheets yet |
-| **Civ clone** | palettes stub; civ-txt / piececraft terrain glyphs | gold/switch/variable already exist | civ-txt + board-viewer | not wired to these pickers |
+| **Civ clone** | palettes stub; civ-txt / piececraft terrain glyphs | gold/switch/variable already exist | **desktop as map** + pals as units/cities | End Turn CE not written; stamp-on-desk missing — see vision §9.3 |
+| **Pokemon clone** | rmmv characters/tiles + same events | grass CE → battle; mart = shop; gym = switch+transfer | desks + pchq routes | same Loop C consumers as RM — vision §9.4 |
 | **GTA-shaped** | none yet (cars/peds would be a new DIR/TILESET pack) | movement + transfer + play_se stubs | no city map | do not start without a tileset PDL |
+
+Implementer briefing (Transfer / Shop / Battle / db files / clone reuse):
+`design-docs/PIECECRAFT-HQ-GAME-EDITOR-AND-PLAY.md` §§6–9. **Play does
+not hide chrome.** Livedesk is a first-class RM map.
 
 db-hq: `&.hq-apps/db-hq-pal/dashboard.xhtpm` has all 15 RMMV tabs;
 **only Common Events is an editable panel.** Ladder:

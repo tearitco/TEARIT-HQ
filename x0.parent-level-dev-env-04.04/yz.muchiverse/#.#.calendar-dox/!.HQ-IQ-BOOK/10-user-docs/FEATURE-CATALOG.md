@@ -109,7 +109,7 @@ driven from the GUI): 📋 hooks planned, not built.
 | **text-edit-hq** | multi-line editor: line-number gutter, selection, real clipboard, Save-As via File Explorer | ✅ |
 | **csv-hq** | spreadsheet: `<grid>` in-place cell edit, 5 named functions (SUM/AVG/MIN/MAX/COUNT), 26 cols, plain-comma | ✅ v1 |
 | **music-player-hq** | iTunes-style player: `.pal`-dir library, `mpg123 -R` playback, transport, ASCII visualizer placeholder | ✅ v1 (`MUSIC-PLAYER-HQ-DESIGN.md`) |
-| **piececraft-hq** | studio board (`<canvas>` + Interact); HQ menu / Toys → Piececraft-HQ; File → samples | 🟡 viewer + map load live; stamp-from-palettes, voxel→events-hq, edit/play chrome split not wired — vision `PIECECRAFT-HQ-GAME-EDITOR-AND-PLAY.md` |
+| **piececraft-hq** | studio board (`<canvas>` + Interact); HQ menu / Toys → Piececraft-HQ; File → samples. Desktop is also an RM-like map (z, transfers, save). Play = Interact; **do not hide chrome**. | 🟡 viewer + map load live; stamp/events/transfer-shop-battle still kv — vision `PIECECRAFT-HQ-GAME-EDITOR-AND-PLAY.md` |
 | **piececraft-xyz** | world manager | 🟡 |
 | **media-img-hq / media-3d-hq / media-daw-hq / media-vid-hq** | house-spec media toys | 🟡 vid demo clip is `NNEST-12.00/#.NNEST_ASSETS/video/sample-10s-vp9.mp4` (`VIDEO-ASSET-SOURCE-LOCATION.pdl`); see `PROGRESS-media-studio.md` |
 | **my-chara-txt / my-lawyer** | `toy.pdl` only, no template yet | 📋 |
