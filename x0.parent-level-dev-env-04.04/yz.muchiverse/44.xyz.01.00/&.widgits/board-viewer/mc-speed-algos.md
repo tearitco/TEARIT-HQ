@@ -206,3 +206,64 @@ comparable to civ-txt's; OpenMP then cut BOTH down further together.
   would likely outperform OpenMP's CPU-only parallelism further, but
   there's nothing to gain from writing that code against hardware that
   doesn't exist here.
+
+---
+
+## 7. 2026-09-09 — second pass + the "is it file I/O?" question
+
+Re-profiled `bv_render_3d` at the pc-hq TV canvas (1108x656, up from
+the old fixed 640x480 after the "open the view" change). Reported as
+"slow again with key input".
+
+### What it is NOT
+
+- **NOT file I/O.** `strace -c` on one frame: 0.023s total in
+  syscalls (3 writes, 166 reads, 88 opens). `bv_dispatch` idle tick =
+  0.00s (coalesce works - the raymarch only runs when an input burst
+  settles). `bv_compose_frame` = 0.00s. `bv_render_2d` = 0.03s. The
+  wraith-alpha "in-memory DB that fakes file read/write, flushes to
+  disk once a minute" shim would remove **nothing measurable** here -
+  there is no I/O bottleneck in this pipeline. Do not reach for it for
+  board-viewer.
+- **NOT thread count.** `nproc` = 8; libgomp default already uses all
+  8. `OMP_NUM_THREADS=8` vs unset: identical (~0.10s).
+- **NOT a new algorithmic bug from the bigger canvas.** Cost scales
+  cleanly linear with pixel count (~2.3 CPU-us/pixel).
+
+### What it IS
+
+- The **raymarch itself**, plus **machine contention**. On an idle box
+  (loadavg ~5) the frame is **~0.10s wall** on 8 cores. The 0.25-0.47s
+  numbers that triggered the report were measured while Chrome held
+  ~74% CPU across cores (loadavg ~18) - the OpenMP region was
+  core-starved. ~0.10s = ~10 fps during *sustained* 3D camera motion;
+  coalescing means a fast key burst renders once, not per key.
+
+### Fixes landed this pass (all byte-identical output, verified)
+
+| commit | change | effect |
+|---|---|---|
+| `33e5c144` | A&W volume clamp: capture the ray's *exit* t from the board bbox, stop the DDA there (kills the ~90-step empty tail every grazing/sky ray walked). `bv_render_3d` also gets `-O3 -march=native -funroll-loops` (was `-O2`). | 1.65 -> 1.36s user @ default cam; bigger win panned-back |
+| `d94c04da` | gate the per-pixel foreground tests (xelector/hero/tree/entity) on `board_bbox_hit` - sky rays skip ~10 AABB tests + tree voxel marches | no change at top-down cam; win panned-back |
+| `dde14725` | **`test_phymoji_hit` was ~30% of the frame** - it slab-tested every (lx,ly) column of every tree/hero per covered pixel (~425 double AABB for a TILE_N=32 tree). Replaced with a local 2D column-grid DDA (`PHYMOJI_GRID_DIM=32`, built once per template), front-to-back, stop at first hit. Same A&W as the board. | 1.41 -> 1.19s user |
+
+Cumulative: ~1.65 -> ~1.19s user / ~0.16 -> ~0.10s wall on an idle
+8-core box, **output byte-identical throughout**, no resolution cap,
+no letterbox, no FOV change.
+
+### Left on the table (not done - diminishing returns at ~0.10s)
+
+- `-ffast-math` measured ~10% more. Skipped: the loop uses `1e17`/
+  `1e18` as *finite* "no hit" sentinels; `-ffinite-math-only` around
+  them plus `-fassociative-math` on the `t_max += t_delta`
+  accumulation is a footgun for 10%.
+- Float conversion of the per-pixel path: **tried, measured, does not
+  help** - a float-internal `ray_aabb_hit_3d` built the same frame
+  byte-identical at the same speed. The FP slab math is not the
+  bottleneck; memory-bound array access + the (now-fixed) phymoji
+  march were.
+- Adaptive resolution (render at ~0.6x while the camera is moving,
+  full res when it settles) is the only remaining lever that keeps
+  1:1 + FOV and would get sustained-motion 3D toward 30 fps. Not
+  attempted - it's a real feature, and coalescing already covers the
+  common "nudge then stop" case.
