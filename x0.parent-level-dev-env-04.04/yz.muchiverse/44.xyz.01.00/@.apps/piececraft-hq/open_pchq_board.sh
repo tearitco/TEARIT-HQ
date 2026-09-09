@@ -94,6 +94,23 @@ echo "$SESS_BASES" | while IFS= read -r _base; do
     done
 done
 
+# Reap an orphaned `bash board-viewer/button.sh run-widget <this pkg>`
+# whose session dir is gone (a hard-killed test / strip restart leaves
+# the bash wrapper alive; ledger_peers still reports it ONLINE because
+# its PID lives, so the projector latches a deleted bv_session -> blank
+# canvas). If no live prisc VM has a cwd under an existing board-viewer
+# session dir, the widget is dead weight - kill it.
+for _w in $(pgrep -f "board-viewer/button.sh run-widget .*/piececraft-hq" 2>/dev/null); do
+    _ok=0
+    for _p in $(pgrep -f "prisc\+x pal/main_module" 2>/dev/null); do
+        _c="$(readlink "/proc/$_p/cwd" 2>/dev/null)"
+        case "$_c" in
+            "$HOUSE_ROOT/&.widgits/board-viewer/pieces/sessions/"*) [ -d "$_c" ] && _ok=1 ;;
+        esac
+    done
+    [ "$_ok" = 1 ] || { echo "open_pchq_board: reaping orphan board-viewer widget $_w (no live session)"; kill -KILL "$_w" 2>/dev/null || true; }
+done
+
 # ── single-instance guard: clean-restart the board window ────────────
 # Match the shared binary by its OWN chtpm path (bare-name match would
 # hit every other khtpm_core_render window) + the projector.
@@ -116,8 +133,18 @@ fi
 # .raw; the projector discovers it via ledger_peers. The board-viewer
 # widget for this host is started (once) by `button.sh run`. Its live
 # cmdline is: bash .../board-viewer/button.sh run-widget <this PKG>.
+# "up" = a board-viewer run-widget for this host AND a live prisc VM in
+# an ON-DISK board-viewer session (a bash wrapper alone is not enough -
+# see the orphan-reap above).
 engine_up() {
-    pgrep -f "board-viewer/button.sh run-widget .*/piececraft-hq" >/dev/null 2>&1
+    pgrep -f "board-viewer/button.sh run-widget .*/piececraft-hq" >/dev/null 2>&1 || return 1
+    for _p in $(pgrep -f "prisc\+x pal/main_module" 2>/dev/null); do
+        _c="$(readlink "/proc/$_p/cwd" 2>/dev/null)"
+        case "$_c" in
+            "$HOUSE_ROOT/&.widgits/board-viewer/pieces/sessions/"*) [ -d "$_c" ] && return 0 ;;
+        esac
+    done
+    return 1
 }
 if ! engine_up; then
     # serialize concurrent launches (rapid double-click) through a
@@ -127,8 +154,13 @@ if ! engine_up; then
     if mkdir "$LOCK" 2>/dev/null; then
         trap 'rmdir "$LOCK" 2>/dev/null || true' EXIT INT TERM
         if ! engine_up; then
-            echo "open_pchq_board: starting engine session (button.sh run, detached)"
-            setsid nohup sh -c 'sh "$0" run' "$PKG/button.sh" >/dev/null 2>&1 &
+            echo "open_pchq_board: starting engine session (button.sh engine mode, detached)"
+            # PCHQ_ENGINE_MODE=1: button.sh blocks on the orchestrator
+            # instead of foregrounding a (tty-less, instantly-exiting)
+            # keyboard_input reader - that early exit is what fired the
+            # rm -rf trap and left the board window blank. Its teardown
+            # trap still runs on a real SIGTERM (taskbar reap) / Ctrl-C.
+            setsid nohup env PCHQ_ENGINE_MODE=1 sh -c 'sh "$0" run' "$PKG/button.sh" >/dev/null 2>&1 &
             _eng=$!
             # button.sh's own EXIT/INT/TERM trap does a clean rm -rf +
             # kill_own_* - nothing ever SIGTERM'd it under the old

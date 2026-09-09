@@ -282,3 +282,41 @@ Reaped 35 orphaned engine processes (sessions back to ~03:30) and
 `rm -rf`'d ~19 stale session dirs across
 `@.apps/piececraft-{hq,xyz}/pieces/sessions/` and
 `&.widgits/board-viewer/pieces/sessions/`.
+
+---
+
+## 7. Steps 2-3 landed (2026-09-09) — "blank small window" fix
+
+The blank/small pc-hq window = the board window mapped with **no live
+board-viewer session behind it** (`canvas_raw` -> a missing / deleted
+`.raw`). Two causes, both fixed:
+
+1. **`button.sh run` under the detached taskbar launch foreground-ran
+   `./system/keyboard_input`**, which exits immediately with no tty ->
+   the `EXIT` trap fired -> `rm -rf "$SESSION_DIR"` while the board
+   window was still attached -> blank. **Fix:** `button.sh` honours
+   `PCHQ_ENGINE_MODE=1` (set by `open_pchq_board.sh`): it `wait`s on the
+   orchestrator (the game's real lifetime) instead of foregrounding a
+   tty-less key reader, and writes `pieces/system/session_dir.txt`. The
+   teardown trap is unchanged — it still runs on a real SIGTERM (taskbar
+   quit / ledger reap) or Ctrl-C. Terminal `button.sh run` is untouched.
+2. **A hard-killed test left the `bash …/board-viewer/button.sh
+   run-widget` wrapper alive with its session dir already gone.**
+   `ledger_peers` keeps a row ONLINE while its PID lives, so the
+   projector latched the deleted session. **Fixes:**
+   - `open_pchq_board.sh` reaps an orphan `run-widget` wrapper when no
+     live prisc VM sits in an on-disk board-viewer session; `engine_up()`
+     likewise requires a real on-disk session, not just the wrapper pid.
+   - `pchq_board_projector.c` `find_board_session()` `stat()`s the
+     session dir and skips it if gone (keeps scanning for a real one).
+3. **Two board windows / two projectors** — `button.sh run` had its own
+   inline `khtpm_core_render … pchq-board.xhtpm` launch. Gated behind
+   `[ -z "$PCHQ_ENGINE_MODE" ]` — the taskbar path lets
+   `open_pchq_board.sh` (with its single-instance guard) own the window;
+   terminal `run` still opens one.
+
+Verified live: one window, one projector, `bv_session` on disk,
+`rgb_frame_3d_overlay.raw` = 1,228,800 B being written (real 3D render),
+full clean stack (`button.sh run` engine-mode -> orchestrator ->
+run-widget -> board-viewer prisc VM (diamond loop) -> window + projector
++ status manager).

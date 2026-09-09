@@ -96,9 +96,18 @@ static int find_board_session(const char *house, const char *host_id, char *out,
         strtok_r(NULL, "|", &save);
         char *proj_tok = strtok_r(NULL, "|", &save);
         if (proj_tok && sess_tok && strcmp(proj_tok, want) == 0) {
-            snprintf(out, outsz, "%s", sess_tok);
-            found = 1;
-            break;
+            /* ledger_peers keeps a row ONLINE as long as its PID lives,
+             * but a hard-killed test can leave the wrapper bash alive
+             * with its session dir already rm -rf'd. A session whose dir
+             * is gone must NOT be reported - it makes canvas_raw point
+             * at a missing .raw = blank window. Keep scanning for a
+             * newer, real one. */
+            struct stat sst;
+            if (stat(sess_tok, &sst) == 0 && S_ISDIR(sst.st_mode)) {
+                snprintf(out, outsz, "%s", sess_tok);
+                found = 1;
+                break;
+            }
         }
     }
     pclose(pf);

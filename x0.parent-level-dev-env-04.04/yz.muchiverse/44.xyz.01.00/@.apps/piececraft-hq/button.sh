@@ -411,9 +411,14 @@ EOSTATE
             # khtpm_core_render.c, so that fallback stopped actually
             # working the moment it was deleted, whether or not this
             # script still offered it.
+            # PCHQ_ENGINE_MODE (taskbar path): open_pchq_board.sh owns
+            # the board window + its single-instance guard - do NOT open
+            # a second one here (that was the "two board windows / two
+            # projectors" bug). Terminal `run` still opens one for
+            # convenience.
             KHTPM_BIN="$HOUSE_DIR/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
             BOARD_TPL="$SCRIPT_DIR/pchq-board.xhtpm"
-            if [ -x "$KHTPM_BIN" ] && [ -f "$BOARD_TPL" ]; then
+            if [ -z "${PCHQ_ENGINE_MODE:-}" ] && [ -x "$KHTPM_BIN" ] && [ -f "$BOARD_TPL" ]; then
                 # projector build-on-demand
                 [ -x "$SCRIPT_DIR/ops/+x/pchq_board_projector.+x" ] || \
                     sh "$SCRIPT_DIR/ops/build_pchq_board_projector.sh" >/dev/null 2>&1 || true
@@ -453,7 +458,24 @@ EOSTATE
 
         trap 'kill "$ORCH_PID" "$GL_PID" "$RGB_PID" "$HQ_MGR_PID" 2>/dev/null; wait "$ORCH_PID" 2>/dev/null; kill_own_module; kill_own_board_widget; kill_own_clock_daemon; kill_own_hq_status_manager; kill_own_orchestrator; persist_session_state; rm -rf "$SESSION_DIR"' EXIT INT TERM
 
-        ./system/keyboard_input
+        # PCHQ_ENGINE_MODE (set by open_pchq_board.sh, the taskbar entry
+        # point - PIECECRAFT-HQ-LAUNCH-STANDARDIZE.md steps 2-3): the
+        # taskbar drives the game entirely through the khtpm board
+        # window's interact_relay writes, so there is no tty and no use
+        # for a foreground keyboard_input reader. Under `setsid nohup`
+        # that reader exits immediately -> the EXIT trap fired -> the
+        # session was rm -rf'd out from under the still-attached board
+        # window -> blank canvas. Engine mode instead blocks on the
+        # orchestrator (the game's real lifetime); the trap still tears
+        # everything down cleanly on a real SIGTERM from the taskbar
+        # quit / ledger reap, or on Ctrl-C. session_dir.txt lets tooling
+        # find this session.
+        if [ -n "${PCHQ_ENGINE_MODE:-}" ]; then
+            echo "$SESSION_DIR" > "$SCRIPT_DIR/pieces/system/session_dir.txt" 2>/dev/null || true
+            wait "$ORCH_PID" 2>/dev/null
+        else
+            ./system/keyboard_input
+        fi
 
         kill "$ORCH_PID" "$GL_PID" "$RGB_PID" 2>/dev/null
         kill_own_module
