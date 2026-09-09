@@ -1,6 +1,8 @@
 # prisc+x.c fork consolidation
 
-**Status: Phase A done; Phase B ~done for the safe cluster (2026-09-09).**
+**Status: Phase B DONE 2026-09-09.** All 17 pal-VM projects with a
+`scripts/build.sh` now compile the ONE canonical; the canonical carries
+wsr/egg's _WIN32/MinGW compile shims. ~11 more were already on `$_SS`.
 `PRISC-X-FORK-CLASSIFICATION.md`. Prompted by the user: *"why so many
 prisc+x forks? Fix that first... does it have KPIs for completion?"*
 
@@ -21,14 +23,21 @@ rm`'d + `.gitignore`d `**/system/prisc+x.c` with a
 - **~11 projects were already on `$_SS = &.widgits/_shared-lib`**
   (civ-txt, tactics-txt, piececraft-hq/-xyz, aomorai-editor, yahoo-app/
   -broker, TSC_ELO, agy-txt, rpg-xyz, rtp-xyz) — untouched.
-- **Deferred:** `014.wsr-pal` + `01.muchi-pals-egg` — fold their
-  `#ifdef _WIN32` shims into the canonical first (see
-  `PRISC-X-FORK-CLASSIFICATION.md`). `101.ledger-player-npc-simple+3` +
-  `101.lpns+map+4` — no `scripts/build.sh`; prisc is built/spawned by
-  their own `system/orchestrator.c` (TPMOS-style), a separate riskier
-  change. `&.widgits/board-viewer/system/prisc+x` — binary only.
-- **Not in scope of this pass:** registering the spawned prisc VM in the
-  master-ledger. That's `chtpm_parser_pal.c`'s `<module>` launch (the
+- **wsr + egg: DONE** (`0dcb93b5`) — shims folded into the canonical
+  (`c7b6fe6c`), both now build from it, `.pal` A/B clean.
+- **board-viewer**: `scripts/build.sh` `cp`s `014.wsr-pal/system/prisc+x`
+  — since wsr now builds the canonical, board-viewer gets it transitively.
+  No change needed.
+- **`101.ledger-player-npc-simple+3` + `101.lpns+map+4`**: no build step
+  compiles prisc at all (orchestrator.c doesn't; the committed
+  `system/prisc+x` binary is used as-is). Dead `system/prisc+x.c`
+  `git rm`'d; a real `-o system/prisc+x "$CANON"` line should be added
+  to each when next touched.
+- **Windows-tester TODO:** egg's `CreateProcessA` / `win_quote_arg`
+  custom-op dispatch (cmd.exe can't parse the `'%s'` single-quoting
+  `popen` gets). `#define popen _popen` makes it compile + run at wsr's
+  level; the cmd.exe-correct version is ~60 unverifiable lines, left out.
+- **Not in scope:** registering the spawned prisc VM in the master-ledger. That's `chtpm_parser_pal.c`'s `<module>` launch (the
   legacy parser), broader blast radius — its own follow-up
   (PROC-LIFECYCLE §5).
 
