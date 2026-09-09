@@ -52,3 +52,4 @@ current plan. Each carries a top-of-file HISTORIC banner.
 ## Related memory
 `[[piececraft-hq-launch-and-interact]]`, `[[proc-ledger-consolidation]]`,
 `[[tpmos-reference-location]]`, `[[prefer-marker-files-not-mtime]]`.
+- [BOARD-VIEWER-3D-PERF-CEILING.md](BOARD-VIEWER-3D-PERF-CEILING.md) — why 3D can't hit 60fps as-is (CPU raymarch), and the GPU-in-a-persistent-process path to Minecraft-class

@@ -271,3 +271,19 @@ no letterbox, no FOV change.
   ~9% of pixels differ (silhouette blocks only), full-res path
   byte-identical to before. Sustained 3D camera motion ~16 fps, snaps
   crisp the instant you stop.
+
+---
+
+## 8. The ceiling (2026-09-09) - see the dedicated doc
+
+The incremental fixes in this file are all CPU-side and have a hard
+floor: a per-pixel CPU raymarch is ~O(pixels) ≈ **80-100 ms** at the
+pc-hq canvas even fully tuned. Reaching "Minecraft-class" (60+ fps,
+more voxels, more logic) needs an **architectural** change - GPU
+rendering in a persistent process - because MC rasterises a pre-built
+chunk mesh on the GPU (O(visible quads), ~1-3 ms CPU/frame) while this
+raymarches 727 k rays on 8 CPU cores. The AMD Raven iGPU + EGL/GLX
+stack is present and unused. Full analysis, the four paths (GPU
+raymarch / CPU mesh+raster / persistent CPU / make-2D-default), and the
+recommendation are in
+`#.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/design-docs/BOARD-VIEWER-3D-PERF-CEILING.md`.

@@ -39,14 +39,26 @@
 #define PATH_BUF 4096
 #define RELAY_BUF (MAX_LINE * 64)   /* plenty for a frame's worth of held-key input */
 
-/* held-vs-released key handling (mc-speed-algos.md §7). khtpm writes
- * each relay line as "<code> <monotonic_ms>". A line older than
- * RELAY_STALE_MS means the user has already let go and this is just
- * backlog that piled up behind a slow render - drop it so movement
- * stops promptly on release instead of coasting through the queue.
- * A bare "<code>" line (older khtpm) has no timestamp -> treated as
- * fresh, exactly as before (reverse compatible). */
-#define RELAY_STALE_MS 120
+/* held-vs-released key handling (mc-speed-algos.md §7,
+ * BOARD-VIEWER-3D-PERF-CEILING.md §6). khtpm writes each relay line as
+ * "<code> <monotonic_ms>". A line older than the stale window means
+ * the user has already let go and this is just backlog that piled up
+ * behind a slow render - drop it so movement stops promptly on
+ * release instead of coasting through the queue. A bare "<code>" line
+ * (older khtpm) has no timestamp -> treated as fresh, exactly as
+ * before (reverse compatible).
+ *
+ * The window is ADAPTIVE: a fixed 120ms was wrong under load - when a
+ * frame takes 300-450ms, every key after the first ages out and the
+ * xelector under-moves ("inaccurate"). Track the real cost instead:
+ * stale = clamp(2 x last_3d_render_ms, floor, ceil). */
+#define RELAY_STALE_FLOOR_MS 150
+#define RELAY_STALE_CEIL_MS  900
+
+static long long mono_ms(void) {
+    struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
 /* also cap a backlog RUN of the same arrow key to a few moves/tick so
  * a deep queue can't teleport the xelector. */
 #define BVD_ARROW_RUN_CAP 3
@@ -121,6 +133,15 @@ int main(void) {
     pj(pos_path,    sizeof(pos_path),    "pieces/display/.bv_dispatch_screen_pos");
     pj(marker_path, sizeof(marker_path), "pieces/display/frame_changed.txt");
 
+    /* adaptive stale window from the last 3D render's real duration */
+    char dur_path[PATH_BUF];
+    pj(dur_path, sizeof(dur_path), "pieces/display/.bv_dispatch_3d_dur_ms");
+    long long last_3d_dur = 0;
+    { FILE *df = fopen(dur_path, "r"); if (df) { if (fscanf(df, "%lld", &last_3d_dur) != 1) last_3d_dur = 0; fclose(df); } }
+    long long stale_ms = 2 * last_3d_dur;
+    if (stale_ms < RELAY_STALE_FLOOR_MS) stale_ms = RELAY_STALE_FLOOR_MS;
+    if (stale_ms > RELAY_STALE_CEIL_MS)  stale_ms = RELAY_STALE_CEIL_MS;
+
     /* --- 1. drain interact_relay.txt (read all, then truncate) --- */
     char buf[RELAY_BUF];
     size_t used = 0;
@@ -158,9 +179,7 @@ int main(void) {
     char *av[BVD_MAX_KEYS + 2];
     int nk = 0;
     av[0] = op_path;
-    long long drain_now_ms;
-    { struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
-      drain_now_ms = (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000; }
+    long long drain_now_ms = mono_ms();
     int arrow_run_code = 0, arrow_run_n = 0;   /* collapse a run of the same arrow key */
     for (char *p = buf; *p && nk < BVD_MAX_KEYS; ) {
         int keycode = 0;
@@ -171,7 +190,7 @@ int main(void) {
         if (got >= 1 && keycode != 0) {
             /* got==2 -> timestamped: drop if the user already let go.
              * got==1 -> old bare format: always fresh. */
-            if (got == 2 && (drain_now_ms - ts_ms) > RELAY_STALE_MS) {
+            if (got == 2 && (drain_now_ms - ts_ms) > stale_ms) {
                 dropped_stale++;
             } else {
                 int is_arrow = (keycode >= 1000 && keycode <= 1003);
@@ -193,7 +212,8 @@ int main(void) {
         p = nl + 1;
     }
     if (getenv("BVD_DEBUG"))
-        fprintf(stderr, "bvd: kept=%d stale_dropped=%d any_key=%d\n", nk, dropped_stale, any_key);
+        fprintf(stderr, "bvd: kept=%d stale_dropped=%d any_key=%d stale_ms=%lld (last_3d_dur=%lld)\n",
+                nk, dropped_stale, any_key, stale_ms, last_3d_dur);
     if (nk > 0) { av[1 + nk] = NULL; run_argv(av); }
 
     /* --- 4. render --- (pchq-vs-tpmos.md P-6/P-7)
@@ -231,9 +251,7 @@ int main(void) {
 
         char t_path[PATH_BUF];
         pj(t_path, sizeof(t_path), "pieces/display/.bv_dispatch_3d_ms");
-        long long now_ms;
-        { struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
-          now_ms = (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000; }
+        long long now_ms = mono_ms();
         long long last_ms = 0;
         { FILE *tf = fopen(t_path, "r"); if (tf) { if (fscanf(tf, "%lld", &last_ms) != 1) last_ms = 0; fclose(tf); } }
 
@@ -252,9 +270,13 @@ int main(void) {
             if (lf) { fprintf(lf, "%d\n", motion_frame ? 1 : 0); fclose(lf); }
 
             pj(op_path, sizeof(op_path), "ops/+x/bv_render_3d.+x");
+            long long r0 = mono_ms();
             run_op(op_path, NULL);
+            long long r1 = mono_ms();
             FILE *tf = fopen(t_path, "w");
             if (tf) { fprintf(tf, "%lld\n", now_ms); fclose(tf); }
+            FILE *df2 = fopen(dur_path, "w");   /* feeds next tick's adaptive stale window */
+            if (df2) { fprintf(df2, "%lld\n", r1 - r0); fclose(df2); }
         }
         pj(op_path, sizeof(op_path), "ops/+x/bv_compose_frame.+x");
         run_op(op_path, NULL);
