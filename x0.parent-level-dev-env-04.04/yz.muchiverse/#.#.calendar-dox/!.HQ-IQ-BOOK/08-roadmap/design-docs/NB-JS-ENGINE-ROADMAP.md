@@ -21,7 +21,7 @@ String/Object/Math, try/catch, prototypes). What is missing is the
 | `document.title` get/set | real (→ `TITLE\|`) |
 | `document.write/writeln` | real (→ `TEXT\|` rows) |
 | `document.getElementById` / `querySelector` | **stub → null** |
-| `location.href` | getter only, no navigation |
+| `location.href` | get/set; assign/replace/reload navigate (rung 6 slice 2) |
 | `localStorage` / `sessionStorage` | no-op stubs |
 | `window` / `self` / `globalThis` | **BUG: alias the storage stub, not the JS global** |
 
@@ -230,8 +230,28 @@ plausible stub, `MutationObserver` (can no-op then improve),
 > (`tests/worker_cookie_test.c`, 3-LOAD set / fresh-heap get / cross-host
 > scope, + jar-content verification) — commit `1f943aba`. The manager will
 > later point the worker at its own `#.desktop/nb_cookies.txt` via
-> `NB_COOKIES_FILE`; **remaining rung-6 C piece:** real `history`/
-> `location` navigation to the manager.
+> `NB_COOKIES_FILE`.
+>
+> **LANDED 2026-09-08 — real `history`/`location` navigation to the
+> manager** (last rung-6 C piece). The page's `location.*` (assign/`href=`
+> set/replace/reload) and `history.*` (back/forward/go) calls now route
+> through real natives (`ops/nb_host.h` `nav_resolve`/`nav_request`;
+> `go(n)` maps to BACK/FORWARD step counts, `go(0)` to RELOAD) into a
+> single pending NAV the worker emits as a `NAV\n<kind>\n<url-or-count>\n`
+> frame before `STATUS ok`. `pushState`/`replaceState` keep the in-heap
+> bookkeeping stack (state/length) AND send `ADDR` so the manager updates
+> the address bar (`g_current_url`, current tab url) with NO fetch. The
+> manager captures NAV during `worker_load` and `consume_pending_nav()`
+> (main loop, after `handle_request()`) runs it through the SAME do_fetch /
+> `network_browser_back|forward.txt` stacks as a `go:`/`back:` request —
+> GO = link (push current to Back, clear Forward, visit log); REPLACE =
+> navigate, no history entry; RELOAD = re-fetch current. Eval/CLI paths
+> (no manager) keep the request inert (old no-throw noop). New `make
+> check` suite `wcn` (`tests/worker_nav_test.c`: exact NAV frame contract
+> for assign/href=/replace/reload/replaceState/pushState/back/go(-2)/
+> go(2)/no-nav + re-LOAD follow-through), live end-to-end verified against
+> the real manager (JS `location.assign` → next page fetched, Back stack
+> updated; `pushState` → address bar changes without a fetch).
 
 
 ### Rung 7 — CSS/layout awareness  *(optional, large, defer)*

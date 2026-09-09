@@ -247,3 +247,34 @@ Merge `origin/opencode` for `1f943aba`.
 - Still open on rung 6: real `history`/`location` navigation to the
   manager (house-standard lock applies before editing
   `network_browser_manager.c`). No thread/manager/daemon changes.
+
+## NOTICE 2026-09-08 — rung-6 real `history`/`location` navigation lands
+
+Merge `origin/opencode` (one commit after the cookie jar).
+
+- The page's `location.*` (`assign`/`href=` setter/`replace`/`reload`)
+  and `history.*` (`back`/`forward`/`go`) now route through real natives
+  in `ops/nb_host.h` (`nav_resolve`/`nav_request`) into ONE pending NAV
+  the worker daemon emits as a `NAV\n<kind>\n<url-or-count>\n` frame right
+  before `STATUS ok`. `history.go(n)` becomes BACK/FORWARD ×n (capped 8),
+  `go(0)`/`reload` = RELOAD. Eval/CLI paths keep the request inert.
+- `pushState`/`replaceState` keep the in-heap bookkeeping stack
+  (`history.state`/`length`) AND send `ADDR`, so the manager updates the
+  address bar (`g_current_url` + current tab url) with **no fetch**.
+- Manager side (`network_browser_manager.c`): `worker_load` captures NAV
+  frames; new `consume_pending_nav()` in the main loop (after
+  `handle_request()`) runs them through the same `do_fetch`/Back-Forward
+  file stacks as a `go:`/`back:` toolbar request. GO = link-like (push
+  current to Back, clear Forward, visit log); REPLACE = navigate without
+  a history entry; RELOAD = re-fetch current.
+- New `make check` suite **`wcn`** (`tests/worker_nav_test.c`): 11 LOADs
+  asserting the exact NAV frame for assign/href=/replace/reload/
+  replaceState/pushState/back/go(-2)/go(2)/no-nav, plus a follow-through
+  re-LOAD. All suites green (`wdt/wft/wet/wck/wcn` + 18-case cli_test).
+- **Live end-to-end verified** against the real manager on a throwaway
+  house: a page whose JS called `location.assign(b.html)` → manager
+  fetched/re-LOADed b.html and recorded a.html on the Back stack; a page
+  doing `history.pushState('/c2')` → address bar changed to that URL with
+  no re-fetch. No renderer/chtpm core changes (house rule).
+- Remaining rung-6 scraps: none blocking; rung 7 (layout awareness)
+  deferred. No new mode globals, no `khtpm_core_render.c` edits.

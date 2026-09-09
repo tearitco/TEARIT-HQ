@@ -53,7 +53,9 @@ short version.*
       `document.cookie` jar LANDED (2026-09-07, `1f943aba`, new `wck`
       make-check suite — C natives with RFC-6265 host/path/expiry-
       max-age scope, jar at `$NB_COOKIES_FILE`, survives LOADs via disk);
-      remaining rung-6 piece is real `history`/`location` navigation to
-      the manager (before touching `network_browser_manager.c`, the
-      khtpm-house-standards lock requires reading INDEX tier-1 docs +
-      `CENTROID_GOLD_STD.md` first).
+      real `history`/`location` navigation to the manager LANDED
+      (2026-09-08, see roadmap — `NAV\n` frame + `consume_pending_nav()`,
+      new `wcn` make-check suite; location.assign/replace/reload + href=,
+      history.back/forward/go, pushState/replaceState address-bar ADDR).
+      Remaining rung 6 scraps: none blocking — `matchMedia`/getComputedStyle
+      stubs shipped in `b079f0c9`; rung 7 (layout awareness) deferred.
