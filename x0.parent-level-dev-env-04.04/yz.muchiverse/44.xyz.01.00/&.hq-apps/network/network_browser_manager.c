@@ -1036,6 +1036,12 @@ static void worker_spawn(void) {
         dup2(sv[1], STDIN_FILENO);
         dup2(sv[1], STDOUT_FILENO);
         close(sv[0]); close(sv[1]);
+        /* rung-6 slice 2: hand the worker its own cookie jar under this
+         * house's #.desktop, so cross-LOAD cookies persist per browser
+         * (not the shared ~/.config/nbjs/ fallback). */
+        char jar[PATH_BUF];
+        snprintf(jar, sizeof(jar), "%s/#.desktop/nb_cookies.txt", g_house);
+        setenv("NB_COOKIES_FILE", jar, 1);
         execl(g_js_worker_path, g_js_worker_path, (char *)NULL);
         _exit(127);
     }
