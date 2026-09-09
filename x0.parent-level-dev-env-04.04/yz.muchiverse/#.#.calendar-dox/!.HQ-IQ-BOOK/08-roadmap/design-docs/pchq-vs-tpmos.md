@@ -216,3 +216,183 @@ lands, a single Esc will do it).
   (~4510), `kh_interact_append_13` (~4589), FocusIn/Out (~8369-8420).
 - `PC-HQ-FOCUS-AND-INTERACT-ACTIVATE.md` (grok `74488d53`),
   `pc-hq-leg-vs-nu-fix.md`, `PLAN-pchq-interact-camera-pov.md`.
+
+---
+
+# APPENDIX A — deep pipeline / meta-comparison (2026-09-09)
+
+*Direct instruction: "the movement of xelector in pc-hq is still much
+slower and laggier than expected … there maybe a more deep insidious
+structural issue where the entire x11-hq house deviated from the tpmos
+diamond pipeline standard at some point."*
+
+**It did. There are TWO generations of the render/input loop in this
+house, and pc-hq's 3D board sits on the OLD one at every layer.**
+
+## A.1 The TPMOS "diamond" pal-VM game loop (the standard)
+
+`101.mutaclsym…19.00/pal/game_module_3d.pal` — the loop mutaclysm-neo /
+lpns+map+4 run, the ones the user calls fast:
+
+```
+compose_frame          # once, at startup
+muta_render_3d
+compose_rgb_frame
+hit_frame
+loop:
+  exec ./ops/+x/game_dispatch     # ONE consolidated op
+  sleep 16667                     # 60 Hz
+  j loop
+```
+
+`game_dispatch.c` header: *"One-shot op: read **ALL** keys from relay,
+dispatch each, run NPC auto-play, compose frame, signal renderer.
+Architecture: read all -> dispatch all -> NPC -> render -> exit."*
+
+So the diamond is: **drain the whole input queue, apply every key,
+render exactly once, tick at 60 Hz.** Holding an arrow key advances one
+step per key *per tick* (many steps land in one 16.6 ms frame) — smooth.
+
+## A.2 What board-viewer / pc-hq actually runs (the OLD "civ-txt clone"
+loop)
+
+`&.widgits/board-viewer/pal/main_module.pal` (byte-for-byte the same
+shape as `@.apps/civ-txt/pal/main_module.pal`, `my-chara-txt`,
+`piececraft-xyz` — the whole civ-txt clone lineage):
+
+```
+loop:
+  bv_menu_input x9                       # "tick" (fork+exec+wait)
+  read_pos  bv_screen_changed.txt
+  beq -> check_key ; else -> render
+check_key:
+  read_history interact_relay.txt x2,x1  # exactly ONE key
+  beq x2,x0 -> no_key
+  bv_menu_input x2                        # process that ONE key (fork)
+  j render
+no_key:
+  sleep 30000                            # 33 Hz
+render:
+  bv_render_3d                            # FULL per-pixel DDA raymarch, fork
+  bv_compose_frame                        # fork
+  hit_frame                               # fork
+  sleep 30000                             # 33 Hz
+```
+
+Every deviation from A.1, in one loop:
+
+| # | Diamond (A.1) | board-viewer (A.2) | Cost per xelector move |
+|---|---|---|---|
+| **P1** | drain **all** queued keys per tick | **one** `read_history` → **one** key per iteration | holding arrow = 1 move / iteration, not N / frame |
+| **P2** | `sleep 16667` (60 Hz) | `sleep 30000` (33 Hz), **and** a second `sleep 30000` after render | ≥30 ms floor per move, ~60 ms round trip |
+| **P3** | one consolidated `game_dispatch` op/tick | `bv_menu_input` + `bv_render_3d` + `bv_compose_frame` + `hit_frame` = **4 fork+exec+waitpid** per iteration (`prisc+x.c` `run_custom_bin`) | 4 process spawns per move |
+| **P4** | `muta_render_3d` / `compose_rgb_frame` run once at boot; loop only signals | **`bv_render_3d` (raymarch) runs EVERY render branch**, unconditionally | a full DDA raymarch (OpenMP, still 10-30 ms) per move |
+| **P5** | renderer = compiled C, marker-pulsed, in-process | see A.3 | — |
+
+Net: one held-arrow step ≈ `30 ms sleep + 4×fork + raymarch` ≈
+**50-90 ms → 11-20 moves/s**, vs the diamond's smooth 60. This is the
+xelector lag, and it is **structural**, not tuning.
+
+## A.3 The x11-hq renderer also deviates
+
+`khtpm_core_render.c` event loop (`hq_run_event_loop`):
+
+```
+struct timeval tv = (g_has_canvas || window_is_dock())
+                        ? { 0, 33000 }      /* 33 Hz */
+                        : { 0, 150000 };    /* 6.6 Hz */
+select(...);
+...
+if (g_has_canvas && !g_quit) g_frame_dirty = 1;   /* repaint EVERY tick */
+if (g_frame_dirty && !g_quit) { g_frame_dirty = 0; redraw(); }
+```
+
+- **33 Hz, not 60.**
+- **`g_frame_dirty = 1` unconditionally every tick** for a canvas window
+  → `redraw()` (re-read the `.raw`, XPutImage) 33×/s whether the frame
+  changed or not. TPMOS `pieces/display/renderer.c` repaints **only when
+  `frame_changed.txt` grows** (append-only pulse marker). This is
+  poll-and-repaint, not pulse-driven — the exact "DO NOT set dirty=1
+  directly" the TPMOS parser header warns against, ported inside-out.
+- Two input paths (direct X `KeyPress` → `handle_key`, **and**
+  `poll_agent_history()` on `entity_menu_history/<pid>.txt`) instead of
+  the single `keyboard/history.txt` → parser-drain the diamond uses.
+
+## A.4 Other spiritual discrepancies found
+
+- **Compositor bypass.** Diamond: `keyboard → parser → marker →
+  renderer → ONE composited `rgb_frame.raw` (via `chtpm_rgb_render` /
+  `compose_rgb_frame`). pc-hq's `<canvas sprite="${canvas_raw}">` blits
+  `rgb_frame_3d_overlay.raw` **directly** — skips the shared compositor.
+  Faster, but it means the text chrome and the 3D view are composed by
+  two unrelated code paths (`khtpm_draw_core` vs `bv_render_3d`) instead
+  of one.
+- **Interact state across 4 processes + a 300 ms projector** (body of
+  this doc, D1-D9) instead of one parser owning `active_index`.
+- **`interact_relay.txt` vs `player_app/history.txt`.** The diamond /
+  last-good pc-hq relays into `player_app/history.txt` (+ `KEY_PRESSED:`
+  into `keyboard/history.txt`); current pc-hq relays into a bespoke
+  `interact_relay.txt` that only the pal-VM reads, bypassing the
+  parser's `process_key` (see D8, and the 2026-09-09 format bug D2).
+
+## A.5 Parity plan — the loop (supersedes nothing in §4; adds P-5..7)
+
+### P-5 — port board-viewer to the `game_dispatch` diamond loop
+New `&.widgits/board-viewer/ops/bv_dispatch.c` — one-shot, matching
+`101.mutaclsym…/ops/game_dispatch.c`:
+1. read **every** pending line of `interact_relay.txt` (advance cursor),
+2. apply each to camera / xelector (`bv_menu_input`'s move logic, inlined
+   or one `bv_menu_input` call per key but no render between),
+3. if anything moved → `bv_render_3d` **once**, `bv_compose_frame` once,
+   write the render marker,
+4. exit.
+
+`main_module.pal` becomes:
+```
+loop:
+  exec ./ops/+x/bv_dispatch
+  sleep 16667
+  j loop
+```
+Shared widget → civ-txt / piececraft-xyz / my-chara-txt inherit the
+same speed-up (they run the identical `main_module.pal` shape). Land it
+behind a `bv_dispatch` presence check so a project without the new op
+falls back to the old loop.
+
+### P-6 — `bv_render_3d` only on real change
+`bv_dispatch` skips the raymarch when neither camera nor board changed
+this tick (compare a cheap hash / the `bv_screen_changed` size it
+already reads). The raymarch is the single most expensive step (P4).
+
+### P-7 — marker-drive the khtpm canvas
+`khtpm_core_render.c`: for a `g_has_canvas` window, stat
+`<canvas dir>/rgb_frame*_changed.txt` (or the `.raw` size) and set
+`g_frame_dirty` **only on growth**, not every tick. Optionally drop the
+select timeout to `16667`. Removes 33 redundant `redraw()`s/s.
+
+### Sequencing
+P-1..4 (this doc §4, the format/ownership fixes) are landed / small.
+**P-5 is the big one for xelector lag** and is a board-viewer refactor
+(shared, needs its own test pass across civ-txt/piececraft-xyz). P-6/P-7
+are follow-ons. None of P-5..7 touch Interact semantics.
+
+## A.6 KPI for the loop work
+- Holding an arrow in pc-hq Interact = smooth ≥ 50 moves/s (parity with
+  mutaclysm-neo on the same box).
+- `ps`/`perf` during a held move: **one** `bv_dispatch` spawn per 16 ms,
+  not 4 ops per 30 ms; `bv_render_3d` not spawned on idle ticks.
+- `khtpm_core_render` `redraw()` count while the board is idle ≈ 0/s
+  (was ~33/s).
+
+## A.7 Sources (appendix)
+- `101.mutaclsym…19.00/pal/game_module_3d.pal`, `game_module.pal`;
+  `ops/game_dispatch.c` (header + `run_op` fork pattern).
+- `@.apps/civ-txt/pal/main_module.pal` (same shape as board-viewer).
+- `&.widgits/board-viewer/pal/main_module.pal`, `default_op.txt`,
+  `ops/bv_render_3d.c` (DDA raymarch + `-lomp`).
+- `&.widgits/_shared-lib/system/prisc+x.c` `exec_custom_op` /
+  `run_custom_bin` (~1012-1105).
+- `khtpm_core_render.c` `hq_run_event_loop` (~8524-8610).
+- `1.TPMOS…/pieces/display/renderer.c`,
+  `pieces/chtpm/plugins/chtpm_parser.c` main loop (marker-pulse
+  discipline).

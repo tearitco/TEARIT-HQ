@@ -1,3 +1,7 @@
+> **HISTORIC (2026-09-09).** Design conclusions superseded by
+> `08-roadmap/design-docs/pchq-vs-tpmos.md` — see `pc-hq-INDEX.md`.
+> Kept for archaeology; the investigation notes are still valid.
+
 # pc-hq board / Interact Mode — open bugs (2026-09-04)
 
 ## READ THIS FIRST — triage order

@@ -1,3 +1,7 @@
+> **HISTORIC (2026-09-09).** Design conclusions superseded by
+> `08-roadmap/design-docs/pchq-vs-tpmos.md` — see `pc-hq-INDEX.md`.
+> Kept for archaeology; the investigation notes are still valid.
+
 # pchq board window: history-injection parity checklist (2026-08-30)
 
 Real, repeatable local test that isolates the render/engine pipeline from

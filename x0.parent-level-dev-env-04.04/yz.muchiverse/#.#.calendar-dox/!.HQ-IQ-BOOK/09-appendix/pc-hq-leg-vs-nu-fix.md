@@ -1,3 +1,7 @@
+> **HISTORIC (2026-09-09).** Design conclusions superseded by
+> `08-roadmap/design-docs/pchq-vs-tpmos.md` — see `pc-hq-INDEX.md`.
+> Kept for archaeology; the investigation notes are still valid.
+
 # pc-hq: legacy (working) vs. current (broken) — comparison + solution plan
 
 **Written 2026-09-08.** The user found a pristine, fully-functioning
