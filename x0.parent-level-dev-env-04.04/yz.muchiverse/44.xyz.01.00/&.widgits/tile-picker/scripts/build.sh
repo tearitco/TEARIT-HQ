@@ -77,9 +77,11 @@ gcc $CFLAGS -o "ops/+x/tp_debug_click_watcher.+x" "ops/tp_debug_click_watcher.c"
 # The superseded khtpm_choice_picker.c fork was removed 2026-09-03 (no
 # runtime callers); only khtpm_show_choices.c is built and dispatched.
 SHARED_LIB="$(cd "$SCRIPT_DIR/../_shared-lib" && pwd)"
-cp "$SHARED_LIB/khtpm_render_core.c" ops/khtpm_render_core.c
-cp "$SHARED_LIB/khtpm_css_parser.h" ops/khtpm_css_parser.h
-gcc -Wall -O2 -o "ops/+x/khtpm_show_choices.+x" "ops/khtpm_show_choices.c"
+# SHARED-SOURCE-COMPILE-IN-PLACE.md (2026-09-09): compile the canonical
+# shared source in place via -I; no local copy in ops/. khtpm_show_
+# choices.c text-includes khtpm_render_core.c and #includes
+# khtpm_css_parser.h, both resolved from $SHARED_LIB.
+gcc -Wall -O2 -I "$SHARED_LIB" -o "ops/+x/khtpm_show_choices.+x" "ops/khtpm_show_choices.c"
 
 echo "--- Copying system binaries (local copies for dev) ---"
 WSR="$(cd "$SCRIPT_DIR/../.." && pwd)/014.wsr-pal💸️📌️+2"
