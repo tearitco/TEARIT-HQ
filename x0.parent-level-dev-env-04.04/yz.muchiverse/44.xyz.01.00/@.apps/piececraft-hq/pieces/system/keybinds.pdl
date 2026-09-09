@@ -4,25 +4,26 @@ META         | file_id            | keybinds
 META         | note               | Unified board-viewer keybinds. Read by &.widgits/board-viewer/ops/bv_menu_input.c. Edit + relaunch (no rebuild). Values on KEY/VERB rows are RAW ASCII KEYCODES (python3 -c "print(ord('w'))" or man ascii). Missing a row -> the built-in default (shown in the comment). This file overrides pieces/system/arrow_config.txt's key_* section and pieces/system/keybinds.txt.
 
 # ── camera / POV / view ──
-# render_mode_toggle, the pov_mode_* keys and cjk_view are NON-modal
-# (work from any mode). q/e/r/t rotate, w/a/s/d pan and c/v height now
-# work in EVERY 3D camera mode (2026-09-09).
+# render_mode_toggle, the pov_mode_* keys and cjk_view are NON-modal:
+# they work from any mode. pov_mode_* switch you into 3D; cjk_view
+# switches you into the 2D Chinese/ASCII view. The rotate/pan/height
+# keys below stay 3D-only.
 KEY          | render_mode_toggle | 48        # '0'  toggle 2D <-> 3D
 KEY          | cjk_view           | 96        # '`'  always -> 2D Chinese / ASCII terminal view
 KEY          | pov_mode_1         | 49        # '1'  first person   (-> 3D)
 KEY          | pov_mode_2         | 50        # '2'  third person   (-> 3D)
 KEY          | pov_mode_3         | 51        # '3'  free roam      (-> 3D, wasd pan)
 KEY          | pov_mode_4         | 52        # '4'  bird's eye     (-> 3D, wasd pan, no rotate)
-KEY          | yaw_left           | 113       # 'q'  turn left   (all 3D modes)
-KEY          | yaw_right          | 101       # 'e'  turn right  (all 3D modes)
-KEY          | pitch_down         | 114       # 'r'  look down   (all 3D modes)
-KEY          | pitch_up           | 116       # 't'  look up     (all 3D modes)
-KEY          | pan_forward        | 119       # 'w'  pan forward (all 3D modes)
-KEY          | pan_back           | 115       # 's'  pan back    (all 3D modes)
-KEY          | pan_left           | 97        # 'a'  pan left    (all 3D modes)
-KEY          | pan_right          | 100       # 'd'  pan right   (all 3D modes)
-KEY          | cam_height_down    | 99        # 'c'  camera Z -1 (all 3D modes)
-KEY          | cam_height_up      | 118       # 'v'  camera Z +1 (all 3D modes)
+KEY          | yaw_left           | 113       # 'q'  turn left   (modes 1/2/3)
+KEY          | yaw_right          | 101       # 'e'  turn right  (modes 1/2/3)
+KEY          | pitch_down         | 114       # 'r'  look down   (modes 1/2/3)
+KEY          | pitch_up           | 116       # 't'  look up     (modes 1/2/3)
+KEY          | pan_forward        | 119       # 'w'  pan forward (modes 3/4)
+KEY          | pan_back           | 115       # 's'  pan back    (modes 3/4)
+KEY          | pan_left           | 97        # 'a'  pan left    (modes 3/4)
+KEY          | pan_right          | 100       # 'd'  pan right   (modes 3/4)
+KEY          | cam_height_down    | 99        # 'c'  camera Z -1 (modes 3/4)
+KEY          | cam_height_up      | 118       # 'v'  camera Z +1 (modes 3/4)
 KEY          | reset_view         | 102       # 'f'  reset camera to this mode's default
 
 # ── xelector cursor / possession (muta ops/choice.c parity) ──
