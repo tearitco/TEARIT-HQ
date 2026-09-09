@@ -2,7 +2,7 @@
 #
 #   make            -> ./nbjs
 #   make install    -> $(PREFIX)/bin/nbjs  (default PREFIX=/usr/local)
-#   make check      -> build + run the five worker suites + cli_test
+#   make check      -> build + run the six worker suites + cli_test
 #
 # To run:   ./nbjs file.js [args...]              # node mode (no DOM) — like node,
 #                                                 #   + require()/require('fs') + ESM
@@ -42,16 +42,20 @@ wck: tests/worker_cookie_test.c nb_dom.c
 wcn: tests/worker_nav_test.c nb_dom.c
 	$(CC) $(CFLAGS) -o $@ tests/worker_nav_test.c nb_dom.c
 
+wst: tests/worker_storage_test.c nb_dom.c
+	$(CC) $(CFLAGS) -o $@ tests/worker_storage_test.c nb_dom.c
+
 wcl: tests/cli_test.c
 	$(CC) $(CFLAGS) -o $@ tests/cli_test.c
 
-check: nbjs wdt wft wet wck wcn wcl
+check: nbjs wdt wft wet wck wcn wst wcl
 	rm -rf /tmp/nbjs-check ; mkdir -p /tmp/nbjs-check
 	./wdt ./nbjs tests/worker_dom_test.js /tmp/nbjs-check
 	./wft ./nbjs tests/worker_fetch_test.js /tmp/nbjs-check
 	NBW_CONSOLE=/tmp/nbjs-check/console.out ./wet ./nbjs tests/worker_events_test.js /tmp/nbjs-check
 	NBW_CONSOLE=/tmp/nbjs-check/console.out ./wck ./nbjs /tmp/nbjs-check
 	NBW_CONSOLE=/tmp/nbjs-check/console.out ./wcn ./nbjs /tmp/nbjs-check
+	NBW_CONSOLE=/tmp/nbjs-check/console.out ./wst ./nbjs /tmp/nbjs-check
 	./wcl ./nbjs tests /tmp/nbjs-check
 
 install: nbjs

@@ -1450,6 +1450,225 @@ static duk_ret_t nb_dom_cookie_set(duk_context *ctx) {
     return 0;
 }
 
+/* ===================== rung 6: localStorage (disk jar) + sessionStorage (per-LOAD) =====
+ * install_host leaves getItem/setItem/removeItem as no-op stubs; install_dom replaces
+ * BOTH globals with real C-backed objects here. localStorage persists across LOADs via
+ * a jar on disk at $NB_LOCALSTORAGE_FILE (fallback ~/.config/nbjs/nb_localstorage.txt);
+ * sessionStorage lives in process memory and is cleared at the top of every run_page,
+ * so each LOAD gets a fresh session (a fresh Duktape heap could not carry JS state
+ * anyway). Jar line format: <pct-encoded key>\t<pct-encoded value>\n — keys/values are
+ * percent-encoded (RFC 3986 unreserved pass through, everything else %XX) so tabs,
+ * newlines and control chars are safe inside a line. Reads tolerate damage. */
+#define ST_MAX_ENT 256
+
+typedef struct { char key[256]; char value[4096]; } StEnt;
+
+static char g_ls_path[PATH_MAX];
+static int  g_ls_path_set = 0;
+static StEnt g_ls[ST_MAX_ENT];      /* reused load/save buffer (single-threaded) */
+static StEnt g_ss[ST_MAX_ENT];      /* in-memory session map, cleared per LOAD */
+static int  g_ss_count = 0;
+
+static void ls_jar_init(void) {
+    g_ls_path_set = 1;
+    const char *env = getenv("NB_LOCALSTORAGE_FILE");
+    if (env && env[0]) { snprintf(g_ls_path, sizeof(g_ls_path), "%s", env); return; }
+    const char *home = getenv("HOME");
+    if (home && home[0])
+        snprintf(g_ls_path, sizeof(g_ls_path), "%s/.config/nbjs/nb_localstorage.txt", home);
+    else
+        g_ls_path[0] = 0;   /* no writable location: reads null, writes no-op */
+}
+
+static int pct_is_safe(unsigned char c) {
+    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+           (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~';
+}
+static void pct_encode(const char *in, char *out, size_t olen) {
+    size_t o = 0;
+    for (const unsigned char *c = (const unsigned char *)in; *c && o + 3 < olen; c++) {
+        if (pct_is_safe(*c)) out[o++] = (char)*c;
+        else { unsigned char uc = *c;
+            static const char H[] = "0123456789ABCDEF";
+            out[o++] = '%'; out[o++] = H[uc >> 4]; out[o++] = H[uc & 15];
+        }
+    }
+    out[o] = 0;
+}
+static void pct_decode(char *s) {
+    char *w = s;
+    for (const char *r = s; *r;) {
+        if (r[0] == '%' && r[1] && r[2]) {
+            int hi, lo;
+            char h1 = r[1], h2 = r[2];
+            hi = (h1 >= '0' && h1 <= '9') ? h1 - '0' :
+                 (h1 >= 'a' && h1 <= 'f') ? h1 - 'a' + 10 :
+                 (h1 >= 'A' && h1 <= 'F') ? h1 - 'A' + 10 : -1;
+            lo = (h2 >= '0' && h2 <= '9') ? h2 - '0' :
+                 (h2 >= 'a' && h2 <= 'f') ? h2 - 'a' + 10 :
+                 (h2 >= 'A' && h2 <= 'F') ? h2 - 'A' + 10 : -1;
+            if (hi >= 0 && lo >= 0) { *w++ = (char)((hi << 4) | lo); r += 3; continue; }
+        }
+        *w++ = *r++;
+    }
+    *w = 0;
+}
+
+static int st_load_file(const char *path, StEnt *ents, int maxn) {
+    char *buf = NULL;
+    size_t bl = 0;
+    if (!read_file(path, &buf, &bl)) return 0;
+    int n = 0;
+    char *p = buf;
+    while (p && *p && n < maxn) {
+        char *nl = strchr(p, '\n');
+        if (nl) *nl = 0;
+        char *tab = strchr(p, '\t');
+        if (tab) {
+            *tab = 0;
+            snprintf(ents[n].key, sizeof(ents[n].key), "%s", p);
+            pct_decode(ents[n].key);
+            snprintf(ents[n].value, sizeof(ents[n].value), "%s", tab + 1);
+            pct_decode(ents[n].value);
+            n++;
+        }
+        p = nl ? nl + 1 : NULL;
+    }
+    free(buf);
+    return n;
+}
+
+static void ls_save_file(const StEnt *ents, int n) {
+    if (!g_ls_path[0]) return;
+    char dirbuf[PATH_MAX];
+    snprintf(dirbuf, sizeof(dirbuf), "%s", g_ls_path);
+    char *slash = strrchr(dirbuf, '/');
+    if (slash) { *slash = 0; if (slash != dirbuf) mkdir_p(dirbuf); }
+    SB b = {0, 0, 0};
+    for (int i = 0; i < n; i++) {
+        char k[256 * 3 + 1], v[4096 * 3 + 1];
+        pct_encode(ents[i].key, k, sizeof(k));
+        pct_encode(ents[i].value, v, sizeof(v));
+        sb_put(&b, k); sb_put(&b, "\t"); sb_put(&b, v); sb_put(&b, "\n");
+    }
+    char tmp[PATH_MAX];
+    snprintf(tmp, sizeof(tmp), "%s.tmp", g_ls_path);
+    FILE *f = fopen(tmp, "wb");
+    if (f) {
+        if (b.s && b.len) fwrite(b.s, 1, b.len, f);
+        fclose(f);
+        rename(tmp, g_ls_path);
+    }
+    free(b.s);
+}
+
+static int ls_find(int n, const char *key) {
+    for (int i = 0; i < n; i++) if (strcmp(g_ls[i].key, key) == 0) return i;
+    return -1;
+}
+static duk_ret_t nb_ls_getItem(duk_context *ctx) {
+    const char *key = duk_get_string(ctx, 0);
+    if (!g_ls_path_set) ls_jar_init();
+    if (!key || !g_ls_path[0]) { duk_push_null(ctx); return 1; }
+    int n = st_load_file(g_ls_path, g_ls, ST_MAX_ENT);
+    int f = ls_find(n, key);
+    if (f < 0) duk_push_null(ctx); else duk_push_string(ctx, g_ls[f].value);
+    return 1;
+}
+static duk_ret_t nb_ls_setItem(duk_context *ctx) {
+    const char *key = duk_get_string(ctx, 0);
+    const char *val = duk_safe_to_string(ctx, 1);
+    if (!g_ls_path_set) ls_jar_init();
+    if (!key || !g_ls_path[0]) return 0;
+    int n = st_load_file(g_ls_path, g_ls, ST_MAX_ENT);
+    int f = ls_find(n, key);
+    if (f >= 0) {
+        snprintf(g_ls[f].value, sizeof(g_ls[f].value), "%s", val);
+    } else if (n < ST_MAX_ENT) {
+        StEnt *e = &g_ls[n++];
+        memset(e, 0, sizeof(*e));
+        snprintf(e->key, sizeof(e->key), "%s", key);
+        snprintf(e->value, sizeof(e->value), "%s", val);
+    } else {
+        return 0;
+    }
+    ls_save_file(g_ls, n);
+    return 0;
+}
+static duk_ret_t nb_ls_removeItem(duk_context *ctx) {
+    const char *key = duk_get_string(ctx, 0);
+    if (!g_ls_path_set) ls_jar_init();
+    if (!key || !g_ls_path[0]) return 0;
+    int n = st_load_file(g_ls_path, g_ls, ST_MAX_ENT);
+    int f = ls_find(n, key);
+    if (f < 0) return 0;
+    for (int i = f; i + 1 < n; i++) g_ls[i] = g_ls[i + 1];
+    ls_save_file(g_ls, n - 1);
+    return 0;
+}
+static duk_ret_t nb_ls_clear(duk_context *ctx) {
+    if (!g_ls_path_set) ls_jar_init();
+    if (g_ls_path[0]) ls_save_file(g_ls, 0);
+    return 0;
+}
+static duk_ret_t nb_ls_key(duk_context *ctx) {
+    int i = (int)duk_get_number_default(ctx, 0, -1);
+    if (!g_ls_path_set) ls_jar_init();
+    if (!g_ls_path[0] || i < 0) { duk_push_null(ctx); return 1; }
+    int n = st_load_file(g_ls_path, g_ls, ST_MAX_ENT);
+    if (i >= n) duk_push_null(ctx); else duk_push_string(ctx, g_ls[i].key);
+    return 1;
+}
+static duk_ret_t nb_ls_length(duk_context *ctx) {
+    if (!g_ls_path_set) ls_jar_init();
+    int n = g_ls_path[0] ? st_load_file(g_ls_path, g_ls, ST_MAX_ENT) : 0;
+    duk_push_int(ctx, n);
+    return 1;
+}
+
+static int ss_find(const char *k) {
+    for (int i = 0; i < g_ss_count; i++) if (strcmp(g_ss[i].key, k) == 0) return i;
+    return -1;
+}
+static duk_ret_t nb_ss_getItem(duk_context *ctx) {
+    const char *k = duk_get_string(ctx, 0);
+    if (!k) { duk_push_null(ctx); return 1; }
+    int f = ss_find(k);
+    if (f < 0) duk_push_null(ctx); else duk_push_string(ctx, g_ss[f].value);
+    return 1;
+}
+static duk_ret_t nb_ss_setItem(duk_context *ctx) {
+    const char *k = duk_get_string(ctx, 0);
+    const char *v = duk_safe_to_string(ctx, 1);
+    if (!k) return 0;
+    int f = ss_find(k);
+    if (f >= 0) {
+        snprintf(g_ss[f].value, sizeof(g_ss[f].value), "%s", v);
+    } else if (g_ss_count < ST_MAX_ENT) {
+        StEnt *e = &g_ss[g_ss_count++];
+        memset(e, 0, sizeof(*e));
+        snprintf(e->key, sizeof(e->key), "%s", k);
+        snprintf(e->value, sizeof(e->value), "%s", v);
+    }
+    return 0;
+}
+static duk_ret_t nb_ss_removeItem(duk_context *ctx) {
+    const char *k = duk_get_string(ctx, 0);
+    if (!k) return 0;
+    int f = ss_find(k);
+    if (f < 0) return 0;
+    for (int i = f; i + 1 < g_ss_count; i++) g_ss[i] = g_ss[i + 1];
+    g_ss_count--;
+    return 0;
+}
+static duk_ret_t nb_ss_clear(duk_context *ctx) { g_ss_count = 0; return 0; }
+static duk_ret_t nb_ss_key(duk_context *ctx) {
+    int i = (int)duk_get_number_default(ctx, 0, -1);
+    if (i < 0 || i >= g_ss_count) duk_push_null(ctx); else duk_push_string(ctx, g_ss[i].key);
+    return 1;
+}
+static duk_ret_t nb_ss_length(duk_context *ctx) { duk_push_int(ctx, g_ss_count); return 1; }
+
 /* Attach the DOM natives to the global `document` object. */
 static void install_dom(duk_context *ctx) {
     duk_get_global_string(ctx, "document");
@@ -1477,6 +1696,35 @@ static void install_dom(duk_context *ctx) {
     duk_push_c_function(ctx, nb_dom_cookie_set, 1);
     duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
     duk_pop(ctx);
+
+    /* rung 6: localStorage/sessionStorage — the prelude's twin no-op stubs
+     * become two real objects: localStorage (disk jar, survives LOADs) and
+     * sessionStorage (in-memory, cleared per LOAD). Fresh objects are created
+     * here and replace the globals, so no interaction with the prelude stubs'
+     * attributes (a duk_def_prop on the prelude's object throws
+     * 'not configurable'). Both share the shape getItem/setItem/removeItem/
+     * clear/key + a length getter. */
+    duk_push_object(ctx);
+    duk_push_c_function(ctx, nb_ls_getItem, 1);    duk_put_prop_string(ctx, -2, "getItem");
+    duk_push_c_function(ctx, nb_ls_setItem, 2);    duk_put_prop_string(ctx, -2, "setItem");
+    duk_push_c_function(ctx, nb_ls_removeItem, 1); duk_put_prop_string(ctx, -2, "removeItem");
+    duk_push_c_function(ctx, nb_ls_clear, 0);      duk_put_prop_string(ctx, -2, "clear");
+    duk_push_c_function(ctx, nb_ls_key, 1);        duk_put_prop_string(ctx, -2, "key");
+    duk_push_string(ctx, "length");
+    duk_push_c_function(ctx, nb_ls_length, 0);
+    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_CONFIGURABLE | DUK_DEFPROP_ENUMERABLE);
+    duk_put_global_string(ctx, "localStorage");
+
+    duk_push_object(ctx);
+    duk_push_c_function(ctx, nb_ss_getItem, 1);    duk_put_prop_string(ctx, -2, "getItem");
+    duk_push_c_function(ctx, nb_ss_setItem, 2);    duk_put_prop_string(ctx, -2, "setItem");
+    duk_push_c_function(ctx, nb_ss_removeItem, 1); duk_put_prop_string(ctx, -2, "removeItem");
+    duk_push_c_function(ctx, nb_ss_clear, 0);      duk_put_prop_string(ctx, -2, "clear");
+    duk_push_c_function(ctx, nb_ss_key, 1);        duk_put_prop_string(ctx, -2, "key");
+    duk_push_string(ctx, "length");
+    duk_push_c_function(ctx, nb_ss_length, 0);
+    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_CONFIGURABLE | DUK_DEFPROP_ENUMERABLE);
+    duk_put_global_string(ctx, "sessionStorage");
 }
 
 #define EVAL_BUDGET_SEC 2   /* plan step 5: watchdog for runaway page.js */
@@ -2164,6 +2412,9 @@ static void run_page(void) {
     /* rung-6 slice 2: only the daemon (manager) can act on navigation. */
     g_nav_kind[0] = 0; g_nav_url[0] = 0; g_nav_count = 1;
     g_nav_emit = !g_cli;
+
+    /* rung-6: sessionStorage is per-LOAD — fresh session for this page. */
+    g_ss_count = 0;
 
     g_dom_root = NULL;
     g_orphans = NULL;

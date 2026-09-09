@@ -1042,6 +1042,8 @@ static void worker_spawn(void) {
         char jar[PATH_BUF];
         snprintf(jar, sizeof(jar), "%s/#.desktop/nb_cookies.txt", g_house);
         setenv("NB_COOKIES_FILE", jar, 1);
+        snprintf(jar, sizeof(jar), "%s/#.desktop/nb_localstorage.txt", g_house);
+        setenv("NB_LOCALSTORAGE_FILE", jar, 1);
         execl(g_js_worker_path, g_js_worker_path, (char *)NULL);
         _exit(127);
     }
