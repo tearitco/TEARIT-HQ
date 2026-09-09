@@ -311,3 +311,32 @@ Merge `origin/opencode` (two commits after the navigation notice).
   objects* throws `'not configurable'` at boot (dead worker, WST_RC=141,
   every page fails trivially) — create fresh objects + `duk_put_global_string`
   instead; never put accessor def_props on prelude-created globals.
+
+## NOTICE 2026-09-09 — boot hygiene: no more silent dead workers
+
+Merge `origin/opencode` (commits after the storage notice).
+
+- The one trailing cost of the storage fix was invisibility: a boot-time
+  throw stopped the worker with zero trace on the manager or in any log
+  (only WST_RC=141 + "no reply from worker" in the suite). This slice makes
+  every worker failure visible at the module level.
+- `ops/nb_js_worker.c`: `install_dom()` + `install_events_timers()` now run
+  under `boot_install_safe()` (a `duk_pcall` guard). On throw it prints
+  `WERR| boot install: <msg>` to stderr and lets the page load anyway —
+  a future `'not configurable'`-class boot bug shows up as a line, not a
+  corpse. Both boot sites (page runner + REPL) use the guard.
+- `network_browser_manager.c`: `worker_spawn` redirects the worker's stderr
+  to `<house>/#.desktop/network_browser_worker.err.log` (per-house append);
+  `worker_close` tails that log onto the manager's stderr as
+  `[worker] <line>` (offset-tracked, one line per worker death, no re-dump).
+  `worker_load` also relays any `ERROR|` rows to the module log without
+  aborting the STATUS frame read.
+- Harnesses: all six worker suites print a `harness: worker killed by
+  signal %d - see WERR| stderr above` note instead of a bare rc on crash.
+- Verified: full `make check` green (6 worker suites + 18-case cli_test),
+  `build.sh` clean. Live E2E against the real manager on the throwaway
+  house: page loaded with resident worker, script ran
+  (`TEXT|worker-ran` replaced the static row), `network_browser_worker.err.log`
+  exists at the configured path; killing the worker then driving a LOAD
+  surfaced the buffered stderr lines as `[worker] ...` on the manager.
+  No renderer/chtpm core changes.
