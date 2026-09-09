@@ -1,6 +1,16 @@
 # sql-hq — design doc
 
-**Status: DESIGN.** Written 2026-09-08. The user wants an in-house SQL
+**Status: BUILT (steps 1–6, 9) — 2026-09-08.** Route B chosen (vendored
+`sqlite3.c` 3.46.1 amalgamation). Shipped: CSV/PDL adapters
+(`sql_hq_adapters.c`), engine + sqlite3-shell-style REPL
+(`sql_hq_engine.c` — `sql_hq repl`), the x11-hq window
+(`sql-hq.xhtpm` + `sql_hq_projector.c` + `sql_hq_action.sh`), 29-row
+macro sidebar (`sql_hq_macros.pdl`), and the db-cell menu row
+(`db_menu_3_cmd | livedesk:open-sql-hq`). Remaining: steps 7 (staged
+Begin/Commit/Rollback polish), 8 (Export + re-runnable History), 10
+(grid keyboard nav, RFC-4180 quoted-comma CSV splitter). See §6 table.
+
+Written 2026-09-08. The user wants an in-house SQL
 tool that loads `.csv` and `.pdl` files as tables and queries them with
 SQL (`.sql` / `.db` files "later, if ever"), with a macro-button
 sidebar UI like the SQLite web playground (`/home/no/Desktop/siql.png`).
@@ -232,18 +242,20 @@ recompile — same pattern as the strip menus.
 
 ## 6. Phased plan + KPIs (grok's requested "10-step + KPIs")
 
+Status key: ✅ built (2026-09-08) · ⬜ remaining.
+
 | # | step | done-when (KPI) |
 |---|---|---|
-| 1 | **Adapters**: `sql_hq_adapters.c` — `csv_load`/`csv_dump`, `pdl_load`/`pdl_dump` (flat + record detect). Standalone, unit-tested. | round-trips `data.csv`, `livedesk_theme.pdl` (flat), `clocks.pdl` (record) byte-stable through load→dump. |
-| 2 | **Engine (Route B)**: vendor `sqlite3.c`; `sql_hq_engine.c` builds `:memory:` from a manifest, runs a query file, writes a TSV grid + dirty-table list. | `SELECT * FROM data` on the CSV matches `PURE.c`; a real `INNER JOIN` across two CSVs returns correct rows. |
-| 3 | **CLI orchestrator** (the reference's own next-step): `sql_hq` REPL — `\open x.csv`, type SQL, see the grid, `\commit`. No GUI yet. | 10 mixed queries (SELECT/JOIN/GROUP BY/UPDATE+commit) run in one session; committed files correct on disk. |
-| 4 | **`sql-hq.xhtpm` + projector + button.sh** — static window: sidebar (subset of §5), editor `text_area`, Run, results `<repeat>` grid. `class="sql-hq database-window"`. | window opens via `button.sh`; typing a query + Run shows rows in the grid; `khtpm_png_dump` proof. |
-| 5 | **`sql_hq_action.sh`** wired to every ★ macro + snippet insertion for the rest. | each sidebar button does the right thing; snippet macros land at the cursor. |
-| 6 | **Active-table tabbar** — one `<tab>` per manifest table; `set-table` updates `${table}`; `Import CSV/PDL` adds a tab. | open 3 files → 3 tabs; switching changes which table `SELECT *` targets. |
-| 7 | **Begin/Commit/Rollback** — staged writes; `commit` calls the adapters' dump; `rollback` discards. | UPDATE then Rollback = file unchanged; UPDATE then Commit = file changed, still valid CSV/PDL. |
-| 8 | **Export + History** — grid → CSV/PDL/clipboard; every run appended to `state/history/`, re-runnable. | export produces a file another tool can re-open; history row re-runs identically. |
-| 9 | **db cell wiring** — `db_menu_3_cmd` + `launcher_sql`; open from `[ ]9.db → sql-hq`. | clicking the row opens the window. |
-| 10 | **Docs + polish** — `sql-hq/README.md` (user), update `pc-hq-bugs.md`-style notes, `CENTROID_GOLD_STD.md` app list; keyboard nav in the grid; error surface (bad SQL → a red message row, not a crash). | a rusty-SQL user can load `data.csv` and run SELECT/WHERE/ORDER BY/JOIN from the sidebar with no docs. |
+| ✅ 1 | **Adapters**: `sql_hq_adapters.c` — `csv_load`/`csv_dump`, `pdl_load`/`pdl_dump` (flat + record detect). Standalone, unit-tested. | round-trips `data.csv`, `livedesk_theme.pdl` (flat), `clocks.pdl` (record) byte-stable through load→dump. |
+| ✅ 2 | **Engine (Route B)**: vendor `sqlite3.c`; `sql_hq_engine.c` builds `:memory:` from a manifest, runs a query file, writes a TSV grid + dirty-table list. | `SELECT * FROM data` on the CSV matches `PURE.c`; a real `INNER JOIN` across two CSVs returns correct rows. |
+| ✅ 3 | **CLI orchestrator** (the reference's own next-step): `sql_hq` REPL — `\open x.csv`, type SQL, see the grid, `\commit`. No GUI yet. | 10 mixed queries (SELECT/JOIN/GROUP BY/UPDATE+commit) run in one session; committed files correct on disk. |
+| ✅ 4 | **`sql-hq.xhtpm` + projector + button.sh** — static window: sidebar (subset of §5), editor `text_area`, Run, results `<repeat>` grid. `class="sql-hq database-window"`. | window opens via `button.sh`; typing a query + Run shows rows in the grid; `khtpm_png_dump` proof. |
+| ✅ 5 | **`sql_hq_action.sh`** wired to every ★ macro + snippet insertion for the rest. | each sidebar button does the right thing; snippet macros land at the cursor. |
+| ✅ 6 | **Active-table tabbar** — one `<tab>` per manifest table; `set-table` updates `${table}`; `Import CSV/PDL` adds a tab. | open 3 files → 3 tabs; switching changes which table `SELECT *` targets. |
+| ⬜ 7 | **Begin/Commit/Rollback** — staged writes; `commit` calls the adapters' dump; `rollback` discards. | UPDATE then Rollback = file unchanged; UPDATE then Commit = file changed, still valid CSV/PDL. |
+| ⬜ 8 | **Export + History** — grid → CSV/PDL/clipboard; every run appended to `state/history/`, re-runnable. | export produces a file another tool can re-open; history row re-runs identically. |
+| ✅ 9 | **db cell wiring** — `db_menu_3_cmd` + `launcher_sql`; open from `[ ]9.db → sql-hq`. | clicking the row opens the window. |
+| ⬜ 10 | **Docs + polish** — `sql-hq/README.md` (user), update `pc-hq-bugs.md`-style notes, `CENTROID_GOLD_STD.md` app list; keyboard nav in the grid; error surface (bad SQL → a red message row, not a crash). | a rusty-SQL user can load `data.csv` and run SELECT/WHERE/ORDER BY/JOIN from the sidebar with no docs. |
 
 Optional later: `.db` file support (`ATTACH`), `EXPLAIN` visualiser,
 `function_bank.txt` (the reference's `sum ./+x/sum.+x` idea — only

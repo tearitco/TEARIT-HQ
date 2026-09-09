@@ -20,10 +20,15 @@ status that's wrong — this is meant to be edited.
 
 ## Taskbar strip cells (`#.desktop/livedesk_taskbar.pdl`)
 
-The bottom strip. Click a cell → its submenu. `livedesk_build_<cell>_menu()`
-in `khtpm_taskbar_manager.c` builds each; rows come from
-`livedesk_taskbar.pdl` (`<cell>_menu_N_*`) and dispatch via
-`livedesk:open-X` strings resolved through `livedesk_launchers.pdl`.
+The bottom strip. Click a cell → its submenu. Rows come from
+`livedesk_taskbar.pdl` as `<cell>_menu_N_label` / `<cell>_menu_N_cmd`
+pairs, read at open time (`livedesk_pdl_menu_rows()`); the hardcoded
+`livedesk_build_<cell>_menu()` bodies in `khtpm_taskbar_manager.c` are
+now just the `count==0` fallback (player/ai/db converted; the four
+directory-scanning builders — user/pals/toys/clock — still hardcoded).
+A `_cmd` is a `livedesk:open-X` string (→ `livedesk_launchers.pdl`), a
+bare shell command, or `widget:<name> <MODE> <start> <verb>`. See
+`08-roadmap/design-docs/TASKBAR-MENUS-DATA-DRIVEN.md`.
 
 | cell | what it opens | status |
 |---|---|---|
@@ -33,7 +38,7 @@ in `khtpm_taskbar_manager.c` builds each; rows come from
 | **palettes** | emoji / elements / rmmv / piececraft (Mineclonia) / cdda pickers | 🟡 chooser-grid live for rmmv+piececraft+cdda+emojis (`08-roadmap/TILESETS-EVENTS-AND-GAME-CLONES.md`); paint/df/kenney still stub |
 | **edit** | text-edit-hq (below) | ✅ |
 | **player** | entity player: play/pause/reset entities | ✅ |
-| **db** | db-hq-pal record browser (below) | 🟡 read-only fields |
+| **db** | db-ez · db-hq(-pal) record browser · sql-hq (SQL over csv/pdl) | 🟡 db-hq-pal read-only fields; sql-hq window live |
 | **plugins** | — | 🔶 inert placeholder |
 | **store** | — | 📋 (`07-install-and-ship/`) |
 | **network** | IRC Chat / Forum / Chain / Browser | see "13.network" below |
@@ -124,6 +129,7 @@ driven from the GUI): 📋 hooks planned, not built.
 | **stats-hq** | ✅ | dashboard |
 | **signup-hq** | 🟡 | login/signup flow |
 | **irc-chat-hq / chain-hq** | ✅ | see 13.network |
+| **sql-hq** | 🟡 | SQL over `.csv` / `.pdl` (vendored sqlite3). Window: macro sidebar + editor + results grid; also a `sql_hq repl` CLI. Open from `[ ]db → sql-hq`. Staged Commit/Rollback + Export/History still WIP. `SQL-HQ-DESIGN.md`. |
 | **forum-hq / db-hq / js** | 🔶 | placeholder / legacy `.chtpm` |
 
 ---

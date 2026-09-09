@@ -10,6 +10,15 @@
   handoff (stale filenames, predates `CENTROID_GOLD_STD.md` and
   everything since). Read this before tasking Grok with anything.
 - `OPEN-ITEMS.md` — the current, real open-item summary (start here).
+- `design-docs/SQL-HQ-DESIGN.md` — **2026-09-08 BUILT (steps 1–6, 9)**:
+  sql-hq = SQL over `.csv` / `.pdl` (vendored sqlite3 amalgamation);
+  x11-hq window + macro sidebar + `sql_hq repl` CLI, opens from
+  `[ ]db → sql-hq`. Remaining: staged Commit/Rollback, Export/History,
+  grid polish (§6 table).
+- `design-docs/TASKBAR-MENUS-DATA-DRIVEN.md` — **in progress**: strip
+  submenu rows moved to `livedesk_taskbar.pdl` `<cell>_menu_N_label/_cmd`
+  read at open time. player/ai/db converted; user/pals/toys/clock
+  (directory-scanning) still hardcoded.
 - `design-docs/MY-PALETTES-TILED-OHR-TILE-EDITOR-DESIGN.md` — **2026-09-08
   DESIGN ONLY**: Tiled + OHRRPGCE pickers, restore My Palettes library
   (not Canvas-Craft), Tiled-like tile-editor. Local examples already on

@@ -1,4 +1,4 @@
-# Open items — real, current, as of 2026-09-02
+# Open items — real, current, as of 2026-09-08
 
 *See `00-INDEX.md` for the fuller list with file pointers. This is the
 short version.*
@@ -64,3 +64,15 @@ short version.*
 13. Tiled + OHRRPGCE palettes, My Palettes library, tile-editor:
     **design only** — `design-docs/MY-PALETTES-TILED-OHR-TILE-EDITOR-DESIGN.md`.
     Local demos already exist under `#.potential-assets/#.hampster-tiles…`.
+14. Strip submenus → data-driven (`livedesk_taskbar.pdl`
+    `<cell>_menu_N_label/_cmd`): player/ai/db converted; the four
+    directory-scanning builders (user/pals/toys/clock) still hardcoded
+    — need a prefix+scan+suffix pdl pattern. `TASKBAR-MENUS-DATA-DRIVEN.md`.
+15. sql-hq: built through step 6 + db-cell wiring (step 9). Remaining —
+    staged Begin/Commit/Rollback polish (7), Export + re-runnable
+    History (8), grid keyboard nav + RFC-4180 quoted-comma CSV
+    splitter (10). `design-docs/SQL-HQ-DESIGN.md`.
+16. pc-hq board Interact/focus (grok): WM-managed board window +
+    per-frame focus re-assert + fix "Interact Mode never arms" (reparse
+    -on-vars-change not firing for the pchq board). `09-appendix/
+    pc-hq-leg-vs-nu-fix.md` §5/§6/§6b, `pc-hq-bugs.md` Bug 2.
