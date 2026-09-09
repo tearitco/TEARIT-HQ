@@ -473,10 +473,93 @@ Event**, the RM meaning — **not** a dlopen module and **not** a
 - Wait for a full battle engine — overlay is useful **before** battle
   v0 (move preview, Transfer dest, explosion radius, edit collision
   ghosts).
-- Use whole-screen `tint_screen` as a fake range (you cannot tint
-  individual cells that way).
+- Use RM **`tint_screen`** (one multiply on the whole map: dusk, flash,
+  fade) as a stand-in for **per-cell** range. That opcode cannot mark
+  individual tiles. **This is not calling the existing placer “fake.”**
+  The placer is a real click-capture surface (see next subsection).
 - Precompute every unit’s range every frame. Recompute **on select**
   and when passability/occupancy changes.
+
+**Existing tile-picker place vs range select — same job, fix and share**
+
+Owner report: armed place from the picker does **not** show a grid, feels
+weird, and the hole for the picker window **does not follow** if you
+move the picker.
+
+That path is real today:
+
+- Palettes click → `palettes_menu.sh arm-rmmv` → `tp_set_brush_rmmv` +
+  detached `tp_arm_placer_rmmv.+x`.
+- Placer (`&.widgits/tile-picker/ops/tp_arm_placer_rmmv.c`) maps up to
+  **four override_redirect InputOutput windows** covering the **whole
+  screen** with ~12% amber (`_NET_WM_WINDOW_OPACITY`), **except** a
+  rectangle snapshotted as `picker_x/y/w/h` at arm time. Click →
+  `tp_place_desktop_rmmv.+x`. Esc cancels. Mutter/XWayland cannot see
+  clicks on bare desktop, so a mapped capture surface was the live
+  fix (2026-08-29), not a prototype.
+
+Why it feels like a dumb whole-screen wash (and not a map grid):
+
+1. **No cell grid.** The capture windows are four screen strips, not
+   desk/pchq tiles. Nothing reads chunk size or desk cell pitch.
+2. **Hole is frozen.** Rect is argv at spawn. Moving the palettes
+   window does not `XMoveResizeWindow` the strips. The hole sits where
+   the picker **was**.
+3. **Rect often never arrives.** `khtpm_core_render.c` puts
+   `g_win_x, g_win_y, g_window->w, g_window->h` on the `arm-rmmv`
+   action, but `palettes_menu.sh` documents that dispatch **appends
+   pkg_dir + house_root**, so `$5–$8` are **paths**, the integer check
+   fails, and the placer covers **the entire screen** with no hole.
+   That is the “doesn’t show where the original window was” bug.
+4. **`g_win_x/y` may be stale** even when integers get through (create
+   geom, not live `XGetGeometry` after drag).
+5. **arm-pc / arm-cdda** do not necessarily share this placer; emoji
+   `tp_arm_placer.+x` is a **root grab** (broken on this Mutter) plus
+   board-viewer hit-test. Three place paths, one should remain.
+
+**Yes: integrate place-from-picker with range-select.** Both are
+“highlight legal cells, take one click, write a coordinate.” Place is
+`kind=place` on **every passable (or all) cells**; tactics range is
+`kind=move|attack` on a BFS subset. Same compositor, same
+`select_in_range` (or `select_cell`). Do **not** keep a second
+full-screen amber OS overlay as the long-term place UI.
+
+Target shape:
+
+- Armed brush writes `range_overlay.pdl` with `kind=place` cells (or
+  one `kind=all` + brush kv). Map compositor tints **tiles**, with an
+  optional grid stroke on cell edges.
+- Click is hit-test on the **map** (desk cell or pchq voxel), not a
+  screen-sized X window. Palettes stays a normal window; no hole to
+  track.
+- If XWayland still cannot click “bare” desk, the capture surface may
+  remain as a **hit-test shim only** (InputOnly or 1% opacity), but
+  **drawing** (grid, legal cells, brush ghost) lives in the map
+  overlay file — not in the shim’s background pixel.
+
+Short-term placer fixes if place must work before the compositor
+(optional, do not polish the amber forever):
+
+- Pass picker **xid** (or pid) into the placer; **poll
+  `XGetGeometry`/`XTranslateCoordinates`** and resize the four strips
+  when the picker moves. That is the actual “window moved” fix.
+- Stop stuffing geom on `action=` after house_root; use a state file
+  `picker_geom.txt` the projector writes every layout, or pass xid
+  only.
+- Draw a **cell grid** in the capture windows (or drop drawing there
+  and use overlay.pdl even with the shim).
+- One placer for rmmv/pc/cdda/emoji.
+
+Old `tp_range_grid.+x` (AU14 popup diamond, not map-aligned) is
+**not** the compositor. Do not revive it as Civ range.
+
+**`tint_screen` vs the amber placer (wording):** `tint_screen` is an
+RM **event command** that dyes the whole playfield one color (night,
+damage flash). Using that command as “range overlay” would be the
+wrong tool — that is all “don’t fake with whole-screen tint” meant.
+The **amber capture** is a different, real, house-specific overlay; it
+is the right *click* workaround and the wrong *paint* for grids. Keep
+the click lesson; replace the paint with cell tints.
 
 **File contract (implementers — keep this shape):**
 
@@ -568,8 +651,9 @@ overlay early (it is not Civ DLC). Suggested PRs:
    (even if the UI stays field tiles — a “flush to play files” script
    is enough).
 3. **Passability** on glyphs + **Transfer consumer** (desk and pchq).
-4. **Range overlay compositor** (reads `range_overlay.pdl`; fake cells
-   tint on hardware) — **priority**.
+4. **Range overlay compositor** (reads `range_overlay.pdl`; can start
+   with stamped CELLs) — **priority**. Same layer as tile-picker
+   place; do not keep amber full-screen as the grid.
 5. **BFS helper + `show_range` / `hide_range` / `select_in_range`**.
 6. **Shop v0** (choices + gold + items).
 7. **Battle v0** (choices + one enemy hp file) — overlay attack cells
