@@ -823,8 +823,9 @@ static int handle_one_key(int key) {
      * desk"): the 2026-08-31 remap to '5'-'8' (to reserve '1'-'4' for a
      * future "one map" desktop-3D mode shared with cursword) is undone -
      * pc-hq/board-viewer uses '1'-'4' for POV, same as muta. cursword's
-     * own tp_desktop_window_rgb.c remap is now moot and can be reverted
-     * separately (no real 3D on the desktop). This also un-shadows the
+     * own desktop camera (khtpm_core_render.c cursword_handle_camera_key)
+     * never had numeric mode keys - only the abandoned "one map"
+     * reservation, now cleared. This also un-shadows the
      * '5'/'6' FILE_MENU/DESK_MENU dispatch further down (it was dead
      * code while '5'-'8' returned first). */
     if (key == key_pov_1 || key == key_pov_2 || key == key_pov_3 || key == key_pov_4) {

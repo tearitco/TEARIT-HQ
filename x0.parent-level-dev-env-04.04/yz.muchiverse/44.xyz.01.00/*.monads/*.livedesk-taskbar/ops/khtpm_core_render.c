@@ -4603,7 +4603,7 @@ static void kh_interact_append_13(void) {
         if (!paths[i] || !paths[i][0]) continue;
         FILE *f = fopen(paths[i], "a");
         if (!f) continue;
-        /* pchq-vw-tpmos.md D2: keyboard/history.txt needs the
+        /* pchq-vs-tpmos.md D2: keyboard/history.txt needs the
          * KEY_PRESSED: prefix or the board_viewer.chtpm parser ignores
          * it (so grok's FocusOut auto-disengage silently did nothing). */
         if (strstr(paths[i], "keyboard/history.txt")) fprintf(f, "KEY_PRESSED: 13\n");
@@ -7079,7 +7079,7 @@ static void handle_key(KeySym ks, char ch) {
      * while engaged). kh_key_history_code() is the SAME decimal-code
      * resolver history capture already uses - reused, not reinvented. */
     /* Escape bypasses the g_x11_window_focused half of the gate
-     * (pchq-vw-tpmos.md D5): a real KeyPress here proves this window has
+     * (pchq-vs-tpmos.md D5): a real KeyPress here proves this window has
      * X focus, and Escape is the unambiguous "exit Interact" - forward
      * it (format-correct, D2) so the board_viewer.chtpm parser's own
      * process_key(27) ESC-exit runs even if a spurious Mutter FocusOut
@@ -13754,14 +13754,14 @@ static int tp_main(int argc, char **argv) {
                      * the moment a key was pressed while armed -
                      * confirmed by direct read, not assumed. */
                     KeySym ks2 = XLookupKeysym(&xev.xkey, 0);
-                    /* REAL FIX 2026-08-31 - the camera-mode keys moved
-                     * from 1-4 to 5-8 (see cursword_handle_camera_key()'s
-                     * own header comment: keys 1-4 are now reserved for
-                     * a future "one map" perspective mode) - the old
-                     * special-cased "1"/"2"/"3"/"4" label branch here is
-                     * dropped since it's no longer needed: XKeysymToString()
-                     * already returns the correct literal digit string
-                     * ("5".."8") for these keysyms same as any other key. */
+                    /* 2026-09-09: cursword's desktop camera has no
+                     * numeric mode keys - the "one map" 1-4 reservation
+                     * (and the brief 1-4 -> 5-8 remap) is abandoned
+                     * (^.ONE-MAP-ATTEMPT.md; pc-hq/board-viewer uses 1-4
+                     * for POV again). Digit keys fall through to the
+                     * generic cursword_log_key() / dispatch below with
+                     * no special-casing - XKeysymToString() returns the
+                     * literal digit string same as any other key. */
                     cursword_log_key(
                         ks2 == XK_Escape ? "ESC" :
                         ks2 == XK_Left ? "LEFT" : ks2 == XK_Right ? "RIGHT" :
