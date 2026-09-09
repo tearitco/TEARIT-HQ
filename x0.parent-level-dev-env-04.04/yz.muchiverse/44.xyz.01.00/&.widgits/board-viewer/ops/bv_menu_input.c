@@ -483,7 +483,13 @@ static int handle_one_key(int key) {
      * a real, one-tile-per-press step like every other mode. */
     if ((dx || dy) && focused_project_root[0]) {
         int cam_mode_for_move = read_kv_int(state_path, "camera_mode", default_camera_mode(focused_project_root));
-        if (cam_mode_for_move == 1 || cam_mode_for_move == 2) {
+        int rmode_for_move    = read_kv_int(state_path, "render_mode", 1);
+        /* The camera-relative rotate + handedness flip below is for the
+         * 3D first/third-person views (modes 1/2). The 2D top-down tile
+         * grid (render_mode==0, PCHQ-2D-TILE-VIEW) has NO camera
+         * handedness - "left" is just -x - so skip it there or the
+         * arrows come out mirrored (direct report 2026-09-09). */
+        if (rmode_for_move != 0 && (cam_mode_for_move == 1 || cam_mode_for_move == 2)) {
             int cam_yaw_for_move = read_kv_int(state_path, "cam_yaw", 180);
             /* NEGATED 2026-08-04, direct user correction ("right and
              * left in 1/2 are still flipped... just swap them wherever
@@ -615,6 +621,18 @@ static int handle_one_key(int key) {
         int render_mode = read_kv_int(state_path, "render_mode", default_render_mode(focused_project_root));
         write_kv_int(state_path, "render_mode", !render_mode);
         bump_screen_changed(project_root);
+        return 0;
+    }
+
+    /* '`' (backtick, 96) - the 2D style toggle (PCHQ-2D-TILE-VIEW):
+     * tiles <-> emoji. Only meaningful while render_mode==0; a no-op in
+     * 3D. */
+    if (key == 96) {
+        if (read_kv_int(state_path, "render_mode", 1) == 0) {
+            char cur[16] = ""; read_kv_str(state_path, "view_2d_style", cur, sizeof(cur));
+            write_kv(state_path, "view_2d_style", strcmp(cur, "emoji") == 0 ? "tiles" : "emoji");
+            bump_screen_changed(project_root);
+        }
         return 0;
     }
 

@@ -98,6 +98,7 @@ static void resolve_focused(const char *raw) {
 typedef struct { char glyph; unsigned char r, g, b; } Leg;
 static Leg  g_leg[MAX_LEGEND];
 static int  g_nleg = 0;
+static char g_leg_hex[MAX_LEGEND][16];   /* asset_hex column, parallel to g_leg */
 static void load_legend(void) {
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/pieces/system/terrain_legend.txt", focused_root);
@@ -113,19 +114,85 @@ static void load_legend(void) {
         char *rt = strtok_r(NULL, "|", &sv);
         char *gt = strtok_r(NULL, "|", &sv);
         char *bt = strtok_r(NULL, "|", &sv);
+        char *at = strtok_r(NULL, "|", &sv);        /* asset_hex ("-" = none) */
         if (!g || !g[0] || !rt || !gt || !bt) continue;
         g_leg[g_nleg].glyph = g[0];
         g_leg[g_nleg].r = (unsigned char)atoi(rt);
         g_leg[g_nleg].g = (unsigned char)atoi(gt);
         g_leg[g_nleg].b = (unsigned char)atoi(bt);
+        g_leg_hex[g_nleg][0] = '\0';
+        if (at && at[0] && strcmp(at, "-") != 0)
+            snprintf(g_leg_hex[g_nleg], sizeof(g_leg_hex[0]), "%s", at);
         g_nleg++;
     }
     fclose(f);
 }
+static int legend_idx(char glyph) {
+    for (int i = 0; i < g_nleg; i++) if (g_leg[i].glyph == glyph) return i;
+    return -1;
+}
 static int legend_rgb(char glyph, unsigned char *r, unsigned char *g, unsigned char *b) {
-    for (int i = 0; i < g_nleg; i++)
-        if (g_leg[i].glyph == glyph) { *r = g_leg[i].r; *g = g_leg[i].g; *b = g_leg[i].b; return 1; }
-    return 0;
+    int i = legend_idx(glyph);
+    if (i < 0) return 0;
+    *r = g_leg[i].r; *g = g_leg[i].g; *b = g_leg[i].b; return 1;
+}
+
+/* ---- emoji sprites (pieces/registry/emoji_assets/<HEX>/voxels_16.csv,
+ * a flat 16x16 RGBA sheet - the SAME asset bv_render_3d textures with).
+ * Loaded once per hex, scaled per cell, alpha-composited. ---- */
+#define EMO_N 64
+#define EMO_RES 16
+static struct { char hex[16]; int ok; unsigned char px[EMO_RES*EMO_RES*4]; } g_emo[EMO_N];
+static int g_nemo = 0;
+static const unsigned char *load_emoji16(const char *hex) {
+    if (!hex || !hex[0]) return NULL;
+    for (int i = 0; i < g_nemo; i++)
+        if (strcmp(g_emo[i].hex, hex) == 0) return g_emo[i].ok ? g_emo[i].px : NULL;
+    if (g_nemo >= EMO_N) return NULL;
+    int slot = g_nemo++;
+    snprintf(g_emo[slot].hex, sizeof(g_emo[slot].hex), "%s", hex);
+    g_emo[slot].ok = 0;
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/pieces/registry/emoji_assets/%s/voxels_16.csv", project_root, hex);
+    FILE *f = host_fopen(path, "r");
+    if (!f) return NULL;
+    char line[MAX_LINE];
+    int n = 0;
+    while (n < EMO_RES*EMO_RES && fgets(line, sizeof(line), f)) {
+        int r, g, b, a;
+        if (line[0] == '#') continue;
+        if (sscanf(line, "%d,%d,%d,%d", &r, &g, &b, &a) == 4) {
+            g_emo[slot].px[n*4+0] = (unsigned char)r;
+            g_emo[slot].px[n*4+1] = (unsigned char)g;
+            g_emo[slot].px[n*4+2] = (unsigned char)b;
+            g_emo[slot].px[n*4+3] = (unsigned char)a;
+            n++;
+        }
+    }
+    fclose(f);
+    g_emo[slot].ok = (n == EMO_RES*EMO_RES);
+    return g_emo[slot].ok ? g_emo[slot].px : NULL;
+}
+/* blit a 16x16 RGBA sprite scaled (nearest) into cellxcell at (dx,dy),
+ * alpha over whatever is already in the frame. */
+static void blit_emoji(unsigned char *frame, int W, int dx, int dy, int cell, const unsigned char *e16) {
+    for (int yy = 0; yy < cell; yy++) {
+        int sy = yy * EMO_RES / cell; if (sy >= EMO_RES) sy = EMO_RES - 1;
+        for (int xx = 0; xx < cell; xx++) {
+            int sx = xx * EMO_RES / cell; if (sx >= EMO_RES) sx = EMO_RES - 1;
+            const unsigned char *s = e16 + (sy*EMO_RES + sx)*4;
+            int a = s[3];
+            if (a == 0) continue;
+            unsigned char *d = frame + ((size_t)(dy+yy) * W + (dx+xx)) * 4;
+            if (a >= 255) { d[0]=s[0]; d[1]=s[1]; d[2]=s[2]; d[3]=255; }
+            else {
+                d[0] = (unsigned char)((s[0]*a + d[0]*(255-a)) / 255);
+                d[1] = (unsigned char)((s[1]*a + d[1]*(255-a)) / 255);
+                d[2] = (unsigned char)((s[2]*a + d[2]*(255-a)) / 255);
+                d[3] = 255;
+            }
+        }
+    }
 }
 
 /* ---- entities: pos + colour ---- */
@@ -288,22 +355,35 @@ int main(void) {
     }
 
     #define VP_PXR(SX,SY) (px + ((size_t)(SY) * W + (SX)) * 4)
+    /* view_2d_style (` toggle): "emoji" -> fill cells with the emoji
+     * sprite over the terrain colour; "tiles" (default) -> the flat
+     * colour grid (P1). Real palette tilesets are P2b. */
+    char style[16] = ""; read_kv_str(st, "view_2d_style", style, sizeof(style));
+    int want_emoji = (strcmp(style, "emoji") == 0);
+
     /* --- ground tiles --- */
     for (int scy = 0; scy < rows; scy++) {
         for (int scx = 0; scx < cols; scx++) {
             int bx = ox + scx, by = oy + scy;
             if (bx < 0 || by < 0 || bx >= bw || by >= bh) continue;
             unsigned char r = air_r, g = air_g, b = air_b;
+            const unsigned char *e16 = NULL;
             if (by < g_bh && bx < g_bw) {
                 char gch = g_board[by][bx];
-                if (gch && gch != '_' && gch != ' ')
-                    if (!legend_rgb(gch, &r, &g, &b)) { r = 90; g = 90; b = 96; }
+                if (gch && gch != '_' && gch != ' ') {
+                    int li = legend_idx(gch);
+                    if (li >= 0) { r = g_leg[li].r; g = g_leg[li].g; b = g_leg[li].b;
+                                   if (want_emoji) e16 = load_emoji16(g_leg_hex[li]); }
+                    else { r = 90; g = 90; b = 96; }
+                }
             }
+            int dx = scx*cell, dy = scy*cell;
             for (int yy = 0; yy < cell; yy++)
                 for (int xx = 0; xx < cell; xx++) {
-                    unsigned char *p = VP_PXR(scx*cell + xx, scy*cell + yy);
+                    unsigned char *p = VP_PXR(dx + xx, dy + yy);
                     p[0]=r; p[1]=g; p[2]=b; p[3]=255;
                 }
+            if (e16) blit_emoji(px, W, dx, dy, cell, e16);
         }
     }
 
