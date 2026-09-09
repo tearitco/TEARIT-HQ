@@ -1,4 +1,5 @@
 #!/bin/bash
+_pcd="$(cd "$(dirname "$0")" && pwd)"; while [ "$_pcd" != "/" ] && [ ! -d "$_pcd/&.widgits/_shared-lib" ]; do _pcd="$(dirname "$_pcd")"; done; PRISC_CANON_SHARED_LIB="$_pcd/&.widgits/_shared-lib"  # PRISC-X-FORK-CONSOLIDATION.md
 # Build avatar-creation system + ops
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -8,7 +9,7 @@ mkdir -p ops/+x system
 CFLAGS="-Wall -Wextra -O2"
 
 echo "--- system ---"
-gcc $CFLAGS "system/prisc+x.c" -o "system/prisc+x"
+gcc $CFLAGS "$PRISC_CANON_SHARED_LIB/system/prisc+x.c" -o "system/prisc+x"
 gcc $CFLAGS "system/keyboard_input.c" -o "system/keyboard_input"
 gcc $CFLAGS "system/renderer.c" -o "system/renderer"
 gcc $CFLAGS -Wno-unused-result -Wno-stringop-truncation "system/chtpm_parser_pal.c" -o "system/chtpm_parser_pal"

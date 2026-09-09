@@ -1,9 +1,10 @@
 #!/bin/bash
+_pcd="$(cd "$(dirname "$0")" && pwd)"; while [ "$_pcd" != "/" ] && [ ! -d "$_pcd/&.widgits/_shared-lib" ]; do _pcd="$(dirname "$_pcd")"; done; PRISC_CANON_SHARED_LIB="$_pcd/&.widgits/_shared-lib"  # PRISC-X-FORK-CONSOLIDATION.md
 # scripts/build.sh - compile everything, warning-free.
 #
 # LOCAL COPIES, NOT A LIVE SHARED_OPS REFERENCE: this project keeps its
 # own real, local copy of every file below that also exists in
-# yz.muchiverse/2.muchi-verse/shared-ops/ (system/prisc+x.c,
+# yz.muchiverse/2.muchi-verse/shared-ops/ ("$PRISC_CANON_SHARED_LIB/system/prisc+x.c",
 # system/keyboard_input.c, system/chtpm_parser_pal.c,
 # system/chtpm_rgb_render.c, ops/palnet_peer.c) - same convention every
 # other project in this family follows (see ../shared-ops-manifest.txt).
@@ -24,7 +25,7 @@ mkdir -p ops/+x system
 CFLAGS="-Wall -Wextra -O2"
 
 echo "--- Building system processes ---"
-gcc $CFLAGS "system/prisc+x.c" -o "system/prisc+x"
+gcc $CFLAGS "$PRISC_CANON_SHARED_LIB/system/prisc+x.c" -o "system/prisc+x"
 gcc $CFLAGS "system/keyboard_input.c" -o "system/keyboard_input"
 gcc $CFLAGS "system/renderer.c" -o "system/renderer"
 

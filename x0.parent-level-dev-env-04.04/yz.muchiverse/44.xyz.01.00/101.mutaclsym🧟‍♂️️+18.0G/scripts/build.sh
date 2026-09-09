@@ -1,11 +1,12 @@
 #!/bin/sh
+_pcd="$(cd "$(dirname "$0")" && pwd)"; while [ "$_pcd" != "/" ] && [ ! -d "$_pcd/&.widgits/_shared-lib" ]; do _pcd="$(dirname "$_pcd")"; done; PRISC_CANON_SHARED_LIB="$_pcd/&.widgits/_shared-lib"  # PRISC-X-FORK-CONSOLIDATION.md
 # Builds every binary independently - no shared object files, no shared
 # headers, matching cdda-tpm-std-fast.txt sec. 1. Each translation unit
 # is compiled and linked on its own line.
 #
 # LOCAL COPIES, NOT A LIVE SHARED_OPS REFERENCE: this project keeps its
 # own real, local copy of every file below that also exists in
-# yz.muchiverse/2.muchi-verse/shared-ops/ (system/prisc+x.c,
+# yz.muchiverse/2.muchi-verse/shared-ops/ ("$PRISC_CANON_SHARED_LIB/system/prisc+x.c",
 # system/keyboard_input.c, system/chtpm_parser_pal.c,
 # system/chtpm_rgb_render.c, ops/pdl_reader.c, ops/dump_rgb_png.c,
 # ops/lib/) - direct user instruction: "i dont wanna use shared ops, in
@@ -24,7 +25,7 @@ CC=${CC:-gcc}
 CFLAGS="-std=c11 -Wall -Wextra -O2"
 
 echo "-- prisc+x (VM)"
-$CC $CFLAGS -o system/prisc+x system/prisc+x.c
+$CC $CFLAGS -o system/prisc+x "$PRISC_CANON_SHARED_LIB/system/prisc+x.c"
 
 echo "-- keyboard_input (raw termios, no ncurses - local copy, see"
 echo "   system/keyboard_input.c's own header comment)"

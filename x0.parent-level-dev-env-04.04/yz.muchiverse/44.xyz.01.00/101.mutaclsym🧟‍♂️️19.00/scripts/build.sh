@@ -1,4 +1,5 @@
 #!/bin/bash
+_pcd="$(cd "$(dirname "$0")" && pwd)"; while [ "$_pcd" != "/" ] && [ ! -d "$_pcd/&.widgits/_shared-lib" ]; do _pcd="$(dirname "$_pcd")"; done; PRISC_CANON_SHARED_LIB="$_pcd/&.widgits/_shared-lib"  # PRISC-X-FORK-CONSOLIDATION.md
 # scripts/build.sh - compile everything, warning-free where possible.
 #
 # LOCAL COPIES, NOT A LIVE SHARED_OPS REFERENCE: system/*.c here are
@@ -13,7 +14,7 @@ mkdir -p ops/+x system
 CFLAGS="-Wall -Wextra -O2"
 
 echo "--- Building system processes ---"
-gcc $CFLAGS "system/prisc+x.c" -o "system/prisc+x"
+gcc $CFLAGS "$PRISC_CANON_SHARED_LIB/system/prisc+x.c" -o "system/prisc+x"
 gcc $CFLAGS "system/keyboard_input.c" -o "system/keyboard_input"
 gcc $CFLAGS "system/renderer.c" -o "system/renderer"
 
