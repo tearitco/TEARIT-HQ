@@ -19,6 +19,12 @@ done
 
 case "$ACTION" in
     run|r|start)
+        # PRISC-X-FORK-CONSOLIDATION.md (2026-09-09): PAL VM from the ONE
+        # canonical &.widgits/_shared-lib/system/prisc+x.c (no scripts/
+        # build.sh in this project).
+        _pcd="$SCRIPT_DIR"; while [ "$_pcd" != "/" ] && [ ! -d "$_pcd/&.widgits/_shared-lib" ]; do _pcd="$(dirname "$_pcd")"; done
+        [ -f "$_pcd/&.widgits/_shared-lib/system/prisc+x.c" ] && \
+            gcc -O2 -std=c11 -w -o "$SCRIPT_DIR/system/prisc+x" "$_pcd/&.widgits/_shared-lib/system/prisc+x.c" 2>/dev/null || true
         if [ "$PAL_MODE" -eq 1 ]; then
             echo "=== LPNS+MAP+4 Launcher (PAL Mode) ==="
             export PAL_LAYOUT="pieces/chtpm/layouts/lpns_main_menu_pal.chtpm"

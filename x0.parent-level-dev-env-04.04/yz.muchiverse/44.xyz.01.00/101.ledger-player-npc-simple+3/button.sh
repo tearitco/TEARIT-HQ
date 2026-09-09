@@ -26,6 +26,12 @@ case "$ACTION" in
             echo "Failed to compile orchestrator"
             exit 1
         }
+        # PRISC-X-FORK-CONSOLIDATION.md (2026-09-09): the PAL VM is built
+        # from the ONE canonical &.widgits/_shared-lib/system/prisc+x.c.
+        # This project has no scripts/build.sh; keep the binary fresh here.
+        _pcd="$SCRIPT_DIR"; while [ "$_pcd" != "/" ] && [ ! -d "$_pcd/&.widgits/_shared-lib" ]; do _pcd="$(dirname "$_pcd")"; done
+        [ -f "$_pcd/&.widgits/_shared-lib/system/prisc+x.c" ] && \
+            gcc -O2 -std=c11 -w -o "$SCRIPT_DIR/system/prisc+x" "$_pcd/&.widgits/_shared-lib/system/prisc+x.c" 2>/dev/null || true
         if [ "$PAL_MODE" -eq 1 ]; then
             echo "=== LPNS+3 Word Game (PAL Mode) ==="
             export PAL_LAYOUT="pieces/chtpm/layouts/lpns_word_menu_pal.chtpm"
