@@ -796,6 +796,14 @@ static int g_worker_fd = -1;
 static pid_t g_worker_pid = -1;
 static char g_worker_render[65536];   /* step 4: last RENDER rows, or "" */
 
+/* rung-6 slice 2: the worker's pending NAV request, captured from a NAV
+ * frame during worker_load and consumed by the main loop on the next tick
+ * (kind: GO/REPLACE/RELOAD/BACK/FORWARD/ADDR; url for the navigations,
+ * count is the step count for BACK/FORWARD). */
+static char g_pending_nav_kind[16] = "";
+static char g_pending_nav_url[PATH_BUF] = "";
+static int  g_pending_nav_count = 1;
+
 /* Step 4: overlay the worker's RENDER rows onto page.state.txt. The
  * post-JS DOM is authoritative, so content rows (TITLE/TEXT/LINK/IMG) are
  * replaced wholesale; non-content rows (URL|...) pass through unchanged.
@@ -1050,6 +1058,7 @@ static int worker_load(const char *js_path, const char *dom_path,
     if (!worker_send(payload, (size_t)n)) { worker_close(); return 0; }
 
     g_worker_render[0] = 0;
+    g_pending_nav_kind[0] = 0; g_pending_nav_url[0] = 0; g_pending_nav_count = 1;
     char resp[65536];
     for (;;) {
         if (!worker_recv_line(resp, sizeof(resp))) { worker_close(); return 0; }
@@ -1058,6 +1067,36 @@ static int worker_load(const char *js_path, const char *dom_path,
             if (rn + 1 < sizeof(g_worker_render))
                 memcpy(g_worker_render, resp + 7, rn + 1);
             continue;   /* wait for STATUS next */
+        }
+        if (strncmp(resp, "NAV\n", 4) == 0) {
+            /* rung-6 slice 2: NAV\n<kind>\n<url-or-count>\n — the page asked
+             * to navigate (history.forward() etc. or location.assign()).
+             * Stash it; the main loop runs it through the same do_fetch /
+             * back/forward stacks as a go:/back: request. */
+            char *f1 = resp + 4;
+            char *n1 = strchr(f1, '\n');
+            if (n1) {
+                size_t l = (size_t)(n1 - f1);
+                if (l >= sizeof(g_pending_nav_kind)) l = sizeof(g_pending_nav_kind) - 1;
+                memcpy(g_pending_nav_kind, f1, l);
+                g_pending_nav_kind[l] = 0;
+                if (n1[1]) {
+                    char v[PATH_BUF];
+                    size_t vl = strlen(n1 + 1);
+                    if (vl >= sizeof(v)) vl = sizeof(v) - 1;
+                    memcpy(v, n1 + 1, vl);
+                    v[vl] = 0;
+                    char *nl = strchr(v, '\n');
+                    if (nl) *nl = 0;
+                    if (strcmp(g_pending_nav_kind, "BACK") == 0 ||
+                        strcmp(g_pending_nav_kind, "FORWARD") == 0) {
+                        g_pending_nav_count = atoi(v);
+                    } else {
+                        snprintf(g_pending_nav_url, sizeof(g_pending_nav_url), "%s", v);
+                    }
+                }
+            }
+            continue;   /* keep reading until STATUS */
         }
         return strncmp(resp, "STATUS ok", 9) == 0;
     }
@@ -1941,6 +1980,59 @@ static void handle_request(void) {
     }
 }
 
+/* rung-6 slice 2: run the worker's pending NAV request (set when page JS
+ * called location.assign/replace/reload, history.back/forward/go, or
+ * pushState/replaceState). Duplicates the request-file contract so JS
+ * navigation and toolbar navigation funnel through the SAME do_fetch /
+ * back/forward stacks. GO = link-like (pushes current onto Back + clears
+ * Forward, visits the log). REPLACE = navigate without a history entry.
+ * RELOAD = re-fetch current. BACK/FORWARD walk the file stacks (count>1
+ * for history.go(n)). ADDR = address-bar only, no fetch (pushState). */
+static void consume_pending_nav(void) {
+    if (!g_pending_nav_kind[0]) return;
+    char kind[16], url[PATH_BUF];
+    int count = g_pending_nav_count;
+    snprintf(kind, sizeof(kind), "%s", g_pending_nav_kind);
+    snprintf(url, sizeof(url), "%s", g_pending_nav_url);
+    g_pending_nav_kind[0] = 0; g_pending_nav_url[0] = 0; g_pending_nav_count = 1;
+    if (count < 1) count = 1;
+    if (count > 8) count = 8;
+
+    if (strcmp(kind, "GO") == 0) {
+        if (!url[0]) return;
+        stack_clear(g_forward_path);
+        do_fetch(url, 1);
+    } else if (strcmp(kind, "REPLACE") == 0) {
+        if (!url[0]) return;
+        do_fetch(url, 0);
+    } else if (strcmp(kind, "RELOAD") == 0) {
+        if (g_current_url[0]) do_fetch(g_current_url, 0);
+        else publish_status("error: nothing to reload");
+    } else if (strcmp(kind, "BACK") == 0) {
+        for (int i = 0; i < count; i++) {
+            char prev[PATH_BUF];
+            if (!stack_pop(g_back_path, prev, sizeof(prev))) break;
+            if (g_current_url[0]) stack_push(g_forward_path, g_current_url);
+            do_fetch(prev, 0);
+        }
+    } else if (strcmp(kind, "FORWARD") == 0) {
+        for (int i = 0; i < count; i++) {
+            char next[PATH_BUF];
+            if (!stack_pop(g_forward_path, next, sizeof(next))) break;
+            if (g_current_url[0]) stack_push(g_back_path, g_current_url);
+            do_fetch(next, 0);
+        }
+    } else if (strcmp(kind, "ADDR") == 0) {
+        /* pushState/replaceState: update what the address bar shows, no
+         * fetch and no history-stack change (the projection picks the new
+         * URL up on this tick's write_chtpm_projection()). */
+        if (!url[0]) return;
+        snprintf(g_current_url, sizeof(g_current_url), "%s", url);
+        if (g_tab_count > 0 && g_tab_current >= 0 && g_tab_current < g_tab_count)
+            snprintf(g_tabs[g_tab_current].url, sizeof(g_tabs[g_tab_current].url), "%s", url);
+    }
+}
+
 /* REAL, NEW 2026-09-01 - write live .chtpm projection from manager state
  * (ported from khtpm_open_hai_manager.c's own pattern). Regenerates
  * the .chtpm file every main-loop tick from the manager's real published
@@ -2559,6 +2651,7 @@ int main(int argc, char **argv) {
 
     for (;;) {
         handle_request();
+        consume_pending_nav();
         write_chtpm_projection();
 
         if (!parent_still_alive()) {
