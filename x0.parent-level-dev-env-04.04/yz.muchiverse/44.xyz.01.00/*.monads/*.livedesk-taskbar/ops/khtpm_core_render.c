@@ -5194,22 +5194,26 @@ static void assign_nav_and_layout(void) {
                 if (!cw) cw = g_win_w - 12;
                 if (!ch) ch = 360;
                 item->x = 6; item->y = y; item->w = cw; item->h = ch;
-                /* user-resizable: centre the fixed canvas in the (larger)
-                 * window instead of pinning it top-left with dead space.
-                 * P3 replaces this with a canvas that fills the window. */
                 if (g_user_resizable) {
-                    if (cw < g_win_w - 12) item->x = (g_win_w - cw) / 2;
-                    int avail = g_win_h - y - 8;
-                    if (ch < avail) item->y = y + (avail - ch) / 2;
+                    /* the canvas FILLS the window (below the toolbar) -
+                     * resize the window, the map view resizes with it.
+                     * The producing renderer is told this pixel size via
+                     * #.desktop/pchq_board_view.txt (below) and renders
+                     * exactly that, so kh_draw_canvas blits 1:1. */
+                    item->x = 6;
+                    item->w = g_win_w - 12;
+                    item->h = g_win_h - item->y - 8;
+                    if (item->w < 64) item->w = 64;
+                    if (item->h < 64) item->h = 64;
+                    char vsz[PATH_BUF];
+                    snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", g_house_root);
+                    FILE *vf = fopen(vsz, "w");
+                    if (vf) { fprintf(vf, "%d %d\n", item->w, item->h); fclose(vf); }
+                } else {
+                    /* not user-owned: grow the window to the framebuffer */
+                    if (cw + 12 > g_win_w) { g_win_w = cw + 12; g_window->w = g_win_w; }
                 }
-                /* Grow the window to the framebuffer - UNLESS the user
-                 * owns the size (class="user-resizable"), where the
-                 * canvas just clips/letterboxes at whatever size they
-                 * dragged and never yanks the window bigger on a
-                 * view/frame-dim change. */
-                if (!g_user_resizable && cw + 12 > g_win_w) { g_win_w = cw + 12; g_window->w = g_win_w; }
-                if (g_user_resizable && cw + 12 > g_win_w) { item->w = g_win_w - 12; }
-                y += ch + 4;
+                y += item->h + 4;
                 continue;
             }
             if (strcmp(item->tag, "item") != 0 && strcmp(item->tag, "cli_io") != 0 && strcmp(item->tag, "text_area") != 0 && !is_text) continue;
@@ -14914,20 +14918,20 @@ int main(int argc, char **argv) {
     XSetErrorHandler(kh_nonfatal_x_error);
     screen = DefaultScreen(dpy);
     cmap = DefaultColormap(dpy, screen);
-    /* class="user-resizable" opens at a reasonable TV-shaped default
-     * (~16:9, about half the screen width), not shrink-wrapped to its
-     * canvas/toolbar (direct report 2026-09-09: "should open as a
-     * reasonable ... tv screen, not a skinny rectangle"). Layout then
-     * leaves this alone (see the !g_user_resizable guards); a ⌟ drag
-     * changes it. */
+    /* class="user-resizable" opens filling the screen work area (never
+     * wider than the display - direct report 2026-09-09), pinned to the
+     * top-left below the taskbar. Layout leaves g_win_w/h alone (see the
+     * !g_user_resizable guards); the ⌟ drag and the canvas both track
+     * this. */
     if (g_user_resizable) {
         int sw = DisplayWidth(dpy, screen), sh = DisplayHeight(dpy, screen);
-        int iw = sw / 2;
-        if (iw < 720) iw = 720;
-        if (iw > sw - 80) iw = sw - 80;
-        int ih = iw * 9 / 16;
-        if (ih > sh - 140) { ih = sh - 140; iw = ih * 16 / 9; }
-        g_win_w = iw; g_win_h = ih;
+        int top = WM_MANAGED_DRAG_MIN_Y;          /* clear the taskbar strip */
+        g_win_x = 0;
+        g_win_y = top;
+        g_win_w = sw;
+        g_win_h = sh - top;
+        if (g_win_w < KH_WIN_MIN_W) g_win_w = KH_WIN_MIN_W;
+        if (g_win_h < KH_WIN_MIN_H) g_win_h = KH_WIN_MIN_H;
     }
     reload_font_ui();  /* "Noto Sans CJK SC" / "DejaVu Sans" at pixelsize scaled(13)/scaled(12) - honours hq_ui.pdl font_scale, loaded just above */
     /* REAL, NEW 2026-08-25 (live report: bookmarks' own path labels

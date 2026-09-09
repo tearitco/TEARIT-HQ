@@ -253,11 +253,18 @@ int main(void) {
         fclose(gf);
       } }
 
-    /* FIXED viewport - matches the 3D overlay (640x480) so toggling `0`
-     * never resizes the window. A P3 follow-up makes this track the
-     * board window's actual canvas size; for now it's a window onto the
-     * board, centred on the xelector. */
-    const int W = 640, H = 480;
+    /* Viewport size = the board window's live canvas pixel size, which
+     * the khtpm renderer writes to #.desktop/pchq_board_view.txt every
+     * layout (class="user-resizable"). Resize the window -> the map view
+     * resizes with it. Falls back to 640x480 (== the 3D overlay) if the
+     * file isn't there yet. */
+    int W = 640, H = 480;
+    { char vsz[PATH_BUF]; snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", house_root);
+      FILE *vf = host_fopen(vsz, "r");
+      if (vf) { int a = 0, b = 0; if (fscanf(vf, "%d %d", &a, &b) == 2) {
+                    if (a >= 160 && a <= 3840) W = a;
+                    if (b >= 120 && b <= 2160) H = b;
+                } fclose(vf); } }
     int cols = W / cell, rows = H / cell;
     if (cols < 1) cols = 1;
     if (rows < 1) rows = 1;
