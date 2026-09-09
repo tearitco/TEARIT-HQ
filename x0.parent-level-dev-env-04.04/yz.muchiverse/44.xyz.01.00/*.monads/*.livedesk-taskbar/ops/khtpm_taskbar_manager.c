@@ -1203,6 +1203,55 @@ void ktb_stop_strip_renderers(const char *house_root) { (void)house_root; }
  * backstop for anything that was running before the registry existed. */
 void ktb_reap_launched(const char *house_root) {
     kh_proc_reap_all(house_root, 200, 0);
+#ifndef _WIN32
+    /* CURSWORD on explicit quit (direct live report 2026-09-09: "two
+     * cursword icons on screen, even after i quit"). cursword is
+     * deliberately exempt from livedesk_close_all() /
+     * livedesk_kill_stray_entities() ("always-on assistant, 1st
+     * entity") — correct for a desk switch, WRONG for an explicit quit
+     * (X.quit / [X] / KSC_CLOSE_QUIT), the only path that calls this
+     * function. A current-session cursword is already in the ledger
+     * (via ktb_system_recorded) so kh_proc_reap_all above got it; this
+     * /proc sweep also catches cursword processes started BEFORE the
+     * ledger existed (orphans reparented to init — the actual cause of
+     * the pile-up), scoped to THIS house_root so a different house's
+     * cursword is never touched. Same SIGTERM->1s->SIGKILL shape as
+     * livedesk_kill_strip_renderers(). */
+    DIR *pd = opendir("/proc");
+    if (pd) {
+        pid_t cw[32]; int cn = 0;
+        struct dirent *e;
+        while ((e = readdir(pd)) != NULL) {
+            if (e->d_name[0] < '0' || e->d_name[0] > '9') continue;
+            char cpath[64];
+            snprintf(cpath, sizeof(cpath), "/proc/%s/cmdline", e->d_name);
+            FILE *cf = fopen(cpath, "r");
+            if (!cf) continue;
+            char cb[KTB_PATH_BUF * 2];
+            size_t nb = fread(cb, 1, sizeof(cb) - 1, cf);
+            fclose(cf);
+            if (nb == 0) continue;
+            cb[nb] = '\0';
+            for (size_t i = 0; i < nb; i++) if (cb[i] == '\0') cb[i] = ' ';
+            if (strstr(cb, house_root) &&
+                strstr(cb, "khtpm_core_render.+x") &&
+                strstr(cb, "/pals/cursword")) {
+                int pid = atoi(e->d_name);
+                if (pid > 1 && cn < (int)(sizeof(cw) / sizeof(cw[0])))
+                    cw[cn++] = (pid_t)pid;
+            }
+        }
+        closedir(pd);
+        int any = 0;
+        for (int i = 0; i < cn; i++) { kill(cw[i], SIGTERM); any = 1; }
+        if (any) {
+            struct timespec ts = {0, 400 * 1000 * 1000};   /* 400ms */
+            nanosleep(&ts, NULL);
+            for (int i = 0; i < cn; i++)
+                if (kill(cw[i], 0) == 0) kill(cw[i], SIGKILL);
+        }
+    }
+#endif
 }
 
 int ktb_close_x0(int screen_w) {
