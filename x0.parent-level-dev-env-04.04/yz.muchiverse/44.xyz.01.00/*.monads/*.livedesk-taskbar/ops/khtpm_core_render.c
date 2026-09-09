@@ -717,6 +717,25 @@ static void skip_ws(const char **p) { while (**p && isspace((unsigned char)**p))
  * spinning or aborting - this counter just makes it non-silent. */
 static long g_parse_skipped_bytes = 0;
 
+/* Paranoia cap: even with the forward-progress guard, bound the total
+ * loop iterations of one parse_chtpm() call so a future no-progress
+ * regression in SOME OTHER parser loop can't hang the process either.
+ * Set to ~4x the (post-substitution) template length + a floor; a
+ * well-formed parse is well under 1x. 0 = disabled (no parse running). */
+static long g_parse_budget = 0;
+static int  g_parse_cap_hit = 0;
+/* Set by parse_chtpm() for the MAIN window's template only: how many
+ * bytes the last parse skipped, and a sticky "this window's template is
+ * not well-formed" flag the redraw() title code shows as "⚠ malformed
+ * template". Cleared when a later reparse of the same template is
+ * clean. */
+static long g_last_parse_skipped = 0;
+static int  g_window_malformed = 0;
+#define KH_PARSE_STEP() do { \
+    if (g_parse_budget > 0 && --g_parse_budget <= 0) { \
+        g_parse_cap_hit = 1; return p + strlen(p); \
+    } } while (0)
+
 static void parse_attr_value(const char **p, char *out, size_t outsz) {
     skip_ws(p);
     if (**p != '"') { out[0] = '\0'; return; }
@@ -970,6 +989,7 @@ static const char *parse_element(const char *p, Elem *parent) {
      * signup-hq gates. */
     int drop_elem = 0;
     for (;;) {
+        KH_PARSE_STEP();
         skip_ws(&p);
         if (*p == '/' && p[1] == '>') {
             p += 2;
@@ -1001,6 +1021,7 @@ static const char *parse_element(const char *p, Elem *parent) {
         parent->n_children--;
 
     for (;;) {
+        KH_PARSE_STEP();
         skip_ws(&p);
         if (!*p) return p;
         if (p[0] == '<' && p[1] == '/') {
@@ -1493,9 +1514,16 @@ static Elem *parse_chtpm(const char *path) {
         }
     }
 
+    /* paranoia cap: ~4x the post-substitution length + a floor. A
+     * well-formed parse stays under 1x; this only trips on a genuine
+     * runaway (a future no-progress bug somewhere in parse_element). */
+    g_parse_budget = (long)strlen(buf) * 4 + 100000;
+    g_parse_cap_hit = 0;
+
     const char *p = buf;
     Elem *root = NULL;
     while (*p) {
+        if (--g_parse_budget <= 0) { g_parse_cap_hit = 1; break; }
         skip_ws(&p);
         if (!*p) break;
         if (*p == '<' && p[1] == '!') { p = parse_element(p, NULL); continue; }
@@ -1509,17 +1537,26 @@ static Elem *parse_chtpm(const char *path) {
         }
     }
     free(buf);
-    if (g_parse_skipped_bytes > skipped_before) {
+    g_parse_budget = 0;   /* parse over - disable the step guard */
+    long this_skipped = g_parse_skipped_bytes - skipped_before;
+    if (this_skipped > 0 || g_parse_cap_hit) {
         /* Non-silent, non-fatal: a not-well-formed template rendered
          * with garbled bytes dropped. Almost always a bare " / < / > /
          * & in a ${var} value that landed outside a quoted attribute
          * (kh_substitute_vars escapes the in-attribute case). The
          * window still opens; this line is the breadcrumb. */
         fprintf(stderr,
-            "khtpm parse_chtpm(%s): NOT WELL-FORMED - skipped %ld stray byte(s) "
+            "khtpm parse_chtpm(%s): NOT WELL-FORMED - skipped %ld stray byte(s)%s "
             "(a bare \" / < / > / & in a ${var} value between tags?). "
             "Window still rendered, content may be garbled.\n",
-            path, g_parse_skipped_bytes - skipped_before);
+            path, this_skipped, g_parse_cap_hit ? " AND HIT THE ITERATION CAP" : "");
+    }
+    /* Sticky visible marker - only for THIS window's own template (not
+     * the dock-peer strip or an unrelated reparse); cleared by a later
+     * clean reparse of the same file. */
+    if (!g_chtpm_path[0] || (path && strcmp(path, g_chtpm_path) == 0)) {
+        g_last_parse_skipped = this_skipped;
+        g_window_malformed = (this_skipped > 0 || g_parse_cap_hit);
     }
     if (root && root->n_children > 0) return root->children[0];
     return root;
@@ -6831,9 +6868,10 @@ static void redraw(void) {
         kh_compose_entity_ident();
         const char *title_raw = g_window->label[0] ? g_window->label
                               : (g_entity_ident[0] ? g_entity_ident : g_current_page);
-        snprintf(title_buf, sizeof(title_buf), "%s %s%s",
+        snprintf(title_buf, sizeof(title_buf), "%s %s%s%s",
                  (focus_win == win) ? "^" : ".", title_raw,
-                 g_default_scope_confine ? "  Active [^]: (ESC to exit)" : "");
+                 g_default_scope_confine ? "  Active [^]: (ESC to exit)" : "",
+                 g_window_malformed ? "  \xE2\x9A\xA0 malformed template" : "");
         const char *title = title_buf;
         if (window_is_dock()) {
             const char *mark = (focus_win == win) ? "^" : ".";
