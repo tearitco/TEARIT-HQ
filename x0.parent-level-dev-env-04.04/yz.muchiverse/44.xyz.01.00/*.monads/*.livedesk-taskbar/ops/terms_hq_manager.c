@@ -281,7 +281,7 @@ static int discover_system_json_path(void) {
     if (access(g_system_json_path, F_OK) == 0) return 1;
 
     char pdl_path[PATH_BUF];
-    snprintf(pdl_path, sizeof(pdl_path), "%s/../../../#.NNEST_ASSETS/RMMV-ASSET-SOURCE-LOCATION.pdl", g_house_root);
+    snprintf(pdl_path, sizeof(pdl_path), "%s/shared/RMMV-ASSET-SOURCE-LOCATION.pdl", g_house_root);
 
     char mount_point[PATH_BUF] = "";
     char project_root[PATH_BUF] = "";

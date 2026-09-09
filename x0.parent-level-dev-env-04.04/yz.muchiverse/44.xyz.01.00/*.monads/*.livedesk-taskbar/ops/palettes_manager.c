@@ -443,11 +443,11 @@ static void publish_elements(void) {
  * hardcoded `&.widgits/palettes/tilesets/rmmv`, and no `/media/.../
  * www/img` USB fallback anymore - img_root is the single source of
  * truth for where the house's own stable local copy lives. */
-/* SOURCE PDLs sit beside the clones (NNEST-12.00/#.NNEST_ASSETS),
- * not in calendar-dox. house_root is 44.xyz.01.00. */
+/* SOURCE PDLs live in the house zip (shared/), always shipped.
+ * img_root inside each PDL may point at optional #.NNEST_ASSETS clones. */
 static void asset_source_pdl_path(const char *house_root, const char *name,
                                   char *out, size_t outsz) {
-    snprintf(out, outsz, "%s/../../../#.NNEST_ASSETS/%s", house_root, name);
+    snprintf(out, outsz, "%s/shared/%s", house_root, name);
 }
 
 static int rmmv_img_root(const char *house_root, char *out, size_t outsz) {

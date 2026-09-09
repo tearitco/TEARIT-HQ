@@ -15,4 +15,4 @@ NOTE         | why                | Real RPG Maker MV tile assets + real, readab
 NOTE         | mount_is_external  | 1
 NOTE         | mount_fstype       | ext2 (confirmed via `mount` at time of writing - re-check if path resolution ever fails, the drive may not be mounted at session start)
 NOTE         | see_also           | RPG-CODE-INDEX-REF.md (HQ-IQ-BOOK design-docs) - findings from engine_core_file, cited in TILE-SYSTEM-DESIGN.md autotile
-NOTE         | pdl_home           | 2026-09-08 this file lives in NNEST-12.00/#.NNEST_ASSETS/ (with the clones), not calendar-dox/1.^V-hq
+NOTE         | pdl_home           | 2026-09-08 this file lives in 44.xyz.01.00/shared/ (house zip). img_root may point at optional #.NNEST_ASSETS clones.

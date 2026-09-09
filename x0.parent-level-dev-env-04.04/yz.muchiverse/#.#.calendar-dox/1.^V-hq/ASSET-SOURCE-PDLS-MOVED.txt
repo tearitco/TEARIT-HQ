@@ -1,10 +1,10 @@
-2026-09-08 — asset SOURCE PDLs moved out of this docs tree.
+2026-09-08 — asset SOURCE PDLs are not in this docs tree.
 
-Canonical (next to the clones, not calendar-dox):
+Canonical (in the house zip, always present):
 
-  NNEST-12.00/#.NNEST_ASSETS/*-ASSET-SOURCE-LOCATION.pdl
-  NNEST-12.00/#.NNEST_ASSETS/UNICODE-EMOJI-SOURCE-LOCATION.pdl
-  NNEST-12.00/#.NNEST_ASSETS/VIDEO-ASSET-SOURCE-LOCATION.pdl
+  44.xyz.01.00/shared/*-ASSET-SOURCE-LOCATION.pdl
+  44.xyz.01.00/shared/UNICODE-EMOJI-SOURCE-LOCATION.pdl
+  44.xyz.01.00/shared/VIDEO-ASSET-SOURCE-LOCATION.pdl
 
-C reads house_root/../../../#.NNEST_ASSETS/<name>.pdl
-(house_root = 44.xyz.01.00). Do not put SOURCE keys back here.
+C: house_root/shared/<name>.pdl
+Clone bytes (optional): NNEST-12.00/#.NNEST_ASSETS/ as named by img_root.

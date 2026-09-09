@@ -50,10 +50,11 @@ landed 2026-09-08). Design: `08-roadmap/design-docs/TILE-SYSTEM-DESIGN.md`,
 ## 2. Asset roots (outside the house zip)
 
 Same rule as RMMV: PNGs do not live inside `44.xyz.01.00`. Pointer
-PDLs live **next to the clones** (`NNEST-12.00/#.NNEST_ASSETS/`), not
-in calendar-dox. C: `house_root/../../../#.NNEST_ASSETS/<name>.pdl`.
+PDLs live in the house zip (`44.xyz.01.00/shared/`) so they ship even
+when `#.NNEST_ASSETS` is missing. C: `house_root/shared/<name>.pdl`.
+`img_root` inside each PDL still names the optional clone.
 
-| What | PDL (`NNEST-12.00/#.NNEST_ASSETS/`) | On-disk root |
+| What | PDL (`44.xyz.01.00/shared/`) | On-disk root (optional clone) |
 |---|---|---|
 | RPG Maker MV img | `RMMV-ASSET-SOURCE-LOCATION.pdl` `img_root` | `NNEST-12.00/#.NNEST_ASSETS/rmmv-www-img` |
 | Mineclonia / MC-like | `MINECLONIA-ASSET-SOURCE-LOCATION.pdl` `img_root` | `NNEST-12.00/#.NNEST_ASSETS/mineclonia/mods` |

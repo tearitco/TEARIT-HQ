@@ -88,7 +88,7 @@ Toys → **Piececraft-HQ** (not **Piececraft** / `piececraft-xyz`).
 | Board window | `@.apps/piececraft-hq/pchq-board.xhtpm` + projector + `pchq_board_action.sh` | 🟡 opens, WM-managed, Interact arms from vars; canvas reads live `canvas_raw` |
 | 3D/2D view | `&.widgits/board-viewer` POV `1`–`4` | ✅ engine |
 | Palettes | `button-pal.sh` cats | 🟡 pickers live; **no drop onto board or desk** |
-| Assets | `NNEST-12.00/#.NNEST_ASSETS/` + `*-ASSET-SOURCE-LOCATION.pdl` **in that same dir** | ✅ C must not hardcode clone paths |
+| Assets | clones in `NNEST-12.00/#.NNEST_ASSETS/` (optional); pointers in `44.xyz.01.00/shared/*-ASSET-SOURCE-LOCATION.pdl` | ✅ C reads shared/; must not hardcode clone paths |
 | Sample maps | `pieces/system/maps/{mineclonia_sample,cdda_sample}/` | 🟡 File load copies `map.txt` → chunk |
 | Events editor | `&.widgits/events-hq` | ✅ IR → pal → `cmd_N.sh` |
 | Common Events | db-hq-pal CE tab | 🟡 in-tab; other tabs are field tiles |
