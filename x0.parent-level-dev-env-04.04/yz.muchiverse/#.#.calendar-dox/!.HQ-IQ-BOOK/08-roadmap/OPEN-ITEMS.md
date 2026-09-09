@@ -62,4 +62,8 @@ short version.*
       Rungs 3-4 also LANDED in the resident worker (timer/event drain,
       XHR/fetch) — the only true Phase-2 remainder is document-order script
       runs (manager still concatenates `<script>` bodies into
-      `tmp/page.js`). Reconciled 2026-09-08.
+      `tmp/page.js`). Real `localStorage`/`sessionStorage` LANDED
+      (2026-09-09, new `wst` make-check suite): localStorage = per-house
+      disk jar at `<house>/#.desktop/nb_localstorage.txt` via
+      `NB_LOCALSTORAGE_FILE` (pct-encoded key/value lines, atomic writes);
+      sessionStorage = in-memory, reset per LOAD. Reconciled 2026-09-09.

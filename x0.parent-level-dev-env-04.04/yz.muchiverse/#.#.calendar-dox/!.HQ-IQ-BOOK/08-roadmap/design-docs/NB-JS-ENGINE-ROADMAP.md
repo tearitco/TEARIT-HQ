@@ -22,7 +22,7 @@ String/Object/Math, try/catch, prototypes). What is missing is the
 | `document.write/writeln` | real (→ `TEXT\|` rows) |
 | `document.getElementById` / `querySelector` | real — walks the worker's C DOM tree (phase-1 steps 3-5) |
 | `location.href` | get/set; assign/replace/reload navigate (rung 6 slice 2) |
-| `localStorage` / `sessionStorage` | no-op stubs |
+| `localStorage` / `sessionStorage` | real (rung 6: per-house disk jar / per-LOAD memory) |
 | `window` / `self` / `globalThis` | real — the Duktape global object (no bug; verified 2026-09-08) |
 
 **Pipeline (as of Phase 1, 2026-09-05):** the manager's `do_fetch()`
@@ -49,7 +49,7 @@ concatenates `<script>` bodies into `tmp/page.js`) truly remains.
 > (window/self/globalThis = the Duktape global object) and the phase-1
 > worker gate (`wdt` `worker_dom_test.c`, incl. a CLI-mode re-verify with a
 > real `fetch.dom`) exercises the real accessors; `localStorage`/
-> `sessionStorage` remain intentional no-op stubs (no disk behind them).
+> `sessionStorage` became real on 2026-09-09 (rung 6 — LANDED block below).
 
 ---
 
@@ -269,6 +269,23 @@ plausible stub, `MutationObserver` (can no-op then improve),
 > go(2)/no-nav + re-LOAD follow-through), live end-to-end verified against
 > the real manager (JS `location.assign` → next page fetched, Back stack
 > updated; `pushState` → address bar changes without a fetch).
+>
+> **LANDED 2026-09-09 — real `localStorage` / `sessionStorage`.**
+> `install_dom()` now swaps the prelude's twin no-op stubs for fresh
+> objects wired to real C natives (`ops/nb_js_worker.c`). `localStorage`
+> persists to a disk jar at `$NB_LOCALSTORAGE_FILE` (fallback
+> `$HOME/.config/nbjs/nb_localstorage.txt`), which the manager points at
+> `<house>/#.desktop/nb_localstorage.txt` in `worker_spawn` — one
+> persistent jar per house, exactly like `nb_cookies.txt`. The jar is
+> TAB-separated `pct-encoded key\tpct-encoded value` lines (RFC-3986-safe
+> so tabs/newlines round-trip), atomic tmp+rename writes, damage-tolerant
+> reads, 256 entries / 256 B key / 4 kB value. `sessionStorage` is an
+> in-memory store reset per LOAD (fresh heap ⇒ correct semantics for
+> free). New `make check` suite `wst` (`tests/worker_storage_test.c`:
+> 2 LOADs — set, fresh-heap persist get, session resets — plus jar-content
+> assertions). Live end-to-end vs the real manager: page set localStorage +
+> sessionStorage, `location.assign` to a second page that read localStorage
+> (persisted) and found sessionStorage empty, jar confirmed on disk.
 
 
 ### Rung 7 — CSS/layout awareness  *(optional, large, defer)*

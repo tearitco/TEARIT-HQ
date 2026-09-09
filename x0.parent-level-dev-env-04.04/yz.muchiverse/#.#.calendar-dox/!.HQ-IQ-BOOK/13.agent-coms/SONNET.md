@@ -279,3 +279,35 @@ Merge `origin/opencode` (one commit after the cookie jar).
   no re-fetch. No renderer/chtpm core changes (house rule).
 - Remaining rung-6 scraps: none blocking; rung 7 (layout awareness)
   deferred. No new mode globals, no `khtpm_core_render.c` edits.
+
+## NOTICE 2026-09-09 — rung-6 real `localStorage`/`sessionStorage` lands
+
+Merge `origin/opencode` (two commits after the navigation notice).
+
+- `install_dom()` in `ops/nb_js_worker.c` replaces the prelude's twin
+  no-op stubs with fresh objects wired to real C natives.
+- **localStorage** = disk jar at `$NB_LOCALSTORAGE_FILE` (fallback
+  `$HOME/.config/nbjs/nb_localstorage.txt`); the manager points its
+  resident worker at `<house>/#.desktop/nb_localstorage.txt` in
+  `worker_spawn`, so each house owns one persistent jar (same pattern as
+  `nb_cookies.txt`). Jar is TAB-separated `pct-encoded key\tpct-encoded
+  value` lines (RFC-3986-safe → tabs/newlines round-trip), atomic
+  tmp+rename writes, damage-tolerant reads, 256 entries/256B key/4kB
+  value.
+- **sessionStorage** = in-memory store reset per LOAD (fresh heap ⇒
+  correct scoping; no disk).
+- New `make check` suite **`wst`** (`tests/worker_storage_test.c`):
+  2 LOADs — set on L1, persist-get on L2 for localStorage, session reset
+  on L2 — plus jar-content assertions incl. percent-encoding. All six
+  worker suites + 18-case cli_test green; `build.sh` clean (pre-existing
+  `-Wformat-truncation` .tmp noise only).
+- **Live end-to-end verified** against the real manager on the throwaway
+  house: page a set `localStorage.theme=night` + a sessionStorage key,
+  `location.assign(b.html)`; page b ran in a fresh LOAD, read
+  `theme` (persisted) and found the session key empty (`ss_seen=none`),
+  then wrote to the same jar — final jar on disk:
+  `theme\tnight` + `ss_seen\tnone`. No renderer/chtpm core changes.
+- Debug note for future agents: `duk_def_prop` on the *prelude's stub
+  objects* throws `'not configurable'` at boot (dead worker, WST_RC=141,
+  every page fails trivially) — create fresh objects + `duk_put_global_string`
+  instead; never put accessor def_props on prelude-created globals.
