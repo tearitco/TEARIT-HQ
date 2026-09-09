@@ -206,6 +206,12 @@ void ktb_quit_and_save(KtbState *s);
  * or it races run_khtpm_strip.sh's restart. See khtpm_taskbar_manager.c. */
 void ktb_stop_strip_renderers(const char *house_root);
 
+/* PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md — orchestrator-owned reap of
+ * every tb-launched process (registry: #.desktop/livedesk_proc_list.txt).
+ * Call ONLY from the explicit-user-quit paths, alongside
+ * ktb_stop_strip_renderers(). */
+void ktb_reap_launched(const char *house_root);
+
 /* Layout helpers for plat drawing */
 int ktb_close_x0(int screen_w);
 int ktb_shortcuts_x0(int screen_w, int n_shortcuts);

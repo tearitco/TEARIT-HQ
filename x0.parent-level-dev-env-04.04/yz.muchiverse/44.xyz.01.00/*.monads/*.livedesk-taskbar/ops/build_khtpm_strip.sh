@@ -45,7 +45,9 @@ fi
 SHARED="$(cd "$(dirname "$0")/../../../&.widgits/_shared-lib" && pwd)"
 
 echo "-- khtpm manager driver (pure logic, no Xlib) -> +x/khtpm_taskbar_manager_main.+x"
-$CC $CFLAGS -o +x/khtpm_taskbar_manager_main.+x \
+# -I "$SHARED": khtpm_taskbar_manager.c now #includes kh_proc_registry.h
+# (PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md).
+$CC $CFLAGS -I "$SHARED" -o +x/khtpm_taskbar_manager_main.+x \
   khtpm_taskbar_manager_main.c khtpm_taskbar_manager.c
 
 # REAL FIX 2026-09-01 - khtpm_strip_parser.+x AND tp_desktop_window_rgb.+x

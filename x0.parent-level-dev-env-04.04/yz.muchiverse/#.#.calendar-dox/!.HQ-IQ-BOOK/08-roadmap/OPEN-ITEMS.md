@@ -76,11 +76,12 @@ short version.*
     per-frame focus re-assert + fix "Interact Mode never arms" (reparse
     -on-vars-change not firing for the pchq board). `09-appendix/
     pc-hq-leg-vs-nu-fix.md` §5/§6/§6b, `pc-hq-bugs.md` Bug 2.
-17. Process-lifecycle teardown (TPMOS parity): orchestrator-owned,
-    PID-tracked reap on taskbar exit so devs/agents never kill children
-    by hand. Shared `kh_proc_registry.h` + passing standalone test
-    landed; NOT wired into the taskbar yet. `design-docs/
-    PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md` §5 steps 2–7.
+17. Process-lifecycle teardown (TPMOS parity): **WIRED 2026-09-09** —
+    `ktb_system_recorded` registers every launch, `ktb_reap_launched`
+    (kh_proc_reap_all) fires at the 3 explicit-quit sites, `ktb_init`
+    prunes. Unit + integration tests pass. Left: one isolated live-
+    desktop verify (quit → zero strays) + app-fork funnelling (§5 4–7).
+    `design-docs/PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md`.
 18. ~~Shared source compiled by copy-into-`ops/`~~ **DONE 2026-09-09**:
     switch every `build_*.sh` to compile the canonical
     `&.widgits/_shared-lib/*.c` in place with `-I` (binary stays local),

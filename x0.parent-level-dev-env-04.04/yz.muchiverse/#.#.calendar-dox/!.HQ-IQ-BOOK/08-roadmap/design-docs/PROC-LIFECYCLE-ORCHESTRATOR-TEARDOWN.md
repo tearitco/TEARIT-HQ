@@ -1,10 +1,45 @@
 # Process lifecycle — orchestrator-owned, PID-tracked teardown
 
-**Status: DESIGN + sample implementation (2026-09-09).** A shared
-`kh_proc_registry` helper (`&.widgits/_shared-lib/kh_proc_registry.h`)
-and a standalone, passing test harness exist. Live wiring into the
-taskbar manager + launch sites is **not done** — that is the migration
-in §5. Prompted by the user: *"devs are expected to kill child
+**Status: WIRED INTO THE TASKBAR (2026-09-09) — awaiting one live
+end-to-end check.** Steps 1–3 of §5 landed; unit + integration tests
+pass. The only thing left before "done" is the isolated live-desktop
+verification in step 3 (quit the real taskbar → `ps` shows zero house
+processes; confirm a normal `run_khtpm_strip.sh new` restart and the
+toys/HQ dropdowns still work) — deliberately left for the owner to run,
+per `03-pitfalls/X11-AND-SESSION-PITFALLS.md`'s "test the ONE target in
+isolation, verify dropdowns still work" rule.
+
+What landed:
+- `khtpm_taskbar_manager.c` — `#define KH_PROC_REGISTRY_IMPL` +
+  `#include "kh_proc_registry.h"`. `ktb_system_recorded()` now also
+  reads back the launched PID and `kh_proc_register()`s it (real
+  `/proc` start-time, the PID-reuse guard) into
+  `#.desktop/livedesk_proc_list.txt`; the legacy
+  `livedesk_launched_pids.txt` is still written for one release so
+  `kill_hq_windows.sh` keeps working unaided. `ktb_init()` calls
+  `kh_proc_registry_prune()` (not `_reset` — a `run_khtpm_strip.sh new`
+  restarts only the strip pair, leaving prior windows alive; prune
+  keeps live entries, drops dead/reused ones). New public
+  `ktb_reap_launched()` = `kh_proc_reap_all(house_root, 200, 0)`.
+- `khtpm_taskbar_manager.h` — declares `ktb_reap_launched()`.
+- `khtpm_taskbar_manager_main.c` — calls `ktb_reap_launched(s->house_
+  root)` at the **three** explicit-user-quit sites only (X.quit,
+  `hq_quit_requested`, `KSC_CLOSE_QUIT`), right after the existing
+  `ktb_stop_strip_renderers()`. A plain SIGTERM
+  (`run_khtpm_strip.sh` restart) does **not** reap.
+- `build_khtpm_strip.sh` — `-I "$SHARED"` on the manager-driver
+  compile.
+- `&.widgits/_shared-lib/tests/test_proc_registry_tb.c` +
+  `build_test_proc_registry.sh` (runs both tests) — the integration
+  test reproduces the `ktb_system_recorded` / `ktb_reap_launched` /
+  `ktb_init`-prune bodies verbatim against detached `/tmp` children:
+  both files get the 3 entries, reap kills all 3 + truncates the
+  canonical registry, prune keeps the live entry and drops a stale
+  one. 0 failures; no leaked children.
+
+Full house-wide funnelling (every app's own long-lived forks;
+`livedesk_hq_windows_<pid>.txt` fold-in; retiring the "kill your own
+children" note) remains §5 steps 4–7. Prompted by the user: *"devs are expected to kill child
 processes themselves — this isn't the desire. TPMOS's orchestrator
 tracks its children's PIDs and runs an on-kill teardown. We should have
 the same standard."*

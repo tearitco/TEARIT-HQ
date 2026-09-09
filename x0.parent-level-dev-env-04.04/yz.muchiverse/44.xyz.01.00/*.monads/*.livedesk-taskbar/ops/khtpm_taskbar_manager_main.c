@@ -755,6 +755,7 @@ static void dispatch_code(KtbState *s, int code) {
         s->hq_quit_requested = 0;
         ktb_quit_and_save(s);
         ktb_stop_strip_renderers(s->house_root); /* take the bar off screen too (2026-09-08) */
+        ktb_reap_launched(s->house_root); /* reap every tb-launched HQ window/toy (2026-09-09) */
         g_running = 0;
         return;
     }
@@ -843,6 +844,7 @@ static void dispatch_code(KtbState *s, int code) {
     } else if (code == KSC_CLOSE_QUIT) {
         ktb_quit_and_save(s);
         ktb_stop_strip_renderers(s->house_root);
+        ktb_reap_launched(s->house_root); /* reap every tb-launched HQ window/toy (2026-09-09) */
         g_running = 0;
     } else if (code >= KSC_TAB_BASE && code < KSC_TAB_BASE + KTB_MAX_TABS) {
         ktb_activate_tab(s, code - KSC_TAB_BASE);

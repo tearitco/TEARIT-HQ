@@ -23,6 +23,14 @@
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
+
+/* Orchestrator-owned PID-tracked teardown (TPMOS parity) —
+ * PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md. This file is compiled exactly
+ * once (into khtpm_taskbar_manager_main.+x), so it carries the IMPL.
+ * build_khtpm_strip.sh adds -I "$SHARED" for this header. */
+#define KH_PROC_REGISTRY_IMPL
+#include "kh_proc_registry.h"
+
 #ifndef _WIN32
 #include <dirent.h>
 #include <sys/stat.h>
@@ -88,7 +96,29 @@ static int ktb_system_recorded(const char *house_root, const char *cmd) {
     snprintf(wrapped, sizeof(wrapped),
              "%s echo $! >> \"%s/#.desktop/livedesk_launched_pids.txt\"",
              cmd, house_root);
-    return system(wrapped);
+    int rc = system(wrapped);
+    /* PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md: also record this launch in
+     * the canonical registry so the quit reaper reaches it. `cmd` ends in
+     * ` &`, so by the time system() returns the foreground `echo $!` has
+     * already appended the setsid group-leader PID to
+     * livedesk_launched_pids.txt — read it back and register properly (C
+     * computes the real /proc start-time, the PID-reuse guard). The old
+     * file is still written for one release so kill_hq_windows.sh keeps
+     * working unaided. */
+    char pidfile[KTB_PATH_BUF];
+    snprintf(pidfile, sizeof(pidfile),
+             "%s/#.desktop/livedesk_launched_pids.txt", house_root);
+    FILE *pf = fopen(pidfile, "r");
+    if (pf) {
+        char ln[64]; long last = 0;
+        while (fgets(ln, sizeof(ln), pf)) {
+            long v = strtol(ln, NULL, 10);
+            if (v > 1) last = v;
+        }
+        fclose(pf);
+        if (last > 1) kh_proc_register(house_root, last, last, "tb-launch");
+    }
+    return rc;
 }
 #endif
 
@@ -349,6 +379,13 @@ void ktb_init(KtbState *s, const char *house_root) {
 #ifdef _WIN32
     for (char *p = s->pid_path; *p; p++) if (*p == '/') *p = '\\';
 #endif
+    /* PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md: PRUNE (not reset) the
+     * launched-process registry on every manager start. `run_khtpm_
+     * strip.sh new` restarts only the strip pair, leaving prior HQ
+     * windows/toys alive — a blind truncate would lose track of them.
+     * Prune keeps live entries, drops dead/PID-reused ones; a genuine
+     * fresh boot prunes to empty. */
+    kh_proc_registry_prune(s->house_root);
     snprintf(s->theme_bg, sizeof(s->theme_bg), "white");
     snprintf(s->theme_fg, sizeof(s->theme_fg), "black");
     s->tab_focus_idx = 0;
@@ -1148,6 +1185,19 @@ void ktb_stop_strip_renderers(const char *house_root) {
 #else
 void ktb_stop_strip_renderers(const char *house_root) { (void)house_root; }
 #endif
+
+/* PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md: the orchestrator-owned reap.
+ * Called ONLY from the explicit-user-quit sites in _main.c (X.quit /
+ * [X] / KSC_CLOSE_QUIT) — the same three places ktb_stop_strip_
+ * renderers() already fires. A plain SIGTERM (run_khtpm_strip.sh
+ * restart) does NOT reap: the user may just be restarting the bar.
+ * TERM(-pgid,pid) -> 200ms -> KILL -> reap -> truncate. Never signals
+ * pid 0/1, self, or its own process group (see kh_proc_registry.h).
+ * kill_hq_windows.sh's name-pattern list stays as the manual HQ-menu
+ * backstop for anything that was running before the registry existed. */
+void ktb_reap_launched(const char *house_root) {
+    kh_proc_reap_all(house_root, 200, 0);
+}
 
 int ktb_close_x0(int screen_w) {
     return screen_w - KTB_CLOSE_W;
