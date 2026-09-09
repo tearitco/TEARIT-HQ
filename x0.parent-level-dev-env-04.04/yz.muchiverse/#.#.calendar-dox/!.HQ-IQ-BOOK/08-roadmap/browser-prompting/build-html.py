@@ -139,6 +139,10 @@ STYLE = """<style>
 def esc(s):
     return html.escape(s, quote=False)
 
+def href(path):
+    # a literal '#' in a URL path starts the fragment - encode every one
+    return path.replace("#", "%23")
+
 _INLINE_CODE = re.compile(r"`([^`]+)`")
 _LINK = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
 _BOLD = re.compile(r"\*\*([^*]+)\*\*")
@@ -254,14 +258,14 @@ BUILT = datetime.date.today().isoformat()
 
 def sidebar(depth, current_slug):
     up = "../" * depth
-    rows = ['<a class="navlink%s" href="%s0.browser-p-index=%s.html">Overview / index</a>'
-            % ("" if current_slug else " current", up, "%23")]
+    rows = ['<a class="navlink%s" href="%s">Overview / index</a>'
+            % ("" if current_slug else " current", href(up + "0.browser-p-index=#.html"))]
     for slug, label, dot, _ in PAGES:
-        href = ("%s#.browser-prompting/%s.html" % (up, slug)) if depth == 0 else ("%s.html" % slug)
+        target = ("%s#.browser-prompting/%s.html" % (up, slug)) if depth == 0 else ("%s.html" % slug)
         cur = " current" if slug == current_slug else ""
         rows.append('<a class="navlink%s" href="%s"><span class="dot %s"></span>%s</a>'
-                    % (cur, href.replace("#", "%23"), dot, label))
-    house = "%s#.house-user-guide.html/0.user-guide-index=%s.html" % (up, "%23")
+                    % (cur, href(target), dot, label))
+    house = href("%s#.house-user-guide.html/0.user-guide-index=#.html" % up)
     return """<aside class="sidebar">
   <div class="brand">TEARIT-HQ<strong>Browser Prompting Guide</strong></div>
   <nav>
@@ -300,9 +304,9 @@ def page_shell(title, depth, current_slug, body):
 
 def build_index():
     md = open(os.path.join(HERE, "0.START-HERE.md"), encoding="utf-8").read()
-    cards = ['<a class="card" href="#.browser-prompting/%s.html">'
+    cards = ['<a class="card" href="%s">'
              '<div class="card-title">%s</div><p class="card-desc">%s</p></a>'
-             % (slug.replace("#", "%23"), esc(label), esc(CARD_DESC[slug]))
+             % (href("#.browser-prompting/%s.html" % slug), esc(label), esc(CARD_DESC[slug]))
              for slug, label, _dot, _ in PAGES]
     body = ('<div class="hero-eyebrow">Delegation map — not a research report</div>\n'
             '<h1 class="pagetitle">Browser Prompting Guide</h1>\n'
