@@ -708,9 +708,13 @@ static int load_phymoji_asset(const char *root, const char *entity_id,
  * file's own already-proven terrain empty-space-skip technique (mc-
  * speed-algos.md §3), same real principle applied to phymoji models. */
 #define MAX_PHYMOJI_COLUMNS 2048
+/* local (lx,ly) grid side for the column-DDA acceleration index below.
+ * pc_phymoji_gen's TILE_N is 32, so local coords are 0..31. */
+#define PHYMOJI_GRID_DIM 32
 typedef struct {
     unsigned char lx, ly;
     unsigned char exists_mask; /* bit z set = voxel z present (z always 0..7) */
+    unsigned char min_z, max_z; /* precomputed lowest/highest set bit of exists_mask */
     unsigned char cr[8], cg[8], cb[8];
 } PhymojiColumn;
 
@@ -734,7 +738,27 @@ static int build_phymoji_columns(const PhymojiVoxel *voxels, int count, PhymojiC
             cols[found].cr[z] = v->r; cols[found].cg[z] = v->g; cols[found].cb[z] = v->b;
         }
     }
+    for (int c = 0; c < ncols; c++) {
+        int mn = 0, mx = 7;
+        while (mn < 8 && !(cols[c].exists_mask & (1 << mn))) mn++;
+        while (mx > 0 && !(cols[c].exists_mask & (1 << mx))) mx--;
+        cols[c].min_z = (unsigned char)mn; cols[c].max_z = (unsigned char)mx;
+    }
     return ncols;
+}
+
+/* (lx,ly) -> column index, or -1. Lets test_phymoji_hit() walk the
+ * model with a 2D Amanatides-Woo DDA (front-to-back, stop at first
+ * hit) instead of slab-testing EVERY column per pixel - the tree
+ * (~425 cols after TILE_N 8->32) was ~30% of the whole 3D frame,
+ * profiled 2026-09-09. Same DDA structure as this file's own board
+ * traversal. */
+static void build_phymoji_col_grid(const PhymojiColumn *cols, int count, short *grid) {
+    for (int i = 0; i < PHYMOJI_GRID_DIM * PHYMOJI_GRID_DIM; i++) grid[i] = -1;
+    for (int c = 0; c < count; c++) {
+        if (cols[c].lx < PHYMOJI_GRID_DIM && cols[c].ly < PHYMOJI_GRID_DIM)
+            grid[(int)cols[c].ly * PHYMOJI_GRID_DIM + (int)cols[c].lx] = (short)c;
+    }
 }
 
 /* Real per-world-instance destructible state (phymoji.md §3's own
@@ -790,8 +814,10 @@ static int test_phymoji_hit(double ox, double oy, double oz, double dirx, double
                              double world_size_x, double world_size_y, double world_size_z,
                              int max_lx, int max_ly, int max_lz,
                              const PhymojiColumn *cols, int col_count,
+                             const short *col_grid,
                              double *out_t, int *out_face,
                              unsigned char *out_r, unsigned char *out_g, unsigned char *out_b) {
+    (void)col_count;
     double scale_x = (double)(max_lx + 1) / world_size_x;
     double scale_y = (double)(max_ly + 1) / world_size_y;
     double scale_z = (double)(max_lz + 1) / world_size_z;
@@ -800,20 +826,65 @@ static int test_phymoji_hit(double ox, double oy, double oz, double dirx, double
 
     double best_local_t = 1e18;
     int best_face = -1, best_col = -1;
-    for (int c = 0; c < col_count; c++) {
-        if (!cols[c].exists_mask) continue;
-        int min_z = 0, max_z = 7;
-        while (min_z < 8 && !(cols[c].exists_mask & (1 << min_z))) min_z++;
-        while (max_z > 0 && !(cols[c].exists_mask & (1 << max_z))) max_z--;
-        double t; int face;
-        if (ray_aabb_hit_3d(lox, loy, loz, ldx, ldy, ldz,
-                             (double)cols[c].lx, (double)cols[c].lx + 1.0,
-                             (double)cols[c].ly, (double)cols[c].ly + 1.0,
-                             (double)min_z, (double)max_z + 1.0,
-                             &t, &face)
-            && t < best_local_t) {
-            best_local_t = t; best_face = face; best_col = c;
+
+    /* Clip the ray to the model's local AABB (0..max_l+1 per axis), then
+     * walk the (lx,ly) column grid with a 2D Amanatides-Woo DDA -
+     * front-to-back, stop once the next cell boundary is past the best
+     * hit. Same structure as this file's board DDA. Replaces the old
+     * "slab-test EVERY column, keep the min" loop (up to ~425 double
+     * ray/AABB tests per covered pixel for a TILE_N=32 tree). */
+    double ent_t = 0.0, ext_t = 1e18;
+    {
+        double tmin = 0.0, tmax = 1e18;
+        double axo[3] = { lox, loy, loz }, axd[3] = { ldx, ldy, ldz };
+        double axhi[3] = { (double)(max_lx + 1), (double)(max_ly + 1), (double)(max_lz + 1) };
+        for (int ax = 0; ax < 3; ax++) {
+            if (fabs(axd[ax]) < 1e-12) { if (axo[ax] < 0.0 || axo[ax] > axhi[ax]) return 0; continue; }
+            double t0 = (0.0 - axo[ax]) / axd[ax], t1 = (axhi[ax] - axo[ax]) / axd[ax];
+            if (t0 > t1) { double tt = t0; t0 = t1; t1 = tt; }
+            if (t0 > tmin) tmin = t0;
+            if (t1 < tmax) tmax = t1;
+            if (tmin > tmax) return 0;
         }
+        if (tmax < 0.0) return 0;
+        ent_t = tmin < 0.0 ? 0.0 : tmin;
+        ext_t = tmax;
+    }
+
+    double sx = lox + ldx * ent_t, sy = loy + ldy * ent_t;
+    int cx = (int)floor(sx), cy = (int)floor(sy);
+    if (cx < 0) cx = 0; else if (cx > max_lx) cx = max_lx;
+    if (cy < 0) cy = 0; else if (cy > max_ly) cy = max_ly;
+    int step_x = (ldx > 1e-12) ? 1 : (ldx < -1e-12 ? -1 : 0);
+    int step_y = (ldy > 1e-12) ? 1 : (ldy < -1e-12 ? -1 : 0);
+    double tdx = (fabs(ldx) > 1e-12) ? fabs(1.0 / ldx) : 1e18;
+    double tdy = (fabs(ldy) > 1e-12) ? fabs(1.0 / ldy) : 1e18;
+    double tmx = (step_x > 0) ? ent_t + ((cx + 1) - sx) / ldx
+               : (step_x < 0 ? ent_t + (cx - sx) / ldx : 1e18);
+    double tmy = (step_y > 0) ? ent_t + ((cy + 1) - sy) / ldy
+               : (step_y < 0 ? ent_t + (cy - sy) / ldy : 1e18);
+
+    int guard = max_lx + max_ly + 4;
+    for (int s = 0; s <= guard; s++) {
+        if (cx >= 0 && cx <= max_lx && cy >= 0 && cy <= max_ly &&
+            cx < PHYMOJI_GRID_DIM && cy < PHYMOJI_GRID_DIM) {
+            short ci = col_grid[cy * PHYMOJI_GRID_DIM + cx];
+            if (ci >= 0 && cols[ci].exists_mask) {
+                double t; int face;
+                if (ray_aabb_hit_3d(lox, loy, loz, ldx, ldy, ldz,
+                                     (double)cols[ci].lx, (double)cols[ci].lx + 1.0,
+                                     (double)cols[ci].ly, (double)cols[ci].ly + 1.0,
+                                     (double)cols[ci].min_z, (double)cols[ci].max_z + 1.0,
+                                     &t, &face) && t < best_local_t) {
+                    best_local_t = t; best_face = face; best_col = ci;
+                }
+            }
+        }
+        double next_t = (tmx < tmy) ? tmx : tmy;
+        if (best_col >= 0 && next_t > best_local_t) break;
+        if (next_t > ext_t) break;
+        if (tmx < tmy) { cx += step_x; tmx += tdx; }
+        else           { cy += step_y; tmy += tdy; }
     }
     if (best_col < 0) return 0;
     /* Real exact z within the merged column - recover it from the
@@ -863,6 +934,7 @@ typedef struct {
     int max_lx, max_ly, max_lz;
     PhymojiColumn columns[MAX_PHYMOJI_COLUMNS];
     int column_count;
+    short col_grid[PHYMOJI_GRID_DIM * PHYMOJI_GRID_DIM]; /* (ly*DIM+lx) -> column idx, -1 empty */
 } PhymojiTemplate;
 
 static PhymojiTemplate g_phymoji_templates[MAX_PHYMOJI_TEMPLATES];
@@ -881,6 +953,7 @@ static int get_or_load_phymoji_template(const char *root, const char *entity_id)
                                     &t->max_lx, &t->max_ly, &t->max_lz);
     if (t->count <= 0) return -1;
     t->column_count = build_phymoji_columns(t->voxels, t->count, t->columns, MAX_PHYMOJI_COLUMNS);
+    build_phymoji_col_grid(t->columns, t->column_count, t->col_grid);
     return g_phymoji_template_count++;
 }
 
@@ -1504,6 +1577,7 @@ int main(void) {
      * OLD flat marker box below as an honest fallback, not a crash. */
     static PhymojiVoxel g_hero_phymoji[MAX_PHYMOJI_VOXELS];
     static PhymojiColumn g_hero_phymoji_columns[MAX_PHYMOJI_COLUMNS];
+    static short g_hero_phymoji_col_grid[PHYMOJI_GRID_DIM * PHYMOJI_GRID_DIM];
     int g_hero_phymoji_column_count = 0;
     int hero_phymoji_count = 0;
     int hero_phymoji_max_lx = 7, hero_phymoji_max_ly = 7, hero_phymoji_max_lz = 7;
@@ -1513,6 +1587,7 @@ int main(void) {
         if (hero_phymoji_count > 0) {
             hero_phymoji_count = apply_phymoji_removed(focused_project_root, "hero_01", g_hero_phymoji, hero_phymoji_count);
             g_hero_phymoji_column_count = build_phymoji_columns(g_hero_phymoji, hero_phymoji_count, g_hero_phymoji_columns, MAX_PHYMOJI_COLUMNS);
+            build_phymoji_col_grid(g_hero_phymoji_columns, g_hero_phymoji_column_count, g_hero_phymoji_col_grid);
         }
     }
     load_phymoji_world_entities(focused_project_root);
@@ -1922,7 +1997,7 @@ int main(void) {
                     if (test_phymoji_hit(ox, oy, oz, dirx, diry, dirz, wx0, wy0, wz0,
                                           world_size, world_size, world_size,
                                           hero_phymoji_max_lx, hero_phymoji_max_ly, hero_phymoji_max_lz,
-                                          g_hero_phymoji_columns, g_hero_phymoji_column_count, &t, &face, &pr, &pg, &pb)
+                                          g_hero_phymoji_columns, g_hero_phymoji_column_count, g_hero_phymoji_col_grid, &t, &face, &pr, &pg, &pb)
                         && t < best_t) {
                         best_t = t; best_face = face; is_cube = 0; entity_hit_idx = -1; is_xelector_hit = 0;
                         is_hero_hit = 1; hero_phymoji_voxel_idx = 1; phy_wentity_idx = -1; phy_wentity_voxel_idx = -1;
@@ -1980,7 +2055,7 @@ int main(void) {
                     if (test_phymoji_hit(ox, oy, oz, dirx, diry, dirz, wx0, wy0, wz0,
                                           wsx, wsy, wsz,
                                           wt->max_lx, wt->max_ly, wt->max_lz,
-                                          wt->columns, wt->column_count, &t, &face, &pr, &pg, &pb)
+                                          wt->columns, wt->column_count, wt->col_grid, &t, &face, &pr, &pg, &pb)
                         && t < best_t) {
                         best_t = t; best_face = face; is_cube = 0; entity_hit_idx = -1; is_xelector_hit = 0;
                         is_hero_hit = 0; hero_phymoji_voxel_idx = -1;
