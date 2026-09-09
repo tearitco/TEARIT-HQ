@@ -113,3 +113,4 @@ x0.parent-level-dev-env-04.04_*.7z
 # PRISC-X-FORK-CONSOLIDATION.md — pal VM built from the ONE canonical
 # &.widgits/_shared-lib/system/prisc+x.c; no vendored per-project copy.
 **/system/prisc+x.c
+!**/_shared-lib/system/prisc+x.c
