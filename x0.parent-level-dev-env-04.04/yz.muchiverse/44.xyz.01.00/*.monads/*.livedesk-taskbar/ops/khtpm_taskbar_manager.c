@@ -4500,17 +4500,22 @@ void ktb_hq_activate(KtbState *s, int row) {
 #endif
         ktb_hq_close(s);
     } else if (strcmp(m->command, "livedesk:open-piececraft-hq") == 0) {
-        /* HQ-menu pin: toys list is 17+ rows; click y/row used to hit
-         * piececraft-xyz instead of piececraft-hq. Same button.sh run
-         * as livedesk:open-toy. */
+        /* THE standard x11-hq launch for piececraft-hq's board window
+         * (PIECECRAFT-HQ-LAUNCH-STANDARDIZE.md). open_pchq_board.sh is
+         * the stats-hq-shaped launcher: single-instance guard (clean
+         * board-window restart, no blank on reclick), ensures a
+         * board-viewer engine session exists, launches the shared
+         * khtpm_core_render against pchq-board.xhtpm, records the PID in
+         * livedesk_proc_list.txt. `button.sh run` is now the terminal
+         * path only; the toys-menu `toy.pdl` duplicate was removed. */
 #ifdef _WIN32
         char launch[KTB_PATH_BUF];
-        snprintf(launch, sizeof(launch), "%s/@.apps/piececraft-hq/button.sh", s->house_root);
+        snprintf(launch, sizeof(launch), "%s/@.apps/piececraft-hq/open_pchq_board.sh", s->house_root);
         (void)launch;
 #else
         char sh[KTB_PATH_BUF * 3];
-        snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c 'sh \"%s/@.apps/piececraft-hq/button.sh\" run' >/dev/null 2>&1 &",
-                 s->house_root);
+        snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c 'sh \"%s/@.apps/piececraft-hq/open_pchq_board.sh\" \"%s\"' >/dev/null 2>&1 &",
+                 s->house_root, s->house_root);
         int rc = ktb_system_recorded(s->house_root, sh);
         (void)rc;
 #endif
