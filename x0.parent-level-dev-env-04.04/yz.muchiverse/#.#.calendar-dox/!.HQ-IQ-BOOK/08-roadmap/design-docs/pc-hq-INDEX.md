@@ -11,7 +11,8 @@ generations of design — hence this index.
 | Doc | Scope |
 |---|---|
 | **`pchq-vs-tpmos.md`** | **THE authority** for the board window: Interact Mode, the input/render pipeline, and the parity gap vs the TPMOS "diamond" standard (fuzz-op / `chtpm_parser.c`). Body = Interact (D1-D9, PR-1..4). Appendix A = the deep loop/pipeline comparison (P1-P7): board-viewer runs the pre-diamond `civ-txt`-lineage `main_module.pal` loop (33 Hz, one-key-per-iter, 4 fork-ops/frame, raymarch every frame) instead of mutaclysm's `game_dispatch` + `sleep 16667` diamond — the structural cause of xelector lag. |
-| `PIECECRAFT-HQ-LAUNCH-STANDARDIZE.md` | How the board window is launched: `open_pchq_board.sh` (the standard x11-hq shape), engine-session lifecycle, orphan reaping, `livedesk_proc_list.txt` registration. §6 = what landed. |
+| `PIECECRAFT-HQ-LAUNCH-STANDARDIZE.md` | How the board window is launched: `open_pchq_board.sh` (the standard x11-hq shape), engine-session lifecycle, orphan reaping, `livedesk_proc_list.txt` registration. §6-7 = what landed (incl. the `button.sh` engine-mode split that fixed the blank/small window). |
+| **`pchq-vs-muta.md`** | The camera / POV key model vs mutaclysm. The camera math is fully ported in `bv_menu_input.c`; the symptoms ("wasd / 1-4 / 0 don't work") are: POV keys deliberately remapped `1-4`→`5-8` (R1), pan needs `camera_mode` 3/4 which isn't the default (R2), and two real bugs — `0`→2D shows nothing because the `<canvas>` blits the raw 3D overlay not the composited `rgb_frame.raw` (B1), and `5`/`6` FILE/DESK dispatch is dead code shadowed by the `5-8` camera switch (B2). Fixes are a projector one-liner + dead-code deletion + a legend + a naming decision. |
 | `PIECECRAFT-HQ-GAME-EDITOR-AND-PLAY.md` | The game itself (edit vs play loops, maps/desks, world gen). |
 | `piececraft-hq.md` | Original studio-vision overview. |
 
