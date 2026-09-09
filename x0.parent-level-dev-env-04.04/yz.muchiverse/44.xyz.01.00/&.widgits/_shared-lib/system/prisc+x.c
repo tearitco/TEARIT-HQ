@@ -37,9 +37,37 @@
 #include <direct.h>
 #include <process.h>
 #include <io.h>
+#include <fcntl.h>
+#include <stdarg.h>
 #define usleep(us) Sleep((us)/1000)
 #define REALPATH(path, resolved) _fullpath(resolved, path, 4096)
 #define SETENV(name, value, overwrite) _putenv_s(name, value)
+/* WINDOWS FOLD-IN 2026-09-09 (from 014.wsr-pal + 01.muchi-pals-egg's own
+ * long-standing local prisc+x.c — PRISC-X-FORK-CONSOLIDATION.md). MinGW
+ * names popen/pclose with a leading underscore, and asprintf is only
+ * present with _GNU_SOURCE. These make the custom-op dispatch below
+ * COMPILE on Windows (it did not before). NOT Linux-testable here — the
+ * whole block is #ifdef _WIN32, verified inert on Linux by re-A/B of
+ * every converted project; needs a real MinGW build to confirm the
+ * Windows path. */
+#define popen  _popen
+#define pclose _pclose
+#ifndef asprintf
+static int kh_prisc_asprintf(char **strp, const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    int n = vsnprintf(NULL, 0, fmt, ap);
+    va_end(ap);
+    if (n < 0) return -1;
+    *strp = (char *)malloc((size_t)n + 1);
+    if (!*strp) return -1;
+    va_start(ap, fmt);
+    vsnprintf(*strp, (size_t)n + 1, fmt, ap);
+    va_end(ap);
+    return n;
+}
+#define asprintf kh_prisc_asprintf
+#endif
 #else
 #include <unistd.h>
 #include <dirent.h>
