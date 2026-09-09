@@ -4602,7 +4602,13 @@ static void kh_interact_append_13(void) {
     for (int i = 0; i < n; i++) {
         if (!paths[i] || !paths[i][0]) continue;
         FILE *f = fopen(paths[i], "a");
-        if (f) { fprintf(f, "13\n"); fclose(f); }
+        if (!f) continue;
+        /* pchq-vw-tpmos.md D2: keyboard/history.txt needs the
+         * KEY_PRESSED: prefix or the board_viewer.chtpm parser ignores
+         * it (so grok's FocusOut auto-disengage silently did nothing). */
+        if (strstr(paths[i], "keyboard/history.txt")) fprintf(f, "KEY_PRESSED: 13\n");
+        else                                          fprintf(f, "13\n");
+        fclose(f);
     }
 }
 
@@ -7067,21 +7073,26 @@ static void handle_key(KeySym ks, char ch) {
      * never intercepted locally) and 'p' (never a local dump shortcut
      * while engaged). kh_key_history_code() is the SAME decimal-code
      * resolver history capture already uses - reused, not reinvented. */
-    /* REAL FIX 2026-09-09, direct live report ("stuck in interact, esc
-     * doesn't work, and other buttons in window still fire"). The
-     * `&& g_x11_window_focused` extra gate added by 74488d53 (pc-hq
-     * FocusOut-disengage) is unreliable for the WM-managed XWayland
-     * board window under Mutter: a real FocusOut(NotifyNormal) can fire
-     * and leave g_x11_window_focused stuck at 0 even while the window is
-     * the actual keyboard focus - after which NO key (Escape included)
-     * is forwarded, the engine never gets the 27 to disengage, and the
-     * key falls through to local nav so the toolbar buttons still
-     * respond. Reaching handle_key() with a real key IS proof this
-     * window holds X focus, so re-assert the flag here, and once armed
-     * ALWAYS consume the key (forward if we can, swallow otherwise) -
-     * never fall through to local nav while Interact is armed. */
-    if (g_interact_relay_on) {
-        g_x11_window_focused = 1;  /* a real KeyPress here proves focus */
+    /* Escape bypasses the g_x11_window_focused half of the gate
+     * (pchq-vw-tpmos.md D5): a real KeyPress here proves this window has
+     * X focus, and Escape is the unambiguous "exit Interact" - forward
+     * it (format-correct, D2) so the board_viewer.chtpm parser's own
+     * process_key(27) ESC-exit runs even if a spurious Mutter FocusOut
+     * left the flag at 0. */
+    if (g_interact_relay_on && ks == XK_Escape) {
+        g_x11_window_focused = 1;
+        for (int i = 0; i < g_interact_relay_n; i++) {
+            const char *p = g_interact_relay_paths[i];
+            if (!p[0]) continue;
+            FILE *f = fopen(p, "a");
+            if (!f) continue;
+            if (strstr(p, "keyboard/history.txt")) fprintf(f, "KEY_PRESSED: 27\n");
+            else                                   fprintf(f, "27\n");
+            fclose(f);
+        }
+        return;
+    }
+    if (g_interact_relay_on && g_x11_window_focused) {
         int code = kh_key_history_code(ks, ch);
         /* REAL FIX 2026-09-04 (see PLAN-pchq-interact-camera-pov.md
          * Part A for the full citation trail) - tpmos/board-viewer's
@@ -7095,11 +7106,23 @@ static void handle_key(KeySym ks, char ch) {
         else if (code == 201) code = 1003; /* Down  -> ARROW_DOWN  */
         else if (code == 202) code = 1000; /* Left  -> ARROW_LEFT  */
         else if (code == 203) code = 1001; /* Right -> ARROW_RIGHT */
+        /* REAL FIX 2026-09-09 (pchq-vw-tpmos.md D2 - the bug behind
+         * "esc dead / starts armed / stuck"): the two relay targets take
+         * DIFFERENT formats, exactly like run_pchq_board_mode()'s own
+         * pchq_append_key(). keyboard/history.txt is read by the
+         * board_viewer.chtpm PARSER, whose main loop only parses
+         * `KEY_PRESSED: <n>` lines - a bare `27`/`13` there is silently
+         * ignored, so the parser's process_key() ESC-exit never runs and
+         * active_gui_is_typing.txt sticks at 1 forever. interact_relay
+         * .txt is read bare by the pal-VM camera loop. */
         for (int i = 0; i < g_interact_relay_n; i++) {
             const char *p = g_interact_relay_paths[i];
             if (!p[0]) continue;
             FILE *f = fopen(p, "a");
-            if (f) { fprintf(f, "%d\n", code); fclose(f); }
+            if (!f) continue;
+            if (strstr(p, "keyboard/history.txt")) fprintf(f, "KEY_PRESSED: %d\n", code);
+            else                                   fprintf(f, "%d\n", code);
+            fclose(f);
         }
         /* REAL, NEW 2026-09-04, direct request ("add p frame dump to
          * game then") - 'p' is not on the documented camera/POV key
