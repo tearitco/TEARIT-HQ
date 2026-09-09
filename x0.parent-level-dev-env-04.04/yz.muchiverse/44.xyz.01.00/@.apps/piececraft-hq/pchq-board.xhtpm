@@ -27,7 +27,7 @@
      Old pchq-board.chtpm (class="pchq-board" -> run_pchq_board_mode)
      stays as rollback; button.sh still launches THAT until this path is
      proven. -->
-<window label="piececraft-hq board" class="pchq-board-pal database-window managed" vars="state/ui.txt">
+<window label="piececraft-hq board" class="pchq-board-pal database-window managed user-resizable" vars="state/ui.txt">
   <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="piececraft-hq"/>
   <page name="main">
     <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>

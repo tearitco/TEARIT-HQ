@@ -2858,6 +2858,20 @@ static int kh_nonfatal_x_error(Display *d, XErrorEvent *e) {
 static int g_popup_dragging = 0;
 static int g_popup_drag_last_x = 0, g_popup_drag_last_y = 0;
 
+/* User drag-resize (2026-09-09, direct request: "we used to have window
+ * grab stretch resize - definitely want that for this window, but
+ * toggleable by project layout or pdl"). Opt-in per window via
+ * <window class="user-resizable">. When on: a ⌟ glyph is drawn in the
+ * bottom-right, and a button-1 drag started in that KH_RESIZE_GRIP hot
+ * corner resizes the window (XResizeWindow + relayout). Zero effect on
+ * every other window. */
+static int g_user_resizable = 0;
+static int g_win_resizing = 0;
+static int g_resize_start_xr = 0, g_resize_start_yr = 0, g_resize_start_w = 0, g_resize_start_h = 0;
+#define KH_RESIZE_GRIP 20
+#define KH_WIN_MIN_W   220
+#define KH_WIN_MIN_H   140
+
 /* REAL, NEW 2026-09-01 - the old chat-hai mode block (~2,500 lines,
  * chai_-prefixed: its own draw_elem/render_tree/CSS apply/layout/
  * handle_key/click handling) was fully deleted here, along with every
@@ -5180,7 +5194,13 @@ static void assign_nav_and_layout(void) {
                 if (!cw) cw = g_win_w - 12;
                 if (!ch) ch = 360;
                 item->x = 6; item->y = y; item->w = cw; item->h = ch;
-                if (cw + 12 > g_win_w) { g_win_w = cw + 12; g_window->w = g_win_w; }
+                /* Grow the window to the framebuffer - UNLESS the user
+                 * owns the size (class="user-resizable"), where the
+                 * canvas just clips/letterboxes at whatever size they
+                 * dragged and never yanks the window bigger on a
+                 * view/frame-dim change. */
+                if (!g_user_resizable && cw + 12 > g_win_w) { g_win_w = cw + 12; g_window->w = g_win_w; }
+                if (g_user_resizable && cw + 12 > g_win_w) { item->w = g_win_w - 12; }
                 y += ch + 4;
                 continue;
             }
@@ -7110,6 +7130,16 @@ static void redraw(void) {
         XDrawRectangle(dpy, buf, gc, 0, 0,
                        (unsigned)(g_win_w - 1), (unsigned)(g_win_h - 1));
     }
+    /* user drag-resize affordance: ⌟ in the bottom-right corner when the
+     * window opted in (class="user-resizable"). The KH_RESIZE_GRIP hot
+     * corner in the ButtonPress handler is anchored to the same spot. */
+    if (g_user_resizable && xftdraw_buf && font_ui) {
+        XftColor gcol = xft_color(g_theme_fg[0] ? g_theme_fg : "#888888");
+        XftDrawStringUtf8(xftdraw_buf, &gcol, font_ui,
+                          g_win_w - 15, g_win_h - 5,
+                          (const FcChar8 *)"\xE2\x8C\x9F", 3);   /* U+231F ⌟ */
+        XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &gcol);
+    }
     XSync(dpy, False);
     XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, AllPlanes, ZPixmap);
     if (frame) {
@@ -8464,6 +8494,19 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             }
         }
         if (is_popup) {
+            /* user drag-resize: button-1 in the bottom-right KH_RESIZE_GRIP
+             * hot corner starts a resize (opt-in, <window class="user-
+             * resizable">). Checked before the title drag-start below. */
+            if (g_user_resizable && !window_is_dock() && ev->xbutton.button == 1 &&
+                ev->xbutton.x >= g_win_w - KH_RESIZE_GRIP && ev->xbutton.x < g_win_w &&
+                ev->xbutton.y >= g_win_h - KH_RESIZE_GRIP && ev->xbutton.y < g_win_h) {
+                g_win_resizing = 1;
+                g_resize_start_xr = ev->xbutton.x_root;
+                g_resize_start_yr = ev->xbutton.y_root;
+                g_resize_start_w = g_win_w;
+                g_resize_start_h = g_win_h;
+                return;
+            }
             /* REAL, NEW 2026-08-29 (TASK 1: popup drag support) - check for
              * drag-start on chrome area (y < CHROME_H), same pattern as
              * db-hq/events-hq/chat-hai. Button 1 only, top CHROME_H pixels.
@@ -8551,9 +8594,23 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
     }
     if (ev->type == ButtonRelease && ev->xbutton.button == 1) {
         g_popup_dragging = 0;  /* REAL, NEW 2026-08-29 (TASK 1) */
+        g_win_resizing = 0;
         return;
     }
     if (ev->type == MotionNotify) {
+        if (is_popup && g_win_resizing) {
+            int nw = g_resize_start_w + (ev->xmotion.x_root - g_resize_start_xr);
+            int nh = g_resize_start_h + (ev->xmotion.y_root - g_resize_start_yr);
+            if (nw < KH_WIN_MIN_W) nw = KH_WIN_MIN_W;
+            if (nh < KH_WIN_MIN_H) nh = KH_WIN_MIN_H;
+            if (nw != g_win_w || nh != g_win_h) {
+                g_win_w = nw; g_win_h = nh;
+                if (g_window) { g_window->w = g_win_w; g_window->h = g_win_h; }
+                XResizeWindow(dpy, win, (unsigned)g_win_w, (unsigned)g_win_h);
+                if (!g_quit) { assign_nav_and_layout(); redraw(); }
+            }
+            return;
+        }
         if (is_popup && g_popup_dragging) {
             /* REAL, NEW 2026-08-29 (TASK 1: popup drag-move) - same pattern
              * as other modes: compute delta from last recorded x_root/y_root,
@@ -14679,6 +14736,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < g_window->n_classes; i++) {
         if (strcmp(g_window->classes[i], "database-window") == 0 ||
             strcmp(g_window->classes[i], "palettes-pal") == 0) g_default_persistent = 1;
+        if (strcmp(g_window->classes[i], "user-resizable") == 0) g_user_resizable = 1;
         /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode, real, data-
          * driven detection (`<window class="db-hq">`, same convention
          * as swatch-picker's own). */

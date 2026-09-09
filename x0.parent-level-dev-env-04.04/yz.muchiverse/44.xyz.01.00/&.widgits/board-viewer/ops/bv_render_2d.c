@@ -235,106 +235,116 @@ int main(void) {
     int bw = g_bw > 0 ? g_bw : 20;
     int bh = g_bh > 0 ? g_bh : 15;
 
-    /* cell size: house grid, shrunk to keep P1's whole-board frame sane */
+    /* cell size: the house desktop grid (desk_grid.pdl GRID|cell_px|N,
+     * default 80) - a board cell is the same on-screen size as a desk
+     * cell. */
     char grid_pdl[PATH_BUF];
     snprintf(grid_pdl, sizeof(grid_pdl), "%s/#.desktop/desk_grid.pdl", house_root);
     int cell = 80;
     { FILE *gf = host_fopen(grid_pdl, "r");
       if (gf) { char l[MAX_LINE];
         while (fgets(l, sizeof(l), gf)) {
-            /* "GRID | cell_px | N" */
-            char *p = strstr(l, "cell_px");
+            char *p = strstr(l, "cell_px");            /* "GRID | cell_px | N" */
             if (!p) continue;
             p = strchr(p, '|'); if (!p) continue;
-            int v = atoi(p + 1); if (v >= 4 && v <= 512) cell = v;
+            int v = atoi(p + 1); if (v >= 8 && v <= 256) cell = v;
             break;
         }
         fclose(gf);
       } }
-    while ((long)bw * cell > MAX_FRAME_PX || (long)bh * cell > MAX_FRAME_PX) {
-        if (cell <= 8) break;
-        cell -= 4;
-    }
 
-    int W = bw * cell, H = bh * cell;
-    if (W < 1) W = 1;
-    if (H < 1) H = 1;
+    /* FIXED viewport - matches the 3D overlay (640x480) so toggling `0`
+     * never resizes the window. A P3 follow-up makes this track the
+     * board window's actual canvas size; for now it's a window onto the
+     * board, centred on the xelector. */
+    const int W = 640, H = 480;
+    int cols = W / cell, rows = H / cell;
+    if (cols < 1) cols = 1;
+    if (rows < 1) rows = 1;
+
+    /* viewport origin cell (top-left), centred on the xelector, clamped */
+    int ox = (sel_x >= 0 ? sel_x : bw / 2) - cols / 2;
+    int oy = (sel_y >= 0 ? sel_y : bh / 2) - rows / 2;
+    if (bw > cols) { if (ox < 0) ox = 0; if (ox > bw - cols) ox = bw - cols; } else ox = -(cols - bw) / 2;
+    if (bh > rows) { if (oy < 0) oy = 0; if (oy > bh - rows) oy = bh - rows; } else oy = -(rows - bh) / 2;
+
     unsigned char *px = calloc((size_t)W * H, 4);
     if (!px) return 1;
 
-    /* --- ground fill --- */
-    unsigned char air_r = 24, air_g = 24, air_b = 28;   /* desk-ish dark; NOT sky blue */
-    for (int cy = 0; cy < bh; cy++) {
-        for (int cx = 0; cx < bw; cx++) {
+    unsigned char air_r = 24, air_g = 24, air_b = 28;   /* desk-ish dark, NOT sky blue */
+    unsigned char gl_r = 60, gl_g = 90, gl_b = 70;      /* faint "matrix" grid line */
+
+    /* fill: whole frame starts as air (covers the sub-cell remainder on
+     * the right/bottom edges too) */
+    for (size_t i = 0; i < (size_t)W * H; i++) {
+        px[i*4+0] = air_r; px[i*4+1] = air_g; px[i*4+2] = air_b; px[i*4+3] = 255;
+    }
+
+    #define VP_PXR(SX,SY) (px + ((size_t)(SY) * W + (SX)) * 4)
+    /* --- ground tiles --- */
+    for (int scy = 0; scy < rows; scy++) {
+        for (int scx = 0; scx < cols; scx++) {
+            int bx = ox + scx, by = oy + scy;
+            if (bx < 0 || by < 0 || bx >= bw || by >= bh) continue;
             unsigned char r = air_r, g = air_g, b = air_b;
-            if (cy < g_bh && cx < g_bw) {
-                char gl = g_board[cy][cx];
-                if (gl && gl != '_' && gl != ' ')
-                    if (!legend_rgb(gl, &r, &g, &b)) { r = 90; g = 90; b = 96; }  /* unknown glyph */
+            if (by < g_bh && bx < g_bw) {
+                char gch = g_board[by][bx];
+                if (gch && gch != '_' && gch != ' ')
+                    if (!legend_rgb(gch, &r, &g, &b)) { r = 90; g = 90; b = 96; }
             }
-            for (int yy = 0; yy < cell; yy++) {
-                unsigned char *row = px + ((size_t)(cy * cell + yy) * W + cx * cell) * 4;
+            for (int yy = 0; yy < cell; yy++)
                 for (int xx = 0; xx < cell; xx++) {
-                    row[xx * 4 + 0] = r; row[xx * 4 + 1] = g; row[xx * 4 + 2] = b; row[xx * 4 + 3] = 255;
+                    unsigned char *p = VP_PXR(scx*cell + xx, scy*cell + yy);
+                    p[0]=r; p[1]=g; p[2]=b; p[3]=255;
                 }
-            }
         }
     }
 
-    /* --- entities: solid square, inner 60% --- */
+    /* --- entities (inner 60% square) --- */
     for (int i = 0; i < g_nent; i++) {
-        int cx = g_ent[i].x, cy = g_ent[i].y;
-        if (cx < 0 || cy < 0 || cx >= bw || cy >= bh) continue;
-        int m = cell / 5;                    /* inset */
-        for (int yy = m; yy < cell - m; yy++) {
-            unsigned char *row = px + ((size_t)(cy * cell + yy) * W + cx * cell) * 4;
+        int scx = g_ent[i].x - ox, scy = g_ent[i].y - oy;
+        if (scx < 0 || scy < 0 || scx >= cols || scy >= rows) continue;
+        int m = cell / 5;
+        for (int yy = m; yy < cell - m; yy++)
             for (int xx = m; xx < cell - m; xx++) {
-                row[xx * 4 + 0] = g_ent[i].r; row[xx * 4 + 1] = g_ent[i].g;
-                row[xx * 4 + 2] = g_ent[i].b; row[xx * 4 + 3] = 255;
+                unsigned char *p = VP_PXR(scx*cell + xx, scy*cell + yy);
+                p[0]=g_ent[i].r; p[1]=g_ent[i].g; p[2]=g_ent[i].b; p[3]=255;
             }
-        }
     }
 
-    /* --- the manual "matrix" grid: 1px on every cell boundary --- */
-    unsigned char gl_r = 60, gl_g = 90, gl_b = 70;      /* faint matrix green-grey */
-    for (int cx = 0; cx <= bw; cx++) {
-        int x = cx * cell; if (x >= W) x = W - 1;
-        for (int y = 0; y < H; y++) {
-            unsigned char *pxl = px + ((size_t)y * W + x) * 4;
-            pxl[0] = gl_r; pxl[1] = gl_g; pxl[2] = gl_b; pxl[3] = 255;
-        }
+    /* --- the manual matrix grid (viewport-relative cell boundaries) --- */
+    for (int c = 0; c <= cols; c++) {
+        int x = c * cell; if (x >= W) x = W - 1;
+        for (int y = 0; y < H; y++) { unsigned char *p = VP_PXR(x, y); p[0]=gl_r; p[1]=gl_g; p[2]=gl_b; p[3]=255; }
     }
-    for (int cy = 0; cy <= bh; cy++) {
-        int y = cy * cell; if (y >= H) y = H - 1;
-        unsigned char *rowp = px + (size_t)y * W * 4;
-        for (int x = 0; x < W; x++) {
-            rowp[x * 4 + 0] = gl_r; rowp[x * 4 + 1] = gl_g; rowp[x * 4 + 2] = gl_b; rowp[x * 4 + 3] = 255;
-        }
+    for (int c = 0; c <= rows; c++) {
+        int y = c * cell; if (y >= H) y = H - 1;
+        for (int x = 0; x < W; x++) { unsigned char *p = VP_PXR(x, y); p[0]=gl_r; p[1]=gl_g; p[2]=gl_b; p[3]=255; }
     }
 
     /* --- xelector: 2px inset border, bright accent --- */
-    if (sel_x >= 0 && sel_y >= 0 && sel_x < bw && sel_y < bh) {
-        unsigned char xr = 255, xg = 204, xb = 0;
-        int x0 = sel_x * cell, y0 = sel_y * cell;
-        for (int t = 1; t <= 2; t++) {
-            for (int x = x0 + t; x < x0 + cell - t; x++) {
-                for (int yy = 0; yy < 2; yy++) {
-                    unsigned char *a = px + ((size_t)(y0 + t + yy) * W + x) * 4;
-                    unsigned char *c = px + ((size_t)(y0 + cell - 1 - t - yy) * W + x) * 4;
-                    a[0] = xr; a[1] = xg; a[2] = xb; a[3] = 255;
-                    c[0] = xr; c[1] = xg; c[2] = xb; c[3] = 255;
-                }
-            }
-            for (int y = y0 + t; y < y0 + cell - t; y++) {
-                for (int xx = 0; xx < 2; xx++) {
-                    unsigned char *a = px + ((size_t)y * W + x0 + t + xx) * 4;
-                    unsigned char *c = px + ((size_t)y * W + x0 + cell - 1 - t - xx) * 4;
-                    a[0] = xr; a[1] = xg; a[2] = xb; a[3] = 255;
-                    c[0] = xr; c[1] = xg; c[2] = xb; c[3] = 255;
-                }
+    {
+        int scx = sel_x - ox, scy = sel_y - oy;
+        if (sel_x >= 0 && sel_y >= 0 && scx >= 0 && scy >= 0 && scx < cols && scy < rows) {
+            unsigned char xr = 255, xg = 204, xb = 0;
+            int x0 = scx * cell, y0 = scy * cell;
+            for (int t = 1; t <= 2; t++) {
+                for (int x = x0 + t; x < x0 + cell - t; x++)
+                    for (int yy = 0; yy < 2; yy++) {
+                        unsigned char *a = VP_PXR(x, y0 + t + yy);
+                        unsigned char *cc = VP_PXR(x, y0 + cell - 1 - t - yy);
+                        a[0]=xr; a[1]=xg; a[2]=xb; a[3]=255; cc[0]=xr; cc[1]=xg; cc[2]=xb; cc[3]=255;
+                    }
+                for (int y = y0 + t; y < y0 + cell - t; y++)
+                    for (int xx = 0; xx < 2; xx++) {
+                        unsigned char *a = VP_PXR(x0 + t + xx, y);
+                        unsigned char *cc = VP_PXR(x0 + cell - 1 - t - xx, y);
+                        a[0]=xr; a[1]=xg; a[2]=xb; a[3]=255; cc[0]=xr; cc[1]=xg; cc[2]=xb; cc[3]=255;
+                    }
             }
         }
     }
+    #undef VP_PXR
 
     char out[PATH_BUF], rec[PATH_BUF];
     snprintf(out, sizeof(out), "%s/pieces/display/rgb_frame_2d.raw", project_root);

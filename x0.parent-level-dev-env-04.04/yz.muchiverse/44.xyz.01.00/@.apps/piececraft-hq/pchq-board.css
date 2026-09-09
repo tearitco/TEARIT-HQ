@@ -15,3 +15,10 @@ window { background-color: #141414; font-family: Ubuntu; font-size: 10px; }
 .pchq-menu-active { background-color: #2f5f8f; color: #ffffff; }
 
 .quiet { color: #888888; font-size: 9px; }
+
+/* Fixed canvas box: 640x480 matches both bv_render_3d's overlay and
+ * bv_render_2d's viewport, so toggling 0 (3D<->2D) never resizes the
+ * window (direct report 2026-09-09). With class="user-resizable" on the
+ * window, a drag on the ⌟ grip resizes the chrome; the canvas clips /
+ * letterboxes to whatever size (P3: track the window). */
+#view { width: 640px; height: 480px; }
