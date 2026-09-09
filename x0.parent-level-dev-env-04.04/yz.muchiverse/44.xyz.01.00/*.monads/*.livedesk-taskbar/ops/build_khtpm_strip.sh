@@ -37,12 +37,12 @@ if [ "$OS_TYPE" = "Darwin" ]; then
     fi
 fi
 
-# Sync shared files from the single canonical source (2026-08-12
-# dedup pass - see &.widgits/_shared-lib/README.md for why this is a
-# build-time copy, not a runtime shared include path).
+# SHARED-SOURCE-COMPILE-IN-PLACE.md (2026-09-09): the two `cp
+# "$SHARED"/khtpm_css_parser.{c,h}` lines here were vestigial — the
+# manager-driver compile below uses neither, and the renderer is built
+# by build_core_render.sh (which now compiles the canonical in place
+# via -I). Nothing in this script needs a local copy any more.
 SHARED="$(cd "$(dirname "$0")/../../../&.widgits/_shared-lib" && pwd)"
-cp "$SHARED/khtpm_css_parser.c" khtpm_css_parser.c
-cp "$SHARED/khtpm_css_parser.h" khtpm_css_parser.h
 
 echo "-- khtpm manager driver (pure logic, no Xlib) -> +x/khtpm_taskbar_manager_main.+x"
 $CC $CFLAGS -o +x/khtpm_taskbar_manager_main.+x \

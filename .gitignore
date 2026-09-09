@@ -96,3 +96,13 @@ palettes-*_state.txt
 
 # house backup archives (large binaries — keep only on disk)
 x0.parent-level-dev-env-04.04_*.7z
+
+# 2026-09-09 SHARED-SOURCE-COMPILE-IN-PLACE.md — house-authored shared
+# .c/.h are compiled in place from &.widgits/_shared-lib/ (via -I), never
+# copied into a consumer ops/ dir. Ignore any stray build-copy so it
+# can't be re-committed. (Path has an /ops/ segment, so the canonical
+# _shared-lib/ copies are unaffected.)
+**/ops/khtpm_css_parser.c
+**/ops/khtpm_css_parser.h
+**/ops/khtpm_render_core.c
+**/ops/khtpm_draw_core.c

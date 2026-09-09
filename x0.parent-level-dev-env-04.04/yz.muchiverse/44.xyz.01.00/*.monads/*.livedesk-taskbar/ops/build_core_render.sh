@@ -21,11 +21,16 @@ CFLAGS="-std=c11 -Wall -O2 $(pkg-config --cflags xft)"
 # tp_desktop_window_rgb.c's build_shape_mask()/cursword_update_shape()).
 LIBS="-lX11 -lXext $(pkg-config --libs xft) -lm"
 
+# SHARED-SOURCE-COMPILE-IN-PLACE.md (2026-09-09): the house-authored
+# shared .c/.h are NO LONGER copied into this dir. `-I "$SHARED"`
+# points the include search at the one canonical copy, and
+# khtpm_css_parser.c is named by its canonical path on the compile
+# line below. Text-includes (#include "khtpm_render_core.c" /
+# "khtpm_draw_core.c" inside khtpm_core_render.c) resolve via the same
+# -I. Only the built binary stays local. stb_image_write.h is a frozen
+# vendored third-party header (not house code, ~zero drift risk) and is
+# still copied for now — out of scope for this pass.
 SHARED="$(cd "$(dirname "$0")/../../../&.widgits/_shared-lib" && pwd)"
-cp "$SHARED/khtpm_css_parser.c" khtpm_css_parser.c
-cp "$SHARED/khtpm_css_parser.h" khtpm_css_parser.h
-cp "$SHARED/khtpm_render_core.c" khtpm_render_core.c
-cp "$SHARED/khtpm_draw_core.c" khtpm_draw_core.c
 mkdir -p lib
 cp "$SHARED/stb_image_write.h" lib/stb_image_write.h
 
@@ -51,7 +56,7 @@ fi
 # process (khtpm_taskbar_manager_main.+x's own real, separate compile
 # of khtpm_taskbar_manager.c is that legitimate case, untouched).
 echo "-- entity-menu renderer -> +x/khtpm_core_render.+x"
-$CC $CFLAGS $X11_FLAGS -o +x/khtpm_core_render.+x \
-  khtpm_core_render.c khtpm_css_parser.c $LIBS
+$CC $CFLAGS $X11_FLAGS -I "$SHARED" -o +x/khtpm_core_render.+x \
+  khtpm_core_render.c "$SHARED/khtpm_css_parser.c" $LIBS
 
 echo "OK +x/khtpm_core_render.+x"
