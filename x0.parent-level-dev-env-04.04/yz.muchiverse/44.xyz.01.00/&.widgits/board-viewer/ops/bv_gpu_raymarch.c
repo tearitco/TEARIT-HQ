@@ -57,6 +57,9 @@ static const char *FS_SRC =
 "uniform vec3  u_bmin[128];\n"
 "uniform vec3  u_bmax[128];\n"
 "uniform vec4  u_bcol[128];\n"     /* .rgb colour, .a: 1 = apply light, 0 = self-lit */
+"uniform int   u_bmdl[128];\n"     /* >=0 -> raymarch phymoji model u_bmdl[i] inside the box */
+"uniform highp sampler3D u_mdl;\n" /* 32x32x(8*8): model m at z [m*8, m*8+8) */
+"uniform ivec3 u_mdim[8];\n"       /* per-model (lx,ly,lz) counts */
 "\n"
 "bool slab(vec3 ro, vec3 rd, vec3 bn, vec3 bx, out float t, out int face) {\n"
 "  float tmin = -1e30, tmax = 1e30; face = -1;\n"
@@ -89,9 +92,32 @@ static const char *FS_SRC =
 "\n"
 "  for (int i = 0; i < u_nbox; i++) {\n"
 "    float t; int f;\n"
-"    if (slab(ro, rd, u_bmin[i], u_bmax[i], t, f) && t < bestT) {\n"
+"    if (!slab(ro, rd, u_bmin[i], u_bmax[i], t, f) || t >= bestT) continue;\n"
+"    int mdl = u_bmdl[i];\n"
+"    if (mdl < 0) {\n"
 "      bestT = t; col = u_bcol[i].rgb; hit = true;\n"
 "      self_lit = (u_bcol[i].a < 0.5); face = f;\n"
+"      continue;\n"
+"    }\n"
+"    /* raymarch the dense model grid inside the box (fixed sub-cell step) */\n"
+"    vec3 bsz = max(u_bmax[i] - u_bmin[i], vec3(1e-4));\n"
+"    ivec3 md = u_mdim[mdl];\n"
+"    vec3  cellw = bsz / vec3(md);\n"
+"    float mn = min(min(cellw.x, cellw.y), cellw.z);\n"
+"    float stepT = 0.5 * mn / max(length(rd), 1e-4);\n"
+"    float mt = max(t, 0.0) + stepT * 0.5;\n"
+"    for (int k = 0; k < 220; k++) {\n"
+"      vec3 wp = ro + rd * mt;\n"
+"      vec3 lf = (wp - u_bmin[i]) / bsz;\n"
+"      if (lf.x < -0.02 || lf.y < -0.02 || lf.z < -0.02 ||\n"
+"          lf.x > 1.02 || lf.y > 1.02 || lf.z > 1.02) break;\n"
+"      ivec3 li = clamp(ivec3(lf * vec3(md)), ivec3(0), md - 1);\n"
+"      vec4 mv = texelFetch(u_mdl, ivec3(li.x, li.y, mdl * 8 + li.z), 0);\n"
+"      if (mv.a > 0.5) {\n"
+"        if (mt < bestT) { bestT = mt; col = mv.rgb; hit = true; self_lit = false; face = f; }\n"
+"        break;\n"
+"      }\n"
+"      mt += stepT;\n"
 "    }\n"
 "  }\n"
 "\n"
@@ -155,14 +181,15 @@ static const char *FS_SRC =
 static int        s_persist = 0;
 static EGLDisplay s_dpy = EGL_NO_DISPLAY;
 static EGLContext s_ctx = EGL_NO_CONTEXT;
-static GLuint     s_prog = 0, s_vao = 0, s_fbo = 0, s_rbo = 0, s_tex_grid = 0, s_tex_leg = 0, s_tex_terr = 0;
+static GLuint     s_prog = 0, s_vao = 0, s_fbo = 0, s_rbo = 0, s_tex_grid = 0, s_tex_leg = 0, s_tex_terr = 0, s_tex_mdl = 0;
 static int        s_fw = 0, s_fh = 0;          /* current FBO size */
 static int        s_gw = 0, s_gh = 0, s_gd = 0; /* current grid-tex dims */
 static int        s_leg_alloc = 0;            /* legend tex storage created */
 static int        s_terr_alloc = 0;           /* terrain-array storage created */
+static int        s_mdl_alloc = 0;
 /* cached uniform locations (glGetUniformLocation is a string lookup) */
 static struct {
-    GLint eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, nbox, bmin, bmax, bcol;
+    GLint eye, fwd, right, up, focal, res, wext, grid, leg, terr, lbbox, light, sky, nbox, bmin, bmax, bcol, bmdl, mdl, mdim;
 } s_u;
 
 static GLuint compile(GLenum type, const char *src) {
@@ -256,8 +283,18 @@ static int gl_ensure_context(void) {
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    s_dpy = dpy; s_ctx = ctx; s_prog = prog; s_vao = vao; s_tex_leg = leg; s_tex_terr = terr;
-    s_leg_alloc = 0; s_terr_alloc = 0;
+    GLuint mdl = 0;
+    glGenTextures(1, &mdl);
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_3D, mdl);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    s_dpy = dpy; s_ctx = ctx; s_prog = prog; s_vao = vao; s_tex_leg = leg; s_tex_terr = terr; s_tex_mdl = mdl;
+    s_leg_alloc = 0; s_terr_alloc = 0; s_mdl_alloc = 0;
 
     #define UL(n) glGetUniformLocation(prog, n)
     s_u.eye=UL("u_eye"); s_u.fwd=UL("u_fwd"); s_u.right=UL("u_right"); s_u.up=UL("u_up");
@@ -265,6 +302,7 @@ static int gl_ensure_context(void) {
     s_u.grid=UL("u_grid"); s_u.leg=UL("u_leg"); s_u.terr=UL("u_terr"); s_u.lbbox=UL("u_lbbox");
     s_u.light=UL("u_light"); s_u.sky=UL("u_sky");
     s_u.nbox=UL("u_nbox"); s_u.bmin=UL("u_bmin"); s_u.bmax=UL("u_bmax"); s_u.bcol=UL("u_bcol");
+    s_u.bmdl=UL("u_bmdl"); s_u.mdl=UL("u_mdl"); s_u.mdim=UL("u_mdim");
     #undef UL
     return 0;
 }
@@ -317,16 +355,18 @@ void bv_gpu_shutdown(void) {
     if (s_tex_grid) glDeleteTextures(1, &s_tex_grid);
     if (s_tex_leg) glDeleteTextures(1, &s_tex_leg);
     if (s_tex_terr) glDeleteTextures(1, &s_tex_terr);
+    if (s_tex_mdl) glDeleteTextures(1, &s_tex_mdl);
     if (s_rbo) glDeleteRenderbuffers(1, &s_rbo);
     if (s_fbo) glDeleteFramebuffers(1, &s_fbo);
     eglMakeCurrent(s_dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     if (s_ctx != EGL_NO_CONTEXT) eglDestroyContext(s_dpy, s_ctx);
     eglTerminate(s_dpy);
     s_dpy = EGL_NO_DISPLAY; s_ctx = EGL_NO_CONTEXT;
-    s_prog = s_vao = s_fbo = s_rbo = s_tex_grid = s_tex_leg = s_tex_terr = 0;
+    s_prog = s_vao = s_fbo = s_rbo = s_tex_grid = s_tex_leg = s_tex_terr = s_tex_mdl = 0;
     s_fw = s_fh = s_gw = s_gh = s_gd = 0;
     s_leg_alloc = 0;
     s_terr_alloc = 0;
+    s_mdl_alloc = 0;
     s_persist = 0;
 }
 
@@ -411,6 +451,32 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
         glUniform4fv(s_u.lbbox, nlay, lbb);
     }
 
+    /* phymoji model 3D texture: 32x32x(8*BV_GPU_MAX_MODEL), model m in
+     * z-slices [m*8, m*8+8) */
+    if (s->model_n > 0) {
+        glActiveTexture(GL_TEXTURE3);
+        glBindTexture(GL_TEXTURE_3D, s_tex_mdl);
+        if (!s_mdl_alloc) {
+            glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA8, BV_GPU_MDL_DIM, BV_GPU_MDL_DIM,
+                         BV_GPU_MDL_DEPTH * BV_GPU_MAX_MODEL, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+            s_mdl_alloc = 1;
+        }
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        int mn = s->model_n; if (mn > BV_GPU_MAX_MODEL) mn = BV_GPU_MAX_MODEL;
+        for (int m = 0; m < mn; m++)
+            glTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, m * BV_GPU_MDL_DEPTH,
+                            BV_GPU_MDL_DIM, BV_GPU_MDL_DIM, BV_GPU_MDL_DEPTH,
+                            GL_RGBA, GL_UNSIGNED_BYTE, s->model_vox[m]);
+        int mdim[BV_GPU_MAX_MODEL * 3];
+        for (int m = 0; m < BV_GPU_MAX_MODEL; m++) {
+            mdim[m*3+0] = (m < mn && s->model_dim[m][0] > 0) ? s->model_dim[m][0] : 1;
+            mdim[m*3+1] = (m < mn && s->model_dim[m][1] > 0) ? s->model_dim[m][1] : 1;
+            mdim[m*3+2] = (m < mn && s->model_dim[m][2] > 0) ? s->model_dim[m][2] : 1;
+        }
+        glUniform3iv(s_u.mdim, BV_GPU_MAX_MODEL, mdim);
+    }
+    glUniform1i(s_u.mdl, 3);
+
     glUniform3fv(s_u.eye,   1, s->eye);
     glUniform3fv(s_u.fwd,   1, s->fwd);
     glUniform3fv(s_u.right, 1, s->right);
@@ -428,15 +494,18 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
         glUniform1i(s_u.nbox, nb);
         if (nb > 0) {
             float bmin[128*3], bmax[128*3], bcol[128*4];
+            int bmdl[128];
             for (int i = 0; i < nb; i++) {
                 bmin[i*3+0]=s->box[i].min_x; bmin[i*3+1]=s->box[i].min_y; bmin[i*3+2]=s->box[i].min_z;
                 bmax[i*3+0]=s->box[i].max_x; bmax[i*3+1]=s->box[i].max_y; bmax[i*3+2]=s->box[i].max_z;
                 bcol[i*4+0]=s->box[i].r; bcol[i*4+1]=s->box[i].g; bcol[i*4+2]=s->box[i].b;
                 bcol[i*4+3]=s->box[i].self_lit ? 0.0f : 1.0f;
+                bmdl[i] = (s->box[i].model >= 0 && s->box[i].model < BV_GPU_MAX_MODEL) ? s->box[i].model : -1;
             }
             glUniform3fv(s_u.bmin, nb, bmin);
             glUniform3fv(s_u.bmax, nb, bmax);
             glUniform4fv(s_u.bcol, nb, bcol);
+            glUniform1iv(s_u.bmdl, nb, bmdl);
         }
     }
 

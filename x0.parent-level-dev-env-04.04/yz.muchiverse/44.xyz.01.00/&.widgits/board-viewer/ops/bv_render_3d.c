@@ -1970,7 +1970,7 @@ static int render_one_frame(void) {
               B->min_x=(float)(x0); B->min_y=(float)(y0); B->min_z=(float)(z0); \
               B->max_x=(float)(x1); B->max_y=(float)(y1); B->max_z=(float)(z1); \
               B->r=(float)(cr)/255.0f; B->g=(float)(cg)/255.0f; B->b=(float)(cb)/255.0f; \
-              B->self_lit=(slit); } } while (0)
+              B->self_lit=(slit); B->model=-1; } } while (0)
         if (sun_body.present)
             ADDBOX(sun_body.x-2.0, sun_body.y-2.0, sun_body.z-2.0,
                    sun_body.x+2.0, sun_body.y+2.0, sun_body.z+2.0, 255,220,120, 1);
@@ -1984,16 +1984,56 @@ static int render_one_frame(void) {
             ADDBOX(g_entities[i].pos_x+0.25, 0.0, g_entities[i].pos_y+0.25,
                    g_entities[i].pos_x+0.75, 1.0, g_entities[i].pos_y+0.75,
                    g_entities[i].r, g_entities[i].g, g_entities[i].b, 0);
-        if (g_hero_present && camera_mode != 1)
-            ADDBOX(g_hero_x+0.2, g_hero_z+0.0, g_hero_y+0.2,
-                   g_hero_x+0.8, g_hero_z+0.9, g_hero_y+0.8, 200,90,60, 0);
+        /* --- phymoji models: dense local voxel grids the shader
+         * raymarches inside each entity's world box (shaped hero /
+         * trees / chicken instead of flat boxes). ports the CPU
+         * test_phymoji_hit world->local mapping: local (lx,ly,lz) <-
+         * scaled world (X, Y=height, Z). --- */
+        #define GPU_ADD_MODEL(VOX,CNT,MLX,MLY,MLZ) ({ int _m=-1; \
+            if ((CNT) > 0 && sc.model_n < BV_GPU_MAX_MODEL) { \
+                _m = sc.model_n++; \
+                memset(sc.model_vox[_m], 0, sizeof(sc.model_vox[_m])); \
+                int _dx=(MLX)+1, _dy=(MLY)+1, _dz=(MLZ)+1; \
+                if (_dx>BV_GPU_MDL_DIM)_dx=BV_GPU_MDL_DIM; if (_dy>BV_GPU_MDL_DIM)_dy=BV_GPU_MDL_DIM; \
+                if (_dz>BV_GPU_MDL_DEPTH)_dz=BV_GPU_MDL_DEPTH; \
+                sc.model_dim[_m][0]=_dx; sc.model_dim[_m][1]=_dy; sc.model_dim[_m][2]=_dz; \
+                for (int _i=0; _i<(CNT); _i++) { \
+                    int _x=(VOX)[_i].lx, _y=(VOX)[_i].ly, _z=(VOX)[_i].lz; \
+                    if (_x<0||_x>=_dx||_y<0||_y>=_dy||_z<0||_z>=_dz) continue; \
+                    int _o=((_z*BV_GPU_MDL_DIM + _y)*BV_GPU_MDL_DIM + _x)*4; \
+                    sc.model_vox[_m][_o+0]=(VOX)[_i].r; sc.model_vox[_m][_o+1]=(VOX)[_i].g; \
+                    sc.model_vox[_m][_o+2]=(VOX)[_i].b; sc.model_vox[_m][_o+3]=255; } \
+            } _m; })
+
+        if (g_hero_present && camera_mode != 1) {
+            int hm = -1;
+            if (hero_phymoji_count > 0)
+                hm = GPU_ADD_MODEL(g_hero_phymoji, hero_phymoji_count,
+                                   hero_phymoji_max_lx, hero_phymoji_max_ly, hero_phymoji_max_lz);
+            double hs = 0.9;
+            ADDBOX(g_hero_x+0.5-hs/2.0, g_hero_z+0.0, g_hero_y+0.5-hs/2.0,
+                   g_hero_x+0.5+hs/2.0, g_hero_z+hs,  g_hero_y+0.5+hs/2.0, 200,90,60, 0);
+            if (hm >= 0) sc.box[sc.box_n-1].model = hm;
+        }
+        int tmpl_model[MAX_PHYMOJI_TEMPLATES];
+        for (int t=0; t<MAX_PHYMOJI_TEMPLATES; t++) tmpl_model[t] = -1;
         for (int wi=0; wi<g_phymoji_world_entity_count; wi++) {
             PhymojiWorldEntity *we = &g_phymoji_world_entities[wi];
             double wsx=1.0, wsy=3.0, wsz=1.0; int cr=60,cg=140,cb=50;
             if (strcmp(we->entity_id, "chicken")==0) { wsx=wsy=wsz=0.6; cr=cg=cb=210; }
+            int ti = we->template_idx, wm = -1;
+            if (ti >= 0 && ti < MAX_PHYMOJI_TEMPLATES && ti < g_phymoji_template_count) {
+                if (tmpl_model[ti] < 0) {
+                    PhymojiTemplate *pt = &g_phymoji_templates[ti];
+                    tmpl_model[ti] = GPU_ADD_MODEL(pt->voxels, pt->count, pt->max_lx, pt->max_ly, pt->max_lz);
+                }
+                wm = tmpl_model[ti];
+            }
             ADDBOX(we->x+0.5-wsx/2.0, we->z+0.0, we->y+0.5-wsz/2.0,
                    we->x+0.5+wsx/2.0, we->z+wsy, we->y+0.5+wsz/2.0, cr,cg,cb, 0);
+            if (wm >= 0) sc.box[sc.box_n-1].model = wm;
         }
+        #undef GPU_ADD_MODEL
         #undef ADDBOX
         if (bv_gpu_raymarch(&sc, g_fbuf) == 0) gpu_done = 1;
         else fprintf(stderr, "bv_render_3d: GPU backend failed, using CPU\n");
