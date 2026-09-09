@@ -59,3 +59,7 @@ short version.*
       history.back/forward/go, pushState/replaceState address-bar ADDR).
       Remaining rung 6 scraps: none blocking — `matchMedia`/getComputedStyle
       stubs shipped in `b079f0c9`; rung 7 (layout awareness) deferred.
+      Rungs 3-4 also LANDED in the resident worker (timer/event drain,
+      XHR/fetch) — the only true Phase-2 remainder is document-order script
+      runs (manager still concatenates `<script>` bodies into
+      `tmp/page.js`). Reconciled 2026-09-08.

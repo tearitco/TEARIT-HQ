@@ -32,9 +32,14 @@ a `<script>` is present — spawns a **resident worker**
 page JS against it, and replies with `RENDER\n<rows>` which the manager
 overlays onto `page.state.txt` (see `NB-JS-ENGINE-WORKER-PLAN.md` + the
 phase-1 `PROGRESS-nb-js-worker-phase1.md`). The one-shot `nb_js_eval.+x`
-remains as the rollback/test path. Still missing (Phase 2): document-order
-script runs, event loop + timers (rung 3), XHR/fetch (rung 4), the
-rung-2/6 BOM remainder.
+remains as the rollback/test path. Reconciled 2026-09-08: the "Still
+missing (Phase 2)" items are LANDED in the resident worker — event loop +
+timers (rung 3: lifecycle/microtask/timer drain, `setTimeout`/
+`setInterval`/`clear*`/`queueMicrotask`, `MAX_DRAIN_MS` 800,
+`MAX_TIMER_INVOCATIONS` 5000, `MAX_RAF_FRAMES` 120; gated by `wet`),
+XHR/fetch (rung 4, `wft`), and the rung-2/6 BOM remainder (`wdt`, `wcn`,
+`wck`). Only Phase-2 **document-order script runs** (the manager
+concatenates `<script>` bodies into `tmp/page.js`) truly remains.
 
 > The table above is the *pre*-Phase-1 snapshot; `getElementById` /
 > `querySelector` and the rest became real accessors walking the worker's
@@ -215,10 +220,14 @@ plausible stub, `MutationObserver` (can no-op then improve),
 >   no-op stubs — `b079f0c9`
 > - `atob`/`btoa` Base64 + `setTimeout`/`setInterval`/`clear*` (return
 >   ids, callback never fires — one-shot has no event loop) — `e71232d1`
+>   (the RESIDENT worker's rung-3 drain supersedes this: its timers DO
+>   fire pre-RENDER, bounded by `MAX_DRAIN_MS`/`MAX_TIMER_INVOCATIONS`)
 > - `document.cookie` empty-jar getter/setter (no throw; file jar still
 >   a C job later) — `f5f86b4d`
 > **Still to do (needs C or the worker):** real `history`/`location`
 > navigation pushed to the manager, a real timer/event loop (rung 3).
+> Both since LANDED in the resident worker (rung-6 `NAV` LANDED block
+> below; rung 3 timer wait/drain via `MAX_DRAIN_MS`, gated by `wet`).
 > Tests under `network/tests/rung6_*.js`
 > all +OK|1; 5 suites green. Since phase-1 step 2 the shared `nb_host.h`
 > carries these stubs into the resident worker too, so eval AND worker
