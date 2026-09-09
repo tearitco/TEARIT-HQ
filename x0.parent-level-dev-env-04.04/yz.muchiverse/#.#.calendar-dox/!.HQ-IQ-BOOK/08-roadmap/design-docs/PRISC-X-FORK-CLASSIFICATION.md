@@ -1,5 +1,11 @@
 # prisc+x.c fork classification (Phase A)
 
+> **Phase B is DONE (`PRISC-X-FORK-CONSOLIDATION.md`).** Two claims in this
+> Phase-A pass were refined by the actual conversion: the canonical was
+> genuinely missing wsr/egg's `#ifdef _WIN32`/MinGW *compile* shims (now
+> folded in, `c7b6fe6c`), and wsr's `read_history_str` op turned out to be
+> used by zero wsr `.pal` (no fold needed). Everything else here held.
+
 **2026-09-09. Read-only pass** for `PRISC-X-FORK-CONSOLIDATION.md` §5
 Phase A. Every claim below was checked against the actual source
 (`diff -u` of each variant vs `&.widgits/_shared-lib/system/prisc+x.c`,
