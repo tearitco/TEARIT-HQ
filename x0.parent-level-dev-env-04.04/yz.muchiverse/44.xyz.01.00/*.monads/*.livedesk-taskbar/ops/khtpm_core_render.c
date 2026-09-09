@@ -126,6 +126,39 @@ static int g_n_elems = 0;
 static char g_package_dir[PATH_BUF];
 static char g_house_root[PATH_BUF];
 static char g_chtpm_path[PATH_BUF];  /* real, generic (2026-08-31) - the real .chtpm this process was launched against, kept for the generic live-reparse capability below */
+
+/* Entity-menu identity strip for the title bar (2026-09-09, direct
+ * report: "entities just say ^main; they used to have entity name +
+ * uid & pid"). Composed once from g_chtpm_path when this process is
+ * rendering an entity context menu (.../<entity>/menu.chtpm): the
+ * fallback title becomes "<entity> <iid> <pid4>" instead of the bare
+ * page name "main". Empty for every other window (HQ windows carry a
+ * real <window label="...">, so they never hit this fallback). */
+static char g_entity_ident[128] = "";
+static void kh_compose_entity_ident(void) {
+    if (g_entity_ident[0] || !g_chtpm_path[0]) return;
+    const char *slash = strrchr(g_chtpm_path, '/');
+    const char *base = slash ? slash + 1 : g_chtpm_path;
+    if (strcmp(base, "menu.chtpm") != 0) return;   /* only entity menus */
+    /* dir = g_chtpm_path without the trailing "/menu.chtpm" */
+    char dir[PATH_BUF];
+    size_t dl = (size_t)(slash - g_chtpm_path);
+    if (dl >= sizeof(dir)) return;
+    memcpy(dir, g_chtpm_path, dl); dir[dl] = '\0';
+    const char *ds = strrchr(dir, '/');
+    const char *ename = ds ? ds + 1 : dir;         /* the entity dir name */
+    char iid[32] = "";
+    char ipath[PATH_BUF];
+    snprintf(ipath, sizeof(ipath), "%s/instance_id.txt", dir);
+    FILE *f = fopen(ipath, "r");
+    if (f) { if (fgets(iid, sizeof(iid), f)) iid[strcspn(iid, "\r\n")] = '\0'; fclose(f); }
+    if (iid[0])
+        snprintf(g_entity_ident, sizeof(g_entity_ident), "%s %s %04d",
+                 ename, iid, (int)getpid() % 10000);
+    else
+        snprintf(g_entity_ident, sizeof(g_entity_ident), "%s %04d",
+                 ename, (int)getpid() % 10000);
+}
 /* REAL FIX 2026-09-01 (live report: open-hai's own real projection
  * never got picked up after a fresh launch - the bootstrap-then-
  * manager-writes-real-content sequence happens fast enough, especially
@@ -6659,7 +6692,11 @@ static void redraw(void) {
         XGetInputFocus(dpy, &focus_win, &focus_revert);
         g_focus_owned_painted = (focus_win == win) ? 1 : 0; /* what the "^"/"." below reflects - the FocusIn/FocusOut redraw guard reads this */
         char title_buf[192];
-        const char *title_raw = (g_window->label[0] ? g_window->label : g_current_page);
+        /* fallback chain: explicit <window label> -> entity identity
+         * strip (entity menus) -> bare page name. */
+        kh_compose_entity_ident();
+        const char *title_raw = g_window->label[0] ? g_window->label
+                              : (g_entity_ident[0] ? g_entity_ident : g_current_page);
         snprintf(title_buf, sizeof(title_buf), "%s %s%s",
                  (focus_win == win) ? "^" : ".", title_raw,
                  g_default_scope_confine ? "  Active [^]: (ESC to exit)" : "");
