@@ -89,10 +89,10 @@ short version.*
     delete the ~5 stale `ops/` copies (6 already drifted), packaging
     keeps self-contained subtrees via one `vendor-into.sh`.
     `design-docs/SHARED-SOURCE-COMPILE-IN-PLACE.md`.
-19. prisc+x.c fork consolidation: ~26 copies / 7 variants across ~20
-    pal-using projects. **Phase A (classify) DONE 2026-09-09**
-    (`PRISC-X-FORK-CLASSIFICATION.md`): the `_shared-lib/` canonical is
-    the newest VM, every fork is *behind* it (10-cluster carries a real
-    path-trunc bug) — upgrade-everyone. Phase B blocker: nothing builds
-    the canonical yet, so it needs a standalone-build + `.pal`-corpus
-    diff before any project switch. `PRISC-X-FORK-CONSOLIDATION.md`.
+19. prisc+x.c fork consolidation: **Phase B ~done 2026-09-09** — 15
+    pal-VM projects now compile the ONE canonical
+    `&.widgits/_shared-lib/system/prisc+x.c` (walk-up resolver, vendored
+    copy git-rm'd + gitignored), each A/B-verified `.pal`-identical;
+    ~11 others were already on `$_SS`. Left: wsr + muchi-pals-egg
+    (_WIN32 fold-in first), ledger-player + lpns+map (orchestrator-
+    built), board-viewer (binary). `PRISC-X-FORK-CONSOLIDATION.md`.

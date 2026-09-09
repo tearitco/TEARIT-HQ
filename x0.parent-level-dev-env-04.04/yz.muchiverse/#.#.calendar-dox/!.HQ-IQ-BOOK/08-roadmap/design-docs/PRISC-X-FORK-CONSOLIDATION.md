@@ -1,9 +1,36 @@
 # prisc+x.c fork consolidation
 
-**Status: Phase A (classification) DONE 2026-09-09** —
-`PRISC-X-FORK-CLASSIFICATION.md`. No project code changed yet.
-Prompted by the user: *"why so many prisc+x forks? Fix that first — it
-sounds like the biggest problem. Does it have KPIs for completion?"*
+**Status: Phase A done; Phase B ~done for the safe cluster (2026-09-09).**
+`PRISC-X-FORK-CLASSIFICATION.md`. Prompted by the user: *"why so many
+prisc+x forks? Fix that first... does it have KPIs for completion?"*
+
+Phase B landed (each: `scripts/build.sh` compiles
+`&.widgits/_shared-lib/system/prisc+x.c` via a walk-up
+`PRISC_CANON_SHARED_LIB` resolver; vendored `system/prisc+x.c` `git
+rm`'d + `.gitignore`d `**/system/prisc+x.c` with a
+`!**/_shared-lib/...` exemption):
+- **15 projects converted + A/B-verified** (`aa527edf`, `7fd2a427`):
+  `041.pal-forum`, `041.pal-chain`, `044.pal-chat-irc`,
+  `045.muchi-pal-agent`, `101.mutaclsym19.00` (muta-neo),
+  `101.mutaclsym+18.0G`, `102.editor-00.00`, `0.user-pal/00.login-signup`,
+  `0.user-pal/01.avatar-creation`, `002.zoo/…INK…PEN`, `*.START_BUTTON`,
+  `@.apps/my-biotech`, `@.apps/my-chara-txt`, `@.apps/my-lawyer`,
+  `@.apps/myne-qrypto/qtc`. Per project: every `.pal` in it run through
+  the OLD fork binary vs the NEW canonical binary (stdout+stderr) —
+  identical; rebuilds green via its own `scripts/build.sh`.
+- **~11 projects were already on `$_SS = &.widgits/_shared-lib`**
+  (civ-txt, tactics-txt, piececraft-hq/-xyz, aomorai-editor, yahoo-app/
+  -broker, TSC_ELO, agy-txt, rpg-xyz, rtp-xyz) — untouched.
+- **Deferred:** `014.wsr-pal` + `01.muchi-pals-egg` — fold their
+  `#ifdef _WIN32` shims into the canonical first (see
+  `PRISC-X-FORK-CLASSIFICATION.md`). `101.ledger-player-npc-simple+3` +
+  `101.lpns+map+4` — no `scripts/build.sh`; prisc is built/spawned by
+  their own `system/orchestrator.c` (TPMOS-style), a separate riskier
+  change. `&.widgits/board-viewer/system/prisc+x` — binary only.
+- **Not in scope of this pass:** registering the spawned prisc VM in the
+  master-ledger. That's `chtpm_parser_pal.c`'s `<module>` launch (the
+  legacy parser), broader blast radius — its own follow-up
+  (PROC-LIFECYCLE §5).
 
 TL;DR after reading every diff: it is the biggest **surface**
 (≈20 projects) but **not** the hardest problem — the
