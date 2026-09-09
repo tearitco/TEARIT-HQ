@@ -1,0 +1,217 @@
+json-2-house-prompt.txt
+2026-09-08
+How to convert RPG Maker MV data.json <-> house-shaped files.
+Use a Python script. Do not hand-edit 400-line JSON. Do not put
+clone PNGs in git. Do not hardcode #.NNEST_ASSETS in C.
+
+--------------------------------------------------------------------
+0. Script, not a one-off paste
+--------------------------------------------------------------------
+
+Write ONE converter, both directions:
+
+  $HOUSE/shared/ops/rmmv_json_house.py   (or %.harnesses/... until stable)
+
+  python3 rmmv_json_house.py import  --www <path-to-www> --out $HOUSE
+  python3 rmmv_json_house.py export  --house $HOUSE --www <path-to-www>
+  python3 rmmv_json_house.py roundtrip --www <path> --tmp /tmp/rt
+      # import then export; diff JSON keys you care about
+
+Rules for the .py:
+- Read img_root / project_root from
+  $HOUSE/shared/RMMV-ASSET-SOURCE-LOCATION.pdl
+  (SOURCE | img_root | ...). Do not bake USB paths into the script.
+- UTF-8. MV JSON is often UTF-8-sig. json.load with encoding utf-8-sig.
+- Index 0 in MV arrays is usually null (id 1 is first real row). Skip
+  nulls. House ids are 1-based strings or ints, never a leading null.
+- Never rewrite the MV project in place on import. Write house files.
+  Export writes a COPY of data/ unless --in-place (default off).
+- Roundtrip must be lossy-honest: print UNKNOWN keys to a sidecar
+  *.unmapped.txt so we do not drop Features/Traits silently.
+
+--------------------------------------------------------------------
+1. MV files (www/data/) vs house
+--------------------------------------------------------------------
+
+MV (JSON arrays of objects, rpg_objects.js shapes):
+
+  Actors.json Classes.json Skills.json Items.json Weapons.json
+  Armors.json Enemies.json Troops.json States.json Animations.json
+  Tilesets.json CommonEvents.json System.json MapInfos.json
+  Map001.json Map002.json ...
+  (Types live inside System.json: elements, skillTypes, ...)
+
+House (plain text, one writer per file):
+
+  Database rows  -> PDL  SECTION|KEY|VALUE  or TAG|id|k=v
+                   target: $HOUSE/shared/db/play/<Tab>.pdl
+                   (create this dir; do NOT only write
+                    #.desktop/db_hq_*.state.txt — that is a form buffer)
+
+  Common Events  -> $HOUSE/common_events/<slug>/event_pkg/
+                   pages/page_N/event.ir.pdl
+                   (same shape events-hq already authors)
+
+  Map            -> either
+                   (a) pchq  @.apps/piececraft-hq/pieces/system/maps/<id>/
+                       map.txt + events.pdl
+                   (b) livedesk desk  xyzfs/.../desks/<name>.pdl  DESK rows
+                   Pick (a) for RM-like maps first.
+
+  Terms          -> INI  [Basic Terms] / [Commands] / [Params]
+                   (db_hq_terms.state.txt is already this; do not TAG-split)
+
+  Switches/vars  -> switches.txt / variables.txt  name=value
+                   (System.json has switches[] / variables[] name lists)
+
+--------------------------------------------------------------------
+2. Event list: MV code -> house NODE type
+--------------------------------------------------------------------
+
+MV Map/CommonEvent "list" is:
+
+  { "code": 101, "indent": 0, "parameters": [ ... ] }
+
+House:
+
+  NODE | id=<n> type=<registry type> | key=value|key=value
+
+Map MV code -> registry type (enough to start; extend in the .py table):
+
+  101 Show Text          -> show_text     params[0] face, [4] text lines
+                            join text with \\n; speaker from face name
+  102 Show Choices       -> show_choices  choices=a,b,c  default=
+  103 Input Number       -> input_number
+  104 Select Item        -> select_item
+  105 Scrolling Text     -> scrolling_text
+  111/411/412 If/Else/End-> if / else / end     (indent in IR later)
+  112/413 Loop/Repeat    -> loop / repeat_above
+  113 Break Loop         -> break_loop
+  115 Exit Event         -> exit_event
+  117 Common Event       -> call_common_event
+  118/119 Label/Jump     -> label / jump_to_label
+  121 Control Switches   -> control_switch
+  122 Control Variables  -> control_variable
+  123 Self Switch        -> control_self_switch
+  124 Timer              -> control_timer
+  125 Change Gold        -> change_gold / take_gold (sign)
+  126/127/128 Items/Wpn/Arm -> change_items / change_weapons / change_armors
+  129 Party member       -> change_party_member
+  201 Transfer Player    -> transfer_player   map,xy  (add z later)
+  202 Set Vehicle        -> sidecar unmapped v1
+  205 Set Movement Route -> set_move_route
+  213/214 Show Anim/Erase-> show_animation / erase_event
+  221/222 Fadeout/in     -> fadeout_screen / fadein_screen
+  223/224/225 Tint/Flash/Shake -> tint_screen / flash_screen / shake_screen
+  230 Wait               -> wait
+  231/232 Show/Move Pic  -> unmapped v1
+  241-246 BGM/BGS/ME/SE  -> play_se for SE; others unmapped v1
+  250 SE                 -> play_se
+  301 Battle Processing  -> battle_processing
+  302 Shop Processing    -> shop_processing   goods=id,id
+  303 Name Input         -> unmapped v1
+  311-317 Actor change   -> change_hp/mp/tp/state/skill/equip/name/...
+  351-353 Menu/Save/Gameover -> change_menu_access / change_save_access
+  355 Script             -> comment  (never exec JS)
+  356 Plugin Command     -> comment  + unmapped
+  401-412 indent tails   -> fold into previous NODE or if/else
+
+If code not in table: NODE type=comment text=mv_code_<n>|json=<compact>
+AND append to *.unmapped.txt. Never drop.
+
+indent: store STATE | indent | N on the NODE or a field indent=N.
+House if/else is not full MV yet; import still, play may no-op.
+
+--------------------------------------------------------------------
+3. Database objects (Actors.json etc.)
+--------------------------------------------------------------------
+
+Each JSON object ~ { id, name, ... }. House row example:
+
+  ACTOR | id=1 | name=Harold | class_id=1 | init_level=1 | max_level=99
+        | character=Actor1|character_index=0 | face=Actor1|face_index=0
+        | mhp=...   (v1: flatten params[0] start; skip full 99-curves)
+
+Items.json:
+  ITEM | id=1 | name=Potion | price=50 | consumable=1 | itype=1
+       | effect=recover_hp | magnitude=...
+
+Keep unknown keys as EXTRA | id=1 | json={...} one line so export
+can restore. Features[] (code/dataId/value) -> TRAIT rows or EXTRA.
+
+System.json:
+  start mapId, start x/y, partyMembers[], gold, windowTone, title,
+  terms (Basic/Commands — already INI), switches[] names, variables[]
+  names, battleBGM, menuCommands, opt*.
+
+  SYSTEM | start_map=1 | start_xy=8,6 | gold=0 | party=1,2
+  plus Terms INI dump.
+
+Tilesets.json flags[] is a packed int array — v1 store as
+  TILESET | id=1 | name= | img_A1=... | flags_b64=...
+Do not pretend we have RM passage editor yet.
+
+--------------------------------------------------------------------
+4. Maps
+--------------------------------------------------------------------
+
+MapInfos.json -> MAPINFO | id=1 | name=Town | parent=0 | order=
+
+Map00N.json:
+  width, height, data[]  (layers * width * height, MV 6 layers)
+  events{}  keyed by event id
+
+House pchq v1:
+  maps/<slug>/map.txt     one layer (z0) as glyphs or tile ids
+  maps/<slug>/events.pdl  EVENT | x= y= | trigger= | cmds=
+  maps/<slug>/layers/zN.txt  if you keep more layers
+
+data[] layout: layer L, index = L*width*height + y*width + x
+  tile id 0 = empty. Autotiles: keep numeric id in map.txt for now;
+  do not expand A1/A2 in v1.
+
+Event on map: graphic + pages[]. Highest page with conditions = RM.
+House v1: one page -> one event_pkg under the map dir:
+  maps/<slug>/events/<eid>/pages/page_1/event.ir.pdl
+  trigger names: action -> on-click, player-touch, event-touch,
+  autorun, parallel.
+
+--------------------------------------------------------------------
+5. Export (house -> MV JSON)
+--------------------------------------------------------------------
+
+Inverse tables. Fill MV null at [0]. Required keys MV editor expects
+must exist even if 0 / "" / []. Read rpg_objects.js in img_root's
+sibling www/js if present (PDL engine_js_dir) for default objects.
+
+Do not export house comments as Script (355). Export as 108 Comment.
+
+If house NODE type has no MV code, emit 108 Comment with the type
+string so the project still opens in MV.
+
+--------------------------------------------------------------------
+6. What you (human) do
+--------------------------------------------------------------------
+
+1. Point RMMV-ASSET-SOURCE-LOCATION.pdl img_root / game_www_dir at a
+   real www (SpaceShop or a test project).
+2. Ask a coder: implement rmmv_json_house.py as above, no C, no
+   renderer. Roundtrip one Map001 + Items.json + one CommonEvent.
+3. Sanity: after import, open events-hq on the imported CE; open
+   map.txt in pchq File load. After export, open the copy in MV
+   (or at least json.load both and diff ids/names).
+4. Unmapped.txt must be empty for the demo map before you call it
+   done. Unknown plugin commands staying as comments is OK.
+
+--------------------------------------------------------------------
+7. Prompt paste for a weak model (give this + the .py path)
+--------------------------------------------------------------------
+
+Implement $HOUSE/shared/ops/rmmv_json_house.py (stdlib json/os/re only).
+Read PDL SOURCE keys from $HOUSE/shared/RMMV-ASSET-SOURCE-LOCATION.pdl.
+import/export/roundtrip as in this file. Skip JSON null slot 0.
+Map MV event codes via an explicit dict; unknown -> comment + unmapped
+log. Write Common Events to common_events/<slug>/event_pkg/.../event.ir.pdl
+NODE rows. Write db tables to shared/db/play/*.pdl not #.desktop form
+buffers. Do not exec MV Script. Do not modify khtpm_core_render.c.
+Compile nothing. Roundtrip Items.json + one map; print a short report.
