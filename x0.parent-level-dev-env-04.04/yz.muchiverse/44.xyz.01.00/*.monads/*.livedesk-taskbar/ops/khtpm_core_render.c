@@ -12236,14 +12236,21 @@ static int tp_main(int argc, char **argv) {
      * the FocusOut handler in the main event loop below). */
     swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | FocusChangeMask;
     swa.override_redirect = g_override_redirect; /* real X11 requirement whenever a window's own depth differs from its parent's (root's) - harmless to set unconditionally */
-    /* left as 0 (black) - tp_main() paints its own frame every tick from
-     * its tile/sprite renderer (it does NOT go through the shared
-     * redraw()/g_theme_bg path - that is HQ/default mode only), so this
-     * server-side backing colour only shows for one frame before first
-     * paint. Theming the tile renderer itself is separate, unstarted
-     * work; use tp_hex_pixel() (not the shared alloc_pixel(), whose
-     * dpy/cmap/screen globals tp_main never sets) if it's picked up. */
-    swa.background_pixel = 0;
+    /* The server-side backing colour, shown until this window paints its
+     * first real frame. tp_main() has its own tile/sprite renderer (NOT
+     * the shared redraw()/g_theme_bg path - HQ mode only), so this is
+     * the ONLY theme hook for the pre-first-paint gap. It used to be 0
+     * (black): direct report ("on new startups there are black squares
+     * that show up and disappear") - that is this, one unpainted entity
+     * window per still-spawning tile during the login storm, not
+     * zombies or debug. Theme it so the gap blends instead of flashing
+     * black. tp_hex_pixel() (local Display) - NOT the shared
+     * alloc_pixel(), whose dpy/cmap/screen globals tp_main never sets
+     * (that mistake closed the book-stack entity, see tp_hex_pixel's
+     * header). For cursword's ARGB visual a null pixel keeps it fully
+     * transparent, which is the intended look there. */
+    swa.background_pixel = g_is_cursword ? 0
+                        : tp_hex_pixel(dpy, screen_num, g_theme_bg);
 
     Window win = XCreateWindow(dpy, RootWindow(dpy, screen_num), 3 * GRID_CELL_PX, 3 * GRID_CELL_PX, WIN_PX, WIN_PX,
                                 0, win_depth, InputOutput, win_vis,
