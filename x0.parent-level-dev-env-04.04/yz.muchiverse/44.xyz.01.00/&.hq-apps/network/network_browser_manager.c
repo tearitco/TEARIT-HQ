@@ -85,6 +85,7 @@
 #include <signal.h>
 #include <errno.h>
 #include <poll.h>
+#include <fcntl.h>
 
 #include "nb_dom.h"
 
@@ -795,6 +796,8 @@ static void collect_scripts(const char *html, const char *page_url, FILE *js_out
 static int g_worker_fd = -1;
 static pid_t g_worker_pid = -1;
 static char g_worker_render[65536];   /* step 4: last RENDER rows, or "" */
+static char g_worker_err_path[PATH_BUF];  /* hygiene: worker stderr log */
+static long g_werr_tail = 0;              /* bytes of that log already surfaced */
 
 /* rung-6 slice 2: the worker's pending NAV request, captured from a NAV
  * frame during worker_load and consumed by the main loop on the next tick
@@ -979,6 +982,7 @@ static void collect_page_media(const char *html, const char *page_url) {
 
 #define WORKER_RECV_TIMEOUT_MS 3000   /* plan step 5: stall watchdog */
 
+static void worker_err_tail(void);   /* defined below worker_close */
 static int worker_send(const char *payload, size_t n) {
     if (g_worker_fd < 0) return 0;
     char lb[16];
@@ -1018,6 +1022,36 @@ static void worker_close(void) {
         kill(g_worker_pid, SIGKILL);          /* plan step 5: no strays */
         int st; waitpid(g_worker_pid, &st, 0);
         g_worker_pid = -1;
+        /* hygiene: surface whatever the worker wrote to its stderr since
+         * the last close (boot WERR| lines, page errors) on OUR stderr so
+         * the module log carries the cause without a post-mortem hunt. */
+        worker_err_tail();
+    }
+}
+
+/* Print the worker's stderr log lines that haven't been surfaced yet,
+ * one per [worker]-prefixed manager-stderr line. */
+static void worker_err_tail(void) {
+    if (!g_worker_err_path[0]) return;
+    FILE *f = fopen(g_worker_err_path, "rb");
+    if (!f) return;
+    if (fseek(f, 0, SEEK_END) != 0) { fclose(f); return; }
+    long total = ftell(f);
+    if (total <= g_werr_tail) { fclose(f); g_werr_tail = total; return; }
+    if (fseek(f, g_werr_tail, SEEK_SET) != 0) { fclose(f); return; }
+    static char buf[16384];
+    size_t got = fread(buf, 1, sizeof(buf) - 1, f);
+    long end = ftell(f);
+    fclose(f);
+    if (end > g_werr_tail) g_werr_tail = end;
+    buf[got] = 0;
+    char *line = buf;
+    for (char *p = buf; *p; p++) {
+        if (*p == '\n') {
+            *p = 0;
+            if (*line) fprintf(stderr, "[worker] %s\n", line);
+            line = p + 1;
+        }
     }
 }
 
@@ -1036,6 +1070,11 @@ static void worker_spawn(void) {
         dup2(sv[1], STDIN_FILENO);
         dup2(sv[1], STDOUT_FILENO);
         close(sv[0]); close(sv[1]);
+        /* hygiene: worker stderr → per-house log (append). The worker's
+         * WERR| boot lines / page errors land here and are surfaced on
+         * our stderr by worker_err_tail() when the worker closes. */
+        int er = open(g_worker_err_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
+        if (er >= 0) { dup2(er, STDERR_FILENO); close(er); }
         /* rung-6 slice 2: hand the worker its own cookie jar under this
          * house's #.desktop, so cross-LOAD cookies persist per browser
          * (not the shared ~/.config/nbjs/ fallback). */
@@ -1105,6 +1144,12 @@ static int worker_load(const char *js_path, const char *dom_path,
                 }
             }
             continue;   /* keep reading until STATUS */
+        }
+        /* hygiene: worker-side JS/boot diagnostics (ERROR| rows) go to the
+         * module log too, and don't abort the STATUS read mid-frame. */
+        if (strncmp(resp, "ERROR|", 6) == 0) {
+            fprintf(stderr, "[worker] %s\n", resp);
+            continue;
         }
         return strncmp(resp, "STATUS ok", 9) == 0;
     }
@@ -2615,6 +2660,7 @@ int main(int argc, char **argv) {
     path_join(g_forward_path, sizeof(g_forward_path), desktop, "network_browser_forward.txt");
     path_join(g_visit_log_path, sizeof(g_visit_log_path), desktop, "network_browser_history.log.txt");
     path_join(g_bookmark_path, sizeof(g_bookmark_path), desktop, "network_browser_bookmarks.txt");
+    path_join(g_worker_err_path, sizeof(g_worker_err_path), desktop, "network_browser_worker.err.log");
     path_join(g_tabs_path, sizeof(g_tabs_path), desktop, "network_browser_tabs.txt");
     path_join(g_tabs_root, sizeof(g_tabs_root), desktop, "nb_tabs");
     mkdir_p_local(g_tabs_root);

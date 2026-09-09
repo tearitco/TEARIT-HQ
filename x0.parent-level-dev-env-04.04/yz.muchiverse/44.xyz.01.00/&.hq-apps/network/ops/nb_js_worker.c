@@ -2376,6 +2376,25 @@ static void install_events_timers(duk_context *ctx) {
     duk_pop(ctx);
 }
 
+/* boot hygiene (2026-09-09): install_dom / install_events_timers run under a
+ * protected call so a throw (e.g. 'not configurable' from a duk_def_prop on a
+ * prelude stub) is caught, reported to stderr as WERR|, and the page still
+ * loads instead of the worker dying silently mid-boot. */
+static duk_ret_t boot_duk_install(duk_context *ctx) {
+    install_dom(ctx);
+    install_events_timers(ctx);
+    return 0;
+}
+static void boot_install_safe(duk_context *ctx) {
+    duk_push_c_function(ctx, boot_duk_install, 0);
+    if (duk_pcall(ctx, 0) != 0) {   /* nargs=0: callable at -1, this=undefined */
+        fprintf(stderr, "WERR| boot install: %s\n",
+                duk_safe_to_string(ctx, -1));
+        duk_pop(ctx);
+    }
+    duk_pop(ctx);
+}
+
 /* plan step 5: CPU budget for script eval. If page.js burns through
  * EVAL_BUDGET_SEC of CPU (while(true) {} and friends) SIGALRM fires while
  * Duktape is running; the deadly default _exit kills the worker mid-eval, the
@@ -2441,8 +2460,7 @@ static void run_page(void) {
     if (peval_budget(ctx, g_js_prelude) != 0) duk_pop(ctx);
     duk_pop(ctx);
 
-    install_dom(ctx);
-    install_events_timers(ctx);
+    boot_install_safe(ctx);
 
     char *src = NULL;
     size_t src_n = 0;
@@ -2573,8 +2591,7 @@ static int repl_main(void) {
     duk_pop(ctx);
     static const char empty_html[] = "<html><body></body></html>";
     g_dom_root = nb_parse_html(empty_html, sizeof(empty_html) - 1);
-    install_dom(ctx);
-    install_events_timers(ctx);
+    boot_install_safe(ctx);
 
     int tty_out = isatty(STDOUT_FILENO);
     char line[8192];

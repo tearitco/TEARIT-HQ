@@ -121,7 +121,10 @@ int main(int argc, char **argv) {
     for (;;) {
         if (!wreply(from_child[0], reply, sizeof(reply))) {
             fprintf(stderr, "FAIL: no reply from worker\n");
-            int st; waitpid(pid, &st, 0); return 1;
+            int st; waitpid(pid, &st, 0);
+            if (WIFSIGNALED(st))
+                fprintf(stderr, "harness: worker killed by signal %d - see WERR| stderr above\n", WTERMSIG(st));
+            return 1;
         }
         if (strncmp(reply, "RENDER\n", 7) == 0) continue;  /* step 4 rows */
         status = reply;
@@ -131,6 +134,7 @@ int main(int argc, char **argv) {
     if (!pass) printf("WORKER said: %s\n", status);
     wsend(to_child[1], "QUIT");
     int st; waitpid(pid, &st, 0);
+    if (WIFSIGNALED(st)) fprintf(stderr, "harness: worker killed by signal %d - see WERR| stderr above\n", WTERMSIG(st));
 
     printf("%s\n", pass ? "PASS: worker_dom_test -> STATUS ok" : "FAIL: worker_dom_test");
     return pass ? 0 : 1;

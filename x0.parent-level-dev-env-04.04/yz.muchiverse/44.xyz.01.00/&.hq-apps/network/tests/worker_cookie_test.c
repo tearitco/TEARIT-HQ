@@ -188,5 +188,6 @@ int main(int argc, char **argv) {
 
     wsend(to_child[1], "QUIT");
     int st; waitpid(pid, &st, 0);
+    if (WIFSIGNALED(st)) fprintf(stderr, "harness: worker killed by signal %d - see WERR| stderr above\n", WTERMSIG(st));
     return pass ? 0 : 1;
 }

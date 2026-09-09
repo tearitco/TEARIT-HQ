@@ -182,6 +182,7 @@ int main(int argc, char **argv) {
 
     wsend(to_child[1], "QUIT");
     int st; waitpid(pid, &st, 0);
+    if (WIFSIGNALED(st)) fprintf(stderr, "harness: worker killed by signal %d - see WERR| stderr above\n", WTERMSIG(st));
 
     printf("%s\n", pass ? "PASS: worker_storage_test -> localStorage jar + session scoping ok"
                        : "FAIL: worker_storage_test");
