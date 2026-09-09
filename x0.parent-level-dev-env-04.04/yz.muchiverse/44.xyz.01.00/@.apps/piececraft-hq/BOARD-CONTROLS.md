@@ -24,11 +24,13 @@ Last verified: 2026-09-09.
 | `Desk` | `menu desk` | dropdown of desks (maps) for the active world |
 | `Menu` / `Player` / `${clock}` | stubs / readout | `Menu`+`Player` are layout stubs; the clock is the **game** clock (§4) |
 
-**Known issue (2026-09-09):** mouse clicks on `!` and `_` (and the
-toolbar row) can be swallowed by the window's drag-start zone in
-`khtpm_core_render.c` — only `x` reliably takes a mouse click; the rest
-respond to keyboard nav (arrows + Enter). Fix tracked in
-`pchq-vs-tpmos.md`. Keyboard nav always works.
+**Fixed 2026-09-09:** mouse clicks on `!` / `_` were being swallowed by
+the window drag-start zone; and clicking the clock (`action="void"`)
+closed the whole window (`void` → `g_quit`). Both fixed in
+`khtpm_core_render.c` (`g_canvas_chrome_left_x`; `void` no-op for
+persistent/canvas windows). `!` toggles `TOGGLE_FULLSCREEN` but for a
+fixed-size canvas window that only repositions to 0,0 — a true
+fill-screen (canvas blit scaling) is still to do.
 
 ---
 
