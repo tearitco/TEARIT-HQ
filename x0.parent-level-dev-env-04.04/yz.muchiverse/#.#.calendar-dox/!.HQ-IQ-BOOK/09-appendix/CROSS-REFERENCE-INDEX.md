@@ -27,7 +27,7 @@
 | Open roadmap items | `08-roadmap/OPEN-ITEMS.md` |
 | Tilesets, palettes, event guides, MC/CDDA/Civ/GTA/RPG Maker clone map | `08-roadmap/TILESETS-EVENTS-AND-GAME-CLONES.md` |
 | My Palettes / Tiled / OHRRPGCE / tile-editor (design only) | `08-roadmap/design-docs/MY-PALETTES-TILED-OHR-TILE-EDITOR-DESIGN.md` |
-| Asset location PDLs (RMMV, Mineclonia, CDDA, emoji 17, video clip) | `#.#.calendar-dox/1.^V-hq/*-ASSET-SOURCE-LOCATION.pdl` + `UNICODE-EMOJI-SOURCE-LOCATION.pdl` + `VIDEO-ASSET-SOURCE-LOCATION.pdl` |
+| Asset location PDLs (RMMV, Mineclonia, CDDA, Tiled, OHR, emoji 17, video) | `NNEST-12.00/#.NNEST_ASSETS/*-ASSET-SOURCE-LOCATION.pdl` (moved 2026-09-08 out of calendar-dox `1.^V-hq/`) |
 | Per-tile event guides (Mineclonia / CDDA) | `44.xyz.01.00/#.ref/menu/event-guides/` |
 | Event command registry (live) | `44.xyz.01.00/#.ref/menu/event_commands.registry.pdl` |
 | 2026-08-31 in-progress network-HQ work | `08-roadmap/au-31/` |

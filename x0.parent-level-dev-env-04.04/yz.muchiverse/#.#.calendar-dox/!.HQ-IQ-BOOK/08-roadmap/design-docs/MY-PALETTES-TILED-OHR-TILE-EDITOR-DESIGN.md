@@ -51,7 +51,7 @@ House copy target (same outside-zip rule):
 `NNEST-12.00/#.NNEST_ASSETS/tiled-sprout-lands/`  
 plus optional later clone of Tiled `examples/` as `tiled-official-examples/`.
 
-PDL: `1.^V-hq/TILED-ASSET-SOURCE-LOCATION.pdl`.
+PDL: `NNEST-12.00/#.NNEST_ASSETS/TILED-ASSET-SOURCE-LOCATION.pdl`.
 
 ---
 
@@ -84,7 +84,7 @@ hand is desirable **before** an RMMV-autotile module. Tile-editor v1
 should expose a **passability overlay** (4-bit NESW) as a sidecar
 `.pass.pdl`, not baked into pixels.
 
-PDL: `1.^V-hq/OHRRPGCE-ASSET-SOURCE-LOCATION.pdl`.
+PDL: `NNEST-12.00/#.NNEST_ASSETS/OHRRPGCE-ASSET-SOURCE-LOCATION.pdl`.
 
 ---
 
@@ -125,7 +125,7 @@ event_guide.pdl   optional pointer into event-guides/
 Index: `xyzfs/users/<uid>/home/livedesk/my-palettes/index.pdl`
 `ENTRY | id=sprout-grass | style=tiled | label=Sprout Grass`
 
-House-wide demos still use `1.^V-hq/*-ASSET-SOURCE-LOCATION.pdl`.
+House-wide demos use `NNEST-12.00/#.NNEST_ASSETS/*-ASSET-SOURCE-LOCATION.pdl`.
 Import **copies** into the user library (do not alias `#.potential-assets`).
 
 ### 3.3 Loader styles (the dropdown)

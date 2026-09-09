@@ -88,7 +88,7 @@ Toys → **Piececraft-HQ** (not **Piececraft** / `piececraft-xyz`).
 | Board window | `@.apps/piececraft-hq/pchq-board.xhtpm` + projector + `pchq_board_action.sh` | 🟡 opens, WM-managed, Interact arms from vars; canvas reads live `canvas_raw` |
 | 3D/2D view | `&.widgits/board-viewer` POV `1`–`4` | ✅ engine |
 | Palettes | `button-pal.sh` cats | 🟡 pickers live; **no drop onto board or desk** |
-| Assets | `NNEST-12.00/#.NNEST_ASSETS/` via `1.^V-hq/*-ASSET-SOURCE-LOCATION.pdl` | ✅ C must not hardcode |
+| Assets | `NNEST-12.00/#.NNEST_ASSETS/` + `*-ASSET-SOURCE-LOCATION.pdl` **in that same dir** | ✅ C must not hardcode clone paths |
 | Sample maps | `pieces/system/maps/{mineclonia_sample,cdda_sample}/` | 🟡 File load copies `map.txt` → chunk |
 | Events editor | `&.widgits/events-hq` | ✅ IR → pal → `cmd_N.sh` |
 | Common Events | db-hq-pal CE tab | 🟡 in-tab; other tabs are field tiles |
@@ -550,8 +550,8 @@ Short-term placer fixes if place must work before the compositor
   and use overlay.pdl even with the shim).
 - One placer for rmmv/pc/cdda/emoji.
 
-Old `tp_range_grid.+x` (AU14 popup diamond, not map-aligned) is
-**not** the compositor. Do not revive it as Civ range.
+`tp_range_grid.+x` (AU14 screen-space diamond) was **deleted 2026-09-08**.
+Do not revive it. Pet menu Move is a no-op until `select_in_range`.
 
 **`tint_screen` vs the amber placer (wording):** `tint_screen` is an
 RM **event command** that dyes the whole playfield one color (night,

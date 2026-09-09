@@ -113,9 +113,6 @@ if [ -f "$SHARED/ops/build_sprite_phymoji_gen.sh" ]; then
     fi
 fi
 
-echo "-- window-position/range-grid helper tp_range_grid.c -> +x/tp_range_grid.+x"
-$CC $CFLAGS $X11_FLAGS -o +x/tp_range_grid.+x tp_range_grid.c -lX11 -lXext
-
 # 2026-08-18: taskbar's terminal ASCII mirror (HQ menu "cli" row) - two
 # binaries, matching TPMOS's real renderer.c/keyboard_input.c split
 # (never combined - see khtpm_strip_render_ascii.c's own header comment

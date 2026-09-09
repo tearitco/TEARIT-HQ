@@ -49,9 +49,11 @@ landed 2026-09-08). Design: `08-roadmap/design-docs/TILE-SYSTEM-DESIGN.md`,
 
 ## 2. Asset roots (outside the house zip)
 
-Same rule as RMMV: PNGs do not live inside `44.xyz.01.00`. Pointers:
+Same rule as RMMV: PNGs do not live inside `44.xyz.01.00`. Pointer
+PDLs live **next to the clones** (`NNEST-12.00/#.NNEST_ASSETS/`), not
+in calendar-dox. C: `house_root/../../../#.NNEST_ASSETS/<name>.pdl`.
 
-| What | PDL (`#.#.calendar-dox/1.^V-hq/`) | On-disk root |
+| What | PDL (`NNEST-12.00/#.NNEST_ASSETS/`) | On-disk root |
 |---|---|---|
 | RPG Maker MV img | `RMMV-ASSET-SOURCE-LOCATION.pdl` `img_root` | `NNEST-12.00/#.NNEST_ASSETS/rmmv-www-img` |
 | Mineclonia / MC-like | `MINECLONIA-ASSET-SOURCE-LOCATION.pdl` `img_root` | `NNEST-12.00/#.NNEST_ASSETS/mineclonia/mods` |

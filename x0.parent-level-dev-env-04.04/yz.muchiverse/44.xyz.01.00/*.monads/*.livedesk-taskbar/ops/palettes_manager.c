@@ -443,9 +443,16 @@ static void publish_elements(void) {
  * hardcoded `&.widgits/palettes/tilesets/rmmv`, and no `/media/.../
  * www/img` USB fallback anymore - img_root is the single source of
  * truth for where the house's own stable local copy lives. */
+/* SOURCE PDLs sit beside the clones (NNEST-12.00/#.NNEST_ASSETS),
+ * not in calendar-dox. house_root is 44.xyz.01.00. */
+static void asset_source_pdl_path(const char *house_root, const char *name,
+                                  char *out, size_t outsz) {
+    snprintf(out, outsz, "%s/../../../#.NNEST_ASSETS/%s", house_root, name);
+}
+
 static int rmmv_img_root(const char *house_root, char *out, size_t outsz) {
     char pdl[PATH_BUF];
-    snprintf(pdl, sizeof(pdl), "%s/../#.#.calendar-dox/1.^V-hq/RMMV-ASSET-SOURCE-LOCATION.pdl", house_root);
+    asset_source_pdl_path(house_root, "RMMV-ASSET-SOURCE-LOCATION.pdl", pdl, sizeof(pdl));
     FILE *f = fopen(pdl, "r");
     if (!f) return 0;
     char line[PATH_BUF];
@@ -1186,7 +1193,7 @@ static void publish_debug(void) {
  * Grid = 16×16 (or scaled) PNG thumbs → sprite.csv like rmmv. */
 static int pc_img_root(char *out, size_t outsz) {
     char pdl[PATH_BUF];
-    snprintf(pdl, sizeof(pdl), "%s/../#.#.calendar-dox/1.^V-hq/MINECLONIA-ASSET-SOURCE-LOCATION.pdl", g_house_root);
+    asset_source_pdl_path(g_house_root, "MINECLONIA-ASSET-SOURCE-LOCATION.pdl", pdl, sizeof(pdl));
     FILE *f = fopen(pdl, "r");
     if (!f) return 0;
     char line[PATH_BUF];
@@ -1352,7 +1359,7 @@ static void publish_piececraft(void) {
 
 static int cdda_img_root(char *out, size_t outsz) {
     char pdl[PATH_BUF];
-    snprintf(pdl, sizeof(pdl), "%s/../#.#.calendar-dox/1.^V-hq/CDDA-ASSET-SOURCE-LOCATION.pdl", g_house_root);
+    asset_source_pdl_path(g_house_root, "CDDA-ASSET-SOURCE-LOCATION.pdl", pdl, sizeof(pdl));
     FILE *f = fopen(pdl, "r");
     if (!f) return 0;
     char line[PATH_BUF];
@@ -1538,7 +1545,7 @@ static void publish_cdda(void) {
 
 static int pdl_img_root_named(const char *pdl_name, char *out, size_t outsz) {
     char pdl[PATH_BUF];
-    snprintf(pdl, sizeof(pdl), "%s/../#.#.calendar-dox/1.^V-hq/%s", g_house_root, pdl_name);
+    asset_source_pdl_path(g_house_root, pdl_name, pdl, sizeof(pdl));
     FILE *f = fopen(pdl, "r");
     if (!f) return 0;
     char line[PATH_BUF];
@@ -2058,7 +2065,7 @@ int main(int argc, char **argv) {
         g_source_path[0] = '\0';
     } else if (strcmp(g_category, "emojis") == 0) {
         char pdl[PATH_BUF];
-        snprintf(pdl, sizeof(pdl), "%s/../#.#.calendar-dox/1.^V-hq/UNICODE-EMOJI-SOURCE-LOCATION.pdl", g_house_root);
+        asset_source_pdl_path(g_house_root, "UNICODE-EMOJI-SOURCE-LOCATION.pdl", pdl, sizeof(pdl));
         g_source_path[0] = '\0';
         FILE *pf = fopen(pdl, "r");
         if (pf) {

@@ -98,7 +98,7 @@ static void blit_poster(int dx, int dy){
  * (same pattern as palettes img_root). No hardcoded NNEST_ASSETS. */
 static int pdl_source_value(const char *pdl_name, const char *key, char *out, size_t outsz){
     char pdl[PL];
-    snprintf(pdl, sizeof(pdl), "%s/../#.#.calendar-dox/1.^V-hq/%s", house_root, pdl_name);
+    snprintf(pdl, sizeof(pdl), "%s/../../../#.NNEST_ASSETS/%s", house_root, pdl_name);
     FILE *f = fopen(pdl, "r");
     if(!f) return 0;
     char line[PL];

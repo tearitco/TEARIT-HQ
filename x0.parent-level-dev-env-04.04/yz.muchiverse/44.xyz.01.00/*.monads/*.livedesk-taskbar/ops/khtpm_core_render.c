@@ -11722,13 +11722,8 @@ static void draw_context_menu(Display *dpy, Window popup, GC gc, MethodItem *ite
     }
 }
 
-/* REAL, 2026-08-05: the range-finder grid used to be drawn HERE as an
- * opaque popup (real, but covered the dog/nearby tiles - direct
- * correction: "it should just be a transparent outline like a png").
- * Moved to a real standalone binary, ops/tp_range_grid.c, using the
- * X11 Shape Extension (same real transparency technique this file's
- * own sprite rendering already uses) - launched via system() from the
- * "OPEN_RANGE_GRID" dispatch below instead of drawn inline. */
+/* 2026-09-08: tp_range_grid.+x deleted. Map range is range_overlay.pdl
+ * (vision §6.7), not a screen-space diamond popup. */
 
 static void close_context_menu(Display *dpy, Window popup) {
     if (g_grab_pointer) XUngrabPointer(dpy, CurrentTime);
@@ -12314,7 +12309,7 @@ static int tp_main(int argc, char **argv) {
     int user_popup_x = 0, user_popup_y = 0;
     MethodItem user_methods[4];
     snprintf(user_methods[0].label, sizeof(user_methods[0].label), "Move");
-    snprintf(user_methods[0].action, sizeof(user_methods[0].action), "OPEN_RANGE_GRID");
+    snprintf(user_methods[0].action, sizeof(user_methods[0].action), "void");
     snprintf(user_methods[1].label, sizeof(user_methods[1].label), "Inventory");
     snprintf(user_methods[1].action, sizeof(user_methods[1].action), "void");
     snprintf(user_methods[2].label, sizeof(user_methods[2].label), "Skill");
@@ -13267,35 +13262,6 @@ static int tp_main(int argc, char **argv) {
                 }
                 close_context_menu(dpy, user_popup_win);
                 user_popup_win = 0;
-                if (strcmp(user_methods[row].action, "OPEN_RANGE_GRID") == 0) {
-                    /* REAL FIX 2026-08-05: this used to draw an OPAQUE
-                     * popup right here (real, but covered up the dog
-                     * and nearby tiles - direct correction: "it should
-                     * just be a transparent outline like a png").
-                     * Consolidated into tp_range_grid.+x, a real
-                     * standalone binary using the X11 Shape Extension
-                     * (same technique this file's own sprite
-                     * transparency already uses) so only the outline
-                     * strokes are opaque - launched here instead of
-                     * duplicating that logic. Centered on THIS
-                     * window's own real position (win_x/win_y, the
-                     * same coords XMoveWindow already uses), not the
-                     * submenu popup's location - direct correction
-                     * ("the range finder should be around the dog
-                     * tho, its off center"). */
-                    int grid_size = 5 * GRID_CELL_PX;
-                    int gx = win_x + WIN_PX / 2 - grid_size / 2;
-                    int gy = win_y + WIN_PX / 2 - grid_size / 2;
-                    char self_path[TP_PATH_BUF];
-                    if (self_exe_path(self_path, sizeof(self_path))) {
-                        char *ops_dir = dirname(self_path);
-                        char cmd[TP_PATH_BUF * 2];
-                        snprintf(cmd, sizeof(cmd), "'%s/tp_range_grid.+x' %d %d >/dev/null 2>&1 &",
-                                 ops_dir, gx, gy);
-                        int rc = system(cmd);
-                        (void)rc;
-                    }
-                }
                 need_redraw = 1;
             } else if (input_popup_win && xev.type == Expose && xev.xany.window == input_popup_win) {
                 char disp[300];
