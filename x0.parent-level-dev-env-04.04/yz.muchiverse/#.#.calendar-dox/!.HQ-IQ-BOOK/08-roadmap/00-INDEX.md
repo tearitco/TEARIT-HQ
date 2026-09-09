@@ -25,7 +25,8 @@
 - `design-docs/PIECECRAFT-HQ-GAME-EDITOR-AND-PLAY.md` — **2026-09-08
   studio vision + implementer briefing**: desktop is an RM map too;
   play does not hide chrome; Transfer/Shop/Battle/db guidance; CDDA /
-  MC / Civ / Pokemon as event skins (§§6–9).
+  MC / Civ / Pokemon as event skins (§§6–9). Range overlay §6.7
+  (priority; builtin compositor+BFS, plugin = registry+db).
 - `TILESETS-EVENTS-AND-GAME-CLONES.md` — **2026-09-08 find-it-later map**:
   palettes categories (RMMV / Mineclonia / CDDA / emoji / tiled / ohr),
   outside-zip asset PDLs, event-guide sheets, registry + `mr_world`,

@@ -437,21 +437,144 @@ Load = copy back + Transfer-without-fade to saved map_id/xy. **Do not**
 re-run Autoruns that already completed unless their page conditions
 still match (self-switch A on a chest must stay ON).
 
+### 6.7 Range overlay (Civ / tactics / AoE) — **priority**, split builtin vs plugin
+
+Tactics games (Civ unit move, Fire Emblem, XCOM, FFT, RM “grid battle”
+plugins) all need the same picture: **blue tiles you can walk to, red
+tiles you can attack, a path ghost, click only those cells.** Owner:
+treat this as a **priority**, not a Civ polish item after shops.
+
+RPG Maker **does not** ship this on the map. Ace/MV give passability +
+screen tint. Grid-range is always a **plugin** there (Yanfly, Victor,
+VisuStella) because RM combat is a separate scene. **This house is
+different:** the map *is* the tactics board (desktop pals, pchq
+chunks). So we do **not** copy “it’s only a plugin.” We also do **not**
+put Civ math in `khtpm_core_render.c` or `bv_render_3d.c`.
+
+**Verdict (do this split, not a single blob):**
+
+| Piece | Builtin or plugin? | Why |
+|---|---|---|
+| **Passability** (`pass=0\|1`, 4-dir, z-up/down) | **Builtin map data** | Transfer, walking, CDDA doors, MC gravity, overlay BFS all need it. `terrain_legend.txt` column now. |
+| **Cell overlay compositor** | **Builtin, generic** | Board-viewer already blits `rgb_frame_3d_overlay.raw`. Livedesk/pchq must **tint cells from a list file**, same way `tint_screen` tints the whole view. No game name in C. |
+| **Reachability BFS** (walk cost, occupancy) | **Builtin map service** (small `+x` / one C helper next to chunks, **not** the khtpm renderer) | Dijkstra/BFS on the grid is engine-shaped (RM already pathfinds internally). Reused by overlay, NPC `move_route` “approach”, CDDA zeds, Pokemon wandering. |
+| **Range rules** (min/max, Manhattan vs Chebyshev vs facing, “attack after move”, min-range bows, ZoC) | **Plugin = db + event, not a .so** | Skills/Weapons `range_min,range_max,range_shape`; Actor/unit `move_points,move_cost`. Civ vs FE vs XCOM differ **here only**. |
+| **When it shows / what click does** | **Plugin = registry cmd + CE** | `show_range` / `hide_range` / `select_in_range` as events-hq commands. Civ “select unit” CE writes the overlay; RM spell AoE uses the same cmd. |
+
+“Plugin” in this house means **registry command + pdl data + Common
+Event**, the RM meaning — **not** a dlopen module and **not** a
+`g_is_civ` branch.
+
+**Do not:**
+
+- Draw range inside `khtpm_core_render.c` with a Civ flag.
+- Fork a second overlay path for desktop vs pchq (one `range_overlay.pdl`
+  both compositors read).
+- Wait for a full battle engine — overlay is useful **before** battle
+  v0 (move preview, Transfer dest, explosion radius, edit collision
+  ghosts).
+- Use whole-screen `tint_screen` as a fake range (you cannot tint
+  individual cells that way).
+- Precompute every unit’s range every frame. Recompute **on select**
+  and when passability/occupancy changes.
+
+**File contract (implementers — keep this shape):**
+
+```
+# range_overlay.pdl  (map-local; empty = hidden)
+OVERLAY | on=1 origin=4,7,0 kind=move
+CELL    | x=4 y=7 z=0 kind=origin
+CELL    | x=5 y=7 z=0 kind=move cost=1
+CELL    | x=6 y=7 z=0 kind=move cost=2
+CELL    | x=6 y=6 z=0 kind=attack
+CELL    | x=5 y=7 z=0 kind=path   # optional walk ghost
+```
+
+Kinds to support v1: `origin`, `move`, `attack`, `path`, `aoe`,
+`blocked` (optional). Colors are **theme/CSS or one kv map**
+(`move=#4a7`, `attack=#c44`) — not hardcoded per clone.
+
+**BFS rules v1 (RM + FE + Civ all survive this):**
+
+- 4-dir default; `shape=diamond` (Manhattan) for move; `shape=square`
+  (Chebyshev) optional for king-move / Civ diagonal later.
+- Cost: flat 1, or `move_cost` on the glyph (road 1, forest 2, mountain
+  impass). Civ **needs** cost; FE too. Pokemon overworld can ignore
+  cost.
+- Occupancy: allied units block **through** but you may **pass**
+  (FE) vs **stop** (Civ). One flag `pass_units=0|1` on the overlay
+  request. Do not special-case “Civ.”
+- Attack overlay = either (a) cells within `range_min..range_max` of
+  **origin** (ranged before move) or (b) union of ranges from every
+  **reachable move cell** (move-then-shoot). Request flag
+  `attack_from=origin|move_cells`. Civ ranged bombard = origin;
+  FE swords = move_cells then adjacent.
+- Z: same z only in v1. Stairs/ladders later (CDDA).
+
+**New registry cmds (plugin surface, kv like shop today):**
+
+- `show_range` — PARAMS: `origin`, `move_pts`, `atk_min,atk_max`,
+  `shape`, `attack_from`. Writes `range_overlay.pdl` via the BFS
+  helper.
+- `hide_range` — empty file / `on=0`.
+- `select_in_range` — **blocks** the interpreter until the player
+  clicks a `CELL` of allowed `kind` (or cancel). Writes
+  `selected_tile=x,y,z,kind`. Then the event `move_route` / Transfer
+  same-map / `battle_processing`.
+
+That last cmd is the tactics **menu**. RM Show Choices is the v0
+stand-in only until this exists; **do not ship Civ with only
+choices** if overlay is a priority.
+
+**Who paints:** compositor already has 3D overlay blit. Cell tint
+should be **under** pals/units, **over** terrain (RM events sit on
+tiles). Desktop map: same — tint desk cells under pals. **Chrome
+stays**; this is map paint, not a new window.
+
+**Reuse beyond Civ:**
+
+| Game | Overlay use |
+|---|---|
+| Civ / tactics | move + attack on unit select |
+| RM field | spell AoE, “where does this Transfer land”, shop? no |
+| Pokemon | optional move tiles; wild-grass is **not** this |
+| CDDA | explosion / fire radius, throw range, stairs preview |
+| Minecraft | torch light later; v1 skip. Chest radius? no |
+| Edit mode | collision ghosts / event markers **may** use `kind=blocked` — still not hiding chrome |
+
+**Sequence bump (priority vs Loop C):** passability column **before**
+or **with** Transfer (walking is Transfer’s cousin). Overlay compositor
++ empty pdl **next** (you can stamp fake CELLs and see tints — that is
+the hardware proof). BFS helper + `show_range` **before** Civ End Turn
+and **before** pretty battle UI. `select_in_range` before Civ is
+playable. Shop/battle v0 can stay parallel; **do not** block overlay
+on battle.
+
+**Acceptance:** select a pal, `show_range` with move_pts=3, blue cells
+appear on **desktop or pchq**, click a blue cell, pal moves, overlay
+clears. Red attack cells optional in the same demo. No renderer
+`g_is_*`.
+
 ---
 
 ## 7. How a lesser model should sequence the work
 
-Do **not** build a combat engine before Transfer. Suggested PRs:
+Do **not** build a combat engine before Transfer. **Do** land range
+overlay early (it is not Civ DLC). Suggested PRs:
 
 1. **Play interpreter** that runs `cmd_N.sh` / registry templates in
    order, honors Wait/Text, on the **focused map** (desk or pchq).
 2. **System.pdl + Items.pdl + Actors.pdl** writers from db-hq save
    (even if the UI stays field tiles — a “flush to play files” script
    is enough).
-3. **Transfer consumer** (desk and pchq).
-4. **Shop v0** (choices + gold + items).
-5. **Battle v0** (choices + one enemy hp file).
-6. **Save slot** as directory copy.
+3. **Passability** on glyphs + **Transfer consumer** (desk and pchq).
+4. **Range overlay compositor** (reads `range_overlay.pdl`; fake cells
+   tint on hardware) — **priority**.
+5. **BFS helper + `show_range` / `hide_range` / `select_in_range`**.
+6. **Shop v0** (choices + gold + items).
+7. **Battle v0** (choices + one enemy hp file) — overlay attack cells
+   can target this later.
+8. **Save slot** as directory copy.
 
 Guides (`event-guides/`) already list `need=transfer_player` etc.
 When a consumer lands, **remove that id from TILE.need** and add it to
@@ -557,6 +680,7 @@ Not a full 4X sim.
 | Units | pals with move_route + Action | RM events that the **player** “possesses” is awkward. v0: one unit = the hero; other units = events you Action to “select” (switch) then Transfer-in-place as that pal. v1 later: party = army list in Actors. |
 | End turn | Common Event called from a **desk pal** “Next Turn” or Show Choices | CE: gold income, city growth variable, AI move_route, encounter check. |
 | Combat | `battle_processing` | Troop = the other unit’s enemy row. Win → erase loser event (self-switch + graphic none). |
+| **Move / attack range overlay** | **§6.7 builtin compositor + BFS; rules in db** | **Priority.** Unit Action → `show_range` (move blue, attack red) → `select_in_range` → `move_route` or Battle. Not a Civ-only plugin; not renderer C. |
 | Diplomacy / tech | switches + variables + Show Choices | “Open borders” = switch. Tech tree = variables; CE gates units. **Do not** build a tech UI; a list of choices is RM-correct. |
 | Fog | skip v1 **or** tint cells | Not a new engine. |
 | Save | desk snapshot | Civ save **is** the desktop save. |
@@ -617,3 +741,5 @@ CE, System start map. Pokemon **is** the RM template with grass CE.
 - Playable GTA before a tileset PDL.
 - Using `event.commands.remaining.txt` as truth.
 - Forking the interpreter per clone.
+- Range overlay as `g_is_civ` / khtpm renderer branch, or as a dlopen
+  plugin. Split is §6.7: builtin tint+BFS, plugin = registry+db.
