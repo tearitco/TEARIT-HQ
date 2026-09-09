@@ -396,3 +396,38 @@ are follow-ons. None of P-5..7 touch Interact semantics.
 - `1.TPMOS…/pieces/display/renderer.c`,
   `pieces/chtpm/plugins/chtpm_parser.c` main loop (marker-pulse
   discipline).
+
+---
+
+## APPENDIX B — P-5 landed (2026-09-09)
+
+`&.widgits/board-viewer/`:
+- **NEW `ops/bv_dispatch.c`** — the one-shot diamond op (drain ALL of
+  `interact_relay.txt` → `bv_menu_input.+x` per key → `bv_render_3d` +
+  `bv_compose_frame` + `frame_changed` marker ONCE; nothing on an idle
+  tick). Direct port of `game_dispatch.c`'s shape.
+- **`pal/main_module.pal`** → `loop: exec ./ops/+x/bv_dispatch.+x ;
+  sleep 16667`. Old loop kept verbatim as `pal/main_module_legacy.pal`
+  (rollback = swap the filename back).
+- `scripts/build.sh` builds `bv_dispatch.+x`.
+
+Affects every board-viewer consumer (pc-hq, and anyone who opens "View
+Board" from civ-txt / piececraft-xyz — those projects' OWN
+`pal/main_module.pal` are separate files, untouched, still on the old
+loop until ported).
+
+**Measured (fresh board-viewer session, 60 keys injected as one burst):**
+- diamond loop: **~150 keys/s drained, 3 renders for 60 keys**.
+- old loop: ~11-20 moves/s, one render per key.
+- **≈10× throughput**, render count down from 1-per-key to ~1-per-20-keys.
+
+Remaining cost is the per-key `bv_menu_input.+x` fork (60 forks for 60
+keys). **P-6** (batch keys into one `bv_menu_input` call, or inline its
+~200-line move core) would close most of the rest — its own follow-up.
+**P-7** (marker-drive the khtpm canvas repaint) still open.
+
+End-to-end held-key xelector A/B in the live pc-hq window is pending the
+`button.sh engine` split (PIECECRAFT-HQ-LAUNCH-STANDARDIZE.md steps 2-3)
+— the current `button.sh run` chain is too flaky under the detached
+taskbar launch to bring the full game+board stack up reliably for a
+clean measurement.

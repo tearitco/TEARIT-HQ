@@ -1,36 +1,24 @@
-# main_module.pal - board-viewer's own dedicated module, per
-# xyzos-standards §41's per-screen module convention. Same proven
-# idle-sync/screen_changed-diff shape every project in this house uses.
+# main_module.pal - board-viewer's dedicated module.
+#
+# TPMOS DIAMOND loop (pchq-vs-tpmos.md APPENDIX A, plan P-5), ported
+# from 101.mutaclsym...19.00/pal/game_module.pal. The old pre-diamond
+# loop (one key per iteration, bv_menu_input + bv_render_3d + bv_compose
+# _frame + hit_frame every 30ms) is pal/main_module_legacy.pal, kept for
+# rollback.
+#
+# ops/+x/bv_dispatch.+x does the whole tick: drain EVERY pending key
+# from interact_relay.txt, run bv_menu_input per key, then bv_render_3d
+# + bv_compose_frame + frame_changed marker ONCE - and nothing at all on
+# an idle tick.
 li x1, 0
 
-li x9, 0
-bv_menu_input x9
+# one unconditional render at boot so view.txt / the 3D overlay exist
+# before the first key
 bv_render_3d
 bv_compose_frame
 hit_frame
-read_pos x7, "pieces/display/bv_screen_changed.txt"
 
 loop:
-li x9, 0
-bv_menu_input x9
-read_pos x8, "pieces/display/bv_screen_changed.txt"
-beq x7, x8, check_key
-addi x7, x8, 0
-j render
-
-check_key:
-read_history pieces/apps/player_app/interact_relay.txt x2, x1
-beq x2, x0, no_key
-bv_menu_input x2
-j render
-
-no_key:
-sleep 30000
-j loop
-
-render:
-bv_render_3d
-bv_compose_frame
-hit_frame
-sleep 30000
+exec ./ops/+x/bv_dispatch.+x
+sleep 16667
 j loop

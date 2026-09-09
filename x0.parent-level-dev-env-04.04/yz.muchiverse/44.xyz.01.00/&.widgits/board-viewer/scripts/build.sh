@@ -18,6 +18,12 @@ echo "--- Building board-viewer ops ---"
 gcc $CFLAGS -o "ops/+x/bv_compose_frame.+x" "ops/bv_compose_frame.c"
 gcc $CFLAGS -o "ops/+x/bv_menu_input.+x" "ops/bv_menu_input.c" -lm
 gcc $CFLAGS -fopenmp -o "ops/+x/bv_render_3d.+x" "ops/bv_render_3d.c" -lm
+# TPMOS-diamond game loop (pchq-vs-tpmos.md P-5): pal/main_module.pal is
+# `loop: exec ./ops/+x/bv_dispatch ; sleep 16667`. bv_dispatch drains
+# ALL of interact_relay.txt then renders once (was 1 key + 4 fork-ops +
+# raymarch per 30ms iteration). pal/main_module_legacy.pal is the old
+# loop, kept for rollback.
+gcc $CFLAGS -o "ops/+x/bv_dispatch.+x" "ops/bv_dispatch.c"
 # Real house-wide widget discovery/registration (Phase 0 follow-up,
 # 2026-08-03 - see ops/ledger_append.c's own header comment: ported
 # from file-menu's own proven mechanism, "default" xyzfs fallback so
