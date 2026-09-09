@@ -239,3 +239,46 @@ if `$DISPLAY` is set.
   (`livedesk:open-piececraft-hq`).
 - `@.apps/piececraft-hq/button.sh`, `ops/pchq_board_projector.c`,
   `pchq-board.xhtpm`, `toy.pdl`.
+
+---
+
+## 6. What actually landed (2026-09-09)
+
+- **Step 1** (`389809ea`): `open_pchq_board.sh` + manager dispatch +
+  `toy.pdl` removal — then `5dda83a4` corrected the menu choice (keep
+  pc-hq in the toys menu via the standard launcher, drop
+  `@.apps/piececraft-xyz/toy.pdl` instead).
+- **Steps 2-3 — folded into the launcher, not a button.sh rewrite**
+  (`fd3cc6ae`): `button.sh` is 515 lines of hard-won fixes, so instead
+  of restructuring it:
+  - `open_pchq_board.sh` reaps orphaned engine procs (cwd under a
+    project session dir, `ppid∈{1,1003}`, not part of a live session)
+    and `rm -rf`s the dead session dirs, on every launch.
+  - On a cold engine start it registers the detached `button.sh run`
+    process group in `livedesk_proc_list.txt` (+ `pieces/system/
+    engine.pid`). A taskbar quit's `kill(-pgid, SIGTERM)` now reaches
+    it → `button.sh`'s own `EXIT INT TERM` trap does the clean
+    `rm -rf` + `kill_own_*`. The trap was always correct; nothing ever
+    signalled it under the old detached launch.
+  - `button.sh run` itself is untouched — still the terminal/dev path,
+    still the thing the launcher spawns for the engine.
+- **Projector** (`fd3cc6ae`): `pchq_board_projector.c` cached the
+  session-dir discovery — `find_board_session()` was `popen()`-ing
+  `ledger_peers.+x` every 300 ms loop. Verified: 0 execs / 2 s.
+- **Interact + File button** (`dc111cf4`, separate track): the
+  `g_interact_relay_on && g_x11_window_focused` gate in `handle_key()`
+  left Interact stuck (Esc dead, toolbar still live) when a spurious
+  `FocusOut(NotifyNormal)` pinned `g_x11_window_focused=0` on the
+  WM-managed XWayland board window. Now: a real KeyPress re-asserts the
+  flag, the gate is `g_interact_relay_on` alone, and an armed key is
+  always consumed (never local nav). `tb-file` → `pchq_board_action.sh
+  file-hq` (File Explorer widget) instead of a dropdown; the dead File
+  dropdown block was removed from `pchq-board.xhtpm`. Root: `74488d53`
+  (grok, 2026-09-08) — only compiled into the running strip on
+  2026-09-09.
+
+### One-time cleanup done this session
+Reaped 35 orphaned engine processes (sessions back to ~03:30) and
+`rm -rf`'d ~19 stale session dirs across
+`@.apps/piececraft-{hq,xyz}/pieces/sessions/` and
+`&.widgits/board-viewer/pieces/sessions/`.
