@@ -5134,7 +5134,7 @@ static void assign_nav_and_layout(void) {
                     tab->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = tab;
                     tx += tw + scaled(3);
                 }
-                if (tx + scaled(6) > g_win_w) { g_win_w = tx + scaled(6); g_window->w = g_win_w; }
+                if (!g_user_resizable && tx + scaled(6) > g_win_w) { g_win_w = tx + scaled(6); g_window->w = g_win_w; }
                 tabbar->x = 0; tabbar->y = CHROME_H + canvas_tabbar_h; tabbar->w = g_win_w; tabbar->h = row_h_tb;
                 css_compute_style(&g_sheet, tabbar->tag, tabbar->id, tabbar->classes, tabbar->n_classes, 0, &tabbar->style);
                 canvas_tabbar_h += row_h_tb;
@@ -5194,6 +5194,14 @@ static void assign_nav_and_layout(void) {
                 if (!cw) cw = g_win_w - 12;
                 if (!ch) ch = 360;
                 item->x = 6; item->y = y; item->w = cw; item->h = ch;
+                /* user-resizable: centre the fixed canvas in the (larger)
+                 * window instead of pinning it top-left with dead space.
+                 * P3 replaces this with a canvas that fills the window. */
+                if (g_user_resizable) {
+                    if (cw < g_win_w - 12) item->x = (g_win_w - cw) / 2;
+                    int avail = g_win_h - y - 8;
+                    if (ch < avail) item->y = y + (avail - ch) / 2;
+                }
                 /* Grow the window to the framebuffer - UNLESS the user
                  * owns the size (class="user-resizable"), where the
                  * canvas just clips/letterboxes at whatever size they
@@ -5254,7 +5262,10 @@ static void assign_nav_and_layout(void) {
             y += item_h;
         }
         if (row_x) y += row_h + 4;
-        g_win_h = y + 8;
+        /* user owns the height when class="user-resizable" - don't
+         * shrink-wrap the window to the canvas/toolbar content. */
+        if (!g_user_resizable) g_win_h = y + 8;
+        else if (g_win_h < y + 8) g_win_h = y + 8;   /* but never clip content */
         }
     }
     if (!window_is_dock() && g_window) {
@@ -8594,20 +8605,38 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
     }
     if (ev->type == ButtonRelease && ev->xbutton.button == 1) {
         g_popup_dragging = 0;  /* REAL, NEW 2026-08-29 (TASK 1) */
-        g_win_resizing = 0;
+        if (g_win_resizing) {
+            /* commit: ONE relayout + redraw now that the drag is done.
+             * Doing it per-MotionNotify feeds back through the
+             * has_canvas/toolbar layout (which only ever grows g_win_w,
+             * plus a per-pass +2*KH_WIN_FRAME) and the window grows
+             * without bound while you drag - the "infinite grow" bug. */
+            g_win_resizing = 0;
+            if (!g_quit) { assign_nav_and_layout(); redraw(); }
+        }
         return;
     }
     if (ev->type == MotionNotify) {
         if (is_popup && g_win_resizing) {
+            /* coalesce the motion burst - only the final position matters */
+            XEvent mdrain;
+            while (XCheckTypedWindowEvent(dpy, win, MotionNotify, &mdrain)) *ev = mdrain;
+            int scr = DefaultScreen(dpy);
+            int maxw = DisplayWidth(dpy, scr), maxh = DisplayHeight(dpy, scr);
             int nw = g_resize_start_w + (ev->xmotion.x_root - g_resize_start_xr);
             int nh = g_resize_start_h + (ev->xmotion.y_root - g_resize_start_yr);
             if (nw < KH_WIN_MIN_W) nw = KH_WIN_MIN_W;
             if (nh < KH_WIN_MIN_H) nh = KH_WIN_MIN_H;
+            if (nw > maxw) nw = maxw;
+            if (nh > maxh) nh = maxh;
             if (nw != g_win_w || nh != g_win_h) {
                 g_win_w = nw; g_win_h = nh;
                 if (g_window) { g_window->w = g_win_w; g_window->h = g_win_h; }
+                /* X window only + cheap same-buffer repaint. NO
+                 * assign_nav_and_layout() here - see the ButtonRelease
+                 * comment. The Pixmap may be smaller than the new size
+                 * for a beat; redraw() on release rebuilds it. */
                 XResizeWindow(dpy, win, (unsigned)g_win_w, (unsigned)g_win_h);
-                if (!g_quit) { assign_nav_and_layout(); redraw(); }
             }
             return;
         }
@@ -14885,6 +14914,21 @@ int main(int argc, char **argv) {
     XSetErrorHandler(kh_nonfatal_x_error);
     screen = DefaultScreen(dpy);
     cmap = DefaultColormap(dpy, screen);
+    /* class="user-resizable" opens at a reasonable TV-shaped default
+     * (~16:9, about half the screen width), not shrink-wrapped to its
+     * canvas/toolbar (direct report 2026-09-09: "should open as a
+     * reasonable ... tv screen, not a skinny rectangle"). Layout then
+     * leaves this alone (see the !g_user_resizable guards); a ⌟ drag
+     * changes it. */
+    if (g_user_resizable) {
+        int sw = DisplayWidth(dpy, screen), sh = DisplayHeight(dpy, screen);
+        int iw = sw / 2;
+        if (iw < 720) iw = 720;
+        if (iw > sw - 80) iw = sw - 80;
+        int ih = iw * 9 / 16;
+        if (ih > sh - 140) { ih = sh - 140; iw = ih * 16 / 9; }
+        g_win_w = iw; g_win_h = ih;
+    }
     reload_font_ui();  /* "Noto Sans CJK SC" / "DejaVu Sans" at pixelsize scaled(13)/scaled(12) - honours hq_ui.pdl font_scale, loaded just above */
     /* REAL, NEW 2026-08-25 (live report: bookmarks' own path labels
      * carry real emoji dir names, rendered as tofu boxes - "open-hai
