@@ -81,7 +81,7 @@ short version.*
     by hand. Shared `kh_proc_registry.h` + passing standalone test
     landed; NOT wired into the taskbar yet. `design-docs/
     PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md` §5 steps 2–7.
-18. Shared source compiled by copy-into-`ops/` (drift + silent-clobber):
+18. ~~Shared source compiled by copy-into-`ops/`~~ **DONE 2026-09-09**:
     switch every `build_*.sh` to compile the canonical
     `&.widgits/_shared-lib/*.c` in place with `-I` (binary stays local),
     delete the ~5 stale `ops/` copies (6 already drifted), packaging

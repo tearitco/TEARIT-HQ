@@ -1,11 +1,30 @@
 # Shared source: compile the canonical file, move only the binary
 
-**Status: DESIGN / plan (2026-09-09).** No code changed yet. Prompted by
+**Status: DONE for the khtpm shared source (2026-09-09).** Prompted by
 the user: *"we compile a local version of shared code by copying it,
 so someone edits the copy instead of the definitive file. Why not
-compile the definitive code and just move the binary? A silly mistake
-from the original rushed implementation — make a plan to fix it, with
-testable KPIs proving nothing broke."*
+compile the definitive code and just move the binary?"*
+
+Landed:
+- `build_core_render.sh`, `build_khtpm_strip.sh`,
+  `tile-picker/scripts/build.sh`, `livedesk-clock/ops/build_lc_clock.sh`
+  now compile `&.widgits/_shared-lib/khtpm_{css_parser.c,css_parser.h,
+  render_core.c,draw_core.c}` in place via `-I`; no `cp` into `ops/`.
+- Every tracked `ops/` copy `git rm`'d (incl. the fully-dead
+  chat-hai/ + events-hq/ ones left from the CENTROID merge);
+  `.gitignore` `**/ops/khtpm_{css_parser.c,css_parser.h,render_core.c,
+  draw_core.c}`.
+- `&.widgits/_shared-lib/vendor-into.sh` — the one blessed copy path,
+  for the install/packaging step only.
+- KPIs A–E + G verified (see §5): every affected binary rebuilds
+  BYTE-IDENTICAL; zero `ops/` source churn on build; a `#warning` in
+  the canonical fires during the build; `vendor-into.sh` yields a
+  no-`-I` build byte-identical to the `-I` build.
+
+Out of scope (kept as-is): `stb_image_write.h` copies (frozen vendored
+3rd-party header, ~0 drift risk); `build_db_hq.sh` (already dead — refs
+a nonexistent `khtpm_hq_render.c`, no callers). Follow-on: the ~26
+`prisc+x.c` forks — `PRISC-X-FORK-CONSOLIDATION.md`.
 
 ---
 
