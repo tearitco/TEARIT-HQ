@@ -865,6 +865,11 @@ static int handle_one_key(int key) {
         if (camera_mode == 1 || camera_mode == 2) {
             write_kv_int(state_path, "cam_yaw", 180);
             write_kv_int(state_path, "cam_pitch", 6);
+            /* drop any leftover free-roam pan so switching from mode 3/4
+             * doesn't fling the follow-camera off with a huge offset */
+            write_kv_int(state_path, "cam_pan_x", 0);
+            write_kv_int(state_path, "cam_pan_z", 0);
+            write_kv_int(state_path, "cam_z_level", 0);
         } else if (camera_mode == 4) {
             /* Center pan on the selector (same as 'f' reset below, and
              * for the same reason: mode 4's pan is ABSOLUTE map coords,
@@ -915,6 +920,10 @@ static int handle_one_key(int key) {
         if (camera_mode == 1 || camera_mode == 2) {
             write_kv_int(state_path, "cam_yaw", 180);
             write_kv_int(state_path, "cam_pitch", 6);
+            /* also clear any w/a/s/d + c/v offset so 'f' fully re-centres */
+            write_kv_int(state_path, "cam_pan_x", 0);
+            write_kv_int(state_path, "cam_pan_z", 0);
+            write_kv_int(state_path, "cam_z_level", 0);
         } else if (camera_mode == 3) {
             /* Same real "cam_pan_y is a height, not a row" fix as the
              * '1'-'4' switch block above. */
@@ -936,16 +945,18 @@ static int handle_one_key(int key) {
         return 0;
     }
 
-    /* q/e yaw, r/t pitch - live in modes 1/2/3, no-op in mode 4 (exact
-     * per-mode table, 5-pov-widgit.md §2e). */
-    if (camera_mode != 4 && (key == key_yaw_left || key == key_yaw_right)) {
+    /* q/e yaw, r/t pitch - all camera modes now (direct instruction
+     * 2026-09-09 "all the camera modes should have wasd etc ... put
+     * them back on"). Mode 4's build_camera already consumes yaw/pitch
+     * for its look direction. */
+    if (key == key_yaw_left || key == key_yaw_right) {
         int yaw = read_kv_int(state_path, "cam_yaw", 180);
         yaw += (key == key_yaw_right) ? YAW_STEP : -YAW_STEP;
         write_kv_int(state_path, "cam_yaw", yaw);
         bump_screen_changed(project_root);
         return 0;
     }
-    if (camera_mode != 4 && (key == key_pitch_down || key == key_pitch_up)) {
+    if (key == key_pitch_down || key == key_pitch_up) {
         int pitch = read_kv_int(state_path, "cam_pitch", 6);
         pitch += (key == key_pitch_up) ? PITCH_STEP : -PITCH_STEP;
         pitch = clamp_int(pitch, -89, 89);
@@ -954,12 +965,22 @@ static int handle_one_key(int key) {
         return 0;
     }
 
-    /* w/a/s/d pan - only modes 3/4, different axis mapping per mode
-     * (free-roam pans on z/x; bird's-eye pans on y/x - matches
-     * camera_control.c's own real, distinct mode-3-vs-4 mapping). */
-    if ((camera_mode == 3 || camera_mode == 4) &&
-        (key == key_pan_forward || key == key_pan_left || key == key_pan_back || key == key_pan_right)) {
-        if (camera_mode == 3) {
+    /* w/a/s/d pan - all modes. Modes 3/4 keep their distinct axis
+     * mapping (free-roam z/x, bird's-eye y/x); modes 1/2 (first/third
+     * person) pan cam_pan_x/z as an offset from the followed anchor -
+     * build_camera() adds those in modes 1/2 too now. */
+    if (key == key_pan_forward || key == key_pan_left || key == key_pan_back || key == key_pan_right) {
+        if (camera_mode == 4) {
+            int pan_y = read_kv_int(state_path, "cam_pan_y", 0);
+            int pan_x = read_kv_int(state_path, "cam_pan_x", 0);
+            if (key == key_pan_forward) pan_y -= PAN_STEP;
+            else if (key == key_pan_back) pan_y += PAN_STEP;
+            else if (key == key_pan_left) pan_x -= PAN_STEP;
+            else if (key == key_pan_right) pan_x += PAN_STEP;
+            write_kv_int(state_path, "cam_pan_y", pan_y);
+            write_kv_int(state_path, "cam_pan_x", pan_x);
+        } else {
+            /* modes 1/2/3: pan on cam_pan_x / cam_pan_z */
             int pan_z = read_kv_int(state_path, "cam_pan_z", 0);
             int pan_x = read_kv_int(state_path, "cam_pan_x", 0);
             /* was hardcoded 'w'/'a'/'s'/'d' - a real bug: the gate above
@@ -971,22 +992,13 @@ static int handle_one_key(int key) {
             else if (key == key_pan_right) pan_x += PAN_STEP;
             write_kv_int(state_path, "cam_pan_z", pan_z);
             write_kv_int(state_path, "cam_pan_x", pan_x);
-        } else {
-            int pan_y = read_kv_int(state_path, "cam_pan_y", 0);
-            int pan_x = read_kv_int(state_path, "cam_pan_x", 0);
-            if (key == key_pan_forward) pan_y -= PAN_STEP;
-            else if (key == key_pan_back) pan_y += PAN_STEP;
-            else if (key == key_pan_left) pan_x -= PAN_STEP;
-            else if (key == key_pan_right) pan_x += PAN_STEP;
-            write_kv_int(state_path, "cam_pan_y", pan_y);
-            write_kv_int(state_path, "cam_pan_x", pan_x);
         }
         bump_screen_changed(project_root);
         return 0;
     }
 
-    /* c/v z-level - modes 3/4 only. */
-    if ((camera_mode == 3 || camera_mode == 4) && (key == key_cam_down || key == key_cam_up)) {
+    /* c/v camera z-level - all modes now. */
+    if (key == key_cam_down || key == key_cam_up) {
         int z_level = read_kv_int(state_path, "cam_z_level", 0);
         z_level += (key == key_cam_down) ? 1 : -1;
         write_kv_int(state_path, "cam_z_level", z_level);

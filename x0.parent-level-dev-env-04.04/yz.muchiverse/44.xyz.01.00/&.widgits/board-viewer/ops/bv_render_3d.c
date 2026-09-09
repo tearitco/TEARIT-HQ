@@ -1399,9 +1399,15 @@ static Camera build_camera(int camera_mode, double yaw_deg, double pitch_deg,
          * eye isn't dead-center in its own cell at all, sitting instead
          * nearer the cell's forward edge) - both real, generous safety
          * margins, not just a minimal fix. */
-        cam.eye.x = anchor_x + fp_face_dist * sin(yaw); cam.eye.y = anchor_h + fp_eye_height; cam.eye.z = anchor_z + fp_face_dist * cos(yaw);
+        cam.eye.x = anchor_x + fp_face_dist * sin(yaw) + pan_x;
+        cam.eye.y = anchor_h + fp_eye_height + z_level * 2.0;
+        cam.eye.z = anchor_z + fp_face_dist * cos(yaw) + pan_z;
     } else if (camera_mode == 2) {
-        cam.eye.x = anchor_x - tp_distance * sin(yaw); cam.eye.y = anchor_h + tp_height; cam.eye.z = anchor_z - tp_distance * cos(yaw);
+        /* w/a/s/d pan + c/v height offset the follow-camera in modes 1/2
+         * too (direct instruction 2026-09-09 - wasd in every mode). */
+        cam.eye.x = anchor_x - tp_distance * sin(yaw) + pan_x;
+        cam.eye.y = anchor_h + tp_height + z_level * 2.0;
+        cam.eye.z = anchor_z - tp_distance * cos(yaw) + pan_z;
     } else if (camera_mode == 3) {
         /* REAL FIX 2026-08-03, direct user report ("zx xelector movement
          * shouldn't move camera, thats a bug") - real precedent checked
