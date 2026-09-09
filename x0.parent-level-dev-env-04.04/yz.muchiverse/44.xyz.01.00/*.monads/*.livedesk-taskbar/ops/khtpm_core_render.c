@@ -12959,7 +12959,15 @@ static int tp_main(int argc, char **argv) {
                             clamp_popup_to_screen(dpy, &tpx, &tpy, pop_w, pop_h);
                             XSetWindowAttributes swa2;
                             swa2.override_redirect = True;
-                            swa2.background_pixel = WhitePixel(dpy, DefaultScreen(dpy));
+                            /* 2026-09-09, direct report ("after choosing
+                             * the bible verse / tao it shows a popup with
+                             * text - those are still black and white").
+                             * The Show Text popup (book-stack's verse /
+                             * Tao view) was a hardcoded white bg + black
+                             * text. Use the livedesk theme like every
+                             * other surface (g_theme_bg/fg are loaded +
+                             * live-refreshed in hq_idle_tick()). */
+                            swa2.background_pixel = alloc_pixel(g_theme_bg);
                             swa2.event_mask = ExposureMask | ButtonPressMask | KeyPressMask;
                             text_popup_win = XCreateWindow(dpy, RootWindow(dpy, DefaultScreen(dpy)),
                                                             tpx, tpy, pop_w, pop_h, 1,
@@ -13515,7 +13523,11 @@ static int tp_main(int argc, char **argv) {
                 { Window root_r; int x_r, y_r; unsigned int w_r, h_r, bw_r, depth_r;
                   XGetGeometry(dpy, text_popup_win, &root_r, &x_r, &y_r, &w_r, &h_r, &bw_r, &depth_r);
                   pop_w2 = (int)w_r; pop_h2 = (int)h_r; }
+                /* themed border + text (popup_gc is shared with the
+                 * context menus, whatever fg they last set - pin it) */
+                XSetForeground(dpy, popup_gc, alloc_pixel(kh_shade_hex(g_theme_fg, -60)));
                 XDrawRectangle(dpy, text_popup_win, popup_gc, 0, 0, pop_w2 - 1, pop_h2 - 1);
+                XSetForeground(dpy, popup_gc, alloc_pixel(g_theme_fg));
                 for (int li = 0; li < g_text_popup_n_lines; li++) {
                     popup_draw_text(dpy, text_popup_win, popup_gc, 8, (li + 1) * POPUP_ROW_H - 6, g_text_popup_lines[li]);
                 }
