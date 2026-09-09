@@ -358,6 +358,23 @@ static const char *kh_shade_hex(const char *hex, int delta) {
     return out;
 }
 
+/* Allocate a "#rrggbb" pixel using an EXPLICIT Display+screen.
+ * tp_main() (tile/entity mode) has its own LOCAL Display and never
+ * sets the file-scope dpy/cmap/screen that the shared alloc_pixel()
+ * reads - calling alloc_pixel() from there dereferences a NULL Display
+ * and kills the process (regression: a themed Show Text popup closed
+ * the book-stack entity, 2026-09-09). Uses the root default colormap,
+ * which is what tp_main's popup windows and popup_gc actually use
+ * (they are created CopyFromParent / on the root). */
+static unsigned long tp_hex_pixel(Display *d, int scr, const char *hex) {
+    if (!d) return 0;
+    if (!hex || !hex[0]) return BlackPixel(d, scr);
+    Colormap cm = DefaultColormap(d, scr);
+    XColor c;
+    if (XParseColor(d, cm, hex, &c) && XAllocColor(d, cm, &c)) return c.pixel;
+    return BlackPixel(d, scr);
+}
+
 static void load_theme_colors(void) {
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/#.desktop/livedesk_theme.pdl", g_house_root);
@@ -12219,10 +12236,13 @@ static int tp_main(int argc, char **argv) {
      * the FocusOut handler in the main event loop below). */
     swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | FocusChangeMask;
     swa.override_redirect = g_override_redirect; /* real X11 requirement whenever a window's own depth differs from its parent's (root's) - harmless to set unconditionally */
-    /* left as 0 (black) - alloc_pixel() needs the shared dpy/cmap/screen
-     * globals which tp_main() has not set up at this point (it uses a
-     * local dpy here); redraw()'s own first pass repaints the whole
-     * window with alloc_pixel(g_theme_bg) a frame later anyway. */
+    /* left as 0 (black) - tp_main() paints its own frame every tick from
+     * its tile/sprite renderer (it does NOT go through the shared
+     * redraw()/g_theme_bg path - that is HQ/default mode only), so this
+     * server-side backing colour only shows for one frame before first
+     * paint. Theming the tile renderer itself is separate, unstarted
+     * work; use tp_hex_pixel() (not the shared alloc_pixel(), whose
+     * dpy/cmap/screen globals tp_main never sets) if it's picked up. */
     swa.background_pixel = 0;
 
     Window win = XCreateWindow(dpy, RootWindow(dpy, screen_num), 3 * GRID_CELL_PX, 3 * GRID_CELL_PX, WIN_PX, WIN_PX,
@@ -12985,7 +13005,7 @@ static int tp_main(int argc, char **argv) {
                              * text. Use the livedesk theme like every
                              * other surface (g_theme_bg/fg are loaded +
                              * live-refreshed in hq_idle_tick()). */
-                            swa2.background_pixel = alloc_pixel(g_theme_bg);
+                            swa2.background_pixel = tp_hex_pixel(dpy, DefaultScreen(dpy), g_theme_bg);
                             swa2.event_mask = ExposureMask | ButtonPressMask | KeyPressMask;
                             text_popup_win = XCreateWindow(dpy, RootWindow(dpy, DefaultScreen(dpy)),
                                                             tpx, tpy, pop_w, pop_h, 1,
@@ -13543,9 +13563,9 @@ static int tp_main(int argc, char **argv) {
                   pop_w2 = (int)w_r; pop_h2 = (int)h_r; }
                 /* themed border + text (popup_gc is shared with the
                  * context menus, whatever fg they last set - pin it) */
-                XSetForeground(dpy, popup_gc, alloc_pixel(kh_shade_hex(g_theme_fg, -60)));
+                XSetForeground(dpy, popup_gc, tp_hex_pixel(dpy, DefaultScreen(dpy), kh_shade_hex(g_theme_fg, -60)));
                 XDrawRectangle(dpy, text_popup_win, popup_gc, 0, 0, pop_w2 - 1, pop_h2 - 1);
-                XSetForeground(dpy, popup_gc, alloc_pixel(g_theme_fg));
+                XSetForeground(dpy, popup_gc, tp_hex_pixel(dpy, DefaultScreen(dpy), g_theme_fg));
                 for (int li = 0; li < g_text_popup_n_lines; li++) {
                     popup_draw_text(dpy, text_popup_win, popup_gc, 8, (li + 1) * POPUP_ROW_H - 6, g_text_popup_lines[li]);
                 }
