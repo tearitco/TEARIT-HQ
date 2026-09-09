@@ -122,9 +122,26 @@ int main(int argc, char **argv) {
     static char ui[UIBUF], last[UIBUF];
     last[0] = '\0';
 
+    /* Session discovery is a popen() of a whole binary (ledger_peers.+x)
+     * - it was run EVERY 300ms loop, forever, per board window. The
+     * board-viewer session dir almost never changes: discover it once,
+     * then only re-scan when we don't have one or the cached dir has
+     * disappeared (session ended). */
+    static char bv_cache[PATH_MAX] = "";
+
     for (;;) {
         char bv[PATH_MAX] = "";
-        int have = find_board_session(house, host_id, bv, sizeof(bv));
+        int have;
+        {
+            struct stat cst;
+            if (bv_cache[0] && stat(bv_cache, &cst) == 0 && S_ISDIR(cst.st_mode)) {
+                snprintf(bv, sizeof(bv), "%s", bv_cache);
+                have = 1;
+            } else {
+                have = find_board_session(house, host_id, bv, sizeof(bv));
+                snprintf(bv_cache, sizeof(bv_cache), "%s", have ? bv : "");
+            }
+        }
 
         char raw[PATH_MAX] = "", typing[PATH_MAX] = "", h1[PATH_MAX] = "", h2[PATH_MAX] = "";
         if (have) {

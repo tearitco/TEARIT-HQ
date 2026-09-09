@@ -55,6 +55,45 @@ if [ ! -f "$BOARD_TPL" ]; then
     exit 1
 fi
 
+# ── reap stale/orphaned engine sessions ────────────────────────────
+# `button.sh run`'s own EXIT trap (rm -rf $SESSION_DIR + kill_own_*)
+# only fires if THAT button.sh exits/gets SIGTERM cleanly. A strip
+# restart or a hard kill orphans the whole stack (chtpm_parser_pal x2,
+# renderer x2, prisc+x, board-viewer widget) - reparented to init,
+# every one still spinning its 60Hz poll loop forever. That was the
+# real "pc-hq is laggy" bottleneck (dozens of orphan pollers starving
+# the live engine). Reap any engine proc whose cwd is under one of
+# this project's session dirs and whose parent is gone (ppid 1), then
+# drop the dead session dir.
+SESS_BASES="$PKG/pieces/sessions
+$HOUSE_ROOT/&.widgits/board-viewer/pieces/sessions"
+_live_sessions=""
+for _p in $(pgrep -f "keyboard_input|system/orchestrator|board-viewer/button.sh run-widget" 2>/dev/null); do
+    _c="$(readlink "/proc/$_p/cwd" 2>/dev/null)"
+    case "$_c" in *"/pieces/sessions/"*) _live_sessions="$_live_sessions $(basename "$_c")" ;; esac
+done
+for _p in $(pgrep -f "chtpm_parser_pal|system/renderer|prisc\+x|system/orchestrator" 2>/dev/null); do
+    _c="$(readlink "/proc/$_p/cwd" 2>/dev/null)" || continue
+    case "$_c" in
+        "$PKG/pieces/sessions/"*|"$HOUSE_ROOT/&.widgits/board-viewer/pieces/sessions/"*) : ;;
+        *) continue ;;
+    esac
+    _b="$(basename "$_c")"
+    case " $_live_sessions " in *" $_b "*) continue ;; esac   # part of a live session
+    _pp="$(awk '{print $4}' "/proc/$_p/stat" 2>/dev/null)"
+    [ "$_pp" = "1" ] || [ "$_pp" = "1003" ] || continue        # orphaned only
+    kill -KILL "$_p" 2>/dev/null || true
+done
+# drop session dirs with nothing live in them
+echo "$SESS_BASES" | while IFS= read -r _base; do
+    [ -d "$_base" ] || continue
+    for _d in "$_base"/*/; do
+        [ -d "$_d" ] || continue
+        case " $_live_sessions " in *" $(basename "$_d") "*) continue ;; esac
+        rm -rf "$_d" 2>/dev/null || true
+    done
+done
+
 # ── single-instance guard: clean-restart the board window ────────────
 # Match the shared binary by its OWN chtpm path (bare-name match would
 # hit every other khtpm_core_render window) + the projector.
@@ -90,6 +129,15 @@ if ! engine_up; then
         if ! engine_up; then
             echo "open_pchq_board: starting engine session (button.sh run, detached)"
             setsid nohup sh -c 'sh "$0" run' "$PKG/button.sh" >/dev/null 2>&1 &
+            _eng=$!
+            # button.sh's own EXIT/INT/TERM trap does a clean rm -rf +
+            # kill_own_* - nothing ever SIGTERM'd it under the old
+            # taskbar launch, so it orphaned. Register its group in the
+            # proc-ledger: a taskbar quit (ktb_reap_launched) now
+            # kill(-pgid, SIGTERM)s it -> its trap fires -> clean.
+            printf '%s\n' "$_eng" > "$PKG/pieces/system/engine.pid" 2>/dev/null || true
+            printf '%s %s 0 0 pchq-engine\n' "$_eng" "$_eng" \
+                >> "$HOUSE_ROOT/#.desktop/livedesk_proc_list.txt" 2>/dev/null || true
         fi
     fi
     # wait up to ~8s for the widget session to register
