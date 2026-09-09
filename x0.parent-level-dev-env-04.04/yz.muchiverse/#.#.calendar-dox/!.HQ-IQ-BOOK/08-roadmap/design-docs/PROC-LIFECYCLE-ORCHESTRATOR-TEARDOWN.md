@@ -355,17 +355,36 @@ after it, quietly.
    master 5-field line are both reaped by `reap_all`. Live: restart →
    ledger lines now carry `master = <manager pid>` (verified against
    `ps -o comm`); KSC_CLOSE_QUIT still reaps all + restore is healthy.
-5. Make it the default, app by app (one commit each, pal-script /
-   window smoke per app): `music-player-hq` registers its `mpg123 -R`
-   child via `kh_spawn`; `<module>` manager binaries call
-   `kh_proc_self_register()` in `main()`; prisc-hosting launchers
-   register the VM; every remaining `setsid nohup … &` launch site in
-   `khtpm_taskbar_manager.c` moves to `kh_spawn.sh`.
-6. Retire the "kill your own children" note in
-   `OPERATIONAL-LANDMINES.md` #9 / the compact doc — replace with "the
-   taskbar reaps every registered process on quit; spawn long-lived
-   children via `kh_spawn`, or call `kh_proc_self_register()` in
-   `main()`."
+5. Make it the default, app by app (one commit each, smoke per app):
+   - ✅ **`<module>`s DONE + LIVE-VERIFIED 2026-09-09.**
+     `khtpm_core_render.c` `#include`s `kh_proc_registry.h` (own IMPL —
+     separate binary). `kh_collect_and_launch_modules()` calls
+     `kh_proc_register_owned(house_root, module_pid, module_pid,
+     getpid(), <id>)` for every `<module>` it forks;
+     `kh_cleanup_modules()` (atexit) also runs
+     `kh_proc_reap_subtree(g_house_root, getpid(), 1, 0)` to drop the
+     render's owned rows. Live: opened sql-hq → ledger row
+     `<projector pid> <pgid> <sql-hq render pid> … sql-hq` appeared;
+     the projector was `setsid`-detached (own pgid) so a plain
+     group-kill would have missed it; SIGTERM the render → the row is
+     gone AND the detached projector reaped. Fixes pitfall #13.5.
+   - **`music-player-hq`** — `mpg_start()` in `music_player_manager.c`
+     forks `mpg123 -R` (stays in the manager's group today, but
+     registering makes prune/`reap_subtree` honest): add
+     `kh_proc_register_owned(house_root, mpg_pid, mpg_pid, getpid(),
+     "mpg123")` after the fork, `kh_proc_reap_one` in `mpg_stop`.
+     Needs `-I "$SHARED"` + `KH_PROC_REGISTRY_IMPL` in its build. TODO.
+   - **prisc-hosting `button.sh`s** (board-viewer + ~20 pal projects) —
+     move `setsid nohup system/prisc+x … &` to `kh_spawn.sh`. Pairs
+     with `PRISC-X-FORK-CONSOLIDATION.md` Phase B (same file set). TODO.
+   - remaining `setsid nohup … &` sites in `khtpm_taskbar_manager.c`
+     already go through `ktb_system_recorded` (registered) — leave.
+6. ✅ **DONE 2026-09-09.** `OPERATIONAL-LANDMINES.md` #9 + the compact
+   doc's "Kill your children" bullet rewritten: the taskbar reaps the
+   ledger on quit and the renderer reaps its own `<module>`s; an
+   engine child a *manager* forks, or anything from a bare `button.sh`,
+   is still manual until that app moves to `kh_spawn` /
+   `kh_proc_self_register()`.
 7. Fold `livedesk_hq_windows_<pid>.txt` into the ledger (its
    `win=/title=/x=/y=/minimized=/focused=` become trailing `k=v` on the
    process's own line via `kh_proc_self_register`); drop

@@ -47,10 +47,20 @@ involving live windows or shared files.*
    already has the right context, not a separate control referencing
    global focus state.
 9. **Kill child processes, not just the window process.** A rendered
-    window often forks a real backend manager
-    (`khtpm_events_hq_manager.+x`, etc.) as a child. After any test
-    session, `ps aux | grep` for manager names too, and confirm zero
-    strays.
+    window forks a real backend manager
+    (`khtpm_events_hq_manager.+x`, etc.) as a child.
+    **Partly automated 2026-09-09** (`PROC-LIFECYCLE-ORCHESTRATOR-
+    TEARDOWN.md`): the taskbar reaps everything in
+    `#.desktop/livedesk_proc_list.txt` on an explicit quit, and
+    `khtpm_core_render.+x` now registers every `<module>` it forks
+    (owned by the render) + reaps them from its `atexit` — so a
+    `setsid`-detached projector no longer orphans on window close.
+    **Still manual**: an engine child a *manager* forks (`mpg123 -R`,
+    a prisc VM, a vendor daemon), and anything started from its own
+    `button.sh` outside the taskbar — those must spawn via `kh_spawn` /
+    `kh_spawn.sh` or call `kh_proc_self_register()` in `main()` to be
+    covered. Until an app is migrated, after a test still `ps aux |
+    grep` for its manager/engine names and confirm zero strays.
 10. **Never end a work block with uncommitted code.** Uncommitted work
     is fire-able: it literally died once here (the whole nb-js-worker
     step-6/7 set was lost when its only copy lived in the working tree

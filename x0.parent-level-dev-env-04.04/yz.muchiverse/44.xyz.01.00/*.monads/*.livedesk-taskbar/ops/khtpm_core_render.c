@@ -86,6 +86,14 @@ extern char **environ;
 #include <libgen.h> /* REAL, NEW 2026-09-01 - tile mode's own dirname()/basename() (self_exe_path/piece_id) */
 #include <sys/file.h> /* REAL, NEW 2026-09-01 - tile mode's own real flock() cross-process popup mutex */
 
+/* Orchestrator-owned PID teardown — PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md.
+ * This is its own binary (separate from khtpm_taskbar_manager_main.+x),
+ * so it carries the IMPL. build_core_render.sh passes -I "$SHARED".
+ * _POSIX_C_SOURCE is already set at line 1, so the header's own
+ * _GNU_SOURCE fallback stays inert. */
+#define KH_PROC_REGISTRY_IMPL
+#include "kh_proc_registry.h"
+
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "lib/stb_image_write.h"
 
@@ -544,6 +552,13 @@ static void kh_cleanup_modules(void) {
             waitpid(g_module_pids[i], NULL, WNOHANG);
         }
     g_n_module_pids = 0;
+    /* PROC-LIFECYCLE: drop this render's owned rows from the canonical
+     * ledger (the SIGTERM loop above already stopped them; this rewrites
+     * the file without them so a later reap_all / prune has nothing
+     * stale to chase). grace_ms 1 -> the already-dead modules are
+     * skip-stale, so it's effectively just the rewrite. */
+    if (g_house_root[0])
+        kh_proc_reap_subtree(g_house_root, (long)getpid(), 1, 0);
 }
 
 static void kh_collect_and_launch_modules(Elem *e, const char *house_root, const char *package_dir) {
@@ -554,7 +569,24 @@ static void kh_collect_and_launch_modules(Elem *e, const char *house_root, const
             g_n_module_pids < KH_MAX_MODULES) {
             pid_t p = launch_module(c->label, house_root, package_dir,
                                     c->id[0] ? c->id : NULL);
-            if (p > 0) g_module_pids[g_n_module_pids++] = p;
+            if (p > 0) {
+                g_module_pids[g_n_module_pids++] = p;
+                /* PROC-LIFECYCLE: track every <module> in the canonical
+                 * ledger, owned by THIS render (master = getpid()). It's
+                 * in the render's process group so a house quit reaches
+                 * it via the group-kill anyway; registering also lets
+                 * prune keep the ledger honest and a kill -9'd render's
+                 * modules still get reaped house-wide. */
+                if (house_root && house_root[0]) {
+                    /* name must be a single whitespace-free token (the
+                     * ledger line is space-delimited). c->label is the
+                     * whole `src="..."` string, so use the module id, or
+                     * a fixed label. */
+                    const char *mn = (c->id[0]) ? c->id : "module";
+                    kh_proc_register_owned(house_root, (long)p, (long)p,
+                                           (long)getpid(), mn);
+                }
+            }
         }
         kh_collect_and_launch_modules(c, house_root, package_dir);
     }
