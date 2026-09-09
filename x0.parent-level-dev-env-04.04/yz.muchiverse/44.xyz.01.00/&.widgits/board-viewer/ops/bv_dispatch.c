@@ -82,6 +82,22 @@ static long file_size(const char *path) {
     return (stat(path, &st) == 0) ? (long)st.st_size : 0;
 }
 
+/* one int key out of pieces/system/bv_state.txt (flat key=value) */
+static int read_state_int(const char *key, int def) {
+    char path[PATH_BUF];
+    pj(path, sizeof(path), "pieces/system/bv_state.txt");
+    FILE *f = fopen(path, "r");
+    if (!f) return def;
+    size_t kl = strlen(key);
+    char line[MAX_LINE];
+    int v = def;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, key, kl) == 0 && line[kl] == '=') { v = atoi(line + kl + 1); break; }
+    }
+    fclose(f);
+    return v;
+}
+
 int main(void) {
     resolve_root();
     if (!project_root[0]) return 0;
@@ -158,6 +174,16 @@ int main(void) {
      *     3D frame the instant you let go. */
 #define BV3D_MIN_MS 150
     if (any_key || external_change) {
+        /* PCHQ-2D-TILE-VIEW.md: render_mode==0 -> the flat tile grid
+         * (bv_render_2d), NOT the raymarch and NOT bv_compose_frame
+         * (that's the legend/status text chrome we're dropping). It's a
+         * cheap pixel-fill so it runs every change tick, no coalescing. */
+        if (read_state_int("render_mode", 1) == 0) {
+            pj(op_path, sizeof(op_path), "ops/+x/bv_render_2d.+x");
+            run_op(op_path, NULL);
+            FILE *mk = fopen(marker_path, "a");
+            if (mk) { fputc('F', mk); fputc('\n', mk); fclose(mk); }
+        } else {
         /* did more keys already queue while we were dispatching? */
         long still = file_size(relay_path);
         int burst_ongoing = (still > 0);
@@ -184,6 +210,7 @@ int main(void) {
         run_op(op_path, NULL);
         FILE *mk = fopen(marker_path, "a");   /* == prisc `hit_frame` */
         if (mk) { fputc('F', mk); fputc('\n', mk); fclose(mk); }
+        }
     }
 
     /* Record bv_screen_changed.txt's size AFTER our own bv_menu_input

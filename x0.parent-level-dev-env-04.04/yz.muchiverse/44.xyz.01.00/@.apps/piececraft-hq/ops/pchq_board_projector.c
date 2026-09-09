@@ -154,31 +154,28 @@ int main(int argc, char **argv) {
 
         char raw[PATH_MAX] = "", typing[PATH_MAX] = "", h1[PATH_MAX] = "", h2[PATH_MAX] = "";
         if (have) {
-            /* pchq-vs-muta.md B1: `0` toggles render_mode, but
-             * bv_render_3d.c early-returns when render_mode==0 and only
-             * ever writes rgb_frame_3d_overlay.raw - so 2D mode froze
-             * the canvas on the last 3D frame. Pick the source by mode:
-             *   render_mode==1 -> rgb_frame_3d_overlay.raw  (clean 3D,
-             *       no chrome - the khtpm window draws its own toolbar)
-             *   render_mode==0 -> rgb_frame.raw  (chtpm_rgb_render's
-             *       composited frame; the only surface with the 2D
-             *       emoji map. Carries board-viewer's own text chrome
-             *       for now - a chrome-free 2D pixel path is the clean
-             *       follow-up, see the doc.)
+            /* Pick the canvas source by render_mode (bv_state.txt):
+             *   render_mode==1 -> rgb_frame_3d_overlay.raw  (bv_render_3d
+             *       raymarch, no chrome - the khtpm window draws its own
+             *       toolbar)
+             *   render_mode==0 -> rgb_frame_2d.raw  (bv_render_2d, the
+             *       flat RPG-Maker-style tile grid - PCHQ-2D-TILE-VIEW.md.
+             *       Chrome-free by construction; replaces the old
+             *       rgb_frame.raw / chtpm_rgb_render text-chrome hack.)
              * Fallback to whichever exists so the canvas is never blank. */
-            char st_path[PATH_MAX], overlay[PATH_MAX], comp[PATH_MAX];
+            char st_path[PATH_MAX], overlay[PATH_MAX], flat2d[PATH_MAX];
             snprintf(st_path, sizeof(st_path), "%s/pieces/system/bv_state.txt", bv);
             snprintf(overlay, sizeof(overlay), "%s/pieces/display/rgb_frame_3d_overlay.raw", bv);
-            snprintf(comp,    sizeof(comp),    "%s/pieces/display/rgb_frame.raw", bv);
+            snprintf(flat2d,  sizeof(flat2d),  "%s/pieces/display/rgb_frame_2d.raw", bv);
             char rm[8] = ""; read_kv(st_path, "render_mode", rm, sizeof(rm));
             int mode3d = (rm[0] == '\0' || atoi(rm) != 0);   /* default 3D */
             struct stat so, sc;
             int have_o = (stat(overlay, &so) == 0 && so.st_size > 0);
-            int have_c = (stat(comp,    &sc) == 0 && sc.st_size > 0);
+            int have_c = (stat(flat2d,  &sc) == 0 && sc.st_size > 0);
             if (mode3d && have_o)       snprintf(raw, sizeof(raw), "%s", overlay);
-            else if (!mode3d && have_c) snprintf(raw, sizeof(raw), "%s", comp);
+            else if (!mode3d && have_c) snprintf(raw, sizeof(raw), "%s", flat2d);
             else if (have_o)            snprintf(raw, sizeof(raw), "%s", overlay);
-            else                       snprintf(raw, sizeof(raw), "%s", comp);
+            else                       snprintf(raw, sizeof(raw), "%s", flat2d);
             snprintf(typing, sizeof(typing), "%s/pieces/display/active_gui_is_typing.txt", bv);
             /* REAL FIX 2026-09-04 (live debug: relayed keys landed in
              * player_app/history.txt - confirmed via direct byte-level
