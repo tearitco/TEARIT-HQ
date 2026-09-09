@@ -15,6 +15,13 @@ content.
 
 ## Start here
 
+- **[00-compact/!.HQ-IQ-COMPACT.md](00-compact/!.HQ-IQ-COMPACT.md)** —
+  **the single-file onboarding.** Emoji-sectioned, self-contained: house
+  model, dir map, PIECE/MODULE/OS, X11-for-beginners, the two render
+  families, how to build an HQ app, PDL editing + comments, state-file
+  rules, the relay, build/restart, the gotcha wall, guiding a weak
+  agent, and compaction wisdom. Read this first; it has one pointer (to
+  the rest of the book) at the very bottom, for high-context agents only.
 - **[HQ-BRIEF.md](HQ-BRIEF.md)** — the whole HQ (tech + business) on
   one page. Hand this to another agent before a strategy session.
 
