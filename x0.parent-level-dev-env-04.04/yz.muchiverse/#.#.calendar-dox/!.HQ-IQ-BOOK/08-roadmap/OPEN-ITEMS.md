@@ -89,8 +89,9 @@ short version.*
     keeps self-contained subtrees via one `vendor-into.sh`.
     `design-docs/SHARED-SOURCE-COMPILE-IN-PLACE.md`.
 19. prisc+x.c fork consolidation: ~26 copies / 7 variants across ~20
-    pal-using projects; the `_shared-lib/` canonical is an **opcode
-    superset** of every fork, so this is upgrade-everyone, not merge-N.
-    Depends on #18's compile-in-place + vendor mechanism. Phases A
-    (classify, read-only) → E (one source). `design-docs/
-    PRISC-X-FORK-CONSOLIDATION.md`.
+    pal-using projects. **Phase A (classify) DONE 2026-09-09**
+    (`PRISC-X-FORK-CLASSIFICATION.md`): the `_shared-lib/` canonical is
+    the newest VM, every fork is *behind* it (10-cluster carries a real
+    path-trunc bug) — upgrade-everyone. Phase B blocker: nothing builds
+    the canonical yet, so it needs a standalone-build + `.pal`-corpus
+    diff before any project switch. `PRISC-X-FORK-CONSOLIDATION.md`.

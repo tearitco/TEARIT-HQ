@@ -1,15 +1,30 @@
 # prisc+x.c fork consolidation
 
-**Status: DESIGN + investigation done (2026-09-09).** No code changed.
+**Status: Phase A (classification) DONE 2026-09-09** —
+`PRISC-X-FORK-CLASSIFICATION.md`. No project code changed yet.
 Prompted by the user: *"why so many prisc+x forks? Fix that first — it
 sounds like the biggest problem. Does it have KPIs for completion?"*
 
-TL;DR after measuring: it is the biggest **surface** (≈20 projects) but
-**not** the hardest problem — the canonical `_shared-lib/` copy is an
-**opcode superset** of every fork, so this is an *upgrade-everyone*, not
-a *merge-N-divergent-VMs*. Recommended sequencing: do
-`SHARED-SOURCE-COMPILE-IN-PLACE.md` **first** (it builds the exact
-mechanism this needs), then this.
+TL;DR after reading every diff: it is the biggest **surface**
+(≈20 projects) but **not** the hardest problem — the
+`_shared-lib/system/prisc+x.c` canonical (1408 L) is genuinely the
+**newest, most complete** VM; every fork is *behind* it (the 10-project
+`30ab13606d3c` cluster even carries a real `original[128]`
+path-truncation bug the canonical fixed). So this is *upgrade-everyone*,
+not *merge-N-divergent-VMs*. Two forks (`wsr`, `egg`) additionally
+carry `#ifdef _WIN32` shims to fold into the canonical first.
+
+**Real blocker for Phase B:** nothing builds the canonical today, so
+the first project switch is also the first live exercise of ~250 lines
+of canonical-only VM code. Phase B step 1 = build the canonical
+standalone and `diff` its output against each project's current binary
+over a real `.pal` corpus, BEFORE editing any `build.sh`. That plus the
+per-project pal-script smoke matrix makes Phase B a focused follow-up
+effort, not a quick change.
+
+Sequencing (unchanged): `SHARED-SOURCE-COMPILE-IN-PLACE.md` **done**
+first (built the compile-in-place + `vendor-into.sh` mechanism this
+reuses); proc-lifecycle wiring **done**; then Phase B here.
 
 ---
 
