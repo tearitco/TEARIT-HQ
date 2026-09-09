@@ -102,14 +102,40 @@ kill_khtpm() {
 
 case "$ACTION" in
     boot|new|test|run)
+        # Single-restart lock (2026-09-09, direct report: "i clicked
+        # restart 3 times ... it took a very long time ... shouldn't
+        # allow restarts while others are in progress"). Each restart
+        # runs a full KHTPM_FORCE_BUILD=1 gcc of the ~15k-line
+        # khtpm_core_render.c and then kill+relaunch; N concurrent ones
+        # race on the same +x/ output and the same PIDs. mkdir is an
+        # atomic test-and-set on every POSIX fs; a dead holder (crashed
+        # mid-build) is reclaimed by its recorded pid. `boot` (autostart)
+        # is exempt - it never rebuilds and only runs once at login.
+        if [ "$ACTION" != "boot" ]; then
+            _RS_LOCK="$HOUSE/#.desktop/.khtpm_restart.lock"
+            if ! mkdir "$_RS_LOCK" 2>/dev/null; then
+                _rs_holder="$(cat "$_RS_LOCK/pid" 2>/dev/null || echo '')"
+                if [ -n "$_rs_holder" ] && kill -0 "$_rs_holder" 2>/dev/null; then
+                    echo "khtpm restart already in progress (pid $_rs_holder) — ignoring this click"
+                    exit 0
+                fi
+                rm -rf "$_RS_LOCK"
+                mkdir "$_RS_LOCK" 2>/dev/null || { echo "khtpm restart already in progress — ignoring"; exit 0; }
+            fi
+            echo $$ > "$_RS_LOCK/pid"
+            trap 'rm -rf "$_RS_LOCK"' EXIT INT TERM
+        fi
         # `boot` = launch-only, NO rebuild - for $.crypts/autostart.pdl so
         # the desktop start button is snappy. `new`/`run`/`test` are an
         # explicit "build fresh" verb, so FORCE past build_khtpm_strip.sh's
         # freshness gate (2026-09-09) - the desktop start button relies on
         # that gate for speed, but a dev typing `new` wants an unconditional
-        # rebuild.
+        # rebuild. LIVEDESK_START_SPLASH=1: same "Building livedesk…" window
+        # the desktop start button shows (build_khtpm_strip.sh gates it on
+        # actually needing a build) so a restart click isn't a silent
+        # 30-second freeze.
         if [ "$ACTION" != "boot" ]; then
-            KHTPM_FORCE_BUILD=1 sh "$SCRIPT_DIR/build_khtpm_strip.sh" || { echo "BUILD FAILED — not launching"; exit 1; }
+            KHTPM_FORCE_BUILD=1 LIVEDESK_START_SPLASH=1 sh "$SCRIPT_DIR/build_khtpm_strip.sh" || { echo "BUILD FAILED — not launching"; exit 1; }
         elif [ ! -x "$SCRIPT_DIR/+x/khtpm_core_render.+x" ] || [ ! -x "$SCRIPT_DIR/+x/khtpm_taskbar_manager_main.+x" ]; then
             # first-ever boot with no binaries: fall back to a build
             sh "$SCRIPT_DIR/build_khtpm_strip.sh" || { echo "BUILD FAILED — not launching"; exit 1; }
