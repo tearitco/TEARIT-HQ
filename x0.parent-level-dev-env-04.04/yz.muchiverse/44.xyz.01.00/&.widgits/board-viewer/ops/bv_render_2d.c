@@ -164,6 +164,10 @@ static const unsigned char *load_emoji16(const char *hex) {
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/pieces/registry/emoji_assets/%s/voxels_16.csv", project_root, hex);
     FILE *f = host_fopen(path, "r");
+    if (!f && focused_root[0]) {   /* session may not have copied this asset - fall back to the host project */
+        snprintf(path, sizeof(path), "%s/pieces/registry/emoji_assets/%s/voxels_16.csv", focused_root, hex);
+        f = host_fopen(path, "r");
+    }
     if (!f) return NULL;
     char line[MAX_LINE];
     int n = 0;
@@ -284,47 +288,52 @@ static void read_first_line(const char *path, char *out, size_t osz) {
     if (fgets(out, osz, f)) out[strcspn(out, "\r\n")] = '\0';
     fclose(f);
 }
-static void load_actors(int cur_z) {
-    char p[PATH_BUF], emo[PATH_BUF], glyph[16];
-    /* hero */
-    if (g_nent < MAX_ENT) {
-        snprintf(p, sizeof(p), "%s/pieces/hero_01/state.txt", focused_root);
-        int hx = -1, hy = -1, hz = -999;
-        char b[32];
-        read_kv_str(p, "pos_x", b, sizeof(b)); if (b[0]) hx = atoi(b);
-        read_kv_str(p, "pos_y", b, sizeof(b)); if (b[0]) hy = atoi(b);
-        read_kv_str(p, "pos_z", b, sizeof(b)); if (b[0]) hz = atoi(b);
-        if (hx >= 0 && hy >= 0 && hz == cur_z) {
-            snprintf(emo, sizeof(emo), "%s/pieces/registry/phymoji_assets/hero_humanoid/emoji.txt", focused_root);
-            read_first_line(emo, glyph, sizeof(glyph));
-            Ent *e = &g_ent[g_nent++];
-            memset(e, 0, sizeof(*e));
-            e->x = hx; e->y = hy; e->z = hz; e->r = e->g = e->b = 90;
-            utf8_first_hex(glyph, e->hex, sizeof(e->hex));
-            snprintf(emo, sizeof(emo), "%s/pieces/registry/phymoji_assets/hero_humanoid/cjk.txt", focused_root);
-            read_first_line(emo, e->cjk, sizeof(e->cjk));
-        }
-    }
-    /* animals */
-    snprintf(p, sizeof(p), "%s/pieces/world_01/animals.txt", focused_root);
+/* An actor shows on the z-slice being viewed AND on the slice one
+ * below it (its feet stand on that surface - a plain z==cur_z match
+ * hides every surface-standing piece whenever you look at the ground
+ * layer, which is exactly "why don't I see the player"). */
+static int actor_on_z(int actor_z, int cur_z) {
+    return actor_z == cur_z || actor_z == cur_z + 1;
+}
+static void add_actor(const char *asset_id, int x, int y, int z) {
+    if (g_nent >= MAX_ENT) return;
+    char emo[PATH_BUF], glyph[16];
+    Ent *e = &g_ent[g_nent];
+    memset(e, 0, sizeof(*e));
+    e->x = x; e->y = y; e->z = z; e->r = e->g = e->b = 90;
+    snprintf(emo, sizeof(emo), "%s/pieces/registry/phymoji_assets/%s/emoji.txt", focused_root, asset_id);
+    read_first_line(emo, glyph, sizeof(glyph));
+    utf8_first_hex(glyph, e->hex, sizeof(e->hex));
+    snprintf(emo, sizeof(emo), "%s/pieces/registry/phymoji_assets/%s/cjk.txt", focused_root, asset_id);
+    read_first_line(emo, e->cjk, sizeof(e->cjk));
+    if (e->hex[0] || e->cjk[0]) g_nent++;   /* skip if the asset has neither sidecar */
+}
+/* "asset_id,x,y,z" list file (world_01/animals.txt, phymoji_entities.txt) */
+static void load_actor_list(const char *rel_path, int cur_z) {
+    char p[PATH_BUF];
+    snprintf(p, sizeof(p), "%s/%s", focused_root, rel_path);
     FILE *f = host_fopen(p, "r");
-    if (f) {
-        char line[MAX_LINE], name[64];
-        int x, y, z;
-        while (g_nent < MAX_ENT && fgets(line, sizeof(line), f)) {
-            if (sscanf(line, "%63[^,],%d,%d,%d", name, &x, &y, &z) != 4) continue;
-            if (z != cur_z) continue;
-            snprintf(emo, sizeof(emo), "%s/pieces/registry/phymoji_assets/%s/emoji.txt", focused_root, name);
-            read_first_line(emo, glyph, sizeof(glyph));
-            Ent *e = &g_ent[g_nent++];
-            memset(e, 0, sizeof(*e));
-            e->x = x; e->y = y; e->z = z; e->r = e->g = e->b = 90;
-            utf8_first_hex(glyph, e->hex, sizeof(e->hex));
-            snprintf(emo, sizeof(emo), "%s/pieces/registry/phymoji_assets/%s/cjk.txt", focused_root, name);
-            read_first_line(emo, e->cjk, sizeof(e->cjk));
-        }
-        fclose(f);
+    if (!f) return;
+    char line[MAX_LINE], name[64];
+    int x, y, z;
+    while (g_nent < MAX_ENT && fgets(line, sizeof(line), f)) {
+        if (sscanf(line, "%63[^,],%d,%d,%d", name, &x, &y, &z) != 4) continue;
+        if (actor_on_z(z, cur_z)) add_actor(name, x, y, z);
     }
+    fclose(f);
+}
+static void load_actors(int cur_z) {
+    /* hero */
+    char p[PATH_BUF], b[32];
+    snprintf(p, sizeof(p), "%s/pieces/hero_01/state.txt", focused_root);
+    int hx = -1, hy = -1, hz = -999;
+    read_kv_str(p, "pos_x", b, sizeof(b)); if (b[0]) hx = atoi(b);
+    read_kv_str(p, "pos_y", b, sizeof(b)); if (b[0]) hy = atoi(b);
+    read_kv_str(p, "pos_z", b, sizeof(b)); if (b[0]) hz = atoi(b);
+    if (hx >= 0 && hy >= 0 && actor_on_z(hz, cur_z)) add_actor("hero_humanoid", hx, hy, hz);
+    /* world props + animals (same "id,x,y,z" shape as bv_compose_frame) */
+    load_actor_list("pieces/world_01/phymoji_entities.txt", cur_z);
+    load_actor_list("pieces/world_01/animals.txt", cur_z);
 }
 
 /* ---- board glyphs (one z-slice) ---- */

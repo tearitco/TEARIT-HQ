@@ -80,7 +80,7 @@ const unsigned char *bv_cjk_coverage(unsigned int cp, int px) {
     ensure_face();
     if (s_state != 1) return NULL;
 
-    int render_px = (px * 88) / 100;          /* small margin inside the cell */
+    int render_px = (px * 80) / 100;          /* margin inside the cell (wide CJK strokes can exceed the em box) */
     if (render_px < 4) render_px = 4;
     if (FT_Set_Pixel_Sizes(s_face, 0, (FT_UInt)render_px)) return NULL;
     if (FT_Load_Char(s_face, cp, FT_LOAD_RENDER)) return NULL;
