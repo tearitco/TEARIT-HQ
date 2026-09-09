@@ -60,8 +60,14 @@
     <item id="tb-in" class="pchq-tb ${interact_class}" label="In: ${interact_label}"
           relay="${bv_h1},${bv_h2}"
           action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'interact'"/>
+    <!-- 2026-09-09, direct report ("file button ... opening dropdown menu,
+         instead of file browser widget as it should ... the dropdown is
+         only for maps[=desks], not files"). File now goes STRAIGHT to the
+         File Explorer widget (pchq_board_action.sh's `file-hq` verb:
+         fe-pick.sh LOAD -> load the picked map). Only Desk keeps the
+         dropdown. -->
     <item id="tb-file" class="pchq-tb" label="File"
-          action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'menu' 'file'"/>
+          action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'file-hq'"/>
     <item id="tb-desk" class="pchq-tb" label="Desk"
           action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'menu' 'desk'"/>
     <!-- 2026-09-04: restored - the original toolbar order was
@@ -79,13 +85,8 @@
     <item id="tb-player" class="pchq-tb quiet" label="Player" action="void"/>
     <item id="tb-clock" class="pchq-tb quiet" label="${clock}" action="void"/>
 
-    <!-- File menu (state-driven view swap, events-hq picker pattern) -->
-    <item id="fm-cancel" class="pchq-menu-row" label="- close -" show="${file_menu_open}"
-          action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'menu' 'close'"/>
-    <repeat count="${n_file_opts}" bind="f">
-      <item id="fo-${f.#}" class="pchq-menu-row ${f.active}" label="${f.label}" show="${file_menu_open}"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' '${f.verb}' '${f.arg}'"/>
-    </repeat>
+    <!-- (File dropdown removed 2026-09-09 - File goes straight to the
+         File Explorer widget now, see tb-file above.) -->
 
     <!-- Desk menu -->
     <item id="dm-cancel" class="pchq-menu-row" label="- close -" show="${desk_menu_open}"

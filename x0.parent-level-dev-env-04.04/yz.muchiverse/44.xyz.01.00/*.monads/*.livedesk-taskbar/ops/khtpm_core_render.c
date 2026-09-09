@@ -7067,7 +7067,21 @@ static void handle_key(KeySym ks, char ch) {
      * never intercepted locally) and 'p' (never a local dump shortcut
      * while engaged). kh_key_history_code() is the SAME decimal-code
      * resolver history capture already uses - reused, not reinvented. */
-    if (g_interact_relay_on && g_x11_window_focused) {
+    /* REAL FIX 2026-09-09, direct live report ("stuck in interact, esc
+     * doesn't work, and other buttons in window still fire"). The
+     * `&& g_x11_window_focused` extra gate added by 74488d53 (pc-hq
+     * FocusOut-disengage) is unreliable for the WM-managed XWayland
+     * board window under Mutter: a real FocusOut(NotifyNormal) can fire
+     * and leave g_x11_window_focused stuck at 0 even while the window is
+     * the actual keyboard focus - after which NO key (Escape included)
+     * is forwarded, the engine never gets the 27 to disengage, and the
+     * key falls through to local nav so the toolbar buttons still
+     * respond. Reaching handle_key() with a real key IS proof this
+     * window holds X focus, so re-assert the flag here, and once armed
+     * ALWAYS consume the key (forward if we can, swallow otherwise) -
+     * never fall through to local nav while Interact is armed. */
+    if (g_interact_relay_on) {
+        g_x11_window_focused = 1;  /* a real KeyPress here proves focus */
         int code = kh_key_history_code(ks, ch);
         /* REAL FIX 2026-09-04 (see PLAN-pchq-interact-camera-pov.md
          * Part A for the full citation trail) - tpmos/board-viewer's
