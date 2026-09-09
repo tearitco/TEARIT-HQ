@@ -707,6 +707,16 @@ static Elem *reusable_slot(Elem *slots, int max_slots, int index, const char *ta
  * own hand-rolled parser, not reinvented) ---------- */
 static void skip_ws(const char **p) { while (**p && isspace((unsigned char)**p)) (*p)++; }
 
+/* Count of malformed bytes the tag-tree parser had to skip in the
+ * current parse_chtpm() call (see the forward-progress guard in
+ * parse_element()'s child loop). >0 means a not-well-formed template -
+ * almost always a bare `"` / `<` / `>` / `&` in a ${var} value that
+ * kh_substitute_vars() couldn't escape (a value spliced OUTSIDE a
+ * quoted attribute, e.g. free `>${x}<` between tags). The parser
+ * degrades gracefully (skips the byte, keeps rendering) rather than
+ * spinning or aborting - this counter just makes it non-silent. */
+static long g_parse_skipped_bytes = 0;
+
 static void parse_attr_value(const char **p, char *out, size_t outsz) {
     skip_ws(p);
     if (**p != '"') { out[0] = '\0'; return; }
@@ -1024,7 +1034,7 @@ static const char *parse_element(const char *p, Elem *parent) {
          * is a separate change.) */
         const char *before = p;
         p = parse_element(p, e);
-        if (p == before) p++;
+        if (p == before) { g_parse_skipped_bytes++; p++; }
     }
 }
 
@@ -1426,6 +1436,7 @@ static char *kh_expand_repeats_all(char *a, char *b, size_t cap) {
 }
 
 static Elem *parse_chtpm(const char *path) {
+    long skipped_before = g_parse_skipped_bytes;
     FILE *f = fopen(path, "r");
     if (!f) return NULL;
     fseek(f, 0, SEEK_END);
@@ -1498,6 +1509,18 @@ static Elem *parse_chtpm(const char *path) {
         }
     }
     free(buf);
+    if (g_parse_skipped_bytes > skipped_before) {
+        /* Non-silent, non-fatal: a not-well-formed template rendered
+         * with garbled bytes dropped. Almost always a bare " / < / > /
+         * & in a ${var} value that landed outside a quoted attribute
+         * (kh_substitute_vars escapes the in-attribute case). The
+         * window still opens; this line is the breadcrumb. */
+        fprintf(stderr,
+            "khtpm parse_chtpm(%s): NOT WELL-FORMED - skipped %ld stray byte(s) "
+            "(a bare \" / < / > / & in a ${var} value between tags?). "
+            "Window still rendered, content may be garbled.\n",
+            path, g_parse_skipped_bytes - skipped_before);
+    }
     if (root && root->n_children > 0) return root->children[0];
     return root;
 }
