@@ -3,8 +3,10 @@
  *
  * It reproduces, verbatim, the two code paths added to
  * khtpm_taskbar_manager.c:
- *   - ktb_system_recorded(): run `<cmd> & echo $! >> launched_pids.txt`,
- *     then read the last PID back and kh_proc_register() it.
+ *   - ktb_system_recorded(): run `<cmd> & echo $! > .livedesk_last_launch.pid`,
+ *     then read that PID back and kh_proc_register_owned() it into the one
+ *     proc-ledger (the legacy livedesk_launched_pids.txt is gone — DROP,
+ *     PROC-LIFECYCLE-CONSOLIDATE-REGISTRIES.md §2).
  *   - ktb_reap_launched(): kh_proc_reap_all(house_root, 200, 0).
  * against its own detached /tmp children — NO taskbar, NO house process.
  *
@@ -31,14 +33,13 @@ static void msleep(int ms){ struct timespec t={ms/1000,(long)(ms%1000)*1000000L}
 
 /* verbatim shape of ktb_system_recorded() from khtpm_taskbar_manager.c */
 static void tb_system_recorded(const char *house_root, const char *cmd) {
-    char wrapped[4096];
-    snprintf(wrapped, sizeof(wrapped),
-             "%s echo $! >> \"%s/#.desktop/livedesk_launched_pids.txt\"",
-             cmd, house_root);
-    int rc = system(wrapped); (void)rc;
     char pidfile[2048];
     snprintf(pidfile, sizeof(pidfile),
-             "%s/#.desktop/livedesk_launched_pids.txt", house_root);
+             "%s/#.desktop/.livedesk_last_launch.pid", house_root);
+    char wrapped[4096];
+    snprintf(wrapped, sizeof(wrapped),
+             "%s echo $! > \"%s\"", cmd, pidfile);
+    int rc = system(wrapped); (void)rc;
     FILE *pf = fopen(pidfile, "r");
     if (pf) {
         char ln[64]; long last = 0;
@@ -52,8 +53,7 @@ static void tb_system_recorded(const char *house_root, const char *cmd) {
 /* verbatim shape of ktb_reap_launched() */
 static void tb_reap_launched(const char *house_root) { kh_proc_reap_all(house_root, 200, 0); }
 
-static long last_launched_pid_line_count(const char *hr) {
-    char p[2048]; snprintf(p, sizeof(p), "%s/#.desktop/livedesk_launched_pids.txt", hr);
+static long file_line_count(const char *p) {
     FILE *f = fopen(p, "r"); if (!f) return -1;
     long n = 0; int c; while ((c = fgetc(f)) != EOF) if (c == '\n') n++;
     fclose(f); return n;
@@ -77,17 +77,17 @@ int main(void) {
     }
     msleep(150);
 
-    /* both files should now have 3 entries */
-    long old_lines = last_launched_pid_line_count(dir);
+    /* the one proc-ledger now has all 3 entries; the scratch pidfile
+     * holds only the most-recent launch (single line, overwritten). */
+    char lastpid[2200]; snprintf(lastpid,sizeof(lastpid),"%s/#.desktop/.livedesk_last_launch.pid",dir);
     char rp[2048]; kh_proc_registry_path(dir, rp, sizeof(rp));
     long reg_lines = 0; { FILE *f = fopen(rp, "r"); if (f){ int c; while((c=fgetc(f))!=EOF) if(c=='\n') reg_lines++; fclose(f);} }
-    CHECK(old_lines == 3, "legacy livedesk_launched_pids.txt kept (3 lines)");
+    CHECK(file_line_count(lastpid) == 1, "scratch .livedesk_last_launch.pid is single-line (overwritten)");
     CHECK(reg_lines == 3, "canonical livedesk_proc_list.txt has 3 lines");
 
-    /* collect the 3 pids from the legacy file to check liveness */
+    /* collect the 3 pids from the proc-ledger (field 1) to check liveness */
     long pids[3] = {0,0,0};
-    { char p[2048]; snprintf(p,sizeof(p),"%s/#.desktop/livedesk_launched_pids.txt",dir);
-      FILE *f = fopen(p,"r"); char ln[64]; int k=0;
+    { FILE *f = fopen(rp,"r"); char ln[128]; int k=0;
       while (f && k<3 && fgets(ln,sizeof(ln),f)) pids[k++] = strtol(ln,NULL,10);
       if (f) fclose(f); }
     CHECK(alive(pids[0]) && alive(pids[1]) && alive(pids[2]), "all 3 launched children alive");

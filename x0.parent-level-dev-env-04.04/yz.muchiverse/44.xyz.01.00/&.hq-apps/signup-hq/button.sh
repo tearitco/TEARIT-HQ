@@ -40,7 +40,7 @@ mkdir -p "$HOUSE_ROOT/#.desktop/signup_hq"
 : > "$HOUSE_ROOT/#.desktop/signup_hq/request.txt"
 
 setsid nohup "$BIN" "$HOUSE_ROOT" "$XHTPM" >"$AUDIT/signup-hq.log" 2>&1 < /dev/null &
-echo $! >> "$HOUSE_ROOT/#.desktop/livedesk_launched_pids.txt" 2>/dev/null || true
+printf '%s %s 0 0 signup-hq\n' "$!" "$!" >> "$HOUSE_ROOT/#.desktop/livedesk_proc_list.txt" 2>/dev/null || true
 disown 2>/dev/null || true
 sleep 1
 

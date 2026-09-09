@@ -92,22 +92,21 @@ static void ktb_load_zorder_mode(KtbState *s);
  * dash. Fix: no explicit `;` - a plain space after the caller's own
  * trailing `&` is a valid, single separator (`cmd & echo $! ...`). */
 static int ktb_system_recorded(const char *house_root, const char *cmd) {
-    char wrapped[KTB_PATH_BUF * 4];
-    snprintf(wrapped, sizeof(wrapped),
-             "%s echo $! >> \"%s/#.desktop/livedesk_launched_pids.txt\"",
-             cmd, house_root);
-    int rc = system(wrapped);
-    /* PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md: also record this launch in
-     * the canonical registry so the quit reaper reaches it. `cmd` ends in
-     * ` &`, so by the time system() returns the foreground `echo $!` has
-     * already appended the setsid group-leader PID to
-     * livedesk_launched_pids.txt — read it back and register properly (C
-     * computes the real /proc start-time, the PID-reuse guard). The old
-     * file is still written for one release so kill_hq_windows.sh keeps
-     * working unaided. */
+    /* DROP 2026-09-09 (PROC-LIFECYCLE-CONSOLIDATE-REGISTRIES.md §2): the
+     * legacy bare-PID file #.desktop/livedesk_launched_pids.txt is gone.
+     * `cmd` ends in ` &`, so a trailing foreground `echo $! > <tmp>`
+     * still runs in the same shell before system() returns — write the
+     * setsid group-leader PID to a private single-line scratch file,
+     * read it back, and register it PROPERLY in the one proc-ledger
+     * (kh_proc_register_owned computes the real /proc start-time, the
+     * PID-reuse guard). */
     char pidfile[KTB_PATH_BUF];
     snprintf(pidfile, sizeof(pidfile),
-             "%s/#.desktop/livedesk_launched_pids.txt", house_root);
+             "%s/#.desktop/.livedesk_last_launch.pid", house_root);
+    char wrapped[KTB_PATH_BUF * 4];
+    snprintf(wrapped, sizeof(wrapped),
+             "%s echo $! > \"%s\"", cmd, pidfile);
+    int rc = system(wrapped);
     FILE *pf = fopen(pidfile, "r");
     if (pf) {
         char ln[64]; long last = 0;

@@ -111,7 +111,7 @@ setsid nohup "$BIN" "$HOUSE_ROOT" "$CHTPM" \
 # window binary it launches here - THIS script's own $! (the actual
 # `$BIN` process, its own real session/group leader since it's re-
 # setsid'd right above) is the one the kill-switch actually needs.
-echo $! >> "$HOUSE_ROOT/#.desktop/livedesk_launched_pids.txt" 2>/dev/null || true
+printf '%s %s 0 0 db-hq\n' "$!" "$!" >> "$HOUSE_ROOT/#.desktop/livedesk_proc_list.txt" 2>/dev/null || true
 disown 2>/dev/null || true
 sleep 1
 

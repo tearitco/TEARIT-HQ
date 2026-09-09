@@ -86,7 +86,7 @@ setsid nohup "$BIN" "$HOUSE_ROOT" "$CHTPM" \
 # REAL FIX 2026-08-25 (au11-hq direct request: "why cant u write that
 # final pid to a file and reconsume it?") - see open_db_hq.sh's own
 # identical line for the full rationale.
-echo $! >> "$HOUSE_ROOT/#.desktop/livedesk_launched_pids.txt" 2>/dev/null || true
+printf '%s %s 0 0 stats-hq\n' "$!" "$!" >> "$HOUSE_ROOT/#.desktop/livedesk_proc_list.txt" 2>/dev/null || true
 disown 2>/dev/null || true
 sleep 1
 

@@ -25,7 +25,14 @@ gcc $CFLAGS "system/renderer.c" -o "system/renderer"
 
 echo "--- Building chtpm_parser_pal (PERSISTENT process, -Wno-unused-result"
 echo "    -Wno-stringop-truncation required - see shared-ops/chtpm_parser_pal.c)"
-gcc $CFLAGS -Wno-unused-result -Wno-stringop-truncation "system/chtpm_parser_pal.c" -o "system/chtpm_parser_pal"
+# PROC-LIFECYCLE-CONSOLIDATE-REGISTRIES.md §3: compile the CANONICAL
+# parser (not the drifting vendored system/ copy) with the proc-ledger
+# opt-in, so a taskbar quit / kill_hq_windows reaps this project's prisc
+# VM. -I gives it kh_proc_registry.h; -DKH_HAVE_PROC_REGISTRY turns the
+# (otherwise no-op) hooks on.
+gcc $CFLAGS -Wno-unused-result -Wno-stringop-truncation \
+    -I "$PRISC_CANON_SHARED_LIB" -DKH_HAVE_PROC_REGISTRY \
+    "$PRISC_CANON_SHARED_LIB/system/chtpm_parser_pal.c" -o "system/chtpm_parser_pal"
 
 echo "--- Building palnet_peer (local copy - reusable P2P op, see"
 echo "    ../PAL-NET-STANDARD.txt) ---"

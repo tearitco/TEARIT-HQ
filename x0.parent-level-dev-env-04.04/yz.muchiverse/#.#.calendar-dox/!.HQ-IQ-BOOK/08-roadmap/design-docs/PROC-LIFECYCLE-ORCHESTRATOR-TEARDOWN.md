@@ -388,11 +388,23 @@ after it, quietly.
    engine child a *manager* forks, or anything from a bare `button.sh`,
    is still manual until that app moves to `kh_spawn` /
    `kh_proc_self_register()`.
-7. Fold `livedesk_hq_windows_<pid>.txt` into the ledger (its
-   `win=/title=/x=/y=/minimized=/focused=` become trailing `k=v` on the
-   process's own line via `kh_proc_self_register`); drop
-   `livedesk_launched_pids.txt` and retire `kill_hq_windows.sh`'s
-   name-pattern list to `EMERGENCY_*`-only.
+7. **Superseded by `PROC-LIFECYCLE-CONSOLIDATE-REGISTRIES.md`
+   (2026-09-09).** Outcome of that research:
+   - **DROP `livedesk_launched_pids.txt` — DONE.** `kill_hq_windows.sh`
+     reads the proc-ledger (field 1 = pid, field 2 = pgid); the 12
+     launcher scripts + `ktb_system_recorded()` append/register into
+     `livedesk_proc_list.txt`; the bare-PID file is gone.
+   - **FOLD `livedesk_hq_windows_<pid>.txt` — NOT done, by decision.**
+     It is per-window UI-state rewritten every redraw tick; merging it
+     into one shared ledger trades zero-contention per-PID writes for
+     `flock` churn on the teardown file. HQ windows are already reaped
+     via their `ktb_system_recorded` group leader. The recommended
+     future move is a *split* (write-once identity → ledger via
+     `kh_proc_self_register`; volatile geometry stays a per-PID tick
+     file), not a merge — see that doc §1.
+   - **prisc VM registration — DONE** (canonical `chtpm_parser_pal.c`,
+     opt-in `-DKH_HAVE_PROC_REGISTRY`; `044.pal-chat-irc` migrated,
+     rest are a mechanical rollout).
 
 ## 6. KPIs
 

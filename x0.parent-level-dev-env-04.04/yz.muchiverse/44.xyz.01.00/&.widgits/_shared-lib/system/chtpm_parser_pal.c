@@ -32,6 +32,16 @@
 #include <errno.h>
 #include <stdarg.h>
 
+/* PROC-LIFECYCLE-CONSOLIDATE-REGISTRIES.md §3 - register the prisc VM
+ * (the <module> child this parser forks) into the house proc-ledger so a
+ * taskbar quit / kill_hq_windows reaps it. Opt-in per project: a build
+ * that wants this passes  -I <_shared-lib> -DKH_HAVE_PROC_REGISTRY  ;
+ * every other (not-yet-migrated) build compiles byte-identically. */
+#ifdef KH_HAVE_PROC_REGISTRY
+#define KH_PROC_REGISTRY_IMPL
+#include "kh_proc_registry.h"
+#endif
+
 // TPM CHTPM Parser (v3.6 - PROJECT LOADER FIX)
 // Responsibility: 100% Warning-free, app-aware routing and variables.
 
@@ -611,6 +621,64 @@ void resolve_root() {
     }
 }
 
+/* ── prisc-VM proc-ledger registration (opt-in, see top-of-file note) ──
+ * All no-ops unless the build defined KH_HAVE_PROC_REGISTRY. */
+#ifdef KH_HAVE_PROC_REGISTRY
+/* Walk up from the project/session dir to the house root — the nearest
+ * ancestor that contains a "#.desktop" directory (where the ledger
+ * livedesk_proc_list.txt lives). Returns "" if none found (project
+ * checked out standalone) → every register/reap call then no-ops. */
+static const char *kh_pal_house_root(void) {
+    static char cached[MAX_PATH] = "";
+    static int  done = 0;
+    if (done) return cached;
+    done = 1;
+    const char *starts[2] = { project_root_path, session_root_path };
+    for (int s = 0; s < 2; s++) {
+        if (!starts[s] || !starts[s][0]) continue;
+        char cur[MAX_PATH];
+        if (starts[s][0] == '/') {
+            strncpy(cur, starts[s], sizeof(cur) - 1);
+        } else if (!getcwd(cur, sizeof(cur))) {
+            continue;
+        } else if (strcmp(starts[s], ".") != 0) {
+            size_t l = strlen(cur);
+            snprintf(cur + l, sizeof(cur) - l, "/%s", starts[s]);
+        }
+        cur[sizeof(cur) - 1] = '\0';
+        for (int hop = 0; hop < 40; hop++) {
+            char probe[MAX_PATH];
+            snprintf(probe, sizeof(probe), "%s/#.desktop", cur);
+            struct stat st;
+            if (stat(probe, &st) == 0 && S_ISDIR(st.st_mode)) {
+                strncpy(cached, cur, sizeof(cached) - 1);
+                cached[sizeof(cached) - 1] = '\0';
+                return cached;
+            }
+            char *slash = strrchr(cur, '/');
+            if (!slash || slash == cur) break;
+            *slash = '\0';
+        }
+    }
+    return cached; /* "" */
+}
+
+static void kh_pal_register_module(pid_t p, const char *tag) {
+    const char *hr = kh_pal_house_root();
+    if (hr[0] && p > 1)
+        kh_proc_register_owned(hr, (long)p, (long)p, (long)getpid(),
+                               (tag && tag[0]) ? tag : "prisc");
+}
+static void kh_pal_reap_module(pid_t p) {
+    const char *hr = kh_pal_house_root();
+    if (hr[0] && p > 1)
+        kh_proc_reap_one(hr, (long)p, 1);
+}
+#else
+#define kh_pal_register_module(p, tag) ((void)0)
+#define kh_pal_reap_module(p)          ((void)0)
+#endif
+
 void build_path(char* dst, size_t sz, const char* fmt, ...) {
     va_list args; va_start(args, fmt); vsnprintf(dst, sz, fmt, args); va_end(args);
 }
@@ -907,6 +975,7 @@ void cleanup_module() {
          * shutdown of a process this same code just signaled, not a
          * wait on unrelated/unbounded work. */
         waitpid(current_module_pid, NULL, 0);
+        kh_pal_reap_module(current_module_pid); /* drop its ledger row */
         current_module_pid = -1;
         current_module_path[0] = '\0';
     }
@@ -920,8 +989,28 @@ void cleanup_module() {
 #endif
 }
 
-void handle_sigint(int sig __attribute__((unused))) { 
-    cleanup_module(); if (scratch_substituted) free(scratch_substituted); exit(0); 
+/* Reap every persistent extra-<module> (launch_extra_module) — only on
+ * real shutdown, NOT on cleanup_module()'s per-transition path (extra
+ * modules deliberately outlive screen changes). */
+static void cleanup_extra_modules(void) {
+#ifndef _WIN32
+    for (int i = 0; i < g_extra_module_count; i++) {
+        pid_t p = (pid_t)g_extra_modules[i].pid;
+        if (p > 0) {
+            kill(p, SIGTERM);
+            waitpid(p, NULL, WNOHANG);
+            kh_pal_reap_module(p);
+            g_extra_modules[i].pid = 0;
+        }
+    }
+#endif
+}
+
+void handle_sigint(int sig __attribute__((unused))) {
+    cleanup_module();
+    cleanup_extra_modules();
+    if (scratch_substituted) free(scratch_substituted);
+    exit(0);
 }
 
 void set_var(const char* name, const char* value) {
@@ -2003,6 +2092,7 @@ void launch_module(const char* launch_str) {
         execv(args[0], args); exit(1);
     }
     else if (current_module_pid > 0) {
+        kh_pal_register_module(current_module_pid, "prisc"); /* proc-ledger */
         // DEBUG: Log successful fork
         {
             FILE *dbg = fopen("debug.txt", "a");
@@ -2144,6 +2234,7 @@ void launch_extra_module(const char* launch_str) {
                 execv(args[0], args); _exit(1);
             }
             g_extra_modules[i].pid = pid;
+            kh_pal_register_module(pid, "prisc-x"); /* proc-ledger */
 #else
             g_extra_modules[i].pid = win_spawn(args[0], args);
 #endif
@@ -2175,6 +2266,7 @@ void launch_extra_module(const char* launch_str) {
         execv(args[0], args); _exit(1);
     }
     g_extra_modules[slot].pid = pid;
+    kh_pal_register_module(pid, "prisc-x"); /* proc-ledger */
 #else
     g_extra_modules[slot].pid = win_spawn(args[0], args);
 #endif
@@ -3843,7 +3935,8 @@ void process_key(int key) {
 int main(int argc, char **argv) {
     g_nav_debug = (getenv("CHTPM_NAV_DEBUG") != NULL); /* real merge, see nav_debug()'s own header comment */
     resolve_root(); scratch_substituted = malloc(MAX_LABEL_LEN); if (argc > 1) strncpy(current_layout, argv[1], MAX_PATH-1);
-    signal(SIGINT, handle_sigint); 
+    signal(SIGINT, handle_sigint);
+    signal(SIGTERM, handle_sigint); /* taskbar quit / kill_hq_windows → reap the prisc VM too */
     active_index = -1;
     focus_index = 0;
     /* Drop stale focus from a previous session so the first frame starts on the

@@ -153,7 +153,7 @@ setsid nohup "$BIN" "$HOUSE_ROOT" "$XHTPM" \
 # pid to a file and reconsume it?") - records THIS script's own $!, the
 # real window binary's own PID/session leader, not the outer taskbar
 # wrapper's.
-echo $! >> "$HOUSE_ROOT/#.desktop/livedesk_launched_pids.txt" 2>/dev/null || true
+printf '%s %s 0 0 open-hai\n' "$!" "$!" >> "$HOUSE_ROOT/#.desktop/livedesk_proc_list.txt" 2>/dev/null || true
 disown 2>/dev/null || true
 sleep 1
 

@@ -83,7 +83,7 @@ fi
 
 setsid nohup "$BIN" "$HOUSE_ROOT" "$XHTPM" \
     >"$AUDIT_DIR/co-lab-hai.log" 2>&1 < /dev/null &
-echo $! >> "$HOUSE_ROOT/#.desktop/livedesk_launched_pids.txt" 2>/dev/null || true
+printf '%s %s 0 0 co-lab-hai\n' "$!" "$!" >> "$HOUSE_ROOT/#.desktop/livedesk_proc_list.txt" 2>/dev/null || true
 disown 2>/dev/null || true
 sleep 1
 

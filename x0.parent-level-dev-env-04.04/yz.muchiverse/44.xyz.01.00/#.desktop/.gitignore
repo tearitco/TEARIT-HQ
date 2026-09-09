@@ -37,7 +37,8 @@ taskbar_settings_frame*.txt
 # hq window registry + launcher/relay transients
 livedesk_hq_windows_*.txt
 /livedesk_header_cell_ids.txt
-/livedesk_launched_pids.txt
+/livedesk_proc_list.txt
+/.livedesk_last_launch.pid
 /livedesk_nav_claims.txt
 /livedesk_next_index.txt
 /livedesk_open.txt
