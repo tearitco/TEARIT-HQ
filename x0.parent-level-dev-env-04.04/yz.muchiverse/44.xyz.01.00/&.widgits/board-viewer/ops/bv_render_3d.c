@@ -1479,7 +1479,16 @@ static void write_overlay_receipt(const char *path, int ov_w, int ov_h) {
  * error (alloc), 2 = nothing to do (2D mode / session not ready).
  * bv_render_3d.+x runs this once; bv_render_3d.+x --daemon runs it in
  * a loop with the GPU context kept resident (Path A v2). */
+#ifdef BV_HAVE_GPU
+static double g_prof_load_ms = 0, g_prof_gpu_ms = 0, g_prof_write_ms = 0;
+static double bv_now_ms_(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t);
+    return t.tv_sec * 1e3 + t.tv_nsec / 1e6; }
+#endif
+
 static int render_one_frame(void) {
+#ifdef BV_HAVE_GPU
+    double prof_t0 = bv_now_ms_();
+#endif
     resolve_root();
     load_house_root();
 
@@ -1893,11 +1902,14 @@ static int render_one_frame(void) {
      * (no phymoji voxel detail, no shadow rays). ---- */
     int gpu_done = 0;
 #ifdef BV_HAVE_GPU
+    g_prof_load_ms = bv_now_ms_() - prof_t0;
     if (use_gpu_render) {
+        double gpu_t0 = bv_now_ms_();
         static BvGpuScene sc;            /* static: ~7KB of box arrays */
         static unsigned char gpu_grid[MAX_BOARD_DIM * MAX_BOARD_DIM * MAX_VOXEL_Z];
         memset(&sc, 0, sizeof(sc));
         sc.w = g_fw; sc.h = g_fh; sc.focal = (float)cam.focal;
+        sc.lod_step = g_lod_step;   /* motion frames raymarch at reduced res on the GPU too */
         sc.eye[0]=(float)cam.eye.x;   sc.eye[1]=(float)cam.eye.y;   sc.eye[2]=(float)cam.eye.z;
         sc.fwd[0]=(float)cam.forward.x; sc.fwd[1]=(float)cam.forward.y; sc.fwd[2]=(float)cam.forward.z;
         sc.right[0]=(float)cam.right.x; sc.right[1]=(float)cam.right.y; sc.right[2]=(float)cam.right.z;
@@ -1959,6 +1971,7 @@ static int render_one_frame(void) {
         #undef ADDBOX
         if (bv_gpu_raymarch(&sc, g_fbuf) == 0) gpu_done = 1;
         else fprintf(stderr, "bv_render_3d: GPU backend failed, using CPU\n");
+        g_prof_gpu_ms = bv_now_ms_() - gpu_t0;
     }
 #endif
     if (!gpu_done) {
@@ -2543,8 +2556,14 @@ static int render_one_frame(void) {
     snprintf(overlay_receipt_path, sizeof(overlay_receipt_path), "%s/pieces/display/rgb_frame_3d_overlay.receipt.txt", project_root);
 
     size_t byte_count = (size_t)g_fw * (size_t)g_fh * 4;
+#ifdef BV_HAVE_GPU
+    double wr_t0 = bv_now_ms_();
+#endif
     write_file_atomic(overlay_path, g_fbuf, byte_count);
     write_overlay_receipt(overlay_receipt_path, g_fw, g_fh);
+#ifdef BV_HAVE_GPU
+    g_prof_write_ms = bv_now_ms_() - wr_t0;
+#endif
 
     free(g_fbuf); g_fbuf = NULL;
     return 0;
@@ -2602,8 +2621,9 @@ int main(int argc, char **argv) {
             int rc = render_one_frame();
             clock_gettime(CLOCK_MONOTONIC, &tb);
             if (getenv("BV_GPU_DEBUG"))
-                fprintf(stderr, "bv_gpu daemon frame %lld: %.1f ms (rc=%d)\n", served + 1,
-                        (tb.tv_sec - ta.tv_sec) * 1e3 + (tb.tv_nsec - ta.tv_nsec) / 1e6, rc);
+                fprintf(stderr, "bv_gpu daemon frame %lld: %.1f ms  [load %.1f | gpu %.1f | write %.1f] (rc=%d)\n",
+                        served + 1, (tb.tv_sec - ta.tv_sec) * 1e3 + (tb.tv_nsec - ta.tv_nsec) / 1e6,
+                        g_prof_load_ms, g_prof_gpu_ms, g_prof_write_ms, rc);
             served++;
             { FILE *af = fopen(ackp, "w"); if (af) { fprintf(af, "%lld\n", served); fclose(af); } }
             if (rc == 0) { FILE *mf = fopen(mkp, "a"); if (mf) { fputc('F', mf); fputc('\n', mf); fclose(mf); } }

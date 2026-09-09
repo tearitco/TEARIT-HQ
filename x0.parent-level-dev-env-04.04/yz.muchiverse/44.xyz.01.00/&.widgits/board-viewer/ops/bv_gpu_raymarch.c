@@ -21,6 +21,7 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GLES3/gl3.h>
+#include <time.h>
 
 static int g_dbg = 0;
 #define DBG(...) do { if (g_dbg) fprintf(stderr, "bv_gpu: " __VA_ARGS__); } while (0)
@@ -72,7 +73,7 @@ static const char *FS_SRC =
 "\n"
 "void main() {\n"
 "  float a = (gl_FragCoord.x - u_res.x * 0.5) / u_focal;\n"
-"  float b = (gl_FragCoord.y - u_res.y * 0.5) / u_focal;\n"
+"  float b = (u_res.y * 0.5 - gl_FragCoord.y) / u_focal;\n"   /* flipped: GL row 0 = image top, so glReadPixels needs no row-flip */
 "  vec3 rd = normalize(u_fwd + a * u_right + b * u_up);\n"
 "  vec3 ro = u_eye;\n"
 "\n"
@@ -136,6 +137,11 @@ static EGLContext s_ctx = EGL_NO_CONTEXT;
 static GLuint     s_prog = 0, s_vao = 0, s_fbo = 0, s_rbo = 0, s_tex_grid = 0, s_tex_leg = 0;
 static int        s_fw = 0, s_fh = 0;          /* current FBO size */
 static int        s_gw = 0, s_gh = 0, s_gd = 0; /* current grid-tex dims */
+static int        s_leg_alloc = 0;            /* legend tex storage created */
+/* cached uniform locations (glGetUniformLocation is a string lookup) */
+static struct {
+    GLint eye, fwd, right, up, focal, res, wext, grid, leg, light, sky, nbox, bmin, bmax, bcol;
+} s_u;
 
 static GLuint compile(GLenum type, const char *src) {
     GLuint sh = glCreateShader(type);
@@ -219,6 +225,14 @@ static int gl_ensure_context(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     s_dpy = dpy; s_ctx = ctx; s_prog = prog; s_vao = vao; s_tex_leg = leg;
+    s_leg_alloc = 0;
+
+    #define UL(n) glGetUniformLocation(prog, n)
+    s_u.eye=UL("u_eye"); s_u.fwd=UL("u_fwd"); s_u.right=UL("u_right"); s_u.up=UL("u_up");
+    s_u.focal=UL("u_focal"); s_u.res=UL("u_res"); s_u.wext=UL("u_wext");
+    s_u.grid=UL("u_grid"); s_u.leg=UL("u_leg"); s_u.light=UL("u_light"); s_u.sky=UL("u_sky");
+    s_u.nbox=UL("u_nbox"); s_u.bmin=UL("u_bmin"); s_u.bmax=UL("u_bmax"); s_u.bcol=UL("u_bcol");
+    #undef UL
     return 0;
 }
 
@@ -277,6 +291,7 @@ void bv_gpu_shutdown(void) {
     s_dpy = EGL_NO_DISPLAY; s_ctx = EGL_NO_CONTEXT;
     s_prog = s_vao = s_fbo = s_rbo = s_tex_grid = s_tex_leg = 0;
     s_fw = s_fh = s_gw = s_gh = s_gd = 0;
+    s_leg_alloc = 0;
     s_persist = 0;
 }
 
@@ -290,12 +305,19 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
     if (!s || !out || s->w <= 0 || s->h <= 0) return 1;
     if (s->board_w <= 0 || s->board_h <= 0 || s->z_count <= 0 || !s->grid) return 1;
 
+    int step = (s->lod_step > 1) ? s->lod_step : 1;
+    if (step > 4) step = 4;
+    int rw = s->w / step, rh = s->h / step;
+    if (rw < 32) rw = 32;
+    if (rh < 32) rh = 32;
+
     if (gl_ensure_context() != 0) { if (!s_persist) bv_gpu_shutdown(); return 1; }
+    /* FBO is always full output size - LOD just renders a sub-rect of
+     * it (glViewport), so toggling LOD never re-allocates the FBO. */
     if (gl_ensure_targets(s->w, s->h) != 0) { if (!s_persist) bv_gpu_shutdown(); return 1; }
     gl_ensure_grid_tex(s->board_w, s->board_h, s->z_count);
 
     int rc = 1;
-    unsigned char *flip = NULL;
 
     glBindFramebuffer(GL_FRAMEBUFFER, s_fbo);
     glBindVertexArray(s_vao);
@@ -321,24 +343,28 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
         }
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, s_tex_leg);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, lut);
+        if (!s_leg_alloc) {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, lut);
+            s_leg_alloc = 1;
+        } else {
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 1, GL_RGBA, GL_UNSIGNED_BYTE, lut);
+        }
     }
 
-    #define U(n) glGetUniformLocation(s_prog, n)
-    glUniform3fv(U("u_eye"),   1, s->eye);
-    glUniform3fv(U("u_fwd"),   1, s->fwd);
-    glUniform3fv(U("u_right"), 1, s->right);
-    glUniform3fv(U("u_up"),    1, s->up);
-    glUniform1f (U("u_focal"), s->focal);
-    glUniform2f (U("u_res"),   (float)s->w, (float)s->h);
-    glUniform3f (U("u_wext"),  (float)s->board_w, (float)s->z_count, (float)s->board_h);
-    glUniform1i (U("u_grid"),  0);
-    glUniform1i (U("u_leg"),   1);
-    glUniform1f (U("u_light"), s->light_level);
-    glUniform3fv(U("u_sky"),   1, s->sky);
+    glUniform3fv(s_u.eye,   1, s->eye);
+    glUniform3fv(s_u.fwd,   1, s->fwd);
+    glUniform3fv(s_u.right, 1, s->right);
+    glUniform3fv(s_u.up,    1, s->up);
+    glUniform1f (s_u.focal, s->focal * (float)rh / (float)s->h);   /* same FOV at the reduced res */
+    glUniform2f (s_u.res,   (float)rw, (float)rh);
+    glUniform3f (s_u.wext,  (float)s->board_w, (float)s->z_count, (float)s->board_h);
+    glUniform1i (s_u.grid,  0);
+    glUniform1i (s_u.leg,   1);
+    glUniform1f (s_u.light, s->light_level);
+    glUniform3fv(s_u.sky,   1, s->sky);
     {
         int nb = s->box_n; if (nb > BV_GPU_MAX_BOX) nb = BV_GPU_MAX_BOX; if (nb > 128) nb = 128;
-        glUniform1i(U("u_nbox"), nb);
+        glUniform1i(s_u.nbox, nb);
         if (nb > 0) {
             float bmin[128*3], bmax[128*3], bcol[128*4];
             for (int i = 0; i < nb; i++) {
@@ -347,36 +373,45 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
                 bcol[i*4+0]=s->box[i].r; bcol[i*4+1]=s->box[i].g; bcol[i*4+2]=s->box[i].b;
                 bcol[i*4+3]=s->box[i].self_lit ? 0.0f : 1.0f;
             }
-            glUniform3fv(U("u_bmin"), nb, bmin);
-            glUniform3fv(U("u_bmax"), nb, bmax);
-            glUniform4fv(U("u_bcol"), nb, bcol);
+            glUniform3fv(s_u.bmin, nb, bmin);
+            glUniform3fv(s_u.bmax, nb, bmax);
+            glUniform4fv(s_u.bcol, nb, bcol);
         }
     }
-    #undef U
 
-    glViewport(0, 0, s->w, s->h);
+    glViewport(0, 0, rw, rh);
     glDisable(GL_DEPTH_TEST);
     glClearColor(s->sky[0], s->sky[1], s->sky[2], 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     glDrawArrays(GL_TRIANGLES, 0, 3);
-
     {
         GLenum e = glGetError();
         if (e != GL_NO_ERROR) { fprintf(stderr, "bv_gpu: GL error 0x%x after draw\n", e); goto done; }
     }
 
-    flip = (unsigned char *)malloc((size_t)s->w * s->h * 4);
-    if (!flip) goto done;
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glReadPixels(0, 0, s->w, s->h, GL_RGBA, GL_UNSIGNED_BYTE, flip);
-    for (int y = 0; y < s->h; y++)
-        memcpy(out + (size_t)y * s->w * 4,
-               flip + (size_t)(s->h - 1 - y) * s->w * 4,
-               (size_t)s->w * 4);
+    if (step == 1) {
+        glReadPixels(0, 0, s->w, s->h, GL_RGBA, GL_UNSIGNED_BYTE, out);   /* shader renders top-down -> no flip */
+    } else {
+        /* read the reduced frame, then nearest-upscale into the full out */
+        static unsigned char scratch[1280 * 960 * 4];
+        if ((size_t)rw * rh * 4 > sizeof(scratch)) { fprintf(stderr, "bv_gpu: LOD scratch too small\n"); goto done; }
+        glReadPixels(0, 0, rw, rh, GL_RGBA, GL_UNSIGNED_BYTE, scratch);
+        for (int y = 0; y < s->h; y++) {
+            int sy = y * rh / s->h; if (sy >= rh) sy = rh - 1;
+            const unsigned char *srow = scratch + (size_t)sy * rw * 4;
+            unsigned char *drow = out + (size_t)y * s->w * 4;
+            for (int x = 0; x < s->w; x++) {
+                int sx = x * rw / s->w; if (sx >= rw) sx = rw - 1;
+                const unsigned char *sp = srow + (size_t)sx * 4;
+                unsigned char *dp = drow + (size_t)x * 4;
+                dp[0]=sp[0]; dp[1]=sp[1]; dp[2]=sp[2]; dp[3]=255;
+            }
+        }
+    }
     rc = 0;
 
 done:
-    free(flip);
     if (!s_persist) bv_gpu_shutdown();
     return rc;
 }

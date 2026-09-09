@@ -32,7 +32,8 @@ typedef struct {
 } BvGpuBox;
 
 typedef struct {
-    int   w, h;
+    int   w, h;                  /* output frame size (always written full) */
+    int   lod_step;              /* 1 = full res; >1 = raymarch at w/step x h/step and nearest-upscale (motion frames) */
     float focal;                 /* cam.focal (already fov/height-derived) */
 
     float eye[3], fwd[3], right[3], up[3];   /* camera, world space */

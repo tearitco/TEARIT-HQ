@@ -186,6 +186,44 @@ Lifecycle: started by `button.sh` / the session orchestrator next to
 guard like the projector's. This is the **one documented persistent
 process** the perf-ceiling doc calls for.
 
+## 4b. v3 measured (2026-09-09) - the readback-sync wall
+
+v3 landed: shader renders top-down (no 2.9 MB row-flip memcpy), cached
+uniform locations, `glTexSubImage2D` for the legend, and `.bv_render_lod`
+plumbed into the GPU path (renders a `w/step x h/step` sub-rect of a
+full-size FBO + nearest-upscale, so LOD never re-allocates the FBO).
+
+Daemon now ~30-33 ms/frame (~31 fps internal, ~17 fps live). But the
+per-frame breakdown is stuck:
+
+| bucket | ms | what |
+|---|---|---|
+| load | ~5-8 | file reads (chunk/legend/entities/camera) |
+| gpu  | **~15-17** | scene upload + draw + **`glReadPixels` (synchronous)** |
+| write | ~9-13 | `write_file_atomic` 2.9 MB |
+
+The `gpu` bucket does **not** shrink with LOD (step-2 = same ~15 ms).
+On this AMD Mesa iGPU `glReadPixels` from a renderbuffer forces a full
+pipeline flush + a blocking GPU->CPU copy, and that sync has a ~15 ms
+fixed cost here regardless of pixel count. Every frame is fully
+serial: draw -> sync-read -> CPU write -> next draw.
+
+## 4c. v4 - the real 60+ fps push (not started)
+
+1. **PBO + fence async readback.** `glReadPixels` into a `GL_PIXEL_PACK_BUFFER`,
+   read frame N-1's PBO (with an `glFenceSync`) while frame N renders.
+   Genuine pipelining - removes the ~15 ms serial stall. This is the
+   single biggest remaining lever.
+2. **Shared-memory framebuffer.** `shm_open` a `w*h*4` segment; the
+   khtpm canvas element `mmap`s it instead of reading `.raw`. Removes
+   the ~10 ms `write_file_atomic` per frame.
+3. **Cache the scene load** behind a `bv_screen_changed` marker - only
+   re-read the chunk/legend/entities when the host changes them
+   (camera stays per-frame). ~5 ms.
+4. Then LOD actually pays off (the raymarch is real work again once the
+   sync stall is gone), and a bigger chunk / more entities have
+   headroom.
+
 ## 5. v3
 
 - Phymoji voxel detail: upload `PhymojiColumn` data as an SSBO, port
