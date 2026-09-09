@@ -56,9 +56,9 @@ fp_eye_height=1.5
 # tp_look_down_deg: how many degrees to tilt the VIEW down (on top of
 #   whatever r/t pitch you've dialed in) so the elevated camera
 #   actually looks down at the entity instead of level over its head.
-tp_distance=5.0
-tp_height=4.0
-tp_look_down_deg=20.0
+tp_distance=7.0
+tp_height=9.0
+tp_look_down_deg=48.0
 
 # --- Lighting engine (xyz-ngn-plan.md) ---
 # lighting_enabled: 1 = real sun/moon-driven sky color + ground light
