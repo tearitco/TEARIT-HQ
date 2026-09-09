@@ -1,0 +1,207 @@
+<title>Architecture Explainers — Browser Prompting</title>
+
+<style>
+  :root {
+    --bg: #f4f3ef; --surface: #ffffff; --surface-2: #ececE6; --border: #dcdad2;
+    --text: #1c1c1a; --text-dim: #6b6a63; --accent: #1a8a4a; --accent-warm: #b5720a;
+    --status-wip: #2563a8; --code-bg: #ececE6; --code-text: #2b2b28;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, "Liberation Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  :root:not([data-theme="light"]) { @media (prefers-color-scheme: dark) {
+    --bg: #14161a; --surface: #1b1e24; --surface-2: #21252c; --border: #2b2f37;
+    --text: #e9e7e2; --text-dim: #9599a1; --accent: #22c55e; --accent-warm: #f0a63f;
+    --status-wip: #5b9dd9; --code-bg: #16181c; --code-text: #dcdad4;
+  } }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --surface: #1b1e24; --surface-2: #21252c; --border: #2b2f37;
+    --text: #e9e7e2; --text-dim: #9599a1; --accent: #22c55e; --accent-warm: #f0a63f;
+    --status-wip: #5b9dd9; --code-bg: #16181c; --code-text: #dcdad4;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  a:focus-visible, .navlink:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 100vh; }
+  .sidebar { border-right: 1px solid var(--border); background: var(--surface); padding: 28px 20px 40px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .brand { font-family: var(--mono); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 4px; }
+  .brand strong { display: block; font-family: var(--sans); font-size: 1.05rem; font-weight: 800; letter-spacing: -0.01em; color: var(--text); text-transform: none; margin-top: 2px; }
+  nav { margin-top: 24px; display: flex; flex-direction: column; gap: 20px; }
+  .navgroup-label { font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: 8px; }
+  .navlinks { display: flex; flex-direction: column; gap: 2px; }
+  .navlink { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; color: var(--text); text-decoration: none; font-size: 0.88rem; }
+  .navlink:hover { background: var(--surface-2); }
+  .navlink.current { background: var(--surface-2); font-weight: 700; }
+  .navlink .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--border); }
+  .navlink .dot.done { background: var(--accent); }
+  .navlink .dot.wip { background: var(--status-wip); }
+  main { padding: 56px 40px 120px; min-width: 0; }
+  .col { max-width: 820px; margin: 0 auto; }
+  .hero-eyebrow { font-family: var(--mono); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 10px; }
+  h1.pagetitle { font-size: 2.1rem; font-weight: 800; letter-spacing: -0.02em; text-wrap: balance; margin: 0 0 14px; }
+  .lede { font-size: 1.08rem; color: var(--text-dim); max-width: 64ch; margin: 0 0 40px; }
+  section.doc { padding-top: 40px; margin-top: 8px; border-top: 1px solid var(--border); scroll-margin-top: 24px; }
+  section.doc:first-of-type { border-top: none; padding-top: 0; }
+  .section-path { font-family: var(--mono); font-size: 0.78rem; color: var(--text-dim); margin: 0 0 4px; }
+  h1 { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.02em; text-wrap: balance; margin: 0 0 14px; }
+  h2 { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.01em; text-wrap: balance; margin: 30px 0 8px; }
+  h3 { font-size: 1.08rem; font-weight: 700; margin: 26px 0 10px; }
+  h4 { font-size: 0.95rem; font-weight: 700; margin: 20px 0 8px; color: var(--text-dim); }
+  p { margin: 0 0 16px; max-width: 74ch; }
+  ul, ol { margin: 0 0 16px; padding-left: 22px; }
+  li { margin-bottom: 6px; max-width: 72ch; }
+  li > ul, li > ol { margin: 6px 0 4px; }
+  code { font-family: var(--mono); font-size: 0.86em; background: var(--code-bg); color: var(--code-text); padding: 0.12em 0.4em; border-radius: 4px; }
+  pre { background: var(--code-bg); color: var(--code-text); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; overflow-x: auto; margin: 0 0 20px; }
+  pre code { background: none; padding: 0; font-size: 0.84rem; line-height: 1.55; }
+  blockquote { margin: 0 0 18px; padding: 4px 16px; border-left: 3px solid var(--accent); color: var(--text-dim); }
+  blockquote p { margin: 8px 0; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+  .table-wrap { overflow-x: auto; margin: 0 0 20px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
+  .cardgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin: 0 0 32px; }
+  .card { display: block; border: 1px solid var(--border); background: var(--surface); border-radius: 10px; padding: 18px 20px; text-decoration: none; color: var(--text); }
+  .card:hover { border-color: var(--accent); }
+  .card .card-title { font-weight: 700; font-size: 1.0rem; margin-bottom: 6px; }
+  .card .card-desc { color: var(--text-dim); font-size: 0.86rem; margin: 0; }
+  footer.pagefoot { max-width: 820px; margin: 64px auto 0; padding-top: 24px; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.85rem; }
+  @media (max-width: 880px) { .shell { grid-template-columns: 1fr; } .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); } main { padding: 40px 20px 100px; } }
+  html { scroll-behavior: smooth; }
+</style>
+
+<div class="shell">
+<aside class="sidebar">
+  <div class="brand">TEARIT-HQ<strong>Browser Prompting Guide</strong></div>
+  <nav>
+    <div>
+      <div class="navgroup-label">Guide</div>
+      <div class="navlinks">
+        <a class="navlink" href="../0.browser-p-index=%23.html">Overview / index</a>
+        <a class="navlink" href="1.platform-primer.html"><span class="dot done"></span>Platform Primer</a>
+        <a class="navlink" href="2.house-shape-status.html"><span class="dot done"></span>House Shape Status</a>
+        <a class="navlink" href="3.ai-agents.html"><span class="dot wip"></span>AI Agents</a>
+        <a class="navlink" href="4.open-hai-free-ai.html"><span class="dot done"></span>open-hai + Free AI</a>
+        <a class="navlink" href="5.bugs-toys-gl.html"><span class="dot wip"></span>Bugs / Toys / GL</a>
+        <a class="navlink current" href="6.architecture-explainers.html"><span class="dot wip"></span>Architecture Explainers</a>
+        <a class="navlink" href="7.platform-passes.html"><span class="dot wip"></span>Grok's Lanes</a>
+        <a class="navlink" href="8.project-starters.html"><span class="dot wip"></span>Project Starters</a>
+      </div>
+    </div>
+    <div>
+      <div class="navgroup-label">Elsewhere</div>
+      <div class="navlinks">
+        <a class="navlink" href="../#.house-user-guide.html/0.user-guide-index=%23.html">← Muchiverse House — User Guide</a>
+      </div>
+    </div>
+  </nav>
+</aside>
+  <main><div class="col">
+<div class="hero-eyebrow">Browser Prompting Guide</div>
+<h1 class="pagetitle">Architecture Explainers</h1>
+<section class="doc">
+<div class="section-path">browser-prompting/architecture-explainers/7.collaborative-entity-games-delegation.md</div>
+<h1>🤝🎲 Collaborative Entity Games — architecture explainer + delegation map</h1>
+<p><strong>Goal:</strong> multiple entities operating on the same game mechanic simultaneously (roguelike, business sim, farming, etc.) — e.g. your business-sim plan (banks/stores trading, players working for salary, buying/selling to farmers/miners/scientists). See <code>project-starters/14.</code> for that specific starter.</p>
+<h2>🧠 The real, existing building blocks (attach-this-file-as-context version)</h2>
+<ul><li><strong>Sessions = games.</strong> Each game instance is a session folder.</li><li><strong>Desks = maps.</strong> A session can have multiple desks; a desk is one playable map/screen.</li><li><strong>Pals = placed entities.</strong> A pal is an entity instance living on a desk, with its own <code>state.txt</code> — the SAME piece-containment model as everything else in the house (<code>PIECE → MODULE → OS</code>).</li><li><strong>Multiple entities on one desk</strong> is already the base case, not a special mode — the taskbar's own tab bar tracks multiple open entities per session today.</li><li><strong>The real open question for "collaborative" specifically</strong>: how entities on the SAME desk read/write SHARED state (a bank's ledger, a market's price list) without a one-writer-rule violation. This needs a real answer before building — see file 8 (data storage ledger) for the real mechanism to reuse (<code>master_ledger</code>-style append-only ledgers, one canonical writer per ledger, readers poll).</li></ul>
+<h2>📎 What to attach (if delegating the actual build)</h2>
+<div class="table-wrap"><table><thead><tr><th>Slot</th><th>File</th></tr></thead><tbody><tr><td>Context #1</td><td>THIS file</td></tr><tr><td>Context #2</td><td><code>browser-prompting/architecture-explainers/8.data-storage-ledger-delegation.md</code> (the shared-state mechanism)</td></tr><tr><td>Code</td><td>An existing multi-entity desk's real manager (find one via <code>au11-hq/livedesk-dir-map.md</code>) as the reference shape</td></tr></tbody></table></div>
+<h2>✍️ Prompt shape</h2>
+<pre><code>CONTEXT: [this file + the data-storage-ledger explainer]
+CODE: [an existing desk manager with 2+ entities as reference]
+PROMPT:
+  "Design a [bank/store/market] piece that N other entities (farmers, players) read/write shared
+  state on (prices, inventory, salaries). Use the house's real one-writer-rule + append-only-
+  ledger pattern - the piece itself owns writes, everyone else reads its published state.txt/
+  ledger, nobody else writes to it directly."</code></pre>
+</section>
+<section class="doc">
+<div class="section-path">browser-prompting/architecture-explainers/8.data-storage-ledger-delegation.md</div>
+<h1>📒🔒 Backend Data Storage &amp; Sharing Ledger — architecture explainer + delegation map</h1>
+<p><strong>Goal:</strong> understand (and extend) how the house's data storage/sharing ledger actually works — you flagged existing docs on this as "too much, unsure if current." This file is the numbered, dated, deliberately-small replacement.</p>
+<h2>🧠 The real mechanism (as verified this session, dated 2026-08-18)</h2>
+<ol><li><strong>One-writer rule</strong> — every state/ledger file has exactly ONE process that ever writes it. Anyone else only reads. Violating this is a real, named house pitfall (#17/#36 in TPMOS's own pitfalls doc) — causes frame lag / stale-looking UI, not a crash, which makes it sneaky.</li><li><strong>Append-only ledgers for history/audit</strong> — <code>master_ledger.txt</code>-style files: every meaningful action gets ONE appended, timestamped line, never edited/rewritten. This session's own real example: <code>strip_input_history.txt</code> (<code>KEY_PRESSED:</code>/<code>MOUSE_EVENT:</code> lines, one writer, growing forever, readers <code>stat()</code> the size to detect new lines cheaply rather than re-reading the whole file).</li><li><strong>Marker/pulse files for "something changed"</strong> — a SEPARATE tiny file, appended with a single byte, exists purely so readers can <code>stat()</code> it (cheap) instead of re-parsing a big state file on every poll tick (expensive). The marker's SIZE is the signal, not its content.</li><li><strong>Cursor-based incremental reads</strong> — a reader remembers how many bytes of a growing file it's already consumed (a "cursor"), and only reads new bytes past that point each poll — never re-reads from the start. Real, proven pattern (<code>poll_agent_relay()</code>, <code>poll_captured_input()</code> in this session's own taskbar work) — first-sight NEVER replays backlog, truncation resyncs without replay.</li><li><strong>Shared state = a dedicated piece that owns it</strong>, not a free-floating file everyone touches. If N entities need to see "the bank's gold total," the bank IS a piece with its own <code>state.txt</code>; the bank's own manager/ops are the only writer; everyone else reads.</li></ol>
+<h2>📎 What to attach</h2>
+<div class="table-wrap"><table><thead><tr><th>Slot</th><th>File</th></tr></thead><tbody><tr><td>Context #1</td><td>THIS file</td></tr><tr><td>Context #2</td><td><code>au11-hq/taskbar-history-txt-migration-investigation.md</code> — the freshest, most concrete real example of this whole pattern built end-to-end this session (relay → dispatcher → state file → readers)</td></tr><tr><td>Code</td><td>Whichever specific ledger/state file's real writer you're extending</td></tr></tbody></table></div>
+<h2>✍️ Prompt shape</h2>
+<pre><code>CONTEXT: [this file + taskbar-history-txt-migration-investigation.md]
+CODE: [the specific state/ledger file's current writer]
+PROMPT:
+  "Add [new shared data need] following the house's real one-writer-rule + append-only-ledger +
+  marker-pulse pattern (see context). Identify the ONE process that should own writes before
+  writing any code - don't let two processes write the same file."</code></pre>
+</section>
+<section class="doc">
+<div class="section-path">browser-prompting/architecture-explainers/9.networking-13network-delegation.md</div>
+<h1>🌐📡 Networking Apps → House-Friendly + Populate <code>network</code> Cell — delegation map</h1>
+<p><strong>CORRECTED 2026-08-18</strong> — original version of this file wrongly said no networking apps exist. They do: <code>041.pal-chain⛓️/</code>, <code>041.pal-forum👥️/</code>, <code>044.pal-chat-irc👥️+2/</code> (all at house root). All three ALREADY have a real <code>pal/</code>, <code>ops/</code>, <code>net/</code>, <code>button.sh</code>, and a <code>phase2-module-split-report.txt</code> — meaning some house-alignment work has already happened, this is NOT a from-scratch conversion. <strong>Goal, corrected</strong>: verify how far that phase-2 split actually got, THEN finish wiring into the taskbar's <code>network</code> cell (<code>strip_btn_9_label = network</code> in <code>livedesk_taskbar.pdl</code> — still just a label, no menu wired to it yet, that part of the original claim was accurate) and decide whether they live under a new <code>13.network/</code> grouping dir or stay at their current house-root locations.</p>
+<h2>🔎 First prompt should be discovery, not conversion</h2>
+<p>Given real prior work already exists (<code>phase2-module-split-report.txt</code> in each), don't let a browser AI start converting blind — first ask it to read that report + summarize current real status per app, same "discovery before construction" discipline as the xyz-installer-dev topic (<code>project-starters/15.</code>).</p>
+<h2>🧠 What "house-friendly" concretely means here</h2>
+<ul><li>PIECE → MODULE → OS shape (see <code>1.platform-primer-ALWAYS-ATTACH.md</code>).</li><li>File-backed state, one-writer-rule, marker-pulse redraw signaling.</li><li>A <code>*_manager.c</code> that's thin (delegates to ops), a <code>.chtpm</code> layout using <code>khtpm_*</code>-family tags if it's taskbar-launched (no flexbox/descendant selectors).</li><li>Menu wiring goes through the taskbar's real dispatch string convention (<code>"livedesk:open-X"</code> → <code>strcmp</code> branch in <code>ktb_hq_activate()</code>), NOT a raw shell command baked into a menu builder (silently no-ops on relative paths — real, already-hit house pitfall).</li></ul>
+<h2>📎 What to attach</h2>
+<div class="table-wrap"><table><thead><tr><th>Slot</th><th>File</th></tr></thead><tbody><tr><td>Context #1</td><td><code>1.platform-primer-ALWAYS-ATTACH.md</code></td></tr><tr><td>Context #2</td><td><code>au11-hq/TASKBAR-MENU-ARCHITECTURE.md</code> — exact recipe for wiring a new cell's menu correctly</td></tr><tr><td>Code</td><td>ONE of the three apps' <code>phase2-module-split-report.txt</code>, as the FIRST prompt's only code attachment</td></tr></tbody></table></div>
+<h2>✍️ Prompt shape #1 — discovery (do this first, per app)</h2>
+<pre><code>CONTEXT: [platform-primer + TASKBAR-MENU-ARCHITECTURE.md]
+CODE: [041.pal-chain / 041.pal-forum / 044.pal-chat-irc's own phase2-module-split-report.txt]
+PROMPT:
+  "Summarize this networking app's real current status against house convention (PIECE/MODULE/OS,
+  file-backed state, thin manager). What's already done per this report vs. still needed before
+  it could wire into the taskbar's `network` cell (strip_btn_9)?"</code></pre>
+<h2>✍️ Prompt shape #2 — the actual taskbar wiring (after discovery confirms readiness)</h2>
+<pre><code>CONTEXT: [platform-primer + TASKBAR-MENU-ARCHITECTURE.md]
+CODE: [that app's own manager/ops entry point]
+PROMPT:
+  "Wire this app into the taskbar's `network` cell (strip_btn_9) using the real 'livedesk:open-X'
+  dispatch-string convention from TASKBAR-MENU-ARCHITECTURE.md, NOT a raw shell command. Don't
+  invent a new relay/dispatch mechanism - reuse the existing one."</code></pre>
+<p><strong>Do this in small bites</strong> — one networking capability (e.g. "chat over LAN") per browser prompt, not the whole networking suite at once, given the 1-2-page-of-code return limit.</p>
+</section>
+<section class="doc">
+<div class="section-path">browser-prompting/architecture-explainers/10.board-viewer-drag-drop-entities-delegation.md</div>
+<h1>🖱️🧩 Board-viewer/Muta Drag-Drop Entity+Event Creation — delegation map</h1>
+<p><strong>Goal:</strong> allow entities and their events to be drag-dropped into a <code>board-viewer</code>/mutaclysm-like environment for visual game creation. Real location confirmed: <code>&amp;.widgits/board-viewer/</code>.</p>
+<h2>📎 What to attach</h2>
+<div class="table-wrap"><table><thead><tr><th>Slot</th><th>File</th></tr></thead><tbody><tr><td>Context #1</td><td><code>1.platform-primer-ALWAYS-ATTACH.md</code></td></tr><tr><td>Context #2</td><td><code>au11-hq/EVENT_AI_VISION.md</code> — the event-type vocabulary this drag-drop UI needs to expose (message/choice/trigger types), so the drag-drop surface matches what events can actually DO</td></tr><tr><td>Code</td><td><code>&amp;.widgits/board-viewer/</code>'s own current source (whichever file owns the board/grid rendering + hit-testing)</td></tr></tbody></table></div>
+<h2>🧠 Real shape to reuse, not reinvent</h2>
+<ul><li>Board-viewer already has SOME piece-placement/rendering logic — a drag-drop feature is an input extension (mouse-drag → piece placement), not a new rendering system.</li><li>Look at how mutaclysm's own <code>system/keyboard_input.c</code>+<code>ops/move_player.c</code> split works (capture vs. mutation) — dragging is conceptually the same shape: capture the drag gesture, then a SEPARATE op mutates the target desk's piece-placement state, one-writer-rule intact.</li><li>Events attached to a dropped entity should follow file 4's real event-runtime shape (relay- driven activation, not automatic-on-drop unless that's a deliberate new trigger type).</li></ul>
+<h2>✍️ Prompt shape</h2>
+<pre><code>CONTEXT: [platform-primer + EVENT_AI_VISION.md]
+CODE: [board-viewer's own current board/grid rendering file]
+PROMPT:
+  "Add drag-drop support: dragging an entity from [source] onto the board should place it at the
+  drop position on the current desk, writing to the desk's own piece-placement state (one writer,
+  file-backed). Don't build a new rendering system - extend the existing board/grid hit-testing
+  to also handle a drag gesture. Events already attached to the entity should carry over
+  unmodified."</code></pre>
+</section>
+<section class="doc">
+<div class="section-path">browser-prompting/architecture-explainers/11.palettes-toys-pals-delegation.md</div>
+<h1>🎨🧰 Palettes (Tile/Sprite Picker) as Toys/Pals — delegation map</h1>
+<p><strong>Goal:</strong> figure out how palettes (tile/sprite pickers) should associate to projects, whether they're also "pals" (get a bottom-toolbar slot + their own save-state per file/desk).</p>
+<h2>🧠 Real starting point (confirmed location)</h2>
+<p><code>&amp;.widgits/tile-picker/</code> — the existing tile-picker widget IS the real reference implementation for "palette" already. It also owns the real <code>tp_test_send_key.c</code>/<code>tp_test_send_click.c</code> XTest input-injection tools (see <code>2.house-shape-status-report.md</code> for why those matter beyond this topic). <code>au11-hq/TASKBAR-MENU-ARCHITECTURE.md</code>'s own "Building a NEW sub-app from scratch" section covers real pitfalls this exact widget family hit (elem-pool exhaustion, CSS-apply clobbering, ledger tail-vs-head reads) — read that BEFORE assuming a palette is a simple copy-paste of an existing sub-app.</p>
+<h2>🤔 The real open design question (don't let a browser AI guess this — decide first)</h2>
+<p>Is a palette:</p>
+<ul><li>(a) <strong>A pal</strong> — a placed entity instance with its own <code>state.txt</code>, gets a bottom-toolbar tab slot, saves state per-desk like any other pal, OR</li><li>(b) <strong>A project-scoped tool</strong> — lives inside <code>3.&lt;file&gt;</code>'s own scope, no toolbar presence, opened contextually from within the project it's editing?</li></ul>
+<p>These are architecturally different (pal = first-class taskbar citizen with its own tab; tool = subordinate to whatever project opened it). <strong>Answer this yourself before prompting</strong> — a browser AI given ambiguous scope here will guess wrong more often than not, per the platform primer's own "don't invent a new pattern" rule (there's no existing precedent for a "tool that's ALSO a pal" to copy from).</p>
+<h2>📎 What to attach (once you've decided a vs. b above)</h2>
+<div class="table-wrap"><table><thead><tr><th>Slot</th><th>File</th></tr></thead><tbody><tr><td>Context #1</td><td><code>1.platform-primer-ALWAYS-ATTACH.md</code></td></tr><tr><td>Context #2</td><td><code>au11-hq/TASKBAR-MENU-ARCHITECTURE.md</code> (sub-app-from-scratch pitfalls section)</td></tr><tr><td>Code</td><td><code>&amp;.widgits/tile-picker/</code>'s own current source as the reference shape</td></tr></tbody></table></div>
+<h2>✍️ Prompt shape</h2>
+<pre><code>CONTEXT: [platform-primer + TASKBAR-MENU-ARCHITECTURE.md]
+CODE: [tile-picker's own real source]
+PROMPT:
+  "I've decided palettes should be [pals with their own toolbar tab / project-scoped tools -
+  PICK ONE]. Extend tile-picker's own real architecture to support per-project association,
+  following [pal state-save conventions / project-scoping conventions] already used elsewhere.
+  Don't build a third, new pattern."</code></pre>
+</section>
+    <footer class="pagefoot">
+      Snapshot generated 2026-09-08 from <code>!.HQ-IQ-BOOK/08-roadmap/browser-prompting/*.md</code>
+      by <code>build-html.py</code>. Not a live mirror — re-run the script after editing the
+      markdown source.
+    </footer>
+  </div></main>
+</div>

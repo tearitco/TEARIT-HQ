@@ -1,0 +1,164 @@
+<title>Browser Prompting Guide</title>
+
+<style>
+  :root {
+    --bg: #f4f3ef; --surface: #ffffff; --surface-2: #ececE6; --border: #dcdad2;
+    --text: #1c1c1a; --text-dim: #6b6a63; --accent: #1a8a4a; --accent-warm: #b5720a;
+    --status-wip: #2563a8; --code-bg: #ececE6; --code-text: #2b2b28;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, "Liberation Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  :root:not([data-theme="light"]) { @media (prefers-color-scheme: dark) {
+    --bg: #14161a; --surface: #1b1e24; --surface-2: #21252c; --border: #2b2f37;
+    --text: #e9e7e2; --text-dim: #9599a1; --accent: #22c55e; --accent-warm: #f0a63f;
+    --status-wip: #5b9dd9; --code-bg: #16181c; --code-text: #dcdad4;
+  } }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --surface: #1b1e24; --surface-2: #21252c; --border: #2b2f37;
+    --text: #e9e7e2; --text-dim: #9599a1; --accent: #22c55e; --accent-warm: #f0a63f;
+    --status-wip: #5b9dd9; --code-bg: #16181c; --code-text: #dcdad4;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  a:focus-visible, .navlink:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 100vh; }
+  .sidebar { border-right: 1px solid var(--border); background: var(--surface); padding: 28px 20px 40px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .brand { font-family: var(--mono); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 4px; }
+  .brand strong { display: block; font-family: var(--sans); font-size: 1.05rem; font-weight: 800; letter-spacing: -0.01em; color: var(--text); text-transform: none; margin-top: 2px; }
+  nav { margin-top: 24px; display: flex; flex-direction: column; gap: 20px; }
+  .navgroup-label { font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: 8px; }
+  .navlinks { display: flex; flex-direction: column; gap: 2px; }
+  .navlink { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; color: var(--text); text-decoration: none; font-size: 0.88rem; }
+  .navlink:hover { background: var(--surface-2); }
+  .navlink.current { background: var(--surface-2); font-weight: 700; }
+  .navlink .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--border); }
+  .navlink .dot.done { background: var(--accent); }
+  .navlink .dot.wip { background: var(--status-wip); }
+  main { padding: 56px 40px 120px; min-width: 0; }
+  .col { max-width: 820px; margin: 0 auto; }
+  .hero-eyebrow { font-family: var(--mono); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 10px; }
+  h1.pagetitle { font-size: 2.1rem; font-weight: 800; letter-spacing: -0.02em; text-wrap: balance; margin: 0 0 14px; }
+  .lede { font-size: 1.08rem; color: var(--text-dim); max-width: 64ch; margin: 0 0 40px; }
+  section.doc { padding-top: 40px; margin-top: 8px; border-top: 1px solid var(--border); scroll-margin-top: 24px; }
+  section.doc:first-of-type { border-top: none; padding-top: 0; }
+  .section-path { font-family: var(--mono); font-size: 0.78rem; color: var(--text-dim); margin: 0 0 4px; }
+  h1 { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.02em; text-wrap: balance; margin: 0 0 14px; }
+  h2 { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.01em; text-wrap: balance; margin: 30px 0 8px; }
+  h3 { font-size: 1.08rem; font-weight: 700; margin: 26px 0 10px; }
+  h4 { font-size: 0.95rem; font-weight: 700; margin: 20px 0 8px; color: var(--text-dim); }
+  p { margin: 0 0 16px; max-width: 74ch; }
+  ul, ol { margin: 0 0 16px; padding-left: 22px; }
+  li { margin-bottom: 6px; max-width: 72ch; }
+  li > ul, li > ol { margin: 6px 0 4px; }
+  code { font-family: var(--mono); font-size: 0.86em; background: var(--code-bg); color: var(--code-text); padding: 0.12em 0.4em; border-radius: 4px; }
+  pre { background: var(--code-bg); color: var(--code-text); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; overflow-x: auto; margin: 0 0 20px; }
+  pre code { background: none; padding: 0; font-size: 0.84rem; line-height: 1.55; }
+  blockquote { margin: 0 0 18px; padding: 4px 16px; border-left: 3px solid var(--accent); color: var(--text-dim); }
+  blockquote p { margin: 8px 0; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+  .table-wrap { overflow-x: auto; margin: 0 0 20px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
+  .cardgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin: 0 0 32px; }
+  .card { display: block; border: 1px solid var(--border); background: var(--surface); border-radius: 10px; padding: 18px 20px; text-decoration: none; color: var(--text); }
+  .card:hover { border-color: var(--accent); }
+  .card .card-title { font-weight: 700; font-size: 1.0rem; margin-bottom: 6px; }
+  .card .card-desc { color: var(--text-dim); font-size: 0.86rem; margin: 0; }
+  footer.pagefoot { max-width: 820px; margin: 64px auto 0; padding-top: 24px; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.85rem; }
+  @media (max-width: 880px) { .shell { grid-template-columns: 1fr; } .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); } main { padding: 40px 20px 100px; } }
+  html { scroll-behavior: smooth; }
+</style>
+
+<div class="shell">
+<aside class="sidebar">
+  <div class="brand">TEARIT-HQ<strong>Browser Prompting Guide</strong></div>
+  <nav>
+    <div>
+      <div class="navgroup-label">Guide</div>
+      <div class="navlinks">
+        <a class="navlink current" href="0.browser-p-index=%23.html">Overview / index</a>
+        <a class="navlink" href="%23.browser-prompting/1.platform-primer.html"><span class="dot done"></span>Platform Primer</a>
+        <a class="navlink" href="%23.browser-prompting/2.house-shape-status.html"><span class="dot done"></span>House Shape Status</a>
+        <a class="navlink" href="%23.browser-prompting/3.ai-agents.html"><span class="dot wip"></span>AI Agents</a>
+        <a class="navlink" href="%23.browser-prompting/4.open-hai-free-ai.html"><span class="dot done"></span>open-hai + Free AI</a>
+        <a class="navlink" href="%23.browser-prompting/5.bugs-toys-gl.html"><span class="dot wip"></span>Bugs / Toys / GL</a>
+        <a class="navlink" href="%23.browser-prompting/6.architecture-explainers.html"><span class="dot wip"></span>Architecture Explainers</a>
+        <a class="navlink" href="%23.browser-prompting/7.platform-passes.html"><span class="dot wip"></span>Grok's Lanes</a>
+        <a class="navlink" href="%23.browser-prompting/8.project-starters.html"><span class="dot wip"></span>Project Starters</a>
+      </div>
+    </div>
+    <div>
+      <div class="navgroup-label">Elsewhere</div>
+      <div class="navlinks">
+        <a class="navlink" href="#.house-user-guide.html/0.user-guide-index=%23.html">← Muchiverse House — User Guide</a>
+      </div>
+    </div>
+  </nav>
+</aside>
+  <main><div class="col">
+<div class="hero-eyebrow">Delegation map — not a research report</div>
+<h1 class="pagetitle">Browser Prompting Guide</h1>
+<p class="lede">A managerial delegation map for handing scoped work to a token-limited browser-window AI (or Grok, or a small local model): what to attach, what to say, and what has already been verified live — so house context is never re-derived from scratch per task.</p>
+<div class="cardgrid">
+<a class="card" href="#.browser-prompting/1.platform-primer.html"><div class="card-title">Platform Primer</div><p class="card-desc">PIECE→MODULE→OS, the two parser families, input/relay conventions, CENTROID_GOLD_STD. Your default context upload.</p></a>
+<a class="card" href="#.browser-prompting/2.house-shape-status.html"><div class="card-title">House Shape Status</div><p class="card-desc">Honest answer to “is the house in shape?” — what's verified solid, what's genuine drift, where docs actually live.</p></a>
+<a class="card" href="#.browser-prompting/3.ai-agents.html"><div class="card-title">AI Agents</div><p class="card-desc">chat-hai UI, Harnecient technique, RMMV event scripting, and pushing weak local models (gemma3:270m/1b) via deterministic dispatch.</p></a>
+<a class="card" href="#.browser-prompting/4.open-hai-free-ai.html"><div class="card-title">open-hai + Free AI</div><p class="card-desc">Live test results — OpenRouter key works, which free models return real tool-calls, quota mechanics, the read/write approval boundary.</p></a>
+<a class="card" href="#.browser-prompting/5.bugs-toys-gl.html"><div class="card-title">Bugs / Toys / GL</div><p class="card-desc">Leftover bugs, joystick port, more taskbar toys, piececraft-xyz GL→X11 migration.</p></a>
+<a class="card" href="#.browser-prompting/6.architecture-explainers.html"><div class="card-title">Architecture Explainers</div><p class="card-desc">Collaborative entity games, the append-only ledger / one-writer model, networking cell wiring, board-viewer drag-drop, palettes-as-pals.</p></a>
+<a class="card" href="#.browser-prompting/7.platform-passes.html"><div class="card-title">Grok's Lanes</div><p class="card-desc">Grok's lanes: Windows/Mac compat catch-up, and the 103.media-studio → x11-HQ toy conversion (decision made, phased handoff).</p></a>
+<a class="card" href="#.browser-prompting/8.project-starters.html"><div class="card-title">Project Starters</div><p class="card-desc">Business-sim game plan, xyz-installer-dev exploration, calendar/notebook HQ app.</p></a>
+</div>
+<section class="doc">
+<h1>🗺️ browser-prompting/ — START HERE</h1>
+<p><strong>Written 2026-08-18, direct request: "rephrase this prompt in ur own words + emoji heavy, more indexed/organized + ur knowledge of current codebase &amp; dox."</strong> This is a <strong>managerial delegation map</strong>, not a research report — each file below tells you what to attach and what to say, so a browser-window AI (limited to ~3 uploads: 1 prompt + 1 context + 1-2 code files, returning ~1-2 pages of code) can get productive fast without re-deriving house context from scratch every time.</p>
+<hr>
+<h2>🎯 The constraint this whole directory is built around</h2>
+<p>You're moving to browser-window AI prompting once your CLI tokens run out this week. That AI:</p>
+<ul><li>📎 Can only take ~3 file uploads at once (1 prompt, 1 context, 1-2 code)</li><li>📄 Returns ~1-2 pages of code per round</li><li>🧠 Has ZERO memory of this house's conventions unless you tell it</li></ul>
+<p><strong>➡️ So every file below is small, dated, and numbered on purpose</strong> — not because the topics are small, but because YOUR upload budget is. Each one names the 2-3 real docs to attach + gives an actual prompt template, not a research essay.</p>
+<h2>🪄 The one rule that saves you the most tokens</h2>
+<p><strong>Almost every task needs <code>1.platform-primer-ALWAYS-ATTACH.md</code> as your context slot.</strong> It's the one-file version of "how this house works" (PIECE→MODULE→OS, layout+manager always come as a pair, the two parser families, input/relay/dispatch conventions, one-writer-rule). Attach it by default; only swap it out when a topic file below says to add something instead of it.</p>
+<hr>
+<h2>📁 Index</h2>
+<h3>🧱 Foundation (read/attach first)</h3>
+<div class="table-wrap"><table><thead><tr><th>File</th><th>What it's for</th></tr></thead><tbody><tr><td><code>1.platform-primer-ALWAYS-ATTACH.md</code></td><td>🎫 your default context upload for almost everything</td></tr><tr><td><code>2.house-shape-status-report.md</code></td><td>🏚️➡️🏡 honest answer to "is the house in shape?" — read yourself, don't necessarily upload</td></tr></tbody></table></div>
+<h3>🤖 AI agents / chat-hai (haiku-appropriate zone — see note below)</h3>
+<div class="table-wrap"><table><thead><tr><th>File</th><th>Topic</th></tr></thead><tbody><tr><td><code>ai-agents/3.chat-hai-openhai-harnecient-delegation.md</code></td><td>💬 chat-hai UI, OpenRouter, Harnecient technique, "conversation agents with jobs"</td></tr><tr><td><code>ai-agents/4.rmmv-event-scripting-ai-teaching-delegation.md</code></td><td>🎮 RMMV-style events + teaching weak local AI to build/nav them</td></tr><tr><td><code>open-hai-free-ai/</code></td><td>🧪🆓 <strong>its own directory now</strong> — live-tested open-hai + free-tier OpenRouter findings, an informal <code>#.wassup-hai.txt</code> status note, real quota/rate-limit info, other free-API options. This thread is active and growing, that's why it got promoted out of <code>ai-agents/</code> — see Part 2 below.</td></tr></tbody></table></div>
+<p><strong>🪙 Token-saving note</strong>: per your own instruction, things you ask <strong>Haiku</strong> (not browser AI) should stay scoped to files 3-4 above specifically — chat-hai/open-hai/Harnecient territory. Everything else in this directory → browser AI.</p>
+<h3>🐛 Bugs, joystick, toys, GL migration</h3>
+<div class="table-wrap"><table><thead><tr><th>File</th><th>Topic</th></tr></thead><tbody><tr><td><code>bugs-toys-gl/5.remaining-bugs-joystick-toys-delegation.md</code></td><td>🐛🕹️🧸 leftover bugs, joystick, more taskbar toys</td></tr><tr><td><code>bugs-toys-gl/6.gl-to-x11-toolbar-piececraft-delegation.md</code></td><td>🖼️➡️🪟 piececraft-xyz GL→X11 (may already be partially done — check first!)</td></tr></tbody></table></div>
+<h3>🏗️ Architecture explainers (upload-as-context files for bigger design questions)</h3>
+<div class="table-wrap"><table><thead><tr><th>File</th><th>Topic</th></tr></thead><tbody><tr><td><code>architecture-explainers/7.collaborative-entity-games-delegation.md</code></td><td>🤝🎲 multiple entities, same mechanic (roguelike/business-sim/farming)</td></tr><tr><td><code>architecture-explainers/8.data-storage-ledger-delegation.md</code></td><td>📒🔒 how the backend ledger/shared-state system really works</td></tr><tr><td><code>architecture-explainers/9.networking-13network-delegation.md</code></td><td>🌐📡 house-friendly networking apps + populating the <code>network</code> cell — <strong>CORRECTED (see Part 2): the apps already exist, this is a finish-the-wiring job, not a from-scratch one</strong></td></tr><tr><td><code>architecture-explainers/10.board-viewer-drag-drop-entities-delegation.md</code></td><td>🖱️🧩 drag-drop entity/event creation in board-viewer/muta</td></tr><tr><td><code>architecture-explainers/11.palettes-toys-pals-delegation.md</code></td><td>🎨🧰 tile/sprite pickers as pals — <strong>has a real open decision you need to make first</strong></td></tr></tbody></table></div>
+<h3>🚀 Grok's lanes</h3>
+<div class="table-wrap"><table><thead><tr><th>File</th><th>Topic</th></tr></thead><tbody><tr><td><code>platform-passes/12.grok-windows-mac-compat-delegation.md</code></td><td>🪟🍎 Windows/Mac catch-up after Linux-focused drift, real cross-platform rules included</td></tr><tr><td><code>platform-passes/13.grok-media-studio-continuation-delegation.md</code></td><td>🎬🎨 103.media-studio apps — <strong>real decision framing on spec-now vs. spec-later included</strong></td></tr></tbody></table></div>
+<h3>🌱 Project starters (new work, from scratch)</h3>
+<div class="table-wrap"><table><thead><tr><th>File</th><th>Topic</th></tr></thead><tbody><tr><td><code>project-starters/14.business-sim-game-starter-delegation.md</code></td><td>🏦🌾 your banks/stores/farmers business-sim plan</td></tr><tr><td><code>project-starters/15.xyz-installer-dev-exploration-delegation.md</code></td><td>📦🧙 installer wizard — real file map of what's already there, plus a version-mismatch flag</td></tr><tr><td><code>project-starters/16.calendar-notebook-hq-delegation.md</code></td><td>📅📓 calendar notebook app — <strong>splits into 3 real sub-features, don't prompt them together</strong></td></tr></tbody></table></div>
+<hr>
+<h2>🧩 The "1 Apple app?" aside — quick answer, no dedicated file needed</h2>
+<p>You asked whether the calendar/notebook/etc. should be one app or ship separately. <strong>Short answer: ship all of them separately</strong> — every one already needs "taskbar spine" (the real PIECE/MODULE/OS + relay/dispatch shape) regardless, so bundling into one app buys you nothing architecturally. The "framework shape document" you're picturing IS <code>1.platform-primer- ALWAYS-ATTACH.md</code> — that's the narrow, reusable "widget shape" description, already written. No new file needed for this specific question.</p>
+<h2>🆕 Part 2 (2026-08-18, same day, direct request: "add that 2 the 0 prompt doc as pt 2 also pls")</h2>
+<p>Everything below happened AFTER the original index above was written — corrections, a real live AI test, and a direct priority call.</p>
+<h3>🎯 Priority recommendation (you asked "what should my priorities be, I'm going crazy")</h3>
+<p>Given your own long-term goal (migrate off paid tokens toward free/local AI), <strong>validate the free-AI pipeline FIRST</strong>, ahead of onboarding/3D/events content work — not alongside it. Reasoning: whether Qwen/free-tier-OpenRouter/local-Ollama can reliably do real agentic work is a GATE that changes the shape of every other roadmap item. If it can't, everything else still routes through browser-prompting or paid Sonnet regardless of which content topic you pick first. <strong>This validation is now DONE for a first real slice</strong> — see <code>open-hai-free-ai/</code> below. Real verdict: yes, usable now, for read-only/conversational work; write/edit/run still needs a human to approve each action.</p>
+<h3>✅ Real correction: networking apps already exist</h3>
+<p>Original file 9 above wrongly said no networking apps exist. They do — <code>041.pal-chain⛓️/</code>, <code>041.pal-forum👥️/</code>, <code>044.pal-chat-irc👥️+2/</code> (house root), each with real <code>pal/</code>/<code>ops/</code>/<code>net/</code>/<code>button.sh</code> AND a <code>phase2-module-split-report.txt</code> (real prior house-alignment work already done, not from scratch). File 9 has been rewritten with a real discovery-first prompt shape instead of an assumed from-scratch conversion. <strong>Lesson for you as the human router</strong>: when I don't have a directory listing directly in front of me, treat my "doesn't exist" claims as unverified until you or I actually check — this one was wrong.</p>
+<h3>🧪🆓 open-hai + free-tier AI — validated live, has its OWN directory now (<code>open-hai-free-ai/</code>)</h3>
+<p>This grew into its own real, ongoing thread (not a one-off question), so it got promoted out of <code>ai-agents/</code> into a dedicated directory, same reasoning as any topic that outgrows a single file:</p>
+<ul><li><code>open-hai-free-ai/#.wassup-hai.txt</code> — informal quick-reference note (your own wussup-doc style), covers real OpenRouter quota mechanics (the $10-lifetime-topup daily-cap threshold), other free APIs worth knowing (Google AI Studio, Groq, Mistral), and the real safety/gotcha findings below.</li><li><code>open-hai-free-ai/1.live-test-findings-2026-08-18.md</code> — the full writeup with real test transcripts: your OpenRouter key confirmed working, 2 new free models added (both files, manager AND render — they keep separate copies, real drift risk, kept in sync this pass), a real end-to-end conversation + a real <code>list_dir</code> tool-call execution confirmed live, the real read/list-vs-write/edit/run approval boundary, and a real path-handling gotcha (special characters like <code>&amp;</code> in a path can get dropped by the model when it re-emits a tool call).</li><li>Also found and fixed live: <code>&amp;.widgits/open-hai/README.md</code> had a STALE bug warning (said nav digit-jump breaks past index 9 — the code already fixes this, ported from <code>chtpm_parser.c</code>'s own standard; only the doc never got updated). Corrected in place.</li></ul>
+<p><strong>Bottom line on "is open-hai + OpenRouter usable yet"</strong>: yes, for real, confirmed live today — not a guess, not a maybe. Use <code>open-hai-free-ai/</code> as your starting context for any future work in this specific lane.</p>
+<h2>🆕 Part 3 (2026-09-02, house-path-migration + standards-refresh pass)</h2>
+<p>Real, dated update after checking this directory against current house state:</p>
+<ul><li><strong>The house has moved.</strong> Old path (<code>NNEST-11.17/.../44.xyz❤️‍🔥️00.17</code>) is now <code>/home/no/Desktop/github/work/NNEST-12.00/.../44.xyz.01.00</code> (both the ancestor path AND the house's own internal folder name changed — see <code>1.^V-hq/S1_HOUSE_PATH_MIGRATION.md</code>). If any file in this directory has an absolute path baked into a prompt template, re-check it before pasting — most don't, since the whole point of this directory is house-relative topic descriptions, not literal paths, but verify before trusting an old one.</li><li><strong><code>1.platform-primer-ALWAYS-ATTACH.md</code> (your default context file) was stale and has been corrected</strong> (2026-09-02): it named the shared khtpm renderer binary by an old name (<code>khtpm_entity_menu_render.c</code>, since renamed <code>khtpm_core_render.c</code> and, as of 2026-09-01, merged with the taskbar strip parser too) and made <strong>zero mention of <code>CENTROID_GOLD_STD.md</code></strong> — the mandatory architecture (adopted 2026-08-31) for any NEW khtpm window/app. Both are now fixed in that file. <strong>If you already have an older cached copy of the primer pasted somewhere, re-pull it</strong> — this is exactly the kind of drift this directory exists to prevent.</li><li>File 15 (<code>project-starters/15.xyz-installer-dev-exploration- delegation.md</code>) and the whole install/store/versioning topic are now under active, real, in-conversation discussion — see <code>2.SEPT/PHONDO_INSTALL_IDEAS.md</code>. Don't delegate an install-wizard task from file 15 without checking that doc first; the ground has shifted since file 15 was written (no fixed product name anymore — it's chosen per customer at ship time — plus real decisions on CLI- first bootstrap and store shape).</li></ul>
+<h2>🧭 If a topic isn't covered yet</h2>
+<p>Add a new numbered file to whichever subdir fits (or a new subdir, following this same <code>N.topic-name-delegation.md</code> shape), and add a row to the index above. Keep the same discipline: 2-3 attach-files max, an actual prompt template, not a research essay. This directory is only useful as long as it stays smaller than the thing it's helping you avoid re-explaining every time.</p>
+</section>
+    <footer class="pagefoot">
+      Snapshot generated 2026-09-08 from <code>!.HQ-IQ-BOOK/08-roadmap/browser-prompting/*.md</code>
+      by <code>build-html.py</code>. Not a live mirror — re-run the script after editing the
+      markdown source.
+    </footer>
+  </div></main>
+</div>

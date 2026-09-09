@@ -1,0 +1,296 @@
+<title>Grok's Lanes — Browser Prompting</title>
+
+<style>
+  :root {
+    --bg: #f4f3ef; --surface: #ffffff; --surface-2: #ececE6; --border: #dcdad2;
+    --text: #1c1c1a; --text-dim: #6b6a63; --accent: #1a8a4a; --accent-warm: #b5720a;
+    --status-wip: #2563a8; --code-bg: #ececE6; --code-text: #2b2b28;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, "Liberation Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  :root:not([data-theme="light"]) { @media (prefers-color-scheme: dark) {
+    --bg: #14161a; --surface: #1b1e24; --surface-2: #21252c; --border: #2b2f37;
+    --text: #e9e7e2; --text-dim: #9599a1; --accent: #22c55e; --accent-warm: #f0a63f;
+    --status-wip: #5b9dd9; --code-bg: #16181c; --code-text: #dcdad4;
+  } }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --surface: #1b1e24; --surface-2: #21252c; --border: #2b2f37;
+    --text: #e9e7e2; --text-dim: #9599a1; --accent: #22c55e; --accent-warm: #f0a63f;
+    --status-wip: #5b9dd9; --code-bg: #16181c; --code-text: #dcdad4;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  a:focus-visible, .navlink:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 100vh; }
+  .sidebar { border-right: 1px solid var(--border); background: var(--surface); padding: 28px 20px 40px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .brand { font-family: var(--mono); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 4px; }
+  .brand strong { display: block; font-family: var(--sans); font-size: 1.05rem; font-weight: 800; letter-spacing: -0.01em; color: var(--text); text-transform: none; margin-top: 2px; }
+  nav { margin-top: 24px; display: flex; flex-direction: column; gap: 20px; }
+  .navgroup-label { font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: 8px; }
+  .navlinks { display: flex; flex-direction: column; gap: 2px; }
+  .navlink { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; color: var(--text); text-decoration: none; font-size: 0.88rem; }
+  .navlink:hover { background: var(--surface-2); }
+  .navlink.current { background: var(--surface-2); font-weight: 700; }
+  .navlink .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--border); }
+  .navlink .dot.done { background: var(--accent); }
+  .navlink .dot.wip { background: var(--status-wip); }
+  main { padding: 56px 40px 120px; min-width: 0; }
+  .col { max-width: 820px; margin: 0 auto; }
+  .hero-eyebrow { font-family: var(--mono); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 10px; }
+  h1.pagetitle { font-size: 2.1rem; font-weight: 800; letter-spacing: -0.02em; text-wrap: balance; margin: 0 0 14px; }
+  .lede { font-size: 1.08rem; color: var(--text-dim); max-width: 64ch; margin: 0 0 40px; }
+  section.doc { padding-top: 40px; margin-top: 8px; border-top: 1px solid var(--border); scroll-margin-top: 24px; }
+  section.doc:first-of-type { border-top: none; padding-top: 0; }
+  .section-path { font-family: var(--mono); font-size: 0.78rem; color: var(--text-dim); margin: 0 0 4px; }
+  h1 { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.02em; text-wrap: balance; margin: 0 0 14px; }
+  h2 { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.01em; text-wrap: balance; margin: 30px 0 8px; }
+  h3 { font-size: 1.08rem; font-weight: 700; margin: 26px 0 10px; }
+  h4 { font-size: 0.95rem; font-weight: 700; margin: 20px 0 8px; color: var(--text-dim); }
+  p { margin: 0 0 16px; max-width: 74ch; }
+  ul, ol { margin: 0 0 16px; padding-left: 22px; }
+  li { margin-bottom: 6px; max-width: 72ch; }
+  li > ul, li > ol { margin: 6px 0 4px; }
+  code { font-family: var(--mono); font-size: 0.86em; background: var(--code-bg); color: var(--code-text); padding: 0.12em 0.4em; border-radius: 4px; }
+  pre { background: var(--code-bg); color: var(--code-text); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; overflow-x: auto; margin: 0 0 20px; }
+  pre code { background: none; padding: 0; font-size: 0.84rem; line-height: 1.55; }
+  blockquote { margin: 0 0 18px; padding: 4px 16px; border-left: 3px solid var(--accent); color: var(--text-dim); }
+  blockquote p { margin: 8px 0; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+  .table-wrap { overflow-x: auto; margin: 0 0 20px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
+  .cardgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin: 0 0 32px; }
+  .card { display: block; border: 1px solid var(--border); background: var(--surface); border-radius: 10px; padding: 18px 20px; text-decoration: none; color: var(--text); }
+  .card:hover { border-color: var(--accent); }
+  .card .card-title { font-weight: 700; font-size: 1.0rem; margin-bottom: 6px; }
+  .card .card-desc { color: var(--text-dim); font-size: 0.86rem; margin: 0; }
+  footer.pagefoot { max-width: 820px; margin: 64px auto 0; padding-top: 24px; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.85rem; }
+  @media (max-width: 880px) { .shell { grid-template-columns: 1fr; } .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); } main { padding: 40px 20px 100px; } }
+  html { scroll-behavior: smooth; }
+</style>
+
+<div class="shell">
+<aside class="sidebar">
+  <div class="brand">TEARIT-HQ<strong>Browser Prompting Guide</strong></div>
+  <nav>
+    <div>
+      <div class="navgroup-label">Guide</div>
+      <div class="navlinks">
+        <a class="navlink" href="../0.browser-p-index=%23.html">Overview / index</a>
+        <a class="navlink" href="1.platform-primer.html"><span class="dot done"></span>Platform Primer</a>
+        <a class="navlink" href="2.house-shape-status.html"><span class="dot done"></span>House Shape Status</a>
+        <a class="navlink" href="3.ai-agents.html"><span class="dot wip"></span>AI Agents</a>
+        <a class="navlink" href="4.open-hai-free-ai.html"><span class="dot done"></span>open-hai + Free AI</a>
+        <a class="navlink" href="5.bugs-toys-gl.html"><span class="dot wip"></span>Bugs / Toys / GL</a>
+        <a class="navlink" href="6.architecture-explainers.html"><span class="dot wip"></span>Architecture Explainers</a>
+        <a class="navlink current" href="7.platform-passes.html"><span class="dot wip"></span>Grok's Lanes</a>
+        <a class="navlink" href="8.project-starters.html"><span class="dot wip"></span>Project Starters</a>
+      </div>
+    </div>
+    <div>
+      <div class="navgroup-label">Elsewhere</div>
+      <div class="navlinks">
+        <a class="navlink" href="../#.house-user-guide.html/0.user-guide-index=%23.html">← Muchiverse House — User Guide</a>
+      </div>
+    </div>
+  </nav>
+</aside>
+  <main><div class="col">
+<div class="hero-eyebrow">Browser Prompting Guide</div>
+<h1 class="pagetitle">Grok's Lanes</h1>
+<section class="doc">
+<div class="section-path">browser-prompting/platform-passes/12.grok-windows-mac-compat-delegation.md</div>
+<h1>🪟🍎 Grok — Windows/Mac Compatibility Catch-Up — delegation map</h1>
+<p><strong>Goal:</strong> bring Windows usability back up to date after heavy Linux-focused refactors drifted it out of sync. Some shims exist but are UNTESTED since the refactors.</p>
+<h2>🧠 Real, house-standard cross-platform rules to give Grok up front (from TPMOS's own real</h2>
+<p>standards — these are proven, not aspirational)</p>
+<ul><li><code>#ifndef _WIN32</code> for Linux/macOS blocks, <code>#ifdef _WIN32</code> for Windows — NEVER refactor established POSIX logic "to clean it up" for Windows compat. Surgical wraps only.</li><li>Linux: <code>fork()</code>+<code>exec()</code>+<code>waitpid()</code>. Windows: <code>_spawnl()</code> with <code>_P_NOWAIT</code> (shared console) or <code>_P_DETACH</code> (background daemon).</li><li>Linux orchestrators block on <code>pthread_join()</code>. Windows needs a persistent <code>while(!should_exit) { Sleep(100); }</code> loop instead — detached Windows processes return immediately, unlike Linux's join-based lifecycle.</li><li>Path separators: <code>/</code> for all internal logic/<code>fopen()</code>, only convert to <code>\\</code> for native Windows <code>_spawn</code>/<code>system()</code> calls.</li><li><code>setpgid</code> has no Windows equivalent — Windows signal handling needs explicit <code>taskkill</code> or tracked-PID cleanup to avoid orphaned processes.</li><li>Hardcoded Linux font paths will crash Windows — always provide a <code>C:/Windows/Fonts/</code> fallback or a graceful no-asset exit.</li></ul>
+<h2>📎 What to attach</h2>
+<div class="table-wrap"><table><thead><tr><th>Slot</th><th>File</th></tr></thead><tbody><tr><td>Context #1</td><td><code>1.platform-primer-ALWAYS-ATTACH.md</code></td></tr><tr><td>Context #2</td><td>THIS file (the real cross-platform rules above, ported from TPMOS's own onboarding bible §9)</td></tr><tr><td>Code</td><td>Whichever specific file has the untested/broken Windows shim</td></tr></tbody></table></div>
+<h2>✍️ Prompt shape</h2>
+<pre><code>CONTEXT: [platform-primer + this file's own cross-platform rules section]
+CODE: [the file with the untested Windows shim]
+PROMPT:
+  "This shim was written for Windows compat but never tested since a heavy Linux-focused refactor.
+  Audit it against the real cross-platform rules in context (surgical #ifdef wraps, fork/exec vs
+  _spawnl, path separator handling). Fix drift, don't rewrite POSIX logic. Flag anything you can't
+  verify without a live Windows machine rather than guessing it's correct."</code></pre>
+</section>
+<section class="doc">
+<div class="section-path">browser-prompting/platform-passes/13.grok-media-studio-continuation-delegation.md</div>
+<h1>🎬🎨 Grok — finish the 103.media-studio → x11-HQ conversion</h1>
+<p><strong>Updated 2026-09-07.</strong> The decision below is now MADE (was "weighing" in the prior version). This is a completion handoff: convert the media-studio sub-apps to house-spec x11-HQ <strong>toys</strong>, in a fixed order, one per prompt.</p>
+<hr>
+<h2>0. Confirmed current state (checked in code 2026-09-07)</h2>
+<p><code>44.xyz.01.00/103.media-studio/</code> holds:</p>
+<div class="table-wrap"><table><thead><tr><th>Sub-app</th><th>Dir</th><th>Converted?</th></tr></thead><tbody><tr><td>Image editor</td><td><code>103.img-editor/</code></td><td>❌ out-of-spec (<code>button.sh</code> + <code>ops/*_main.c</code> pile, own binary)</td></tr><tr><td>3D / Blender-clone</td><td><code>103.3d=blender-clone/</code></td><td>❌ out-of-spec</td></tr><tr><td>DAW (audio)</td><td><code>103.daw/</code></td><td>❌ out-of-spec</td></tr><tr><td>Video editor</td><td><code>103.vid-edit/</code></td><td>❌ out-of-spec</td></tr><tr><td>TTS</td><td><code>100.tts-point-2-anything/</code></td><td>just a shell script — <strong>ignore</strong></td></tr></tbody></table></div>
+<p><strong>None are converted.</strong> No <code>.chtpm</code>/<code>.xhtpm</code>, no <code>*_manager.c</code>, not in the HQ toys menu. A prior Grok session (<code>grok-frozen-s3.md</code>, house root) started this — it was mid-edit on <code>khtpm_taskbar_manager.c</code> and about to write specs/skeletons when it froze. <strong>Nothing from it landed</strong> (git log for <code>103.media-studio/</code> = initial commit + the Sep-1 path rename only). Start clean.</p>
+<p>Each sub-app dir today has: <code>button.sh</code>, <code>ops/</code>, <code>pieces/</code>, <code>docs/</code>, <code>HOW2_*.md</code>, a <code>walk-off-a6-*.txt</code>. The <code>HOW2_*.md</code> + walk-off files are your spec for <strong>what each app must still do</strong> after conversion — read them first; do not lose features.</p>
+<hr>
+<h2>1. The decision (MADE — do not re-litigate)</h2>
+<p><strong>Option B: convert to house spec now.</strong> Real generic <code>nav_index</code> / sidebar+panel, file-backed state, a thin manager process, shared <code>khtpm_core_render.+x</code> for all rendering. This is a *migration of existing content onto the current standard*, the same class of work as the network-browser conversion — <strong>not a redesign</strong>.</p>
+<p>Why B and not "keep building fast": every out-of-spec app is a future merge cost AND its own bespoke context doc every time it's handed to a browser-window AI. House-spec code is exactly what <code>1.platform-primer-ALWAYS-ATTACH.md</code> already describes in one upload, so future prompts stay small. It is also <strong>Windows-handoff prep</strong>: a house-spec app rides the shared renderer, so when the renderer gets its platform seam (<code>08-roadmap/design-docs/CROSS-PLATFORM-SEAM-AND- SHARED-INFRA.md</code> Part 2) these come along for free; an out-of-spec app needs its own port.</p>
+<hr>
+<h2>2. Order (updated 2026-09-08 — 2D and 3D are SEPARATE toys)</h2>
+<p>Do them <strong>one at a time, in this order</strong>. Each is its own prompt, its own review, its own "done" before the next starts.</p>
+<p>A first pass merged img+3D into <code>media-img3d-hq</code>. <strong>Reverted as product:</strong> HOW2_IMAGE and HOW2_BLEND are different apps (tools, keys, canvas vs camera). Combined nav blew the ~20-item budget and mixed layer vis with an outliner. Hybrid dir kept as a pointer; <code>toy.pdl</code> removed.</p>
+<ol><li><strong><code>img</code> → <code>@.apps/media-img-hq/</code></strong> — 2D paint (HOW2_IMAGE.md).</li><li><strong><code>3d=blender-clone</code> → <code>@.apps/media-3d-hq/</code></strong> — 3D viewport (HOW2_BLEND.md). <strong>Camera lives only here.</strong> Reuse piececraft-hq Interact-Mode + <code>bv_menu_input.c</code> <code>ARROW_*=1000..1003</code> when wiring real orbit; do not invent a new camera stack in the renderer.</li><li><strong><code>daw</code></strong> — <code>@.apps/media-daw-hq/</code></li><li><strong><code>vid-edit</code></strong> — <code>@.apps/media-vid-hq/</code></li><li><code>tts</code> — skipped.</li></ol>
+<hr>
+<h2>3. Target shape per app (house spec)</h2>
+<p>Copy the <strong><code>&amp;.hq-apps/co-lab-hai/</code></strong> app verbatim as the structural template — it is the newest, cleanest full example:</p>
+<pre><code>&lt;app&gt;/
+  button.sh              # launches: khtpm_core_render.+x &lt;house&gt; &lt;app&gt;/&lt;app&gt;.xhtpm
+                         #  after spawning the manager (see co-lab-hai/button.sh)
+  &lt;app&gt;.xhtpm            # static template: &lt;window&gt;&lt;page&gt;&lt;sidebar&gt;+&lt;panel&gt;, nav via
+  &lt;app&gt;.css             #  generic &lt;item&gt;/&lt;text&gt;/&lt;cli_io&gt; — NO hand-built Elem tree
+  ops/&lt;app&gt;_manager.c   # thin manager: parse argv (&lt;house&gt; &lt;pkg&gt; [id]), loop,
+                        #  poll &lt;pkg&gt;/state/&lt;app&gt;_action.txt (seq=N / cmd=...),
+                        #  publish &lt;pkg&gt;/state/&lt;app&gt;_ui.txt. Business logic ONLY here.
+  ops/build_&lt;app&gt;_manager.sh
+  ops/&lt;app&gt;_action.sh   # tiny shim: write seq+cmd to the action file
+  toy.pdl               # title=&lt;Name&gt;\nlaunch=button.sh   -&gt; makes it appear in HQ toys</code></pre>
+<p><strong>Manager reference:</strong> <code>&amp;.hq-apps/co-lab-hai/colab_hai_manager.c</code> (and <code>&amp;.widgits/palettes/ops/elements_palette_manager.c</code> for a smaller one). Use <code>&amp;.widgits/_shared-lib/kh_plat.h</code> for sleep / monotonic clock / mkdir / spawn / terminate-signals so the manager carries no <code>#ifdef _WIN32</code> (see <code>CROSS-PLATFORM-SEAM-AND-SHARED-INFRA.md</code> Part 1).</p>
+<p><strong>HQ toys registration:</strong> the toys menu (<code>khtpm_taskbar_manager.c</code> <code>toys_scan_one_root()</code>) scans <code>house_root/</code>, <code>@.apps/</code>, <code>&amp;.widgits/</code> <strong>one level deep</strong> for any dir containing a <code>toy.pdl</code>. <code>103.media- studio/&lt;app&gt;/</code> is two levels down, so the converted apps must either live in <code>@.apps/</code> (preferred — that's where <code>piececraft-hq</code>, <code>aomorai-editor</code> live) or a 4th scan root for <code>103.media-studio/</code> gets added. <strong>Recommend: move each converted app to <code>@.apps/media-&lt;name&gt;/</code></strong> and leave a one-line pointer in the old <code>103.media-studio/&lt;app&gt;/</code>. Confirm the placement with the owner in the first prompt.</p>
+<hr>
+<h2>4. Mandatory gates (every prompt, every app)</h2>
+<ul><li><strong><code>44.xyz.01.00/CENTROID_GOLD_STD.md</code></strong> — read in full. One parsed <code>.chtpm</code>+CSS Elem tree; business logic in the manager; <strong>never</strong> a new <code>g_is_&lt;project&gt;</code> flag or per-app branch in <code>khtpm_core_render.c</code>.</li><li><strong><code>03-pitfalls/HOUSE_CODE_PITFALLS.md</code></strong> — at minimum #11 (no inline data-loading in the shared file), #12 (style must be a CSS rule, two draw paths), #14 (no bespoke layout/scroll branch — reuse <code>layout_sidebar_panel</code> / <code>layout_scroll_region</code> / the swatch-grid / <code>sprite-grid-row</code> paths; clip, never translate), #15 (never <code>kill(getppid())</code>).</li><li><strong>Testing = relay injection</strong>, not xdotool: decimal <code>KEY_PRESSED:</code> / <code>MOUSE_EVENT:</code> lines into <code>#.desktop/entity_menu_history/&lt;pid&gt;.txt</code> + a cheap text read of the app's own <code>&lt;app&gt;_ui.txt</code>. See <code>06-testing/</code> and <code>khtpm-house-standards</code> skill.</li><li><strong>No new per-app C in <code>khtpm_core_render.c</code>.</strong> If a view needs something the generic vocabulary lacks, add a *generic, data-driven* capability (class/attribute) — and say so explicitly for owner review before writing it.</li><li>Keep every <code>HOW2_*.md</code> feature. A conversion that drops functionality is not done.</li></ul>
+<hr>
+<h2>5. What to attach (per prompt)</h2>
+<div class="table-wrap"><table><thead><tr><th>Slot</th><th>File</th></tr></thead><tbody><tr><td>Context #1</td><td><code>1.platform-primer-ALWAYS-ATTACH.md</code></td></tr><tr><td>Context #2</td><td><strong>this file</strong></td></tr><tr><td>Context #3</td><td>that app's <code>HOW2_*.md</code> + <code>walk-off-a6-*.txt</code></td></tr><tr><td>Code ref</td><td><code>&amp;.hq-apps/co-lab-hai/</code> (structure) — and for app #1 also <code>@.apps/piececraft-hq/pchq-board.xhtpm</code> + <code>PLAN-pchq-interact-camera-pov.md</code></td></tr><tr><td>Code</td><td>the ONE media-studio sub-app being converted</td></tr></tbody></table></div>
+<h2>6. Prompt shape</h2>
+<pre><code>CONTEXT: [platform primer + this file + the app's HOW2_*.md]
+CODE:    [the ONE media-studio sub-app] [+ co-lab-hai as the structural template]
+PROMPT:
+  "Convert this out-of-house-spec app to a house-spec x11-HQ toy: thin
+   manager process + static .xhtpm/.css + shared khtpm_core_render.+x,
+   generic nav, file-backed state (seq/cmd action file, published
+   _ui.txt), a toy.pdl so it shows in the HQ toys menu. Structure it
+   exactly like &amp;.hq-apps/co-lab-hai/. Keep every feature in the
+   HOW2_*.md. Migration, not redesign. Obey CENTROID_GOLD_STD +
+   HOUSE_CODE_PITFALLS #11/#14/#15 — no g_is_* branch in the renderer,
+   no bespoke layout/scroll branch, reuse the existing generic paths.
+   [For 3D only:] piececraft-hq-style camera (Interact-Mode relay +
+   bv_menu_input dispatch). Do NOT merge 2D paint into this app."</code></pre>
+<h2>7. Definition of done (per app)</h2>
+<ul><li>[ ] Launches from the HQ <strong>toys</strong> menu (has a <code>toy.pdl</code>, placement confirmed with owner)</li><li>[ ] <code>button.sh</code> spawns the manager, then <code>khtpm_core_render.+x</code> on the static <code>.xhtpm</code> — no bespoke render binary left</li><li>[ ] All state is file-backed (<code>_ui.txt</code> published, <code>_action.txt</code> polled); one-writer rule holds</li><li>[ ] Nav works window-wide via generic <code>nav_index</code>; verified by relay injection + a <code>_ui.txt</code> read, screenshotted for the owner</li><li>[ ] Every <code>HOW2_*.md</code> feature still works</li><li>[ ] <code>khtpm_core_render.c</code> diff is zero (or a single reviewed, generic, data-driven capability with owner sign-off)</li><li>[ ] Old <code>103.media-studio/&lt;app&gt;/</code> left as a one-line pointer to the new location</li></ul>
+<h2>Related</h2>
+<ul><li><code>08-roadmap/FORWARD-ROADMAP-2026-09-02.md</code> §2b (original scoping)</li><li><code>08-roadmap/design-docs/GROK-HANDOFF-2026-09-02.md</code> §2 (sequence: media-studio → then pal-chain / pal-forum / pal-chat-irc)</li><li><code>08-roadmap/design-docs/CROSS-PLATFORM-SEAM-AND-SHARED-INFRA.md</code> (why house-spec = Windows-handoff-ready)</li><li><code>grok-frozen-s3.md</code> (house root) — the frozen prior attempt, for context only; nothing in it shipped</li></ul>
+<hr>
+<h2>ADDENDUM 2026-09-08 — references + <code>screen-rec-hq</code> skeleton started</h2>
+<h3>Best reference for a MEDIA app: <code>@.apps/music-player-hq/</code></h3>
+<p><code>co-lab-hai</code> (above) is the generic structural template. For the media-studio apps specifically, <strong><code>@.apps/music-player-hq/</code> is the closer model</strong> — it's a completed, live, house-spec conversion of a media app (mp3 player: <code>button.sh</code> + <code>music-player-hq-pal.xhtpm</code>/<code>.css</code> + <code>ops/music_player_manager.c</code> wrapping an <code>mpg123 -R</code> engine child + <code>toy.pdl</code> + <code>music_player_ui.txt</code>/<code>_action.txt</code>). Copy its shape. Its design doc: <code>08-roadmap/design-docs/MUSIC-PLAYER-HQ-DESIGN.md</code>. (One thing NOT to copy: it uses a <code>MUS_*</code> dispatch branch in <code>khtpm_core_render.c</code>. New apps must use a <code>*_action.sh</code> shim instead — zero renderer changes. See <code>elements_palette_manager</code> / <code>elem_click.sh</code> and the screen-rec-hq skeleton below.)</p>
+<h3><code>screen-rec-hq</code> — "streaming" toy, skeleton is IN, needs finishing</h3>
+<p>Owner's call: the screen-recorder/"streaming" app goes in the toys list too, but it is the <strong>forum/irc conversion style</strong> (wrap an existing engine daemon), NOT a media editor. A compiling skeleton is already committed at <strong><code>@.apps/screen-rec-hq/</code></strong> — read its <code>README.md</code> for status + the 6-item TODO. The engine (<code>151.screen-rec+01.02/system/screen_rec</code>, Wayland portal + PipeWire + libx264) stays unchanged; the skeleton replaces only the old GLUT GUI with a thin manager + <code>.xhtpm</code>. Highest-value next steps: a <code>daemon-only</code> launch verb, then the <code>&lt;canvas&gt;</code> live preview wired to the engine's <code>rgb_frame.raw</code> (<code>kh_draw_canvas</code> already does this for the piececraft board).</p>
+<h3>Momentum / "start the foundations first"</h3>
+<p>Owner wants each app scaffolded (button.sh + .xhtpm/.css + a manager stub that compiles + toy.pdl) BEFORE the real feature build, so there is always a launchable target. <code>screen-rec-hq</code> is the first example of that. Do the same for the img+3D, DAW, and video apps — a skeleton per app, in order, each its own small commit — then flesh them out one at a time.</p>
+<hr>
+<h1>🎨 DESIGN / LAYOUT PLAYBOOK — translating a GUI mockup to the generic vocabulary</h1>
+<p>You do NOT invent tags or CSS. Every media app maps onto the same ~12 tags. This section is the recipe. Read <code>02-architecture/ XHTPM-PARSER-REFERENCE.md</code> §2/§9/§10/§11 for the full facts; this is the "what do I actually type" layer.</p>
+<h2>A. First decision: which of the 4 window skeletons?</h2>
+<p>Pick ONE. All four are already implemented in the renderer — you're choosing, not building.</p>
+<div class="table-wrap"><table><thead><tr><th>Skeleton</th><th>Use when</th><th>Trigger</th></tr></thead><tbody><tr><td><strong>1. sidebar + panel</strong></td><td>a list/tree on the left, a detail/edit area on the right (DAW track list, video clip bin, image layers)</td><td><code>&lt;window&gt;</code> has BOTH <code>&lt;sidebar&gt;</code> and <code>&lt;panel&gt;</code></td></tr><tr><td><strong>2. sidebar + panel + <code>&lt;canvas&gt;</code></strong></td><td>same, but the right side is a live pixel view (image canvas, 3D viewport, video preview, DAW visualizer)</td><td>as above, with <code>&lt;canvas&gt;</code> inside <code>&lt;panel&gt;</code></td></tr><tr><td><strong>3. flat toolbar + full-bleed <code>&lt;canvas&gt;</code></strong></td><td>the app IS a viewport with a thin control strip (piececraft board)</td><td><code>&lt;page&gt;</code> has a <code>&lt;canvas&gt;</code> and a <code>&lt;row class="toolbar"&gt;</code>, no <code>&lt;sidebar&gt;</code></td></tr><tr><td><strong>4. multi-column <code>&lt;page style="display:flex"&gt;</code></strong></td><td>genuinely 3+ side-by-side regions (DAW: tracks │ piano-roll │ mixer)</td><td><code>&lt;page style="display:flex; flex-direction:row"&gt;</code> with N <code>&lt;panel&gt;</code> children</td></tr></tbody></table></div>
+<p><strong>All media apps are skeleton 2 or 4.</strong> img = 2 (tools + canvas + layers). 3D = 2 (tools + canvas + outliner). DAW = 4 (arrangement / piano-roll / mixer columns) OR 2 with a <code>show=</code>-gated mixer drawer — start with 2, it's simpler. Video = 2 (timeline sidebar + preview/inspector panel).</p>
+<h3>Skeleton 2 stub (copy this, rename)</h3>
+<pre><code>&lt;window label="APP - ${title}" class="database-window" vars="state/APP_ui.txt"&gt;
+  &lt;module src="@.apps/APP/ops/+x/APP_manager.+x" id="_"/&gt;
+  &lt;page name="main"&gt;
+    &lt;sidebar id="side" class="app-side"&gt;
+      &lt;tabbar class="tab-bar"&gt;
+        &lt;tab id="tabA" class="tab" action="'${HOUSE}/@.apps/APP/ops/APP_action.sh' 'TAB:A'" label="A"/&gt;
+        &lt;tab id="tabB" class="tab" action="'${HOUSE}/@.apps/APP/ops/APP_action.sh' 'TAB:B'" label="B"/&gt;
+      &lt;/tabbar&gt;
+      &lt;text label="items - ${n_items}" class="quiet"/&gt;
+      &lt;scrolllist&gt;
+        &lt;repeat count="${n_items}" bind="it"&gt;
+          &lt;item id="row${it.#}" class="app-row ${it.cls}" label="${it.name}"
+                action="'${HOUSE}/@.apps/APP/ops/APP_action.sh' 'PICK:${it.#}'"/&gt;
+        &lt;/repeat&gt;
+      &lt;/scrolllist&gt;
+    &lt;/sidebar&gt;
+    &lt;panel id="main" class="app-main"&gt;
+      &lt;text label="${status_line}" class="app-status"/&gt;
+      &lt;canvas id="view" class="app-canvas"/&gt;
+      &lt;row class="toolbar app-transport"&gt;
+        &lt;item id="b1" class="app-btn" label="${play_label}" action="'${HOUSE}/@.apps/APP/ops/APP_action.sh' 'PLAY'"/&gt;
+        &lt;item id="b2" class="app-btn" label="[ stop ]"      action="'${HOUSE}/@.apps/APP/ops/APP_action.sh' 'STOP'"/&gt;
+      &lt;/row&gt;
+      &lt;text label="${msg}" class="app-msg" show="${msg}"/&gt;
+    &lt;/panel&gt;
+  &lt;/page&gt;
+&lt;/window&gt;</code></pre>
+<h2>B. "Do I need a new tag / a new HTML-ish category?" — almost certainly NO</h2>
+<p>If a mockup element isn't in this table, it's still one of these — pick the closest. Do <strong>not</strong> ask the owner for a new tag unless you've genuinely exhausted this table AND the thing is used by 2+ apps.</p>
+<div class="table-wrap"><table><thead><tr><th>GUI thing in the mockup</th><th>Generic construct</th><th>markup</th></tr></thead><tbody><tr><td>menu bar (File / Edit / …)</td><td><code>&lt;tabbar&gt;</code> of <code>&lt;tab&gt;</code> (action buttons)</td><td><code>&lt;tabbar class="tab-bar"&gt;&lt;tab .../&gt;&lt;/tabbar&gt;</code></td></tr><tr><td>toolbar / tool strip (brush, eraser, grab…)</td><td><code>&lt;row class="toolbar"&gt;</code> of <code>&lt;item&gt;</code></td><td>one <code>&lt;item&gt;</code> per tool; active tool via <code>class="${tool_cls}"</code> from state</td></tr><tr><td>transport bar ( \</td><td>◀ ▶ ⏹ ⏺ ⟳ )</td><td><code>&lt;row class="toolbar"&gt;</code> of <code>&lt;item&gt;</code></td><td>labels are <code>${play_label}</code> etc. so the manager flips ▶/⏸</td></tr><tr><td>LCD / timecode / BPM readout</td><td><code>&lt;text&gt;</code> (NOT an item — non-interactive)</td><td><code>&lt;text label="${bars}.${beats}.${ticks}  ${bpm} BPM"/&gt;</code></td></tr><tr><td>status bar</td><td><code>&lt;text class="status"&gt;</code></td><td>one line, <code>${var}</code>-filled</td></tr><tr><td>track lanes / timeline rows / clip blocks</td><td><code>&lt;scrolllist&gt;</code> of <code>&lt;row class="sprite-grid-row"&gt;</code> OR of <code>&lt;item&gt;</code> rows</td><td>each lane = a row; clip blocks = <code>&lt;item&gt;</code> children or a <code>&lt;canvas&gt;</code> strip</td></tr><tr><td>piano roll / grid editor</td><td><code>&lt;grid&gt;</code> (see GRID-ELEMENT-DESIGN.md) OR <code>&lt;canvas&gt;</code></td><td><code>&lt;grid rows="16"/&gt;</code> for a real cell grid; <code>&lt;canvas&gt;</code> if you draw it yourself</td></tr><tr><td>image canvas / 3D viewport / video preview</td><td><code>&lt;canvas id="view"&gt;</code> + manager-fed framebuffer</td><td>manager writes an RGBA <code>.raw</code>; <code>kh_draw_canvas</code> blits it (piececraft board is the reference)</td></tr><tr><td>layers list / outliner / clip bin</td><td><code>&lt;scrolllist&gt;</code> of <code>&lt;item&gt;</code> in the <code>&lt;sidebar&gt;</code></td><td>visibility toggle = <code>backspace_action=</code> or a 2nd <code>&lt;item&gt;</code> per row</td></tr><tr><td>inspector / properties panel</td><td>a second <code>&lt;panel&gt;</code> (skeleton 4) OR a <code>show=</code>-gated block in the main panel</td><td><code>&lt;text&gt;</code> rows + <code>&lt;cli_io&gt;</code> for editable numeric fields</td></tr><tr><td>mixer / inserts drawer</td><td><code>show="${drawer_open}"</code> on a <code>&lt;row&gt;</code> or <code>&lt;panel&gt;</code>; toggled by an <code>&lt;item&gt;</code></td><td>manager owns <code>drawer_open</code> in <code>_ui.txt</code></td></tr><tr><td>tabs that switch WHAT the panel shows</td><td><code>&lt;tab ... target_id="side"&gt;</code> (scopes nav)</td><td>with <code>target_id</code> it confines nav; without, it's just a button</td></tr><tr><td>a text field the user types in (rename, BPM, path)</td><td><code>&lt;cli_io target_id="fieldname" rows="1"&gt;</code></td><td>never a fake <code>&lt;input&gt;</code>; <code>&lt;cli_io&gt;</code> is the only input element</td></tr><tr><td>multi-line notes / script area</td><td><code>&lt;text_area rows="12" content="${buf}"&gt;</code></td><td></td></tr><tr><td>scrollbars, sliders, spinners, checkboxes, radio, dropdowns</td><td><strong>do not exist as elements.</strong> slider → +/- <code>&lt;item&gt;</code> pair + a display-only <code>&lt;text&gt;</code> bar. dropdown → a <code>&lt;tab&gt;</code>/<code>&lt;item&gt;</code> that opens another menu page (<code>GOTO:</code>). checkbox → an <code>&lt;item&gt;</code> whose label/class flips from state.</td><td>(music-player-hq does seek/volume exactly this way — copy it)</td></tr></tbody></table></div>
+<h2>C. Ordering the nav <code>[ ]</code> items — the rules</h2>
+<p><code>nav_index</code> (<code>[ ]1. [ ]2. …</code>) is assigned <strong>in document order</strong> to every <code>&lt;tab&gt;</code>, <code>&lt;item&gt;</code>, and <code>&lt;cli_io&gt;</code> that has a <code>label</code> or an <code>action</code>/<code>onclick</code>. <code>&lt;text&gt;</code> / <code>&lt;text_area&gt;</code> / <code>&lt;title&gt;</code> / <code>&lt;module&gt;</code> get <strong>no</strong> nav number. So:</p>
+<ol><li><strong>Order = the order you write them in the template.</strong> Put the control the user reaches for most FIRST. Put destructive / rare ones LAST.</li><li><strong>The chrome <code>[X]</code> close is auto-appended after everything.</strong> Don't add your own <code>&lt;item id="close"&gt;</code> unless you deliberately want it earlier in the run.</li><li><strong><code>&lt;tab&gt;</code>s come first</strong> in a sidebar+panel window (they're the 1st child of <code>&lt;page&gt;</code>). If a tab has <code>target_id=</code>, clicking it *scopes* nav into that region — <code>[^]</code> on the tab, arrows stay inside, Esc pops out. Use <code>target_id</code> when "pick a tab, then navigate its contents" is the flow (record lists, layer lists). Omit it when the tab is just a one-shot action (File → New).</li><li><strong>Scroll regions nav-number only the VISIBLE rows</strong> — a 500-item list is fine, off-screen rows have <code>nav_index=0</code> and PageDn/wheel/ the <code>^</code>/<code>v</code> sbar arrows bring more into range. Never emit 500 bare <code>&lt;item&gt;</code>s outside a <code>&lt;scrolllist&gt;</code>.</li><li><strong>Keep ~20 nav items visible per screen.</strong> More than that = you need a scroll region or a second page (<code>GOTO:</code>), not a wall.</li><li><strong>Group with <code>&lt;row class="toolbar"&gt;</code>.</strong> Items in one toolbar row still each get a nav number but read as a visual cluster — that's how you make a transport bar or a tool strip.</li><li><strong>A <code>[ ]N.</code> badge is ~46px of the element's width.</strong> In CSS give a short-labelled button enough <code>width:</code> or the label clips to just the badge.</li></ol>
+<h2>D. CSS is a tiny subset — plan around it</h2>
+<p>Supported: <code>background-color</code>, <code>color</code>, <code>border</code> / <code>border-width</code>, <code>font-family</code>, <code>font-size</code>, <code>font-weight</code>, <code>padding</code>, <code>width</code>, <code>height</code>, <code>display:flex</code> + <code>flex-direction</code> + <code>flex-wrap</code> + <code>gap</code>, <code>flex-grow</code>, <code>position:absolute</code> + <code>top</code>/<code>left</code>.</p>
+<p><strong>NOT supported</strong> (silent no-op → element renders 0px or unstyled): <code>min-width</code> / <code>max-width</code> / <code>width:auto</code>, <code>margin</code> (mostly), <code>%</code> widths on most elements, any color/gradient/shadow/radius/transition, <code>grid</code>, floats. <strong>If an element has no explicit <code>width:</code> it is very often laid out at 0 and you'll swear it "didn't render" — pitfall #16's sibling.</strong> Set real px.</p>
+<p>Set every color as a literal in the rule (there are no CSS variables). Dark theme by default (<code>#121214</code> bg, <code>#e6e6ea</code> text, <code>#24242a</code> buttons) — match the other <code>@.apps/*.css</code>.</p>
+<h2>E. Worked example — the DAW (<code>media-daw-hq</code>)</h2>
+<p><code>HOW2_DAW.md</code>'s pass-2 layout table → this skeleton. Nav numbers annotated in comments; <code>${…}</code> all come from <code>media_daw_hq_manager.c</code>'s published <code>_ui.txt</code>.</p>
+<pre><code>&lt;window label="Muchi DAW - ${lcd}" class="database-window" vars="state/media_daw_hq_ui.txt"&gt;
+  &lt;module src="@.apps/media-daw-hq/ops/+x/media_daw_hq_manager.+x" id="_"/&gt;
+  &lt;page name="main"&gt;
+
+    &lt;sidebar id="tracks" class="daw-side"&gt;
+      &lt;tabbar class="tab-bar"&gt;
+        &lt;tab id="addtrk" class="tab" label="+ Track"                              &lt;!-- [ ]1 --&gt;
+             action="'${HOUSE}/@.apps/media-daw-hq/ops/media_daw_hq_action.sh' 'ADD_TRACK'"/&gt;
+        &lt;tab id="mixtgl" class="tab" label="Mixer (B)"                            &lt;!-- [ ]2 --&gt;
+             action="'${HOUSE}/@.apps/media-daw-hq/ops/media_daw_hq_action.sh' 'MIX_TOGGLE'"/&gt;
+      &lt;/tabbar&gt;
+      &lt;text label="tracks - ${n_tracks}" class="quiet"/&gt;
+      &lt;scrolllist&gt;
+        &lt;repeat count="${n_tracks}" bind="t"&gt;
+          &lt;!-- one nav item per track header (color chip + name + M/S/R live in the label/class) --&gt;
+          &lt;item id="trk${t.#}" class="daw-trk ${t.cls}" label="${t.hdr}"          &lt;!-- [ ]3.. --&gt;
+                action="'${HOUSE}/@.apps/media-daw-hq/ops/media_daw_hq_action.sh' 'SEL_TRACK:${t.#}'"
+                backspace_action="'${HOUSE}/@.apps/media-daw-hq/ops/media_daw_hq_action.sh' 'DEL_TRACK:${t.#}'"/&gt;
+        &lt;/repeat&gt;
+      &lt;/scrolllist&gt;
+    &lt;/sidebar&gt;
+
+    &lt;panel id="edit" class="daw-main"&gt;
+      &lt;!-- transport: one toolbar row, 5 items --&gt;
+      &lt;row class="toolbar daw-transport"&gt;
+        &lt;item id="tp_rew"  class="daw-btn" label="|&lt;"   action="'…' 'REW'"/&gt;       &lt;!-- [ ]N   --&gt;
+        &lt;item id="tp_stop" class="daw-btn" label="[]"   action="'…' 'STOP'"/&gt;      &lt;!-- [ ]N+1 --&gt;
+        &lt;item id="tp_play" class="daw-btn" label="${play_label}" action="'…' 'PLAY'"/&gt;
+        &lt;item id="tp_rec"  class="daw-btn daw-rec" label="(o)" action="'…' 'REC'"/&gt;
+        &lt;item id="tp_cyc"  class="daw-btn ${cycle_cls}" label="cyc" action="'…' 'CYCLE'"/&gt;
+      &lt;/row&gt;
+      &lt;text label="${lcd}   ${bpm} BPM" class="daw-lcd"/&gt;            &lt;!-- NOT nav --&gt;
+      &lt;text label="${bar_ruler}" class="daw-ruler"/&gt;                &lt;!-- NOT nav; ascii ruler string from manager --&gt;
+
+      &lt;!-- arrangement lanes: a canvas the manager draws (clip blocks + playhead),
+           OR a scrolllist of sprite-grid rows if you want per-clip nav --&gt;
+      &lt;canvas id="arrange" class="daw-arrange"/&gt;
+
+      &lt;!-- piano roll underneath --&gt;
+      &lt;grid id="proll" rows="12"/&gt;                                  &lt;!-- [ ]last-1 (grid is one nav slot) --&gt;
+
+      &lt;!-- mixer drawer: show-gated, toggled by [ ]2 above --&gt;
+      &lt;row class="toolbar daw-mixer" show="${mixer_open}"&gt;
+        &lt;repeat count="${n_tracks}" bind="m"&gt;
+          &lt;item id="mx${m.#}" class="daw-mx" label="${m.fader}" action="'…' 'FADER:${m.#}'"/&gt;
+        &lt;/repeat&gt;
+      &lt;/row&gt;
+      &lt;text label="${msg}" class="daw-msg" show="${msg}"/&gt;
+    &lt;/panel&gt;
+  &lt;/page&gt;
+&lt;/window&gt;</code></pre>
+<p>Nav run reads: <code>+Track, Mixer, track1..trackN, |&lt;, [], play, rec, cyc, proll, fader1..faderN, [X]</code>. Most-used (add track, transport) early; <code>[X]</code> auto-last. Everything else (LCD, ruler, arrangement view) is <code>&lt;text&gt;</code>/<code>&lt;canvas&gt;</code> and correctly gets no number.</p>
+<h2>F. Per-screen checklist</h2>
+<ul><li>[ ] one skeleton chosen (A above) — not a hybrid you invented</li><li>[ ] every mockup widget mapped via table B — zero new tags</li><li>[ ] nav items in most-used-first order; no <code>&lt;item&gt;</code> outside a <code>&lt;scrolllist&gt;</code> if there are &gt;~20</li><li>[ ] every styled element has an explicit <code>width:</code> / <code>height:</code> in px</li><li>[ ] all dynamic text via <code>${var}</code> from the manager's <code>_ui.txt</code>; template has NO business logic</li><li>[ ] actions go through <code>ops/APP_action.sh</code> (no new renderer verb)</li><li>[ ] <code>&lt;canvas&gt;</code> (if any) has a real framebuffer source or is left inert with a <code>TODO</code></li><li>[ ] launched, screenshotted, one action relay-tested, <code>_ui.txt</code> read</li></ul>
+</section>
+    <footer class="pagefoot">
+      Snapshot generated 2026-09-08 from <code>!.HQ-IQ-BOOK/08-roadmap/browser-prompting/*.md</code>
+      by <code>build-html.py</code>. Not a live mirror — re-run the script after editing the
+      markdown source.
+    </footer>
+  </div></main>
+</div>
