@@ -116,7 +116,13 @@ static int ktb_system_recorded(const char *house_root, const char *cmd) {
             if (v > 1) last = v;
         }
         fclose(pf);
-        if (last > 1) kh_proc_register(house_root, last, last, "tb-launch");
+        /* master_pid = this manager: a house-wide quit reaps via
+         * kh_proc_reap_all; a future "close just this app" reaps via
+         * kh_proc_reap_subtree(<the app's own root pid>) once apps
+         * register their own forks (§5 step 5). */
+        if (last > 1)
+            kh_proc_register_owned(house_root, last, last,
+                                   (long)getpid(), "tb-launch");
     }
     return rc;
 }

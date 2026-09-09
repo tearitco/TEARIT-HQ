@@ -339,14 +339,22 @@ after it, quietly.
    `kh_proc_reap_all(hr, 200, 0)` at the 3 explicit-quit sites. Live
    run confirmed register→quit→reap→truncate; dropdowns unaffected;
    restart unaffected (see the status block up top).
-4. **Master-ledger column + `kh_spawn` funnel + self-register**
-   (§3.1 / §3.2 / §3.2b). Add the `<master_pid>` column
-   (loader accepts 4- and 5-field lines); add
-   `kh_proc_register_owned` / `kh_proc_reap_subtree` /
-   `kh_proc_self_register`. Add `&.widgits/_shared-lib/kh_spawn.h` +
-   `kh_spawn.sh`. `ktb_system_recorded` → `kh_proc_register_owned(…,
-   getpid(), …)`. Unit-test the subtree reap (master A's children die,
-   master B's don't) before any app change.
+4. ✅ **DONE + LIVE-VERIFIED 2026-09-09.** `<master_pid>` column added
+   (`<pid> <pgid> <master_pid> <starttime> <name>`); `khpr_load` accepts
+   both the 4- and 5-field forms. New API in `kh_proc_registry.h`:
+   `kh_proc_register_owned`, `kh_proc_reap_subtree(master_pid)`,
+   `kh_proc_self_register` / `kh_proc_self_unregister`. New
+   `&.widgits/_shared-lib/kh_spawn.h` (`kh_spawn()` = fork + setsid? +
+   chdir? + execv + `kh_proc_register_owned` in the parent) +
+   `kh_spawn.sh` (shell launch sites). `ktb_system_recorded` →
+   `kh_proc_register_owned(…, getpid(), "tb-launch")`.
+   `tests/test_proc_registry_master.c` (added to the runner) — 14
+   checks, all pass: subtree reap isolates master A from B; a reap keyed
+   on an app-root pid also drops that root's own row;
+   self-register/unregister round-trips; a v1 4-field line and a
+   master 5-field line are both reaped by `reap_all`. Live: restart →
+   ledger lines now carry `master = <manager pid>` (verified against
+   `ps -o comm`); KSC_CLOSE_QUIT still reaps all + restore is healthy.
 5. Make it the default, app by app (one commit each, pal-script /
    window smoke per app): `music-player-hq` registers its `mpg123 -R`
    child via `kh_spawn`; `<module>` manager binaries call

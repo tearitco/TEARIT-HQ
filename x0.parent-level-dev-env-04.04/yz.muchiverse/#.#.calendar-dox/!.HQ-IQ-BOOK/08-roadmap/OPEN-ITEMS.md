@@ -79,8 +79,9 @@ short version.*
 17. Process-lifecycle teardown (TPMOS parity): **WIRED + LIVE-VERIFIED
     2026-09-09** — restart→register→quit→reap→truncate confirmed on the
     running desktop; dropdowns unaffected; legacy pidfile still written.
-    Left: app-fork funnelling — a window/manager NOT launched by the
-    taskbar still doesn't register (§5 steps 4–7).
+    master-ledger column + kh_spawn funnel + self-register landed
+    (§5 step 4, tested + live). Left: migrate app forks onto kh_spawn /
+    kh_proc_self_register app-by-app (§5 5–7).
     `design-docs/PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md`.
 18. ~~Shared source compiled by copy-into-`ops/`~~ **DONE 2026-09-09**:
     switch every `build_*.sh` to compile the canonical

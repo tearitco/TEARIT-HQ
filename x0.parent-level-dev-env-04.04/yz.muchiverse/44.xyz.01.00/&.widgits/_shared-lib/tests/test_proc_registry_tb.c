@@ -44,7 +44,9 @@ static void tb_system_recorded(const char *house_root, const char *cmd) {
         char ln[64]; long last = 0;
         while (fgets(ln, sizeof(ln), pf)) { long v = strtol(ln, NULL, 10); if (v > 1) last = v; }
         fclose(pf);
-        if (last > 1) kh_proc_register(house_root, last, last, "tb-launch");
+        if (last > 1)
+            kh_proc_register_owned(house_root, last, last,
+                                   (long)getpid(), "tb-launch");
     }
 }
 /* verbatim shape of ktb_reap_launched() */
