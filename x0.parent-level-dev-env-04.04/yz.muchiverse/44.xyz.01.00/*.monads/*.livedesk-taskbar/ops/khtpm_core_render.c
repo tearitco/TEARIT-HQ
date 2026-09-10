@@ -2299,9 +2299,13 @@ static int elem_has_class(Elem *e, const char *cls) {
  * edge (WM frame + being safely inside, matching the ~60px right
  * reserve user-resizable windows already use). */
 #define WM_MANAGED_BOTTOM_RESERVE 46
-#define WM_FS_MARGIN_X 12
-#define WM_FS_MARGIN_RIGHT 64
-#define WM_FS_MARGIN_BOTTOM 12
+#define WM_FS_MARGIN_X 16
+#define WM_FS_MARGIN_RIGHT 140   /* generous - kept overshooting the right; stop short */
+#define WM_FS_MARGIN_BOTTOM 32
+/* absolute safety cap: fullscreen never exceeds this fraction of the
+ * reported display, whatever the WM / HiDPI coord weirdness (direct
+ * instruction: "when in doubt dont go far, stop short"). */
+#define WM_FS_MAX_PCT 90
 
 
 /* Real, single-slot font cache for text measurement, ported verbatim
@@ -3671,12 +3675,14 @@ static int layout_sidebar_panel(Elem *page) {
     if (g_default_is_fullscreen) {
         /* work area only, and stop short of every edge (see the
          * WM_FS_MARGIN_* declaration comment) */
-        g_win_w = kh_screen_w() - WM_FS_MARGIN_X - WM_FS_MARGIN_RIGHT;
-        g_win_h = kh_screen_h() - WM_MANAGED_DRAG_MIN_Y
-                  - WM_MANAGED_BOTTOM_RESERVE - WM_FS_MARGIN_BOTTOM;
-        if (g_win_w < 320) g_win_w = kh_screen_w() - WM_FS_MARGIN_X;
-        if (g_win_h < 240) g_win_h = kh_screen_h() - WM_MANAGED_DRAG_MIN_Y;
-        if (g_win_h < 240) g_win_h = kh_screen_h();
+        int sw = kh_screen_w(), sh = kh_screen_h();
+        g_win_w = sw - WM_FS_MARGIN_X - WM_FS_MARGIN_RIGHT;
+        g_win_h = sh - WM_MANAGED_DRAG_MIN_Y - WM_MANAGED_BOTTOM_RESERVE - WM_FS_MARGIN_BOTTOM;
+        if (g_win_w > sw * WM_FS_MAX_PCT / 100) g_win_w = sw * WM_FS_MAX_PCT / 100;
+        if (g_win_h > sh * WM_FS_MAX_PCT / 100) g_win_h = sh * WM_FS_MAX_PCT / 100;
+        if (g_win_w < 320) g_win_w = sw - WM_FS_MARGIN_X;
+        if (g_win_h < 240) g_win_h = sh - WM_MANAGED_DRAG_MIN_Y;
+        if (g_win_h < 240) g_win_h = sh;
     } else {
         g_win_w = g_window->style.has_width ? g_window->style.width : DEFAULT_WIN_W;
         g_win_h = g_window->style.has_height ? g_window->style.height : DEFAULT_WIN_H;
