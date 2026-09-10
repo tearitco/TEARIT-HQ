@@ -55,22 +55,33 @@ Edit `keybinds.pdl` and relaunch — no rebuild. `0`, `` ` `` and `1`–`4`
 are **non-modal** (work from any view); the rotate / pan / height keys
 act only while `render_mode == 1` (3D).
 
+**Changed 2026-09-09:** the rotate / pan / height keys now fire in **all
+four** 3D POV modes (previously several were gated to 3·4 only). Key
+`5` mirrors `f`. `w↔s` and `a↔d` pan directions were flipped so modes
+1·2·3 match 4.
+
 | Key | Action | Modes |
 |---|---|---|
 | `0` | toggle 2D ⇄ 3D | any |
 | `` ` `` | always → 2D Chinese / ASCII terminal view (`view_2d_style=ascii`) | any |
 | `1` `2` `3` `4` | POV: first-person / third-person / free-roam / bird's-eye — **switches to 3D** | any |
-| `q` `e` | yaw left / right | 1·2·3 |
-| `r` `t` | pitch down / up | 1·2·3 |
-| `w` `a` `s` `d` | pan | 3·4 |
-| `c` `v` | camera height − / + | 3·4 |
-| `f` | reset camera to the mode default | 3·4 |
+| `q` `e` | yaw left / right | 1·2·3·4 |
+| `r` `t` | pitch down / up | 1·2·3·4 |
+| `w` `a` `s` `d` | pan | 1·2·3·4 |
+| `c` `v` | camera height − / + | 1·2·3·4 |
+| `f` / `5` | reset camera to the mode default | 1·2·3·4 |
 | `z` `x` | move the xelector (cursor) down / up a z-level | any |
 | `8` | snap the xelector back to the hero | any |
 | arrows | move the xelector on the board plane | any |
 
-`camera_mode` defaults to **2** (third-person); `w/a/s/d` pan is a
-designed no-op until you press `3` or `4`.
+`camera_mode` defaults to **2** (third-person). In modes 1·2 the pan /
+height offsets are added on top of the hero-follow anchor and are
+zeroed when you press `1`, `2`, or `f`/`5`.
+
+**GPU renderer:** `pieces/system/arrow_config.txt : use_gpu_render=1`
+routes 3D frames through the resident `bv_render_3d --daemon` EGL
+raymarch (see `08-roadmap/design-docs/BV-GPU-RENDER-DESIGN.md`).
+`motion_lod_step=2` drops render resolution while a move key is held.
 
 The `5`-`8` "one map" remap and the cursword shared layer are
 abandoned — `1`-`4` are POV, same as mutaclysm.

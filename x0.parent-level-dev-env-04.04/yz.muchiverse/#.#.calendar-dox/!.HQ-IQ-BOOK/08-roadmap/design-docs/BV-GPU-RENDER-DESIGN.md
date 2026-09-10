@@ -208,6 +208,41 @@ pipeline flush + a blocking GPU->CPU copy, and that sync has a ~15 ms
 fixed cost here regardless of pixel count. Every frame is fully
 serial: draw -> sync-read -> CPU write -> next draw.
 
+## 4d. landed on top of v3 (2026-09-09) — visual + control parity
+
+These shipped after the v3 perf work; they don't move the ms budget but
+they close the gap with the CPU renderer's output and the house camera
+model:
+
+- **Terrain emoji textures.** Per-solid-legend-layer 16×16 RGBA from
+  `pieces/registry/emoji_assets/<hex>/voxels_16.csv` (`get_voxel8_cached`)
+  → `GL_TEXTURE_2D_ARRAY` (16×16×64) + `u_lbbox[64]` opaque bbox per
+  layer. Shader does a real per-cell `slab()` test for the true hit
+  face/UV (the DDA step axis is the *board-bbox* entry face for the
+  first cell, not the voxel's — using it gave degenerate side-face UVs).
+- **Shaped phymoji models.** Trees / chicken / hero upload as dense
+  32×32×8 RGBA sub-volumes of a `sampler3D` model atlas
+  (`u_bmdl[128]` box→model id, `u_mdim[8]` per-model dims); box loop
+  raymarchs the model when `model >= 0`. Hero stays a box until its
+  `hero_humanoid` phymoji asset is generated (`pc_phymoji_gen`).
+- **Top-face shading fix.** Top = **face 3** (the Y-slab swapped case,
+  matches CPU `best_face != 3`). The darken was keyed on `face != 2`,
+  so every lit grass top was ×0.75 and read muddy. Now `face != 3`.
+- **Camera keys in all 3D modes.** `w/a/s/d` pan, `q/e` yaw, `r/t`
+  pitch, `c/v` height fire in modes 1–4; `w↔s` / `a↔d` pan directions
+  flipped to match the other modes; key `5` mirrors `f` (recenter).
+  `build_camera` modes 1/2 add `+ pan_x/+ pan_z/+ z_level*2`.
+- **Grey-frame flash fixed** — see `03-pitfalls/HOUSE_CODE_PITFALLS.md`
+  #17: `write_file_atomic` no longer `remove()`s before `rename()` on
+  POSIX, and `kh_draw_canvas` re-blits its cached frame on a partial
+  read instead of returning into a cleared buffer.
+- **Direction-change instant flip** — the stale-key compensator in
+  `bv_dispatch` now drops the already-queued opposite direction the
+  moment a different arrow keycode arrives in the batch, so a reversal
+  takes effect on the next frame instead of after the old run drains.
+  The compensator itself is now a `keybinds.pdl` toggle
+  (`OPT | multipress_compensator | <0|1>`).
+
 ## 4c. v4 - the real 60+ fps push (not started)
 
 1. **PBO + fence async readback.** `glReadPixels` into a `GL_PIXEL_PACK_BUFFER`,

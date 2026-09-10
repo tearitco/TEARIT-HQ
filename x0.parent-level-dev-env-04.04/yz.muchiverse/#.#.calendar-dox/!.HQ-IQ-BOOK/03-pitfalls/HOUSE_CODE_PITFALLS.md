@@ -644,5 +644,48 @@ fix for this whole class.
 
 ---
 
+## 17. `remove(path)` before `rename(tmp, path)` in a "write-atomic" helper opens a no-file window every write — a file-relay consumer paints one blank/grey frame
+
+**Real, live-caught 2026-09-09** (user: "sometimes during a move
+render, the screen goes all grey for 1 frame"). `bv_render_3d.c`'s
+`write_file_atomic()` did:
+
+```c
+fclose(f);                          /* tmp is complete */
+remove(path);                       /* <-- path now MISSING */
+if (rename(tmp_path, path) != 0) { ... }
+```
+
+The `remove(path)` was a **Windows-only** necessity (Win32 `rename`
+won't overwrite an existing dest). On POSIX `rename(2)` replaces an
+existing file **atomically** — the `remove` there only creates a
+window, once per frame, where `path` does not exist. Any consumer
+that `stat`s / `fopen`s the file in that window (here khtpm's
+`kh_draw_canvas` reading `rgb_frame_3d_overlay.raw` + its
+`.receipt.txt`, ~30×/s during a camera move) sees ENOENT for one tick.
+
+**Fixes (`a4504430`):**
+- Producer: `#ifdef _WIN32` around the `remove(path)`. POSIX path is
+  just `rename(tmp, path)` — no gap.
+- Consumer hardening: `kh_draw_canvas` read the receipt for the frame
+  size and, on a mid-write `w/h == 0` tick, `return`ed early — but
+  `redraw()` has *already cleared the window buffer*, so returning
+  leaves the canvas box showing the cleared background (grey). The
+  "keep the last frame" behaviour only holds if the consumer actually
+  **re-blits** its cached image every call. Fixed to fall through with
+  the cached `c_w/c_h` and re-blit the last good `XImage`; it only
+  fills a flat colour when nothing has ever been decoded.
+
+**Rules:**
+- A "write-atomically" helper on POSIX = write `tmp` then `rename` —
+  **never `remove(dest)` first**. Guard any `remove(dest)` as
+  `#ifdef _WIN32`.
+- A consumer that repaints from a file another process writes must
+  **re-blit its last good copy on every frame** where the read fails
+  or looks partial — never skip the paint (the surrounding redraw has
+  usually cleared the target already).
+
+---
+
 *Append new entries here as they're found — this file exists so the
 next session doesn't re-discover the same mistake from scratch.*
