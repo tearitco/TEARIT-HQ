@@ -2771,12 +2771,34 @@ int main(int argc, char **argv) {
     /* one render at start so the overlay exists before the first request */
     render_one_frame();
 
+    /* MILESTONE A (pc-hq board reframe) - the khtpm board window writes
+     * #.desktop/pchq_board_view.txt on every layout (incl. a ⌟ drag
+     * resize, which bv_dispatch is NOT in the loop for). Watch it here
+     * so a window resize re-renders the 3D view at the new size without
+     * needing a POV change to nudge it. Content compare (w h), not
+     * mtime (prefer-marker-files rule). */
+    char vszp[PATH_BUF]; vszp[0] = '\0';
+    int last_vw = 0, last_vh = 0;
+    if (house_root[0]) {
+        snprintf(vszp, sizeof(vszp), "%s/#.desktop/pchq_board_view.txt", house_root);
+        FILE *vf0 = fopen(vszp, "r");
+        if (vf0) { if (fscanf(vf0, "%d %d", &last_vw, &last_vh) != 2) { last_vw = last_vh = 0; } fclose(vf0); }
+    }
+
     int idle_ticks = 0;                 /* 3ms each; ~90000 = 270s with no request -> exit (orphan cleanup) */
     while (!g_daemon_stop) {
         long long now = bv_file_size(reqp);
-        if (now != last_req) {
+        int vw = last_vw, vh = last_vh, view_changed = 0;
+        if (vszp[0]) {
+            FILE *vf = fopen(vszp, "r");
+            if (vf) { if (fscanf(vf, "%d %d", &vw, &vh) == 2 &&
+                          (vw != last_vw || vh != last_vh)) view_changed = 1;
+                      fclose(vf); }
+        }
+        if (now != last_req || view_changed) {
             idle_ticks = 0;
             last_req = now;
+            last_vw = vw; last_vh = vh;
             struct timespec ta, tb;
             clock_gettime(CLOCK_MONOTONIC, &ta);
             int rc = render_one_frame();
