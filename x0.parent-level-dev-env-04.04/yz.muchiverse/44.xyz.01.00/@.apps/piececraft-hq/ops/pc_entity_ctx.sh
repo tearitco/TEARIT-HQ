@@ -85,8 +85,9 @@ label_for() {
     [ -n "$NOTE" ] && printf '    <text label="%s" />\n' "$NOTE"
     for v in $VERBS; do
         [ "$v" = EXIT ] && continue
-        printf '    <item label="%s" action="sh %s/append.sh %s %s %s %s %s"/>\n' \
-            "$(label_for "$v")" "$PKG" "$v" "$SX" "$SY" "$SZ" "${ID:-_}"
+        printf '    <item label="%s" action="sh %s/append.sh %s %s %s %s %s %s %s %s"/>\n' \
+            "$(label_for "$v")" "$PKG" "$v" "$SX" "$SY" "$SZ" "${ID:-_}" \
+            "${KIND:-_}" "${GLYPH:-_}" "${TMPL:-_}"
     done
     printf '    <item label="Close" action="CLOSE"/>\n'
     printf '  </page>\n</window>\n'
@@ -94,10 +95,11 @@ label_for() {
 
 cat > "$PKG/append.sh" <<APP
 #!/bin/sh
-V="\$1"; X="\$2"; Y="\$3"; Z="\$4"; ID="\$5"
-[ "\$ID" = _ ] && ID=""
-[ "\$V" != EXIT ] && printf 'CTX_%s %s %s %s %s\n' "\$V" "\$X" "\$Y" "\$Z" "\$ID" >> "$INBOX"
-echo "\$(date '+%H:%M:%S') click \$V \$X,\$Y,\$Z \${ID:-.}" >> "$LOG"
+# CTX_<VERB> x y z id kind glyph template   ('_' = empty field)
+V="\$1"; X="\$2"; Y="\$3"; Z="\$4"; ID="\$5"; KIND="\$6"; GLYPH="\$7"; TMPL="\$8"
+[ "\$V" != EXIT ] && printf 'CTX_%s %s %s %s %s %s %s %s\n' \
+    "\$V" "\$X" "\$Y" "\$Z" "\${ID:-_}" "\${KIND:-_}" "\${GLYPH:-_}" "\${TMPL:-_}" >> "$INBOX"
+echo "\$(date '+%H:%M:%S') click \$V \$X,\$Y,\$Z \${ID} \${KIND}" >> "$LOG"
 for p in \$(pgrep -f "khtpm_core_render.+x .*ctx-menu\\.xhtpm" 2>/dev/null); do
     [ "\$(cat /proc/\$p/comm 2>/dev/null)" = khtpm_core_rend ] && kill "\$p" 2>/dev/null
 done

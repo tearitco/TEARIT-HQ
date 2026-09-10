@@ -657,6 +657,61 @@ static int ctx_delete_world_entity(const char *proj_root, const char *id,
     return 0;
 }
 
+/* MILESTONE E slice 3 - set one chunk cell (glyph '_' = clear to air).
+ * Reads board_manifest.txt z_base, rewrites row y / col x of the
+ * <z_base><z>.txt layer bv_render_3d loads. Returns 1 on success. */
+static int ctx_set_voxel(const char *proj_root, int x, int y, int z, char glyph,
+                         char *msg, size_t msgsz) {
+    char real_root[MAX_PATH];
+    resolve_real_root(proj_root, real_root, sizeof(real_root));
+    char man[PATH_BUF], zbase[512] = "";
+    snprintf(man, sizeof(man), "%s/pieces/system/board_manifest.txt", real_root);
+    read_kv_str_local(man, "z_base", zbase, sizeof(zbase));
+    if (!zbase[0]) { snprintf(msg, msgsz, "no board_manifest z_base"); return 0; }
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/%s%d.txt", real_root, zbase, z);
+    FILE *f = fopen(path, "r");
+    if (!f) { snprintf(msg, msgsz, "no chunk layer z%d", z); return 0; }
+    static char rows[64][160];
+    int n = 0; char line[160];
+    while (n < 64 && fgets(line, sizeof(line), f)) {
+        line[strcspn(line, "\r\n")] = '\0';
+        snprintf(rows[n++], sizeof(rows[0]), "%s", line);
+    }
+    fclose(f);
+    if (y < 0 || y >= n || x < 0 || x >= (int)strlen(rows[y])) {
+        snprintf(msg, msgsz, "cell %d,%d out of chunk range", x, y);
+        return 0;
+    }
+    rows[y][x] = glyph;
+    FILE *wf = fopen(path, "w");
+    if (!wf) { snprintf(msg, msgsz, "cannot write chunk layer"); return 0; }
+    for (int i = 0; i < n; i++) fprintf(wf, "%s\n", rows[i]);
+    fclose(wf);
+    if (glyph == '_') snprintf(msg, msgsz, "Removed voxel @ %d,%d,%d", x, y, z);
+    else              snprintf(msg, msgsz, "Placed '%c' @ %d,%d,%d", glyph, x, y, z);
+    return 1;
+}
+
+/* append "name,x,y,z" to a positioned-entity manifest (animals.txt for
+ * a chicken, phymoji_entities.txt for anything else). */
+static int ctx_place_entity(const char *proj_root, const char *name,
+                            int x, int y, int z, char *msg, size_t msgsz) {
+    if (!name || !name[0]) { snprintf(msg, msgsz, "clipboard empty"); return 0; }
+    char real_root[MAX_PATH];
+    resolve_real_root(proj_root, real_root, sizeof(real_root));
+    const char *rel = strstr(name, "chicken") ? "pieces/world_01/animals.txt"
+                                              : "pieces/world_01/phymoji_entities.txt";
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/%s", real_root, rel);
+    FILE *f = fopen(path, "a");
+    if (!f) { snprintf(msg, msgsz, "cannot write %s", rel); return 0; }
+    fprintf(f, "%s,%d,%d,%d\n", name, x, y, z);
+    fclose(f);
+    snprintf(msg, msgsz, "Placed %s @ %d,%d,%d", name, x, y, z);
+    return 1;
+}
+
 static int advance_tick(const char *proj_root) {
     /* REAL FIX 2026-08-04, direct user report ("tick didn't change
      * time... autotick isn't moving time forward"): this used to write
@@ -977,19 +1032,56 @@ int main(int argc, char **argv) {
             int rc = system(c); (void)rc;
 #endif
             snprintf(message, sizeof(message), "context menu");
-        } else if (strncmp(cmd, "CTX_INSPECT", 11) == 0) {
-            int x = 0, y = 0, z = 0; char id[64] = "";
-            sscanf(cmd + 11, "%d %d %d %63s", &x, &y, &z, id);
-            snprintf(message, sizeof(message), "Inspect: %s @ %d,%d,%d",
-                     id[0] ? id : "(cell)", x, y, z);
-        } else if (strncmp(cmd, "CTX_DELETE", 10) == 0) {
-            int x = 0, y = 0, z = 0; char id[64] = "";
-            sscanf(cmd + 10, "%d %d %d %63s", &x, &y, &z, id);
-            ctx_delete_world_entity(project_root, id, x, y, z, message, sizeof(message));
-        } else if (strncmp(cmd, "CTX_", 4) == 0) {
-            /* COPY / PASTE / PLACE / POSSESS / TOENTITY - plumbed
-             * (menu -> inbox -> here), apply not implemented this slice. */
-            snprintf(message, sizeof(message), "%s - not implemented yet", cmd);
+        } else if (strncmp(cmd, "CTX_", 4) == 0 && strcmp(cmd, "CTX_MENU") != 0) {
+            /* CTX_<VERB> x y z id kind glyph template  ('_' = empty).
+             * append.sh (pc_entity_ctx.sh) emits this shape. */
+            char verb[16] = "";
+            int x = 0, y = 0, z = 0;
+            char id[64] = "", kind[32] = "", glyph[8] = "", tmpl[64] = "";
+            sscanf(cmd, "CTX_%15s", verb);
+            const char *rest = strchr(cmd, ' ');
+            if (rest) sscanf(rest + 1, "%d %d %d %63s %31s %7s %63s",
+                             &x, &y, &z, id, kind, glyph, tmpl);
+            #define UNDOT(s) do { if (strcmp((s), "_") == 0) (s)[0] = '\0'; } while (0)
+            UNDOT(id); UNDOT(kind); UNDOT(glyph); UNDOT(tmpl);
+            #undef UNDOT
+            char clip[PATH_BUF]; char rr_c[MAX_PATH];
+            resolve_real_root(project_root, rr_c, sizeof(rr_c));
+            snprintf(clip, sizeof(clip), "%s/pieces/display/ctx_clipboard.txt", rr_c);
+
+            if (strcmp(verb, "INSPECT") == 0) {
+                snprintf(message, sizeof(message), "%s%s @ %d,%d,%d",
+                         kind[0] ? kind : "cell", id[0] ? id : "", x, y, z);
+            } else if (strcmp(verb, "DELETE") == 0) {
+                if (!ctx_delete_world_entity(project_root, id, x, y, z, message, sizeof(message))
+                    && strcmp(kind, "voxel") == 0)
+                    ctx_set_voxel(project_root, x, y, z, '_', message, sizeof(message));
+            } else if (strcmp(verb, "COPY") == 0) {
+                FILE *cf = fopen(clip, "w");
+                if (cf) {
+                    fprintf(cf, "kind=%s\nglyph=%s\ntemplate=%s\nid=%s\n",
+                            kind, glyph, tmpl, id);
+                    fclose(cf);
+                }
+                snprintf(message, sizeof(message), "Copied %s", kind[0] ? kind : "cell");
+            } else if (strcmp(verb, "PASTE") == 0) {
+                char ck[32] = "", cg[8] = "", ctpl[64] = "", cid[64] = "";
+                read_kv_str_local(clip, "kind", ck, sizeof(ck));
+                read_kv_str_local(clip, "glyph", cg, sizeof(cg));
+                read_kv_str_local(clip, "template", ctpl, sizeof(ctpl));
+                read_kv_str_local(clip, "id", cid, sizeof(cid));
+                if (strcmp(ck, "voxel") == 0 && cg[0])
+                    ctx_set_voxel(project_root, x, y, z, cg[0], message, sizeof(message));
+                else if (ctpl[0] || cid[0])
+                    ctx_place_entity(project_root, ctpl[0] ? ctpl : cid, x, y, z,
+                                     message, sizeof(message));
+                else
+                    snprintf(message, sizeof(message), "Clipboard empty - Copy something first");
+            } else if (strcmp(verb, "PLACE") == 0) {
+                snprintf(message, sizeof(message), "Place: pick a block palette (todo)");
+            } else {
+                snprintf(message, sizeof(message), "%s - not implemented yet", verb);
+            }
         } else if (strcmp(cmd, "OPEN_BOARD_WIDGET") == 0) {
             open_board_widget(project_root, message, sizeof(message));
         } else if (strcmp(cmd, "OPEN_VIEW_EDITOR") == 0) {
