@@ -41,9 +41,10 @@ XHR/fetch (rung 4, `wft`), and the rung-2/6 BOM remainder (`wdt`, `wcn`,
 `wck`). Phase-2 **document-order script runs** (per-`<script>` programs
 over a `/*nbjs-script-boundary*/` split, gated by `wps`) LANDED 2026-09-09
 — see the LANDED block under Rung 6 below. With that, the resident-worker
-engine covers everything the ladder's rungs 1-6 promise; what's truly left
-is real-server fetch breadth (the manager's `curl` ladder on live `http://`
-sites) and rung 7 CSS/layout awareness.
+engine covers everything the ladder's rungs 1-6 promise. Real-server fetch
+breadth (the manager's curl ladder on live `http://` sites) LANDED
+2026-09-10 — see the "Rung 6 remainder: real `http://` fetch breadth"
+block below; what's truly left is rung 7 CSS/layout awareness.
 
 > The table above is the *pre*-Phase-1 snapshot; `getElementById` /
 > `querySelector` and the rest became real accessors walking the worker's
@@ -308,6 +309,33 @@ plausible stub, `MutationObserver` (can no-op then improve),
 > page.js without a sentinel still runs as one program. Live E2E: inline/
 > ext/inline page rendered `TEXT|seq=a,b,c`; a bad middle script still
 > rendered `after-bad:s1` with the WERR surfaced.
+
+> **Rung 6 remainder: real `http://` fetch breadth — LANDED 2026-09-10**
+> The manager's curl ladder already fetched any scheme (`do_fetch` →
+> `run_curl_interruptible` → `extract_and_publish` → worker LOAD) and
+> `collect_scripts` already resolved `<script src=>` relative URLs over
+> http bases; what was unproven was a real server flowing end-to-end. Live
+> E2E against `python3 -m http.server` proved it: a page with inline +
+> external-relative scripts renders `TEXT|seq=a,b,c` (TITLE extracted), and
+> localStorage set on one http page persists to the next http navigation
+> (`theme=http-ok`). Two real bugs surfaced and are fixed:
+> - **Worker-side fetch/XHR relative URL resolution.** `fetch("api.json")`
+>   on an http page failed with `curl rc=768` (exit 3). Root cause was not
+>   the worker's transport — the prelude `splitParts` (`ops/nb_host.h`)
+>   re-appended `b.port` after `b.host` already embeds it, producing
+>   `http://127.0.0.1:8123:8123/...` double-port URLs for any base carrying
+>   an explicit port (file://-based suites never had one, so `wft`/`wss`
+>   missed it). The port re-appender is removed. Belt-and-braces: the
+>   worker's `nb_fetch_sync` now also resolves the incoming URL against
+>   `g_href` via a new `resolve_doc_url()` (scheme detection, `//host`,
+>   `/abs`, and relative-dirname merging — RFC 3986 §5-style, mirroring the
+>   manager's `resolve_url`), so JS-visible errors carry the resolved URL
+>   (`curl rc=3 status=0 url=http://...`). Both fetch and XHR still
+>   pre-resolve in the prelude; the C side is a no-op for absolute URLs.
+> E2E-verified per-page: relative `fetch("api.json")` returns
+>   `st=200 fetch={"hello":"rung4-http"}` — the rung-4 transport over real
+>   HTTP. All 7 worker suites + 18-case `cli_test` + `sh build.sh` (4
+>   binaries) green post-fix.
 
 ### Rung 7 — CSS/layout awareness  *(optional, large, defer)*
 `getBoundingClientRect`, `offsetWidth/Height`, `display:none`

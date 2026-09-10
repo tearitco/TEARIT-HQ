@@ -370,3 +370,31 @@ Merge `origin/opencode` (commits after the boot-hygiene notice).
 - Honest remaining gaps (now stated in the roadmap + OPEN-ITEMS): real
   `http://` fetch breadth behind the manager's curl ladder, and rung 7
   CSS/layout awareness.
+
+## NOTICE 2026-09-10 — real `http://` fetch breadth LANDED
+
+Merge `origin/opencode` (commits after the Phase-2 notice).
+
+- Live E2E vs `python3 -m http.server` (throwaway house + fixture site)
+  proved the manager's curl ladder end-to-end: a page with inline +
+  external-relative `<script src>` renders `TEXT|seq=a,b,c` (TITLE
+  extracted); localStorage set on one `http://` page persists to the next
+  http navigation (`theme=http-ok`); JS-side relative `fetch("api.json")`
+  resolves against the page URL and hits the real server
+  (`st=200 fetch={"hello":"rung4-http"}`) — the rung-4 transport over real
+  HTTP.
+- Two worker-side fixes:
+  - **Prelude `splitParts` double-port bug** (`ops/nb_host.h`): it re-appended
+    `b.port` after `b.host` already embeds it, yielding
+    `http://127.0.0.1:8123:8123/...` for any base with an explicit port —
+    curl exited 3 (URL malformed). file://-based suites never had a port so
+    `wft`/`wrapper` missed it. Port re-appender removed.
+  - **`nb_fetch_sync` belt-and-braces** (`ops/nb_js_worker.c`): new
+    `resolve_doc_url()` merges the incoming URL against `g_href`
+    (scheme/`//host`/`/abs`/relative-dirname, RFC 3986 §5-style, mirroring
+    the manager's `resolve_url`); fetch errors now carry the resolved URL
+    (`curl rc=3 status=0 url=http://...`). The prelude still pre-resolves
+    for both fetch and XHR; the C resolver is a no-op for absolute URLs.
+- All 7 worker suites + 18-case cli_test + `sh build.sh` (4 binaries)
+  green post-fix. No renderer/chtpm core changes. Only rung 7
+  CSS/layout awareness remains as an honest gap.

@@ -74,5 +74,11 @@ short version.*
       per-script syntax isolation + shared top-level `var` + external src at
       DOM position; failures print `WERR| script N: ...` into the worker
       stderr log (surfaced as `[worker]` lines, boot-hygiene slice). Real
-      server-side breadth (`http://` pages behind the manager's curl ladder)
-      and rung 7 CSS/layout awareness are the honest remaining gaps.
+      `http://` server fetch breadth LANDED (2026-09-10): live `python3 -m
+      http.server` E2E proved the manager's curl ladder end-to-end — inline +
+      relative `<script src>` page renders `seq=a,b,c`, localStorage persists
+      across http navs, and JS-side relative `fetch()`/XHR resolve against
+      the page URL and hit real servers (fixed the prelude `splitParts`
+      double-port bug on base URLs with explicit ports; worker
+      `resolve_doc_url()` fallback + resolved URL in fetch errors). Only rung
+      7 CSS/layout awareness remains as an honest gap.
