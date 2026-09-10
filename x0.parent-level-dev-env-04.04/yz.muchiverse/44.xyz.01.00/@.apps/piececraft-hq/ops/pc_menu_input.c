@@ -962,10 +962,18 @@ int main(int argc, char **argv) {
              * context-menu window on whatever pick.txt currently says. */
             char rr[MAX_PATH];
             resolve_real_root(project_root, rr, sizeof(rr));
+            {   /* breadcrumb: proves the verb arrived even if the
+                 * script can't open a window (e.g. no renderer built) */
+                char lg[MAX_PATH];
+                snprintf(lg, sizeof(lg), "%s/pieces/display/ctx_menu.log", rr);
+                FILE *lf = fopen(lg, "a");
+                if (lf) { fprintf(lf, "CTX_MENU verb reached pc_menu_input (root=%s)\n", rr); fclose(lf); }
+            }
 #ifndef _WIN32
             char c[MAX_PATH * 2];
             snprintf(c, sizeof(c),
-                     "setsid sh '%s/ops/pc_entity_ctx.sh' '%s' >/dev/null 2>&1 &", rr, rr);
+                     "setsid sh '%s/ops/pc_entity_ctx.sh' '%s' >>'%s/pieces/display/ctx_menu.log' 2>&1 &",
+                     rr, rr, rr);
             int rc = system(c); (void)rc;
 #endif
             snprintf(message, sizeof(message), "context menu");
