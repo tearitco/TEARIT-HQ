@@ -3762,6 +3762,43 @@ static int layout_sidebar_panel(Elem *page) {
         sidebar->x = 0; sidebar->y = content_top; sidebar->w = sidebar_w; sidebar->h = g_win_h - content_top;
         panel->x = sidebar_w; panel->y = content_top; panel->w = g_win_w - sidebar_w; panel->h = g_win_h - content_top;
     }
+
+    /* MILESTONE B (PCHQ-ENTITY-MENU-AND-TASKBAR-DESIGN.md §6a) - a
+     * generic bottom-dock <footer>: one horizontal strip along the
+     * window's bottom edge, laid out AFTER sidebar/panel (their heights
+     * are trimmed so nothing paints under it). Any HQ window can carry a
+     * status / entities bar. <item>/<text> children flow left-to-right. */
+    {
+        Elem *footer = NULL;
+        for (int i = 0; i < page->n_children; i++)
+            if (strcmp(page->children[i]->tag, "footer") == 0) { footer = page->children[i]; break; }
+        if (footer) {
+            css_compute_style(&g_sheet, footer->tag, footer->id, footer->classes, footer->n_classes, 0, &footer->style);
+            int footer_h = footer->style.has_height ? footer->style.height : scaled(26);
+            if (footer_h < 12) footer_h = 12;
+            footer->x = 0; footer->y = g_win_h - footer_h;
+            footer->w = g_win_w; footer->h = footer_h;
+            sidebar->h -= footer_h; panel->h -= footer_h;
+            if (sidebar->h < 0) sidebar->h = 0;
+            if (panel->h < 0) panel->h = 0;
+            int fx = scaled(6);
+            for (int i = 0; i < footer->n_children; i++) {
+                Elem *fi = footer->children[i];
+                if (strcmp(fi->tag, "item") != 0 && strcmp(fi->tag, "text") != 0) continue;
+                css_compute_style(&g_sheet, fi->tag, fi->id, fi->classes, fi->n_classes, 0, &fi->style);
+                int fw = fi->style.has_width ? fi->style.width
+                       : (kh_measure_text_px(&fi->style, fi->label) + scaled(18));
+                int fh = fi->style.has_height ? fi->style.height : footer_h - scaled(6);
+                fi->x = fx; fi->y = footer->y + scaled(3); fi->w = fw; fi->h = fh;
+                if (strcmp(fi->tag, "item") == 0 && (fi->onclick[0] || fi->label[0])) {
+                    fi->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = fi;
+                } else {
+                    fi->nav_index = 0;
+                }
+                fx += fw + scaled(4);
+            }
+        }
+    }
     /* REAL, NEW 2026-08-31 (live report: "no separation elements") -
      * a real visible divider between the two regions belongs in CSS
      * (entity_menu_default.css's own generic `sidebar`/`cli_io` rules),
@@ -4700,11 +4737,23 @@ static void kh_scan_interact_relay(void) {
     Elem *found = NULL;
     Elem *any_relay = NULL;
     if (pg) {
-        for (int i = 0; i < pg->n_children; i++) {
-            Elem *it = pg->children[i];
-            if (strcmp(it->tag, "item") != 0 || !it->relay[0]) continue;
-            if (!any_relay) any_relay = it;
-            if (elem_has_class(it, "interact-active")) { found = it; break; }
+        /* direct page children, AND one level into a layout container
+         * (sidebar / tabbar / footer) - milestone A moved the board's
+         * relay trigger from a flat page <item> into a <sidebar>/
+         * <tabbar> toolbar. Accept <item> or <tab>. */
+        for (int i = 0; i < pg->n_children && !found; i++) {
+            Elem *c = pg->children[i];
+            int is_container = (strcmp(c->tag, "sidebar") == 0 ||
+                                strcmp(c->tag, "tabbar") == 0 ||
+                                strcmp(c->tag, "footer") == 0);
+            int lo = is_container ? 0 : -1;
+            int hi = is_container ? c->n_children : 0;
+            for (int j = lo; j < hi; j++) {
+                Elem *it = (j < 0) ? c : c->children[j];
+                if ((strcmp(it->tag, "item") != 0 && strcmp(it->tag, "tab") != 0) || !it->relay[0]) continue;
+                if (!any_relay) any_relay = it;
+                if (elem_has_class(it, "interact-active")) { found = it; break; }
+            }
         }
     }
     if (!found) found = any_relay;

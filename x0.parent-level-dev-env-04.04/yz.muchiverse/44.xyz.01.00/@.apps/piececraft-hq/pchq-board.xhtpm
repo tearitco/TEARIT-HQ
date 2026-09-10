@@ -1,40 +1,48 @@
-<!-- pchq-board.xhtpm - MILESTONE A (PCHQ-ENTITY-MENU-AND-TASKBAR-DESIGN.md
-     §6a): the board window as a NORMAL sidebar+panel HQ window.
+<!-- pchq-board.xhtpm - MILESTONE A + A-2 + B
+     (PCHQ-ENTITY-MENU-AND-TASKBAR-DESIGN.md §6a): the board window as a
+     normal HQ window with a horizontal toolbar + a footer.
 
-       <sidebar class="pchq-toolbar">  - In/File/Desk/Menu/Player/clock.
-         (A2, per direct feedback: move this to a horizontal <tabbar>
-          top row + add a <footer> row.)
-       <panel id="view-panel"><canvas id="view"/>  - the 2D/3D blit.
-         kh_layout_canvas_in_region() fills the panel box with the
-         canvas, sets g_has_canvas, wires canvas_raw, writes
-         #.desktop/pchq_board_view.txt so bv_render_3d renders that
-         exact pixel size (1:1 blit). The dropdown-child panels are
-         page-level (NOT nested in the sidebar) so layout_sidebar_panel
-         picks view-panel as the content region.
+       <tabbar id="toolbar">  - In/File/Desk/Menu/Player/clock as a
+         horizontal <tab> row just under the chrome (direct feedback:
+         "header should be <tabbar> horizontal row"). <tab> click
+         dispatches onclick=, so shell actions + ACTIVATE dropdowns both
+         work; kh_scan_interact_relay now also finds a relay= trigger
+         inside a <tabbar>.
+       <sidebar id="rail">  - width:0, present only to satisfy
+         layout_sidebar_panel()'s sidebar+panel trigger.
+       <panel id="view-panel"><canvas id="view"/>  - the 2D/3D blit;
+         kh_layout_canvas_in_region() fills it, sets g_has_canvas, wires
+         canvas_raw, writes #.desktop/pchq_board_view.txt (1:1 blit).
+       <footer id="statusbar">  - horizontal bottom strip; milestone C
+         puts the entities bar here.
 
-     Free now (no board-specific C): X/!/_ chrome, taskbar entry,
-     minimize/restore, and REAL Desk/Menu dropdowns (generic
-     onclick="ACTIVATE" + class="dropdown-child" + target_id).
-
-     Rollback: pchq-board.hascanvas.xhtpm (PCHQ_BOARD_HASCANVAS=1). -->
+     Free: X/!/_ chrome, taskbar entry, minimize/restore, REAL Desk/Menu
+     dropdowns. Rollback: pchq-board.hascanvas.xhtpm (PCHQ_BOARD_HASCANVAS=1). -->
 <window label="piececraft-hq board" class="pchq-board-pal database-window managed user-resizable" vars="state/ui.txt">
   <module src="@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x" args="piececraft-hq"/>
   <page name="main">
-    <sidebar id="toolbar" class="pchq-toolbar sidebar">
-      <item id="tb-in" class="pchq-tb ${interact_class}" label="In: ${interact_label}"
-            relay="${bv_h1},${bv_h2}"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'interact'"/>
-      <item id="tb-file" class="pchq-tb" label="File"
-            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'file-hq'"/>
-      <item id="tb-desk" class="pchq-tb" label="Desk ▾" onclick="ACTIVATE" target_id="tb-desk"/>
-      <item id="tb-menu" class="pchq-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
-      <item id="tb-player" class="pchq-tb quiet" label="Player" action="void"/>
-      <item id="tb-clock" class="pchq-tb quiet" label="${clock}" action="void"/>
-    </sidebar>
+    <tabbar id="toolbar" class="pchq-toolbar">
+      <tab id="tb-in" class="pchq-tb ${interact_class}" label="In: ${interact_label}"
+           relay="${bv_h1},${bv_h2}"
+           onclick="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'interact'"/>
+      <tab id="tb-file" class="pchq-tb" label="File"
+           onclick="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'file-hq'"/>
+      <tab id="tb-desk" class="pchq-tb" label="Desk ▾" onclick="ACTIVATE" target_id="tb-desk"/>
+      <tab id="tb-menu" class="pchq-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
+      <tab id="tb-player" class="pchq-tb" label="Player" onclick="void"/>
+      <tab id="tb-clock" class="pchq-tb" label="${clock}" onclick="void"/>
+    </tabbar>
+
+    <sidebar id="rail" class="pchq-rail sidebar"></sidebar>
 
     <panel id="view-panel" class="pchq-view">
       <canvas id="view" sprite="${canvas_raw}"/>
     </panel>
+
+    <footer id="statusbar" class="pchq-footer">
+      <text label="piececraft-hq" class="quiet"/>
+      <item id="ft-entbar" class="pchq-ft" label="entities: off" onclick="void"/>
+    </footer>
 
     <!-- dropdown overlays: page-level so they don't shadow view-panel -->
     <panel class="dropdown-child" target_id="tb-desk">
