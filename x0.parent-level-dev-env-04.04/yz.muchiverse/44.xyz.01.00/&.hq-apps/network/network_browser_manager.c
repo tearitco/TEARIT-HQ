@@ -85,6 +85,8 @@
 #include <signal.h>
 #include <errno.h>
 #include <poll.h>
+#include <fcntl.h>
+#include <sys/file.h>
 
 #include "nb_dom.h"
 
@@ -686,20 +688,73 @@ static void load_page_title(char *out, size_t outsz);
 static void do_fetch(const char *url_in, int record_history);
 
 static char g_curl_url_path[PATH_BUF];
+static char g_curl_cookie_path[PATH_BUF];  /* per-house Netscape jar shared by page/script/worker curls */
+static int g_lock_fd = -1;                 /* single-instance flock fd (held for life) */
 static char g_js_worker_path[PATH_BUF];
 static char g_js_script_path[PATH_BUF];
 static char g_media_op_path[PATH_BUF];
 static char g_media_root[PATH_BUF];
 
+/* One manager per house. flock(2) LOCK_EX|LOCK_NB on a lock file dies with
+ * the process (no stale-pid handling needed) and is per-house, so separate
+ * houses can still run separate managers. Prevents the racing-manager
+ * pileup that corrupted live E2E runs. */
+static void acquire_house_lock(const char *lock_path) {
+    g_lock_fd = open(lock_path, O_WRONLY | O_CREAT, 0644);
+    if (g_lock_fd < 0) return;             /* cannot lock: run anyway, don't wedged die */
+    if (flock(g_lock_fd, LOCK_EX | LOCK_NB) != 0) {
+        fprintf(stderr,
+                "network_browser_manager: another instance already owns %s "
+                "(kill it first) - exiting\n", lock_path);
+        _exit(2);
+    }
+    if (ftruncate(g_lock_fd, 0) == 0) {
+        char pid[32];
+        int pn = snprintf(pid, sizeof(pid), "%ld\n", (long)getpid());
+        (void)!write(g_lock_fd, pid, (size_t)pn);
+    }
+}
+
+/* Browsers execute only classic-JS scripts (absent/empty type, or a
+ * javascript MIME). Everything else — module, application/json,
+ * application/ld+json, text/template, and any other custom type — is
+ * skipped; the DOM parser already drops those nodes, so running them would
+ * just emit WERR noise (and module syntax Duktape can't parse anyway). */
 static int script_type_skip(const char *tag, const char *tag_end) {
     const char *t = strcasestr_local(tag, "type=");
     if (!t || t >= tag_end) return 0;
     t += 5;
-    if (*t == '"' || *t == '\'') t++;
-    if (strncasecmp(t, "module", 6) == 0) return 1;
-    if (strcasestr_local(t, "json") && t < tag_end) return 1;
-    if (strcasestr_local(t, "ld+json") && t < tag_end) return 1;
-    return 0;
+    char q = 0;
+    if (*t == '"' || *t == '\'') { q = *t; t++; }
+    const char *u = t;
+    while (u < tag_end && *u && (q ? (*u != q)
+                            : (*u != ' ' && *u != '\t' && *u != '>'))) u++;
+    size_t n = (size_t)(u - t);
+    if (n == 0) return 0;
+    if (n >= 32) n = 32;
+    char buf[64];
+    memcpy(buf, t, n); buf[n] = 0;
+    for (size_t i = 0; i < n; i++) buf[i] = (char)tolower((unsigned char)buf[i]);
+    if (strstr(buf, "javascript")) return 0;
+    return 1;
+}
+
+/* True if `tag` sits inside an unclosed <noscript> element. With scripting
+ * enabled browsers neither render noscript content nor run its `<script>`
+ * children; the DOM serializer already drops noscript outright. */
+static int in_noscript_block(const char *root, const char *tag) {
+    const char *p = root;
+    int open = 0;
+    while (p && p < tag) {
+        const char *o = strcasestr_local(p, "<noscript");
+        const char *c = strcasestr_local(p, "</noscript>");
+        if (o && o >= tag) o = NULL;
+        if (c && c >= tag) c = NULL;
+        if (o && (!c || o < c)) { open = 1; p = o + 9; continue; }
+        if (c && (!o || c < o)) { open = 0; p = c + 11; continue; }
+        break;
+    }
+    return open;
 }
 
 static int curl_url_to_file(const char *url, const char *out_path) {
@@ -714,12 +769,14 @@ static int curl_url_to_file(const char *url, const char *out_path) {
     fclose(uf);
     char cmd[PATH_BUF * 2];
     snprintf(cmd, sizeof(cmd),
-        "curl -sL --max-time 8 -A 'Mozilla/5.0 (NNEST network-browser-hq)' -o '%s' -K '%s'",
-        out_path, g_curl_url_path);
+        "curl -sL --max-time 8 -A 'Mozilla/5.0 (NNEST network-browser-hq)'"
+        " -b '%s' -c '%s' -o '%s' -K '%s'",
+        g_curl_cookie_path, g_curl_cookie_path, out_path, g_curl_url_path);
     return system(cmd) == 0;
 }
 
 static void collect_scripts(const char *html, const char *page_url, FILE *js_out, int *n_scripts) {
+#define SCRIPT_BOUNDARY "/*nbjs-script-boundary*/"   /* per-script slices for the worker's document-order runner */
     const char *p = html;
     int n = 0, n_ext = 0;
     *n_scripts = 0;
@@ -732,6 +789,7 @@ static void collect_scripts(const char *html, const char *page_url, FILE *js_out
         }
         const char *gt = strchr(tag, '>');
         if (!gt) break;
+        if (in_noscript_block(html, tag)) { p = tag + 7; continue; }
         const char *close = strcasestr_local(gt, "</script>");
         if (!close) break;
         if (script_type_skip(tag, gt)) {
@@ -762,9 +820,9 @@ static void collect_scripts(const char *html, const char *page_url, FILE *js_out
                     if (ef) {
                         char buf[4096];
                         size_t r;
-                        fprintf(js_out, "\n;try{/* src %d */\n", n_ext);
+                        fprintf(js_out, SCRIPT_BOUNDARY "\n");
                         while ((r = fread(buf, 1, sizeof(buf), ef)) > 0) fwrite(buf, 1, r, js_out);
-                        fprintf(js_out, "\n}catch(_e){print('script error '+String(_e));}\n");
+                        fprintf(js_out, "\n");
                         fclose(ef);
                         n++;
                         n_ext++;
@@ -776,9 +834,9 @@ static void collect_scripts(const char *html, const char *page_url, FILE *js_out
         }
         const char *body = gt + 1;
         if (close > body) {
-            fprintf(js_out, "\n;try{/* inline %d */\n", n);
+            fprintf(js_out, SCRIPT_BOUNDARY "\n");
             fwrite(body, 1, (size_t)(close - body), js_out);
-            fprintf(js_out, "\n}catch(_e){print('script error '+String(_e));}\n");
+            fprintf(js_out, "\n");
             n++;
         }
         p = close + 9;
@@ -795,6 +853,16 @@ static void collect_scripts(const char *html, const char *page_url, FILE *js_out
 static int g_worker_fd = -1;
 static pid_t g_worker_pid = -1;
 static char g_worker_render[65536];   /* step 4: last RENDER rows, or "" */
+static char g_worker_err_path[PATH_BUF];  /* hygiene: worker stderr log */
+static long g_werr_tail = 0;              /* bytes of that log already surfaced */
+
+/* rung-6 slice 2: the worker's pending NAV request, captured from a NAV
+ * frame during worker_load and consumed by the main loop on the next tick
+ * (kind: GO/REPLACE/RELOAD/BACK/FORWARD/ADDR; url for the navigations,
+ * count is the step count for BACK/FORWARD). */
+static char g_pending_nav_kind[16] = "";
+static char g_pending_nav_url[PATH_BUF] = "";
+static int  g_pending_nav_count = 1;
 
 /* Step 4: overlay the worker's RENDER rows onto page.state.txt. The
  * post-JS DOM is authoritative, so content rows (TITLE/TEXT/LINK/IMG) are
@@ -971,6 +1039,7 @@ static void collect_page_media(const char *html, const char *page_url) {
 
 #define WORKER_RECV_TIMEOUT_MS 3000   /* plan step 5: stall watchdog */
 
+static void worker_err_tail(void);   /* defined below worker_close */
 static int worker_send(const char *payload, size_t n) {
     if (g_worker_fd < 0) return 0;
     char lb[16];
@@ -1010,6 +1079,36 @@ static void worker_close(void) {
         kill(g_worker_pid, SIGKILL);          /* plan step 5: no strays */
         int st; waitpid(g_worker_pid, &st, 0);
         g_worker_pid = -1;
+        /* hygiene: surface whatever the worker wrote to its stderr since
+         * the last close (boot WERR| lines, page errors) on OUR stderr so
+         * the module log carries the cause without a post-mortem hunt. */
+        worker_err_tail();
+    }
+}
+
+/* Print the worker's stderr log lines that haven't been surfaced yet,
+ * one per [worker]-prefixed manager-stderr line. */
+static void worker_err_tail(void) {
+    if (!g_worker_err_path[0]) return;
+    FILE *f = fopen(g_worker_err_path, "rb");
+    if (!f) return;
+    if (fseek(f, 0, SEEK_END) != 0) { fclose(f); return; }
+    long total = ftell(f);
+    if (total <= g_werr_tail) { fclose(f); g_werr_tail = total; return; }
+    if (fseek(f, g_werr_tail, SEEK_SET) != 0) { fclose(f); return; }
+    static char buf[16384];
+    size_t got = fread(buf, 1, sizeof(buf) - 1, f);
+    long end = ftell(f);
+    fclose(f);
+    if (end > g_werr_tail) g_werr_tail = end;
+    buf[got] = 0;
+    char *line = buf;
+    for (char *p = buf; *p; p++) {
+        if (*p == '\n') {
+            *p = 0;
+            if (*line) fprintf(stderr, "[worker] %s\n", line);
+            line = p + 1;
+        }
     }
 }
 
@@ -1028,6 +1127,21 @@ static void worker_spawn(void) {
         dup2(sv[1], STDIN_FILENO);
         dup2(sv[1], STDOUT_FILENO);
         close(sv[0]); close(sv[1]);
+        /* hygiene: worker stderr → per-house log (append). The worker's
+         * WERR| boot lines / page errors land here and are surfaced on
+         * our stderr by worker_err_tail() when the worker closes. */
+        int er = open(g_worker_err_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
+        if (er >= 0) { dup2(er, STDERR_FILENO); close(er); }
+        /* rung-6 slice 2: hand the worker its own cookie jar under this
+         * house's #.desktop, so cross-LOAD cookies persist per browser
+         * (not the shared ~/.config/nbjs/ fallback). */
+        char jar[PATH_BUF];
+        snprintf(jar, sizeof(jar), "%s/#.desktop/nb_cookies.txt", g_house);
+        setenv("NB_COOKIES_FILE", jar, 1);
+        snprintf(jar, sizeof(jar), "%s/#.desktop/nb_localstorage.txt", g_house);
+        setenv("NB_LOCALSTORAGE_FILE", jar, 1);
+        snprintf(jar, sizeof(jar), "%s/#.desktop/nb_curl_cookies.txt", g_house);
+        setenv("NB_CURL_COOKIES_FILE", jar, 1);
         execl(g_js_worker_path, g_js_worker_path, (char *)NULL);
         _exit(127);
     }
@@ -1050,6 +1164,7 @@ static int worker_load(const char *js_path, const char *dom_path,
     if (!worker_send(payload, (size_t)n)) { worker_close(); return 0; }
 
     g_worker_render[0] = 0;
+    g_pending_nav_kind[0] = 0; g_pending_nav_url[0] = 0; g_pending_nav_count = 1;
     char resp[65536];
     for (;;) {
         if (!worker_recv_line(resp, sizeof(resp))) { worker_close(); return 0; }
@@ -1058,6 +1173,42 @@ static int worker_load(const char *js_path, const char *dom_path,
             if (rn + 1 < sizeof(g_worker_render))
                 memcpy(g_worker_render, resp + 7, rn + 1);
             continue;   /* wait for STATUS next */
+        }
+        if (strncmp(resp, "NAV\n", 4) == 0) {
+            /* rung-6 slice 2: NAV\n<kind>\n<url-or-count>\n — the page asked
+             * to navigate (history.forward() etc. or location.assign()).
+             * Stash it; the main loop runs it through the same do_fetch /
+             * back/forward stacks as a go:/back: request. */
+            char *f1 = resp + 4;
+            char *n1 = strchr(f1, '\n');
+            if (n1) {
+                size_t l = (size_t)(n1 - f1);
+                if (l >= sizeof(g_pending_nav_kind)) l = sizeof(g_pending_nav_kind) - 1;
+                memcpy(g_pending_nav_kind, f1, l);
+                g_pending_nav_kind[l] = 0;
+                if (n1[1]) {
+                    char v[PATH_BUF];
+                    size_t vl = strlen(n1 + 1);
+                    if (vl >= sizeof(v)) vl = sizeof(v) - 1;
+                    memcpy(v, n1 + 1, vl);
+                    v[vl] = 0;
+                    char *nl = strchr(v, '\n');
+                    if (nl) *nl = 0;
+                    if (strcmp(g_pending_nav_kind, "BACK") == 0 ||
+                        strcmp(g_pending_nav_kind, "FORWARD") == 0) {
+                        g_pending_nav_count = atoi(v);
+                    } else {
+                        snprintf(g_pending_nav_url, sizeof(g_pending_nav_url), "%s", v);
+                    }
+                }
+            }
+            continue;   /* keep reading until STATUS */
+        }
+        /* hygiene: worker-side JS/boot diagnostics (ERROR| rows) go to the
+         * module log too, and don't abort the STATUS read mid-frame. */
+        if (strncmp(resp, "ERROR|", 6) == 0) {
+            fprintf(stderr, "[worker] %s\n", resp);
+            continue;
         }
         return strncmp(resp, "STATUS ok", 9) == 0;
     }
@@ -1511,6 +1662,7 @@ static int run_curl_interruptible(const char *out_path, const char *cfg_path) {
     if (pid == 0) {
         execlp("curl", "curl", "-sL", "--max-time", "12",
                "-A", "Mozilla/5.0 (NNEST network-browser-hq)",
+               "-b", g_curl_cookie_path, "-c", g_curl_cookie_path,
                "-o", out_path, "-K", cfg_path, (char *)NULL);
         _exit(127);
     }
@@ -1938,6 +2090,59 @@ static void handle_request(void) {
         tab_new();
     } else if (strcmp(line, "closetab:") == 0 || strcmp(line, "closetab") == 0) {
         tab_close_current();
+    }
+}
+
+/* rung-6 slice 2: run the worker's pending NAV request (set when page JS
+ * called location.assign/replace/reload, history.back/forward/go, or
+ * pushState/replaceState). Duplicates the request-file contract so JS
+ * navigation and toolbar navigation funnel through the SAME do_fetch /
+ * back/forward stacks. GO = link-like (pushes current onto Back + clears
+ * Forward, visits the log). REPLACE = navigate without a history entry.
+ * RELOAD = re-fetch current. BACK/FORWARD walk the file stacks (count>1
+ * for history.go(n)). ADDR = address-bar only, no fetch (pushState). */
+static void consume_pending_nav(void) {
+    if (!g_pending_nav_kind[0]) return;
+    char kind[16], url[PATH_BUF];
+    int count = g_pending_nav_count;
+    snprintf(kind, sizeof(kind), "%s", g_pending_nav_kind);
+    snprintf(url, sizeof(url), "%s", g_pending_nav_url);
+    g_pending_nav_kind[0] = 0; g_pending_nav_url[0] = 0; g_pending_nav_count = 1;
+    if (count < 1) count = 1;
+    if (count > 8) count = 8;
+
+    if (strcmp(kind, "GO") == 0) {
+        if (!url[0]) return;
+        stack_clear(g_forward_path);
+        do_fetch(url, 1);
+    } else if (strcmp(kind, "REPLACE") == 0) {
+        if (!url[0]) return;
+        do_fetch(url, 0);
+    } else if (strcmp(kind, "RELOAD") == 0) {
+        if (g_current_url[0]) do_fetch(g_current_url, 0);
+        else publish_status("error: nothing to reload");
+    } else if (strcmp(kind, "BACK") == 0) {
+        for (int i = 0; i < count; i++) {
+            char prev[PATH_BUF];
+            if (!stack_pop(g_back_path, prev, sizeof(prev))) break;
+            if (g_current_url[0]) stack_push(g_forward_path, g_current_url);
+            do_fetch(prev, 0);
+        }
+    } else if (strcmp(kind, "FORWARD") == 0) {
+        for (int i = 0; i < count; i++) {
+            char next[PATH_BUF];
+            if (!stack_pop(g_forward_path, next, sizeof(next))) break;
+            if (g_current_url[0]) stack_push(g_back_path, g_current_url);
+            do_fetch(next, 0);
+        }
+    } else if (strcmp(kind, "ADDR") == 0) {
+        /* pushState/replaceState: update what the address bar shows, no
+         * fetch and no history-stack change (the projection picks the new
+         * URL up on this tick's write_chtpm_projection()). */
+        if (!url[0]) return;
+        snprintf(g_current_url, sizeof(g_current_url), "%s", url);
+        if (g_tab_count > 0 && g_tab_current >= 0 && g_tab_current < g_tab_count)
+            snprintf(g_tabs[g_tab_current].url, sizeof(g_tabs[g_tab_current].url), "%s", url);
     }
 }
 
@@ -2515,6 +2720,12 @@ int main(int argc, char **argv) {
     path_join(g_forward_path, sizeof(g_forward_path), desktop, "network_browser_forward.txt");
     path_join(g_visit_log_path, sizeof(g_visit_log_path), desktop, "network_browser_history.log.txt");
     path_join(g_bookmark_path, sizeof(g_bookmark_path), desktop, "network_browser_bookmarks.txt");
+    path_join(g_worker_err_path, sizeof(g_worker_err_path), desktop, "network_browser_worker.err.log");
+    {
+        char lockpath[PATH_BUF];
+        path_join(lockpath, sizeof(lockpath), desktop, "network_browser_manager.lock");
+        acquire_house_lock(lockpath);
+    }
     path_join(g_tabs_path, sizeof(g_tabs_path), desktop, "network_browser_tabs.txt");
     path_join(g_tabs_root, sizeof(g_tabs_root), desktop, "nb_tabs");
     mkdir_p_local(g_tabs_root);
@@ -2538,6 +2749,7 @@ int main(int argc, char **argv) {
     path_join(g_tmp_html_path, sizeof(g_tmp_html_path), tmpdir, "fetch.html");
     path_join(g_tmp_dom_path, sizeof(g_tmp_dom_path), tmpdir, "fetch.dom");
     path_join(g_curl_url_path, sizeof(g_curl_url_path), tmpdir, "curl.url.cfg");
+    path_join(g_curl_cookie_path, sizeof(g_curl_cookie_path), desktop, "nb_curl_cookies.txt");
     path_join(g_fetch_pid_path, sizeof(g_fetch_pid_path), tmpdir, "fetch.pid");
     path_join(g_js_script_path, sizeof(g_js_script_path), tmpdir, "page.js");
     snprintf(g_js_worker_path, sizeof(g_js_worker_path), "%s/ops/+x/nb_js_worker.+x", g_package_dir);
@@ -2559,6 +2771,7 @@ int main(int argc, char **argv) {
 
     for (;;) {
         handle_request();
+        consume_pending_nav();
         write_chtpm_projection();
 
         if (!parent_still_alive()) {

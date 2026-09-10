@@ -48,6 +48,8 @@ static char g_title[512];
 
 static int g_cli = 0;            /* argv mode: plain text out, no RPC framing */
 static int g_cli_status_ok = 0;  /* CLI exit-status latch set by send_status */
+static int g_nav_emit = 0;       /* rung-6 slice 2: daemon only (!g_cli, set */
+                                 /* per run_page) - NAV frames go to manager */
 
 static void send_payload(const char *payload, size_t n) {
     if (g_cli) {
@@ -1448,6 +1450,225 @@ static duk_ret_t nb_dom_cookie_set(duk_context *ctx) {
     return 0;
 }
 
+/* ===================== rung 6: localStorage (disk jar) + sessionStorage (per-LOAD) =====
+ * install_host leaves getItem/setItem/removeItem as no-op stubs; install_dom replaces
+ * BOTH globals with real C-backed objects here. localStorage persists across LOADs via
+ * a jar on disk at $NB_LOCALSTORAGE_FILE (fallback ~/.config/nbjs/nb_localstorage.txt);
+ * sessionStorage lives in process memory and is cleared at the top of every run_page,
+ * so each LOAD gets a fresh session (a fresh Duktape heap could not carry JS state
+ * anyway). Jar line format: <pct-encoded key>\t<pct-encoded value>\n — keys/values are
+ * percent-encoded (RFC 3986 unreserved pass through, everything else %XX) so tabs,
+ * newlines and control chars are safe inside a line. Reads tolerate damage. */
+#define ST_MAX_ENT 256
+
+typedef struct { char key[256]; char value[4096]; } StEnt;
+
+static char g_ls_path[PATH_MAX];
+static int  g_ls_path_set = 0;
+static StEnt g_ls[ST_MAX_ENT];      /* reused load/save buffer (single-threaded) */
+static StEnt g_ss[ST_MAX_ENT];      /* in-memory session map, cleared per LOAD */
+static int  g_ss_count = 0;
+
+static void ls_jar_init(void) {
+    g_ls_path_set = 1;
+    const char *env = getenv("NB_LOCALSTORAGE_FILE");
+    if (env && env[0]) { snprintf(g_ls_path, sizeof(g_ls_path), "%s", env); return; }
+    const char *home = getenv("HOME");
+    if (home && home[0])
+        snprintf(g_ls_path, sizeof(g_ls_path), "%s/.config/nbjs/nb_localstorage.txt", home);
+    else
+        g_ls_path[0] = 0;   /* no writable location: reads null, writes no-op */
+}
+
+static int pct_is_safe(unsigned char c) {
+    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+           (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~';
+}
+static void pct_encode(const char *in, char *out, size_t olen) {
+    size_t o = 0;
+    for (const unsigned char *c = (const unsigned char *)in; *c && o + 3 < olen; c++) {
+        if (pct_is_safe(*c)) out[o++] = (char)*c;
+        else { unsigned char uc = *c;
+            static const char H[] = "0123456789ABCDEF";
+            out[o++] = '%'; out[o++] = H[uc >> 4]; out[o++] = H[uc & 15];
+        }
+    }
+    out[o] = 0;
+}
+static void pct_decode(char *s) {
+    char *w = s;
+    for (const char *r = s; *r;) {
+        if (r[0] == '%' && r[1] && r[2]) {
+            int hi, lo;
+            char h1 = r[1], h2 = r[2];
+            hi = (h1 >= '0' && h1 <= '9') ? h1 - '0' :
+                 (h1 >= 'a' && h1 <= 'f') ? h1 - 'a' + 10 :
+                 (h1 >= 'A' && h1 <= 'F') ? h1 - 'A' + 10 : -1;
+            lo = (h2 >= '0' && h2 <= '9') ? h2 - '0' :
+                 (h2 >= 'a' && h2 <= 'f') ? h2 - 'a' + 10 :
+                 (h2 >= 'A' && h2 <= 'F') ? h2 - 'A' + 10 : -1;
+            if (hi >= 0 && lo >= 0) { *w++ = (char)((hi << 4) | lo); r += 3; continue; }
+        }
+        *w++ = *r++;
+    }
+    *w = 0;
+}
+
+static int st_load_file(const char *path, StEnt *ents, int maxn) {
+    char *buf = NULL;
+    size_t bl = 0;
+    if (!read_file(path, &buf, &bl)) return 0;
+    int n = 0;
+    char *p = buf;
+    while (p && *p && n < maxn) {
+        char *nl = strchr(p, '\n');
+        if (nl) *nl = 0;
+        char *tab = strchr(p, '\t');
+        if (tab) {
+            *tab = 0;
+            snprintf(ents[n].key, sizeof(ents[n].key), "%s", p);
+            pct_decode(ents[n].key);
+            snprintf(ents[n].value, sizeof(ents[n].value), "%s", tab + 1);
+            pct_decode(ents[n].value);
+            n++;
+        }
+        p = nl ? nl + 1 : NULL;
+    }
+    free(buf);
+    return n;
+}
+
+static void ls_save_file(const StEnt *ents, int n) {
+    if (!g_ls_path[0]) return;
+    char dirbuf[PATH_MAX];
+    snprintf(dirbuf, sizeof(dirbuf), "%s", g_ls_path);
+    char *slash = strrchr(dirbuf, '/');
+    if (slash) { *slash = 0; if (slash != dirbuf) mkdir_p(dirbuf); }
+    SB b = {0, 0, 0};
+    for (int i = 0; i < n; i++) {
+        char k[256 * 3 + 1], v[4096 * 3 + 1];
+        pct_encode(ents[i].key, k, sizeof(k));
+        pct_encode(ents[i].value, v, sizeof(v));
+        sb_put(&b, k); sb_put(&b, "\t"); sb_put(&b, v); sb_put(&b, "\n");
+    }
+    char tmp[PATH_MAX];
+    snprintf(tmp, sizeof(tmp), "%s.tmp", g_ls_path);
+    FILE *f = fopen(tmp, "wb");
+    if (f) {
+        if (b.s && b.len) fwrite(b.s, 1, b.len, f);
+        fclose(f);
+        rename(tmp, g_ls_path);
+    }
+    free(b.s);
+}
+
+static int ls_find(int n, const char *key) {
+    for (int i = 0; i < n; i++) if (strcmp(g_ls[i].key, key) == 0) return i;
+    return -1;
+}
+static duk_ret_t nb_ls_getItem(duk_context *ctx) {
+    const char *key = duk_get_string(ctx, 0);
+    if (!g_ls_path_set) ls_jar_init();
+    if (!key || !g_ls_path[0]) { duk_push_null(ctx); return 1; }
+    int n = st_load_file(g_ls_path, g_ls, ST_MAX_ENT);
+    int f = ls_find(n, key);
+    if (f < 0) duk_push_null(ctx); else duk_push_string(ctx, g_ls[f].value);
+    return 1;
+}
+static duk_ret_t nb_ls_setItem(duk_context *ctx) {
+    const char *key = duk_get_string(ctx, 0);
+    const char *val = duk_safe_to_string(ctx, 1);
+    if (!g_ls_path_set) ls_jar_init();
+    if (!key || !g_ls_path[0]) return 0;
+    int n = st_load_file(g_ls_path, g_ls, ST_MAX_ENT);
+    int f = ls_find(n, key);
+    if (f >= 0) {
+        snprintf(g_ls[f].value, sizeof(g_ls[f].value), "%s", val);
+    } else if (n < ST_MAX_ENT) {
+        StEnt *e = &g_ls[n++];
+        memset(e, 0, sizeof(*e));
+        snprintf(e->key, sizeof(e->key), "%s", key);
+        snprintf(e->value, sizeof(e->value), "%s", val);
+    } else {
+        return 0;
+    }
+    ls_save_file(g_ls, n);
+    return 0;
+}
+static duk_ret_t nb_ls_removeItem(duk_context *ctx) {
+    const char *key = duk_get_string(ctx, 0);
+    if (!g_ls_path_set) ls_jar_init();
+    if (!key || !g_ls_path[0]) return 0;
+    int n = st_load_file(g_ls_path, g_ls, ST_MAX_ENT);
+    int f = ls_find(n, key);
+    if (f < 0) return 0;
+    for (int i = f; i + 1 < n; i++) g_ls[i] = g_ls[i + 1];
+    ls_save_file(g_ls, n - 1);
+    return 0;
+}
+static duk_ret_t nb_ls_clear(duk_context *ctx) {
+    if (!g_ls_path_set) ls_jar_init();
+    if (g_ls_path[0]) ls_save_file(g_ls, 0);
+    return 0;
+}
+static duk_ret_t nb_ls_key(duk_context *ctx) {
+    int i = (int)duk_get_number_default(ctx, 0, -1);
+    if (!g_ls_path_set) ls_jar_init();
+    if (!g_ls_path[0] || i < 0) { duk_push_null(ctx); return 1; }
+    int n = st_load_file(g_ls_path, g_ls, ST_MAX_ENT);
+    if (i >= n) duk_push_null(ctx); else duk_push_string(ctx, g_ls[i].key);
+    return 1;
+}
+static duk_ret_t nb_ls_length(duk_context *ctx) {
+    if (!g_ls_path_set) ls_jar_init();
+    int n = g_ls_path[0] ? st_load_file(g_ls_path, g_ls, ST_MAX_ENT) : 0;
+    duk_push_int(ctx, n);
+    return 1;
+}
+
+static int ss_find(const char *k) {
+    for (int i = 0; i < g_ss_count; i++) if (strcmp(g_ss[i].key, k) == 0) return i;
+    return -1;
+}
+static duk_ret_t nb_ss_getItem(duk_context *ctx) {
+    const char *k = duk_get_string(ctx, 0);
+    if (!k) { duk_push_null(ctx); return 1; }
+    int f = ss_find(k);
+    if (f < 0) duk_push_null(ctx); else duk_push_string(ctx, g_ss[f].value);
+    return 1;
+}
+static duk_ret_t nb_ss_setItem(duk_context *ctx) {
+    const char *k = duk_get_string(ctx, 0);
+    const char *v = duk_safe_to_string(ctx, 1);
+    if (!k) return 0;
+    int f = ss_find(k);
+    if (f >= 0) {
+        snprintf(g_ss[f].value, sizeof(g_ss[f].value), "%s", v);
+    } else if (g_ss_count < ST_MAX_ENT) {
+        StEnt *e = &g_ss[g_ss_count++];
+        memset(e, 0, sizeof(*e));
+        snprintf(e->key, sizeof(e->key), "%s", k);
+        snprintf(e->value, sizeof(e->value), "%s", v);
+    }
+    return 0;
+}
+static duk_ret_t nb_ss_removeItem(duk_context *ctx) {
+    const char *k = duk_get_string(ctx, 0);
+    if (!k) return 0;
+    int f = ss_find(k);
+    if (f < 0) return 0;
+    for (int i = f; i + 1 < g_ss_count; i++) g_ss[i] = g_ss[i + 1];
+    g_ss_count--;
+    return 0;
+}
+static duk_ret_t nb_ss_clear(duk_context *ctx) { g_ss_count = 0; return 0; }
+static duk_ret_t nb_ss_key(duk_context *ctx) {
+    int i = (int)duk_get_number_default(ctx, 0, -1);
+    if (i < 0 || i >= g_ss_count) duk_push_null(ctx); else duk_push_string(ctx, g_ss[i].key);
+    return 1;
+}
+static duk_ret_t nb_ss_length(duk_context *ctx) { duk_push_int(ctx, g_ss_count); return 1; }
+
 /* Attach the DOM natives to the global `document` object. */
 static void install_dom(duk_context *ctx) {
     duk_get_global_string(ctx, "document");
@@ -1475,6 +1696,35 @@ static void install_dom(duk_context *ctx) {
     duk_push_c_function(ctx, nb_dom_cookie_set, 1);
     duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
     duk_pop(ctx);
+
+    /* rung 6: localStorage/sessionStorage — the prelude's twin no-op stubs
+     * become two real objects: localStorage (disk jar, survives LOADs) and
+     * sessionStorage (in-memory, cleared per LOAD). Fresh objects are created
+     * here and replace the globals, so no interaction with the prelude stubs'
+     * attributes (a duk_def_prop on the prelude's object throws
+     * 'not configurable'). Both share the shape getItem/setItem/removeItem/
+     * clear/key + a length getter. */
+    duk_push_object(ctx);
+    duk_push_c_function(ctx, nb_ls_getItem, 1);    duk_put_prop_string(ctx, -2, "getItem");
+    duk_push_c_function(ctx, nb_ls_setItem, 2);    duk_put_prop_string(ctx, -2, "setItem");
+    duk_push_c_function(ctx, nb_ls_removeItem, 1); duk_put_prop_string(ctx, -2, "removeItem");
+    duk_push_c_function(ctx, nb_ls_clear, 0);      duk_put_prop_string(ctx, -2, "clear");
+    duk_push_c_function(ctx, nb_ls_key, 1);        duk_put_prop_string(ctx, -2, "key");
+    duk_push_string(ctx, "length");
+    duk_push_c_function(ctx, nb_ls_length, 0);
+    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_CONFIGURABLE | DUK_DEFPROP_ENUMERABLE);
+    duk_put_global_string(ctx, "localStorage");
+
+    duk_push_object(ctx);
+    duk_push_c_function(ctx, nb_ss_getItem, 1);    duk_put_prop_string(ctx, -2, "getItem");
+    duk_push_c_function(ctx, nb_ss_setItem, 2);    duk_put_prop_string(ctx, -2, "setItem");
+    duk_push_c_function(ctx, nb_ss_removeItem, 1); duk_put_prop_string(ctx, -2, "removeItem");
+    duk_push_c_function(ctx, nb_ss_clear, 0);      duk_put_prop_string(ctx, -2, "clear");
+    duk_push_c_function(ctx, nb_ss_key, 1);        duk_put_prop_string(ctx, -2, "key");
+    duk_push_string(ctx, "length");
+    duk_push_c_function(ctx, nb_ss_length, 0);
+    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_CONFIGURABLE | DUK_DEFPROP_ENUMERABLE);
+    duk_put_global_string(ctx, "sessionStorage");
 }
 
 #define EVAL_BUDGET_SEC 2   /* plan step 5: watchdog for runaway page.js */
@@ -1636,11 +1886,56 @@ static void cfg_data(FILE *f, const char *val) {
     fputs("\"\n", f);
 }
 
+/* Resolve a fetch/XHR URL against the current document URL (g_href), the
+ * same RFC 3986 §5-style merge the manager does for script srcs:
+ *   already-schemed   -> as-is (file:, http:, https:, data:, ...)
+ *   //host/[...]      -> scheme of g_href + the rest
+ *   /abs/path         -> scheme://host of g_href + the rest
+ *   rel/path          -> scheme://host + dirname(g_href's path) + the rest
+ * g_href may itself be file:///... (file-based suites keep working). */
+static void resolve_doc_url(const char *rel, char *out, size_t olen) {
+    out[0] = 0;
+    if (!rel || !rel[0]) return;
+    const char *sc = strstr(g_href, "://");
+    const char *rp = rel;
+    while (*rp && *rp != ':' && *rp != '/' && *rp != '?' && *rp != '#') rp++;
+    if (*rp == ':') { snprintf(out, olen, "%s", rel); return; }      /* has scheme */
+    if (strncmp(rel, "//", 2) == 0 && sc) {
+        snprintf(out, olen, "%.*s%s", (int)(sc - g_href + 3), g_href, rel);
+        return;
+    }
+    const char *hp = sc ? sc + 3 : NULL;
+    const char *hostslash = hp ? strchr(hp, '/') : NULL;
+    if (rel[0] == '/') {
+        if (sc && hostslash) snprintf(out, olen, "%.*s%s",
+                                      (int)(hostslash - g_href), g_href, rel);
+        else if (sc) snprintf(out, olen, "%s%s", g_href, rel);
+        else snprintf(out, olen, "%s", rel);
+        return;
+    }
+    if (sc && hp) {
+        const char *dlast = strrchr(hp, '/');
+        if (dlast && dlast > hp)
+            snprintf(out, olen, "%.*s%s", (int)(dlast - g_href + 1), g_href, rel);
+        else if (hostslash)
+            snprintf(out, olen, "%.*s%s", (int)(hostslash - g_href + 1), g_href, rel);
+        else snprintf(out, olen, "%s/%s", g_href, rel);
+    } else {
+        const char *lst = strrchr(g_href, '/');
+        if (lst) snprintf(out, olen, "%.*s%s", (int)(lst - g_href + 1), g_href, rel);
+        else snprintf(out, olen, "%s", rel);
+    }
+}
+
 static duk_ret_t nb_fetch_sync(duk_context *ctx) {
     const char *method = duk_require_string(ctx, 0);
     const char *url = duk_require_string(ctx, 1);
     const char *headers = duk_get_string(ctx, 2); if (!headers) headers = "";
     const char *body = duk_get_string(ctx, 3); if (!body) body = "";
+
+    char urlb[2300];
+    resolve_doc_url(url, urlb, sizeof(urlb));
+    url = urlb;
 
     char *rb = NULL; size_t rn = 0; int status = 0; char errbuf[256] = "";
 
@@ -1671,6 +1966,16 @@ static duk_ret_t nb_fetch_sync(duk_context *ctx) {
                 cfg_line(cf, "user-agent", "Mozilla/5.0 (NNEST network-browser-hq nb-js-worker rung4)");
                 cfg_line(cf, "max-time", "8");
                 fputs("silent\nlocation\nfail\n", cf);
+                /* same-origin cookie parity: send + persist the shared per-
+                 * house jar so JS-side fetch/XHR see server Set-Cookie (and
+                 * set — cross-navigation) cookies like the manager's curls. */
+                {
+                    const char *cjar = getenv("NB_CURL_COOKIES_FILE");
+                    if (cjar && cjar[0]) {
+                        cfg_line(cf, "cookie", cjar);
+                        cfg_line(cf, "cookie-jar", cjar);
+                    }
+                }
                 /* one header = line per raw "Name: value" line (no strtok_r) */
                 for (const char *p = headers; *p; ) {
                     const char *nl = strchr(p, '\n');
@@ -1706,7 +2011,9 @@ static duk_ret_t nb_fetch_sync(duk_context *ctx) {
                     if (status > 0 && read_file(bodypath, &rb, &rn)) {
                         /* treats zero-byte bodies as a successful empty read */
                     }
-                    if (!rb) snprintf(errbuf, sizeof(errbuf), "curl rc=%d status=%d", rc, status);
+                    if (!rb) snprintf(errbuf, sizeof(errbuf),
+                                      "curl rc=%d status=%d url=%s",
+                                      rc, status, url);
                 } else snprintf(errbuf, sizeof(errbuf), "popen curl failed");
                 unlink(cfgpath);
                 unlink(bodypath);
@@ -2126,6 +2433,25 @@ static void install_events_timers(duk_context *ctx) {
     duk_pop(ctx);
 }
 
+/* boot hygiene (2026-09-09): install_dom / install_events_timers run under a
+ * protected call so a throw (e.g. 'not configurable' from a duk_def_prop on a
+ * prelude stub) is caught, reported to stderr as WERR|, and the page still
+ * loads instead of the worker dying silently mid-boot. */
+static duk_ret_t boot_duk_install(duk_context *ctx) {
+    install_dom(ctx);
+    install_events_timers(ctx);
+    return 0;
+}
+static void boot_install_safe(duk_context *ctx) {
+    duk_push_c_function(ctx, boot_duk_install, 0);
+    if (duk_pcall(ctx, 0) != 0) {   /* nargs=0: callable at -1, this=undefined */
+        fprintf(stderr, "WERR| boot install: %s\n",
+                duk_safe_to_string(ctx, -1));
+        duk_pop(ctx);
+    }
+    duk_pop(ctx);
+}
+
 /* plan step 5: CPU budget for script eval. If page.js burns through
  * EVAL_BUDGET_SEC of CPU (while(true) {} and friends) SIGALRM fires while
  * Duktape is running; the deadly default _exit kills the worker mid-eval, the
@@ -2152,12 +2478,72 @@ static void dom_teardown(void) {
     g_dom_root = NULL;
 }
 
+/* phase-2 (2026-09-09): document-order script runs. The manager writes one
+ * <script> (inline or src-fetched) per slice of page.js, separated by the
+ * SCRIPT_BOUNDARY sentinel. Each slice is compiled and run as its own
+ * program — browser classic-script parity: a syntax error in slice 2 does
+ * not stop slices 1/3, top-level `var` still lands on the shared global,
+ * and external <script src> executes at its DOM position. Per-slice
+ * failures print to stderr (surfaced by the manager as WERR|/[worker]).
+ * A legacy page.js without any sentinel is treated as one program. */
+#define SCRIPT_BOUNDARY "/*nbjs-script-boundary*/"
+static const char *find_script_boundary(const char *p, const char *end,
+                                        const char **after) {
+    const char *q = p;
+    for (; q + sizeof(SCRIPT_BOUNDARY) - 1 <= end; q++) {
+        if (q[0] == '/' && q[1] == '*' &&
+            memcmp(q, SCRIPT_BOUNDARY, sizeof(SCRIPT_BOUNDARY) - 1) == 0) {
+            *after = q + sizeof(SCRIPT_BOUNDARY) - 1;
+            return q;
+        }
+    }
+    return NULL;
+}
+static void run_scripts_slices(duk_context *ctx, char *src, size_t src_n) {
+    const char *p = src, *end = src + src_n;
+    const char *after = NULL;
+    if (!find_script_boundary(p, end, &after)) {
+        /* legacy single-program page.js */
+        duk_push_lstring(ctx, src, src_n);
+        if (peval_budget(ctx, NULL) != 0) {
+            fprintf(stderr, "WERR| script 0: %s\n", duk_safe_to_string(ctx, -1));
+            duk_pop(ctx);
+        } else duk_pop(ctx);
+        return;
+    }
+    p = after;
+    int idx = 0;
+    for (;;) {
+        const char *next = NULL;
+        size_t slice = (size_t)(end - p);
+        const char *bn = find_script_boundary(p, end, &next);
+        if (bn) slice = (size_t)(bn - p);
+        if (slice > 0) {
+            duk_push_lstring(ctx, p, slice);
+            if (peval_budget(ctx, NULL) != 0) {
+                fprintf(stderr, "WERR| script %d: %s\n", idx,
+                        duk_safe_to_string(ctx, -1));
+                duk_pop(ctx);
+            } else duk_pop(ctx);
+        }
+        idx++;
+        if (!bn) break;
+        p = next;
+    }
+}
 static void run_page(void) {
     /* phase-2 (commit 7): per-page event/timer/microtask state */
     g_timer_count = 0; g_micro_n = 0; g_micro_head = 0; g_evl_count = 0;
     g_onprop_count = 0;
     g_next_id = 1; g_invocations = 0; g_raf_fires = 0;
     g_pending_err = 0; g_pending_errmsg[0] = 0;
+
+    /* rung-6 slice 2: only the daemon (manager) can act on navigation. */
+    g_nav_kind[0] = 0; g_nav_url[0] = 0; g_nav_count = 1;
+    g_nav_emit = !g_cli;
+
+    /* rung-6: sessionStorage is per-LOAD — fresh session for this page. */
+    g_ss_count = 0;
 
     g_dom_root = NULL;
     g_orphans = NULL;
@@ -2184,8 +2570,7 @@ static void run_page(void) {
     if (peval_budget(ctx, g_js_prelude) != 0) duk_pop(ctx);
     duk_pop(ctx);
 
-    install_dom(ctx);
-    install_events_timers(ctx);
+    boot_install_safe(ctx);
 
     char *src = NULL;
     size_t src_n = 0;
@@ -2198,19 +2583,8 @@ static void run_page(void) {
     }
     if (src_n == 0) { free(src); duk_destroy_heap(ctx); dom_teardown(); send_status("STATUS ok"); return; }
 
-    duk_push_lstring(ctx, src, src_n);
+    run_scripts_slices(ctx, src, src_n);
     free(src);
-    int rc = peval_budget(ctx, NULL);
-    if (rc != 0) {
-        const char *m = duk_safe_to_string(ctx, -1);
-        char msg[1024];
-        snprintf(msg, sizeof(msg), "STATUS err:%s", m ? m : "script error");
-        duk_destroy_heap(ctx);
-        dom_teardown();
-        send_status(msg);
-        return;
-    }
-    duk_pop(ctx);
     /* phase-2 (commit 7): lifecycle + event loop — timers/microtasks now fire */
     int ev_err = run_event_loop(ctx);
     if (ev_err) {
@@ -2245,6 +2619,27 @@ static void run_page(void) {
         free(pay);
     }
     free(r.s);
+
+    /* rung-6 slice 2: if the page asked to navigate, ship a NAV frame so the
+     * manager follows it through its own fetch/stack machinery (manager
+     * worker_load captures it, the main loop consumes it next tick). */
+    if (g_nav_emit && g_nav_kind[0]) {
+        char pay[4600];
+        int pn = 0;
+        if (g_nav_kind[0] == 'B' || g_nav_kind[0] == 'F')  /* BACK/FORWARD: step count */
+            pn = snprintf(pay, sizeof(pay), "NAV\n%s\n%d\n", g_nav_kind,
+                          g_nav_count > 0 ? g_nav_count : 1);
+        else
+            pn = snprintf(pay, sizeof(pay), "NAV\n%s\n%s\n", g_nav_kind, g_nav_url);
+        if (pn > 0 && pn < (int)sizeof(pay)) {
+            char *ppay = malloc((size_t)pn + 1);
+            if (ppay) {
+                memcpy(ppay, pay, (size_t)pn); ppay[pn] = 0;
+                send_payload(ppay, (size_t)pn);
+                free(ppay);
+            }
+        }
+    }
 
     dom_teardown();
     send_status("STATUS ok");
@@ -2295,8 +2690,7 @@ static int repl_main(void) {
     duk_pop(ctx);
     static const char empty_html[] = "<html><body></body></html>";
     g_dom_root = nb_parse_html(empty_html, sizeof(empty_html) - 1);
-    install_dom(ctx);
-    install_events_timers(ctx);
+    boot_install_safe(ctx);
 
     int tty_out = isatty(STDOUT_FILENO);
     char line[8192];

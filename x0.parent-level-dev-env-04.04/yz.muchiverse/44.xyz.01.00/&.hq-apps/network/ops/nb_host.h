@@ -30,7 +30,10 @@
     static char g_title[512]; \
     static int  g_title_set; \
     static char g_href[4096]; \
-    static int  g_cli_log;      /* CLI mode: bare console lines, no prefix */
+    static int  g_cli_log;      /* CLI mode: bare console lines, no prefix */\
+    static char g_nav_kind[16]; /* rung-6 slice 2: pending NAV request the  */\
+    static char g_nav_url[4096];/*  page asked for; emitted as a NAV frame  */\
+    static int  g_nav_count;    /*  (BACK/FORWARD step count) by the worker  */
 #endif
 
 #define LINE_CAP 2048
@@ -111,6 +114,98 @@ static duk_ret_t native_undefined(duk_context *ctx) {
 static duk_ret_t native_noop(duk_context *ctx) {
     (void)ctx;
     return 0;
+}
+
+/* ---- rung-6 slice 2: real navigation request plumbing. The page's
+ * location.* / history.* calls funnel into a pending NAV request recorded
+ * in g_nav_kind/g_nav_url/g_nav_count. The worker daemon (its own private
+ * g_nav_emit, see nb_js_worker.c) emits it as a NAV frame before STATUS;
+ * the manager then runs it through its own fetch/back/forward machinery.
+ * In the eval/CLI paths nothing is ever emitted - the request is inert,
+ * exactly the old 'must not throw' noop behaviour. */
+static void nav_resolve(const char *rel, char *out, size_t outsz) {
+    if (!rel || !rel[0] || strstr(rel, "://")) {
+        snprintf(out, outsz, "%s", rel ? rel : "");
+        return;
+    }
+    const char *base = g_href[0] ? g_href : "about:blank";
+    if (rel[0] == '/' && rel[1] == '/') {          /* //host/x protocol-relative */
+        const char *se = strstr(base, "://");
+        if (se) {
+            size_t pl = (size_t)(se - base + 3);
+            snprintf(out, outsz, "%.*s%s", (int)pl, base, rel + 2);
+        } else snprintf(out, outsz, "%s", rel);
+        return;
+    }
+    if (strncmp(base, "about:", 6) == 0) { snprintf(out, outsz, "%s", rel); return; }
+    const char *sep = strstr(base, "://");
+    if (!sep) { snprintf(out, outsz, "%s", rel); return; }
+    const char *host_start = sep + 3;
+    const char *path_start = strchr(host_start, '/');
+    if (rel[0] == '/') {                           /* root-relative /x */
+        size_t host_len = path_start ? (size_t)(path_start - base) : strlen(base);
+        snprintf(out, outsz, "%.*s%s", (int)host_len, base, rel);
+        return;
+    }
+    if (rel[0] == '?' || rel[0] == '#') {          /* same path, new query/hash */
+        const char *stop = strchr(base, rel[0]);
+        size_t upto = stop ? (size_t)(stop - base) : strlen(base);
+        snprintf(out, outsz, "%.*s%s", (int)upto, base, rel);
+        return;
+    }
+    if (path_start) {                              /* directory-relative */
+        const char *last_slash = strrchr(path_start, '/');
+        size_t dir_len = last_slash ? (size_t)(last_slash - base + 1)
+                                    : (size_t)(path_start - base + 1);
+        snprintf(out, outsz, "%.*s%s", (int)dir_len, base, rel);
+    } else {
+        size_t bl = strlen(base), rl = strlen(rel);
+        if (bl + 1 >= outsz) bl = outsz - 2;
+        if (outsz - bl - 1 < rl) rl = outsz - bl - 1;
+        snprintf(out, outsz, "%.*s/%.*s", (int)bl, base, (int)rl, rel);
+    }
+}
+
+static void nav_request(const char *kind, const char *param, int resolve) {
+    snprintf(g_nav_kind, sizeof(g_nav_kind), "%s", kind);
+    if (resolve) nav_resolve(param, g_nav_url, sizeof(g_nav_url));
+    else         snprintf(g_nav_url, sizeof(g_nav_url), "%s", param ? param : "");
+    g_nav_count = 1;
+}
+
+static duk_ret_t nb_nav_go(duk_context *ctx) {
+    nav_request("GO", duk_get_string(ctx, 0), 1);
+    duk_push_undefined(ctx); return 1;
+}
+static duk_ret_t nb_nav_replace(duk_context *ctx) {
+    nav_request("REPLACE", duk_get_string(ctx, 0), 1);
+    duk_push_undefined(ctx); return 1;
+}
+static duk_ret_t nb_nav_reload(duk_context *ctx) {
+    nav_request("RELOAD", NULL, 0);
+    duk_push_undefined(ctx); return 1;
+}
+static duk_ret_t nb_nav_back(duk_context *ctx) {
+    nav_request("BACK", NULL, 0);
+    duk_push_undefined(ctx); return 1;
+}
+static duk_ret_t nb_nav_forward(duk_context *ctx) {
+    nav_request("FORWARD", NULL, 0);
+    duk_push_undefined(ctx); return 1;
+}
+static duk_ret_t nb_nav_go_n(duk_context *ctx) {
+    double n = duk_is_number(ctx, 0) ? duk_get_number(ctx, 0) : 0;
+    int ni = (n < 0) ? (int)(-n) : (int)n;
+    if (ni > 8) ni = 8;
+    if (n < 0)      { nav_request("BACK", NULL, 0);    g_nav_count = ni; }
+    else if (n > 0) { nav_request("FORWARD", NULL, 0); g_nav_count = ni; }
+    else            { nav_request("RELOAD", NULL, 0); }
+    duk_push_undefined(ctx); return 1;
+}
+static duk_ret_t nb_nav_addr(duk_context *ctx) {
+    /* pushState/replaceState: address bar update without a fetch. */
+    nav_request("ADDR", duk_get_string(ctx, 0), 1);
+    duk_push_undefined(ctx); return 1;
 }
 
 static void fatal_handler(void *udata, const char *msg) {
@@ -233,7 +328,7 @@ static const char g_js_prelude[] =
 "function splitParts(urlString, base){\n"
 "  var s=String(urlString||'');\n"
 "  if(s.indexOf('://')<0 && s.charAt(0)!=='/' && s.indexOf('?')!==0 && s.charAt(0)!=='#' && s!==''){\n"
-"    if(base && base!==EMPTY_URL){ var b=splitParts(base,null); var pos=b.pathname.lastIndexOf('/'); s=b.protocol+'//'+b.host+(b.port?':'+b.port:'')+(pos>=0?b.pathname.slice(0,pos+1):'/')+s; }\n"
+"    if(base && base!==EMPTY_URL){ var b=splitParts(base,null); var pos=b.pathname.lastIndexOf('/'); s=b.protocol+'//'+b.host+(pos>=0?b.pathname.slice(0,pos+1):'/')+s; }\n"
 "    else { s=EMPTY_URL; }\n"
 "  }\n"
 "if(s===EMPTY_URL) return {protocol:'',authority:'',host:'',hostname:'',port:'',pathname:'',search:'',hash:'',origin:'null'};\n"
@@ -297,16 +392,23 @@ static const char g_js_prelude[] =
 "Object.defineProperty(window,'URL',{ value:URL, configurable:true, writable:true });\n"
 "Object.defineProperty(window,'URLSearchParams',{ value:URLSearchParams, configurable:true, writable:true });\n"
 "\n"
-"/* ---- history (rung 6 stubs — no real navigation until rung 6 fully lands) ---- */\n"
+"/* ---- history (rung 6 slice 2): real navigation via worker natives. ---- */\n"
+"/* ---- pushState/replaceState keep a per-heap bookkeeping stack (state, ---- */\n"
+"/* ---- length) and ALSO notify the manager to update the address bar sum ---- */\n"
+"/* ---- (ADDR, no fetch). back/forward/go route to the worker; the manager ---- */\n"
+"/* ---- walks its file stacks / re-fetches on its own loop. In eval/CLI ---- */\n"
+"/* ---- (no daemon) the natives are inert no-ops. ---- */\n"
 "(function(){\n"
 "  var _stack=[{state:null,title:'',url:''}], _idx=0;\n"
-"  var h={scrollRestoration:'auto', back:function(){if(_idx>0)_idx--;}, forward:function(){if(_idx<_stack.length-1)_idx++;},\n"
-"    go:function(n){var t=_idx+n;if(t>=0&&t<_stack.length)_idx=t;}};\n"
+"  var h={scrollRestoration:'auto',\n"
+"    back:function(){ if(typeof __nb_nav_back==='function') __nb_nav_back(); },\n"
+"    forward:function(){ if(typeof __nb_nav_forward==='function') __nb_nav_forward(); },\n"
+"    go:function(n){ if(typeof __nb_nav_go==='function') __nb_nav_go(n); },\n"
+"    pushState:function(st,t,u){ _stack[_stack.length]={state:st||null,title:String(t||''),url:String(u||'')}; _idx=_stack.length-1; if(typeof __nb_nav_addr==='function') __nb_nav_addr(String(u||'')); },\n"
+"    replaceState:function(st,t,u){ _stack[_idx]={state:st||null,title:String(t||''),url:String(u||'')}; if(typeof __nb_nav_addr==='function') __nb_nav_addr(String(u||'')); }\n"
+"  };\n"
 "  Object.defineProperty(h,'length',{get:function(){return _stack.length;}});\n"
 "  Object.defineProperty(h,'state',{get:function(){return _stack[_idx].state;}});\n"
-"  Object.defineProperty(h,'href',{get:function(){return _stack[_idx].url;}});\n"
-"  h.pushState=function(st,t,u){_stack.push({state:st||null,title:String(t||''),url:String(u||'')});_idx=_stack.length-1;};\n"
-"  h.replaceState=function(st,t,u){_stack[_idx]={state:st||null,title:String(t||''),url:String(u||'')};};\n"
 "  Object.defineProperty(window,'history',{value:h,configurable:true,writable:true});\n"
 "})();\n"
 "\n"
@@ -545,14 +647,17 @@ static void install_host(duk_context *ctx) {
     duk_push_object(ctx);
     duk_push_string(ctx, "href");
     duk_push_c_function(ctx, native_get_href, 0);
-    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
+    duk_push_c_function(ctx, nb_nav_go, 1);
+    duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
     install_location_parts(ctx, g_href);
-    /* rung 6 will make these navigate; for now they must not throw */
-    duk_push_c_function(ctx, native_noop, DUK_VARARGS);
-    duk_dup(ctx, -1);
-    duk_put_prop_string(ctx, -3, "assign");
-    duk_dup(ctx, -1);
-    duk_put_prop_string(ctx, -3, "replace");
+    /* rung 6 slice 2: real navigation. assign/href= push a history entry
+     * (manager do_fetch record_history=1); replace swaps the current page
+     * without a new history entry; reload re-fetches the same URL. */
+    duk_push_c_function(ctx, nb_nav_go, 1);
+    duk_put_prop_string(ctx, -2, "assign");
+    duk_push_c_function(ctx, nb_nav_replace, 1);
+    duk_put_prop_string(ctx, -2, "replace");
+    duk_push_c_function(ctx, nb_nav_reload, 0);
     duk_put_prop_string(ctx, -2, "reload");
     duk_put_prop_string(ctx, -2, "location");
 
@@ -604,6 +709,14 @@ static void install_host(duk_context *ctx) {
     duk_put_prop_string(ctx, g, "self");
     duk_dup(ctx, g);
     duk_put_prop_string(ctx, g, "globalThis");
+
+    /* rung-6 slice 2: history prelude hooks. The prelude's history object
+     * calls these to hand back/forward/go/ADDR to the worker (which turns
+     * them into a NAV frame when a manager is listening). */
+    duk_push_c_function(ctx, nb_nav_back, 0);    duk_put_prop_string(ctx, g, "__nb_nav_back");
+    duk_push_c_function(ctx, nb_nav_forward, 0); duk_put_prop_string(ctx, g, "__nb_nav_forward");
+    duk_push_c_function(ctx, nb_nav_go_n, 1);    duk_put_prop_string(ctx, g, "__nb_nav_go");
+    duk_push_c_function(ctx, nb_nav_addr, 1);    duk_put_prop_string(ctx, g, "__nb_nav_addr");
 
     /* cheap always-safe window scalars */
     duk_push_string(ctx, "");

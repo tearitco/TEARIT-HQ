@@ -53,10 +53,46 @@ short version.*
       `document.cookie` jar LANDED (2026-09-07, `1f943aba`, new `wck`
       make-check suite — C natives with RFC-6265 host/path/expiry-
       max-age scope, jar at `$NB_COOKIES_FILE`, survives LOADs via disk);
-      remaining rung-6 piece is real `history`/`location` navigation to
-      the manager (before touching `network_browser_manager.c`, the
-      khtpm-house-standards lock requires reading INDEX tier-1 docs +
-      `CENTROID_GOLD_STD.md` first).
+      real `history`/`location` navigation to the manager LANDED
+      (2026-09-08, see roadmap — `NAV\n` frame + `consume_pending_nav()`,
+      new `wcn` make-check suite; location.assign/replace/reload + href=,
+      history.back/forward/go, pushState/replaceState address-bar ADDR).
+      Remaining rung 6 scraps: none blocking — `matchMedia`/getComputedStyle
+      stubs shipped in `b079f0c9`; rung 7 (layout awareness) deferred.
+      Rungs 3-4 also LANDED in the resident worker (timer/event drain,
+      XHR/fetch) — the only true Phase-2 remainder is document-order script
+      runs (manager still concatenates `<script>` bodies into
+      `tmp/page.js`). Real `localStorage`/`sessionStorage` LANDED
+      (2026-09-09, new `wst` make-check suite): localStorage = per-house
+      disk jar at `<house>/#.desktop/nb_localstorage.txt` via
+      `NB_LOCALSTORAGE_FILE` (pct-encoded key/value lines, atomic writes);
+      sessionStorage = in-memory, reset per LOAD. Reconciled 2026-09-09.
+      Phase-2 **document-order script runs** LANDED (2026-09-09, new `wps`
+      make-check suite): manager emits one `<script>` (inline or src-fetched)
+      per page.js slice, split on `/*nbjs-script-boundary*/`; the worker
+      compiles/runs each slice as a separate program — document order +
+      per-script syntax isolation + shared top-level `var` + external src at
+      DOM position; failures print `WERR| script N: ...` into the worker
+      stderr log (surfaced as `[worker]` lines, boot-hygiene slice). Real
+      `http://` server fetch breadth LANDED (2026-09-10): live `python3 -m
+      http.server` E2E proved the manager's curl ladder end-to-end — inline +
+      relative `<script src>` page renders `seq=a,b,c`, localStorage persists
+      across http navs, and JS-side relative `fetch()`/XHR resolve against
+      the page URL and hit real servers (fixed the prelude `splitParts`
+      double-port bug on base URLs with explicit ports; worker
+      `resolve_doc_url()` fallback + resolved URL in fetch errors). Only rung
+      7 CSS/layout awareness remains as an honest gap. Hardening LANDED
+      (2026-09-10): shared per-house cookie jar for page/script/worker
+      curls (`nb_curl_cookies.txt` — server Set-Cookie persists + is
+      retransmitted, worker fetch same-origin; separate from the
+      `document.cookie` jar), browser-correct `script_type_skip` (template/
+      module/non-JS types never run) and noscript script suppression, and
+      a real remote-site smoke test (example.com redirect + httpbin cookie
+      round-trip + iana full page through the ladder). Manager is now
+      single-instance per house (`flock` on
+      `#.desktop/network_browser_manager.lock`, exits rc=2 on a second
+      launch) — the racing-manager pileup that corrupted live E2E runs can
+      no longer happen.
 12. Game-clone tiles/events (MC / CDDA / Civ / GTA / RPG Maker): pickers
     + event-guide PDLs + sample maps exist; **not** drop-on-board,
     voxel→events-hq, desk persistence, or battle/shop UI. See

@@ -20,10 +20,10 @@ String/Object/Math, try/catch, prototypes). What is missing is the
 | `console.log/info/warn/error`, `print` | real (→ `LOG\|` rows) |
 | `document.title` get/set | real (→ `TITLE\|`) |
 | `document.write/writeln` | real (→ `TEXT\|` rows) |
-| `document.getElementById` / `querySelector` | **stub → null** |
-| `location.href` | getter only, no navigation |
-| `localStorage` / `sessionStorage` | no-op stubs |
-| `window` / `self` / `globalThis` | **BUG: alias the storage stub, not the JS global** |
+| `document.getElementById` / `querySelector` | real — walks the worker's C DOM tree (phase-1 steps 3-5) |
+| `location.href` | get/set; assign/replace/reload navigate (rung 6 slice 2) |
+| `localStorage` / `sessionStorage` | real (rung 6: per-house disk jar / per-LOAD memory) |
+| `window` / `self` / `globalThis` | real — the Duktape global object (no bug; verified 2026-09-08) |
 
 **Pipeline (as of Phase 1, 2026-09-05):** the manager's `do_fetch()`
 strips `<script>` bodies, concatenates them into `tmp/page.js`, and — when
@@ -32,13 +32,29 @@ a `<script>` is present — spawns a **resident worker**
 page JS against it, and replies with `RENDER\n<rows>` which the manager
 overlays onto `page.state.txt` (see `NB-JS-ENGINE-WORKER-PLAN.md` + the
 phase-1 `PROGRESS-nb-js-worker-phase1.md`). The one-shot `nb_js_eval.+x`
-remains as the rollback/test path. Still missing (Phase 2): document-order
-script runs, event loop + timers (rung 3), XHR/fetch (rung 4), the
-rung-2/6 BOM remainder.
+remains as the rollback/test path. Reconciled 2026-09-08: the "Still
+missing (Phase 2)" items are LANDED in the resident worker — event loop +
+timers (rung 3: lifecycle/microtask/timer drain, `setTimeout`/
+`setInterval`/`clear*`/`queueMicrotask`, `MAX_DRAIN_MS` 800,
+`MAX_TIMER_INVOCATIONS` 5000, `MAX_RAF_FRAMES` 120; gated by `wet`),
+XHR/fetch (rung 4, `wft`), and the rung-2/6 BOM remainder (`wdt`, `wcn`,
+`wck`). Phase-2 **document-order script runs** (per-`<script>` programs
+over a `/*nbjs-script-boundary*/` split, gated by `wps`) LANDED 2026-09-09
+— see the LANDED block under Rung 6 below. With that, the resident-worker
+engine covers everything the ladder's rungs 1-6 promise. Real-server fetch
+breadth (the manager's curl ladder on live `http://` sites) LANDED
+2026-09-10 — see the "Rung 6 remainder: real `http://` fetch breadth"
+block below; what's truly left is rung 7 CSS/layout awareness.
 
 > The table above is the *pre*-Phase-1 snapshot; `getElementById` /
 > `querySelector` and the rest became real accessors walking the worker's
-> C DOM tree in phase-1 steps 3-5.
+> C DOM tree in phase-1 steps 3-5. Reconciled 2026-09-08: the `window` /
+> `self` / `globalThis` "BUG" row and the `getElementById`/`querySelector`
+> "stub → null" row were both stale — code has been correct since `1cb67da3`
+> (window/self/globalThis = the Duktape global object) and the phase-1
+> worker gate (`wdt` `worker_dom_test.c`, incl. a CLI-mode re-verify with a
+> real `fetch.dom`) exercises the real accessors; `localStorage`/
+> `sessionStorage` became real on 2026-09-09 (rung 6 — LANDED block below).
 
 ---
 
@@ -209,10 +225,14 @@ plausible stub, `MutationObserver` (can no-op then improve),
 >   no-op stubs — `b079f0c9`
 > - `atob`/`btoa` Base64 + `setTimeout`/`setInterval`/`clear*` (return
 >   ids, callback never fires — one-shot has no event loop) — `e71232d1`
+>   (the RESIDENT worker's rung-3 drain supersedes this: its timers DO
+>   fire pre-RENDER, bounded by `MAX_DRAIN_MS`/`MAX_TIMER_INVOCATIONS`)
 > - `document.cookie` empty-jar getter/setter (no throw; file jar still
 >   a C job later) — `f5f86b4d`
 > **Still to do (needs C or the worker):** real `history`/`location`
 > navigation pushed to the manager, a real timer/event loop (rung 3).
+> Both since LANDED in the resident worker (rung-6 `NAV` LANDED block
+> below; rung 3 timer wait/drain via `MAX_DRAIN_MS`, gated by `wet`).
 > Tests under `network/tests/rung6_*.js`
 > all +OK|1; 5 suites green. Since phase-1 step 2 the shared `nb_host.h`
 > carries these stubs into the resident worker too, so eval AND worker
@@ -228,11 +248,137 @@ plausible stub, `MutationObserver` (can no-op then improve),
 > runs a fresh heap, so the jar file is the ONLY cross-LOAD persistence.
 > Live in `ops/nb_js_worker.c`, new `make check` suite `wck`
 > (`tests/worker_cookie_test.c`, 3-LOAD set / fresh-heap get / cross-host
-> scope, + jar-content verification) — commit `1f943aba`. The manager will
-> later point the worker at its own `#.desktop/nb_cookies.txt` via
-> `NB_COOKIES_FILE`; **remaining rung-6 C piece:** real `history`/
-> `location` navigation to the manager.
+> scope, + jar-content verification) — commit `1f943aba`. The manager now
+> (2026-09-08) points its resident worker at this house's
+> `<house>/#.desktop/nb_cookies.txt` via `NB_COOKIES_FILE` in
+> `worker_spawn`, live-verified: page set cookie + `location.assign` to a
+> second page which read it back through the per-house jar.
+>
+> **LANDED 2026-09-08 — real `history`/`location` navigation to the
+> manager** (last rung-6 C piece). The page's `location.*` (assign/`href=`
+> set/replace/reload) and `history.*` (back/forward/go) calls now route
+> through real natives (`ops/nb_host.h` `nav_resolve`/`nav_request`;
+> `go(n)` maps to BACK/FORWARD step counts, `go(0)` to RELOAD) into a
+> single pending NAV the worker emits as a `NAV\n<kind>\n<url-or-count>\n`
+> frame before `STATUS ok`. `pushState`/`replaceState` keep the in-heap
+> bookkeeping stack (state/length) AND send `ADDR` so the manager updates
+> the address bar (`g_current_url`, current tab url) with NO fetch. The
+> manager captures NAV during `worker_load` and `consume_pending_nav()`
+> (main loop, after `handle_request()`) runs it through the SAME do_fetch /
+> `network_browser_back|forward.txt` stacks as a `go:`/`back:` request —
+> GO = link (push current to Back, clear Forward, visit log); REPLACE =
+> navigate, no history entry; RELOAD = re-fetch current. Eval/CLI paths
+> (no manager) keep the request inert (old no-throw noop). New `make
+> check` suite `wcn` (`tests/worker_nav_test.c`: exact NAV frame contract
+> for assign/href=/replace/reload/replaceState/pushState/back/go(-2)/
+> go(2)/no-nav + re-LOAD follow-through), live end-to-end verified against
+> the real manager (JS `location.assign` → next page fetched, Back stack
+> updated; `pushState` → address bar changes without a fetch).
+>
+> **LANDED 2026-09-09 — real `localStorage` / `sessionStorage`.**
+> `install_dom()` now swaps the prelude's twin no-op stubs for fresh
+> objects wired to real C natives (`ops/nb_js_worker.c`). `localStorage`
+> persists to a disk jar at `$NB_LOCALSTORAGE_FILE` (fallback
+> `$HOME/.config/nbjs/nb_localstorage.txt`), which the manager points at
+> `<house>/#.desktop/nb_localstorage.txt` in `worker_spawn` — one
+> persistent jar per house, exactly like `nb_cookies.txt`. The jar is
+> TAB-separated `pct-encoded key\tpct-encoded value` lines (RFC-3986-safe
+> so tabs/newlines round-trip), atomic tmp+rename writes, damage-tolerant
+> reads, 256 entries / 256 B key / 4 kB value. `sessionStorage` is an
+> in-memory store reset per LOAD (fresh heap ⇒ correct semantics for
+> free). New `make check` suite `wst` (`tests/worker_storage_test.c`:
+> 2 LOADs — set, fresh-heap persist get, session resets — plus jar-content
+> assertions). Live end-to-end vs the real manager: page set localStorage +
+> sessionStorage, `location.assign` to a second page that read localStorage
+> (persisted) and found sessionStorage empty, jar confirmed on disk.
 
+> **LANDED 2026-09-09 — Phase 2: document-order script runs**
+> (`ops/nb_js_worker.c` `run_scripts_slices` + manager `collect_scripts`;
+> suite `wps`, `tests/worker_scriptseq_test.c`). This was the last
+> "Still missing (Phase 2)" item above: the manager used to concatenate
+> every `<script>` body into one page.js and the worker ran it as a single
+> Duktape program, so a syntax error anywhere killed the whole page. Now
+> each `<script>` (inline or `<script src=...>`, in DOM order) is written
+> as its own slice of page.js, split on a `/*nbjs-script-boundary*/`
+> sentinel, and the worker compiles+runs each slice as a separate program:
+> browser classic-script parity — document order, per-script syntax-error
+> isolation (slice N failing doesn't stop N+1), top-level `var` sharing the
+> global, and external src executing at its DOM position. Per-slice
+> failures print `WERR| script N: <msg>` to the worker's stderr log, which
+> the manager surfaces as `[worker]` lines (boot-hygiene slice). Legacy
+> page.js without a sentinel still runs as one program. Live E2E: inline/
+> ext/inline page rendered `TEXT|seq=a,b,c`; a bad middle script still
+> rendered `after-bad:s1` with the WERR surfaced.
+
+> **Rung 6 remainder: real `http://` fetch breadth — LANDED 2026-09-10**
+> The manager's curl ladder already fetched any scheme (`do_fetch` →
+> `run_curl_interruptible` → `extract_and_publish` → worker LOAD) and
+> `collect_scripts` already resolved `<script src=>` relative URLs over
+> http bases; what was unproven was a real server flowing end-to-end. Live
+> E2E against `python3 -m http.server` proved it: a page with inline +
+> external-relative scripts renders `TEXT|seq=a,b,c` (TITLE extracted), and
+> localStorage set on one http page persists to the next http navigation
+> (`theme=http-ok`). Two real bugs surfaced and are fixed:
+> - **Worker-side fetch/XHR relative URL resolution.** `fetch("api.json")`
+>   on an http page failed with `curl rc=768` (exit 3). Root cause was not
+>   the worker's transport — the prelude `splitParts` (`ops/nb_host.h`)
+>   re-appended `b.port` after `b.host` already embeds it, producing
+>   `http://127.0.0.1:8123:8123/...` double-port URLs for any base carrying
+>   an explicit port (file://-based suites never had one, so `wft`/`wss`
+>   missed it). The port re-appender is removed. Belt-and-braces: the
+>   worker's `nb_fetch_sync` now also resolves the incoming URL against
+>   `g_href` via a new `resolve_doc_url()` (scheme detection, `//host`,
+>   `/abs`, and relative-dirname merging — RFC 3986 §5-style, mirroring the
+>   manager's `resolve_url`), so JS-visible errors carry the resolved URL
+>   (`curl rc=3 status=0 url=http://...`). Both fetch and XHR still
+>   pre-resolve in the prelude; the C side is a no-op for absolute URLs.
+> E2E-verified per-page: relative `fetch("api.json")` returns
+>   `st=200 fetch={"hello":"rung4-http"}` — the rung-4 transport over real
+>   HTTP. All 7 worker suites + 18-case `cli_test` + `sh build.sh` (4
+>   binaries) green post-fix.
+
+> **Rung 6 remainder hardening — cookie parity, script-tag edges, real
+> remote breadths: LANDED 2026-09-10.** Three follow-ups to the localhost
+> http proof, each E2E-verified against live servers:
+> - **Same-origin cookie parity.** Page loads, `<script src>` fetches, and
+>   the worker's JS-side `fetch`/XHR now share ONE per-house Netscape jar,
+>   `<house>/#.desktop/nb_curl_cookies.txt` (manager curls pass `-b/-c`;
+>   the worker gets it via `NB_CURL_COOKIES_FILE` and emits `cookie` +
+>   `cookie-jar` in its curl config). Server `Set-Cookie` byte-persists
+>   across navigations and is retransmitted; worker fetch sees the same
+>   cookies. Live E2E (custom fixture server): fresh house `guard` →
+>   `guard-fail`; page sets `sess=abc123` via `Set-Cookie`; next request to
+>   a guarded route → `guard-ok`; JS `fetch()` to a guarded API →
+>   `ok:true`. Scope note: this jar is separate from the rung-6
+>   `document.cookie` jar (`NB_COOKIES_FILE`, `wck`) — JS-written cookies
+>   and wire cookies are not yet merged.
+> - **Script-tag edge audit.** `script_type_skip` was allowlisting
+>   (`module`/`json`/`ld+json`) and thus RAN unknown types like
+>   `text/template` as broken JS (WERR noise). Rewritten to browser rules:
+>   run only absent/empty-type or any `*javascript*` MIME; skip everything
+>   else. Added `in_noscript_block` — with scripting enabled, browsers
+>   neither render `<noscript>` content nor run its `<script>` children;
+>   the DOM serializer already dropped noscript, but `collect_scripts`
+>   still ran the inner scripts. Both now skipped. `async`/`defer` are
+>   documented as doc-order (defer-consistent) — async reordering is not
+>   modeled.
+> - **Real remote-site smoke test** (internet egress present): the ladder
+>   fetched real third-party pages — `http://example.com` renders
+>   `TITLE|Example Domain` through the 301→https redirect (no TLS
+>   machinery of our own, curl handles it); `https://httpbin.org/cookies/
+>   set/fruit/kiwi` redirected with the fresh cookie retransmitted on the
+>   follow (response body echoes `{ "cookies": { "fruit": "kiwi" } }` and
+>   the jar holds the scoped `httpbin.org` entry); a full production page
+>   (`https://www.iana.org/help/example-domains`, utf-8) extracted
+>   `TITLE`/`LINK`/`IMG` and ran all of jQuery + dtable + relative-time as
+>   external script slices resolved against the https base — zero WERR.
+> Operational landmine surfaced while testing: spawning the manager
+> repeatedly at the same house without killing the previous instance stacks
+> several managers racing on the shared request/state files (stale-binary
+> writes corrupted results). Fixed 2026-09-10 — the manager now flocks a
+> per-house `#.desktop/network_browser_manager.lock`
+> (`LOCK_EX|LOCK_NB`; the lock dies with the process, so no stale-pid
+> handling; second instance prints and exits rc=2).
 
 ### Rung 7 — CSS/layout awareness  *(optional, large, defer)*
 `getBoundingClientRect`, `offsetWidth/Height`, `display:none`

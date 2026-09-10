@@ -241,9 +241,196 @@ Merge `origin/opencode` for `1f943aba`.
   content afterward. All suites green.
 - Notes: the old rung6 eval fixture `tests/rung6_cookie_test.js` still
   exercises the prelude fallback (reads `''`, drops writes). Default
-  path is `$HOME`-based; the manager is expected to pass
-  `NB_COOKIES_FILE="$APPDIR/#.desktop/nb_cookies.txt"` when it spawns
-  the worker.
+  path is `$HOME`-based; since 2026-09-08 the manager's `worker_spawn`
+  passes `NB_COOKIES_FILE="<house>/#.desktop/nb_cookies.txt"` to its
+  resident worker (live-verified: page A set `sid=abc123`, navigated via
+  `location.assign` to page B which read it back — jar landed per-house).
 - Still open on rung 6: real `history`/`location` navigation to the
   manager (house-standard lock applies before editing
   `network_browser_manager.c`). No thread/manager/daemon changes.
+
+## NOTICE 2026-09-08 — rung-6 real `history`/`location` navigation lands
+
+Merge `origin/opencode` (one commit after the cookie jar).
+
+- The page's `location.*` (`assign`/`href=` setter/`replace`/`reload`)
+  and `history.*` (`back`/`forward`/`go`) now route through real natives
+  in `ops/nb_host.h` (`nav_resolve`/`nav_request`) into ONE pending NAV
+  the worker daemon emits as a `NAV\n<kind>\n<url-or-count>\n` frame right
+  before `STATUS ok`. `history.go(n)` becomes BACK/FORWARD ×n (capped 8),
+  `go(0)`/`reload` = RELOAD. Eval/CLI paths keep the request inert.
+- `pushState`/`replaceState` keep the in-heap bookkeeping stack
+  (`history.state`/`length`) AND send `ADDR`, so the manager updates the
+  address bar (`g_current_url` + current tab url) with **no fetch**.
+- Manager side (`network_browser_manager.c`): `worker_load` captures NAV
+  frames; new `consume_pending_nav()` in the main loop (after
+  `handle_request()`) runs them through the same `do_fetch`/Back-Forward
+  file stacks as a `go:`/`back:` toolbar request. GO = link-like (push
+  current to Back, clear Forward, visit log); REPLACE = navigate without
+  a history entry; RELOAD = re-fetch current.
+- New `make check` suite **`wcn`** (`tests/worker_nav_test.c`): 11 LOADs
+  asserting the exact NAV frame for assign/href=/replace/reload/
+  replaceState/pushState/back/go(-2)/go(2)/no-nav, plus a follow-through
+  re-LOAD. All suites green (`wdt/wft/wet/wck/wcn` + 18-case cli_test).
+- **Live end-to-end verified** against the real manager on a throwaway
+  house: a page whose JS called `location.assign(b.html)` → manager
+  fetched/re-LOADed b.html and recorded a.html on the Back stack; a page
+  doing `history.pushState('/c2')` → address bar changed to that URL with
+  no re-fetch. No renderer/chtpm core changes (house rule).
+- Remaining rung-6 scraps: none blocking; rung 7 (layout awareness)
+  deferred. No new mode globals, no `khtpm_core_render.c` edits.
+
+## NOTICE 2026-09-09 — rung-6 real `localStorage`/`sessionStorage` lands
+
+Merge `origin/opencode` (two commits after the navigation notice).
+
+- `install_dom()` in `ops/nb_js_worker.c` replaces the prelude's twin
+  no-op stubs with fresh objects wired to real C natives.
+- **localStorage** = disk jar at `$NB_LOCALSTORAGE_FILE` (fallback
+  `$HOME/.config/nbjs/nb_localstorage.txt`); the manager points its
+  resident worker at `<house>/#.desktop/nb_localstorage.txt` in
+  `worker_spawn`, so each house owns one persistent jar (same pattern as
+  `nb_cookies.txt`). Jar is TAB-separated `pct-encoded key\tpct-encoded
+  value` lines (RFC-3986-safe → tabs/newlines round-trip), atomic
+  tmp+rename writes, damage-tolerant reads, 256 entries/256B key/4kB
+  value.
+- **sessionStorage** = in-memory store reset per LOAD (fresh heap ⇒
+  correct scoping; no disk).
+- New `make check` suite **`wst`** (`tests/worker_storage_test.c`):
+  2 LOADs — set on L1, persist-get on L2 for localStorage, session reset
+  on L2 — plus jar-content assertions incl. percent-encoding. All six
+  worker suites + 18-case cli_test green; `build.sh` clean (pre-existing
+  `-Wformat-truncation` .tmp noise only).
+- **Live end-to-end verified** against the real manager on the throwaway
+  house: page a set `localStorage.theme=night` + a sessionStorage key,
+  `location.assign(b.html)`; page b ran in a fresh LOAD, read
+  `theme` (persisted) and found the session key empty (`ss_seen=none`),
+  then wrote to the same jar — final jar on disk:
+  `theme\tnight` + `ss_seen\tnone`. No renderer/chtpm core changes.
+- Debug note for future agents: `duk_def_prop` on the *prelude's stub
+  objects* throws `'not configurable'` at boot (dead worker, WST_RC=141,
+  every page fails trivially) — create fresh objects + `duk_put_global_string`
+  instead; never put accessor def_props on prelude-created globals.
+
+## NOTICE 2026-09-09 — boot hygiene: no more silent dead workers
+
+Merge `origin/opencode` (commits after the storage notice).
+
+- The one trailing cost of the storage fix was invisibility: a boot-time
+  throw stopped the worker with zero trace on the manager or in any log
+  (only WST_RC=141 + "no reply from worker" in the suite). This slice makes
+  every worker failure visible at the module level.
+- `ops/nb_js_worker.c`: `install_dom()` + `install_events_timers()` now run
+  under `boot_install_safe()` (a `duk_pcall` guard). On throw it prints
+  `WERR| boot install: <msg>` to stderr and lets the page load anyway —
+  a future `'not configurable'`-class boot bug shows up as a line, not a
+  corpse. Both boot sites (page runner + REPL) use the guard.
+- `network_browser_manager.c`: `worker_spawn` redirects the worker's stderr
+  to `<house>/#.desktop/network_browser_worker.err.log` (per-house append);
+  `worker_close` tails that log onto the manager's stderr as
+  `[worker] <line>` (offset-tracked, one line per worker death, no re-dump).
+  `worker_load` also relays any `ERROR|` rows to the module log without
+  aborting the STATUS frame read.
+- Harnesses: all six worker suites print a `harness: worker killed by
+  signal %d - see WERR| stderr above` note instead of a bare rc on crash.
+- Verified: full `make check` green (6 worker suites + 18-case cli_test),
+  `build.sh` clean. Live E2E against the real manager on the throwaway
+  house: page loaded with resident worker, script ran
+  (`TEXT|worker-ran` replaced the static row), `network_browser_worker.err.log`
+  exists at the configured path; killing the worker then driving a LOAD
+  surfaced the buffered stderr lines as `[worker] ...` on the manager.
+  No renderer/chtpm core changes.
+
+## NOTICE 2026-09-09 — Phase 2 LANDED: document-order per-script runs
+
+Merge `origin/opencode` (commits after the boot-hygiene notice).
+
+- The last "Still missing (Phase 2)" item is gone. `collect_scripts` now
+  writes each `<script>` (inline or `<script src=...>`, in DOM order) as
+  its own slice of page.js, separated by a `/*nbjs-script-boundary*/`
+  sentinel (the old `;try{...}catch` concat wrapper is gone). The worker's
+  `run_scripts_slices` compiles+runs each slice as a separate Duktape
+  program.
+- Browser classic-script parity, in the worker: document order; a syntax
+  or runtime error in one slice prints `WERR| script N: <msg>` and the
+  NEXT slice still runs (previously a single parse error killed the whole
+  page); top-level `var` still lands on the shared global (cross-slice
+  visibility); an external src executes at its DOM position. Legacy
+  page.js without any sentinel is treated as one program.
+- New `make check` suite **`wps`** (`tests/worker_scriptseq_test.c`,
+  4 cases: order+isolation `seq=1,3` despite a bad middle slice;
+  cross-slice globals; external-at-position `a,b,c`; legacy single
+  program). All 7 worker suites + 18-case cli_test green; `build.sh`
+  clean.
+- Live E2E vs the real manager (throwaway house): inline/ext/inline page
+  rendered `TEXT|seq=a,b,c`; a page whose middle script had a syntax error
+  still rendered `after-bad:s1`, with `WERR| script 1: SyntaxError` in
+  `network_browser_worker.err.log` and surfaced as `[worker] ...` on the
+  manager at worker close. No renderer/chtpm core changes.
+- Honest remaining gaps (now stated in the roadmap + OPEN-ITEMS): real
+  `http://` fetch breadth behind the manager's curl ladder, and rung 7
+  CSS/layout awareness.
+
+## NOTICE 2026-09-10 — real `http://` fetch breadth LANDED
+
+Merge `origin/opencode` (commits after the Phase-2 notice).
+
+- Live E2E vs `python3 -m http.server` (throwaway house + fixture site)
+  proved the manager's curl ladder end-to-end: a page with inline +
+  external-relative `<script src>` renders `TEXT|seq=a,b,c` (TITLE
+  extracted); localStorage set on one `http://` page persists to the next
+  http navigation (`theme=http-ok`); JS-side relative `fetch("api.json")`
+  resolves against the page URL and hits the real server
+  (`st=200 fetch={"hello":"rung4-http"}`) — the rung-4 transport over real
+  HTTP.
+- Two worker-side fixes:
+  - **Prelude `splitParts` double-port bug** (`ops/nb_host.h`): it re-appended
+    `b.port` after `b.host` already embeds it, yielding
+    `http://127.0.0.1:8123:8123/...` for any base with an explicit port —
+    curl exited 3 (URL malformed). file://-based suites never had a port so
+    `wft`/`wrapper` missed it. Port re-appender removed.
+  - **`nb_fetch_sync` belt-and-braces** (`ops/nb_js_worker.c`): new
+    `resolve_doc_url()` merges the incoming URL against `g_href`
+    (scheme/`//host`/`/abs`/relative-dirname, RFC 3986 §5-style, mirroring
+    the manager's `resolve_url`); fetch errors now carry the resolved URL
+    (`curl rc=3 status=0 url=http://...`). The prelude still pre-resolves
+    for both fetch and XHR; the C resolver is a no-op for absolute URLs.
+- All 7 worker suites + 18-case cli_test + `sh build.sh` (4 binaries)
+  green post-fix. No renderer/chtpm core changes. Only rung 7
+  CSS/layout awareness remains as an honest gap.
+
+## NOTICE 2026-09-10 — follow-up hardenings: cookie parity + script edges + real-site smoke
+
+Merge `origin/opencode` (commits after the http-breadth notice).
+
+- **Same-origin cookie parity.** Page loads, `<script src>` fetches, and
+  worker JS-side `fetch`/XHR share one per-house jar, `#.desktop/
+  nb_curl_cookies.txt` (manager curls `-b/-c`; worker gets it via
+  `NB_CURL_COOKIES_FILE` and emits `cookie` + `cookie-jar` in its curl
+  config). Live E2E: fresh-house guarded route → `guard-fail`; a page's
+  Set-Cookie persists; guarded route → `guard-ok`; worker fetch to a
+  guarded API → `ok:true`. Known boundary: this wire jar is separate from
+  the `document.cookie` jar (`NB_COOKIES_FILE`) — JS-written vs wire
+  cookies not yet merged.
+- **Script-tag edges.** `script_type_skip` rewritten to browser rules —
+  run only absent/empty-type or `*javascript*` MIME scripts, skip the rest
+  (was allowlisting module/json/ld+json, so `text/template` ran as broken
+  JS). New `in_noscript_block` guard: `<script>` inside `<noscript>` no
+  longer runs (browsers with scripting enabled run none of it); the DOM
+  serializer already dropped noscript. `async`/`defer` documented as
+  doc-order (defer-consistent); async reorder not modeled.
+- **Real remote-site smoke test** (this machine has internet egress):
+  `http://example.com` → `TITLE|Example Domain` through the 301→https
+  redirect; `https://httpbin.org/cookies/set/fruit/kiwi` → fresh cookie
+  retransmitted on the follow (body echoes `{"cookies":{"fruit":"kiwi"}}`,
+  jar holds the scoped `httpbin.org` entry); full production page
+  `https://www.iana.org/help/example-domains` → TITLE/LINK/IMG + jQuery +
+  dtable + relative-time as external slices, zero WERR.
+- **Operational landmine (test discipline, not a code bug):** repeatedly
+  `go:`-driving the same live house without killing the previous manager
+  stacks several managers racing on shared request/state files — stale
+  binaries corrupt results. Kill before relaunch. RESOLVED 2026-09-10:
+  the manager now flocks a per-house `#.desktop/network_browser_manager.lock`
+  (`LOCK_EX|LOCK_NB`, dies with the process); a second instance prints and
+  exits rc=2. So the pileup can no longer happen even if launch is
+  repeated. All gates green (29 PASS, 4 binaries).
