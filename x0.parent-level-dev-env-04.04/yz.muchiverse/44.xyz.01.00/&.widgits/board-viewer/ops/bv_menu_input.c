@@ -394,6 +394,7 @@ static int handle_one_key(int key) {
     int key_reset_xelector = '8';
     int key_z_down = 'z', key_z_up = 'x';
     int key_reset_view = 'f';
+    int key_reset_view_alt = '5';   /* direct instruction 2026-09-09: "make 5 do same as f" */
     int key_yaw_left = 'q', key_yaw_right = 'e';
     int key_pitch_down = 'r', key_pitch_up = 't';
     int key_pan_forward = 'w', key_pan_back = 's', key_pan_left = 'a', key_pan_right = 'd';
@@ -439,6 +440,7 @@ static int handle_one_key(int key) {
         key_z_down = pdl_bind_int(kb_pdl_path, "KEY", "xelector_z_down", key_z_down);
         key_z_up   = pdl_bind_int(kb_pdl_path, "KEY", "xelector_z_up",   key_z_up);
         key_reset_view = pdl_bind_int(kb_pdl_path, "KEY", "reset_view", key_reset_view);
+        key_reset_view_alt = pdl_bind_int(kb_pdl_path, "KEY", "reset_view_alt", key_reset_view_alt);
         key_yaw_left  = pdl_bind_int(kb_pdl_path, "KEY", "yaw_left",  key_yaw_left);
         key_yaw_right = pdl_bind_int(kb_pdl_path, "KEY", "yaw_right", key_yaw_right);
         key_pitch_down = pdl_bind_int(kb_pdl_path, "KEY", "pitch_down", key_pitch_down);
@@ -914,7 +916,7 @@ static int handle_one_key(int key) {
 
     int camera_mode = read_kv_int(state_path, "camera_mode", default_camera_mode(focused_project_root));
 
-    if (key == key_reset_view) {
+    if (key == key_reset_view || key == key_reset_view_alt) {
         /* Reset, mode-dependent default (camera_control.c's own 'f'
          * handling per mode - see 5-pov-widgit.md §2e table). */
         if (camera_mode == 1 || camera_mode == 2) {

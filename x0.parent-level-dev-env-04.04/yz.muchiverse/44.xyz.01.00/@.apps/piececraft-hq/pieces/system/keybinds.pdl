@@ -24,6 +24,7 @@ KEY          | pan_right          | 100       # 'd'  pan right   (all 3D modes)
 KEY          | cam_height_down    | 99        # 'c'  camera Z -1 (all 3D modes)
 KEY          | cam_height_up      | 118       # 'v'  camera Z +1 (all 3D modes)
 KEY          | reset_view         | 102       # 'f'  reset camera to this mode's default
+KEY          | reset_view_alt     | 53        # '5'  same as 'f' (recentre); shadows the old '5'->FILE_MENU (File is on the chrome button)
 
 # ── xelector cursor / possession (muta ops/choice.c parity) ──
 KEY          | xelector_z_down    | 122       # 'z'  xelector Z -1
