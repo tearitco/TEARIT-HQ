@@ -3694,6 +3694,11 @@ static int layout_sidebar_panel(Elem *page) {
         if (g_win_w < 320) g_win_w = sw - WM_FS_MARGIN_X;
         if (g_win_h < 240) g_win_h = sh - WM_MANAGED_DRAG_MIN_Y;
         if (g_win_h < 240) g_win_h = sh;
+    } else if (g_user_resizable && g_win_w > 0 && g_win_h > 0) {
+        /* a user-resizable window OWNS its own size after main()'s
+         * initial value - the ⌟ drag updates g_win_w/g_win_h and this
+         * relayout must NOT snap it back to the CSS/default ("resize
+         * wont grow at all" report 2026-09-10). */
     } else {
         g_win_w = g_window->style.has_width ? g_window->style.width : DEFAULT_WIN_W;
         g_win_h = g_window->style.has_height ? g_window->style.height : DEFAULT_WIN_H;
@@ -8739,6 +8744,23 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
      * is kept only because it still works for synthetic/XTest testing
      * and costs nothing to leave in. */
     if (ev->type == ButtonPress) {
+        /* drag-resize grip - works for ANY user-resizable window, not
+         * just popups (the pc-hq board is now a managed sidebar+panel
+         * window, so the popup-gated grip block below never fired for
+         * it - "resize wont grow at all" report 2026-09-10). Very small
+         * hot corner (KH_RESIZE_GRIP px), checked before any element
+         * hit-test so a footer cell can't eat it. */
+        if (g_user_resizable && !window_is_dock() && !g_win_resizing &&
+            ev->xbutton.button == 1 &&
+            ev->xbutton.x >= g_win_w - KH_RESIZE_GRIP && ev->xbutton.x < g_win_w &&
+            ev->xbutton.y >= g_win_h - KH_RESIZE_GRIP && ev->xbutton.y < g_win_h) {
+            g_win_resizing = 1;
+            g_resize_start_xr = ev->xbutton.x_root;
+            g_resize_start_yr = ev->xbutton.y_root;
+            g_resize_start_w = g_win_w;
+            g_resize_start_h = g_win_h;
+            return;
+        }
         /* REAL FIX 2026-09-03 (direct live report: "its way to hard to
          * get window focus. i tap click window and it still doesn't
          * have focus") - root cause, confirmed live via the new "^"/"."
@@ -8926,7 +8948,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         return;
     }
     if (ev->type == MotionNotify) {
-        if (is_popup && g_win_resizing) {
+        if (g_win_resizing) {   /* any user-resizable window, not just popups */
             /* coalesce the motion burst - only the final position matters */
             XEvent mdrain;
             while (XCheckTypedWindowEvent(dpy, win, MotionNotify, &mdrain)) *ev = mdrain;
