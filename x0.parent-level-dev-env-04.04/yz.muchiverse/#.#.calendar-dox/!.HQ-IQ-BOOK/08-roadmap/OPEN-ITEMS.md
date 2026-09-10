@@ -67,3 +67,12 @@ short version.*
       disk jar at `<house>/#.desktop/nb_localstorage.txt` via
       `NB_LOCALSTORAGE_FILE` (pct-encoded key/value lines, atomic writes);
       sessionStorage = in-memory, reset per LOAD. Reconciled 2026-09-09.
+      Phase-2 **document-order script runs** LANDED (2026-09-09, new `wps`
+      make-check suite): manager emits one `<script>` (inline or src-fetched)
+      per page.js slice, split on `/*nbjs-script-boundary*/`; the worker
+      compiles/runs each slice as a separate program — document order +
+      per-script syntax isolation + shared top-level `var` + external src at
+      DOM position; failures print `WERR| script N: ...` into the worker
+      stderr log (surfaced as `[worker]` lines, boot-hygiene slice). Real
+      server-side breadth (`http://` pages behind the manager's curl ladder)
+      and rung 7 CSS/layout awareness are the honest remaining gaps.

@@ -38,8 +38,12 @@ timers (rung 3: lifecycle/microtask/timer drain, `setTimeout`/
 `setInterval`/`clear*`/`queueMicrotask`, `MAX_DRAIN_MS` 800,
 `MAX_TIMER_INVOCATIONS` 5000, `MAX_RAF_FRAMES` 120; gated by `wet`),
 XHR/fetch (rung 4, `wft`), and the rung-2/6 BOM remainder (`wdt`, `wcn`,
-`wck`). Only Phase-2 **document-order script runs** (the manager
-concatenates `<script>` bodies into `tmp/page.js`) truly remains.
+`wck`). Phase-2 **document-order script runs** (per-`<script>` programs
+over a `/*nbjs-script-boundary*/` split, gated by `wps`) LANDED 2026-09-09
+— see the LANDED block under Rung 6 below. With that, the resident-worker
+engine covers everything the ladder's rungs 1-6 promise; what's truly left
+is real-server fetch breadth (the manager's `curl` ladder on live `http://`
+sites) and rung 7 CSS/layout awareness.
 
 > The table above is the *pre*-Phase-1 snapshot; `getElementById` /
 > `querySelector` and the rest became real accessors walking the worker's
@@ -287,6 +291,23 @@ plausible stub, `MutationObserver` (can no-op then improve),
 > sessionStorage, `location.assign` to a second page that read localStorage
 > (persisted) and found sessionStorage empty, jar confirmed on disk.
 
+> **LANDED 2026-09-09 — Phase 2: document-order script runs**
+> (`ops/nb_js_worker.c` `run_scripts_slices` + manager `collect_scripts`;
+> suite `wps`, `tests/worker_scriptseq_test.c`). This was the last
+> "Still missing (Phase 2)" item above: the manager used to concatenate
+> every `<script>` body into one page.js and the worker ran it as a single
+> Duktape program, so a syntax error anywhere killed the whole page. Now
+> each `<script>` (inline or `<script src=...>`, in DOM order) is written
+> as its own slice of page.js, split on a `/*nbjs-script-boundary*/`
+> sentinel, and the worker compiles+runs each slice as a separate program:
+> browser classic-script parity — document order, per-script syntax-error
+> isolation (slice N failing doesn't stop N+1), top-level `var` sharing the
+> global, and external src executing at its DOM position. Per-slice
+> failures print `WERR| script N: <msg>` to the worker's stderr log, which
+> the manager surfaces as `[worker]` lines (boot-hygiene slice). Legacy
+> page.js without a sentinel still runs as one program. Live E2E: inline/
+> ext/inline page rendered `TEXT|seq=a,b,c`; a bad middle script still
+> rendered `after-bad:s1` with the WERR surfaced.
 
 ### Rung 7 — CSS/layout awareness  *(optional, large, defer)*
 `getBoundingClientRect`, `offsetWidth/Height`, `display:none`

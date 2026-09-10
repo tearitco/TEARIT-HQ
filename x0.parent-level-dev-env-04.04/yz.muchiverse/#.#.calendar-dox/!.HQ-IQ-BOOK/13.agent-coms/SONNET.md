@@ -340,3 +340,33 @@ Merge `origin/opencode` (commits after the storage notice).
   exists at the configured path; killing the worker then driving a LOAD
   surfaced the buffered stderr lines as `[worker] ...` on the manager.
   No renderer/chtpm core changes.
+
+## NOTICE 2026-09-09 — Phase 2 LANDED: document-order per-script runs
+
+Merge `origin/opencode` (commits after the boot-hygiene notice).
+
+- The last "Still missing (Phase 2)" item is gone. `collect_scripts` now
+  writes each `<script>` (inline or `<script src=...>`, in DOM order) as
+  its own slice of page.js, separated by a `/*nbjs-script-boundary*/`
+  sentinel (the old `;try{...}catch` concat wrapper is gone). The worker's
+  `run_scripts_slices` compiles+runs each slice as a separate Duktape
+  program.
+- Browser classic-script parity, in the worker: document order; a syntax
+  or runtime error in one slice prints `WERR| script N: <msg>` and the
+  NEXT slice still runs (previously a single parse error killed the whole
+  page); top-level `var` still lands on the shared global (cross-slice
+  visibility); an external src executes at its DOM position. Legacy
+  page.js without any sentinel is treated as one program.
+- New `make check` suite **`wps`** (`tests/worker_scriptseq_test.c`,
+  4 cases: order+isolation `seq=1,3` despite a bad middle slice;
+  cross-slice globals; external-at-position `a,b,c`; legacy single
+  program). All 7 worker suites + 18-case cli_test green; `build.sh`
+  clean.
+- Live E2E vs the real manager (throwaway house): inline/ext/inline page
+  rendered `TEXT|seq=a,b,c`; a page whose middle script had a syntax error
+  still rendered `after-bad:s1`, with `WERR| script 1: SyntaxError` in
+  `network_browser_worker.err.log` and surfaced as `[worker] ...` on the
+  manager at worker close. No renderer/chtpm core changes.
+- Honest remaining gaps (now stated in the roadmap + OPEN-ITEMS): real
+  `http://` fetch breadth behind the manager's curl ladder, and rung 7
+  CSS/layout awareness.
