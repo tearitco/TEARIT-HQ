@@ -998,6 +998,81 @@ static void load_phymoji_world_entities(const char *root) {
     load_phymoji_world_entities_file(root, "pieces/world_01/animals.txt");
 }
 
+/* fwd - real definition ~line 1532 (Windows-safe atomic rename) */
+static void write_file_atomic(const char *path, const void *data, size_t len);
+
+/* MILESTONE D (PCHQ-ENTITY-MENU-AND-TASKBAR-DESIGN.md) - publish what
+ * the on-screen selector is currently pointing at, once per frame, so
+ * pc_menu_input.c (right-click / Shift -> entity context menu) and the
+ * future 7.edit rectangle selector share ONE "what's under the cursor"
+ * primitive instead of each re-deriving it. Pure read of already-loaded
+ * state - no raycast, no perf cost. Keyboard/selector-driven for now;
+ * a real click ray can overwrite the same file later.
+ *
+ *   pieces/display/pick.txt   (key=value, atomic)
+ *     sel_x= sel_y= sel_z=     the targeted cell
+ *     kind=  hero | tree | chicken | entity | voxel | air
+ *     id=    hero_01 | <entity_id> | <hex>        ("" if none)
+ *     template=  <phymoji entity_id>              ("" if none)
+ *     glyph= <char>   asset_hex= <hex>            (kind=voxel only)
+ */
+static void write_pick_txt(const char *root,
+                           char board3d[MAX_VOXEL_Z][MAX_BOARD_DIM][MAX_BOARD_DIM],
+                           int board_w, int board_h, int z_count,
+                           int sx, int sy, int sz) {
+    const char *kind = "air";
+    const char *id = "";
+    const char *tmpl = "";
+    char glyph_buf[2] = "";
+    const char *asset_hex = "";
+
+    if (g_hero_present && g_hero_x == sx && g_hero_y == sy && g_hero_z == sz) {
+        kind = "hero";
+        id = "hero_01";
+    }
+    if (!id[0]) {
+        for (int i = 0; i < g_phymoji_world_entity_count; i++) {
+            PhymojiWorldEntity *e = &g_phymoji_world_entities[i];
+            if (e->x != sx || e->y != sy || e->z != sz) continue;
+            id = e->entity_id;
+            tmpl = e->entity_id;
+            kind = (strstr(e->entity_id, "chicken")) ? "chicken"
+                 : (strstr(e->entity_id, "tree"))    ? "tree"
+                 : "entity";
+            break;
+        }
+    }
+    if (!id[0]) {
+        for (int i = 0; i < g_entity_count; i++) {
+            if (g_entities[i].pos_x == sx && g_entities[i].pos_y == sy) {
+                kind = "entity";
+                id = g_entities[i].hex;
+                break;
+            }
+        }
+    }
+    if (!id[0] && sx >= 0 && sx < board_w && sy >= 0 && sy < board_h &&
+        sz >= 0 && sz < z_count) {
+        char g = board3d[sz][sy][sx];
+        if (!voxel_is_air(g)) {
+            kind = "voxel";
+            glyph_buf[0] = g;
+            const TerrainLegendEntry *le = terrain_legend_lookup(g);
+            if (le && le->asset_hex[0]) asset_hex = le->asset_hex;
+        }
+    }
+
+    char buf[512];
+    int n = snprintf(buf, sizeof(buf),
+        "sel_x=%d\nsel_y=%d\nsel_z=%d\nkind=%s\nid=%s\ntemplate=%s\nglyph=%s\nasset_hex=%s\n",
+        sx, sy, sz, kind, id, tmpl, glyph_buf, asset_hex);
+    if (n > 0) {
+        char path[PATH_BUF];
+        snprintf(path, sizeof(path), "%s/pieces/display/pick.txt", root);
+        write_file_atomic(path, buf, (size_t)n);
+    }
+}
+
 /* --- real voxel texture cache, ported from mutaclysm's own
  * get_voxel8_cached()/sample_voxel8_pixel() (ops/compose_rgb_frame.c) -
  * sized for 256 entries (16x16) since this project's own real assets
@@ -1644,6 +1719,12 @@ static int render_one_frame(void) {
     int current_z = read_kv_int(state_path, "current_z", default_current_z(focused_project_root));
     if (current_z >= z_count) current_z = z_count - 1;
     if (current_z < 0) current_z = 0;
+
+    /* MILESTONE D - publish the targeted cell for pc_menu_input's entity
+     * context menu + the future 7.edit selector. Cheap, read-only. */
+    write_pick_txt(focused_project_root, board3d, board_w, board_h, z_count,
+                   selector_x, selector_y, current_z);
+
     int camera_mode = read_kv_int(state_path, "camera_mode", default_camera_mode(focused_project_root));
     /* REAL PARITY FIX 2026-08-07: fresh cam_pitch used to default to
      * -90 (straight down) in EVERY mode, so even the config-driven
