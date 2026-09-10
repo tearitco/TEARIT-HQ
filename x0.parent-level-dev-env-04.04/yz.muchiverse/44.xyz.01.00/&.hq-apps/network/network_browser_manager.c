@@ -86,6 +86,7 @@
 #include <errno.h>
 #include <poll.h>
 #include <fcntl.h>
+#include <sys/file.h>
 
 #include "nb_dom.h"
 
@@ -688,10 +689,31 @@ static void do_fetch(const char *url_in, int record_history);
 
 static char g_curl_url_path[PATH_BUF];
 static char g_curl_cookie_path[PATH_BUF];  /* per-house Netscape jar shared by page/script/worker curls */
+static int g_lock_fd = -1;                 /* single-instance flock fd (held for life) */
 static char g_js_worker_path[PATH_BUF];
 static char g_js_script_path[PATH_BUF];
 static char g_media_op_path[PATH_BUF];
 static char g_media_root[PATH_BUF];
+
+/* One manager per house. flock(2) LOCK_EX|LOCK_NB on a lock file dies with
+ * the process (no stale-pid handling needed) and is per-house, so separate
+ * houses can still run separate managers. Prevents the racing-manager
+ * pileup that corrupted live E2E runs. */
+static void acquire_house_lock(const char *lock_path) {
+    g_lock_fd = open(lock_path, O_WRONLY | O_CREAT, 0644);
+    if (g_lock_fd < 0) return;             /* cannot lock: run anyway, don't wedged die */
+    if (flock(g_lock_fd, LOCK_EX | LOCK_NB) != 0) {
+        fprintf(stderr,
+                "network_browser_manager: another instance already owns %s "
+                "(kill it first) - exiting\n", lock_path);
+        _exit(2);
+    }
+    if (ftruncate(g_lock_fd, 0) == 0) {
+        char pid[32];
+        int pn = snprintf(pid, sizeof(pid), "%ld\n", (long)getpid());
+        (void)!write(g_lock_fd, pid, (size_t)pn);
+    }
+}
 
 /* Browsers execute only classic-JS scripts (absent/empty type, or a
  * javascript MIME). Everything else — module, application/json,
@@ -2699,6 +2721,11 @@ int main(int argc, char **argv) {
     path_join(g_visit_log_path, sizeof(g_visit_log_path), desktop, "network_browser_history.log.txt");
     path_join(g_bookmark_path, sizeof(g_bookmark_path), desktop, "network_browser_bookmarks.txt");
     path_join(g_worker_err_path, sizeof(g_worker_err_path), desktop, "network_browser_worker.err.log");
+    {
+        char lockpath[PATH_BUF];
+        path_join(lockpath, sizeof(lockpath), desktop, "network_browser_manager.lock");
+        acquire_house_lock(lockpath);
+    }
     path_join(g_tabs_path, sizeof(g_tabs_path), desktop, "network_browser_tabs.txt");
     path_join(g_tabs_root, sizeof(g_tabs_root), desktop, "nb_tabs");
     mkdir_p_local(g_tabs_root);
