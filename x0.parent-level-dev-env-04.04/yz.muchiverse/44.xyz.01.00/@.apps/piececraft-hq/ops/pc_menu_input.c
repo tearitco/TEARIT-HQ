@@ -956,6 +956,19 @@ int main(int argc, char **argv) {
             ledger_append(project_root, tick, "player", "build", details);
             tick_animals(project_root, tick);
             snprintf(message, sizeof(message), "Build (tick %d) - block placement not implemented yet.", tick);
+        } else if (strcmp(cmd, "CTX_MENU") == 0) {
+            /* MILESTONE E slice 2 - the ctx_menu VERB (keybinds.pdl,
+             * fires even unpossessed) reaches here. Launch the shared
+             * context-menu window on whatever pick.txt currently says. */
+            char rr[MAX_PATH];
+            resolve_real_root(project_root, rr, sizeof(rr));
+#ifndef _WIN32
+            char c[MAX_PATH * 2];
+            snprintf(c, sizeof(c),
+                     "setsid sh '%s/ops/pc_entity_ctx.sh' '%s' >/dev/null 2>&1 &", rr, rr);
+            int rc = system(c); (void)rc;
+#endif
+            snprintf(message, sizeof(message), "context menu");
         } else if (strncmp(cmd, "CTX_INSPECT", 11) == 0) {
             int x = 0, y = 0, z = 0; char id[64] = "";
             sscanf(cmd + 11, "%d %d %d %63s", &x, &y, &z, id);

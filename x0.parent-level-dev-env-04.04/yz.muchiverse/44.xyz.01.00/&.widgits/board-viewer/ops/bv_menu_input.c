@@ -1065,21 +1065,27 @@ static int handle_one_key(int key) {
      * declares real hero abilities (JUMP/MINE/BUILD, civ-vs-piece.md
      * §2/§6a), so the whole dispatch below is gated on actively
      * possessing hero_01 - an unpossessed free-roaming xelector has no
-     * business jumping/mining, it's just a camera cursor. A finer-
-     * grained per-action gate (if a future keybind ever needs to work
-     * regardless of possession) is real future work, not needed while
-     * every declared action is hero-only. */
+     * business jumping/mining, it's just a camera cursor.
+     *
+     * FINER-GRAINED GATE, 2026-09-10 (PCHQ-ENTITY-MENU-AND-TASKBAR-
+     * DESIGN.md milestone E slice 2): a small allow-list of verbs fires
+     * regardless of possession - CTX_MENU opens the entity context menu
+     * on whatever the free-roaming xelector points at, which by
+     * definition is an unpossessed action. Everything else stays
+     * hero-only. */
     char possessed_id_verb[64] = "";
     if (focused_project_root[0]) {
         char xelector_state_path_verb[PATH_BUF];
         snprintf(xelector_state_path_verb, sizeof(xelector_state_path_verb), "%s/pieces/xelector_01/state.txt", focused_project_root);
         read_kv_str(xelector_state_path_verb, "possessed_id", possessed_id_verb, sizeof(possessed_id_verb));
     }
-    if (focused_project_root[0] && strcmp(possessed_id_verb, "hero_01") == 0) {
+    if (focused_project_root[0]) {
         char action[64] = "";
         /* unified keybinds.pdl VERB lines first, then legacy keybinds.txt */
         pdl_verb_lookup(kb_pdl_path, key, action, sizeof(action));
-        if (!action[0]) {
+        int verb_always_allowed = (action[0] && strcmp(action, "CTX_MENU") == 0);
+        int possessing_hero = (strcmp(possessed_id_verb, "hero_01") == 0);
+        if (!action[0] && possessing_hero) {
             char keybinds_path[PATH_BUF];
             snprintf(keybinds_path, sizeof(keybinds_path), "%s/pieces/system/keybinds.txt", focused_project_root);
             FILE *kf = fopen(keybinds_path, "r");
@@ -1099,7 +1105,7 @@ static int handle_one_key(int key) {
                 fclose(kf);
             }
         }
-        if (action[0]) {
+        if (action[0] && (possessing_hero || verb_always_allowed)) {
             send_action_to_host(focused_project_root, action);
         }
     }
