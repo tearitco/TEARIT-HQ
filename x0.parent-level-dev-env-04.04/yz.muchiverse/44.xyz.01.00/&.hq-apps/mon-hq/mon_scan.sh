@@ -139,6 +139,14 @@ ps -eo pid,ppid,pgid,etimes,pcpu,args 2>/dev/null > "$PS_SNAP"
 TASKBAR_PGID=$(awk 'NR>1 && $6 ~ /khtpm_taskbar_manager_main/ {print $3; exit}' "$PS_SNAP")
 [ -z "${TASKBAR_PGID:-}" ] && TASKBAR_PGID=-1
 
+# A board-viewer / pc-hq engine stack has a real owner - the open board
+# window - even though open_pchq_board.sh only ledgers the wrapper pid,
+# not every prisc VM under it. If a live board window renderer exists,
+# engine-stack procs are GOOD (class "engine"), not leaked.
+BOARD_WINDOW_LIVE=0
+awk 'NR>1' "$PS_SNAP" | grep -qE 'khtpm_core_render\.\+x .*(pchq-board|board_viewer|board-viewer).*\.xhtpm' \
+    && BOARD_WINDOW_LIVE=1
+
 # ---- build MATCHED set ---------------------------------------------
 # a line matches if args hits PATTERNS and does NOT hit SHELL_PATTERNS
 # POSIX-ERE for awk: turn \+ \. into bracket classes so mawk/gawk don't warn
@@ -239,6 +247,9 @@ classify_all() {
                         class=pal; note="registered pal window"
                     elif [ "$is_pal" = 1 ]; then
                         class=pal-unreg; stray=1; note="pal window, not in ledger"
+                    elif [ "$is_engine" = 1 ] && [ "$BOARD_WINDOW_LIVE" = 1 ]; then
+                        class=engine
+                        note="feeds the live board window; $led"
                     elif [ "$is_engine" = 1 ]; then
                         class=detached; stray=1
                         note="engine stack detached from the taskbar, $led - leak"
@@ -248,7 +259,10 @@ classify_all() {
                     fi
                     ;;
                 *)
-                    if [ "$is_engine" = 1 ]; then
+                    if [ "$is_engine" = 1 ] && [ "$BOARD_WINDOW_LIVE" = 1 ]; then
+                        class=engine
+                        note="feeds the live board window; $led"
+                    elif [ "$is_engine" = 1 ]; then
                         class=detached; stray=1
                         note="engine stack under non-house parent '$pshort' (pid $ppid)"
                     else
@@ -259,8 +273,9 @@ classify_all() {
             esac
         fi
 
-        # a full engine-stack member that isn't registered and is old = stray
-        if [ "$is_engine" = 1 ] && [ "$led" = unreg ] \
+        # a full engine-stack member that isn't registered and is old =
+        # stray - UNLESS a live board window is consuming its frames.
+        if [ "$is_engine" = 1 ] && [ "$led" = unreg ] && [ "$BOARD_WINDOW_LIVE" != 1 ] \
            && [ "$age" -ge "$((STALE_MIN*60))" ] && [ "$class" != shell ]; then
             stray=1
             [ -z "$note" ] && note="engine stack, unregistered, ${STALE_MIN}m+ old"
