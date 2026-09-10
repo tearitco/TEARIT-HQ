@@ -2290,6 +2290,12 @@ static int elem_has_class(Elem *e, const char *cls) {
 }
 
 #define WM_MANAGED_DRAG_MIN_Y 90
+/* Fullscreen ("!" / TOGGLE_FULLSCREEN) fills only the desktop WORK AREA
+ * - the band between the livedesk top strip (WM_MANAGED_DRAG_MIN_Y) and
+ * the bottom dock strip - not the whole display (direct instruction
+ * 2026-09-10: "full screen shouldn't go above the size within bottom/
+ * top tb of desk"). */
+#define WM_MANAGED_BOTTOM_RESERVE 46
 
 
 /* Real, single-slot font cache for text measurement, ported verbatim
@@ -3657,8 +3663,11 @@ static int layout_sidebar_panel(Elem *page) {
     css_compute_style(&g_sheet, panel->tag, panel->id, panel->classes, panel->n_classes, 0, &panel->style);
 
     if (g_default_is_fullscreen) {
+        /* work area only - between the top and bottom desktop strips */
         g_win_w = kh_screen_w();
-        g_win_h = kh_screen_h();
+        g_win_h = kh_screen_h() - WM_MANAGED_DRAG_MIN_Y - WM_MANAGED_BOTTOM_RESERVE;
+        if (g_win_h < 240) g_win_h = kh_screen_h() - WM_MANAGED_DRAG_MIN_Y;
+        if (g_win_h < 240) g_win_h = kh_screen_h();
     } else {
         g_win_w = g_window->style.has_width ? g_window->style.width : DEFAULT_WIN_W;
         g_win_h = g_window->style.has_height ? g_window->style.height : DEFAULT_WIN_H;
@@ -5900,7 +5909,8 @@ static void dispatch(const char *action) {
         g_default_is_fullscreen = !g_default_is_fullscreen;
         if (g_default_is_fullscreen) {
             g_default_pre_fullscreen_x = g_win_x; g_default_pre_fullscreen_y = g_win_y;
-            g_win_x = 0; g_win_y = 0;
+            /* top-left of the work area, not 0,0 - clears the top strip */
+            g_win_x = 0; g_win_y = WM_MANAGED_DRAG_MIN_Y;
         } else {
             g_win_x = g_default_pre_fullscreen_x; g_win_y = g_default_pre_fullscreen_y;
         }
