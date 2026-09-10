@@ -1,10 +1,29 @@
 # pc-hq — entity context menu, entities taskbar, real dropdowns
 
-**Status: BRAINSTORM / DESIGN — nothing built.** Written 2026-09-10 from
-a direct brainstorm request. Read `PIECECRAFT_XYZ_DESIGN.md` §3a (the
-xelector-context-menu precedent this supersedes in ambition) and
+**Status: DESIGN — decisions resolved 2026-09-10, nothing built yet.**
+Written from a direct brainstorm request. Read `PIECECRAFT_XYZ_DESIGN.md`
+§3a (the xelector-context-menu precedent this supersedes in ambition) and
 `#.#.calendar-dox/!.HQ-IQ-BOOK/02-architecture/X11-HQ-APP-DESIGN-WISDOMS.md`
 first.
+
+**Resolved decisions (2026-09-10):**
+1. Context-menu verb list — the §2 draft is accepted as a starting
+   point; it lives in `pieces/system/keybinds.pdl` / a menu descriptor
+   so it can be refined later without a rebuild.
+2. **The board window is reframed as a normal sidebar+panel HQ window**
+   with the 2D/3D view as a `<canvas>` inside the panel (was "option
+   2.2"). Chrome, nav, dropdowns, minimize, the taskbar entry, and the
+   footer entities bar then all come from the generic path with no
+   board-specific code. This is its own milestone (A) — the board's
+   existing fixes (fullscreen, drag zones, `managed` mode, `!`/`_`
+   chrome, canvas scaling) get a full regression pass.
+3. **The entities bar is an in-window bottom region**, not a second
+   strip process. With decision 2 it is just a generic bottom-dock
+   region in the same Elem tree — no proc-ledger entry, no edge-glue,
+   no leak risk. Needs one generic addition: a bottom/footer dock
+   region in `layout_sidebar_panel` (milestone B).
+4. Trigger: right-click (`Button3`) + `KEY | ctx_menu | 16` (Shift),
+   pdl-changeable.
 
 ---
 
@@ -120,30 +139,38 @@ descriptor dirs. That extraction **is** the first work item.
 
 ---
 
-## 3. Entities taskbar on the pc-hq board (opt-in)
+## 3. Entities bar along the bottom of the pc-hq window (opt-in)
 
-Mirror the livedesk **bottom** strip: one cell per world entity
-(chicken, tree-cluster, hero, xelector…), click → focus/inspect,
-right-click → the §2 menu.
+Mirror the livedesk bottom strip: one cell per world entity (chicken,
+tree-cluster, hero, xelector…), click → focus/inspect, right-click →
+the §2 menu — **inside** the pc-hq window's own bottom edge, not a
+separate process.
 
-- **Reuse:** `khtpm_taskbar_manager*.c` already builds a bottom
-  entity-strip from a live PID/entity set and renders it via
-  `khtpm_core_render` dock mode (`class="dock-bottom"`). The pc-hq board
-  window can host a **second dock-bottom strip** the same way the
-  desktop does — the manager already separates "which entity set" from
-  "how to draw a strip." Feed it pc-hq's world-entity list instead of
-  the livedesk desk's.
-- **Default OFF.** `pieces/system/pchq.pdl`:
-  `OPT | entities_taskbar | 0`. A `Menu ▸ View ▸ Entities bar` toggle
-  (see §4) flips it. Ship it false; let the user turn it on.
-- **Open question:** the board window is one X window; a child
-  dock-bottom strip is a second window glued to its bottom edge (the
-  desktop strip is its own top-level). Simplest first cut: the strip is
-  a row *inside* the board window's own Elem tree (a `<row
-  class="entities-bar" show="${entities_bar_on}">` of `<repeat>`
-  cells) — no second process, projector publishes the cell list. Only
-  promote to a real separate strip window if the in-window row proves
-  too cramped.
+**Resolved (decision 3):** once the board is a normal sidebar+panel
+window (decision 2 / milestone A), the entities bar is simply a
+**bottom-dock region in the same Elem tree**, laid out by the generic
+engine, published by the projector. No second process → nothing to
+spawn, leak, glue to a window edge, or register in
+`livedesk_proc_list.txt`. It moves/resizes/minimizes with the window
+because it *is* the window.
+
+**The one generic addition (milestone B):** `layout_sidebar_panel`
+today lays out `<tabbar>` (top) + `<sidebar>` (west) + `<panel>`
+(center). It has **no bottom region**. Add a generic bottom-dock zone —
+`<footer>` tag (or `<panel dock="bottom">`) — reserved height along the
+window's bottom edge, laid out after sidebar/panel. House-wide win: any
+HQ window can then carry a status/footer bar.
+
+**Cell rendering is reused, not re-grown.** The `<footer>` contains a
+`<repeat>` of dock-style cells using the SAME cell markup/CSS the
+livedesk strip's cells use (`class="dock-cell"` …). If that rendering
+isn't cleanly separable from `khtpm_taskbar_manager`, extracting it is
+part of milestone C — never a hand-rolled parallel row (§0).
+
+**Default OFF.** `pieces/system/pchq.pdl`:
+`OPT | entities_bar | 0`. A real `Menu ▸ View ▸ Entities bar` dropdown
+item (see §4) flips it; the projector emits `entities_bar_on` and the
+`<footer show="${entities_bar_on}">` appears/hides. Ship it false.
 
 ---
 
@@ -167,20 +194,17 @@ onclick="ACTIVATE"  class="dropdown-child"  target_id="<trigger id>"
 one active "open" trigger at a time, nav-scoped, Esc-to-close — zero new
 C.
 
-**The gap:** that primitive was wired for **default / sidebar+panel**
-mode. The board window renders in the **`has_canvas` flat-toolbar**
-layout, which the dropdown scope logic may not cover. Two options,
-pick one (decision needed):
+**The gap, and the resolution (decision 2).** That primitive was wired
+for **default / sidebar+panel** mode; the board today renders in the
+`has_canvas` flat-toolbar layout, which the scope logic doesn't cover.
+Rather than extend the `has_canvas` special case, **the board is
+reframed as a normal sidebar+panel window with the view as a `<canvas>`
+in the panel** (milestone A). Then dropdowns "just work" with zero
+board-specific code — along with chrome, minimize, nav, the taskbar
+entry and the §3 footer. `has_canvas` stays for genuinely chrome-less
+fullscreen canvases; the board is not one of those.
 
-1. **Extend the `ACTIVATE`/dropdown-child scope handling to the
-   `has_canvas` layout** — small, generic, benefits any future
-   canvas+toolbar app. Preferred.
-2. Give the board window a real sidebar/panel chrome frame around the
-   canvas so it's a default-mode window that happens to contain a
-   `<canvas>` — bigger change, but then *everything* generic (dropdowns,
-   chrome, taskbar entry, minimize) works with no special-casing.
-
-Either way the toolbar becomes:
+The toolbar becomes:
 
 ```
 <item id="tb-desk" onclick="ACTIVATE" target_id="tb-desk">Desk ▾</item>
@@ -201,37 +225,42 @@ and `Menu` becomes a real dropdown (`View ▸ Entities bar`, later
 | primitive | exists as | reuse path for pc-hq |
 |---|---|---|
 | entity context menu | `khtpm_core_render` entity-menu mode | **call as-is** once §1a descriptor-dir refactor lands |
-| dropdown menu | `ACTIVATE` + `dropdown-child` + `target_id` (default mode) | **refactor**: extend scope handling to `has_canvas` (§4.1) |
-| bottom entity strip | `khtpm_taskbar_manager` dock-bottom + `khtpm_core_render` dock mode | **reuse** the draw path; feed pc-hq's entity list (§3) |
+| dropdown menu | `ACTIVATE` + `dropdown-child` + `target_id` (default mode) | **free** once the board is a default-mode window (milestone A) |
+| board window frame | `layout_sidebar_panel` (chrome/nav/minimize/taskbar entry) | **reframe** the board onto it; `<canvas>` in the `<panel>` (milestone A) |
+| bottom-dock / footer region | *does not exist* in `layout_sidebar_panel` | **new, generic**: `<footer>` zone, house-wide (milestone B) |
+| entity-cell rendering | livedesk strip's `dock-cell` markup/CSS | **reuse** in the `<footer>` `<repeat>`; extract from `khtpm_taskbar_manager` if needed (milestone C) |
 | toolbar-item click routing | generic `action=` → shell verb, `onclick=` verbs | already used by pchq-board.xhtpm — keep |
 | entity record | livedesk = package dir; pc-hq = manifest row | **refactor**: a descriptor-dir shim so the menu doesn't care which |
 | click → world cell | per-frame raymarch first-hit | **new, tiny**: publish `pick.txt`; selector + `7.edit` reuse it |
 
-Nothing in this list is a from-scratch build. The two real refactors
-are: **(a)** the descriptor-dir extraction so the entity menu is
-world-agnostic, **(b)** dropdown scope in `has_canvas`.
+The real work: **(A)** reframe the board as a default-mode window,
+**(B)** add a generic `<footer>` dock region, **(C)** the descriptor-dir
+extraction so the entity menu is world-agnostic + reuse the dock-cell
+rendering. Everything else falls out.
 
 ---
 
-## 6. Rollout (all flags default false)
+## 6. Milestones (all pc-hq flags ship false)
 
 `pieces/system/pchq.pdl` (new, or fold into existing config):
 
 ```
 OPT | ctx_menu_enabled   | 1        # right-click / Shift → entity menu
 KEY | ctx_menu           | 16       # Shift; changeable
-OPT | entities_taskbar   | 0        # bottom entity strip (ship OFF)
+OPT | entities_bar       | 0        # bottom entities bar (ship OFF)
 ```
 
-Order:
-1. `pick.txt` per-frame cell pick (unlocks everything else).
-2. Descriptor-dir refactor + `pc_menu_input.c` right-click → launch the
-   shared entity menu → apply `action.txt` to world files. Delete a
-   voxel / a chicken end-to-end = the proof.
-3. `has_canvas` dropdown scope; convert `Desk` + `Menu` to real
-   dropdowns; `Menu ▸ View ▸ Entities bar` toggle.
-4. In-window entities bar row, projector-fed, default off.
-5. (Later) copy/cut/paste buffer shared with `7.edit`.
+| # | milestone | delivers / unblocks |
+|---|---|---|
+| **A** | **Reframe the board** onto `layout_sidebar_panel`: `<sidebar>` (thin/collapsible) + `<panel>` holding `<canvas id="view">`. Full regression pass on fullscreen, drag zones, `managed` mode, `!`/`_` chrome, and canvas scaling inside a panel (the real unknown). | generic chrome, nav, minimize, taskbar entry; **real `Desk`/`Menu` dropdowns for free** (drop the fake `show=` rows) |
+| **B** | **Generic `<footer>` dock region** in `layout_sidebar_panel` — reserved bottom-edge height, laid out after sidebar/panel, `show=`-able. | any HQ window can carry a status/footer bar |
+| **C** | **Entities bar**: projector emits the entity-cell list + `entities_bar_on`; `<footer show="${entities_bar_on}">` of `<repeat>` **`dock-cell`** cells (extract that rendering from `khtpm_taskbar_manager` if it isn't cleanly reusable). `Menu ▸ View ▸ Entities bar` toggles it. | familiar bottom entity bar, in-window, no new process |
+| **D** | **`pick.txt`** per-frame cell pick (raymarch first-hit → `pieces/display/pick.txt`: `x y z face kind`). | click→cell for the menu, the selector, and `7.edit` |
+| **E** | **Descriptor-dir refactor**: pull the entity-menu launch out of the livedesk-specific path so it takes a `kind=`/`x y z`/`template=` descriptor dir. `pc_menu_input.c` right-click / `Shift` → write descriptor → `fork+exec khtpm_core_render.+x` entity-menu mode → poll `action.txt` → apply to world files (`animals.txt`, chunk CSV, `hero_01/`). **Proof: delete a voxel and a chicken end-to-end.** | the actual feature |
+| **F** | *(later)* copy/cut/paste buffer shared with `7.edit`'s rectangle selector (§7). | — |
+
+A and D are independent and can run in parallel; B needs A; C needs B;
+E needs D (and benefits from A for positioning the popup).
 
 ---
 
@@ -249,15 +278,22 @@ Order:
 - `02-architecture/X11-HQ-APP-DESIGN-WISDOMS.md` — the sidebar/panel,
   dropdown, `<module>` mechanics.
 - `03-pitfalls/00-INDEX.md` → CPU safety — the board engine is already
-  the house's worst leak source; a second strip process (§3) must
-  register in `livedesk_proc_list.txt` or it becomes another `mon-hq`
-  BAD row.
+  the house's worst leak source. Decision 3 (in-window footer, no second
+  process) keeps it that way; if milestone C ever needs a helper
+  process, it must register in `livedesk_proc_list.txt` or it becomes
+  another `mon-hq` BAD row.
 
-## 8. Decisions needed from the user
+## 8. Decisions — RESOLVED 2026-09-10
 
-1. Verb list for the context menu (§2 draft table) — confirm / edit.
-2. Dropdown approach (§4): extend `has_canvas` scope (rec.) vs reframe
-   the board as a default-mode window.
-3. Entities bar (§3): in-window row first (rec.) vs real second strip
-   window.
-4. Default trigger key for the menu (`Shift` = `16` assumed).
+1. **Verb list** — §2 draft accepted as a start; pdl/descriptor-driven,
+   refine later without a rebuild.
+2. **Board window** — reframed onto `layout_sidebar_panel` with the view
+   as an in-panel `<canvas>` (milestone A). Not the `has_canvas`
+   special case.
+3. **Entities bar** — in-window bottom `<footer>` region (milestones
+   B+C), no second process.
+4. **Trigger** — right-click + `KEY | ctx_menu | 16` (Shift), changeable.
+
+Still open (implementation-time, not blocking): the canvas-scaling-in-a-
+panel unknown in milestone A; whether `dock-cell` rendering is cleanly
+extractable in C.
