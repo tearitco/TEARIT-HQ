@@ -12,7 +12,7 @@ window { background-color: #141414; font-family: Ubuntu; font-size: 10px; }
   background-color: #2f5f8f; color: #ffffff; }
 
 /* zero-width sidebar (only there to trigger the sidebar+panel layout) */
-.pchq-rail { width: 0px; }
+.pchq-rail { width: 2px; }
 
 /* bottom status/footer strip */
 .pchq-footer { background-color: #181818; border: 1px solid #2a2a2a; border-width: 1; height: 24px; }

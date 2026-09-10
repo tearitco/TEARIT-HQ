@@ -2533,6 +2533,25 @@ static void kh_serialize_frame_elem(FILE *f, Elem *e) {
  * uses (non-title children first, in order, title deferred to last at
  * each level) - PRESERVING draw order matters for real visual parity
  * (a later-drawn element can visually overlap an earlier one). */
+/* MILESTONE A polish (direct report: "desk dropdown renders UNDER the
+ * game map"). The per-level second-pass defer below only reorders
+ * dropdown-child WITHIN one container's subtree - a dropdown nested in
+ * an early sibling (the board's <sidebar id="rail">) still paints
+ * before a later sibling (<panel> with the <canvas>). Collect every
+ * non-dock dropdown-child tree-wide during the first pass and flush it
+ * AFTER everything (canvas, footer, chrome) via
+ * kh_serialize_frame_deferred(). */
+static Elem *g_ser_dd[32];
+static int g_ser_dd_n = 0;
+static void kh_serialize_frame_subtree(FILE *f, Elem *e);
+static void kh_serialize_frame_deferred(FILE *f) {
+    for (int i = 0; i < g_ser_dd_n; i++) {
+        kh_serialize_frame_elem(f, g_ser_dd[i]);
+        kh_serialize_frame_subtree(f, g_ser_dd[i]);
+    }
+    g_ser_dd_n = 0;
+}
+
 static void kh_serialize_frame_subtree(FILE *f, Elem *e) {
     for (int i = 0; i < e->n_children; i++) {
         Elem *c = e->children[i];
@@ -2548,15 +2567,20 @@ static void kh_serialize_frame_subtree(FILE *f, Elem *e) {
          * immediately painted-over by whatever line came after it in
          * this file, same real reason <title> is deferred below. Same
          * fix, same place, mirrored. */
-        if (elem_has_class(c, "dropdown-child")) continue;
+        if (elem_has_class(c, "dropdown-child")) {
+            /* dock keeps its own in-place menu paint; every other window
+             * defers tree-wide (flushed last by the caller). */
+            if (!window_is_dock() && g_ser_dd_n < 32) g_ser_dd[g_ser_dd_n++] = c;
+            continue;
+        }
         kh_serialize_frame_elem(f, c);
         kh_serialize_frame_subtree(f, c);
     }
     for (int i = 0; i < e->n_children; i++) {
         Elem *c = e->children[i];
         if (strcmp(c->tag, "title") == 0) kh_serialize_frame_elem(f, c);
-        else if (elem_has_class(c, "dropdown-child")) {
-            if (window_is_dock() && !g_dock_in_menu_paint) continue;
+        else if (elem_has_class(c, "dropdown-child") && window_is_dock()) {
+            if (!g_dock_in_menu_paint) continue;
             kh_serialize_frame_elem(f, c);
             kh_serialize_frame_subtree(f, c);
         }
@@ -7106,6 +7130,7 @@ static void redraw(void) {
         snprintf(tmpp, sizeof(tmpp), "%s.tmp", fpath);
         FILE *ff = fopen(tmpp, "w");
         if (ff) {
+            g_ser_dd_n = 0;
             kh_serialize_frame_subtree(ff, page);
             /* REAL, NEW 2026-09-01 - the sidebar+panel chrome "X"/"!"
              * pair (see their own static-storage declaration comment)
@@ -7129,6 +7154,9 @@ static void redraw(void) {
                 if (g_sbar_up_elem[sbi].w > 0) kh_serialize_frame_elem(ff, &g_sbar_up_elem[sbi]);
                 if (g_sbar_down_elem[sbi].w > 0) kh_serialize_frame_elem(ff, &g_sbar_down_elem[sbi]);
             }
+            /* MILESTONE A polish - open dropdown-child last so it paints
+             * OVER the <canvas> / <footer> (direct report). */
+            kh_serialize_frame_deferred(ff);
             fclose(ff); rename(tmpp, fpath);
         }
         {

@@ -34,23 +34,23 @@
     </tabbar>
 
     <!-- zero-width rail: satisfies layout_sidebar_panel's sidebar+panel
-         trigger AND hosts the dropdown-child overlays (the generic
-         overlay pass runs per-container inside layout_fixed_rows_and_
-         scrolllist; a page-level <panel class="dropdown-child"> is
-         never laid out). Triggers are found window-wide by id, so they
-         stay in the <tabbar>. -->
+         trigger AND hosts the dropdown rows. The generic overlay pass
+         (in layout_fixed_rows_and_scrolllist) wants FLAT sibling
+         <item class="dropdown-child" target_id="X">, stacked below
+         trigger X (same shape co-lab-hai uses), NOT a wrapping panel.
+         Triggers stay in the <tabbar>, found window-wide by id.
+         Painted last (over the canvas) - kh_serialize_frame_deferred. -->
     <sidebar id="rail" class="pchq-rail sidebar">
-      <panel class="dropdown-child" target_id="tb-desk">
-        <repeat count="${n_desk_opts}" bind="d">
-          <item id="do-${d.#}" class="pchq-menu-row ${d.active}" label="${d.label}"
-                action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'desk' '${d.#}'"/>
-        </repeat>
-      </panel>
-      <panel class="dropdown-child" target_id="tb-menu">
-        <item id="mn-entbar" class="pchq-menu-row" label="Entities bar on/off"
-              action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_toggle_pdl_opt.sh' '${HOUSE}/@.apps/piececraft-hq/pieces/system/pchq.pdl' 'entities_bar'"/>
-        <item id="mn-db" class="pchq-menu-row quiet" label="Db (todo)" action="void"/>
-      </panel>
+      <repeat count="${n_desk_opts}" bind="d">
+        <item id="do-${d.#}" class="pchq-menu-row dropdown-child ${d.active}" target_id="tb-desk"
+              label="${d.label}"
+              action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'desk' '${d.#}'"/>
+      </repeat>
+      <item id="mn-entbar" class="pchq-menu-row dropdown-child" target_id="tb-menu"
+            label="Entities bar on/off"
+            action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_toggle_pdl_opt.sh' '${HOUSE}/@.apps/piececraft-hq/pieces/system/pchq.pdl' 'entities_bar'"/>
+      <item id="mn-db" class="pchq-menu-row dropdown-child quiet" target_id="tb-menu"
+            label="Db (todo)" action="void"/>
     </sidebar>
 
     <panel id="view-panel" class="pchq-view">
