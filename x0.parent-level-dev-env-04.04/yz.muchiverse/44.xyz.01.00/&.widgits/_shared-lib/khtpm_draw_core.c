@@ -589,11 +589,18 @@ static void kh_draw_canvas(Elem *e) {
      * on screen (below) instead of blanking - no visible flicker, same
      * spirit as the old implementation apparently already had. */
     if (w <= 0 || h <= 0) {
-        if (!c_img) {
+        /* bad receipt tick (read landed mid-write -> w/h==0). redraw()
+         * has already cleared the window buffer, so returning here
+         * leaves the canvas box grey - re-blit the LAST good frame
+         * instead (fall through with its cached size). Only fill when
+         * there's genuinely nothing cached yet. */
+        if (c_img && c_w > 0 && c_h > 0) {
+            w = c_w; h = c_h;
+        } else {
             XSetForeground(dpy, gc, alloc_pixel("#101014"));
             XFillRectangle(dpy, buf, gc, e->x, e->y, (unsigned)e->w, (unsigned)e->h);
+            return;
         }
-        return;
     }
     if (strcmp(c_path, spr) != 0 || c_w != w || c_h != h || !c_img) {
         snprintf(c_path, sizeof(c_path), "%s", spr);

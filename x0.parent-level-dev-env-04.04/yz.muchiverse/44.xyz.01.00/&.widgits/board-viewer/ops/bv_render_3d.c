@@ -1464,8 +1464,14 @@ static void write_file_atomic(const char *path, const void *data, size_t len) {
     if (!f) return;
     if (fwrite(data, 1, len, f) != len) { fclose(f); remove(tmp_path); return; }
     fclose(f);
-    /* Windows rename does not overwrite existing dest (muta/wsr fix). */
+#ifdef _WIN32
+    /* Windows rename does not overwrite an existing dest. Elsewhere,
+     * rename(2) atomically replaces it - do NOT remove(path) first:
+     * that leaves the file MISSING for a moment every frame, and a
+     * consumer (khtpm's kh_draw_canvas) that stats it in that window
+     * paints one grey frame. Visible as a flicker during a move. */
     remove(path);
+#endif
     if (rename(tmp_path, path) != 0) {
         FILE *out = host_fopen(path, "wb");
         if (out) { fwrite(data, 1, len, out); fclose(out); }
