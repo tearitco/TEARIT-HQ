@@ -81,4 +81,11 @@ short version.*
       the page URL and hit real servers (fixed the prelude `splitParts`
       double-port bug on base URLs with explicit ports; worker
       `resolve_doc_url()` fallback + resolved URL in fetch errors). Only rung
-      7 CSS/layout awareness remains as an honest gap.
+      7 CSS/layout awareness remains as an honest gap. Hardening LANDED
+      (2026-09-10): shared per-house cookie jar for page/script/worker
+      curls (`nb_curl_cookies.txt` — server Set-Cookie persists + is
+      retransmitted, worker fetch same-origin; separate from the
+      `document.cookie` jar), browser-correct `script_type_skip` (template/
+      module/non-JS types never run) and noscript script suppression, and
+      a real remote-site smoke test (example.com redirect + httpbin cookie
+      round-trip + iana full page through the ladder).

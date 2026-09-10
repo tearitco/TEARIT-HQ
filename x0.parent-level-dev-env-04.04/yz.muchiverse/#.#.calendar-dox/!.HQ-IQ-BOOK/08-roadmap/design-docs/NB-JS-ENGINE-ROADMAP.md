@@ -337,6 +337,47 @@ plausible stub, `MutationObserver` (can no-op then improve),
 >   HTTP. All 7 worker suites + 18-case `cli_test` + `sh build.sh` (4
 >   binaries) green post-fix.
 
+> **Rung 6 remainder hardening — cookie parity, script-tag edges, real
+> remote breadths: LANDED 2026-09-10.** Three follow-ups to the localhost
+> http proof, each E2E-verified against live servers:
+> - **Same-origin cookie parity.** Page loads, `<script src>` fetches, and
+>   the worker's JS-side `fetch`/XHR now share ONE per-house Netscape jar,
+>   `<house>/#.desktop/nb_curl_cookies.txt` (manager curls pass `-b/-c`;
+>   the worker gets it via `NB_CURL_COOKIES_FILE` and emits `cookie` +
+>   `cookie-jar` in its curl config). Server `Set-Cookie` byte-persists
+>   across navigations and is retransmitted; worker fetch sees the same
+>   cookies. Live E2E (custom fixture server): fresh house `guard` →
+>   `guard-fail`; page sets `sess=abc123` via `Set-Cookie`; next request to
+>   a guarded route → `guard-ok`; JS `fetch()` to a guarded API →
+>   `ok:true`. Scope note: this jar is separate from the rung-6
+>   `document.cookie` jar (`NB_COOKIES_FILE`, `wck`) — JS-written cookies
+>   and wire cookies are not yet merged.
+> - **Script-tag edge audit.** `script_type_skip` was allowlisting
+>   (`module`/`json`/`ld+json`) and thus RAN unknown types like
+>   `text/template` as broken JS (WERR noise). Rewritten to browser rules:
+>   run only absent/empty-type or any `*javascript*` MIME; skip everything
+>   else. Added `in_noscript_block` — with scripting enabled, browsers
+>   neither render `<noscript>` content nor run its `<script>` children;
+>   the DOM serializer already dropped noscript, but `collect_scripts`
+>   still ran the inner scripts. Both now skipped. `async`/`defer` are
+>   documented as doc-order (defer-consistent) — async reordering is not
+>   modeled.
+> - **Real remote-site smoke test** (internet egress present): the ladder
+>   fetched real third-party pages — `http://example.com` renders
+>   `TITLE|Example Domain` through the 301→https redirect (no TLS
+>   machinery of our own, curl handles it); `https://httpbin.org/cookies/
+>   set/fruit/kiwi` redirected with the fresh cookie retransmitted on the
+>   follow (response body echoes `{ "cookies": { "fruit": "kiwi" } }` and
+>   the jar holds the scoped `httpbin.org` entry); a full production page
+>   (`https://www.iana.org/help/example-domains`, utf-8) extracted
+>   `TITLE`/`LINK`/`IMG` and ran all of jQuery + dtable + relative-time as
+>   external script slices resolved against the https base — zero WERR.
+> Operational landmine surfaced while testing: spawning the manager
+> repeatedly at the same house without killing the previous instance stacks
+> several managers racing on the shared request/state files (stale-binary
+> writes corrupted results). A single-instance guard is a future hardening;
+> testing discipline: kill before re-launch.
+
 ### Rung 7 — CSS/layout awareness  *(optional, large, defer)*
 `getBoundingClientRect`, `offsetWidth/Height`, `display:none`
 visibility. Needed by carousels / lazy-loaders / sticky headers.

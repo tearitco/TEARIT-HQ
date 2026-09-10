@@ -398,3 +398,36 @@ Merge `origin/opencode` (commits after the Phase-2 notice).
 - All 7 worker suites + 18-case cli_test + `sh build.sh` (4 binaries)
   green post-fix. No renderer/chtpm core changes. Only rung 7
   CSS/layout awareness remains as an honest gap.
+
+## NOTICE 2026-09-10 — follow-up hardenings: cookie parity + script edges + real-site smoke
+
+Merge `origin/opencode` (commits after the http-breadth notice).
+
+- **Same-origin cookie parity.** Page loads, `<script src>` fetches, and
+  worker JS-side `fetch`/XHR share one per-house jar, `#.desktop/
+  nb_curl_cookies.txt` (manager curls `-b/-c`; worker gets it via
+  `NB_CURL_COOKIES_FILE` and emits `cookie` + `cookie-jar` in its curl
+  config). Live E2E: fresh-house guarded route → `guard-fail`; a page's
+  Set-Cookie persists; guarded route → `guard-ok`; worker fetch to a
+  guarded API → `ok:true`. Known boundary: this wire jar is separate from
+  the `document.cookie` jar (`NB_COOKIES_FILE`) — JS-written vs wire
+  cookies not yet merged.
+- **Script-tag edges.** `script_type_skip` rewritten to browser rules —
+  run only absent/empty-type or `*javascript*` MIME scripts, skip the rest
+  (was allowlisting module/json/ld+json, so `text/template` ran as broken
+  JS). New `in_noscript_block` guard: `<script>` inside `<noscript>` no
+  longer runs (browsers with scripting enabled run none of it); the DOM
+  serializer already dropped noscript. `async`/`defer` documented as
+  doc-order (defer-consistent); async reorder not modeled.
+- **Real remote-site smoke test** (this machine has internet egress):
+  `http://example.com` → `TITLE|Example Domain` through the 301→https
+  redirect; `https://httpbin.org/cookies/set/fruit/kiwi` → fresh cookie
+  retransmitted on the follow (body echoes `{"cookies":{"fruit":"kiwi"}}`,
+  jar holds the scoped `httpbin.org` entry); full production page
+  `https://www.iana.org/help/example-domains` → TITLE/LINK/IMG + jQuery +
+  dtable + relative-time as external slices, zero WERR.
+- **Operational landmine (test discipline, not a code bug):** repeatedly
+  `go:`-driving the same live house without killing the previous manager
+  stacks several managers racing on shared request/state files — stale
+  binaries corrupt results. Kill before relaunch; a single-instance guard
+  is opened as future hardening. All gates green (29 PASS, 4 binaries).
