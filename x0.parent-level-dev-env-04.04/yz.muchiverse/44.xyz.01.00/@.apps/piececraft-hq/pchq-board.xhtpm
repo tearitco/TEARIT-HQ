@@ -46,11 +46,15 @@
               label="${d.label}"
               action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'desk' '${d.#}'"/>
       </repeat>
+      <item id="dm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-desk"
+            label="- cancel -" action="void"/>
       <item id="mn-entbar" class="pchq-menu-row dropdown-child" target_id="tb-menu"
             label="Entities bar on/off"
             action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_toggle_pdl_opt.sh' '${HOUSE}/@.apps/piececraft-hq/pieces/system/pchq.pdl' 'entities_bar'"/>
       <item id="mn-db" class="pchq-menu-row dropdown-child quiet" target_id="tb-menu"
             label="Db (todo)" action="void"/>
+      <item id="mn-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-menu"
+            label="- cancel -" action="void"/>
     </sidebar>
 
     <panel id="view-panel" class="pchq-view">

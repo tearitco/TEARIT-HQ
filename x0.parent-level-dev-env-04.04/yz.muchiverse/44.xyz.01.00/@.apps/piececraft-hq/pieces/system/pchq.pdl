@@ -6,4 +6,4 @@ META         | note               | piececraft-hq board options. Read by ops/pch
 # MILESTONE C (PCHQ-ENTITY-MENU-AND-TASKBAR-DESIGN.md) - the board's
 # <footer> entities bar (one cell per world entity, click = its context
 # menu). Ships OFF; Menu > Entities bar toggles it.
-OPT        | entities_bar | 0
+OPT        | entities_bar | 1
