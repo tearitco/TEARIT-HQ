@@ -50,6 +50,24 @@ file itself.**
 That's the whole rule. Everything below is the real history that led
 here, and the real, concrete consequences of the rule.
 
+### 1a. The reuse corollary — refactor & reuse, never rewrite
+
+**When one app (pc-hq, a widget, a game view) needs a capability another
+part of the house already has — a context menu, a taskbar cell, a
+dropdown, click routing, an entity record — the answer is always either
+(1) call the existing binary/mode as-is over fork+exec + file IPC, or
+(2) refactor the existing code so both callers share the *same*
+implementation, then call that. It is never "write a private copy."**
+
+A parallel second implementation of a house primitive is a defect on
+sight, no matter how small it looks. If sharing requires a refactor
+first, the refactor *is* the task. The pc-hq board's hand-built
+File/Desk "dropdown" (mode-specific C predating this document) is the
+canonical example of the anti-pattern — see
+`44.xyz.01.00/@.apps/piececraft-hq/PCHQ-ENTITY-MENU-AND-TASKBAR-DESIGN.md`
+§0. Future agents: honor this even when the literal request sounds like
+"just add a menu here."
+
 ---
 
 ## 2. The real history — four real stages, not one mistake and one fix
