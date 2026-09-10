@@ -7024,6 +7024,143 @@ static void dock_write_ascii_frame(void) {
  * KEY_PRESSED lines into #.desktop/entity_menu_history/<pid>.txt. The
  * dock keeps its own strip_ascii_* filenames (the cli launcher + docs
  * point at them) - it's the already-shipped special case. */
+/* REAL, NEW 2026-09-10 - frame-history receipts design doc,
+ * kh_write_ascii_frame()'s own helpers. FNV1a over the canonical frame
+ * text: the "did the frame really change" test (only_on_change, the
+ * receipts.conf policy key the design maps 1:1) - byte-identical
+ * re-renders append nothing to history and mint no receipts. */
+static unsigned long long kh_fnv1a64(const unsigned char *p, size_t n) {
+    unsigned long long h = 1469598103934665603ULL;
+    for (size_t i = 0; i < n; i++) { h ^= (unsigned char)p[i]; h *= 1099511628211ULL; }
+    return h;
+}
+
+/* L1 - the durable, append-only per-window frame history, mirroring the
+ * dock's own strip_ascii_frame_history.txt discipline (timestamped block
+ * header, rotate past 512KB) on the per-PID non-dock mirror. This is an
+ * OUTPUT audit trail, not an input relay (no byte-cursor consumer), so
+ * plain append + rotate is the whole story; the caller gates it on real
+ * change so idle repaints never bloat it. */
+static void kh_append_ascii_history(const char *dir, int pid, const char *base, const char *ts,
+                                    const char *fbuf, size_t flen) {
+    char hpath[PATH_BUF];
+    snprintf(hpath, sizeof(hpath), "%s/%d.frame_history.txt", dir, pid);
+    FILE *h = fopen(hpath, "a");
+    if (h) {
+        struct stat st;
+        if (fstat(fileno(h), &st) == 0 && st.st_size > 512 * 1024) { fclose(h); h = fopen(hpath, "w"); }
+    }
+    if (!h) return;
+    fprintf(h, "\n=== %s pid %d  %s ===\n", base, pid, ts);
+    fwrite(fbuf, 1, flen, h);
+    fclose(h);
+}
+
+/* L2 - OBJECT-lines pdl: one machine-readable row per element the
+ * readable mirror actually shows (dock_ascii_walk's own row predicate:
+ * has a label or a real nav number, and is not a bare container), with
+ * the real laid-out geometry + nav + active state. This is the TMOS
+ * scene.objects.pdl shape, so two snapshots diff as data, not pixels. */
+static void kh_receipt_objects_walk(FILE *f, Elem *e) {
+    if (!e) return;
+    int is_container = (strcmp(e->tag, "window") == 0 || strcmp(e->tag, "page") == 0 ||
+                        strcmp(e->tag, "sidebar") == 0 || strcmp(e->tag, "panel") == 0 ||
+                        strcmp(e->tag, "row") == 0 || strcmp(e->tag, "tabbar") == 0 ||
+                        strcmp(e->tag, "scrolllist") == 0 || strcmp(e->tag, "module") == 0);
+    if (e->y >= -1000 && !is_container && (e->label[0] != '\0' || e->nav_index > 0)) {
+        char classes_joined[CSS_MAX_CLASSES * 33] = "";
+        for (int i = 0; i < e->n_classes; i++) {
+            if (i > 0) strcat(classes_joined, ",");
+            strcat(classes_joined, e->classes[i]);
+        }
+        fprintf(f, "OBJECT tag=%s id=%s class=%s x=%d y=%d w=%d h=%d nav=%d active=%d label=%s\n",
+                e->tag[0] ? e->tag : "-", e->id[0] ? e->id : "-",
+                classes_joined[0] ? classes_joined : "-",
+                e->x, e->y, e->w, e->h, e->nav_index, e->active,
+                e->label[0] ? e->label : "-");
+    }
+    for (int i = 0; i < e->n_children; i++) kh_receipt_objects_walk(f, e->children[i]);
+}
+
+static int s_receipt_seq = 0;
+
+/* L2 - the TMOS/wraith-shaped receipt PDL for one real rendered frame:
+ * serials, the source frame/history files, a FNV1a checksum of the
+ * canonical frame text, geometry + focus, and the linked OBJECTs pdl.
+ * <pid>.receipt.pdl is the always-current mirror; <pid>.<seq>.* are
+ * locked snapshots. L3 - the one-line-per-snapshot index ledger, bounded
+ * to the last 50 entries (receipts.conf max_entries, built-in default -
+ * no config file required, per the design doc). */
+static void kh_write_frame_receipt(const char *dir, int pid, const char *base, unsigned long long dig) {
+    int seq = ++s_receipt_seq;
+    char rlat[PATH_BUF], rsnap[PATH_BUF], op[PATH_BUF];
+    snprintf(rlat,  sizeof(rlat),  "%s/%d.receipt.pdl", dir, pid);
+    snprintf(rsnap, sizeof(rsnap), "%s/%d.%d.receipt.pdl", dir, pid, seq);
+    snprintf(op,    sizeof(op),    "%s/%d.%d.objects.pdl", dir, pid, seq);
+
+    time_t now = time(NULL);
+    char iso[40];
+    strftime(iso, sizeof(iso), "%Y-%m-%dT%H:%M:%SZ", gmtime(&now));
+    const char *label = (g_window && g_window->label[0]) ? g_window->label : base;
+
+    FILE *of = fopen(op, "w");
+    if (of) { kh_receipt_objects_walk(of, g_window); fclose(of); }
+
+    char *rbuf = NULL; size_t rlen = 0;
+    FILE *r = open_memstream(&rbuf, &rlen);
+    if (!r) return;
+    fprintf(r, "receipt_type=kh_x11_framesnapshot\n");
+    fprintf(r, "generated_by=khtpm_core_render\n");
+    fprintf(r, "generated_at_epoch=%ld\n", (long)now);
+    fprintf(r, "generated_at_iso_utc=%s\n", iso);
+    fprintf(r, "receipt_generation_key=%d@%ld\n", pid, (long)now);
+    fprintf(r, "window=%s\n", label);
+    fprintf(r, "chtpm=%s\n", base);
+    fprintf(r, "page=%s\n", g_current_page[0] ? g_current_page : "-");
+    fprintf(r, "vars=%s\n", g_vars_path[0] ? g_vars_path : "-");
+    fprintf(r, "source_frame_txt=ascii_frames/%d.frame.txt\n", pid);
+    fprintf(r, "source_history_txt=ascii_frames/%d.frame_history.txt\n", pid);
+    fprintf(r, "frame_checksum_fnv1a64=0x%016llx\n", dig);
+    fprintf(r, "viewport_w=%d\n", g_win_w);
+    fprintf(r, "viewport_h=%d\n", g_win_h);
+    fprintf(r, "focus_nav=%d\n", g_focus_nav);
+    fprintf(r, "n_nav=%d\n", g_n_nav);
+    fprintf(r, "objects_pdl=ascii_frames/%d.%d.objects.pdl\n", pid, seq);
+    fprintf(r, "png=-\n");
+    fclose(r);
+
+    FILE *fa = fopen(rsnap, "w");
+    if (fa) { fwrite(rbuf, 1, rlen, fa); fclose(fa); }
+    FILE *fl = fopen(rlat, "w");
+    if (fl) { fwrite(rbuf, 1, rlen, fl); fclose(fl); }
+    free(rbuf);
+
+    char ipath[PATH_BUF];
+    snprintf(ipath, sizeof(ipath), "%s/index.txt", dir);
+    char all[1024 * 512] = "";
+    size_t alln = 0;
+    { FILE *fi = fopen(ipath, "r");
+      if (fi) {
+          long sz; fseek(fi, 0, SEEK_END); sz = ftell(fi); fseek(fi, 0, SEEK_SET);
+          if (sz > 0 && sz < (long)sizeof(all) - 1) { alln = (size_t)fread(all, 1, (size_t)sz, fi); all[alln] = '\0'; }
+          fclose(fi); } }
+    int nl = 0;
+    for (char *p = all; (p = strchr(p, '\n')) != NULL; p++) nl++;
+    if (nl >= 50) {
+        char *p = all;
+        for (int i = 0; i < nl - 49; i++) { char *n = strchr(p, '\n'); if (!n) break; p = n + 1; }
+        FILE *fo = fopen(ipath, "w");
+        if (fo) { fputs(p, fo); fclose(fo); }
+    }
+    FILE *fa2 = fopen(ipath, "a");
+    if (fa2) {
+        /* label may carry spaces - index uses the chtpm basename (safe
+         * whitespace-splittable third field) + the checksum for the diff */
+        fprintf(fa2, "%s %d %s %d 0x%016llx\n", iso, pid, base, seq, dig);
+        fclose(fa2);
+    }
+}
+
 static void kh_write_ascii_frame(void) {
     if (!g_window || window_is_dock()) return;
 
@@ -7039,21 +7176,44 @@ static void kh_write_ascii_frame(void) {
     time_t now = time(NULL);
     strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", localtime(&now));
 
+    /* Serialize the readable frame into memory ONCE - the SAME bytes
+     * feed (a) the live <pid>.frame.txt overwrite, (b) the DIAMOND
+     * pulse, and (c) the on-change history + receipt writers, so the
+     * presenter, the live file, the durable history block and the
+     * receipt all describe one canonical serialization - no drift. */
+    char *fbuf = NULL; size_t flen = 0;
+    FILE *ms = open_memstream(&fbuf, &flen);
+    if (!ms) return;
+    fprintf(ms, "--- %s  pid %d  %s ---\n", base, (int)getpid(), ts);
+    if (g_current_page[0]) fprintf(ms, "--- page: %s ---\n", g_current_page);
+    dock_ascii_walk(ms, g_window, 0);
+    fclose(ms);
+
     FILE *f = fopen(fpath, "w");
-    if (!f) return;
-    fprintf(f, "--- %s  pid %d  %s ---\n", base, (int)getpid(), ts);
-    if (g_current_page[0]) fprintf(f, "--- page: %s ---\n", g_current_page);
-    dock_ascii_walk(f, g_window, 0);
-    fclose(f);
+    if (f) { fwrite(fbuf, 1, flen, f); fclose(f); }
 
     struct stat pst;
     const char *mode = (stat(ppath, &pst) == 0 && pst.st_size > 64 * 1024) ? "w" : "a";
     FILE *pf = fopen(ppath, mode);
     if (pf) { fputc('P', pf); fclose(pf); }
+
+    /* only_on_change: byte-identical re-renders (idle mouse-move
+     * repaints) append no history block and mint no receipts */
+    static unsigned long long s_last_dig = 0;
+    static int s_init = 0;
+    unsigned long long dig = kh_fnv1a64((const unsigned char *)fbuf, flen);
+    if (!s_init || dig != s_last_dig) {
+        s_init = 1; s_last_dig = dig;
+        kh_append_ascii_history(dir, (int)getpid(), base, ts, fbuf, flen);
+        kh_write_frame_receipt(dir, (int)getpid(), base, dig);
+    }
+    free(fbuf);
 }
 
-/* Real cleanup counterpart - a closed window's frame/pulse pair
- * shouldn't linger. Called from the same quit paths as
+/* Real cleanup counterpart - a closed window's live frame/pulse pair
+ * shouldn't linger. The frame_history.txt receipt/history stream is a
+ * durable audit trail (frame-history receipts design doc), so it stays
+ * AFTER the window closes. Called from the same quit paths as
  * history_unregister(). */
 static void kh_ascii_frame_unregister(void) {
     char p[PATH_BUF];
