@@ -60,7 +60,11 @@ involving live windows or shared files.*
     `button.sh` outside the taskbar — those must spawn via `kh_spawn` /
     `kh_spawn.sh` or call `kh_proc_self_register()` in `main()` to be
     covered. Until an app is migrated, after a test still `ps aux |
-    grep` for its manager/engine names and confirm zero strays.
+    grep` for its manager/engine names and confirm zero strays — or
+    just open **`mon-hq`** (HQ menu → `mon`, or
+    `sh 44.xyz.01.00/&.hq-apps/mon-hq/mon_scan.sh list`), which
+    classifies every board/engine/hq process GOOD vs BAD and reaps the
+    BAD ones. See `00-INDEX.md` → **CPU safety**.
 10. **Never end a work block with uncommitted code.** Uncommitted work
     is fire-able: it literally died once here (the whole nb-js-worker
     step-6/7 set was lost when its only copy lived in the working tree

@@ -1,34 +1,39 @@
 <!-- mon-hq.xhtpm - "session monitor" HQ window.
-     Lists every board/engine/hq process the house can spawn, classes
-     each (shell / pal / singleton / child / orphan / detached), marks
-     the stray ones, and offers a one-click "KILL ALL STRAY".
-
-     Backend: <module> forks mon_refresh.sh, a plain shell loop that
-     re-runs `mon_scan.sh publish state/ui.txt` every couple seconds.
-     The renderer substitutes ${...} from state/ui.txt and re-reads it
-     when it changes (same shape as stats-hq-pal.xhtpm, minus prisc).
-
-     class must NOT be a bare built-in mode name ("stats-hq" etc.) or
-     the renderer's C fast-path trips - "mon-hq" is safe. -->
+     Two headings: GOOD (owned / accounted for) and BAD (stray / leaked).
+     Backend: <module> forks mon_refresh.sh, a shell loop that re-runs
+     `mon_scan.sh publish state/ui.txt` every couple seconds. The
+     renderer substitutes ${...} from state/ui.txt and re-reads it when
+     it changes (same shape as stats-hq-pal.xhtpm, minus prisc).
+     class "mon-hq" is safe (no built-in C fast-path trips on it). -->
 <window label="Session Monitor" class="mon-hq database-window" vars="state/ui.txt">
   <module id="mon_refresh" src="&.hq-apps/mon-hq/mon_refresh.sh"/>
   <page name="main">
     <panel id="bar" class="settings-block">
-      <text label="scanned ${scan_time}  -  ${rows_count} house proc(s), ${stray_count} stray" class="block-title"/>
+      <text label="scanned ${scan_time}  -  ${good_count} good / ${bad_count} bad" class="block-title"/>
       <row>
         <item class="btn" label="   refresh now   " action="sh '${PKG}/mon_scan.sh' publish '${PKG}/state/ui.txt'"/>
-        <item class="btn danger" label="   KILL ALL STRAY   " action="sh '${PKG}/mon_scan.sh' kill-all"/>
+        <item class="btn danger" label="   KILL ALL BAD   " action="sh '${PKG}/mon_scan.sh' kill-all"/>
         <item class="btn danger" label="  + pals/singletons  " action="sh '${PKG}/mon_scan.sh' kill-all --with-pals"/>
       </row>
-      <text label="stray PIDs: ${stray_pids}" class="quiet"/>
     </panel>
-    <panel id="list" class="settings-block">
-      <text label="'!' = stray (no live owner / leaked stack / unregistered engine)" class="quiet"/>
+
+    <panel id="bad" class="settings-block">
+      <text label="BAD - stray / leaked (no live owner, or a detached engine stack)" class="block-title"/>
       <scrolllist class="from-top">
-        <repeat count="${rows_count}" bind="row">
-          <text label="${row.text}"/>
+        <repeat count="${bad_count}" bind="b">
+          <text label="${b.text}"/>
         </repeat>
-        <text label="(nothing running that this house spawned - clean)" class="quiet" show="${clean}"/>
+        <text label="(none - nothing leaked)" class="quiet" show="${no_bad}"/>
+      </scrolllist>
+    </panel>
+
+    <panel id="good" class="settings-block">
+      <text label="GOOD - owned / accounted for (taskbar, pals, managers, live -hq windows)" class="block-title"/>
+      <scrolllist class="from-top">
+        <repeat count="${good_count}" bind="g">
+          <text label="${g.text}"/>
+        </repeat>
+        <text label="(nothing running that this house spawned)" class="quiet" show="${no_good}"/>
       </scrolllist>
     </panel>
   </page>

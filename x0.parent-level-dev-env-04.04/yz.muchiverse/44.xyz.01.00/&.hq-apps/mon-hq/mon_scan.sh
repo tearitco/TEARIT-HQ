@@ -302,52 +302,67 @@ STRAY_PGIDS=$(printf '%s\n' "$ROWS" | awk -F'|' '$7==1 {print $3}' | sort -u | t
 # ================= modes ==========================================
 MODE="${1:-list}"
 
+print_section() {   # $1 = want-stray (0/1), $2 = heading
+    _any=0
+    printf '%s\n' "$ROWS" | sort -t'|' -k4,4nr | while IFS='|' read -r pid ppid pgid age cpu class stray led note short; do
+        [ -z "$pid" ] && continue
+        [ "$stray" = "$1" ] || continue
+        if [ "$_any" = 0 ]; then printf '\n== %s ==\n' "$2"; _any=1; fi
+        printf '  %-7s %-11s %-6s %6s  %s\n' "$pid" "[$class]" "$(human_age "$age")" "$cpu" "$note"
+        printf '          %s\n' "$short"
+    done
+}
+
 case "$MODE" in
 list)
-    printf '%-8s %-8s %-6s %-7s %5s  %-11s %-5s %s\n' \
-        PID PPID PGID AGE "%CPU" CLASS LEDG NOTE
-    printf '%s\n' "$ROWS" | sort -t'|' -k7,7nr -k4,4nr | while IFS='|' read -r pid ppid pgid age cpu class stray led note short; do
-        [ -z "$pid" ] && continue
-        mark=' '; [ "$stray" = 1 ] && mark='*'
-        printf '%s%-7s %-8s %-6s %-7s %5s  %-11s %-5s %s\n' \
-            "$mark" "$pid" "$ppid" "$pgid" "$(human_age "$age")" "$cpu" "$class" "$led" "$note"
-        printf '         └─ %s\n' "$short"
-    done
-    echo
     n=$(printf '%s\n' "$ROWS" | awk -F'|' '$1!=""' | wc -l | tr -d ' ')
     ns=$(echo $STRAY_PIDS | wc -w | tr -d ' ')
-    echo "matched $n house proc(s); $ns marked stray (*)."
+    ng=$((n - ns))
+    print_section 0 "GOOD  ($ng) - owned / accounted for"
+    print_section 1 "BAD   ($ns) - stray / leaked (no live owner)"
+    echo
+    echo "matched $n house proc(s): $ng good, $ns bad."
     if [ "$ns" -gt 0 ]; then
-        echo "stray PIDs : $STRAY_PIDS"
-        echo "kill them  : sh '$SELF_DIR/mon_scan.sh' kill-all"
+        echo "bad PIDs  : $STRAY_PIDS"
+        echo "reap them : sh '$SELF_DIR/mon_scan.sh' kill-all"
+    else
+        echo "nothing stray - clean."
     fi
     ;;
 
 publish)
     OUT="${2:-$SELF_DIR/state/ui.txt}"
     tmp="$OUT.tmp.$$"
+    emit_rows() {   # $1 = want-stray, $2 = key prefix  -> lines "<prefix>_N_text=..."
+        _i=0
+        printf '%s\n' "$ROWS" | sort -t'|' -k4,4nr | while IFS='|' read -r pid ppid pgid age cpu class stray led note short; do
+            [ -z "$pid" ] && continue
+            [ "$stray" = "$1" ] || continue
+            printf '%s_%s_text=%-7s %-11s %-6s cpu:%-4s %-5s  %s\n' \
+                "$2" "$_i" "$pid" "[$class]" "$(human_age "$age")" "$cpu" "$led" "$short"
+            _i=$((_i+1))
+        done
+    }
     {
         echo "scan_time=$(date '+%H:%M:%S')"
         echo "house_root=$HOUSE_ROOT"
-        n=0
-        printf '%s\n' "$ROWS" | sort -t'|' -k7,7nr -k4,4nr | while IFS='|' read -r pid ppid pgid age cpu class stray led note short; do
-            [ -z "$pid" ] && continue
-            mark=' '; [ "$stray" = 1 ] && mark='!'
-            printf 'row_%s_text=%s %-7s %-9s a:%-7s cpu:%-4s %-11s %-5s  %s\n' \
-                "$n" "$mark" "$pid" "[$class]" "$(human_age "$age")" "$cpu" "$short" "$led" "$note"
-            n=$((n+1))
-        done > "$tmp.rows"
-        cat "$tmp.rows"; rm -f "$tmp.rows"
+        emit_rows 0 good
+        emit_rows 1 bad
         rc=$(printf '%s\n' "$ROWS" | awk -F'|' '$1!=""' | wc -l | tr -d ' ')
         sc=$(echo $STRAY_PIDS | wc -w | tr -d ' ')
+        gc=$((rc - sc))
         echo "rows_count=$rc"
+        echo "good_count=$gc"
+        echo "bad_count=$sc"
         echo "stray_count=$sc"
+        echo "bad_pids=$STRAY_PIDS"
         echo "stray_pids=$STRAY_PIDS"
-        if [ "$rc" -eq 0 ]; then echo "clean=1"; else echo "clean=0"; fi
-        if [ "$sc" -eq 0 ]; then echo "no_stray=1"; else echo "no_stray=0"; fi
+        [ "$gc" -eq 0 ] && echo "no_good=1" || echo "no_good=0"
+        [ "$sc" -eq 0 ] && echo "no_bad=1"  || echo "no_bad=0"
+        [ "$rc" -eq 0 ] && echo "clean=1"   || echo "clean=0"
     } > "$tmp"
     mv -f "$tmp" "$OUT"
-    echo "mon_scan: wrote $OUT"
+    echo "mon_scan: wrote $OUT ($gc good, $sc bad)"
     ;;
 
 kill-all)
