@@ -83,6 +83,60 @@ note under it — don't silently edit it away.*
   finding: `g_is_cursword`, nested inside `tp_main()`, is the live
   analog of what this entry was worried about).
 
+- **2026-09-10 — three bottom-taskbar / cross-window nav bugs (user-
+  reported, investigated, NOT yet fixed).** All live-confirmed on the
+  running desktop; captured here so the next pass doesn't re-derive.
+
+  1. **A new window's nav-jump number lands *before* older entities'
+     numbers.** Opening the pc-hq board gave it strip nav `16` while
+     pre-existing desk entities kept `17`–`23`, so the newer window
+     jumps *ahead* of them in Tab/digit order. Root cause: strip nav
+     is **positional, re-derived every frame** by layout x-order, not
+     stable per-entity. `g_dock_header_nav_hi` (khtpm_core_render.c
+     ~5065) is set to `g_n_nav` after the top strip row, then the
+     bottom-bar cells "continue above that" (~6853/6868) in
+     `khtpm_taskbar_manager`'s `s->tabs[]` order. A newly-registered
+     HQ window is inserted into `s->tabs[]` by that manager (by kind /
+     pid, not appended last), so every bottom cell after it shifts and
+     the window sits at whatever slot the insert chose. Fix direction:
+     append new HQ-window cells at the END of the bottom-bar tab list
+     (after all entity cells), or give each cell a stable id-keyed nav
+     that survives a relayout instead of a positional one.
+
+  2. **Bottom-strip arrow/Tab nav caps ~2 short of the last cell**
+     ("wont go past 22 - jumps back to 22 at 23, wont reach 24").
+     Live frame dump at the time: `g_n_nav = 24`, `dock-page-plus` =
+     nav 24. So navs 1–23 exist but focus won't cross ~22. Suspects,
+     in order: (a) the `g_dock_header_nav_hi` / `g_dock_peer_win`
+     split - `kh_nav_step`'s dock-confine loop
+     (`while (!kh_elem_arrow_stop(...))`) plus the focus-follows-window
+     handoff at khtpm_core_render.c ~7782/7797
+     (`want = (g_focus_nav > g_dock_header_nav_hi) ? peer : win`) can
+     strand focus at the top-strip/bottom-bar boundary; (b) a parked
+     (`nav_index = 0`) or `class="no-nav"` cell near the end that the
+     step skips into a wrap. Needs a live `g_focus_nav` trace while
+     arrowing 20→24 to pin which.
+
+  3. **Strip `+`/`-` pager sits off the visible right edge and isn't
+     aligned with the cells.** `dock_place_pager()` (khtpm_core_render.c
+     ~4306, changed 2026-09-10 to a horizontal `- +` pair) anchors the
+     `+` at `win_w - 8 - aw`. On this box the bottom strip `win_w` is
+     the Xwayland-reported width (wider than the visible monitor - the
+     same HiDPI/virtual-desktop gap the fullscreen fix works around),
+     so `x ≈ 2066` lands past the visible edge; the old lone `+` at
+     `win_w - DOCK_PAGER_W + 8` (`x ≈ 2024`) was 42px further in and
+     stayed visible. Also `DOCK_PAGER_W` (80px) still reserved on the
+     right while the pair needs ~48, so there's dead space and the
+     pair floats at the extreme right instead of "justified left"
+     right after the last cell (user's preference). Fix direction:
+     anchor the pair at `win_w - DOCK_PAGER_W + 8` (old safe zone) or,
+     better, place it immediately after the last laid-out cell
+     (`col_x`) so it left-flows with them; and cap the strip's usable
+     right edge the way the `<footer>` grip fix already caps pc-hq's.
+     Related standing issue: `dock-page-plus` alone is a no-op
+     (`PAGEROW:+1` needs `g_dock_visible_rows < g_dock_packed_rows`) -
+     it should only render when there's a row to page to.
+
 ## Recently fixed (kept short — see 03-pitfalls for the general lesson each one produced)
 
 - **2026-09-04 — pc-hq "^" active-scope badge never showed.** Every
