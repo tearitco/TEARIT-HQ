@@ -1,6 +1,16 @@
-/* pchq-board.css - piececraft-hq 3D board view (static xhtpm port of
- * run_pchq_board_mode). Dark, matches the old hand-drawn chrome. */
+/* pchq-board.css - piececraft-hq 3D board view.
+ * MILESTONE A: sidebar+panel window (was flat has_canvas). The
+ * X/!/_ chrome, taskbar entry and dropdowns now come from the generic
+ * layout_sidebar_panel() path - no board-specific chrome CSS needed. */
 window { background-color: #141414; font-family: Ubuntu; font-size: 10px; }
+
+/* the left toolbar strip (In/File/Desk/Menu/Player/clock stacked) */
+.pchq-toolbar { width: 104px; background-color: #181818;
+  border: 1px solid #2a2a2a; border-width: 1; }
+
+/* real dropdown panels (Desk / Menu) - shared entity_menu_default.css
+ * gives them the opaque bg + border; pin a width so rows don't clip. */
+.dropdown-child { width: 210px; }
 
 .chrome-btn { background-color: #2b2b2b; color: #eeeeee; font-weight: bold;
   font-size: 11px; border: 1px solid #888888; border-width: 1; }

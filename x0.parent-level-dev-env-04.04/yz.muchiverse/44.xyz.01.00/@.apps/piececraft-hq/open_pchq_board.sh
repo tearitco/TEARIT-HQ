@@ -38,7 +38,14 @@ HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 OPS_DIR="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
 BIN="$OPS_DIR/+x/khtpm_core_render.+x"
 PROJECTOR="$PKG/ops/+x/pchq_board_projector.+x"
-BOARD_TPL="$PKG/pchq-board.xhtpm"
+# MILESTONE A: default is the sidebar+panel board window. Set
+# PCHQ_BOARD_HASCANVAS=1 to fall back to the old flat has_canvas
+# template while the reframe is being shaken out.
+if [ -n "${PCHQ_BOARD_HASCANVAS:-}" ] && [ -f "$PKG/pchq-board.hascanvas.xhtpm" ]; then
+    BOARD_TPL="$PKG/pchq-board.hascanvas.xhtpm"
+else
+    BOARD_TPL="$PKG/pchq-board.xhtpm"
+fi
 
 # ── build-on-demand (same shape as open_stats_hq.sh) ─────────────────
 if [ ! -x "$BIN" ]; then

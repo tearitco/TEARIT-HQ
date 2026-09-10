@@ -3567,9 +3567,57 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
  * consumer can rely on, tag-based, not open-hai-specific). Returns 1
  * if it actually ran (caller should skip the old flat-list path),
  * 0 if `page` has no sidebar+panel pair (old path still owns it). */
+/* MILESTONE A (PCHQ-ENTITY-MENU-AND-TASKBAR-DESIGN.md §6a) - lay out a
+ * <canvas> child of a sidebar+panel region so the board window can be a
+ * normal HQ window (chrome, dropdowns, taskbar entry, minimize) with the
+ * 2D/3D view as an in-panel canvas instead of the flat has_canvas
+ * layout. The canvas fills the region box. Sets g_has_canvas (drives
+ * the live-feed ~30fps tick), wires the projector's canvas_raw sprite,
+ * and writes the producer-size handoff (#.desktop/pchq_board_view.txt)
+ * so bv_render_3d renders the exact pixel box kh_draw_canvas blits 1:1.
+ * The shared draw_elem() already dispatches <canvas> -> kh_draw_canvas
+ * regardless of layout, so no paint-side change is needed. Returns 1 if
+ * a canvas was found and placed. */
+static int kh_layout_canvas_in_region(Elem *region, int rx, int ry, int rw, int rh) {
+    Elem *cv = NULL;
+    for (int i = 0; i < region->n_children; i++)
+        if (strcmp(region->children[i]->tag, "canvas") == 0) { cv = region->children[i]; break; }
+    if (!cv) return 0;
+
+    css_compute_style(&g_sheet, cv->tag, cv->id, cv->classes, cv->n_classes, 0, &cv->style);
+    { const char *cr = kh_get_var("canvas_raw");
+      if (cr && cr[0]) snprintf(cv->sprite, sizeof(cv->sprite), "%s", cr); }
+
+    int pad = 6;
+    cv->x = rx + pad; cv->y = ry + pad;
+    cv->w = rw - 2 * pad; cv->h = rh - 2 * pad;
+    if (cv->w < 64) cv->w = 64;
+    if (cv->h < 64) cv->h = 64;
+    cv->nav_index = 0;
+    g_has_canvas = 1;
+
+    char vsz[PATH_BUF];
+    snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", g_house_root);
+    FILE *vf = fopen(vsz, "w");
+    if (vf) { fprintf(vf, "%d %d\n", cv->w, cv->h); fclose(vf); }
+    return 1;
+}
+
 static int layout_sidebar_panel(Elem *page) {
     Elem *sidebar = find_by_tag(page, "sidebar");
-    Elem *panel = find_by_tag(page, "panel");
+    /* The main content panel is a DIRECT child of <page> and is not a
+     * dropdown overlay. find_by_tag()'s depth-first first-match would
+     * otherwise return a `<panel class="dropdown-child">` nested inside
+     * the sidebar (milestone A: the board's Desk/Menu dropdowns) - so
+     * pick deliberately, then fall back to the old behavior. */
+    Elem *panel = NULL;
+    for (int i = 0; i < page->n_children; i++) {
+        Elem *c = page->children[i];
+        if (strcmp(c->tag, "panel") == 0 && !elem_has_class(c, "dropdown-child")) {
+            panel = c; break;
+        }
+    }
+    if (!panel) panel = find_by_tag(page, "panel");
     if (!sidebar || !panel) return 0;
     generic_sbar_reset();
 
@@ -3819,7 +3867,10 @@ static int layout_sidebar_panel(Elem *page) {
         layout_fixed_rows_and_scrolllist(sidebar, sidebar->x, sidebar->y, sidebar->w, sidebar->h,
                                           &g_default_sidebar_scroll, &g_default_sidebar_nav_lo, &g_default_sidebar_nav_hi);
     }
-    if (panel->style.has_display && panel->style.display_flex) {
+    if (kh_layout_canvas_in_region(panel, panel->x, panel->y, panel->w, panel->h)) {
+        /* MILESTONE A - the panel is a live canvas (pc-hq board); it
+         * filled the box, no fixed-rows / flex pass for it. */
+    } else if (panel->style.has_display && panel->style.display_flex) {
         zero_nav_subtree(panel);
         kh_css_deep(panel);
         css_layout_pass(panel, panel->x, panel->y, panel->w, panel->h);
