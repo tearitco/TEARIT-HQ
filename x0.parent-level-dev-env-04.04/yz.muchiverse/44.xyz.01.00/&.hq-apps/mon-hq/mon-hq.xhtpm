@@ -20,8 +20,8 @@
     <panel id="bad" class="settings-block">
       <text label="BAD - stray / leaked (no live owner, or a detached engine stack)" class="block-title"/>
       <scrolllist class="from-top">
-        <repeat count="${bad_count}" bind="b">
-          <text label="${b.text}"/>
+        <repeat count="${bad_count}" bind="bad">
+          <text label="${bad.text}"/>
         </repeat>
         <text label="(none - nothing leaked)" class="quiet" show="${no_bad}"/>
       </scrolllist>
@@ -30,8 +30,8 @@
     <panel id="good" class="settings-block">
       <text label="GOOD - owned / accounted for (taskbar, pals, managers, live -hq windows)" class="block-title"/>
       <scrolllist class="from-top">
-        <repeat count="${good_count}" bind="g">
-          <text label="${g.text}"/>
+        <repeat count="${good_count}" bind="good">
+          <text label="${good.text}"/>
         </repeat>
         <text label="(nothing running that this house spawned)" class="quiet" show="${no_good}"/>
       </scrolllist>

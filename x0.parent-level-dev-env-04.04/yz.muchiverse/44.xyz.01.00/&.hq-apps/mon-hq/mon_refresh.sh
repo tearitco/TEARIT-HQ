@@ -5,7 +5,9 @@
 #
 # argv (appended by launch_module): <house_root> <package_dir>
 set -u
-REFRESH_SEC="${MON_REFRESH_SEC:-2}"
+# weak-box friendly: one publish is ~1.5s of ps/awk/proc reads, so a
+# 4s gap keeps the monitor's own footprint well under 30% of a core.
+REFRESH_SEC="${MON_REFRESH_SEC:-4}"
 HOUSE_ROOT="${1:-${KHTPM_HOUSE:-}}"
 PKG="${2:-${KHTPM_PKG:-}}"
 [ -n "$PKG" ] || PKG=$(cd "$(dirname "$0")" && pwd)
