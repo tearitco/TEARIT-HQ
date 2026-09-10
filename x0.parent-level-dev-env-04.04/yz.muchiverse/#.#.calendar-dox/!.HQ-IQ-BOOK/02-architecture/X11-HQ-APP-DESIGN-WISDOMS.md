@@ -5,6 +5,39 @@ the `<grid>` element, and clipboard/selection (2026-09-05 session).
 Read alongside `CENTROID_GOLD_STD.md` and the `khtpm-house-standards`
 skill - this is the "how it actually feels to build one" layer.
 
+## 0. Start from the runnable skeleton
+
+`44.xyz.01.00/&.hq-apps/_template-hq/` is a **working** minimal HQ
+window — full chrome, bottom-taskbar entry, a live-refreshing sidebar,
+two `action=` buttons, a `<repeat>` list. `cp -r` it, rename three
+things (its `README.md` lists them), and you have a registered window
+on screen before writing any logic. It also serves as a smoke test for
+the renderer + `<module>` + `vars=` + `<repeat>` + `action=` path.
+
+**The five things that bite everyone (all learned live, mon-hq
+2026-09-10):**
+
+1. **`<sidebar>` + `<panel>` is mandatory for chrome + the taskbar
+   entry.** `khtpm_core_render` only runs `layout_sidebar_panel()` —
+   which synthesises the `X` / `_` chrome and writes
+   `#.desktop/livedesk_hq_windows_<pid>.txt` (the strip entry) — when
+   the page has **both**. A `<panel>`-only page renders with neither and
+   is un-closable except by `kill`.
+2. **`class="… database-window"` (or `palettes-pal`) makes it
+   persistent** — otherwise the renderer closes the window after any
+   `action=` fires.
+3. **`<repeat bind="X">` → `${X.text}` → `${X_<n>_text}`.** The bind
+   name must equal the key *prefix* the publisher writes. Mismatch =
+   the list renders the right number of **blank** rows.
+4. **`<module src="a b c"/>` is `execv`'d directly** (shebang honoured
+   for a script), with `<house_root> <package_dir>` appended, and
+   `SIGTERM`ed on window close. Omit the tag for a static window.
+5. **HQ-menu `cmd` runs through `sh -c`** — a leading `&` in a path is
+   job-control. An app under `&.hq-apps/` needs a glob-safe
+   `*.monads/*.livedesk-taskbar/ops/open_<app>.sh` shim in its `.pdl`
+   row (pattern: `open_mon.sh`). `vars=` and `${PKG}` resolve against
+   the `.xhtpm`'s own directory.
+
 ## 1. The shape never changes
 
 Every real X11-HQ app is the SAME three parts:

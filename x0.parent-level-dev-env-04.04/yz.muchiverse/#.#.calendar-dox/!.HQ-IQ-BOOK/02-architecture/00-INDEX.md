@@ -19,6 +19,14 @@
   a concrete "could this convert to the ops/manager+projector pattern
   events-hq and pchq-board already prove out" assessment for `tp_main()`
   (TILE MODE). Audit only, nothing fixed as part of it.
+- `X11-HQ-APP-DESIGN-WISDOMS.md` — **"how it actually feels to build
+  one."** §0 points at the runnable copy-paste skeleton
+  (`44.xyz.01.00/&.hq-apps/_template-hq/`) and the five non-obvious
+  must-haves (sidebar+panel ⇒ chrome + taskbar entry; `database-window`
+  ⇒ persistent; `<repeat>` bind name = key prefix; `<module>` exec
+  contract; the `&`-path / `sh -c` menu-row gotcha). Then the deeper
+  layer: delegating the manager to a fresh agent, cross-app comms via
+  published state, `dispatch()` verb blocks, buffer limits.
 - `RENDERING-ORIENTATION.md` — how the khtpm merged binary actually
   works today (the "current, not-yet-ideal" companion to the gold
   standard).

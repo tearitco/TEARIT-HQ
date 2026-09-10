@@ -1,0 +1,55 @@
+<!-- template-hq.xhtpm - the copy-paste skeleton for a new X11-HQ window.
+
+  WHY THIS SHAPE (each line earns its place - do not "simplify" them away):
+
+  * <window class="... database-window">  ->  khtpm_core_render sets
+    g_default_persistent: a button click will NOT close the window.
+    Without "database-window" (or "palettes-pal") every action quits.
+
+  * <sidebar> + <panel>  ->  the renderer only runs
+    layout_sidebar_panel(), which wires the  X / _  chrome trio,
+    minimize/restore, AND writes #.desktop/livedesk_hq_windows_<pid>.txt
+    (the bottom-taskbar entry), when the page has BOTH a <sidebar> and a
+    <panel>. A <panel>-only page renders with no chrome and never shows
+    up on the strip. (Learned the hard way, mon-hq 2026-09-10.)
+
+  * vars="state/ui.txt"  ->  path is relative to THIS file's directory.
+    The renderer substitutes ${key} from it and re-reads on change.
+
+  * <module src="...refresh.sh"/>  ->  the renderer execs the tokens
+    directly (shebang honoured), appending  <house_root> <package_dir>.
+    It SIGTERMs the module when the window closes. Use it for a live
+    backend loop; drop the line entirely for a static window.
+
+  * <repeat count="${rows_count}" bind="row">  ->  ${row.text} resolves
+    to ${row_<n>_text}. The bind name MUST equal the key PREFIX your
+    publisher writes (row_0_text, row_1_text, ...). bind="r" would look
+    for r_0_text and render blank.
+
+  * ${PKG} in an action= is this file's directory. An action string the
+    renderer doesn't recognise as a built-in verb is run as a shell
+    command with  '<package_dir>' '<house_root>'  appended.
+-->
+<window label="Template HQ" class="template-hq database-window" vars="state/ui.txt">
+  <module id="refresh" src="&.hq-apps/_template-hq/refresh.sh"/>
+  <page name="main">
+    <sidebar id="sidebar" class="sidebar">
+      <text label="updated ${stamp}" class="quiet"/>
+      <text label="tick = ${tick}" class="block-title"/>
+      <item id="a_bump"  class="btn"        label="   bump   "  action="sh '${PKG}/actions.sh' bump  '${PKG}'"/>
+      <item id="a_reset" class="btn danger" label="  reset  "   action="sh '${PKG}/actions.sh' reset '${PKG}'"/>
+      <text label="rows" class="block-title"/>
+      <scrolllist>
+        <repeat count="${rows_count}" bind="row">
+          <item id="row${row.#}" class="data-item" label="${row.text}"/>
+        </repeat>
+        <text label="(no rows)" class="quiet" show="${no_rows}"/>
+      </scrolllist>
+    </sidebar>
+    <panel id="detail" class="settings-block">
+      <text label="detail panel" class="block-title"/>
+      <text label="Whatever the manager/refresh script publishes goes here." class="quiet"/>
+      <text label="last action: ${last_action}"/>
+    </panel>
+  </page>
+</window>
