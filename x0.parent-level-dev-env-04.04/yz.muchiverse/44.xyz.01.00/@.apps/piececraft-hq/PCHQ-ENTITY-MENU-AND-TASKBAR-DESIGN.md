@@ -256,13 +256,65 @@ OPT | entities_bar       | 0        # bottom entities bar (ship OFF)
 | **B** | **Generic `<footer>` dock region** in `layout_sidebar_panel` — reserved bottom-edge height, laid out after sidebar/panel, `show=`-able. | any HQ window can carry a status/footer bar |
 | **C** | **Entities bar**: projector emits the entity-cell list + `entities_bar_on`; `<footer show="${entities_bar_on}">` of `<repeat>` **`dock-cell`** cells (extract that rendering from `khtpm_taskbar_manager` if it isn't cleanly reusable). `Menu ▸ View ▸ Entities bar` toggles it. | familiar bottom entity bar, in-window, no new process |
 | **D** | ✅ **DONE 2026-09-10** (`9458280c`). `bv_render_3d.c` `write_pick_txt()` → `pieces/display/pick.txt` (`sel_x/y/z`, `kind`, `id`, `template`, `glyph`). Selector-driven; a click ray can overwrite it later. | click→cell for the menu, the selector, and `7.edit` |
-| **E** | **slice 1 ✅** (`a3b5f882`): `ops/pc_entity_ctx.sh` reads `pick.txt` → builds a `<sidebar>+<panel>` menu package → launches the **shared** `khtpm_core_render` → rows append `CTX_<VERB> x y z id` to the game inbox. `pc_menu_input.c` applies `CTX_DELETE` (removes the `id,x,y,z` line from `animals.txt`/`phymoji_entities.txt`) + `CTX_INSPECT`; `CTX_*` stubs for copy/paste/place/possess. **slice 2 ✅** (`3c56fb61`): `VERB \| 109 \| CTX_MENU` ('m'), `bv_menu_input.c` `verb_always_allowed` so it fires unpossessed, `pc_menu_input` `CTX_MENU` → `setsid pc_entity_ctx.sh`. **slice 3 (todo)**: right-click on the canvas as a second trigger; real voxel delete (chunk CSV edit); copy/paste buffer. Headless end-to-end verified; live: does 'm' reach `bv_menu_input` via the relay. | the actual feature |
+| **E** | **slice 1 ✅** (`a3b5f882`) → **slice 3 ✅** (`db92ab0c`). `ops/pc_entity_ctx.sh` reads `pick.txt`, generates `<window class="entity-menu">` (flat `<item>` rows, same shape/CSS as `#.desktop/entities/*/menu.chtpm`) rendered by the **shared** `khtpm_core_render`; rows append `CTX_<VERB> x y z id kind glyph template` to the game inbox. `pc_menu_input.c`: `CTX_DELETE` (entity manifest, then `ctx_set_voxel` clears the chunk-CSV cell), `CTX_COPY`/`CTX_PASTE` (`pieces/display/ctx_clipboard.txt`), `CTX_INSPECT`. `bv_menu_input.c` `verb_always_allowed` lets `VERB \| 109 \| CTX_MENU` ('m') fire unpossessed; `pc_menu_input` `CTX_MENU` → `setsid pc_entity_ctx.sh`. Live-verified: 'm' → menu → Delete works. **slice 3b (todo):** right-click on the canvas as a 2nd trigger (needs canvas `Button3` through the interact relay); block-palette for `PLACE`. | the actual feature |
 | **F** | *(later)* copy/cut/paste buffer shared with `7.edit`'s rectangle selector (§7). | — |
 
 A and D are independent and can run in parallel; B needs A; C needs B;
 E needs D (and benefits from A for positioning the popup).
 
 ---
+
+## 6a. Milestone A — implementation plan (its own session)
+
+**Why its own session:** the board renders through `khtpm_core_render`'s
+`has_canvas` layout branch (~150 lines: canvas sizing from a receipt,
+`g_user_resizable` fill-window resize, the `X`/`!`/`_` chrome trio, the
+`#.desktop/pchq_board_view.txt` producer-size handoff, drag-zone
+`g_canvas_chrome_left_x`). `layout_sidebar_panel()` handles none of
+that. Reconciling them is real renderer surgery on the daily-driver
+board window — regression surface: fullscreen, drag, `managed` mode,
+canvas 1:1 blit, the projector's `bv_session` discovery.
+
+**Steps:**
+
+1. **`kh_layout_canvas_in_region(Elem *region)`** (new helper in
+   `khtpm_core_render.c`): find a `<canvas>` direct child of `region`;
+   set its `x/y/w/h` to the region box (minus any `<text>` header rows
+   already laid out above it); `g_has_canvas = 1`; wire `item->sprite`
+   from `kh_get_var("canvas_raw")`; `nav_index = 0`; write the
+   producer-size handoff (`pchq_board_view.txt`) with the region's
+   pixel w/h so `bv_render_3d` renders exactly that and `kh_draw_canvas`
+   blits 1:1. Reuse the receipt-dim fallback from the `has_canvas`
+   branch (extract it to a shared `kh_canvas_dims(sprite, &w, &h)`).
+2. In **`layout_sidebar_panel()`**, right after the sidebar/panel region
+   boxes are computed and before `layout_fixed_rows_and_scrolllist(panel,
+   …)`: `if (kh_layout_canvas_in_region(panel)) { /* canvas filled the
+   panel; skip the fixed-rows pass for it */ }`. Same optional call for
+   `sidebar` (unused by the board but generic).
+3. **Verify the paint path** already dispatches `<canvas>` via
+   `kh_draw_canvas` regardless of layout (grep `render_tree`/`draw_elem`
+   for the `"canvas"` tag) — it should; if not, add the tag case.
+4. **Rewrite `pchq-board.xhtpm`** → `<window class="pchq-board-pal
+   database-window managed user-resizable">` with `<page>` containing a
+   `<sidebar class="pchq-toolbar">` (the In/File/Desk/Menu/Player/clock
+   `<item>`s, now as a vertical or `display:flex` row strip) + a
+   `<panel><canvas id="view" sprite="${canvas_raw}"/></panel>`. Keep the
+   current file as `pchq-board.hascanvas.xhtpm` (rollback), and add
+   `PCHQ_BOARD_HASCANVAS=1` to `open_pchq_board.sh` to launch the old
+   one.
+5. **Convert `Desk` + `Menu` to real dropdowns** using the now-available
+   generic primitive: `<item id="tb-desk" onclick="ACTIVATE"
+   target_id="tb-desk">` + `<panel class="dropdown-child"
+   target_id="tb-desk"><repeat …/></panel>`. Delete the fake
+   `show="${desk_menu_open}"` rows and the projector's `menu_open`
+   plumbing.
+6. **Regression pass** (live, dump_frame each): board blits 1:1 at
+   default size; resize → canvas + `pchq_board_view.txt` track; `!`
+   fullscreen; `_` minimize + restore; window drag from the toolbar
+   band only; `Desk` dropdown opens/closes/Esc; the projector still
+   finds `bv_session` and the canvas isn't blank on first paint.
+7. Then **B** (generic `<footer>` region) + **C** (entities bar) sit on
+   top with no more board-specific work.
 
 ## 7. Related / future
 
