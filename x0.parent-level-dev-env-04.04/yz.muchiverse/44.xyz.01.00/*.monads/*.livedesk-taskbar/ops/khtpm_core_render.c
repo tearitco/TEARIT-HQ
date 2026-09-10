@@ -4304,48 +4304,50 @@ static int dock_item_cw(Elem *t) {
     return cw;
 }
 
-static void dock_place_pager(int win_w) {
-    /* Horizontal "- +" pair on the first row, at the right edge - same
-     * shape as the pc-hq <footer> pager (direct instruction: "i like
-     * the +- ... better"). Both show whenever there's more than one
-     * packed row of cells (was: lone "+" always, "-" stacked on row 2
-     * only after paging down). */
+/* Horizontal "- +" pager, placed right AFTER the last cell (left-flowing
+ * with the cells, not pinned to the far right - direct instruction:
+ * "why isn't it justified left like the [cells]?"), and only when there
+ * is actually a row to page to (g_dock_packed_rows > 1) - a lone no-op
+ * "+" was the old behaviour. `after_x` = the x just past the last laid-
+ * out cell on the last visible row. */
+static void dock_place_pager(int win_w, int after_x) {
     int aw = scaled(22), gap = scaled(4);
-    int show_minus = (g_dock_packed_rows > 1) || (g_dock_visible_rows > 1);
-
-    memset(&g_dock_plus_elem, 0, sizeof(g_dock_plus_elem));
-    snprintf(g_dock_plus_elem.tag, sizeof(g_dock_plus_elem.tag), "item");
-    snprintf(g_dock_plus_elem.id, sizeof(g_dock_plus_elem.id), "dock-page-plus");
-    snprintf(g_dock_plus_elem.label, sizeof(g_dock_plus_elem.label), "+");
-    snprintf(g_dock_plus_elem.onclick, sizeof(g_dock_plus_elem.onclick), "PAGEROW:+1");
-    g_dock_plus_elem.x = win_w - 8 - aw;
-    g_dock_plus_elem.y = 0;
-    g_dock_plus_elem.w = aw;
-    g_dock_plus_elem.h = DOCK_BAR_H;
-    css_compute_style(&g_sheet, g_dock_plus_elem.tag, g_dock_plus_elem.id, NULL, 0, 0, &g_dock_plus_elem.style);
-    g_dock_plus_elem.nav_index = ++g_n_nav;
-    g_nav[g_n_nav - 1] = &g_dock_plus_elem;
+    int need = (g_dock_packed_rows > 1) || (g_dock_visible_rows > 1);
 
     memset(&g_dock_minus_elem, 0, sizeof(g_dock_minus_elem));
+    memset(&g_dock_plus_elem,  0, sizeof(g_dock_plus_elem));
+    if (!need) {
+        g_dock_minus_elem.y = g_dock_plus_elem.y = -100000;
+        g_dock_minus_elem.nav_index = g_dock_plus_elem.nav_index = 0;
+        return;
+    }
+
+    int mx = after_x + gap;
+    /* never let the pair run past the visible strip: DOCK_PAGER_W is the
+     * right margin the packer already reserved, so this is the hard cap. */
+    int cap = win_w - DOCK_PAGER_W + 8;
+    if (mx > cap) mx = cap;
+    if (mx < DOCK_FOCUS_BOX_W) mx = DOCK_FOCUS_BOX_W;
+
     snprintf(g_dock_minus_elem.tag, sizeof(g_dock_minus_elem.tag), "item");
     snprintf(g_dock_minus_elem.id, sizeof(g_dock_minus_elem.id), "dock-page-minus");
     snprintf(g_dock_minus_elem.label, sizeof(g_dock_minus_elem.label), "-");
     snprintf(g_dock_minus_elem.onclick, sizeof(g_dock_minus_elem.onclick), "PAGEROW:-1");
-    if (show_minus) {
-        g_dock_minus_elem.x = win_w - 8 - aw - gap - aw;
-        g_dock_minus_elem.y = 0;
-        g_dock_minus_elem.w = aw;
-        g_dock_minus_elem.h = DOCK_BAR_H;
-        css_compute_style(&g_sheet, g_dock_minus_elem.tag, g_dock_minus_elem.id, NULL, 0, 0, &g_dock_minus_elem.style);
-        g_dock_minus_elem.nav_index = ++g_n_nav;
-        g_nav[g_n_nav - 1] = &g_dock_minus_elem;
-    } else {
-        g_dock_minus_elem.x = 0;
-        g_dock_minus_elem.y = -100000;
-        g_dock_minus_elem.w = 0;
-        g_dock_minus_elem.h = 0;
-        g_dock_minus_elem.nav_index = 0;
-    }
+    g_dock_minus_elem.x = mx; g_dock_minus_elem.y = 0;
+    g_dock_minus_elem.w = aw; g_dock_minus_elem.h = DOCK_BAR_H;
+    css_compute_style(&g_sheet, "item", "dock-page-minus", NULL, 0, 0, &g_dock_minus_elem.style);
+    g_dock_minus_elem.nav_index = ++g_n_nav;
+    g_nav[g_n_nav - 1] = &g_dock_minus_elem;
+
+    snprintf(g_dock_plus_elem.tag, sizeof(g_dock_plus_elem.tag), "item");
+    snprintf(g_dock_plus_elem.id, sizeof(g_dock_plus_elem.id), "dock-page-plus");
+    snprintf(g_dock_plus_elem.label, sizeof(g_dock_plus_elem.label), "+");
+    snprintf(g_dock_plus_elem.onclick, sizeof(g_dock_plus_elem.onclick), "PAGEROW:+1");
+    g_dock_plus_elem.x = mx + aw + gap; g_dock_plus_elem.y = 0;
+    g_dock_plus_elem.w = aw; g_dock_plus_elem.h = DOCK_BAR_H;
+    css_compute_style(&g_sheet, "item", "dock-page-plus", NULL, 0, 0, &g_dock_plus_elem.style);
+    g_dock_plus_elem.nav_index = ++g_n_nav;
+    g_nav[g_n_nav - 1] = &g_dock_plus_elem;
 }
 
 static void dock_draw_separators(Elem *page) {
@@ -4434,7 +4436,7 @@ static int layout_dock_bar(Elem *page) {
         if (g_dock_visible_rows > g_dock_packed_rows) g_dock_visible_rows = g_dock_packed_rows;
         if (g_dock_visible_rows < 1) g_dock_visible_rows = 1;
         y = g_dock_visible_rows * DOCK_BAR_H;
-        dock_place_pager(g_win_w);
+        dock_place_pager(g_win_w, col_x);
         for (i = 0; i < page->n_children; i++) {
             Elem *c = page->children[i];
             if (strcmp(c->tag, "cli_io") == 0) {
