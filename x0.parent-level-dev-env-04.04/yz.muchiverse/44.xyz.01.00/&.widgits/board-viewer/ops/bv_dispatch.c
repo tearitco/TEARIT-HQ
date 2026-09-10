@@ -260,12 +260,29 @@ int main(void) {
                 dropped_stale++;
             } else {
                 int is_arrow = (keycode >= 1000 && keycode <= 1003);
-                if (compensator && is_arrow && keycode == arrow_run_code) {
-                    arrow_run_n++;
-                    if (arrow_run_n > BVD_ARROW_RUN_CAP) goto next_line; /* cap the run */
-                } else {
-                    arrow_run_code = is_arrow ? keycode : 0;
-                    arrow_run_n = is_arrow ? 1 : 0;
+                if (compensator && is_arrow) {
+                    if (keycode == arrow_run_code) {
+                        arrow_run_n++;
+                        if (arrow_run_n > BVD_ARROW_RUN_CAP) goto next_line; /* cap the run */
+                    } else {
+                        /* direction change inside one drained batch: the
+                         * run so far is the key the user just moved OFF
+                         * of. Drop it (pop the already-emitted entries)
+                         * so movement flips immediately instead of
+                         * coasting through the old key's backlog. */
+                        if (arrow_run_code >= 1000 && arrow_run_n > 0) {
+                            int pop = arrow_run_n;                 /* how many of the old run we EMITTED */
+                            if (pop > BVD_ARROW_RUN_CAP) pop = BVD_ARROW_RUN_CAP;  /* the rest were cap-dropped already */
+                            if (pop > nk) pop = nk;
+                            nk -= pop;
+                            dropped_stale += pop;  /* -> still renders once, shows in BVD_DEBUG */
+                        }
+                        arrow_run_code = keycode;
+                        arrow_run_n = 1;
+                    }
+                } else if (!is_arrow) {
+                    arrow_run_code = 0;
+                    arrow_run_n = 0;
                 }
                 snprintf(keystr[nk], sizeof(keystr[0]), "%d", keycode);
                 av[1 + nk] = keystr[nk];
