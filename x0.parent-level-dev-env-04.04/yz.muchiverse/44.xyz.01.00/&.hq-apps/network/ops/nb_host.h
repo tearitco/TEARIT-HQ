@@ -328,7 +328,7 @@ static const char g_js_prelude[] =
 "function splitParts(urlString, base){\n"
 "  var s=String(urlString||'');\n"
 "  if(s.indexOf('://')<0 && s.charAt(0)!=='/' && s.indexOf('?')!==0 && s.charAt(0)!=='#' && s!==''){\n"
-"    if(base && base!==EMPTY_URL){ var b=splitParts(base,null); var pos=b.pathname.lastIndexOf('/'); s=b.protocol+'//'+b.host+(b.port?':'+b.port:'')+(pos>=0?b.pathname.slice(0,pos+1):'/')+s; }\n"
+"    if(base && base!==EMPTY_URL){ var b=splitParts(base,null); var pos=b.pathname.lastIndexOf('/'); s=b.protocol+'//'+b.host+(pos>=0?b.pathname.slice(0,pos+1):'/')+s; }\n"
 "    else { s=EMPTY_URL; }\n"
 "  }\n"
 "if(s===EMPTY_URL) return {protocol:'',authority:'',host:'',hostname:'',port:'',pathname:'',search:'',hash:'',origin:'null'};\n"
