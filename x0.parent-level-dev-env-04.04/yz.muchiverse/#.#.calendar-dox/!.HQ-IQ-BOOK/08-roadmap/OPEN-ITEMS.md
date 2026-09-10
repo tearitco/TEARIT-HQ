@@ -80,8 +80,8 @@ short version.*
       across http navs, and JS-side relative `fetch()`/XHR resolve against
       the page URL and hit real servers (fixed the prelude `splitParts`
       double-port bug on base URLs with explicit ports; worker
-      `resolve_doc_url()` fallback + resolved URL in fetch errors). Only rung
-      7 CSS/layout awareness remains as an honest gap. Hardening LANDED
+`resolve_doc_url()` fallback + resolved URL in fetch errors). Only rung
+       7 CSS/layout awareness remains as an honest gap. Hardening LANDED
       (2026-09-10): shared per-house cookie jar for page/script/worker
       curls (`nb_curl_cookies.txt` — server Set-Cookie persists + is
       retransmitted, worker fetch same-origin; separate from the
@@ -92,4 +92,19 @@ short version.*
       single-instance per house (`flock` on
       `#.desktop/network_browser_manager.lock`, exits rc=2 on a second
       launch) — the racing-manager pileup that corrupted live E2E runs can
-      no longer happen.
+      no longer happen. **Rung 7 CSS/layout awareness LANDED (2026-09-10,
+      slice 1 CSS-cascade subset, new `wcs` make-check suite + worker-side
+      `nb_css`)**: inline `<style>` + up to 4 linked stylesheets (resolved
+      + curled via the shared cookie jar) shipped as a 5th LOAD line;
+      rule cache + selector matching (tag/`#id`/`.class`/`*`, descendant,
+      comma lists; `:pseudo`/`[attr]` stripped), specificity + source
+      order + `!important`, inline wins; computed surface display/
+      visibility/opacity/px-width+height; `getComputedStyle` +
+      `getPropertyValue`, `el.style` snapshot, offset/client width-height,
+      `getBoundingClientRect` (x/y 0), `offsetParent`; `display:none`/
+      `visibility:hidden` (self or ancestor) → metrics 0 + null parent.
+      Honest slice-2 gaps: no text-flow/layout (sizes = CSS px or 0),
+      `@media` never fires (no viewport), no inheritance, `el.style`
+      writes don't reflow. Full gate now 55 PASS + 4 binaries; live E2E on
+      a 8126 styled fixture → `ghost=none,rect=140x80,offH=80,op=null`,
+      zero WERR.

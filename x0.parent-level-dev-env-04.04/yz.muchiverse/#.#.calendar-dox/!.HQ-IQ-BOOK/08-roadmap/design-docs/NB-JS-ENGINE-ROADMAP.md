@@ -44,7 +44,8 @@ over a `/*nbjs-script-boundary*/` split, gated by `wps`) LANDED 2026-09-09
 engine covers everything the ladder's rungs 1-6 promise. Real-server fetch
 breadth (the manager's curl ladder on live `http://` sites) LANDED
 2026-09-10 — see the "Rung 6 remainder: real `http://` fetch breadth"
-block below; what's truly left is rung 7 CSS/layout awareness.
+block below; rung 7 CSS/layout awareness LANDED (slice 1, CSS-cascade
+subset) 2026-09-10 — see the Rung 7 block.
 
 > The table above is the *pre*-Phase-1 snapshot; `getElementById` /
 > `querySelector` and the rest became real accessors walking the worker's
@@ -380,10 +381,40 @@ plausible stub, `MutationObserver` (can no-op then improve),
 > (`LOCK_EX|LOCK_NB`; the lock dies with the process, so no stale-pid
 > handling; second instance prints and exits rc=2).
 
-### Rung 7 — CSS/layout awareness  *(optional, large, defer)*
+### Rung 7 — CSS/layout awareness  *(slice 1 LANDED 2026-09-10; layout engine not modeled)*
 `getBoundingClientRect`, `offsetWidth/Height`, `display:none`
 visibility. Needed by carousels / lazy-loaders / sticky headers.
-Big; only worth it once rungs 1-6 land and real sites are close.
+
+**Slice 1 (LANDED): CSS-cascade subset.**
+- Manager `collect_styles` concatenates inline `<style>` bodies + up to 4
+  `<link rel="stylesheet">` resources (resolved + curled via the shared
+  cookie jar) into `tmp/style.css`; LOAD carries it as a 5th line; worker
+  `nb_css` parses a rule cache (comments stripped, `/*!` kept simple,
+  `@media`/`@supports`/`@keyframes` blocks and `@import`/`@charset`
+  skipped — no viewport, so no media query can ever fire).
+- Selector matching: element / `#id` / `.class` / `*`, descendant
+  combinator, comma lists; `:pseudo` and `[attr]` stripped, never
+  evaluated (engine tolerance). Cascade: id/class/type specificity
+  triple + source order; `!important`; inline `style="..."` always wins
+  (and any non-`none` display clears an earlier `none`).
+- Computed surface: `display` (`"none"` only — everything else is
+  visible), `visibility` (hidden/collapse), `opacity` (0..1), px/plain
+  `width`/`height` (other units ignored). No inheritance (documented).
+- Element API: `getComputedStyle(el)` (own props + `getPropertyValue`),
+  `el.style` (identity-cached snapshot of the inline `style` attribute;
+  JS writes persist on the snapshot but are NOT fed back into metrics —
+  no layout engine), `offsetWidth/Height`, `clientWidth/Height`
+  (CSS px or 0), `getBoundingClientRect()` (x/y = 0 always; w/h from
+  CSS px or 0), `offsetParent` (nearest tag ancestor, `null` when hidden).
+- `display:none`/`visibility:hidden` on an element or ANY ancestor
+  hides it: metrics 0, `offsetParent` null.
+- Suite: `wcs` (worker_css_test.c) 9 cases; full gate 55 PASS + 4
+  binaries; live E2E on 127.0.0.1:8126 styled fixture →
+  `ghost=none,rect=140x80,offH=80,op=null`, zero WERR.
+
+**Known gaps** (`slb` slice 2): no text-width/flow metrics (sizes come
+from the CSS declaration or 0), `@media` never fires, no inheritance,
+`el.style` writes don't reflow.
 
 ---
 

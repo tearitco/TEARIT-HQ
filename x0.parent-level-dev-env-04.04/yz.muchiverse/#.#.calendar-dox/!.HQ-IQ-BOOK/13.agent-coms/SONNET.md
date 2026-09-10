@@ -434,3 +434,31 @@ Merge `origin/opencode` (commits after the http-breadth notice).
   (`LOCK_EX|LOCK_NB`, dies with the process); a second instance prints and
   exits rc=2. So the pileup can no longer happen even if launch is
   repeated. All gates green (29 PASS, 4 binaries).
+
+## NOTICE 2026-09-10 — rung 7 CSS/layout awareness LANDED (slice 1)
+
+The last roadmap gap is now real (slash-1 edges):
+
+- Manager `collect_styles` concatenates inline `<style>` + up to 4
+  `<link rel="stylesheet">` (resolved, curled via the shared cookie jar)
+  into `tmp/style.css`; LOAD grew a 5th line for it.
+- Worker-side `nb_css` (new translation unit, compiled into the worker
+  only): rule cache from the CSS text (comments stripped, `@media` /
+  `@keyframes` / `@supports` blocks + `@import` skipped), selector
+  matching = tag/`#id`/`.class`/`*` + descendant + comma lists
+  (`:pseudo`/`[attr]` stripped, not evaluated), cascade with
+  id/class/type specificity + source order + `!important`, inline
+  `style=""` always wins and a later non-`none` display clears a prior
+  `none`.
+- Computed surface: `display`, `visibility`, `opacity`, px `width`/
+  `height`. `getComputedStyle` (own props + `getPropertyValue`),
+  `el.style` (identity-cached snapshot of the inline attr), `offsetWidth`
+  /`offsetHeight`/`clientWidth`/`clientHeight`, `getBoundingClientRect`
+  (x/y 0), `offsetParent`. `display:none`/`visibility:hidden` on the
+  element or any ancestor → metrics 0 + `offsetParent` null.
+- HONEST GAPS (slice 2): no text-flow/layout engine (sizes = CSS px or
+  0), `@media` never fires, no inheritance, `el.style` writes don't
+  reflow/re-hit metrics.
+- Evidence: `make check` 55 PASS, `sh build.sh` 4/4 OK; live E2E on a
+  styled fixture (127.0.0.1:8126) → `ghost=none,rect=140x80,offH=80,
+  op=null`, zero WERR. WCS suite joined `make check` (9 cases).
