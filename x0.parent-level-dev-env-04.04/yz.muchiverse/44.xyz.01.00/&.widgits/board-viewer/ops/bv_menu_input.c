@@ -985,13 +985,13 @@ static int handle_one_key(int key) {
             /* modes 1/2/3: pan on cam_pan_x / cam_pan_z */
             int pan_z = read_kv_int(state_path, "cam_pan_z", 0);
             int pan_x = read_kv_int(state_path, "cam_pan_x", 0);
-            /* was hardcoded 'w'/'a'/'s'/'d' - a real bug: the gate above
-             * used the remappable key_pan_* vars but the dispatch here
-             * ignored them, so rebinding pan keys silently did nothing. */
-            if (key == key_pan_forward) pan_z += PAN_STEP;
-            else if (key == key_pan_back) pan_z -= PAN_STEP;
-            else if (key == key_pan_left) pan_x -= PAN_STEP;
-            else if (key == key_pan_right) pan_x += PAN_STEP;
+            /* w<->s and a<->d flipped 2026-09-09 (direct instruction:
+             * "close but reverse w with s, and a with d") - modes 1/2/3
+             * now pan so the world moves the intuitive way. */
+            if (key == key_pan_forward) pan_z -= PAN_STEP;
+            else if (key == key_pan_back) pan_z += PAN_STEP;
+            else if (key == key_pan_left) pan_x += PAN_STEP;
+            else if (key == key_pan_right) pan_x -= PAN_STEP;
             write_kv_int(state_path, "cam_pan_z", pan_z);
             write_kv_int(state_path, "cam_pan_x", pan_x);
         }
