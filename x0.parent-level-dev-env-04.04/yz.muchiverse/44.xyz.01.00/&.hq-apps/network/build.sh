@@ -39,7 +39,7 @@ $CC -std=c11 -Wall -O2 -I"$JSDIR" -o "$SDIR/ops/+x/nb_js_eval.+x" "$SDIR/ops/nb_
 # Step 3 adds nb_dom.c (the manager's DOM serializer) so the worker can
 # rebuild the fetch.dom tree in its own heap.
 echo "-- nb_js_worker -> ops/+x/nb_js_worker.+x"
-$CC -std=c11 -Wall -O2 -I"$JSDIR" -o "$SDIR/ops/+x/nb_js_worker.+x" "$SDIR/ops/nb_js_worker.c" "$SDIR/nb_dom.c" "$JSDIR/duktape.c" -lm && echo "OK nb_js_worker" || exit 1
+$CC -std=c11 -Wall -O2 -I"$JSDIR" -o "$SDIR/ops/+x/nb_js_worker.+x" "$SDIR/ops/nb_js_worker.c" "$SDIR/nb_dom.c" "$SDIR/nb_css.c" "$JSDIR/duktape.c" -lm && echo "OK nb_js_worker" || exit 1
 
 echo "-- nb_media_to_sprite -> ops/+x/nb_media_to_sprite.+x"
 $CC -std=c11 -Wall -O2 -I"$JSDIR" -o "$SDIR/ops/+x/nb_media_to_sprite.+x" "$SDIR/ops/nb_media_to_sprite.c" -lm && echo "OK nb_media_to_sprite" || exit 1

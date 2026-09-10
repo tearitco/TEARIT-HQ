@@ -692,6 +692,7 @@ static char g_curl_cookie_path[PATH_BUF];  /* per-house Netscape jar shared by p
 static int g_lock_fd = -1;                 /* single-instance flock fd (held for life) */
 static char g_js_worker_path[PATH_BUF];
 static char g_js_script_path[PATH_BUF];
+static char g_js_style_path[PATH_BUF];   /* rung 7: concatenated page CSS */
 static char g_media_op_path[PATH_BUF];
 static char g_media_root[PATH_BUF];
 
@@ -842,6 +843,97 @@ static void collect_scripts(const char *html, const char *page_url, FILE *js_out
         p = close + 9;
     }
     *n_scripts = n;
+}
+
+/* rung 7: concatenate the page's CSS into g_js_style_path — inline
+ * <style> bodies in document order, then up to 4 <link rel="stylesheet">
+ * resources resolved against the page URL (same cookie jar as page loads).
+ * nb_css.c in the worker parses this; an empty file just yields no rules. */
+static void collect_styles(const char *html, const char *page_url, FILE *css_out) {
+    const char *p = html;
+    while (p && *p) {
+        const char *tag = strcasestr_local(p, "<style");
+        if (!tag) break;
+        if (tag[6] != '>' && tag[6] != ' ' && tag[6] != '\t' &&
+            tag[6] != '\n' && tag[6] != '/') { p = tag + 6; continue; }
+        const char *gt = strchr(tag, '>');
+        if (!gt) break;
+        if (in_noscript_block(html, tag)) { p = gt + 1; continue; }
+        const char *close = strcasestr_local(gt, "</style>");
+        if (!close) break;
+        const char *body = gt + 1;
+        if (close > body) fwrite(body, 1, (size_t)(close - body), css_out);
+        fputc('\n', css_out);
+        p = close + 8;
+    }
+    int n_link = 0;
+    p = html;
+    while (p && *p && n_link < 4) {
+        const char *tag = strcasestr_local(p, "<link");
+        if (!tag) break;
+        if (tag[5] != '>' && tag[5] != ' ' && tag[5] != '\t' &&
+            tag[5] != '\n' && tag[5] != '/') { p = tag + 5; continue; }
+        const char *gt = strchr(tag, '>');
+        if (!gt) break;
+        const char *rel = strcasestr_local(tag, "rel=");
+        if (!(rel && rel < gt)) { p = gt + 1; continue; }
+        {
+            const char *v = rel + 4;
+            char q = 0;
+            if (*v == '"' || *v == '\'') { q = *v; v++; }
+            const char *vend = v;
+            if (q) { while (*vend && *vend != q) vend++; }
+            else { while (*vend && !isspace((unsigned char)*vend) && *vend != '>') vend++; }
+            char rv[64];
+            size_t rn = (size_t)(vend - v);
+            if (rn >= sizeof(rv)) rn = sizeof(rv) - 1;
+            memcpy(rv, v, rn);
+            rv[rn] = 0;
+            int is_sh = 0;
+            const char *w = rv;
+            while (*w && !is_sh) {
+                const char *ww = w;
+                while (*w && !isspace((unsigned char)*w)) w++;
+                if ((size_t)(w - ww) == 10 && strncasecmp(ww, "stylesheet", 10) == 0)
+                    is_sh = 1;
+                while (*w && isspace((unsigned char)*w)) w++;
+            }
+            if (!is_sh) { p = gt + 1; continue; }
+        }
+        const char *href = strcasestr_local(tag, "href=");
+        if (!(href && href < gt)) { p = gt + 1; continue; }
+        const char *v = href + 5;
+        char q = 0;
+        if (*v == '"' || *v == '\'') { q = *v; v++; }
+        const char *vend = v;
+        if (q) { while (*vend && *vend != q) vend++; }
+        else { while (*vend && !isspace((unsigned char)*vend) && *vend != '>') vend++; }
+        char hs[PATH_BUF];
+        size_t hn = (size_t)(vend - v);
+        if (hn >= sizeof(hs)) hn = sizeof(hs) - 1;
+        memcpy(hs, v, hn);
+        hs[hn] = 0;
+        html_decode_entities(hs);
+        if (hs[0] && strncasecmp(hs, "data:", 5) != 0) {
+            char resolved[PATH_BUF], ext[PATH_BUF];
+            resolve_url(page_url, hs, resolved, sizeof(resolved));
+            snprintf(ext, sizeof(ext), "%s.ext%d.css", g_js_style_path, n_link);
+            if (curl_url_to_file(resolved, ext)) {
+                FILE *ef = fopen(ext, "r");
+                if (ef) {
+                    char buf[4096];
+                    size_t r;
+                    fputc('\n', css_out);
+                    while ((r = fread(buf, 1, sizeof(buf), ef)) > 0)
+                        fwrite(buf, 1, r, css_out);
+                    fputc('\n', css_out);
+                    fclose(ef);
+                    n_link++;
+                }
+            }
+        }
+        p = gt + 1;
+    }
 }
 
 /* ---- NB-JS persistent worker lifecycle (worker plan §2B) ----
@@ -1154,13 +1246,15 @@ static void worker_spawn(void) {
 /* Ask the worker to run a page. Reads the optional RENDER frame (step 4)
  * into g_worker_render[] then the STATUS frame. Returns 1 on "STATUS ok". */
 static int worker_load(const char *js_path, const char *dom_path,
-                       const char *href, const char *title) {
+                       const char *href, const char *title,
+                       const char *css_path) {
     worker_spawn();
     if (g_worker_fd < 0) return 0;
     char payload[8192];
-    int n = snprintf(payload, sizeof(payload), "LOAD\n%s\n%s\n%s\n%s",
+    int n = snprintf(payload, sizeof(payload), "LOAD\n%s\n%s\n%s\n%s\n%s",
                      js_path ? js_path : "", dom_path ? dom_path : "",
-                     href ? href : "", title ? title : "");
+                     href ? href : "", title ? title : "",
+                     css_path ? css_path : "");
     if (!worker_send(payload, (size_t)n)) { worker_close(); return 0; }
 
     g_worker_render[0] = 0;
@@ -1234,12 +1328,20 @@ static void run_page_scripts(const char *html, const char *url, const char *titl
     fclose(js);
     if (n <= 0) return;
 
+    /* rung 7: ship the page's CSS to the worker (empty file = no rules,
+     * the worker's nb_css_parse degrades gracefully). */
+    FILE *sf = fopen(g_js_style_path, "w");
+    if (sf) {
+        collect_styles(html, url, sf);
+        fclose(sf);
+    }
+
     /* NB-JS worker authoritative: LOAD the page into the resident worker
      * and, when it reports RENDER rows, overlay them onto page.state.txt
      * (document.title=, el.textContent=, appendChild, ...). The legacy
      * one-shot nb_js_eval effects path is gone — the worker is the single
      * DOM writer. A worker that fails leaves the static DOM in place. */
-    worker_load(g_js_script_path, g_tmp_dom_path, url, title);
+    worker_load(g_js_script_path, g_tmp_dom_path, url, title, g_js_style_path);
     (void)merge_render_rows();
 }
 
@@ -2752,6 +2854,7 @@ int main(int argc, char **argv) {
     path_join(g_curl_cookie_path, sizeof(g_curl_cookie_path), desktop, "nb_curl_cookies.txt");
     path_join(g_fetch_pid_path, sizeof(g_fetch_pid_path), tmpdir, "fetch.pid");
     path_join(g_js_script_path, sizeof(g_js_script_path), tmpdir, "page.js");
+    path_join(g_js_style_path, sizeof(g_js_style_path), tmpdir, "style.css");
     snprintf(g_js_worker_path, sizeof(g_js_worker_path), "%s/ops/+x/nb_js_worker.+x", g_package_dir);
     snprintf(g_media_op_path, sizeof(g_media_op_path), "%s/ops/+x/nb_media_to_sprite.+x", g_package_dir);
     path_join(g_media_root, sizeof(g_media_root), desktop, "nb_sprites");

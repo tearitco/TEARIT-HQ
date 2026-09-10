@@ -18,7 +18,7 @@ PREFIX  ?= /usr/local
 BINDIR  ?= $(PREFIX)/bin
 JS_DIR  ?= ../js
 
-SRC := ops/nb_js_worker.c nb_dom.c
+SRC := ops/nb_js_worker.c nb_dom.c nb_css.c
 
 nbjs: $(SRC) ops/nb_host.h nb_dom.h $(JS_DIR)/duktape.c
 	$(CC) $(CFLAGS) -I$(JS_DIR) -o $@ $(SRC) $(JS_DIR)/duktape.c -lm
@@ -48,10 +48,13 @@ wst: tests/worker_storage_test.c nb_dom.c
 wps: tests/worker_scriptseq_test.c nb_dom.c
 	$(CC) $(CFLAGS) -o $@ tests/worker_scriptseq_test.c nb_dom.c
 
+wcs: tests/worker_css_test.c nb_dom.c
+	$(CC) $(CFLAGS) -o $@ tests/worker_css_test.c nb_dom.c
+
 wcl: tests/cli_test.c
 	$(CC) $(CFLAGS) -o $@ tests/cli_test.c
 
-check: nbjs wdt wft wet wck wcn wst wps wcl
+check: nbjs wdt wft wet wck wcn wst wps wcs wcl
 	rm -rf /tmp/nbjs-check ; mkdir -p /tmp/nbjs-check
 	./wdt ./nbjs tests/worker_dom_test.js /tmp/nbjs-check
 	./wft ./nbjs tests/worker_fetch_test.js /tmp/nbjs-check
@@ -60,6 +63,7 @@ check: nbjs wdt wft wet wck wcn wst wps wcl
 	NBW_CONSOLE=/tmp/nbjs-check/console.out ./wcn ./nbjs /tmp/nbjs-check
 	NBW_CONSOLE=/tmp/nbjs-check/console.out ./wst ./nbjs /tmp/nbjs-check
 	NBW_CONSOLE=/tmp/nbjs-check/console.out ./wps ./nbjs /tmp/nbjs-check
+	NBW_CONSOLE=/tmp/nbjs-check/console.out ./wcs ./nbjs /tmp/nbjs-check
 	./wcl ./nbjs tests /tmp/nbjs-check
 
 install: nbjs
@@ -67,6 +71,6 @@ install: nbjs
 	install -m 0755 nbjs $(DESTDIR)$(BINDIR)/nbjs
 
 clean:
-	rm -f nbjs nbw wdt wft wet wck wcn wst wps wcl
+	rm -f nbjs nbw wdt wft wet wck wcn wst wps wcs wcl
 
 .PHONY: check install clean

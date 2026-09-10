@@ -208,6 +208,23 @@ static duk_ret_t nb_nav_addr(duk_context *ctx) {
     duk_push_undefined(ctx); return 1;
 }
 
+/* rung 7 slice 1: default getComputedStyle — a minimal object usable by
+ * the one-shot eval/standalone hosts that have no DOM/style engine. The
+ * resident worker overwrites __nb_ges with its rich CSS resolver after
+ * install_host. */
+static duk_ret_t nb_ges(duk_context *ctx) {
+    (void)ctx;
+    duk_push_object(ctx);
+    duk_push_string(ctx, "");  duk_put_prop_string(ctx, -2, "display");
+    duk_push_string(ctx, "");  duk_put_prop_string(ctx, -2, "visibility");
+    duk_push_string(ctx, "1"); duk_put_prop_string(ctx, -2, "opacity");
+    duk_push_number(ctx, 0);   duk_put_prop_string(ctx, -2, "width");
+    duk_push_number(ctx, 0);   duk_put_prop_string(ctx, -2, "height");
+    duk_push_c_function(ctx, native_null, 1);
+    duk_put_prop_string(ctx, -2, "getPropertyValue");
+    return 1;
+}
+
 static void fatal_handler(void *udata, const char *msg) {
     (void)udata;
     if (g_out) pipe_one("ERROR", msg ? msg : "fatal");
@@ -414,7 +431,7 @@ static const char g_js_prelude[] =
 "\n"
 "/* ---- matchMedia / getComputedStyle / MutationObserver stubs ---- */\n"
 "Object.defineProperty(window,'matchMedia',{value:function(q){return{matches:false,media:String(q||''),addListener:function(){},removeListener:function(){},addEventListener:function(){},removeEventListener:function(){},dispatchEvent:function(){return false;}};},configurable:true,writable:true});\n"
-"Object.defineProperty(window,'getComputedStyle',{value:function(){return{getPropertyValue:function(){return'';}};},configurable:true,writable:true});\n"
+"Object.defineProperty(window,'getComputedStyle',{value:function(el){var s=__nb_ges(el);return s;},configurable:true,writable:true});\n"
 "function MutationObserver(cb){this._cb=cb;}\n"
 "MutationObserver.prototype.observe=function(){};\n"
 "MutationObserver.prototype.disconnect=function(){};\n"
@@ -717,6 +734,13 @@ static void install_host(duk_context *ctx) {
     duk_push_c_function(ctx, nb_nav_forward, 0); duk_put_prop_string(ctx, g, "__nb_nav_forward");
     duk_push_c_function(ctx, nb_nav_go_n, 1);    duk_put_prop_string(ctx, g, "__nb_nav_go");
     duk_push_c_function(ctx, nb_nav_addr, 1);    duk_put_prop_string(ctx, g, "__nb_nav_addr");
+
+    /* rung 7 slice 1: window.getComputedStyle -> native bridge. The
+     * minimal object here is the eval/standalone default; the resident
+     * worker re-registers __nb_ges with its rich CSS-backed resolver
+     * after install_host (the prelude resolves __nb_ges at call time). */
+    duk_push_c_function(ctx, nb_ges, 1);
+    duk_put_prop_string(ctx, g, "__nb_ges");
 
     /* cheap always-safe window scalars */
     duk_push_string(ctx, "");
