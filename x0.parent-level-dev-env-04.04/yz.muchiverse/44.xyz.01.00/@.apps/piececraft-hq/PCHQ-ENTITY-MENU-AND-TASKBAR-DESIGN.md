@@ -252,15 +252,32 @@ OPT | entities_bar       | 0        # bottom entities bar (ship OFF)
 
 | # | milestone | delivers / unblocks |
 |---|---|---|
-| **A** | **Reframe the board** onto `layout_sidebar_panel`: `<sidebar>` (thin/collapsible) + `<panel>` holding `<canvas id="view">`. Full regression pass on fullscreen, drag zones, `managed` mode, `!`/`_` chrome, and canvas scaling inside a panel (the real unknown). | generic chrome, nav, minimize, taskbar entry; **real `Desk`/`Menu` dropdowns for free** (drop the fake `show=` rows) |
-| **B** | **Generic `<footer>` dock region** in `layout_sidebar_panel` — reserved bottom-edge height, laid out after sidebar/panel, `show=`-able. | any HQ window can carry a status/footer bar |
-| **C** | **Entities bar**: projector emits the entity-cell list + `entities_bar_on`; `<footer show="${entities_bar_on}">` of `<repeat>` **`dock-cell`** cells (extract that rendering from `khtpm_taskbar_manager` if it isn't cleanly reusable). `Menu ▸ View ▸ Entities bar` toggles it. | familiar bottom entity bar, in-window, no new process |
+| **A** | ✅ **DONE 2026-09-10** (`148fe346`). `kh_layout_canvas_in_region()` fills a sidebar+panel `<panel>` with a `<canvas>` (sets `g_has_canvas`, wires `canvas_raw`, writes `pchq_board_view.txt` 1:1); `layout_sidebar_panel()` picks the content panel = first page-level `<panel>` that is NOT `dropdown-child` (the blank-canvas fix). `pchq-board.xhtpm` reframed; old flat template kept as `pchq-board.hascanvas.xhtpm` (`PCHQ_BOARD_HASCANVAS=1`). | generic chrome, nav, minimize, **bottom-taskbar entry**, real `Desk`/`Menu` dropdowns |
+| **A-2** | ✅ **DONE 2026-09-10** (`be53d9c3`). Toolbar is a horizontal `<tabbar>` of `<tab>` buttons (was a left `<sidebar>` column); `kh_scan_interact_relay()` now finds a `relay=` trigger one level inside `<tabbar>`/`<sidebar>`/`<footer>` and accepts `<tab>`. Zero-width `<sidebar id="rail">` only satisfies the layout trigger. | horizontal top toolbar per direct feedback |
+| **B** | ✅ **DONE 2026-09-10** (`be53d9c3`). Generic `<footer>` bottom-dock region in `layout_sidebar_panel` — reserved bottom-edge height, `<item>`/`<text>` children flow left-to-right, nav-numbered, sidebar/panel heights trimmed, `show=`-able. | any HQ window can carry a status/footer bar |
+| **C** | ✅ **DONE 2026-09-10** (`68ba5ebf`). `pchq_board_projector.c` publishes `n_ent` / `ent_<i>_{label,id,kind,x,y,z}` (hero + `animals.txt` + `phymoji_entities.txt`, cap 16) + `entities_bar_on` from `pchq.pdl`. `<footer show="${entities_bar_on}">` of `<repeat>` cells; each opens the shared context menu via `pc_entity_ctx.sh <root> <x> <y> <z> <kind> <id>`. `Menu ▸ Entities bar on/off` flips `pchq.pdl` via `pc_toggle_pdl_opt.sh`. | familiar bottom entity bar, in-window, no new process |
 | **D** | ✅ **DONE 2026-09-10** (`9458280c`). `bv_render_3d.c` `write_pick_txt()` → `pieces/display/pick.txt` (`sel_x/y/z`, `kind`, `id`, `template`, `glyph`). Selector-driven; a click ray can overwrite it later. | click→cell for the menu, the selector, and `7.edit` |
 | **E** | **slice 1 ✅** (`a3b5f882`) → **slice 3 ✅** (`db92ab0c`). `ops/pc_entity_ctx.sh` reads `pick.txt`, generates `<window class="entity-menu">` (flat `<item>` rows, same shape/CSS as `#.desktop/entities/*/menu.chtpm`) rendered by the **shared** `khtpm_core_render`; rows append `CTX_<VERB> x y z id kind glyph template` to the game inbox. `pc_menu_input.c`: `CTX_DELETE` (entity manifest, then `ctx_set_voxel` clears the chunk-CSV cell), `CTX_COPY`/`CTX_PASTE` (`pieces/display/ctx_clipboard.txt`), `CTX_INSPECT`. `bv_menu_input.c` `verb_always_allowed` lets `VERB \| 109 \| CTX_MENU` ('m') fire unpossessed; `pc_menu_input` `CTX_MENU` → `setsid pc_entity_ctx.sh`. Live-verified: 'm' → menu → Delete works. **slice 3b (todo):** right-click on the canvas as a 2nd trigger (needs canvas `Button3` through the interact relay); block-palette for `PLACE`. | the actual feature |
 | **F** | *(later)* copy/cut/paste buffer shared with `7.edit`'s rectangle selector (§7). | — |
 
 A and D are independent and can run in parallel; B needs A; C needs B;
 E needs D (and benefits from A for positioning the popup).
+
+### Polish / known (post A–C, not blocking)
+
+- **Wide-panel void.** `bv_render_3d` reads `pchq_board_view.txt` and
+  derives `cam.focal` from `g_fh` only, so a wide panel widens the
+  horizontal FOV and the 16×16 chunk no longer fills it — blue sky
+  shows left/right. Not a regression (the old flat canvas was ~square).
+  Fix later: aspect-aware camera framing (zoom to keep the chunk
+  framed) or a bigger chunk. Zoom (`c`/`v`) works around it now.
+- **Footer cell labels clip** (`tree_...`). `<footer>` cells auto-size
+  to `measure_text + 18`; a longer id truncates. Widen `.pchq-ft` or
+  shorten the published labels.
+- **Live-verify** `Desk ▾` / `Menu ▾` open on click (dropdown primitive
+  is native to `layout_sidebar_panel`; only the triggers are
+  dump-verified).
+- **E slice 3b** still open: right-click on the canvas as a 2nd trigger.
 
 ---
 
