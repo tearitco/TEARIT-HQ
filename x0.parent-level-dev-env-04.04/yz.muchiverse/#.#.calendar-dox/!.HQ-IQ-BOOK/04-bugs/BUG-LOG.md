@@ -117,6 +117,25 @@ note under it — don't silently edit it away.*
      step skips into a wrap. Needs a live `g_focus_nav` trace while
      arrowing 20→24 to pin which.
 
+     ✅ FIXED 2026-09-10 — neither suspect. Root cause was in the
+     **taskbar manager**, not the renderer: the strip's "tab half" is
+     entity cells (`s->n_tabs`) FOLLOWED BY hq-window cells
+     (`s->n_hq_wins`), both positionally navigable, but every focus
+     clamp/wrap only counted `n_tabs`. So with 7 entities + 1 hq-window
+     cell, `tab_focus_idx` maxed at 6 and the last cell (the
+     `🪟 piececraft-hq board` window) was unreachable — exactly "won't
+     go past 22 / 2nd-to-last". Fixed by using `n_tabs + n_hq_wins`
+     as the tab-half size in: `khtpm_taskbar_manager_main.c`
+     `KSC_SET_FOCUS_BASE` handler; `khtpm_taskbar_manager.c` post-reload
+     clamp (~726), `ktb_focus_delta()`, `ktb_nav_focus_delta()` (the
+     real arrow handler — `total = KTB_STRIP_N_CELLS + n_tabs +
+     n_hq_wins`); and `ktb_activate_tab()` gained an hq-window branch
+     that just records the focus slot (the renderer's own `FOCUSWIN:`
+     onclick does the activation — the manager is X-free). Verified
+     live via the `strip_history.txt` relay: FOCUS_RIGHT now lands on
+     `strip_focus_cell=-1 / tab_focus_idx=7` (the last cell) and wraps
+     cleanly to `strip_focus_cell=0` on the next step.
+
   3. **Strip `+`/`-` pager sits off the visible right edge and isn't
      aligned with the cells.** `dock_place_pager()` (khtpm_core_render.c
      ~4306, changed 2026-09-10 to a horizontal `- +` pair) anchors the

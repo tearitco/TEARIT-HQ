@@ -824,7 +824,11 @@ static void dispatch_code(KtbState *s, int code) {
             s->strip_focus_cell = nav_n - 1;
         } else if (nav_n > KTB_STRIP_N_CELLS) {
             int t = nav_n - KTB_STRIP_N_CELLS - 1;
-            if (t >= 0 && t < s->n_tabs) { s->strip_focus_cell = -1; s->tab_focus_idx = t; }
+            /* BUG-LOG.md 2026-09-10 #2: the "tab half" of the strip is
+             * entity cells (n_tabs) FOLLOWED BY hq-window cells
+             * (n_hq_wins) - both are positionally navigable, so clamp
+             * against the combined count, not n_tabs alone. */
+            if (t >= 0 && t < s->n_tabs + s->n_hq_wins) { s->strip_focus_cell = -1; s->tab_focus_idx = t; }
         }
         return;
     }

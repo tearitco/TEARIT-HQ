@@ -723,7 +723,13 @@ void ktb_reload(KtbState *s) {
     load_strip_user_cmd(s);
     ktb_load_zorder_mode(s);
     ktb_merge_hq_windows(s);
-    if (s->tab_focus_idx >= s->n_tabs) s->tab_focus_idx = s->n_tabs > 0 ? s->n_tabs - 1 : 0;
+    /* BUG-LOG.md 2026-09-10 #2: tab_focus_idx spans entity cells then
+     * hq-window cells (n_tabs + n_hq_wins), so clamp to the combined
+     * count - clamping at n_tabs stranded focus ~2 cells short. */
+    {
+        int n_strip_tabs = s->n_tabs + s->n_hq_wins;
+        if (s->tab_focus_idx >= n_strip_tabs) s->tab_focus_idx = n_strip_tabs > 0 ? n_strip_tabs - 1 : 0;
+    }
     if (s->strip_focus_cell >= KTB_STRIP_N_CELLS) s->strip_focus_cell = KTB_STRIP_N_CELLS - 1;
 }
 
@@ -831,6 +837,15 @@ static void write_relay(const char *package_path, const char *cmd) {
 }
 
 void ktb_activate_tab(KtbState *s, int idx) {
+    /* BUG-LOG.md 2026-09-10 #2: an hq-window cell (idx >= n_tabs, still
+     * within n_tabs + n_hq_wins) is navigable but has no s->tabs[] entry
+     * and no OPEN_CONTEXT relay - the renderer's own FOCUSWIN: onclick
+     * does its activation. Just record the focus slot and return. */
+    if (idx >= s->n_tabs && idx < s->n_tabs + s->n_hq_wins) {
+        s->strip_focus_cell = -1;
+        s->tab_focus_idx = idx;
+        return;
+    }
     if (idx < 0 || idx >= s->n_tabs) return;
     /* Real bug fix (2026-08-11, direct live report: "enter on nav in
      * bottom bar isn't opening its context menu like it used to"). This
@@ -1053,10 +1068,12 @@ void ktb_digit_enter(KtbState *s) {
 }
 
 void ktb_focus_delta(KtbState *s, int delta) {
-    if (s->n_tabs <= 0) return;
+    /* BUG-LOG.md 2026-09-10 #2: wrap across entity + hq-window cells. */
+    int n_strip_tabs = s->n_tabs + s->n_hq_wins;
+    if (n_strip_tabs <= 0) return;
     s->tab_focus_idx += delta;
-    if (s->tab_focus_idx < 0) s->tab_focus_idx = s->n_tabs - 1;
-    if (s->tab_focus_idx >= s->n_tabs) s->tab_focus_idx = 0;
+    if (s->tab_focus_idx < 0) s->tab_focus_idx = n_strip_tabs - 1;
+    if (s->tab_focus_idx >= n_strip_tabs) s->tab_focus_idx = 0;
     s->nav_armed = 1;
 }
 
@@ -4933,7 +4950,10 @@ void ktb_strip_user_activate(KtbState *s) {
  * skip-logic is needed for the strip half of the range, only n_tabs==0
  * collapsing the tab half to nothing. */
 void ktb_nav_focus_delta(KtbState *s, int delta) {
-    int total = KTB_STRIP_N_CELLS + s->n_tabs;
+    /* BUG-LOG.md 2026-09-10 #2: the strip is header cells + entity cells
+     * + hq-window cells; the last group was omitted here, so arrow nav
+     * wrapped ~2 cells short of the real end. */
+    int total = KTB_STRIP_N_CELLS + s->n_tabs + s->n_hq_wins;
     if (total <= 0) return;
     int focus = (s->strip_focus_cell >= 0) ? s->strip_focus_cell : KTB_STRIP_N_CELLS + s->tab_focus_idx;
     focus += delta;
