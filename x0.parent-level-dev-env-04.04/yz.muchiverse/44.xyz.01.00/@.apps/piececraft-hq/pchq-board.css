@@ -17,7 +17,7 @@ window { background-color: #141414; font-family: Ubuntu; font-size: 10px; }
 /* bottom status/footer strip */
 .pchq-footer { background-color: #181818; border: 1px solid #2a2a2a; border-width: 1; height: 24px; }
 .pchq-ft { background-color: #232323; color: #cccccc; font-size: 10px;
-  border: 1px solid #3a3a3a; border-width: 1; }
+  width: 88px; border: 1px solid #3a3a3a; border-width: 1; }
 
 /* real dropdown panels (Desk / Menu) - shared entity_menu_default.css
  * gives them the opaque bg + border; pin a width so rows don't clip. */

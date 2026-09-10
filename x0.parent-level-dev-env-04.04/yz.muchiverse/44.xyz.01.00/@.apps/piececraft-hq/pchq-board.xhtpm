@@ -33,7 +33,25 @@
       <tab id="tb-clock" class="pchq-tb" label="${clock}" onclick="void"/>
     </tabbar>
 
-    <sidebar id="rail" class="pchq-rail sidebar"></sidebar>
+    <!-- zero-width rail: satisfies layout_sidebar_panel's sidebar+panel
+         trigger AND hosts the dropdown-child overlays (the generic
+         overlay pass runs per-container inside layout_fixed_rows_and_
+         scrolllist; a page-level <panel class="dropdown-child"> is
+         never laid out). Triggers are found window-wide by id, so they
+         stay in the <tabbar>. -->
+    <sidebar id="rail" class="pchq-rail sidebar">
+      <panel class="dropdown-child" target_id="tb-desk">
+        <repeat count="${n_desk_opts}" bind="d">
+          <item id="do-${d.#}" class="pchq-menu-row ${d.active}" label="${d.label}"
+                action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'desk' '${d.#}'"/>
+        </repeat>
+      </panel>
+      <panel class="dropdown-child" target_id="tb-menu">
+        <item id="mn-entbar" class="pchq-menu-row" label="Entities bar on/off"
+              action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_toggle_pdl_opt.sh' '${HOUSE}/@.apps/piececraft-hq/pieces/system/pchq.pdl' 'entities_bar'"/>
+        <item id="mn-db" class="pchq-menu-row quiet" label="Db (todo)" action="void"/>
+      </panel>
+    </sidebar>
 
     <panel id="view-panel" class="pchq-view">
       <canvas id="view" sprite="${canvas_raw}"/>
@@ -48,19 +66,6 @@
               action="setsid sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_entity_ctx.sh' '${HOUSE}/@.apps/piececraft-hq' '${ent.x}' '${ent.y}' '${ent.z}' '${ent.kind}' '${ent.id}'"/>
       </repeat>
     </footer>
-
-    <!-- dropdown overlays: page-level so they don't shadow view-panel -->
-    <panel class="dropdown-child" target_id="tb-desk">
-      <repeat count="${n_desk_opts}" bind="d">
-        <item id="do-${d.#}" class="pchq-menu-row ${d.active}" label="${d.label}"
-              action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'desk' '${d.#}'"/>
-      </repeat>
-    </panel>
-    <panel class="dropdown-child" target_id="tb-menu">
-      <item id="mn-entbar" class="pchq-menu-row" label="Entities bar on/off"
-            action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_toggle_pdl_opt.sh' '${HOUSE}/@.apps/piececraft-hq/pieces/system/pchq.pdl' 'entities_bar'"/>
-      <item id="mn-db" class="pchq-menu-row quiet" label="Db (todo)" action="void"/>
-    </panel>
 
     <text label="No live board-viewer session - open 'View Board' from the game first." class="quiet" show="${no_session}"/>
   </page>
