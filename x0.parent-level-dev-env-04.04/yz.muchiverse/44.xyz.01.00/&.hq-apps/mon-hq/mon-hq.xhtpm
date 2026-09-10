@@ -1,0 +1,35 @@
+<!-- mon-hq.xhtpm - "session monitor" HQ window.
+     Lists every board/engine/hq process the house can spawn, classes
+     each (shell / pal / singleton / child / orphan / detached), marks
+     the stray ones, and offers a one-click "KILL ALL STRAY".
+
+     Backend: <module> forks mon_refresh.sh, a plain shell loop that
+     re-runs `mon_scan.sh publish state/ui.txt` every couple seconds.
+     The renderer substitutes ${...} from state/ui.txt and re-reads it
+     when it changes (same shape as stats-hq-pal.xhtpm, minus prisc).
+
+     class must NOT be a bare built-in mode name ("stats-hq" etc.) or
+     the renderer's C fast-path trips - "mon-hq" is safe. -->
+<window label="Session Monitor" class="mon-hq database-window" vars="state/ui.txt">
+  <module id="mon_refresh" src="&.hq-apps/mon-hq/mon_refresh.sh"/>
+  <page name="main">
+    <panel id="bar" class="settings-block">
+      <text label="scanned ${scan_time}  -  ${rows_count} house proc(s), ${stray_count} stray" class="block-title"/>
+      <row>
+        <item class="btn" label="   refresh now   " action="sh '${PKG}/mon_scan.sh' publish '${PKG}/state/ui.txt'"/>
+        <item class="btn danger" label="   KILL ALL STRAY   " action="sh '${PKG}/mon_scan.sh' kill-all"/>
+        <item class="btn danger" label="  + pals/singletons  " action="sh '${PKG}/mon_scan.sh' kill-all --with-pals"/>
+      </row>
+      <text label="stray PIDs: ${stray_pids}" class="quiet"/>
+    </panel>
+    <panel id="list" class="settings-block">
+      <text label="'!' = stray (no live owner / leaked stack / unregistered engine)" class="quiet"/>
+      <scrolllist class="from-top">
+        <repeat count="${rows_count}" bind="row">
+          <text label="${row.text}"/>
+        </repeat>
+        <text label="(nothing running that this house spawned - clean)" class="quiet" show="${clean}"/>
+      </scrolllist>
+    </panel>
+  </page>
+</window>

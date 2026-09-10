@@ -29,7 +29,14 @@ SECTION      | hq_menu_11_label    | debug
 SECTION      | hq_menu_11_cmd      | livedesk:open-palette:debug
 SECTION      | hq_menu_12_label    | piececraft-hq
 SECTION      | hq_menu_12_cmd      | livedesk:open-piececraft-hq
-SECTION      | hq_menu_13_label    | cancel
+# mon - "session monitor": lists every board/engine/hq process the house
+# spawned, classifies each (shell/pal/singleton/child/orphan/detached),
+# marks the stray ones, one-click KILL ALL STRAY. Wrapper lives under a
+# glob-safe ops/ path (the real app is &.hq-apps/mon-hq/, and a leading
+# '&' in an `sh -c` row is job-control).
+SECTION      | hq_menu_13_label    | mon
+SECTION      | hq_menu_13_cmd      | sh *.monads/*.livedesk-taskbar/ops/open_mon.sh
+SECTION      | hq_menu_14_label    | cancel
 
 SECTION      | file_menu_1_label   | new-desk
 SECTION      | file_menu_1_cmd     | livedesk:new-desk

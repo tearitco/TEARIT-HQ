@@ -1,0 +1,38 @@
+/* mon-hq.css - sibling .css for mon-hq.xhtpm, auto-merged by the shared
+   renderer (same stem). Colour/border only; the generic layout engine
+   owns geometry. Mirrors the house -hq look (stats-hq-pal.css). */
+
+.settings-block {
+  background-color: #181818;
+  border: 1px solid #2a2a2a;
+}
+
+.block-title {
+  color: #e8e8e8;
+}
+
+.quiet {
+  color: #8a8a8a;
+}
+
+.btn {
+  background-color: #232323;
+  border: 1px solid #3a3a3a;
+  color: #dddddd;
+}
+
+.btn.active {
+  background-color: #2f5f8f;
+  color: #ffffff;
+}
+
+.btn.danger {
+  background-color: #3a1e1e;
+  border-color: #6b2b2b;
+  color: #ffdede;
+}
+
+.btn.danger.active {
+  background-color: #8f2f2f;
+  color: #ffffff;
+}
