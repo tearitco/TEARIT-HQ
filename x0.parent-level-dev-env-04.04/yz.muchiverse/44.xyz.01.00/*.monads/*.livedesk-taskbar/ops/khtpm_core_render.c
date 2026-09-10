@@ -1621,6 +1621,11 @@ static int g_key_ctrl = 0;
  * close gesture, from #.desktop/hq_ui.pdl:  close_combo=ctrl+c
  * (the user can set ctrl+q, ctrl+w, ctrl+shift+w, ...). */
 static char g_close_combo[24] = "ctrl+c";
+/* Top of the desktop work area - a new HQ window spawns here, fullscreen
+ * starts here, and window drag can't go above it (clears the GNOME
+ * panel + livedesk top strip). #.desktop/hq_ui.pdl: win_top_y=90 -
+ * bump it if the board opens too high / into the top taskbar. */
+static int g_win_top_y = 90;   /* == WM_MANAGED_DRAG_MIN_Y (defined below) */
 /* REAL FIX 2026-09-05, direct live report ("tb and x11-hq windows no
  * longer do double digit accumulation jump, ie 15 jumps to 5") -
  * multi-digit nav-jump accumulator for the generic default-mode
@@ -5095,7 +5100,7 @@ static void assign_nav_and_layout(void) {
          * IS the real detection. g_default_has_sidebar_panel latching
          * true is the correct "first time" signal already used one
          * line below for a different real fix, same real idea reused. */
-        if (!g_default_has_sidebar_panel) { g_win_x = 80; g_win_y = 80; }
+        if (!g_default_has_sidebar_panel) { g_win_x = 80; g_win_y = g_win_top_y; }
         g_default_has_sidebar_panel = 1;
         if (g_dock_drop_lo && g_default_active_scope_id[0] &&
             (g_focus_nav < g_dock_drop_lo || g_focus_nav > g_dock_drop_hi))
@@ -5943,7 +5948,7 @@ static void dispatch(const char *action) {
         if (g_default_is_fullscreen) {
             g_default_pre_fullscreen_x = g_win_x; g_default_pre_fullscreen_y = g_win_y;
             /* inside the work area, stop short of the edges */
-            g_win_x = WM_FS_MARGIN_X; g_win_y = WM_MANAGED_DRAG_MIN_Y;
+            g_win_x = WM_FS_MARGIN_X; g_win_y = g_win_top_y;
         } else {
             g_win_x = g_default_pre_fullscreen_x; g_win_y = g_default_pre_fullscreen_y;
         }
@@ -8952,7 +8957,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
             int dx = ev->xmotion.x_root - g_popup_drag_last_x;
             int dy = ev->xmotion.y_root - g_popup_drag_last_y;
             g_win_x += dx; g_win_y += dy;
-            if (g_win_y < WM_MANAGED_DRAG_MIN_Y) g_win_y = WM_MANAGED_DRAG_MIN_Y;
+            if (g_win_y < g_win_top_y) g_win_y = g_win_top_y;
             XMoveWindow(dpy, win, g_win_x, g_win_y);
             g_popup_drag_last_x = ev->xmotion.x_root;
             g_popup_drag_last_y = ev->xmotion.y_root;
@@ -9460,6 +9465,11 @@ static void desktop_load_click_two_step(const char *house_root) {
         else if (strcmp(line, "close_combo") == 0) {
             snprintf(g_close_combo, sizeof(g_close_combo), "%s", val);
             for (char *p = g_close_combo; *p; p++) if (*p >= 'A' && *p <= 'Z') *p += 32;
+        }
+        else if (strcmp(line, "win_top_y") == 0) {
+            g_win_top_y = atoi(val);
+            if (g_win_top_y < 0) g_win_top_y = 0;
+            if (g_win_top_y > 400) g_win_top_y = 400;
         }
         else if (strcmp(line, "emoji_sprite_view") == 0) g_emoji_sprite_view_top = (strcmp(val, "top") == 0);
         else if (strcmp(line, "font_scale") == 0) {
@@ -15170,7 +15180,7 @@ int main(int argc, char **argv) {
      * right after the one shared load call (dbhq_load_font_scale()) at
      * line ~17761, same real pattern applied here. */
     if (find_by_tag(g_window, "sidebar") && find_by_tag(g_window, "panel")) {
-        g_win_x = 80; g_win_y = 80; /* sidebar+panel default, distinct from the small-popup modes' 300,300 */
+        g_win_x = 80; g_win_y = g_win_top_y; /* sidebar+panel default (hq_ui.pdl win_top_y) */
     }
 
     /* REAL FIX (found live, first standalone test): g_win_h is DATA-
