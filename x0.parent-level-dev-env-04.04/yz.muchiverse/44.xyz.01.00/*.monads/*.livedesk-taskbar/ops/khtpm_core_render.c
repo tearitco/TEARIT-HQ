@@ -4945,8 +4945,19 @@ static int kh_page_has_relay_item(void) {
     Elem *pg = find_page(g_current_page);
     if (!pg) return 0;
     for (int i = 0; i < pg->n_children; i++) {
-        Elem *it = pg->children[i];
-        if (strcmp(it->tag, "item") == 0 && it->relay[0]) return 1;
+        Elem *c = pg->children[i];
+        if ((strcmp(c->tag, "item") == 0 || strcmp(c->tag, "tab") == 0) && c->relay[0])
+            return 1;
+        /* milestone A: the board's relay trigger moved into a <tabbar>/
+         * <sidebar>/<footer> toolbar - look one level in. */
+        if (strcmp(c->tag, "tabbar") == 0 || strcmp(c->tag, "sidebar") == 0 ||
+            strcmp(c->tag, "footer") == 0) {
+            for (int j = 0; j < c->n_children; j++) {
+                Elem *it = c->children[j];
+                if ((strcmp(it->tag, "item") == 0 || strcmp(it->tag, "tab") == 0) && it->relay[0])
+                    return 1;
+            }
+        }
     }
     return 0;
 }
@@ -7653,7 +7664,20 @@ static void handle_key(KeySym ks, char ch) {
         if (hf) { fprintf(hf, "27\n"); fclose(hf); }
         return;
     }
-    if (ks == XK_Escape) { g_quit = 1; return; }
+    if (ks == XK_Escape) {
+        /* Direct instruction 2026-09-10: "we dont wanna close any
+         * window on esc cuz it could be accident. ctrl+c is ok, but
+         * nothing else but the x button". A real app window
+         * (persistent / sidebar+panel / canvas - db-hq, events-hq, the
+         * pc-hq board) is NEVER closed by a bare Escape; it has an [X]
+         * chrome button. Bare ESC here is a no-op (earlier handlers
+         * already gave ESC its useful jobs: exit a scope, forward to an
+         * armed interact relay). Transient popups - the entity context
+         * menu, pickers - keep their own ESC-to-dismiss below. */
+        if (g_default_persistent || g_default_has_sidebar_panel || g_has_canvas)
+            return;
+        g_quit = 1; return;
+    }
     /* REAL, NEW 2026-09-01 - a real, generic second action any focused
      * <item> can carry (see Elem's own backspace_action field comment) -
      * checked BEFORE the plain Up/Down/digit nav below, same real key-
