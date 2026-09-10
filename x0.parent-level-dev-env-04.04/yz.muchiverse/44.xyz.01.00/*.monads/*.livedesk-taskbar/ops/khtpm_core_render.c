@@ -189,6 +189,12 @@ static Window g_dock_kbd_win;
 static int g_dock_visible_rows = 1;
 static int g_dock_packed_rows = 1;
 static Elem g_dock_plus_elem, g_dock_minus_elem;
+/* MILESTONE B/C - generic <footer> row pager (same idea as the dock
+ * +/- above, for any sidebar+panel window's footer). g_footer_vis_rows
+ * survives redraws; clamped against g_footer_total_rows each layout. */
+static Elem g_footer_more_elem, g_footer_less_elem;
+static int g_footer_vis_rows = 1;
+static int g_footer_total_rows = 1;
 static int g_dock_in_peer_paint;
 static int g_dock_in_menu_paint;
 static Window g_dock_menu_win;
@@ -3787,39 +3793,91 @@ static int layout_sidebar_panel(Elem *page) {
         panel->x = sidebar_w; panel->y = content_top; panel->w = g_win_w - sidebar_w; panel->h = g_win_h - content_top;
     }
 
-    /* MILESTONE B (PCHQ-ENTITY-MENU-AND-TASKBAR-DESIGN.md §6a) - a
-     * generic bottom-dock <footer>: one horizontal strip along the
+    /* MILESTONE B/C (PCHQ-ENTITY-MENU-AND-TASKBAR-DESIGN.md §6a) - a
+     * generic bottom-dock <footer>: a horizontal strip along the
      * window's bottom edge, laid out AFTER sidebar/panel (their heights
-     * are trimmed so nothing paints under it). Any HQ window can carry a
-     * status / entities bar. <item>/<text> children flow left-to-right. */
+     * trimmed so nothing paints under it). Cells WRAP into rows; a
+     * synthesized +/- pager (like the dock strip's) shows/hides deeper
+     * rows via FOOTER_ROWS:+1/-1. g_footer_vis_rows of g_footer_total_
+     * rows are visible; off-page cells park at -100000. */
+    g_footer_more_elem.w = g_footer_less_elem.w = 0;
     {
         Elem *footer = NULL;
         for (int i = 0; i < page->n_children; i++)
             if (strcmp(page->children[i]->tag, "footer") == 0) { footer = page->children[i]; break; }
         if (footer) {
             css_compute_style(&g_sheet, footer->tag, footer->id, footer->classes, footer->n_classes, 0, &footer->style);
-            int footer_h = footer->style.has_height ? footer->style.height : scaled(26);
-            if (footer_h < 12) footer_h = 12;
-            footer->x = 0; footer->y = g_win_h - footer_h;
-            footer->w = g_win_w; footer->h = footer_h;
-            sidebar->h -= footer_h; panel->h -= footer_h;
-            if (sidebar->h < 0) sidebar->h = 0;
-            if (panel->h < 0) panel->h = 0;
-            int fx = scaled(6);
+            int row_h = footer->style.has_height ? footer->style.height : scaled(24);
+            if (row_h < 12) row_h = 12;
+            int pad = scaled(6);
+            int pager_w = scaled(46);   /* room for +/- at the right edge */
+
+            /* pass 1: assign each cell a (row, x) by wrapping */
+            int row = 0, fx = pad, max_row = 0;
             for (int i = 0; i < footer->n_children; i++) {
                 Elem *fi = footer->children[i];
                 if (strcmp(fi->tag, "item") != 0 && strcmp(fi->tag, "text") != 0) continue;
                 css_compute_style(&g_sheet, fi->tag, fi->id, fi->classes, fi->n_classes, 0, &fi->style);
                 int fw = fi->style.has_width ? fi->style.width
                        : (kh_measure_text_px(&fi->style, fi->label) + scaled(18));
-                int fh = fi->style.has_height ? fi->style.height : footer_h - scaled(6);
-                fi->x = fx; fi->y = footer->y + scaled(3); fi->w = fw; fi->h = fh;
+                if (fx > pad && fx + fw > g_win_w - pad - pager_w) { row++; fx = pad; }
+                fi->x = fx; fi->w = fw; fi->h = row_h - scaled(4);
+                fi->y = row;                       /* stash the row index in y for pass 2 */
+                if (row > max_row) max_row = row;
+                fx += fw + scaled(4);
+            }
+            g_footer_total_rows = max_row + 1;
+            if (g_footer_vis_rows < 1) g_footer_vis_rows = 1;
+            if (g_footer_vis_rows > g_footer_total_rows) g_footer_vis_rows = g_footer_total_rows;
+
+            int footer_h = g_footer_vis_rows * row_h + scaled(4);
+            footer->x = 0; footer->y = g_win_h - footer_h;
+            footer->w = g_win_w; footer->h = footer_h;
+            sidebar->h -= footer_h; panel->h -= footer_h;
+            if (sidebar->h < 0) sidebar->h = 0;
+            if (panel->h < 0) panel->h = 0;
+
+            /* pass 2: real y from the stashed row, park off-page rows */
+            for (int i = 0; i < footer->n_children; i++) {
+                Elem *fi = footer->children[i];
+                if (strcmp(fi->tag, "item") != 0 && strcmp(fi->tag, "text") != 0) continue;
+                int r = fi->y;
+                if (r >= g_footer_vis_rows) {
+                    fi->x = 0; fi->y = -100000; fi->w = 0; fi->h = 0; fi->nav_index = 0;
+                    continue;
+                }
+                fi->y = footer->y + scaled(2) + r * row_h;
                 if (strcmp(fi->tag, "item") == 0 && (fi->onclick[0] || fi->label[0])) {
                     fi->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = fi;
                 } else {
                     fi->nav_index = 0;
                 }
-                fx += fw + scaled(4);
+            }
+
+            /* synthesize the +/- pager on the footer's first row when
+             * there is more than one row of cells. */
+            if (g_footer_total_rows > 1) {
+                int ay = footer->y + scaled(2);
+                int aw = scaled(20), ah = row_h - scaled(4);
+                memset(&g_footer_less_elem, 0, sizeof(g_footer_less_elem));
+                snprintf(g_footer_less_elem.tag, sizeof(g_footer_less_elem.tag), "item");
+                snprintf(g_footer_less_elem.id, sizeof(g_footer_less_elem.id), "footer-rows-less");
+                snprintf(g_footer_less_elem.label, sizeof(g_footer_less_elem.label), "-");
+                snprintf(g_footer_less_elem.onclick, sizeof(g_footer_less_elem.onclick), "FOOTER_ROWS:-1");
+                g_footer_less_elem.x = g_win_w - pad - 2 * aw - scaled(3);
+                g_footer_less_elem.y = ay; g_footer_less_elem.w = aw; g_footer_less_elem.h = ah;
+                css_compute_style(&g_sheet, "item", "footer-rows-less", NULL, 0, 0, &g_footer_less_elem.style);
+                g_footer_less_elem.nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = &g_footer_less_elem;
+
+                memset(&g_footer_more_elem, 0, sizeof(g_footer_more_elem));
+                snprintf(g_footer_more_elem.tag, sizeof(g_footer_more_elem.tag), "item");
+                snprintf(g_footer_more_elem.id, sizeof(g_footer_more_elem.id), "footer-rows-more");
+                snprintf(g_footer_more_elem.label, sizeof(g_footer_more_elem.label), "+");
+                snprintf(g_footer_more_elem.onclick, sizeof(g_footer_more_elem.onclick), "FOOTER_ROWS:+1");
+                g_footer_more_elem.x = g_win_w - pad - aw;
+                g_footer_more_elem.y = ay; g_footer_more_elem.w = aw; g_footer_more_elem.h = ah;
+                css_compute_style(&g_sheet, "item", "footer-rows-more", NULL, 0, 0, &g_footer_more_elem.style);
+                g_footer_more_elem.nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = &g_footer_more_elem;
             }
         }
     }
@@ -5460,6 +5518,14 @@ static void dispatch(const char *action) {
     }
     if (strcmp(action, "PAGEROW:-1") == 0) {
         if (g_dock_visible_rows > 1) g_dock_visible_rows--;
+        return;
+    }
+    if (strcmp(action, "FOOTER_ROWS:+1") == 0) {
+        if (g_footer_vis_rows < g_footer_total_rows) g_footer_vis_rows++;
+        return;
+    }
+    if (strcmp(action, "FOOTER_ROWS:-1") == 0) {
+        if (g_footer_vis_rows > 1) g_footer_vis_rows--;
         return;
     }
     if (strncmp(action, "FOCUSWIN:", 9) == 0) {
@@ -7154,6 +7220,11 @@ static void redraw(void) {
                 if (g_sbar_up_elem[sbi].w > 0) kh_serialize_frame_elem(ff, &g_sbar_up_elem[sbi]);
                 if (g_sbar_down_elem[sbi].w > 0) kh_serialize_frame_elem(ff, &g_sbar_down_elem[sbi]);
             }
+            /* MILESTONE B/C - the synthesized footer row pager, same
+             * "lives outside the parsed tree" pattern as the chrome
+             * trio above. */
+            if (g_footer_more_elem.w > 0) kh_serialize_frame_elem(ff, &g_footer_more_elem);
+            if (g_footer_less_elem.w > 0) kh_serialize_frame_elem(ff, &g_footer_less_elem);
             /* MILESTONE A polish - open dropdown-child last so it paints
              * OVER the <canvas> / <footer> (direct report). */
             kh_serialize_frame_deferred(ff);

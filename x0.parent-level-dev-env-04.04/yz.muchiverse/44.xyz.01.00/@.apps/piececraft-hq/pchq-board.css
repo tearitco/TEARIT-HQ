@@ -17,7 +17,12 @@ window { background-color: #141414; font-family: Ubuntu; font-size: 10px; }
 /* bottom status/footer strip */
 .pchq-footer { background-color: #181818; border: 1px solid #2a2a2a; border-width: 1; height: 24px; }
 .pchq-ft { background-color: #232323; color: #cccccc; font-size: 10px;
-  width: 88px; border: 1px solid #3a3a3a; border-width: 1; }
+  width: 96px; border: 1px solid #3a3a3a; border-width: 1; }
+/* the synthesized footer row pager (+ / -) - appears bottom-right when
+ * entity cells wrap past one row */
+#footer-rows-more, #footer-rows-less {
+  background-color: #2b2b2b; color: #eeeeee; font-weight: bold;
+  border: 1px solid #888888; border-width: 1; }
 
 /* real dropdown panels (Desk / Menu) - shared entity_menu_default.css
  * gives them the opaque bg + border; pin a width so rows don't clip. */
