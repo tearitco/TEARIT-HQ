@@ -687,20 +687,52 @@ static void load_page_title(char *out, size_t outsz);
 static void do_fetch(const char *url_in, int record_history);
 
 static char g_curl_url_path[PATH_BUF];
+static char g_curl_cookie_path[PATH_BUF];  /* per-house Netscape jar shared by page/script/worker curls */
 static char g_js_worker_path[PATH_BUF];
 static char g_js_script_path[PATH_BUF];
 static char g_media_op_path[PATH_BUF];
 static char g_media_root[PATH_BUF];
 
+/* Browsers execute only classic-JS scripts (absent/empty type, or a
+ * javascript MIME). Everything else — module, application/json,
+ * application/ld+json, text/template, and any other custom type — is
+ * skipped; the DOM parser already drops those nodes, so running them would
+ * just emit WERR noise (and module syntax Duktape can't parse anyway). */
 static int script_type_skip(const char *tag, const char *tag_end) {
     const char *t = strcasestr_local(tag, "type=");
     if (!t || t >= tag_end) return 0;
     t += 5;
-    if (*t == '"' || *t == '\'') t++;
-    if (strncasecmp(t, "module", 6) == 0) return 1;
-    if (strcasestr_local(t, "json") && t < tag_end) return 1;
-    if (strcasestr_local(t, "ld+json") && t < tag_end) return 1;
-    return 0;
+    char q = 0;
+    if (*t == '"' || *t == '\'') { q = *t; t++; }
+    const char *u = t;
+    while (u < tag_end && *u && (q ? (*u != q)
+                            : (*u != ' ' && *u != '\t' && *u != '>'))) u++;
+    size_t n = (size_t)(u - t);
+    if (n == 0) return 0;
+    if (n >= 32) n = 32;
+    char buf[64];
+    memcpy(buf, t, n); buf[n] = 0;
+    for (size_t i = 0; i < n; i++) buf[i] = (char)tolower((unsigned char)buf[i]);
+    if (strstr(buf, "javascript")) return 0;
+    return 1;
+}
+
+/* True if `tag` sits inside an unclosed <noscript> element. With scripting
+ * enabled browsers neither render noscript content nor run its `<script>`
+ * children; the DOM serializer already drops noscript outright. */
+static int in_noscript_block(const char *root, const char *tag) {
+    const char *p = root;
+    int open = 0;
+    while (p && p < tag) {
+        const char *o = strcasestr_local(p, "<noscript");
+        const char *c = strcasestr_local(p, "</noscript>");
+        if (o && o >= tag) o = NULL;
+        if (c && c >= tag) c = NULL;
+        if (o && (!c || o < c)) { open = 1; p = o + 9; continue; }
+        if (c && (!o || c < o)) { open = 0; p = c + 11; continue; }
+        break;
+    }
+    return open;
 }
 
 static int curl_url_to_file(const char *url, const char *out_path) {
@@ -715,8 +747,9 @@ static int curl_url_to_file(const char *url, const char *out_path) {
     fclose(uf);
     char cmd[PATH_BUF * 2];
     snprintf(cmd, sizeof(cmd),
-        "curl -sL --max-time 8 -A 'Mozilla/5.0 (NNEST network-browser-hq)' -o '%s' -K '%s'",
-        out_path, g_curl_url_path);
+        "curl -sL --max-time 8 -A 'Mozilla/5.0 (NNEST network-browser-hq)'"
+        " -b '%s' -c '%s' -o '%s' -K '%s'",
+        g_curl_cookie_path, g_curl_cookie_path, out_path, g_curl_url_path);
     return system(cmd) == 0;
 }
 
@@ -734,6 +767,7 @@ static void collect_scripts(const char *html, const char *page_url, FILE *js_out
         }
         const char *gt = strchr(tag, '>');
         if (!gt) break;
+        if (in_noscript_block(html, tag)) { p = tag + 7; continue; }
         const char *close = strcasestr_local(gt, "</script>");
         if (!close) break;
         if (script_type_skip(tag, gt)) {
@@ -1084,6 +1118,8 @@ static void worker_spawn(void) {
         setenv("NB_COOKIES_FILE", jar, 1);
         snprintf(jar, sizeof(jar), "%s/#.desktop/nb_localstorage.txt", g_house);
         setenv("NB_LOCALSTORAGE_FILE", jar, 1);
+        snprintf(jar, sizeof(jar), "%s/#.desktop/nb_curl_cookies.txt", g_house);
+        setenv("NB_CURL_COOKIES_FILE", jar, 1);
         execl(g_js_worker_path, g_js_worker_path, (char *)NULL);
         _exit(127);
     }
@@ -1604,6 +1640,7 @@ static int run_curl_interruptible(const char *out_path, const char *cfg_path) {
     if (pid == 0) {
         execlp("curl", "curl", "-sL", "--max-time", "12",
                "-A", "Mozilla/5.0 (NNEST network-browser-hq)",
+               "-b", g_curl_cookie_path, "-c", g_curl_cookie_path,
                "-o", out_path, "-K", cfg_path, (char *)NULL);
         _exit(127);
     }
@@ -2685,6 +2722,7 @@ int main(int argc, char **argv) {
     path_join(g_tmp_html_path, sizeof(g_tmp_html_path), tmpdir, "fetch.html");
     path_join(g_tmp_dom_path, sizeof(g_tmp_dom_path), tmpdir, "fetch.dom");
     path_join(g_curl_url_path, sizeof(g_curl_url_path), tmpdir, "curl.url.cfg");
+    path_join(g_curl_cookie_path, sizeof(g_curl_cookie_path), desktop, "nb_curl_cookies.txt");
     path_join(g_fetch_pid_path, sizeof(g_fetch_pid_path), tmpdir, "fetch.pid");
     path_join(g_js_script_path, sizeof(g_js_script_path), tmpdir, "page.js");
     snprintf(g_js_worker_path, sizeof(g_js_worker_path), "%s/ops/+x/nb_js_worker.+x", g_package_dir);

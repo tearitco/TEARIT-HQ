@@ -1966,6 +1966,16 @@ static duk_ret_t nb_fetch_sync(duk_context *ctx) {
                 cfg_line(cf, "user-agent", "Mozilla/5.0 (NNEST network-browser-hq nb-js-worker rung4)");
                 cfg_line(cf, "max-time", "8");
                 fputs("silent\nlocation\nfail\n", cf);
+                /* same-origin cookie parity: send + persist the shared per-
+                 * house jar so JS-side fetch/XHR see server Set-Cookie (and
+                 * set — cross-navigation) cookies like the manager's curls. */
+                {
+                    const char *cjar = getenv("NB_CURL_COOKIES_FILE");
+                    if (cjar && cjar[0]) {
+                        cfg_line(cf, "cookie", cjar);
+                        cfg_line(cf, "cookie-jar", cjar);
+                    }
+                }
                 /* one header = line per raw "Name: value" line (no strtok_r) */
                 for (const char *p = headers; *p; ) {
                     const char *nl = strchr(p, '\n');
