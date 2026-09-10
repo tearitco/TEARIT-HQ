@@ -39,9 +39,14 @@
       <canvas id="view" sprite="${canvas_raw}"/>
     </panel>
 
-    <footer id="statusbar" class="pchq-footer">
-      <text label="piececraft-hq" class="quiet"/>
-      <item id="ft-entbar" class="pchq-ft" label="entities: off" onclick="void"/>
+    <!-- MILESTONE C: entities bar. show= drops the whole strip when
+         entities_bar is 0 in pchq.pdl (Menu > Entities bar toggles it). -->
+    <footer id="statusbar" class="pchq-footer" show="${entities_bar_on}">
+      <text label="ents" class="quiet"/>
+      <repeat count="${n_ent}" bind="ent">
+        <item id="e${ent.#}" class="pchq-ft" label="${ent.label}"
+              action="setsid sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_entity_ctx.sh' '${HOUSE}/@.apps/piececraft-hq' '${ent.x}' '${ent.y}' '${ent.z}' '${ent.kind}' '${ent.id}'"/>
+      </repeat>
     </footer>
 
     <!-- dropdown overlays: page-level so they don't shadow view-panel -->
@@ -52,7 +57,8 @@
       </repeat>
     </panel>
     <panel class="dropdown-child" target_id="tb-menu">
-      <item id="mn-entbar" class="pchq-menu-row" label="Entities bar (todo)" action="void"/>
+      <item id="mn-entbar" class="pchq-menu-row" label="Entities bar on/off"
+            action="sh '${HOUSE}/@.apps/piececraft-hq/ops/pc_toggle_pdl_opt.sh' '${HOUSE}/@.apps/piececraft-hq/pieces/system/pchq.pdl' 'entities_bar'"/>
       <item id="mn-db" class="pchq-menu-row quiet" label="Db (todo)" action="void"/>
     </panel>
 

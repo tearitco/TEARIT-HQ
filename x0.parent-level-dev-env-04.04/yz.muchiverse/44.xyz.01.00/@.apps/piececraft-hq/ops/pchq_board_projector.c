@@ -33,10 +33,80 @@
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
-#define UIBUF 8192
+#define UIBUF 16384
 
 static void sanitize(char *s) {
     for (char *p = s; *p; p++) if (*p == '\n' || *p == '\r' || *p == '\t') *p = ' ';
+}
+
+/* one OPT/KEY value out of a pipe-delimited .pdl:  "<any> | <name> | <val>" */
+static int read_pdl_opt(const char *path, const char *name, int def) {
+    FILE *f = fopen(path, "r");
+    if (!f) return def;
+    char l[256]; int v = def;
+    while (fgets(l, sizeof(l), f)) {
+        if (l[0] == '#') continue;
+        char *p1 = strchr(l, '|'); if (!p1) continue;
+        char *p2 = strchr(p1 + 1, '|'); if (!p2) continue;
+        char nm[64]; int k = 0;
+        for (char *q = p1 + 1; q < p2 && k < 63; q++) if (*q != ' ' && *q != '\t') nm[k++] = *q;
+        nm[k] = '\0';
+        if (strcmp(nm, name) != 0) continue;
+        v = atoi(p2 + 1);
+        break;
+    }
+    fclose(f);
+    return v;
+}
+
+/* MILESTONE C - append entities-bar rows for the <footer> from
+ * world_01/{animals,phymoji_entities}.txt + hero_01. host_app_root =
+ * "<house>/@.apps/<host>". Capped at 16. */
+static size_t emit_entities(char *ui, size_t off, const char *host_app_root, int on) {
+    int n = 0;
+    char hp[PATH_MAX];
+    snprintf(hp, sizeof(hp), "%s/pieces/hero_01/state.txt", host_app_root);
+    FILE *hf = fopen(hp, "r");
+    if (hf) {
+        char hx[16] = "", hy[16] = "", hz[16] = "", l[128];
+        while (fgets(l, sizeof(l), hf)) {
+            if (!strncmp(l, "pos_x=", 6)) sscanf(l + 6, "%15s", hx);
+            else if (!strncmp(l, "pos_y=", 6)) sscanf(l + 6, "%15s", hy);
+            else if (!strncmp(l, "pos_z=", 6)) sscanf(l + 6, "%15s", hz);
+        }
+        fclose(hf);
+        if (hx[0] && hy[0] && hz[0]) {
+            off += (size_t)snprintf(ui + off, UIBUF - off,
+                "ent_%d_label=hero\nent_%d_id=hero_01\nent_%d_kind=hero\n"
+                "ent_%d_x=%s\nent_%d_y=%s\nent_%d_z=%s\n",
+                n, n, n, n, hx, n, hy, n, hz);
+            n++;
+        }
+    }
+    const char *files[2] = { "pieces/world_01/animals.txt",
+                             "pieces/world_01/phymoji_entities.txt" };
+    for (int fi = 0; fi < 2 && n < 16; fi++) {
+        char p[PATH_MAX];
+        snprintf(p, sizeof(p), "%s/%s", host_app_root, files[fi]);
+        FILE *f = fopen(p, "r");
+        if (!f) continue;
+        char line[160];
+        while (n < 16 && fgets(line, sizeof(line), f)) {
+            char id[64]; int x, y, z;
+            if (sscanf(line, "%63[^,],%d,%d,%d", id, &x, &y, &z) != 4) continue;
+            const char *kind = strstr(id, "chicken") ? "chicken"
+                             : strstr(id, "tree")    ? "tree" : "entity";
+            off += (size_t)snprintf(ui + off, UIBUF - off,
+                "ent_%d_label=%s\nent_%d_id=%s\nent_%d_kind=%s\n"
+                "ent_%d_x=%d\nent_%d_y=%d\nent_%d_z=%d\n",
+                n, id, n, id, n, kind, n, x, n, y, n, z);
+            n++;
+        }
+        fclose(f);
+    }
+    off += (size_t)snprintf(ui + off, UIBUF - off,
+        "n_ent=%d\nentities_bar_on=%s\n", n, on ? "1" : "");
+    return off;
 }
 
 /* one "key=value" line out of a flat key=value file */
@@ -259,6 +329,15 @@ int main(int argc, char **argv) {
         off += (size_t)snprintf(ui + off, UIBUF - off,
             "n_desk_opts=1\nd_0_label=%s\nd_0_active=pchq-menu-active\n",
             active_board);
+
+        /* MILESTONE C - the <footer> entities bar */
+        {
+            char host_app[PATH_MAX], pdl[PATH_MAX];
+            snprintf(host_app, sizeof(host_app), "%s/@.apps/%s", house, host_id);
+            snprintf(pdl, sizeof(pdl), "%s/pieces/system/pchq.pdl", host_app);
+            int ebar = read_pdl_opt(pdl, "entities_bar", 0);
+            off = emit_entities(ui, off, host_app, ebar);
+        }
 
         if (strcmp(ui, last) != 0) {
             FILE *w = fopen(tmp_path, "w");

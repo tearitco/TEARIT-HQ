@@ -37,7 +37,12 @@ fi
 PICK="$ROOT/pieces/display/pick.txt"
 SX=0; SY=0; SZ=0; KIND=none; ID=""; TMPL=""; GLYPH=""
 NOTE=""
-if [ -f "$PICK" ]; then
+if [ $# -ge 6 ]; then
+    # explicit target: pc_entity_ctx.sh <root> <x> <y> <z> <kind> <id>
+    # (footer entities-bar cell click - no pick.txt round-trip)
+    SX="$2"; SY="$3"; SZ="$4"; KIND="$5"; ID="$6"; TMPL="$6"
+    [ "$ID" = _ ] && ID=""
+elif [ -f "$PICK" ]; then
     kv() { sed -n "s/^$1=//p" "$PICK" | head -1; }
     SX=$(kv sel_x); SY=$(kv sel_y); SZ=$(kv sel_z)
     KIND=$(kv kind); ID=$(kv id); TMPL=$(kv template); GLYPH=$(kv glyph)
