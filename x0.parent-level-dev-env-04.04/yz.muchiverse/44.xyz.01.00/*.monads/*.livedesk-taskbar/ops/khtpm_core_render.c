@@ -4305,14 +4305,22 @@ static int dock_item_cw(Elem *t) {
 }
 
 static void dock_place_pager(int win_w) {
+    /* Horizontal "- +" pair on the first row, at the right edge - same
+     * shape as the pc-hq <footer> pager (direct instruction: "i like
+     * the +- ... better"). Both show whenever there's more than one
+     * packed row of cells (was: lone "+" always, "-" stacked on row 2
+     * only after paging down). */
+    int aw = scaled(22), gap = scaled(4);
+    int show_minus = (g_dock_packed_rows > 1) || (g_dock_visible_rows > 1);
+
     memset(&g_dock_plus_elem, 0, sizeof(g_dock_plus_elem));
     snprintf(g_dock_plus_elem.tag, sizeof(g_dock_plus_elem.tag), "item");
     snprintf(g_dock_plus_elem.id, sizeof(g_dock_plus_elem.id), "dock-page-plus");
     snprintf(g_dock_plus_elem.label, sizeof(g_dock_plus_elem.label), "+");
     snprintf(g_dock_plus_elem.onclick, sizeof(g_dock_plus_elem.onclick), "PAGEROW:+1");
-    g_dock_plus_elem.x = win_w - DOCK_PAGER_W + 8;
+    g_dock_plus_elem.x = win_w - 8 - aw;
     g_dock_plus_elem.y = 0;
-    g_dock_plus_elem.w = DOCK_PAGER_W - 16;
+    g_dock_plus_elem.w = aw;
     g_dock_plus_elem.h = DOCK_BAR_H;
     css_compute_style(&g_sheet, g_dock_plus_elem.tag, g_dock_plus_elem.id, NULL, 0, 0, &g_dock_plus_elem.style);
     g_dock_plus_elem.nav_index = ++g_n_nav;
@@ -4323,10 +4331,10 @@ static void dock_place_pager(int win_w) {
     snprintf(g_dock_minus_elem.id, sizeof(g_dock_minus_elem.id), "dock-page-minus");
     snprintf(g_dock_minus_elem.label, sizeof(g_dock_minus_elem.label), "-");
     snprintf(g_dock_minus_elem.onclick, sizeof(g_dock_minus_elem.onclick), "PAGEROW:-1");
-    if (g_dock_visible_rows > 1) {
-        g_dock_minus_elem.x = win_w - DOCK_PAGER_W + 8;
-        g_dock_minus_elem.y = DOCK_BAR_H;
-        g_dock_minus_elem.w = DOCK_PAGER_W - 16;
+    if (show_minus) {
+        g_dock_minus_elem.x = win_w - 8 - aw - gap - aw;
+        g_dock_minus_elem.y = 0;
+        g_dock_minus_elem.w = aw;
         g_dock_minus_elem.h = DOCK_BAR_H;
         css_compute_style(&g_sheet, g_dock_minus_elem.tag, g_dock_minus_elem.id, NULL, 0, 0, &g_dock_minus_elem.style);
         g_dock_minus_elem.nav_index = ++g_n_nav;
