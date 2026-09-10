@@ -721,6 +721,7 @@ static int curl_url_to_file(const char *url, const char *out_path) {
 }
 
 static void collect_scripts(const char *html, const char *page_url, FILE *js_out, int *n_scripts) {
+#define SCRIPT_BOUNDARY "/*nbjs-script-boundary*/"   /* per-script slices for the worker's document-order runner */
     const char *p = html;
     int n = 0, n_ext = 0;
     *n_scripts = 0;
@@ -763,9 +764,9 @@ static void collect_scripts(const char *html, const char *page_url, FILE *js_out
                     if (ef) {
                         char buf[4096];
                         size_t r;
-                        fprintf(js_out, "\n;try{/* src %d */\n", n_ext);
+                        fprintf(js_out, SCRIPT_BOUNDARY "\n");
                         while ((r = fread(buf, 1, sizeof(buf), ef)) > 0) fwrite(buf, 1, r, js_out);
-                        fprintf(js_out, "\n}catch(_e){print('script error '+String(_e));}\n");
+                        fprintf(js_out, "\n");
                         fclose(ef);
                         n++;
                         n_ext++;
@@ -777,9 +778,9 @@ static void collect_scripts(const char *html, const char *page_url, FILE *js_out
         }
         const char *body = gt + 1;
         if (close > body) {
-            fprintf(js_out, "\n;try{/* inline %d */\n", n);
+            fprintf(js_out, SCRIPT_BOUNDARY "\n");
             fwrite(body, 1, (size_t)(close - body), js_out);
-            fprintf(js_out, "\n}catch(_e){print('script error '+String(_e));}\n");
+            fprintf(js_out, "\n");
             n++;
         }
         p = close + 9;

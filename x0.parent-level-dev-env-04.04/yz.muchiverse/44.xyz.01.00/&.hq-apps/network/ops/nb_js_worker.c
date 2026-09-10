@@ -2421,6 +2421,59 @@ static void dom_teardown(void) {
     g_dom_root = NULL;
 }
 
+/* phase-2 (2026-09-09): document-order script runs. The manager writes one
+ * <script> (inline or src-fetched) per slice of page.js, separated by the
+ * SCRIPT_BOUNDARY sentinel. Each slice is compiled and run as its own
+ * program — browser classic-script parity: a syntax error in slice 2 does
+ * not stop slices 1/3, top-level `var` still lands on the shared global,
+ * and external <script src> executes at its DOM position. Per-slice
+ * failures print to stderr (surfaced by the manager as WERR|/[worker]).
+ * A legacy page.js without any sentinel is treated as one program. */
+#define SCRIPT_BOUNDARY "/*nbjs-script-boundary*/"
+static const char *find_script_boundary(const char *p, const char *end,
+                                        const char **after) {
+    const char *q = p;
+    for (; q + sizeof(SCRIPT_BOUNDARY) - 1 <= end; q++) {
+        if (q[0] == '/' && q[1] == '*' &&
+            memcmp(q, SCRIPT_BOUNDARY, sizeof(SCRIPT_BOUNDARY) - 1) == 0) {
+            *after = q + sizeof(SCRIPT_BOUNDARY) - 1;
+            return q;
+        }
+    }
+    return NULL;
+}
+static void run_scripts_slices(duk_context *ctx, char *src, size_t src_n) {
+    const char *p = src, *end = src + src_n;
+    const char *after = NULL;
+    if (!find_script_boundary(p, end, &after)) {
+        /* legacy single-program page.js */
+        duk_push_lstring(ctx, src, src_n);
+        if (peval_budget(ctx, NULL) != 0) {
+            fprintf(stderr, "WERR| script 0: %s\n", duk_safe_to_string(ctx, -1));
+            duk_pop(ctx);
+        } else duk_pop(ctx);
+        return;
+    }
+    p = after;
+    int idx = 0;
+    for (;;) {
+        const char *next = NULL;
+        size_t slice = (size_t)(end - p);
+        const char *bn = find_script_boundary(p, end, &next);
+        if (bn) slice = (size_t)(bn - p);
+        if (slice > 0) {
+            duk_push_lstring(ctx, p, slice);
+            if (peval_budget(ctx, NULL) != 0) {
+                fprintf(stderr, "WERR| script %d: %s\n", idx,
+                        duk_safe_to_string(ctx, -1));
+                duk_pop(ctx);
+            } else duk_pop(ctx);
+        }
+        idx++;
+        if (!bn) break;
+        p = next;
+    }
+}
 static void run_page(void) {
     /* phase-2 (commit 7): per-page event/timer/microtask state */
     g_timer_count = 0; g_micro_n = 0; g_micro_head = 0; g_evl_count = 0;
@@ -2473,19 +2526,8 @@ static void run_page(void) {
     }
     if (src_n == 0) { free(src); duk_destroy_heap(ctx); dom_teardown(); send_status("STATUS ok"); return; }
 
-    duk_push_lstring(ctx, src, src_n);
+    run_scripts_slices(ctx, src, src_n);
     free(src);
-    int rc = peval_budget(ctx, NULL);
-    if (rc != 0) {
-        const char *m = duk_safe_to_string(ctx, -1);
-        char msg[1024];
-        snprintf(msg, sizeof(msg), "STATUS err:%s", m ? m : "script error");
-        duk_destroy_heap(ctx);
-        dom_teardown();
-        send_status(msg);
-        return;
-    }
-    duk_pop(ctx);
     /* phase-2 (commit 7): lifecycle + event loop — timers/microtasks now fire */
     int ev_err = run_event_loop(ctx);
     if (ev_err) {
