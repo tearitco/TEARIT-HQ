@@ -1615,6 +1615,12 @@ static Elem *g_default_input_elem;
  * End). default_cli_io_handle_key() reads it: Shift+move extends the
  * text selection, an unshifted move collapses it. */
 static int g_key_shift = 0;
+static int g_key_ctrl = 0;
+/* PDL-configurable window-close combo. ESC never closes a real app
+ * window (accident risk - direct instruction). This is the deliberate
+ * close gesture, from #.desktop/hq_ui.pdl:  close_combo=ctrl+c
+ * (the user can set ctrl+q, ctrl+w, ctrl+shift+w, ...). */
+static char g_close_combo[24] = "ctrl+c";
 /* REAL FIX 2026-09-05, direct live report ("tb and x11-hq windows no
  * longer do double digit accumulation jump, ie 15 jumps to 5") -
  * multi-digit nav-jump accumulator for the generic default-mode
@@ -7480,6 +7486,26 @@ static void dump_frame_png(void) {
 }
 
 static void handle_key(KeySym ks, char ch) {
+    /* PDL-configurable window close (#.desktop/hq_ui.pdl close_combo,
+     * default ctrl+c). The deliberate close gesture for a focused
+     * window - ESC deliberately does NOT close a real app window
+     * (accident risk). Compares the base keysym (Ctrl+C delivers ch
+     * 0x03, so ch is useless here) against the letter after the last
+     * '+', case-insensitively, with the ctrl/shift requirement. */
+    if (g_close_combo[0] && ((ks >= 'a' && ks <= 'z') || (ks >= 'A' && ks <= 'Z'))) {
+        const char *plus = strrchr(g_close_combo, '+');
+        int want_ch = plus ? (unsigned char)plus[1] : (unsigned char)g_close_combo[0];
+        int want_ctrl  = (strstr(g_close_combo, "ctrl")  != NULL);
+        int want_shift = (strstr(g_close_combo, "shift") != NULL);
+        int got = (int)ks; if (got >= 'A' && got <= 'Z') got += 32;
+        if (want_ch >= 'A' && want_ch <= 'Z') want_ch += 32;
+        if (want_ch && got == want_ch &&
+            (!want_ctrl  || g_key_ctrl) &&
+            (!want_shift || g_key_shift)) {
+            g_quit = 1;
+            return;
+        }
+    }
     /* REAL FIX 2026-09-04 (pc-hq-bugs.md Bug 2 - "tb top gets focus
      * (steals it) and wont ever give it back" the instant the user
      * presses an arrow key after clicking a different window). Root
@@ -8929,6 +8955,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         /* REAL, NEW 2026-09-05 - real Shift state for this key, read by
          * default_cli_io_handle_key()'s selection logic. */
         g_key_shift = (ev->xkey.state & ShiftMask) ? 1 : 0;
+        g_key_ctrl  = (ev->xkey.state & ControlMask) ? 1 : 0;
         if (is_popup) {
             /* Physical keys must move dock/popup nav in-process.
              * Capture+poll is for agent replay; idle tick still consumes
@@ -9418,6 +9445,10 @@ static void desktop_load_click_two_step(const char *house_root) {
         char *nl = strchr(val, '\n');
         if (nl) *nl = '\0';
         if (strcmp(line, "click_two_step") == 0) g_click_two_step = atoi(val) != 0;
+        else if (strcmp(line, "close_combo") == 0) {
+            snprintf(g_close_combo, sizeof(g_close_combo), "%s", val);
+            for (char *p = g_close_combo; *p; p++) if (*p >= 'A' && *p <= 'Z') *p += 32;
+        }
         else if (strcmp(line, "emoji_sprite_view") == 0) g_emoji_sprite_view_top = (strcmp(val, "top") == 0);
         else if (strcmp(line, "font_scale") == 0) {
             int p = (int)(atof(val) * 100.0 + 0.5);

@@ -1,51 +1,12 @@
-# hq_ui.pdl - shared UI config for all -hq apps (db-hq, events-hq, ai-hq, etc.)
-# font_scale: multiplier applied to both font sizes and layout box sizes
-# (chrome height, row heights, default window size), so a bigger font
-# never gets clipped by boxes that stayed the same size. Range 0.5-3.0.
-font_scale=1.25
+# hq_ui.pdl - per-desktop UI options read by khtpm_core_render (every
+# HQ / x11-hq window). Plain key=value. Live-reloaded.
 
-# window_x / window_y: initial on-screen position of the -hq window
-# (root coords). Default was a hardcoded 100,100 in khtpm_hq_render.c -
-# that put the window only ~46px below the top (the taskbar + work-area
-# margin is ~54px), so stats/db-hq windows appeared glued right under the
-# taskbar. Now configurable without a rebuild (direct instruction
-# 2026-08-13: "scootch them down a bit... are there values in .pdl
-# separate as they should be?"). Left as 100 default; window_y raised to
-# clear the taskbar area with comfortable margin.
-window_x=100
-window_y=160
+# close_combo: the ONLY keyboard gesture that closes a focused window
+# (Escape deliberately does NOT - too easy to hit by accident). The
+# window's [X] chrome button always works too. Format: ctrl+<key>,
+# optionally with shift:  ctrl+c   ctrl+q   ctrl+w   ctrl+shift+w
+close_combo=ctrl+c
 
-# focus_grab: 0 (default, KISS hail-mary 2026-08-12) = do NOTHING focus-
-# related on map/click, matching egg_window.c's own entity/context
-# window exactly (no XSetInputFocus, no XGrabKeyboard) - those windows
-# also launch fresh from a click and reliably keep keyboard focus with
-# zero special handling, so try that first. 1 = fall back to the earlier
-# XGrabKeyboard+retry / right-click-force-focus machinery if 0 doesn't
-# actually fix real physical keyboard input.
-focus_grab=1
-
-# click_two_step: 1 (default, 2026-08-29) = a click on a real nav-
-# numbered element (button/tab/row - anything with a "[ ]N." badge)
-# only moves focus onto it the first time ("[>]"), matching what nav/
-# digit-jump already does - a SECOND click on the same, already-
-# focused element is what actually activates it. Applies house-wide
-# (db-hq/events-hq/chat-hai), except the chat-hai composer text field
-# (clicking a text field to focus it for typing keeps its own separate
-# real toggle, chai_require_cli_activation - a different kind of
-# action than "select this menu item"). Set to 0 to restore the older
-# "auto" behavior: one click both focuses AND activates immediately,
-# per direct instruction ("make it optional from .pdl, can open
-# immediately, or wait for second click").
+# click_two_step: 1 = first click focuses, second activates (default).
+#   0 = one click activates.
 click_two_step=1
-
-# emoji_sprite_view: how desktop entities render in 3D camera mode
-# (cursword's own camera_mode 3/4, tp_desktop_window_rgb.c's real
-# per-voxel raymarch). "front" (default) = a straight-on view, the
-# classic real "topdown map, front-facing sprite/object" convention -
-# direct instruction 2026-08-30 ("lets keep the camera angles
-# reasonable... view from front for now"), since the earlier fixed
-# diagonal "corner" view read as melted/unreasonable. "top" = that
-# original diagonal corner view, kept as a real named alternative for
-# later camera work, not deleted - direct instruction: "later will
-# change when doing more camera stuff."
-emoji_sprite_view=front
