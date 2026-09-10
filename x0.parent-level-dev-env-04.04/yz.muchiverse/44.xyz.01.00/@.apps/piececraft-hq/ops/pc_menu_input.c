@@ -613,6 +613,50 @@ static void tick_animals(const char *proj_root, int tick) {
  * is a real, shared helper both call into, not two separate counters
  * drifting apart. Returns the NEW tick value (post-increment) so the
  * caller can log/display it without a second read. */
+/* MILESTONE E (PCHQ-ENTITY-MENU-AND-TASKBAR-DESIGN.md) - remove one
+ * "id,x,y,z" line from the two positioned-entity manifests bv_render_3d
+ * reads (animals.txt = movable, phymoji_entities.txt = static decor).
+ * Returns 1 if a line was removed. Reached via the CTX_DELETE inbox
+ * verb the shared context-menu window (pc_entity_ctx.sh) appends. */
+static int ctx_delete_world_entity(const char *proj_root, const char *id,
+                                   int x, int y, int z, char *msg, size_t msgsz) {
+    char real_root[MAX_PATH];
+    resolve_real_root(proj_root, real_root, sizeof(real_root));
+    const char *files[2] = { "pieces/world_01/animals.txt",
+                             "pieces/world_01/phymoji_entities.txt" };
+    for (int fi = 0; fi < 2; fi++) {
+        char path[MAX_PATH];
+        snprintf(path, sizeof(path), "%s/%s", real_root, files[fi]);
+        FILE *f = fopen(path, "r");
+        if (!f) continue;
+        static char lines[256][160];
+        int n = 0, removed = 0;
+        char line[160];
+        while (n < 256 && fgets(line, sizeof(line), f)) {
+            char lid[64]; int lx = 0, ly = 0, lz = 0;
+            if (sscanf(line, "%63[^,],%d,%d,%d", lid, &lx, &ly, &lz) == 4 &&
+                lx == x && ly == y && lz == z &&
+                (!id[0] || strcmp(lid, id) == 0)) {
+                removed++;
+                continue;
+            }
+            snprintf(lines[n++], sizeof(lines[0]), "%s", line);
+        }
+        fclose(f);
+        if (removed) {
+            FILE *w = fopen(path, "w");
+            if (w) {
+                for (int i = 0; i < n; i++) fputs(lines[i], w);
+                fclose(w);
+            }
+            snprintf(msg, msgsz, "Deleted %s @ %d,%d,%d", id[0] ? id : "entity", x, y, z);
+            return 1;
+        }
+    }
+    snprintf(msg, msgsz, "Nothing to delete at %d,%d,%d", x, y, z);
+    return 0;
+}
+
 static int advance_tick(const char *proj_root) {
     /* REAL FIX 2026-08-04, direct user report ("tick didn't change
      * time... autotick isn't moving time forward"): this used to write
@@ -912,6 +956,19 @@ int main(int argc, char **argv) {
             ledger_append(project_root, tick, "player", "build", details);
             tick_animals(project_root, tick);
             snprintf(message, sizeof(message), "Build (tick %d) - block placement not implemented yet.", tick);
+        } else if (strncmp(cmd, "CTX_INSPECT", 11) == 0) {
+            int x = 0, y = 0, z = 0; char id[64] = "";
+            sscanf(cmd + 11, "%d %d %d %63s", &x, &y, &z, id);
+            snprintf(message, sizeof(message), "Inspect: %s @ %d,%d,%d",
+                     id[0] ? id : "(cell)", x, y, z);
+        } else if (strncmp(cmd, "CTX_DELETE", 10) == 0) {
+            int x = 0, y = 0, z = 0; char id[64] = "";
+            sscanf(cmd + 10, "%d %d %d %63s", &x, &y, &z, id);
+            ctx_delete_world_entity(project_root, id, x, y, z, message, sizeof(message));
+        } else if (strncmp(cmd, "CTX_", 4) == 0) {
+            /* COPY / PASTE / PLACE / POSSESS / TOENTITY - plumbed
+             * (menu -> inbox -> here), apply not implemented this slice. */
+            snprintf(message, sizeof(message), "%s - not implemented yet", cmd);
         } else if (strcmp(cmd, "OPEN_BOARD_WIDGET") == 0) {
             open_board_widget(project_root, message, sizeof(message));
         } else if (strcmp(cmd, "OPEN_VIEW_EDITOR") == 0) {

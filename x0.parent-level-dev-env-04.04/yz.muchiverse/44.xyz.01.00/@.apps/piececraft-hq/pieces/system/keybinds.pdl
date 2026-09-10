@@ -45,6 +45,15 @@ VERB         | 47                 | END_TURN
 VERB         | 46                 | TOGGLE_AUTOTICK
 VERB         | 44                 | CYCLE_TICK_SPEED
 
+# ── entity context menu (PCHQ-ENTITY-MENU-AND-TASKBAR-DESIGN.md) ──
+# ctx_menu key / right-click -> the shared khtpm context-menu window on
+# whatever the selector points at (pieces/display/pick.txt). Slice 1:
+# the op + apply verbs exist; the key below is DECLARED but not yet
+# wired into bv_menu_input's dispatch (slice 2 adds the unpossessed
+# VERB gate). Test today by running ops/pc_entity_ctx.sh by hand.
+OPT          | ctx_menu_enabled   | 1
+KEY          | ctx_menu           | 16        # Shift; changeable
+
 # ── input options ──
 # multipress_compensator: 1 = bv_dispatch drops stale queued keys (a
 #   held key that piled up behind a slow 3D render) so movement stops
