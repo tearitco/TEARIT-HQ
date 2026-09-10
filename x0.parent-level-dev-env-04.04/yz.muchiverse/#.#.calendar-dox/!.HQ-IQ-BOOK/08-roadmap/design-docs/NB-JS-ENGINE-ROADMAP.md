@@ -375,8 +375,10 @@ plausible stub, `MutationObserver` (can no-op then improve),
 > Operational landmine surfaced while testing: spawning the manager
 > repeatedly at the same house without killing the previous instance stacks
 > several managers racing on the shared request/state files (stale-binary
-> writes corrupted results). A single-instance guard is a future hardening;
-> testing discipline: kill before re-launch.
+> writes corrupted results). Fixed 2026-09-10 — the manager now flocks a
+> per-house `#.desktop/network_browser_manager.lock`
+> (`LOCK_EX|LOCK_NB`; the lock dies with the process, so no stale-pid
+> handling; second instance prints and exits rc=2).
 
 ### Rung 7 — CSS/layout awareness  *(optional, large, defer)*
 `getBoundingClientRect`, `offsetWidth/Height`, `display:none`

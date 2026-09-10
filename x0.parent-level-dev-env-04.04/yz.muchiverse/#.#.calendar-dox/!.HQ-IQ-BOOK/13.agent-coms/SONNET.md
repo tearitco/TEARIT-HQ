@@ -429,5 +429,8 @@ Merge `origin/opencode` (commits after the http-breadth notice).
 - **Operational landmine (test discipline, not a code bug):** repeatedly
   `go:`-driving the same live house without killing the previous manager
   stacks several managers racing on shared request/state files — stale
-  binaries corrupt results. Kill before relaunch; a single-instance guard
-  is opened as future hardening. All gates green (29 PASS, 4 binaries).
+  binaries corrupt results. Kill before relaunch. RESOLVED 2026-09-10:
+  the manager now flocks a per-house `#.desktop/network_browser_manager.lock`
+  (`LOCK_EX|LOCK_NB`, dies with the process); a second instance prints and
+  exits rc=2. So the pileup can no longer happen even if launch is
+  repeated. All gates green (29 PASS, 4 binaries).

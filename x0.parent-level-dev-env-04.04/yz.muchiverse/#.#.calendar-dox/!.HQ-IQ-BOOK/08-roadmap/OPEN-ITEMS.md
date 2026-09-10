@@ -88,4 +88,8 @@ short version.*
       `document.cookie` jar), browser-correct `script_type_skip` (template/
       module/non-JS types never run) and noscript script suppression, and
       a real remote-site smoke test (example.com redirect + httpbin cookie
-      round-trip + iana full page through the ladder).
+      round-trip + iana full page through the ladder). Manager is now
+      single-instance per house (`flock` on
+      `#.desktop/network_browser_manager.lock`, exits rc=2 on a second
+      launch) — the racing-manager pileup that corrupted live E2E runs can
+      no longer happen.
