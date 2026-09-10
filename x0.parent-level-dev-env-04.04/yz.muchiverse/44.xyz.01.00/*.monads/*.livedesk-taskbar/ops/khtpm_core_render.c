@@ -3841,6 +3841,10 @@ static int layout_sidebar_panel(Elem *page) {
             if (row_h < 12) row_h = 12;
             int pad = scaled(6);
             int pager_w = scaled(46);   /* room for +/- at the right edge */
+            /* always stop short of the ⌟ drag-resize grip in the
+             * bottom-right corner (direct instruction) */
+            int grip = g_user_resizable ? KH_RESIZE_GRIP + scaled(4) : 0;
+            int right_edge = g_win_w - pad - grip;
 
             /* pass 1: assign each cell a (row, x) by wrapping */
             int row = 0, fx = pad, max_row = 0;
@@ -3850,7 +3854,7 @@ static int layout_sidebar_panel(Elem *page) {
                 css_compute_style(&g_sheet, fi->tag, fi->id, fi->classes, fi->n_classes, 0, &fi->style);
                 int fw = fi->style.has_width ? fi->style.width
                        : (kh_measure_text_px(&fi->style, fi->label) + scaled(18));
-                if (fx > pad && fx + fw > g_win_w - pad - pager_w) { row++; fx = pad; }
+                if (fx > pad && fx + fw > right_edge - pager_w) { row++; fx = pad; }
                 fi->x = fx; fi->w = fw; fi->h = row_h - scaled(4);
                 fi->y = row;                       /* stash the row index in y for pass 2 */
                 if (row > max_row) max_row = row;
@@ -3862,10 +3866,18 @@ static int layout_sidebar_panel(Elem *page) {
 
             int footer_h = g_footer_vis_rows * row_h + scaled(4);
             footer->x = 0; footer->y = g_win_h - footer_h;
+            /* the footer NEVER climbs into the header/toolbar band -
+             * they don't compete. Keep a sliver of panel between them. */
+            int min_footer_y = content_top + scaled(6);
+            if (footer->y < min_footer_y) {
+                footer->y = min_footer_y;
+                footer_h = g_win_h - footer->y;
+                if (footer_h < row_h) footer_h = row_h;
+            }
             footer->w = g_win_w; footer->h = footer_h;
-            sidebar->h -= footer_h; panel->h -= footer_h;
-            if (sidebar->h < 0) sidebar->h = 0;
-            if (panel->h < 0) panel->h = 0;
+            /* sidebar/panel stop exactly at the footer top */
+            panel->h  = footer->y - panel->y;   if (panel->h  < 0) panel->h  = 0;
+            sidebar->h = footer->y - sidebar->y; if (sidebar->h < 0) sidebar->h = 0;
 
             /* pass 2: real y from the stashed row, park off-page rows */
             for (int i = 0; i < footer->n_children; i++) {
@@ -3894,7 +3906,7 @@ static int layout_sidebar_panel(Elem *page) {
                 snprintf(g_footer_less_elem.id, sizeof(g_footer_less_elem.id), "footer-rows-less");
                 snprintf(g_footer_less_elem.label, sizeof(g_footer_less_elem.label), "-");
                 snprintf(g_footer_less_elem.onclick, sizeof(g_footer_less_elem.onclick), "FOOTER_ROWS:-1");
-                g_footer_less_elem.x = g_win_w - pad - 2 * aw - scaled(3);
+                g_footer_less_elem.x = right_edge - 2 * aw - scaled(3);
                 g_footer_less_elem.y = ay; g_footer_less_elem.w = aw; g_footer_less_elem.h = ah;
                 css_compute_style(&g_sheet, "item", "footer-rows-less", NULL, 0, 0, &g_footer_less_elem.style);
                 g_footer_less_elem.nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = &g_footer_less_elem;
@@ -3904,7 +3916,7 @@ static int layout_sidebar_panel(Elem *page) {
                 snprintf(g_footer_more_elem.id, sizeof(g_footer_more_elem.id), "footer-rows-more");
                 snprintf(g_footer_more_elem.label, sizeof(g_footer_more_elem.label), "+");
                 snprintf(g_footer_more_elem.onclick, sizeof(g_footer_more_elem.onclick), "FOOTER_ROWS:+1");
-                g_footer_more_elem.x = g_win_w - pad - aw;
+                g_footer_more_elem.x = right_edge - aw;
                 g_footer_more_elem.y = ay; g_footer_more_elem.w = aw; g_footer_more_elem.h = ah;
                 css_compute_style(&g_sheet, "item", "footer-rows-more", NULL, 0, 0, &g_footer_more_elem.style);
                 g_footer_more_elem.nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = &g_footer_more_elem;
