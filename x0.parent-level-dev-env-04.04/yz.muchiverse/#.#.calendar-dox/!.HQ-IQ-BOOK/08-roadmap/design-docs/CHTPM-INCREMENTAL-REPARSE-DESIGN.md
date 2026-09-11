@@ -71,6 +71,57 @@ exact same gap a third time if the foundation doesn't change).
 
 ## Proposed design
 
+### 0. Modularity: a new file in `_shared-lib/`, not more code in `khtpm_core_render.c`
+
+Direct instruction 2026-09-11: "is there a way to do this more
+modularly, using ops/ functions etc so its not so volatile?" - real,
+already-established house convention answers this directly, no new
+pattern needed: `&.widgits/_shared-lib/` already holds
+`khtpm_render_core.c`/`khtpm_draw_core.c`/`khtpm_css_parser.c` as
+separate, focused, TEXT-INCLUDED files (`#include
+"khtpm_render_core.c"`, resolved against the one canonical copy via a
+build-time `-I` flag - see `SHARED-SOURCE-COMPILE-IN-PLACE.md`, landed
+2026-09-09). No in-house `.h`, no `.so`/dynamic linking (house-wide
+rule, `khtpm-house-standards` skill) - just a genuinely separate `.c`
+file, one real translation unit, compiled alongside the others.
+
+This whole design lands as a **new file**, `&.widgits/_shared-lib/
+khtpm_reparse_diff.c`, `#include`d from `khtpm_core_render.c` the same
+way the existing three already are - NOT inline code added to the
+already-huge `khtpm_core_render.c`. Concretely:
+
+- `khtpm_reparse_diff.c` owns: the diff/patch algorithm (§2), the
+  keyed-match logic, the free-list (§3). It depends only on the `Elem`
+  type (already shared via `khtpm_render_core.c`) - no `dpy`/X11, no
+  `g_default_input_elem` or any other `khtpm_core_render.c` global
+  referenced directly. Its real entry point is one function,
+  something like `int kh_reparse_diff_patch(Elem *old_root, Elem
+  *new_root, Elem **removed_out, int *removed_n)` - takes two trees,
+  patches `old_root`'s subtree in place, returns what got removed so
+  the CALLER (khtpm_core_render.c, which owns `g_default_input_elem`
+  and every other cross-reparse pointer) decides what to do about a
+  removed element being the armed one. The diff engine itself should
+  not need to know cli_io/text_area/grid are special - preserving
+  `input_buffer`/`cursor`/etc across a match is a generic "these
+  fields are runtime state, not template output" rule the engine
+  applies uniformly (a real, small, explicit list of field names/
+  offsets it never overwrites on a match, documented in the file
+  itself), not per-tag logic.
+- This split is what makes §7's headless test harness realistic: a
+  standalone test driver can `#include "khtpm_reparse_diff.c"` alone
+  (plus `khtpm_render_core.c` for the `Elem` type it depends on),
+  build two small `Elem` trees by hand or from fixture `.chtpm` files
+  via the existing `parse_chtpm()`, call `kh_reparse_diff_patch()`,
+  and assert on the result - zero X11, zero live window, zero
+  `khtpm_core_render.c` globals involved. Write this test file
+  alongside the implementation, not after.
+- Build-script change: `build_core_render.sh` (and any other consumer
+  that ends up needing this - the taskbar's own build script if the
+  dock rollout step needs it compiled in) adds `khtpm_reparse_diff.c`
+  to its `-I`'d text-include set, same one-line-per-consumer pattern
+  the 2026-09-09 migration already established for the other three
+  files - no new build mechanism to invent.
+
 ### 1. Two-pool parse: old (live) + new (candidate)
 
 Reparse currently overwrites `g_pool[]` in place. Instead: parse the
@@ -206,29 +257,35 @@ override_redirect incident's own mistake (tested the target window
 first via xdotool, got false confidence, broke the dock without
 anyone noticing until the user reported it live). Concretely:
 
-1. Implement `g_pool_next`/diff/patch/free-list behind a compile-time
-   or runtime flag, OFF by default - the existing full-rebuild path
-   stays the real, live behavior until the new path is proven.
-2. Build a standalone test harness (a fixture `.chtpm` + a script that
-   mutates it in controlled ways - content-only change, add a row,
-   remove a row, reorder rows, change a keyed field's tag) and unit-
-   verify the diff/patch logic against it headless, BEFORE touching
-   any real window's live behavior. This house's `--headless` mode and
-   `g_headless` layout fallback already exist for exactly this kind of
-   isolated test.
-3. Flip the flag ON for the dock/taskbar specifically first. Live-test
+1. Write `&.widgits/_shared-lib/khtpm_reparse_diff.c` (§0) -
+   `g_pool_next`/diff/patch/free-list logic, self-contained. Not
+   wired into `khtpm_core_render.c` yet.
+2. Write its standalone test driver alongside it (§0's own test-file
+   point) - a small program that `#include`s only `khtpm_reparse_diff.c`
+   + `khtpm_render_core.c`, builds/parses fixture `.chtpm` trees,
+   mutates them in controlled ways (content-only change, add a row,
+   remove a row, reorder rows, change a keyed field's tag), and
+   asserts the diff/patch result - real Elem-identity checks (same
+   pointer survives a content-only change), not just visual output.
+   Fully headless, zero X11, zero live window. Get this green before
+   touching `khtpm_core_render.c` at all.
+3. Wire `khtpm_reparse_diff.c` into `khtpm_core_render.c`'s
+   `reparse_chtpm_if_changed()` behind a compile-time or runtime flag,
+   OFF by default - the existing full-rebuild path stays the real,
+   live behavior until the new path is proven end to end.
+4. Flip the flag ON for the dock/taskbar specifically first. Live-test
    every dropdown/menu interaction a human would do. Get explicit
    user confirmation before proceeding.
-4. Flip it on for one simple window (text-edit-hq or chat-hai) next.
+5. Flip it on for one simple window (text-edit-hq or chat-hai) next.
    Verify text_area/cli_io state survives a real reparse burst, same
    as today's relay tests, PLUS get real-hardware confirmation this
    time (see [[relay-testing-may-mask-real-focus-bugs]] - relay-only
    verification is not sufficient evidence any more for this bug
    class).
-5. Only then flip it on for network-browser (the actual motivating
+6. Only then flip it on for network-browser (the actual motivating
    case) and confirm the address bar bug is genuinely gone on real
    hardware.
-6. Once every window is confirmed working on the new path, remove the
+7. Once every window is confirmed working on the new path, remove the
    flag and the old full-rebuild code path, and delete the now-dead
    `kh_text_areas_reload()`/`kh_cli_io_reload()`/
    `kh_find_input_by_key()` bolt-ons.
@@ -278,3 +335,7 @@ anyone noticing until the user reported it live). Concretely:
   house's own "don't do more work than the content actually changed"
   philosophy this design applies one layer deeper (element identity,
   not just redraw timing).
+- `SHARED-SOURCE-COMPILE-IN-PLACE.md` - the existing modular-`.c`-
+  files-in-`_shared-lib/`, text-included-via-`-I` convention §0 of
+  this design follows for `khtpm_reparse_diff.c`, rather than adding
+  more code to `khtpm_core_render.c` directly.
