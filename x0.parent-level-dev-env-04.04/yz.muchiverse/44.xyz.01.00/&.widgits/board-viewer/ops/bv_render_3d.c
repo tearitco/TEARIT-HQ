@@ -1650,6 +1650,18 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
     if (mm_x < 0) mm_x = 0;
     if (mm_y < 0) mm_y = 0;
 
+    /* Real, new (direct user report: "the minimap is fliped along
+     * vertical axis. chicken in on right in minimap but left in real
+     * map"). build_camera()'s own real right-vector at the default
+     * yaw=180 works out to (-1,0,0) - camera modes 1/2's own actual
+     * screen-right points toward DECREASING world x (bv_menu_input.c's
+     * own "left arrow is strafing right" fix, same coordinate-
+     * handedness property) - a naive col-increases-rightward minimap
+     * disagrees with that baseline view. Mirror X below so world x
+     * still increases toward screen-right on the minimap, matching
+     * what the default 3D view actually shows. Y is untouched - only
+     * X was reported/observed flipped. */
+
     /* dark backing + 1px light border, same legibility convention as
      * bv_blit_text's own box. */
     bv_fill_rect(mm_x - 2, mm_y - 2, mm_x + mm_w + 2, mm_y + mm_h + 2, 30, 30, 34);
@@ -1668,7 +1680,7 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
                 const TerrainLegendEntry *le = terrain_legend_lookup(glyph);
                 if (le) { r = le->r; g = le->g; b = le->b; } else { r = 110; g = 110; b = 110; }
             }
-            int cx = mm_x + col * cellpx, cy = mm_y + row * cellpx;
+            int cx = mm_x + (g_mm_board_w - 1 - col) * cellpx, cy = mm_y + row * cellpx;
             bv_fill_rect(cx, cy, cx + cellpx, cy + cellpx, r, g, b);
         }
     }
@@ -1692,7 +1704,7 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
         if (strstr(e->entity_id, "chicken"))     { r = 235; g = 205; b = 70; }  /* yellow */
         else if (strstr(e->entity_id, "tree"))   { r = 18;  g = 80;  b = 24; }  /* dark forest green - direct report: too close to grass at (90,170,60) */
         else                                      { r = 225; g = 225; b = 225; } /* generic - light grey */
-        int cx = mm_x + e->x * cellpx + inset, cy = mm_y + e->y * cellpx + inset;
+        int cx = mm_x + (g_mm_board_w - 1 - e->x) * cellpx + inset, cy = mm_y + e->y * cellpx + inset;
         bv_fill_rect(cx, cy, cx + dot, cy + dot, r, g, b);
     }
 
@@ -1701,7 +1713,7 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
      * full cell so it's easy to find even off the player. */
     if (g_xelector_present && g_xelector_x >= 0 && g_xelector_x < g_mm_board_w &&
         g_xelector_y >= 0 && g_xelector_y < g_mm_board_h) {
-        int cx = mm_x + g_xelector_x * cellpx, cy = mm_y + g_xelector_y * cellpx;
+        int cx = mm_x + (g_mm_board_w - 1 - g_xelector_x) * cellpx, cy = mm_y + g_xelector_y * cellpx;
         bv_fill_rect(cx, cy, cx + cellpx, cy + cellpx, 80, 220, 255);
     }
 
@@ -1712,7 +1724,7 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
     int mark_x = g_hero_present ? g_hero_x : g_mm_selx;
     int mark_y = g_hero_present ? g_hero_y : g_mm_sely;
     if (mark_x >= 0 && mark_x < g_mm_board_w && mark_y >= 0 && mark_y < g_mm_board_h) {
-        int cx = mm_x + mark_x * cellpx, cy = mm_y + mark_y * cellpx;
+        int cx = mm_x + (g_mm_board_w - 1 - mark_x) * cellpx, cy = mm_y + mark_y * cellpx;
         bv_fill_rect(cx, cy, cx + cellpx, cy + cellpx, 255, 70, 70);
     }
 }
