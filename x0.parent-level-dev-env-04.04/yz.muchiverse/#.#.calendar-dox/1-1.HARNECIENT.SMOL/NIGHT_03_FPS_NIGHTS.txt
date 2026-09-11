@@ -1,0 +1,28 @@
+# 🔫 NIGHT 3 — FPS NIGHTS: many shooters, one house 🌃
+# ====================================================
+# Title: "🔫 NIGHT 3 — FPS NIGHTS: many shooters, one house 🌃"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, game 3 of 3
+
+**THE NARRATOR:** Third and last of the NIGHT launch games — and the reason this whole track is even called NIGHTS. 🌙
+
+**MAXINE:** Say that part again for the people skimming.
+
+**TOMO:** The Day lessons are numbered Days because they taught the house in daylight, one lesson at a time. This new class of entries runs parallel to that, not instead of it — and it's called NIGHTS because that's literally when you'd boot up a shooter.
+
+**RAHWEH:** So NIGHTS isn't just this doc's own name, it's the actual in-house label for the whole new lesson class?
+
+**MAXINE:** Right — Day 27 and NIGHT 1 can both exist. They're two different tracks through the same book.
+
+**THE NARRATOR:** And the game itself?
+
+**TOMO:** Not one shooter — several types, released under that same NIGHTS banner. Different rule sets, different pacing, same underlying board/tile substrate the rest of the house already renders.
+
+**RAHWEH:** Arena-style, tactical, whatever else — all sharing one engine, just different NIGHT entries?
+
+**TOMO:** That's the plan. Each type gets its own real NIGHT lesson once it's built, same as each Day got its own file instead of one giant Day 1.
+
+**MAXINE:** Which keeps this consistent with everything else in the book — small, real, one topic per file, easy to convert to audio and easy to re-listen to on its own.
+
+**THE NARRATOR:** Three games, three NIGHTS — the emergent world, the fast wager match, and the shooters. That's the launch slate. Everything after this gets its own new NIGHT number, same as the Days always have.

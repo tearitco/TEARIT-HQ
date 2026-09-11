@@ -1,0 +1,42 @@
+# 🧱 NIGHT 1 — The Block, the Civilization, the Market 🏛️📈
+# ==========================================================
+# Title: "🧱 NIGHT 1 — The Block, the Civilization, the Market 🏛️📈"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, game 1 of 3
+
+**THE NARRATOR:** The Day lessons taught you the house. Starting tonight, a new track — the NIGHTS — walks through the games the house is *for*. 🌙
+
+**MAXINE:** Not scripted games. One game that keeps becoming a different game.
+
+**TOMO:** It starts as a block-world — dig, place, survive. Same tile/board substrate every widget in this house already speaks. Nothing exotic yet.
+
+**RAHWEH:** And then?
+
+**TOMO:** And then the players who stick around start building *civilizations* on top of the blocks. Same world, same save file — the abstraction level just rises, because the players raised it.
+
+**MAXINE:** That's the real trick — it's emergent, not a level-select menu. Nobody flips a switch from "Minecraft mode" to "Civ mode." The tech tree a player researches *is* the switch.
+
+**THE NARRATOR:** And the tech tree isn't hand-authored either.
+
+**TOMO:** Right — it's LLM-mined. The in-fiction "game manager" is itself discovering laws of physics and economics as players push into them, the same way this house's own agents discover the codebase by reading it, not by a manual someone wrote in advance.
+
+**RAHWEH:** So the deeper a world's research goes, the richer its simulation gets.
+
+**MAXINE:** And the richer the simulation, the more a civilization's own output — gold, chickens, whatever THAT world decided was worth minting — means something real, because it took real research to produce it.
+
+**TOMO:** That's where it becomes 📈 Capitalism-Lab-shaped. Markets, prices, trade routes between civilizations in the SAME world.
+
+**THE NARRATOR:** And past that?
+
+**RAHWEH:** 🌠 "GTA in space," eventually — once a civilization's reach and its market both go far enough, the same emergent logic just... doesn't stop at the planet.
+
+**MAXINE:** Here's the part that makes it a real economy and not just a number going up in one save file: every world is its own chain.
+
+**TOMO:** A chain is a lobby — solo or multiplayer, doesn't matter. Each chain mints its own blockchain NFTs for whatever it decided was valuable. And chains trade with EACH OTHER, on a real p2p exchange, at a real exchange rate.
+
+**RAHWEH:** So my chickens from a solo world could genuinely be worth something on a totally different player's chain.
+
+**TOMO:** If your chain's research went deep enough to make chickens scarce and real, yes. That's the whole point — the economy isn't balanced by a designer. It's balanced by how much work each world's own players actually put into discovering it.
+
+**THE NARRATOR:** One block. One civilization. One market. Three names for the same emergent save file, at three different depths of research. Next NIGHT: a much smaller, much more finished game — wager-chess. ♟️

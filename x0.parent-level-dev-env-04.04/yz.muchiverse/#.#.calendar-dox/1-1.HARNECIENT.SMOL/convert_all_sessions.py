@@ -164,7 +164,16 @@ async def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     base_path = Path(BASE_DIR)
-    txt_files = sorted(base_path.glob('DAY_*.txt'))
+    # REAL FIX 2026-09-11 (direct live request: "did u make the highly
+    # technical lesson scripts? then we will convert them to mp3") -
+    # NIGHT_*.txt is a new, parallel lesson-script track (game design,
+    # not house architecture) alongside the existing DAY_*.txt series -
+    # same file shape (Title/Characters/Voices header + the same
+    # dialogue format), so it converts through this exact same
+    # pipeline. Globbed and sorted separately so DAY_1..DAY_N still
+    # plays in its own real numeric order before NIGHT_1..NIGHT_N does,
+    # rather than interleaving by filename sort.
+    txt_files = sorted(base_path.glob('DAY_*.txt')) + sorted(base_path.glob('NIGHT_*.txt'))
 
     # Default to 1, or use argument
     limit = 1
