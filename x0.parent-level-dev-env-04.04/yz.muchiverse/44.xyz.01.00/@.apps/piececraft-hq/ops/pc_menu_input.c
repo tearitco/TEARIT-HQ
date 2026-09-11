@@ -739,6 +739,30 @@ int main(int argc, char **argv) {
     if (argc < 2) return 1;
     resolve_root();
 
+    /* BV-HUD-TEXT-OVERLAY-AND-MINIMAP.md milestone B - hud.txt's own
+     * game-owned line, mirrored from the SAME real world_01/state.txt
+     * tick advance_tick() owns. bv_render_3d.c's bv_draw_hud() reads
+     * this back as an optional line - most HUD fields (coords/zlevel/
+     * possess/pick) come straight from the renderer's own live state,
+     * this is the one field only the game side actually knows. Cheap,
+     * unconditional (every invocation, not gated on which action ran). */
+    {
+        /* real_root, not project_root - bv_render_3d.c's own focused_
+         * project_root (where it looks for hud.txt) resolves the same
+         * way write_pick_txt()/tick_animals() do, and world_01/state.txt
+         * itself is only ever real on real_root (advance_tick()'s own
+         * header comment, same "symlink omission" class of bug). */
+        char real_root[MAX_PATH];
+        resolve_real_root(project_root, real_root, sizeof(real_root));
+        char world_state_path[PATH_BUF], hud_path[PATH_BUF];
+        snprintf(world_state_path, sizeof(world_state_path), "%s/pieces/world_01/state.txt", real_root);
+        int tick = read_kv_int(world_state_path, "tick", 0);
+        snprintf(hud_path, sizeof(hud_path), "%s/pieces/display/hud.txt", real_root);
+        char tickbuf[16];
+        snprintf(tickbuf, sizeof(tickbuf), "tick %d", tick);
+        write_kv(hud_path, "line1", tickbuf);
+    }
+
     char state_path[PATH_BUF], config_path[PATH_BUF];
     snprintf(state_path, sizeof(state_path), "%s/projects/piececraft-hq/pieces/pc_menu/state.txt", project_root);
     snprintf(config_path, sizeof(config_path), "%s/pieces/system/config.txt", project_root);
