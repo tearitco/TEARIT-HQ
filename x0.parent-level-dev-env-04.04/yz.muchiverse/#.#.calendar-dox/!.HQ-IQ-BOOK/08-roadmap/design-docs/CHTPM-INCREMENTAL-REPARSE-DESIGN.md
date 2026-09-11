@@ -1,6 +1,23 @@
 # khtpm incremental reparse (real tree diff/patch) — design doc
 
-**Status: DESIGN ONLY, NOT STARTED.** Direct instruction 2026-09-11,
+**Status: IMPLEMENTATION IN PROGRESS.** §0 (khtpm_reparse_diff.c) done,
+headless-tested green (commit `bb3f24fe`). Wired into
+`reparse_chtpm_if_changed()` behind `incremental_reparse=1` in
+`hq_ui.pdl`, OFF by default (commit `d13c92ef`). Rollout step 1 (dock/
+taskbar) DONE and PASSING, 2026-09-11: flipped the flag live (only the
+dock running at the time, so no other window was affected), restarted
+the strip, drove it via the real relay (not xdotool) - 6 real reparses
+observed in `kh_focus_debug.log`, including one genuine structural
+change (the "toys" dropdown opening: `removed=20`, correctly diffed
+and patched), all `ok`, zero crash, zero X error attributable to this
+change, dock re-dumped via PNG afterward and renders correctly (nav
+badges intact, clock advanced, no visual corruption). Next: step 2 (one
+simple window - text-edit-hq or chat-hai) with real-hardware
+confirmation, not relay-only.
+
+Original design notes below, superseded in status only - the design
+itself held up unchanged through implementation and this first live
+test. Direct instruction 2026-09-11,
 after the network-browser address-bar focus bug got "fixed" 3 times
 (each fix real, each verified via the house's own relay-driven test
 methodology, each reported unchanged on real hardware): "how do we fix
