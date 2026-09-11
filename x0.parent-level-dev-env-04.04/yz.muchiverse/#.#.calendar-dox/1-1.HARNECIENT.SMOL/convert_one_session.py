@@ -157,7 +157,20 @@ async def process_session(txt_file):
             failed += 1
 
     if combined:
-        combined.export(output_file, format='mp3', bitrate='192k')
+        # REAL FIX 2026-09-11 (direct live report: "those audio files
+        # wont play on mac, even tho the first ones did" - DAY 1-20 vs
+        # the new NIGHT files, both made through this same script with
+        # otherwise identical export() args). ffmpeg's mp3 encoder
+        # defaults to ID3v2.4 tags; older/stricter macOS decoders
+        # (QuickTime Player, Mail's attachment preview, some
+        # AudioToolbox-based players) have documented compatibility
+        # problems specifically with ID3v2.4 - ID3v2.3 is the safe,
+        # universally-readable choice everywhere ID3v2.4 works too.
+        # Forced explicitly rather than left to ffmpeg's own default,
+        # which can silently change between ffmpeg versions/builds -
+        # exactly the kind of "worked before, quietly stopped" gap that
+        # would explain older files playing fine and newer ones not.
+        combined.export(output_file, format='mp3', bitrate='192k', parameters=["-id3v2_version", "3"])
         size = os.path.getsize(output_file) / (1024 * 1024)
         print(f"\n  Result: {size:.2f} MB ({success} ok, {failed} failed)")
         return True

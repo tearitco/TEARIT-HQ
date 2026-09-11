@@ -149,7 +149,11 @@ async def process_session(txt_file):
             failed += 1
 
     if combined:
-        combined.export(output_file, format='mp3', bitrate='192k')
+        # REAL FIX 2026-09-11 - see convert_one_session.py's own
+        # comment on this same line for the full reasoning (ID3v2.3,
+        # not ffmpeg's ID3v2.4 default, for older Mac player
+        # compatibility - direct live report on the NIGHT_* files).
+        combined.export(output_file, format='mp3', bitrate='192k', parameters=["-id3v2_version", "3"])
         size = os.path.getsize(output_file) / (1024 * 1024)
         print(f"\n  Result: {size:.2f} MB ({success} ok, {failed} failed)")
         return True
