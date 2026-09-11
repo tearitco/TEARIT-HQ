@@ -9008,7 +9008,20 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                     if (!it) continue;
                     if (px >= it->x && px < it->x + it->w &&
                         py >= it->y && py < it->y + it->h) {
-                        g_focus_nav = it->nav_index;
+                        /* REAL FIX 2026-09-10 (direct follow-up report:
+                         * "no. there still firing from one" - this is
+                         * a SECOND, separate dropdown click path from
+                         * click_focus_then_activate()'s own dropdown-
+                         * child branch just fixed: g_dock_menu_win is
+                         * the standalone HQ popup window (toys/pals/
+                         * session/etc - built from the manager's own
+                         * hq_menu[] rows, not the xhtpm dropdown-child
+                         * pattern), and its click hit-test unconditionally
+                         * fired on the first click, same bypass, just a
+                         * different code path. Route through the shared
+                         * two-step gate instead of hand-rolling the
+                         * unconditional fire again. */
+                        if (!click_focus_then_activate(it)) { redraw(); return; }
                         activate_focused();
                         if (!g_quit) redraw();
                         return;
