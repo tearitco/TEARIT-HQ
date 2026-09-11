@@ -13,7 +13,8 @@ OPT          | hud_fps              | 0     # frame rate (off by default)
 OPT          | hud_minimap          | 1     # 3D corner minimap
 
 # ── layout ──
-KEY          | hud_anchor           | top-right   # top-left | top-right | bottom-left | bottom-right
+KEY          | hud_anchor           | top-left    # text lines - top-left | top-right | bottom-left | bottom-right
+KEY          | minimap_anchor       | top-right   # minimap - independent corner from hud_anchor
 KEY          | hud_scale            | 1           # integer glyph scale (1 = 8x16 px)
 KEY          | minimap_px_per_col   | 8           # px per voxel column
 KEY          | minimap_max_px       | 160         # hard cap on minimap width/height (keeps it a small inset)

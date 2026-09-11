@@ -1512,7 +1512,7 @@ static int bv_hud_fps(void) {
 static char (*g_mm_board3d)[MAX_BOARD_DIM][MAX_BOARD_DIM] = NULL;
 static int (*g_mm_col_top)[MAX_BOARD_DIM] = NULL;
 static int g_mm_board_w = 0, g_mm_board_h = 0, g_mm_selx = 0, g_mm_sely = 0;
-static void bv_draw_minimap(const char *pdl, int pad, int top_anchor, int right_anchor, int text_block_h);
+static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int text_right_anchor, int text_block_h);
 
 static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely) {
     int fps = bv_hud_fps(); /* always call - keeps the fps clock ticking even when hidden */
@@ -1525,7 +1525,7 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
     if (scale < 1) scale = 1;
     if (scale > 4) scale = 4;
     char anchor[24];
-    hud_pdl_str(pdl, "hud_anchor", anchor, sizeof(anchor), "top-right");
+    hud_pdl_str(pdl, "hud_anchor", anchor, sizeof(anchor), "top-left");
 
     hud_ensure_font(game_root);
 
@@ -1601,9 +1601,22 @@ static void bv_fill_rect(int x0, int y0, int x1, int y1, unsigned char r, unsign
  * text_block_h = however tall the text HUD stack already drew (0 if
  * none), so the minimap stacks below it in the same corner instead of
  * overlapping. */
-static void bv_draw_minimap(const char *pdl, int pad, int top_anchor, int right_anchor, int text_block_h) {
+static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int text_right_anchor, int text_block_h) {
     if (!hud_pdl_int(pdl, "hud_minimap", 1)) return;
     if (g_mm_board_w <= 0 || g_mm_board_h <= 0) return;
+
+    /* independent corner from the text HUD (direct instruction
+     * 2026-09-10: "the words should be on the left side, and let hud
+     * go to top" - text defaults top-left, minimap keeps its own
+     * top-right default). Only stack past the text block when they
+     * actually share a corner - otherwise the minimap sits flush at
+     * its own pad, same as if no text HUD existed. */
+    char mm_anchor[24];
+    hud_pdl_str(pdl, "minimap_anchor", mm_anchor, sizeof(mm_anchor), "top-right");
+    int top_anchor = !strstr(mm_anchor, "bottom");
+    int right_anchor = strstr(mm_anchor, "right") != NULL;
+    int same_corner = (top_anchor == text_top_anchor) && (right_anchor == text_right_anchor);
+    if (!same_corner) text_block_h = 0;
 
     int px_per_col = hud_pdl_int(pdl, "minimap_px_per_col", 8);
     if (px_per_col < 1) px_per_col = 1;
