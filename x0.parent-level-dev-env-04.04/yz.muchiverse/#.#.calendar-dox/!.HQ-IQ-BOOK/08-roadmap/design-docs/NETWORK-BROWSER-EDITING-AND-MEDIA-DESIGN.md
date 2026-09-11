@@ -18,8 +18,10 @@ anchors are to the live tree at time of writing.
    house-wide two-step click rule now makes the address bar require TWO
    clicks (1st = focus, 2nd = arm), and any template/vars reparse disarms
    the field mid-edit. Live probe: 1 click → letters AND BackSpace dead;
-   2 clicks → `abc`, 2×BackSpace → `ab`. Fix = cli_io always arms on
-   first click + armed field survives reparse (re-arm by target_id).
+   2 clicks → `abc`, 2×BackSpace → `ab`.
+   ⚠️ **OWNERSHIP: the cli-io editing/arm fix is Sonnet's — NOT
+   opencode's.** The research evidence below stays as the record; the D1–D3
+   "decisions" are superseded by that hand-off and must not be built here.
 2. **Images**: the house already renders images two ways — generic
    `sprite=` thumbnail blits (≤64px tiles; browser already emits them)
    and `<canvas sprite=".raw">` native framebuffers (media-img-hq
@@ -40,6 +42,9 @@ anchors are to the live tree at time of writing.
 ---
 
 ## 1. (a) Cli-io editing — root cause + fix
+
+⚠️ **Owned by Sonnet. opencode deliberately does NOT implement D1–D3.**
+This section is research/evidence for the hand-off.
 
 ### Evidence (live, 2026-09-10)
 
@@ -68,30 +73,14 @@ anchors are to the live tree at time of writing.
   `address=` (nothing typed). Click twice, type abc → `address=abc`;
   BackSpace ×2 → `address=ab` (BACKSPACE WORKS once armed).
 
-### Decisions
+### Decisions (WITHDRAWN — superseded by hand-off to Sonnet)
 
-- D1. **cli_io always arms on first click** in `click_focus_then_activate`:
-  a hit element whose tag is `cli_io`/`text_area`/`grid` returns `1`
-  (activate → arm) regardless of `click_two_step`. Arming is not an
-  action; it only takes keyboard ownership, so it must never be gated by
-  the two-step rule. Keep two-step for real action items.
-- D2. **Armed field survives reparse**: capture `{target_id/id, buffer,
-  cursor}` before the tree rebuild (~1758), re-locate the element after
-  `parse_chtpm`, re-arm + restore cursor (mirror the existing
-  `text_area_<id>.txt` save/restore pattern). Then live projection
-  rewrites (page text, console rows) can no longer kill an edit in
-  flight.
-- D3. Optional UX: while armed, the address bar draws its own
-  `input_buffer` instead of the URL var label, so what you're typing is
-  visible before Enter (currently only `cli_io_state.txt` + the ^ cursor
-  prove it).
+- ❌ D1. cli_io always arms on first click in `click_focus_then_activate`:
+  (withdrawn; Sonnet's call).
+- ❌ D2. Armed field survives reparse (withdrawn; Sonnet's call).
+- ❌ D3. draw `input_buffer` while armed (optional UX; withdrawn as above).
 
-### Verify after build
-
-- A1: one click → type `abc` → state `address=abc`; BackSpace → `ab`.
-- A2: type one char, force a console change (`eval:1`) via the request
-  file mid-edit, keep typing → arm must persist, buffer intact.
-- A3: Enter after edit dispatches `go:<typed>` (manager `nb_write_go.sh`).
+### Evidence for Sonnet (kept verbatim)
 
 ---
 
@@ -232,10 +221,9 @@ The browser's `<video>` today opens external `ffplay` (`write_chtpm_projection`
 
 ## 5. Build order & evidence protocol
 
-1. **A first** (small, unblocks the console REPL UX): D1+D2 (+D3), then
-   A1-A3 probes.
-2. **B**: D4 city `eval:`-style repro on a JS page with an `<img>`; then
-   D5 placeholders; optional D6 full-size canvas.
+1. **A — OWNED BY SONNET** (cli-io arm fix; opencode skips).
+2. **B**: D4 (worker IMG-row → sprite pass), then D5 placeholders; then
+   optional D6 full-size canvas.
 3. **C**: V2 p.o.c. using one short mp4 + local fixture page; C1 probe.
 4. **D**: subset spec (nb_dom.h header) + corpus tests; D9 holes.
 5. Every step: fresh `make` build + live run + receipt/state evidence +
