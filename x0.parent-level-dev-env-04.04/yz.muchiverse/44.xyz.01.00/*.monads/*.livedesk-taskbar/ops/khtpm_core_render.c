@@ -13480,14 +13480,29 @@ static int tp_main(int argc, char **argv) {
          * an already-running entity. The popup fontset itself was
          * already fixed to react live (ensure_popup_fontset_current(),
          * see load_popup_fontset()'s own header comment) - it just
-         * never got a live g_ui_scale_pct to react TO. Same real
-         * reload + force-redraw shape the HQ-window path already uses
-         * (see UI_SCALE_MINUS/PLUS's own handler). */
-        int old_scale_pct = g_ui_scale_pct;
-        if (g_house_root[0]) desktop_load_click_two_step(g_house_root);
-        int scale_changed = (g_ui_scale_pct != old_scale_pct);
-
-        int need_redraw = scale_changed;
+         * never got a live g_ui_scale_pct to react TO.
+         *
+         * REAL FOLLOW-UP FIX, same day (direct correction: "it doesn't
+         * have to read every loop. just on change... or is your way
+         * better for some reason i dont know?") - it was NOT better,
+         * two real bugs in the first pass: (1) this called
+         * desktop_load_click_two_step() directly and UNCONDITIONALLY
+         * every ~300ms tick, doing a real file-open+full-parse every
+         * time instead of reusing hq_ui_pdl_reload_if_changed() (the
+         * function the other two modes already call, which does the
+         * cheap part itself - one stat(), compares mtime against a
+         * cached g_hq_ui_pdl_mtime, only opens/parses when it actually
+         * differs). (2) even if it had called that wrapper, its own
+         * redraw signal (hq_request_redraw() -> g_frame_dirty) is
+         * never read anywhere in tp_main's own loop - a real change
+         * would have reloaded silently and never actually repainted.
+         * Fixed both: reuse the shared gated wrapper as-is (one cheap
+         * stat() per tick, no duplicated parse logic, matches the
+         * other two modes exactly), then read+clear g_frame_dirty
+         * locally to drive tp_main's own real need_redraw. */
+        hq_ui_pdl_reload_if_changed(g_house_root);
+        int need_redraw = 0;
+        if (g_frame_dirty) { need_redraw = 1; g_frame_dirty = 0; }
         /* REAL FIX 2026-09-01 (live report: after the @ always-on-top
          * toggle respawned every entity at once, all but cursword sat
          * blank until an unrelated click elsewhere happened to trip a
