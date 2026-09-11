@@ -22,4 +22,4 @@ font_scale=1.50
 # own CSS font-family (if it sets one) always wins - this is only the
 # fallback every window without its own font-family uses. Live-reloaded
 # same as font_scale; picker lives in the taskbar-settings app.
-font_family=DSEG7 Classic
+font_family=DejaVu Sans
