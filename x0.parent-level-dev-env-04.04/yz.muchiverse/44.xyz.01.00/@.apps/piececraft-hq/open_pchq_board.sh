@@ -87,8 +87,20 @@ for _p in $(pgrep -f "chtpm_parser_pal|system/renderer|prisc\+x|system/orchestra
     esac
     _b="$(basename "$_c")"
     case " $_live_sessions " in *" $_b "*) continue ;; esac   # part of a live session
-    _pp="$(awk '{print $4}' "/proc/$_p/stat" 2>/dev/null)"
-    [ "$_pp" = "1" ] || [ "$_pp" = "1003" ] || continue        # orphaned only
+    # REAL FIX 2026-09-10, live-caught bug (mon_scan.sh flagged a real
+    # stray stack this check kept missing - orchestrator/chtpm_parser_
+    # pal/prisc+x rooted under `sh button.sh run`, itself parented to a
+    # dead tool-shell pid 1003, but the LEAF proc's own immediate ppid
+    # is some mid-tree pid, never 1 or 1003 directly). Checking only
+    # $_p's own ppid missed every multi-level-deep engine child - the
+    # whole `button.sh run` stack is one real X session (setsid), so
+    # walk up to the SESSION LEADER (sid) and check ITS ppid instead;
+    # that catches the entire tree regardless of how deep $_p sits in
+    # it, not just direct children of the dead parent.
+    _sid="$(ps -o sid= -p "$_p" 2>/dev/null | tr -d ' ')"
+    [ -n "$_sid" ] || continue
+    _leader_pp="$(ps -o ppid= -p "$_sid" 2>/dev/null | tr -d ' ')"
+    [ "$_leader_pp" = "1" ] || [ "$_leader_pp" = "1003" ] || continue   # orphaned only
     kill -KILL "$_p" 2>/dev/null || true
 done
 # drop session dirs with nothing live in them
