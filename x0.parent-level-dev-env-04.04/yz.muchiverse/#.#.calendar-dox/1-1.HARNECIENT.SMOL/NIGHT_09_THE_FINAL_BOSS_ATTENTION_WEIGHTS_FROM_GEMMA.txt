@@ -1,0 +1,50 @@
+# 👑 NIGHT 9 — The Final Boss: Gemma weighs its own corpus 🌟
+# ================================================================
+# Title: "👑 NIGHT 9 — The Final Boss: Gemma weighs its own corpus 🌟"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, grand finale
+
+**THE NARRATOR:** Three NIGHTS of deep-dives, one real thread underneath all of them. Tonight it surfaces. 🌙👑
+
+**MAXINE:** Say the real question first, because it's a genuinely bigger one than anything so far.
+
+**RAHWEH:** Can Gemma train our own emergent attention mini-corpuses — use its own weights to ASCRIBE meaningful, reusable attention weights to a corpus we hand it, instead of hand-tuning every weight ourselves?
+
+**TOMO:** And go further: suggest new words, new sentences, even new CATEGORIES, each arriving with its own pre-tuned starting weight, instead of a human inventing the category first and tuning it second.
+
+**THE NARRATOR:** That is a real, legitimate technique — it has a name in the wider world: weak supervision, or LLM-as-annotator. A big model doesn't have to be the thing that RUNS at inference time. It can be the thing that LABELS, at authoring time, so a small, fast, deterministic system runs later, forever, for free.
+
+**MAXINE:** And here's the reveal — the house already has the exact SLOT this fits into. NIGHT 8 named it directly and almost walked past it: `corp_decide.c`'s own real "weighted" decision_mode reads its risk-bias numbers from a real file — `weights.txt`. Someone, or something, still has to WRITE that file.
+
+**TOMO:** Today, a human hand-tunes it. Tonight's real proposal: Gemma authors a first real draft of it — not live, not at game-tick time, but OFFLINE, once, the same way an RL policy trains offline before it ever ships.
+
+**RAHWEH:** Walk through what that actually looks like.
+
+**MAXINE:** You hand Gemma a real corpus — every word/phrase a category needs to recognize, maybe with a few hand-labeled examples as anchors. Its job, one pass, is to propose an attention weight for EACH term: how strongly does this word signal THIS category, on some real numeric scale. That's a real, well-shaped task for a 1-billion-parameter model — it's judgment on SHORT spans of text, the same shape as `corp_decide.c`'s own real mode-3 call, just run many times over a list instead of once over a portfolio.
+
+**TOMO:** And the output isn't a live answer the game consults. It's a real, static file — a "mini corpus," term-to-weight, sitting right next to `weights.txt` in spirit. Once it's written, the runtime NEVER calls a model to use it. Same discipline as every NIGHT before this one: the model authors, the FSM/lookup runs.
+
+**THE NARRATOR:** And the "suggest new words, new categories" half?
+
+**RAHWEH:** Same shape, one level up — instead of only weighing what you handed it, Gemma proposes ADDITIONS: words you didn't think to include that probably belong, entire new categories it noticed clustering in the corpus, each arriving with its own draft weight already attached.
+
+**MAXINE:** Which is genuinely powerful, and genuinely risky in the same breath — a model proposing its OWN categories can drift somewhere a human never asked for. So the real discipline here isn't "trust the output," it's "review the diff." Every Gemma-proposed word, weight, or category is a real, inspectable line in a real file before it ever reaches a runtime `weights.txt` — a pull request, not an auto-merge.
+
+**THE NARRATOR:** Now — the combination question, the actual final boss. What happens when you run all four together: attention-weight authoring, GOAP, RL, FSM?
+
+**TOMO:** Picture the full stack, top to bottom, and notice every layer is offline except one. Gemma authors the attention-weighted vocabulary for a domain, offline, reviewed. That vocabulary feeds a GOAP planner's own cost function — actions that touch high-weight terms cost less, or score higher, when the goal involves that domain. The GOAP planner runs deterministically, generates candidate plans, still zero model calls. An RL process, separately, trains OFFLINE against many simulated runs of those GOAP plans, refining which candidate-selection HEURISTIC wins most often — and THAT'S what becomes the trained "policy" decision_mode from NIGHT 8.
+
+**MAXINE:** And the FSM sits under all of it, unchanged — the hard floor. Whatever the attention weights suggest, whatever GOAP plans, whatever RL learns, the FSM's real states and real transitions are what actually execute, tick by tick, in the game. Nothing above it is ever allowed to skip a state the FSM doesn't already permit.
+
+**RAHWEH:** So the "combination" isn't four systems fighting for control. It's four systems at four different TIMESCALES, stacked.
+
+**TOMO:** Exactly that. Attention-weight authoring: once, per corpus, mostly offline, human-reviewed. RL training: many offline episodes, before ship. GOAP planning: once per real decision point, live but model-free. FSM execution: every tick, always, the only layer touching real game state directly.
+
+**MAXINE:** And Gemma's own real role, named once for all four, one final time: it never RUNS the game. It helps WRITE the things that run the game — a weight file, a reward function, a chosen plan, a line of dialogue — always reviewable, always with a deterministic fallback if it's wrong, slow, or simply not there.
+
+**THE NARRATOR:** That's the real shape of the "final boss," and it isn't a monster to defeat — it's the actual architecture this whole NIGHT track has been walking toward since NIGHT 4 named the trigger-layer gap. Attention weights, GOAP, RL, FSM: four real tools, one real discipline holding them together — offline authorship, reviewable output, a deterministic runtime that never waits on a model it doesn't have to.
+
+**TOMO:** Go build the smallest version first: hand Gemma ONE small real corpus, get ONE real weights.txt draft back, review every line by hand before it ever reaches `corp_decide.c`'s own directory. Prove that loop. Everything in tonight's combination is built the exact same way, one layer at a time. 👑✨
+
+**THE NARRATOR:** Nine NIGHTS. One real thread. Go build it.
