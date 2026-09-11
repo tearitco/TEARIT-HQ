@@ -1673,7 +1673,41 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
         }
     }
 
-    /* camera-tracked cell: hero when present, else the selector -
+    /* Real, new (direct user report: "xelector player, trees and
+     * chicken should all be on minimap. whats up?" - the marker below
+     * used to be a single cell, hero-or-selector only, so every OTHER
+     * live thing on the board was invisible). Draw every placed
+     * phymoji world entity (trees, chickens, ...) as a small inset dot
+     * - same kind classification write_pick_txt() already uses
+     * (strstr on entity_id) - so the minimap and the "pick" HUD line
+     * agree on what something is. Dots first (smallest, most numerous,
+     * most likely to be UNDER something), xelector next, hero/player
+     * LAST so it always wins visually when things overlap one cell. */
+    int inset = cellpx / 4; if (inset < 1) inset = 1;
+    int dot = cellpx - inset * 2; if (dot < 1) dot = 1;
+    for (int i = 0; i < g_phymoji_world_entity_count; i++) {
+        PhymojiWorldEntity *e = &g_phymoji_world_entities[i];
+        if (e->x < 0 || e->x >= g_mm_board_w || e->y < 0 || e->y >= g_mm_board_h) continue;
+        unsigned char r, g, b;
+        if (strstr(e->entity_id, "chicken"))     { r = 235; g = 205; b = 70; }  /* yellow */
+        else if (strstr(e->entity_id, "tree"))   { r = 55;  g = 175; b = 60; }  /* green */
+        else                                      { r = 225; g = 225; b = 225; } /* generic - light grey */
+        int cx = mm_x + e->x * cellpx + inset, cy = mm_y + e->y * cellpx + inset;
+        bv_fill_rect(cx, cy, cx + dot, cy + dot, r, g, b);
+    }
+
+    /* xelector (the board's own targeting cursor, distinct from the
+     * hero/player and from bv_draw_hud's plain "pos" selector) - cyan,
+     * full cell so it's easy to find even off the player. */
+    if (g_xelector_present && g_xelector_x >= 0 && g_xelector_x < g_mm_board_w &&
+        g_xelector_y >= 0 && g_xelector_y < g_mm_board_h) {
+        int cx = mm_x + g_xelector_x * cellpx, cy = mm_y + g_xelector_y * cellpx;
+        bv_fill_rect(cx, cy, cx + cellpx, cy + cellpx, 80, 220, 255);
+    }
+
+    /* hero/player - red, drawn last (on top of everything else). Falls
+     * back to the plain selector cursor when there's no hero at all,
+     * so the minimap always shows at least one "you are here" cell -
      * matches bv_draw_hud's own "poss"/"pos" line convention. */
     int mark_x = g_hero_present ? g_hero_x : g_mm_selx;
     int mark_y = g_hero_present ? g_hero_y : g_mm_sely;
