@@ -1,0 +1,36 @@
+# 🧠 NIGHT 7 — FSM First, Gemma Second: cursword already proves the pattern 🎙️
+# ================================================================================
+# Title: "🧠 NIGHT 7 — FSM First, Gemma Second: cursword already proves the pattern 🎙️"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, deep-dive 3 of 3
+
+**THE NARRATOR:** Same correction as last NIGHT, different app: this isn't a proposal to design from zero either. It's already built — `cursword_fsm.c`, real, real onboarding walk-through, real code on disk. 🌙
+
+**MAXINE:** So NIGHT 4's question — "how much freestyle, how much FSM" — cursword itself already has an opinion, in its own header comment.
+
+**TOMO:** Word for word, the real design already written there: narration goes to a `say_log.txt` file, one line per beat. `cursword_say()` — real function, stubbed today — will call the local "gemma" harness for the line, and fall back to a canned string on ANY failure.
+
+**RAHWEH:** That's the exact Harnecient pattern, stated as code, not as a lesson.
+
+**MAXINE:** Model OPTIONAL. Deterministic fallback ALWAYS present. If Gemma is slow, wrong, or just not running, the FSM still completes the onboarding walk-through with the canned line instead. The game never breaks because the model didn't answer.
+
+**THE NARRATOR:** Walk through what the FSM actually owns versus what the model call is allowed to touch.
+
+**TOMO:** The FSM owns every real state transition: guest arrives, USER menu opens, "New User..." gets activated, the text field arms, the human types a username, cursword narrates and points at the NEXT step — avatar. Every one of those is a hard, scripted transition. None of it waits on a model to decide whether to happen.
+
+**MAXINE:** What Gemma is allowed to touch is exactly one thing: the WORDING of the narration line at each beat. Not whether to narrate, not what state comes next — just "say this beat's line in a slightly different way, if you can." That's the entire freestyle surface area, by design.
+
+**RAHWEH:** So if I were proposing cursword's NEXT feature — driving a game NPC instead of onboarding — the same split applies?
+
+**TOMO:** Exactly the same split, and that's the real, reusable lesson here: your proposal's FSM is the NPC's real states — idle, alert, chasing, fleeing, whatever the game needs — each with real, hard-coded transition conditions your proposal can test without ever calling a model. THEN, and only then, you find the one or two beats where a LINE of dialogue needs writing, and that's where a `cursword_say()`-shaped call goes, with the same canned-fallback discipline already proven here.
+
+**MAXINE:** And that discipline matters more the smaller the model gets. Gemma 3 1B is not going to reliably decide "should this NPC start chasing the player" — that's exactly the kind of multi-step judgment call small models get wrong under pressure. It's very capable of picking a warmer or colder-sounding word for a line whose CONTENT the FSM already decided.
+
+**THE NARRATOR:** So to answer NIGHT 4's own question directly, with real code behind the answer instead of a guess: can Gemma handle cursword-style driving? Yes — for language. No — not yet, and not by design, for game-state decisions. cursword's own author already drew that line before this lesson existed.
+
+**TOMO:** Which means the real homework for a student proposal here isn't "design the FSM-vs-freestyle split." It's already designed. The real homework is: implement `cursword_say()` for real (it's a stub today), prove the fallback path actually fires when gemma is unavailable — kill the local model process and confirm the canned line still plays — and THEN, only after that's proven solid, propose the next FSM (an NPC, a shop menu, whatever) using the exact same shape.
+
+**RAHWEH:** Prove the fallback first. Build new logic second.
+
+**MAXINE:** That's the whole NIGHT. Go read `cursword_fsm.c` before you write a line of your own. 🎙️
