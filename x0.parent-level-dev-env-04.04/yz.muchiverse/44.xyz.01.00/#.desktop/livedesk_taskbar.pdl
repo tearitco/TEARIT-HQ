@@ -27,8 +27,6 @@ SECTION      | hq_menu_10_label    | !kill hq
 SECTION      | hq_menu_10_cmd      | sh *.monads/*.livedesk-taskbar/ops/kill_hq_windows.sh .
 SECTION      | hq_menu_11_label    | debug
 SECTION      | hq_menu_11_cmd      | livedesk:open-palette:debug
-SECTION      | hq_menu_12_label    | piececraft-hq
-SECTION      | hq_menu_12_cmd      | livedesk:open-piececraft-hq
 # mon - "session monitor": lists every board/engine/hq process the house
 # spawned, classifies each (shell/pal/singleton/child/orphan/detached),
 # marks the stray ones, one-click KILL ALL STRAY. Wrapper lives under a
