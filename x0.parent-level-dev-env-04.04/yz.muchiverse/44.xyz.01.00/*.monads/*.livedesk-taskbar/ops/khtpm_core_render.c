@@ -2161,18 +2161,29 @@ static int click_focus_then_activate(Elem *hit) {
     /* Out-of-scope rows stay numbered and drawn, but a click must not
      * steal focus or fire — same as chtpm_parser.c is_navigable(). */
     if (!kh_elem_in_scope(hit)) return 0;
-    /* Dock menus: a mouse hit on a dropdown-child row opens/runs
-     * immediately. Bottom-strip HQ window cells (class hqwin /
-     * onclick FOCUSWIN:) are the same shape as a taskbar button —
-     * first click must raise/restore, not merely focus (Enter already
-     * activated; click_two_step made pc-hq look like it "only opens
-     * from nav"). ACTIVATE (HQ/File-style trigger) on dock cells honors
-     * #.desktop/hq_ui.pdl click_two_step: when click_two_step=0, ACTIVATE
-     * fires on first click; when click_two_step=1, it requires two-step
-     * (first click sets focus, second click activates). */
+    /* Dock: bottom-strip HQ window cells (class hqwin / onclick
+     * FOCUSWIN:) are the same shape as a taskbar button — first click
+     * must raise/restore, not merely focus (Enter already activated;
+     * click_two_step made pc-hq look like it "only opens from nav").
+     * ACTIVATE (HQ/File-style trigger) on dock cells honors #.desktop/
+     * hq_ui.pdl click_two_step: when click_two_step=0, ACTIVATE fires
+     * on first click; when click_two_step=1, it requires two-step
+     * (first click sets focus, second click activates).
+     *
+     * REAL FIX 2026-09-10 (direct report: "even tho we are on '2
+     * clicks' it only takes one click to open apps from dropdown
+     * menus... an agent's false assumption to leave these out of the
+     * boolean switch") - `dropdown-child` used to be unconditionally
+     * lumped into this immediate-fire group ("a mouse hit on a
+     * dropdown-child row opens/runs immediately"), bypassing
+     * g_click_two_step entirely regardless of the house-wide setting.
+     * That was never an intentional exception, just an old false
+     * assumption baked into the comment - removed. A dropdown row is
+     * shaped exactly like any other clickable item once its menu is
+     * open, so it now falls through to the same click_two_step check
+     * every other row uses below. */
     if (window_is_dock() &&
-        (elem_has_class(hit, "dropdown-child") ||
-         elem_has_class(hit, "hqwin") ||
+        (elem_has_class(hit, "hqwin") ||
          (hit->onclick[0] && strncmp(hit->onclick, "FOCUSWIN:", 9) == 0) ||
          (!g_click_two_step && strcmp(hit->onclick, "ACTIVATE") == 0))) {
         g_focus_nav = hit->nav_index;
@@ -8997,7 +9008,20 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                     if (!it) continue;
                     if (px >= it->x && px < it->x + it->w &&
                         py >= it->y && py < it->y + it->h) {
-                        g_focus_nav = it->nav_index;
+                        /* REAL FIX 2026-09-10 (direct follow-up report:
+                         * "no. there still firing from one" - this is
+                         * a SECOND, separate dropdown click path from
+                         * click_focus_then_activate()'s own dropdown-
+                         * child branch just fixed: g_dock_menu_win is
+                         * the standalone HQ popup window (toys/pals/
+                         * session/etc - built from the manager's own
+                         * hq_menu[] rows, not the xhtpm dropdown-child
+                         * pattern), and its click hit-test unconditionally
+                         * fired on the first click, same bypass, just a
+                         * different code path. Route through the shared
+                         * two-step gate instead of hand-rolling the
+                         * unconditional fire again. */
+                        if (!click_focus_then_activate(it)) { redraw(); return; }
                         activate_focused();
                         if (!g_quit) redraw();
                         return;
@@ -10859,24 +10883,56 @@ static XFontStruct *g_font_info = NULL;
  * plain Latin fallback so ASCII stays crisp). Built once in main(),
  * used by every popup draw site below instead of XDrawString. */
 static XFontSet g_popup_fontset = NULL;
+/* the g_ui_scale_pct this fontset was actually built at - lets
+ * ensure_popup_fontset_current() (below) notice a live font_scale
+ * change and rebuild, instead of baking in whatever scale happened to
+ * be loaded at process start forever. 0 = never built yet. */
+static int g_popup_fontset_pct = 0;
 
 static void load_popup_fontset(Display *dpy) {
+    /* REAL FIX 2026-09-10, direct report ("everything honors [font
+     * settings] but 1 thing... the bible verse popup within bookstack
+     * entity"): this whole XFontSet predates font_scale (2026-08-05,
+     * house-wide scaling landed later) and never picked it up - the
+     * "18" pixel-size field below was a hardcoded literal, while
+     * POPUP_ROW_H right next to every draw site already correctly used
+     * scaled(28). g_ui_scale_pct is already loaded by the time any
+     * real caller reaches this (desktop_load_click_two_step() runs
+     * earlier in every mode's own startup) - scaled(18) here is the
+     * whole fix for a fresh popup; ensure_popup_fontset_current()
+     * below covers a font_scale change while an entity is already
+     * running (settings reload live, this fontset didn't rebuild). */
     char **missing = NULL;
     int n_missing = 0;
     char *def_str = NULL;
-    const char *base =
-        "-misc-fixed-medium-r-normal--18-120-100-100-c-90-iso10646-1,"
-        "-*-fixed-medium-r-normal--18-*-*-*-*-*-iso10646-1,"
-        "-*-*-medium-r-normal--*-*-*-*-*-*-iso10646-1";
+    char base[320];
+    int px = scaled(18);
+    snprintf(base, sizeof(base),
+        "-misc-fixed-medium-r-normal--%d-120-100-100-c-90-iso10646-1,"
+        "-*-fixed-medium-r-normal--%d-*-*-*-*-*-iso10646-1,"
+        "-*-*-medium-r-normal--*-*-*-*-*-*-iso10646-1", px, px);
+    if (g_popup_fontset) { XFreeFontSet(dpy, g_popup_fontset); g_popup_fontset = NULL; }
     g_popup_fontset = XCreateFontSet(dpy, base, &missing, &n_missing, &def_str);
     if (missing) XFreeStringList(missing);
     if (!g_popup_fontset) {
         g_popup_fontset = XCreateFontSet(dpy, "fixed", &missing, &n_missing, &def_str);
         if (missing) XFreeStringList(missing);
     }
+    g_popup_fontset_pct = g_ui_scale_pct;
+}
+
+/* Rebuild the popup fontset if a live font_scale reload changed
+ * g_ui_scale_pct since it was last built - cheap check (an int
+ * compare) on every popup text draw/measure, real work only on an
+ * actual change. Called from popup_draw_text()/popup_text_px() so
+ * every existing call site gets this for free, no new call sites. */
+static void ensure_popup_fontset_current(Display *dpy) {
+    if (g_popup_fontset && g_popup_fontset_pct == g_ui_scale_pct) return;
+    load_popup_fontset(dpy);
 }
 
 static void popup_draw_text(Display *dpy, Drawable d, GC gc, int x, int y, const char *s) {
+    ensure_popup_fontset_current(dpy);
     if (g_popup_fontset) {
         Xutf8DrawString(dpy, d, g_popup_fontset, gc, x, y, s, (int)strlen(s));
     } else {
@@ -10886,8 +10942,8 @@ static void popup_draw_text(Display *dpy, Drawable d, GC gc, int x, int y, const
 
 /* Pixel width of UTF-8 popup label text (same fontset as popup_draw_text). */
 static int popup_text_px(Display *dpy, const char *s) {
-    (void)dpy;
     if (!s || !*s) return 0;
+    ensure_popup_fontset_current(dpy);
     if (g_popup_fontset) {
         XRectangle ink, logical;
         Xutf8TextExtents(g_popup_fontset, s, (int)strlen(s), &ink, &logical);
