@@ -1344,6 +1344,173 @@ static int g_lod_step = 1;
 static unsigned char *g_fbuf = NULL;
 #define FB(X,Y) (g_fbuf + ((size_t)(Y) * (size_t)g_fw + (size_t)(X)) * 4)
 
+/* ===== HUD: engine-drawn text/minimap overlay (BV-HUD-TEXT-OVERLAY-AND-
+ * MINIMAP.md). Milestone A: generic ascii text blitter reusing the SAME
+ * on-disk 8x16 font as the team-digit mask above
+ * (pieces/registry/fonts/ascii/<code>/glyph.txt) - no new asset. Painted
+ * straight into g_fbuf as the LAST thing before write_file_atomic(), so
+ * it rides along in rgb_frame_3d_overlay.raw and composites in via
+ * chtpm_rgb_render's MAP3D_MARKER path. Skipped entirely when hud.pdl is
+ * absent or hud_enabled=0 (frame stays byte-identical -> frame-history
+ * only_on_change digest unaffected). */
+#define HUD_FONT_LO 32
+#define HUD_FONT_HI 126
+#define HUD_FONT_N  (HUD_FONT_HI - HUD_FONT_LO + 1)
+static unsigned char g_hud_glyph[HUD_FONT_N][GLYPH_PX_H][GLYPH_PX_W];
+static char          g_hud_glyph_have[HUD_FONT_N];
+static char          g_hud_font_root[PATH_BUF] = "";
+
+/* Load every printable glyph once per (font root). Cheap: 95 tiny files,
+ * one stat/open each, only on first HUD draw of a session. */
+static void hud_ensure_font(const char *game_root) {
+    if (g_hud_font_root[0] && strcmp(g_hud_font_root, game_root) == 0) return;
+    snprintf(g_hud_font_root, sizeof(g_hud_font_root), "%s", game_root);
+    memset(g_hud_glyph_have, 0, sizeof(g_hud_glyph_have));
+    for (int code = HUD_FONT_LO; code <= HUD_FONT_HI; code++) {
+        char path[PATH_BUF];
+        snprintf(path, sizeof(path), "%s/pieces/registry/fonts/ascii/%d/glyph.txt", game_root, code);
+        FILE *f = host_fopen(path, "r");
+        if (!f) continue;
+        int idx = code - HUD_FONT_LO;
+        char line[64];
+        for (int row = 0; row < GLYPH_PX_H; row++) {
+            if (!fgets(line, sizeof(line), f)) { for (int c = 0; c < GLYPH_PX_W; c++) g_hud_glyph[idx][row][c] = 0; continue; }
+            for (int c = 0; c < GLYPH_PX_W; c++) g_hud_glyph[idx][row][c] = (line[c] == '#') ? 1 : 0;
+        }
+        fclose(f);
+        g_hud_glyph_have[idx] = 1;
+    }
+}
+
+/* Blit str at (x,y) top-left corner, integer scale, colour fg[3].
+ * box!=0 -> darken a 1-scale pad behind the whole run first so the text
+ * stays readable over sky or bright voxels. Returns x past the last
+ * glyph (so callers can chain). Clips to the framebuffer. */
+static int bv_blit_text(int x, int y, const char *str,
+                        unsigned char fr, unsigned char fg_, unsigned char fb_,
+                        int scale, int box) {
+    if (!g_fbuf || !str) return x;
+    if (scale < 1) scale = 1;
+    int gw = GLYPH_PX_W * scale, gh = GLYPH_PX_H * scale;
+    int n = (int)strlen(str);
+    if (box) {
+        int bx0 = x - scale, by0 = y - scale;
+        int bx1 = x + n * gw + scale, by1 = y + gh + scale;
+        if (bx0 < 0) bx0 = 0;
+        if (by0 < 0) by0 = 0;
+        if (bx1 > g_fw) bx1 = g_fw;
+        if (by1 > g_fh) by1 = g_fh;
+        for (int by = by0; by < by1; by++)
+            for (int bx = bx0; bx < bx1; bx++) {
+                unsigned char *p = FB(bx, by);
+                p[0] = (unsigned char)(p[0] / 4); p[1] = (unsigned char)(p[1] / 4);
+                p[2] = (unsigned char)(p[2] / 4); p[3] = 255;
+            }
+    }
+    int cx = x;
+    for (int i = 0; i < n; i++, cx += gw) {
+        unsigned char c = (unsigned char)str[i];
+        if (c < HUD_FONT_LO || c > HUD_FONT_HI) continue;
+        int idx = c - HUD_FONT_LO;
+        if (!g_hud_glyph_have[idx]) continue;
+        for (int row = 0; row < GLYPH_PX_H; row++)
+            for (int cc = 0; cc < GLYPH_PX_W; cc++) {
+                if (!g_hud_glyph[idx][row][cc]) continue;
+                for (int sy = 0; sy < scale; sy++)
+                    for (int sx = 0; sx < scale; sx++) {
+                        int px = cx + cc * scale + sx, py = y + row * scale + sy;
+                        if (px < 0 || px >= g_fw || py < 0 || py >= g_fh) continue;
+                        unsigned char *p = FB(px, py);
+                        p[0] = fr; p[1] = fg_; p[2] = fb_; p[3] = 255;
+                    }
+            }
+    }
+    return cx;
+}
+
+/* pipe-delimited "<tag> | <name> | <val>" reader, twin of
+ * bv_dispatch.c's read_pdl_opt (spaces around pipes optional). */
+static int hud_pdl_int(const char *pdl_path, const char *name, int def) {
+    FILE *f = host_fopen(pdl_path, "r");
+    if (!f) return def;
+    char line[256];
+    int val = def;
+    while (fgets(line, sizeof(line), f)) {
+        if (line[0] == '#') continue;
+        char *bar1 = strchr(line, '|'); if (!bar1) continue;
+        char *bar2 = strchr(bar1 + 1, '|'); if (!bar2) continue;
+        char field[128];
+        char *ns = bar1 + 1, *ne = bar2;
+        while (*ns == ' ' || *ns == '\t') ns++;
+        while (ne > ns && (ne[-1] == ' ' || ne[-1] == '\t')) ne--;
+        size_t fl = (size_t)(ne - ns); if (fl >= sizeof(field)) fl = sizeof(field) - 1;
+        memcpy(field, ns, fl); field[fl] = '\0';
+        if (strcmp(field, name) != 0) continue;
+        char *vs = bar2 + 1;
+        while (*vs == ' ' || *vs == '\t') vs++;
+        val = atoi(vs);
+        break;
+    }
+    fclose(f);
+    return val;
+}
+
+static void hud_pdl_str(const char *pdl_path, const char *name, char *out, size_t out_sz, const char *def) {
+    snprintf(out, out_sz, "%s", def);
+    FILE *f = host_fopen(pdl_path, "r");
+    if (!f) return;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        if (line[0] == '#') continue;
+        char *bar1 = strchr(line, '|'); if (!bar1) continue;
+        char *bar2 = strchr(bar1 + 1, '|'); if (!bar2) continue;
+        char field[128];
+        char *ns = bar1 + 1, *ne = bar2;
+        while (*ns == ' ' || *ns == '\t') ns++;
+        while (ne > ns && (ne[-1] == ' ' || ne[-1] == '\t')) ne--;
+        size_t fl = (size_t)(ne - ns); if (fl >= sizeof(field)) fl = sizeof(field) - 1;
+        memcpy(field, ns, fl); field[fl] = '\0';
+        if (strcmp(field, name) != 0) continue;
+        char *vs = bar2 + 1;
+        while (*vs == ' ' || *vs == '\t') vs++;
+        size_t vl = strlen(vs);
+        while (vl > 0 && (vs[vl-1] == '\n' || vs[vl-1] == '\r' || vs[vl-1] == ' ' || vs[vl-1] == '\t')) vs[--vl] = '\0';
+        snprintf(out, out_sz, "%s", vs);
+        break;
+    }
+    fclose(f);
+}
+
+/* Draw the HUD for one frame. game_root == render_one_frame()'s
+ * focused_project_root (that's where pieces/system/hud.pdl and the font
+ * live). Milestone A: hud_enabled gate + anchored "HUD" tag only. */
+static void bv_draw_hud(const char *game_root) {
+    if (!g_fbuf || !game_root || !game_root[0]) return;
+    char pdl[PATH_BUF];
+    snprintf(pdl, sizeof(pdl), "%s/pieces/system/hud.pdl", game_root);
+    if (!hud_pdl_int(pdl, "hud_enabled", 0)) return;
+
+    int scale = hud_pdl_int(pdl, "hud_scale", 1);
+    if (scale < 1) scale = 1;
+    if (scale > 4) scale = 4;
+    char anchor[24];
+    hud_pdl_str(pdl, "hud_anchor", anchor, sizeof(anchor), "top-right");
+
+    hud_ensure_font(game_root);
+
+    const char *tag = "HUD";
+    int pad = 6 * scale;
+    int tw = (int)strlen(tag) * GLYPH_PX_W * scale;
+    int th = GLYPH_PX_H * scale;
+    int x = pad, y = pad;
+    if (strstr(anchor, "right"))  x = g_fw - tw - pad;
+    if (strstr(anchor, "bottom")) y = g_fh - th - pad;
+    if (x < 0) x = 0;
+    if (y < 0) y = 0;
+
+    bv_blit_text(x, y, tag, 235, 245, 255, scale, 1);
+}
+
 /* REAL, NEW 2026-08-04, xyz-ngn-plan.md §2/§2b (piececraft-xyz's own
  * real day/night orbital plan, Step 1) - the sun's own real ELLIPTICAL
  * orbit ("long oval", direct instruction: "sun should be close to our
@@ -2704,6 +2871,10 @@ static int render_one_frame(void) {
         }
     }
     } /* end if (!gpu_done) - CPU raymarch loop */
+
+    /* HUD overlay (BV-HUD-TEXT-OVERLAY-AND-MINIMAP.md) - last paint into
+     * g_fbuf, on top of the raymarch, before the atomic write. */
+    bv_draw_hud(focused_project_root);
 
     /* Writes ONLY the overlay file - never rgb_frame.raw itself (see
      * this file's own header comment + view-vs-muta.md). system/
