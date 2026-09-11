@@ -94,7 +94,13 @@ static int kh_hex_luma(const char *hex) {
  * XftFontClose() the returned font - shared, cached handle. */
 static XftFont *font_for(const CssStyle *st) {
     char spec[128];
-    const char *fam = st->has_font_family ? st->font_family : "DejaVu Sans";
+    /* g_ui_font_family - house-wide default font (hq_ui.pdl font_family=,
+     * settings picker), declared in khtpm_core_render.c before this file
+     * is #include'd there - falls back to "DejaVu Sans" if that global
+     * were ever missing (defensive, not expected to trigger). A
+     * window's own real CSS font-family (st->has_font_family) always
+     * wins - this is only the default this file used to hard-literal. */
+    const char *fam = st->has_font_family ? st->font_family : g_ui_font_family;
     int size = scaled(st->has_font_size ? st->font_size : 12);
     snprintf(spec, sizeof(spec), "%s:pixelsize=%d%s", fam, size, (st->has_font_weight && st->font_weight_bold) ? ":bold" : "");
 

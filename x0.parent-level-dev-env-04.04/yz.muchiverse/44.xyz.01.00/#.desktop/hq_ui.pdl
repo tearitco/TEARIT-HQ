@@ -15,3 +15,11 @@ win_top_y=96
 # click_two_step: 1 = first click focuses, second activates (default).
 #   0 = one click activates.
 click_two_step=1
+font_scale=1.50
+
+# font_family: house-wide DEFAULT font (fontconfig name, e.g. "DejaVu
+# Sans" / "Times New Roman" / "Comic Sans MS" / "Helvetica"). A window's
+# own CSS font-family (if it sets one) always wins - this is only the
+# fallback every window without its own font-family uses. Live-reloaded
+# same as font_scale; picker lives in the taskbar-settings app.
+font_family=DejaVu Sans

@@ -117,6 +117,7 @@ static void kh_raise_and_focus(Window w); /* fwd - dispatch()'s FOCUSWIN handler
 static int kh_key_history_code(KeySym ks, char ch); /* fwd - handle_key()'s interact-relay forward uses it before its real definition, near kh_capture_key */
 static void desktop_toggle_click_two_step(const char *house_root); /* fwd - dispatch()'s CLICK_TWOSTEP_TOGGLE handler uses it before its real definition, near desktop_load_click_two_step */
 static void desktop_set_font_scale(const char *house_root, int pct); /* fwd - dispatch()'s UI_SCALE_MINUS/PLUS handlers */
+static void desktop_set_font_family(const char *house_root, const char *name); /* fwd - dispatch()'s UI_FONT_FAMILY_NEXT/PREV handlers */
 static void desktop_load_click_two_step(const char *house_root); /* fwd - hq_ui_pdl_reload_if_changed() (hq_idle_tick(), long-running dock strip) uses it before its real definition */
 static void reload_font_ui(void); /* fwd - hq_ui_pdl_reload_if_changed() re-sizes the chrome font on a live font_scale change */
 static void kh_text_areas_reload(Elem *root); /* fwd - reparse_chtpm_if_changed() re-hydrates <text_area> buffers, defined near default_text_area_save */
@@ -2140,6 +2141,26 @@ static int g_click_two_step = 1;
  * font-size, row heights, paddings) picks this up for free. Settings
  * 'Size -'/'Size +' step it via the UI_SCALE_MINUS/PLUS verbs. */
 static int g_ui_scale_pct = 100;
+/* REAL, NEW 2026-09-10, direct instruction ("when should we add font
+ * picker to settings") - house-wide DEFAULT font family, same real
+ * role font_scale already plays for size. Any window/CSS that sets its
+ * own font-family (e.g. pchq-board.css's "Ubuntu") keeps winning - this
+ * is only the fallback the Xft spec builder used to hard-literal to
+ * "DejaVu Sans" (see that function's own header comment for the exact
+ * site). Loaded by desktop_load_click_two_step() below, same file/same
+ * function font_scale already uses - one settings reload path, not two. */
+static char g_ui_font_family[64] = "DejaVu Sans";
+/* Curated font-family picker list (Settings' own "Font -/+ " cycle) -
+ * real fontconfig names, real TrueType fonts already covered by this
+ * house's own font stack (fontconfig substitutes a close match for any
+ * of these not literally installed, same as any other Xft app - never
+ * a hard failure, matches XftFontOpenName's own fallback behavior
+ * already relied on elsewhere in this file). */
+static const char *g_font_family_choices[] = {
+    "DejaVu Sans", "Times New Roman", "Comic Sans MS", "Helvetica",
+    "Ubuntu", "Noto Sans",
+};
+#define N_FONT_FAMILY_CHOICES (int)(sizeof(g_font_family_choices) / sizeof(g_font_family_choices[0]))
 static int window_is_dock(void);
 static int elem_has_class(Elem *e, const char *cls);
 static int kh_elem_in_scope(Elem *e);
@@ -2346,7 +2367,7 @@ static int kh_measure_text_px(const CssStyle *st, const char *text) {
         return n * adv;
     }
     char spec[128];
-    const char *fam = st->has_font_family ? st->font_family : "DejaVu Sans";
+    const char *fam = st->has_font_family ? st->font_family : g_ui_font_family;
     int size = scaled(st->has_font_size ? st->font_size : 12);
     snprintf(spec, sizeof(spec), "%s:pixelsize=%d%s", fam, size, (st->has_font_weight && st->font_weight_bold) ? ":bold" : "");
 
@@ -5927,6 +5948,24 @@ static void dispatch(const char *action) {
         if (s < 75) s = 75;
         if (s > 200) s = 200;
         desktop_set_font_scale(g_house_root, s);
+        reload_font_ui();
+        if (!g_quit) { assign_nav_and_layout(); redraw(); }
+        return;
+    }
+    if (strcmp(action, "UI_FONT_FAMILY_NEXT") == 0 || strcmp(action, "UI_FONT_FAMILY_PREV") == 0) {
+        /* direct instruction 2026-09-10 ("when should we add font
+         * picker to settings... lets do the build") - same real
+         * step-button UX UI_SCALE_MINUS/PLUS already uses, cycling
+         * g_font_family_choices instead of a number. Any window with
+         * its own CSS font-family is unaffected - only the house-wide
+         * default this picker controls. */
+        int idx = 0;
+        for (int i = 0; i < N_FONT_FAMILY_CHOICES; i++)
+            if (strcmp(g_ui_font_family, g_font_family_choices[i]) == 0) { idx = i; break; }
+        idx += (action[15] == 'N') ? 1 : -1;   /* "UI_FONT_FAMILY_" is 15 chars - index 15 is N(ext)/P(rev) */
+        if (idx < 0) idx = N_FONT_FAMILY_CHOICES - 1;
+        if (idx >= N_FONT_FAMILY_CHOICES) idx = 0;
+        desktop_set_font_family(g_house_root, g_font_family_choices[idx]);
         reload_font_ui();
         if (!g_quit) { assign_nav_and_layout(); redraw(); }
         return;
@@ -9664,6 +9703,28 @@ static void desktop_set_font_scale(const char *house_root, int pct) {
     g_ui_scale_pct = pct;
 }
 
+static void desktop_set_font_family(const char *house_root, const char *name) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
+    char lines[128][256];
+    int n = 0;
+    FILE *f = fopen(path, "r");
+    if (f) { while (n < 128 && fgets(lines[n], sizeof(lines[n]), f)) n++; fclose(f); }
+    int replaced = 0;
+    for (int i = 0; i < n; i++) {
+        if (strncmp(lines[i], "font_family=", 12) == 0) {
+            snprintf(lines[i], sizeof(lines[i]), "font_family=%s\n", name);
+            replaced = 1;
+        }
+    }
+    FILE *wf = fopen(path, "w");
+    if (!wf) return;
+    for (int i = 0; i < n; i++) fputs(lines[i], wf);
+    if (!replaced) fprintf(wf, "font_family=%s\n", name);
+    fclose(wf);
+    snprintf(g_ui_font_family, sizeof(g_ui_font_family), "%s", name);
+}
+
 static void desktop_load_click_two_step(const char *house_root) {
     char path[4352]; /* matches this file's own later TP_PATH_BUF (not yet declared at this point) */
     snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
@@ -9693,6 +9754,9 @@ static void desktop_load_click_two_step(const char *house_root) {
             if (p < 50) p = 50;      /* the hq_ui.pdl comment's own 0.5-3.0 range */
             if (p > 300) p = 300;
             g_ui_scale_pct = p;
+        }
+        else if (strcmp(line, "font_family") == 0 && val[0]) {
+            snprintf(g_ui_font_family, sizeof(g_ui_font_family), "%s", val);
         }
     }
     fclose(f);
