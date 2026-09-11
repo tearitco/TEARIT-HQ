@@ -1,4 +1,5 @@
 #define _POSIX_C_SOURCE 200809L /* CLOCK_MONOTONIC + getline() under -std=c11 strict mode - bumped from 199309L 2026-08-16 for chai_load_ledger()'s real getline() fix, see that function's own header comment */
+#include <stdarg.h> /* 2026-09-11 - kh_focus_debug_log()'s va_list, TEMPORARY diagnostic logging */
 /* khtpm_entity_menu_render.c — entity context menu, Stage 2c PROOF
  * (2026-08-16, direct instruction: "oh use chtpm. its standard" -
  * overriding the smaller module-only-bolt-on option initially
@@ -123,6 +124,7 @@ static void reload_font_ui(void); /* fwd - hq_ui_pdl_reload_if_changed() re-size
 static void kh_text_areas_reload(Elem *root); /* fwd - reparse_chtpm_if_changed() re-hydrates <text_area> buffers, defined near default_text_area_save */
 static void kh_cli_io_reload(Elem *root); /* fwd - reparse_chtpm_if_changed() re-hydrates <cli_io> buffers, defined near kh_text_areas_reload */
 static Elem *kh_find_input_by_key(Elem *root, const char *key); /* fwd - reparse_chtpm_if_changed() re-arms a cli_io/text_area across a live reparse without releasing the keyboard grab it already holds */
+static void kh_focus_debug_log(const char *fmt, ...); /* fwd - TEMPORARY diagnostic logging, see its own definition comment (network-browser recurring focus bug) */
 #define MAX_ELEMS 1024  /* 2026-09-02: page projection + chrome, was 512 */
 #define MAX_PAGE_STACK 8
 
@@ -1818,8 +1820,10 @@ static int reparse_chtpm_if_changed(void) {
             char *rbuf = strcmp(reelem->tag, "text_area") == 0 ? reelem->text_area_buffer : reelem->input_buffer;
             reelem->cursor = (int)strlen(rbuf);
             reelem->sel_anchor = reelem->cursor;
+            kh_focus_debug_log("REPARSE key=%s FOUND buf_len=%d", saved_input_key, (int)strlen(rbuf));
         } else {
             kh_ungrab_kbd(); /* field really is gone - the grab held for it is now meaningless */
+            kh_focus_debug_log("REPARSE key=%s NOT_FOUND - ungrabbed", saved_input_key);
         }
     }
     if (g_dock_peer_path[0]) {
@@ -6526,6 +6530,16 @@ static void kh_clipboard_insert_text(Elem *e, const char *text) {
 static void default_cli_io_handle_key(KeySym ks, char ch) {
     Elem *e = g_default_input_elem;
     if (!e) return;
+    /* TEMPORARY diagnostic (see kh_focus_debug_log's own comment) -
+     * proves the key genuinely REACHED this process/function at all -
+     * if the log shows real KEYPRESS lines missing for a real
+     * keystroke the user typed, the key never arrived here (lost to
+     * another window/the grab, an X-level problem, not this function's
+     * own logic); if every key shows up here but the visible on-screen
+     * result is still wrong, the bug is downstream of this point. */
+    kh_focus_debug_log("KEYPRESS key=%s ks=%lu ch=%d(%c)",
+                        e->target_id[0] ? e->target_id : e->id, (unsigned long)ks, (int)ch,
+                        (ch >= 32 && ch < 127) ? ch : '?');
     int is_area = (strcmp(e->tag, "text_area") == 0);
     char *buf = is_area ? e->text_area_buffer : e->input_buffer;
     size_t cap = is_area ? sizeof(e->text_area_buffer) : sizeof(e->input_buffer);
@@ -6565,7 +6579,10 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
      * yet, so this can't regress any of them) - see the matching
      * XUngrabKeyboard on every real disarm path (Escape here, reparse_
      * chtpm_if_changed()'s own real safety net). */
-    if (ks == XK_Escape) { g_default_input_elem = NULL; kh_ungrab_kbd(); return; }
+    if (ks == XK_Escape) {
+        kh_focus_debug_log("ESCAPE key=%s - explicit user disarm", e->target_id[0] ? e->target_id : e->id);
+        g_default_input_elem = NULL; kh_ungrab_kbd(); return;
+    }
     /* REAL, NEW 2026-09-05 (CLIPBOARD-COPY-PASTE-DESIGN.md +
      * TEXT_AREA-SCROLL-GUTTER-SELECTION-DESIGN.md) - Ctrl+C / Ctrl+V /
      * Ctrl+X arrive as plain control characters through XLookupString
@@ -8585,15 +8602,52 @@ static int hq_window_has_x_focus(void) {
     return 1;
 }
 
+/* REAL, NEW 2026-09-11 - TEMPORARY diagnostic-only logging (direct
+ * instruction: network-browser's cli_io focus/backspace bug has been
+ * "fixed" 3 times now, every fix passing this house's own relay-driven
+ * test methodology cleanly, and the user reports real physical
+ * hardware is unchanged every time - the relay test itself may be
+ * masking the real bug, same class of problem as the already-
+ * documented override_redirect/xdotool masking (09-appendix/
+ * pc-hq-bugs.md Bug 2). Rather than ask for a synchronous side-by-side
+ * test session, this appends one real, timestamped line per grab
+ * attempt/outcome to <package_dir>/kh_focus_debug.log so the user can
+ * just use the browser normally and the log gets read back afterward -
+ * real evidence from real hardware, no live monitoring needed. Safe to
+ * remove once this bug's real root cause is found - see BUG-LOG.md's
+ * "network-browser address bar" open entry. */
+static void kh_focus_debug_log(const char *fmt, ...) {
+    if (!g_package_dir[0]) return;
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/kh_focus_debug.log", g_package_dir);
+    FILE *f = fopen(path, "a");
+    if (!f) return;
+    struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
+    struct tm tmv; localtime_r(&ts.tv_sec, &tmv);
+    fprintf(f, "%02d:%02d:%02d.%03ld ", tmv.tm_hour, tmv.tm_min, tmv.tm_sec, ts.tv_nsec / 1000000);
+    va_list ap; va_start(ap, fmt);
+    vfprintf(f, fmt, ap);
+    va_end(ap);
+    fprintf(f, "\n");
+    fclose(f);
+}
+
 /* generic history-relay + keyboard-grab helpers (were dbhq_*; the
  * popup/entity-menu + cli_io paths still need them after the dbhq_*
  * deletion). */
 static void kh_grab_keyboard_retry(void) {
     if (!dpy) return;   /* --headless: no display, nothing to grab */
-    for (int a = 0; a < 5; a++) {
-        if (XGrabKeyboard(dpy, win, True, GrabModeAsync, GrabModeAsync, CurrentTime) == GrabSuccess) break;
+    int a, rc = -1;
+    for (a = 0; a < 5; a++) {
+        rc = XGrabKeyboard(dpy, win, True, GrabModeAsync, GrabModeAsync, CurrentTime);
+        if (rc == GrabSuccess) break;
         XSync(dpy, False); usleep(5000);
     }
+    Window fw = None; int rev = 0;
+    XGetInputFocus(dpy, &fw, &rev);
+    kh_focus_debug_log("GRAB key=%s attempts=%d rc=%d(0=success) real_focus_is_us=%d",
+                        g_default_input_elem ? (g_default_input_elem->target_id[0] ? g_default_input_elem->target_id : g_default_input_elem->id) : "?",
+                        a + 1, rc, fw == win);
 }
 static int kh_key_history_code(KeySym ks, char ch) {
     if (ch >= 32 && ch <= 126) return (unsigned char)ch;
