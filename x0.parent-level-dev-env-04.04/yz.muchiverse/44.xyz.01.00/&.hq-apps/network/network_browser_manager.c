@@ -1887,6 +1887,45 @@ static void bookmark_add(const char *url, const char *title) {
     fclose(f);
 }
 
+/* REAL, NEW 2026-09-11, direct live report ("history nav buttons were
+ * supposed to delete on backspace, and have delete all"). g_visit_log_
+ * path is a plain append-only, newest-LAST file; write_ui_projection()'s
+ * own history block (real header comment right where h_%d_del_action
+ * is published) walks it backwards to show newest-first at display
+ * index 0 - `display_idx` here is that SAME index, translated back to
+ * the real file line index the same way that loop does
+ * (`hi = hn - 1 - display_idx`), so the entry actually removed is
+ * exactly the one the user saw and backspaced. Read-all/skip-one/
+ * rewrite-all, same real shape every other small state file in this
+ * house uses for a delete (no temp-file atomicity here on purpose -
+ * this file is already rewritten wholesale on every real edit
+ * elsewhere in this codebase, e.g. default_cli_io_save()). */
+static void history_delete_at(int display_idx) {
+    if (display_idx < 0) return;
+    char lines[256][PATH_BUF];
+    int hn = 0;
+    FILE *f = fopen(g_visit_log_path, "r");
+    if (!f) return;
+    while (hn < 256 && fgets(lines[hn], PATH_BUF, f)) {
+        size_t L = strlen(lines[hn]);
+        while (L > 0 && (lines[hn][L-1] == '\n' || lines[hn][L-1] == '\r')) lines[hn][--L] = 0;
+        if (lines[hn][0]) hn++;
+    }
+    fclose(f);
+    int hi = hn - 1 - display_idx;
+    if (hi < 0 || hi >= hn) return; /* stale index (a concurrent visit shifted it) - safe no-op, not a crash */
+    FILE *w = fopen(g_visit_log_path, "w");
+    if (!w) return;
+    for (int i = 0; i < hn; i++) if (i != hi) fprintf(w, "%s\n", lines[i]);
+    fclose(w);
+}
+
+/* "delete all" - direct request, same turn as history_delete_at() above. */
+static void history_clear_all(void) {
+    FILE *w = fopen(g_visit_log_path, "w");
+    if (w) fclose(w);
+}
+
 static void load_page_title(char *out, size_t outsz) {
     out[0] = 0;
     FILE *pf = fopen(g_page_state_path, "r");
@@ -2259,6 +2298,10 @@ static void handle_request(void) {
         load_page_title(title, sizeof(title));
         if (g_current_url[0]) { bookmark_add(g_current_url, title); publish_status("ready"); }
         else publish_status("error: nothing to bookmark");
+    } else if (strncmp(line, "delhist:", 8) == 0) {
+        history_delete_at(atoi(line + 8));
+    } else if (strcmp(line, "clearhist:") == 0 || strcmp(line, "clearhist") == 0) {
+        history_clear_all();
     } else if (strncmp(line, "tab:", 4) == 0) {
         tab_switch(atoi(line + 4));
     } else if (strcmp(line, "newtab:") == 0 || strcmp(line, "newtab") == 0) {
@@ -2791,10 +2834,25 @@ static void write_ui_projection(void) {
             shell_escape_squote(hlines[hi], url_sq, sizeof(url_sq));
             UI_PUT("h_%d_label=%s\n", shown, lab_s);
             UI_PUT("h_%d_action='%s/ops/nb_write_go.sh' 'go' '%s'\n", shown, g_package_dir, url_sq);
+            /* REAL, NEW 2026-09-11, direct live report ("history nav
+             * buttons were supposed to delete on backspace, and have
+             * delete all") - same real, generic backspace_action
+             * capability every other deletable list row in the house
+             * uses (open-hai's own session rows: "id like to add
+             * backspace to delete... instead of making all those
+             * delete spots"). Indexed by the DISPLAY position (shown,
+             * 0=newest) - history_delete_at() below does the newest-
+             * first-to-file-line-index translation, matching exactly
+             * how this same loop walks hlines[] backwards to build
+             * that same display order. */
+            UI_PUT("h_%d_del_action='%s/ops/nb_write_delhist.sh' 'delhist' '%d'\n", shown, g_package_dir, shown);
             shown++;
         }
         UI_PUT("n_hist=%d\n", shown);
         UI_PUT("no_hist=%d\n", shown == 0 ? 1 : 0);
+        /* "delete all" - direct request, same turn as backspace-to-
+         * delete above. */
+        UI_PUT("clear_hist_action='%s/ops/nb_write_clearhist.sh' 'clearhist'\n", g_package_dir);
     }
 
     /* tab strip */

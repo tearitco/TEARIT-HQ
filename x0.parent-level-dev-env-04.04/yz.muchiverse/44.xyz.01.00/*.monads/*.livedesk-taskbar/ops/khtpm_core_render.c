@@ -1007,6 +1007,36 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
             snprintf(decoded, sizeof(decoded), "%s", val);
             decode_entities(decoded);
             snprintf(e->text_area_buffer, sizeof(e->text_area_buffer), "%s", decoded);
+        } else if (strcmp(e->tag, "cli_io") == 0) {
+            /* REAL, NEW 2026-09-11, direct live report ("if i use
+             * existing tab, it doesn't let me backspace w/e data is in
+             * there. is there no record of it or something") - real
+             * root cause: nothing ever seeded a cli_io's input_buffer
+             * (what typing/Backspace actually edit) from anything - a
+             * manager-projected label= (network-browser's address bar:
+             * the loaded URL) looked fully populated but the real,
+             * editable input_buffer underneath was always empty. First
+             * fix reused label= itself to seed input_buffer, but label=
+             * is ALSO drawn as a literal prefix before input_buffer for
+             * every cli_io (chat-hai's "&gt; " prompt is the same
+             * mechanism) - for network-browser specifically, where
+             * label WAS the whole URL, that doubled the text on screen
+             * (label + input_buffer both showing the same URL back to
+             * back). Real fix: cli_io gets the exact same content=
+             * seed-attribute text_area already has, right above -
+             * UNCONDITIONAL copy, no "only if empty" guard needed,
+             * because reparse_chtpm_if_changed()'s reparse-diff engine
+             * already protects input_buffer on any MATCHED element
+             * (kh_diff_apply_template() never touches it) exactly the
+             * same way it already protects text_area_buffer - proven
+             * by the SAME unconditional pattern one branch up. label=
+             * stays free to be a short, real prefix (or empty) for
+             * every cli_io, including this one, with zero special
+             * casing. */
+            char decoded[sizeof(e->input_buffer)];
+            snprintf(decoded, sizeof(decoded), "%s", val);
+            decode_entities(decoded);
+            snprintf(e->input_buffer, sizeof(e->input_buffer), "%s", decoded);
         }
     } else if (strcmp(name, "bg") == 0) {
         /* REAL, NEW 2026-09-04, direct live request ("can we add grey

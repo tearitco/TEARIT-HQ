@@ -25,9 +25,17 @@
         <text label="No bookmarks yet" class="quiet" show="${no_bm}"/>
       </scrolllist>
       <text label="History" class="block-title"/>
+      <!-- 2026-09-11, direct live report ("history nav buttons were
+           supposed to delete on backspace, and have delete all") -
+           backspace_action is the same real, generic per-item delete
+           capability open-hai's own session rows already use (nav to
+           the row, press Backspace); clear-all is a real, separate row
+           that only shows once there's real history to clear
+           (show="${n_hist}" - falsy/"0" when the list is empty). -->
+      <item id="nb-clearhist" label="Clear All History" action="${clear_hist_action}" show="${n_hist}"/>
       <scrolllist>
         <repeat count="${n_hist}" bind="h">
-          <item id="hist${h.#}" label="${h.label}" action="${h.action}"/>
+          <item id="hist${h.#}" label="${h.label}" action="${h.action}" backspace_action="${h.del_action}"/>
         </repeat>
         <text label="No history yet" class="quiet" show="${no_hist}"/>
       </scrolllist>
@@ -49,8 +57,15 @@
         </repeat>
         <item id="nb-newtab" class="quiet" label="New tab" action="${act_newtab}"/>
       </row>
+      <!-- 2026-09-11, direct live report ("it doesn't let me backspace
+           w/e data is in there") - content= (not label=) seeds the
+           REAL editable input_buffer, same real mechanism text_area's
+           own content= attribute already uses; label= is just drawn
+           as a prefix before input_buffer, so putting the loaded URL
+           there too doubled it on screen. See apply_attr()'s own
+           content= handling for the full story. -->
       <cli_io id="address" class="top nb-address" target_id="address"
-              label="${addr_label}" action="${act_go}"/>
+              content="${addr_label}" action="${act_go}"/>
       <text id="status" class="nb-status" label="${status}"/>
       <scrolllist class="from-top nb-content">
         <repeat count="${content_count}" bind="c">
