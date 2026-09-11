@@ -8707,20 +8707,24 @@ static int pchq_theme_changed_dirty(const char *house_root) {
  * mtime-gate convention as pchq_theme_changed_dirty() above (avoid a
  * needless fopen+read every tick for every window in the house);
  * called every tick in hq_idle_tick(), same shared every-mode spot. */
-/* hq_ui.pdl is a Settings-window config file rewritten in place (not
- * appended), so a size cursor can't see an equal-length rewrite - this
- * is the one spot that must key off mtime. NANOSECOND, never
- * st_mtime-seconds: two Settings saves inside one wall-clock second
- * must not collapse into one. */
-static struct timespec g_hq_ui_pdl_mtime = {0, 0};
+/* REAL FIX 2026-09-10, DIAMOND standard (see hq_ui_pdl_touch_marker()'s
+ * own header comment) - hq_ui.pdl itself is rewritten in place, not
+ * appended, so it can never be the marker; #.desktop/hq_ui_pdl_changed
+ * .txt is the real append-only marker every writer touches. The
+ * standard's own rule 1: "a render happens iff an append-only marker
+ * file's size grew - strictly greater, monotonic. Never mtime, never a
+ * hash." -1 = not yet initialized (the FIRST call in a process just
+ * establishes the baseline without reloading - the real settings were
+ * already read once at startup via desktop_load_click_two_step()). */
+static long g_hq_ui_pdl_marker_sz = -1;
 static void hq_ui_pdl_reload_if_changed(const char *house_root) {
     char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui_pdl_changed.txt", house_root);
     struct stat st;
     if (stat(path, &st) != 0) return;
-    if (st.st_mtim.tv_sec != g_hq_ui_pdl_mtime.tv_sec ||
-        st.st_mtim.tv_nsec != g_hq_ui_pdl_mtime.tv_nsec) {
-        g_hq_ui_pdl_mtime = st.st_mtim;
+    if (g_hq_ui_pdl_marker_sz < 0) { g_hq_ui_pdl_marker_sz = (long)st.st_size; return; }
+    if ((long)st.st_size > g_hq_ui_pdl_marker_sz) {
+        g_hq_ui_pdl_marker_sz = (long)st.st_size;
         int old_scale = g_ui_scale_pct;
         desktop_load_click_two_step(house_root);
         if (g_ui_scale_pct != old_scale) {
@@ -9659,6 +9663,24 @@ static int g_emoji_sprite_view_top = 0; /* 0 = front (default), 1 = top */
  * open windows (that would need the same respawn-all-processes
  * mechanism ktb_toggle_zorder_respawn() uses for override_redirect;
  * deliberately not built here, scope kept to "settable at all"). */
+/* REAL FIX 2026-09-10 (direct instruction: "diamond standard isn't
+ * mtime, its fsize by appending to a marker file... can u find and do"
+ * - see 02-architecture/reference/TPMOS-DIAMOND-render-chain.md).
+ * hq_ui.pdl itself is rewritten in place, not appended (an equal-length
+ * rewrite is invisible to a size cursor on the FILE ITSELF - the exact
+ * reason a past pass here used mtime instead) - the real DIAMOND fix
+ * isn't "watch the content file's own size," it's "every writer also
+ * appends one byte to a dedicated, real append-only marker," same
+ * shape as TPMOS's own frame_changed.txt. Called by all three real
+ * writers below (desktop_toggle_click_two_step/desktop_set_font_scale/
+ * desktop_set_font_family) right after they rewrite hq_ui.pdl. */
+static void hq_ui_pdl_touch_marker(const char *house_root) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui_pdl_changed.txt", house_root);
+    FILE *f = fopen(path, "a");
+    if (f) { fputc('K', f); fclose(f); }
+}
+
 static void desktop_toggle_click_two_step(const char *house_root) {
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
@@ -9683,6 +9705,7 @@ static void desktop_toggle_click_two_step(const char *house_root) {
     if (!replaced) fprintf(wf, "click_two_step=%d\n", new_val);
     fclose(wf);
     g_click_two_step = new_val;
+    hq_ui_pdl_touch_marker(house_root);
 }
 
 /* Rewrite hq_ui.pdl's font_scale row in place (same shape as
@@ -9711,6 +9734,7 @@ static void desktop_set_font_scale(const char *house_root, int pct) {
     if (!replaced) fprintf(wf, "font_scale=%.2f\n", pct / 100.0);
     fclose(wf);
     g_ui_scale_pct = pct;
+    hq_ui_pdl_touch_marker(house_root);
 }
 
 static void desktop_set_font_family(const char *house_root, const char *name) {
@@ -9733,6 +9757,7 @@ static void desktop_set_font_family(const char *house_root, const char *name) {
     if (!replaced) fprintf(wf, "font_family=%s\n", name);
     fclose(wf);
     snprintf(g_ui_font_family, sizeof(g_ui_font_family), "%s", name);
+    hq_ui_pdl_touch_marker(house_root);
 }
 
 static void desktop_load_click_two_step(const char *house_root) {
