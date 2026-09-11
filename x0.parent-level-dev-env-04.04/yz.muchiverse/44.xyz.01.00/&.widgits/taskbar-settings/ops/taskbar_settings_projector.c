@@ -93,6 +93,30 @@ static int read_click_two_step(const char *house) {
     return val;
 }
 
+/* REAL, NEW 2026-09-10, direct request ("when should we add font
+ * picker to settings... lets do the build") - same real precedent as
+ * read_click_two_step() just above: reads the house-wide font_family
+ * key purely to publish the CURRENT choice as a label for the Font
+ * </> stepper buttons, never writes it (khtpm_core_render.c's own
+ * desktop_set_font_family() owns writing). */
+static void read_font_family(const char *house, char *out, size_t out_sz) {
+    snprintf(out, out_sz, "DejaVu Sans"); /* same compile-time default the renderer itself uses */
+    char path[PATH_MAX];
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[128];
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "font_family=", 12) == 0) {
+            char *v = line + 12;
+            v[strcspn(v, "\r\n")] = '\0';
+            if (v[0]) snprintf(out, out_sz, "%s", v);
+            break;
+        }
+    }
+    fclose(f);
+}
+
 static void read_state(const char *path, int *phase, int *bg, int *fg, int *apply) {
     *phase = 0; *bg = -1; *fg = -1; *apply = 0;
     FILE *f = fopen(path, "r");
@@ -107,7 +131,7 @@ static void read_state(const char *path, int *phase, int *bg, int *fg, int *appl
     fclose(f);
 }
 
-static void build_ui(char *ui, size_t cap, int phase, int bg, int fg, int click_two_step) {
+static void build_ui(char *ui, size_t cap, int phase, int bg, int fg, int click_two_step, const char *font_family) {
     const char *prompt =
         phase <= 0 ? "pick a background swatch" :
         phase == 1 ? "pick a text swatch"       :
@@ -128,6 +152,7 @@ static void build_ui(char *ui, size_t cap, int phase, int bg, int fg, int click_
     }
     off += (size_t)snprintf(ui + off, cap - off, "click_two_step_label=%s\n",
                             click_two_step ? "Click: 2-step" : "Click: 1-step");
+    off += (size_t)snprintf(ui + off, cap - off, "font_family=%s\n", font_family);
 }
 
 int main(int argc, char **argv) {
@@ -147,8 +172,10 @@ int main(int argc, char **argv) {
         int phase, bg, fg, apply;
         read_state(in_path, &phase, &bg, &fg, &apply);
         int click_two_step = read_click_two_step(house);
+        char font_family[64];
+        read_font_family(house, font_family, sizeof(font_family));
         ui[0] = '\0';
-        build_ui(ui, sizeof(ui), phase, bg, fg, click_two_step);
+        build_ui(ui, sizeof(ui), phase, bg, fg, click_two_step, font_family);
 
         if (strcmp(ui, last) != 0) {              /* content-gated write */
             FILE *f = fopen(tmp_path, "w");

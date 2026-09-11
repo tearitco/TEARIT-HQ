@@ -1,4 +1,5 @@
 #define _POSIX_C_SOURCE 200809L /* CLOCK_MONOTONIC + getline() under -std=c11 strict mode - bumped from 199309L 2026-08-16 for chai_load_ledger()'s real getline() fix, see that function's own header comment */
+#include <stdarg.h> /* 2026-09-11 - kh_focus_debug_log()'s va_list, TEMPORARY diagnostic logging */
 /* khtpm_entity_menu_render.c — entity context menu, Stage 2c PROOF
  * (2026-08-16, direct instruction: "oh use chtpm. its standard" -
  * overriding the smaller module-only-bolt-on option initially
@@ -43,6 +44,7 @@
  * eventual integration point doesn't need a different argv shape). */
 #include "khtpm_css_parser.h"
 #include "khtpm_render_core.c" /* real .c, not a header - see that file's own comment */
+#include "khtpm_reparse_diff.c" /* 2026-09-11 - real keyed tree diff/patch, see 08-roadmap/design-docs/CHTPM-INCREMENTAL-REPARSE-DESIGN.md. Wired in behind g_use_incremental_reparse, OFF by default - see that flag's own declaration comment. */
 /* khtpm_taskbar_manager.h/.c removed 2026-09-01 - real, confirmed dead
  * linkage: ktb_init()/ktb_quit_and_save() (the only reason db-hq mode
  * ever needed it) were already removed from this file in an earlier
@@ -117,14 +119,67 @@ static void kh_raise_and_focus(Window w); /* fwd - dispatch()'s FOCUSWIN handler
 static int kh_key_history_code(KeySym ks, char ch); /* fwd - handle_key()'s interact-relay forward uses it before its real definition, near kh_capture_key */
 static void desktop_toggle_click_two_step(const char *house_root); /* fwd - dispatch()'s CLICK_TWOSTEP_TOGGLE handler uses it before its real definition, near desktop_load_click_two_step */
 static void desktop_set_font_scale(const char *house_root, int pct); /* fwd - dispatch()'s UI_SCALE_MINUS/PLUS handlers */
+static void desktop_set_font_family(const char *house_root, const char *name); /* fwd - dispatch()'s UI_FONT_FAMILY_NEXT/PREV handlers */
 static void desktop_load_click_two_step(const char *house_root); /* fwd - hq_ui_pdl_reload_if_changed() (hq_idle_tick(), long-running dock strip) uses it before its real definition */
 static void reload_font_ui(void); /* fwd - hq_ui_pdl_reload_if_changed() re-sizes the chrome font on a live font_scale change */
 static void kh_text_areas_reload(Elem *root); /* fwd - reparse_chtpm_if_changed() re-hydrates <text_area> buffers, defined near default_text_area_save */
+static void kh_cli_io_reload(Elem *root); /* fwd - reparse_chtpm_if_changed() re-hydrates <cli_io> buffers, defined near kh_text_areas_reload */
+static Elem *kh_find_input_by_key(Elem *root, const char *key); /* fwd - reparse_chtpm_if_changed() re-arms a cli_io/text_area across a live reparse without releasing the keyboard grab it already holds */
+static void kh_focus_debug_log(const char *fmt, ...); /* fwd - TEMPORARY diagnostic logging, see its own definition comment (network-browser recurring focus bug) */
+static Elem *elem_new(const char *tag); /* fwd - kh_pool_alloc() (CHTPM-INCREMENTAL-REPARSE-DESIGN.md) calls this before its real definition */
 #define MAX_ELEMS 1024  /* 2026-09-02: page projection + chrome, was 512 */
 #define MAX_PAGE_STACK 8
 
 static Elem g_pool[MAX_ELEMS];
 static int g_n_elems = 0;
+/* 2026-09-11 - CHTPM-INCREMENTAL-REPARSE-DESIGN.md §3/§1. OFF by
+ * default (0) - reparse_chtpm_if_changed() keeps its existing,
+ * unmodified, always-a-full-rebuild behavior unless this is
+ * explicitly turned on. Read once at startup from #.desktop/hq_ui.pdl
+ * (incremental_reparse=1) by hq_ui_pdl_reload_if_changed()'s own real
+ * PDL-load site - a runtime toggle, not a recompile, so the design
+ * doc's mandatory dock-first rollout order can be tested window by
+ * window without rebuilding between steps. */
+static int g_use_incremental_reparse = 0;
+/* g_pool's own free-list (design doc §3) - ONLY used by the
+ * incremental path (g_use_incremental_reparse=1). The existing
+ * full-rebuild path (g_n_elems=0 on every reparse) never populates or
+ * drains this - it's a no-op, unused array for every window that
+ * doesn't opt in, zero behavior change for the default path. Slots
+ * freed by a genuinely-removed Elem (kh_pool_free(), the
+ * KhDiffAllocator's free_fn) get pushed here; kh_pool_alloc() pops one
+ * before falling back to elem_new()'s own bump allocator. */
+static int g_pool_free_idx[MAX_ELEMS];
+static int g_pool_free_n = 0;
+static Elem *kh_pool_alloc(void *ctx) {
+    (void)ctx;
+    if (g_pool_free_n > 0) {
+        Elem *e = &g_pool[g_pool_free_idx[--g_pool_free_n]];
+        memset(e, 0, sizeof(*e));
+        return e;
+    }
+    return elem_new(""); /* falls through to the existing bump allocator against the SAME g_pool - real tag gets set by kh_diff_apply_template() right after this returns */
+}
+static void kh_pool_free(void *ctx, Elem *e) {
+    (void)ctx;
+    if (g_pool_free_n >= MAX_ELEMS) return; /* real cap, matches g_pool's own - should be unreachable (can't free more slots than exist) */
+    int idx = (int)(e - g_pool);
+    if (idx < 0 || idx >= MAX_ELEMS) return; /* not one of ours - defensive, should never happen */
+    g_pool_free_idx[g_pool_free_n++] = idx;
+}
+/* Scratch pool for the NEW/candidate tree the incremental path parses
+ * into (design doc §1) - completely separate from g_pool, discarded
+ * (its own g_n_elems_next reset to 0) after every diff/patch attempt,
+ * success or failure. parse_chtpm()/elem_new() are retargeted to bump
+ * into THIS array for the duration of that one parse via
+ * g_elem_pool_target/g_elem_n_target (see elem_new()'s own updated
+ * body) - both default to &g_pool/&g_n_elems so every OTHER caller of
+ * elem_new() (the existing full-rebuild path, popup/context-menu
+ * parses, everything) is completely unaffected. */
+static Elem g_pool_next[MAX_ELEMS];
+static int g_n_elems_next = 0;
+static Elem *g_elem_pool_target = g_pool;
+static int *g_elem_n_target = &g_n_elems;
 static char g_package_dir[PATH_BUF];
 static char g_house_root[PATH_BUF];
 static char g_chtpm_path[PATH_BUF];  /* real, generic (2026-08-31) - the real .chtpm this process was launched against, kept for the generic live-reparse capability below */
@@ -683,8 +738,16 @@ static void kh_launch_window_modules(Elem *window, const char *house_root, const
 }
 
 static Elem *elem_new(const char *tag) {
-    if (g_n_elems >= MAX_ELEMS) return NULL;
-    Elem *e = &g_pool[g_n_elems++];
+    /* 2026-09-11 - bumps whichever pool g_elem_pool_target/
+     * g_elem_n_target currently point at. Both default to g_pool/
+     * &g_n_elems (set at their own declaration) - every existing call
+     * site, and every window that never touches the incremental path,
+     * sees IDENTICAL behavior to before this change. Only
+     * kh_parse_into_scratch() (the incremental path's own candidate
+     * parse) retargets these, briefly, around its one parse_chtpm()
+     * call - see that function's own comment. */
+    if (*g_elem_n_target >= MAX_ELEMS) return NULL;
+    Elem *e = &g_elem_pool_target[(*g_elem_n_target)++];
     memset(e, 0, sizeof(*e));
     snprintf(e->tag, sizeof(e->tag), "%s", tag);
     return e;
@@ -944,6 +1007,36 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
             snprintf(decoded, sizeof(decoded), "%s", val);
             decode_entities(decoded);
             snprintf(e->text_area_buffer, sizeof(e->text_area_buffer), "%s", decoded);
+        } else if (strcmp(e->tag, "cli_io") == 0) {
+            /* REAL, NEW 2026-09-11, direct live report ("if i use
+             * existing tab, it doesn't let me backspace w/e data is in
+             * there. is there no record of it or something") - real
+             * root cause: nothing ever seeded a cli_io's input_buffer
+             * (what typing/Backspace actually edit) from anything - a
+             * manager-projected label= (network-browser's address bar:
+             * the loaded URL) looked fully populated but the real,
+             * editable input_buffer underneath was always empty. First
+             * fix reused label= itself to seed input_buffer, but label=
+             * is ALSO drawn as a literal prefix before input_buffer for
+             * every cli_io (chat-hai's "&gt; " prompt is the same
+             * mechanism) - for network-browser specifically, where
+             * label WAS the whole URL, that doubled the text on screen
+             * (label + input_buffer both showing the same URL back to
+             * back). Real fix: cli_io gets the exact same content=
+             * seed-attribute text_area already has, right above -
+             * UNCONDITIONAL copy, no "only if empty" guard needed,
+             * because reparse_chtpm_if_changed()'s reparse-diff engine
+             * already protects input_buffer on any MATCHED element
+             * (kh_diff_apply_template() never touches it) exactly the
+             * same way it already protects text_area_buffer - proven
+             * by the SAME unconditional pattern one branch up. label=
+             * stays free to be a short, real prefix (or empty) for
+             * every cli_io, including this one, with zero special
+             * casing. */
+            char decoded[sizeof(e->input_buffer)];
+            snprintf(decoded, sizeof(decoded), "%s", val);
+            decode_entities(decoded);
+            snprintf(e->input_buffer, sizeof(e->input_buffer), "%s", decoded);
         }
     } else if (strcmp(name, "bg") == 0) {
         /* REAL, NEW 2026-09-04, direct live request ("can we add grey
@@ -982,6 +1075,27 @@ static const char *parse_element(const char *p, Elem *parent) {
     }
     tag[tn] = '\0';
     Elem *e = elem_new(tag);
+    /* REAL BUG FIX 2026-09-11 (gdb-traced crash: a real, large loaded
+     * page - 4chan's own /b/ front page, ~250+ real content rows,
+     * each one 4 real Elems per the network-browser template's own
+     * <repeat> body even though only one of the four ever shows -
+     * pushed g_pool past MAX_ELEMS=1024, elem_new() returned NULL, and
+     * this line dereferenced it unconditionally: `e->parent = parent`
+     * on a NULL e). elem_new()'s own documented contract (see its
+     * declaration's 2026-08-26 comment, "elem_new() returns NULL,
+     * guarded call sites just skip adding content") was never actually
+     * honored HERE, the one call site every other element in the house
+     * ultimately funnels through - a real, root-cause gap, not a
+     * network-browser-specific one (any window's page, given enough
+     * content, was one large-enough load away from this same crash).
+     * Real fix: once the pool is genuinely exhausted, there is no
+     * recovering a partial parse - stop parsing HERE, at the exact
+     * point of exhaustion, same "run out of string" contract this
+     * function's own closing-tag branch a few lines down already uses
+     * (`return end ? end + 1 : p + strlen(p);`) - the tree is silently
+     * truncated at MAX_ELEMS rather than crashing; every already-parsed
+     * element up to this point is real and rendered normally. */
+    if (!e) return p + strlen(p);
     e->parent = parent;
     if (parent && parent->n_children < MAX_CHILDREN) parent->children[parent->n_children++] = e;
 
@@ -1679,6 +1793,29 @@ static int g_headless;  /* fwd (real def near g_dump_and_exit) - referenced by t
  * --headless run (dpy == NULL) can't segfault Xlib on a NULL Display,
  * and so the call is a clean no-op before any display is open. */
 static void kh_ungrab_kbd(void) { if (dpy) XUngrabKeyboard(dpy, CurrentTime); }
+/* 2026-09-11, CHTPM-INCREMENTAL-REPARSE-DESIGN.md §1 - parses `path`
+ * into the SCRATCH pool (g_pool_next) instead of the live g_pool,
+ * leaving g_window/every existing live pointer completely untouched.
+ * Works by briefly retargeting elem_new()'s own bump allocator
+ * (g_elem_pool_target/g_elem_n_target) around this one parse_chtpm()
+ * call, then restoring it - every OTHER elem_new() call site in the
+ * house (the existing full-rebuild path included) is unaffected, since
+ * those globals default to &g_pool/&g_n_elems and nothing else ever
+ * retargets them. Returns the scratch tree's root (still non-NULL only
+ * as long as it's used before the NEXT call to this function or the
+ * next full rebuild - it lives in g_pool_next, which reparse_chtpm_
+ * if_changed() resets to empty right after every diff attempt). */
+static Elem *kh_parse_into_scratch(const char *path) {
+    g_n_elems_next = 0;
+    Elem *saved_pool = g_elem_pool_target;
+    int *saved_n = g_elem_n_target;
+    g_elem_pool_target = g_pool_next;
+    g_elem_n_target = &g_n_elems_next;
+    Elem *result = parse_chtpm(path);
+    g_elem_pool_target = saved_pool;
+    g_elem_n_target = saved_n;
+    return result;
+}
 /* Forward declaration - real definition (with its own header comment)
  * lives in the generic sidebar+panel scroll section further down.
  * Needed here so a reparse (new manager content) can auto-scroll the
@@ -1733,6 +1870,60 @@ static int reparse_chtpm_if_changed(void) {
             return 0;
     }
     g_chtpm_mtime = st.st_mtim;
+    /* 2026-09-11 - CHTPM-INCREMENTAL-REPARSE-DESIGN.md. Tried FIRST,
+     * before any of the existing full-rebuild logic below runs - on
+     * success this returns immediately, the full-rebuild code never
+     * executes. OFF by default (g_use_incremental_reparse); requires a
+     * real existing g_window to diff against (the very first parse of
+     * a window's life has nothing to compare to - falls through to the
+     * existing path below, same as always). On any failure (parse
+     * failure, diff failure/allocator exhaustion, root tag changed)
+     * this deliberately does NOT return - it falls through to the
+     * unmodified existing code below, which does its own fresh
+     * g_n_elems=0/parse_chtpm() rebuild regardless of whatever partial
+     * state the failed diff attempt may have left g_window in (kh_
+     * reparse_diff_patch()'s own documented contract: on failure the
+     * old tree's state is undefined, the caller must discard it
+     * entirely - which is exactly what falling through to the existing
+     * rebuild does, for free, no special-casing needed). */
+    if (g_use_incremental_reparse && g_window) {
+        Elem *candidate = kh_parse_into_scratch(g_chtpm_path);
+        if (candidate) {
+            KhDiffAllocator alloc = { kh_pool_alloc, kh_pool_free, NULL };
+            Elem *removed[MAX_ELEMS];
+            KhDiffRemovedList rl = { removed, MAX_ELEMS, 0 };
+            int ok = kh_reparse_diff_patch(g_window, candidate, &alloc, &rl);
+            g_n_elems_next = 0; /* scratch pool always discarded here, success or failure - candidate's own Elems are never adopted into the live tree */
+            if (ok) {
+                /* The diff preserved identity for everything else - the
+                 * ONLY place a cross-reparse pointer can still go stale
+                 * is a genuine removal, reported here. This replaces
+                 * EVERY per-consumer find-by-key bolt-on (kh_text_areas_
+                 * reload/kh_cli_io_reload/kh_find_input_by_key) for any
+                 * window running this path - none of those run below. */
+                for (int i = 0; i < rl.n; i++) {
+                    if (removed[i] == g_default_input_elem) {
+                        kh_ungrab_kbd();
+                        g_default_input_elem = NULL;
+                        kh_focus_debug_log("INCREMENTAL_REPARSE armed field genuinely removed - disarmed");
+                    }
+                    if (removed[i] == g_default_active_scope_root) {
+                        g_default_active_scope_root = NULL;
+                        g_default_scope_confine = 0;
+                    }
+                }
+                if (g_dock_peer_path[0]) {
+                    g_dock_peer = parse_chtpm(g_dock_peer_path);
+                    { struct stat pst; if (g_dock_peer && stat(g_dock_peer_path, &pst) == 0) g_dock_peer_mtime = pst.st_mtim; }
+                }
+                kh_focus_debug_log("INCREMENTAL_REPARSE ok removed=%d", rl.n);
+                return 1;
+            }
+            kh_focus_debug_log("INCREMENTAL_REPARSE diff failed rc=%d - falling back to full rebuild this tick", ok);
+        } else {
+            kh_focus_debug_log("INCREMENTAL_REPARSE candidate parse failed - falling back to full rebuild this tick");
+        }
+    }
     /* REAL FIX 2026-08-31 (found live testing open-hai's own projection
      * with a real, live-typing manager behind it: clicks/Enter appeared
      * to silently stop arming a cli_io field for no visible reason) -
@@ -1753,8 +1944,31 @@ static int reparse_chtpm_if_changed(void) {
      * fix) - see this function's own forward-declaration comment for
      * `dpy` above for why leaving it held would be a much worse bug
      * than the one this whole block fixes. A harmless no-op when
-     * nothing was actually armed/grabbed. */
-    if (g_default_input_elem) kh_ungrab_kbd();
+     * nothing was actually armed/grabbed.
+     *
+     * REAL FIX 2026-09-11 (direct instruction: "in text-edit-hq its
+     * working perfect. can we make [browser, h-ai cli_io] just work
+     * like text-edit?" - text-edit-hq's <text_area> already got a real
+     * reparse-survival fix on 2026-09-08 (kh_text_areas_reload, right
+     * below) that <cli_io> never got - this is that same parity applied
+     * to cli_io, nothing else bundled in this time. Root cause this
+     * closes: this block unconditionally disarmed+ungrabbed on EVERY
+     * reparse; a manager that reparses often while a cli_io is armed
+     * (open-hai streaming a response, network-browser's ~300ms tick)
+     * loses the field constantly, while text-edit-hq's manager barely
+     * reparses after load so its text_area rarely hit this at all - not
+     * because text_area is special, just because it's rarely exercised.
+     * The X keyboard grab is a Window-level resource, not tied to our
+     * Elem* - if the SAME field (by saved key) still exists after
+     * reparse, the grab already held for it is still valid; nothing to
+     * release. Capture which field was armed, by key, before the
+     * pointer is cleared - restored (without retaking the grab) once
+     * the new tree exists, a few lines down. */
+    char saved_input_key[128] = "";
+    if (g_default_input_elem) {
+        const char *k = g_default_input_elem->target_id[0] ? g_default_input_elem->target_id : g_default_input_elem->id;
+        snprintf(saved_input_key, sizeof(saved_input_key), "%s", k);
+    }
     g_default_input_elem = NULL;
     /* Same real dangling-pointer reasoning as g_default_input_elem just
      * above - a stale dropdown-open pointer into a freed/reused pool
@@ -1775,6 +1989,29 @@ static int reparse_chtpm_if_changed(void) {
      * re-resolve just below restores nav state across the same reparse.
      * No-op for any text_area whose save file doesn't exist yet. */
     kh_text_areas_reload(new_window);
+    /* cli_io's own half of the same fix, real parity with text_area
+     * above - see kh_cli_io_reload()'s own header comment. Restore
+     * buffer content for every cli_io, then - if a field was actually
+     * armed when this reparse started - re-find that SAME field in the
+     * new tree by its saved key and re-arm it: cursor to the end of
+     * the restored buffer, no stale selection. The grab is NOT retaken
+     * here - it was never released above, so it's still held. Only the
+     * else branch touches the grab, for the one real case that needs
+     * it: the field genuinely disappeared from the new tree. */
+    kh_cli_io_reload(new_window);
+    if (saved_input_key[0]) {
+        Elem *reelem = kh_find_input_by_key(new_window, saved_input_key);
+        if (reelem) {
+            g_default_input_elem = reelem;
+            char *rbuf = strcmp(reelem->tag, "text_area") == 0 ? reelem->text_area_buffer : reelem->input_buffer;
+            reelem->cursor = (int)strlen(rbuf);
+            reelem->sel_anchor = reelem->cursor;
+            kh_focus_debug_log("REPARSE key=%s FOUND buf_len=%d", saved_input_key, (int)strlen(rbuf));
+        } else {
+            kh_ungrab_kbd(); /* field really is gone - the grab held for it is now meaningless */
+            kh_focus_debug_log("REPARSE key=%s NOT_FOUND - ungrabbed", saved_input_key);
+        }
+    }
     if (g_dock_peer_path[0]) {
         g_dock_peer = parse_chtpm(g_dock_peer_path);
         { struct stat pst; if (g_dock_peer && stat(g_dock_peer_path, &pst) == 0) g_dock_peer_mtime = pst.st_mtim; }
@@ -2140,6 +2377,36 @@ static int g_click_two_step = 1;
  * font-size, row heights, paddings) picks this up for free. Settings
  * 'Size -'/'Size +' step it via the UI_SCALE_MINUS/PLUS verbs. */
 static int g_ui_scale_pct = 100;
+/* REAL, NEW 2026-09-10, direct instruction ("when should we add font
+ * picker to settings") - house-wide DEFAULT font family, same real
+ * role font_scale already plays for size. Any window/CSS that sets its
+ * own font-family (e.g. pchq-board.css's "Ubuntu") keeps winning - this
+ * is only the fallback the Xft spec builder used to hard-literal to
+ * "DejaVu Sans" (see that function's own header comment for the exact
+ * site). Loaded by desktop_load_click_two_step() below, same file/same
+ * function font_scale already uses - one settings reload path, not two. */
+static char g_ui_font_family[64] = "DejaVu Sans";
+/* Curated font-family picker list (Settings' own "Font -/+ " cycle) -
+ * real fontconfig names, real TrueType fonts already covered by this
+ * house's own font stack (fontconfig substitutes a close match for any
+ * of these not literally installed, same as any other Xft app - never
+ * a hard failure, matches XftFontOpenName's own fallback behavior
+ * already relied on elsewhere in this file). DSEG7/DSEG14 Classic
+ * added 2026-09-10 (direct request: "is there a digital style font you
+ * know? thats what i want to use") - real, installed (`fonts-dseg`
+ * apt package, added this session), the actual open-source 7-/14-
+ * segment LCD-style typeface family, not an approximation. DSEG7 is
+ * the classic digital-clock look but only really covers digits +
+ * a handful of symbols (most letters render as a rough segment
+ * approximation, not their real shape) - DSEG14 covers the full
+ * alphabet properly (14-segment displays can spell real words) at the
+ * same digital aesthetic, so it's the safer pick if DSEG7 turns out
+ * hard to read in nav labels/buttons. Both in the cycle either way. */
+static const char *g_font_family_choices[] = {
+    "DejaVu Sans", "Times New Roman", "Comic Sans MS", "Helvetica",
+    "Ubuntu", "Noto Sans", "DSEG7 Classic", "DSEG14 Classic",
+};
+#define N_FONT_FAMILY_CHOICES (int)(sizeof(g_font_family_choices) / sizeof(g_font_family_choices[0]))
 static int window_is_dock(void);
 static int elem_has_class(Elem *e, const char *cls);
 static int kh_elem_in_scope(Elem *e);
@@ -2346,7 +2613,7 @@ static int kh_measure_text_px(const CssStyle *st, const char *text) {
         return n * adv;
     }
     char spec[128];
-    const char *fam = st->has_font_family ? st->font_family : "DejaVu Sans";
+    const char *fam = st->has_font_family ? st->font_family : g_ui_font_family;
     int size = scaled(st->has_font_size ? st->font_size : 12);
     snprintf(spec, sizeof(spec), "%s:pixelsize=%d%s", fam, size, (st->has_font_weight && st->font_weight_bold) ? ":bold" : "");
 
@@ -3528,6 +3795,28 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
             if (elem_has_class(c, "top")) {
                 c->x = x; c->y = y_cursor; c->w = w; c->h = this_h;
                 y_cursor += this_h;
+            } else if (strcmp(c->tag, "text_area") == 0 && !scrolllist) {
+                /* REAL FIX 2026-09-11, direct live report ("5/highlight
+                 * is way too high... shouldn't be higher than line
+                 * counter or tabbar but it is") - the glue-to-bottom-
+                 * strip-sized-by-rows math right below is built for
+                 * chat's shape (a <scrolllist> of history ABOVE a small
+                 * rows="3" composer - chat-hai's real layout), correct
+                 * there. text-edit-hq's panel has no <scrolllist> at
+                 * all - its rows="20" <text_area> IS the entire panel
+                 * content, meant to FILL it, not glue a fixed
+                 * composer_h=(20*ROW_H) strip to the bottom, which once
+                 * that computed height exceeded the real panel height
+                 * put c->y ABOVE y itself (above the tabbar/gutter -
+                 * exactly the report). Deliberately scoped to tag ==
+                 * "text_area" only (not cli_io) - direct instruction
+                 * 2026-09-11 ("roll back anything u change that wasn't
+                 * about text area") after the same-shaped cli_io fix
+                 * broke open-hai; a bare <text_area> with no sibling
+                 * <scrolllist> has nothing to leave room for above it,
+                 * so filling the whole container is safe and correct
+                 * for it specifically. */
+                c->x = x; c->y = y; c->w = w; c->h = h;
             } else {
                 c->x = x; c->y = y + h - composer_h; c->w = w; c->h = composer_h;
             }
@@ -5931,6 +6220,24 @@ static void dispatch(const char *action) {
         if (!g_quit) { assign_nav_and_layout(); redraw(); }
         return;
     }
+    if (strcmp(action, "UI_FONT_FAMILY_NEXT") == 0 || strcmp(action, "UI_FONT_FAMILY_PREV") == 0) {
+        /* direct instruction 2026-09-10 ("when should we add font
+         * picker to settings... lets do the build") - same real
+         * step-button UX UI_SCALE_MINUS/PLUS already uses, cycling
+         * g_font_family_choices instead of a number. Any window with
+         * its own CSS font-family is unaffected - only the house-wide
+         * default this picker controls. */
+        int idx = 0;
+        for (int i = 0; i < N_FONT_FAMILY_CHOICES; i++)
+            if (strcmp(g_ui_font_family, g_font_family_choices[i]) == 0) { idx = i; break; }
+        idx += (action[15] == 'N') ? 1 : -1;   /* "UI_FONT_FAMILY_" is 15 chars - index 15 is N(ext)/P(rev) */
+        if (idx < 0) idx = N_FONT_FAMILY_CHOICES - 1;
+        if (idx >= N_FONT_FAMILY_CHOICES) idx = 0;
+        desktop_set_font_family(g_house_root, g_font_family_choices[idx]);
+        reload_font_ui();
+        if (!g_quit) { assign_nav_and_layout(); redraw(); }
+        return;
+    }
     if (strcmp(action, "CLICK_TWOSTEP_TOGGLE") == 0) {
         desktop_toggle_click_two_step(g_house_root);
         redraw();
@@ -6181,6 +6488,54 @@ static void kh_text_areas_reload(Elem *root) {
         kh_text_areas_reload(root->children[i]);
 }
 
+/* cli_io's own half of the same real fix text_area got 2026-09-08 -
+ * see reparse_chtpm_if_changed()'s own 2026-09-11 comment (direct
+ * instruction: "make [browser, h-ai cli_io] just work like text-edit"). */
+static void kh_cli_io_reload(Elem *root) {
+    if (!root || !g_package_dir[0]) return;
+    if (strcmp(root->tag, "cli_io") == 0) {
+        const char *key = root->target_id[0] ? root->target_id : root->id;
+        if (key[0]) {
+            char path[PATH_BUF];
+            default_cli_io_state_path(path, sizeof(path));
+            FILE *f = fopen(path, "r");
+            if (f) {
+                char line[256];
+                while (fgets(line, sizeof(line), f)) {
+                    line[strcspn(line, "\r\n")] = '\0';
+                    char *eq = strchr(line, '=');
+                    if (!eq) continue;
+                    *eq = '\0';
+                    if (strcmp(line, key) == 0) {
+                        snprintf(root->input_buffer, sizeof(root->input_buffer), "%s", eq + 1);
+                        break;
+                    }
+                }
+                fclose(f);
+            }
+        }
+    }
+    for (int i = 0; i < root->n_children; i++)
+        kh_cli_io_reload(root->children[i]);
+}
+
+/* Find the SAME cli_io/text_area a saved key= identifies, in a freshly
+ * rebuilt tree - same key derivation (target_id-or-id) the save/reload
+ * functions above already use, checked against BOTH fields (not just
+ * find_by_id()'s plain e->id match) since target_id and id can differ. */
+static Elem *kh_find_input_by_key(Elem *root, const char *key) {
+    if (!root || !key || !key[0]) return NULL;
+    if (strcmp(root->tag, "cli_io") == 0 || strcmp(root->tag, "text_area") == 0) {
+        const char *k = root->target_id[0] ? root->target_id : root->id;
+        if (k[0] && strcmp(k, key) == 0) return root;
+    }
+    for (int i = 0; i < root->n_children; i++) {
+        Elem *r = kh_find_input_by_key(root->children[i], key);
+        if (r) return r;
+    }
+    return NULL;
+}
+
 /* REAL, NEW 2026-09-05 - real logical-line (delimited by actual `\n`
  * bytes the user typed, NOT the renderer's own display-only word-wrap
  * breaks) boundary helpers, shared by Home/End/Up/Down below. For
@@ -6361,6 +6716,16 @@ static void kh_clipboard_insert_text(Elem *e, const char *text) {
 static void default_cli_io_handle_key(KeySym ks, char ch) {
     Elem *e = g_default_input_elem;
     if (!e) return;
+    /* TEMPORARY diagnostic (see kh_focus_debug_log's own comment) -
+     * proves the key genuinely REACHED this process/function at all -
+     * if the log shows real KEYPRESS lines missing for a real
+     * keystroke the user typed, the key never arrived here (lost to
+     * another window/the grab, an X-level problem, not this function's
+     * own logic); if every key shows up here but the visible on-screen
+     * result is still wrong, the bug is downstream of this point. */
+    kh_focus_debug_log("KEYPRESS key=%s ks=%lu ch=%d(%c)",
+                        e->target_id[0] ? e->target_id : e->id, (unsigned long)ks, (int)ch,
+                        (ch >= 32 && ch < 127) ? ch : '?');
     int is_area = (strcmp(e->tag, "text_area") == 0);
     char *buf = is_area ? e->text_area_buffer : e->input_buffer;
     size_t cap = is_area ? sizeof(e->text_area_buffer) : sizeof(e->input_buffer);
@@ -6400,7 +6765,10 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
      * yet, so this can't regress any of them) - see the matching
      * XUngrabKeyboard on every real disarm path (Escape here, reparse_
      * chtpm_if_changed()'s own real safety net). */
-    if (ks == XK_Escape) { g_default_input_elem = NULL; kh_ungrab_kbd(); return; }
+    if (ks == XK_Escape) {
+        kh_focus_debug_log("ESCAPE key=%s - explicit user disarm", e->target_id[0] ? e->target_id : e->id);
+        g_default_input_elem = NULL; kh_ungrab_kbd(); return;
+    }
     /* REAL, NEW 2026-09-05 (CLIPBOARD-COPY-PASTE-DESIGN.md +
      * TEXT_AREA-SCROLL-GUTTER-SELECTION-DESIGN.md) - Ctrl+C / Ctrl+V /
      * Ctrl+X arrive as plain control characters through XLookupString
@@ -6436,6 +6804,26 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
             if (is_area) default_text_area_save(e); else default_cli_io_save(e);
         }
         kh_clipboard_request_paste();
+        return;
+    }
+    /* REAL, NEW 2026-09-11, direct live report ("unlike a real browser,
+     * i cant clear the search bar. i have to open a new tab") - root
+     * cause: activate_focused() arms a cli_io with the cursor at the
+     * END of the buffer and the selection COLLAPSED (sel_anchor ==
+     * cursor), never select-all-on-focus like a real browser's address
+     * bar; and this function had no key that selects the whole buffer
+     * at all - Ctrl+A simply did nothing. A real, generic gap (every
+     * cli_io/text_area in the house, not network-browser-specific),
+     * fixed the same generic way Ctrl+C/X/V already are: Ctrl+A
+     * (ASCII 1, matches the existing 3/22/24 pattern just above)
+     * selects [0, strlen(buf)) - the user can then just start typing
+     * (kh_text_delete_selection() already replaces a live selection on
+     * any keystroke, same as every other selection-aware path here) or
+     * hit Backspace/Delete to clear it in one motion, no new-tab
+     * workaround needed. */
+    if (ch == 1) { /* Ctrl+A - select all */
+        e->sel_anchor = 0;
+        e->cursor = (int)strlen(buf);
         return;
     }
     /* --- cursor movement, selection-aware. Shift+move keeps
@@ -8420,15 +8808,52 @@ static int hq_window_has_x_focus(void) {
     return 1;
 }
 
+/* REAL, NEW 2026-09-11 - TEMPORARY diagnostic-only logging (direct
+ * instruction: network-browser's cli_io focus/backspace bug has been
+ * "fixed" 3 times now, every fix passing this house's own relay-driven
+ * test methodology cleanly, and the user reports real physical
+ * hardware is unchanged every time - the relay test itself may be
+ * masking the real bug, same class of problem as the already-
+ * documented override_redirect/xdotool masking (09-appendix/
+ * pc-hq-bugs.md Bug 2). Rather than ask for a synchronous side-by-side
+ * test session, this appends one real, timestamped line per grab
+ * attempt/outcome to <package_dir>/kh_focus_debug.log so the user can
+ * just use the browser normally and the log gets read back afterward -
+ * real evidence from real hardware, no live monitoring needed. Safe to
+ * remove once this bug's real root cause is found - see BUG-LOG.md's
+ * "network-browser address bar" open entry. */
+static void kh_focus_debug_log(const char *fmt, ...) {
+    if (!g_package_dir[0]) return;
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/kh_focus_debug.log", g_package_dir);
+    FILE *f = fopen(path, "a");
+    if (!f) return;
+    struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
+    struct tm tmv; localtime_r(&ts.tv_sec, &tmv);
+    fprintf(f, "%02d:%02d:%02d.%03ld ", tmv.tm_hour, tmv.tm_min, tmv.tm_sec, ts.tv_nsec / 1000000);
+    va_list ap; va_start(ap, fmt);
+    vfprintf(f, fmt, ap);
+    va_end(ap);
+    fprintf(f, "\n");
+    fclose(f);
+}
+
 /* generic history-relay + keyboard-grab helpers (were dbhq_*; the
  * popup/entity-menu + cli_io paths still need them after the dbhq_*
  * deletion). */
 static void kh_grab_keyboard_retry(void) {
     if (!dpy) return;   /* --headless: no display, nothing to grab */
-    for (int a = 0; a < 5; a++) {
-        if (XGrabKeyboard(dpy, win, True, GrabModeAsync, GrabModeAsync, CurrentTime) == GrabSuccess) break;
+    int a, rc = -1;
+    for (a = 0; a < 5; a++) {
+        rc = XGrabKeyboard(dpy, win, True, GrabModeAsync, GrabModeAsync, CurrentTime);
+        if (rc == GrabSuccess) break;
         XSync(dpy, False); usleep(5000);
     }
+    Window fw = None; int rev = 0;
+    XGetInputFocus(dpy, &fw, &rev);
+    kh_focus_debug_log("GRAB key=%s attempts=%d rc=%d(0=success) real_focus_is_us=%d",
+                        g_default_input_elem ? (g_default_input_elem->target_id[0] ? g_default_input_elem->target_id : g_default_input_elem->id) : "?",
+                        a + 1, rc, fw == win);
 }
 static int kh_key_history_code(KeySym ks, char ch) {
     if (ch >= 32 && ch <= 126) return (unsigned char)ch;
@@ -8658,20 +9083,24 @@ static int pchq_theme_changed_dirty(const char *house_root) {
  * mtime-gate convention as pchq_theme_changed_dirty() above (avoid a
  * needless fopen+read every tick for every window in the house);
  * called every tick in hq_idle_tick(), same shared every-mode spot. */
-/* hq_ui.pdl is a Settings-window config file rewritten in place (not
- * appended), so a size cursor can't see an equal-length rewrite - this
- * is the one spot that must key off mtime. NANOSECOND, never
- * st_mtime-seconds: two Settings saves inside one wall-clock second
- * must not collapse into one. */
-static struct timespec g_hq_ui_pdl_mtime = {0, 0};
+/* REAL FIX 2026-09-10, DIAMOND standard (see hq_ui_pdl_touch_marker()'s
+ * own header comment) - hq_ui.pdl itself is rewritten in place, not
+ * appended, so it can never be the marker; #.desktop/hq_ui_pdl_changed
+ * .txt is the real append-only marker every writer touches. The
+ * standard's own rule 1: "a render happens iff an append-only marker
+ * file's size grew - strictly greater, monotonic. Never mtime, never a
+ * hash." -1 = not yet initialized (the FIRST call in a process just
+ * establishes the baseline without reloading - the real settings were
+ * already read once at startup via desktop_load_click_two_step()). */
+static long g_hq_ui_pdl_marker_sz = -1;
 static void hq_ui_pdl_reload_if_changed(const char *house_root) {
     char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui_pdl_changed.txt", house_root);
     struct stat st;
     if (stat(path, &st) != 0) return;
-    if (st.st_mtim.tv_sec != g_hq_ui_pdl_mtime.tv_sec ||
-        st.st_mtim.tv_nsec != g_hq_ui_pdl_mtime.tv_nsec) {
-        g_hq_ui_pdl_mtime = st.st_mtim;
+    if (g_hq_ui_pdl_marker_sz < 0) { g_hq_ui_pdl_marker_sz = (long)st.st_size; return; }
+    if ((long)st.st_size > g_hq_ui_pdl_marker_sz) {
+        g_hq_ui_pdl_marker_sz = (long)st.st_size;
         int old_scale = g_ui_scale_pct;
         desktop_load_click_two_step(house_root);
         if (g_ui_scale_pct != old_scale) {
@@ -9610,6 +10039,24 @@ static int g_emoji_sprite_view_top = 0; /* 0 = front (default), 1 = top */
  * open windows (that would need the same respawn-all-processes
  * mechanism ktb_toggle_zorder_respawn() uses for override_redirect;
  * deliberately not built here, scope kept to "settable at all"). */
+/* REAL FIX 2026-09-10 (direct instruction: "diamond standard isn't
+ * mtime, its fsize by appending to a marker file... can u find and do"
+ * - see 02-architecture/reference/TPMOS-DIAMOND-render-chain.md).
+ * hq_ui.pdl itself is rewritten in place, not appended (an equal-length
+ * rewrite is invisible to a size cursor on the FILE ITSELF - the exact
+ * reason a past pass here used mtime instead) - the real DIAMOND fix
+ * isn't "watch the content file's own size," it's "every writer also
+ * appends one byte to a dedicated, real append-only marker," same
+ * shape as TPMOS's own frame_changed.txt. Called by all three real
+ * writers below (desktop_toggle_click_two_step/desktop_set_font_scale/
+ * desktop_set_font_family) right after they rewrite hq_ui.pdl. */
+static void hq_ui_pdl_touch_marker(const char *house_root) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui_pdl_changed.txt", house_root);
+    FILE *f = fopen(path, "a");
+    if (f) { fputc('K', f); fclose(f); }
+}
+
 static void desktop_toggle_click_two_step(const char *house_root) {
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
@@ -9634,6 +10081,7 @@ static void desktop_toggle_click_two_step(const char *house_root) {
     if (!replaced) fprintf(wf, "click_two_step=%d\n", new_val);
     fclose(wf);
     g_click_two_step = new_val;
+    hq_ui_pdl_touch_marker(house_root);
 }
 
 /* Rewrite hq_ui.pdl's font_scale row in place (same shape as
@@ -9662,6 +10110,30 @@ static void desktop_set_font_scale(const char *house_root, int pct) {
     if (!replaced) fprintf(wf, "font_scale=%.2f\n", pct / 100.0);
     fclose(wf);
     g_ui_scale_pct = pct;
+    hq_ui_pdl_touch_marker(house_root);
+}
+
+static void desktop_set_font_family(const char *house_root, const char *name) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/hq_ui.pdl", house_root);
+    char lines[128][256];
+    int n = 0;
+    FILE *f = fopen(path, "r");
+    if (f) { while (n < 128 && fgets(lines[n], sizeof(lines[n]), f)) n++; fclose(f); }
+    int replaced = 0;
+    for (int i = 0; i < n; i++) {
+        if (strncmp(lines[i], "font_family=", 12) == 0) {
+            snprintf(lines[i], sizeof(lines[i]), "font_family=%s\n", name);
+            replaced = 1;
+        }
+    }
+    FILE *wf = fopen(path, "w");
+    if (!wf) return;
+    for (int i = 0; i < n; i++) fputs(lines[i], wf);
+    if (!replaced) fprintf(wf, "font_family=%s\n", name);
+    fclose(wf);
+    snprintf(g_ui_font_family, sizeof(g_ui_font_family), "%s", name);
+    hq_ui_pdl_touch_marker(house_root);
 }
 
 static void desktop_load_click_two_step(const char *house_root) {
@@ -9678,6 +10150,14 @@ static void desktop_load_click_two_step(const char *house_root) {
         char *nl = strchr(val, '\n');
         if (nl) *nl = '\0';
         if (strcmp(line, "click_two_step") == 0) g_click_two_step = atoi(val) != 0;
+        /* 2026-09-11, CHTPM-INCREMENTAL-REPARSE-DESIGN.md - runtime
+         * toggle for the incremental reparse path, OFF (0) unless this
+         * key is present and non-zero. A real PDL key, not a
+         * recompile, so the design doc's mandatory dock-first rollout
+         * order can be tested window by window (this house-wide
+         * setting is read by every khtpm_core_render.c process, same
+         * as click_two_step) without rebuilding between steps. */
+        else if (strcmp(line, "incremental_reparse") == 0) g_use_incremental_reparse = atoi(val) != 0;
         else if (strcmp(line, "close_combo") == 0) {
             snprintf(g_close_combo, sizeof(g_close_combo), "%s", val);
             for (char *p = g_close_combo; *p; p++) if (*p >= 'A' && *p <= 'Z') *p += 32;
@@ -9693,6 +10173,9 @@ static void desktop_load_click_two_step(const char *house_root) {
             if (p < 50) p = 50;      /* the hq_ui.pdl comment's own 0.5-3.0 range */
             if (p > 300) p = 300;
             g_ui_scale_pct = p;
+        }
+        else if (strcmp(line, "font_family") == 0 && val[0]) {
+            snprintf(g_ui_font_family, sizeof(g_ui_font_family), "%s", val);
         }
     }
     fclose(f);
@@ -13394,7 +13877,41 @@ static int tp_main(int argc, char **argv) {
         select(xfd + 1, &fds, NULL, NULL, &tv);
 #endif
 
+        /* REAL FIX 2026-09-10, direct report ("why didnt bible pop up
+         * change size when house size was changed? doesn't it read
+         * from .pdl?"): desktop-entity mode (tp_main - every pal/
+         * monster/book-stack, NOT the generic HQ-window main()/
+         * hq_dispatch_xevent loops) never called hq_ui_pdl_reload_if_
+         * changed() anywhere in its own event loop - font_scale (and
+         * font_family, close_combo, win_top_y, click_two_step) were
+         * read ONCE at process start (desktop_load_click_two_step()
+         * a few hundred lines up) and never again for the lifetime of
+         * an already-running entity. The popup fontset itself was
+         * already fixed to react live (ensure_popup_fontset_current(),
+         * see load_popup_fontset()'s own header comment) - it just
+         * never got a live g_ui_scale_pct to react TO.
+         *
+         * REAL FOLLOW-UP FIX, same day (direct correction: "it doesn't
+         * have to read every loop. just on change... or is your way
+         * better for some reason i dont know?") - it was NOT better,
+         * two real bugs in the first pass: (1) this called
+         * desktop_load_click_two_step() directly and UNCONDITIONALLY
+         * every ~300ms tick, doing a real file-open+full-parse every
+         * time instead of reusing hq_ui_pdl_reload_if_changed() (the
+         * function the other two modes already call, which does the
+         * cheap part itself - one stat(), compares mtime against a
+         * cached g_hq_ui_pdl_mtime, only opens/parses when it actually
+         * differs). (2) even if it had called that wrapper, its own
+         * redraw signal (hq_request_redraw() -> g_frame_dirty) is
+         * never read anywhere in tp_main's own loop - a real change
+         * would have reloaded silently and never actually repainted.
+         * Fixed both: reuse the shared gated wrapper as-is (one cheap
+         * stat() per tick, no duplicated parse logic, matches the
+         * other two modes exactly), then read+clear g_frame_dirty
+         * locally to drive tp_main's own real need_redraw. */
+        hq_ui_pdl_reload_if_changed(g_house_root);
         int need_redraw = 0;
+        if (g_frame_dirty) { need_redraw = 1; g_frame_dirty = 0; }
         /* REAL FIX 2026-09-01 (live report: after the @ always-on-top
          * toggle respawned every entity at once, all but cursword sat
          * blank until an unrelated click elsewhere happened to trip a

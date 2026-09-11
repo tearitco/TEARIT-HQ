@@ -87,8 +87,32 @@ just here. Instead:
 
 If you're about to write a bracket/nav-badge string, a `parse_chtpm()`
 loop, or armed-input-state logic by hand: stop and check whether
-`khtpm_render_core.c`/`khtpm_draw_core.c` (the shared, text-included
-core files) already provide it. They usually do.
+`khtpm_render_core.c`/`khtpm_draw_core.c`/`khtpm_reparse_diff.c` (the
+shared, text-included core files, `&.widgits/_shared-lib/`) already
+provide it. They usually do.
+
+## Element identity across reparse (2026-09-11)
+
+`reparse_chtpm_if_changed()` no longer destroys and rebuilds the whole
+`Elem` tree on every reparse — `khtpm_reparse_diff.c` (a real, keyed
+tree diff/patch, same text-included-canonical-`.c` convention as the
+other shared core files) patches matched elements in place instead,
+behind `incremental_reparse=1` in `#.desktop/hq_ui.pdl` (live house-
+wide as of this date). Full design: `08-roadmap/design-docs/
+CHTPM-INCREMENTAL-REPARSE-DESIGN.md`; the house-wide rules this landed
+are `CENTROID_GOLD_STD.md` item 9. The one thing worth knowing before
+touching any `<cli_io>`: **`content=` seeds a field's editable
+`input_buffer` (what typing/Backspace act on); `label=` is only ever
+display text or a short prefix, never the same value as content=.**
+Putting a field's real content in `label=` looks fine at a glance but
+breaks Backspace (input_buffer never gets seeded) and, if you then
+also set `content=` to the same value, visibly DOUBLES the text
+on-screen (label draws as a literal prefix before input_buffer for
+every cli_io — this is a real, already-hit, already-fixed mistake, not
+a hypothetical one). Do not add a new `kh_*_reload()` bolt-on for a
+new stateful element type — that pattern is obsolete; a new runtime-
+state field needs one line added to `kh_diff_apply_template()`'s own
+explicit preserve-list in `khtpm_reparse_diff.c`, not a new function.
 
 ## Adding a *layout* branch to `khtpm_core_render.c` (2026-09-06 incident)
 

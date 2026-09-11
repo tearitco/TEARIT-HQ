@@ -69,6 +69,15 @@
          hq_ui_pdl_reload_if_changed(). See LIVEDESK-UI-SCALE.md. -->
     <item id="ui-scale-minus" action="UI_SCALE_MINUS" class="opacity-btn" label="Size -"/>
     <item id="ui-scale-plus"  action="UI_SCALE_PLUS"  class="opacity-btn" label="Size +"/>
+    <!-- 2026-09-10, direct request ("when should we add font picker to
+         settings... lets do the build") - same step-button UX as Size
+         -/+ above, cycling hq_ui.pdl's font_family through a curated
+         list (dispatch()'s UI_FONT_FAMILY_NEXT/PREV). The label shows
+         the CURRENT family so the picker is legible without a real
+         dropdown widget. -->
+    <item id="font-family-prev" action="UI_FONT_FAMILY_PREV" class="opacity-btn" label="Font ◀"/>
+    <item id="font-family-name" class="opacity-btn no-nav" label="${font_family}"/>
+    <item id="font-family-next" action="UI_FONT_FAMILY_NEXT" class="opacity-btn" label="Font ▶"/>
     <!-- 2026-09-04, direct live request ("single click vs double
          click. it was added to settings yet?") - toggles the same
          house-wide click_two_step key every window's own click

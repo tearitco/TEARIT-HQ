@@ -5,6 +5,19 @@ the user: *"we compile a local version of shared code by copying it,
 so someone edits the copy instead of the definitive file. Why not
 compile the definitive code and just move the binary?"*
 
+**2026-09-11 addendum**: `&.widgits/_shared-lib/khtpm_reparse_diff.c`
+(the real, keyed Elem-tree diff/patch engine -
+`08-roadmap/design-docs/CHTPM-INCREMENTAL-REPARSE-DESIGN.md`) is a
+4th canonical file following this exact convention - text-included
+(`#include "khtpm_reparse_diff.c"`) from `khtpm_core_render.c`,
+resolved via the SAME `-I "$SHARED"` flag `build_core_render.sh`
+already passes for `khtpm_render_core.c`/`khtpm_draw_core.c` - no
+build-script change was needed to add it. Its own standalone test
+driver, `khtpm_reparse_diff_test.c`, lives alongside it in
+`_shared-lib/` too (not compiled by any house build script - a
+manual, headless, `cc -o t khtpm_reparse_diff_test.c && ./t` unit
+test, run before any change to the diff engine itself).
+
 Landed:
 - `build_core_render.sh`, `build_khtpm_strip.sh`,
   `tile-picker/scripts/build.sh`, `livedesk-clock/ops/build_lc_clock.sh`
