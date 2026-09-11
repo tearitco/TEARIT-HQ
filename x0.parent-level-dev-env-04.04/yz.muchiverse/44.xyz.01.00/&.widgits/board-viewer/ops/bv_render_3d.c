@@ -1690,7 +1690,7 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
         if (e->x < 0 || e->x >= g_mm_board_w || e->y < 0 || e->y >= g_mm_board_h) continue;
         unsigned char r, g, b;
         if (strstr(e->entity_id, "chicken"))     { r = 235; g = 205; b = 70; }  /* yellow */
-        else if (strstr(e->entity_id, "tree"))   { r = 55;  g = 175; b = 60; }  /* green */
+        else if (strstr(e->entity_id, "tree"))   { r = 18;  g = 80;  b = 24; }  /* dark forest green - direct report: too close to grass at (90,170,60) */
         else                                      { r = 225; g = 225; b = 225; } /* generic - light grey */
         int cx = mm_x + e->x * cellpx + inset, cy = mm_y + e->y * cellpx + inset;
         bv_fill_rect(cx, cy, cx + dot, cy + dot, r, g, b);
