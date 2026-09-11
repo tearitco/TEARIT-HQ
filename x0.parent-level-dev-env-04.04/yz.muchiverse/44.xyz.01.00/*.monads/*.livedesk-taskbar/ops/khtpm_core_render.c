@@ -2161,18 +2161,29 @@ static int click_focus_then_activate(Elem *hit) {
     /* Out-of-scope rows stay numbered and drawn, but a click must not
      * steal focus or fire — same as chtpm_parser.c is_navigable(). */
     if (!kh_elem_in_scope(hit)) return 0;
-    /* Dock menus: a mouse hit on a dropdown-child row opens/runs
-     * immediately. Bottom-strip HQ window cells (class hqwin /
-     * onclick FOCUSWIN:) are the same shape as a taskbar button —
-     * first click must raise/restore, not merely focus (Enter already
-     * activated; click_two_step made pc-hq look like it "only opens
-     * from nav"). ACTIVATE (HQ/File-style trigger) on dock cells honors
-     * #.desktop/hq_ui.pdl click_two_step: when click_two_step=0, ACTIVATE
-     * fires on first click; when click_two_step=1, it requires two-step
-     * (first click sets focus, second click activates). */
+    /* Dock: bottom-strip HQ window cells (class hqwin / onclick
+     * FOCUSWIN:) are the same shape as a taskbar button — first click
+     * must raise/restore, not merely focus (Enter already activated;
+     * click_two_step made pc-hq look like it "only opens from nav").
+     * ACTIVATE (HQ/File-style trigger) on dock cells honors #.desktop/
+     * hq_ui.pdl click_two_step: when click_two_step=0, ACTIVATE fires
+     * on first click; when click_two_step=1, it requires two-step
+     * (first click sets focus, second click activates).
+     *
+     * REAL FIX 2026-09-10 (direct report: "even tho we are on '2
+     * clicks' it only takes one click to open apps from dropdown
+     * menus... an agent's false assumption to leave these out of the
+     * boolean switch") - `dropdown-child` used to be unconditionally
+     * lumped into this immediate-fire group ("a mouse hit on a
+     * dropdown-child row opens/runs immediately"), bypassing
+     * g_click_two_step entirely regardless of the house-wide setting.
+     * That was never an intentional exception, just an old false
+     * assumption baked into the comment - removed. A dropdown row is
+     * shaped exactly like any other clickable item once its menu is
+     * open, so it now falls through to the same click_two_step check
+     * every other row uses below. */
     if (window_is_dock() &&
-        (elem_has_class(hit, "dropdown-child") ||
-         elem_has_class(hit, "hqwin") ||
+        (elem_has_class(hit, "hqwin") ||
          (hit->onclick[0] && strncmp(hit->onclick, "FOCUSWIN:", 9) == 0) ||
          (!g_click_two_step && strcmp(hit->onclick, "ACTIVATE") == 0))) {
         g_focus_nav = hit->nav_index;
