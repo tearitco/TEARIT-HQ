@@ -44,6 +44,7 @@
  * eventual integration point doesn't need a different argv shape). */
 #include "khtpm_css_parser.h"
 #include "khtpm_render_core.c" /* real .c, not a header - see that file's own comment */
+#include "khtpm_reparse_diff.c" /* 2026-09-11 - real keyed tree diff/patch, see 08-roadmap/design-docs/CHTPM-INCREMENTAL-REPARSE-DESIGN.md. Wired in behind g_use_incremental_reparse, OFF by default - see that flag's own declaration comment. */
 /* khtpm_taskbar_manager.h/.c removed 2026-09-01 - real, confirmed dead
  * linkage: ktb_init()/ktb_quit_and_save() (the only reason db-hq mode
  * ever needed it) were already removed from this file in an earlier
@@ -125,11 +126,60 @@ static void kh_text_areas_reload(Elem *root); /* fwd - reparse_chtpm_if_changed(
 static void kh_cli_io_reload(Elem *root); /* fwd - reparse_chtpm_if_changed() re-hydrates <cli_io> buffers, defined near kh_text_areas_reload */
 static Elem *kh_find_input_by_key(Elem *root, const char *key); /* fwd - reparse_chtpm_if_changed() re-arms a cli_io/text_area across a live reparse without releasing the keyboard grab it already holds */
 static void kh_focus_debug_log(const char *fmt, ...); /* fwd - TEMPORARY diagnostic logging, see its own definition comment (network-browser recurring focus bug) */
+static Elem *elem_new(const char *tag); /* fwd - kh_pool_alloc() (CHTPM-INCREMENTAL-REPARSE-DESIGN.md) calls this before its real definition */
 #define MAX_ELEMS 1024  /* 2026-09-02: page projection + chrome, was 512 */
 #define MAX_PAGE_STACK 8
 
 static Elem g_pool[MAX_ELEMS];
 static int g_n_elems = 0;
+/* 2026-09-11 - CHTPM-INCREMENTAL-REPARSE-DESIGN.md §3/§1. OFF by
+ * default (0) - reparse_chtpm_if_changed() keeps its existing,
+ * unmodified, always-a-full-rebuild behavior unless this is
+ * explicitly turned on. Read once at startup from #.desktop/hq_ui.pdl
+ * (incremental_reparse=1) by hq_ui_pdl_reload_if_changed()'s own real
+ * PDL-load site - a runtime toggle, not a recompile, so the design
+ * doc's mandatory dock-first rollout order can be tested window by
+ * window without rebuilding between steps. */
+static int g_use_incremental_reparse = 0;
+/* g_pool's own free-list (design doc §3) - ONLY used by the
+ * incremental path (g_use_incremental_reparse=1). The existing
+ * full-rebuild path (g_n_elems=0 on every reparse) never populates or
+ * drains this - it's a no-op, unused array for every window that
+ * doesn't opt in, zero behavior change for the default path. Slots
+ * freed by a genuinely-removed Elem (kh_pool_free(), the
+ * KhDiffAllocator's free_fn) get pushed here; kh_pool_alloc() pops one
+ * before falling back to elem_new()'s own bump allocator. */
+static int g_pool_free_idx[MAX_ELEMS];
+static int g_pool_free_n = 0;
+static Elem *kh_pool_alloc(void *ctx) {
+    (void)ctx;
+    if (g_pool_free_n > 0) {
+        Elem *e = &g_pool[g_pool_free_idx[--g_pool_free_n]];
+        memset(e, 0, sizeof(*e));
+        return e;
+    }
+    return elem_new(""); /* falls through to the existing bump allocator against the SAME g_pool - real tag gets set by kh_diff_apply_template() right after this returns */
+}
+static void kh_pool_free(void *ctx, Elem *e) {
+    (void)ctx;
+    if (g_pool_free_n >= MAX_ELEMS) return; /* real cap, matches g_pool's own - should be unreachable (can't free more slots than exist) */
+    int idx = (int)(e - g_pool);
+    if (idx < 0 || idx >= MAX_ELEMS) return; /* not one of ours - defensive, should never happen */
+    g_pool_free_idx[g_pool_free_n++] = idx;
+}
+/* Scratch pool for the NEW/candidate tree the incremental path parses
+ * into (design doc §1) - completely separate from g_pool, discarded
+ * (its own g_n_elems_next reset to 0) after every diff/patch attempt,
+ * success or failure. parse_chtpm()/elem_new() are retargeted to bump
+ * into THIS array for the duration of that one parse via
+ * g_elem_pool_target/g_elem_n_target (see elem_new()'s own updated
+ * body) - both default to &g_pool/&g_n_elems so every OTHER caller of
+ * elem_new() (the existing full-rebuild path, popup/context-menu
+ * parses, everything) is completely unaffected. */
+static Elem g_pool_next[MAX_ELEMS];
+static int g_n_elems_next = 0;
+static Elem *g_elem_pool_target = g_pool;
+static int *g_elem_n_target = &g_n_elems;
 static char g_package_dir[PATH_BUF];
 static char g_house_root[PATH_BUF];
 static char g_chtpm_path[PATH_BUF];  /* real, generic (2026-08-31) - the real .chtpm this process was launched against, kept for the generic live-reparse capability below */
@@ -688,8 +738,16 @@ static void kh_launch_window_modules(Elem *window, const char *house_root, const
 }
 
 static Elem *elem_new(const char *tag) {
-    if (g_n_elems >= MAX_ELEMS) return NULL;
-    Elem *e = &g_pool[g_n_elems++];
+    /* 2026-09-11 - bumps whichever pool g_elem_pool_target/
+     * g_elem_n_target currently point at. Both default to g_pool/
+     * &g_n_elems (set at their own declaration) - every existing call
+     * site, and every window that never touches the incremental path,
+     * sees IDENTICAL behavior to before this change. Only
+     * kh_parse_into_scratch() (the incremental path's own candidate
+     * parse) retargets these, briefly, around its one parse_chtpm()
+     * call - see that function's own comment. */
+    if (*g_elem_n_target >= MAX_ELEMS) return NULL;
+    Elem *e = &g_elem_pool_target[(*g_elem_n_target)++];
     memset(e, 0, sizeof(*e));
     snprintf(e->tag, sizeof(e->tag), "%s", tag);
     return e;
@@ -1684,6 +1742,29 @@ static int g_headless;  /* fwd (real def near g_dump_and_exit) - referenced by t
  * --headless run (dpy == NULL) can't segfault Xlib on a NULL Display,
  * and so the call is a clean no-op before any display is open. */
 static void kh_ungrab_kbd(void) { if (dpy) XUngrabKeyboard(dpy, CurrentTime); }
+/* 2026-09-11, CHTPM-INCREMENTAL-REPARSE-DESIGN.md §1 - parses `path`
+ * into the SCRATCH pool (g_pool_next) instead of the live g_pool,
+ * leaving g_window/every existing live pointer completely untouched.
+ * Works by briefly retargeting elem_new()'s own bump allocator
+ * (g_elem_pool_target/g_elem_n_target) around this one parse_chtpm()
+ * call, then restoring it - every OTHER elem_new() call site in the
+ * house (the existing full-rebuild path included) is unaffected, since
+ * those globals default to &g_pool/&g_n_elems and nothing else ever
+ * retargets them. Returns the scratch tree's root (still non-NULL only
+ * as long as it's used before the NEXT call to this function or the
+ * next full rebuild - it lives in g_pool_next, which reparse_chtpm_
+ * if_changed() resets to empty right after every diff attempt). */
+static Elem *kh_parse_into_scratch(const char *path) {
+    g_n_elems_next = 0;
+    Elem *saved_pool = g_elem_pool_target;
+    int *saved_n = g_elem_n_target;
+    g_elem_pool_target = g_pool_next;
+    g_elem_n_target = &g_n_elems_next;
+    Elem *result = parse_chtpm(path);
+    g_elem_pool_target = saved_pool;
+    g_elem_n_target = saved_n;
+    return result;
+}
 /* Forward declaration - real definition (with its own header comment)
  * lives in the generic sidebar+panel scroll section further down.
  * Needed here so a reparse (new manager content) can auto-scroll the
@@ -1738,6 +1819,60 @@ static int reparse_chtpm_if_changed(void) {
             return 0;
     }
     g_chtpm_mtime = st.st_mtim;
+    /* 2026-09-11 - CHTPM-INCREMENTAL-REPARSE-DESIGN.md. Tried FIRST,
+     * before any of the existing full-rebuild logic below runs - on
+     * success this returns immediately, the full-rebuild code never
+     * executes. OFF by default (g_use_incremental_reparse); requires a
+     * real existing g_window to diff against (the very first parse of
+     * a window's life has nothing to compare to - falls through to the
+     * existing path below, same as always). On any failure (parse
+     * failure, diff failure/allocator exhaustion, root tag changed)
+     * this deliberately does NOT return - it falls through to the
+     * unmodified existing code below, which does its own fresh
+     * g_n_elems=0/parse_chtpm() rebuild regardless of whatever partial
+     * state the failed diff attempt may have left g_window in (kh_
+     * reparse_diff_patch()'s own documented contract: on failure the
+     * old tree's state is undefined, the caller must discard it
+     * entirely - which is exactly what falling through to the existing
+     * rebuild does, for free, no special-casing needed). */
+    if (g_use_incremental_reparse && g_window) {
+        Elem *candidate = kh_parse_into_scratch(g_chtpm_path);
+        if (candidate) {
+            KhDiffAllocator alloc = { kh_pool_alloc, kh_pool_free, NULL };
+            Elem *removed[MAX_ELEMS];
+            KhDiffRemovedList rl = { removed, MAX_ELEMS, 0 };
+            int ok = kh_reparse_diff_patch(g_window, candidate, &alloc, &rl);
+            g_n_elems_next = 0; /* scratch pool always discarded here, success or failure - candidate's own Elems are never adopted into the live tree */
+            if (ok) {
+                /* The diff preserved identity for everything else - the
+                 * ONLY place a cross-reparse pointer can still go stale
+                 * is a genuine removal, reported here. This replaces
+                 * EVERY per-consumer find-by-key bolt-on (kh_text_areas_
+                 * reload/kh_cli_io_reload/kh_find_input_by_key) for any
+                 * window running this path - none of those run below. */
+                for (int i = 0; i < rl.n; i++) {
+                    if (removed[i] == g_default_input_elem) {
+                        kh_ungrab_kbd();
+                        g_default_input_elem = NULL;
+                        kh_focus_debug_log("INCREMENTAL_REPARSE armed field genuinely removed - disarmed");
+                    }
+                    if (removed[i] == g_default_active_scope_root) {
+                        g_default_active_scope_root = NULL;
+                        g_default_scope_confine = 0;
+                    }
+                }
+                if (g_dock_peer_path[0]) {
+                    g_dock_peer = parse_chtpm(g_dock_peer_path);
+                    { struct stat pst; if (g_dock_peer && stat(g_dock_peer_path, &pst) == 0) g_dock_peer_mtime = pst.st_mtim; }
+                }
+                kh_focus_debug_log("INCREMENTAL_REPARSE ok removed=%d", rl.n);
+                return 1;
+            }
+            kh_focus_debug_log("INCREMENTAL_REPARSE diff failed rc=%d - falling back to full rebuild this tick", ok);
+        } else {
+            kh_focus_debug_log("INCREMENTAL_REPARSE candidate parse failed - falling back to full rebuild this tick");
+        }
+    }
     /* REAL FIX 2026-08-31 (found live testing open-hai's own projection
      * with a real, live-typing manager behind it: clicks/Enter appeared
      * to silently stop arming a cli_io field for no visible reason) -
@@ -9944,6 +10079,14 @@ static void desktop_load_click_two_step(const char *house_root) {
         char *nl = strchr(val, '\n');
         if (nl) *nl = '\0';
         if (strcmp(line, "click_two_step") == 0) g_click_two_step = atoi(val) != 0;
+        /* 2026-09-11, CHTPM-INCREMENTAL-REPARSE-DESIGN.md - runtime
+         * toggle for the incremental reparse path, OFF (0) unless this
+         * key is present and non-zero. A real PDL key, not a
+         * recompile, so the design doc's mandatory dock-first rollout
+         * order can be tested window by window (this house-wide
+         * setting is read by every khtpm_core_render.c process, same
+         * as click_two_step) without rebuilding between steps. */
+        else if (strcmp(line, "incremental_reparse") == 0) g_use_incremental_reparse = atoi(val) != 0;
         else if (strcmp(line, "close_combo") == 0) {
             snprintf(g_close_combo, sizeof(g_close_combo), "%s", val);
             for (char *p = g_close_combo; *p; p++) if (*p >= 'A' && *p <= 'Z') *p += 32;
