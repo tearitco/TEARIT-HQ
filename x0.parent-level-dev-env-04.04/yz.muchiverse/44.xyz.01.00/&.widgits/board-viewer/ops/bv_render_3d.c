@@ -1504,6 +1504,16 @@ static int bv_hud_fps(void) {
  * rather than duplicating the kind/id lookup (that file is already
  * fresh this exact frame, milestone D). Stacks up to 6 lines from the
  * configured corner. */
+/* minimap data stash - set once per render_one_frame() call right
+ * before bv_draw_hud(), read by bv_draw_minimap() further down. These
+ * point INTO render_one_frame()'s own `static` locals (board3d/col_top
+ * persist across calls, so aliasing them here is safe) rather than
+ * threading 5 extra params through bv_draw_hud() for one sub-feature. */
+static char (*g_mm_board3d)[MAX_BOARD_DIM][MAX_BOARD_DIM] = NULL;
+static int (*g_mm_col_top)[MAX_BOARD_DIM] = NULL;
+static int g_mm_board_w = 0, g_mm_board_h = 0, g_mm_selx = 0, g_mm_sely = 0;
+static void bv_draw_minimap(const char *pdl, int pad, int top_anchor, int right_anchor, int text_block_h);
+
 static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely) {
     int fps = bv_hud_fps(); /* always call - keeps the fps clock ticking even when hidden */
     if (!g_fbuf || !game_root || !game_root[0]) return;
@@ -1549,8 +1559,6 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
             if (val[0]) snprintf(lines[n++], sizeof(lines[0]), "%s", val);
         }
     }
-    if (n == 0) return;
-
     int pad = 6 * scale;
     int row_h = GLYPH_PX_H * scale + 3 * scale;
     int top_anchor = !strstr(anchor, "bottom");
@@ -1563,6 +1571,85 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
         if (x < 0) x = 0;
         if (y < 0) y = 0;
         bv_blit_text(x, y, lines[i], 235, 245, 255, scale, 1);
+    }
+
+    /* milestone C minimap stacks in the SAME corner, right after the
+     * text lines (n may be 0 - that's fine, it just starts at pad). */
+    bv_draw_minimap(pdl, pad, top_anchor, right_anchor, n * row_h);
+}
+
+/* clipped flat-fill rect, shared by the minimap's backing/cells/border/
+ * marker - every caller already clips to g_fw/g_fh manually elsewhere in
+ * this file, so keep the same convention here. */
+static void bv_fill_rect(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, unsigned char b) {
+    if (x0 < 0) x0 = 0;
+    if (y0 < 0) y0 = 0;
+    if (x1 > g_fw) x1 = g_fw;
+    if (y1 > g_fh) y1 = g_fh;
+    for (int y = y0; y < y1; y++)
+        for (int x = x0; x < x1; x++) {
+            unsigned char *p = FB(x, y);
+            p[0] = r; p[1] = g; p[2] = b; p[3] = 255;
+        }
+}
+
+/* Milestone C - 3D-view minimap (BV-HUD-TEXT-OVERLAY-AND-MINIMAP.md
+ * §4b). Reuses render_one_frame()'s OWN col_top[][] empty-space-skip
+ * precompute (mc-speed-algos.md) - no second scan, no new geometry.
+ * One flat block per column at its topmost solid voxel's terrain
+ * colour; the possessed/camera-tracked cell gets a bright marker.
+ * text_block_h = however tall the text HUD stack already drew (0 if
+ * none), so the minimap stacks below it in the same corner instead of
+ * overlapping. */
+static void bv_draw_minimap(const char *pdl, int pad, int top_anchor, int right_anchor, int text_block_h) {
+    if (!hud_pdl_int(pdl, "hud_minimap", 1)) return;
+    if (g_mm_board_w <= 0 || g_mm_board_h <= 0) return;
+
+    int px_per_col = hud_pdl_int(pdl, "minimap_px_per_col", 8);
+    if (px_per_col < 1) px_per_col = 1;
+    int max_px = hud_pdl_int(pdl, "minimap_max_px", 160);
+    if (max_px < 8) max_px = 8;
+    int cellpx = px_per_col;
+    while (cellpx > 1 && (g_mm_board_w * cellpx > max_px || g_mm_board_h * cellpx > max_px)) cellpx--;
+
+    int mm_w = g_mm_board_w * cellpx, mm_h = g_mm_board_h * cellpx;
+    if (mm_w <= 0 || mm_h <= 0 || mm_w > g_fw || mm_h > g_fh) return;
+
+    int mm_y = top_anchor ? (pad + text_block_h) : (g_fh - pad - mm_h - text_block_h);
+    int mm_x = right_anchor ? (g_fw - mm_w - pad) : pad;
+    if (mm_x < 0) mm_x = 0;
+    if (mm_y < 0) mm_y = 0;
+
+    /* dark backing + 1px light border, same legibility convention as
+     * bv_blit_text's own box. */
+    bv_fill_rect(mm_x - 2, mm_y - 2, mm_x + mm_w + 2, mm_y + mm_h + 2, 30, 30, 34);
+    bv_fill_rect(mm_x - 2, mm_y - 2, mm_x + mm_w + 2, mm_y - 1, 150, 150, 160);
+    bv_fill_rect(mm_x - 2, mm_y + mm_h + 1, mm_x + mm_w + 2, mm_y + mm_h + 2, 150, 150, 160);
+    bv_fill_rect(mm_x - 2, mm_y - 2, mm_x - 1, mm_y + mm_h + 2, 150, 150, 160);
+    bv_fill_rect(mm_x + mm_w + 1, mm_y - 2, mm_x + mm_w + 2, mm_y + mm_h + 2, 150, 150, 160);
+
+    for (int row = 0; row < g_mm_board_h; row++) {
+        for (int col = 0; col < g_mm_board_w; col++) {
+            int lvl = g_mm_col_top[row][col];
+            unsigned char r, g, b;
+            if (lvl < 0) { r = 18; g = 18; b = 22; } /* empty column - near-black */
+            else {
+                char glyph = g_mm_board3d[lvl][row][col];
+                const TerrainLegendEntry *le = terrain_legend_lookup(glyph);
+                if (le) { r = le->r; g = le->g; b = le->b; } else { r = 110; g = 110; b = 110; }
+            }
+            int cx = mm_x + col * cellpx, cy = mm_y + row * cellpx;
+            bv_fill_rect(cx, cy, cx + cellpx, cy + cellpx, r, g, b);
+        }
+    }
+
+    /* camera-tracked cell: hero when present, else the selector -
+     * matches bv_draw_hud's own "poss"/"pos" line convention. */
+    int mark_x = g_hero_present ? g_hero_x : g_mm_selx;
+    int mark_y = g_hero_present ? g_hero_y : g_mm_sely;
+    if (mark_x >= 0 && mark_x < g_mm_board_w && mark_y >= 0 && mark_y < g_mm_board_h) {
+        int cx = mm_x + mark_x * cellpx, cy = mm_y + mark_y * cellpx;
+        bv_fill_rect(cx, cy, cx + cellpx, cy + cellpx, 255, 70, 70);
     }
 }
 
@@ -2998,6 +3085,9 @@ static int render_one_frame(void) {
 
     /* HUD overlay (BV-HUD-TEXT-OVERLAY-AND-MINIMAP.md) - last paint into
      * g_fbuf, on top of the raymarch, before the atomic write. */
+    g_mm_board3d = board3d; g_mm_col_top = col_top;
+    g_mm_board_w = board_w; g_mm_board_h = board_h;
+    g_mm_selx = selector_x; g_mm_sely = selector_y;
     bv_draw_hud(focused_project_root, current_z, selector_x, selector_y);
 
     size_t byte_count = (size_t)g_fw * (size_t)g_fh * 4;
