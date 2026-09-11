@@ -1532,6 +1532,23 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
     char lines[8][64];
     int n = 0;
 
+    if (hud_pdl_int(pdl, "hud_time", 1) && n < 8) {
+        /* GAME clock, not wall clock - same world_01/state.txt
+         * game_time_epoch_sec + %86400 -> HH:MM convention
+         * pchq_board_projector.c's own toolbar clock already uses
+         * (direct instruction 2026-09-09: "time on display should show
+         * clock time, not real time"), reused verbatim so the HUD and
+         * the toolbar never disagree. */
+        char worldp[PATH_BUF];
+        snprintf(worldp, sizeof(worldp), "%s/pieces/world_01/state.txt", game_root);
+        long long ep = read_kv_ll(worldp, "game_time_epoch_sec", -1);
+        if (ep >= 0) {
+            long long tod = ep % 86400; if (tod < 0) tod += 86400;
+            snprintf(lines[n++], sizeof(lines[0]), "time %02lld:%02lld", tod / 3600, (tod % 3600) / 60);
+        } else {
+            snprintf(lines[n++], sizeof(lines[0]), "time --:--");
+        }
+    }
     if (hud_pdl_int(pdl, "hud_coords", 1) && n < 8)
         snprintf(lines[n++], sizeof(lines[0]), "pos %d,%d,%d", selx, sely, current_z);
     if (hud_pdl_int(pdl, "hud_zlevel", 1) && n < 8)

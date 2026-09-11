@@ -5,6 +5,7 @@ META         | note                 | pc-hq board HUD policy. Read every frame b
 
 # ── master + per-element switches (0|1) ──
 OPT          | hud_enabled          | 1     # master switch - 0 hides everything, frame == pre-HUD
+OPT          | hud_time             | 1     # game clock HH:MM (world_01/state.txt game_time_epoch_sec, same as the toolbar clock)
 OPT          | hud_coords           | 1     # x y z of camera / possessed entity
 OPT          | hud_zlevel           | 1     # current z-slice
 OPT          | hud_possess          | 1     # possessed entity id
