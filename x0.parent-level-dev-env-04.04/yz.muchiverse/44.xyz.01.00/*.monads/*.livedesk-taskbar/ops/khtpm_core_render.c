@@ -121,6 +121,8 @@ static void desktop_set_font_family(const char *house_root, const char *name); /
 static void desktop_load_click_two_step(const char *house_root); /* fwd - hq_ui_pdl_reload_if_changed() (hq_idle_tick(), long-running dock strip) uses it before its real definition */
 static void reload_font_ui(void); /* fwd - hq_ui_pdl_reload_if_changed() re-sizes the chrome font on a live font_scale change */
 static void kh_text_areas_reload(Elem *root); /* fwd - reparse_chtpm_if_changed() re-hydrates <text_area> buffers, defined near default_text_area_save */
+static void kh_cli_io_reload(Elem *root); /* fwd - reparse_chtpm_if_changed() re-hydrates <cli_io> buffers, defined near kh_text_areas_reload */
+static Elem *kh_find_input_by_key(Elem *root, const char *key); /* fwd - reparse_chtpm_if_changed() re-arms a cli_io/text_area across a live reparse without releasing the keyboard grab it already holds */
 #define MAX_ELEMS 1024  /* 2026-09-02: page projection + chrome, was 512 */
 #define MAX_PAGE_STACK 8
 
@@ -1754,8 +1756,31 @@ static int reparse_chtpm_if_changed(void) {
      * fix) - see this function's own forward-declaration comment for
      * `dpy` above for why leaving it held would be a much worse bug
      * than the one this whole block fixes. A harmless no-op when
-     * nothing was actually armed/grabbed. */
-    if (g_default_input_elem) kh_ungrab_kbd();
+     * nothing was actually armed/grabbed.
+     *
+     * REAL FIX 2026-09-11 (direct instruction: "in text-edit-hq its
+     * working perfect. can we make [browser, h-ai cli_io] just work
+     * like text-edit?" - text-edit-hq's <text_area> already got a real
+     * reparse-survival fix on 2026-09-08 (kh_text_areas_reload, right
+     * below) that <cli_io> never got - this is that same parity applied
+     * to cli_io, nothing else bundled in this time. Root cause this
+     * closes: this block unconditionally disarmed+ungrabbed on EVERY
+     * reparse; a manager that reparses often while a cli_io is armed
+     * (open-hai streaming a response, network-browser's ~300ms tick)
+     * loses the field constantly, while text-edit-hq's manager barely
+     * reparses after load so its text_area rarely hit this at all - not
+     * because text_area is special, just because it's rarely exercised.
+     * The X keyboard grab is a Window-level resource, not tied to our
+     * Elem* - if the SAME field (by saved key) still exists after
+     * reparse, the grab already held for it is still valid; nothing to
+     * release. Capture which field was armed, by key, before the
+     * pointer is cleared - restored (without retaking the grab) once
+     * the new tree exists, a few lines down. */
+    char saved_input_key[128] = "";
+    if (g_default_input_elem) {
+        const char *k = g_default_input_elem->target_id[0] ? g_default_input_elem->target_id : g_default_input_elem->id;
+        snprintf(saved_input_key, sizeof(saved_input_key), "%s", k);
+    }
     g_default_input_elem = NULL;
     /* Same real dangling-pointer reasoning as g_default_input_elem just
      * above - a stale dropdown-open pointer into a freed/reused pool
@@ -1776,6 +1801,27 @@ static int reparse_chtpm_if_changed(void) {
      * re-resolve just below restores nav state across the same reparse.
      * No-op for any text_area whose save file doesn't exist yet. */
     kh_text_areas_reload(new_window);
+    /* cli_io's own half of the same fix, real parity with text_area
+     * above - see kh_cli_io_reload()'s own header comment. Restore
+     * buffer content for every cli_io, then - if a field was actually
+     * armed when this reparse started - re-find that SAME field in the
+     * new tree by its saved key and re-arm it: cursor to the end of
+     * the restored buffer, no stale selection. The grab is NOT retaken
+     * here - it was never released above, so it's still held. Only the
+     * else branch touches the grab, for the one real case that needs
+     * it: the field genuinely disappeared from the new tree. */
+    kh_cli_io_reload(new_window);
+    if (saved_input_key[0]) {
+        Elem *reelem = kh_find_input_by_key(new_window, saved_input_key);
+        if (reelem) {
+            g_default_input_elem = reelem;
+            char *rbuf = strcmp(reelem->tag, "text_area") == 0 ? reelem->text_area_buffer : reelem->input_buffer;
+            reelem->cursor = (int)strlen(rbuf);
+            reelem->sel_anchor = reelem->cursor;
+        } else {
+            kh_ungrab_kbd(); /* field really is gone - the grab held for it is now meaningless */
+        }
+    }
     if (g_dock_peer_path[0]) {
         g_dock_peer = parse_chtpm(g_dock_peer_path);
         { struct stat pst; if (g_dock_peer && stat(g_dock_peer_path, &pst) == 0) g_dock_peer_mtime = pst.st_mtim; }
@@ -6250,6 +6296,54 @@ static void kh_text_areas_reload(Elem *root) {
     }
     for (int i = 0; i < root->n_children; i++)
         kh_text_areas_reload(root->children[i]);
+}
+
+/* cli_io's own half of the same real fix text_area got 2026-09-08 -
+ * see reparse_chtpm_if_changed()'s own 2026-09-11 comment (direct
+ * instruction: "make [browser, h-ai cli_io] just work like text-edit"). */
+static void kh_cli_io_reload(Elem *root) {
+    if (!root || !g_package_dir[0]) return;
+    if (strcmp(root->tag, "cli_io") == 0) {
+        const char *key = root->target_id[0] ? root->target_id : root->id;
+        if (key[0]) {
+            char path[PATH_BUF];
+            default_cli_io_state_path(path, sizeof(path));
+            FILE *f = fopen(path, "r");
+            if (f) {
+                char line[256];
+                while (fgets(line, sizeof(line), f)) {
+                    line[strcspn(line, "\r\n")] = '\0';
+                    char *eq = strchr(line, '=');
+                    if (!eq) continue;
+                    *eq = '\0';
+                    if (strcmp(line, key) == 0) {
+                        snprintf(root->input_buffer, sizeof(root->input_buffer), "%s", eq + 1);
+                        break;
+                    }
+                }
+                fclose(f);
+            }
+        }
+    }
+    for (int i = 0; i < root->n_children; i++)
+        kh_cli_io_reload(root->children[i]);
+}
+
+/* Find the SAME cli_io/text_area a saved key= identifies, in a freshly
+ * rebuilt tree - same key derivation (target_id-or-id) the save/reload
+ * functions above already use, checked against BOTH fields (not just
+ * find_by_id()'s plain e->id match) since target_id and id can differ. */
+static Elem *kh_find_input_by_key(Elem *root, const char *key) {
+    if (!root || !key || !key[0]) return NULL;
+    if (strcmp(root->tag, "cli_io") == 0 || strcmp(root->tag, "text_area") == 0) {
+        const char *k = root->target_id[0] ? root->target_id : root->id;
+        if (k[0] && strcmp(k, key) == 0) return root;
+    }
+    for (int i = 0; i < root->n_children; i++) {
+        Elem *r = kh_find_input_by_key(root->children[i], key);
+        if (r) return r;
+    }
+    return NULL;
 }
 
 /* REAL, NEW 2026-09-05 - real logical-line (delimited by actual `\n`
