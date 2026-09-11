@@ -2155,10 +2155,20 @@ static char g_ui_font_family[64] = "DejaVu Sans";
  * house's own font stack (fontconfig substitutes a close match for any
  * of these not literally installed, same as any other Xft app - never
  * a hard failure, matches XftFontOpenName's own fallback behavior
- * already relied on elsewhere in this file). */
+ * already relied on elsewhere in this file). DSEG7/DSEG14 Classic
+ * added 2026-09-10 (direct request: "is there a digital style font you
+ * know? thats what i want to use") - real, installed (`fonts-dseg`
+ * apt package, added this session), the actual open-source 7-/14-
+ * segment LCD-style typeface family, not an approximation. DSEG7 is
+ * the classic digital-clock look but only really covers digits +
+ * a handful of symbols (most letters render as a rough segment
+ * approximation, not their real shape) - DSEG14 covers the full
+ * alphabet properly (14-segment displays can spell real words) at the
+ * same digital aesthetic, so it's the safer pick if DSEG7 turns out
+ * hard to read in nav labels/buttons. Both in the cycle either way. */
 static const char *g_font_family_choices[] = {
     "DejaVu Sans", "Times New Roman", "Comic Sans MS", "Helvetica",
-    "Ubuntu", "Noto Sans",
+    "Ubuntu", "Noto Sans", "DSEG7 Classic", "DSEG14 Classic",
 };
 #define N_FONT_FAMILY_CHOICES (int)(sizeof(g_font_family_choices) / sizeof(g_font_family_choices[0]))
 static int window_is_dock(void);
