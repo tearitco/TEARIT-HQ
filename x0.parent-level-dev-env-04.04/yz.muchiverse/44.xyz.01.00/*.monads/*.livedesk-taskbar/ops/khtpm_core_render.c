@@ -13468,7 +13468,26 @@ static int tp_main(int argc, char **argv) {
         select(xfd + 1, &fds, NULL, NULL, &tv);
 #endif
 
-        int need_redraw = 0;
+        /* REAL FIX 2026-09-10, direct report ("why didnt bible pop up
+         * change size when house size was changed? doesn't it read
+         * from .pdl?"): desktop-entity mode (tp_main - every pal/
+         * monster/book-stack, NOT the generic HQ-window main()/
+         * hq_dispatch_xevent loops) never called hq_ui_pdl_reload_if_
+         * changed() anywhere in its own event loop - font_scale (and
+         * font_family, close_combo, win_top_y, click_two_step) were
+         * read ONCE at process start (desktop_load_click_two_step()
+         * a few hundred lines up) and never again for the lifetime of
+         * an already-running entity. The popup fontset itself was
+         * already fixed to react live (ensure_popup_fontset_current(),
+         * see load_popup_fontset()'s own header comment) - it just
+         * never got a live g_ui_scale_pct to react TO. Same real
+         * reload + force-redraw shape the HQ-window path already uses
+         * (see UI_SCALE_MINUS/PLUS's own handler). */
+        int old_scale_pct = g_ui_scale_pct;
+        if (g_house_root[0]) desktop_load_click_two_step(g_house_root);
+        int scale_changed = (g_ui_scale_pct != old_scale_pct);
+
+        int need_redraw = scale_changed;
         /* REAL FIX 2026-09-01 (live report: after the @ always-on-top
          * toggle respawned every entity at once, all but cursword sat
          * blank until an unrelated click elsewhere happened to trip a
