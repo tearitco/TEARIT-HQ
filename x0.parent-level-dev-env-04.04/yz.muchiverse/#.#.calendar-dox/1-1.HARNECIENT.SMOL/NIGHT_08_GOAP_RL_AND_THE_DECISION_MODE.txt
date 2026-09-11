@@ -1,0 +1,52 @@
+# ⚖️ NIGHT 8 — GOAP, RL, and the decision_mode Gemma already has 🎯
+# ====================================================================
+# Title: "⚖️ NIGHT 8 — GOAP, RL, and the decision_mode Gemma already has 🎯"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, deep-dive 4 of 4
+
+**THE NARRATOR:** NIGHT 7 said: FSM for the rules, Gemma for the wording, proven by cursword. Tonight's question goes further — later, in research/development tasks, in the games themselves, can Gemma CHOOSE between options? Weigh variables? 🌙
+
+**MAXINE:** And the honest answer, again, is: this isn't hypothetical. Go look at `014.wsr-pal/ops/corp_decide.c`. It already does exactly this, today, for real corporations trading real simulated stock.
+
+**TOMO:** It's built around a real, named convention — `decision_mode` — and there are already multiple real modes, not one. Mode 1 is "weighted": a real formula, ported from wsr-pal's own market simulation, blending book value per share, a market-cap multiplier, a leverage factor, and a risk-bias weight, 70/30 against price momentum. That IS "choosing based on different variable weights" — already real code, not a proposal.
+
+**RAHWEH:** And mode 3?
+
+**TOMO:** Mode 3 is "llm" — and it calls `gemma3:270m`, even smaller than the 1B model open-hai defaults to, over a one-shot LAN Ollama call, no conversation history, no tools. It reads `cash=... stock_price=... fundamental_value_estimate=...` as plain text, and the model's ONE job is to pick buy, sell, or hold.
+
+**MAXINE:** So Gemma is already proven, in this house, at choosing between a small, fixed set of options given a handful of numeric variables as context. That's the real ceiling to design around, not a guess.
+
+**THE NARRATOR:** Now map that onto GOAP.
+
+**TOMO:** GOAP — Goal-Oriented Action Planning — is the real next tier above an FSM. An FSM has fixed states and fixed transitions you wrote by hand. GOAP instead gives an agent a GOAL and a library of possible actions, each with preconditions and effects, and a planner searches for a sequence of actions that gets from the current state to the goal.
+
+**RAHWEH:** So GOAP can produce MULTIPLE valid plans to reach the same goal.
+
+**MAXINE:** Often, yes — and THAT is exactly where a `decision_mode=3`-style Gemma call earns its keep. Not planning — choosing. Let the real GOAP planner (deterministic, fast, no model call) generate two or three candidate plans, each with its own real cost/weight numbers already computed. Gemma's job is the same shape as `corp_decide.c`'s: read a short, numeric summary of each candidate, pick one, maybe with one line of reasoning.
+
+**TOMO:** Same discipline as NIGHT 7's FSM lesson: the planner is deterministic and always produces a valid answer even with zero model calls — pick the lowest-cost plan by default. Gemma is an OPTIONAL tie-breaker or preference-shaper on top, with that same deterministic fallback if the call fails or the model output doesn't parse.
+
+**THE NARRATOR:** And RL — reinforcement learning, reward and punishment. Where does that fit, honestly?
+
+**MAXINE:** This is the one place to be careful, because RL is a fundamentally different KIND of thing than the other three. Weighted-formula and GOAP are both live, per-decision computations. RL is a TRAINING process — it runs offline, over many, many simulated episodes, adjusting a policy based on reward signals, before the game ever ships that policy to a real player.
+
+**TOMO:** So RL isn't "Gemma reasons through reward and punishment live, in the game loop." Gemma is a language model, not an optimizer — asking it to DO reinforcement learning in real time, per tick, is the wrong tool for the job, the same way asking it to run the game's physics would be.
+
+**RAHWEH:** Then what's the real Gemma-shaped role near RL?
+
+**TOMO:** Two honest ones. First: REWARD SHAPING assistance — RL training needs a reward function, and writing a good one by hand is hard. A model can help a designer draft candidate reward functions in plain language, which then get compiled into real numeric code before training runs — Gemma helps WRITE the recipe, never executes it live.
+
+**MAXINE:** Second: once an RL policy is trained and shipped, it becomes a FIFTH `decision_mode` — call it "policy" — sitting right alongside weighted/rule/llm/human in the exact same dispatch `corp_decide.c` already has. The policy itself is a small, fast lookup or a tiny trained network, not a model call. Gemma's only involvement at THAT point is the same supervisory role as everywhere else tonight: watch the policy's real outputs, and if they look wrong (a stat goes somewhere it never should), flag it or escalate to a human — the same "human" decision_mode that already exists.
+
+**THE NARRATOR:** So summarize the whole ladder, one more time, plainly.
+
+**TOMO:** Live, per-tick game logic: FSM, always, zero model calls, proven by cursword.
+
+**RAHWEH:** A planner needs to pick between several valid options: GOAP generates the candidates deterministically; Gemma is the optional chooser, exactly like `corp_decide.c`'s real `decision_mode=3` — same shape, same size model, same one-shot call, same fallback.
+
+**MAXINE:** Long-horizon optimization, reward and punishment: RL trains OFFLINE, produces a policy, and that policy becomes its own `decision_mode` at runtime — never a live model call.
+
+**TOMO:** And across ALL of it, Gemma's most reliable job is supervision, not authorship — watch a pipeline's real outputs, flag what looks wrong, defer to a human when it's genuinely unsure. That's the pattern this house already trusts it with, four times over.
+
+**THE NARRATOR:** So the real homework, once again: read `corp_decide.c` and `gov_decide.c` before proposing anything new here. The decision_mode convention already answers most of tonight's question — the new work is extending it with a GOAP-candidate mode and, later, a trained-policy mode, not inventing a new way for Gemma to decide things. ⚖️
