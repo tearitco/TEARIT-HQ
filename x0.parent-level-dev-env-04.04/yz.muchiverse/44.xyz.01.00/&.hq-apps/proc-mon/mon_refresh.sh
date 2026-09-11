@@ -1,5 +1,5 @@
 #!/bin/sh
-# mon_refresh.sh - the <module> backend for mon-hq.xhtpm.
+# mon_refresh.sh - the <module> backend for proc-mon.xhtpm.
 # Re-publishes state/ui.txt every REFRESH_SEC. The renderer SIGTERMs
 # this on window close (kh_cleanup_modules), so no guard needed.
 #

@@ -1,4 +1,4 @@
-<!-- mon-hq.xhtpm - "session monitor" HQ window.
+<!-- proc-mon.xhtpm - "session monitor" HQ window.
 
      Uses the db-hq / stats-hq <sidebar> + <panel> structure ON PURPOSE:
      khtpm_core_render only runs layout_sidebar_panel() - which wires the
@@ -13,8 +13,8 @@
 
      <repeat bind="X"> resolves ${X.text} -> ${X_<n>_text}, so the bind
      name MUST equal the key prefix mon_scan.sh writes (good_ / bad_). -->
-<window label="Session Monitor" class="mon-hq database-window" vars="state/ui.txt">
-  <module id="mon_refresh" src="&.hq-apps/mon-hq/mon_refresh.sh"/>
+<window label="Session Monitor" class="proc-mon database-window" vars="state/ui.txt">
+  <module id="mon_refresh" src="&.hq-apps/proc-mon/mon_refresh.sh"/>
   <page name="main">
     <sidebar id="sidebar" class="sidebar">
       <text label="scanned ${scan_time}" class="quiet"/>

@@ -13,7 +13,7 @@
 #
 # Usage:
 #   mon_scan.sh [list]                 - print the table (default)
-#   mon_scan.sh publish <ui.txt>       - write key=value rows for mon-hq.xhtpm
+#   mon_scan.sh publish <ui.txt>       - write key=value rows for proc-mon.xhtpm
 #   mon_scan.sh kill-all [--with-pals] - TERM->KILL every STRAY proc
 #                                        (--with-pals also reaps idle pal windows)
 #
@@ -37,7 +37,7 @@ INIT_PID=1
 SELF_DIR=$(cd "$(dirname "$0")" && pwd)
 HOUSE_ROOT="${MON_HOUSE:-${KHTPM_HOUSE:-}}"
 if [ -z "${HOUSE_ROOT:-}" ] || [ ! -d "$HOUSE_ROOT" ]; then
-    # &.hq-apps/mon-hq -> up 2 = 44.xyz.01.00 (the house root)
+    # &.hq-apps/proc-mon -> up 2 = 44.xyz.01.00 (the house root)
     HOUSE_ROOT=$(cd "$SELF_DIR/../.." && pwd)
 fi
 LEDGER="$HOUSE_ROOT/#.desktop/livedesk_proc_list.txt"
