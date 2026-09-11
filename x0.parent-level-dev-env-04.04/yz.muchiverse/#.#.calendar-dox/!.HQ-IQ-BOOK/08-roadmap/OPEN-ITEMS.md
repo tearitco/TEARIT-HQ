@@ -150,3 +150,14 @@ short version.*
     no scripts/build.sh compiles prisc — need a real line added);
     egg's CreateProcessA cmd.exe-correct custom-op dispatch (needs a
     MinGW build to verify). `PRISC-X-FORK-CONSOLIDATION.md`.
+20. HARNECIENT NIGHT-track horizon items: 6 real, concrete proposals
+    surfaced while writing the NIGHT_01-10 onboarding/export lesson
+    track (`1-1.HARNECIENT.SMOL/`), each grounded in real code found
+    live — pc-hq's own trigger layer, wager-chess on the real
+    `pal-chain`, finishing `cursword_say()`'s real stub, extending
+    `corp_decide.c`'s real `decision_mode` with GOAP/policy modes,
+    a Gemma-authored `weights.txt` tool, and swapping the real
+    from-scratch attention chatbot's (`#.Z.HUMAN_LLM/.../attention.c`)
+    random cold-start weights for Gemma-authored ones. Not started —
+    full list + file pointers: `design-docs/HARNECIENT-NIGHT-TRACK-
+    HORIZON-ITEMS.md`.
