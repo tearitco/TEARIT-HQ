@@ -2702,9 +2702,55 @@ static void write_ui_projection(void) {
     UI_PUT("act_newtab='%s/ops/nb_write_newtab.sh' 'newtab'\n", g_package_dir);
     UI_PUT("act_go='%s/ops/nb_write_go.sh' 'go' '%s'\n", g_package_dir, g_ui_output_path);
 
+    /* REAL FIX 2026-09-11, direct report ("is only backspacing a
+     * certain amount, not entire search bar... isolated to only
+     * browser cli_io search window... works in h-ai apps just fine").
+     * Real research (not guessed): this block used to derive addr_
+     * label from g_current_url ONLY - the currently-LOADED page, a
+     * totally different concept from what the user is actively typing.
+     * This runs every ~300ms tick regardless; ANYTHING else in that
+     * tick's projection changing (status text, tab count, a spinner -
+     * unrelated to the address bar) triggers a real renderer reparse,
+     * which re-seeds the cli_io's own input_buffer from its live
+     * label= attribute - silently snapping the address bar back toward
+     * the full original URL and fighting the user's own backspacing.
+     * open-hai's composer field never has this problem because its
+     * label="&gt; " is a fixed xhtpm literal its manager never touches.
+     *
+     * Real fix: read cli_io_state.txt's own address= (the SAME file
+     * default_cli_io_save() already writes on every real keystroke) -
+     * while the user has live, unsaved typed text there, echo THAT
+     * back as addr_label instead of g_current_url, so even an
+     * unrelated reparse just resets input_buffer to the value it
+     * already has (a no-op in practice). Direct instruction: "browser
+     * can search when enter is pressed, and remember that site till
+     * next enter" - Enter's own existing renderer-side handling already
+     * clears+re-saves the buffer empty right after firing act_go
+     * (default_cli_io_run_action's own real argv3, not a file re-read -
+     * no race), so an EMPTY cli_io_state.txt is exactly "not being
+     * actively edited right now" - falls through to g_current_url
+     * (the page that just loaded, or the last one, "remembered"),
+     * matching normal browser address-bar behavior. */
     {
         char shown[PATH_BUF], s[PATH_BUF];
-        snprintf(shown, sizeof(shown), "%s", g_current_url[0] ? g_current_url : "URL: ");
+        char typed[PATH_BUF] = "";
+        {
+            char cli_state_path[PATH_BUF];
+            snprintf(cli_state_path, sizeof(cli_state_path), "%s/cli_io_state.txt", g_package_dir);
+            FILE *cf = fopen(cli_state_path, "r");
+            if (cf) {
+                char line[PATH_BUF];
+                while (fgets(line, sizeof(line), cf)) {
+                    line[strcspn(line, "\r\n")] = '\0';
+                    if (strncmp(line, "address=", 8) == 0) {
+                        snprintf(typed, sizeof(typed), "%s", line + 8);
+                        break;
+                    }
+                }
+                fclose(cf);
+            }
+        }
+        snprintf(shown, sizeof(shown), "%s", typed[0] ? typed : (g_current_url[0] ? g_current_url : "URL: "));
         uisan(shown, s, sizeof(s));
         UI_PUT("addr_label=%s\n", s);
     }

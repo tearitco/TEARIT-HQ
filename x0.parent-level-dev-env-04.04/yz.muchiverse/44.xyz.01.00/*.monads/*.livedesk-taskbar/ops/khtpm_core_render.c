@@ -121,6 +121,8 @@ static void desktop_set_font_family(const char *house_root, const char *name); /
 static void desktop_load_click_two_step(const char *house_root); /* fwd - hq_ui_pdl_reload_if_changed() (hq_idle_tick(), long-running dock strip) uses it before its real definition */
 static void reload_font_ui(void); /* fwd - hq_ui_pdl_reload_if_changed() re-sizes the chrome font on a live font_scale change */
 static void kh_text_areas_reload(Elem *root); /* fwd - reparse_chtpm_if_changed() re-hydrates <text_area> buffers, defined near default_text_area_save */
+static void kh_cli_io_reload(Elem *root); /* fwd - reparse_chtpm_if_changed() re-hydrates <cli_io> buffers, defined near kh_text_areas_reload */
+static Elem *kh_find_input_by_key(Elem *root, const char *key); /* fwd - reparse_chtpm_if_changed() re-arms a cli_io/text_area across a live reparse */
 #define MAX_ELEMS 1024  /* 2026-09-02: page projection + chrome, was 512 */
 #define MAX_PAGE_STACK 8
 
@@ -1755,7 +1757,43 @@ static int reparse_chtpm_if_changed(void) {
      * `dpy` above for why leaving it held would be a much worse bug
      * than the one this whole block fixes. A harmless no-op when
      * nothing was actually armed/grabbed. */
-    if (g_default_input_elem) kh_ungrab_kbd();
+    /* REAL FIX 2026-09-11 (direct report: "why is there any behavior
+     * discrepancy [between network-browser's cli_io and chat-hai's].
+     * lets get rid of it" - traced to: this same shared code path
+     * unconditionally disarms+ungrabs on EVERY reparse; chat-hai's own
+     * manager rarely reparses (only on a real new chat event) so it
+     * almost never hits this, network-browser's manager rewrites its
+     * whole projection ~every 300ms so it hits it constantly - same
+     * renderer bug, wildly different visibility). Capture WHICH field
+     * was armed, by its own save-key, before the pointer below is torn
+     * down - restored after the new tree is built, a few lines down.
+     *
+     * REAL FIX 2026-09-11 #2 (direct report: "it became slow in
+     * chat-hai as well... why is cli-io/text input slow now? it used
+     * to be very fast") - the first cut of this fix ALWAYS called
+     * kh_ungrab_kbd() here then kh_grab_keyboard_retry() below once the
+     * field was re-found, i.e. a real synchronous XGrabKeyboard round
+     * trip (up to 5 retries, 5ms usleep each) on EVERY reparse a field
+     * was armed for - and this whole function is SHARED by every
+     * khtpm_core_render.c window (chat-hai, text-edit-hq, network-
+     * browser, all of them, one binary), so that cost landed on every
+     * app, not just network-browser. But the X keyboard grab is a
+     * Window-level resource, not tied to our own Elem* at all - if the
+     * SAME logical field (by saved key) still exists after reparse, the
+     * grab we already hold is still perfectly valid and was never
+     * actually lost; there was never a need to release+reacquire it.
+     * Real fix: do NOT ungrab here. Only release the grab further down,
+     * and only in the one case that actually needs it - the field
+     * genuinely disappeared from the new tree (renamed/removed). This
+     * also fully closes the earlier TOCTOU race (2 of 3 rapid backspace
+     * keys, prior report) for free: there is no ungrab-then-regrab gap
+     * left to race against when the field persists, which is the
+     * common case on every real reparse tick. */
+    char saved_input_key[128] = "";
+    if (g_default_input_elem) {
+        const char *k = g_default_input_elem->target_id[0] ? g_default_input_elem->target_id : g_default_input_elem->id;
+        snprintf(saved_input_key, sizeof(saved_input_key), "%s", k);
+    }
     g_default_input_elem = NULL;
     /* Same real dangling-pointer reasoning as g_default_input_elem just
      * above - a stale dropdown-open pointer into a freed/reused pool
@@ -1776,6 +1814,35 @@ static int reparse_chtpm_if_changed(void) {
      * re-resolve just below restores nav state across the same reparse.
      * No-op for any text_area whose save file doesn't exist yet. */
     kh_text_areas_reload(new_window);
+    /* cli_io's own half of the same real fix - see kh_cli_io_reload()'s
+     * own header comment. Restore buffer content for every cli_io
+     * (like text_area above), then - if a field was actually armed
+     * when this reparse started - re-find that SAME field in the new
+     * tree by its saved key and re-arm it: cursor to the end of the
+     * restored buffer, no stale selection. REAL FIX 2026-09-11 #2
+     * (direct report: "it became slow in chat-hai as well... why is
+     * cli-io/text input slow now? it used to be very fast") - the grab
+     * is NOT retaken here when the field is found: this function no
+     * longer releases it above either (see that comment), so it's
+     * still held and a fresh XGrabKeyboard round trip here would be
+     * pure waste on every reparse tick, in every window in the house
+     * (this file is one shared binary). Only the else branch below
+     * touches the grab now, for the one real case that needs it - the
+     * field genuinely disappeared from the new tree (removed/renamed);
+     * anything still armed and unchanged sails through with zero X
+     * calls, same as it always should have. */
+    kh_cli_io_reload(new_window);
+    if (saved_input_key[0]) {
+        Elem *reelem = kh_find_input_by_key(new_window, saved_input_key);
+        if (reelem) {
+            g_default_input_elem = reelem;
+            char *rbuf = strcmp(reelem->tag, "text_area") == 0 ? reelem->text_area_buffer : reelem->input_buffer;
+            reelem->cursor = (int)strlen(rbuf);
+            reelem->sel_anchor = reelem->cursor;
+        } else {
+            kh_ungrab_kbd(); /* field really is gone - the grab held for it is now meaningless */
+        }
+    }
     if (g_dock_peer_path[0]) {
         g_dock_peer = parse_chtpm(g_dock_peer_path);
         { struct stat pst; if (g_dock_peer && stat(g_dock_peer_path, &pst) == 0) g_dock_peer_mtime = pst.st_mtim; }
@@ -3559,6 +3626,26 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
             if (elem_has_class(c, "top")) {
                 c->x = x; c->y = y_cursor; c->w = w; c->h = this_h;
                 y_cursor += this_h;
+            } else if (!scrolllist) {
+                /* REAL FIX 2026-09-11, direct live report ("5/highlight
+                 * is way too high... shouldn't be higher than line
+                 * counter or tabbar but it is") - the glue-to-bottom-
+                 * strip-sized-by-rows math right below this branch was
+                 * built for the chat shape (a <scrolllist> of history
+                 * ABOVE a small rows="3" composer - chat-hai's real
+                 * layout), where "glue a short strip to the bottom"
+                 * is correct. text-edit-hq's panel has no <scrolllist>
+                 * at all - its rows="20" <text_area> IS the entire
+                 * panel content, meant to FILL it, not glue a fixed
+                 * composer_h=(20*ROW_H) strip to the bottom - which,
+                 * once that computed height exceeds the real panel
+                 * height, put c->y = y+h-composer_h ABOVE y itself
+                 * (above the tabbar/gutter, exactly the report). Real
+                 * fix: a cli_io/text_area with no sibling <scrolllist>
+                 * in this same container has nothing to leave room for
+                 * above it - fill the whole container instead of the
+                 * rows-sized bottom slice. */
+                c->x = x; c->y = y; c->w = w; c->h = h;
             } else {
                 c->x = x; c->y = y + h - composer_h; c->w = w; c->h = composer_h;
             }
@@ -6228,6 +6315,54 @@ static void kh_text_areas_reload(Elem *root) {
     }
     for (int i = 0; i < root->n_children; i++)
         kh_text_areas_reload(root->children[i]);
+}
+
+/* cli_io's own half of the same real fix text_area got on 2026-09-08 -
+ * see reparse_chtpm_if_changed()'s own 2026-09-11 comment (the "why is
+ * there any behavior discrepancy" report) for the full diagnosis. */
+static void kh_cli_io_reload(Elem *root) {
+    if (!root || !g_package_dir[0]) return;
+    if (strcmp(root->tag, "cli_io") == 0) {
+        const char *key = root->target_id[0] ? root->target_id : root->id;
+        if (key[0]) {
+            char path[PATH_BUF];
+            default_cli_io_state_path(path, sizeof(path));
+            FILE *f = fopen(path, "r");
+            if (f) {
+                char line[256];
+                while (fgets(line, sizeof(line), f)) {
+                    line[strcspn(line, "\r\n")] = '\0';
+                    char *eq = strchr(line, '=');
+                    if (!eq) continue;
+                    *eq = '\0';
+                    if (strcmp(line, key) == 0) {
+                        snprintf(root->input_buffer, sizeof(root->input_buffer), "%s", eq + 1);
+                        break;
+                    }
+                }
+                fclose(f);
+            }
+        }
+    }
+    for (int i = 0; i < root->n_children; i++)
+        kh_cli_io_reload(root->children[i]);
+}
+
+/* Find the SAME cli_io/text_area a saved key= identifies, in a freshly
+ * rebuilt tree - same key derivation (target_id-or-id) the save/reload
+ * functions above already use, checked against BOTH fields (not just
+ * find_by_id()'s plain e->id match) since target_id and id can differ. */
+static Elem *kh_find_input_by_key(Elem *root, const char *key) {
+    if (!root || !key || !key[0]) return NULL;
+    if (strcmp(root->tag, "cli_io") == 0 || strcmp(root->tag, "text_area") == 0) {
+        const char *k = root->target_id[0] ? root->target_id : root->id;
+        if (k[0] && strcmp(k, key) == 0) return root;
+    }
+    for (int i = 0; i < root->n_children; i++) {
+        Elem *r = kh_find_input_by_key(root->children[i], key);
+        if (r) return r;
+    }
+    return NULL;
 }
 
 /* REAL, NEW 2026-09-05 - real logical-line (delimited by actual `\n`
