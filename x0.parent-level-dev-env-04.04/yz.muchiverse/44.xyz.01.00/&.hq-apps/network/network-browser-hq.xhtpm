@@ -14,7 +14,7 @@
 <window label="Network Browser" class="network-browser-pal database-window"
         vars="#.desktop/network-browser-hq_ui.txt">
   <module src="&.hq-apps/network/+x/network_browser_manager.+x" id="ui"/>
-  <page name="main">
+  <page name="main" class="nb-cols">
 
     <sidebar>
       <text label="Bookmarks" class="block-title"/>
@@ -33,7 +33,7 @@
       </scrolllist>
     </sidebar>
 
-    <panel>
+    <panel class="nb-body">
       <row class="toolbar">
         <item id="nb-back"   class="quiet" label="Back"      action="${act_back}"/>
         <item id="nb-fwd"    class="quiet" label="Forward"   action="${act_fwd}"/>
@@ -60,6 +60,20 @@
           <item id="cm${c.#}" label="${c.label}" sprite="${c.sprite}" action="${c.action}"  show="${c.is_media}"/>
         </repeat>
         <text label="${empty_msg}" class="quiet" show="${content_empty}"/>
+      </scrolllist>
+    </panel>
+
+    <!-- devtools console (2026-09-10): an eval:<js> REPL + console.*
+         capture, rendered from the tail of network_browser_console.txt.
+         Type e.g. "eval:1+1" or "eval:document.title" in the address bar;
+         results/errors stream into the rows below. -->
+    <panel class="nb-console">
+      <text label="Console" class="block-title"/>
+      <text label="Try: eval:1 + 1" class="quiet" show="${no_console}"/>
+      <scrolllist class="from-top">
+        <repeat count="${n_console}" bind="con">
+          <text label="${con.text}"/>
+        </repeat>
       </scrolllist>
     </panel>
 

@@ -13,3 +13,26 @@ window.network-browser { width: 960px; height: 640px; background-color: #141414;
 .nb-status { background-color: #101010; color: #88cc88; }
 .nb-content { background-color: #1a1a1a; color: #cccccc; }
 sidebar { width: 200px; background-color: #1a1a1a; color: #cccccc; }
+
+/* devtools console (2026-09-10): flex 3-column layout, canvas-craft
+   recipe — page is a flex row; sidebar keeps its fixed width, content
+   and console panels grow. Zero renderer C (generic flex path). */
+.nb-cols {
+    display: flex;
+    flex-direction: row;
+}
+.nb-body {
+    flex-grow: 2;
+    background-color: #1a1a1a;
+    border: 1px solid #3a3a3a;
+    border-color: #3a3a3a;
+}
+.nb-console {
+    flex-grow: 1;
+    background-color: #101010;
+    border: 1px solid #2a2a2a;
+    border-color: #2a2a2a;
+    color: #8fbf8f;
+    font-family: DejaVu Sans Mono;
+    font-size: 10px;
+}

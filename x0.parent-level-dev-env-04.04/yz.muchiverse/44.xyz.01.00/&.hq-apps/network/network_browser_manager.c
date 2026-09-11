@@ -946,6 +946,7 @@ static int g_worker_fd = -1;
 static pid_t g_worker_pid = -1;
 static char g_worker_render[65536];   /* step 4: last RENDER rows, or "" */
 static char g_worker_err_path[PATH_BUF];  /* hygiene: worker stderr log */
+static char g_console_path[PATH_BUF];     /* devtools console capture (NBW_CONSOLE) */
 static long g_werr_tail = 0;              /* bytes of that log already surfaced */
 
 /* rung-6 slice 2: the worker's pending NAV request, captured from a NAV
@@ -1234,6 +1235,13 @@ static void worker_spawn(void) {
         setenv("NB_LOCALSTORAGE_FILE", jar, 1);
         snprintf(jar, sizeof(jar), "%s/#.desktop/nb_curl_cookies.txt", g_house);
         setenv("NB_CURL_COOKIES_FILE", jar, 1);
+        /* devtools console EVAL: the worker streams console.* lines (and
+         * the eval> result lines) into this capture file; the projection
+         * renders its tail into the [console] panel. Append-mode on the
+         * worker side keeps history across respawns. */
+        char con[PATH_BUF];
+        snprintf(con, sizeof(con), "%s/#.desktop/network_browser_console.txt", g_house);
+        setenv("NBW_CONSOLE", con, 1);
         execl(g_js_worker_path, g_js_worker_path, (char *)NULL);
         _exit(127);
     }
@@ -1300,6 +1308,62 @@ static int worker_load(const char *js_path, const char *dom_path,
         }
         /* hygiene: worker-side JS/boot diagnostics (ERROR| rows) go to the
          * module log too, and don't abort the STATUS read mid-frame. */
+        if (strncmp(resp, "ERROR|", 6) == 0) {
+            fprintf(stderr, "[worker] %s\n", resp);
+            continue;
+        }
+        return strncmp(resp, "STATUS ok", 9) == 0;
+    }
+}
+
+/* devtools console EVAL: run <js> against the resident page heap. The
+ * worker echoes source/result into the NBW_CONSOLE capture (the manager's
+ * write_ui_projection renders its tail into the [console] panel), re-emits
+ * RENDER rows (overlaid onto page.state.txt via merge_render_rows) and
+ * stashes any NAV the snippet triggered (consumed next main-loop tick,
+ * same as a page-triggered NAV). Returns 1 on "STATUS ok". */
+static int worker_eval(const char *js) {
+    worker_spawn();
+    if (g_worker_fd < 0) { publish_status("error: no worker"); return 0; }
+    char payload[8192];
+    int n = snprintf(payload, sizeof(payload), "EVAL\n%s", js ? js : "");
+    if (!worker_send(payload, (size_t)n)) { worker_close(); return 0; }
+
+    char resp[65536];
+    for (;;) {
+        if (!worker_recv_line(resp, sizeof(resp))) { worker_close(); return 0; }
+        if (strncmp(resp, "RENDER\n", 7) == 0) {
+            size_t rn = strlen(resp + 7);
+            if (rn + 1 < sizeof(g_worker_render))
+                memcpy(g_worker_render, resp + 7, rn + 1);
+            continue;   /* wait for STATUS next */
+        }
+        if (strncmp(resp, "NAV\n", 4) == 0) {
+            char *f1 = resp + 4;
+            char *n1 = strchr(f1, '\n');
+            if (n1) {
+                size_t l = (size_t)(n1 - f1);
+                if (l >= sizeof(g_pending_nav_kind)) l = sizeof(g_pending_nav_kind) - 1;
+                memcpy(g_pending_nav_kind, f1, l);
+                g_pending_nav_kind[l] = 0;
+                if (n1[1]) {
+                    char v[PATH_BUF];
+                    size_t vl = strlen(n1 + 1);
+                    if (vl >= sizeof(v)) vl = sizeof(v) - 1;
+                    memcpy(v, n1 + 1, vl);
+                    v[vl] = 0;
+                    char *nl = strchr(v, '\n');
+                    if (nl) *nl = 0;
+                    if (strcmp(g_pending_nav_kind, "BACK") == 0 ||
+                        strcmp(g_pending_nav_kind, "FORWARD") == 0) {
+                        g_pending_nav_count = atoi(v);
+                    } else {
+                        snprintf(g_pending_nav_url, sizeof(g_pending_nav_url), "%s", v);
+                    }
+                }
+            }
+            continue;
+        }
         if (strncmp(resp, "ERROR|", 6) == 0) {
             fprintf(stderr, "[worker] %s\n", resp);
             continue;
@@ -2161,7 +2225,16 @@ static void handle_request(void) {
     FILE *cf = fopen(g_request_path, "w");
     if (cf) fclose(cf);
 
-    if (strncmp(line, "go:", 3) == 0) {
+    /* devtools console EVAL: the address bar writes "go:<typed>", so a
+     * typed "eval:<js>" arrives as "go:eval:<js>" here (nb_write_go.sh
+     * keeps the go: prefix). Must be matched BEFORE the generic go: branch. */
+    if (strncmp(line, "go:eval:", 8) == 0) {
+        publish_status(worker_eval(line + 8) ? "ready" : "eval error");
+        (void)merge_render_rows();
+    } else if (strncmp(line, "eval:", 5) == 0) {
+        publish_status(worker_eval(line + 5) ? "ready" : "eval error");
+        (void)merge_render_rows();
+    } else if (strncmp(line, "go:", 3) == 0) {
         stack_clear(g_forward_path);
         do_fetch(line + 3, 1);
     } else if (strcmp(line, "back:") == 0 || strcmp(line, "back") == 0) {
@@ -2585,6 +2658,30 @@ static void uisan(const char *in, char *out, size_t outsz) {
     }
     out[o] = '\0';
 }
+
+/* devtools console: keep the NBW_CONSOLE capture file bounded. Trims to the
+ * last <maxbytes> at a line boundary; called from write_ui_projection so the
+ * projection loop itself enforces the cap without the worker knowing. */
+static void trim_tail_file(const char *path, size_t maxbytes) {
+    struct stat st;
+    if (!path || stat(path, &st) != 0 || (size_t)st.st_size <= maxbytes) return;
+    FILE *in = fopen(path, "r");
+    if (!in) return;
+    long skip = (long)(st.st_size - (long)maxbytes);
+    if (fseek(in, skip, SEEK_SET) != 0) { fclose(in); return; }
+    int c;
+    while ((c = fgetc(in)) != EOF && c != '\n') {}   /* align to a line start */
+    char tmp[PATH_BUF];
+    snprintf(tmp, sizeof(tmp), "%s.trim", path);
+    FILE *out = fopen(tmp, "w");
+    if (!out) { fclose(in); return; }
+    char buf[8192];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), in)) > 0) fwrite(buf, 1, n, out);
+    fclose(in); fclose(out);
+    rename(tmp, path);
+}
+
 static void write_ui_projection(void) {
     char *buf = malloc(262144);
     if (!buf) return;
@@ -2770,6 +2867,40 @@ static void write_ui_projection(void) {
         UI_PUT("empty_msg=Ready - enter a URL above\n");
     }
 
+    /* devtools console - the worker's NBW_CONSOLE capture tail (console.*
+     * lines + eval: source/result echoes). Ring of the last 200 lines. */
+    {
+        if (g_console_path[0]) trim_tail_file(g_console_path, 262144);
+        char *clines[200];
+        int ci = 0;
+        FILE *cf = g_console_path[0] ? fopen(g_console_path, "r") : NULL;
+        if (cf) {
+            char line[1400];
+            while (fgets(line, sizeof(line), cf)) {
+                size_t L = strlen(line);
+                while (L > 0 && (line[L-1] == '\n' || line[L-1] == '\r')) line[--L] = 0;
+                if (!line[0]) continue;
+                char *d = strdup(line);
+                if (!d) continue;
+                if (ci == 200) {           /* drop oldest, keep last 199 */
+                    free(clines[0]);
+                    memmove(clines, clines + 1, sizeof(char *) * 199);
+                    ci = 199;
+                }
+                clines[ci++] = d;
+            }
+            fclose(cf);
+        }
+        for (int i = 0; i < ci; i++) {
+            char s[1500];
+            uisan(clines[i], s, sizeof(s));
+            UI_PUT("con_%d_text=%s\n", i, s);
+            free(clines[i]);
+        }
+        UI_PUT("n_console=%d\n", ci);
+        UI_PUT("no_console=%d\n", ci == 0 ? 1 : 0);
+    }
+
 #undef UI_PUT
     static char *g_last_ui = NULL;
     if (g_last_ui && strcmp(g_last_ui, buf) == 0) { free(buf); return; }
@@ -2823,6 +2954,7 @@ int main(int argc, char **argv) {
     path_join(g_visit_log_path, sizeof(g_visit_log_path), desktop, "network_browser_history.log.txt");
     path_join(g_bookmark_path, sizeof(g_bookmark_path), desktop, "network_browser_bookmarks.txt");
     path_join(g_worker_err_path, sizeof(g_worker_err_path), desktop, "network_browser_worker.err.log");
+    path_join(g_console_path, sizeof(g_console_path), desktop, "network_browser_console.txt");
     {
         char lockpath[PATH_BUF];
         path_join(lockpath, sizeof(lockpath), desktop, "network_browser_manager.lock");
