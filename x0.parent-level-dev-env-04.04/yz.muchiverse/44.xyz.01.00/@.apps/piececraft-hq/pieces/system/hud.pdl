@@ -1,0 +1,21 @@
+SECTION      | KEY                  | VALUE
+----------------------------------------
+META         | file_id              | hud
+META         | note                 | pc-hq board HUD policy. Read every frame by &.widgits/board-viewer/ops/bv_render_3d.c (bv_draw_hud). Menu-tb "HUD" rows flip the OPT lines via pc_toggle_pdl_opt.sh - live, no rebuild, no restart. See 08-roadmap/design-docs/BV-HUD-TEXT-OVERLAY-AND-MINIMAP.md.
+
+# ── master + per-element switches (0|1) ──
+OPT          | hud_enabled          | 1     # master switch - 0 hides everything, frame == pre-HUD
+OPT          | hud_time             | 1     # game clock HH:MM (world_01/state.txt game_time_epoch_sec, same as the toolbar clock)
+OPT          | hud_coords           | 1     # x y z of camera / possessed entity
+OPT          | hud_zlevel           | 1     # current z-slice
+OPT          | hud_possess          | 1     # possessed entity id
+OPT          | hud_pick             | 1     # entity/voxel under the selector (pieces/display/pick.txt)
+OPT          | hud_fps              | 0     # frame rate (off by default)
+OPT          | hud_minimap          | 1     # 3D corner minimap
+
+# ── layout ──
+KEY          | hud_anchor           | top-left    # text lines - top-left | top-right | bottom-left | bottom-right
+KEY          | minimap_anchor       | top-right   # minimap - independent corner from hud_anchor
+KEY          | hud_scale            | 1           # integer glyph scale (1 = 8x16 px)
+KEY          | minimap_px_per_col   | 8           # px per voxel column
+KEY          | minimap_max_px       | 160         # hard cap on minimap width/height (keeps it a small inset)

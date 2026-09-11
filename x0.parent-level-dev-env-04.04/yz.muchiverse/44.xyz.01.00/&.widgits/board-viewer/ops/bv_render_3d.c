@@ -1344,6 +1344,460 @@ static int g_lod_step = 1;
 static unsigned char *g_fbuf = NULL;
 #define FB(X,Y) (g_fbuf + ((size_t)(Y) * (size_t)g_fw + (size_t)(X)) * 4)
 
+/* ===== HUD: engine-drawn text/minimap overlay (BV-HUD-TEXT-OVERLAY-AND-
+ * MINIMAP.md). Milestone A: generic ascii text blitter reusing the SAME
+ * on-disk 8x16 font as the team-digit mask above
+ * (pieces/registry/fonts/ascii/<code>/glyph.txt) - no new asset. Painted
+ * straight into g_fbuf as the LAST thing before write_file_atomic(), so
+ * it rides along in rgb_frame_3d_overlay.raw and composites in via
+ * chtpm_rgb_render's MAP3D_MARKER path. Skipped entirely when hud.pdl is
+ * absent or hud_enabled=0 (frame stays byte-identical -> frame-history
+ * only_on_change digest unaffected). */
+#define HUD_FONT_LO 32
+#define HUD_FONT_HI 126
+#define HUD_FONT_N  (HUD_FONT_HI - HUD_FONT_LO + 1)
+static unsigned char g_hud_glyph[HUD_FONT_N][GLYPH_PX_H][GLYPH_PX_W];
+static char          g_hud_glyph_have[HUD_FONT_N];
+static char          g_hud_font_root[PATH_BUF] = "";
+
+/* Load every printable glyph once per (font root). Cheap: 95 tiny files,
+ * one stat/open each, only on first HUD draw of a session. */
+static void hud_ensure_font(const char *game_root) {
+    if (g_hud_font_root[0] && strcmp(g_hud_font_root, game_root) == 0) return;
+    snprintf(g_hud_font_root, sizeof(g_hud_font_root), "%s", game_root);
+    memset(g_hud_glyph_have, 0, sizeof(g_hud_glyph_have));
+    for (int code = HUD_FONT_LO; code <= HUD_FONT_HI; code++) {
+        char path[PATH_BUF];
+        snprintf(path, sizeof(path), "%s/pieces/registry/fonts/ascii/%d/glyph.txt", game_root, code);
+        FILE *f = host_fopen(path, "r");
+        if (!f) continue;
+        int idx = code - HUD_FONT_LO;
+        char line[64];
+        for (int row = 0; row < GLYPH_PX_H; row++) {
+            if (!fgets(line, sizeof(line), f)) { for (int c = 0; c < GLYPH_PX_W; c++) g_hud_glyph[idx][row][c] = 0; continue; }
+            for (int c = 0; c < GLYPH_PX_W; c++) g_hud_glyph[idx][row][c] = (line[c] == '#') ? 1 : 0;
+        }
+        fclose(f);
+        g_hud_glyph_have[idx] = 1;
+    }
+}
+
+/* Blit str at (x,y) top-left corner, integer scale, colour fg[3].
+ * box!=0 -> darken a 1-scale pad behind the whole run first so the text
+ * stays readable over sky or bright voxels. Returns x past the last
+ * glyph (so callers can chain). Clips to the framebuffer. */
+static int bv_blit_text(int x, int y, const char *str,
+                        unsigned char fr, unsigned char fg_, unsigned char fb_,
+                        int scale, int box) {
+    if (!g_fbuf || !str) return x;
+    if (scale < 1) scale = 1;
+    int gw = GLYPH_PX_W * scale, gh = GLYPH_PX_H * scale;
+    int n = (int)strlen(str);
+    if (box) {
+        int bx0 = x - scale, by0 = y - scale;
+        int bx1 = x + n * gw + scale, by1 = y + gh + scale;
+        if (bx0 < 0) bx0 = 0;
+        if (by0 < 0) by0 = 0;
+        if (bx1 > g_fw) bx1 = g_fw;
+        if (by1 > g_fh) by1 = g_fh;
+        for (int by = by0; by < by1; by++)
+            for (int bx = bx0; bx < bx1; bx++) {
+                unsigned char *p = FB(bx, by);
+                p[0] = (unsigned char)(p[0] / 4); p[1] = (unsigned char)(p[1] / 4);
+                p[2] = (unsigned char)(p[2] / 4); p[3] = 255;
+            }
+    }
+    int cx = x;
+    for (int i = 0; i < n; i++, cx += gw) {
+        unsigned char c = (unsigned char)str[i];
+        if (c < HUD_FONT_LO || c > HUD_FONT_HI) continue;
+        int idx = c - HUD_FONT_LO;
+        if (!g_hud_glyph_have[idx]) continue;
+        for (int row = 0; row < GLYPH_PX_H; row++)
+            for (int cc = 0; cc < GLYPH_PX_W; cc++) {
+                if (!g_hud_glyph[idx][row][cc]) continue;
+                for (int sy = 0; sy < scale; sy++)
+                    for (int sx = 0; sx < scale; sx++) {
+                        int px = cx + cc * scale + sx, py = y + row * scale + sy;
+                        if (px < 0 || px >= g_fw || py < 0 || py >= g_fh) continue;
+                        unsigned char *p = FB(px, py);
+                        p[0] = fr; p[1] = fg_; p[2] = fb_; p[3] = 255;
+                    }
+            }
+    }
+    return cx;
+}
+
+/* pipe-delimited "<tag> | <name> | <val>" reader, twin of
+ * bv_dispatch.c's read_pdl_opt (spaces around pipes optional). */
+static int hud_pdl_int(const char *pdl_path, const char *name, int def) {
+    FILE *f = host_fopen(pdl_path, "r");
+    if (!f) return def;
+    char line[256];
+    int val = def;
+    while (fgets(line, sizeof(line), f)) {
+        if (line[0] == '#') continue;
+        char *bar1 = strchr(line, '|'); if (!bar1) continue;
+        char *bar2 = strchr(bar1 + 1, '|'); if (!bar2) continue;
+        char field[128];
+        char *ns = bar1 + 1, *ne = bar2;
+        while (*ns == ' ' || *ns == '\t') ns++;
+        while (ne > ns && (ne[-1] == ' ' || ne[-1] == '\t')) ne--;
+        size_t fl = (size_t)(ne - ns); if (fl >= sizeof(field)) fl = sizeof(field) - 1;
+        memcpy(field, ns, fl); field[fl] = '\0';
+        if (strcmp(field, name) != 0) continue;
+        char *vs = bar2 + 1;
+        while (*vs == ' ' || *vs == '\t') vs++;
+        val = atoi(vs);
+        break;
+    }
+    fclose(f);
+    return val;
+}
+
+static void hud_pdl_str(const char *pdl_path, const char *name, char *out, size_t out_sz, const char *def) {
+    snprintf(out, out_sz, "%s", def);
+    FILE *f = host_fopen(pdl_path, "r");
+    if (!f) return;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        if (line[0] == '#') continue;
+        char *bar1 = strchr(line, '|'); if (!bar1) continue;
+        char *bar2 = strchr(bar1 + 1, '|'); if (!bar2) continue;
+        char field[128];
+        char *ns = bar1 + 1, *ne = bar2;
+        while (*ns == ' ' || *ns == '\t') ns++;
+        while (ne > ns && (ne[-1] == ' ' || ne[-1] == '\t')) ne--;
+        size_t fl = (size_t)(ne - ns); if (fl >= sizeof(field)) fl = sizeof(field) - 1;
+        memcpy(field, ns, fl); field[fl] = '\0';
+        if (strcmp(field, name) != 0) continue;
+        char *vs = bar2 + 1;
+        while (*vs == ' ' || *vs == '\t') vs++;
+        size_t vl = strlen(vs);
+        while (vl > 0 && (vs[vl-1] == '\n' || vs[vl-1] == '\r' || vs[vl-1] == ' ' || vs[vl-1] == '\t')) vs[--vl] = '\0';
+        snprintf(out, out_sz, "%s", vs);
+        break;
+    }
+    fclose(f);
+}
+
+/* Cheap always-on fps (no BV_HAVE_GPU dependency - this file's own
+ * bv_now_ms_ profiling helper is GPU-only). One static last-timestamp,
+ * updated once per render_one_frame() call regardless of build. */
+static double bv_wallclock_ms(void) {
+    struct timespec t;
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    return t.tv_sec * 1e3 + t.tv_nsec / 1e6;
+}
+static int bv_hud_fps(void) {
+    static double s_last = 0;
+    double now = bv_wallclock_ms();
+    int fps = (s_last > 0 && now > s_last) ? (int)(1000.0 / (now - s_last)) : 0;
+    s_last = now;
+    return fps;
+}
+
+/* Draw the HUD for one frame. game_root == render_one_frame()'s
+ * focused_project_root (that's where pieces/system/hud.pdl and the font
+ * live). selx/sely/z = the same selector/current_z render_one_frame()
+ * just fed to write_pick_txt() - re-reads its own pick.txt output
+ * rather than duplicating the kind/id lookup (that file is already
+ * fresh this exact frame, milestone D). Stacks up to 6 lines from the
+ * configured corner. */
+/* minimap data stash - set once per render_one_frame() call right
+ * before bv_draw_hud(), read by bv_draw_minimap() further down. These
+ * point INTO render_one_frame()'s own `static` locals (board3d/col_top
+ * persist across calls, so aliasing them here is safe) rather than
+ * threading 5 extra params through bv_draw_hud() for one sub-feature. */
+static char (*g_mm_board3d)[MAX_BOARD_DIM][MAX_BOARD_DIM] = NULL;
+static int (*g_mm_col_top)[MAX_BOARD_DIM] = NULL;
+static int g_mm_board_w = 0, g_mm_board_h = 0, g_mm_selx = 0, g_mm_sely = 0;
+static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int text_right_anchor, int text_block_h);
+
+static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely) {
+    int fps = bv_hud_fps(); /* always call - keeps the fps clock ticking even when hidden */
+    if (!g_fbuf || !game_root || !game_root[0]) return;
+    char pdl[PATH_BUF];
+    snprintf(pdl, sizeof(pdl), "%s/pieces/system/hud.pdl", game_root);
+    if (!hud_pdl_int(pdl, "hud_enabled", 0)) return;
+
+    int scale = hud_pdl_int(pdl, "hud_scale", 1);
+    if (scale < 1) scale = 1;
+    if (scale > 4) scale = 4;
+    char anchor[24];
+    hud_pdl_str(pdl, "hud_anchor", anchor, sizeof(anchor), "top-left");
+
+    hud_ensure_font(game_root);
+
+    char lines[8][64];
+    int n = 0;
+
+    if (hud_pdl_int(pdl, "hud_time", 1) && n < 8) {
+        /* GAME clock, not wall clock - same world_01/state.txt
+         * game_time_epoch_sec + %86400 -> HH:MM convention
+         * pchq_board_projector.c's own toolbar clock already uses
+         * (direct instruction 2026-09-09: "time on display should show
+         * clock time, not real time"), reused verbatim so the HUD and
+         * the toolbar never disagree. */
+        char worldp[PATH_BUF];
+        snprintf(worldp, sizeof(worldp), "%s/pieces/world_01/state.txt", game_root);
+        long long ep = read_kv_ll(worldp, "game_time_epoch_sec", -1);
+        if (ep >= 0) {
+            long long tod = ep % 86400; if (tod < 0) tod += 86400;
+            snprintf(lines[n++], sizeof(lines[0]), "time %02lld:%02lld", tod / 3600, (tod % 3600) / 60);
+        } else {
+            snprintf(lines[n++], sizeof(lines[0]), "time --:--");
+        }
+    }
+    if (hud_pdl_int(pdl, "hud_coords", 1) && n < 8)
+        snprintf(lines[n++], sizeof(lines[0]), "pos %d,%d,%d", selx, sely, current_z);
+    if (hud_pdl_int(pdl, "hud_zlevel", 1) && n < 8)
+        snprintf(lines[n++], sizeof(lines[0]), "z=%d", current_z);
+    if (hud_pdl_int(pdl, "hud_possess", 1) && n < 8)
+        snprintf(lines[n++], sizeof(lines[0]), "poss %s", g_hero_present ? "hero_01" : "-");
+    if (hud_pdl_int(pdl, "hud_pick", 1) && n < 8) {
+        char pickp[PATH_BUF], kind[32] = "-", id[64] = "-";
+        snprintf(pickp, sizeof(pickp), "%s/pieces/display/pick.txt", game_root);
+        read_kv_str(pickp, "kind", kind, sizeof(kind));
+        read_kv_str(pickp, "id", id, sizeof(id));
+        if (!kind[0]) snprintf(kind, sizeof(kind), "-");
+        snprintf(lines[n++], sizeof(lines[0]), "pick %s%s%s", kind, id[0] ? " " : "", id);
+    }
+    if (hud_pdl_int(pdl, "hud_fps", 0) && n < 8)
+        snprintf(lines[n++], sizeof(lines[0]), "fps %d", fps);
+    /* free-form extension: game-owned pieces/display/hud.txt line1..line4 */
+    {
+        char hudtxt[PATH_BUF];
+        snprintf(hudtxt, sizeof(hudtxt), "%s/pieces/display/hud.txt", game_root);
+        for (int li = 1; li <= 4 && n < 8; li++) {
+            char key[16], val[64] = "";
+            snprintf(key, sizeof(key), "line%d", li);
+            read_kv_str(hudtxt, key, val, sizeof(val));
+            if (val[0]) snprintf(lines[n++], sizeof(lines[0]), "%s", val);
+        }
+    }
+    int pad = 6 * scale;
+    int row_h = GLYPH_PX_H * scale + 3 * scale;
+    int top_anchor = !strstr(anchor, "bottom");
+    int right_anchor = strstr(anchor, "right") != NULL;
+
+    for (int i = 0; i < n; i++) {
+        int y = top_anchor ? (pad + i * row_h) : (g_fh - pad - row_h * (n - i));
+        int tw = (int)strlen(lines[i]) * GLYPH_PX_W * scale;
+        int x = right_anchor ? (g_fw - tw - pad) : pad;
+        if (x < 0) x = 0;
+        if (y < 0) y = 0;
+        bv_blit_text(x, y, lines[i], 235, 245, 255, scale, 1);
+    }
+
+    /* milestone C minimap stacks in the SAME corner, right after the
+     * text lines (n may be 0 - that's fine, it just starts at pad). */
+    bv_draw_minimap(pdl, pad, top_anchor, right_anchor, n * row_h);
+}
+
+/* clipped flat-fill rect, shared by the minimap's backing/cells/border/
+ * marker - every caller already clips to g_fw/g_fh manually elsewhere in
+ * this file, so keep the same convention here. */
+static void bv_fill_rect(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, unsigned char b) {
+    if (x0 < 0) x0 = 0;
+    if (y0 < 0) y0 = 0;
+    if (x1 > g_fw) x1 = g_fw;
+    if (y1 > g_fh) y1 = g_fh;
+    for (int y = y0; y < y1; y++)
+        for (int x = x0; x < x1; x++) {
+            unsigned char *p = FB(x, y);
+            p[0] = r; p[1] = g; p[2] = b; p[3] = 255;
+        }
+}
+
+/* Milestone C - 3D-view minimap (BV-HUD-TEXT-OVERLAY-AND-MINIMAP.md
+ * §4b). Reuses render_one_frame()'s OWN col_top[][] empty-space-skip
+ * precompute (mc-speed-algos.md) - no second scan, no new geometry.
+ * One flat block per column at its topmost solid voxel's terrain
+ * colour; the possessed/camera-tracked cell gets a bright marker.
+ * text_block_h = however tall the text HUD stack already drew (0 if
+ * none), so the minimap stacks below it in the same corner instead of
+ * overlapping. */
+static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int text_right_anchor, int text_block_h) {
+    if (!hud_pdl_int(pdl, "hud_minimap", 1)) return;
+    if (g_mm_board_w <= 0 || g_mm_board_h <= 0) return;
+
+    /* independent corner from the text HUD (direct instruction
+     * 2026-09-10: "the words should be on the left side, and let hud
+     * go to top" - text defaults top-left, minimap keeps its own
+     * top-right default). Only stack past the text block when they
+     * actually share a corner - otherwise the minimap sits flush at
+     * its own pad, same as if no text HUD existed. */
+    char mm_anchor[24];
+    hud_pdl_str(pdl, "minimap_anchor", mm_anchor, sizeof(mm_anchor), "top-right");
+    int top_anchor = !strstr(mm_anchor, "bottom");
+    int right_anchor = strstr(mm_anchor, "right") != NULL;
+    int same_corner = (top_anchor == text_top_anchor) && (right_anchor == text_right_anchor);
+    if (!same_corner) text_block_h = 0;
+
+    int px_per_col = hud_pdl_int(pdl, "minimap_px_per_col", 8);
+    if (px_per_col < 1) px_per_col = 1;
+    int max_px = hud_pdl_int(pdl, "minimap_max_px", 160);
+    if (max_px < 8) max_px = 8;
+    int cellpx = px_per_col;
+    while (cellpx > 1 && (g_mm_board_w * cellpx > max_px || g_mm_board_h * cellpx > max_px)) cellpx--;
+
+    int mm_w = g_mm_board_w * cellpx, mm_h = g_mm_board_h * cellpx;
+    if (mm_w <= 0 || mm_h <= 0 || mm_w > g_fw || mm_h > g_fh) return;
+
+    int mm_y = top_anchor ? (pad + text_block_h) : (g_fh - pad - mm_h - text_block_h);
+    int mm_x = right_anchor ? (g_fw - mm_w - pad) : pad;
+    if (mm_x < 0) mm_x = 0;
+    if (mm_y < 0) mm_y = 0;
+
+    /* Real, new (direct user report: "the minimap is fliped along
+     * vertical axis. chicken in on right in minimap but left in real
+     * map"). build_camera()'s own real right-vector at the default
+     * yaw=180 works out to (-1,0,0) - camera modes 1/2's own actual
+     * screen-right points toward DECREASING world x (bv_menu_input.c's
+     * own "left arrow is strafing right" fix, same coordinate-
+     * handedness property) - a naive col-increases-rightward minimap
+     * disagrees with that baseline view. Mirror X below so world x
+     * still increases toward screen-right on the minimap, matching
+     * what the default 3D view actually shows. Y is untouched - only
+     * X was reported/observed flipped. */
+
+    /* dark backing + 1px light border, same legibility convention as
+     * bv_blit_text's own box. */
+    bv_fill_rect(mm_x - 2, mm_y - 2, mm_x + mm_w + 2, mm_y + mm_h + 2, 30, 30, 34);
+    bv_fill_rect(mm_x - 2, mm_y - 2, mm_x + mm_w + 2, mm_y - 1, 150, 150, 160);
+    bv_fill_rect(mm_x - 2, mm_y + mm_h + 1, mm_x + mm_w + 2, mm_y + mm_h + 2, 150, 150, 160);
+    bv_fill_rect(mm_x - 2, mm_y - 2, mm_x - 1, mm_y + mm_h + 2, 150, 150, 160);
+    bv_fill_rect(mm_x + mm_w + 1, mm_y - 2, mm_x + mm_w + 2, mm_y + mm_h + 2, 150, 150, 160);
+
+    for (int row = 0; row < g_mm_board_h; row++) {
+        for (int col = 0; col < g_mm_board_w; col++) {
+            int lvl = g_mm_col_top[row][col];
+            unsigned char r, g, b;
+            if (lvl < 0) { r = 18; g = 18; b = 22; } /* empty column - near-black */
+            else {
+                char glyph = g_mm_board3d[lvl][row][col];
+                const TerrainLegendEntry *le = terrain_legend_lookup(glyph);
+                if (le) { r = le->r; g = le->g; b = le->b; } else { r = 110; g = 110; b = 110; }
+            }
+            int cx = mm_x + (g_mm_board_w - 1 - col) * cellpx, cy = mm_y + row * cellpx;
+            bv_fill_rect(cx, cy, cx + cellpx, cy + cellpx, r, g, b);
+        }
+    }
+
+    /* Real, new (direct user report: "xelector player, trees and
+     * chicken should all be on minimap. whats up?" - the marker below
+     * used to be a single cell, hero-or-selector only, so every OTHER
+     * live thing on the board was invisible). Draw every placed
+     * phymoji world entity (trees, chickens, ...) as a small inset dot
+     * - same kind classification write_pick_txt() already uses
+     * (strstr on entity_id) - so the minimap and the "pick" HUD line
+     * agree on what something is. Dots first (smallest, most numerous,
+     * most likely to be UNDER something), xelector next, hero/player
+     * LAST so it always wins visually when things overlap one cell. */
+    int inset = cellpx / 4; if (inset < 1) inset = 1;
+    int dot = cellpx - inset * 2; if (dot < 1) dot = 1;
+    for (int i = 0; i < g_phymoji_world_entity_count; i++) {
+        PhymojiWorldEntity *e = &g_phymoji_world_entities[i];
+        if (e->x < 0 || e->x >= g_mm_board_w || e->y < 0 || e->y >= g_mm_board_h) continue;
+        unsigned char r, g, b;
+        if (strstr(e->entity_id, "chicken"))     { r = 235; g = 205; b = 70; }  /* yellow */
+        else if (strstr(e->entity_id, "tree"))   { r = 18;  g = 80;  b = 24; }  /* dark forest green - direct report: too close to grass at (90,170,60) */
+        else                                      { r = 225; g = 225; b = 225; } /* generic - light grey */
+        int cx = mm_x + (g_mm_board_w - 1 - e->x) * cellpx + inset, cy = mm_y + e->y * cellpx + inset;
+        bv_fill_rect(cx, cy, cx + dot, cy + dot, r, g, b);
+    }
+
+    /* xelector (the board's own targeting cursor, distinct from the
+     * hero/player and from bv_draw_hud's plain "pos" selector) - cyan,
+     * full cell so it's easy to find even off the player. */
+    if (g_xelector_present && g_xelector_x >= 0 && g_xelector_x < g_mm_board_w &&
+        g_xelector_y >= 0 && g_xelector_y < g_mm_board_h) {
+        int cx = mm_x + (g_mm_board_w - 1 - g_xelector_x) * cellpx, cy = mm_y + g_xelector_y * cellpx;
+        bv_fill_rect(cx, cy, cx + cellpx, cy + cellpx, 80, 220, 255);
+    }
+
+    /* hero/player - red, drawn last (on top of everything else). Falls
+     * back to the plain selector cursor when there's no hero at all,
+     * so the minimap always shows at least one "you are here" cell -
+     * matches bv_draw_hud's own "poss"/"pos" line convention. */
+    int mark_x = g_hero_present ? g_hero_x : g_mm_selx;
+    int mark_y = g_hero_present ? g_hero_y : g_mm_sely;
+    if (mark_x >= 0 && mark_x < g_mm_board_w && mark_y >= 0 && mark_y < g_mm_board_h) {
+        int cx = mm_x + (g_mm_board_w - 1 - mark_x) * cellpx, cy = mm_y + mark_y * cellpx;
+        bv_fill_rect(cx, cy, cx + cellpx, cy + cellpx, 255, 70, 70);
+    }
+}
+
+/* FNV1a-64 over the finished framebuffer - same digest discipline
+ * khtpm_core_render.c's own frame-history receipts use for their own
+ * canonical frame text (kh_fnv1a64), so a text-only agent gets the SAME
+ * "did the picture really change" guarantee for the engine's 3D content
+ * that it already gets for chrome. Kept as its own local copy (no
+ * cross-.c linking, per house standards) rather than importing khtpm's. */
+static unsigned long long bv_fnv1a64(const unsigned char *p, size_t n) {
+    unsigned long long h = 1469598103934665603ULL;
+    for (size_t i = 0; i < n; i++) { h ^= (unsigned long long)p[i]; h *= 1099511628211ULL; }
+    return h;
+}
+
+/* Real, new (BV-HUD-TEXT-OVERLAY-AND-MINIMAP.md §"dead code" follow-up,
+ * direct user report: "make sure its all very legit" - khtpm's own
+ * frame-history receipts describe chrome ONLY, kh_receipt_objects_walk
+ * skips the <canvas> element itself, so a blind/non-PNG agent had ZERO
+ * text description of what the 3D engine was actually showing). Written
+ * every frame right alongside the RGBA overlay, same file, same root -
+ * a text-only agent can read this instead of decoding rgb_frame_3d_
+ * overlay.raw. Cheap: one snprintf'd buffer, one atomic write. */
+static void bv_write_scene_receipt(const char *game_root, int board_w, int board_h, int z_count,
+                                   int current_z, int selx, int sely,
+                                   int camera_mode, int cam_yaw, int cam_pitch,
+                                   double eye_x, double eye_y, double eye_z,
+                                   unsigned long long overlay_digest) {
+    if (!game_root || !game_root[0]) return;
+    time_t now = time(NULL);
+    char iso[40];
+    strftime(iso, sizeof(iso), "%Y-%m-%dT%H:%M:%SZ", gmtime(&now));
+
+    char *buf = NULL; size_t len = 0;
+    FILE *r = open_memstream(&buf, &len);
+    if (!r) return;
+    fprintf(r, "receipt_type=bv_x3d_scenesnapshot\n");
+    fprintf(r, "generated_by=bv_render_3d\n");
+    fprintf(r, "generated_at_iso_utc=%s\n", iso);
+    fprintf(r, "generated_at_epoch=%ld\n", (long)now);
+    fprintf(r, "viewport_w=%d\nviewport_h=%d\n", g_fw, g_fh);
+    fprintf(r, "board_w=%d\nboard_h=%d\nz_count=%d\n", board_w, board_h, z_count);
+    fprintf(r, "current_z=%d\n", current_z);
+    fprintf(r, "selector_x=%d\nselector_y=%d\n", selx, sely);
+    fprintf(r, "camera_mode=%d\ncam_yaw=%d\ncam_pitch=%d\n", camera_mode, cam_yaw, cam_pitch);
+    fprintf(r, "cam_eye_x=%.2f\ncam_eye_y=%.2f\ncam_eye_z=%.2f\n", eye_x, eye_y, eye_z);
+    fprintf(r, "hero_present=%d\n", g_hero_present);
+    if (g_hero_present) fprintf(r, "hero_x=%d\nhero_y=%d\nhero_z=%d\n", g_hero_x, g_hero_y, g_hero_z);
+    {
+        char pickp[PATH_BUF], kind[32] = "-", id[64] = "-";
+        snprintf(pickp, sizeof(pickp), "%s/pieces/display/pick.txt", game_root);
+        read_kv_str(pickp, "kind", kind, sizeof(kind));
+        read_kv_str(pickp, "id", id, sizeof(id));
+        fprintf(r, "pick_kind=%s\npick_id=%s\n", kind[0] ? kind : "-", id[0] ? id : "-");
+    }
+    int ne = g_phymoji_world_entity_count;
+    if (ne > 16) ne = 16; /* cap, matches pchq_board_projector.c's own emit_entities() cap */
+    fprintf(r, "n_entities=%d\n", ne);
+    for (int i = 0; i < ne; i++) {
+        PhymojiWorldEntity *e = &g_phymoji_world_entities[i];
+        fprintf(r, "entity_%d_id=%s\nentity_%d_x=%d\nentity_%d_y=%d\nentity_%d_z=%d\n",
+                i, e->entity_id, i, e->x, i, e->y, i, e->z);
+    }
+    fprintf(r, "overlay_checksum_fnv1a64=0x%016llx\n", overlay_digest);
+    fclose(r);
+
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/pieces/display/scene_receipt.pdl", game_root);
+    write_file_atomic(path, buf, len);
+    free(buf);
+}
+
 /* REAL, NEW 2026-08-04, xyz-ngn-plan.md §2/§2b (piececraft-xyz's own
  * real day/night orbital plan, Step 1) - the sun's own real ELLIPTICAL
  * orbit ("long oval", direct instruction: "sun should be close to our
@@ -2705,6 +3159,27 @@ static int render_one_frame(void) {
     }
     } /* end if (!gpu_done) - CPU raymarch loop */
 
+    /* HUD overlay (BV-HUD-TEXT-OVERLAY-AND-MINIMAP.md) - last paint into
+     * g_fbuf, on top of the raymarch, before the atomic write. */
+    g_mm_board3d = board3d; g_mm_col_top = col_top;
+    g_mm_board_w = board_w; g_mm_board_h = board_h;
+    g_mm_selx = selector_x; g_mm_sely = selector_y;
+    bv_draw_hud(focused_project_root, current_z, selector_x, selector_y);
+
+    size_t byte_count = (size_t)g_fw * (size_t)g_fh * 4;
+
+    /* Scene receipt (BV-HUD-TEXT-OVERLAY-AND-MINIMAP.md, "make sure its
+     * all very legit" follow-up) - the engine's own text-only frame
+     * history, checksummed the same way khtpm's frame-history receipts
+     * are, since those never describe the <canvas> content. Digest is
+     * over the FINAL g_fbuf (HUD included) so it matches exactly what
+     * rgb_frame_3d_overlay.raw is about to hold. */
+    bv_write_scene_receipt(focused_project_root, board_w, board_h, z_count,
+                           current_z, selector_x, selector_y,
+                           camera_mode, cam_yaw, cam_pitch,
+                           cam.eye.x, cam.eye.y, cam.eye.z,
+                           bv_fnv1a64(g_fbuf, byte_count));
+
     /* Writes ONLY the overlay file - never rgb_frame.raw itself (see
      * this file's own header comment + view-vs-muta.md). system/
      * chtpm_rgb_render (mutaclysm's own fork) remains the sole writer
@@ -2714,7 +3189,6 @@ static int render_one_frame(void) {
     snprintf(overlay_path, sizeof(overlay_path), "%s/pieces/display/rgb_frame_3d_overlay.raw", project_root);
     snprintf(overlay_receipt_path, sizeof(overlay_receipt_path), "%s/pieces/display/rgb_frame_3d_overlay.receipt.txt", project_root);
 
-    size_t byte_count = (size_t)g_fw * (size_t)g_fh * 4;
 #ifdef BV_HAVE_GPU
     double wr_t0 = bv_now_ms_();
 #endif
