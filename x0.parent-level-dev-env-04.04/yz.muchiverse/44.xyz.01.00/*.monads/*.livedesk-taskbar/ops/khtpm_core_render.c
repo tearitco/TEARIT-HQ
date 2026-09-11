@@ -3559,6 +3559,28 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
             if (elem_has_class(c, "top")) {
                 c->x = x; c->y = y_cursor; c->w = w; c->h = this_h;
                 y_cursor += this_h;
+            } else if (strcmp(c->tag, "text_area") == 0 && !scrolllist) {
+                /* REAL FIX 2026-09-11, direct live report ("5/highlight
+                 * is way too high... shouldn't be higher than line
+                 * counter or tabbar but it is") - the glue-to-bottom-
+                 * strip-sized-by-rows math right below is built for
+                 * chat's shape (a <scrolllist> of history ABOVE a small
+                 * rows="3" composer - chat-hai's real layout), correct
+                 * there. text-edit-hq's panel has no <scrolllist> at
+                 * all - its rows="20" <text_area> IS the entire panel
+                 * content, meant to FILL it, not glue a fixed
+                 * composer_h=(20*ROW_H) strip to the bottom, which once
+                 * that computed height exceeded the real panel height
+                 * put c->y ABOVE y itself (above the tabbar/gutter -
+                 * exactly the report). Deliberately scoped to tag ==
+                 * "text_area" only (not cli_io) - direct instruction
+                 * 2026-09-11 ("roll back anything u change that wasn't
+                 * about text area") after the same-shaped cli_io fix
+                 * broke open-hai; a bare <text_area> with no sibling
+                 * <scrolllist> has nothing to leave room for above it,
+                 * so filling the whole container is safe and correct
+                 * for it specifically. */
+                c->x = x; c->y = y; c->w = w; c->h = h;
             } else {
                 c->x = x; c->y = y + h - composer_h; c->w = w; c->h = composer_h;
             }
