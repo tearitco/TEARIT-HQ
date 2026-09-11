@@ -61,10 +61,10 @@ involving live windows or shared files.*
     `kh_spawn.sh` or call `kh_proc_self_register()` in `main()` to be
     covered. Until an app is migrated, after a test still `ps aux |
     grep` for its manager/engine names and confirm zero strays — or
-    just open **`mon-hq`** (HQ menu → `mon`, or
-    `sh 44.xyz.01.00/&.hq-apps/mon-hq/mon_scan.sh list`), which
-    classifies every board/engine/hq process GOOD vs BAD and reaps the
-    BAD ones. See `00-INDEX.md` → **CPU safety**.
+    just open **`proc-mon`** (renamed from `mon-hq` 2026-09-10; HQ menu
+    → `mon`, or `sh 44.xyz.01.00/&.hq-apps/proc-mon/mon_scan.sh list`),
+    which classifies every board/engine/hq process GOOD vs BAD and
+    reaps the BAD ones. See `00-INDEX.md` → **CPU safety**.
 10. **Never end a work block with uncommitted code.** Uncommitted work
     is fire-able: it literally died once here (the whole nb-js-worker
     step-6/7 set was lost when its only copy lived in the working tree
@@ -75,6 +75,27 @@ involving live windows or shared files.*
     `wip: ...`). Sweep nothing extra — do NOT `git add -A` across the
     tree; runtime state files (`module_parent.pid`, `.pdl`, logs) drown
     the real diff. Push only when the user asks.
+11. **Syncing another tool's branch to match yours: merge, never force/
+    reset/rebase — even when the user asks you to "sync it" or "give it
+    to X too."** Real incident, 2026-09-10: at the user's request to
+    hand `claude`'s work to `opencode`, Sonnet ran `git branch -f
+    opencode main` + a force-push while opencode's own session had that
+    branch checked out with real local state — moved their branch ref
+    out from under a live worktree mid-edit, corrupting their checkout
+    (a 313-file phantom diff, hours of both agents' time to diagnose).
+    A second attempt assumed a clean tree would let `opencode` fast-
+    forward onto the new state — also wrong: their branch had genuinely
+    diverged (real divergent commits, not just a dirty tree), so no
+    amount of stashing could make a fast-forward topologically possible
+    — only `git merge origin/<branch>` + push resolves that. **The
+    rule, reciprocal for every tool sharing this repo:** to bring
+    another tool's branch up to date, `git merge` (or fetch + merge)
+    their branch's real commits into the target and push the merge —
+    never move/reset/force-push a branch ref that another live session
+    might have checked out. If genuinely unsure whether a target branch
+    is clean-behind (safe to fast-forward) or has real divergent
+    commits, check first (`git merge-base --is-ancestor` /
+    `git log A..B`) rather than assuming either way.
 
 ## Verification discipline (non-negotiable)
 

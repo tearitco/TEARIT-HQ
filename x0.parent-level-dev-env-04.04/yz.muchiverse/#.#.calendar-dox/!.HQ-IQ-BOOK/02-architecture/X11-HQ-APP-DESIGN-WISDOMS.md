@@ -14,7 +14,7 @@ things (its `README.md` lists them), and you have a registered window
 on screen before writing any logic. It also serves as a smoke test for
 the renderer + `<module>` + `vars=` + `<repeat>` + `action=` path.
 
-**The five things that bite everyone (all learned live, mon-hq
+**The five things that bite everyone (all learned live, proc-mon
 2026-09-10):**
 
 1. **`<sidebar>` + `<panel>` is mandatory for chrome + the taskbar
