@@ -168,14 +168,31 @@ pc-hq's `file-hq` verb keeps its own tiny consumer but calls the shared
    `count==0` fallback.
    - **DONE** (static builders): `player` (3a), `ai` (3a), `db` (3b)
      — `2026-09-08`, commits `e23dea05` / `2d7c1ae7`, verified live.
-   - **REMAINING** (directory-scanning builders): `user`, `pals`,
-     `toys`, `clock`. These enumerate accounts / pals / toy projects /
-     clocks, so the conversion is: read static *prefix* rows from the
-     pdl (`<cell>_menu_pre_N_*`), append the scanned rows, then static
-     *suffix* rows (`<cell>_menu_post_N_*`). Higher regression risk
-     (account switching, pal placement, toy launch, clock control) —
-     do each with a live click-test of the scanned action, not just
-     the menu render.
+   - **DONE** (the one remaining static builder): `clock` — `2026-09-10`,
+     commit `90e8ae2e`. Takes the exact `player`/`ai`/`db` shape
+     verbatim (it turned out to have no directory scan at all, 4 fixed
+     rows — just never got the treatment).
+   - **DONE** (directory-scanning builders): `user`, `pals`, `toys` —
+     `2026-09-10`, commit `90e8ae2e`. New sibling helper
+     `livedesk_pdl_menu_rows_staged(house_root, cell, "pre"|"post",
+     menu, max)` brackets the real scan: static *prefix* rows from the
+     pdl (`<cell>_menu_pre_N_label`/`_cmd`), then the scanned rows
+     (accounts / pal dirs / toy.pdl projects, unchanged), then static
+     *suffix* rows (`<cell>_menu_post_N_label`/`_cmd`) — falls back to
+     the old hardcoded "Cancel" only when the pdl defines no post rows,
+     so an untouched house is byte-identical to before. Verified live
+     against the real manager (`strip_history.txt` header-open codes,
+     read back via `#.desktop/strip_ui.txt`): all three still open with
+     their real scanned content unchanged, and a real `toys_menu_pre_1_*`
+     test row rendered first (`hi_0`) ahead of every scanned toy before
+     being removed. All 7 debt-list cells (`user`, `player`, `db`,
+     `pals`, `toys`, `clock`, `ai`) are now pdl-driven — **step 3 is
+     done.**
+   - Found *while* doing this step, not part of it: the click-dispatch
+     side of these same dropdowns had two separate places that bypassed
+     `click_two_step` entirely (fixed `51987955` / `a9d7085c`, same
+     session) — worth knowing if you're reading this doc for the menu
+     *data* story and wondering why click behavior changed too.
 4. **`03-pitfalls/HOUSE_CODE_PITFALLS.md`**: new entry — "strip menu
    behavior is `livedesk_taskbar.pdl` data; a fresh
    `strcmp(m->command, "livedesk:…")` branch for a *launch* is the
