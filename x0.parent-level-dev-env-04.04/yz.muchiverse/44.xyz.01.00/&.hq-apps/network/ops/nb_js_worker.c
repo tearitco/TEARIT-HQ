@@ -54,6 +54,13 @@ static int g_cli_status_ok = 0;  /* CLI exit-status latch set by send_status */
 static int g_nav_emit = 0;       /* rung-6 slice 2: daemon only (!g_cli, set */
                                  /* per run_page) - NAV frames go to manager */
 
+/* devtools console EVAL: the last LOAD's Duktape heap + DOM tree stay live
+ * (g_live_ctx / g_dom_root) between LOAD and EVAL, so an eval:<js> snippet
+ * runs against the real page context (document, window, globals, timer
+ * bindings) and can mutate the DOM. Tear down only at the next LOAD or on
+ * QUIT/error - see run_page() and live_teardown(). */
+static duk_context *g_live_ctx = NULL;
+
 static void send_payload(const char *payload, size_t n) {
     if (g_cli) {
         /* plain text: drop the "RENDER\n" frame header, then the rows */
@@ -2676,6 +2683,18 @@ static void dom_teardown(void) {
     g_css = NULL;
 }
 
+/* devtools console EVAL: tear down everything a previous LOAD left live
+ * (resident Duktape heap + its DOM tree). run_page() keeps those alive on
+ * the success path so an eval:<js> snippet can run against the page; this
+ * helper is the disciplined cleanup for the next LOAD, errors and QUIT. */
+static void live_teardown(void) {
+    if (g_live_ctx) {
+        duk_destroy_heap(g_live_ctx);
+        g_live_ctx = NULL;
+    }
+    dom_teardown();
+}
+
 /* phase-2 (2026-09-09): document-order script runs. The manager writes one
  * <script> (inline or src-fetched) per slice of page.js, separated by the
  * SCRIPT_BOUNDARY sentinel. Each slice is compiled and run as its own
@@ -2743,6 +2762,10 @@ static void run_page(void) {
     /* rung-6: sessionStorage is per-LOAD — fresh session for this page. */
     g_ss_count = 0;
 
+    /* devtools console EVAL: a previous LOAD may still have its resident
+     * heap + DOM alive; tear it down before building this page. */
+    live_teardown();
+
     g_dom_root = NULL;
     g_orphans = NULL;
     g_css = NULL;
@@ -2773,7 +2796,8 @@ static void run_page(void) {
     }
 
     duk_context *ctx = duk_create_heap(NULL, NULL, NULL, NULL, fatal_handler);
-    if (!ctx) { dom_teardown(); send_status("STATUS err:heap"); return; }
+    if (!ctx) { live_teardown(); send_status("STATUS err:heap"); return; }
+    g_live_ctx = ctx;   /* resident from here on — kept alive for EVAL */
     install_host(ctx);
 
     /* rung 7: the resident worker's CSS resolve wins over install_host's
@@ -2792,13 +2816,11 @@ static void run_page(void) {
     char *src = NULL;
     size_t src_n = 0;
     if (!read_file(g_page_js, &src, &src_n)) {
-        duk_destroy_heap(ctx);
-        free(src);
-        dom_teardown();
         send_status("STATUS err:cannot read page.js");
+        live_teardown();
         return;
     }
-    if (src_n == 0) { free(src); duk_destroy_heap(ctx); dom_teardown(); send_status("STATUS ok"); return; }
+    if (src_n == 0) { free(src); send_status("STATUS ok"); return; }
 
     run_scripts_slices(ctx, src, src_n);
     free(src);
@@ -2808,12 +2830,10 @@ static void run_page(void) {
         char msg[1100];
         snprintf(msg, sizeof(msg), "STATUS err:%s",
                  g_pending_errmsg[0] ? g_pending_errmsg : "event loop error");
-        duk_destroy_heap(ctx);
-        dom_teardown();
         send_status(msg);
+        live_teardown();
         return;
     }
-    duk_destroy_heap(ctx);
 
     /* step 4: emit RENDER rows from the post-JS DOM, then STATUS. The
      * manager merges these into page.state.txt so JS mutations show. */
@@ -2858,7 +2878,65 @@ static void run_page(void) {
         }
     }
 
-    dom_teardown();
+    /* devtools console EVAL: keep the heap + DOM tree resident so an
+     * eval:<js> snippet can run against this page context (see cmd_eval);
+     * live_teardown() reclaims it at the next LOAD / QUIT / error. */
+    send_status("STATUS ok");
+}
+
+/* devtools console EVAL: run a <js> snippet against the resident page heap
+ * (g_live_ctx). Source + result (+ any console.* noise) echo to the console
+ * capture (g_out / NBW_CONSOLE); post-eval DOM rows are re-emitted so JS
+ * mutations show in the browser; an eval-triggered navigation ships a NAV
+ * frame. Budget-guarded like page scripts (peval_budget / EVAL_BUDGET_SEC). */
+static void cmd_eval(const char *js) {
+    if (!g_live_ctx) { send_status("STATUS err:no page loaded"); return; }
+    if (g_out) { fprintf(g_out, ">%s\n", js); fflush(g_out); }
+    duk_push_lstring(g_live_ctx, js, strlen(js));
+    int rc = peval_budget(g_live_ctx, NULL);
+    if (rc != 0) {
+        const char *m = duk_safe_to_string(g_live_ctx, -1);
+        char msg[1100];
+        snprintf(msg, sizeof(msg), "STATUS err:%s", m ? m : "eval error");
+        if (g_out) { fprintf(g_out, "!>%s\n", m ? m : "eval error"); fflush(g_out); }
+        duk_pop(g_live_ctx);
+        send_status(msg);
+        return;
+    }
+    const char *r = duk_safe_to_string(g_live_ctx, -1);
+    if (g_out) { fprintf(g_out, "=>%s\n", r ? r : ""); fflush(g_out); }
+    duk_pop(g_live_ctx);
+
+    /* re-emit post-eval RENDER rows so mutated DOM is reflected */
+    SB rr = {0, 0, 0};
+    dom_render_rows(&rr);
+    if (rr.s && rr.s[0]) {
+        size_t rn = strlen(rr.s);
+        if (rn < RENDER_MAX) {
+            char *pay = malloc(7 + rn + 1);
+            if (pay) {
+                memcpy(pay, "RENDER\n", 7);
+                memcpy(pay + 7, rr.s, rn);
+                pay[7 + rn] = 0;
+                send_payload(pay, 7 + rn);
+                free(pay);
+            }
+        }
+    }
+    free(rr.s);
+
+    /* an eval can navigate too (e.g. location.href = "...") */
+    if (g_nav_emit && g_nav_kind[0]) {
+        char pay[4600];
+        int pn = 0;
+        if (g_nav_kind[0] == 'B' || g_nav_kind[0] == 'F')
+            pn = snprintf(pay, sizeof(pay), "NAV\n%s\n%d\n", g_nav_kind,
+                          g_nav_count > 0 ? g_nav_count : 1);
+        else
+            pn = snprintf(pay, sizeof(pay), "NAV\n%s\n%s\n", g_nav_kind, g_nav_url);
+        if (pn > 0 && pn < (int)sizeof(pay))
+            send_payload(pay, (size_t)pn);
+    }
     send_status("STATUS ok");
 }
 
@@ -3541,7 +3619,9 @@ int main(int argc, char **argv) {
     {
         const char *nbw_out = getenv("NBW_CONSOLE");
         if (nbw_out && nbw_out[0]) {
-            g_out = fopen(nbw_out, "w");
+            /* append ("ab") — the manager keeps a live console panel across
+             * worker respawns and trims the file itself (trim_tail_file) */
+            g_out = fopen(nbw_out, "ab");
             if (g_out) setvbuf(g_out, NULL, _IOLBF, 0);   /* console capture (debug/tests) */
         }
     }
@@ -3572,6 +3652,7 @@ int main(int argc, char **argv) {
         char *f[8];           split_lines(f);
         const char *cmd = f[0] ? f[0] : "";
         if (strcmp(cmd, "QUIT") == 0) {
+            live_teardown();
             break;
         } else if (strcmp(cmd, "LOAD") == 0) {
             g_title[0] = 0; g_href[0] = 0;
@@ -3582,6 +3663,10 @@ int main(int argc, char **argv) {
             if (f[4]) snprintf(g_title, sizeof(g_title), "%s", f[4]);
             if (f[5]) snprintf(g_style_css, sizeof(g_style_css), "%s", f[5]);
             run_page();
+        } else if (strcmp(cmd, "EVAL") == 0) {
+            /* devtools console: eval:<js> — js is field 1 (address-bar single
+             * line; embedded '\n' is split out by split_lines, fine for REPL) */
+            cmd_eval(f[1] ? f[1] : "");
         } else {
             send_status("STATUS err:unknown command");
         }
