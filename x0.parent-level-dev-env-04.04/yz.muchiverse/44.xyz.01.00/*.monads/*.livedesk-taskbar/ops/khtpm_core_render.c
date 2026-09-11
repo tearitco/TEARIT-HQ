@@ -1045,6 +1045,27 @@ static const char *parse_element(const char *p, Elem *parent) {
     }
     tag[tn] = '\0';
     Elem *e = elem_new(tag);
+    /* REAL BUG FIX 2026-09-11 (gdb-traced crash: a real, large loaded
+     * page - 4chan's own /b/ front page, ~250+ real content rows,
+     * each one 4 real Elems per the network-browser template's own
+     * <repeat> body even though only one of the four ever shows -
+     * pushed g_pool past MAX_ELEMS=1024, elem_new() returned NULL, and
+     * this line dereferenced it unconditionally: `e->parent = parent`
+     * on a NULL e). elem_new()'s own documented contract (see its
+     * declaration's 2026-08-26 comment, "elem_new() returns NULL,
+     * guarded call sites just skip adding content") was never actually
+     * honored HERE, the one call site every other element in the house
+     * ultimately funnels through - a real, root-cause gap, not a
+     * network-browser-specific one (any window's page, given enough
+     * content, was one large-enough load away from this same crash).
+     * Real fix: once the pool is genuinely exhausted, there is no
+     * recovering a partial parse - stop parsing HERE, at the exact
+     * point of exhaustion, same "run out of string" contract this
+     * function's own closing-tag branch a few lines down already uses
+     * (`return end ? end + 1 : p + strlen(p);`) - the tree is silently
+     * truncated at MAX_ELEMS rather than crashing; every already-parsed
+     * element up to this point is real and rendered normally. */
+    if (!e) return p + strlen(p);
     e->parent = parent;
     if (parent && parent->n_children < MAX_CHILDREN) parent->children[parent->n_children++] = e;
 
@@ -6753,6 +6774,26 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
             if (is_area) default_text_area_save(e); else default_cli_io_save(e);
         }
         kh_clipboard_request_paste();
+        return;
+    }
+    /* REAL, NEW 2026-09-11, direct live report ("unlike a real browser,
+     * i cant clear the search bar. i have to open a new tab") - root
+     * cause: activate_focused() arms a cli_io with the cursor at the
+     * END of the buffer and the selection COLLAPSED (sel_anchor ==
+     * cursor), never select-all-on-focus like a real browser's address
+     * bar; and this function had no key that selects the whole buffer
+     * at all - Ctrl+A simply did nothing. A real, generic gap (every
+     * cli_io/text_area in the house, not network-browser-specific),
+     * fixed the same generic way Ctrl+C/X/V already are: Ctrl+A
+     * (ASCII 1, matches the existing 3/22/24 pattern just above)
+     * selects [0, strlen(buf)) - the user can then just start typing
+     * (kh_text_delete_selection() already replaces a live selection on
+     * any keystroke, same as every other selection-aware path here) or
+     * hit Backspace/Delete to clear it in one motion, no new-tab
+     * workaround needed. */
+    if (ch == 1) { /* Ctrl+A - select all */
+        e->sel_anchor = 0;
+        e->cursor = (int)strlen(buf);
         return;
     }
     /* --- cursor movement, selection-aware. Shift+move keeps
