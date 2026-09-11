@@ -6,6 +6,70 @@ note under it — don't silently edit it away.*
 
 ## Open
 
+- **network-browser address bar: keeps losing keyboard focus/backspace
+  while typing - RECURRING, fixed 3+ times, still reported broken on
+  real hardware** (found/re-found repeatedly 2026-09-10/11). User
+  report (verbatim, most recent): "its the exact sae bg as we just
+  fixed the last 3 times. no difference."
+
+  **Real, confirmed root causes fixed so far** (all landed, all
+  verified via the relay-driven testing method - see below for why
+  that verification is now suspect):
+  1. `network_browser_manager.c`'s `write_ui_projection()` used to
+     derive the address bar's `addr_label` from `g_current_url` (the
+     LOADED page), not the live-typed value - any unrelated reparse
+     (status/tabs/history changing, ~every 300ms) re-seeded the field
+     from the stale full URL, fighting every edit. Fixed to echo
+     `cli_io_state.txt`'s own `address=` while non-empty.
+  2. `khtpm_core_render.c`'s `reparse_chtpm_if_changed()` unconditionally
+     disarmed + released the real `XGrabKeyboard` on EVERY reparse for
+     `<cli_io>` (text_area got an equivalent fix 2026-09-08, cli_io
+     never did until now). network-browser's manager reparses far more
+     often than most windows (the ~300ms tick above), so it hit this
+     constantly. Fixed: the grab is a Window-level resource, not tied
+     to the Elem* - if the same field (by saved key) still exists after
+     reparse, the grab already held is still valid; only release it if
+     the key is genuinely gone. This fix is now shared/generic (helps
+     open-hai/chat-hai too, not network-browser-specific) and the user
+     separately confirmed it fixed open-hai's real, repeated click-arm/
+     focus-loss failures on real hardware.
+
+  **Both (1) and (2) are live, committed, and pass every scripted
+  relay test this session ran** (click-arm via `MOUSE_EVENT`, type via
+  `KEY_PRESSED`, wait 3+ seconds through several real manager reparse
+  ticks, backspace - content and arm state both survive correctly,
+  repeatable). **The user reports the real, physical-hardware behavior
+  is unchanged - still broken, still losing focus/backspace.**
+
+  **Open question, not yet resolved**: this exact split (synthetic/
+  relay-driven testing shows success, real hardware still fails) is
+  the SAME shape as the already-documented, already-solved-once
+  `override_redirect` pc-hq focus bug (`09-appendix/pc-hq-bugs.md`
+  Bug 2, "synthetic XTest input worked, masking the bug"). The relay
+  mechanism this house's own testing hierarchy ranks ABOVE xdotool
+  (`#.desktop/entity_menu_history/<pid>.txt`, real KeyPress/ButtonPress
+  dispatch through the SAME `handle_key()`/`hq_dispatch_xevent()` code
+  path a real X event takes) has not, until now, been suspected of
+  having its own version of this masking effect - but the gap between
+  "relay says fixed" and "real user says broken, unchanged, 3 fixes in
+  a row" is now wide enough that it must be considered. Real
+  differences between relay-driven and real-hardware input not yet
+  ruled out: real `MotionNotify` events (the desktop is focus-follows-
+  mouse; a human naturally moves the mouse while reading/scrolling a
+  loaded page, the relay never does), real inter-keystroke timing
+  (much slower/irregular than a scripted burst, giving more real
+  manager reparse ticks a chance to land mid-edit), and real
+  X-server-level grab contention from OTHER concurrently-open
+  windows/the taskbar (the relay's `KEY_PRESSED`/`MOUSE_EVENT` lines
+  are dispatched by this window's OWN process reading its OWN history
+  file - it is not proven this reaches `handle_key()` via the exact
+  same call path a genuine X `KeyPress`/`ButtonPress` event takes,
+  e.g. it may bypass whatever real X grab/focus state a live human
+  interaction depends on). **Needs live re-test with a human clicking/
+  typing while an agent watches `cli_io_state.txt` and the real
+  `XGetInputFocus` state in parallel, not another round of relay-only
+  verification before calling it fixed.**
+
 - **pc-hq board: real keyboard focus vs the taskbar** (found
   2026-09-04, see `09-appendix/pc-hq-bugs.md` for the full
   investigation): root cause found and proven once already, by a
