@@ -2863,28 +2863,42 @@ static int livedesk_build_desk_menu(const char *house_root, HQMenuItem *menu, in
     return i;
 }
 
+/* fwd - defined below livedesk_pdl_menu_rows(); the directory-scanning
+ * builders (pals here, user/toys further down) need it before that
+ * point in the file. */
+static int livedesk_pdl_menu_rows_staged(const char *house_root, const char *cell, const char *stage,
+                                         HQMenuItem *menu, int max);
+
 static int livedesk_build_pals_menu(const char *house_root, HQMenuItem *menu, int max) {
+    /* TASKBAR-MENUS-DATA-DRIVEN.md §4 step 3 - directory-scanning
+     * builder, so pdl-driven static rows bracket the real scan instead
+     * of replacing it: pals_menu_pre_N_* first, the scanned pal list in
+     * the middle, pals_menu_post_N_* last (falls back to the old
+     * hardcoded "Cancel" only when the pdl defines no post rows, so an
+     * untouched house behaves exactly as before). */
+    int n = livedesk_pdl_menu_rows_staged(house_root, "pals", "pre", menu, max);
+
     char pr[KTB_PATH_BUF];
-    if (!livedesk_pals_root(house_root, pr, sizeof(pr))) return 0;
+    if (!livedesk_pals_root(house_root, pr, sizeof(pr))) return n;
     char names[KTB_LIVEDESK_DYN_MAX][64];
-    int n = 0;
+    int scan_n = 0;
     DIR *d = opendir(pr);
     if (d) {
         struct dirent *e;
         while ((e = readdir(d))) {
-            if (n >= max || n >= KTB_LIVEDESK_DYN_MAX) break;
+            if (scan_n >= max - n || scan_n >= KTB_LIVEDESK_DYN_MAX) break;
             if (e->d_name[0] == '.') continue;
             char mp[KTB_PATH_BUF];
             snprintf(mp, sizeof(mp), "%s/%s/pal.pdl", pr, e->d_name);
             char gp[KTB_PATH_BUF];
             snprintf(gp, sizeof(gp), "%s/%s/glyph.txt", pr, e->d_name);
             if (access(mp, F_OK) != 0 && access(gp, F_OK) != 0) continue;
-            snprintf(names[n], sizeof(names[n]), "%s", e->d_name);
-            n++;
+            snprintf(names[scan_n], sizeof(names[scan_n]), "%s", e->d_name);
+            scan_n++;
         }
         closedir(d);
-        for (int i = 0; i < n - 1; i++)
-            for (int j = i + 1; j < n; j++)
+        for (int i = 0; i < scan_n - 1; i++)
+            for (int j = i + 1; j < scan_n; j++)
                 if (strcmp(names[j], names[i]) < 0) {
                     char t[64];
                     snprintf(t, sizeof(t), "%s", names[i]);
@@ -2892,7 +2906,7 @@ static int livedesk_build_pals_menu(const char *house_root, HQMenuItem *menu, in
                     snprintf(names[j], sizeof(names[j]), "%s", t);
                 }
     }
-    for (int i = 0; i < n && i < max; i++) {
+    for (int i = 0; i < scan_n && n < max; i++, n++) {
         char mp[KTB_PATH_BUF], glyph[64] = "", hash[128] = "";
         snprintf(mp, sizeof(mp), "%s/%s/pal.pdl", pr, names[i]);
         read_key_value(mp, "glyph", glyph, sizeof(glyph));
@@ -2900,14 +2914,18 @@ static int livedesk_build_pals_menu(const char *house_root, HQMenuItem *menu, in
         char short_hash[16] = "";
         snprintf(short_hash, sizeof(short_hash), "%s", hash);
         short_hash[10] = '\0';
-        snprintf(menu[i].label, sizeof(menu[i].label), "%s %s #%s",
+        snprintf(menu[n].label, sizeof(menu[n].label), "%s %s #%s",
                  glyph[0] ? glyph : "•", names[i], short_hash);
-        snprintf(menu[i].command, sizeof(menu[i].command), "livedesk:pal:%s", names[i]);
+        snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:pal:%s", names[i]);
     }
     if (n < max) {
-        snprintf(menu[n].label, sizeof(menu[n].label), "Cancel");
-        menu[n].command[0] = '\0';
-        n++;
+        int post = livedesk_pdl_menu_rows_staged(house_root, "pals", "post", &menu[n], max - n);
+        n += post;
+        if (post == 0 && n < max) {
+            snprintf(menu[n].label, sizeof(menu[n].label), "Cancel");
+            menu[n].command[0] = '\0';
+            n++;
+        }
     }
     return n;
 }
@@ -2957,6 +2975,35 @@ static int livedesk_pdl_menu_rows(const char *house_root, const char *prefix,
         char lkey[48], ckey[48];
         snprintf(lkey, sizeof(lkey), "%s_menu_%d_label", prefix, i);
         snprintf(ckey, sizeof(ckey), "%s_menu_%d_cmd", prefix, i);
+        char lab[64] = "", cmd[KTB_PATH_BUF] = "";
+        read_key_value(pdl, lkey, lab, sizeof(lab));
+        read_key_value(pdl, ckey, cmd, sizeof(cmd));
+        if (!lab[0]) continue;
+        snprintf(menu[count].label, sizeof(menu[count].label), "%s", lab);
+        snprintf(menu[count].command, sizeof(menu[count].command), "%s", cmd);
+        count++;
+    }
+    return count;
+}
+
+/* Sibling of livedesk_pdl_menu_rows() for the directory-scanning
+ * builders (user/pals/toys - TASKBAR-MENUS-DATA-DRIVEN.md §2.3/§4 step
+ * 3, "REMAINING" list). Those can't be pure static-or-scan like player/
+ * ai/db (a row for EVERY scanned account/pal/toy would be absurd to
+ * hand-write in the pdl) - instead the pdl supplies optional static
+ * rows BEFORE and AFTER the real scan: `<cell>_menu_pre_N_label`/`_cmd`
+ * and `<cell>_menu_post_N_label`/`_cmd`. stage is "pre" or "post".
+ * Returns how many rows it wrote into menu[0..), same convention as
+ * livedesk_pdl_menu_rows(). */
+static int livedesk_pdl_menu_rows_staged(const char *house_root, const char *cell, const char *stage,
+                                         HQMenuItem *menu, int max) {
+    char pdl[KTB_PATH_BUF];
+    snprintf(pdl, sizeof(pdl), "%s/#.desktop/livedesk_taskbar.pdl", house_root);
+    int count = 0;
+    for (int i = 1; i <= max; i++) {
+        char lkey[64], ckey[64];
+        snprintf(lkey, sizeof(lkey), "%s_menu_%s_%d_label", cell, stage, i);
+        snprintf(ckey, sizeof(ckey), "%s_menu_%s_%d_cmd", cell, stage, i);
         char lab[64] = "", cmd[KTB_PATH_BUF] = "";
         read_key_value(pdl, lkey, lab, sizeof(lab));
         read_key_value(pdl, ckey, cmd, sizeof(cmd));
@@ -3501,7 +3548,13 @@ static int livedesk_clock_rows(const char *house_root, HQMenuItem *menu, int max
 }
 
 static int livedesk_build_clock_menu(const char *house_root, HQMenuItem *menu, int max) {
-    int n = 0;
+    /* TASKBAR-MENUS-DATA-DRIVEN.md §4 step 3 - "clock" was the one
+     * "REMAINING" debt-list entry that's actually STATIC (4 fixed
+     * rows, no directory scan), so it takes the exact same player/ai/
+     * db shape: pdl rows win when livedesk_taskbar.pdl defines any
+     * clock_menu_N_*, hardcoded rows are the count==0 fallback. */
+    int n = livedesk_pdl_menu_rows(house_root, "clock", menu, max);
+    if (n > 0) return n;
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "clocks & cals"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:clock:clocks"); n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "reminders"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:clock:reminders"); n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "game clocks"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:clock:game"); n++; }
@@ -3697,7 +3750,13 @@ static int livedesk_build_db_common_events_menu(const char *house_root, HQMenuIt
  * then "new-user-name", see ktb_cliio_submit()) as the closest faithful
  * match given that real constraint, not a wholesale re-architecture. */
 static int livedesk_build_user_menu(const char *house_root, HQMenuItem *menu, int max) {
-    int n = 0;
+    /* TASKBAR-MENUS-DATA-DRIVEN.md §4 step 3 - directory-scanning
+     * builder (real accounts under 0.user-pal/users/), so pdl-driven
+     * static rows bracket the real New-User/switch/Logout block rather
+     * than replacing it: user_menu_pre_N_* first, user_menu_post_N_*
+     * last (falls back to the old hardcoded "Cancel" only when the pdl
+     * defines no post rows). */
+    int n = livedesk_pdl_menu_rows_staged(house_root, "user", "pre", menu, max);
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "New User..."); snprintf(menu[n].command, sizeof(menu[n].command), "user:new"); n++; }
 
     char login_root[KTB_PATH_BUF];
@@ -3785,9 +3844,13 @@ static int livedesk_build_user_menu(const char *house_root, HQMenuItem *menu, in
         }
     }
     if (n < max) {
-        snprintf(menu[n].label, sizeof(menu[n].label), "Cancel");
-        menu[n].command[0] = '\0';
-        n++;
+        int post = livedesk_pdl_menu_rows_staged(house_root, "user", "post", &menu[n], max - n);
+        n += post;
+        if (post == 0 && n < max) {
+            snprintf(menu[n].label, sizeof(menu[n].label), "Cancel");
+            menu[n].command[0] = '\0';
+            n++;
+        }
     }
     return n;
 }
@@ -3889,7 +3952,13 @@ static void toys_scan_one_root(const char *root, HQMenuItem *menu, int max, int 
 }
 
 static int livedesk_build_toys_menu(const char *house_root, HQMenuItem *menu, int max) {
-    int n = 0;
+    /* TASKBAR-MENUS-DATA-DRIVEN.md §4 step 3 - directory-scanning
+     * builder (the actual reproduction case for the "one click opens a
+     * dropdown app" report this refactor followed from), so pdl-driven
+     * static rows bracket the real 3-root toy.pdl scan: toys_menu_pre_
+     * N_* first, toys_menu_post_N_* last (falls back to the old
+     * hardcoded "Cancel" only when the pdl defines no post rows). */
+    int n = livedesk_pdl_menu_rows_staged(house_root, "toys", "pre", menu, max);
     toys_scan_one_root(house_root, menu, max, &n);
     char apps_root[KTB_PATH_BUF];
     snprintf(apps_root, sizeof(apps_root), "%s/@.apps", house_root);
@@ -3902,7 +3971,11 @@ static int livedesk_build_toys_menu(const char *house_root, HQMenuItem *menu, in
     char widgits_root[KTB_PATH_BUF];
     snprintf(widgits_root, sizeof(widgits_root), "%s/&.widgits", house_root);
     toys_scan_one_root(widgits_root, menu, max, &n);
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Cancel"); menu[n].command[0] = '\0'; n++; }
+    if (n < max) {
+        int post = livedesk_pdl_menu_rows_staged(house_root, "toys", "post", &menu[n], max - n);
+        n += post;
+        if (post == 0 && n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Cancel"); menu[n].command[0] = '\0'; n++; }
+    }
     return n;
 }
 
