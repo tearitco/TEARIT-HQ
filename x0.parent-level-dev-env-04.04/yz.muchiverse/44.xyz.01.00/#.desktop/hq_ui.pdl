@@ -23,3 +23,4 @@ font_scale=1.25
 # fallback every window without its own font-family uses. Live-reloaded
 # same as font_scale; picker lives in the taskbar-settings app.
 font_family=DejaVu Sans
+incremental_reparse=1

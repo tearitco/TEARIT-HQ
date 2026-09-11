@@ -2702,6 +2702,25 @@ static void write_ui_projection(void) {
     UI_PUT("act_newtab='%s/ops/nb_write_newtab.sh' 'newtab'\n", g_package_dir);
     UI_PUT("act_go='%s/ops/nb_write_go.sh' 'go' '%s'\n", g_package_dir, g_ui_output_path);
 
+    /* REVERTED 2026-09-11, direct instruction ("its echoing them twice
+     * ... just treat this pipeline same as the other cli-io's clear on
+     * new, 1 render only"). The 2026-09-11 fix just above this (now
+     * removed) echoed cli_io_state.txt's own live-typed address= back
+     * as addr_label, to fight the OLD destroy-and-rebuild reparse
+     * wiping input_buffer on every tick. That's now unnecessary AND
+     * actively harmful: khtpm_core_render.c's reparse_chtpm_if_changed()
+     * (CHTPM-INCREMENTAL-REPARSE-DESIGN.md, live for every window as of
+     * this same session) already preserves a cli_io's input_buffer
+     * across reparse by never destroying the Elem in the first place -
+     * no manager-side echo needed at all. Having BOTH the renderer's
+     * own live-typed input_buffer AND the manager re-injecting the same
+     * text via label= is two sources of truth for one field - the real
+     * cause of the reported double-echo. Every other cli_io in the
+     * house (open-hai's composer, chat-hai's, text-edit-hq's editor)
+     * has a STATIC label/content, never manager-projected once armed -
+     * this now matches that same one-source-of-truth shape: addr_label
+     * is purely the loaded page's URL, exactly like it was before any
+     * of this session's cli_io investigation started. */
     {
         char shown[PATH_BUF], s[PATH_BUF];
         snprintf(shown, sizeof(shown), "%s", g_current_url[0] ? g_current_url : "URL: ");
