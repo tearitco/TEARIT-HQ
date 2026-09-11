@@ -10883,24 +10883,56 @@ static XFontStruct *g_font_info = NULL;
  * plain Latin fallback so ASCII stays crisp). Built once in main(),
  * used by every popup draw site below instead of XDrawString. */
 static XFontSet g_popup_fontset = NULL;
+/* the g_ui_scale_pct this fontset was actually built at - lets
+ * ensure_popup_fontset_current() (below) notice a live font_scale
+ * change and rebuild, instead of baking in whatever scale happened to
+ * be loaded at process start forever. 0 = never built yet. */
+static int g_popup_fontset_pct = 0;
 
 static void load_popup_fontset(Display *dpy) {
+    /* REAL FIX 2026-09-10, direct report ("everything honors [font
+     * settings] but 1 thing... the bible verse popup within bookstack
+     * entity"): this whole XFontSet predates font_scale (2026-08-05,
+     * house-wide scaling landed later) and never picked it up - the
+     * "18" pixel-size field below was a hardcoded literal, while
+     * POPUP_ROW_H right next to every draw site already correctly used
+     * scaled(28). g_ui_scale_pct is already loaded by the time any
+     * real caller reaches this (desktop_load_click_two_step() runs
+     * earlier in every mode's own startup) - scaled(18) here is the
+     * whole fix for a fresh popup; ensure_popup_fontset_current()
+     * below covers a font_scale change while an entity is already
+     * running (settings reload live, this fontset didn't rebuild). */
     char **missing = NULL;
     int n_missing = 0;
     char *def_str = NULL;
-    const char *base =
-        "-misc-fixed-medium-r-normal--18-120-100-100-c-90-iso10646-1,"
-        "-*-fixed-medium-r-normal--18-*-*-*-*-*-iso10646-1,"
-        "-*-*-medium-r-normal--*-*-*-*-*-*-iso10646-1";
+    char base[320];
+    int px = scaled(18);
+    snprintf(base, sizeof(base),
+        "-misc-fixed-medium-r-normal--%d-120-100-100-c-90-iso10646-1,"
+        "-*-fixed-medium-r-normal--%d-*-*-*-*-*-iso10646-1,"
+        "-*-*-medium-r-normal--*-*-*-*-*-*-iso10646-1", px, px);
+    if (g_popup_fontset) { XFreeFontSet(dpy, g_popup_fontset); g_popup_fontset = NULL; }
     g_popup_fontset = XCreateFontSet(dpy, base, &missing, &n_missing, &def_str);
     if (missing) XFreeStringList(missing);
     if (!g_popup_fontset) {
         g_popup_fontset = XCreateFontSet(dpy, "fixed", &missing, &n_missing, &def_str);
         if (missing) XFreeStringList(missing);
     }
+    g_popup_fontset_pct = g_ui_scale_pct;
+}
+
+/* Rebuild the popup fontset if a live font_scale reload changed
+ * g_ui_scale_pct since it was last built - cheap check (an int
+ * compare) on every popup text draw/measure, real work only on an
+ * actual change. Called from popup_draw_text()/popup_text_px() so
+ * every existing call site gets this for free, no new call sites. */
+static void ensure_popup_fontset_current(Display *dpy) {
+    if (g_popup_fontset && g_popup_fontset_pct == g_ui_scale_pct) return;
+    load_popup_fontset(dpy);
 }
 
 static void popup_draw_text(Display *dpy, Drawable d, GC gc, int x, int y, const char *s) {
+    ensure_popup_fontset_current(dpy);
     if (g_popup_fontset) {
         Xutf8DrawString(dpy, d, g_popup_fontset, gc, x, y, s, (int)strlen(s));
     } else {
@@ -10910,8 +10942,8 @@ static void popup_draw_text(Display *dpy, Drawable d, GC gc, int x, int y, const
 
 /* Pixel width of UTF-8 popup label text (same fontset as popup_draw_text). */
 static int popup_text_px(Display *dpy, const char *s) {
-    (void)dpy;
     if (!s || !*s) return 0;
+    ensure_popup_fontset_current(dpy);
     if (g_popup_fontset) {
         XRectangle ink, logical;
         Xutf8TextExtents(g_popup_fontset, s, (int)strlen(s), &ink, &logical);
