@@ -410,12 +410,31 @@ void elem_inject_loop(Elem *parent, void **rows, int n, ElemFactory fn, void *ct
 static void css_layout_pass(Elem *e, int x, int y, int avail_w, int avail_h) {
     e->x = x;
     e->y = y;
+    /* REAL FIX 2026-09-11, direct live report ("resizing browser to
+     * full screen isn't working... window is bigger but browser window
+     * is in small window in big window") - live-confirmed via a PNG
+     * dump: chrome/border tracked the new fullscreen size correctly,
+     * but the flex-laid-out content (sidebar/nb-body/nb-console, the
+     * only window in the house using this css_layout_pass() flex path
+     * directly on its <page>) stayed frozen at its very first-ever
+     * size. Root cause: an element with no CSS width/height used to
+     * fall back to keeping its OWN PREVIOUS e->w/e->h if already
+     * nonzero, instead of the fresh avail_w/avail_h this call was
+     * just given - so avail_w only ever "won" on the very first pass
+     * (e->w starts at 0), and every later relayout (a window resize,
+     * fullscreen toggle, or any future live resize) silently kept the
+     * original size forever. avail_w/avail_h IS this element's real,
+     * current, authoritative size for this pass (computed by whichever
+     * caller invoked this function, be it the top-level layout_
+     * sidebar_panel() with g_win_w or a flex-parent handing down a
+     * proportioned child size a few lines below) - always use it when
+     * there's no explicit CSS size, never a stale remembered value. */
     e->w = (e->style.has_width && !e->style.width_is_pct) ? e->style.width
          : (e->style.has_width && e->style.width_is_pct) ? (avail_w * e->style.width) / 100
-         : (e->w > 0 ? e->w : avail_w);
+         : avail_w;
     e->h = (e->style.has_height && !e->style.height_is_pct) ? e->style.height
          : (e->style.has_height && e->style.height_is_pct) ? (avail_h * e->style.height) / 100
-         : (e->h > 0 ? e->h : avail_h);
+         : avail_h;
 
     int is_flex = e->style.has_display && e->style.display_flex;
     if (!is_flex) return; /* block: children untouched, caller manages them by hand */
