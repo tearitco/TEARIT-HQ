@@ -304,6 +304,50 @@ parser, zero new IR to invent.
      `state/*.txt` via tmp + rename so a reader never sees a partial
      frame. A reader that content-hashes a state file debounces
      (same new value on two consecutive polls) before acting.
+9. **Element identity survives reparse — real tree diff/patch, not
+   destroy-and-rebuild.** ADDED 2026-09-11 after a real, multi-round
+   incident chasing network-browser's cli_io losing keyboard focus/
+   backspacing wrongly - see `08-roadmap/design-docs/CHTPM-
+   INCREMENTAL-REPARSE-DESIGN.md` for the full design and
+   `04-bugs/BUG-LOG.md`'s "network-browser address bar" entry for the
+   incident trail (3 narrower fixes, each real, each insufficient,
+   before this landed). `reparse_chtpm_if_changed()` used to destroy
+   the ENTIRE `Elem` tree and rebuild it from scratch
+   (`g_n_elems = 0; parse_chtpm(...)`) on every real reparse -
+   `khtpm_reparse_diff.c` (a new canonical file,
+   `&.widgits/_shared-lib/`, same text-include-a-`.c` convention as
+   `khtpm_render_core.c`/`khtpm_draw_core.c`) now diffs the new parse
+   against the live tree by key (`target_id` else `id`) and patches
+   matched elements IN PLACE instead - a cross-reparse pointer
+   (`g_default_input_elem` etc.) simply never goes dangling for an
+   element reparse didn't need to touch, no per-consumer find-by-key
+   bolt-on required (the pattern `kh_text_areas_reload()`/
+   `kh_cli_io_reload()` were - now dead code, kept only until the
+   rollout's own final cleanup step). Concrete rules for any element
+   whose runtime state must survive a reparse:
+   - **A stateful `<cli_io>`/`<text_area>`/`<grid>` MUST carry a real
+     `id` or `target_id`.** The diff's positional fallback key (for
+     genuinely unkeyed rows) is not reliable enough for anything with
+     live user state - see the design doc's own "Open questions"
+     section for exactly why (front-shifting lists especially).
+   - **`content=` seeds a field's initial value ONCE, `label=` is
+     always just display text/prefix, never the same thing.** A real,
+     confirmed, reported bug (not hypothetical): giving a `<cli_io>`'s
+     `label=` the field's actual editable content (network-browser's
+     address bar, briefly, before this line existed) looked fine at a
+     glance but broke Backspace (input_buffer, what typing/Backspace
+     actually edit, was never seeded from label= - see `apply_attr()`'s
+     own `content`/`label` branches) and, on a second attempt, visibly
+     DOUBLED the text once content= was mistakenly ALSO set to the
+     same value label= already had (label draws as a literal prefix
+     before input_buffer for every cli_io - chat-hai's `"&gt; "`
+     prompt is the same mechanism). Use `content=` for the seed,
+     `label=` for a short prefix or nothing.
+   - **Do not add a new `kh_*_reload()` bolt-on for a new stateful
+     element type.** That pattern is what this whole item replaced -
+     `kh_diff_apply_template()`'s own explicit runtime-state-fields
+     list (in `khtpm_reparse_diff.c`) is the one place a new field
+     needs a line added, not a new function.
 
 ---
 

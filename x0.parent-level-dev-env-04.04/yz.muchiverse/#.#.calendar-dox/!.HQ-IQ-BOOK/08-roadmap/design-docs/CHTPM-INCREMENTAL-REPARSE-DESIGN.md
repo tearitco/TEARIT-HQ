@@ -1,6 +1,25 @@
 # khtpm incremental reparse (real tree diff/patch) — design doc
 
-**Status: IMPLEMENTATION IN PROGRESS.** §0 (khtpm_reparse_diff.c) done,
+**Status: LIVE, MERGED TO `claude` (2026-09-11).** Built on a
+short-lived branch (`khtpm-incremental-reparse`, off `claude`) per
+direct instruction ("lets commit them on a new branch tho, to be
+safe") while confidence was still building; fast-forward merged back
+into `claude` and the branch deleted once the user confirmed real-
+hardware testing passed for the dock/taskbar, chat-hai, and network-
+browser (including the address-bar content=/label= fix and the
+history delete/clear-all feature built on top of it - see this doc's
+own step 3 below and `04-bugs/BUG-LOG.md`'s "network-browser address
+bar" entry, now closed). `incremental_reparse=1` is live in
+`#.desktop/hq_ui.pdl` - every window in the house currently runs the
+new path. Remaining, NOT yet done: individually exercising every
+OTHER window type (open-hai, text-edit-hq, db-hq, events-hq, etc. -
+they're all running the new path by virtue of the shared flag, but
+nobody's specifically driven each one yet) and the final cleanup step
+(§ rollout step 7: remove the flag/old path, delete the now-dead
+`kh_text_areas_reload()`/`kh_cli_io_reload()`/`kh_find_input_by_key()`
+bolt-ons) once that broader confidence exists.
+
+Earlier status, preserved for the history: §0 (khtpm_reparse_diff.c) done,
 headless-tested green (commit `bb3f24fe`). Wired into
 `reparse_chtpm_if_changed()` behind `incremental_reparse=1` in
 `hq_ui.pdl`, OFF by default (commit `d13c92ef`). Rollout step 1 (dock/
@@ -11,9 +30,29 @@ observed in `kh_focus_debug.log`, including one genuine structural
 change (the "toys" dropdown opening: `removed=20`, correctly diffed
 and patched), all `ok`, zero crash, zero X error attributable to this
 change, dock re-dumped via PNG afterward and renders correctly (nav
-badges intact, clock advanced, no visual corruption). Next: step 2 (one
-simple window - text-edit-hq or chat-hai) with real-hardware
-confirmation, not relay-only.
+badges intact, clock advanced, no visual corruption). Rollout step 2
+(chat-hai) DONE and PASSING: launched during an ACTIVE, running
+multi-persona autonomous conversation (a new message appended every
+~6s - real, frequent reparse activity, not idle); typed into the
+composer, waited through 2 genuine reparses (one a real structural
+change, the new message being appended), content and armed state both
+survived; 3 real Backspace keystrokes all registered correctly - the
+exact symptom class this whole investigation started from.
+
+**Rollout step 3 (network-browser, the actual motivating case) DONE
+and PASSING, confirmed on REAL hardware (not just relay) - the user
+tested directly**: "yes its finally fixed." Two real bugs surfaced and
+were fixed along the way, both now folded into `CENTROID_GOLD_STD.md`
+item 9 as house-wide lessons: (a) the address bar losing focus/
+backspacing wrongly - the actual bug this whole design exists to fix -
+gone; (b) a real, separate `content=` vs `label=` confusion (briefly
+regressed into a visible double-echo before the real fix landed) -
+`content=` seeds `input_buffer` (what typing/Backspace edit), `label=`
+is always just display text/a prefix, never the same thing. A related,
+unrelated-to-this-design crash
+(`parse_element()` not null-checking `elem_new()`'s return when a
+large loaded page exhausted `MAX_ELEMS`) was also found and fixed
+during this same testing pass.
 
 Original design notes below, superseded in status only - the design
 itself held up unchanged through implementation and this first live
