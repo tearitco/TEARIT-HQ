@@ -68,17 +68,18 @@ Build:
 
 ### C. Video via wraith-alpha player subprocess (V2)
 Docs:
-- [ ] C doc: `NETWORK-BROWSER-VIDEO-HOWTO.md` (wraith contract
+- [x] C doc: `NETWORK-BROWSER-VIDEO-HOWTO.md` (wraith contract
       `video.control`/`video.playback`/`current_frame.png` + how we
       spawn it under the manager).
 
 Build:
-- [ ] V2 p.o.c.: one short mp4 + a local fixture page with `<video>`;
+- [x] V2 p.o.c.: one short mp4 + a local fixture page with `<video>`;
       player subprocess steered by `video.control`, frames land on the
-      canvas via `source_ref`/sprite path.
-- [ ] Probe C1: watch `frame_index` advance; screenshot a mid-frame.
+      canvas via sprite.csv mtime-reload (`hq_sprite()`).
+- [x] Probe C1: watch `frame_index` advance; screenshot a mid-frame.
   (V1 keep ffplay for real playback; V3 rawvideo pipe is later if ever
   needed.)
+- [x] Probe C2: `video:pause` / `video:resume` / `video:stop` controls.
 
 ### D. HTML subset spec (D8–D9)
 Docs:
@@ -106,6 +107,7 @@ Build:
 | 2026-09-11 | Merge Sonnet refactor | — | merge `2cbf0019`, pushed, tree clean |
 | 2026-09-11 | B/D4+D5 | `build.sh` OK ×4 | Probe B2 live: img_test.html → IMG|…/nb_sprites/m0|red box (page.state) + red sprite.csv (253,0,0); placeholder path proven via malformed fixture (grey 90,90,90) |
 | 2026-09-11 | B/D4 (worker) | — (same build) | Probe JS: img_js_test.html → title "v2" (worker RENDER replaced rows) → IMG|…/m0|red via worker → sprite red (253,0,0) |
+| 2026-09-11 | C V2 p.o.c. | `build.sh` OK ×5 (manager, media, player, pump) | Probe C1 live (O-tree browser 0x1a00002): video_test.html → `VIDEO|…#.desktop/nb_sprites/m0|file://…mp4|video`; `frame_index` 9→48 @8fps while `m0/sprite.csv` hash changed every 1s (704 distinct colors, animated tile via hq_sprite mtime-reload); player+pump self-exited at 80/80 natural end. Probe C2: `video:pause` froze (state=paused), `video:resume` resumed 40→56, `video:stop` removed session dir, 0 pump/0 player, status "video stopped". |
 |          | (fill in as tasks complete) | | |
 
 ## How to resume

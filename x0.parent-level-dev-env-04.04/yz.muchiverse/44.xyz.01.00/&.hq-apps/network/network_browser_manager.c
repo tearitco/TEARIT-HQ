@@ -695,6 +695,11 @@ static char g_js_script_path[PATH_BUF];
 static char g_js_style_path[PATH_BUF];   /* rung 7: concatenated page CSS */
 static char g_media_op_path[PATH_BUF];
 static char g_media_root[PATH_BUF];
+static char g_video_player_path[PATH_BUF];
+static char g_video_pump_path[PATH_BUF];
+static char g_video_sess[PATH_BUF];   /* "" = no video running */
+static int   g_video_pump_pid = -1;
+static int   g_video_player_pid = -1;
 
 /* One manager per house. flock(2) LOCK_EX|LOCK_NB on a lock file dies with
  * the process (no stale-pid handling needed) and is per-house, so separate
@@ -1153,6 +1158,124 @@ static void collect_page_media(const char *html, const char *page_url) {
     fclose(pf);
     fclose(wf);
     atomic_commit(g_page_state_path, tmp);
+}
+
+/* ---- Task C 2026-09-11: video-in-canvas V2 (wraith player) ----
+ * One resident mechanism and no renderer C: nb_video_player (vendored
+ * wraith) pre-extracts mp4 frames at 8fps and copies current_frame.png;
+ * nb_video_pump converts the newest frame into m<N>/sprite.csv; the
+ * renderer's hq_sprite() re-reads sprite.csv on mtime change, so the
+ * existing VIDEO tile animates. V1 ffplay action stays as real-playback. */
+
+static void video_reap(void) {
+    if (g_video_player_pid > 0) {
+        int st = 0;
+        if (waitpid(g_video_player_pid, &st, WNOHANG) == g_video_player_pid) g_video_player_pid = -1;
+    }
+    if (g_video_pump_pid > 0) {
+        int st = 0;
+        if (waitpid(g_video_pump_pid, &st, WNOHANG) == g_video_pump_pid) g_video_pump_pid = -1;
+    }
+}
+
+static void video_stop_all(void) {
+    if (g_video_pump_pid < 0 && g_video_player_pid < 0 && !g_video_sess[0]) return;
+    if (g_video_sess[0]) {
+        /* tell the player's frame loop to stop, then kill wrapped child */
+        {
+            FILE *c = fopen(g_video_sess, "a");  /* ensure exists */
+            if (c) fclose(c);
+        }
+        char cpath[PATH_BUF], cmd[PATH_BUF * 2];
+        snprintf(cpath, sizeof(cpath), "%s/session/video.control", g_video_sess);
+        {
+            FILE *f = fopen(cpath, "w");
+            if (f) { fprintf(f, "stop\n"); fclose(f); }
+        }
+        snprintf(cmd, sizeof(cmd), "'%s' --stop '%s' >/dev/null 2>&1", g_video_player_path, g_video_sess);
+        (void)system(cmd);
+        snprintf(cmd, sizeof(cmd), "rm -rf '%s'", g_video_sess);
+        (void)system(cmd);
+    }
+    if (g_video_pump_pid > 0) {
+        kill(g_video_pump_pid, SIGTERM);
+        video_reap();
+    }
+    if (g_video_player_pid > 0) {
+        kill(g_video_player_pid, SIGTERM);
+        video_reap();
+    }
+}
+
+static void video_start(const char *sprite_dir, const char *local_path) {
+    video_stop_all();
+    mkdir_p_local(g_video_sess);
+    if (g_video_player_path[0] && g_video_pump_path[0] &&
+        access(g_video_player_path, X_OK) == 0 && access(g_video_pump_path, X_OK) == 0) {
+    } else {
+        publish_status("error: video ops missing");
+        return;
+    }
+    {
+        struct stat st;
+        if (stat(local_path, &st) != 0 || st.st_size < 100) {
+            publish_status("error: video file missing");
+            return;
+        }
+    }
+    g_video_player_pid = fork();
+    if (g_video_player_pid == 0) {
+        execl(g_video_player_path, g_video_player_path, local_path, g_video_sess, (char *)NULL);
+        _exit(127);
+    }
+    if (g_video_player_pid < 0) { g_video_player_pid = -1; return; }
+    /* give the player a moment to create session before pump watches it */
+    usleep(200000);
+    g_video_pump_pid = fork();
+    if (g_video_pump_pid == 0) {
+        char fps[8];
+        snprintf(fps, sizeof(fps), "8");
+        execl(g_video_pump_path, g_video_pump_path, g_video_sess, sprite_dir, fps, (char *)NULL);
+        _exit(127);
+    }
+    if (g_video_pump_pid < 0) g_video_pump_pid = -1;
+}
+
+static void video_start_if_page_has_video(void) {
+    FILE *pf = fopen(g_page_state_path, "r");
+    if (!pf) return;
+    char sprite_dir[PATH_BUF] = "";
+    char vurl[PATH_BUF] = "";
+    char line[PATH_BUF + 512];
+    while (fgets(line, sizeof(line), pf)) {
+        /* VIDEO|<rel>|<url>|video */
+        if (strncmp(line, "VIDEO|", 6) != 0) continue;
+        char *rel = line + 6;
+        char *b1 = strchr(rel, '|');
+        if (!b1) continue;
+        *b1 = 0;
+        char *url = b1 + 1;
+        char *b2 = strchr(url, '|');
+        if (b2) *b2 = 0;
+        if (!rel[0] || !url[0]) continue;
+        snprintf(sprite_dir, sizeof(sprite_dir), "%s", rel);
+        snprintf(vurl, sizeof(vurl), "%s", url);
+        break;
+    }
+    fclose(pf);
+    if (!sprite_dir[0] || !vurl[0]) { video_stop_all(); return; }
+    /* p.o.c.: local file only; remote mp4 keeps the V1 ffplay action */
+    if (strncmp(vurl, "http://", 7) == 0 || strncmp(vurl, "https://", 8) == 0) {
+        video_stop_all();
+        return;
+    }
+    char local[PATH_BUF];
+    snprintf(local, sizeof(local), "%s", vurl);
+    if (strncmp(local, "file://", 7) == 0) {
+        char *p = local + 7;
+        snprintf(local, sizeof(local), "%s", p);
+    }
+    video_start(sprite_dir, local);
 }
 
 #define WORKER_RECV_TIMEOUT_MS 3000   /* plan step 5: stall watchdog */
@@ -2262,6 +2385,7 @@ static void do_fetch(const char *url_in, int record_history) {
         }
         run_page_scripts(html, url, title);
         collect_page_media(html, url);
+        video_start_if_page_has_video();
     }
 
     if (record_history && g_current_url[0] && strcmp(g_current_url, url) != 0)
@@ -2333,6 +2457,19 @@ static void handle_request(void) {
         tab_new();
     } else if (strcmp(line, "closetab:") == 0 || strcmp(line, "closetab") == 0) {
         tab_close_current();
+    } else if (strcmp(line, "video:stop") == 0) {
+        video_stop_all();
+        publish_status("video stopped");
+    } else if (strcmp(line, "video:pause") == 0 && g_video_sess[0]) {
+        char cmd[PATH_BUF * 2];
+        snprintf(cmd, sizeof(cmd), "'%s' --pause '%s' >/dev/null 2>&1", g_video_player_path, g_video_sess);
+        (void)system(cmd);
+        publish_status("video paused");
+    } else if (strcmp(line, "video:resume") == 0 && g_video_sess[0]) {
+        char cmd[PATH_BUF * 2];
+        snprintf(cmd, sizeof(cmd), "'%s' --resume '%s' >/dev/null 2>&1", g_video_player_path, g_video_sess);
+        (void)system(cmd);
+        publish_status("video playing");
     }
 }
 
@@ -3093,6 +3230,10 @@ int main(int argc, char **argv) {
     snprintf(g_media_op_path, sizeof(g_media_op_path), "%s/ops/+x/nb_media_to_sprite.+x", g_package_dir);
     path_join(g_media_root, sizeof(g_media_root), desktop, "nb_sprites");
     mkdir_p_local(g_media_root);
+    snprintf(g_video_player_path, sizeof(g_video_player_path), "%s/ops/+x/nb_video_player.+x", g_package_dir);
+    snprintf(g_video_pump_path, sizeof(g_video_pump_path), "%s/ops/+x/nb_video_pump.+x", g_package_dir);
+    snprintf(g_video_sess, sizeof(g_video_sess), "%s/&.hq-apps/network/tmp/nb_video0", g_house);
+    video_stop_all(); /* stale session from a previous run */
 
     /* ensure the request file exists and is empty on startup - same
      * "never assume, always create" discipline khtpm_open_hai_manager.c uses. */
@@ -3113,9 +3254,11 @@ int main(int argc, char **argv) {
 
         if (!parent_still_alive()) {
             fprintf(stderr, "network_browser_manager: parent renderer is gone - exiting\n");
+            video_stop_all();
             worker_quit();
             break;
         }
+        video_reap();
         usleep(300000);
     }
     return 0;

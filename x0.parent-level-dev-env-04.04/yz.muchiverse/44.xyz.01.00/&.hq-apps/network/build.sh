@@ -43,3 +43,14 @@ $CC -std=c11 -Wall -O2 -I"$JSDIR" -o "$SDIR/ops/+x/nb_js_worker.+x" "$SDIR/ops/n
 
 echo "-- nb_media_to_sprite -> ops/+x/nb_media_to_sprite.+x"
 $CC -std=c11 -Wall -O2 -I"$JSDIR" -o "$SDIR/ops/+x/nb_media_to_sprite.+x" "$SDIR/ops/nb_media_to_sprite.c" -lm && echo "OK nb_media_to_sprite" || exit 1
+
+# 2026-09-11 (task C, video-in-canvas V2): vendored wraith-alpha player
+# (ops/nb_video_player.c, same contract as chtmgl-video-isolate's) + the
+# resident 8fps frame->sprite pump (ops/nb_video_pump.c). Player forks its
+# own child loop; the manager owns both, pump exits on control=stop or
+# natural end.
+echo "-- nb_video_player -> ops/+x/nb_video_player.+x"
+$CC -std=c11 -Wall -O2 -o "$SDIR/ops/+x/nb_video_player.+x" "$SDIR/ops/nb_video_player.c" && echo "OK nb_video_player" || exit 1
+
+echo "-- nb_video_pump -> ops/+x/nb_video_pump.+x"
+$CC -std=c11 -Wall -O2 -o "$SDIR/ops/+x/nb_video_pump.+x" "$SDIR/ops/nb_video_pump.c" && echo "OK nb_video_pump" || exit 1
