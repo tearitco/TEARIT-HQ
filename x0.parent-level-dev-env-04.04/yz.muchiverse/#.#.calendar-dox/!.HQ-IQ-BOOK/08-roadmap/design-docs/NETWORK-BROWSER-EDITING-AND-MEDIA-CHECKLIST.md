@@ -59,8 +59,12 @@ Build:
       ffmpeg-made `redbox.png` shows as a RED SQUARE. Stale fixture was
       an stb-incompatible PNG ("invalid filter") — regenerate fixtures
       with ffmpeg, never hand-made PNGs.
-- [ ] PROBE B1 (manifest covers), PROBE B3 (placeholder on 404),
-      JS-page `<img>` route still to re-run on rebuilt worker.
+- [x] JS-page `<img>` route PASSED: `img_js_test.html` (script sets
+      title v2 → worker RENDER runs → `merge_render_rows` replaced rows)
+      → `IMG|…#.desktop/nb_sprites/m0|red via worker` → sprite red
+      (253,0,0). Proves D4's worker emit path end-to-end.
+- [ ] PROBE B1 (manifest covers), PROBE B3 (placeholder on 404)
+      still to run.
 
 ### C. Video via wraith-alpha player subprocess (V2)
 Docs:
@@ -101,6 +105,7 @@ Build:
 |------|------|-------|----------|
 | 2026-09-11 | Merge Sonnet refactor | — | merge `2cbf0019`, pushed, tree clean |
 | 2026-09-11 | B/D4+D5 | `build.sh` OK ×4 | Probe B2 live: img_test.html → IMG|…/nb_sprites/m0|red box (page.state) + red sprite.csv (253,0,0); placeholder path proven via malformed fixture (grey 90,90,90) |
+| 2026-09-11 | B/D4 (worker) | — (same build) | Probe JS: img_js_test.html → title "v2" (worker RENDER replaced rows) → IMG|…/m0|red via worker → sprite red (253,0,0) |
 |          | (fill in as tasks complete) | | |
 
 ## How to resume
