@@ -978,7 +978,8 @@ static int merge_render_rows(void) {
             size_t L = strlen(row);
             while (L > 0 && (row[L-1]=='\n' || row[L-1]=='\r')) row[--L] = 0;
             if (strncmp(row, "TITLE|", 6) == 0 || strncmp(row, "TEXT|", 5) == 0 ||
-                strncmp(row, "LINK|", 5) == 0 || strncmp(row, "IMG|", 4) == 0)
+                strncmp(row, "LINK|", 5) == 0 || strncmp(row, "IMG|", 4) == 0 ||
+                strncmp(row, "MEDIA|", 6) == 0)
                 continue;
             fprintf(wf, "%s\n", row);
         }
@@ -1072,6 +1073,30 @@ static int fetch_to_sprite(const char *abs_url, const char *out_dir) {
     return stat(csv, &st) == 0 && st.st_size > 20;
 }
 
+/* D5 2026-09-11: when a media fetch/decode fails, still emit a tile so
+ * the page doesn't silently blank. Writes a 64x64 sprite.csv grey tile
+ * with a darker border (a visible "placeholder", never mistaken for the
+ * real image). The <item label=> still carries the real alt text. */
+static int write_placeholder_sprite(const char *out_dir) {
+    mkdir_p_local(out_dir);
+    char csv_path[PATH_BUF];
+    snprintf(csv_path, sizeof(csv_path), "%s/sprite.csv", out_dir);
+    FILE *f = fopen(csv_path, "w");
+    if (!f) return 0;
+    fprintf(f, "# resolution=64\n");
+    for (int y = 0; y < 64; y++) {
+        for (int x = 0; x < 64; x++) {
+            int edge = (x < 3 || y < 3 || x >= 61 || y >= 61);
+            unsigned char r = edge ? 90 : 150, g = edge ? 90 : 150, b = edge ? 90 : 150, a = 255;
+            if (!edge && ((x + y) % 32) < 8) { r = 135; g = 135; b = 135; }  /* subtle diagonal */
+            fprintf(f, "%d,%d,%d,%d\n", r, g, b, a);
+        }
+    }
+    fclose(f);
+    struct stat st;
+    return stat(csv_path, &st) == 0 && st.st_size > 20;
+}
+
 static void collect_page_media(const char *html, const char *page_url) {
     (void)html; (void)page_url;
     if (!g_media_op_path[0]) return;
@@ -1114,7 +1139,7 @@ static void collect_page_media(const char *html, const char *page_url) {
         const char *fetch_url = urlbuf;
         if (kind[0] == 'V' && extra[0] && !media_skip_url(extra)) fetch_url = extra;
         else if (media_skip_url(urlbuf) && extra[0]) fetch_url = extra;
-        if (!fetch_to_sprite(fetch_url, dir)) continue;
+        if (!fetch_to_sprite(fetch_url, dir) && !write_placeholder_sprite(dir)) continue;
         strip_pipes(urlbuf);
         strip_pipes(extra);
         char rel[PATH_BUF];

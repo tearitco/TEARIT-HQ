@@ -44,13 +44,23 @@ Docs:
       fix + verify steps). Committed 2026-09-11.
 
 Build:
-- [ ] D4: worker `IMG|<url>` rows go through the same
-      fetch→`nb_media_to_sprite`→sprite-dir pass as `MEDIA|` rows
-      (manager `collect_page_media`, gap proven in design doc §2).
-- [ ] D5: placeholder tile + alt text when the fetch/decode fails
-      (today a failed IMG row is dropped or blank).
-- [ ] Render a JS page with an `<img>`; tile draws with real pixels.
-      Verify recipe in B doc.
+- [x] D4: worker `IMG|<url>` rows emit `MEDIA|I|<resolved>|<alt>` via
+      `sb_put` (bypasses `rw_row`'s pipe-stripping); manager
+      `merge_render_rows` replaces `MEDIA|` rows just like other RENDER
+      rows. Live-verified static: `file:///…/tests/fixtures/img_test.html`
+      → `IMG|…#.desktop/nb_sprites/m0|red box` in page.state.
+- [x] D5: `write_placeholder_sprite()` emits a grey bordered tile when
+      `fetch_to_sprite` fails (no more dropped rows). Live-proven twice:
+      malformed fixture → grey placeholder tile in window AND in
+      sprite.csv (`90,90,90`); well-formed PNG → real red tile
+      (`253,0,0`). Border+diagonal marks it as placeholder.
+- [x] Render a page with an `<img>`; tile draws with real pixels.
+      PROBE B2 (static) PASSED 2026-09-11 live in window 0x1a00002:
+      ffmpeg-made `redbox.png` shows as a RED SQUARE. Stale fixture was
+      an stb-incompatible PNG ("invalid filter") — regenerate fixtures
+      with ffmpeg, never hand-made PNGs.
+- [ ] PROBE B1 (manifest covers), PROBE B3 (placeholder on 404),
+      JS-page `<img>` route still to re-run on rebuilt worker.
 
 ### C. Video via wraith-alpha player subprocess (V2)
 Docs:
@@ -90,9 +100,25 @@ Build:
 | Date | Task | Build | Evidence |
 |------|------|-------|----------|
 | 2026-09-11 | Merge Sonnet refactor | — | merge `2cbf0019`, pushed, tree clean |
+| 2026-09-11 | B/D4+D5 | `build.sh` OK ×4 | Probe B2 live: img_test.html → IMG|…/nb_sprites/m0|red box (page.state) + red sprite.csv (253,0,0); placeholder path proven via malformed fixture (grey 90,90,90) |
 |          | (fill in as tasks complete) | | |
 
 ## How to resume
 1. Read `NETWORK-BROWSER-EDITING-AND-MEDIA-DESIGN.md` (the plan).
 2. Pick the first task with `[~]`/`[ ]` here, read its how-to doc.
 3. Build, verify with real evidence, commit scoped, update this sheet.
+
+## Two-checkout gotcha (2026-09-11, cost an hour)
+- The LIVE desktop runs from `…/NNEST-12.00/…` (no `-opencode`); the AGENT
+  edits+commits in `…/NNEST-12.00-opencode/…` (its own git checkout).
+- Editing+reproducing BOTH in `-opencode` while pointing `button.sh` at
+  `NNEST-12.00` proves nothing — the live manager binary won't have the
+  new code.
+- Deploy path (user decides): agent commits in `-opencode`, user syncs the
+  changed files / checkout into `NNEST-12.00`. When self-testing, launch
+  the browser FROM the `-opencode` tree (its own taskbar ops renderer +
+  fresh manager binary + own `#.desktop` state all exist there), then kill
+  only the browser's exact PIDs afterwards — never `pkill
+  network_browser_manager` (it kills the whole house desktop incl. pals).
+- Kill tip: `kill <renderer_pid> <manager_pid>` by exact PID; then
+  `rm -f …/network/module_parent.pid` before re-launching.
