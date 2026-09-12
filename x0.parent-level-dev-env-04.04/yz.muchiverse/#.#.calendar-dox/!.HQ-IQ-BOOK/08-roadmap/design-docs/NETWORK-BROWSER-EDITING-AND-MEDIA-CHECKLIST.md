@@ -38,7 +38,7 @@ fresh make + live run + real evidence (state file, screenshot, receipt).
       page/console reparse doesn't kill the edit. (Post-merge sanity,
       part of task 0.)
 
-### B. In-page images via existing sprite path (D4–D5)   ← IN PROGRESS
+### B. In-page images via existing sprite path (D4–D5)   ← DONE
 Docs:
 - [x] B doc: `NETWORK-BROWSER-IMAGES-HOWTO.md` (arch + exact gap +
       fix + verify steps). Committed 2026-09-11.
@@ -63,8 +63,14 @@ Build:
       title v2 → worker RENDER runs → `merge_render_rows` replaced rows)
       → `IMG|…#.desktop/nb_sprites/m0|red via worker` → sprite red
       (253,0,0). Proves D4's worker emit path end-to-end.
-- [ ] PROBE B1 (manifest covers), PROBE B3 (placeholder on 404)
-      still to run.
+- [x] PROBE B1 (manifest covers): `manifest_test.html` → 3 IMG rows
+      (`m0|cover A`, `m1|cover B`, `m2|cover C`), 3 sprite tiles live in
+      window with real pixels (red `253,0,0`, green `0,253,0`, blue
+      `0,0,254`), 3 projection items m0/m1/m2 + labels.
+- [x] PROBE B3 (broken 404): `broken_test.html` →
+      `https://invalid.invalid/broken.png` → IMG row KEPT (not dropped),
+      grey bordered placeholder tile (90 border / 150 fill / 135 diag =
+      `write_placeholder_sprite`), label "broken tile" in projection.
 
 ### C. Video via wraith-alpha player subprocess (V2)
 Docs:
@@ -108,6 +114,7 @@ Build:
 | 2026-09-11 | B/D4+D5 | `build.sh` OK ×4 | Probe B2 live: img_test.html → IMG|…/nb_sprites/m0|red box (page.state) + red sprite.csv (253,0,0); placeholder path proven via malformed fixture (grey 90,90,90) |
 | 2026-09-11 | B/D4 (worker) | — (same build) | Probe JS: img_js_test.html → title "v2" (worker RENDER replaced rows) → IMG|…/m0|red via worker → sprite red (253,0,0) |
 | 2026-09-11 | C V2 p.o.c. | `build.sh` OK ×5 (manager, media, player, pump) | Probe C1 live (O-tree browser 0x1a00002): video_test.html → `VIDEO|…#.desktop/nb_sprites/m0|file://…mp4|video`; `frame_index` 9→48 @8fps while `m0/sprite.csv` hash changed every 1s (704 distinct colors, animated tile via hq_sprite mtime-reload); player+pump self-exited at 80/80 natural end. Probe C2: `video:pause` froze (state=paused), `video:resume` resumed 40→56, `video:stop` removed session dir, 0 pump/0 player, status "video stopped". |
+| 2026-09-11 | B folds | — (same build) | Probe B1 live: manifest_test.html → 3 IMG rows (m0/m1/m2 = red/green/blue sprites, labels cover A/B/C) all in projection. Probe B3 live: broken_test.html → invalid.invalid 404 → IMG row kept (no drop) + grey placeholder tile (90 border/150 fill/135 diag), label "broken tile". |
 |          | (fill in as tasks complete) | | |
 
 ## How to resume
