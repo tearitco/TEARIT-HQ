@@ -18,12 +18,14 @@ fresh make + live run + real evidence (state file, screenshot, receipt).
 ### 0. Pre-flight (after 2026-09-11 merge of Sonnet's refactor)
 - [x] Merge `origin/main` → `opencode` (commit `2cbf0019`, pushed).
       No conflicts; both history lines preserved.
-- [ ] Rebuild the renderer from the merged source; confirm the house
-      still builds and a window still opens (merge sanity, before any
-      new feature work).
-      → how-to: `…/04.04/yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/02-architecture/SHARED-SOURCE-COMPILE-IN-PLACE.md`
-      (how the shared-lib is compiled in place) + landmine #10
-      (commit-at-end).
+- [x] Renderer + manager both compile clean from merged source. Window
+      opens on relaunch: PID 2486116 (renderer), PID 2486162 (manager),
+      frame shows default Network Browser UI. `module_parent.pid` staleness
+      was a pre-existing race, not a merge regression — note: pid file
+      should be cleaned on manual relaunch.
+      → build: `…/network/ops/build_core_render.sh` + `…/network/build.sh`
+      → launch: `…/network/button.sh $HOUSE_ROOT` (after removing stale
+      module_parent.pid in the pkg dir).
 
 ### A. Cli-io editing (vault: hand-off to Sonnet)
 - [x] Root-caused + live-proven (2026-09-10): BackSpace works when the
@@ -36,10 +38,10 @@ fresh make + live run + real evidence (state file, screenshot, receipt).
       page/console reparse doesn't kill the edit. (Post-merge sanity,
       part of task 0.)
 
-### B. In-page images via existing sprite path (D4–D5)   ← NEXT
+### B. In-page images via existing sprite path (D4–D5)   ← IN PROGRESS
 Docs:
-- [~] B doc: `NETWORK-BROWSER-IMAGES-HOWTO.md` (arch + exact gap +
-      fix + verify steps).
+- [x] B doc: `NETWORK-BROWSER-IMAGES-HOWTO.md` (arch + exact gap +
+      fix + verify steps). Committed 2026-09-11.
 
 Build:
 - [ ] D4: worker `IMG|<url>` rows go through the same
