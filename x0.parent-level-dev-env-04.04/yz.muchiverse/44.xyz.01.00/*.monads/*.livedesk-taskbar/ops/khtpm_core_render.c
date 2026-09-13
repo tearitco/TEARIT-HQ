@@ -2266,7 +2266,31 @@ static void ktb_toggle_zorder_respawn(void) {
     closedir(pd);
     for (i = 0; i < n_found; i++)
         if (found[i].pid != self) kill(found[i].pid, SIGTERM);
-    usleep(300000);
+    /* REAL FIX 2026-09-13, direct live report ("1.2 seconds is really
+     * long"): this used to be a flat, unconditional usleep(300000) -
+     * 300ms of pure dead time on EVERY toggle, no matter how fast the
+     * old processes actually died. That number wasn't arbitrary - it
+     * matches POLL_INTERVAL_USEC (each entity's own select() timeout)
+     * exactly, as if SIGTERM had to wait for the next poll tick to be
+     * noticed. It doesn't: sigaction() (handle_shutdown_signal_info(),
+     * no SA_RESTART) makes a pending SIGTERM interrupt a blocking
+     * select() immediately (real, standard POSIX EINTR behavior, not
+     * an assumption) - g_shutdown_requested gets set and the old
+     * process's own loop exits on its very next condition check,
+     * typically sub-millisecond, not 300ms later. Real fix: poll for
+     * actual death (kill(pid,0)) instead of guessing a fixed delay -
+     * returns the instant every old process is confirmed gone, with a
+     * short real ceiling (30ms x up to 6 = 180ms) as a safety margin
+     * for the rare slow case, not the common-case cost. */
+    for (int wait_i = 0; wait_i < 6; wait_i++) {
+        int all_dead = 1;
+        for (i = 0; i < n_found; i++) {
+            if (found[i].pid == self) continue;
+            if (kill(found[i].pid, 0) == 0 || errno != ESRCH) { all_dead = 0; break; }
+        }
+        if (all_dead) break;
+        usleep(30000);
+    }
     /* REAL FIX 2026-09-13, direct live report ("it populated eventually
      * after a long time. why would it take so long?... the old legacy
      * tb would populate all immediately") - researched, not a compile
