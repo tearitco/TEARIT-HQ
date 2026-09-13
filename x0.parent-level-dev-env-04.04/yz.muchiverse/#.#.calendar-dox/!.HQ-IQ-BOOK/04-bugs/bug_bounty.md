@@ -181,11 +181,36 @@ becomes common, `livedesk_spawn_active_desk()` doing its own liveness
 check via a fresher registry read (not just relying on the dedup
 safety net downstream) would remove the visible flicker.
 
-If the ORIGINAL symptom (blank dock, valid backing data, no restart
-involved) recurs even with the 3s heartbeat in place, re-open this
-entry again - that would mean the render is somehow blocked for
-longer than 3s (the render loop itself stalled, not just one specific
-detection path failing), a materially different, worse class of bug.
+**Superseded same day (`930fd9ba`)** - direct follow-up: "we dont use
+mtime or hash for render, ideally we use marker filesize change only,
+or stay with last render (mtime has edgecases); do u see this
+instruction in golden rules? thats the final fix." Yes -
+`CENTROID_GOLD_STD.md` rule 8 says exactly this ("not on mtime, not
+on a hash, not per input event"), and the 3s-timer band-aid above
+never actually followed it. The REAL final fix: this exact file
+already has a proven, already-wired instance of the real marker
+pattern one function away - `khtpm_taskbar_manager_main.c`'s
+`publish_state()` writes `strip_ui.txt`/`strip_state.txt` THEN
+appends one byte to `#.desktop/strip_frame_changed.txt`
+(`touch_frame_changed()`); `dock_poll_strip_state()` in this same
+render file already watches that marker's SIZE growth for its own
+narrower focus-sync job. `reparse_chtpm_if_changed()`'s vars-changed
+gate now watches that SAME marker directly for dock windows,
+replacing the hash/debounce chain AND the 3s timer entirely - no
+mtime, no hash, no polling interval, growth is the only signal, per
+rule 8 to the letter. Non-dock windows are unaffected (most have no
+single real "the" writer process the way the strip's manager is one,
+so the hash/debounce path stays correct for them). Verified live:
+render tracked real entity-count changes in `strip_ui.txt` exactly at
+every check across multiple restarts, no lag, no staleness, no timer.
+
+If the ORIGINAL symptom (blank dock, valid backing data) recurs even
+with the marker gate in place, re-open this entry again - check FIRST
+whether `strip_frame_changed.txt` itself is actually growing on every
+real `publish_state()` call (a marker that stops growing is a
+materially different, worse bug than this entry's own history: the
+manager's publish path itself broken, not a render-side detection
+gap).
 
 ---
 
