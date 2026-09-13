@@ -1,0 +1,30 @@
+# ♟️ NIGHT 2 — Wager-Chess: small rules, real stakes 💰
+# =====================================================
+# Title: "♟️ NIGHT 2 — Wager-Chess: small rules, real stakes 💰"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, game 2 of 3
+
+**THE NARRATOR:** Last NIGHT was the biggest, slowest-building game in the house. This one's the opposite on purpose. 🌙
+
+**MAXINE:** Small, on purpose?
+
+**TOMO:** Deliberately simplified rules — pre-ordained armies, not open chess theory. The scope here isn't "how deep is the strategy," it's "how fast can two players sit down and play a real match with real stakes."
+
+**RAHWEH:** So the pieces are already decided before the match starts?
+
+**TOMO:** Right — army versus army, set pieces, no build phase. You're not designing your force, you're commanding it.
+
+**MAXINE:** And every match is scored on a real Elo rating, same math chess.com and every other real ladder uses. Win, your number goes up. Lose, it goes down. No hand-waving.
+
+**THE NARRATOR:** And the wager?
+
+**RAHWEH:** Each match, both players stake a set token amount up front. Winner takes the pot.
+
+**TOMO:** Set amount, not a bidding war — keeps it simple, keeps a losing streak from spiraling into something reckless. The depth in this game is the RATING, not the pot size.
+
+**MAXINE:** Which means this is the one NIGHT game that's basically ready to build almost immediately — it doesn't need the emergent-research engine NIGHT 1 needs. Fixed rules, fixed armies, a real Elo formula, a real wager escrow. That's it.
+
+**RAHWEH:** So it's the fast win of the three.
+
+**TOMO:** Exactly — small rules, real stakes, real ladder. Next NIGHT: the loudest one. Guns. 🔫

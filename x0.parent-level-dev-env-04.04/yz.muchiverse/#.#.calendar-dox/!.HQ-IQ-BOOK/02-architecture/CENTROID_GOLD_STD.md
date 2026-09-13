@@ -348,6 +348,36 @@ parser, zero new IR to invent.
      `kh_diff_apply_template()`'s own explicit runtime-state-fields
      list (in `khtpm_reparse_diff.c`) is the one place a new field
      needs a line added, not a new function.
+10. **A window's launcher never blocks the window from mapping on its
+    own first real data fetch.** ADDED 2026-09-11, direct live report
+    on `proc-mon` ("this window seems to wait till it runs script to
+    open. that makes it feel really slow. cant it open first, say
+    'scanning'?"). `proc-mon`'s own `button.sh` ran a real, ~1.5s
+    synchronous scan BEFORE ever launching the renderer, "to seed the
+    view" - genuinely redundant, since its own `<module>` backend
+    (`mon_refresh.sh`) already runs that exact same scan as the very
+    first thing it does once the window is up. Real, house-wide rule:
+    - **Launch the renderer immediately.** Any `<module>`/manager
+      backend that does its own real first-tick work (a scan, a
+      fetch, a slow read) already runs that work moments after launch
+      regardless - a launcher script blocking on the SAME work before
+      even mapping the window is doing it twice, once for nothing.
+    - **If the window's own state file doesn't exist yet, write a
+      real, instant, valid placeholder** (a genuine "scanning..."/
+      "loading..." value in whatever field the template shows, plus
+      whatever `no_x=1`/`count=0` keys the template needs to render
+      cleanly with zero real rows) rather than leaving the file
+      missing or blocking until real data exists. A re-open of an
+      already-scanned window shows its last real, stale-but-real data
+      immediately - no placeholder needed, don't blank a window that
+      already had content.
+    - **Don't sleep unconditionally "to be safe."** `proc-mon`'s own
+      launcher also had an unconditional `sleep 1` "for the old
+      instance to settle" that ran even when there was no old instance
+      to kill. Gate any settling delay on the actual condition that
+      needs it (a real instance was actually found and killed this
+      time), not a blanket tax on every launch. Live-verified fix:
+      cold launch went from ~2.5s+ blocking to ~58ms.
 
 ---
 

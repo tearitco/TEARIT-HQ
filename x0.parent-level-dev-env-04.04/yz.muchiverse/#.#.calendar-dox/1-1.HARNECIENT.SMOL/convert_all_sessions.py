@@ -149,7 +149,11 @@ async def process_session(txt_file):
             failed += 1
 
     if combined:
-        combined.export(output_file, format='mp3', bitrate='192k')
+        # REAL FIX 2026-09-11 - see convert_one_session.py's own
+        # comment on this same line for the full reasoning (ID3v2.3,
+        # not ffmpeg's ID3v2.4 default, for older Mac player
+        # compatibility - direct live report on the NIGHT_* files).
+        combined.export(output_file, format='mp3', bitrate='192k', parameters=["-id3v2_version", "3"])
         size = os.path.getsize(output_file) / (1024 * 1024)
         print(f"\n  Result: {size:.2f} MB ({success} ok, {failed} failed)")
         return True
@@ -164,7 +168,16 @@ async def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     base_path = Path(BASE_DIR)
-    txt_files = sorted(base_path.glob('DAY_*.txt'))
+    # REAL FIX 2026-09-11 (direct live request: "did u make the highly
+    # technical lesson scripts? then we will convert them to mp3") -
+    # NIGHT_*.txt is a new, parallel lesson-script track (game design,
+    # not house architecture) alongside the existing DAY_*.txt series -
+    # same file shape (Title/Characters/Voices header + the same
+    # dialogue format), so it converts through this exact same
+    # pipeline. Globbed and sorted separately so DAY_1..DAY_N still
+    # plays in its own real numeric order before NIGHT_1..NIGHT_N does,
+    # rather than interleaving by filename sort.
+    txt_files = sorted(base_path.glob('DAY_*.txt')) + sorted(base_path.glob('NIGHT_*.txt'))
 
     # Default to 1, or use argument
     limit = 1

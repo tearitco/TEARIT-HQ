@@ -1,4 +1,4 @@
-/* mon-hq.css - sibling .css for mon-hq.xhtpm, auto-merged by the shared
+/* proc-mon.css - sibling .css for proc-mon.xhtpm, auto-merged by the shared
    renderer (same stem). Colour/border only; the generic layout engine
    owns geometry. Mirrors the house -hq look (stats-hq-pal.css). */
 
@@ -34,5 +34,25 @@
 
 .btn.danger.active {
   background-color: #8f2f2f;
+  color: #ffffff;
+}
+
+/* another live taskbar session's procs - real/owned, not stray, but not
+   THIS session either. distinct amber so it's never confused with BAD
+   (red) or GOOD (default) at a glance. */
+.data-item.other-session {
+  background-color: #2a230f;
+  border: 1px solid #6b5324;
+  color: #f0d9a0;
+}
+
+.btn.warn {
+  background-color: #2a230f;
+  border-color: #6b5324;
+  color: #f0d9a0;
+}
+
+.btn.warn.active {
+  background-color: #6b5324;
   color: #ffffff;
 }

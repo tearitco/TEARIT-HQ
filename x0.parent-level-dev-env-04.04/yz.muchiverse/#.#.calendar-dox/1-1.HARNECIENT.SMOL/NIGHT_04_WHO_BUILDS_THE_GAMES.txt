@@ -1,0 +1,58 @@
+# 🏗️ NIGHT 4 — Who Builds The Games: agents, proposals, and Gemma 🤖
+# ====================================================================
+# Title: "🏗️ NIGHT 4 — Who Builds The Games: agents, proposals, and Gemma 🤖"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, technical deep-dive
+
+**THE NARRATOR:** NIGHTS 1 through 3 pitched the games. Tonight is different — this one's for the students who are going to actually BUILD them. 🌙
+
+**MAXINE:** So less "here's the dream," more "here's the real gap and who closes it."
+
+**TOMO:** Right. Start with the honest state of the world, checked in the actual codebase, not assumed: events-hq and db-hq already talk to each other for real — db-hq's own Common Events tab reuses the events-hq editor directly. That's the DATA layer, and it's solid.
+
+**RAHWEH:** So what's missing?
+
+**TOMO:** The TRIGGER layer. Nobody has wired pc-hq's actual game board — the thing a player walks around in — to fire a Common Event when something happens in-game. Touch an NPC, pick up an item, cross a tile boundary — none of that calls into events-hq yet. The only real bridge that exists today is Interact Mode, and that's raw keyboard forwarding, not event dispatch.
+
+**MAXINE:** So the data model is done. The nervous system connecting "a thing happened on the board" to "a Common Event fires" isn't built.
+
+**THE NARRATOR:** This is exactly where student proposals come in. Not "go build it" — "come back with a real proposal for HOW you'd build it."
+
+**TOMO:** Right, and here's the discipline: a percent-complete number in this book is a STARTING POINT for your own investigation, not a grade you inherit. If NIGHT'S write-up says "events/db wiring is roughly 30 to 40 percent," your job as a student isn't to accept that — it's to go re-check it yourself, the same way it was checked here: grep the real code, read the real commit history, and either confirm the number or correct it in your own proposal. A proposal that just repeats this book's own estimate without re-verifying it is not a real proposal.
+
+**RAHWEH:** So the actual assignment is: find the trigger-layer gap yourself, then propose the bridge.
+
+**MAXINE:** And a real proposal has a shape — what file does the trigger live in, what does it call, what's the smallest possible first version that proves the whole idea (one NPC, one Common Event, nothing else), and what did you actually run to prove it works. Same "no invented partial-success state" discipline this whole house already holds itself to.
+
+**THE NARRATOR:** Now — who's actually doing the building? Because "agents" isn't one thing.
+
+**TOMO:** Right, and this is where the harness matters. A HARNECIENT-trained agent doesn't get native tool-calling into this codebase — it reads and writes real files, the same relay files a human or the renderer itself would read and write. That's the whole Day 12/16/17 lesson stack: code-tools-harness, events, db-hq, all as file-shaped interfaces, not APIs.
+
+**RAHWEH:** So an agent proposing the trigger-layer bridge would do it the exact same way a human developer in this house does?
+
+**MAXINE:** Exactly the same way — read the board's own state files, read events-hq's own trigger format, write a small script that watches one and writes to the other. No special agent-only capability required. That's the whole point of the harness: it doesn't create a second class of developer, it makes the FILE interface good enough that any developer — human or agent — uses the same real path.
+
+**TOMO:** Which answers "will the harnecient agents be able to handle this" directly: yes, for the SAME reason a human intern could handle it — because the real interface is plain files, not a hidden C API. The limiting factor isn't capability, it's whether the agent's own harness gives it the RIGHT tools — read_file and write_file alone are enough for THIS specific task, because events-hq's own format is already plain text.
+
+**THE NARRATOR:** Now — PvP and p2p. NIGHT 1 promised a cross-chain exchange. How does that actually work, mechanically?
+
+**MAXINE:** Same real substrate as the multiplayer-via-chat idea — a chain's own ledger is a real file (or a small set of them) that every player's client reads. A PvP action is a write to that ledger a peer resolves, the same shape as chain-hq's own message-and-response pattern.
+
+**TOMO:** Concretely: player A's move gets appended to the shared ledger file; player B's client (or another agent watching it) reads the new line, resolves the rules, appends the result. No sockets required for a first version — the SAME file-relay convention this whole house is built on, just between two players' file trees instead of one process's own state.
+
+**RAHWEH:** And the cross-chain exchange rate?
+
+**TOMO:** That's a second ledger, one level up — a rate between chain A's token and chain B's token, updated the same file-append way. Build the single-chain ledger first; the cross-chain exchange is the same mechanism run twice, not a new mechanism.
+
+**THE NARRATOR:** Last question, and it's the sharpest one: driving cursword through Gemma. Can a small local model actually run a game character?
+
+**MAXINE:** Depends entirely on what "run" means. open-hai's own default model today is gemma3:1b — a genuinely small model, one billion parameters. That model is not reliably going to make good multi-step strategic decisions on its own, every tick, forever.
+
+**TOMO:** So the real answer is: mostly finite-state-machine, a little freestyle, not the other way around. An FSM handles the actual game logic — what state is this NPC in, what are its valid transitions, what triggers a change. Gemma's real job is filling in the PARTS that need language — dialogue lines, flavor text, maybe picking BETWEEN a small set of FSM-offered options when the situation is ambiguous, not inventing the options itself.
+
+**RAHWEH:** So freestyle for flavor, FSM for the actual rules.
+
+**MAXINE:** That's the honest split for a 1-billion-parameter model. A bigger model could push more decision-making into freestyle territory over time — that's a real, later upgrade path, not something to design around on day one. Build the FSM first, so the game works with ZERO model calls; then let Gemma color it in.
+
+**THE NARRATOR:** So, to the students listening: the events/db gap is real and specific — it's the trigger layer, not the data layer. The way you close it is the same harness this whole book already taught you, read/write against real files. PvP and the cross-chain exchange are the same file-ledger pattern, applied twice. And cursword's own AI should lean FSM-first, Gemma-assisted, not Gemma-driven — until a bigger model earns more trust. Go write the proposal. 📝

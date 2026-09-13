@@ -1,0 +1,32 @@
+# ⛓️ NIGHT 6 — The Chain, the Wallet, the Wager: it's already built 💰
+# =====================================================================
+# Title: "⛓️ NIGHT 6 — The Chain, the Wallet, the Wager: it's already built 💰"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, deep-dive 2 of 3
+
+**THE NARRATOR:** Correction before anything else, and it's a good one. 🌙
+
+**MAXINE:** Go on.
+
+**THE NARRATOR:** NIGHT 1 and NIGHT 4 talked about "a real ledger file, append-and-resolve" as if it were a proposal to build. It's not a proposal. It's a real, already-working app in this house: `pal-chain`.
+
+**TOMO:** Confirmed in code, not assumed — `chain_create_wallet.c` is real, compiles, real SHA-256 password hashing via OpenSSL, real collision-refusal on wallet creation. And real wallets already exist on disk — `wallets/walletA_529309/wallet.txt`, with a real `wallet_id`, `password_hash`, `created_at`, `cached_balance`, and `last_processed_block`.
+
+**RAHWEH:** So there's already a working balance and a working block number.
+
+**MAXINE:** Right — `last_processed_block=13185` on a real wallet I read directly off disk. That's not zero. That's a chain that's already processed over thirteen thousand blocks for at least one wallet.
+
+**THE NARRATOR:** So the real assignment for this NIGHT isn't "design a wager ledger from scratch." It's "go read pal-chain, and write a proposal for how wager-chess and the cross-chain exchange plug INTO it, not around it."
+
+**TOMO:** Real starting questions for that proposal: does pal-chain already support a transaction TYPE, or only balance transfers? A wager needs an escrow step — both players' stakes locked before the match starts, released to the winner after. Is that one existing transaction type, or two new ones?
+
+**MAXINE:** And the password model matters here too — real `wallet_id` + `password_hash` login, not anonymous. So a wager match needs both players authenticated against THEIR OWN real wallet before the stake locks, or the "wager" part isn't actually a wager, it's a promise.
+
+**RAHWEH:** What about NIGHT 1's cross-chain exchange rate — is that in pal-chain already?
+
+**TOMO:** Unconfirmed as of this NIGHT's own research pass — flagged, not answered, the same discipline NIGHT 4 asked of you. A real proposal checks `PAL-CHAIN-STANDARD.txt` (referenced directly in the wallet-creation code's own header) before assuming a cross-chain rate needs building from zero. It may already be scoped, partially built, or explicitly out of scope with a documented reason — any of those three is a real, different starting point for a proposal, and you won't know which until you've read it.
+
+**MAXINE:** Which is the actual lesson of this whole NIGHT: the excitement of "we'll build a blockchain for the game" was premature. The blockchain exists. The game doesn't talk to it yet. That's a smaller, more honest gap — and a much faster one to close, because you're integrating with a real system, not inventing one under deadline pressure.
+
+**THE NARRATOR:** So: read `PAL-CHAIN-STANDARD.txt`. Read `chain_create_wallet.c` and its siblings in `041.pal-chain/ops/`. Find out what a real wallet-to-wallet transaction already looks like on disk. THEN write the wager-chess escrow proposal, and the cross-chain-rate proposal separately, each citing exactly what you found — not what NIGHT 1 guessed. Go. ⛓️

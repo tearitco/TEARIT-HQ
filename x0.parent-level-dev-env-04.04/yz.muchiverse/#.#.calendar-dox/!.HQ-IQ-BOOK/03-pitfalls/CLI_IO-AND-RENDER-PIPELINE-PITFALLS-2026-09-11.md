@@ -240,6 +240,26 @@ a `clear_hist_action`/`nb_write_clearhist.sh` (`clearhist:`) request
 verb, same shape as the existing bookmark/go verbs in
 `network_browser_manager.c`'s `handle_request()`.
 
+## 11. Launcher blocking window-open on a redundant synchronous scan (proc-mon)
+
+**Symptom**: proc-mon's window felt slow to open — a real, noticeable
+delay between clicking the menu item and the window appearing at all.
+
+**Real cause**: two stacked, avoidable delays in `button.sh`, both
+BEFORE the renderer ever launched: an unconditional `sleep 1` (even on
+a fresh launch with no existing instance to tear down), and a full
+synchronous `mon_scan.sh publish` (~1.5s of `ps`/`awk`/proc reads) "to
+seed the view" — genuinely redundant, since `mon_refresh.sh` (the
+window's own `<module>` backend) already runs that exact same scan as
+the first thing it does once the renderer is up.
+
+**Real fix, now a permanent house-wide UX rule — `CENTROID_GOLD_STD.md`
+item 10**: launch the renderer immediately; if the state file doesn't
+exist yet, write a real, instant "scanning..." placeholder instead of
+blocking; gate any settling `sleep` on the actual condition that needs
+it, never run it unconditionally. Live-verified: ~2.5s+ down to ~58ms
+on a cold launch.
+
 ---
 
 ## Related

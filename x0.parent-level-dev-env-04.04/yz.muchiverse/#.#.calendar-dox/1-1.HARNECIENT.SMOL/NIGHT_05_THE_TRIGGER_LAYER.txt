@@ -1,0 +1,42 @@
+# 🔌 NIGHT 5 — The Trigger Layer: closing the events/db gap for real 🧵
+# ========================================================================
+# Title: "🔌 NIGHT 5 — The Trigger Layer: closing the events/db gap for real 🧵"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, deep-dive 1 of 3
+
+**THE NARRATOR:** NIGHT 4 named the gap. Tonight we go all the way down into it — no summarizing, the actual file-by-file shape of the fix. 🌙
+
+**MAXINE:** Start from the two things that ARE real, so nobody re-derives what's already built.
+
+**TOMO:** One: db-hq-pal's own Common Events tab reuses the events-hq editor directly — same real code, not a copy. So an event YOU author in events-hq is immediately a real row db-hq's own Common Events list can show and reference. That's the data layer, confirmed, done.
+
+**RAHWEH:** Two?
+
+**TOMO:** Two: pc-hq's Interact Mode already forwards real keyboard input from a khtpm window into the game engine's own input file — `keyboard/history.txt` and a relay file, both real, both live. So the WIRE between "a khtpm window" and "the game engine" already exists. It's just carrying keystrokes, not events.
+
+**MAXINE:** So the honest framing: the plumbing between the two worlds is proven. It's just plumbing the wrong kind of signal.
+
+**THE NARRATOR:** Which means the proposal a student writes here isn't "invent a bridge from nothing." It's "reuse the proven pipe, change what flows through it."
+
+**TOMO:** Right — concretely: the game engine already knows, every tick, what tile the player's on, what it's standing next to, what it just picked up. That's real, in-memory or in-file state the engine already has for its own rendering. The proposal's real first question is: where does the engine ALREADY write that per-tick state to a file, the same way `keyboard/history.txt` already gets written?
+
+**RAHWEH:** And if it doesn't write it anywhere yet?
+
+**MAXINE:** Then step one of the proposal is a small, real addition to the engine — append one line to a new file, `pieces/display/board_events.txt` or similar, whenever something trigger-worthy happens: "touched_npc:NAME", "picked_up:ITEM_ID", "entered_tile:X,Y". Same append-only, one-writer convention the marker files elsewhere in this house already use — not a new pattern, the same one.
+
+**TOMO:** Step two is the bridge script — a small, separate process (same house rule as everything else here: no linking, no editing the renderer/manager, a genuinely separate file-watcher). It tails that new events file, and for each line, looks up whether a Common Event is registered for that trigger string, and if so, fires it the way events-hq's own dispatcher already fires an event today.
+
+**THE NARRATOR:** And "fires it the way events-hq already fires one" — what does that actually mean, mechanically?
+
+**MAXINE:** Events-hq events are data rows with real conditions and real effects, already interpretable by the shared engine's own dispatch — the bridge script doesn't need to reimplement what an event DOES, only recognize WHEN one should run and hand off the event ID. That hand-off is the entire new surface area.
+
+**RAHWEH:** So the smallest provable first version —
+
+**TOMO:** — is one NPC, one trigger string, one Common Event, end to end: walk into the NPC, `touched_npc:NAME` gets appended, the bridge script sees it, fires the ONE matching Common Event, and something observable happens — a dialogue box, a stat change, anything checkable. Prove that loop before touching a second NPC.
+
+**MAXINE:** And "checkable" is the real bar — same discipline as everywhere else in this house: a fresh build, a fresh run, real evidence the event fired, not "should work." A screenshot or a state-file diff, not a claim.
+
+**THE NARRATOR:** One more thing students should carry into this proposal: db-hq's own database rows — items, stats, whatever a Common Event reads or writes — already have a real, working read/write path from events-hq's side. So once the trigger fires, the EFFECT side (give the player an item, change a stat) is not new work. Only the trigger side is.
+
+**TOMO:** Which is worth saying plainly: this is a smaller gap than NIGHT 1's pitch made it sound like. It's one new append-only file, one new small watcher process, and reusing two systems that already work. Go write that proposal — cite the real files, not the vibe. 📋
