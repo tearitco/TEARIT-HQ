@@ -11524,53 +11524,46 @@ static void glyph_color(char g, float *r, float *gg, float *b) {
  * and leaves *base_list unset if no such font can be loaded (caller falls
  * back to the plain color square, same as before this fix). */
 static int g_font_loaded = 0;
-static XFontStruct *g_font_info = NULL;
+static XftFont *g_font_info = NULL;
 
 /* REAL FIX 2026-08-05, direct report ("its having problems with the
  * chinese"): all popup text (context menu rows, Show Text) was drawn
  * with plain XDrawString - Latin-1 only, real X core-font limitation,
  * so the Chinese half of book-stack's Bible verses rendered as boxes/
- * garbage. Real fix: Xutf8DrawString against a real multi-byte XFontSet
- * that includes a CJK-capable base font (confirmed present on this
- * house's system via `fc-list :lang=zh` / `xlsfonts` - GNU unifont's
- * own "-misc-fixed-*-iso10646-1" covers CJK, used here alongside a
- * plain Latin fallback so ASCII stays crisp). Built once in main(),
- * used by every popup draw site below instead of XDrawString. */
-static XFontSet g_popup_fontset = NULL;
+ * garbage. Real fix (UPDATED 2026-09-13, see below): Xft/fontconfig
+ * text, which covers CJK the same way font_ui/kh_measure_text_px
+ * already do elsewhere in this file, instead of a hand-built XFontSet.
+ * Built once in tp_main()'s own startup, used by every popup draw site
+ * below instead of XDrawString. */
+static XftFont *g_popup_fontset = NULL;
 /* the g_ui_scale_pct this fontset was actually built at - lets
  * ensure_popup_fontset_current() (below) notice a live font_scale
  * change and rebuild, instead of baking in whatever scale happened to
  * be loaded at process start forever. 0 = never built yet. */
 static int g_popup_fontset_pct = 0;
 
+/* REAL FIX 2026-09-13, direct instruction ("dig into whats actually
+ * slowing entity startup") - real, measured root cause (startup_timing.
+ * txt, TP_STARTUP_TIMING=1): this fontset and load_glyph_font()'s own
+ * g_font_info below, TOGETHER, were ~90-95% of every entity's ~100ms
+ * respawn cost (54-70ms + 20-39ms, confirmed live across 3 runs) - the
+ * legacy X core-font path (XCreateFontSet/XLoadQueryFont) forces the X
+ * SERVER to do a full wildcard font-list match on every single process
+ * start, with nothing cached across respawns. Xft/fontconfig (already
+ * used everywhere else in this file - font_ui, kh_measure_text_px) goes
+ * through fontconfig's own persistent on-disk cache instead - real,
+ * confirmed fix, not a guess (see TP_TIMING_MARK results in the always-
+ * on-top toggle perf thread, tb-bug-doc.txt). */
 static void load_popup_fontset(Display *dpy) {
-    /* REAL FIX 2026-09-10, direct report ("everything honors [font
-     * settings] but 1 thing... the bible verse popup within bookstack
-     * entity"): this whole XFontSet predates font_scale (2026-08-05,
-     * house-wide scaling landed later) and never picked it up - the
-     * "18" pixel-size field below was a hardcoded literal, while
-     * POPUP_ROW_H right next to every draw site already correctly used
-     * scaled(28). g_ui_scale_pct is already loaded by the time any
-     * real caller reaches this (desktop_load_click_two_step() runs
-     * earlier in every mode's own startup) - scaled(18) here is the
-     * whole fix for a fresh popup; ensure_popup_fontset_current()
-     * below covers a font_scale change while an entity is already
-     * running (settings reload live, this fontset didn't rebuild). */
-    char **missing = NULL;
-    int n_missing = 0;
-    char *def_str = NULL;
-    char base[320];
+    int screen_num = DefaultScreen(dpy);
     int px = scaled(18);
-    snprintf(base, sizeof(base),
-        "-misc-fixed-medium-r-normal--%d-120-100-100-c-90-iso10646-1,"
-        "-*-fixed-medium-r-normal--%d-*-*-*-*-*-iso10646-1,"
-        "-*-*-medium-r-normal--*-*-*-*-*-*-iso10646-1", px, px);
-    if (g_popup_fontset) { XFreeFontSet(dpy, g_popup_fontset); g_popup_fontset = NULL; }
-    g_popup_fontset = XCreateFontSet(dpy, base, &missing, &n_missing, &def_str);
-    if (missing) XFreeStringList(missing);
+    char spec[96];
+    snprintf(spec, sizeof(spec), "monospace:pixelsize=%d", px);
+    if (g_popup_fontset) { XftFontClose(dpy, g_popup_fontset); g_popup_fontset = NULL; }
+    g_popup_fontset = XftFontOpenName(dpy, screen_num, spec);
     if (!g_popup_fontset) {
-        g_popup_fontset = XCreateFontSet(dpy, "fixed", &missing, &n_missing, &def_str);
-        if (missing) XFreeStringList(missing);
+        snprintf(spec, sizeof(spec), "DejaVu Sans Mono:pixelsize=%d", px);
+        g_popup_fontset = XftFontOpenName(dpy, screen_num, spec);
     }
     g_popup_fontset_pct = g_ui_scale_pct;
 }
@@ -11585,10 +11578,37 @@ static void ensure_popup_fontset_current(Display *dpy) {
     load_popup_fontset(dpy);
 }
 
+/* Real, explicit-Display XftColor alloc, same reasoning as tp_hex_pixel()
+ * just above (tp_main's own LOCAL dpy/screen/colormap, NOT the shared
+ * file-scope dpy/screen/cmap the HQ-window xft_color() reads) - caller
+ * frees via XftColorFree(), same convention xft_color()'s own callers
+ * already use. */
+static XftColor tp_xft_color(Display *d, Visual *vis, Colormap cm, const char *hex) {
+    XftColor xc;
+    XRenderColor rc = {0, 0, 0, 0xffff};
+    if (hex && hex[0] == '#' && strlen(hex) >= 7) {
+        unsigned int r, g, b;
+        sscanf(hex + 1, "%02x%02x%02x", &r, &g, &b);
+        rc.red = (unsigned short)(r * 257); rc.green = (unsigned short)(g * 257); rc.blue = (unsigned short)(b * 257);
+    }
+    XftColorAllocValue(d, vis, cm, &rc, &xc);
+    return xc;
+}
+
 static void popup_draw_text(Display *dpy, Drawable d, GC gc, int x, int y, const char *s) {
+    (void)gc;
     ensure_popup_fontset_current(dpy);
     if (g_popup_fontset) {
-        Xutf8DrawString(dpy, d, g_popup_fontset, gc, x, y, s, (int)strlen(s));
+        int screen_num = DefaultScreen(dpy);
+        Visual *vis = DefaultVisual(dpy, screen_num);
+        Colormap cm = DefaultColormap(dpy, screen_num);
+        XftDraw *xd = XftDrawCreate(dpy, d, vis, cm);
+        if (xd) {
+            XftColor col = tp_xft_color(dpy, vis, cm, "#000000");
+            XftDrawStringUtf8(xd, &col, g_popup_fontset, x, y, (const FcChar8 *)s, (int)strlen(s));
+            XftColorFree(dpy, vis, cm, &col);
+            XftDrawDestroy(xd);
+        }
     } else {
         XDrawString(dpy, d, gc, x, y, s, (int)strlen(s));
     }
@@ -11599,38 +11619,47 @@ static int popup_text_px(Display *dpy, const char *s) {
     if (!s || !*s) return 0;
     ensure_popup_fontset_current(dpy);
     if (g_popup_fontset) {
-        XRectangle ink, logical;
-        Xutf8TextExtents(g_popup_fontset, s, (int)strlen(s), &ink, &logical);
-        return logical.width > 0 ? logical.width : ink.width;
+        XGlyphInfo ext;
+        XftTextExtentsUtf8(dpy, g_popup_fontset, (const FcChar8 *)s, (int)strlen(s), &ext);
+        return ext.width;
     }
-    /* Fallback: ~9px/glyph for the 18px fixed face we load. */
+    /* Fallback: ~9px/glyph for the 18px face we load. */
     return (int)strlen(s) * 9;
 }
 
 static int load_glyph_font(Display *dpy) {
-    g_font_info = XLoadQueryFont(dpy, "-sony-fixed-medium-r-normal--24-170-100-100-c-120-iso8859-1");
-    if (!g_font_info) g_font_info = XLoadQueryFont(dpy, "fixed");
+    int screen_num = DefaultScreen(dpy);
+    g_font_info = XftFontOpenName(dpy, screen_num, "monospace:pixelsize=24");
+    if (!g_font_info) g_font_info = XftFontOpenName(dpy, screen_num, "DejaVu Sans Mono:pixelsize=24");
     if (!g_font_info) return 0;
     return 1;
 }
 
-/* Draws directly into the compose buffer via plain XDrawString (no GL
- * display lists needed once glXUseXFont is gone - XLoadQueryFont's own
- * XFontStruct is enough for a GC-based draw). */
-static void draw_glyph_rgb(Display *dpy, Drawable buf, GC gc, char g) {
+/* Draws directly into the compose buffer via Xft (see load_glyph_font()'s
+ * own header comment - was XLoadQueryFont/XDrawString, real measured
+ * startup-cost fix 2026-09-13). vis/cm are the entity window's OWN
+ * visual/colormap (win_vis/swa.colormap in tp_main - cursword's real
+ * ARGB32 visual on that one entity, default visual/colormap on every
+ * other), matching whatever buf/win were actually created with. */
+static void draw_glyph_rgb(Display *dpy, Drawable buf, GC gc, char g, Visual *vis, Colormap cm) {
+    (void)gc;
     if (!g_font_info) return;
-    XSetFont(dpy, gc, g_font_info->fid);
+    XftDraw *xd = XftDrawCreate(dpy, buf, vis, cm);
+    if (!xd) return;
     /* Real, new 2026-08-30 - BlackPixel() alone has no real alpha byte
      * (0 in the high byte), which would draw fully TRANSPARENT text on
      * cursword's own new ARGB32 window - see draw_sprite_rgb()'s own
      * matching comment. Harmless no-op high byte on every other
-     * entity's plain 24-bit window. */
-    XSetForeground(dpy, gc, 0xFF000000UL | BlackPixel(dpy, DefaultScreen(dpy)));
+     * entity's plain 24-bit window - XftColor's own alpha channel
+     * (0xffff, opaque) plays the same role here. */
+    XftColor col = tp_xft_color(dpy, vis, cm, "#000000");
     int cw = WIN_PX / 2, ch = (g_font_info->ascent + g_font_info->descent);
     int x = (WIN_PX - cw) / 2;
     int y = (WIN_PX + g_font_info->ascent - g_font_info->descent) / 2;
     (void)ch;
-    XDrawString(dpy, buf, gc, x, y, &g, 1);
+    XftDrawStringUtf8(xd, &col, g_font_info, x, y, (const FcChar8 *)&g, 1);
+    XftColorFree(dpy, vis, cm, &col);
+    XftDrawDestroy(xd);
 }
 
 /* REAL FIX 2026-08-04, direct instruction ("do u see how egg-pal creates
@@ -13608,6 +13637,39 @@ static int tp_main(int argc, char **argv) {
     win_package_rel(package_buf);
 #endif
     const char *package_dir = package_buf;
+    /* REAL, NEW 2026-09-13, direct instruction ("dig into whats
+     * actually slowing entity startup") - genuine measurement, not
+     * guesswork: a real per-step timestamp log, one line per real
+     * setup phase, appended to startup_timing.txt in this entity's own
+     * package dir. Env-gated (TP_STARTUP_TIMING=1) so this never costs
+     * anything on a normal run - only set while actively profiling.
+     * Found the real bottleneck with it (legacy X core-font loading,
+     * see load_popup_fontset()/load_glyph_font()'s own header comments
+     * for the fix) - kept permanently, env-gated, as a real reusable
+     * diagnostic for the next "why is startup slow" question, same
+     * reasoning handle_shutdown_signal_info()'s SA_SIGINFO forensics
+     * were kept for. */
+    struct timespec tp_t0, tp_tlast;
+    int tp_timing_on = getenv("TP_STARTUP_TIMING") != NULL;
+    if (tp_timing_on) { clock_gettime(CLOCK_MONOTONIC, &tp_t0); tp_tlast = tp_t0; }
+#define TP_TIMING_MARK(label) do { \
+    if (tp_timing_on) { \
+        struct timespec tp_now; clock_gettime(CLOCK_MONOTONIC, &tp_now); \
+        double tp_since_last = (tp_now.tv_sec - tp_tlast.tv_sec) * 1000.0 + (tp_now.tv_nsec - tp_tlast.tv_nsec) / 1e6; \
+        double tp_since_0 = (tp_now.tv_sec - tp_t0.tv_sec) * 1000.0 + (tp_now.tv_nsec - tp_t0.tv_nsec) / 1e6; \
+        char tp_tpath[TP_PATH_BUF]; \
+        snprintf(tp_tpath, sizeof(tp_tpath), "%s/startup_timing.txt", package_dir); \
+        FILE *tp_tf = fopen(tp_tpath, "a"); \
+        if (tp_tf) { fprintf(tp_tf, "%s: +%.2fms (total %.2fms)\n", label, tp_since_last, tp_since_0); fclose(tp_tf); } \
+        /* REAL FIX - re-stamp AFTER the file write (not before), so this
+         * mark's own I/O latency (real, confirmed cost on this xyzfs
+         * mount) is absorbed into ITS OWN delta the next time around,
+         * never silently attributed to the NEXT real step - this exact
+         * bug briefly made load_glyph_font look like a ~60ms cost when
+         * it was really the previous mark's own disk write. */ \
+        clock_gettime(CLOCK_MONOTONIC, &tp_tlast); \
+    } \
+} while (0)
     /* REAL, NEW 2026-09-13 - g_package_dir used to be set ONLY on the
      * default/HQ-window main() path, never here in tp_main() (entity/
      * tile mode) - handle_shutdown_signal_info()'s own real forensic
@@ -13634,8 +13696,10 @@ static int tp_main(int argc, char **argv) {
     snprintf(g_history_path, sizeof(g_history_path), "%s/history.txt", package_dir);
     snprintf(g_relay_path, sizeof(g_relay_path), "%s/interact_relay.txt", package_dir);
     append_history("WINDOW_OPEN");
+    TP_TIMING_MARK("start->history");
     char g_ops_dir[TP_PATH_BUF];
     resolve_livedesk_paths(g_ops_dir, sizeof(g_ops_dir), g_house_root, sizeof(g_house_root));
+    TP_TIMING_MARK("resolve_livedesk_paths");
 #ifdef _WIN32
     if (!g_house_root[0]) snprintf(g_house_root, sizeof(g_house_root), ".");
 #endif
@@ -13655,6 +13719,7 @@ static int tp_main(int argc, char **argv) {
     if (g_house_root[0]) desktop_load_click_two_step(g_house_root);
     if (g_house_root[0]) load_override_redirect(g_house_root);
     if (g_house_root[0] && g_is_cursword) cursword_load_move_mode(g_house_root);
+    TP_TIMING_MARK("theme/click2step/override_redirect/move_mode");
     /* REAL FIX 2026-08-27 (TILE-SYSTEM-DESIGN.md §0a) - read the real,
      * optional, house-wide grid cell size as early as possible (right
      * after g_house_root resolves, before anything below uses
@@ -13677,6 +13742,7 @@ static int tp_main(int argc, char **argv) {
         ensure_taskbar_running(g_house_root);
         append_history("LIVEDESK_INDEX=%d", g_livedesk_index);
     }
+    TP_TIMING_MARK("livedesk_index/registry_add/ensure_taskbar_running");
     /* REAL FIX 2026-08-05 (MUCHI_RANCHER monsters), EXTENDED 2026-08-29
      * direct live report ("placing a tile isn't taking up the full
      * 80px tile square... all entities need this fix except muchi
@@ -13719,7 +13785,9 @@ static int tp_main(int argc, char **argv) {
         fprintf(stderr, "tp_desktop_window: cannot open display\n");
         return 1;
     }
+    TP_TIMING_MARK("XOpenDisplay");
     load_popup_fontset(dpy);
+    TP_TIMING_MARK("load_popup_fontset");
 
     int screen_num = DefaultScreen(dpy);
     Visual *vis = DefaultVisual(dpy, screen_num);
@@ -13864,9 +13932,11 @@ static int tp_main(int argc, char **argv) {
         write_pos(package_dir, win_x, win_y);
     }
 
+    TP_TIMING_MARK("pos-compute/colormap");
     Window win = XCreateWindow(dpy, RootWindow(dpy, screen_num), win_x, win_y, WIN_PX, WIN_PX,
                                 0, win_depth, InputOutput, win_vis,
                                 CWColormap | CWEventMask | CWOverrideRedirect | CWBorderPixel | CWBackPixel, &swa);
+    TP_TIMING_MARK("XCreateWindow");
     /* REAL, NEW 2026-09-01 - when the pdl turns override_redirect off
      * (WM-managed pieces, so the taskbar's @ toggle can control their
      * real z-order on Xwayland/Mutter), Mutter would put a titlebar/frame
@@ -13883,7 +13953,9 @@ static int tp_main(int argc, char **argv) {
         XSetClassHint(dpy, win, &(XClassHint){(char *)"MuchiverseLivedesk", (char *)"MuchiverseLivedesk"});
     }
     XMapWindow(dpy, win);
+    TP_TIMING_MARK("motif_hints/XMapWindow");
     set_window_opacity(dpy, win, tp_load_theme_opacity(g_house_root));
+    TP_TIMING_MARK("set_window_opacity");
     /* REAL FIX 2026-08-29, direct live report ("entities and tb dropdown
      * cell tabs aren't opaque yet" - i.e. still full opacity) - ported
      * from khtpm_strip_parser.c's own real "KISS opacity-on-reset fix"
@@ -13943,6 +14015,7 @@ static int tp_main(int argc, char **argv) {
     float r, g, b;
     glyph_color(glyph, &r, &g, &b);
     g_font_loaded = load_glyph_font(dpy);
+    TP_TIMING_MARK("load_glyph_font");
 
     /* Resolve ops_dir (same /proc/self/exe technique tp_place_desktop.c
      * already uses) so apply_asset_override() can find tp_asset_to_
@@ -13959,16 +14032,19 @@ static int tp_main(int argc, char **argv) {
             apply_asset_override(package_dir, ops_dir);
         }
     }
+    TP_TIMING_MARK("self_exe_path/apply_asset_override");
 
     char sprite_path[TP_PATH_BUF];
     snprintf(sprite_path, sizeof(sprite_path), "%s/sprite.csv", package_dir);
     g_has_sprite = load_sprite_csv(sprite_path);
+    TP_TIMING_MARK("load_sprite_csv");
     /* Real, new 2026-08-30 - real per-voxel phymoji asset, generated
      * on demand from this entity's own real sprite.csv if it doesn't
      * exist yet (see load_entity_phymoji()/ensure_entity_phymoji_
      * generated()'s own header comments) - loaded once here, cached
      * for the whole process lifetime same as the sprite itself. */
     load_entity_phymoji(package_dir, resolved_ops_dir);
+    TP_TIMING_MARK("load_entity_phymoji");
 
     /* Real window shape from the sprite's own alpha, if we have one -
      * see build_shape_mask()'s own header comment for why GL_BLEND
@@ -14035,6 +14111,7 @@ static int tp_main(int argc, char **argv) {
     int xfd = ConnectionNumber(dpy);
     MethodItem methods[MAX_METHODS];
     int n_methods = load_methods(package_dir, methods, MAX_METHODS);
+    TP_TIMING_MARK("load_methods");
     if (n_methods == 0) {
         snprintf(methods[0].label, sizeof(methods[0].label), "Close");
         snprintf(methods[0].action, sizeof(methods[0].action), "CLOSE");
@@ -14048,6 +14125,7 @@ static int tp_main(int argc, char **argv) {
      * methods[]/n_methods keeps working completely unchanged. */
     ObjPage obj_pages[MAX_PAGES];
     int n_obj_pages = load_objects(package_dir, obj_pages, MAX_PAGES);
+    TP_TIMING_MARK("load_objects");
     int using_objects = (n_obj_pages > 0);
     int cur_page = 0;
     int page_stack[MAX_PAGES];
@@ -14116,6 +14194,7 @@ static int tp_main(int argc, char **argv) {
     int running = 1;
     struct timeval last_frame = { 0, 0 };
 
+    TP_TIMING_MARK("setup-complete->entering event loop");
     while (running && !g_shutdown_requested) {
 #ifdef _WIN32
         x11_wait(dpy, POLL_INTERVAL_USEC);
@@ -15771,7 +15850,7 @@ static int tp_main(int argc, char **argv) {
                     was_3d_last_frame = 0;
                 }
             }
-            else if (g_font_loaded) draw_glyph_rgb(dpy, g_buf, g_buf_gc, glyph);
+            else if (g_font_loaded) draw_glyph_rgb(dpy, g_buf, g_buf_gc, glyph, win_vis, swa.colormap);
             /* REAL, NEW 2026-08-30, direct instruction ("camera pan/
              * zoom moves the whole desktop") - a real, desktop-wide
              * screen-position offset while in 3D mode. win_x/win_y
