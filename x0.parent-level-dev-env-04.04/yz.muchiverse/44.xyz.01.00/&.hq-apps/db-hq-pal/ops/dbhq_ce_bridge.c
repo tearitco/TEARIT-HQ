@@ -140,12 +140,42 @@ static void ensure_ce_backend(const char *evpkg, const char *label) {
     }
 }
 
+/* REAL FIX 2026-09-13, direct live report: db-hq-pal's own tabbar
+ * hardcodes `class="active"` on the Actors tab only, in the STATIC
+ * dashboard.xhtpm - a fresh process (before any click happens in ITS
+ * OWN lifetime) always shows Actors as visually active regardless of
+ * what the real PERSISTED state (active.pdl's own real tag) says -
+ * confirmed live: real state said tag=CE (Common Events genuinely
+ * selected, panel content correctly showed it), tab bar still showed
+ * no tab as active at all. Real fix: this already-running, already-
+ * polling module (reads active.pdl's tag every 400ms regardless of
+ * value) publishes one real active_<tab>=0/1 boolean per tab into
+ * ui_ce.txt (already in the window's own `vars=` list) - the xhtpm
+ * then drives each tab's own class from its real matching var
+ * (class="active${active_actors}" etc.) instead of a hardcoded
+ * default, same real "class=x${bool}" pattern already used
+ * elsewhere in this house (h-ai-lab's own selected${inst.selected}). */
+static void write_active_tabs(FILE *out, const char *tag) {
+    static const char *tags[]  = {"ACTOR","CLASS","SKILL","ITEM","WEAPON","ARMOR","ENEMY","TROOP","STATE","ANIMATION","TILESET","CE","SYSTEM","TYPE","TERM"};
+    static const char *names[] = {"actors","classes","skills","items","weapons","armors","enemies","troops","states","animations","tilesets","ce","system","types","terms"};
+    size_t i;
+    /* value is the literal word "active" or empty - NOT a 0/1 boolean
+     * suffix (the "class${bool}" trick used elsewhere in this house,
+     * e.g. h-ai-lab's selected${inst.selected}, doesn't fit here: the
+     * renderer's own internal tab-active detection does a real
+     * strcmp(class, "active") - an emitted "active0"/"active1" would
+     * never match that check either way). */
+    for (i = 0; i < sizeof(tags) / sizeof(tags[0]); i++)
+        fprintf(out, "active_%s=%s\n", names[i], strcmp(tag, tags[i]) == 0 ? "active" : "");
+}
+
 static void write_ui_ce(const char *src_ui, const char *ce_pkg, const char *label) {
     char dst[PATH_MAX], tmp[PATH_MAX];
     snprintf(dst, sizeof(dst), "%s/state/ui_ce.txt", g_pkg);
     snprintf(tmp, sizeof(tmp), "%s.tmp", dst);
     FILE *out = fopen(tmp, "w");
     if (!out) return;
+    write_active_tabs(out, "CE");
     fprintf(out, "ce_pkg=%s\n", ce_pkg);
     fprintf(out, "ce_label=%s\n", label);
     FILE *in = fopen(src_ui, "r");
@@ -172,12 +202,13 @@ static void write_ui_ce(const char *src_ui, const char *ce_pkg, const char *labe
     rename(tmp, dst);
 }
 
-static void write_idle_ui_ce(void) {
+static void write_idle_ui_ce(const char *tag) {
     char dst[PATH_MAX], tmp[PATH_MAX];
     snprintf(dst, sizeof(dst), "%s/state/ui_ce.txt", g_pkg);
     snprintf(tmp, sizeof(tmp), "%s.tmp", dst);
     FILE *out = fopen(tmp, "w");
     if (!out) return;
+    write_active_tabs(out, tag);
     fprintf(out,
             "ce_pkg=\nce_label=\nn_cmds=0\npicker_open=0\nfields_open=0\n"
             "list_open=0\nempty_list=1\ntrigger=\nn_picker=0\nn_fields=0\n"
@@ -200,8 +231,9 @@ int main(int argc, char **argv) {
         snprintf(active, sizeof(active), "%s/state/active.pdl", g_pkg);
         read_pdl_key(active, "tag", tag, sizeof(tag));
         read_pdl_key(active, "sel", sel_s, sizeof(sel_s));
+        if (!tag[0]) snprintf(tag, sizeof(tag), "ACTOR"); /* real default, matches dbhq_projector.pal's own s21 fallback before active.pdl exists */
         if (strcmp(tag, "CE") != 0) {
-            write_idle_ui_ce();
+            write_idle_ui_ce(tag);
             usleep(400000);
             continue;
         }
@@ -209,7 +241,7 @@ int main(int argc, char **argv) {
         snprintf(list, sizeof(list), "%s/#.desktop/db_hq_common_events.state.txt", g_house);
         ce_name_at(list, atoi(sel_s), name, sizeof(name));
         if (!name[0]) {
-            write_idle_ui_ce();
+            write_idle_ui_ce(tag);
             usleep(400000);
             continue;
         }

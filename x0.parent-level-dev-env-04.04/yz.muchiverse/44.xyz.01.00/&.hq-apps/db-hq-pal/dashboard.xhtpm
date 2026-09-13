@@ -20,28 +20,58 @@
   <module src="&.widgits/_shared-lib/system/+x/prisc+x.+x pal/dbhq_projector.pal"/>
   <module src="&.hq-apps/db-hq-pal/ops/+x/dbhq_ce_bridge.+x"/>
   <page name="main">
+    <!-- REAL FIX 2026-09-13, direct live report: on a fresh process
+         (before any click in ITS OWN lifetime), the tab bar used to
+         hardcode Actors as class="active" regardless of what the real
+         PERSISTED state (active.pdl's own tag, read by dbhq_ce_bridge.c
+         every poll) actually says - confirmed live: real state said
+         tag=CE, panel correctly showed Common Events, tab bar still
+         showed no tab as active. Each tab's class now comes straight
+         from dbhq_ce_bridge.c's own real active_<tab> var (the literal
+         word "active" or empty - see that function's own header
+         comment for why not a 0/1 boolean suffix) instead of a static
+         default. -->
     <tabbar class="tab-bar">
-      <tab id="tab-actors"     class="active" label="Actors"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_actors.state.txt' 'ACTOR' 'Actors'"/>
-      <tab id="tab-classes"    label="Classes"       target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_classes.state.txt' 'CLASS' 'Classes'"/>
-      <tab id="tab-skills"     label="Skills"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_skills.state.txt' 'SKILL' 'Skills'"/>
-      <tab id="tab-items"      label="Items"         target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_items.state.txt' 'ITEM' 'Items'"/>
-      <tab id="tab-weapons"    label="Weapons"       target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_weapons.state.txt' 'WEAPON' 'Weapons'"/>
-      <tab id="tab-armors"     label="Armors"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_armors.state.txt' 'ARMOR' 'Armors'"/>
-      <tab id="tab-enemies"    label="Enemies"       target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_enemies.state.txt' 'ENEMY' 'Enemies'"/>
-      <tab id="tab-troops"     label="Troops"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_troops.state.txt' 'TROOP' 'Troops'"/>
-      <tab id="tab-states"     label="States"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_states.state.txt' 'STATE' 'States'"/>
-      <tab id="tab-animations" label="Animations"    target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_animations.state.txt' 'ANIMATION' 'Animations'"/>
-      <tab id="tab-tilesets"   label="Tilesets"      target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_tilesets.state.txt' 'TILESET' 'Tilesets'"/>
-      <tab id="tab-ce"         label="Common Events" target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_common_events.state.txt' 'CE' 'Common Events'"/>
-      <tab id="tab-system"     label="System"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_system.state.txt' 'SYSTEM' 'System'"/>
-      <tab id="tab-types"      label="Types"         target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_types.state.txt' 'TYPE' 'Types'"/>
-      <tab id="tab-terms"      label="Terms"         target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_terms.state.txt' 'TERM' 'Terms'"/>
+      <tab id="tab-actors"     class="${active_actors}"     label="Actors"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_actors.state.txt' 'ACTOR' 'Actors'"/>
+      <tab id="tab-classes"    class="${active_classes}"    label="Classes"       target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_classes.state.txt' 'CLASS' 'Classes'"/>
+      <tab id="tab-skills"     class="${active_skills}"     label="Skills"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_skills.state.txt' 'SKILL' 'Skills'"/>
+      <tab id="tab-items"      class="${active_items}"      label="Items"         target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_items.state.txt' 'ITEM' 'Items'"/>
+      <tab id="tab-weapons"    class="${active_weapons}"    label="Weapons"       target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_weapons.state.txt' 'WEAPON' 'Weapons'"/>
+      <tab id="tab-armors"     class="${active_armors}"     label="Armors"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_armors.state.txt' 'ARMOR' 'Armors'"/>
+      <tab id="tab-enemies"    class="${active_enemies}"    label="Enemies"       target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_enemies.state.txt' 'ENEMY' 'Enemies'"/>
+      <tab id="tab-troops"     class="${active_troops}"     label="Troops"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_troops.state.txt' 'TROOP' 'Troops'"/>
+      <tab id="tab-states"     class="${active_states}"     label="States"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_states.state.txt' 'STATE' 'States'"/>
+      <tab id="tab-animations" class="${active_animations}" label="Animations"    target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_animations.state.txt' 'ANIMATION' 'Animations'"/>
+      <tab id="tab-tilesets"   class="${active_tilesets}"   label="Tilesets"      target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_tilesets.state.txt' 'TILESET' 'Tilesets'"/>
+      <tab id="tab-ce"         class="${active_ce}"         label="Common Events" target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_common_events.state.txt' 'CE' 'Common Events'"/>
+      <tab id="tab-system"     class="${active_system}"     label="System"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_system.state.txt' 'SYSTEM' 'System'"/>
+      <tab id="tab-types"      class="${active_types}"      label="Types"         target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_types.state.txt' 'TYPE' 'Types'"/>
+      <tab id="tab-terms"      class="${active_terms}"      label="Terms"         target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_terms.state.txt' 'TERM' 'Terms'"/>
     </tabbar>
     <sidebar id="sidebar" class="sidebar">
       <text label="${tab_title}" class="quiet"/>
       <scrolllist>
         <repeat count="${rows_count}" bind="row">
-          <item id="r${row.#}" class="data-item" label="${row.text}" action="'${PKG}/ops/dbhq_action.sh' 'sel' '${row.#}'"/>
+          <!-- REAL FIX 2026-09-13, direct live report ("it skips 20,
+               21"): a row's own selection used to just fire its plain
+               action= - nothing ever widened nav scope past the tab
+               click's own confinement to <sidebar> (see <tab
+               target_id="sidebar"> above), so anything the selection
+               reveals in <panel id="detail"> (Common Events' own
+               Trigger/+Add Command/Play/command-list controls, or any
+               other tab's own detail fields) sat structurally outside
+               the confined scope and arrow-nav silently skipped past
+               it - real, reproduced, not guessed (kh_nav_step()'s own
+               scope-confine branch, khtpm_core_render.c ~line 5157).
+               Real, existing house precedent for "click, then widen
+               scope into a container, then also run a real action":
+               onclick="ACTIVATE <command>" + target_id=<container id>
+               - the exact mechanism <tab target_id="sidebar"> above
+               already uses to scope INTO the sidebar in the first
+               place. Reusing it here to scope back OUT into the
+               panel once a row is picked, instead of inventing
+               anything new. -->
+          <item id="r${row.#}" class="data-item" label="${row.text}" target_id="detail" action="ACTIVATE '${PKG}/ops/dbhq_action.sh' 'sel' '${row.#}'"/>
         </repeat>
       </scrolllist>
     </sidebar>
