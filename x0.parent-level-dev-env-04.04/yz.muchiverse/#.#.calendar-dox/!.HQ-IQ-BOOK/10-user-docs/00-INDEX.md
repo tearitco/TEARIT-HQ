@@ -8,3 +8,6 @@
 - `_.0.aigent-testing-u10.txt` — agent testing guide (key injection +
   frame review), how to test the history.txt-polling family vs. the
   raw-Xlib/XTest family.
+- `PRESENTATION-VIDEO-PIPELINE.md` — how to make a paced, TTS-narrated
+  proof MP4 from PNG dumps (`dump_frame_png_op` + `make_presentation_video.py`),
+  the manifest format, and the honest status of browser media.
