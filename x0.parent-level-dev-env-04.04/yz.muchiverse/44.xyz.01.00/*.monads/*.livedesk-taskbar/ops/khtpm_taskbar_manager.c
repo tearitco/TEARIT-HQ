@@ -4537,6 +4537,21 @@ void ktb_hq_activate(KtbState *s, int row) {
         (void)rc;
 #endif
         ktb_hq_close(s);
+    } else if (strcmp(m->command, "livedesk:open-h-ai-lab") == 0) {
+        /* H-AI-LAB-DESIGN.md Part 3 - new row under the real, existing
+         * 14.h-ai dropdown (ai_menu_4 below). Same generic launcher-
+         * registry indirection as settings/stats above (not a
+         * hardcoded path like open-hai/chat-hai still are) - path
+         * comes from livedesk_launchers.pdl's launcher_h_ai_lab row. */
+        char launcher[KTB_PATH_BUF];
+        if (ktb_hq_launcher_path(s->house_root, "h_ai_lab", launcher, sizeof(launcher))) {
+            char sh[KTB_PATH_BUF * 3];
+            snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c 'sh \"%s\" \"%s\"' >/dev/null 2>&1 &",
+                     launcher, s->house_root);
+            int rc = ktb_system_recorded(s->house_root, sh);
+            (void)rc;
+        }
+        ktb_hq_close(s);
     } else if (strcmp(m->command, "livedesk:open-chat-hai") == 0) {
         /* chat-hai cell (14) - standalone X11 window for multi-model ambient chat.
          * Launched via button.sh (mirrors open-hai pattern exactly). */

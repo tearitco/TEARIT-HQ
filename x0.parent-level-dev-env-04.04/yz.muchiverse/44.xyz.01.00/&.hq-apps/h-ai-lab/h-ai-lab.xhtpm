@@ -1,0 +1,36 @@
+<!-- h-ai-lab.xhtpm - "h-ai-lab" HQ window. H-AI-LAB-DESIGN.md Part 3,
+     smallest first step: one sidebar row per real AI-registry entry,
+     one embedded read-only viewer panel. No chat/retrain tiers yet -
+     real, separate, later steps once this embed pattern is proven.
+
+     Same real shape proc-mon already proves (sidebar+panel <window
+     class="database-window">, a <module> backend re-publishing
+     state/ui.txt on a timer) - NOT db-hq's own bespoke C-side panel-
+     injector (dbhq_ce_inject_panel etc.) - this house's standing rule
+     is zero new per-project C in khtpm_core_render.c, so the detail
+     viewer is a plain <text_area> reading ${detail_text} (see
+     ai_lab_scan.sh's own header comment for why content= specifically,
+     not <text>). -->
+<window label="h-ai-lab" class="h-ai-lab database-window" vars="state/ui.txt">
+  <module id="ai_lab_refresh" src="&.hq-apps/h-ai-lab/ai_lab_refresh.sh"/>
+  <page name="main">
+    <sidebar id="sidebar" class="sidebar">
+      <text label="scanned ${scan_time}" class="quiet"/>
+      <text label="${n_instances} AI instance(s)" class="block-title"/>
+      <item id="b_refresh" class="btn" label="  refresh now  " action="sh '${PKG}/ai_lab_scan.sh' '${HOUSE}' publish '${PKG}/state/ui.txt'"/>
+      <scrolllist>
+        <repeat count="${n_instances}" bind="inst">
+          <item id="inst${inst.#}" class="data-item inst-row selected${inst.selected}" label="${inst.name}  [${inst.kind}]" action="${inst.action}"/>
+        </repeat>
+        <text label="(no AI instances registered yet - see H-AI-LAB-DESIGN.md Part 1/2)" class="quiet" show="${no_instances}"/>
+      </scrolllist>
+    </sidebar>
+    <panel id="detail" class="settings-block">
+      <text label="Select an instance on the left" class="quiet" show="${no_detail}"/>
+      <text label="${detail_name}  —  kind: ${detail_kind}" class="block-title" show="${has_detail}"/>
+      <text label="PATH: ${detail_path}" class="quiet" show="${has_detail}"/>
+      <text label="IFACE: ${detail_iface}" class="quiet" show="${has_detail}"/>
+      <text_area id="detail_view" content="${detail_text}" class="detail-view" show="${has_detail}"/>
+    </panel>
+  </page>
+</window>

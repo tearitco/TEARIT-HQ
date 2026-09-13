@@ -74,7 +74,10 @@ SECTION      | ai_menu_2_label       | Chat-h-ai
 SECTION      | ai_menu_2_cmd         | livedesk:open-chat-hai
 SECTION      | ai_menu_3_label       | Co-lab-h-ai
 SECTION      | ai_menu_3_cmd         | livedesk:open-colab-hai
-SECTION      | ai_menu_4_label       | Cancel
+# H-AI-LAB-DESIGN.md Part 3 - the real, first row for h-ai-lab.
+SECTION      | ai_menu_4_label       | h-ai-lab
+SECTION      | ai_menu_4_cmd         | livedesk:open-h-ai-lab
+SECTION      | ai_menu_5_label       | Cancel
 
 # db cell (9.db) - converted from C-hardcoded 2026-09-08. The builder
 # still gates on an active livedesk session (no session -> no menu).
