@@ -109,3 +109,31 @@ relaunched clean, survived past the 10s checkpoint that used to kill
 them. Still worth independently re-observing over a real long session
 before this whole entry is considered fully proven, same caveat as
 above.
+
+**A THIRD, different regression found + fixed same series, 2026-09-13
+(74debf38)** - direct live report: "some entities are missing again,
+after your fix... this didn't used to happen." This time nothing died
+(all 6 processes confirmed alive, correctly registered, correct
+`n_tabs=7` in every backing file) - the BOTTOM BAR ITSELF was visually
+frozen showing a stale, out-of-order 4-tab subset, confirmed via a
+real PNG dump of the live dock window (`dump_frame_png_op`), not
+guessed from code alone. Root cause, found via a second round of
+temporary debug logging: `write_small_file()` (writes `strip_ui.txt`,
+the file driving the dock's `${n_tabs}`/`${tab.*}` vars) did
+`remove(path)` THEN `rename(tmp, path)` - not atomic, opening a real
+window where a concurrent reader's `fopen()` gets `ENOENT`. When that
+hit `khtpm_core_render.c`'s dock-peer reparse, `parse_chtpm()`
+returned NULL and the code unconditionally did
+`g_dock_peer = parse_chtpm(...)`, NULLing an already-good tree with no
+future retry ever repainting it - worse during rapid entity churn
+(more writes = more chances to hit the gap). **Fixed**: dropped the
+redundant `remove()` (every other writer in this codebase already
+skips it); both dock-peer reparse sites now only adopt a non-NULL
+parse result, keeping the last-good tree instead of blanking on any
+transient read failure. Verified live: PNG dump of the dock window
+during the same staggered 6-entity relaunch that used to freeze it now
+shows all 7 tabs correctly. If entities visually vanish from the dock
+again with processes/registry confirmed alive, this is the file to
+re-open, not a new one - and dump the actual window pixels
+(`dump_frame_png_op`) before trusting any backing file's content, since
+this class of bug is specifically "data is fine, the render is stale."
