@@ -84,9 +84,25 @@ guessed at. If they're real and separate from the qroq/MoE project
 above, they need their own real file-path pointer before any of this
 roadmap assumes they're the same thing.
 
+7. **IRL bootstrap recursion — a self-teaching famous-llm chain**
+   (NIGHT_12) — full spec: `IRL-BOOTSTRAP-RECURSION-SPEC.md` (this same
+   dir). Two real hops on top of NIGHT 11's five layers: Claude builds
+   a small FSM (`irl_bootstrap_fsm`, real, still to be written) that
+   teaches Gemma to run Layers 1-2 (IRL judging + weight authoring)
+   unattended on its OWN `open-hai` transcript history (real data,
+   already logged by `khtpm_open_hai_manager.c persist_msg()` — zero
+   new logging needed); that same FSM then runs all five layers to
+   produce a real, smaller, from-scratch `attention.c`-shaped
+   famous-llm. A third hop (that famous-llm bootstrapping its own
+   smaller famous-llm) is explicitly future work, not this item's
+   proof bar. Smallest first step: hand-score 5 real `U|`/`A|`
+   exchanges from one real open-hai transcript using the file's own
+   inline correction signal (does the next `U|` line restate/correct)
+   — no FSM, no Gemma call, until that's confirmed clean.
+
 ## Related
 
-- The NIGHT lessons themselves: `1-1.HARNECIENT.SMOL/NIGHT_05..10_*`.
+- The NIGHT lessons themselves: `1-1.HARNECIENT.SMOL/NIGHT_05..12_*`.
 - `08-roadmap/OPEN-ITEMS.md` item 1 (events/db-hq registry) — item 1
   above is the trigger-side half of that same gap.
 - `TILESETS-EVENTS-AND-GAME-CLONES.md` — the wider game-clone catalog

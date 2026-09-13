@@ -150,14 +150,19 @@ short version.*
     no scripts/build.sh compiles prisc — need a real line added);
     egg's CreateProcessA cmd.exe-correct custom-op dispatch (needs a
     MinGW build to verify). `PRISC-X-FORK-CONSOLIDATION.md`.
-20. HARNECIENT NIGHT-track horizon items: 6 real, concrete proposals
-    surfaced while writing the NIGHT_01-10 onboarding/export lesson
+20. HARNECIENT NIGHT-track horizon items: 7 real, concrete proposals
+    surfaced while writing the NIGHT_01-12 onboarding/export lesson
     track (`1-1.HARNECIENT.SMOL/`), each grounded in real code found
     live — pc-hq's own trigger layer, wager-chess on the real
     `pal-chain`, finishing `cursword_say()`'s real stub, extending
     `corp_decide.c`'s real `decision_mode` with GOAP/policy modes,
-    a Gemma-authored `weights.txt` tool, and swapping the real
+    a Gemma-authored `weights.txt` tool, swapping the real
     from-scratch attention chatbot's (`#.Z.HUMAN_LLM/.../attention.c`)
-    random cold-start weights for Gemma-authored ones. Not started —
-    full list + file pointers: `design-docs/HARNECIENT-NIGHT-TRACK-
-    HORIZON-ITEMS.md`.
+    random cold-start weights for Gemma-authored ones, and (item 7,
+    newest) a two-hop IRL bootstrap recursion — an FSM Claude builds
+    once that teaches Gemma to run NIGHT_11's IRL/weight-authoring
+    layers unattended on its own real `open-hai` transcripts, then
+    uses that same FSM to produce a smaller, real, from-scratch
+    famous-llm — full spec: `design-docs/IRL-BOOTSTRAP-RECURSION-
+    SPEC.md`. Not started — full list + file pointers: `design-docs/
+    HARNECIENT-NIGHT-TRACK-HORIZON-ITEMS.md`.

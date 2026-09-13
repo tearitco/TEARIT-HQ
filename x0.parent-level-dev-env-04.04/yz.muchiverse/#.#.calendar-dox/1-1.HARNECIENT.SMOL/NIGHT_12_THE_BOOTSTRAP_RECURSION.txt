@@ -1,0 +1,78 @@
+# 🪆 NIGHT 12 — The Bootstrap Recursion: famous-llm teaching a famous-llm 🪆
+# ====================================================================
+# Title: "🪆 NIGHT 12 — The Bootstrap Recursion: famous-llm teaching a famous-llm 🪆"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, second bonus round
+
+**THE NARRATOR:** NIGHT 11 closed with five layers and one instruction: go build Layer 1 first. Tonight's question is what happens if you hand the WHOLE five-layer machine to something smaller than you, and ask it to build its own. 🪆
+
+**MAXINE:** Say the recursion out loud once, plainly, before we touch a single file. Claude watches real chats and builds a famous-llm. Then Claude teaches GEMMA how to do that same five-layer build — for real, on its own corpus. Then GEMMA, using that exact same five-layer recipe, builds a SMALLER famous-llm of its own. Two real hops: Claude bootstraps Gemma's process, Gemma bootstraps its own model. Prove those two, and the shape is proven — a third hop is the same recipe again, not a new invention.
+
+**RAHWEH:** And the thing being bootstrapped at every hop is the SAME five layers from NIGHT 11? Not a new architecture per hop?
+
+**TOMO:** Same five layers, every hop — that's the whole point. Layer 0 corpus, Layer 1 IRL reward inference, Layer 2 weight authoring, Layer 3 cheap cosine router, Layer 4 the real small attention net, Layer 5 the FSM wrapper holding it all together. What changes per hop isn't the shape — it's WHO is doing Layer 1 and Layer 2's work, and how much smaller Layer 4's net is allowed to be.
+
+**THE NARRATOR:** Start at the real, current, honest ground floor. What corpus exists RIGHT NOW, today, with zero new code?
+
+**MAXINE:** `open-hai`'s own real session transcripts — `khtpm_open_hai_manager.c`'s `persist_msg()` already appends every message, forever, to `<session_dir>/transcript.txt`, one line per turn, `U|<text>` for the human side, `A|<text>` for Gemma's side (it calls Ollama for the real model). That file already exists, already growing, for every real conversation this house has ever had with Gemma through open-hai. Layer 0 isn't hypothetical — it's sitting on disk right now, in a boring pipe-delimited format a shell script can `cut -d'|'` apart with no new parser.
+
+**RAHWEH:** So hop zero — the one that ISN'T a hop, it's the thing we already have — is: Claude watches those transcripts.
+
+**TOMO:** Right, and "watches" should mean something real and small, same as every NIGHT before this one insisted on: a separate process tailing `transcript.txt` files (append-only, one more reader in a house full of append-only readers — nothing new to invent there), doing NIGHT 11's Layer 1 job by hand at first — read a real `U|`/`A|` exchange, judge it the way a human already would ("did Gemma's answer get accepted, rephrased, or corrected in the next `U|` line"), write that judgment down next to it. That's IRL's training signal, and it costs nothing but attention, because the correction IS visible in-line: if the very next `U|` line restates the question or says "no I meant," that's a real, cheap, textual negative-reward signal — no separate labeling pass needed.
+
+**MAXINE:** That's the part of tonight's ask that's easy to miss — "letting it watch me chat with Gemma" doesn't require a new sensor. `open-hai` already recorded it. The IRL harness's whole job at this hop is reading a file that already exists and scoring it.
+
+**THE NARRATOR:** Now the first real hop. Claude doesn't just DO Layer 1 — Claude teaches GEMMA to do its own Layer 1 and Layer 2, unsupervised, going forward.
+
+**RAHWEH:** "Teaches" meaning what, concretely? Gemma doesn't get fine-tuned by us — it's a fixed local model we call.
+
+**TOMO:** Meaning an FSM, NIGHT 7's own real pattern (`cursword_fsm.c`'s FSM-first/Gemma-optional shape, same one item 3 of the horizon doc still has open) — a small state machine that does NOT touch Gemma's weights at all. It sits around Gemma the same way `cursword_fsm.c` sits around it today: `IDLE -> WATCHING (tailing a transcript) -> JUDGING (one short Gemma call: "did the last exchange look corrected or accepted") -> PROPOSING (writes a draft weights.txt line, same shape as NIGHT 9's Gemma-authored weights tool) -> IDLE`. The FSM is what "recurses" — it's a real, small, buildable state machine, not a training loop. Gemma's role inside it is exactly what `corp_decide.c`'s existing `decision_mode=3` (llm) already proves works: one bounded call, short-span judgment, real output, no fine-tuning required.
+
+**MAXINE:** So "Claude bootstraps Gemma to do this on its own" is literally: Claude writes that FSM once. From then on, the FSM runs Gemma through Layers 1 and 2 unattended, on Gemma's own real conversation history, with zero further help from Claude. That's hop one, complete and checkable — does the FSM run, does it produce a real `weights.txt` draft, does a human spot-check agree with a few of its judgments.
+
+**THE NARRATOR:** Hop two — the one tonight is really asking about. Gemma, using that same FSM, builds its OWN smaller famous-llm.
+
+**TOMO:** Same five layers, run by the FSM instead of by us. Layer 0 is Gemma's own judged transcript slice. Layer 1/2 is the FSM-plus-Gemma loop from hop one, already proven. Layer 3 is the same cheap cosine-similarity router NIGHT 11 described — no neural compute, just `cosine_similarity.c` again. Layer 4 is where "smaller" becomes literal: not another Ollama-hosted model, but a real, tiny, from-scratch attention net in the SAME shape as the qroq project's own `attention.c` — `struct VocabEntry` with a `weight` field, `W_q`/`W_k`/`W_v`, `forward_prop.c` — just trained on a narrower slice (one curriculum, Gemma's own judged corpus) with far fewer parameters than qroq's already-small original. Layer 5 wraps it in the same FSM shape as Layer 5 always is.
+
+**RAHWEH:** So the recursion isn't "Gemma writes a new Gemma" — Gemma can't do that, it's a fixed model. The recursion is "Gemma runs the exact same five-layer PROCESS Claude ran, and what comes out the other end at Layer 4 is a smaller, real, from-scratch qroq-style net" — a "famous," not a "Gemma."
+
+**MAXINE:** Exactly, and that distinction matters enough to say twice: at every hop, Layer 4 is always a SMALL, real, hand-buildable attention net — never a call to a bigger hosted model. The thing being recursively produced is "famous-llm," always. What recurses is WHO ran the four cheap layers that fed it, not the size of model doing the calling.
+
+**THE NARRATOR:** Two hops, then — Claude-builds-the-FSM, and Gemma-runs-the-FSM-to-produce-a-famous. What proves each hop actually worked, not just "should work"?
+
+**TOMO:** Hop one's proof: the FSM ran unattended for a real stretch of time against real transcript files, produced at least one `weights.txt` draft, and a human, reading a handful of its per-exchange judgments blind (not told which ones the FSM flagged good or bad), agrees with the FSM's call more often than chance. That's the same "prove the inference works before trusting it unsupervised" discipline NIGHT 11 already closed on — nothing new, just applied to Gemma-as-the-judge instead of Claude-as-the-judge.
+
+**RAHWEH:** Hop two's proof?
+
+**MAXINE:** The resulting famous-llm — the small, from-scratch net Layer 4 produced — actually answers a held-out real question from its OWN judged curriculum better than a `rand()`-initialized version of the same net trained on the same data with no IRL weighting at all. Not "better than Gemma," not "better than Claude" — better than its own unweighted baseline. That's the honest, smallest bar that actually isolates whether the recursion added anything, versus just measuring "is a small net worse than a big one," which everyone already knows the answer to.
+
+**THE NARRATOR:** Now — what does tonight's requester still need that hasn't been named yet? Real gaps, not flourishes.
+
+**TOMO:** Four, plainly. First: a real stopping condition for the FSM's judging state, or it silently drifts — every corrected exchange nudges weights, forever, with no decay and no re-review window; NIGHT 9's human-review-the-diff discipline has to survive into the unattended loop, meaning the FSM needs a real `PENDING_REVIEW` state that queues drafts instead of auto-merging them, no matter how many hops deep this goes.
+
+**RAHWEH:** Second?
+
+**MAXINE:** A real safety rail on hop two specifically: Gemma choosing ITS OWN curriculum slice and judging ITS OWN correctness is a closed loop with no outside signal — that's exactly the condition where a model can reward-hack its own metric without anyone noticing, because nothing outside the loop is watching. The fix isn't complicated: the SAME transcript-correction signal from hop zero (did the next line say "no, I meant") is an external, textual, hard-to-game check that still comes from the real human on the other end of open-hai, not from Gemma judging itself in a vacuum. Keep that external anchor at every hop, however deep the recursion goes, or the loop has no ground truth left in it at all.
+
+**TOMO:** Third — resource honesty, given the house's own standing note about this being a real, documented weak-CPU machine: hop two's from-scratch training run is exactly the kind of multi-minute background job `nice -n 15 ionice -c3` exists for, and it should run as a real background job with its own progress marker file, not something a human sits and watches complete.
+
+**RAHWEH:** Fourth?
+
+**MAXINE:** Naming, so nobody three sessions from now confuses which artifact is which: hop one's FSM gets its own name, distinct from `cursword_fsm.c` (which is a real, different, still-unfinished stub) and distinct from "famous-llm" (which is the Layer-4 OUTPUT, not the FSM that produces it). Call the FSM itself something like `irl_bootstrap_fsm` when it's actually built — a process and its product need different names or the design doc rots into ambiguity the first time someone reads it cold.
+
+**THE NARRATOR:** So, formally, tonight's addition to NIGHT 11's five layers: a Layer 6, sitting ABOVE Layer 5, that isn't part of any one famous-llm — it's the recursion rule itself.
+
+**TOMO:** Layer 6: "the same five layers, run again, by whoever Layer 1-5 just produced enough trust to run them." Hop count is a parameter, not a fixed number — tonight only asks for two hops as the proof, because two is the smallest number that actually demonstrates recursion (one hop is just "we built a thing"; two hops is "the thing we built can build another thing, using the same recipe, unsupervised").
+
+**RAHWEH:** And the THIRD hop tonight explicitly said not to count — Claude bootstrapping Gemma's Gemma's famous's famous?
+
+**MAXINE:** Explicitly not required, and for a real reason, not just scope-cutting: once hop two is proven, hop three is the identical claim applied one level further down, with no new mechanism to invent — proving it a third time tests durability and compute budget, not the idea. That's real future work, not part of tonight's design.
+
+**THE NARRATOR:** Smallest real first step, same as always.
+
+**TOMO:** One: point a read-only script at ONE real `open-hai` session's `transcript.txt`, by hand, and hand-score five real `U|`/`A|` exchanges as corrected-or-accepted — no FSM yet, no Gemma call yet, just proving the file format and the correction signal are as clean as they look on paper. Two: only once that's confirmed, build the FSM's `WATCHING`/`JUDGING` states around it, with Gemma doing the judging call `corp_decide.c`'s `decision_mode=3` already proves is real. Everything past that — `PROPOSING`, hop two's from-scratch net, Layer 6 as a general rule — waits until those two are true and checked, not assumed.
+
+**RAHWEH:** History, still watched. Weights, still reviewed before they merge. Now — the watcher, taught to watch itself, twice, before we ever ask it to watch itself a third time.
+
+**THE NARRATOR:** Go hand-score five exchanges first. 🪆🧬
