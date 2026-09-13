@@ -137,3 +137,68 @@ again with processes/registry confirmed alive, this is the file to
 re-open, not a new one - and dump the actual window pixels
 (`dump_frame_png_op`) before trusting any backing file's content, since
 this class of bug is specifically "data is fine, the render is stale."
+
+---
+
+## ⚠️ OPEN 2026-09-13: taskbar HQ menu gets permanently stuck on nav 1, no key/click moves it
+
+**Reported:** 2026-09-13, direct live report: "tb has an issue now,
+its stuck on 1.hq no matter what is pressed" - then, after a full
+strip restart cleared it: "ok, good... but it must happen later?"
+(a real ask for the recurring root cause, not just relief that a
+restart cleared it once).
+
+**What's confirmed:**
+- ✅ NOT caused by any of this session's other taskbar-adjacent
+  commits (`dfedf360`, `5cf91818`, `5b584ada`, `d941a7d4`) - none
+  touch the HQ-menu/scope-confine code path or either dock window at
+  all; `5b584ada` only touches the separate bottom "pals" row's
+  startup window creation, confirmed unaffected (that window,
+  `g_dock_peer_win`, was present and fine throughout).
+- ✅ A real, concrete gap found by code audit and fixed (`3e87e11f`):
+  the reparse scope-restore block (`khtpm_core_render.c`, runs on
+  EVERY reparse - the dock's own projector rewrites its state every
+  ~400ms tick, so this is constant) only ever **sets**
+  `g_default_scope_confine` to 1 in its two match branches
+  (target_id container, or a `<tab>` locking onto `<sidebar>`) - it
+  never reset it to 0 when the current scope trigger matches neither,
+  which is exactly the case for a plain header cell (`strip-cell-1`
+  "HQ": bare `onclick="ACTIVATE"`, no target_id, not a `<tab>`). If
+  confine was ever left at 1 from an earlier real scoped interaction,
+  it would survive every later reparse regardless of what got clicked
+  afterward - `kh_elem_in_scope()` has no other match for a
+  target_id-less item, so nav (arrows, digit-jump) permanently locks
+  to just the current trigger. Fix: explicit reset to 0 before the
+  two conditional re-sets, mirroring `activate_focused()`'s own
+  ACTIVATE branch (already correct - unconditional reset before
+  conditionally setting).
+- ❌ **Not independently reproduced live.** Multiple clean-restart +
+  keyboard-only (`xdotool key --window <id>`, real X KeyPress events)
+  open/arrow-nav sequences all worked correctly, both before and after
+  the fix - the exact sequence that leaves `g_default_scope_confine`
+  stuck at 1 for THIS window (which structurally has no `<tab>` and no
+  target_id'd trigger of its own anywhere in `khtpm_strip_header.xhtpm`
+  - the only two paths that ever set confine=1 at all) was not
+  isolated. The fix closes a real, legitimate staleness gap, but
+  whether it's the actual mechanism behind the live report is unproven.
+
+**Real next steps, not yet done:**
+1. The synthetic-event testing here (`xdotool key --window`) sends
+   real X `KeyPress` events directly to the render process - but the
+   real user's physical keyboard may reach this dock window through a
+   DIFFERENT path: `khtpm_strip_keyboard_ascii.+x` (a separate, raw
+   termios-reading binary per the house's own ASCII-relay convention).
+   If that relay's key→code mapping or delivery timing diverges from
+   direct X KeyPress handling, the real bug may live there instead,
+   invisible to any test that only sends synthetic X events to the
+   window directly. Check that binary's own code path next.
+2. If it resurfaces, do NOT just restart to clear it - first read
+   `#.desktop/strip_state.txt` (hq_open/hq_n_menu/hq_focus) AND, if a
+   live process attach is possible, the actual runtime value of
+   `g_default_scope_confine`/`g_default_active_scope_id` before doing
+   anything else, to finally catch it in the stuck state instead of
+   only ever seeing it cleared.
+3. Re-open this exact entry if the symptom recurs post-`3e87e11f`,
+   rather than starting a new one - and note whether it was triggered
+   by real physical keyboard/mouse input or another synthetic test, to
+   start narrowing the input-path question in (1).
