@@ -1828,8 +1828,15 @@ static int reparse_chtpm_if_changed(void) {
     if (!g_chtpm_path[0]) return 0;
     struct stat st;
     if (stat(g_chtpm_path, &st) != 0) return 0;
+    /* REAL FIX 2026-09-13, direct live report ("all options in tb and
+     * bottom bar disappear... top reappeared, but not bottom for a
+     * while... there was no change so why did this happen?... even if
+     * it is idle or slow cpu, it shouldn't do that"): hoisted out of the
+     * block below (was scoped there, invisible to the two real re-parse
+     * sites further down) so both of them can gate on it - see those
+     * sites' own updated comments for the actual fix this enables. */
+    int peer_changed = 0;
     {
-        int peer_changed = 0;
         if (g_dock_peer_path[0]) {
             struct stat pst;
             if (stat(g_dock_peer_path, &pst) == 0 &&
@@ -1955,16 +1962,32 @@ static int reparse_chtpm_if_changed(void) {
                         g_default_scope_confine = 0;
                     }
                 }
-                if (g_dock_peer_path[0]) {
-                    /* REAL FIX 2026-09-13 (same incident as write_small_file's
-                     * own header comment) - only adopt a FRESH successful
-                     * parse; a transient read failure (the ENOENT race that
-                     * fix closes, or any other one-off fopen hiccup) must
-                     * never NULL out an already-good tree - that's what
-                     * silently froze the dock bar's last-painted pixels
-                     * with no future retry ever repairing it. Keep showing
-                     * the last-known-good tabs until a parse genuinely
-                     * succeeds again. */
+                if (g_dock_peer_path[0] && peer_changed) {
+                    /* REAL FIX 2026-09-13, direct live report ("bottom bar
+                     * disappears... there was no change so why did this
+                     * happen?"): this used to re-parse the peer template
+                     * from disk unconditionally on EVERY successful header
+                     * reparse (i.e. on every single vars_changed tick -
+                     * basically any tab/pal state update, which can be
+                     * frequent) even though the peer is a STATIC template
+                     * that (per this file's own long-standing comment
+                     * elsewhere) never changes again after boot. That's
+                     * real, repeated, unnecessary disk I/O + a fresh
+                     * parse_chtpm() call for a file that essentially never
+                     * changes - and every one of those was a fresh, brand
+                     * new chance to hit the same class of transient read
+                     * hiccup (ENOENT-style race, slow/contended disk under
+                     * this house's own documented weak-CPU machine) this
+                     * exact symptom has already been chased and patched
+                     * four separate times this week (see this file's
+                     * "FOURTH live occurrence" comment above). peer_changed
+                     * (computed once, above, from the peer's own real
+                     * mtime) was already sitting right there the whole
+                     * time - simplification, not another patch: only
+                     * touch the peer file when it ACTUALLY changed. Keeps
+                     * the fresh-parse-only-adopts-on-success guard just
+                     * below unchanged (still real, still needed for the
+                     * rare case the template genuinely is edited live). */
                     Elem *np = parse_chtpm(g_dock_peer_path);
                     if (np) g_dock_peer = np;
                     { struct stat pst; if (g_dock_peer && stat(g_dock_peer_path, &pst) == 0) g_dock_peer_mtime = pst.st_mtim; }
@@ -2065,10 +2088,11 @@ static int reparse_chtpm_if_changed(void) {
             kh_focus_debug_log("REPARSE key=%s NOT_FOUND - ungrabbed", saved_input_key);
         }
     }
-    if (g_dock_peer_path[0]) {
+    if (g_dock_peer_path[0] && peer_changed) {
         /* REAL FIX 2026-09-13 - see the incremental-reparse branch's own
-         * identical comment above; same real reason, same fix, this is
-         * just the full-rebuild fallback's copy of the same assignment. */
+         * identical comment above (peer_changed gate, real reason, real
+         * simplification); this is just the full-rebuild fallback's copy
+         * of the same fix. */
         Elem *np = parse_chtpm(g_dock_peer_path);
         if (np) g_dock_peer = np;
         { struct stat pst; if (g_dock_peer && stat(g_dock_peer_path, &pst) == 0) g_dock_peer_mtime = pst.st_mtim; }
@@ -9339,8 +9363,38 @@ static void hq_idle_tick(void) {
      * under them would invalidate those, real, deliberate exclusion,
      * not an oversight). */
     {
-        if (reparse_chtpm_if_changed()) {
+        /* REAL, NEW 2026-09-13, direct live report ("all options in tb
+         * and bottom bar disappear... top reappeared, but not bottom
+         * for a while... there was no change so why did this happen?
+         * even if it is idle or slow cpu, it shouldn't do that") - the
+         * strip's own kh_focus_debug.log already proves the periodic
+         * (once-a-minute, clock-driven) reparse ITSELF always reports
+         * success ("INCREMENTAL_REPARSE ok removed=0", every single
+         * time, for hours) - so whatever actually blanked the bars that
+         * time isn't a parse/diff failure. Real permanent, always-on
+         * (not env-gated - this is cheap, one clock_gettime + one log
+         * line per reparse, not per frame) timing around this exact
+         * tick, so the NEXT occurrence leaves hard evidence (a real
+         * slow assign_nav_and_layout()/redraw() call logged with its
+         * own duration) instead of another guess. */
+        struct timespec _rp_t0, _rp_t1;
+        int _rp_dock = window_is_dock();
+        if (_rp_dock) clock_gettime(CLOCK_MONOTONIC, &_rp_t0);
+        int _rp_changed = reparse_chtpm_if_changed();
+        if (_rp_dock) {
+            clock_gettime(CLOCK_MONOTONIC, &_rp_t1);
+            double _rp_ms = (_rp_t1.tv_sec - _rp_t0.tv_sec) * 1000.0 + (_rp_t1.tv_nsec - _rp_t0.tv_nsec) / 1e6;
+            if (_rp_changed || _rp_ms > 5.0)
+                kh_focus_debug_log("DOCK_TICK reparse_changed=%d reparse_ms=%.2f", _rp_changed, _rp_ms);
+        }
+        if (_rp_changed) {
+            if (_rp_dock) clock_gettime(CLOCK_MONOTONIC, &_rp_t0);
             assign_nav_and_layout(); redraw();
+            if (_rp_dock) {
+                clock_gettime(CLOCK_MONOTONIC, &_rp_t1);
+                double _rp_ms = (_rp_t1.tv_sec - _rp_t0.tv_sec) * 1000.0 + (_rp_t1.tv_nsec - _rp_t0.tv_nsec) / 1e6;
+                kh_focus_debug_log("DOCK_TICK layout+redraw_ms=%.2f g_n_elems=%d", _rp_ms, g_n_elems);
+            }
             /* REAL FIX 2026-09-04 (pc-hq-bugs.md Bug 2, same root cause
              * as handle_key()'s own new guard above) - this used to
              * blindly re-grab whenever g_dock_kbd_win was still set,
