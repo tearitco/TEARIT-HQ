@@ -47,7 +47,22 @@ case "$VERB" in
 
   picker)
     case "$ARG" in
-      open)  printf '1\n' > "$MGR/picker.txt" ;;
+      # REAL FIX 2026-09-13, direct live report ("add command doesn't
+      # show the old events command picker"): evhq_projector.c's own
+      # real gate is `picker_open = (picker.txt=="1") && scripting`,
+      # where scripting = (view==0) - Scratch/Blueprints (view!=0) is
+      # real, persistent, per-event state (view.txt lives in the
+      # event's own .hq_manager/ dir, survives every future session).
+      # Clicking "+ Add Command" is itself a clear, unambiguous signal
+      # of intent - it must never be silently swallowed by a leftover
+      # view choice from a completely different earlier session, with
+      # zero error/hint shown anywhere. Real fix: opening the picker
+      # also resets view back to scripting (0), so Add Command always
+      # works regardless of which view was last selected - confirmed
+      # live: view.txt stuck at "1" was the exact, sole reason
+      # picker_open stayed 0 no matter how many times picker.txt got
+      # written to "1".
+      open)  printf '1\n' > "$MGR/picker.txt"; printf '0\n' > "$MGR/view.txt" ;;
       close) printf '0\n' > "$MGR/picker.txt" ;;
       *) echo "evhq_action: picker needs open|close" >&2; exit 1 ;;
     esac ;;
