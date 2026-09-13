@@ -16085,6 +16085,34 @@ int main(int argc, char **argv) {
     { struct stat gcst; if (stat(g_chtpm_path, &gcst) == 0) g_chtpm_mtime = gcst.st_mtim; }
     kh_text_areas_reload(g_window); /* 2026-09-08 - restore a persisted <text_area> (sql-hq editor) on launch too, not only across reparse */
     if (elem_has_class(g_window, "dock-header")) {
+        /* REAL FIX 2026-09-13, direct live report ("nav is stuck at 1
+         * again") - live-confirmed on a GENUINELY FRESH strip process
+         * (a brand-new PID from an always-on-top respawn, never sent a
+         * real click in its own lifetime by the time it was checked):
+         * nav was already snapped into a "dropdown open" scope from
+         * frame one (kh_elem_in_scope()'s own g_default_active_scope_id/
+         * g_dock_drop_lo pair already non-empty/non-zero). Every real
+         * setter of g_default_active_scope_id is click-driven (grepped,
+         * confirmed - activate_focused()'s own ACTIVATE/tab branches,
+         * the Escape-pop handler) - none of them can fire before this
+         * process's own event loop even starts, so the exact mechanism
+         * that pre-seeds it remains unconfirmed. Rather than chase a
+         * process-local global's mystery initial state further, this is
+         * the direct, robust answer: a freshly-started dock window
+         * cannot possibly have a real, current scope yet (nothing has
+         * been clicked in ITS OWN lifetime) - explicitly zero every
+         * piece of that state right here, once, before the first real
+         * layout pass ever runs, so whatever value these globals
+         * happened to hold is irrelevant. Belt-and-suspenders on top of
+         * the two earlier related fixes this same week (the reparse-
+         * restore confine reset, and the dup-registry-line race) - this
+         * one guarantees a clean slate unconditionally, not just in the
+         * specific paths already found. */
+        g_default_active_scope_root = NULL;
+        g_default_active_scope_id[0] = '\0';
+        g_default_scope_confine = 0;
+        g_dock_drop_lo = 0;
+        g_dock_drop_hi = 0;
         /* peer is the static bottom template beside the header, never
          * a generated #.desktop/strip_bottom.chtpm (layout-update). */
         snprintf(g_dock_peer_path, sizeof(g_dock_peer_path),
