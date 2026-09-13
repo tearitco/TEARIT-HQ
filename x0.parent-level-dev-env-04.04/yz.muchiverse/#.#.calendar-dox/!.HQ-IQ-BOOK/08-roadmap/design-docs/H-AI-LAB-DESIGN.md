@@ -1,13 +1,17 @@
 # h-ai-lab — an inspection/play GUI for every AI this house has built
 
-**Status: BRAINSTORMED + SCOPED, not started.** Direct live request
+**Status: Parts 1-2 + Part 3 step 1 DONE and live-verified
+(`04bfb971`, `e3743313`, `55f1659e`).** Direct live request
 (2026-09-13): a GUI ("h-ai-lab," shaped like db-hq) to inspect an AI
 by its events/ops and corpuses/weights, and "play" with it by
 attaching it to a real X11-HQ template window. Full narrative
 walkthrough: `1-1.HARNECIENT.SMOL/NIGHT_13_H_AI_LAB_AND_THE_REAL_
 REGISTRY.txt`. This doc is the terse, buildable version. Extends
 `IRL-BOOTSTRAP-RECURSION-SPEC.md` (NIGHT 12) - h-ai-lab is where that
-spec's `irl_bootstrap_fsm` becomes visible and operable, once built.
+spec's `irl_bootstrap_fsm` becomes visible and operable, once built -
+Part 4 below (2026-09-13, second pass) is exactly that: the manual,
+button-driven front end for the same states, built before the FSM
+automates them.
 
 ## Grounding: what's real, today, that this design reuses (zero invention)
 
@@ -47,6 +51,15 @@ spec's `irl_bootstrap_fsm` becomes visible and operable, once built.
   `livedesk_registry_add()` - the real read-prune-write-rename pattern
   (just root-caused and fixed twice this same week, see `bug_bounty.md`)
   the new AI-instance registry reuses, not a new file-locking scheme.
+- `014.wsr-pal💸️📌️+2/ops/corp_decide.c` `llm_choice()` (~line 176-214) -
+  the real, exact Gemma call shape Part 4 reuses: one-shot
+  `POST http://10.0.0.144:11434/api/chat` (LAN Ollama, model
+  `gemma3:270m`, no history/tools[]), real deterministic fallback on
+  any failure. This is a DIFFERENT real AI from an `attention-net`
+  registry entry's own `/api/chat` (that's "famous" itself, the
+  from-scratch model this house built; Gemma is the general-purpose
+  tool-model used to author/judge - NIGHT 9/11/12's own distinction,
+  never conflate the two in the UI).
 
 ## Part 1 — the real registry (build this first)
 
@@ -119,43 +132,104 @@ rewrite: kill the local model mid-run, confirm the canned line still
 plays. A table-driven FSM must not regress the one FSM-first/model-
 optional guarantee this house already depends on.
 
-## Part 3 — h-ai-lab itself
+## Part 3 — h-ai-lab itself (DONE, step 1 of 4)
 
-**Location:** new `<window class="database-window ai-lab">` (or
-similar), launched from a new third row in the existing `14.h-ai`
-strip-cell dropdown (`strip_btn_14_menu_2_label = h-ai-lab`, pushing
-the existing `cancel` row down one slot in `livedesk_taskbar.pdl`) -
-not a new taskbar cell, reusing the real one that already exists.
+**Location (as built, `55f1659e`):** `<window class="database-window
+h-ai-lab">`, launched from the real `14.h-ai` dropdown's `ai_menu_4`
+row ("h-ai-lab"), dispatched via a new `livedesk:open-h-ai-lab`
+`khtpm_taskbar_manager.c` branch reading its launcher path from
+`livedesk_launchers.pdl`'s `launcher_h_ai_lab` row - same generic
+indirection as settings/stats, not hardcoded. (The `ai_menu_N`
+pdl-key family is the real, live one `livedesk_build_ai_menu()`
+reads; `strip_btn_14_menu_N` in the same file is dead/unused - don't
+edit it for this cell.)
 
-**Shape:** sidebar = one row per `ai_instances_registry.txt` entry
-(name + KIND badge). Selecting a row injects a panel for that
-instance's KIND - same embed pattern as db-hq's Common Events tab,
-literally the same `*_inject_panel()` shape, new per-KIND injector
-functions instead of a new architecture.
+**Shape (as built):** sidebar = one row per
+`ai_instances_registry.txt` entry (name + KIND badge, via
+`ai_lab_scan.sh` + a `<module>` refresh loop, NOT a C-side
+`*_inject_panel()` - zero new per-project C in `khtpm_core_render.c`,
+the generic `<repeat>`/`${var}`/`action=` vocabulary does the whole
+job). Selecting a row shows that entry's own real content in an
+embedded `<text_area content="${detail_text}">` (multi-line file
+content encoded as literal `\n` escapes - `kh_load_vars` is strictly
+one `KEY=VALUE` per physical line, this is the one real, already-
+supported mechanism for showing multi-line data, not a new one).
 
-**Three real tiers per panel, all present in v1 (direct instruction:
-"all of the above, i just wanna see the hooks are there"):**
+**Three real tiers, step 1 (viewer only) DONE, chat/retrain next:**
 
-1. **Chat** - `cli_io` field. `attention-net` → `POST /api/chat`.
+1. **Viewer** - DONE. Read-only, currently `fsm`-only (cursword's
+   `fsm_table.pdl`, plain text, live-verified). `attention-net` →
+   `GET /api/debug` rendered as text (a full weight-heatmap
+   visualization stays OUT of scope - qroq's own
+   `visualize_associations` 2D/3D/4D tools are a real, separate, later
+   integration). `decision-pal` → its `state.txt` fields, plain. Real
+   next step, not yet built.
+2. **Chat** - not yet built. `cli_io` field. `attention-net` → `POST`
+   that entry's own `/api/chat` (talking to "famous" itself).
    `decision-pal` → direct `state.txt`/`decision_mode` write + read
-   back the pal's own decision output. `fsm` → inject a message as
-   that FSM's real trigger event, show the resulting state transition.
-2. **Viewer** - read-only. `attention-net` → `GET /api/debug`
-   rendered as text/values (a full weight-heatmap visualization is
-   explicitly OUT of v1 scope - the qroq project's existing
-   `visualize_associations` 2D/3D/4D tools are a real, separate,
-   later integration, not reinvented here). `fsm` → the state table
-   itself, current state highlighted, read directly off `PATH` (cheap
-   text read, not a rendered diagram - matches this house's own
-   "text state beats decoding pixels" testing convention).
-   `decision-pal` → its `state.txt` fields, plain.
-3. **Retrain trigger** - a real, VISIBLE, WIRED-BUT-HONEST button:
-   "run IRL pass" fires NIGHT 12's `irl_bootstrap_fsm`'s `PROPOSING`
-   step. Since that FSM is not built yet (`IRL-BOOTSTRAP-RECURSION-
-   SPEC.md`'s own smallest-first-step hasn't happened), this control
-   ships DISABLED with a real, honest label ("not yet built") rather
-   than hidden - direct instruction was to prove the hook exists, not
-   to fake that it works.
+   back the decision. `fsm` → inject a message as a real trigger
+   event, show the resulting transition.
+3. **Gemma-driven action rows** - see Part 4 below (2026-09-13, direct
+   follow-up question: "can the chat interface with famous, train
+   weights from gemma, be asked to create/score curriculum thru
+   button etc") - a real, separate plan, not folded into tier 2's
+   chat box.
+
+## Part 4 — Gemma-driven action rows (db-hq inspiration, direct instruction)
+
+**Direct question:** "so the chat can interface with 'famous' (in
+house llm) gemma, can it train weights from gemma, be asked to
+create/score curriculum thru button etc etc? whats the plan for that?
+im thinking dq-hq inspiration [db-hq]."
+
+**The real distinction that decides the whole shape:** "famous" (a
+registry `attention-net` entry, e.g. the qroq project) and Gemma
+(`corp_decide.c`'s real LAN `gemma3:270m`) are two DIFFERENT real
+models doing two different jobs. Chatting with famous is tier 2
+(above) - talking to the model you built. Training weights / scoring
+or creating a curriculum is never "chat with Gemma" in a freeform
+box - it's Gemma performing ONE bounded, single-purpose task ON
+famous's own corpus, the exact shape NIGHT 9/11/12 already spec'd
+(propose, never auto-merge). A single chat box that has to be phrased
+correctly to trigger the right operation is the wrong UI for that -
+db-hq's own real shape (structured rows, each a distinct real command,
+not a prompt you hope parses right) is the correct instinct, and it's
+also literally NIGHT 12's `irl_bootstrap_fsm` states made clickable by
+a human before the FSM exists to fire them itself:
+
+| Button (real, bounded, single-purpose) | Real call | FSM state it manually performs |
+|---|---|---|
+| Propose weights (Gemma) | `llm_choice()`-shaped call: hand Gemma the corpus/term list (NIGHT 9's tool), get back a weight proposal | `PROPOSING` |
+| Score curriculum (Gemma) | Same call shape: hand Gemma one real transcript slice, ask corrected-vs-accepted (the inline correction signal, `IRL-BOOTSTRAP-RECURSION-SPEC.md`) | `JUDGING` |
+| Create curriculum (Gemma) | Same call shape: propose a new category name + starter weights | `PROPOSING` (new-category case) |
+| Review queue | Lists every pending Gemma-authored draft above; a human accepts (writes it into the real `weights.txt`/curriculum file) or rejects (discards) ONE at a time | `PENDING_REVIEW` - never auto-merge, same discipline as every prior NIGHT |
+
+**Why build the buttons before the FSM automates them:** a human
+clicking "accept"/"reject" on real Gemma output, one row at a time, IS
+the smallest real proof that the review discipline actually works -
+prove a human can supervise it before trusting an FSM to run it
+unattended. This is not new scope invented for h-ai-lab; it's the
+existing `irl_bootstrap_fsm` design, given a UI before it's given
+automation.
+
+**Real, separate artifact per action** (never write straight into a
+live file): each button appends to a small per-instance review-queue
+file (e.g. `<instance PATH's own dir>/pending_review.txt`, one
+proposal per line: what it is, Gemma's raw output, timestamp) - the
+Review Queue row above reads that file, and Accept is the only code
+path allowed to write into the real `weights.txt`/curriculum file.
+Exact file format: decide when this part actually starts, matching
+the "don't over-specify ahead of building" rule the rest of this doc
+already follows.
+
+**Scope boundary, explicit:** this is still design, not started. Real
+smallest first step for Part 4 specifically: ONE button (Score
+curriculum), against ONE real transcript slice, writing to ONE
+review-queue file, with NO accept/merge path yet - prove Gemma's call
++ the draft write before building the review/accept UI on top of it.
+Matches `IRL-BOOTSTRAP-RECURSION-SPEC.md`'s own smallest-first-step
+(hand-score 5 exchanges) - Part 4's first button is that same proof,
+just reachable from a real UI instead of a hand-run script.
 
 ## Real blockers vs. non-blockers (direct question, answered)
 
@@ -175,19 +249,20 @@ today, so in practice, it is).
 
 ## Smallest real first step (do exactly this, nothing bigger, first)
 
-1. Build `ai_instances_registry.txt` + `ai_registry_add()` (the
-   read-prune-write-rename writer) + a plain read function. No UI yet.
-2. Rewrite `cursword_fsm.c` into a real table-driven shape; register
-   it in the new registry as the first `KIND=fsm` entry. Prove
-   `cursword_say()`'s fallback path still works post-rewrite.
-3. Build ONE sidebar row + ONE embedded panel (viewer tier only,
-   reading cursword's new state table) - prove the db-hq-style embed
-   pattern works for a real AI instance before promising all three
-   tiers for every KIND.
-4. Only after 1-3 are proven: add the chat tier, then the qroq
-   attention-net KIND (viewer via `/api/debug`, chat via `/api/chat`),
-   then the decision-pal KIND, then the disabled retrain-trigger slot.
-   Do not build all KINDs/tiers at once.
+1. ✅ DONE - `ai_instances_registry.txt` + `ai_registry.sh` (add/
+   remove/prune/list), `flock`-locked read-prune-write-rename.
+2. ✅ DONE - `cursword_fsm.c` rewritten table-driven, registered as
+   the first `KIND=fsm` entry.
+3. ✅ DONE - one sidebar row + one embedded viewer panel, live-verified
+   against cursword's real table, including a real input-relay click
+   proving the refresh action actually re-scans.
+4. **Next, not yet started, pick ONE:** (a) the chat tier for
+   `attention-net` (viewer via `/api/debug`, chat via `/api/chat`) -
+   register the qroq project as the registry's first `attention-net`
+   entry first; (b) Part 4's first button (Score curriculum, one
+   transcript slice, one review-queue write, no accept path yet).
+   Do not build all KINDs/tiers/Part-4-buttons at once - same
+   one-real-thing-at-a-time discipline this whole doc has followed.
 
 ## Open questions this doc does not resolve
 
