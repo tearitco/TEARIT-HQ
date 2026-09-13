@@ -1,0 +1,60 @@
+# 🧪 NIGHT 13 — h-ai-lab: a window onto every AI this house has made 🧪
+# ====================================================================
+# Title: "🧪 NIGHT 13 — h-ai-lab: a window onto every AI this house has made 🧪"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, third bonus round
+
+**THE NARRATOR:** NIGHT 12 gave the recursion its shape. Tonight asks a plainer question: once you've built two, five, ten of these things, how do you actually SEE them? 🧪
+
+**MAXINE:** The direct ask was a GUI - "h-ai-lab" - somewhere to inspect an AI by its own events/ops and corpuses/weights, and "play" with it by attaching it to a real X11-HQ template window. Same shape as db-hq, but for AIs instead of database rows.
+
+**RAHWEH:** Does db-hq's own shape actually transfer? It's a real, working precedent, not a guess.
+
+**TOMO:** It transfers better than a fresh design would. `db-hq` isn't its own separate manager+projector binary at all - it's a `<window class="database-window">` MODE of the one shared renderer, sidebar of categories on the left, panel of content on the right. And its Common Events tab already does the exact trick h-ai-lab needs: selecting that sidebar row doesn't open a NEW window, it INJECTS the whole events-hq editor directly into db-hq's own panel. One sidebar, one panel, swappable embedded content. h-ai-lab is that same pattern with a different sidebar list.
+
+**MAXINE:** And the "attaching it and playing with it" half turns out cheaper than expected, too. The qroq attention project already runs a real HTTP server - `GET /api/curricula`, `POST /api/chat`, `GET /api/debug`. The panel doesn't need to embed a model's CODE. It can be a `cli_io` chat field hitting `/api/chat`, plus a read-only view over `/api/debug`. The API was already there, just never given a face.
+
+**THE NARRATOR:** Direct instruction tonight: build this the RIGHT way, meaning a real house-wide registry first, not a hardcoded scan. And fold in a second, related task at the same time - rewrite `cursword`'s own FSM to be table-driven. Say why those two belong in the same pass.
+
+**RAHWEH:** Because h-ai-lab's sidebar needs something to list, and right now there's nothing real to list. `047.scm🎓️+1/corpuses/*/weights.txt`, the qroq project, `cursword`, every `corp_decide.c`-style pal with its own `decision_mode` - each real, each discoverable only by knowing exactly where to look by hand. No single file says "here is every AI this house has."
+
+**TOMO:** And `cursword_fsm.c` - the one real, live FSM in the house today - turns out NOT to be table-driven at all. `set_state("OFFER")`, `set_state("NEW_USER")`, plain sequential string writes threaded through procedural C, no transition table, no trigger/condition struct. It can't show up in an event editor as it's written today. Rewriting it into a real table (states, triggers, the same shape events-hq's own real event already has: trigger + condition + command) does two things at once: it's the smallest real content the new registry can list on day one, AND it proves whether "FSM as events" is even a fair thing to ask of the rest of the house's FSMs before promising it broadly.
+
+**THE NARRATOR:** So the registry's real shape, then. What does an entry need?
+
+**MAXINE:** Enough for h-ai-lab's sidebar to draw a row and know what kind of panel to inject. A real name, a real path, a KIND (fsm / attention-net / decision-pal / other), and - this is the part that makes it more than a directory listing - a pointer to whatever that kind's own real interface already is: an FSM's state-table file, an attention-net's `/api/*` base URL, a decision-pal's `state.txt` + `decision_mode` field. The registry doesn't reinvent how any of these things already talk - it just points at the real, existing interface each one already has, the same way db-hq's own sidebar just points at whichever real database file each row already reads.
+
+**RAHWEH:** One writer, one file, append-only, same house convention as everywhere else?
+
+**TOMO:** Same convention, yes - but this one's not append-only in the pure sense, since an AI can be retired or renamed. Real, small, and the SAME read-prune-write-rename shape `livedesk_registry_add()` already uses for the entity taskbar (NIGHT 12's own bug-hunt, still fresh) - a real, proven pattern for "many real instances register themselves, a reader prunes dead ones," not a new invention.
+
+**MAXINE:** And where does h-ai-lab live in the actual taskbar? Direct instruction: under the existing `14.h-ai` cell - `strip_btn_14_label = h-ai`, sitting right next to "Open h-ai" and "Chat-h-ai" in `livedesk_taskbar.pdl` today. A third row, "h-ai-lab," same dropdown, launching the same generic renderer against a new `h-ai-lab.xhtpm` the way `dashboard.chtpm` already does for db-hq.
+
+**THE NARRATOR:** "I want all of it, I just want to see the hooks are there" - the direct answer on how deep v1 goes.
+
+**RAHWEH:** Three real tiers, then, not picked one over the other - chat, viewer, and a retrain trigger - each wired to its real, existing hook, none of them faked.
+
+**TOMO:** Tier one, chat: a `cli_io` panel, `POST /api/chat` for an attention-net entry, or a direct call into `corp_decide.c`'s own `decision_mode` dispatch for a decision-pal entry - "talking to it" means genuinely different things per KIND, and the panel has to actually branch on that, not pretend every AI takes the same input.
+
+**MAXINE:** Tier two, viewer: `GET /api/debug` for weights/corpus state on an attention-net; for an FSM entry (cursword, once rewritten), the viewer is the state TABLE itself - literal rows, current state highlighted, read directly off disk, the same "cheap text read beats decoding pixels" discipline this house's own testing convention already insists on elsewhere.
+
+**RAHWEH:** Tier three, retrain?
+
+**TOMO:** This is the one real hook that's honestly not fully there yet - NIGHT 12's own `irl_bootstrap_fsm` is still unbuilt. Tier three in h-ai-lab is a button that's WIRED to fire that FSM's `PROPOSING` step once it exists - visible today as a real, present, but disabled control, not hidden, not faked as working. "See that the hook is there" means exactly that: the UI slot exists, the wire is drawn, the other end just isn't built yet.
+
+**THE NARRATOR:** Real blockers, honestly, before anyone assumes this is ready to build.
+
+**MAXINE:** The pc-hq trigger layer (horizon item 1, still unbuilt) is NOT one - h-ai-lab talks to events-hq's already-working dispatch directly, the same path db-hq's own embedded editor already uses. That confusion's worth naming just to rule it out.
+
+**TOMO:** Two REAL blockers instead. One: the registry itself doesn't exist yet - nothing to build a sidebar from until it does. Two: `cursword_fsm.c`'s own rewrite has to happen before cursword can be the registry's first real FSM-kind entry - not a blocker for the REGISTRY's existence, but a blocker for h-ai-lab's own smallest end-to-end proof (register one real thing, show it in a sidebar, embed a real panel for it) if cursword is meant to be that first thing.
+
+**RAHWEH:** Smallest real first step, then - not the whole three-tier UI, not yet.
+
+**MAXINE:** One: build the registry file and its own real read-prune-write-rename reader, nothing else. Two: rewrite `cursword_fsm.c` into a real table, register it. Three: one sidebar row, one embedded panel, reading that ONE real table - prove the db-hq-style embed pattern works for an AI instance before promising it for ten of them.
+
+**THE NARRATOR:** Named, scoped, pointed at real files. Go build the registry first.
+
+**TOMO:** History, watched. Weights, reviewed. Now - one room to actually see them all standing in.
+
+**RAHWEH:** h-ai-lab. Go build the registry first. 🧪🪞

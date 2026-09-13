@@ -100,9 +100,26 @@ roadmap assumes they're the same thing.
    inline correction signal (does the next `U|` line restate/correct)
    — no FSM, no Gemma call, until that's confirmed clean.
 
+8. **h-ai-lab — a real AI-instance registry + inspection GUI**
+   (NIGHT_13) — full spec: `H-AI-LAB-DESIGN.md` (this same dir). A new
+   `ai_instances_registry.txt` (real read-prune-write-rename registry,
+   same shape as `livedesk_registry_add()`) any FSM/attention-net/
+   decision-pal registers into; a db-hq-style sidebar+embedded-panel
+   GUI, launched from the real, existing `14.h-ai` taskbar dropdown,
+   reading that registry. Bundled in the same pass: a real rewrite of
+   `cursword_fsm.c` (today plain procedural `set_state()` calls, not
+   table-driven) into a table-driven shape, both to give the registry
+   its first real FSM-kind entry and to test whether "FSM as events"
+   is honestly answerable before promising it house-wide. Real
+   blockers named: the registry not existing yet, and cursword's own
+   rewrite (since it's the only real FSM in the house today). NOT
+   blocked by the still-unbuilt pc-hq trigger layer (item 1) - h-ai-lab
+   talks to events-hq's dispatch directly, same path db-hq already
+   uses. Smallest first step: build the registry + writer only, no UI.
+
 ## Related
 
-- The NIGHT lessons themselves: `1-1.HARNECIENT.SMOL/NIGHT_05..12_*`.
+- The NIGHT lessons themselves: `1-1.HARNECIENT.SMOL/NIGHT_05..13_*`.
 - `08-roadmap/OPEN-ITEMS.md` item 1 (events/db-hq registry) — item 1
   above is the trigger-side half of that same gap.
 - `TILESETS-EVENTS-AND-GAME-CLONES.md` — the wider game-clone catalog
