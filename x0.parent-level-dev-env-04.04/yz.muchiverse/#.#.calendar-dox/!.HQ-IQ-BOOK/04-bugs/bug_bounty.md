@@ -214,6 +214,131 @@ gap).
 
 ---
 
+## ✅ CLOSED 2026-09-13: tab reordering / entities missing after restart - the real architectural cause
+
+**Reported same day, multiple times, same underlying file:** "it just
+reshuffled again... how did old codebase accomplish functionality"
+and separately "some entities didn't show up on restart... was it
+related to restart somehow like before? is there a guard against
+that?" and again "bottom tb is missing entities again... this needs 2
+stop happening. no patches. research house standards, and a real
+solution."
+
+**Real root cause, researched not guessed:** `#.desktop/livedesk_
+open.txt` (the file that decides the taskbar's tab list) was written
+by EVERY entity process independently, on its own unsynchronized
+~10s self-heal timer - exactly the "one hot shared file, many
+writers" shape `PROC-LIFECYCLE-CONSOLIDATE-REGISTRIES.md` (this
+house's own design doc, §1) explicitly names as the pattern the
+house's one-writer rule exists to avoid. This one anti-pattern was
+the real, shared cause behind THREE separately-reported symptoms:
+tab reordering (each entity's periodic rewrite repositioned its own
+line), entities missing after a restart (races between the manager's
+one-time startup read and entities' own async writes), and a third,
+related PID-reuse class (see below).
+
+**Real, structural fix (`764944ea`, `ec77a18f`)** - not another patch
+on the same timer:
+1. Entities register ONCE, at their own startup; the periodic re-add
+   removed from `khtpm_core_render.c`'s `tp_main()` entirely.
+2. The manager is now the SOLE writer - `ktb_self_heal_active_desk_
+   registry()` (`khtpm_taskbar_manager.c`, called from `ktb_reload()`
+   every tick, internally gated to the same ~10s cadence) restores a
+   registry line for any active-desk pal found genuinely alive via a
+   real `/proc` cmdline identity scan but missing from the registry,
+   and separately re-calls the already-safe `livedesk_spawn_active_
+   desk()` so a pal that silently never launched gets a real retry -
+   never spawns duplicates (identity-guarded).
+3. A THIRD site sharing the same PID-reuse false-positive class
+   fixed twice earlier the same day (`ktb_pid_is_this_pal()`, for
+   `livedesk_spawn_desk`'s `already_live` check and `livedesk_ensure_
+   cursword`) was found and closed: `load_tabs()`'s own dup-kill
+   logic - the function that builds the tab list every single tick -
+   was still using bare `ktb_pid_alive()`. Live-traced via temporary
+   debug logging (added and fully removed same pass): a stale,
+   PID-reused registry line alongside a genuinely fresh spawn made
+   two "alive" entries look like a real zorder-respawn duplicate, and
+   the correct dup-kill logic SIGTERMed one of them - a real,
+   plausible explanation for repeated silent spawn failures for one
+   specific entity across several restarts.
+
+**Verified live** across multiple clean restarts (full process kill
+first, not partial): registry order stable, zero reordering, entities
+restored without any manual click, matching the exact "no patches,
+real solution" ask.
+
+**Real, honest caveat, not fully closed**: this fix explains and
+closes every registry/respawn-skip mechanism found - but one entity
+(`book-stack`) kept failing to survive across several of these same
+restarts for a DIFFERENT, still-open reason (see the new bounty entry
+below) - its own crash, not a registry bug. Don't mistake a future
+`book-stack`-specific absence for a regression of THIS fix without
+checking that entry first.
+
+---
+
+## ⚠️ OPEN 2026-09-13: book-stack dies silently, sometime after a genuinely successful launch
+
+**Reported:** direct live report, same pass as the registry fix
+above: "bookstack is missing. it needs to be fault tolerant. (it
+appeared later) but thats bugy, janky. know fix?"
+
+**What's confirmed:**
+- ✅ NOT a registry/spawn-skip bug - ruled out directly. Temporary
+  debug logging (added and fully removed) proved the manager's spawn
+  retry correctly, repeatedly attempts to launch book-stack every
+  self-heal cycle, and on at least one clean-restart observation
+  `already_live=1` was reached almost immediately (a genuinely fast,
+  successful self-registration) - the registry/self-heal layer is
+  doing its real job.
+- ✅ A REAL, confirmed successful launch happens first: book-stack's
+  own `history.txt` shows `WINDOW_OPEN` then `ENTITY_PHYMOJI_LOADED`
+  (its sprite/voxel atlas load completing) on every attempt - then
+  nothing. The process is gone sometime after, silently, with no
+  further history entries, no stderr, no exit code ever observed
+  (spawned detached via `setsid nohup ... &`, not something this
+  investigation could directly `wait()` on).
+- ✅ NOT reliably reproducible on demand - inconsistent across
+  restarts in the same session (sometimes survives indefinitely,
+  sometimes dies within seconds), and a manual foreground/synchronous
+  relaunch (bypassing the manager entirely) also succeeded without
+  crashing at least once - genuinely intermittent, not a deterministic
+  parse/data bug (an earlier "failed to parse" finding this same
+  investigation turned out to be a false lead from an incorrect
+  manual repro command - argc mismatch - not a real bug in book-
+  stack's own package; ruled out and corrected in-session, worth
+  recording so a future reader doesn't chase it again).
+- ✅ This system routes core dumps through apport
+  (`/proc/sys/kernel/core_pattern`), which needs `RLIMIT_CORE` raised
+  per-process to even attempt a capture - the default here was 0,
+  silently discarding every crash with zero forensic trail. This is
+  why nothing could be found: there was never any evidence to read.
+
+**Real fix landed this pass (`7da1ae7b`)**: not a fix for the crash
+itself (not yet root-caused) but the fix that makes root-causing it
+possible - every entity spawn now does `ulimit -c unlimited` before
+the real launch (all 3 spawn sites in `khtpm_taskbar_manager.c`).
+Harmless when nothing crashes.
+
+**Real next steps, not yet done:**
+1. Next time book-stack (or any entity) dies this way, check for a
+   real core file (`/var/crash`, or wherever apport/this system's
+   `core_pattern` handler actually deposits one now that `RLIMIT_
+   CORE` is raised) and read the actual backtrace - stop guessing at
+   the cause from source alone.
+2. `book-stack`'s own `history.txt` was unusually large (~468KB)
+   compared to other entities' when this was investigated - worth
+   checking whether something in its own startup reads/replays that
+   file and whether size is a real factor (untested this pass, a real
+   lead not yet chased).
+3. If a core file is captured, cross-reference the crash address/
+   frame against `load_entity_phymoji()`/`build_shape_mask()` (the
+   two real steps that run immediately around the last successful
+   history entry, `ENTITY_PHYMOJI_LOADED`) as the first real suspects,
+   not a blind full-file audit.
+
+---
+
 ## ⚠️ OPEN 2026-09-13: taskbar HQ menu gets permanently stuck on nav 1, no key/click moves it
 
 **Reported:** 2026-09-13, direct live report: "tb has an issue now,
