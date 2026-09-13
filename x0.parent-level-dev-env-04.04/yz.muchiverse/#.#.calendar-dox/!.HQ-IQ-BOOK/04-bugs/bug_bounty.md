@@ -422,7 +422,7 @@ sender via that entity's own `last_signal.txt` - check that first.
 
 ---
 
-## ⚠️ OPEN 2026-09-13: taskbar HQ menu gets permanently stuck on nav 1, no key/click moves it
+## ✅ CLOSED 2026-09-13: taskbar HQ menu gets permanently stuck on nav 1, no key/click moves it
 
 **Reported:** 2026-09-13, direct live report: "tb has an issue now,
 its stuck on 1.hq no matter what is pressed" - then, after a full
@@ -484,3 +484,42 @@ restart cleared it once).
    rather than starting a new one - and note whether it was triggered
    by real physical keyboard/mouse input or another synthetic test, to
    start narrowing the input-path question in (1).
+
+**Recurred, 2026-09-13, same day** - direct live report: "nav is
+stuck at 1 again." This time genuinely reproduced live (not just
+suspected): a real, GENUINELY FRESH strip process (a brand-new PID
+from an always-on-top respawn) already showed the stuck state on its
+very first frame dump, before this investigation sent it ANY input.
+Confirmed via direct testing: a digit-jump (`5`) worked fine (landed
+on nav5, proving the earlier `g_default_scope_confine` fix from
+`3e87e11f` was NOT the active mechanism here), but the VERY NEXT
+arrow-key press snapped straight back to nav1 - a different code path
+entirely (`assign_nav_and_layout()`'s own drop-zone clamp, gated on
+`g_dock_drop_lo && g_default_active_scope_id[0]`, checked on every
+layout pass, independent of `g_default_scope_confine`).
+
+Root mechanism for HOW a brand-new process ends up with
+`g_default_active_scope_id` already non-empty before receiving any
+real click **was not conclusively found** despite a real attempt
+(exhaustively grepped every assignment site - all three are
+click-handler code, none can run before the process's own event loop
+starts; ruled out cross-process leakage, a var-driven class seed).
+
+**Real, structural fix anyway (`67aacbe4`)**: rather than keep
+chasing the mystery initial value, a freshly-started dock window now
+explicitly zeroes `g_default_active_scope_root`/`id`,
+`g_default_scope_confine`, and `g_dock_drop_lo`/`hi` once, right
+after its own template parses, before the first real layout pass ever
+runs - a fresh process cannot possibly have a real, current nav scope
+yet, so whatever these globals happened to hold becomes irrelevant.
+Belt-and-suspenders on top of `3e87e11f`'s own narrower fix. Verified
+live: digit-jump then arrow-step composed correctly (`5` then `Right`
+→ nav6) on a fresh post-toggle process, no snap-back.
+
+**Real, honest gap this entry leaves for a future reader**: since the
+exact seeding mechanism was never caught in the act, if this recurs a
+THIRD time, the new zero-at-startup guard would only mean something
+is setting this state DURING the process's life (post-startup, a real
+click-path bug) rather than pre-seeding it - re-open this entry and
+check for that distinction specifically, not just "does the bug still
+happen."
