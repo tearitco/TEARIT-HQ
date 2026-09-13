@@ -687,5 +687,89 @@ that `stat`s / `fopen`s the file in that window (here khtpm's
 
 ---
 
+## 18. A "restore a stale registry line" self-heal that checks a stale in-memory snapshot can create the exact duplicate its own dup-kill logic then SIGTERMs — killing the only real process
+
+**Real, live-caught 2026-09-13** (user: "no bookstack still", then
+"theres nothing external to house quiting booktstack it must be in
+house. it must be researched and fix. also i keep seeing weirdly
+that it redraws then quickly dissapears"). An entity (`book-stack`)
+opened a real window, painted a real first frame, then died within
+about one second — every single time, on every restart, with zero
+crash evidence anywhere (no core dump, `strace -p` blocked by this
+environment's `yama.ptrace_scope`). Not a crash at all: the entity's
+own manager was sending it a real `SIGTERM`.
+
+**Root cause:** earlier the same day, a real, correct fix
+(`ec77a18f`) added `ktb_self_heal_active_desk_registry()` — a
+periodic self-heal that restores a registry line for any active-desk
+pal it finds genuinely alive via a real `/proc` identity scan but
+missing from `#.desktop/livedesk_open.txt`. Its "is this pal already
+in the registry" check compared against `s->tabs[]`, a snapshot
+`load_tabs()` had taken once at the *top* of that same tick — not the
+live file. If the entity's own process self-registered (its real,
+separate, one-time startup write) in the narrow window between that
+snapshot and the self-heal's own check, self-heal had no way to see
+it and appended a **second, genuine duplicate line naming the exact
+same live PID**. `load_tabs()`'s own dup-kill logic (real, correct,
+needed for an actual zorder-respawn leftover with two DIFFERENT live
+PIDs for one entity) saw the entity name twice on its very next read
+and SIGTERMed the "duplicate" — which, since both lines named the
+*same* PID, meant killing the only real process there was. A crash-
+shaped symptom with zero crash: a race between two writers to one
+shared file, one of them checking a stale copy of "what's already
+there."
+
+**How it was actually found — not guessed:** static reading (checking
+every `kill()`/`SIGTERM` call site, checking for stale-registry-line
+theories) got close but never confirmed WHO was sending the signal.
+The real unlock was upgrading the entity's own `signal(SIGTERM, ...)`
+handler to `sigaction()` + `SA_SIGINFO`, so the handler could record
+the sender's real PID (via `info->si_pid`) with async-signal-safe
+`write(2)` before the process died. The very next occurrence named
+the sender directly: the entity's own taskbar manager process. One
+real signal, caught once, ended what static analysis alone could not.
+
+**Fixes (`b5443a67`):**
+- The self-heal's restore-write is now a single pass **inside the one
+  real registry lock**, re-checking the *live* file directly (by real
+  cmdline identity, not just a name match) instead of trusting the
+  stale snapshot — the duplicate can no longer be created.
+- A second, related bug found while writing that fix: the naive fix
+  (just call `livedesk_read_open()` again to re-check) would have
+  acquired/released the *same shared, process-wide lock fd* from
+  *inside* an already-held lock — silently dropping the outer lock
+  the instant the nested call returned, leaving the write after it
+  unprotected again. **A lock helper that caches one fd per process
+  is not safely nestable** — a function that already holds the lock
+  must never call another function that also acquires/releases it;
+  inline the read instead.
+- The `SA_SIGINFO` signal-sender diagnostic was kept permanently, not
+  removed after use — cheap, silent when nothing fires it, and it's
+  what actually cracked this bug in one shot.
+
+**Rules:**
+- A self-heal / restore function that decides "is X already present"
+  before writing a shared registry must check the registry **itself**,
+  fresh, at write time — not a snapshot taken earlier in the same
+  tick by a different, unrelated read. Two real, independent writers
+  to one file is exactly the shape where a stale snapshot creates a
+  duplicate the OTHER writer's own correct logic then reacts to
+  badly.
+- When a process dies with no crash evidence (no core, no coredump
+  tooling available, nothing in its own history/log right before the
+  silence), suspect an external signal before suspecting internal
+  code — and get real proof (`SA_SIGINFO` + `si_pid`, or equivalent)
+  instead of guessing from source reading alone. A signal handler
+  that only sets a flag is blind to *who* sent it; upgrading it costs
+  nothing and turns "reaches the loop then vanishes, no evidence" into
+  a one-shot, conclusive answer.
+- A cross-process lock built on ONE cached, reused file descriptor per
+  process (`flock()` on a static fd) is not reentrant-safe across
+  function boundaries the way a real mutex might read as — never call
+  a second lock-acquiring function while already holding that same
+  lock; inline the read/write instead.
+
+---
+
 *Append new entries here as they're found — this file exists so the
 next session doesn't re-discover the same mistake from scratch.*
