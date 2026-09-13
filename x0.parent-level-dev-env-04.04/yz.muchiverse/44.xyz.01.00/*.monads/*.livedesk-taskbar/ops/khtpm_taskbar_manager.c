@@ -783,7 +783,28 @@ void ktb_merge_hq_windows(KtbState *s) {
             if ((p = strstr(line, "minimized=1"))) ent.minimized = 1;
             if ((p = strstr(line, "focused=1"))) ent.focused = 1;
             fclose(f);
-            if (!ent.win || !ktb_pid_is_hq_renderer(ent.pid)) continue;
+            /* REAL FIX 2026-09-12 (direct live report: "why has doing
+             * this been killing the tb... entities dropping from the
+             * bottom toolbar" investigation - real, confirmed, separate
+             * leak found along the way, not the entity-tile bug itself
+             * but worth closing regardless). cleanup_hq_window_registry()
+             * only runs via atexit() (khtpm_core_render.c) - a crashed
+             * or SIGKILL'd renderer never gets that chance, so its
+             * registry file survives forever. Confirmed live: 60+ stale
+             * livedesk_hq_windows_<pid>.txt files for long-dead PIDs
+             * sitting in #.desktop/, none matching any currently-alive
+             * process. This reader already does the definitive liveness
+             * + identity check (ktb_pid_is_hq_renderer) every single
+             * scan - it's the one place in the house that KNOWS a given
+             * registry file is stale, so it's the right place to also
+             * delete it, self-healing the leak instead of just skipping
+             * past it forever. Real, safe: only ever unlinks a file this
+             * exact check just proved belongs to a dead/wrong process,
+             * never a live one. */
+            if (!ent.win || !ktb_pid_is_hq_renderer(ent.pid)) {
+                unlink(path);
+                continue;
+            }
             s->hq_wins[s->n_hq_wins++] = ent;
         } else {
             fclose(f);
