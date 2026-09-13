@@ -1,0 +1,26 @@
+# cursword_fsm.c's real, table-driven state graph. H-AI-LAB-DESIGN.md
+# Part 2: this replaces the old plain-procedural set_state("X") shape
+# (no table, no validation - the whole reason cursword couldn't be
+# the AI registry's first real fsm-kind entry, or show up in an
+# event-shaped viewer). Every real edge below is the exact transition
+# sequence already live in run_onboarding()/main() - see ops/README.md
+# "States" section for the human-readable walk. cursword_fsm.c now
+# loads this table at startup and validates every set_state() call
+# against it (WARN + still-allow on a genuinely new/unlisted edge -
+# never hard-fail a working onboarding flow over a table mistake, but
+# never silently accept an edge without a trace either).
+#
+# STATE | <name> | NEXT=<comma-separated allowed next states>
+# "(start)" is the pseudo-state for the FSM's own two real entry
+# points - not a real state cursword_fsm.state is ever written as.
+STATE | (start)       | NEXT=OFFER,IDLE
+STATE | OFFER          | NEXT=OPEN_USER
+STATE | OPEN_USER      | NEXT=NEW_USER,ERROR
+STATE | NEW_USER       | NEXT=AUTO_ID,WATCH_SIGNUP
+STATE | AUTO_ID        | NEXT=AUTO_NAME
+STATE | AUTO_NAME      | NEXT=WATCH_DONE
+STATE | WATCH_SIGNUP   | NEXT=WATCH_DONE
+STATE | WATCH_DONE     | NEXT=IDLE,DONE
+STATE | DONE           | NEXT=IDLE
+STATE | ERROR          | NEXT=
+STATE | IDLE           | NEXT=

@@ -30,6 +30,21 @@ WATCH_DONE → DONE → IDLE`  (or `ERROR` if the taskbar can't be
 reached). Current state is mirrored to `entities/cursword/cursword_fsm.state`;
 a trace goes to `cursword_fsm.log`.
 
+**Table-driven since 2026-09-13** (H-AI-LAB-DESIGN.md Part 2): the
+graph above is now real, loaded data —
+`entities/cursword/fsm_table.pdl`, one `STATE | <name> | NEXT=<comma
+list>` row per state. `cursword_fsm.c`'s `set_state()` validates every
+real transition against it (`FSM_WARN` in `cursword_fsm.log` on a
+genuinely unlisted edge — never a hard failure, a table mistake must
+never block a working onboarding flow; a missing table just disables
+validation with a warning, same fallback spirit as `cursword_say()`'s
+own model-optional posture). This is also cursword's real, first entry
+in the house-wide AI registry
+(`&.widgits/ai-lab/ops/ai_registry.sh add ... cursword fsm
+entities/cursword/fsm_table.pdl -`) — the table file IS the registry's
+real `PATH` for this instance, and (later) h-ai-lab's own state-graph
+viewer for an `fsm`-kind entry reads this exact file.
+
 ## The three future hooks (stubbed, fallback already wired)
 
 | function | v1 | later |

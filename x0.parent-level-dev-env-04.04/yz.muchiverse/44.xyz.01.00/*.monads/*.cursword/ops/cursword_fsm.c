@@ -50,6 +50,7 @@ static char g_fsmlog[1024];     /* <pkg>/cursword_fsm.log                   */
 static char g_fsmstate[1024];   /* <pkg>/cursword_fsm.state                 */
 static char g_ttsq[1024];       /* <pkg>/tts_queue.txt                      */
 static char g_sttin[1024];      /* <pkg>/stt_in.txt                         */
+static char g_fsmtable[1024];   /* <pkg>/fsm_table.pdl                      */
 static int  g_auto = 0;
 
 static void nap_ms(int ms) {
@@ -63,12 +64,6 @@ static void logline(const char *tag, const char *msg) {
     FILE *f = fopen(g_fsmlog, "a");
     if (f) { fprintf(f, "%ld %s %s\n", now_s(), tag, msg); fclose(f); }
     fprintf(stderr, "[cursword_fsm] %s %s\n", tag, msg);
-}
-
-static void set_state(const char *s) {
-    FILE *f = fopen(g_fsmstate, "w");
-    if (f) { fprintf(f, "%s\n", s); fclose(f); }
-    logline("STATE", s);
 }
 
 /* read a whole small file into buf; returns length (0 if missing/empty) */
@@ -85,6 +80,102 @@ static size_t slurp(const char *path, char *buf, size_t n) {
 static void rstrip(char *s) {
     size_t l = strlen(s);
     while (l && (s[l-1] == '\n' || s[l-1] == '\r' || s[l-1] == ' ' || s[l-1] == '\t')) s[--l] = 0;
+}
+
+/* ---------- H-AI-LAB-DESIGN.md Part 2: the real state table --------
+ * Replaces the old plain-procedural set_state("X") shape (no table,
+ * no validation) with a real, loaded transition graph - see
+ * fsm_table.pdl's own header comment for the full "why." Small, fixed
+ * arrays are the right size here (this FSM has 11 real states, ever)
+ * - a dynamic structure would be premature for a table this size. */
+#define FSM_MAX_STATES 16
+#define FSM_MAX_NEXT   6
+typedef struct {
+    char name[32];
+    char next[FSM_MAX_NEXT][32];
+    int  n_next;
+} FsmStateDef;
+static FsmStateDef g_fsm_states[FSM_MAX_STATES];
+static int g_n_fsm_states = 0;
+static char g_fsm_current[32] = "";   /* "" until the first set_state() call */
+
+static FsmStateDef *fsm_find_state(const char *name) {
+    int i;
+    for (i = 0; i < g_n_fsm_states; i++)
+        if (strcmp(g_fsm_states[i].name, name) == 0) return &g_fsm_states[i];
+    return NULL;
+}
+
+/* Parses fsm_table.pdl's own real, small format:
+ *   STATE | <name> | NEXT=<comma,separated,list>
+ * Comment/blank lines (leading '#' or empty) are skipped. A missing
+ * or unparsable table is NOT fatal - set_state() just skips
+ * validation entirely if g_n_fsm_states stays 0, so a missing table
+ * degrades to the old, always-allow behavior instead of blocking
+ * onboarding over a doc file problem. */
+static void load_fsm_table(void) {
+    FILE *f = fopen(g_fsmtable, "r");
+    if (!f) { fprintf(stderr, "[cursword_fsm] WARN fsm_table.pdl missing - set_state() validation disabled\n"); return; }
+    char line[512];
+    while (fgets(line, sizeof(line), f)) {
+        char *p = line;
+        while (*p == ' ' || *p == '\t') p++;
+        if (*p == '#' || *p == '\n' || *p == '\0') continue;
+        if (strncmp(p, "STATE", 5) != 0) continue;
+        char *bar1 = strchr(p, '|');
+        if (!bar1) continue;
+        char *bar2 = strchr(bar1 + 1, '|');
+        if (!bar2) continue;
+        char name[32]; size_t nl = (size_t)(bar2 - (bar1 + 1));
+        if (nl >= sizeof(name)) nl = sizeof(name) - 1;
+        memcpy(name, bar1 + 1, nl); name[nl] = 0;
+        rstrip(name);
+        { char *s = name; while (*s == ' ') s++; if (s != name) memmove(name, s, strlen(s) + 1); }
+        if (g_n_fsm_states >= FSM_MAX_STATES) { fprintf(stderr, "[cursword_fsm] WARN fsm_table.pdl has more states than FSM_MAX_STATES - truncated\n"); break; }
+        FsmStateDef *st = &g_fsm_states[g_n_fsm_states++];
+        snprintf(st->name, sizeof(st->name), "%s", name);
+        st->n_next = 0;
+        char *nextp = strstr(bar2 + 1, "NEXT=");
+        if (nextp) {
+            nextp += 5;
+            rstrip(nextp);
+            char *tok = strtok(nextp, ",");
+            while (tok && st->n_next < FSM_MAX_NEXT) {
+                while (*tok == ' ') tok++;
+                if (*tok) snprintf(st->next[st->n_next++], sizeof(st->next[0]), "%s", tok);
+                tok = strtok(NULL, ",");
+            }
+        }
+    }
+    fclose(f);
+}
+
+/* real edge check - never hard-fails (a table mistake must not block
+ * a working onboarding flow), always traces loudly either way. Runs
+ * BEFORE the state is actually written/logged so the WARN (if any)
+ * lands right next to the STATE line it's about in cursword_fsm.log. */
+static void fsm_validate_transition(const char *from, const char *to) {
+    if (g_n_fsm_states == 0) return;   /* table missing/empty - validation off */
+    const char *from_key = from[0] ? from : "(start)";
+    FsmStateDef *st = fsm_find_state(from_key);
+    if (!st) {
+        FILE *f = fopen(g_fsmlog, "a");
+        if (f) { fprintf(f, "%ld FSM_WARN unknown state '%s' not in fsm_table.pdl\n", now_s(), from_key); fclose(f); }
+        return;
+    }
+    int i;
+    for (i = 0; i < st->n_next; i++)
+        if (strcmp(st->next[i], to) == 0) return;   /* real, listed edge */
+    FILE *f = fopen(g_fsmlog, "a");
+    if (f) { fprintf(f, "%ld FSM_WARN unlisted transition %s -> %s (not in fsm_table.pdl NEXT=)\n", now_s(), from_key, to); fclose(f); }
+}
+
+static void set_state(const char *s) {
+    fsm_validate_transition(g_fsm_current, s);
+    FILE *f = fopen(g_fsmstate, "w");
+    if (f) { fprintf(f, "%s\n", s); fclose(f); }
+    logline("STATE", s);
+    snprintf(g_fsm_current, sizeof(g_fsm_current), "%s", s);
 }
 
 /* ---------- the three future-facing hooks ---------------------------- */
@@ -228,6 +319,7 @@ static int setup_paths(void) {
     snprintf(g_fsmstate, sizeof(g_fsmstate), "%s/cursword_fsm.state",  g_pkg);
     snprintf(g_ttsq,     sizeof(g_ttsq),     "%s/tts_queue.txt",       g_pkg);
     snprintf(g_sttin,    sizeof(g_sttin),    "%s/stt_in.txt",          g_pkg);
+    snprintf(g_fsmtable, sizeof(g_fsmtable), "%s/fsm_table.pdl",       g_pkg);
     return 1;
 }
 
@@ -318,6 +410,7 @@ int main(int argc, char **argv) {
     { size_t l = strlen(g_house); if (l > 1 && g_house[l-1] == '/') g_house[l-1] = 0; }
 
     if (!setup_paths()) return 1;
+    load_fsm_table();
 
     logline("START", g_auto ? "mode=auto" : "mode=walk");
 
