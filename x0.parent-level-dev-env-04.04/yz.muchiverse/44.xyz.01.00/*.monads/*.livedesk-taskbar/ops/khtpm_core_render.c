@@ -13748,7 +13748,99 @@ static int tp_main(int argc, char **argv) {
     swa.background_pixel = g_is_cursword ? 0
                         : tp_hex_pixel(dpy, screen_num, g_theme_bg);
 
-    Window win = XCreateWindow(dpy, RootWindow(dpy, screen_num), 3 * GRID_CELL_PX, 3 * GRID_CELL_PX, WIN_PX, WIN_PX,
+    /* REAL FIX 2026-09-13, direct live report ("at entity render time,
+     * i always see in the top left these 'ghost renders' before real
+     * renders... trying to render dead/legacy entities?") - not dead
+     * entities at all: every FRESH entity window used to be created
+     * here at a hardcoded near-origin default (3*GRID_CELL_PX,
+     * 3*GRID_CELL_PX - genuinely "top left"), immediately mapped
+     * (visible), and only THEN moved to its real, saved grid position
+     * via a SEPARATE XMoveWindow call ~250 lines further down, after
+     * real disk I/O (read_initial_pos/read_map_size/read_entity_z) and
+     * other setup. With several entities respawning together (a normal
+     * always-on-top toggle or restart), that's several real windows
+     * all briefly stacked near the same wrong corner before each snaps
+     * to its own distinct real spot - exactly what reads as "ghost
+     * renders," and it's every real entity doing this every time, not
+     * a stale/legacy one. Real fix: compute the REAL win_x/win_y (the
+     * exact same logic that used to run after window creation, moved
+     * here verbatim, nothing behaviorally changed about how the
+     * position itself is derived) BEFORE XCreateWindow, and create the
+     * window there directly - no wrong position ever exists on screen,
+     * so there is nothing left to visibly correct afterward. */
+    int screen_w = DisplayWidth(dpy, DefaultScreen(dpy));
+    int screen_h = DisplayHeight(dpy, DefaultScreen(dpy));
+    int max_col = (screen_w / GRID_CELL_PX) - 1;
+    int max_row = (screen_h / GRID_CELL_PX) - 1;
+    /* REAL, NEW 2026-08-31 ("map size" movement wall, see
+     * read_map_size()'s own header comment) - a configured
+     * desk_grid.pdl map_cols/map_rows overrides the screen-derived
+     * bound above (real, deliberately smaller-or-equal "wall" so an
+     * entity dragged/placed/nudged can never end up further out than
+     * the configured map, not just the physical screen edge). Every
+     * other real clamp site in this function (drag release, arrow-key
+     * nudge, click-to-place) already reuses these same max_col/max_row
+     * locals, so this one override site is the only real change
+     * needed. */
+    {
+        int cfg_cols = 0, cfg_rows = 0;
+        read_map_size(g_house_root, &cfg_cols, &cfg_rows);
+        if (cfg_cols > 0) max_col = cfg_cols - 1;
+        if (cfg_rows > 0) max_row = cfg_rows - 1;
+    }
+    if (max_col < 0) max_col = 0;
+    if (max_row < 0) max_row = 0;
+    /* Real, new 2026-08-31 - this entity's own persisted z, loaded
+     * once at startup (see g_entity_z's own declaration comment). */
+    g_entity_z = read_entity_z(package_dir);
+    int win_x = 3 * GRID_CELL_PX, win_y = 3 * GRID_CELL_PX; /* grid-aligned spawn, matching egg_window.c's own default */
+    {
+        int ix, iy;
+        if (read_initial_pos(package_dir, &ix, &iy)) {
+            int gx = (ix + GRID_CELL_PX / 2) / GRID_CELL_PX;
+            int gy = (iy + GRID_CELL_PX / 2) / GRID_CELL_PX;
+            if (gx < 0) gx = 0; if (gx > max_col) gx = max_col;
+            if (gy < 0) gy = 0; if (gy > max_row) gy = max_row;
+            win_x = gx * GRID_CELL_PX;
+            win_y = gy * GRID_CELL_PX;
+        }
+#ifdef _WIN32
+        /* Linux pos can sit past this monitor. Keep on the primary work
+         * area, below the strip. */
+        {
+            int pad_top = 40, g = 8;
+            if (win_x < g) win_x = g;
+            if (win_y < pad_top) win_y = pad_top;
+            if (win_x + WIN_PX > screen_w - g) win_x = screen_w - WIN_PX - g;
+            if (win_y + WIN_PX > screen_h - g) win_y = screen_h - WIN_PX - g;
+            if (win_x < g) win_x = g;
+            if (win_y < pad_top) win_y = pad_top;
+        }
+#endif
+#ifdef __APPLE__
+        /* macOS leg (2026-08-22): mirror of the _WIN32 work-area clamp.
+         * Saved Linux grid positions can sit past this display's right
+         * edge (live: tiles parked at x=1600 on a 1680px screen, mostly
+         * invisible). XQuartz rootless maps y=0 to just under the macOS
+         * menu bar, so pad_top only needs to clear the taskbar strip. */
+        {
+            int pad_top = 40, g = 8;
+            if (win_x < g) win_x = g;
+            if (win_y < pad_top) win_y = pad_top;
+            if (win_x + WIN_PX > screen_w - g) win_x = screen_w - WIN_PX - g;
+            if (win_y + WIN_PX > screen_h - g) win_y = screen_h - WIN_PX - g;
+            if (win_x < g) win_x = g;
+            if (win_y < pad_top) win_y = pad_top;
+        }
+#endif
+        /* macOS leg (2026-08-22): persist the CLAMPED position - the
+         * saved Linux grid value can sit past this display's edge, and
+         * downstream consumers (khtpm_show_choices.c's picker spawn
+         * reads this same file) must not inherit an off-screen x/y. */
+        write_pos(package_dir, win_x, win_y);
+    }
+
+    Window win = XCreateWindow(dpy, RootWindow(dpy, screen_num), win_x, win_y, WIN_PX, WIN_PX,
                                 0, win_depth, InputOutput, win_vis,
                                 CWColormap | CWEventMask | CWOverrideRedirect | CWBorderPixel | CWBackPixel, &swa);
     /* REAL, NEW 2026-09-01 - when the pdl turns override_redirect off
@@ -13916,80 +14008,7 @@ static int tp_main(int argc, char **argv) {
         cursword_update_shape(dpy, win);
     }
 
-    int screen_w = DisplayWidth(dpy, DefaultScreen(dpy));
-    int screen_h = DisplayHeight(dpy, DefaultScreen(dpy));
-    int max_col = (screen_w / GRID_CELL_PX) - 1;
-    int max_row = (screen_h / GRID_CELL_PX) - 1;
-    /* REAL, NEW 2026-08-31 ("map size" movement wall, see
-     * read_map_size()'s own header comment) - a configured
-     * desk_grid.pdl map_cols/map_rows overrides the screen-derived
-     * bound above (real, deliberately smaller-or-equal "wall" so an
-     * entity dragged/placed/nudged can never end up further out than
-     * the configured map, not just the physical screen edge). Every
-     * other real clamp site in this function (drag release, arrow-key
-     * nudge, click-to-place) already reuses these same max_col/max_row
-     * locals, so this one override site is the only real change
-     * needed. */
-    {
-        int cfg_cols = 0, cfg_rows = 0;
-        read_map_size(g_house_root, &cfg_cols, &cfg_rows);
-        if (cfg_cols > 0) max_col = cfg_cols - 1;
-        if (cfg_rows > 0) max_row = cfg_rows - 1;
-    }
-    if (max_col < 0) max_col = 0;
-    if (max_row < 0) max_row = 0;
-
     int xfd = ConnectionNumber(dpy);
-    /* Real, new 2026-08-31 - this entity's own persisted z, loaded
-     * once at startup (see g_entity_z's own declaration comment). */
-    g_entity_z = read_entity_z(package_dir);
-    int win_x = 3 * GRID_CELL_PX, win_y = 3 * GRID_CELL_PX; /* grid-aligned spawn, matching egg_window.c's own default */
-    {
-        int ix, iy;
-        if (read_initial_pos(package_dir, &ix, &iy)) {
-            int gx = (ix + GRID_CELL_PX / 2) / GRID_CELL_PX;
-            int gy = (iy + GRID_CELL_PX / 2) / GRID_CELL_PX;
-            if (gx < 0) gx = 0; if (gx > max_col) gx = max_col;
-            if (gy < 0) gy = 0; if (gy > max_row) gy = max_row;
-            win_x = gx * GRID_CELL_PX;
-            win_y = gy * GRID_CELL_PX;
-        }
-#ifdef _WIN32
-        /* Linux pos can sit past this monitor. Keep on the primary work
-         * area, below the strip. */
-        {
-            int pad_top = 40, g = 8;
-            if (win_x < g) win_x = g;
-            if (win_y < pad_top) win_y = pad_top;
-            if (win_x + WIN_PX > screen_w - g) win_x = screen_w - WIN_PX - g;
-            if (win_y + WIN_PX > screen_h - g) win_y = screen_h - WIN_PX - g;
-            if (win_x < g) win_x = g;
-            if (win_y < pad_top) win_y = pad_top;
-        }
-#endif
-#ifdef __APPLE__
-        /* macOS leg (2026-08-22): mirror of the _WIN32 work-area clamp.
-         * Saved Linux grid positions can sit past this display's right
-         * edge (live: tiles parked at x=1600 on a 1680px screen, mostly
-         * invisible). XQuartz rootless maps y=0 to just under the macOS
-         * menu bar, so pad_top only needs to clear the taskbar strip. */
-        {
-            int pad_top = 40, g = 8;
-            if (win_x < g) win_x = g;
-            if (win_y < pad_top) win_y = pad_top;
-            if (win_x + WIN_PX > screen_w - g) win_x = screen_w - WIN_PX - g;
-            if (win_y + WIN_PX > screen_h - g) win_y = screen_h - WIN_PX - g;
-            if (win_x < g) win_x = g;
-            if (win_y < pad_top) win_y = pad_top;
-        }
-#endif
-        XMoveWindow(dpy, win, win_x, win_y);
-        /* macOS leg (2026-08-22): persist the CLAMPED position - the
-         * saved Linux grid value can sit past this display's edge, and
-         * downstream consumers (khtpm_show_choices.c's picker spawn
-         * reads this same file) must not inherit an off-screen x/y. */
-        write_pos(package_dir, win_x, win_y);
-    }
     MethodItem methods[MAX_METHODS];
     int n_methods = load_methods(package_dir, methods, MAX_METHODS);
     if (n_methods == 0) {
