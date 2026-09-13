@@ -376,6 +376,53 @@ static int ktb_pid_is_hq_renderer(int pid) {
     return 1;
 }
 
+/* REAL, NEW 2026-09-13 - same PID-reuse identity guard as
+ * ktb_pid_is_hq_renderer() above, for entity pals instead of HQ
+ * windows. Direct live report ("some entities didn't show up on
+ * restart. i had to manually click office to get them... is there a
+ * guard against that?"): livedesk_spawn_desk()'s own already_live
+ * check (a couple hundred lines below) only ever called plain
+ * ktb_pid_alive() against livedesk_open.txt's registered PIDs -
+ * exactly the PID-reuse hazard this file already root-caused and
+ * fixed ONCE for the HQ-window registry (ktb_pid_is_hq_renderer()'s
+ * own header comment - a closed process's stale registry entry
+ * survives, and if the OS later hands that exact PID to an unrelated
+ * process, kill(pid,0) reports it falsely "alive"), just never
+ * ported to this second, separate registry. A false-positive here is
+ * worse than the HQ-window case: it doesn't just leave a phantom
+ * taskbar cell, it SKIPS the real respawn entirely (already_live=1
+ * -> continue, never launches the pal at all) - matching the exact
+ * report precisely: a manual desk-switch (livedesk_switch_desk())
+ * fixed it because THAT path unconditionally closes-then-respawns,
+ * bypassing this flawed check altogether, while the passive startup
+ * spawn (livedesk_spawn_active_desk(), called once from ktb_init())
+ * trusted it and silently skipped whatever it false-positived on.
+ * comm alone (ktb_pid_is_hq_renderer()'s own check) isn't enough
+ * here - every pal shares the identical binary/comm - so this also
+ * verifies the live PID's own real /proc/<pid>/cmdline references
+ * THIS specific pal's path, same real technique
+ * livedesk_kill_strip_renderers()/livedesk_kill_stray_entities()
+ * already use elsewhere in this exact file, not invented here. */
+static int ktb_pid_is_this_pal(int pid, const char *pal_path) {
+    if (!ktb_pid_alive(pid)) return 0;
+#ifdef __linux__
+    char cpath[64];
+    snprintf(cpath, sizeof(cpath), "/proc/%d/cmdline", pid);
+    FILE *cf = fopen(cpath, "r");
+    if (!cf) return 1; /* unreadable /proc - fail open, matches every sibling check's own posture */
+    char cmdbuf[KTB_PATH_BUF * 2];
+    size_t nb = fread(cmdbuf, 1, sizeof(cmdbuf) - 1, cf);
+    fclose(cf);
+    if (nb == 0) return 0; /* a real process always has a non-empty cmdline; empty here means the read raced a just-exited pid */
+    cmdbuf[nb] = '\0';
+    for (size_t i = 0; i < nb; i++) if (cmdbuf[i] == '\0') cmdbuf[i] = ' ';
+    return strstr(cmdbuf, pal_path) != NULL;
+#else
+    (void)pal_path;
+    return 1;
+#endif
+}
+
 void ktb_init(KtbState *s, const char *house_root) {
     memset(s, 0, sizeof(*s));
     snprintf(s->house_root, sizeof(s->house_root), "%s",
@@ -2230,7 +2277,12 @@ static void livedesk_ensure_cursword(const char *house_root) {
         for (int i = 0; i < n; i++) {
             char base[64];
             livedesk_base_name(paths[i], base, sizeof(base));
-            if (strcmp(base, "cursword") != 0 || !ktb_pid_alive(pids[i])) continue;
+            /* REAL FIX 2026-09-13 - see ktb_pid_is_this_pal()'s own
+             * header comment (PID-reuse guard, same class of bug as
+             * ktb_pid_is_hq_renderer()). cursword is "always open, the
+             * user's assistant" - a false-positive skip here is the
+             * worst version of this bug, not just a missing pal. */
+            if (strcmp(base, "cursword") != 0 || !ktb_pid_is_this_pal(pids[i], paths[i])) continue;
             if (!keep) keep = pids[i];
             else if (pids[i] > 1) kill((pid_t)pids[i], SIGTERM);
         }
@@ -2436,7 +2488,13 @@ static void livedesk_spawn_desk(const char *house_root, const char *sroot, const
         {
             int already_live = 0;
             for (int i = 0; i < n_live; i++)
-                if (strcmp(live_paths[i], pal) == 0 && ktb_pid_alive(live_pids[i])) { already_live = 1; break; }
+                /* REAL FIX 2026-09-13, direct live report ("some
+                 * entities didn't show up on restart... is there a
+                 * guard against that?") - see ktb_pid_is_this_pal()'s
+                 * own header comment for the full PID-reuse story;
+                 * plain ktb_pid_alive() alone let a reused PID falsely
+                 * skip a real respawn here. */
+                if (strcmp(live_paths[i], pal) == 0 && ktb_pid_is_this_pal(live_pids[i], pal)) { already_live = 1; break; }
             if (already_live) continue; /* real process already running for this pal - never double-spawn it */
         }
         /* REAL FIX 2026-08-31, direct live report ("asa/ava/book-stack/
