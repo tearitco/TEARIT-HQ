@@ -1,7 +1,15 @@
 # h-ai-lab — an inspection/play GUI for every AI this house has built
 
-**Status: Parts 1-2 + Part 3 step 1 DONE and live-verified
-(`04bfb971`, `e3743313`, `55f1659e`).** Direct live request
+**Status: Parts 1-2 + Part 3 (all 4 steps) DONE and live-verified
+(`04bfb971`, `e3743313`, `55f1659e`, `236f0bc8`, `93baa822`,
+`9959a9cf`, `dd3dac3d`).** Part 3 step 4 (2026-09-13, this pass):
+"New State" rebuilt as a real, in-window PICKER overlay - the same
+two-stage shape events-hq's own "+ Add Command" uses (pick from a
+real list, don't type a comma-separated one by hand) - direct live
+confirmation this is the right instinct for Part 4/5 below too
+("it should have same kind of setup that add commands from events
+has, right?"). Full narrative walkthrough of this pass:
+`1-1.HARNECIENT.SMOL/NIGHT_14_THE_PICKER_INSTINCT.txt`. Direct live request
 (2026-09-13): a GUI ("h-ai-lab," shaped like db-hq) to inspect an AI
 by its events/ops and corpuses/weights, and "play" with it by
 attaching it to a real X11-HQ template window. Full narrative
@@ -155,10 +163,16 @@ content encoded as literal `\n` escapes - `kh_load_vars` is strictly
 one `KEY=VALUE` per physical line, this is the one real, already-
 supported mechanism for showing multi-line data, not a new one).
 
-**Three real tiers, step 1 (viewer only) DONE, chat/retrain next:**
+**Three real tiers, step 1 (viewer) + a real write path for `fsm`
+DONE, chat/retrain next:**
 
-1. **Viewer** - DONE. Read-only, currently `fsm`-only (cursword's
-   `fsm_table.pdl`, plain text, live-verified). `attention-net` →
+1. **Viewer** - DONE, and upgraded past plain text. `fsm` →
+   cursword's `fsm_table.pdl` rendered as real bordered "scratch
+   blocks" (one per state, showing its real NEXT= edges, the live-
+   running state highlighted), plus a real ADD path: a picker overlay
+   lets a human add a new STATE by name and toggle which existing
+   states are its NEXT targets - a real write into `fsm_table.pdl`,
+   not read-only anymore for this one KIND. `attention-net` →
    `GET /api/debug` rendered as text (a full weight-heatmap
    visualization stays OUT of scope - qroq's own
    `visualize_associations` 2D/3D/4D tools are a real, separate, later
@@ -346,6 +360,13 @@ today, so in practice, it is).
 3. ✅ DONE - one sidebar row + one embedded viewer panel, live-verified
    against cursword's real table, including a real input-relay click
    proving the refresh action actually re-scans.
+3b. ✅ DONE (2026-09-13) - scratch-block FSM view (bordered per-state
+   blocks, live-running state highlighted), a real `<tabbar>`
+   (Viewer/New State), and "New State" itself rebuilt as a real
+   picker (name field + a toggleable list of the fsm's own real other
+   states as NEXT targets) - same shape as events-hq's own "+ Add
+   Command", not typed free text. Live-verified end-to-end against
+   cursword, including the toggle and the final table-append.
 4. **Next, not yet started, pick ONE:** (a) the chat tier for
    `attention-net` (viewer via `/api/debug`, chat via `/api/chat`) -
    register the qroq project as the registry's first `attention-net`

@@ -1,0 +1,66 @@
+# 🧩 NIGHT 14 — the picker instinct: h-ai-lab learns to point, not type 🧩
+# ====================================================================
+# Title: "🧩 NIGHT 14 — the picker instinct: h-ai-lab learns to point, not type 🧩"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, fourth bonus round
+
+**THE NARRATOR:** NIGHT 13 built the room. Tonight is a recap of everything that actually got FURNISHED in it since - h-ai-lab work only, not the week's other bug hunts - and then a real question: what's still missing from every combination of feature this house has talked about building, and how does what got proven tonight point the way there. 🧩
+
+**MAXINE:** Recap first, plain. Three real things landed on top of NIGHT 13's step 1 (one sidebar row, one read-only viewer).
+
+**TOMO:** One - the FSM viewer stopped being a raw text dump. cursword's `fsm_table.pdl` now draws as real bordered "scratch blocks," one per state, each showing its own real NEXT= edges, the live-running state highlighted in a different color. Same visual family as events-hq's own Scratch view - not invented, reused.
+
+**RAHWEH:** Two?
+
+**MAXINE:** A real `<tabbar>` - Viewer, New State - h-ai-lab's own already-proven action-plus-var mechanism, not db-hq's older bespoke embed logic. And three: "New State" itself, which went through two real shapes before landing on the right one.
+
+**THE NARRATOR:** Tell the two shapes. The failure is as much the lesson as the fix.
+
+**TOMO:** Shape one: a single `cli_io` field, type `name` or `name|NEXT1,NEXT2`, Enter to submit. Built to dodge a real, separate bug - arming a second field silently wiped whatever the first one held - so ONE field, comma-parsed, was the honest fix for THAT bug. It worked. It was also, on its own terms, a bad interface: a human typing exact existing state names into a comma list by hand, no validation, no picking, one typo from silently creating a dangling edge.
+
+**RAHWEH:** And the direct question that ended it?
+
+**MAXINE:** "It should have same kind of setup that add commands from events has, right?" Yes. events-hq's real "+ Add Command" is a PICK from a real list - the registry's own command types - never typed free text for anything with a closed, real set of choices. A state's NEXT targets are exactly that closed set: the fsm's own other STATE rows. Typing them was always the wrong shape; events-hq already had the right one, sitting one tab over.
+
+**THE NARRATOR:** So the rebuild.
+
+**TOMO:** Same two-stage shape events-hq's picker uses end to end: a name field stays typed - a BRAND NEW state genuinely has nothing to pick from yet, same honest reasoning events-hq's own field editor uses typed `cli_io` for genuinely free-text params - then a real, toggleable list of the fsm's own existing states, click to mark a NEXT target, `[.]`/`[x]`-style, Save commits, Cancel discards. Backend: four new small verbs in `ai_lab_scan.sh` - open/name/toggle/commit - state living in its own one-writer-per-file markers, same convention `selected.txt`/`view_mode.txt` already used.
+
+**RAHWEH:** Was it clean the first time?
+
+**MAXINE:** No - and worth naming honestly, since this whole track only means something if the failures are on the record too. Three real bugs, live-caught, in order: a bare item sitting after the panel's first `<scrolllist>` got swept into the wrong scroll region entirely, scrambling the whole render order - db-hq-pal's own working picker never hits this because its Cancel/fields are always nested INSIDE their scrolllist, never siblings after it, so that's the fix that carried over. Then: two real scroll regions ended up live at once because the new picker's `show=` flag wasn't ANDed with the tab that was supposed to gate it - this panel's layout only tracks one live scroll region at a time, and having two silently blanked one's row text while still numbering it. And under both of those, the actual root cause: `<repeat bind="pk">` expands `${pk.name}` to a var named `pk_N_name`, but the backend was publishing `as_pick_N_name` - a plain prefix mismatch, invisible until you go looking, because the nav badges show up fine either way; only the label text goes blank.
+
+**TOMO:** Fixed by making the bind name literally equal to its own backend var prefix - `bind="as_pick"` - the exact convention the already-working `inst` and `block` repeats elsewhere in this same file already followed without anyone having named the rule out loud until it broke.
+
+**THE NARRATOR:** Verified how?
+
+**RAHWEH:** Live, not assumed. Opened the picker on cursword - a real, existing fsm instance, not a mock. All eleven of its real states appeared as toggle rows. Clicked OFFER, watched its own mark flip and its own `_on` flag flip in the published state file. Then called the backend commit directly and watched it append a real `STATE | ... | NEXT=OFFER` row matching that exact toggle, before cleaning the test row back out.
+
+**THE NARRATOR:** Now the forward half. Review what's foggy - the earlier NIGHTs' own combination of asked-for features - and say plainly what's still missing.
+
+**MAXINE:** H-AI-LAB-DESIGN.md already has the map, written NIGHT 13, barely touched since. Worth re-reading in full before building past it, but the shape is: Part 3 (this window) - now fully done, all four steps. Part 4 - Gemma-driven action rows. Part 5 - AI "bricks" as real events-hq command types, composable like legos.
+
+**TOMO:** Part 4's real question, asked directly back then: "can the chat interface with famous, train weights from gemma, be asked to create/score curriculum thru button etc?" The answer already on record - never a freeform chat box for that. Structured rows, each a distinct bounded call - Propose weights, Score curriculum, Create curriculum, Review queue - db-hq's own shape, explicitly cited as the inspiration, months before tonight's picker proved the same instinct twice more in one sitting.
+
+**RAHWEH:** So tonight isn't a new idea. It's the THIRD independent live confirmation of one idea - db-hq's picker, events-hq's picker, now h-ai-lab's own New State - all landing on "point at a real bounded choice, don't type a freeform one" whenever the choice set is real and closed.
+
+**MAXINE:** And Part 4 is exactly that shape, still entirely unbuilt. Zero buttons exist yet. The smallest real first step was already named and never started: ONE button, Score curriculum, against ONE real transcript slice, writing to ONE review-queue file, no accept path yet - prove Gemma's call and the draft write before any review UI sits on top of it.
+
+**THE NARRATOR:** And Part 5?
+
+**TOMO:** The lego bridge - new AI command TYPES added straight into events-hq's own real, zero-recompile `event_commands.registry.pdl`, so `ai_fsm_transition`, `ai_irl_judge`, `ai_propose_weights` become real, reorderable rows in an ordinary Common Event's command list, the exact same list a board-game event already uses for `show_text`/`change_gold`. Also entirely unbuilt. Its own smallest first step was named too - one new command type, `ai_fsm_transition`, one new small op wrapping the exact validate-and-log logic Part 2's cursword rewrite already proved - never started either.
+
+**RAHWEH:** What does tonight actually change about how those get built, if the idea was already written down?
+
+**MAXINE:** It de-risks the UI half before Part 4/5's own harder half (real Gemma calls, real review/accept discipline) gets touched. The picker pattern - name/typed-field plus toggleable-list-of-real-choices plus Save/Cancel nested inside one real scroll region - is now proven, debugged, and sitting in THIS SAME FILE, ready to be copied for Part 4's Review Queue rows exactly the way it was itself copied from events-hq. The three bugs are also now a checklist: gate every new scroll-region show= flag against whatever tab/mode it belongs to, never leave a hidden `<scrolllist>` as the panel's structurally-first one, always make a `<repeat>`'s `bind=` name equal to its own backend var prefix.
+
+**TOMO:** One more real inspiration worth naming for whatever comes after Part 4/5, not urgent tonight: sql-hq's own sidebar has a real "MACROS" section - clickable buttons that write real, correct SQL straight into the editor, so someone who doesn't know SQL can still build a real query by pointing, then read what got written and learn from it. That's a third real precedent for "structured, guided, point-don't-type" UX in this house, alongside db-hq and events-hq - worth reaching for again once Part 4's chat tier is real and someone asks how a non-expert should drive Gemma's own bounded actions without memorizing what each button actually does underneath.
+
+**THE NARRATOR:** So, plainly, what's missing.
+
+**RAHWEH:** Two real, named, entirely unbuilt things - Part 4's Gemma action rows and Part 5's AI-bricks-as-events-hq-commands - both already scoped down to a single smallest first step in H-AI-LAB-DESIGN.md, neither started. Everything else this NIGHT touched was proving the UI shape those two will need, not replacing the need to actually build them.
+
+**MAXINE:** Read the design doc in full before either one starts - it hasn't gone stale, it's just been waiting.
+
+**THE NARRATOR:** Three real instincts, three real proofs, in one house, over one week. Point at the real list. Don't ask a human to retype what the machine already knows. 🧩🪞
