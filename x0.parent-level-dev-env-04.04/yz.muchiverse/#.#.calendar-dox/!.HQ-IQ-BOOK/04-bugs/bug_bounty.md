@@ -277,7 +277,7 @@ checking that entry first.
 
 ---
 
-## ⚠️ OPEN 2026-09-13: book-stack dies silently, sometime after a genuinely successful launch
+## ✅ CLOSED 2026-09-13: book-stack dies silently, sometime after a genuinely successful launch
 
 **Reported:** direct live report, same pass as the registry fix
 above: "bookstack is missing. it needs to be fault tolerant. (it
@@ -377,6 +377,48 @@ disruptive to the user's own concurrent session ("i was on tb but
 dissapeared" - a live report of collateral disruption from this same
 debugging). Any future continuation of this investigation should
 prefer passive observation over forced restarts wherever possible.
+
+**Real root cause found and fixed (`b5443a67`)**, direct follow-up:
+"theres nothing external to house quiting booktstack it must be in
+house. it must be researched and fix. also i keep seeing weirdly
+that it redraws then quickly dissapears." Upgraded `tp_main()`'s
+signal handler to `SA_SIGINFO` (`handle_shutdown_signal_info()`,
+`khtpm_core_render.c`) - a real, permanent diagnostic, kept - so it
+writes the real sender PID via async-signal-safe `write(2)` before
+exiting. Caught live on the very next occurrence: the sender was
+`khtpm_taskbar_manager_main.+x` itself, confirming the user's own
+instinct - not anything external.
+
+Traced to the exact site: `ktb_self_heal_active_desk_registry()`'s
+registry-restore half (landed earlier the same day, `ec77a18f`) only
+checked the stale `s->tabs[]` snapshot from that same tick's earlier
+`load_tabs()` call before appending a "restore" line for a pal found
+alive via `/proc`. If book-stack's own process self-registered (its
+real, separate, one-time startup write) in the narrow window between
+that snapshot and this check, self-heal had no way to see it and
+appended a SECOND, genuine duplicate line naming the exact same live
+PID. `load_tabs()`'s own dup-kill (real, correct logic for an actual
+zorder-respawn leftover) then saw "book-stack" twice on its very next
+read and SIGTERMed the second occurrence - which, since both lines
+named the same PID, meant killing the only real process there was.
+This is exactly "it redraws then quickly disappears": the window
+opens and paints for real, then dies to a real signal about one
+manager tick later.
+
+Fix: the registry-restore write now happens as a single pass inside
+the one real registry lock, re-checking the LIVE file directly (by
+real cmdline identity, not just a name match) instead of trusting the
+stale snapshot. Also fixed a related correctness bug found while
+writing this: the original patch would have called
+`livedesk_read_open()` (which itself acquires/releases the same
+shared, process-wide lock fd) from inside an already-held lock,
+silently dropping protection the instant it returned.
+
+Verified live: book-stack alive and stable for 30+ seconds with zero
+forced restarts after the fix, all 7 entities present. If this exact
+symptom (opens, paints, dies within ~1s) recurs for ANY entity, the
+`SA_SIGINFO` handler left in place should immediately name the real
+sender via that entity's own `last_signal.txt` - check that first.
 
 ---
 
