@@ -771,5 +771,74 @@ real signal, caught once, ended what static analysis alone could not.
 
 ---
 
+## 19. A "re-check on every reparse" path that never gates on its own already-computed change flag re-does full work on every unrelated tick — including a periodic, content-free one
+
+Direct live report (2026-09-13): "all options in tb and bottom bar
+disappear... top reappeared, but not bottom for a while... there was
+no change so why did this happen? even if it is idle or slow cpu, it
+shouldn't do that." The taskbar strip's `reparse_chtpm_if_changed()`
+computes `peer_changed` (a real mtime check on the bottom dock peer's
+own static `.xhtpm` template) up front, specifically so callers can
+skip peer work when the peer hasn't changed — then never checked it:
+both the incremental-diff-success branch and the full-rebuild fallback
+branch unconditionally called `parse_chtpm()` on the peer template
+every single time EITHER of the OTHER two trigger conditions fired
+(`vars_changed` or the header's own mtime), including a periodic,
+completely content-free tick that isn't even about the peer at all.
+
+The strip's own `kh_focus_debug.log` showed this tick firing exactly
+once a minute, driven by the taskbar's clock/date display's own
+`strftime()` update republishing state - hours of consecutive
+`INCREMENTAL_REPARSE ok removed=0` lines, a genuinely successful
+no-op diff every time. The peer re-parse riding along on every one of
+those was pure waste: a real disk read + parse of a file that (per
+this same file's own long-standing comment) never changes again after
+boot, repeated once a minute forever, and every one of those was a
+fresh, independent chance to hit the exact class of transient-read
+race ("bottom tb missing entities") this symptom has already been
+chased down and patched **four separate times** this same week, each
+time via a narrower, different specific mechanism (a dead pid, a
+double-registration kill, an ENOENT race, a content-hash instability
+window) - never by simply asking "does this really need to run again
+right now."
+
+**Why this is easy to miss:** the guard variable already exists,
+already has the right name, already gets computed at the top of the
+function for exactly this purpose - it's very easy to read the
+function as "of course it's gated" without checking that every call
+site downstream actually consults it, especially once the function has
+grown multiple branches (incremental success / diff failure / full
+rebuild) that each independently re-implement "now update the peer
+too."
+
+**Rules:**
+- When a function computes a `*_changed` flag specifically to gate
+  expensive work, grep every place that does the expensive work and
+  confirm each one actually reads the flag - a flag computed but not
+  consulted is worse than no flag at all, because it looks correct on
+  inspection.
+- A periodic, content-free re-publish (a clock tick, a heartbeat, any
+  "nothing really changed" republish) exercising a code path is not
+  free just because the path reports success - if that path does
+  real I/O (a fresh `parse_chtpm()`/disk read) for a sub-part that
+  didn't actually need re-checking, it's real, recurring, avoidable
+  cost AND an avoidable new roll of the dice against the same known
+  transient-failure class, running forever, once a minute, for no
+  reason.
+- Before adding a fifth patch to the same recurring symptom class,
+  check whether an earlier, unrelated-looking "unconditional" call in
+  the same function is simply doing more work than it needs to -
+  simplifying away needless repeated work can close a whole class of
+  timing-dependent bugs that patching the failure mode itself, one
+  occurrence at a time, never fully closes.
+- When a report says "there was no change, why did this happen" and
+  "even under idle/slow CPU it shouldn't do that," take both halves
+  literally: find the actual trigger (here, a once-a-minute clock
+  republish, confirmed via the existing debug log - not guessed), and
+  don't accept "it's just slow sometimes" as an explanation without
+  evidence a human can point to (a log line, a timing number).
+
+---
+
 *Append new entries here as they're found — this file exists so the
 next session doesn't re-discover the same mistake from scratch.*
