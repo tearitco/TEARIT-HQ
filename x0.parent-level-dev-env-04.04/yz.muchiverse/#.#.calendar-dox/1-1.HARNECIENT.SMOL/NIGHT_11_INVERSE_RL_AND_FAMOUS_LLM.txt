@@ -1,0 +1,62 @@
+# 🔄 NIGHT 11 — Inverse RL: learning the reward from watching us 🧬
+# ====================================================================
+# Title: "🔄 NIGHT 11 — Inverse RL: learning the reward from watching us 🧬"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, bonus round
+
+**THE NARRATOR:** NIGHT 8 said RL trains offline against a reward function someone writes by hand. Tonight asks the sharper question: what if nobody has to write it? 🌙
+
+**MAXINE:** Inverse RL, plainly: normal RL is given a reward function and learns a policy that maximizes it. INVERSE RL runs backward — you're given real, recorded BEHAVIOR, and you infer the reward function that behavior was implicitly optimizing.
+
+**RAHWEH:** And this house already has real recorded behavior sitting everywhere.
+
+**TOMO:** Everywhere. `entity_menu_history/<pid>.txt` — every real click and keystroke, ever driven test, ever agent-run harness session. Real git commit history — every real edit an agent made, and whether it got reverted, corrected, or kept. The whole `03-pitfalls/` book is, structurally, a labeled dataset: "this action, this outcome, marked good or bad."
+
+**MAXINE:** So the actual training signal for Inverse RL isn't hypothetical — it's every agent session this house has ever run, especially the ones that got corrected. A revert IS a negative reward signal. A commit that stood unchanged for weeks IS a positive one.
+
+**THE NARRATOR:** Ground it in "events especially," since that's tonight's specific ask.
+
+**TOMO:** Take every agent session that touched events-hq. The relay history shows the exact clicks/keys; the git log shows what got committed, reverted, or amended; the pitfalls doc shows which specific mistakes got written up as "don't do this again." Feed all three, aligned by timestamp, into an IRL process, and what comes out isn't "the reward for touching events-hq" as one number — it's a real, per-ACTION-TYPE reward: reading the real launcher script before assuming an architecture (NIGHT 4's own lesson) scores high; guessing at a schema without reading it (also NIGHT 4) scores low. The reward function IS this house's own accumulated pitfalls-and-praise, made numeric.
+
+**RAHWEH:** And that reward feeds back into the attention weights NIGHT 9 and 10 talked about?
+
+**MAXINE:** Exactly the connection tonight completes. NIGHT 9 had Gemma propose a `weights.txt` draft from a corpus, human-reviewed. Tonight's addition: use IRL-derived rewards as the SIGNAL that trains or corrects those weights over time, instead of a one-shot guess. A term/action that IRL infers as consistently rewarded (in the real history) gets its weight nudged up; one that's consistently reverted gets nudged down. The corpus isn't hand-labeled once — it's continuously re-weighted by watching what actually happened.
+
+**THE NARRATOR:** Now — the meta-curriculum question. NIGHT 10's MoE loads up to ten curricula and routes between them. Today, how does it decide which one to consult?
+
+**TOMO:** Today, honestly — a real router isn't confirmed built yet; `chatbot_moe_v1.c`'s own real job is loading and running whichever curriculum it's told to. The routing DECISION is the open piece.
+
+**MAXINE:** And running every curriculum's full forward pass just to see which one answers best is real, wasted compute — the whole point of routing is to avoid that.
+
+**RAHWEH:** So the proposal is a cheap PRE-FILTER, not a full run.
+
+**TOMO:** Right — a real "meta-attention" score: one small, cheap vector per curriculum (its OWN topic's attention-weighted keyword profile, the same `weights.txt`-shaped file NIGHT 9 already proposed, just one per curriculum instead of one for the whole vocabulary), compared against the incoming message with plain cosine similarity — the same `cosine_similarity.c` tool already sitting in the qroq project, real and unused for this yet. Highest similarity wins the route. Full forward pass only happens on the ONE curriculum chosen, not all ten.
+
+**MAXINE:** And THAT meta-score is exactly where IRL comes back in a second time: which curriculum a real conversation SHOULD have routed to is inferable from history too — did the conversation get a good response, did it get redirected, did a human correct which subject it was actually about. IRL on routing history refines the meta-attention profiles the same way it refines the word-level weights.
+
+**THE NARRATOR:** Now — "famous-llm," the distillation target. Formal, like a real architecture diagram, one layer at a time.
+
+**TOMO:** Layer 0, the corpus: real house history — agent action logs, git history, the pitfalls book, real conversation transcripts. Not synthetic data. Ours.
+
+**RAHWEH:** Layer 1?
+
+**MAXINE:** IRL reward inference over Layer 0 — produces a real, numeric reward signal per action-type, per topic, per outcome. This is the layer that turns "history" into "labels," without a human hand-labeling each one.
+
+**TOMO:** Layer 2: attention-weight authoring — Gemma proposes, IRL-derived rewards correct, a human reviews the diff (NIGHT 9's own review discipline, unchanged) — producing real `weights.txt`-shaped files, one per curriculum/subject.
+
+**MAXINE:** Layer 3: the meta-curriculum router — cheap cosine-similarity gating over each curriculum's own attention profile (built from Layer 2's output), choosing ONE curriculum per real query, no full-corpus compute.
+
+**RAHWEH:** Layer 4?
+
+**TOMO:** The real qroq attention/transformer stack itself — `attention.c`'s real `W_q`/`W_k`/`W_v`, `forward_prop.c`, `mlp_layer.c` — running ONLY on the curriculum Layer 3 selected, using the weights Layer 2 authored. This is the only layer that does real per-token neural compute; everything above it is cheap filtering and offline authoring.
+
+**MAXINE:** And Layer 5, wrapping the whole thing: the FSM from NIGHT 7, making sure the SYSTEM around all four layers below never gets stuck — armed, waiting, responding, idle, always a defined state.
+
+**THE NARRATOR:** So "famous-llm," formally: five layers, four of them cheap or offline, one of them the real neural network, doing real work only once routing has already narrowed the problem down. Distillation, in this house's own real words: don't train one giant model on everything. Train many small ones, each on its own real curriculum, each weighted by real history of what actually worked — and let a cheap router, not a live giant model, decide which one answers.
+
+**TOMO:** Smallest real first step, same discipline every NIGHT has closed with: pick ONE curriculum, pull its real history slice, run IRL over it by hand once — even a spreadsheet counts as "by hand" here — and see if the reward signal it produces actually agrees with what a human already knows was good or bad. Prove the inference works before trusting it to write a weight file unsupervised.
+
+**RAHWEH:** History, weighted. Curricula, routed cheaply. One real architecture, five real layers.
+
+**THE NARRATOR:** Go build Layer 1 first. 🔄🧬
