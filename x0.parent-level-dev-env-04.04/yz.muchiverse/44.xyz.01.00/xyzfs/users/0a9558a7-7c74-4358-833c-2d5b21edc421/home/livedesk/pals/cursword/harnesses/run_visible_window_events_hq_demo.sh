@@ -55,7 +55,20 @@ PRISC_CWD="$HOUSE/101.mutaclsym🧟‍♂️️+18.0G"
 LAUNCH_LOG="/tmp/eventshw_visproof_launch.log"
 BKPDIR="/tmp/eventshw_visproof_backup"
 
-PROC_PATTERN="khtpm_core_render\.\+x"
+# REAL FIX 2026-09-13, direct live report (this session: "run the
+# harness or is it stale?") - this used to be a bare
+# "khtpm_core_render\.\+x", which pgrep -f matches against EVERY
+# running render process's full cmdline, not just this run's own
+# disposable one. On a real, live desktop (the normal case now - this
+# house has had a real taskbar + entities running continuously for
+# weeks) that matched every pal, cursword, book-stack, and the strip
+# itself - step 0's "kill stray processes before run" and cleanup()'s
+# "kill new render procs" would have killed the user's entire live
+# desktop, not just this harness's own throwaway window. Scoped to the
+# ENTITY name below instead - real and safe, since ENTITY is a unique,
+# disposable name that only this harness's own launch command ever
+# uses; no real house entity is ever named this.
+PROC_PATTERN="khtpm_core_render\.\+x.*visproof-disposable"
 MGR_PATTERN="khtpm_events_hq_manager\.\+x"
 
 RESULTS_DIR="$PAL_DIR/presentations/events-hq-visible-window-$(date '+%Y%m%d-%H%M%S')"

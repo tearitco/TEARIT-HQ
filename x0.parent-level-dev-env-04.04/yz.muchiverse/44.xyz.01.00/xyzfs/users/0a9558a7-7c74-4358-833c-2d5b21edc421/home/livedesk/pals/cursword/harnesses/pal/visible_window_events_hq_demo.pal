@@ -42,6 +42,18 @@
 #   x2  - the loop-break compare constant (1 = "view_mode is the value we
 #         waited for").
 #
+# REAL FIX 2026-09-13, direct live report ("run the harness or is it
+# stale?"): the house-root literal below was still the OLD pre-migration
+# path (NNEST-11.17) - this house moved to NNEST-12.00 since this file
+# was written, and being a literal string (see the next paragraph), it
+# never got carried forward. Repointed to the current house root; no
+# other change. Confirmed this was real staleness, not the only bug -
+# see kh_launch_window_modules()'s own 2026-09-13 fix in
+# khtpm_core_render.c for a second, separate, CURRENT regression this
+# same investigation found (events-hq's manager module launch was
+# missing its required entity_label argv, a fresh launch never
+# actually reached the point this harness drives).
+#
 # Real files touched (all absolute; the house-root path is a literal
 # string here - no PAL-level path interpolation exists, same honest
 # limitation as task5's header notes):
@@ -64,7 +76,7 @@
 
 li x15, 1          # x15 = 1 -> next ecall is SYS_OPEN
 li x13, 2          # x13 = 2 -> open mode "append" (send_input's 2nd line)
-ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/events_hq_history.txt"   # send_input line 3: open the REAL events-hq relay; x12 <- fd
+ecall "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.desktop/events_hq_history.txt"   # send_input line 3: open the REAL events-hq relay; x12 <- fd
 addi x14, x12, 0   # send_input line 4: stash the fd in x14 (safe across clobbers)
 li x15, 3          # send_input line 5: x15 = 3 -> SYS_WRITE_LINE
 addi x12, x14, 0   # send_input line 6: restore the stashed fd into x12
@@ -75,7 +87,7 @@ ecall              # send_input line 10: close the relay handle (digit-jump stag
 
 li x15, 1          # second send_input, line 1: SYS_OPEN
 li x13, 2          # second send_input, line 2: append mode
-ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/events_hq_history.txt"   # second send_input, line 3: reopen the real relay; x12 <- fd
+ecall "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.desktop/events_hq_history.txt"   # second send_input, line 3: reopen the real relay; x12 <- fd
 addi x14, x12, 0   # second send_input, line 4: stash the fd
 li x15, 3          # second send_input, line 5: SYS_WRITE_LINE
 addi x12, x14, 0   # second send_input, line 6: restore fd
@@ -88,7 +100,7 @@ _loop_1:           # "loop" (real command): the poll top - re-entered from repea
 sleep 100000       # "wait" ms=100 -> 100000 micros (real pacing between polls, not a tight spin)
 li x15, 6          # "if" compare line 1: x15 = 6 -> SYS_GET_KV_INT (read one key from a flat file)
 li x13, -1         # "if" fallback default: -1 so a missing/absent key can never false-positive
-ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/events_hq_view_mode.txt" "view_mode"   # THE ONE DELIBERATE DEVIATION: the real `if` command hardwires its read to {STATE_DIR}/switches.txt, which cannot express a sibling file; the TASK-named target is events_hq_view_mode.txt, so ONLY the GET target is swapped - the loop machinery below is the real compiled shape verbatim. x12 <- view_mode's current value (or -1)
+ecall "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.desktop/events_hq_view_mode.txt" "view_mode"   # THE ONE DELIBERATE DEVIATION: the real `if` command hardwires its read to {STATE_DIR}/switches.txt, which cannot express a sibling file; the TASK-named target is events_hq_view_mode.txt, so ONLY the GET target is swapped - the loop machinery below is the real compiled shape verbatim. x12 <- view_mode's current value (or -1)
 li x2, 1           # "if" compare line 2: x2 = 1 -> the value we are waiting for (view_mode=1)
 bne x12, x2, _else_1   # "if" compare line 3: not-equal (still 0/-1) -> fall through to _else_1 (retry); equal -> keep going to the break
 j _loop_end_1      # "break_loop" (real command): forward jump BY NAME to the loop exit - the ONLY authored exit
@@ -99,7 +111,7 @@ _loop_end_1:       # the break target, emitted by the compiler AFTER the repeat 
 
 li x15, 1          # third send_input (PNG dump), line 1: SYS_OPEN
 li x13, 2          # third send_input, line 2: append mode
-ecall "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/#.desktop/events_hq_history.txt"   # third send_input, line 3: reopen the real relay; x12 <- fd
+ecall "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.desktop/events_hq_history.txt"   # third send_input, line 3: reopen the real relay; x12 <- fd
 addi x14, x12, 0   # third send_input, line 4: stash the fd
 li x15, 3          # third send_input, line 5: SYS_WRITE_LINE
 addi x12, x14, 0   # third send_input, line 6: restore fd

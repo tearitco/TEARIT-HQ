@@ -690,14 +690,29 @@ static void kh_cleanup_modules(void) {
         kh_proc_reap_subtree(g_house_root, (long)getpid(), 1, 0);
 }
 
+/* Real def + full header comment near g_arg3_dir further down (events-
+ * hq's real 4-arg launch shape needs this) - declared here, ABOVE its
+ * first real use in kh_collect_and_launch_modules() just below, since
+ * that function is itself defined long before g_arg3_dir's own section
+ * of the file. */
+static char g_arg4_entity_label[PATH_BUF] = "";
 static void kh_collect_and_launch_modules(Elem *e, const char *house_root, const char *package_dir) {
     if (!e) return;
     for (int i = 0; i < e->n_children; i++) {
         Elem *c = e->children[i];
         if (strcmp(c->tag, "module") == 0 && c->label[0] &&
             g_n_module_pids < KH_MAX_MODULES) {
-            pid_t p = launch_module(c->label, house_root, package_dir,
-                                    c->id[0] ? c->id : NULL);
+            /* REAL FIX 2026-09-13 - see g_arg4_entity_label's own decl
+             * comment. A <module> tag's own explicit id= always wins
+             * (unchanged, existing behavior for every other mode); only
+             * events-hq's real launch (argv[4] captured into this
+             * global) falls back here, and only when the module didn't
+             * already specify its own id. Confirmed live via the fixed
+             * run_visible_window_events_hq_demo.sh harness - without
+             * this, khtpm_events_hq_manager.+x's own argc<4 check exits
+             * immediately with a usage error on every fresh launch. */
+            const char *extra = c->id[0] ? c->id : (g_arg4_entity_label[0] ? g_arg4_entity_label : NULL);
+            pid_t p = launch_module(c->label, house_root, package_dir, extra);
             if (p > 0) {
                 g_module_pids[g_n_module_pids++] = p;
                 /* PROC-LIFECYCLE: track every <module> in the canonical
@@ -1215,6 +1230,35 @@ static char g_vars_path[PATH_BUF] = "";
  * The pre-existing "argc>=5 -> g_win_x=atoi(argv[3])" popup path is
  * guarded to only run when argv[3] is NOT a directory. */
 static char g_arg3_dir[PATH_BUF] = "";
+/* REAL FIX 2026-09-13, direct live report ("run the harness or is it
+ * stale?" - it was NOT stale, it found a real, current regression):
+ * events-hq's own real launch shape is <house> <chtpm> <pkg_dir>
+ * <entity_label> (argv[3]=pkg_dir dir, argv[4]=entity_label - see
+ * §5d.11's comment on the argv[3]/argv[4] reinterpretation just below
+ * in main()). g_arg3_dir already captures argv[3] for the generic
+ * instance-dir hook, but argv[4] (the entity_label khtpm_events_hq_
+ * manager.c's own main() requires - "usage: <house_root> <pkg_dir>
+ * <entity_label>", argc<4 is a hard exit) was never captured anywhere
+ * - kh_launch_window_modules()'s own module-launch call passed neither
+ * this nor g_arg3_dir (it passed g_package_dir, dirname of the .chtpm
+ * itself, e.g. ".../events-hq/pieces" - wrong directory entirely) to
+ * launch_module(), so the manager it self-spawns via <module> always
+ * exited immediately on a fresh launch: confirmed live via
+ * run_visible_window_events_hq_demo.sh (fixed to be safe to run
+ * against a live desktop, see that harness's own PROC_PATTERN comment)
+ * - "khtpm_events_hq_manager: usage: <house_root> <pkg_dir>
+ * <entity_label>" in the launch log, zero PNG produced. The long-lived
+ * asa/ava/greet_player managers already running elsewhere on this
+ * house predate whatever refactor broke this (this file's own <module>
+ * self-launch consolidation, per launch_module()'s header comment,
+ * folded events-hq onto the same generic path db-hq/chat-hai use -
+ * neither of which need a THIRD manager argv the way events-hq does) -
+ * a fresh events-hq launch has been silently broken since, unnoticed
+ * because nothing relaunched it until this investigation.
+ *
+ * (g_arg4_entity_label itself is declared earlier in this file, right
+ * before kh_collect_and_launch_modules() - its first real use - since
+ * that function is defined long before this section.) */
 static char g_extra_vars_path[PATH_BUF] = "";
 /* vars-file change is content-hashed (g_vars_hash), not mtime-tracked */
 /* hash of the vars-file bytes at the last reparse - so a projector that
@@ -16295,6 +16339,13 @@ int main(int argc, char **argv) {
             snprintf(g_extra_vars_path, sizeof(g_extra_vars_path),
                      "%s/.hq_manager/ui.txt", g_arg3_dir);
             setenv("KHTPM_ARG3", g_arg3_dir, 1);
+            /* REAL FIX 2026-09-13 - see g_arg4_entity_label's own decl
+             * comment: events-hq's real launch shape is <house> <chtpm>
+             * <pkg_dir> <entity_label> - capture argv[4] here too, right
+             * alongside g_arg3_dir, so kh_launch_window_modules() below
+             * can pass it through to the manager it self-spawns. */
+            if (argc >= 5 && argv[4][0])
+                snprintf(g_arg4_entity_label, sizeof(g_arg4_entity_label), "%s", argv[4]);
         }
     }
 
@@ -16489,7 +16540,7 @@ int main(int argc, char **argv) {
          * here. Same generic call, same cleanup (atexit kh_cleanup_
          * modules, registered inside). Without this a headless window
          * shows only its static skeleton, its manager never running. */
-        kh_launch_window_modules(g_window, g_house_root, g_package_dir);
+        kh_launch_window_modules(g_window, g_house_root, g_arg3_dir[0] ? g_arg3_dir : g_package_dir);
         return headless_run();
     }
 
@@ -16780,7 +16831,7 @@ int main(int argc, char **argv) {
          * file itself (see khtpm_open_hai_manager.c's own real use of
          * it) - opt-in, not required, zero effect on a module that
          * never reads it. Fork EVERY <module> (shell + one per tab). */
-        kh_launch_window_modules(g_window, g_house_root, g_package_dir);
+        kh_launch_window_modules(g_window, g_house_root, g_arg3_dir[0] ? g_arg3_dir : g_package_dir);
     }
 
     {
