@@ -2319,7 +2319,7 @@ static void ktb_toggle_zorder_respawn(void) {
     for (i = 0; i < n_found; i++) {
         pid_t pid;
         if (found[i].pid == self) continue;
-        usleep(120000); /* real stagger - see this function's own header comment */
+        usleep(30000); /* real stagger - see this function's own header comment; 30ms direct instruction 2026-09-13 (was 120ms) */
         pid = fork();
         if (pid == 0) {
             char *av[9];
