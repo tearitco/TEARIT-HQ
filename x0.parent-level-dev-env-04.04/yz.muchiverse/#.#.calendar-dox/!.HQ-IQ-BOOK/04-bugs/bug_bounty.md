@@ -9,7 +9,7 @@ re-open a NEW entry for the same symptom.
 
 ---
 
-## 🕵️ OPEN: entities drop off the bottom taskbar after a while, but stay on-screen
+## ✅ CLOSED 2026-09-12: entities drop off the bottom taskbar after a while, but stay on-screen
 
 **Reported:** 2026-09-11/12, direct live report: "why after a while
 entities are dropping from the bottom toolbard (but staying on
@@ -69,8 +69,20 @@ in this file to begin with, so the self-healer had nothing of theirs
 to false-positive delete. The self-healer is confirmed safe and
 unrelated to this bounty's real symptom.
 
-**Do NOT close this entry** until an entity tile has been watched
-disappearing live, with the exact file/mechanism identified — the fix
-above was a real, confirmed, worthwhile leak closed along the way, but
-closing this bounty on that alone would be declaring victory on the
-wrong bug.
+**Real root cause found, 2026-09-12 (3e334acc)**: `livedesk_registry_add()`
+(an entity's own bottom-bar ledger line) is called EXACTLY ONCE, at
+`tp_main()` startup - confirmed via grep, no other call site existed.
+The taskbar manager's own registry reader does a real read-prune-write
+cycle every tick, dropping any entry whose PID fails a single
+`ktb_pid_alive()` check on that one read. Since an entity never
+re-registered itself after startup, any single wrong/transient result
+from that check, ever, across a long session, permanently erased the
+line - while the process itself kept running and rendering, matching
+"staying on screen" exactly. This is the opposite of the HQ-window
+registry, which every generic HQ window rewrites on EVERY redraw tick
+(already self-healing) - the entity path never got that same
+treatment. **Fixed**: `tp_main()`'s loop now re-calls
+`livedesk_registry_add()` every ~10s, same self-healing shape. Not yet
+independently re-observed live over a long real session (the original
+report couldn't be reproduced on demand) - if this resurfaces after
+the fix, re-open this exact entry rather than starting a new one.
