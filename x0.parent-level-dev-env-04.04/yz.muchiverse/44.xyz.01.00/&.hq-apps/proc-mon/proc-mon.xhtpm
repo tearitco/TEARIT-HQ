@@ -22,6 +22,14 @@
       <item id="b_refresh" class="btn" label="  refresh now  " action="sh '${PKG}/mon_scan.sh' publish '${PKG}/state/ui.txt'"/>
       <item id="b_kill" class="btn danger" label="  KILL ALL BAD  " action="sh '${PKG}/mon_scan.sh' kill-all"/>
       <item id="b_kill2" class="btn danger" label=" + pals/singletons " action="sh '${PKG}/mon_scan.sh' kill-all --with-pals"/>
+      <text label="OTHER SESSION - real, not stray, not this one" class="block-title"/>
+      <scrolllist>
+        <repeat count="${other_count}" bind="other">
+          <item id="other${other.#}" class="data-item other-session" label="${other.text}"/>
+          <item id="killother${other.#}" class="btn warn" label="  kill this session  " action="sh '${PKG}/mon_scan.sh' kill-session ${other.pgid}"/>
+        </repeat>
+        <text label="(none - no other live taskbar session)" class="quiet" show="${no_other}"/>
+      </scrolllist>
       <text label="BAD - stray / leaked" class="block-title"/>
       <scrolllist>
         <repeat count="${bad_count}" bind="bad">

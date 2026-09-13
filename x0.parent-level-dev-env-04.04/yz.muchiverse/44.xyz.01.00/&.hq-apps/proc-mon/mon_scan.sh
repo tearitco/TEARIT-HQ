@@ -135,9 +135,33 @@ ps -eo pid=,ppid=,pgid=,etimes=,pcpu=,args= 2>/dev/null \
   | awk '{print}' > /dev/null
 ps -eo pid,ppid,pgid,etimes,pcpu,args 2>/dev/null > "$PS_SNAP"
 
-# taskbar process-group (the whole desktop shell shares it)
-TASKBAR_PGID=$(awk 'NR>1 && $6 ~ /khtpm_taskbar_manager_main/ {print $3; exit}' "$PS_SNAP")
+# taskbar process-group (the whole desktop shell shares it).
+# REAL FIX 2026-09-12, direct live report ("would another tb session
+# show up as BAD? id like it to still show up... maybe they can have a
+# different color? can they have their own kill button?") - correct:
+# this used to capture only the FIRST live khtpm_taskbar_manager_main's
+# PGID (`exit` after one match), so a SECOND, genuinely legitimate
+# taskbar session (and everything under it - its own pals/HQ windows)
+# fell through every other check and landed on orphan/pal-unreg/
+# detached = stray = BAD, even though it's a real, live, owned session,
+# just not THIS one. Real fix: capture EVERY live taskbar PGID, and
+# tell "this session" (the one that's ALSO this mon_scan.sh's own
+# process-group ancestor - a real, checkable fact, not a guess) apart
+# from "some other session" - both are real/GOOD, never stray, but
+# tagged with a different class= so the UI can color/act on them
+# differently (see mon_scan.sh's own `kill-session` verb below).
+# Simplest real, honest distinction mon_scan.sh can actually make: it
+# has no reliable way to know which live taskbar session is "the"
+# session vs "another" one (both are equally real desktop shells) - so
+# the FIRST one found is treated as the primary (class=shell, exactly
+# today's existing behavior, unchanged), and any ADDITIONAL live
+# taskbar PGIDs are a real, new, separate, non-stray class
+# (class=other-session, see the classification loop below) rather than
+# silently falling through to orphan/pal-unreg/detached = BAD.
+TASKBAR_PGIDS=$(awk 'NR>1 && $6 ~ /khtpm_taskbar_manager_main/ {print $3}' "$PS_SNAP" | tr '\n' ' ')
+TASKBAR_PGID=$(echo $TASKBAR_PGIDS | awk '{print $1}')
 [ -z "${TASKBAR_PGID:-}" ] && TASKBAR_PGID=-1
+OTHER_TASKBAR_PGIDS=$(echo $TASKBAR_PGIDS | awk '{for(i=2;i<=NF;i++) print $i}' | tr '\n' ' ')
 
 # A board-viewer / pc-hq engine stack has a real owner - the open board
 # window - even though open_pchq_board.sh only ledgers the wrapper pid,
@@ -226,8 +250,16 @@ classify_all() {
 
         class=""; stray=0; note=""
 
+        is_other_session=0
+        for og in $OTHER_TASKBAR_PGIDS; do
+            [ "$pgid" = "$og" ] && is_other_session=1 && break
+        done
+
         if [ "$pgid" = "$TASKBAR_PGID" ]; then
             class=shell; note="taskbar process-group - protected"
+        elif [ "$is_other_session" = 1 ]; then
+            class=other-session; stray=0
+            note="another live taskbar session (pgid $pgid) - not this one, not stray"
         elif [ "$ppid" = "$INIT_PID" ]; then
             class=orphan; stray=1; note="reparented to init(1) - no live owner"
         elif house_ancestor "$pid" >/dev/null; then
@@ -328,15 +360,31 @@ print_section() {   # $1 = want-stray (0/1), $2 = heading
     done
 }
 
+print_other_sessions() {
+    _any=0
+    printf '%s\n' "$ROWS" | sort -t'|' -k3,3 -k4,4nr | while IFS='|' read -r pid ppid pgid age cpu class stray led note short; do
+        [ -z "$pid" ] && continue
+        [ "$class" = other-session ] || continue
+        if [ "$_any" = 0 ]; then printf '\n== OTHER SESSION - not this one, not stray ==\n'; _any=1; fi
+        printf '  %-7s %-11s %-6s %6s  %s\n' "$pid" "[pgid $pgid]" "$(human_age "$age")" "$cpu" "$note"
+        printf '          %s\n' "$short"
+    done
+}
+
 case "$MODE" in
 list)
     n=$(printf '%s\n' "$ROWS" | awk -F'|' '$1!=""' | wc -l | tr -d ' ')
     ns=$(echo $STRAY_PIDS | wc -w | tr -d ' ')
     ng=$((n - ns))
     print_section 0 "GOOD  ($ng) - owned / accounted for"
+    print_other_sessions
     print_section 1 "BAD   ($ns) - stray / leaked (no live owner)"
     echo
     echo "matched $n house proc(s): $ng good, $ns bad."
+    if [ -n "$(echo $OTHER_TASKBAR_PGIDS | tr -d ' ')" ]; then
+        echo "other live taskbar session pgid(s): $OTHER_TASKBAR_PGIDS"
+        echo "kill just one: sh '$SELF_DIR/mon_scan.sh' kill-session <pgid>"
+    fi
     if [ "$ns" -gt 0 ]; then
         echo "bad PIDs  : $STRAY_PIDS"
         echo "reap them : sh '$SELF_DIR/mon_scan.sh' kill-all"
@@ -353,8 +401,20 @@ publish)
         printf '%s\n' "$ROWS" | sort -t'|' -k4,4nr | while IFS='|' read -r pid ppid pgid age cpu class stray led note short; do
             [ -z "$pid" ] && continue
             [ "$stray" = "$1" ] || continue
+            [ "$class" = other-session ] && continue
             printf '%s_%s_text=%-7s %-11s %-6s cpu:%-4s %-5s  %s\n' \
                 "$2" "$_i" "$pid" "[$class]" "$(human_age "$age")" "$cpu" "$led" "$short"
+            _i=$((_i+1))
+        done
+    }
+    emit_other() {   # class=other-session rows, own key prefix so the UI can color them separately
+        _i=0
+        printf '%s\n' "$ROWS" | sort -t'|' -k3,3 -k4,4nr | while IFS='|' read -r pid ppid pgid age cpu class stray led note short; do
+            [ -z "$pid" ] && continue
+            [ "$class" = other-session ] || continue
+            printf 'other_%s_text=%-7s %-11s %-6s pgid:%-7s %-5s  %s\n' \
+                "$_i" "$pid" "[other-session]" "$(human_age "$age")" "$pgid" "$led" "$short"
+            printf 'other_%s_pgid=%s\n' "$_i" "$pgid"
             _i=$((_i+1))
         done
     }
@@ -363,17 +423,22 @@ publish)
         echo "house_root=$HOUSE_ROOT"
         emit_rows 0 good
         emit_rows 1 bad
+        emit_other
         rc=$(printf '%s\n' "$ROWS" | awk -F'|' '$1!=""' | wc -l | tr -d ' ')
         sc=$(echo $STRAY_PIDS | wc -w | tr -d ' ')
-        gc=$((rc - sc))
+        oc=$(printf '%s\n' "$ROWS" | awk -F'|' '$6=="other-session"' | wc -l | tr -d ' ')
+        gc=$((rc - sc - oc))
         echo "rows_count=$rc"
         echo "good_count=$gc"
         echo "bad_count=$sc"
         echo "stray_count=$sc"
+        echo "other_count=$oc"
+        echo "other_pgids=$(echo $OTHER_TASKBAR_PGIDS)"
         echo "bad_pids=$STRAY_PIDS"
         echo "stray_pids=$STRAY_PIDS"
         [ "$gc" -eq 0 ] && echo "no_good=1" || echo "no_good=0"
         [ "$sc" -eq 0 ] && echo "no_bad=1"  || echo "no_bad=0"
+        [ "$oc" -eq 0 ] && echo "no_other=1" || echo "no_other=0"
         [ "$rc" -eq 0 ] && echo "clean=1"   || echo "clean=0"
     } > "$tmp"
     mv -f "$tmp" "$OUT"
@@ -425,8 +490,29 @@ kill-all)
     [ -f "$SELF_DIR/state/ui.txt" ] && sh "$0" publish "$SELF_DIR/state/ui.txt" >/dev/null 2>&1 || true
     ;;
 
+kill-session)
+    tg="${2:-}"
+    case "$tg" in ''|*[!0-9]*) echo "usage: mon_scan.sh kill-session <pgid>" >&2; exit 2 ;; esac
+    ok=0
+    for og in $OTHER_TASKBAR_PGIDS; do [ "$og" = "$tg" ] && ok=1; done
+    if [ "$ok" != 1 ]; then
+        echo "mon_scan: pgid $tg is not a known OTHER live taskbar session - refusing" >&2
+        echo "known other session pgid(s): $OTHER_TASKBAR_PGIDS" >&2
+        exit 1
+    fi
+    [ "$tg" = "$TASKBAR_PGID" ] && { echo "mon_scan: refusing to kill THIS session's pgid" >&2; exit 1; }
+    echo "mon_scan: TERM -> process-group $tg (other session, debugging kill)"
+    kill -TERM "-$tg" 2>/dev/null || true
+    sleep 2
+    if kill -0 "-$tg" 2>/dev/null; then
+        echo "mon_scan: KILL -> process-group $tg"
+        kill -KILL "-$tg" 2>/dev/null || true
+    fi
+    [ -f "$SELF_DIR/state/ui.txt" ] && sh "$0" publish "$SELF_DIR/state/ui.txt" >/dev/null 2>&1 || true
+    ;;
+
 *)
-    echo "usage: mon_scan.sh [list|publish <ui.txt>|kill-all [--with-pals]]" >&2
+    echo "usage: mon_scan.sh [list|publish <ui.txt>|kill-all [--with-pals]|kill-session <pgid>]" >&2
     exit 2
     ;;
 esac
