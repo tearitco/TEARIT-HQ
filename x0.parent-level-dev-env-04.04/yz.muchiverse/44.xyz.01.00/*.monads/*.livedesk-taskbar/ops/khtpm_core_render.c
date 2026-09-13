@@ -1913,7 +1913,17 @@ static int reparse_chtpm_if_changed(void) {
                     }
                 }
                 if (g_dock_peer_path[0]) {
-                    g_dock_peer = parse_chtpm(g_dock_peer_path);
+                    /* REAL FIX 2026-09-13 (same incident as write_small_file's
+                     * own header comment) - only adopt a FRESH successful
+                     * parse; a transient read failure (the ENOENT race that
+                     * fix closes, or any other one-off fopen hiccup) must
+                     * never NULL out an already-good tree - that's what
+                     * silently froze the dock bar's last-painted pixels
+                     * with no future retry ever repairing it. Keep showing
+                     * the last-known-good tabs until a parse genuinely
+                     * succeeds again. */
+                    Elem *np = parse_chtpm(g_dock_peer_path);
+                    if (np) g_dock_peer = np;
                     { struct stat pst; if (g_dock_peer && stat(g_dock_peer_path, &pst) == 0) g_dock_peer_mtime = pst.st_mtim; }
                 }
                 kh_focus_debug_log("INCREMENTAL_REPARSE ok removed=%d", rl.n);
@@ -2013,7 +2023,11 @@ static int reparse_chtpm_if_changed(void) {
         }
     }
     if (g_dock_peer_path[0]) {
-        g_dock_peer = parse_chtpm(g_dock_peer_path);
+        /* REAL FIX 2026-09-13 - see the incremental-reparse branch's own
+         * identical comment above; same real reason, same fix, this is
+         * just the full-rebuild fallback's copy of the same assignment. */
+        Elem *np = parse_chtpm(g_dock_peer_path);
+        if (np) g_dock_peer = np;
         { struct stat pst; if (g_dock_peer && stat(g_dock_peer_path, &pst) == 0) g_dock_peer_mtime = pst.st_mtim; }
     }
     if (g_default_active_scope_id[0]) {

@@ -269,7 +269,25 @@ static void write_small_file(const char *house_root, const char *rel_path, const
     if (!f) return;
     fputs(buf, f);
     fclose(f);
-    remove(path);
+    /* REAL FIX 2026-09-13 (direct live incident: "some entities are
+     * missing again... this didn't used to happen"): this used to
+     * remove(path) THEN rename(tmp, path) - two separate syscalls, NOT
+     * atomic. POSIX rename() already atomically REPLACES an existing
+     * destination in one step; the preceding remove() only opened a
+     * real window where path genuinely doesn't exist on disk at all.
+     * strip_ui.txt (this function's main real caller, written on every
+     * manager tick) is read by khtpm_core_render.c's parse_chtpm() via
+     * a plain fopen(path, "r") for BOTH the header window and the dock
+     * bottom peer - a reader's fopen() landing in that gap gets ENOENT,
+     * parse_chtpm() returns NULL, and (for the dock peer specifically)
+     * g_dock_peer was NULLed with no automatic retry, silently freezing
+     * the bottom bar's last-painted pixels since nothing repaints a
+     * NULL peer - exactly the live symptom, worst during rapid entity
+     * churn (fast successive writes = more ENOENT windows to hit).
+     * Every other writer in this codebase (livedesk_registry_add, etc.)
+     * already does the correct fopen+rename-only pattern; this was the
+     * one outlier. Real fix: drop the redundant remove(), let rename()
+     * do its one real atomic job. */
     rename(tmp, path);
 }
 
