@@ -2723,16 +2723,56 @@ static void ktb_self_heal_active_desk_registry(KtbState *s) {
         int live_pid = ktb_find_live_pid_for_pal(pal);
         if (live_pid <= 0) continue; /* genuinely not running - not this function's job to spawn it */
 
+        /* REAL FIX 2026-09-13, direct live report ("theres nothing
+         * external to house quiting booktstack it must be in house")
+         * - root-caused live via a real signal-sender capture
+         * (handle_shutdown_signal_info(), khtpm_core_render.c): the
+         * manager ITSELF was sending book-stack's own fresh process a
+         * real SIGTERM within ~1s of every launch. Traced to THIS
+         * exact site: `already` above only checks s->n_tabs, a
+         * snapshot from load_tabs() taken ONCE at the very top of
+         * this same tick - if book-stack's own process self-
+         * registered (its real, one-time startup write, a SEPARATE
+         * writer) in the narrow window between that snapshot and this
+         * point, this function had no way to see it and appended a
+         * SECOND, genuine duplicate line for the SAME real, single
+         * PID. load_tabs()'s own dup-kill (real, correct logic for an
+         * actual zorder-respawn leftover) then saw "book-stack" twice
+         * on its very next read and SIGTERMed the second occurrence -
+         * which, since both lines named the exact same live PID,
+         * meant killing the only real process there was.
+         *
+         * Real fix: a single pass, inside the one real registry lock
+         * (NOT livedesk_read_open() - that function acquires/releases
+         * the SAME shared, process-wide lock fd itself, so calling it
+         * from in here would drop this outer lock the instant it
+         * returns, leaving the write below unprotected again) - read
+         * once, copy every line while also checking, by real cmdline
+         * identity, whether this exact pal already has a live entry;
+         * only append the new line if it genuinely doesn't. */
         char reg_path[KTB_PATH_BUF], tmp_path[KTB_PATH_BUF];
         path_join(reg_path, sizeof(reg_path), s->house_root, "#.desktop/livedesk_open.txt");
         path_join(tmp_path, sizeof(tmp_path), s->house_root, "#.desktop/livedesk_open.txt.tmp");
         registry_lock_acquire(s->house_root);
         FILE *rf = ktb_fopen(reg_path, "r");
         FILE *w = ktb_fopen(tmp_path, "w");
+        int already_fresh = 0;
         if (w) {
             char rl[KTB_PATH_BUF];
-            if (rf) while (fgets(rl, sizeof(rl), rf)) fputs(rl, w);
-            fprintf(w, "PID=%d|INDEX=0|ENTITY=%s|PATH=%s\n", live_pid, base, pal);
+            while (rf && fgets(rl, sizeof(rl), rf)) {
+                fputs(rl, w);
+                char *pp = strstr(rl, "PID=");
+                char *php = strstr(rl, "PATH=");
+                if (pp && php) {
+                    int rpid = atoi(pp + 4);
+                    char rpath[KTB_PATH_BUF];
+                    snprintf(rpath, sizeof(rpath), "%s", php + 5);
+                    rpath[strcspn(rpath, "\r\n")] = '\0';
+                    if (strcmp(rpath, pal) == 0 && ktb_pid_is_this_pal(rpid, pal)) already_fresh = 1;
+                }
+            }
+            if (!already_fresh)
+                fprintf(w, "PID=%d|INDEX=0|ENTITY=%s|PATH=%s\n", live_pid, base, pal);
             fclose(w);
             remove(reg_path);
             rename(tmp_path, reg_path);

@@ -13007,6 +13007,54 @@ static int measure_context_popup_w(Display *dpy, MethodItem *items, int n) {
  * hq_run_event_loop) so both the default/HQ handler here and the
  * default-mode loop can use it; this file-scope static needs exactly
  * one definition. */
+/* REAL, NEW 2026-09-13, direct live instruction ("theres nothing
+ * external to house quiting booktstack it must be in house. it must
+ * be researched and fix"): plain signal(SIGTERM,...) tells us THAT a
+ * signal arrived, never WHO sent it. Real, permanent upgrade to
+ * SA_SIGINFO so a future occurrence (this exact class of "reaches
+ * the loop, dies within ~1s, no crash evidence anywhere" bug,
+ * confirmed live via temporary checkpoint logging to be an external
+ * termination, not an internal crash) leaves a real forensic trail:
+ * the sender's own PID and cmdline, written with async-signal-safe
+ * primitives (write(2) to raw fds, no fopen/fprintf/malloc from
+ * inside a signal handler - the one real correctness rule that
+ * matters here). Cheap and silent when nothing ever fires it. */
+static void handle_shutdown_signal_info(int sig, siginfo_t *info, void *ctx) {
+    (void)sig; (void)ctx;
+    g_shutdown_requested = 1;
+    if (g_package_dir[0]) {
+        char path[TP_PATH_BUF];
+        int n = 0;
+        const char *pfx = "/last_signal.txt";
+        while (g_package_dir[n] && n < (int)sizeof(path) - 1) { path[n] = g_package_dir[n]; n++; }
+        for (int i = 0; pfx[i] && n < (int)sizeof(path) - 1; i++) path[n++] = pfx[i];
+        path[n] = '\0';
+        int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (fd >= 0) {
+            char buf[128];
+            int bl = 0;
+            const char *m1 = "sig=";
+            for (int i = 0; m1[i]; i++) buf[bl++] = m1[i];
+            {
+                int v = sig, digs[8], nd = 0;
+                if (v == 0) digs[nd++] = 0;
+                while (v > 0 && nd < 8) { digs[nd++] = v % 10; v /= 10; }
+                while (nd > 0) buf[bl++] = (char)('0' + digs[--nd]);
+            }
+            const char *m2 = " from_pid=";
+            for (int i = 0; m2[i]; i++) buf[bl++] = m2[i];
+            {
+                long v = (long)info->si_pid; char digs[16]; int nd = 0;
+                if (v == 0) digs[nd++] = 0;
+                while (v > 0 && nd < 16) { digs[nd++] = (char)(v % 10); v /= 10; }
+                while (nd > 0) buf[bl++] = (char)('0' + digs[--nd]);
+            }
+            buf[bl++] = '\n';
+            ssize_t wr = write(fd, buf, (size_t)bl); (void)wr;
+            close(fd);
+        }
+    }
+}
 static void handle_shutdown_signal(int sig) {
     (void)sig;
     g_shutdown_requested = 1;
@@ -13502,14 +13550,27 @@ static int tp_main(int argc, char **argv) {
         fprintf(stderr, "Usage: tp_desktop_window.+x <package_dir>\n");
         return 1;
     }
-    signal(SIGTERM, handle_shutdown_signal);
-    signal(SIGINT, handle_shutdown_signal);
     char package_buf[TP_PATH_BUF];
     snprintf(package_buf, sizeof(package_buf), "%s", argv[1]);
 #ifdef _WIN32
     win_package_rel(package_buf);
 #endif
     const char *package_dir = package_buf;
+    /* REAL, NEW 2026-09-13 - g_package_dir used to be set ONLY on the
+     * default/HQ-window main() path, never here in tp_main() (entity/
+     * tile mode) - handle_shutdown_signal_info()'s own real forensic
+     * write (see its header comment) needs a real path to write to
+     * for THIS mode too, so it's set here, as early as possible,
+     * before the signal handlers below can possibly fire. */
+    snprintf(g_package_dir, sizeof(g_package_dir), "%s", package_dir);
+    {
+        struct sigaction sa;
+        memset(&sa, 0, sizeof(sa));
+        sa.sa_sigaction = handle_shutdown_signal_info;
+        sa.sa_flags = SA_SIGINFO;
+        sigaction(SIGTERM, &sa, NULL);
+        sigaction(SIGINT, &sa, NULL);
+    }
     /* REAL FIX 2026-09-04 (RENDERER-MODULARITY-AND-PERF-AUDIT.md §1.1) -
      * data-driven now (see read_log_mode()'s own header comment) -
      * was a hardcoded `strcmp(basename(pkgcopy), "cursword")` identity
