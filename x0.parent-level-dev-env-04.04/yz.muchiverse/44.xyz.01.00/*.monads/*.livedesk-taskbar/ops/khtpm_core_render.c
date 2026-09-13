@@ -14029,37 +14029,31 @@ static int tp_main(int argc, char **argv) {
          * other two modes exactly), then read+clear g_frame_dirty
          * locally to drive tp_main's own real need_redraw. */
         hq_ui_pdl_reload_if_changed(g_house_root);
-        /* REAL FIX 2026-09-12 (bug_bounty.md: "entities dropping from
-         * the bottom toolbar after a while, but staying on screen").
-         * Root cause found: livedesk_registry_add() (this entity's own
-         * bottom-bar ledger line) is called EXACTLY ONCE, at process
-         * start (a few hundred lines up) - unlike the HQ-window
-         * registry (livedesk_hq_windows_<pid>.txt), which every generic
-         * HQ window rewrites on EVERY redraw tick and is therefore
-         * self-healing. The taskbar manager's own reader
-         * (khtpm_taskbar_manager.c, the registry read-prune-write
-         * cycle) drops any entry whose PID fails a single
-         * ktb_pid_alive() check on that one read - if that check is
-         * EVER wrong just once, for any real transient reason, a
-         * one-time-registered entity's line is gone from the ledger
-         * forever, even though the entity process itself never crashed
-         * and keeps rendering (exactly "staying on screen"). Real fix:
-         * make entity registration self-healing the same way HQ
-         * windows already are - periodically re-add this entity's own
-         * line, so even a spurious prune corrects itself on the next
-         * refresh instead of being permanent. Gated cheap (once per
-         * ~10s) - re-appending is the same cheap lock+read+prune+append
-         * livedesk_registry_add() already does for the FIRST
-         * registration, just repeated. */
-        {
-            static struct timespec s_last_registry_refresh;
-            struct timespec now_ts;
-            clock_gettime(CLOCK_MONOTONIC, &now_ts);
-            if (now_ts.tv_sec - s_last_registry_refresh.tv_sec >= 10) {
-                s_last_registry_refresh = now_ts;
-                livedesk_registry_add(g_house_root, package_dir, g_livedesk_index, getpid());
-            }
-        }
+        /* REMOVED 2026-09-13 (direct live report: "this needs 2 stop
+         * happening... research house standards, and a real
+         * solution"). This used to be a periodic (~10s) re-add of this
+         * entity's own line into #.desktop/livedesk_open.txt - a real
+         * fix, 2026-09-12, for a real bug (a one-time-registered
+         * entity's line silently, permanently pruned by one transient
+         * ktb_pid_alive() misread). But with EVERY entity doing this on
+         * its own unsynchronized timer, that file became exactly the
+         * "one hot shared file, many writers" shape
+         * PROC-LIFECYCLE-CONSOLIDATE-REGISTRIES.md (this house's own
+         * design doc, §1) explicitly names as the pattern the house's
+         * one-writer rule exists to avoid - and was the real, shared
+         * root cause behind three separate symptoms fixed piecemeal
+         * this same week (tab reordering, entities missing after a
+         * restart, a blank taskbar with otherwise-valid process data).
+         * Real, structural fix this time, not another patch on this
+         * same timer: entities register ONCE, at their own startup
+         * (still done, a few hundred lines up) and never write this
+         * file again. The manager is now the sole writer - see
+         * ktb_self_heal_active_desk_registry() (khtpm_taskbar_
+         * manager.c) for its real replacement: the SAME ~10s cadence,
+         * self-healing the SAME class of spurious-prune bug, but from
+         * the one process that's supposed to own this file, reading
+         * real /proc liveness rather than trusting N independent
+         * writers to coordinate themselves. */
         int need_redraw = 0;
         if (g_frame_dirty) { need_redraw = 1; g_frame_dirty = 0; }
         /* REAL FIX 2026-09-01 (live report: after the @ always-on-top
