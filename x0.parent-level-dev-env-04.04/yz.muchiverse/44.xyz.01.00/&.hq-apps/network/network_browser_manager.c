@@ -697,9 +697,11 @@ static char g_media_op_path[PATH_BUF];
 static char g_media_root[PATH_BUF];
 static char g_video_player_path[PATH_BUF];
 static char g_video_pump_path[PATH_BUF];
+static char g_video_play_path[PATH_BUF];  /* V3 real-time op (+x/nb_video_play.+x) */
 static char g_video_sess[PATH_BUF];   /* "" = no video running */
 static int   g_video_pump_pid = -1;
 static int   g_video_player_pid = -1;
+static int   g_video_v3 = 0;   /* 1 = the running session is the V3 op */
 
 /* One manager per house. flock(2) LOCK_EX|LOCK_NB on a lock file dies with
  * the process (no stale-pid handling needed) and is per-house, so separate
@@ -1181,7 +1183,9 @@ static void video_reap(void) {
 static void video_stop_all(void) {
     if (g_video_pump_pid < 0 && g_video_player_pid < 0 && !g_video_sess[0]) return;
     if (g_video_sess[0]) {
-        /* tell the player's frame loop to stop, then kill wrapped child */
+        /* tell the running session to stop. V2 path: player + pump write
+         * into sess/session/video.control; V3 op (nb_video_play) reads
+         * sess/video.control -- poke both, then reap. */
         {
             FILE *c = fopen(g_video_sess, "a");  /* ensure exists */
             if (c) fclose(c);
@@ -1192,7 +1196,13 @@ static void video_stop_all(void) {
             FILE *f = fopen(cpath, "w");
             if (f) { fprintf(f, "stop\n"); fclose(f); }
         }
-        snprintf(cmd, sizeof(cmd), "'%s' --stop '%s' >/dev/null 2>&1", g_video_player_path, g_video_sess);
+        snprintf(cpath, sizeof(cpath), "%s/video.control", g_video_sess);
+        {
+            FILE *f = fopen(cpath, "w");
+            if (f) { fprintf(f, "stop\n"); fclose(f); }
+        }
+        const char *poke = g_video_v3 && g_video_play_path[0] ? g_video_play_path : g_video_player_path;
+        snprintf(cmd, sizeof(cmd), "'%s' --stop '%s' >/dev/null 2>&1", poke, g_video_sess);
         (void)system(cmd);
         snprintf(cmd, sizeof(cmd), "rm -rf '%s'", g_video_sess);
         (void)system(cmd);
@@ -1205,11 +1215,28 @@ static void video_stop_all(void) {
         kill(g_video_player_pid, SIGTERM);
         video_reap();
     }
+    g_video_v3 = 0;
 }
 
-static void video_start(const char *sprite_dir, const char *local_path) {
+static void video_start(const char *sprite_dir, const char *url) {
     video_stop_all();
-    mkdir_p_local(g_video_sess);
+    /* V3: single real-time op (libav decode + ALSA out). It resolves
+     * youtube/http(s)/local itself and publishes surface.raw +
+     * surface.receipt.txt into its own session dir; no pump, no ffplay
+     * V2 pair. */
+    if (g_video_play_path[0] && access(g_video_play_path, X_OK) == 0) {
+        mkdir_p_local(g_video_sess);
+        g_video_v3 = 1;
+        g_video_player_pid = fork();
+        if (g_video_player_pid == 0) {
+            execl(g_video_play_path, g_video_play_path, url, g_video_sess, (char *)NULL);
+            _exit(127);
+        }
+        if (g_video_player_pid < 0) { g_video_v3 = 0; g_video_player_pid = -1; return; }
+        return;
+    }
+    /* V2 fallback: pre-extract + pump (only when the V3 op isn't built),
+     * offline-specific sprite.csv 8fps path. */
     if (g_video_player_path[0] && g_video_pump_path[0] &&
         access(g_video_player_path, X_OK) == 0 && access(g_video_pump_path, X_OK) == 0) {
     } else {
@@ -1218,14 +1245,15 @@ static void video_start(const char *sprite_dir, const char *local_path) {
     }
     {
         struct stat st;
-        if (stat(local_path, &st) != 0 || st.st_size < 100) {
+        if (stat(url, &st) != 0 || st.st_size < 100) {
             publish_status("error: video file missing");
             return;
         }
     }
+    mkdir_p_local(g_video_sess);
     g_video_player_pid = fork();
     if (g_video_player_pid == 0) {
-        execl(g_video_player_path, g_video_player_path, local_path, g_video_sess, (char *)NULL);
+        execl(g_video_player_path, g_video_player_path, url, g_video_sess, (char *)NULL);
         _exit(127);
     }
     if (g_video_player_pid < 0) { g_video_player_pid = -1; return; }
@@ -1264,18 +1292,23 @@ static void video_start_if_page_has_video(void) {
     }
     fclose(pf);
     if (!sprite_dir[0] || !vurl[0]) { video_stop_all(); return; }
-    /* p.o.c.: local file only; remote mp4 keeps the V1 ffplay action */
+    /* V3 resolves local|http(s)|youtube itself; the V2 path stays
+     * local-file-only as before. */
+    char target[PATH_BUF];
+    if (strncmp(vurl, "file://", 7) == 0) {
+        snprintf(target, sizeof(target), "%s", vurl + 7);
+    } else {
+        snprintf(target, sizeof(target), "%s", vurl);
+    }
+    if (g_video_play_path[0] && access(g_video_play_path, X_OK) == 0) {
+        video_start(sprite_dir, target);
+        return;
+    }
     if (strncmp(vurl, "http://", 7) == 0 || strncmp(vurl, "https://", 8) == 0) {
         video_stop_all();
         return;
     }
-    char local[PATH_BUF];
-    snprintf(local, sizeof(local), "%s", vurl);
-    if (strncmp(local, "file://", 7) == 0) {
-        char *p = local + 7;
-        snprintf(local, sizeof(local), "%s", p);
-    }
-    video_start(sprite_dir, local);
+    video_start(sprite_dir, target);
 }
 
 #define WORKER_RECV_TIMEOUT_MS 3000   /* plan step 5: stall watchdog */
@@ -2126,6 +2159,55 @@ static int publish_direct_image(const char *url) {
     return 1;
 }
 
+/* REAL, NEW 2026-09-12 (NETWORK-BROWSER-VIDEO-V3-DESIGN.md §3, V3-B
+ * "YouTube URL" probe): a bare video URL - youtu.be/..., a /watch?v=,
+ * a direct .mp4/.webm, or the yt: shortcut - never produces a <video>
+ * tag in fetched HTML (YouTube's player is JS-driven, and a raw media
+ * URL isn't HTML at all), so extract_and_publish() could never emit
+ * the VIDEO| row video_start_if_page_has_video() keys on. The has_canvas
+ * renderer path needed a real equivalent of the image-classifier ahead
+ * of it in do_fetch() (looks_image_bytes()/publish_direct_image()<--the
+ * exact pattern this mirrors): classify the URL FIRST, and when it is
+ * one, publish a VIDEO|<sprite_dir>|<url>|video page.state row that has
+ * no poster sprite (sprite_dir is only the V2 fallback's album art -
+ * V3 ignores it, surface.raw is the real frame) and let the shared V3
+ * start path run. No per-app hack: it is the same page-state contract
+ * every <video> parse already fills. */
+static int url_is_video(const char *url) {
+    if (!url || !url[0]) return 0;
+    if (strstr(url, "youtu.be/") != NULL) return 1;
+    if (strstr(url, "youtube.com/watch") != NULL || strstr(url, "youtube.com/shorts") != NULL)
+        return 1;
+    if (strncmp(url, "yt:", 3) == 0) return 1;
+    /* direct media: http(s) URL ending in a video extension (query string
+     * allowed). Local file paths reach video_start the same way once the
+     * page parser hands them a VIDEO row. */
+    const char *q = strchr(url, '?');
+    const char *sl = strrchr(url, '/');
+    const char *dot = strrchr(url, '.');
+    if (!dot || (q && dot > q)) return 0;
+    if (sl && dot < sl) return 0;
+    const char *ext = dot + 1;
+    return strcasecmp(ext, "mp4") == 0 ||
+           strcasecmp(ext, "webm") == 0 ||
+           strcasecmp(ext, "m4v") == 0 ||
+           strcasecmp(ext, "mov") == 0 ||
+           strcasecmp(ext, "mkv") == 0;
+}
+
+static int publish_direct_video(const char *url) {
+    char tmp[PATH_BUF];
+    FILE *out = atomic_open(g_page_state_path, tmp, sizeof(tmp));
+    if (!out) return 0;
+    const char *slash = strrchr(url, '/');
+    const char *leaf = (slash && slash[1]) ? slash + 1 : "video";
+    fprintf(out, "URL|%s\nTITLE|%s\n", url, leaf);
+    fprintf(out, "VIDEO|%s/#.desktop/nb_sprites/video|%s|video\n", g_house, url);
+    fclose(out);
+    atomic_commit(g_page_state_path, tmp);
+    return 1;
+}
+
 
 #define CATALOG_MAX 24
 
@@ -2295,6 +2377,32 @@ static void do_fetch(const char *url_in, int record_history) {
     publish_status("loading");
     write_chtpm_projection(); /* live X11 window must show loading before curl blocks */
 
+    /* REAL, NEW 2026-09-12 (V3-B probe, NETWORK-BROWSER-VIDEO-V3-DESIGN.md
+     * §3): a bare video URL - youtu.be/..., /watch?v=, direct .mp4/.webm,
+     * yt: shortcut - never yields a <video> tag in fetched HTML (YouTube's
+     * player is JS-driven; a raw media URL isn't HTML at all), so the page
+     * parser could never emit the VIDEO| row that starts the V3 op.
+     * Classify the URL itself and publish a poster-less VIDEO| row
+     * (sprite_dir is only V2 fallback art; V3 ignores it and blits
+     * surface.raw). Checked BEFORE curl so a multi-MB JS-heavy page is
+     * never downloaded. Mirrors the image classifier's success shape. */
+    if (url_is_video(url)) {
+        publish_status("ready");
+        write_chtpm_projection();
+        if (publish_direct_video(url)) {
+            video_start_if_page_has_video();
+            if (record_history && g_current_url[0] && strcmp(g_current_url, url) != 0)
+                stack_push(g_back_path, g_current_url);
+            snprintf(g_current_url, sizeof(g_current_url), "%s", url);
+            visit_log_append(url);
+            tab_after_fetch_ok(url);
+            write_chtpm_projection();
+            return;
+        }
+        publish_status("error: video start failed");
+        return;
+    }
+
     {
         FILE *uf = fopen(g_curl_url_path, "w");
         if (!uf) { publish_status("error: could not write curl url file"); return; }
@@ -2346,7 +2454,28 @@ static void do_fetch(const char *url_in, int record_history) {
         return;
     }
 
-    if (ingest_4chan_catalog(url)) {
+    /* REAL, NEW 2026-09-12 (V3-B probe, NETWORK-BROWSER-VIDEO-V3-DESIGN.md
+     * §3): a bare video URL - youtu.be/..., /watch?v=, direct .mp4/.webm,
+     * yt: shortcut - never yields a <video> tag in fetched HTML, so the
+     * generic page parser below could never emit the VIDEO| row that
+     * starts the V3 op. Classify the URL itself and publish a poster-less
+     * VIDEO| row (sprite_dir is only V2 fallback art; V3 ignores it).
+     * Mirror the image path's commit/history/status shape exactly. */
+    if (url_is_video(url)) {
+        if (publish_direct_video(url)) {
+            video_start_if_page_has_video();
+            if (record_history && g_current_url[0] && strcmp(g_current_url, url) != 0)
+                stack_push(g_back_path, g_current_url);
+            snprintf(g_current_url, sizeof(g_current_url), "%s", url);
+            visit_log_append(url);
+            tab_after_fetch_ok(url);
+            publish_status("ready");
+            write_chtpm_projection();
+            return;
+        }
+    }
+
+if (ingest_4chan_catalog(url)) {
         if (record_history && g_current_url[0] && strcmp(g_current_url, url) != 0)
             stack_push(g_back_path, g_current_url);
         snprintf(g_current_url, sizeof(g_current_url), "%s", url);
@@ -2462,12 +2591,14 @@ static void handle_request(void) {
         publish_status("video stopped");
     } else if (strcmp(line, "video:pause") == 0 && g_video_sess[0]) {
         char cmd[PATH_BUF * 2];
-        snprintf(cmd, sizeof(cmd), "'%s' --pause '%s' >/dev/null 2>&1", g_video_player_path, g_video_sess);
+        const char *poke = g_video_v3 && g_video_play_path[0] ? g_video_play_path : g_video_player_path;
+        snprintf(cmd, sizeof(cmd), "'%s' --pause '%s' >/dev/null 2>&1", poke, g_video_sess);
         (void)system(cmd);
         publish_status("video paused");
     } else if (strcmp(line, "video:resume") == 0 && g_video_sess[0]) {
         char cmd[PATH_BUF * 2];
-        snprintf(cmd, sizeof(cmd), "'%s' --resume '%s' >/dev/null 2>&1", g_video_player_path, g_video_sess);
+        const char *poke = g_video_v3 && g_video_play_path[0] ? g_video_play_path : g_video_player_path;
+        snprintf(cmd, sizeof(cmd), "'%s' --resume '%s' >/dev/null 2>&1", poke, g_video_sess);
         (void)system(cmd);
         publish_status("video playing");
     }
@@ -3090,10 +3221,19 @@ static void write_ui_projection(void) {
                     }
                     uisan(rest, s1, sizeof(s1));
                     char lab_s[700]; uisan(valt[0] ? valt : "play", lab_s, sizeof(lab_s));
-                    char url_sq[PATH_BUF * 2];
-                    shell_escape_squote(vurl, url_sq, sizeof(url_sq));
-                    UI_PUT("c_%d_kind=video\nc_%d_is_media=1\nc_%d_sprite=%s\nc_%d_label=%s\n", rc, rc, rc, s1, rc, lab_s);
-                    UI_PUT("c_%d_action=ffplay -autoexit -loglevel error '%s'\n", rc, url_sq);
+                    if (g_video_v3 && g_video_sess[0]) {
+                        /* V3: live canvas row. The canvas sprite is the op's
+                         * surface.raw path; kh_draw_canvas reads dims from the
+                         * sibling surface.receipt.txt (frame_w/h). */
+                        char raw_s[PATH_BUF];
+                        snprintf(raw_s, sizeof(raw_s), "%s/surface.raw", g_video_sess);
+                        UI_PUT("c_%d_kind=video\nc_%d_is_media=1\nc_%d_is_canvas=1\nc_%d_sprite=%s\nc_%d_label=%s\n", rc, rc, rc, rc, raw_s, rc, lab_s);
+                    } else {
+                        char url_sq[PATH_BUF * 2];
+                        shell_escape_squote(vurl, url_sq, sizeof(url_sq));
+                        UI_PUT("c_%d_kind=video\nc_%d_is_media=1\nc_%d_sprite=%s\nc_%d_label=%s\n", rc, rc, rc, s1, rc, lab_s);
+                        UI_PUT("c_%d_action=ffplay -autoexit -loglevel error '%s'\n", rc, url_sq);
+                    }
                 } else {
                     continue;
                 }
@@ -3232,6 +3372,7 @@ int main(int argc, char **argv) {
     mkdir_p_local(g_media_root);
     snprintf(g_video_player_path, sizeof(g_video_player_path), "%s/ops/+x/nb_video_player.+x", g_package_dir);
     snprintf(g_video_pump_path, sizeof(g_video_pump_path), "%s/ops/+x/nb_video_pump.+x", g_package_dir);
+    snprintf(g_video_play_path, sizeof(g_video_play_path), "%s/ops/+x/nb_video_play.+x", g_package_dir);
     snprintf(g_video_sess, sizeof(g_video_sess), "%s/&.hq-apps/network/tmp/nb_video0", g_house);
     video_stop_all(); /* stale session from a previous run */
 

@@ -152,12 +152,14 @@ Key properties:
 
 ## 5. Probe matrix (run AGAINST THE LIVE WINDOW, evidence-logged)
 
-| Probe | Input | Expect | Evidence |
-|---|---|---|---|
-| V3-A | `file://` → `video_test.mp4` (8fps source, now decoded full-fps) | surface.raw mtime changes ~30fps; receipt frame_w/h right; audio on headset | `ls -l --time-style=full-iso nb_video0/surface.raw` twice 200ms apart; screenshot `dump_frame_png_op.+x` |
-| V3-B | YouTube URL (non-DRM sample, e.g. Big Buck Bunny) | yt-dlp resolves → stream plays in canvas | resolve log line; screenshot; audio |
-| V3-C | pause / resume / stop / EOF | state transitions clean; no zombie | control-file trace; `video.state` file |
-| V3-D | Widevine URL | explicit "DRM cannot decode" message | console + status row |
+| Probe | Input | Expect | Evidence | Result |
+|---|---|---|---|---|
+| V3-A | `file://` → `video_test.mp4` (640x360 24fps, no audio) | surface.raw mtime changes ~30fps; receipt frame_w/h right | `ls -l --time-style=full-iso nb_video0/surface.raw`; window dump | ✅ **DONE 2026-09-12** — receipt `frame_w=640 frame_h=360`; play confirmed on-screen. Root cause that had blocked this: ops-dir stale copy of `khtpm_draw_core.c` shadowed the canonical shared-lib (quoted-include at `khtpm_core_render.c:2544`); the tracked canonical already had the `frame_w/h` fallback. Stale copy deleted, canonical compiles in-place. |
+| V3-B | YouTube URL (non-DRM sample, e.g. Big Buck Bunny) | yt-dlp resolves → stream plays in canvas | resolve log line; screenshot; audio | ✅ **DONE 2026-09-12** — `go:https://www.youtube.com/watch?v=jNQXAC9IVRw` → `VIDEO|` row → op decode → canvas blit. Two blockers fixed: (1) manager had **no video-URL classifier** (a bare YT/mp4 URL never yields a `<video>` tag, so the HTML parser never emitted the VIDEO| row) → added `url_is_video()` + `publish_direct_video()` in `do_fetch` before curl, mirroring the image path; (2) googlevideo CDN 403'd (`c=ANDROID_VR` URLs are rejected even by yt-dlp itself) → op `resolve_url()` now forces `--extractor-args 'youtube:player_client=android'` + browser UA + referer on `avformat_open_input`. |
+| V3-C | pause / resume / stop / EOF | state transitions clean; no zombie | control-file trace; `video.state` file | |
+| V3-D | Widevine URL | explicit "DRM cannot decode" message | console + status row | |
+
+**Scope notes (2026-09-12):** YouTube **search & comments are NOT in V3** — the browser is a TITLE/TEXT/LINK/IMG/VIDEO HTML extractor, never a JS executor. Comments load post-JS via the `youtubei/v1` API (invisible to the parser). Search is a plausible V4 probe (results ARE embedded as `ytInitialData` JSON in the raw `youtube.com/results` HTML → tiny JSON→VIDEO-row mapper), comments are not.
 
 ## 6. Files / contract summary
 

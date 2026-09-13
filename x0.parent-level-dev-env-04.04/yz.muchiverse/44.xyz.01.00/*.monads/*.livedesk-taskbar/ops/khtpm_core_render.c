@@ -3535,10 +3535,45 @@ static int sprite_grid_visual_lines(const Elem *c, int w) {
     return lines < 1 ? 1 : lines;
 }
 
+/* REAL, NEW 2026-09-12 (NETWORK-BROWSER-VIDEO-V3-DESIGN.md §2/§2.3) - a
+ * canvas INSIDE a <scrolllist> gets a real multi-row span so the live
+ * video surface is scrollable content, not a 1-row sliver. Frame height
+ * comes from the SAME sibling receipt kh_draw_canvas() reads
+ * (<base>.receipt.txt, frame_h=/overlay_h= priority - matching build
+ * convention so one contract sizes both layout AND paint), squashed to
+ * ROW_H units. No file open on the hot path: NaN-proof, and a missing
+ * receipt (producer still writing) yields a 1-row placeholder at worst. */
+static int scroll_canvas_frame_h(const Elem *c) {
+    if (!c || !c->sprite[0]) return 0;
+    char rc[512];
+    { const char *dot = strrchr(c->sprite, '.');
+      if (dot && strcmp(dot, ".raw") == 0)
+          snprintf(rc, sizeof(rc), "%.*s.receipt.txt", (int)(dot - c->sprite), c->sprite);
+      else
+          snprintf(rc, sizeof(rc), "%s.receipt.txt", c->sprite);
+    }
+    int h = 0;
+    FILE *rf = fopen(rc, "r");
+    if (rf) {
+        char l[128];
+        while (fgets(l, sizeof(l), rf)) {
+            if (!strncmp(l, "overlay_h=", 10)) h = atoi(l + 10);
+            else if (!h && !strncmp(l, "frame_h=", 8)) h = atoi(l + 8);
+        }
+        fclose(rf);
+    }
+    return h;
+}
+
 static int scroll_row_span(const Elem *c, int w) {
     if (scroll_is_sprite_grid_row(c)) {
         int line_span = (SPRITE_GRID_TILE_H + ROW_H - 1) / ROW_H;
         return sprite_grid_visual_lines(c, w) * line_span;
+    }
+    if (c && strcmp(c->tag, "canvas") == 0) {
+        int fh = scroll_canvas_frame_h(c);
+        if (fh < ROW_H) fh = ROW_H;
+        return (fh + ROW_H - 1) / ROW_H;
     }
     if (c && c->sprite[0]) return (64 + ROW_H + 8 + ROW_H - 1) / ROW_H; /* 64px blit + one ROW_H for the nav chip */
     /* REAL FIX 2026-09-03 (direct live report: co-lab-hai's own long
@@ -3637,7 +3672,8 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
         if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0 ||
-            strcmp(c->tag, "cli_io") == 0 || strcmp(c->tag, "text_area") == 0 || scroll_is_sprite_grid_row(c))
+            strcmp(c->tag, "cli_io") == 0 || strcmp(c->tag, "text_area") == 0 ||
+            strcmp(c->tag, "canvas") == 0 || scroll_is_sprite_grid_row(c))
             total += scroll_row_span(c, w);
     }
     int max_scroll = total > visible_rows ? total - visible_rows : 0;
@@ -3673,8 +3709,12 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
         int is_grid = scroll_is_sprite_grid_row(c);
+        /* a canvas inside a scroll window is a real content row too
+         * (V3 video): same clip rules + own span from the receipt */
         if (!is_grid && strcmp(c->tag, "item") != 0 && strcmp(c->tag, "text") != 0 &&
-            strcmp(c->tag, "cli_io") != 0 && strcmp(c->tag, "text_area") != 0) continue;
+            strcmp(c->tag, "cli_io") != 0 && strcmp(c->tag, "text_area") != 0 &&
+            strcmp(c->tag, "canvas") != 0) continue;
+        if (strcmp(c->tag, "canvas") == 0) g_has_canvas = 1; /* live surface -> 30fps tick */
         int span = scroll_row_span(c, inner_w);
         int visible = (row + span > *scroll && row < *scroll + visible_rows);
         if (is_grid) {

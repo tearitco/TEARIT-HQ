@@ -54,3 +54,14 @@ $CC -std=c11 -Wall -O2 -o "$SDIR/ops/+x/nb_video_player.+x" "$SDIR/ops/nb_video_
 
 echo "-- nb_video_pump -> ops/+x/nb_video_pump.+x"
 $CC -std=c11 -Wall -O2 -o "$SDIR/ops/+x/nb_video_pump.+x" "$SDIR/ops/nb_video_pump.c" && echo "OK nb_video_pump" || exit 1
+
+# 2026-09-12 (task C V3, full-fps video): real-time libav decode + ALSA
+# out op that publishes canvas raw+receipt directly (no pump). Needs
+# libav* + alsa dev (pkg-config); skipped cleanly when absent so the
+# manager falls back to the V2 pump path.
+echo "-- nb_video_play -> ops/+x/nb_video_play.+x"
+if pkg-config --exists libavformat libavcodec libavutil libswscale libswresample alsa; then
+  $CC -std=c11 -Wall -Wextra -O2 -o "$SDIR/ops/+x/nb_video_play.+x" "$SDIR/ops/nb_video_play.c" $(pkg-config --cflags --libs libavformat libavcodec libavutil libswscale libswresample alsa) && echo "OK nb_video_play" || exit 1
+else
+  echo "skip nb_video_play (no libav/alsa dev)"
+fi
