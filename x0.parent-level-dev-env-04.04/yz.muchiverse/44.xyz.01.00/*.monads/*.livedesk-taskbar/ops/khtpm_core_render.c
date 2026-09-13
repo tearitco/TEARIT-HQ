@@ -10795,7 +10795,28 @@ static void livedesk_registry_add(const char *house_root, const char *package_di
         while (fgets(line, sizeof(line), f)) {
             char *pp = strstr(line, "PID=");
             int line_pid = pp ? atoi(pp + 4) : 0;
-            if (!pp || !pid_is_alive(line_pid)) continue;
+            /* REAL FIX 2026-09-12 (direct live incident: a periodic
+             * self-heal re-call of this same function, added earlier
+             * tonight in tp_main() to fix the "entities drop off the
+             * bottom bar" bounty bug, fires on its VERY FIRST tick
+             * (static timer starts at zero, so "10s have passed" is
+             * true immediately) - landing right alongside the real
+             * startup registration below. This prune only ever dropped
+             * DEAD pids, so re-registering a still-alive pid just
+             * appended a second, genuine duplicate line for the same
+             * live entity. khtpm_taskbar_manager.c's load_tabs() then
+             * saw two live-PID lines for one entity in a single read
+             * and killed the "duplicate" (logic written for an actual
+             * zorder-respawn leftover, not this) - which was the
+             * entity's only real process. Confirmed live via a debug
+             * log: "line pid=X entity=self alive=1" appeared twice in
+             * one tick, immediately followed by "DUP-KILL pid=X". Real
+             * fix: also drop any existing line for THIS SAME pid before
+             * appending its fresh one, so a re-registration replaces
+             * its own prior line instead of piling up beside it -
+             * correct for every future periodic self-heal call, not
+             * just the immediate-first-tick case. */
+            if (!pp || !pid_is_alive(line_pid) || line_pid == (int)pid) continue;
             fputs(line, w);
         }
     }
