@@ -2267,28 +2267,33 @@ static void ktb_toggle_zorder_respawn(void) {
     for (i = 0; i < n_found; i++)
         if (found[i].pid != self) kill(found[i].pid, SIGTERM);
     usleep(300000);
-    for (i = 0; i < n_found; i++) {
-        pid_t pid;
-        if (found[i].pid == self) continue;
-        pid = fork();
-        if (pid == 0) {
-            char *av[9];
-            int n, j, devnull;
-            setsid();
-            devnull = open("/dev/null", O_RDWR);
-            if (devnull >= 0) {
-                dup2(devnull, 0); dup2(devnull, 1); dup2(devnull, 2);
-                if (devnull > 2) close(devnull);
-            }
-            av[0] = (char *)bins[found[i].which];
-            n = found[i].argc < 8 ? found[i].argc : 8;
-            for (j = 1; j < n; j++) av[j] = found[i].arg[j];
-            av[n] = NULL;
-            execve(av[0], av, environ);
-            _exit(1);
-        }
-    }
-    /* Recreate this strip so override_redirect is set at XCreateWindow. */
+    /* REAL FIX 2026-09-13, direct live report ("it populated eventually
+     * after a long time. why would it take so long?... the old legacy
+     * tb would populate all immediately") - researched, not a compile
+     * step (confirmed directly: execve() here re-runs the SAME binary,
+     * no build call anywhere in this path). Two real, separate causes
+     * closed here:
+     * 1. The strip/dock renderer itself used to respawn LAST, after
+     *    every entity - the one window the user is actually staring at
+     *    (and the ONLY one showing the real, already-correct tab list -
+     *    every earlier round in tb-bug-doc.txt already proved the DATA
+     *    side is fine) sat blank the whole time entities were still
+     *    coming up. Moved first.
+     * 2. Zero stagger, zero nice - launching 7-8 real GUI processes
+     *    (each doing genuine startup work: sprite/phymoji atlas load,
+     *    X11 window+GC+Pixmap creation, font loading) all at once with
+     *    default scheduling priority is exactly the shape this house's
+     *    own standing rule already names (project memory,
+     *    "nice-heavy-background-work": "weak CPU machine... wrap
+     *    multi-minute background work with nice... so the taskbar/
+     *    desktop stays responsive") - never applied to this respawn
+     *    burst specifically. Real fix: the strip stays at normal
+     *    priority (it must repaint immediately, it's the UI shell);
+     *    every entity gets a real, small stagger (`usleep`) between
+     *    forks and a real, mild `nice()` bump in the child before
+     *    `execve` - keeps the burst from saturating the CPU all at
+     *    once without meaningfully slowing any one entity's own
+     *    startup. */
     {
         pid_t np = fork();
         if (np == 0) {
@@ -2308,6 +2313,29 @@ static void ktb_toggle_zorder_respawn(void) {
                 av[n] = NULL;
                 execve(av[0], av, environ);
             }
+            _exit(1);
+        }
+    }
+    for (i = 0; i < n_found; i++) {
+        pid_t pid;
+        if (found[i].pid == self) continue;
+        usleep(120000); /* real stagger - see this function's own header comment */
+        pid = fork();
+        if (pid == 0) {
+            char *av[9];
+            int n, j, devnull;
+            setsid();
+            nice(8); /* real, mild CPU-priority yield to the strip above - see header comment */
+            devnull = open("/dev/null", O_RDWR);
+            if (devnull >= 0) {
+                dup2(devnull, 0); dup2(devnull, 1); dup2(devnull, 2);
+                if (devnull > 2) close(devnull);
+            }
+            av[0] = (char *)bins[found[i].which];
+            n = found[i].argc < 8 ? found[i].argc : 8;
+            for (j = 1; j < n; j++) av[j] = found[i].arg[j];
+            av[n] = NULL;
+            execve(av[0], av, environ);
             _exit(1);
         }
     }

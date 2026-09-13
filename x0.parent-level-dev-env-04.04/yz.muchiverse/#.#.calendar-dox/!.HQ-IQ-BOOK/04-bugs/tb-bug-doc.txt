@@ -1,0 +1,266 @@
+TB-BUG-DOC.TXT — the bottom taskbar entity-population saga, consolidated
+==========================================================================
+Created 2026-09-13, direct instruction: "this was a big bug... wanna
+record it in pitfalls?" (yes, done - HOUSE_CODE_PITFALLS.md #18) then
+"want to modify our tb-bug-doc.txt with previous attempts, new research
+first, etc?" - this file. One real symptom family (the bottom taskbar
+failing to show the real, live entity set), many distinct root causes
+found across one week, tracked here in order instead of scattered across
+bug_bounty.md entries that each only tell part of the story.
+
+Cross-references: `bug_bounty.md` has the full, individually-detailed
+entries this file summarizes chronologically; `HOUSE_CODE_PITFALLS.md`
+#18 has the generalized lesson from the book-stack round specifically.
+This file is the narrative spine tying them together, not a replacement
+for either.
+
+--------------------------------------------------------------------
+ROUND 1 (2026-09-11/12) — entities drop off the bottom taskbar "after a
+while", but stay on screen
+--------------------------------------------------------------------
+Real root cause: `livedesk_registry_add()` (an entity's own bottom-bar
+ledger line) was called EXACTLY ONCE, at process start. The manager's
+own registry reader drops any entry whose PID fails a single
+`ktb_pid_alive()` check on that one read - if that check is EVER wrong
+just once, for any real transient reason, a one-time-registered
+entity's line is gone from the ledger forever, even though the process
+itself never crashed.
+
+Fix (3e334acc): periodic (~10s) self-re-registration, so even a
+spurious prune corrects itself on the next refresh.
+
+Real regression THIS fix immediately caused (eca3c071): the periodic
+re-call fired on its VERY FIRST tick (static timer starts at zero), so
+re-registering a still-alive pid appended a second, genuine duplicate
+line for the same live entity - the manager's own dup-kill (real logic
+for an actual zorder-respawn leftover) then SIGTERMed the "duplicate" -
+killing every non-cursword entity within 1-2s of every spawn. Fixed by
+also dropping any existing line for the SAME pid before appending.
+
+A THIRD regression, same series (74debf38): "some entities are missing
+again, after your fix... this didn't used to happen." Not a process
+death this time - the bottom bar itself was visually frozen showing a
+stale subset. Root cause: `write_small_file()` did `remove(path)` then
+`rename(tmp, path)` - not atomic, opening a real ENOENT window a
+concurrent reader could land in; when it hit the dock-peer reparse, a
+transient NULL parse unconditionally replaced an already-good tree with
+nothing, and nothing ever re-tried. Fixed: dropped the redundant
+remove(); dock-peer reparse only adopts a non-NULL parse result.
+
+--------------------------------------------------------------------
+ROUND 2 (2026-09-13, morning) — HQ menu nav gets permanently stuck
+--------------------------------------------------------------------
+A related but separate symptom (not entity-population, the taskbar's
+own HQ dropdown nav) - full detail in bug_bounty.md's own entry. Real
+fix: the reparse scope-restore block never reset `g_default_scope_
+confine` to 0 when the current trigger matched neither of its two
+real-confine branches - left stuck at 1 forever if ever set once
+elsewhere in that process's lifetime. Fixed with an explicit reset.
+Mentioned here only because it shares the "was this really fixed or
+just cleared by a restart" methodology lesson the rest of this doc
+leans on hard: **a restart clearing a symptom is not evidence the
+symptom is fixed** - every real round below was validated with the
+process staying alive/observed across multiple minutes, never just
+"restarted once, looked fine."
+
+--------------------------------------------------------------------
+ROUND 3 (2026-09-13, midday) — "bottom tb is missing entities again...
+how do we fix this once and for all"
+--------------------------------------------------------------------
+Live-confirmed via direct file reads: `strip_ui.txt` had the correct
+real 7-tab data the ENTIRE time, its content-hash was genuinely stable
+across 5+ full seconds, and the dock window was still blank regardless
+- a render-side staleness bug, unrelated to Round 1's registry-write
+bugs. Real, structural first attempt: an unconditional 3-second forced
+reparse timer for dock windows (af273699) - abandoned same day (see
+Round 4) for not actually following house standard.
+
+--------------------------------------------------------------------
+ROUND 4 (2026-09-13) — "we dont use mtime or hash for render... do u
+see this instruction in golden rules? thats the final fix"
+--------------------------------------------------------------------
+CENTROID_GOLD_STD.md rule 8, verbatim: marker-filesize-growth only,
+never mtime/hash/a timer. The manager's own `publish_state()` already
+appends one byte to `#.desktop/strip_frame_changed.txt` on every real
+publish (`touch_frame_changed()`); the render side already watched
+that marker for a narrower focus-sync job. Real, final fix (930fd9ba):
+the dock's own vars-changed reparse gate watches that SAME marker
+directly, replacing hash/debounce/the timer entirely. This is the
+correct, permanent mechanism for "is there new data to show" - not
+revisited since, not implicated in any round after this one.
+
+--------------------------------------------------------------------
+ROUND 5 (2026-09-13) — "some entities didn't show up on restart...
+was it related to restart like before? is there a guard against that?"
+--------------------------------------------------------------------
+Real, NEW mechanism: PID reuse. `ktb_pid_alive()` (used by
+`livedesk_spawn_desk`'s `already_live` skip-check, `livedesk_ensure_
+cursword`, and `load_tabs()`'s own dup-kill) only ever checked "is a
+non-zombie process sitting on this PID number" - a closed entity's
+stale registry line surviving until the OS reuses its exact PID for
+some unrelated process makes that check a false positive, silently
+skipping a real respawn (worse than a phantom cell: the entity never
+launches at all). This exact class was ALREADY found and fixed once
+for the HQ-window registry (`ktb_pid_is_hq_renderer()`, 2026-09-03) -
+just never ported to the entity-pal registry. Fixed (3041e357): new
+`ktb_pid_is_this_pal(pid, pal_path)` - verifies the live PID's own
+`/proc/<pid>/cmdline` actually references THAT pal's path, not just
+that the PID number is occupied. Applied at all three sites.
+
+--------------------------------------------------------------------
+ROUND 6 (2026-09-13) — "it just reshuffled again. how did old
+codebase accomplish [stable order]?"
+--------------------------------------------------------------------
+Researched, not guessed: `PROC-LIFECYCLE-CONSOLIDATE-REGISTRIES.md`
+(this house's own design doc) names the exact anti-pattern
+`livedesk_open.txt` had become - EVERY entity independently
+self-registered into it on its own unsynchronized ~10s timer (Round
+1's own fix!), the textbook "one hot shared file, many writers" shape
+the house's one-writer rule exists to avoid. This was the real, SHARED
+cause behind both the reordering AND a chunk of Round 5's missing-
+entity symptoms.
+
+Real, structural fix (764944ea, ec77a18f - NOTE: this ec77a18f is a
+DIFFERENT commit than Round 1's ec77a18f dedup fix, same short-hash-
+adjacent numbering is coincidental, check full hash if grepping):
+1. Entities register ONCE, at their own startup. The periodic re-add
+   from Round 1 removed entirely from `khtpm_core_render.c`.
+2. The manager becomes the SOLE writer -
+   `ktb_self_heal_active_desk_registry()`, called from `ktb_reload()`
+   every tick, internally gated to the same ~10s cadence. Restores a
+   registry line for anything genuinely alive-but-missing (identity-
+   verified /proc scan), and separately re-calls the already-safe
+   `livedesk_spawn_active_desk()` so a silently-never-launched pal
+   gets a real retry.
+3. `load_tabs()`'s own dup-kill (the function building the tab list
+   EVERY tick) was found still using bare `ktb_pid_alive()` - the
+   third and most consequential site sharing Round 5's PID-reuse
+   class. Fixed with the same identity check.
+
+--------------------------------------------------------------------
+ROUND 7 (2026-09-13) — book-stack: "no bookstack still" / "theres
+nothing external to house quiting booktstack it must be in house"
+--------------------------------------------------------------------
+The big one. Full narrative in bug_bounty.md's own closed entry and
+HOUSE_CODE_PITFALLS.md #18 - condensed here:
+
+1. Core-dump forensics (raising RLIMIT_CORE per spawn) was tried
+   first and was a dead end in THIS environment specifically -
+   `/var/crash` never populated, `strace -p` outright blocked
+   (`yama.ptrace_scope`). Recorded so a future session doesn't
+   re-attempt the same dead end.
+2. Real breakthrough: upgraded the entity's own SIGTERM/SIGINT
+   handler to `sigaction()` + `SA_SIGINFO`, writing the real sender
+   PID (via async-signal-safe `write(2)`) before exiting. The VERY
+   NEXT occurrence named the sender directly: the entity's own
+   taskbar manager process. Confirmed the user's own instinct
+   ("nothing external") with real proof, not just agreement.
+3. Root cause: Round 6's own new `ktb_self_heal_active_desk_
+   registry()` checked a STALE snapshot (`s->tabs[]`, taken once at
+   the top of the same tick by `load_tabs()`) before deciding to
+   restore a line for an alive-but-missing pal. If the entity's own
+   real self-registration landed in the gap between that snapshot and
+   the check, self-heal appended a genuine SECOND line naming the
+   SAME live PID - and `load_tabs()`'s own (correct, needed) dup-kill
+   then SIGTERMed the "duplicate," which was the only real process
+   there was. This is exactly "it redraws then quickly disappears":
+   a real first frame, then death to a real signal about one manager
+   tick later.
+4. Fix (b5443a67): the restore-write is now a single pass inside the
+   one real registry lock, re-checking the LIVE file directly (by
+   cmdline identity) instead of the stale snapshot. Also fixed a
+   related bug found while writing this: the naive fix would have
+   called `livedesk_read_open()` (which itself acquires/releases the
+   SAME shared, cached-fd lock) from inside an already-held lock,
+   silently dropping protection - not reentrant-safe. Rewritten as
+   one inline pass instead.
+
+The `SA_SIGINFO` diagnostic was kept permanently (not stripped after
+use) - if this exact "opens, paints, dies within ~1s, zero crash
+evidence" shape ever recurs for ANY entity, check that entity's own
+`last_signal.txt` FIRST.
+
+--------------------------------------------------------------------
+ROUND 8 (2026-09-13, current, OPEN) — always-on-top toggle: "bottom
+tb is empty again... it populated eventually after a long time. why
+would it take so long? were they compiling first? or what? the old
+legacy tb would populate all immediately"
+--------------------------------------------------------------------
+New research this pass. NOT a compile step - confirmed directly, no
+build/compile call exists anywhere in this path. The real mechanism,
+read end to end in `khtpm_core_render.c`:
+
+`ZORDER_TOGGLE` (the "@ always-on-top" HQ menu row) runs, in order:
+  1. `g_zorder_above` flips, persisted to `khtpm_zorder_mode.state.txt`.
+  2. `g_override_redirect` flips to match - but this can only take
+     effect at `XCreateWindow` time (a real, documented X11 constraint
+     - override_redirect isn't a live-updatable window property), so
+     EVERY already-open window rendered by this binary must be torn
+     down and recreated to pick up the new value.
+  3. `ktb_toggle_zorder_respawn()`: scans `/proc` for every process
+     whose cmdline matches `tp_desktop_window_rgb` / `khtpm_core_
+     render` / `network_browser_render` (i.e. every entity tile AND
+     the strip/dock renderer itself - NOT the taskbar manager, which
+     stays running throughout), SIGTERMs all of them at once, sleeps
+     a flat 300ms, then `fork()`+`execve()`s each one back using the
+     EXACT argv it read from `/proc/<pid>/cmdline` - a raw, direct
+     re-exec, completely bypassing the normal `button.sh`/
+     `livedesk_spawn_desk()` launch path entirely.
+  4. The strip itself is included in this same sweep (a second,
+     dedicated fork+execve block) - then the CURRENT process sets
+     `g_quit = 1` and exits cleanly right after triggering all of the
+     above.
+
+Why this is real, not a compile: `execve()` replaces a process image
+in-place, no build step of any kind, no different code path than a
+normal launch would run.
+
+Why it can plausibly take a long time regardless - the REAL, live
+lead this round found: **zero stagger, zero priority hint**. All 7+
+entities (tiles) AND the strip get `fork()`ed back in one tight loop
+with no delay between them and no `nice`/`ionice` (this house's own
+documented standing rule for exactly this shape of problem - see
+`nice-heavy-background-work` in the project's own memory index: "weak
+CPU machine... wrap multi-minute background work with nice -n 15
+ionice -c3 so the taskbar/desktop stays responsive"). Each fresh
+entity does real, non-trivial startup work (sprite/phymoji atlas
+load/generation, X11 window+GC+Pixmap creation, font loading) -
+launching 7-8 of those simultaneously on a documented weak-CPU machine
+with no stagger and default scheduling priority is a real, plausible,
+un-fixed source of multi-second-to-much-longer visible delay, distinct
+from every registry/render bug found in Rounds 1-7 (all of which are
+independently confirmed fixed - this is a NEW, separate performance
+characteristic of the respawn burst itself, not a correctness bug in
+the data/render pipeline).
+
+Why "the old legacy tb populated immediately" is a real, useful data
+point, not just nostalgia: the OLD codebase (pre-refactor reference,
+`NNEST-11.17`) never had this exact respawn-everything-via-raw-execve
+mechanism at all for a zorder toggle - `override_redirect` handling
+there (if it existed) predates this consolidated binary's own X11
+constraint-driven mass-respawn design. This is likely a genuinely NEW
+behavior introduced when tile mode was folded into this shared
+binary, not a regression in an old, already-solved path.
+
+STATUS: root mechanism identified and explained (not a compile, not a
+registry bug - a real, unstaggered process-restart burst). The
+STAGGER/NICE FIX ITSELF is being implemented and verified this same
+pass - see the next real commit after this doc for whether it lands
+and what it measured. If this doc is being read before that commit
+exists, this round is still open.
+
+--------------------------------------------------------------------
+STANDING LESSON, all 8 rounds
+--------------------------------------------------------------------
+Every round in this file traces to ONE of three shapes:
+  (a) a stale-liveness-check false positive (PID reuse) - Round 5, one
+      of Round 6's three fixes, and structurally adjacent to Round 7;
+  (b) a multi-writer race on one shared file - Round 1's own periodic-
+      re-add regression, Round 6's reordering, Round 7's duplicate-
+      line kill;
+  (c) a render/detection mechanism that doesn't follow the house's own
+      documented marker-filesize-growth standard - Round 3/4.
+None of these are "flaky hardware" or "just restart it" - every one
+had a real, findable, fixable mechanism. When a NEW round of this same
+symptom family shows up, check these three shapes FIRST before
+assuming a fourth, novel mechanism.
