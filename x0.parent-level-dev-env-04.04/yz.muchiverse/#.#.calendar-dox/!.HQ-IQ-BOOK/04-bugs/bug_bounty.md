@@ -9,7 +9,7 @@ re-open a NEW entry for the same symptom.
 
 ---
 
-## ✅ CLOSED 2026-09-12: entities drop off the bottom taskbar after a while, but stay on-screen
+## ⚠️ REOPENED 2026-09-13 (4th occurrence): entities drop off the bottom taskbar after a while, but stay on-screen
 
 **Reported:** 2026-09-11/12, direct live report: "why after a while
 entities are dropping from the bottom toolbard (but staying on
@@ -137,6 +137,55 @@ again with processes/registry confirmed alive, this is the file to
 re-open, not a new one - and dump the actual window pixels
 (`dump_frame_png_op`) before trusting any backing file's content, since
 this class of bug is specifically "data is fine, the render is stale."
+
+**4th occurrence, 2026-09-13** - direct live report: "bottom tb is
+missing entities again. no matter what this cant happen. how do we
+fix this once and for all?" Confirmed the SAME "data is fine, render
+is stale" class as `74debf38` above - not that fix's own specific
+ENOENT race (checked directly): `strip_ui.txt` held the correct real
+7-tab data the entire time, its content-hash was genuinely STABLE
+across 5+ full seconds (ruling out the two-poll debounce too), and
+`dump_frame_png_op` on the live dock window still showed it blank
+regardless - a fourth, distinct mechanism in this same fragile
+mtime/hash/debounce chain, not isolated this pass.
+
+**Real, structural answer this time (`af273699`)**, matching the
+direct "once and for all" ask: stopped trying to find and patch the
+Nth specific detection gap in this chain. The dock strip now
+unconditionally forces a full reparse+relayout+repaint every 3s,
+completely independent of mtime/hash/debounce ever agreeing again -
+gated to dock windows only (`window_is_dock()`) so every other window
+keeps its existing cheaper change-only behavior. A genuinely bounded
+worst case now exists: however this next fails, it self-heals within
+3 seconds, not "possibly never again until a manual restart." Verified
+live: a fully clean restart (every taskbar/entity process killed
+first, not a partial one) held all 7 real entities correctly
+rendered, with the tab order visibly reshuffling on each heartbeat
+tick, across a 35s watch.
+
+**A second, separate thing found the SAME session, worth recording so
+it isn't mistaken for this bug's own root cause later**: a test
+restart done WITHOUT first killing already-running entity processes
+(this session's own repeated manual `run_khtpm_strip.sh new` calls
+while testing unrelated code) caused a real entity die-off within
+~10s - traced to colliding with `livedesk_spawn_active_desk()`'s
+already-guarded (`ktb_pid_alive`-checked) respawn-on-startup logic:
+old entities registered under a stale/pruned prior registry snapshot,
+a fresh respawn creating a real second live PID per entity, and
+`load_tabs()`'s own existing one-entity-one-PID dedup (its real,
+intentional job) correctly SIGTERMing the duplicates - working as
+designed, just startling to watch happen. Not a bug in the sense this
+entry tracks (a normal user session never does a partial restart that
+way), but real enough to name: if a future partial-restart workflow
+becomes common, `livedesk_spawn_active_desk()` doing its own liveness
+check via a fresher registry read (not just relying on the dedup
+safety net downstream) would remove the visible flicker.
+
+If the ORIGINAL symptom (blank dock, valid backing data, no restart
+involved) recurs even with the 3s heartbeat in place, re-open this
+entry again - that would mean the render is somehow blocked for
+longer than 3s (the render loop itself stalled, not just one specific
+detection path failing), a materially different, worse class of bug.
 
 ---
 
