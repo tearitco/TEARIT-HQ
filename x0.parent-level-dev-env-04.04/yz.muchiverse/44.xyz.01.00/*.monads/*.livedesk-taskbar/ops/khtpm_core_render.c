@@ -2261,6 +2261,39 @@ static void ktb_toggle_zorder_respawn(void) {
             p += l + 1;
             if (p >= cmdbuf + (int)got) break;
         }
+        /* REAL FIX 2026-09-13, direct live report ("just the bottom
+         * toolbar that is taking long to populate... we dont even need
+         * to respawn the bottom toolbar tho for ontop. get it? we dont
+         * need to respawn top tb either. just entities") - correct: the
+         * always-on-top toggle is real, per-ENTITY window state
+         * (swa.override_redirect = g_override_redirect, tp_main() only).
+         * The strip's own two windows (khtpm_strip_header.xhtpm's
+         * process, which also renders the bottom peer template in the
+         * SAME process - see g_dock_peer_path) are unconditionally WM-
+         * managed already (2026-09-13, "dock strip windows... completely
+         * independent of the global g_override_redirect PDL" - see
+         * dock_managed in main()) - this toggle can never change their
+         * z-order behavior at all, so killing+respawning them here was
+         * always pure waste: real process teardown, a full re-launch
+         * (re-parse strip_header/bottom.xhtpm, re-walk the registry,
+         * reload every tab), for a window whose own state this toggle
+         * doesn't touch - exactly the real, visible "bottom toolbar
+         * takes long to populate" cost. Same real /proc cmdline-
+         * substring identity check khtpm_taskbar_manager.c's own
+         * livedesk_kill_strip_renderers() already uses for this same
+         * "is this process the strip" question - ported here rather
+         * than re-invented. */
+        {
+            int is_strip = 0;
+            for (k = 0; k < found[n_found].argc; k++) {
+                const char *av = found[n_found].arg[k];
+                if (strstr(av, "khtpm_strip_header.xhtpm") ||
+                    strstr(av, "khtpm_strip_bottom.xhtpm") ||
+                    strstr(av, "strip_header.chtpm") ||
+                    strstr(av, "strip_bottom.chtpm")) { is_strip = 1; break; }
+            }
+            if (is_strip) continue;
+        }
         n_found++;
     }
     closedir(pd);
@@ -6062,6 +6095,34 @@ static void dispatch(const char *action) {
         g_override_redirect = g_zorder_above ? 1 : 0;
         ktb_toggle_zorder_apply(g_zorder_above);
         ktb_toggle_zorder_respawn();
+        /* REAL FIX 2026-09-13, direct live report ("we dont even need
+         * to respawn the bottom toolbar tho for ontop... we dont need
+         * to respawn top tb either. just entities") - correct: always-
+         * on-top is real per-ENTITY window state (swa.override_redirect,
+         * tp_main() only) - the strip's own two windows are
+         * unconditionally WM-managed regardless of this setting (see
+         * dock_managed in main()), so ktb_toggle_zorder_respawn() above
+         * now skips them entirely (real /proc cmdline identity check,
+         * same one khtpm_taskbar_manager.c's own
+         * livedesk_kill_strip_renderers() already uses). This @ button
+         * only ever lives on the strip itself (khtpm_strip_header.chtpm,
+         * grepped - no other window ever wires ZORDER_TOGGLE), so the
+         * process running THIS handler is always the strip - it must
+         * NOT g_quit anymore: nothing above it in
+         * ktb_toggle_zorder_respawn() forked a replacement (the strip is
+         * excluded from that respawn list now), so setting g_quit here
+         * would just kill the taskbar with nothing left to bring it
+         * back. Re-apply the strip's own persistent EWMH ABOVE hint live
+         * instead (XChangeProperty, no window recreation needed - unlike
+         * override_redirect, _NET_WM_STATE is a plain property any
+         * window can update after the fact) so its own always-above
+         * preference stays in sync with the new g_zorder_above value
+         * without needing to restart the process that just changed it. */
+        if (window_is_dock()) {
+            apply_dock_window_hints(dpy, win, g_win_x, g_win_y);
+            if (g_dock_peer_win) apply_dock_window_hints(dpy, g_dock_peer_win, g_dock_peer_x, g_dock_peer_y);
+            return;
+        }
         g_quit = 1;
         return;
     }
