@@ -1841,9 +1841,51 @@ static int reparse_chtpm_if_changed(void) {
          * .chtpm is now static, so its mtime never moves - a data
          * change shows up as a new mtime on g_vars_path instead. Treat
          * that exactly like a template change: re-parse (which re-runs
-         * kh_load_vars + kh_substitute_vars) + re-layout + re-draw. */
+         * kh_load_vars + kh_substitute_vars) + re-layout + re-draw.
+         *
+         * REAL FIX 2026-09-13, direct live report: "bottom tb is missing
+         * entities again... no matter what this cant happen" - the
+         * FOURTH live occurrence of this exact symptom class this week
+         * (bug_bounty.md), each time a DIFFERENT specific mechanism (a
+         * dead pid, a double-registration kill, an ENOENT race, and this
+         * time: a content-hash that was live-confirmed STABLE for 5+
+         * full seconds with the dock still blank - a fourth, distinct
+         * gap in this exact mtime/hash/debounce chain). Direct follow-up
+         * instruction, after an earlier pass here tried a periodic
+         * forced-reparse timer as a band-aid over that same chain: "we
+         * dont use mtime or hash for render, ideally we use marker
+         * filesize change only, or stay with last render... do u see
+         * this instruction in golden rules?" - CENTROID_GOLD_STD.md
+         * rule 8 ("Repaint discipline - marker/dirty model... not on
+         * mtime, not on a hash, not per input event"), yes, and this
+         * exact file already has the real, proven, ALREADY-WIRED
+         * instance of it one function away: the manager's own
+         * publish_state() (khtpm_taskbar_manager_main.c) writes
+         * strip_ui.txt/strip_state.txt THEN appends one byte to
+         * #.desktop/strip_frame_changed.txt (touch_frame_changed()) -
+         * dock_poll_strip_state() below already watches that marker's
+         * SIZE growth, never mtime, for its own (narrower) focus-sync
+         * job. The real, final fix: for a dock window, THIS reparse
+         * gate watches the exact same marker for content changes too,
+         * replacing the hash/debounce chain entirely - no timer, no
+         * hash, no possible instability window; growth is the one and
+         * only real signal, exactly as rule 8 states. Non-dock windows
+         * (every other mode) keep the existing hash/debounce path
+         * unchanged - they have no such marker to watch (most have no
+         * single "the" writer process the way the strip's manager is
+         * one), so the earlier mechanism stays the correct one there. */
         int vars_changed = 0;
-        if (g_vars_path[0]) {
+        if (window_is_dock()) {
+            static long s_dock_vars_marker = -1;
+            char mp[PATH_BUF];
+            snprintf(mp, sizeof(mp), "%s/#.desktop/strip_frame_changed.txt", g_house_root);
+            struct stat mst;
+            if (stat(mp, &mst) == 0) {
+                if (s_dock_vars_marker < 0)              s_dock_vars_marker = mst.st_size;      /* first sight */
+                else if (mst.st_size < s_dock_vars_marker) s_dock_vars_marker = mst.st_size;      /* truncated/rotated - resync */
+                else if (mst.st_size > s_dock_vars_marker) { s_dock_vars_marker = mst.st_size; vars_changed = 1; }
+            }
+        } else if (g_vars_path[0]) {
             /* content-hash ALL the state files (one per <module>) - a
              * reparse fires only on a real byte change in any of them,
              * not on a projector's identical every-tick rewrite
@@ -1865,44 +1907,6 @@ static int reparse_chtpm_if_changed(void) {
                 }
             } else {
                 g_vars_hash_pending = 0;
-            }
-        }
-        /* REAL FIX 2026-09-13, direct live report: "bottom tb is missing
-         * entities again. no matter what this cant happen" - the FOURTH
-         * live occurrence of this exact class of symptom this week
-         * (bug_bounty.md's "entities drop off the bottom taskbar" entry,
-         * 3e334acc/eca3c071/74debf38), each time root-caused to a
-         * DIFFERENT specific mechanism (a dead pid, a double-registration
-         * kill, an ENOENT race) - and this time, live-confirmed via
-         * direct file reads, NONE of those: `strip_ui.txt` had the
-         * correct real 7-tab data the whole time, its content-hash was
-         * genuinely STABLE across 5+ full seconds (ruling out the
-         * two-poll debounce above as the culprit too), and the dock
-         * window was still blank regardless - a real mechanism distinct
-         * from all three prior fixes, not yet isolated. Rather than
-         * chase a fifth narrow edge case in this same fragile change-
-         * detection chain (mtime-vs-mtime, hash-vs-hash, a debounce
-         * pending-slot), this is the direct, structural answer to "fix
-         * this once and for all": the dock strip (header + its bottom
-         * peer) is the one persistent piece of UI that must NEVER stay
-         * stale for more than a few seconds no matter which specific
-         * detection path fails next - so it unconditionally forces a
-         * full reparse+relayout+repaint on a bounded timer, completely
-         * independent of mtime/hash/debounce ever agreeing again. Cheap
-         * (small files, a few-hundred-ms period is not this file's
-         * concern - HEARTBEAT_S below is generous), and gated to dock
-         * windows only so every other window keeps its existing,
-         * cheaper change-only behavior unchanged. */
-        if (!vars_changed && window_is_dock()) {
-            static struct timespec s_dock_heartbeat;
-            struct timespec now;
-            clock_gettime(CLOCK_MONOTONIC, &now);
-            double elapsed = (now.tv_sec - s_dock_heartbeat.tv_sec) +
-                              (now.tv_nsec - s_dock_heartbeat.tv_nsec) / 1e9;
-            if (s_dock_heartbeat.tv_sec == 0 || elapsed >= 3.0) {
-                s_dock_heartbeat = now;
-                vars_changed = 1;
-                if (g_vars_path[0]) { g_vars_hash = kh_files_hash(g_vars_path); g_vars_hash_pending = 0; }
             }
         }
         if (st.st_mtim.tv_sec == g_chtpm_mtime.tv_sec && st.st_mtim.tv_nsec == g_chtpm_mtime.tv_nsec && !peer_changed && !vars_changed)
