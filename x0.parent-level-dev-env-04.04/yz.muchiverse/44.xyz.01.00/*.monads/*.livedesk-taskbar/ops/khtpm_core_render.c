@@ -1823,6 +1823,7 @@ static Elem *kh_parse_into_scratch(const char *path) {
  * latest" convention any chat UI needs - see this function's own body
  * below for where it's used. */
 static int g_default_scrolllist_scroll;
+static int window_is_dock(void); /* real def + header comment further down; forward-declared for the dock heartbeat below */
 static int reparse_chtpm_if_changed(void) {
     if (!g_chtpm_path[0]) return 0;
     struct stat st;
@@ -1864,6 +1865,44 @@ static int reparse_chtpm_if_changed(void) {
                 }
             } else {
                 g_vars_hash_pending = 0;
+            }
+        }
+        /* REAL FIX 2026-09-13, direct live report: "bottom tb is missing
+         * entities again. no matter what this cant happen" - the FOURTH
+         * live occurrence of this exact class of symptom this week
+         * (bug_bounty.md's "entities drop off the bottom taskbar" entry,
+         * 3e334acc/eca3c071/74debf38), each time root-caused to a
+         * DIFFERENT specific mechanism (a dead pid, a double-registration
+         * kill, an ENOENT race) - and this time, live-confirmed via
+         * direct file reads, NONE of those: `strip_ui.txt` had the
+         * correct real 7-tab data the whole time, its content-hash was
+         * genuinely STABLE across 5+ full seconds (ruling out the
+         * two-poll debounce above as the culprit too), and the dock
+         * window was still blank regardless - a real mechanism distinct
+         * from all three prior fixes, not yet isolated. Rather than
+         * chase a fifth narrow edge case in this same fragile change-
+         * detection chain (mtime-vs-mtime, hash-vs-hash, a debounce
+         * pending-slot), this is the direct, structural answer to "fix
+         * this once and for all": the dock strip (header + its bottom
+         * peer) is the one persistent piece of UI that must NEVER stay
+         * stale for more than a few seconds no matter which specific
+         * detection path fails next - so it unconditionally forces a
+         * full reparse+relayout+repaint on a bounded timer, completely
+         * independent of mtime/hash/debounce ever agreeing again. Cheap
+         * (small files, a few-hundred-ms period is not this file's
+         * concern - HEARTBEAT_S below is generous), and gated to dock
+         * windows only so every other window keeps its existing,
+         * cheaper change-only behavior unchanged. */
+        if (!vars_changed && window_is_dock()) {
+            static struct timespec s_dock_heartbeat;
+            struct timespec now;
+            clock_gettime(CLOCK_MONOTONIC, &now);
+            double elapsed = (now.tv_sec - s_dock_heartbeat.tv_sec) +
+                              (now.tv_nsec - s_dock_heartbeat.tv_nsec) / 1e9;
+            if (s_dock_heartbeat.tv_sec == 0 || elapsed >= 3.0) {
+                s_dock_heartbeat = now;
+                vars_changed = 1;
+                if (g_vars_path[0]) { g_vars_hash = kh_files_hash(g_vars_path); g_vars_hash_pending = 0; }
             }
         }
         if (st.st_mtim.tv_sec == g_chtpm_mtime.tv_sec && st.st_mtim.tv_nsec == g_chtpm_mtime.tv_nsec && !peer_changed && !vars_changed)
