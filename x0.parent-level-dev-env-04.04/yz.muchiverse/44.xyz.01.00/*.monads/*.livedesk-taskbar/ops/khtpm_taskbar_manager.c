@@ -2343,7 +2343,7 @@ static void livedesk_ensure_cursword(const char *house_root) {
     win_spawn_cwd(exe, pal);
 #else
     char cmd[KTB_PATH_BUF * 2];
-    snprintf(cmd, sizeof(cmd), KTB_SETSID "nohup '%s' '%s' >/dev/null 2>&1 < /dev/null &", exe, pal);
+    snprintf(cmd, sizeof(cmd), "ulimit -c unlimited; " KTB_SETSID "nohup '%s' '%s' >/dev/null 2>&1 < /dev/null &", exe, pal);
     int rc = ktb_system_recorded(house_root, cmd);
     (void)rc;
 #endif
@@ -2563,11 +2563,26 @@ static void livedesk_spawn_desk(const char *house_root, const char *sroot, const
             FILE *pw = fopen(posp, "w");
             if (pw) { fprintf(pw, "x=%d\ny=%d\n", x, y); fclose(pw); }
         }
+        /* REAL, NEW 2026-09-13, direct live report ("bookstack is
+         * missing... it appeared later... but thats buggy, janky...
+         * know fix?") - live-traced, not guessed: book-stack's own
+         * history.txt showed a real WINDOW_OPEN + ENTITY_PHYMOJI_LOADED
+         * (a genuinely successful launch), then nothing - it dies
+         * silently sometime after, no crash evidence anywhere (this
+         * system routes core dumps through apport, which needs
+         * RLIMIT_CORE raised per-process to even attempt one - the
+         * default here is 0, silently discarding every crash). Not
+         * yet root-caused (an intermittent crash needs a real capture
+         * to root-cause, not more guessing) - this is that capture:
+         * raise the core limit for every entity spawn, so the NEXT
+         * time this happens there's a real core file
+         * (/var/crash or the process's own cwd, apport-dependent) to
+         * read instead of silence. Harmless when nothing crashes. */
 #ifdef _WIN32
         win_spawn_cwd(exe, pal);
 #else
         char cmd[KTB_PATH_BUF * 2];
-        snprintf(cmd, sizeof(cmd), KTB_SETSID "nohup '%s' '%s' >/dev/null 2>&1 < /dev/null &", exe, pal);
+        snprintf(cmd, sizeof(cmd), "ulimit -c unlimited; " KTB_SETSID "nohup '%s' '%s' >/dev/null 2>&1 < /dev/null &", exe, pal);
         int rc = ktb_system_recorded(house_root, cmd);
         (void)rc;
 #endif
@@ -3470,7 +3485,7 @@ static void livedesk_place_pal(const char *house_root, const char *name) {
 #else
     if (access(exe, F_OK) == 0) {
         char cmd[KTB_PATH_BUF * 2];
-        snprintf(cmd, sizeof(cmd), KTB_SETSID "nohup '%s' '%s' >/dev/null 2>&1 < /dev/null &", exe, pal);
+        snprintf(cmd, sizeof(cmd), "ulimit -c unlimited; " KTB_SETSID "nohup '%s' '%s' >/dev/null 2>&1 < /dev/null &", exe, pal);
         int rc = ktb_system_recorded(house_root, cmd);
         (void)rc;
     }
