@@ -25,22 +25,24 @@ SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
 if [ "${1:-}" = "create_state" ]; then
     PKG_ARG="${2:-}"
     HOUSE_ARG="${3:-}"
-    NEXT_VAL="${4:-}"
+    SPEC_VAL="${4:-}"
     [ -n "$PKG_ARG" ] && [ -n "$HOUSE_ARG" ] || { echo "ai_lab_scan.sh create_state: missing pkg/house" >&2; exit 1; }
     REG_SH="$HOUSE_ARG/&.widgits/ai-lab/ops/ai_registry.sh"
     SEL_FILE="$PKG_ARG/state/selected.txt"
-    CLIIO_STATE="$PKG_ARG/cli_io_state.txt"
     RESULT_FILE="$PKG_ARG/state/last_action_result.txt"
     SEL=""
     [ -f "$SEL_FILE" ] && SEL="$(cat "$SEL_FILE" 2>/dev/null)"
-    NAME_VAL=""
-    [ -f "$CLIIO_STATE" ] && NAME_VAL="$(sed -n 's/^new_state_name=//p' "$CLIIO_STATE" | tail -1)"
+    # ONE field, "name" or "name|NEXT1,NEXT2" - split here, never a
+    # second cli_io (see this file's own real-bug writeup above).
+    NAME_VAL="${SPEC_VAL%%|*}"
+    case "$SPEC_VAL" in
+        *\|*) NEXT_VAL="${SPEC_VAL#*|}" ;;
+        *) NEXT_VAL="" ;;
+    esac
     if [ -z "$SEL" ]; then
         echo "no instance selected - select an fsm instance first" > "$RESULT_FILE"
     elif [ -z "$NAME_VAL" ]; then
-        echo "type a state name in the 'new state name' field first" > "$RESULT_FILE"
-    elif [ -z "$NEXT_VAL" ]; then
-        echo "type NEXT states (or leave literally empty and press Enter again for a terminal state)" > "$RESULT_FILE"
+        echo "type a state name (optionally name|NEXT1,NEXT2) first" > "$RESULT_FILE"
     else
         SEL_LINE="$(sh "$REG_SH" list "$HOUSE_ARG" 2>/dev/null | awk -F'|' -v n="NAME=$SEL" '$1==n')"
         d_kind=$(printf '%s' "$SEL_LINE" | awk -F'|' '{print $2}' | sed 's/^KIND=//')
@@ -53,7 +55,7 @@ if [ "${1:-}" = "create_state" ]; then
             echo "state '$NAME_VAL' already exists in $SEL - pick a different name" > "$RESULT_FILE"
         else
             printf 'STATE | %-14s | NEXT=%s\n' "$NAME_VAL" "$NEXT_VAL" >> "$d_path"
-            echo "added state '$NAME_VAL' (NEXT=$NEXT_VAL) to $SEL" > "$RESULT_FILE"
+            echo "added state '$NAME_VAL' (NEXT=${NEXT_VAL:-none, terminal}) to $SEL" > "$RESULT_FILE"
         fi
     fi
     sh "$0" "$HOUSE_ARG" publish "$PKG_ARG/state/ui.txt" >/dev/null 2>&1 || true

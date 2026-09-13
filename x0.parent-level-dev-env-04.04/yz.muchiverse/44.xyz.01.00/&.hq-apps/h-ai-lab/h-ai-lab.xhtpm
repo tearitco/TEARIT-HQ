@@ -62,36 +62,23 @@
       </scrolllist>
       <text_area id="detail_view" content="${detail_text}" class="detail-view" show="${show_raw_text}"/>
 
-      <!-- New State tab: a real create form. State name auto-saves to
-           cli_io_state.txt on every keystroke (default cli_io
-           behavior, no action= needed); NEXT states' own action=
-           fires ai_lab_scan.sh create_state, which reads the name
-           field back out of that same file and appends a real
-           STATE row to the selected fsm's table - see the script's
-           own header comment for the exact real argv contract. -->
+      <!-- New State tab: a real create form. REAL FIX 2026-09-13
+           (direct live report: "ok fix it") - root-caused, not
+           guessed: arming ANY cli_io clears whatever was armed before
+           it, even mid-type, even before Enter - a real, generic,
+           confirmed single-active-field behavior (live-tested: typed
+           "ABC" into field 1 with no Enter at all, armed field 2,
+           field 1's saved value in cli_io_state.txt was already
+           wiped). Two SEPARATE fields can therefore never both hold a
+           value at submit time - fighting that with cleverer relay
+           timing was the wrong fix. Real fix: ONE cli_io, one real
+           submit, "name" or "name|NEXT1,NEXT2" - create_state parses
+           the pipe itself, no second field, no race possible by
+           construction. -->
       <text label="Add a new STATE to ${detail_name}" class="block-title" show="${view_is_new}"/>
-      <text label="new state name:" class="quiet" show="${view_is_new}"/>
-      <cli_io id="new_state_name" label="" show="${view_is_new}"/>
-      <text label="NEXT states (comma-separated, or leave empty for a terminal state):" class="quiet" show="${view_is_new}"/>
-      <cli_io id="new_state_next" label="" action="sh '${PKG}/ai_lab_scan.sh' create_state" show="${view_is_new}"/>
+      <text label="type:  name   or   name|NEXT1,NEXT2   then Enter" class="quiet" show="${view_is_new}"/>
+      <cli_io id="new_state_spec" label="" action="sh '${PKG}/ai_lab_scan.sh' create_state" show="${view_is_new}"/>
       <text label="${last_result}" class="quiet" show="${view_is_new}"/>
-      <!-- KNOWN, REAL, NOT YET ROOT-CAUSED (2026-09-13): arming and
-           typing into ONE cli_io (new_state_name alone) is live-
-           verified reliable. Arming the SECOND field (new_state_next)
-           right after committing the first was observed, live, to
-           sometimes leave new_state_name's own saved value wiped back
-           to empty in cli_io_state.txt before the create_state action
-           ever fires - no garbage was ever written to a real
-           fsm_table.pdl (confirmed, the backend refuses to act on an
-           empty name), so this is a real reliability/timing issue in
-           the two-field sequence, not a data-corruption risk. Prime
-           suspect, not yet confirmed: ai_lab_refresh.sh's periodic
-           republish (every 4s) reparsing the window mid-type. The
-           create_state SCRIPT LOGIC itself is proven correct via
-           direct invocation (adds a well-formed STATE row, refuses a
-           duplicate name, refuses a non-fsm target). Needs a real,
-           focused debugging pass before this form is considered fully
-           reliable end-to-end through the live GUI. -->
     </panel>
   </page>
 </window>
