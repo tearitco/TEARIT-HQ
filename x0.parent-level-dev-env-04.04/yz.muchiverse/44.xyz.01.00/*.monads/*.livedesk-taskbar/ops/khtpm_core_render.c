@@ -15903,7 +15903,29 @@ int main(int argc, char **argv) {
          * a generated #.desktop/strip_bottom.chtpm (layout-update). */
         snprintf(g_dock_peer_path, sizeof(g_dock_peer_path),
                  "%s/khtpm_strip_bottom.xhtpm", g_package_dir);
-        g_dock_peer = parse_chtpm(g_dock_peer_path);
+        /* REAL FIX 2026-09-13 (direct live report: "task bar has an
+         * issue doing that that needs to be fixed" - the bottom bar
+         * missing on SOME boots, not others). Same real ENOENT-style
+         * transient-read-failure class already root-caused and fixed
+         * for the RUNTIME reparse call sites (74debf38) - but THIS
+         * one, the one-time STARTUP parse, never got the same
+         * treatment: a single failed parse_chtpm() here left
+         * g_dock_peer NULL for the entire life of the process, with
+         * no later retry ever able to recover it (peer_changed only
+         * fires on a real mtime change to a STATIC template file that
+         * never changes again after boot). Unlike a runtime reparse,
+         * this runs once before the event loop starts, so a short,
+         * bounded blocking retry here is real and safe, not a
+         * responsiveness regression. */
+        for (int _dp_try = 0; _dp_try < 40 && !g_dock_peer; _dp_try++) {
+            g_dock_peer = parse_chtpm(g_dock_peer_path);
+            if (!g_dock_peer) {
+                struct timespec _dp_ts = {0, 100 * 1000 * 1000L};
+                nanosleep(&_dp_ts, NULL);
+            }
+        }
+        if (!g_dock_peer)
+            fprintf(stderr, "khtpm_core_render: dock peer parse failed after retries: %s\n", g_dock_peer_path);
         { struct stat pst; if (g_dock_peer && stat(g_dock_peer_path, &pst) == 0) g_dock_peer_mtime = pst.st_mtim; }
     }
 
