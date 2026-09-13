@@ -10870,6 +10870,9 @@ static void livedesk_registry_add(const char *house_root, const char *package_di
     FILE *w = fopen(tmp_path, "w");
     if (f && w) {
         char line[TP_PATH_BUF];
+        char newline[TP_PATH_BUF];
+        int wrote_self = 0;
+        snprintf(newline, sizeof(newline), "PID=%d|INDEX=%d|ENTITY=%s|PATH=%s\n", (int)pid, index, ent_name, package_dir);
         while (fgets(line, sizeof(line), f)) {
             char *pp = strstr(line, "PID=");
             int line_pid = pp ? atoi(pp + 4) : 0;
@@ -10886,21 +10889,38 @@ static void livedesk_registry_add(const char *house_root, const char *package_di
              * saw two live-PID lines for one entity in a single read
              * and killed the "duplicate" (logic written for an actual
              * zorder-respawn leftover, not this) - which was the
-             * entity's only real process. Confirmed live via a debug
-             * log: "line pid=X entity=self alive=1" appeared twice in
-             * one tick, immediately followed by "DUP-KILL pid=X". Real
-             * fix: also drop any existing line for THIS SAME pid before
-             * appending its fresh one, so a re-registration replaces
-             * its own prior line instead of piling up beside it -
-             * correct for every future periodic self-heal call, not
-             * just the immediate-first-tick case. */
-            if (!pp || !pid_is_alive(line_pid) || line_pid == (int)pid) continue;
+             * entity's only real process.
+             *
+             * REAL FIX 2026-09-13, direct follow-up (direct live
+             * report: "it just reshuffled again... how did old
+             * codebase accomplish [stable order]?"): the fix above
+             * dropped this entity's OLD line and appended the fresh
+             * one at the TAIL of the file - every entity's own
+             * unsynchronized ~10s self-heal timer (tp_main()) means
+             * entities re-register at staggered moments, each one
+             * yanking itself to the bottom of the file on its own
+             * schedule - load_tabs() (both this house's current AND
+             * the old, pre-periodic-self-heal codebase, confirmed
+             * identical) reads this file top-to-bottom for the tab
+             * order, so the file order IS the visible tab order, and
+             * this was silently, continuously reshuffling it as a
+             * side effect - not a rendering bug, a real data-ordering
+             * one. The old codebase never had this because it never
+             * re-registered at all (register once, at launch, line
+             * never moves again). Real fix: write this entity's own
+             * fresh line back IN PLACE, at its original row, instead
+             * of always at the tail - keeps the exact same self-heal
+             * guarantee (a lapsed/pruned entry still gets restored)
+             * with zero reordering as a side effect, matching the old
+             * codebase's real stable-order invariant. */
+            if (line_pid == (int)pid) { fputs(newline, w); wrote_self = 1; continue; }
+            if (!pp || !pid_is_alive(line_pid)) continue;
             fputs(line, w);
         }
+        if (!wrote_self) fputs(newline, w); /* genuinely new registration - append */
     }
     if (f) fclose(f);
     if (w) {
-        fprintf(w, "PID=%d|INDEX=%d|ENTITY=%s|PATH=%s\n", (int)pid, index, ent_name, package_dir);
         fclose(w);
         rename(tmp_path, reg_path);
     }
