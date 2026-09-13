@@ -62,22 +62,40 @@
       </scrolllist>
       <text_area id="detail_view" content="${detail_text}" class="detail-view" show="${show_raw_text}"/>
 
-      <!-- New State tab: a real create form. REAL FIX 2026-09-13
-           (direct live report: "ok fix it") - root-caused, not
-           guessed: arming ANY cli_io clears whatever was armed before
-           it, even mid-type, even before Enter - a real, generic,
-           confirmed single-active-field behavior (live-tested: typed
-           "ABC" into field 1 with no Enter at all, armed field 2,
-           field 1's saved value in cli_io_state.txt was already
-           wiped). Two SEPARATE fields can therefore never both hold a
-           value at submit time - fighting that with cleverer relay
-           timing was the wrong fix. Real fix: ONE cli_io, one real
-           submit, "name" or "name|NEXT1,NEXT2" - create_state parses
-           the pipe itself, no second field, no race possible by
-           construction. -->
+      <!-- New State tab: same real two-stage PICKER shape as
+           events-hq's own "+ Add Command" (direct live report,
+           2026-09-13: "it should have same kind of setup that add
+           commands from events has, right?" - yes). NEXT targets are
+           a closed, real set (the fsm's own other STATE rows) - pick
+           them by clicking to toggle, don't type a comma list by
+           hand. Name still typed (cli_io) - a NEW state genuinely has
+           no existing set to pick from, same real reasoning
+           events-hq's own field editor uses typed cli_io fields for
+           free-text params. See ai_lab_scan.sh's own addstate_* verbs
+           (header comment there) for the backend half. -->
       <text label="Add a new STATE to ${detail_name}" class="block-title" show="${view_is_new}"/>
-      <text label="type:  name   or   name|NEXT1,NEXT2   then Enter" class="quiet" show="${view_is_new}"/>
-      <cli_io id="new_state_spec" label="" action="sh '${PKG}/ai_lab_scan.sh' create_state" show="${view_is_new}"/>
+      <item id="as-add" class="data-item" label="+ Add State" show="${view_is_new}" action="sh '${PKG}/ai_lab_scan.sh' addstate_open '${HOUSE}'"/>
+      <!-- REAL FIX 2026-09-13 - a bare top-level <item>/<cli_io>
+           sitting AFTER this panel's first <scrolllist> (the "blocks"
+           one above, even hidden) gets swept into that one shared
+           scroll region instead of staying fixed - confirmed live
+           (the cli_io and Save/Cancel rendered inside the picker's
+           own cramped scroll box, out of source order). db-hq-pal's
+           own working picker never hits this: Cancel/fields are
+           always nested INSIDE their scrolllist, never siblings after
+           it. Same fix here - name field, toggle list, and Save/
+           Cancel all real children of ONE <scrolllist>. -->
+      <scrolllist show="${as_open}">
+        <repeat count="${n_as_pick}" bind="as_pick">
+          <item id="asp${as_pick.#}" class="data-item" label="${as_pick.mark}  ${as_pick.name}" action="sh '${PKG}/ai_lab_scan.sh' addstate_toggle '${HOUSE}' '${as_pick.name}'"/>
+        </repeat>
+        <text label="(no other states yet - this will be a terminal state)" class="quiet" show="${no_as_pick}"/>
+        <text label="name" class="quiet"/>
+        <cli_io id="as_name_field" label="[${as_name}]  " action="sh '${PKG}/ai_lab_scan.sh' addstate_name"/>
+        <text label="NEXT targets - click to toggle" class="quiet"/>
+        <item id="as-save" class="data-item" label="Save state" action="sh '${PKG}/ai_lab_scan.sh' create_state '${PKG}' '${HOUSE}'"/>
+        <item id="as-cancel" class="data-item" label="&lt; Cancel" action="sh '${PKG}/ai_lab_scan.sh' addstate_cancel '${HOUSE}'"/>
+      </scrolllist>
       <text label="${last_result}" class="quiet" show="${view_is_new}"/>
     </panel>
   </page>

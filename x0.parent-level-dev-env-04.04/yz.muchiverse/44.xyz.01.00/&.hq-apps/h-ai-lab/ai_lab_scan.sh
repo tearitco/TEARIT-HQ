@@ -22,27 +22,78 @@ SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
 # (which are plain, hand-built `sh ai_lab_scan.sh <house_root> <mode>
 # ...` strings). Handled as its own branch, first, before the normal
 # house_root-first parsing below assumes argv1 is a path.
+# REAL FIX 2026-09-13, direct live report ("it should have same kind
+# of setup that add commands from events has, right?"): "New State"
+# used to be ONE raw cli_io, "name" or "name|NEXT1,NEXT2" - typing a
+# comma list of existing state names by hand, no validation, no
+# picking. events-hq's own real "+ Add Command" shape is a PICK from
+# a real list (registry command types), not typed free text, for
+# anything that has a closed real set of choices - a state's NEXT
+# targets are exactly that (the fsm's own other STATE rows). Ported
+# the same two-stage shape (events-hq's picker -> fields -> commit):
+# addstate_open (arm), addstate_name (typed, free text - a NEW state
+# genuinely has no closed set to pick from), addstate_toggle (pick
+# NEXT targets from the real existing STATE list, click to
+# toggle - the actual picker), addstate_commit (save), addstate_cancel.
+# State lives in state/as_*.txt, same one-writer-per-file convention
+# as selected.txt/view_mode.txt above.
+AS_OPEN_FILE="$SELF_DIR/state/as_open.txt"
+AS_NAME_FILE="$SELF_DIR/state/as_name.txt"
+AS_NEXT_FILE="$SELF_DIR/state/as_next.txt"   # comma-joined, no spaces
+case "${1:-}" in
+addstate_open)
+    # plain action=, same house_root-first argv as select/view above:
+    # sh ai_lab_scan.sh addstate_open '<house_root>'
+    mkdir -p "$SELF_DIR/state"
+    printf '1\n' > "$AS_OPEN_FILE"
+    printf '\n' > "$AS_NAME_FILE"
+    printf '\n' > "$AS_NEXT_FILE"
+    sh "$0" "${2:-.}" publish >/dev/null 2>&1 || true
+    exit 0 ;;
+addstate_cancel)
+    printf '0\n' > "$AS_OPEN_FILE"
+    sh "$0" "${2:-.}" publish >/dev/null 2>&1 || true
+    exit 0 ;;
+addstate_name)
+    # cli_io convention (see default_cli_io_run_action() comment
+    # above): argv = <pkg> <house> <typed_value>.
+    printf '%s\n' "${4:-}" > "$AS_NAME_FILE"
+    sh "$0" "${3:-.}" publish >/dev/null 2>&1 || true
+    exit 0 ;;
+addstate_toggle)
+    # plain action=, house_root-first: addstate_toggle '<house_root>' '<name>'
+    HR="${2:-.}"
+    NM="${3:-}"
+    mkdir -p "$SELF_DIR/state"
+    CUR=""
+    [ -f "$AS_NEXT_FILE" ] && CUR="$(cat "$AS_NEXT_FILE" 2>/dev/null)"
+    if printf ',%s,' "$CUR" | grep -qF ",$NM,"; then
+        NEW="$(printf '%s' "$CUR" | awk -v n="$NM" -F',' '{for(i=1;i<=NF;i++) if($i!=n) printf "%s%s", (out?",":""), $i, (out=1)}')"
+    else
+        NEW="${CUR:+$CUR,}$NM"
+    fi
+    printf '%s\n' "$NEW" > "$AS_NEXT_FILE"
+    sh "$0" "$HR" publish >/dev/null 2>&1 || true
+    exit 0 ;;
+esac
+
 if [ "${1:-}" = "create_state" ]; then
     PKG_ARG="${2:-}"
     HOUSE_ARG="${3:-}"
-    SPEC_VAL="${4:-}"
     [ -n "$PKG_ARG" ] && [ -n "$HOUSE_ARG" ] || { echo "ai_lab_scan.sh create_state: missing pkg/house" >&2; exit 1; }
     REG_SH="$HOUSE_ARG/&.widgits/ai-lab/ops/ai_registry.sh"
     SEL_FILE="$PKG_ARG/state/selected.txt"
     RESULT_FILE="$PKG_ARG/state/last_action_result.txt"
     SEL=""
     [ -f "$SEL_FILE" ] && SEL="$(cat "$SEL_FILE" 2>/dev/null)"
-    # ONE field, "name" or "name|NEXT1,NEXT2" - split here, never a
-    # second cli_io (see this file's own real-bug writeup above).
-    NAME_VAL="${SPEC_VAL%%|*}"
-    case "$SPEC_VAL" in
-        *\|*) NEXT_VAL="${SPEC_VAL#*|}" ;;
-        *) NEXT_VAL="" ;;
-    esac
+    NAME_VAL=""
+    [ -f "$PKG_ARG/state/as_name.txt" ] && NAME_VAL="$(cat "$PKG_ARG/state/as_name.txt" 2>/dev/null)"
+    NEXT_VAL=""
+    [ -f "$PKG_ARG/state/as_next.txt" ] && NEXT_VAL="$(cat "$PKG_ARG/state/as_next.txt" 2>/dev/null)"
     if [ -z "$SEL" ]; then
         echo "no instance selected - select an fsm instance first" > "$RESULT_FILE"
     elif [ -z "$NAME_VAL" ]; then
-        echo "type a state name (optionally name|NEXT1,NEXT2) first" > "$RESULT_FILE"
+        echo "type a state name first" > "$RESULT_FILE"
     else
         SEL_LINE="$(sh "$REG_SH" list "$HOUSE_ARG" 2>/dev/null | awk -F'|' -v n="NAME=$SEL" '$1==n')"
         d_kind=$(printf '%s' "$SEL_LINE" | awk -F'|' '{print $2}' | sed 's/^KIND=//')
@@ -56,6 +107,7 @@ if [ "${1:-}" = "create_state" ]; then
         else
             printf 'STATE | %-14s | NEXT=%s\n' "$NAME_VAL" "$NEXT_VAL" >> "$d_path"
             echo "added state '$NAME_VAL' (NEXT=${NEXT_VAL:-none, terminal}) to $SEL" > "$RESULT_FILE"
+            printf '0\n' > "$PKG_ARG/state/as_open.txt"
         fi
     fi
     sh "$0" "$HOUSE_ARG" publish "$PKG_ARG/state/ui.txt" >/dev/null 2>&1 || true
@@ -191,6 +243,48 @@ publish)
                 fi
                 echo "is_fsm=$is_fsm"
                 echo "n_blocks=$n_blocks"
+
+                # Add State picker: real, existing STATE names as
+                # toggleable NEXT-target rows (events-hq's own "pick
+                # from a real list" shape - see this file's addstate_*
+                # header comment above for the full story).
+                AS_OPEN=0
+                [ -f "$SELF_DIR/state/as_open.txt" ] && AS_OPEN="$(cat "$SELF_DIR/state/as_open.txt" 2>/dev/null)"
+                [ -n "$AS_OPEN" ] || AS_OPEN=0
+                AS_NAME=""
+                [ -f "$SELF_DIR/state/as_name.txt" ] && AS_NAME="$(cat "$SELF_DIR/state/as_name.txt" 2>/dev/null)"
+                AS_NEXT=""
+                [ -f "$SELF_DIR/state/as_next.txt" ] && AS_NEXT="$(cat "$SELF_DIR/state/as_next.txt" 2>/dev/null)"
+                # REAL FIX 2026-09-13 - must also require VIEW=new_state,
+                # not just is_fsm: this panel's layout engine tracks only
+                # ONE live scroll region at a time (confirmed live - with
+                # both show_blocks=1 and as_open=1 at once, both real
+                # <scrolllist>s' repeat rows got nav-numbered but their
+                # label TEXT silently failed to paint - a real renderer
+                # limit, not a cosmetic ordering issue). show_blocks
+                # already forces to 0 during new_state view (see below);
+                # as_open must equally force to 0 outside it, or leaving
+                # the New State tab with it still armed re-triggers the
+                # exact same two-scrolllist collision on the Viewer tab.
+                echo "as_open=$([ "$is_fsm" = 1 ] && [ "$VIEW" = "new_state" ] && [ "$AS_OPEN" = "1" ] && echo 1 || echo 0)"
+                echo "as_name=$AS_NAME"
+                n_as_pick=0
+                if [ "$is_fsm" = 1 ] && [ "$AS_OPEN" = "1" ]; then
+                    pi=0
+                    while IFS= read -r line; do
+                        case "$line" in STATE\ *) : ;; *) continue ;; esac
+                        p_name=$(printf '%s' "$line" | awk -F'|' '{print $2}' | sed 's/^ *//;s/ *$//')
+                        [ -z "$p_name" ] && continue
+                        on=$(printf ',%s,' "$AS_NEXT" | grep -qF ",$p_name," && echo 1 || echo 0)
+                        echo "as_pick_${pi}_name=$p_name"
+                        echo "as_pick_${pi}_on=$on"
+                        echo "as_pick_${pi}_mark=$([ "$on" = 1 ] && echo 'x' || echo '.')"
+                        pi=$((pi+1))
+                    done < "$d_path"
+                    n_as_pick=$pi
+                fi
+                echo "n_as_pick=$n_as_pick"
+                echo "no_as_pick=$([ "$n_as_pick" -eq 0 ] && echo 1 || echo 0)"
                 # two vars, not a negated show= (the renderer's show=
                 # attribute has no negation - see proc-mon/h-ai-lab's
                 # own earlier no_detail/no_instances precedent).
@@ -227,6 +321,7 @@ $(ls -1 "$d_path" | head -30)"
                 echo "show_blocks=0"
                 echo "show_raw_text=0"
                 echo "n_blocks=0"
+                echo "as_open=0"; echo "as_name="; echo "n_as_pick=0"; echo "no_as_pick=1"
             fi
         else
             echo "has_detail=0"
@@ -234,6 +329,7 @@ $(ls -1 "$d_path" | head -30)"
             echo "detail_text=(select an instance from the list)"
             echo "show_blocks=0"
             echo "show_raw_text=0"
+            echo "as_open=0"; echo "as_name="; echo "n_as_pick=0"; echo "no_as_pick=1"
             echo "n_blocks=0"
         fi
     } > "$tmp"
