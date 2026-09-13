@@ -2034,9 +2034,30 @@ static int reparse_chtpm_if_changed(void) {
         /* re-resolve the scope across the reparse the projector's
          * every-tick state write triggers - by the trigger's id, then
          * (interact-style container scope) to its target_id container,
-         * restoring the confine flag so nav stays confined. */
+         * restoring the confine flag so nav stays confined.
+         *
+         * REAL FIX 2026-09-13 (direct live report: "tb has an issue
+         * now, its stuck on 1.hq no matter what is pressed") -
+         * g_default_scope_confine used to be left AS-IS here (only
+         * ever set to 1 in the two branches below, never reset to 0)
+         * - a real, latent bug, not something this session's other
+         * fixes touched: a header cell like strip-cell-1 ("HQ") has a
+         * bare onclick="ACTIVATE" with NO target_id, and isn't a
+         * <tab>, so neither branch below matches for it - but if
+         * g_default_scope_confine was already 1 from ANY earlier real
+         * scoped interaction in this same process's lifetime (a
+         * <tab>, or a target_id'd ACTIVATE elsewhere), it stayed 1
+         * forever after, on every single reparse (this dock's own
+         * projector rewrites its state every ~400ms tick, so this
+         * runs constantly) - permanently confining nav to just the
+         * trigger itself (kh_elem_in_scope() has no other match for
+         * it), matching the exact reported symptom. activate_focused()
+         * itself already gets this right (unconditional reset to 0
+         * before conditionally setting 1, see its own ACTIVATE branch
+         * above) - this re-resolve path must do the same. */
         Elem *trig = find_by_id(g_window, g_default_active_scope_id);
         g_default_active_scope_root = trig;
+        g_default_scope_confine = 0;
         if (trig && trig->target_id[0]) {
             Elem *c = find_by_id(g_window, trig->target_id);
             if (c) { g_default_active_scope_root = c; g_default_scope_confine = 1; }
