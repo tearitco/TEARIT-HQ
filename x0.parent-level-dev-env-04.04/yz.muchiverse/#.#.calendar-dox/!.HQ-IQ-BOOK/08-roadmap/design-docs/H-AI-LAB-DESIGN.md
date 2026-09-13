@@ -231,6 +231,96 @@ Matches `IRL-BOOTSTRAP-RECURSION-SPEC.md`'s own smallest-first-step
 (hand-score 5 exchanges) - Part 4's first button is that same proof,
 just reachable from a real UI instead of a hand-run script.
 
+## Part 5 — AI bricks as real events-hq commands ("lego" composability)
+
+**Direct follow-up:** "does the events editor consume ai events? do we
+have that yet" → confirmed, no: `#.ref/menu/event_commands.registry.pdl`
+has zero AI-related commands today (checked directly), and
+`fsm_table.pdl` (Part 2) is a separate format events-hq's editor never
+reads. **Direct instruction, this pass:** bridge them for real, and
+make every AI "trick" this house has discussed (FSM, GOAP, RL policy,
+IRL judging, weight/curriculum authoring, attention chat) rearrangeable
+and swappable "like legos."
+
+**The real insight that makes this cheap, not a new system:** this
+house already has TWO proven, real, zero-recompile "swap the brick"
+mechanisms, built for different reasons, that this plan just connects:
+
+1. **events-hq's own command registry**
+   (`event_commands.registry.pdl`) - adding a new command TYPE is
+   editing this one file, no recompile, no C change, LIVE-PROVEN
+   (`take_gold`'s own header comment: added while the manager was
+   already running, picked up next poll tick, no restart). A real,
+   confirmed constraint: each command gets exactly `FIELD1`/`FIELD2` -
+   no `FIELD3` exists anywhere in the file today.
+2. **`corp_decide.c`'s `decision_mode` dispatch** - a pal already swaps
+   its entire decision STRATEGY via one integer (weighted/rule/llm/
+   human today; `goap`/`policy` are horizon item 4, already spec'd,
+   not yet built). This is the real, existing precedent for "the same
+   pal, a different brick plugged into its decision slot."
+
+**The bridge:** add a new family of AI command TYPES to the SAME
+`event_commands.registry.pdl`, each wrapping a real, small, separate op
+(same `TEMPLATE exec "$D/.../+x/some_op.+x" "$ENT" '{param}'` shape
+every existing command already uses) - not a new registry, not a new
+editor, not new C in events-hq itself:
+
+| COMMAND type | FIELD1 | FIELD2 | Real op it wraps |
+|---|---|---|---|
+| `ai_fsm_transition` | AI instance name (from `ai_instances_registry.txt`) | target state | validates + fires against that instance's `fsm_table.pdl`, same `fsm_validate_transition()` logic Part 2 already wrote - real, existing code, not reinvented |
+| `ai_goap_plan` | AI instance name | goal (opt) | horizon item 4's `goap` decision_mode, once built |
+| `ai_rl_policy_choose` | AI instance name | - | horizon item 4's `policy` decision_mode, once built |
+| `ai_irl_judge` | AI instance name | transcript slice ref | Part 4's "Score curriculum" op, same call, now callable from ANY event, not only h-ai-lab's own button |
+| `ai_propose_weights` | AI instance name | - | Part 4's "Propose weights" op, likewise |
+| `ai_attention_chat` | AI instance name | message | that instance's own `/api/chat` (tier 2) |
+
+**Why FIELD1 = instance name solves the 2-field ceiling:** every AI
+command needs to know WHICH instance and WHAT KIND it is (fsm vs
+attention-net vs decision-pal) - instead of cramming that into fields,
+the op looks `KIND`/`PATH`/`IFACE` up from `ai_instances_registry.txt`
+by name (`ai_registry.sh list` + a grep, same as `ai_lab_scan.sh`
+already does). One real field carries everything the op needs; FIELD2
+stays free for the ONE thing that's genuinely per-call (a target
+state, a message, a transcript ref) - the registry (Part 1) is what
+makes this fit the real 2-field constraint instead of running into it.
+
+**The "legos" part, concretely:** an events-hq Common Event's command
+list is ALREADY a real, ordered, freely add/remove/reorder-able
+sequence in the existing editor - that IS the lego mechanism, already
+built, for a completely different reason (game events). Once the AI
+command types above exist in the registry, composing `ai_fsm_transition
+-> ai_goap_plan -> ai_irl_judge -> ai_propose_weights` as one event's
+command list, reorderable and editable live, no recompile, is the real
+"try out different architectures/tricks" experimentation surface the
+direct ask wants - not a new mechanism, the SAME one every board-game
+event already uses, pointed at AI bricks instead of `show_text`/
+`change_gold`.
+
+**Real, honest limits, not glossed over:**
+- Not every real FSM will fit `ai_fsm_transition` cleanly. `cursword_
+  fsm.c`'s own real transitions are gated on polling/`wait_for()`
+  side effects (menu-open checks, `is_guest()` polling loops), not a
+  pure "trigger arrives, transition fires" shape - an event-fired
+  transition works for a STATE CHANGE, it does not replace cursword's
+  own procedural waiting logic. Full FSM-as-events was already flagged
+  as a real, open, not-fully-answerable question in Part 2; this part
+  doesn't resolve it, it just lets the STATE GRAPH be poked from an
+  event where that's honestly enough (most non-cursword FSMs, once
+  they exist, likely will be simpler).
+- `ai_goap_plan`/`ai_rl_policy_choose` wrap horizon item 4, which is
+  NOT built yet - these two command types are real registry ROWS that
+  can be added now, but their TEMPLATE ops don't exist until item 4
+  does. Adding the row and the op are two separate real steps.
+
+**Smallest real first step for Part 5:** ONE new command type,
+`ai_fsm_transition`, wrapping a NEW small op (`ai_event_fsm_transition.sh
+<house_root> <instance_name> <target_state>` - looks up the instance's
+`fsm_table.pdl` via the registry, runs the same validate-and-log logic
+Part 2's `fsm_validate_transition()` already proves, writes the result).
+Add the ONE registry row, test it fires from a real Common Event
+against cursword, before adding any other AI command type. Same
+one-real-thing-at-a-time discipline as every prior part of this doc.
+
 ## Real blockers vs. non-blockers (direct question, answered)
 
 **NOT a blocker:** the pc-hq event-trigger layer (horizon item 1,
