@@ -10,7 +10,18 @@
      is zero new per-project C in khtpm_core_render.c, so the detail
      viewer is a plain <text_area> reading ${detail_text} (see
      ai_lab_scan.sh's own header comment for why content= specifically,
-     not <text>). -->
+     not <text>).
+
+     H-AI-LAB-DESIGN.md Part 6: a KIND=fsm entry ALSO gets a real
+     "scratch block" view (one bordered item per real STATE row in its
+     fsm_table.pdl, showing its real NEXT= options, the live-running
+     state highlighted) - reuses events-hq's own real, live
+     publish_scratch_blocks() visual language, not a new mechanism.
+     View-only for now; events-hq's own event.pal has no native
+     branching (confirmed via direct code research), so this
+     deliberately does NOT pretend cursword's real conditional
+     transitions are events-hq "choices" - it's h-ai-lab's own real
+     viewer, styled the same way. -->
 <window label="h-ai-lab" class="h-ai-lab database-window" vars="state/ui.txt">
   <module id="ai_lab_refresh" src="&.hq-apps/h-ai-lab/ai_lab_refresh.sh"/>
   <page name="main">
@@ -30,7 +41,13 @@
       <text label="${detail_name}  —  kind: ${detail_kind}" class="block-title" show="${has_detail}"/>
       <text label="PATH: ${detail_path}" class="quiet" show="${has_detail}"/>
       <text label="IFACE: ${detail_iface}" class="quiet" show="${has_detail}"/>
-      <text_area id="detail_view" content="${detail_text}" class="detail-view" show="${has_detail}"/>
+      <text label="live state: ${fsm_live_state}" class="block-title" show="${show_blocks}"/>
+      <scrolllist show="${show_blocks}">
+        <repeat count="${n_blocks}" bind="block">
+          <item id="blk${block.#}" class="data-item fsm-block current${block.iscurrent}" label="${block.state}  →  ${block.next}"/>
+        </repeat>
+      </scrolllist>
+      <text_area id="detail_view" content="${detail_text}" class="detail-view" show="${show_raw_text}"/>
     </panel>
   </page>
 </window>

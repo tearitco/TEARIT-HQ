@@ -85,6 +85,48 @@ publish)
                 echo "detail_iface=$d_iface"
                 echo "has_detail=1"
                 echo "no_detail=0"
+
+                # H-AI-LAB-DESIGN.md Part 5/6: real "scratch block" view
+                # for a KIND=fsm entry - reuses events-hq's own real,
+                # live publish_scratch_blocks() precedent (labeled,
+                # bordered blocks, not a raw text dump) instead of
+                # forcing cursword's real conditional branches through
+                # events-hq's event.pal pipeline, which has NO native
+                # branching (show_choices only records a pick, never
+                # jumps commands - confirmed by direct code research,
+                # not assumed). View-only for now - editing (dragging a
+                # new NEXT= option in) is a real, separate, later step.
+                is_fsm=0
+                n_blocks=0
+                if [ "$d_kind" = "fsm" ] && [ -f "$d_path" ]; then
+                    is_fsm=1
+                    live_state=""
+                    [ -n "$d_iface" ] && [ "$d_iface" != "-" ] && [ -f "$d_iface" ] && live_state="$(cat "$d_iface" 2>/dev/null | tr -d '[:space:]')"
+                    bi=0
+                    while IFS= read -r line; do
+                        case "$line" in
+                            STATE\ *) : ;;
+                            *) continue ;;
+                        esac
+                        st_name=$(printf '%s' "$line" | awk -F'|' '{print $2}' | sed 's/^ *//;s/ *$//')
+                        st_next=$(printf '%s' "$line" | awk -F'|' '{print $3}' | sed 's/^ *//;s/^NEXT=//;s/ *$//')
+                        [ -z "$st_name" ] && continue
+                        echo "block_${bi}_state=$st_name"
+                        echo "block_${bi}_next=${st_next:-(terminal - no NEXT states)}"
+                        echo "block_${bi}_iscurrent=$([ -n "$live_state" ] && [ "$st_name" = "$live_state" ] && echo 1 || echo 0)"
+                        bi=$((bi+1))
+                    done < "$d_path"
+                    n_blocks=$bi
+                    echo "fsm_live_state=${live_state:-(not running)}"
+                fi
+                echo "is_fsm=$is_fsm"
+                echo "n_blocks=$n_blocks"
+                # two vars, not a negated show= (the renderer's show=
+                # attribute has no negation - see proc-mon/h-ai-lab's
+                # own earlier no_detail/no_instances precedent).
+                echo "show_blocks=$is_fsm"
+                echo "show_raw_text=$([ "$is_fsm" = 1 ] && echo 0 || echo 1)"
+
                 if [ -f "$d_path" ]; then
                     DETAIL_RAW=$(head -c 4000 "$d_path")
                 elif [ -d "$d_path" ]; then
@@ -104,11 +146,17 @@ $(ls -1 "$d_path" | head -30)"
                 echo "has_detail=0"
                 echo "no_detail=1"
                 echo "detail_text=(selected instance no longer in the registry)"
+                echo "show_blocks=0"
+                echo "show_raw_text=0"
+                echo "n_blocks=0"
             fi
         else
             echo "has_detail=0"
             echo "no_detail=1"
             echo "detail_text=(select an instance from the list)"
+            echo "show_blocks=0"
+            echo "show_raw_text=0"
+            echo "n_blocks=0"
         fi
     } > "$tmp"
     mv -f "$tmp" "$OUT"
