@@ -86,3 +86,26 @@ treatment. **Fixed**: `tp_main()`'s loop now re-calls
 independently re-observed live over a long real session (the original
 report couldn't be reproduced on demand) - if this resurfaces after
 the fix, re-open this exact entry rather than starting a new one.
+
+**Real regression this same fix caused, found + fixed same day (eca3c071)**:
+the periodic re-call above fires on its VERY FIRST tick, not after a
+real 10s wait - its `static struct timespec` timer starts at zero, so
+"10s have passed" is true immediately, right alongside the real
+startup registration. `livedesk_registry_add()`'s own prune loop only
+ever dropped DEAD pids, so re-registering a still-alive pid appended a
+second, genuine duplicate line for the same live entity.
+`khtpm_taskbar_manager.c`'s `load_tabs()` then saw two live-PID lines
+for one entity in a single read and SIGTERM'd the "duplicate" (logic
+written for an actual zorder-respawn leftover, not this) - killing
+every non-`cursword` entity within 1-2s of every spawn, reproduced via
+both a manual launch and the real Player>reset path (`cursword`
+structurally exempt from every close/kill sweep, hence the only
+survivor). Root-caused live via temporary debug logging in
+`load_tabs()` (added and fully removed same pass). **Fixed**: the
+prune loop also drops any existing line for the SAME pid being
+re-registered, so a re-registration replaces its own prior line
+instead of piling up beside it. Verified live: all 6 killed pals
+relaunched clean, survived past the 10s checkpoint that used to kill
+them. Still worth independently re-observing over a real long session
+before this whole entry is considered fully proven, same caveat as
+above.
