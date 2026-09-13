@@ -320,22 +320,63 @@ possible - every entity spawn now does `ulimit -c unlimited` before
 the real launch (all 3 spawn sites in `khtpm_taskbar_manager.c`).
 Harmless when nothing crashes.
 
-**Real next steps, not yet done:**
-1. Next time book-stack (or any entity) dies this way, check for a
-   real core file (`/var/crash`, or wherever apport/this system's
-   `core_pattern` handler actually deposits one now that `RLIMIT_
-   CORE` is raised) and read the actual backtrace - stop guessing at
-   the cause from source alone.
-2. `book-stack`'s own `history.txt` was unusually large (~468KB)
-   compared to other entities' when this was investigated - worth
-   checking whether something in its own startup reads/replays that
-   file and whether size is a real factor (untested this pass, a real
-   lead not yet chased).
-3. If a core file is captured, cross-reference the crash address/
-   frame against `load_entity_phymoji()`/`build_shape_mask()` (the
-   two real steps that run immediately around the last successful
-   history entry, `ENTITY_PHYMOJI_LOADED`) as the first real suspects,
-   not a blind full-file audit.
+**Major update, same day, live-traced with temporary checkpoint
+logging (added and fully removed)** - direct re-report after it kept
+recurring: "no bookstack still". Two real findings that change the
+shape of this bug:
+
+1. **`/var/crash` stayed empty even with `RLIMIT_CORE` raised**
+   (`7da1ae7b`) - `strace -p` also failed outright
+   (`ptrace(PTRACE_SEIZE)`: Operation not permitted - `yama.ptrace_
+   scope` blocks it in this environment). Neither forensic tool is
+   usable here; core-dump capture is a dead end in this environment
+   specifically, not a fix that needs more time to pay off.
+2. **The real, reproducible signal**: a temporary checkpoint
+   (`append_history("...ENTER_MAIN_LOOP")` immediately before the
+   main event loop, plus a per-iteration counter immediately inside
+   it) showed the loop-entry checkpoint fires on **every single
+   launch**, but the first-iteration checkpoint (one line later,
+   after nothing but a trivial `while` condition check and an
+   integer increment - code that cannot itself crash) **never once
+   fired**, across ~15+ consecutive observed launch/death cycles,
+   each dying within about one second of reaching the loop. Trivial
+   code between two checkpoints, one always logged and the other
+   never reached, is a real, strong signal this is an EXTERNAL
+   termination (a SIGTERM arriving in that same ~1s window) rather
+   than an internal crash - book-stack's own code was never actually
+   caught misbehaving.
+
+**Real next steps, not yet done** (superseding the core-dump-focused
+ones above - that path is closed off in this environment):
+1. Find what's sending book-stack SIGTERM within ~1s of every
+   launch. Real candidates, not yet individually ruled out: (a) the
+   shared, single-line `#.desktop/.livedesk_last_launch.pid` scratch
+   file `ktb_system_recorded()` uses to learn the PID it just spawned
+   (header comment, `khtpm_taskbar_manager.c` ~line 94) - if a
+   SECOND spawn (the manager launches several entities in a tight
+   loop) overwrites this shared file before the FIRST spawn's own
+   caller reads it back, a wrong PID could end up registered/reaped
+   against the wrong entity; (b) `load_tabs()`'s own dup-kill SIGTERM
+   (now identity-verified as of this same day's earlier fix, but not
+   re-examined AFTER this specific finding); (c) any other real
+   SIGTERM sender in `khtpm_taskbar_manager.c` (`kill_hq_windows.sh`,
+   `livedesk_kill_stray_entities()`, the proc-registry reaper) that
+   could be matching book-stack's fresh PID by an unintended pattern.
+2. Add a REAL (not temporary-debug) `signal(SIGTERM, ...)` log line
+   in `tp_main()`'s own handler (`handle_shutdown_signal()`) if it
+   doesn't already log which signal/when - the fastest way to
+   confirm (1) directly instead of narrowing by elimination.
+3. `book-stack`'s own `history.txt` was unusually large (~468KB)
+   compared to other entities' - still untested as a factor, lower
+   priority now that (1) points away from book-stack's own code
+   entirely.
+
+**A real, honest caveat about this investigation's own methodology**:
+reproducing this required repeated live restarts, which was directly
+disruptive to the user's own concurrent session ("i was on tb but
+dissapeared" - a live report of collateral disruption from this same
+debugging). Any future continuation of this investigation should
+prefer passive observation over forced restarts wherever possible.
 
 ---
 
