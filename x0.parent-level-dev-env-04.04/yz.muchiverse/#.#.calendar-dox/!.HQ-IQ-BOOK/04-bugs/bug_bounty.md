@@ -57,6 +57,18 @@ verify live]."
    this specific instance, vs. a structural bug that would recur
    regardless of any one crash.
 
+**Ruled out, 2026-09-12** (direct question: "could that be what got rid
+of the good entities? a false positive from the self-healer before?"):
+NO — confirmed by code structure, not just plausibility. The registry
+file the self-healer above touches is only ever WRITTEN by `redraw()`'s
+own generic-HQ-window branch (gated on `g_default_has_sidebar_panel`),
+which lives entirely outside `tp_main()` (entity/tile mode's own
+separate function, starting well after that write code in the file,
+never setting that flag). Entity tiles structurally never had an entry
+in this file to begin with, so the self-healer had nothing of theirs
+to false-positive delete. The self-healer is confirmed safe and
+unrelated to this bounty's real symptom.
+
 **Do NOT close this entry** until an entity tile has been watched
 disappearing live, with the exact file/mechanism identified — the fix
 above was a real, confirmed, worthwhile leak closed along the way, but
