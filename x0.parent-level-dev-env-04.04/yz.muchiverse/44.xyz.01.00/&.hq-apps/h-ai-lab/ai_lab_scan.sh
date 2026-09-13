@@ -14,11 +14,59 @@
 # real, separate, later steps once this embed pattern is proven.
 set -u
 SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# REAL, generic cli_io submit convention (khtpm_core_render.c
+# default_cli_io_run_action(), ~line 6447): a cli_io's own action= is
+# invoked as `<action> '<package_dir>' '<house_root>' '<typed_value>'
+# &` - a DIFFERENT argv order than every other action= in this file
+# (which are plain, hand-built `sh ai_lab_scan.sh <house_root> <mode>
+# ...` strings). Handled as its own branch, first, before the normal
+# house_root-first parsing below assumes argv1 is a path.
+if [ "${1:-}" = "create_state" ]; then
+    PKG_ARG="${2:-}"
+    HOUSE_ARG="${3:-}"
+    NEXT_VAL="${4:-}"
+    [ -n "$PKG_ARG" ] && [ -n "$HOUSE_ARG" ] || { echo "ai_lab_scan.sh create_state: missing pkg/house" >&2; exit 1; }
+    REG_SH="$HOUSE_ARG/&.widgits/ai-lab/ops/ai_registry.sh"
+    SEL_FILE="$PKG_ARG/state/selected.txt"
+    CLIIO_STATE="$PKG_ARG/cli_io_state.txt"
+    RESULT_FILE="$PKG_ARG/state/last_action_result.txt"
+    SEL=""
+    [ -f "$SEL_FILE" ] && SEL="$(cat "$SEL_FILE" 2>/dev/null)"
+    NAME_VAL=""
+    [ -f "$CLIIO_STATE" ] && NAME_VAL="$(sed -n 's/^new_state_name=//p' "$CLIIO_STATE" | tail -1)"
+    if [ -z "$SEL" ]; then
+        echo "no instance selected - select an fsm instance first" > "$RESULT_FILE"
+    elif [ -z "$NAME_VAL" ]; then
+        echo "type a state name in the 'new state name' field first" > "$RESULT_FILE"
+    elif [ -z "$NEXT_VAL" ]; then
+        echo "type NEXT states (or leave literally empty and press Enter again for a terminal state)" > "$RESULT_FILE"
+    else
+        SEL_LINE="$(sh "$REG_SH" list "$HOUSE_ARG" 2>/dev/null | awk -F'|' -v n="NAME=$SEL" '$1==n')"
+        d_kind=$(printf '%s' "$SEL_LINE" | awk -F'|' '{print $2}' | sed 's/^KIND=//')
+        d_path=$(printf '%s' "$SEL_LINE" | awk -F'|' '{print $3}' | sed 's/^PATH=//')
+        if [ "$d_kind" != "fsm" ]; then
+            echo "'$SEL' is not an fsm instance - can't add a STATE row" > "$RESULT_FILE"
+        elif [ ! -f "$d_path" ]; then
+            echo "'$SEL' has no real table file at $d_path" > "$RESULT_FILE"
+        elif awk -F'|' -v n="$NAME_VAL" '$1 ~ /^STATE / { s=$2; gsub(/^ +| +$/,"",s); if (s==n) f=1 } END{exit !f}' "$d_path"; then
+            echo "state '$NAME_VAL' already exists in $SEL - pick a different name" > "$RESULT_FILE"
+        else
+            printf 'STATE | %-14s | NEXT=%s\n' "$NAME_VAL" "$NEXT_VAL" >> "$d_path"
+            echo "added state '$NAME_VAL' (NEXT=$NEXT_VAL) to $SEL" > "$RESULT_FILE"
+        fi
+    fi
+    sh "$0" "$HOUSE_ARG" publish "$PKG_ARG/state/ui.txt" >/dev/null 2>&1 || true
+    exit 0
+fi
+
 HOUSE_ROOT="${1:-${KHTPM_HOUSE:-}}"
 [ -n "$HOUSE_ROOT" ] && [ -d "$HOUSE_ROOT" ] || { echo "ai_lab_scan.sh: need house_root" >&2; exit 1; }
 HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 REG_SH="$HOUSE_ROOT/&.widgits/ai-lab/ops/ai_registry.sh"
 SEL_FILE="$SELF_DIR/state/selected.txt"
+RESULT_FILE="$SELF_DIR/state/last_action_result.txt"
+VIEW_FILE="$SELF_DIR/state/view_mode.txt"
 
 MODE="${2:-publish}"
 
@@ -33,17 +81,37 @@ select)
     sh "$0" "$HOUSE_ROOT" publish >/dev/null 2>&1 || true
     ;;
 
+view)
+    # a real <tabbar>/<tab> click (Viewer / New State) - drives which
+    # panel content shows via show="${view_is_*}" vars below, the SAME
+    # proven mechanism as select's own sidebar action, not the native
+    # tab/scope internals (kept deliberately simple/predictable, same
+    # reasoning as every other real choice made in this file).
+    MODENAME="${3:-viewer}"
+    mkdir -p "$SELF_DIR/state"
+    printf '%s\n' "$MODENAME" > "$VIEW_FILE"
+    sh "$0" "$HOUSE_ROOT" publish >/dev/null 2>&1 || true
+    ;;
+
 publish)
     OUT="${3:-$SELF_DIR/state/ui.txt}"
     mkdir -p "$SELF_DIR/state"
     tmp="$OUT.tmp.$$"
     SEL=""
     [ -f "$SEL_FILE" ] && SEL="$(cat "$SEL_FILE" 2>/dev/null)"
+    VIEW="viewer"
+    [ -f "$VIEW_FILE" ] && VIEW="$(cat "$VIEW_FILE" 2>/dev/null)"
+    [ -n "$VIEW" ] || VIEW="viewer"
+    LAST_RESULT=""
+    [ -f "$RESULT_FILE" ] && LAST_RESULT="$(cat "$RESULT_FILE" 2>/dev/null)"
 
     REG_LINES="$(sh "$REG_SH" list "$HOUSE_ROOT" 2>/dev/null)"
 
     {
         echo "scan_time=$(date '+%H:%M:%S')"
+        echo "view_is_viewer=$([ "$VIEW" = "new_state" ] && echo 0 || echo 1)"
+        echo "view_is_new=$([ "$VIEW" = "new_state" ] && echo 1 || echo 0)"
+        echo "last_result=${LAST_RESULT:-(no action yet)}"
         i=0
         det_name=""; det_kind=""; det_path=""; det_iface=""
         printf '%s\n' "$REG_LINES" | while IFS='|' read -r f1 f2 f3 f4; do
@@ -124,8 +192,16 @@ publish)
                 # two vars, not a negated show= (the renderer's show=
                 # attribute has no negation - see proc-mon/h-ai-lab's
                 # own earlier no_detail/no_instances precedent).
-                echo "show_blocks=$is_fsm"
-                echo "show_raw_text=$([ "$is_fsm" = 1 ] && echo 0 || echo 1)"
+                # ANDed with the Viewer-tab state right here, not via
+                # nested show= (that combinator isn't a thing this
+                # renderer's generic vocabulary has) - one flat var per
+                # real on-screen condition.
+                if [ "$VIEW" = "new_state" ]; then
+                    echo "show_blocks=0"; echo "show_raw_text=0"
+                else
+                    echo "show_blocks=$is_fsm"
+                    echo "show_raw_text=$([ "$is_fsm" = 1 ] && echo 0 || echo 1)"
+                fi
 
                 if [ -f "$d_path" ]; then
                     DETAIL_RAW=$(head -c 4000 "$d_path")

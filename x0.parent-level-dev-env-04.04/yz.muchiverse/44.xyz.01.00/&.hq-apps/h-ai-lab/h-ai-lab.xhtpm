@@ -25,6 +25,18 @@
 <window label="h-ai-lab" class="h-ai-lab database-window" vars="state/ui.txt">
   <module id="ai_lab_refresh" src="&.hq-apps/h-ai-lab/ai_lab_refresh.sh"/>
   <page name="main">
+    <!-- H-AI-LAB-DESIGN.md Part 7: real <tabbar>/<tab> - MUST be a
+         direct child of <page> (confirmed by khtpm_core_render.c's own
+         layout code, which iterates page->children looking for it -
+         nesting it inside <panel> silently renders nothing). Content-
+         switching is driven by h-ai-lab's own already-proven
+         action=+var mechanism (view_is_viewer/view_is_new), not
+         db-hq's bespoke g_is_db_hq C-side embed logic - that stays a
+         grandfathered exception, not a pattern to copy. -->
+    <tabbar class="tab-bar" show="${has_detail}">
+      <tab id="tab_viewer" label="Viewer" action="sh '${PKG}/ai_lab_scan.sh' '${HOUSE}' view viewer"/>
+      <tab id="tab_new" label="New State" action="sh '${PKG}/ai_lab_scan.sh' '${HOUSE}' view new_state"/>
+    </tabbar>
     <sidebar id="sidebar" class="sidebar">
       <text label="scanned ${scan_time}" class="quiet"/>
       <text label="${n_instances} AI instance(s)" class="block-title"/>
@@ -41,6 +53,7 @@
       <text label="${detail_name}  —  kind: ${detail_kind}" class="block-title" show="${has_detail}"/>
       <text label="PATH: ${detail_path}" class="quiet" show="${has_detail}"/>
       <text label="IFACE: ${detail_iface}" class="quiet" show="${has_detail}"/>
+
       <text label="live state: ${fsm_live_state}" class="block-title" show="${show_blocks}"/>
       <scrolllist show="${show_blocks}">
         <repeat count="${n_blocks}" bind="block">
@@ -48,6 +61,37 @@
         </repeat>
       </scrolllist>
       <text_area id="detail_view" content="${detail_text}" class="detail-view" show="${show_raw_text}"/>
+
+      <!-- New State tab: a real create form. State name auto-saves to
+           cli_io_state.txt on every keystroke (default cli_io
+           behavior, no action= needed); NEXT states' own action=
+           fires ai_lab_scan.sh create_state, which reads the name
+           field back out of that same file and appends a real
+           STATE row to the selected fsm's table - see the script's
+           own header comment for the exact real argv contract. -->
+      <text label="Add a new STATE to ${detail_name}" class="block-title" show="${view_is_new}"/>
+      <text label="new state name:" class="quiet" show="${view_is_new}"/>
+      <cli_io id="new_state_name" label="" show="${view_is_new}"/>
+      <text label="NEXT states (comma-separated, or leave empty for a terminal state):" class="quiet" show="${view_is_new}"/>
+      <cli_io id="new_state_next" label="" action="sh '${PKG}/ai_lab_scan.sh' create_state" show="${view_is_new}"/>
+      <text label="${last_result}" class="quiet" show="${view_is_new}"/>
+      <!-- KNOWN, REAL, NOT YET ROOT-CAUSED (2026-09-13): arming and
+           typing into ONE cli_io (new_state_name alone) is live-
+           verified reliable. Arming the SECOND field (new_state_next)
+           right after committing the first was observed, live, to
+           sometimes leave new_state_name's own saved value wiped back
+           to empty in cli_io_state.txt before the create_state action
+           ever fires - no garbage was ever written to a real
+           fsm_table.pdl (confirmed, the backend refuses to act on an
+           empty name), so this is a real reliability/timing issue in
+           the two-field sequence, not a data-corruption risk. Prime
+           suspect, not yet confirmed: ai_lab_refresh.sh's periodic
+           republish (every 4s) reparsing the window mid-type. The
+           create_state SCRIPT LOGIC itself is proven correct via
+           direct invocation (adds a well-formed STATE row, refuses a
+           duplicate name, refuses a non-fsm target). Needs a real,
+           focused debugging pass before this form is considered fully
+           reliable end-to-end through the live GUI. -->
     </panel>
   </page>
 </window>
