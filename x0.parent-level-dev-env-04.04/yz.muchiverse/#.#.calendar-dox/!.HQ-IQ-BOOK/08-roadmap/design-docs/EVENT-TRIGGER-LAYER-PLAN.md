@@ -128,11 +128,15 @@ not "should work."
   board-viewer's own `bv_menu_input.c`; the real POST-move hook
   piececraft-hq owns is `pc_menu_input.c`'s `MOVE` handler, per §3
   Step 1 above.
-- Does the bridge script need to be a long-running daemon (like
-  `pc_clock_daemon.c`) or can it be spawned/torn down alongside the
-  piececraft-hq session itself? Match whichever existing lifecycle
-  convention `pc_clock_daemon.c` already uses — don't invent a new one.
-  **Still open — next real question to answer.**
+- ~~Does the bridge script need to be a long-running daemon~~
+  **ANSWERED (2026-09-14, confirmed with user)**: yes, a persistent
+  forked companion process — it must stay alive for the whole session
+  to catch new ledger lines as they happen, a one-shot op would miss
+  everything after the moment it ran. Match `pc_clock_daemon.c`'s exact
+  lifecycle convention (`launch_clock_daemon_if_needed()`'s PID-file +
+  `kill -0` liveness check, forked once per world at
+  `CONFIRM_START`/`CONFIRM_START_DEBUG`) — a second daemon launched the
+  same way, alongside the clock daemon, not a new pattern.
 
 ## 5. Downstream
 
