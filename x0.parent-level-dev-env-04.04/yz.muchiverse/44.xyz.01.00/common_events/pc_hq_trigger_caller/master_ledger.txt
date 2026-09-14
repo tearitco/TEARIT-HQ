@@ -1,0 +1,5 @@
+[2026-09-14 11:43:50] Play: also triggered common event cdda_beartrap_touch (trigger=player-touch)
+[2026-09-14 11:43:50] Play: also triggered common event cdda_beartrap_touch (trigger=player-touch)
+[2026-09-14 11:45:10] Play: also triggered common event cdda_beartrap_touch (trigger=player-touch)
+[2026-09-14 11:49:17] Play: also triggered common event cdda_beartrap_touch (trigger=player-touch)
+[2026-09-14 11:50:29] Play: also triggered common event cdda_beartrap_touch (trigger=player-touch)

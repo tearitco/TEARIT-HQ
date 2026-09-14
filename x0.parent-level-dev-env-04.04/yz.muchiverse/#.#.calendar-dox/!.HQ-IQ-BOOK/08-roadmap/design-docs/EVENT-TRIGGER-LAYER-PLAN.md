@@ -183,8 +183,84 @@ live** — commit pending. What was actually built:
   existing real-vs-session-root convention. Not reverted; flagged here
   so it's not mistaken for silent, unintended state drift later.
 
-**Still not started**: §3 Step 2 (the persistent bridge-watcher daemon
-that tails `master_ledger.txt` for `touched_npc` lines and actually
-fires the matching Common Event via `play_event.sh`) — lifecycle
-already decided (§4: persistent forked daemon, matching
-`pc_clock_daemon.c`'s launch convention). That's the real next task.
+## §3 Step 2 - DONE (2026-09-14, same day), the full loop closes
+
+**The trigger layer is now real, end to end, exactly matching NIGHT_05's
+own bar: walk into it, something happens, no manual step.**
+
+What was built:
+
+- **`pc_trigger_watcher.c`** (new file) — the persistent bridge-watcher
+  daemon, same real lifecycle shape as `pc_clock_daemon.c` byte-for-
+  byte (PID-file + `kill(pid,0)` liveness check, `setsid`-detached,
+  SIGTERM/SIGINT clean exit). Tails `data/master_ledger.txt` from its
+  own launch-time EOF (never replays old data on a fresh start, same
+  "only genuinely new lines" tolerance `palnet_peer.c`'s own
+  `read_outbox_new_lines()` already uses for a concurrently-written
+  file). For each new `touched_npc` line, shells out to events-hq's
+  real `play_event.sh` with `trigger=player-touch` — the exact same
+  call the manual Play button already makes.
+- **`pc_menu_input.c`**: new `launch_trigger_watcher_if_needed()`
+  (byte-for-byte the same shape as `launch_clock_daemon_if_needed()`),
+  called alongside it at all 6 real call sites
+  (`CONFIRM_START`/`CONFIRM_START_DEBUG`/`CONFIRM_START_MAP`/
+  `TOGGLE_AUTOTICK`'s own re-arm path/etc.) — the watcher comes up
+  automatically whenever a world session starts, same as the clock.
+- **A real, minimal Common Event package**,
+  `common_events/cdda_beartrap_touch/` (mirrors `common_events/
+  greet_player/`'s own exact structure: `condition.pdl` with
+  `COND | trigger | player-touch`, `event.ir.pdl`/`event.pal`/
+  `cmd_1.sh` running the real, already-proven `mr_show_text.+x`) —
+  built per the user's own confirmed direction (a real event package,
+  not teaching the bridge to parse `events.pdl`'s ambiguous `cmds=`
+  list directly). A small, real, separate placeholder directory,
+  `common_events/pc_hq_trigger_caller/`, is used as `play_event.sh`'s
+  required `$PKG` argument — real, documented finding: `play_event.sh`'s
+  own common-events dispatch block has NO per-entity scoping, it runs
+  ANY common event matching the trigger regardless of `$PKG`, so the
+  caller placeholder's own identity doesn't matter for this to work
+  correctly (flagged in `pc_trigger_watcher.c`'s own header comment as
+  the real, honest scope limitation to fix once more than one
+  player-touch common event exists).
+- **Proven live, real evidence, with a full debug trace** (not "should
+  work"): launched the watcher against a `CONFIRM_START_MAP:cdda_sample`
+  world, walked the player onto the real `x=6,y=5` tile, and the
+  watcher's own debug log showed it read the fresh ledger line
+  (`touched=1`), ran `play_event.sh` (`rc=0`), and
+  `common_events/cdda_beartrap_touch/interact_relay.txt` genuinely
+  received `SHOW_TEXT_FILE:...text_1.txt` — fully automatic, zero
+  manual Play button, zero events-hq editor interaction.
+- **Two real bugs found and fixed during this build, not glossed
+  over**:
+  1. `mr_show_text.+x` needs a real TEXT FILE path as its 2nd arg (its
+     own header comment says so), not inline literal text — my first
+     `cmd_1.sh` draft passed literal text directly (copying a pattern
+     that appears to have the same latent bug elsewhere,
+     `m8_redhorned`'s own `cmd_4.sh` — not touched here, flagged as a
+     separate, pre-existing issue). Fixed by writing the message to a
+     real `text_1.txt` and resolving its absolute path in `cmd_1.sh`
+     before the script's own `cd`.
+  2. An early "it fired twice" result was traced to a genuinely stray,
+     orphaned watcher process left over from an earlier, improperly
+     backgrounded test launch (NOT a logic bug in the offset-tracking
+     code) — confirmed by finding and killing the real second PID, then
+     re-proving a single clean instance fires exactly once per
+     genuinely new ledger line.
+- **Honest caveat carried over from §3 Step 1**: this again wrote into
+  the real, persistent `real_root`, not a disposable session — the
+  live piececraft-hq project's own `master_ledger.txt`, world state,
+  and the new `cdda_beartrap_touch` common event's own runtime files
+  (`history.txt`/`interact_relay.txt`/`master_ledger.txt`) now contain
+  real test-run evidence from this proof, left in place rather than
+  reverted, matching `common_events/greet_player/`'s own convention of
+  tracking these runtime files in git rather than gitignoring them.
+
+**Real, deliberately out-of-scope for this pass** (per §7's "don't
+build it all in one sweep" sequencing):
+- Per-tile-to-event routing once more than one `player-touch` common
+  event exists (§3 Step 2's own noted limitation above).
+- Any UI for `CONFIRM_START_MAP` (currently inbox-relay-only, matching
+  this house's own real testing convention).
+- The Play Mode / entity harness / "move" Common Event work this whole
+  track exists to unblock (`PLAY-MODE-ENTITY-HARNESS-DESIGN.md`) — now
+  genuinely unblocked, not yet started.

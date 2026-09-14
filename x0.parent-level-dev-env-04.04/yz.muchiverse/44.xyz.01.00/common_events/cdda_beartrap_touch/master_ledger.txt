@@ -1,0 +1,12 @@
+[Prisc Error] Could not open ops file: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/101.mutaclsym🧟‍♂️️+18.0G/system/default_op.txt
+[2026-09-14 11:41:51] Play triggered common event cdda_beartrap_touch (page_1, trigger=player-touch) via greet_player
+[Prisc Error] Could not open ops file: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/101.mutaclsym🧟‍♂️️+18.0G/system/default_op.txt
+[2026-09-14 11:43:50] Play triggered common event cdda_beartrap_touch (page_1, trigger=player-touch) via pc_hq_trigger_caller
+[Prisc Error] Could not open ops file: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/101.mutaclsym🧟‍♂️️+18.0G/system/default_op.txt
+[2026-09-14 11:43:50] Play triggered common event cdda_beartrap_touch (page_1, trigger=player-touch) via pc_hq_trigger_caller
+[Prisc Error] Could not open ops file: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/101.mutaclsym🧟‍♂️️+18.0G/system/default_op.txt
+[2026-09-14 11:45:10] Play triggered common event cdda_beartrap_touch (page_1, trigger=player-touch) via pc_hq_trigger_caller
+[Prisc Error] Could not open ops file: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/101.mutaclsym🧟‍♂️️+18.0G/system/default_op.txt
+[2026-09-14 11:49:17] Play triggered common event cdda_beartrap_touch (page_1, trigger=player-touch) via pc_hq_trigger_caller
+[Prisc Error] Could not open ops file: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/101.mutaclsym🧟‍♂️️+18.0G/system/default_op.txt
+[2026-09-14 11:50:29] Play triggered common event cdda_beartrap_touch (page_1, trigger=player-touch) via pc_hq_trigger_caller

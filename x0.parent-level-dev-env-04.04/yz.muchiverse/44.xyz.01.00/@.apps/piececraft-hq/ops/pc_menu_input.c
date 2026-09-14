@@ -433,6 +433,49 @@ static void launch_clock_daemon_if_needed(const char *proj_root) {
 #endif
 }
 
+/* REAL, NEW 2026-09-14 (EVENT-TRIGGER-LAYER-PLAN.md §3 Step 2) - the
+ * persistent bridge-watcher daemon (pc_trigger_watcher.c) that tails
+ * data/master_ledger.txt for touched_npc lines and fires the matching
+ * Common Event via play_event.sh. Byte-for-byte the same real launch
+ * shape as launch_clock_daemon_if_needed() above (PID-file + kill(pid,0)
+ * liveness check, setsid-detached) - the second daemon in this project
+ * shaped exactly like the first, not a new pattern. */
+static void launch_trigger_watcher_if_needed(const char *proj_root) {
+    char real_root[PATH_BUF];
+    resolve_real_root(proj_root, real_root, sizeof(real_root));
+    char pid_path[PATH_BUF];
+    snprintf(pid_path, sizeof(pid_path), "%s/pieces/system/pc_trigger_watcher.pid", real_root);
+    FILE *pf = fopen(pid_path, "r");
+    if (pf) {
+        int pid = 0;
+        if (fscanf(pf, "%d", &pid) == 1 && pid > 0 && kill(pid, 0) == 0) {
+            fclose(pf);
+            return; /* already real, alive */
+        }
+        fclose(pf);
+    }
+#ifdef _WIN32
+    {
+        char env_kv[PATH_BUF + 32];
+        snprintf(env_kv, sizeof(env_kv), "PRISC_PROJECT_ROOT=%s", proj_root);
+        _putenv(env_kv);
+        char daemon_path[PATH_BUF];
+        snprintf(daemon_path, sizeof(daemon_path), "%s\\ops\\+x\\pc_trigger_watcher.+x", real_root);
+        for (char *p = daemon_path; *p; p++) if (*p == '/') *p = '\\';
+        if (!win_run_pe(daemon_path, NULL, proj_root, 0, 1))
+            win_run_pe("ops\\+x\\pc_trigger_watcher.+x", NULL, proj_root, 0, 1);
+        FILE *wf = fopen(pid_path, "w");
+        if (wf) { fprintf(wf, "1\n"); fclose(wf); }
+    }
+#else
+    char cmd[PATH_BUF * 2];
+    snprintf(cmd, sizeof(cmd),
+             "PRISC_PROJECT_ROOT='%s' setsid '%s/ops/+x/pc_trigger_watcher.+x' >/dev/null 2>&1 < /dev/null &",
+             proj_root, proj_root);
+    { int _rc = system(cmd); (void)_rc; }
+#endif
+}
+
 /* Host project id for board-viewer ledger scoping (board-viewer:<host>). */
 static const char *host_project_id(void) {
     const char *pid = getenv("PRISC_PROJECT_ID");
@@ -950,6 +993,7 @@ int main(int argc, char **argv) {
             }
 #endif
             launch_clock_daemon_if_needed(project_root);
+            launch_trigger_watcher_if_needed(project_root);
 
             snprintf(message, sizeof(message), "World generated (seed %u). Game started.", world_seed);
         } else if (strcmp(cmd, "CONFIRM_START_DEBUG") == 0) {
@@ -989,6 +1033,7 @@ int main(int argc, char **argv) {
             }
 #endif
             launch_clock_daemon_if_needed(project_root);
+            launch_trigger_watcher_if_needed(project_root);
 
             snprintf(message, sizeof(message), "Debug flat world generated. Game started.");
         } else if (strncmp(cmd, "CONFIRM_START_MAP:", 19) == 0) {
@@ -1032,6 +1077,7 @@ int main(int argc, char **argv) {
             }
 #endif
             launch_clock_daemon_if_needed(project_root);
+            launch_trigger_watcher_if_needed(project_root);
 
             snprintf(message, sizeof(message), "Map '%s' loaded. Game started.", map_id_arg);
         } else if (strcmp(cmd, "END_TURN") == 0) {
@@ -1077,6 +1123,7 @@ int main(int argc, char **argv) {
                  * world-gen paths use; no-op if the daemon is already
                  * alive (pid-file + kill(pid,0) check). */
                 launch_clock_daemon_if_needed(project_root);
+                launch_trigger_watcher_if_needed(project_root);
             }
             snprintf(message, sizeof(message), "Autotick %s.", enabled ? "ON" : "off");
         } else if (strcmp(cmd, "CYCLE_TICK_SPEED") == 0) {
@@ -1370,6 +1417,7 @@ int main(int argc, char **argv) {
             }
 #endif
             launch_clock_daemon_if_needed(project_root);
+            launch_trigger_watcher_if_needed(project_root);
 
         } else if (strcmp(cmd, "CREATE_WORLD_DEBUG") == 0) {
             /* REAL, NEW 2026-08-30: create a new debug flat world. Same as
@@ -1427,6 +1475,7 @@ int main(int argc, char **argv) {
             }
 #endif
             launch_clock_daemon_if_needed(project_root);
+            launch_trigger_watcher_if_needed(project_root);
         }
     }
 

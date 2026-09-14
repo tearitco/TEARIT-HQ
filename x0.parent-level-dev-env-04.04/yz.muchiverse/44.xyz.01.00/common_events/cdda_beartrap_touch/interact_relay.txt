@@ -1,0 +1,1 @@
+SHOW_TEXT_FILE:/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/common_events/cdda_beartrap_touch/event_pkg/pages/page_1/text_1.txt

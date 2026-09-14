@@ -1,0 +1,7 @@
+# event.pal - real prisc+x opcodes, hand-authored to match the exact
+# shape khtpm_events_hq_manager.c's own compiler produces (event.ir.pdl
+# -> event.pal -> cmd_N.sh), for the trigger-layer proof
+# (EVENT-TRIGGER-LAYER-PLAN.md §3 Step 2).
+# pkg=cdda_beartrap_touch page=page_1
+exec cmd_1.sh
+halt
