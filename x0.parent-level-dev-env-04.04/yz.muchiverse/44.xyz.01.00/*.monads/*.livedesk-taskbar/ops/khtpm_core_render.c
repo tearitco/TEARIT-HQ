@@ -14293,6 +14293,110 @@ static int read_entity_z(const char *package_dir) {
     return z;
 }
 
+/* REAL, NEW 2026-09-14 (desktop-entity trigger-layer proof, direct
+ * instruction: "it should use the same master ledger mechanism
+ * displayed in lpns, remember?") - project-local copy of the exact
+ * same real, proven format RMMV-EVENT-ARCHITECTURE-LEARNINGS.md §7
+ * documents from 101.lpns+map+4's own master_ledger.txt, and that
+ * piececraft-hq's own pc_menu_input.c ledger_append() already uses:
+ * `timestamp|turn|actor|action_type|details`, one append-only file,
+ * shared, multi-writer. Lives under #.desktop/ - the real, already-
+ * established house-wide-state location (matches livedesk_open.txt,
+ * khtpm_play_mode.state.txt, khtpm_zorder_mode.state.txt), not a new
+ * top-level shared dir. "turn" has no real turn-based meaning on the
+ * desktop - kept as a monotonic real-time counter (seconds since this
+ * process started) purely to preserve the exact same 5-field row
+ * shape as the proven format, not to invent a new one. */
+static void desktop_ledger_append(const char *house_root, const char *actor, const char *action_type, const char *details) {
+    char path[TP_PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/master_ledger.txt", house_root);
+    FILE *f = fopen(path, "a");
+    if (!f) return;
+    time_t now = time(NULL);
+    char ts[64];
+    strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%S", localtime(&now));
+    static time_t s_start = 0;
+    if (!s_start) s_start = now;
+    fprintf(f, "%s|%ld|%s|%s|%s\n", ts, (long)(now - s_start), actor, action_type, details);
+    fclose(f);
+}
+
+/* REAL, NEW 2026-09-14 - real, honest global on/off read, mirroring
+ * khtpm_taskbar_manager.c's own khtpm_load_play_mode() (a genuinely
+ * separate binary, per this house's own duplicate-rather-than-share
+ * convention - not a shared header). Same file,
+ * #.desktop/khtpm_play_mode.state.txt, same `mode=on|off` shape. */
+static int desktop_load_play_mode(const char *house_root) {
+    char path[TP_PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/khtpm_play_mode.state.txt", house_root);
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    char line[64];
+    int on = 0;
+    if (fgets(line, sizeof(line), f) && strstr(line, "mode=on")) on = 1;
+    fclose(f);
+    return on;
+}
+
+/* REAL, NEW 2026-09-14 (EVENT-TRIGGER-LAYER-PLAN.md's own desktop-
+ * entity extension, direct instruction: "we will use move /
+ * pathfinding event program to make cursword move to castle" -> "it
+ * should use the same master ledger mechanism") - cursword-only (the
+ * real, established player/selector entity - see g_is_cursword's own
+ * declaration comment), Play-Mode-gated (per PLAY-MODE-ENTITY-
+ * HARNESS-DESIGN.md - a plain desktop drag while NOT in Play Mode
+ * must never fire a gameplay trigger). Scans every sibling pal's own
+ * desktop_pos.txt (derived from package_dir's own parent - the real
+ * pals/ directory every entity already lives under, no new lookup
+ * needed) for an EXACT x,y match (matching piececraft-hq's own
+ * check_player_touch_trigger()'s exact-equality convention, not
+ * "close enough" - see mr_move_to_entity.c's own arrival-check fix
+ * for why adjacency alone is the wrong bar here). On a match, appends
+ * a real `touched_npc` line to the SAME shared ledger - firing the
+ * actual Common Event is the bridge-watcher's job (not yet built),
+ * same real split pc_trigger_watcher.c already uses (detect here,
+ * fire there). */
+static void desktop_check_touch_trigger(const char *house_root, const char *package_dir, int x, int y) {
+    if (!g_is_cursword) return;
+    if (!desktop_load_play_mode(house_root)) return;
+
+    char pkgcopy[TP_PATH_BUF];
+    snprintf(pkgcopy, sizeof(pkgcopy), "%s", package_dir);
+    char *self_base = basename(pkgcopy);
+    char self_name[128];
+    snprintf(self_name, sizeof(self_name), "%s", self_base);
+
+    char pals_root[TP_PATH_BUF];
+    snprintf(pals_root, sizeof(pals_root), "%s", package_dir);
+    char *slash = strrchr(pals_root, '/');
+    if (slash) *slash = '\0';
+
+    DIR *d = opendir(pals_root);
+    if (!d) return;
+    struct dirent *ent;
+    while ((ent = readdir(d)) != NULL) {
+        if (ent->d_name[0] == '.') continue;
+        if (strcmp(ent->d_name, self_name) == 0) continue;
+        char pos_path[TP_PATH_BUF];
+        snprintf(pos_path, sizeof(pos_path), "%s/%s/desktop_pos.txt", pals_root, ent->d_name);
+        FILE *pf = fopen(pos_path, "r");
+        if (!pf) continue;
+        char line[128];
+        int px = -1, py = -1;
+        while (fgets(line, sizeof(line), pf)) {
+            if (strncmp(line, "x=", 2) == 0) px = atoi(line + 2);
+            else if (strncmp(line, "y=", 2) == 0) py = atoi(line + 2);
+        }
+        fclose(pf);
+        if (px == x && py == y) {
+            char details[128];
+            snprintf(details, sizeof(details), "target:%s,x:%d,y:%d", ent->d_name, x, y);
+            desktop_ledger_append(house_root, self_name, "touched_npc", details);
+        }
+    }
+    closedir(d);
+}
+
 static void write_pos(const char *package_dir, int x, int y) {
     char path[TP_PATH_BUF];
     snprintf(path, sizeof(path), "%s/desktop_pos.txt", package_dir);
@@ -14308,6 +14412,10 @@ static void write_pos(const char *package_dir, int x, int y) {
      * changes needed anywhere else in this file. */
     fprintf(f, "x=%d\ny=%d\nz=%d\n", x, y, g_entity_z);
     fclose(f);
+    /* Real, single choke point every real position change already
+     * passes through (drag/arrow-nudge/click-to-place/MOVE_TO) - see
+     * desktop_check_touch_trigger()'s own header comment. */
+    desktop_check_touch_trigger(g_house_root, package_dir, x, y);
 }
 
 /* Real, new 2026-08-31 - the shared, desktop-wide "which z level is
