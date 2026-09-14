@@ -3822,6 +3822,60 @@ static void khtpm_save_play_mode(const char *house_root, int on) {
  * khtpm_load_play_mode() live every menu open, same "1.hq"'s own
  * "@ always-on-top" dropdown-child pattern this mirrors), dispatched
  * to a real "livedesk:play-toggle" command (see ktb_hq_activate()). */
+/* REAL, NEW 2026-09-14, direct live instruction ("in order to
+ * actually show game menu += save/load game slots i may add a 'menu'
+ * option after desks... lets just add it after desk for now") - the
+ * new top-level 5.menu cell (inserted right after 4.desk, every real
+ * position from 5 onward in strip_header.xhtpm/this dispatch chain
+ * shifted by one to make room, per the direct decision to do the
+ * real insertion rather than append at the end).
+ *
+ * Reads the CURRENTLY ACTIVE desk's own real .pdl for a `GAME | name
+ * | <value>` row (same real SECTION|KEY|VALUE-family convention every
+ * other .pdl row in this house already uses - a plain, non-DESK row
+ * coexists safely in a desk .pdl, load_tabs()/livedesk_spawn_desk()'s
+ * own DESK-row parsers already skip any line not starting with
+ * "DESK"). No desk today declares one (including civ-test) - this
+ * shows a real, honest "(no game on this desk)" + Cancel in that
+ * case, matching this house's own load_methods()/CTXMENU convention:
+ * a real, sane fallback, never a blank menu. Save/Load themselves are
+ * real, honest stubs (void) for now - there is no real save-worthy
+ * game state anywhere yet (CIV-TEST-DESK-AND-DOOR-TRANSFER-PLAN.md
+ * §7's own build order puts this after the events-only Civ clone has
+ * real state, not before) - this proves the real menu mechanism
+ * itself, not save/load functionality. */
+static int livedesk_build_menu_menu(const char *house_root, HQMenuItem *menu, int max) {
+    char sroot[KTB_PATH_BUF];
+    if (!livedesk_sessions_root(house_root, sroot, sizeof(sroot))) goto no_game;
+    char cur[KTB_PATH_BUF] = "";
+    livedesk_default_session(house_root, sroot, cur, sizeof(cur));
+    if (!cur[0]) goto no_game;
+    char ad[64] = "";
+    livedesk_active_desk(sroot, cur, ad, sizeof(ad));
+    if (!ad[0]) goto no_game;
+    char sdir[KTB_PATH_BUF], dp[KTB_PATH_BUF];
+    livedesk_session_dir(sroot, cur, sdir, sizeof(sdir));
+    snprintf(dp, sizeof(dp), "%s/desks/%s.pdl", sdir, ad);
+    char game_name[64] = "";
+    read_key_value(dp, "GAME", game_name, sizeof(game_name));
+    if (!game_name[0]) goto no_game;
+
+    int n = 0;
+    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Save"); menu[n].command[0] = '\0'; n++; }
+    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Load"); menu[n].command[0] = '\0'; n++; }
+    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Cancel"); menu[n].command[0] = '\0'; n++; }
+    return n;
+
+no_game:
+    if (max < 1) return 0;
+    snprintf(menu[0].label, sizeof(menu[0].label), "(no game on this desk)");
+    menu[0].command[0] = '\0';
+    if (max < 2) return 1;
+    snprintf(menu[1].label, sizeof(menu[1].label), "Cancel");
+    menu[1].command[0] = '\0';
+    return 2;
+}
+
 static int livedesk_build_player_menu(const char *house_root, HQMenuItem *menu, int max) {
     int n = livedesk_pdl_menu_rows(house_root, "player", menu, max);
     if (n > 0) return n;
@@ -4445,33 +4499,43 @@ void ktb_hq_open(KtbState *s, int which) {
      * unchanged to the existing chain. */
     const char *cid = ktb_cell_id(s, which);
     if (strcmp(cid, "toys") == 0) { n = livedesk_build_toys_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX); }
-    /* palettes (positional 6, "6.palettes") wired 2026-08-24 - cid branch
-     * first like toys; positional fallback while incremental adoption
-     * continues (livedesk_header_cell_ids.txt now declares 6|palettes). */
-    else if (strcmp(cid, "palettes") == 0 || which == 6) n = livedesk_build_palettes_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    /* palettes (positional 7, was 6 before 5.menu's 2026-09-14
+     * insertion) wired 2026-08-24 - cid branch first like toys;
+     * positional fallback while incremental adoption continues (no
+     * real "N|palettes" row in livedesk_header_cell_ids.txt as of this
+     * writing - only "12|toys" - so this dispatches via the which==7
+     * fallback today, not cid). */
+    else if (strcmp(cid, "palettes") == 0 || which == 7) n = livedesk_build_palettes_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     else if (which == 2) n = livedesk_build_user_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     else if (which == 4) n = livedesk_build_desk_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    else if (which == 5) n = livedesk_build_pals_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else if (which == 5) n = livedesk_build_menu_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else if (which == 6) n = livedesk_build_pals_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     else if (which == 1) n = livedesk_build_hq_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     else if (which == 3) n = livedesk_build_file_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    else if (which == 8) n = livedesk_build_player_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    /* db (9) restored 2026-08-12 - was parked as an inert placeholder
+    else if (which == 9) n = livedesk_build_player_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    /* db (10, was 9 before 5.menu's 2026-09-14 insertion) restored
+     * 2026-08-12 - was parked as an inert placeholder
      * while the real bug (header-click codes swallowed whenever ANY
      * cell's menu was already open, see dispatch_code()'s hq_open branch
      * in khtpm_taskbar_manager_main.c) got found and fixed; that bug
      * hit every cell, not just db, so db itself was never the problem.
      * See au11-hq/DB-HQ-HANDOFF.md for db-hq's still-placeholder status. */
-    else if (which == 9) n = livedesk_build_db_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    /* ai (14) - real, wired 2026-08-12, see livedesk_build_ai_menu()'s
-     * own header comment. Was one of the bare inert cells (6/7/10/11/
-     * 12/13/14) this same catch-all comment below used to include. */
-    else if (which == 14) n = livedesk_build_ai_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    /* date/time (15) - clock menu, wired 2026-08-13 (au11-hq/15.clock-
-     * design.md §5.2): root + internal sublevels 151 (clocks&cals) / 152
-     * (reminders) / 153 (game-clock controls) / 154 (calendar view). The
-     * header click itself routes here generically via KSC_HQ_HEADER_BASE
-     * (see khtpm_strip_codes.h: which = cell index + 1, 15 = date/time). */
-    else if (which == 15) n = livedesk_build_clock_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else if (which == 10) n = livedesk_build_db_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    /* ai (15, was 14 before 5.menu's 2026-09-14 insertion) - real,
+     * wired 2026-08-12, see livedesk_build_ai_menu()'s own header
+     * comment. Was one of the bare inert cells this same catch-all
+     * comment below used to include. */
+    else if (which == 15) n = livedesk_build_ai_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    /* date/time (16, was 15) - clock menu, wired 2026-08-13 (au11-hq/
+     * 15.clock-design.md §5.2): root + internal sublevels 151
+     * (clocks&cals) / 152 (reminders) / 153 (game-clock controls) / 154
+     * (calendar view) - these internal sub-codes are unrelated to real
+     * header-cell positions, untouched by the 2026-09-14 shift. The
+     * header click itself routes here generically via
+     * KSC_HQ_HEADER_BASE (which = real click position, not parsed from
+     * any id string - see 5.menu's own header comment for the full
+     * 2026-09-14 renumbering this file went through). */
+    else if (which == 16) n = livedesk_build_clock_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     else if (which == CLOCK_MENU_CLOCKS) n = livedesk_build_clock_cals_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     else if (which == CLOCK_MENU_REMINDERS) n = livedesk_build_clock_reminders_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     else if (which == CLOCK_MENU_GAME) n = livedesk_build_clock_game_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
@@ -4479,11 +4543,12 @@ void ktb_hq_open(KtbState *s, int which) {
     else if (which == 100) n = livedesk_build_session_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX); /* 100 = internal-only "session picker", reached from the file cell's "load" row (livedesk:load), never a header click directly - see ktb_hq_activate() */
     else if (which == 101) n = livedesk_build_db_ez_sections_menu(s->hq_menu, KTB_LIVEDESK_DYN_MAX); /* 101 = internal-only db-ez 14-section list, reached from db cell's "db-ez" row */
     else if (which == 102) n = livedesk_build_db_common_events_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX); /* 102 = internal-only Common Events list (global, house_root-wide), reached from db-ez's "Common Events" row */
-    /* network (13) - real, wired 2026-08-31, see livedesk_build_network_
-     * menu()'s own header comment. Was one of the bare inert cells this
-     * same catch-all comment below used to include. */
-    else if (which == 13) n = livedesk_build_network_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    else { ktb_hq_close(s); return; } /* inert cell (6/7/10/11/12) or unknown - close any open popup, no-op otherwise, matching the legacy exactly */
+    /* network (14, was 13 before 5.menu's 2026-09-14 insertion) - real,
+     * wired 2026-08-31, see livedesk_build_network_menu()'s own header
+     * comment. Was one of the bare inert cells this same catch-all
+     * comment below used to include. */
+    else if (which == 14) n = livedesk_build_network_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else { ktb_hq_close(s); return; } /* inert cell (8/11/12/13, "edit"/"plugins"/"toys" w/o real cid/"store") or unknown - close any open popup, no-op otherwise, matching the legacy exactly. Real numbers shifted 2026-09-14 - see 5.menu's own header comment above for why. */
     if (n <= 0) {
         snprintf(s->hq_menu[0].label, sizeof(s->hq_menu[0].label), "(empty)");
         s->hq_menu[0].command[0] = '\0';

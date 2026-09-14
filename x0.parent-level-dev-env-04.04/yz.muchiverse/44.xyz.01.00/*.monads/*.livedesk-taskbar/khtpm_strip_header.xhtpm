@@ -7,18 +7,19 @@
 <item id="strip-cell-2" label="${username}" sprite="${avatar_dir}" class="dock-cell" onclick="ACTIVATE"/>
 <item id="strip-cell-3" label="${file_label}" class="dock-cell" onclick="ACTIVATE"/>
 <item id="strip-cell-4" label="${desks_label}" class="dock-cell" onclick="ACTIVATE"/>
-<item id="strip-cell-5" label="pals" class="dock-cell" onclick="ACTIVATE"/>
-<item id="strip-cell-6" label="palettes" class="dock-cell" onclick="ACTIVATE"/>
-<item id="strip-cell-7" label="edit" class="dock-cell" onclick="ACTIVATE"/>
-<item id="strip-cell-8" label="player" class="dock-cell" onclick="ACTIVATE"/>
-<item id="strip-cell-9" label="db" class="dock-cell" onclick="ACTIVATE"/>
-<item id="strip-cell-10" label="plugins" class="dock-cell" onclick="ACTIVATE"/>
-<item id="strip-cell-11" label="toys" class="dock-cell" onclick="ACTIVATE"/>
-<item id="strip-cell-12" label="store" class="dock-cell" onclick="ACTIVATE"/>
-<item id="strip-cell-13" label="network" class="dock-cell" onclick="ACTIVATE"/>
-<item id="strip-cell-14" label="h-ai" class="dock-cell" onclick="ACTIVATE"/>
-<item id="strip-cell-15" label="${datetime}" class="dock-cell" onclick="ACTIVATE"/>
-<item id="strip-cell-16" label="${PID}" class="dock-cell no-nav"/>
+<item id="strip-cell-5" label="menu" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-6" label="pals" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-7" label="palettes" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-8" label="edit" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-9" label="player" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-10" label="db" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-11" label="plugins" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-12" label="toys" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-13" label="store" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-14" label="network" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-15" label="h-ai" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-16" label="${datetime}" class="dock-cell" onclick="ACTIVATE"/>
+<item id="strip-cell-17" label="${PID}" class="dock-cell no-nav"/>
 </row>
 <repeat count="${n_hqitems}" bind="hi">
 <item class="dropdown-child" target_id="${drop_target}" label="${hi.label}" sprite="${hi.sprite}" action="${hi.cmd}"/>
