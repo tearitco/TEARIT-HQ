@@ -243,6 +243,37 @@ trigger-layer proposal has been promoted into
 verified against real code (per-tick position already exists at
 `pieces/hero_01/state.txt`; `board_events.txt` does not exist yet;
 `play_event.sh`'s trigger-string page-scan is real and reusable
-as-is). Next real step: trace `pc_world_manager.c`'s movement-
-resolution path to find where to hook the real trigger-append - not
-yet started.*
+as-is).*
+
+## 4. UPDATE (2026-09-14, later same day) - Step 1 built and proven live
+
+Traced `pc_world_manager.c`/`pc_generate_chunk.c` per the plan's own
+open question - found the REAL master ledger already existed and was
+already multi-writer (`pc_menu_input.c`/`pc_clock_daemon.c` both
+already call `ledger_append()` into `data/master_ledger.txt`, same
+format independently as `101.lpns+map+4`'s own proven ledger, see
+`RMMV-EVENT-ARCHITECTURE-LEARNINGS.md` §7). Superseded the original
+`board_events.txt` proposal - use the existing ledger directly.
+
+Built and shipped (commit `15075cbe`):
+- `pc_generate_chunk.c`: real static-map loading (`map:<map_id>` mode),
+  reading `pieces/system/maps/<map_id>/map.txt`, writing `map_id` into
+  `world_01/state.txt`.
+- `pc_menu_input.c`: new `CONFIRM_START_MAP:<map_id>` command, and
+  `check_player_touch_trigger()` wired into the existing `MOVE`
+  handler - checks the player's position against the active map's
+  `events.pdl` `trigger=player-touch` rows, appends a real
+  `touched_npc` line to the SAME ledger on a match.
+
+**Proven live, real evidence**: loaded `cdda_sample`, walked onto its
+real `x=6 y=5 trigger=player-touch` tile, `data/master_ledger.txt`
+genuinely gained `...|player|touched_npc|x:6,y:5` - fully automatic,
+no events-hq editor, no Play button touched. Full writeup, including
+the honest "this mutated the real persistent world state, not a
+disposable session" caveat, is in `EVENT-TRIGGER-LAYER-PLAN.md`'s own
+"Next step" section.
+
+**Not yet started**: §3 Step 2 - the persistent bridge-watcher daemon
+that tails `master_ledger.txt` for `touched_npc` lines and actually
+fires the matching Common Event via `play_event.sh`. Real next task on
+this track.
