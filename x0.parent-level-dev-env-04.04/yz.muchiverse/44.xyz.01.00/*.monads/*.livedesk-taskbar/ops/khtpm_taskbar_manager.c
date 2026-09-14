@@ -4607,12 +4607,22 @@ void ktb_hq_activate(KtbState *s, int row) {
          * toggle's real state genuinely lives here (the manager, not
          * the renderer) - Play Mode has no per-window X property to
          * apply, it's a plain global flag other processes (the
-         * desktop-side trigger watcher, once built) poll. Safe to
-         * flip directly on this one command, no respawn/reapply step
-         * needed - the label just reflects khtpm_load_play_mode()
-         * fresh on the menu's next open. */
+         * desktop-side trigger watcher) poll. Safe to flip directly on
+         * this one command, no respawn/reapply step needed.
+         *
+         * REAL FIX 2026-09-14, direct live report ("can it not close
+         * tb after?"): closing (ktb_hq_close()) after every toggle
+         * meant you had to reopen 8.player from scratch to even see
+         * whether it changed - a real, needless extra step for what's
+         * meant to be a quick, repeatable flip (matches always-on-
+         * top's own real UX: that toggle never closes the taskbar
+         * either). Re-open the SAME menu (which=8) instead of closing
+         * - reuses ktb_hq_open()'s own real build+publish+nav-claim
+         * logic verbatim (same function every fresh open already
+         * uses), so the label genuinely reflects the new state
+         * immediately, in place, no reopen needed. */
         khtpm_save_play_mode(s->house_root, !khtpm_load_play_mode(s->house_root));
-        ktb_hq_close(s);
+        ktb_hq_open(s, 8);
         return;
     }
     if (strncmp(m->command, "widget:", 7) == 0) {
