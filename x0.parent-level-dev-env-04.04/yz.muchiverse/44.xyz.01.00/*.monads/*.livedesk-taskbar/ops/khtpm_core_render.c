@@ -118,6 +118,7 @@ static void redraw(void); /* REAL, forward declaration needed for dispatch()'s O
 static void kh_raise_and_focus(Window w); /* fwd - dispatch()'s FOCUSWIN handler uses it, defined near hq_dispatch_xevent */
 static void kh_open_cli_io_context_menu(Elem *target, int win_px, int win_py); /* fwd - hq_dispatch_xevent's ButtonPress (button 3) uses it, defined near close_context_menu */
 static void kh_poll_cli_io_ctxmenu_action(void); /* fwd - hq_idle_tick() polls this; defined near kh_open_cli_io_context_menu */
+static pid_t g_khtpm_menu_pid; /* fwd - hq_idle_tick() reaps this; real definition (with initializer) near launch_khtpm_menu() */
 static int kh_key_history_code(KeySym ks, char ch); /* fwd - handle_key()'s interact-relay forward uses it before its real definition, near kh_capture_key */
 static void desktop_toggle_click_two_step(const char *house_root); /* fwd - dispatch()'s CLICK_TWOSTEP_TOGGLE handler uses it before its real definition, near desktop_load_click_two_step */
 static void desktop_set_font_scale(const char *house_root, int pct); /* fwd - dispatch()'s UI_SCALE_MINUS/PLUS handlers */
@@ -9515,6 +9516,22 @@ static void hq_idle_tick(void) {
      * for the cli_io/text_area right-click menu (kh_open_cli_io_
      * context_menu()'s own header comment) - cheap, mtime-gated. */
     kh_poll_cli_io_ctxmenu_action();
+    /* REAL, NEW 2026-09-14 - reap the menu-fork child (launch_khtpm_
+     * menu()) whenever it actually exits. The kill-then-relaunch guard
+     * at the top of launch_khtpm_menu() also calls waitpid(WNOHANG)
+     * right after SIGTERM, but that's almost never fast enough to
+     * catch a still-running child - an entity that opens exactly one
+     * menu and never opens a second left that child as a permanent
+     * <defunct> zombie for the rest of its own life (confirmed live,
+     * 2026-09-14 - ava/asa's own real menu-fork PIDs). This is the
+     * only other place g_khtpm_menu_pid's child can exit from (user
+     * closes the menu, or its own action fires and it self-quits). */
+    if (g_khtpm_menu_pid > 0) {
+        int wstatus;
+        if (waitpid(g_khtpm_menu_pid, &wstatus, WNOHANG) == g_khtpm_menu_pid) {
+            g_khtpm_menu_pid = -1;
+        }
+    }
     /* REAL, NEW 2026-09-05 - age out the top-right "copied" tag: one
      * last repaint the moment it crosses ~2s old, then it stays cleared
      * (this block is a no-op once g_clip_copied_at is back to 0). */
