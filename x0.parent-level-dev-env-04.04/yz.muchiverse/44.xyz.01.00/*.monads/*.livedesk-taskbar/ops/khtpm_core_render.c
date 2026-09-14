@@ -14103,15 +14103,50 @@ static void kh_open_cli_io_context_menu(Elem *target, int win_px, int win_py) {
     popup_lock_acquire();
     XSetWindowAttributes swa;
     swa.override_redirect = True;
-    swa.background_pixel = alloc_pixel("#1c1c1c");
+    /* REAL FIX 2026-09-14, direct live report ("it doesn't look like
+     * the entity context menus. can u give it the primary and
+     * secondary colors etc?" -> "wait it uses the theme of tb colors
+     * like x11-hq doent u see that?") - the entity menu the user
+     * actually sees day to day is launch_khtpm_menu() (a few hundred
+     * lines up), which forks a genuinely SEPARATE process rendering a
+     * real menu.chtpm through this same binary's normal theme/CSS
+     * pipeline - that's real, current, and IS theme-colored, matching
+     * x11-hq windows exactly, because it genuinely is another x11-hq
+     * window. It can't be reused here directly: Cut/Copy/Paste need
+     * real, live, in-process access to THIS window's own armed-field
+     * buffer/selection/cursor, which a separate forked process has no
+     * way to reach. Real, correct fix for the in-process popup this
+     * function still needs: use the SAME live theme colors those
+     * windows read (g_theme_bg/g_theme_fg, loaded by load_theme_
+     * colors() at startup and live-reloadable) instead of either the
+     * unthemed legacy open_context_menu() look or an invented scheme -
+     * genuinely theme-matched, not a guess. */
+    swa.background_pixel = alloc_pixel(g_theme_bg[0] ? g_theme_bg : "#1c1c1c");
     swa.event_mask = ExposureMask | ButtonPressMask | KeyPressMask;
     g_cliio_ctx_win = XCreateWindow(dpy, RootWindow(dpy, scr), rx, ry, (unsigned)g_popup_w, (unsigned)h, 1,
                                      CopyFromParent, InputOutput, CopyFromParent,
                                      CWOverrideRedirect | CWBackPixel | CWEventMask, &swa);
-    XSetWindowBorder(dpy, g_cliio_ctx_win, alloc_pixel("#888888"));
+    /* REAL FIX 2026-09-14 - same real WM_CLASS open_context_menu()
+     * already sets (2026-08-06 fix: Mutter's Wayland xwayland-grab-
+     * access-rules restricts XGrabKeyboard from XWayland clients by
+     * default unless WM_CLASS is set and allowlisted by $.crypts/
+     * enable_xwayland_grabs.sh) - this popup never set one, so its own
+     * keyboard grab a few lines below could be silently denied by the
+     * exact same real Wayland policy that fix already exists for. */
+    XClassHint *class_hint = XAllocClassHint();
+    if (class_hint) {
+        class_hint->res_name = (char *)"MuchiverseLivedesk";
+        class_hint->res_class = (char *)"MuchiverseLivedesk";
+        XSetClassHint(dpy, g_cliio_ctx_win, class_hint);
+        XFree(class_hint);
+    }
     XMapRaised(dpy, g_cliio_ctx_win);
     g_cliio_ctx_gc = XCreateGC(dpy, g_cliio_ctx_win, 0, NULL);
-    XSetForeground(dpy, g_cliio_ctx_gc, alloc_pixel("#cccccc"));
+    /* real theme text color (entity_menu_default.css's own real
+     * `item { color: #cccccc; }` rule - g_theme_fg's own default
+     * matches it exactly) - GC default is black, invisible against the
+     * dark theme background just set above. */
+    XSetForeground(dpy, g_cliio_ctx_gc, alloc_pixel(g_theme_fg[0] ? g_theme_fg : "#cccccc"));
     if (g_grab_pointer) XGrabPointer(dpy, g_cliio_ctx_win, True, ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
     if (g_grab_keyboard) XGrabKeyboard(dpy, g_cliio_ctx_win, True, GrabModeAsync, GrabModeAsync, CurrentTime);
     draw_context_menu(dpy, g_cliio_ctx_win, g_cliio_ctx_gc, g_cliio_ctx_items, g_cliio_ctx_n, 1, g_cliio_ctx_focus);
