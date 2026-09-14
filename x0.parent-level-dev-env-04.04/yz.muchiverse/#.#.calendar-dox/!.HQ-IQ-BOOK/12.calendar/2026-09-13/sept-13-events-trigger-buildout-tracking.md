@@ -237,7 +237,12 @@ since this doc is scoped to the events-trigger build-out track.
 
 ---
 
-*§2's legacy-events-hq state check is now fully closed. Next real step
-on this track: promote NIGHT_05's trigger-layer proposal into
-`08-roadmap/design-docs/EVENT-TRIGGER-LAYER-PLAN.md` and start
-building - not yet started.*
+*§2's legacy-events-hq state check is now fully closed. NIGHT_05's
+trigger-layer proposal has been promoted into
+`08-roadmap/design-docs/EVENT-TRIGGER-LAYER-PLAN.md` (2026-09-14),
+verified against real code (per-tick position already exists at
+`pieces/hero_01/state.txt`; `board_events.txt` does not exist yet;
+`play_event.sh`'s trigger-string page-scan is real and reusable
+as-is). Next real step: trace `pc_world_manager.c`'s movement-
+resolution path to find where to hook the real trigger-append - not
+yet started.*
