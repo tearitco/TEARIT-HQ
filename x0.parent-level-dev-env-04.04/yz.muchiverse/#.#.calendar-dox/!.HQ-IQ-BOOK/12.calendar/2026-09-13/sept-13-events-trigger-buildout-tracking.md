@@ -99,40 +99,69 @@ interpolation exists in this VM), never updated when the house moved
 to `NNEST-12.00`. **Fixed**: repointed all four to the current house
 root.
 
-### 2c. Still open - NOT yet fixed
+### 2c. CLOSED (2026-09-14) - root-caused, not one bug but five
 
-Even with all three fixes above, the harness's own PAL drive still
-times out (60s) on the same step every time:
+Root-caused by hand, one injection at a time, not guessed. What
+looked like a single "view_mode never flips" symptom was actually
+**five separate, real, independent drift bugs** stacked on top of each
+other - fixed in commit `3e621a4d`:
 
-- The render **does** create `events_hq_view_mode.txt` (proof the
-  mechanism partially works - this used to not exist at all before
-  fix #2).
-- The injected relay events (digit-jump `50` + Enter `13`) **do**
-  reach the real relay file (`events_hq_history.txt`) - confirmed by
-  reading it back after a run.
-- But `view_mode` never flips from `0` to `1` - the view-tab switch the
-  digit-jump is supposed to trigger doesn't appear to be landing.
+1. **Dead relay target**: this whole harness family wrote to a fixed
+   `events_hq_history.txt` - confirmed via direct code search, zero
+   references anywhere in `khtpm_core_render.c`. Every window now
+   polls a generic per-process relay (`history_path()` ->
+   `#.desktop/entity_menu_history/<pid>.txt`). Nothing the harness ever
+   injected was reaching the window, at any point.
+2. **The feature itself doesn't exist**: `g_evhq_view_mode`/
+   `evhq_layout_pass()`/`events_hq_view_mode.txt` (all three named in
+   `dashboard.chtpm`'s own header comment as implementing the
+   Scripting/Scratch/Blueprints view-tab switch) - zero matches
+   anywhere in the current renderer. Never carried over when events-hq
+   got merged into this shared binary. Not drift - dead code. The
+   harness's only real assertion (`view_mode == 1`) was unprovable by
+   construction.
+3. **Global nav numbering**: this house's own already-documented rule
+   (`_.0.aigent-testing-k9.txt`'s "Rule 7") - nav numbers are shared
+   across every open khtpm window, never reset to 1 per window. A
+   blind digit-jump in a harness that always runs alongside the real
+   live desktop could land anywhere, including a text field, arming it
+   and swallowing the later PNG-dump key as literal text.
+4. **Wrong PNG path**: `dump_frame_png()`'s real, current output is
+   the generic `/tmp/entity-menu-frame.png` (shared by every mode) -
+   never a per-mode `/tmp/events-hq-frame.png`. The dump mechanism was
+   never broken; the harness was checking a file it never writes.
+5. **Stale VM binary**: the deployed `prisc+x` binary itself predated
+   its own source - `strings` on the binary showed zero matches for
+   `sgetenv`/`slit`/`sappend`/`sfopen`/etc, all real opcodes already in
+   `prisc+x.c` since 2026-09-03. Rebuilt via `101.mutaclsym`'s own
+   `scripts/build.sh`.
 
-**Not yet root-caused.** Candidate causes, unconfirmed:
-- A relay-dispatch change since this harness was last proven (some
-  other refactor this week touched `dispatch_relay_code()`-adjacent
-  code for nav/scope state - see `bug_bounty.md`'s stuck-nav entries).
-- The events-hq dashboard's own nav-tab count/order may have shifted
-  (digit `2` may no longer land on the same tab it used to).
-- Possibly unrelated to any of this week's work - could predate it.
+**Also hardened, not just fixed**, per direct instruction ("is
+retarget enough? can we harden it"):
+- House root and target PID are now looked up dynamically at runtime
+  (`sgetenv "KHTPM_HOUSE"`/`"KHTPM_TARGET_PID"`, prisc+x's own existing
+  string-opcode family - no VM language change needed) instead of a
+  literal baked into the `.pal` - survives any future house move.
+- Dropped the digit-jump+Enter step outright (a real assumption
+  removed, not routed around) since it depended on a feature that no
+  longer exists and a nav-number that can't be predicted.
+- Replaced the PNG size-threshold guess (`>1000 bytes`, wrong for this
+  harness's deliberately-empty disposable entity) with a real PNG
+  magic-byte signature check - a content-independent, hard assertion.
 
-**Next step**: drive the same disposable window manually (relay file,
-one keypress at a time) and dump a real PNG after each step to see
-exactly where the sequence diverges from what the PAL expects, instead
-of guessing further. Not started yet.
+**Verified**: full harness run now genuinely PASSes all three
+assertions (real PNG produced + signature verified, verdict
+`done=1`/`pass=1`, zero stray processes after cleanup) in ~7 seconds,
+zero disruption to the live desktop.
 
 ---
 
-## 3. Real files touched today
+## 3. Real files touched
 
 - `*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c` - `g_arg4_entity_label` capture + wiring (commit `ac10a579`)
-- `xyzfs/users/.../pals/cursword/harnesses/run_visible_window_events_hq_demo.sh` - safe stray-kill scoping (commit `ac10a579`)
-- `xyzfs/users/.../pals/cursword/harnesses/pal/visible_window_events_hq_demo.pal` - house-root path fix (commit `ac10a579`)
+- `xyzfs/users/.../pals/cursword/harnesses/run_visible_window_events_hq_demo.sh` - safe stray-kill scoping (`ac10a579`), real relay path + PNG signature check (`3e621a4d`)
+- `xyzfs/users/.../pals/cursword/harnesses/pal/visible_window_events_hq_demo.pal` - dynamic path lookup, dead-feature/dead-relay/wrong-nav/wrong-PNG-path fixes (`3e621a4d`)
+- `101.mutaclsym🧟‍♂️️+18.0G/system/prisc+x` - rebuilt from current source (`3e621a4d`)
 
 Unrelated, same-day fixes also landed this session (taskbar
 performance/reliability work, not events-hq) - see `bug_bounty.md` and
@@ -141,6 +170,7 @@ since this doc is scoped to the events-trigger build-out track.
 
 ---
 
-*Update this doc as the open item in §2c gets root-caused, and again
-once NIGHT_05's trigger-layer proposal is promoted to a real roadmap
-doc and build-out actually starts.*
+*§2's legacy-events-hq state check is now fully closed. Next real step
+on this track: promote NIGHT_05's trigger-layer proposal into
+`08-roadmap/design-docs/EVENT-TRIGGER-LAYER-PLAN.md` and start
+building - not yet started.*
