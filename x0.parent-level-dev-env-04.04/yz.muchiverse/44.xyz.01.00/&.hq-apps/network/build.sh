@@ -65,3 +65,11 @@ if pkg-config --exists libavformat libavcodec libavutil libswscale libswresample
 else
   echo "skip nb_video_play (no libav/alsa dev)"
 fi
+
+# 2026-09-14 (task C V4, pure-C YouTube resolver): yt_resolve replaces
+# the popen'd ~/.local/bin/yt-dlp --get-url call inside nb_video_play.
+# Posts innerTube youtubei/v1/player with the ANDROID client context
+# (which mints direct googlevideo URLs, no signature deciphering),
+# parses streamingData, prints best mp4 stream URL. Deps: system curl.
+echo "-- yt_resolve -> ops/+x/yt_resolve.+x"
+$CC -std=c11 -Wall -Wextra -O2 -o "$SDIR/ops/+x/yt_resolve.+x" "$SDIR/ops/yt_resolve.c" && echo "OK yt_resolve" || exit 1

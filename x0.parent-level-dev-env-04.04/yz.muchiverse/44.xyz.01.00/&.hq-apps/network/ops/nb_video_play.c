@@ -117,29 +117,41 @@ static void publish_frame(const char *sess, const unsigned char *rgba, int w, in
     }
 }
 
+static void self_dir(char *out, size_t n) {
+    char link[PATH_MAX];
+    ssize_t r = readlink("/proc/self/exe", link, sizeof link - 1);
+    if (r <= 0) { out[0] = 0; return; }
+    link[r] = 0;
+    char *slash = strrchr(link, '/');
+    if (slash) *slash = 0;
+    snprintf(out, n, "%s", link);
+}
+
 static const char *resolve_url(char *buf, size_t n, const char *url) {
-    /* YouTube → yt-dlp --get-url (non-DRM only). The resolved direct
-     * stream URL feeds the same libav pipeline as a plain http(s) one. */
+    /* YouTube → ops/+x/yt_resolve (pure-C innerTube android-client player
+     * resolver - the build.sh sibling of this file). It mints DIRECT
+     * googlevideo stream URLs (no n-sig / signatureCipher / poToken
+     * deciphering; verified 2026-09-14 with ANDROID 20.02.35). Replaces
+     * the old popen'd `~/.local/bin/yt-dlp --get-url ...`. */
     if (strstr(url, "youtu.be") || strstr(url, "youtube.com") ||
         strncmp(url, "yt:", 3) == 0) {
-        char cmd[PATH_MAX * 2];
-        /* player_client=android: the default android_vr client mints
-         * googlevideo URLs the CDN 403s even for yt-dlp itself (n-sig / pot
-         * stamp mismatch); 'android' mints URLs that stream fine with a
-         * plain browser UA. Verified 2026-09-12. */
-        snprintf(cmd, sizeof(cmd),
-                 "~/.local/bin/yt-dlp --get-url --no-playlist "
-                 "--format 'best[ext=mp4]/best' "
-                 "--extractor-args 'youtube:player_client=android' '%s' "
-                 "2>/dev/null", url);
-        FILE *p = popen(cmd, "r");
-        if (p) {
-            if (fgets(buf, (int)n, p)) {
-                size_t l = strlen(buf);
-                while (l > 0 && (buf[l-1] == '\n' || buf[l-1] == '\r')) buf[--l] = 0;
+        char dir[PATH_MAX], tool[PATH_MAX], cmd[PATH_MAX * 2 + 128];
+        self_dir(dir, sizeof dir);
+        if (dir[0]) {
+            snprintf(tool, sizeof tool, "%s/yt_resolve.+x", dir);
+            if (access(tool, X_OK) == 0) {
+                snprintf(cmd, sizeof cmd, "'%s' '%s' 2>/dev/null", tool, url);
+                FILE *p = popen(cmd, "r");
+                if (p) {
+                    if (fgets(buf, (int)n, p)) {
+                        size_t l = strlen(buf);
+                        while (l > 0 && (buf[l-1] == '\n' || buf[l-1] == '\r')) buf[--l] = 0;
+                    }
+                    int rc = pclose(p);
+                    if (buf[0] && rc == 0) return buf;
+                }
+                buf[0] = 0;
             }
-            int rc = pclose(p);
-            if (buf[0] && rc == 0) return buf;
         }
     }
     snprintf(buf, n, "%s", url);
@@ -250,14 +262,14 @@ int main(int argc, char **argv) {
     write_state(sess, "starting");
     write_pid(sess);
 
-    char url[PATH_MAX * 2];
+    char url[32 * 1024];
     resolve_url(url, sizeof(url), argv[1]);
 
     avformat_network_init();
     AVFormatContext *fmt = NULL;
-    /* YouTube's googlevideo CDN 403s the default Lavf user-agent; yt-dlp
-     * emits sig-verified URLs that still check UA + referer origin. Feed a
-     * real browser UA and a youtube referer so avio/http passes the check. */
+    /* YouTube's googlevideo CDN 403s the default Lavf user-agent; the
+     * resolved stream URLs still check UA + referer origin. Feed a real
+     * browser UA and a youtube referer so avio/http passes the check. */
     AVDictionary *opts = NULL;
     av_dict_set(&opts, "http_user_agent",
                 "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
