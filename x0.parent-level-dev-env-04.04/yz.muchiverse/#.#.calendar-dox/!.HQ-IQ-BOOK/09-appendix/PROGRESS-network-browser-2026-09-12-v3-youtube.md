@@ -126,3 +126,16 @@ task was part of V3's scope; both are now written down here.
    rung-6 fetch is the heavier alternative.
 4. Close V3-C (pause/resume/stop/EOF audit) and V3-D (Widevine explicit
    "DRM cannot decode" message) probe rows if time permits.
+
+---
+
+## 5. Update 2026-09-14 — watch pages migrated to V4 (see the V4 progress doc)
+
+The original project goal — "YouTube watch pages render as normal" — landed
+as V4 on `opencode` and supersedes items 2/3 above. All watch-page rows
+(title/channel/meta/description + clickable related grid) come from the
+page's own embedded `ytInitialData`, no `youtubei/v1` API call. Details,
+evidence, and the remaining work (YouTube search, comments, focus-branch
+merge, real-hardware click test) are in
+`09-appendix/PROGRESS-network-browser-2026-09-14-v4-youtube-watch.md`,
+which is the running owner for the watch-page feature going forward.

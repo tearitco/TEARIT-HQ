@@ -2369,6 +2369,403 @@ static void write_fetch_dom(const char *html, size_t n) {
     }
 }
 
+/* =====================================================================
+ * V4 2026-09-12: YouTube watch-page ingest.
+ * "Make the watch page work as normal" - instead of the V3-B bare-video
+ * fast path, a youtube.com/watch URL now fetches its page HTML and
+ * parses the `ytInitialData` JSON the page itself renders from, the
+ * same data YouTube uses to draw the watch page: the clean title, a
+ * meta line (channel / subscribers / views / date), the real
+ * description, and the end-screen related-video grid (the initial
+ * HTML carries 12 endScreenVideoRenderer entries with videoId + thumb;
+ * the related *sidebar* is NOT in the initial response).
+ *
+ * All rows ride the SHARED page.state contract the generic projection/
+ * collection layers already handle - nothing renderer-specific, nothing
+ * per-app:
+ *   main video    MEDIA|V  -> collect_page_media -> VIDEO| (drives V3)
+ *   related thumb MEDIA|I + following LINK row   (the chhtml + UI
+ *   writers both turn an IMG tailed by a LINK into a tile whose action
+ *   is the go:<watch url> - click plays the related video)
+ * A related click lands back in do_fetch as go:watch?v=<id>, which is a
+ * watch page again, so it renders its own metadata + video. Exactly
+ * Chrome/Firefox behavior.
+ * ===================================================================== */
+
+static int youtube_watch_page(const char *url) {
+    return url && strstr(url, "youtube.com/watch") != NULL;
+}
+
+/* ---- tiny path-based JSON reader over a span (no alloc, no tree) --
+ * js_path_val() walks paths like
+ *   contents.twoColumnWatchNextResults.results.results.contents[0]
+ *     .videoPrimaryInfoRenderer.title.runs[0].text
+ * (array index = suffix bracket on a key component) and returns the
+ * START of the value at that path (NULL on miss). Objects/arrays are
+ * scanned to the current level by skipping sibling values; quotes and
+ * backslash escapes are honored inside strings. Assumes the same brace
+ * matched JSON sub-span the walker is handed (the ytInitialData blob). */
+
+static const char *js_ws(const char *p) {
+    if (!p) return NULL;
+    while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') p++;
+    return p;
+}
+
+static const char *js_str_end(const char *p) {
+    if (!p || *p != '"') return NULL;
+    p++;
+    while (*p) {
+        if (*p == '\\') { p += 2; continue; }
+        if (*p == '"') return p + 1;
+        p++;
+    }
+    return NULL;
+}
+
+/* skip one JSON value starting at p (quote/depth aware); return AFTER it */
+static const char *js_value_end(const char *p) {
+    p = js_ws(p);
+    if (!p) return NULL;
+    if (*p == '{' || *p == '[') {
+        int depth = 0;
+        char q = 0;
+        const char *s = p;
+        while (*s) {
+            if (q) {
+                if (*s == q) q = 0;
+                else if (*s == '\\') s++;
+            } else if (*s == '"') {
+                q = '"';
+            } else if (*s == '{' || *s == '[') {
+                depth++;
+            } else if (*s == '}' || *s == ']') {
+                depth--;
+                if (depth <= 0) return s + 1;
+            }
+            s++;
+        }
+        return NULL;
+    }
+    if (*p == '"') return js_str_end(p);
+    while (*p && *p != ',' && *p != '}' && *p != ']') p++;
+    return p;
+}
+
+/* inside object `{"...":val,...}` - value start for `key`, or NULL.
+ * A non-matching key is skipped via js_value_end, so a duplicate key
+ * at the same level just wins; nested same-named keys never match. */
+static const char *js_obj_val(const char *obj, const char *key) {
+    if (!obj || *obj != '{') return NULL;
+    const char *p = obj + 1;
+    for (;;) {
+        p = js_ws(p);
+        if (!p || !*p || *p == '}') return NULL;
+        const char *ke = js_str_end(p);
+        if (!ke) return NULL;
+        size_t kl = strlen(key);
+        if (kl == (size_t)(ke - p - 2) && memcmp(p + 1, key, kl) == 0) {
+            const char *c = js_ws(ke);
+            return (c && *c == ':') ? js_ws(c + 1) : NULL;
+        }
+        p = js_ws(ke);
+        if (!p || *p != ':') return NULL;
+        p = js_value_end(p + 1);
+        if (!p) return NULL;
+        if (*p == ',') { p++; continue; }
+        return NULL;
+    }
+}
+
+/* array: value start of element (0-based), or NULL when out of range */
+static const char *js_arr_val(const char *arr, int idx) {
+    if (!arr || *arr != '[') return NULL;
+    const char *p = arr + 1;
+    for (int n = 0;; n++) {
+        p = js_ws(p);
+        if (!p || !*p || *p == ']') return NULL;
+        if (n == idx) return p;
+        p = js_value_end(p);
+        if (!p) return NULL;
+        p = js_ws(p);
+        if (*p == ',') { p++; continue; }
+        return NULL;
+    }
+}
+
+static const char *js_path_val(const char *v, const char *path) {
+    const char *p = path;
+    while (v && *p) {
+        char key[64];
+        int k = 0;
+        int idx = -1;
+        while (*p && *p != '.' && *p != '[') {
+            if (k < (int)sizeof(key) - 1) key[k++] = *p;
+            p++;
+        }
+        key[k] = 0;
+        if (*p == '[') {
+            idx = 0;
+            p++;
+            while (*p >= '0' && *p <= '9') { idx = idx * 10 + (*p - '0'); p++; }
+            if (*p == ']') p++;
+        }
+        if (*p == '.') p++;
+        if (idx >= 0) {
+            /* key component with an index suffix: obj[key] THEN [idx] */
+            if (key[0]) { v = js_obj_val(v, key); if (!v) return NULL; v = js_ws(v); }
+            v = js_arr_val(v, idx);
+            if (!v) return NULL;
+        } else {
+            v = js_obj_val(v, key);
+            if (!v) return NULL;
+        }
+        v = js_ws(v);
+    }
+    return v;
+}
+
+/* fetch a string value at path; unescape JSON escapes incl \uXXXX
+ * (nbsp -> space, bullet -> '-'). Returns 1 on found+non-empty. */
+static int js_get_str(const char *json, const char *path, char *out, size_t outsz) {
+    out[0] = 0;
+    const char *v = js_path_val(json, path);
+    if (!v || *v != '"') return 0;
+    const char *se = js_str_end(v);
+    if (!se) return 0;
+    const char *q = v + 1;
+    size_t o = 0;
+    while (q < se - 1 && o + 1 < outsz) {
+        if (*q == '\\' && q + 1 < se) {
+            q++;
+            switch (*q) {
+                case 'n': out[o++] = '\n'; break;
+                case 't': out[o++] = '\t'; break;
+                case 'r': out[o++] = '\r'; break;
+                case 'b': out[o++] = '\b'; break;
+                case 'f': out[o++] = '\f'; break;
+                case '/': out[o++] = '/'; break;
+                case '"': out[o++] = '"'; break;
+                case '\\': out[o++] = '\\'; break;
+                case 'u': {
+                    unsigned u = 0;
+                    int h;
+                    for (h = 0; h < 4 && q + 1 < se - 1; h++) {
+                        q++;
+                        int d = 0;
+                        if (*q >= '0' && *q <= '9') d = *q - '0';
+                        else if (*q >= 'a' && *q <= 'f') d = *q - 'a' + 10;
+                        else if (*q >= 'A' && *q <= 'F') d = *q - 'A' + 10;
+                        else break;
+                        u = (u << 4) | (unsigned)d;
+                    }
+                    if (u == 0xA0) u = 0x20;        /* nbsp -> space */
+                    if (u == 0x2022) u = 0x2D;      /* bullet -> '-' */
+                    if (u < 0x80) {
+                        if (u >= 0x20) out[o++] = (char)u;
+                    } else if (u < 0x800) {
+                        out[o++] = (char)(0xC0 | (u >> 6));
+                        out[o++] = (char)(0x80 | (u & 0x3F));
+                    } else {
+                        out[o++] = (char)(0xE0 | (u >> 12));
+                        out[o++] = (char)(0x80 | ((u >> 6) & 0x3F));
+                        out[o++] = (char)(0x80 | (u & 0x3F));
+                    }
+                    break;
+                }
+                default: out[o++] = *q; break;
+            }
+            q++;
+        } else {
+            out[o++] = *q++;
+        }
+    }
+    out[o] = 0;
+    return o > 0;
+}
+
+/* pull the `v=` watch id out of a youtube.com/watch URL */
+static void yt_vid_from_url(const char *url, char *out, size_t outsz) {
+    out[0] = 0;
+    const char *q = strchr(url, '?');
+    if (!q) return;
+    const char *vp = strstr(q, "v=");
+    if (!vp) return;
+    vp += 2;
+    size_t n = 0;
+    while (vp[n] && vp[n] != '&') n++;
+    if (n >= outsz) n = outsz - 1;
+    memcpy(out, vp, n);
+    out[n] = 0;
+}
+
+/* strip characters hostile to the page.state row format */
+static void yt_sanitize(char *s) {
+    char *w = s, *r = s;
+    while (*r) {
+        if (*r == '|') { r++; continue; }
+        if (*r == '\n' || *r == '\r' || *r == '\t') *w++ = ' ';
+        else *w++ = *r;
+        r++;
+    }
+    *w = 0;
+}
+
+#define YT_WRAP 78
+/* one paragraph (no stray \n) -> TEXT| rows, wrapped on spaces */
+static void yt_emit_para(FILE *out, char *para, int *lines, int maxlines) {
+    collapse_ws(para);
+    if (!para[0]) return;
+    char *s = para;
+    while (*s && *lines < maxlines) {
+        size_t L = strlen(s);
+        if (L <= YT_WRAP) { fprintf(out, "TEXT|%s\n", s); (*lines)++; break; }
+        size_t cut = YT_WRAP;
+        while (cut > (size_t)YT_WRAP / 2 && s[cut] && s[cut] != ' ') cut--;
+        if (s[cut] == ' ') {
+            s[cut] = 0;
+            fprintf(out, "TEXT|%s\n", s);
+            s += cut + 1;
+        } else {
+            char save = s[YT_WRAP];
+            s[YT_WRAP] = 0;
+            fprintf(out, "TEXT|%s\n", s);
+            s[YT_WRAP] = save;
+            s += YT_WRAP;
+        }
+        (*lines)++;
+    }
+}
+
+/* break js-decoded description (paragraphs on \n) into TEXT| rows */
+static void yt_emit_desc(FILE *out, const char *desc) {
+    static char buf[YT_WRAP * 200 + 8];
+    size_t dn = strlen(desc);
+    if (dn >= sizeof(buf) - 1) dn = sizeof(buf) - 1;
+    memcpy(buf, desc, dn);
+    buf[dn] = 0;
+    int lines = 0;
+    char *par = buf;
+    char *p = buf;
+    while (p && *p && lines < 120) {
+        if (*p == '\n') {
+            *p = 0;
+            yt_emit_para(out, par, &lines, 120);
+            par = p + 1;
+        }
+        p++;
+    }
+    if (par && *par) yt_emit_para(out, par, &lines, 120);
+}
+
+/* write the full watch-page row set; returns 1 when the fetched HTML
+ * carried ytInitialData (a real watch page). */
+static int ingest_youtube_watch(const char *html, const char *url, FILE *out) {
+    const char *mark = strstr(html, "var ytInitialData");
+    if (!mark) return 0;
+    const char *eq = strchr(mark, '=');
+    if (!eq) return 0;
+    const char *j0 = eq + 1;
+    while (*j0 == ' ' || *j0 == '\t') j0++;
+    if (*j0 != '{') return 0;
+    int depth = 0;
+    char q = 0;
+    const char *je = j0;
+    for (; *je; je++) {
+        if (q) {
+            if (*je == q) q = 0;
+            else if (*je == '\\') je++;
+        } else if (*je == '"') {
+            q = '"';
+        } else if (*je == '{') {
+            depth++;
+        } else if (*je == '}') {
+            depth--;
+            if (depth == 0) { je++; break; }
+        }
+    }
+    if (depth != 0) return 0;       /* malformed blob - fall back to generic */
+    (void)je;                        /* the walker self-bounds on object/value closers */
+
+    static const char *P =
+        "contents.twoColumnWatchNextResults.results.results.contents";
+    char title[600], chan[600], subs[300], views[300], date[300];
+    char desc[YT_WRAP * 200];
+    char pat[900];
+
+    snprintf(pat, sizeof(pat), "%s[0].videoPrimaryInfoRenderer.title.runs[0].text", P);
+    js_get_str(j0, pat, title, sizeof(title));
+    snprintf(pat, sizeof(pat), "%s[0].videoPrimaryInfoRenderer.viewCount.videoViewCountRenderer.viewCount.simpleText", P);
+    js_get_str(j0, pat, views, sizeof(views));
+    snprintf(pat, sizeof(pat), "%s[0].videoPrimaryInfoRenderer.dateText.simpleText", P);
+    js_get_str(j0, pat, date, sizeof(date));
+    snprintf(pat, sizeof(pat), "%s[1].videoSecondaryInfoRenderer.owner.videoOwnerRenderer.title.runs[0].text", P);
+    js_get_str(j0, pat, chan, sizeof(chan));
+    snprintf(pat, sizeof(pat), "%s[1].videoSecondaryInfoRenderer.owner.videoOwnerRenderer.subscriberCountText.simpleText", P);
+    js_get_str(j0, pat, subs, sizeof(subs));
+    snprintf(pat, sizeof(pat), "%s[1].videoSecondaryInfoRenderer.attributedDescription.content", P);
+    js_get_str(j0, pat, desc, sizeof(desc));
+
+    char vid[32];
+    yt_vid_from_url(url, vid, sizeof(vid));
+    if (!vid[0] && !title[0] && !chan[0]) return 0;   /* not a watch page's shape */
+    if (!title[0] && chan[0]) snprintf(title, sizeof(title), "%s", chan);
+
+    yt_sanitize(title);
+    yt_sanitize(chan);
+    yt_sanitize(subs);
+    yt_sanitize(views);
+    yt_sanitize(date);
+
+    fprintf(out, "URL|%s\n", url);
+    if (vid[0]) {
+        /* main video first: collect_page_media sprites the poster and
+         * emits the VIDEO| row video_start_if_page_has_video() keys on */
+        fprintf(out, "MEDIA|V|https://www.youtube.com/watch?v=%s|https://i.ytimg.com/vi/%s/hqdefault.jpg\n", vid, vid);
+    }
+    fprintf(out, "TITLE|%s\n", title[0] ? title : "YouTube");
+    {
+        char meta[900];
+        size_t mo = 0;
+        const char *parts[4] = { chan, subs, views, date };
+        for (int pi = 0; pi < 4; pi++) {
+            if (!parts[pi][0]) continue;
+            if (mo) {
+                if (mo < sizeof(meta) - 3) { meta[mo++] = 0xC2; meta[mo++] = 0xB7; meta[mo++] = ' '; }
+            }
+            size_t pl = strlen(parts[pi]);
+            if (pl >= sizeof(meta) - mo) pl = sizeof(meta) - mo - 1;
+            memcpy(meta + mo, parts[pi], pl);
+            mo += pl;
+        }
+        meta[mo] = 0;
+        if (meta[0]) fprintf(out, "TEXT|%s\n", meta);
+    }
+    yt_emit_desc(out, desc);
+
+    /* end-screen related videos: 12 thumbnails from the player overlay */
+    for (int i = 0; i < 12; i++) {
+        char rp[900], rp2[1000];
+        snprintf(rp, sizeof(rp),
+            "playerOverlays.playerOverlayRenderer.endScreen.watchNextEndScreenRenderer.results[%d].endScreenVideoRenderer", i);
+        char rvid[32], rtitle[700];
+        snprintf(rp2, sizeof(rp2), "%s.videoId", rp);
+        if (!js_get_str(j0, rp2, rvid, sizeof(rvid))) break;
+        snprintf(rp2, sizeof(rp2), "%s.title.simpleText", rp);
+        if (!js_get_str(j0, rp2, rtitle, sizeof(rtitle))) snprintf(rtitle, sizeof(rtitle), "Video");
+        yt_sanitize(rtitle);
+        char shortlab[48];
+        snprintf(shortlab, sizeof(shortlab), "%s", rtitle);
+        shortlab[40] = 0;
+        if (shortlab[0]) {
+            fprintf(out, "MEDIA|I|https://i.ytimg.com/vi/%s/hqdefault.jpg|%s\n", rvid, shortlab);
+            fprintf(out, "LINK|https://www.youtube.com/watch?v=%s|%s\n", rvid, rtitle);
+        }
+    }
+
+    return 1;
+}
+
 static void do_fetch(const char *url_in, int record_history) {
     char url[PATH_BUF];
     if (g_current_url[0]) resolve_url(g_current_url, url_in, url, sizeof(url));
@@ -2386,7 +2783,7 @@ static void do_fetch(const char *url_in, int record_history) {
      * (sprite_dir is only V2 fallback art; V3 ignores it and blits
      * surface.raw). Checked BEFORE curl so a multi-MB JS-heavy page is
      * never downloaded. Mirrors the image classifier's success shape. */
-    if (url_is_video(url)) {
+    if (url_is_video(url) && !youtube_watch_page(url)) {
         publish_status("ready");
         write_chtpm_projection();
         if (publish_direct_video(url)) {
@@ -2461,7 +2858,7 @@ static void do_fetch(const char *url_in, int record_history) {
      * starts the V3 op. Classify the URL itself and publish a poster-less
      * VIDEO| row (sprite_dir is only V2 fallback art; V3 ignores it).
      * Mirror the image path's commit/history/status shape exactly. */
-    if (url_is_video(url)) {
+    if (url_is_video(url) && !youtube_watch_page(url)) {
         if (publish_direct_video(url)) {
             video_start_if_page_has_video();
             if (record_history && g_current_url[0] && strcmp(g_current_url, url) != 0)
@@ -2475,7 +2872,30 @@ static void do_fetch(const char *url_in, int record_history) {
         }
     }
 
-if (ingest_4chan_catalog(url)) {
+    /* V4 2026-09-12: youtube.com/watch page - parse ytInitialData into
+     * CORE rows (main video + title + meta + desc), then let the shared
+     * layers finish: collect_page_media turns the MEDIA rows into
+     * sprite VIDEO|/IMG| rows (fetching the poster/related thumbs),
+     * video_start_if_page_has_video() starts the V3 op on the main row. */
+    if (youtube_watch_page(url)) {
+        char tmpy[PATH_BUF];
+        FILE *outy = atomic_open(g_page_state_path, tmpy, sizeof(tmpy));
+        int yt_ok = 0;
+        if (outy) {
+            yt_ok = ingest_youtube_watch(html, url, outy);
+            fclose(outy);
+            if (yt_ok) {
+                atomic_commit(g_page_state_path, tmpy);
+                collect_page_media(html, url);
+                video_start_if_page_has_video();
+                goto do_fetch_publish_done;
+            } else {
+                unlink(tmpy);            /* bad/odd watch shape - generic parse */
+            }
+        }
+    }
+
+    if (ingest_4chan_catalog(url)) {
         if (record_history && g_current_url[0] && strcmp(g_current_url, url) != 0)
             stack_push(g_back_path, g_current_url);
         snprintf(g_current_url, sizeof(g_current_url), "%s", url);
@@ -2517,6 +2937,9 @@ if (ingest_4chan_catalog(url)) {
         video_start_if_page_has_video();
     }
 
+    /* shared post-content tail (YT branch jumps here past the generic
+     * parse; 4chan keeps its own inline copy) */
+do_fetch_publish_done:
     if (record_history && g_current_url[0] && strcmp(g_current_url, url) != 0)
         stack_push(g_back_path, g_current_url);
     snprintf(g_current_url, sizeof(g_current_url), "%s", url);
@@ -3177,8 +3600,18 @@ static void write_ui_projection(void) {
         FILE *pf = fopen(g_page_state_path, "r");
         int rc = 0;
         if (pf) {
-            char line[PATH_BUF + 512];
-            while (fgets(line, sizeof(line), pf) && rc < 400) {
+            /* in-memory rows so an IMG depleted by an adjacent LINK (the
+             * watch-page related-tile pattern) reads far enough ahead. */
+            enum { NB_UI_ROWS_MAX = 128 };
+            char (*rows)[PATH_BUF + 512] = malloc(sizeof(*rows) * NB_UI_ROWS_MAX);
+            if (!rows) { fclose(pf); pf = 0; }
+            if (!pf) { UI_PUT("content_count=0\ncontent_empty=1\nempty_msg=Ready - enter a URL above\n"); }
+            else {
+            int nrow = 0;
+            while (nrow < NB_UI_ROWS_MAX && fgets(rows[nrow], sizeof(rows[0]), pf)) nrow++;
+            fclose(pf);
+            for (int ri = 0; ri < nrow && rc < 400; ri++) {
+                char *line = rows[ri];
                 size_t n = strlen(line);
                 while (n > 0 && (line[n-1] == '\n' || line[n-1] == '\r')) line[--n] = 0;
                 char *bar = strchr(line, '|');
@@ -3208,6 +3641,20 @@ static void write_ui_projection(void) {
                     uisan(rest, s1, sizeof(s1));        /* sprite dir */
                     char lab_s[700]; uisan(s2[0] ? s2 : " ", lab_s, sizeof(lab_s));
                     UI_PUT("c_%d_kind=img\nc_%d_is_media=1\nc_%d_sprite=%s\nc_%d_label=%s\n", rc, rc, rc, s1, rc, lab_s);
+                    /* V4 2026-09-12: an IMG immediately tailed by a LINK
+                     * row is the tile's action (watch-page related videos
+                     * arrive as IMG+LINK pairs) - emit the go: and consume
+                     * the LINK, mirroring the chhtml writer's img+link
+                     * run pairing so both projections stay clickable. */
+                    if (ri + 1 < nrow && strncmp(rows[ri + 1], "LINK|", 5) == 0) {
+                        char *lnext = rows[ri + 1] + 5;
+                        char *ubar = strchr(lnext, '|');
+                        if (ubar) *ubar = 0;
+                        char url_sq[PATH_BUF * 2];
+                        shell_escape_squote(lnext, url_sq, sizeof(url_sq));
+                        UI_PUT("c_%d_action='%s/ops/nb_write_go.sh' 'go' '%s'\n", rc, g_package_dir, url_sq);
+                        ri++;
+                    }
                 } else if (strcmp(kind, "VIDEO") == 0) {
                     /* VIDEO|<sprite_dir>|<url>|<alt> */
                     char *b2 = strchr(rest, '|');
@@ -3239,7 +3686,8 @@ static void write_ui_projection(void) {
                 }
                 rc++;
             }
-            fclose(pf);
+            free(rows);
+            }
         }
         UI_PUT("content_count=%d\n", rc);
         UI_PUT("content_empty=%d\n", rc == 0 ? 1 : 0);
