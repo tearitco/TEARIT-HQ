@@ -14026,11 +14026,35 @@ static void kh_open_cli_io_context_menu(Elem *target, int win_px, int win_py) {
      * comment above. */
     if (!dpy || g_cliio_ctx_win) return;
     g_cliio_ctx_n = kh_load_cli_io_context_menu(g_cliio_ctx_items, 8);
-    /* REAL, NEW 2026-09-14, direct live report ("we shouldn't assume
-     * menu entries or opps") - zero real CTXMENU rows in THIS window's
-     * own meta.pdl means this app never opted in - a real, deliberate
-     * no-op, not a house-wide assumed Cut/Copy/Paste default. */
-    if (g_cliio_ctx_n == 0) return;
+    /* REAL FIX 2026-09-14, direct live report ("nothing is opening from
+     * right click... should have a context menu open default on all
+     * right clicks") - same real fallback shape load_methods()'s own
+     * caller already uses for entities (zero real METHOD rows still
+     * gets a real, sane "Close" inserted, never a blank menu) - a
+     * window whose manager hasn't written any CTXMENU rows yet still
+     * gets a real, sane default here: Cut/Copy/Paste when the click
+     * landed on a real cli_io/text_area (there's real buffer/selection
+     * state to act on), or just Cancel for a plain window-space right-
+     * click (nothing else generically meaningful to offer there without
+     * assuming app-specific "opps" - see this block's own earlier
+     * header comment on why CUT/COPY/PASTE specifically are safe,
+     * universal built-ins, not an app-specific assumption). A real
+     * CTXMENU row in meta.pdl still fully REPLACES this default - the
+     * fallback only fires when the app hasn't configured anything. */
+    if (g_cliio_ctx_n == 0) {
+        int i = 0;
+        if (target) {
+            snprintf(g_cliio_ctx_items[i].label, sizeof(g_cliio_ctx_items[i].label), "Cut");
+            snprintf(g_cliio_ctx_items[i].action, sizeof(g_cliio_ctx_items[i].action), "CUT"); i++;
+            snprintf(g_cliio_ctx_items[i].label, sizeof(g_cliio_ctx_items[i].label), "Copy");
+            snprintf(g_cliio_ctx_items[i].action, sizeof(g_cliio_ctx_items[i].action), "COPY"); i++;
+            snprintf(g_cliio_ctx_items[i].label, sizeof(g_cliio_ctx_items[i].label), "Paste");
+            snprintf(g_cliio_ctx_items[i].action, sizeof(g_cliio_ctx_items[i].action), "PASTE"); i++;
+        }
+        snprintf(g_cliio_ctx_items[i].label, sizeof(g_cliio_ctx_items[i].label), "Cancel");
+        snprintf(g_cliio_ctx_items[i].action, sizeof(g_cliio_ctx_items[i].action), "CANCEL"); i++;
+        g_cliio_ctx_n = i;
+    }
     g_cliio_ctx_target = target;
     g_cliio_ctx_focus = 0;
     snprintf(g_full_id, sizeof(g_full_id), "Edit");
