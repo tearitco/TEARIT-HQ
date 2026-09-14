@@ -273,7 +273,32 @@ the honest "this mutated the real persistent world state, not a
 disposable session" caveat, is in `EVENT-TRIGGER-LAYER-PLAN.md`'s own
 "Next step" section.
 
-**Not yet started**: §3 Step 2 - the persistent bridge-watcher daemon
-that tails `master_ledger.txt` for `touched_npc` lines and actually
-fires the matching Common Event via `play_event.sh`. Real next task on
-this track.
+## 5. UPDATE (2026-09-14, same day) - Step 2 DONE, the full loop closes
+
+**The trigger layer is now real, end to end** - commit `7f64428d`. Built
+`pc_trigger_watcher.c` (new persistent bridge-watcher daemon, same real
+lifecycle shape as `pc_clock_daemon.c`), wired its launch alongside the
+clock daemon at all 6 real world-start sites, and built a real, minimal
+Common Event package (`common_events/cdda_beartrap_touch/`, mirroring
+`greet_player`'s own structure) for the bridge to actually call.
+
+**Proven live with a full debug trace**: walked the player onto
+`cdda_sample`'s real `x=6,y=5` tile with the watcher already running -
+it read the fresh `touched_npc` ledger line, ran `play_event.sh`
+automatically, and the target Common Event's own `interact_relay.txt`
+genuinely received a real `SHOW_TEXT_FILE:...` command. No events-hq
+editor, no Play button. This is NIGHT_05's own bar
+("walk into it, something happens, no manual step"), now genuinely met.
+
+Two real bugs found and fixed along the way (not glossed over):
+`mr_show_text.+x` needs a real text FILE path, not inline literal text;
+an early "fired twice" result traced to a genuinely stray orphaned
+watcher process from an earlier test launch, not a logic bug in the
+offset-tracking code. Full writeup, including the real, honest scope
+limitation (`play_event.sh`'s common-events dispatch has no per-entity
+scoping yet) and the "mutated real persistent state" caveat, is in
+`EVENT-TRIGGER-LAYER-PLAN.md`'s own "§3 Step 2" section.
+
+**This track is now CLOSED as a working end-to-end proof.** Downstream:
+`PLAY-MODE-ENTITY-HARNESS-DESIGN.md`'s "move" Common Event / Play Mode
+work is genuinely unblocked now - not yet started.
