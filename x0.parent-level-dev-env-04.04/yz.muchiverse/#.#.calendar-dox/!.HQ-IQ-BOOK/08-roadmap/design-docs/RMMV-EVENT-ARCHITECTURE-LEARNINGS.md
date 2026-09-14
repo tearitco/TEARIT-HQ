@@ -126,3 +126,68 @@ well.
 - `Game_Switches`' flat global numeric-ID scoping — too coarse for a
   multi-process, multi-entity house; `Game_SelfSwitches`' composite key
   is the real, useful shape (§6).
+
+## 7. Addendum (2026-09-14) — a real, closer-to-home precedent found AFTER §6, and it changes the answer
+
+Checked this house's own existing "ledger"/shared-state prior art before
+finalizing anything, per direct instruction ("those sorts of things
+should always be referenced"). Two real, concrete things change §6's
+recommendation:
+
+**`101.lpns+map+4/data/master_ledger.txt`** — a real, WORKING, already-
+proven in-house ledger for a turn-based multiplayer board game. Format
+(header row, real, currently in the file):
+```
+timestamp|epoch|player|turn|action_data|action_type
+2026-07-24T19:00:00|1|alice|0|x:1,y:0|move
+```
+Critically, per `ledger-4-agent-trace.md` §6: **this is ONE append-only
+file that is ALSO the replayed source of truth for all game state** —
+`game_turn_input.c`/`game_compose_frame.c` both reconstruct player
+positions by replaying the whole ledger from `config.txt`'s starting
+values forward. This directly CONTRADICTS §6's recommendation to keep
+`board_events.txt` (transient signal) and a separate keyed `LEDGER`
+file (durable state) apart — this house has already built, and proven
+live, the single-unified-append-log-as-source-of-truth pattern instead,
+in a directly comparable turn-based-game context (closer to
+piececraft-hq than RMMV is). **This is a better precedent to follow
+than RMMV's §3 split, being real, in-house, and already working** —
+worth strongly reconsidering §6's two-file split in favor of one
+append-only ledger the trigger watcher both reads (for new lines) and
+can replay (for "has this already fired" checks), rather than
+inventing a second keyed store.
+
+**`TPMOS_DRAGON_COMPAT.md`'s explicit standing architecture rule**
+(house-wide, not project-specific): *"Architecture Decision:
+Self-Contained vs Shared... Recommendation: Keep projects
+self-contained. Code duplication is acceptable for portability."* This
+matters directly for the "where should this ledger live" question the
+user asked: the house's own standing guidance leans AGAINST a shared
+top-level ledger directory that both khtpm (desktop) and piececraft-hq
+reach into — favoring each project owning its own state.
+
+**The one real, existing cross-project hand-off precedent**:
+`44.xyz.01.00/exchange/` — a real, currently-EMPTY, top-level directory
+(built for the drag-drop-test harness's pet-import case,
+`dd_check_import.c`: `<exchange_dir>/<pet_id>/state.txt` +
+`piece.pdl`). It's narrow and explicit — a one-time hand-off drop zone
+for moving ONE entity from one app to another — not a continuously-
+polled shared state bus. This is the real shape a THIN cross-app
+boundary should take here, if one is ever needed, not a general shared
+ledger directory.
+
+**Revised recommendation**: piececraft-hq's `board_events.txt` (and any
+replay-ledger built the `master_ledger.txt` way, per this addendum's
+first point) should stay SELF-CONTAINED inside piececraft-hq's own
+project directory, matching house convention — not moved to a new
+top-level shared dir. The actual "sharing" the trigger layer needs
+between khtpm (desktop, where events-hq's editor lives) and piececraft-
+hq already exists and doesn't need a new mechanism: each Common Event's
+own `event_pkg/` directory (with its `condition.pdl`/`event.pal`) is
+already the real, established shared contract both events-hq's editor
+and any future pc-hq-side bridge script read from — this was already
+true before today, nothing new to build there. A genuinely new
+top-level shared ledger directory is not needed for the trigger layer
+as currently scoped; keep it self-contained, per house convention,
+unless a real, concrete future need for cross-app hand-off arises — and
+if it does, model it on `exchange/`'s narrow shape, not a shared bus.
