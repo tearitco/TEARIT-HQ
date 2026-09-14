@@ -55,6 +55,12 @@ static void livedesk_spawn_desk(const char *house_root, const char *sroot, const
 static void livedesk_spawn_active_desk(const char *house_root);
 #ifndef _WIN32
 static void ktb_self_heal_active_desk_registry(KtbState *s); /* real def + header comment further down (ktb_reload() calls this before its own real definition) */
+/* REAL, NEW 2026-09-14 (see livedesk_spawn_desk()'s own already_live
+ * check, further down, for why) - real def + header comment further
+ * down; a direct /proc-cmdline-identity scan, the same ground-truth
+ * technique ktb_self_heal_active_desk_registry()'s own registry-restore
+ * half already trusts as its one source of truth. */
+static int ktb_find_live_pid_for_pal(const char *pal_path);
 #endif
 
 /* REAL, NEW 2026-09-01 - forward decl: ktb_reload() (defined before this
@@ -662,7 +668,20 @@ static int load_tabs(KtbState *s) {
             if (dup) {
                 /* One pal entity = one bottom-bar cell. Extra live PIDs
                  * (zorder respawn leftovers) stay on screen if we only
-                 * hide the tab; terminate the extra so Quit closes all. */
+                 * hide the tab; terminate the extra so Quit closes all.
+                 *
+                 * REAL, NEW 2026-09-14 - temporary debug logging at this
+                 * exact site (added live, fully removed here) caught the
+                 * real 2026-09-14 "entities killed over and over" bug
+                 * red-handed: `t.pid` matched `s->tabs[j].pid` exactly
+                 * every single time it fired - the "duplicate" was
+                 * always the entity's own single live PID, appearing
+                 * twice in the registry file due to a leftover per-
+                 * entity self-registration timer in khtpm_core_render.c
+                 * (removed, see tp_main()'s own header comment at the
+                 * old call site). This kill() call itself was correct,
+                 * general-purpose dup-handling logic all along - the
+                 * bug was upstream, feeding it a false duplicate. */
                 if (t.pid > 1) kill((pid_t)t.pid, SIGTERM);
                 continue;
             }
@@ -789,7 +808,30 @@ static void load_strip_user_cmd(KtbState *s) {
 void ktb_reload(KtbState *s) {
     load_tabs(s);
 #ifndef _WIN32
-    ktb_self_heal_active_desk_registry(s); /* see its own header comment - the manager's real replacement for the removed per-entity self-heal timer */
+    /* REAL, NEW 2026-09-14, direct live instruction ("restore this to
+     * a point where there were no complaints related to tb self
+     * healing. turn that off and just make sure the entities load
+     * first"): disabled entirely, not patched again. This function has
+     * now caused THREE separate real "entities die/flicker/vanish"
+     * incidents across two days (2026-09-13's book-stack SIGTERM bug,
+     * fixed in b5443a67; today's "appears then restarts" loop, fixed
+     * structurally earlier this same session via ktb_find_live_pid_
+     * for_pal(); and this final live incident, still recurring after
+     * that fix). Each fix closed one real race but the underlying
+     * shape - a periodic timer independently re-deciding "should this
+     * be running" against fast-moving, multi-writer process state -
+     * keeps producing a new one. Direct instruction is to stop
+     * patching this shape and turn it off. The original, simpler,
+     * already-proven mechanism (livedesk_spawn_active_desk(), called
+     * ONCE at manager startup by ktb_init(), no periodic re-check)
+     * still runs entities at launch - that's what "make sure the
+     * entities load first" refers to, and it's untouched by this
+     * change. A genuinely crashed entity will no longer be silently
+     * relaunched mid-session; that's a real, accepted trade-off, not
+     * an oversight - re-enabling self-heal (or building its real
+     * replacement) is real, separate, future work if that's ever
+     * needed, not a quick toggle back on. */
+    (void)ktb_self_heal_active_desk_registry; /* kept, unused - see comment above; not deleted so the real function + its full incident history stays in this file for whenever a real replacement is designed */
 #endif
     sync_tab_claims(s);
     sync_strip_claims(s);
@@ -2457,10 +2499,19 @@ static void livedesk_spawn_desk(const char *house_root, const char *sroot, const
      * registry before spawning anything, and skip any row whose pal is
      * already running - so even if this function somehow runs twice
      * concurrently (a second bug, a stuck lock, anything), it can never
-     * itself be the thing that launches two processes for one entity. */
+     * itself be the thing that launches two processes for one entity.
+     *
+     * REAL, NEW 2026-09-14 - Windows-only now. The already_live check
+     * below uses ktb_find_live_pid_for_pal()'s real /proc-cmdline
+     * ground-truth scan on every other platform instead (see that
+     * check's own header comment) - this registry snapshot is exactly
+     * the staleness hazard that caused the real "appears then
+     * restarts" bug, kept only where there's no /proc to scan. */
+#ifdef _WIN32
     int live_pids[KTB_LIVEDESK_MAX_OPEN], live_idx[KTB_LIVEDESK_MAX_OPEN];
     char live_ents[KTB_LIVEDESK_MAX_OPEN][128], live_paths[KTB_LIVEDESK_MAX_OPEN][KTB_PATH_BUF];
     int n_live = livedesk_read_open(house_root, live_pids, live_ents, live_paths, live_idx, KTB_LIVEDESK_MAX_OPEN);
+#endif
     while (fgets(line, sizeof(line), f)) {
         if (strncmp(line, "DESK", 4) != 0) continue;
         char *p = strchr(line, '|');
@@ -2515,14 +2566,47 @@ static void livedesk_spawn_desk(const char *house_root, const char *sroot, const
         }
         {
             int already_live = 0;
+#ifndef _WIN32
+            /* REAL FIX 2026-09-14, direct live report ("its now
+             * restarting and killing entities over and over again" /
+             * "make it so it never happens... use a marker file or
+             * something like std"): the registry-snapshot check below
+             * (live_paths[]/live_pids[], read ONCE at the top of this
+             * function) can be transiently stale - load_tabs() (runs
+             * far more often than this) can momentarily drop a
+             * genuinely-alive pal's registry line on a single
+             * ktb_pid_is_this_pal() false-negative, normally self-
+             * healed moments later, but if THIS function's own
+             * already_live check reads the registry in that narrow
+             * gap, it wrongly concludes the pal is dead and launches a
+             * genuine SECOND process - load_tabs()'s own correct
+             * dup-kill logic then SIGTERMs one of the two, real and
+             * indistinguishable from "appears then restarts." Real,
+             * structural fix (not just a reorder - this is the actual
+             * "never happens" version): skip the registry file
+             * entirely for this decision. /proc IS the real marker -
+             * each process's own /proc/<pid>/cmdline is a live,
+             * kernel-maintained, unforgeable record of its own
+             * identity, the same ground-truth technique this file's
+             * own self-heal registry-restore already trusts as its
+             * one source of truth (ktb_find_live_pid_for_pal()) -
+             * reused here instead of duplicating the scan. No registry
+             * staleness window can exist if the decision never
+             * consults the registry at all. */
+            already_live = (ktb_find_live_pid_for_pal(pal) > 0);
+#else
             for (int i = 0; i < n_live; i++)
                 /* REAL FIX 2026-09-13, direct live report ("some
                  * entities didn't show up on restart... is there a
                  * guard against that?") - see ktb_pid_is_this_pal()'s
                  * own header comment for the full PID-reuse story;
                  * plain ktb_pid_alive() alone let a reused PID falsely
-                 * skip a real respawn here. */
+                 * skip a real respawn here. Windows fallback only -
+                 * ktb_find_live_pid_for_pal()'s /proc scan is Linux-
+                 * only, see the #ifndef _WIN32 branch above for the
+                 * real, structural fix used everywhere else. */
                 if (strcmp(live_paths[i], pal) == 0 && ktb_pid_is_this_pal(live_pids[i], pal)) { already_live = 1; break; }
+#endif
             if (already_live) continue; /* real process already running for this pal - never double-spawn it */
         }
         /* REAL FIX 2026-08-31, direct live report ("asa/ava/book-stack/
@@ -2674,8 +2758,31 @@ static void ktb_self_heal_active_desk_registry(KtbState *s) {
      * calling it again here is a genuine no-op for every entity
      * that's really running and a real, safe respawn attempt for
      * anything that silently never launched - same real desk-
-     * consistency check, both halves, one process, one cadence. */
-    livedesk_spawn_active_desk(s->house_root);
+     * consistency check, both halves, one process, one cadence.
+     *
+     * REAL FIX 2026-09-14, direct live report ("its now restarting and
+     * killing entities over and over again" / "the cpu is slow, but
+     * this shouldn't happen on a weak cpu"): this call USED to run
+     * FIRST, before the registry-restore loop below. load_tabs() (runs
+     * every regular tick, far more often than this 10s-gated function)
+     * can transiently drop a genuinely-alive pal's registry line on a
+     * single momentary ktb_pid_is_this_pal() false-negative (see that
+     * function's own header comment) - normally harmless, corrected by
+     * THIS function's own restore loop moments later. But
+     * livedesk_spawn_active_desk()'s own already_live guard reads that
+     * SAME registry file - if it ran before the restore loop had a
+     * chance to repair a just-dropped line, it saw a live pal as
+     * missing and launched a genuine SECOND, duplicate real process
+     * for it. load_tabs()'s own dup-kill (correct logic for an actual
+     * zorder-respawn leftover) then SIGTERMed one of the two -
+     * indistinguishable from "appears then restarts," repeating every
+     * ~10s self-heal tick. Slower CPUs make the underlying transient
+     * /proc read hiccup this races against more likely, matching the
+     * report exactly. Fix: reconcile the registry (the loop below, real
+     * ground-truth /proc scan via ktb_find_live_pid_for_pal()) BEFORE
+     * ever asking "is it already live" - moved to the end of this
+     * function, after every registry line has had its chance to be
+     * repaired first. */
 
     char sroot[KTB_PATH_BUF];
     if (!livedesk_sessions_root(s->house_root, sroot, sizeof(sroot))) return;
