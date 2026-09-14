@@ -5,7 +5,7 @@
 # (Escape deliberately does NOT - too easy to hit by accident). The
 # window's [X] chrome button always works too. Format: ctrl+<key>,
 # optionally with shift:  ctrl+c   ctrl+q   ctrl+w   ctrl+shift+w
-close_combo=ctrl+c
+close_combo=ctrl+q
 
 # win_top_y: y (px) where a new HQ window spawns / fullscreen starts /
 # window drag is clamped - clears the GNOME panel + livedesk top strip.

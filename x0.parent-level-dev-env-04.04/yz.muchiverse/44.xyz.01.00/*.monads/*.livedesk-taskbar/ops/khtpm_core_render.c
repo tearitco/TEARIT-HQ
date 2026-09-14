@@ -1776,9 +1776,23 @@ static int g_key_shift = 0;
 static int g_key_ctrl = 0;
 /* PDL-configurable window-close combo. ESC never closes a real app
  * window (accident risk - direct instruction). This is the deliberate
- * close gesture, from #.desktop/hq_ui.pdl:  close_combo=ctrl+c
- * (the user can set ctrl+q, ctrl+w, ctrl+shift+w, ...). */
-static char g_close_combo[24] = "ctrl+c";
+ * close gesture, from #.desktop/hq_ui.pdl:  close_combo=ctrl+q
+ * (the user can set ctrl+w, ctrl+shift+w, ...).
+ *
+ * REAL FIX 2026-09-14, direct live report ("i tried selecting it
+ * didn't work" -> "is it competing with ctrl+c 2 kill?" -> "just
+ * change ctrl+c to kill to off for now. we will change kill to
+ * ctrl+q"): this default WAS ctrl+c, and handle_key()'s close-combo
+ * check below runs completely unconditionally, before any armed-field
+ * check - so a real Ctrl+C pressed to copy selected text out of an
+ * armed cli_io/text_area closed the WHOLE WINDOW first, every time,
+ * before the copy could ever register. Confirmed live: this is what
+ * silently killed a test window mid-copy-test this same session.
+ * Real fix for now: move the default off Ctrl+C entirely (ctrl+q) -
+ * a real fix that lets Ctrl+C mean copy while a field is armed,
+ * without touching close_combo, is real, separate follow-up work, not
+ * done here. */
+static char g_close_combo[24] = "ctrl+q";
 /* Top of the desktop work area - a new HQ window spawns here, fullscreen
  * starts here, and window drag can't go above it (clears the GNOME
  * panel + livedesk top strip). #.desktop/hq_ui.pdl: win_top_y=90 -
