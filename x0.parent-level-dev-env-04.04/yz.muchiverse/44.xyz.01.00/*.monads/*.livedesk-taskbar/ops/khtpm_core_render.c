@@ -10843,6 +10843,13 @@ static int g_grab_keyboard = LIVEDESK_USE_XGRAB_KEYBOARD;
  * this file's own real call sites below still just reads "WIN_PX" -
  * only its OWN declaration changed, not the 9 real places it's used. */
 static int WIN_PX = 64;
+/* REAL, NEW 2026-09-14 - this entity's own real, declared window-
+ * stacking priority (read_z_priority()'s own header comment for the
+ * full story - a real, general per-entity .pdl field, not a cursword-
+ * only hack). 0 = default, never self-raises; >0 = periodically self-
+ * raises in hq_idle_tick() so it stays visually on top of every
+ * default-priority sibling. */
+static int g_z_priority = 0;
 #define POLL_INTERVAL_USEC 300000
 #define TP_PATH_BUF 4352
 /* REAL FIX 2026-08-04, direct instruction ("desk has a grid... egg-pets
@@ -11794,6 +11801,44 @@ static int read_log_mode(const char *package_dir) {
         if ((size_t)(label_end - p) != klen || strncmp(p, key, klen) != 0) continue;
         result = atoi(end + 1) != 0;
         break;
+    }
+    fclose(f);
+    return result;
+}
+
+/* REAL, NEW 2026-09-14, direct live report ("entities should have z
+ * levels priorities when on desk in their pdl... cursword should
+ * always have highest z level priority. right now it hides behind
+ * castle") - a genuinely different Z from g_entity_z (that one is the
+ * "which floor am I on" grouping cursword's own c/v keys change,
+ * gating show/hide via desktop_active_z.txt; this one is real window
+ * STACKING order - which overlapping entity paints on top). Same real
+ * SECTION|KEY|VALUE STATE-row convention read_footprint_tiles() above
+ * already established - `STATE | z_priority | N` in the package's own
+ * meta.pdl, defaults to 0 (unaffected) when absent, so every existing
+ * entity keeps its current stacking behavior until it actually
+ * declares one. */
+static int read_z_priority(const char *package_dir) {
+    char path[TP_PATH_BUF];
+    snprintf(path, sizeof(path), "%s/meta.pdl", package_dir);
+    FILE *f = pdl_open(path);
+    if (!f) return 0;
+    char line[TP_PATH_BUF];
+    int result = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "STATE", 5) != 0) continue;
+        char *p = strchr(line, '|');
+        if (!p) continue;
+        p++;
+        while (*p == ' ') p++;
+        char *end = strchr(p, '|');
+        if (!end) continue;
+        char *label_end = end;
+        while (label_end > p && label_end[-1] == ' ') label_end--;
+        const char *key = "z_priority";
+        size_t klen = strlen(key);
+        if ((size_t)(label_end - p) != klen || strncmp(p, key, klen) != 0) continue;
+        result = atoi(end + 1);
     }
     fclose(f);
     return result;
@@ -14571,6 +14616,7 @@ static int tp_main(int argc, char **argv) {
         if (footprint_tiles < 1) footprint_tiles = 1;
         WIN_PX = footprint_tiles * GRID_CELL_PX;
     }
+    g_z_priority = read_z_priority(package_dir);
     read_menu_config(package_dir);
     /* REAL FIX 2026-08-04, direct instruction ("id like to see emojis
      * tho"): glyph.txt can now hold a real multi-byte UTF-8 emoji -
@@ -15113,6 +15159,28 @@ static int tp_main(int argc, char **argv) {
             load_camera_state(g_house_root);
             load_active_z(g_house_root);
             need_redraw = 1;
+        }
+
+        /* REAL, NEW 2026-09-14, direct live report ("cursword should
+         * always have highest z level priority. right now it hides
+         * behind castle") - real window-stacking enforcement for any
+         * entity that declared a nonzero z_priority in its own
+         * meta.pdl (read_z_priority()'s own header comment). Cheap,
+         * unconditional self-raise every real tick (this loop already
+         * runs every POLL_INTERVAL_USEC regardless) - XRaiseWindow on
+         * an already-topmost window is a real, cheap X-server no-op,
+         * so this costs nothing extra for the common "nothing else
+         * mapped since last tick" case, and correctly wins back the
+         * top spot the instant some OTHER, later-mapped/raised entity
+         * (like castle, appearing after cursword) would otherwise
+         * cover it. Honest, first-pass limitation, not silently
+         * hidden: this only guarantees "priority > 0 always beats
+         * priority == 0" - two different entities both declaring a
+         * nonzero priority would race each other's own tick timing,
+         * not a strict ordering by value yet; real, separate follow-up
+         * if that's ever needed. */
+        if (g_z_priority > 0) {
+            XRaiseWindow(dpy, win);
         }
 
         /* REAL, 2026-08-05: poll interact_relay.txt for an injected
