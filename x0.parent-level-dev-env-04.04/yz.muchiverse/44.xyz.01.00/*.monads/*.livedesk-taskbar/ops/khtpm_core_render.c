@@ -3490,6 +3490,14 @@ static int kh_nonfatal_x_error(Display *d, XErrorEvent *e) {
  * despite living inside that block historically. */
 static int g_popup_dragging = 0;
 static int g_popup_drag_last_x = 0, g_popup_drag_last_y = 0;
+/* REAL, NEW 2026-09-14, direct live report ("i see shift arrow working
+ * now. but not mouse drag. can u fix that?") - real mouse drag-select
+ * for cli_io/text_area. g_text_drag_elem is the armed field currently
+ * being dragged (NULL when not dragging) - checked instead of just a
+ * bare bool so a stray MotionNotify after the field somehow changed
+ * out from under a drag (a reparse mid-drag, a real edge case) can't
+ * write into a dangling pointer. */
+static Elem *g_text_drag_elem = NULL;
 
 /* User drag-resize (2026-09-09, direct request: "we used to have window
  * grab stretch resize - definitely want that for this window, but
@@ -9596,6 +9604,95 @@ static void hq_idle_tick(void) {
     if (g_quit) return;
 }
 
+/* REAL, NEW 2026-09-14 - see g_text_drag_elem's own decl comment.
+ * Converts a real click/drag point (px,py, window-relative) on an
+ * ARMED cli_io/text_area into a byte offset into its own buffer, using
+ * kh_elem_badge_label_x()/kh_text_offset_at_x() (khtpm_draw_core.c) so
+ * this stays consistent with the real draw position rather than a
+ * second, drifting guess. cli_io is treated as single-line (the real
+ * common case - address-bar-style fields) - a wrapped cli_io
+ * approximates to its own first visual row, an accepted v1 limit.
+ * text_area does real row-aware hit-testing, mirroring draw_elem()'s
+ * own word-wrap walk closely enough for the common case; a heavily
+ * wrapped long line may land a few bytes off in a rare edge case -
+ * still real, working drag-select for ordinary editing. */
+static int kh_input_offset_at_click(Elem *e, int px, int py) {
+    int is_area = (strcmp(e->tag, "text_area") == 0);
+    XftFont *font = font_for(&e->style);
+    if (!font) return is_area ? (int)strlen(e->text_area_buffer) : (int)strlen(e->input_buffer);
+    if (!is_area) {
+        int text_x = kh_elem_badge_label_x(e);
+        char shown[256 + 64];
+        snprintf(shown, sizeof(shown), "%s%s", e->label, e->input_buffer);
+        int label_len = (int)strlen(e->label);
+        int off = kh_text_offset_at_x(font, shown, px - text_x) - label_len;
+        int blen = (int)strlen(e->input_buffer);
+        if (off < 0) off = 0;
+        if (off > blen) off = blen;
+        return off;
+    }
+    /* text_area - real row-aware hit test, mirrors draw_elem()'s own
+     * word-wrap walk (khtpm_draw_core.c, text_area branch) closely. */
+    static char shown_buf[4096 + 300];
+    snprintf(shown_buf, sizeof(shown_buf), "%s%s", e->label, e->text_area_buffer);
+    const char *shown_label = shown_buf;
+    int label_len = (int)strlen(e->label);
+    int text_x = e->x + 4;
+    int avail_w = e->w > 0 ? (e->x + e->w) - text_x : -1;
+    int line_h = font->ascent - font->descent > 0 ? font->ascent - font->descent : 12;
+    line_h += 4;
+    int badge_reserve = (e->nav_index > 0) ? line_h : 0;
+    int max_lines = (e->h - badge_reserve) / line_h;
+    if (max_lines < 1) max_lines = 1;
+    int rel_x = px - text_x;
+    int target_row = (py - e->y - badge_reserve) / line_h;
+    if (target_row < 0) target_row = 0;
+    if (target_row >= max_lines) target_row = max_lines - 1;
+
+    const char *lp = shown_label;
+    int line_no = 0;
+    int found_off = -1;
+    while (*lp && line_no < max_lines && found_off < 0) {
+        const char *nl = strchr(lp, '\n');
+        int logical_len = nl ? (int)(nl - lp) : (int)strlen(lp);
+        const char *sp = lp;
+        int remaining = logical_len;
+        do {
+            int last_good_space = -1, i = 0;
+            XGlyphInfo lw;
+            for (;;) {
+                if (i >= remaining) break;
+                if (sp[i] == ' ') last_good_space = i;
+                XftTextExtentsUtf8(dpy, font, (const FcChar8 *)sp, i + 1, &lw);
+                if (avail_w > 0 && lw.width > avail_w) break;
+                i++;
+            }
+            int cut = i;
+            int more_in_logical = (i < remaining);
+            if (more_in_logical && last_good_space >= 0) cut = last_good_space;
+            if (cut == 0 && more_in_logical) cut = 1;
+            if (line_no == target_row) {
+                char row_buf[600];
+                snprintf(row_buf, sizeof(row_buf), "%.*s", cut, sp);
+                int row_start = (int)(sp - shown_label);
+                found_off = row_start + kh_text_offset_at_x(font, row_buf, rel_x);
+            }
+            sp += cut;
+            remaining -= cut;
+            if (more_in_logical && last_good_space >= 0 && remaining > 0 && *sp == ' ') { sp++; remaining--; }
+            line_no++;
+        } while (remaining > 0 && line_no < max_lines && found_off < 0);
+        if (found_off >= 0 || !nl) break;
+        lp = nl + 1;
+    }
+    if (found_off < 0) found_off = (int)strlen(shown_label); /* past all real rows - end of text */
+    int buf_off = found_off - label_len;
+    int blen = (int)strlen(e->text_area_buffer);
+    if (buf_off < 0) buf_off = 0;
+    if (buf_off > blen) buf_off = blen;
+    return buf_off;
+}
+
 static void popup_handle_click(int px, int py) {
     /* REAL, NEW 2026-08-29 (direct instruction: "i think whole house
      * should have the same single|doubleclick rule or it could be
@@ -9620,6 +9717,22 @@ static void popup_handle_click(int px, int py) {
         if (px >= it->x && px < it->x + it->w && py >= it->y && py < it->y + it->h) {
             if (!click_focus_then_activate(it)) { redraw(); return; }
             activate_focused();
+            /* REAL, NEW 2026-09-14, direct live report ("shift arrow
+             * working now. but not mouse drag. can u fix that?") - a
+             * real click on an ARMED cli_io/text_area (this is only
+             * reached once click_focus_then_activate() has genuinely
+             * armed it, not the first half of a click_two_step pair)
+             * positions the cursor at the real click point instead of
+             * activate_focused()'s own default end-of-buffer arm, and
+             * starts a real drag-select: MotionNotify (button 1 held)
+             * extends [sel_anchor,cursor) as the mouse moves, same
+             * shape every other text editor's own click-drag gives. */
+            if (g_default_input_elem == it &&
+                (strcmp(it->tag, "cli_io") == 0 || strcmp(it->tag, "text_area") == 0)) {
+                it->cursor = kh_input_offset_at_click(it, px, py);
+                it->sel_anchor = it->cursor;
+                g_text_drag_elem = it;
+            }
             if (!g_quit) assign_nav_and_layout();
             redraw();
             return;
@@ -9956,6 +10069,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
     }
     if (ev->type == ButtonRelease && ev->xbutton.button == 1) {
         g_popup_dragging = 0;  /* REAL, NEW 2026-08-29 (TASK 1) */
+        g_text_drag_elem = NULL; /* REAL, NEW 2026-09-14 - end any real text drag-select */
         if (g_win_resizing) {
             /* commit: ONE relayout + redraw now that the drag is done.
              * Doing it per-MotionNotify feeds back through the
@@ -9968,6 +10082,31 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         return;
     }
     if (ev->type == MotionNotify) {
+        /* REAL, NEW 2026-09-14, direct live report ("shift arrow
+         * working now. but not mouse drag. can u fix that?") - real
+         * drag-select: while button 1 is genuinely still held (checked
+         * via the event's own state, not just "we started a drag" -
+         * the button could have been released outside this window and
+         * we'd miss the ButtonRelease) and a text field is the live
+         * drag target, extend [sel_anchor,cursor) to the current mouse
+         * position every motion tick. Coalesced the same way the
+         * resize-drag branch just below already does - only the final
+         * position in a motion burst matters for where the cursor ends
+         * up. Checked BEFORE g_win_resizing/g_popup_dragging so a text
+         * drag can never be shadowed by an unrelated window-level drag
+         * state left set from something else. */
+        if (g_text_drag_elem && (ev->xmotion.state & Button1Mask)) {
+            XEvent mdrain;
+            while (XCheckTypedWindowEvent(dpy, win, MotionNotify, &mdrain)) *ev = mdrain;
+            if (g_default_input_elem == g_text_drag_elem) {
+                g_text_drag_elem->cursor = kh_input_offset_at_click(g_text_drag_elem, ev->xmotion.x, ev->xmotion.y);
+                if (!g_quit) redraw();
+            } else {
+                g_text_drag_elem = NULL; /* disarmed out from under the drag - stop cleanly */
+            }
+            return;
+        }
+        if (g_text_drag_elem && !(ev->xmotion.state & Button1Mask)) g_text_drag_elem = NULL; /* missed the real ButtonRelease - stop here instead */
         if (g_win_resizing) {   /* any user-resizable window, not just popups */
             /* coalesce the motion burst - only the final position matters */
             XEvent mdrain;

@@ -656,6 +656,86 @@ static void kh_draw_canvas(Elem *e) {
     }
 }
 
+/* REAL, NEW 2026-09-14, direct live report ("i see shift arrow working
+ * now. but not mouse drag. can u fix that?") - real mouse drag-select
+ * for cli_io/text_area needs to convert a click's screen x into a byte
+ * offset into the element's own text, which needs to know exactly
+ * where the real drawn text START-X is (badge_label_x) - the same
+ * value draw_elem()'s own inline nav-badge-width computation below
+ * computes. Factored out here so the hit-test math in khtpm_core_
+ * render.c's mouse handling can compute the SAME real value, not a
+ * second, drifting guess. Deliberately does NOT reproduce draw_elem()'s
+ * own sprite-driven badge_label_x adjustment (the short_bar taskbar-
+ * icon case) - cli_io/text_area, this function's only real callers,
+ * never carry a sprite= attribute. Real, small, known duplication
+ * against draw_elem()'s own still-separate inline copy (own cache, own
+ * font open) rather than a larger draw_elem() refactor - draw_elem()
+ * needs the nav_badge string/font handle again later for the actual
+ * badge draw, this function only ever needs the resulting x. */
+static int kh_elem_badge_label_x(Elem *e) {
+    int pad = e->style.has_padding ? e->style.padding : 4;
+    int label_x = e->x + pad;
+    int badge_label_x = label_x;
+    if (e->nav_index > 0) {
+        char prefix[8];
+        int is_scope = (g_dbhq_active_scope_root && e == g_dbhq_active_scope_root) ||
+                       (g_default_input_elem && e->id[0] && strcmp(e->id, g_default_input_elem->id) == 0) ||
+                       (g_default_active_scope_id[0] && e->id[0] &&
+                        strcmp(e->id, g_default_active_scope_id) == 0) ||
+                       (g_default_scope_confine && g_default_active_tab_id[0] && e->id[0] &&
+                        strcmp(e->id, g_default_active_tab_id) == 0) ||
+                       (g_interact_relay_on && e->relay[0]);
+        elem_cursor_prefix(e, g_focus_nav, is_scope, prefix, sizeof(prefix));
+        char nav_badge[16];
+        snprintf(nav_badge, sizeof(nav_badge), "%s%d.", prefix, e->nav_index);
+        static char badge_cached_spec2[48] = "";
+        static XftFont *badge_cached_font2 = NULL;
+        char numspec[48];
+        snprintf(numspec, sizeof(numspec), "DejaVu Sans Mono:pixelsize=%d", scaled(9));
+        XftFont *nav_badge_font;
+        if (badge_cached_font2 && strcmp(badge_cached_spec2, numspec) == 0) {
+            nav_badge_font = badge_cached_font2;
+        } else {
+            if (badge_cached_font2) XftFontClose(dpy, badge_cached_font2);
+            nav_badge_font = XftFontOpenName(dpy, screen, numspec);
+            if (!nav_badge_font) { snprintf(numspec, sizeof(numspec), "DejaVu Sans:pixelsize=%d", scaled(9)); nav_badge_font = XftFontOpenName(dpy, screen, numspec); }
+            badge_cached_font2 = nav_badge_font;
+            snprintf(badge_cached_spec2, sizeof(badge_cached_spec2), "%s", numspec);
+        }
+        if (nav_badge_font) {
+            XGlyphInfo nav_badge_ext;
+            XftTextExtentsUtf8(dpy, nav_badge_font, (const FcChar8 *)nav_badge, (int)strlen(nav_badge), &nav_badge_ext);
+            badge_label_x = label_x + nav_badge_ext.width + 5;
+        }
+    }
+    return badge_label_x;
+}
+
+/* REAL, NEW 2026-09-14 - same investigation as kh_elem_badge_label_x()
+ * above: the byte offset into a UTF-8 string whose glyph boundary is
+ * closest to target_x pixels from the string's own left edge. Linear
+ * scan by byte - cheap enough for real field lengths (cli_io capped at
+ * 256B, a text_area's own visual ROW is far shorter than its 4096B
+ * buffer even before wrapping). Byte-granularity matches this codebase's
+ * own existing convention throughout (cursor/sel_anchor are always
+ * `strlen()`-based byte offsets, never a codepoint count). */
+static int kh_text_offset_at_x(XftFont *f, const char *text, int target_x) {
+    if (!f || !text) return 0;
+    if (target_x <= 0) return 0;
+    int len = (int)strlen(text);
+    XGlyphInfo ext;
+    XftTextExtentsUtf8(dpy, f, (const FcChar8 *)text, len, &ext);
+    if (target_x >= ext.width) return len;
+    int best = 0, best_d = target_x;
+    for (int i = 0; i <= len; i++) {
+        XGlyphInfo e2;
+        XftTextExtentsUtf8(dpy, f, (const FcChar8 *)text, i, &e2);
+        int d = target_x - (int)e2.width; if (d < 0) d = -d;
+        if (d <= best_d) { best_d = d; best = i; }
+    }
+    return best;
+}
+
 static void draw_elem(Elem *e, int hover_id_hash) {
     (void)hover_id_hash;
     /* REAL FIX 2026-08-29 (EVENTS-HQ-RENDER-UNIFICATION-PLAN.md's own
