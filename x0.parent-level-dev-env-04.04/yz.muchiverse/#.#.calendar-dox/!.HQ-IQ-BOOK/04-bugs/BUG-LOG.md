@@ -222,6 +222,19 @@ note under it — don't silently edit it away.*
 
 ## Recently fixed (kept short — see 03-pitfalls for the general lesson each one produced)
 
+- **2026-09-14 — clicking a window in the taskbar didn't bring it to
+  front while always-on-top was off.** Direct live report. Root cause:
+  `kh_raise_and_focus()` (the taskbar's own FOCUSWIN handler) sent its
+  `_NET_ACTIVE_WINDOW` request and `XSetInputFocus` call with
+  `CurrentTime` - the EWMH spec explicitly documents `CurrentTime` here
+  as unreliable, since a real WM (Mutter) arbitrates focus-stealing
+  prevention against this timestamp; a request with no real timestamp
+  can be silently deprioritized for a WM-managed window. Worked fine
+  under override_redirect (bypasses the WM's arbitration entirely),
+  broke the moment windows became WM-managed. Fixed: track the real X
+  server timestamp of the taskbar's own most recent input event
+  (`g_last_event_time`, set once at the top of `hq_dispatch_xevent()`)
+  and pass that instead of `CurrentTime` to both calls.
 - **2026-09-04 — pc-hq "^" active-scope badge never showed.** Every
   generic-mode window draws through a serialize-Elem-to-text-then-
   reparse round trip, not `render_tree()` directly (confirmed zero

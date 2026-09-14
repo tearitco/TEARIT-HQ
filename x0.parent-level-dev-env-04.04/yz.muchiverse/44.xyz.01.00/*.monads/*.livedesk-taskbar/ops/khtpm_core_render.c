@@ -1773,6 +1773,20 @@ static Elem *g_default_input_elem;
  * End). default_cli_io_handle_key() reads it: Shift+move extends the
  * text selection, an unshifted move collapses it. */
 static int g_key_shift = 0;
+/* REAL, NEW 2026-09-14, direct live report ("clicking text-edit in tb
+ * didn't bring it to top in always on top off") - the real X server
+ * timestamp of the most recent real input event this process has seen
+ * (ButtonPress/KeyPress both carry a real `.time`), updated once at the
+ * top of hq_dispatch_xevent(). kh_raise_and_focus() used to pass
+ * CurrentTime to its _NET_ACTIVE_WINDOW request and XSetInputFocus -
+ * the EWMH spec explicitly calls CurrentTime unreliable there (a real
+ * WM uses this timestamp to arbitrate focus-stealing prevention against
+ * its own last-seen user activity time; Mutter can silently ignore/
+ * deprioritize a CurrentTime request for a WM-managed window instead of
+ * actually raising it - matches the report exactly: it worked while
+ * override_redirect bypassed the WM entirely, broke once windows became
+ * WM-managed). 0 (CurrentTime) until the first real event arrives. */
+static Time g_last_event_time = 0;
 static int g_key_ctrl = 0;
 /* PDL-configurable window-close combo. ESC never closes a real app
  * window (accident risk - direct instruction). This is the deliberate
@@ -9658,6 +9672,17 @@ static int g_pal_rmmv_button1_was_down = 0;
 static void kh_raise_and_focus(Window w) {
     if (!dpy || !w) return;
     XRaiseWindow(dpy, w);
+    /* REAL FIX 2026-09-14 - see g_last_event_time's own decl comment.
+     * CurrentTime here (both the ClientMessage below and
+     * XSetInputFocus) is the real, documented reason this could
+     * silently fail to raise a WM-managed window: Mutter's focus-
+     * stealing-prevention arbitrates on this timestamp against its own
+     * last-seen user-activity time, and a CurrentTime request carries
+     * no real evidence of "this really is a direct, fresh user action"
+     * - a real timestamp from the click that triggered this call does.
+     * Falls back to CurrentTime only if no real event has been seen
+     * yet (startup edge case). */
+    Time ts = g_last_event_time ? g_last_event_time : CurrentTime;
     Atom naw = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
     if (naw != None) {
         XEvent e; memset(&e, 0, sizeof(e));
@@ -9666,15 +9691,24 @@ static void kh_raise_and_focus(Window w) {
         e.xclient.message_type = naw;
         e.xclient.format = 32;
         e.xclient.data.l[0] = 2;            /* source: pager / direct user action */
-        e.xclient.data.l[1] = CurrentTime;
+        e.xclient.data.l[1] = ts;
         XSendEvent(dpy, RootWindow(dpy, DefaultScreen(dpy)), False,
                    SubstructureNotifyMask | SubstructureRedirectMask, &e);
     }
-    XSetInputFocus(dpy, w, RevertToParent, CurrentTime);
+    XSetInputFocus(dpy, w, RevertToParent, ts);
     XFlush(dpy);
 }
 
 static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
+    /* real, current server timestamp - see g_last_event_time's own decl
+     * comment. Every event type that carries one uses the same struct
+     * offset in Xlib's XEvent union (KeyPress/Release, ButtonPress/
+     * Release, MotionNotify all agree), so ev->xkey.time reads it
+     * correctly regardless of which of those this actually is. */
+    if (ev->type == KeyPress || ev->type == KeyRelease ||
+        ev->type == ButtonPress || ev->type == ButtonRelease ||
+        ev->type == MotionNotify)
+        g_last_event_time = ev->xkey.time;
 
     if (ev->type == Expose) {
         /* Coalesce the damage burst. X delivers one Expose per rectangle of
