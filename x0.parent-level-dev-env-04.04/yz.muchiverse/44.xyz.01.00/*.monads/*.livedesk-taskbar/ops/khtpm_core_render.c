@@ -116,6 +116,8 @@ static void kh_capture_click(int x, int y, int button);
 static void kh_capture_key(KeySym ks, char ch);
 static void redraw(void); /* REAL, forward declaration needed for dispatch()'s OPACITY_MINUS/OPACITY_PLUS handlers (NEW 2026-08-29 TASK 2) */
 static void kh_raise_and_focus(Window w); /* fwd - dispatch()'s FOCUSWIN handler uses it, defined near hq_dispatch_xevent */
+static void kh_open_cli_io_context_menu(Elem *target, int win_px, int win_py); /* fwd - hq_dispatch_xevent's ButtonPress (button 3) uses it, defined near close_context_menu */
+static int kh_dispatch_cli_io_ctx_event(XEvent *ev); /* fwd - same, real 1 if this event was for the ctx menu (caller should stop dispatching it further) */
 static int kh_key_history_code(KeySym ks, char ch); /* fwd - handle_key()'s interact-relay forward uses it before its real definition, near kh_capture_key */
 static void desktop_toggle_click_two_step(const char *house_root); /* fwd - dispatch()'s CLICK_TWOSTEP_TOGGLE handler uses it before its real definition, near desktop_load_click_two_step */
 static void desktop_set_font_scale(const char *house_root, int pct); /* fwd - dispatch()'s UI_SCALE_MINUS/PLUS handlers */
@@ -9823,6 +9825,13 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         ev->type == MotionNotify)
         g_last_event_time = ev->xkey.time;
 
+    /* REAL, NEW 2026-09-14 - the cli_io/text_area right-click context
+     * menu (see kh_dispatch_cli_io_ctx_event()'s own header comment)
+     * takes priority the same way the dock-menu popup's own click
+     * hit-test already does - checked first, before anything else,
+     * with real X11 pointer+keyboard grabs held on it while open. */
+    if (kh_dispatch_cli_io_ctx_event(ev)) return;
+
     if (ev->type == Expose) {
         /* Coalesce the damage burst. X delivers one Expose per rectangle of
          * a single damaged region (and a fresh burst every time another
@@ -10060,6 +10069,40 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
              * still near/over the row they just clicked (the common
              * case for a single Backspace right after), this alone
              * closes the gap without grabbing anything exclusively. */
+            /* REAL, NEW 2026-09-14, direct live report across several
+             * turns - real right-click context menu, "just like entity
+             * context menus... for the window (or subwindow)": a real
+             * right-click ANYWHERE in the window opens THIS window's
+             * own CTXMENU-driven menu (kh_open_cli_io_context_menu()'s
+             * own header comment) if its manager ever wrote any real
+             * CTXMENU rows to meta.pdl - a real, deliberate no-op
+             * otherwise (never a house-wide assumed default). If the
+             * click happens to land on a cli_io/text_area, that element
+             * becomes the real target (so a CUT/COPY/PASTE row, if the
+             * app's own meta.pdl declares one, has real buffer/
+             * selection state to act on) - target is NULL for a
+             * right-click on plain window space, which is fine for any
+             * OTHER app-declared action (dispatch()-routed, no target
+             * Elem needed) and simply means CUT/COPY/PASTE would be a
+             * no-op if chosen there. poll_agent_history()'s own
+             * MOUSE_EVENT dispatch deliberately never routes button 3
+             * to popup_handle_click() (that's a left-click activation
+             * path) - real right-click hit-testing lives here instead. */
+            if (ev->xbutton.button == 3) {
+                Elem *hit = NULL;
+                for (int i = 0; i < g_n_nav; i++) {
+                    Elem *it = g_nav[i];
+                    if (!it) continue;
+                    if ((strcmp(it->tag, "cli_io") == 0 || strcmp(it->tag, "text_area") == 0) &&
+                        ev->xbutton.x >= it->x && ev->xbutton.x < it->x + it->w &&
+                        ev->xbutton.y >= it->y && ev->xbutton.y < it->y + it->h) {
+                        hit = it;
+                        break;
+                    }
+                }
+                kh_open_cli_io_context_menu(hit, ev->xbutton.x, ev->xbutton.y);
+                return;
+            }
             XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
             kh_capture_click(ev->xbutton.x, ev->xbutton.y, (int)ev->xbutton.button);
             poll_agent_history();
@@ -13892,6 +13935,211 @@ static void close_context_menu(Display *dpy, Window popup) {
     if (g_grab_keyboard) kh_ungrab_kbd();
     XDestroyWindow(dpy, popup);
     popup_lock_release();
+}
+
+/* ---------- REAL, NEW 2026-09-14, direct live report across several
+ * turns ("what about a context menu for right click with cut/copy/
+ * paste/ (nav ready?)" -> "and can give cancel option too. read from
+ * .pdl like others" -> "is it possible to be done thru OP? to work on
+ * the ipc layer?" -> "no u misunderstand. each app may have its own
+ * uses for right click, so we shouldn't assume menu entries or opps"
+ * -> "can u do it? just like entity context menus? can be context menu
+ * for the window (or subwindow), just like entities is... can be
+ * handled by manager to an extent") - real right-click menu
+ * infrastructure for cli_io/text_area in "default"-mode HQ windows,
+ * built EXACTLY like entity mode's own real context menu already is:
+ * `load_methods()` (just above/before this block) reads real METHOD
+ * rows from `<package_dir>/meta.pdl` - a real file any entity's own
+ * manager can freely rewrite, no renderer change needed to add/change
+ * items. This does the identical thing, scoped to a NEW row type
+ * (`CTXMENU`) in the SAME meta.pdl, sourced from `g_package_dir` (this
+ * window's own package dir in "default" mode - the direct equivalent
+ * of tp_main's own per-entity package_dir). Zero house-wide default,
+ * zero assumed entries: a window/manager that never writes any CTXMENU
+ * rows gets a real, deliberate no-op on right-click - opt-in per app,
+ * exactly like every other real per-entity menu in this house already
+ * works. NOT delegated to a separate OP binary for the interactive
+ * parts (popup window, mouse/keyboard hit-testing, real X11 CLIPBOARD
+ * ownership) - those genuinely need to live in this process, an
+ * external op has no access to any of them - but CUT/COPY/PASTE are
+ * the only built-in recognized verbs; anything else an app's own
+ * meta.pdl declares (its own "opps") is dispatched through the exact
+ * same generic dispatch() every onclick= in this mode already uses, so
+ * a manager can wire its own right-click actions freely. Reuses
+ * measure_context_popup_w()/draw_context_menu()/close_context_menu()
+ * above verbatim (already generic, dpy/win/gc/items/n parameterized,
+ * no tp_main-only globals) rather than a second, drifting popup-render
+ * implementation. */
+static Window g_cliio_ctx_win = None;
+static GC g_cliio_ctx_gc = 0;
+static MethodItem g_cliio_ctx_items[8];
+static int g_cliio_ctx_n = 0;
+static int g_cliio_ctx_focus = 0;
+static Elem *g_cliio_ctx_target = NULL;
+
+/* Real `CTXMENU | Label | action` rows from THIS window's own
+ * `<package_dir>/meta.pdl` - same file, same pipe-delimited shape,
+ * same parse loop as load_methods()'s own real `METHOD` rows just
+ * above, a different row keyword so the two lists don't collide in one
+ * shared file. Zero rows (file missing, or an app that simply never
+ * writes any) -> n=0, real, deliberate "no menu" - never a house-wide
+ * assumed default. */
+static int kh_load_cli_io_context_menu(MethodItem *items, int max) {
+    char path[TP_PATH_BUF];
+    snprintf(path, sizeof(path), "%s/meta.pdl", g_package_dir);
+    FILE *f = pdl_open(path);
+    if (!f) return 0;
+    char line[TP_PATH_BUF];
+    int n = 0;
+    while (n < max && fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "CTXMENU", 7) != 0) continue;
+        char *p = strchr(line, '|');
+        if (!p) continue;
+        p++;
+        while (*p == ' ') p++;
+        char *end = strchr(p, '|');
+        if (!end) continue;
+        char *label_end = end;
+        while (label_end > p && label_end[-1] == ' ') label_end--;
+        size_t llen = (size_t)(label_end - p);
+        if (llen == 0 || llen >= sizeof(items[0].label)) continue;
+        memcpy(items[n].label, p, llen);
+        items[n].label[llen] = '\0';
+
+        char *a = end + 1;
+        while (*a == ' ') a++;
+        char *a_end = a + strcspn(a, "\r\n");
+        while (a_end > a && a_end[-1] == ' ') a_end--;
+        size_t alen = (size_t)(a_end - a);
+        if (alen == 0 || alen >= sizeof(items[0].action)) continue;
+        memcpy(items[n].action, a, alen);
+        items[n].action[alen] = '\0';
+        n++;
+    }
+    fclose(f);
+    return n;
+}
+
+static void kh_open_cli_io_context_menu(Elem *target, int win_px, int win_py) {
+    /* target may be NULL - a real, deliberate window-level (not
+     * element-specific) right-click, see this block's own header
+     * comment above. */
+    if (!dpy || g_cliio_ctx_win) return;
+    g_cliio_ctx_n = kh_load_cli_io_context_menu(g_cliio_ctx_items, 8);
+    /* REAL, NEW 2026-09-14, direct live report ("we shouldn't assume
+     * menu entries or opps") - zero real CTXMENU rows in THIS window's
+     * own meta.pdl means this app never opted in - a real, deliberate
+     * no-op, not a house-wide assumed Cut/Copy/Paste default. */
+    if (g_cliio_ctx_n == 0) return;
+    g_cliio_ctx_target = target;
+    g_cliio_ctx_focus = 0;
+    snprintf(g_full_id, sizeof(g_full_id), "Edit");
+    g_popup_w = measure_context_popup_w(dpy, g_cliio_ctx_items, g_cliio_ctx_n);
+    int h = POPUP_ROW_H * (g_cliio_ctx_n + 1);
+    int scr = DefaultScreen(dpy);
+    int sw = DisplayWidth(dpy, scr), sh = DisplayHeight(dpy, scr);
+    Window child_ret;
+    int rx = 0, ry = 0;
+    XTranslateCoordinates(dpy, win, RootWindow(dpy, scr), win_px, win_py, &rx, &ry, &child_ret);
+    if (rx + g_popup_w > sw) rx = sw - g_popup_w;
+    if (ry + h > sh) ry = sh - h;
+    if (rx < 0) rx = 0;
+    if (ry < 0) ry = 0;
+    popup_lock_acquire();
+    XSetWindowAttributes swa;
+    swa.override_redirect = True;
+    swa.background_pixel = alloc_pixel("#1c1c1c");
+    swa.event_mask = ExposureMask | ButtonPressMask | KeyPressMask;
+    g_cliio_ctx_win = XCreateWindow(dpy, RootWindow(dpy, scr), rx, ry, (unsigned)g_popup_w, (unsigned)h, 1,
+                                     CopyFromParent, InputOutput, CopyFromParent,
+                                     CWOverrideRedirect | CWBackPixel | CWEventMask, &swa);
+    XSetWindowBorder(dpy, g_cliio_ctx_win, alloc_pixel("#888888"));
+    XMapRaised(dpy, g_cliio_ctx_win);
+    g_cliio_ctx_gc = XCreateGC(dpy, g_cliio_ctx_win, 0, NULL);
+    XSetForeground(dpy, g_cliio_ctx_gc, alloc_pixel("#cccccc"));
+    if (g_grab_pointer) XGrabPointer(dpy, g_cliio_ctx_win, True, ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
+    if (g_grab_keyboard) XGrabKeyboard(dpy, g_cliio_ctx_win, True, GrabModeAsync, GrabModeAsync, CurrentTime);
+    draw_context_menu(dpy, g_cliio_ctx_win, g_cliio_ctx_gc, g_cliio_ctx_items, g_cliio_ctx_n, 1, g_cliio_ctx_focus);
+}
+
+static void kh_close_cli_io_context_menu(void) {
+    if (!g_cliio_ctx_win) return;
+    XFreeGC(dpy, g_cliio_ctx_gc);
+    close_context_menu(dpy, g_cliio_ctx_win);
+    g_cliio_ctx_win = None;
+    g_cliio_ctx_target = NULL;
+}
+
+static void kh_run_cli_io_context_action(const char *action) {
+    Elem *e = g_cliio_ctx_target; /* real, may be NULL - a window-level row has no specific text field */
+    if (strcmp(action, "COPY") == 0 || strcmp(action, "CUT") == 0) {
+        if (e) {
+            int is_area = (strcmp(e->tag, "text_area") == 0);
+            char *buf = is_area ? e->text_area_buffer : e->input_buffer;
+            int lo, hi;
+            if (kh_text_selection_range(e, buf, &lo, &hi)) {
+                char tmp[4096];
+                int n = hi - lo; if (n > (int)sizeof(tmp) - 1) n = (int)sizeof(tmp) - 1;
+                memcpy(tmp, buf + lo, (size_t)n); tmp[n] = '\0';
+                kh_clipboard_copy(tmp);
+                if (strcmp(action, "CUT") == 0) kh_text_delete_selection(e, buf);
+            }
+        } /* no target element under a window-level right-click: real, honest no-op */
+    } else if (strcmp(action, "PASTE") == 0) {
+        if (e) g_default_input_elem = e; /* paste lands at whichever field is armed - make sure it's really this one, if there is one */
+        kh_clipboard_request_paste();
+    } else if (strcmp(action, "CANCEL") != 0 && strcmp(action, "void") != 0) {
+        /* REAL, NEW 2026-09-14, direct live report ("each app may have
+         * its own uses for right click, so we shouldn't assume menu
+         * entries or opps") - CUT/COPY/PASTE are the only built-in
+         * verbs (real clipboard/selection access); anything else a
+         * window's own meta.pdl declares runs through the exact same
+         * generic dispatch() every onclick= in this mode already uses,
+         * regardless of whether this row had a specific text-field
+         * target - a manager can wire its own real right-click actions
+         * freely, same as any other method row. */
+        dispatch(action);
+    }
+    /* CANCEL/void: real, deliberate no-op, just closes below. */
+    kh_close_cli_io_context_menu();
+    if (!g_quit) redraw();
+}
+
+/* Returns 1 if this event belonged to the context menu (caller should
+ * stop dispatching it further); 0 if the menu isn't open or the event
+ * is for something else. Called first, at the very top of
+ * hq_dispatch_xevent(), same priority the dock-menu popup's own
+ * dispatch already gets. */
+static int kh_dispatch_cli_io_ctx_event(XEvent *ev) {
+    if (!g_cliio_ctx_win) return 0;
+    if (ev->type == Expose && ev->xexpose.window == g_cliio_ctx_win) {
+        draw_context_menu(dpy, g_cliio_ctx_win, g_cliio_ctx_gc, g_cliio_ctx_items, g_cliio_ctx_n, 1, g_cliio_ctx_focus);
+        return 1;
+    }
+    if (ev->type == ButtonPress) {
+        if (ev->xbutton.window != g_cliio_ctx_win) { kh_close_cli_io_context_menu(); if (!g_quit) redraw(); return 1; }
+        int row = ev->xbutton.y / POPUP_ROW_H - 1;
+        if (row >= 0 && row < g_cliio_ctx_n) kh_run_cli_io_context_action(g_cliio_ctx_items[row].action);
+        else { kh_close_cli_io_context_menu(); if (!g_quit) redraw(); }
+        return 1;
+    }
+    if (ev->type == KeyPress) {
+        KeySym ks; char buf8[8];
+        XLookupString(&ev->xkey, buf8, sizeof(buf8) - 1, &ks, NULL);
+        if (ks == XK_Escape) { kh_close_cli_io_context_menu(); if (!g_quit) redraw(); return 1; }
+        if (ks == XK_Down) { g_cliio_ctx_focus = (g_cliio_ctx_focus + 1) % g_cliio_ctx_n; draw_context_menu(dpy, g_cliio_ctx_win, g_cliio_ctx_gc, g_cliio_ctx_items, g_cliio_ctx_n, 1, g_cliio_ctx_focus); return 1; }
+        if (ks == XK_Up) { g_cliio_ctx_focus = (g_cliio_ctx_focus - 1 + g_cliio_ctx_n) % g_cliio_ctx_n; draw_context_menu(dpy, g_cliio_ctx_win, g_cliio_ctx_gc, g_cliio_ctx_items, g_cliio_ctx_n, 1, g_cliio_ctx_focus); return 1; }
+        if (ks == XK_Return || ks == XK_KP_Enter) { kh_run_cli_io_context_action(g_cliio_ctx_items[g_cliio_ctx_focus].action); return 1; }
+        /* real digit-jump nav, same shape as every other real house
+         * popup - '1'..'8' picks that row directly. */
+        if (buf8[0] >= '1' && buf8[0] <= '9') {
+            int n = buf8[0] - '1';
+            if (n < g_cliio_ctx_n) kh_run_cli_io_context_action(g_cliio_ctx_items[n].action);
+            return 1;
+        }
+        return 1; /* keyboard is grabbed to this popup - swallow anything else too */
+    }
+    return 0;
 }
 
 /* REAL, NEW 2026-08-04, direct instruction ("allow user editing of
