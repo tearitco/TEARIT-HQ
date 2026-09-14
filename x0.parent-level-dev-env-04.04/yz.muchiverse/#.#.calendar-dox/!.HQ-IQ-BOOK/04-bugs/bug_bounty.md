@@ -81,6 +81,37 @@ checking whether `khtpm_strip_keyboard_ascii.+x`-style relay delivery
 taskbar input) is involved here too, or whether this is purely direct-
 X11-KeyPress delivery failing.
 
+**Follow-up, 2026-09-14 - selection-highlight investigation, a REAL,
+SEPARATE, now-FIXED bug found alongside this one, not the same root
+cause**: tasked with checking whether "selection highlight never
+appears" is just downstream of this entry's own keyboard-delivery
+mystery, or a genuinely separate gap. Confirmed it is separate.
+`sel_anchor`/`cursor` selection state is tracked completely generically
+in `khtpm_core_render.c`'s key handler (`g_key_shift`-gated, not
+tag-gated) - a real `cli_io` gets exactly the same correct
+`[sel_anchor,cursor)` range as a `text_area` whenever a real Shift+Arrow
+keypress DOES reach it. But `&.widgits/_shared-lib/khtpm_draw_core.c`
+only ever drew the selection band (the `sel_lo`/`sel_hi` XFillRectangle
+`#2f5f8f`) inside the `<text_area>`-only branch - the separate,
+single-line `<cli_io>` draw path (same file, the `draw_label ==
+shown_label` block that already draws cli_io's own cursor bar) had NO
+equivalent code at all, so even a `cli_io` with a genuinely correct,
+non-collapsed selection range would render zero visible highlight.
+**Fixed**: added the same sel_lo/sel_hi band draw to the single-line
+cli_io path, same `#2f5f8f` fill, same scoping as the existing cursor
+bar (armed + unclipped label only). Rebuilt clean via
+`build_core_render.sh` in `*.monads/*.livedesk-taskbar/ops/` (pre-
+existing snprintf-truncation warnings only, no new warnings, no
+errors). **Not independently re-verified against real hardware input**
+because of the keyboard-delivery bug documented in this same entry -
+could not drive a real Shift+Arrow keystroke into any live or
+disposable test window with confidence it would actually arrive, so
+this fix is code-reviewed-correct (traced the identical logic pattern
+against the already-proven text_area branch) but not yet pixel-
+verified live. If the highlight still doesn't appear once the
+keyboard-delivery bug above is fixed, re-check this cli_io draw path
+first before assuming a third bug.
+
 ---
 
 ## ⚠️ REOPENED 2026-09-13 (4th occurrence): entities drop off the bottom taskbar after a while, but stay on-screen
