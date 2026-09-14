@@ -739,6 +739,50 @@ static void draw_elem(Elem *e, int hover_id_hash) {
         for (int i = 0; i < bw; i++)
             XDrawRectangle(dpy, buf, gc, e->x + i, e->y + i, e->w - 1 - 2 * i, e->h - 1 - 2 * i);
     }
+    /* REAL, NEW 2026-09-14 (network-browser video V4 "Nav row with
+     * play/pause + progress" request) - a real, generic `<bar>` element:
+     * progress/playhead strip (see Elem's own bar_value/bar_max comment
+     * in khtpm_render_core.c). The element's own bg (CSS or bg= override
+     * above) is the TRACK; the fill is value/max of the foreground width;
+     * a 1px bright playhead line marks the fill edge; an optional centered
+     * label (the v1 consumer publishes "0:07 / 0:18" time text) overlays
+     * the middle. max<=0 draws track-only (zero fill) - every existing
+     * element is untouched because nothing else ever sets bar_max. */
+    if (strcmp(e->tag, "bar") == 0) {
+        if (!e->style.has_bg_color) {
+            XSetForeground(dpy, gc, alloc_pixel("#222222"));
+            XFillRectangle(dpy, buf, gc, e->x, e->y, e->w, e->h);
+        }
+        if (e->bar_max > 0) {
+            int frac = e->bar_value;
+            if (frac < 0) frac = 0;
+            if (frac > e->bar_max) frac = e->bar_max;
+            int fill_px = (int)((long long)e->w * frac / e->bar_max);
+            if (fill_px > 0) {
+                XSetForeground(dpy, gc, alloc_pixel(e->style.has_fg_color ? e->style.fg_color : "#2f8f5f"));
+                XFillRectangle(dpy, buf, gc, e->x, e->y, (unsigned)fill_px, (unsigned)e->h);
+                /* 1px bright playhead at the fill edge (visible even when
+                 * value==max - the trailing edge of the last pixel). */
+                XSetForeground(dpy, gc, alloc_pixel("#ffcc00"));
+                int px = e->x + fill_px - 1;
+                if (px < e->x) px = e->x;
+                XDrawLine(dpy, buf, gc, px, e->y, px, e->y + e->h);
+            }
+        }
+        if (e->label[0]) {
+            XftFont *font = font_for(&e->style);
+            const char *def_fg = (window_is_dock() && kh_hex_luma(g_theme_bg) > 140) ? "#1c1c1c" : "#cccccc";
+            XftColor col = xft_color(e->style.has_fg_color ? e->style.fg_color : def_fg);
+            XGlyphInfo ext;
+            XftTextExtentsUtf8(dpy, font, (const FcChar8 *)e->label, (int)strlen(e->label), &ext);
+            int lx = e->x + (e->w - ext.width) / 2;
+            if (lx < e->x) lx = e->x;
+            int ly = e->y + (e->h + (font->ascent - font->descent)) / 2;
+            draw_text_emoji(font, &col, lx, ly, e->label);
+            XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &col);
+        }
+        return;
+    }
     if (strcmp(e->tag, "tab") == 0 && e->active && !e->style.has_bg_color) {
         XSetForeground(dpy, gc, alloc_pixel("#2a2a2a"));
         XFillRectangle(dpy, buf, gc, e->x, e->y, e->w, e->h);
