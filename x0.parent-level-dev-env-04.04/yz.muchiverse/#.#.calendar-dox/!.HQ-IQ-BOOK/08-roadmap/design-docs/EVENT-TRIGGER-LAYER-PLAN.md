@@ -62,22 +62,47 @@ Play button.
 - **The effect side (db-hq reads/writes, Show Text, Change Gold) is
   proven, live-verified this week** — not touched by this doc at all.
 
-## 3. The real, minimal design
+## 3. The real, minimal design — REVISED 2026-09-14, real hook point found
 
-**Step 1 — engine writes `board_events.txt`.** A small, real addition
-to whatever piececraft-hq code already detects tile-adjacency/pickup
-(needs its own follow-up code search into `pc_world_manager.c`/
-`pc_generate_chunk.c`'s movement-resolution path before implementation
-— not done in this doc, flagged as the real first implementation
-task). Append-only, one line per event, same convention every marker
-file in this house already uses: `touched_npc:NAME`,
-`picked_up:ITEM_ID`, `entered_tile:X,Y`. Lives alongside
-`pieces/hero_01/state.txt`, e.g. `pieces/display/board_events.txt`.
+**§4's own open question is now answered — and the answer changes this
+plan for the better: the "master ledger" this needs already EXISTS and
+is already live**, not something to build. Confirmed by direct code
+read: `pc_menu_input.c` and `pc_clock_daemon.c` BOTH already call a
+real `ledger_append(root, turn, actor, action_type, details)` that
+appends to `data/master_ledger.txt` in exactly the
+`timestamp|turn|actor|action_type|details` row format — the SAME
+format, independently, as `101.lpns+map+4`'s own proven ledger
+(`RMMV-EVENT-ARCHITECTURE-LEARNINGS.md` §7). It's already multi-writer
+TODAY: the player's own `MOVE` action appends `player|move|tick:N`
+(`pc_menu_input.c` line 1001) and each animal's own wander tick appends
+`<entity_id>|wander|x:N,y:N` (`pc_clock_daemon.c` line 194) to the
+exact same file. **`board_events.txt` as a separate new file is no
+longer the right design** — superseded by this finding; use
+`master_ledger.txt` directly instead, one new `action_type` value
+(`touched_npc`, `picked_up`, etc.) alongside the `move`/`wander`/
+`end_turn`/`jump` ones already there.
+
+**Step 1 — one new check inside the existing `MOVE` handler.**
+`pc_menu_input.c`'s `MOVE` case (~line 987-1001) already runs on every
+real player movement, AFTER board-viewer's own `bv_menu_input.c` has
+already written the player's new `pos_x`/`pos_y` to `xelector`'s state
+file (confirmed by that handler's own header comment: "the xelector's
+own pos_x/y/z were already written directly by board-viewer... before
+this ever arrives here"). Add: read the player's now-current position,
+compare against `events.pdl`'s registered `EVENT | x= y= |
+trigger=player-touch` rows, and on a match call the SAME
+`ledger_append()` already declared right there (line 304) with
+`action_type="touched_npc"` (or similar) instead of `"move"`. No new
+file, no new write mechanism — one new comparison and one new call to
+a function that's already sitting in scope.
 
 **Step 2 — the bridge script.** A new, small, standalone process
 (`tail -f`-shaped, per §2's own real precedent) watching
-`board_events.txt`. For each new line:
-1. Parse the trigger string (`touched_npc:NAME` etc.).
+`data/master_ledger.txt` for new lines (not `board_events.txt` — see
+above), filtering for the new `touched_npc`/etc. `action_type` values
+specifically. For each match:
+1. Parse the trigger string (`touched_npc:NAME` etc.) out of the
+   ledger row's `details` field.
 2. Look up whether ANY registered Common Event's `condition.pdl` has a
    matching `COND | trigger | <value>` row for that exact string — via
    the existing page-scan logic `play_event.sh` already has (reused,
@@ -88,23 +113,26 @@ file in this house already uses: `touched_npc:NAME`,
 **Step 3 — the smallest provable proof, per NIGHT_05's own bar**: one
 NPC, one trigger string, one Common Event, end to end. Walk the player
 piece onto `x=6,y=5` in `cdda_sample` (a real, already-existing
-`trigger=player-touch` row), confirm `board_events.txt` gets
-`touched_npc:t` (or whatever the real glyph/name resolves to)
-appended, confirm the bridge script fires `change_hp`/`change_state`
-on its own, confirm a real, checkable state change (an hp value in
-`hero_01/state.txt`, or a screenshot) — not "should work."
+`trigger=player-touch` row), confirm `data/master_ledger.txt` gets a
+new `...|touched_npc|...` line appended, confirm the bridge script
+fires `change_hp`/`change_state` on its own, confirm a real, checkable
+state change (an hp value in `hero_01/state.txt`, or a screenshot) —
+not "should work."
 
 ## 4. Open, real question before implementation starts
 
-- Exactly where in `pc_world_manager.c`/`pc_generate_chunk.c` does
-  movement get resolved each tick, and is there already an
-  adjacency/collision check close enough to append the trigger line
-  from, or does this need new tile-lookup code? **Not yet researched —
-  first real task when this doc moves from plan to build.**
+- ~~Exactly where in `pc_world_manager.c`/`pc_generate_chunk.c` does
+  movement get resolved each tick~~ **ANSWERED (2026-09-14)**: it
+  doesn't — `pc_world_manager.c` is world reset/init only, no movement
+  code. The real per-tick position-write happens cross-project in
+  board-viewer's own `bv_menu_input.c`; the real POST-move hook
+  piececraft-hq owns is `pc_menu_input.c`'s `MOVE` handler, per §3
+  Step 1 above.
 - Does the bridge script need to be a long-running daemon (like
   `pc_clock_daemon.c`) or can it be spawned/torn down alongside the
   piececraft-hq session itself? Match whichever existing lifecycle
   convention `pc_clock_daemon.c` already uses — don't invent a new one.
+  **Still open — next real question to answer.**
 
 ## 5. Downstream
 
@@ -116,6 +144,8 @@ that design doc's own §7 sequencing already says so.
 
 ## Next step
 
-Not started. First real task: trace `pc_world_manager.c`'s movement-
-resolution path to find (or confirm the absence of) an adjacency check
-Step 1 can hook into.
+Not started (no code written yet). Real hook point found and
+documented (§3/§4 above) — next actual task is implementing §3 Step 1
+(the adjacency check inside `pc_menu_input.c`'s `MOVE` handler) and
+Step 2 (the bridge watcher on `data/master_ledger.txt`), then proving
+§3 Step 3 end to end.
