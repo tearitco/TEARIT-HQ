@@ -9,6 +9,80 @@ re-open a NEW entry for the same symptom.
 
 ---
 
+## ⚠️ OPEN 2026-09-14: real physical keyboard input silently never arrives at an armed cli_io/text_area, despite grab+focus both reporting success
+
+**Reported:** direct live report on `text-edit-hq` - "i tried selecting it
+didn't work" → (after two separate, real selection-preservation bugs were
+found and fixed, see `03-pitfalls/HOUSE_CODE_PITFALLS.md` and commit
+`0bbaf435`) → "did u fix it? im still not getting selection highlight" →
+"yea its not working. but it seems like a focus issue cuz typing isn't
+working also. clicking nav in window still works." Confirmed: not a
+selection-specific bug at all - the field never receives ANY real
+keystrokes while this is happening, selection included.
+
+**Live evidence, `@.apps/text-edit-hq/kh_focus_debug.log`:**
+```
+05:39:54.525 GRAB key=editor attempts=1 rc=0(0=success) real_focus_is_us=1
+05:39:55.137 GRAB key=editor attempts=1 rc=0(0=success) real_focus_is_us=1
+05:39:55.357 GRAB key=editor attempts=1 rc=0(0=success) real_focus_is_us=1
+05:39:56.070 GRAB key=editor attempts=1 rc=0(0=success) real_focus_is_us=1
+05:39:57.740 GRAB key=editor attempts=1 rc=0(0=success) real_focus_is_us=1
+05:39:58.116 GRAB key=editor attempts=1 rc=0(0=success) real_focus_is_us=1
+05:40:12.997 INCREMENTAL_REPARSE ok removed=0
+```
+Six real `XGrabKeyboard` attempts in ~3.5 seconds, EVERY one reporting
+`rc=0` (success) AND `real_focus_is_us=1` (a live `XGetInputFocus`
+readback also confirms this window holds real X focus) - yet **zero
+`KEYPRESS` lines appear anywhere in this window**, despite the user
+actively typing during exactly this span. The repeated re-grabs
+themselves are real and concerning (something is re-triggering
+`activate_focused()` far more often than a single click-in explains -
+not yet root-caused, flagged separately in commit `0bbaf435`'s own
+message) - but the core mystery is that X11's own APIs report total
+success while real keystrokes are provably never delivered.
+
+**Matches a known, documented, historically-recurring house bug
+class - NOT a fresh discovery, but the SAME class showing up in a new
+place:**
+- `09-appendix/pc-hq-leg-vs-nu-fix.md` - "XGetInputFocus lies":
+  `override_redirect` windows under Mutter/XWayland can report
+  successful focus/grab via the X11 API while real hardware `KeyPress`
+  events never actually arrive. Documented as having regressed and
+  been re-fixed once already (`git show 35c1b0b1~1`) - a real,
+  confirmed recurring-regression pattern, not a one-off.
+- `1.^V-hq/_.0.aigent-testing-k9.txt` §F-19: a related instance in the
+  taskbar's own popup keyboard focus, same "reports success, doesn't
+  actually work" theme, only ever caught empirically (XTest
+  injection), never by code review.
+
+**The wrinkle that makes THIS occurrence not a clean match**: both
+prior documented cases were specifically about `override_redirect`
+windows. This house's `#.desktop/livedesk_override_redirect.pdl` is
+currently `false` (**managed** mode, not override_redirect / "always-
+on-top") - text-edit-hq is failing in the OPPOSITE state from what the
+existing docs describe. Either: (a) this is the same underlying WM/
+XWayland quirk showing up for managed windows too, for a related but
+distinct reason, or (b) it's a genuinely new, third cause that only
+looks similar. Not yet distinguished.
+
+**Real, cheap, not-yet-run diagnostic**: toggle the taskbar's own "@"
+button (always-on-top ON = override_redirect=true) and retry typing in
+text-edit-hq. If the symptom changes, that confirms override_redirect-
+vs-managed is the load-bearing variable here too, same as the
+documented cases. If it doesn't change either way, this is likely
+cause (b), a new mechanism, and the override_redirect docs are a red
+herring for this specific instance.
+
+**Not yet done**: the override_redirect toggle test above; finding
+what's actually re-triggering `activate_focused()` so often (the
+repeated-GRAB pattern itself, independent of whether keys arrive);
+checking whether `khtpm_strip_keyboard_ascii.+x`-style relay delivery
+(a separate raw-termios path some other house docs reference for
+taskbar input) is involved here too, or whether this is purely direct-
+X11-KeyPress delivery failing.
+
+---
+
 ## ⚠️ REOPENED 2026-09-13 (4th occurrence): entities drop off the bottom taskbar after a while, but stay on-screen
 
 **Reported:** 2026-09-11/12, direct live report: "why after a while
