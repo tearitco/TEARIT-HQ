@@ -81,6 +81,46 @@ checking whether `khtpm_strip_keyboard_ascii.+x`-style relay delivery
 taskbar input) is involved here too, or whether this is purely direct-
 X11-KeyPress delivery failing.
 
+**Live update 2026-09-14, same day - the override_redirect toggle test
+above WAS run, and rules out hypothesis (a):** direct report "shift
+arrow didn't have focus things are missing focus again." Confirmed:
+`#.desktop/livedesk_override_redirect.pdl` now reads `true`
+(always-on-top ON) - typing STILL fails in this state too:
+```
+06:20:03.255 GRAB key=editor attempts=1 rc=0(0=success) real_focus_is_us=1
+06:20:04.881 GRAB key=editor attempts=1 rc=0(0=success) real_focus_is_us=1
+06:20:15.390 GRAB key=editor attempts=1 rc=0(0=success) real_focus_is_us=1
+06:20:15.925 GRAB key=editor attempts=1 rc=0(0=success) real_focus_is_us=1
+06:20:16.330 GRAB key=editor attempts=1 rc=0(0=success) real_focus_is_us=1
+```
+No `KEYPRESS` lines follow any of these. Since it fails identically in
+BOTH override_redirect and managed states, this is **not** the same
+override_redirect-specific mechanism `pc-hq-leg-vs-nu-fix.md` documents
+- override_redirect-vs-managed is a red herring for this specific
+instance (cause (b) from the wrinkle above, not (a)).
+
+**New, real, differentiating clue** - the SAME tail of the log also
+shows the one real grab FAILURE seen so far:
+```
+06:16:53.704 GRAB key=editor attempts=6 rc=1(0=success) real_focus_is_us=1
+06:16:53.866 GRAB key=editor attempts=6 rc=1(0=success) real_focus_is_us=1
+06:16:54.355 KEYPRESS key=editor ks=107 ch=107(k)
+06:16:54.390 KEYPRESS key=editor ks=105 ch=105(i)
+...
+```
+`rc=1` here means the grab genuinely FAILED (the "(0=success)" in the
+log format string is a static label, not this line's own result) -
+yet real keys arrived immediately afterward anyway. This is the
+opposite of what "the grab delivers keys" would predict, and is worth
+taking seriously: it suggests the exclusive `XGrabKeyboard` itself may
+be the unreliable part under this Mutter/XWayland setup - not focus,
+not the arm logic - and that plain `XSetInputFocus`-based delivery
+(no active exclusive grab) may work MORE reliably here than the grab
+this file has always assumed it needs. Not yet tested directly (would
+need a real, deliberate "skip the grab, rely on focus alone" trial),
+but a real, concrete, differentiating next hypothesis - more promising
+than continuing to chase override_redirect.
+
 **Follow-up, 2026-09-14 - selection-highlight investigation, a REAL,
 SEPARATE, now-FIXED bug found alongside this one, not the same root
 cause**: tasked with checking whether "selection highlight never
