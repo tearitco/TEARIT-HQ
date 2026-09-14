@@ -56,15 +56,19 @@ SECTION      | desk_menu_action_2_label | +new-desk
 SECTION      | desk_menu_action_2_cmd   | livedesk:new-desk
 SECTION      | desk_menu_action_3_label | cancel
 
-# player cell (8.player) - converted from C-hardcoded 2026-09-08
-# (TASKBAR-MENU-ARCHITECTURE.md debt list). play/pause are inert
-# placeholders (empty cmd = just close); reset closes all entities and
-# respawns the current desk fresh (livedesk_reset_entities()).
-SECTION      | player_menu_1_label   | play
-SECTION      | player_menu_2_label   | pause
-SECTION      | player_menu_3_label   | reset
-SECTION      | player_menu_3_cmd     | livedesk:reset-entities
-SECTION      | player_menu_4_label   | Cancel
+# player cell (8.player) - REAL, NEW 2026-09-14, direct live report
+# ("play button doesn't work. resets nav. doesn't change a view."):
+# these static play/pause rows were the actual root cause -
+# livedesk_pdl_menu_rows() reads THIS file first, so it always won
+# over livedesk_build_player_menu()'s own real, dynamic "1.play: ON/
+# OFF" toggle fallback (khtpm_taskbar_manager.c), which never got a
+# chance to run at all. Removed entirely (not just the play/pause
+# rows - ANY real row here, including reset/Cancel, would have kept
+# short-circuiting the fallback) so the C-side dynamic build always
+# runs; that fallback already includes real, equivalent reset/Cancel
+# rows, so nothing is lost, only play/pause gains a real, live,
+# toggling command. See livedesk_build_player_menu()'s own comment
+# for the real row shape now in effect.
 
 # ai cell (14.h-ai) - converted from C-hardcoded 2026-09-08. Was the
 # original anti-pattern TASKBAR-MENU-ARCHITECTURE.md called out.
