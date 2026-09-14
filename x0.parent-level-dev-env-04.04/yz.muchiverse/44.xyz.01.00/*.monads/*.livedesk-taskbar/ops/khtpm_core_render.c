@@ -1768,6 +1768,37 @@ static Elem *find_page(const char *name) {
  * a stale armed-field pointer from the old tree is not just wrong, it
  * aliases whatever the new parse happens to write at that pool slot). */
 static Elem *g_default_input_elem;
+/* REAL, NEW 2026-09-14, direct live report ("cli-io can switch if
+ * cli-io is active or not active. get it? that can be checked by
+ * pdl... could that be handled thru layout/manager?") - g_default_
+ * input_elem (armed/not-armed) is real, current state that only ever
+ * existed inside this process; a manager has no way to see it, so it
+ * can't use it as a real switch to decide what layout/menu content to
+ * publish. Publishes a real, tiny state file, same convention as the
+ * existing .hq_manager/ui.txt vars publish (g_extra_vars_path) -
+ * `active=1`/`active=0`, written only on a real ARM<->UNARM transition
+ * (not every redundant re-arm of the same already-armed field), so a
+ * manager can poll it and use it exactly like any other switch this
+ * house's event/condition system already checks. Routed through ONE
+ * real setter (below) rather than patched into each of the several
+ * real g_default_input_elem = ... assignment sites by hand - single
+ * source of truth, no drift risk if a future call site gets added and
+ * someone forgets the publish. */
+static void kh_publish_cli_io_active(int active) {
+    if (!g_package_dir[0]) return;
+    char dir[PATH_BUF], path[PATH_BUF];
+    snprintf(dir, sizeof(dir), "%s/.hq_manager", g_package_dir);
+    mkdir(dir, 0777);
+    snprintf(path, sizeof(path), "%s/cli_io_active.txt", dir);
+    FILE *f = fopen(path, "w");
+    if (f) { fprintf(f, "active=%d\n", active); fclose(f); }
+}
+static void kh_set_default_input_elem(Elem *e) {
+    int was_active = (g_default_input_elem != NULL);
+    int now_active = (e != NULL);
+    g_default_input_elem = e;
+    if (was_active != now_active) kh_publish_cli_io_active(now_active);
+}
 /* REAL, NEW 2026-09-05 (TEXT_AREA-SCROLL-GUTTER-SELECTION-DESIGN.md) -
  * Shift-held state for the CURRENT key being dispatched. Set from
  * ev->xkey.state at the physical KeyPress site and per-code in
@@ -2028,7 +2059,7 @@ static int reparse_chtpm_if_changed(void) {
                 for (int i = 0; i < rl.n; i++) {
                     if (removed[i] == g_default_input_elem) {
                         kh_ungrab_kbd();
-                        g_default_input_elem = NULL;
+                        kh_set_default_input_elem(NULL);
                         kh_focus_debug_log("INCREMENTAL_REPARSE armed field genuinely removed - disarmed");
                     }
                     if (removed[i] == g_default_active_scope_root) {
@@ -2143,7 +2174,7 @@ static int reparse_chtpm_if_changed(void) {
         saved_cursor = g_default_input_elem->cursor;
         saved_sel_anchor = g_default_input_elem->sel_anchor;
     }
-    g_default_input_elem = NULL;
+    kh_set_default_input_elem(NULL);
     /* Same real dangling-pointer reasoning as g_default_input_elem just
      * above - a stale dropdown-open pointer into a freed/reused pool
      * slot is a real, live crash risk, not a cosmetic one. */
@@ -2176,7 +2207,7 @@ static int reparse_chtpm_if_changed(void) {
     if (saved_input_key[0]) {
         Elem *reelem = kh_find_input_by_key(new_window, saved_input_key);
         if (reelem) {
-            g_default_input_elem = reelem;
+            kh_set_default_input_elem(reelem);
             char *rbuf = strcmp(reelem->tag, "text_area") == 0 ? reelem->text_area_buffer : reelem->input_buffer;
             int rlen = (int)strlen(rbuf);
             /* REAL FIX 2026-09-14 - see saved_input_buf's own header
@@ -7103,7 +7134,7 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
      * chtpm_if_changed()'s own real safety net). */
     if (ks == XK_Escape) {
         kh_focus_debug_log("ESCAPE key=%s - explicit user disarm", e->target_id[0] ? e->target_id : e->id);
-        g_default_input_elem = NULL; kh_ungrab_kbd(); return;
+        kh_set_default_input_elem(NULL); kh_ungrab_kbd(); return;
     }
     /* REAL, NEW 2026-09-05 (CLIPBOARD-COPY-PASTE-DESIGN.md +
      * TEXT_AREA-SCROLL-GUTTER-SELECTION-DESIGN.md) - Ctrl+C / Ctrl+V /
@@ -7328,7 +7359,7 @@ static void default_grid_handle_key(KeySym ks, char ch) {
         return;
     }
     /* State 0: navigating. */
-    if (ks == XK_Escape) { g_default_input_elem = NULL; kh_ungrab_kbd(); return; }
+    if (ks == XK_Escape) { kh_set_default_input_elem(NULL); kh_ungrab_kbd(); return; }
     if (ks == XK_Up)    { if (e->grid_cur_row > 0) e->grid_cur_row--; return; }
     if (ks == XK_Down)  { e->grid_cur_row++; return; } /* no hard upper cap here - the MANAGER is the real bounds authority (SETCELL already rejects out-of-range refs), same as csv_hq_manager.c's own parse_cell_ref() */
     if (ks == XK_Left)  { if (e->grid_cur_col > 0) e->grid_cur_col--; return; }
@@ -7407,7 +7438,7 @@ static void activate_focused(void) {
          * different field, or this one after really being disarmed)
          * still gets the real re-focus convention below unchanged. */
         int already_armed = (g_default_input_elem == item);
-        g_default_input_elem = item;
+        kh_set_default_input_elem(item);
         if (!already_armed) {
             /* REAL, NEW 2026-09-05 - arm at the end of whatever's already
              * typed, matching every normal editor's own re-focus
@@ -7429,7 +7460,7 @@ static void activate_focused(void) {
      * jump or a still-"editing" flag from a previous arm would be a
      * real, confusing leftover state to resume into. */
     if (strcmp(item->tag, "grid") == 0) {
-        g_default_input_elem = item;
+        kh_set_default_input_elem(item);
         item->grid_jump_buffer[0] = '\0';
         item->grid_edit_mode = 0;
         kh_grab_keyboard_retry();
@@ -14110,7 +14141,7 @@ static void kh_run_cli_io_context_action(const char *action) {
             }
         } /* no target element under a window-level right-click: real, honest no-op */
     } else if (strcmp(action, "PASTE") == 0) {
-        if (e) g_default_input_elem = e; /* paste lands at whichever field is armed - make sure it's really this one, if there is one */
+        if (e) kh_set_default_input_elem(e); /* paste lands at whichever field is armed - make sure it's really this one, if there is one */
         kh_clipboard_request_paste();
     } else if (strcmp(action, "CANCEL") != 0 && strcmp(action, "void") != 0) {
         /* REAL, NEW 2026-09-14, direct live report ("each app may have
