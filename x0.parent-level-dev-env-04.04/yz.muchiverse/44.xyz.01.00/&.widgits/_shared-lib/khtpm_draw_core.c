@@ -656,22 +656,20 @@ static void kh_draw_canvas(Elem *e) {
     }
 }
 
-/* REAL, NEW 2026-09-14, direct live report ("i see shift arrow working
- * now. but not mouse drag. can u fix that?") - real mouse drag-select
- * for cli_io/text_area needs to convert a click's screen x into a byte
- * offset into the element's own text, which needs to know exactly
- * where the real drawn text START-X is (badge_label_x) - the same
- * value draw_elem()'s own inline nav-badge-width computation below
- * computes. Factored out here so the hit-test math in khtpm_core_
- * render.c's mouse handling can compute the SAME real value, not a
- * second, drifting guess. Deliberately does NOT reproduce draw_elem()'s
- * own sprite-driven badge_label_x adjustment (the short_bar taskbar-
- * icon case) - cli_io/text_area, this function's only real callers,
- * never carry a sprite= attribute. Real, small, known duplication
- * against draw_elem()'s own still-separate inline copy (own cache, own
- * font open) rather than a larger draw_elem() refactor - draw_elem()
- * needs the nav_badge string/font handle again later for the actual
- * badge draw, this function only ever needs the resulting x. */
+/* REAL, NEW 2026-09-05 (mouse drag-select for cli_io/text_area) -
+ * factored out of draw_elem()'s own inline nav-badge-width computation
+ * (kept as a real, small, deliberate duplicate against draw_elem()'s
+ * own copy rather than a bigger refactor, since draw_elem() needs the
+ * font handle again later for the actual badge draw). Used by
+ * kh_input_offset_at_click() (khtpm_core_render.c) to know where past
+ * the nav badge a click's real text-relative x actually starts.
+ *
+ * REAL, RESTORED 2026-09-14 - this function (and kh_text_offset_at_x
+ * below) were silently dropped from this file during a concurrent-
+ * agent commit collision (c9b0b7ff, "network bar V4") that overwrote
+ * this file from a copy predating this feature - reapplied verbatim
+ * from the original commit (13aba0a1) on top of that commit's own
+ * real <bar> draw work, not reverting it. */
 static int kh_elem_badge_label_x(Elem *e) {
     int pad = e->style.has_padding ? e->style.padding : 4;
     int label_x = e->x + pad;
@@ -713,12 +711,9 @@ static int kh_elem_badge_label_x(Elem *e) {
 
 /* REAL, NEW 2026-09-14 - same investigation as kh_elem_badge_label_x()
  * above: the byte offset into a UTF-8 string whose glyph boundary is
- * closest to target_x pixels from the string's own left edge. Linear
- * scan by byte - cheap enough for real field lengths (cli_io capped at
- * 256B, a text_area's own visual ROW is far shorter than its 4096B
- * buffer even before wrapping). Byte-granularity matches this codebase's
- * own existing convention throughout (cursor/sel_anchor are always
- * `strlen()`-based byte offsets, never a codepoint count). */
+ * closest to target_x pixels in - a linear XftTextExtentsUtf8 scan,
+ * real but O(n) per call (n = string length), acceptable for a single
+ * click/drag-motion event, not a per-frame hot path. */
 static int kh_text_offset_at_x(XftFont *f, const char *text, int target_x) {
     if (!f || !text) return 0;
     if (target_x <= 0) return 0;
@@ -818,6 +813,50 @@ static void draw_elem(Elem *e, int hover_id_hash) {
         int bw = e->style.has_border_width ? e->style.border_width : 1;
         for (int i = 0; i < bw; i++)
             XDrawRectangle(dpy, buf, gc, e->x + i, e->y + i, e->w - 1 - 2 * i, e->h - 1 - 2 * i);
+    }
+    /* REAL, NEW 2026-09-14 (network-browser video V4 "Nav row with
+     * play/pause + progress" request) - a real, generic `<bar>` element:
+     * progress/playhead strip (see Elem's own bar_value/bar_max comment
+     * in khtpm_render_core.c). The element's own bg (CSS or bg= override
+     * above) is the TRACK; the fill is value/max of the foreground width;
+     * a 1px bright playhead line marks the fill edge; an optional centered
+     * label (the v1 consumer publishes "0:07 / 0:18" time text) overlays
+     * the middle. max<=0 draws track-only (zero fill) - every existing
+     * element is untouched because nothing else ever sets bar_max. */
+    if (strcmp(e->tag, "bar") == 0) {
+        if (!e->style.has_bg_color) {
+            XSetForeground(dpy, gc, alloc_pixel("#222222"));
+            XFillRectangle(dpy, buf, gc, e->x, e->y, e->w, e->h);
+        }
+        if (e->bar_max > 0) {
+            int frac = e->bar_value;
+            if (frac < 0) frac = 0;
+            if (frac > e->bar_max) frac = e->bar_max;
+            int fill_px = (int)((long long)e->w * frac / e->bar_max);
+            if (fill_px > 0) {
+                XSetForeground(dpy, gc, alloc_pixel(e->style.has_fg_color ? e->style.fg_color : "#2f8f5f"));
+                XFillRectangle(dpy, buf, gc, e->x, e->y, (unsigned)fill_px, (unsigned)e->h);
+                /* 1px bright playhead at the fill edge (visible even when
+                 * value==max - the trailing edge of the last pixel). */
+                XSetForeground(dpy, gc, alloc_pixel("#ffcc00"));
+                int px = e->x + fill_px - 1;
+                if (px < e->x) px = e->x;
+                XDrawLine(dpy, buf, gc, px, e->y, px, e->y + e->h);
+            }
+        }
+        if (e->label[0]) {
+            XftFont *font = font_for(&e->style);
+            const char *def_fg = (window_is_dock() && kh_hex_luma(g_theme_bg) > 140) ? "#1c1c1c" : "#cccccc";
+            XftColor col = xft_color(e->style.has_fg_color ? e->style.fg_color : def_fg);
+            XGlyphInfo ext;
+            XftTextExtentsUtf8(dpy, font, (const FcChar8 *)e->label, (int)strlen(e->label), &ext);
+            int lx = e->x + (e->w - ext.width) / 2;
+            if (lx < e->x) lx = e->x;
+            int ly = e->y + (e->h + (font->ascent - font->descent)) / 2;
+            draw_text_emoji(font, &col, lx, ly, e->label);
+            XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &col);
+        }
+        return;
     }
     if (strcmp(e->tag, "tab") == 0 && e->active && !e->style.has_bg_color) {
         XSetForeground(dpy, gc, alloc_pixel("#2a2a2a"));
@@ -1554,44 +1593,6 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                 ty = e->y + e->h - 4;
                 if (ty < e->y + font->ascent) ty = e->y + font->ascent;
                 badge_label_x = e->x + pad;
-            }
-            /* REAL, NEW 2026-09-14 (bug_bounty.md "real physical
-             * keyboard input silently never arrives..." investigation
-             * - see that entry's 2026-09-14 followup) - <text_area>
-             * has real selection-highlight drawing (sel_lo/sel_hi,
-             * see that branch above), but this single-line <cli_io>
-             * path never did: sel_anchor/cursor ARE tracked generically
-             * for cli_io too (khtpm_core_render.c's key handler is not
-             * tag-gated), so a cli_io's own selection state was always
-             * real and correct - it just never got drawn. Same real
-             * band as text_area's: XFillRectangle behind the selected
-             * span, drawn BEFORE the glyphs so the text paints on top.
-             * Scoped like the cursor bar just below: only the
-             * unclipped (`draw_label == shown_label`) single-line case
-             * - a clipped cli_io skips the highlight rather than draw
-             * it at a wrong position, same reasoning as the cursor. */
-            if (strcmp(e->tag, "cli_io") == 0 && cli_io_armed && draw_label == shown_label) {
-                int label_len = (int)strlen(e->label);
-                Elem *live = g_default_input_elem;
-                if (live && live->sel_anchor != live->cursor) {
-                    int a = live->sel_anchor < live->cursor ? live->sel_anchor : live->cursor;
-                    int b = live->sel_anchor < live->cursor ? live->cursor : live->sel_anchor;
-                    int sel_lo = label_len + a;
-                    int sel_hi = label_len + b;
-                    if (sel_lo < 0) sel_lo = 0;
-                    if (sel_hi > (int)strlen(shown_label)) sel_hi = (int)strlen(shown_label);
-                    if (sel_hi > sel_lo) {
-                        XGlyphInfo pre, span;
-                        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)shown_label, sel_lo, &pre);
-                        XftTextExtentsUtf8(dpy, font, (const FcChar8 *)shown_label, sel_hi, &span);
-                        int hx = badge_label_x + pre.width;
-                        int hw = span.width - pre.width;
-                        if (hw < 2) hw = 2;
-                        XSetForeground(dpy, gc, alloc_pixel("#2f5f8f"));
-                        XFillRectangle(dpy, buf, gc, hx, ty - font->ascent, (unsigned)hw, (unsigned)(font->ascent + (font->descent > 0 ? font->descent : 2)));
-                        XSetForeground(dpy, gc, alloc_pixel(e->style.has_fg_color ? e->style.fg_color : default_fg));
-                    }
-                }
             }
             draw_text_emoji(font, &col, badge_label_x, ty, draw_label);
             /* REAL, NEW 2026-09-05 (CLI_IO-CURSOR-AND-TEXT_AREA-
