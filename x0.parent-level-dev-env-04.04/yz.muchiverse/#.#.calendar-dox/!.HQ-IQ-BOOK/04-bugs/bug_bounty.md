@@ -597,3 +597,61 @@ is setting this state DURING the process's life (post-startup, a real
 click-path bug) rather than pre-seeding it - re-open this entry and
 check for that distinction specifically, not just "does the bug still
 happen."
+
+---
+
+## Research pass 2026-09-14 (haiku) — keyboard-input-at-text-edit-hq bug
+
+**1. Related docs audit (pc-hq-leg-vs-nu-fix.md + §F-19):**
+
+`pc-hq-leg-vs-nu-fix.md` documents TWO prior instances of the SAME failure
+class ("XGetInputFocus lies") — override_redirect windows under Mutter/XWayland
+reporting successful focus/grab while real hardware KeyPress events never
+arrived. Both were fixes (git show 35c1b0b1~1 for one commit history). The
+§F-19 reference in `_.0.aigent-testing-k9.txt` points to a third, related
+taskbar popup-keyboard-focus bug where "reports success, doesn't work" was
+only ever caught empirically via XTest injection, never by code review alone.
+**Neither prior fix was ever actually applied to the CURRENT codebase** — the
+legacy code's per-frame XSetInputFocus re-assert loop (LEG 8943-8948, "survives
+click-away/click-back") is gone from NU; a 2026-09-08 attempt (`ae9e7d14`,
+reverted) to add managed-window support never made it to final form. No
+XTest-injection workaround code exists in production paths (XTest tools exist
+only in tile-picker testing suite for diagnostic use, not as delivery path).
+
+**2. Window creation + grab/focus code audit (khtpm_core_render.c):**
+
+- **Window creation (line 16770-16772)**: `win_managed = dock_managed || elem_has_class(g_window, "managed"); swa.override_redirect = win_managed ? False : (Bool)g_override_redirect;` — text-edit-hq lacks the "managed" class, so gets created with `override_redirect = g_override_redirect` (true by default), matching the EXPECTED state from the bug report.
+
+- **XGrabKeyboard call site (line 9181)**: `kh_grab_keyboard_retry()` function attempts grab up to 5 times (line 9180: `for (a = 0; a < 5; a++)`) with XSync + usleep between attempts — retries do exist and match the repeated GRAB log entries in the evidence.
+
+- **XSetInputFocus retry (line 16835-16842)**: A 5-attempt post-map focus retry loop EXISTS, but **only for popup windows inside the generic window-creation code** — NOT called for the text-edit-hq main window itself (condition check at line 16805 gates it to non-dock, but no equivalent wrap for the retry). The comment at line 8264-8273 explicitly notes this retry pattern as "2026-08-28 fix, popups are no longer getting nav/index focus" — but it's a per-map-time fix, not the per-frame re-assertion LEG had.
+
+- **Existing fallback mechanisms**: No per-frame XSetInputFocus re-assertion exists in the general idle-tick path. Comments at line 2557-2559 explicitly mention "XSync + XSetInputFocus storm on every idle redraw = the flicker regression. Not set for override_redirect windows (2026-09-03 flicker)." Line 7066-7069 references this same reasoning: "per-frame `pchq_focus_ok` loop is gone" (a real deletion from the refactor, not a forgotten wire-up). The retry at line 7395-7396 (`kh_grab_keyboard_retry()`) is called from `activate_focused()` (when user clicks), not from idle ticks.
+
+**3. XWayland/Mutter override_redirect documented behavior (broad grep):**
+
+- `pc-hq-leg-vs-nu-fix.md` §3-A, top comment (from LEG's own code): *"override_redirect windows never get real keyboard/mouse focus routed by Mutter (synthetic XTest input worked, masking the bug)."* — a real, proven, documented WM quirk, not a hypothesis.
+
+- §4 root-cause map: "keys never reach `handle_key()` ... Root: **`override_redirect` window**."
+
+- **2026-09-03 flicker regression** (comment line 2559) proves this has recurred before: a per-window per-frame focus re-assert was added, then removed because it caused flicker — suggesting Mutter itself rejects rapid repeated XSetInputFocus calls on override_redirect windows (the "SetInputFocus storm" comment).
+
+- **No XTest-delivery workaround anywhere**: XTest injection tools (`tp_test_send_key.c`) exist only in testing suite (`tile-picker/ops/`), never wired into production paths. The testing guide (`_.0.aigent-testing-k9.txt` SCOPE ADDENDUM, §F-19) explicitly names XTest as a DISCOVERY method ("only ever caught empirically") not a DELIVERY workaround.
+
+**4. Root-cause candidates (static analysis only, not live-tested):**
+
+- **(a) Managed window state conflict**: text-edit-hq IS created WM-managed (override_redirect=false per the debug evidence from livedesk_override_redirect.pdl = false), yet the bug report says it's "not a clean match" because documented cases were override_redirect. If this is genuinely managed (WM should route keys normally), the bug class may be different — OR the managed-window focus retry mechanism is incomplete (the post-map retry only fires on a narrow condition).
+
+- **(b) Repeated re-grabs indicate state churn**: The log shows 6 grab attempts in ~3.5 seconds ("something is re-triggering `activate_focused()` far more often than a single click-in explains", per the bug report itself). This suggests the window is losing focus between attempts, or a different code path is repeatedly calling grab. No retry-trigger mechanism was caught in static reading.
+
+- **(c) Mutter+XWayland managed-window focus routing is also unreliable**: The documented cases covered override_redirect specifically, but this bug may be the SAME family showing up for managed windows too. The fact that XGetInputFocus reports success (line 9189, `real_focus_is_us=1`) despite no KeyPress events arriving suggests a WM-level async delivery failure, not a local bug.
+
+**Concrete diagnostic tests NOT yet run (require live hardware):**
+
+1. **Override_redirect toggle test** (already proposed in bug entry): Switch livedesk_override_redirect.pdl between true/false, restart text-edit-hq, retry typing. If symptom changes, override_redirect state is load-bearing (same as documented cases). If it does NOT change, this is likely cause (b)/(c), a new mechanism.
+
+2. **Repeated-grab root cause**: Enable `g_default_input_elem` tracking at a finer granularity (e.g. log the caller of `activate_focused()` each time) to identify what's repeatedly re-triggering the grab attempts every 0.5-1s. This requires either instrumentation or live gdb attach.
+
+3. **Real X11 event delivery confirmation**: Run `xinput test <device>` during typing in text-edit-hq to confirm whether the X server itself is receiving KeyPress events from hardware. If it is (other windows get them), but text-edit-hq doesn't, the bug is X11-level focus routing. If it isn't, the issue is earlier in the input stack.
+
+4. **WM-managed focus test on a different app**: Create a temporary override_redirect-false test window (same window-creation path as text-edit-hq, different app name), attempt typing. If it works fine, the bug is text-edit-hq-specific (not the managed-window code path itself). If it also fails, the managed-window focus logic is broken for this entire Mutter version.
