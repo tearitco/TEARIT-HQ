@@ -15178,8 +15178,24 @@ static int tp_main(int argc, char **argv) {
          * priority == 0" - two different entities both declaring a
          * nonzero priority would race each other's own tick timing,
          * not a strict ordering by value yet; real, separate follow-up
-         * if that's ever needed. */
-        if (g_z_priority > 0) {
+         * if that's ever needed.
+         *
+         * REAL FIX 2026-09-14, direct live follow-up question ("will
+         * u make sure always ontop on/off still does what it needs to
+         * do?") - caught a real, latent conflict this raised: gated on
+         * g_override_redirect (the SAME real per-entity flag the @
+         * always-on-top toggle already flips, see that toggle's own
+         * ZORDER_TOGGLE handler). With always-on-top OFF, this entity
+         * is a normal, WM-managed window like any other real app - an
+         * unconditional periodic self-raise there would keep popping
+         * it back above whatever OTHER real application the user just
+         * brought to front, fighting the window manager itself, not
+         * just winning against sibling desktop entities (which is all
+         * the real report ever asked for). Gating this to override-
+         * redirect mode keeps z_priority doing exactly what it was
+         * asked to do (win against other desktop entities) without
+         * ever touching normal WM-managed stacking. */
+        if (g_z_priority > 0 && g_override_redirect) {
             XRaiseWindow(dpy, win);
         }
 
