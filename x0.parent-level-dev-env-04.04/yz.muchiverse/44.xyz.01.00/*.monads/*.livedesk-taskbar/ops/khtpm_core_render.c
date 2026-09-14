@@ -2099,9 +2099,33 @@ static int reparse_chtpm_if_changed(void) {
      * pointer is cleared - restored (without retaking the grab) once
      * the new tree exists, a few lines down. */
     char saved_input_key[128] = "";
+    /* REAL FIX 2026-09-14, direct live report ("i tried selecting it
+     * didn't work"... "theres some finnicky focus issues with the
+     * text edit hq space") - the restore code a few lines down used to
+     * unconditionally collapse the selection (cursor -> end of buffer,
+     * sel_anchor = cursor) every single time a reparse landed on an
+     * already-armed field, whether or not the buffer actually changed.
+     * text-edit-hq's own debug log shows it re-arming (activate_
+     * focused()) far more often than a single click-in explains ("the
+     * finnicky focus issues") - each of THOSE re-arms also collapses
+     * selection (separate, real mechanism, activate_focused() itself)
+     * - but every ordinary reparse tick was ALSO wiping any live
+     * Shift+Arrow selection the user had built up, even when nothing
+     * about the field's own content changed. Capture the pre-reparse
+     * buffer content here too, so the restore below can tell "content
+     * genuinely changed under us" (cursor-to-end is still correct)
+     * apart from "unrelated reparse, this field's own text is
+     * identical" (the real selection should survive). */
+    char saved_input_buf[4096] = "";
+    int saved_cursor = 0, saved_sel_anchor = 0;
     if (g_default_input_elem) {
         const char *k = g_default_input_elem->target_id[0] ? g_default_input_elem->target_id : g_default_input_elem->id;
         snprintf(saved_input_key, sizeof(saved_input_key), "%s", k);
+        const char *ob = strcmp(g_default_input_elem->tag, "text_area") == 0 ?
+            g_default_input_elem->text_area_buffer : g_default_input_elem->input_buffer;
+        snprintf(saved_input_buf, sizeof(saved_input_buf), "%s", ob);
+        saved_cursor = g_default_input_elem->cursor;
+        saved_sel_anchor = g_default_input_elem->sel_anchor;
     }
     g_default_input_elem = NULL;
     /* Same real dangling-pointer reasoning as g_default_input_elem just
@@ -2138,9 +2162,24 @@ static int reparse_chtpm_if_changed(void) {
         if (reelem) {
             g_default_input_elem = reelem;
             char *rbuf = strcmp(reelem->tag, "text_area") == 0 ? reelem->text_area_buffer : reelem->input_buffer;
-            reelem->cursor = (int)strlen(rbuf);
-            reelem->sel_anchor = reelem->cursor;
-            kh_focus_debug_log("REPARSE key=%s FOUND buf_len=%d", saved_input_key, (int)strlen(rbuf));
+            int rlen = (int)strlen(rbuf);
+            /* REAL FIX 2026-09-14 - see saved_input_buf's own header
+             * comment: only force cursor-to-end/collapse-selection when
+             * the field's own content genuinely changed under this
+             * reparse (a real save/load/regen did happen - cursor
+             * position from before may not even be valid). If it's
+             * byte-identical, this was an unrelated reparse tick - keep
+             * whatever selection the user had built up, clamped only
+             * for safety against a length that can't have grown past
+             * what it already was. */
+            if (strcmp(rbuf, saved_input_buf) == 0) {
+                reelem->cursor = saved_cursor > rlen ? rlen : (saved_cursor < 0 ? 0 : saved_cursor);
+                reelem->sel_anchor = saved_sel_anchor > rlen ? rlen : (saved_sel_anchor < 0 ? 0 : saved_sel_anchor);
+            } else {
+                reelem->cursor = rlen;
+                reelem->sel_anchor = reelem->cursor;
+            }
+            kh_focus_debug_log("REPARSE key=%s FOUND buf_len=%d content_same=%d", saved_input_key, rlen, strcmp(rbuf, saved_input_buf) == 0);
         } else {
             kh_ungrab_kbd(); /* field really is gone - the grab held for it is now meaningless */
             kh_focus_debug_log("REPARSE key=%s NOT_FOUND - ungrabbed", saved_input_key);
@@ -7325,14 +7364,35 @@ static void activate_focused(void) {
      * Escape-branch comment for the full real diagnosis. Grab taken
      * HERE (arm time), released on every real disarm path. */
     if (strcmp(item->tag, "cli_io") == 0 || strcmp(item->tag, "text_area") == 0) {
+        /* REAL FIX 2026-09-14, direct live report ("i tried selecting
+         * it didn't work"... "theres some finnicky focus issues with
+         * the text edit hq space") - this field can already be armed
+         * AND already be the live g_default_input_elem when
+         * activate_focused() fires again (text-edit-hq's own debug log
+         * shows repeated re-arms far more often than a single click-in
+         * explains) - the arm-at-end-of-buffer/collapse-selection logic
+         * below used to run every single time regardless, silently
+         * wiping any in-progress Shift+Arrow selection between the
+         * user's own keystrokes. kh_grab_keyboard_retry() still runs
+         * unconditionally below (cheap, idempotent if the grab is
+         * already held - and the real fix if THIS is what's
+         * re-establishing a grab that keeps genuinely dying, a
+         * separate, not-yet-root-caused question). Only the cursor/
+         * selection reset is now skipped for a redundant re-trigger on
+         * the SAME already-armed field; a genuinely NEW arm (a
+         * different field, or this one after really being disarmed)
+         * still gets the real re-focus convention below unchanged. */
+        int already_armed = (g_default_input_elem == item);
         g_default_input_elem = item;
-        /* REAL, NEW 2026-09-05 - arm at the end of whatever's already
-         * typed, matching every normal editor's own re-focus
-         * convention, not wherever a stale cursor happened to be left.
-         * text_area added alongside cli_io here (same real armed-field
-         * mechanism, same ^ indicator, same Escape-disarm path). */
-        item->cursor = (int)strlen(strcmp(item->tag, "text_area") == 0 ? item->text_area_buffer : item->input_buffer);
-        item->sel_anchor = item->cursor; /* arm with no stale selection */
+        if (!already_armed) {
+            /* REAL, NEW 2026-09-05 - arm at the end of whatever's already
+             * typed, matching every normal editor's own re-focus
+             * convention, not wherever a stale cursor happened to be left.
+             * text_area added alongside cli_io here (same real armed-field
+             * mechanism, same ^ indicator, same Escape-disarm path). */
+            item->cursor = (int)strlen(strcmp(item->tag, "text_area") == 0 ? item->text_area_buffer : item->input_buffer);
+            item->sel_anchor = item->cursor; /* arm with no stale selection */
+        }
         kh_grab_keyboard_retry();
         return;
     }
