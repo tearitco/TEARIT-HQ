@@ -14,6 +14,73 @@ file per session unless this one gets unwieldy.
 
 ---
 
+## 0. Orientation (2026-09-14) - what "trigger" means, what "a game" means here, and what already works
+
+Written after a direct request to be walked through this from
+scratch, catching up on what's done/missing and why. Grounded in real
+code search (`tp_main()`'s click handling, `dashboard.chtpm`'s Play
+button, `khtpm_events_hq_manager.c`'s dispatch, `play_event.sh`,
+piececraft-hq's `events.pdl`) - not guessed.
+
+**The surprising part: nothing automatic fires a Common Event today.**
+The only real way one runs is a human opening the events-hq editor and
+pressing the **"▶ Play"** button (`dashboard.chtpm`'s
+`<button id="play-test">`). That calls `khtpm_events_hq_manager.c`'s
+`play` action, which shells out to `&.widgits/events-hq/ops/
+play_event.sh`, which scans `event_pkg/pages/page_*`, picks whichever
+page's `condition.pdl` trigger label matches the (default `"on-click"`)
+filter argument, and runs its compiled `event.pal`.
+
+The `trigger=on-click` / `trigger=Autorun` / `trigger=player-touch`
+labels seen in event data are **not live listeners** - confirmed no
+code path anywhere compares them against a real mouse click, a page
+load, or player movement. They're inert filter tags `play_event.sh`
+reads only when a human has already pressed Play. Real footnote:
+`common_events/greet_player/`'s own trigger is actually `Autorun`, but
+`play_event.sh`'s default filter is `"on-click"` - pressing plain Play
+on it today may not even select the matching page. Small, separate,
+real gap, not currently blocking anything.
+
+**The trigger layer (NIGHT_05) is building the FIRST real, automatic
+listener** - something that watches for a genuine in-game action and
+fires the matching Common Event on its own, no human touching the
+editor.
+
+**"A game" here means two different real things, not one:**
+1. **The desktop itself** (pals - cursword, asa, ava, book-stack) -
+   desktop companions, not a game board. They can have Common Events
+   attached, but there's no "walking into" one; only ever fired via
+   manual Play. Confirmed: `tp_main()`'s real ButtonPress handling has
+   no code that looks up an entity's `event_pkg` or fires anything on
+   click - a scripting sandbox, not a game.
+2. **piececraft-hq** - a genuinely separate engine (its own renderer,
+   `chtpm_parser_pal`/`prisc+x`, unrelated to the khtpm desktop family)
+   with a real tile board, x/y coordinates, NPC-like glyphs. Real event
+   data already exists there (`@.apps/piececraft-hq/pieces/system/maps/
+   cdda_sample/events.pdl`: `EVENT | x=6 y=5 glyph=t |
+   trigger=player-touch cmds=change_hp,change_state`) - but zero
+   movement code anywhere reads it during play. Data exists, nothing
+   acts on it. **This is the real target of the trigger layer.**
+
+**How a human tests it, once built**: open piececraft-hq, move the
+player piece onto the tile at `x=6, y=5` (or wherever a test NPC gets
+registered), and watch something fire on its own - a real Show Text
+popup, a real gold change - without ever touching the events-hq editor
+or pressing Play. That's the whole proof: walk into it, something
+happens, no manual step.
+
+**What already works, and how it's unrelated to "trigger"**: Change
+Gold / Show Text (seen working live) are the real, current **effect**
+side - what an event DOES once running (`mr_change_gold.+x`/
+`mr_show_text.+x`, both proven). Trigger is a separate concern
+entirely - the **cause** side, why/when an event starts. Today the only
+cause that exists is "a human pressed Play." The trigger layer doesn't
+touch Change Gold/Show Text at all - it only gives events a SECOND, real
+way to start (automatic), alongside the manual Play button, which
+stays for editing/testing.
+
+---
+
 ## 1. What "events trigger build-out" actually refers to
 
 No file is literally titled "events trigger build-out." Two real
