@@ -3441,6 +3441,52 @@ static void trim_tail_file(const char *path, size_t maxbytes) {
     rename(tmp, path);
 }
 
+/* REAL, NEW 2026-09-14 (video V4 "Nav row with play/pause + progress"
+ * request) - read the V3 op's live playhead (surface.playhead.txt:
+ * pos=<sec>\ndur=<sec>, rewritten by the op on every frame) and state
+ * (video.state: playing/paused/stopped) so write_ui_projection() can
+ * publish a real progress/play-pause strip that M OVES while the video
+ * plays. Both are a plain fopen+scan of byte-small files every manager
+ * tick (300ms) - cheap, and reparse-visible to the renderer immediately. */
+static int video_read_playhead(const char *sess, double *pos, double *dur) {
+    *pos = 0.0; *dur = 0.0;
+    if (!sess || !sess[0]) return 0;
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/surface.playhead.txt", sess);
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    char line[128];
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "pos=", 4) == 0) *pos = atof(line + 4);
+        else if (strncmp(line, "dur=", 4) == 0) *dur = atof(line + 4);
+    }
+    fclose(f);
+    return 1;
+}
+
+static const char *video_read_state(const char *sess) {
+    static char st[16];
+    st[0] = '\0';
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/video.state", sess);
+    FILE *f = fopen(path, "r");
+    if (f) {
+        if (fgets(st, sizeof(st), f)) {
+            size_t L = strlen(st);
+            while (L > 0 && (st[L-1] == '\n' || st[L-1] == '\r')) st[--L] = '\0';
+        }
+        fclose(f);
+    }
+    return st;
+}
+
+/* "0:07" / "0:18" mm:ss readout for the bar's centered time label. */
+static void video_format_time(char *out, size_t n, double secs) {
+    int s = (int)(secs + 0.5);
+    if (s < 0) s = 0;
+    snprintf(out, n, "%d:%02d", s / 60, s % 60);
+}
+
 static void write_ui_projection(void) {
     char *buf = malloc(262144);
     if (!buf) return;
@@ -3675,6 +3721,54 @@ static void write_ui_projection(void) {
                         char raw_s[PATH_BUF];
                         snprintf(raw_s, sizeof(raw_s), "%s/surface.raw", g_video_sess);
                         UI_PUT("c_%d_kind=video\nc_%d_is_media=1\nc_%d_is_canvas=1\nc_%d_sprite=%s\nc_%d_label=%s\n", rc, rc, rc, rc, raw_s, rc, lab_s);
+                        /* V4 (2026-09-14, "Nav row with play/pause +
+                         * progress"): TWO extra content rows under the
+                         * canvas, both show=-carried by the static xhtpm's
+                         * own play/bar drop-in rows:
+                         *   rc+1 = play/pause toggle (label = the ACTION
+                         *          shown: pause when playing, play when
+                         *          paused; nb_video_cmd.sh reads video.state
+                         *          to decide which control to write)
+                         *   rc+2 = generic <bar> progress strip - value/max
+                         *          in centiseconds (player's float seconds
+                         *          x100), centered mm:ss label, seek onClick
+                         *          with a literal %FRAC the RENDERER replaces
+                         *          with the 0.0..1.0 click fraction (generic
+                         *          <bar> capability, see Elem's bar_max
+                         *          comment in khtpm_render_core.c). */
+                        double ph_pos = 0.0, ph_dur = 0.0;
+                        video_read_playhead(g_video_sess, &ph_pos, &ph_dur);
+                        const char *vst = video_read_state(g_video_sess);
+                        int is_playing = (strcmp(vst, "playing") == 0);
+                        /* ▌▌ = pause glyph (U+258C x2), ▶ = play (U+25B6):
+                         * both in DejaVu Sans, the only text-glyph fallback
+                         * the shared draw already uses. Holdings render the
+                         * ACTION on the button (standard media convention:
+                         * clicking the shown glyph does that thing). */
+                        const char *play_label = is_playing
+                            ? "\xE2\x96\x8C\xE2\x96\x8C"
+                            : "\xE2\x96\xB6";
+                        char toc_cmd[PATH_BUF * 2];
+                        snprintf(toc_cmd, sizeof(toc_cmd),
+                                 "'%s/ops/nb_video_cmd.sh' 'toggle' '%s'",
+                                 g_package_dir, g_video_sess);
+                        UI_PUT("c_%d_is_play=1\nc_%d_play_label=%s\nc_%d_play_action=%s\n",
+                               rc + 1, rc + 1, play_label, rc + 1, toc_cmd);
+                        int cs_pos = (int)(ph_pos * 100);
+                        int cs_dur = (int)(ph_dur * 100);
+                        char t1[16], t2[16], bar_text[48];
+                        video_format_time(t1, sizeof(t1), ph_pos);
+                        video_format_time(t2, sizeof(t2), ph_dur);
+                        snprintf(bar_text, sizeof(bar_text), "%s / %s", t1, t2);
+                        char seek_cmd[PATH_BUF * 2];
+                        snprintf(seek_cmd, sizeof(seek_cmd),
+                                 "'%s/ops/nb_video_cmd.sh' 'seek' '%s' %%FRAC",
+                                 g_package_dir, g_video_sess);
+                        UI_PUT("c_%d_is_bar=1\nc_%d_bar_value=%d\nc_%d_bar_max=%d\nc_%d_bar_text=%s\nc_%d_bar_action=%s\n",
+                               rc + 2, rc + 2, cs_pos, rc + 2, cs_dur,
+                               rc + 2, bar_text, rc + 2, seek_cmd);
+                        rc += 2; /* consumed indexes rc+1 and rc+2; final
+                                  * rc++ below closes at rc+3 (canvas + 2) */
                     } else {
                         char url_sq[PATH_BUF * 2];
                         shell_escape_squote(vurl, url_sq, sizeof(url_sq));

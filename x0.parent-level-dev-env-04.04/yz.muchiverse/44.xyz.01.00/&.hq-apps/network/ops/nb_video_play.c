@@ -48,6 +48,7 @@
 #define STATE_SUFFIX "/video.state"
 #define RAW_SUFFIX "/surface.raw"
 #define RECEIPT_SUFFIX "/surface.receipt.txt"
+#define PLAYHEAD_SUFFIX "/surface.playhead.txt"
 
 static volatile sig_atomic_t g_stop = 0;
 static void on_signal(int s) { (void)s; g_stop = 1; }
@@ -84,13 +85,24 @@ static const char *poll_control(const char *sess, char *buf, size_t n) {
     FILE *f = fopen(path, "r");
     if (!f) return NULL;
     if (fgets(buf, (int)n, f)) {
-        size_t l = strlen(buf);
-        while (l > 0 && (buf[l-1] == '\n' || buf[l-1] == '\r')) buf[--l] = 0;
-        fclose(f);
-        return buf[0] ? buf : NULL;
+        size_t L = strlen(buf);
+        while (L && (buf[L-1] == '\n' || buf[L-1] == '\r')) buf[--L] = '\0';
     }
     fclose(f);
-    return NULL;
+    return buf[0] ? buf : NULL;
+}
+
+/* One-shot control semantics: a command word is consumed once applied.
+ * "pause" is the deliberate exception (the pause wait-loop polls the SAME
+ * word until "resume"/"stop" rewrite the file), but "seek" must not
+ * linger - an unconsumed "seek:" re-fires on every loop iteration,
+ * freezing the picture at the target (each frame re-seeks to the same
+ * spot and decodes a single frame before the next re-seek). Clear it the
+ * moment a seek lands. */
+static void clear_control(const char *sess) {
+    char path[PATH_MAX];
+    snprintf(path, sizeof(path), "%s" CTRL_SUFFIX, sess);
+    unlink(path);
 }
 
 /* Atomic-ish surface publish: tmp + rename so kh_draw_canvas() always
@@ -125,6 +137,14 @@ static void self_dir(char *out, size_t n) {
     char *slash = strrchr(link, '/');
     if (slash) *slash = 0;
     snprintf(out, n, "%s", link);
+}
+
+static void write_playhead(const char *sess, double pos, double dur) {
+    char path[PATH_MAX], tmp[PATH_MAX];
+    snprintf(path, sizeof(path), "%s" PLAYHEAD_SUFFIX, sess);
+    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+    FILE *f = fopen(tmp, "w");
+    if (f) { fprintf(f, "pos=%.3f\ndur=%.3f\n", pos, dur); fclose(f); rename(tmp, path); }
 }
 
 static const char *resolve_url(char *buf, size_t n, const char *url) {
@@ -269,13 +289,17 @@ int main(int argc, char **argv) {
     AVFormatContext *fmt = NULL;
     /* YouTube's googlevideo CDN 403s the default Lavf user-agent; the
      * resolved stream URLs still check UA + referer origin. Feed a real
-     * browser UA and a youtube referer so avio/http passes the check. */
+     * browser UA and a youtube referer so avio/http passes the check.
+     * The file:// protocol REJECTS the seekable option (avio/file has
+     * no such knob) so keep the http/yt dict strictly for remote urls. */
     AVDictionary *opts = NULL;
-    av_dict_set(&opts, "http_user_agent",
-                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", 0);
-    av_dict_set(&opts, "http_referrer", "https://www.youtube.com/", 0);
-    av_dict_set(&opts, "seekable", "1", 0);
+    if (strncmp(url, "file://", 7) != 0) {
+        av_dict_set(&opts, "http_user_agent",
+                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", 0);
+        av_dict_set(&opts, "http_referrer", "https://www.youtube.com/", 0);
+        av_dict_set(&opts, "seekable", "1", 0);
+    }
     if (avformat_open_input(&fmt, url, NULL, &opts) != 0) {
         av_dict_free(&opts);
         write_state(sess, "stopped");
@@ -340,16 +364,31 @@ int main(int argc, char **argv) {
     AVPacket *pkt = av_packet_alloc();
     int running = 1, eof = 0, got_v = 0, got_a = 0;
     double play_start = mono_now();
+    double cur_pos = 0.0, dur = 0.0;
+    if (fmt->duration > 0) dur = (double)fmt->duration / AV_TIME_BASE;
     int have_audio_clock = (alsa != NULL && swr != NULL);
     write_state(sess, "playing");
     publish_frame(sess, NULL, 0, 0); /* receipt exists even before frame 0 */
 
     while (running && !g_stop) {
-        /* ---- control: pause (keep last frame, wait) / stop ---- */
+        /* ---- control: pause / resume / seek / stop ---- */
         {
-            char ctl[32], ctl2[32];
+            char ctl[64], ctl2[64];
             const char *c = poll_control(sess, ctl, sizeof(ctl));
-            if (c && strcmp(c, "pause") == 0) {
+            if (c && strncmp(c, "seek:", 5) == 0) {
+                double frac = atof(c + 5);
+                if (frac < 0.0) frac = 0.0; if (frac > 1.0) frac = 1.0;
+                if (dur > 0.0) {
+                    int64_t ts = (int64_t)(frac * dur * AV_TIME_BASE);
+                    av_seek_frame(fmt, -1, ts, AVSEEK_FLAG_BACKWARD);
+                    if (vctx) avcodec_flush_buffers(vctx);
+                    if (actx) avcodec_flush_buffers(actx);
+                    play_start = mono_now() - frac * dur;
+                    cur_pos = frac * dur;
+                    write_playhead(sess, cur_pos, dur);
+                    clear_control(sess); /* one-shot: don't re-fire next frame */
+                }
+            } else if (c && strcmp(c, "pause") == 0) {
                 write_state(sess, "paused");
                 if (alsa) snd_pcm_pause(alsa, 1);
                 int resumed = 0;
@@ -414,6 +453,14 @@ int main(int argc, char **argv) {
         }
 
         if (eof && !got_v && !got_a) { running = 0; break; }
+        /* playhead: live position once a frame (monotonic since start /
+         * resume / seek) */
+        {
+            double p = mono_now() - play_start;
+            if (p < 0) p = 0;
+            if (dur > 0 && p > dur) p = dur;
+            write_playhead(sess, p, dur);
+        }
         /* busy-loop guard: without audio, a fast stream still paces on
          * pts above; cap loop rate when a stream has no usable pts */
         msleep(2);

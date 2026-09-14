@@ -12,6 +12,8 @@ window.network-browser { width: 960px; height: 640px; background-color: #141414;
 .nb-address { background-color: #0e0e0e; color: #ffffff; border: 1px solid #666666; }
 .nb-status { background-color: #101010; color: #88cc88; }
 .nb-content { background-color: #1a1a1a; color: #cccccc; }
+.bar { background-color: #222222; color: #2f8f5f; }
+.bar.play-bar { background-color: #222222; color: #2f8f5f; }
 sidebar { width: 200px; background-color: #1a1a1a; color: #cccccc; }
 
 /* devtools console (2026-09-10): flex 3-column layout, canvas-craft

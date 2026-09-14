@@ -80,6 +80,16 @@
                raw via kh_draw_canvas on the 30fps g_has_canvas tick. -->
           <canvas id="cv${c.#}" class="video-frame" width="640" height="360"
                   sprite="${c.sprite}" show="${c.is_canvas}"/>
+          <!-- V4 (2026-09-14): playhead nav strip - play/pause toggle +
+               generic <bar> progress (value/max in centiseconds, centered
+               mm:ss label, click-to-seek via the renderer's own %FRAC
+               substitution in the bar's onclick) + live mm:ss readout.
+               The projector emits c_N_is_play=1 / c_N_is_bar=1 rows right
+               after the canvas row; empty rows for every other kind, so
+               the generic element vocabulary (no per-app C) covers it. -->
+          <item id="pp${c.#}" label="${c.play_label}" action="${c.play_action}" show="${c.is_play}"/>
+          <bar id="pa${c.#}" value="${c.bar_value}" max="${c.bar_max}"
+               label="${c.bar_text}" action="${c.bar_action}" show="${c.is_bar}"/>
         </repeat>
         <text label="${empty_msg}" class="quiet" show="${content_empty}"/>
       </scrolllist>
