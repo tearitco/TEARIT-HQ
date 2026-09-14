@@ -15072,6 +15072,36 @@ static int tp_main(int argc, char **argv) {
                         XMoveWindow(dpy, win, win_x, win_y);
                         write_pos(package_dir, win_x, win_y);
                         XFlush(dpy);
+                    } else if (strncmp(line, "MOVE_TO:", 8) == 0) {
+                        /* REAL, NEW 2026-09-14 (PLAY-MODE-ENTITY-HARNESS-
+                         * DESIGN.md §3's "move" Common Event, direct
+                         * instruction: "we will use move / pathfinding
+                         * event program to make cursword move to
+                         * castle") - the real, general-purpose relay-
+                         * injection channel for programmatic movement, so
+                         * a "move" Common Event's own op can move
+                         * cursword the same way a human's real click-to-
+                         * place already does (grid-snap + XMoveWindow +
+                         * write_pos), without simulating a fake mouse
+                         * click. `MOVE_TO:<x>,<y>` - raw pixel
+                         * coordinates, already grid-aligned by the
+                         * caller (this entity's own current desktop_pos.
+                         * txt plus/minus GRID_CELL_PX, matching every
+                         * other pal's own real grid-snapped position) -
+                         * re-snapped here too, defensively, exactly like
+                         * the real click-to-place handler does, so a
+                         * slightly-off caller can't park this off-grid. */
+                        int tx = 0, ty = 0;
+                        sscanf(line + 8, "%d,%d", &tx, &ty);
+                        int gx = (tx + GRID_CELL_PX / 2) / GRID_CELL_PX;
+                        int gy = (ty + GRID_CELL_PX / 2) / GRID_CELL_PX;
+                        if (gx < 0) gx = 0;
+                        if (gy < 0) gy = 0;
+                        win_x = gx * GRID_CELL_PX;
+                        win_y = gy * GRID_CELL_PX;
+                        XMoveWindow(dpy, win, win_x, win_y);
+                        write_pos(package_dir, win_x, win_y);
+                        XFlush(dpy);
                     } else if (strncmp(line, "RUN_METHOD:", 11) == 0) {
                         const char *label = line + 11;
                         for (int i = 0; i < n_methods; i++) {
