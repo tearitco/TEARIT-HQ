@@ -1,0 +1,16 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | castle
+STATE        | kind                 | deskpal
+STATE        | glyph                | 🏰
+STATE        | instance_id          | CSTL
+METHOD       | City                 | sh -c 'exec "$1/&.widgits/events-hq/ops/play_event.sh" "$0" "$1" city'
+METHOD       | Production           | sh -c 'exec "$1/&.widgits/events-hq/ops/play_event.sh" "$0" "$1" production'
+METHOD       | Armed Forces         | sh -c 'exec "$1/&.widgits/events-hq/ops/play_event.sh" "$0" "$1" armed_forces'
+METHOD       | View                 | sh -c 'exec "$1/&.widgits/events-hq/ops/play_event.sh" "$0" "$1" view'
+METHOD       | Happy                | sh -c 'exec "$1/&.widgits/events-hq/ops/play_event.sh" "$0" "$1" happy'
+METHOD       | Rename               | sh -c 'exec "$1/&.widgits/events-hq/ops/play_event.sh" "$0" "$1" rename'
+METHOD       | Events (hq)          | sh -c 'exec "$1/&.widgits/events-hq/button.sh" "$0" "$1"'
+METHOD       | Dir                  | sh -c 'exec xdg-open "$0"'
+METHOD       | Close                | CLOSE
+METHOD       | Cancel               | void

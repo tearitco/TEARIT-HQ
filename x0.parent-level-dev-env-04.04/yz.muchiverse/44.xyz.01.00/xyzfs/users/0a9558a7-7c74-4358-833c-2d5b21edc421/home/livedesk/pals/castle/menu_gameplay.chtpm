@@ -1,0 +1,21 @@
+<!-- menu_gameplay.chtpm - castle's real "in Play Mode" gameplay menu,
+     the actual Civ I city menu (SNES manual's own main menu options),
+     same real launch_khtpm_menu() mechanism/theme as menu.chtpm - just
+     a SEPARATE file, only ever launched by the trigger-layer's own
+     touch-fire action (event_pkg/pages/page_1/cmd_1.sh), never by a
+     plain right-click (that's menu.chtpm's job, see its own header
+     comment). Each city option is a real, honest stub for now
+     (action="void") - deep gameplay behind each is separate, later
+     work (PLAY-MODE-ENTITY-HARNESS-DESIGN.md), this proves the real
+     trigger-fires-a-themed-menu mechanism end to end first. -->
+<window class="entity-menu">
+  <page name="main">
+    <item label="City" action="void"/>
+    <item label="Production" action="void"/>
+    <item label="Armed Forces" action="void"/>
+    <item label="View" action="void"/>
+    <item label="Happy" action="void"/>
+    <item label="Rename" action="void"/>
+    <item label="Cancel" action="void"/>
+  </page>
+</window>

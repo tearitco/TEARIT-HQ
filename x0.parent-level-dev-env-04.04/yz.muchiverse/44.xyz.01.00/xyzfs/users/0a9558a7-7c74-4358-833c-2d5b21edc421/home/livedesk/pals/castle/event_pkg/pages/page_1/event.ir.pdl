@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------
+META         | piece_id           | castle
+STATE        | source               | events-hq
+NODE         | id=1 type=show_choices | choices=City,Production,Armed Forces,View,Happy,Rename|default=0

@@ -1,0 +1,3 @@
+[Prisc Error] Could not open ops file: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/101.mutaclsym🧟‍♂️️+18.0G/system/default_op.txt
+[2026-09-14 13:08:34] Play event page_1 (trigger=player-touch) for castle | no inventory.txt yet
+[2026-09-14 13:08:34] Play: also triggered common event cdda_beartrap_touch (trigger=player-touch)

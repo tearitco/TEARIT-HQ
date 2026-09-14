@@ -1,0 +1,21 @@
+<!-- menu.chtpm - castle's real, STANDARD (not-in-Play-Mode) right-click
+     entity menu, same real launch_khtpm_menu() mechanism every entity
+     uses. Direct instruction: "its showing the 'in play' menu when not
+     in play it should only show events, delete, cancel. its 'in play'
+     menu is its gameplay menu that should only show when 'in play'" -
+     the real Civ I city menu (City/Production/Armed Forces/View/Happy/
+     Rename) moved OUT of this file, into menu_gameplay.chtpm, and is
+     only ever launched from there by the trigger-layer's own touch-fire
+     action (event_pkg/pages/page_1/cmd_1.sh) - never by a plain right-
+     click. This file is castle's own everyday editing menu.
+     Delete is a real, honest stub (action="void") - no real per-pal
+     deletion mechanism exists anywhere in this house yet (checked,
+     not assumed); wiring one is separate, later work, not silently
+     faked here. -->
+<window class="entity-menu">
+  <page name="main">
+    <item label="Events" action="sh -c 'exec &quot;$1/&.widgits/events-hq/button.sh&quot; &quot;$0&quot; &quot;$1&quot;'"/>
+    <item label="Delete" action="void"/>
+    <item label="Cancel" action="void"/>
+  </page>
+</window>

@@ -3779,6 +3779,34 @@ static int livedesk_build_file_menu(const char *house_root, HQMenuItem *menu, in
     return n;
 }
 
+/* REAL, NEW 2026-09-14 (PLAY-MODE-ENTITY-HARNESS-DESIGN.md's own "8.
+ * player in tb" toggle, direct instruction: "we want to toggle is via
+ * '[]8.player : []1.play' and add on off var next to it, like 1.hq tb
+ * sub has") - real, persisted global Play Mode flag, same exact real
+ * convention load_zorder_mode()/save_zorder_mode() already use
+ * (khtpm_core_render.c) for always-on-top: a small state file,
+ * `mode=<value>` on its own line, absent file = default off. Kept as
+ * a SEPARATE file (not reusing the zorder one) since these are two
+ * genuinely unrelated toggles that happen to share a storage shape,
+ * not two names for the same setting. */
+static int khtpm_load_play_mode(const char *house_root) {
+    char path[KTB_PATH_BUF];
+    path_join(path, sizeof(path), house_root, "#.desktop/khtpm_play_mode.state.txt");
+    FILE *f = ktb_fopen(path, "r");
+    if (!f) return 0;
+    char line[64];
+    int on = 0;
+    if (fgets(line, sizeof(line), f) && strstr(line, "mode=on")) on = 1;
+    fclose(f);
+    return on;
+}
+static void khtpm_save_play_mode(const char *house_root, int on) {
+    char path[KTB_PATH_BUF];
+    path_join(path, sizeof(path), house_root, "#.desktop/khtpm_play_mode.state.txt");
+    FILE *f = ktb_fopen(path, "w");
+    if (f) { fprintf(f, "mode=%s\n", on ? "on" : "off"); fclose(f); }
+}
+
 /* Static player-cell submenu (play/pause/reset). play/pause were ported
  * verbatim from tp_taskbar.c's load_strip_config() defaults for btns[5]
  * ("player") and are genuinely inert placeholders in legacy itself (only
@@ -3787,14 +3815,24 @@ static int livedesk_build_file_menu(const char *house_root, HQMenuItem *menu, in
  * request 2026-08-11 ("wire up player > reset [to] close all entities
  * then relaunch them fresh") — real, new functionality added here, not
  * present in legacy at all. See livedesk_reset_entities() for what it
- * does. */
+ * does.
+ *
+ * REAL, NEW 2026-09-14 - the old inert "play"/"pause" rows are replaced
+ * by ONE real toggle row, "1.play: ON"/"1.play: OFF" (dynamic, reads
+ * khtpm_load_play_mode() live every menu open, same "1.hq"'s own
+ * "@ always-on-top" dropdown-child pattern this mirrors), dispatched
+ * to a real "livedesk:play-toggle" command (see ktb_hq_activate()). */
 static int livedesk_build_player_menu(const char *house_root, HQMenuItem *menu, int max) {
     int n = livedesk_pdl_menu_rows(house_root, "player", menu, max);
     if (n > 0) return n;
     /* fallback: hardcoded rows (used only when the .pdl defines no
      * player_menu_N_* rows) */
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "play"); menu[n].command[0] = '\0'; n++; }
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "pause"); menu[n].command[0] = '\0'; n++; }
+    if (n < max) {
+        int on = khtpm_load_play_mode(house_root);
+        snprintf(menu[n].label, sizeof(menu[n].label), "1.play: %s", on ? "ON" : "OFF");
+        snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:play-toggle");
+        n++;
+    }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "reset"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:reset-entities"); n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Cancel"); menu[n].command[0] = '\0'; n++; }
     return n;
@@ -4562,6 +4600,19 @@ void ktb_hq_activate(KtbState *s, int row) {
         /* Renderer owns the real X raise/sink (onclick=ZORDER_TOGGLE).
          * Do not flip the state file here - a leftover 5000 relay would
          * undo the renderer's toggle on the same click. */
+        return;
+    }
+    if (strcmp(m->command, "livedesk:play-toggle") == 0) {
+        /* REAL, NEW 2026-09-14 - unlike zorder-toggle above, THIS
+         * toggle's real state genuinely lives here (the manager, not
+         * the renderer) - Play Mode has no per-window X property to
+         * apply, it's a plain global flag other processes (the
+         * desktop-side trigger watcher, once built) poll. Safe to
+         * flip directly on this one command, no respawn/reapply step
+         * needed - the label just reflects khtpm_load_play_mode()
+         * fresh on the menu's next open. */
+        khtpm_save_play_mode(s->house_root, !khtpm_load_play_mode(s->house_root));
+        ktb_hq_close(s);
         return;
     }
     if (strncmp(m->command, "widget:", 7) == 0) {
