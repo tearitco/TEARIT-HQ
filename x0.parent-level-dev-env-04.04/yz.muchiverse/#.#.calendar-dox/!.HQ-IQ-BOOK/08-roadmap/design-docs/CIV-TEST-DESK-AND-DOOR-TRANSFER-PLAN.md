@@ -37,18 +37,26 @@ manual step" bar.
 - **Real "transfer player" Common Event**: a new op, `mr_transfer_desk`
   (mirrors `mr_show_text.c`/`mr_move_to_entity.c`'s own real, minimal
   shape) - `mr_transfer_desk.+x <house_root> <session> <target_desk>`.
-  Its real effect: the SAME real, production-proven
-  `livedesk_switch_desk()` desk-switch path the taskbar's own
-  `livedesk:switch-desk:` command already uses - **not** a new,
-  parallel desk-switch mechanism. Real open question, flagged not
-  guessed: `livedesk_switch_desk()` lives inside the MANAGER process
-  (khtpm_taskbar_manager.c); this op runs as a child of `prisc+x`, a
-  separate process entirely - needs a real integration point (a
-  request file the manager's own idle loop polls, matching this
-  house's own file-relay convention everywhere else, or a direct shell
-  invocation if the switch logic can be safely extracted/duplicated as
-  a standalone op) - **not resolved here, real first sub-task when
-  building this step.**
+  **RESOLVED 2026-09-14** (direct instruction: "that is the sort of
+  thing that doesn't need to live in manager once we have events, but
+  u can make separate event for now then add it to live desk later.
+  its just an op right? cant the manager run prisc event ops?") -
+  confirmed the manager already runs arbitrary real ops/scripts via
+  shell dispatch (the exact same way `play_event.sh`'s own `prisc+x`
+  invocation already works, already proven for castle) - no NEW cross-
+  process signaling into the running manager needed at all, since the
+  trigger already fires through that same real `play_event.sh` ->
+  `prisc+x` -> op path. `mr_transfer_desk` is a normal op like any
+  other real event command; it gets its OWN small, honest, self-
+  contained "switch desk" implementation for now (duplicating what
+  `livedesk_switch_desk()` does directly - same real desk-state
+  files/session-pointer/respawn steps, same "duplicate rather than
+  share a header" convention this house already uses everywhere else
+  for cross-binary logic), NOT a request-file/manager-polling scheme.
+  Real, deliberate, explicitly NOT permanent: once desk-switching is
+  more centrally event-driven, consolidate this standalone copy back
+  into the real, single `livedesk_switch_desk()` implementation -
+  flagged here so it isn't forgotten, not solved now.
 - **Trigger wiring**: identical shape to castle's own `condition.pdl`
   (`COND | trigger | player-touch`) + `event.ir.pdl`/`event.pal`/
   `cmd_1.sh` calling `mr_transfer_desk`. No new trigger mechanism -
@@ -124,19 +132,23 @@ game slots i may add a 'menu' option after desks... does this seem
 like a good idea or do u know a better way. tb is getting a bit
 crowded but that maybe acceptable?"
 
-**Real recommendation, given directly, not just recorded**: don't add
-a new top-level taskbar cell. Add "Menu" as a real, CONDITIONAL row
-inside the EXISTING desks dropdown (`4.desk`, `livedesk_build_desk_
-menu()`) - only appears when the CURRENTLY ACTIVE desk's own .pdl
-declares a real game section (a new, small `GAME | name | civ-test`-
-style row, same real SECTION|KEY|VALUE convention every other .pdl in
-this house already uses), read live the same way every other
-conditional row here already is. This directly answers the "tb
-getting crowded" concern by construction - zero permanent new surface
-area, the row simply doesn't exist on any desk that isn't a declared
-game. A real, later promotion to its own top-level cell (if this
-becomes a heavily-used feature) is a cheap, separate, future change,
-not a wall this design paints itself into.
+**REVISED 2026-09-14** (direct live response: "the desks may actually
+get more crowded than taskbar. also its really me debating whether or
+not to show different tb during 'play' mode... i dont want to do it
+yet for just 1 menu thing. i think we should just add it after desk
+for now") - the conditional-row-inside-desks-dropdown idea above is
+superseded: nesting it there risks crowding the DESKS dropdown instead
+of the taskbar, just moving the problem. The real, bigger question
+underneath this (should the whole taskbar look different in Play Mode
+- a genuine "game UI" vs "desktop edit UI" distinction, matching
+PLAY-MODE-ENTITY-HARNESS-DESIGN.md's own vision) is real and worth
+solving eventually, but explicitly NOT for one menu item right now.
+**Decided**: a real, new, plain top-level cell, positioned right AFTER
+the existing `4.desk` cell - simplest, most direct option for now,
+genuinely revisited once the bigger "different taskbar in Play Mode"
+question gets its own real design pass (not forgotten - flagged here
+as the real reason this specific placement is a deliberate, temporary
+choice, not a final architectural stance).
 
 ## 7. Real build order (do not skip ahead)
 
