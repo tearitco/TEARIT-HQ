@@ -258,9 +258,46 @@ static unsigned int hash_coord(unsigned int seed, int chunk_x, int chunk_y, int 
 static const int tree_col[TREE_COUNT] = {4, 12, 3, 11};
 static const int tree_row[TREE_COUNT] = {4, 4, 12, 12};
 
+/* REAL, NEW 2026-09-14 (EVENT-TRIGGER-LAYER-PLAN.md §3 Step 3's own
+ * "smallest provable proof" fixture) - loads a real, static, authored
+ * map (pieces/system/maps/<map_id>/map.txt, a CHUNK_DIM x CHUNK_DIM
+ * ASCII grid) instead of procedural generation. This is genuinely new:
+ * no code anywhere previously read map.txt/events.pdl at all (confirmed
+ * by direct grep - the trigger-layer plan's own §2 finding). Kept
+ * intentionally minimal for this first slice: 'W' becomes a tall solid
+ * column (visual only - no collision/movement blocking is wired up
+ * anywhere in this codebase yet, out of scope for the trigger-layer
+ * proof), every other glyph becomes flat, walkable floor at the same
+ * FLAT_SURFACE_Z debug fixtures already use. Returns 1 (caller should
+ * fall back / report failure) if the map file can't be read. */
+static int load_map_surface(const char *map_id, int surface[CHUNK_DIM][CHUNK_DIM]) {
+    char map_path[PATH_BUF];
+    snprintf(map_path, sizeof(map_path), "%s/pieces/system/maps/%s/map.txt", real_root, map_id);
+    FILE *f = host_fopen(map_path, "r");
+    if (!f) return 1;
+    char line[CHUNK_DIM + 8];
+    int row = 0;
+    while (row < CHUNK_DIM && fgets(line, sizeof(line), f)) {
+        line[strcspn(line, "\r\n")] = '\0';
+        int len = (int)strlen(line);
+        for (int col = 0; col < CHUNK_DIM; col++) {
+            char glyph = (col < len) ? line[col] : 'f';
+            surface[row][col] = (glyph == 'W') ? (FLAT_SURFACE_Z + 3) : FLAT_SURFACE_Z;
+        }
+        row++;
+    }
+    fclose(f);
+    /* Any row the file didn't provide (map shorter than CHUNK_DIM)
+     * defaults to flat walkable floor, same as a too-short line above. */
+    for (; row < CHUNK_DIM; row++)
+        for (int col = 0; col < CHUNK_DIM; col++)
+            surface[row][col] = FLAT_SURFACE_Z;
+    return 0;
+}
+
 int main(int argc, char **argv) {
     if (argc < 4) {
-        fprintf(stderr, "Usage: pc_generate_chunk.+x <seed> <chunk_x> <chunk_y> [flat]\n");
+        fprintf(stderr, "Usage: pc_generate_chunk.+x <seed> <chunk_x> <chunk_y> [flat|map:<map_id>]\n");
         return 1;
     }
     resolve_root();
@@ -269,6 +306,7 @@ int main(int argc, char **argv) {
     int chunk_x = atoi(argv[2]);
     int chunk_y = atoi(argv[3]);
     int flat_mode = (argc >= 5 && strcmp(argv[4], "flat") == 0);
+    const char *map_id = (argc >= 5 && strncmp(argv[4], "map:", 4) == 0) ? argv[4] + 4 : NULL;
 
     char chunk_dir[PATH_BUF];
     char mkdir_cmd[PATH_BUF + 16];
@@ -286,15 +324,25 @@ int main(int argc, char **argv) {
      * (base 16, middle of 32). Multiple biomes / real noise octaves are
      * later work (design §6), not Phase 1's bar either way. */
     int surface[CHUNK_DIM][CHUNK_DIM];
-    for (int row = 0; row < CHUNK_DIM; row++) {
-        for (int col = 0; col < CHUNK_DIM; col++) {
-            if (flat_mode) {
-                surface[row][col] = FLAT_SURFACE_Z;
-            } else {
-                unsigned int h = hash_coord(seed, chunk_x, chunk_y, col, row);
-                int variation = (int)(h % 5) - 2; /* -2..+2 */
-                surface[row][col] = 16 + variation;
+    int map_load_failed = 0;
+    if (map_id) {
+        map_load_failed = load_map_surface(map_id, surface);
+    }
+    if (!map_id || map_load_failed) {
+        for (int row = 0; row < CHUNK_DIM; row++) {
+            for (int col = 0; col < CHUNK_DIM; col++) {
+                if (flat_mode) {
+                    surface[row][col] = FLAT_SURFACE_Z;
+                } else {
+                    unsigned int h = hash_coord(seed, chunk_x, chunk_y, col, row);
+                    int variation = (int)(h % 5) - 2; /* -2..+2 */
+                    surface[row][col] = 16 + variation;
+                }
             }
+        }
+        if (map_load_failed) {
+            fprintf(stderr, "pc_generate_chunk: map '%s' not found, falling back to flat\n", map_id);
+            map_id = NULL;
         }
     }
 
@@ -376,6 +424,14 @@ int main(int argc, char **argv) {
     write_kv(world_state_path, "autotick_speed", "min");
     write_kv_int(world_state_path, "autotick_last_real_ms", 0);
 
+    /* REAL, NEW 2026-09-14 (EVENT-TRIGGER-LAYER-PLAN.md §3/§4) - the
+     * MOVE handler in pc_menu_input.c reads this back to know which
+     * map's events.pdl to check the player's position against. Empty
+     * string (write_kv still writes the key) for procedural/flat worlds
+     * - a blank map_id is the real, honest "no static map loaded, no
+     * trigger check to run" signal, not a magic sentinel string. */
+    write_kv(world_state_path, "map_id", map_id ? map_id : "");
+
     /* pieces/world_01/phymoji_entities.txt - real positioned phymoji
      * objects (phymoji.md §4b), one "entity_id,x,y,z" line per placed
      * tree, board-viewer's own bv_render_3d.c reads this generically
@@ -436,13 +492,23 @@ int main(int argc, char **argv) {
     snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p '%s'", hero_dir);
     { int _rc = system(mkdir_cmd); (void)_rc; }
 #endif
+    /* Real map mode spawns at a fixed, known-walkable floor tile
+     * (row=1,col=1 - cdda_sample's own 'f' floor ring) rather than the
+     * procedural center column (8,8) - cdda_sample's own (8,8) is a
+     * real registered event tile (the door, events.pdl's own
+     * `x=8 y=8 glyph=D` row), so spawning there would land the player
+     * directly on an event before the trigger-layer proof even starts
+     * moving. Procedural/flat worlds keep the original center spawn. */
+    int spawn_col = map_id ? 1 : 8;
+    int spawn_row = map_id ? 1 : 8;
+
     char hero_state_path[PATH_BUF];
     snprintf(hero_state_path, sizeof(hero_state_path), "%s/state.txt", hero_dir);
     write_kv(hero_state_path, "entity_type", "hero");
     write_kv_int(hero_state_path, "hp", 20);
-    write_kv_int(hero_state_path, "pos_x", 8);
-    write_kv_int(hero_state_path, "pos_y", 8);
-    write_kv_int(hero_state_path, "pos_z", surface[8][8] + 1);
+    write_kv_int(hero_state_path, "pos_x", spawn_col);
+    write_kv_int(hero_state_path, "pos_y", spawn_row);
+    write_kv_int(hero_state_path, "pos_z", surface[spawn_row][spawn_col] + 1);
     write_kv(hero_state_path, "owner_id", "player");
     write_kv_int(hero_state_path, "chunk_x", chunk_x);
     write_kv_int(hero_state_path, "chunk_y", chunk_y);
@@ -474,9 +540,9 @@ int main(int argc, char **argv) {
     char xelector_state_path[PATH_BUF];
     snprintf(xelector_state_path, sizeof(xelector_state_path), "%s/state.txt", xelector_dir);
     write_kv(xelector_state_path, "entity_type", "xelector");
-    write_kv_int(xelector_state_path, "pos_x", 8);
-    write_kv_int(xelector_state_path, "pos_y", 8);
-    write_kv_int(xelector_state_path, "pos_z", surface[8][8] + 1);
+    write_kv_int(xelector_state_path, "pos_x", spawn_col);
+    write_kv_int(xelector_state_path, "pos_y", spawn_row);
+    write_kv_int(xelector_state_path, "pos_z", surface[spawn_row][spawn_col] + 1);
     write_kv(xelector_state_path, "possessed_id", "hero_01");
     write_kv_int(xelector_state_path, "chunk_x", chunk_x);
     write_kv_int(xelector_state_path, "chunk_y", chunk_y);

@@ -148,8 +148,43 @@ that design doc's own §7 sequencing already says so.
 
 ## Next step
 
-Not started (no code written yet). Real hook point found and
-documented (§3/§4 above) — next actual task is implementing §3 Step 1
-(the adjacency check inside `pc_menu_input.c`'s `MOVE` handler) and
-Step 2 (the bridge watcher on `data/master_ledger.txt`), then proving
-§3 Step 3 end to end.
+**§3 Step 1 and Step 3 are DONE (2026-09-14), real, built, and proven
+live** — commit pending. What was actually built:
+
+- `pc_generate_chunk.c`: new `map:<map_id>` generation mode
+  (`load_map_surface()`) — reads a real, static, authored
+  `pieces/system/maps/<map_id>/map.txt` grid instead of procedural
+  generation, writes the map's own id into `world_01/state.txt`'s new
+  `map_id` key, and spawns hero/xelector at a safe, known-walkable
+  fixed tile (not the procedural center column, which lands directly
+  on `cdda_sample`'s own door event otherwise). Reachable via a new
+  `CONFIRM_START_MAP:<map_id>` inbox command in `pc_menu_input.c`
+  (same dispatch shape as `CONFIRM_START_DEBUG`; no menu button wired
+  yet — real, deliberate, separate UI increment, not required for the
+  mechanism itself).
+- `pc_menu_input.c`: new `check_player_touch_trigger()`, called from
+  the `MOVE` handler right after the existing `move` ledger append. It
+  reads the player's just-written position, parses the active map's
+  `events.pdl` for a `trigger=player-touch` row at that exact `x,y`,
+  and on a match calls the SAME `ledger_append()` already in scope
+  with a new `touched_npc` action_type — no new file, no new write
+  path, exactly as §3's revised design called for.
+- **Proven live**, real evidence (not "should work"): loaded
+  `cdda_sample` via `CONFIRM_START_MAP:cdda_sample`, moved the player
+  onto the real, pre-existing `x=6 y=5 glyph=t trigger=player-touch`
+  tile, and `data/master_ledger.txt` genuinely gained a new line:
+  `...|1|player|touched_npc|x:6,y:5` — fully automatic, no events-hq
+  editor, no Play button. Both binaries rebuilt clean via the project's
+  own real `scripts/build.sh` flags, zero new warnings/errors.
+- **Honest caveat**: this DID write into the real, persistent
+  `real_root` (not a disposable test session) — the live piececraft-hq
+  project's own world seed/tick/hero+xelector position and
+  `master_ledger.txt` now reflect this test run, per this op's own
+  existing real-vs-session-root convention. Not reverted; flagged here
+  so it's not mistaken for silent, unintended state drift later.
+
+**Still not started**: §3 Step 2 (the persistent bridge-watcher daemon
+that tails `master_ledger.txt` for `touched_npc` lines and actually
+fires the matching Common Event via `play_event.sh`) — lifecycle
+already decided (§4: persistent forked daemon, matching
+`pc_clock_daemon.c`'s launch convention). That's the real next task.
