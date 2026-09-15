@@ -62,21 +62,24 @@ static void read_pdl_kv(const char *path, const char *key, char *out, size_t sz)
     fclose(f);
 }
 
-/* Real 33-row action menu, in the exact order of the direct frame dump
- * the user pasted (not piece.pdl's own unordered METHOD list - that
- * file groups by category, the real ON-SCREEN order groups "Navigation"
- * items after a separator instead). The original ASCII UI's own row 1
- * ("Actions [+]") was the fold TRIGGER, not a real action - dsr.xhtpm
- * has a real, static "Actions" panel header instead, so it's not
- * duplicated here.
- *
- * ROLLED BACK 2026-09-14 (see dsr.xhtpm's own rollback comment) - a
- * follow-up pass that moved File/Game Options/Settings/Help into a
- * tabbar and removed "New Game" broke nav by mixing Actions into the
- * status sidebar at the same time; reverted to this last confirmed-
- * working list wholesale rather than partially. Both of those changes
- * are still real, still wanted - redo them properly (separate real
- * columns, verified via a frame dump) rather than re-attempted here. */
+/* REAL, NEW 2026-09-15, direct instruction ("now lets fill in the op
+ * buttons by category") - the flat 33-row list (kept below, unchanged,
+ * for any future caller that still wants "every action in one list")
+ * is now ALSO split into the 4 real category boxes the WSR 8.12
+ * Trading Desk screenshot itself shows (Research Menus and Tools/
+ * Transactions/Other/Quick Search Functions) - dsr.xhtpm's own real
+ * template renders each as its own `<panel class="dsr-box">` in the
+ * wrap-grid now, replacing the old single flat Actions panel (see
+ * NOTES.md's own "Grouped-box layout" entry). Categorization is a real
+ * semantic grouping by what each action DOES (research/reporting vs.
+ * a real money-moving transaction vs. administrative/navigational vs.
+ * the one real search action), not derived from any WSR data file -
+ * piece.pdl's own METHOD list has no category field, this house's own
+ * design-doc plan explicitly left the actual split to be worked out
+ * here. File/Game Options/Settings/Help are deliberately left OUT of
+ * every category box - dsr.xhtpm's own `<tabbar>` already represents
+ * them, so keeping them ALSO in a category box would be a real, visible
+ * duplication, not a fresh action. */
 static const char *ACTION_LABELS[] = {
     "File", "Game Options", "Settings", "Help", "Select Player",
     "Culture", "Entity Info", "Select Corp.", "History", "General", "Tools",
@@ -88,6 +91,31 @@ static const char *ACTION_LABELS[] = {
 };
 #define N_ACTIONS (int)(sizeof(ACTION_LABELS) / sizeof(ACTION_LABELS[0]))
 #define NAV_SEPARATOR_AFTER 27 /* real "--- Navigation ---" row appears before index 27 (27 real rows above it) */
+
+static const char *RESEARCH_LABELS[] = {
+    "Research Report", "List Portfolio", "Financial Profile",
+    "List Options", "Earnings Report", "Shareholder List",
+    "My Corporations", "Chart", "Watchlist", "TICKER", "History",
+    "Entity Info", "Culture", "General", "Tools"
+};
+#define N_RESEARCH (int)(sizeof(RESEARCH_LABELS) / sizeof(RESEARCH_LABELS[0]))
+
+static const char *TRANSACTION_LABELS[] = {
+    "Buy/Sell", "Financing", "Private", "Other Trans", "List Futures",
+    "Management"
+};
+#define N_TRANSACTIONS (int)(sizeof(TRANSACTION_LABELS) / sizeof(TRANSACTION_LABELS[0]))
+
+static const char *OTHER_LABELS[] = {
+    "Select Player", "Select Corp.", "Misc. Menu", "Auto", "New Game",
+    "End Turn", "Back"
+};
+#define N_OTHER (int)(sizeof(OTHER_LABELS) / sizeof(OTHER_LABELS[0]))
+
+static const char *SEARCH_LABELS[] = {
+    "DB Search"
+};
+#define N_SEARCH (int)(sizeof(SEARCH_LABELS) / sizeof(SEARCH_LABELS[0]))
 
 static void write_small_file(const char *path, const char *content) {
     char tmp[PB];
@@ -150,6 +178,26 @@ static void publish(const char *house_root, const char *state_path) {
             "act_%d_sep_before=%d\n",
             i, ACTION_LABELS[i], i, (i == NAV_SEPARATOR_AFTER) ? 1 : 0);
     }
+
+    /* REAL, NEW 2026-09-15 - the 4 real category boxes (see this file's
+     * own header comment on RESEARCH_LABELS[] etc.); same var-prefix
+     * convention as act_N_label above (bind= name must equal the
+     * published prefix exactly). */
+    off += (size_t)snprintf(body + off, sizeof(body) - off,
+        "n_research=%d\nn_transactions=%d\nn_other=%d\nn_search=%d\n",
+        N_RESEARCH, N_TRANSACTIONS, N_OTHER, N_SEARCH);
+    for (int i = 0; i < N_RESEARCH && off < sizeof(body) - 256; i++)
+        off += (size_t)snprintf(body + off, sizeof(body) - off,
+            "res_%d_label=%s\n", i, RESEARCH_LABELS[i]);
+    for (int i = 0; i < N_TRANSACTIONS && off < sizeof(body) - 256; i++)
+        off += (size_t)snprintf(body + off, sizeof(body) - off,
+            "trn_%d_label=%s\n", i, TRANSACTION_LABELS[i]);
+    for (int i = 0; i < N_OTHER && off < sizeof(body) - 256; i++)
+        off += (size_t)snprintf(body + off, sizeof(body) - off,
+            "oth_%d_label=%s\n", i, OTHER_LABELS[i]);
+    for (int i = 0; i < N_SEARCH && off < sizeof(body) - 256; i++)
+        off += (size_t)snprintf(body + off, sizeof(body) - off,
+            "srch_%d_label=%s\n", i, SEARCH_LABELS[i]);
 
     char ui_path[PB];
     snprintf(ui_path, sizeof(ui_path), "%s/&.hq-apps/dsr/state/ui.txt", house_root);

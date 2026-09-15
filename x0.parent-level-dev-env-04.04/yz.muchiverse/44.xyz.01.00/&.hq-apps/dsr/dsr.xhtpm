@@ -120,12 +120,35 @@
 <text label="Population: ${population}" class="quiet"/>
 <text label="Temperature: ${temperature}C" class="quiet"/>
 </panel>
-<panel id="detail" class="panel dsr-actions">
-<text label="Actions" class="block-title"/>
+<panel id="box-research" class="dsr-box dsr-catbox">
+<text label="Research Menus and Tools" class="block-title"/>
 <scrolllist>
-<repeat count="${n_actions}" bind="act">
-<text label="--- Navigation ---" show="${act.sep_before}"/>
-<item label="${act.label}" action="void"/>
+<repeat count="${n_research}" bind="res">
+<item label="${res.label}" action="void"/>
+</repeat>
+</scrolllist>
+</panel>
+<panel id="box-transactions" class="dsr-box dsr-catbox">
+<text label="Transactions" class="block-title"/>
+<scrolllist>
+<repeat count="${n_transactions}" bind="trn">
+<item label="${trn.label}" action="void"/>
+</repeat>
+</scrolllist>
+</panel>
+<panel id="box-other" class="dsr-box dsr-catbox">
+<text label="Other" class="block-title"/>
+<scrolllist>
+<repeat count="${n_other}" bind="oth">
+<item label="${oth.label}" action="void"/>
+</repeat>
+</scrolllist>
+</panel>
+<panel id="box-search" class="dsr-box dsr-catbox">
+<text label="Quick Search Functions" class="block-title"/>
+<scrolllist>
+<repeat count="${n_search}" bind="srch">
+<item label="${srch.label}" action="void"/>
 </repeat>
 </scrolllist>
 </panel>

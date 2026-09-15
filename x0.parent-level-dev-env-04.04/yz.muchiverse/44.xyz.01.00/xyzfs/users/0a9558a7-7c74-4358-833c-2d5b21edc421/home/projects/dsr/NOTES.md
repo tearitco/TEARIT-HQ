@@ -197,6 +197,49 @@ Two real, honest scope decisions this pass (not silently done):
   scrolllist, its own full-width row below the status boxes. This is
   the resolution (for now) of the open question below.
 
+## Action categories - built, 2026-09-15
+
+Direct instruction: "now lets fill in the op buttons by category."
+`dsr_manager.c` gained 4 named arrays (RESEARCH_LABELS/TRANSACTION_
+LABELS/OTHER_LABELS/SEARCH_LABELS, a real semantic grouping by what
+each action does - piece.pdl has no category field to derive this
+from, this house's own design-doc plan left the actual split to be
+worked out here) and publishes them (`n_research`/`res_N_label`, etc.,
+same `bind=`-must-equal-prefix convention as everything else). The old
+flat single Actions panel is now 4 real `<panel class="dsr-box
+dsr-catbox">` boxes (Research Menus and Tools/Transactions/Other/Quick
+Search Functions) in the same wrap-grid as the status boxes - all 9
+boxes total now. `ACTION_LABELS[]`/`act_N_label` kept published,
+unused by the template now, in case a future flat-list consumer wants
+it. File/Game Options/Settings/Help deliberately excluded from every
+category box (the `<tabbar>` already represents them - would be a
+real, visible duplication otherwise).
+
+Real, honest layout trade-off, not fixed this pass: flex-wrap doesn't
+equalize row heights across boxes of different heights (a `.dsr-box`
+status box is 130px, a `.dsr-catbox` category box is 300px) - when a
+short and tall box share a row, the short box's own row leaves real
+visible empty space below it before the next row starts. Cosmetic,
+not a functional bug (confirmed via a real frame dump - every box's
+own content and nav still land in the right place); a later pass could
+solve it with matched row groupings if it's worth the real effort.
+
+Same pass, direct live report ("the text ... isn't getting the
+secondary color. its white and so is the background so its hard to
+see"): `.dsr-actions` (now the category boxes' own shared styling
+point too) never had its own real background-color/border like every
+other `.dsr-box` already did, so it fell through to this window's own
+active house theme default - real, visible near-white-on-white. Fixed
+with the same dark panel treatment, plus one real, explicit `item`/
+`text` bare-tag color rule (khtpm_css_parser.c only supports bare tag /
+single compound class chain / #id selectors - confirmed against
+canvas-craft.css's own documented constraint before writing this, a
+first attempt at a `.dsr-box item` descendant-combinator selector was
+caught and reverted before it ever shipped) so every plain, unclassed
+status value and action label gets real, readable contrast regardless
+of the house's own active theme, not just the boxes that happened to
+already set one.
+
 ## Ideas / synergies (running notes, not commitments)
 -
 
@@ -204,14 +247,8 @@ Two real, honest scope decisions this pass (not silently done):
 - ~~Where does "Actions" sit relative to the grouped boxes above~~ -
   resolved 2026-09-15: its own dedicated full-width scrolling panel
   below the grid, not itself a wrap-grid box.
-- Next real step, direct instruction ("now lets fill in the op buttons
-  by category"): split `dsr_manager.c`'s own flat `ACTION_LABELS[]`
-  into named categories (Research Menus and Tools/Transactions/Other/
-  Quick Search Functions, matching the WSR screenshot's own remaining
-  4 boxes) and give each its own real `<panel class="dsr-box">` in the
-  wrap-grid, same shape as the status boxes above - real, cheap,
-  data-only work per this project's own "Layout plan" note (no
-  renderer change needed), not yet started.
+- ~~Split ACTION_LABELS[] into named categories~~ - done, 2026-09-15,
+  see below.
 - The `open_desk.state.txt` toggle has no real UI to flip it yet (no
   menu row calls it) - real file-based toggle exists, real switch
   doesn't yet.

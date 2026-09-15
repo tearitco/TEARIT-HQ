@@ -12,7 +12,7 @@
 
 .dsr-toy {
   width: 900px;
-  height: 760px;
+  height: 980px;
 }
 
 .dsr-grid {
@@ -46,11 +46,53 @@
   padding: 6px;
 }
 
+/* REAL, NEW 2026-09-15, direct instruction ("now lets fill in the op
+   buttons by category") - the 4 real action-category boxes (Research
+   Menus and Tools/Transactions/Other/Quick Search Functions), replacing
+   the old single flat Actions panel. Same .dsr-box base (width/bg/
+   border/padding); this rule, declared AFTER .dsr-box in this file, so
+   it wins on height only (css_compute_style_ex() merges same-tier class
+   rules in the sheet's own declaration order - confirmed by reading
+   the code, not guessed) - tall enough for the longest real category
+   list (Research, 15 rows) without needing per-box heights; a shorter
+   category's own scrolllist just has empty space below it, same real
+   trade-off the status boxes' own shared height already made. */
+.dsr-catbox {
+  height: 300px;
+}
+
+/* REAL FIX, direct live report ("the text in the x11-hq dsr window
+   isn't getting the secondary color. its white and so is the
+   background so its hard to see") - this box never got its own real
+   background-color/border like every .dsr-box already has (it fell
+   through to this window's own house-theme default, which reads as
+   near-white here) - same dark panel treatment as the status boxes,
+   for real, visible contrast regardless of the active house theme. */
 .dsr-actions {
   width: 860px;
   height: 420px;
   flex-grow: 1;
+  background-color: #1c1f28;
+  border: 1px solid #3a3f52;
+  border-color: #3a3f52;
+  padding: 6px;
 }
 
 .block-title { color: #ffffff; font-weight: bold; }
 .quiet       { color: #8b93a7; }
+/* Plain, unclassed <text>/<item> rows (every real status value and
+   every category-box action label) - explicit, not left to whatever
+   default this window's own active house theme happens to pick, same
+   real reason .dsr-actions above needed one. Bare tag selectors only -
+   khtpm_css_parser.c takes bare tag / single compound class chain /
+   #id, no descendant combinators (canvas-craft.css's own header
+   comment already documents this constraint); css_compute_style()
+   applies tag rules before class rules, so .block-title/.quiet's own
+   more specific color still wins on the rows that set them. */
+item {
+  color: #d6d9e3;
+}
+
+text {
+  color: #d6d9e3;
+}
