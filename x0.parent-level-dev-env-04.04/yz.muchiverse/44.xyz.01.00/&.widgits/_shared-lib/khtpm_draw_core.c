@@ -1672,9 +1672,38 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             XSetForeground(dpy, gc, alloc_pixel("#141414"));
             XFillRectangle(dpy, buf, gc, chip_x0, chip_y0, (unsigned)chip_w, (unsigned)chip_h);
             chip_drawn = 1;
-        } else if ((e->sprite[0] || is_swatch_tile) && e->y >= 16) {
+        } else if ((e->sprite[0] || is_swatch_tile) && e->y >= 16 && !elem_has_class(e, "dock-cell")) {
             /* Sprite tiles and swatch-picker tiles: draw badge ABOVE the tile
-             * with a dark backing chip for contrast. */
+             * with a dark backing chip for contrast.
+             *
+             * REAL FIX 2026-09-15, direct live report ("navigating the
+             * bottom tb and pager, it jumps index after a while and
+             * also the pager elements disappeared... pc-hq's same
+             * bottom tb pager work fine"): reproduced live - opening
+             * the dock's second row (a real sprite-bearing dock-cell
+             * at y=45, e->y>=16) made THIS branch fire and draw its
+             * badge ABOVE the tile (numy_above = e->y - gap_margin -
+             * descent), landing back inside ROW 1's own box - the
+             * dock strip packs rows with ZERO vertical gap
+             * (DOCK_BAR_H per row, no margin), unlike the swatch/
+             * palette grids this branch was written for, which DO
+             * have real vertical spacing between rows for an
+             * above-tile badge to sit in. Every row-2+ dock-cell's
+             * own badge bled up into the row above it, visually
+             * "stealing" that space while row 2 itself looked
+             * unnumbered - not a nav-index bug at all (the underlying
+             * data, read straight from the frame file, was always
+             * correct: sequential 17..35, row 2 genuinely at y=45).
+             * The "+/- pager disappeared" half of the same report was
+             * this same misdraw pushing the badge chip (and the real
+             * separator line drawn right after) into row 1's paint
+             * pass, visually burying the pager off in the noise - the
+             * pager's own real Elem/frame-file entry was never
+             * actually missing (confirmed live: still present, still
+             * numbered, in every dump taken). dock-cell rows exclude
+             * themselves from this branch and fall through to the
+             * general inline chip below instead, matching row 1's own
+             * already-correct placement. */
             int chip_pad = 1;
             int gap_margin = 2;
             int numy_above = e->y - gap_margin - nav_badge_font->descent;
