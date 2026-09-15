@@ -201,4 +201,11 @@ _sx="$(pkg-config --cflags --libs x11 xft 2>/dev/null)"
 [ -n "$_sx" ] || _sx="-I/usr/include/freetype2 -lX11 -lXft"
 $CC $CFLAGS -o +x/livedesk_splash.+x livedesk_splash.c $_sx
 
+# 2026-09-15: house-wide joystick arrow input, v1 (JOYSTICK-INPUT-
+# HOUSE-WIDE-DESIGN.md). Standalone, no X11 deps - reads the raw Linux
+# joystick API and appends to a shared relay file every window's own
+# poll_agent_history() already tail-polls.
+echo "-- house-wide joystick arrow-input daemon -> +x/khtpm_joystick_daemon.+x"
+$CC $CFLAGS -o +x/khtpm_joystick_daemon.+x khtpm_joystick_daemon.c
+
 echo "OK +x/khtpm_taskbar_manager_main.+x and +x/khtpm_core_render.+x (strip mode + entity/tile mode, plus helpers)"

@@ -867,7 +867,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
         XFillRectangle(dpy, buf, gc, e->x, e->y, e->w, e->h);
     }
     if (e->nav_index > 0 && e->nav_index == g_focus_nav) {
-        XSetForeground(dpy, gc, alloc_pixel("#ff8c00"));
+        XSetForeground(dpy, gc, alloc_pixel(g_theme_accent));
         /* The focus box is a 1px halo drawn just OUTSIDE the element
          * (x-1..x+w, y-1..y+h) - correct for every compact <item>,
          * dropdown row, strip cell, etc., and how it has always
@@ -958,8 +958,8 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                 snprintf(status_line, sizeof(status_line), "%s%d. jump: %s_", prefix, e->nav_index, g_default_input_elem->grid_jump_buffer);
             else
                 snprintf(status_line, sizeof(status_line), "%s%d.", prefix, e->nav_index);
-            const char *badge_fg = armed ? (edit_mode ? "#ffcc00" : "#ff8c00") :
-                                    (e->nav_index == g_focus_nav ? "#ff8c00" : "#888888");
+            const char *badge_fg = armed ? (edit_mode ? "#ffcc00" : g_theme_accent) :
+                                    (e->nav_index == g_focus_nav ? g_theme_accent : "#888888");
             XftColor bcol = xft_color(badge_fg);
             draw_text_emoji(gfont, &bcol, e->x + 2, e->y + gfont->ascent + 1, status_line);
             XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &bcol);
@@ -1034,7 +1034,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
              * badges, not one. The pending jump buffer (state 0) is
              * shown in the real status row above, not here - see that
              * row's own comment for why. */
-            XSetForeground(dpy, gc, alloc_pixel(edit_mode ? "#ffcc00" : "#ff8c00"));
+            XSetForeground(dpy, gc, alloc_pixel(edit_mode ? "#ffcc00" : g_theme_accent));
             XDrawRectangle(dpy, buf, gc, hx, hy, CELL_W_PX, CELL_H_PX);
             if (edit_mode) {
                 /* The one real cell being edited shows its own live
@@ -1418,8 +1418,24 @@ static void draw_elem(Elem *e, int hover_id_hash) {
          * needs to track it for readability, not stay hardcoded. Only
          * when the item has no explicit CSS fg_color of its own -
          * an explicit fg_color is a deliberate per-element choice,
-         * left alone. */
-        const char *default_fg = (window_is_dock() && kh_hex_luma(g_theme_bg) > 140) ? "#1c1c1c" : "#cccccc";
+         * left alone.
+         *
+         * REAL FIX 2026-09-15, direct live report ("the font should be
+         * using secondary color from user color settings picker, or
+         * they will never match, this should be a layout renderer
+         * standard") - g_theme_fg IS that user-picked color (loaded
+         * straight from #.desktop/livedesk_theme.pdl's own `fg` row,
+         * the same value the color picker writes); every unstyled
+         * item/text label house-wide now defaults to it instead of a
+         * flat "#cccccc" a per-widget CSS file had to override by hand
+         * to ever match. Dock's own light-bg readability override above
+         * still wins when it applies (a real, narrower exception, not
+         * touched here); off-dock this is now g_theme_fg, with
+         * "#cccccc" only as the literal fallback if the theme file
+         * hasn't loaded a fg value yet. */
+        const char *default_fg = (window_is_dock() && kh_hex_luma(g_theme_bg) > 140)
+                                      ? "#1c1c1c"
+                                      : (g_theme_fg[0] ? g_theme_fg : "#cccccc");
         XftColor col = xft_color(e->style.has_fg_color ? e->style.fg_color : default_fg);
         XGlyphInfo extents;
         XftTextExtentsUtf8(dpy, font, (const FcChar8 *)shown_label, (int)strlen(shown_label), &extents);
@@ -1763,8 +1779,8 @@ static void draw_elem(Elem *e, int hover_id_hash) {
              * element contrast calculation needed anywhere. */
             const char *badge_fg = "#cccccc";
             if (nav_badge[1] == '^') badge_fg = "#ffd24a";
-            else if (nav_badge[1] == '>') badge_fg = "#ff8c00";
-            else if (focused) badge_fg = "#ff8c00";
+            else if (nav_badge[1] == '>') badge_fg = g_theme_accent;
+            else if (focused) badge_fg = g_theme_accent;
             XftColor numcol = xft_color(badge_fg);
             XftDrawStringUtf8(xftdraw_buf, &numcol, nav_badge_font, draw_x, numy, (const FcChar8 *)nav_badge, (int)strlen(nav_badge));
             XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &numcol);
