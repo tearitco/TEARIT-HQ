@@ -296,6 +296,24 @@ EOSTATE
         export PAL_LAYOUT="$PC_PAL_LAYOUT"
         "$SCRIPT_DIR/system/orchestrator" 2>>pieces/system/orchestrator.log &
         ORCH_PID=$!
+        # REAL FIX 2026-09-15, direct live report ("those should show
+        # up in our proc-mon we should beable to find and kill them
+        # under 'other session' in proc mon") - this whole session
+        # stack (orchestrator + whatever it forks internally: renderer/
+        # chtpm_parser_pal/prisc+x) never registered with the house's
+        # real proc-mon registry (kh_proc_registry.h) - confirmed live,
+        # a leftover test session from this exact launcher was found
+        # running invisibly. Same real fix already applied to board-
+        # viewer's own button.sh, same date: register the top-level
+        # spawned pid via the shell-callable kh_proc_register_op
+        # wrapper (no orchestrator.c source change needed - that file
+        # is duplicated across dozens of project dirs house-wide, a
+        # shell-level fix here is the safe, minimal, already-proven
+        # pattern instead of touching all of them).
+        REG_OP="$HOUSE_DIR/&.widgits/_shared-lib/ops/+x/kh_proc_register_op.+x"
+        if [ -x "$REG_OP" ]; then
+            "$REG_OP" "$HOUSE_DIR" "$ORCH_PID" "pchq-orchestrator" >/dev/null 2>&1 || true
+        fi
 
         # OPTIONAL GL/RGB MIRROR - gated on NO_GL and a real DISPLAY,
         # skips gracefully otherwise. MUST wait for chtpm_parser_pal's
@@ -353,6 +371,11 @@ EOSTATE
             if [ -x ./system/chtpm_rgb_render ]; then
                 ./system/chtpm_rgb_render >/dev/null 2>&1 &
                 RGB_PID=$!
+            fi
+            # Same real proc-mon registration fix as ORCH_PID above.
+            if [ -x "$REG_OP" ]; then
+                [ -n "$GL_PID" ] && "$REG_OP" "$HOUSE_DIR" "$GL_PID" "pchq-mirror" >/dev/null 2>&1 || true
+                [ -n "$RGB_PID" ] && "$REG_OP" "$HOUSE_DIR" "$RGB_PID" "pchq-rgb-render" >/dev/null 2>&1 || true
             fi
         fi
 
