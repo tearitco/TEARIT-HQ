@@ -134,6 +134,17 @@ plan). This pass is "buildings in place," not "buildings that do
 anything," matching the same display-first sequencing the toy itself
 already followed.
 
+**Population buildings added, 2026-09-14** - direct instruction: "add
+🏨 on each side in the missing spot (where the population bank
+lives)." The bottom row (gy=3) only had 3 of its 4 column slots filled
+(3 remaining stores after the top row took 1) - `dsr_population_a`
+(gx=13,gy=3 / x=1040,y=240) and `dsr_population_b` (gx=23,gy=3 /
+x=1840,y=240) fill that real 4th slot on each side, same simple-deskpal
+shape as every other building. Verified live: both real windows
+confirmed via `xwininfo` at the exact expected coordinates, a direct
+frame dump of `dsr_population_a` confirmed the real 🏨 sprite renders
+correctly. 16 real buildings total now (was 14).
+
 ## Toy -> desk auto-open - built, 2026-09-14
 
 Direct instruction: "the dsr desk should be opening when we open dsr
