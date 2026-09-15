@@ -65,15 +65,29 @@ mechanism already exists, house-wide, and is now wired into pc-hq:
   ON"/"Player: OFF"). This is the real "start/stop for game mode" the
   user described - explicitly NOT the clock/tick daemon, which is a
   separate, always-running thing.
-- **Real, conditional caveat for later** (direct live note, not yet
-  actionable): Player start/stop *may* need to also start/stop
-  `pc_clock_daemon.c` itself, but ONLY if that clock is ever mapped to
-  a genuine real-time "live play" mode - NOT if it's driven by
-  steps/end-turn instead. No such clock-mode concept exists anywhere
-  in `pc_clock_daemon.c` today (confirmed - grepped for it, zero
-  hits), so this is real future scope, not something wired now - don't
-  invent a clock-mode branch speculatively; build it when a real
-  clock-mode concept actually exists.
+- **Real, conditional caveat for later, now with a real reference to
+  copy** (direct live note: "there is a clock mode concept in fuzz-op
+  and maybe some other places in house that can be reused"): Player
+  start/stop *may* need to also gate `pc_clock_daemon.c`, but ONLY if
+  that clock is ever mapped to a genuine real-time "live play" mode -
+  NOT if it's driven by steps/end-turn instead. Confirmed: no such
+  concept exists in `pc_clock_daemon.c` today, and none exists anywhere
+  else in this house either (checked board-viewer, the desktop idle
+  loop - nothing). **A real, working reference DOES exist in the
+  sibling TPMOS prototype tree**: `pieces/system/clock_daemon/plugins/
+  clock_daemon.c` (used by `projects/fuzz-op/`) - a real `mode=auto|
+  manual` key in its state file. `auto` = the daemon self-increments
+  time/turn every tick (real-time/live-play); `manual` = the daemon
+  idles and does nothing until an external `tick` call (fuzz-op_
+  manager.c's own `tick_clock_if_manual()`, invoked once per discrete
+  player action) - exactly the live-play-vs-step split described here.
+  Recommended shape if/when this gets built: mirror `mode=auto|manual`
+  into `pc_clock_daemon.c`'s own state file, gate its tick loop the
+  same way, and have Play Mode's own toggle call an equivalent
+  `set-mode` rather than starting/stopping the daemon process itself
+  (fuzz-op's daemon stays always-running and cheap - a bare `sleep(1)`
+  loop - and just branches internally). Still not wired - real future
+  scope with a real template now, not invented from scratch.
 - **Still real, separate, unbuilt work** (PLAY-MODE-ENTITY-HARNESS-
   DESIGN.md §4, its own "nothing in this doc is built yet"): entities
   showing a genuinely DIFFERENT context menu depending on this flag
