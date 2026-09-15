@@ -4919,8 +4919,19 @@ static int layout_sidebar_panel(Elem *page) {
 #define DOCK_CELL_GAP 16
 #define DOCK_NAV_BADGE_PX 36
 #define DOCK_FOCUS_BOX_W 64
-#define DOCK_PAGER_W 80
-#define DOCK_MAX_PACK 128
+/* REAL FIX 2026-09-14, direct live report ("the +- is not centered in
+ * the space for it either... u may want to make the space for it
+ * wider to accomodate"): 80px was sized back when nav badges on this
+ * pair were always single-digit; a desk with 20+ entities (dsr's own
+ * 17 live buildings) pushes the pager's own nav numbers into the
+ * 30s - two digits - and the old margin left the pair cramped against
+ * the last cell. Widened; dock_place_pager() below now centers the
+ * pair within this margin instead of hugging the right edge. */
+#define DOCK_PAGER_W 110
+/* DOCK_MAX_PACK removed 2026-09-14 (DOCK-BAR-GENERIC-LAYOUT-MIGRATION.md
+ * phase 1) - was the fixed-size bound for the bottom bar's own
+ * hand-packed pack[] array, deleted along with it now that
+ * css_layout_pass's flex-wrap engine owns that job. */
 
 static int window_is_dock(void) {
     return g_window && (elem_has_class(g_window, "dock-header") || elem_has_class(g_window, "dock-bottom"));
@@ -5109,12 +5120,16 @@ static void dock_place_pager(int win_w, int after_x) {
         return;
     }
 
-    /* right-aligned inside the reserved DOCK_PAGER_W margin, same real
-     * shape as the footer pager's own right_edge - 2*aw - gap /
-     * right_edge - aw pair. */
-    int right_edge = win_w - 8;
-    int mx = right_edge - 2 * aw - gap;
+    /* Centered within the reserved DOCK_PAGER_W margin (not hugging the
+     * right edge) - direct live report ("the +- is not centered in the
+     * space for it either"). margin_start is where the row-packer's
+     * own max_w cap (g_win_w - DOCK_FOCUS_BOX_W - DOCK_PAGER_W) stops
+     * laying out cells, i.e. the real left edge of this reserved zone. */
+    int margin_start = win_w - DOCK_PAGER_W;
+    int content_w = 2 * aw + gap;
+    int mx = margin_start + (DOCK_PAGER_W - content_w) / 2;
     if (mx < DOCK_FOCUS_BOX_W) mx = DOCK_FOCUS_BOX_W;
+    if (mx + content_w > win_w - 4) mx = win_w - 4 - content_w;
 
     snprintf(g_dock_minus_elem.tag, sizeof(g_dock_minus_elem.tag), "item");
     snprintf(g_dock_minus_elem.id, sizeof(g_dock_minus_elem.id), "dock-page-minus");
@@ -5179,51 +5194,74 @@ static int layout_dock_bar(Elem *page) {
     }
     y = 0;
     if (is_bottom) {
-        Elem *pack[DOCK_MAX_PACK];
-        int n_pack = 0, r, col_x, max_w;
+        /* REAL FIX 2026-09-14 (DOCK-BAR-GENERIC-LAYOUT-MIGRATION.md,
+         * phase 1) - the hand-written column/row-advance pack loop
+         * (real source of today's own pager-position/centering/row-
+         * overlap bugs, all pixel-math mistakes) is replaced by the
+         * generic flex-wrap engine (css_layout_pass, khtpm_render_
+         * core.c - same real mechanism canvas-craft.xhtpm's own proven
+         * tile grid already uses). This C code now only does what a
+         * template author can't express in CSS: MEASURE each cell's
+         * own content-driven width (dock_item_cw() kept for exactly
+         * that, no longer for positioning) and set css_layout_pass's
+         * one real input it can't infer (the wrap-line height). The
+         * actual row-wrap/column-advance math is gone from this file -
+         * it lives in the shared engine now, where a bug in it gets
+         * fixed once for every window, not re-found per dock feature. */
+        Elem *row_elem = NULL;
+        int max_w = g_win_w - DOCK_FOCUS_BOX_W - DOCK_PAGER_W;
+        if (max_w < 40) max_w = 40;
         for (i = 0; i < page->n_children; i++) {
             Elem *c = page->children[i];
+            if (strcmp(c->tag, "row") == 0 && elem_has_class(c, "toolbar")) { row_elem = c; break; }
+        }
+        int n_pack = 0, r_max = 0;
+        if (row_elem) {
             int k;
-            if (strcmp(c->tag, "row") != 0 || !elem_has_class(c, "toolbar")) continue;
-            c->x = 0; c->y = 0; c->w = g_win_w; c->h = 0; c->nav_index = 0;
-            for (k = 0; k < c->n_children; k++) {
-                Elem *t = c->children[k];
+            css_compute_style(&g_sheet, row_elem->tag, row_elem->id, row_elem->classes, row_elem->n_classes, 0, &row_elem->style);
+            for (k = 0; k < row_elem->n_children; k++) {
+                Elem *t = row_elem->children[k];
                 if (strcmp(t->tag, "item") != 0) {
                     t->x = 0; t->y = -100000; t->w = 0; t->h = 0; t->nav_index = 0;
                     continue;
                 }
-                if (n_pack < DOCK_MAX_PACK) pack[n_pack++] = t;
-            }
-        }
-        max_w = g_win_w - DOCK_FOCUS_BOX_W - DOCK_PAGER_W;
-        if (max_w < 40) max_w = 40;
-        r = 0;
-        col_x = DOCK_FOCUS_BOX_W;
-        for (i = 0; i < n_pack; i++) {
-            Elem *t = pack[i];
-            int cw = dock_item_cw(t);
-            if (col_x > DOCK_FOCUS_BOX_W && col_x + cw > DOCK_FOCUS_BOX_W + max_w) {
-                r++;
-                col_x = DOCK_FOCUS_BOX_W;
-            }
-            if (r < g_dock_visible_rows) {
-                t->x = col_x;
-                t->y = r * DOCK_BAR_H;
-                t->w = cw;
-                t->h = DOCK_BAR_H;
                 css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
-                t->nav_index = ++g_n_nav;
-                g_nav[g_n_nav - 1] = t;
-                col_x += cw + DOCK_CELL_GAP;
-            } else {
-                t->x = 0; t->y = -100000; t->w = 0; t->h = 0; t->nav_index = 0;
+                t->w = dock_item_cw(t);
+                t->h = DOCK_BAR_H;
+            }
+            /* 100000: tall enough that flex-wrap never runs out of
+             * vertical room to lay out every real row - rows beyond
+             * g_dock_visible_rows are hidden below, after layout, the
+             * same real "compute everything, then hide what's off-
+             * page" pattern the footer pager already uses. */
+            css_layout_pass(row_elem, DOCK_FOCUS_BOX_W, 0, max_w, 100000);
+            for (k = 0; k < row_elem->n_children; k++) {
+                Elem *t = row_elem->children[k];
+                if (strcmp(t->tag, "item") != 0 || t->w <= 0) continue;
+                n_pack++;
+                int r = t->y / DOCK_BAR_H;
+                if (r > r_max) r_max = r;
             }
         }
-        g_dock_packed_rows = (n_pack > 0) ? (r + 1) : 1;
+        g_dock_packed_rows = (n_pack > 0) ? (r_max + 1) : 1;
         if (g_dock_visible_rows > g_dock_packed_rows) g_dock_visible_rows = g_dock_packed_rows;
         if (g_dock_visible_rows < 1) g_dock_visible_rows = 1;
+        if (row_elem) {
+            int k;
+            for (k = 0; k < row_elem->n_children; k++) {
+                Elem *t = row_elem->children[k];
+                if (strcmp(t->tag, "item") != 0 || t->w <= 0) continue;
+                int r = t->y / DOCK_BAR_H;
+                if (r < g_dock_visible_rows) {
+                    t->nav_index = ++g_n_nav;
+                    g_nav[g_n_nav - 1] = t;
+                } else {
+                    t->x = 0; t->y = -100000; t->w = 0; t->h = 0; t->nav_index = 0;
+                }
+            }
+        }
         y = g_dock_visible_rows * DOCK_BAR_H;
-        dock_place_pager(g_win_w, col_x);
+        dock_place_pager(g_win_w, 0);
         for (i = 0; i < page->n_children; i++) {
             Elem *c = page->children[i];
             if (strcmp(c->tag, "cli_io") == 0) {

@@ -1,0 +1,30 @@
+/* khtpm_strip_header.css - sibling-.css, auto-merged by the shared
+   renderer (same stem as khtpm_strip_header.xhtpm).
+
+   REAL, NEW 2026-09-14 (DOCK-BAR-GENERIC-LAYOUT-MIGRATION.md, phase
+   1) - the real display:flex/flex-wrap rule that lets layout_dock_bar()
+   hand the row-wrap/column-advance math to the shared generic flex
+   engine (css_layout_pass) instead of a hand-written C packing loop.
+   Same real mechanism canvas-craft.css's own .cc-cols rule already
+   proves live. No other properties needed here - cell width/height
+   are still set from C (dock_item_cw()/DOCK_BAR_H, real content-driven
+   sizes a plain CSS rule can't express), everything else (row-wrap,
+   column position) is the engine's job now.
+
+   REAL, this class is actually used by khtpm_strip_BOTTOM.xhtpm, not
+   this file's own khtpm_strip_header.xhtpm - not a mistake. The strip
+   header+peer (bottom bar) are ONE real process, sharing ONE real
+   CSS ruleset (g_sheet); CSS auto-load is keyed off main()'s own
+   startup g_chtpm_path (the HEADER's path) ONLY - the peer's own
+   sibling .css is never separately loaded (confirmed by reading
+   main()'s own real load site before adding this rule, not guessed -
+   a first attempt at this exact rule, placed at khtpm_strip_bottom.css,
+   silently never took effect for exactly this reason). Any future
+   dock-peer-only CSS rule belongs here too, for the same reason,
+   until/unless the peer gets its own real load site. */
+
+.dock-flexrow {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+}

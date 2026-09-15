@@ -4,20 +4,28 @@
      ENTITY cells FIRST, then HQ-window cells (BUG-LOG.md 2026-09-10 #1):
      nav numbers are positional across all toolbar rows, so a newly
      opened window must number AFTER every existing entity, never jump
-     ahead of them. -->
+     ahead of them.
+
+     REAL FIX 2026-09-14 (DOCK-BAR-GENERIC-LAYOUT-MIGRATION.md, phase
+     1) - the three real `<row>`s (tabs/hq-windows/shortcuts) used to
+     be packed together by layout_dock_bar()'s own hand-written
+     column/row-advance loop, re-flowing across row boundaries by
+     manual C math. Merged into ONE real `<row class="toolbar
+     dock-flexrow">` (same real source order - entities, then
+     hq-windows, then shortcuts, preserved) so the generic
+     `display:flex; flex-wrap:wrap` engine (css_layout_pass, same
+     proven mechanism canvas-craft.xhtpm already uses) does the actual
+     wrapping - no per-window C packing logic left to have position/
+     centering bugs in. -->
 <window class="dock-bottom" vars="#.desktop/strip_ui.txt">
 <page id="main">
-<row class="toolbar">
+<row class="toolbar dock-flexrow">
 <repeat count="${n_tabs}" bind="tab">
 <item label="${tab.label}" sprite="${tab.sprite}" class="dock-cell" action="${tab.action}"/>
 </repeat>
-</row>
-<row class="toolbar">
 <repeat count="${n_hqwins}" bind="hw">
 <item label="${hw.label}" class="dock-cell hqwin${hw.minclass}" onclick="${hw.onclick}"/>
 </repeat>
-</row>
-<row class="toolbar">
 <repeat count="${n_sc}" bind="sc">
 <item label="${sc.label}" class="dock-cell" action="${sc.action}"/>
 </repeat>

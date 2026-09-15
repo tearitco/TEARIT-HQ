@@ -150,6 +150,33 @@ house's own "delete, don't half-remove" convention. `DOCK_BAR_H` and
 
 ## 6. Status
 
-Not started. Scoped and documented per direct instruction, staged into
-3 real phases so each is independently testable and revertible rather
-than one large, hard-to-verify rewrite.
+**Phase 1 DONE and verified live, 2026-09-14** - merged the bottom
+bar's three real `<row>`s into one `<row class="toolbar dock-flexrow">`
+(`khtpm_strip_bottom.xhtpm`); `.dock-flexrow { display:flex;
+flex-direction:row; flex-wrap:wrap; }` added - real gotcha found and
+fixed live: this rule had to go in `khtpm_strip_header.css`, NOT a
+same-stem `khtpm_strip_bottom.css` sibling, because CSS auto-load is
+keyed off `main()`'s own startup `g_chtpm_path` (the header's path)
+only - the peer never gets its own separate load, confirmed by reading
+the real load site, not guessed (a first attempt at
+`khtpm_strip_bottom.css` silently never took effect). `layout_dock_bar()`
+now only measures each cell's real content width
+(`dock_item_cw()`, kept for that, not positioning) and hands the actual
+row-wrap/column-advance math to `css_layout_pass()`; nav-index
+assignment happens in a real post-layout pass over the now-positioned
+children, same visual order as before. `DOCK_MAX_PACK` deleted (real,
+not half-removed) along with the `pack[]` array it sized.
+
+Verified live via real frame dumps (not guessed): row 1 renders
+correctly; paging to row 2 (`PAGEROW:+1` via the real pager) shows a
+clean second row with ZERO bleed into row 1 (today's own reported
+bug); paging back (`PAGEROW:-1`) collapses cleanly; the header window
+(untouched by this phase - still its own separate hand-packed branch)
+confirmed unaffected.
+
+**Phase 2 (replace the bespoke +/- pager with the generic scrollbar)
+and Phase 3 (delete now-dead constants/functions) not started.**
+`dock_place_pager()`/`g_dock_plus_elem`/`g_dock_minus_elem`/
+`PAGEROW:±1` are all still real and in use - phase 1 deliberately
+scoped to the row-packing change only, per this doc's own staging
+plan, verified independently before phase 2 begins.
