@@ -7,12 +7,25 @@
    not CSS, but a window needs a real declared size same as every
    other sidebar+panel consumer already provides. */
 
+/* REAL FIX 2026-09-15, direct live report ("file picker should take
+   up the entire screen. not one half, the other half is completely
+   empty side pane, thats bad") - widened the whole window and gave
+   the real majority of it to .sidebar (what a human is actually
+   looking at almost all the time); .fe-panel keeps a real, honest
+   fixed width instead of an even 50/50 split (it's only ever real
+   content in SAVE mode - the filename field + Save button - LOAD
+   mode's own hint text doesn't need the room a 50/50 split gave it).
+   `user-resizable` (the window's own class=, file-explorer-pal.xhtpm)
+   means these are real, honest STARTING sizes, not a hard cap - the
+   user can already drag it bigger via the free ⌟ grip every other
+   opted-in HQ window gets. */
 window {
-    width: 480px;
-    height: 420px;
+    width: 820px;
+    height: 620px;
 }
 
 .sidebar {
+    width: 620px;
     background-color: #161616;
     border-color: #333333;
 }
@@ -22,13 +35,23 @@ window {
     border: 1px solid #2a2a2a;
 }
 
-.dir-label {
+/* REAL, NEW 2026-09-15, direct live report ("show current file path,
+   as button of each path that allows clicking and will jump to that
+   dir") - one real, clickable button per real ancestor path segment
+   (file_explorer_manager.c's own build_crumbs()), replacing the old
+   plain, unclickable ${dir} label. */
+.fe-crumb {
     color: #ffd24a;
-    padding: 4px 8px;
+    padding: 2px 8px;
 }
 
+/* REAL, NEW 2026-09-15, direct live report ("ugly and hard to use") -
+   real breathing room now that every row carries a real icon
+   (📁/💾/📄/⬅️, file_explorer_manager.c's own entry_N_icon), not just
+   plain "DIR"/"FIL" text. */
 .fe-entry {
     color: #cccccc;
+    padding: 3px 8px;
 }
 
 .opacity-btn {

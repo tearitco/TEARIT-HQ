@@ -51,7 +51,7 @@
      Removed - dismissal is the free chrome X, same as every other
      sidebar+panel window in the house already relies on. -->
 
-<window label="File Explorer - ${mode}" class="file-explorer-pal database-window" vars="file_explorer_ui.txt">
+<window label="File Explorer - ${mode}" class="file-explorer-pal database-window user-resizable" vars="file_explorer_ui.txt">
   <!-- REAL, NEW 2026-09-05 - launch_module() passes house_root then
        package_dir automatically, then this <module>'s own id= as a
        THIRD, single extra argv slot (kh_collect_and_launch_modules()'s
@@ -60,14 +60,37 @@
        slot carries the browse mode; the manager always starts
        browsing at house_root itself (a real, honest v1 default - see
        file_explorer_manager.c's own header for why a configurable
-       start_dir isn't wired up yet). -->
+       start_dir isn't wired up yet).
+
+       REAL FIX 2026-09-15, direct live reports ("its ugly and hard to
+       use", "the other half is completely empty side pane, thats
+       bad", "should show current file path as buttons... jump to
+       that dir", "window should be resizable"):
+       - `user-resizable` added - the same free, generic ⌟ drag-grip
+         every other opted-in HQ window already gets, no new code.
+       - The dead, mostly-empty `<panel>` in LOAD mode is real, not
+         cosmetic - `layout_sidebar_panel()`'s own gate (confirmed
+         this same session, DSR's own toy) requires BOTH a real
+         `<sidebar>` and a real `<panel>` or the whole window falls to
+         a tiny no-chrome fallback, so it can't just be deleted. Given
+         real width instead (`.fe-panel` in the CSS) so it reads as a
+         real, if secondary, region (SAVE mode's own filename+Save
+         controls) rather than a wasted half-window - and `.sidebar`
+         widened to do the real majority of the work, matching what
+         the user is actually looking at 95% of the time.
+       - `${dir}`'s own plain, unclickable label replaced with a real
+         breadcrumb - one button per real ancestor path segment
+         (file_explorer_manager.c's own new build_crumbs()/CRUMB:<n>),
+         each jumps straight to that directory. -->
   <module src="&.widgits/file-explorer/ops/+x/file_explorer_manager.+x" id="LOAD"/>
   <page name="main">
     <sidebar id="sidebar" class="sidebar">
-      <text label="${dir}" class="dir-label"/>
+      <repeat count="${n_crumbs}" bind="crumb">
+      <item id="crumb${crumb.#}" class="fe-crumb" action="FE_CRUMB:${crumb.#}" label="${crumb.label}"/>
+      </repeat>
       <scrolllist>
         <repeat count="${n_entries}" bind="entry">
-        <item id="entry${entry.#}" class="fe-entry" action="FE_ENTRY:${entry.#}" label="${entry.type} ${entry.name} ${entry.size}"/>
+        <item id="entry${entry.#}" class="fe-entry" action="FE_ENTRY:${entry.#}" label="${entry.icon}  ${entry.name} ${entry.size}"/>
         </repeat>
       </scrolllist>
     </sidebar>
