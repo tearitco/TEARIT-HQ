@@ -1,0 +1,4 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | palcraft_sign_onclick
+COND | trigger | on-click

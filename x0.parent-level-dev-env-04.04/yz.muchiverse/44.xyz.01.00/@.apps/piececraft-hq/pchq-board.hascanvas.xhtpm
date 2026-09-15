@@ -82,7 +82,17 @@
          same real stub slots (action="void", present for layout/nav
          parity only, no dispatch yet), NOT wired to anything new. -->
     <item id="tb-menu" class="pchq-tb quiet" label="Menu" action="void"/>
-    <item id="tb-player" class="pchq-tb quiet" label="Player" action="void"/>
+    <!-- REAL, NEW 2026-09-15, direct live report ("pc-hq has a player
+         button in tabbar, its supposed to work from there") - real
+         position readback now (pchq_board_projector.c's own
+         player_label, possessed_id + pos_x/y/z off xelector_01/
+         state.txt); no HP field exists anywhere yet, so this is
+         honestly position-only, matching the 2026-09-04 stub note's
+         own "hero HP/position readback" wording as far as real data
+         allows. Still not clickable (no panel exists to open) - class
+         stays "quiet" same as tb-clock right next to it, a real
+         readback label, not a real button yet. -->
+    <item id="tb-player" class="pchq-tb quiet" label="${player_label}" action="void"/>
     <item id="tb-clock" class="pchq-tb quiet" label="${clock}" action="void"/>
 
     <!-- (File dropdown removed 2026-09-09 - File goes straight to the

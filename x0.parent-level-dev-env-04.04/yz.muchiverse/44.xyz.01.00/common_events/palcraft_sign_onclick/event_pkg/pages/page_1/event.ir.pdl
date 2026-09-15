@@ -1,0 +1,9 @@
+SECTION      | KEY                | VALUE
+----------------------------------
+META         | piece_id           | palcraft_sign_onclick
+STATE        | source               | events-hq
+STATE        | graphic              | mcl_signs/textures/_0.png
+STATE        | trigger              | on-click
+STATE        | guide                | event-guides/mineclonia/interact.pdl TILE id=sign
+NODE         | id=1 type=show_text | text=A weathered sign. Someone carved something into it.
+NODE         | id=2 type=scrolling_text | text=...but the words have faded with time.

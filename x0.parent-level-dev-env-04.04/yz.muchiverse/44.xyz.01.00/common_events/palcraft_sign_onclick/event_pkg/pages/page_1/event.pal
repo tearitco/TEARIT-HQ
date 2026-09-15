@@ -1,0 +1,11 @@
+# event.pal - real prisc+x opcodes, hand-authored to match the exact
+# shape khtpm_events_hq_manager.c's own compiler produces (event.ir.pdl
+# -> event.pal -> cmd_N.sh), same real, accepted convention
+# common_events/cdda_beartrap_touch's own event.pal already uses for
+# this exact kind of small, hand-scaffolded proof package - see
+# PALCRAFT-DESIGN.md §2 (this is the v1 "one real block, ported
+# end-to-end" template every other mineclonia block gets copied from).
+# pkg=palcraft_sign_onclick page=page_1
+exec cmd_1.sh
+exec cmd_2.sh
+halt

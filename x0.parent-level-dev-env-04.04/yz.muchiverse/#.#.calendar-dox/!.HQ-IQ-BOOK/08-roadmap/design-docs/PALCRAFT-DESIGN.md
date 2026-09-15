@@ -44,17 +44,30 @@ They are the actual precedent — not a hypothetical.
 
 ## 1. Edit mode vs Play mode
 
+**UPDATE 2026-09-15, confirmed by direct code read (this was left as an
+open question for Grok; resolved here instead of leaving it to guess):
+there is no existing edit/play-mode toggle anywhere in piececraft-hq.**
+`config.txt`'s own `game_state` key is only ever `"unknown"` (initial)
+or `"playing"` (set once by `pc_generate_chunk`/`CONFIRM_START_MAP`,
+never unset) - confirmed by reading every `game_state` read/write site
+in `pc_menu_input.c` and `pc_hq_status_manager.c`. It exists purely for
+a status-line display, not to gate any real behavior split. This is
+genuinely new v1 work, not a wire-into-existing-thing task:
+
 - **Edit mode** = default. Every block placement/removal is a direct,
   inspectable data edit (voxel grid + a Common Event binding), the same
   as any other house map editor — nothing hidden, nothing compiled
   that isn't also sitting on disk as real `.pdl`/`.ir.pdl`.
 - **Play mode** = piececraft-hq's existing possession/movement loop
-  runs live against that same data; ON is however piececraft-hq's own
-  desks already gate play vs edit today (reuse that toggle — **Grok:
-  confirm the exact existing mechanism in `pc_menu_input.c`/
-  `PCHQ-ENTITY-MENU-AND-TASKBAR-DESIGN.md` before inventing a new
-  PALCRAFT-specific flag; if one already exists, wire into it, don't
-  duplicate it**).
+  runs live against that same data.
+- A real toggle needs: a new `game_state` value (or a new, separate
+  key - `edit_mode`/`play_mode` boolean is probably clearer than
+  overloading `game_state` further) written by a new input action, and
+  every place voxel-removal/placement currently fires unconditionally
+  needs to check it before acting. **Grok: this is real, scoped design
+  work - propose the exact mechanism (new key name, which input action
+  flips it, what happens to in-flight possession when flipped) in your
+  first co-lab post rather than guessing silently.**
 - The auditability requirement (user's own words: "each behavior and
   block is auditable in edit mode") is satisfied by construction as
   long as §2/§3 are followed — every block's behavior is a real,
@@ -62,6 +75,17 @@ They are the actual precedent — not a hypothetical.
   logic baked into PALCRAFT's own C/renderer code.
 
 ## 2. One Common Event package per block type (confirmed convention)
+
+**A real, working v1 example is already built and landed:
+`common_events/palcraft_sign_onclick/`** (mineclonia's own `sign` row,
+`need=-`) — two nodes (`show_text` then `scrolling_text`), compiled by
+hand to match the exact shape `khtpm_events_hq_manager.c`'s own
+compiler produces, same accepted convention `cdda_beartrap_touch`
+already used for this kind of small proof package. **Copy this
+directory's shape for every other block**, don't re-derive it from
+scratch. It intentionally omits `interact_relay.txt`/`history.txt`/
+`master_ledger.txt` - those are real runtime output from actual play
+sessions, not source files a template should fake.
 
 Matches `common_events/cdda_beartrap_touch/` exactly:
 
@@ -139,12 +163,34 @@ does, that PR is out of spec — say so directly rather than merge it.
 
 ---
 
+## Preliminary work already done (2026-09-15, before handoff)
+
+- **Map-loading fixed.** `pchq_board_action.sh`'s `file-hq`/`load-map`
+  verbs used to write to `chunk_0_0_z0.txt`/`board_config.txt` and
+  inject key 54 - confirmed dead, nothing in the engine ever read
+  either file or handled that key. Replaced with the one real, working
+  path: writing `CONFIRM_START_MAP:<map_id>` to
+  `pieces/system/widget_cmds/inbox.txt`, which `pc_menu_input.c`
+  already drains every tick (confirmed by direct code read - no
+  keypress needed to trigger it). Real, honest behavior note: this
+  starts a genuinely NEW world from the picked map, same as the New
+  Game flow - there is still no live in-place map-swap in the engine,
+  and this doesn't pretend to have one.
+- **`common_events/palcraft_sign_onclick/` scaffolded and landed** -
+  see §2's own note above.
+- **§1's "confirm the toggle" question is now answered directly in
+  §1 above**: no such toggle exists yet - it's real v1 work, not a
+  lookup.
+
 ## Open questions for Grok (answer these in your first co-lab post)
 
-1. Confirm the exact edit/play-mode toggle mechanism already in
-   piececraft-hq (file + line) before §1 gets implemented.
+1. Propose the exact edit/play-mode toggle mechanism per §1's own
+   updated guidance (new key name, which input flips it, what happens
+   to in-flight possession) - this is now a design proposal, not a
+   lookup, since none exists yet.
 2. Which mineclonia rows (by `id=`) do you propose for the v1 Common
-   Event port batch — all `need=-` rows, or a smaller first slice?
+   Event port batch beyond `sign` (already landed) — all remaining
+   `need=-` rows, or a smaller next slice?
 3. Any real gap in `pc_menu_input.c`'s placement-side voxel API you
    hit once you're actually in the code (this doc is written from a
    read of the removal side only — the placement side may differ).
