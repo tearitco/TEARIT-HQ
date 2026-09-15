@@ -1,2 +1,16 @@
 # dsr - Desk Street Raider desk, new, empty, created for tinkering/synergy-scouting.
 # Real DESK rows (2 castles/4 banks/8 stores) get appended here the same way civ-test.pdl got its castle row.
+DESK | dsr_castle_a | xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_castle_a | 800 | 80 | 10 | 1 | 🏰 | 1
+DESK | dsr_bank_a1 | xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_a1 | 880 | 80 | 11 | 1 | 🏦 | 2
+DESK | dsr_bank_a2 | xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_a2 | 960 | 80 | 12 | 1 | 🏦 | 3
+DESK | dsr_store_a1 | xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a1 | 1040 | 80 | 13 | 1 | 🏪 | 4
+DESK | dsr_store_a2 | xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a2 | 800 | 240 | 10 | 3 | 🏪 | 5
+DESK | dsr_store_a3 | xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a3 | 880 | 240 | 11 | 3 | 🏪 | 6
+DESK | dsr_store_a4 | xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a4 | 960 | 240 | 12 | 3 | 🏪 | 7
+DESK | dsr_castle_b | xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_castle_b | 1600 | 80 | 20 | 1 | 🏰 | 8
+DESK | dsr_bank_b1 | xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_b1 | 1680 | 80 | 21 | 1 | 🏦 | 9
+DESK | dsr_bank_b2 | xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_b2 | 1760 | 80 | 22 | 1 | 🏦 | 10
+DESK | dsr_store_b1 | xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b1 | 1840 | 80 | 23 | 1 | 🏪 | 11
+DESK | dsr_store_b2 | xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b2 | 1600 | 240 | 20 | 3 | 🏪 | 12
+DESK | dsr_store_b3 | xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b3 | 1680 | 240 | 21 | 3 | 🏪 | 13
+DESK | dsr_store_b4 | xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b4 | 1760 | 240 | 22 | 3 | 🏪 | 14

@@ -20,31 +20,50 @@ is a real, new desk-wide DISPLAY convention, not specific to any one
 game (Civilization, DSR, etc.) - applies to `civ-test`, `office`, and
 every desk going forward.
 
-## 3. Real questions, unresolved - document before deciding, not after
+## 3. Resolved, 2026-09-14 (direct clarification)
 
-- **Is this a SEPARATE overview display, or does it change where
-  entities actually live?** Two real, different things it could mean:
-  (a) a fixed-position "skyline" legend/overview cluster at top-center,
-  distinct from each entity's own real, interactive `desktop_pos.txt`
-  position (entities stay walkable/touchable wherever they are; the
-  city formation is a second, read-only representation), or
-  (b) entities of a shared "type" actually get laid out/clustered into
-  a city arrangement as their REAL position (replacing free placement
-  for city-formation-eligible entities).
-- **"different emojis for each entity type"** - does this mean one
-  representative glyph per TYPE (e.g. one 🏰 icon standing in for
-  "however many castle-type entities exist"), or every individual
-  entity's own real glyph shown separately, just arranged city-style?
-- **What counts as an "entity type"?** Per-pal (cursword vs castle vs
-  door_civ are each their own type), per-category (buildings vs
-  characters vs objects), or per-game (civilization's own entity
-  roster vs office's own desktop-tool roster)?
-- **Real vs decorative**: is the city formation clickable/interactive
-  (each city-formation glyph a real, working shortcut to its entity,
-  like a legend you can click to jump to/highlight the real entity),
-  or purely a visual overview with no interaction?
-- **Scope**: every desk, or only game-desks (civ-test/dsr/etc), not
-  utility desks like `office`?
+> "the city formations, they are made from emojis, and will occupy
+> tiles. they will be row, empty row, row (to allow for navigation),
+> columns of four then space then four to allow navigation (roads)
+> like a city. they will be on left and right side per
+> 'castle/country' with a space in between them showing that they
+> clearly own either side of the screen."
+
+- **Real entities, real positions - not a separate overview.** Each
+  building IS a real, individually interactive deskpal at a real
+  `DESK`-row/`desktop_pos.txt` position - not a second read-only
+  legend layered on top. Resolved by the DSR build (§ below): every
+  entity's own real glyph, own real window, own real grid tile.
+- **One tile per real entity**, not one glyph per type - a game with 4
+  banks shows 4 real 🏦 tiles, not one 🏦 standing in for all of them.
+- **"Entity type" = per-pal**, each distinct pal (castle vs bank vs
+  store) gets its own glyph; multiple entities of the SAME pal-type
+  (e.g. 4 stores) each get their own real tile too.
+- **The grid pattern**: alternating building/empty rows ("row, empty
+  row, row") so there's always a real walkable street between rows;
+  within a row, buildings cluster in blocks of 4 columns with a gap
+  column as a road, same idea applied to columns as to rows.
+- **Two sides, mirrored, with a real gap**: one city per "castle/
+  country" (one on the left, one on the right of the board), a real
+  empty-column gap between them so it's visually obvious the two
+  territories are distinct and each owns its own side.
+- **Interactivity**: real, same as every other desk entity (each
+  building is a real, clickable/touchable pal, not decorative).
+- **Scope**: per-game, not universal - DSR's own `dsr` desk is the
+  first real build of this pattern (§4 below); whether/how it applies
+  to other desks (civ-test, a future Dwarf Fortress desk, etc.) is
+  each game's own later decision, not a forced house-wide rule.
+
+## 4. Real build - DSR, 2026-09-14
+
+First real implementation: the `dsr` desk's own 14 buildings (2
+castles/4 banks/8 stores, per `TEST-GAMES-ROADMAP.md` §6's own real
+DSR design). Full detail, including exact grid coordinates and live
+verification, is in `xyzfs/.../home/projects/dsr/NOTES.md`'s own
+"City formation - built" section - not duplicated here to avoid the
+two docs drifting apart. Buildings are currently simple deskpals
+(Events(hq)/Dir/Close/Cancel stubs) - no real government/bank/store
+mechanic behind them yet, matching DSR's own display-first sequencing.
 
 ## 4. What already exists that this can probably be built on
 
@@ -82,4 +101,6 @@ do" instruction.
 
 ## 6. Status
 
-Not started. Open questions in §3 not yet resolved.
+First real build live (DSR's `dsr` desk, §4). Design questions
+resolved 2026-09-14. Next: decide, per-game, whether/how this pattern
+extends to other desks.

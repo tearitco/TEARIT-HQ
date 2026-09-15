@@ -95,6 +95,58 @@ Quick Search, Actions) its own real `<panel>`, verify the flex-wrap
 row-breaks visually via a real frame dump BEFORE declaring it done,
 and don't reuse rollback's sidebar+single-panel shape as a shortcut.
 
+## City formation - built, 2026-09-14
+
+Direct instruction, resolving `DESK-CITY-FORMATION-DISPLAY.md`'s own
+open questions for DSR specifically: 14 real buildings now live on the
+`dsr` desk, one real pal (own atlas/sprite/glyph) per building, real
+`DESK` rows in `dsr.pdl` - not a legend/overview, real interactive
+entities at real positions.
+
+- **2 castles** (🏰 `dsr_castle_a`/`dsr_castle_b`) = the 2 governments,
+  one per side.
+- **4 banks** (🏦 `dsr_bank_a1/a2`, `dsr_bank_b1/b2`) = 2 per side.
+- **8 stores** (🏪 `dsr_store_a1..4`, `dsr_store_b1..4`) = 4 per side.
+
+Layout (grid cell = 80px, matches house convention): each side/city is
+a real "row, empty row, row" block - row 0 (gy=0) holds castle+2
+banks+1 store (4 cols), row 1 (gy=1) left empty as a real street/
+navigation gap, row 2 (gy=2) holds the remaining 3 stores. Left city
+at gx 10-13 (x=800-1040), right city at gx 20-23 (x=1600-1840), gx
+14-19 (x=1120-1520, ~5 empty columns) left as the real gap between the
+two territories - "a space in between them showing that they clearly
+own either side of the screen."
+
+Verified live: all 14 real X11 windows confirmed via `xwininfo -root
+-tree` at their exact expected coordinates, named `tile:<name>-<iid>:
+<glyph>`; a direct frame dump of `dsr_castle_a`'s own window confirmed
+the real 🏰 sprite renders correctly. (A `scrot` full-desktop capture
+came back blank for this same region - a known, already-documented
+house pitfall, `03-pitfalls/HOUSE_CODE_PITFALLS.md` #4, "external
+screenshot capture is unreliable" - the per-window `dump_frame_png_op`
+dumps are the real, trusted proof here, not the scrot.)
+
+**Real, deliberate simplification**: every building is currently a
+simple deskpal (Events(hq)/Dir/Close/Cancel stubs only, same shape as
+`book-stack`) - no real government/bank/store MECHANIC exists yet
+(rate-setting, loans, etc. per roadmap §6's own ledger-driven economy
+plan). This pass is "buildings in place," not "buildings that do
+anything," matching the same display-first sequencing the toy itself
+already followed.
+
+## Toy -> desk auto-open - built, 2026-09-14
+
+Direct instruction: "the dsr desk should be opening when we open dsr
+x11-hq widgit." `button.sh` now calls the real `mr_transfer_desk` op
+(same mechanism `door_civ`'s own touch-trigger uses) right after
+launching the toy's own window+manager, switching the active desk to
+`dsr` so its buildings are live and visible. Real, honest toggle:
+`state/open_desk.state.txt` (`mode=on|off`, same shape
+`khtpm_play_mode.state.txt` already uses) - missing file defaults to
+on. Verified live: `session.pdl`'s own `active_desk` flipped to `dsr`
+and all 14 buildings came up as real processes on a real
+`button.sh` invocation.
+
 ## Ideas / synergies (running notes, not commitments)
 -
 
@@ -102,3 +154,6 @@ and don't reuse rollback's sidebar+single-panel shape as a shortcut.
 - Where does "Actions" sit relative to the grouped boxes above - is it
   itself one more box in the wrap-grid, or does it stay a dedicated
   scrolling region below/beside the grid? Not yet decided.
+- The `open_desk.state.txt` toggle has no real UI to flip it yet (no
+  menu row calls it) - real file-based toggle exists, real switch
+  doesn't yet.

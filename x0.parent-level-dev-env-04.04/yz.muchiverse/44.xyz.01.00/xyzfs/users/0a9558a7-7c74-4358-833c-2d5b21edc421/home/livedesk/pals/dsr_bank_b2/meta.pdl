@@ -1,0 +1,7 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | dsr_bank_b2
+METHOD       | Events (hq)          | sh -c 'exec "$1/&.widgits/events-hq/button.sh" "$0" "$1"'
+METHOD       | Dir                  | sh -c 'exec xdg-open "$0"'
+METHOD       | Close                | CLOSE
+METHOD       | Cancel               | void
