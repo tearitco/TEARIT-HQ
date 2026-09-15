@@ -4480,6 +4480,18 @@ static int livedesk_build_toys_menu(const char *house_root, HQMenuItem *menu, in
     char widgits_root[KTB_PATH_BUF];
     snprintf(widgits_root, sizeof(widgits_root), "%s/&.widgits", house_root);
     toys_scan_one_root(widgits_root, menu, max, &n);
+    /* REAL, NEW 2026-09-14, direct live report while building DSR ("i
+     * noticed u did not add it to toys yet") - traced: &.hq-apps/ (the
+     * real home of db-hq-pal/chat-hai/network/dsr/etc - every "real HQ
+     * app" this house has) was never a scanned root at all, a real,
+     * pre-existing gap (db-hq-pal's own toy.pdl has been sitting there
+     * unscanned this whole time too, not something this session
+     * introduced) - not DSR-specific, so fixed generically here,
+     * fourth root, same opt-in-by-toy.pdl-presence convention as the
+     * other three. */
+    char hqapps_root[KTB_PATH_BUF];
+    snprintf(hqapps_root, sizeof(hqapps_root), "%s/&.hq-apps", house_root);
+    toys_scan_one_root(hqapps_root, menu, max, &n);
     if (n < max) {
         int post = livedesk_pdl_menu_rows_staged(house_root, "toys", "post", &menu[n], max - n);
         n += post;
