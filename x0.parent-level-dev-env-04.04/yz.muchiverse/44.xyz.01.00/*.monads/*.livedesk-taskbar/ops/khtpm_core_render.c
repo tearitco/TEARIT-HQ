@@ -126,6 +126,7 @@ static void desktop_set_font_family(const char *house_root, const char *name); /
 static void desktop_load_click_two_step(const char *house_root); /* fwd - hq_ui_pdl_reload_if_changed() (hq_idle_tick(), long-running dock strip) uses it before its real definition */
 static void reload_font_ui(void); /* fwd - hq_ui_pdl_reload_if_changed() re-sizes the chrome font on a live font_scale change */
 static void kh_text_areas_reload(Elem *root); /* fwd - reparse_chtpm_if_changed() re-hydrates <text_area> buffers, defined near default_text_area_save */
+static void kh_ensure_dock_peer_window(void); /* fwd - hq_idle_tick()'s own per-tick self-heal call; real def + header comment near main() */
 static void kh_cli_io_reload(Elem *root); /* fwd - reparse_chtpm_if_changed() re-hydrates <cli_io> buffers, defined near kh_text_areas_reload */
 static Elem *kh_find_input_by_key(Elem *root, const char *key); /* fwd - reparse_chtpm_if_changed() re-arms a cli_io/text_area across a live reparse without releasing the keyboard grab it already holds */
 static void kh_focus_debug_log(const char *fmt, ...); /* fwd - TEMPORARY diagnostic logging, see its own definition comment (network-browser recurring focus bug) */
@@ -1998,6 +1999,50 @@ static int reparse_chtpm_if_changed(void) {
                 else if (mst.st_size < s_dock_vars_marker) s_dock_vars_marker = mst.st_size;      /* truncated/rotated - resync */
                 else if (mst.st_size > s_dock_vars_marker) { s_dock_vars_marker = mst.st_size; vars_changed = 1; }
             }
+            /* REAL FIX 2026-09-14, direct live report ("sword and castle
+             * aren't on bottom toolbar... they were there for last 15
+             * minutes. then vanished... same bug we had before, vanishing
+             * bottom tb entities"): live-checked at report time - the
+             * real data was already fully correct (both processes alive,
+             * both registered in livedesk_open.txt, strip_ui.txt already
+             * published n_tabs=2 with both labels) - this was NEVER a
+             * process-death or registry-prune bug, purely a frozen render:
+             * the marker-growth gate just above only forces a reparse
+             * when something NEW changes; if a reparse is ever missed or
+             * silently lost (a transient read hiccup, a race with the
+             * manager's own rewrite, anything) there was no second chance
+             * to self-correct - the dock peer just sits on whatever was
+             * last (wrongly) drawn, indefinitely, even once the
+             * underlying data is fully correct again. The house's own
+             * previous fix for this SYMPTOM CLASS (ktb_self_heal_active_
+             * desk_registry(), khtpm_taskbar_manager.c) was a periodic
+             * ~10s timer that re-decided PROCESS LIFECYCLE (spawn/kill)
+             * against fast-moving state, and caused three real "entities
+             * die/flicker/vanish" incidents itself before being disabled
+             * entirely (see ktb_reload()'s own 2026-09-14 header comment)
+             * - that shape is exactly what NOT to repeat here. This is
+             * deliberately narrower and cannot touch process lifecycle at
+             * all: a bounded-interval FORCE of the exact same reparse
+             * path a real vars change already takes, reading the exact
+             * same on-disk ground truth (strip_ui.txt/livedesk_open.txt
+             * via the manager's own publish) - if the data is already
+             * right, this is a no-op repaint; if a prior reparse was
+             * ever missed, this closes the gap within one interval
+             * instead of leaving it wrong until the next real change
+             * happens to land. 20s chosen to comfortably beat "sat idle
+             * 15 minutes" while staying cheap (one parse_chtpm() of a
+             * small template, not a process operation). */
+            {
+                static struct timespec s_dock_force_last = {0, 0};
+                struct timespec now_ts;
+                clock_gettime(CLOCK_MONOTONIC, &now_ts);
+                if (s_dock_force_last.tv_sec == 0) {
+                    s_dock_force_last = now_ts;
+                } else if (now_ts.tv_sec - s_dock_force_last.tv_sec >= 20) {
+                    s_dock_force_last = now_ts;
+                    vars_changed = 1;
+                }
+            }
         } else if (g_vars_path[0]) {
             /* content-hash ALL the state files (one per <module>) - a
              * reparse fires only on a real byte change in any of them,
@@ -2022,6 +2067,27 @@ static int reparse_chtpm_if_changed(void) {
                 g_vars_hash_pending = 0;
             }
         }
+        /* REAL FIX 2026-09-14, direct live report ("navs wont go past 2
+         * as if 2 are on tb, but its the old tb items(7) not the 2") -
+         * root cause: peer_changed (just above) only fires on the
+         * bottom dock peer's OWN template file mtime, which per this
+         * function's 2026-09-13 comment a few lines up is deliberately
+         * treated as static and never touched again after boot. That
+         * assumption is wrong for khtpm_strip_bottom.xhtpm specifically
+         * - its whole content is a <repeat count="${n_tabs}"> driven by
+         * the SAME per-tick vars data the header's own vars_changed
+         * check already watches (n_tabs/tab_N_* - real, live proof: a
+         * desk switch changed n_tabs from 7 to 2 in strip_ui.txt and the
+         * marker grew, so the header side re-rendered its own nav count
+         * correctly, but the peer's tab list never got a fresh
+         * parse_chtpm() at all, so it kept showing whatever 7 stale
+         * <tab> elements were parsed at boot - nav numbering (driven by
+         * live vars) and the visibly rendered tree (driven by the stale
+         * peer parse) silently diverged from that point on. Fix: a real
+         * vars change is exactly as real a reason to refresh the peer as
+         * a template edit - fold it in here rather than re-deriving a
+         * second, parallel "did the tab list change" signal. */
+        if (vars_changed) peer_changed = 1;
         if (st.st_mtim.tv_sec == g_chtpm_mtime.tv_sec && st.st_mtim.tv_nsec == g_chtpm_mtime.tv_nsec && !peer_changed && !vars_changed)
             return 0;
     }
@@ -9573,6 +9639,43 @@ static void hq_idle_tick(void) {
          * own duration) instead of another guess. */
         struct timespec _rp_t0, _rp_t1;
         int _rp_dock = window_is_dock();
+        /* REAL FIX 2026-09-14, direct live report ("the bottom toolbar
+         * is completely gone. i think it died again"): live-confirmed
+         * via a raw X window-tree dump (not guessed) that this was NOT
+         * the render-staleness bug this same symptom class usually is
+         * (§bug_bounty.md) - the underlying data was fine, the process
+         * was alive and ticking normally (DOCK_TICK firing every ~10s),
+         * but `g_dock_peer_win` (the bottom bar's own real X Window)
+         * genuinely did not exist anywhere on the X server - a
+         * different, more severe failure than "stale," and NOT a
+         * self-heal killing anything (self-heal is fully disabled, see
+         * ktb_reload()'s own 2026-09-14 header comment in
+         * khtpm_taskbar_manager.c - and grepped: nothing anywhere in
+         * this file ever XUnmapWindow/XDestroyWindow's g_dock_peer_win
+         * while the process is alive). Root cause not pinned down with
+         * certainty (the startup parse-retry loop a few hundred lines
+         * up logged no failure that run), but the SHAPE is the same one
+         * this exact bug class keeps taking: a one-time startup
+         * decision (`if (g_dock_peer) { XCreateWindow(...) }`, runs
+         * ONCE before the event loop starts) with zero later recovery
+         * if it's ever skipped or the window is ever lost by any other
+         * means. Real, structural, narrow fix matching the house's own
+         * post-mortem on the OLD self-heal (khtpm_taskbar_manager.c's
+         * ktb_reload() comment): this touches ONLY this process's own
+         * window creation, never another process's lifecycle, so it
+         * cannot repeat that mechanism's own "died/flickered/vanished"
+         * incident history. If the peer's DATA exists (`g_dock_peer`
+         * non-NULL, real - the marker-gated reparse above already
+         * guarantees this stays correct) but its WINDOW doesn't
+         * (`g_dock_peer_win == 0`, or the window id it holds is no
+         * longer valid on the server), recreate it right here using the
+         * exact same real creation code the startup path uses (kept
+         * in its own function, `kh_ensure_dock_peer_window()`, so
+         * there is exactly one real place this window ever gets built,
+         * not two independently-maintained copies). Cheap: one
+         * `XGetWindowAttributes` liveness probe per tick, real window
+         * creation only on the rare tick it's actually needed. */
+        if (_rp_dock) kh_ensure_dock_peer_window();
         if (_rp_dock) clock_gettime(CLOCK_MONOTONIC, &_rp_t0);
         int _rp_changed = reparse_chtpm_if_changed();
         if (_rp_dock) {
@@ -16995,6 +17098,70 @@ static int headless_run(void) {
     return 0;
 }
 
+/* REAL, NEW 2026-09-14, direct live report ("the bottom toolbar is
+ * completely gone. i think it died again. we have to prevent this
+ * bug"). The one real place the dock peer's (bottom tab bar's) own X
+ * Window gets built - factored out of main()'s own startup code (which
+ * now just calls this once) so the SAME real creation logic can also
+ * be called defensively from the main loop's own per-tick self-check,
+ * with zero risk of two independently-maintained copies drifting apart.
+ * Idempotent/safe to call every tick: a real `XGetWindowAttributes`
+ * liveness probe first - if the window already exists and the server
+ * still knows about it, this is a cheap no-op single round-trip, not a
+ * window recreated every tick. Only actually rebuilds
+ * (GC/Pixmap/XftDraw included, matching the original startup code
+ * exactly) when the window is genuinely missing or the server reports
+ * it invalid (BadWindow), which is real evidence the window is gone,
+ * not a guess. Requires `dpy`/`screen`/`cmap`/`g_dock_peer_path[0]` -
+ * all already resolved by the time this can usefully run (main loop,
+ * after startup), so no extra readiness checks needed here. */
+static void kh_ensure_dock_peer_window(void) {
+    if (!g_dock_peer_path[0]) return;   /* this window isn't a dock at all */
+    if (!g_dock_peer) return;            /* peer data not parsed (yet) - nothing to show, nothing to build a window for */
+    if (g_dock_peer_win) {
+        XWindowAttributes wa;
+        /* A BadWindow error here would otherwise reach the process's
+         * own default X error handler (fatal by default) - main()
+         * installs `kh_nonfatal_x_error` globally at the earliest
+         * possible point specifically so every best-effort X call in
+         * every mode survives exactly this class of stale-id error
+         * instead of crashing the whole process - so a plain
+         * XGetWindowAttributes call here is safe: it returns 0
+         * (failure) and the already-installed non-fatal handler logs
+         * and continues instead of aborting. */
+        if (XGetWindowAttributes(dpy, g_dock_peer_win, &wa)) return; /* still real and alive - nothing to do */
+        /* Window id is stale/invalid - fall through and rebuild for
+         * real, same as "never created" below. */
+        g_dock_peer_win = 0;
+    }
+
+    XSetWindowAttributes pswa;
+    pswa.background_pixel = alloc_pixel(g_theme_bg);
+    pswa.override_redirect = False;
+    pswa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | StructureNotifyMask | FocusChangeMask;
+    g_dock_peer_win = XCreateWindow(dpy, RootWindow(dpy, screen),
+        g_dock_peer_x, g_dock_peer_y,
+        (unsigned)(g_dock_peer_w > 0 ? g_dock_peer_w : 64),
+        (unsigned)(g_dock_peer_h > 0 ? g_dock_peer_h : DOCK_BAR_H),
+        0, CopyFromParent, InputOutput, CopyFromParent,
+        CWBackPixel | CWOverrideRedirect | CWEventMask, &pswa);
+    apply_dock_window_hints(dpy, g_dock_peer_win, g_dock_peer_x, g_dock_peer_y);
+    render_managed_wm_hints(dpy, g_dock_peer_win, 1);
+    XMapRaised(dpy, g_dock_peer_win);
+    set_window_opacity(dpy, g_dock_peer_win, load_theme_opacity());
+    XMoveWindow(dpy, g_dock_peer_win, g_dock_peer_x, g_dock_peer_y);
+    g_dock_peer_gc = XCreateGC(dpy, g_dock_peer_win, 0, NULL);
+    g_dock_peer_buf_w = g_dock_peer_w > 0 ? g_dock_peer_w : 64;
+    g_dock_peer_buf_h = g_dock_peer_h > 0 ? g_dock_peer_h : DOCK_BAR_H;
+    if (g_dock_peer_buf) { XFreePixmap(dpy, g_dock_peer_buf); g_dock_peer_buf = 0; }
+    if (g_dock_peer_xft) { XftDrawDestroy(g_dock_peer_xft); g_dock_peer_xft = NULL; }
+    g_dock_peer_buf = XCreatePixmap(dpy, g_dock_peer_win,
+        (unsigned)g_dock_peer_buf_w, (unsigned)g_dock_peer_buf_h,
+        (unsigned)DefaultDepth(dpy, screen));
+    g_dock_peer_xft = XftDrawCreate(dpy, g_dock_peer_buf, DefaultVisual(dpy, screen), cmap);
+    kh_focus_debug_log("DOCK_PEER_WINDOW (re)created id=0x%lx", (unsigned long)g_dock_peer_win);
+}
+
 int main(int argc, char **argv) {
     /* Scan + strip the flag tokens so the positional parsing below sees
      * a clean <house_root> <chtpm_path> [x] [y] regardless of where the
@@ -17625,36 +17792,14 @@ int main(int argc, char **argv) {
      * convention. */
     g_buf_w = g_win_w; g_buf_h = g_win_h;
 
-    if (g_dock_peer) {
-        XSetWindowAttributes pswa;
-        pswa.background_pixel = alloc_pixel(g_theme_bg);
-        /* REAL FIX 2026-09-05 - see the main dock window's own
-         * `dock_managed` fix above (same header comment) for the full
-         * story. g_dock_peer_win is the bottom "pals" row - just as
-         * persistent as the main strip, needs the exact same
-         * unconditional WM-managed treatment for real arrow-key/click
-         * routing, independent of the global override_redirect PDL. */
-        pswa.override_redirect = False;
-        pswa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask | KeyPressMask | StructureNotifyMask | FocusChangeMask;
-        g_dock_peer_win = XCreateWindow(dpy, RootWindow(dpy, screen),
-            g_dock_peer_x, g_dock_peer_y,
-            (unsigned)(g_dock_peer_w > 0 ? g_dock_peer_w : 64),
-            (unsigned)(g_dock_peer_h > 0 ? g_dock_peer_h : DOCK_BAR_H),
-            0, CopyFromParent, InputOutput, CopyFromParent,
-            CWBackPixel | CWOverrideRedirect | CWEventMask, &pswa);
-        apply_dock_window_hints(dpy, g_dock_peer_win, g_dock_peer_x, g_dock_peer_y);
-        render_managed_wm_hints(dpy, g_dock_peer_win, 1);
-        XMapRaised(dpy, g_dock_peer_win);
-        set_window_opacity(dpy, g_dock_peer_win, load_theme_opacity());
-        XMoveWindow(dpy, g_dock_peer_win, g_dock_peer_x, g_dock_peer_y);
-        g_dock_peer_gc = XCreateGC(dpy, g_dock_peer_win, 0, NULL);
-        g_dock_peer_buf_w = g_dock_peer_w > 0 ? g_dock_peer_w : 64;
-        g_dock_peer_buf_h = g_dock_peer_h > 0 ? g_dock_peer_h : DOCK_BAR_H;
-        g_dock_peer_buf = XCreatePixmap(dpy, g_dock_peer_win,
-            (unsigned)g_dock_peer_buf_w, (unsigned)g_dock_peer_buf_h,
-            (unsigned)DefaultDepth(dpy, screen));
-        g_dock_peer_xft = XftDrawCreate(dpy, g_dock_peer_buf, DefaultVisual(dpy, screen), cmap);
-    }
+    /* REAL FIX 2026-09-14 - startup creation folded into the same real
+     * function (`kh_ensure_dock_peer_window()`, defined above main())
+     * the main loop's own per-tick self-heal calls, so this window is
+     * built in exactly one place regardless of whether it's the first
+     * time or a live recovery. See that function's own header comment
+     * for the full "bottom toolbar completely gone" incident this
+     * closes. */
+    kh_ensure_dock_peer_window();
 
     redraw();
     /* REAL FIX 2026-08-29 part 3 - see db-hq branch's own identical

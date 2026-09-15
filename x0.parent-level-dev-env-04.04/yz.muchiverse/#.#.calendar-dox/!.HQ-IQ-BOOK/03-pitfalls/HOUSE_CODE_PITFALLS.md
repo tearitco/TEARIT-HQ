@@ -840,5 +840,115 @@ too."
 
 ---
 
+## 20. "Only touch it when it actually changed" is a real fix for ONE flag but a real regression if a sibling window's data comes from the SAME source and was relying on the flag you just narrowed
+
+Direct live report (2026-09-14): "sword and castle aren't on bottom
+toolbar... they were there for last 15 minutes. then vanished. its the
+same bug we had before." 5th occurrence of the exact "vanishing bottom
+tb entities" bounty (`04-bugs/bug_bounty.md`) - but the mirror image of
+pitfall #19 above, not a repeat of it. #19 was the peer re-parsing TOO
+OFTEN (riding along on unrelated ticks). The fix for that narrowed the
+peer's own gate to `peer_changed` — a real mtime check on the peer's
+*template file* specifically, reasoning (correct, in isolation) that
+the template is static and never touches disk again after boot.
+
+What that reasoning missed: `khtpm_strip_bottom.xhtpm` (the peer) is
+almost entirely `<repeat count="${n_tabs}">` — its RENDERED content is
+100% driven by the same live vars data (`n_tabs`/`tab_N_*`) the
+HEADER's own `vars_changed` marker-gate (`930fd9ba`, the real fix for
+the ORIGINAL version of this bug) already tracks. Narrowing the peer's
+own gate to "only its template file" silently un-coupled it from that
+marker again — for the peer specifically, not the header — because
+"template" and "content" look like the same thing for a static window
+but are NOT for one built entirely out of `${var}` substitution. The
+header kept self-healing on every real data change; the peer quietly
+went back to "never, since the template never moves," and nobody
+noticed until an entity sat still long enough for the divergence to be
+visible (data correct, tab list frozen on whatever was last drawn).
+
+**Rules:**
+- When two sibling render targets (a header + a peer window, a main
+  view + a preview pane, etc.) are ever unified onto ONE real change
+  signal to fix a bug, treat that unification as a single fact about
+  BOTH of them — a later "let's only refresh X when X's own source
+  actually changes" optimization on just one of them needs to ask
+  "does X's own source fully capture every way X's rendered content
+  can go stale," not just "does X's template file's mtime move."
+- A `<repeat count="${var}">`-shaped template has NO static content of
+  its own to have an mtime-relevant "own source" — gating its refresh
+  on its template file's mtime is gating on a signal that structurally
+  cannot ever fire again after boot. If a window's total content is
+  synthesized from vars, its correct "own change" signal IS the vars
+  signal, full stop — there isn't a narrower, cheaper one to find.
+- Before narrowing a shared/unified change-gate for one specific
+  consumer "to avoid unnecessary work," grep every OTHER consumer of
+  that same broad flag and ask whether any of them structurally has no
+  independent staleness source of its own (i.e., are 100% var-driven)
+  — those consumers cannot be narrowed away from the broad flag without
+  silently losing all future self-healing.
+- This bounty's own history (5 occurrences, `04-bugs/bug_bounty.md`)
+  is itself evidence for a general rule: a narrow, targeted fix for
+  THIS specific detection gap is not the same as the symptom class
+  being closed — each fix has closed one real, distinct mechanism and
+  the next one found a different one. Don't declare "fixed once and
+  for all" language true just because the CURRENT known mechanism is
+  patched; verify the fix against the actual live data path (marker
+  growth, published vars, a PNG frame dump), not against "the code now
+  reads right."
+
+---
+
+## 21. "Self-heal the CONTENT of a window" and "self-heal the EXISTENCE of that window" are two separate bugs — fixing one says nothing about the other
+
+Direct live report (2026-09-14, ~1hr after pitfall #20 above, same
+session): "the bottom toolbar is completely gone. i think it died
+again. we have to prevent this bug." Looked exactly like another round
+of the same bounty (`04-bugs/bug_bounty.md`'s "vanishing bottom tb
+entities" entry) - it was not. A raw `xwininfo -root -tree` dump
+(real X server ground truth) showed the header window present, the
+bottom bar's own separate X Window entirely absent - while the process
+was alive, ticking normally, and its own data was 100% correct
+(`n_tabs=2`, right labels, `DOCK_TICK` logging every ~10s like
+nothing was wrong).
+
+The fixes earlier that same day (pitfall #20, marker-gate coupling)
+were all about `g_dock_peer` - the PARSED DATA/tree for the bottom
+bar's content. This bug was one layer lower: `g_dock_peer_win` - the
+actual X Window the content gets drawn INTO. Both are set exactly
+once at startup (`if (g_dock_peer) { XCreateWindow(...) }`, runs
+before the event loop, never revisited), and BOTH are the same real
+shape ("a one-time decision with no later recovery") - but they are
+two structurally independent single points of failure, not one. A
+fix that makes the content self-heal (re-parse on every real vars
+change) does nothing to protect the window that content gets drawn
+into if THAT was the thing that failed to get created.
+
+**Rules:**
+- When a resource is built in two layers - a container (window/
+  buffer/connection) and content that gets loaded/drawn/written into
+  it - a "does this need to be redone" self-heal check on the CONTENT
+  layer does not imply the CONTAINER layer is self-healing too. Ask
+  the question separately for each layer: "if the container itself
+  were missing right now, would anything notice and rebuild it, or
+  would content-refresh logic just keep quietly succeeding into a
+  handle that doesn't correspond to anything real?"
+- A raw ground-truth dump (here, `xwininfo -root -tree`; elsewhere a
+  `/proc` scan, a real DB query, a socket check) beats trusting a
+  process's own internal log/state when diagnosing "X is gone but the
+  process seems fine" - the process's own logs (`DOCK_TICK` firing
+  normally) can be entirely truthful about ITS OWN state while still
+  being wrong about whether the thing it's drawing into still exists.
+- The safe way to add a recovery check for a resource that's normally
+  built once at startup: factor the real creation code into one real,
+  reusable function (not copy it into a second "recovery" copy that
+  can drift from the original), call it once at startup AND on a
+  cheap per-tick liveness probe (here, `XGetWindowAttributes` - a
+  real existence+validity check, not a guess) from the main loop.
+  Keep it a genuine no-op on the common case (resource already exists
+  and is valid) so the check itself never becomes a new source of
+  per-tick cost or risk.
+
+---
+
 *Append new entries here as they're found — this file exists so the
 next session doesn't re-discover the same mistake from scratch.*

@@ -357,6 +357,112 @@ materially different, worse bug than this entry's own history: the
 manager's publish path itself broken, not a render-side detection
 gap).
 
+**5th occurrence, 2026-09-14** - direct live report: "sword and castle
+aren't on bottom toolbar... they were there for last 15 minutes. then
+vanished. its the same bug we had before." Confirmed the exact same
+"data is fine, render is stale" shape as every prior occurrence above:
+at report time both `cursword` and `castle` were alive, both correctly
+present in `livedesk_open.txt`, and `strip_ui.txt` already published
+the correct `n_tabs=2` with both labels - the marker-based gate
+(`930fd9ba`) was doing its job for the HEADER window the whole time.
+
+**Real root cause this time, found by reading the code (not yet caught
+live via debug log): the marker-gate fix never actually covered the
+dock PEER (`g_dock_peer`, the bottom tab bar's own separate parsed
+tree from `khtpm_strip_bottom.xhtpm`).** `peer_changed` (the flag
+gating both real reparse sites for `g_dock_peer`) is computed from the
+peer's own template-file mtime only - a 2026-09-13 "avoid unnecessary
+I/O" simplification (same day as the 4th occurrence, unrelated commit)
+explicitly decoupled it from `vars_changed` again, reasoning the
+template is static and never touches disk after boot. True for the
+template BYTES, false for what it RENDERS: `khtpm_strip_bottom.xhtpm`
+is entirely `<repeat count="${n_tabs}">` - its actual content is 100%
+data-driven, the same data `vars_changed`/the marker already tracks
+for the header. So the header self-healed via the marker every tick,
+while the peer silently went back to only refreshing on a file mtime
+that structurally never moves - the exact bug `930fd9ba` closed,
+reopened for one specific window by an unrelated cleanup pass that
+didn't know the peer needed the same gate. Fixed (this session, before
+`af273699`'s successor commit): `peer_changed |= vars_changed` in
+`reparse_chtpm_if_changed()`, restoring the same marker coverage to
+the peer the header already had. Verified live via a controlled
+`mr_transfer_desk` round-trip (office `n_tabs=8` -> civ-test
+`n_tabs=2` -> back), confirmed both header nav-count AND the peer's
+own tab list updated together on each switch.
+
+**Belt-and-suspenders addition, same fix pass**: given this exact
+mechanism has now produced FIVE distinct root causes across three
+days, a bounded 20s periodic force-reparse of dock windows was also
+added (`s_dock_force_last`, `CLOCK_MONOTONIC`), independent of
+`vars_changed`. Worth being honest about the tension this creates with
+rule 8 ("not on mtime, not on a hash, not per input event") and the
+3s-timer approach `930fd9ba` deliberately replaced for violating that
+exact rule - this is NOT a replacement for the marker-based fix above
+(that stays the real, primary mechanism), it's a bounded worst-case
+fallback given this chain's own track record of yet another gap
+surfacing. Deliberately narrower than every removed timer before it:
+it forces the same reparse a real vars change already triggers,
+touches no process lifecycle (unlike `ktb_self_heal_active_desk_
+registry()`, disabled the same day for the opposite reason - see
+`03-pitfalls/HOUSE_CODE_PITFALLS.md`), and is a no-op repaint when
+data is already correct. If a 6th occurrence surfaces, treat this
+20s fallback as a bug-severity DOWNGRADE signal, not proof the class
+is closed - the real question each time is still "why did the marker-
+driven path miss it," not "did the fallback eventually catch it."
+
+**6th occurrence, 2026-09-14 (same day, ~1hr later) - a DIFFERENT,
+more severe mechanism than every prior occurrence above.** Direct live
+report: "the bottom toolbar is completely gone. i think it died again.
+we have to prevent this bug." This time NOT the "data is fine, render
+is stale" shape at all - confirmed via a raw `xwininfo -root -tree`
+dump (real X server ground truth, not a backing-file read): the header
+window (`0xa00002`, y=50) existed; the bottom bar's own separate X
+Window simply did not exist ANYWHERE in the server's window list,
+while the process itself was alive and actively ticking normally
+(`DOCK_TICK` firing every ~10s in `kh_focus_debug.log`, correct
+`n_tabs=2` data the whole time). Ruled out: process crash (uptime
+continuous, no gap), the disabled self-heal (confirmed nothing calls
+it), and any `XUnmapWindow`/`XDestroyWindow` touching `g_dock_peer_win`
+anywhere in the file while the process is alive (grepped - none
+exist). The one-time startup parse-retry (`g_dock_peer` itself, added
+for the ORIGINAL 2026-09-13 version of this exact "missing on some
+boots" symptom) logged no failure this run either.
+
+**Real root cause: the window CREATION itself, not the reparse/render
+path this whole entry has been about until now, is a second, separate
+one-time startup decision with zero later recovery** -
+`if (g_dock_peer) { XCreateWindow(...) }` runs exactly once, before
+the event loop starts. Exact trigger for why it was skipped or lost
+this one specific run not pinned down with certainty (both known
+upstream causes - the file-parse race, the `dock-header` class check -
+tested negative this time), but the SHAPE is the same "decided once,
+never re-checked" pattern as every fix above, one level lower in the
+stack (the window handle itself, not what gets drawn into it).
+
+**Fixed, structurally**: the real creation code was factored out of
+`main()`'s own startup path into `kh_ensure_dock_peer_window()` (a
+real, single, reusable function - not a second copy), which the main
+loop's own per-tick self-check (`hq_idle_tick()`) now also calls. Cheap
+every tick (one `XGetWindowAttributes` liveness probe, a real no-op
+when the window already exists and is alive); only actually rebuilds
+the window (+ GC/Pixmap/XftDraw) when the probe proves it's genuinely
+missing or the server reports it invalid. Deliberately narrow, same
+posture as the 20s fallback above: touches ONLY this process's own
+window handle, never another process's lifecycle, so it structurally
+cannot repeat `ktb_self_heal_active_desk_registry()`'s own "died/
+flickered/vanished" incident history. Verified live: relaunched via
+the real `run_khtpm_strip.sh new` path, confirmed both bar windows
+present in a fresh `xwininfo` dump and a real
+`DOCK_PEER_WINDOW (re)created id=0x...` log line at startup.
+
+This is now TWO independent, real self-heal layers stacked on this one
+symptom class: the 20s marker-independent reparse (5th occurrence,
+covers "window exists, content is stale") and this window-existence
+probe (6th occurrence, covers "window doesn't exist at all"). If a 7th
+occurrence surfaces, check FIRST which of the two this new instance
+actually is (a fresh `xwininfo` dump settles it immediately) before
+assuming either existing fix has a gap in it.
+
 ---
 
 ## ✅ CLOSED 2026-09-13: tab reordering / entities missing after restart - the real architectural cause
