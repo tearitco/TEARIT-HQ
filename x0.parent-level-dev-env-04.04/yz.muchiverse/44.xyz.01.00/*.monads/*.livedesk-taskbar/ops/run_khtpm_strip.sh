@@ -170,6 +170,33 @@ case "$ACTION" in
         ;;
     stop)
         kill_khtpm
+        # REAL FIX 2026-09-15, direct live report ("i tried to quit tb
+        # but cursword is still open. it needs to be added to kill
+        # list"). cursword is deliberately exempt from every normal
+        # entity kill loop (it's the "always-on assistant, 1st entity")
+        # - the ONE place that's supposed to override that for a real
+        # quit is ktb_reap_launched() (khtpm_taskbar_manager.c), but
+        # that only runs from the taskbar's OWN internal X.quit/[X]/
+        # KSC_CLOSE_QUIT dispatch, never from this script's own plain
+        # external kill -TERM (same real distinction that function's
+        # own header comment already draws: "A plain SIGTERM... does
+        # NOT reap: the user may just be restarting the bar" - true for
+        # `new`, but `stop` here IS a genuine explicit quit, not a
+        # restart, so it should behave the same way). Same real
+        # cmdline-match + TERM-then-KILL shape ktb_reap_launched() uses
+        # in C, scoped to THIS house_root so a different house's
+        # cursword is never touched.
+        cw_pids="$(pgrep -f "khtpm_core_render\.\+x" 2>/dev/null | while read -r p; do
+            tr '\0' ' ' < "/proc/$p/cmdline" 2>/dev/null | grep -qF "$HOUSE" && \
+            tr '\0' ' ' < "/proc/$p/cmdline" 2>/dev/null | grep -qF "/pals/cursword" && \
+            echo "$p"
+        done)"
+        if [ -n "$cw_pids" ]; then
+            echo "$cw_pids" | xargs -r kill -TERM
+            sleep 0.4
+            for p in $cw_pids; do kill -0 "$p" 2>/dev/null && kill -KILL "$p"; done
+            echo "cursword stopped (was PID(s): $(echo $cw_pids | tr '\n' ' '))"
+        fi
         ;;
     status)
         pids="$(khtpm_pids)"
