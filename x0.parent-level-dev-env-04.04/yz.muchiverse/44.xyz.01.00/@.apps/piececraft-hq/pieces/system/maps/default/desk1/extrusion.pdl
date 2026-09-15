@@ -1,0 +1,10 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+META         | map_id             | default
+META         | note                | Declared per-glyph extrusion table
+META         | note2               | (real, data-driven; generalizes
+META         | note3               | pc_generate_chunk.c's old hardcoded
+META         | note4               | single 'W'=wall rule - see this
+META         | note5               | file's own load_map_surface() read.
+EXTRUDE      | W                  | 3
+EXTRUDE      | default             | 0

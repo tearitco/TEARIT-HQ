@@ -1,0 +1,13 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+META         | map_id             | test_terraces
+META         | note                | Real, multi-glyph extrusion test -
+META         | note2               | proves the declared table handles
+META         | note3               | more than one non-default glyph
+META         | note4               | (not just the old hardcoded W-only
+META         | note5               | rule). W=wall, h=raised terrace,
+META         | note6               | d=sunken pit, f/blank=flat floor.
+EXTRUDE      | W                  | 3
+EXTRUDE      | h                  | 1
+EXTRUDE      | d                  | -1
+EXTRUDE      | default             | 0

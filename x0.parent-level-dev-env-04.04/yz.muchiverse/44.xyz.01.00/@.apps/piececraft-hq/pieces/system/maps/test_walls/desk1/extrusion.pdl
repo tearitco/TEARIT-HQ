@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+META         | map_id             | test_walls
+EXTRUDE      | W                  | 3
+EXTRUDE      | default             | 0

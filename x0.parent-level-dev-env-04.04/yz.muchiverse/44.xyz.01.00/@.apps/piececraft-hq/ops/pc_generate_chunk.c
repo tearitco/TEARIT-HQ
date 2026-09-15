@@ -287,7 +287,7 @@ static void load_extrusion_table(const char *map_id, char glyphs[MAX_EXTRUDE_GLY
     *n = 0;
     *default_delta = 0;
     char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/pieces/system/maps/%s/extrusion.pdl", real_root, map_id);
+    snprintf(path, sizeof(path), "%s/pieces/system/maps/%s/desk1/extrusion.pdl", real_root, map_id);
     FILE *f = host_fopen(path, "r");
     if (!f) return;
     char line[256];
@@ -312,9 +312,19 @@ static void load_extrusion_table(const char *map_id, char glyphs[MAX_EXTRUDE_GLY
     fclose(f);
 }
 
+/* REAL FIX 2026-09-15, direct live report ("they should be a certain
+ * 'desk' within project to show the first map, even if its only
+ * 'desk1'... without desk there is no map. file = dir desk = map") -
+ * a map_id directory is a real PROJECT (game.pdl declares its desks);
+ * the actual map DATA lives one level deeper, under a real desk
+ * subdirectory - `pieces/system/maps/<map_id>/desk1/map.txt`, not
+ * directly under the project dir. v1 scope: always the first desk
+ * (hardcoded "desk1"), matching the direct instruction - real desk
+ * SELECTION (picking desk2/desk3/etc.) is separate, later work, not
+ * silently faked here. */
 static int load_map_surface(const char *map_id, int surface[CHUNK_DIM][CHUNK_DIM]) {
     char map_path[PATH_BUF];
-    snprintf(map_path, sizeof(map_path), "%s/pieces/system/maps/%s/map.txt", real_root, map_id);
+    snprintf(map_path, sizeof(map_path), "%s/pieces/system/maps/%s/desk1/map.txt", real_root, map_id);
     FILE *f = host_fopen(map_path, "r");
     if (!f) return 1;
     char ex_glyphs[MAX_EXTRUDE_GLYPHS]; int ex_deltas[MAX_EXTRUDE_GLYPHS], ex_n, ex_default;
