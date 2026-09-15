@@ -408,6 +408,18 @@ static void set_window_opacity(Display *d, Window w, double opacity) {
 
 static char g_theme_bg[16] = "#1c1c1c";
 static char g_theme_fg[16] = "#cccccc";
+/* REAL, NEW 2026-09-15, direct live report ("the accent hue sounds
+ * like a good idea if u know a good place to implement that... without
+ * much fuss") - the house-wide focus-halo/armed-badge accent color was
+ * hardcoded "#ff8c00" (orange) at 7 real draw sites in khtpm_draw_
+ * core.c/khtpm_core_render.c, totally independent of the user's own
+ * theme pick. A flat shade of g_theme_fg itself would often be too
+ * close to body text to read as a distinct "this is focused" signal
+ * (e.g. a lighter purple next to purple text), so this is a real hue
+ * ROTATION (not a shade) - genuinely different-looking, but still
+ * DERIVED from the user's own color, not a second hardcoded constant.
+ * Computed once in load_theme_colors() below, not per-draw-call. */
+static char g_theme_accent[16] = "#ff8c00";
 
 /* Nudge a "#rrggbb" toward white (delta>0) or black (delta<0) by delta
  * per channel, clamped. Used for the small chrome-strip accent over the
@@ -422,6 +434,51 @@ static const char *kh_shade_hex(const char *hex, int delta) {
     if (g < 0) g = 0; if (g > 255) g = 255;
     if (b < 0) b = 0; if (b > 255) b = 255;
     snprintf(out, sizeof(out), "#%02x%02x%02x", r, g, b);
+    return out;
+}
+
+/* REAL, NEW 2026-09-15, direct live report ("the accent hue sounds
+ * like a good idea") - rotates a "#rrggbb" hex's HUE by `deg` degrees
+ * (0-360) around the HSL color wheel, keeping saturation/lightness
+ * (boosted to a real minimum so a near-grey theme fg still produces a
+ * visibly colored accent, not another shade of grey). Used once, at
+ * theme-load, to derive g_theme_accent from g_theme_fg - a genuinely
+ * different-looking color still DERIVED from the user's own pick,
+ * unlike a plain shade (kh_shade_hex) which stays the same hue. */
+static const char *kh_hue_rotate_hex(const char *hex, double deg) {
+    static char out[8];
+    int ri = 0, gi = 0, bi = 0;
+    if (!hex || sscanf(hex, "#%2x%2x%2x", &ri, &gi, &bi) != 3) return hex ? hex : "#ff8c00";
+    double r = ri / 255.0, g = gi / 255.0, b = bi / 255.0;
+    double mx = r > g ? (r > b ? r : b) : (g > b ? g : b);
+    double mn = r < g ? (r < b ? r : b) : (g < b ? g : b);
+    double l = (mx + mn) / 2.0, h = 0.0, s = 0.0;
+    double d = mx - mn;
+    if (d > 0.0001) {
+        s = l > 0.5 ? d / (2.0 - mx - mn) : d / (mx + mn);
+        if (mx == r) h = fmod((g - b) / d + (g < b ? 6.0 : 0.0), 6.0);
+        else if (mx == g) h = (b - r) / d + 2.0;
+        else h = (r - g) / d + 4.0;
+        h *= 60.0;
+    }
+    h = fmod(h + deg, 360.0); if (h < 0) h += 360.0;
+    if (s < 0.5) s = 0.5;          /* real minimum so a near-grey fg still reads as a real color */
+    if (l < 0.35) l = 0.35; if (l > 0.65) l = 0.65; /* keep it visible on both light and dark bg */
+    double c = (1.0 - fabs(2.0 * l - 1.0)) * s;
+    double x = c * (1.0 - fabs(fmod(h / 60.0, 2.0) - 1.0));
+    double m = l - c / 2.0;
+    double r2, g2, b2;
+    if (h < 60)       { r2 = c; g2 = x; b2 = 0; }
+    else if (h < 120) { r2 = x; g2 = c; b2 = 0; }
+    else if (h < 180) { r2 = 0; g2 = c; b2 = x; }
+    else if (h < 240) { r2 = 0; g2 = x; b2 = c; }
+    else if (h < 300) { r2 = x; g2 = 0; b2 = c; }
+    else              { r2 = c; g2 = 0; b2 = x; }
+    int ro = (int)((r2 + m) * 255.0 + 0.5), go = (int)((g2 + m) * 255.0 + 0.5), bo = (int)((b2 + m) * 255.0 + 0.5);
+    if (ro < 0) ro = 0; if (ro > 255) ro = 255;
+    if (go < 0) go = 0; if (go > 255) go = 255;
+    if (bo < 0) bo = 0; if (bo > 255) bo = 255;
+    snprintf(out, sizeof(out), "#%02x%02x%02x", ro, go, bo);
     return out;
 }
 
@@ -471,6 +528,11 @@ static void load_theme_colors(void) {
         else if (strcmp(key, "fg") == 0) snprintf(g_theme_fg, sizeof(g_theme_fg), "%s", v);
     }
     fclose(f);
+    /* g_theme_accent tracks g_theme_fg (a +150deg hue rotation - roughly
+     * opposite-ish on the wheel without landing exactly on the
+     * mathematical complement, which for some hues reads as muddy) -
+     * recomputed every time the theme reloads, same as bg/fg. */
+    snprintf(g_theme_accent, sizeof(g_theme_accent), "%s", kh_hue_rotate_hex(g_theme_fg, 150.0));
 }
 
 static double load_theme_opacity(void) {
@@ -6167,9 +6229,21 @@ static void assign_nav_and_layout(void) {
 
         /* Same <tabbar> strip layout_sidebar_panel() uses (db-hq /
          * csv-hq). Canvas pages used to skip it, so a skeleton-3 toy
-         * could not put New/Demo/tools on a horizontal tab row. */
+         * could not put New/Demo/tools on a horizontal tab row.
+         *
+         * REAL FIX 2026-09-15, direct live report ("we dont need a
+         * sidbar at all" / "thats a different legacy bug that we can
+         * remove") - this block used to be gated on has_canvas only;
+         * generalized to run for ANY flat page with a real <tabbar>
+         * child, canvas or not - a plain flat list (file-explorer's
+         * own real breadcrumb row) needs the exact same horizontal tab
+         * strip a canvas page already gets, no real reason to keep it
+         * canvas-only. Safe, backward-compatible: the inner loop only
+         * ever acts on children whose tag=="tabbar", so any page with
+         * no real <tabbar> at all still gets canvas_tabbar_h=0, a
+         * true no-op, unchanged from before. */
         int canvas_tabbar_h = 0;
-        if (has_canvas) {
+        {
             int row_h_tb = scaled(28);
             int th = row_h_tb - scaled(4);
             for (int ci = 0; ci < page->n_children; ci++) {
@@ -6201,8 +6275,37 @@ static void assign_nav_and_layout(void) {
         int y = CHROME_H + canvas_tabbar_h;
         int chrome_x = g_win_w - 8;      /* has_canvas only */
         int row_x = 0, row_h = 0;        /* has_canvas horizontal-row cursor */
+        int found_close = 0;
         for (int i = 0; i < page->n_children; i++) {
             Elem *item = page->children[i];
+            /* REAL FIX 2026-09-15, direct live report ("we dont need a
+             * sidbar at all" - file-explorer's own list needed real
+             * scrolling, which this flat-page path never had at all
+             * before now: a <scrolllist> here previously matched none
+             * of this loop's own tag cases and was silently dropped -
+             * its own children never positioned, never nav-numbered,
+             * genuinely invisible, not just unscrolled). Delegates to
+             * layout_scroll_region() - the same real, generic scroll
+             * primitive layout_sidebar_panel()'s own panel-side
+             * scrolllist already uses, reusing its exact scroll state
+             * (g_default_scrolllist_scroll/nav_lo/nav_hi) rather than
+             * new globals - safe because a window is either sidebar+
+             * panel-shaped or flat-page-shaped, never both at once, so
+             * there's no real risk of the two ever colliding. Fills
+             * every real pixel left below the tabbar/chrome down to
+             * the window's own bottom edge - a flat page's own list IS
+             * the whole window, not one region sharing it with a
+             * sidebar. */
+            if (strcmp(item->tag, "scrolllist") == 0) {
+                int room = g_win_h - y - 8;
+                if (room < ROW_H) room = ROW_H;
+                css_compute_style(&g_sheet, item->tag, item->id, item->classes, item->n_classes, 0, &item->style);
+                layout_scroll_region(item, 0, y, g_win_w, room,
+                                      &g_default_scrolllist_scroll,
+                                      &g_default_scrolllist_nav_lo, &g_default_scrolllist_nav_hi);
+                y += room;
+                continue;
+            }
             /* 2026-08-31 - a plain <text> row advances y like an item row
              * (real vertical space) but is never nav-numbered. */
             int is_text = strcmp(item->tag, "text") == 0;
@@ -6276,12 +6379,28 @@ static void assign_nav_and_layout(void) {
             if (strcmp(item->tag, "item") != 0 && strcmp(item->tag, "cli_io") != 0 && strcmp(item->tag, "text_area") != 0 && !is_text) continue;
             css_compute_style(&g_sheet, item->tag, item->id, item->classes, item->n_classes, 0, &item->style);
 
-            if (has_canvas && !is_text) {
-                int is_close = strcmp(item->id, "close") == 0;
+            if (!is_text) {
+                /* REAL FIX 2026-09-15, direct live report ("this one is
+                 * missing chrome buttons" / "still no chrome standards")
+                 * - this whole is_close block used to be has_canvas-only,
+                 * so a flat, canvas-less page's own explicit chrome item
+                 * (id="chrome-close"/class="chrome-btn"/"close-btn") was
+                 * never detected as chrome at all - it just fell through
+                 * into the plain full-width stacked-row path below like
+                 * any other <item>. Generalized: chrome_x/top-right
+                 * placement is real and correct for ANY flat page, not
+                 * just canvas ones (chrome_x is initialized to g_win_w-8
+                 * unconditionally above already); only the horizontal
+                 * toolbar-ROW packing right below (has_width items)
+                 * stays canvas-only, since that's a real canvas-toolbar-
+                 * specific behavior a plain list never asked for. */
+                int is_close = strcmp(item->id, "close") == 0 ||
+                                strcmp(item->id, "chrome-close") == 0;
                 for (int c = 0; c < item->n_classes && !is_close; c++)
                     if (strcmp(item->classes[c], "chrome-btn") == 0 ||
                         strcmp(item->classes[c], "close-btn") == 0) is_close = 1;
                 if (is_close) {
+                    found_close = 1;
                     int cw = kh_measure_text_px(&item->style, item->label) + 52;
                     if (cw < 48) cw = 48;
                     chrome_x -= cw;
@@ -6293,6 +6412,18 @@ static void assign_nav_and_layout(void) {
                     item->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = item;
                     continue;
                 }
+            }
+            /* REAL FIX 2026-09-15, direct live report ("can the back
+             * button and grid view be on same row, instead of back
+             * being tied to other files? get it?") - this CSS-width-
+             * driven horizontal row packing used to be has_canvas-only,
+             * same real gap as the is_close block above: a flat,
+             * canvas-less page's own two toolbar items (Back/grid-
+             * toggle, both declared width in CSS) had no way to share a
+             * row at all - every plain <item> fell to the single-per-
+             * row fallback further below. Generalized, same reasoning
+             * as the chrome fix above. */
+            if (!is_text) {
                 if (item->style.has_width && item->style.width > 0) {
                     int iw = item->style.width;
                     int ih = item->style.has_height ? item->style.height : ROW_H;
@@ -6323,6 +6454,29 @@ static void assign_nav_and_layout(void) {
             y += item_h;
         }
         if (row_x) y += row_h + 4;
+        /* Same real "every window MUST have a way out" fallback the
+         * swatch-grid path already has (~line 6026, "make sure x11-hq
+         * windows all have a default x button") - a flat page that
+         * declares no explicit chrome item at all now still gets one,
+         * synthesized through the exact same g_default_close_elem
+         * machinery, real id="chrome-close" CSS look included. */
+        if (!found_close) {
+            memset(g_default_close_elem, 0, sizeof(*g_default_close_elem));
+            snprintf(g_default_close_elem->tag, sizeof(g_default_close_elem->tag), "item");
+            snprintf(g_default_close_elem->id, sizeof(g_default_close_elem->id), "chrome-close");
+            snprintf(g_default_close_elem->label, sizeof(g_default_close_elem->label), "X");
+            snprintf(g_default_close_elem->onclick, sizeof(g_default_close_elem->onclick), "CLOSE");
+            css_compute_style(&g_sheet, "item", "chrome-close", NULL, 0, 0, &g_default_close_elem->style);
+            int cw = kh_measure_text_px(&g_default_close_elem->style, "X") + 52;
+            if (cw < 48) cw = 48;
+            chrome_x -= cw;
+            g_default_close_elem->x = chrome_x; g_default_close_elem->y = 2;
+            g_default_close_elem->w = cw; g_default_close_elem->h = CHROME_H - 4;
+            kh_clamp_elem_onscreen(g_default_close_elem);
+            chrome_x = g_default_close_elem->x - 4;
+            g_default_close_elem->nav_index = ++g_n_nav;
+            g_nav[g_n_nav - 1] = g_default_close_elem;
+        }
         /* user owns the height when class="user-resizable". No
          * "never clip content" fallback here: the canvas is sized to
          * fill exactly the space left below the toolbar
@@ -8274,6 +8428,34 @@ static void redraw(void) {
         Window focus_win; int focus_revert;
         XGetInputFocus(dpy, &focus_win, &focus_revert);
         g_focus_owned_painted = (focus_win == win) ? 1 : 0; /* what the "^"/"." below reflects - the FocusIn/FocusOut redraw guard reads this */
+        /* REAL, NEW 2026-09-15, direct live report ("the joy keys
+         * should be consumed and interpreted from same file as arrow
+         * keys, just like in tpmos. is that std?") - yes: this window
+         * already polls its OWN per-pid relay file
+         * (#.desktop/entity_menu_history/<pid>.txt) every tick via
+         * poll_agent_history() - the exact same file real arrow-key
+         * relay/agent testing already uses, proven reliable. Rather
+         * than have khtpm_joystick_daemon.+x guess which window is
+         * focused (no _NET_WM_PID is set anywhere in this codebase,
+         * and the existing livedesk_hq_windows_<pid>.txt registry is
+         * scoped to sidebar+panel app windows only, ~line 8487 below -
+         * it would miss a flat-page window like file-explorer), this
+         * window publishes the one fact it ALREADY knows reliably
+         * right here (focus_win == win, the same check the "^"/"."
+         * title indicator uses) as a tiny, universal, one-line marker
+         * ANY window type produces - the daemon reads it once per
+         * event to pick which pid's relay file to append into. Only
+         * written while actually focused (never clears to a stale 0)
+         * - the daemon simply targets whichever pid wrote here most
+         * recently, same "eventually consistent, cheap" convention the
+         * frame-file writes already use. */
+        if (focus_win == win) {
+            char fp_path[PATH_BUF], fp_tmp[PATH_BUF];
+            snprintf(fp_path, sizeof(fp_path), "%s/#.desktop/joystick_focused_pid.txt", g_house_root);
+            snprintf(fp_tmp, sizeof(fp_tmp), "%s.tmp.%d", fp_path, (int)getpid());
+            FILE *fpf = fopen(fp_tmp, "w");
+            if (fpf) { fprintf(fpf, "%d\n", (int)getpid()); fclose(fpf); rename(fp_tmp, fp_path); }
+        }
         char title_buf[192];
         /* fallback chain: explicit <window label> -> entity identity
          * strip (entity menus) -> bare page name. */
@@ -8306,7 +8488,7 @@ static void redraw(void) {
          * the copy keypress already redraws once to show it;
          * hq_idle_tick() redraws once more to clear it when it ages. */
         if (g_clip_copied_at && (time(NULL) - g_clip_copied_at) <= 2) {
-            XftColor cc = xft_color("#ff8c00");
+            XftColor cc = xft_color(g_theme_accent);
             const char *tag = "copied";
             XGlyphInfo ge;
             XftTextExtentsUtf8(dpy, font_ui, (const FcChar8 *)tag, (int)strlen(tag), &ge);

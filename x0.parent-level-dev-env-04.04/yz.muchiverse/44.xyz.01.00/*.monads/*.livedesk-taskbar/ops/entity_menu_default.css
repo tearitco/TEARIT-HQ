@@ -6,7 +6,20 @@
  * called css_load() at all until this port), so one real, shared file
  * here matches actual current behavior, not a new design decision. */
 window { background: #1c1c1c; }
-item { color: #cccccc; }
+/* REAL FIX 2026-09-15, direct live report ("the font color still isnt
+ * using secondary font color... shouldn't have to say this for every
+ * x11-hq window/layout. it should be automatic, unless user changes
+ * the css") - this hardcoded `item { color: #cccccc; }` rule loads for
+ * EVERY default-mode window house-wide and counts as an explicit CSS
+ * color (has_fg_color=1), which fully shadowed khtpm_draw_core.c's own
+ * new g_theme_fg-aware default (draw_elem()'s unstyled-label fallback,
+ * same date) before it could ever run - the real reason that C-level
+ * fix alone did nothing. Removed: a window with no color rule of its
+ * own for `item` now genuinely falls through to the live, user-picked
+ * g_theme_fg (#.desktop/livedesk_theme.pdl's own `fg` row) automatically,
+ * matching the direct ask. A window's own CSS (e.g. .fe-entry, a msg-*
+ * class) still wins normally - only the flat, house-wide bare-tag
+ * override is gone. */
 window.dock-header, window.dock-bottom { background: #1c1c1c; }
 .dock-cell { color: #cccccc; font-family: Noto Sans CJK SC; font-size: 13px; }
 

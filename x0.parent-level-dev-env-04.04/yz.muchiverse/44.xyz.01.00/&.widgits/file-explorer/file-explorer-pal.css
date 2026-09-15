@@ -1,69 +1,62 @@
 /* file-explorer-pal.css - merged on top of entity_menu_default.css for
    the file-explorer-pal window (same convention as taskbar-settings-
    pal.css: this loads because the renderer merges the .css sitting
-   next to the loaded .xhtpm, same stem). Window size + .sidebar
-   background match bookmarks-pal.css's own real, working sidebar+
-   panel window - geometry itself is owned by layout_sidebar_panel(),
-   not CSS, but a window needs a real declared size same as every
-   other sidebar+panel consumer already provides. */
+   next to the loaded .xhtpm, same stem). */
 
-/* REAL FIX 2026-09-15, direct live report ("file picker should take
-   up the entire screen. not one half, the other half is completely
-   empty side pane, thats bad") - widened the whole window and gave
-   the real majority of it to .sidebar (what a human is actually
-   looking at almost all the time); .fe-panel keeps a real, honest
-   fixed width instead of an even 50/50 split (it's only ever real
-   content in SAVE mode - the filename field + Save button - LOAD
-   mode's own hint text doesn't need the room a 50/50 split gave it).
-   `user-resizable` (the window's own class=, file-explorer-pal.xhtpm)
-   means these are real, honest STARTING sizes, not a hard cap - the
-   user can already drag it bigger via the free ⌟ grip every other
-   opted-in HQ window gets. */
+/* REAL RESHAPE 2026-09-15, direct live pushback ("wait. requires a
+   sidebar? thats insane" - see file-explorer-pal.xhtpm's own header
+   comment for the full real story) - this file no longer uses
+   <sidebar>/<panel> at all; khtpm_core_render.c's own hardcoded
+   g_win_w=1120/g_win_h=720 for ANY `user-resizable` window (confirmed
+   by reading the code, not guessed) is the REAL starting size - this
+   window{} rule only matters if `user-resizable` is ever dropped. */
 window {
     width: 820px;
     height: 620px;
 }
 
-.sidebar {
-    width: 620px;
-    background-color: #161616;
+/* REAL, NEW 2026-09-15, direct live suggestion ("we can put
+   breadcrumbs in tabbar") - the tabbar itself needs no width/height
+   rule (khtpm_core_render.c's own generic <tabbar> layout owns that,
+   same as every other real tabbar in the house); this is just real,
+   readable tab colors matching the rest of the window's dark theme. */
+.fe-crumbs-bar {
+    background-color: #1a1a1a;
     border-color: #333333;
 }
 
-.fe-panel {
-    background-color: #181818;
-    border: 1px solid #2a2a2a;
-}
-
-/* REAL, NEW 2026-09-15, direct live report ("show current file path,
-   as button of each path that allows clicking and will jump to that
-   dir") - one real, clickable button per real ancestor path segment
-   (file_explorer_manager.c's own build_crumbs()), replacing the old
-   plain, unclickable ${dir} label. */
-.fe-crumb {
-    color: #ffd24a;
-    padding: 2px 8px;
-}
+/* REAL FIX 2026-09-15, direct live report ("the font should be using
+   secondary color from user color settings picker, or they will never
+   match, this should be a layout renderer standard") - per-widget
+   hardcoded colors here (item/text/tab #cccccc, tab #8b5cf6) fought
+   this exact complaint: a static hex never tracks the user's own
+   color-picker choice. Fixed at the real, generic source instead -
+   khtpm_draw_core.c's own unstyled-label default now IS g_theme_fg
+   (loaded live from #.desktop/livedesk_theme.pdl's own `fg` row, the
+   same value the color picker writes) house-wide, not just here. No
+   local color rule needed for item/text/tab anymore - removing them
+   lets that real renderer standard apply, instead of shadowing it with
+   a value that will drift the next time the user picks a new color. */
 
 /* REAL, NEW 2026-09-15, direct live report ("ugly and hard to use") -
    real breathing room now that every row carries a real icon
    (📁/💾/📄/⬅️, file_explorer_manager.c's own entry_N_icon), not just
-   plain "DIR"/"FIL" text. */
+   plain "DIR"/"FIL" text. Padding only - color comes from the real
+   renderer-wide g_theme_fg default now, see comment above. */
 .fe-entry {
-    color: #cccccc;
     padding: 3px 8px;
 }
 
+/* REAL, NEW 2026-09-15, direct live report ("can the back button and
+   grid view be on same row") - a real, generic width= is what puts
+   these on one row (khtpm_core_render.c's own row-packing cursor is
+   width-driven, see that file's own comment on this same date); no
+   width -> always its own full row, which is why Back/Grid used to
+   stack. */
 .opacity-btn {
     background-color: #444444;
     color: #ffffff;
     padding: 4px 8px;
     border: 1px solid #666666;
-}
-
-.close-btn {
-    background-color: #663333;
-    color: #ffffff;
-    padding: 4px 8px;
-    border: 1px solid #884444;
+    width: 140px;
 }
