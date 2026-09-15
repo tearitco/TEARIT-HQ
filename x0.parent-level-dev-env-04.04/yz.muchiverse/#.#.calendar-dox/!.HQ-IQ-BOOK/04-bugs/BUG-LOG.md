@@ -220,6 +220,39 @@ note under it — don't silently edit it away.*
      (`PAGEROW:+1` needs `g_dock_visible_rows < g_dock_packed_rows`) -
      it should only render when there's a row to page to.
 
+- **2026-09-15 — cursword disappears on click instead of arming
+  selection/drawing its yellow highlight circle.** Regression vs. the
+  `2026-09-04` house snapshot (`/home/no/Desktop/github/xdb/
+  44.xyz-house-1.00-09-04-064656/`, real known-good reference). Root
+  cause NOT yet confirmed — ruled out the obvious suspects (the
+  `g_is_cursword`/`log_mode` refactor, the shape-mask helper
+  extraction, the FocusOut filter, a stale binary) without finding the
+  actual break. Full handoff with real next-step leads (window-creation
+  X attributes in `tp_main()`, the tile-mode-globals footgun, a real
+  live-repro path since the default-mode relay file doesn't work for
+  tile mode): `13.agent-coms/2026-09-15/
+  CURSWORD-DISAPPEARS-ON-CLICK-HANDOFF.md`.
+
+  **🔄 RESOLVED, same day, after quota was extended.** A full `tp_main()`
+  swap against the 09-04 snapshot did NOT fix it (correctly ruling out
+  that whole function), and a taskbar-manager dedup-check revert
+  (`ktb_pid_is_this_pal()` → `ktb_pid_alive()`, a real, separate, kept
+  fix) also didn't fix it. Real root cause found via a live
+  `strace -f -tt -e trace=all` on the actual click: no signal was ever
+  delivered — the process called `exit_group(1)` on itself, and the
+  trace showed a real X `BadMatch` on `RenderCreatePicture` printed to
+  stderr right before it. `popup_draw_text()` (a shared helper)
+  hardcoded `DefaultVisual`/`DefaultColormap`; cursword's own armed-only
+  debug-log lines pass its real 32-bit ARGB pixmap into it - a Visual/
+  Drawable depth mismatch. This house installs no custom
+  `XSetErrorHandler()`, so Xlib's own default handler prints-and-exits
+  on ANY X protocol error house-wide, with zero visible crash trace -
+  "it just disappeared" was literally true. Fixed generically (real
+  depth query + matching Visual/Colormap, any future ARGB caller
+  covered). Full writeup + rules + the still-open "add a real
+  `XSetErrorHandler` house-wide" follow-up:
+  `03-pitfalls/HOUSE_CODE_PITFALLS.md` #23.
+
 ## Recently fixed (kept short — see 03-pitfalls for the general lesson each one produced)
 
 - **2026-09-14 — clicking a window in the taskbar didn't bring it to

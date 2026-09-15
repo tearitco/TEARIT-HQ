@@ -1017,5 +1017,89 @@ like the click itself was wrong.
 
 ---
 
+## 23. No custom X error handler means ANY X protocol error (a bad Visual/Drawable depth match, anywhere) silently exit(1)s the whole process — "it just disappears" is a real X error, not a crash you'll see
+
+Direct live report (2026-09-15): "clicking cursword now deletes it
+from screen !? it used to draw a yellow circle around it." Burned a
+huge amount of investigation before finding the real cause: a full
+wholesale swap of `tp_main()` (the entire tile/entity-mode function)
+against a known-good 09-04 snapshot did NOT fix it — proving the bug
+wasn't in that function at all, despite it owning 100% of cursword's
+own click-handling, arm/disarm, and shape-mask code. A taskbar-manager
+dedup-check revert (a real, separate, correct fix for a different
+concern) also didn't fix it. Neither swap/revert helped because the
+actual bug lived in neither of those places.
+
+**Real root cause, found only via a live `strace -f -tt -e trace=all`
+on the actual click**: no signal was ever delivered to the process.
+It called `exit_group(1)` on itself, and the syscall trace right
+before that showed the real reason printed to stderr:
+```
+X Error of failed request: BadMatch
+Major opcode: RENDER, Minor opcode: RenderCreatePicture
+```
+`khtpm_core_render.c` installs no custom `XSetErrorHandler()` — so
+Xlib's own DEFAULT error handler runs on any synchronous X protocol
+error, which prints the error and calls `exit(1)`. This is true for
+EVERY khtpm-family window, not just cursword — any BadMatch/BadValue/
+etc. anywhere in the codebase kills the whole process silently, with
+no crash dialog, no core dump (even with `ulimit -c unlimited` set, as
+cursword's own launcher already does — a clean `exit()` produces no
+core, only a real signal-death does), and no stack trace. From the
+outside this looks EXACTLY like "the window just disappeared," not
+like a crash — there is no visible difference between "closed
+cleanly" and "X error killed it" unless you strace it live.
+
+The actual BadMatch: `popup_draw_text()` (a shared helper used by
+every popup/context-menu/debug-text draw in the file) hardcoded
+`DefaultVisual(dpy, screen)`/`DefaultColormap(dpy, screen)` — correct
+for every normal-depth window, but cursword is the one entity in the
+house with a real 32-bit ARGB visual (`have_argb_visual`), and its
+own debug-log lines (drawn ONLY while armed — never reachable via
+right-click, which is why right-click always worked fine) pass its
+32-bit ARGB pixmap into this function. `XftDrawCreate()` on a 32-bit
+Drawable with a 24-bit Visual is a genuine, unconditional depth
+mismatch — BadMatch on RenderCreatePicture, every single time.
+
+**Rules:**
+- If a khtpm-family window "just disappears" with no error dialog, no
+  taskbar entry, nothing — do NOT assume it's a click-handling/logic
+  bug in whatever function visibly owns the feature. First rule it in
+  or out with a live `strace -f -tt -e trace=signal,exit_group,kill`
+  (cheap, fast) — a real `exit_group(N)` with NO preceding signal
+  means the process exited itself, which immediately rules out "some
+  other process killed it" AND directs you to look for a `return`/
+  `exit()` path, not a kill/SIGSEGV. If that's inconclusive, a full
+  `-e trace=all` on the next repro shows the real stderr output
+  (including any X error) in the syscalls right before the exit.
+- A full-function swap against a known-good reference version is a
+  valid, fast way to RULE OUT a function (if the bug survives an
+  identical swap, it's proven to live in something that function
+  calls, not the function itself) — but don't stop there assuming
+  it's disproven the whole file. This bug lived in a shared helper
+  defined OUTSIDE `tp_main()`, called both by `tp_main()` and by
+  completely unrelated default-mode code — the swap correctly proved
+  "not `tp_main()`'s own logic" while the real bug sat one call away.
+- Any function that creates an `XftDraw`/calls `XRenderCreatePicture`
+  against a caller-supplied `Drawable` must not assume that Drawable
+  matches the screen's default Visual/Colormap/depth — query the
+  Drawable's REAL depth (`XGetGeometry`) and pick a real matching
+  Visual (`XMatchVisualInfo`) when it differs, exactly the way
+  `draw_glyph_rgb()`'s own real vis/cm parameters already had to (see
+  that function's own header comment — the exact same lesson, learned
+  once already for a different function, and still missed here).
+  `popup_draw_text()` is now fixed generically (any depth mismatch,
+  any future ARGB caller), not just patched for cursword specifically.
+- Real, still-open house-wide follow-up (not done as part of this
+  fix, flagged here so it isn't lost): installing a real custom
+  `XSetErrorHandler()` across khtpm-family windows — even just one
+  that logs the error to a real file before calling exit — would have
+  cut this entire investigation from most of a session down to minutes,
+  and would apply to every future X protocol error, not just this one
+  call site. Xlib's default handler's exit-with-no-trace behavior is a
+  real, house-wide blind spot, not unique to cursword.
+
+---
+
 *Append new entries here as they're found — this file exists so the
 next session doesn't re-discover the same mistake from scratch.*

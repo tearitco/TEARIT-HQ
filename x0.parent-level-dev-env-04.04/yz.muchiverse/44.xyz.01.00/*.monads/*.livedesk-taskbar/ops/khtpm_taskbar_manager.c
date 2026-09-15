@@ -2347,12 +2347,34 @@ static void livedesk_ensure_cursword(const char *house_root) {
         for (int i = 0; i < n; i++) {
             char base[64];
             livedesk_base_name(paths[i], base, sizeof(base));
-            /* REAL FIX 2026-09-13 - see ktb_pid_is_this_pal()'s own
-             * header comment (PID-reuse guard, same class of bug as
-             * ktb_pid_is_hq_renderer()). cursword is "always open, the
-             * user's assistant" - a false-positive skip here is the
-             * worst version of this bug, not just a missing pal. */
-            if (strcmp(base, "cursword") != 0 || !ktb_pid_is_this_pal(pids[i], paths[i])) continue;
+            /* REAL REVERT 2026-09-15, direct live report (cursword
+             * disappearing on a normal left click, confirmed via a
+             * full khtpm_core_render.c tp_main() swap against the real
+             * 09-04 known-good snapshot that did NOT fix it - ruling
+             * out tp_main() entirely and pointing back at this file).
+             * The 2026-09-13 fix below replaced the simple "is this
+             * pid alive" check with the stricter ktb_pid_is_this_pal()
+             * (also requires /proc/<pid>/cmdline to contain the pal's
+             * own path) - real, correct fix for OTHER pals' false-
+             * positive-skip bug, but applied here too, to cursword's
+             * OWN dedicated always-open ensure/dedup loop, which runs
+             * on every taskbar tick. A single false-negative from that
+             * stricter check (a /proc race, a cmdline-format mismatch)
+             * right around a real click's own state changes would hit
+             * this loop's kill branch and SIGTERM the live, just-armed
+             * cursword - independent of anything in khtpm_core_
+             * render.c, matching every observed symptom (disappears on
+             * a normal click, right-click/context-menu unaffected
+             * since that's a different code path entirely, synthetic
+             * xdotool clicks didn't reproduce it since they don't hit
+             * this same tick-timing window the same way). Reverted to
+             * the exact real Sept-11 check (confirmed via direct file
+             * comparison against a known-good backup from that date) -
+             * cursword's own loop only ever needs a plain liveness
+             * check; the PID-reuse hazard ktb_pid_is_this_pal() guards
+             * against is a real, separate concern for the OTHER call
+             * sites that still use it, untouched here. */
+            if (strcmp(base, "cursword") != 0 || !ktb_pid_alive(pids[i])) continue;
             if (!keep) keep = pids[i];
             else if (pids[i] > 1) kill((pid_t)pids[i], SIGTERM);
         }
@@ -3896,12 +3918,14 @@ static int livedesk_build_player_menu(const char *house_root, HQMenuItem *menu, 
      * handler. */
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "stop"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:play-stop"); n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "reset"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:reset-entities"); n++; }
-    /* REAL, NEW 2026-09-15, direct live answer ("it just opens a text
-     * file in dir of project that lets user take notes") - house_root-
-     * level notes.txt, same "ensure it exists, then launch text-edit-
-     * hq" shape pc-hq's own sibling row uses. See ktb_hq_activate()'s
-     * own "livedesk:open-notes" handler. */
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "notes-db"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:open-notes"); n++; }
+    /* REAL FIX 2026-09-15, direct live correction ("u gave player in tb
+     * another notes-db (it already had one)") - a "notes-db" row here
+     * duplicated the real, already-existing GENERIC "notes-<cell>" row
+     * every header-cell menu already gets (ktb_hq_open()'s own real
+     * mechanism, ~line 4583 below: "notes-player" via #.desktop/
+     * scripts/notes.sh) - removed. pc-hq's own separate "Notes"
+     * dropdown row is unaffected (a different window, no pre-existing
+     * per-cell notes mechanism to duplicate there). */
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Cancel"); menu[n].command[0] = '\0'; n++; }
     return n;
 }
@@ -4723,25 +4747,6 @@ void ktb_hq_activate(KtbState *s, int row) {
          * Same re-open-in-place UX as play-toggle, same real reason. */
         khtpm_save_play_mode(s->house_root, 0);
         ktb_hq_open(s, 8);
-        return;
-    }
-    if (strcmp(m->command, "livedesk:open-notes") == 0) {
-        /* REAL, NEW 2026-09-15, direct live answer ("it just opens a
-         * text file in dir of project that lets user take notes") -
-         * house_root-level notes.txt; text-edit-hq has no file-argv
-         * (single-instance, always launches fresh - confirmed reading
-         * its own button.sh) so this just ensures the file exists,
-         * then launches the editor same as open-hai above. */
-        char notes[KTB_PATH_BUF];
-        path_join(notes, sizeof(notes), s->house_root, "notes.txt");
-        FILE *nf = ktb_fopen(notes, "a");
-        if (nf) fclose(nf);
-        char sh[KTB_PATH_BUF * 3];
-        snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c 'sh \"%s/@.apps/text-edit-hq/button.sh\" run' >/dev/null 2>&1 &",
-                 s->house_root);
-        int rc = ktb_system_recorded(s->house_root, sh);
-        (void)rc;
-        ktb_hq_close(s);
         return;
     }
     if (strncmp(m->command, "widget:", 7) == 0) {

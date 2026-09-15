@@ -12570,6 +12570,42 @@ static void popup_draw_text(Display *dpy, Drawable d, GC gc, int x, int y, const
         int screen_num = DefaultScreen(dpy);
         Visual *vis = DefaultVisual(dpy, screen_num);
         Colormap cm = DefaultColormap(dpy, screen_num);
+        /* REAL FIX 2026-09-15, direct live report (cursword disappearing
+         * on a normal left click - root-caused via a live strace: a real
+         * X BadMatch on RenderCreatePicture, Xlib's own default error
+         * handler calling exit(1) with no custom handler installed to
+         * catch it). This function always assumed the DEFAULT (24-bit)
+         * visual/colormap - true for every other real caller (popups/
+         * context menus, all normal-depth windows), but cursword's own
+         * armed-only debug-log lines (drawn nowhere else - never reached
+         * via right-click, only ever via the left-click arm sequence,
+         * matching every symptom observed) pass `d` = g_buf, a real
+         * 32-bit ARGB pixmap for cursword specifically (have_argb_visual
+         * path). XftDrawCreate() on a 32-bit Drawable with a 24-bit
+         * Visual is a genuine depth mismatch - RenderCreatePicture
+         * BadMatch, unconditionally, every time. Real, generic fix:
+         * query the ACTUAL depth of `d` and use a real matching visual/
+         * colormap when it differs from the screen default, instead of
+         * assuming every caller's Drawable matches DefaultVisual. Fixes
+         * every current and future ARGB-depth caller of this shared
+         * helper, not just cursword. */
+        {
+            Window root_ret; int xr, yr; unsigned int wr, hr, bw, real_depth;
+            if (XGetGeometry(dpy, d, &root_ret, &xr, &yr, &wr, &hr, &bw, &real_depth) &&
+                (int)real_depth != DefaultDepth(dpy, screen_num)) {
+                XVisualInfo vinfo;
+                if (XMatchVisualInfo(dpy, screen_num, (int)real_depth, TrueColor, &vinfo)) {
+                    vis = vinfo.visual;
+                    static Colormap s_argb_cm = 0;
+                    static Visual *s_argb_cm_vis = NULL;
+                    if (s_argb_cm_vis != vis) {
+                        s_argb_cm = XCreateColormap(dpy, RootWindow(dpy, screen_num), vis, AllocNone);
+                        s_argb_cm_vis = vis;
+                    }
+                    cm = s_argb_cm;
+                }
+            }
+        }
         XftDraw *xd = XftDrawCreate(dpy, d, vis, cm);
         if (xd) {
             /* REAL FIX 2026-09-14, direct live report ("its showing the
