@@ -463,6 +463,47 @@ occurrence surfaces, check FIRST which of the two this new instance
 actually is (a fresh `xwininfo` dump settles it immediately) before
 assuming either existing fix has a gap in it.
 
+**7th occurrence, 2026-09-14 (same day) - the 5th-occurrence fix's own
+force-refresh runs and still doesn't repaint. NOT closed by either of
+the two self-heal layers above - a real, distinct, deeper mechanism.**
+Direct live report: "i just switched to civ test from office, and the
+tb bottom is showing the wrong entities? (are we updating tb correctly
+yet? needs hardening it seems)." Confirmed via the SAME real evidence
+standard this entry's own history insists on (a direct window frame
+dump, not a backing-file read): the bottom bar showed `dsr`'s own
+buildings (cursword, dsr_castle_a, dsr_bank_a1/a2, dsr_store_a1/a2) -
+stale content from a desk visited earlier - while `civ-test` was the
+real active desk and `strip_ui.txt` already held the fully correct
+`n_tabs=2` (cursword, castle) data.
+
+**This time the window genuinely exists (ruling out the 6th
+occurrence) AND the 5th occurrence's own 20s force-refresh was
+genuinely firing** - `kh_focus_debug.log` showed real,
+repeated `INCREMENTAL_REPARSE ok` / `DOCK_TICK reparse_changed=1` /
+`DOCK_TICK layout+redraw_ms=...` entries roughly every 20 seconds for
+the full 87-minute life of the process (confirmed via `ps -o etimes`),
+proving the reparse gate itself was doing exactly what the 5th
+occurrence's fix designed it to do. Re-dumped the live frame twice,
+several seconds apart, across two of these real reparse+redraw ticks -
+pixel-identical stale content both times. **The reparse is real, the
+redraw is real, the on-screen result never changes anyway** - this is
+a `redraw()`-level bug (a stale cached frame/diff the repaint path
+trusts instead of the freshly reparsed tree), not a
+"was a reparse ever triggered" bug, which is what both prior fixes
+address. Not yet root-caused inside `redraw()` itself - flagged here
+for that real, separate investigation, not guessed at.
+
+**Immediate real fix applied**: a full `run_khtpm_strip.sh new`
+restart - confirmed via a fresh frame dump immediately after, correct
+content painted right away. This is NOT a fix for the underlying bug,
+only for the user's immediate block - a full process restart
+trivially side-steps any stale-cache-in-memory bug the same way it
+always has. If this occurs again, do NOT stop at another restart:
+capture `redraw()`'s own execution around a reparse tick that produces
+a `reparse_changed=1` log line but no visible change - the real fix
+lives in there, not in the reparse gate (already proven correct this
+pass) or the window-existence probe (also already proven correct).
+
 ---
 
 ## ✅ CLOSED 2026-09-13: tab reordering / entities missing after restart - the real architectural cause
