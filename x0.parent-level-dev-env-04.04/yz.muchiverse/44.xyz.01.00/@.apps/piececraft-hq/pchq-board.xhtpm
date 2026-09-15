@@ -29,15 +29,14 @@
            onclick="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'file-hq'"/>
       <tab id="tb-desk" class="pchq-tb" label="Desk ▾" onclick="ACTIVATE" target_id="tb-desk"/>
       <tab id="tb-menu" class="pchq-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
-      <!-- REAL FIX 2026-09-15, direct live correction ("its actually
-           player control for game start stop... its the same yes [as
-           PLAY-MODE-ENTITY-HARNESS-DESIGN.md's Play Mode]") - a real,
-           clickable toggle now, same house-wide flag the desktop
-           taskbar's own "8.player" menu already writes
-           (#.desktop/khtpm_play_mode.state.txt). Not the clock/tick
-           daemon (a separate, always-running thing). -->
-      <tab id="tb-player" class="pchq-tb" label="${player_label}"
-           onclick="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player'"/>
+      <!-- REAL FIX 2026-09-15, direct live correction ("player should
+           have dropdown that says play, reset, stop, notes-db, cancel
+           ... like tb hq dropdown []9.player") - same real dropdown
+           shape as tb-desk right above (ACTIVATE + dropdown-child rows
+           in the rail below), matching the desktop taskbar's own
+           player menu (khtpm_taskbar_manager.c's livedesk_build_
+           player_menu()) instead of a flat single-click toggle. -->
+      <tab id="tb-player" class="pchq-tb" label="${player_label} ▾" onclick="ACTIVATE" target_id="tb-player"/>
       <tab id="tb-clock" class="pchq-tb" label="${clock}" onclick="void"/>
     </tabbar>
 
@@ -62,6 +61,26 @@
       <item id="mn-db" class="pchq-menu-row dropdown-child quiet" target_id="tb-menu"
             label="Db (todo)" action="void"/>
       <item id="mn-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-menu"
+            label="- cancel -" action="void"/>
+      <!-- REAL, NEW 2026-09-15, direct live report ("player should
+           have dropdown that says play, reset, stop, notes-db,
+           cancel") - matches the desktop taskbar's own player menu
+           row set (play/reset/Cancel) plus the two rows it's missing
+           there too (stop, notes-db) - see khtpm_taskbar_manager.c's
+           livedesk_build_player_menu() for the sibling fix. -->
+      <item id="pm-play" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="${player_label}"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'toggle'"/>
+      <item id="pm-stop" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Stop"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'stop'"/>
+      <item id="pm-reset" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Reset"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'reset'"/>
+      <item id="pm-notes" class="pchq-menu-row dropdown-child" target_id="tb-player"
+            label="Notes"
+            action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player' 'notes'"/>
+      <item id="pm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-player"
             label="- cancel -" action="void"/>
     </sidebar>
 

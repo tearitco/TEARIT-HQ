@@ -3887,7 +3887,21 @@ static int livedesk_build_player_menu(const char *house_root, HQMenuItem *menu, 
         snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:play-toggle");
         n++;
     }
+    /* REAL, NEW 2026-09-15, direct live report ("our tb hq dropdown
+     * player is missing 'stop'" - same live report that added pc-hq's
+     * own Player dropdown, deliberately kept in sync with this menu's
+     * row set). Explicit force-off, distinct from the toggle above -
+     * "make sure it's definitely stopped" without reading the current
+     * label first. See ktb_hq_activate()'s own "livedesk:play-stop"
+     * handler. */
+    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "stop"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:play-stop"); n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "reset"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:reset-entities"); n++; }
+    /* REAL, NEW 2026-09-15, direct live answer ("it just opens a text
+     * file in dir of project that lets user take notes") - house_root-
+     * level notes.txt, same "ensure it exists, then launch text-edit-
+     * hq" shape pc-hq's own sibling row uses. See ktb_hq_activate()'s
+     * own "livedesk:open-notes" handler. */
+    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "notes-db"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:open-notes"); n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Cancel"); menu[n].command[0] = '\0'; n++; }
     return n;
 }
@@ -4700,6 +4714,34 @@ void ktb_hq_activate(KtbState *s, int row) {
          * immediately, in place, no reopen needed. */
         khtpm_save_play_mode(s->house_root, !khtpm_load_play_mode(s->house_root));
         ktb_hq_open(s, 8);
+        return;
+    }
+    if (strcmp(m->command, "livedesk:play-stop") == 0) {
+        /* REAL, NEW 2026-09-15, direct live report ("our tb hq dropdown
+         * player is missing 'stop'") - explicit force-off, distinct
+         * from the toggle above (no read-current-state-first needed).
+         * Same re-open-in-place UX as play-toggle, same real reason. */
+        khtpm_save_play_mode(s->house_root, 0);
+        ktb_hq_open(s, 8);
+        return;
+    }
+    if (strcmp(m->command, "livedesk:open-notes") == 0) {
+        /* REAL, NEW 2026-09-15, direct live answer ("it just opens a
+         * text file in dir of project that lets user take notes") -
+         * house_root-level notes.txt; text-edit-hq has no file-argv
+         * (single-instance, always launches fresh - confirmed reading
+         * its own button.sh) so this just ensures the file exists,
+         * then launches the editor same as open-hai above. */
+        char notes[KTB_PATH_BUF];
+        path_join(notes, sizeof(notes), s->house_root, "notes.txt");
+        FILE *nf = ktb_fopen(notes, "a");
+        if (nf) fclose(nf);
+        char sh[KTB_PATH_BUF * 3];
+        snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c 'sh \"%s/@.apps/text-edit-hq/button.sh\" run' >/dev/null 2>&1 &",
+                 s->house_root);
+        int rc = ktb_system_recorded(s->house_root, sh);
+        (void)rc;
+        ktb_hq_close(s);
         return;
     }
     if (strncmp(m->command, "widget:", 7) == 0) {

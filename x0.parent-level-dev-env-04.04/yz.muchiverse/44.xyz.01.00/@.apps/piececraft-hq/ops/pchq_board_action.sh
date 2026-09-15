@@ -197,13 +197,59 @@ case "$VERB" in
         # real, separate, not-yet-built follow-up work, out of scope
         # for this toggle wiring itself.
         HOUSE="$(cd "$SELF_DIR/../../.." && pwd)"
+        PCHQ="$(cd "$SELF_DIR/.." && pwd)"
         PM="$HOUSE/#.desktop/khtpm_play_mode.state.txt"
-        CUR=off
-        [ -f "$PM" ] && grep -q 'mode=on' "$PM" && CUR=on
-        NEXT=on
-        [ "$CUR" = on ] && NEXT=off
         mkdir -p "$(dirname "$PM")"
-        printf 'mode=%s\n' "$NEXT" > "$PM"
+        # REAL, NEW 2026-09-15, direct live report ("player should have
+        # dropdown that says play, reset, stop, notes-db, cancel") -
+        # ARG picks the sub-action; empty ARG (a bare click, no
+        # dropdown) keeps the original toggle behavior for backward
+        # compat with the hascanvas variant, which has no dropdown
+        # support at all (see that file's own header comment).
+        SUB="${ARG:-toggle}"
+        case "$SUB" in
+            toggle)
+                CUR=off
+                [ -f "$PM" ] && grep -q 'mode=on' "$PM" && CUR=on
+                NEXT=on
+                [ "$CUR" = on ] && NEXT=off
+                printf 'mode=%s\n' "$NEXT" > "$PM"
+                ;;
+            stop)
+                # Explicit force-off, distinct from toggle - "make sure
+                # it's definitely stopped" without needing to read the
+                # current label first.
+                printf 'mode=off\n' > "$PM"
+                ;;
+            reset)
+                # Real reuse of the one real, working map-load path
+                # (file-hq/load-map's own fix, same date) - re-issues
+                # CONFIRM_START_MAP for whatever map is CURRENTLY
+                # active (world_01/state.txt's own map_id, the real
+                # field pc_generate_chunk.c writes and reads - NOT
+                # board_config.txt, confirmed dead). A real "restart
+                # this same map fresh" action, not a guess.
+                WORLD_STATE="$PCHQ/pieces/world_01/state.txt"
+                MAP_ID=""
+                [ -f "$WORLD_STATE" ] && MAP_ID="$(sed -n 's/^map_id=//p' "$WORLD_STATE" | head -1)"
+                if [ -n "$MAP_ID" ]; then
+                    mkdir -p "$PCHQ/pieces/system/widget_cmds"
+                    printf 'CONFIRM_START_MAP:%s\n' "$MAP_ID" > "$PCHQ/pieces/system/widget_cmds/inbox.txt"
+                fi
+                ;;
+            notes)
+                # REAL, NEW 2026-09-15 - "it just opens a text file in
+                # dir of project that lets user take notes" (direct
+                # live answer). text-edit-hq has no file-argv (single-
+                # instance, always launches fresh - confirmed by
+                # reading its own button.sh) so this ensures the real
+                # notes file exists, then launches the editor; the user
+                # opens it themselves from there.
+                NOTES="$PCHQ/notes.txt"
+                [ -f "$NOTES" ] || : > "$NOTES"
+                setsid sh "$HOUSE/@.apps/text-edit-hq/button.sh" run >/tmp/pchq-notes-texted.log 2>&1 < /dev/null &
+                ;;
+        esac
         ;;
 esac
 exit 0
