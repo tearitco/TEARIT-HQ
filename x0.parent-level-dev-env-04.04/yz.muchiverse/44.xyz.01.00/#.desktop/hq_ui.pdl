@@ -23,4 +23,27 @@ font_scale=1.25
 # fallback every window without its own font-family uses. Live-reloaded
 # same as font_scale; picker lives in the taskbar-settings app.
 font_family=DejaVu Sans
-incremental_reparse=1
+
+# incremental_reparse: REAL FIX 2026-09-15, direct live report ("navigating
+# the bottom tb and pager, it jumps index after a while and also the pager
+# elements disappeared") - turned back OFF. Live-reproduced, hard evidence
+# (kh_focus_debug.log's own "g_n_elems=" trail): the dock's own diff/match
+# never recognizes its repeated elements as "same" across a reparse (every
+# log line read "INCREMENTAL_REPARSE ok removed=0" - it never once thought
+# anything was removable), so every reparse tick bump-allocated a FRESH
+# copy of the dock's ~21 elements into the shared g_pool[MAX_ELEMS=1024]
+# without ever freeing the stale ones. A short real navigation session
+# (walk right to the pager, activate it, walk back) drove g_n_elems from
+# ~700 to a pegged 1024 in under two minutes - the dock relays a focus-
+# echo (dock_relay_focus_code()) on EVERY arrow key, so it reparses far
+# more often than any other window, hitting this leak first and fastest,
+# which is exactly why pc-hq's own footer pager never showed this - it
+# doesn't churn vars anywhere near as often. Once the pool is exhausted,
+# rendering visibly corrupts (nav numbering jumps, whole rows/the pager
+# vanish) - not a coincidence, a real out-of-capacity failure. Reverting
+# to the always-full-rebuild path (g_n_elems=0 every reparse, no leak
+# possible by construction) until the diff/match algorithm itself is
+# fixed to actually recognize unchanged elements - see
+# CHTPM-INCREMENTAL-REPARSE-DESIGN.md and 04-bugs/bug_bounty.md for the
+# full writeup. Do not flip this back to 1 without fixing that first.
+incremental_reparse=0
