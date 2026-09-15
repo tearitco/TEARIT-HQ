@@ -950,5 +950,72 @@ into if THAT was the thing that failed to get created.
 
 ---
 
+---
+
+## 22. A numeric IPC contract between two separate binaries is only as safe as its LEAST-updated copy of the constant it depends on
+
+Direct live report (2026-09-15): "it keeps jumping ahead when mouse
+clicks bottom tb, to next nav." Spent most of a session chasing this
+as a click-coordinate/race bug in the renderer (`khtpm_core_render.c`)
+- reordered the event loop, added debug logging at the actual
+hit-test - and proved, with a real log line, that the renderer's own
+click handling was matching the correct item on every single click.
+The bug was never there.
+
+Real root cause: the taskbar manager (`khtpm_taskbar_manager_main.c`,
+a SEPARATE binary/process from the renderer) decodes a focus-echo code
+the renderer sends it (`6000 + g_focus_nav`, `dock_relay_focus_code()`)
+using its own `KTB_STRIP_N_CELLS` constant to figure out which
+bottom-bar tab that nav number refers to. That constant was hardcoded
+to `15` and never updated when the header template
+(`khtpm_strip_header.xhtpm`) gained a 16th real cell at some earlier
+point - the renderer's own idea of "how many header cells" is always
+computed live from the actual template, so it was correct; only the
+manager's copy had drifted stale. Every focus-echo round trip was
+silently off by exactly one tab from that point on, and the manager's
+own (wrong) answer got applied BACK over the renderer's own (correct)
+click on the very next reparse - so from the outside it looked exactly
+like the click itself was wrong.
+
+**Rules:**
+- When two separate processes/binaries agree on a numeric protocol by
+  each hardcoding the SAME count/offset independently (not by one side
+  deriving it from the other, or both reading one shared source), that
+  number WILL drift the moment either side's real data changes and the
+  other isn't touched in the same commit - there is no mechanism
+  forcing them to move together, only discipline, and discipline
+  fails silently here (no crash, no error, just one-off-wrong output).
+- If a bug's symptom is "the position/value is wrong," check both ends
+  of every process boundary the affected data crosses BEFORE assuming
+  the bug lives in whichever process the user is looking at. The
+  renderer was the visible, clickable thing; the actual stale constant
+  was in a different binary the user never directly interacts with.
+- A real log/debug line placed exactly at the suspected fault point
+  (here, the click hit-test loop) that PROVES the suspected component
+  innocent is worth more than another round of static reading -
+  narrowing "which of the two processes" beats continuing to guess
+  inside the one you already suspect.
+- The actual fix: collapse the duplicated literal to ONE real macro,
+  defined once, that every consumer (including array sizes that used
+  to carry their own independent "matches the constant" comment)
+  derives from - not a second, better-commented hardcoded copy. A
+  comment saying "matches KTB_STRIP_N_CELLS" next to a literal is not
+  a guarantee, just a promise nothing enforces; the array literal
+  drifted anyway despite exactly that comment already being there
+  (see the old `cell_id_pos[15] /* matches KTB_STRIP_N_CELLS */`).
+- Longer-term architectural note (from the same conversation, not yet
+  acted on): this whole class of bug is a direct cost of an IPC
+  protocol built from bare integer code RANGES (`KSC_TAB_BASE 2000`,
+  `KSC_SHORTCUT_BASE 3000`, `KSC_SET_FOCUS_BASE 6000`, etc.) that both
+  sides must independently know the boundaries of, rather than a
+  self-describing contract (named events, or the receiver asking the
+  sender for the count instead of assuming it). The magic-range
+  convention is simple and debuggable (a human can read a bare number
+  in a relay file) but it is exactly this bug's own root cause,
+  structurally, and will recur again for any other range unless/until
+  it's replaced.
+
+---
+
 *Append new entries here as they're found — this file exists so the
 next session doesn't re-discover the same mistake from scratch.*

@@ -35,3 +35,12 @@ every chat log.
   no Windows twin (CROSS-PLATFORM-PENDING #1), today's change is
   port-positive (removed bespoke code, routed through OS-free shared
   helpers).
+- `2026-09-15/` — closed the "bottom-bar click jumps to next nav" bug:
+  real root cause was a stale cross-process constant (manager's
+  `KTB_STRIP_N_CELLS` one behind the header template's real cell
+  count), not the renderer's click handling - proved live with a
+  debug log before fixing. `03-pitfalls/` #22 + `04-bugs/bug_bounty.md`.
+  Also: dock event-loop reorder hardening, pager spacing tweak,
+  architecture discussion (monolith vs. IPC contract - see notes.md)
+  captured for later. Back to game mechanics next; AI/networking
+  pipeline flagged as upcoming, not yet scheduled.
