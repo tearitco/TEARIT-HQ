@@ -97,8 +97,16 @@
    accent (#8b5cf6, #.desktop/livedesk_theme.pdl's own real `fg` value,
    read directly rather than guessed - the same real purple the window
    title/chrome border already show). Explicit now, matching that real
-   theme color exactly. */
-.tab {
+   theme color exactly.
+
+   REAL FIX, same pass, caught live ("the text in tabbar is still
+   white on white. it hasnt changed colors yet?") - this rule's own
+   leading "." made it a CLASS selector (matches class="tab"), not a
+   TAG selector - <tab> elements have no class attribute at all here
+   (confirmed live: the real serialized frame file's own classes field
+   was empty for every one), so it matched nothing. Bare tag selector,
+   same convention `item`/`text` below already use correctly. */
+tab {
   color: #8b5cf6;
 }
 
