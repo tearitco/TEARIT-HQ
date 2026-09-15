@@ -1,0 +1,84 @@
+<!-- dsr.xhtpm - DSR (Desk Street Raider) toy, real X11-HQ window.
+     Direct instruction, 2026-09-14: "theres no difference between its
+     gui and 014.wsr-pal...+2/ cept it should be in x11-hq format" -
+     same real field content/values as that pal's own wsr_compose_frame.c
+     (Wallet/Active Corp Balance Sheet/Financial News/World Status) and
+     the same real 34-row action menu as its own piece.pdl (see
+     dsr_manager.c's own header comment for the exact ordering source),
+     rendered through this house's already-generic tag vocabulary
+     instead of that pal's own ASCII/RGB renderer - zero new per-project
+     C in khtpm_core_render.c itself, same convention db-hq-pal/
+     chat-hai/network-browser all already use.
+
+     REAL FIX, direct live report ("its a bit smaller than it needs to
+     be" / "missing chrome headers"): a plain flat <text>/<scrolllist>
+     page never gets a real window's own chrome (X/!/_ buttons) or its
+     own CSS width/height - both only apply to the real <sidebar>+
+     <panel> layout pair (assign_nav_and_layout()'s own real gate,
+     confirmed by reading the code, not guessed) - the SAME real shape
+     db-hq-pal's own dashboard.xhtpm uses. Restructured: the status
+     readout lives in <sidebar> (always visible, doesn't scroll away),
+     the real 33-row action menu lives in <panel>'s own <scrolllist>.
+
+     ROLLED BACK 2026-09-14 - a follow-up layout pass (tabbar +
+     3-column split) mixed Actions into the SAME sidebar as the status
+     readout instead of giving each real column its own real region
+     (canvas-craft.xhtpm's own proven shape is sidebar=ONE thing,
+     panel=ONE thing each) and broke nav - direct instruction: "you
+     would be better off rolling back than this." Rolled back to the
+     last confirmed-working version, verified via a real frame dump,
+     THEN the real File/Game Options/Settings/Help <tabbar> was added
+     back on top of that known-good state (same real tag db-hq-pal's
+     own dashboard.xhtpm uses) - nothing else changed this pass. A
+     fuller real layout (matching the actual Wall Street Raider 8.12
+     Trading Desk screenshot's own grouped-box structure: Active
+     Entity/Research Menus/Transactions/Other/Balance Sheet/News/
+     Commodity Prices/Quick Search) is real, still wanted, staged for
+     a dedicated next pass once that structure is worked out together.
+
+     Real, deliberate simplification this pass (display-first, per
+     direct instruction "can we do that first?"): every action is a
+     real, honest action="void" stub, matching castle's own
+     menu_gameplay.chtpm convention (no real per-action mechanic exists
+     yet, not silently faked). The fold/collapse ("[^]"/"[>]")
+     interaction the original ASCII UI has is not reproduced yet either
+     - all rows are populated dynamically from the manager's own real
+     data (dsr_manager.c's ACTION_LABELS[]), so relabeling/reordering/
+     adding rows later is real, cheap, data-only work, not a template
+     change. See xyzfs/.../home/projects/dsr/NOTES.md for status. -->
+<window label="Desk Street Raider" class="dsr-toy" vars="state/ui.txt">
+<page id="main">
+<tabbar class="tab-bar">
+<tab id="tab-file" label="File" action="void"/>
+<tab id="tab-options" label="Game Options" action="void"/>
+<tab id="tab-settings" label="Settings" action="void"/>
+<tab id="tab-help" label="Help" action="void"/>
+</tabbar>
+<sidebar id="sidebar" class="sidebar">
+<text label="D S R" class="block-title"/>
+<text label="Desk Street Raider" class="quiet"/>
+<text label="Turn: ${turn}" class="quiet"/>
+<text label="Active: ${active_corp}" class="quiet"/>
+<text label="Your Wallet:" class="block-title"/>
+<text label="Cash: ${player_cash}"/>
+<text label="Active Corp Balance Sheet:" class="block-title"/>
+<text label="Cash (CD's): ${corp_cash}"/>
+<text label="Stock Price: ${corp_stock_price}"/>
+<text label="Owned By: ${corp_owned_by}"/>
+<text label="FINANCIAL NEWS" class="block-title"/>
+<text label="${news_ticker}: $${news_price} (${news_pct}%)" class="quiet"/>
+<text label="WORLD STATUS" class="block-title"/>
+<text label="Population: ${population}" class="quiet"/>
+<text label="Temperature: ${temperature}C" class="quiet"/>
+</sidebar>
+<panel id="detail" class="panel">
+<text label="Actions" class="block-title"/>
+<scrolllist>
+<repeat count="${n_actions}" bind="act">
+<text label="--- Navigation ---" show="${act.sep_before}"/>
+<item label="${act.label}" action="void"/>
+</repeat>
+</scrolllist>
+</panel>
+</page>
+</window>

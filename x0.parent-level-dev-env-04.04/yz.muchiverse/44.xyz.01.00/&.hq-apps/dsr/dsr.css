@@ -1,0 +1,15 @@
+/* dsr.css - DSR (Desk Street Raider). Sibling-.css, auto-merged by the
+   shared renderer (same stem as dsr.xhtpm).
+
+   ROLLED BACK 2026-09-14 to the last confirmed-working sidebar+panel
+   size (see dsr.xhtpm's own rollback comment) - the tabbar/3-column
+   layout pass is real, still wanted, just needs to be redone properly
+   next rather than re-attempted here. */
+
+.dsr-toy {
+  width: 620px;
+  height: 900px;
+}
+
+.block-title { color: #ffffff; font-weight: bold; }
+.quiet       { color: #8b93a7; }

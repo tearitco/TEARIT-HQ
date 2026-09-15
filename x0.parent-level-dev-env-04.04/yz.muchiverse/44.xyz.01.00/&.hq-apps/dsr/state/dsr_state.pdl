@@ -1,0 +1,13 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+STATE        | turn               | 0
+STATE        | active_corp        | corp_AFL
+STATE        | player_cash        | 1613
+STATE        | corp_cash          | 5000
+STATE        | corp_stock_price   | 115.04
+STATE        | corp_owned_by      | (independent)
+STATE        | news_ticker        | CMZ
+STATE        | news_price         | 0.10
+STATE        | news_pct           | -99.38
+STATE        | population         | 10000
+STATE        | temperature        | 15
