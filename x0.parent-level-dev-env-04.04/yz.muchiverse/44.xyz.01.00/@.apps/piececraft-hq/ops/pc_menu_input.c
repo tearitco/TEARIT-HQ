@@ -1036,7 +1036,7 @@ int main(int argc, char **argv) {
             launch_trigger_watcher_if_needed(project_root);
 
             snprintf(message, sizeof(message), "Debug flat world generated. Game started.");
-        } else if (strncmp(cmd, "CONFIRM_START_MAP:", 19) == 0) {
+        } else if (strncmp(cmd, "CONFIRM_START_MAP:", 18) == 0) {
             /* REAL, NEW 2026-09-14 (EVENT-TRIGGER-LAYER-PLAN.md §3 Step
              * 3's own "smallest provable proof" fixture) - loads a real,
              * static, authored map (pieces/system/maps/<map_id>/) via
@@ -1047,11 +1047,29 @@ int main(int argc, char **argv) {
              * mechanism every other real command already uses
              * (`inbox_cmd_buf` above) - no menu button wired up yet,
              * left as a real, separate, later UI increment; the trigger
-             * mechanism itself doesn't depend on one. */
+             * mechanism itself doesn't depend on one.
+             *
+             * REAL FIX 2026-09-15, direct live report ("would loading
+             * 'default' load the default map?") - this branch NEVER
+             * actually ran, for any map, ever, since it was first
+             * written 2026-09-14: "CONFIRM_START_MAP:" is 18 real
+             * characters (confirmed: `printf '%s' "CONFIRM_START_MAP:"
+             * | wc -c` -> 18), but both this strncmp's length AND the
+             * cmd+19 offset just below used 19 - a real off-by-one.
+             * strncmp(..., 19) compares one byte past the literal's own
+             * content into cmd's own next real character (e.g. 'd' of
+             * "default") against the literal's implicit '\0' - always a
+             * mismatch, so this branch was silently, permanently dead
+             * code. Found via a live strace-less debug trace (added
+             * fprintf right before this branch and one INSIDE it - the
+             * outer one fired with the exact right cmd string, the
+             * inner one never printed at all, proving the strncmp
+             * itself was the break). Fixed to the real, counted length
+             * (18) - cmd+18 (not +19) just below for the same reason. */
             write_kv(config_path, "game_state", "playing");
 
             char map_id_arg[128];
-            snprintf(map_id_arg, sizeof(map_id_arg), "%s", cmd + 19);
+            snprintf(map_id_arg, sizeof(map_id_arg), "%s", cmd + 18);
             unsigned int world_seed = (unsigned int)time(NULL) ^ (unsigned int)getpid();
 
 #ifdef _WIN32

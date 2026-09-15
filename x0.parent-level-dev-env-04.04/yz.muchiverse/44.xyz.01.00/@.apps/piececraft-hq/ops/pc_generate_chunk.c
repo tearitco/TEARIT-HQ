@@ -270,11 +270,55 @@ static const int tree_row[TREE_COUNT] = {4, 4, 12, 12};
  * proof), every other glyph becomes flat, walkable floor at the same
  * FLAT_SURFACE_Z debug fixtures already use. Returns 1 (caller should
  * fall back / report failure) if the map file can't be read. */
+/* REAL, NEW 2026-09-15, direct live report ("it should be a real
+ * directory, with .pdl file that is 'board-game' type... just 2d, plus
+ * their extrusion method, and chunks if there is multiples") -
+ * generalizes the old hardcoded single 'W'=wall rule into a real,
+ * declared, data-driven glyph->height-delta table, read from a sibling
+ * pieces/system/maps/<map_id>/extrusion.pdl (SECTION|KEY|VALUE, same
+ * convention every other real .pdl in this house uses):
+ *   EXTRUDE | W       | 3        <- glyph W adds 3 to FLAT_SURFACE_Z
+ *   EXTRUDE | default | 0        <- any glyph not listed above
+ * Absent file = old hardcoded behavior exactly (W=wall, everything
+ * else flat) - fully backward compatible with mineclonia_sample/
+ * cdda_sample, which declare no extrusion.pdl of their own. */
+#define MAX_EXTRUDE_GLYPHS 32
+static void load_extrusion_table(const char *map_id, char glyphs[MAX_EXTRUDE_GLYPHS], int deltas[MAX_EXTRUDE_GLYPHS], int *n, int *default_delta) {
+    *n = 0;
+    *default_delta = 0;
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/pieces/system/maps/%s/extrusion.pdl", real_root, map_id);
+    FILE *f = host_fopen(path, "r");
+    if (!f) return;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "EXTRUDE", 7) != 0) continue;
+        char *p1 = strchr(line, '|');
+        if (!p1) continue;
+        char *p2 = strchr(p1 + 1, '|');
+        if (!p2) continue;
+        char key[64]; int klen = (int)(p2 - (p1 + 1));
+        while (*(p1 + 1) == ' ') p1++;
+        if (klen <= 0 || klen >= (int)sizeof(key)) continue;
+        memcpy(key, p1 + 1, (size_t)klen);
+        key[klen] = '\0';
+        /* trim trailing spaces off key */
+        int kl = (int)strlen(key);
+        while (kl > 0 && key[kl - 1] == ' ') key[--kl] = '\0';
+        int val = atoi(p2 + 1);
+        if (strcmp(key, "default") == 0) { *default_delta = val; continue; }
+        if (*n < MAX_EXTRUDE_GLYPHS && key[0]) { glyphs[*n] = key[0]; deltas[*n] = val; (*n)++; }
+    }
+    fclose(f);
+}
+
 static int load_map_surface(const char *map_id, int surface[CHUNK_DIM][CHUNK_DIM]) {
     char map_path[PATH_BUF];
     snprintf(map_path, sizeof(map_path), "%s/pieces/system/maps/%s/map.txt", real_root, map_id);
     FILE *f = host_fopen(map_path, "r");
     if (!f) return 1;
+    char ex_glyphs[MAX_EXTRUDE_GLYPHS]; int ex_deltas[MAX_EXTRUDE_GLYPHS], ex_n, ex_default;
+    load_extrusion_table(map_id, ex_glyphs, ex_deltas, &ex_n, &ex_default);
     char line[CHUNK_DIM + 8];
     int row = 0;
     while (row < CHUNK_DIM && fgets(line, sizeof(line), f)) {
@@ -282,7 +326,9 @@ static int load_map_surface(const char *map_id, int surface[CHUNK_DIM][CHUNK_DIM
         int len = (int)strlen(line);
         for (int col = 0; col < CHUNK_DIM; col++) {
             char glyph = (col < len) ? line[col] : 'f';
-            surface[row][col] = (glyph == 'W') ? (FLAT_SURFACE_Z + 3) : FLAT_SURFACE_Z;
+            int delta = ex_n > 0 ? ex_default : (glyph == 'W' ? 3 : 0); /* no table at all = old hardcoded rule */
+            for (int i = 0; i < ex_n; i++) if (ex_glyphs[i] == glyph) { delta = ex_deltas[i]; break; }
+            surface[row][col] = FLAT_SURFACE_Z + delta;
         }
         row++;
     }
