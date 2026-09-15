@@ -5077,13 +5077,27 @@ static int dock_item_cw(Elem *t) {
     return cw;
 }
 
-/* Horizontal "- +" pager, placed right AFTER the last cell (left-flowing
- * with the cells, not pinned to the far right - direct instruction:
- * "why isn't it justified left like the [cells]?"), and only when there
- * is actually a row to page to (g_dock_packed_rows > 1) - a lone no-op
- * "+" was the old behaviour. `after_x` = the x just past the last laid-
- * out cell on the last visible row. */
+/* Horizontal "- +" pager. REAL FIX 2026-09-14, direct live report ("the
+ * +- [for] viewing lower rows of entities... are on left instead of
+ * right, where there is literally a designated space fore them" -
+ * pc-hq's own footer pager, `pchq-board.css`'s own "appears bottom-
+ * right" convention, cited as the real working reference). Right-
+ * aligned again now, INSIDE the DOCK_PAGER_W margin the row-packer
+ * already reserves and never lays a cell into (`max_w = g_win_w -
+ * DOCK_FOCUS_BOX_W - DOCK_PAGER_W` above) - confirmed live: that
+ * margin was sitting empty on the right the whole time the pager
+ * rendered left-flowing instead, exactly the "designated space" this
+ * report points at. This reverses an EARLIER direct instruction
+ * ("why isn't it justified left like the [cells]?", 2026-08-something)
+ * that moved it left-flowing in the first place - recorded here since
+ * that comment is now wrong, not silently deleted: this NEWER, more
+ * specific instruction (with a real working reference to match) is
+ * the one to keep going forward if the two ever seem to conflict
+ * again. `after_x` (the x just past the last laid-out cell) is no
+ * longer used for positioning, only for the `need` check's own
+ * context - kept as a parameter so every call site stays unchanged. */
 static void dock_place_pager(int win_w, int after_x) {
+    (void)after_x;
     int aw = scaled(22), gap = scaled(4);
     int need = (g_dock_packed_rows > 1) || (g_dock_visible_rows > 1);
 
@@ -5095,11 +5109,11 @@ static void dock_place_pager(int win_w, int after_x) {
         return;
     }
 
-    int mx = after_x + gap;
-    /* never let the pair run past the visible strip: DOCK_PAGER_W is the
-     * right margin the packer already reserved, so this is the hard cap. */
-    int cap = win_w - DOCK_PAGER_W + 8;
-    if (mx > cap) mx = cap;
+    /* right-aligned inside the reserved DOCK_PAGER_W margin, same real
+     * shape as the footer pager's own right_edge - 2*aw - gap /
+     * right_edge - aw pair. */
+    int right_edge = win_w - 8;
+    int mx = right_edge - 2 * aw - gap;
     if (mx < DOCK_FOCUS_BOX_W) mx = DOCK_FOCUS_BOX_W;
 
     snprintf(g_dock_minus_elem.tag, sizeof(g_dock_minus_elem.tag), "item");
