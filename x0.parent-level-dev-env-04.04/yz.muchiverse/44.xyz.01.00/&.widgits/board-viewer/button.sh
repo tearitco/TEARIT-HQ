@@ -177,6 +177,22 @@ EOSTATE
     RENDERER_PID=$!
     ./system/chtpm_parser_pal pieces/chtpm/layouts/board_viewer.chtpm >/dev/null 2>&1 &
     CHTPM_PID=$!
+    # REAL FIX 2026-09-15, direct live report ("they should show up in
+    # proc-mon, thats why its there") - these three top-level spawns
+    # (renderer/chtpm_parser_pal/chtpm_rgb_render below) previously
+    # registered nowhere: chtpm_parser_pal.c's own kh_pal_register_module()
+    # only tracks the prisc MODULES it itself spawns, not these top-
+    # level processes. Confirmed live this session: orphaned copies of
+    # exactly these three binaries were found running against deleted
+    # session dirs, invisible to proc-mon, burning CPU. Real, generic
+    # shell-callable wrapper (KH-PROC-REGISTRY-OP.md-equivalent - see
+    # kh_proc_register_op.c's own header), best-effort (never block
+    # launch on it).
+    REG_OP="$HOUSE_DIR/&.widgits/_shared-lib/ops/+x/kh_proc_register_op.+x"
+    if [ -x "$REG_OP" ]; then
+        "$REG_OP" "$HOUSE_DIR" "$RENDERER_PID" "bv-renderer" >/dev/null 2>&1 || true
+        "$REG_OP" "$HOUSE_DIR" "$CHTPM_PID" "bv-chtpm-parser-pal" >/dev/null 2>&1 || true
+    fi
 
     GL_PID=""
     RGB_PID=""
@@ -266,6 +282,9 @@ EOSTATE
         if [ -z "$NO_RGB_COMPOSITOR" ] && [ -x ./system/chtpm_rgb_render ]; then
             ./system/chtpm_rgb_render >/dev/null 2>&1 &
             RGB_PID=$!
+            if [ -x "$REG_OP" ]; then
+                "$REG_OP" "$HOUSE_DIR" "$RGB_PID" "bv-chtpm-rgb-render" >/dev/null 2>&1 || true
+            fi
         fi
     fi
 
