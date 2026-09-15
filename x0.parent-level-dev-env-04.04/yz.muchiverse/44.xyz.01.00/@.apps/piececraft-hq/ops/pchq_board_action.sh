@@ -177,5 +177,33 @@ case "$VERB" in
         restore_interact
         printf 'open=\n' > "$PKG_STATE/menu.txt"
         ;;
+    player)
+        # REAL FIX 2026-09-15, direct live correction ("i think it
+        # thinks player means 'player of entity' it actually is player
+        # control for game start stop... its the same yes, start stop
+        # for game mode... how player in tb should play all entities /
+        # events and common events in 'DESK'") - toggles the SAME real,
+        # house-wide Play Mode flag PLAY-MODE-ENTITY-HARNESS-DESIGN.md
+        # already defines and the desktop taskbar's own "8.player"
+        # menu already writes (khtpm_taskbar_manager.c's khtpm_save_
+        # play_mode() / khtpm_core_render.c's desktop_load_play_mode(),
+        # same file, same `mode=on|off` shape) - that doc's own §2
+        # explicitly says "pc-hq has no Play button yet... needs to be
+        # added as part of this work". This IS that button. NOT the
+        # clock/tick daemon (a separate, always-running thing per the
+        # same live correction) - purely the shared on/off flag; what
+        # pc-hq's own entities DO differently while it's on (real
+        # Play-Mode-only context menus, per that design doc's §4) is
+        # real, separate, not-yet-built follow-up work, out of scope
+        # for this toggle wiring itself.
+        HOUSE="$(cd "$SELF_DIR/../../.." && pwd)"
+        PM="$HOUSE/#.desktop/khtpm_play_mode.state.txt"
+        CUR=off
+        [ -f "$PM" ] && grep -q 'mode=on' "$PM" && CUR=on
+        NEXT=on
+        [ "$CUR" = on ] && NEXT=off
+        mkdir -p "$(dirname "$PM")"
+        printf 'mode=%s\n' "$NEXT" > "$PM"
+        ;;
 esac
 exit 0

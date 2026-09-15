@@ -303,30 +303,25 @@ int main(int argc, char **argv) {
                      tod / 3600, (tod % 3600) / 60);
         }
 
-        /* REAL, NEW 2026-09-15, direct live report ("pc-hq has a player
-         * button in tabbar, its supposed to work from there") - this
-         * tab was a real, deliberate stub since 2026-09-04 ("Player is
-         * a real stub for now (hero HP/position readback is a separate,
-         * later pass)"). No HP field exists anywhere for the xelector/
-         * possessed entity (confirmed - xelector_01/state.txt has no
-         * hp key), so v1 scope is honestly just the position half of
-         * that original note: possessed_id + pos_x/y/z, same real
-         * inline-in-the-tab-label convention tb-clock already uses
-         * right next to this one (no new panel/dropdown - a plain
-         * label readback). */
-        char xelector_state[PATH_MAX];
-        snprintf(xelector_state, sizeof(xelector_state),
-                 "%s/@.apps/%s/pieces/xelector_01/state.txt", house, host_id);
-        char px[16] = "?", py[16] = "?", pz[16] = "?", possessed[64] = "";
-        read_kv(xelector_state, "pos_x", px, sizeof(px));
-        read_kv(xelector_state, "pos_y", py, sizeof(py));
-        read_kv(xelector_state, "pos_z", pz, sizeof(pz));
-        read_kv(xelector_state, "possessed_id", possessed, sizeof(possessed));
-        char player_label[96];
-        if (possessed[0])
-            snprintf(player_label, sizeof(player_label), "Player: %s (%s,%s,%s)", possessed, px, py, pz);
-        else
-            snprintf(player_label, sizeof(player_label), "Player: (%s,%s,%s)", px, py, pz);
+        /* REAL FIX 2026-09-15, direct live correction ("i think it
+         * thinks player means 'player of entity' it actually is player
+         * control for game start stop... its the same yes [as PLAY-
+         * MODE-ENTITY-HARNESS-DESIGN.md's own Play Mode]") - the
+         * position-readback this comment used to describe was the
+         * WRONG read of the original 2026-09-04 stub note; replaced
+         * with the real thing: the same house-wide Play Mode flag the
+         * desktop taskbar's own "8.player" menu already toggles
+         * (#.desktop/khtpm_play_mode.state.txt, `mode=on|off`) -
+         * that design doc's own §2 says pc-hq needs exactly this
+         * button added. pchq_board_action.sh's own `player` verb
+         * flips this same file; this just reads it back for display. */
+        char pm_path[PATH_MAX];
+        snprintf(pm_path, sizeof(pm_path), "%s/#.desktop/khtpm_play_mode.state.txt", house);
+        char pm_mode[16] = "";
+        read_kv(pm_path, "mode", pm_mode, sizeof(pm_mode));
+        char player_label[32];
+        snprintf(player_label, sizeof(player_label), "Player: %s",
+                 strcmp(pm_mode, "on") == 0 ? "ON" : "OFF");
 
         size_t off = 0;
         off += (size_t)snprintf(ui + off, UIBUF - off,

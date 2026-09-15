@@ -29,14 +29,15 @@
            onclick="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'file-hq'"/>
       <tab id="tb-desk" class="pchq-tb" label="Desk ▾" onclick="ACTIVATE" target_id="tb-desk"/>
       <tab id="tb-menu" class="pchq-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
-      <!-- REAL, NEW 2026-09-15, direct live report ("pc-hq has a
-           player button in tabbar, its supposed to work from there") -
-           real position readback (pchq_board_projector.c's own
-           player_label, possessed_id + pos_x/y/z off xelector_01/
-           state.txt) - no HP field exists anywhere yet, so this is
-           honestly position-only. Still not clickable, same as
-           tb-clock right next to it - a real readback, not a button. -->
-      <tab id="tb-player" class="pchq-tb" label="${player_label}" onclick="void"/>
+      <!-- REAL FIX 2026-09-15, direct live correction ("its actually
+           player control for game start stop... its the same yes [as
+           PLAY-MODE-ENTITY-HARNESS-DESIGN.md's Play Mode]") - a real,
+           clickable toggle now, same house-wide flag the desktop
+           taskbar's own "8.player" menu already writes
+           (#.desktop/khtpm_play_mode.state.txt). Not the clock/tick
+           daemon (a separate, always-running thing). -->
+      <tab id="tb-player" class="pchq-tb" label="${player_label}"
+           onclick="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'player'"/>
       <tab id="tb-clock" class="pchq-tb" label="${clock}" onclick="void"/>
     </tabbar>
 

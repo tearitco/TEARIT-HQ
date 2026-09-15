@@ -44,30 +44,49 @@ They are the actual precedent — not a hypothetical.
 
 ## 1. Edit mode vs Play mode
 
-**UPDATE 2026-09-15, confirmed by direct code read (this was left as an
-open question for Grok; resolved here instead of leaving it to guess):
-there is no existing edit/play-mode toggle anywhere in piececraft-hq.**
-`config.txt`'s own `game_state` key is only ever `"unknown"` (initial)
-or `"playing"` (set once by `pc_generate_chunk`/`CONFIRM_START_MAP`,
-never unset) - confirmed by reading every `game_state` read/write site
-in `pc_menu_input.c` and `pc_hq_status_manager.c`. It exists purely for
-a status-line display, not to gate any real behavior split. This is
-genuinely new v1 work, not a wire-into-existing-thing task:
+**UPDATE 2026-09-15 #2, direct live correction of the first version of
+this section** (which wrongly concluded no such mechanism exists and
+proposed inventing a new one - WRONG, caught before it shipped: "i
+think it thinks player means 'player of entity' it actually is player
+control for game start stop... its the same yes [as this]"). The real
+mechanism already exists, house-wide, and is now wired into pc-hq:
 
-- **Edit mode** = default. Every block placement/removal is a direct,
-  inspectable data edit (voxel grid + a Common Event binding), the same
-  as any other house map editor — nothing hidden, nothing compiled
-  that isn't also sitting on disk as real `.pdl`/`.ir.pdl`.
-- **Play mode** = piececraft-hq's existing possession/movement loop
-  runs live against that same data.
-- A real toggle needs: a new `game_state` value (or a new, separate
-  key - `edit_mode`/`play_mode` boolean is probably clearer than
-  overloading `game_state` further) written by a new input action, and
-  every place voxel-removal/placement currently fires unconditionally
-  needs to check it before acting. **Grok: this is real, scoped design
-  work - propose the exact mechanism (new key name, which input action
-  flips it, what happens to in-flight possession when flipped) in your
-  first co-lab post rather than guessing silently.**
+- **`#.desktop/khtpm_play_mode.state.txt`** (`mode=on|off`) - a real,
+  persisted, house-wide flag, already written by the desktop taskbar's
+  own "8.player" menu (`khtpm_taskbar_manager.c`'s `khtpm_save_play_
+  mode()`) and read by `khtpm_core_render.c`'s `desktop_load_play_
+  mode()` to gate DSR/cursword's own touch-trigger firing. Full design:
+  `08-roadmap/design-docs/PLAY-MODE-ENTITY-HARNESS-DESIGN.md` - its own
+  §2 explicitly says *"pc-hq has no Play button yet... needs to be
+  added as part of this work."*
+- **Landed this session**: pc-hq's toolbar "Player" tab now toggles
+  this exact flag (`pchq_board_action.sh`'s new `player` verb) and
+  displays it live (`pchq_board_projector.c`'s `player_label`, "Player:
+  ON"/"Player: OFF"). This is the real "start/stop for game mode" the
+  user described - explicitly NOT the clock/tick daemon, which is a
+  separate, always-running thing.
+- **Real, conditional caveat for later** (direct live note, not yet
+  actionable): Player start/stop *may* need to also start/stop
+  `pc_clock_daemon.c` itself, but ONLY if that clock is ever mapped to
+  a genuine real-time "live play" mode - NOT if it's driven by
+  steps/end-turn instead. No such clock-mode concept exists anywhere
+  in `pc_clock_daemon.c` today (confirmed - grepped for it, zero
+  hits), so this is real future scope, not something wired now - don't
+  invent a clock-mode branch speculatively; build it when a real
+  clock-mode concept actually exists.
+- **Still real, separate, unbuilt work** (PLAY-MODE-ENTITY-HARNESS-
+  DESIGN.md §4, its own "nothing in this doc is built yet"): entities
+  showing a genuinely DIFFERENT context menu depending on this flag
+  (edit-mode menu = event editing; play-mode menu = game-specific
+  commands, Fire-Emblem/tactics-style) - that doc's own real, generated-
+  `menu.chtpm` + `launch_khtpm_menu()` mechanism is the right
+  foundation, not a new popup system. **Grok: this is the actual scoped
+  work for PALCRAFT's own edit/play split - wire pc-hq's block
+  placement/removal to check `desktop_load_play_mode()`-equivalent
+  (piececraft-hq's own binaries need their own read function, same
+  house "duplicate rather than share" convention every other consumer
+  of this file already follows) before acting, and build the real
+  Play-Mode context menu per that design doc's §4.**
 - The auditability requirement (user's own words: "each behavior and
   block is auditable in edit mode") is satisfied by construction as
   long as §2/§3 are followed — every block's behavior is a real,
