@@ -846,7 +846,7 @@ static void dispatch_code(KtbState *s, int code) {
              * entity cells (n_tabs) FOLLOWED BY hq-window cells
              * (n_hq_wins) - both are positionally navigable, so clamp
              * against the combined count, not n_tabs alone. */
-            if (t >= 0 && t < s->n_tabs + s->n_hq_wins) { s->strip_focus_cell = -1; s->tab_focus_idx = t; }
+            if (t >= 0 && t < s->n_tabs + s->n_hq_wins + KTB_TAB_FOCUS_PAGER_MARGIN) { s->strip_focus_cell = -1; s->tab_focus_idx = t; }
         }
         return;
     }

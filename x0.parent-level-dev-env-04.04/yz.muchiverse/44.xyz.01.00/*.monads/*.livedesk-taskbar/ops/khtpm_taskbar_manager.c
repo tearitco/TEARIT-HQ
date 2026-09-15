@@ -844,7 +844,7 @@ void ktb_reload(KtbState *s) {
      * hq-window cells (n_tabs + n_hq_wins), so clamp to the combined
      * count - clamping at n_tabs stranded focus ~2 cells short. */
     {
-        int n_strip_tabs = s->n_tabs + s->n_hq_wins;
+        int n_strip_tabs = s->n_tabs + s->n_hq_wins + KTB_TAB_FOCUS_PAGER_MARGIN;
         if (s->tab_focus_idx >= n_strip_tabs) s->tab_focus_idx = n_strip_tabs > 0 ? n_strip_tabs - 1 : 0;
     }
     if (s->strip_focus_cell >= KTB_STRIP_N_CELLS) s->strip_focus_cell = KTB_STRIP_N_CELLS - 1;

@@ -26,6 +26,37 @@ extern "C" {
  * if khtpm_strip_header.xhtpm ever gains/loses a real header cell - never
  * add a second hardcoded literal anywhere else in this file. */
 #define KTB_STRIP_N_CELLS_MAX 16
+/* REAL FIX 2026-09-15, direct live report ("nav skips back after tb is
+ * opened (wont go to last 2 +- pagers)") - the X11 strip renderer
+ * (khtpm_core_render.c) appends up to 2 real, focusable, synthetic nav
+ * slots AFTER every real tab/hq-window cell whenever its own content
+ * wraps to more than one row: the "-"/"+" row pager
+ * (dock_place_pager(), g_dock_minus_elem/g_dock_plus_elem). This
+ * manager has NO concept of those two cells at all - they're not real
+ * tabs, never appear in s->tabs[]/s->n_tabs - so its own
+ * KSC_SET_FOCUS_BASE decode (dispatch_code(), khtpm_taskbar_manager_
+ * main.c) rejected any nav position landing on them as out of range,
+ * silently leaving s->tab_focus_idx at its last valid (real-tab) value
+ * instead. The renderer's own dock_poll_strip_state() then read that
+ * STALE, rejected value back on the manager's very next republish
+ * (which fires on essentially every focus-echo, since the manager
+ * republishes unconditionally) and overwrote the renderer's own,
+ * correct, just-set focus with it - a genuine round-trip data loss,
+ * not a race: reproduced live with a debug log proving g_focus_nav
+ * flips from a correct 34 back to a stale 33 with NO clamp/logic in
+ * the renderer itself ever touching it. Real fix: widen the manager's
+ * own understood tab_focus_idx range by this same +2 margin, in BOTH
+ * places it's bounded (dispatch_code()'s accept-check AND ktb_reload()'s
+ * own post-load clamp - the two drifting apart from each other is
+ * exactly last commit's own pitfall #22 lesson, not repeated here).
+ * The manager doesn't need to know what the extra 2 slots MEAN, only
+ * that it must not reject/clamp away a value the renderer legitimately
+ * sent it - a lossless round trip for a range the manager treats as
+ * opaque is enough. Harmless when the renderer's own content is only
+ * ever 1 row (no pager exists there either, so it never sends a nav
+ * position in this margin) - this only ever gets exercised when the
+ * renderer's own pager is real. */
+#define KTB_TAB_FOCUS_PAGER_MARGIN 2
 #define KTB_MAX_TABS 64
 #define KTB_MAX_SHORTCUTS 16
 #define KTB_BAR_H 36
