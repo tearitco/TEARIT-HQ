@@ -215,14 +215,38 @@ it. File/Game Options/Settings/Help deliberately excluded from every
 category box (the `<tabbar>` already represents them - would be a
 real, visible duplication otherwise).
 
-Real, honest layout trade-off, not fixed this pass: flex-wrap doesn't
-equalize row heights across boxes of different heights (a `.dsr-box`
-status box is 130px, a `.dsr-catbox` category box is 300px) - when a
-short and tall box share a row, the short box's own row leaves real
-visible empty space below it before the next row starts. Cosmetic,
-not a functional bug (confirmed via a real frame dump - every box's
-own content and nav still land in the right place); a later pass could
-solve it with matched row groupings if it's worth the real effort.
+**Follow-up fixes, same day, direct live reports:**
+- "db search doesn't need its own pane. just put it under other" -
+  `SEARCH_LABELS[]`/its own box removed; "DB Search" folded into
+  `OTHER_LABELS[]` instead. Dropped the grid from 4 to 3 category
+  boxes.
+- The flex-wrap-mismatched-row blank space noted above (short status
+  boxes sharing a row with a tall category box, since flex-wrap packs
+  strictly in document order) turned out NOT worth leaving as a
+  trade-off once actually seen live ("there is a blank frame around
+  the bottom and right side that makes no sense") - fixed for real
+  with a `.dsr-break` spacer (an invisible `<text>` wider than the
+  whole row, forcing a fresh flex row after it, same real mechanism
+  any HTML flex layout uses for a manual row break) between the status
+  boxes and the category boxes. All 3 category boxes now share their
+  own row together, same height, no more mismatched-row dead space.
+  `.dsr-toy`'s own width/height re-measured against the real box grid
+  each time (820x900 as of this write) rather than left stale.
+- "maybe research menu section wont need thumb cause it can be
+  longer" - `.dsr-catbox` grown from 300px to 500px, fits all 15 of
+  Research's real rows with no scrollbar needed.
+- "the toolbar text is hard to read... why isn't it secondary color
+  purple?" - `<tab>` had no color rule at all; given this house's own
+  real theme secondary accent (`#8b5cf6`, read directly from
+  `#.desktop/livedesk_theme.pdl`'s own `fg` value, the same purple the
+  window title/chrome border already use) instead of whatever
+  unstyled default it was falling back to.
+
+One small, real, accepted remainder: the 5 status boxes (not evenly
+divisible by the grid's own 3-per-row width) leave one blank cell in
+their own 2nd row (Financial News/World Status, no 3rd box) - same
+height as its row-mates, so it reads as ordinary grid spacing, not a
+"broken" gap the way the category-row mismatch did.
 
 Same pass, direct live report ("the text ... isn't getting the
 secondary color. its white and so is the background so its hard to

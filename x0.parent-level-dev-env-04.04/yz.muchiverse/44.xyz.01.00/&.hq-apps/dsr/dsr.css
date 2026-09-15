@@ -6,19 +6,41 @@
    flex-wrap container, `.dsr-box` is every titled status box's own
    real, bordered region (same real border/padding properties
    canvas-craft.css's own `.cc-panel`/`.cc-sidebar` already prove work
-   here), `.dsr-actions` is forced to its own full-width row below the
-   boxes by being wider than any row of boxes could leave room for -
-   real flex-wrap doing the row-break, no special-case width math. */
+   here). */
 
+/* REAL FIX, direct live report ("db search doesn't need its own
+   pane... also there is a blank frame around the bottom and right
+   side that makes no sense") - two real, separate causes:
+   (1) folding "Quick Search Functions" into Other dropped the grid
+   from 4 to 3 category boxes, and .dsr-toy's own width/height were
+   still sized for the old, taller 2-row-of-boxes shape - real dead
+   space below/right of the real content.
+   (2) flex-wrap packs in strict DOCUMENT order, not by matching
+   height - with 5 short status boxes then 3 tall category boxes, the
+   3rd status row's own 2 boxes (News/World) shared a row with the 1st
+   CATEGORY box (Research, 500px vs their own 130px) - real, visible
+   dead space where the short boxes' own row stopped far short of
+   Research's own height, not a bug in the engine, just document order
+   crossing a real visual group boundary. Fixed with `.dsr-break` - a
+   real, invisible spacer wider than the whole row, which forces
+   flex-wrap to start a fresh row after it (same real mechanism any
+   HTML flex-wrap layout uses for a manual row break, no special-case
+   engine support needed). All 3 category boxes now share their OWN
+   row together, same height, zero mismatched-row blank space. */
 .dsr-toy {
-  width: 900px;
-  height: 980px;
+  width: 820px;
+  height: 900px;
 }
 
 .dsr-grid {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
+}
+
+.dsr-break {
+  width: 900px;
+  height: 0px;
 }
 
 /* REAL FIX, same pass, caught live ("it has no nav focus or anything
@@ -56,26 +78,28 @@
    the code, not guessed) - tall enough for the longest real category
    list (Research, 15 rows) without needing per-box heights; a shorter
    category's own scrolllist just has empty space below it, same real
-   trade-off the status boxes' own shared height already made. */
+   trade-off the status boxes' own shared height already made.
+
+   REAL FIX, direct live report ("maybe research menu section wont
+   need thumb cause it can be longer") - 300px only fit ~9 of
+   Research's real 15 rows, forcing a scrollbar; grown to fit all 15
+   with no scroll needed (measured against the real per-row height a
+   live frame dump showed, not guessed). */
 .dsr-catbox {
-  height: 300px;
+  height: 500px;
 }
 
-/* REAL FIX, direct live report ("the text in the x11-hq dsr window
-   isn't getting the secondary color. its white and so is the
-   background so its hard to see") - this box never got its own real
-   background-color/border like every .dsr-box already has (it fell
-   through to this window's own house-theme default, which reads as
-   near-white here) - same dark panel treatment as the status boxes,
-   for real, visible contrast regardless of the active house theme. */
-.dsr-actions {
-  width: 860px;
-  height: 420px;
-  flex-grow: 1;
-  background-color: #1c1f28;
-  border: 1px solid #3a3f52;
-  border-color: #3a3f52;
-  padding: 6px;
+/* REAL FIX, direct live report ("the toolbar text is hard to read...
+   why isn't it secondary color purple?") - <tab> was never given its
+   own real color rule at all (this file had zero `.tab`/`.tab-bar`
+   rules before now), so it fell to whatever this window's own
+   unstyled-element default is - not this house's real theme secondary
+   accent (#8b5cf6, #.desktop/livedesk_theme.pdl's own real `fg` value,
+   read directly rather than guessed - the same real purple the window
+   title/chrome border already show). Explicit now, matching that real
+   theme color exactly. */
+.tab {
+  color: #8b5cf6;
 }
 
 .block-title { color: #ffffff; font-weight: bold; }

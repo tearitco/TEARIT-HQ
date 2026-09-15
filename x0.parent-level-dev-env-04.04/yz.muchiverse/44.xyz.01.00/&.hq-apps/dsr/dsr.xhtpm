@@ -120,6 +120,7 @@
 <text label="Population: ${population}" class="quiet"/>
 <text label="Temperature: ${temperature}C" class="quiet"/>
 </panel>
+<text label="" class="dsr-break"/>
 <panel id="box-research" class="dsr-box dsr-catbox">
 <text label="Research Menus and Tools" class="block-title"/>
 <scrolllist>
@@ -141,14 +142,6 @@
 <scrolllist>
 <repeat count="${n_other}" bind="oth">
 <item label="${oth.label}" action="void"/>
-</repeat>
-</scrolllist>
-</panel>
-<panel id="box-search" class="dsr-box dsr-catbox">
-<text label="Quick Search Functions" class="block-title"/>
-<scrolllist>
-<repeat count="${n_search}" bind="srch">
-<item label="${srch.label}" action="void"/>
 </repeat>
 </scrolllist>
 </panel>

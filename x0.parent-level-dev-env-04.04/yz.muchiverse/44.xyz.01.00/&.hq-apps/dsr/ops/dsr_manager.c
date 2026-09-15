@@ -106,16 +106,15 @@ static const char *TRANSACTION_LABELS[] = {
 };
 #define N_TRANSACTIONS (int)(sizeof(TRANSACTION_LABELS) / sizeof(TRANSACTION_LABELS[0]))
 
+/* REAL, NEW 2026-09-15, direct live report ("db search doesn't need
+ * its own pane. just put it under other") - "Quick Search Functions"
+ * was a real 1-item box (DB Search alone); folded into Other instead
+ * of keeping a whole box for one row. */
 static const char *OTHER_LABELS[] = {
     "Select Player", "Select Corp.", "Misc. Menu", "Auto", "New Game",
-    "End Turn", "Back"
+    "End Turn", "Back", "DB Search"
 };
 #define N_OTHER (int)(sizeof(OTHER_LABELS) / sizeof(OTHER_LABELS[0]))
-
-static const char *SEARCH_LABELS[] = {
-    "DB Search"
-};
-#define N_SEARCH (int)(sizeof(SEARCH_LABELS) / sizeof(SEARCH_LABELS[0]))
 
 static void write_small_file(const char *path, const char *content) {
     char tmp[PB];
@@ -179,13 +178,13 @@ static void publish(const char *house_root, const char *state_path) {
             i, ACTION_LABELS[i], i, (i == NAV_SEPARATOR_AFTER) ? 1 : 0);
     }
 
-    /* REAL, NEW 2026-09-15 - the 4 real category boxes (see this file's
+    /* REAL, NEW 2026-09-15 - the 3 real category boxes (see this file's
      * own header comment on RESEARCH_LABELS[] etc.); same var-prefix
      * convention as act_N_label above (bind= name must equal the
      * published prefix exactly). */
     off += (size_t)snprintf(body + off, sizeof(body) - off,
-        "n_research=%d\nn_transactions=%d\nn_other=%d\nn_search=%d\n",
-        N_RESEARCH, N_TRANSACTIONS, N_OTHER, N_SEARCH);
+        "n_research=%d\nn_transactions=%d\nn_other=%d\n",
+        N_RESEARCH, N_TRANSACTIONS, N_OTHER);
     for (int i = 0; i < N_RESEARCH && off < sizeof(body) - 256; i++)
         off += (size_t)snprintf(body + off, sizeof(body) - off,
             "res_%d_label=%s\n", i, RESEARCH_LABELS[i]);
@@ -195,9 +194,6 @@ static void publish(const char *house_root, const char *state_path) {
     for (int i = 0; i < N_OTHER && off < sizeof(body) - 256; i++)
         off += (size_t)snprintf(body + off, sizeof(body) - off,
             "oth_%d_label=%s\n", i, OTHER_LABELS[i]);
-    for (int i = 0; i < N_SEARCH && off < sizeof(body) - 256; i++)
-        off += (size_t)snprintf(body + off, sizeof(body) - off,
-            "srch_%d_label=%s\n", i, SEARCH_LABELS[i]);
 
     char ui_path[PB];
     snprintf(ui_path, sizeof(ui_path), "%s/&.hq-apps/dsr/state/ui.txt", house_root);
