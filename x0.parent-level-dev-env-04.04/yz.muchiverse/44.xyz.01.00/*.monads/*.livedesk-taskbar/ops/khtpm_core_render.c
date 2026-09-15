@@ -2041,74 +2041,46 @@ static int reparse_chtpm_if_changed(void) {
                 } else if (now_ts.tv_sec - s_dock_force_last.tv_sec >= 20) {
                     s_dock_force_last = now_ts;
                     vars_changed = 1;
-                    /* REAL FIX 2026-09-14, direct live report ("tb is
-                     * flickering sometimes") right after the destroy+
-                     * rebuild hardening below landed - real, visible
-                     * regression this same session introduced: doing
-                     * XDestroyWindow/XFreePixmap/XFreeGC EVERY 20s,
-                     * unconditionally, is a real destroy-and-recreate
-                     * of the whole window on a cadence short enough to
-                     * be visibly seen, not just a cheap safety net.
-                     * matches this house's own PITFALLS_ACTIVE doc §17
-                     * "ONE WRITER RULE... dual writers/recreations
-                     * cause flicker" - the rebuild itself is real and
-                     * still wanted (7th occurrence), just needed a
-                     * separate, far less frequent cadence from the
-                     * cheap 20s reparse-nudge above (which stays at
-                     * 20s - it's a real vars_changed=1, not a window
-                     * teardown, no visible cost). Gated on its own
-                     * independent 5-minute timer below - 15x fewer
-                     * rebuilds than before, still a real, bounded
-                     * worst-case (the 7th occurrence itself took 87
-                     * minutes to surface, so 5 minutes is still a
-                     * massive improvement over "never self-heals"
-                     * while no longer being visible to the eye. */
-                    static struct timespec s_dock_rebuild_last = {0, 0};
-                    if (s_dock_rebuild_last.tv_sec == 0) {
-                        s_dock_rebuild_last = now_ts;
-                    } else if (now_ts.tv_sec - s_dock_rebuild_last.tv_sec >= 300) {
-                        s_dock_rebuild_last = now_ts;
-                    /* REAL FIX 2026-09-14, direct live report ("i just
-                     * switched to civ test from office, and the tb
-                     * bottom is showing the wrong entities... harden
-                     * that code in a safe logical KISS way"). Live-
-                     * confirmed (04-bugs/bug_bounty.md's 7th
-                     * occurrence): the reparse gate above was already
-                     * firing correctly every 20s here, and
-                     * dock_paint_peer() was genuinely running (real
-                     * redraw_ms logged every cycle) - yet the painted
-                     * pixels stayed on a prior desk's stale content for
-                     * 87 minutes straight. Root cause not pinned down
-                     * (the write/rename/read frame-file pattern is
-                     * identical to the header's own, which never has
-                     * this problem, so that's not the differentiator;
-                     * the g_dock_in_peer_paint reentrancy guard has no
-                     * early-return path that could leave it stuck,
-                     * checked directly). Rather than guess further at
-                     * WHICH piece of the peer's own draw state
-                     * (Pixmap/GC/XftDraw) is going stale, this is the
-                     * safe, KISS, bounded answer: on this same real 20s
-                     * safety-net tick, actually destroy the peer's
-                     * drawing surface so kh_ensure_dock_peer_window()'s
-                     * own already-proven self-heal (6th occurrence)
-                     * rebuilds it completely fresh next tick - Pixmap,
-                     * GC, XftDraw, window, all new. If the staleness
-                     * lives in any of those, this closes it without
-                     * needing to have proven which one; if it doesn't,
-                     * this is a harmless, bounded, once-per-20s rebuild
-                     * of one small window's own resources - touches
-                     * nothing outside this process, matches the exact
-                     * "narrow, no process-lifecycle" posture the 5th/
-                     * 6th occurrence fixes already established. */
-                    if (g_dock_peer_win) {
-                        if (g_dock_peer_xft) { XftDrawDestroy(g_dock_peer_xft); g_dock_peer_xft = NULL; }
-                        if (g_dock_peer_buf) { XFreePixmap(dpy, g_dock_peer_buf); g_dock_peer_buf = 0; }
-                        if (g_dock_peer_gc) { XFreeGC(dpy, g_dock_peer_gc); g_dock_peer_gc = 0; }
-                        XDestroyWindow(dpy, g_dock_peer_win);
-                        g_dock_peer_win = 0;
-                    }
-                    }
                 }
+                /* REAL FIX 2026-09-15, direct live report ("i do see a
+                 * flicker on bottom tb every once in a while... never
+                 * on top bar... once every 5-10 min"). Root cause: the
+                 * 300s blind destroy+rebuild that used to live here
+                 * (7th bounty occurrence's own "safe, KISS" answer,
+                 * 2026-09-14) unconditionally tore down and rebuilt
+                 * the peer's real Pixmap/GC/XftDraw/Window on a plain
+                 * elapsed-time timer, whether or not anything was
+                 * actually wrong - exactly a blind timer, the opposite
+                 * of this house's own DIAMOND/marker-driven-render
+                 * standard, and exactly why it only ever hit the
+                 * bottom bar (the only window with this destructive
+                 * timer at all) and never the header or any entity
+                 * (neither has one). That 7th occurrence's own root
+                 * cause was explicitly "not pinned down with
+                 * certainty" at the time - a speculative safety net,
+                 * not a real fix. Since then, this same session found
+                 * and fixed several concrete, confirmed root causes of
+                 * real dock staleness (the incremental-reparse element-
+                 * pool leak, the manager's stale KTB_STRIP_N_CELLS
+                 * focus round-trip, the pager focus-echo bug) - real
+                 * condition-based fixes, not timers. The remaining,
+                 * real, condition-based self-heal for "the window
+                 * itself is genuinely gone" is
+                 * kh_ensure_dock_peer_window()'s own per-tick
+                 * XGetWindowAttributes liveness check (already live,
+                 * already proven, the 6th occurrence's own fix) - a
+                 * real state check, not a blind timer, exactly the
+                 * DIAMOND spirit: react to what's ACTUALLY wrong, not
+                 * to elapsed time. Removed the blind rebuild rather
+                 * than replace it with a marker file, since a marker
+                 * can only prove "a reparse ran," not "the paint
+                 * surface itself is corrupt" - the one failure mode
+                 * this timer was guessing at - and no live evidence
+                 * this session (or since) has shown that failure mode
+                 * recurring. If it ever does resurface, root-cause it
+                 * for real with the kh_focus_debug_log probe technique
+                 * this session proved out repeatedly, not another
+                 * blind timer. */
             }
         } else if (g_vars_path[0]) {
             /* content-hash ALL the state files (one per <module>) - a

@@ -1031,3 +1031,19 @@ Once the pool is exhausted, every subsequent `elem_new()` call for the dock eith
 **Verified live**: same reproduction (walk to pager, open row 2, walk to the new farthest pager button) - focus now reaches and holds at nav 35 (`+`), confirmed stable across several additional ticks/presses, no revert.
 
 **Files**: `khtpm_taskbar_manager.h` (the new macro), `khtpm_taskbar_manager_main.c`, `khtpm_taskbar_manager.c`. `khtpm_core_render.c` untouched (debug probes added and fully removed, net zero diff).
+
+---
+
+## ✅ CLOSED — bottom tb flicker, ~once every 5-10 min, never top bar/entities (2026-09-15)
+
+**Report**: "i do see a flicker on bottom tb every once in a while... never on top bar so i know we can fix it. we can use marker filesize file monitor when frame changes like diamond and golden standard says or is there something else? entities never flicker either so surely we can fix bottom tb (its very rare, once ever 5-10 min)"
+
+**Root cause**: the dock peer's own 300s "safe, KISS" destroy+rebuild (this bounty's own 7th occurrence fix, 2026-09-14) was a **blind elapsed-time timer** - every 5 minutes, unconditionally, it tore down and rebuilt the peer's real Pixmap/GC/XftDraw/Window, whether or not anything was actually wrong. That's exactly why the symptom was bottom-bar-only, on a 5-10 minute cadence: no other window (header, any entity) has an equivalent destructive timer at all. The 7th occurrence's own root cause was explicitly logged as "not pinned down with certainty" at the time - a speculative safety net stacked on a guess, not a real fix, and this house's own DIAMOND standard is exactly "react to real, observed state change, never a blind timer" - the direct report named the correct standard to hold this code to.
+
+**Why it's safe to remove now, not just silence**: this same session found and fixed several concrete, confirmed root causes of real dock staleness/desync since that 7th occurrence was logged - the incremental-reparse element-pool leak (g_pool exhaustion), the manager's stale `KTB_STRIP_N_CELLS` focus round-trip, and the pager's own missing `tab_focus_idx` margin. Any of these could plausibly have been the real, still-unidentified cause behind the 7th occurrence's own "genuinely running, yet the painted pixels stayed frozen" symptom - real condition-based bugs, now fixed, not timer-shaped problems. The one remaining REAL condition-based self-heal for "the window itself is genuinely gone" is `kh_ensure_dock_peer_window()`'s own per-tick `XGetWindowAttributes` liveness check (the 6th occurrence's own fix, already live, already proven) - a real state check, not a blind timer.
+
+**Fix**: removed the blind 300s destroy+rebuild block entirely. Kept the harmless 20s `vars_changed=1` nudge (a real reparse trigger, not a window teardown - no visible cost, never caused this flicker). Did not replace it with a marker-file check, since a marker can only prove "a reparse ran," not "the paint surface itself is corrupted" - the one failure mode the removed timer was guessing at - and no live evidence since (including this whole session's own heavy dock stress-testing) has shown that failure mode recurring.
+
+**If this specific symptom (stale paint despite a genuinely running, correctly-ticking process) ever resurfaces**: root-cause it for real with the `kh_focus_debug_log` targeted-probe technique this session proved out repeatedly (the nav-jump and pager bugs above), not another blind timer.
+
+**Files**: `khtpm_core_render.c` (removed code only - net negative diff).
