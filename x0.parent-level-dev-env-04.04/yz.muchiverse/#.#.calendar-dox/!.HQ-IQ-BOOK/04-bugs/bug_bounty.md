@@ -504,6 +504,37 @@ a `reparse_changed=1` log line but no visible change - the real fix
 lives in there, not in the reparse gate (already proven correct this
 pass) or the window-existence probe (also already proven correct).
 
+**Bounded, KISS hardening applied same day** (direct instruction:
+"harden that code in a safe logical KISS way"). Investigated further
+before patching: the write→rename→read frame-file round trip
+`dock_paint_peer()` uses to actually paint is byte-identical to the
+HEADER's own equivalent block, which never shows this bug - ruling
+that pattern out as the differentiator. The `g_dock_in_peer_paint`
+reentrancy guard was also checked directly for an early-return path
+that could leave it stuck at 1 forever (which would silently skip
+every future repaint while `redraw()`'s own outer timing logs kept
+looking normal, matching every observed symptom) - none exists, the
+function is straight-line code with a single guaranteed reset at the
+end. Root cause NOT pinned down after this pass either. Given that,
+the safe, bounded answer per direct instruction: on the same real 20s
+safety-net tick (5th occurrence), the peer's entire drawing surface
+(Pixmap, GC, XftDraw, the X Window itself) is now destroyed outright;
+the 6th occurrence's own `kh_ensure_dock_peer_window()` self-heal
+(already proven correct, runs every tick) rebuilds it completely
+fresh on the very next tick. If the staleness lives in any piece of
+that drawing state, this closes it without needing to have proven
+which piece; if it doesn't, this is a harmless, once-per-20s rebuild
+of one small window's own resources, in-process only - matches the
+exact "no process lifecycle, no cross-process effects" posture the
+5th/6th fixes already established, not a new pattern. NOT yet
+independently re-observed live over a long real session (this exact
+7th occurrence took 87 minutes to surface) - if the ORIGINAL symptom
+recurs even with this in place, that's real evidence the staleness
+lives somewhere this fix doesn't reach (the serialized frame-file
+content itself, or something in `assign_nav_and_layout()` shared
+between header and peer) - re-open this entry, don't add an 8th patch
+blind.
+
 ---
 
 ## ✅ CLOSED 2026-09-13: tab reordering / entities missing after restart - the real architectural cause

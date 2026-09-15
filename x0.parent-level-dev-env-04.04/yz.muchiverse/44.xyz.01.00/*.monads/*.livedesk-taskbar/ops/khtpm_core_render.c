@@ -2041,6 +2041,45 @@ static int reparse_chtpm_if_changed(void) {
                 } else if (now_ts.tv_sec - s_dock_force_last.tv_sec >= 20) {
                     s_dock_force_last = now_ts;
                     vars_changed = 1;
+                    /* REAL FIX 2026-09-14, direct live report ("i just
+                     * switched to civ test from office, and the tb
+                     * bottom is showing the wrong entities... harden
+                     * that code in a safe logical KISS way"). Live-
+                     * confirmed (04-bugs/bug_bounty.md's 7th
+                     * occurrence): the reparse gate above was already
+                     * firing correctly every 20s here, and
+                     * dock_paint_peer() was genuinely running (real
+                     * redraw_ms logged every cycle) - yet the painted
+                     * pixels stayed on a prior desk's stale content for
+                     * 87 minutes straight. Root cause not pinned down
+                     * (the write/rename/read frame-file pattern is
+                     * identical to the header's own, which never has
+                     * this problem, so that's not the differentiator;
+                     * the g_dock_in_peer_paint reentrancy guard has no
+                     * early-return path that could leave it stuck,
+                     * checked directly). Rather than guess further at
+                     * WHICH piece of the peer's own draw state
+                     * (Pixmap/GC/XftDraw) is going stale, this is the
+                     * safe, KISS, bounded answer: on this same real 20s
+                     * safety-net tick, actually destroy the peer's
+                     * drawing surface so kh_ensure_dock_peer_window()'s
+                     * own already-proven self-heal (6th occurrence)
+                     * rebuilds it completely fresh next tick - Pixmap,
+                     * GC, XftDraw, window, all new. If the staleness
+                     * lives in any of those, this closes it without
+                     * needing to have proven which one; if it doesn't,
+                     * this is a harmless, bounded, once-per-20s rebuild
+                     * of one small window's own resources - touches
+                     * nothing outside this process, matches the exact
+                     * "narrow, no process-lifecycle" posture the 5th/
+                     * 6th occurrence fixes already established. */
+                    if (g_dock_peer_win) {
+                        if (g_dock_peer_xft) { XftDrawDestroy(g_dock_peer_xft); g_dock_peer_xft = NULL; }
+                        if (g_dock_peer_buf) { XFreePixmap(dpy, g_dock_peer_buf); g_dock_peer_buf = 0; }
+                        if (g_dock_peer_gc) { XFreeGC(dpy, g_dock_peer_gc); g_dock_peer_gc = 0; }
+                        XDestroyWindow(dpy, g_dock_peer_win);
+                        g_dock_peer_win = 0;
+                    }
                 }
             }
         } else if (g_vars_path[0]) {
