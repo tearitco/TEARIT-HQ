@@ -1,14 +1,55 @@
 /* dsr.css - DSR (Desk Street Raider). Sibling-.css, auto-merged by the
    shared renderer (same stem as dsr.xhtpm).
 
-   ROLLED BACK 2026-09-14 to the last confirmed-working sidebar+panel
-   size (see dsr.xhtpm's own rollback comment) - the tabbar/3-column
-   layout pass is real, still wanted, just needs to be redone properly
-   next rather than re-attempted here. */
+   GROUPED-BOX PASS, 2026-09-15 (see dsr.xhtpm's own matching comment) -
+   widened to fit the real WSR-style box grid; `.dsr-grid` is the real
+   flex-wrap container, `.dsr-box` is every titled status box's own
+   real, bordered region (same real border/padding properties
+   canvas-craft.css's own `.cc-panel`/`.cc-sidebar` already prove work
+   here), `.dsr-actions` is forced to its own full-width row below the
+   boxes by being wider than any row of boxes could leave room for -
+   real flex-wrap doing the row-break, no special-case width math. */
 
 .dsr-toy {
-  width: 620px;
-  height: 900px;
+  width: 900px;
+  height: 760px;
+}
+
+.dsr-grid {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+/* REAL FIX, same pass, caught live ("it has no nav focus or anything
+   yet" -> then found empty when the box's own content overflowed past
+   the row below it): css_layout_pass() sizes every flex box from THIS
+   file's own explicit width/height BEFORE each box's own children are
+   laid out in a later, separate pass - it does not auto-grow a box's
+   height from its children's real content the way a browser would.
+   Without an explicit height, every .dsr-box came out of the flex pass
+   at a tiny default height, so a box's own 2nd/3rd text line painted
+   past its own box into whatever sat below it in the next flex row
+   (confirmed live via the real frame-file x/y dump, not guessed - My
+   Balance Sheet's own 3 lines were the tallest real content, its own
+   box height is sized for exactly that plus the title + padding).
+   Every other box shares the same height for visual grid alignment
+   (a real, deliberate simplification - box-specific heights would look
+   uneven/jagged in a wrapped grid; matches every real box's own tallest
+   sibling instead of computing each one separately). */
+.dsr-box {
+  width: 270px;
+  height: 130px;
+  background-color: #1c1f28;
+  border: 1px solid #3a3f52;
+  border-color: #3a3f52;
+  padding: 6px;
+}
+
+.dsr-actions {
+  width: 860px;
+  height: 420px;
+  flex-grow: 1;
 }
 
 .block-title { color: #ffffff; font-weight: bold; }

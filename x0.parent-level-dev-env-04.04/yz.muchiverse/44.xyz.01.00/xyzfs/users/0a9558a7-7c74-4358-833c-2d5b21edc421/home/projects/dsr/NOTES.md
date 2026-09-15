@@ -158,13 +158,60 @@ on. Verified live: `session.pdl`'s own `active_desk` flipped to `dsr`
 and all 14 buildings came up as real processes on a real
 `button.sh` invocation.
 
+## Grouped-box layout - built, 2026-09-15
+
+Direct instruction: "can we go back to the paneling for the dsr toy...
+lets get back on track" - resumed the "Layout plan" section above.
+5 real, separate status boxes now (Active Entity Selected/Your
+Wallet/My Balance Sheet/Financial News Headlines/World Status), each
+its own `<panel class="dsr-box">` (one is a real `<sidebar>` instead -
+see below), wrapped via `.dsr-grid { display:flex; flex-wrap:wrap }`
+on the page - confirmed live via a real frame dump, no overlap, real
+nav/chrome intact.
+
+Two real bugs hit and fixed live, same pass:
+- **Window went empty/tiny** - `layout_sidebar_panel()`'s own gate
+  requires BOTH a real `<sidebar>` AND a real `<panel>` present; the
+  first attempt made every box a `<panel>` and had none left tagged
+  `<sidebar>` at all. Fixed: "Active Entity Selected" is a real
+  `<sidebar>` tag (same `.dsr-box` class, visually identical) - matches
+  canvas-craft's own proven shape (exactly one sidebar + N panel
+  siblings, sidebar not optional).
+- **Box content overflowed into the row below** - `css_layout_pass()`
+  sizes each flex box from its own CSS width/height BEFORE that box's
+  own children are laid out in a later pass; it does not auto-grow
+  height from content. Without an explicit `.dsr-box` height, every
+  box came out of the flex pass too short, so a box's 2nd/3rd line
+  painted past its own box into the next row. Fixed with an explicit
+  shared height (130px, sized for the tallest real box content, My
+  Balance Sheet's 3 lines) - confirmed by reading the real frame-file
+  x/y dump before guessing at a fix.
+
+Two real, honest scope decisions this pass (not silently done):
+- "Commodity Prices" (the WSR screenshot's own 7th box) has no real
+  data source - `population`/`temperature` fill that slot under their
+  own honest "World Status" title instead.
+- "Research Menus and Tools"/"Transactions"/"Other"/"Quick Search
+  Functions" (the screenshot's own action-CATEGORY boxes) not split
+  out yet - Actions stays one flat `<panel class="dsr-actions">`
+  scrolllist, its own full-width row below the status boxes. This is
+  the resolution (for now) of the open question below.
+
 ## Ideas / synergies (running notes, not commitments)
 -
 
 ## Open questions
-- Where does "Actions" sit relative to the grouped boxes above - is it
-  itself one more box in the wrap-grid, or does it stay a dedicated
-  scrolling region below/beside the grid? Not yet decided.
+- ~~Where does "Actions" sit relative to the grouped boxes above~~ -
+  resolved 2026-09-15: its own dedicated full-width scrolling panel
+  below the grid, not itself a wrap-grid box.
+- Next real step, direct instruction ("now lets fill in the op buttons
+  by category"): split `dsr_manager.c`'s own flat `ACTION_LABELS[]`
+  into named categories (Research Menus and Tools/Transactions/Other/
+  Quick Search Functions, matching the WSR screenshot's own remaining
+  4 boxes) and give each its own real `<panel class="dsr-box">` in the
+  wrap-grid, same shape as the status boxes above - real, cheap,
+  data-only work per this project's own "Layout plan" note (no
+  renderer change needed), not yet started.
 - The `open_desk.state.txt` toggle has no real UI to flip it yet (no
   menu row calls it) - real file-based toggle exists, real switch
   doesn't yet.

@@ -28,13 +28,55 @@
      would be better off rolling back than this." Rolled back to the
      last confirmed-working version, verified via a real frame dump,
      THEN the real File/Game Options/Settings/Help <tabbar> was added
-     back on top of that known-good state (same real tag db-hq-pal's
-     own dashboard.xhtpm uses) - nothing else changed this pass. A
-     fuller real layout (matching the actual Wall Street Raider 8.12
-     Trading Desk screenshot's own grouped-box structure: Active
-     Entity/Research Menus/Transactions/Other/Balance Sheet/News/
-     Commodity Prices/Quick Search) is real, still wanted, staged for
-     a dedicated next pass once that structure is worked out together.
+     back on top of that known-good state - nothing else changed that
+     pass.
+
+     GROUPED-BOX PASS, 2026-09-15 (direct instruction: "can we go back
+     to the paneling for the dsr toy... we probably wrote down, lets
+     get back on track" - resuming NOTES.md's own documented plan).
+     The single <sidebar> status readout is now 5 real, separate
+     `<panel class="dsr-box">` siblings (Active Entity Selected/Your
+     Wallet/My Balance Sheet/Financial News Headlines/World Status),
+     each its own titled box, matching the real Wall Street Raider 8.12
+     Trading Desk screenshot's own grouped-box structure - exactly the
+     lesson from the rollback above (every box gets its OWN real
+     region, none share one). `.dsr-grid { display:flex; flex-wrap:wrap
+     }` on the page lets them wrap into rows automatically (same real
+     mechanism canvas-craft.xhtpm's own 3-column flex row already
+     proves, just wrapped instead of single-row) - no renderer change,
+     confirmed against the code before building, per this project's own
+     "Layout plan" NOTES.md entry.
+
+     Two real, honest, deliberate scope decisions (both flagged in
+     NOTES.md, not silently done):
+     - "Commodity Prices" (the screenshot's own 7th box) has no real
+       data source yet - `population`/`temperature` (the toy's existing
+       "World Status" fields) fill that visual slot instead, under
+       their own honest "World Status" title, not mislabeled.
+     - "Research Menus and Tools"/"Transactions"/"Other"/"Quick Search
+       Functions" (the screenshot's own action-category boxes) are NOT
+       split out this pass - the 33-action list stays ONE flat, already-
+       proven `<panel class="dsr-actions">` scrolllist, now its own
+       full-width row below the status boxes (flex-wrap does this for
+       free - it's simply wide enough to force its own line). Splitting
+       ACTION_LABELS[] into named categories is real, still wanted, real
+       data-only work for a later pass (see NOTES.md's own "Open
+       questions") - not attempted blind this pass just to check a box.
+
+     REAL FIX, same pass, caught immediately live ("its empty"): first
+     attempt made EVERY status box a `<panel>` and dropped `<sidebar>`
+     entirely - `layout_sidebar_panel()`'s own gate (confirmed by
+     reading the code) requires BOTH a real `<sidebar>` AND a real
+     `<panel>`, no exception for "multiple panels, no sidebar"
+     (`if (!sidebar || !panel) return 0;`) - canvas-craft's own proven
+     3-column shape still has exactly one real `<sidebar>` as one of
+     its three columns; panels are the ADDITIONAL siblings, sidebar
+     itself is not optional. Without it the whole window falls to the
+     flat/no-chrome fallback (the same "too small/missing chrome"
+     class of bug this file's own very first real fix, above, already
+     root-caused once). Fixed: the first box ("Active Entity Selected")
+     is a real `<sidebar>` tag instead of `<panel>` - same visual box,
+     same `.dsr-box` class, satisfies the gate for real.
 
      Real, deliberate simplification this pass (display-first, per
      direct instruction "can we do that first?"): every action is a
@@ -47,31 +89,38 @@
      adding rows later is real, cheap, data-only work, not a template
      change. See xyzfs/.../home/projects/dsr/NOTES.md for status. -->
 <window label="Desk Street Raider" class="dsr-toy" vars="state/ui.txt">
-<page id="main">
+<page id="main" class="dsr-grid">
 <tabbar class="tab-bar">
 <tab id="tab-file" label="File" action="void"/>
 <tab id="tab-options" label="Game Options" action="void"/>
 <tab id="tab-settings" label="Settings" action="void"/>
 <tab id="tab-help" label="Help" action="void"/>
 </tabbar>
-<sidebar id="sidebar" class="sidebar">
-<text label="D S R" class="block-title"/>
-<text label="Desk Street Raider" class="quiet"/>
+<sidebar id="box-active" class="dsr-box">
+<text label="Active Entity Selected" class="block-title"/>
 <text label="Turn: ${turn}" class="quiet"/>
 <text label="Active: ${active_corp}" class="quiet"/>
-<text label="Your Wallet:" class="block-title"/>
+</sidebar>
+<panel id="box-wallet" class="dsr-box">
+<text label="Your Wallet" class="block-title"/>
 <text label="Cash: ${player_cash}"/>
-<text label="Active Corp Balance Sheet:" class="block-title"/>
+</panel>
+<panel id="box-balance" class="dsr-box">
+<text label="My Balance Sheet" class="block-title"/>
 <text label="Cash (CD's): ${corp_cash}"/>
 <text label="Stock Price: ${corp_stock_price}"/>
 <text label="Owned By: ${corp_owned_by}"/>
-<text label="FINANCIAL NEWS" class="block-title"/>
+</panel>
+<panel id="box-news" class="dsr-box">
+<text label="Financial News Headlines" class="block-title"/>
 <text label="${news_ticker}: $${news_price} (${news_pct}%)" class="quiet"/>
-<text label="WORLD STATUS" class="block-title"/>
+</panel>
+<panel id="box-world" class="dsr-box">
+<text label="World Status" class="block-title"/>
 <text label="Population: ${population}" class="quiet"/>
 <text label="Temperature: ${temperature}C" class="quiet"/>
-</sidebar>
-<panel id="detail" class="panel">
+</panel>
+<panel id="detail" class="panel dsr-actions">
 <text label="Actions" class="block-title"/>
 <scrolllist>
 <repeat count="${n_actions}" bind="act">
