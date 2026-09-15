@@ -12239,9 +12239,28 @@ static void load_popup_fontset(Display *dpy) {
     int screen_num = DefaultScreen(dpy);
     int px = scaled(18);
     char spec[96];
-    snprintf(spec, sizeof(spec), "monospace:pixelsize=%d", px);
+    /* REAL FIX 2026-09-14, direct live report ("its showing the verses
+     * without color and not rendering chinese font anymore") -
+     * reproduced live via a real SHOW_TEXT_FILE relay + frame dump
+     * (not guessed): this requested "monospace", falling back to
+     * "DejaVu Sans Mono" - NEITHER has CJK glyph coverage, so any
+     * Chinese codepoint drew as a tofu box regardless of how long this
+     * has been wrong. This function's own 2026-08-05 header comment
+     * says its whole purpose was "Xft/fontconfig text, which covers
+     * CJK the same way font_ui/kh_measure_text_px already do
+     * elsewhere in this file" - but never actually requested the same
+     * real family those do (confirmed: font_ui's own reload_font_ui()
+     * requests "Noto Sans CJK SC" explicitly). Matched here now, same
+     * real family, with the old "monospace" request kept as a real
+     * fallback (not removed) in case Noto Sans CJK SC is ever missing
+     * on a given machine. */
+    snprintf(spec, sizeof(spec), "Noto Sans CJK SC:pixelsize=%d", px);
     if (g_popup_fontset) { XftFontClose(dpy, g_popup_fontset); g_popup_fontset = NULL; }
     g_popup_fontset = XftFontOpenName(dpy, screen_num, spec);
+    if (!g_popup_fontset) {
+        snprintf(spec, sizeof(spec), "monospace:pixelsize=%d", px);
+        g_popup_fontset = XftFontOpenName(dpy, screen_num, spec);
+    }
     if (!g_popup_fontset) {
         snprintf(spec, sizeof(spec), "DejaVu Sans Mono:pixelsize=%d", px);
         g_popup_fontset = XftFontOpenName(dpy, screen_num, spec);
@@ -12285,7 +12304,19 @@ static void popup_draw_text(Display *dpy, Drawable d, GC gc, int x, int y, const
         Colormap cm = DefaultColormap(dpy, screen_num);
         XftDraw *xd = XftDrawCreate(dpy, d, vis, cm);
         if (xd) {
-            XftColor col = tp_xft_color(dpy, vis, cm, "#000000");
+            /* REAL FIX 2026-09-14, direct live report ("its showing the
+             * verses without color... anymore") - see this function's
+             * own CJK fix above for the frame-dump evidence. Hardcoded
+             * black here meant the 2026-09-09 fix ("still black and
+             * white" - the exact same complaint) only ever themed the
+             * popup's own BACKGROUND (g_theme_bg, at window creation);
+             * the text itself stayed hardcoded regardless of theme,
+             * silently half-closing that report. Real theme fg, same
+             * live-updating global the popup's own border already uses
+             * (the XDrawRectangle call right before this loop, in the
+             * SHOW_TEXT_FILE Expose handler) - both now track the same
+             * real theme. */
+            XftColor col = tp_xft_color(dpy, vis, cm, g_theme_fg[0] ? g_theme_fg : "#cccccc");
             XftDrawStringUtf8(xd, &col, g_popup_fontset, x, y, (const FcChar8 *)s, (int)strlen(s));
             XftColorFree(dpy, vis, cm, &col);
             XftDrawDestroy(xd);

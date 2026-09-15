@@ -9,6 +9,62 @@ re-open a NEW entry for the same symptom.
 
 ---
 
+## ✅ CLOSED 2026-09-14: book-stack's verse popup lost CJK glyphs and text color
+
+**Reported:** direct live report, with a real "how it looks now" vs
+"how it looked before today" screenshot pair: current showed a dark
+background with plain, uncolored text and Chinese characters as tofu
+boxes (□□□□□□□); the earlier screenshot showed a cyan background with
+bold, colored text and correctly-rendered Chinese.
+
+**Investigation, git-first (per direct instruction to check git diff
+before guessing):** traced the real render chain - book-stack's own
+`meta.pdl` "Read" method → `pieces/reader/.../branches/bible_text/
+run.sh` → `khtpm_show_text.+x` (a thin relay writer) → a
+`SHOW_TEXT_FILE:` command in book-stack's OWN `interact_relay.txt` →
+handled by that SAME entity's own `khtpm_core_render.+x` process
+(`tp_main()` mode). Checked git history for every file in that chain -
+`khtpm_show_text.c` (Aug 5), the mutaclysm `system/renderer.c`/
+`chtpm_rgb_render.c` (no commits since a Sept 1 path-rename, unrelated)
+- all showed zero relevant diffs. Binaries were all newer than their
+own source (no stale-build explanation either). Ruled out a live
+theme value being the cause too (checked `livedesk_theme.pdl`
+directly).
+
+**Real root cause, found by reading `popup_draw_text()`/
+`load_popup_fontset()` in `khtpm_core_render.c` and reproduced live**
+(a real `SHOW_TEXT_FILE` relay fired at a fresh book-stack process,
+frame-dumped via `dump_frame_png_op` - not guessed): this code was
+NEVER actually right, not a regression from a recent change -
+
+1. `load_popup_fontset()` requested Xft font family `"monospace"`
+   (falling back to `"DejaVu Sans Mono"`) - neither has CJK glyph
+   coverage. Every OTHER CJK-capable text path in this same file
+   (`font_ui`, via `reload_font_ui()`) explicitly requests `"Noto Sans
+   CJK SC"` - this function's own 2026-08-05 header comment claimed to
+   do the same thing font_ui does, but never actually matched its real
+   font family.
+2. `popup_draw_text()`'s own Xft draw call hardcoded the text color to
+   `"#000000"` regardless of theme. A 2026-09-09 fix (direct report:
+   "after choosing the bible verse / tao it shows a popup with text -
+   those are still black and white") themed the popup's own
+   BACKGROUND (`g_theme_bg`, at window creation) but never touched
+   this hardcoded foreground - silently half-closing that exact same
+   complaint, which is presumably why it resurfaced.
+
+**Fixed**: `load_popup_fontset()` now requests `"Noto Sans CJK SC"`
+first (matching `font_ui`'s own real convention), with the old
+`"monospace"` request kept as a real fallback, then `"DejaVu Sans
+Mono"` as a final fallback - not removed, just reordered.
+`popup_draw_text()` now uses live `g_theme_fg` instead of hardcoded
+black. Verified live: a real `SHOW_TEXT_FILE` relay + frame dump
+before the fix reproduced the exact reported symptom (tofu boxes,
+uncolored text); the same test after the fix showed correctly-
+rendered Chinese characters and theme-colored (cyan) text, both
+matching the "how it used to look" reference screenshot.
+
+---
+
 ## ⚠️ OPEN 2026-09-14: real physical keyboard input silently never arrives at an armed cli_io/text_area, despite grab+focus both reporting success
 
 **Reported:** direct live report on `text-edit-hq` - "i tried selecting it
