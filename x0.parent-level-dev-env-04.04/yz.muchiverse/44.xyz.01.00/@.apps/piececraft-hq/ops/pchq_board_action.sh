@@ -132,12 +132,24 @@ case "$VERB" in
         printf 'open=\n' > "$PKG_STATE/menu.txt"
         PICK="$(sh "$HOUSE/&.widgits/file-explorer/fe-pick.sh" LOAD "$PCHQ/pieces/system/maps")"
         [ -n "$PICK" ] || exit 0
+        # REAL FIX 2026-09-15, direct live instruction ("file = dir
+        # desk = map... without desk there is no map") - a project dir
+        # (what the user actually picks in File Explorer) no longer
+        # holds map.txt directly; the real map data now lives one level
+        # deeper, under a real desk subdir (v1: always desk1). Handle
+        # every real way a pick can land: the project dir itself, a
+        # desk subdir picked directly, or map.txt picked directly deep
+        # inside a desk - in every case, walk back up to the real
+        # PROJECT dir (the one with game.pdl) before deriving NAME, so
+        # this never accidentally names a desk ("desk1") as if it were
+        # the project.
         case "$PICK" in
-            */map.txt) MAPDIR="$(dirname "$PICK")" ;;
-            *)         MAPDIR="$PICK" ;;
+            */map.txt) PROJDIR="$(dirname "$(dirname "$PICK")")" ;;
+            */desk1)   PROJDIR="$(dirname "$PICK")" ;;
+            *)         PROJDIR="$PICK" ;;
         esac
-        [ -f "$MAPDIR/map.txt" ] || exit 0
-        NAME="$(basename "$MAPDIR")"
+        [ -f "$PROJDIR/desk1/map.txt" ] || exit 0
+        NAME="$(basename "$PROJDIR")"
         mkdir -p "$PCHQ/pieces/system/widget_cmds"
         printf 'CONFIRM_START_MAP:%s\n' "$NAME" > "$PCHQ/pieces/system/widget_cmds/inbox.txt"
         ;;

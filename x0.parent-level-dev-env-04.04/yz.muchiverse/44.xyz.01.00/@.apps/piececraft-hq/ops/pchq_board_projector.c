@@ -277,8 +277,21 @@ int main(int argc, char **argv) {
          * via pchq_read_config_kv) - live under @.apps/<host>/ */
         char cfg[PATH_MAX], active_level[64] = "", active_board[64] = "";
         snprintf(cfg, sizeof(cfg), "%s/@.apps/%s/pieces/system/board_config.txt", house, host_id);
-        read_kv(cfg, "active_level", active_level, sizeof(active_level));
         read_kv(cfg, "active_board", active_board, sizeof(active_board));
+        /* REAL FIX 2026-09-15, direct live report ("where did the
+         * default game map go... it should be a 'default' folder
+         * available in File menu") - active_level used to read
+         * board_config.txt's own active_level key, which this same
+         * session's file-hq/load-map fix stopped writing (confirmed
+         * dead - nothing in the engine ever read it either). Left
+         * stale here, this row highlighting would silently drift from
+         * reality. The real, live-updated source is world_01/state.txt's
+         * own map_id (the same field CONFIRM_START_MAP/pc_generate_
+         * chunk.c actually write/read) - empty map_id means the flat/
+         * procedural "default" world, not a named map. */
+        char world_state_al[PATH_MAX];
+        snprintf(world_state_al, sizeof(world_state_al), "%s/@.apps/%s/pieces/world_01/state.txt", house, host_id);
+        read_kv(world_state_al, "map_id", active_level, sizeof(active_level));
         if (!active_board[0]) snprintf(active_board, sizeof(active_board), "default");
         int is_legacy = (strcmp(active_level, "default-legacy") == 0);
         sanitize(active_board);
@@ -337,13 +350,31 @@ int main(int argc, char **argv) {
             strcmp(menu_open, "desk") == 0 ? "1" : "");
 
         off += (size_t)snprintf(ui + off, UIBUF - off,
-            "n_file_opts=4\n"
-            "f_0_label=Open File Explorer\nf_0_verb=file-hq\nf_0_arg=\nf_0_active=\n"
-            "f_1_label=mineclonia_sample\nf_1_verb=load-map\nf_1_arg=mineclonia_sample\nf_1_active=%s\n"
-            "f_2_label=cdda_sample\nf_2_verb=load-map\nf_2_arg=cdda_sample\nf_2_active=%s\n"
-            "f_3_label=default-legacy\nf_3_verb=file\nf_3_arg=1\nf_3_active=%s\n",
+            "n_file_opts=7\n"
+            /* REAL, NEW 2026-09-15, direct live report ("it should be a
+             * 'default' folder availiable in File menu till user makes
+             * new(palcraft) then can load palcraft from file menu") -
+             * a real, always-available way back to the flat/procedural
+             * starting world - now a real desk-backed project dir
+             * (pieces/system/maps/default/desk1/), same load-map path
+             * every other real project uses (see PALCRAFT-DESIGN.md's
+             * own "file = dir, desk = map" convention, same date). */
+            "f_0_label=\xF0\x9F\x95\xB9\xEF\xB8\x8F default\nf_0_verb=load-map\nf_0_arg=default\nf_0_active=%s\n"
+            "f_1_label=Open File Explorer\nf_1_verb=file-hq\nf_1_arg=\nf_1_active=\n"
+            "f_2_label=mineclonia_sample\nf_2_verb=load-map\nf_2_arg=mineclonia_sample\nf_2_active=%s\n"
+            "f_3_label=cdda_sample\nf_3_verb=load-map\nf_3_arg=cdda_sample\nf_3_active=%s\n"
+            /* REAL, NEW 2026-09-15 - two real test projects, same date,
+             * proving the desk-backed load path + the generalized
+             * multi-glyph extrusion table both work for genuinely new
+             * projects, not just the pre-existing three. */
+            "f_4_label=\xF0\x9F\x95\xB9\xEF\xB8\x8F test_walls\nf_4_verb=load-map\nf_4_arg=test_walls\nf_4_active=%s\n"
+            "f_5_label=\xF0\x9F\x95\xB9\xEF\xB8\x8F test_terraces\nf_5_verb=load-map\nf_5_arg=test_terraces\nf_5_active=%s\n"
+            "f_6_label=default-legacy\nf_6_verb=file\nf_6_arg=1\nf_6_active=%s\n",
+            active_level[0] ? "" : "pchq-menu-active",
             strcmp(active_level, "mineclonia_sample") == 0 ? "pchq-menu-active" : "",
             strcmp(active_level, "cdda_sample") == 0 ? "pchq-menu-active" : "",
+            strcmp(active_level, "test_walls") == 0 ? "pchq-menu-active" : "",
+            strcmp(active_level, "test_terraces") == 0 ? "pchq-menu-active" : "",
             is_legacy ? "pchq-menu-active" : "");
 
         off += (size_t)snprintf(ui + off, UIBUF - off,
