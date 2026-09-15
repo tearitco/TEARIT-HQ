@@ -591,6 +591,22 @@ content itself, or something in `assign_nav_and_layout()` shared
 between header and peer) - re-open this entry, don't add an 8th patch
 blind.
 
+**Real, same-session correction: this fix itself caused visible
+flicker.** Direct live report right after it landed: "tb is
+flickering sometimes." Real cause, found immediately (not guessed):
+the destroy+rebuild ran on the SAME 20-second cadence as the cheap
+vars-changed nudge - a real `XDestroyWindow`/`XFreePixmap`/`XFreeGC`
+every 20s is a genuine, visible teardown-and-recreate of the whole
+window, not a free safety net. Matches this house's own referenced
+`PITFALLS_ACTIVE_2026-03-18.txt` §17 ("ONE WRITER RULE... dual
+writers/recreations cause flicker/corruption"). Fixed: split into two
+independent timers - the cheap `vars_changed = 1` nudge stays at 20s
+(no visible cost, just a data re-check), the actual destructive
+rebuild moved to its own 5-minute cadence (15x less frequent). Still a
+real, bounded worst-case (well under the 87 minutes the 7th occurrence
+itself took to surface) without being visible to the eye during normal
+use.
+
 ---
 
 ## ✅ CLOSED 2026-09-13: tab reordering / entities missing after restart - the real architectural cause

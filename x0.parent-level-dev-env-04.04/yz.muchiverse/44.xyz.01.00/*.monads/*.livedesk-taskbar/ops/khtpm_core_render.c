@@ -2041,6 +2041,33 @@ static int reparse_chtpm_if_changed(void) {
                 } else if (now_ts.tv_sec - s_dock_force_last.tv_sec >= 20) {
                     s_dock_force_last = now_ts;
                     vars_changed = 1;
+                    /* REAL FIX 2026-09-14, direct live report ("tb is
+                     * flickering sometimes") right after the destroy+
+                     * rebuild hardening below landed - real, visible
+                     * regression this same session introduced: doing
+                     * XDestroyWindow/XFreePixmap/XFreeGC EVERY 20s,
+                     * unconditionally, is a real destroy-and-recreate
+                     * of the whole window on a cadence short enough to
+                     * be visibly seen, not just a cheap safety net.
+                     * matches this house's own PITFALLS_ACTIVE doc §17
+                     * "ONE WRITER RULE... dual writers/recreations
+                     * cause flicker" - the rebuild itself is real and
+                     * still wanted (7th occurrence), just needed a
+                     * separate, far less frequent cadence from the
+                     * cheap 20s reparse-nudge above (which stays at
+                     * 20s - it's a real vars_changed=1, not a window
+                     * teardown, no visible cost). Gated on its own
+                     * independent 5-minute timer below - 15x fewer
+                     * rebuilds than before, still a real, bounded
+                     * worst-case (the 7th occurrence itself took 87
+                     * minutes to surface, so 5 minutes is still a
+                     * massive improvement over "never self-heals"
+                     * while no longer being visible to the eye. */
+                    static struct timespec s_dock_rebuild_last = {0, 0};
+                    if (s_dock_rebuild_last.tv_sec == 0) {
+                        s_dock_rebuild_last = now_ts;
+                    } else if (now_ts.tv_sec - s_dock_rebuild_last.tv_sec >= 300) {
+                        s_dock_rebuild_last = now_ts;
                     /* REAL FIX 2026-09-14, direct live report ("i just
                      * switched to civ test from office, and the tb
                      * bottom is showing the wrong entities... harden
@@ -2079,6 +2106,7 @@ static int reparse_chtpm_if_changed(void) {
                         if (g_dock_peer_gc) { XFreeGC(dpy, g_dock_peer_gc); g_dock_peer_gc = 0; }
                         XDestroyWindow(dpy, g_dock_peer_win);
                         g_dock_peer_win = 0;
+                    }
                     }
                 }
             }
