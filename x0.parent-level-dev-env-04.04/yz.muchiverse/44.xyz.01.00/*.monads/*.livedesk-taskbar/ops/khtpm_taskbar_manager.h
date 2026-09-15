@@ -16,6 +16,16 @@ extern "C" {
 #endif
 
 #define KTB_PATH_BUF 4352
+/* REAL FIX 2026-09-15 (see KtbState's own cell_id_pos/cell_id_str field
+ * comment further down for the full incident this closes) - the ONE real
+ * source of truth for "how many real nav-numbered cells does the header
+ * template have", defined here (before KtbState needs it to size two
+ * arrays) so KTB_STRIP_N_CELLS below can just equal it instead of the
+ * struct and the macro drifting apart the way KTB_STRIP_N_CELLS and the
+ * template's own real cell count already did once. Bump this ONE number
+ * if khtpm_strip_header.xhtpm ever gains/loses a real header cell - never
+ * add a second hardcoded literal anywhere else in this file. */
+#define KTB_STRIP_N_CELLS_MAX 16
 #define KTB_MAX_TABS 64
 #define KTB_MAX_SHORTCUTS 16
 #define KTB_BAR_H 36
@@ -141,7 +151,7 @@ typedef struct {
      * HQ/file/desks/pals/player ever populate hq_menu; the rest are inert
      * placeholders - see khtpm_taskbar_manager.c's ktb_hq_open()). */
     char strip_user_cmd[KTB_PATH_BUF]; /* USER cell's command, from livedesk_taskbar.pdl's strip_user_cmd key - empty by default, matching legacy's load_strip_config() default (no user-switcher wired in the legacy itself either) */
-    int strip_focus_cell; /* unified header-cell cursor: 0..14 = a strip cell, -1 = focus is on a tab instead (see ktb_nav_focus_delta()) */
+    int strip_focus_cell; /* unified header-cell cursor: 0..(KTB_STRIP_N_CELLS-1) = a strip cell, -1 = focus is on a tab instead (see ktb_nav_focus_delta()) */
     /* REAL, NEW 2026-08-16, direct correction ("the cells aren't
      * supposed to be hardcoded... that's an oversight") - real
      * position(1-based)->id table, read once at startup from
@@ -153,8 +163,30 @@ typedef struct {
      * real, data-declared identity (e.g. "toys") before falling back to
      * the existing which==N chain - additive, doesn't change any
      * existing cell's own behavior. */
-    int cell_id_pos[15]; /* real literal, matches KTB_STRIP_N_CELLS (defined just below - can't use the macro itself before its own definition) */
-    char cell_id_str[15][64];
+    /* REAL FIX 2026-09-15 (bug_bounty.md, "mouse click jumps to next
+     * nav" - root cause, found by direct read + a temporary debug log,
+     * not guessed: the header template (khtpm_strip_header.xhtpm) grew
+     * a 16th real nav-numbered cell - strip-cell-16, "${datetime}" -
+     * at some point after this file's own KTB_STRIP_N_CELLS was fixed
+     * at 15, and nothing enforced the two ever staying in sync. Every
+     * absolute-focus round trip (dock_relay_focus_code()'s "6000 +
+     * g_focus_nav", decoded in khtpm_taskbar_manager_main.c's
+     * dispatch_code() via `nav_n - KTB_STRIP_N_CELLS - 1`) was silently
+     * off by exactly one bottom-bar tab for any nav above the header -
+     * a real click's hit-test was always correct (proved live via
+     * CLICK_PROBE in kh_focus_debug.log matching the right Elem), but
+     * the manager's own tab_focus_idx it echoed back was one tab ahead,
+     * and the renderer's next reparse applied THAT back over the
+     * click's own correct focus. Same real bug class this house has
+     * hit before (arrays sized by a literal instead of the macro next
+     * to them, `khtpm_strip_header.xhtpm`'s own cell count silently
+     * drifting from a manager-side constant) - fixed at the root by
+     * making KTB_STRIP_N_CELLS itself match the template's real count
+     * (16) and sizing these two arrays off the macro instead of a
+     * second, independently-maintainable literal, so they can never
+     * drift apart again. */
+    int cell_id_pos[KTB_STRIP_N_CELLS_MAX];
+    char cell_id_str[KTB_STRIP_N_CELLS_MAX][64];
     int n_cell_ids;
 
     /* --- HQ window taskbar entries (2026-09-03, §2.1). Merged from
@@ -172,7 +204,7 @@ typedef struct {
     int zorder_above;
 } KtbState;
 
-#define KTB_STRIP_N_CELLS 15
+#define KTB_STRIP_N_CELLS KTB_STRIP_N_CELLS_MAX
 
 void ktb_init(KtbState *s, const char *house_root);
 /* REAL, NEW 2026-08-16 - see KtbState's own cell_id_pos/cell_id_str field comment. */

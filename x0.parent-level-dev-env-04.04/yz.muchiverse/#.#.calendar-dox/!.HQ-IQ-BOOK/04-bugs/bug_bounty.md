@@ -976,3 +976,24 @@ only in tile-picker testing suite for diagnostic use, not as delivery path).
 3. **Real X11 event delivery confirmation**: Run `xinput test <device>` during typing in text-edit-hq to confirm whether the X server itself is receiving KeyPress events from hardware. If it is (other windows get them), but text-edit-hq doesn't, the bug is X11-level focus routing. If it isn't, the issue is earlier in the input stack.
 
 4. **WM-managed focus test on a different app**: Create a temporary override_redirect-false test window (same window-creation path as text-edit-hq, different app name), attempt typing. If it works fine, the bug is text-edit-hq-specific (not the managed-window code path itself). If it also fails, the managed-window focus logic is broken for this entire Mutter version.
+
+---
+
+## ✅ CLOSED — bottom-bar mouse click "jumps ahead" to next nav (2026-09-15)
+
+**Report**: "it keeps jumping ahead when mouse clicks bottom tb, to next nav, whenever nav moves... are we using same strategy as top tb?"
+
+**Investigation path** (real evidence at every step, not guessed):
+- Reproduced live via real `xdotool` click at exact coordinates read from the peer window's own serialized frame file (`entity_menu_frame_<pid>_bot.txt`) — a click squarely inside item 18's real box (x=214-388) consistently focused item 19 instead.
+- Ruled out: digit-key relay, bare numeric relay, and even a raw `MOUSE_EVENT:` relay injection at the same coordinates — none reproduced it, which briefly pointed at a real-X11-delivery-only race.
+- Directly tested the header (top tb) with the identical method — it did NOT reproduce, answering the user's own question: no, top and bottom were not using "the same strategy" at the point that mattered.
+- First hypothesis (event-loop ordering: `hq_idle_tick()`'s reparse racing a real ButtonPress already queued) was implemented and verified live — bug still reproduced identically. Ruled out; kept the reorder anyway as real, harmless hardening (dispatch-pending-before-idle-tick can never make numbering staler for an in-flight event).
+- Added a temporary debug log at the actual hit-test in `popup_handle_click()` and reproduced once more: the log proved the click's own hit-test was matching the CORRECT Elem (`MATCHED i=17 nav=18 label=dsr_castle_a`) every time. The bug was never in the renderer's click handling.
+
+**Real root cause**: `khtpm_taskbar_manager.h`'s `KTB_STRIP_N_CELLS` was hardcoded to `15`, stale since before the header template (`khtpm_strip_header.xhtpm`) grew a 16th real nav-numbered cell (`strip-cell-16`, `${datetime}`). Every click relays `6000 + g_focus_nav` (`dock_relay_focus_code()`) to the manager so its own `strip_focus_cell`/`tab_focus_idx` stay in lockstep; `dispatch_code()` decoded that using the stale `15` (`t = nav_n - KTB_STRIP_N_CELLS - 1`), landing the manager's own focus one bottom-bar tab ahead of the real click. The renderer's next reparse pulled that wrong value back in over the click's own correct focus — a manager/renderer desync, not a click or a race.
+
+**Fix**: introduced one real source-of-truth macro, `KTB_STRIP_N_CELLS_MAX 16`, defined once at the top of `khtpm_taskbar_manager.h` (before `KtbState` needs it to size `cell_id_pos`/`cell_id_str`); `KTB_STRIP_N_CELLS` now just equals it. Replaced every other place carrying its own duplicate `15` literal (`ktb_load_cell_ids()`'s loop bound in `khtpm_taskbar_manager.c`, the notes-menu `which <= 15` range check) so this exact drift class can't happen again — bump the one macro if the header template ever gains/loses a real cell, nothing else to update.
+
+**Verified live**: same real xdotool-click reproduction that failed twice before now lands correctly (`[>]18 dsr_castle_a`, no jump).
+
+**Files**: `khtpm_taskbar_manager.h`, `khtpm_taskbar_manager.c` (the manager-side fix); `khtpm_core_render.c` (event-loop reorder hardening, kept though not the root cause).

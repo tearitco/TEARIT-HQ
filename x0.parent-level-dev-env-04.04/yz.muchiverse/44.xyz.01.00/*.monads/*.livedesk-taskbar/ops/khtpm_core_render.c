@@ -5109,7 +5109,12 @@ static int dock_item_cw(Elem *t) {
  * context - kept as a parameter so every call site stays unchanged. */
 static void dock_place_pager(int win_w, int after_x) {
     (void)after_x;
-    int aw = scaled(22), gap = scaled(4);
+    /* REAL, NEW 2026-09-15, direct live report ("could be a bit more
+     * 'left' and spaced between the 2") - widened the -/+ gap and
+     * biased the centered position a bit left of dead-center in the
+     * DOCK_PAGER_W margin, both real, cosmetic pixel tweaks only. */
+    int aw = scaled(22), gap = scaled(10);
+    int left_bias = scaled(10);
     int need = (g_dock_packed_rows > 1) || (g_dock_visible_rows > 1);
 
     memset(&g_dock_minus_elem, 0, sizeof(g_dock_minus_elem));
@@ -5127,7 +5132,7 @@ static void dock_place_pager(int win_w, int after_x) {
      * laying out cells, i.e. the real left edge of this reserved zone. */
     int margin_start = win_w - DOCK_PAGER_W;
     int content_w = 2 * aw + gap;
-    int mx = margin_start + (DOCK_PAGER_W - content_w) / 2;
+    int mx = margin_start + (DOCK_PAGER_W - content_w) / 2 - left_bias;
     if (mx < DOCK_FOCUS_BOX_W) mx = DOCK_FOCUS_BOX_W;
     if (mx + content_w > win_w - 4) mx = win_w - 4 - content_w;
 
@@ -10668,6 +10673,35 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
          * nav_tab_unregister, history_unregister) which the default/
          * HQ-window modes previously skipped entirely on kill -TERM. */
         if (g_shutdown_requested) { g_quit = 1; break; }
+        /* REAL FIX 2026-09-15 (bug_bounty.md, "mouse click jumps to next
+         * nav" - root cause traced by direct read, not guessed: dock
+         * mode numbers bottom-bar items RELATIVELY, off
+         * g_dock_header_nav_hi (assign_nav_and_layout(), ~line 5892) -
+         * every bottom Elem's nav_index is header_count + position, not
+         * an absolute id. hq_idle_tick() (below) is what can trigger a
+         * reparse/relayout that recomputes that header count (a vars
+         * change - the clock label, username, any n_tabs-driven count).
+         * This loop used to run hq_idle_tick() BEFORE draining XPending,
+         * so a real ButtonPress the X server had already queued (the
+         * click landed on the numbering painted on screen) could be
+         * dispatched AFTER a same-tick reparse silently shifted every
+         * bottom nav_index out from under it - the click's pixel hit
+         * was always correct, but the Elem it hit had already been
+         * renumbered by the time click_focus_then_activate() read its
+         * nav_index. Fix, once and for all, by construction rather than
+         * by patching the race narrower: drain and fully dispatch every
+         * event the server already delivered to us FIRST, every single
+         * loop iteration, before hq_idle_tick() is allowed to touch
+         * g_nav/g_dock_header_nav_hi at all. Any event already in hand
+         * is now always evaluated against the numbering that was live
+         * when it was queued - a reparse can still change numbering,
+         * but only ever for the NEXT event, never retroactively for one
+         * already in flight. */
+        while (XPending(dpy)) {
+            XEvent ev; XNextEvent(dpy, &ev);
+            hq_dispatch_xevent(&ev, wm_delete, is_popup);
+        }
+        if (g_quit) break;
         hq_idle_tick();
         if (g_quit) break;
         fd_set fds; FD_ZERO(&fds);
@@ -10692,10 +10726,10 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
                                 ? (struct timeval){ 0, 33000 }
                                 : (struct timeval){ 0, 150000 };
         select(xfd + 1, &fds, NULL, NULL, &tv);
-        while (XPending(dpy)) {
-            XEvent ev; XNextEvent(dpy, &ev);
-            hq_dispatch_xevent(&ev, wm_delete, is_popup);
-        }
+        /* Events that arrive during THIS select() wait are deliberately
+         * left queued - they'll be the very first thing drained at the
+         * top of the NEXT iteration, before that iteration's own
+         * hq_idle_tick(), so the same guarantee holds every cycle. */
         /* REAL, NEW 2026-08-29 - see dbhq_rmmv_poll_pointer's own
          * header comment. A real, non-event, XQueryPointer-based
          * fallback for real human mouse clicks, which a real Mutter/

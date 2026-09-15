@@ -488,7 +488,7 @@ void ktb_load_cell_ids(KtbState *s) {
     FILE *f = ktb_fopen(path, "r");
     if (!f) return;
     char line[128];
-    while (s->n_cell_ids < 15 && fgets(line, sizeof(line), f)) {
+    while (s->n_cell_ids < KTB_STRIP_N_CELLS_MAX && fgets(line, sizeof(line), f)) {
         char *bar = strchr(line, '|');
         if (!bar) continue;
         *bar = '\0';
@@ -4574,7 +4574,7 @@ void ktb_hq_open(KtbState *s, int which) {
      * the dir map + `xdg-open`). Real header cells only (which 1..15);
      * the internal session/db-ez/common-events sub-lists (100/101/102)
      * are skipped. Idempotent - never doubles the row on re-open. */
-    if (which >= 1 && which <= 15 && n >= 1 && n < KTB_LIVEDESK_DYN_MAX - 1 &&
+    if (which >= 1 && which <= KTB_STRIP_N_CELLS && n >= 1 && n < KTB_LIVEDESK_DYN_MAX - 1 &&
         strncmp(s->hq_menu[n - 1].label, "notes-", 6) != 0) {
         const char *cell = ktb_cell_id(s, which);
         char cellname[32];
