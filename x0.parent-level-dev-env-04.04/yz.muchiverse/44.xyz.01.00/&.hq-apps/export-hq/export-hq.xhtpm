@@ -1,0 +1,27 @@
+<!-- export-hq.xhtpm - STATIC TEMPLATE (CHTPM-ARCHITECTURE-FIX.md). Layout
+     only, never regenerated. <module> forks export_hq_manager.+x, which
+     writes plain key=value + n_cand/c_N_* repeat rows to state/ui.txt;
+     the shared renderer substitutes ${var} and expands <repeat>. -->
+<window label="Export package" class="export-hq database-window managed user-resizable" vars="state/ui.txt">
+  <module src="&.hq-apps/export-hq/+x/export_hq_manager.+x"/>
+  <page name="main">
+    <sidebar>
+      <text label="Export package"/>
+      <text label="pick app(s), a dest dir, then Package" class="quiet"/>
+    </sidebar>
+    <panel>
+      <text label="Candidates (same list the taskbar's Toys menu shows):" class="title"/>
+      <repeat count="${n_cand}" bind="c">
+        <item id="cand-${c.#}" label="${c.mark} ${c.title}"
+              action="'${PKG}/ops/export_hq_action.sh' 'toggle' '${c.id}'"/>
+      </repeat>
+      <item label="rescan" class="quiet"
+            action="'${PKG}/ops/export_hq_action.sh' 'rescan'"/>
+      <cli_io id="destf" label="dest dir: " content="${dest}"
+              action="'${PKG}/ops/export_hq_action.sh' 'setdest'"/>
+      <item id="btn-package" label="Package"
+            action="'${PKG}/ops/export_hq_action.sh' 'package'"/>
+      <text label="${status}" class="hint"/>
+    </panel>
+  </page>
+</window>

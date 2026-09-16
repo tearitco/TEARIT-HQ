@@ -1,5 +1,20 @@
 # 08 — Roadmap
 
+- `design-docs/TODO-2026-09-15/MAJOR-PRIORITIES-2026-09-15.md` — **the
+  current real major-priorities brainstorm**: 3 tracks settled via
+  live Q&A - (1) mineclonia as a real, loadable, re-referenceable
+  file:desk (Grok, direct in-house), (2) AI-ARC/hai-studio
+  (discovery-then-iteration, starts by synthesizing the HARNECIENT.SMOL
+  NIGHT_07-14 conversations, not re-deriving), (3) minigames
+  (DSR/TSOTS/TPMOJIO/Dwarf-Fortress) + shared AI direction. 5
+  cross-cutting decisions settled (NPC move = Common-Event scripted;
+  triggers on play=on in a loaded file:desk; rendering reuses
+  board-viewer's existing per-frame entity read; updates flow through
+  the real `master_ledger`/`ledger_append()` standard; a new shared,
+  reusable "AI-framework Common Event" vocabulary connects Track 2 to
+  1/3). Also flags a hard blocker: no per-entity trigger scoping yet
+  (only one `player-touch` Common Event exists house-wide today) - must
+  land before Track 1 can actually work.
 - `FORWARD-ROADMAP-2026-09-02.md` — **the current real plan going
   forward**: hardening a live, human-supervised Sonnet/Grok chat
   channel, then Grok's real task sequence (media-studio + network-app
