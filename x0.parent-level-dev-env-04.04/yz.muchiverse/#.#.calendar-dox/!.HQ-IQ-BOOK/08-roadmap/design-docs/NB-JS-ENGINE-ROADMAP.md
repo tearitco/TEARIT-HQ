@@ -341,18 +341,26 @@ plausible stub, `MutationObserver` (can no-op then improve),
 > **Rung 6 remainder hardening — cookie parity, script-tag edges, real
 > remote breadths: LANDED 2026-09-10.** Three follow-ups to the localhost
 > http proof, each E2E-verified against live servers:
-> - **Same-origin cookie parity.** Page loads, `<script src>` fetches, and
->   the worker's JS-side `fetch`/XHR now share ONE per-house Netscape jar,
->   `<house>/#.desktop/nb_curl_cookies.txt` (manager curls pass `-b/-c`;
->   the worker gets it via `NB_CURL_COOKIES_FILE` and emits `cookie` +
->   `cookie-jar` in its curl config). Server `Set-Cookie` byte-persists
->   across navigations and is retransmitted; worker fetch sees the same
->   cookies. Live E2E (custom fixture server): fresh house `guard` →
->   `guard-fail`; page sets `sess=abc123` via `Set-Cookie`; next request to
->   a guarded route → `guard-ok`; JS `fetch()` to a guarded API →
->   `ok:true`. Scope note: this jar is separate from the rung-6
->   `document.cookie` jar (`NB_COOKIES_FILE`, `wck`) — JS-written cookies
->   and wire cookies are not yet merged.
+> - **Same-origin cookie parity / UNIFIED cookie store (2026-09-16): ONE
+>   authoritative jar for `document.cookie` AND the network layer.**
+>   The old two-store split (line below) is eliminated: `nb_js_worker`
+>   `nb_fetch_sync` now attaches a `Cookie:` header scoped from OUR jar
+>   (`cookie_header_for_url`, RFC 6265 §5.1.4 path-match + Domain/Secure/
+>   expiry) and ingests response `Set-Cookie` straight into the same jar
+>   (`cookie_set_from_wire`, `dump-header` → per-line parse). The worker
+>   NEVER uses `NB_CURL_COOKIES_FILE` from here forward (curl `-b/-c`
+>   delegation removed); the manager may still set it for its OWN curls.
+>   **Long-term standard (no drift): one jar — `NB_COOKIES_FILE` —
+>   serves `document.cookie`, wire `Set-Cookie` ingress, and `Cookie`
+>   egress; response `Set-Cookie` is the only wire ingress.** Also fixed
+>   a latent port bug in `href_parts` (host from `g_href` previously kept
+>   the `:port` suffix, so port-scoped pages never matched jar cookies —
+>   invisible while set/get both used the same wrong host; the unified
+>   store exposed it). E2E loopback receipt (`worker_login_test`, `wlt`,
+>   hermetic 127.0.0.1 ephemeral port): `/auth` → `Set-Cookie: sid=wlt456`
+>   → page `document.cookie` reads `sid=wlt456` → `/guard` reattaches it
+>   → `guard-ok`; jar bytes byte-verified. Full `make check` (41 suites)
+>   green.
 > - **Script-tag edge audit.** `script_type_skip` was allowlisting
 >   (`module`/`json`/`ld+json`) and thus RAN unknown types like
 >   `text/template` as broken JS (WERR noise). Rewritten to browser rules:

@@ -27,11 +27,11 @@ share one primitive (a canvas that paints frames) and almost nothing else.
 |------|--------------------|--------|
 | View a resolved googlevideo stream | `nb_video_play` (native player) | **DONE** |
 | Generic `<bar>` seek/play row under the canvas | `khtpm_core_render` `<bar>` branch + manager VIDEO branch | **DONE** |
-| Render youtube.com's real HTML page (DOM) | network-browser khtpm DOM rendering | **jar-attach BUILT** (receipt sid=abc123 via NB_COOKIES_FILE); **login SAPISID NOT built** |
+| Render youtube.com's real HTML page (DOM) | network-browser khtpm DOM rendering | **jar-attach BUILT** (receipt sid=abc123 via NB_COOKIES_FILE); **login SAPISID NOT built** — see row 34 for unified store status |
 | Execute youtube.com's client-side JS bundle (loads comments, lazy sections, player config) | browser JS engine | **NOT built** |
 | Page-originated fetch/XHR (innerTube `next` comments, websocket chat, GraphQL) with session cookies attached — the network the page's own JS speaks, not a manager-side one-shot curl | browser network/XHR layer | **BUILT** — hermetic receipt green: worker_page_test (page-originated InnerTube-`next` XHR + NB_COOKIES_FILE session jar; WPT-EXIT=0, next200 + sid=abc123, file:// fixture, zero network) |
 | Apply youtube.com's CSS (layout, right-rail, dark theme) | browser CSS engine | partial (`.css` files, not full page CSS) |
-| Session cookies + login (yt-visitor, SAPISID, etc.) | browser cookie store | **NOT built** |
+| Session cookies + login (yt-visitor, SAPISID, etc.) | browser cookie store | **PARTIAL** — unified jar built (wire `Set-Cookie` ingress + `Cookie` egress through `NB_COOKIES_FILE`; `document.cookie` and `nb_fetch_sync` share one store; chromium-parity proven by hermetic loopback receipt `worker_login_test` / `wlt`); real Google SAPISID handshake + `LOGIN`-grade credential injection **NOT built** (no per-site hardcode; page JS must do its own `SAPISIDHASH` signing via the one authoritative jar) |
 | Feed InnerTube API requests from the browser (needs a valid `yt-visitor_data` + API key + signature) | browser network layer | partial (`yt_resolve` standalone, not in-page) |
 | Render comments / chat (they are API-loaded + JS-injected, not in static HTML) | browser DOM/JS after an API call | **NOT built** |
 | Site JS that fights headless/simple UAs, TLS fingerprinting | browser HTTP stack | gate exists for UA/referer only |
