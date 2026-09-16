@@ -25,8 +25,19 @@
       <tab id="tb-in" class="pchq-tb ${interact_class}" label="In: ${interact_label}"
            relay="${bv_h1},${bv_h2}"
            onclick="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'interact'"/>
-      <tab id="tb-file" class="pchq-tb" label="File"
-           onclick="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'file-hq'"/>
+      <!-- REAL FIX 2026-09-15 (5), direct live report ("none:none...
+           it says none:none for file:desk. thats wrong" - traced to
+           tb-file calling 'file-hq' DIRECTLY, which opens File
+           Explorer, not a quick-pick menu; the real n_file_opts/f_*
+           rows the projector has published this whole session were
+           never wired into any actual UI element - confirmed dead,
+           the exact reason clicking "File" never actually loaded
+           "default"). Now a real ACTIVATE dropdown, same shape as
+           tb-desk/tb-menu/tb-player right next to it - "Open File
+           Explorer" is still reachable as one of its own real rows
+           (f_1 below), not removed, just no longer the ONLY thing a
+           File click can do. -->
+      <tab id="tb-file" class="pchq-tb" label="File ▾" onclick="ACTIVATE" target_id="tb-file"/>
       <tab id="tb-desk" class="pchq-tb" label="Desk ▾" onclick="ACTIVATE" target_id="tb-desk"/>
       <tab id="tb-menu" class="pchq-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
       <!-- REAL FIX 2026-09-15, direct live correction ("player should
@@ -48,6 +59,13 @@
          Triggers stay in the <tabbar>, found window-wide by id.
          Painted last (over the canvas) - kh_serialize_frame_deferred. -->
     <sidebar id="rail" class="pchq-rail sidebar">
+      <repeat count="${n_file_opts}" bind="f">
+        <item id="fo-${f.#}" class="pchq-menu-row dropdown-child ${f.active}" target_id="tb-file"
+              label="${f.label}"
+              action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' '${f.verb}' '${f.arg}'"/>
+      </repeat>
+      <item id="fm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-file"
+            label="- cancel -" action="void"/>
       <repeat count="${n_desk_opts}" bind="d">
         <item id="do-${d.#}" class="pchq-menu-row dropdown-child ${d.active}" target_id="tb-desk"
               label="${d.label}"
