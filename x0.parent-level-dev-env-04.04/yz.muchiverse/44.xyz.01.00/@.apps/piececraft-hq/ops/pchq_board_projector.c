@@ -127,6 +127,40 @@ static void read_kv(const char *path, const char *key, char *out, size_t outsz) 
     fclose(f);
 }
 
+/* game.pdl uses "SECTION | KEY | VALUE" pipe columns, not KEY=VALUE -
+ * read_kv() above can't parse it (confirmed live: silently returned
+ * empty for every key). Matches pc_generate_chunk.c's own
+ * load_extrusion_table() column-split logic. */
+static void read_pdl_kv(const char *path, const char *key, char *out, size_t outsz) {
+    out[0] = '\0';
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        char *p1 = strchr(line, '|');
+        if (!p1) continue;
+        char *p2 = strchr(p1 + 1, '|');
+        if (!p2) continue;
+        char k[64]; int klen = (int)(p2 - (p1 + 1));
+        while (*(p1 + 1) == ' ') p1++;
+        klen = (int)(p2 - (p1 + 1));
+        if (klen <= 0 || klen >= (int)sizeof(k)) continue;
+        memcpy(k, p1 + 1, (size_t)klen);
+        k[klen] = '\0';
+        int kl = (int)strlen(k);
+        while (kl > 0 && k[kl - 1] == ' ') k[--kl] = '\0';
+        if (strcmp(k, key) != 0) continue;
+        char *v = p2 + 1;
+        while (*v == ' ') v++;
+        v[strcspn(v, "\r\n")] = '\0';
+        int vl = (int)strlen(v);
+        while (vl > 0 && v[vl - 1] == ' ') v[--vl] = '\0';
+        snprintf(out, outsz, "%s", v);
+        break;
+    }
+    fclose(f);
+}
+
 static int file_has_nonzero(const char *path) {
     FILE *f = fopen(path, "r");
     if (!f) return 0;
@@ -292,7 +326,31 @@ int main(int argc, char **argv) {
         char world_state_al[PATH_MAX];
         snprintf(world_state_al, sizeof(world_state_al), "%s/@.apps/%s/pieces/world_01/state.txt", house, host_id);
         read_kv(world_state_al, "map_id", active_level, sizeof(active_level));
-        if (!active_board[0]) snprintf(active_board, sizeof(active_board), "default");
+        /* REAL FIX 2026-09-15, direct live report ("Desk dropdown shows
+         * 'mineclonia sample' regardless of what's actually loaded") -
+         * active_board had the exact same staleness bug as active_level
+         * above (same dead board_config.txt key, never migrated when
+         * active_level was fixed). The real, live source is the
+         * currently-loaded project's own game.pdl (file=dir, desk=map
+         * hierarchy) - desk_1_label under pieces/system/maps/<project>/,
+         * project = map_id if set, else the real "default" project
+         * (never a bare literal "default" string - that project has its
+         * own real game.pdl too). */
+        {
+            char proj_id[64];
+            snprintf(proj_id, sizeof(proj_id), "%s", active_level[0] ? active_level : "default");
+            char game_pdl[PATH_MAX];
+            snprintf(game_pdl, sizeof(game_pdl), "%s/pieces/system/maps/%s/game.pdl", pkg, proj_id);
+            char proj_label[64] = "", desk_label[64] = "";
+            read_pdl_kv(game_pdl, "label", proj_label, sizeof(proj_label));
+            read_pdl_kv(game_pdl, "desk_1_label", desk_label, sizeof(desk_label));
+            if (proj_label[0] && desk_label[0])
+                snprintf(active_board, sizeof(active_board), "%s - %s", proj_label, desk_label);
+            else if (proj_label[0])
+                snprintf(active_board, sizeof(active_board), "%s", proj_label);
+            else
+                snprintf(active_board, sizeof(active_board), "default-map-1");
+        }
         int is_legacy = (strcmp(active_level, "default-legacy") == 0);
         sanitize(active_board);
 
