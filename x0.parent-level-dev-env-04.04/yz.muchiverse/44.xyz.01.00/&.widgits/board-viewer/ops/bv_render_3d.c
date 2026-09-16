@@ -1576,6 +1576,15 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
             if (val[0]) snprintf(lines[n++], sizeof(lines[0]), "%s", val);
         }
     }
+    /* REAL, NEW 2026-09-15 (4), direct live request ("the hud changes
+     * aren't in pc-hq yet, i could prove it if we had pid in
+     * screenshot") - a real, unconditional readback of THIS renderer
+     * process's own live getpid(), no file round-trip (a stale/old
+     * session's renderer has a DIFFERENT real PID, so this is a direct,
+     * un-fakeable way to confirm which process a screenshot is actually
+     * showing - the exact confusion a stale-session relaunch caused
+     * earlier this same session). */
+    if (n < 8) snprintf(lines[n++], sizeof(lines[0]), "pid %d", (int)getpid());
     int pad = 6 * scale;
     int row_h = GLYPH_PX_H * scale + 3 * scale;
     int top_anchor = !strstr(anchor, "bottom");
