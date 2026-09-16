@@ -243,3 +243,54 @@ has stopped recurring in review.*
   burst per restack over an override-redirect window. Drain the whole
   burst (`XCheckTypedWindowEvent(... Expose ...)`) before repainting
   once; never `redraw()` per `Expose` event.
+
+## 2026-09-12 — network-browser address-bar keyboard focus (esc/backspace) investigation
+
+*Confirmed FIXED by live evidence 2026-09-12 evening; entry documents
+the mechanism + the genuine measurement traps so the next person
+doesn't re-chase a phantom.*
+
+- **The address bar is NOT a single-click-to-arm field under this
+  house's `click_two_step=1`.** The address `<cli_io class="top">` is
+  laid out as a normal navigable row (`nav_index = ++g_n_nav`,
+  `khtpm_core_render.c` `layout_fixed_rows_and_scrolllist()`), so the
+  generic two-step click gate governs it: click = focus, Enter (or a
+  second click) = `activate_focused()` → `kh_grab_keyboard_retry()` →
+  `GRAB key=address`. "Click once, then type Backspace" FAILS BY
+  DESIGN unless a prior click/Enter already armed the field. After an
+  explicit Escape-disarm, re-arm is two-step: **click, then Enter (or
+  click twice)**. Tested live: single click → no GRAB line; click +
+  Enter → fresh `GRAB ... rc=0 real_focus_is_us=1`, keys reach
+  `KEYPRESS key=address`. This is the recurring "backspace/esc don't
+  work in the browser" root cause described in `04-bugs/BUG-LOG.md`.
+- **Ground truth for arm/grab state is `kh_focus_debug.log`**
+  (`<package>/kh_focus_debug.log`, written by `kh_focus_debug_log()`):
+  `GRAB key=<field> rc=0 real_focus_is_us=1` = keyboard grab held;
+  `KEYPRESS key=<field> ks=...` = key reached the armed handler;
+  `ESCAPE key=<field>` = explicit disarm. If a key's effect is
+  ambiguous, this log decides.
+- **Ground truth that a click actually reached the renderer is the
+  relay mailbox** `#.desktop/entity_menu_history/<renderer_pid>.txt`:
+  the renderer writes `MOUSE_EVENT: <button> <x> <y> 1` on every click
+  and `KEY_PRESSED: <code>` on every key. If a "click did nothing"
+  investigation shows NO new `MOUSE_EVENT` line, the click never hit
+  this renderer — stop and re-check window geometry, not the click
+  code.
+- **WINDOWS MOVE. Re-verify live window geometry before every probe —
+  never reuse yesterday's coordinates.** This investigation burned an
+  hour on "re-arm is broken" that turned out to be a moved window: the
+  browser window sat at `+80+96` during the 21:05 log evidence, but at
+  probe time `xwininfo -id <win>` reported it at `+0+928`. Clicks sent
+  to the old screen y (~130–180) landed in the **nav/tab toolbar
+  rows**, not the address row (which, from `content_top =
+  CHROME_H + tabbar_h` and three fixed `ROW_H` rows, sits ~y 168–192
+  on a `+80+96` window — but ~y 1000–1024 on the moved `+0+928` one).
+  Probes that miss the field look exactly like the bug you're chasing.
+- **`xdotool key --window <win>` (XSendEvent) bypasses X grabs
+  entirely and can mask a real grab loss.** For grab-state testing use
+  global `xdotool key <key>` / `xdotool mousemove ... click 1` (real
+  XTEST), which route through the server grab exactly like a human.
+- **Click coordinates in the mailbox are window-relative**, so when a
+  probe's `MOUSE_EVENT` says `400 84` and the window is at `+0+928`,
+  the screen click was `(400, 1012)` — compute carefully before
+  concluding a could-not-possibly-have-hit element.

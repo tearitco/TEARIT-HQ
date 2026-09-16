@@ -406,6 +406,7 @@ static void rw_wrap(SB *b, char *s) {
         else { char save = s[RWS_TEXT]; s[RWS_TEXT] = 0; rw_row(b, "TEXT", s); s[RWS_TEXT] = save; s += RWS_TEXT; }
     }
 }
+static void resolve_doc_url(const char *rel, char *out, size_t olen);   /* defined below (fetch/rung 4) */
 static void dom_walk_render(const NbNode *n, int *titled, SB *b) {
     if (!n) return;
     const char *tg = n->tag;
@@ -433,9 +434,28 @@ static void dom_walk_render(const NbNode *n, int *titled, SB *b) {
         snprintf(srcbuf, sizeof(srcbuf), "%s", nb_attr_get(n, "src"));
         snprintf(altbuf, sizeof(altbuf), "%s", nb_attr_get(n, "alt"));
         if (srcbuf[0]) {
-            char imgbuf[2048];
-            snprintf(imgbuf, sizeof(imgbuf), "%s|%s", srcbuf, altbuf);
-            rw_row(b, "IMG", imgbuf);
+            /* D4 2026-09-11: emit MEDIA|I|resolved|alt so collect_page_media
+             * in the manager runs the same fetch->nb_media_to_sprite->sprite
+             * pass it runs for static pages. rw_row() strips '|' (its LINK/IMG
+             * rows are space-joined single fields), so this row is built with
+             * sb_put() directly to preserve the pipe-separated MEDIA wire
+             * format that collect_page_media() parses. */
+            char rs[2048];
+            resolve_doc_url(srcbuf, rs, sizeof(rs));
+            char altb[512];
+            for (size_t i = 0; altbuf[i] && i + 1 < sizeof(altb); i++) {
+                char c = altbuf[i];
+                if (c == '\r') continue;
+                altb[i] = (c == '\n' || c == '|') ? ' ' : c;
+                altb[i + 1] = 0;
+            }
+            if (b->len < RENDER_MAX) {
+                sb_put(b, "MEDIA|I|");
+                sb_put(b, rs);
+                sb_put(b, "|");
+                if (altb[0]) sb_put(b, altb);
+                sb_put(b, "\n");
+            }
             caption_used = 1;
         }
     }

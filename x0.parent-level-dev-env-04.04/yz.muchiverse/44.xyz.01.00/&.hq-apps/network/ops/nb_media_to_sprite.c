@@ -36,6 +36,28 @@ static int looks_video(const char *path) {
         || strcmp(e, ".mov") == 0 || strcmp(e, ".ogv") == 0 || strcmp(e, ".avi") == 0;
 }
 
+/* Task C: fetch_to_sprite stores the payload as raw.bin (no extension), so
+ * looks_video() misses real video. Sniff magic bytes instead: ftyp for
+ * mp4/mov, EBML for webm/mkv. */
+static int bytes_sniff_video(const char *path) {
+    FILE *f = fopen(path, "rb");
+    if (!f) return 0;
+    unsigned char h[16];
+    size_t n = fread(h, 1, sizeof(h), f);
+    fclose(f);
+    if (n >= 8 && h[4]=='f' && h[5]=='t' && h[6]=='y' && h[7]=='p') return 1;
+    if (n >= 4 && h[0]==0x1A && h[1]==0x45 && h[2]==0xDF && h[3]==0xA3) return 1;
+    return 0;
+}
+
+static int extract_video_poster(const char *in, const char *out) {
+    char cmd[8192];
+    snprintf(cmd, sizeof(cmd),
+        "ffmpeg -y -hide_banner -loglevel error -i '%s' -vframes 1 -vf scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2 '%s'",
+        in, SPR_RES, SPR_RES, SPR_RES, SPR_RES, out);
+    return system(cmd) == 0;
+}
+
 static int write_sprite_csv(const char *dir, const unsigned char *rgba, int w, int h) {
     char csv[4096];
     snprintf(csv, sizeof(csv), "%s/sprite.csv", dir);
@@ -67,13 +89,9 @@ int main(int argc, char **argv) {
 
     char work[4096];
     snprintf(work, sizeof(work), "%s", in);
-    if (looks_video(in)) {
+    if (looks_video(in) || bytes_sniff_video(in)) {
         snprintf(work, sizeof(work), "%s/poster.png", dir);
-        char cmd[8192];
-        snprintf(cmd, sizeof(cmd),
-            "ffmpeg -y -hide_banner -loglevel error -i '%s' -vframes 1 -vf scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2 '%s'",
-            in, SPR_RES, SPR_RES, SPR_RES, SPR_RES, work);
-        if (system(cmd) != 0) {
+        if (extract_video_poster(in, work) != 0) {
             fprintf(stderr, "nb_media_to_sprite: ffmpeg poster failed\n");
             return 1;
         }

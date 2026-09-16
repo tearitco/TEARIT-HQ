@@ -43,3 +43,33 @@ $CC -std=c11 -Wall -O2 -I"$JSDIR" -o "$SDIR/ops/+x/nb_js_worker.+x" "$SDIR/ops/n
 
 echo "-- nb_media_to_sprite -> ops/+x/nb_media_to_sprite.+x"
 $CC -std=c11 -Wall -O2 -I"$JSDIR" -o "$SDIR/ops/+x/nb_media_to_sprite.+x" "$SDIR/ops/nb_media_to_sprite.c" -lm && echo "OK nb_media_to_sprite" || exit 1
+
+# 2026-09-11 (task C, video-in-canvas V2): vendored wraith-alpha player
+# (ops/nb_video_player.c, same contract as chtmgl-video-isolate's) + the
+# resident 8fps frame->sprite pump (ops/nb_video_pump.c). Player forks its
+# own child loop; the manager owns both, pump exits on control=stop or
+# natural end.
+echo "-- nb_video_player -> ops/+x/nb_video_player.+x"
+$CC -std=c11 -Wall -O2 -o "$SDIR/ops/+x/nb_video_player.+x" "$SDIR/ops/nb_video_player.c" && echo "OK nb_video_player" || exit 1
+
+echo "-- nb_video_pump -> ops/+x/nb_video_pump.+x"
+$CC -std=c11 -Wall -O2 -o "$SDIR/ops/+x/nb_video_pump.+x" "$SDIR/ops/nb_video_pump.c" && echo "OK nb_video_pump" || exit 1
+
+# 2026-09-12 (task C V3, full-fps video): real-time libav decode + ALSA
+# out op that publishes canvas raw+receipt directly (no pump). Needs
+# libav* + alsa dev (pkg-config); skipped cleanly when absent so the
+# manager falls back to the V2 pump path.
+echo "-- nb_video_play -> ops/+x/nb_video_play.+x"
+if pkg-config --exists libavformat libavcodec libavutil libswscale libswresample alsa; then
+  $CC -std=c11 -Wall -Wextra -O2 -o "$SDIR/ops/+x/nb_video_play.+x" "$SDIR/ops/nb_video_play.c" $(pkg-config --cflags --libs libavformat libavcodec libavutil libswscale libswresample alsa) && echo "OK nb_video_play" || exit 1
+else
+  echo "skip nb_video_play (no libav/alsa dev)"
+fi
+
+# 2026-09-14 (task C V4, pure-C YouTube resolver): yt_resolve replaces
+# the popen'd ~/.local/bin/yt-dlp --get-url call inside nb_video_play.
+# Posts innerTube youtubei/v1/player with the ANDROID client context
+# (which mints direct googlevideo URLs, no signature deciphering),
+# parses streamingData, prints best mp4 stream URL. Deps: system curl.
+echo "-- yt_resolve -> ops/+x/yt_resolve.+x"
+$CC -std=c11 -Wall -Wextra -O2 -o "$SDIR/ops/+x/yt_resolve.+x" "$SDIR/ops/yt_resolve.c" && echo "OK yt_resolve" || exit 1

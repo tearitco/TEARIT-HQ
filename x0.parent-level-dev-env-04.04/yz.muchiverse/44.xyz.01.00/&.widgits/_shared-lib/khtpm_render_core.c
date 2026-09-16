@@ -250,6 +250,18 @@ typedef struct Elem {
     int grid_edit_mode;
     char grid_jump_buffer[16];
     char grid_cell_buffer[256];
+    /* REAL, NEW 2026-09-14 (network browser video V4 "Nav row with
+     * play/pause + progress" request) - a real, generic `<bar>` element:
+     * a progress/playhead strip. bar_value/bar_max are the same arbitrary
+     * unit (both ints, e.g. centiseconds for a video player) - the fill
+     * fraction is value/max, drawn by draw_elem()'s own bar branch. A bar
+     * carrying an onclick= has it dispatched on click with any literal
+     * `%FRAC` replaced by the 0.0..1.0 click fraction (see
+     * activate_focused()'s own bar branch, khtpm_core_render.c) - a
+     * generic click-to-seek that works for any app, not just video. Both
+     * default 0 = draw_elem()'s generic chain is completely unchanged for
+     * every existing element (this pairing has the max=0 no-fill guard). */
+    int bar_value, bar_max;
     struct Elem *children[MAX_CHILDREN];
     int n_children;
     struct Elem *parent;

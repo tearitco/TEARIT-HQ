@@ -1065,6 +1065,17 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
         /* REAL, NEW 2026-09-01 - see Elem's own rows field comment in
          * khtpm_render_core.c. */
         e->rows = atoi(val);
+    } else if (strcmp(name, "value") == 0) {
+        /* REAL, NEW 2026-09-14 - generic `<bar>` progress/playhead value
+         * (see Elem's own bar_value comment in khtpm_render_core.c).
+         * Same arbitrary unit as max=; v1 consumers (network-browser's
+         * video nav row) publish centiseconds. Zero effect on any tag
+         * that isn't <bar>. */
+        e->bar_value = atoi(val);
+    } else if (strcmp(name, "max") == 0) {
+        /* REAL, NEW 2026-09-14 - generic `<bar>` upper bound (see the
+         * value= branch directly above; max=0 means "no fill"). */
+        e->bar_max = atoi(val);
     } else if (strcmp(name, "content") == 0) {
         /* REAL, NEW 2026-09-05 (pdl-read's own real "display a data-
          * driven page of text" need, found live: putting multi-line
@@ -2833,6 +2844,16 @@ static struct timespec g_map_time;
 static int g_focus_nav = 1;
 static int g_n_nav = 0;
 static Elem *g_nav[MAX_ELEMS];
+/* REAL, NEW 2026-09-14 (generic `<bar>` click-to-seek) - the raw
+ * window-local click X a human hit a <bar> with, relative to the bar's
+ * own x so the fraction is (click_x - e->x)/e->w. Set by popup_handle_
+ * click()'s own bar hit-test immediately before activate_focused() runs
+ * the bar's onclick (that generic dispatcher sees g_focus_nav, not the
+ * pointer, so the coordinate is carried here instead). -1 = no pending
+ * bar click, which activate_focused()'s bar branch uses to run the SAME
+ * command the other generic dispatch paths use (Enter on a focused bar
+ * seeks to the current playhead, e.g. half when no bar click is pending). */
+static int g_bar_click_x = -1;
 /* REAL, NEW 2026-08-31 - moved up here (from its own real definition
  * site right before activate_focused(), further down this file) so
  * khtpm_draw_core.c's own #include below can see it: a cli_io element
@@ -4042,10 +4063,45 @@ static int sprite_grid_visual_lines(const Elem *c, int w) {
     return lines < 1 ? 1 : lines;
 }
 
+/* REAL, NEW 2026-09-12 (NETWORK-BROWSER-VIDEO-V3-DESIGN.md §2/§2.3) - a
+ * canvas INSIDE a <scrolllist> gets a real multi-row span so the live
+ * video surface is scrollable content, not a 1-row sliver. Frame height
+ * comes from the SAME sibling receipt kh_draw_canvas() reads
+ * (<base>.receipt.txt, frame_h=/overlay_h= priority - matching build
+ * convention so one contract sizes both layout AND paint), squashed to
+ * ROW_H units. No file open on the hot path: NaN-proof, and a missing
+ * receipt (producer still writing) yields a 1-row placeholder at worst. */
+static int scroll_canvas_frame_h(const Elem *c) {
+    if (!c || !c->sprite[0]) return 0;
+    char rc[512];
+    { const char *dot = strrchr(c->sprite, '.');
+      if (dot && strcmp(dot, ".raw") == 0)
+          snprintf(rc, sizeof(rc), "%.*s.receipt.txt", (int)(dot - c->sprite), c->sprite);
+      else
+          snprintf(rc, sizeof(rc), "%s.receipt.txt", c->sprite);
+    }
+    int h = 0;
+    FILE *rf = fopen(rc, "r");
+    if (rf) {
+        char l[128];
+        while (fgets(l, sizeof(l), rf)) {
+            if (!strncmp(l, "overlay_h=", 10)) h = atoi(l + 10);
+            else if (!h && !strncmp(l, "frame_h=", 8)) h = atoi(l + 8);
+        }
+        fclose(rf);
+    }
+    return h;
+}
+
 static int scroll_row_span(const Elem *c, int w) {
     if (scroll_is_sprite_grid_row(c)) {
         int line_span = (SPRITE_GRID_TILE_H + ROW_H - 1) / ROW_H;
         return sprite_grid_visual_lines(c, w) * line_span;
+    }
+    if (c && strcmp(c->tag, "canvas") == 0) {
+        int fh = scroll_canvas_frame_h(c);
+        if (fh < ROW_H) fh = ROW_H;
+        return (fh + ROW_H - 1) / ROW_H;
     }
     if (c && c->sprite[0]) return (64 + ROW_H + 8 + ROW_H - 1) / ROW_H; /* 64px blit + one ROW_H for the nav chip */
     /* REAL FIX 2026-09-03 (direct live report: co-lab-hai's own long
@@ -4144,7 +4200,9 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
         if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0 ||
-            strcmp(c->tag, "cli_io") == 0 || strcmp(c->tag, "text_area") == 0 || scroll_is_sprite_grid_row(c))
+            strcmp(c->tag, "cli_io") == 0 || strcmp(c->tag, "text_area") == 0 ||
+            strcmp(c->tag, "canvas") == 0 || strcmp(c->tag, "bar") == 0 ||
+            scroll_is_sprite_grid_row(c))
             total += scroll_row_span(c, w);
     }
     int max_scroll = total > visible_rows ? total - visible_rows : 0;
@@ -4180,8 +4238,12 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
         int is_grid = scroll_is_sprite_grid_row(c);
+        /* a canvas inside a scroll window is a real content row too
+         * (V3 video): same clip rules + own span from the receipt */
         if (!is_grid && strcmp(c->tag, "item") != 0 && strcmp(c->tag, "text") != 0 &&
-            strcmp(c->tag, "cli_io") != 0 && strcmp(c->tag, "text_area") != 0) continue;
+            strcmp(c->tag, "cli_io") != 0 && strcmp(c->tag, "text_area") != 0 &&
+            strcmp(c->tag, "canvas") != 0 && strcmp(c->tag, "bar") != 0) continue;
+        if (strcmp(c->tag, "canvas") == 0) g_has_canvas = 1; /* live surface -> 30fps tick */
         int span = scroll_row_span(c, inner_w);
         int visible = (row + span > *scroll && row < *scroll + visible_rows);
         if (is_grid) {
@@ -4189,7 +4251,8 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
         } else if (visible) {
             c->x = x; c->y = content_y + (row - *scroll) * ROW_H; c->w = inner_w; c->h = span * ROW_H;
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
-            if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "cli_io") == 0 || strcmp(c->tag, "text_area") == 0) {
+            if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "cli_io") == 0 ||
+                strcmp(c->tag, "text_area") == 0 || strcmp(c->tag, "bar") == 0) {
                 c->nav_index = ++g_n_nav;
                 g_nav[g_n_nav - 1] = c;
                 if (*out_lo == 0) *out_lo = c->nav_index;
@@ -4279,7 +4342,7 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
          * own real, final x/y/h - a trigger living inside a toolbar
          * row, not just a bare <item>, needs that same guarantee). */
         if (elem_has_class(c, "dropdown-child")) continue;
-        if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0) {
+        if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0 || strcmp(c->tag, "bar") == 0) {
             /* REAL FIX 2026-09-03 (direct live report: co-lab-hai's own
              * PENDING banner still didn't wrap after scroll_row_span()'s
              * own fix - root cause: that banner is a direct <text> child
@@ -4291,7 +4354,7 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
             int span = scroll_row_span(c, w);
             c->x = x; c->y = y_cursor; c->w = w; c->h = span * ROW_H;
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
-            if (strcmp(c->tag, "item") == 0) { c->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = c; }
+            if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "bar") == 0) { c->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = c; }
             else c->nav_index = 0;
             y_cursor += span * ROW_H;
         } else if (strcmp(c->tag, "row") == 0 && elem_has_class(c, "toolbar") && !elem_has_class(c, "pal-grid-row")) {
@@ -7899,6 +7962,48 @@ static void activate_focused(void) {
         }
         return;
     }
+    /* REAL, NEW 2026-09-14 (generic `<bar>` click-to-seek, same
+     * "recognized element handles itself before generic dispatch()"
+     * order as ACTIVATE/SCROLLUP right above) - a <bar> onClick carries a
+     * literal `%FRAC` placeholder (set by the projector) that must hold
+     * the 0.0..1.0 fraction of the exact click point: Substitute the
+     * real value from g_bar_click_x (popup_handle_click()'s own bar
+     * hit-test), then dispatch the finished command. With no pending
+     * click (Enter on a focused bar) the placeholder resolves to the
+     * playhead's own current fraction when max>0, else 0.5 - a same-spot
+     * Enter is then a harmless no-op seek for the common video consumer. */
+    if (strcmp(item->tag, "bar") == 0 && item->onclick[0]) {
+        double frac;
+        if (g_bar_click_x >= item->x) {
+            frac = (item->w > 0) ? (double)(g_bar_click_x - item->x) / item->w : 0.0;
+        } else if (item->bar_max > 0) {
+            frac = (double)item->bar_value / item->bar_max;
+        } else {
+            frac = 0.5;
+        }
+        if (frac < 0.0) frac = 0.0;
+        if (frac > 1.0) frac = 1.0;
+        char cmd[sizeof(item->onclick) + 24];
+        const char *ph = strstr(item->onclick, "%FRAC");
+        if (ph) {
+            char frac_s[16];
+            snprintf(frac_s, sizeof(frac_s), "%.4f", frac);
+            size_t pre = (size_t)(ph - item->onclick);
+            size_t post = strlen(ph + 5);
+            if (pre + strlen(frac_s) + post < sizeof(cmd)) {
+                memcpy(cmd, item->onclick, pre);
+                memcpy(cmd + pre, frac_s, strlen(frac_s));
+                memcpy(cmd + pre + strlen(frac_s), ph + 5, post + 1);
+            } else {
+                snprintf(cmd, sizeof(cmd), "%s", item->onclick);
+            }
+        } else {
+            snprintf(cmd, sizeof(cmd), "%s", item->onclick);
+        }
+        g_bar_click_x = -1; /* one pending bar click, one substitution */
+        dispatch(cmd);
+        return;
+    }
     if (item->onclick[0]) dispatch(item->onclick);
 }
 
@@ -10129,6 +10234,8 @@ static int kh_input_offset_at_click(Elem *e, int px, int py) {
 }
 
 static void popup_handle_click(int px, int py) {
+    g_bar_click_x = -1; /* fresh frame: no pending bar click until the
+                         * bar-specific hit-test below arms one */
     /* REAL, NEW 2026-08-29 (direct instruction: "i think whole house
      * should have the same single|doubleclick rule or it could be
      * confusing... it should be house wide if possible/ez") - same
@@ -10150,6 +10257,11 @@ static void popup_handle_click(int px, int py) {
     for (int i = i0; i < i1; i++) {
         Elem *it = g_nav[i];
         if (px >= it->x && px < it->x + it->w && py >= it->y && py < it->y + it->h) {
+            /* generic <bar>: remember the exact click X (relative-to-x
+             * fraction is computed in activate_focused()'s bar branch =
+             * the ONLY place a bar click can actually reach the onClick,
+             * since Click is a pointer form of the exact same Enter). */
+            g_bar_click_x = (strcmp(it->tag, "bar") == 0) ? px : -1;
             if (!click_focus_then_activate(it)) { redraw(); return; }
             activate_focused();
             /* REAL, NEW 2026-09-14, direct live report ("shift arrow
