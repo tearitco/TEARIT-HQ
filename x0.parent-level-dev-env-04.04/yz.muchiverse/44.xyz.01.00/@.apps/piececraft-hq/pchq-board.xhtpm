@@ -51,7 +51,7 @@
       <repeat count="${n_desk_opts}" bind="d">
         <item id="do-${d.#}" class="pchq-menu-row dropdown-child ${d.active}" target_id="tb-desk"
               label="${d.label}"
-              action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'desk' '${d.#}'"/>
+              action="'${HOUSE}/@.apps/piececraft-hq/ops/pchq_board_action.sh' '${bv_session}' 'desk' '${d.id}'"/>
       </repeat>
       <item id="dm-cancel" class="pchq-menu-row dropdown-child quiet" target_id="tb-desk"
             label="- cancel -" action="void"/>

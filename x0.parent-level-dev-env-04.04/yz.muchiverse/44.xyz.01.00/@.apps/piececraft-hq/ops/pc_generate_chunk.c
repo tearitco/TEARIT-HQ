@@ -283,11 +283,11 @@ static const int tree_row[TREE_COUNT] = {4, 4, 12, 12};
  * else flat) - fully backward compatible with mineclonia_sample/
  * cdda_sample, which declare no extrusion.pdl of their own. */
 #define MAX_EXTRUDE_GLYPHS 32
-static void load_extrusion_table(const char *map_id, char glyphs[MAX_EXTRUDE_GLYPHS], int deltas[MAX_EXTRUDE_GLYPHS], int *n, int *default_delta) {
+static void load_extrusion_table(const char *map_id, const char *desk_id, char glyphs[MAX_EXTRUDE_GLYPHS], int deltas[MAX_EXTRUDE_GLYPHS], int *n, int *default_delta) {
     *n = 0;
     *default_delta = 0;
     char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/pieces/system/maps/%s/desk1/extrusion.pdl", real_root, map_id);
+    snprintf(path, sizeof(path), "%s/pieces/system/maps/%s/%s/extrusion.pdl", real_root, map_id, desk_id);
     FILE *f = host_fopen(path, "r");
     if (!f) return;
     char line[256];
@@ -317,18 +317,20 @@ static void load_extrusion_table(const char *map_id, char glyphs[MAX_EXTRUDE_GLY
  * 'desk1'... without desk there is no map. file = dir desk = map") -
  * a map_id directory is a real PROJECT (game.pdl declares its desks);
  * the actual map DATA lives one level deeper, under a real desk
- * subdirectory - `pieces/system/maps/<map_id>/desk1/map.txt`, not
- * directly under the project dir. v1 scope: always the first desk
- * (hardcoded "desk1"), matching the direct instruction - real desk
- * SELECTION (picking desk2/desk3/etc.) is separate, later work, not
- * silently faked here. */
-static int load_map_surface(const char *map_id, int surface[CHUNK_DIM][CHUNK_DIM]) {
+ * subdirectory - `pieces/system/maps/<map_id>/<desk_id>/map.txt`.
+ *
+ * REAL FIX 2026-09-15 (2), direct live follow-up ("what if we made a
+ * default desk 2... so i could validate desk switching works") - desk
+ * was hardcoded "desk1" above; now a real, caller-supplied desk_id
+ * (defaults to "desk1" in main() below when none given) so a second
+ * desk is genuinely loadable, not just a folder that's never read. */
+static int load_map_surface(const char *map_id, const char *desk_id, int surface[CHUNK_DIM][CHUNK_DIM], char surface_glyph[CHUNK_DIM][CHUNK_DIM]) {
     char map_path[PATH_BUF];
-    snprintf(map_path, sizeof(map_path), "%s/pieces/system/maps/%s/desk1/map.txt", real_root, map_id);
+    snprintf(map_path, sizeof(map_path), "%s/pieces/system/maps/%s/%s/map.txt", real_root, map_id, desk_id);
     FILE *f = host_fopen(map_path, "r");
     if (!f) return 1;
     char ex_glyphs[MAX_EXTRUDE_GLYPHS]; int ex_deltas[MAX_EXTRUDE_GLYPHS], ex_n, ex_default;
-    load_extrusion_table(map_id, ex_glyphs, ex_deltas, &ex_n, &ex_default);
+    load_extrusion_table(map_id, desk_id, ex_glyphs, ex_deltas, &ex_n, &ex_default);
     char line[CHUNK_DIM + 8];
     int row = 0;
     while (row < CHUNK_DIM && fgets(line, sizeof(line), f)) {
@@ -339,6 +341,18 @@ static int load_map_surface(const char *map_id, int surface[CHUNK_DIM][CHUNK_DIM
             int delta = ex_n > 0 ? ex_default : (glyph == 'W' ? 3 : 0); /* no table at all = old hardcoded rule */
             for (int i = 0; i < ex_n; i++) if (ex_glyphs[i] == glyph) { delta = ex_deltas[i]; break; }
             surface[row][col] = FLAT_SURFACE_Z + delta;
+            /* REAL, NEW 2026-09-15 (3), direct live report ("the view
+             * didn't change... maybe the map could use red blocks
+             * instead of grass so i'd know") - the surface voxel was
+             * ALWAYS hardcoded ',' (grass) below, regardless of the
+             * map's own glyph - a real map switch only ever showed up
+             * as a subtle height bump, easy to miss entirely. Now the
+             * map's own glyph (terrain_legend.txt's real vocabulary,
+             * e.g. 'R'=redblock) is threaded straight through to the
+             * surface voxel instead of being discarded after computing
+             * height. 'f' (bare floor, no legend entry) still reads as
+             * plain grass, matching the old default look exactly. */
+            surface_glyph[row][col] = (glyph == 'f') ? ',' : glyph;
         }
         row++;
     }
@@ -346,14 +360,16 @@ static int load_map_surface(const char *map_id, int surface[CHUNK_DIM][CHUNK_DIM
     /* Any row the file didn't provide (map shorter than CHUNK_DIM)
      * defaults to flat walkable floor, same as a too-short line above. */
     for (; row < CHUNK_DIM; row++)
-        for (int col = 0; col < CHUNK_DIM; col++)
+        for (int col = 0; col < CHUNK_DIM; col++) {
             surface[row][col] = FLAT_SURFACE_Z;
+            surface_glyph[row][col] = ',';
+        }
     return 0;
 }
 
 int main(int argc, char **argv) {
     if (argc < 4) {
-        fprintf(stderr, "Usage: pc_generate_chunk.+x <seed> <chunk_x> <chunk_y> [flat|map:<map_id>]\n");
+        fprintf(stderr, "Usage: pc_generate_chunk.+x <seed> <chunk_x> <chunk_y> [flat|map:<map_id>[:<desk_id>]]\n");
         return 1;
     }
     resolve_root();
@@ -362,7 +378,25 @@ int main(int argc, char **argv) {
     int chunk_x = atoi(argv[2]);
     int chunk_y = atoi(argv[3]);
     int flat_mode = (argc >= 5 && strcmp(argv[4], "flat") == 0);
-    const char *map_id = (argc >= 5 && strncmp(argv[4], "map:", 4) == 0) ? argv[4] + 4 : NULL;
+    static char map_id_buf[128];
+    static char desk_id_buf[64];
+    const char *map_id = NULL;
+    snprintf(desk_id_buf, sizeof(desk_id_buf), "desk1");   /* real default: v1's only desk */
+    if (argc >= 5 && strncmp(argv[4], "map:", 4) == 0) {
+        const char *rest = argv[4] + 4;
+        const char *colon = strchr(rest, ':');
+        if (colon) {
+            int mlen = (int)(colon - rest);
+            if (mlen >= (int)sizeof(map_id_buf)) mlen = (int)sizeof(map_id_buf) - 1;
+            memcpy(map_id_buf, rest, (size_t)mlen);
+            map_id_buf[mlen] = '\0';
+            snprintf(desk_id_buf, sizeof(desk_id_buf), "%s", colon + 1);
+        } else {
+            snprintf(map_id_buf, sizeof(map_id_buf), "%s", rest);
+        }
+        map_id = map_id_buf;
+    }
+    const char *desk_id = desk_id_buf;
 
     char chunk_dir[PATH_BUF];
     char mkdir_cmd[PATH_BUF + 16];
@@ -380,9 +414,13 @@ int main(int argc, char **argv) {
      * (base 16, middle of 32). Multiple biomes / real noise octaves are
      * later work (design §6), not Phase 1's bar either way. */
     int surface[CHUNK_DIM][CHUNK_DIM];
+    char surface_glyph[CHUNK_DIM][CHUNK_DIM];
+    for (int row = 0; row < CHUNK_DIM; row++)
+        for (int col = 0; col < CHUNK_DIM; col++)
+            surface_glyph[row][col] = ',';   /* real default: plain grass, same look as before this fix */
     int map_load_failed = 0;
     if (map_id) {
-        map_load_failed = load_map_surface(map_id, surface);
+        map_load_failed = load_map_surface(map_id, desk_id, surface, surface_glyph);
     }
     if (!map_id || map_load_failed) {
         for (int row = 0; row < CHUNK_DIM; row++) {
@@ -417,10 +455,10 @@ int main(int argc, char **argv) {
                  * phymoji_entities.txt, NOT embedded as terrain glyphs
                  * here anymore. Ground under a tree column is now plain
                  * grass, same as everywhere else. */
-                if (z > sh) glyph = '_';         /* air */
-                else if (z == sh) glyph = ',';    /* grass surface */
-                else if (z >= sh - 3) glyph = '.'; /* dirt subsurface */
-                else glyph = 's';                  /* stone below */
+                if (z > sh) glyph = '_';                  /* air */
+                else if (z == sh) glyph = surface_glyph[row][col]; /* real map glyph, was hardcoded ',' */
+                else if (z >= sh - 3) glyph = '.';         /* dirt subsurface */
+                else glyph = 's';                          /* stone below */
                 fputc(glyph, zf);
             }
             fputc('\n', zf);
@@ -487,6 +525,9 @@ int main(int argc, char **argv) {
      * - a blank map_id is the real, honest "no static map loaded, no
      * trigger check to run" signal, not a magic sentinel string. */
     write_kv(world_state_path, "map_id", map_id ? map_id : "");
+    /* REAL, NEW 2026-09-15 (2) - desk switching's own live state, same
+     * empty-means-nothing-loaded convention as map_id above. */
+    write_kv(world_state_path, "desk_id", map_id ? desk_id : "");
 
     /* pieces/world_01/phymoji_entities.txt - real positioned phymoji
      * objects (phymoji.md §4b), one "entity_id,x,y,z" line per placed

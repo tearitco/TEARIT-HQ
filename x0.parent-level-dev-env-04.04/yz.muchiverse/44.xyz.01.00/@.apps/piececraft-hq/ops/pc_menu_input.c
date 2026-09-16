@@ -876,6 +876,22 @@ int main(int argc, char **argv) {
         char tickbuf[16];
         snprintf(tickbuf, sizeof(tickbuf), "tick %d", tick);
         write_kv(hud_path, "line1", tickbuf);
+        /* REAL, NEW 2026-09-15 (3), direct live request ("maybe u can
+         * add <filename>:<desk-name> to the hud debug display for
+         * sanity") - a real, live readback of exactly what this SAME
+         * session thinks is loaded (world_01/state.txt's own map_id/
+         * desk_id, the same two fields CONFIRM_START_MAP/CONFIRM_SET_
+         * DESK write) - lets a click be sanity-checked without
+         * guessing from the render alone whether a session picked up a
+         * desk switch at all. */
+        char map_id_hud[128] = "", desk_id_hud[64] = "";
+        read_kv_str_local(world_state_path, "map_id", map_id_hud, sizeof(map_id_hud));
+        read_kv_str_local(world_state_path, "desk_id", desk_id_hud, sizeof(desk_id_hud));
+        char mdbuf[192];
+        snprintf(mdbuf, sizeof(mdbuf), "%s:%s",
+                 map_id_hud[0] ? map_id_hud : "(none)",
+                 desk_id_hud[0] ? desk_id_hud : "(none)");
+        write_kv(hud_path, "line2", mdbuf);
     }
 
     char state_path[PATH_BUF], config_path[PATH_BUF];
@@ -1098,6 +1114,60 @@ int main(int argc, char **argv) {
             launch_trigger_watcher_if_needed(project_root);
 
             snprintf(message, sizeof(message), "Map '%s' loaded. Game started.", map_id_arg);
+        } else if (strncmp(cmd, "CONFIRM_SET_DESK:", sizeof("CONFIRM_SET_DESK:") - 1) == 0) {
+            /* REAL, NEW 2026-09-15 (2), direct live request ("what if
+             * we made a default desk 2... so i could validate desk
+             * switching works") - real desk switching, wired the same
+             * way CONFIRM_START_MAP is, deliberately using
+             * sizeof(LITERAL)-1 instead of a hand-counted length
+             * constant (per this same session's own off-by-one bug in
+             * CONFIRM_START_MAP just above, and the harness-hardening
+             * TODO it produced) so this can never suffer that exact
+             * class of bug. Reloads the CURRENTLY loaded map
+             * (world_01/state.txt's own map_id, same live field
+             * CONFIRM_START_MAP/pc_generate_chunk.c write/read - NOT
+             * board_config.txt) with a different desk_id - a no-op if
+             * no map is loaded (empty map_id = procedural/flat world,
+             * no desk concept applies). */
+            char real_root_local[PATH_BUF];
+            resolve_real_root(project_root, real_root_local, sizeof(real_root_local));
+            char world_state_path[PATH_BUF];
+            snprintf(world_state_path, sizeof(world_state_path), "%s/pieces/world_01/state.txt", real_root_local);
+            char cur_map_id[128];
+            read_kv_str_local(world_state_path, "map_id", cur_map_id, sizeof(cur_map_id));
+            if (!cur_map_id[0]) {
+                snprintf(message, sizeof(message), "No map loaded - nothing to switch desks on.");
+            } else {
+                write_kv(config_path, "game_state", "playing");
+                char desk_id_arg[64];
+                snprintf(desk_id_arg, sizeof(desk_id_arg), "%s", cmd + (sizeof("CONFIRM_SET_DESK:") - 1));
+                unsigned int world_seed = (unsigned int)time(NULL) ^ (unsigned int)getpid();
+#ifdef _WIN32
+                {
+                    char env_kv[PATH_BUF + 32];
+                    snprintf(env_kv, sizeof(env_kv), "PRISC_PROJECT_ROOT=%s", project_root);
+                    _putenv(env_kv);
+                    char args[192];
+                    snprintf(args, sizeof(args), "%u 0 0 map:%s:%s", world_seed, cur_map_id, desk_id_arg);
+                    int ok = win_run_pe("ops\\+x\\pc_generate_chunk.+x", args, project_root, 120000, 0);
+                    if (!ok) {
+                        snprintf(message, sizeof(message),
+                                 "CONFIRM_SET_DESK: pc_generate_chunk failed to launch.");
+                    }
+                }
+#else
+                {
+                    char gen_cmd[PATH_BUF + 192];
+                    snprintf(gen_cmd, sizeof(gen_cmd),
+                             "PRISC_PROJECT_ROOT='%s' '%s/ops/+x/pc_generate_chunk.+x' %u 0 0 map:%s:%s >/dev/null 2>&1",
+                             project_root, project_root, world_seed, cur_map_id, desk_id_arg);
+                    { int _rc = system(gen_cmd); (void)_rc; }
+                }
+#endif
+                launch_clock_daemon_if_needed(project_root);
+                launch_trigger_watcher_if_needed(project_root);
+                snprintf(message, sizeof(message), "Desk '%s' loaded.", desk_id_arg);
+            }
         } else if (strcmp(cmd, "END_TURN") == 0) {
             /* Manual tick-advance fallback (design §5, phase2-plan.md
              * §6 step 1) - the SAME real world_01/state.txt tick

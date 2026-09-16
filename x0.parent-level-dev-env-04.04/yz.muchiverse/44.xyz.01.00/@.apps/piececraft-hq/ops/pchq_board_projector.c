@@ -15,7 +15,7 @@
  *   menu_open=file|desk|      file_menu_open=1|""  desk_menu_open=1|""
  *   n_file_opts=2  f_0_label=default-pdl  f_0_active=pchq-menu-active|""
  *                  f_1_label=default-legacy f_1_active=...
- *   n_desk_opts=1  d_0_label=<board>  d_0_active=pchq-menu-active
+ *   n_desk_opts=N  d_0_id=  d_0_label=  d_0_active=pchq-menu-active|""  ...
  *
  * The menu-open state + active_level/active_board come from
  * <pkg>/state/menu.txt (pchq_board_action.sh writes it) and
@@ -332,25 +332,52 @@ int main(int argc, char **argv) {
          * above (same dead board_config.txt key, never migrated when
          * active_level was fixed). The real, live source is the
          * currently-loaded project's own game.pdl (file=dir, desk=map
-         * hierarchy) - desk_1_label under pieces/system/maps/<project>/,
-         * project = map_id if set, else the real "default" project
-         * (never a bare literal "default" string - that project has its
-         * own real game.pdl too). */
-        {
-            char proj_id[64];
-            snprintf(proj_id, sizeof(proj_id), "%s", active_level[0] ? active_level : "default");
-            char game_pdl[PATH_MAX];
-            snprintf(game_pdl, sizeof(game_pdl), "%s/pieces/system/maps/%s/game.pdl", pkg, proj_id);
-            char proj_label[64] = "", desk_label[64] = "";
-            read_pdl_kv(game_pdl, "label", proj_label, sizeof(proj_label));
-            read_pdl_kv(game_pdl, "desk_1_label", desk_label, sizeof(desk_label));
-            if (proj_label[0] && desk_label[0])
-                snprintf(active_board, sizeof(active_board), "%s - %s", proj_label, desk_label);
-            else if (proj_label[0])
-                snprintf(active_board, sizeof(active_board), "%s", proj_label);
-            else
-                snprintf(active_board, sizeof(active_board), "default-map-1");
+         * hierarchy) - project = map_id if set, else the real "default"
+         * project (never a bare literal "default" string - that project
+         * has its own real game.pdl too).
+         *
+         * REAL, NEW 2026-09-15 (2), direct live follow-up ("what if we
+         * made a default desk 2... so i could validate desk switching
+         * works") - the Desk dropdown used to always publish exactly
+         * one fake row (n_desk_opts=1, hardcoded desk_1_label). Now
+         * reads game.pdl's own real n_desks and desk_N_id/desk_N_label
+         * rows and publishes all of them, with the CURRENTLY active one
+         * (world_01/state.txt's own live desk_id, same convention as
+         * map_id) marked pchq-menu-active - a real, clickable list
+         * instead of a static label. */
+        char active_desk_id[64] = "";
+        read_kv(world_state_al, "desk_id", active_desk_id, sizeof(active_desk_id));
+        if (!active_desk_id[0]) snprintf(active_desk_id, sizeof(active_desk_id), "desk1");
+        char proj_id[64];
+        snprintf(proj_id, sizeof(proj_id), "%s", active_level[0] ? active_level : "default");
+        char game_pdl[PATH_MAX];
+        snprintf(game_pdl, sizeof(game_pdl), "%s/pieces/system/maps/%s/game.pdl", pkg, proj_id);
+        char proj_label[64] = "";
+        read_pdl_kv(game_pdl, "label", proj_label, sizeof(proj_label));
+        char n_desks_s[8] = "";
+        read_pdl_kv(game_pdl, "n_desks", n_desks_s, sizeof(n_desks_s));
+        int n_desks = n_desks_s[0] ? atoi(n_desks_s) : 1;
+        if (n_desks < 1) n_desks = 1;
+        if (n_desks > 8) n_desks = 8;   /* real, generous v1 cap */
+        char cur_desk_label[64] = "";
+        for (int di = 1; di <= n_desks; di++) {
+            char k_id[32], k_lbl[32];
+            snprintf(k_id, sizeof(k_id), "desk_%d_id", di);
+            snprintf(k_lbl, sizeof(k_lbl), "desk_%d_label", di);
+            char d_id[64] = "", d_lbl[64] = "";
+            read_pdl_kv(game_pdl, k_id, d_id, sizeof(d_id));
+            read_pdl_kv(game_pdl, k_lbl, d_lbl, sizeof(d_lbl));
+            if (!d_id[0]) snprintf(d_id, sizeof(d_id), "desk%d", di);
+            if (!d_lbl[0]) snprintf(d_lbl, sizeof(d_lbl), "Desk %d", di);
+            if (strcmp(d_id, active_desk_id) == 0)
+                snprintf(cur_desk_label, sizeof(cur_desk_label), "%s", d_lbl);
         }
+        if (proj_label[0] && cur_desk_label[0])
+            snprintf(active_board, sizeof(active_board), "%s - %s", proj_label, cur_desk_label);
+        else if (proj_label[0])
+            snprintf(active_board, sizeof(active_board), "%s", proj_label);
+        else
+            snprintf(active_board, sizeof(active_board), "default-map-1");
         int is_legacy = (strcmp(active_level, "default-legacy") == 0);
         sanitize(active_board);
 
@@ -435,9 +462,25 @@ int main(int argc, char **argv) {
             strcmp(active_level, "test_terraces") == 0 ? "pchq-menu-active" : "",
             is_legacy ? "pchq-menu-active" : "");
 
-        off += (size_t)snprintf(ui + off, UIBUF - off,
-            "n_desk_opts=1\nd_0_label=%s\nd_0_active=pchq-menu-active\n",
-            active_board);
+        /* REAL, NEW 2026-09-15 (2) - real, per-desk rows (was always
+         * exactly one fake row). Re-reads game.pdl's desk_N_id/
+         * desk_N_label rows (same n_desks computed above) so every
+         * declared desk shows up as its own clickable row. */
+        off += (size_t)snprintf(ui + off, UIBUF - off, "n_desk_opts=%d\n", n_desks);
+        for (int di = 1; di <= n_desks; di++) {
+            char k_id[32], k_lbl[32];
+            snprintf(k_id, sizeof(k_id), "desk_%d_id", di);
+            snprintf(k_lbl, sizeof(k_lbl), "desk_%d_label", di);
+            char d_id[64] = "", d_lbl[64] = "";
+            read_pdl_kv(game_pdl, k_id, d_id, sizeof(d_id));
+            read_pdl_kv(game_pdl, k_lbl, d_lbl, sizeof(d_lbl));
+            if (!d_id[0]) snprintf(d_id, sizeof(d_id), "desk%d", di);
+            if (!d_lbl[0]) snprintf(d_lbl, sizeof(d_lbl), "Desk %d", di);
+            off += (size_t)snprintf(ui + off, UIBUF - off,
+                "d_%d_id=%s\nd_%d_label=%s\nd_%d_active=%s\n",
+                di - 1, d_id, di - 1, d_lbl, di - 1,
+                strcmp(d_id, active_desk_id) == 0 ? "pchq-menu-active" : "");
+        }
 
         /* MILESTONE C - the <footer> entities bar */
         {

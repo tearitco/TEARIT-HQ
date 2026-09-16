@@ -1,0 +1,9 @@
+SECTION      | KEY                | VALUE
+----------------------------------------------------------------------
+META         | map_id             | default
+META         | note                | Desk 2 - a real, visually distinct
+META         | note2               | checkerboard-of-walls, built so
+META         | note3               | switching Desk 1 <-> Desk 2 is
+META         | note4               | obviously different, not a guess.
+EXTRUDE      | R                  | 3
+EXTRUDE      | default             | 0

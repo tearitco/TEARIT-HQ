@@ -183,10 +183,21 @@ case "$VERB" in
         printf 'open=\n' > "$PKG_STATE/menu.txt"
         ;;
     desk)
-        engage_if_needed
-        append_key 54                                 # '6' - DESK_MENU reload
-        sleep 0.15
-        restore_interact
+        # REAL FIX 2026-09-15 (2), direct live follow-up ("what if we
+        # made a default desk 2... so i could validate desk switching
+        # works") - this used to send key 54 ('6' - DESK_MENU reload),
+        # which pc_menu_input.c has NO handler for at all (confirmed by
+        # direct code read, same as file-hq's own header comment found
+        # for key 54's OTHER dead caller) - real, permanently dead code,
+        # never worked. Real fix: same inbox-command mechanism
+        # file-hq/load-map already use, with a new CONFIRM_SET_DESK:
+        # command (pc_menu_input.c). ARG is the desk_id
+        # (pchq-board.xhtpm's repeat now passes ${d.id}, not a bare row
+        # index).
+        PCHQ="$(cd "$SELF_DIR/.." && pwd)"
+        [ -n "$ARG" ] || exit 0
+        mkdir -p "$PCHQ/pieces/system/widget_cmds"
+        printf 'CONFIRM_SET_DESK:%s\n' "$ARG" > "$PCHQ/pieces/system/widget_cmds/inbox.txt"
         printf 'open=\n' > "$PKG_STATE/menu.txt"
         ;;
     player)
