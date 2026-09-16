@@ -502,11 +502,24 @@ static int handle_one_key(int key) {
         int cam_mode_for_move = read_kv_int(state_path, "camera_mode", default_camera_mode(focused_project_root));
         int rmode_for_move    = read_kv_int(state_path, "render_mode", 1);
         /* The camera-relative rotate + handedness flip below is for the
-         * 3D first/third-person views (modes 1/2). The 2D top-down tile
-         * grid (render_mode==0, PCHQ-2D-TILE-VIEW) has NO camera
-         * handedness - "left" is just -x - so skip it there or the
-         * arrows come out mirrored (direct report 2026-09-09). */
-        if (rmode_for_move != 0 && (cam_mode_for_move == 1 || cam_mode_for_move == 2)) {
+         * 3D first/third-person views (modes 1/2, render_mode==1 ONLY).
+         * The 2D top-down tile grid (render_mode==0, PCHQ-2D-TILE-VIEW)
+         * has NO camera handedness - "left" is just -x - so skip it
+         * there or the arrows come out mirrored (direct report
+         * 2026-09-09). REAL FIX 2026-09-15, direct live report ("move
+         * left and right seem to be backwards" in the new side-scroll
+         * view): render_mode==2 (side-scroll, also flat/2D - see
+         * bv_render_2d.c's own load_side_board()) is NOT render_mode==0
+         * but IS just as camera-handedness-free - the old `!= 0` guard
+         * let it fall through into this 3D-only block whenever
+         * camera_mode happened to be 1/2 (the real, live default per
+         * arrow_config.txt's own default_camera_mode=2, persisting
+         * across the Tab switch into side view) - confirmed live: a
+         * direct ARROW_RIGHT test decreased selector_x instead of
+         * increasing it, exactly this bug. Tightened to `== 1` - this
+         * block is now provably 3D-mode-only, not merely
+         * "not-the-one-other-mode-anyone-thought-of-at-the-time". */
+        if (rmode_for_move == 1 && (cam_mode_for_move == 1 || cam_mode_for_move == 2)) {
             int cam_yaw_for_move = read_kv_int(state_path, "cam_yaw", 180);
             /* NEGATED 2026-08-04, direct user correction ("right and
              * left in 1/2 are still flipped... just swap them wherever
