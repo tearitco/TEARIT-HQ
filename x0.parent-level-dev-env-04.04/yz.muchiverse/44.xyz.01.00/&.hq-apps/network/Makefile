@@ -54,7 +54,10 @@ wcs: tests/worker_css_test.c nb_dom.c
 wcl: tests/cli_test.c
 	$(CC) $(CFLAGS) -o $@ tests/cli_test.c
 
-check: nbjs wdt wft wet wck wcn wst wps wcs wcl
+wpt: tests/worker_page_test.c nb_dom.c
+	$(CC) $(CFLAGS) -o $@ tests/worker_page_test.c nb_dom.c
+
+check: nbjs wdt wft wet wck wcn wst wps wcs wcl wpt
 	rm -rf /tmp/nbjs-check ; mkdir -p /tmp/nbjs-check
 	./wdt ./nbjs tests/worker_dom_test.js /tmp/nbjs-check
 	./wft ./nbjs tests/worker_fetch_test.js /tmp/nbjs-check
@@ -64,6 +67,7 @@ check: nbjs wdt wft wet wck wcn wst wps wcs wcl
 	NBW_CONSOLE=/tmp/nbjs-check/console.out ./wst ./nbjs /tmp/nbjs-check
 	NBW_CONSOLE=/tmp/nbjs-check/console.out ./wps ./nbjs /tmp/nbjs-check
 	NBW_CONSOLE=/tmp/nbjs-check/console.out ./wcs ./nbjs /tmp/nbjs-check
+	./wpt ./nbjs tests/worker_page_test.js /tmp/nbjs-check
 	./wcl ./nbjs tests /tmp/nbjs-check
 
 install: nbjs
@@ -71,6 +75,6 @@ install: nbjs
 	install -m 0755 nbjs $(DESTDIR)$(BINDIR)/nbjs
 
 clean:
-	rm -f nbjs nbw wdt wft wet wck wcn wst wps wcs wcl
+	rm -f nbjs nbw wdt wft wet wck wcn wst wps wcs wcl wpt
 
 .PHONY: check install clean
