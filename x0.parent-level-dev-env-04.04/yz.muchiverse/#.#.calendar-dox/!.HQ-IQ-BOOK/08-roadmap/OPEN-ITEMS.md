@@ -168,3 +168,12 @@ short version.*
     the registry's first FSM-kind entry — full spec: `design-docs/
     H-AI-LAB-DESIGN.md`. Not started — full list + file pointers:
     `design-docs/HARNECIENT-NIGHT-TRACK-HORIZON-ITEMS.md`.
+21. pc-hq camera_mode 5 (side-scroll/Mario): only modes 1-4 exist today
+    (confirmed by direct code read, no 5th mode, no prior design doc).
+    Docs-only pass done 2026-09-15 — `&.widgits/5-pov-widgit.md` §2g:
+    flat/side-viewed rendering (kin to `render_mode==0`'s 2D philosophy,
+    not a 5th 3D-raymarch angle), key `'5'`. Real open questions before
+    coding: does it live inside `render_mode==1`'s camera_mode switch or
+    need its own `render_mode` value; what "side" (which map axis)
+    means for a board with no fixed facing; whether it tracks the
+    selector the way modes 1/2 lock onto a hero. Not started.

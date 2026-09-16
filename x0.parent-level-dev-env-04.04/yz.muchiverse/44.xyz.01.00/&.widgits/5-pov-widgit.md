@@ -83,6 +83,57 @@ Switching `camera_mode` (via `'1'`-`'4'`, only live while `render_mode==1`) rese
 
 **For this widget**: since board-viewer has no "hero" (only a selector cursor, §7), modes 1/2 (hero-locked) don't map cleanly — mode 4 (bird's-eye, absolute map coords, camera detachable from any single entity) is the natural default and the one explicitly requested as most relevant to a board-overview widget. Modes 1-3 should still be built (per the resolved open item in §6 — "all 4 needed for debugging, not scoped down"), but the widget's own selector should likely stand in for "hero" in modes 1/2's hero-lock logic, same role mutaclysm's own hero plays there.
 
+### 2g. camera_mode 5 — side-scroll/platformer view (PLANNED, NOT YET BUILT)
+
+2026-09-15, direct live request: "in pc-hq, there are 4 camera modes,
+we wanted to add a 5th for 'side scroll' (mario) type mode." Confirmed
+via direct code read: only `camera_mode` 1-4 exist anywhere in the
+house today (`bv_menu_input.c`, `bv_compose_frame.c`) — no 5th mode, no
+prior design doc for one. This section exists so the idea has a real,
+findable home before it gets built, not because any code exists yet.
+
+**What it actually is, per direct clarification**: NOT a 5th angle on
+the existing 3D raymarch (modes 1-4 all live inside `render_mode==1`).
+It's closer kin to `render_mode==0` (the flat/2D "emoji mode" — see
+§2a/§2c) — same flat-rendering philosophy, but viewed **from the
+side** (an X-height plane, like a 2D platformer) instead of `render_
+mode==0`'s existing top-down X-Y plane. Think Mario, not an isometric/
+orbit camera angle.
+
+**Key**: `'5'` — the natural next digit extending the existing `'1'`-
+`'4'` camera_mode-switch convention (`is_pov_key` in `ops/choice.c`
+and its board-viewer port in `bv_menu_input.c`), per direct
+confirmation.
+
+**Real open design questions, not yet answered** (flagging honestly,
+not guessing ahead of a real build pass):
+- Does mode 5 live under `render_mode==1`'s `camera_mode` switch (so
+  `'5'` just becomes a 5th case dispatched the same way 1-4 are), or
+  does it need its own `render_mode` value (e.g. `render_mode==2`)
+  since its actual rendering approach is flat/2D-style, not 3D
+  raymarch, matching render_mode 0's philosophy more than 1-4's? The
+  existing `is_pov_key` gate (`render_mode == 1 && key in {1,2,3,4}`)
+  would need to either admit `'5'` into that same gate (if mode 5
+  stays inside render_mode==1's numbering) or grow a second, parallel
+  gate (if it's really a new render_mode value wearing camera_mode's
+  clothes).
+- What does "side" mean concretely for a board with no fixed
+  left-right facing (pc-hq's board isn't a corridor with one obvious
+  scroll axis) — does the player pick which map axis (X or Z) becomes
+  the visible "side," and how (a key, or does it follow current
+  yaw/facing like modes 1/2 do)?
+- Does the existing selector-cursor-as-hero-stand-in convention (§2e's
+  own "For this widget" note — board-viewer has no real hero) apply
+  the same way here, i.e. does the camera track the selector's
+  position along the chosen scroll axis the way modes 1/2 lock onto a
+  hero?
+
+**Build-order note, once these are answered**: same sequencing lesson
+as §2f above — a `camera_mode`/`render_mode` value with no matching
+render pass produces an empty/undefined view. Wire the key + state
+persistence first (testable via state-file inspection alone, same as
+§2f recommends), then build the actual flat-side-view render pass.
+
 ### 2f. render_mode requires real extrusion to be visible — sequencing note
 
 Toggling `render_mode` to 1 (3D) with no raymarch renderer built yet produces an empty/undefined 3D pass — it is not visually meaningful until §3's extrusion work (raymarch walls/terrain + entity extrusion) is actually implemented for this widget. Build order should be: (a) camera state + full key dispatch (this section) wired and persisting correctly — testable even before any 3D pixels exist, by inspecting the state file directly or via the receipt/PNG mechanism in §8 — then (b) the actual 3D render pass, so `'0'` has something real to reveal.
