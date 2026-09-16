@@ -21,6 +21,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
+#include <strings.h>   /* strcasecmp() - Toys dropdown alpha sort */
+#else
+#define strcasecmp _stricmp   /* MSVC/MinGW real equivalent, same as win_exe_suffix()'s own usage below */
+#endif
 #include <ctype.h>
 #include <errno.h>
 #include <time.h> /* clock_gettime/CLOCK_MONOTONIC - ktb_self_heal_active_desk_registry()'s own ~10s gate */
@@ -4506,6 +4511,7 @@ static int livedesk_build_toys_menu(const char *house_root, HQMenuItem *menu, in
      * N_* first, toys_menu_post_N_* last (falls back to the old
      * hardcoded "Cancel" only when the pdl defines no post rows). */
     int n = livedesk_pdl_menu_rows_staged(house_root, "toys", "pre", menu, max);
+    int pdl_pre_n = n;   /* real boundary - only rows scanned below get sorted */
     toys_scan_one_root(house_root, menu, max, &n);
     char apps_root[KTB_PATH_BUF];
     snprintf(apps_root, sizeof(apps_root), "%s/@.apps", house_root);
@@ -4530,6 +4536,19 @@ static int livedesk_build_toys_menu(const char *house_root, HQMenuItem *menu, in
     char hqapps_root[KTB_PATH_BUF];
     snprintf(hqapps_root, sizeof(hqapps_root), "%s/&.hq-apps", house_root);
     toys_scan_one_root(hqapps_root, menu, max, &n);
+    /* REAL, NEW 2026-09-15, direct live request ("is there a way we
+     * can get these toys drop downs to be sorted in abc order?") -
+     * the 4-root scan above is real, live directory order
+     * (readdir()'s own filesystem order, not alphabetical), so the
+     * list visibly reordered between opens. Sort only the SCANNED
+     * rows in place (pdl_pre_n..n) - the pdl-driven pre/post rows
+     * (including "Cancel") keep their own authored order/position,
+     * only the directory-scan portion gets alphabetized. */
+    for (int i = pdl_pre_n; i < n - 1; i++)
+        for (int j = i + 1; j < n; j++)
+            if (strcasecmp(menu[j].label, menu[i].label) < 0) {
+                HQMenuItem tmp = menu[i]; menu[i] = menu[j]; menu[j] = tmp;
+            }
     if (n < max) {
         int post = livedesk_pdl_menu_rows_staged(house_root, "toys", "post", &menu[n], max - n);
         n += post;
