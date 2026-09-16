@@ -400,6 +400,18 @@ static int handle_one_key(int key) {
     int key_pan_forward = 'w', key_pan_back = 's', key_pan_left = 'a', key_pan_right = 'd';
     int key_cam_down = 'c', key_cam_up = 'v';
     int key_pov_1 = '1', key_pov_2 = '2', key_pov_3 = '3', key_pov_4 = '4';
+    /* REAL, NEW 2026-09-15, direct live request ("we wanted to add a
+     * 5th [camera mode] for 'side scroll' (mario) type mode... key
+     * '5' is already bound to reset_view_alt/file_menu below - Tab
+     * (raw code 9, kh_key_history_code()'s own real Tab->9 mapping)
+     * is free in this file and free of khtpm's own generic dispatch
+     * while Interact Mode is armed, per direct live decision "what
+     * about tab?"). NOT a camera_mode like 1-4 - it's a real
+     * render_mode value (2), same flat-render family as render_mode 0
+     * (see bv_render_2d.c's own load_side_board() for why), so it's
+     * dispatched in its own block below, not folded into the 1-4
+     * ternary. */
+    int key_pov_5 = 9;
     int key_cjk_view = '`';   /* 96 - always -> 2D Chinese/ASCII view */
     int key_file_menu = '5', key_desk_menu = '6';
     if (focused_project_root[0]) {
@@ -455,6 +467,7 @@ static int handle_one_key(int key) {
         key_pov_2 = pdl_bind_int(kb_pdl_path, "KEY", "pov_mode_2", key_pov_2);
         key_pov_3 = pdl_bind_int(kb_pdl_path, "KEY", "pov_mode_3", key_pov_3);
         key_pov_4 = pdl_bind_int(kb_pdl_path, "KEY", "pov_mode_4", key_pov_4);
+        key_pov_5 = pdl_bind_int(kb_pdl_path, "KEY", "pov_mode_5", key_pov_5);
         key_cjk_view = pdl_bind_int(kb_pdl_path, "KEY", "cjk_view", key_cjk_view);
         key_file_menu = pdl_bind_int(kb_pdl_path, "KEY", "file_menu", key_file_menu);
         key_desk_menu = pdl_bind_int(kb_pdl_path, "KEY", "desk_menu", key_desk_menu);
@@ -835,7 +848,7 @@ static int handle_one_key(int key) {
 
     int render_mode = read_kv_int(state_path, "render_mode", default_render_mode(focused_project_root));
     if (!render_mode &&
-        key != key_pov_1 && key != key_pov_2 && key != key_pov_3 && key != key_pov_4) {
+        key != key_pov_1 && key != key_pov_2 && key != key_pov_3 && key != key_pov_4 && key != key_pov_5) {
         /* Most camera controls are a no-op unless render_mode==1 -
          * matches mutaclysm's own ops/camera_control.c. EXCEPTION
          * (direct instruction 2026-09-09, "1234 should always change
@@ -910,6 +923,21 @@ static int handle_one_key(int key) {
             write_kv_int(state_path, "cam_yaw", 180);
             write_kv_int(state_path, "cam_pitch", -90);
         }
+        bump_screen_changed(project_root);
+        return 0;
+    }
+
+    /* REAL, NEW 2026-09-15, direct live request ("we wanted to add a
+     * 5th [camera mode] for 'side scroll' (mario) type mode... its
+     * supposed to use 'emoji mode' like camera option 0") - Tab
+     * toggles render_mode 0 <-> 2 directly (a real render_mode value,
+     * not a camera_mode - see bv_render_2d.c's load_side_board() for
+     * the real reasoning: this is the SAME flat-render family as mode
+     * 0, sliced from the side instead of top-down). Toggling OUT of
+     * mode 1 (3D) via Tab also lands on 2 (matches '0''s own "always
+     * land somewhere sane" behavior), not a bare flip. */
+    if (key == key_pov_5) {
+        write_kv_int(state_path, "render_mode", render_mode == 2 ? 0 : 2);
         bump_screen_changed(project_root);
         return 0;
     }
