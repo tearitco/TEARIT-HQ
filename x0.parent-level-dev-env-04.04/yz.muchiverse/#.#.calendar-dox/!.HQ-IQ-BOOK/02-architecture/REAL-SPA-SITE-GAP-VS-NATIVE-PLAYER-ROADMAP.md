@@ -124,12 +124,22 @@ tiktok.com, reddit.com/new. There is no youtube-specific shortcut.
   to reuse the day `<DOM>/<CSS>/<script>` land.
 - The correct next milestone = **the network/session wall itself** (the
   one the user named 2026-09-14): a real page-originated XHR/fetch
-  surface + a cookie/localStorage session store, built AS ONE generic
-  engine (same one-engine rule: no per-site branches). Comments are NOT
-  a milestone — they are the *day* the page's own JS can issue an
-  InnerTube `next` call through that XHR wall with the session attached,
-  and the page renders its own rows. A manager projecting raw JSON rows
-  instead of the page rendering them is fake, is not on this roadmap.
-- Everything below retains the 4-gap framing (DOM / CSS / JS / session,
-  with `<XHR>`/fetch counted inside the session-gap) as the universal
-  test, not youtube-specific.
+
+## Wall-2/3 specification (write-through, per roadmap 2026-09-14, appended 2026-09-16)
+
+This is the working Specification for the two cells the roadmap table marks **NOT built** — the bottom-of-the-stack rungs that make comments real:
+
+### Requirements
+- [ ] A page-originated XHR/fetch surface — the page's own JS can issue an InnerTube `next` call *through the browser's* network layer.
+- [ ] A session store (cookies/localStorage) — NB_COOKIES_FILE jar + cookie-save_file write shape; hermetic tmpdir, file:// fixtures, zero network.
+- [ ] Session attach: the page-originated call carries the session cookie (4-tab + expires+secure shape) scoped to the page host, NOT the fixture host — cookie-scope separation survives page-originated dispatch.
+
+### Technical / design
+- Same generic engine (one-engine rule — NO per-site branch, NO new g_is_<project> global): the driver expands a template into page.js so the PAGE issues the XHR; no manager-side one-shot curl.
+- Hermetic: NB_COOKIES_FILE jar only in tmpdir; file:// fixture; pid-pipe LOAD/RENDER/STATUS protocol (worker_page_test driver shape proven at worker_fetch_test/worker_cookie_test/worker_page_test); exit-code assert `WPT-EXIT=0`.
+
+### KPIs
+- Hermetic page driver run proves page-originated `next` XHR with session attached: RENDER = `invoke/yt_next` HTTP-200 fixture + session cookie `sid=` — through the same generic engine, byte-exact sha-receipted before commit.
+- Rebuild + rerun the whole test wall (nbjs wdt wft wet wck wcn wst wps wcs wcl wpt) — green, hermetic.
+
+**Recipe for the day-rung:** Comments = the day a real page's own JS issues InnerTube `next` through this XHR wall with the session attached; a manager projecting raw JSON rows is fake and NOT on this roadmap.
