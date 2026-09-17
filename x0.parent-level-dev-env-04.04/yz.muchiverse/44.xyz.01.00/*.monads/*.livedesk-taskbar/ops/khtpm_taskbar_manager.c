@@ -518,6 +518,21 @@ const char *ktb_cell_id(const KtbState *s, int which) {
     return "";
 }
 
+/* REAL, NEW 2026-09-17 - the reverse of ktb_cell_id() (id->position
+ * instead of position->id), for real, self-correcting internal
+ * reopen calls (e.g. Player toggle reopening its own menu after a
+ * state flip) that used to hardcode a raw position number - the exact
+ * bug class bug_bounty.md's 2026-09-17 entry documents (5 separate
+ * sites drifted out of sync with the real dispatch chain after
+ * 5.menu's 2026-09-14 insertion). Falls back to `fallback_pos` if this
+ * id has no real declared row in livedesk_header_cell_ids.txt yet -
+ * same incremental-adoption convention as ktb_cell_id() itself. */
+int ktb_cell_pos_by_id(const KtbState *s, const char *id, int fallback_pos) {
+    for (int i = 0; i < s->n_cell_ids; i++)
+        if (strcmp(s->cell_id_str[i], id) == 0) return s->cell_id_pos[i];
+    return fallback_pos;
+}
+
 void ktb_write_pidfile(KtbState *s, int pid) {
     FILE *f = ktb_fopen(s->pid_path, "w");
     if (f) { fprintf(f, "%d\n", pid); fclose(f); }
@@ -4567,44 +4582,46 @@ void ktb_hq_open(KtbState *s, int which) {
      * "" (no real id declared for this position yet) falls through
      * unchanged to the existing chain. */
     const char *cid = ktb_cell_id(s, which);
-    if (strcmp(cid, "toys") == 0) { n = livedesk_build_toys_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX); }
-    /* palettes (positional 7, was 6 before 5.menu's 2026-09-14
-     * insertion) wired 2026-08-24 - cid branch first like toys;
-     * positional fallback while incremental adoption continues (no
-     * real "N|palettes" row in livedesk_header_cell_ids.txt as of this
-     * writing - only "12|toys" - so this dispatches via the which==7
-     * fallback today, not cid). */
+    /* REAL FIX 2026-09-17 (bug_bounty.md's own 2026-09-17 entry - 5
+     * separate sites drifted out of sync with the real header layout
+     * after 5.menu's 2026-09-14 insertion, because they were all
+     * still positional-only) - every declared cell in
+     * livedesk_header_cell_ids.txt now dispatches by cid FIRST, with
+     * the exact position that file currently declares kept as an
+     * `||` fallback (never removed - the house's own established
+     * incremental-adoption convention, same as toys/palettes already
+     * did). A cell whose row gets deleted from that file, or whose
+     * position changes without a code change, still resolves
+     * correctly via the OTHER side of the `||` - this can no longer
+     * drift silently the way the plain `which == N` chain did. */
+    if (strcmp(cid, "toys") == 0 || which == 12) { n = livedesk_build_toys_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX); }
     else if (strcmp(cid, "palettes") == 0 || which == 7) n = livedesk_build_palettes_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    else if (which == 2) n = livedesk_build_user_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    else if (which == 4) n = livedesk_build_desk_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    else if (which == 5) n = livedesk_build_menu_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    else if (which == 6) n = livedesk_build_pals_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    else if (which == 1) n = livedesk_build_hq_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    else if (which == 3) n = livedesk_build_file_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    else if (which == 9) n = livedesk_build_player_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    /* db (10, was 9 before 5.menu's 2026-09-14 insertion) restored
-     * 2026-08-12 - was parked as an inert placeholder
+    else if (strcmp(cid, "user") == 0 || which == 2) n = livedesk_build_user_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else if (strcmp(cid, "desk") == 0 || which == 4) n = livedesk_build_desk_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else if (strcmp(cid, "menu") == 0 || which == 5) n = livedesk_build_menu_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else if (strcmp(cid, "pals") == 0 || which == 6) n = livedesk_build_pals_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else if (strcmp(cid, "hq") == 0 || which == 1) n = livedesk_build_hq_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else if (strcmp(cid, "file") == 0 || which == 3) n = livedesk_build_file_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else if (strcmp(cid, "player") == 0 || which == 9) n = livedesk_build_player_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    /* db restored 2026-08-12 - was parked as an inert placeholder
      * while the real bug (header-click codes swallowed whenever ANY
      * cell's menu was already open, see dispatch_code()'s hq_open branch
      * in khtpm_taskbar_manager_main.c) got found and fixed; that bug
      * hit every cell, not just db, so db itself was never the problem.
      * See au11-hq/DB-HQ-HANDOFF.md for db-hq's still-placeholder status. */
-    else if (which == 10) n = livedesk_build_db_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    /* ai (15, was 14 before 5.menu's 2026-09-14 insertion) - real,
-     * wired 2026-08-12, see livedesk_build_ai_menu()'s own header
-     * comment. Was one of the bare inert cells this same catch-all
-     * comment below used to include. */
-    else if (which == 15) n = livedesk_build_ai_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    /* date/time (16, was 15) - clock menu, wired 2026-08-13 (au11-hq/
+    else if (strcmp(cid, "db") == 0 || which == 10) n = livedesk_build_db_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    /* ai - real, wired 2026-08-12, see livedesk_build_ai_menu()'s own
+     * header comment. Was one of the bare inert cells this same
+     * catch-all comment below used to include. */
+    else if (strcmp(cid, "ai") == 0 || which == 15) n = livedesk_build_ai_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    /* date/time - clock menu, wired 2026-08-13 (au11-hq/
      * 15.clock-design.md §5.2): root + internal sublevels 151
      * (clocks&cals) / 152 (reminders) / 153 (game-clock controls) / 154
      * (calendar view) - these internal sub-codes are unrelated to real
-     * header-cell positions, untouched by the 2026-09-14 shift. The
-     * header click itself routes here generically via
-     * KSC_HQ_HEADER_BASE (which = real click position, not parsed from
-     * any id string - see 5.menu's own header comment for the full
-     * 2026-09-14 renumbering this file went through). */
-    else if (which == 16) n = livedesk_build_clock_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+     * header-cell positions/identity, not migrated (see the 100/101/102
+     * internal-only codes just below for the same reasoning - they're
+     * never reached via a real header click at all). */
+    else if (strcmp(cid, "clock") == 0 || which == 16) n = livedesk_build_clock_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     else if (which == CLOCK_MENU_CLOCKS) n = livedesk_build_clock_cals_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     else if (which == CLOCK_MENU_REMINDERS) n = livedesk_build_clock_reminders_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     else if (which == CLOCK_MENU_GAME) n = livedesk_build_clock_game_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
@@ -4612,12 +4629,11 @@ void ktb_hq_open(KtbState *s, int which) {
     else if (which == 100) n = livedesk_build_session_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX); /* 100 = internal-only "session picker", reached from the file cell's "load" row (livedesk:load), never a header click directly - see ktb_hq_activate() */
     else if (which == 101) n = livedesk_build_db_ez_sections_menu(s->hq_menu, KTB_LIVEDESK_DYN_MAX); /* 101 = internal-only db-ez 14-section list, reached from db cell's "db-ez" row */
     else if (which == 102) n = livedesk_build_db_common_events_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX); /* 102 = internal-only Common Events list (global, house_root-wide), reached from db-ez's "Common Events" row */
-    /* network (14, was 13 before 5.menu's 2026-09-14 insertion) - real,
-     * wired 2026-08-31, see livedesk_build_network_menu()'s own header
-     * comment. Was one of the bare inert cells this same catch-all
-     * comment below used to include. */
-    else if (which == 14) n = livedesk_build_network_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    else { ktb_hq_close(s); return; } /* inert cell (8/11/12/13, "edit"/"plugins"/"toys" w/o real cid/"store") or unknown - close any open popup, no-op otherwise, matching the legacy exactly. Real numbers shifted 2026-09-14 - see 5.menu's own header comment above for why. */
+    /* network - real, wired 2026-08-31, see livedesk_build_network_
+     * menu()'s own header comment. Was one of the bare inert cells
+     * this same catch-all comment below used to include. */
+    else if (strcmp(cid, "network") == 0 || which == 14) n = livedesk_build_network_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else { ktb_hq_close(s); return; } /* inert cell (8/11/13, no real id declared - "edit"/"plugins"/"store") or unknown - close any open popup, no-op otherwise, matching the legacy exactly. */
     if (n <= 0) {
         snprintf(s->hq_menu[0].label, sizeof(s->hq_menu[0].label), "(empty)");
         s->hq_menu[0].command[0] = '\0';
@@ -4767,31 +4783,37 @@ void ktb_hq_activate(KtbState *s, int row) {
          *
          * REAL FIX 2026-09-14, direct live report ("can it not close
          * tb after?"): closing (ktb_hq_close()) after every toggle
-         * meant you had to reopen 8.player from scratch to even see
+         * meant you had to reopen player from scratch to even see
          * whether it changed - a real, needless extra step for what's
          * meant to be a quick, repeatable flip (matches always-on-
          * top's own real UX: that toggle never closes the taskbar
-         * either). Re-open the SAME menu (which=9, player - REAL FIX
-         * 2026-09-17: this said which=8 since the day it was written,
-         * already wrong even then - 5.menu's insertion that same day
-         * shifted player 8->9, and this line was never updated) instead
-         * of closing - reuses ktb_hq_open()'s own real build+publish+
-         * nav-claim logic verbatim (same function every fresh open
-         * already uses), so the label genuinely reflects the new state
-         * immediately, in place, no reopen needed. */
+         * either). Re-open the SAME menu instead of closing - reuses
+         * ktb_hq_open()'s own real build+publish+nav-claim logic
+         * verbatim (same function every fresh open already uses), so
+         * the label genuinely reflects the new state immediately, in
+         * place, no reopen needed.
+         *
+         * REAL FIX 2026-09-17: this hardcoded which=8 since the day it
+         * was written, already wrong even then - 5.menu's insertion
+         * that same day shifted player 8->9, and this line was never
+         * updated (part of bug_bounty.md's 2026-09-17 entry). Now
+         * resolved via ktb_cell_pos_by_id() - the real, data-declared
+         * id->position lookup (the reverse of ktb_cell_id(), same
+         * livedesk_header_cell_ids.txt "9|player" row) - so a future
+         * reorder can't silently break this reopen the same way
+         * again; 9 is kept only as the fallback for a missing row. */
         khtpm_save_play_mode(s->house_root, !khtpm_load_play_mode(s->house_root));
-        ktb_hq_open(s, 9);
+        ktb_hq_open(s, ktb_cell_pos_by_id(s, "player", 9));
         return;
     }
     if (strcmp(m->command, "livedesk:play-stop") == 0) {
         /* REAL, NEW 2026-09-15, direct live report ("our tb hq dropdown
          * player is missing 'stop'") - explicit force-off, distinct
          * from the toggle above (no read-current-state-first needed).
-         * Same re-open-in-place UX as play-toggle, same real reason.
-         * which=9 (player) - REAL FIX 2026-09-17, same stale-8 bug as
-         * play-toggle just above. */
+         * Same re-open-in-place UX as play-toggle, same real reason
+         * and same ktb_cell_pos_by_id() fix. */
         khtpm_save_play_mode(s->house_root, 0);
-        ktb_hq_open(s, 9);
+        ktb_hq_open(s, ktb_cell_pos_by_id(s, "player", 9));
         return;
     }
     if (strncmp(m->command, "widget:", 7) == 0) {
@@ -5063,7 +5085,20 @@ void ktb_hq_activate(KtbState *s, int row) {
          * (todo-a12.txt Phase A). */
         ktb_hq_open(s, 101);
     } else if (strcmp(m->command, "livedesk:db-ez-back") == 0) {
-        ktb_hq_open(s, 9);
+        /* REAL FIX 2026-09-17, found while fixing bug_bounty.md's
+         * 2026-09-17 entry (not one of the 5 sites originally found
+         * live - caught by grepping every ktb_hq_open(s, <literal>)
+         * call site while adding ktb_cell_pos_by_id()) - this reopened
+         * PLAYER (9), not DB (10), even though db-ez-sections/101 (see
+         * two cases above) is only ever reached from the DB cell's own
+         * "db-ez" row. "9" here matches db's OWN pre-5.menu position
+         * (see ktb_hq_open()'s own "db restored... was 9 before
+         * 5.menu" history) - this call site was simply never updated
+         * when db moved to 10. Real, silent misnavigation: clicking
+         * "back" from the db-ez section list landed you in the Player
+         * menu instead. Now resolved via ktb_cell_pos_by_id(), same as
+         * the play-toggle/play-stop sites above. */
+        ktb_hq_open(s, ktb_cell_pos_by_id(s, "db", 10));
     } else if (strcmp(m->command, "livedesk:db-ez-common-events") == 0) {
         ktb_hq_open(s, 102);
     } else if (strcmp(m->command, "livedesk:db-ez-common-events-back") == 0) {
@@ -5292,7 +5327,16 @@ void ktb_hq_activate(KtbState *s, int row) {
             ktb_hq_open(s, CLOCK_MENU_GAME);
             return;
         } else if (strcmp(rest, "back") == 0) {
-            ktb_hq_open(s, 15);
+            /* REAL FIX 2026-09-17, found the same way as db-ez-back
+             * (grepping every raw ktb_hq_open(s, <literal>) site) -
+             * this reopened AI (15), not CLOCK (16), even though every
+             * caller of this "back" is a clock sub-menu (clocks/
+             * reminders/game). "15" matches clock's OWN pre-5.menu
+             * position - never updated when clock moved to 16. Real,
+             * silent misnavigation: "back" from any clock sub-list
+             * landed you in the h-ai menu instead of the clock root.
+             * Now resolved via ktb_cell_pos_by_id(). */
+            ktb_hq_open(s, ktb_cell_pos_by_id(s, "clock", 16));
             return;
         } else if (strncmp(rest, "open:", 5) == 0) {
             snprintf(g_clock_sel_id, sizeof(g_clock_sel_id), "%s", rest + 5);

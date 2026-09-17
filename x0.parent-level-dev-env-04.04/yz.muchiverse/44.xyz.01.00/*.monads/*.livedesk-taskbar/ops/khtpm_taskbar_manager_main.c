@@ -402,8 +402,13 @@ static void publish_var_fragments(const KtbState *s, const char *house_root) {
          * TWO places (this one + publish_strip_ui()'s own duplicate
          * check) - pals moved from 5 to 6 when 5.menu was inserted
          * 2026-09-14, this comment's own citation was already stale
-         * the day it was written. */
-        int is_pals = (s->hq_open == 6);
+         * the day it was written. Now resolves via ktb_cell_id() (the
+         * real, data-declared position->id lookup,
+         * livedesk_header_cell_ids.txt's own "6|pals" row) first, the
+         * literal 6 kept only as the fallback for a missing/deleted
+         * row - same incremental-adoption convention as
+         * ktb_hq_open()'s own cid-first dispatch. */
+        int is_pals = (strcmp(ktb_cell_id(s, s->hq_open), "pals") == 0 || s->hq_open == 6);
         char pals_root[KTB_PATH_BUF] = "";
         if (is_pals) livedesk_pals_root(s->house_root, pals_root, sizeof(pals_root));
         for (int i = 0; i < s->hq_n_menu && off < sizeof(frag); i++) {
@@ -581,8 +586,11 @@ static void publish_strip_ui(const KtbState *s, const char *house_root) {
          * This one didn't break the dropdown itself (that's driven by
          * n_hqitems/drop_target, already correct), just meant pals
          * rows never got their real per-pal sprite icon (is_pals was
-         * true for "menu" instead of "pals"). */
-        int is_pals = (s->hq_open == 6);
+         * true for "menu" instead of "pals"). Now resolves via
+         * ktb_cell_id() first, literal 6 kept as fallback - see the
+         * other is_pals site's own header comment for the full
+         * reasoning. */
+        int is_pals = (strcmp(ktb_cell_id(s, s->hq_open), "pals") == 0 || s->hq_open == 6);
         char pals_root[KTB_PATH_BUF] = "";
         if (is_pals) livedesk_pals_root(s->house_root, pals_root, sizeof(pals_root));
         for (i = 0; i < s->hq_n_menu; i++) {

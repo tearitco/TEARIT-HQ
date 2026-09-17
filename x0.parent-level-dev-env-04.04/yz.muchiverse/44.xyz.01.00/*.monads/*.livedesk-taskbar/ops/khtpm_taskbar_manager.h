@@ -241,6 +241,7 @@ void ktb_init(KtbState *s, const char *house_root);
 /* REAL, NEW 2026-08-16 - see KtbState's own cell_id_pos/cell_id_str field comment. */
 void ktb_load_cell_ids(KtbState *s);
 const char *ktb_cell_id(const KtbState *s, int which);
+int ktb_cell_pos_by_id(const KtbState *s, const char *id, int fallback_pos);
 void ktb_write_pidfile(KtbState *s, int pid);
 void ktb_unlink_pidfile(const KtbState *s);
 
