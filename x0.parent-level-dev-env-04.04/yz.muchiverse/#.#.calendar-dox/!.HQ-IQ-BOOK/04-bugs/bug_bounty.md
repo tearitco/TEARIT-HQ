@@ -1,5 +1,84 @@
 # 🎯 bug_bounty.md — hard-to-pin / recurring bugs, tracked until closed
 
+---
+
+## ✅ CLOSED 2026-09-17: taskbar HQ header cells drifted after 5.menu's insertion - wrong labels, missing dropdowns, wrong reopen target
+
+**Reported:** direct live report - "i clicked h-ai, and i noticed it
+sais 'notes-clock' (instead of notes-hai) then i clicked clock. its
+dropdown is gone... and now nav is stuck." Follow-up clarified via a
+quick check: the real Clock header cell itself (not a mislabeled row)
+failed to show its dropdown - nav correctly focused the cell (the "^"
+indicator) but no rows ever appeared.
+
+**Root cause, confirmed by direct code read + a real grep of every
+`which == N` / `hq_open == N` site across both taskbar manager files**
+(not guessed from the old per-line comments, which turned out to be
+part of the problem): 5.menu's own 2026-09-14 insertion shifted every
+header cell from position 5 onward by one (`pals` 5→6, `palettes`
+6→7, `player` 8→9, `db` 9→10, `network` 13→14, `ai` 14→15, `clock`
+15→16 - confirmed against the real, current template,
+`khtpm_strip_header.xhtpm`'s own `strip-cell-N` declarations). The
+*live dispatch chain* (`ktb_hq_open()`'s own `which == N` chain) was
+updated correctly at the time. Five other places, checked one at a
+time and found stale, were not:
+
+1. `khtpm_taskbar_manager.c`'s notes-row fallback name-lookup switch
+   (only reached when `ktb_cell_id()` has no real declared id for a
+   position - true for every cell except "toys" today) still used the
+   PRE-5.menu numbering wholesale (`case 5: nm="pals"` should be
+   "menu"; `case 6: nm="palettes"` should be "pals"; `case 8:
+   nm="player"` should be db's old value on a cell that's really
+   inert; `case 13/14/15` for network/ai/clock should be 14/15/16;
+   `case 16` for clock didn't exist at all, falling to default "hq").
+   This is the direct cause of "notes-clock" instead of "notes-hai".
+2. `khtpm_taskbar_manager_main.c`'s `publish_strip_ui()` - the actual
+   root cause of the missing Clock dropdown: `if (s->hq_open >= 1 &&
+   s->hq_open <= 15)` gated whether `drop_target` got published at
+   all. Clock is `hq_open==16`, so this check failed, `drop_target`
+   published EMPTY, and the xhtpm template's dropdown-child rows
+   (`target_id="${drop_target}"`) had nowhere to attach - they never
+   rendered, even though `n_hqitems` itself was correct. The cell's
+   own nav focus still highlighted (driven by `hq_open` directly, not
+   `drop_target`), which is exactly the "shows '^', locks to the
+   number, but no dropdown" symptom reported live.
+3. Two separate `is_pals` checks (one in `publish_strip_ui()`, one in
+   the ASCII/text-mirror HQITEM fragment builder) both said `hq_open
+   == 5` (now "menu") instead of `== 6` (real "pals") - real per-pal
+   sprite icons in the Pals dropdown were silently never applied.
+4. `khtpm_taskbar_manager.c`'s `livedesk:play-toggle`/`livedesk:play-
+   stop` handlers both reopened `ktb_hq_open(s, 8)` after flipping
+   Play Mode - `which=8` is a genuinely inert cell today (no menu
+   builder dispatches there at all); Player is really 9. Both were
+   already wrong the same day they were written (2026-09-14) - 5.menu
+   landed the same day and this reopen call was never updated.
+
+**Fixed**: all five sites corrected to match the real, current
+dispatch chain (verified against the live template, not assumed).
+`publish_strip_ui()`'s own check now uses the real shared
+`KTB_STRIP_N_CELLS` macro instead of another hand-counted literal -
+the exact bug class every one of these five bugs was.
+
+**Real architecture gap, NOT fixed here** (direct live follow-up:
+"numbers arne't supposed to be hardcoded. they were supposed to be
+refactored to be dynamic, from .pdl like bottom tb. did we not do that
+yet?"): correct - `ktb_cell_id()` (the real, data-driven position→id
+lookup via `#.desktop/livedesk_header_cell_ids.txt`) exists and works,
+but that file has exactly ONE real entry (`12|toys`) as of this
+writing. Every other header cell still resolves through the
+positional `which == N` chain this whole bug class lives in. Fixing
+the five numbers is a real, necessary, immediate fix - it is not the
+same as finishing the migration OPEN-ITEMS.md #14 already tracks
+("Strip submenus → data-driven... the four directory-scanning builders
+(user/pals/toys/clock) still hardcoded"). That migration is real,
+separate, follow-up work, flagged here so the next pass doesn't
+mistake this fix for that one.
+
+**Verification**: rebuilt via `build_khtpm_strip.sh` (clean, no new
+warnings), restarted the live taskbar via `run_khtpm_strip.sh new`.
+
+---
+
 Different from `BUG-LOG.md` (append real fixed/found entries) and
 `03-pitfalls/` (lessons already extracted). This file is for a bug
 that's **real, reported more than once, and not yet fully explained**

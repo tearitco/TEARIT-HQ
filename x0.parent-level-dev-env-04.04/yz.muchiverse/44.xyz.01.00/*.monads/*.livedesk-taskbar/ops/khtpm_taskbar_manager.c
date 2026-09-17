@@ -4638,14 +4638,35 @@ void ktb_hq_open(KtbState *s, int which) {
         if (cell && cell[0]) {
             snprintf(cellname, sizeof(cellname), "%s", cell);
         } else {
+            /* REAL FIX 2026-09-17, direct live report ("i clicked h-ai,
+             * i noticed it sais 'notes-clock' (instead of notes-hai)")
+             * - this switch was STILL using the numbering from BEFORE
+             * 5.menu's 2026-09-14 insertion (see ktb_hq_open()'s own
+             * dispatch chain just above, and its per-cell comments
+             * documenting the real shift: palettes 6->7, db 9->10,
+             * ai 14->15, network 13->14, clock 15->16) - the real
+             * which==N dispatch chain was updated at the time, this
+             * FALLBACK name lookup (only reached when ktb_cell_id() has
+             * no real declared id for the position - true for every
+             * cell except "toys" today) never was. Drift was worse than
+             * just network/ai/clock: 5/6 were swapped (pals<->menu),
+             * 8/9 were off by one (player/db), not only the three the
+             * live report happened to hit. Rebuilt to match the real
+             * dispatch chain exactly, position for position, confirmed
+             * by direct grep of every real `which == N` case above
+             * (not reasoned from the old comments alone). which==8 is
+             * a genuinely inert cell today (no menu builder dispatches
+             * there) - default "hq" is correct for it, same as any
+             * other unmapped position. */
             const char *nm = "hq";
             switch (which) {
                 case 1: nm = "hq"; break;      case 2: nm = "user"; break;
                 case 3: nm = "file"; break;    case 4: nm = "desk"; break;
-                case 5: nm = "pals"; break;    case 6: nm = "palettes"; break;
-                case 8: nm = "player"; break;  case 9: nm = "db"; break;
-                case 13: nm = "network"; break; case 14: nm = "ai"; break;
-                case 15: nm = "clock"; break;  default: nm = "hq"; break;
+                case 5: nm = "menu"; break;    case 6: nm = "pals"; break;
+                case 7: nm = "palettes"; break; case 9: nm = "player"; break;
+                case 10: nm = "db"; break;
+                case 14: nm = "network"; break; case 15: nm = "ai"; break;
+                case 16: nm = "clock"; break;  default: nm = "hq"; break;
             }
             snprintf(cellname, sizeof(cellname), "%s", nm);
         }
@@ -4750,22 +4771,27 @@ void ktb_hq_activate(KtbState *s, int row) {
          * whether it changed - a real, needless extra step for what's
          * meant to be a quick, repeatable flip (matches always-on-
          * top's own real UX: that toggle never closes the taskbar
-         * either). Re-open the SAME menu (which=8) instead of closing
-         * - reuses ktb_hq_open()'s own real build+publish+nav-claim
-         * logic verbatim (same function every fresh open already
-         * uses), so the label genuinely reflects the new state
+         * either). Re-open the SAME menu (which=9, player - REAL FIX
+         * 2026-09-17: this said which=8 since the day it was written,
+         * already wrong even then - 5.menu's insertion that same day
+         * shifted player 8->9, and this line was never updated) instead
+         * of closing - reuses ktb_hq_open()'s own real build+publish+
+         * nav-claim logic verbatim (same function every fresh open
+         * already uses), so the label genuinely reflects the new state
          * immediately, in place, no reopen needed. */
         khtpm_save_play_mode(s->house_root, !khtpm_load_play_mode(s->house_root));
-        ktb_hq_open(s, 8);
+        ktb_hq_open(s, 9);
         return;
     }
     if (strcmp(m->command, "livedesk:play-stop") == 0) {
         /* REAL, NEW 2026-09-15, direct live report ("our tb hq dropdown
          * player is missing 'stop'") - explicit force-off, distinct
          * from the toggle above (no read-current-state-first needed).
-         * Same re-open-in-place UX as play-toggle, same real reason. */
+         * Same re-open-in-place UX as play-toggle, same real reason.
+         * which=9 (player) - REAL FIX 2026-09-17, same stale-8 bug as
+         * play-toggle just above. */
         khtpm_save_play_mode(s->house_root, 0);
-        ktb_hq_open(s, 8);
+        ktb_hq_open(s, 9);
         return;
     }
     if (strncmp(m->command, "widget:", 7) == 0) {
