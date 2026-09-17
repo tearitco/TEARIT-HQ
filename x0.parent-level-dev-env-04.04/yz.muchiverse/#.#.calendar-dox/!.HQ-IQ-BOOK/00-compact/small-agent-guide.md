@@ -68,6 +68,11 @@ is at `44.xyz.01.00/#.ref/menu/event-guides/mineclonia/`
 (`mcl_core.pdl`, `interact.pdl`) — read those before guessing at
 mineclonia mechanics.
 
+**Windows/Mac porting** — `00-compact/compact-win-mac.md`: real
+current status (Windows partial, Mac ~zero native work), the
+`win_posix_shim.h` / `*_win.c` pattern to copy, what's genuinely not
+started. Read before touching any cross-platform code.
+
 **LLMUD** — `08-roadmap/design-docs/LLMUD-INTEGRATION-DESIGN.md` did
 not exist as of 2026-09-17. If it's still missing when you look, a
 parallel design task is expected to create it soon — check for it

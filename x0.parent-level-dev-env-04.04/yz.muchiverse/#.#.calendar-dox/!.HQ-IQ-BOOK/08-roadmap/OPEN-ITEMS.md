@@ -4,7 +4,13 @@
 short version.*
 
 1. Events/db-hq: registry grew 2026-09-08 (`mr_world` — transfer/shop/battle/fade are **kv only**). db-hq still only Common Events is an editable tab. Catalog: `TILESETS-EVENTS-AND-GAME-CLONES.md`.
-2. Cross-platform (Windows/Mac) work: pending.
+2. Cross-platform (Windows/Mac) work: **more specific now** — Windows
+   has real partial coverage (`win_posix_shim.h` in 4 apps, 3 real
+   `*_win.c` files incl. the taskbar strip's Win32 GDI twin), biggest
+   gap is `khtpm_core_render.c` (8 window modes) having no Windows
+   twin at all. Mac has zero native platform-specific files — works
+   today only via XQuartz. See `00-compact/compact-win-mac.md` for the
+   verified summary + real doc pointers.
 3. Generic khtpm dispatch table (replace `g_is_<mode>` flags):
    designed, not built.
 4. ASCII/headless khtpm renderer: DONE (2026-09-06). `cli` strip
