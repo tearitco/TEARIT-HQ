@@ -73,6 +73,12 @@ current status (Windows partial, Mac ~zero native work), the
 `win_posix_shim.h` / `*_win.c` pattern to copy, what's genuinely not
 started. Read before touching any cross-platform code.
 
+**PALCRAFT / mineclonia-Grok-handoff** — `00-compact/compact-
+mineclonia-grok-handoff.md`: real, live, active delegation to Grok
+(started 2026-09-15) building block-event Minecraft-clone content on
+piececraft-hq's existing voxel world. Read before touching anything
+under `common_events/palcraft_*` or piececraft-hq's `ops/` files.
+
 **Store tab / GitHub-backed install** — `00-compact/compact-store-
 install.md`: planned, not built (taskbar cell 13 is still inert). One
 real decision recorded 2026-09-17: each store item is its own repo
