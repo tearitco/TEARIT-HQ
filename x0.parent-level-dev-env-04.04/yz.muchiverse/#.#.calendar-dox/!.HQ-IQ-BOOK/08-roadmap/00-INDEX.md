@@ -64,6 +64,20 @@
   crafts chemistry — bench/recipe/inventory UI reused, bounded
   Gemma-suggests-never-auto-writes discipline from Part 4. Gated on
   Part 5's own smallest-first-step landing first.
+- `design-docs/LLMUD-HACK.md` — **2026-09-18 design, technical-depth
+  pass for the ai-research/ML-PhD side**: the Harnecient Hack (see
+  `HARNECIENT-HACK.md`, kept simple on purpose) mutated to watch real
+  action sequences instead of generating text - 4 shapes (Original/
+  Watch/Behavior-Bank-Slotting/Meta-LLMUD), verifies + resolves every
+  real gap in `4.qwen-harnextend++.txt`'s proposal (DESCRIBE-not-
+  CLASSIFY ambiguity in Watch Mode, missing fallback, missing
+  artifact-visibility, undefined weight-update rule - now a real
+  Laplace-smoothed formula), names the real, already-existing watch
+  surfaces (`entity_menu_history/<pid>.txt`, Claude Code's own tool
+  transcript - no new capture infra needed), and draws a real, new
+  bridge to `IRL-BOOTSTRAP-RECURSION-SPEC.md`'s famous-llm work
+  (Behavior Banks as a second Layer-0 curriculum source). §7 lists 5
+  real open theory questions for the ai team, deliberately unresolved.
 - `design-docs/` — 63 design/plan/handoff/investigation docs moved in
   bulk (`git mv`, history preserved) from `1.^V-hq/`. **Not
   individually hand-condensed** in this pass (see note below) — still
