@@ -59,6 +59,7 @@ this set, no regressions).
   (headers+body pass-through, `.json()`/`.text()` stubs) before wiring.
 - `make check` 44 PASS / 0 FAIL (drove 4 fixture requests: login, browse,
   badsig, visitor).
+- Commit `7fe6ff7b` on `opencode` (6 files).
 
 ### 2026-09-17 row 35 DONE (in-page InnerTube feed)
 - **New hermetic test** `tests/worker_innertube_test.c|.js` (`wit`, wired
