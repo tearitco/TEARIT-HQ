@@ -94,7 +94,10 @@
   content, not just replay known-good actions. §6/§7 name PALCRAFT/
   mineclonia as the real near-term testbed and argue for building one
   shared watch/observe layer (not two) ahead of either hack's own
-  bank-scoring work.
+  bank-scoring work. Companion audio: `1-1.HARNECIENT.SMOL/NIGHT_17_
+  NEW_GAME_PLUS.txt`/`.mp3` — "new game plus" framing, all three hacks
+  as one recursive describe-then-score system run three times on a
+  bigger object each loop.
 - `design-docs/` — 63 design/plan/handoff/investigation docs moved in
   bulk (`git mv`, history preserved) from `1.^V-hq/`. **Not
   individually hand-condensed** in this pass (see note below) — still
