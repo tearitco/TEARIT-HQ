@@ -25,14 +25,12 @@ we don't end up taking — that's the point of doing it here first.
 
 ## Contents
 
-- `2026-09-05/FONT-SIZE-AND-UI-SCALE-BRAINSTORM.md` — user-adjustable
-  font size in Settings, and what "surrounding sizes" (buttons, window
-  chrome, row heights) would need to scale with it.
-- `2026-09-05/PDL-READER-AND-FILE-EXPLORER-WIDGET.md` — a document
-  reader ("pdl-reader") for PDL-indexed readable docs (PDF-like
-  zoom/page nav), which needs a not-yet-built "file explorer widget"
-  shared component; the same widget should also back real save-as/load
-  flows house-wide (currently missing/broken there). Includes the
-  root-caused `102.agy-txt` legacy-launcher bug found while
-  researching this, and the tpmos `agy-text-editor` reference UX this
-  session captured live for a future `toys` text-editor refactor.
+Dated subdirs `2026-09-05/` and `2026-09-14/` were folded into
+`LEARNINGS.md` and moved to `#.Zarchive-2-trash/11.brainstorm/`
+(2026-09-17 book audit) — read that file for the durable findings
+(font-scale wiring gap, the File Explorer widget landing, the
+`102.agy-txt` launcher fix, the Play Mode/entity-harness design, and
+the Scratch/Blueprints rendering fossil).
+
+- `LEARNINGS.md` — condensed durable findings/decisions from all
+  archived dated dirs.

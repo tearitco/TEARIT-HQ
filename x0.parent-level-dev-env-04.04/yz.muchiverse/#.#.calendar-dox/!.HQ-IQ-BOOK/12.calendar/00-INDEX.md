@@ -18,29 +18,17 @@ every chat log.
 
 ## Contents
 
-- `2026-09-05/` — taskbar dock keyboard-focus regression (fixed +
-  documented in `03-pitfalls/`), swatch-picker data-driven color list,
-  dock label/badge contrast fixes; font-size/UI-scale brainstorm
-  started, not yet scheduled.
-- `2026-09-07/` — pc-hq board: clicking File/Desk trapped the user in
-  Interact Mode (auto-engaged, never released) → arrows forwarded to the
-  game, local nav frozen on the File item. Fixed in `pchq_board_action.sh`
-  (engage-if-off + restore); `09-appendix/pc-hq-bugs.md` Bug 5.
-- `2026-09-06/` — periodic-picker Down-arrow bug fixed by reusing the
-  existing scroll path (pitfall #14 + skill update); `main` unified to
-  both agents' work (`git push origin opencode:main`, FF to
-  `4290b4a0`) + git-for-newbies walkthrough; cross-platform (Win/Mac)
-  handoff-friendliness concern captured — docs still live under
-  `07-install-and-ship/windows-mac/`, `khtpm_core_render.c` still has
-  no Windows twin (CROSS-PLATFORM-PENDING #1), today's change is
-  port-positive (removed bespoke code, routed through OS-free shared
-  helpers).
-- `2026-09-15/` — closed the "bottom-bar click jumps to next nav" bug:
-  real root cause was a stale cross-process constant (manager's
-  `KTB_STRIP_N_CELLS` one behind the header template's real cell
-  count), not the renderer's click handling - proved live with a
-  debug log before fixing. `03-pitfalls/` #22 + `04-bugs/bug_bounty.md`.
-  Also: dock event-loop reorder hardening, pager spacing tweak,
-  architecture discussion (monolith vs. IPC contract - see notes.md)
-  captured for later. Back to game mechanics next; AI/networking
-  pipeline flagged as upcoming, not yet scheduled.
+All dated subdirs (`2026-09-05/` through `2026-09-15/`) were folded
+into `LEARNINGS.md` and moved to `#.Zarchive-2-trash/12.calendar/`
+(2026-09-17 book audit) — read that file for the durable decisions/
+findings; the day-by-day status entries that used to be listed here
+are no longer kept as live reference. `13.agent-coms/2026-09-15/
+GROK.md` (the live PALCRAFT task handoff) is the one dated-dir file
+from that same pass that was NOT archived, since it's still the real,
+in-progress onboarding doc for ongoing work.
+
+- `LEARNINGS.md` — condensed durable findings/decisions from all
+  archived dated dirs: the trigger layer closing end-to-end
+  (2026-09-13/14), multi-agent git process hygiene, cross-platform
+  audit results, the cursword ARGB-Visual crash root cause, and the
+  Sept 11 handout's still-valid tool-assignment reasoning.
