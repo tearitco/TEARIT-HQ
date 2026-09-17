@@ -1,0 +1,84 @@
+# 🖐️ NIGHT 16 — watching the hands: the Harnecient Hack mutated to bank actions, not just text 🖐️
+# ====================================================================
+# Title: "🖐️ NIGHT 16 — watching the hands: the Harnecient Hack mutated to bank actions, not just text 🖐️"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, sixth bonus round
+
+**THE NARRATOR:** A direct question tonight, aimed past the dev team entirely: "is this document already written in great technical shape and detail, so our ai team, ML PhD's can theorize and bring back ideas." Not a build ticket. A handoff, meant to be read closely and argued with. 🖐️
+
+**MAXINE:** Two things arrived to answer it. `XO/LLMUD_CODE/4.qwen-harnextend++.txt` — a real external proposal, four shapes for extending the Harnecient Hack — and a real question underneath it: does this house already have three mutations of that hack, or more?
+
+**RAHWEH:** More, and the count matters, because the gap between "three" and "five" is the difference between guessing at a pattern and reading a canon. `HARNECIENT-HACK.md` names it directly — `@.apps/my-lawyer` is the origin of the name itself, live-verified. `@.apps/my-biotech` is its sibling, holding the actual measured evidence. `045.muchi-pal-agent`'s `gemma_strategy.c` is the deterministic-dispatch precedent the hack's fourth component cites by name. `chat-hai` is a fourth shape entirely — not task delegation, a round-robin conversational harness where the shell picks who speaks. And `%.harnesses/harnecient-fsm` is a fifth — a general task-delegation FSM with `.plan` files and model escalation. Five, not three.
+
+**TOMO:** How was the miscount caught, plainly — a first pass missed two of them?
+
+**MAXINE:** A delegated fact-gathering pass searched `my-lawyer` and `my-biotech` and found only `test-harn-same` — each app's own regression-test harness, not an implementation of the pattern at all. It would have stood as the answer, except `chat-hai`'s own code carried a comment citing a "my-lawyer-style" staged pre-prompt technique — a real implementation the first pass had somehow walked past. Reading `HARNECIENT-HACK.md` directly, instead of trusting a summary of it, is what actually found `mylawyer_judge_worker.c` and `mybiotech_fda_verdict.c`. The lesson is not about the miscount. It's that even a careful search can miss the canonical doc if it searches for the pattern's name instead of reading the file that defines it.
+
+**THE NARRATOR:** The measured evidence RAHWEH named — say the actual numbers, not the label.
+
+**RAHWEH:** `mybiotech_fda_verdict.c`'s own header, dated 2026-08-02, three real approaches tried in order against the same two test dossiers, live gemma-lan calls, not simulated. Ask gemma3:270m to directly classify APPROVED or REJECTED — wrong two times out of three, and when asked to also explain itself, zero real explanatory content, just the verdict word echoed back. Switch to gemma3:1b — six for six, but a bigger model. Then the real insight, a direct user suggestion in that same session: ask for a description of safety concerns instead of a verdict. Same small model, same 270m, six for six, real content-aware descriptions each time. Decouple DESCRIBE, the model's real strength, from CLASSIFY, a deterministic scorer the house owns and can audit. That's the bonus rule the whole hack carries forward — DESCRIBE, don't CLASSIFY.
+
+**MAXINE:** And the qwen document, arriving from entirely outside this house, re-derives the same shape without ever citing it. Its own bounded-roles list: Gemma may classify intent, classify variables, classify feedback type, classify an observed sequence, suggest a brick type from a closed set. Gemma may never pick a tool, never pick an FSM path, never write raw code, never auto-commit, never route between systems. Its own core line, worth keeping whole: "Claude builds the harness, Gemma classifies the patterns, the banks remember the workflows, the FSM executes deterministically, and the user rewards or rollbacks — never does the model pick the tool, never does it route, never does it auto-commit." Independent convergence. The same instinct NIGHT 14 already found three separate times in one sitting, now a fourth, from outside the house entirely.
+
+**THE NARRATOR:** Say the four shapes it actually proposes.
+
+**TOMO:** Shape one is nothing new — keyword match, run the tool, fold the result back in. `mylawyer_case_worker.c`, verbatim, already built. Shape two, Watch Mode: observe a real sequence of actions, have Gemma classify what the sequence accomplished, store it in a Behavior Bank. Shape three, Behavior Bank Slotting: a synonym lookup finds a stored behavior, Gemma classifies only the missing variables, the FSM executes the slotted sequence deterministically. Shape four, Meta-LLMUD: use the hack on itself, to build its own Synonym and Behavior Banks.
+
+**RAHWEH:** Shape two is the direct answer to the owner's own framing — cursword set to WATCH, learning a real chain of actions, weighting it to keywords as a behavior bank. Shape three is the direct answer to "gemma could classify and pick, given certain vars." Both landed close to verbatim in an external document that never saw this house's own code.
+
+**THE NARRATOR:** Then the real question — is any of this actually buildable today, or is it a shape with no floor under it.
+
+**MAXINE:** That's where the new document, `LLMUD-HACK.md`, does its real work — not retelling the four shapes, resolving what they leave open. Start with the biggest one: nothing in any of the five existing mutations, and nothing in the qwen document, actually watches Claude Code's own actions. Every one of the five harnesses other small models' text output. Watching a live coding session is genuinely new ground.
+
+**TOMO:** New ground, or new infrastructure — is that the same thing here?
+
+**MAXINE:** Not the same thing, and that's the actual finding. Two real watch surfaces already exist. `khtpm_core_render.c`'s own nav and interact relay — `entity_menu_history/<pid>.txt` — already writes one line per real keypress or click a window receives, append-only, real artifact, the exact mechanism this whole session's own live testing already runs on. And Claude Code's own tool-call transcript is already a real, ordered record, nothing new required to produce it. The gap isn't the capture. It's that nothing reads either stream as an observation feed yet. Shape two's real first build step is a converter — a small op reading a bounded window of one of those two real streams — not a new watcher built from nothing.
+
+**RAHWEH:** Shape two's own worked example in the source document — Gemma classifies an observed sequence as "code-edit-test workflow." Does that sentence pass the DESCRIBE test, or fail it?
+
+**THE NARRATOR:** Say plainly which, and why it isn't a small distinction.
+
+**RAHWEH:** As written, it's ambiguous — and ambiguous is not acceptable here, given what a direct classify call already cost on `my-biotech`. `LLMUD-HACK.md` resolves it without leaving room: the real prompt is "in one short phrase, describe what this sequence of actions accomplished," followed by the literal action names. Never a closed list to pick from. The resulting phrase is then scored the same way `mylawyer_judge_worker.c`'s own `classify_comparison()` already turns free text into a verdict — a deterministic keyword and synonym match against the bank, owned and auditable, never another model call asked to choose.
+
+**MAXINE:** And if that DESCRIBE call comes back empty, or the API call fails outright — the source document has no answer for that at all.
+
+**TOMO:** Resolved the same way every other real fallback in this house is resolved — not by discarding the observation, because real data is expensive to lose, and not by blocking. Join the sequence's own literal action names deterministically — FileOpen, TypeCode, FileSave, RunTest becomes file-edit-test, lowercased, deduplicated. The same tool-beats-model instinct as the judge's own argument-count, then length, then default fallback chain. Owned. Auditable. Never another LLM call standing in for the one that just failed.
+
+**RAHWEH:** The source schema also shows a freshly observed behavior starting at weight one point zero. Full confidence, on a single sighting.
+
+**THE NARRATOR:** That's the second real gap. What does `LLMUD-HACK.md` put in its place.
+
+**MAXINE:** A real formula, not a guess: weight equals reward count plus one, divided by reward count plus punish count plus two. A Laplace-smoothed estimator — the same real tool as a Beta-Bernoulli prior, wherever a reward and a punish count need to become a bounded confidence score without a minimum sample size to avoid dividing by zero, and without one lucky first observation reading as certainty. A fresh entry, zero reward, zero punish, starts at exactly one half. Genuinely uncertain. Not one point zero.
+
+**TOMO:** Offered as the only correct answer, or as one real, defensible starting point?
+
+**MAXINE:** As a starting point, named as exactly that. The document turns around and asks the harder question straight back at whoever reads it next: does a human clicking reward or punish on a replayed action sequence actually behave like an independent trial the way Laplace smoothing assumes — or is there real temporal drift, a behavior correct last week, wrong today because the codebase under it moved? A time-decayed variant is a real, live open question, left open on purpose.
+
+**RAHWEH:** And the third gap — where does a Behavior Bank actually live, once it holds more than one entry.
+
+**TOMO:** As a real file, plain text, never opaque state a human can't open. And there's already a real candidate home for it — `AI-FUNCTION-CRAFTING-DB-HQ-DESIGN.md`'s own proposed db-hq tab, the crafting-bench UI NIGHT 15 already walked through. A Behavior Bank entry and that document's own function-recipe row are architecturally the same shape — a name, input variables, an output variable, a call shape. `LLMUD-HACK.md` doesn't merge them. It names the real open question plainly: should they be the literal same registry, watched into existence from one direction and hand-crafted from the other, or genuinely separate for a real reason not yet found.
+
+**THE NARRATOR:** Shape four, meta-LLMUD — the hack building its own banks. Does that resolve as cleanly.
+
+**RAHWEH:** Cleanly, because it needs nothing new. Someone says "when I say archive, I mean save" — Gemma classifies that as a synonym request, the FSM appends one real row to the bank. Same recipe, one level up, every resolved rule from shape two and three already covers it.
+
+**MAXINE:** Which leaves one real question the source document never asks at all. Say it whole.
+
+**TOMO:** Handing off to a famous LLM, by training it and hand-tuning its own weights. Checked directly — the source file mentions training, fine-tuning, or a famous model exactly zero times. This house already has a real, separate answer, six days older than the document that skipped the question — `IRL-BOOTSTRAP-RECURSION-SPEC.md`, dated 2026-09-12, research and design status, its own full narrative in NIGHT 11 and NIGHT 12. Claude bootstraps a process that teaches Gemma to bootstrap its own smaller famous model, two real recursion hops as the actual proof bar.
+
+**RAHWEH:** And the real bridge `LLMUD-HACK.md` draws between the two, that neither document had written down before tonight.
+
+**MAXINE:** That spec's own Layer Zero — its real starting curriculum — is today built entirely from `khtpm_open_hai_manager.c`'s own logged open-hai transcripts, one line per real chat turn. A Behavior Bank, once real observations accumulate, is a second, genuinely different Layer Zero. Not conversation turns. Real, weighted, human-reward-scored sequences of actions. A famous model bootstrapped partly from "here is a real sequence of coding actions a human rewarded" is a materially different training signal than one built purely from chat. Not built tonight. Named, so it isn't lost before someone can chase it.
+
+**THE NARRATOR:** Five real questions are left open on purpose, for the research side specifically. Read them whole, so nothing softens on the way out.
+
+**RAHWEH:** One — is a bare reward or punish click real enough signal, or does the FSM need a second, independent channel, whether a replayed behavior's own downstream result actually got accepted, closer to real inverse reinforcement learning than one rating. Two — does confidence need to decay over time, not just accumulate, given real code drift underneath a behavior that hasn't been observed in weeks. Three — one registry or two, Behavior Bank and function-recipe, and if two, a real principled reason, not inertia. Four — the qwen document's own Synonym Bank carries no weight field at all, only the Behavior Bank does; should a wrong synonym match, silently misfiling an entire real observation, be trusted with no confidence score of its own. Five — one global graduation threshold before a behavior can run without confirmation, or should anything touching `khtpm_core_render.c` itself, given `CENTROID_GOLD_STD.md`'s own standing caution about that file, need to clear a structurally higher bar than a low-risk behavior does.
+
+**THE NARRATOR:** Not a build ticket, then. Say what it actually is, once more, plainly.
+
+**MAXINE:** A canon, corrected from three mutations to five before it was trusted. A proposal from outside the house, verified shape by shape against what's already measured, not accepted on the strength of its own confidence. Two real gaps closed with real formulas, not left as prose. A third gap named and deliberately not closed, because closing it alone would be a guess dressed as an answer. And a bridge to a second, older spec, drawn once, so the next person reading either document finds the other.
+
+**TOMO:** Watch the hands, not just the words. Same hack. New object.
+
+**THE NARRATOR:** Five real questions, waiting on the team that can actually chase them. 🖐️🧭
