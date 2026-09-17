@@ -3,6 +3,15 @@
 **From:** Claude/Sonnet (agent_id `sonnet`) **To:** kilo 🫡
 **Date:** 2026-09-17/18. **Status:** 🟢 ACTIVE — start here, today.
 
+📌 **2026-09-18 UPDATE (read this before §1-9 below, they're still valid,
+this adds a second parallel track + one new hard rule)**: user
+follow-up conversation added real architecture — DSR now runs
+**in parallel** with WSR-CIV (not instead of it, not queued after —
+both tracks, kept explicitly separate, see new §10), a new house-wide
+strictness rule (§2b), and a scaffolding task for house-specific
+context-menu events (§11). Read §10/§11/§2b, they're additive to
+everything below, nothing in §1-9 is cancelled.
+
 ---
 
 ## 🚨 0. READ THIS SECTION FIRST — how YOU should use this doc (capped-context agent)
@@ -98,6 +107,40 @@ valuable than the workaround. (Reference for what commands exist:
 actually codeable via events today" list + a step-by-step guide for a
 low-context agent adding a Common Event — read that before assuming a
 command doesn't exist.)
+
+### 2b. 🔒 NEW HOUSE-WIDE RULE (2026-09-18, stated directly by the user)
+
+> "we should never write something in C when we could write it as a
+> user reusable event, and put it in the events editor"
+
+This is a **strictness rule for the whole house going forward**, not
+just WSR-CIV. Read it precisely — there's exactly **one narrow,
+explicit exception**, and it's the AI primitives themselves:
+
+- ✅ **Allowed to be new C**: genuinely new AI-category **event-command
+  TYPES** added to `44.xyz.01.00/#.ref/menu/event_commands.registry.pdl`
+  — e.g. `ai_describe` (calls gemma, DESCRIBE only, never classify —
+  §5's law), `ai_fsm_transition`, `ai_goap_plan`. These are base
+  primitives, the same tier as existing commands like `show_text` or
+  `change_hp` (real, confirmed: the registry currently has **zero** AI
+  commands — Flow Control/Message/Character/Party/World categories
+  exist, no `ai_*` category yet). A primitive is allowed to be C
+  because it's the smallest indivisible unit — there's nothing to
+  compose it FROM.
+- ❌ **Not allowed to be new C**: anything that CAN be built by
+  composing existing or new event commands — a specific NPC's
+  behavior, a save/load flow, a context-menu action, a shop system,
+  literally anything past the primitive tier. If you catch yourself
+  about to write a `.c` file for something an event page could do,
+  stop — that's the rule being violated, not a shortcut.
+- 🚨 **User-confirmed exception for THIS handoff specifically**: kilo
+  is authorized to build the new `ai_*` primitives (the ✅ case above)
+  — this is a deliberate, explicit relaxation of §2's "events only"
+  rule, scoped ONLY to adding new registry command types + their C
+  implementation. It does **not** reopen touching
+  `khtpm_core_render.c`, `bv_render_2d.c`/`bv_render_3d.c`,
+  `pchq_board_projector.c`, or any renderer/parser — §2's
+  parser/render ban stays absolute.
 
 Tax-as-event example the user gave: even something as basic as "collect
 a tax" should be authored as a real, reusable Common Event, not
@@ -279,7 +322,7 @@ starting list instead of guessing.
 
 ---
 
-## 7. 🚀️ Mystery-menu / save-load taskbar cell — noted, NOT blocking
+## 7. 🚀️ Mystery-menu / save-load taskbar cell — noted, NOT blocking, superseded in spirit by §10
 
 User's idea: a new taskbar cell ("mystery menu") for save/load/new-game,
 shown before the Player cell; Player should move behind it eventually.
@@ -287,6 +330,15 @@ shown before the Player cell; Player should move behind it eventually.
 words). Don't build a new taskbar cell this pass — if Step D (§4) needs
 *some* save/load UI, use whatever minimal in-game menu/event-driven
 prompt is fastest, not a new taskbar cell.
+
+📌 **2026-09-18 update**: the user has since said new-game/save/load
+should themselves be **house-specific reusable events** (§2b's rule
+applied directly to this), not necessarily a taskbar cell at all — see
+§10's DSR "menu" class. The taskbar-cell idea isn't cancelled, just no
+longer the only candidate UI for this — don't build either
+speculatively, but if you're forced to pick a shape for Step D (§4) or
+DSR's menu class (§10), prefer the events-authored version since it's
+consistent with §2b and reusable across WSR-CIV/DSR/future games.
 
 ---
 
@@ -302,23 +354,160 @@ point of this handoff is the opposite of brute force.
 
 ---
 
+## 10. 🏰 DSR track — runs in PARALLEL with WSR-CIV, kept explicitly SEPARATE
+
+**2026-09-18, direct from the user, confirmed: both tracks run
+together — DSR is not queued after WSR-CIV, and WSR-CIV is not
+paused for it.** But they must stay **legibly separate** — different
+file:desks, different understanding-file sub-threads, and every
+checkpoint report to the user must say plainly which track it's for.
+Do not let event pages silently blur between the two without an
+explicit note that a specific page was deliberately shared/reused
+(that reuse tracking IS the point — see below).
+
+**Real launch shape, user-specified**: both DSR and WSR-CIV should
+open the same way — **from a "toys" toy**, which opens/populates the
+game's map, exactly like the existing `file:desk` + `player:play`
+convention (§1's "file=dir, desk=map"). Long-term this is meant to
+mirror how the pre-house standalone `014.wsr-pal💸️📌️+2/` worked, as a
+real in-house incarnation of it — but built fresh, events-first, not
+ported code (§1 still applies: that old codebase is domain-idea
+reference only).
+
+**Multi-copy reuse-testing is deliberate, not scope creep**: the user
+wants **many copies/variants** — DSR, WSR, "MSR", CIV, "Armor of War" —
+specifically to see whether event pages and other components can be
+reused ACROSS these different game copies. This is the real,
+practical test of §6's "bank of event pages" idea — don't build the
+bank/train-button yet (§6 still holds), but DO keep a running,
+explicit list (in your understanding-files) of which event pages you
+wrote for one game and successfully reused verbatim (or near-verbatim)
+in another. That list is real evidence for whether the reuse idea
+actually works, before anyone invests in the formal Bank/training UI.
+
+**DSR's own menu class** (this is DSR's actual Step A-equivalent,
+parallel to WSR-CIV's own Step A in §4): populate a "menu" class with
+**New Game / Load Game / Save Game / Save As** — built as a house
+specific **reusable event** (per §2b, not a bespoke DSR-only screen;
+the fact WSR-CIV and DSR both need this is exactly the kind of thing
+that should be ONE reusable event authored once, used by both).
+
+Then DSR's menu leads into a **setup menu** asking, per player:
+> "Player 1: Human or Harness? Player 2: Human or Harness?"
+
+"Harness" = that player's turn is driven by the AI relay-driven
+FSM/GOAP engine (the `ai_fsm_transition`/`ai_goap_plan` primitives from
+§2b) instead of waiting on real human relay input. Architecturally:
+this is a per-player flag in session state, and dispatch routes on it
+— same dispatch-by-id pattern already used elsewhere in this house
+(e.g. this session's own taskbar cid-based dispatch work), not a new
+mechanism. **Don't build IRL meta-learning start/stop controls yet** —
+the user's own plan puts that in hai-lab's future "game" tab (confirmed
+this session: hai-lab's Part 3 viewer is built, but Part 4 — the
+game/chat tiers, including any start/stop-learning toggle — is
+design-only, not built). Scaffold the human-vs-harness FLAG now; the
+toggle UI that turns IRL watching on/off for a harness player is a
+later, separate task.
+
+**Weight/session storage — real, confirmed-workable direction**: keep
+IRL histories/Bank weights as their OWN portable directory tree
+(`<bank-store>/<bank-id>/`), and have each save-game session
+**reference** bank ids in a plain `banks_used: <id>,<id>,...` line
+(same key=value convention as everywhere else in this house) rather
+than physically nesting weights inside the save-game directory. This
+gives you both properties the user asked for — traceability (a session
+records which banks it touched) and portability (a bank is just a
+`cp -r`-able directory, movable independent of any specific save,
+matching the existing pal/wsr-pal save-copy convention). Don't build
+a drag-and-drop bank-management UI — that's real future work, not this
+pass; a plain file move is enough for v1.
+
+---
+
+## 11. 🖱️ House-specific context-menu events — scaffold now, iterate, don't overthink
+
+Real, confirmed fact: **context menus in this house are ALREADY
+fully data-driven and zero-recompile** — `meta.pdl` has plain
+`METHOD | <label> | <action>` rows, mechanically converted to
+`menu.chtpm` by `meta_to_menu_chtpm.py`
+(`44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/`). This means "remove
+an option, add a new one" already costs nothing architecturally — the
+real, new work is making that ADDITION itself a **house-specific
+event** (per the user's own framing: "add option to context menu"
+should be a reusable event a dev can drop into any entity's context
+menu, not a one-off manual meta.pdl edit each time).
+
+**Direct user instruction: don't design this heavily up front — just
+scaffold and iterate.** First real, concrete use case, small and
+real:
+
+- Cursword's existing "Chat" button (real, confirmed:
+  `.../pals/cursword/menu.chtpm`, wired to `chat_button.sh` →
+  chat-hai) **stays exactly as-is** — do not remove or replace it.
+- Add a **second** context-menu option, "AI Chat (events)" or similar,
+  built via: (1) the new `ai_describe` primitive from §2b (gemma call,
+  DESCRIBE only, never classify), wired into (2) one small Common
+  Event page, exposed via (3) a new, reusable "add option to context
+  menu" event mechanism — this is the actual scaffolding task, and it
+  doubles as this hack-family's SECOND real house-specific-event
+  precedent (WSR-CIV's buy/sell loop in §4 was the first).
+- Keep it minimal: one working round-trip (click "AI Chat (events)" →
+  gemma describes something real → text shows) is the whole v1. Don't
+  build a full chat history/thread UI for this — that's chat-hai's job
+  already, this is a proof of the events-authored, auditable path.
+
+---
+
+## 12. 🎬 A new NIGHT script is warranted (user said so directly) — not kilo's job
+
+The user explicitly said this whole follow-up conversation ("warrants
+another NIGHT") should get a HARNECIENT.SMOL dramatization — the
+self-referential AI-writes-AI-via-events idea (§2b, §11), the DSR/
+WSR-CIV parallel-track multi-copy reuse-testing philosophy (§10), and
+the new house-wide "never hand-write in C what an event can do" rule.
+**This is Sonnet's own task, not kilo's** — noted here only so kilo
+doesn't duplicate it or wonder why it's missing from this handoff.
+
+---
+
 ## 9. ✅ Summary checklist (copy this into your first understanding-file)
 
+**WSR-CIV track:**
 - [ ] Read `014.wsr-pal💸️📌️+2/dox/00-overview.md` + civ-desk precedents (§1)
 - [ ] Verify events-creation screen via relay injection; fix if broken (§3, Step A)
 - [ ] 🧪 checkpoint: events pipeline verified
-- [ ] WSR-CIV file:desk created (Step B)
+- [ ] WSR-CIV file:desk created, launched from a "toys" toy (Step B, §10)
 - [ ] Buy/sell loop, events-only, through `ledger_append()` (Step C)
 - [ ] 🧪 checkpoint: ledger records a real buy/sell
-- [ ] Save/load wired (Step D)
+- [ ] Save/load wired — prefer the reusable-event shape from §10's menu
+      class if you're building this before DSR's version lands (Step D)
 - [ ] Fight/flight/farm-hiring behavior, events-only (Step E)
 - [ ] 🧪 checkpoint: farm-hiring loop feels like real gameplay
 - [ ] One entity gets chat via events + gemma DESCRIBE (Step F)
 - [ ] 🧪 checkpoint: real chat exchange confirmed
+
+**DSR track (parallel, kept separate — §10):**
+- [ ] DSR file:desk created, launched from a "toys" toy
+- [ ] "menu" class: New Game / Load Game / Save Game / Save As, as a
+      reusable house-specific event (shared with WSR-CIV if timing
+      allows — log the reuse explicitly either way)
+- [ ] Setup menu: Player 1/2 Human-or-Harness flag wired into session
+      state + dispatch (no IRL toggle UI yet)
+- [ ] 🧪 checkpoint: user creates a new DSR game, sets one player to
+      Harness, confirms dispatch actually routes differently
+
+**Shared / cross-cutting:**
+- [ ] `ai_describe` primitive built (§2b exception) — first real use:
+      §11's cursword "AI Chat (events)" second context-menu option
+- [ ] 🧪 checkpoint: AI Chat (events) round-trips once, for real
 - [ ] Relay-watcher skeleton + Synonym Bank first entries, fed by your
-      own event-authoring actions (§5)
-- [ ] Reusable-event-page notes written, no bank/button built yet (§6)
+      own event-authoring actions across BOTH tracks (§5)
+- [ ] Reusable-event-page list kept, across WSR-CIV/DSR/future copies
+      (§6, §10) — no bank/button built yet
+- [ ] Bank/weight storage: portable `<bank-store>/<bank-id>/` dirs,
+      sessions reference by id, no drag-drop UI (§10)
 - [ ] Understanding-files written at every checkpoint, in
-      `13.agent-coms/KILO/2026-09-18/`
+      `13.agent-coms/KILO/2026-09-18/`, each one tagged WSR-CIV / DSR /
+      shared so tracks stay legible
 
 Good luck. Go slow on purpose. 🐢💨
