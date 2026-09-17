@@ -2811,6 +2811,31 @@ static int run_event_loop(duk_context *ctx) {
     return g_pending_err;
 }
 
+/* ==================== rung 6 seam: generic SHA-1 primitive =============
+ * Row-34 login: Google's page JS signs SAPISIDHASH =
+ *   <ts>_<base64(sha1(<ts> " " <SAPISID> " " <origin>))>
+ * by itself (Chromium parity — browsers have no LOGIN op; the site's own
+ * script does the crypto). But the page needs a SHA-1 primitive to do so.
+ * This is the engine-generic one: `__nb_sha1(utf8)->base64(digest)`, exposed
+ * to any page. Not youtube-specific; the page JS handles the SAPISIDHASH
+ * composition purely in JS (btoa exists too, but Duktape strings are CESU-8,
+ * so the digest is pre-encoded ASCII base64 here — verified against openssl
+ * in worker_sapisid_test).  Shared impl in nb_sha1.h so fixture servers
+ * recompute the SAME digest when verifying a received signature. */
+#include "nb_sha1.h"
+
+/* __nb_sha1(str) -> base64 of the 20-byte SHA-1 digest (plain ASCII). */
+static duk_ret_t nb_sha1_native(duk_context *ctx) {
+    duk_size_t n = 0;
+    const char *t = duk_safe_to_lstring(ctx, 0, &n);
+    uint8_t out[20];
+    nbsha1((const uint8_t *)t, n, out);
+    char b64[29];
+    nbsha1_b64_20(out, b64);
+    duk_push_string(ctx, b64);
+    return 1;
+}
+
 static void install_events_timers(duk_context *ctx) {
     duk_get_global_string(ctx, "document");
     duk_push_c_function(ctx, nb_doc_addEventListener, 2);    duk_put_prop_string(ctx, -2, "addEventListener");
@@ -2826,6 +2851,7 @@ static void install_events_timers(duk_context *ctx) {
     }
     duk_pop(ctx);
     duk_push_global_object(ctx);
+    duk_push_c_function(ctx, nb_sha1_native, 1);         duk_put_prop_string(ctx, -2, "__nb_sha1");
     duk_push_c_function(ctx, nb_timer_setTimeout, 2);    duk_put_prop_string(ctx, -2, "setTimeout");
     duk_push_c_function(ctx, nb_timer_setInterval, 2);   duk_put_prop_string(ctx, -2, "setInterval");
     duk_push_c_function(ctx, nb_timer_clearTimeout, 1);  duk_put_prop_string(ctx, -2, "clearTimeout");

@@ -361,6 +361,23 @@ plausible stub, `MutationObserver` (can no-op then improve),
 >   → page `document.cookie` reads `sid=wlt456` → `/guard` reattaches it
 >   → `guard-ok`; jar bytes byte-verified. Full `make check` (41 suites)
 >   green.
+> - **Real-shape login handshake / engine-generic SHA-1 (2026-09-17):**
+>   the page JS itself performs google's `SAPISIDHASH` signing (Chromium
+>   parity — browsers have no LOGIN op; the site's script does the
+>   crypto). To let it, the engine now exposes ONE engine-generic crypto
+>   primitive, `__nb_sha1(str)` → `base64(sha1(str))` (shared impl in
+>   `ops/nb_sha1.h`, pinned against openssl vectors inside
+>   `worker_sapisid_test`; raw bytes would be CESU-8-mangled in a Duktape
+>   string, so the digest is pre-encoded as ASCII base64). Page JS builds
+>   `SAPISIDHASH = <ts>_<base64(sha1(<ts> " " <SAPISID> " " <origin>))>`
+>   with stock `Date.now()` and sends it as `Authorization`. Hermetic
+>   loopback receipt (`worker_sapisid_test`, `wss`, 127.0.0.1 ephemeral):
+>   `/login` grants `Set-Cookie: SAPISID=…; sid=ssr77` → page reads
+>   `document.cookie`, signs, `/guard` RE-COMPUTES the sha1 server-side
+>   from received ts + granted SAPISID + received `Origin:` and replies
+>   `guard-ok` only on exact match → `/reagent` re-attaches the session
+>   cookie. No per-site hardcode in the engine. Full `make check` (42
+>   suites) green.
 > - **Script-tag edge audit.** `script_type_skip` was allowlisting
 >   (`module`/`json`/`ld+json`) and thus RAN unknown types like
 >   `text/template` as broken JS (WERR noise). Rewritten to browser rules:
