@@ -7,13 +7,13 @@ the two docs at the bottom. Current session verbatim state (what was
 said/done, pending decisions) is in the **Work log** section — update
 it at the end of every block.
 
-**Last updated:** 2026-09-17 (row 35 in-page InnerTube feed BUILT — 43 PASS)
+**Last updated:** 2026-09-17 (fetch() surface proven — 44 PASS)
 
 **Branch:** `opencode` (this agent's own branch; never commit to
 `main`/`claude`/`grok`). Nothing is ever pushed without the user's
 explicit "push" verb.
 **Build:** `make nbjs` (workspace `44.xyz.01.00/&.hq-apps/network`).
-**Full suite:** `make check` — currently **43 PASS / 0 FAIL** (wit added
+**Full suite:** `make check` — currently **44 PASS / 0 FAIL** (wfp added
 this set, no regressions).
 
 ---
@@ -38,8 +38,27 @@ this set, no regressions).
 | 34a | unified jar: wire Set-Cookie -> document.cookie -> reattach | **BUILT** — `worker_login_test`/`wlt` (hermetic loopback) |
 | 34b | real login: page JS reads SAPISID, computes SAPISIDHASH, sends `Authorization` on innerTube call | **BUILT** — `worker_sapisid_test`/`wss` (page JS signs via `__nb_sha1`; fixture recomputes sha1 server-side; SIGN=guard-ok, loopback) |
 | 35 | feed InnerTube from the browser (visitor_data + API key + signature) | **BUILT** — `worker_innertube_test`/`wit` (page JS POSTs `/youtubei/v1/browse?key=…` with visitor cookie + SAPISIDHASH + JSON body; fixture accepts innerYes only when all three legs verify) |
+| 32f | same feed through the **fetch()** surface (row 31's bundle uses fetch(), not XHR) | **BUILT** — `worker_fetch_post_test`/`wfp` (Promise-chain `fetch(url,{method,headers,body})` → same signed innerTube POST → `response.json()` + fetch() 401 rejection surfaced; no engine changes) |
 
 ## Work log (most recent first)
+
+### 2026-09-17 fetch() surface DONE (row 32 extension, wfp)
+- **New hermetic test** `tests/worker_fetch_post_test.c|.js` (`wfp`, wired
+  into Makefile check/clean): the real youtube bundle issues innerTube
+  calls through `fetch()`+Promise, not XHR — so this receipt drives the
+  same three signed legs (visitor cookie + API key + SAPISIDHASH,
+  recomputed by the fixture) through the host-world fetch() in nb_host.h:
+  `/login` → `fetch(url?key=…, {method:'POST', headers:{Content-Type,
+  Origin, Authorization:SAPISIDHASH …}, body: JSON})` → `response.json()`
+  must parse `{"legs":"ok"}` → then a deliberately WOBBLE-SECRET
+  `/badsig` POST proves the Promise rejection path surfaces to page JS
+  (output `AUTH=<authfail>`, mirrors a browser's fetch() rejecting on
+  401 through `.catch`). Jar attach + egress markers re-verified.
+- ZERO engine changes — rows 32/34/35 already covered the fetch()→
+  nbFetchSync path (same one jar); the prelude was verified line 560-573
+  (headers+body pass-through, `.json()`/`.text()` stubs) before wiring.
+- `make check` 44 PASS / 0 FAIL (drove 4 fixture requests: login, browse,
+  badsig, visitor).
 
 ### 2026-09-17 row 35 DONE (in-page InnerTube feed)
 - **New hermetic test** `tests/worker_innertube_test.c|.js` (`wit`, wired
@@ -173,7 +192,8 @@ Steps:
 - Prelude: `44.xyz.01.00/&.hq-apps/network/ops/nb_host.h`
 - Makefile: `44.xyz.01.00/&.hq-apps/network/Makefile`
 - Tests: `44.xyz.01.00/&.hq-apps/network/tests/worker_login_test.c|.js`,
-  `worker_sapisid_test.c|.js`, `worker_innertube_test.c|.js`
+  `worker_sapisid_test.c|.js`, `worker_innertube_test.c|.js`,
+  `worker_fetch_post_test.c|.js`
 - Manager: `.../network/network_browser_manager.c` (sets
   NB_CURL_COOKIES_FILE at :1418)
 - Roadmap: `yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/

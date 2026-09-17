@@ -390,6 +390,18 @@ plausible stub, `MutationObserver` (can no-op then improve),
 >   No engine change needed — everything row 35 required was already
 >   provided by the unified jar + `__nb_sha1`. Full `make check` (43
 >   suites) green.
+> - **innerTube via the `fetch()` surface (2026-09-17):** row 31's real
+>   youtube bundle issues innerTube calls through `fetch()`+Promise, not
+>   XHR — so `worker_fetch_post_test` / `wfp` drives the SAME signed
+>   browse through host `fetch(url, {method, headers, body})` from
+>   `nb_host.h` (line 552+): `/login` grants the jar, the page Promise-
+>   chains `fetch()` → `response.json()` must parse `{"legs":"ok"}`, then
+>   a wrinkle-secret `/badsig` POST asserts the 401 → Promise rejection
+>   surfaces to page JS (browser-equivalent `.catch`). Fixture recomputes
+>   the signature (shared `nbsha1` in `ops/nb_sha1.h`) and honors only an
+>   exact match. ZERO engine changes — the fetch()→nbFetchSync path was
+>   already covered by rows 32/34/35's one-jar wall. Full `make check`
+>   (44 suites) green.
 > - **Script-tag edge audit.** `script_type_skip` was allowlisting
 >   (`module`/`json`/`ld+json`) and thus RAN unknown types like
 >   `text/template` as broken JS (WERR noise). Rewritten to browser rules:
