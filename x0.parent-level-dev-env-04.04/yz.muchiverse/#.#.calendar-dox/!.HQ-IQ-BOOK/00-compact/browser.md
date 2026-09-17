@@ -7,13 +7,13 @@ the two docs at the bottom. Current session verbatim state (what was
 said/done, pending decisions) is in the **Work log** section — update
 it at the end of every block.
 
-**Last updated:** 2026-09-17 (row 34b login handshake BUILT — 42 PASS)
+**Last updated:** 2026-09-17 (row 35 in-page InnerTube feed BUILT — 43 PASS)
 
 **Branch:** `opencode` (this agent's own branch; never commit to
 `main`/`claude`/`grok`). Nothing is ever pushed without the user's
 explicit "push" verb.
 **Build:** `make nbjs` (workspace `44.xyz.01.00/&.hq-apps/network`).
-**Full suite:** `make check` — currently **42 PASS / 0 FAIL** (wss added
+**Full suite:** `make check` — currently **43 PASS / 0 FAIL** (wit added
 this set, no regressions).
 
 ---
@@ -37,8 +37,27 @@ this set, no regressions).
 | 32 | page-originated fetch/XHR + session attach | **BUILT** — `worker_page_test`/`wpt` */
 | 34a | unified jar: wire Set-Cookie -> document.cookie -> reattach | **BUILT** — `worker_login_test`/`wlt` (hermetic loopback) |
 | 34b | real login: page JS reads SAPISID, computes SAPISIDHASH, sends `Authorization` on innerTube call | **BUILT** — `worker_sapisid_test`/`wss` (page JS signs via `__nb_sha1`; fixture recomputes sha1 server-side; SIGN=guard-ok, loopback) |
+| 35 | feed InnerTube from the browser (visitor_data + API key + signature) | **BUILT** — `worker_innertube_test`/`wit` (page JS POSTs `/youtubei/v1/browse?key=…` with visitor cookie + SAPISIDHASH + JSON body; fixture accepts innerYes only when all three legs verify) |
 
 ## Work log (most recent first)
+
+### 2026-09-17 row 35 DONE (in-page InnerTube feed)
+- **New hermetic test** `tests/worker_innertube_test.c|.js` (`wit`, wired
+  into Makefile check/clean): page JS issues a real google-shaped
+  `/youtubei/v1/browse?key=<KEY>&prettyPrint=false` POST through the
+  browser's own XHR wall — `yt-visitor_data` cookie (granted on `/login`
+  via Set-Cookie), `X-Goog-Visitor-Id` + `Origin` + `Authorization:
+  SAPISIDHASH` headers, and a real innerTube JSON browse body
+  (`context.client.clientName:"WEB"`, `browseId`). THE fixture accepts
+  (`innerYes`) only when visitor-data cookie + matching API key + a
+  signature recomputed from granted SAPISID + received ts + Origin ALL
+  verify; then `/visitor` proves the jar re-attaches. ZERO engine
+  changes — rows 32/34 (unified jar + `__nb_sha1` + XHR body/headers)
+  already provided everything. `make check` 43 PASS / 0 FAIL.
+- Engine audit re-verified after this set: no LOGIN op, no per-site
+  hardcode (only comment mentions), one jar — chromium parity holds.
+- Docs updated: REAL-SPA roadmap row 35 -> BUILT, design-doc bullet.
+- Commit + pushed (`827d0a83` row 34b was pushed; row 35 staged next).
 
 ### 2026-09-17 row 34b DONE (login half)
 - **Engine primitive:** `__nb_sha1(str)` -> `base64(sha1(str))` registered
@@ -101,26 +120,25 @@ this set, no regressions).
   exist in the prelude (byte-safe 0-255, so base64 of SHA-1 digests
   works). Prelude has `document.cookie` stub replaced by C natives.
 
-## Next: beyond row 34b (what the real youtube page still needs)
+## Next: beyond row 35 (what the real youtube page still needs)
 
-Row 34 is now fully BUILT (unified jar + real-shape login handshake).
-Remaining realistic gaps for "render+drive youtube.com" (roadmap rows):
+Rows 32-35 are now BUILT (page-originated XHR + unified jar + real-shape
+login handshake + in-page signed InnerTube feed). Remaining realistic gaps
+for "render+drive youtube.com" (roadmap rows):
 
-1. **Feed InnerTube from the browser** (roadmap row: "Feed InnerTube API
-   requests from the browser") — row 34b proves the SIGNATURE path end-toend
-   (page signs SAPISIDHASH; a signed `/youtubei/v1/...` call is accepted).
-   A real `yt-visitor_data` + API key flow still has no hermetic receipt.
-2. **Execute youtube.com's full JS bundle** (row 31) — comments, lazy
-   sections, player config; engine JS + external-slice loading exist
+1. **Execute youtube.com's full JS bundle** (row 31) — comments, lazy
+   sections, player config. Engine JS + external-slice loading exist
    (ladder tested real third-party pages) but the youtube bundle itself
-   has not been exercised hermetically.
-3. **Page CSS** (partial) — `.css` files, not full page CSS.
+   has not been exercised hermetically. Biggest remaining item.
+2. **Page CSS** (partial) — `.css` files, not full page CSS.
+3. **Websocket chat** (row 32 mentions websocket chat) — page-originated
+   XHR is built, but a websocket client surface is not.
 
-Suggested next receipt when resuming: extend `wss` (or a new `wyg` test)
-to a full signed `/youtubei/v1/browse`-shaped call where the fixture
-requires BOTH `SAPISIDHASH` Authorization AND a valid `yt-visitor_data`
-cookie — proving the visitor-data + signature combination the real page
-sends; then tackle the real page's bundle size/performance.
+Suggested next receipt when resuming: fetch a real slice of the youtube
+bundle (e.g. the innertube web init) into a file:// fixture and prove the
+page runs it with the visitor+signature context attached end-to-end on the
+real shape; or prototype a websocket XHR-companion surface hermetically
+with a loopback ws fixture.
 
 ## The row-34b plan (as executed, for the record)
 
@@ -155,7 +173,7 @@ Steps:
 - Prelude: `44.xyz.01.00/&.hq-apps/network/ops/nb_host.h`
 - Makefile: `44.xyz.01.00/&.hq-apps/network/Makefile`
 - Tests: `44.xyz.01.00/&.hq-apps/network/tests/worker_login_test.c|.js`,
-  `worker_sapisid_test.c|.js`
+  `worker_sapisid_test.c|.js`, `worker_innertube_test.c|.js`
 - Manager: `.../network/network_browser_manager.c` (sets
   NB_CURL_COOKIES_FILE at :1418)
 - Roadmap: `yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/

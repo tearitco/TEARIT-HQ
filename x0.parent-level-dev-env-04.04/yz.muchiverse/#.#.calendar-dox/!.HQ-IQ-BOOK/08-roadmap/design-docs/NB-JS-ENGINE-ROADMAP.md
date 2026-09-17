@@ -378,6 +378,18 @@ plausible stub, `MutationObserver` (can no-op then improve),
 >   `guard-ok` only on exact match → `/reagent` re-attaches the session
 >   cookie. No per-site hardcode in the engine. Full `make check` (42
 >   suites) green.
+> - **In-page InnerTube feed (2026-09-17):** roadmap row 35. The page's
+>   own JS POSTs a google-shaped `/youtubei/v1/browse?key=…` through the
+>   browser XHR wall — `yt-visitor_data` cookie + `X-Goog-Visitor-Id`
+>   header + SAPISIDHASH-signed `Authorization` + a real innerTube JSON
+>   browse body. The hermetic fixture (`worker_innertube_test`, `wit`,
+>   127.0.0.1 ephemeral) accepts (`innerYes`) only when ALL notes of the
+>   bottleneck verify: visitor-data cookie, matching API key, signature
+>   recomputed from granted SAPISID + received ts + Origin, and a
+>   well-formed browse body; then `/visitor` proves the jar re-attaches.
+>   No engine change needed — everything row 35 required was already
+>   provided by the unified jar + `__nb_sha1`. Full `make check` (43
+>   suites) green.
 > - **Script-tag edge audit.** `script_type_skip` was allowlisting
 >   (`module`/`json`/`ld+json`) and thus RAN unknown types like
 >   `text/template` as broken JS (WERR noise). Rewritten to browser rules:
