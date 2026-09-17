@@ -179,3 +179,23 @@ short version.*
     Xelector highlight honestly skipped in v1 (no height of its own).
     Live-tested against pc-hq's real chunk data, PNG-verified. See
     `&.widgits/5-pov-widgit.md` §2g.
+22. LLMUD fold-in (external `XO/LLMUD_CODE/0.LLMUD.md` +
+    `1.BANK_SYSTEMS.md` architecture proposals, 2026-09-17): folded
+    into this house's own plan, not copy-pasted. Real finding: LLMUD's
+    FSM/event/reward-loop layer independently re-derives what
+    `H-AI-LAB-DESIGN.md` Part 4/5 and `IRL-BOOTSTRAP-RECURSION-SPEC.md`
+    already scoped (validation, not new work). Genuinely new: a
+    Synonym/Relation/Sentence Bank layer this house has no equivalent
+    of, and a Rollback/StateSnapshot gap in Part 4's Review Queue.
+    Smallest real first step named: a Synonym Bank file + lookup op,
+    wired into Part 5's own `ai_fsm_transition` smallest-first-step.
+    Not started. `design-docs/LLMUD-INTEGRATION-DESIGN.md`.
+23. AI-Function-Crafting db-hq tab (direct owner ask, 2026-09-17): a
+    new db-hq tab, Canvas-Craft's bench/recipe/inventory UI pattern
+    (`design-docs/CANVAS-CRAFT-DESIGN.md`) pointed at constructing new
+    events-hq AI command rows (`H-AI-LAB-DESIGN.md` Part 5) from real
+    input/variable names instead of chemistry ingredients — a bounded,
+    Propose-never-auto-merge "deterministic coding agent for events."
+    Explicitly gated on Part 5's own `ai_fsm_transition` smallest-
+    first-step landing first. Not started.
+    `design-docs/AI-FUNCTION-CRAFTING-DB-HQ-DESIGN.md`.

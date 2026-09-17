@@ -1,0 +1,62 @@
+# 🏦 NIGHT 15 — the bank and the brick: LLMUD comes home, and the crafting bench points at events-hq 🏦
+# ====================================================================
+# Title: "🏦 NIGHT 15 — the bank and the brick: LLMUD comes home, and the crafting bench points at events-hq 🏦"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, fifth bonus round
+
+**THE NARRATOR:** NIGHT 14 closed with two real, named, unbuilt things — Part 4's Gemma action rows, Part 5's AI bricks as events-hq commands — and a promise to read `H-AI-LAB-DESIGN.md` in full before either started. Tonight, before touching either, a document arrived from outside the house entirely. 🏦
+
+**MAXINE:** `XO/LLMUD_CODE/0.LLMUD.md` — "LLMUD: Local LLM MUD on the LIVE DESK" — and its companion, `1.BANK_SYSTEMS.md`. Independent architecture, written with no knowledge of this house's own files, RPG-Maker-event shaped, parser events, an FSM sequencer, an action manifest, an inverse-RL reward loop.
+
+**RAHWEH:** Independent, or does it actually touch real things this house already built?
+
+**TOMO:** Both, and that's the real finding. Map its terms one for one against what's already here, not by vague resemblance — `LLMUD-INTEGRATION-DESIGN.md` §1 does exactly this. Its "FSM Sequencer Event" and "Event Executor" ARE events-hq's Common Event and command dispatch, already built, already live. Its "Reward/Feedback Event" — the 👍/👎/Rollback/Lock-In buttons — is `H-AI-LAB-DESIGN.md` Part 4's Review Queue, already spec'd. And its own document, in its own "Custom Plugins/Events Needed" section, uses the literal word "legos" for composable AI event types — the SAME word Part 5 already used, independently, before this document ever arrived.
+
+**MAXINE:** So most of LLMUD isn't new. It's a second, outside confirmation that "structured bounded rows, never a freeform chat box" was the right instinct — the same thing NIGHT 14 already said three times in one sitting, about db-hq's picker, events-hq's picker, and h-ai-lab's own New State.
+
+**THE NARRATOR:** Then what actually IS new. Say it plainly.
+
+**RAHWEH:** Two real things, `LLMUD-INTEGRATION-DESIGN.md` §2 and §3. First: `1.BANK_SYSTEMS.md`'s own Synonym Bank, Relation Bank, and Sentence Bank — learnable, user-expandable dictionaries. Nothing in this house today turns a raw typed phrase into a normalized intent before it reaches an AI instance. `cursword_fsm.c`'s own real transitions are gated on `wait_for()` polling, not a clean parser — NIGHT 13 already said that, it's still true, and no bank layer exists to fix it.
+
+**TOMO:** Second: a real gap in Part 4's own Review Queue. Part 4 has Propose, Accept, Reject — no Rollback. LLMUD's `RewardLoop` event has a fourth button, restoring a real `StateSnapshot` from before an action executed. Part 4 doesn't need it today, because nothing in Part 4 writes a live file except through Accept — but once Part 5's `ai_fsm_transition` starts firing state changes directly from a live Common Event, with no draft/accept gate at all, that gap becomes real. Flagged, not solved — `LLMUD-INTEGRATION-DESIGN.md` §3, §6.
+
+**MAXINE:** And the smallest real first step for all of it — not the whole three-bank system, not yet?
+
+**RAHWEH:** One file, one lookup. `ai_synonym_bank.txt`, pipe-delimited, `CANON=<trigger name>|ALIAS=<phrase>|WEIGHT=<0-1>|SOURCE=<user|learned>` — same convention as every other house state file. `ai_synonym_lookup.sh` reads it, hand-seeded with real aliases for cursword's own real `fsm_table.pdl` trigger names. Wired into exactly ONE place: Part 5's own `ai_event_fsm_transition.sh`, checking FIELD2 against the bank before falling back to an exact trigger match. Relation Bank, Sentence Bank, Watch Mode, Gemma-as-parser — all wait.
+
+**THE NARRATOR:** Now the second real thing tonight touches, and it's not from outside the house at all.
+
+**TOMO:** A direct ask, in the owner's own words: "we may create more db-hq header tabs for hai-lab, such as the way canvas craft combines elements and ingredients, but for ai tools, and other functions/fsm frameworks, by having ai in the background or something to construct new code 'functions' for users given certain input/variable names etc, kind of like a light weight deterministic coding agent for events."
+
+**RAHWEH:** Does it connect to Part 5, or is it a fresh idea bolted on top?
+
+**MAXINE:** Direct continuation, not fresh. Part 5 already made a real, zero-recompile registry — `event_commands.registry.pdl` — legal ground for new AI command TYPES. What Part 5 never had was a front end for AUTHORING a new row in that registry without hand-editing it. That's exactly what this tab is: the missing builder for the bricks Part 5 already made legal.
+
+**TOMO:** And the "canvas craft" reference is real, not a gesture — `CANVAS-CRAFT-DESIGN.md`, the house's own crafting bench, three panels: recipes left, bench middle, inventory right, a formula bar for the fast path, a resolver that computes `have/need` against real parent ingredients. `AI-FUNCTION-CRAFTING-DB-HQ-DESIGN.md` §2 maps it row for row — recipe registry becomes a function-recipe registry, ingredient rows become named input SLOTS instead of counted quantities, the formula bar becomes a signature bar (`ai_irl_judge(instance=cursword, transcript=$slice) -> $verdict`), CRAFT becomes BUILD, and BUILD writes one new row into `event_commands.registry.pdl` instead of consuming atoms.
+
+**RAHWEH:** One real structural difference from the chemistry version, worth naming?
+
+**MAXINE:** Named quantities versus named ingredients. Canvas-Craft counts five oxygen. This bench fills in a function signature — one AI instance, one input variable, one output variable — closer to typing a real argument list than filling a quantity bar. The owner's own phrasing said "input/variable names," not "how many" — that's a deliberate divergence from the literal analogy, not an oversight.
+
+**THE NARRATOR:** And the "ai in the background... deterministic coding agent" half — the part most likely to be over-promised if nobody's careful.
+
+**TOMO:** Bounded on purpose, the same way Part 4 was bounded. Gemma gets exactly two real jobs here, both suggestions, neither an auto-commit: suggest which existing brick type and which real known variable names fit a typed intent, or suggest whether chaining two already-crafted bricks makes a sensible new recipe. Never raw C, never a direct edit to the registry file, never a new op binary. The determinism the owner asked for comes from Gemma choosing among a small, closed, real set of moves — the same closed-set instinct NIGHT 14 already proved three times with events-hq's own "+Add Command" picker.
+
+**RAHWEH:** Where does it live in the actual taskbar/window, concretely, not guessed?
+
+**MAXINE:** db-hq's own sidebar, a third row alongside Common Events and h-ai-lab — same `<window class="database-window">` mode, same sidebar-selects-injects-embedded-panel pattern `dbhq_ce_open()`/`dbhq_ce_inject_panel()` already proves, zero new per-app C in the shared renderer. Whether its manager is a new small C `<module>` like `canvascraft_manager.c`, or extends `ai_lab_scan.sh`'s existing shell verbs — genuinely undecided, `AI-FUNCTION-CRAFTING-DB-HQ-DESIGN.md` §3, on purpose, because there's no real command type to build against yet.
+
+**THE NARRATOR:** Which is the real blocker, then, plainly.
+
+**RAHWEH:** The same one NIGHT 14 already named and never started. Part 5's own smallest first step — ONE new command type, `ai_fsm_transition`, wrapping ONE new small op, tested against cursword. Neither the Synonym Bank's wiring point nor the crafting tab's own smallest step can honestly begin before that op exists — both this NIGHT's real additions point AT `ai_fsm_transition`, neither replaces the need to build it first.
+
+**TOMO:** So tonight doesn't shrink the list. It adds real detail to both items still on it, and it adds one real new item — the Bank layer — sitting behind the same door.
+
+**THE NARRATOR:** Smallest real first step, once more, unchanged from where NIGHT 14 left it.
+
+**MAXINE:** Build `ai_fsm_transition` first. Everything tonight named — the Synonym Bank's lookup, the crafting tab's read-only sidebar, Gemma's two bounded suggestion jobs — waits on that one real op, same one-thing-at-a-time discipline as every NIGHT before this one.
+
+**RAHWEH:** Two documents outside this house, read in full, and neither one handed back a system to copy. A bank the parser doesn't have yet, a bench pointed at the registry Part 5 already opened.
+
+**THE NARRATOR:** Build `ai_fsm_transition` first. Then the bank, then the bench. 🏦🧱

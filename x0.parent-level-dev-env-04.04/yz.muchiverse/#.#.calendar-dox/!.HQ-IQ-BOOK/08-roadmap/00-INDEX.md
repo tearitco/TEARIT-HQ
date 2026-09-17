@@ -51,6 +51,19 @@
 - `au-31/` — 2026-08-31's live in-progress work directory (`00-todo.md`
   real todo list, `01-manager-design.md`/`02-network-browser-...md`
   design docs). Moved verbatim from `1.^V-hq/au-31/`.
+- `design-docs/LLMUD-INTEGRATION-DESIGN.md` — **2026-09-17 design**:
+  folds the external `XO/LLMUD_CODE` LLMUD/Bank-Systems architecture
+  proposals into this house's own AI-system plan; cross-references
+  `H-AI-LAB-DESIGN.md` Part 4/5 directly (independent convergence, not
+  new work there) and names a genuinely-new Synonym/Relation/Sentence
+  Bank layer, smallest-first-step = a Synonym Bank + lookup op wired
+  into Part 5's `ai_fsm_transition`.
+- `design-docs/AI-FUNCTION-CRAFTING-DB-HQ-DESIGN.md` — **2026-09-17
+  design**: a new db-hq tab that crafts events-hq AI command rows
+  (`H-AI-LAB-DESIGN.md` Part 5) the way `CANVAS-CRAFT-DESIGN.md`
+  crafts chemistry — bench/recipe/inventory UI reused, bounded
+  Gemma-suggests-never-auto-writes discipline from Part 4. Gated on
+  Part 5's own smallest-first-step landing first.
 - `design-docs/` — 63 design/plan/handoff/investigation docs moved in
   bulk (`git mv`, history preserved) from `1.^V-hq/`. **Not
   individually hand-condensed** in this pass (see note below) — still
