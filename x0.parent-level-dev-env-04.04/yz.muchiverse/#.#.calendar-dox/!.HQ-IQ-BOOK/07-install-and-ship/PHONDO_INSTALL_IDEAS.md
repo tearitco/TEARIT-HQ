@@ -176,11 +176,15 @@ shared map, not the transcript.)
    second machine/VM? A friend? A stranger who finds this on GitHub?
    The answer changes how much onboarding/safety/error-handling
    actually matters yet.
-3. **GitHub-as-appstore — how literal?** Is the idea "toys/pals are
-   literally individual git repos a user's install can `git clone`/
-   `pull`", or more like "one central catalog repo lists approved
-   items, each with its own download location"? These lead to very
-   different amounts of new infrastructure.
+3. ~~GitHub-as-appstore — how literal?~~ **ANSWERED 2026-09-17, direct
+   from owner: "will be its own git rep for now. in tearit-co, just
+   document for now."** Each store item (toy/pal/palette/plugin/
+   file-desk) is its own individual git repo, under the `tearit-co`
+   GitHub org, for now — not one central catalog repo listing download
+   locations. "For now" and "just document" are load-bearing: this is
+   a real decision to build against later, not a build instruction
+   yet — see `00-compact/compact-store-install.md` for the compact
+   pointer version of this decision.
 4. **What does "approved" mean, concretely, if anything yet?** Is
    there a reviewer (you), an automated check (the KPI harness must
    pass), both, neither for now (anything-goes alpha channel)?
