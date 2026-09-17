@@ -78,6 +78,23 @@
   bridge to `IRL-BOOTSTRAP-RECURSION-SPEC.md`'s famous-llm work
   (Behavior Banks as a second Layer-0 curriculum source). §7 lists 5
   real open theory questions for the ai team, deliberately unresolved.
+- `design-docs/DUSTOPIA-HACK.md` — **2026-09-18 design**: sibling to
+  `LLMUD-HACK.md`, verifying `6-qwen-dustopia-hack.md`'s "self-building
+  world" proposal (DESCRIBE→SCORE→STORE→SCALE applied to fractal
+  world-CONTENT generation, not action-replay). §1 gives the mechanical
+  (not just cited) explanation of why DESCRIBE beats CLASSIFY, the gap
+  flagged as missing from `NIGHT_16`/`LLMUD-HACK.md`. §3 honestly
+  scores each of the 4 named bank layers against real house status
+  (Synonym Bank real, Behavior Bank reuses LLMUD-HACK's own schema
+  unchanged, Relation/Sentence Bank real ideas with zero house-side
+  design work). §4 flags the source doc's "λ spectral flow parameter"
+  as imported-but-unverified rather than inventing an explanation. §5
+  sets a real, stricter auto-execute policy than LLMUD-HACK's
+  (propose-and-confirm by default), since this hack can spawn new game
+  content, not just replay known-good actions. §6/§7 name PALCRAFT/
+  mineclonia as the real near-term testbed and argue for building one
+  shared watch/observe layer (not two) ahead of either hack's own
+  bank-scoring work.
 - `design-docs/` — 63 design/plan/handoff/investigation docs moved in
   bulk (`git mv`, history preserved) from `1.^V-hq/`. **Not
   individually hand-condensed** in this pass (see note below) — still
