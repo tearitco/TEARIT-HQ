@@ -104,6 +104,22 @@
   exception (new `ai_*` event-command primitives), the DSR/WSR-CIV
   parallel-track multi-copy event-reuse experiment, and the confirmed
   zero-recompile context-menu-as-event scaffolding.
+- `design-docs/RELAY-WINDOW-TARGETING-DESIGN.md` — **2026-09-18
+  design, not started**: formalizes how a relay-driving agent picks
+  the right window/PID. Real current mechanism confirmed by direct
+  code read: `history_path()` keys purely on the process's own
+  `getpid()`, dispatch never checks X11 focus (deliberate, so
+  human+agent can share a display), and per-PID files (fixed
+  2026-08-29) already prevent cross-window bleed. The real gap: no
+  formal target-resolution/liveness-check step, and the taskbar's own
+  `focused=0/1` tracking (`livedesk_hq_windows_<pid>.txt`) doesn't gate
+  relay consumption at all — meaning a relay-only test can pass a step
+  a real human replay would need an extra focus-click for (ties
+  directly to the `relay-testing-may-mask-real-focus-bugs` house
+  rule). Proposes making that focus-raise step explicit/logged rather
+  than silently skipped, and extending the existing per-window registry
+  with a `purpose=`/`title=` field for a real purpose->PID lookup
+  instead of `ps aux` grepping. §5 lists 3 open questions for the user.
 - `design-docs/` — 63 design/plan/handoff/investigation docs moved in
   bulk (`git mv`, history preserved) from `1.^V-hq/`. **Not
   individually hand-condensed** in this pass (see note below) — still
