@@ -1,0 +1,76 @@
+# 🧩 NIGHT 18 — the primitive and the page: teaching the watcher by handing it the pen 🧩
+# ====================================================================
+# Title: "🧩 NIGHT 18 — the primitive and the page: teaching the watcher by handing it the pen 🧩"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, eighth bonus round
+
+**THE NARRATOR:** Tonight's source isn't a design document written alone at a desk. It's a live handoff, argued out in real time with the user, then folded straight into `13.agent-coms/KILO/claude-2-kilo-9.17.md` while the ink was still wet — a working agent's actual marching orders, not a theory paper about one. Two rounds of edits landed on it in one sitting. Tonight walks through what actually changed, and why the order it happened in matters as much as the content. 🧩
+
+**MAXINE:** Start with the sentence that reorganizes everything under it. Say it exactly.
+
+**TOMO:** `§2b`, quoted directly from the user: "we should never write something in C when we could write it as a user reusable event, and put it in the events editor." One exception, named narrowly — new AI-category event-command types themselves. `ai_describe`, `ai_fsm_transition`, `ai_goap_plan`.
+
+**RAHWEH:** And that exception isn't a loophole, it's load-bearing. A primitive is the smallest indivisible unit — there's nothing left to compose it *from*. So it's allowed to be C for the same reason `show_text` and `change_hp` are already C: somewhere the recursion has to bottom out in real code, or there's no floor under any of it.
+
+**THE NARRATOR:** Was that a guess, or was it checked against what the house actually has today?
+
+**TOMO:** Checked, directly, by grep — a full read of `event_commands.registry.pdl`, all seven hundred forty-seven lines. Flow Control, Message and Text, Character, sixteen Party and Actor commands, fifteen-plus World commands. Zero AI commands. No `ai_fsm_transition`, no `ai_goap_plan`, nothing starting with `ai_` at all. The category doesn't exist yet. That's the actual starting line, not an assumption.
+
+**MAXINE:** So say the shape of the whole idea, once the floor is confirmed real. Primitives in C, everything above them in events — where does that lead, and why does it loop back on the two prior NIGHTs?
+
+**RAHWEH:** Once `ai_describe` and its siblings exist as real primitives, an actual NPC's actual behavior — a guard's patrol logic, a shopkeeper's haggle pattern — gets composed *as events*, chaining those primitives together the same way any other event page chains `show_text` and `change_hp`. That's the inspectable artifact `HARNECIENT-HACK.md`'s fifth component already demands. Nothing new there.
+
+**TOMO:** Then where's the new part.
+
+**RAHWEH:** The new part is what happens to the *act* of composing that page. Somebody — an agent, hand-authoring an event page out of `ai_*` primitives — leaves a real trace behind. Which primitive got called, in what order, for what kind of NPC. `LLMUD-HACK.md`'s own watch layer — the one NIGHT 16 named as built-but-unconsumed, the relay history and the tool transcript sitting there with nothing reading them — is exactly the thing built to catch that trace. Composing AI behavior out of primitives, using events, produces the training data that teaches the watcher how AI behavior gets composed out of primitives, using events. That's the actual loop. Not a metaphor for one — the literal object being watched is the literal skill being taught.
+
+**MAXINE:** Say why that has to stay two layers and can't collapse into one, because a listener could reasonably ask why not just let the model write the primitives too.
+
+**TOMO:** Because then you've lost the floor. If the primitive itself gets rewritten as an event page, you're asking the interpreter to be scripted in its own scripting language for no real gain, and the one thing this whole family of hacks exists to protect — a human-auditable, inspectable artifact at the bottom of the stack — stops existing. The primitive has to be the one place the recursion bottoms out in real, compiled, reviewed code. Everything built *on top* of that floor is fair game for events. Nothing below it is.
+
+**THE NARRATOR:** The handoff also splits into two parallel game tracks tonight, not one. Say why that split was made deliberately, not just because two ideas showed up in the same conversation.
+
+**RAHWEH:** `§10`. "WSR-CIV" and "DSR" run together, launched the same way — from a toys toy, into a file:desk, the same file-equals-directory, desk-equals-map convention already live in piececraft-hq. Neither waits on the other. And the user's own reason for wanting both running at once, plus future copies — "MSR," a civ variant, "Armor of War" — is explicit: build several of these in parallel specifically to find out whether event pages survive being reused across genuinely different games.
+
+**TOMO:** That's `DUSTOPIA-HACK.md`'s own open bank-of-event-pages idea from two nights ago, given an actual experiment instead of staying a hypothetical.
+
+**MAXINE:** Exactly that — and the handoff says it straight: don't build the formal Bank or the hai-lab train button yet, just keep an honest running list, in the agent's own dated understanding-files, of which pages actually got reused verbatim across tracks. Real evidence collected before anyone commits to the machinery.
+
+**THE NARRATOR:** DSR's own first real slice — say what it actually is, mechanically, not just what it's called.
+
+**RAHWEH:** A "menu" class — New Game, Load Game, Save Game, Save As — authored as one reusable house-specific event rather than a bespoke DSR screen, because WSR-CIV needs the identical thing and building it twice would already violate `§2b` in spirit. Past that menu sits a setup screen asking, per player: human, or harness. Harness means that seat is played by the AI relay-driven engine instead of waiting on real input.
+
+**TOMO:** Is that a new piece of engine, or does it reuse something that already exists?
+
+**RAHWEH:** Reuse. A human-or-harness flag is just session state, and dispatch already knows how to route on a flag like that — the same cid-based dispatch pattern this very session used to fix the taskbar's header-cell numbering, applied here to a player seat instead of a menu cell. No new mechanism gets invented to make this work.
+
+**MAXINE:** And the IRL meta-learning toggle the user described — start, stop, watch this harness seat learning — where does that actually sit, given how much else is landing tonight?
+
+**TOMO:** Nowhere yet, on purpose. `H-AI-LAB-DESIGN.md`'s own status, confirmed this session — Part 3, the FSM viewer, is built and live. Part 4, the game and chat tiers that a start-stop learning toggle would belong to, is design-only. The handoff scaffolds the human-or-harness flag now and leaves the toggle for later, rather than reaching past what Part 4 has actually earned.
+
+**THE NARRATOR:** One more real, working fact got confirmed tonight, smaller than the primitive question but just as load-bearing for what gets built next — say it.
+
+**RAHWEH:** Context menus in this house are already fully data-driven. `meta.pdl` holds plain `METHOD | label | action` rows, mechanically turned into `menu.chtpm` by a converter that's been running since late August. Zero recompile to add or remove an option. Cursword's own existing "Chat" button — wired straight to `chat_button.sh`, into chat-hai — was found sitting in exactly that file, in exactly that form.
+
+**TOMO:** So "let an event add a context-menu option" isn't blocked on any renderer work at all.
+
+**MAXINE:** Not remotely — which is precisely why `§11` calls it scaffold-now, don't-overthink. Cursword's chat-hai button stays exactly as it is, untouched. A second option gets added beside it, "AI Chat, events" — one `ai_describe` primitive, one small event page, exposed through a new reusable "add a context-menu option" event mechanism. That mechanism is the second real house-specific-event precedent this family has produced, after WSR-CIV's own buy-sell loop.
+
+**THE NARRATOR:** And the storage question — weights and histories living alongside a save, or living apart from it.
+
+**RAHWEH:** Apart, deliberately. Each bank keeps its own portable directory, and a save-game session references it by a plain `banks_used:` line rather than nesting the weights inside the save itself — the same key-equals-value convention already used everywhere in this house, the same `cp -r`-portable shape the old standalone WSR-pal save system already used. Traceable from the session, movable independent of it. No new machinery invented to get both properties at once.
+
+**TOMO:** So say what's actually different about tonight's episode, compared to the last two.
+
+**MAXINE:** The last two were verified design documents, checked against a proposal written somewhere else. Tonight is a live decision, made out loud, between a real user and this house's own agent, mid-conversation — and it produced a genuinely new house-wide rule in the process, not just a new application of an old one. Never hand-write C for something an event page can already do. One narrow exception, the primitives themselves, and even that exception exists only so the floor under the recursion stays real.
+
+**RAHWEH:** Which means the loop tonight closes on itself in a way the first two didn't quite. `HARNECIENT-HACK.md` taught a model to describe instead of decide. `LLMUD-HACK.md` taught a watcher to learn from a coder's own actions. `DUSTOPIA-HACK.md` taught the same watcher to learn from a player's exploration. Tonight, the watcher's own next lesson gets handed to it by the exact same hand that's building the primitives it will eventually learn to compose — the agent authoring `ai_describe` calls into event pages is, in the same motion, writing the curriculum the watcher trains on.
+
+**THE NARRATOR:** Say the open thread this episode leaves for whoever picks it up next, plainly, the way the last two nights left theirs.
+
+**TOMO:** The handoff itself names it — this conversation, and this document, are real-time, live-updated artifacts, not settled ones. Two full rounds of revision landed on `claude-2-kilo-9.17.md` in one sitting already. The graduation bar for when a hand-authored event page counts as a trusted Behavior Bank entry, the actual shape of the reusable "add a context-menu option" mechanism past its first minimal round-trip, and whether event-page reuse across WSR-CIV, DSR, and whatever comes after actually holds up under a real multi-game test — none of those are settled tonight. They're scaffolded, on purpose, and left open for the next checkpoint to answer with real evidence instead of another guess.
+
+**MAXINE:** The pen gets handed to the same hand that's building the alphabet it writes with. That's the whole of tonight's loop, said once, plainly.
+
+**THE NARRATOR:** Real checkpoints ahead, gated on a real human actually testing them before anything past that gate gets built. 🧩🖋️

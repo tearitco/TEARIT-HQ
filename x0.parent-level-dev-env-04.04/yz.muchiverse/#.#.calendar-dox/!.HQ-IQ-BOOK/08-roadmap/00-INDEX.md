@@ -97,7 +97,13 @@
   bank-scoring work. Companion audio: `1-1.HARNECIENT.SMOL/NIGHT_17_
   NEW_GAME_PLUS.txt`/`.mp3` — "new game plus" framing, all three hacks
   as one recursive describe-then-score system run three times on a
-  bigger object each loop.
+  bigger object each loop. Follow-up: `1-1.HARNECIENT.SMOL/NIGHT_18_
+  THE_PRIMITIVE_AND_THE_PAGE.txt`/`.mp3` — dramatizes the live
+  `13.agent-coms/KILO/claude-2-kilo-9.17.md` handoff Q&A: the new
+  house-wide "never write C for what an event can do" rule with its one
+  exception (new `ai_*` event-command primitives), the DSR/WSR-CIV
+  parallel-track multi-copy event-reuse experiment, and the confirmed
+  zero-recompile context-menu-as-event scaffolding.
 - `design-docs/` — 63 design/plan/handoff/investigation docs moved in
   bulk (`git mv`, history preserved) from `1.^V-hq/`. **Not
   individually hand-condensed** in this pass (see note below) — still
