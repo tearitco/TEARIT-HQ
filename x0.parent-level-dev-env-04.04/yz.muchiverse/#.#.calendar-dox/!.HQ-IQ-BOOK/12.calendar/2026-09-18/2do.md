@@ -22,7 +22,12 @@ grid and a human has clicked it once via relay.
 User-facing writeup (do not lose the reason):
 `10-user-docs/2026-09-18/WHY-DSR-WSR-PAUSED.md`.
 
-## Next sprint (design only) — drop INTO windows
+## Slice 1 — window highlight + desktop pal → Inventory (landed, check)
+
+Highlight color = `drop_highlight=` (FE default `#88ff66`). Drag a
+desk pal over File Explorer / Inventory: thick green frame. Release:
+`mv` pal dir into `dir=` (current explorer folder). Spec slices 2–5
+still later.
 
 See `08-roadmap/design-docs/INVENTORY-DROP-AND-WINDOW-HIGHLIGHT-2026-09-18.md`.
 Palette Place ≠ Xdnd. Highlight the **window** on hover; reuse

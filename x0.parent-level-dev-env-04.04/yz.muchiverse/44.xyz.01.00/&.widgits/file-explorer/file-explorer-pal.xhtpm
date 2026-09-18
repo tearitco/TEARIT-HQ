@@ -55,7 +55,7 @@
      <panel>, just <tabbar> (breadcrumbs) + a real top-level
      <scrolllist> that fills the rest of the window. -->
 
-<window label="File Explorer - ${mode}" class="file-explorer-pal database-window user-resizable" vars="file_explorer_ui.txt">
+<window label="File Explorer - ${mode}" class="file-explorer-pal database-window user-resizable" vars="file_explorer_ui.txt" drop_highlight="#88ff66" drop_action="sh -c 'exec sh &quot;$1/&amp;.widgits/file-explorer/ops/fe_drop.sh&quot; &quot;$0&quot; &quot;$1&quot;'">
   <!-- REAL, NEW 2026-09-05 - launch_module() passes house_root then
        package_dir automatically, then this <module>'s own id= as a
        THIRD, single extra argv slot (kh_collect_and_launch_modules()'s

@@ -1,7 +1,31 @@
 # Inventory drop + reusable window highlight — design (2026-09-18)
 
-**Status:** DESIGN ONLY. Next sprint. Do not implement in this pass.
+**Status:** SPEC + slice 1 in progress (window highlight + desktop pal
+→ Inventory `mv`). Preview-while-drag and pc-hq↔desk are later slices.
 **Palette overlay:** user confirmed the 64px wireframe looks good.
+
+## Have we done pc-hq → desk?
+
+**No.** Palettes Place stamps **tiles** onto the desk. Piececraft
+`pchq_place_cell.sh` writes a **glyph into a board cell**, not a
+livedesk pal window. Dragging a pal from a pc-hq window onto the
+desktop (or the reverse) is **not built**. That is slice 3.
+
+## Preview while dragging
+
+Not required now. Useful later for inventory↔inventory and pc-hq↔desk
+so you see the sprite follow the pointer. Slice 4. Slice 1 is
+**window highlight only** (no ghost sprite).
+
+## Slices (do one at a time)
+
+| # | What | Status |
+|---|---|---|
+| 1 | Highlight drop-target HQ window (caller color). Desktop pal drag-release `mv`s into Inventory/`current_dir`. Xdnd `drop_action` still works for dir drops (bookmarks-style). | **landed 2026-09-18 — check** |
+| 2 | Drag **out** of Inventory onto desk (spawn/move pal window). | later |
+| 3 | pc-hq window ↔ desk (same highlight + dest registry). | later |
+| 4 | Optional drag preview (ghost). | later |
+| 5 | Inventory ↔ inventory (same as 1 once two explorers have dest dirs). | later |
 
 ## Three different “drag” stories (do not mix them)
 
