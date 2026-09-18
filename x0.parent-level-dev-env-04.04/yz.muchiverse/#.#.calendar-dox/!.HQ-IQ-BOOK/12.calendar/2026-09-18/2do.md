@@ -22,6 +22,10 @@ grid and a human has clicked it once via relay.
 User-facing writeup (do not lose the reason):
 `10-user-docs/2026-09-18/WHY-DSR-WSR-PAUSED.md`.
 
+## Hover UX — USER SAW IT (slow; not 60fps)
+
+Pal poll 300ms, FE loop 150ms. Tighten later if wanted. Un-factor next.
+
 ## Hover UX (2026-09-18) — file-area fill + banner
 
 On drop-hover the explorer **body** paints `drop_highlight` and a
