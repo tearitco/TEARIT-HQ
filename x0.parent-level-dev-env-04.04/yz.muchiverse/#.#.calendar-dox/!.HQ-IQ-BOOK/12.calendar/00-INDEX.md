@@ -32,3 +32,8 @@ in-progress onboarding doc for ongoing work.
   (2026-09-13/14), multi-agent git process hygiene, cross-platform
   audit results, the cursword ARGB-Visual crash root cause, and the
   Sept 11 handout's still-valid tool-assignment reasoning.
+
+Live dated dirs again (book audit had folded 2026-09-05..15):
+
+- `2026-09-18/2do.md` — WSR-CIV/DSR **paused** while Cursword
+  Inventory/qolq-dir bootstrap runs; resume conditions listed there.

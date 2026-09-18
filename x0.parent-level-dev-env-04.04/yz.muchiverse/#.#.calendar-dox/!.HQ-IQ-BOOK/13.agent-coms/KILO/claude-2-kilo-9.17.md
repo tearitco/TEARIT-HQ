@@ -33,8 +33,13 @@ path is documented in
 `13.agent-coms/GROK/2026-09-17-cursword-file-inventory-chat.md`.
 §11's "add AI Chat (events) to Cursword context menu, leave Chat as-is"
 is **not cancelled for Chat**, but the *first* new buttons are
-**File** and **Inventory**, not a second chat item. Do not start
-famous/QKV/meta-transformer work this pass.
+**File** (stub/hook only) and **Inventory**, not a second chat item.
+Do not start famous/QKV/meta-transformer work this pass.
+
+📌 **2026-09-18 PAUSE (user)**: WSR-CIV + DSR tracks in this handoff
+are **paused momentarily**, not cancelled. Todo:
+`12.calendar/2026-09-18/2do.md`. Do not start Step A–F or DSR menu
+class until that file says resume.
 
 ---
 

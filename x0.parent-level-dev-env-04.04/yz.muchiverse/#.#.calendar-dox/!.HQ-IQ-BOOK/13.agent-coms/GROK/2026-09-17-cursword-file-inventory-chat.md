@@ -1,6 +1,7 @@
 # Cursword File / Inventory / robot-chat — planning burst (2026-09-17)
 
-**Status:** PLAN ONLY. No code this burst. Waiting on user check-in.
+**Status:** PLAN, answers landed 2026-09-18. Still no Inventory UI
+code this burst — waiting on the grid-shape check-in below.
 **Why:** faster bootstrap than a full LLM or event-chat on Cursword main.
 
 ## What we are NOT doing this pass
@@ -47,23 +48,99 @@
   `08-roadmap/design-docs/RELAY-WINDOW-TARGETING-DESIGN.md` (design
   only).
 
-## Proposed next burst (after you confirm)
+## Answers (user, 2026-09-18)
 
-**Only:** add File + Inventory METHOD rows on Cursword `meta.pdl`,
-regenerate `menu.chtpm`, make Inventory open *something* visible
-(even a stub grid of `inventory/` after mkdir). Stop. Relay-click
-those two rows. Ask before robot pal or gemma.
+1. **File can wait.** An experimental METHOD hook is fine (stub that
+   does not yet turn Cursword into a 📁 sprite). Inventory is the
+   real first button.
+2. **New directory** `cursword/inventory/`. Move today's
+   `inventory.txt` *into* that dir. Do not delete the old path until
+   live readers are retargeted (slow migrate).
+3. **New 🤖️ pal** — do not retarget an existing desktop pal.
+4. Grid question was too compressed — restated below. User: swatch /
+   file-hq "sounds ok" pending a real explanation.
+5. **Pause WSR-CIV/DSR momentarily.** Todo lives in
+   `12.calendar/2026-09-18/2do.md`.
 
-## Open questions (please answer)
+### What currently uses `inventory.txt` (live, not just docs)
 
-1. File vs Inventory: same window/code, two entry points — or File =
-   icon-transform of the Cursword sprite, Inventory = always a separate
-   x11-hq window?
-2. `inventory/` vs current `inventory.txt` — new dir beside the txt,
-   or replace?
-3. Robot: new pal cloned from an existing 🤖️, or retarget an already-
-   on-desktop pal?
-4. First visible grid: reuse palettes swatch-grid (`class="swatch"`)
-   / file-hq, or a new x11-hq layout?
-5. Keep kilo WSR-CIV/DSR running in parallel, or pause those until
-   File+Inventory exist?
+These still hardcode `<package_dir>/inventory.txt` and parse `qolq=`:
+
+- `&.widgits/events-hq/ops/mr_change_gold.c`
+- `&.widgits/events-hq/ops/mr_select_item.c`
+- `&.widgits/events-hq/ops/play_event.sh` (ledger line + gold.txt sync)
+- `*.monads/*.muchi-pet/ops/open_rp_menu.sh`
+
+Unrelated `inventory.txt` files also exist under muchi-pals /
+avatar-creation (`pieces/world_01/.../inventory.txt`,
+`xyzfs/.../home/avatars/inventory.txt`) — different contract, leave
+them alone this pass.
+
+**Migrate rule:** after mkdir, keep a compatibility copy or symlink at
+`cursword/inventory.txt` pointing at `cursword/inventory/inventory.txt`
+until those four ops are retargeted. Do not break Play / CHANGE_GOLD
+in the same burst as the menu buttons.
+
+### Purity / russian-doll (keep in dox, do not implement 105 files)
+
+Game items move as **real directories** (`mv entity_dir
+cursword/inventory/`). True purity would make quantity itself a pile
+of files (105 gold → 105 `qolq` files or dirs). That is allowed, and
+overkill for v1.
+
+v1 target:
+
+```
+cursword/inventory/           # the bag (movable, nestable)
+  inventory.txt               # legacy kv bag — migrate away
+  qolq/qolq.txt               # contents: 105   (one number, no key=)
+  <robot pal dir>/            # later
+```
+
+`gold.txt` at pal root (if present) stays in the slow-migrate pile
+with `inventory.txt`; do not invent a third gold source this pass.
+
+## Question 4 restated — what "grid" means
+
+This house already has **two** on-screen shapes that look like "a
+folder of tiles," and they are not the same code path:
+
+**A. Palettes swatch grid** (`class="swatch"` on `<item>` inside a
+`khtpm_core_render` `.xhtpm` window). Used by RPG Maker tile pickers.
+Squares wrap to window width, sprites drawn in cells, one-way drag
+onto a map is already real. Closest visual to "inventory of icons."
+Does **not** today mean "this cell is a nested pal directory you can
+`mv` onto the desktop."
+
+**B. file-hq / host folder** — `METHOD | Dir` already `xdg-open`s the
+pal. That is the *host* file manager, not an in-house window, and it
+shows the whole pal (events, harnesses, pngs), not just
+`inventory/`.
+
+**C. A new x11-hq window** whose cells are **entity pals** (each cell
+= a subdirectory of `inventory/`, icon = that pal's png). Drag in/out
+= `mv` on the linux fs. This is the actual product. A and B are
+*parts* we can steal (swatch layout for the cells; maybe file-hq
+patterns for listing a dir), not the product themselves.
+
+So the short question was: **first visible Inventory window = steal
+swatch layout (A) and point its cells at `inventory/` subdirs, or
+stand up a new layout branch in the renderer (which house rules
+forbid if A already fits)?** Recommendation: **A**, no new
+`layout_*` in `khtpm_core_render.c`. Confirm before I wire it.
+
+## Proposed next burst (after you confirm Q4)
+
+**Only:** mkdir `cursword/inventory/`; move `inventory.txt` in; add
+compat symlink at the old path; add **Inventory** METHOD + a stub
+**File** METHOD (log/no-op or same window later); regenerate
+`menu.chtpm`. Stop before a pretty grid if the hook merely opens a
+window. Relay-click Inventory. No robot pal yet. No gemma.
+
+## Still open (new)
+
+- Inventory window: steal swatch grid (A) — yes/no?
+- Compat path: symlink `cursword/inventory.txt` →
+  `inventory/inventory.txt` until ops retarget — yes/no?
+- Robot spawn: create the new pal on the **desktop** first, then drag
+  into `inventory/`, or create it already inside `inventory/`?
