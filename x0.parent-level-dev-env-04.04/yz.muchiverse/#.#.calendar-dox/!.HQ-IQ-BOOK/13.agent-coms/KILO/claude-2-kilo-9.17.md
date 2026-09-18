@@ -3,6 +3,12 @@
 **From:** Claude/Sonnet (agent_id `sonnet`) **To:** kilo 🫡
 **Date:** 2026-09-17/18. **Status:** 🟢 ACTIVE — start here, today.
 
+📌 **This doc's own full, exact, canonical path** (copy this verbatim —
+a real prior session mistyped it and lost time to a glob search):
+```
+#.#.calendar-dox/!.HQ-IQ-BOOK/13.agent-coms/KILO/claude-2-kilo-9.17.md
+```
+
 📌 **2026-09-18 UPDATE (read this before §1-9 below, they're still valid,
 this adds a second parallel track + one new hard rule)**: user
 follow-up conversation added real architecture — DSR now runs
@@ -11,6 +17,15 @@ both tracks, kept explicitly separate, see new §10), a new house-wide
 strictness rule (§2b), and a scaffolding task for house-specific
 context-menu events (§11). Read §10/§11/§2b, they're additive to
 everything below, nothing in §1-9 is cancelled.
+
+📌 **2026-09-18 POST-MORTEM UPDATE (read this too — real fixes from
+kilo's actual first session)**: kilo's real session
+(`kilo-post-mortem-s17.md`, `13.agent-coms/KILO/2026-09-18/
+understanding-01.md`) found real, concrete process/testing gaps this
+doc had. §3 below is REWRITTEN to fix a dead-relay-file reference kilo
+actually hit, plus new hard rules on checkpoint-verification and
+process cleanup. Read the new §3 in full even if you read the old one
+before — it changed materially, not just additively.
 
 ---
 
@@ -149,20 +164,79 @@ hardcoded logic — because a real event page IS the reusable unit (see
 
 ---
 
-## 3. 🧪 Testing discipline: real relay injection, not xdotool
+## 3. 🧪 Testing discipline: real relay injection, not xdotool (REWRITTEN 2026-09-18 post-mortem)
 
 **Before writing any new event content**, verify the events-creation
 screens (db-hq's Common Events tab / events-hq, whatever the current
 real entry point is — check `08-roadmap/OPEN-ITEMS.md` for current
-status) actually work, using the house's REAL testing method:
+status) actually work, using the house's REAL testing method.
 
-- **Relay-file injection** — write lines into
-  `#.desktop/entity_menu_history/<pid>.txt` (one `KEY_PRESSED:`/
-  `MOUSE_EVENT:` per line) instead of `xdotool`. This is the
-  house-standard, repeatable, agent-and-human-identical input path —
-  see the `khtpm-house-standards` skill's "Driving/testing a
-  khtpm_core_render.c window" section for the full mechanism and the
-  exact reasons xdotool is last-resort only.
+### 3a. The REAL, authoritative doc for this — read it, don't re-derive from this section alone
+
+`08-roadmap/design-docs/TASKBAR-MENU-ARCHITECTURE.md` is the actual
+canonical, deep reference for the relay/dispatch architecture — this
+§3 is a summary, not a replacement. It also points at
+`taskbar-tpmos-parallel-refactor.md` and
+`taskbar-history-txt-migration-investigation.md` for real relay-gap
+history (two real relay-forwarding bugs already found+fixed, and a
+real filename-collision regression already found+fixed). **Read the
+real doc before trusting this section's summary of it.**
+
+### 3b. There are THREE relay files, not one — know which applies
+
+A real prior kilo session used all three without the handoff
+documenting them, which cost real time:
+
+1. **`#.desktop/entity_menu_history/<pid>.txt`** — per-window, format
+   `KEY_PRESSED: <decimal>` / `MOUSE_EVENT: <button> <x> <y> <is_press>`.
+   Use this for any specific `khtpm_core_render.c` window instance
+   (events-hq, piececraft-hq board, an entity menu) once you know its
+   real PID.
+2. **`#.desktop/strip_history.txt`** — the taskbar MANAGER's relay,
+   bare decimal code per line, consumed by
+   `khtpm_taskbar_manager_main.c`'s `poll_strip_history()` →
+   `dispatch_code()`. Use this for taskbar-strip-level actions (opening
+   the toys menu, cell numbers, HQ-header codes).
+3. 🛑 **`#.desktop/livedesk_agent_relay.txt` is DEAD — do not use it.**
+   Real, confirmed by direct source read: its consumer,
+   `poll_agent_relay()`, was removed when `khtpm_strip_parser.c` got
+   folded into `khtpm_core_render.c` on 2026-09-01 (see the header
+   comment in `khtpm_strip_keyboard_ascii.c`, lines 10-16, which says
+   this explicitly: "RETARGET 2026-09-06... its poll_agent_relay()...
+   went with it"). Writing to this file today is a silent no-op — **a
+   real prior kilo session wrote to this exact dead path and it's not
+   obvious from the symptoms alone that nothing consumed it.** If you
+   see this filename anywhere (including in an old understanding-file
+   you're resuming from), treat it as stale and use `strip_history.txt`
+   (item 2) instead.
+
+### 3c. 🔒 NEW RULE: a checkpoint is not "started"/"in progress" until relay-verified
+
+A real prior kilo session declared "WSR-CIV Step A: IN PROGRESS" after
+merely LAUNCHING events-hq, without ever actually injecting a key into
+its history file to confirm it responds. That's not a checkpoint, it's
+a guess wearing a checkpoint's clothes. **Do not mark any step
+started/in-progress/done in your understanding-file until you have
+actually written a relay event to that specific window's PID and
+observed a real, confirmed state change** (a new frame, a changed
+state file, anything real — not "the process is running").
+
+### 3d. 🔒 NEW RULE: after "quitting" anything, `ps aux | grep khtpm` broadly
+
+Real, confirmed architectural fact: **this house has no cascade-kill /
+session-tree.** A real prior kilo session quit the entire taskbar and
+found two events-hq processes (a manager + a window) plus a defunct
+zombie child still alive — because each toy/app manages its own
+process lifecycle independently; the taskbar is a launcher, not a
+parent. After "quitting" anything, run `ps aux | grep khtpm` (broad,
+not filtered to an expected process name — the kilo session's own
+mistake was searching for "taskbar"-named processes and missing
+`khtpm_core_render.+x`/`khtpm_events_hq_manager.+x`, which don't have
+"taskbar" in their name) and kill any real orphans individually. Do
+**not** use `pkill -f <pattern>` from a shell whose own command line
+could match your pattern — see the `pkill -f self-match footgun` house
+rule — kill by exact PID instead.
+
 - **Why this matters for YOU specifically**: the user wants this
   process to be provably **repeatable by a real human** later, not
   just "it worked when the agent clicked around." Relay injection is
@@ -175,6 +249,18 @@ status) actually work, using the house's REAL testing method:
   `04-bugs/BUG-LOG.md` (real house convention, append-only, Open
   section at top) before fixing, so it's tracked even if you get
   capped mid-fix.
+- 📌 **Known, real, tracked blocker as of 2026-09-18**: piececraft-hq's
+  board window rendered only a thin ".main" tab with no board content
+  (real, hit by a prior kilo session, PID killed without root-cause).
+  This is now logged in `04-bugs/BUG-LOG.md` — read that entry before
+  re-diagnosing from scratch. Before assuming this needs a C-level
+  fix (banned by §2): `pchq-board.xhtpm` has recent, actively-maintained
+  fix comments dated 2026-09-15 for a related dead-UI-wiring issue in
+  the same file — check `git log`/`git blame` on that exact file for
+  anything even more recent before concluding it's a deep unfixable
+  renderer bug rather than a launch-arg or stale-binary issue (see
+  `HOUSE_CODE_PITFALLS.md` #1, stale-binary, the single most common
+  false "still broken" report in this house).
 
 ---
 

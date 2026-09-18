@@ -6,6 +6,26 @@ note under it — don't silently edit it away.*
 
 ## Open
 
+- **piececraft-hq board window renders only a thin ".main" tab, no
+  board content** (found 2026-09-18, kilo's first WSR-CIV session per
+  the `claude-2-kilo-9.17.md` handoff, `kilo-post-mortem-s17.md`).
+  Launched via toys menu → Piececraft-HQ (relay code `5018` on
+  `strip_history.txt`), PID 191387, window came up but only the page
+  name/tab rendered, no board/tile content ever appeared. Killed
+  without root-cause (not diagnosed further this session). NOT
+  confirmed pre-existing vs. a fresh regression — `pchq-board.xhtpm`
+  has real, actively-maintained fix comments dated as recently as
+  2026-09-15 (a related dead-UI-wiring bug, tb-file calling file-hq
+  directly instead of a dropdown, already fixed), so the file is
+  live-maintained, not abandoned. **Before assuming this needs a
+  C-level fix** (`§2` of the kilo handoff bans touching
+  `pchq_board_projector.c`/any renderer): check `git log`/`git blame`
+  on `pchq-board.xhtpm` and `pchq_board_projector.c` for anything more
+  recent than 2026-09-15, and rule out a stale-binary/launch-arg issue
+  first (`03-pitfalls/HOUSE_CODE_PITFALLS.md` #1 — the single most
+  common false "still broken" report in this house). Real blocker for
+  WSR-CIV Step B (file:desk creation) until resolved.
+
 - **network-browser address bar: keeps losing keyboard focus/backspace
   while typing - RECURRING, fixed 3+ times, still reported broken on
   real hardware** (found/re-found repeatedly 2026-09-10/11). User
@@ -69,43 +89,6 @@ note under it — don't silently edit it away.*
   typing while an agent watches `cli_io_state.txt` and the real
   `XGetInputFocus` state in parallel, not another round of relay-only
   verification before calling it fixed.**
-
-  🔄 CORRECTION/RESOLVED (2026-09-12, same day as the open question
-  above): live re-test on the real X input path (global XTEST
-  `xdotool mousemove ... click 1` / `xdotool key`, NOT
-  `xdotool --window`/XSendEvent which bypasses grabs) shows the field
-  arms correctly: click the address row then Enter →
-  `GRAB key=address attempts=1 rc=0(0=success) real_focus_is_us=1` in
-  `&.hq-apps/network/kh_focus_debug.log`, and subsequent keys reach
-  `KEYPRESS key=address`. The window's grab then survives the ~300ms
-  manager reparse ticks (fix #2 above holding). **The "relay works,
-  hardware broken" gap was not a second bug — it was a
-  test-expectation/measurement artifact:**
-  1. **The address bar is a two-step click target, not
-     single-click-to-arm.** Its `<cli_io class="top">` is laid out as
-     a normal navigable row (`nav_index = ++g_n_nav`), so with the
-     house-wide `click_two_step=1` a single click only moves focus;
-     Enter (or a second click) calls `activate_focused()` →
-     `kh_grab_keyboard_retry()` → `GRAB`. "Click once then type
-     Backspace" therefore fails BY DESIGN. After the documented
-     Escape-disarm, re-arm is **click, then Enter** (or click twice).
-  2. **The probe window had MOVED.** The 21:05 log evidence was under
-     window `+80+96`; at probe time `xwininfo` showed the same window
-     id at `+0+928`. Clicks sent to the old screen y landed in the
-     nav/tab **toolbar rows**, not the address row — which reads
-     exactly like "click does not re-arm." Always re-verify live
-     geometry before a probe; never reuse stale coordinates.
-  **Ground truth for the next person**: `kh_focus_debug.log`
-  (`GRAB`/`KEYPRESS`/`ESCAPE` lines) for arm/grab state, and the relay
-  mailbox `#.desktop/entity_menu_history/<renderer_pid>.txt`
-  (`MOUSE_EVENT`/`KEY_PRESSED` lines) to prove an event actually
-  reached the renderer. Prior fixes (1) and (2) remain load-bearing and
-  correct. Caveat: XTEST is still synthetic, though it routes through
-  the server grab like a human — if hardware behavior is ever reported
-  broken again, first re-check window position, then whether the test
-  used `--window` (XSendEvent) instead of global XTEST. See
-  `03-pitfalls/X11-AND-SESSION-PITFALLS.md` (2026-09-12 section) for
-  the standing lesson.
 
 - **pc-hq board: real keyboard focus vs the taskbar** (found
   2026-09-04, see `09-appendix/pc-hq-bugs.md` for the full
