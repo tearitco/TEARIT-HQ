@@ -10731,7 +10731,7 @@ static void kh_drag_stack_above(Display *d, Window pal, Window target,
     XErrorHandler old;
     if (!d || !pal) return;
     root = DefaultRootWindow(d);
-    pw = WIN_PX > 0 ? WIN_PX : 64;
+    pw = 64; /* WIN_PX is declared later; pals are 64px tiles */
     ph = pw;
     old = XSetErrorHandler(kh_xerr_ign);
     if (on && target && target != pal) {
