@@ -1,8 +1,10 @@
 # HANDOFF — resume the JS engine swap (Duktape → QuickJS)
 
 Single entry file for the resuming instance. Read THIS first, then the
-two deep docs in §6, then execute §8. Everything below is repo-relative
-to the worktree root `/home/no/Desktop/github/work/NNEST-12.00-opencode`.
+two deep docs in §6, then execute §8. All paths in this doc are
+**repo-relative** — they are valid at the root of the cloned repo on
+ANY machine (on this machine the clone lives at
+`/home/no/Desktop/github/work/NNEST-12.00-opencode`).
 
 ## 1. The job (compacted)
 
@@ -21,23 +23,43 @@ natives in `ops/nb_js_worker.c` + 19 names/16 natives in `ops/nb_host.h`
 + 11 refs in `ops/nb_js_eval.c`) and the Makefile `nbjs` target change.
 The 44 suites are pipe-driven and engine-agnostic — do not modify them.
 
-## 2. Same git (no push needed — same machine)
+## 2. Getting the work on a NEW machine (this is the different-machine case)
 
-- ONE repository, TWO worktrees of it:
-  - `/home/no/Desktop/github/work/NNEST-12.00` — branch `claude`
-    (the OTHER agent's tree. **Never commit here.**)
-  - `/home/no/Desktop/github/work/NNEST-12.00-opencode` — branch
-    `opencode` (THIS job's tree. **All work goes here.**)
-- No remote push required to resume: the new instance reads the same
-  filesystem. Pushing is only for a different machine, and only on the
-  user's explicit "push".
-- Commit rules: commit ONLY on `opencode`, scoped `git add <path>` per
-  file (never `-A`); NEVER stage runtime state files (pdl, logs, pids,
-  `.png`, built binaries `nbjs`/`w*`); never end a block with
-  uncommitted code (mid-work ok as `wip: <what>`); never
-  merge/cherry-pick/push without the user's explicit "push"; never
-  commit to `main`/`claude`/`chtpm-delete-per-app-c`.
-- Paths contain `&`, `#`, `!` — **always quote them in bash**.
+**Where the code lives (GitHub):**
+```
+repo:   https://github.com/tearitco/TEARIT-HQ.git
+branch: opencode   (ALL of this job's work lives on `opencode`)
+```
+To pick this up on the new machine:
+```
+git clone -b opencode https://github.com/tearitco/TEARIT-HQ.git tearit-hq
+cd tearit-hq
+```
+Then open THIS file from the cloned root and follow §6 → §8. Everything
+is repo-relative, so paths work at any clone location.
+
+**⚠ PUSH GATE — required before the new machine clones.** As of this
+write, `opencode` is **ahead of `origin/opencode` by 8 commits** — the
+vendored QuickJS files, the resume docs, probe receipts, and the graft
+plan are NOT on GitHub yet. A fresh clone will NOT contain them. The
+user MUST push first (`git push origin opencode`) or transport the
+worktree by other means (e.g. the desktop copy of this file + simplest
+is to push). After the push, the clone above pulls everything.
+
+**This machine's local layout (for reference only, not reproduced on a
+new machine):** this repo is used via TWO worktrees of one git store:
+`/home/no/Desktop/github/work/NNEST-12.00` = branch `claude` (the other
+agent — never commit there) and `/home/no/Desktop/github/work/
+NNEST-12.00-opencode` = branch `opencode` (all work). On the new machine
+a single clone on `opencode` is correct.
+
+Commit rules (same everywhere): commit ONLY on `opencode`, scoped
+`git add <path>` per file (never `-A`); NEVER stage runtime state files
+(pdl, logs, pids, `.png`, built binaries `nbjs`/`w*`); never end a
+block with uncommitted code (mid-work ok as `wip: <what>`); never
+merge/cherry-pick/push without the user's explicit "push"; never commit
+to `main`/`claude`/`chtpm-delete-per-app-c`.
+Paths contain `&`, `#`, `!` — **always quote them in bash**.
 
 ## 3. Exact state at handoff (2026-09-18)
 
@@ -104,7 +126,8 @@ build).
 3. House rules if in doubt: `AGENTS.md` (repo root), `01-orientation/
    BRANCH-STRATEGY.md`, `03-pitfalls/OPERATIONAL-LANDMINES.md` (#10 =
    commit rule).
-Offline backup of all house docs: `/tmp/HQ-IQ-BOOK.7z`.
+Offline backup of all house docs (only exists on this machine):
+`/tmp/HQ-IQ-BOOK.7z`.
 
 ## 7. Repo-relative key paths (never typed — copy)
 
