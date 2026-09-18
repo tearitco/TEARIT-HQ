@@ -44,7 +44,6 @@ minimize x even without sidebar. Relaunch File Explorer.
 
 ## Active today
 
-- Cursword `inventory/` dir + slow migrate of `inventory.txt` /
-  `qolq` (see `13.agent-coms/GROK/2026-09-17-cursword-file-inventory-chat.md`)
-- Experimental File METHOD hook only; full 📁 icon mode waits
-- New 🤖️ pal later, not this burst
+- Cursword **Inventory** METHOD landed (opens File Explorer at
+  `cursword/inventory/`). Slow migrate of `inventory.txt` / `qolq` still
+  open. File METHOD stub + 📁 icon mode still wait. New 🤖️ pal later.
