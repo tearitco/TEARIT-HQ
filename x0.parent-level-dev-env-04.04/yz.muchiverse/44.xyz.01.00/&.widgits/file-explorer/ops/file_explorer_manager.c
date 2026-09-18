@@ -98,7 +98,16 @@ typedef struct {
     int n_crumbs;
     int grid_view; /* 0=list (default), 1=grid - REAL, NEW 2026-09-15, direct live report ("we wanted list/grid toggle") */
     int has_back; /* REAL, NEW 2026-09-15 - Back is its own toolbar button now, not a list entry; see list_directory()'s own comment. */
+    time_t dir_mtime;
+    nlink_t dir_nlink;
 } State;
+
+static void fe_note_dir(State *state) {
+    struct stat st;
+    if (!state || stat(state->current_dir, &st) != 0) return;
+    state->dir_mtime = st.st_mtime;
+    state->dir_nlink = st.st_nlink;
+}
 
 /* REAL, NEW 2026-09-15, direct live report ("show current file path,
  * as button of each path that allows clicking and will jump to that
@@ -259,6 +268,7 @@ void list_directory(const char *dir, State *state) {
     state->has_back = strcmp(dir, "/") != 0;
 
     build_crumbs(state);
+    fe_note_dir(state);
 }
 
 void write_ui_file(const char *package_dir, State *state,
@@ -458,6 +468,15 @@ int main(int argc, char *argv[]) {
 
     while (1) {
         usleep(50000);
+
+        {
+            struct stat dst;
+            if (stat(state.current_dir, &dst) == 0 &&
+                (dst.st_mtime != state.dir_mtime || dst.st_nlink != state.dir_nlink)) {
+                list_directory(state.current_dir, &state);
+                write_ui_file(package_dir, &state, "", "");
+            }
+        }
 
         int seq;
         char cmd[MAX_CMD_BUFFER];

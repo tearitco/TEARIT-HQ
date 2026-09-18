@@ -22,10 +22,10 @@ grid and a human has clicked it once via relay.
 User-facing writeup (do not lose the reason):
 `10-user-docs/2026-09-18/WHY-DSR-WSR-PAUSED.md`.
 
-## WAIT — user check before code (2026-09-18 evening)
+## A landed (stat-poll list refresh) — reopen File Explorer once
 
-Issues (ninja drop `mv`d but explorer stale until reopen; Place no grid):
-design doc **Live bugs after slice 1**. Proposed: (A) manager `stat` poll to relist, (B) PLACE spawns `tp_arm_placer_rmmv` but pal-place not tile-stamp, (C) hover paint later. **Do not code until user picks.**
+Manager `stat`s `current_dir` each 50ms; mtime/nlink change → relist.
+Place-grid (B) still waiting. Architecture: `08-roadmap/design-docs/XHTPM-RE.md`.
 
 ## Slice 1 — window highlight + desktop pal → Inventory (landed, check)
 
