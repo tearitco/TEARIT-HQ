@@ -121,7 +121,7 @@
          specifically hasn't been proven live yet - test both modes
          before trusting this comment over what's actually on screen. -->
     <repeat count="${n_grid_entries}" bind="entry">
-    <item id="gentry${entry.#}" class="swatch" label="${entry.icon} ${entry.name}" action="FE_ENTRY:${entry.#}"/>
+    <item id="gentry${entry.#}" class="swatch" label="${entry.icon}  ${entry.name} ${entry.size}" action="FE_ENTRY:${entry.#}"/>
     </repeat>
   </page>
 </window>

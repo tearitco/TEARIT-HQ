@@ -177,7 +177,19 @@ gold-ops retarget unless you ask.
 Palette left-click-to-place is the *old* one-way tile picker. Inventory
 and file-explorer grid are the *bag*: look first, arm drag on purpose.
 
-No code this note.
+**Placement grid vs browse grid (user 2026-09-18):** they are not the
+same. Browse grid = file-explorer Grid View (icon+name+size, same
+payload as list). **Placement grid SHOULD be its own layout** (future):
+a **wireframe grid**, not an all-yellow fill. Not built this burst.
+Do not add that layout until asked.
+
+Disconnect log (plain text): `12.calendar/2026-09-18/answers.txt`
+
+2026-09-18 code (browse grid only): swatch layout was wiping `label=`
+on every tile (palette convention). File-explorer tiles have no
+sprite, so that left empty 34px squares. Fix: keep label when there
+is no sprite; widen those cells so icon+name+size fit. Palette sprite
+tiles unchanged.
 
 ## Still open (new)
 
