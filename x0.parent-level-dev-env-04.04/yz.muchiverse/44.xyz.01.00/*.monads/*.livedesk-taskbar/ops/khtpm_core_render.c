@@ -10046,8 +10046,8 @@ static void kh_write_drop_zone(void) {
                                   0, 0, &rx, &ry, &child);
             zx = rx; zy = ry;
         }
-        fprintf(f, "pid=%d\nx=%d\ny=%d\nw=%d\nh=%d\ndest=%s\ncolor=%s\n",
-                (int)getpid(), zx, zy, zw, zh, dest, g_drop_highlight_color);
+        fprintf(f, "pid=%d\nwin=0x%lx\nx=%d\ny=%d\nw=%d\nh=%d\ndest=%s\ncolor=%s\n",
+                (int)getpid(), (unsigned long)win, zx, zy, zw, zh, dest, g_drop_highlight_color);
     }
     fclose(f);
 }
@@ -10093,21 +10093,43 @@ static int kh_read_drag_hover(void) {
     return pid;
 }
 
-/* Pointer over a published drop zone? dest out. Skip our own pid. */
-static int kh_drop_zone_hit(int rx, int ry, char *dest, size_t destsz) {
+/* Pointer over a published drop zone? Match the X window under the
+ * pointer (walk parent chain) to zone `win=`, not the often-stale
+ * x/y/w/h (WM-moved File Explorer sat at 90,90 in the file while the
+ * pointer was at y=1476). Fall back to rect if no win id. */
+static int kh_drop_zone_hit(Display *dpy_hit, int rx, int ry, char *dest, size_t destsz) {
     char dirp[PATH_BUF];
     DIR *d;
     struct dirent *de;
     int self = (int)getpid();
+    unsigned long stack[64];
+    int nstack = 0;
     if (!g_house_root[0]) return 0;
+    if (dpy_hit) {
+        Window current = RootWindow(dpy_hit, DefaultScreen(dpy_hit));
+        int x = rx, y = ry;
+        while (nstack < 63) {
+            Window child = None;
+            int nx = 0, ny = 0;
+            if (!XTranslateCoordinates(dpy_hit, current, current, x, y, &nx, &ny, &child))
+                break;
+            if (child == None) break;
+            stack[nstack++] = (unsigned long)child;
+            current = child;
+            x = nx;
+            y = ny;
+        }
+    }
     snprintf(dirp, sizeof(dirp), "%s/#.desktop/khtpm_drop_zones", g_house_root);
     d = opendir(dirp);
     if (!d) return 0;
     while ((de = readdir(d)) != NULL) {
         char fp[PATH_BUF], line[PATH_BUF];
         FILE *f;
-        int pid = 0, x = 0, y = 0, w = 0, h = 0;
+        int pid = 0, x = 0, y = 0, w = 0, h = 0, i;
+        unsigned long zwin = 0;
         char zdest[PATH_BUF];
+        int hit = 0;
         zdest[0] = 0;
         if (!strstr(de->d_name, ".txt")) continue;
         snprintf(fp, sizeof(fp), "%s/%s", dirp, de->d_name);
@@ -10115,6 +10137,7 @@ static int kh_drop_zone_hit(int rx, int ry, char *dest, size_t destsz) {
         if (!f) continue;
         while (fgets(line, sizeof(line), f)) {
             if (!strncmp(line, "pid=", 4)) pid = atoi(line + 4);
+            else if (!strncmp(line, "win=", 4)) zwin = strtoul(line + 4, NULL, 0);
             else if (!strncmp(line, "x=", 2)) x = atoi(line + 2);
             else if (!strncmp(line, "y=", 2)) y = atoi(line + 2);
             else if (!strncmp(line, "w=", 2)) w = atoi(line + 2);
@@ -10125,8 +10148,14 @@ static int kh_drop_zone_hit(int rx, int ry, char *dest, size_t destsz) {
             }
         }
         fclose(f);
-        if (pid == self || w <= 0 || h <= 0 || !zdest[0]) continue;
-        if (rx >= x && rx < x + w && ry >= y && ry < y + h) {
+        if (pid == self || !zdest[0]) continue;
+        if (zwin) {
+            for (i = 0; i < nstack; i++)
+                if (stack[i] == zwin) { hit = 1; break; }
+        }
+        if (!hit && w > 0 && h > 0 && rx >= x && rx < x + w && ry >= y && ry < y + h)
+            hit = 1;
+        if (hit) {
             if (dest && destsz) snprintf(dest, destsz, "%s", zdest);
             closedir(d);
             return pid;
@@ -15945,15 +15974,16 @@ static int tp_main(int argc, char **argv) {
                 dest[0] = 0;
                 const char *bn = strrchr(package_dir, '/');
                 bn = bn ? bn + 1 : package_dir;
-                int zpid = kh_drop_zone_hit(rx, ry, dest, sizeof(dest));
+                int zpid = kh_drop_zone_hit(dpy, rx, ry, dest, sizeof(dest));
                 kh_write_drag_hover(zpid, bn);
+                XRaiseWindow(dpy, win);
                 {
                     char tp[PATH_BUF];
                     FILE *tf;
                     snprintf(tp, sizeof(tp), "%s/#.desktop/drop_poll.txt", g_house_root);
                     tf = fopen(tp, "w");
                     if (tf) {
-                        fprintf(tf, "rx=%d ry=%d zpid=%d name=%s dest=%s\n",
+                        fprintf(tf, "rx=%d ry=%d zpid=%d name=%s dest=%s nstack_hint=winwalk\n",
                                 rx, ry, zpid, bn, dest);
                         fclose(tf);
                     }
@@ -17258,7 +17288,7 @@ static int tp_main(int argc, char **argv) {
                 } else {
                 {
                     char dest[PATH_BUF];
-                    int zpid = kh_drop_zone_hit(xev.xbutton.x_root, xev.xbutton.y_root, dest, sizeof(dest));
+                    int zpid = kh_drop_zone_hit(dpy, xev.xbutton.x_root, xev.xbutton.y_root, dest, sizeof(dest));
                     kh_write_drag_hover(0, "");
                     if (zpid && dest[0] && package_dir[0]) {
                         const char *base = strrchr(package_dir, '/');
@@ -17336,7 +17366,7 @@ static int tp_main(int argc, char **argv) {
                 drag_start_y = xev.xmotion.y_root;
                 {
                     char dest[PATH_BUF];
-                    int zpid = kh_drop_zone_hit(xev.xmotion.x_root, xev.xmotion.y_root, dest, sizeof(dest));
+                    int zpid = kh_drop_zone_hit(dpy, xev.xmotion.x_root, xev.xmotion.y_root, dest, sizeof(dest));
                     {
                         const char *bn = strrchr(package_dir, '/');
                         bn = bn ? bn + 1 : package_dir;
@@ -17640,8 +17670,9 @@ static int tp_main(int argc, char **argv) {
              * switch to shared scene just yet"). */
             {
                 static int z_was_mapped = 1; /* window starts real, mapped (XMapWindow already ran earlier in main()) */
-                int z_should_show = (g_entity_z == g_active_z);
-                if (z_should_show && !z_was_mapped) { XMapWindow(dpy, win); z_was_mapped = 1; }
+                int z_should_show = (g_entity_z == g_active_z) || dragging;
+                if (dragging) { XMapWindow(dpy, win); XRaiseWindow(dpy, win); z_was_mapped = 1; }
+                else if (z_should_show && !z_was_mapped) { XMapWindow(dpy, win); z_was_mapped = 1; }
                 else if (!z_should_show && z_was_mapped) { XUnmapWindow(dpy, win); z_was_mapped = 0; }
                 if (!z_should_show) goto skip_zfiltered_draw;
             }
