@@ -21,8 +21,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
+#include <strings.h>   /* strcasecmp() - Toys dropdown alpha sort */
+#else
+#define strcasecmp _stricmp   /* MSVC/MinGW real equivalent, same as win_exe_suffix()'s own usage below */
+#endif
 #include <ctype.h>
 #include <errno.h>
+#include <time.h> /* clock_gettime/CLOCK_MONOTONIC - ktb_self_heal_active_desk_registry()'s own ~10s gate */
+
+/* Orchestrator-owned PID-tracked teardown (TPMOS parity) —
+ * PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md. This file is compiled exactly
+ * once (into khtpm_taskbar_manager_main.+x), so it carries the IMPL.
+ * build_khtpm_strip.sh adds -I "$SHARED" for this header. */
+#define KH_PROC_REGISTRY_IMPL
+#include "kh_proc_registry.h"
+
 #ifndef _WIN32
 #include <dirent.h>
 #include <sys/stat.h>
@@ -44,6 +58,15 @@ static void livedesk_ensure_cursword(const char *house_root);
  * can drift) gets reliably relaunched. */
 static void livedesk_spawn_desk(const char *house_root, const char *sroot, const char *id, const char *desk);
 static void livedesk_spawn_active_desk(const char *house_root);
+#ifndef _WIN32
+static void ktb_self_heal_active_desk_registry(KtbState *s); /* real def + header comment further down (ktb_reload() calls this before its own real definition) */
+/* REAL, NEW 2026-09-14 (see livedesk_spawn_desk()'s own already_live
+ * check, further down, for why) - real def + header comment further
+ * down; a direct /proc-cmdline-identity scan, the same ground-truth
+ * technique ktb_self_heal_active_desk_registry()'s own registry-restore
+ * half already trusts as its one source of truth. */
+static int ktb_find_live_pid_for_pal(const char *pal_path);
+#endif
 
 /* REAL, NEW 2026-09-01 - forward decl: ktb_reload() (defined before this
  * helper's own definition) needs it to re-mirror the live always-on-top
@@ -84,11 +107,38 @@ static void ktb_load_zorder_mode(KtbState *s);
  * dash. Fix: no explicit `;` - a plain space after the caller's own
  * trailing `&` is a valid, single separator (`cmd & echo $! ...`). */
 static int ktb_system_recorded(const char *house_root, const char *cmd) {
+    /* DROP 2026-09-09 (PROC-LIFECYCLE-CONSOLIDATE-REGISTRIES.md §2): the
+     * legacy bare-PID file #.desktop/livedesk_launched_pids.txt is gone.
+     * `cmd` ends in ` &`, so a trailing foreground `echo $! > <tmp>`
+     * still runs in the same shell before system() returns — write the
+     * setsid group-leader PID to a private single-line scratch file,
+     * read it back, and register it PROPERLY in the one proc-ledger
+     * (kh_proc_register_owned computes the real /proc start-time, the
+     * PID-reuse guard). */
+    char pidfile[KTB_PATH_BUF];
+    snprintf(pidfile, sizeof(pidfile),
+             "%s/#.desktop/.livedesk_last_launch.pid", house_root);
     char wrapped[KTB_PATH_BUF * 4];
     snprintf(wrapped, sizeof(wrapped),
-             "%s echo $! >> \"%s/#.desktop/livedesk_launched_pids.txt\"",
-             cmd, house_root);
-    return system(wrapped);
+             "%s echo $! > \"%s\"", cmd, pidfile);
+    int rc = system(wrapped);
+    FILE *pf = fopen(pidfile, "r");
+    if (pf) {
+        char ln[64]; long last = 0;
+        while (fgets(ln, sizeof(ln), pf)) {
+            long v = strtol(ln, NULL, 10);
+            if (v > 1) last = v;
+        }
+        fclose(pf);
+        /* master_pid = this manager: a house-wide quit reaps via
+         * kh_proc_reap_all; a future "close just this app" reaps via
+         * kh_proc_reap_subtree(<the app's own root pid>) once apps
+         * register their own forks (§5 step 5). */
+        if (last > 1)
+            kh_proc_register_owned(house_root, last, last,
+                                   (long)getpid(), "tb-launch");
+    }
+    return rc;
 }
 #endif
 
@@ -341,6 +391,53 @@ static int ktb_pid_is_hq_renderer(int pid) {
     return 1;
 }
 
+/* REAL, NEW 2026-09-13 - same PID-reuse identity guard as
+ * ktb_pid_is_hq_renderer() above, for entity pals instead of HQ
+ * windows. Direct live report ("some entities didn't show up on
+ * restart. i had to manually click office to get them... is there a
+ * guard against that?"): livedesk_spawn_desk()'s own already_live
+ * check (a couple hundred lines below) only ever called plain
+ * ktb_pid_alive() against livedesk_open.txt's registered PIDs -
+ * exactly the PID-reuse hazard this file already root-caused and
+ * fixed ONCE for the HQ-window registry (ktb_pid_is_hq_renderer()'s
+ * own header comment - a closed process's stale registry entry
+ * survives, and if the OS later hands that exact PID to an unrelated
+ * process, kill(pid,0) reports it falsely "alive"), just never
+ * ported to this second, separate registry. A false-positive here is
+ * worse than the HQ-window case: it doesn't just leave a phantom
+ * taskbar cell, it SKIPS the real respawn entirely (already_live=1
+ * -> continue, never launches the pal at all) - matching the exact
+ * report precisely: a manual desk-switch (livedesk_switch_desk())
+ * fixed it because THAT path unconditionally closes-then-respawns,
+ * bypassing this flawed check altogether, while the passive startup
+ * spawn (livedesk_spawn_active_desk(), called once from ktb_init())
+ * trusted it and silently skipped whatever it false-positived on.
+ * comm alone (ktb_pid_is_hq_renderer()'s own check) isn't enough
+ * here - every pal shares the identical binary/comm - so this also
+ * verifies the live PID's own real /proc/<pid>/cmdline references
+ * THIS specific pal's path, same real technique
+ * livedesk_kill_strip_renderers()/livedesk_kill_stray_entities()
+ * already use elsewhere in this exact file, not invented here. */
+static int ktb_pid_is_this_pal(int pid, const char *pal_path) {
+    if (!ktb_pid_alive(pid)) return 0;
+#ifdef __linux__
+    char cpath[64];
+    snprintf(cpath, sizeof(cpath), "/proc/%d/cmdline", pid);
+    FILE *cf = fopen(cpath, "r");
+    if (!cf) return 1; /* unreadable /proc - fail open, matches every sibling check's own posture */
+    char cmdbuf[KTB_PATH_BUF * 2];
+    size_t nb = fread(cmdbuf, 1, sizeof(cmdbuf) - 1, cf);
+    fclose(cf);
+    if (nb == 0) return 0; /* a real process always has a non-empty cmdline; empty here means the read raced a just-exited pid */
+    cmdbuf[nb] = '\0';
+    for (size_t i = 0; i < nb; i++) if (cmdbuf[i] == '\0') cmdbuf[i] = ' ';
+    return strstr(cmdbuf, pal_path) != NULL;
+#else
+    (void)pal_path;
+    return 1;
+#endif
+}
+
 void ktb_init(KtbState *s, const char *house_root) {
     memset(s, 0, sizeof(*s));
     snprintf(s->house_root, sizeof(s->house_root), "%s",
@@ -349,6 +446,13 @@ void ktb_init(KtbState *s, const char *house_root) {
 #ifdef _WIN32
     for (char *p = s->pid_path; *p; p++) if (*p == '/') *p = '\\';
 #endif
+    /* PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md: PRUNE (not reset) the
+     * launched-process registry on every manager start. `run_khtpm_
+     * strip.sh new` restarts only the strip pair, leaving prior HQ
+     * windows/toys alive — a blind truncate would lose track of them.
+     * Prune keeps live entries, drops dead/PID-reused ones; a genuine
+     * fresh boot prunes to empty. */
+    kh_proc_registry_prune(s->house_root);
     snprintf(s->theme_bg, sizeof(s->theme_bg), "white");
     snprintf(s->theme_fg, sizeof(s->theme_fg), "black");
     s->tab_focus_idx = 0;
@@ -389,7 +493,7 @@ void ktb_load_cell_ids(KtbState *s) {
     FILE *f = ktb_fopen(path, "r");
     if (!f) return;
     char line[128];
-    while (s->n_cell_ids < 15 && fgets(line, sizeof(line), f)) {
+    while (s->n_cell_ids < KTB_STRIP_N_CELLS_MAX && fgets(line, sizeof(line), f)) {
         char *bar = strchr(line, '|');
         if (!bar) continue;
         *bar = '\0';
@@ -412,6 +516,21 @@ const char *ktb_cell_id(const KtbState *s, int which) {
     for (int i = 0; i < s->n_cell_ids; i++)
         if (s->cell_id_pos[i] == which) return s->cell_id_str[i];
     return "";
+}
+
+/* REAL, NEW 2026-09-17 - the reverse of ktb_cell_id() (id->position
+ * instead of position->id), for real, self-correcting internal
+ * reopen calls (e.g. Player toggle reopening its own menu after a
+ * state flip) that used to hardcode a raw position number - the exact
+ * bug class bug_bounty.md's 2026-09-17 entry documents (5 separate
+ * sites drifted out of sync with the real dispatch chain after
+ * 5.menu's 2026-09-14 insertion). Falls back to `fallback_pos` if this
+ * id has no real declared row in livedesk_header_cell_ids.txt yet -
+ * same incremental-adoption convention as ktb_cell_id() itself. */
+int ktb_cell_pos_by_id(const KtbState *s, const char *id, int fallback_pos) {
+    for (int i = 0; i < s->n_cell_ids; i++)
+        if (strcmp(s->cell_id_str[i], id) == 0) return s->cell_id_pos[i];
+    return fallback_pos;
 }
 
 void ktb_write_pidfile(KtbState *s, int pid) {
@@ -539,7 +658,28 @@ static int load_tabs(KtbState *s) {
             snprintf(t.path, sizeof(t.path), "%s", p + 5);
             t.path[strcspn(t.path, "\r\n")] = 0;
         }
-        if (!t.entity[0] || !ktb_pid_alive(t.pid)) continue;
+        /* REAL FIX 2026-09-13, direct live report ("bookstack is
+         * missing... it appeared later... but thats buggy, janky"):
+         * this is the THIRD site sharing the same PID-reuse false-
+         * positive class already root-caused twice this same pass
+         * (ktb_pid_is_this_pal()'s own header comment) - and the most
+         * consequential one, since it's what builds s->tabs[] every
+         * single tick, feeding every other consumer including the new
+         * self-heal. Live-traced: book-stack's spawn was correctly,
+         * repeatedly retried (confirmed via direct debug logging - a
+         * real spawn attempt fired on every ~10s self-heal tick) but
+         * the process never survived past this very read - a genuinely
+         * fresh, alive PID for book-stack, read alongside a STALE
+         * line whose OWN pid number had been reused by some unrelated
+         * process, both passed plain ktb_pid_alive() as "alive," and
+         * the dup-kill below (real, correct logic for an ACTUAL
+         * zorder-respawn leftover) SIGTERMed one of the two - a
+         * plausible/likely explanation for exactly "spawns, dies
+         * almost immediately, every time." Same fix as the other two
+         * sites: verify real process IDENTITY (cmdline references
+         * this exact pal path), not just that the PID number is
+         * occupied. */
+        if (!t.entity[0] || !ktb_pid_is_this_pal(t.pid, t.path)) continue;
         {
             int dup = 0, j;
             for (j = 0; j < s->n_tabs; j++) {
@@ -548,7 +688,20 @@ static int load_tabs(KtbState *s) {
             if (dup) {
                 /* One pal entity = one bottom-bar cell. Extra live PIDs
                  * (zorder respawn leftovers) stay on screen if we only
-                 * hide the tab; terminate the extra so Quit closes all. */
+                 * hide the tab; terminate the extra so Quit closes all.
+                 *
+                 * REAL, NEW 2026-09-14 - temporary debug logging at this
+                 * exact site (added live, fully removed here) caught the
+                 * real 2026-09-14 "entities killed over and over" bug
+                 * red-handed: `t.pid` matched `s->tabs[j].pid` exactly
+                 * every single time it fired - the "duplicate" was
+                 * always the entity's own single live PID, appearing
+                 * twice in the registry file due to a leftover per-
+                 * entity self-registration timer in khtpm_core_render.c
+                 * (removed, see tp_main()'s own header comment at the
+                 * old call site). This kill() call itself was correct,
+                 * general-purpose dup-handling logic all along - the
+                 * bug was upstream, feeding it a false duplicate. */
                 if (t.pid > 1) kill((pid_t)t.pid, SIGTERM);
                 continue;
             }
@@ -674,6 +827,32 @@ static void load_strip_user_cmd(KtbState *s) {
 
 void ktb_reload(KtbState *s) {
     load_tabs(s);
+#ifndef _WIN32
+    /* REAL, NEW 2026-09-14, direct live instruction ("restore this to
+     * a point where there were no complaints related to tb self
+     * healing. turn that off and just make sure the entities load
+     * first"): disabled entirely, not patched again. This function has
+     * now caused THREE separate real "entities die/flicker/vanish"
+     * incidents across two days (2026-09-13's book-stack SIGTERM bug,
+     * fixed in b5443a67; today's "appears then restarts" loop, fixed
+     * structurally earlier this same session via ktb_find_live_pid_
+     * for_pal(); and this final live incident, still recurring after
+     * that fix). Each fix closed one real race but the underlying
+     * shape - a periodic timer independently re-deciding "should this
+     * be running" against fast-moving, multi-writer process state -
+     * keeps producing a new one. Direct instruction is to stop
+     * patching this shape and turn it off. The original, simpler,
+     * already-proven mechanism (livedesk_spawn_active_desk(), called
+     * ONCE at manager startup by ktb_init(), no periodic re-check)
+     * still runs entities at launch - that's what "make sure the
+     * entities load first" refers to, and it's untouched by this
+     * change. A genuinely crashed entity will no longer be silently
+     * relaunched mid-session; that's a real, accepted trade-off, not
+     * an oversight - re-enabling self-heal (or building its real
+     * replacement) is real, separate, future work if that's ever
+     * needed, not a quick toggle back on. */
+    (void)ktb_self_heal_active_desk_registry; /* kept, unused - see comment above; not deleted so the real function + its full incident history stays in this file for whenever a real replacement is designed */
+#endif
     sync_tab_claims(s);
     sync_strip_claims(s);
     load_shortcuts(s);
@@ -681,7 +860,13 @@ void ktb_reload(KtbState *s) {
     load_strip_user_cmd(s);
     ktb_load_zorder_mode(s);
     ktb_merge_hq_windows(s);
-    if (s->tab_focus_idx >= s->n_tabs) s->tab_focus_idx = s->n_tabs > 0 ? s->n_tabs - 1 : 0;
+    /* BUG-LOG.md 2026-09-10 #2: tab_focus_idx spans entity cells then
+     * hq-window cells (n_tabs + n_hq_wins), so clamp to the combined
+     * count - clamping at n_tabs stranded focus ~2 cells short. */
+    {
+        int n_strip_tabs = s->n_tabs + s->n_hq_wins + KTB_TAB_FOCUS_PAGER_MARGIN;
+        if (s->tab_focus_idx >= n_strip_tabs) s->tab_focus_idx = n_strip_tabs > 0 ? n_strip_tabs - 1 : 0;
+    }
     if (s->strip_focus_cell >= KTB_STRIP_N_CELLS) s->strip_focus_cell = KTB_STRIP_N_CELLS - 1;
 }
 
@@ -735,7 +920,28 @@ void ktb_merge_hq_windows(KtbState *s) {
             if ((p = strstr(line, "minimized=1"))) ent.minimized = 1;
             if ((p = strstr(line, "focused=1"))) ent.focused = 1;
             fclose(f);
-            if (!ent.win || !ktb_pid_is_hq_renderer(ent.pid)) continue;
+            /* REAL FIX 2026-09-12 (direct live report: "why has doing
+             * this been killing the tb... entities dropping from the
+             * bottom toolbar" investigation - real, confirmed, separate
+             * leak found along the way, not the entity-tile bug itself
+             * but worth closing regardless). cleanup_hq_window_registry()
+             * only runs via atexit() (khtpm_core_render.c) - a crashed
+             * or SIGKILL'd renderer never gets that chance, so its
+             * registry file survives forever. Confirmed live: 60+ stale
+             * livedesk_hq_windows_<pid>.txt files for long-dead PIDs
+             * sitting in #.desktop/, none matching any currently-alive
+             * process. This reader already does the definitive liveness
+             * + identity check (ktb_pid_is_hq_renderer) every single
+             * scan - it's the one place in the house that KNOWS a given
+             * registry file is stale, so it's the right place to also
+             * delete it, self-healing the leak instead of just skipping
+             * past it forever. Real, safe: only ever unlinks a file this
+             * exact check just proved belongs to a dead/wrong process,
+             * never a live one. */
+            if (!ent.win || !ktb_pid_is_hq_renderer(ent.pid)) {
+                unlink(path);
+                continue;
+            }
             s->hq_wins[s->n_hq_wins++] = ent;
         } else {
             fclose(f);
@@ -789,6 +995,15 @@ static void write_relay(const char *package_path, const char *cmd) {
 }
 
 void ktb_activate_tab(KtbState *s, int idx) {
+    /* BUG-LOG.md 2026-09-10 #2: an hq-window cell (idx >= n_tabs, still
+     * within n_tabs + n_hq_wins) is navigable but has no s->tabs[] entry
+     * and no OPEN_CONTEXT relay - the renderer's own FOCUSWIN: onclick
+     * does its activation. Just record the focus slot and return. */
+    if (idx >= s->n_tabs && idx < s->n_tabs + s->n_hq_wins) {
+        s->strip_focus_cell = -1;
+        s->tab_focus_idx = idx;
+        return;
+    }
     if (idx < 0 || idx >= s->n_tabs) return;
     /* Real bug fix (2026-08-11, direct live report: "enter on nav in
      * bottom bar isn't opening its context menu like it used to"). This
@@ -1011,10 +1226,12 @@ void ktb_digit_enter(KtbState *s) {
 }
 
 void ktb_focus_delta(KtbState *s, int delta) {
-    if (s->n_tabs <= 0) return;
+    /* BUG-LOG.md 2026-09-10 #2: wrap across entity + hq-window cells. */
+    int n_strip_tabs = s->n_tabs + s->n_hq_wins;
+    if (n_strip_tabs <= 0) return;
     s->tab_focus_idx += delta;
-    if (s->tab_focus_idx < 0) s->tab_focus_idx = s->n_tabs - 1;
-    if (s->tab_focus_idx >= s->n_tabs) s->tab_focus_idx = 0;
+    if (s->tab_focus_idx < 0) s->tab_focus_idx = n_strip_tabs - 1;
+    if (s->tab_focus_idx >= n_strip_tabs) s->tab_focus_idx = 0;
     s->nav_armed = 1;
 }
 
@@ -1040,6 +1257,56 @@ void ktb_action_portable(const char *in, char *out, size_t out_sz) {
 static void livedesk_close_all(const char *house_root);
 #ifndef _WIN32
 static void livedesk_kill_stray_entities(const char *house_root);
+
+/* REAL, NEW 2026-09-08 (direct live report: "i used quit to quit tb but
+ * it's still on screen"). X.quit / [X]-close stop the manager loop
+ * (g_running = 0) and close entities, but the strip's own RENDERER is a
+ * separate process (khtpm_core_render.+x <house>
+ * .../khtpm_strip_header.xhtpm, + the bottom peer) launched as a
+ * sibling by run_khtpm_strip.sh - nothing was signalling it, so the bar
+ * stayed on screen orphaned after the manager exited. This is the
+ * narrow /proc sweep run_khtpm_strip.sh's own strip_parser_pids() does,
+ * ported to C: ONLY khtpm_core_render.+x processes for THIS house_root
+ * whose argv also names the strip header/bottom template - never a pal,
+ * an hq window, or the manager itself. SIGTERM then SIGKILL after 1s,
+ * same shape as livedesk_kill_stray_entities(). */
+static void livedesk_kill_strip_renderers(const char *house_root) {
+    DIR *pd = opendir("/proc");
+    if (!pd) return;
+    pid_t pids[16];
+    int n = 0;
+    struct dirent *ent;
+    while ((ent = readdir(pd)) != NULL) {
+        if (ent->d_name[0] < '0' || ent->d_name[0] > '9') continue;
+        char cpath[64];
+        snprintf(cpath, sizeof(cpath), "/proc/%s/cmdline", ent->d_name);
+        FILE *cf = fopen(cpath, "r");
+        if (!cf) continue;
+        char cmdbuf[KTB_PATH_BUF * 2];
+        size_t nb = fread(cmdbuf, 1, sizeof(cmdbuf) - 1, cf);
+        fclose(cf);
+        if (nb == 0) continue;
+        cmdbuf[nb] = '\0';
+        for (size_t i = 0; i < nb; i++) if (cmdbuf[i] == '\0') cmdbuf[i] = ' ';
+        if (strstr(cmdbuf, house_root) &&
+            strstr(cmdbuf, "khtpm_core_render.+x") &&
+            (strstr(cmdbuf, "khtpm_strip_header.xhtpm") ||
+             strstr(cmdbuf, "khtpm_strip_bottom.xhtpm") ||
+             strstr(cmdbuf, "strip_header.chtpm") ||
+             strstr(cmdbuf, "strip_bottom.chtpm"))) {
+            int pid = atoi(ent->d_name);
+            if (pid > 0 && n < (int)(sizeof(pids) / sizeof(pids[0]))) pids[n++] = (pid_t)pid;
+        }
+    }
+    closedir(pd);
+    if (n == 0) return;
+    for (int i = 0; i < n; i++) kill(pids[i], SIGTERM);
+    struct timespec ts = {1, 0};
+    nanosleep(&ts, NULL);
+    for (int i = 0; i < n; i++) {
+        if (kill(pids[i], 0) == 0) kill(pids[i], SIGKILL);
+    }
+}
 #endif
 
 void ktb_quit_and_save(KtbState *s) {
@@ -1079,6 +1346,86 @@ void ktb_quit_and_save(KtbState *s) {
     livedesk_kill_stray_entities(s->house_root);
 #endif
     ktb_unlink_pidfile(s);
+    /* NOTE: the strip renderer is NOT stopped here. ktb_quit_and_save()
+     * also runs on a plain SIGTERM exit (main() bottom), and
+     * run_khtpm_strip.sh's own restart already SIGTERMs the old pair
+     * then launches a fresh one - a renderer kill here would race that
+     * and leave the new strip with no window. The strip renderer is
+     * stopped ONLY on an explicit user quit, via
+     * ktb_stop_strip_renderers() called from the KSC_CLOSE_QUIT /
+     * hq_quit_requested paths in khtpm_taskbar_manager_main.c. */
+}
+
+#ifndef _WIN32
+/* Public entry for the explicit-user-quit paths in _main.c. See
+ * livedesk_kill_strip_renderers()'s header for what/why. */
+void ktb_stop_strip_renderers(const char *house_root) {
+    livedesk_kill_strip_renderers(house_root);
+}
+#else
+void ktb_stop_strip_renderers(const char *house_root) { (void)house_root; }
+#endif
+
+/* PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md: the orchestrator-owned reap.
+ * Called ONLY from the explicit-user-quit sites in _main.c (X.quit /
+ * [X] / KSC_CLOSE_QUIT) — the same three places ktb_stop_strip_
+ * renderers() already fires. A plain SIGTERM (run_khtpm_strip.sh
+ * restart) does NOT reap: the user may just be restarting the bar.
+ * TERM(-pgid,pid) -> 200ms -> KILL -> reap -> truncate. Never signals
+ * pid 0/1, self, or its own process group (see kh_proc_registry.h).
+ * kill_hq_windows.sh's name-pattern list stays as the manual HQ-menu
+ * backstop for anything that was running before the registry existed. */
+void ktb_reap_launched(const char *house_root) {
+    kh_proc_reap_all(house_root, 200, 0);
+#ifndef _WIN32
+    /* CURSWORD on explicit quit (direct live report 2026-09-09: "two
+     * cursword icons on screen, even after i quit"). cursword is
+     * deliberately exempt from livedesk_close_all() /
+     * livedesk_kill_stray_entities() ("always-on assistant, 1st
+     * entity") — correct for a desk switch, WRONG for an explicit quit
+     * (X.quit / [X] / KSC_CLOSE_QUIT), the only path that calls this
+     * function. A current-session cursword is already in the ledger
+     * (via ktb_system_recorded) so kh_proc_reap_all above got it; this
+     * /proc sweep also catches cursword processes started BEFORE the
+     * ledger existed (orphans reparented to init — the actual cause of
+     * the pile-up), scoped to THIS house_root so a different house's
+     * cursword is never touched. Same SIGTERM->1s->SIGKILL shape as
+     * livedesk_kill_strip_renderers(). */
+    DIR *pd = opendir("/proc");
+    if (pd) {
+        pid_t cw[32]; int cn = 0;
+        struct dirent *e;
+        while ((e = readdir(pd)) != NULL) {
+            if (e->d_name[0] < '0' || e->d_name[0] > '9') continue;
+            char cpath[64];
+            snprintf(cpath, sizeof(cpath), "/proc/%s/cmdline", e->d_name);
+            FILE *cf = fopen(cpath, "r");
+            if (!cf) continue;
+            char cb[KTB_PATH_BUF * 2];
+            size_t nb = fread(cb, 1, sizeof(cb) - 1, cf);
+            fclose(cf);
+            if (nb == 0) continue;
+            cb[nb] = '\0';
+            for (size_t i = 0; i < nb; i++) if (cb[i] == '\0') cb[i] = ' ';
+            if (strstr(cb, house_root) &&
+                (strstr(cb, "khtpm_entity.+x") || strstr(cb, "khtpm_core_render.+x")) &&
+                strstr(cb, "/pals/cursword")) {
+                int pid = atoi(e->d_name);
+                if (pid > 1 && cn < (int)(sizeof(cw) / sizeof(cw[0])))
+                    cw[cn++] = (pid_t)pid;
+            }
+        }
+        closedir(pd);
+        int any = 0;
+        for (int i = 0; i < cn; i++) { kill(cw[i], SIGTERM); any = 1; }
+        if (any) {
+            struct timespec ts = {0, 400 * 1000 * 1000};   /* 400ms */
+            nanosleep(&ts, NULL);
+            for (int i = 0; i < cn; i++)
+                if (kill(cw[i], 0) == 0) kill(cw[i], SIGKILL);
+        }
+    }
+#endif
 }
 
 int ktb_close_x0(int screen_w) {
@@ -2020,6 +2367,33 @@ static void livedesk_ensure_cursword(const char *house_root) {
         for (int i = 0; i < n; i++) {
             char base[64];
             livedesk_base_name(paths[i], base, sizeof(base));
+            /* REAL REVERT 2026-09-15, direct live report (cursword
+             * disappearing on a normal left click, confirmed via a
+             * full khtpm_core_render.c tp_main() swap against the real
+             * 09-04 known-good snapshot that did NOT fix it - ruling
+             * out tp_main() entirely and pointing back at this file).
+             * The 2026-09-13 fix below replaced the simple "is this
+             * pid alive" check with the stricter ktb_pid_is_this_pal()
+             * (also requires /proc/<pid>/cmdline to contain the pal's
+             * own path) - real, correct fix for OTHER pals' false-
+             * positive-skip bug, but applied here too, to cursword's
+             * OWN dedicated always-open ensure/dedup loop, which runs
+             * on every taskbar tick. A single false-negative from that
+             * stricter check (a /proc race, a cmdline-format mismatch)
+             * right around a real click's own state changes would hit
+             * this loop's kill branch and SIGTERM the live, just-armed
+             * cursword - independent of anything in khtpm_core_
+             * render.c, matching every observed symptom (disappears on
+             * a normal click, right-click/context-menu unaffected
+             * since that's a different code path entirely, synthetic
+             * xdotool clicks didn't reproduce it since they don't hit
+             * this same tick-timing window the same way). Reverted to
+             * the exact real Sept-11 check (confirmed via direct file
+             * comparison against a known-good backup from that date) -
+             * cursword's own loop only ever needs a plain liveness
+             * check; the PID-reuse hazard ktb_pid_is_this_pal() guards
+             * against is a real, separate concern for the OTHER call
+             * sites that still use it, untouched here. */
             if (strcmp(base, "cursword") != 0 || !ktb_pid_alive(pids[i])) continue;
             if (!keep) keep = pids[i];
             else if (pids[i] > 1) kill((pid_t)pids[i], SIGTERM);
@@ -2042,7 +2416,7 @@ static void livedesk_ensure_cursword(const char *house_root) {
      * Same real invocation shape (<package_dir>), zero argv changes
      * needed here. */
     char exe[KTB_PATH_BUF];
-    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", house_root);
+    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity.+x", house_root);
 #ifdef _WIN32
     win_star_alias(exe);
     win_exe_suffix(exe);
@@ -2053,7 +2427,7 @@ static void livedesk_ensure_cursword(const char *house_root) {
     win_spawn_cwd(exe, pal);
 #else
     char cmd[KTB_PATH_BUF * 2];
-    snprintf(cmd, sizeof(cmd), KTB_SETSID "nohup '%s' '%s' >/dev/null 2>&1 < /dev/null &", exe, pal);
+    snprintf(cmd, sizeof(cmd), "ulimit -c unlimited; " KTB_SETSID "nohup '%s' '%s' >/dev/null 2>&1 < /dev/null &", exe, pal);
     int rc = ktb_system_recorded(house_root, cmd);
     (void)rc;
 #endif
@@ -2130,7 +2504,7 @@ static void livedesk_spawn_desk(const char *house_root, const char *sroot, const
      * mode - see this file's own first spawn site (livedesk_ensure_
      * cursword) for the full comment. */
     char exe[KTB_PATH_BUF];
-    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", house_root);
+    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity.+x", house_root);
 #ifdef _WIN32
     win_star_alias(exe);
     win_exe_suffix(exe);
@@ -2167,10 +2541,19 @@ static void livedesk_spawn_desk(const char *house_root, const char *sroot, const
      * registry before spawning anything, and skip any row whose pal is
      * already running - so even if this function somehow runs twice
      * concurrently (a second bug, a stuck lock, anything), it can never
-     * itself be the thing that launches two processes for one entity. */
+     * itself be the thing that launches two processes for one entity.
+     *
+     * REAL, NEW 2026-09-14 - Windows-only now. The already_live check
+     * below uses ktb_find_live_pid_for_pal()'s real /proc-cmdline
+     * ground-truth scan on every other platform instead (see that
+     * check's own header comment) - this registry snapshot is exactly
+     * the staleness hazard that caused the real "appears then
+     * restarts" bug, kept only where there's no /proc to scan. */
+#ifdef _WIN32
     int live_pids[KTB_LIVEDESK_MAX_OPEN], live_idx[KTB_LIVEDESK_MAX_OPEN];
     char live_ents[KTB_LIVEDESK_MAX_OPEN][128], live_paths[KTB_LIVEDESK_MAX_OPEN][KTB_PATH_BUF];
     int n_live = livedesk_read_open(house_root, live_pids, live_ents, live_paths, live_idx, KTB_LIVEDESK_MAX_OPEN);
+#endif
     while (fgets(line, sizeof(line), f)) {
         if (strncmp(line, "DESK", 4) != 0) continue;
         char *p = strchr(line, '|');
@@ -2225,8 +2608,47 @@ static void livedesk_spawn_desk(const char *house_root, const char *sroot, const
         }
         {
             int already_live = 0;
+#ifndef _WIN32
+            /* REAL FIX 2026-09-14, direct live report ("its now
+             * restarting and killing entities over and over again" /
+             * "make it so it never happens... use a marker file or
+             * something like std"): the registry-snapshot check below
+             * (live_paths[]/live_pids[], read ONCE at the top of this
+             * function) can be transiently stale - load_tabs() (runs
+             * far more often than this) can momentarily drop a
+             * genuinely-alive pal's registry line on a single
+             * ktb_pid_is_this_pal() false-negative, normally self-
+             * healed moments later, but if THIS function's own
+             * already_live check reads the registry in that narrow
+             * gap, it wrongly concludes the pal is dead and launches a
+             * genuine SECOND process - load_tabs()'s own correct
+             * dup-kill logic then SIGTERMs one of the two, real and
+             * indistinguishable from "appears then restarts." Real,
+             * structural fix (not just a reorder - this is the actual
+             * "never happens" version): skip the registry file
+             * entirely for this decision. /proc IS the real marker -
+             * each process's own /proc/<pid>/cmdline is a live,
+             * kernel-maintained, unforgeable record of its own
+             * identity, the same ground-truth technique this file's
+             * own self-heal registry-restore already trusts as its
+             * one source of truth (ktb_find_live_pid_for_pal()) -
+             * reused here instead of duplicating the scan. No registry
+             * staleness window can exist if the decision never
+             * consults the registry at all. */
+            already_live = (ktb_find_live_pid_for_pal(pal) > 0);
+#else
             for (int i = 0; i < n_live; i++)
-                if (strcmp(live_paths[i], pal) == 0 && ktb_pid_alive(live_pids[i])) { already_live = 1; break; }
+                /* REAL FIX 2026-09-13, direct live report ("some
+                 * entities didn't show up on restart... is there a
+                 * guard against that?") - see ktb_pid_is_this_pal()'s
+                 * own header comment for the full PID-reuse story;
+                 * plain ktb_pid_alive() alone let a reused PID falsely
+                 * skip a real respawn here. Windows fallback only -
+                 * ktb_find_live_pid_for_pal()'s /proc scan is Linux-
+                 * only, see the #ifndef _WIN32 branch above for the
+                 * real, structural fix used everywhere else. */
+                if (strcmp(live_paths[i], pal) == 0 && ktb_pid_is_this_pal(live_pids[i], pal)) { already_live = 1; break; }
+#endif
             if (already_live) continue; /* real process already running for this pal - never double-spawn it */
         }
         /* REAL FIX 2026-08-31, direct live report ("asa/ava/book-stack/
@@ -2267,11 +2689,26 @@ static void livedesk_spawn_desk(const char *house_root, const char *sroot, const
             FILE *pw = fopen(posp, "w");
             if (pw) { fprintf(pw, "x=%d\ny=%d\n", x, y); fclose(pw); }
         }
+        /* REAL, NEW 2026-09-13, direct live report ("bookstack is
+         * missing... it appeared later... but thats buggy, janky...
+         * know fix?") - live-traced, not guessed: book-stack's own
+         * history.txt showed a real WINDOW_OPEN + ENTITY_PHYMOJI_LOADED
+         * (a genuinely successful launch), then nothing - it dies
+         * silently sometime after, no crash evidence anywhere (this
+         * system routes core dumps through apport, which needs
+         * RLIMIT_CORE raised per-process to even attempt one - the
+         * default here is 0, silently discarding every crash). Not
+         * yet root-caused (an intermittent crash needs a real capture
+         * to root-cause, not more guessing) - this is that capture:
+         * raise the core limit for every entity spawn, so the NEXT
+         * time this happens there's a real core file
+         * (/var/crash or the process's own cwd, apport-dependent) to
+         * read instead of silence. Harmless when nothing crashes. */
 #ifdef _WIN32
         win_spawn_cwd(exe, pal);
 #else
         char cmd[KTB_PATH_BUF * 2];
-        snprintf(cmd, sizeof(cmd), KTB_SETSID "nohup '%s' '%s' >/dev/null 2>&1 < /dev/null &", exe, pal);
+        snprintf(cmd, sizeof(cmd), "ulimit -c unlimited; " KTB_SETSID "nohup '%s' '%s' >/dev/null 2>&1 < /dev/null &", exe, pal);
         int rc = ktb_system_recorded(house_root, cmd);
         (void)rc;
 #endif
@@ -2284,6 +2721,217 @@ static void livedesk_spawn_desk(const char *house_root, const char *sroot, const
      * own explicit re-check every time this function runs. */
     livedesk_ensure_cursword(house_root);
 }
+
+#ifndef _WIN32
+/* REAL, NEW 2026-09-13 - the real architectural fix, not another
+ * patch. Direct live report ("this needs 2 stop happening... research
+ * house standards, and a real solution"): #.desktop/livedesk_open.txt
+ * (the file that decides the taskbar's own tab list) was being
+ * written by EVERY entity process independently, on its own
+ * unsynchronized ~10s self-heal timer - the exact "one hot shared
+ * file, many writers" shape PROC-LIFECYCLE-CONSOLIDATE-REGISTRIES.md
+ * (this house's own design doc, §1) explicitly names as the pattern
+ * the house's one-writer rule exists to avoid. That multi-writer
+ * churn was the real, shared root cause behind three separate
+ * symptoms fixed piecemeal this session (tab reordering, entities
+ * missing after a restart, a blank taskbar with valid process data) -
+ * every one of them a race between independent writers/readers on one
+ * shared file, not three unrelated bugs.
+ *
+ * The fix: entities stop writing this file except once, at their own
+ * startup (see tp_main()'s own header comment at the old periodic
+ * timer's former location for why the timer existed and why it's
+ * gone). The MANAGER becomes the sole writer - same one-writer
+ * pattern strip_ui.txt/livedesk_proc_list.txt/every db-hq-pal-style
+ * state file in this house already uses. This function is the
+ * manager's own replacement self-heal: once per ~10s (same cadence
+ * the removed per-entity timer used), read the active desk's real
+ * pal list, and for any pal genuinely alive (found via a real /proc
+ * cmdline identity scan - same technique ktb_pid_is_this_pal() uses
+ * for one candidate PID, here searching for one) but missing from the
+ * registry, the manager - and only the manager - writes it back in.
+ * Never spawns anything (that's livedesk_spawn_desk()'s job, called
+ * once at startup/switch) - this only restores a registry line for a
+ * process that already, verifiably, exists. */
+static int ktb_find_live_pid_for_pal(const char *pal_path) {
+    DIR *pd = opendir("/proc");
+    if (!pd) return 0;
+    struct dirent *ent;
+    int found = 0;
+    while ((ent = readdir(pd)) != NULL) {
+        if (ent->d_name[0] < '0' || ent->d_name[0] > '9') continue;
+        char cpath[64];
+        snprintf(cpath, sizeof(cpath), "/proc/%s/cmdline", ent->d_name);
+        FILE *cf = fopen(cpath, "r");
+        if (!cf) continue;
+        char cmdbuf[KTB_PATH_BUF * 2];
+        size_t nb = fread(cmdbuf, 1, sizeof(cmdbuf) - 1, cf);
+        fclose(cf);
+        if (nb == 0) continue;
+        cmdbuf[nb] = '\0';
+        for (size_t i = 0; i < nb; i++) if (cmdbuf[i] == '\0') cmdbuf[i] = ' ';
+        if ((strstr(cmdbuf, "khtpm_entity.+x") || strstr(cmdbuf, "khtpm_core_render.+x")) && strstr(cmdbuf, pal_path)) {
+            found = atoi(ent->d_name);
+            break;
+        }
+    }
+    closedir(pd);
+    return found;
+}
+
+static void ktb_self_heal_active_desk_registry(KtbState *s) {
+    static struct timespec s_last;
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    if (s_last.tv_sec != 0 && now.tv_sec - s_last.tv_sec < 10) return;
+    s_last = now;
+
+    /* REAL, NEW 2026-09-13 - a real, separate gap found live testing
+     * this same pass: an entity can fail to spawn AT ALL (a real
+     * system()/fork hiccup under the launch burst a full desk-spawn
+     * creates - confirmed live, book-stack simply never became a
+     * process on one restart) - this function only ever restores a
+     * REGISTRY LINE for something already verifiably alive, by
+     * design, so it can never recover that case on its own. The fix
+     * isn't more logic here - it's reusing the one function that
+     * already spawns safely: livedesk_spawn_active_desk() (called
+     * once at manager startup) has its own already_live guard
+     * (identity-checked as of this same day's earlier fix), so
+     * calling it again here is a genuine no-op for every entity
+     * that's really running and a real, safe respawn attempt for
+     * anything that silently never launched - same real desk-
+     * consistency check, both halves, one process, one cadence.
+     *
+     * REAL FIX 2026-09-14, direct live report ("its now restarting and
+     * killing entities over and over again" / "the cpu is slow, but
+     * this shouldn't happen on a weak cpu"): this call USED to run
+     * FIRST, before the registry-restore loop below. load_tabs() (runs
+     * every regular tick, far more often than this 10s-gated function)
+     * can transiently drop a genuinely-alive pal's registry line on a
+     * single momentary ktb_pid_is_this_pal() false-negative (see that
+     * function's own header comment) - normally harmless, corrected by
+     * THIS function's own restore loop moments later. But
+     * livedesk_spawn_active_desk()'s own already_live guard reads that
+     * SAME registry file - if it ran before the restore loop had a
+     * chance to repair a just-dropped line, it saw a live pal as
+     * missing and launched a genuine SECOND, duplicate real process
+     * for it. load_tabs()'s own dup-kill (correct logic for an actual
+     * zorder-respawn leftover) then SIGTERMed one of the two -
+     * indistinguishable from "appears then restarts," repeating every
+     * ~10s self-heal tick. Slower CPUs make the underlying transient
+     * /proc read hiccup this races against more likely, matching the
+     * report exactly. Fix: reconcile the registry (the loop below, real
+     * ground-truth /proc scan via ktb_find_live_pid_for_pal()) BEFORE
+     * ever asking "is it already live" - moved to the end of this
+     * function, after every registry line has had its chance to be
+     * repaired first. */
+
+    char sroot[KTB_PATH_BUF];
+    if (!livedesk_sessions_root(s->house_root, sroot, sizeof(sroot))) return;
+    char active_session[64] = "";
+    livedesk_root_read(sroot, active_session, sizeof(active_session), NULL, 0);
+    if (!active_session[0]) return;
+    char active_desk[64] = "";
+    livedesk_active_desk(sroot, active_session, active_desk, sizeof(active_desk));
+    if (!active_desk[0]) return;
+
+    char sdir[KTB_PATH_BUF], dp[KTB_PATH_BUF];
+    livedesk_session_dir(sroot, active_session, sdir, sizeof(sdir));
+    snprintf(dp, sizeof(dp), "%s/desks/%s.pdl", sdir, active_desk);
+    FILE *f = fopen(dp, "r");
+    if (!f) return;
+    char line[KTB_PATH_BUF * 2];
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "DESK", 4) != 0) continue;
+        char *p = strchr(line, '|');
+        if (!p) continue;
+        p++;
+        char *path = NULL;
+        strtok(p, "|"); /* entity name field - unused, base is derived from path below */
+        path = strtok(NULL, "|");
+        if (!path) continue;
+        while (*path == ' ') path++;
+        path[strcspn(path, "\r\n")] = '\0';
+        char *pe = path + strlen(path);
+        while (pe > path && pe[-1] == ' ') *--pe = '\0';
+
+        char base[64];
+        livedesk_base_name(path, base, sizeof(base));
+        if (strcmp(base, "cursword") == 0) continue; /* own dedicated ensure path (livedesk_ensure_cursword) */
+
+        int already = 0;
+        for (int i = 0; i < s->n_tabs; i++)
+            if (strcmp(s->tabs[i].entity, base) == 0) { already = 1; break; }
+        if (already) continue;
+
+        char pr[KTB_PATH_BUF];
+        if (!livedesk_pals_root(s->house_root, pr, sizeof(pr))) continue;
+        char pal[KTB_PATH_BUF];
+        snprintf(pal, sizeof(pal), "%s/%s", pr, base);
+
+        int live_pid = ktb_find_live_pid_for_pal(pal);
+        if (live_pid <= 0) continue; /* genuinely not running - not this function's job to spawn it */
+
+        /* REAL FIX 2026-09-13, direct live report ("theres nothing
+         * external to house quiting booktstack it must be in house")
+         * - root-caused live via a real signal-sender capture
+         * (handle_shutdown_signal_info(), khtpm_core_render.c): the
+         * manager ITSELF was sending book-stack's own fresh process a
+         * real SIGTERM within ~1s of every launch. Traced to THIS
+         * exact site: `already` above only checks s->n_tabs, a
+         * snapshot from load_tabs() taken ONCE at the very top of
+         * this same tick - if book-stack's own process self-
+         * registered (its real, one-time startup write, a SEPARATE
+         * writer) in the narrow window between that snapshot and this
+         * point, this function had no way to see it and appended a
+         * SECOND, genuine duplicate line for the SAME real, single
+         * PID. load_tabs()'s own dup-kill (real, correct logic for an
+         * actual zorder-respawn leftover) then saw "book-stack" twice
+         * on its very next read and SIGTERMed the second occurrence -
+         * which, since both lines named the exact same live PID,
+         * meant killing the only real process there was.
+         *
+         * Real fix: a single pass, inside the one real registry lock
+         * (NOT livedesk_read_open() - that function acquires/releases
+         * the SAME shared, process-wide lock fd itself, so calling it
+         * from in here would drop this outer lock the instant it
+         * returns, leaving the write below unprotected again) - read
+         * once, copy every line while also checking, by real cmdline
+         * identity, whether this exact pal already has a live entry;
+         * only append the new line if it genuinely doesn't. */
+        char reg_path[KTB_PATH_BUF], tmp_path[KTB_PATH_BUF];
+        path_join(reg_path, sizeof(reg_path), s->house_root, "#.desktop/livedesk_open.txt");
+        path_join(tmp_path, sizeof(tmp_path), s->house_root, "#.desktop/livedesk_open.txt.tmp");
+        registry_lock_acquire(s->house_root);
+        FILE *rf = ktb_fopen(reg_path, "r");
+        FILE *w = ktb_fopen(tmp_path, "w");
+        int already_fresh = 0;
+        if (w) {
+            char rl[KTB_PATH_BUF];
+            while (rf && fgets(rl, sizeof(rl), rf)) {
+                fputs(rl, w);
+                char *pp = strstr(rl, "PID=");
+                char *php = strstr(rl, "PATH=");
+                if (pp && php) {
+                    int rpid = atoi(pp + 4);
+                    char rpath[KTB_PATH_BUF];
+                    snprintf(rpath, sizeof(rpath), "%s", php + 5);
+                    rpath[strcspn(rpath, "\r\n")] = '\0';
+                    if (strcmp(rpath, pal) == 0 && ktb_pid_is_this_pal(rpid, pal)) already_fresh = 1;
+                }
+            }
+            if (!already_fresh)
+                fprintf(w, "PID=%d|INDEX=0|ENTITY=%s|PATH=%s\n", live_pid, base, pal);
+            fclose(w);
+            remove(reg_path);
+            rename(tmp_path, reg_path);
+        }
+        if (rf) fclose(rf);
+        registry_lock_release();
+    }
+    fclose(f);
+}
+#endif
 
 static void livedesk_default_session(const char *house_root, const char *sroot, char *out, size_t sz) {
     char active[KTB_PATH_BUF] = "";
@@ -2416,35 +3064,10 @@ static void livedesk_load_session(const char *house_root, const char *sroot, con
     livedesk_root_write(sroot, id, cur[0] ? cur : id);
 }
 
-/* REAL, NEW 2026-09-08 - the file cell's "load" row now opens the real
- * File Explorer widget (a separate window) instead of an in-place
- * session-picker sub-dropdown that could freeze the strip nav. The
- * widget can't call back into this process, so #.desktop/scripts/
- * pick-session.sh drops the picked session id here; this is polled
- * from the main loop and consumed once. `id` is a bare session dir
- * name (basename of what the user picked under the sessions root). */
-void ktb_poll_pending_session_open(KtbState *s) {
-    char path[KTB_PATH_BUF];
-    path_join(path, sizeof(path), s->house_root,
-              "#.desktop/livedesk_pending_open_session.txt");
-    FILE *f = ktb_fopen(path, "r");
-    if (!f) return;
-    char id[64] = "";
-    if (fgets(id, sizeof(id), f)) {
-        char *nl = strpbrk(id, "\r\n"); if (nl) *nl = '\0';
-    }
-    fclose(f);
-    remove(path);
-    if (!id[0]) return;
-    /* reject anything with a path separator - id is a bare dir name */
-    if (strchr(id, '/') || strchr(id, '\\') || strcmp(id, "..") == 0) return;
-    char sroot[KTB_PATH_BUF];
-    if (!livedesk_sessions_root(s->house_root, sroot, sizeof(sroot))) return;
-    char sp[KTB_PATH_BUF];
-    snprintf(sp, sizeof(sp), "%s/%s/session.pdl", sroot, id);
-    if (access(sp, F_OK) != 0) return;   /* not a real session */
-    livedesk_load_session(s->house_root, sroot, id);
-}
+/* (2026-09-08) ktb_poll_pending_session_open + ktb_poll_pending_save_as
+ * were merged into the single generic ktb_poll_widget_result(), defined
+ * below after livedesk_save_as_with_name(). See
+ * 08-roadmap/design-docs/TASKBAR-MENUS-DATA-DRIVEN.md step 1. */
 
 static void livedesk_new_session(const char *house_root) {
     char sroot[KTB_PATH_BUF];
@@ -2513,31 +3136,68 @@ static void livedesk_save_as_with_name(const char *house_root, const char *sroot
     livedesk_root_write(sroot, nid, "");
 }
 
-/* Symmetric with ktb_poll_pending_session_open (2026-09-08). The file
- * cell's "save-as" row used to call ktb_cliio_open_save_as() - the
- * in-place cli_io name prompt - which, reached from the file sub-menu
- * (an already-replaced popup), latched the strip nav on cell 3 exactly
- * like the old "load" path did. Now "save-as" launches
- * #.desktop/scripts/save-as-session.sh, which opens the File Explorer
- * widget in SAVE mode at the sessions root and drops the typed name
- * here; this is polled from the main loop and consumed once. */
-void ktb_poll_pending_save_as(KtbState *s) {
+/* Generic consumer for a `widget:` menu row's result (2026-09-08, the
+ * TASKBAR-MENUS-DATA-DRIVEN.md step-1 replacement for the two per-feature
+ * pollers ktb_poll_pending_session_open / ktb_poll_pending_save_as).
+ *
+ * #.desktop/scripts/menu-widget.sh runs the widget (File Explorer),
+ * resolves the pick, and writes #.desktop/livedesk_widget_result.txt:
+ *   verb=<routing key>
+ *   value=<picked absolute path, or empty on cancel>
+ * This is polled once per main-loop tick and consumed (file removed).
+ *
+ * verbs handled here:
+ *   open-session : `value` is a path at/under the sessions root -> the
+ *                  session dir name -> livedesk_load_session().
+ *   save-as      : `value`'s basename is the new session name ->
+ *                  livedesk_save_as_with_name().
+ * An unknown/empty verb, or empty value, is a harmless no-op. */
+void ktb_poll_widget_result(KtbState *s) {
     char path[KTB_PATH_BUF];
     path_join(path, sizeof(path), s->house_root,
-              "#.desktop/livedesk_pending_save_as.txt");
+              "#.desktop/livedesk_widget_result.txt");
     FILE *f = ktb_fopen(path, "r");
     if (!f) return;
-    char name[64] = "";
-    if (fgets(name, sizeof(name), f)) {
-        char *nl = strpbrk(name, "\r\n"); if (nl) *nl = '\0';
+    char verb[32] = "", value[KTB_PATH_BUF] = "";
+    char line[KTB_PATH_BUF];
+    while (fgets(line, sizeof(line), f)) {
+        line[strcspn(line, "\r\n")] = '\0';
+        if (strncmp(line, "verb=", 5) == 0)
+            snprintf(verb, sizeof(verb), "%s", line + 5);
+        else if (strncmp(line, "value=", 6) == 0)
+            snprintf(value, sizeof(value), "%s", line + 6);
     }
     fclose(f);
     remove(path);
-    if (!name[0]) return;
-    if (strchr(name, '/') || strchr(name, '\\') || strcmp(name, "..") == 0) return;
+    if (!verb[0] || !value[0]) return;
+
     char sroot[KTB_PATH_BUF];
     if (!livedesk_sessions_root(s->house_root, sroot, sizeof(sroot))) return;
-    livedesk_save_as_with_name(s->house_root, sroot, name);
+
+    if (strcmp(verb, "open-session") == 0) {
+        /* map the picked path -> a bare session dir name under sroot */
+        char id[64] = "";
+        size_t rl = strlen(sroot);
+        if (strncmp(value, sroot, rl) == 0 && value[rl] == '/') {
+            const char *rel = value + rl + 1;
+            const char *slash = strchr(rel, '/');
+            size_t n = slash ? (size_t)(slash - rel) : strlen(rel);
+            if (n > 0 && n < sizeof(id)) { memcpy(id, rel, n); id[n] = '\0'; }
+        } else {
+            const char *base = strrchr(value, '/');
+            snprintf(id, sizeof(id), "%s", base ? base + 1 : value);
+        }
+        if (!id[0] || strcmp(id, "..") == 0) return;
+        char sp[KTB_PATH_BUF];
+        snprintf(sp, sizeof(sp), "%s/%s/session.pdl", sroot, id);
+        if (access(sp, F_OK) != 0) return;
+        livedesk_load_session(s->house_root, sroot, id);
+    } else if (strcmp(verb, "save-as") == 0) {
+        const char *base = strrchr(value, '/');
+        const char *name = base ? base + 1 : value;
+        if (!name[0] || strcmp(name, "..") == 0) return;
+        livedesk_save_as_with_name(s->house_root, sroot, name);
+    }
 }
 
 static int livedesk_build_session_menu(const char *house_root, HQMenuItem *menu, int max) {
@@ -2662,28 +3322,42 @@ static int livedesk_build_desk_menu(const char *house_root, HQMenuItem *menu, in
     return i;
 }
 
+/* fwd - defined below livedesk_pdl_menu_rows(); the directory-scanning
+ * builders (pals here, user/toys further down) need it before that
+ * point in the file. */
+static int livedesk_pdl_menu_rows_staged(const char *house_root, const char *cell, const char *stage,
+                                         HQMenuItem *menu, int max);
+
 static int livedesk_build_pals_menu(const char *house_root, HQMenuItem *menu, int max) {
+    /* TASKBAR-MENUS-DATA-DRIVEN.md §4 step 3 - directory-scanning
+     * builder, so pdl-driven static rows bracket the real scan instead
+     * of replacing it: pals_menu_pre_N_* first, the scanned pal list in
+     * the middle, pals_menu_post_N_* last (falls back to the old
+     * hardcoded "Cancel" only when the pdl defines no post rows, so an
+     * untouched house behaves exactly as before). */
+    int n = livedesk_pdl_menu_rows_staged(house_root, "pals", "pre", menu, max);
+
     char pr[KTB_PATH_BUF];
-    if (!livedesk_pals_root(house_root, pr, sizeof(pr))) return 0;
+    if (!livedesk_pals_root(house_root, pr, sizeof(pr))) return n;
     char names[KTB_LIVEDESK_DYN_MAX][64];
-    int n = 0;
+    int scan_n = 0;
     DIR *d = opendir(pr);
     if (d) {
         struct dirent *e;
         while ((e = readdir(d))) {
-            if (n >= max || n >= KTB_LIVEDESK_DYN_MAX) break;
+            if (scan_n >= max - n || scan_n >= KTB_LIVEDESK_DYN_MAX) break;
             if (e->d_name[0] == '.') continue;
             char mp[KTB_PATH_BUF];
             snprintf(mp, sizeof(mp), "%s/%s/pal.pdl", pr, e->d_name);
             char gp[KTB_PATH_BUF];
             snprintf(gp, sizeof(gp), "%s/%s/glyph.txt", pr, e->d_name);
             if (access(mp, F_OK) != 0 && access(gp, F_OK) != 0) continue;
-            snprintf(names[n], sizeof(names[n]), "%s", e->d_name);
-            n++;
+            snprintf(names[scan_n], sizeof(names[scan_n]), "%s", e->d_name);
+            scan_n++;
         }
         closedir(d);
-        for (int i = 0; i < n - 1; i++)
-            for (int j = i + 1; j < n; j++)
+        for (int i = 0; i < scan_n - 1; i++)
+            for (int j = i + 1; j < scan_n; j++)
                 if (strcmp(names[j], names[i]) < 0) {
                     char t[64];
                     snprintf(t, sizeof(t), "%s", names[i]);
@@ -2691,7 +3365,7 @@ static int livedesk_build_pals_menu(const char *house_root, HQMenuItem *menu, in
                     snprintf(names[j], sizeof(names[j]), "%s", t);
                 }
     }
-    for (int i = 0; i < n && i < max; i++) {
+    for (int i = 0; i < scan_n && n < max; i++, n++) {
         char mp[KTB_PATH_BUF], glyph[64] = "", hash[128] = "";
         snprintf(mp, sizeof(mp), "%s/%s/pal.pdl", pr, names[i]);
         read_key_value(mp, "glyph", glyph, sizeof(glyph));
@@ -2699,14 +3373,18 @@ static int livedesk_build_pals_menu(const char *house_root, HQMenuItem *menu, in
         char short_hash[16] = "";
         snprintf(short_hash, sizeof(short_hash), "%s", hash);
         short_hash[10] = '\0';
-        snprintf(menu[i].label, sizeof(menu[i].label), "%s %s #%s",
+        snprintf(menu[n].label, sizeof(menu[n].label), "%s %s #%s",
                  glyph[0] ? glyph : "•", names[i], short_hash);
-        snprintf(menu[i].command, sizeof(menu[i].command), "livedesk:pal:%s", names[i]);
+        snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:pal:%s", names[i]);
     }
     if (n < max) {
-        snprintf(menu[n].label, sizeof(menu[n].label), "Cancel");
-        menu[n].command[0] = '\0';
-        n++;
+        int post = livedesk_pdl_menu_rows_staged(house_root, "pals", "post", &menu[n], max - n);
+        n += post;
+        if (post == 0 && n < max) {
+            snprintf(menu[n].label, sizeof(menu[n].label), "Cancel");
+            menu[n].command[0] = '\0';
+            n++;
+        }
     }
     return n;
 }
@@ -2728,6 +3406,63 @@ static int livedesk_build_palettes_menu(const char *house_root, HQMenuItem *menu
         char lkey[40], ckey[40];
         snprintf(lkey, sizeof(lkey), "palettes_menu_%d_label", i);
         snprintf(ckey, sizeof(ckey), "palettes_menu_%d_cmd", i);
+        char lab[64] = "", cmd[KTB_PATH_BUF] = "";
+        read_key_value(pdl, lkey, lab, sizeof(lab));
+        read_key_value(pdl, ckey, cmd, sizeof(cmd));
+        if (!lab[0]) continue;
+        snprintf(menu[count].label, sizeof(menu[count].label), "%s", lab);
+        snprintf(menu[count].command, sizeof(menu[count].command), "%s", cmd);
+        count++;
+    }
+    return count;
+}
+
+/* Shared row reader for the data-driven strip menus (TASKBAR-MENU-
+ * ARCHITECTURE.md): reads `<prefix>_menu_<N>_label` / `_cmd` rows
+ * (1-based N) from #.desktop/livedesk_taskbar.pdl into menu[0..],
+ * returns the count. A builder calls this first and falls back to its
+ * own hardcoded rows only when it returns 0 (the `count==0` fallback
+ * shape livedesk_build_hq_menu()/_file_menu() already use). Extracted
+ * 2026-09-08 so the remaining C-hardcoded builders (player/ai/db/...)
+ * can convert with one line each instead of a copy-pasted loop. */
+static int livedesk_pdl_menu_rows(const char *house_root, const char *prefix,
+                                  HQMenuItem *menu, int max) {
+    char pdl[KTB_PATH_BUF];
+    snprintf(pdl, sizeof(pdl), "%s/#.desktop/livedesk_taskbar.pdl", house_root);
+    int count = 0;
+    for (int i = 1; i <= max; i++) {
+        char lkey[48], ckey[48];
+        snprintf(lkey, sizeof(lkey), "%s_menu_%d_label", prefix, i);
+        snprintf(ckey, sizeof(ckey), "%s_menu_%d_cmd", prefix, i);
+        char lab[64] = "", cmd[KTB_PATH_BUF] = "";
+        read_key_value(pdl, lkey, lab, sizeof(lab));
+        read_key_value(pdl, ckey, cmd, sizeof(cmd));
+        if (!lab[0]) continue;
+        snprintf(menu[count].label, sizeof(menu[count].label), "%s", lab);
+        snprintf(menu[count].command, sizeof(menu[count].command), "%s", cmd);
+        count++;
+    }
+    return count;
+}
+
+/* Sibling of livedesk_pdl_menu_rows() for the directory-scanning
+ * builders (user/pals/toys - TASKBAR-MENUS-DATA-DRIVEN.md §2.3/§4 step
+ * 3, "REMAINING" list). Those can't be pure static-or-scan like player/
+ * ai/db (a row for EVERY scanned account/pal/toy would be absurd to
+ * hand-write in the pdl) - instead the pdl supplies optional static
+ * rows BEFORE and AFTER the real scan: `<cell>_menu_pre_N_label`/`_cmd`
+ * and `<cell>_menu_post_N_label`/`_cmd`. stage is "pre" or "post".
+ * Returns how many rows it wrote into menu[0..), same convention as
+ * livedesk_pdl_menu_rows(). */
+static int livedesk_pdl_menu_rows_staged(const char *house_root, const char *cell, const char *stage,
+                                         HQMenuItem *menu, int max) {
+    char pdl[KTB_PATH_BUF];
+    snprintf(pdl, sizeof(pdl), "%s/#.desktop/livedesk_taskbar.pdl", house_root);
+    int count = 0;
+    for (int i = 1; i <= max; i++) {
+        char lkey[64], ckey[64];
+        snprintf(lkey, sizeof(lkey), "%s_menu_%s_%d_label", cell, stage, i);
+        snprintf(ckey, sizeof(ckey), "%s_menu_%s_%d_cmd", cell, stage, i);
         char lab[64] = "", cmd[KTB_PATH_BUF] = "";
         read_key_value(pdl, lkey, lab, sizeof(lab));
         read_key_value(pdl, ckey, cmd, sizeof(cmd));
@@ -2929,7 +3664,7 @@ static void livedesk_place_pal(const char *house_root, const char *name) {
      * a separate binary, folded into khtpm_core_render.c's own
      * tp_main() mode - see this file's own first spawn site
      * (livedesk_ensure_cursword) for the full comment. */
-    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", house_root);
+    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity.+x", house_root);
 #ifdef _WIN32
     win_star_alias(exe);
     win_exe_suffix(exe);
@@ -2939,7 +3674,7 @@ static void livedesk_place_pal(const char *house_root, const char *name) {
 #else
     if (access(exe, F_OK) == 0) {
         char cmd[KTB_PATH_BUF * 2];
-        snprintf(cmd, sizeof(cmd), KTB_SETSID "nohup '%s' '%s' >/dev/null 2>&1 < /dev/null &", exe, pal);
+        snprintf(cmd, sizeof(cmd), "ulimit -c unlimited; " KTB_SETSID "nohup '%s' '%s' >/dev/null 2>&1 < /dev/null &", exe, pal);
         int rc = ktb_system_recorded(house_root, cmd);
         (void)rc;
     }
@@ -3080,10 +3815,38 @@ static int livedesk_build_file_menu(const char *house_root, HQMenuItem *menu, in
     int n = 0;
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "new-desk"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:new-desk"); n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "save"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:save"); n++; }
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "save-as"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:save-as"); n++; }
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "load"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:load"); n++; }
+    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "save-as"); snprintf(menu[n].command, sizeof(menu[n].command), "widget:file-explorer SAVE @sessions save-as"); n++; }
+    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "load"); snprintf(menu[n].command, sizeof(menu[n].command), "widget:file-explorer LOAD @sessions open-session"); n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Cancel"); menu[n].command[0] = '\0'; n++; }
     return n;
+}
+
+/* REAL, NEW 2026-09-14 (PLAY-MODE-ENTITY-HARNESS-DESIGN.md's own "8.
+ * player in tb" toggle, direct instruction: "we want to toggle is via
+ * '[]8.player : []1.play' and add on off var next to it, like 1.hq tb
+ * sub has") - real, persisted global Play Mode flag, same exact real
+ * convention load_zorder_mode()/save_zorder_mode() already use
+ * (khtpm_core_render.c) for always-on-top: a small state file,
+ * `mode=<value>` on its own line, absent file = default off. Kept as
+ * a SEPARATE file (not reusing the zorder one) since these are two
+ * genuinely unrelated toggles that happen to share a storage shape,
+ * not two names for the same setting. */
+static int khtpm_load_play_mode(const char *house_root) {
+    char path[KTB_PATH_BUF];
+    path_join(path, sizeof(path), house_root, "#.desktop/khtpm_play_mode.state.txt");
+    FILE *f = ktb_fopen(path, "r");
+    if (!f) return 0;
+    char line[64];
+    int on = 0;
+    if (fgets(line, sizeof(line), f) && strstr(line, "mode=on")) on = 1;
+    fclose(f);
+    return on;
+}
+static void khtpm_save_play_mode(const char *house_root, int on) {
+    char path[KTB_PATH_BUF];
+    path_join(path, sizeof(path), house_root, "#.desktop/khtpm_play_mode.state.txt");
+    FILE *f = ktb_fopen(path, "w");
+    if (f) { fprintf(f, "mode=%s\n", on ? "on" : "off"); fclose(f); }
 }
 
 /* Static player-cell submenu (play/pause/reset). play/pause were ported
@@ -3094,12 +3857,95 @@ static int livedesk_build_file_menu(const char *house_root, HQMenuItem *menu, in
  * request 2026-08-11 ("wire up player > reset [to] close all entities
  * then relaunch them fresh") — real, new functionality added here, not
  * present in legacy at all. See livedesk_reset_entities() for what it
- * does. */
-static int livedesk_build_player_menu(HQMenuItem *menu, int max) {
+ * does.
+ *
+ * REAL, NEW 2026-09-14 - the old inert "play"/"pause" rows are replaced
+ * by ONE real toggle row, "1.play: ON"/"1.play: OFF" (dynamic, reads
+ * khtpm_load_play_mode() live every menu open, same "1.hq"'s own
+ * "@ always-on-top" dropdown-child pattern this mirrors), dispatched
+ * to a real "livedesk:play-toggle" command (see ktb_hq_activate()). */
+/* REAL, NEW 2026-09-14, direct live instruction ("in order to
+ * actually show game menu += save/load game slots i may add a 'menu'
+ * option after desks... lets just add it after desk for now") - the
+ * new top-level 5.menu cell (inserted right after 4.desk, every real
+ * position from 5 onward in strip_header.xhtpm/this dispatch chain
+ * shifted by one to make room, per the direct decision to do the
+ * real insertion rather than append at the end).
+ *
+ * Reads the CURRENTLY ACTIVE desk's own real .pdl for a `GAME | name
+ * | <value>` row (same real SECTION|KEY|VALUE-family convention every
+ * other .pdl row in this house already uses - a plain, non-DESK row
+ * coexists safely in a desk .pdl, load_tabs()/livedesk_spawn_desk()'s
+ * own DESK-row parsers already skip any line not starting with
+ * "DESK"). No desk today declares one (including civ-test) - this
+ * shows a real, honest "(no game on this desk)" + Cancel in that
+ * case, matching this house's own load_methods()/CTXMENU convention:
+ * a real, sane fallback, never a blank menu. Save/Load themselves are
+ * real, honest stubs (void) for now - there is no real save-worthy
+ * game state anywhere yet (CIV-TEST-DESK-AND-DOOR-TRANSFER-PLAN.md
+ * §7's own build order puts this after the events-only Civ clone has
+ * real state, not before) - this proves the real menu mechanism
+ * itself, not save/load functionality. */
+static int livedesk_build_menu_menu(const char *house_root, HQMenuItem *menu, int max) {
+    char sroot[KTB_PATH_BUF];
+    if (!livedesk_sessions_root(house_root, sroot, sizeof(sroot))) goto no_game;
+    char cur[KTB_PATH_BUF] = "";
+    livedesk_default_session(house_root, sroot, cur, sizeof(cur));
+    if (!cur[0]) goto no_game;
+    char ad[64] = "";
+    livedesk_active_desk(sroot, cur, ad, sizeof(ad));
+    if (!ad[0]) goto no_game;
+    char sdir[KTB_PATH_BUF], dp[KTB_PATH_BUF];
+    livedesk_session_dir(sroot, cur, sdir, sizeof(sdir));
+    snprintf(dp, sizeof(dp), "%s/desks/%s.pdl", sdir, ad);
+    char game_name[64] = "";
+    read_key_value(dp, "GAME", game_name, sizeof(game_name));
+    if (!game_name[0]) goto no_game;
+
     int n = 0;
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "play"); menu[n].command[0] = '\0'; n++; }
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "pause"); menu[n].command[0] = '\0'; n++; }
+    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Save"); menu[n].command[0] = '\0'; n++; }
+    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Load"); menu[n].command[0] = '\0'; n++; }
+    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Cancel"); menu[n].command[0] = '\0'; n++; }
+    return n;
+
+no_game:
+    if (max < 1) return 0;
+    snprintf(menu[0].label, sizeof(menu[0].label), "(no game on this desk)");
+    menu[0].command[0] = '\0';
+    if (max < 2) return 1;
+    snprintf(menu[1].label, sizeof(menu[1].label), "Cancel");
+    menu[1].command[0] = '\0';
+    return 2;
+}
+
+static int livedesk_build_player_menu(const char *house_root, HQMenuItem *menu, int max) {
+    int n = livedesk_pdl_menu_rows(house_root, "player", menu, max);
+    if (n > 0) return n;
+    /* fallback: hardcoded rows (used only when the .pdl defines no
+     * player_menu_N_* rows) */
+    if (n < max) {
+        int on = khtpm_load_play_mode(house_root);
+        snprintf(menu[n].label, sizeof(menu[n].label), "1.play: %s", on ? "ON" : "OFF");
+        snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:play-toggle");
+        n++;
+    }
+    /* REAL, NEW 2026-09-15, direct live report ("our tb hq dropdown
+     * player is missing 'stop'" - same live report that added pc-hq's
+     * own Player dropdown, deliberately kept in sync with this menu's
+     * row set). Explicit force-off, distinct from the toggle above -
+     * "make sure it's definitely stopped" without reading the current
+     * label first. See ktb_hq_activate()'s own "livedesk:play-stop"
+     * handler. */
+    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "stop"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:play-stop"); n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "reset"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:reset-entities"); n++; }
+    /* REAL FIX 2026-09-15, direct live correction ("u gave player in tb
+     * another notes-db (it already had one)") - a "notes-db" row here
+     * duplicated the real, already-existing GENERIC "notes-<cell>" row
+     * every header-cell menu already gets (ktb_hq_open()'s own real
+     * mechanism, ~line 4583 below: "notes-player" via #.desktop/
+     * scripts/notes.sh) - removed. pc-hq's own separate "Notes"
+     * dropdown row is unaffected (a different window, no pre-existing
+     * per-cell notes mechanism to duplicate there). */
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Cancel"); menu[n].command[0] = '\0'; n++; }
     return n;
 }
@@ -3121,8 +3967,11 @@ static int livedesk_build_player_menu(HQMenuItem *menu, int max) {
  * The 2-row shape (Open h-ai + Cancel) is INTENTIONAL, not a workaround.
  * Cancel row provides standard close-without-action UX, matching other
  * menus that need to be dismissible. */
-static int livedesk_build_ai_menu(HQMenuItem *menu, int max) {
-    int n = 0;
+static int livedesk_build_ai_menu(const char *house_root, HQMenuItem *menu, int max) {
+    int n = livedesk_pdl_menu_rows(house_root, "ai", menu, max);
+    if (n > 0) return n;
+    /* fallback: hardcoded rows (used only when the .pdl defines no
+     * ai_menu_N_* rows) */
     if (n < max) {
         snprintf(menu[n].label, sizeof(menu[n].label), "Open h-ai");
         snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:open-open-hai");
@@ -3266,7 +4115,13 @@ static int livedesk_clock_rows(const char *house_root, HQMenuItem *menu, int max
 }
 
 static int livedesk_build_clock_menu(const char *house_root, HQMenuItem *menu, int max) {
-    int n = 0;
+    /* TASKBAR-MENUS-DATA-DRIVEN.md §4 step 3 - "clock" was the one
+     * "REMAINING" debt-list entry that's actually STATIC (4 fixed
+     * rows, no directory scan), so it takes the exact same player/ai/
+     * db shape: pdl rows win when livedesk_taskbar.pdl defines any
+     * clock_menu_N_*, hardcoded rows are the count==0 fallback. */
+    int n = livedesk_pdl_menu_rows(house_root, "clock", menu, max);
+    if (n > 0) return n;
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "clocks & cals"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:clock:clocks"); n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "reminders"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:clock:reminders"); n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "game clocks"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:clock:game"); n++; }
@@ -3319,8 +4174,14 @@ static int livedesk_build_db_menu(const char *house_root, HQMenuItem *menu, int 
     if (!livedesk_sessions_root(house_root, sroot, sizeof(sroot))) return 0;
     char cur[KTB_PATH_BUF] = "";
     livedesk_root_read(sroot, cur, sizeof(cur), NULL, 0);
-    if (!cur[0]) return 0;
+    if (!cur[0]) return 0;   /* no active session -> no db menu (gate kept) */
 
+    n = livedesk_pdl_menu_rows(house_root, "db", menu, max);
+    if (n > 0) return n;
+    /* fallback: hardcoded rows (used only when the .pdl defines no
+     * db_menu_N_* rows). db-ez -> the 101/102 sub-lists (kept until
+     * db-hq-pal's Common Events tab port lands, see
+     * TASKBAR-MENUS-DATA-DRIVEN.md); db-hq -> the pal dashboard window. */
     if (n < max) {
         snprintf(menu[n].label, sizeof(menu[n].label), "db-ez");
         snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:db-ez-sections");
@@ -3456,7 +4317,13 @@ static int livedesk_build_db_common_events_menu(const char *house_root, HQMenuIt
  * then "new-user-name", see ktb_cliio_submit()) as the closest faithful
  * match given that real constraint, not a wholesale re-architecture. */
 static int livedesk_build_user_menu(const char *house_root, HQMenuItem *menu, int max) {
-    int n = 0;
+    /* TASKBAR-MENUS-DATA-DRIVEN.md §4 step 3 - directory-scanning
+     * builder (real accounts under 0.user-pal/users/), so pdl-driven
+     * static rows bracket the real New-User/switch/Logout block rather
+     * than replacing it: user_menu_pre_N_* first, user_menu_post_N_*
+     * last (falls back to the old hardcoded "Cancel" only when the pdl
+     * defines no post rows). */
+    int n = livedesk_pdl_menu_rows_staged(house_root, "user", "pre", menu, max);
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "New User..."); snprintf(menu[n].command, sizeof(menu[n].command), "user:new"); n++; }
 
     char login_root[KTB_PATH_BUF];
@@ -3544,9 +4411,13 @@ static int livedesk_build_user_menu(const char *house_root, HQMenuItem *menu, in
         }
     }
     if (n < max) {
-        snprintf(menu[n].label, sizeof(menu[n].label), "Cancel");
-        menu[n].command[0] = '\0';
-        n++;
+        int post = livedesk_pdl_menu_rows_staged(house_root, "user", "post", &menu[n], max - n);
+        n += post;
+        if (post == 0 && n < max) {
+            snprintf(menu[n].label, sizeof(menu[n].label), "Cancel");
+            menu[n].command[0] = '\0';
+            n++;
+        }
     }
     return n;
 }
@@ -3648,7 +4519,14 @@ static void toys_scan_one_root(const char *root, HQMenuItem *menu, int max, int 
 }
 
 static int livedesk_build_toys_menu(const char *house_root, HQMenuItem *menu, int max) {
-    int n = 0;
+    /* TASKBAR-MENUS-DATA-DRIVEN.md §4 step 3 - directory-scanning
+     * builder (the actual reproduction case for the "one click opens a
+     * dropdown app" report this refactor followed from), so pdl-driven
+     * static rows bracket the real 3-root toy.pdl scan: toys_menu_pre_
+     * N_* first, toys_menu_post_N_* last (falls back to the old
+     * hardcoded "Cancel" only when the pdl defines no post rows). */
+    int n = livedesk_pdl_menu_rows_staged(house_root, "toys", "pre", menu, max);
+    int pdl_pre_n = n;   /* real boundary - only rows scanned below get sorted */
     toys_scan_one_root(house_root, menu, max, &n);
     char apps_root[KTB_PATH_BUF];
     snprintf(apps_root, sizeof(apps_root), "%s/@.apps", house_root);
@@ -3661,7 +4539,36 @@ static int livedesk_build_toys_menu(const char *house_root, HQMenuItem *menu, in
     char widgits_root[KTB_PATH_BUF];
     snprintf(widgits_root, sizeof(widgits_root), "%s/&.widgits", house_root);
     toys_scan_one_root(widgits_root, menu, max, &n);
-    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Cancel"); menu[n].command[0] = '\0'; n++; }
+    /* REAL, NEW 2026-09-14, direct live report while building DSR ("i
+     * noticed u did not add it to toys yet") - traced: &.hq-apps/ (the
+     * real home of db-hq-pal/chat-hai/network/dsr/etc - every "real HQ
+     * app" this house has) was never a scanned root at all, a real,
+     * pre-existing gap (db-hq-pal's own toy.pdl has been sitting there
+     * unscanned this whole time too, not something this session
+     * introduced) - not DSR-specific, so fixed generically here,
+     * fourth root, same opt-in-by-toy.pdl-presence convention as the
+     * other three. */
+    char hqapps_root[KTB_PATH_BUF];
+    snprintf(hqapps_root, sizeof(hqapps_root), "%s/&.hq-apps", house_root);
+    toys_scan_one_root(hqapps_root, menu, max, &n);
+    /* REAL, NEW 2026-09-15, direct live request ("is there a way we
+     * can get these toys drop downs to be sorted in abc order?") -
+     * the 4-root scan above is real, live directory order
+     * (readdir()'s own filesystem order, not alphabetical), so the
+     * list visibly reordered between opens. Sort only the SCANNED
+     * rows in place (pdl_pre_n..n) - the pdl-driven pre/post rows
+     * (including "Cancel") keep their own authored order/position,
+     * only the directory-scan portion gets alphabetized. */
+    for (int i = pdl_pre_n; i < n - 1; i++)
+        for (int j = i + 1; j < n; j++)
+            if (strcasecmp(menu[j].label, menu[i].label) < 0) {
+                HQMenuItem tmp = menu[i]; menu[i] = menu[j]; menu[j] = tmp;
+            }
+    if (n < max) {
+        int post = livedesk_pdl_menu_rows_staged(house_root, "toys", "post", &menu[n], max - n);
+        n += post;
+        if (post == 0 && n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Cancel"); menu[n].command[0] = '\0'; n++; }
+    }
     return n;
 }
 
@@ -3675,34 +4582,46 @@ void ktb_hq_open(KtbState *s, int which) {
      * "" (no real id declared for this position yet) falls through
      * unchanged to the existing chain. */
     const char *cid = ktb_cell_id(s, which);
-    if (strcmp(cid, "toys") == 0) { n = livedesk_build_toys_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX); }
-    /* palettes (positional 6, "6.palettes") wired 2026-08-24 - cid branch
-     * first like toys; positional fallback while incremental adoption
-     * continues (livedesk_header_cell_ids.txt now declares 6|palettes). */
-    else if (strcmp(cid, "palettes") == 0 || which == 6) n = livedesk_build_palettes_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    else if (which == 2) n = livedesk_build_user_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    else if (which == 4) n = livedesk_build_desk_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    else if (which == 5) n = livedesk_build_pals_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    else if (which == 1) n = livedesk_build_hq_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    else if (which == 3) n = livedesk_build_file_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    else if (which == 8) n = livedesk_build_player_menu(s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    /* db (9) restored 2026-08-12 - was parked as an inert placeholder
+    /* REAL FIX 2026-09-17 (bug_bounty.md's own 2026-09-17 entry - 5
+     * separate sites drifted out of sync with the real header layout
+     * after 5.menu's 2026-09-14 insertion, because they were all
+     * still positional-only) - every declared cell in
+     * livedesk_header_cell_ids.txt now dispatches by cid FIRST, with
+     * the exact position that file currently declares kept as an
+     * `||` fallback (never removed - the house's own established
+     * incremental-adoption convention, same as toys/palettes already
+     * did). A cell whose row gets deleted from that file, or whose
+     * position changes without a code change, still resolves
+     * correctly via the OTHER side of the `||` - this can no longer
+     * drift silently the way the plain `which == N` chain did. */
+    if (strcmp(cid, "toys") == 0 || which == 12) { n = livedesk_build_toys_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX); }
+    else if (strcmp(cid, "palettes") == 0 || which == 7) n = livedesk_build_palettes_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else if (strcmp(cid, "user") == 0 || which == 2) n = livedesk_build_user_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else if (strcmp(cid, "desk") == 0 || which == 4) n = livedesk_build_desk_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else if (strcmp(cid, "menu") == 0 || which == 5) n = livedesk_build_menu_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else if (strcmp(cid, "pals") == 0 || which == 6) n = livedesk_build_pals_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else if (strcmp(cid, "hq") == 0 || which == 1) n = livedesk_build_hq_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else if (strcmp(cid, "file") == 0 || which == 3) n = livedesk_build_file_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else if (strcmp(cid, "player") == 0 || which == 9) n = livedesk_build_player_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    /* db restored 2026-08-12 - was parked as an inert placeholder
      * while the real bug (header-click codes swallowed whenever ANY
      * cell's menu was already open, see dispatch_code()'s hq_open branch
      * in khtpm_taskbar_manager_main.c) got found and fixed; that bug
      * hit every cell, not just db, so db itself was never the problem.
      * See au11-hq/DB-HQ-HANDOFF.md for db-hq's still-placeholder status. */
-    else if (which == 9) n = livedesk_build_db_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    /* ai (14) - real, wired 2026-08-12, see livedesk_build_ai_menu()'s
-     * own header comment. Was one of the bare inert cells (6/7/10/11/
-     * 12/13/14) this same catch-all comment below used to include. */
-    else if (which == 14) n = livedesk_build_ai_menu(s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    /* date/time (15) - clock menu, wired 2026-08-13 (au11-hq/15.clock-
-     * design.md §5.2): root + internal sublevels 151 (clocks&cals) / 152
-     * (reminders) / 153 (game-clock controls) / 154 (calendar view). The
-     * header click itself routes here generically via KSC_HQ_HEADER_BASE
-     * (see khtpm_strip_codes.h: which = cell index + 1, 15 = date/time). */
-    else if (which == 15) n = livedesk_build_clock_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else if (strcmp(cid, "db") == 0 || which == 10) n = livedesk_build_db_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    /* ai - real, wired 2026-08-12, see livedesk_build_ai_menu()'s own
+     * header comment. Was one of the bare inert cells this same
+     * catch-all comment below used to include. */
+    else if (strcmp(cid, "ai") == 0 || which == 15) n = livedesk_build_ai_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    /* date/time - clock menu, wired 2026-08-13 (au11-hq/
+     * 15.clock-design.md §5.2): root + internal sublevels 151
+     * (clocks&cals) / 152 (reminders) / 153 (game-clock controls) / 154
+     * (calendar view) - these internal sub-codes are unrelated to real
+     * header-cell positions/identity, not migrated (see the 100/101/102
+     * internal-only codes just below for the same reasoning - they're
+     * never reached via a real header click at all). */
+    else if (strcmp(cid, "clock") == 0 || which == 16) n = livedesk_build_clock_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     else if (which == CLOCK_MENU_CLOCKS) n = livedesk_build_clock_cals_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     else if (which == CLOCK_MENU_REMINDERS) n = livedesk_build_clock_reminders_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
     else if (which == CLOCK_MENU_GAME) n = livedesk_build_clock_game_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
@@ -3710,11 +4629,11 @@ void ktb_hq_open(KtbState *s, int which) {
     else if (which == 100) n = livedesk_build_session_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX); /* 100 = internal-only "session picker", reached from the file cell's "load" row (livedesk:load), never a header click directly - see ktb_hq_activate() */
     else if (which == 101) n = livedesk_build_db_ez_sections_menu(s->hq_menu, KTB_LIVEDESK_DYN_MAX); /* 101 = internal-only db-ez 14-section list, reached from db cell's "db-ez" row */
     else if (which == 102) n = livedesk_build_db_common_events_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX); /* 102 = internal-only Common Events list (global, house_root-wide), reached from db-ez's "Common Events" row */
-    /* network (13) - real, wired 2026-08-31, see livedesk_build_network_
-     * menu()'s own header comment. Was one of the bare inert cells this
-     * same catch-all comment below used to include. */
-    else if (which == 13) n = livedesk_build_network_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
-    else { ktb_hq_close(s); return; } /* inert cell (6/7/10/11/12) or unknown - close any open popup, no-op otherwise, matching the legacy exactly */
+    /* network - real, wired 2026-08-31, see livedesk_build_network_
+     * menu()'s own header comment. Was one of the bare inert cells
+     * this same catch-all comment below used to include. */
+    else if (strcmp(cid, "network") == 0 || which == 14) n = livedesk_build_network_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX);
+    else { ktb_hq_close(s); return; } /* inert cell (8/11/13, no real id declared - "edit"/"plugins"/"store") or unknown - close any open popup, no-op otherwise, matching the legacy exactly. */
     if (n <= 0) {
         snprintf(s->hq_menu[0].label, sizeof(s->hq_menu[0].label), "(empty)");
         s->hq_menu[0].command[0] = '\0';
@@ -3728,21 +4647,42 @@ void ktb_hq_open(KtbState *s, int which) {
      * the dir map + `xdg-open`). Real header cells only (which 1..15);
      * the internal session/db-ez/common-events sub-lists (100/101/102)
      * are skipped. Idempotent - never doubles the row on re-open. */
-    if (which >= 1 && which <= 15 && n >= 1 && n < KTB_LIVEDESK_DYN_MAX - 1 &&
+    if (which >= 1 && which <= KTB_STRIP_N_CELLS && n >= 1 && n < KTB_LIVEDESK_DYN_MAX - 1 &&
         strncmp(s->hq_menu[n - 1].label, "notes-", 6) != 0) {
         const char *cell = ktb_cell_id(s, which);
         char cellname[32];
         if (cell && cell[0]) {
             snprintf(cellname, sizeof(cellname), "%s", cell);
         } else {
+            /* REAL FIX 2026-09-17, direct live report ("i clicked h-ai,
+             * i noticed it sais 'notes-clock' (instead of notes-hai)")
+             * - this switch was STILL using the numbering from BEFORE
+             * 5.menu's 2026-09-14 insertion (see ktb_hq_open()'s own
+             * dispatch chain just above, and its per-cell comments
+             * documenting the real shift: palettes 6->7, db 9->10,
+             * ai 14->15, network 13->14, clock 15->16) - the real
+             * which==N dispatch chain was updated at the time, this
+             * FALLBACK name lookup (only reached when ktb_cell_id() has
+             * no real declared id for the position - true for every
+             * cell except "toys" today) never was. Drift was worse than
+             * just network/ai/clock: 5/6 were swapped (pals<->menu),
+             * 8/9 were off by one (player/db), not only the three the
+             * live report happened to hit. Rebuilt to match the real
+             * dispatch chain exactly, position for position, confirmed
+             * by direct grep of every real `which == N` case above
+             * (not reasoned from the old comments alone). which==8 is
+             * a genuinely inert cell today (no menu builder dispatches
+             * there) - default "hq" is correct for it, same as any
+             * other unmapped position. */
             const char *nm = "hq";
             switch (which) {
                 case 1: nm = "hq"; break;      case 2: nm = "user"; break;
                 case 3: nm = "file"; break;    case 4: nm = "desk"; break;
-                case 5: nm = "pals"; break;    case 6: nm = "palettes"; break;
-                case 8: nm = "player"; break;  case 9: nm = "db"; break;
-                case 13: nm = "network"; break; case 14: nm = "ai"; break;
-                case 15: nm = "clock"; break;  default: nm = "hq"; break;
+                case 5: nm = "menu"; break;    case 6: nm = "pals"; break;
+                case 7: nm = "palettes"; break; case 9: nm = "player"; break;
+                case 10: nm = "db"; break;
+                case 14: nm = "network"; break; case 15: nm = "ai"; break;
+                case 16: nm = "clock"; break;  default: nm = "hq"; break;
             }
             snprintf(cellname, sizeof(cellname), "%s", nm);
         }
@@ -3831,6 +4771,73 @@ void ktb_hq_activate(KtbState *s, int row) {
         /* Renderer owns the real X raise/sink (onclick=ZORDER_TOGGLE).
          * Do not flip the state file here - a leftover 5000 relay would
          * undo the renderer's toggle on the same click. */
+        return;
+    }
+    if (strcmp(m->command, "livedesk:play-toggle") == 0) {
+        /* REAL, NEW 2026-09-14 - unlike zorder-toggle above, THIS
+         * toggle's real state genuinely lives here (the manager, not
+         * the renderer) - Play Mode has no per-window X property to
+         * apply, it's a plain global flag other processes (the
+         * desktop-side trigger watcher) poll. Safe to flip directly on
+         * this one command, no respawn/reapply step needed.
+         *
+         * REAL FIX 2026-09-14, direct live report ("can it not close
+         * tb after?"): closing (ktb_hq_close()) after every toggle
+         * meant you had to reopen player from scratch to even see
+         * whether it changed - a real, needless extra step for what's
+         * meant to be a quick, repeatable flip (matches always-on-
+         * top's own real UX: that toggle never closes the taskbar
+         * either). Re-open the SAME menu instead of closing - reuses
+         * ktb_hq_open()'s own real build+publish+nav-claim logic
+         * verbatim (same function every fresh open already uses), so
+         * the label genuinely reflects the new state immediately, in
+         * place, no reopen needed.
+         *
+         * REAL FIX 2026-09-17: this hardcoded which=8 since the day it
+         * was written, already wrong even then - 5.menu's insertion
+         * that same day shifted player 8->9, and this line was never
+         * updated (part of bug_bounty.md's 2026-09-17 entry). Now
+         * resolved via ktb_cell_pos_by_id() - the real, data-declared
+         * id->position lookup (the reverse of ktb_cell_id(), same
+         * livedesk_header_cell_ids.txt "9|player" row) - so a future
+         * reorder can't silently break this reopen the same way
+         * again; 9 is kept only as the fallback for a missing row. */
+        khtpm_save_play_mode(s->house_root, !khtpm_load_play_mode(s->house_root));
+        ktb_hq_open(s, ktb_cell_pos_by_id(s, "player", 9));
+        return;
+    }
+    if (strcmp(m->command, "livedesk:play-stop") == 0) {
+        /* REAL, NEW 2026-09-15, direct live report ("our tb hq dropdown
+         * player is missing 'stop'") - explicit force-off, distinct
+         * from the toggle above (no read-current-state-first needed).
+         * Same re-open-in-place UX as play-toggle, same real reason
+         * and same ktb_cell_pos_by_id() fix. */
+        khtpm_save_play_mode(s->house_root, 0);
+        ktb_hq_open(s, ktb_cell_pos_by_id(s, "player", 9));
+        return;
+    }
+    if (strncmp(m->command, "widget:", 7) == 0) {
+        /* Generic "open a helper window and act on its result" menu row
+         * (2026-09-08, TASKBAR-MENUS-DATA-DRIVEN.md step 1). _cmd form:
+         *   widget:<name> <MODE> <start-token> <result-verb>
+         * e.g. `widget:file-explorer LOAD @sessions open-session`.
+         * menu-widget.sh runs the widget modally and drops the pick in
+         * #.desktop/livedesk_widget_result.txt for ktb_poll_widget_
+         * result() (main loop). No in-place menu swap -> can't latch
+         * strip nav the way the old livedesk:load / :save-as did. */
+        char wname[32] = "", wmode[16] = "", wstart[64] = "", wverb[32] = "";
+        sscanf(m->command + 7, "%31s %15s %63s %31s", wname, wmode, wstart, wverb);
+        if (wname[0] && wverb[0]) {
+            char fx[KTB_PATH_BUF * 3];
+            snprintf(fx, sizeof(fx),
+                     KTB_SETSID "nohup sh -c 'sh \"%s/#.desktop/scripts/menu-widget.sh\" \"%s\" \"%s\" \"%s\" \"%s\" \"%s\"' >/dev/null 2>&1 &",
+                     s->house_root, s->house_root, wname,
+                     wmode[0] ? wmode : "LOAD",
+                     wstart[0] ? wstart : "@house", wverb);
+            int rc = ktb_system_recorded(s->house_root, fx);
+            (void)rc;
+        }
+        ktb_hq_close(s);
         return;
     }
     if (strcmp(m->command, "user:new") == 0) {
@@ -4078,7 +5085,20 @@ void ktb_hq_activate(KtbState *s, int row) {
          * (todo-a12.txt Phase A). */
         ktb_hq_open(s, 101);
     } else if (strcmp(m->command, "livedesk:db-ez-back") == 0) {
-        ktb_hq_open(s, 9);
+        /* REAL FIX 2026-09-17, found while fixing bug_bounty.md's
+         * 2026-09-17 entry (not one of the 5 sites originally found
+         * live - caught by grepping every ktb_hq_open(s, <literal>)
+         * call site while adding ktb_cell_pos_by_id()) - this reopened
+         * PLAYER (9), not DB (10), even though db-ez-sections/101 (see
+         * two cases above) is only ever reached from the DB cell's own
+         * "db-ez" row. "9" here matches db's OWN pre-5.menu position
+         * (see ktb_hq_open()'s own "db restored... was 9 before
+         * 5.menu" history) - this call site was simply never updated
+         * when db moved to 10. Real, silent misnavigation: clicking
+         * "back" from the db-ez section list landed you in the Player
+         * menu instead. Now resolved via ktb_cell_pos_by_id(), same as
+         * the play-toggle/play-stop sites above. */
+        ktb_hq_open(s, ktb_cell_pos_by_id(s, "db", 10));
     } else if (strcmp(m->command, "livedesk:db-ez-common-events") == 0) {
         ktb_hq_open(s, 102);
     } else if (strcmp(m->command, "livedesk:db-ez-common-events-back") == 0) {
@@ -4178,6 +5198,21 @@ void ktb_hq_activate(KtbState *s, int row) {
         (void)rc;
 #endif
         ktb_hq_close(s);
+    } else if (strcmp(m->command, "livedesk:open-h-ai-lab") == 0) {
+        /* H-AI-LAB-DESIGN.md Part 3 - new row under the real, existing
+         * 14.h-ai dropdown (ai_menu_4 below). Same generic launcher-
+         * registry indirection as settings/stats above (not a
+         * hardcoded path like open-hai/chat-hai still are) - path
+         * comes from livedesk_launchers.pdl's launcher_h_ai_lab row. */
+        char launcher[KTB_PATH_BUF];
+        if (ktb_hq_launcher_path(s->house_root, "h_ai_lab", launcher, sizeof(launcher))) {
+            char sh[KTB_PATH_BUF * 3];
+            snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c 'sh \"%s\" \"%s\"' >/dev/null 2>&1 &",
+                     launcher, s->house_root);
+            int rc = ktb_system_recorded(s->house_root, sh);
+            (void)rc;
+        }
+        ktb_hq_close(s);
     } else if (strcmp(m->command, "livedesk:open-chat-hai") == 0) {
         /* chat-hai cell (14) - standalone X11 window for multi-model ambient chat.
          * Launched via button.sh (mirrors open-hai pattern exactly). */
@@ -4233,6 +5268,45 @@ void ktb_hq_activate(KtbState *s, int row) {
         (void)rc;
 #endif
         ktb_hq_close(s);
+    } else if (strcmp(m->command, "livedesk:open-sql-hq") == 0) {
+        /* db cell's "sql-hq" row - SQL over .csv/.pdl. Same launch
+         * shape as db-hq-pal above (single-quoted sh -c makes the
+         * &.hq-apps path safe). SQL-HQ-DESIGN.md. */
+#ifdef _WIN32
+        char bin[KTB_PATH_BUF], chtpm[KTB_PATH_BUF];
+        snprintf(bin, sizeof(bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", s->house_root);
+        snprintf(chtpm, sizeof(chtpm), "%s/&.hq-apps/sql-hq/sql-hq.xhtpm", s->house_root);
+        const char *aa[2] = { s->house_root, chtpm };
+        win_spawn_n(bin, aa, 2);
+#else
+        char sh[KTB_PATH_BUF * 3];
+        snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c 'sh \"%s/&.hq-apps/sql-hq/button.sh\" \"%s\"' >/dev/null 2>&1 &",
+                 s->house_root, s->house_root);
+        int rc = ktb_system_recorded(s->house_root, sh);
+        (void)rc;
+#endif
+        ktb_hq_close(s);
+    } else if (strcmp(m->command, "livedesk:open-piececraft-hq") == 0) {
+        /* THE standard x11-hq launch for piececraft-hq's board window
+         * (PIECECRAFT-HQ-LAUNCH-STANDARDIZE.md). open_pchq_board.sh is
+         * the stats-hq-shaped launcher: single-instance guard (clean
+         * board-window restart, no blank on reclick), ensures a
+         * board-viewer engine session exists, launches the shared
+         * khtpm_core_render against pchq-board.xhtpm, records the PID in
+         * livedesk_proc_list.txt. `button.sh run` is now the terminal
+         * path only; the toys-menu `toy.pdl` duplicate was removed. */
+#ifdef _WIN32
+        char launch[KTB_PATH_BUF];
+        snprintf(launch, sizeof(launch), "%s/@.apps/piececraft-hq/open_pchq_board.sh", s->house_root);
+        (void)launch;
+#else
+        char sh[KTB_PATH_BUF * 3];
+        snprintf(sh, sizeof(sh), KTB_SETSID "nohup sh -c 'sh \"%s/@.apps/piececraft-hq/open_pchq_board.sh\" \"%s\"' >/dev/null 2>&1 &",
+                 s->house_root, s->house_root);
+        int rc = ktb_system_recorded(s->house_root, sh);
+        (void)rc;
+#endif
+        ktb_hq_close(s);
     } else if (strncmp(m->command, "livedesk:clock:", 15) == 0) {
         /* Cell 15 clock menu dispatch (15.clock-design.md §5.3). All
          * writers shell out to lc_clock (control plane) which does the
@@ -4253,7 +5327,16 @@ void ktb_hq_activate(KtbState *s, int row) {
             ktb_hq_open(s, CLOCK_MENU_GAME);
             return;
         } else if (strcmp(rest, "back") == 0) {
-            ktb_hq_open(s, 15);
+            /* REAL FIX 2026-09-17, found the same way as db-ez-back
+             * (grepping every raw ktb_hq_open(s, <literal>) site) -
+             * this reopened AI (15), not CLOCK (16), even though every
+             * caller of this "back" is a clock sub-menu (clocks/
+             * reminders/game). "15" matches clock's OWN pre-5.menu
+             * position - never updated when clock moved to 16. Real,
+             * silent misnavigation: "back" from any clock sub-list
+             * landed you in the h-ai menu instead of the clock root.
+             * Now resolved via ktb_cell_pos_by_id(). */
+            ktb_hq_open(s, ktb_cell_pos_by_id(s, "clock", 16));
             return;
         } else if (strncmp(rest, "open:", 5) == 0) {
             snprintf(g_clock_sel_id, sizeof(g_clock_sel_id), "%s", rest + 5);
@@ -4384,56 +5467,13 @@ void ktb_hq_activate(KtbState *s, int row) {
          * replacement popup). */
         livedesk_save(s->house_root);
         ktb_hq_close(s);
-    } else if (strcmp(m->command, "livedesk:save-as") == 0) {
-        /* file cell's "save-as" row - mirrors livedesk_dispatch()'s
-         * `livedesk_save_as()` branch, which opens the cli-io text-input
-         * modal (same real target as the standalone which==4 header used
-         * to be before this pass's 12-cell renumbering - see
-         * ktb_cliio_open_save_as()).
-         *
-         * REAL FIX 2026-09-08 (live report: "save as didn't open picker
-         * and gets stuck on 3 like load did b4"). Reached from the file
-         * sub-menu, ktb_cliio_open_save_as()'s in-place cli_io prompt
-         * latched the strip nav on cell 3. Same cure as "load": close
-         * the menu, launch save-as-session.sh -> File Explorer widget in
-         * SAVE mode at the sessions root -> drops the typed name in
-         * #.desktop/livedesk_pending_save_as.txt for
-         * ktb_poll_pending_save_as() (main loop). */
-        {
-            char fx[KTB_PATH_BUF * 3];
-            snprintf(fx, sizeof(fx),
-                     KTB_SETSID "nohup sh -c 'sh \"%s/#.desktop/scripts/save-as-session.sh\" \"%s\"' >/dev/null 2>&1 &",
-                     s->house_root, s->house_root);
-            int rc = ktb_system_recorded(s->house_root, fx);
-            (void)rc;
-        }
-        ktb_hq_close(s);
-    } else if (strcmp(m->command, "livedesk:load") == 0) {
-        /* file cell's "load" row.
-         *
-         * REAL FIX 2026-09-08 (direct live report: "when i click load
-         * in []3. it gets stuck instead of opening the filebrowser
-         * widget"). The old path was `ktb_hq_open(s, 100)` - it swapped
-         * this menu IN PLACE for the "session picker" sub-dropdown, a
-         * which>15 pseudo-cell with no real header cell behind it. That
-         * nested/replaced-popup shape has no clean way out (the code's
-         * own comment: "13 is an inert cell and would close the popup")
-         * and its nav could latch, freezing the strip focus on cell 3.
-         *
-         * Now (2026-09-08): close the menu and run pick-session.sh - it
-         * opens the real File Explorer widget (its own window, its own
-         * [X]) started at the sessions root, waits for the pick, and
-         * drops the chosen session id in
-         * #.desktop/livedesk_pending_open_session.txt, which
-         * ktb_poll_pending_session_open() (main loop) consumes and hands
-         * to livedesk_load_session(). */
-        char fx[KTB_PATH_BUF * 3];
-        snprintf(fx, sizeof(fx),
-                 KTB_SETSID "nohup sh -c 'sh \"%s/#.desktop/scripts/pick-session.sh\" \"%s\"' >/dev/null 2>&1 &",
-                 s->house_root, s->house_root);
-        int rc = ktb_system_recorded(s->house_root, fx);
-        (void)rc;
-        ktb_hq_close(s);
+    /* file cell's "save-as" / "load" rows are now `widget:` _cmd rows
+     * (livedesk_taskbar.pdl file_menu_*), handled by the generic
+     * strncmp(m->command, "widget:", 7) branch near the top of this
+     * function -> menu-widget.sh -> ktb_poll_widget_result(). The old
+     * livedesk:save-as / livedesk:load branches (and pick-session.sh /
+     * save-as-session.sh) were deleted 2026-09-08, TASKBAR-MENUS-DATA-
+     * DRIVEN.md step 1. */
     } else if (strcmp(m->command, "quit") == 0) {
         /* Real HQ menu's "X.quit" row (which==1, see ktb_hq_open()) -
          * mirrors tp_taskbar.c's agent_relay_dispatch() "quit" branch. Can't
@@ -4689,7 +5729,10 @@ void ktb_strip_user_activate(KtbState *s) {
  * skip-logic is needed for the strip half of the range, only n_tabs==0
  * collapsing the tab half to nothing. */
 void ktb_nav_focus_delta(KtbState *s, int delta) {
-    int total = KTB_STRIP_N_CELLS + s->n_tabs;
+    /* BUG-LOG.md 2026-09-10 #2: the strip is header cells + entity cells
+     * + hq-window cells; the last group was omitted here, so arrow nav
+     * wrapped ~2 cells short of the real end. */
+    int total = KTB_STRIP_N_CELLS + s->n_tabs + s->n_hq_wins;
     if (total <= 0) return;
     int focus = (s->strip_focus_cell >= 0) ? s->strip_focus_cell : KTB_STRIP_N_CELLS + s->tab_focus_idx;
     focus += delta;

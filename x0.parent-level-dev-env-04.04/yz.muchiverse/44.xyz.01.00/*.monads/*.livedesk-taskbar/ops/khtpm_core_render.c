@@ -12534,8 +12534,9 @@ static void ensure_taskbar_running(const char *house_root) {
     }
     if (!alive) {
         char cmd[TP_PATH_BUF * 2];
-        snprintf(cmd, sizeof(cmd), "'%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x' '%s' >/dev/null 2>&1 &",
-                 house_root, house_root);
+        snprintf(cmd, sizeof(cmd),
+                 "'%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x' '%s' '%s/*.monads/*.livedesk-taskbar/khtpm_strip_header.xhtpm' >/dev/null 2>&1 &",
+                 house_root, house_root, house_root);
         int rc = system(cmd);
         (void)rc;
     }
@@ -18210,10 +18211,10 @@ int main(int argc, char **argv) {
      * consolidation rationale (khtpm_strip_parser.c/.../
      * tp_desktop_window_rgb.c folded in verbatim, zero linking). */
     if (argc == 2) {
-        /* Tile/pal windows only. The taskbar strip is a normal
-         * <house_root> <chtpm_path> launch of this same loop
-         * (class=dock-header / dock-bottom), not a second engine. */
-        return tp_main(argc, argv);
+        fprintf(stderr,
+                "khtpm_core_render: pal/tile process is khtpm_entity.+x <package_dir>\n"
+                "usage: %s <house_root> <chtpm_path> [x] [y]\n", argv[0]);
+        return 1;
     }
     /* REAL Stage 5 step 3/4 (2026-08-16, khtpm-merge-how2.md §5d.3) -
      * was <package_dir> <house_root> [x] [y] (house_root NOT first,
