@@ -22,7 +22,13 @@ grid and a human has clicked it once via relay.
 User-facing writeup (do not lose the reason):
 `10-user-docs/2026-09-18/WHY-DSR-WSR-PAUSED.md`.
 
-## Overlay (palette placer) — check 2026-09-18
+## Next sprint (design only) — drop INTO windows
+
+See `08-roadmap/design-docs/INVENTORY-DROP-AND-WINDOW-HIGHLIGHT-2026-09-18.md`.
+Palette Place ≠ Xdnd. Highlight the **window** on hover; reuse
+`drop_action=`. Do not start until the next sprint.
+
+## Overlay (palette placer) — check 2026-09-18 (user: looks good)
 
 `tp_arm_placer_rmmv.c`: solid amber 12% wash replaced with **64px
 tic-tac-toe lines** (ARGB if the display has a 32-bit visual). Hole

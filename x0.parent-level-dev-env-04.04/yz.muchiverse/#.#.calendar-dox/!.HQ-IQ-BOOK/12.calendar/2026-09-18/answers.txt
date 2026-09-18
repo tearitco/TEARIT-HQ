@@ -44,6 +44,12 @@ A: Drive nav through the window's own relay
    .png.receipt.txt / .png.frame.txt). No python dump tools. Escalate
    to the user before xdotool/XTest.
 
+Q15 Palette place vs muchi Xdnd vs inventory-in
+A: Three stories. Palettes Place = overlay click-capture (now
+   wireframe), NOT Xdnd. Muchi xdnd_source.c is NOT linked; egg uses
+   coord+file. khtpm drop_action= is a live XDND *target* (bookmarks).
+   Inventory-in = highlight the window + drop_action; design 2026-09-18.
+
 Q14 File-explorer breadcrumbs too long
 A: Wrap + grow height until user resizes. Not this burst. Todo in
    2do.md. Difficulty medium: reuse palette chip-wrap on <tab>; also
