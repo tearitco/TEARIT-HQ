@@ -129,13 +129,22 @@ stand up a new layout branch in the renderer (which house rules
 forbid if A already fits)?** Recommendation: **A**, no new
 `layout_*` in `khtpm_core_render.c`. Confirm before I wire it.
 
-## Proposed next burst (after you confirm Q4)
+## WAIT (user 2026-09-18) — do not invent a second explorer
 
-**Only:** mkdir `cursword/inventory/`; move `inventory.txt` in; add
-compat symlink at the old path; add **Inventory** METHOD + a stub
-**File** METHOD (log/no-op or same window later); regenerate
-`menu.chtpm`. Stop before a pretty grid if the hook merely opens a
-window. Relay-click Inventory. No robot pal yet. No gemma.
+File Explorer **already has grid mode** (2026-09-15): toolbar
+`FE_VIEWMODE` (`Grid View` / `List View`), manager `grid_view` flag,
+`<item class="swatch">` only when `n_grid_entries>0` so list mode
+does not trip the whole-page swatch layout. Default is **list**.
+Own comment: breadcrumbs/close in GRID have **not** been proven live.
+
+`start_dir` is already a `fe_request.txt` key (`fe-pick.sh`), not a
+renderer argv. No new `layout_*`. No new inventory widget.
+
+**Next burst, only if you say so:** prove grid live (open file-explorer,
+relay-click Grid View, screenshot/state), then Inventory METHOD =
+that same widget + `start_dir=$pal/inventory/` + maybe default
+`grid_view=1`. Still no symlink. Still no robot pal. Still no
+gold-ops retarget unless you ask.
 
 ## Still open (new)
 
