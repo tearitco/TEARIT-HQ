@@ -2906,6 +2906,25 @@ static int g_hq_minimized = 0;
 static int g_default_is_fullscreen = 0;
 static int g_default_pre_fullscreen_x = 0, g_default_pre_fullscreen_y = 0;
 
+/* Auto chrome trio for swatch-grid / flat-page (2026-09-18). */
+static void kh_place_chrome_btn(Elem *e, const char *id, const char *label,
+                                const char *onclick, int *chrome_x) {
+    memset(e, 0, sizeof(*e));
+    snprintf(e->tag, sizeof(e->tag), "item");
+    snprintf(e->id, sizeof(e->id), "%s", id);
+    snprintf(e->label, sizeof(e->label), "%s", label);
+    snprintf(e->onclick, sizeof(e->onclick), "%s", onclick);
+    css_compute_style(&g_sheet, "item", id, NULL, 0, 0, &e->style);
+    int cw = kh_measure_text_px(&e->style, label) + 52;
+    if (cw < 48) cw = 48;
+    *chrome_x -= cw;
+    e->x = *chrome_x; e->y = 2; e->w = cw; e->h = CHROME_H - 4;
+    kh_clamp_elem_onscreen(e);
+    *chrome_x = e->x - 4;
+    e->nav_index = ++g_n_nav;
+    g_nav[g_n_nav - 1] = e;
+}
+
 /* Lays out `container`'s own direct item/text children as a real,
  * generic scrollable list clipped to the given box - only `visible_rows`
  * of them (h/ROW_H) are ever given a real position/nav_index; the rest
@@ -4673,25 +4692,12 @@ static void assign_nav_and_layout(void) {
          * declared none, synthesise the same g_default_close_elem the
          * sidebar+panel path uses - drawn/clicked/serialised through the
          * exact machinery that already exists for it. */
-        if (!found_close) {
-            memset(g_default_close_elem, 0, sizeof(*g_default_close_elem));
-            snprintf(g_default_close_elem->tag, sizeof(g_default_close_elem->tag), "item");
-            snprintf(g_default_close_elem->id, sizeof(g_default_close_elem->id), "chrome-close");
-            snprintf(g_default_close_elem->label, sizeof(g_default_close_elem->label), "X");
-            snprintf(g_default_close_elem->onclick, sizeof(g_default_close_elem->onclick), "CLOSE");
-            css_compute_style(&g_sheet, "item", "chrome-close", NULL, 0, 0, &g_default_close_elem->style);
-            int cw = kh_measure_text_px(&g_default_close_elem->style, "X") + 52;
-            if (cw < 48) cw = 48;
-            chrome_x -= cw;
-            g_default_close_elem->x = chrome_x; g_default_close_elem->y = 2;
-            g_default_close_elem->w = cw; g_default_close_elem->h = CHROME_H - 4;
-            kh_clamp_elem_onscreen(g_default_close_elem);
-            chrome_x = g_default_close_elem->x - 4;
-            g_default_close_elem->nav_index = ++g_n_nav;
-            g_nav[g_n_nav - 1] = g_default_close_elem;
-        } else {
-            g_default_close_elem->w = 0;   /* template has its own; keep the synth one inert */
-        }
+        if (!found_close)
+            kh_place_chrome_btn(g_default_close_elem, "chrome-close", "X", "CLOSE", &chrome_x);
+        else
+            g_default_close_elem->w = 0;
+        kh_place_chrome_btn(g_default_fullscreen_elem, "chrome-fullscreen", "!", "TOGGLE_FULLSCREEN", &chrome_x);
+        kh_place_chrome_btn(g_default_minimize_elem, "chrome-minimize", "_", "MINIMIZE", &chrome_x);
         /* helper: does this <item> carry class="pal-dir" (the long folder
          * list - pinned to the FOOTER; sheet A/B/C + tileset choosers go
          * up top, next to the grid, since they're picked far more often) */
@@ -8067,10 +8073,12 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
              * (g_default_has_sidebar_panel), else keep the original
              * 60px for any other popup that has just a plain close
              * corner and no chrome trio of its own. */
-            int chrome_zone_x = (g_default_has_sidebar_panel && g_default_minimize_elem->w > 0)
+            int chrome_zone_x = (g_default_minimize_elem->w > 0)
                                  ? g_default_minimize_elem->x
-                                 : ((g_default_has_sidebar_panel && g_default_fullscreen_elem->w > 0)
-                                    ? g_default_fullscreen_elem->x : g_win_w - 60);
+                                 : ((g_default_fullscreen_elem->w > 0)
+                                    ? g_default_fullscreen_elem->x
+                                    : ((g_default_close_elem->w > 0)
+                                       ? g_default_close_elem->x : g_win_w - 60));
             if (!window_is_dock() && ev->xbutton.button == 1 && ev->xbutton.y >= KH_WIN_FRAME && ev->xbutton.y < CHROME_H + KH_WIN_FRAME &&
                 !(ev->xbutton.x >= chrome_zone_x && ev->xbutton.x < g_win_w)) {
                 g_popup_dragging = 1;
