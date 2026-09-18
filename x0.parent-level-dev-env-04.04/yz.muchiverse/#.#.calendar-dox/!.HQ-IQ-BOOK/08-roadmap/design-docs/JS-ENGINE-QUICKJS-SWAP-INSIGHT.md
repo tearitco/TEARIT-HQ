@@ -1,7 +1,9 @@
 # JS engine swap insight — Duktape is the floor, QuickJS is the door (row 31)
 
-**Status:** decision recorded / transplant NOT started
-**Date:** 2026-09-17
+**Status:** graft IN PROGRESS — QuickJS vendored, code edits NOT yet
+started. If you are a NEW instance resuming this: read §8 (RESUME PACK)
+before anything else.
+**Date:** 2026-09-17 (updated 2026-09-18)
 **Scope:** `44.xyz.01.00/&.hq-apps/network/` — the `nbjs` JS engine
 (`&.hq-apps/js/duktape.*`) and its C boundary in `ops/nb_js_worker.c`.
 **Companion:** `NB-JS-ENGINE-ROADMAP.md` (where we are), the REAL-SPA
@@ -214,7 +216,7 @@ User decisions on the two graft checkpoints:
 
 **Concrete graft checklist** (what "rung 4-6" means now):
 
-- [ ] Vendor official QuickJS 2026-06-04 into `&.hq-apps/js/`:
+- [x] Vendor official QuickJS 2026-06-04 into `&.hq-apps/js/`:
       `quickjs.c/.h`, `cutils.c/.h`, `libregexp.*`, `libunicode.*`,
       `libunicode-table.h`, `dtoa.c/.h`, `list.h`. Keep duktape/* in
       place until the transplant is green (nb_js_eval.c eval path can
@@ -236,8 +238,10 @@ User decisions on the two graft checkpoints:
 - [ ] `nb_host.h`: registrations from `duk_push_c_function`+`
       duk_put_prop_string` to `JS_NewCFunction`+`JS_SetPropertyStr`;
       prelude text stays verbatim except the Promise-polyfill chunk.
-- [ ] `nb_js_eval.c`: existing Duktape CLI path left intact for the
-      session (rollback anchor), or ported last if time permits.
+- [x] `nb_js_eval.c` decision FLIPPED 2026-09-18: port it too (only 11
+      `duk_` refs / 7 APIs) because it `#include`s `nb_host.h`, which
+      must become QuickJS-typed. Rollback anchor becomes the pre-graft
+      commit + duktape files kept on disk (not a Duktape nb_js_eval).
 - [ ] Fresh `make check` -> all 44 suites PASS on the QuickJS build;
       fix/commit each regression as it appears (expected suspects: timer
       ordering in wlt/wss, microtask cadence in wfp/wit, exception-string
@@ -251,14 +255,235 @@ tree stays recoverable via the pre-graft commit + duktape files kept in
 place. The graft never forces working-tree noise into a commit: runtime
 state files are not staged (house rule #10).
 
-## 8. Note for the next session/handoff reader
+## 8. RESUME PACK — handoff to a NEW instance (read first, cold start)
 
-Read first: §6 ladders, §7 guardrails, the graft checklist above, then
-this file's full work log. The source of truth for the live decision is
-this doc; the code state is whatever the `opencode` branch HEAD says.
+Write date: **2026-09-18**. This section is the whole handoff: how to use
+the same git, what the job is, the standards, the exact in-flight state,
+and the translation table that turns the remaining work into mechanical
+copy.
 
-State at handoff: engine graft APPROVED, probes green, zero engine
-edits made yet. The compiler invocation for probing is in §work-log
-(rung 3 entry). Re-probe driver sources live in `/tmp/qjs-src/`
-(`qprobe.c`, `qprelude.c`) and the dumped `/tmp/NB_PRELUDE.js`; they
-recompile in seconds if /tmp was cleared.
+### 8.1 Same git — two worktrees, two branches
+
+- One repository. The `AGENTS.md` house-rules file lives at the repo
+  root of `/home/no/Desktop/github/work/NNEST-12.00`.
+- The repo has **two worktrees** of the same git store:
+  - `/home/no/Desktop/github/work/NNEST-12.00` — branch `claude`
+    (the OTHER agent's tree). **Never commit here.**
+  - `/home/no/Desktop/github/work/NNEST-12.00-opencode` — branch
+    `opencode` (THIS job's tree). **All work goes here.**
+- So: do NOT set your working dir to the bare `NNEST-12.00`; open files
+  under `NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/
+  44.xyz.01.00/&.hq-apps/network/...`.
+- Paths contain `&` and `#` and `!` — **always quote them in bash**,
+  or the shell will interpret them.
+- The turf of this job is the `network` cell: `ops/nb_js_worker.c`,
+  `ops/nb_host.h`, `ops/nb_js_eval.c`, `Makefile`, `&.hq-apps/js/`.
+- Commit rules (see also AGENTS.md, BRANCH-STRATEGY.md,
+  OPERATIONAL-LANDMINES.md #10): commit ONLY on `opencode`, scoped
+  `git add <path>` per file (never `-A`); runtime state files (pdl,
+  logs, pids, `.png`, built binaries `nbjs`/`w*`) are NEVER staged;
+  never end a work block with uncommitted code (mid-work ok as
+  `wip: <what>`); never merge/cherry-pick/push without the user's
+  explicit "push"; never commit to `main`/`claude`/`chtpm-delete-per-app-c`.
+
+### 8.2 The job (compacted)
+
+Replace the Duktape 2.7 (ES5.1-only parser) engine with **QuickJS
+2026-06-04** so youtube.com's real ES2020+ bundle can execute (roadmap
+row 31). Two approved decisions:
+
+1. **Native job queue** — delete the C stash-FIFO microtask emulation
+   and the prelude's Promise polyfill; drain via `JS_ExecutePendingJob`.
+2. **Full worker+host graft, 44 suites green in-session.**
+
+Scope discipline: pipe protocol, DOM tree, cookie jar, storage jars,
+`__nb_sha1`, CSS cache, event loop C-state (~2100 lines) survive
+**untouched**. Only the duk-boundary (~750 lines / 54 API names / 105
+natives in the worker + 19 names/16 natives in nb_host.h + 11 refs in
+nb_js_eval.c) and the Makefile `nbjs` target change. The 44 suites are
+pipe-driven and engine-agnostic — they are the regression net, do not
+modify them.
+
+### 8.3 Exact state at handoff (2026-09-18)
+
+DONE (committed on `opencode` unless noted):
+- Insight + decision doc, probe receipts, approved graft plan —
+  commits `6171d38c`, `fe74897b`, `67e06d22` (all unpushed).
+- Probe evidence: modern-syntax parse+run (`QJ-PROBE yyyyyy|async=y`)
+  and verbatim prelude load under QuickJS (`PRELUDE-SMOKE LOADED`,
+  `PRELUDE-CHECK href=...`).
+- **QuickJS vendored into `&.hq-apps/js/`** — 13 files (`quickjs.c/.h`,
+  `cutils.c/.h`, `libregexp.c/.h`, `libregexp-opcode.h`,
+  `libunicode.c/.h`, `libunicode-table.h`, `dtoa.c/.h`, `list.h`).
+  `duktape.*` + `stb_image.h` still in place (rollback).
+  **UNCOMMITTED → commit these first.**
+- Full read of `nb_js_worker.c` (3912 lines). Region map in §8.4.
+- Per-file duk API inventories captured (§9 table built from them).
+
+NOT STARTED:
+- The actual code translation (host, worker, eval, Makefile), the
+  build, and the 44-suite run. Transplant has not touched a line yet.
+
+### 8.4 Region map of `ops/nb_js_worker.c` (line refs; on-disk file is authoritative)
+
+- 1-158: includes, framing (g_rbuf/recv_frame/split_lines), `g_live_ctx`
+  decl. Only line ~62 `static duk_context *g_live_ctx` → `JSContext *`.
+- 159-488: DOM tree C-state, node_index, SB builder, selector engine,
+  RENDER rows — **no duk calls; untouched**.
+- 490-527: `get_node`/`get_this` helpers + ONPROPS (duk) — translate.
+- 528-812: CSS/getComputedStyle + element/document natives (duk) —
+  translate values only; bodies are DOM logic.
+- 814-1196: element + classList natives (duk) — translate.
+- 1198-1347: `push_node` + node-identity wrapper (duk + **global stash**
+  map) — translate; stash → C-side `JSValue` map keyed on the global
+  object (`__nb_idmap`), created in run_page, freed at teardown.
+- 1349-1390 + 1722-1840 + 1841-2200: cookie jar / storage C helpers —
+  **untouched**; the GET/SET natives around them (duk) translate.
+- ~2061: `install_dom` — translate entire registration block.
+- ~2300-2460: timers/microtasks/RAF natives (duk) + event-binding —
+  translate; **microtask FIFO deleted**; timer callbacks become C-
+  held `JSValue`s (dup/free instead of stash arrays).
+- 2461-2812: `drain_microtasks` (**DELETE**) + `run_due_timers` +
+  `run_event_loop` — rewrite drain to `while (JS_IsJobPending(rt))
+  JS_ExecutePendingJob(rt,&jctx)` (jctx = ctx; `ctx2 && jctx == ctx`
+  pattern from the probe loop; break on `<0` + `JS_GetException`).
+- 2825-2874: `__nb_sha1` native + `install_events_timers` (duk) —
+  translate.
+- 2880-2893: `boot_duk_install`: `install_safe` — translate the
+  duk_pcall wrapper to `JS_Call(ctx, fn, JS_UNDEFINED, argc, argv)`.
+- 2895-2906: alarm-based CPU budget — **stays** (sigalrm → _exit).
+- 2908-3123: `run_page` — heap create (`JS_NewRuntime`/`JS_NewContext`),
+  eval (JS_Eval), global bootstrap, callbacks `JS_Call`.
+- 3129-3291: `cmd_eval` + REPL (`repl_main`) — translate.
+- 3293-3448: CLI node-mode natives (read_file/fs/cli install) — translate.
+- 3481-3679: `g_cjs_prelude` JS string — **untouched**.
+- 3681-3912: `cli_main` + `main` — translate (`duk_pcompile_lstring_*`
+  → `JS_Eval` + strip a leading `#!...` shebang line in C, since this
+  QuickJS build ships no SHEBANG eval flag).
+
+### 8.5 Next steps (exact order)
+
+1. Commit the 13 vendored `&.hq-apps/js/` files + this doc + browser.md
+   update, scoped, on `opencode`. (House rule: never hand off with
+   uncommitted work.)
+2. Rewrite `nb_host.h` (756 lines): `#include "../js/quickjs.h"`; the 16
+   registrations go `duk_push_c_function`+`duk_put_prop_string` →
+   `JS_NewCFunction`+`JS_SetPropertyStr`; accessors → `JS_DefineProperty
+   GetSet` with magic get/set; `g_js_prelude[]` (339-484, 19,805 bytes)
+   stays verbatim EXCEPT the Promise-polyfill chunk gets deleted.
+3. Rewrite `nb_js_worker.c` top→bottom per §8.4 using §9's table.
+4. Rewrite `nb_js_eval.c` (11 refs, 7 APIs — trivial) so the shared
+   nb_host.h compiles.
+5. Makefile `nbjs` target: CFLAGS → **`-std=gnu11`** (NOT `-std=c11` —
+   quickjs.c uses the `asm` keyword at ~line 60600) and add
+   `-D_GNU_SOURCE -DCONFIG_VERSION=\"2026-06-04\" -fwrapv`; replace
+   `$(JS_DIR)/duktape.c` with `quickjs.c cutils.c libregexp.c
+   libunicode.c dtoa.c` (**NO libbf.c — merged in this release**); keep
+   `-lm`. Our TUs can stay `-std=c11`; only the engine TUs break.
+6. `make` → iterate compiler errors (expect mass signature-only fixes).
+7. `make check` → all 44 suites green from a fresh build + fresh run;
+   fix+commit each regression (expected suspects: timer ordering in
+   wlt/wss, microtask cadence in wfp/wit, exception-string formats).
+8. Flip house docs to GREEN: this doc (graft DONE + commit hashes +
+   engine file list), compact browser.md (engine-swap line), and
+   NB-JS-ENGINE-ROADMAP ("ES5.1 language done" framing → corrected).
+
+### 8.6 Rollback anchor (adjusted 2026-09-18)
+
+`duktape.c/.h/duk_config.h` remain vendored in `&.hq-apps/js/`; the
+pre-graft `opencode` commits are the recovery point. `nb_js_eval.c` is
+now QuickJS too — do NOT leave it Duktape against a QuickJS `nb_host.h`
+(it won't compile).
+
+### 8.7 Where to prove / other pointers
+
+- Probe recompile kits live in `/tmp/qjs-src/` (`qprobe.c`, `qprelude.c`)
+  and `/tmp/NB_PRELUDE.js` — disposable; not needed for the graft.
+- `git log --oneline` on `opencode`: `67e06d22` = approved graft plan.
+- Load the `khtpm-house-standards` skill before touching any
+  _manager.c/_render.c pair or taskbar UI (not needed for nbjs cells).
+- Never report green without `make check` from a fresh build + fresh
+  run — a clean compile is not evidence.
+
+## 9. Translation table — the meat (duk → QuickJS 2026-06-04)
+
+Built from the 2026-09-18 API inventories. Natives become:
+
+```c
+static JSValue nb_node_name(JSContext *ctx, JSValueConst this_val,
+                            int argc, JSValueConst *argv) {
+    struct node *n = get_node(ctx, this_val);
+    return JS_NewString(ctx, n && n->id ? n->id : "");
+}
+```
+
+Return `JS_UNDEFINED`/`JS_NULL`/`JS_TRUE`/`JS_FALSE`/built values or
+`JS_NewInt32/NewFloat64/NewString/NewStringLen/NewObject/NewArray`;
+on error `JS_ThrowTypeError/RangeError/InternalError(ctx,"fmt",...)`
+then `return JS_EXCEPTION;`.
+
+| duk (Duktape 2.7) | QuickJS |
+|---|---|
+| `duk_create_heap(NULL,NULL,NULL,NULL,fatal)` | `rt=JS_NewRuntime(); ctx=JS_NewContext(rt);` (fatal cb N/A) |
+| `duk_destroy_heap(ctx)` | `JS_FreeContext(ctx); JS_FreeRuntime(JS_GetRuntime(ctx));` |
+| `duk_context *`/`duk_ret_t`/`duk_idx_t` | `JSContext *`/`JSValue`/`int` |
+| `return 0` from native | `return JS_UNDEFINED;` (or value) |
+| `duk_get_string(ctx,i)` (no coercion) | if `JS_IsString(argv[k])`: `JS_ToCStringLen(ctx,&len,argv[k])`; else treat as NULL — matched |
+| `duk_safe_to_string(ctx,i)` (coerce, no throw) | `JS_ToCString(ctx,argv[k])`; if NULL → clear exc + `JS_PrintValue` dump; caller frees |
+| `duk_get_int/get_number` (no coercion) | `JS_IsNumber ? JS_ToInt32/JS_ToFloat64 : default` |
+| `duk_to_boolean` | `JS_ToBool(ctx,v)` — returns `int`, `-1`=exception → treat `<=0` as 0 |
+| `duk_is_object/callable/number/string` | `JS_IsObject/JS_IsFunction/JS_IsNumber/JS_IsString` |
+| `duk_push_undefined/null/boolean/int/number/string/lstring` | `JS_UNDEFINED/JS_NULL/JS_NewBool/JS_NewInt32/JS_NewFloat64/JS_NewString/JS_NewStringLen` |
+| `duk_push_object/array/global_object` | `JS_NewObject/JS_NewArray/JS_GetGlobalObject` (latter = OWNED, free) |
+| `duk_push_this` | `this_val` (native param) |
+| `duk_push_global_stash` | **gone** — microtask FIFO deleted; idmap → `__nb_idmap` on global object |
+| `duk_push_c_function(ctx,fn,nargs)` | `JS_NewCFunction(ctx,fn,"name",nargs)` |
+| `duk_set_magic` + `duk_get_current_magic` | `JS_NewCFunctionMagic(ctx,fn,"name",len,JS_CFUNC_generic_magic,i)`; native gains trailing `int magic` |
+| `duk_get_global_string(ctx,"k")` | `JS_GetPropertyStr(JS_GetGlobalObject(ctx),"k")` (free the glob) |
+| `duk_put_prop_string(ctx,o,"k")` | `JS_SetPropertyStr(ctx,o,"k",val)` — **takes ownership of val** |
+| `duk_put_prop_index(ctx,a,i)` | `JS_SetPropertyUint32(ctx,a,i,val)` — **takes ownership** |
+| `duk_get_prop_string/prop_index` | `JS_GetPropertyStr/JS_GetPropertyUint32` (owned; free after) |
+| `duk_has_prop_string` | `JS_HasProperty(ctx,o,JS_NewAtom(ctx,"k"))` + `JS_FreeAtom` |
+| `duk_del_prop_index` | `JS_DeleteProperty(ctx,o,JS_NewAtomUInt32(ctx,i),0)` + free atom |
+| `duk_def_prop(ctx,o,idx,DUK_DEFPROP_HAVE_GETTER|...SETTER|...ENUMERABLE|ENUMERABLE)` | `JS_DefinePropertyGetSet(ctx,o,JS_NewAtom(ctx,"k"),get_fn,set_fn,JS_PROP_HAS_GET|JS_PROP_HAS_SET|JS_PROP_HAS_ENUMERABLE|JS_PROP_ENUMERABLE)` — takes ownership of fns; magic accessors via NewCFunctionMagic |
+| `duk_dup(ctx,i)` | `JS_DupValue(ctx,v)` |
+| `duk_pop`/`duk_pop_2` | `JS_FreeValue(ctx,v)` (free owned refs) |
+| `duk_remove` | stack idioms → locals with Dup/Free discipline |
+| `duk_pcall(ctx,n)` | `r=JS_Call(ctx,f,JS_UNDEFINED,n,argv)`; `JS_IsException(r)` → `JS_GetException`+save pErr; free f |
+| `duk_pcall_method(ctx,n)` | `JS_Call(ctx,f,this_val,n,argv)` |
+| `duk_pnew(ctx,n)` | `JS_CallConstructor(ctx,f,n,argv)` (1 use) |
+| `duk_peval_string(ctx,src)` / `duk_peval` | `JS_Eval(ctx,src,len,"<nbjs>",JS_EVAL_TYPE_GLOBAL)`; check `JS_IsException` |
+| `duk_pcompile_lstring_filename` (CLI) | `JS_Eval(ctx,src,n,filename,JS_EVAL_TYPE_GLOBAL);` + manually strip `#!` shebang line |
+| `duk_error(ctx,DERR,"fmt",...)` | `JS_ThrowTypeError/RangeError/InternalError/...` + `return JS_EXCEPTION` |
+| `duk_uarridx_t` | `uint32_t` |
+| `DUK_VARARGS` natives | fixed length 0 (QuickJS passes real argc always; length is cosmetic) |
+| microtask FIFO + prelude Promise polyfill | **delete**; `queueMicrotask` native → `JS_EnqueueJob`; drain `while(JS_IsJobPending(rt)) JS_ExecutePendingJob(rt,&jctx)` in the event loop |
+| stash-held timers | C `JSValue` fields; dup to fire, free on clear/overwrite, free all at teardown |
+
+Ownership cheat-sheet: `JS_SetPropertyStr/Uint32` and
+`JS_DefinePropertyGetSet` CONSUME the value(s); `JS_GetProperty*`,
+`JS_GetGlobalObject`, `JS_Eval`, `JS_Call` RETURN owned refs you must
+`JS_FreeValue`. `JS_ToCString*` returns memory freed with
+`JS_FreeCString`.
+
+Worked conversions worth copying: the sha1 native and the DOM
+getElementById native are the two cleanest duk→QuickJS hand ports in
+the worker (translate via the table above and mirror shape).
+
+## 10. Work log (appended by session)
+
+### 2026-09-18 — vendor DONE + full API map + resume-pack handoff
+- Vendored official QuickJS **2026-06-04** into `&.hq-apps/js/` (13
+  files; duktape kept for rollback). *Commit pending — the vendored
+  files are uncommitted working-tree additions as of this write.*
+- Re-read `nb_js_worker.c` end-to-end (3912 lines): confirmed §8.4
+  region map; full API inventories (54 duk names / 776 refs / 105
+  natives in worker; 19 / 151 / 16 in nb_host.h; 7 / 11 in
+  nb_js_eval.c); read `nb_host.h`, `nb_js_eval.c`, `Makefile`,
+  `quickjs.h`; locked the quickjs build flags (§8.5 step 5) and the
+  microtask/timer translation (stash-FIFO → JS_ExecutePendingJob;
+  stash timers → C JSValue fields).
+- Decision: `nb_js_eval.c` ported too (rollback anchor adjusted, §8.6).
+- This RESUME PACK (§8) + translation table (§9) written so a fresh
+  instance can restart the graft cold. Next action on resume: commit
+  vendored files, then run §8.5 steps 2→8.

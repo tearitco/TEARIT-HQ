@@ -7,7 +7,8 @@ the two docs at the bottom. Current session verbatim state (what was
 said/done, pending decisions) is in the **Work log** section — update
 it at the end of every block.
 
-**Last updated:** 2026-09-17 (fetch() surface proven — 44 PASS)
+**Last updated:** 2026-09-18 (QuickJS graft IN PROGRESS — engine cell
+touched, suites NOT yet run on the new engine)
 
 **Branch:** `opencode` (this agent's own branch; never commit to
 `main`/`claude`/`grok`). Nothing is ever pushed without the user's
@@ -41,6 +42,20 @@ this set, no regressions).
 | 32f | same feed through the **fetch()** surface (row 31's bundle uses fetch(), not XHR) | **BUILT** — `worker_fetch_post_test`/`wfp` (Promise-chain `fetch(url,{method,headers,body})` → same signed innerTube POST → `response.json()` + fetch() 401 rejection surfaced; no engine changes) |
 
 ## Work log (most recent first)
+
+### 2026-09-18 QuickJS graft started (engine cell) — handoff written
+- Vendored official QuickJS **2026-06-04** into
+  `&.hq-apps/js/` (13 files: quickjs.c/.h, cutils, libregexp*,
+  libunicode*, dtoa, list.h); `duktape.*` kept for rollback.
+  UNCOMMITTED at write time — resumed instance commits these first.
+- Full read of `nb_js_worker.c` (3912 lines) + per-file duk API
+  inventories; full translation table (duk → QuickJS) + worker region
+  map + build flags (`-std=gnu11`, `-D_GNU_SOURCE`,
+  `-DCONFIG_VERSION="2026-06-04"`, no libbf.c) + next-step order now
+  live in the insight doc §8-§9. Cold-start resumption instructions
+  (git/worktree usage, standards board) are in §8.
+- **caution:** `make check` green (44 PASS) was on the DUKTAPE build;
+  nothing has run on QuickJS yet.
 
 ### 2026-09-17 fetch() surface DONE (row 32 extension, wfp)
 - **New hermetic test** `tests/worker_fetch_post_test.c|.js` (`wfp`, wired
@@ -155,8 +170,12 @@ for "render+drive youtube.com" (roadmap rows):
    C-embeddable engine that parses modern syntax; Duktape 3 is WTF-8
    strings, not grammar). Architecture is safe: ~750/3912 lines are the
    duk boundary; protocol, DOM, jars, sha1, and all 44 pipe-driven test
-   harnesses survive as-is. Full plan: design-doc
-   `08-roadmap/design-docs/JS-ENGINE-QUICKJS-SWAP-INSIGHT.md`.
+   harnesses survive as-is.
+   **GRAFT STATUS (2026-09-18): IN PROGRESS — quickjs vendored into
+   `&.hq-apps/js/`, code edits not started.** `make check` on this
+   worktree is STALE until the graft + fresh run is done. If resuming
+   cold, read the full plan + resume pack + translation table:
+   `08-roadmap/design-docs/JS-ENGINE-QUICKJS-SWAP-INSIGHT.md` §6-§9.
 2. **Page CSS** (partial) — `.css` files, not full page CSS.
 3. **Websocket chat** (row 32 mentions websocket chat) — page-originated
    XHR is built, but a websocket client surface is not.
@@ -200,6 +219,9 @@ Steps:
 - SHA-1: `44.xyz.01.00/&.hq-apps/network/ops/nb_sha1.h`
 - Prelude: `44.xyz.01.00/&.hq-apps/network/ops/nb_host.h`
 - Makefile: `44.xyz.01.00/&.hq-apps/network/Makefile`
+- Engine libs: `44.xyz.01.00/&.hq-apps/js/` (quickjs.* + cutils/
+  libregexp*/libunicode*/dtoa/list.h — NEW, uncommitted as of
+  2026-09-18; duktape.* kept for rollback)
 - Tests: `44.xyz.01.00/&.hq-apps/network/tests/worker_login_test.c|.js`,
   `worker_sapisid_test.c|.js`, `worker_innertube_test.c|.js`,
   `worker_fetch_post_test.c|.js`
