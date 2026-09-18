@@ -18173,6 +18173,14 @@ static void kh_ensure_dock_peer_window(void) {
     kh_focus_debug_log("DOCK_PEER_WINDOW (re)created id=0x%lx", (unsigned long)g_dock_peer_win);
 }
 
+#ifdef KHTPM_ENTITY_BIN
+/* Unfactor piece 1 (2026-09-18): pal process is its own +x, same
+ * source, -DKHTPM_ENTITY_BIN. HQ binary still has argc==2 -> tp_main
+ * until spawners switch (piece 2). */
+int main(int argc, char **argv) {
+    return tp_main(argc, argv);
+}
+#else
 int main(int argc, char **argv) {
     /* Scan + strip the flag tokens so the positional parsing below sees
      * a clean <house_root> <chtpm_path> [x] [y] regardless of where the
@@ -18831,3 +18839,4 @@ int main(int argc, char **argv) {
     XCloseDisplay(dpy);
     return 0;
 }
+#endif /* !KHTPM_ENTITY_BIN */

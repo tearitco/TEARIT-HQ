@@ -22,10 +22,11 @@ so you see the sprite follow the pointer. Slice 4. Slice 1 is
 | # | What | Status |
 |---|---|---|
 | 1 | Highlight drop-target HQ window (caller color). Desktop pal drag-release `mv`s into Inventory/`current_dir`. Xdnd `drop_action` still works for dir drops (bookmarks-style). | **mv works (m8, ninja). Highlight often invisible. List does not live-refresh.** |
-| 2 | Drag **out** of Inventory onto desk (spawn/move pal window). | later |
+| 2 | Drag **out** / Place from explorer onto desk (tic-tac-toe overlay) or onto **another Inventory** (same highlight + dotted slot as manual drag). | **not coded** — Place still only writes `fe_place_armed.txt` |
 | 3 | pc-hq window ↔ desk (same highlight + dest registry). | later |
 | 4 | Optional drag preview (ghost). | later |
 | 5 | Inventory ↔ inventory (same as 1 once two explorers have dest dirs). | later |
+| 6 | **Cli-io `mv <entity-nav-#> <window-nav-#>`** — agent or human types a move instead of dragging. CTXMENU row. Same `mv` as drag. | **docs only** — `UNFACTOR-PAL-X.md` |
 
 ## Three different “drag” stories (do not mix them)
 

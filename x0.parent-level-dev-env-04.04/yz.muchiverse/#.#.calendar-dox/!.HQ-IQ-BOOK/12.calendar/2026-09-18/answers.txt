@@ -44,6 +44,11 @@ A: Drive nav through the window's own relay
    .png.receipt.txt / .png.frame.txt). No python dump tools. Escalate
    to the user before xdotool/XTest.
 
+Q19 Place from explorer, other inventory, cli-io mv, unfactor
+A: Place overlay + second-inventory hover not coded. Cli-io
+   `mv <entity-nav-#> <window-nav-#>` documented in UNFACTOR-PAL-X.md
+   (not implemented). Unfactor piece 1: khtpm_entity.+x same source.
+
 Q18 Try 60fps hover
 A: Pal select 16667us while dragging (idle still 300ms). FE drop-target
    windows 16667us. Sprite MAX_FPS still 30. User can check feel.
