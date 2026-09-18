@@ -28,6 +28,12 @@ arms placement-grid image. Left click stays browse/select.
 See GROK plan section "File-explorer GRID — WIP". Code only when
 asked, one gap at a time.
 
+## Scheduled — file-explorer extra X (done 2026-09-18)
+
+User: dual X never intended; auto chrome only. Cause: template
+`<item id="chrome-close">` plus swatch/flat `g_default_close_elem`.
+Removed the template item. Relaunch File Explorer to see one X.
+
 ## Active today
 
 - Cursword `inventory/` dir + slow migrate of `inventory.txt` /
