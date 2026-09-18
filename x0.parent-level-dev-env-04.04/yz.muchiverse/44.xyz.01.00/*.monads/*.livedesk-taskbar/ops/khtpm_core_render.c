@@ -8852,6 +8852,53 @@ static void redraw(void) {
                                   (const FcChar8 *)banner, (int)strlen(banner));
                 XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &tcol);
             }
+            /* Dotted cell where the file will land (next grid/list slot). */
+            {
+                int sx = 16, sy = CHROME_H + 88, sw = 176, sh = 40;
+                int n = 0, maxx = 0, maxy = 0, tw = 176, th = 40, minx = 24, miny = 0, grid = 0, ni;
+                for (ni = 0; ni < g_n_nav; ni++) {
+                    Elem *e = g_nav[ni];
+                    int ge, en;
+                    if (!e || e->w <= 0) continue;
+                    ge = !strncmp(e->id, "gentry", 6);
+                    en = !strncmp(e->id, "entry", 5) && e->id[5] >= '0' && e->id[5] <= '9';
+                    if (!ge && !en) continue;
+                    if (ge) grid = 1;
+                    n++;
+                    tw = e->w; th = e->h;
+                    if (e->x < minx) minx = e->x;
+                    if (!miny || e->y < miny) miny = e->y;
+                    if (e->y > maxy || (e->y == maxy && e->x >= maxx)) {
+                        maxx = e->x; maxy = e->y;
+                    }
+                }
+                if (n > 0) {
+                    if (grid) {
+                        sx = maxx + tw + 8; sy = maxy;
+                        if (sx + tw > g_win_w - 20) { sx = minx; sy = maxy + th + 8; }
+                        sw = tw; sh = th;
+                    } else {
+                        sx = minx; sy = maxy + th + 4; sw = tw; sh = th;
+                    }
+                } else if (!grid) {
+                    sw = g_win_w > 48 ? g_win_w - 48 : 120;
+                    sh = 28;
+                }
+                XSetForeground(dpy, gc, alloc_pixel("#111111"));
+                XSetLineAttributes(dpy, gc, 2, LineOnOffDash, CapButt, JoinMiter);
+                XDrawRectangle(dpy, buf, gc, sx, sy, (unsigned)sw, (unsigned)sh);
+                XSetLineAttributes(dpy, gc, 1, LineOnOffDash, CapButt, JoinMiter);
+                XDrawRectangle(dpy, buf, gc, sx + 3, sy + 3,
+                               (unsigned)(sw > 6 ? sw - 6 : 1), (unsigned)(sh > 6 ? sh - 6 : 1));
+                XSetLineAttributes(dpy, gc, 1, LineSolid, CapButt, JoinMiter);
+                if (font_ui && xftdraw_buf && g_drop_hover_name[0]) {
+                    XftColor tcol = xft_color("#111111");
+                    XftDrawStringUtf8(xftdraw_buf, &tcol, font_ui, sx + 8, sy + sh / 2 + 4,
+                                      (const FcChar8 *)g_drop_hover_name,
+                                      (int)strlen(g_drop_hover_name));
+                    XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &tcol);
+                }
+            }
         }
     }
     if (g_dock_peer && !g_dock_in_peer_paint) dock_paint_peer();
@@ -10122,13 +10169,15 @@ static int kh_read_drag_hover(void) {
  * pointer (walk parent chain) to zone `win=`, not the often-stale
  * x/y/w/h (WM-moved File Explorer sat at 90,90 in the file while the
  * pointer was at y=1476). Fall back to rect if no win id. */
-static int kh_drop_zone_hit(Display *dpy_hit, int rx, int ry, char *dest, size_t destsz) {
+static int kh_drop_zone_hit(Display *dpy_hit, int rx, int ry, char *dest, size_t destsz,
+                            unsigned long *out_win) {
     char dirp[PATH_BUF];
     DIR *d;
     struct dirent *de;
     int self = (int)getpid();
     unsigned long stack[64];
     int nstack = 0;
+    if (out_win) *out_win = 0;
     if (!g_house_root[0]) return 0;
     if (dpy_hit) {
         Window current = RootWindow(dpy_hit, DefaultScreen(dpy_hit));
@@ -10182,6 +10231,7 @@ static int kh_drop_zone_hit(Display *dpy_hit, int rx, int ry, char *dest, size_t
             hit = 1;
         if (hit) {
             if (dest && destsz) snprintf(dest, destsz, "%s", zdest);
+            if (out_win) *out_win = zwin;
             closedir(d);
             return pid;
         }
@@ -16002,9 +16052,17 @@ static int tp_main(int argc, char **argv) {
                 dest[0] = 0;
                 const char *bn = strrchr(package_dir, '/');
                 bn = bn ? bn + 1 : package_dir;
-                int zpid = kh_drop_zone_hit(dpy, rx, ry, dest, sizeof(dest));
+                unsigned long zwin = 0;
+                int zpid = kh_drop_zone_hit(dpy, rx, ry, dest, sizeof(dest), &zwin);
                 kh_write_drag_hover(zpid, bn);
                 XRaiseWindow(dpy, win);
+                if (zwin && (Window)zwin != win) {
+                    XWindowChanges wc;
+                    wc.sibling = (Window)zwin;
+                    wc.stack_mode = Above;
+                    XConfigureWindow(dpy, win, CWSibling | CWStackMode, &wc);
+                    XRaiseWindow(dpy, win);
+                }
                 {
                     char tp[PATH_BUF];
                     FILE *tf;
@@ -17316,7 +17374,7 @@ static int tp_main(int argc, char **argv) {
                 } else {
                 {
                     char dest[PATH_BUF];
-                    int zpid = kh_drop_zone_hit(dpy, xev.xbutton.x_root, xev.xbutton.y_root, dest, sizeof(dest));
+                    int zpid = kh_drop_zone_hit(dpy, xev.xbutton.x_root, xev.xbutton.y_root, dest, sizeof(dest), NULL);
                     kh_write_drag_hover(0, "");
                     if (zpid && dest[0] && package_dir[0]) {
                         const char *base = strrchr(package_dir, '/');
@@ -17394,7 +17452,7 @@ static int tp_main(int argc, char **argv) {
                 drag_start_y = xev.xmotion.y_root;
                 {
                     char dest[PATH_BUF];
-                    int zpid = kh_drop_zone_hit(dpy, xev.xmotion.x_root, xev.xmotion.y_root, dest, sizeof(dest));
+                    int zpid = kh_drop_zone_hit(dpy, xev.xmotion.x_root, xev.xmotion.y_root, dest, sizeof(dest), NULL);
                     {
                         const char *bn = strrchr(package_dir, '/');
                         bn = bn ? bn + 1 : package_dir;
