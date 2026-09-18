@@ -147,14 +147,22 @@ login handshake + in-page signed InnerTube feed). Remaining realistic gaps
 for "render+drive youtube.com" (roadmap rows):
 
 1. **Execute youtube.com's full JS bundle** (row 31) — comments, lazy
-   sections, player config. Engine JS + external-slice loading exist
-   (ladder tested real third-party pages) but the youtube bundle itself
-   has not been exercised hermetically. Biggest remaining item.
+   sections, player config. **ENGINE BLOCKER FOUND 2026-09-17:** the
+   worker's Duktape is an ES5.1-only parser — `class`/arrows/templates/
+   `?.`/`??`/async/await ALL `parse error` even compiled standalone. The
+   real bundle is ES2020+; no polyfill can fix a parser that rejects the
+   source before running. **Decision: transplant to QuickJS** (only
+   C-embeddable engine that parses modern syntax; Duktape 3 is WTF-8
+   strings, not grammar). Architecture is safe: ~750/3912 lines are the
+   duk boundary; protocol, DOM, jars, sha1, and all 44 pipe-driven test
+   harnesses survive as-is. Full plan: design-doc
+   `08-roadmap/design-docs/JS-ENGINE-QUICKJS-SWAP-INSIGHT.md`.
 2. **Page CSS** (partial) — `.css` files, not full page CSS.
 3. **Websocket chat** (row 32 mentions websocket chat) — page-originated
    XHR is built, but a websocket client surface is not.
 
-Suggested next receipt when resuming: fetch a real slice of the youtube
+Suggested next receipt when resuming: after the QuickJS transplant is green
+(full `make check` on the new engine), fetch a real slice of the youtube
 bundle (e.g. the innertube web init) into a file:// fixture and prove the
 page runs it with the visitor+signature context attached end-to-end on the
 real shape; or prototype a websocket XHR-companion surface hermetically
@@ -200,6 +208,8 @@ Steps:
 - Roadmap: `yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/
   02-architecture/REAL-SPA-SITE-GAP-VS-NATIVE-PLAYER-ROADMAP.md`
 - Design doc: `.../08-roadmap/design-docs/NB-JS-ENGINE-ROADMAP.md`
+- Engine swap insight: `.../08-roadmap/design-docs/
+  JS-ENGINE-QUICKJS-SWAP-INSIGHT.md` (the row-31 parser floor + decision)
 - Site-gap checklists (what real youtube login needs): in the roadmap
   file rows 34-37 and "What we did NOT claim" section.
 
