@@ -4,6 +4,15 @@
 **Principle:** All testing through inject/relay, matching user keyboard input  
 **Owner:** claude-0001 and all agents
 
+🔄 **CORRECTION (2026-09-18)**: the "✅ Right" example below (`nav.sh
+esc` / `nav` / `key` / `type`) writes to `#.desktop/livedesk_agent_relay.txt`.
+That file has **no consumer** after the 2026-09-01/06 parser merge.
+Live-probed 2026-09-17 19:18: `nav.sh nav 9` grew the dead file; `strip_history.txt`
+did not move. For the taskbar strip use `nav.sh hqcell` / `mgrcode` only
+until `nav.sh` is patched. For a specific window use
+`#.desktop/entity_menu_history/<pid>.txt`. See `AIGENT-TESTING-K9.txt`
+(top correction) and `04-bugs/BUG-LOG.md`.
+
 ---
 
 ## The Rule: Relay First, Not Direct CLI

@@ -1,0 +1,56 @@
+ANSWERS LOG — 2026-09-18 (disconnect-safe)
+Path: #.#.calendar-dox/!.HQ-IQ-BOOK/12.calendar/2026-09-18/answers.txt
+Also mirrored in 13.agent-coms/GROK/2026-09-17-cursword-file-inventory-chat.md
+Earlier this session answers lived in .md only; this .txt is the
+plain-text copy you asked for.
+
+Q1 File vs Inventory windows
+A: File can wait. Experimental METHOD hook is ok. Inventory is first.
+
+Q2 inventory.txt vs inventory/ dir
+A: NEW DIR. Put the file IN that dir. No symlinks (Windows). Slow
+   migrate gold/Play readers, or accept they miss qolq until retargeted.
+   Purity: qolq should be qolq.txt or qolq/qolq.txt = 105. True russian
+   doll = 105 files; overkill but allowed; keep in dox.
+
+Q3 Robot pal
+A: Make NEW. Drag into inventory later. Not this burst.
+
+Q4 Grid = swatch vs file-hq vs new layout
+A: Yes reuse existing. No new layout_* in khtpm_core_render for the
+   browse grid. File-explorer ALREADY has Grid View (2026-09-15).
+   Inventory should open that widget, not a second explorer.
+
+Q5 WSR-CIV / DSR
+A: Pause momentarily. Todo: this calendar dir 2do.md.
+
+Q6 Grid issues / click / placement
+A: Grid must show the SAME things list has (icon, name, size).
+   Left click dir today = open dir. Future: right-click -> context ->
+   Move/Drag arms "placement grid image". WIP. Do not finish in one pass.
+
+Q7 Is "placement grid" a layout? Yellow screen?
+A: YES it should be a layout (future). NUANCE (user 2026-09-18): the
+   "yellow field" is NOT the file-explorer browse grid. It is the
+   on-screen OVERLAY when you are placing/dragging an entity onto the
+   desk. That overlay should look like TIC-TAC-TOE (wireframe grid),
+   not a solid yellow screen. Browse-grid (file-explorer Grid View)
+   is a different thing; user already said it looks better.
+
+Q10 Dump PNG how?
+A: Drive nav through the window's own relay
+   (#.desktop/entity_menu_history/<pid>.txt), then KEY_PRESSED: 112
+   ('p' -> dump_frame_png() -> /tmp/entity-menu-frame.png plus
+   .png.receipt.txt / .png.frame.txt). No python dump tools. Escalate
+   to the user before xdotool/XTest.
+
+Q11 git
+A: Push this work to branch grok. Merge into claude later. Do not
+   push claude from this session.
+
+Q8 Document answers in local .txt
+A: Yes from this file onward. This file.
+
+Q9 Scope / permission
+A: Short bursts. Ask before liberal edits. Describe what was done after.
+   No robot pal yet. No gold-ops rewrite unless asked.

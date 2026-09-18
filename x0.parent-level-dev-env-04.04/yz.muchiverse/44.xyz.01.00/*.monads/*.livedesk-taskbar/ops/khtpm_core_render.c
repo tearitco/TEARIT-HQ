@@ -4600,6 +4600,8 @@ static void assign_nav_and_layout(void) {
         int cols = (sbar_right - x0 - GENERIC_SCROLLBAR_W - 4) / pitch;
         if (cols < 1) cols = 1;
         int grid_w = cols * pitch;
+        int tile_w = SWATCH, tile_h = SWATCH;
+        int pitch_x = pitch, pitch_y = pitch;
         int n_sw = 0;
         int chrome_x = g_win_w - 8;   /* right-to-left cursor for chrome buttons */
         int found_close = 0;
@@ -4635,12 +4637,37 @@ static void assign_nav_and_layout(void) {
                     snprintf(g_palette_name_buf[n_sw], sizeof(g_palette_name_buf[n_sw]), "%s", item->label);
                     g_palette_name[n_sw] = g_palette_name_buf[n_sw];
                 }
-                item->label[0] = '\0';
+                /* Palettes: sprite IS the cell; wiping label is
+                 * intentional. File-explorer grid (2026-09-18): no
+                 * sprite, label is icon+name+size same as list mode.
+                 * Blanking those made empty 34px tiles. Keep the
+                 * label when there is no sprite. */
+                if (item->sprite[0])
+                    item->label[0] = '\0';
                 if (n_sw < MAX_CHILDREN) sw_items[n_sw] = item;
                 n_sw++;
             }
         }
-        /* Every real HQ/picker window MUST have a way out (direct
+        {
+            int labeled_sw = 0;
+            int s;
+            for (s = 0; s < n_sw && s < MAX_CHILDREN; s++) {
+                if (sw_items[s]->label[0] && !sw_items[s]->sprite[0]) {
+                    labeled_sw = 1;
+                    break;
+                }
+            }
+            if (labeled_sw) {
+                tile_w = 176;
+                tile_h = 40;
+                pitch_x = tile_w + SWATCH_GAP;
+                pitch_y = tile_h + SWATCH_GAP;
+                cols = (sbar_right - x0 - GENERIC_SCROLLBAR_W - 4) / pitch_x;
+                if (cols < 1) cols = 1;
+                grid_w = cols * pitch_x;
+            }
+        }
+        /* Every real HQ/picker window MUST have a way out (direct)
          * instruction: "make sure x11-hq windows all have a default x
          * button so they don't get stuck on screen"). If the template
          * declared none, synthesise the same g_default_close_elem the
@@ -4739,13 +4766,13 @@ static void assign_nav_and_layout(void) {
         if (max_scroll < 0) max_scroll = 0;
         if (g_swatch_grid_scroll > max_scroll) g_swatch_grid_scroll = max_scroll;
         if (g_swatch_grid_scroll < 0) g_swatch_grid_scroll = 0;
-        int view_h = visible_rows * pitch;
+        int view_h = visible_rows * pitch_y;
         for (int s = 0; s < n_sw && s < MAX_CHILDREN; s++) {
             Elem *it = sw_items[s];
             int col = s % cols, row = s / cols - g_swatch_grid_scroll;
-            it->w = SWATCH; it->h = SWATCH;
+            it->w = tile_w; it->h = tile_h;
             if (row < 0 || row >= visible_rows) { it->w = 0; it->h = 0; it->x = 0; it->y = -100000; }
-            else { it->x = x0 + col * pitch; it->y = y0 + row * pitch; }
+            else { it->x = x0 + col * pitch_x; it->y = y0 + row * pitch_y; }
         }
         if (max_scroll > 0)
             generic_sbar_register(x0, y0, sbar_right - x0, view_h,
