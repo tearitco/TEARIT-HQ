@@ -957,6 +957,7 @@ static void decode_entities(char *s) {
 static char g_drop_action[1024] = "";
 static char g_drop_highlight_color[16] = "#88ff66";
 static int g_drop_highlight = 0;
+static char g_drop_hover_name[128] = "";
 
 static void apply_attr(Elem *e, const char *name, const char *val) {
     if (strcmp(name, "id") == 0 || strcmp(name, "name") == 0) {
@@ -5786,11 +5787,35 @@ static void dock_paint_menu(void) {
                 const char *fc = (g_drop_highlight && g_drop_highlight_color[0])
                     ? g_drop_highlight_color
                     : (g_theme_fg[0] ? g_theme_fg : "#888888");
-                int thick = g_drop_highlight ? 4 : KH_WIN_FRAME;
                 XSetForeground(dpy, gc, alloc_pixel(fc));
-                for (int _fb = 0; _fb < thick; _fb++)
-                    XDrawRectangle(dpy, buf, gc, _fb, _fb,
-                                   (unsigned)(g_win_w - 1 - 2 * _fb), (unsigned)(g_win_h - 1 - 2 * _fb));
+                if (g_drop_highlight) {
+                    int i;
+                    XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)g_win_w, 28);
+                    XSetLineAttributes(dpy, gc, 3, LineOnOffDash, CapButt, JoinMiter);
+                    for (i = 4; i <= 10; i += 3)
+                        XDrawRectangle(dpy, buf, gc, i, i,
+                                       (unsigned)(g_win_w - 1 - 2 * i), (unsigned)(g_win_h - 1 - 2 * i));
+                    XSetLineAttributes(dpy, gc, 1, LineSolid, CapButt, JoinMiter);
+                    if (font_ui && xftdraw_buf) {
+                        char banner[160];
+                        XftColor tcol;
+                        XRenderColor xr;
+                        xr.red = 0; xr.green = 0; xr.blue = 0; xr.alpha = 0xffff;
+                        XftColorAllocValue(dpy, DefaultVisual(dpy, DefaultScreen(dpy)),
+                                           DefaultColormap(dpy, DefaultScreen(dpy)), &xr, &tcol);
+                        snprintf(banner, sizeof(banner), "[ drop: %s ]",
+                                 g_drop_hover_name[0] ? g_drop_hover_name : "...");
+                        XftDrawStringUtf8(xftdraw_buf, &tcol, font_ui, 12, 20,
+                                          (const FcChar8 *)banner, (int)strlen(banner));
+                        XftColorFree(dpy, DefaultVisual(dpy, DefaultScreen(dpy)),
+                                     DefaultColormap(dpy, DefaultScreen(dpy)), &tcol);
+                    }
+                } else {
+                    int _fb;
+                    for (_fb = 0; _fb < KH_WIN_FRAME; _fb++)
+                        XDrawRectangle(dpy, buf, gc, _fb, _fb,
+                                       (unsigned)(g_win_w - 1 - 2 * _fb), (unsigned)(g_win_h - 1 - 2 * _fb));
+                }
             }
         }
         {
@@ -9973,10 +9998,15 @@ static void xdnd_handle_selection(Display *dpy, Window win) {
     g_drop_highlight = 0;
 }
 
+static int kh_is_drop_target_window(void) {
+    if (g_drop_action[0]) return 1;
+    return g_window && elem_has_class(g_window, "file-explorer-pal");
+}
+
 static void kh_write_drop_zone(void) {
     char dirp[PATH_BUF], path[PATH_BUF], dest[PATH_BUF];
     FILE *f;
-    if (!g_drop_action[0] || !g_house_root[0]) return;
+    if (!kh_is_drop_target_window() || !g_house_root[0]) return;
     snprintf(dirp, sizeof(dirp), "%s/#.desktop/khtpm_drop_zones", g_house_root);
     mkdir(dirp, 0777);
     dest[0] = 0;
@@ -10011,7 +10041,7 @@ static void kh_drop_zone_unregister(void) {
     unlink(path);
 }
 
-static void kh_write_drag_hover(int pid) {
+static void kh_write_drag_hover(int pid, const char *name) {
     char path[PATH_BUF], tmp[PATH_BUF];
     FILE *f;
     if (!g_house_root[0]) return;
@@ -10019,20 +10049,28 @@ static void kh_write_drag_hover(int pid) {
     snprintf(tmp, sizeof(tmp), "%s.tmp", path);
     f = fopen(tmp, "w");
     if (!f) return;
-    fprintf(f, "%d\n", pid);
+    fprintf(f, "pid=%d\nname=%s\n", pid, name ? name : "");
     fclose(f);
     rename(tmp, path);
 }
 
 static int kh_read_drag_hover(void) {
-    char path[PATH_BUF];
+    char path[PATH_BUF], line[PATH_BUF];
     FILE *f;
     int pid = 0;
+    g_drop_hover_name[0] = 0;
     if (!g_house_root[0]) return 0;
     snprintf(path, sizeof(path), "%s/#.desktop/drag_hover_pid.txt", g_house_root);
     f = fopen(path, "r");
     if (!f) return 0;
-    if (fscanf(f, "%d", &pid) != 1) pid = 0;
+    while (fgets(line, sizeof(line), f)) {
+        char *nl = strchr(line, '\n'); if (nl) *nl = 0;
+        if (!strncmp(line, "pid=", 4)) pid = atoi(line + 4);
+        else if (!strncmp(line, "name=", 5))
+            snprintf(g_drop_hover_name, sizeof(g_drop_hover_name), "%s", line + 5);
+        else if (line[0] >= '0' && line[0] <= '9')
+            pid = atoi(line); /* old one-line format */
+    }
     fclose(f);
     return pid;
 }
@@ -10140,7 +10178,7 @@ static void hq_ui_pdl_reload_if_changed(const char *house_root) {
 }
 
 static void hq_idle_tick(void) {
-    if (g_drop_action[0]) {
+    if (kh_is_drop_target_window()) {
         int hp = kh_read_drag_hover();
         int want = (hp == (int)getpid()) || (g_xdnd_source != None);
         if (want != g_drop_highlight) {
@@ -17172,7 +17210,7 @@ static int tp_main(int argc, char **argv) {
                 {
                     char dest[PATH_BUF];
                     int zpid = kh_drop_zone_hit(xev.xbutton.x_root, xev.xbutton.y_root, dest, sizeof(dest));
-                    kh_write_drag_hover(0);
+                    kh_write_drag_hover(0, "");
                     if (zpid && dest[0] && package_dir[0]) {
                         const char *base = strrchr(package_dir, '/');
                         base = base ? base + 1 : package_dir;
@@ -17201,6 +17239,7 @@ static int tp_main(int argc, char **argv) {
                 win_y = grid_y * GRID_CELL_PX;
                 XMoveWindow(dpy, win, win_x, win_y);
                 write_pos(package_dir, win_x, win_y);
+                XRaiseWindow(dpy, win);
                 need_redraw = 1;
                 }
             } else if (xev.type == ButtonPress && xev.xbutton.button == 3) {
@@ -17249,7 +17288,11 @@ static int tp_main(int argc, char **argv) {
                 {
                     char dest[PATH_BUF];
                     int zpid = kh_drop_zone_hit(xev.xmotion.x_root, xev.xmotion.y_root, dest, sizeof(dest));
-                    kh_write_drag_hover(zpid);
+                    {
+                        const char *bn = strrchr(package_dir, '/');
+                        bn = bn ? bn + 1 : package_dir;
+                        kh_write_drag_hover(zpid, bn);
+                    }
                     (void)dest;
                 }
                 need_redraw = 1;
