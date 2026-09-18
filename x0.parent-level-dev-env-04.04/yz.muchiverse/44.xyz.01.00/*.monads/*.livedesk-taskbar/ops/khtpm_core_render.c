@@ -10722,7 +10722,18 @@ static void kh_raise_and_focus(Window w) {
  * Reparent the pal onto the File Explorer window so it paints in
  * THAT window's tree (always on top of the file list). */
 static int g_drag_reparented = 0;
+static Window g_drag_host = None;
+static int g_drag_host_pid = 0;
 static int kh_xerr_ign(Display *d, XErrorEvent *e) { (void)d; (void)e; return 0; }
+static int kh_pointer_in_window(Display *d, Window w, int rx, int ry) {
+    XWindowAttributes at;
+    int lx = 0, ly = 0;
+    Window ch = None;
+    if (!d || !w) return 0;
+    if (!XGetWindowAttributes(d, w, &at) || at.width <= 0 || at.height <= 0) return 0;
+    XTranslateCoordinates(d, DefaultRootWindow(d), w, rx, ry, &lx, &ly, &ch);
+    return lx >= 0 && ly >= 0 && lx < at.width && ly < at.height;
+}
 static void kh_drag_stack_above(Display *d, Window pal, Window target,
                                 int on, int rx, int ry) {
     Window root;
@@ -10731,7 +10742,7 @@ static void kh_drag_stack_above(Display *d, Window pal, Window target,
     XErrorHandler old;
     if (!d || !pal) return;
     root = DefaultRootWindow(d);
-    pw = 64; /* WIN_PX is declared later; pals are 64px tiles */
+    pw = 64;
     ph = pw;
     old = XSetErrorHandler(kh_xerr_ign);
     if (on && target && target != pal) {
@@ -10739,6 +10750,7 @@ static void kh_drag_stack_above(Display *d, Window pal, Window target,
         if (!g_drag_reparented) {
             XReparentWindow(d, pal, target, lx - pw / 2, ly - ph / 2);
             g_drag_reparented = 1;
+            g_drag_host = target;
         } else {
             XMoveWindow(d, pal, lx - pw / 2, ly - ph / 2);
         }
@@ -10747,6 +10759,8 @@ static void kh_drag_stack_above(Display *d, Window pal, Window target,
         if (g_drag_reparented) {
             XReparentWindow(d, pal, root, rx - pw / 2, ry - ph / 2);
             g_drag_reparented = 0;
+            g_drag_host = None;
+            g_drag_host_pid = 0;
         }
         XMapRaised(d, pal);
     }
@@ -16091,8 +16105,27 @@ static int tp_main(int argc, char **argv) {
                 bn = bn ? bn + 1 : package_dir;
                 unsigned long zwin = 0;
                 int zpid = kh_drop_zone_hit(dpy, rx, ry, dest, sizeof(dest), &zwin);
-                kh_write_drag_hover(zpid, bn);
-                kh_drag_stack_above(dpy, win, zwin ? (Window)zwin : None, zpid ? 1 : 0, rx, ry);
+                int want = 0;
+                Window host = None;
+                /* Once reparented, window-walk always hits FE (pal is
+                 * its child). Leave = pointer outside the host rect. */
+                if (g_drag_reparented && g_drag_host) {
+                    if (kh_pointer_in_window(dpy, g_drag_host, rx, ry)) {
+                        want = 1;
+                        host = g_drag_host;
+                        zpid = g_drag_host_pid;
+                    }
+                } else if (zpid && zwin) {
+                    want = 1;
+                    host = (Window)zwin;
+                    g_drag_host_pid = zpid;
+                }
+                kh_write_drag_hover(want ? zpid : 0, bn);
+                kh_drag_stack_above(dpy, win, host, want, rx, ry);
+                if (!g_drag_reparented) {
+                    win_x = rx - 32;
+                    win_y = ry - 32;
+                }
                 {
                     char tp[PATH_BUF];
                     FILE *tf;
