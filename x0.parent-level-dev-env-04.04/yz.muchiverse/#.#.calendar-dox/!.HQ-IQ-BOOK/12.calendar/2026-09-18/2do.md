@@ -19,6 +19,9 @@ When unpausing, kilo (or whoever) still starts at:
 Resume trigger: Inventory window shows `cursword/inventory/` as a
 grid and a human has clicked it once via relay.
 
+User-facing writeup (do not lose the reason):
+`10-user-docs/2026-09-18/WHY-DSR-WSR-PAUSED.md`.
+
 ## WIP — file-explorer grid / ctx menu
 
 Browse grid names: landed. Right-click: **Cut/Copy/Paste/Delete/Place**
