@@ -1,16 +1,14 @@
 # Placement from File Explorer / Inventory (not unfactor)
 
-**Status:** SPEC only. Implement after unfactor pieces 2–4 settle.
-**Do not mix this into `UNFACTOR-PAL-X.md`.**
+**Status:** Desk Place from explorer **landed 2026-09-18** (overlay +
+`khtpm_entity.+x`). Other-inventory hover and Cli-io `mv` still spec.
 
 ## Gaps (user 2026-09-18)
 
-1. **Right-click Place** on an entity in the file browser does **not**
-   show the desk tic-tac-toe overlay (`tp_arm_placer_rmmv`). It only
-   writes `fe_place_armed.txt`.
-2. **Target = empty desk:** overlay click → spawn pal
-   (`khtpm_entity.+x`) at grid snap (or `mv` out of inventory onto
-   `pals/` then spawn).
+1. **Right-click Place** → `tp_arm_placer_rmmv` wireframe (env
+   `FE_PLACE_CLICK` skips tile stamp). Click desk → `mv` out of
+   `inventory/` onto sibling `pals/<name>/`, write `desktop_pos.txt`,
+   `khtpm_entity.+x`. Esc cancels. Reopen explorer if list looks stale.
 3. **Target = another Inventory / drop-target HQ window:** same **green
    fill + dotted slot** as a manual drag, then `mv`. Not a tile stamp.
 

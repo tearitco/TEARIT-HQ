@@ -592,12 +592,20 @@ int main(int argc, char *argv[]) {
                 list_directory(state.current_dir, &state);
                 write_ui_file(package_dir, &state, "", "");
             } else if (!strcmp(verb, "PLACE") && src[0]) {
-                /* Arms desk placement later (wireframe overlay). */
                 char pp[MAX_PATH];
                 snprintf(pp, sizeof(pp), "%s/fe_place_armed.txt", package_dir);
                 FILE *pf = fopen(pp, "w");
                 if (pf) { fprintf(pf, "path=%s\n", src); fclose(pf); }
                 fe_clip_write(package_dir, "place", src);
+                {
+                    char sh[MAX_PATH * 4];
+                    snprintf(sh, sizeof(sh),
+                             "sh '%s/ops/fe_place_on_desk.sh' '%s' '%s' '%s'",
+                             package_dir, house_root, package_dir, src);
+                    (void)system(sh);
+                }
+                list_directory(state.current_dir, &state);
+                write_ui_file(package_dir, &state, "", "");
             }
         }
     }

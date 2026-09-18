@@ -272,6 +272,18 @@ int main(int argc, char **argv) {
         }
     }
 
+    {
+        const char *clickf = getenv("FE_PLACE_CLICK");
+        if (clickf && clickf[0]) {
+            FILE *cf = fopen(clickf, "w");
+            if (cf) {
+                fprintf(cf, "x=%d\ny=%d\n", click_x, click_y);
+                fclose(cf);
+            }
+            return 0;
+        }
+    }
+
     char cmd[PATH_BUF * 2];
     snprintf(cmd, sizeof(cmd), "'%s/tp_place_desktop_rmmv.+x' '%s' '%s' >/dev/null 2>&1",
              ops_dir, widget_state_dir, desktop_root);
