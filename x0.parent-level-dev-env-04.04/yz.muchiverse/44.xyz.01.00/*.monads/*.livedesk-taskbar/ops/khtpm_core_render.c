@@ -128,6 +128,7 @@ static void reload_font_ui(void); /* fwd - hq_ui_pdl_reload_if_changed() re-size
 static void kh_text_areas_reload(Elem *root); /* fwd - reparse_chtpm_if_changed() re-hydrates <text_area> buffers, defined near default_text_area_save */
 static void kh_ensure_dock_peer_window(void); /* fwd - hq_idle_tick()'s own per-tick self-heal call; real def + header comment near main() */
 static void kh_cli_io_reload(Elem *root); /* fwd - reparse_chtpm_if_changed() re-hydrates <cli_io> buffers, defined near kh_text_areas_reload */
+static void kh_drop_zone_unregister(void);
 static Elem *kh_find_input_by_key(Elem *root, const char *key); /* fwd - reparse_chtpm_if_changed() re-arms a cli_io/text_area across a live reparse without releasing the keyboard grab it already holds */
 static void kh_focus_debug_log(const char *fmt, ...); /* fwd - TEMPORARY diagnostic logging, see its own definition comment (network-browser recurring focus bug) */
 static Elem *elem_new(const char *tag); /* fwd - kh_pool_alloc() (CHTPM-INCREMENTAL-REPARSE-DESIGN.md) calls this before its real definition */
