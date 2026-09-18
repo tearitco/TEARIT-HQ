@@ -31,6 +31,12 @@
  * click, every real click now lands ON a real surface, sidestepping
  * the invisible-bare-desktop gap entirely instead of fighting it.
  *
+ * 2026-09-18: the amber fill + 12% opacity looked like a solid yellow
+ * screen. User: tic-tac-toe wireframe, not a wash. 32-bit ARGB when
+ * available (transparent fill, yellow lines); else default visual +
+ * yellow lines on a near-clear black (no amber fill). Grid is 64px,
+ * aligned to root so it matches desk snap.
+ *
  * Usage: tp_arm_placer_rmmv.+x <widget_state_dir> <desktop_root>
  * Spawned detached (setsid) by palettes_menu.sh's arm_rmmv(). On a
  * real click, sets TP_INITIAL_X/Y and execs tp_place_desktop_rmmv.+x.
@@ -39,6 +45,7 @@
 #define _GNU_SOURCE
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
+#include <X11/Xutil.h>
 #include <X11/keysym.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,6 +54,18 @@
 #include "self_exe.h" /* macOS leg: portable /proc/self/exe replacement */
 
 #define PATH_BUF 4352
+
+#define PLACE_CELL 64
+
+static void draw_wire_grid(Display *dpy, Window w, GC gc, int ox, int oy, int ww, int wh) {
+    int x, y;
+    int x0 = (PLACE_CELL - (ox % PLACE_CELL)) % PLACE_CELL;
+    int y0 = (PLACE_CELL - (oy % PLACE_CELL)) % PLACE_CELL;
+    for (x = x0; x < ww; x += PLACE_CELL)
+        XDrawLine(dpy, w, gc, x, 0, x, wh);
+    for (y = y0; y < wh; y += PLACE_CELL)
+        XDrawLine(dpy, w, gc, 0, y, ww, y);
+}
 
 static void resolve_ops_dir(char *out, size_t out_sz) {
     char self_path[PATH_BUF];
@@ -116,56 +135,60 @@ int main(int argc, char **argv) {
      * the middle band) - the picker's own area is genuinely uncovered,
      * so a click there goes straight to the real picker window exactly
      * as if this op didn't exist at all. */
-    Colormap cmap = DefaultColormap(dpy, screen);
-    XColor amber;
-    XParseColor(dpy, cmap, "#ffaa00", &amber);
-    XAllocColor(dpy, cmap, &amber);
+    XVisualInfo vinfo;
+    int use_argb = XMatchVisualInfo(dpy, screen, 32, TrueColor, &vinfo);
+    if (use_argb) {
+        vis = vinfo.visual;
+        depth = vinfo.depth;
+    }
+    Colormap cmap = use_argb
+        ? XCreateColormap(dpy, root, vis, AllocNone)
+        : DefaultColormap(dpy, screen);
 
     XSetWindowAttributes swa;
+    memset(&swa, 0, sizeof(swa));
     swa.override_redirect = True;
-    swa.event_mask = ButtonPressMask | KeyPressMask;
-    swa.background_pixel = amber.pixel;
-    unsigned long mask = CWOverrideRedirect | CWEventMask | CWBackPixel;
+    swa.event_mask = ButtonPressMask | KeyPressMask | ExposureMask;
+    swa.colormap = cmap;
+    swa.border_pixel = 0;
+    swa.background_pixel = 0; /* ARGB: transparent; default: black, no amber wash */
+    unsigned long mask = CWOverrideRedirect | CWEventMask | CWBackPixel | CWBorderPixel | CWColormap;
 
-    Window wins[4];
+    struct { Window w; int x, y, ww, wh; } panes[4];
     int n_wins = 0;
+    #define ADD_PANE(_x,_y,_w,_h) do { \
+        if ((_w) > 0 && (_h) > 0) { \
+            panes[n_wins].x = (_x); panes[n_wins].y = (_y); \
+            panes[n_wins].ww = (_w); panes[n_wins].wh = (_h); \
+            panes[n_wins].w = XCreateWindow(dpy, root, (_x), (_y), (unsigned)(_w), (unsigned)(_h), 0, \
+                                            depth, InputOutput, vis, mask, &swa); \
+            n_wins++; \
+        } \
+    } while (0)
     if (pw <= 0 || ph <= 0) {
-        wins[n_wins++] = XCreateWindow(dpy, root, 0, 0, (unsigned)sw, (unsigned)sh, 0,
-                                        depth, InputOutput, vis, mask, &swa);
+        ADD_PANE(0, 0, sw, sh);
     } else {
-        /* top strip: full width, above the picker */
-        if (py > 0) {
-            wins[n_wins++] = XCreateWindow(dpy, root, 0, 0, (unsigned)sw, (unsigned)py, 0,
-                                            depth, InputOutput, vis, mask, &swa);
-        }
-        /* bottom strip: full width, below the picker */
-        if (py + ph < sh) {
-            wins[n_wins++] = XCreateWindow(dpy, root, 0, py + ph, (unsigned)sw, (unsigned)(sh - (py + ph)), 0,
-                                            depth, InputOutput, vis, mask, &swa);
-        }
-        /* left strip: just the picker's own vertical band, left of it */
-        if (px > 0) {
-            wins[n_wins++] = XCreateWindow(dpy, root, 0, py, (unsigned)px, (unsigned)ph, 0,
-                                            depth, InputOutput, vis, mask, &swa);
-        }
-        /* right strip: just the picker's own vertical band, right of it */
-        if (px + pw < sw) {
-            wins[n_wins++] = XCreateWindow(dpy, root, px + pw, py, (unsigned)(sw - (px + pw)), (unsigned)ph, 0,
-                                            depth, InputOutput, vis, mask, &swa);
-        }
+        if (py > 0) ADD_PANE(0, 0, sw, py);
+        if (py + ph < sh) ADD_PANE(0, py + ph, sw, sh - (py + ph));
+        if (px > 0) ADD_PANE(0, py, px, ph);
+        if (px + pw < sw) ADD_PANE(px + pw, py, sw - (px + pw), ph);
     }
+    #undef ADD_PANE
+
+    GC gcs[4];
     for (int i = 0; i < n_wins; i++) {
-        XMapRaised(dpy, wins[i]);
-        Atom opacity_atom = XInternAtom(dpy, "_NET_WM_WINDOW_OPACITY", False);
-        unsigned long val = (unsigned long)(0.12 * (double)0xFFFFFFFFUL);
-        XChangeProperty(dpy, wins[i], opacity_atom, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&val, 1);
-    }
-    XFlush(dpy);
-    usleep(200000); /* same real "opacity needs a real first paint before it sticks" delay this session already found/fixed elsewhere */
-    for (int i = 0; i < n_wins; i++) {
-        Atom opacity_atom = XInternAtom(dpy, "_NET_WM_WINDOW_OPACITY", False);
-        unsigned long val = (unsigned long)(0.12 * (double)0xFFFFFFFFUL);
-        XChangeProperty(dpy, wins[i], opacity_atom, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&val, 1);
+        XMapRaised(dpy, panes[i].w);
+        gcs[i] = XCreateGC(dpy, panes[i].w, 0, NULL);
+        if (use_argb)
+            XSetForeground(dpy, gcs[i], 0xE0FFCC00UL); /* AARRGGBB yellow */
+        else {
+            XColor yel;
+            XParseColor(dpy, cmap, "#ffcc00", &yel);
+            XAllocColor(dpy, cmap, &yel);
+            XSetForeground(dpy, gcs[i], yel.pixel);
+        }
+        XSetLineAttributes(dpy, gcs[i], 1, LineSolid, CapButt, JoinMiter);
+        draw_wire_grid(dpy, panes[i].w, gcs[i], panes[i].x, panes[i].y, panes[i].ww, panes[i].wh);
     }
     XFlush(dpy);
     /* Real keyboard grab still needed for Escape - InputOnly windows
@@ -181,7 +204,11 @@ int main(int argc, char **argv) {
     while (1) {
         XEvent xev;
         XNextEvent(dpy, &xev);
-        if (xev.type == KeyPress) {
+        if (xev.type == Expose) {
+            for (int i = 0; i < n_wins; i++)
+                if (panes[i].w == xev.xexpose.window)
+                    draw_wire_grid(dpy, panes[i].w, gcs[i], panes[i].x, panes[i].y, panes[i].ww, panes[i].wh);
+        } else if (xev.type == KeyPress) {
             KeySym ks = XLookupKeysym(&xev.xkey, 0);
             if (ks == XK_Escape) { cancelled = 1; break; }
         } else if (xev.type == ButtonPress) {
@@ -191,7 +218,10 @@ int main(int argc, char **argv) {
         }
     }
     XUngrabKeyboard(dpy, CurrentTime);
-    for (int i = 0; i < n_wins; i++) XDestroyWindow(dpy, wins[i]);
+    for (int i = 0; i < n_wins; i++) {
+        XFreeGC(dpy, gcs[i]);
+        XDestroyWindow(dpy, panes[i].w);
+    }
     XCloseDisplay(dpy);
 
     /* Real ledger-write, same convention khtpm_core_render.c's

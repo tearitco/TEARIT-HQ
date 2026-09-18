@@ -22,6 +22,13 @@ grid and a human has clicked it once via relay.
 User-facing writeup (do not lose the reason):
 `10-user-docs/2026-09-18/WHY-DSR-WSR-PAUSED.md`.
 
+## Overlay (palette placer) — check 2026-09-18
+
+`tp_arm_placer_rmmv.c`: solid amber 12% wash replaced with **64px
+tic-tac-toe lines** (ARGB if the display has a 32-bit visual). Hole
+around the picker unchanged. Arm a palette RMMV tile and look: grid,
+not yellow screen. Esc still cancels.
+
 ## WIP — file-explorer grid / ctx menu
 
 Browse grid names: landed. Right-click: **Cut/Copy/Paste/Delete/Place**
