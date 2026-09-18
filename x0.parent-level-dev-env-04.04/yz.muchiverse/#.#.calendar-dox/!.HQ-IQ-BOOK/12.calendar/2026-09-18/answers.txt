@@ -44,6 +44,10 @@ A: Drive nav through the window's own relay
    .png.receipt.txt / .png.frame.txt). No python dump tools. Escalate
    to the user before xdotool/XTest.
 
+Q18 Try 60fps hover
+A: Pal select 16667us while dragging (idle still 300ms). FE drop-target
+   windows 16667us. Sprite MAX_FPS still 30. User can check feel.
+
 Q17 Hover highlight seen (user 2026-09-18) but slow
 A: Confirmed. Not 60fps. Pal loop POLL_INTERVAL_USEC=300000 (~3Hz)
    writes hover; FE hq_run_event_loop select is 150000 (~7Hz) and

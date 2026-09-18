@@ -111,9 +111,17 @@ unlinked, file IPC, shmem later) is the right ancestor. Do not
 
 A practical split (order matters):
 
-1. **Extract `tp_main` back to `khtpm_entity.+x`** (desktop pals).
-   File IPC already: `desktop_pos.txt`, `active_z`, drop_zones,
-   history. This is the extraction that makes drag/drop/z *local*.
+1. **Put desktop pals back in their own `+x`** (undo the verbatim
+   `tp_desktop_window_rgb` paste). Files already are the IPC. Not a
+   new framework.
+
+   **LOC guess (2026-09-18, not a promise):** `tp_main()` is ~**2.6k**
+   lines (`khtpm_core_render.c` ~15413–18050). Tile-only helpers
+   (shape mask, sprite, 3D/phymoji, cursword grab, z-filter) sitting
+   *above* it are another ~**3.5–5.5k**. So **~6–8k** would leave the
+   file, HQ remaining ~**10–12k**. Glue (`g_house_root`, dump `'p'`,
+   shared CSS include) stays. Not a clean 8k delete — some symbols
+   are shared until the pal binary `-I`s draw_core like HQ does.
 2. **Keep one HQ renderer** for `.xhtpm` (File Explorer, palettes
    picker chrome, entity-menu). Cap it; new games get a new `+x`, not
    a new `g_is_*` flag.

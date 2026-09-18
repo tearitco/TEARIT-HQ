@@ -11300,8 +11300,9 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
          * the user reported. TPMOS's own reference renderer.c polls its
          * pulse marker at 60Hz (usleep(16667)); 33ms here is the same
          * marker/dirty idea, one cheap stat() per tick, no extra file. */
-        struct timeval tv = (g_has_canvas || window_is_dock())
-                                ? (struct timeval){ 0, 33000 }
+        struct timeval tv = (g_has_canvas || window_is_dock() || g_drop_highlight
+                             || kh_is_drop_target_window())
+                                ? (struct timeval){ 0, 16667 }
                                 : (struct timeval){ 0, 150000 };
         select(xfd + 1, &fds, NULL, NULL, &tv);
         /* Events that arrive during THIS select() wait are deliberately
@@ -15988,7 +15989,7 @@ static int tp_main(int argc, char **argv) {
         fd_set fds;
         FD_ZERO(&fds);
         FD_SET(xfd, &fds);
-        struct timeval tv = { 0, POLL_INTERVAL_USEC };
+        struct timeval tv = { 0, dragging ? 16667 : POLL_INTERVAL_USEC };
         select(xfd + 1, &fds, NULL, NULL, &tv);
 #endif
         if (dragging && dpy) {
