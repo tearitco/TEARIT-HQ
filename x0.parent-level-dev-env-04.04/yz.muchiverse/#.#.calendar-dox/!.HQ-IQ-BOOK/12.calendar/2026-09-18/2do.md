@@ -22,6 +22,12 @@ grid and a human has clicked it once via relay.
 User-facing writeup (do not lose the reason):
 `10-user-docs/2026-09-18/WHY-DSR-WSR-PAUSED.md`.
 
+## Hover UX (2026-09-18) — file-area fill + banner
+
+On drop-hover the explorer **body** paints `drop_highlight` and a
+dashed frame + `[ drop into inventory: name ]` on top of the list.
+Reopen Inventory. Un-factor pal `+x` is NEXT, not this burst.
+
 ## A landed (stat-poll list refresh) — reopen File Explorer once
 
 Manager `stat`s `current_dir` each 50ms; mtime/nlink change → relist.

@@ -8616,7 +8616,9 @@ static void redraw(void) {
         XSetForeground(dpy, gc, alloc_pixel(kh_shade_hex(g_theme_bg, 18)));
         XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)g_win_w, CHROME_H);
         {
-            const char *body = kh_shade_hex(g_theme_bg, 48);
+            const char *body = (g_drop_highlight && g_drop_highlight_color[0])
+                ? g_drop_highlight_color
+                : kh_shade_hex(g_theme_bg, 48);
             XSetForeground(dpy, gc, alloc_pixel(body));
             XFillRectangle(dpy, buf, gc, 0, CHROME_H, (unsigned)g_win_w,
                            (unsigned)(g_win_h > CHROME_H ? g_win_h - CHROME_H : 0));
@@ -8828,6 +8830,29 @@ static void redraw(void) {
         }
         draw_generic_scrollbars();
         if (window_is_dock()) dock_draw_separators(page);
+        /* Drop-hover UX: fill already used drop color for the file
+         * area; paint a dashed frame + name on TOP of the list so it
+         * cannot hide under swatch/scrolllist cells. */
+        if (g_drop_highlight && !window_is_dock()) {
+            int i;
+            const char *fc = g_drop_highlight_color[0] ? g_drop_highlight_color : "#88ff66";
+            XSetForeground(dpy, gc, alloc_pixel(fc));
+            XFillRectangle(dpy, buf, gc, 8, CHROME_H + 8, (unsigned)(g_win_w > 16 ? g_win_w - 16 : 0), 36);
+            XSetLineAttributes(dpy, gc, 4, LineOnOffDash, CapButt, JoinMiter);
+            for (i = 2; i <= 8; i += 3)
+                XDrawRectangle(dpy, buf, gc, i, i,
+                               (unsigned)(g_win_w - 1 - 2 * i), (unsigned)(g_win_h - 1 - 2 * i));
+            XSetLineAttributes(dpy, gc, 1, LineSolid, CapButt, JoinMiter);
+            if (font_ui && xftdraw_buf) {
+                char banner[192];
+                XftColor tcol = xft_color("#111111");
+                snprintf(banner, sizeof(banner), "[ drop into inventory: %s ]",
+                         g_drop_hover_name[0] ? g_drop_hover_name : "...");
+                XftDrawStringUtf8(xftdraw_buf, &tcol, font_ui, 16, CHROME_H + 32,
+                                  (const FcChar8 *)banner, (int)strlen(banner));
+                XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &tcol);
+            }
+        }
     }
     if (g_dock_peer && !g_dock_in_peer_paint) dock_paint_peer();
     if (window_is_dock() && !g_dock_in_peer_paint && !g_dock_in_menu_paint)
@@ -10231,6 +10256,8 @@ static void hq_idle_tick(void) {
         if (want != g_drop_highlight) {
             g_drop_highlight = want;
             hq_request_redraw();
+        } else if (want) {
+            hq_request_redraw(); /* keep the hover fill live every tick */
         }
         kh_write_drop_zone();
     }
