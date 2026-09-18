@@ -42,7 +42,7 @@ Swatch-grid + flat-page now call `kh_place_chrome_btn` for `_` `!` `X`
 (same `g_default_*_elem` as sidebar+panel). Chrome hit-zone uses
 minimize x even without sidebar. Relaunch File Explorer.
 
-## TODO later — file-explorer breadcrumbs wrap (do not start now)
+## TODO later — file-explorer breadcrumbs wrap (landed 2026-09-18, check)
 
 User 2026-09-18: crumb path is extremely long; want wrap + grow
 vertical until the window is resized. File Explorer is already
