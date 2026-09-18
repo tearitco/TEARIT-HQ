@@ -8611,8 +8611,16 @@ static void redraw(void) {
     XSetForeground(dpy, gc, alloc_pixel(g_theme_bg));
     XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h);
     if (!window_is_dock()) {
-    XSetForeground(dpy, gc, alloc_pixel(kh_shade_hex(g_theme_bg, 14)));
-    XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)g_win_w, CHROME_H);
+        /* Header bar: slightly lifted theme. File/body area: duller /
+         * washed so the list is visibly not the same slab as chrome. */
+        XSetForeground(dpy, gc, alloc_pixel(kh_shade_hex(g_theme_bg, 18)));
+        XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)g_win_w, CHROME_H);
+        {
+            const char *body = kh_shade_hex(g_theme_bg, 48);
+            XSetForeground(dpy, gc, alloc_pixel(body));
+            XFillRectangle(dpy, buf, gc, 0, CHROME_H, (unsigned)g_win_w,
+                           (unsigned)(g_win_h > CHROME_H ? g_win_h - CHROME_H : 0));
+        }
     }
 
     /* REAL Stage 5 §5d.3 step 6 (2026-08-16) - real, data-selected
@@ -15934,11 +15942,22 @@ static int tp_main(int argc, char **argv) {
             if (XQueryPointer(dpy, RootWindow(dpy, DefaultScreen(dpy)),
                               &rr, &ch, &rx, &ry, &wx, &wy, &mask)) {
                 char dest[PATH_BUF];
+                dest[0] = 0;
                 const char *bn = strrchr(package_dir, '/');
                 bn = bn ? bn + 1 : package_dir;
                 int zpid = kh_drop_zone_hit(rx, ry, dest, sizeof(dest));
                 kh_write_drag_hover(zpid, bn);
-                (void)dest;
+                {
+                    char tp[PATH_BUF];
+                    FILE *tf;
+                    snprintf(tp, sizeof(tp), "%s/#.desktop/drop_poll.txt", g_house_root);
+                    tf = fopen(tp, "w");
+                    if (tf) {
+                        fprintf(tf, "rx=%d ry=%d zpid=%d name=%s dest=%s\n",
+                                rx, ry, zpid, bn, dest);
+                        fclose(tf);
+                    }
+                }
             }
         }
 
@@ -17113,8 +17132,14 @@ static int tp_main(int argc, char **argv) {
                 press_root_x = xev.xbutton.x_root;
                 press_root_y = xev.xbutton.y_root;
                 gettimeofday(&press_tv, NULL);
+                /* Keep motion/release on THIS pal even when the pointer
+                 * is over File Explorer (otherwise events go to FE). */
+                XGrabPointer(dpy, win, False,
+                             ButtonReleaseMask | ButtonMotionMask | PointerMotionMask,
+                             GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
             } else if (xev.type == ButtonRelease && xev.xbutton.button == 1) {
                 dragging = 0;
+                XUngrabPointer(dpy, CurrentTime);
                 /* Real click-vs-drag distinction, cursword only - see
                  * g_is_cursword's own declaration comment
                  * (CURSWORD-DESKTOP-3D-AND-PIECECRAFT-INSCENE-DESKS-
