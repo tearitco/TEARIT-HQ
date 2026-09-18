@@ -19,36 +19,77 @@ the same file is HQ window, dock, strip, palettes swatch, *and*
 to z-layer unmap, 3D raymarch, cursword grab, and XDND. That is the
 tax, not a lack of skill in the original design.
 
-I am not more “experienced at architecting this house” than the people
-who already chose **separate `+x` + file IPC**. That *is* the house
-pattern. The 18k-line merge was an optimization that now fights the
-pattern.
+**khtpm vs xhtpm/xhtm:** keep that split. **khtpm** = engine (paint an
+Elem tree to X11). **xhtpm / xhtm** = layout markup. Not a rename of
+the engine.
+
+## Correction (user 2026-09-18) — what “combined” actually meant
+
+I overstated. You did **not** decide to smash unix-exe+IPC programs
+into one process because “modularity was too hard.”
+
+**CENTROID_GOLD_STD §1a already says the rule:**
+
+1. If it is already a **binary + file IPC**, **call it** (`fork`/`exec`
+   + files). Do not paste it into another `main()`.
+2. If two things are the **same job** (paint the same kind of window)
+   and someone forked a *private copy of the engine*, **refactor to
+   one implementation** — that is compile-time share (`-I` canonical
+   `khtpm_draw_core.c`), not process merge.
+
+**What you combined on purpose (correct):**
+
+- Many **HQ / `.xhtpm` windows** (events-hq, palettes chrome, File
+  Explorer, entity-menu popup) are the *same process shape*: parse
+  markup, layout Elems, X11 loop. One `khtpm_core_render.+x`, different
+  templates. That is engine + layout, not IPC.
+- **Shared paint/CSS** compiled from `_shared-lib/` in place
+  (`SHARED-SOURCE-COMPILE-IN-PLACE.md`). One source, many binaries.
+  Still not “one process for everything.”
+
+**What was a misunderstanding if it happened (undo later, not a
+philosophy change):**
+
+- Relocating **`tp_desktop_window_rgb.c` into this file as `tp_main()`**
+  (argv-dispatched pal process). That binary was already unix-exe+IPC
+  (`desktop_pos.txt`, `history.txt`, `interact_relay.txt`, one process
+  per pal). Pasting it into the HQ renderer is **rule 1 violated**, not
+  “centroid.” Comments in `khtpm_core_render.c` even say it was moved
+  *verbatim* and dispatched by argv so we would not `#include` across
+  `.c` — that is the wrong escape hatch. The right one was **keep the
+  `+x`, share draw via `-I` if needed.**
+- Folding **`khtpm_strip_parser.c`** (and `poll_agent_relay`) into the
+  same binary. That path *was* file IPC (`livedesk_agent_relay.txt`).
+  After the fold the consumer died; `nav.sh nav` is a no-op. Same class
+  of mistake.
+
+**Still correctly separate today (do not absorb):**
+`file_explorer_manager.+x`, `tp_arm_placer_rmmv.+x`,
+`khtpm_taskbar_manager_main.+x`. Explorer Place should **exec** the
+placer, not grow `tp_main`.
+
+If an agent “combined because IPC wasn’t the shape,” that is only
+valid for **same-shape HQ windows**. If they combined something that
+**already** spoke files, they misread centroid.
 
 ## Is it bloated?
 
-**Yes, as a single translation unit.** ~18.7k lines in
-`khtpm_core_render.c` (2026-09-18). Complexity is not “too many
-helpers”; it is **too many programs in one process**:
+**The HQ window engine is large but one job.** Pain is **`tp_main`
+living in the same `.c` as HQ**, so drop/z/grab edits sit next to
+xhtpm layout. Line count ~18.7k is mostly that paste + history, not
+proof that File Explorer belongs in another language.
 
-| Mode | How you get there | Should be |
+| Process shape | How you get there | Intent |
 |---|---|---|
-| HQ / `.xhtpm` window | `argv` house + template | stay: one small *window* renderer |
-| Dock / taskbar strip | same binary, other template | already a sibling manager; keep IPC |
-| Desktop pal / `tp_main` | `argc==2` package_dir | **own `+x`** (it already was `tp_desktop_window`) |
-| Palettes swatch + RMMV arm | same binary + `tp_arm_placer_rmmv` | placer is already separate — good |
-| Dump `'p'` | in-process `dump_frame_png` | keep in whoever owns the X window |
+| HQ / `.xhtpm` window | house + template | **one engine**, many layouts |
+| Dock / strip | manager `+x` + files; strip paint | **IPC** — do not fold parser back in |
+| Desktop pal | was `tp_desktop_window_rgb.+x` | **IPC** — extract `tp_main` back out |
+| RMMV placer | `tp_arm_placer_rmmv.+x` | **IPC** — already right |
+| FE directory list | `file_explorer_manager.+x` | **IPC** — already right (stat-poll lives here) |
 
-House rule already on disk: no cross-`.c` linking to share behavior
-inside one binary; fork/exec + files. Folding `tp_desktop_window_rgb.c`
-*verbatim* into this file (2026-09-01 comments in the file itself) is
-exactly the moment modularity was traded for “one binary, one
-dispatch.” That trade is now due.
-
-**20k lines is not “unfactorable.”** It is the usual cliff where *every
-new verb* (drop highlight, z-raise, Place overlay) requires a week of
-mode-hunting. Better to split **before** Place-out, pc-hq↔desk, and
-drag-preview pile on. After those, you will still split, just with more
-scar tissue.
+The cliff is **two process types in one `.c`**, not “HQ has too many
+windows.” Extracting the pal `+x` again is restoring IPC, not inventing
+a new architecture.
 
 ## MVC is the wrong slogan here
 
