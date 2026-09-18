@@ -195,3 +195,70 @@ use the Makefile's gnu default).
 - **Downloads stayed in /tmp** `/tmp/qjs-src/`, `/tmp/NB_PRELUDE.js`;
   zero repo changes from the probe run. Decision point reached: graft
   starts now (rung 4) or receipts reviewed first.
+
+### 2026-09-17 — graft PLAN approved (user go, recorded for handoff)
+
+User decisions on the two graft checkpoints:
+
+1. **Microtask model: NATIVE job queue.** Delete the C stash-FIFO
+   (STASH_MICRO/g_micro_*/drain_microtasks scan) + the prelude's Promise
+   polyfill; drain via QuickJS's `JS_ExecutePendingJob`. Gains native
+   async/await semantics, deletes dead emulation weight; tightens the
+   prelude (nb_host.h) and the worker's timing loop. (House Jacobian:
+   "native" wins over "port the FIFO 1:1".)
+2. **Scope: FULL worker+host graft, suites green in-session.** Port the
+   105 natives + heap lifecycle + event loop in `nb_js_worker.c` and the
+   16 registrations in `nb_host.h`; vendor QuickJS into `&.hq-apps/js/`;
+   rewire `Makefile` `nbjs`; then all 44 suites green from a fresh
+   build + fresh run. No half-graft (no two-session split).
+
+**Concrete graft checklist** (what "rung 4-6" means now):
+
+- [ ] Vendor official QuickJS 2026-06-04 into `&.hq-apps/js/`:
+      `quickjs.c/.h`, `cutils.c/.h`, `libregexp.*`, `libunicode.*`,
+      `libunicode-table.h`, `dtoa.c/.h`, `list.h`. Keep duktape/* in
+      place until the transplant is green (nb_js_eval.c eval path can
+      outlive the worker swap for rollback).
+- [ ] Makefile `nbjs` target: swap `$(JS_DIR)/duktape.c` -> quickjs
+      component list; keep `-lm`; add the two qjs compile flags privacy
+      guards from upstream (`-D_GNU_SOURCE -DCONFIG_VERSION="..."`),
+      NOT `-std=c99` (breaks `asm`).
+- [ ] Rewrite `nb_js_worker.c` glue. Per-API map is the ~45 `duk_*`
+      names listed in this doc's survey (put_prop_string/push_string/
+      push_c_function/push_global_stash/peval/...). Natives become
+      `JSValue name(JSContext*, JSValueConst this, int argc, JSValueConst* argv)`
+      with `JS_DupValue/JS_FreeValue` discipline; native *bodies* (DOM,
+      cookie, storage, sha1, css) stay untouched.
+- [ ] **Delete**: STASH_MICRO FIFO, prelude Promise polyfill, the
+      `enqueue`/microtask-drain emulation. **Add**: `JS_ExecutePendingJob`
+      loop in the drain slot (CPU-budget kept via alarm/EVAL_BUDGET_SEC;
+      g_pending_err capture via `JS_GetException`).
+- [ ] `nb_host.h`: registrations from `duk_push_c_function`+`
+      duk_put_prop_string` to `JS_NewCFunction`+`JS_SetPropertyStr`;
+      prelude text stays verbatim except the Promise-polyfill chunk.
+- [ ] `nb_js_eval.c`: existing Duktape CLI path left intact for the
+      session (rollback anchor), or ported last if time permits.
+- [ ] Fresh `make check` -> all 44 suites PASS on the QuickJS build;
+      fix/commit each regression as it appears (expected suspects: timer
+      ordering in wlt/wss, microtask cadence in wfp/wit, exception-string
+      formats).
+- [ ] House docs flip when green: this doc (graft DONE receipt, commit
+      hashes, engine file list), compact browser.md (engine swap line),
+      NB-JS-ENGINE-ROADMAP (ES5.1 "language done" framing -> corrected).
+
+**Rollback anchor:** until `make check` is green on QuickJS, the old
+tree stays recoverable via the pre-graft commit + duktape files kept in
+place. The graft never forces working-tree noise into a commit: runtime
+state files are not staged (house rule #10).
+
+## 8. Note for the next session/handoff reader
+
+Read first: §6 ladders, §7 guardrails, the graft checklist above, then
+this file's full work log. The source of truth for the live decision is
+this doc; the code state is whatever the `opencode` branch HEAD says.
+
+State at handoff: engine graft APPROVED, probes green, zero engine
+edits made yet. The compiler invocation for probing is in §work-log
+(rung 3 entry). Re-probe driver sources live in `/tmp/qjs-src/`
+(`qprobe.c`, `qprelude.c`) and the dumped `/tmp/NB_PRELUDE.js`; they
+recompile in seconds if /tmp was cleared.
