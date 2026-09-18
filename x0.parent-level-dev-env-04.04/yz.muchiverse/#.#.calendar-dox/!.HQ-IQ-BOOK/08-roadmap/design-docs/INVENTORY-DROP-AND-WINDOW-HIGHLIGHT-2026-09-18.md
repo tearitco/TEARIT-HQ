@@ -21,7 +21,7 @@ so you see the sprite follow the pointer. Slice 4. Slice 1 is
 
 | # | What | Status |
 |---|---|---|
-| 1 | Highlight drop-target HQ window (caller color). Desktop pal drag-release `mv`s into Inventory/`current_dir`. Xdnd `drop_action` still works for dir drops (bookmarks-style). | **landed 2026-09-18 — check** |
+| 1 | Highlight drop-target HQ window (caller color). Desktop pal drag-release `mv`s into Inventory/`current_dir`. Xdnd `drop_action` still works for dir drops (bookmarks-style). | **mv works (m8, ninja). Highlight often invisible. List does not live-refresh.** |
 | 2 | Drag **out** of Inventory onto desk (spawn/move pal window). | later |
 | 3 | pc-hq window ↔ desk (same highlight + dest registry). | later |
 | 4 | Optional drag preview (ghost). | later |
@@ -57,6 +57,41 @@ Same cue should work for **any** HQ window that opts in — not Inventory-only.
    - Palettes Place stays the overlay+click path. Different verb.
 4. **Out of inventory:** Cut/Copy/Paste already `mv`/`cp` inside the explorer. “Drag out to desk” = Place armed + overlay **or** Xdnd source from the explorer. Separate burst after INTO works.
 5. **No symlinks.** Real dirs.
+
+## Live bugs after slice 1 (user 2026-09-18 — no code until OK)
+
+### A. Inventory window does not live-update after a drop
+
+**Seen:** ninja dragon `mv`d into `cursword/inventory/`; explorer still empty until close/reopen.
+
+**Why:** the pal process `rename()`s the pal dir. File Explorer’s manager only calls `list_directory()` + `write_ui_file()` on **its own** actions (BACK, ENTRY, VIEWMODE, CTX_*). Nobody pokes `file_explorer_action.txt`. The renderer only re-reads `file_explorer_ui.txt` vars; if that file is stale, `n_entries` stays 0.
+
+**Proposed fix (small, house-shaped):** in `file_explorer_manager.c` poll loop, `stat(current_dir)` each tick; if `st_mtime`/`st_nlink` changed vs last list, relist and rewrite ui.txt. That also picks up a terminal `mv`. Optional extra: pal drop writes `cmd=REFRESH` to the explorer’s action file (needs `pkg=` on the zone file). Prefer the **stat poll** so any external change works.
+
+**Not proposed:** restarting the explorer, or rebuilding the xhtpm.
+
+### B. Place from explorer context menu does not show the tic-tac-toe grid
+
+**Seen:** Cut/Copy/Paste/Delete/Place menu works; Place does not arm the palette overlay.
+
+**Why:** `CTX_PLACE` only writes `fe_place_armed.txt` + clipboard `mode=place`. It never execs `tp_arm_placer_rmmv.+x`. That binary is the **only** live wireframe overlay (palette RMMV click-capture). Palettes Place ≠ explorer Place.
+
+**Proposed fix (one spawn, then a pal-specific click handler):**
+
+1. On PLACE, `setsid tp_arm_placer_rmmv.+x` the same way `palettes_menu.sh arm_rmmv` does (hole around the explorer rect if we have it).
+2. That op currently ends by calling `tp_place_desktop_rmmv.+x` (stamp a **tile**). For a pal dir we must **not** do that. Add a mode or a sibling: if `fe_place_armed.txt` has `path=`, on click write `desktop_pos.txt` (grid snap) and `exec khtpm_core_render.+x <pal_dir>` (or `mv` out of inventory onto `pals/` + spawn). Esc cancels, clears armed file.
+
+**Do not** reuse the overlay to stamp RMMV tiles when the payload is a pal.
+
+### C. Highlight bar often not seen (still)
+
+Drop **does** fire (agent xdotool: m8 → inventory; user: ninja). PNG during drag did not show `[ drop: name ]`. Likely: FE idle redraw lags the hover file, and/or pals live at **y≈1440** while explorer is at **y=90** on a 2496×1664 screen so a short drag never crosses the window. Raise-while-drag is in the new binary; confirm pal process start time ≥ that binary.
+
+**Proposed:** after hover pid matches, FE `hq_request_redraw()` is already there — also bump a `file_explorer_ui.txt` dummy `hover_name=` so vars reparse forces a paint. Secondary: don’t treat as a blocker if A+B land first.
+
+---
+
+**Check with user before any of A/B/C.** Suggested order: **A** (stat poll), then **B** (spawn overlay + pal place, not tile stamp), then C if still needed.
 
 ## Out of scope this sprint
 

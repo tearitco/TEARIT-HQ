@@ -44,6 +44,11 @@ A: Drive nav through the window's own relay
    .png.receipt.txt / .png.frame.txt). No python dump tools. Escalate
    to the user before xdotool/XTest.
 
+Q16 After ninja drop: window stale; Place no grid
+A: mv is real; manager never relists unless it gets an action.
+   Place only writes fe_place_armed.txt. Solutions in design doc
+   A=stat poll, B=spawn overlay+pal spawn, C=hover paint. Wait for OK.
+
 Q15 Palette place vs muchi Xdnd vs inventory-in
 A: Three stories. Palettes Place = overlay click-capture (now
    wireframe), NOT Xdnd. Muchi xdnd_source.c is NOT linked; egg uses

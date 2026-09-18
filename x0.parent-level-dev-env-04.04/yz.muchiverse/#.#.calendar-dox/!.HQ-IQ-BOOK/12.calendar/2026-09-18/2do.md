@@ -22,6 +22,11 @@ grid and a human has clicked it once via relay.
 User-facing writeup (do not lose the reason):
 `10-user-docs/2026-09-18/WHY-DSR-WSR-PAUSED.md`.
 
+## WAIT — user check before code (2026-09-18 evening)
+
+Issues (ninja drop `mv`d but explorer stale until reopen; Place no grid):
+design doc **Live bugs after slice 1**. Proposed: (A) manager `stat` poll to relist, (B) PLACE spawns `tp_arm_placer_rmmv` but pal-place not tile-stamp, (C) hover paint later. **Do not code until user picks.**
+
 ## Slice 1 — window highlight + desktop pal → Inventory (landed, check)
 
 Highlight color = `drop_highlight=` (FE default `#88ff66`). Drag a
