@@ -19,14 +19,13 @@ When unpausing, kilo (or whoever) still starts at:
 Resume trigger: Inventory window shows `cursword/inventory/` as a
 grid and a human has clicked it once via relay.
 
-## WIP — file-explorer grid (do not "finish" in one pass)
+## WIP — file-explorer grid / ctx menu
 
-User: grid does not show image or filename; left-click dir currently
-opens the dir. Transition: **right-click → context → Move/Drag**
-arms placement-grid image. Left click stays browse/select.
-
-See GROK plan section "File-explorer GRID — WIP". Code only when
-asked, one gap at a time.
+Browse grid names: landed. Right-click: **Cut/Copy/Paste/Delete/Place**
+via the same CTXMENU entity-menu as HQ (meta.pdl +
+kh_open_cli_io_context_menu). Place writes `fe_place_armed.txt` only
+(wireframe overlay later). Delete: files unlink, dirs rmdir if empty.
+Left click still opens dirs.
 
 ## Scheduled — file-explorer extra X (done 2026-09-18)
 
