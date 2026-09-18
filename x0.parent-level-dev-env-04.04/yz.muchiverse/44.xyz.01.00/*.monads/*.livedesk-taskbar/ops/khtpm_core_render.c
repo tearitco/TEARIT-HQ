@@ -10029,9 +10029,18 @@ static void kh_write_drop_zone(void) {
     snprintf(path, sizeof(path), "%s/%d.txt", dirp, (int)getpid());
     f = fopen(path, "w");
     if (!f) return;
-    fprintf(f, "pid=%d\nx=%d\ny=%d\nw=%d\nh=%d\ndest=%s\ncolor=%s\n",
-            (int)getpid(), g_win_x, g_win_y, g_win_w, g_win_h,
-            dest, g_drop_highlight_color);
+    {
+        int zx = g_win_x, zy = g_win_y, zw = g_win_w, zh = g_win_h;
+        if (dpy && win) {
+            Window child = None;
+            int rx = 0, ry = 0;
+            XTranslateCoordinates(dpy, win, RootWindow(dpy, DefaultScreen(dpy)),
+                                  0, 0, &rx, &ry, &child);
+            zx = rx; zy = ry;
+        }
+        fprintf(f, "pid=%d\nx=%d\ny=%d\nw=%d\nh=%d\ndest=%s\ncolor=%s\n",
+                (int)getpid(), zx, zy, zw, zh, dest, g_drop_highlight_color);
+    }
     fclose(f);
 }
 
@@ -15918,6 +15927,20 @@ static int tp_main(int argc, char **argv) {
         struct timeval tv = { 0, POLL_INTERVAL_USEC };
         select(xfd + 1, &fds, NULL, NULL, &tv);
 #endif
+        if (dragging && dpy) {
+            Window rr, ch;
+            int rx = 0, ry = 0, wx = 0, wy = 0;
+            unsigned mask = 0;
+            if (XQueryPointer(dpy, RootWindow(dpy, DefaultScreen(dpy)),
+                              &rr, &ch, &rx, &ry, &wx, &wy, &mask)) {
+                char dest[PATH_BUF];
+                const char *bn = strrchr(package_dir, '/');
+                bn = bn ? bn + 1 : package_dir;
+                int zpid = kh_drop_zone_hit(rx, ry, dest, sizeof(dest));
+                kh_write_drag_hover(zpid, bn);
+                (void)dest;
+            }
+        }
 
         /* REAL FIX 2026-09-10, direct report ("why didnt bible pop up
          * change size when house size was changed? doesn't it read
