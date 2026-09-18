@@ -34,6 +34,20 @@ User: dual X never intended; auto chrome only. Cause: template
 `<item id="chrome-close">` plus swatch/flat `g_default_close_elem`.
 Removed the template item. Relaunch File Explorer to see one X.
 
+## TODO today — chrome `_` / `!` / `X` on non-trivial windows
+
+User 2026-09-18: besides X, chrome should get **minimize** (`_`) and
+**expand/fullscreen** (`!`), especially File Explorer and other
+non-trivial HQ windows.
+
+Already true on the **sidebar+panel** path (`g_default_minimize_elem` /
+`g_default_fullscreen_elem` / `g_default_close_elem` in
+`khtpm_core_render.c`). **Swatch-grid and flat-page** (File Explorer
+list/grid) only synthesize **X**. Do not add template buttons — extend
+the same auto-chrome trio those two layout paths already use for X.
+
+Not started this burst. Ask before coding.
+
 ## Active today
 
 - Cursword `inventory/` dir + slow migrate of `inventory.txt` /

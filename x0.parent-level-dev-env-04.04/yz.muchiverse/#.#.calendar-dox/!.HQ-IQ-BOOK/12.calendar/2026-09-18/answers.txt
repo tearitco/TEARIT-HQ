@@ -44,6 +44,11 @@ A: Drive nav through the window's own relay
    .png.receipt.txt / .png.frame.txt). No python dump tools. Escalate
    to the user before xdotool/XTest.
 
+Q12 Chrome minimize + expand
+A: Yes, non-trivial windows (File Explorer first) should get the same
+   auto chrome trio as sidebar+panel: minimize `_`, expand `!`, close
+   `X`. No extra template buttons. Todo: 2026-09-18/2do.md. Not coded.
+
 Q11 git
 A: Push this work to branch grok. Merge into claude later. Do not
    push claude from this session.
