@@ -10717,6 +10717,43 @@ static void kh_raise_and_focus(Window w) {
     XFlush(dpy);
 }
 
+/* Pal-on-inventory: desk pals sit in the livedesk layer (managed
+ * sink-Below, or OR that Mutter still paints under HQ windows).
+ * During drag, ask the WM for ABOVE and Raise. Uses the caller's
+ * Display* — tp_main's dpy is local, not the HQ global. */
+static void kh_drag_stack_above(Display *d, Window pal, Window target, int on) {
+    Atom st, ab;
+    XEvent e;
+    if (!d || !pal) return;
+    {
+        XSetWindowAttributes swa;
+        swa.override_redirect = on ? True : (g_override_redirect ? True : False);
+        XChangeWindowAttributes(d, pal, CWOverrideRedirect, &swa);
+    }
+    st = XInternAtom(d, "_NET_WM_STATE", False);
+    ab = XInternAtom(d, "_NET_WM_STATE_ABOVE", False);
+    memset(&e, 0, sizeof(e));
+    e.xclient.type = ClientMessage;
+    e.xclient.window = pal;
+    e.xclient.message_type = st;
+    e.xclient.format = 32;
+    e.xclient.data.l[0] = on ? 1 : 0;
+    e.xclient.data.l[1] = (long)ab;
+    e.xclient.data.l[3] = 1;
+    XSendEvent(d, DefaultRootWindow(d), False,
+               SubstructureNotifyMask | SubstructureRedirectMask, &e);
+    XMapWindow(d, pal);
+    XRaiseWindow(d, pal);
+    if (on && target && target != pal) {
+        XWindowChanges wc;
+        wc.sibling = target;
+        wc.stack_mode = Above;
+        XConfigureWindow(d, pal, CWSibling | CWStackMode, &wc);
+        XRaiseWindow(d, pal);
+    }
+    XFlush(d);
+}
+
 static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
     /* real, current server timestamp - see g_last_event_time's own decl
      * comment. Every event type that carries one uses the same struct
@@ -16055,14 +16092,7 @@ static int tp_main(int argc, char **argv) {
                 unsigned long zwin = 0;
                 int zpid = kh_drop_zone_hit(dpy, rx, ry, dest, sizeof(dest), &zwin);
                 kh_write_drag_hover(zpid, bn);
-                XRaiseWindow(dpy, win);
-                if (zwin && (Window)zwin != win) {
-                    XWindowChanges wc;
-                    wc.sibling = (Window)zwin;
-                    wc.stack_mode = Above;
-                    XConfigureWindow(dpy, win, CWSibling | CWStackMode, &wc);
-                    XRaiseWindow(dpy, win);
-                }
+                kh_drag_stack_above(dpy, win, zwin ? (Window)zwin : None, 1);
                 {
                     char tp[PATH_BUF];
                     FILE *tf;
@@ -17255,6 +17285,7 @@ static int tp_main(int argc, char **argv) {
                              GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
             } else if (xev.type == ButtonRelease && xev.xbutton.button == 1) {
                 dragging = 0;
+                kh_drag_stack_above(dpy, win, None, 0);
                 XUngrabPointer(dpy, CurrentTime);
                 /* Real click-vs-drag distinction, cursword only - see
                  * g_is_cursword's own declaration comment
