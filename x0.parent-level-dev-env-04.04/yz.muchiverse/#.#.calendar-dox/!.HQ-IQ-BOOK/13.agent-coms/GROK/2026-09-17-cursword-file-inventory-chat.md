@@ -146,6 +146,39 @@ that same widget + `start_dir=$pal/inventory/` + maybe default
 `grid_view=1`. Still no symlink. Still no robot pal. Still no
 gold-ops retarget unless you ask.
 
+## File-explorer GRID — WIP (user 2026-09-18)
+
+**Live gaps (why grid looks empty):**
+
+- Grid cells are `<item class="swatch" label="${icon} ${name}">` with
+  **no `sprite=`**. Swatch layout is a square tile; without a sprite
+  there is no picture. Palettes work because they set `sprite=` (and
+  put a glyph in `label=`).
+- Filename is stuffed into `label=` on a tile that mostly draws a
+  **nav badge above the square**. Name/emoji often clip or sit in the
+  wrong place. List mode still shows `icon name size` as a row; grid
+  does not get that row chrome.
+- **Left click** on a DIR is `FE_ENTRY` → `chdir` (open folder). That
+  is list-browser semantics. It is **not** desk placement.
+
+**Intended interaction (WIP, do not code until asked):**
+
+1. Grid cell = **preview** (real image if the entry has one: pal
+   `atlas.png` / anim frame / toy icon) + **filename** under or on the
+   tile. Still not a new renderer layout branch — fill `sprite=` + a
+   caption the swatch path can actually draw.
+2. **Left click** stays mild: open dir / select file (picker). Does
+   **not** start dragging onto the desk.
+3. **Right click** → context menu (same `meta.pdl` / `menu.chtpm`
+   family as pals) → **Move / Drag** arms "placement grid image"
+   (the palettes `place` / desk-tile chain). Until that menu item is
+   chosen, the cell is not a brush.
+
+Palette left-click-to-place is the *old* one-way tile picker. Inventory
+and file-explorer grid are the *bag*: look first, arm drag on purpose.
+
+No code this note.
+
 ## Still open (new)
 
 - Inventory window: steal swatch grid (A) — yes/no?

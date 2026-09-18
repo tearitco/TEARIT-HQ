@@ -19,6 +19,15 @@ When unpausing, kilo (or whoever) still starts at:
 Resume trigger: Inventory window shows `cursword/inventory/` as a
 grid and a human has clicked it once via relay.
 
+## WIP — file-explorer grid (do not "finish" in one pass)
+
+User: grid does not show image or filename; left-click dir currently
+opens the dir. Transition: **right-click → context → Move/Drag**
+arms placement-grid image. Left click stays browse/select.
+
+See GROK plan section "File-explorer GRID — WIP". Code only when
+asked, one gap at a time.
+
 ## Active today
 
 - Cursword `inventory/` dir + slow migrate of `inventory.txt` /
