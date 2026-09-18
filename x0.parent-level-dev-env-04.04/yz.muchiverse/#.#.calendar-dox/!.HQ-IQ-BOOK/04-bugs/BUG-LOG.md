@@ -26,6 +26,40 @@ note under it — don't silently edit it away.*
   common false "still broken" report in this house). Real blocker for
   WSR-CIV Step B (file:desk creation) until resolved.
 
+- **`nav.sh`'s primary test commands (`nav`/`row`/`key`/`esc`/`type`)
+  are silent no-ops — they write to a dead relay file** (found
+  2026-09-18, chasing kilo's real WSR-CIV testing confusion). Confirmed
+  by direct code read: `#.desktop/harnesses/khtpm-livedesk-taskbar/
+  nav.sh`'s `send_code()` writes to `$RELAY` =
+  `#.desktop/livedesk_agent_relay.txt`, consumed by
+  `poll_agent_relay()` in `khtpm_strip_parser.c`. That binary/consumer
+  **no longer exists** — `khtpm_strip_keyboard_ascii.c`'s own header
+  comment states plainly: "RETARGET 2026-09-06: khtpm_strip_parser.+x
+  was folded into khtpm_core_render.c on 2026-09-01; its
+  poll_agent_relay() (which consumed livedesk_agent_relay.txt) went
+  with it." Nothing currently reads `livedesk_agent_relay.txt` at all.
+  **Only `nav.sh hqcell <n>`/`mgrcode <n>` still work** (they write
+  straight to `#.desktop/strip_history.txt`, the real live path per
+  `khtpm_taskbar_manager_main.c`'s `poll_strip_history()` →
+  `dispatch_code()`). Two docs described the dead path as live and have
+  been corrected: `02-architecture/INPUT-RELAY-PIPELINE.md` and
+  `08-roadmap/design-docs/TASKBAR-MENU-ARCHITECTURE.md` (both dated
+  before the 2026-09-01/06 merge). **Not fixed**: whether `nav.sh`'s
+  `nav`/`row`/`key`/`esc`/`type` commands should be retargeted to write
+  resolved codes into `strip_history.txt` instead (unclear whether
+  `khtpm_core_render.c` grew an equivalent raw-keycode-resolution path
+  after absorbing the parser, or whether that resolution step needs to
+  be re-derived) — this needs real investigation before anyone patches
+  `nav.sh`, not a guessed fix. Until then: use `hqcell`/`mgrcode` only,
+  and treat any past test result that used bare `nav`/`row` as
+  UNVERIFIED, not passing.
+
+  🔄 **2026-09-18 follow-up (Grok, live probe):** `nav.sh nav 9` grew
+  `livedesk_agent_relay.txt` with zero `lsof` readers; `strip_history.txt`
+  mtime unchanged. `mgrcode 27` did append. Dated corrections now sit at
+  the top of `1.^V-hq/_.0.aigent-testing-k9.txt`,
+  `06-testing/AIGENT-TESTING-K9.txt`, and `06-testing/TESTING_STRATEGY.md`.
+
 - **network-browser address bar: keeps losing keyboard focus/backspace
   while typing - RECURRING, fixed 3+ times, still reported broken on
   real hardware** (found/re-found repeatedly 2026-09-10/11). User

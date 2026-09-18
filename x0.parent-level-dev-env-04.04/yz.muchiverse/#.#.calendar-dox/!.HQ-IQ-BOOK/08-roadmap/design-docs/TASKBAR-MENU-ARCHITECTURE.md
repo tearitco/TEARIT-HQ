@@ -48,6 +48,20 @@ what the relay can carry.
 
 ---
 
+🔄 **CORRECTION (2026-09-18)**: the "two-layer relay" diagram and the
+`nav.sh nav`/`row` recommendation below **predate a 2026-09-01/06
+merge that killed the PARSER layer entirely.** `khtpm_strip_parser.c`
+(and its `poll_agent_relay()`, the only consumer of
+`livedesk_agent_relay.txt`) was folded into `khtpm_core_render.c` and
+did not survive — confirmed via `khtpm_strip_keyboard_ascii.c`'s own
+header comment. **`nav.sh nav <n>`/`row <n>`/`key`/`esc`/`type` are
+currently silent no-ops.** Only `nav.sh hqcell <n>`/`mgrcode <n>`
+(the MANAGER layer, writing straight to `strip_history.txt`) still
+work. Full writeup: `04-bugs/BUG-LOG.md` (2026-09-18 entry) and
+`02-architecture/INPUT-RELAY-PIPELINE.md`'s own correction. Read the
+diagram below as **historical**, not current, until `nav.sh` itself
+gets patched or this note is removed.
+
 ## 🗺️ The two-layer relay/dispatch system (read this before touching taskbar C)
 
 ```

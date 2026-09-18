@@ -2,6 +2,33 @@ J2 Testing Guide (Existing + New Features)
 Date: 2026-03-18
 Purpose: Standardize how agents test features (especially via key injection + frame review) to prevent regressions.
 
+🔄 CORRECTION 2026-09-18 (live-probed, do not skip): the 2026-08-11
+SCOPE ADDENDUM below still describes TWO live taskbar relay files and
+calls `nav.sh nav`/`row`/`key`/`esc`/`type` the preferred round-trip.
+That is STALE. `khtpm_strip_parser.c` (and `poll_agent_relay()`, the
+only consumer of `#.desktop/livedesk_agent_relay.txt`) was folded into
+`khtpm_core_render.c` on 2026-09-01 and that consumer did not survive
+(see `khtpm_strip_keyboard_ascii.c` header, RETARGET 2026-09-06).
+LIVE PROBE 2026-09-17 19:18 against a running
+`khtpm_taskbar_manager_main.+x` (PID 19648) + strip renderer (PID 19650):
+  - `HOUSE=<44.xyz.01.00> bash nav.sh nav 9` grew
+    `livedesk_agent_relay.txt` 284→338 bytes (digits 57 + Enter 13).
+  - `strip_history.txt` mtime did NOT change.
+  - `lsof` on `livedesk_agent_relay.txt`: ZERO readers.
+  - grep of live `*.livedesk-taskbar/ops/khtpm_core_render.c`: no
+    `poll_agent_relay` / no `livedesk_agent_relay`.
+  - `nav.sh mgrcode 27` DID append to `strip_history.txt` (29795→29798)
+    and entity `khtpm_core_render` fds sat at EOF on that file.
+Until `nav.sh` is retargeted (NOT done this pass — see BUG-LOG.md
+2026-09-18): use ONLY `nav.sh hqcell` / `mgrcode` for the taskbar
+strip, and `#.desktop/entity_menu_history/<pid>.txt` for a specific
+window. Treat any past "nav.sh nav 2 worked" result as UNVERIFIED.
+Full writeup: `04-bugs/BUG-LOG.md`,
+`02-architecture/INPUT-RELAY-PIPELINE.md`,
+`08-roadmap/design-docs/TASKBAR-MENU-ARCHITECTURE.md` (all dated
+2026-09-18 corrections). The 2026-08-11 addendum and the 2026-08-25
+"confirmed STILL LIVE" audit of `nav.sh` are HISTORICAL, not current.
+
 SCOPE - which family this applies to (added 2026-08-09, real deviation
 found live, not hypothetical)
 ------------------------------------------------------------------------

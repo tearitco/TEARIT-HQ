@@ -27,6 +27,15 @@ actually hit, plus new hard rules on checkpoint-verification and
 process cleanup. Read the new §3 in full even if you read the old one
 before — it changed materially, not just additively.
 
+📌 **2026-09-18 DIRECTION SHIFT (user, Grok session — read before §11)**:
+event-chat on Cursword *main* is the naive iteration. New bootstrap
+path is documented in
+`13.agent-coms/GROK/2026-09-17-cursword-file-inventory-chat.md`.
+§11's "add AI Chat (events) to Cursword context menu, leave Chat as-is"
+is **not cancelled for Chat**, but the *first* new buttons are
+**File** and **Inventory**, not a second chat item. Do not start
+famous/QKV/meta-transformer work this pass.
+
 ---
 
 ## 🚨 0. READ THIS SECTION FIRST — how YOU should use this doc (capped-context agent)

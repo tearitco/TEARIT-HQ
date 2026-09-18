@@ -19,21 +19,48 @@ and a real human produce byte-identical lines; the dispatcher cannot
 tell which wrote them — this is the basis for relay-only testing (see
 `06-testing/TESTING_STRATEGY.md`).
 
-One per-mode focus gate: if two windows of the SAME mode share one
+🔄 **CORRECTION (2026-09-18)**: the line below described a per-mode
+focus gate as the collision-avoidance mechanism. That's stale — fixed
+2026-08-29 (`03-pitfalls/OPERATIONAL-LANDMINES.md`): history files are
+now strictly **per-PID**, not per-mode, so two windows of the same
+type never share a file at all (no focus gate needed — there's nothing
+to gate). Also: relay dispatch does **not** check X11 focus state at
+all, by design — see `RELAY-WINDOW-TARGETING-DESIGN.md` §1-2 for the
+real current mechanism and why that's a deliberate property, not a gap.
+~~One per-mode focus gate: if two windows of the SAME mode share one
 history file, only the X-focused one reads/dispatches — the other
-skips to EOF (matches wraith-alpha's "one file, one reader" shape).
+skips to EOF (matches wraith-alpha's "one file, one reader" shape).~~
 
 ## The relay files
 
-- `#.desktop/livedesk_agent_relay.txt` — parser-layer, raw
-  digit/Enter/Escape/printable ASCII, resolved the same way real human
-  input is. Driven via
-  `#.desktop/harnesses/khtpm-livedesk-taskbar/nav.sh` (needs
-  `HOUSE=<house_root>` set — defaults to `$PWD` otherwise, an easy
-  footgun if you `cd` first).
+🔄 **CORRECTION (2026-09-18)**: this section originally described
+`livedesk_agent_relay.txt` as a live parser-layer path. **It is
+dead.** `khtpm_strip_parser.c` (its only consumer, via
+`poll_agent_relay()`) was folded into `khtpm_core_render.c` on
+2026-09-01, and that function did not survive the merge —
+`khtpm_strip_keyboard_ascii.c`'s own header comment documents this
+retarget directly. Nothing reads `livedesk_agent_relay.txt` today.
+Full writeup: `04-bugs/BUG-LOG.md`'s "`nav.sh`'s primary test commands
+... are silent no-ops" entry (2026-09-18). Corrected list below.
+
+- ~~`#.desktop/livedesk_agent_relay.txt` — parser-layer~~ **DEAD, do
+  not use.** `nav.sh`'s `nav`/`row`/`key`/`esc`/`type` commands still
+  write here and are currently silent no-ops as a result — do not
+  trust a past or future test that used those specific `nav.sh`
+  commands without confirming this got fixed first.
 - `#.desktop/strip_history.txt` — manager-layer, already-resolved
   decimal action codes (`KSC_HQ_HEADER_BASE`+n for a header cell,
-  `KSC_HQ_ITEM_BASE`+n for a submenu row).
+  `KSC_HQ_ITEM_BASE`+n for a submenu row). **This is the real, live
+  path** — read by `khtpm_taskbar_manager_main.c`'s
+  `poll_strip_history()` → `dispatch_code()`. Reach it via `nav.sh
+  hqcell <n>` / `nav.sh mgrcode <n>` (needs `HOUSE=<house_root>` set —
+  defaults to `$PWD` otherwise, an easy footgun if you `cd` first).
+- `#.desktop/entity_menu_history/<pid>.txt` — per-window relay, one
+  file per `khtpm_core_render.c` process (keyed by its own `getpid()`),
+  `KEY_PRESSED:`/`MOUSE_EVENT:` per line — this is the mechanism for
+  driving an individual HQ window (not the taskbar strip itself). See
+  `08-roadmap/design-docs/RELAY-WINDOW-TARGETING-DESIGN.md` for how an
+  agent resolves which PID/window this actually targets.
 - Prefer relay-file injection over `xdotool`/screenshots for driving
   or testing a taskbar/khtpm window; reach for `xdotool`/XTest only
   when the above are genuinely insufficient (e.g. real mouse-drag
