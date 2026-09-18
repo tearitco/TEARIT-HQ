@@ -165,3 +165,33 @@ All **44 test harnesses** drive the worker over pipes and never touch
   §5). 44-suite regression net unchanged.
 - Doc written (this file). No engine edits yet. Next rung: vendor
   QuickJS + standalone modern-syntax probe.
+
+### 2026-09-17 — rung 1+2+3 receipts (engine NOT touched)
+Official bellard QuickJS **2026-06-04** (`quickjs-2026-06-04.tar.xz`,
+https://bellard.org/quickjs/) vendored-side in /tmp (no repo changes).
+Probe drivers built against the real sources with upstream's own flags
+(`-D_GNU_SOURCE -DCONFIG_VERSION="..." -fwrapv`, engine files:
+`quickjs.c cutils.c libregexp.c libunicode.c dtoa.c`; note: no `libbf.c`
+in this release, libbf was merged; `-std=c99` breaks the `asm` keyword —
+use the Makefile's gnu default).
+
+- **Modern-syntax probe** (`qprobe`): evals one global script containing
+  `class`, `?.`, `??`, arrow, template literal, destructuring, spread,
+  and `async function`+`await` over a resolving Promise. Result:
+  `QJ-PROBE yyyyyy|async=y` (every feature evaluates to the expected
+  value; native microtask queue drained via `JS_ExecutePendingJob`). The
+  same source is a `SyntaxError` under repo Duktape (§1) — a clean,
+  same-input side-by-side.
+- **Prelude smoke** (`qprelude`): dumps `g_js_prelude` **verbatim** from
+  `ops/nb_host.h` (19,805 bytes, extracted via an include-based C
+  dumper that links the real header), loads it under QuickJS against
+  stub host globals (`window/document/navigator/location/console` +
+  `__nb_ges` + `URL/URLSearchParams` placeholders). Result:
+  `PRELUDE-SMOKE LOADED ...` then
+  `PRELUDE-CHECK href=https://y.example/a?q=1` — the prelude's URL
+  polyfill actually round-trips a URL. Only load-time smoke (no
+  `nbFetchSync` native in the probe, so no fetch/Promise-io path yet);
+  runtime fetch is exactly what the worker boundary transplant provides.
+- **Downloads stayed in /tmp** `/tmp/qjs-src/`, `/tmp/NB_PRELUDE.js`;
+  zero repo changes from the probe run. Decision point reached: graft
+  starts now (rung 4) or receipts reviewed first.
