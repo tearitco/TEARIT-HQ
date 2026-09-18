@@ -42,6 +42,21 @@ Swatch-grid + flat-page now call `kh_place_chrome_btn` for `_` `!` `X`
 (same `g_default_*_elem` as sidebar+panel). Chrome hit-zone uses
 minimize x even without sidebar. Relaunch File Explorer.
 
+## TODO later — file-explorer breadcrumbs wrap (do not start now)
+
+User 2026-09-18: crumb path is extremely long; want wrap + grow
+vertical until the window is resized. File Explorer is already
+`user-resizable`.
+
+Difficulty (not doing it this pass): **medium, localized**. Crumbs are
+a `<tabbar>` laid out as **one** horizontal row
+(`assign_nav_and_layout` flat-page tabbar loop, ~tx += tw). Palettes
+already wrap chips (`cx + w > g_win_w` → next `cy`). Same cursor on
+`tab` children, add row height into `canvas_tabbar_h` so list/grid
+start lower. Grid/swatch path currently has **no tabbar** — wrap must
+also apply there or crumbs stay broken in Grid View. Not a new
+`layout_*`. Pitfall: nav numbers + click hitboxes per wrapped row.
+
 ## Active today
 
 - Cursword **Inventory** METHOD landed (opens File Explorer at

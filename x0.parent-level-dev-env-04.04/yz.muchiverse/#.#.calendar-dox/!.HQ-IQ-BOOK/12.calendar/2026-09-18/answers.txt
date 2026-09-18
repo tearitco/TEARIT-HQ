@@ -44,6 +44,11 @@ A: Drive nav through the window's own relay
    .png.receipt.txt / .png.frame.txt). No python dump tools. Escalate
    to the user before xdotool/XTest.
 
+Q14 File-explorer breadcrumbs too long
+A: Wrap + grow height until user resizes. Not this burst. Todo in
+   2do.md. Difficulty medium: reuse palette chip-wrap on <tab>; also
+   needs grid-mode tabbar (grid path currently skips tabbar).
+
 Q13 Right-click Drag vs Cut/Copy/Paste/Delete
 A: Pivot to Cut/Copy/Paste/Delete/Place — same entity-menu CTXMENU
    layout as pals and piececraft pc_entity_ctx.sh. Not a new renderer
