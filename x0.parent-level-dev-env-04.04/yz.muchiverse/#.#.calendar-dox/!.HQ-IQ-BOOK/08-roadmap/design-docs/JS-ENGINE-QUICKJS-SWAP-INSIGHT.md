@@ -392,10 +392,11 @@ NOT STARTED:
 
 ### 8.6 Rollback anchor (adjusted 2026-09-18)
 
-`duktape.c/.h/duk_config.h` remain vendored in `&.hq-apps/js/`; the
-pre-graft `opencode` commits are the recovery point. `nb_js_eval.c` is
-now QuickJS too — do NOT leave it Duktape against a QuickJS `nb_host.h`
-(it won't compile).
+`duktape.c/.h/duk_config.h` are gone from the working tree (deleted in the
+graft cleanup commit) — they remain recoverable from git history, as does
+the pre-graft `nb_js_worker.c`/`nb_host.h`/`nb_js_eval.c`. `nb_js_eval.c`
+is QuickJS; there is no Duktape build to fall back to. `stb_image.h` in
+`&.hq-apps/js/` stays (media ops include it).
 
 ### 8.7 Where to prove / other pointers
 
@@ -478,8 +479,10 @@ the worker (translate via the table above and mirror shape).
 - **Engine files** live in `&.hq-apps/js/` (committed `5d1e8bd7`):
   `quickjs.c/.h`, `quickjs-atom.h`, `quickjs-opcode.h`, `cutils.c/.h`,
   `libregexp.c/.h`, `libregexp-opcode.h`, `libunicode.c/.h`,
-  `libunicode-table.h`, `dtoa.c/.h`, `list.h`. `duktape.c/.h` +
-  `duk_config.h` kept in place for rollback; `stb_image.h` untouched.
+  `libunicode-table.h`, `dtoa.c/.h`, `list.h`. `duktape.c/.h` + `duk_config.h` + the old
+  `install-duk.sh` were REMOVED in the 2026-09-18 cleanup (rollback now =
+  git history, not on-disk files); `stb_image.h` stays (nb_media_to_sprite
+  still includes it).
 - **Boundary transplant** (`07aa2200`, 5 files): nb_js_worker.c +
   nb_host.h fully duk→QuickJS (105 natives, heap lifecycle, event loop,
   registrations); microtask FIFO + prelude Promise polyfill **deleted**,

@@ -15,8 +15,9 @@ translated, full `make check` GREEN on the new engine)
 explicit "push" verb.
 **Build:** `make nbjs` (workspace `44.xyz.01.00/&.hq-apps/network`).
 **Engine:** QuickJS **2026-06-04** (vendored `&.hq-apps/js/`; duktape
-kept for rollback). Build needs `-std=gnu11 -D_GNU_SOURCE
--DCONFIG_VERSION="2026-06-04" -fwrapv -pthread`.
+files removed 2026-09-18, recoverable from git history). Build needs
+`-std=gnu11 -D_GNU_SOURCE -DCONFIG_VERSION="2026-06-04" -fwrapv
+-pthread`.
 **Full suite:** `make check` — **44 PASS / 0 FAIL** on the QuickJS
 build (fresh build + fresh run, commit `07aa2200`).
 
@@ -68,7 +69,8 @@ build (fresh build + fresh run, commit `07aa2200`).
   `build.sh` (nb_js_eval/nb_js_worker probes run; nb_video_play still
   skipped for missing libav/alsa — pre-existing).
 - Committed `07aa2200` (5 files) on `opencode`; engine headers
-  `5d1e8bd7`. Rollback anchor: pre-graft commit + `js/duktape.*` kept.
+  `5d1e8bd7`. Rollback anchor = git history (duktape.* + install-duk.sh
+  removed in the 2026-09-18 cleanup commit).
 
 ### 2026-09-18 QuickJS graft started (engine cell) — handoff written
 - Vendored official QuickJS **2026-06-04** into
@@ -248,8 +250,9 @@ Steps:
 - Prelude: `44.xyz.01.00/&.hq-apps/network/ops/nb_host.h`
 - Makefile: `44.xyz.01.00/&.hq-apps/network/Makefile`
 - Engine libs: `44.xyz.01.00/&.hq-apps/js/` (quickjs.c/.h + cutils/
-  libregexp*/libunicode*/dtoa/list.h — committed `5d1e8bd7`;
-  duktape.* kept in place for rollback)
+  libregexp*/libunicode*/dtoa/list.h + quickjs-atom/opcode.h —
+  committed `5d1e8bd7`; duktape.* + install-duk.sh removed in the
+  2026-09-18 cleanup, recoverable from git history)
 - Tests: `44.xyz.01.00/&.hq-apps/network/tests/worker_login_test.c|.js`,
   `worker_sapisid_test.c|.js`, `worker_innertube_test.c|.js`,
   `worker_fetch_post_test.c|.js`
