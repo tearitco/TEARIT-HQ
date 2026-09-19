@@ -1,8 +1,10 @@
 # JS engine swap insight — Duktape is the floor, QuickJS is the door (row 31)
 
-**Status:** graft IN PROGRESS — QuickJS vendored, code edits NOT yet
-started. If you are a NEW instance resuming this: read §8 (RESUME PACK)
-before anything else.
+**Status:** graft **DONE** — engine transplanted and green (full
+`make check` 44 PASS / 0 FAIL on QuickJS 2026-06-04, commits
+`5d1e8bd7` engine headers + `07aa2200` full graft). §8's resume pack is
+**historical** (it described the pre-graft state); the graft receipts
+and engine file list are in §10.
 **Date:** 2026-09-17 (updated 2026-09-18)
 **Scope:** `44.xyz.01.00/&.hq-apps/network/` — the `nbjs` JS engine
 (`&.hq-apps/js/duktape.*`) and its C boundary in `ops/nb_js_worker.c`.
@@ -471,6 +473,41 @@ getElementById native are the two cleanest duk→QuickJS hand ports in
 the worker (translate via the table above and mirror shape).
 
 ## 10. Work log (appended by session)
+
+### 2026-09-18 — graft DONE (receipts, commits `5d1e8bd7` + `07aa2200`)
+- **Engine files** live in `&.hq-apps/js/` (committed `5d1e8bd7`):
+  `quickjs.c/.h`, `quickjs-atom.h`, `quickjs-opcode.h`, `cutils.c/.h`,
+  `libregexp.c/.h`, `libregexp-opcode.h`, `libunicode.c/.h`,
+  `libunicode-table.h`, `dtoa.c/.h`, `list.h`. `duktape.c/.h` +
+  `duk_config.h` kept in place for rollback; `stb_image.h` untouched.
+- **Boundary transplant** (`07aa2200`, 5 files): nb_js_worker.c +
+  nb_host.h fully duk→QuickJS (105 natives, heap lifecycle, event loop,
+  registrations); microtask FIFO + prelude Promise polyfill **deleted**,
+  drain = `while(JS_IsJobPending(rt)) JS_ExecutePendingJob(rt,&jctx)`;
+  stash timers → C-held `JSValue` dup/free; nb_js_eval.c ported (shares
+  nb_host.h). Makefile `nbjs` + build.sh ops lines: 5 engine TUs,
+  `-std=gnu11 -D_GNU_SOURCE -DCONFIG_VERSION=\"2026-06-04\" -fwrapv
+  -pthread`.
+- **Bug fixes found by the transplant + suites:**
+  - `JS_IsCallable` is not in public quickjs.h — use `JS_IsFunction`.
+  - 5 leaked `JS_GetGlobalObject` refs (run_page `__nb_ges`, install_fs
+    `__nb_fs`, repl/cli `__nb_read_file`, cli `process`) + the
+    `esmPrepare` handle (`prep` freed only in the else branch) — all
+    fixed; a single leaked handle makes `JS_FreeRuntime` assert
+    (`list_empty(&rt->gc_obj_list)`, quickjs.c ~2464). Diagnosed with a
+    `-DDUMP_LEAKS` build (prints "Object leaks: …").
+  - **wps slice bug:** QuickJS's lexer peeks `input[input_len]` for EOI
+    checks, so `JS_Eval` must receive NUL-terminated input. Script
+    slices are mid-malloc-buffer; the byte after a slice was `/` (start
+    of the next boundary), manufacturing bogus
+    "unexpected end of string"/`'<<'` SyntaxErrors. Fix:
+    `((char*)p)[slice] = 0;` before each slice eval in
+    `run_scripts_slices` (slices own one contiguous buffer).
+- **Evidence:** `make check` exit 0 — 44 suites, 60 PASS lines, 0 FAIL
+  (fresh `make nbjs` + fresh run; wps repro pages `/tmp/nbjs-check/
+  caseA.js`/`caseB.js` byte-verified). Deployable ops binaries rebuilt
+  via `build.sh`; eval op probe `print("eval-op-ok")` → `OK|1`.
+- Safe to resume §8.5 step 8's row-31 real-bundle receipt.
 
 ### 2026-09-18 — vendor DONE + full API map + resume-pack handoff
 - Vendored official QuickJS **2026-06-04** into `&.hq-apps/js/` (13

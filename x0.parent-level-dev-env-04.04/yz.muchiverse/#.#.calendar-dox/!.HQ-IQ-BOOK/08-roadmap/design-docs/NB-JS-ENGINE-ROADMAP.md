@@ -6,14 +6,28 @@
 `js/duktape.*`, and the `network_browser_manager.c` fetch/script/render
 pipeline.
 
+> **ENGINE FLIP 2026-09-18 (supersedes the Duktape framing below):** the
+> ES5.1 parser was the row-31 floor — see `JS-ENGINE-QUICKJS-SWAP-INSIGHT.md`.
+> The graft is DONE: engine is **QuickJS 2026-06-04** (vendored
+> `&.hq-apps/js/`, commit `5d1e8bd7`; worker/host/eval translated,
+> commit `07aa2200`), full `make check` 44 PASS / 0 FAIL on the fresh
+> build. Section 13's "language is done on Duktape" statement and §4's
+> "swap only if ES6 syntax becomes the wall" recommendation are now
+> HISTORY — the swap already happened. Rows 32-35 receipts all still
+> pass unmodified on the new engine.
+
 ---
 
 ## 0. Where we are
 
-`nb_js_eval.c` (245 lines) already embeds **Duktape**, a real ES5.1
-engine — so the *language* is done (closures, regex, JSON, Array/
-String/Object/Math, try/catch, prototypes). What is missing is the
-**host environment** a page expects. `install_host()` today stubs only:
+`nb_js_eval.c` (245 lines) embeds a real ES5.1 engine — Duktape — so
+the *language* was declared done (closures, regex, JSON, Array/
+String/Object/Math, try/catch, prototypes). **Corrected 2026-09-18:**
+"done" only held for ES5.1-compatible page JS; modern bundles (youtube's
+ES2020+) were rejected by the parser before a byte ran — the engine is
+now QuickJS 2026-06-04 (see status banner above). What is/was missing is
+the **host environment** a page expects. `install_host()` today
+stubs only:
 
 | provided | level |
 |---|---|
@@ -536,6 +550,11 @@ fallback and for tests.
 ---
 
 ## 4. Engine choice — Duktape vs QuickJS
+
+> **RESOLVED 2026-09-18:** the "swap only if syntax becomes the wall"
+> trigger fired; §4's original text (below) is now HISTORY. The engine
+> is QuickJS 2026-06-04 — see the status banner + `JS-ENGINE-QUICKJS-
+> SWAP-INSIGHT.md` §10 (commits `5d1e8bd7`/`07aa2200`, 44 suites green).
 
 Duktape is ES5.1 + a little ES6 (let/const, arrow fns, TypedArrays if
 configured). **Modern bundled sites (webpack/Babel-to-ES2017+, or

@@ -7,15 +7,18 @@ the two docs at the bottom. Current session verbatim state (what was
 said/done, pending decisions) is in the **Work log** section — update
 it at the end of every block.
 
-**Last updated:** 2026-09-18 (QuickJS graft IN PROGRESS — engine cell
-touched, suites NOT yet run on the new engine)
+**Last updated:** 2026-09-18 (QuickJS graft DONE — engine cell fully
+translated, full `make check` GREEN on the new engine)
 
 **Branch:** `opencode` (this agent's own branch; never commit to
 `main`/`claude`/`grok`). Nothing is ever pushed without the user's
 explicit "push" verb.
 **Build:** `make nbjs` (workspace `44.xyz.01.00/&.hq-apps/network`).
-**Full suite:** `make check` — currently **44 PASS / 0 FAIL** (wfp added
-this set, no regressions).
+**Engine:** QuickJS **2026-06-04** (vendored `&.hq-apps/js/`; duktape
+kept for rollback). Build needs `-std=gnu11 -D_GNU_SOURCE
+-DCONFIG_VERSION="2026-06-04" -fwrapv -pthread`.
+**Full suite:** `make check` — **44 PASS / 0 FAIL** on the QuickJS
+build (fresh build + fresh run, commit `07aa2200`).
 
 ---
 
@@ -42,6 +45,30 @@ this set, no regressions).
 | 32f | same feed through the **fetch()** surface (row 31's bundle uses fetch(), not XHR) | **BUILT** — `worker_fetch_post_test`/`wfp` (Promise-chain `fetch(url,{method,headers,body})` → same signed innerTube POST → `response.json()` + fetch() 401 rejection surfaced; no engine changes) |
 
 ## Work log (most recent first)
+
+### 2026-09-18 QuickJS graft DONE (row-31 parser floor removed)
+- Full duk→QuickJS transplant landed in-session per the approved plan:
+  `nb_host.h` + `nb_js_worker.c` (105 natives, heap lifecycle, event
+  loop) + `nb_js_eval.c` translated; microtask FIFO + prelude Promise
+  polyfill DELETED in favor of the native job queue
+  (`JS_ExecutePendingJob` drain); stash timers → C-held `JSValue`s.
+  Makefile `nbjs` + build.sh ops lines rewired to the 5 engine TUs +
+  gnu11/QWFLAGS flags.
+- **Leak fixes:** 5 leaked `JS_GetGlobalObject` refs + the `esmPrepare`
+  handle (a leaked handle asserts in `JS_FreeRuntime` teardown —
+  verified with a `-DDUMP_LEAKS` build).
+- **wps bug (root-caused, not papered):** QuickJS's lexer peeks
+  `input[input_len]` for EOI, so mid-buffer script slices must be
+  NUL-terminated at their eval length (`((char*)p)[slice] = 0;` in
+  `run_scripts_slices`). Repro pages `/tmp/nbjs-check/caseA.js` +
+  `caseB.js` now behave: genuine slice errors only on genuinely-bad
+  slices, later slices run.
+- **Evidence:** `make check` exit 0, **60 PASS lines / 0 FAIL** (44
+  suites, fresh QuickJS build); deployable ops binaries rebuilt via
+  `build.sh` (nb_js_eval/nb_js_worker probes run; nb_video_play still
+  skipped for missing libav/alsa — pre-existing).
+- Committed `07aa2200` (5 files) on `opencode`; engine headers
+  `5d1e8bd7`. Rollback anchor: pre-graft commit + `js/duktape.*` kept.
 
 ### 2026-09-18 QuickJS graft started (engine cell) — handoff written
 - Vendored official QuickJS **2026-06-04** into
@@ -171,11 +198,12 @@ for "render+drive youtube.com" (roadmap rows):
    strings, not grammar). Architecture is safe: ~750/3912 lines are the
    duk boundary; protocol, DOM, jars, sha1, and all 44 pipe-driven test
    harnesses survive as-is.
-   **GRAFT STATUS (2026-09-18): IN PROGRESS — quickjs vendored into
-   `&.hq-apps/js/`, code edits not started.** `make check` on this
-   worktree is STALE until the graft + fresh run is done. If resuming
-   cold, read the full plan + resume pack + translation table:
-   `08-roadmap/design-docs/JS-ENGINE-QUICKJS-SWAP-INSIGHT.md` §6-§9.
+   **GRAFT STATUS (2026-09-18): DONE — engine transplanted and green.**
+   Read `08-roadmap/design-docs/JS-ENGINE-QUICKJS-SWAP-INSIGHT.md`
+   §9-§10 (translation table + graft-DONE receipt, commits
+   `5d1e8bd7`/`07aa2200`). The row-31 parser floor is gone; the next
+   receipt is executing a real slice of the youtube bundle on the new
+   engine with the visitor+signature context attached.
 2. **Page CSS** (partial) — `.css` files, not full page CSS.
 3. **Websocket chat** (row 32 mentions websocket chat) — page-originated
    XHR is built, but a websocket client surface is not.
@@ -219,9 +247,9 @@ Steps:
 - SHA-1: `44.xyz.01.00/&.hq-apps/network/ops/nb_sha1.h`
 - Prelude: `44.xyz.01.00/&.hq-apps/network/ops/nb_host.h`
 - Makefile: `44.xyz.01.00/&.hq-apps/network/Makefile`
-- Engine libs: `44.xyz.01.00/&.hq-apps/js/` (quickjs.* + cutils/
-  libregexp*/libunicode*/dtoa/list.h — NEW, uncommitted as of
-  2026-09-18; duktape.* kept for rollback)
+- Engine libs: `44.xyz.01.00/&.hq-apps/js/` (quickjs.c/.h + cutils/
+  libregexp*/libunicode*/dtoa/list.h — committed `5d1e8bd7`;
+  duktape.* kept in place for rollback)
 - Tests: `44.xyz.01.00/&.hq-apps/network/tests/worker_login_test.c|.js`,
   `worker_sapisid_test.c|.js`, `worker_innertube_test.c|.js`,
   `worker_fetch_post_test.c|.js`
