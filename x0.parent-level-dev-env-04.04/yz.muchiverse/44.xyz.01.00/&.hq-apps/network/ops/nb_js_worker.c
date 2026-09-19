@@ -1343,15 +1343,26 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
     JS_SetPropertyStr(ctx, el, "removeEventListener", JS_NewCFunction(ctx, nb_el_removeEventListener, "removeEventListener", 2));
     JS_SetPropertyStr(ctx, el, "dispatchEvent", JS_NewCFunction(ctx, nb_el_dispatchEvent, "dispatchEvent", 1));
     JS_SetPropertyStr(ctx, el, "click", JS_NewCFunction(ctx, nb_el_click, "click", 0));
-    /* resource/URL attributes real bundles read directly off the element:
-     * closure's module loader does `D = O.src ? O.src : O.getAttribute("href")`
-     * on the <script id="base-js"> / <link> it found by id. Expose the raw
-     * attribute (already absolute in fetched pages; callers absolutize). */
+    /* resource/URL attributes real bundles read directly off the element.
+     * Browsers expose src/href as STRINGS even when the attribute is absent
+     * (an inline <script>.src is ""), and youtube's global error reporter
+     * does `script.src.indexOf("/debug-")` across getElementsByTagName
+     * ("script") — undefined there throws. closure's module loader also does
+     * `O.src ? O.src : O.getAttribute("href")` on <script id="base-js">. */
     if (n->tag) {
-        const char *sv = nb_attr_get(n, "src");
-        if (sv && sv[0]) JS_SetPropertyStr(ctx, el, "src", JS_NewString(ctx, sv));
-        const char *hv = nb_attr_get(n, "href");
-        if (hv && hv[0]) JS_SetPropertyStr(ctx, el, "href", JS_NewString(ctx, hv));
+        static const char *src_tags[] = { "script","img","iframe","input",
+            "source","track","embed","video","audio","frame", NULL };
+        static const char *href_tags[] = { "a","link","area","base", NULL };
+        for (int i = 0; src_tags[i]; i++)
+            if (!strcmp(n->tag, src_tags[i])) {
+                JS_SetPropertyStr(ctx, el, "src", JS_NewString(ctx, nb_attr_get(n, "src")));
+                break;
+            }
+        for (int i = 0; href_tags[i]; i++)
+            if (!strcmp(n->tag, href_tags[i])) {
+                JS_SetPropertyStr(ctx, el, "href", JS_NewString(ctx, nb_attr_get(n, "href")));
+                break;
+            }
     }
     /* canvas 2D (2026-09-18): real bundles probe <canvas> via
      * createElementNS('...','canvas') and immediately call getContext('2d')

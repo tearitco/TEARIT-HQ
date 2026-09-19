@@ -77,6 +77,27 @@ static JSValue native_log(JSContext *ctx, JSValueConst this_val,
         line[o] = 0;
         JS_FreeCString(ctx, s);
     }
+    /* diagnosis aid (NB_STACK=1): a caught Error logged via console.* keeps
+     * its .stack; append it so app-level catches are traceable too. */
+    if (getenv("NB_STACK")) {
+        for (int i = 0; i < argc; i++) {
+            if (!JS_IsObject(argv[i])) continue;
+            JSValue st = JS_GetPropertyStr(ctx, argv[i], "stack");
+            if (JS_IsString(st)) {
+                const char *stc = JS_ToCString(ctx, st);
+                if (stc) {
+                    size_t room = sizeof(line) - o;
+                    if (room > 4) {
+                        int w = snprintf(line + o, room, " @ %s", stc);
+                        if (w > 0) o += ((size_t)w < room ? (size_t)w : room - 1);
+                    }
+                    JS_FreeCString(ctx, stc);
+                }
+            }
+            JS_FreeValue(ctx, st);
+            break;
+        }
+    }
     if (g_cli_log) fprintf(g_out, "%s\n", line);
     else pipe_one("LOG", line);
     return JS_UNDEFINED;
