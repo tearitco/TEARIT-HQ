@@ -2459,6 +2459,18 @@ static void install_dom(JSContext *ctx) {
 }
 
 #define EVAL_BUDGET_SEC 2   /* plan step 5: watchdog for runaway page.js */
+/* NB_EVAL_BUDGET env override (row-31): a real 10.8MB single-IIFE bundle
+ * legitimately needs more than 2s to parse, so receipt runs can raise the
+ * watchdog (NB_EVAL_BUDGET=120); production default stays 2s. */
+static int nb_budget(void) {
+    static int b = -1;
+    if (b < 0) {
+        const char *e = getenv("NB_EVAL_BUDGET");
+        b = e ? atoi(e) : EVAL_BUDGET_SEC;
+        if (b < 1) b = EVAL_BUDGET_SEC;
+    }
+    return b;
+}
 #define MAX_DRAIN_MS 800    /* commit 7: bounded wait so short timers fire pre-RENDER */
 static void sigalrm(int sig);   /* used by run_event_loop below */
 
@@ -2860,7 +2872,7 @@ static JSValue nb_fetch_sync(JSContext *ctx, JSValueConst this_val, int argc, JS
         } else snprintf(errbuf, sizeof(errbuf), "unsupported scheme in %s", url);
     }
 
-    alarm(EVAL_BUDGET_SEC);   /* re-arm the budget for the rest of the drain */
+    alarm(nb_budget());   /* re-arm the budget for the rest of the drain */
 
     JSValue o = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, o, "ok", JS_NewBool(ctx, status >= 200 && status < 300 && rb != NULL));
@@ -3277,7 +3289,7 @@ static void fire_event(JSContext *ctx, int kind, NbNode *n, const char *type) {
 /* returns nonzero if an event-loop callback threw (caller -> STATUS err) */
 static int run_event_loop(JSContext *ctx) {
     signal(SIGALRM, sigalrm);
-    alarm(EVAL_BUDGET_SEC);   /* phase-1 backstop also covers timer/job callbacks */
+    alarm(nb_budget());   /* phase-1 backstop also covers timer/job callbacks */
     drain_jobs(ctx);
     if (!g_pending_err) fire_event(ctx, EVT_DOC, NULL, "DOMContentLoaded");
     drain_jobs(ctx);
@@ -3399,7 +3411,7 @@ static void sigalrm(int sig) { _exit(128 + sig); }
 static int peval_budget(JSContext *ctx, const char *src, size_t src_n,
                         char *errbuf, size_t errlen) {
     signal(SIGALRM, sigalrm);
-    alarm(EVAL_BUDGET_SEC);
+    alarm(nb_budget());
     JSValue r = JS_Eval(ctx, src, src_n, "<script>", JS_EVAL_TYPE_GLOBAL);
     alarm(0);
     if (JS_IsException(r)) {
@@ -3421,7 +3433,7 @@ static int peval_budget(JSContext *ctx, const char *src, size_t src_n,
  * caller — also on JS_EXCEPTION). No exception is consumed here. */
 static JSValue peval_budget_value(JSContext *ctx, const char *src, size_t src_n) {
     signal(SIGALRM, sigalrm);
-    alarm(EVAL_BUDGET_SEC);
+    alarm(nb_budget());
     JSValue r = JS_Eval(ctx, src, src_n, "<script>", JS_EVAL_TYPE_GLOBAL);
     alarm(0);
     return r;
@@ -3601,7 +3613,7 @@ static void run_page(void) {
 
     char *src = NULL;
     size_t src_n = 0;
-    if (!read_file(g_page_js, &src, &src_n)) {
+    if (!read_file_big(g_page_js, &src, &src_n)) {
         send_status("STATUS err:cannot read page.js");
         live_teardown();
         return;
@@ -3771,7 +3783,7 @@ static int repl_main(void) {
     av[1] = JS_NewString(ctx, "[repl]");
     JSValue g0 = JS_GetGlobalObject(ctx);
     signal(SIGALRM, sigalrm);
-    alarm(EVAL_BUDGET_SEC);
+    alarm(nb_budget());
     JSValue rr = JS_Call(ctx, install, g0, 2, av);
     JS_FreeValue(ctx, g0);
     JS_FreeValue(ctx, install);
@@ -3850,7 +3862,7 @@ static int repl_main(void) {
 
         /* drain jobs + timers (no lifecycle events), CPU-bounded */
         signal(SIGALRM, sigalrm);
-        alarm(EVAL_BUDGET_SEC);
+        alarm(nb_budget());
         uint64_t start = now_ms();
         for (int guard = 0; guard < 10000 && !g_pending_err; guard++) {
             if (now_ms() - start > 200) break;
@@ -4405,7 +4417,7 @@ static int cli_main(int argc, char **argv) {
     av[1] = JS_NewString(ctx, entry_file);
     JSValue g1 = JS_GetGlobalObject(ctx);
     signal(SIGALRM, sigalrm);
-    alarm(EVAL_BUDGET_SEC);
+    alarm(nb_budget());
     JSValue rr = JS_Call(ctx, install, g1, 2, av);
     JS_FreeValue(ctx, g1);
     JS_FreeValue(ctx, install);

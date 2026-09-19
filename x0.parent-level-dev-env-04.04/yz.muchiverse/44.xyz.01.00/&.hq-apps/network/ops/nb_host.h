@@ -305,6 +305,45 @@ static int read_file(const char *path, char **out, size_t *out_n) {
     return 1;
 }
 
+/* Page-loader-only read for real bundles (row-31): youtube's kevlar_base.js
+ * is a single 10.8MB IIFE that can only be evaled whole, far past the 512KB
+ * guard above. Unlike read_file, this has no small cap — it realloc-grows in
+ * chunks up to a hard READ_FILE_BIG_MAX ceiling so the worker can't be asked
+ * to materialize an unbounded file. fs-lite and CJS keep the 512KB read_file
+ * (their users could legitimately request huge files and OOM the heap). The
+ * eval watchdog (EVAL_BUDGET_SEC) remains the real runaway guard. */
+#define READ_FILE_BIG_MAX (64 * 1024 * 1024)
+static int read_file_big(const char *path, char **out, size_t *out_n) {
+    FILE *f = fopen(path, "rb");
+    if (!f) return 0;
+    size_t cap = 1024 * 1024, n = 0;
+    char *buf = malloc(cap);
+    if (!buf) { fclose(f); return 0; }
+    for (;;) {
+        size_t room = cap - n - 1;
+        if (room == 0) {
+            if (cap >= READ_FILE_BIG_MAX) { free(buf); fclose(f); return 0; }
+            cap *= 2;
+            if (cap > READ_FILE_BIG_MAX) cap = READ_FILE_BIG_MAX;
+            char *nb = realloc(buf, cap);
+            if (!nb) { free(buf); fclose(f); return 0; }
+            buf = nb;
+            continue;
+        }
+        size_t got = fread(buf + n, 1, room, f);
+        n += got;
+        if (got < room) {
+            if (feof(f)) break;
+            if (ferror(f)) { free(buf); fclose(f); return 0; }
+        }
+    }
+    fclose(f);
+    buf[n] = 0;
+    *out = buf;
+    *out_n = n;
+    return 1;
+}
+
 /* Push each component of an href as a plain string property on the given
  * object. Rung 1: parsing only, no navigation. */
 static void install_location_parts(JSContext *ctx, JSValue obj, const char *href) {
