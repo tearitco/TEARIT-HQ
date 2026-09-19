@@ -858,6 +858,16 @@ static JSValue nb_el_getAttribute(JSContext *ctx, JSValueConst this_val, int arg
     if (v && v[0]) return JS_NewString(ctx, v);
     return JS_NULL;
 }
+/* rung 8: hasAttribute — real bundles gate on documentElement.hasAttribute */
+static JSValue nb_el_hasAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *name = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    if (!n || !name) { JS_FreeCString(ctx, owned); return JS_FALSE; }
+    const char *v = nb_attr_get(n, name);
+    JS_FreeCString(ctx, owned);
+    return JS_NewBool(ctx, v != NULL);
+}
 static char *attrs_set(const NbNode *n, const char *name, const char *val) {
     SB b = {0, 0, 0};
     const char *p = n->attrs ? n->attrs : "";
@@ -1322,6 +1332,7 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
     JS_SetPropertyStr(ctx, el, "getAttribute", JS_NewCFunction(ctx, nb_el_getAttribute, "getAttribute", 1));
     JS_SetPropertyStr(ctx, el, "setAttribute", JS_NewCFunction(ctx, nb_el_setAttribute, "setAttribute", 2));
     JS_SetPropertyStr(ctx, el, "removeAttribute", JS_NewCFunction(ctx, nb_el_removeAttribute, "removeAttribute", 1));
+    JS_SetPropertyStr(ctx, el, "hasAttribute", JS_NewCFunction(ctx, nb_el_hasAttribute, "hasAttribute", 1));
     JS_SetPropertyStr(ctx, el, "appendChild", JS_NewCFunction(ctx, nb_el_appendChild, "appendChild", 1));
     JS_SetPropertyStr(ctx, el, "removeChild", JS_NewCFunction(ctx, nb_el_removeChild, "removeChild", 1));
     JS_SetPropertyStr(ctx, el, "insertBefore", JS_NewCFunction(ctx, nb_el_insertBefore, "insertBefore", 2));
@@ -1338,6 +1349,18 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
     if (n->tag && strcmp(n->tag, "canvas") == 0) {
         JS_SetPropertyStr(ctx, el, "getContext", JS_NewCFunction(ctx, nb_el_getContext, "getContext", 1));
         JS_SetPropertyStr(ctx, el, "toDataURL", JS_NewCFunction(ctx, nb_canvas_toDataURL, "toDataURL", 0));
+    }
+    if (n->tag && strcmp(n->tag, "template") == 0) {
+        /* <template>.content is a DocumentFragment (prelude __nb_docfrag) */
+        JSValue g2 = JS_GetGlobalObject(ctx);
+        JSValue mf = JS_GetPropertyStr(ctx, g2, "__nb_docfrag");
+        JS_FreeValue(ctx, g2);
+        if (JS_IsFunction(ctx, mf)) {
+            JSValue frag = JS_Call(ctx, mf, JS_UNDEFINED, 0, NULL);
+            if (JS_IsException(frag)) JS_FreeValue(ctx, JS_GetException(ctx));
+            else JS_SetPropertyStr(ctx, el, "content", frag);
+        }
+        JS_FreeValue(ctx, mf);
     }
 
     /* el.on<type> = cb accessors; native magic carries the ONPROPS index
@@ -2207,17 +2230,63 @@ static JSValue nb_ss_length(JSContext *ctx, JSValueConst this_val, int argc, JSV
  * timeline for web-animations feature code. Constructors are inert
  * here — illegal-constructor throws are out of scope for this step. */
 static JSValue class_noop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    /* quickjs.c: C constructors receive new_target as this_val, so build the
+     * instance off its .prototype (the fresh object already carries f.prototype)
+     * — `new Element()` then yields an Element instance and instanceof works.
+     * Generic method calls get a non-function receiver and return undefined. */
+    if (JS_IsFunction(ctx, this_val)) {
+        JSValue proto = JS_GetPropertyStr(ctx, this_val, "prototype");
+        JSValue obj = JS_IsObject(proto) ? JS_NewObjectProto(ctx, proto) : JS_NewObject(ctx);
+        JS_FreeValue(ctx, proto);
+        return obj;
+    }
     return JS_UNDEFINED;
 }
+/* whenDefined must return a thenable, so hand back a resolved Promise. */
+static JSValue nb_promise_resolved(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue funcs[2];
+    JSValue p = JS_NewPromiseCapability(ctx, funcs);
+    if (JS_IsException(p)) return p;
+    JS_Call(ctx, funcs[0], JS_UNDEFINED, 1, argv ? argv : &this_val);
+    JS_FreeValue(ctx, funcs[0]);
+    JS_FreeValue(ctx, funcs[1]);
+    return p;
+}
+static JSValue nb_empty_array(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return JS_NewArray(ctx);
+}
+static JSValue nb_empty_object(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return JS_NewObject(ctx);
+}
+/* construct an inert constructor whose .prototype chains off `parent`
+ * (or Object.prototype when parent is not an object). Returns an owned
+ * function object; calling it yields undefined (see class_noop). */
+static JSValue add_class(JSContext *ctx, const char *name, JSValueConst parent) {
+    JSValue f = JS_NewCFunction2(ctx, class_noop, name, 1, JS_CFUNC_constructor, 0);
+    JSValue p = JS_NewObject(ctx);
+    if (JS_IsObject(parent)) JS_SetPrototype(ctx, p, parent);
+    JS_SetPropertyStr(ctx, f, "prototype", p);
+    return f;
+}
+/* register a constructor global only if the name is still free — the prelude
+ * already defines Event (nb_el_click builds clicks through it) and URL-family
+ * globals; clobbering them breaks dispatch and parsing. */
+static void add_global_class(JSContext *ctx, JSValueConst g, const char *name, JSValueConst parent) {
+    JSValue ex = JS_GetPropertyStr(ctx, g, name);
+    int present = !JS_IsUndefined(ex);
+    JS_FreeValue(ctx, ex);
+    if (present) return;
+    JS_SetPropertyStr(ctx, g, name, add_class(ctx, name, parent));
+}
 static void install_dom_classes(JSContext *ctx) {
-    JSValue ETf = JS_NewCFunction(ctx, class_noop, "EventTarget", 1);
-    JSValue Nf = JS_NewCFunction(ctx, class_noop, "Node", 1);
-    JSValue Ef = JS_NewCFunction(ctx, class_noop, "Element", 1);
-    JSValue Hf = JS_NewCFunction(ctx, class_noop, "HTMLElement", 1);
-    JSValue Sf = JS_NewCFunction(ctx, class_noop, "SVGElement", 1);
-    JSValue Tf = JS_NewCFunction(ctx, class_noop, "Text", 1);
-    JSValue Df = JS_NewCFunction(ctx, class_noop, "Document", 1);
-    JSValue Af = JS_NewCFunction(ctx, class_noop, "Animation", 1);
+    JSValue ETf = JS_NewCFunction2(ctx, class_noop, "EventTarget", 1, JS_CFUNC_constructor, 0);
+    JSValue Nf = JS_NewCFunction2(ctx, class_noop, "Node", 1, JS_CFUNC_constructor, 0);
+    JSValue Ef = JS_NewCFunction2(ctx, class_noop, "Element", 1, JS_CFUNC_constructor, 0);
+    JSValue Hf = JS_NewCFunction2(ctx, class_noop, "HTMLElement", 1, JS_CFUNC_constructor, 0);
+    JSValue Sf = JS_NewCFunction2(ctx, class_noop, "SVGElement", 1, JS_CFUNC_constructor, 0);
+    JSValue Tf = JS_NewCFunction2(ctx, class_noop, "Text", 1, JS_CFUNC_constructor, 0);
+    JSValue Df = JS_NewCFunction2(ctx, class_noop, "Document", 1, JS_CFUNC_constructor, 0);
+    JSValue Af = JS_NewCFunction2(ctx, class_noop, "Animation", 1, JS_CFUNC_constructor, 0);
 
     JSValue ETp = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, ETf, "prototype", JS_DupValue(ctx, ETp));
@@ -2273,6 +2342,90 @@ static void install_dom_classes(JSContext *ctx) {
             JS_SetPropertyStr(ctx, doc, "timeline", tl);
         }
         JS_FreeValue(ctx, doc);
+    }
+
+    /* customElements + CSSStyleSheet: real bundles read
+     * window.customElements.polyfillWrapFlushCallback and probe
+     * CSSStyleSheet.prototype at load; both globals must exist even if
+     * inert (feature detection then takes the non-native fallback). */
+    {
+        JSValue ce = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, ce, "define", JS_NewCFunction(ctx, class_noop, "define", 2));
+        JS_SetPropertyStr(ctx, ce, "get", JS_NewCFunction(ctx, class_noop, "get", 1));
+        JS_SetPropertyStr(ctx, ce, "whenDefined", JS_NewCFunction(ctx, nb_promise_resolved, "whenDefined", 1));
+        JS_SetPropertyStr(ctx, ce, "upgrade", JS_NewCFunction(ctx, class_noop, "upgrade", 1));
+        JS_SetPropertyStr(ctx, g, "customElements", ce);
+
+        JSValue CSf = JS_NewCFunction2(ctx, class_noop, "CSSStyleSheet", 1, JS_CFUNC_constructor, 0);
+        JSValue CSp = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, CSp, "replaceSync", JS_NewCFunction(ctx, class_noop, "replaceSync", 1));
+        JS_SetPropertyStr(ctx, CSp, "replace", JS_NewCFunction(ctx, nb_promise_resolved, "replace", 1));
+        JS_SetPropertyStr(ctx, CSp, "insertRule", JS_NewCFunction(ctx, class_noop, "insertRule", 2));
+        JS_SetPropertyStr(ctx, CSp, "deleteRule", JS_NewCFunction(ctx, class_noop, "deleteRule", 1));
+        JS_SetPropertyStr(ctx, CSf, "prototype", CSp);
+        JS_SetPropertyStr(ctx, g, "CSSStyleSheet", CSf);
+    }
+
+    /* standard element/event constructor globals: bundles load-time-read
+     * X.prototype (Object.create / extends) and branch on instanceof for a
+     * long list of names. All inert; prototypes chain onto the hierarchy. */
+    {
+        static const char *html_els[] = {
+            "HTMLTemplateElement", "HTMLUnknownElement", "HTMLScriptElement",
+            "HTMLStyleElement", "HTMLDivElement", "HTMLSpanElement",
+            "HTMLAnchorElement", "HTMLImageElement", "HTMLInputElement",
+            "HTMLButtonElement", "HTMLFormElement", "HTMLLinkElement",
+            "HTMLMetaElement", "HTMLHeadElement", "HTMLBodyElement",
+            "HTMLHtmlElement", "HTMLCanvasElement", "HTMLVideoElement",
+            "HTMLAudioElement", "HTMLMediaElement", "HTMLIFrameElement",
+            "HTMLSelectElement", "HTMLOptionElement", "HTMLTextAreaElement",
+            "HTMLLabelElement", "HTMLUListElement", "HTMLLIElement",
+            "HTMLTableElement", "HTMLParagraphElement", "HTMLHeadingElement",
+            "HTMLTitleElement", "HTMLSlotElement", "HTMLPictureElement",
+            "HTMLSourceElement", "HTMLTrackElement", "HTMLBRElement",
+            "HTMLHRElement", "HTMLPreElement", "HTMLOListElement",
+            "HTMLDListElement", "HTMLMenuElement", "HTMLDialogElement"
+        };
+        for (size_t i = 0; i < sizeof(html_els) / sizeof(html_els[0]); i++)
+            add_global_class(ctx, g, html_els[i], Hp);
+        static const char *svg_els[] = {
+            "SVGSVGElement", "SVGGraphicsElement", "SVGGeometryElement",
+            "SVGPathElement", "SVGUseElement", "SVGImageElement",
+            "SVGTextElement", "SVGGElement", "SVGRectElement",
+            "SVGCircleElement", "SVGDefsElement", "SVGSymbolElement"
+        };
+        for (size_t i = 0; i < sizeof(svg_els) / sizeof(svg_els[0]); i++)
+            add_global_class(ctx, g, svg_els[i], Ep);
+        static const char *node_els[] = {
+            "DocumentFragment", "ShadowRoot", "CharacterData", "Comment",
+            "ProcessingInstruction", "DocumentType", "Attr", "CDATASection"
+        };
+        for (size_t i = 0; i < sizeof(node_els) / sizeof(node_els[0]); i++)
+            add_global_class(ctx, g, node_els[i], Np);
+        static const char *plain[] = {
+            "NodeList", "HTMLCollection", "DOMTokenList", "NamedNodeMap",
+            "MutationObserver", "MutationRecord", "CustomElementRegistry",
+            "DOMParser", "XMLSerializer", "Range", "Selection",
+            "Event", "CustomEvent", "MouseEvent", "KeyboardEvent",
+            "PointerEvent", "TouchEvent", "FocusEvent", "InputEvent",
+            "WheelEvent", "UIEvent", "ProgressEvent", "ErrorEvent",
+            "MessageEvent", "DragEvent", "AnimationEvent", "TransitionEvent"
+        };
+        for (size_t i = 0; i < sizeof(plain) / sizeof(plain[0]); i++)
+            add_global_class(ctx, g, plain[i], JS_UNDEFINED);
+        /* MutationObserver / DOMParser are newable with instance methods */
+        JSValue f = add_class(ctx, "MutationObserver", JS_UNDEFINED);
+        JSValue p = JS_GetPropertyStr(ctx, f, "prototype");
+        JS_SetPropertyStr(ctx, p, "observe", JS_NewCFunction(ctx, class_noop, "observe", 2));
+        JS_SetPropertyStr(ctx, p, "disconnect", JS_NewCFunction(ctx, class_noop, "disconnect", 0));
+        JS_SetPropertyStr(ctx, p, "takeRecords", JS_NewCFunction(ctx, nb_empty_array, "takeRecords", 0));
+        JS_FreeValue(ctx, p);
+        JS_SetPropertyStr(ctx, g, "MutationObserver", f);
+        f = add_class(ctx, "DOMParser", JS_UNDEFINED);
+        p = JS_GetPropertyStr(ctx, f, "prototype");
+        JS_SetPropertyStr(ctx, p, "parseFromString", JS_NewCFunction(ctx, nb_empty_object, "parseFromString", 2));
+        JS_FreeValue(ctx, p);
+        JS_SetPropertyStr(ctx, g, "DOMParser", f);
     }
 
     JS_FreeValue(ctx, g);
