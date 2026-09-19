@@ -690,6 +690,10 @@ static JSValue nb_el_addEventListener(JSContext *ctx, JSValueConst this_val, int
 static JSValue nb_el_removeEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_el_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_el_click(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+/* canvas 2D natives defined with the other DOM natives (getBoundingClientRect
+ * already ships on every wrapper via the existing definition above) */
+static JSValue nb_el_getContext(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_canvas_toDataURL(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_el_onprop_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic);
 static JSValue nb_el_onprop_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic);
 
@@ -761,6 +765,22 @@ static JSValue nb_dom_querySelectorAll(JSContext *ctx, JSValueConst this_val, in
 static JSValue nb_dom_createElement(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     char *owned = NULL;
     const char *tag = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : "";
+    NbNode *n = calloc(1, sizeof(*n));
+    if (!n) { JS_FreeCString(ctx, owned); return JS_NULL; }
+    n->tag = strdup(tag);
+    for (char *t = n->tag; *t; t++) *t = (char)((*t >= 'A' && *t <= 'Z') ? *t + 32 : *t);
+    orphan_add(n);
+    JS_FreeCString(ctx, owned);
+    return push_node(ctx, n);
+}
+static JSValue nb_dom_createElementNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    /* Our element tree is flat (no namespace tracking), so a namespace +
+     * qualified name collapses to the plain tag — same node the browser
+     * would build for e.g. an SVG <svg>. Matches createElement semantics;
+     * real bundles (web-animations-lite calls createElementNS during load)
+     * only need the returned element to exist and accept method calls. */
+    char *owned = NULL;
+    const char *tag = (argc > 1 && JS_IsString(argv[1])) ? (owned = JS_ToCString(ctx, argv[1])) : "";
     NbNode *n = calloc(1, sizeof(*n));
     if (!n) { JS_FreeCString(ctx, owned); return JS_NULL; }
     n->tag = strdup(tag);
@@ -1247,6 +1267,14 @@ static JSValue nb_cl_contains(JSContext *ctx, JSValueConst this_val, int argc, J
 }
 
 #define IDMAPNAME "__nb_idmap"    /* global object: node index -> JS wrapper (identity) */
+/* DOM class prototypes (2026-09-18): real bundles branch on
+ * `instanceof Element` and touch `Element.prototype` at load time. The
+ * per-context global object `__nb_protos` holds the constructor-chain
+ * prototypes for element/text/document wrappers built by install_dom_classes. */
+#define PROTONAME "__nb_protos"
+#define PROTO_EL 0   /* element wrappers ride HTMLElement.prototype */
+#define PROTO_TEXT 1 /* text nodes ride Text.prototype */
+#define PROTO_DOC 2  /* the document object rides Document.prototype */
 
 /* Build a JS element object wrapping a C NbNode. */
 static JSValue push_node(JSContext *ctx, NbNode *n) {
@@ -1268,6 +1296,21 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
     }
     JS_FreeValue(ctx, ex);
     JSValue el = JS_NewObject(ctx);
+    /* DOM class prototype (install_dom_classes) so `el instanceof Element`
+     * and Element.prototype.* resolve like a browser; falls back to a plain
+     * object when the holder is absent (node mode / pre-install). */
+    {
+        JSValue g2 = JS_GetGlobalObject(ctx);
+        JSValue holder = JS_GetPropertyStr(ctx, g2, PROTONAME);
+        JS_FreeValue(ctx, g2);
+        if (JS_IsObject(holder)) {
+            int which = (n->tag && n->tag[0]) ? PROTO_EL : PROTO_TEXT;
+            JSValue p = JS_GetPropertyUint32(ctx, holder, (uint32_t)which);
+            if (JS_IsObject(p)) JS_SetPrototype(ctx, el, p);
+            JS_FreeValue(ctx, p);
+        }
+        JS_FreeValue(ctx, holder);
+    }
     JS_SetPropertyStr(ctx, el, NODEKEY, JS_NewInt32(ctx, nidx));
     {
         const char *label = (n->tag && n->tag[0]) ? n->tag : "#text";
@@ -1287,6 +1330,15 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
     JS_SetPropertyStr(ctx, el, "removeEventListener", JS_NewCFunction(ctx, nb_el_removeEventListener, "removeEventListener", 2));
     JS_SetPropertyStr(ctx, el, "dispatchEvent", JS_NewCFunction(ctx, nb_el_dispatchEvent, "dispatchEvent", 1));
     JS_SetPropertyStr(ctx, el, "click", JS_NewCFunction(ctx, nb_el_click, "click", 0));
+    /* canvas 2D (2026-09-18): real bundles probe <canvas> via
+     * createElementNS('...','canvas') and immediately call getContext('2d')
+     * through a fillStyle/color parse. Minimal context: geometry/measure
+     * stubs that return well-formed objects so parser/feature paths don't
+     * throw; rasterization is out of scope (see NB-JS-ENGINE-ROADMAP). */
+    if (n->tag && strcmp(n->tag, "canvas") == 0) {
+        JS_SetPropertyStr(ctx, el, "getContext", JS_NewCFunction(ctx, nb_el_getContext, "getContext", 1));
+        JS_SetPropertyStr(ctx, el, "toDataURL", JS_NewCFunction(ctx, nb_canvas_toDataURL, "toDataURL", 0));
+    }
 
     /* el.on<type> = cb accessors; native magic carries the ONPROPS index
      * (QuickJS accessors carry no property name — the magic is the index). */
@@ -2144,8 +2196,186 @@ static JSValue nb_ss_key(JSContext *ctx, JSValueConst this_val, int argc, JSValu
 }
 static JSValue nb_ss_length(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { return JS_NewInt32(ctx, g_ss_count); }
 
+/* ---- DOM class hierarchy (2026-09-18) ----
+ * Real bundles feature-detect via `instanceof Element/Node` and read
+ * `Element.prototype` at load. We expose browser constructor globals
+ * and chain their prototypes in the standard order
+ * (EventTarget <- Node <- Element <- HTMLElement / SVGElement),
+ * plus Text, Document and Animation. Wrappers produced by push_node()
+ * ride those prototypes (keyed in the __nb_protos holder), and the
+ * global `document` object rides Document.prototype with a minimal
+ * timeline for web-animations feature code. Constructors are inert
+ * here — illegal-constructor throws are out of scope for this step. */
+static JSValue class_noop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return JS_UNDEFINED;
+}
+static void install_dom_classes(JSContext *ctx) {
+    JSValue ETf = JS_NewCFunction(ctx, class_noop, "EventTarget", 1);
+    JSValue Nf = JS_NewCFunction(ctx, class_noop, "Node", 1);
+    JSValue Ef = JS_NewCFunction(ctx, class_noop, "Element", 1);
+    JSValue Hf = JS_NewCFunction(ctx, class_noop, "HTMLElement", 1);
+    JSValue Sf = JS_NewCFunction(ctx, class_noop, "SVGElement", 1);
+    JSValue Tf = JS_NewCFunction(ctx, class_noop, "Text", 1);
+    JSValue Df = JS_NewCFunction(ctx, class_noop, "Document", 1);
+    JSValue Af = JS_NewCFunction(ctx, class_noop, "Animation", 1);
+
+    JSValue ETp = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, ETf, "prototype", JS_DupValue(ctx, ETp));
+    JSValue Np = JS_NewObject(ctx);
+    JS_SetPrototype(ctx, Np, ETp);
+    JS_SetPropertyStr(ctx, Nf, "prototype", JS_DupValue(ctx, Np));
+    JSValue Ep = JS_NewObject(ctx);
+    JS_SetPrototype(ctx, Ep, Np);
+    JS_SetPropertyStr(ctx, Ef, "prototype", JS_DupValue(ctx, Ep));
+    JSValue Hp = JS_NewObject(ctx);
+    JS_SetPrototype(ctx, Hp, Ep);
+    JS_SetPropertyStr(ctx, Hf, "prototype", JS_DupValue(ctx, Hp));
+    JSValue Sp = JS_NewObject(ctx);
+    JS_SetPrototype(ctx, Sp, Ep);
+    JS_SetPropertyStr(ctx, Sf, "prototype", JS_DupValue(ctx, Sp));
+    JSValue Tp = JS_NewObject(ctx);
+    JS_SetPrototype(ctx, Tp, Np);
+    JS_SetPropertyStr(ctx, Tf, "prototype", JS_DupValue(ctx, Tp));
+    JSValue Dp = JS_NewObject(ctx);
+    JS_SetPrototype(ctx, Dp, Np);
+    JS_SetPropertyStr(ctx, Df, "prototype", JS_DupValue(ctx, Dp));
+    JSValue Ap = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, Af, "prototype", JS_DupValue(ctx, Ap));
+
+    JSValue g = JS_GetGlobalObject(ctx);
+    JSValue holder = JS_NewObject(ctx);
+    JS_SetPropertyUint32(ctx, holder, PROTO_EL, JS_DupValue(ctx, Hp));
+    JS_SetPropertyUint32(ctx, holder, PROTO_TEXT, JS_DupValue(ctx, Tp));
+    JS_SetPropertyUint32(ctx, holder, PROTO_DOC, JS_DupValue(ctx, Dp));
+    JS_SetPropertyStr(ctx, g, PROTONAME, holder);
+
+    JS_SetPropertyStr(ctx, g, "EventTarget", ETf);
+    JS_SetPropertyStr(ctx, g, "Node", Nf);
+    JS_SetPropertyStr(ctx, g, "Element", Ef);
+    JS_SetPropertyStr(ctx, g, "HTMLElement", Hf);
+    JS_SetPropertyStr(ctx, g, "SVGElement", Sf);
+    JS_SetPropertyStr(ctx, g, "Text", Tf);
+    JS_SetPropertyStr(ctx, g, "Document", Df);
+    JS_SetPropertyStr(ctx, g, "Animation", Af);
+
+    /* the document object rides Document.prototype; web-animations reads
+     * document.timeline at load, so give it a minimal one. */
+    {
+        JSValue doc = JS_GetPropertyStr(ctx, g, "document");
+        if (JS_IsObject(doc)) {
+            JS_SetPrototype(ctx, doc, Dp);
+            JSValue tl = JS_NewObject(ctx);
+            JS_SetPropertyStr(ctx, tl, "currentTime", JS_NewFloat64(ctx, 0));
+            JS_SetPropertyStr(ctx, tl, "getAnimations", JS_NewCFunction(ctx, class_noop, "getAnimations", 0));
+            JS_SetPropertyStr(ctx, tl, "play", JS_NewCFunction(ctx, class_noop, "play", 1));
+            JS_SetPropertyStr(ctx, tl, "reverse", JS_NewCFunction(ctx, class_noop, "reverse", 0));
+            JS_SetPropertyStr(ctx, tl, "_play", JS_NewCFunction(ctx, class_noop, "_play", 1));
+            JS_SetPropertyStr(ctx, doc, "timeline", tl);
+        }
+        JS_FreeValue(ctx, doc);
+    }
+
+    JS_FreeValue(ctx, g);
+    /* the constructor function refs were consumed by JS_SetPropertyStr on the
+     * global; the prototype objects are still ours (dups chain/holder). */
+    JS_FreeValue(ctx, Ap);
+    JS_FreeValue(ctx, Dp);
+    JS_FreeValue(ctx, Tp);
+    JS_FreeValue(ctx, Sp);
+    JS_FreeValue(ctx, Hp);
+    JS_FreeValue(ctx, Ep);
+    JS_FreeValue(ctx, Np);
+    JS_FreeValue(ctx, ETp);
+}
+
+/* ---- canvas 2D ---- */
+static JSValue nb_c2d_noop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { return JS_UNDEFINED; }
+static JSValue nb_c2d_getImageData(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    int w = js_arg_index(ctx, argv, argc, 0);
+    int h = js_arg_index(ctx, argv, argc, 1);
+    if (w < 0) w = 0;
+    if (h < 0) h = 0;
+    JSValue img = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, img, "width", JS_NewInt32(ctx, w));
+    JS_SetPropertyStr(ctx, img, "height", JS_NewInt32(ctx, h));
+    JSValue len = JS_NewInt32(ctx, 4 * w * h);
+    JSValue g = JS_GetGlobalObject(ctx);
+    JSValue ctor = JS_GetPropertyStr(ctx, g, "Uint8ClampedArray");
+    JS_FreeValue(ctx, g);
+    JSValue data = (JS_IsObject(ctor) && !JS_IsNull(ctor))
+                       ? JS_CallConstructor(ctx, ctor, 1, &len)
+                       : JS_NewArray(ctx);
+    JS_FreeValue(ctx, ctor);
+    if (JS_IsException(data)) { JS_FreeValue(ctx, JS_GetException(ctx)); data = JS_NewArray(ctx); }
+    JS_SetPropertyStr(ctx, img, "data", data);
+    JS_FreeValue(ctx, len);
+    return img;
+}
+static JSValue nb_c2d_measureText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue m = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, m, "width", JS_NewFloat64(ctx, 0));
+    JS_SetPropertyStr(ctx, m, "actualBoundingBoxAscent", JS_NewFloat64(ctx, 0));
+    JS_SetPropertyStr(ctx, m, "actualBoundingBoxDescent", JS_NewFloat64(ctx, 0));
+    return m;
+}
+static JSValue nb_c2d_gradient(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue g = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, g, "addColorStop", JS_NewCFunction(ctx, nb_c2d_noop, "addColorStop", 2));
+    return g;
+}
+static JSValue nb_c2d_createPattern(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return JS_NewObject(ctx);
+}
+static JSValue nb_c2d_lineDash(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return JS_NewArray(ctx);
+}
+static JSValue nb_el_getContext(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue cached = JS_GetPropertyStr(ctx, this_val, "__nb_ctx");
+    if (JS_IsObject(cached)) return cached;
+    JS_FreeValue(ctx, cached);
+    JSValue c = JS_NewObject(ctx);
+    const char *strprops[] = {
+        "fillStyle", "strokeStyle", "filter", "font", "textAlign", "textBaseline",
+        "lineCap", "lineJoin", "globalCompositeOperation", "shadowColor",
+        "letterSpacing", "wordSpacing", "textTransform", "direction"
+    };
+    for (size_t i = 0; i < sizeof(strprops) / sizeof(strprops[0]); i++)
+        JS_SetPropertyStr(ctx, c, strprops[i], JS_NewString(ctx, ""));
+    const char *numprops[] = {
+        "lineWidth", "globalAlpha", "shadowBlur", "shadowOffsetX", "shadowOffsetY",
+        "miterLimit", "lineDashOffset"
+    };
+    for (size_t i = 0; i < sizeof(numprops) / sizeof(numprops[0]); i++)
+        JS_SetPropertyStr(ctx, c, numprops[i], JS_NewInt32(ctx, 0));
+    const char *noops[] = {
+        "fillRect", "clearRect", "strokeRect", "save", "restore", "translate",
+        "rotate", "scale", "setTransform", "transform", "resetTransform",
+        "drawImage", "putImageData", "beginPath", "closePath", "moveTo",
+        "lineTo", "rect", "arc", "arcTo", "bezierCurveTo", "quadraticCurveTo",
+        "fill", "stroke", "clip", "fillText", "strokeText", "setLineDash",
+        "reset", "isPointInPath", "setTransformMatrix", "drawFocusIfNeeded"
+    };
+    for (size_t i = 0; i < sizeof(noops) / sizeof(noops[0]); i++)
+        JS_SetPropertyStr(ctx, c, noops[i], JS_NewCFunction(ctx, nb_c2d_noop, noops[i], 0));
+    JS_SetPropertyStr(ctx, c, "getImageData", JS_NewCFunction(ctx, nb_c2d_getImageData, "getImageData", 4));
+    JS_SetPropertyStr(ctx, c, "createImageData", JS_NewCFunction(ctx, nb_c2d_getImageData, "createImageData", 2));
+    JS_SetPropertyStr(ctx, c, "getLineDash", JS_NewCFunction(ctx, nb_c2d_lineDash, "getLineDash", 0));
+    JS_SetPropertyStr(ctx, c, "measureText", JS_NewCFunction(ctx, nb_c2d_measureText, "measureText", 1));
+    JS_SetPropertyStr(ctx, c, "createLinearGradient", JS_NewCFunction(ctx, nb_c2d_gradient, "createLinearGradient", 4));
+    JS_SetPropertyStr(ctx, c, "createRadialGradient", JS_NewCFunction(ctx, nb_c2d_gradient, "createRadialGradient", 6));
+    JS_SetPropertyStr(ctx, c, "createPattern", JS_NewCFunction(ctx, nb_c2d_createPattern, "createPattern", 2));
+    JS_SetPropertyStr(ctx, this_val, "__nb_ctx", JS_DupValue(ctx, c));
+    return c;
+}
+static JSValue nb_canvas_toDataURL(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return JS_NewString(ctx, "data:,");
+}
+
+/* ---- DOM class one JS object per C node (see PROTONAME) ---- */
+
 /* Attach the DOM natives to the global `document` object. */
 static void install_dom(JSContext *ctx) {
+    install_dom_classes(ctx);
     JSValue g = JS_GetGlobalObject(ctx);
     JSValue doc = JS_GetPropertyStr(ctx, g, "document");
     if (JS_IsObject(doc)) {
@@ -2154,6 +2384,7 @@ static void install_dom(JSContext *ctx) {
         JS_SetPropertyStr(ctx, doc, "querySelector", JS_NewCFunction(ctx, nb_dom_querySelector, "querySelector", 1));
         JS_SetPropertyStr(ctx, doc, "querySelectorAll", JS_NewCFunction(ctx, nb_dom_querySelectorAll, "querySelectorAll", 1));
         JS_SetPropertyStr(ctx, doc, "createElement", JS_NewCFunction(ctx, nb_dom_createElement, "createElement", 1));
+        JS_SetPropertyStr(ctx, doc, "createElementNS", JS_NewCFunction(ctx, nb_dom_createElementNS, "createElementNS", 2));
         JS_SetPropertyStr(ctx, doc, "createTextNode", JS_NewCFunction(ctx, nb_dom_createTextNode, "createTextNode", 1));
         JS_SetPropertyStr(ctx, doc, "getElementsByClassName", JS_NewCFunction(ctx, nb_dom_getElementsByClassName, "getElementsByClassName", 1));
         {
@@ -2280,6 +2511,19 @@ static const char *js_error_to_cstr(JSContext *ctx, char *buf, size_t bl) {
     }
     snprintf(buf, bl, "%s", s);
     JS_FreeCString(ctx, s);
+    /* diagnosis aid: NB_STACK=1 appends the JS exception stack so a bare
+     * "TypeError: not a function" in a real bundle is traceable. */
+    if (getenv("NB_STACK")) {
+        JSValue st = JS_GetPropertyStr(ctx, e, "stack");
+        if (JS_IsString(st)) {
+            const char *stc = JS_ToCString(ctx, st);
+            if (stc) {
+                snprintf(buf + strlen(buf), bl - strlen(buf), " @ %s", stc);
+                JS_FreeCString(ctx, stc);
+            }
+        }
+        JS_FreeValue(ctx, st);
+    }
     JS_FreeValue(ctx, e);
     return buf;
 }
