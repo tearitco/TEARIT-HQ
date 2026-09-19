@@ -23,6 +23,32 @@ build (fresh build + fresh run, commit `07aa2200`).
 
 ---
 
+## Autonomous loop (row 31 → row 31 done)
+
+The user authorized a self-driven loop (`2026-09-18`): *test, push, move on
+to the next task, repeat until done*. Each task runs the SAME cycle, and no
+step is skipped:
+
+1. **Diagnose** — reproduce with a fresh run; read the real bundle/engine
+   source, don't guess.
+2. **Fix** — smallest change at the right layer (engine > DOM > fixture;
+   no per-site hardcoding).
+3. **Rebuild + fresh evidence** — `make nbjs`, re-run the real bundle to a
+   log under `/tmp/yt/`, quote the actual frames/lines (a clean compile is
+   not evidence).
+4. **`make check`** — must stay **60 PASS / 0 FAIL**.
+5. **Commit** — scoped `git add <path>` on `opencode` only, `fix:`/`docs:`
+   message with the receipt inline; update this Work log.
+6. **Push** — `git push` (user pre-authorized this loop).
+
+**Definition of done (row 31):**
+- **A.** kevlar runs with no logged errors (currently one non-fatal
+  `TypeError: ... 'indexOf' of undefined` to clear). ← next task
+- **B.** the real `home.html` **module graph** is fetched + executed
+  **through the manager** (not `/tmp` files) with the visitor+signature
+  context attached, and renders the page. ← row-31 acceptance
+- **C.** keep `make check` green and this doc current after every block.
+
 ## The browser shape (Chromium parity — the standard, no drift)
 
 - Browsers have **no `LOGIN` op**. Site JS signs `SAPISIDHASH` itself;
