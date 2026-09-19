@@ -527,3 +527,32 @@ the worker (translate via the table above and mirror shape).
 - This RESUME PACK (§8) + translation table (§9) written so a fresh
   instance can restart the graft cold. Next action on resume: commit
   vendored files, then run §8.5 steps 2→8.
+
+### 2026-09-18 — row-31 real-bundle receipts (graft proven on youtube's code)
+- Fetched real youtube bundle files to `/tmp/yt` (`home.html`, `spf.js`,
+  `network.js`, `scheduler.js`, `web-animations.min.js`, `kevlar_base.js`)
+  and ran them under `./nbjs --browser <file> [fetch.dom]`. spf/network/
+  scheduler/web-animations eval clean; `kevlar_base.js` (10,790,631 bytes,
+  one IIFE) is loaded and parsed whole.
+- Commits on `opencode` (scoped, `make check` re-run green each time):
+  - `0c5a24a7` DOM class hierarchy + `createElementNS` + canvas 2D stub +
+    `NB_STACK` traces. Root-cause chain for web-animations: missing
+    `document.createElementNS` → `Element` global undefined
+    (`Element.prototype` read at load) → `<canvas>.getContext` absent.
+  - `fddc91b7` `read_file_big` page-only stream load (64MB ceiling; 512KB
+    `read_file` kept for fs-lite/CJS) + `NB_EVAL_BUDGET` override. Kevlar
+    whole-file load: 8.3s wall, 104MB peak RSS.
+  - `18943d95` constructors (quickjs.c:17642 gives C constructors
+    `new_target` as `this_val`; they must build the instance) +
+    `customElements`/`CSSStyleSheet` + standard element/event globals +
+    `hasAttribute` + prelude `MessageChannel` / `<template>.content`.
+    Note: `add_global_class` deliberately does NOT clobber the prelude's
+    `Event` (nb_el_click builds clicks through it — clobbering broke rung-3
+    events, caught by `make check`).
+  - `b6129605` computed-style `fontSize` (kevlar font metrics).
+- **Where kevlar stops:** line 26741 `querySelector('ytd-app')` with the
+  minimal DOM (fixture-content gap); with a `fetch.dom` built from the real
+  `home.html` it boots its Polymer element system (real Polymer console
+  output) and stops at line 1314's bundle-URL assertion (`Error: Tc`,
+  `_F_jsUrl` mismatch vs the file-loaded script) — app/config-specific, not
+  an engine gap. `make check` remains 60 PASS / 0 FAIL.

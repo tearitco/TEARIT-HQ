@@ -47,6 +47,32 @@ build (fresh build + fresh run, commit `07aa2200`).
 
 ## Work log (most recent first)
 
+### 2026-09-18 row-31 real-bundle receipts (engine runs youtube's code)
+- Engine now executes real youtube bundle files staged in `/tmp/yt`:
+  `spf.js`, `network.js`, `scheduler.js`, `web-animations.min.js` all eval
+  clean under `./nbjs --browser <file> [fetch.dom]`; `kevlar_base.js` (the
+  10,790,631-byte single IIFE) loads whole. Host-surface gaps filled across
+  four commits on `opencode`:
+  - `0c5a24a7` DOM class hierarchy (`Element`/`Node`/`HTMLElement` chains →
+    `instanceof` works), `createElementNS`, canvas 2D `getContext` stub,
+    `NB_STACK=1` exception-stack traces.
+  - `fddc91b7` page-only stream load (`nb_host.h` `read_file_big`, 64MB
+    ceiling) — the 512KB `read_file` guard stays for fs-lite/CJS; plus
+    `NB_EVAL_BUDGET` watchdog override for the 10.8MB parse.
+  - `18943d95` construction fix (quickjs gives C constructors `new_target`),
+    `customElements`/`CSSStyleSheet`, the standard element/event globals,
+    `hasAttribute`, prelude `MessageChannel` + `<template>.content`
+    fragments.
+  - `b6129605` computed-style `fontSize` (kevlar font metrics).
+- **kevlar_base receipt:** with a `fetch.dom` built from the real
+  `home.html`, kevlar boots its Polymer element system (real Polymer
+  console output) and stops at line 1314's bundle-URL assertion
+  (`Error: Tc`, `_F_jsUrl` mismatch vs the file-loaded script) —
+  app/config-specific, not an engine gap. With the minimal DOM it stopped
+  earlier at `querySelector('ytd-app')` (fixture-content gap).
+- `make check` still **60 PASS / 0 FAIL** after every commit. Push through
+  `71de3fd9` (via `git-login-push.sh`); later commits local on `opencode`.
+
 ### 2026-09-18 QuickJS graft DONE (row-31 parser floor removed)
 - Full duk→QuickJS transplant landed in-session per the approved plan:
   `nb_host.h` + `nb_js_worker.c` (105 natives, heap lifecycle, event
