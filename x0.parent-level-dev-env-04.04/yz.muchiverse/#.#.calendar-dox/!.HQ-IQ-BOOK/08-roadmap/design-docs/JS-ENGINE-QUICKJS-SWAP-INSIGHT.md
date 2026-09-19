@@ -570,5 +570,11 @@ the worker (translate via the table above and mirror shape).
 - **Receipt:** `./nbjs --browser kevlar_base.js fetch.home.dom`
   (fetch.dom from the real `home.html`, 419 nodes incl 42 scripts) now runs
   kevlar to completion: Polymer boots, the app renders the youtube footer
-  (15 `LINK|` frames + `© 2026 Google LLC` `TEXT|`), exit 0. One non-fatal
-  logged `TypeError` (`indexOf` of undefined) remains. `make check` 60/0.
+  (15 `LINK|` frames + `© 2026 Google LLC` `TEXT|`), exit 0. `make check`
+  60/0.
+- Follow-up `09fc27b9`: the one logged `TypeError` came from youtube's
+  error reporter (`C2y`) doing `script.src.indexOf("/debug-")` on inline
+  scripts (no src attr → our accessor was undefined). `.src`/`.href` are
+  now strings (`""` when absent) on the tags that own them; kevlar runs with
+  ZERO logged errors. `native_log` also appends a caught `.stack` under
+  `NB_STACK=1`.

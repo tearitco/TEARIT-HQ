@@ -42,8 +42,7 @@ step is skipped:
 6. **Push** — `git push` (user pre-authorized this loop).
 
 **Definition of done (row 31):**
-- **A.** kevlar runs with no logged errors (currently one non-fatal
-  `TypeError: ... 'indexOf' of undefined` to clear). ← next task
+- **A.** kevlar runs with no logged errors. **DONE** (`09fc27b9`).
 - **B.** the real `home.html` **module graph** is fetched + executed
   **through the manager** (not `/tmp` files) with the visitor+signature
   context attached, and renders the page. ← row-31 acceptance
@@ -88,9 +87,14 @@ step is skipped:
   `home.html` now boots its Polymer element system and renders the real
   youtube footer — 15 `LINK|` frames incl `/t/terms`, `/t/privacy`,
   `/new`, plus the `© 2026 Google LLC` `TEXT|` frame; process exits 0.
-- One non-fatal logged error remains (`TypeError: cannot read property
-  'indexOf' of undefined`) — caught by the app, not fatal. `make check`
-  stays **60 PASS / 0 FAIL**.
+- One non-fatal logged error remained until `09fc27b9`: youtube's error
+  reporter (`C2y`) walks `getElementsByTagName("script")` and does
+  `script.src.indexOf("/debug-")`; inline scripts have no `src` attr so our
+  present-only accessor returned `undefined` and threw. Fixed by exposing
+  `.src`/`.href` as strings (`""` when absent) on the tags that own them
+  (script/img/iframe/input/…, a/link/area/base). Also `native_log` now
+  appends a caught Error's `.stack` under `NB_STACK=1`. **kevlar now runs
+  with ZERO logged errors.** `make check` stays **60 PASS / 0 FAIL**.
 
 ### 2026-09-18 row-31 real-bundle receipts (engine runs youtube's code)
 - Engine now executes real youtube bundle files staged in `/tmp/yt`:
