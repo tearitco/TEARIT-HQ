@@ -6,3 +6,19 @@ khtpm_css_parser.c
 khtpm_css_parser.h
 # real runtime scratch (network_browser_manager.c's own fetch target)
 tmp/
+# built worker/test binaries (make nbjs / make w*) - regenerated every build
+nbjs
+wck
+wcl
+wcn
+wcs
+wdt
+wet
+wfp
+wft
+wit
+wlt
+wps
+wpt
+wss
+wst

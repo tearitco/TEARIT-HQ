@@ -12,7 +12,7 @@ extern "C" {
  * Phase 1 step 1 of the NB-JS persistent-worker plan. The manager parses
  * the fetched HTML once into a node tree and serializes it to fetch.dom;
  * the (future) worker reads that file and rebuilds the tree in its own
- * heap for lazy Duktape accessors. This file has zero JS/Duktape deps.
+ * heap for lazy QuickJS accessors. This file has zero JS/engine deps.
  *
  * Intentionally NOT a full HTML5 parser: skips script/style/title/
  * noscript/comments, handles void elements + a few common real-page

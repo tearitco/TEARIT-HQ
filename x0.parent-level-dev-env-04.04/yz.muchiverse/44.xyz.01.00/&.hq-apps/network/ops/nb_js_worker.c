@@ -4,7 +4,7 @@
  * first <script> presence), talking line-RPC over a socketpair dup2'd to
  * stdin/stdout. NB-JS worker plan §1/§2/§4.
  *
- * This is the step-2 SKELETON: it creates one Duktape heap, reuses the
+ * This is the step-2 SKELETON: it creates one QuickJS runtime/context, reuses the
  * shared rung-1/6 host (nb_host.h), reads LOAD-delivered files, runs the
  * page's JS, and reports STATUS ok|err. It writes nothing to the page yet
  * (the DOM-tree accessors + RENDER merge land in steps 3-4). It stays
@@ -153,7 +153,7 @@ static void split_lines(char *fields[8]) {
 
 /* ==================== rung 2 DOM (worker side) ====================
  * The manager serializes the DOM to fetch.dom (nb_dom.h/.c); the worker
- * rebuilds the NbNode tree here and exposes it to JS via native Duktape
+ * rebuilds the NbNode tree here and exposes it to JS via native QuickJS
  * accessors (plan §7 step 3, roadmap §2 minimum API). The JS side only
  * holds opaque pointer handles; the tree is C-side. No shared memory. */
 
@@ -162,7 +162,7 @@ static NbNode *g_orphans = NULL;   /* detached createElement() nodes still to fr
 #define NODEKEY "_nbnode"
 
 /* JS handles are a plain numeric index into g_nodeindex (index -> NbNode*),
- * which is more robust than round-tripping a Duktape pointer object and
+ * which is more robust than round-tripping a JSValue pointer object and
  * survives across multiple lazily-created wrappers for the same node. */
 static NbNode **g_nodeindex = NULL;
 static int g_nodecount = 0, g_nodecap = 0;
@@ -1422,7 +1422,7 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
  * document.cookie getter/setter as C natives (the prelude in nb_host.h leaves
  * a configurable stub; install_dom redefines it with these). The jar lives on
  * disk at $NB_COOKIES_FILE (fallback $HOME/.config/nbjs/nb_cookies.txt), so
- * cookies survive across LOADs — each LOAD runs in a fresh Duktape heap, so
+ * cookies survive across LOADs — each LOAD runs in a fresh engine instance, so
  * the file is the only persistence. Jar line format (TAB-separated legend):
  *   host<TAB>path<TAB>name<TAB>value<TAB>expires_epoch<TAB>secure
  * host "*" = set from a URI with no host. expires 0 = session cookie.
@@ -1918,7 +1918,7 @@ static JSValue nb_dom_cookie_set(JSContext *ctx, JSValueConst this_val, int argc
  * BOTH globals with real C-backed objects here. localStorage persists across LOADs via
  * a jar on disk at $NB_LOCALSTORAGE_FILE (fallback ~/.config/nbjs/nb_localstorage.txt);
  * sessionStorage lives in process memory and is cleared at the top of every run_page,
- * so each LOAD gets a fresh session (a fresh Duktape heap could not carry JS state
+ * so each LOAD gets a fresh session (a fresh runtime/context could not carry JS state
  * anyway). Jar line format: <pct-encoded key>\t<pct-encoded value>\n — keys/values are
  * percent-encoded (RFC 3986 unreserved pass through, everything else %XX) so tabs,
  * newlines and control chars are safe inside a line. Reads tolerate damage. */
@@ -3069,8 +3069,8 @@ static int run_event_loop(JSContext *ctx) {
  * script does the crypto). But the page needs a SHA-1 primitive to do so.
  * This is the engine-generic one: `__nb_sha1(utf8)->base64(digest)`, exposed
  * to any page. Not youtube-specific; the page JS handles the SAPISIDHASH
- * composition purely in JS (btoa exists too, but Duktape strings are CESU-8,
- * so the digest is pre-encoded ASCII base64 here — verified against openssl
+ * composition purely in JS. Raw digest bytes can't round-trip through a JS
+ * string, so the digest is pre-encoded ASCII base64 here — verified against openssl
  * in worker_sapisid_test).  Shared impl in nb_sha1.h so fixture servers
  * recompute the SAME digest when verifying a received signature. */
 #include "nb_sha1.h"
@@ -3134,7 +3134,7 @@ static void install_events_timers(JSContext *ctx) {
 }
 
 /* boot hygiene (2026-09-09): install_dom / install_events_timers ran under a
- * Duktape protected call so a throw was reported to stderr as WERR| and the
+ * protected call so a throw was reported to stderr as WERR| and the
  * page still loaded. QuickJS property definitions don't throw on non-writable
  * targets (JS_DefinePropertyGetSet just returns FALSE), so the direct calls
  * are enough; keep the name for call-site clarity. */
@@ -3145,7 +3145,7 @@ static void boot_install_safe(JSContext *ctx) {
 
 /* plan step 5: CPU budget for script eval. If page.js burns through
  * EVAL_BUDGET_SEC of CPU (while(true) {} and friends) SIGALRM fires while
- * Duktape is running; the deadly default _exit kills the worker mid-eval, the
+ * the engine is running; the deadly default _exit kills the worker mid-eval, the
  * manager sees the socket close and respawns on the next LOAD. */
 static void sigalrm(int sig) { _exit(128 + sig); }
 /* Evaluate src with a SIGALRM CPU budget. Returns 0 on success; on error
@@ -3218,7 +3218,7 @@ static void dom_teardown(void) {
 }
 
 /* devtools console EVAL: tear down everything a previous LOAD left live
- * (resident Duktape heap + its DOM tree). run_page() keeps those alive on
+ * (resident QuickJS runtime + its DOM tree). run_page() keeps those alive on
  * the success path so an eval:<js> snippet can run against the page; this
  * helper is the disciplined cleanup for the next LOAD, errors and QUIT. */
 static void live_teardown(void) {
@@ -3855,8 +3855,8 @@ static int browser_cli_main(int argc, char **argv) {
     return g_cli_status_ok ? 0 : 1;
 }
 
-/* CLI-2 CommonJS loader + CLI-4 source-level ESM transpiler. Pure ES5.1
- * JS so it works on Duktape 2.7.0 (no arrows/let): relative/absolute
+/* CLI-2 CommonJS loader + CLI-4 source-level ESM transpiler. Written in
+ * conservative ES5.1 (no arrows/let): relative/absolute
  * resolution, module/exports wrapper, JSON require, cycles, and a line-
  * based import/export → CJS rewrite. Exposes `require`/`__dirname`/`__filename`
  * plus `__nb_esm_prepare(src)` for the C entry hook and REPL. */
@@ -3889,7 +3889,7 @@ static const char g_cjs_prelude[] =
 " * Heuristic: a line starting (after ws) with `import` or `export` triggers\n"
 " * transpile. Handles: default/named/namespace/side-effect imports,\n"
 " * function/variable/const/default/named/re-export/export-star-from.\n"
-" * Output uses `var` (Duktape-safe). Does NOT support multi-line imports,\n"
+" * Output uses `var` (conservative). Does NOT support multi-line imports,\n"
 " * decorators, type annotations, or dynamic `import()`. */\n"
 "function esmLooks(s){\n"
 "  return /(^|\\n)\\s*(import|export)\\b/.test(s);\n"

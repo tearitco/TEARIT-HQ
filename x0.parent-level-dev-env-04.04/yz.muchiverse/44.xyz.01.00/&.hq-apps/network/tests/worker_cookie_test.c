@@ -6,7 +6,7 @@
  *        "gone" via max-age=0 and expire "old" in the past; assert read-back.
  *   2. page_get.js   href http://example.com/deep/other.html   (fresh heap!)
  *        read the JAR from disk — asserts persistence across LOADs (each LOAD
- *        runs a new Duktape heap, so the file is the only persistence).
+ *        runs a fresh engine instance, so the file is the only persistence).
  *   3. page_scope.js href http://other.test/x
  *        assert other.test does NOT see example.com cookies (host scoping).
  *

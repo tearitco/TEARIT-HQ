@@ -27,7 +27,7 @@ extern "C" {
  * or appears later; !important bumps a rule above non-important ones.
  * Inline `style="..."` (passed separately) always wins. There is no
  * inheritance of any property. Units: px and bare numbers; %/em/rem are
- * ignored. Sizes resolve to 0 when absent. This module has zero JS/Duktape
+ * ignored. Sizes resolve to 0 when absent. This module has zero JS/engine
  * deps so the headless suite can link it directly.
  */
 

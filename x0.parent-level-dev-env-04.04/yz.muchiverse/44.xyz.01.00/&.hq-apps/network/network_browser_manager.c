@@ -727,7 +727,7 @@ static void acquire_house_lock(const char *lock_path) {
  * javascript MIME). Everything else — module, application/json,
  * application/ld+json, text/template, and any other custom type — is
  * skipped; the DOM parser already drops those nodes, so running them would
- * just emit WERR noise (and module syntax Duktape can't parse anyway). */
+ * just emit WERR noise (and module syntax the engine can't parse anyway). */
 static int script_type_skip(const char *tag, const char *tag_end) {
     const char *t = strcasestr_local(tag, "type=");
     if (!t || t >= tag_end) return 0;
