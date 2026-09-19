@@ -556,3 +556,19 @@ the worker (translate via the table above and mirror shape).
   output) and stops at line 1314's bundle-URL assertion (`Error: Tc`,
   `_F_jsUrl` mismatch vs the file-loaded script) — app/config-specific, not
   an engine gap. `make check` remains 60 PASS / 0 FAIL.
+
+### 2026-09-18 — kevlar boots + renders (the `_F_jsUrl` stop cleared)
+- Diagnosed the line-1314 byter (`Nkz`, closure module loader): it computes
+  the bundle URL as `D = O.src ? O.src : O.getAttribute("href")` where
+  `O = getElementById("base-js")`, then requires `Vsi(D)` (URL must match
+  `/(_/js/|_/ss/)…/k=/`). `window._F_jsUrl` (`_.$c._F_jsUrl`) is unset in
+  the fetched page, so the `base-js` script element is the source of truth —
+  and the HTML parser was dropping it (is_skip covered `script`+`head`).
+- Fix `0063797e`: `nb_dom.c` keeps raw-text elements (script/style/title/
+  noscript) as DOM nodes and no longer skips `<head>`; `push_node` exposes
+  `.src`/`.href` from the raw attribute (closure reads these directly).
+- **Receipt:** `./nbjs --browser kevlar_base.js fetch.home.dom`
+  (fetch.dom from the real `home.html`, 419 nodes incl 42 scripts) now runs
+  kevlar to completion: Polymer boots, the app renders the youtube footer
+  (15 `LINK|` frames + `© 2026 Google LLC` `TEXT|`), exit 0. One non-fatal
+  logged `TypeError` (`indexOf` of undefined) remains. `make check` 60/0.

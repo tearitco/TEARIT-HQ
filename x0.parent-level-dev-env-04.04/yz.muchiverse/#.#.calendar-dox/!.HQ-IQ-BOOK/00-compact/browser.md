@@ -47,6 +47,25 @@ build (fresh build + fresh run, commit `07aa2200`).
 
 ## Work log (most recent first)
 
+### 2026-09-18 row-31 kevlar BOOTS + renders the youtube footer
+- The `_F_jsUrl` stop is cleared (`0063797e`). Root cause: kevlar's
+  closure module loader (`Nkz`) resolves its own bundle URL from
+  `getElementById("base-js").src` when `window._F_jsUrl` is unset, but the
+  HTML parser dropped every `<script>`/`<link>` (and `<head>` whole), so
+  the lookup returned null and it threw `Error: Tc` (line 1314).
+  - `nb_dom.c`: `is_skip` → `is_rawtext` (script/style/title/noscript keep
+    the element + id/src/href attrs, body never parsed as markup); `<head>`
+    no longer skipped.
+  - `push_node`: expose `.src`/`.href` off the raw attribute (closure reads
+    these directly, not via `getAttribute`).
+- **Receipt:** `kevlar_base.js` over a `fetch.dom` built from the real
+  `home.html` now boots its Polymer element system and renders the real
+  youtube footer — 15 `LINK|` frames incl `/t/terms`, `/t/privacy`,
+  `/new`, plus the `© 2026 Google LLC` `TEXT|` frame; process exits 0.
+- One non-fatal logged error remains (`TypeError: cannot read property
+  'indexOf' of undefined`) — caught by the app, not fatal. `make check`
+  stays **60 PASS / 0 FAIL**.
+
 ### 2026-09-18 row-31 real-bundle receipts (engine runs youtube's code)
 - Engine now executes real youtube bundle files staged in `/tmp/yt`:
   `spf.js`, `network.js`, `scheduler.js`, `web-animations.min.js` all eval
