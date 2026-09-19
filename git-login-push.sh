@@ -1,13 +1,35 @@
 #!/usr/bin/env bash
-# git-login-push.sh — one-time GitHub SSH login + push for this repo.
+# git-login-push.sh — one-time GitHub SSH login + push for TEARIT-HQ.
 #
 # Run it. The FIRST time it prints a public key: add it to GitHub
 # (Settings -> SSH and GPG keys -> New SSH key -> paste, any title).
 # Then re-run it — it switches origin to SSH (local .git/config only,
 # nothing committed) and pushes the current branch.
+#
+# Usage: git-login-push.sh [REPO_DIR]
+#   REPO_DIR defaults to the git worktree next to this script
+#   (tearit-hq when the script lives in the 0.opencode-desk dir).
 set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+REPO_DIR=""
+if [ -n "${1:-}" ]; then
+  REPO_DIR="$1"
+elif git rev-parse --git-dir >/dev/null 2>&1; then
+  REPO_DIR="$PWD"
+else
+  for d in "$SCRIPT_DIR/tearit-hq" "$SCRIPT_DIR"; do
+    if [ -d "$d/.git" ] && git -C "$d" rev-parse --git-dir >/dev/null 2>&1; then
+      REPO_DIR="$d"; break
+    fi
+  done
+fi
+if [ -z "$REPO_DIR" ]; then
+  echo "Cannot find the git worktree. Pass it as the first argument, e.g.:"
+  echo "  $0 /path/to/TEARIT-HQ"
+  exit 1
+fi
 cd "$REPO_DIR"
 
 KEY="$HOME/.ssh/id_ed25519"
