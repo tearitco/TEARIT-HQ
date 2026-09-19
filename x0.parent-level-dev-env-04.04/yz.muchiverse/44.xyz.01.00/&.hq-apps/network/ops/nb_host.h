@@ -1,4 +1,4 @@
-/* nb_host.h — shared NB-JS Duktape host, used by BOTH the one-shot
+/* nb_host.h — shared NB-JS QuickJS host, used by BOTH the one-shot
  * eval (nb_js_eval.c, kept as headless-test + rollback) and the resident
  * worker (nb_js_worker.c). NB-JS worker plan §2A: "install_host (reuse
  * the rung-1/6 host from nb_js_eval.c, shared via a small nb_host.c or
@@ -8,7 +8,7 @@
  * own private copy — no ABI/link coupling, no shared-mutable state. A .c
  * that includes this just calls install_host(ctx) then eval's the page.
  *
- * The page script sees one consistent rung-1/6 host: a real Duktape
+ * The page script sees one consistent rung-1/6 host: a real QuickJS
  * global object exposed as window/self/globalThis, plus document /
  * location / navigator / screen / localStorage / console, and a rung-6
  * pure-JS prelude wiring URL, URLSearchParams, history, matchMedia,
@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include "../js/duktape.h"
+#include "../js/quickjs.h"
 
 #ifndef NB_HOST_DEFINE_GLOBALS
 #define NB_HOST_DEFINE_GLOBALS() \
@@ -55,65 +55,91 @@ static void pipe_one(const char *key, const char *val) {
     fprintf(g_out, "%s|%s\n", key, buf);
 }
 
-static duk_ret_t native_log(duk_context *ctx) {
-    duk_idx_t n = duk_get_top(ctx);
+static JSValue native_log(JSContext *ctx, JSValueConst this_val,
+                          int argc, JSValueConst *argv) {
+    (void)this_val;
     char line[LINE_CAP];
     size_t o = 0;
     line[0] = 0;
-    for (duk_idx_t i = 0; i < n; i++) {
-        const char *s = duk_safe_to_string(ctx, i);
+    for (int i = 0; i < argc; i++) {
+        const char *s = JS_ToCString(ctx, argv[i]);
+        if (!s) {
+            JSValue ex = JS_GetException(ctx);
+            JS_FreeValue(ctx, ex);
+            if (o + 9 < sizeof(line)) { memcpy(line + o, "undefined", 9); o += 9; line[o] = 0; }
+            continue;
+        }
         if (i > 0 && o + 1 < sizeof(line)) line[o++] = ' ';
-        if (!s) continue;
         size_t sl = strlen(s);
         if (o + sl >= sizeof(line)) sl = sizeof(line) - 1 - o;
         memcpy(line + o, s, sl);
         o += sl;
         line[o] = 0;
+        JS_FreeCString(ctx, s);
     }
     if (g_cli_log) fprintf(g_out, "%s\n", line);
     else pipe_one("LOG", line);
-    return 0;
+    return JS_UNDEFINED;
 }
 
-static duk_ret_t native_write(duk_context *ctx) {
-    duk_idx_t n = duk_get_top(ctx);
-    for (duk_idx_t i = 0; i < n; i++)
-        pipe_one("TEXT", duk_safe_to_string(ctx, i));
-    return 0;
+static JSValue native_write(JSContext *ctx, JSValueConst this_val,
+                            int argc, JSValueConst *argv) {
+    (void)this_val;
+    for (int i = 0; i < argc; i++) {
+        const char *s = JS_ToCString(ctx, argv[i]);
+        if (!s) {
+            JSValue ex = JS_GetException(ctx);
+            JS_FreeValue(ctx, ex);
+            continue;
+        }
+        pipe_one("TEXT", s);
+        JS_FreeCString(ctx, s);
+    }
+    return JS_UNDEFINED;
 }
 
-static duk_ret_t native_get_title(duk_context *ctx) {
-    duk_push_string(ctx, g_title);
-    return 1;
+static JSValue native_get_title(JSContext *ctx, JSValueConst this_val,
+                                int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    return JS_NewString(ctx, g_title);
 }
 
-static duk_ret_t native_set_title(duk_context *ctx) {
-    const char *s = duk_safe_to_string(ctx, 0);
+static JSValue native_set_title(JSContext *ctx, JSValueConst this_val,
+                                int argc, JSValueConst *argv) {
+    (void)this_val;
+    const char *s = NULL;
+    if (argc > 0) {
+        s = JS_ToCString(ctx, argv[0]);
+        if (!s) { JSValue ex = JS_GetException(ctx); JS_FreeValue(ctx, ex); }
+    }
     snprintf(g_title, sizeof(g_title), "%s", s ? s : "");
+    if (s) JS_FreeCString(ctx, s);
     g_title_set = 1;
-    return 0;
+    return JS_UNDEFINED;
 }
 
-static duk_ret_t native_get_href(duk_context *ctx) {
-    duk_push_string(ctx, g_href);
-    return 1;
+static JSValue native_get_href(JSContext *ctx, JSValueConst this_val,
+                               int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    return JS_NewString(ctx, g_href);
 }
 
-static duk_ret_t native_null(duk_context *ctx) {
-    (void)ctx;
-    duk_push_null(ctx);
-    return 1;
+static JSValue native_null(JSContext *ctx, JSValueConst this_val,
+                           int argc, JSValueConst *argv) {
+    (void)ctx; (void)this_val; (void)argc; (void)argv;
+    return JS_NULL;
 }
 
-static duk_ret_t native_undefined(duk_context *ctx) {
-    (void)ctx;
-    duk_push_undefined(ctx);
-    return 1;
+static JSValue native_undefined(JSContext *ctx, JSValueConst this_val,
+                                int argc, JSValueConst *argv) {
+    (void)ctx; (void)this_val; (void)argc; (void)argv;
+    return JS_UNDEFINED;
 }
 
-static duk_ret_t native_noop(duk_context *ctx) {
-    (void)ctx;
-    return 0;
+static JSValue native_noop(JSContext *ctx, JSValueConst this_val,
+                           int argc, JSValueConst *argv) {
+    (void)ctx; (void)this_val; (void)argc; (void)argv;
+    return JS_UNDEFINED;
 }
 
 /* ---- rung-6 slice 2: real navigation request plumbing. The page's
@@ -173,64 +199,93 @@ static void nav_request(const char *kind, const char *param, int resolve) {
     g_nav_count = 1;
 }
 
-static duk_ret_t nb_nav_go(duk_context *ctx) {
-    nav_request("GO", duk_get_string(ctx, 0), 1);
-    duk_push_undefined(ctx); return 1;
+static JSValue nb_nav_go(JSContext *ctx, JSValueConst this_val,
+                         int argc, JSValueConst *argv) {
+    (void)this_val;
+    const char *s = NULL;
+    if (argc > 0) {
+        s = JS_ToCString(ctx, argv[0]);
+        if (!s) { JSValue ex = JS_GetException(ctx); JS_FreeValue(ctx, ex); }
+    }
+    nav_request("GO", s, 1);
+    if (s) JS_FreeCString(ctx, s);
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_nav_replace(duk_context *ctx) {
-    nav_request("REPLACE", duk_get_string(ctx, 0), 1);
-    duk_push_undefined(ctx); return 1;
+static JSValue nb_nav_replace(JSContext *ctx, JSValueConst this_val,
+                              int argc, JSValueConst *argv) {
+    (void)this_val;
+    const char *s = NULL;
+    if (argc > 0) {
+        s = JS_ToCString(ctx, argv[0]);
+        if (!s) { JSValue ex = JS_GetException(ctx); JS_FreeValue(ctx, ex); }
+    }
+    nav_request("REPLACE", s, 1);
+    if (s) JS_FreeCString(ctx, s);
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_nav_reload(duk_context *ctx) {
+static JSValue nb_nav_reload(JSContext *ctx, JSValueConst this_val,
+                             int argc, JSValueConst *argv) {
+    (void)ctx; (void)this_val; (void)argc; (void)argv;
     nav_request("RELOAD", NULL, 0);
-    duk_push_undefined(ctx); return 1;
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_nav_back(duk_context *ctx) {
+static JSValue nb_nav_back(JSContext *ctx, JSValueConst this_val,
+                           int argc, JSValueConst *argv) {
+    (void)ctx; (void)this_val; (void)argc; (void)argv;
     nav_request("BACK", NULL, 0);
-    duk_push_undefined(ctx); return 1;
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_nav_forward(duk_context *ctx) {
+static JSValue nb_nav_forward(JSContext *ctx, JSValueConst this_val,
+                              int argc, JSValueConst *argv) {
+    (void)ctx; (void)this_val; (void)argc; (void)argv;
     nav_request("FORWARD", NULL, 0);
-    duk_push_undefined(ctx); return 1;
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_nav_go_n(duk_context *ctx) {
-    double n = duk_is_number(ctx, 0) ? duk_get_number(ctx, 0) : 0;
+static JSValue nb_nav_go_n(JSContext *ctx, JSValueConst this_val,
+                           int argc, JSValueConst *argv) {
+    (void)ctx; (void)this_val;
+    double n = 0;
+    if (argc > 0 && JS_IsNumber(argv[0])) {
+        double d;
+        if (JS_ToFloat64(ctx, &d, argv[0]) == 0) n = d;
+    }
     int ni = (n < 0) ? (int)(-n) : (int)n;
     if (ni > 8) ni = 8;
     if (n < 0)      { nav_request("BACK", NULL, 0);    g_nav_count = ni; }
     else if (n > 0) { nav_request("FORWARD", NULL, 0); g_nav_count = ni; }
     else            { nav_request("RELOAD", NULL, 0); }
-    duk_push_undefined(ctx); return 1;
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_nav_addr(duk_context *ctx) {
+static JSValue nb_nav_addr(JSContext *ctx, JSValueConst this_val,
+                           int argc, JSValueConst *argv) {
+    (void)this_val;
     /* pushState/replaceState: address bar update without a fetch. */
-    nav_request("ADDR", duk_get_string(ctx, 0), 1);
-    duk_push_undefined(ctx); return 1;
+    const char *s = NULL;
+    if (argc > 0) {
+        s = JS_ToCString(ctx, argv[0]);
+        if (!s) { JSValue ex = JS_GetException(ctx); JS_FreeValue(ctx, ex); }
+    }
+    nav_request("ADDR", s, 1);
+    if (s) JS_FreeCString(ctx, s);
+    return JS_UNDEFINED;
 }
 
 /* rung 7 slice 1: default getComputedStyle — a minimal object usable by
  * the one-shot eval/standalone hosts that have no DOM/style engine. The
  * resident worker overwrites __nb_ges with its rich CSS resolver after
  * install_host. */
-static duk_ret_t nb_ges(duk_context *ctx) {
-    (void)ctx;
-    duk_push_object(ctx);
-    duk_push_string(ctx, "");  duk_put_prop_string(ctx, -2, "display");
-    duk_push_string(ctx, "");  duk_put_prop_string(ctx, -2, "visibility");
-    duk_push_string(ctx, "1"); duk_put_prop_string(ctx, -2, "opacity");
-    duk_push_number(ctx, 0);   duk_put_prop_string(ctx, -2, "width");
-    duk_push_number(ctx, 0);   duk_put_prop_string(ctx, -2, "height");
-    duk_push_c_function(ctx, native_null, 1);
-    duk_put_prop_string(ctx, -2, "getPropertyValue");
-    return 1;
-}
-
-static void fatal_handler(void *udata, const char *msg) {
-    (void)udata;
-    if (g_out) pipe_one("ERROR", msg ? msg : "fatal");
-    if (g_out) fprintf(g_out, "OK|0\n");
-    if (g_out) fclose(g_out);
-    abort();
+static JSValue nb_ges(JSContext *ctx, JSValueConst this_val,
+                      int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    JSValue obj = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, obj, "display", JS_NewString(ctx, ""));
+    JS_SetPropertyStr(ctx, obj, "visibility", JS_NewString(ctx, ""));
+    JS_SetPropertyStr(ctx, obj, "opacity", JS_NewString(ctx, "1"));
+    JS_SetPropertyStr(ctx, obj, "width", JS_NewInt32(ctx, 0));
+    JS_SetPropertyStr(ctx, obj, "height", JS_NewInt32(ctx, 0));
+    JS_SetPropertyStr(ctx, obj, "getPropertyValue",
+                      JS_NewCFunction(ctx, native_null, "getPropertyValue", 1));
+    return obj;
 }
 
 static int read_file(const char *path, char **out, size_t *out_n) {
@@ -250,9 +305,9 @@ static int read_file(const char *path, char **out, size_t *out_n) {
     return 1;
 }
 
-/* Push each component of an href as a plain string property on the object
- * at the top of the stack. Rung 1: parsing only, no navigation. */
-static void install_location_parts(duk_context *ctx, const char *href) {
+/* Push each component of an href as a plain string property on the given
+ * object. Rung 1: parsing only, no navigation. */
+static void install_location_parts(JSContext *ctx, JSValue obj, const char *href) {
     char protocol[32] = "";
     char host[1024]   = "";   /* hostname[:port] */
     char hostname[1024] = "";
@@ -321,20 +376,22 @@ static void install_location_parts(duk_context *ctx, const char *href) {
     if (protocol[0] && host[0])
         snprintf(origin, sizeof(origin), "%s//%s", protocol, host);
 
-    duk_push_string(ctx, protocol); duk_put_prop_string(ctx, -2, "protocol");
-    duk_push_string(ctx, host);     duk_put_prop_string(ctx, -2, "host");
-    duk_push_string(ctx, hostname); duk_put_prop_string(ctx, -2, "hostname");
-    duk_push_string(ctx, port);     duk_put_prop_string(ctx, -2, "port");
-    duk_push_string(ctx, pathname); duk_put_prop_string(ctx, -2, "pathname");
-    duk_push_string(ctx, search);   duk_put_prop_string(ctx, -2, "search");
-    duk_push_string(ctx, hash);     duk_put_prop_string(ctx, -2, "hash");
-    duk_push_string(ctx, origin);   duk_put_prop_string(ctx, -2, "origin");
+    JS_SetPropertyStr(ctx, obj, "protocol", JS_NewString(ctx, protocol));
+    JS_SetPropertyStr(ctx, obj, "host",     JS_NewString(ctx, host));
+    JS_SetPropertyStr(ctx, obj, "hostname", JS_NewString(ctx, hostname));
+    JS_SetPropertyStr(ctx, obj, "port",     JS_NewString(ctx, port));
+    JS_SetPropertyStr(ctx, obj, "pathname", JS_NewString(ctx, pathname));
+    JS_SetPropertyStr(ctx, obj, "search",   JS_NewString(ctx, search));
+    JS_SetPropertyStr(ctx, obj, "hash",     JS_NewString(ctx, hash));
+    JS_SetPropertyStr(ctx, obj, "origin",   JS_NewString(ctx, origin));
 }
 
 /* Rung 4 + rung 6 prelude: URL/URLSearchParams/history/matchMedia/
  * getComputedStyle/MutationObserver/atob/btoa/timers/document.cookie, plus
- * the rung-4 Promise polyfill + fetch()/XMLHttpRequest over the worker's
- * nbFetchSync native. Evaluated once just before the page script. See
+ * fetch()/XMLHttpRequest over the worker's nbFetchSync native. The rung-4
+ * Promise polyfill was DELETED in the QuickJS graft — the engine ships a
+ * native Promise + queueMicrotask (microtasks drained via
+ * JS_ExecutePendingJob). Evaluated once just before the page script. See
  * nb_js_eval.c's comments for provenance. */
 static const char g_js_prelude[] =
 "/* NB-JS host prelude: URL + URLSearchParams polyfill (ES5.1) */\n"
@@ -481,46 +538,8 @@ static const char g_js_prelude[] =
 "try{ Object.defineProperty(document,'cookie',{ get:function(){return '';}, set:function(v){}, configurable:true }); }catch(e){}\n"
 "})();\n"
 "\n"
-"/* ---- rung 4: Promise polyfill + fetch() + XMLHttpRequest over nbFetchSync ---- */\n"
+"/* ---- rung 4: fetch() + XMLHttpRequest over nbFetchSync ---- */\n"
 "(function(){\n"
-"  function enq(fn){ if(typeof queueMicrotask==='function'){ queueMicrotask(fn); return; }\n"
-"    if(typeof setTimeout==='function'){ setTimeout(fn,0); return; } try{ fn(); }catch(e){} }\n"
-"  function Promise(executor){\n"
-"    var self=this; self._s=0; self._v=undefined; self._h=[];\n"
-"    function settle(st,v){ if(self._s!==0) return; self._s=st; self._v=v;\n"
-"      var h=self._h; self._h=null; for(var i=0;i<h.length;i++){ (function(f){ enq(f); })(h[i]); } }\n"
-"    function resolve(v){ var called=false;\n"
-"      if(v && (typeof v==='object'||typeof v==='function') && typeof v.then==='function'){\n"
-"        try{ v.then(function(r){ if(!called){ called=true; resolve(r); } },\n"
-"                 function(e){ if(!called){ called=true; reject(e); } }); return; }\n"
-"        catch(e){ if(!called){ called=true; reject(e); } return; } }\n"
-"      settle(1,v); }\n"
-"    function reject(e){ settle(2,e); }\n"
-"    try{ executor(resolve,reject); }catch(e){ reject(e); }\n"
-"  }\n"
-"  Promise.prototype.then=function(onF,onR){\n"
-"    var self=this; var child=new Promise(function(res,rej){\n"
-"      function propagate(){\n"
-"        try{\n"
-"          var fn=(self._s===1)?onF:onR;\n"
-"          if(typeof fn!=='function'){ if(self._s===1) res(self._v); else rej(self._v); return; }\n"
-"          var r=fn(self._v);\n"
-"          if(r && (typeof r==='object'||typeof r==='function') && typeof r.then==='function') r.then(res,rej);\n"
-"          else res(r);\n"
-"        }catch(e){ rej(e); }\n"
-"      }\n"
-"      if(self._s===0) self._h.push(propagate); else enq(propagate);\n"
-"    });\n"
-"    return child;\n"
-"  };\n"
-"  Promise.prototype['catch']=function(f){ return this.then(null,f); };\n"
-"  Promise.prototype['finally']=function(f){ return this.then(function(v){ return Promise.resolve(f?f():undefined).then(function(){ return v; }); },\n"
-"    function(e){ return Promise.resolve(f?f():undefined).then(function(){ throw e; }); }); };\n"
-"  Promise.resolve=function(v){ return new Promise(function(res){ res(v); }); };\n"
-"  Promise.reject=function(e){ return new Promise(function(res,rej){ rej(e); }); };\n"
-"  Promise.all=function(ps){ ps=ps||[]; return new Promise(function(res,rej){\n"
-"    var out=[], left=ps.length; if(!left){ res(out); return; }\n"
-"    for(var i=0;i<ps.length;i++){ (function(i){ Promise.resolve(ps[i]).then(function(v){ out[i]=v; if(--left===0) res(out); }, rej); })(i); } }); };\n"
 "  function resolveUrl(base,url){\n"
 "    url=String(url||''); base=String(base||'');\n"
 "    if(/^[a-zA-Z][a-zA-Z0-9+.-]*:/i.test(url)) return url;\n"
@@ -603,7 +622,6 @@ static const char g_js_prelude[] =
 "  Object.defineProperty(XMLHttpRequest.prototype,'withCredentials',{ get:function(){ return false; }, set:function(){}, configurable:true });\n"
 "  Object.defineProperty(XMLHttpRequest.prototype,'timeout',{ get:function(){ return 0; }, set:function(){}, configurable:true });\n"
 "  try{\n"
-"    Object.defineProperty(window,'Promise',{ value:Promise, configurable:true, writable:true });\n"
 "    Object.defineProperty(window,'fetch',{ value:fetch, configurable:true, writable:true });\n"
 "    Object.defineProperty(window,'XMLHttpRequest',{ value:XMLHttpRequest, configurable:true, writable:true });\n"
 "    Object.defineProperty(window,'Headers',{ value:function(){ var h={};\n"
@@ -628,129 +646,129 @@ static const char g_js_prelude[] =
 "  Object.defineProperty(window,'Event',{ value:Event, configurable:true, writable:true });\n"
 "})();\n";
 
-static void install_host(duk_context *ctx) {
-    duk_push_global_object(ctx);
-    duk_idx_t g = duk_get_top(ctx) - 1;   /* absolute index of the real JS global */
+static void install_host(JSContext *ctx) {
+    JSValue g = JS_GetGlobalObject(ctx);
 
-    duk_push_c_function(ctx, native_log, DUK_VARARGS);
-    duk_put_prop_string(ctx, -2, "print");
+    JS_SetPropertyStr(ctx, g, "print",
+                      JS_NewCFunction(ctx, native_log, "print", 0));
 
-    duk_push_object(ctx);
-    duk_push_c_function(ctx, native_log, DUK_VARARGS);
-    duk_dup(ctx, -1);
-    duk_put_prop_string(ctx, -3, "log");
-    duk_dup(ctx, -1);
-    duk_put_prop_string(ctx, -3, "info");
-    duk_dup(ctx, -1);
-    duk_put_prop_string(ctx, -3, "warn");
-    duk_put_prop_string(ctx, -2, "error");
-    duk_put_prop_string(ctx, -2, "console");
+    /* console */
+    JSValue cons = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, cons, "log",
+                      JS_NewCFunction(ctx, native_log, "log", 0));
+    JS_SetPropertyStr(ctx, cons, "info",
+                      JS_NewCFunction(ctx, native_log, "info", 0));
+    JS_SetPropertyStr(ctx, cons, "warn",
+                      JS_NewCFunction(ctx, native_log, "warn", 0));
+    JS_SetPropertyStr(ctx, cons, "error",
+                      JS_NewCFunction(ctx, native_log, "error", 0));
+    JS_SetPropertyStr(ctx, g, "console", cons);
 
-    duk_push_object(ctx);
-    duk_push_string(ctx, "title");
-    duk_push_c_function(ctx, native_get_title, 0);
-    duk_push_c_function(ctx, native_set_title, 1);
-    duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
-    duk_push_c_function(ctx, native_write, DUK_VARARGS);
-    duk_dup(ctx, -1);
-    duk_put_prop_string(ctx, -3, "write");
-    duk_put_prop_string(ctx, -2, "writeln");
-    duk_push_c_function(ctx, native_null, 1);
-    duk_dup(ctx, -1);
-    duk_put_prop_string(ctx, -3, "getElementById");
-    duk_put_prop_string(ctx, -2, "querySelector");
-    duk_put_prop_string(ctx, -2, "document");
+    /* document */
+    JSValue doc = JS_NewObject(ctx);
+    JSAtom a_title = JS_NewAtom(ctx, "title");
+    JS_DefinePropertyGetSet(ctx, doc, a_title,
+                            JS_NewCFunction(ctx, native_get_title, "get title", 0),
+                            JS_NewCFunction(ctx, native_set_title, "set title", 1),
+                            JS_PROP_HAS_GET | JS_PROP_HAS_SET |
+                            JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+    JS_FreeAtom(ctx, a_title);
+    JS_SetPropertyStr(ctx, doc, "write",
+                      JS_NewCFunction(ctx, native_write, "write", 0));
+    JS_SetPropertyStr(ctx, doc, "writeln",
+                      JS_NewCFunction(ctx, native_write, "writeln", 0));
+    JS_SetPropertyStr(ctx, doc, "getElementById",
+                      JS_NewCFunction(ctx, native_null, "getElementById", 1));
+    JS_SetPropertyStr(ctx, doc, "querySelector",
+                      JS_NewCFunction(ctx, native_null, "querySelector", 1));
+    JS_SetPropertyStr(ctx, g, "document", doc);
 
-    duk_push_object(ctx);
-    duk_push_string(ctx, "href");
-    duk_push_c_function(ctx, native_get_href, 0);
-    duk_push_c_function(ctx, nb_nav_go, 1);
-    duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
-    install_location_parts(ctx, g_href);
+    /* location */
+    JSValue loc = JS_NewObject(ctx);
+    JSAtom a_href = JS_NewAtom(ctx, "href");
+    JS_DefinePropertyGetSet(ctx, loc, a_href,
+                            JS_NewCFunction(ctx, native_get_href, "get href", 0),
+                            JS_NewCFunction(ctx, nb_nav_go, "set href", 1),
+                            JS_PROP_HAS_GET | JS_PROP_HAS_SET |
+                            JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+    JS_FreeAtom(ctx, a_href);
+    install_location_parts(ctx, loc, g_href);
     /* rung 6 slice 2: real navigation. assign/href= push a history entry
      * (manager do_fetch record_history=1); replace swaps the current page
      * without a new history entry; reload re-fetches the same URL. */
-    duk_push_c_function(ctx, nb_nav_go, 1);
-    duk_put_prop_string(ctx, -2, "assign");
-    duk_push_c_function(ctx, nb_nav_replace, 1);
-    duk_put_prop_string(ctx, -2, "replace");
-    duk_push_c_function(ctx, nb_nav_reload, 0);
-    duk_put_prop_string(ctx, -2, "reload");
-    duk_put_prop_string(ctx, -2, "location");
+    JS_SetPropertyStr(ctx, loc, "assign",
+                      JS_NewCFunction(ctx, nb_nav_go, "assign", 1));
+    JS_SetPropertyStr(ctx, loc, "replace",
+                      JS_NewCFunction(ctx, nb_nav_replace, "replace", 1));
+    JS_SetPropertyStr(ctx, loc, "reload",
+                      JS_NewCFunction(ctx, nb_nav_reload, "reload", 0));
+    JS_SetPropertyStr(ctx, g, "location", loc);
 
     /* navigator — plain data props only, no functions (rung 1) */
-    duk_push_object(ctx);
-    duk_push_string(ctx, "Mozilla/5.0 (X11; Linux x86_64) nb_js_eval");
-    duk_put_prop_string(ctx, -2, "userAgent");
-    duk_push_string(ctx, "en");
-    duk_put_prop_string(ctx, -2, "language");
-    duk_push_array(ctx);
-    duk_push_string(ctx, "en");
-    duk_put_prop_index(ctx, -2, 0);
-    duk_put_prop_string(ctx, -2, "languages");
-    duk_push_string(ctx, "Linux x86_64");
-    duk_put_prop_string(ctx, -2, "platform");
-    duk_push_boolean(ctx, 1);
-    duk_put_prop_string(ctx, -2, "onLine");
-    duk_push_boolean(ctx, 0);
-    duk_put_prop_string(ctx, -2, "cookieEnabled");
-    duk_push_null(ctx);
-    duk_put_prop_string(ctx, -2, "doNotTrack");
-    duk_put_prop_string(ctx, -2, "navigator");
+    JSValue nav = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, nav, "userAgent",
+                      JS_NewString(ctx, "Mozilla/5.0 (X11; Linux x86_64) nb_js_eval"));
+    JS_SetPropertyStr(ctx, nav, "language", JS_NewString(ctx, "en"));
+    JSValue langs = JS_NewArray(ctx);
+    JS_SetPropertyUint32(ctx, langs, 0, JS_NewString(ctx, "en"));
+    JS_SetPropertyStr(ctx, nav, "languages", langs);
+    JS_SetPropertyStr(ctx, nav, "platform", JS_NewString(ctx, "Linux x86_64"));
+    JS_SetPropertyStr(ctx, nav, "onLine", JS_NewBool(ctx, 1));
+    JS_SetPropertyStr(ctx, nav, "cookieEnabled", JS_NewBool(ctx, 0));
+    JS_SetPropertyStr(ctx, nav, "doNotTrack", JS_NULL);
+    JS_SetPropertyStr(ctx, g, "navigator", nav);
 
     /* screen */
-    duk_push_object(ctx);
-    duk_push_int(ctx, 1920); duk_put_prop_string(ctx, -2, "width");
-    duk_push_int(ctx, 1080); duk_put_prop_string(ctx, -2, "height");
-    duk_push_int(ctx, 1920); duk_put_prop_string(ctx, -2, "availWidth");
-    duk_push_int(ctx, 1080); duk_put_prop_string(ctx, -2, "availHeight");
-    duk_push_int(ctx, 24);   duk_put_prop_string(ctx, -2, "colorDepth");
-    duk_push_int(ctx, 24);   duk_put_prop_string(ctx, -2, "pixelDepth");
-    duk_put_prop_string(ctx, -2, "screen");
+    JSValue scr = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, scr, "width",       JS_NewInt32(ctx, 1920));
+    JS_SetPropertyStr(ctx, scr, "height",      JS_NewInt32(ctx, 1080));
+    JS_SetPropertyStr(ctx, scr, "availWidth",  JS_NewInt32(ctx, 1920));
+    JS_SetPropertyStr(ctx, scr, "availHeight", JS_NewInt32(ctx, 1080));
+    JS_SetPropertyStr(ctx, scr, "colorDepth",  JS_NewInt32(ctx, 24));
+    JS_SetPropertyStr(ctx, scr, "pixelDepth",  JS_NewInt32(ctx, 24));
+    JS_SetPropertyStr(ctx, g, "screen", scr);
 
-    duk_push_object(ctx);
-    duk_push_c_function(ctx, native_undefined, 1);
-    duk_put_prop_string(ctx, -2, "getItem");
-    duk_push_c_function(ctx, native_noop, DUK_VARARGS);
-    duk_dup(ctx, -1);
-    duk_put_prop_string(ctx, -3, "setItem");
-    duk_put_prop_string(ctx, -2, "removeItem");
-    duk_dup(ctx, -1);
-    duk_put_prop_string(ctx, -3, "sessionStorage");
-    duk_put_prop_string(ctx, -2, "localStorage");
+    /* localStorage / sessionStorage share one inert storage object */
+    JSValue stor = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, stor, "getItem",
+                      JS_NewCFunction(ctx, native_undefined, "getItem", 1));
+    JS_SetPropertyStr(ctx, stor, "setItem",
+                      JS_NewCFunction(ctx, native_noop, "setItem", 0));
+    JS_SetPropertyStr(ctx, stor, "removeItem",
+                      JS_NewCFunction(ctx, native_noop, "removeItem", 0));
+    JS_SetPropertyStr(ctx, g, "sessionStorage", JS_DupValue(ctx, stor));
+    JS_SetPropertyStr(ctx, g, "localStorage", stor);
 
-    /* window / self / globalThis ARE the real Duktape global object. */
-    duk_dup(ctx, g);
-    duk_put_prop_string(ctx, g, "window");
-    duk_dup(ctx, g);
-    duk_put_prop_string(ctx, g, "self");
-    duk_dup(ctx, g);
-    duk_put_prop_string(ctx, g, "globalThis");
+    /* window / self / globalThis ARE the real QuickJS global object. */
+    JS_SetPropertyStr(ctx, g, "window", JS_DupValue(ctx, g));
+    JS_SetPropertyStr(ctx, g, "self", JS_DupValue(ctx, g));
+    JS_SetPropertyStr(ctx, g, "globalThis", JS_DupValue(ctx, g));
 
     /* rung-6 slice 2: history prelude hooks. The prelude's history object
      * calls these to hand back/forward/go/ADDR to the worker (which turns
      * them into a NAV frame when a manager is listening). */
-    duk_push_c_function(ctx, nb_nav_back, 0);    duk_put_prop_string(ctx, g, "__nb_nav_back");
-    duk_push_c_function(ctx, nb_nav_forward, 0); duk_put_prop_string(ctx, g, "__nb_nav_forward");
-    duk_push_c_function(ctx, nb_nav_go_n, 1);    duk_put_prop_string(ctx, g, "__nb_nav_go");
-    duk_push_c_function(ctx, nb_nav_addr, 1);    duk_put_prop_string(ctx, g, "__nb_nav_addr");
+    JS_SetPropertyStr(ctx, g, "__nb_nav_back",
+                      JS_NewCFunction(ctx, nb_nav_back, "__nb_nav_back", 0));
+    JS_SetPropertyStr(ctx, g, "__nb_nav_forward",
+                      JS_NewCFunction(ctx, nb_nav_forward, "__nb_nav_forward", 0));
+    JS_SetPropertyStr(ctx, g, "__nb_nav_go",
+                      JS_NewCFunction(ctx, nb_nav_go_n, "__nb_nav_go", 1));
+    JS_SetPropertyStr(ctx, g, "__nb_nav_addr",
+                      JS_NewCFunction(ctx, nb_nav_addr, "__nb_nav_addr", 1));
 
     /* rung 7 slice 1: window.getComputedStyle -> native bridge. The
      * minimal object here is the eval/standalone default; the resident
      * worker re-registers __nb_ges with its rich CSS-backed resolver
      * after install_host (the prelude resolves __nb_ges at call time). */
-    duk_push_c_function(ctx, nb_ges, 1);
-    duk_put_prop_string(ctx, g, "__nb_ges");
+    JS_SetPropertyStr(ctx, g, "__nb_ges",
+                      JS_NewCFunction(ctx, nb_ges, "__nb_ges", 1));
 
     /* cheap always-safe window scalars */
-    duk_push_string(ctx, "");
-    duk_put_prop_string(ctx, g, "name");
-    duk_push_boolean(ctx, 0);
-    duk_put_prop_string(ctx, g, "closed");
-    duk_push_int(ctx, 0);
-    duk_put_prop_string(ctx, g, "length");
+    JS_SetPropertyStr(ctx, g, "name", JS_NewString(ctx, ""));
+    JS_SetPropertyStr(ctx, g, "closed", JS_NewBool(ctx, 0));
+    JS_SetPropertyStr(ctx, g, "length", JS_NewInt32(ctx, 0));
 
-    duk_pop(ctx);
+    JS_FreeValue(ctx, g);
 }
 
 #endif /* NB_HOST_H */

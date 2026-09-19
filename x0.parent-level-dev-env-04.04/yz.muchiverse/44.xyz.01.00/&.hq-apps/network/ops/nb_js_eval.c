@@ -1,6 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 /* nb_js_eval.c — one-job JavaScript op for network-browser-hq.
- * Reads one .js file, runs it in Duktape, writes a pipe-table of effects.
+ * Reads one .js file, runs it in QuickJS, writes a pipe-table of effects.
  * The manager is the only writer of page state; this process only writes
  * its own out file, then exits.
  *
@@ -51,9 +51,18 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    duk_context *ctx = duk_create_heap(NULL, NULL, NULL, NULL, fatal_handler);
+    JSRuntime *rt = JS_NewRuntime();
+    if (!rt) {
+        pipe_one("ERROR", "JS_NewRuntime failed");
+        fprintf(g_out, "OK|0\n");
+        fclose(g_out);
+        free(src);
+        return 1;
+    }
+    JSContext *ctx = JS_NewContext(rt);
     if (!ctx) {
-        pipe_one("ERROR", "duk_create_heap failed");
+        JS_FreeRuntime(rt);
+        pipe_one("ERROR", "JS_NewContext failed");
         fprintf(g_out, "OK|0\n");
         fclose(g_out);
         free(src);
@@ -63,25 +72,38 @@ int main(int argc, char **argv) {
 
     /* rung 6 prelude: URL + URLSearchParams polyfill. If it fails the
      * page script still runs (URL just stays undefined). */
-    if (duk_peval_string(ctx, g_js_prelude) != 0) {
-        /* polyfill hygiene: swallow its own error, page continues */
-        duk_pop(ctx);
+    {
+        JSValue r = JS_Eval(ctx, g_js_prelude, strlen(g_js_prelude),
+                            "<prelude>", JS_EVAL_TYPE_GLOBAL);
+        if (JS_IsException(r)) {
+            JSValue e = JS_GetException(ctx);
+            JS_FreeValue(ctx, e);
+        }
+        JS_FreeValue(ctx, r);
     }
-    duk_pop(ctx);
 
-    duk_push_lstring(ctx, src, src_n);
+    JSValue s = JS_Eval(ctx, src, src_n, "<script>", JS_EVAL_TYPE_GLOBAL);
     free(src);
-    if (duk_peval(ctx) != 0) {
-        pipe_one("ERROR", duk_safe_to_string(ctx, -1));
+    if (JS_IsException(s)) {
+        char tmp[512];
+        JSValue e = JS_GetException(ctx);
+        const char *m = JS_ToCString(ctx, e);
+        if (m) { snprintf(tmp, sizeof(tmp), "%s", m); JS_FreeCString(ctx, m); }
+        else snprintf(tmp, sizeof(tmp), "script error");
+        JS_FreeValue(ctx, e);
+        JS_FreeValue(ctx, s);
+        pipe_one("ERROR", tmp);
         fprintf(g_out, "OK|0\n");
-        duk_destroy_heap(ctx);
+        JS_FreeContext(ctx);
+        JS_FreeRuntime(rt);
         fclose(g_out);
         return 1;
     }
-    duk_pop(ctx);
+    JS_FreeValue(ctx, s);
     if (g_title_set) pipe_one("TITLE", g_title);
     fprintf(g_out, "OK|1\n");
-    duk_destroy_heap(ctx);
+    JS_FreeContext(ctx);
+    JS_FreeRuntime(rt);
     fclose(g_out);
     return 0;
 }
