@@ -88,10 +88,15 @@ static int is_void(const char *tag) {
         if (!strcmp(tag, VOID_TAGS[i])) return 1;
     return 0;
 }
-static int is_skip(const char *tag) {
+/* Raw-text elements: keep the ELEMENT (its id/src/href attributes are part
+ * of the DOM and real scripts query them) but never parse its contents as
+ * markup. `<head>` is deliberately NOT skipped: its children
+ * (<script id="base-js" src=…>, <link href=…>) must be reachable through
+ * getElementById — the closure module loader resolves the bundle URL from
+ * exactly that script element (window._F_jsUrl is unset in our fixtures). */
+static int is_rawtext(const char *tag) {
     return !strcmp(tag,"script") || !strcmp(tag,"style")
-        || !strcmp(tag,"title") || !strcmp(tag,"noscript")
-        || !strcmp(tag,"head");
+        || !strcmp(tag,"title") || !strcmp(tag,"noscript");
 }
 
 typedef struct {
@@ -203,7 +208,6 @@ static void parse_open(Parser *ps) {
     ps->p = gt<ps->end?gt+1:ps->end;
 
     if (closing) { stack_pop_to(ps, tag); return; }
-    if (is_skip(tag)) { ps->p = skip_to_close(ps, tag); return; }
     NbNode *n = node_new(ps, tag);
     if (!n) return;
     if (idbuf[0]) n->id = str_dup(idbuf);
@@ -211,6 +215,7 @@ static void parse_open(Parser *ps) {
     if (rn) n->attrs = str_dup_n(raw, rn);
     NbNode *parent = ps->depth>0 ? ps->stack[ps->depth-1] : ps->root;
     append_child(parent, n);
+    if (is_rawtext(tag)) { ps->p = skip_to_close(ps, tag); return; }
     if (!is_void(tag)) {
         if (ps->depth < (int)(sizeof(ps->stack)/sizeof(ps->stack[0]))-1)
             ps->stack[ps->depth++] = n;
