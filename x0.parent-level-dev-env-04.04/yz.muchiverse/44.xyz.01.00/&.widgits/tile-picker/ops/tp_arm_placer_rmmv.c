@@ -137,6 +137,7 @@ typedef struct {
     int pill_x, pill_y, pill_w, pill_h; /* status pill rect (screen px) */
     GjState gj;
     int kb_active, ptr_x, ptr_y;
+    long long last_key_ms;              /* when the last grid key was handled */
     char err[64];
     long long err_until;
     int use_zones, hover_pid;
@@ -415,6 +416,7 @@ static int ov_key(Ov *o, GjKey k, char ch, int *cx, int *cy) {
     char pending[GJ_BUF_CAP];
     GjAction a;
     PDBG("ov_key key=%d ch=%c kb_active=%d jump='%s'", (int)k, ch ? ch : '-', o->kb_active, o->gj.jump);
+    o->last_key_ms = now_ms();
     if (!o->kb_active) {
         Window rr, cc; int rx, ry, wx, wy; unsigned int m;
         o->kb_active = 1;
@@ -428,6 +430,7 @@ static int ov_key(Ov *o, GjKey k, char ch, int *cx, int *cy) {
         ov_redraw(o);
         if (k == GJ_KEY_ENTER) return 0;
     }
+    o->last_key_ms = now_ms();
     snprintf(pending, sizeof(pending), "%s", o->gj.jump);
     a = gj_step(&o->gj, k, ch);
     switch (a) {
@@ -704,9 +707,13 @@ int main(int argc, char **argv) {
             XNextEvent(dpy, &xev);
             if (xev.type == MotionNotify) {
                 int mx = xev.xmotion.x_root, my = xev.xmotion.y_root, moved = 1;
+                PDBG("Motion %d,%d ptr=%d,%d kb=%d", mx, my, ov.ptr_x, ov.ptr_y, ov.kb_active);
                 if (ov.kb_active) {
-                    /* the pointer moving away hands control back to the mouse */
-                    if (abs(mx - ov.ptr_x) + abs(my - ov.ptr_y) < 6) moved = 0;
+                    /* the pointer moving away hands control back to the mouse. A motion event
+                     * within 300 ms of a key is ignored: it is a late event from before the
+                     * keyboard took over (seen once as an intermittent mode drop), and a real
+                     * mouse move keeps sending events, so it still takes effect a moment later. */
+                    if (abs(mx - ov.ptr_x) + abs(my - ov.ptr_y) < 6 || now_ms() - ov.last_key_ms < 300) moved = 0;
                     else { ov.kb_active = 0; ov.gj.jump[0] = '\0'; ov.err[0] = '\0'; ov_update_hover(&ov); ov_redraw(&ov); }
                 }
                 if (moved && use_zones) {

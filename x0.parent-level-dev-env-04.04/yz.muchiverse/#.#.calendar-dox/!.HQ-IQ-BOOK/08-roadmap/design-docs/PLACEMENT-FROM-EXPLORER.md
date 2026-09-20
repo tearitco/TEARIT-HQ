@@ -34,3 +34,8 @@ dir into a sibling. Only `mv`; add verbs beside `CLIIO_MV:` in the manager.
 **Not built:** a typed Cli-io text field for a human in the explorer (the CTXMENU
 `Cli-io` row stays out of `file-explorer/meta.pdl` until that exists); pal-side
 Cli-io (`cliio.txt` commit on Escape) is not wired to `kh_cliio_exec`.
+
+## Labelled Place grid + typed cell (2026-09-20)
+
+Place (right-click -> Place, and the palettes RPG-Maker placer) now shows an A-Z / 1-N labelled grid on the real desk cell; type `c7` (or `7c`) + Enter to highlight, Enter again to place at that cell's centre. Same placement result as a mouse click there (reference px). Refuses cells under the picker / non-existent refs with a red cue; Esc cancels; a click still places. Full behaviour, env flags and limits: `GRID-ELEMENT-DESIGN.md` section "IMPLEMENTED in the Place overlay". Known follow-up: `fe_place_on_desk.sh` snaps to 64 ref px, not the 80px cell.
+

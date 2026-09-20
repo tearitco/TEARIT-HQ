@@ -58,6 +58,7 @@ Replaces: per-key file RMW for UI state, marker-file polling for change detectio
 
 1. **Intra-binary splits — leave for now:** `khtpm_core_render.c` includes `khtpm_draw_core.c`, `khtpm_render_core.c`, `khtpm_reparse_diff.c`, `khtpm_grid_jump.c` (one program cut into files, no cross-binary sharing). Only revisit if the engine itself is split across processes (render server over the DB).
 2. **Cross-binary `.c` shares — remove first:** `khtpm_ui_common.c` (renderer + `khtpm_entity.c`), `khtpm_ui_scale.c` (ui_common, both placers, `khtpm_show_choices.c`).
+   - **Allowed-list addition (2026-09-20):** `khtpm_grid_jump.c` is now also text-included by `tp_arm_placer_rmmv.c` (the Place overlay's typed cell jump, same behaviour as csv-hq). Documented TRANSITIONAL, user-approved; it is a pure state machine with no globals, so replacing it later means a small shared op or published cell-jump service. No other includes were added.
 3. **Shared headers — remove next:** `kh_proc_registry.h` (4 users), `khtpm_css_parser.h` (5), `khtpm_taskbar_manager.h`, `khtpm_strip_codes.h`, `khtpm_plat.h`, `khtpm_core.h`.
 
 | Include | Becomes |

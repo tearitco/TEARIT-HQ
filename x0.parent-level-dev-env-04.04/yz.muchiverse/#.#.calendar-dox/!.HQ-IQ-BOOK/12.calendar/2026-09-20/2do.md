@@ -23,7 +23,7 @@
 4. Audit `khtpm_entity.c` for other helpers that use the always-NULL `dpy` global (pitfall #24 rule 1).
 
 ### Inventory / File Explorer (user's current thread)
-5. **Place-grid labels**: A–Z columns + 1–N rows on the Place overlay, type a ref (`c7`/`7c`) + Enter to highlight, second Enter places — use `_shared-lib/khtpm_grid_jump.c` (see `GRID-ELEMENT-DESIGN.md` "Reuse by overlay pickers").
+5. ~~Place-grid labels~~ **BUILT 2026-09-20** in `tp_arm_placer_rmmv.c` (A-Z/1-N labels on the real desk cell, type `c7`/`7c` + Enter to highlight, Enter again to place, arrows, refusal cues; verified in private Xephyr at 4 resolutions, typed == click coordinates). **Needs the user's real keyboard** (Wayland key delivery) - see `GRID-ELEMENT-DESIGN.md` "IMPLEMENTED in the Place overlay". Follow-ups: `fe_place_on_desk.sh` still snaps to 64 ref px (cell is 80); `tp_arm_placer.c` (emoji brush) not done.
 6. **Cli-io on all entity context menus** (experimental; more verbs than `mv`; re-add the Cli-io row to File Explorer's `meta.pdl` once a human-typable field exists).
 7. Place from the **desk** into an Inventory; drag between explorer windows; right-click methods for a pal with no `sprite.csv`.
 8. Robot/puzzle-piece entities carrying events, dropped into inventories, methods run from the Inventory right-click; slow migrate of `inventory.txt`/`qolq`; File METHOD stub + 📁 icon mode.
