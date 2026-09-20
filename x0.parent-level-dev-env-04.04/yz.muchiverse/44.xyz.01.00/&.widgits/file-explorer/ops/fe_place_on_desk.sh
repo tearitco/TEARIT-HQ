@@ -21,6 +21,10 @@ export FE_PLACE_CLICK="$CLICK"
 export FE_PLACE_ZONES=1
 FE_PLACE_SKIP_DIR="$(dirname "$SRC")"; export FE_PLACE_SKIP_DIR
 FE_PLACE_NAME="$(basename "$SRC")"; export FE_PLACE_NAME
+# Hand X focus back to this explorer window before the overlay grabs the keyboard, so Esc
+# reaches the placer (the right-click popup that had focus is gone by now).
+FP=$(cat "$PKG/module_parent.pid" 2>/dev/null)
+case "$FP" in ""|*[!0-9]*) ;; *) export FE_PLACE_FOCUS_PID="$FP" ;; esac
 ARM="$HOUSE/&.widgits/tile-picker/ops/+x/tp_arm_placer_rmmv.+x"
 [ -x "$ARM" ] || exit 1
 "$ARM" "$PKG" "$HOUSE" || exit 1

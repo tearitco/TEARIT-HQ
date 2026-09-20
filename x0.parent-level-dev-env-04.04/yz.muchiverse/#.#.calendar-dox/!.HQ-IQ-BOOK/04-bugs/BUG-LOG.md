@@ -26,6 +26,31 @@ note under it — don't silently edit it away.*
   common false "still broken" report in this house). Real blocker for
   WSR-CIV Step B (file:desk creation) until resolved.
 
+- **File Explorer Place overlay ignored Esc — FIXED 2026-09-20, NOT yet
+  verified on the real GNOME/Wayland desktop.** Palettes' RPG-Maker placer
+  cancels on Esc; the same `tp_arm_placer_rmmv.+x` launched from File
+  Explorer's right-click Place did not. Difference found: palettes passes
+  the picker window's rect, leaving that X window uncovered and focused, so
+  `XGrabKeyboard` works. Explorer passes no rect, so the overlay covers
+  everything and the right-click popup that had focus is already gone; on
+  Mutter/XWayland no X client is focused and Esc never reaches X. (Not
+  reproducible in a nested Xephyr, where the grab always succeeds, and a
+  headless GNOME Shell's XWayland would not answer connections in this
+  sandbox; so the focus explanation is inferred, not observed.)
+  Fix (`tp_arm_placer_rmmv.c`, `fe_place_on_desk.sh`): (1) `fe_place_on_desk.sh`
+  passes `FE_PLACE_FOCUS_PID` (explorer's renderer pid from
+  `module_parent.pid`); the placer activates that window via EWMH
+  `_NET_ACTIVE_WINDOW` before grabbing, the way palettes' focused picker
+  does implicitly; (2) the keyboard grab retries up to 1s instead of being
+  ignored; (3) Esc is also polled with `XQueryKeymap` (an Esc already held
+  at start is ignored), so it cancels even when another client holds the
+  grab. Verified in Xephyr: Esc cancels; Esc cancels with another client
+  holding `XGrabKeyboard` (the old logic fails this); desk click still
+  places; a click inside a published drop zone still moves the item; hover
+  file is cleared on every exit; palettes-style launch (rect args, no
+  explorer env) still cancels. If Esc still fails on the real desktop, the
+  next step is a focus-independent cancel (e.g. right-click on the overlay).
+
 - **DSR toy did nothing when clicked in the toys menu — FOUND+FIXED
   2026-09-19.** Root cause: the toys menu launches every toy with
   `sh <toy>/button.sh run` (`livedesk:open-toy:` in

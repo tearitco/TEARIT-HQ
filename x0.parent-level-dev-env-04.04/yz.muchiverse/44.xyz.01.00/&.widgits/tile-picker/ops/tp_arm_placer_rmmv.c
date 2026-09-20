@@ -52,6 +52,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/select.h>
+#include <sys/time.h>
 #include "self_exe.h" /* macOS leg: portable /proc/self/exe replacement */
 
 #define PATH_BUF 4352
@@ -130,6 +132,45 @@ static void pz_write_hover(const char *root, int pid, const char *name) {
     fprintf(f, "pid=%d\nname=%s\n", pid, name ? name : "");
     fclose(f);
     rename(tmp, path);
+}
+
+/* Give X input focus to the top-level window owned by `pid` (EWMH
+ * _NET_ACTIVE_WINDOW, source=2 "pager" so focus-stealing prevention lets
+ * it through). Palettes leaves its own picker window uncovered and
+ * focused, so XGrabKeyboard below works there. A launcher whose window
+ * lost focus (e.g. File Explorer: its right-click popup just closed)
+ * passes FE_PLACE_FOCUS_PID so the grab has a focused X client and Esc
+ * reaches us under Mutter/XWayland. */
+static void focus_window_of_pid(Display *dpy, Window root, long pid) {
+    Atom a_list = XInternAtom(dpy, "_NET_CLIENT_LIST", True);
+    Atom a_pid = XInternAtom(dpy, "_NET_WM_PID", True);
+    Atom a_act = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", True);
+    if (!a_list || !a_pid || !a_act) return;
+    Atom type; int fmt; unsigned long n, after; unsigned char *data = NULL;
+    if (XGetWindowProperty(dpy, root, a_list, 0, 4096, False, XA_WINDOW,
+                           &type, &fmt, &n, &after, &data) != Success || !data) return;
+    Window *wins = (Window *)data, target = 0;
+    for (unsigned long i = 0; i < n && !target; i++) {
+        unsigned char *pd = NULL; unsigned long pn, pa; Atom pt; int pf;
+        if (XGetWindowProperty(dpy, wins[i], a_pid, 0, 1, False, XA_CARDINAL,
+                               &pt, &pf, &pn, &pa, &pd) == Success && pd) {
+            if (pn >= 1 && *(unsigned long *)pd == (unsigned long)pid) target = wins[i];
+            XFree(pd);
+        }
+    }
+    XFree(data);
+    if (!target) return;
+    XEvent ev;
+    memset(&ev, 0, sizeof(ev));
+    ev.xclient.type = ClientMessage;
+    ev.xclient.window = target;
+    ev.xclient.message_type = a_act;
+    ev.xclient.format = 32;
+    ev.xclient.data.l[0] = 2;
+    ev.xclient.data.l[1] = CurrentTime;
+    XSendEvent(dpy, root, False, SubstructureRedirectMask | SubstructureNotifyMask, &ev);
+    XSync(dpy, False);
+    usleep(150000);
 }
 
 int main(int argc, char **argv) {
@@ -252,7 +293,16 @@ int main(int argc, char **argv) {
      * user to click IT first. Pointer is NOT grabbed - the real fix is
      * that these windows' own mapped presence covers the real click
      * target now, not a grab. */
-    XGrabKeyboard(dpy, root, False, GrabModeAsync, GrabModeAsync, CurrentTime);
+    {
+        const char *fp = getenv("FE_PLACE_FOCUS_PID");
+        if (fp && atol(fp) > 0) focus_window_of_pid(dpy, root, atol(fp));
+    }
+    /* Retry: another client may hold the grab for a moment (a popup that is
+     * closing). Esc below does not depend on this succeeding. */
+    for (int gtry = 0; gtry < 20; gtry++) {
+        if (XGrabKeyboard(dpy, root, False, GrabModeAsync, GrabModeAsync, CurrentTime) == GrabSuccess) break;
+        usleep(50000);
+    }
     XSync(dpy, False);
 
     int click_x = -1, click_y = -1, cancelled = 0;
@@ -262,8 +312,31 @@ int main(int argc, char **argv) {
     char zone_dest[PATH_BUF];
     int zone_pid = 0, hover_pid = 0;
     zone_dest[0] = 0;
-    while (1) {
+    /* Esc is also polled from the server's key state, so it cancels even when
+     * another client owns the keyboard grab. An Esc already held when the
+     * overlay opens (the keypress that launched it) does not count. */
+    const KeyCode esc_kc = XKeysymToKeycode(dpy, XK_Escape);
+    char keys[32];
+    int esc_prev = 0, done = 0;
+    XQueryKeymap(dpy, keys);
+    if (esc_kc) esc_prev = (keys[esc_kc >> 3] >> (esc_kc & 7)) & 1;
+    while (!done) {
         XEvent xev;
+        if (!XPending(dpy)) {
+            if (esc_kc) {
+                XQueryKeymap(dpy, keys);
+                int esc_now = (keys[esc_kc >> 3] >> (esc_kc & 7)) & 1;
+                if (esc_now && !esc_prev) { cancelled = 1; break; }
+                esc_prev = esc_now;
+            }
+            int cfd = ConnectionNumber(dpy);
+            fd_set rf;
+            struct timeval tv = { 0, 20000 };
+            FD_ZERO(&rf);
+            FD_SET(cfd, &rf);
+            select(cfd + 1, &rf, NULL, NULL, &tv);
+            continue;
+        }
         XNextEvent(dpy, &xev);
         if (xev.type == MotionNotify && use_zones) {
             char zd[PATH_BUF];
