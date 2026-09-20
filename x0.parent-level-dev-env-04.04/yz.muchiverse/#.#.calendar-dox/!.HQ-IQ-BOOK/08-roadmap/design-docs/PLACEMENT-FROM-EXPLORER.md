@@ -22,4 +22,15 @@ mv <entity-nav-#> <window-nav-#>
 
 Same `mv` as drag. Nav # is the on-screen `[ ]N` (desk pal, grid cell,
 or HQ chrome). Agent: `STRING:` / `cli_io` / `entity_menu_history/<pid>.txt`
-— pick one when coding. **Not built.**
+— pick one when coding.
+
+**Built 2026-09-19 (agent path only):** relay line `STRING: mv <src-nav#> <dst-nav#>`
+in `entity_menu_history/<pid>.txt` -> `kh_cliio_exec()` (khtpm_core_render.c) resolves
+the on-screen numbers (entry of that window, or a desk-pal tab from the live nav-claim
+pool; destination = a dir entry, or any other element = the window's current dir) and
+writes `cmd=CLIIO_MV:<src>|<dst>` to `file_explorer_action.txt`; `file_explorer_manager`
+does the `rename()` and writes `cliio_result.txt`. Verified `mv 25 26` moves an inventory
+dir into a sibling. Only `mv`; add verbs beside `CLIIO_MV:` in the manager.
+**Not built:** a typed Cli-io text field for a human in the explorer (the CTXMENU
+`Cli-io` row stays out of `file-explorer/meta.pdl` until that exists); pal-side
+Cli-io (`cliio.txt` commit on Escape) is not wired to `kh_cliio_exec`.

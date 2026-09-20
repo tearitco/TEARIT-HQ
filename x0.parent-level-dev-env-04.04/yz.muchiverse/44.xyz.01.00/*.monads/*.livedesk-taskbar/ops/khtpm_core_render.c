@@ -3110,6 +3110,86 @@ static const char *g_palette_name[12];
  * handler below. */
 static unsigned g_swatch_action_seq = 0;
 
+/* Cli-io typed commands, e.g. `mv 17 21` = move the thing shown as [ ]17 into
+ * the thing shown as [ ]21. Arrives as `STRING: mv 17 21` in the per-pid relay
+ * file (same text a human types into the Cli-io field). This window owns the
+ * nav list, so it resolves numbers here and forwards a resolved command to the
+ * window's manager over its action file; the manager does the file work.
+ * Sources: an entry of this window's list (ids entryN/gentryN), or a desk pal
+ * tab from the live nav-claim pool. Destination: a directory entry of this
+ * window, or any other element of this window (= its current dir).
+ * Add verbs by extending the strcmp chain in kh_cliio_exec(). */
+static Elem *kh_nav_elem(int n) {
+    for (int i = 0; i < g_n_nav; i++)
+        if (g_nav[i] && g_nav[i]->nav_index == n) return g_nav[i];
+    return NULL;
+}
+
+static int kh_entry_idx_of(const Elem *e) {
+    if (!e) return -1;
+    if (!strncmp(e->id, "gentry", 6)) return atoi(e->id + 6);
+    if (!strncmp(e->id, "entry", 5)) return atoi(e->id + 5);
+    return -1;
+}
+
+static int kh_claimed_tab_path(int nav, char *out, size_t outsz) {
+    char cp[PATH_BUF];
+    snprintf(cp, sizeof(cp), "%s/#.desktop/livedesk-nav-claims/livedesk_nav_claims.txt", g_house_root);
+    FILE *f = fopen(cp, "r");
+    if (!f) return 0;
+    char line[PATH_BUF + 256];
+    int found = 0;
+    while (!found && fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "KIND=tab|", 9) != 0) continue;
+        char key[32];
+        snprintf(key, sizeof(key), "|NAV=%d|", nav);
+        if (!strstr(line, key)) continue;
+        char *pp = strstr(line, "|PATH=");
+        if (!pp) continue;
+        pp += 6;
+        pp[strcspn(pp, "\r\n")] = '\0';
+        snprintf(out, outsz, "%s", pp);
+        found = 1;
+    }
+    fclose(f);
+    return found;
+}
+
+static void kh_cliio_result(const char *msg) {
+    if (!g_package_dir[0]) return;
+    char rp[PATH_BUF];
+    snprintf(rp, sizeof(rp), "%s/cliio_result.txt", g_package_dir);
+    FILE *f = fopen(rp, "w");
+    if (f) { fprintf(f, "%s\n", msg); fclose(f); }
+}
+
+static void kh_cliio_exec(const char *text) {
+    char verb[16] = "";
+    int a = 0, b = 0;
+    if (sscanf(text, "%15s %d %d", verb, &a, &b) < 1) return;
+    if (strcmp(verb, "mv") != 0) { kh_cliio_result("error: unknown verb (only mv <nav#> <nav#>)"); return; }
+    char af_path[PATH_BUF];
+    snprintf(af_path, sizeof(af_path), "%s/file_explorer_action.txt", g_package_dir);
+    if (!g_package_dir[0]) return;
+    char probe[PATH_BUF];
+    snprintf(probe, sizeof(probe), "%s/file_explorer_ui.txt", g_package_dir);
+    if (access(probe, F_OK) != 0) { kh_cliio_result("error: this window has no mv handler yet"); return; }
+    char src[PATH_BUF + 2], dst[8];
+    Elem *ea = kh_nav_elem(a), *eb = kh_nav_elem(b);
+    int ia = kh_entry_idx_of(ea), ib = kh_entry_idx_of(eb);
+    char tab_path[PATH_BUF];
+    if (ia >= 0) snprintf(src, sizeof(src), "e%d", ia);
+    else if (kh_claimed_tab_path(a, tab_path, sizeof(tab_path))) snprintf(src, sizeof(src), "p%s", tab_path);
+    else { kh_cliio_result("error: source nav# not found"); return; }
+    if (ib >= 0) snprintf(dst, sizeof(dst), "e%d", ib);
+    else if (eb) snprintf(dst, sizeof(dst), "w");
+    else { kh_cliio_result("error: destination nav# not found"); return; }
+    FILE *f = fopen(af_path, "w");
+    if (!f) return;
+    fprintf(f, "seq=%u\ncmd=CLIIO_MV:%s|%s\n", ++g_swatch_action_seq, src, dst);
+    fclose(f);
+}
+
 static int elem_has_class(Elem *e, const char *cls) {
     for (int i = 0; i < e->n_classes; i++)
         if (strcmp(e->classes[i], cls) == 0) return 1;
@@ -9965,6 +10045,9 @@ static int poll_agent_history(void) {
                  * wheel notches (handled above, each n++'d there) dirty the
                  * frame. Counting every move here made a focused generic
                  * window repaint on every mouse twitch over it = flicker. */
+            } else if (strncmp(line, "STRING: ", 8) == 0) {
+                kh_cliio_exec(line + 8);
+                n++;
             } else if (strncmp(line, "KEY_PRESSED: ", 13) == 0) {
                 int code = atoi(line + 13);
                 if (code > 0) { dispatch_relay_code(code); n++; }
