@@ -7,5 +7,6 @@ STATE        | grab_keyboard      | 1
 STATE        | grab_pointer_while_stay_open | 1
 METHOD       | Read                 | sh -c 'export PACKAGE_DIR="$0"; H="$1"; READER_PATH=$(find "$H" -path "*monads/*book-stack/pieces/reader/event_pkg/pages/page_1/event.pal" 2>/dev/null | head -1); MUTA_ROOT="$(find "$H" -maxdepth 1 -name "101.mutaclsym🧟‍♂️️*" -type d 2>/dev/null | head -1)"; cd "$MUTA_ROOT" && exec "$MUTA_ROOT/system/prisc+x" "$READER_PATH"'
 METHOD       | Dir                  | sh -c 'exec xdg-open "$0"'
+METHOD       | Inventory          | sh -c 'H="$1"; I="$H/&.widgits/file-explorer/instances/inv-$(basename "$(dirname "$0")")-$(basename "$0")"; mkdir -p "$0/inventory" "$I"; printf "mode=LOAD\nstart_dir=%s/inventory\n" "$0" > "$I/fe_request.txt"; exec sh "$H/&.widgits/file-explorer/button.sh" run-instance "$I"'
 METHOD       | Close                | CLOSE
 METHOD       | Cancel               | void

@@ -278,6 +278,7 @@ int main(int argc, char **argv) {
          * inventing new default behavior, porting the existing one.
          * More methods (Open Event Editor, etc.) get appended here
          * later without touching the renderer that reads them. */
+        fprintf(f, "METHOD       | Inventory          | sh -c 'H=\"$1\"; I=\"$H/&.widgits/file-explorer/instances/inv-$(basename \"$(dirname \"$0\")\")-$(basename \"$0\")\"; mkdir -p \"$0/inventory\" \"$I\"; printf \"mode=LOAD\\nstart_dir=%s/inventory\\n\" \"$0\" > \"$I/fe_request.txt\"; exec sh \"$H/&.widgits/file-explorer/button.sh\" run-instance \"$I\"'\n");
         fprintf(f, "METHOD       | Close                | CLOSE\n");
         /* REAL, NEW 2026-09-01, direct instruction ("the placed tiles
          * dont have cancel/copy/paste/delete or events... events should

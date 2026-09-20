@@ -7,7 +7,7 @@ STATE        | grab_keyboard      | 1
 STATE        | log_mode           | 1
 STATE        | z_priority         | 100
 METHOD       | Dir                | sh -c 'mkdir -p "$0/audit"; GDK_BACKEND=x11 xdg-open "$0" >>"$0/audit/dir.log" 2>&1'
-METHOD       | Inventory          | sh -c 'mkdir -p "$0/inventory"; printf "mode=LOAD\nstart_dir=%s/inventory\n" "$0" > "$1/&.widgits/file-explorer/fe_request.txt"; exec sh "$1/&.widgits/file-explorer/button.sh" run'
+METHOD       | Inventory          | sh -c 'H="$1"; I="$H/&.widgits/file-explorer/instances/inv-$(basename "$(dirname "$0")")-$(basename "$0")"; mkdir -p "$0/inventory" "$I"; printf "mode=LOAD\nstart_dir=%s/inventory\n" "$0" > "$I/fe_request.txt"; exec sh "$H/&.widgits/file-explorer/button.sh" run-instance "$I"'
 METHOD       | Chat               | sh -c 'exec sh "$1/&.widgits/open-hai/chat_button.sh" "$1" "$0/chat" cursword-chat'
 METHOD       | Bookmarks          | sh -c 'exec sh "$1/&.widgits/bookmarks/bm_menu.sh" "$1" "$0"'
 METHOD       | Play               | sh -c 'exec sh "$1/*.monads/*.muchi-pet/ops/play_event.sh" "$0"'

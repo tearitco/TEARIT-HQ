@@ -50,13 +50,40 @@ if [ ! -f "$XHTPM" ]; then
     exit 1
 fi
 
+# run-instance <dir>: a NAMED explorer window with its OWN package dir (its own
+# ui/action/request/clipboard-target files), so several can be open at once
+# (e.g. two entities' Inventory). <dir> is symlinked to this widget's template;
+# only a previous window of the SAME <dir> is replaced. Callers write
+# <dir>/fe_request.txt (mode=, start_dir=) before calling. `run` (below) stays
+# the single default instance other apps read at the fixed widget path.
+if [ "$ACTION" = "run-instance" ]; then
+    INST="${2:-}"
+    [ -n "$INST" ] || { echo "file-explorer button.sh: run-instance needs <dir>" >&2; exit 1; }
+    mkdir -p "$INST"
+    ln -sf "$XHTPM" "$INST/file-explorer-pal.xhtpm"
+    ln -sf "$SCRIPT_DIR/file-explorer-pal.css" "$INST/file-explorer-pal.css"
+    IX="$INST/file-explorer-pal.xhtpm"
+    old="$(pgrep -f -- "khtpm_core_render\.\+x.* $IX" 2>/dev/null || true)"
+    if [ -n "$old" ]; then
+        echo "$old" | xargs -r kill -TERM
+        sleep 1
+    fi
+    LOG="/tmp/file-explorer-inst.$(basename "$INST").log"
+    setsid nohup "$BIN" "$HOUSE_ROOT" "$IX" >"$LOG" 2>&1 < /dev/null &
+    disown 2>/dev/null || true
+    sleep 1
+    echo "file-explorer instance launched ($INST)"
+    exit 0
+fi
+
 if [ "$ACTION" != "run" ]; then
     exit 0
 fi
 
-# Same real "set -e safe pgrep" convention as pdl-read/button.sh.
+# Same real "set -e safe pgrep" convention as pdl-read/button.sh. Matches ONLY
+# the default instance (widget dir), never widget/instances/<name>/ windows.
 fe_pids() {
-    pgrep -f "khtpm_core_render\.\+x.*file-explorer-pal\.xhtpm" 2>/dev/null || true
+    pgrep -f "khtpm_core_render\.\+x.* $SCRIPT_DIR/file-explorer-pal\.xhtpm" 2>/dev/null || true
 }
 
 pids="$(fe_pids)"

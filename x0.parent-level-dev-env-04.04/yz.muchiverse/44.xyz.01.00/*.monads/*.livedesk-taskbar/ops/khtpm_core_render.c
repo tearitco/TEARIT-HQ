@@ -6906,7 +6906,13 @@ static void dispatch(const char *action) {
      * header comment for the full real command contract. */
     if (strncmp(action, "FE_", 3) == 0) {
         char ap[PATH_BUF];
-        snprintf(ap, sizeof(ap), "%s/&.widgits/file-explorer/file_explorer_action.txt", g_house_root);
+        /* Each explorer instance owns its own package dir (default instance =
+         * the widget dir itself; named instances = widget/instances/<name>/),
+         * so two explorer windows never share one action file. */
+        if (g_package_dir[0])
+            snprintf(ap, sizeof(ap), "%s/file_explorer_action.txt", g_package_dir);
+        else
+            snprintf(ap, sizeof(ap), "%s/&.widgits/file-explorer/file_explorer_action.txt", g_house_root);
         char cmd_buf[600];
         if (strcmp(action, "FE_SAVEAS") == 0) {
             /* REAL, NEW 2026-09-05 - the filename field is a real,

@@ -12,5 +12,6 @@ METHOD       | Play                 | sh -c 'cd "$0" && H="$(cd ../../.. && pwd)
 METHOD       | Stop                 | void
 METHOD       | Ledger               | sh -c 'cd "$0" && H="$(cd ../../.. && pwd)" && exec gedit "$H/@.apps/asa-&-ava/pieces/asa/master_ledger.txt"'
 METHOD       | Dir                  | xdg-open
+METHOD       | Inventory          | sh -c 'H="$1"; I="$H/&.widgits/file-explorer/instances/inv-$(basename "$(dirname "$0")")-$(basename "$0")"; mkdir -p "$0/inventory" "$I"; printf "mode=LOAD\nstart_dir=%s/inventory\n" "$0" > "$I/fe_request.txt"; exec sh "$H/&.widgits/file-explorer/button.sh" run-instance "$I"'
 METHOD       | Close                | CLOSE
 METHOD       | Cancel               | void

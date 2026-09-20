@@ -72,6 +72,7 @@ ensure_package() {
         echo "METHOD       | Ledger               | gedit \"$PKG/master_ledger.txt\""
         echo "METHOD       | Events (ez)          | \"$MUCHI_RANCHER/ops/open_event_ez.sh\""
         echo "METHOD       | Dir                  | xdg-open"
+        cat "$HOUSE_ROOT/&.widgits/file-explorer/inventory_method_row.txt" 2>/dev/null
         echo "METHOD       | Close                | CLOSE"
         echo "METHOD       | Cancel               | void"
     } > "$PKG/meta.pdl"

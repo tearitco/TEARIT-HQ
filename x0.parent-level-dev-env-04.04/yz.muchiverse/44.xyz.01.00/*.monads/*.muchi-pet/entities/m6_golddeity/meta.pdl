@@ -8,5 +8,6 @@ STATE        | footprint_tiles      | 2
 METHOD       | Ledger               | sh -c 'cd "$0" && exec gedit master_ledger.txt'
 METHOD       | Events (ez)          | sh -c 'exec "$1/*.monads/*.muchi-pet/ops/open_event_ez.sh" "$0" "$1"'
 METHOD       | Dir                  | xdg-open
+METHOD       | Inventory          | sh -c 'H="$1"; I="$H/&.widgits/file-explorer/instances/inv-$(basename "$(dirname "$0")")-$(basename "$0")"; mkdir -p "$0/inventory" "$I"; printf "mode=LOAD\nstart_dir=%s/inventory\n" "$0" > "$I/fe_request.txt"; exec sh "$H/&.widgits/file-explorer/button.sh" run-instance "$I"'
 METHOD       | Close                | CLOSE
 METHOD       | Cancel               | void

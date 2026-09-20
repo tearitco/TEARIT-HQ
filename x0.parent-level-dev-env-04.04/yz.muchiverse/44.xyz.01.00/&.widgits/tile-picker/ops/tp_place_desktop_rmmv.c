@@ -309,6 +309,7 @@ int main(int argc, char **argv) {
          * (autotile recompute-on-neighbor-change) is separate, unbuilt
          * follow-up work. This entity places its single representative
          * kind-thumbnail exactly as picked, no edge-blending yet. */
+        fprintf(f, "METHOD       | Inventory          | sh -c 'H=\"$1\"; I=\"$H/&.widgits/file-explorer/instances/inv-$(basename \"$(dirname \"$0\")\")-$(basename \"$0\")\"; mkdir -p \"$0/inventory\" \"$I\"; printf \"mode=LOAD\\nstart_dir=%s/inventory\\n\" \"$0\" > \"$I/fe_request.txt\"; exec sh \"$H/&.widgits/file-explorer/button.sh\" run-instance \"$I\"'\n");
         fprintf(f, "METHOD       | Close                | CLOSE\n");
         /* REAL, NEW 2026-09-01 - same real gap/fix as tp_place_desktop.c's
          * own identical block (direct instruction: "placed tiles dont

@@ -34,6 +34,7 @@ printf 'battery=100\nenergy=50\ngold=5\n' > "$PKG/state.txt"
     echo "STATE        | note                 | $NOTE"
     echo "METHOD       | Ledger               | gedit \"$PKG/master_ledger.txt\""
     echo "METHOD       | Dir                  | xdg-open"
+    cat "$MONAD_DIR/../../&.widgits/file-explorer/inventory_method_row.txt" 2>/dev/null
     echo "METHOD       | Close                | CLOSE"
     echo "METHOD       | Cancel               | void"
 } > "$PKG/meta.pdl"

@@ -1,21 +1,16 @@
-<!-- menu.chtpm - castle's real, STANDARD (not-in-Play-Mode) right-click
-     entity menu, same real launch_khtpm_menu() mechanism every entity
-     uses. Direct instruction: "its showing the 'in play' menu when not
-     in play it should only show events, delete, cancel. its 'in play'
-     menu is its gameplay menu that should only show when 'in play'" -
-     the real Civ I city menu (City/Production/Armed Forces/View/Happy/
-     Rename) moved OUT of this file, into menu_gameplay.chtpm, and is
-     only ever launched from there by the trigger-layer's own touch-fire
-     action (event_pkg/pages/page_1/cmd_1.sh) - never by a plain right-
-     click. This file is castle's own everyday editing menu.
-     Delete is a real, honest stub (action="void") - no real per-pal
-     deletion mechanism exists anywhere in this house yet (checked,
-     not assumed); wiring one is separate, later work, not silently
-     faked here. -->
+<!-- menu.chtpm - real, generated entity context menu (meta_to_menu_chtpm.py, 2026-08-28 permanent converter). Converted 1:1 from xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/castle/meta.pdl's own real METHOD rows - same real mechanical rule proven on ava/asa/book-stack's own hand conversions. Regenerate by deleting this file and re-running the converter; a real hand-edit here will be lost on the next regenerate, same tradeoff every generated file in this house already has. -->
 <window class="entity-menu">
   <page name="main">
-    <item label="Events" action="sh -c 'exec &quot;$1/&.widgits/events-hq/button.sh&quot; &quot;$0&quot; &quot;$1&quot;'"/>
-    <item label="Delete" action="void"/>
+    <item label="City" action="sh -c 'exec &quot;$1/&amp;.widgits/events-hq/ops/play_event.sh&quot; &quot;$0&quot; &quot;$1&quot; city'"/>
+    <item label="Production" action="sh -c 'exec &quot;$1/&amp;.widgits/events-hq/ops/play_event.sh&quot; &quot;$0&quot; &quot;$1&quot; production'"/>
+    <item label="Armed Forces" action="sh -c 'exec &quot;$1/&amp;.widgits/events-hq/ops/play_event.sh&quot; &quot;$0&quot; &quot;$1&quot; armed_forces'"/>
+    <item label="View" action="sh -c 'exec &quot;$1/&amp;.widgits/events-hq/ops/play_event.sh&quot; &quot;$0&quot; &quot;$1&quot; view'"/>
+    <item label="Happy" action="sh -c 'exec &quot;$1/&amp;.widgits/events-hq/ops/play_event.sh&quot; &quot;$0&quot; &quot;$1&quot; happy'"/>
+    <item label="Rename" action="sh -c 'exec &quot;$1/&amp;.widgits/events-hq/ops/play_event.sh&quot; &quot;$0&quot; &quot;$1&quot; rename'"/>
+    <item label="Events (hq)" action="sh -c 'exec &quot;$1/&amp;.widgits/events-hq/button.sh&quot; &quot;$0&quot; &quot;$1&quot;'"/>
+    <item label="Dir" action="sh -c 'exec xdg-open &quot;$0&quot;'"/>
+    <item label="Inventory" action="sh -c 'H=&quot;$1&quot;; I=&quot;$H/&amp;.widgits/file-explorer/instances/inv-$(basename &quot;$(dirname &quot;$0&quot;)&quot;)-$(basename &quot;$0&quot;)&quot;; mkdir -p &quot;$0/inventory&quot; &quot;$I&quot;; printf &quot;mode=LOAD\nstart_dir=%s/inventory\n&quot; &quot;$0&quot; > &quot;$I/fe_request.txt&quot;; exec sh &quot;$H/&amp;.widgits/file-explorer/button.sh&quot; run-instance &quot;$I&quot;'"/>
+    <item label="Close" action="CLOSE"/>
     <item label="Cancel" action="void"/>
   </page>
 </window>
