@@ -332,6 +332,59 @@ static int match_compound(const NbNode *n, const char *cmp) {
     if (id[0] && (!n->id || strcmp(n->id, id))) return 0;
     char *tok = strtok(clbuf, " ");
     while (tok) { if (!has_class(n, tok)) return 0; tok = strtok(NULL, " "); }
+    /* attribute selectors: [attr], [attr=v], [attr*=v], [attr^=v],
+     * [attr$=v], [attr~=v]. Real bundles depend on exact matching
+     * (webcomponents-lite.js: script[src*="webcomponents-lite.js"]), and
+     * unsupported trailing syntax must FAIL rather than match by tag —
+     * otherwise querySelector returns a wrong (truthy) element and the
+     * caller dereferences it. */
+    while (*p == '[') {
+        p++;
+        const char *as = p;
+        while (*as && *as != '=' && *as != ']' && *as != '~' &&
+               *as != '^' && *as != '$' && *as != '*') as++;
+        char attr[64]; size_t ac = (size_t)(as - p); if (ac > 63) ac = 63;
+        memcpy(attr, p, ac); attr[ac] = 0;
+        for (char *t = attr; *t; t++) *t = (char)tolower((unsigned char)*t);
+        p = as;
+        int op = 0;
+        if (*p == '~' || *p == '^' || *p == '$' || *p == '*') {
+            op = (*p == '~') ? 5 : (*p == '^') ? 3 : (*p == '$') ? 4 : 2;
+            p++; if (*p == '=') p++;
+        } else if (*p == '=') { op = 1; p++; }
+        const char *av = nb_attr_get(n, attr);
+        if (op == 0) {
+            if (!av || !av[0]) return 0;
+        } else {
+            while (*p == ' ' || *p == '\t') p++;
+            char q = 0;
+            if (*p == '"' || *p == '\'') { q = *p; p++; }
+            const char *vs = p;
+            if (q) { while (*p && *p != q) p++; }
+            else { while (*p && *p != ']') p++; }
+            size_t vn = (size_t)(p - vs); char val[512];
+            size_t vc = vn < 511 ? vn : 511; memcpy(val, vs, vc); val[vc] = 0;
+            if (q && *p == q) p++;
+            int ok = 0;
+            switch (op) {
+                case 1: ok = (strcmp(av, val) == 0); break;
+                case 2: ok = (strstr(av, val) != NULL); break;
+                case 3: ok = (strncmp(av, val, strlen(val)) == 0); break;
+                case 4: { size_t al = strlen(av), vl = strlen(val);
+                          ok = (al >= vl && strcmp(av + al - vl, val) == 0); } break;
+                case 5: { const char *s = av; size_t vl = strlen(val);
+                          while (*s) { while (*s == ' ' || *s == '\t') s++;
+                              const char *ws = s;
+                              while (*s && *s != ' ' && *s != '\t') s++;
+                              if ((size_t)(s - ws) == vl && strncmp(ws, val, vl) == 0) { ok = 1; break; } } } break;
+            }
+            if (!ok) return 0;
+        }
+        while (*p == ' ' || *p == '\t') p++;
+        if (*p == ']') p++; else return 0;
+        while (*p == ' ' || *p == '\t') p++;
+    }
+    if (*p) return 0;   /* unsupported selector syntax -> no false match */
     return 1;
 }
 static int match_chain(NbNode *n, char **parts, int idx) {
@@ -691,6 +744,7 @@ static JSValue push_node(JSContext *ctx, NbNode *n);
 static JSValue nb_el_addEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_el_removeEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_el_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_el_contains(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_el_click(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 /* canvas 2D natives defined with the other DOM natives (getBoundingClientRect
  * already ships on every wrapper via the existing definition above) */
@@ -764,6 +818,182 @@ static JSValue nb_dom_querySelectorAll(JSContext *ctx, JSValueConst this_val, in
     JS_FreeCString(ctx, owned);
     return arr;
 }
+
+/* ---- TreeWalker / NodeFilter (row-31): webcomponents-lite.js builds two
+ * walkers at module init (`M=document.createTreeWalker(document,
+ * NodeFilter.SHOW_ALL,null,!1)`, `N=...SHOW_ELEMENT...`) and its ShadyDOM
+ * layer drives Node.prototype accessors through them (M.currentNode=this;
+ * M.parentNode()/firstChild()/...). Implemented against the real C tree. */
+#define WALK_CUR  "__nbw_cur"
+#define WALK_SHOW "__nbw_show"
+#define WALK_FILT "__nbw_filt"
+
+static int walker_accept(JSContext *ctx, JSValueConst walker, NbNode *n) {
+    if (!n) return 0;
+    JSValue sv = JS_GetPropertyStr(ctx, walker, WALK_SHOW);
+    uint32_t show = 0xFFFFFFFFu;
+    if (JS_IsNumber(sv)) { uint32_t v = 0xFFFFFFFFu; JS_ToUint32(ctx, &v, sv); show = v; }
+    JS_FreeValue(ctx, sv);
+    int bit = (n->tag && n->tag[0]) ? 1 : 4;   /* SHOW_ELEMENT vs SHOW_TEXT */
+    if (!(show & (uint32_t)bit)) return 0;
+    JSValue f = JS_GetPropertyStr(ctx, walker, WALK_FILT);
+    int ok = 1;
+    if (JS_IsFunction(ctx, f)) {
+        JSValue node = push_node(ctx, n);
+        JSValue r = JS_Call(ctx, f, walker, 1, (JSValueConst *)&node);
+        JS_FreeValue(ctx, node);
+        if (JS_IsException(r)) { JS_FreeValue(ctx, JS_GetException(ctx)); ok = 0; }
+        else { int32_t rv = 0; JS_ToInt32(ctx, &rv, r); ok = (rv == 1); }
+        JS_FreeValue(ctx, r);
+    } else if (JS_IsObject(f)) {
+        JSValue fn = JS_GetPropertyStr(ctx, f, "acceptNode");
+        if (JS_IsFunction(ctx, fn)) {
+            JSValue node = push_node(ctx, n);
+            JSValue r = JS_Call(ctx, fn, f, 1, (JSValueConst *)&node);
+            JS_FreeValue(ctx, node);
+            if (JS_IsException(r)) { JS_FreeValue(ctx, JS_GetException(ctx)); ok = 0; }
+            else { int32_t rv = 0; JS_ToInt32(ctx, &rv, r); ok = (rv == 1); }
+            JS_FreeValue(ctx, r);
+        }
+        JS_FreeValue(ctx, fn);
+    }
+    JS_FreeValue(ctx, f);
+    return ok;
+}
+static NbNode *walker_cur(JSContext *ctx, JSValueConst walker) {
+    JSValue c = JS_GetPropertyStr(ctx, walker, WALK_CUR);
+    NbNode *n = get_node(ctx, c);
+    JS_FreeValue(ctx, c);
+    return n;
+}
+static NbNode *walker_root(JSContext *ctx, JSValueConst walker) {
+    JSValue r = JS_GetPropertyStr(ctx, walker, "root");
+    NbNode *n = get_node(ctx, r);
+    JS_FreeValue(ctx, r);
+    return n;
+}
+static void walker_set_cur(JSContext *ctx, JSValueConst walker, NbNode *n) {
+    JSValue w = push_node(ctx, n);
+    JS_SetPropertyStr(ctx, walker, WALK_CUR, JS_DupValue(ctx, w));
+    JS_SetPropertyStr(ctx, walker, "currentNode", w);
+}
+static NbNode *prev_sib(NbNode *n) {
+    if (!n || !n->parent) return NULL;
+    NbNode *p = n->parent->first_child;
+    if (p == n) return NULL;
+    while (p && p->next_sibling != n) p = p->next_sibling;
+    return p;
+}
+static JSValue nb_walker_next(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *root = walker_root(ctx, this_val);
+    NbNode *n = walker_cur(ctx, this_val);
+    if (!root || !n) return JS_NULL;
+    for (;;) {
+        if (n->first_child) { n = n->first_child; }
+        else {
+            while (n != root && !n->next_sibling) n = n->parent;
+            if (n == root) return JS_NULL;
+            n = n->next_sibling;
+        }
+        if (walker_accept(ctx, this_val, n)) { walker_set_cur(ctx, this_val, n); return push_node(ctx, n); }
+    }
+}
+static JSValue nb_walker_prev(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *root = walker_root(ctx, this_val);
+    NbNode *n = walker_cur(ctx, this_val);
+    if (!root || !n) return JS_NULL;
+    while (n != root) {
+        NbNode *ps = prev_sib(n);
+        if (ps) {
+            n = ps;
+            while (n->last_child) n = n->last_child;
+            if (walker_accept(ctx, this_val, n)) { walker_set_cur(ctx, this_val, n); return push_node(ctx, n); }
+            continue;
+        }
+        n = n->parent;
+        if (!n || n == root) return JS_NULL;
+        if (walker_accept(ctx, this_val, n)) { walker_set_cur(ctx, this_val, n); return push_node(ctx, n); }
+    }
+    return JS_NULL;
+}
+static JSValue nb_walker_parent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *root = walker_root(ctx, this_val);
+    NbNode *n = walker_cur(ctx, this_val);
+    if (!root || !n) return JS_NULL;
+    while (n && n != root) {
+        n = n->parent;
+        if (n && n != root && walker_accept(ctx, this_val, n)) { walker_set_cur(ctx, this_val, n); return push_node(ctx, n); }
+    }
+    return JS_NULL;
+}
+static JSValue nb_walker_first(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = walker_cur(ctx, this_val);
+    if (!n) return JS_NULL;
+    for (NbNode *c = n->first_child; c; c = c->next_sibling)
+        if (walker_accept(ctx, this_val, c)) { walker_set_cur(ctx, this_val, c); return push_node(ctx, c); }
+    return JS_NULL;
+}
+static JSValue nb_walker_last(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = walker_cur(ctx, this_val);
+    if (!n) return JS_NULL;
+    for (NbNode *c = n->last_child; c; c = prev_sib(c))
+        if (walker_accept(ctx, this_val, c)) { walker_set_cur(ctx, this_val, c); return push_node(ctx, c); }
+    return JS_NULL;
+}
+static JSValue nb_walker_nextsib(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *root = walker_root(ctx, this_val);
+    NbNode *n = walker_cur(ctx, this_val);
+    if (!root || !n || n == root) return JS_NULL;
+    for (NbNode *c = n->next_sibling; c; c = c->next_sibling)
+        if (walker_accept(ctx, this_val, c)) { walker_set_cur(ctx, this_val, c); return push_node(ctx, c); }
+    return JS_NULL;
+}
+static JSValue nb_walker_prevsib(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *root = walker_root(ctx, this_val);
+    NbNode *n = walker_cur(ctx, this_val);
+    if (!root || !n || n == root || !n->parent) return JS_NULL;
+    NbNode *res = NULL;
+    for (NbNode *c = n->parent->first_child; c && c != n; c = c->next_sibling)
+        if (walker_accept(ctx, this_val, c)) res = c;
+    if (res) { walker_set_cur(ctx, this_val, res); return push_node(ctx, res); }
+    return JS_NULL;
+}
+static JSValue nb_walker_get_cur(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = walker_cur(ctx, this_val);
+    return n ? push_node(ctx, n) : JS_NULL;
+}
+static JSValue nb_walker_set_cur(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
+    if (n) JS_SetPropertyStr(ctx, this_val, WALK_CUR, JS_DupValue(ctx, argv[0]));
+    return JS_UNDEFINED;
+}
+static JSValue nb_doc_createTreeWalker(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *root = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
+    if (!root) root = g_dom_root;              /* createTreeWalker(document,...) */
+    if (!root) return JS_NULL;
+    uint32_t show = 0xFFFFFFFFu;
+    if (argc > 1 && JS_IsNumber(argv[1])) JS_ToUint32(ctx, &show, argv[1]);
+    JSValue w = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, w, "root", push_node(ctx, root));
+    JS_SetPropertyStr(ctx, w, "whatToShow", JS_NewUint32(ctx, show));
+    JS_SetPropertyStr(ctx, w, WALK_CUR, push_node(ctx, root));
+    JS_SetPropertyStr(ctx, w, WALK_SHOW, JS_NewUint32(ctx, show));
+    JS_SetPropertyStr(ctx, w, WALK_FILT, (argc > 2) ? JS_DupValue(ctx, argv[2]) : JS_NULL);
+    JS_SetPropertyStr(ctx, w, "nextNode", JS_NewCFunction(ctx, nb_walker_next, "nextNode", 0));
+    JS_SetPropertyStr(ctx, w, "previousNode", JS_NewCFunction(ctx, nb_walker_prev, "previousNode", 0));
+    JS_SetPropertyStr(ctx, w, "parentNode", JS_NewCFunction(ctx, nb_walker_parent, "parentNode", 0));
+    JS_SetPropertyStr(ctx, w, "firstChild", JS_NewCFunction(ctx, nb_walker_first, "firstChild", 0));
+    JS_SetPropertyStr(ctx, w, "lastChild", JS_NewCFunction(ctx, nb_walker_last, "lastChild", 0));
+    JS_SetPropertyStr(ctx, w, "nextSibling", JS_NewCFunction(ctx, nb_walker_nextsib, "nextSibling", 0));
+    JS_SetPropertyStr(ctx, w, "previousSibling", JS_NewCFunction(ctx, nb_walker_prevsib, "previousSibling", 0));
+    JSAtom ck = JS_NewAtom(ctx, "currentNode");
+    JS_DefinePropertyGetSet(ctx, w, ck,
+        JS_NewCFunction(ctx, nb_walker_get_cur, "get currentNode", 0),
+        JS_NewCFunction(ctx, nb_walker_set_cur, "set currentNode", 1), 0);
+    JS_FreeAtom(ctx, ck);
+    return w;
+}
+
 static JSValue nb_dom_createElement(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     char *owned = NULL;
     const char *tag = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : "";
@@ -790,6 +1020,36 @@ static JSValue nb_dom_createElementNS(JSContext *ctx, JSValueConst this_val, int
     orphan_add(n);
     JS_FreeCString(ctx, owned);
     return push_node(ctx, n);
+}
+/* document.implementation (row-31): webcomponents-lite.js does
+ * `document.implementation.createHTMLDocument("inert")` at init and uses
+ * the result as a scratch document to parse HTML strings via innerHTML
+ * (`Sd.createElement(...); d.innerHTML = b`). Our scratch doc reuses the
+ * real createElement/createElementNS (orphan nodes) and advertises the
+ * HTML namespace so ShadyDOM's namespace branch takes createElement. */
+static JSValue make_fake_doc(JSContext *ctx) {
+    JSValue d = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, d, "namespaceURI", JS_NewString(ctx, "http://www.w3.org/1999/xhtml"));
+    JS_SetPropertyStr(ctx, d, "contentType", JS_NewString(ctx, "text/html"));
+    JS_SetPropertyStr(ctx, d, "createElement", JS_NewCFunction(ctx, nb_dom_createElement, "createElement", 1));
+    JS_SetPropertyStr(ctx, d, "createElementNS", JS_NewCFunction(ctx, nb_dom_createElementNS, "createElementNS", 2));
+    return d;
+}
+static JSValue nb_impl_createHTMLDocument(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return make_fake_doc(ctx);
+}
+static JSValue nb_impl_createDocument(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return make_fake_doc(ctx);
+}
+static JSValue nb_impl_createDocumentType(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue t = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, t, "name", (argc > 0) ? JS_DupValue(ctx, argv[0]) : JS_NewString(ctx, "html"));
+    JS_SetPropertyStr(ctx, t, "publicId", JS_NewString(ctx, ""));
+    JS_SetPropertyStr(ctx, t, "systemId", JS_NewString(ctx, ""));
+    return t;
+}
+static JSValue nb_impl_hasFeature(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return JS_NewBool(ctx, 1);
 }
 static JSValue nb_dom_documentElement(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *el = g_dom_root ? find_tag_first(g_dom_root, "html") : NULL;
@@ -1342,6 +1602,7 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
     JS_SetPropertyStr(ctx, el, "addEventListener", JS_NewCFunction(ctx, nb_el_addEventListener, "addEventListener", 2));
     JS_SetPropertyStr(ctx, el, "removeEventListener", JS_NewCFunction(ctx, nb_el_removeEventListener, "removeEventListener", 2));
     JS_SetPropertyStr(ctx, el, "dispatchEvent", JS_NewCFunction(ctx, nb_el_dispatchEvent, "dispatchEvent", 1));
+    JS_SetPropertyStr(ctx, el, "contains", JS_NewCFunction(ctx, nb_el_contains, "contains", 1));
     JS_SetPropertyStr(ctx, el, "click", JS_NewCFunction(ctx, nb_el_click, "click", 0));
     /* resource/URL attributes real bundles read directly off the element.
      * Browsers expose src/href as STRINGS even when the attribute is absent
@@ -2559,6 +2820,15 @@ static void install_dom(JSContext *ctx) {
         JS_SetPropertyStr(ctx, doc, "getElementsByTagName", JS_NewCFunction(ctx, nb_dom_getElementsByTagName, "getElementsByTagName", 1));
         JS_SetPropertyStr(ctx, doc, "querySelector", JS_NewCFunction(ctx, nb_dom_querySelector, "querySelector", 1));
         JS_SetPropertyStr(ctx, doc, "querySelectorAll", JS_NewCFunction(ctx, nb_dom_querySelectorAll, "querySelectorAll", 1));
+        JS_SetPropertyStr(ctx, doc, "createTreeWalker", JS_NewCFunction(ctx, nb_doc_createTreeWalker, "createTreeWalker", 1));
+        {
+            JSValue impl = JS_NewObject(ctx);
+            JS_SetPropertyStr(ctx, impl, "createHTMLDocument", JS_NewCFunction(ctx, nb_impl_createHTMLDocument, "createHTMLDocument", 1));
+            JS_SetPropertyStr(ctx, impl, "createDocument", JS_NewCFunction(ctx, nb_impl_createDocument, "createDocument", 3));
+            JS_SetPropertyStr(ctx, impl, "createDocumentType", JS_NewCFunction(ctx, nb_impl_createDocumentType, "createDocumentType", 3));
+            JS_SetPropertyStr(ctx, impl, "hasFeature", JS_NewCFunction(ctx, nb_impl_hasFeature, "hasFeature", 2));
+            JS_SetPropertyStr(ctx, doc, "implementation", impl);
+        }
         JS_SetPropertyStr(ctx, doc, "createElement", JS_NewCFunction(ctx, nb_dom_createElement, "createElement", 1));
         JS_SetPropertyStr(ctx, doc, "createElementNS", JS_NewCFunction(ctx, nb_dom_createElementNS, "createElementNS", 2));
         JS_SetPropertyStr(ctx, doc, "createTextNode", JS_NewCFunction(ctx, nb_dom_createTextNode, "createTextNode", 1));
@@ -3361,6 +3631,25 @@ static JSValue nb_doc_dispatchEvent(JSContext *ctx, JSValueConst this_val, int a
     JS_FreeValue(ctx, bv);
     return JS_NewBool(ctx, dispatch_event(ctx, EVT_DOC, NULL, ev, bubbles));
 }
+/* Node.contains (row-31): webcomponents-lite.js does
+ * `document.contains ? document.contains.bind(document)
+ *  : document.documentElement.contains.bind(...)` and Polymer/Closure
+ * ask it during upgrades. Ancestry walk over the C tree. */
+static JSValue nb_el_contains(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *self = get_this(ctx, this_val);
+    NbNode *other = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
+    if (!self || !other) return JS_NewBool(ctx, 0);
+    for (NbNode *n = other; n; n = n->parent)
+        if (n == self) return JS_NewBool(ctx, 1);
+    return JS_NewBool(ctx, 0);
+}
+static JSValue nb_doc_contains(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *other = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
+    if (!other || !g_dom_root) return JS_NewBool(ctx, 0);
+    for (NbNode *n = other; n; n = n->parent)
+        if (n == g_dom_root) return JS_NewBool(ctx, 1);
+    return JS_NewBool(ctx, 0);
+}
 static JSValue nb_win_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     JSValue ev = argc > 0 ? argv[0] : JS_UNDEFINED;
     JSValue bv = JS_GetPropertyStr(ctx, ev, "bubbles");
@@ -3529,6 +3818,8 @@ static void install_events_timers(JSContext *ctx) {
         JS_NewCFunction(ctx, nb_doc_removeEventListener, "removeEventListener", 2));
     JS_SetPropertyStr(ctx, doc, "dispatchEvent",
         JS_NewCFunction(ctx, nb_doc_dispatchEvent, "dispatchEvent", 1));
+    JS_SetPropertyStr(ctx, doc, "contains",
+        JS_NewCFunction(ctx, nb_doc_contains, "contains", 1));
     for (int i = 0; ONPROPS[i]; i++) {
         char onname[64];
         snprintf(onname, sizeof(onname), "on%s", ONPROPS[i]);

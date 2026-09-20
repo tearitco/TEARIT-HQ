@@ -783,12 +783,19 @@ static int curl_url_to_file(const char *url, const char *out_path) {
     return system(cmd) == 0;
 }
 
+/* Real SPAs ship a module graph of dozens of scripts (youtube home.html:
+ * 42 <script> tags incl. the 10.8 MB kevlar_base bundle). The old 8-total /
+ * 4-external caps truncated the graph before the app's own bootstrap ran, so
+ * the page rendered only the static DOM. Raise them; the worker's page
+ * loader (read_file_big) accepts up to 64 MB. */
+#define NB_MAX_SCRIPTS     64
+#define NB_MAX_EXT_SCRIPTS 48
 static void collect_scripts(const char *html, const char *page_url, FILE *js_out, int *n_scripts) {
 #define SCRIPT_BOUNDARY "/*nbjs-script-boundary*/"   /* per-script slices for the worker's document-order runner */
     const char *p = html;
     int n = 0, n_ext = 0;
     *n_scripts = 0;
-    while (p && *p && n < 8) {
+    while (p && *p && n < NB_MAX_SCRIPTS) {
         const char *tag = strcasestr_local(p, "<script");
         if (!tag) break;
         if (tag[7] != '>' && tag[7] != ' ' && tag[7] != '\t' && tag[7] != '\n' && tag[7] != '/') {
@@ -806,7 +813,7 @@ static void collect_scripts(const char *html, const char *page_url, FILE *js_out
         }
         const char *src = strcasestr_local(tag, "src=");
         if (src && src < gt) {
-            if (n_ext >= 4) { p = close + 9; continue; }
+            if (n_ext >= NB_MAX_EXT_SCRIPTS) { p = close + 9; continue; }
             const char *v = src + 4;
             char q = 0;
             if (*v == '"' || *v == '\'') { q = *v; v++; }
