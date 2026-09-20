@@ -100,6 +100,7 @@ typedef struct {
     char type[4];
     char size[16];
     char icon[8];
+    char sprite[MAX_PATH]; /* pal dir whose sprite.csv the renderer blits via sprite=; empty = draw icon text */
 } Entry;
 
 #define MAX_CRUMBS 32
@@ -285,6 +286,7 @@ void list_directory(const char *dir, State *state) {
         struct stat st;
         if (stat(full_path, &st) != 0) continue;
 
+        state->entries[state->count].sprite[0] = '\0';
         strncpy(state->entries[state->count].name, entry->d_name, MAX_NAME - 1);
         state->entries[state->count].name[MAX_NAME - 1] = '\0';
 
@@ -292,6 +294,14 @@ void list_directory(const char *dir, State *state) {
             if (pal_glyph(full_path, state->entries[state->count].icon,
                           sizeof(state->entries[state->count].icon))) {
                 strcpy(state->entries[state->count].type, "PAL");
+                /* Real image beats the glyph emoji (which can render as
+                 * tofu): the shared renderer's sprite= reads <dir>/sprite.csv. */
+                char csvp[MAX_PATH];
+                snprintf(csvp, sizeof(csvp), "%s/sprite.csv", full_path);
+                if (access(csvp, R_OK) == 0) {
+                    snprintf(state->entries[state->count].sprite, MAX_PATH, "%s", full_path);
+                    state->entries[state->count].icon[0] = '\0';
+                }
             } else if (has_toy_pdl(full_path)) {
                 strcpy(state->entries[state->count].type, "PRJ");
                 strcpy(state->entries[state->count].icon, "\xf0\x9f\x92\xbe"); /* 💾 */
@@ -375,6 +385,7 @@ void write_ui_file(const char *package_dir, State *state,
         fprintf(f, "entry_%d_type=%s\n", i, state->entries[i].type);
         fprintf(f, "entry_%d_size=%s\n", i, state->entries[i].size);
         fprintf(f, "entry_%d_icon=%s\n", i, state->entries[i].icon);
+        fprintf(f, "entry_%d_sprite=%s\n", i, state->entries[i].sprite);
     }
 
     fprintf(f, "filename=%s\n", state->pending_filename);

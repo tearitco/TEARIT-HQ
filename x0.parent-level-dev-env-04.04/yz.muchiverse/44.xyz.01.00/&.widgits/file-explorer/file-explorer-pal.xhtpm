@@ -93,7 +93,7 @@
     <item id="save" class="opacity-btn" show="${show_save_row}" action="FE_SAVEAS" label="Save"/>
     <scrolllist show="${is_list_view}">
       <repeat count="${n_entries}" bind="entry">
-      <item id="entry${entry.#}" class="fe-entry" action="FE_ENTRY:${entry.#}" label="${entry.icon}  ${entry.name} ${entry.size}"/>
+      <item id="entry${entry.#}" class="fe-entry sprite-inline" sprite="${entry.sprite}" action="FE_ENTRY:${entry.#}" label="${entry.icon}  ${entry.name} ${entry.size}"/>
       </repeat>
     </scrolllist>
     <!-- REAL, NEW 2026-09-15, direct live request ("we wanted list/grid
@@ -111,7 +111,7 @@
          specifically hasn't been proven live yet - test both modes
          before trusting this comment over what's actually on screen. -->
     <repeat count="${n_grid_entries}" bind="entry">
-    <item id="gentry${entry.#}" class="swatch" label="${entry.icon}  ${entry.name} ${entry.size}" action="FE_ENTRY:${entry.#}"/>
+    <item id="gentry${entry.#}" class="swatch" sprite="${entry.sprite}" label="${entry.icon}  ${entry.name} ${entry.size}" action="FE_ENTRY:${entry.#}"/>
     </repeat>
   </page>
 </window>

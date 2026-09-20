@@ -4270,7 +4270,11 @@ static int scroll_row_span(const Elem *c, int w) {
         if (fh < ROW_H) fh = ROW_H;
         return (fh + ROW_H - 1) / ROW_H;
     }
-    if (c && c->sprite[0]) return (64 + ROW_H + 8 + ROW_H - 1) / ROW_H; /* 64px blit + one ROW_H for the nav chip */
+    /* class="sprite-inline": keep a single ROW_H slot; draw_core's short-bar
+     * path then blits a 24px sprite left of the label (taskbar look), so a
+     * list of mixed sprite/non-sprite rows stays uniform. */
+    if (c && c->sprite[0] && !elem_has_class((Elem *)c, "sprite-inline"))
+        return (64 + ROW_H + 8 + ROW_H - 1) / ROW_H; /* 64px blit + one ROW_H for the nav chip */
     /* REAL FIX 2026-09-03 (direct live report: co-lab-hai's own long
      * agent messages clipped with "..." instead of wrapping, unlike
      * chat-hai's own rows - traced to this exact function always

@@ -1688,7 +1688,8 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             XSetForeground(dpy, gc, alloc_pixel("#141414"));
             XFillRectangle(dpy, buf, gc, chip_x0, chip_y0, (unsigned)chip_w, (unsigned)chip_h);
             chip_drawn = 1;
-        } else if ((e->sprite[0] || is_swatch_tile) && e->y >= 16 && !elem_has_class(e, "dock-cell")) {
+        } else if ((e->sprite[0] || is_swatch_tile) && e->y >= 16 && !elem_has_class(e, "dock-cell") &&
+                   !elem_has_class(e, "sprite-inline")) { /* sprite-inline rows keep the inline chip */
             /* Sprite tiles and swatch-picker tiles: draw badge ABOVE the tile
              * with a dark backing chip for contrast.
              *
