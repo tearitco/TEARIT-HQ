@@ -42,7 +42,11 @@ fi
 x=$(grep '^x=' "$CLICK" | sed 's/^x=//')
 y=$(grep '^y=' "$CLICK" | sed 's/^y=//')
 [ -n "$x" ] && [ -n "$y" ] || exit 1
-g=64
+# Snap to the REAL desk grid cell (reference px), the same cell the labelled Place
+# overlay draws (tp_arm_placer_rmmv.c) - was a hardcoded 64 while the grid is 80.
+g=$(awk -F'|' '/cell_px/ { gsub(/[ \t]/, "", $3); print $3; exit }' "$HOUSE/#.desktop/desk_grid.pdl" 2>/dev/null)
+case "$g" in ''|*[!0-9]*) g=80 ;; esac
+[ "$g" -gt 0 ] 2>/dev/null || g=80
 x=$(( (x / g) * g ))
 y=$(( (y / g) * g ))
 
