@@ -86,6 +86,12 @@
          FE_BACK (generic FE_ prefix -> cmd="BACK", handled directly in
          the manager). show="${has_back}" hides it at the real root
          (has_back = current_dir != "/"). -->
+    <!-- 2026-09-19: Search cli-io, its own toolbar row above Back. The shared
+         renderer live-syncs this field to cli_io_state.txt (search=...) on
+         every keystroke; file_explorer_manager.c polls it and filters the
+         current dir by case-insensitive name substring (empty = all). The
+         manager clears it when the directory changes. No Enter needed. -->
+    <cli_io id="search" target_id="search" label="Search: "/>
     <item id="back" class="opacity-btn" show="${has_back}" action="FE_BACK" label="⬅️ Back"/>
     <item id="viewtoggle" class="opacity-btn" action="FE_VIEWMODE" label="${view_toggle_label}"/>
     <text label="Pick a file to load." class="quiet" show="${show_load_hint}"/>

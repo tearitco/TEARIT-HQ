@@ -102,7 +102,7 @@ also apply there or crumbs stay broken in Grid View. Not a new
 ## 2026-09-19 — inventory follow-ups (user, deferred)
 
 - **Cli-io experimental option on ALL entity context menus** (mv <nav#> <nav#> and further verbs) — later. Only `mv` exists (manager `CLIIO_MV:`); the auto-added "Cli-io" row in `load_methods()` has no pal-side handler yet; File Explorer's `meta.pdl` Cli-io row stays out until it does.
-- **File Explorer "Search" cli-io** as its own toolbar button above Back (same style as Back / Grid View) — later.
+- ~~**File Explorer "Search" cli-io** as its own toolbar button above Back~~ ✅ DONE 2026-09-19: `<cli_io id="search">` row above Back (list + grid); `file_explorer_manager.c` polls `cli_io_state.txt` `search=` and filters the current dir live (case-insensitive name substring); empty = all; cleared on directory change. Grid mode needed a small generic allowance for `cli_io` in the swatch-grid chip row (`khtpm_core_render.c`).
 - Real sprite in Inventory tiles — **done** (0eda3dc5, transparency a53ddb80).
 - Inventory row on every entity — **done** (e8a5baa4); named explorer instances (`button.sh run-instance <dir>`) so several Inventory windows can be open.
 - Cross-window Cut/Paste (global `#.desktop/fe_clipboard.txt`) — **done** (711a3c46). Place into an open Inventory (pointer-over-window highlight + click moves item in) — **done**, see commit for Task 4.

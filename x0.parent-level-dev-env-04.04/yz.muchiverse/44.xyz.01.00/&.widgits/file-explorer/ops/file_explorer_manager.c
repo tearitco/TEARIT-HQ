@@ -25,6 +25,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <ctype.h>
 
 #define MAX_PATH 4096
 #define MAX_ENTRIES 512
@@ -155,6 +156,8 @@ typedef struct {
     int has_back; /* REAL, NEW 2026-09-15 - Back is its own toolbar button now, not a list entry; see list_directory()'s own comment. */
     time_t dir_mtime;
     nlink_t dir_nlink;
+    char filter[128];        /* Search cli-io text (case-insensitive substring); empty = show all */
+    char filter_dir[MAX_PATH]; /* dir the filter was last seen in; a change clears the filter */
 } State;
 
 static void fe_note_dir(State *state) {
@@ -301,6 +304,57 @@ int entry_cmp(const void *a, const void *b) {
     return strcmp(ea->name, eb->name);
 }
 
+/* Search cli-io. The renderer live-syncs <cli_io target_id="search"> into
+ * <package_dir>/cli_io_state.txt as `search=<text>` on every keystroke, so the
+ * manager just polls that line (no Enter needed, no renderer changes). */
+static int fe_contains_ci(const char *hay, const char *needle) {
+    size_t nl = strlen(needle);
+    if (nl == 0) return 1;
+    for (; *hay; hay++) {
+        size_t i = 0;
+        while (i < nl && hay[i] && tolower((unsigned char)hay[i]) == tolower((unsigned char)needle[i])) i++;
+        if (i == nl) return 1;
+    }
+    return 0;
+}
+
+static void fe_read_search(const char *package_dir, char *out, size_t sz) {
+    char p[MAX_PATH], line[512];
+    out[0] = '\0';
+    snprintf(p, sizeof(p), "%s/cli_io_state.txt", package_dir);
+    FILE *f = fopen(p, "r");
+    if (!f) return;
+    while (fgets(line, sizeof(line), f)) {
+        line[strcspn(line, "\r\n")] = '\0';
+        if (!strncmp(line, "search=", 7)) snprintf(out, sz, "%s", line + 7);
+    }
+    fclose(f);
+}
+
+/* Empty the search field: rewrite cli_io_state.txt without its search= line
+ * (other fields, e.g. filename=, kept) and add an empty one; the renderer's
+ * per-reparse cli_io reload then clears the on-screen buffer. */
+static void fe_clear_search(const char *package_dir) {
+    char p[MAX_PATH], keep[32][512];
+    int n = 0;
+    snprintf(p, sizeof(p), "%s/cli_io_state.txt", package_dir);
+    FILE *f = fopen(p, "r");
+    if (f) {
+        char line[512];
+        while (n < 31 && fgets(line, sizeof(line), f)) {
+            line[strcspn(line, "\r\n")] = '\0';
+            if (!strncmp(line, "search=", 7) || !strchr(line, '=')) continue;
+            snprintf(keep[n++], sizeof(keep[0]), "%s", line);
+        }
+        fclose(f);
+    }
+    f = fopen(p, "w");
+    if (!f) return;
+    for (int i = 0; i < n; i++) fprintf(f, "%s\n", keep[i]);
+    fprintf(f, "search=\n");
+    fclose(f);
+}
+
 void list_directory(const char *dir, State *state) {
     DIR *d = opendir(dir);
     if (!d) return;
@@ -310,6 +364,9 @@ void list_directory(const char *dir, State *state) {
     struct dirent *entry;
     while ((entry = readdir(d)) != NULL && state->count < MAX_ENTRIES) {
         if (entry->d_name[0] == '.') {
+            continue;
+        }
+        if (state->filter[0] && !fe_contains_ci(entry->d_name, state->filter)) {
             continue;
         }
 
@@ -390,6 +447,7 @@ void write_ui_file(const char *package_dir, State *state,
     fprintf(f, "is_grid_view=%d\n", state->grid_view ? 1 : 0);
     fprintf(f, "view_toggle_label=%s\n", state->grid_view ? "List View" : "Grid View");
     fprintf(f, "has_back=%d\n", state->has_back);
+    fprintf(f, "search_active=%d\n", state->filter[0] ? 1 : 0);
     /* REAL, NEW 2026-09-15 - the renderer's own real swatch-grid layout
      * path (khtpm_core_render.c, the SAME one palettes-emojis.xhtpm
      * already uses) triggers for the WHOLE page the instant ANY real
@@ -568,8 +626,29 @@ int main(int argc, char *argv[]) {
     list_directory(state.current_dir, &state);
     write_ui_file(package_dir, &state, "", "");
 
+    snprintf(state.filter_dir, sizeof(state.filter_dir), "%s", state.current_dir);
+    fe_clear_search(package_dir); /* a fresh window starts with no filter */
+
     while (1) {
         usleep(50000);
+
+        {
+            /* Search cli-io: clear on directory change, else follow the field. */
+            char want[128];
+            fe_read_search(package_dir, want, sizeof(want));
+            if (strcmp(state.filter_dir, state.current_dir) != 0) {
+                snprintf(state.filter_dir, sizeof(state.filter_dir), "%s", state.current_dir);
+                if (want[0] || state.filter[0]) {
+                    fe_clear_search(package_dir);
+                    want[0] = '\0';
+                }
+            }
+            if (strcmp(want, state.filter) != 0) {
+                snprintf(state.filter, sizeof(state.filter), "%s", want);
+                list_directory(state.current_dir, &state);
+                write_ui_file(package_dir, &state, "", "");
+            }
+        }
 
         {
             struct stat dst;
