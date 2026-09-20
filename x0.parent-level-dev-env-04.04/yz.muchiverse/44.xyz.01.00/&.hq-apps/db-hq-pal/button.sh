@@ -6,7 +6,10 @@
 #   button.sh <house_root>
 set -e
 HOUSE_ROOT="${1:-}"
-[ -n "$HOUSE_ROOT" ] && [ -d "$HOUSE_ROOT" ] || { echo "db-hq-pal: need house_root as argv[1]" >&2; exit 1; }
+# The toys menu runs `button.sh run` (argv[1] is not a path); fall back to
+# the house root derived from this script's own location.
+[ -n "$HOUSE_ROOT" ] && [ -d "$HOUSE_ROOT" ] || HOUSE_ROOT="$(dirname "$0")/../.."
+[ -d "$HOUSE_ROOT" ] || { echo "db-hq-pal: cannot resolve house_root" >&2; exit 1; }
 HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
