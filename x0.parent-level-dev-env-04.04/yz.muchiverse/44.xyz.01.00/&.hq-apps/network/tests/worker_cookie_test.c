@@ -6,7 +6,7 @@
  *        "gone" via max-age=0 and expire "old" in the past; assert read-back.
  *   2. page_get.js   href http://example.com/deep/other.html   (fresh heap!)
  *        read the JAR from disk — asserts persistence across LOADs (each LOAD
- *        runs a new Duktape heap, so the file is the only persistence).
+ *        runs a fresh engine instance, so the file is the only persistence).
  *   3. page_scope.js href http://other.test/x
  *        assert other.test does NOT see example.com cookies (host scoping).
  *
@@ -61,6 +61,7 @@ static int wreply(int fd, char *buf, size_t cap) {
     if (n < 0 || (size_t)n >= cap) return 0;
     if (!rread(fd, buf, (size_t)n)) return 0;
     char t; if (read(fd, &t, 1) != 1) return 0;   /* trailing '\n' */
+    if (strncmp(buf, "LIVE|", 5) == 0) return wreply(fd, buf, cap);  /* keepalive */
     return 1;
 }
 

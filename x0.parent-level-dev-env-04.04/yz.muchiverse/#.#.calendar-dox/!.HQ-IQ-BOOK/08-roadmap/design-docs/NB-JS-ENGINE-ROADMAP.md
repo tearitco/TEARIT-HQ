@@ -6,14 +6,28 @@
 `js/duktape.*`, and the `network_browser_manager.c` fetch/script/render
 pipeline.
 
+> **ENGINE FLIP 2026-09-18 (supersedes the Duktape framing below):** the
+> ES5.1 parser was the row-31 floor — see `JS-ENGINE-QUICKJS-SWAP-INSIGHT.md`.
+> The graft is DONE: engine is **QuickJS 2026-06-04** (vendored
+> `&.hq-apps/js/`, commit `5d1e8bd7`; worker/host/eval translated,
+> commit `07aa2200`), full `make check` 44 PASS / 0 FAIL on the fresh
+> build. Section 13's "language is done on Duktape" statement and §4's
+> "swap only if ES6 syntax becomes the wall" recommendation are now
+> HISTORY — the swap already happened. Rows 32-35 receipts all still
+> pass unmodified on the new engine.
+
 ---
 
 ## 0. Where we are
 
-`nb_js_eval.c` (245 lines) already embeds **Duktape**, a real ES5.1
-engine — so the *language* is done (closures, regex, JSON, Array/
-String/Object/Math, try/catch, prototypes). What is missing is the
-**host environment** a page expects. `install_host()` today stubs only:
+`nb_js_eval.c` (245 lines) embeds a real ES5.1 engine — Duktape — so
+the *language* was declared done (closures, regex, JSON, Array/
+String/Object/Math, try/catch, prototypes). **Corrected 2026-09-18:**
+"done" only held for ES5.1-compatible page JS; modern bundles (youtube's
+ES2020+) were rejected by the parser before a byte ran — the engine is
+now QuickJS 2026-06-04 (see status banner above). What is/was missing is
+the **host environment** a page expects. `install_host()` today
+stubs only:
 
 | provided | level |
 |---|---|
@@ -537,6 +551,11 @@ fallback and for tests.
 
 ## 4. Engine choice — Duktape vs QuickJS
 
+> **RESOLVED 2026-09-18:** the "swap only if syntax becomes the wall"
+> trigger fired; §4's original text (below) is now HISTORY. The engine
+> is QuickJS 2026-06-04 — see the status banner + `JS-ENGINE-QUICKJS-
+> SWAP-INSIGHT.md` §10 (commits `5d1e8bd7`/`07aa2200`, 44 suites green).
+
 Duktape is ES5.1 + a little ES6 (let/const, arrow fns, TypedArrays if
 configured). **Modern bundled sites (webpack/Babel-to-ES2017+, or
 untranspiled ES2020) will fail on *syntax* before any DOM work
@@ -743,3 +762,17 @@ Rung 1 in `nb_js_eval.c` `install_host()`: make `window`/`self`/
 (parsed from `argv[3]` href). ~40 lines, no manager changes, kills a
 large share of the current `js: script error` rows immediately. Then
 decide one-shot-plus vs worker (§3) before starting rung 2.
+
+## 2026-09-19 — watch page + resident multi-nav session, zero engine gaps
+
+The same engine that renders youtube's home renders the real **watch**
+page through the manager with no code changes: `TITLE|Rick Astley -
+Never Gonna Give You Up (Official Video) (4K Remaster)`, `MEDIA|V|`
+player frame, 2 thumbnail `MEDIA|I|` frames, 2 suggested `LINK|` rows,
+56 `TEXT|` rows (real description + lyrics + view/subscriber counts),
+0-byte worker error log. And a single resident worker served **two
+consecutive navigations** (home → watch) in one manager house with the
+session jar persisting across both — the rung-4 fetch surface, jar
+ingress, and signed innerTube attach hold end-to-end over real pages.
+`make check` 60/0. Next wall on the REAL-SPA roadmap is CSS/layout; the
+engine's host-surface coverage is now well ahead of the renderer.

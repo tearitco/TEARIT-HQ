@@ -326,6 +326,72 @@ static void resolve_url(const char *base, const char *href, char *out, size_t ou
 }
 
 
+/* Address-bar convenience (2026-09-20): free text that is clearly not a
+ * URL becomes a YouTube search (the on-page searchbox needs Polymer's
+ * custom-element upgrade to exist; the address bar is the immediate path).
+ * Bare hostnames (no scheme, no slash, has a dot, no spaces) get https://
+ * prepended. Real URLs and path/query strings pass through untouched. */
+static int looks_like_bare_host(const char *t) {
+    if (!t[0] || strstr(t, "://") || strchr(t, ' ') || strchr(t, '/'))
+        return 0;
+    if (t[0] == '?' || t[0] == '#') return 0;
+    if (strncasecmp(t, "file:", 5) && strncasecmp(t, "mailto:", 7) &&
+        strncasecmp(t, "tel:", 4) && strncasecmp(t, "data:", 5) &&
+        strncasecmp(t, "blob:", 5) && strncasecmp(t, "javascript:", 11) &&
+        strncasecmp(t, "yt:", 3) && strncasecmp(t, "watch?", 6) && strncasecmp(t, "about:", 6)) {
+        if (t[0] != '.') return (strchr(t, '.') != NULL);
+    }
+    return 0;
+}
+static int is_searchish(const char *t) {
+    if (!t[0]) return 0;
+    if (strchr(t, ' ')) return 1;                          /* free text -> search */
+    if (strstr(t, "://")) return 0;
+    if (t[0] == '/' || t[0] == '?' || t[0] == '#') return 0;
+    if (strncasecmp(t, "file:", 5) == 0 || strncasecmp(t, "mailto:", 7) == 0 ||
+        strncasecmp(t, "tel:", 4) == 0 || strncasecmp(t, "data:", 5) == 0 ||
+        strncasecmp(t, "blob:", 5) == 0 || strncasecmp(t, "javascript:", 11) == 0 ||
+        strncasecmp(t, "yt:", 3) == 0 || strncasecmp(t, "about:", 6) == 0)
+        return 0;
+    if (strchr(t, '/') || strchr(t, '=') || strchr(t, '?')) return 0;  /* path/query -> navigate */
+    if (strchr(t, '.')) return 0;                          /* bare hostname handled above */
+    return 1;
+}
+static void urlenc_query(char *dst, size_t dstsz, const char *s) {
+    size_t i = 0, o = 0;
+    static const char hx[] = "0123456789ABCDEF";
+    while (s[i] && o + 3 < dstsz - 1) {
+        unsigned char c = (unsigned char)s[i];
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || strchr("-_.~", (char)c))
+            dst[o++] = (char)c;
+        else if (c == ' ') dst[o++] = '+';
+        else { dst[o++] = '%'; dst[o++] = hx[c >> 4]; dst[o++] = hx[c & 15]; }
+        i++;
+    }
+    dst[o] = 0;
+}
+static void go_target_or_search(char *out, size_t outsz, const char *t) {
+    if (looks_like_bare_host(t)) { snprintf(out, outsz, "https://%s", t); return; }
+    if (!is_searchish(t)) { snprintf(out, outsz, "%s", t); return; }
+    const char *base = g_current_url[0] ? g_current_url : "https://www.youtube.com/";
+    char host[256];
+    const char *se = strstr(base, "://");
+    if (se) {
+        const char *hs = se + 3;
+        const char *pe = strchr(hs, '/');
+        size_t hl = pe ? (size_t)(pe - hs) : strlen(hs);
+        if (hl >= sizeof(host)) hl = sizeof(host) - 1;
+        memcpy(host, hs, hl); host[hl] = 0;
+    } else snprintf(host, sizeof(host), "www.youtube.com");
+    char q[PATH_BUF];
+    urlenc_query(q, sizeof(q), t);
+    if (strstr(host, "youtube.com") || strstr(host, "youtu.be"))
+        snprintf(out, outsz, "https://%s/results?search_query=%s", host, q);
+    else
+        snprintf(out, outsz, "https://www.youtube.com/results?search_query=%s", q);
+}
+
+
 static const char *skip_named_element(const char *p, const char *name) {
     size_t nlen = strlen(name);
     int depth = 0;
@@ -727,7 +793,7 @@ static void acquire_house_lock(const char *lock_path) {
  * javascript MIME). Everything else — module, application/json,
  * application/ld+json, text/template, and any other custom type — is
  * skipped; the DOM parser already drops those nodes, so running them would
- * just emit WERR noise (and module syntax Duktape can't parse anyway). */
+ * just emit WERR noise (and module syntax the engine can't parse anyway). */
 static int script_type_skip(const char *tag, const char *tag_end) {
     const char *t = strcasestr_local(tag, "type=");
     if (!t || t >= tag_end) return 0;
@@ -783,12 +849,19 @@ static int curl_url_to_file(const char *url, const char *out_path) {
     return system(cmd) == 0;
 }
 
+/* Real SPAs ship a module graph of dozens of scripts (youtube home.html:
+ * 42 <script> tags incl. the 10.8 MB kevlar_base bundle). The old 8-total /
+ * 4-external caps truncated the graph before the app's own bootstrap ran, so
+ * the page rendered only the static DOM. Raise them; the worker's page
+ * loader (read_file_big) accepts up to 64 MB. */
+#define NB_MAX_SCRIPTS     64
+#define NB_MAX_EXT_SCRIPTS 48
 static void collect_scripts(const char *html, const char *page_url, FILE *js_out, int *n_scripts) {
 #define SCRIPT_BOUNDARY "/*nbjs-script-boundary*/"   /* per-script slices for the worker's document-order runner */
     const char *p = html;
     int n = 0, n_ext = 0;
     *n_scripts = 0;
-    while (p && *p && n < 8) {
+    while (p && *p && n < NB_MAX_SCRIPTS) {
         const char *tag = strcasestr_local(p, "<script");
         if (!tag) break;
         if (tag[7] != '>' && tag[7] != ' ' && tag[7] != '\t' && tag[7] != '\n' && tag[7] != '/') {
@@ -806,7 +879,7 @@ static void collect_scripts(const char *html, const char *page_url, FILE *js_out
         }
         const char *src = strcasestr_local(tag, "src=");
         if (src && src < gt) {
-            if (n_ext >= 4) { p = close + 9; continue; }
+            if (n_ext >= NB_MAX_EXT_SCRIPTS) { p = close + 9; continue; }
             const char *v = src + 4;
             char q = 0;
             if (*v == '"' || *v == '\'') { q = *v; v++; }
@@ -1323,10 +1396,10 @@ static int worker_send(const char *payload, size_t n) {
     return write(g_worker_fd, "\n", 1) == 1;
 }
 
-static int worker_recv_line(char *out, size_t cap) {
+static int worker_recv_line_to(char *out, size_t cap, int timeout_ms) {
     if (g_worker_fd < 0) return 0;
     struct pollfd p = { g_worker_fd, POLLIN, 0 };
-    int pr = poll(&p, 1, WORKER_RECV_TIMEOUT_MS);
+    int pr = poll(&p, 1, timeout_ms);
     if (pr <= 0) return 0;   /* worker stalled: caller closes + respawns */
     char lb[16]; size_t i = 0; char c;
     while (read(g_worker_fd, &c, 1) == 1) {
@@ -1346,6 +1419,18 @@ static int worker_recv_line(char *out, size_t cap) {
     if (read(g_worker_fd, &c, 1) != 1) return 0;
     return 1;
 }
+
+static int worker_recv_line(char *out, size_t cap) {
+    return worker_recv_line_to(out, cap, WORKER_RECV_TIMEOUT_MS);
+}
+
+/* A resident LOAD can spend a long quiet stretch evaluating one page slice
+ * (the 11.9MB kevlar head alone is seconds) before its first RENDER/LIVE
+ * frame; the interactive 3s watchdog would kill a healthy worker mid-LOAD.
+ * The per-slice NB_EVAL_BUDGET (60s, set in worker_spawn) still bounds any
+ * genuinely stuck slice, and a dead worker EOFs instantly rather than
+ * timing out — so a generous LOAD quiet-budget is safe. */
+#define WORKER_LOAD_QUIET_MS 90000
 
 static void worker_close(void) {
     if (g_worker_fd >= 0) { close(g_worker_fd); g_worker_fd = -1; }
@@ -1423,6 +1508,14 @@ static void worker_spawn(void) {
         char con[PATH_BUF];
         snprintf(con, sizeof(con), "%s/#.desktop/network_browser_console.txt", g_house);
         setenv("NBW_CONSOLE", con, 1);
+        /* row-31 live incident (2026-09-19): the resident worker's page-slice
+         * budget defaults to EVAL_BUDGET_SEC=2s; the real 10.8MB kevlar head
+         * occasionally crosses it, sigalrm() _exit()s the whole worker
+         * mid-LOAD, and the manager is left with a dead worker — static rows
+         * merge, then "eval" reports "no page loaded". The one-shot row-31
+         * path already overrides NB_EVAL_BUDGET for the same bundle; give the
+         * RESIDENT browser a generous-but-bounded per-slice ceiling too. */
+        setenv("NB_EVAL_BUDGET", "60", 1);
         execl(g_js_worker_path, g_js_worker_path, (char *)NULL);
         _exit(127);
     }
@@ -1450,7 +1543,8 @@ static int worker_load(const char *js_path, const char *dom_path,
     g_pending_nav_kind[0] = 0; g_pending_nav_url[0] = 0; g_pending_nav_count = 1;
     char resp[65536];
     for (;;) {
-        if (!worker_recv_line(resp, sizeof(resp))) { worker_close(); return 0; }
+        if (!worker_recv_line_to(resp, sizeof(resp), WORKER_LOAD_QUIET_MS)) { worker_close(); return 0; }
+        if (strncmp(resp, "LIVE|", 5) == 0) continue;   /* drain keepalive */
         if (strncmp(resp, "RENDER\n", 7) == 0) {
             size_t rn = strlen(resp + 7);
             if (rn + 1 < sizeof(g_worker_render))
@@ -1512,7 +1606,11 @@ static int worker_eval(const char *js) {
 
     char resp[65536];
     for (;;) {
-        if (!worker_recv_line(resp, sizeof(resp))) { worker_close(); return 0; }
+        /* A console command can run the page's own handlers (input/click),
+         * which may then drain a long quiet stretch — same generous budget
+         * as LOAD. A dead worker still EOFs immediately. */
+        if (!worker_recv_line_to(resp, sizeof(resp), WORKER_LOAD_QUIET_MS)) { worker_close(); return 0; }
+        if (strncmp(resp, "LIVE|", 5) == 0) continue;   /* drain keepalive */
         if (strncmp(resp, "RENDER\n", 7) == 0) {
             size_t rn = strlen(resp + 7);
             if (rn + 1 < sizeof(g_worker_render))
@@ -2975,8 +3073,10 @@ static void handle_request(void) {
         publish_status(worker_eval(line + 5) ? "ready" : "eval error");
         (void)merge_render_rows();
     } else if (strncmp(line, "go:", 3) == 0) {
+        char target[PATH_BUF];
+        go_target_or_search(target, sizeof(target), line + 3);
         stack_clear(g_forward_path);
-        do_fetch(line + 3, 1);
+        do_fetch(target, 1);
     } else if (strcmp(line, "back:") == 0 || strcmp(line, "back") == 0) {
         char prev[PATH_BUF];
         if (stack_pop(g_back_path, prev, sizeof(prev))) {

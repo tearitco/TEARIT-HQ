@@ -1,0 +1,285 @@
+# opencode-browser-handoff-er.txt
+
+Emergency / generalized handoff for the QUICKJS NETWORK BROWSER work.
+Read this first on any fresh session. Goal: functional parity with the
+chromium-based browser path — real pages render + are interactive through
+the manager, zero JS errors, end-to-end — then keep going.
+
+-------------------------------
+## 1. THE TASK / ACCEPTANCE
+-------------------------------
+Drive real web pages (YouTube is the shakedown target) through the
+quickjs-based network browser:
+  `network_browser_manager.c` (manager / orchestrator, split into the
+  ./.desktop +x manager; resident worker, curl, cookies)
+  `ops/nb_js_worker.c` (the resident quickjs worker: DOM engine, page
+  scripts, event loop, render-back) + `nb_dom.c` `nb_css.c` + vendored
+  quickjs in `../js/`.
+
+Acceptance line (paraphrased, ongoing): opening https://www.youtube.com/
+must yield a static render with NO js errors, the home element tree wired
+(bootstrap incl. `#search-icon-legacy` live), native search click/enter
+drives a page NAV, results URL lands in page.state, cookies persist,
+`make check` stays 60 PASS / 0 FAIL. Bugs are fixed as they surface until
+that is true.
+
+## 2. TOP-LEVEL STATE (2026-09-19 evening)
+WHAT WORKS (all committed + pushed to origin/opencode, HEAD = commit
+`38efd12f`):
+- Resident worker keepalive: worker emits `LIVE|drain|%u` every ~1800 ms
+  during long drains (resident mode only); manager + all 13 worker test
+  harnesses skip LIVE frames. `run_event_loop()` in nb_js_worker.c.
+- Manager LOAD/EVAL quiet budget: `WORKER_LOAD_QUIET_MS 90000` for the
+  LOAD and EVAL read loops, via `worker_recv_line_to(fd, buf, cap, ms)`
+  (3 s wrapper default) in network_browser_manager.c.
+- `performance` host (nb_host.h): now/timeOrigin/mark/measure/clearMarks/
+  getEntries/getEntriesByType/getEntriesByName/navigation{type,redirectCount}
+  /timing{navigationStart} — killed youtube kevlar's
+  `ReferenceError: 'performance' is not defined`.
+- `NB_EVAL_BUDGET=60` setenv'd on the resident worker child in
+  `worker_spawn()` (~line 1440).
+- End-to-end milestone (VERIFIED through the manager): go:youtube home ->
+  ready; `eval:` sets `#search` value ("never gonna give you up") and
+  dispatches input -> `=>BOX_SET ... btn=0`; `eval:location.href="/results?search_query=..."` ->
+  `=>NAV_REQUESTED` -> page.state URL = the /results URL; cookies in
+  `nb_curl_cookies`; err log 0 bytes.
+- Home page static render ~18-19 rows (footer + TEXT css). `make check`
+  = 60 PASS / 0 FAIL (verified twice).
+
+FIXED 2026-09-20: the two init TypeErrors are GONE (see below for root
+cause record). Home loads fully error-free, console clean, value-set +
+input dispatch work through the manager.
+
+THE NEXT GAP (functional parity, chromium target): the search UI is not
+interactive yet. `#search` input exists (name="search_query") but
+`#search-icon-legacy` / the enclosing `<form action="/results">` are NOT
+in the fetched markup — they are built by kevlar when it UPGRADES the
+custom elements `ytd-masthead` / `ytd-searchbox-spt` (customElements +
+ShadowRoot + `<template>`). Until that host exists, Enter/click on search
+is inert; the working search drive is `eval:location.href="/results?search_query=..."`.
+This milestone (custom-element upgrade) is the biggest remaining feature.
+
+===============================
+2026-09-20 SESSION RECORD (committed with this doc)
+===============================
+SHIPPED (verified through the MANAGER flow, real runs of the new
+binaries):
+- ADDRESS-BAR SEARCH FALLBACK (network_browser_manager.c): the `go:`
+  handler now sends free text (not a URL) to `/results?search_query=...`.
+  Selected via new helpers after resolve_url (~line 328):
+  `looks_like_bare_host`, `is_searchish`, `urlenc_query`,
+  `go_target_or_search`. VERIFIED: request `go:never gonna give you up`
+  -> page.state URL `https://www.youtube.com/results?search_query=never+
+  gonna+give+you+up`, status ready. BEHAVIOR: bare host -> https://host;
+  non-URL free text -> <host>/results?search_query=<enc> where host =
+  the CURRENT page host (or www.youtube.com when empty); paths/queries
+  pass through; full URLs unchanged. NOTES: `&`-free search string shown
+  above; a query with `&` would need the manager's URL space-encoding to
+  also handle it (URL_ENCODE keeps `&` -> curl query already correct).
+- customElements ENGINE SLICE (ops/nb_js_worker.c):
+  - REAL `customElements` on window: define/get/whenDefined/upgrade with
+    registry = plain object `customElements.__registry`, names array
+    `customElements.__names`, upgrade WALK over g_dom_root marking
+    `node->__nb_upgraded` and swapping prototype to the class's proto
+    (ce_define/ce_upgrade/ce_upgrade_one/ce_walk_upgrade/ce_registry.
+    ~after js_error_to_cstr, +:-2000 lines INTO nb_js_worker.c after the
+    2026-09-19 section). Lifecycle best-effort per upgrade:
+    _initializeProperties -> ready -> connectedCallback via property
+    lookups (CE| lines go to worker stderr under NB_TRACE_CB=1).
+  - LATE-REDEFINE LAST-WINS: kevlar's `.f9({disableElementRegistration})
+    (ctor) + _.OV(ctor,name,templateFn)` flow registers a stub first and
+    replaces it later; define() now REPLACES the ctor (+ CE|redefined
+    trace) instead of returning early on dup.
+  - `Element.prototype.attachShadow` (+ C-backed #shadow-root NbNode):
+    returns a C-backed DocumentFragment wrapper with root-scoped
+    querySelector/All, getElementById, getElementsByTagName/ByClassName,
+    childNodes/children/firstChild/lastChild/parentNode/nextSibling,
+    cloneNode(deep), appendChild/insertBefore/removeChild/replaceChild,
+    innerHTML. Element is SET to shadowRoot (no composition rules yet).
+  - `<template>.content` is now ALWAYS C-backed from creation (push_node)
+    via nb_template_content_frag — the prelude JS `__nb_docfrag` bag is
+    NO LONGER used for template.content. FIXES bundle-line-16063
+    HierarchyRequestError: `insertBefore needs a real new node` caused by
+    `C6X.content.insertBefore(oyD().content.cloneNode(!0), firstChild)`
+    where oyD().content was the inert JS docfrag (cloneNode returned a
+    non-node). VERIFIED: that error is GONE; home LOAD err log 0 bytes
+    (~25-30 s home, ~15 s results through the manager).
+  - Forward decls + `nb_el_lastChild`/`hasChildNodes` + fragment
+    query/qsa + `node_deep_copy`/`nb_frag_clone` +
+    `make_fragment_wrapper` + `nb_template_content_frag` +
+    `nb_el_attachShadow`.
+- VERIFIED EMPIRICALLY: `customElements.get('ytd-masthead')` -> defined;
+  the light-DOM ytd-masthead node reports `__nb_upgraded`. Home + results
+  load through the manager with err log 0 bytes (post template fix).
+- `make check` = 60 PASS / 0 FAIL (verified twice this session).
+- REBUILT binaries: worker 1,248,752 B, manager 118,744 B.
+
+CURRENT KNOWN GAPS (next session):
+- Masthead (and most kevlar components) upgrade to a STUB class (ctor
+  name "D", no Polymer methods): kevlar registers the real masthead class
+  via its Nyy/w REGISTRATION WRAPPER — `customElements.define(name, w)`
+  where `w = function(){ G=HTMLElement.call(this); G.inst = new realCtor();
+  forward... }` builds the REAL instance INSIDE its own constructor and
+  forwards methods to it. We do NOT run constructors on upgrade (our
+  upgrade only sets prototype + property-hooks), so `inst` is never
+  created, no Polymer lifecycle, no attachShadow (probe: shadow-no,
+  init/ready/cc all undefined on the upgraded node). Reachable real class
+  = `w`-style only. A FULL native-constructor upgrade semantics is the
+  next engine step (Sprent; would need running the ctor without `new` on
+  the existing C wrapper or a QuickJS-facing trick).
+- ALSO relevant: kevlar flag `kevlar_delay_component_registration` gate at
+  line 10078054 — `_.f(...) || (f9(disableElementRegistration)(ZW),
+  _.OV(ZW,"ytd-masthead",tplFn))` skips when the flag is set; masthead's
+  define then only happens through the delayed queue / Nyy-w wrapper.
+- JS_FreeRuntime `gc_obj_list` assertion appears on the WORKER EXIT after
+  the results-page load (shutdown-time leak; worker is per-load,
+  respawned by the manager, so it's cosmetic — but worth tracking).
+- The on-page search box still renders flat light-DOM only
+  (`input#search` present, `name="search_query"`); no `<form action=
+  "/results">` / `#search-icon-legacy` yet — address-bar fallback is the
+  current working search path.
+- `JS_FreeRuntime` assert + empty TITLE row on results page = follow-ups.
+
+DIAGNOSTIC RECORD (why the two "cannot read property of undefined" init
+TypeErrors happened — now FIXED):
+- ROOT CAUSE: kevlar's bevasrs bootstrap reads
+  `D=window===window.top?window:jyq()?window:window.top` then `g=D[O]`.
+  Our window host defined window/self/globalThis but NOT top/parent/frames,
+  so `window.top` was undefined -> jyq() false -> D=window.top=undefined ->
+  `D[O]` threw (stack: <anonymous> <script>:1031:145 at h at laz ...).
+  Error 2 (HGa at <script>:1042:82, forEach over `_.j_(O,aaZ,6,_.qO())`)
+  was the same bevasrs bootstrap stream.
+- FIX: install_host() now sets window.top/parent/frames = window,
+  opener/frameElement = null, window.length = 0, in ops/nb_host.h.
+- STACK DECODING (for future matches): the whole kevlar bundle
+  (page.js.ext8.js, 42,993 lines) is eval'd as ONE <script>; every
+  `<script>:<line>` in a stack is an OFFSET-LINE into that bundle
+  (line 1031 in a stack = file line ~1030; small +1 shift), NOT a
+  line of page.js. The deepest frame `at <eval> (<script>:42993:8)` is
+  just the top-level eval of the bundle's final line.
+- DIAGNOSTIC TOOLING added: NB_TRACE_CB=1 env, g_trace_cb in
+  nb_js_worker.c dumps full callback/pending-job exceptions to stderr
+  (invoke_cb0 + drain_jobs); prelude installs a capture-phase window
+  'error' listener that re-logs the RAW quickjs Error as [NBTRACE]
+  (the page sanitizes its own copies, stripping quoted property names).
+- NOTE: the standalone worker driver is hit-or-miss at reproduction;
+  the MANAGER flow reproduces reliably (see /tmp/opencode/drive_load.py,
+  which now sends correct frames: length prefix counts the whole body
+  incl. the "LOAD\n" line).
+  1. `TypeError: cannot read property of undefined @ at <anonymous>
+     (<script>:1031:145) at h (<script>:5298:169) at laz
+     (<script>:1031:72)`
+  2. `... @ at HGa (<script>:1042:82) at GZl (<script>:26430:4) at lH6
+     (<script>:26435:4) ...`
+- Stack line numbers point into the kevlar bundle. page.js is assembled
+  from 23 slices (799 lines, sentinel `/*nbjs-script-boundary*/`,
+  `run_scripts_slices()`); the stack numbers instead refer to the
+  per-script kevlar: `page.js.ext8.js` = 42,993 lines / 10.8 MB (ext0 127,
+  ext1 332, ext2 51, ext3 20, ext4 59, ext5 18, ext6 88, ext7 41 resp.).
+  Lines 1031/1042/5298/26417/26747 are all inside page.js.ext8.js. The
+  exact file->stack line mapping has a small offset (laz is file line
+  1030 while the stack says 1031) — not fully pinned yet.
+- Because the page swallows the errors, the full quickjs message
+  (property name) is hidden. In-progress fix tooling:
+
+  DIAGNOSTIC AID JUST ADDED (uncommitted):
+  - `g_trace_cb` + `NB_TRACE_CB=1` env: invoke_cb0() now dumps the FULL
+    callback exception (message + stack with NB_STACK=1) to stderr as
+    `TRACE_CB| <msg>`. Declared ~line 2954, set in main() top, print in
+    invoke_cb0() if-IsException block. REBUILD the worker before use.
+  - Build cmd (NOTE the escaped quotes — plain -D strips them and the
+    macro value becomes NUMERIC 2026-06-04 -> quickjs.c compile error):
+    `gcc -std=gnu11 -O2 -D_GNU_SOURCE "-DCONFIG_VERSION=\"2026-06-04\""
+     -fwrapv -pthread -I"../js" -o ops/+x/nb_js_worker.+x
+     ops/nb_js_worker.c nb_dom.c nb_css.c ../js/quickjs.c ../js/cutils.c
+     ../js/libregexp.c ../js/libunicode.c ../js/dtoa.c -lm`
+  - To reproduce: run the worker RESIDENT (NOT `--browser`; the one-shot
+    CLI path does not run the kevlar async bootstrap that throws), i.e.
+    spawn bare `nb_js_worker.+x` over a pipe and send the LOAD frame.
+  - LOAD FRAME CONTRACT (file PATHS, not inline bytes!) — the worker
+    reads the files itself:
+        body = <page.js path>\n<fetch.dom path>\n\n   (field1=page.js,
+        field2=fetch.dom, field3=href, field4=title, field5=style.css)
+    sent as: `%05d\n` + "LOAD\n" + body.
+  - Driver script: /tmp/opencode/drive_load.py (detached, nohup + poll,
+    survives bash timeout; the LOAD takes minutes — kevlar is slow). The
+    page.js + fetch.dom sources live in the last test house:
+    `/tmp/nbhouse31u/&.hq-apps/network/tmp/`.
+    (A PC crash wiped /tmp/nbhouseira — reconstruct from nbhouse31u.)
+- Next step (was running when the machine crashed): capture TRACE_CB lines
+  from the resident LOAD, get the two property names, map them to a
+  missing host surface (pattern from `performance`/kevlar), wire it in
+  nb_host.h/nb_js_worker.c, rebuild worker+manager, re-drive go: youtube,
+  verify zero errors + `#search-icon-legacy` present, then native search
+  click/enter NAV, then make check 60/0, commit, push.
+
+MINOR OPEN ITEMS:
+- Worker RENDER sometimes lacks the TITLE row (manager merge then drops
+  it) — cosmetic, low priority.
+- The grep `error:` false-positive when building the manager (the source
+  contains the string "error: curl failed") — not a compile error.
+- Taskbar still needs the user to run `$.crypts/install-deps.sh` (sudo;
+  installs libxft-dev so +x/khtpm_core_render.+x lands). Committed
+  b3b2019b.
+
+## 3. PROTOCOL + FILE CONTRACT (manager <-> worker)
+- Worker daemon protocol over a socketpair/stdin-pipe; frames are
+  `XXXXX\n` length+`\n` content. Commands: `LOAD\n<body>` (fields
+  page_js/fetch_dom/href/title/style.css), `EVAL\n<js>` (single line),
+  `QUIT`. Worker replies `STATUS ok|err:...`, `LIVE|drain|%u`,
+  `RENDER\n<rows>`, `WERR| script %d: ...`, `=>BOX_SET ...`,
+  `=>NAV_REQUESTED` etc. In resident mode the worker stays alive for
+  repeated EVALs; run_event_loop() keeps the drain going.
+- Manager side: `#.desktop/network_browser_request.txt` one line per
+  tick; `go:<url>` -> do_fetch (curl -> fetch.html/fetch.dom -> LOAD);
+  `eval:<js>` / `go:eval:<js>` -> worker EVAL + merge_render_rows;
+  NAV frames (`NAV\n<kind>\n<url>`) -> do_fetch again. Status file
+  `network_browser_status.state.txt`; page.state rows `TITLE|`,
+  `URL|`, `TEXT|`, `LINK|`, `BOX|`...
+- Houses (the manager's working dir): `/tmp/nbhouseNN` — each holds
+  `&.hq-apps/network/tmp/{page.js,page.js.ext*.js,fetch.dom,fetch.html,
+  style.css,nb_curl_cookies}` + err/state files. Latest useful:
+  nbhouse31u. IMPORTANT: crash/reboot wipes /tmp houses; artifacts are
+  ephemeral. `nb_curl_cookies` persists cookies across navs.
+- Quoted-path rule: house paths contain `&`, `#`, `!`, spaces — always
+  quote; a bare `&` in the shell backgrounds the command.
+
+## 4. KEY FILES / SYMBOLS
+- ops/nb_js_worker.c — g_trace_cb (~2954), invoke_cb0 (~3017), js_error_to_cstr
+  (~2962), run_event_loop (~3760), run_scripts_slices (~4010, SCRIPT_BOUNDARY
+  ~3997), peval_budget (~3898), WERR ~4034, run_page (~4090), LOAD parse (~5048),
+  main (~5007).
+- ops/nb_host.h — install_host, performance host block, __nb_ges stub.
+- network_browser_manager.c — worker_spawn (~1397, NB_EVAL_BUDGET ~1440),
+  worker_recv_line_to (~1333), WORKER_LOAD_QUIET_MS, worker_load, worker_eval,
+  merge_render_rows (~979), run_page_scripts (~1578).
+- tests/worker_*_test.c — 13 harnesses; all wreply() skip LIVE frames.
+- Builds: worker see §2; manager: `gcc -std=c11 -Wall -O2 -o "+x/network_browser_manager.+x"
+  network_browser_manager.c nb_dom.c` (run from the network workspace dir).
+- Docs: `HANDOFF-JS-ENGINE-QUICKJS.md` (root), HQ-IQ-BOOK standards.
+
+## 5. HOUSE RULES / GOTCHAS (AGENTS.md)
+- Commit scoped at end of every block: `git add <path>` per file, NEVER
+  -A. Branch = `opencode` (never main/claude). Commit inline:
+  `-c user.name="tearitco" -c user.email="88365268+tearitco@users.noreply.github.com"`.
+  Message style: `fix:` / `docs:` / `wip:`. Push only when asked/user
+  expects it (established: push to origin/opencode after commits).
+- `make check` = the 13 harness tests; expect 60 PASS / 0 FAIL. Rebuild
+  worker + manager + re-run + real evidence before reporting "fixed".
+- Python `select() + buffered read(1)` harnesses LIE about frame delivery —
+  redirect worker stdout/stderr to files to inspect frames instead.
+- The compiled binaries are `+x/` `.+x` files in the network tree
+  (untracked by git, treated as runtime state).
+- Clean compile is NOT evidence; a fresh run + state-file/render/err-log
+  inspection is.
+
+## 6. SANITY COMMANDS
+- make check from the network tree.
+- Rebuild worker: §2 command (escaped quotes!).
+- Rebuild manager: §4 command.
+- Drive the browser: write `go:https://www.youtube.com/` to
+  `#.desktop/network_browser_request.txt`, poll the status file, then
+  `eval:<js>`; read page.state + err log + nb_curl_cookies.
+- Diagnose kevlar errors resident: NB_TRACE_CB=1 NB_STACK=1 spawn worker,
+  LOAD with paths, watch TRACE_CB| on stderr (see /tmp/opencode/
+  drive_load.py).

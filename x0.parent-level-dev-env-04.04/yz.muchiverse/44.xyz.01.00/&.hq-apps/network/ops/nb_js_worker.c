@@ -4,7 +4,7 @@
  * first <script> presence), talking line-RPC over a socketpair dup2'd to
  * stdin/stdout. NB-JS worker plan §1/§2/§4.
  *
- * This is the step-2 SKELETON: it creates one Duktape heap, reuses the
+ * This is the step-2 SKELETON: it creates one QuickJS runtime/context, reuses the
  * shared rung-1/6 host (nb_host.h), reads LOAD-delivered files, runs the
  * page's JS, and reports STATUS ok|err. It writes nothing to the page yet
  * (the DOM-tree accessors + RENDER merge land in steps 3-4). It stays
@@ -54,12 +54,13 @@ static int g_cli_status_ok = 0;  /* CLI exit-status latch set by send_status */
 static int g_nav_emit = 0;       /* rung-6 slice 2: daemon only (!g_cli, set */
                                  /* per run_page) - NAV frames go to manager */
 
-/* devtools console EVAL: the last LOAD's Duktape heap + DOM tree stay live
+/* devtools console EVAL: the last LOAD's QuickJS context + DOM tree stay live
  * (g_live_ctx / g_dom_root) between LOAD and EVAL, so an eval:<js> snippet
  * runs against the real page context (document, window, globals, timer
  * bindings) and can mutate the DOM. Tear down only at the next LOAD or on
  * QUIT/error - see run_page() and live_teardown(). */
-static duk_context *g_live_ctx = NULL;
+static JSContext *g_live_ctx = NULL;
+static JSRuntime *g_live_rt  = NULL;
 
 static void send_payload(const char *payload, size_t n) {
     if (g_cli) {
@@ -152,7 +153,7 @@ static void split_lines(char *fields[8]) {
 
 /* ==================== rung 2 DOM (worker side) ====================
  * The manager serializes the DOM to fetch.dom (nb_dom.h/.c); the worker
- * rebuilds the NbNode tree here and exposes it to JS via native Duktape
+ * rebuilds the NbNode tree here and exposes it to JS via native QuickJS
  * accessors (plan §7 step 3, roadmap §2 minimum API). The JS side only
  * holds opaque pointer handles; the tree is C-side. No shared memory. */
 
@@ -161,7 +162,7 @@ static NbNode *g_orphans = NULL;   /* detached createElement() nodes still to fr
 #define NODEKEY "_nbnode"
 
 /* JS handles are a plain numeric index into g_nodeindex (index -> NbNode*),
- * which is more robust than round-tripping a Duktape pointer object and
+ * which is more robust than round-tripping a JSValue pointer object and
  * survives across multiple lazily-created wrappers for the same node. */
 static NbNode **g_nodeindex = NULL;
 static int g_nodecount = 0, g_nodecap = 0;
@@ -185,6 +186,17 @@ static void node_index_reset(void) {
     g_nodecount = 0;
     g_nodecap = 0;
 }
+
+/* Forward decls for the customElements / ShadowRoot / template-content
+ * section (2026-09-20). Defined AFTER js_error_to_cstr so lifecycle hooks
+ * reuse the g_trace_cb dump channel. */
+static JSValue ce_define(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue ce_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue ce_when_def(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue ce_upgrade(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_el_attachShadow(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static NbNode *nb_template_content_frag(JSContext *ctx, JSValue el, NbNode *n);
+static JSValue make_fragment_wrapper(JSContext *ctx, NbNode *frag, const char *nodeName);
 
 /* ---- small string builder ---- */
 typedef struct { char *s; size_t len, cap; } SB;
@@ -331,6 +343,59 @@ static int match_compound(const NbNode *n, const char *cmp) {
     if (id[0] && (!n->id || strcmp(n->id, id))) return 0;
     char *tok = strtok(clbuf, " ");
     while (tok) { if (!has_class(n, tok)) return 0; tok = strtok(NULL, " "); }
+    /* attribute selectors: [attr], [attr=v], [attr*=v], [attr^=v],
+     * [attr$=v], [attr~=v]. Real bundles depend on exact matching
+     * (webcomponents-lite.js: script[src*="webcomponents-lite.js"]), and
+     * unsupported trailing syntax must FAIL rather than match by tag —
+     * otherwise querySelector returns a wrong (truthy) element and the
+     * caller dereferences it. */
+    while (*p == '[') {
+        p++;
+        const char *as = p;
+        while (*as && *as != '=' && *as != ']' && *as != '~' &&
+               *as != '^' && *as != '$' && *as != '*') as++;
+        char attr[64]; size_t ac = (size_t)(as - p); if (ac > 63) ac = 63;
+        memcpy(attr, p, ac); attr[ac] = 0;
+        for (char *t = attr; *t; t++) *t = (char)tolower((unsigned char)*t);
+        p = as;
+        int op = 0;
+        if (*p == '~' || *p == '^' || *p == '$' || *p == '*') {
+            op = (*p == '~') ? 5 : (*p == '^') ? 3 : (*p == '$') ? 4 : 2;
+            p++; if (*p == '=') p++;
+        } else if (*p == '=') { op = 1; p++; }
+        const char *av = nb_attr_get(n, attr);
+        if (op == 0) {
+            if (!av || !av[0]) return 0;
+        } else {
+            while (*p == ' ' || *p == '\t') p++;
+            char q = 0;
+            if (*p == '"' || *p == '\'') { q = *p; p++; }
+            const char *vs = p;
+            if (q) { while (*p && *p != q) p++; }
+            else { while (*p && *p != ']') p++; }
+            size_t vn = (size_t)(p - vs); char val[512];
+            size_t vc = vn < 511 ? vn : 511; memcpy(val, vs, vc); val[vc] = 0;
+            if (q && *p == q) p++;
+            int ok = 0;
+            switch (op) {
+                case 1: ok = (strcmp(av, val) == 0); break;
+                case 2: ok = (strstr(av, val) != NULL); break;
+                case 3: ok = (strncmp(av, val, strlen(val)) == 0); break;
+                case 4: { size_t al = strlen(av), vl = strlen(val);
+                          ok = (al >= vl && strcmp(av + al - vl, val) == 0); } break;
+                case 5: { const char *s = av; size_t vl = strlen(val);
+                          while (*s) { while (*s == ' ' || *s == '\t') s++;
+                              const char *ws = s;
+                              while (*s && *s != ' ' && *s != '\t') s++;
+                              if ((size_t)(s - ws) == vl && strncmp(ws, val, vl) == 0) { ok = 1; break; } } } break;
+            }
+            if (!ok) return 0;
+        }
+        while (*p == ' ' || *p == '\t') p++;
+        if (*p == ']') p++; else return 0;
+        while (*p == ' ' || *p == '\t') p++;
+    }
+    if (*p) return 0;   /* unsupported selector syntax -> no false match */
     return 1;
 }
 static int match_chain(NbNode *n, char **parts, int idx) {
@@ -467,25 +532,45 @@ static void dom_render_rows(SB *b) {
 }
 
 /* ---- JS <-> C node binding ---- */
-static NbNode *get_node(duk_context *ctx, duk_idx_t idx) {
-    if (!duk_is_object(ctx, idx)) return NULL;
-    duk_get_prop_string(ctx, idx, NODEKEY);
-    int i = duk_is_number(ctx, -1) ? (int)duk_get_int(ctx, -1) : -1;
-    duk_pop(ctx);
+static NbNode *get_node(JSContext *ctx, JSValueConst v) {
+    if (!JS_IsObject(v)) return NULL;
+    JSValue k = JS_GetPropertyStr(ctx, v, NODEKEY);
+    int i = -1;
+    if (JS_IsNumber(k)) {
+        int32_t iv;
+        if (JS_ToInt32(ctx, &iv, k) == 0) i = (int)iv;
+    }
+    JS_FreeValue(ctx, k);
     if (i < 0 || i >= g_nodecount) return NULL;
     return g_nodeindex[i];
 }
-/* Node from the `this` binding of an element native (Duktape places the
- * this-binding above the args; the API is duk_push_this()). */
-static NbNode *get_this(duk_context *ctx) {
-    duk_push_this(ctx);
-    if (!duk_is_object(ctx, -1)) { duk_pop(ctx); return NULL; }
-    duk_get_prop_string(ctx, -1, NODEKEY);
-    int i = duk_is_number(ctx, -1) ? (int)duk_get_int(ctx, -1) : -1;
-    duk_pop(ctx);
-    duk_pop(ctx);
-    if (i < 0 || i >= g_nodecount) return NULL;
-    return g_nodeindex[i];
+/* Node from the `this` binding of an element native (QuickJS passes the
+ * this-binding in the native's JSValueConst this_val argument). */
+static NbNode *get_this(JSContext *ctx, JSValueConst this_val) {
+    return get_node(ctx, this_val);
+}
+/* String arg i as own C string (only for string-typed args — the call sites
+ * previously used duk_get_string + a "" fallback), or NULL when absent. */
+static const char *js_arg_str(JSContext *ctx, JSValueConst *argv, int argc, int i, char **owned) {
+    *owned = NULL;
+    if (i >= argc || !JS_IsString(argv[i])) return NULL;
+    *owned = JS_ToCString(ctx, argv[i]);
+    return *owned;
+}
+/* String arg i coercing any value via toString (duk_safe_to_string), "" when
+ * absent. */
+static const char *js_arg_str_any(JSContext *ctx, JSValueConst *argv, int argc, int i, char **owned) {
+    *owned = NULL;
+    if (i >= argc) return "";
+    *owned = JS_ToCString(ctx, argv[i]);
+    return *owned ? *owned : "";
+}
+/* Numeric arg i (numbers only), or -1 when absent/non-number. */
+static int js_arg_index(JSContext *ctx, JSValueConst *argv, int argc, int i) {
+    if (i >= argc || !JS_IsNumber(argv[i])) return -1;
+    int32_t iv;
+    if (JS_ToInt32(ctx, &iv, argv[i]) != 0) return -1;
+    return (int)iv;
 }
 /* el.on<name> accessor names (also parsed from property arg0 of the natives) */
 static const char *const ONPROPS[] = {
@@ -506,72 +591,60 @@ static const char *const ONPROPS[] = {
 
 #define STYK "_nbsty"   /* per-wrapper style-snapshot cache key */
 
-static void push_node(duk_context *ctx, NbNode *n);
-static duk_ret_t nb_css_getprop(duk_context *ctx);
+static JSValue push_node(JSContext *ctx, NbNode *n);
+static JSValue nb_css_getprop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static int css_hidden(const NbNode *n);
 
 static int css_hidden(const NbNode *n) {
     return g_css && nb_css_hidden(g_css, n);
 }
-static duk_ret_t nb_css_getprop(duk_context *ctx);
+static JSValue nb_css_getprop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 
-/* Push an object with the modeled computed style of `n` plus a
+/* Return (as JSValue) an object with the modeled computed style of `n` plus a
  * getPropertyValue(). Missing display => "" (visible), opacity => "1". */
-static void push_computed_style(duk_context *ctx, NbNode *n) {
-    duk_push_object(ctx);
+static JSValue push_computed_style(JSContext *ctx, NbNode *n) {
+    JSValue o = JS_NewObject(ctx);
     NbCssStyle st;
     memset(&st, 0, sizeof(st));
     if (n) nb_css_resolve(g_css, n, nb_attr_get(n, "style"), &st);
-    duk_push_string(ctx, st.display[0] ? st.display : "");
-    duk_put_prop_string(ctx, -2, "display");
-    duk_push_string(ctx, st.visibility);
-    duk_put_prop_string(ctx, -2, "visibility");
-    duk_push_string(ctx, st.opacity[0] ? st.opacity : "1");
-    duk_put_prop_string(ctx, -2, "opacity");
-    duk_push_number(ctx, st.width);
-    duk_put_prop_string(ctx, -2, "width");
-    duk_push_number(ctx, st.height);
-    duk_put_prop_string(ctx, -2, "height");
-    duk_push_c_function(ctx, nb_css_getprop, 1);
-    duk_put_prop_string(ctx, -2, "getPropertyValue");
+    JS_SetPropertyStr(ctx, o, "display", JS_NewString(ctx, st.display[0] ? st.display : ""));
+    JS_SetPropertyStr(ctx, o, "visibility", JS_NewString(ctx, st.visibility));
+    JS_SetPropertyStr(ctx, o, "opacity", JS_NewString(ctx, st.opacity[0] ? st.opacity : "1"));
+    JS_SetPropertyStr(ctx, o, "width", JS_NewFloat64(ctx, st.width));
+    JS_SetPropertyStr(ctx, o, "height", JS_NewFloat64(ctx, st.height));
+    /* font-size is read as a CSS string (kevlar: fontSize.replace('px','')) */
+    JS_SetPropertyStr(ctx, o, "fontSize", JS_NewString(ctx, "16px"));
+    JS_SetPropertyStr(ctx, o, "getPropertyValue",
+                      JS_NewCFunction(ctx, nb_css_getprop, "getPropertyValue", 1));
+    return o;
 }
 
-static duk_ret_t nb_css_getprop(duk_context *ctx) {
-    const char *name = duk_get_string(ctx, 0);
-    if (!name) { duk_push_string(ctx, ""); return 1; }
-    duk_push_this(ctx);
-    if (!duk_is_object(ctx, -1) || !duk_has_prop_string(ctx, -1, name))
-        duk_get_prop_string(ctx, -1, name);          /* missing -> undefined */
-    else
-        duk_get_prop_string(ctx, -1, name);
-    duk_to_string(ctx, -1);
-    duk_remove(ctx, -2);
-    return 1;
+static JSValue nb_css_getprop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    const char *name = (argc > 0 && JS_IsString(argv[0])) ? JS_ToCString(ctx, argv[0]) : NULL;
+    if (!name) return JS_NewString(ctx, "");
+    JSValue v = JS_GetPropertyStr(ctx, this_val, name);
+    JS_FreeCString(ctx, name);
+    return JS_ToString(ctx, v);
 }
 
 /* window.getComputedStyle(el) — registered globally as `__nb_ges` by the
  * resident worker (overriding install_host's minimal default); the host
  * prelude's getComputedStyle delegates here. */
-static duk_ret_t nb_ges_rich(duk_context *ctx) {
-    NbNode *n = get_node(ctx, 0);
-    push_computed_style(ctx, n);
-    return 1;
+static JSValue nb_ges_rich(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_node(ctx, argc > 0 ? argv[0] : JS_UNDEFINED);
+    return push_computed_style(ctx, n);
 }
 
 /* el.style — identity-cached snapshot of the inline style attribute.
  * Reads mirror the declared inline props; JS writes persist on the
  * snapshot (browser-like authoring) but — no layout engine — do not feed
  * the metrics below. Non-enumerable cache prop keeps it per-wrapper. */
-static duk_ret_t nb_el_style_get(duk_context *ctx) {
-    duk_push_this(ctx);
-    if (duk_has_prop_string(ctx, -1, STYK)) {
-        duk_get_prop_string(ctx, -1, STYK);
-        duk_remove(ctx, -2);
-        return 1;
-    }
-    duk_pop(ctx);
-    duk_push_object(ctx);                       /* style snapshot */
-    NbNode *n = get_this(ctx);
+static JSValue nb_el_style_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue cached = JS_GetPropertyStr(ctx, this_val, STYK);
+    if (JS_IsObject(cached)) return cached;         /* identity-cached snapshot */
+    JS_FreeValue(ctx, cached);
+    JSValue o = JS_NewObject(ctx);                  /* style snapshot */
+    NbNode *n = get_this(ctx, this_val);
     if (n) {
         const char *attr = nb_attr_get(n, "style");
         if (attr && *attr) {
@@ -598,50 +671,46 @@ static duk_ret_t nb_el_style_get(duk_context *ctx) {
                         size_t vv = vn < sizeof(vbuf) - 1 ? vn : sizeof(vbuf) - 1;
                         memcpy(vbuf, vs, vv);
                         vbuf[vv] = 0;
-                        duk_push_string(ctx, vbuf);
-                        duk_put_prop_string(ctx, -2, kbuf);
+                        JS_SetPropertyStr(ctx, o, kbuf, JS_NewString(ctx, vbuf));
                     }
                 }
             }
         }
     }
-    duk_push_this(ctx);
-    duk_dup(ctx, -2);
-    duk_put_prop_string(ctx, -2, STYK);
-    duk_pop(ctx);
-    return 1;
+    JS_SetPropertyStr(ctx, this_val, STYK, JS_DupValue(ctx, o));
+    return o;
 }
 
 /* offsetWidth/offsetHeight/clientWidth/clientHeight — magic 0=width,1=height.
  * Hidden elements measure 0 (browser display:none semantics); visible
  * elements report the modeled CSS px size, else 0 (no layout engine). */
-static duk_ret_t nb_el_offdim(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    int which = (int)duk_get_current_magic(ctx);
+static JSValue nb_el_offdim(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic) {
+    NbNode *n = get_this(ctx, this_val);
+    int which = magic;
     double v = 0;
     if (n && !css_hidden(n)) {
         NbCssStyle st;
         nb_css_resolve(g_css, n, nb_attr_get(n, "style"), &st);
         v = which ? st.height : st.width;
     }
-    duk_push_number(ctx, v);
-    return 1;
+    return JS_NewFloat64(ctx, v);
 }
 
-static duk_ret_t nb_el_offset_parent(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    if (!n || css_hidden(n)) { duk_push_null(ctx); return 1; }
+static JSValue nb_el_offset_parent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n || css_hidden(n)) return JS_NULL;
     NbNode *p = n->parent;
     while (p && !p->tag) p = p->parent;   /* climb past #document */
-    if (!p) { duk_push_null(ctx); return 1; }
-    push_node(ctx, p);
-    return 1;
+    if (!p) return JS_NULL;
+    return push_node(ctx, p);
 }
 
-static duk_ret_t nb_rect_tojson(duk_context *ctx) { return 1; } /* this is the rect */
+static JSValue nb_rect_tojson(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return JS_DupValue(ctx, this_val);    /* this is the rect */
+}
 
-static duk_ret_t nb_el_getBoundingClientRect(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
+static JSValue nb_el_getBoundingClientRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
     double w = 0, h = 0;
     if (n && !css_hidden(n)) {
         NbCssStyle st;
@@ -649,156 +718,408 @@ static duk_ret_t nb_el_getBoundingClientRect(duk_context *ctx) {
         w = st.width;
         h = st.height;
     }
-    duk_push_object(ctx);
-    duk_push_number(ctx, 0); duk_put_prop_string(ctx, -2, "x");
-    duk_push_number(ctx, 0); duk_put_prop_string(ctx, -2, "y");
-    duk_push_number(ctx, w); duk_put_prop_string(ctx, -2, "width");
-    duk_push_number(ctx, h); duk_put_prop_string(ctx, -2, "height");
-    duk_push_number(ctx, 0); duk_put_prop_string(ctx, -2, "top");
-    duk_push_number(ctx, w); duk_put_prop_string(ctx, -2, "right");
-    duk_push_number(ctx, h); duk_put_prop_string(ctx, -2, "bottom");
-    duk_push_number(ctx, 0); duk_put_prop_string(ctx, -2, "left");
-    duk_push_c_function(ctx, nb_rect_tojson, 0);
-    duk_put_prop_string(ctx, -2, "toJSON");
-    return 1;
+    JSValue o = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, o, "x", JS_NewFloat64(ctx, 0));
+    JS_SetPropertyStr(ctx, o, "y", JS_NewFloat64(ctx, 0));
+    JS_SetPropertyStr(ctx, o, "width", JS_NewFloat64(ctx, w));
+    JS_SetPropertyStr(ctx, o, "height", JS_NewFloat64(ctx, h));
+    JS_SetPropertyStr(ctx, o, "top", JS_NewFloat64(ctx, 0));
+    JS_SetPropertyStr(ctx, o, "right", JS_NewFloat64(ctx, w));
+    JS_SetPropertyStr(ctx, o, "bottom", JS_NewFloat64(ctx, h));
+    JS_SetPropertyStr(ctx, o, "left", JS_NewFloat64(ctx, 0));
+    JS_SetPropertyStr(ctx, o, "toJSON", JS_NewCFunction(ctx, nb_rect_tojson, "toJSON", 0));
+    return o;
 }
 
-static void push_node(duk_context *ctx, NbNode *n);
-static duk_ret_t nb_el_addEventListener(duk_context *ctx);
-static duk_ret_t nb_el_removeEventListener(duk_context *ctx);
-static duk_ret_t nb_el_dispatchEvent(duk_context *ctx);
-static duk_ret_t nb_el_click(duk_context *ctx);
-static duk_ret_t nb_el_onprop_get(duk_context *ctx);
-static duk_ret_t nb_el_onprop_set(duk_context *ctx);
+static JSValue push_node(JSContext *ctx, NbNode *n);
+static JSValue nb_el_addEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_el_removeEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_el_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_el_contains(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_el_click(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+/* canvas 2D natives defined with the other DOM natives (getBoundingClientRect
+ * already ships on every wrapper via the existing definition above) */
+static JSValue nb_el_getContext(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_canvas_toDataURL(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_el_onprop_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic);
+static JSValue nb_el_onprop_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic);
 
 /* ---- document natives ---- */
-static duk_ret_t nb_dom_getElementById(duk_context *ctx) {
-    const char *id = duk_get_string(ctx, 0);
-    if (!id || !g_dom_root) { duk_push_null(ctx); return 1; }
+static JSValue nb_dom_getElementById(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *owned = NULL;
+    const char *id = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    if (!id || !g_dom_root) { JS_FreeCString(ctx, owned); return JS_NULL; }
     for (const NbNode *c = g_dom_root->first_child; c; c = c->next_sibling) {
         NbNode *r = find_by_id(c, id);
-        if (r) { push_node(ctx, r); return 1; }
+        if (r) { JS_FreeCString(ctx, owned); return push_node(ctx, r); }
     }
-    duk_push_null(ctx);
-    return 1;
+    JS_FreeCString(ctx, owned);
+    return JS_NULL;
 }
-static void collect_tag_into(duk_context *ctx, NbNode *n, const char *tag, duk_idx_t arr, int *i) {
+static void collect_tag_into(JSContext *ctx, NbNode *n, const char *tag, JSValue arr, int *i) {
     if (!n) return;
     if (!tag || !*tag || !strcmp(tag, "*") || (n->tag && !strcasecmp(n->tag, tag))) {
-        push_node(ctx, n);
-        duk_put_prop_index(ctx, arr, (*i)++);
+        JS_SetPropertyUint32(ctx, arr, (uint32_t)(*i)++, push_node(ctx, n));
     }
     for (const NbNode *c = n->first_child; c; c = c->next_sibling)
         collect_tag_into(ctx, (NbNode *)c, tag, arr, i);
 }
-static duk_ret_t nb_dom_getElementsByTagName(duk_context *ctx) {
-    const char *tag = duk_get_string(ctx, 0);
-    duk_idx_t arr = duk_push_array(ctx);
-    if (!g_dom_root) return 1;
-    int i = 0;
-    for (const NbNode *c = g_dom_root->first_child; c; c = c->next_sibling)
-        collect_tag_into(ctx, (NbNode *)c, tag, arr, &i);
-    return 1;
+static JSValue nb_dom_getElementsByTagName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *owned = NULL;
+    const char *tag = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    JSValue arr = JS_NewArray(ctx);
+    if (g_dom_root) {
+        int i = 0;
+        for (const NbNode *c = g_dom_root->first_child; c; c = c->next_sibling)
+            collect_tag_into(ctx, (NbNode *)c, tag, arr, &i);
+        JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
+    }
+    JS_FreeCString(ctx, owned);
+    return arr;
 }
-static void qsa_into(duk_context *ctx, NbNode *n, const char *sel, duk_idx_t arr, int *i) {
+static void qsa_into(JSContext *ctx, NbNode *n, const char *sel, JSValue arr, int *i) {
     if (!n) return;
-    if (match_any_selector(n, sel)) { push_node(ctx, n); duk_put_prop_index(ctx, arr, (*i)++); }
+    if (match_any_selector(n, sel)) {
+        JS_SetPropertyUint32(ctx, arr, (uint32_t)(*i)++, push_node(ctx, n));
+    }
     for (const NbNode *c = n->first_child; c; c = c->next_sibling)
         qsa_into(ctx, (NbNode *)c, sel, arr, i);
 }
-static duk_ret_t nb_dom_querySelector(duk_context *ctx) {
-    const char *sel = duk_get_string(ctx, 0);
-    if (!sel || !g_dom_root) { duk_push_null(ctx); return 1; }
+static JSValue nb_dom_querySelector(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *owned = NULL;
+    const char *sel = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    if (!sel || !g_dom_root) { JS_FreeCString(ctx, owned); return JS_NULL; }
     for (const NbNode *c = g_dom_root->first_child; c; c = c->next_sibling) {
         NbNode *r = query_first((NbNode *)c, sel);
-        if (r) { push_node(ctx, r); return 1; }
+        if (r) { JS_FreeCString(ctx, owned); return push_node(ctx, r); }
     }
-    duk_push_null(ctx);
-    return 1;
+    JS_FreeCString(ctx, owned);
+    return JS_NULL;
 }
-static duk_ret_t nb_dom_querySelectorAll(duk_context *ctx) {
-    const char *sel = duk_get_string(ctx, 0);
-    duk_idx_t arr = duk_push_array(ctx);
-    if (!g_dom_root || !sel) return 1;
-    int i = 0;
-    for (const NbNode *c = g_dom_root->first_child; c; c = c->next_sibling)
-        qsa_into(ctx, (NbNode *)c, sel, arr, &i);
-    return 1;
+static JSValue nb_dom_querySelectorAll(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *owned = NULL;
+    const char *sel = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    JSValue arr = JS_NewArray(ctx);
+    if (g_dom_root && sel) {
+        int i = 0;
+        for (const NbNode *c = g_dom_root->first_child; c; c = c->next_sibling)
+            qsa_into(ctx, (NbNode *)c, sel, arr, &i);
+        JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
+    }
+    JS_FreeCString(ctx, owned);
+    return arr;
 }
-static duk_ret_t nb_dom_createElement(duk_context *ctx) {
-    const char *tag = duk_get_string(ctx, 0) ? duk_get_string(ctx, 0) : "";
+
+/* ---- TreeWalker / NodeFilter (row-31): webcomponents-lite.js builds two
+ * walkers at module init (`M=document.createTreeWalker(document,
+ * NodeFilter.SHOW_ALL,null,!1)`, `N=...SHOW_ELEMENT...`) and its ShadyDOM
+ * layer drives Node.prototype accessors through them (M.currentNode=this;
+ * M.parentNode()/firstChild()/...). Implemented against the real C tree. */
+#define WALK_CUR  "__nbw_cur"
+#define WALK_SHOW "__nbw_show"
+#define WALK_FILT "__nbw_filt"
+
+static int walker_accept(JSContext *ctx, JSValueConst walker, NbNode *n) {
+    if (!n) return 0;
+    JSValue sv = JS_GetPropertyStr(ctx, walker, WALK_SHOW);
+    uint32_t show = 0xFFFFFFFFu;
+    if (JS_IsNumber(sv)) { uint32_t v = 0xFFFFFFFFu; JS_ToUint32(ctx, &v, sv); show = v; }
+    JS_FreeValue(ctx, sv);
+    int bit = (n->tag && n->tag[0]) ? 1 : 4;   /* SHOW_ELEMENT vs SHOW_TEXT */
+    if (!(show & (uint32_t)bit)) return 0;
+    JSValue f = JS_GetPropertyStr(ctx, walker, WALK_FILT);
+    int ok = 1;
+    if (JS_IsFunction(ctx, f)) {
+        JSValue node = push_node(ctx, n);
+        JSValue r = JS_Call(ctx, f, walker, 1, (JSValueConst *)&node);
+        JS_FreeValue(ctx, node);
+        if (JS_IsException(r)) { JS_FreeValue(ctx, JS_GetException(ctx)); ok = 0; }
+        else { int32_t rv = 0; JS_ToInt32(ctx, &rv, r); ok = (rv == 1); }
+        JS_FreeValue(ctx, r);
+    } else if (JS_IsObject(f)) {
+        JSValue fn = JS_GetPropertyStr(ctx, f, "acceptNode");
+        if (JS_IsFunction(ctx, fn)) {
+            JSValue node = push_node(ctx, n);
+            JSValue r = JS_Call(ctx, fn, f, 1, (JSValueConst *)&node);
+            JS_FreeValue(ctx, node);
+            if (JS_IsException(r)) { JS_FreeValue(ctx, JS_GetException(ctx)); ok = 0; }
+            else { int32_t rv = 0; JS_ToInt32(ctx, &rv, r); ok = (rv == 1); }
+            JS_FreeValue(ctx, r);
+        }
+        JS_FreeValue(ctx, fn);
+    }
+    JS_FreeValue(ctx, f);
+    return ok;
+}
+static NbNode *walker_cur(JSContext *ctx, JSValueConst walker) {
+    JSValue c = JS_GetPropertyStr(ctx, walker, WALK_CUR);
+    NbNode *n = get_node(ctx, c);
+    JS_FreeValue(ctx, c);
+    return n;
+}
+static NbNode *walker_root(JSContext *ctx, JSValueConst walker) {
+    JSValue r = JS_GetPropertyStr(ctx, walker, "root");
+    NbNode *n = get_node(ctx, r);
+    JS_FreeValue(ctx, r);
+    return n;
+}
+static void walker_set_cur(JSContext *ctx, JSValueConst walker, NbNode *n) {
+    JSValue w = push_node(ctx, n);
+    JS_SetPropertyStr(ctx, walker, WALK_CUR, JS_DupValue(ctx, w));
+    JS_SetPropertyStr(ctx, walker, "currentNode", w);
+}
+static NbNode *prev_sib(NbNode *n) {
+    if (!n || !n->parent) return NULL;
+    NbNode *p = n->parent->first_child;
+    if (p == n) return NULL;
+    while (p && p->next_sibling != n) p = p->next_sibling;
+    return p;
+}
+static JSValue nb_walker_next(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *root = walker_root(ctx, this_val);
+    NbNode *n = walker_cur(ctx, this_val);
+    if (!root || !n) return JS_NULL;
+    for (;;) {
+        if (n->first_child) { n = n->first_child; }
+        else {
+            while (n != root && !n->next_sibling) n = n->parent;
+            if (n == root) return JS_NULL;
+            n = n->next_sibling;
+        }
+        if (walker_accept(ctx, this_val, n)) { walker_set_cur(ctx, this_val, n); return push_node(ctx, n); }
+    }
+}
+static JSValue nb_walker_prev(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *root = walker_root(ctx, this_val);
+    NbNode *n = walker_cur(ctx, this_val);
+    if (!root || !n) return JS_NULL;
+    while (n != root) {
+        NbNode *ps = prev_sib(n);
+        if (ps) {
+            n = ps;
+            while (n->last_child) n = n->last_child;
+            if (walker_accept(ctx, this_val, n)) { walker_set_cur(ctx, this_val, n); return push_node(ctx, n); }
+            continue;
+        }
+        n = n->parent;
+        if (!n || n == root) return JS_NULL;
+        if (walker_accept(ctx, this_val, n)) { walker_set_cur(ctx, this_val, n); return push_node(ctx, n); }
+    }
+    return JS_NULL;
+}
+static JSValue nb_walker_parent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *root = walker_root(ctx, this_val);
+    NbNode *n = walker_cur(ctx, this_val);
+    if (!root || !n) return JS_NULL;
+    while (n && n != root) {
+        n = n->parent;
+        if (n && n != root && walker_accept(ctx, this_val, n)) { walker_set_cur(ctx, this_val, n); return push_node(ctx, n); }
+    }
+    return JS_NULL;
+}
+static JSValue nb_walker_first(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = walker_cur(ctx, this_val);
+    if (!n) return JS_NULL;
+    for (NbNode *c = n->first_child; c; c = c->next_sibling)
+        if (walker_accept(ctx, this_val, c)) { walker_set_cur(ctx, this_val, c); return push_node(ctx, c); }
+    return JS_NULL;
+}
+static JSValue nb_walker_last(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = walker_cur(ctx, this_val);
+    if (!n) return JS_NULL;
+    for (NbNode *c = n->last_child; c; c = prev_sib(c))
+        if (walker_accept(ctx, this_val, c)) { walker_set_cur(ctx, this_val, c); return push_node(ctx, c); }
+    return JS_NULL;
+}
+static JSValue nb_walker_nextsib(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *root = walker_root(ctx, this_val);
+    NbNode *n = walker_cur(ctx, this_val);
+    if (!root || !n || n == root) return JS_NULL;
+    for (NbNode *c = n->next_sibling; c; c = c->next_sibling)
+        if (walker_accept(ctx, this_val, c)) { walker_set_cur(ctx, this_val, c); return push_node(ctx, c); }
+    return JS_NULL;
+}
+static JSValue nb_walker_prevsib(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *root = walker_root(ctx, this_val);
+    NbNode *n = walker_cur(ctx, this_val);
+    if (!root || !n || n == root || !n->parent) return JS_NULL;
+    NbNode *res = NULL;
+    for (NbNode *c = n->parent->first_child; c && c != n; c = c->next_sibling)
+        if (walker_accept(ctx, this_val, c)) res = c;
+    if (res) { walker_set_cur(ctx, this_val, res); return push_node(ctx, res); }
+    return JS_NULL;
+}
+static JSValue nb_walker_get_cur(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = walker_cur(ctx, this_val);
+    return n ? push_node(ctx, n) : JS_NULL;
+}
+static JSValue nb_walker_set_cur(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
+    if (n) JS_SetPropertyStr(ctx, this_val, WALK_CUR, JS_DupValue(ctx, argv[0]));
+    return JS_UNDEFINED;
+}
+static JSValue nb_doc_createTreeWalker(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *root = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
+    if (!root) root = g_dom_root;              /* createTreeWalker(document,...) */
+    if (!root) return JS_NULL;
+    uint32_t show = 0xFFFFFFFFu;
+    if (argc > 1 && JS_IsNumber(argv[1])) JS_ToUint32(ctx, &show, argv[1]);
+    JSValue w = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, w, "root", push_node(ctx, root));
+    JS_SetPropertyStr(ctx, w, "whatToShow", JS_NewUint32(ctx, show));
+    JS_SetPropertyStr(ctx, w, WALK_CUR, push_node(ctx, root));
+    JS_SetPropertyStr(ctx, w, WALK_SHOW, JS_NewUint32(ctx, show));
+    JS_SetPropertyStr(ctx, w, WALK_FILT, (argc > 2) ? JS_DupValue(ctx, argv[2]) : JS_NULL);
+    JS_SetPropertyStr(ctx, w, "nextNode", JS_NewCFunction(ctx, nb_walker_next, "nextNode", 0));
+    JS_SetPropertyStr(ctx, w, "previousNode", JS_NewCFunction(ctx, nb_walker_prev, "previousNode", 0));
+    JS_SetPropertyStr(ctx, w, "parentNode", JS_NewCFunction(ctx, nb_walker_parent, "parentNode", 0));
+    JS_SetPropertyStr(ctx, w, "firstChild", JS_NewCFunction(ctx, nb_walker_first, "firstChild", 0));
+    JS_SetPropertyStr(ctx, w, "lastChild", JS_NewCFunction(ctx, nb_walker_last, "lastChild", 0));
+    JS_SetPropertyStr(ctx, w, "nextSibling", JS_NewCFunction(ctx, nb_walker_nextsib, "nextSibling", 0));
+    JS_SetPropertyStr(ctx, w, "previousSibling", JS_NewCFunction(ctx, nb_walker_prevsib, "previousSibling", 0));
+    JSAtom ck = JS_NewAtom(ctx, "currentNode");
+    JS_DefinePropertyGetSet(ctx, w, ck,
+        JS_NewCFunction(ctx, nb_walker_get_cur, "get currentNode", 0),
+        JS_NewCFunction(ctx, nb_walker_set_cur, "set currentNode", 1), 0);
+    JS_FreeAtom(ctx, ck);
+    return w;
+}
+
+static JSValue nb_dom_createElement(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *owned = NULL;
+    const char *tag = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : "";
     NbNode *n = calloc(1, sizeof(*n));
-    if (!n) { duk_push_null(ctx); return 1; }
+    if (!n) { JS_FreeCString(ctx, owned); return JS_NULL; }
     n->tag = strdup(tag);
     for (char *t = n->tag; *t; t++) *t = (char)((*t >= 'A' && *t <= 'Z') ? *t + 32 : *t);
     orphan_add(n);
-    push_node(ctx, n);
-    return 1;
+    JS_FreeCString(ctx, owned);
+    return push_node(ctx, n);
 }
-static duk_ret_t nb_dom_documentElement(duk_context *ctx) {
+static JSValue nb_dom_createElementNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    /* Our element tree is flat (no namespace tracking), so a namespace +
+     * qualified name collapses to the plain tag — same node the browser
+     * would build for e.g. an SVG <svg>. Matches createElement semantics;
+     * real bundles (web-animations-lite calls createElementNS during load)
+     * only need the returned element to exist and accept method calls. */
+    char *owned = NULL;
+    const char *tag = (argc > 1 && JS_IsString(argv[1])) ? (owned = JS_ToCString(ctx, argv[1])) : "";
+    NbNode *n = calloc(1, sizeof(*n));
+    if (!n) { JS_FreeCString(ctx, owned); return JS_NULL; }
+    n->tag = strdup(tag);
+    for (char *t = n->tag; *t; t++) *t = (char)((*t >= 'A' && *t <= 'Z') ? *t + 32 : *t);
+    orphan_add(n);
+    JS_FreeCString(ctx, owned);
+    return push_node(ctx, n);
+}
+/* document.implementation (row-31): webcomponents-lite.js does
+ * `document.implementation.createHTMLDocument("inert")` at init and uses
+ * the result as a scratch document to parse HTML strings via innerHTML
+ * (`Sd.createElement(...); d.innerHTML = b`). Our scratch doc reuses the
+ * real createElement/createElementNS (orphan nodes) and advertises the
+ * HTML namespace so ShadyDOM's namespace branch takes createElement. */
+static JSValue make_fake_doc(JSContext *ctx) {
+    JSValue d = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, d, "namespaceURI", JS_NewString(ctx, "http://www.w3.org/1999/xhtml"));
+    JS_SetPropertyStr(ctx, d, "contentType", JS_NewString(ctx, "text/html"));
+    JS_SetPropertyStr(ctx, d, "createElement", JS_NewCFunction(ctx, nb_dom_createElement, "createElement", 1));
+    JS_SetPropertyStr(ctx, d, "createElementNS", JS_NewCFunction(ctx, nb_dom_createElementNS, "createElementNS", 2));
+    return d;
+}
+static JSValue nb_impl_createHTMLDocument(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return make_fake_doc(ctx);
+}
+static JSValue nb_impl_createDocument(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return make_fake_doc(ctx);
+}
+static JSValue nb_impl_createDocumentType(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue t = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, t, "name", (argc > 0) ? JS_DupValue(ctx, argv[0]) : JS_NewString(ctx, "html"));
+    JS_SetPropertyStr(ctx, t, "publicId", JS_NewString(ctx, ""));
+    JS_SetPropertyStr(ctx, t, "systemId", JS_NewString(ctx, ""));
+    return t;
+}
+static JSValue nb_impl_hasFeature(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return JS_NewBool(ctx, 1);
+}
+static JSValue nb_dom_documentElement(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *el = g_dom_root ? find_tag_first(g_dom_root, "html") : NULL;
-    if (el) push_node(ctx, el); else duk_push_null(ctx);
-    return 1;
+    if (el) return push_node(ctx, el);
+    return JS_NULL;
 }
-static duk_ret_t nb_dom_body(duk_context *ctx) {
+static JSValue nb_dom_body(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *el = g_dom_root ? find_tag_first(g_dom_root, "body") : NULL;
-    if (el) push_node(ctx, el); else duk_push_null(ctx);
-    return 1;
+    if (el) return push_node(ctx, el);
+    return JS_NULL;
 }
 /* rung-2 remainder: document.createTextNode / getElementsByClassName /
  * document.head. The parser skips <head> wholesale, so browsers' implicit
  * empty <head> is created on first access (stays out of the render path). */
-static duk_ret_t nb_dom_createTextNode(duk_context *ctx) {
-    const char *v = duk_get_string(ctx, 0) ? duk_get_string(ctx, 0) : "";
+static JSValue nb_dom_createTextNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *owned = NULL;
+    const char *v = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : "";
     NbNode *n = calloc(1, sizeof(*n));
-    if (!n) { duk_push_null(ctx); return 1; }
+    if (!n) { JS_FreeCString(ctx, owned); return JS_NULL; }
     n->text = strdup(v);
     orphan_add(n);
-    push_node(ctx, n);
-    return 1;
+    JS_FreeCString(ctx, owned);
+    return push_node(ctx, n);
 }
-static void collect_cls_into(duk_context *ctx, NbNode *n, const char *tok, duk_idx_t arr, int *i) {
+static void collect_cls_into(JSContext *ctx, NbNode *n, const char *tok, JSValue arr, int *i) {
     if (!n) return;
     if (n->tag && n->tag[0] && has_class(n, tok)) {
-        push_node(ctx, n);
-        duk_put_prop_index(ctx, arr, (*i)++);
+        JS_SetPropertyUint32(ctx, arr, (uint32_t)(*i)++, push_node(ctx, n));
     }
     for (const NbNode *c = n->first_child; c; c = c->next_sibling)
         collect_cls_into(ctx, (NbNode *)c, tok, arr, i);
 }
-static duk_ret_t nb_dom_getElementsByClassName(duk_context *ctx) {
-    const char *tok = duk_get_string(ctx, 0);
-    duk_idx_t arr = duk_push_array(ctx);
-    if (!g_dom_root || !tok || !*tok) return 1;
-    int i = 0;
-    for (const NbNode *c = g_dom_root->first_child; c; c = c->next_sibling)
-        collect_cls_into(ctx, (NbNode *)c, tok, arr, &i);
-    return 1;
+static JSValue nb_dom_getElementsByClassName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *owned = NULL;
+    const char *tok = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    JSValue arr = JS_NewArray(ctx);
+    if (g_dom_root && tok && *tok) {
+        int i = 0;
+        for (const NbNode *c = g_dom_root->first_child; c; c = c->next_sibling)
+            collect_cls_into(ctx, (NbNode *)c, tok, arr, &i);
+        JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
+    }
+    JS_FreeCString(ctx, owned);
+    return arr;
 }
-static duk_ret_t nb_dom_head(duk_context *ctx) {
-    if (!g_dom_root) { duk_push_null(ctx); return 1; }
+static JSValue nb_dom_head(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    if (!g_dom_root) return JS_NULL;
     NbNode *head = find_tag_first(g_dom_root, "head");
     if (!head) {
         head = calloc(1, sizeof(*head));
-        if (!head) { duk_push_null(ctx); return 1; }
+        if (!head) return JS_NULL;
         head->tag = strdup("head");
         NbNode *html = find_tag_first(g_dom_root, "html");
         if (html) local_insert_before(html, head, html->first_child);
         else local_insert_before(g_dom_root, head, NULL);
     }
-    push_node(ctx, head);
-    return 1;
+    return push_node(ctx, head);
 }
 
 /* ---- element natives (this = element object) ---- */
-static duk_ret_t nb_el_getAttribute(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    const char *name = duk_get_string(ctx, 0);
-    if (!n || !name) { duk_push_null(ctx); return 1; }
+static JSValue nb_el_getAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *name = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    if (!n || !name) { JS_FreeCString(ctx, owned); return JS_NULL; }
     const char *v = nb_attr_get(n, name);
-    if (v && v[0]) { duk_push_string(ctx, v); return 1; }
-    duk_push_null(ctx);
-    return 1;
+    JS_FreeCString(ctx, owned);
+    if (v && v[0]) return JS_NewString(ctx, v);
+    return JS_NULL;
+}
+/* rung 8: hasAttribute — real bundles gate on documentElement.hasAttribute */
+static JSValue nb_el_hasAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *name = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    if (!n || !name) { JS_FreeCString(ctx, owned); return JS_FALSE; }
+    const char *v = nb_attr_get(n, name);
+    JS_FreeCString(ctx, owned);
+    return JS_NewBool(ctx, v != NULL);
 }
 static char *attrs_set(const NbNode *n, const char *name, const char *val) {
     SB b = {0, 0, 0};
@@ -852,18 +1173,20 @@ static char *attrs_set(const NbNode *n, const char *name, const char *val) {
     }
     return b.s ? b.s : strdup("");
 }
-static duk_ret_t nb_el_setAttribute(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    const char *name = duk_get_string(ctx, 0);
-    const char *val = duk_get_string(ctx, 1);
-    if (!n || !name) return 0;
+static JSValue nb_el_setAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *nm = NULL, *vl = NULL;
+    const char *name = (argc > 0 && JS_IsString(argv[0])) ? (nm = JS_ToCString(ctx, argv[0])) : NULL;
+    const char *val = (argc > 1 && JS_IsString(argv[1])) ? (vl = JS_ToCString(ctx, argv[1])) : NULL;
+    if (!n || !name) { JS_FreeCString(ctx, nm); JS_FreeCString(ctx, vl); return JS_UNDEFINED; }
     if (!val) val = "";
     if (!strcasecmp(name, "id")) { free(n->id); n->id = strdup(val); }
     else if (!strcasecmp(name, "class")) { free(n->cls); n->cls = strdup(val); }
     char *na = attrs_set(n, name, val);
     free(n->attrs);
     n->attrs = na;
-    return 0;
+    JS_FreeCString(ctx, nm); JS_FreeCString(ctx, vl);
+    return JS_UNDEFINED;
 }
 /* rung-2 remainder: element.removeAttribute(name) — rebuild the raw attrs
  * blob without the named attribute (attrs_set's loop, skipping the match). */
@@ -922,68 +1245,79 @@ static char *attrs_del(const NbNode *n, const char *name) {
     }
     return b.s ? b.s : strdup("");
 }
-static duk_ret_t nb_el_removeAttribute(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    const char *name = duk_get_string(ctx, 0);
-    if (!n || !name || !attrs_has(n, name)) return 0;
+static JSValue nb_el_removeAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *nm = NULL;
+    const char *name = (argc > 0 && JS_IsString(argv[0])) ? (nm = JS_ToCString(ctx, argv[0])) : NULL;
+    if (!n || !name || !attrs_has(n, name)) { JS_FreeCString(ctx, nm); return JS_UNDEFINED; }
     if (!strcasecmp(name, "id")) { free(n->id); n->id = NULL; }
     else if (!strcasecmp(name, "class")) { free(n->cls); n->cls = NULL; }
     char *na = attrs_del(n, name);
     free(n->attrs);
     n->attrs = na;
-    return 0;
+    JS_FreeCString(ctx, nm);
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_el_id_get(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    duk_push_string(ctx, n && n->id ? n->id : "");
-    return 1;
+static JSValue nb_el_id_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    return JS_NewString(ctx, n && n->id ? n->id : "");
 }
-static duk_ret_t nb_el_id_set(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    const char *v = duk_get_string(ctx, 0) ? duk_get_string(ctx, 0) : "";
+static JSValue nb_el_id_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *vl = NULL;
+    const char *v = (argc > 0 && JS_IsString(argv[0])) ? (vl = JS_ToCString(ctx, argv[0])) : "";
     if (n) { free(n->id); n->id = strdup(v); }
-    return 0;
+    JS_FreeCString(ctx, vl);
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_el_className_get(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    duk_push_string(ctx, n && n->cls ? n->cls : "");
-    return 1;
+static JSValue nb_el_className_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    return JS_NewString(ctx, n && n->cls ? n->cls : "");
 }
-static duk_ret_t nb_el_className_set(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    const char *v = duk_get_string(ctx, 0) ? duk_get_string(ctx, 0) : "";
+static JSValue nb_el_className_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *vl = NULL;
+    const char *v = (argc > 0 && JS_IsString(argv[0])) ? (vl = JS_ToCString(ctx, argv[0])) : "";
     if (n) { free(n->cls); n->cls = strdup(v); }
-    return 0;
+    JS_FreeCString(ctx, vl);
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_el_textContent_get(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
+static JSValue nb_el_textContent_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
     SB b = {0, 0, 0};
     node_text_content(n, &b);
-    duk_push_string(ctx, b.s ? b.s : "");
+    JSValue r = JS_NewString(ctx, b.s ? b.s : "");
     free(b.s);
-    return 1;
+    return r;
 }
-static duk_ret_t nb_el_textContent_set(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    if (!n) return 0;
-    const char *v = duk_get_string(ctx, 0) ? duk_get_string(ctx, 0) : "";
+static JSValue nb_el_textContent_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_UNDEFINED;
+    char *vl = NULL;
+    const char *v = (argc > 0 && JS_IsString(argv[0])) ? (vl = JS_ToCString(ctx, argv[0])) : "";
     clear_children(n);
     free(n->text);
     n->text = strdup(v);
-    return 0;
+    JS_FreeCString(ctx, vl);
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_el_innerHTML_get(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
+static JSValue nb_el_innerHTML_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
     SB b = {0, 0, 0};
     if (n) for (const NbNode *c = n->first_child; c; c = c->next_sibling) node_outer_html(c, &b);
-    duk_push_string(ctx, b.s ? b.s : "");
+    JSValue r = JS_NewString(ctx, b.s ? b.s : "");
     free(b.s);
-    return 1;
+    return r;
 }
-static duk_ret_t nb_el_innerHTML_set(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    if (!n) return 0;
-    const char *v = duk_get_string(ctx, 0) ? duk_get_string(ctx, 0) : "";
+static JSValue nb_el_innerHTML_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_UNDEFINED;
+    if (n->tag && !strcmp(n->tag, "template")) {   /* <template>.innerHTML lands in content */
+        NbNode *frag = nb_template_content_frag(ctx, this_val, n);
+        if (frag) n = frag;
+    }
+    char *vl = NULL;
+    const char *v = (argc > 0 && JS_IsString(argv[0])) ? (vl = JS_ToCString(ctx, argv[0])) : "";
     NbNode *frag = nb_parse_html(v, strlen(v));
     NbNode *child = frag ? frag->first_child : NULL;
     clear_children(n);
@@ -999,102 +1333,129 @@ static duk_ret_t nb_el_innerHTML_set(duk_context *ctx) {
         }
     }
     nb_node_free(frag);
-    return 0;
+    JS_FreeCString(ctx, vl);
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_el_children(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    duk_idx_t arr = duk_push_array(ctx);
-    if (!n) return 1;
-    int i = 0;
-    for (const NbNode *c = n->first_child; c; c = c->next_sibling) {
-        if (!c->tag || !c->tag[0]) continue;   /* children is element-only (childNodes keeps text) */
-        push_node(ctx, (NbNode *)c);
-        duk_put_prop_index(ctx, arr, i++);
+static JSValue nb_el_children(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    JSValue arr = JS_NewArray(ctx);
+    if (n) {
+        int i = 0;
+        for (const NbNode *c = n->first_child; c; c = c->next_sibling) {
+            if (!c->tag || !c->tag[0]) continue;   /* children is element-only (childNodes keeps text) */
+            JS_SetPropertyUint32(ctx, arr, (uint32_t)i++, push_node(ctx, (NbNode *)c));
+        }
+        JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
     }
-    return 1;
+    return arr;
 }
-static duk_ret_t nb_el_childNodes(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    duk_idx_t arr = duk_push_array(ctx);
-    if (!n) return 1;
-    int i = 0;
-    for (const NbNode *c = n->first_child; c; c = c->next_sibling) {
-        push_node(ctx, (NbNode *)c);           /* everything, text nodes incl. */
-        duk_put_prop_index(ctx, arr, i++);
+static JSValue nb_el_childNodes(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    JSValue arr = JS_NewArray(ctx);
+    if (n) {
+        int i = 0;
+        for (const NbNode *c = n->first_child; c; c = c->next_sibling) {
+            JS_SetPropertyUint32(ctx, arr, (uint32_t)i++, push_node(ctx, (NbNode *)c));  /* text nodes incl. */
+        }
+        JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
     }
-    return 1;
+    return arr;
 }
-static duk_ret_t nb_el_parentNode(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
+static JSValue nb_el_parentNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
     NbNode *p = n ? n->parent : NULL;
-    if (p) push_node(ctx, p); else duk_push_null(ctx);
-    return 1;
+    if (p) return push_node(ctx, p);
+    return JS_NULL;
 }
-static duk_ret_t nb_el_firstChild(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    if (n && n->first_child) push_node(ctx, n->first_child); else duk_push_null(ctx);
-    return 1;
+static JSValue nb_el_firstChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (n && n->first_child) return push_node(ctx, n->first_child);
+    return JS_NULL;
 }
-static duk_ret_t nb_el_nextSibling(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    if (n && n->next_sibling) push_node(ctx, n->next_sibling); else duk_push_null(ctx);
-    return 1;
+static JSValue nb_el_nextSibling(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (n && n->next_sibling) return push_node(ctx, n->next_sibling);
+    return JS_NULL;
 }
-static duk_ret_t nb_el_appendChild(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    NbNode *ch = duk_is_object(ctx, 0) ? get_node(ctx, 0) : NULL;
-    if (!n || !ch || ch == n) { duk_push_null(ctx); return 1; }
+static JSValue nb_el_appendChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    NbNode *ch = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
+    if (n && n->tag && !strcmp(n->tag, "template")) {   /* appends land in content */
+        NbNode *frag = nb_template_content_frag(ctx, this_val, n);
+        if (frag) n = frag;
+    }
+    if (!n || !ch || ch == n) return JS_NULL;
     node_detach(ch);
     orphan_remove(ch);
     local_append(n, ch);
-    push_node(ctx, ch);
-    return 1;
+    return push_node(ctx, ch);
 }
 /* rung-2 remainder: the tree mutators. A removed node is orphaned, not
  * freed, so a JS wrapper still referencing it stays valid (teardown frees
  * the orphan list). Mirrors DOM errors for the wrong parent/child cases. */
-static duk_ret_t nb_el_removeChild(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    NbNode *ch = duk_is_object(ctx, 0) ? get_node(ctx, 0) : NULL;
-    if (!n || !ch)
-        return duk_error(ctx, DUK_ERR_ERROR, "NotFoundError: removeChild needs an element child");
-    if (!is_child_of(n, ch))
-        return duk_error(ctx, DUK_ERR_ERROR, "NotFoundError: the node is not a child of this element");
+static JSValue nb_el_removeChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    NbNode *ch = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
+    if (!n || !ch) {
+        JSValue e = JS_NewError(ctx);
+        if (!JS_IsException(e)) JS_SetPropertyStr(ctx, e, "message",
+            JS_NewString(ctx, "NotFoundError: removeChild needs an element child"));
+        return JS_Throw(ctx, e);
+    }
+    if (!is_child_of(n, ch)) {
+        JSValue e = JS_NewError(ctx);
+        if (!JS_IsException(e)) JS_SetPropertyStr(ctx, e, "message",
+            JS_NewString(ctx, "NotFoundError: the node is not a child of this element"));
+        return JS_Throw(ctx, e);
+    }
     node_detach(ch);
     orphan_add(ch);
-    push_node(ctx, ch);
-    return 1;
+    return push_node(ctx, ch);
 }
-static duk_ret_t nb_el_insertBefore(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    NbNode *nn = duk_is_object(ctx, 0) ? get_node(ctx, 0) : NULL;
-    NbNode *rn = (duk_get_top(ctx) > 1 && duk_is_object(ctx, 1)) ? get_node(ctx, 1) : NULL;
-    if (!n || !nn || nn == n)
-        return duk_error(ctx, DUK_ERR_ERROR, "HierarchyRequestError: insertBefore needs a real new node");
-    if (rn && !is_child_of(n, rn))
-        return duk_error(ctx, DUK_ERR_ERROR, "NotFoundError: the reference node is not a child of this element");
+static JSValue nb_el_insertBefore(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    NbNode *nn = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
+    NbNode *rn = (argc > 1 && JS_IsObject(argv[1])) ? get_node(ctx, argv[1]) : NULL;
+    if (!n || !nn || nn == n) {
+        JSValue e = JS_NewError(ctx);
+        if (!JS_IsException(e)) JS_SetPropertyStr(ctx, e, "message",
+            JS_NewString(ctx, "HierarchyRequestError: insertBefore needs a real new node"));
+        return JS_Throw(ctx, e);
+    }
+    if (rn && !is_child_of(n, rn)) {
+        JSValue e = JS_NewError(ctx);
+        if (!JS_IsException(e)) JS_SetPropertyStr(ctx, e, "message",
+            JS_NewString(ctx, "NotFoundError: the reference node is not a child of this element"));
+        return JS_Throw(ctx, e);
+    }
     node_detach(nn);
     orphan_remove(nn);
     local_insert_before(n, nn, rn);
-    push_node(ctx, nn);
-    return 1;
+    return push_node(ctx, nn);
 }
-static duk_ret_t nb_el_replaceChild(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    NbNode *nn = duk_is_object(ctx, 0) ? get_node(ctx, 0) : NULL;
-    NbNode *on = (duk_get_top(ctx) > 1 && duk_is_object(ctx, 1)) ? get_node(ctx, 1) : NULL;
-    if (!n || !nn || !on || nn == on || nn == n)
-        return duk_error(ctx, DUK_ERR_ERROR, "HierarchyRequestError: replaceChild needs two distinct real nodes");
-    if (!is_child_of(n, on))
-        return duk_error(ctx, DUK_ERR_ERROR, "NotFoundError: the old child is not a child of this element");
+static JSValue nb_el_replaceChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    NbNode *nn = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
+    NbNode *on = (argc > 1 && JS_IsObject(argv[1])) ? get_node(ctx, argv[1]) : NULL;
+    if (!n || !nn || !on || nn == on || nn == n) {
+        JSValue e = JS_NewError(ctx);
+        if (!JS_IsException(e)) JS_SetPropertyStr(ctx, e, "message",
+            JS_NewString(ctx, "HierarchyRequestError: replaceChild needs two distinct real nodes"));
+        return JS_Throw(ctx, e);
+    }
+    if (!is_child_of(n, on)) {
+        JSValue e = JS_NewError(ctx);
+        if (!JS_IsException(e)) JS_SetPropertyStr(ctx, e, "message",
+            JS_NewString(ctx, "NotFoundError: the old child is not a child of this element"));
+        return JS_Throw(ctx, e);
+    }
     node_detach(nn);                    /* newChild may live in this same list */
     orphan_remove(nn);
     NbNode *after = on->next_sibling;   /* correct after nn's detach relinks */
     node_detach(on);
     orphan_add(on);
     local_insert_before(n, nn, after);
-    push_node(ctx, on);                 /* DOM returns the replaced child */
-    return 1;
+    return push_node(ctx, on);          /* DOM returns the replaced child */
 }
 /* rung-2 remainder: el.value for form fields — a get/set pair; the set
  * string is held on the wrapper (identity-cached per node) under a hidden
@@ -1105,49 +1466,46 @@ static int is_form_field(const char *tag) {
         || !strcmp(tag, "select") || !strcmp(tag, "button")
         || !strcmp(tag, "option");
 }
-static duk_ret_t nb_el_value_get(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    if (!n) { duk_push_string(ctx, ""); return 1; }
-    duk_push_this(ctx);
-    if (duk_has_prop_string(ctx, -1, "\xffvalue")) {
-        duk_get_prop_string(ctx, -1, "\xffvalue");
-        duk_remove(ctx, -2);
-        return 1;
-    }
-    duk_pop(ctx);
+static JSValue nb_el_value_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_NewString(ctx, "");
+    JSValue v0 = JS_GetPropertyStr(ctx, this_val, "\xffvalue");
+    if (JS_IsString(v0)) return v0;
+    JS_FreeValue(ctx, v0);
     const char *v = nb_attr_get(n, "value");
-    if (v && v[0]) { duk_push_string(ctx, v); return 1; }
-    duk_push_string(ctx, "");
-    return 1;
+    if (v && v[0]) return JS_NewString(ctx, v);
+    return JS_NewString(ctx, "");
 }
-static duk_ret_t nb_el_value_set(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    if (!n) return 0;
-    const char *v = duk_get_string(ctx, 0) ? duk_get_string(ctx, 0) : "";
-    duk_push_this(ctx);
-    duk_push_string(ctx, v);
-    duk_put_prop_string(ctx, -2, "\xffvalue");
-    duk_pop(ctx);
-    return 0;
+static JSValue nb_el_value_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_UNDEFINED;
+    char *vl = NULL;
+    const char *v = (argc > 0 && JS_IsString(argv[0])) ? (vl = JS_ToCString(ctx, argv[0])) : "";
+    JS_SetPropertyStr(ctx, this_val, "\xffvalue", JS_NewString(ctx, v));
+    JS_FreeCString(ctx, vl);
+    return JS_UNDEFINED;
 }
 /* ---- classList natives (this = the classList object, shares \xffnode) ---- */
-static duk_ret_t nb_cl_add(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    const char *tok = duk_get_string(ctx, 0);
-    if (!n || !tok || !*tok) return 0;
+static JSValue nb_cl_add(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *tk = NULL;
+    const char *tok = (argc > 0 && JS_IsString(argv[0])) ? (tk = JS_ToCString(ctx, argv[0])) : NULL;
+    if (!n || !tok || !*tok) { JS_FreeCString(ctx, tk); return JS_UNDEFINED; }
     if (!has_class(n, tok)) {
         SB b = {0, 0, 0};
         if (n->cls && *n->cls) { sb_put(&b, n->cls); sb_put(&b, " "); }
         sb_put(&b, tok);
         free(n->cls); n->cls = b.s;
     }
-    return 0;
+    JS_FreeCString(ctx, tk);
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_cl_remove(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    const char *tok = duk_get_string(ctx, 0);
-    if (!n || !tok) return 0;
-    if (!has_class(n, tok)) return 0;
+static JSValue nb_cl_remove(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *tk = NULL;
+    const char *tok = (argc > 0 && JS_IsString(argv[0])) ? (tk = JS_ToCString(ctx, argv[0])) : NULL;
+    if (!n || !tok) { JS_FreeCString(ctx, tk); return JS_UNDEFINED; }
+    if (!has_class(n, tok)) { JS_FreeCString(ctx, tk); return JS_UNDEFINED; }
     SB b = {0, 0, 0};
     char copy[512]; size_t cl = strlen(n->cls); if (cl > 511) cl = 511;
     memcpy(copy, n->cls, cl); copy[cl] = 0;
@@ -1157,180 +1515,268 @@ static duk_ret_t nb_cl_remove(duk_context *ctx) {
         c = strtok(NULL, " ");
     }
     free(n->cls); n->cls = b.s ? b.s : strdup("");
-    return 0;
+    JS_FreeCString(ctx, tk);
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_cl_toggle(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    const char *tok = duk_get_string(ctx, 0);
-    if (!n || !tok || !*tok) { duk_push_boolean(ctx, 0); return 1; }
-    if (has_class(n, tok)) { nb_cl_remove(ctx); duk_push_boolean(ctx, 0); return 1; }
-    nb_cl_add(ctx);
-    duk_push_boolean(ctx, 1);
-    return 1;
+static JSValue nb_cl_toggle(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *tk = NULL;
+    const char *tok = (argc > 0 && JS_IsString(argv[0])) ? (tk = JS_ToCString(ctx, argv[0])) : NULL;
+    if (!n || !tok || !*tok) { JS_FreeCString(ctx, tk); return JS_NewBool(ctx, 0); }
+    if (has_class(n, tok)) { nb_cl_remove(ctx, this_val, argc, argv); JS_FreeCString(ctx, tk); return JS_NewBool(ctx, 0); }
+    nb_cl_add(ctx, this_val, argc, argv);
+    JS_FreeCString(ctx, tk);
+    return JS_NewBool(ctx, 1);
 }
-static duk_ret_t nb_cl_contains(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    const char *tok = duk_get_string(ctx, 0);
-    duk_push_boolean(ctx, n && tok ? has_class(n, tok) : 0);
-    return 1;
+static JSValue nb_cl_contains(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *tk = NULL;
+    const char *tok = (argc > 0 && JS_IsString(argv[0])) ? (tk = JS_ToCString(ctx, argv[0])) : NULL;
+    int r = n && tok ? has_class(n, tok) : 0;
+    JS_FreeCString(ctx, tk);
+    return JS_NewBool(ctx, r);
 }
 
-#define STASH_NODE_MAP 40000   /* single object: node index -> JS wrapper (identity) */
+#define IDMAPNAME "__nb_idmap"    /* global object: node index -> JS wrapper (identity) */
+/* DOM class prototypes (2026-09-18): real bundles branch on
+ * `instanceof Element` and touch `Element.prototype` at load time. The
+ * per-context global object `__nb_protos` holds the constructor-chain
+ * prototypes for element/text/document wrappers built by install_dom_classes. */
+#define PROTONAME "__nb_protos"
+#define PROTO_EL 0   /* element wrappers ride HTMLElement.prototype */
+#define PROTO_TEXT 1 /* text nodes ride Text.prototype */
+#define PROTO_DOC 2  /* the document object rides Document.prototype */
 
 /* Build a JS element object wrapping a C NbNode. */
-static void push_node(duk_context *ctx, NbNode *n) {
+static JSValue push_node(JSContext *ctx, NbNode *n) {
     int nidx = node_index(n);
-    /* wrapper identity: one JS object per C node (heap is fresh per page).
-     * stack: [stash][map]; the wrapper is built on top of both. */
-    duk_push_global_stash(ctx);
-    duk_get_prop_index(ctx, -1, STASH_NODE_MAP);
-    if (!duk_is_object(ctx, -1)) {
-        duk_pop(ctx);
-        duk_push_object(ctx);
-        duk_dup(ctx, -1);
-        duk_put_prop_index(ctx, -3, STASH_NODE_MAP);
+    /* wrapper identity: one JS object per C node, held in the global
+     * __nb_idmap object (the context is fresh per page). */
+    JSValue g = JS_GetGlobalObject(ctx);
+    JSValue map = JS_GetPropertyStr(ctx, g, IDMAPNAME);
+    if (!JS_IsObject(map)) {
+        JS_FreeValue(ctx, map);
+        map = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, g, IDMAPNAME, JS_DupValue(ctx, map));
     }
-    if (duk_has_prop_index(ctx, -1, nidx)) {
-        duk_get_prop_index(ctx, -1, nidx);   /* existing wrapper */
-        duk_remove(ctx, -3);                 /* drop stash, then map */
-        duk_remove(ctx, -2);
-        return;
+    JS_FreeValue(ctx, g);
+    JSValue ex = JS_GetPropertyUint32(ctx, map, (uint32_t)nidx);
+    if (JS_IsObject(ex)) {           /* existing wrapper */
+        JS_FreeValue(ctx, map);
+        return ex;
     }
-    duk_push_object(ctx);                            /* el */
-    duk_push_int(ctx, nidx);
-    duk_put_prop_string(ctx, -2, NODEKEY);
+    JS_FreeValue(ctx, ex);
+    JSValue el = JS_NewObject(ctx);
+    /* DOM class prototype (install_dom_classes) so `el instanceof Element`
+     * and Element.prototype.* resolve like a browser; falls back to a plain
+     * object when the holder is absent (node mode / pre-install). */
+    {
+        JSValue g2 = JS_GetGlobalObject(ctx);
+        JSValue holder = JS_GetPropertyStr(ctx, g2, PROTONAME);
+        JS_FreeValue(ctx, g2);
+        if (JS_IsObject(holder)) {
+            int which = (n->tag && n->tag[0]) ? PROTO_EL : PROTO_TEXT;
+            JSValue p = JS_GetPropertyUint32(ctx, holder, (uint32_t)which);
+            if (JS_IsObject(p)) JS_SetPrototype(ctx, el, p);
+            JS_FreeValue(ctx, p);
+        }
+        JS_FreeValue(ctx, holder);
+    }
+    JS_SetPropertyStr(ctx, el, NODEKEY, JS_NewInt32(ctx, nidx));
     {
         const char *label = (n->tag && n->tag[0]) ? n->tag : "#text";
-        duk_push_string(ctx, label);
-        duk_put_prop_string(ctx, -2, "nodeName");
-        if (n->tag && n->tag[0]) {
-            duk_push_string(ctx, label);
-            duk_put_prop_string(ctx, -2, "tagName");
-        }
+        JS_SetPropertyStr(ctx, el, "nodeName", JS_NewString(ctx, label));
+        if (n->tag && n->tag[0])
+            JS_SetPropertyStr(ctx, el, "tagName", JS_NewString(ctx, label));
     }
 
-    duk_push_c_function(ctx, nb_el_getAttribute, 1);  duk_put_prop_string(ctx, -2, "getAttribute");
-    duk_push_c_function(ctx, nb_el_setAttribute, 2);  duk_put_prop_string(ctx, -2, "setAttribute");
-    duk_push_c_function(ctx, nb_el_removeAttribute, 1); duk_put_prop_string(ctx, -2, "removeAttribute");
-    duk_push_c_function(ctx, nb_el_appendChild, 1);   duk_put_prop_string(ctx, -2, "appendChild");
-    duk_push_c_function(ctx, nb_el_removeChild, 1);   duk_put_prop_string(ctx, -2, "removeChild");
-    duk_push_c_function(ctx, nb_el_insertBefore, 2);  duk_put_prop_string(ctx, -2, "insertBefore");
-    duk_push_c_function(ctx, nb_el_replaceChild, 2);  duk_put_prop_string(ctx, -2, "replaceChild");
-    duk_push_c_function(ctx, nb_el_addEventListener, 2);    duk_put_prop_string(ctx, -2, "addEventListener");
-    duk_push_c_function(ctx, nb_el_removeEventListener, 2); duk_put_prop_string(ctx, -2, "removeEventListener");
-    duk_push_c_function(ctx, nb_el_dispatchEvent, 1);       duk_put_prop_string(ctx, -2, "dispatchEvent");
-    duk_push_c_function(ctx, nb_el_click, 0);               duk_put_prop_string(ctx, -2, "click");
+    JS_SetPropertyStr(ctx, el, "getAttribute", JS_NewCFunction(ctx, nb_el_getAttribute, "getAttribute", 1));
+    JS_SetPropertyStr(ctx, el, "setAttribute", JS_NewCFunction(ctx, nb_el_setAttribute, "setAttribute", 2));
+    JS_SetPropertyStr(ctx, el, "removeAttribute", JS_NewCFunction(ctx, nb_el_removeAttribute, "removeAttribute", 1));
+    JS_SetPropertyStr(ctx, el, "hasAttribute", JS_NewCFunction(ctx, nb_el_hasAttribute, "hasAttribute", 1));
+    JS_SetPropertyStr(ctx, el, "appendChild", JS_NewCFunction(ctx, nb_el_appendChild, "appendChild", 1));
+    JS_SetPropertyStr(ctx, el, "removeChild", JS_NewCFunction(ctx, nb_el_removeChild, "removeChild", 1));
+    JS_SetPropertyStr(ctx, el, "insertBefore", JS_NewCFunction(ctx, nb_el_insertBefore, "insertBefore", 2));
+    JS_SetPropertyStr(ctx, el, "replaceChild", JS_NewCFunction(ctx, nb_el_replaceChild, "replaceChild", 2));
+    JS_SetPropertyStr(ctx, el, "addEventListener", JS_NewCFunction(ctx, nb_el_addEventListener, "addEventListener", 2));
+    JS_SetPropertyStr(ctx, el, "removeEventListener", JS_NewCFunction(ctx, nb_el_removeEventListener, "removeEventListener", 2));
+    JS_SetPropertyStr(ctx, el, "dispatchEvent", JS_NewCFunction(ctx, nb_el_dispatchEvent, "dispatchEvent", 1));
+    JS_SetPropertyStr(ctx, el, "contains", JS_NewCFunction(ctx, nb_el_contains, "contains", 1));
+    JS_SetPropertyStr(ctx, el, "click", JS_NewCFunction(ctx, nb_el_click, "click", 0));
+    /* resource/URL attributes real bundles read directly off the element.
+     * Browsers expose src/href as STRINGS even when the attribute is absent
+     * (an inline <script>.src is ""), and youtube's global error reporter
+     * does `script.src.indexOf("/debug-")` across getElementsByTagName
+     * ("script") — undefined there throws. closure's module loader also does
+     * `O.src ? O.src : O.getAttribute("href")` on <script id="base-js">. */
+    if (n->tag) {
+        static const char *src_tags[] = { "script","img","iframe","input",
+            "source","track","embed","video","audio","frame", NULL };
+        static const char *href_tags[] = { "a","link","area","base", NULL };
+        for (int i = 0; src_tags[i]; i++)
+            if (!strcmp(n->tag, src_tags[i])) {
+                JS_SetPropertyStr(ctx, el, "src", JS_NewString(ctx, nb_attr_get(n, "src")));
+                break;
+            }
+        for (int i = 0; href_tags[i]; i++)
+            if (!strcmp(n->tag, href_tags[i])) {
+                JS_SetPropertyStr(ctx, el, "href", JS_NewString(ctx, nb_attr_get(n, "href")));
+                break;
+            }
+    }
+    /* canvas 2D (2026-09-18): real bundles probe <canvas> via
+     * createElementNS('...','canvas') and immediately call getContext('2d')
+     * through a fillStyle/color parse. Minimal context: geometry/measure
+     * stubs that return well-formed objects so parser/feature paths don't
+     * throw; rasterization is out of scope (see NB-JS-ENGINE-ROADMAP). */
+    if (n->tag && strcmp(n->tag, "canvas") == 0) {
+        JS_SetPropertyStr(ctx, el, "getContext", JS_NewCFunction(ctx, nb_el_getContext, "getContext", 1));
+        JS_SetPropertyStr(ctx, el, "toDataURL", JS_NewCFunction(ctx, nb_canvas_toDataURL, "toDataURL", 0));
+    }
+    if (n->tag && strcmp(n->tag, "template") == 0) {
+        /* <template>.content = C-backed #document-fragment (2026-09-20).
+         * kevlar does template.content.insertBefore(content.cloneNode(true),
+         * firstChild) while wiring its css style tags; the old prelude JS
+         * docfrag couldn't produce/accept C nodes and the insert threw
+         * HierarchyRequestError at bundle line 16063. */
+        (void)nb_template_content_frag(ctx, el, n);
+    }
 
     /* el.on<type> = cb accessors; native magic carries the ONPROPS index
-     * (Duktape accessors pass no property name — setters receive the value,
-     * getters receive nothing). */
+     * (QuickJS accessors carry no property name — the magic is the index). */
     for (int i = 0; ONPROPS[i]; i++) {
         char onname[64];
         snprintf(onname, sizeof(onname), "on%s", ONPROPS[i]);
-        duk_push_string(ctx, onname);
-        duk_push_c_function(ctx, nb_el_onprop_get, 0); duk_set_magic(ctx, -1, i);
-        duk_push_c_function(ctx, nb_el_onprop_set, 1); duk_set_magic(ctx, -1, i);
-        duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
+        JSAtom nm = JS_NewAtom(ctx, onname);
+        JS_DefinePropertyGetSet(ctx, el, nm,
+            JS_NewCFunctionMagic(ctx, nb_el_onprop_get, onname, 0, JS_CFUNC_generic_magic, i),
+            JS_NewCFunctionMagic(ctx, nb_el_onprop_set, onname, 1, JS_CFUNC_generic_magic, i),
+            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
     }
 
     /* read-only accessor properties: children, childNodes, parentNode, firstChild, nextSibling */
-    duk_push_string(ctx, "children");
-    duk_push_c_function(ctx, nb_el_children, 0);
-    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
-    duk_push_string(ctx, "childNodes");
-    duk_push_c_function(ctx, nb_el_childNodes, 0);
-    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
-    duk_push_string(ctx, "parentNode");
-    duk_push_c_function(ctx, nb_el_parentNode, 0);
-    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
-    duk_push_string(ctx, "firstChild");
-    duk_push_c_function(ctx, nb_el_firstChild, 0);
-    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
-    duk_push_string(ctx, "nextSibling");
-    duk_push_c_function(ctx, nb_el_nextSibling, 0);
-    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
+    {
+        JSAtom nm = JS_NewAtom(ctx, "children");
+        JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_el_children, "children", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "childNodes");
+        JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_el_childNodes, "childNodes", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "parentNode");
+        JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_el_parentNode, "parentNode", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "firstChild");
+        JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_el_firstChild, "firstChild", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "nextSibling");
+        JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_el_nextSibling, "nextSibling", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
 
     /* accessors: id, className, textContent, innerHTML */
-    duk_push_string(ctx, "id");
-    duk_push_c_function(ctx, nb_el_id_get, 0);
-    duk_push_c_function(ctx, nb_el_id_set, 1);
-    duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
-    duk_push_string(ctx, "className");
-    duk_push_c_function(ctx, nb_el_className_get, 0);
-    duk_push_c_function(ctx, nb_el_className_set, 1);
-    duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
-    duk_push_string(ctx, "textContent");
-    duk_push_c_function(ctx, nb_el_textContent_get, 0);
-    duk_push_c_function(ctx, nb_el_textContent_set, 1);
-    duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
-    duk_push_string(ctx, "innerHTML");
-    duk_push_c_function(ctx, nb_el_innerHTML_get, 0);
-    duk_push_c_function(ctx, nb_el_innerHTML_set, 1);
-    duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
+    {
+        JSAtom nm = JS_NewAtom(ctx, "id");
+        JS_DefinePropertyGetSet(ctx, el, nm,
+            JS_NewCFunction(ctx, nb_el_id_get, "get id", 0), JS_NewCFunction(ctx, nb_el_id_set, "set id", 1),
+            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "className");
+        JS_DefinePropertyGetSet(ctx, el, nm,
+            JS_NewCFunction(ctx, nb_el_className_get, "get className", 0), JS_NewCFunction(ctx, nb_el_className_set, "set className", 1),
+            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "textContent");
+        JS_DefinePropertyGetSet(ctx, el, nm,
+            JS_NewCFunction(ctx, nb_el_textContent_get, "get textContent", 0), JS_NewCFunction(ctx, nb_el_textContent_set, "set textContent", 1),
+            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "innerHTML");
+        JS_DefinePropertyGetSet(ctx, el, nm,
+            JS_NewCFunction(ctx, nb_el_innerHTML_get, "get innerHTML", 0), JS_NewCFunction(ctx, nb_el_innerHTML_set, "set innerHTML", 1),
+            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
 
     /* rung-2 remainder + rung 7: el.style — identity-cached snapshot of
      * the inline style attribute (reads mirror inline decls; JS writes
      * persist on the snapshot; not fed back into layout metrics). */
-    duk_push_string(ctx, "style");
-    duk_push_c_function(ctx, nb_el_style_get, 0);
-    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
+    {
+        JSAtom nm = JS_NewAtom(ctx, "style");
+        JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_el_style_get, "get style", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
 
     /* rung 7: layout-intent metrics (display:none-aware, CSS px from the
      * cascade, else 0 — see NB-JS-ENGINE-ROADMAP rung 7). */
-    duk_push_string(ctx, "offsetWidth");
-    duk_push_c_function(ctx, nb_el_offdim, 0);
-    duk_set_magic(ctx, -1, 0);
-    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
-    duk_push_string(ctx, "offsetHeight");
-    duk_push_c_function(ctx, nb_el_offdim, 0);
-    duk_set_magic(ctx, -1, 1);
-    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
-    duk_push_string(ctx, "clientWidth");
-    duk_push_c_function(ctx, nb_el_offdim, 0);
-    duk_set_magic(ctx, -1, 0);
-    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
-    duk_push_string(ctx, "clientHeight");
-    duk_push_c_function(ctx, nb_el_offdim, 0);
-    duk_set_magic(ctx, -1, 1);
-    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
-    duk_push_string(ctx, "offsetParent");
-    duk_push_c_function(ctx, nb_el_offset_parent, 0);
-    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
-    duk_push_c_function(ctx, nb_el_getBoundingClientRect, 0);
-    duk_put_prop_string(ctx, -2, "getBoundingClientRect");
+    {
+        JSAtom nm = JS_NewAtom(ctx, "offsetWidth");
+        JS_DefinePropertyGetSet(ctx, el, nm,
+            JS_NewCFunctionMagic(ctx, nb_el_offdim, "get offsetWidth", 0, JS_CFUNC_generic_magic, 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "offsetHeight");
+        JS_DefinePropertyGetSet(ctx, el, nm,
+            JS_NewCFunctionMagic(ctx, nb_el_offdim, "get offsetHeight", 0, JS_CFUNC_generic_magic, 1), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "clientWidth");
+        JS_DefinePropertyGetSet(ctx, el, nm,
+            JS_NewCFunctionMagic(ctx, nb_el_offdim, "get clientWidth", 0, JS_CFUNC_generic_magic, 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "clientHeight");
+        JS_DefinePropertyGetSet(ctx, el, nm,
+            JS_NewCFunctionMagic(ctx, nb_el_offdim, "get clientHeight", 0, JS_CFUNC_generic_magic, 1), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "offsetParent");
+        JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_el_offset_parent, "get offsetParent", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
+    JS_SetPropertyStr(ctx, el, "getBoundingClientRect",
+                      JS_NewCFunction(ctx, nb_el_getBoundingClientRect, "getBoundingClientRect", 0));
 
     /* rung-2 remainder: el.value get/set for form fields. */
     if (is_form_field(n->tag)) {
-        duk_push_string(ctx, "value");
-        duk_push_c_function(ctx, nb_el_value_get, 0);
-        duk_push_c_function(ctx, nb_el_value_set, 1);
-        duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
+        JSAtom nm = JS_NewAtom(ctx, "value");
+        JS_DefinePropertyGetSet(ctx, el, nm,
+            JS_NewCFunction(ctx, nb_el_value_get, "get value", 0), JS_NewCFunction(ctx, nb_el_value_set, "set value", 1),
+            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
     }
 
     /* classList */
-    duk_push_object(ctx);                            /* classList */
-    duk_push_int(ctx, nidx);
-    duk_put_prop_string(ctx, -2, NODEKEY);
-    duk_push_c_function(ctx, nb_cl_add, 1);          duk_put_prop_string(ctx, -2, "add");
-    duk_push_c_function(ctx, nb_cl_remove, 1);       duk_put_prop_string(ctx, -2, "remove");
-    duk_push_c_function(ctx, nb_cl_toggle, 1);       duk_put_prop_string(ctx, -2, "toggle");
-    duk_push_c_function(ctx, nb_cl_contains, 1);     duk_put_prop_string(ctx, -2, "contains");
-    duk_put_prop_string(ctx, -2, "classList");
+    {
+        JSValue cl = JS_NewObject(ctx);                /* classList */
+        JS_SetPropertyStr(ctx, cl, NODEKEY, JS_NewInt32(ctx, nidx));
+        JS_SetPropertyStr(ctx, cl, "add", JS_NewCFunction(ctx, nb_cl_add, "add", 1));
+        JS_SetPropertyStr(ctx, cl, "remove", JS_NewCFunction(ctx, nb_cl_remove, "remove", 1));
+        JS_SetPropertyStr(ctx, cl, "toggle", JS_NewCFunction(ctx, nb_cl_toggle, "toggle", 1));
+        JS_SetPropertyStr(ctx, cl, "contains", JS_NewCFunction(ctx, nb_cl_contains, "contains", 1));
+        JS_SetPropertyStr(ctx, el, "classList", cl);
+    }
 
-    /* cache wrapper in the identity map, then drop stash+map, leaving [wrapper].
-     * stack: [stash][map][el]; el is at -1, map at -3. */
-    duk_dup(ctx, -1);
-    duk_put_prop_index(ctx, -3, nidx);   /* map[nidx] = el (was -2: the wrapper
-                                            stored into itself → identity broke) */
-    duk_remove(ctx, -2);
-    duk_remove(ctx, -2);
+    /* cache wrapper in the identity map so later push_node calls return the
+     * same object (map originally FIXED a self-storing bug: the old code
+     * stored the wrapper into itself -> identity broke). */
+    JS_SetPropertyUint32(ctx, map, (uint32_t)nidx, JS_DupValue(ctx, el));
+    JS_FreeValue(ctx, map);
+    return el;
 }
 
 /* ============================= rung 6: file-backed document.cookie jar =====
  * document.cookie getter/setter as C natives (the prelude in nb_host.h leaves
  * a configurable stub; install_dom redefines it with these). The jar lives on
  * disk at $NB_COOKIES_FILE (fallback $HOME/.config/nbjs/nb_cookies.txt), so
- * cookies survive across LOADs — each LOAD runs in a fresh Duktape heap, so
+ * cookies survive across LOADs — each LOAD runs in a fresh engine instance, so
  * the file is the only persistence. Jar line format (TAB-separated legend):
  *   host<TAB>path<TAB>name<TAB>value<TAB>expires_epoch<TAB>secure
  * host "*" = set from a URI with no host. expires 0 = session cookie.
@@ -1699,11 +2145,11 @@ static void cookie_set_from_wire(const char *header_val, const char *request_url
     cookie_save_file(ents, n);
 }
 
-static duk_ret_t nb_dom_cookie_get(duk_context *ctx) {
+static JSValue nb_dom_cookie_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     if (!g_cookie_path_set) cookie_jar_init();
-    if (!g_cookie_path[0]) { duk_push_string(ctx, ""); return 1; }
+    if (!g_cookie_path[0]) return JS_NewString(ctx, "");
     char host[128], rp[512];
-    if (!href_parts(host, sizeof(host), rp, sizeof(rp))) { duk_push_string(ctx, ""); return 1; }
+    if (!href_parts(host, sizeof(host), rp, sizeof(rp))) return JS_NewString(ctx, "");
     for (char *c = host; *c; c++) *c = (char)tolower((unsigned char)*c);
     CookieEnt ents[COOKIE_MAX_ENT];
     int n = cookie_load_file(ents, COOKIE_MAX_ENT);
@@ -1720,17 +2166,19 @@ static duk_ret_t nb_dom_cookie_get(duk_context *ctx) {
         sb_put(&b, "=");
         sb_put(&b, ents[i].value);
     }
-    duk_push_lstring(ctx, b.s ? b.s : "", b.len);
+    JSValue r = JS_NewStringLen(ctx, b.s ? b.s : "", b.len);
     free(b.s);
-    return 1;
+    return r;
 }
 
-static duk_ret_t nb_dom_cookie_set(duk_context *ctx) {
-    const char *spec = duk_safe_to_string(ctx, 0);
+static JSValue nb_dom_cookie_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *spec_owned = NULL;
+    const char *spec = argc > 0 ? (spec_owned = JS_ToCString(ctx, argv[0])) : NULL;
+    if (!spec) return JS_UNDEFINED;   /* JS_ToCString already threw on coercion failure */
     if (!g_cookie_path_set) cookie_jar_init();
-    if (!spec || !*spec || !g_cookie_path[0]) return 0;
+    if (!spec || !*spec || !g_cookie_path[0]) { JS_FreeCString(ctx, spec_owned); return JS_UNDEFINED; }
     char host[128], rp[512];
-    if (!href_parts(host, sizeof(host), rp, sizeof(rp))) return 0;
+    if (!href_parts(host, sizeof(host), rp, sizeof(rp))) { JS_FreeCString(ctx, spec_owned); return JS_UNDEFINED; }
 
     char buf[4096];
     snprintf(buf, sizeof(buf), "%s", spec);
@@ -1741,14 +2189,14 @@ static duk_ret_t nb_dom_cookie_set(duk_context *ctx) {
     int secure = 0;
 
     char *tok = strtok(buf, ";");
-    if (!tok) return 0;
+    if (!tok) { JS_FreeCString(ctx, spec_owned); return JS_UNDEFINED; }
     tok = trim_c(tok);
     char *eq = strchr(tok, '=');
-    if (!eq || eq == tok) return 0;
+    if (!eq || eq == tok) { JS_FreeCString(ctx, spec_owned); return JS_UNDEFINED; }
     *eq = 0;
     snprintf(name, sizeof(name), "%s", tok);
     sanitize_cookie_value(eq + 1, value, sizeof(value));
-    if (!name[0]) return 0;
+    if (!name[0]) { JS_FreeCString(ctx, spec_owned); return JS_UNDEFINED; }
 
     while ((tok = strtok(NULL, ";")) != NULL) {
         tok = trim_c(tok);
@@ -1815,7 +2263,8 @@ static duk_ret_t nb_dom_cookie_set(duk_context *ctx) {
         }
     }
     cookie_save_file(ents, n);
-    return 0;
+    JS_FreeCString(ctx, spec_owned);
+    return JS_UNDEFINED;
 }
 
 /* ===================== rung 6: localStorage (disk jar) + sessionStorage (per-LOAD) =====
@@ -1823,7 +2272,7 @@ static duk_ret_t nb_dom_cookie_set(duk_context *ctx) {
  * BOTH globals with real C-backed objects here. localStorage persists across LOADs via
  * a jar on disk at $NB_LOCALSTORAGE_FILE (fallback ~/.config/nbjs/nb_localstorage.txt);
  * sessionStorage lives in process memory and is cleared at the top of every run_page,
- * so each LOAD gets a fresh session (a fresh Duktape heap could not carry JS state
+ * so each LOAD gets a fresh session (a fresh runtime/context could not carry JS state
  * anyway). Jar line format: <pct-encoded key>\t<pct-encoded value>\n — keys/values are
  * percent-encoded (RFC 3986 unreserved pass through, everything else %XX) so tabs,
  * newlines and control chars are safe inside a line. Reads tolerate damage. */
@@ -1934,20 +2383,23 @@ static int ls_find(int n, const char *key) {
     for (int i = 0; i < n; i++) if (strcmp(g_ls[i].key, key) == 0) return i;
     return -1;
 }
-static duk_ret_t nb_ls_getItem(duk_context *ctx) {
-    const char *key = duk_get_string(ctx, 0);
+static JSValue nb_ls_getItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *ko = NULL;
+    const char *key = js_arg_str(ctx, argv, argc, 0, &ko);
     if (!g_ls_path_set) ls_jar_init();
-    if (!key || !g_ls_path[0]) { duk_push_null(ctx); return 1; }
+    if (!key || !g_ls_path[0]) { JS_FreeCString(ctx, ko); return JS_NULL; }
     int n = st_load_file(g_ls_path, g_ls, ST_MAX_ENT);
     int f = ls_find(n, key);
-    if (f < 0) duk_push_null(ctx); else duk_push_string(ctx, g_ls[f].value);
-    return 1;
+    JS_FreeCString(ctx, ko);
+    if (f < 0) return JS_NULL;
+    return JS_NewString(ctx, g_ls[f].value);
 }
-static duk_ret_t nb_ls_setItem(duk_context *ctx) {
-    const char *key = duk_get_string(ctx, 0);
-    const char *val = duk_safe_to_string(ctx, 1);
+static JSValue nb_ls_setItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *ko = NULL, *vo = NULL;
+    const char *key = js_arg_str(ctx, argv, argc, 0, &ko);
+    const char *val = js_arg_str_any(ctx, argv, argc, 1, &vo);
     if (!g_ls_path_set) ls_jar_init();
-    if (!key || !g_ls_path[0]) return 0;
+    if (!key || !g_ls_path[0]) { JS_FreeCString(ctx, ko); JS_FreeCString(ctx, vo); return JS_UNDEFINED; }
     int n = st_load_file(g_ls_path, g_ls, ST_MAX_ENT);
     int f = ls_find(n, key);
     if (f >= 0) {
@@ -1958,57 +2410,63 @@ static duk_ret_t nb_ls_setItem(duk_context *ctx) {
         snprintf(e->key, sizeof(e->key), "%s", key);
         snprintf(e->value, sizeof(e->value), "%s", val);
     } else {
-        return 0;
+        JS_FreeCString(ctx, ko); JS_FreeCString(ctx, vo);
+        return JS_UNDEFINED;
     }
     ls_save_file(g_ls, n);
-    return 0;
+    JS_FreeCString(ctx, ko); JS_FreeCString(ctx, vo);
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_ls_removeItem(duk_context *ctx) {
-    const char *key = duk_get_string(ctx, 0);
+static JSValue nb_ls_removeItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *ko = NULL;
+    const char *key = js_arg_str(ctx, argv, argc, 0, &ko);
     if (!g_ls_path_set) ls_jar_init();
-    if (!key || !g_ls_path[0]) return 0;
+    if (!key || !g_ls_path[0]) { JS_FreeCString(ctx, ko); return JS_UNDEFINED; }
     int n = st_load_file(g_ls_path, g_ls, ST_MAX_ENT);
     int f = ls_find(n, key);
-    if (f < 0) return 0;
+    JS_FreeCString(ctx, ko);
+    if (f < 0) return JS_UNDEFINED;
     for (int i = f; i + 1 < n; i++) g_ls[i] = g_ls[i + 1];
     ls_save_file(g_ls, n - 1);
-    return 0;
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_ls_clear(duk_context *ctx) {
+static JSValue nb_ls_clear(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     if (!g_ls_path_set) ls_jar_init();
     if (g_ls_path[0]) ls_save_file(g_ls, 0);
-    return 0;
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_ls_key(duk_context *ctx) {
-    int i = (int)duk_get_number_default(ctx, 0, -1);
+static JSValue nb_ls_key(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    int i = js_arg_index(ctx, argv, argc, 0);
     if (!g_ls_path_set) ls_jar_init();
-    if (!g_ls_path[0] || i < 0) { duk_push_null(ctx); return 1; }
+    if (!g_ls_path[0] || i < 0) return JS_NULL;
     int n = st_load_file(g_ls_path, g_ls, ST_MAX_ENT);
-    if (i >= n) duk_push_null(ctx); else duk_push_string(ctx, g_ls[i].key);
-    return 1;
+    if (i >= n) return JS_NULL;
+    return JS_NewString(ctx, g_ls[i].key);
 }
-static duk_ret_t nb_ls_length(duk_context *ctx) {
+static JSValue nb_ls_length(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     if (!g_ls_path_set) ls_jar_init();
     int n = g_ls_path[0] ? st_load_file(g_ls_path, g_ls, ST_MAX_ENT) : 0;
-    duk_push_int(ctx, n);
-    return 1;
+    return JS_NewInt32(ctx, n);
 }
 
 static int ss_find(const char *k) {
     for (int i = 0; i < g_ss_count; i++) if (strcmp(g_ss[i].key, k) == 0) return i;
     return -1;
 }
-static duk_ret_t nb_ss_getItem(duk_context *ctx) {
-    const char *k = duk_get_string(ctx, 0);
-    if (!k) { duk_push_null(ctx); return 1; }
+static JSValue nb_ss_getItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *ko = NULL;
+    const char *k = js_arg_str(ctx, argv, argc, 0, &ko);
+    if (!k) { JS_FreeCString(ctx, ko); return JS_NULL; }
     int f = ss_find(k);
-    if (f < 0) duk_push_null(ctx); else duk_push_string(ctx, g_ss[f].value);
-    return 1;
+    JS_FreeCString(ctx, ko);
+    if (f < 0) return JS_NULL;
+    return JS_NewString(ctx, g_ss[f].value);
 }
-static duk_ret_t nb_ss_setItem(duk_context *ctx) {
-    const char *k = duk_get_string(ctx, 0);
-    const char *v = duk_safe_to_string(ctx, 1);
-    if (!k) return 0;
+static JSValue nb_ss_setItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *ko = NULL, *vo = NULL;
+    const char *k = js_arg_str(ctx, argv, argc, 0, &ko);
+    const char *v = js_arg_str_any(ctx, argv, argc, 1, &vo);
+    if (!k) { JS_FreeCString(ctx, ko); JS_FreeCString(ctx, vo); return JS_UNDEFINED; }
     int f = ss_find(k);
     if (f >= 0) {
         snprintf(g_ss[f].value, sizeof(g_ss[f].value), "%s", v);
@@ -2018,115 +2476,470 @@ static duk_ret_t nb_ss_setItem(duk_context *ctx) {
         snprintf(e->key, sizeof(e->key), "%s", k);
         snprintf(e->value, sizeof(e->value), "%s", v);
     }
-    return 0;
+    JS_FreeCString(ctx, ko); JS_FreeCString(ctx, vo);
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_ss_removeItem(duk_context *ctx) {
-    const char *k = duk_get_string(ctx, 0);
-    if (!k) return 0;
+static JSValue nb_ss_removeItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *ko = NULL;
+    const char *k = js_arg_str(ctx, argv, argc, 0, &ko);
+    if (!k) { JS_FreeCString(ctx, ko); return JS_UNDEFINED; }
     int f = ss_find(k);
-    if (f < 0) return 0;
+    JS_FreeCString(ctx, ko);
+    if (f < 0) return JS_UNDEFINED;
     for (int i = f; i + 1 < g_ss_count; i++) g_ss[i] = g_ss[i + 1];
     g_ss_count--;
-    return 0;
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_ss_clear(duk_context *ctx) { g_ss_count = 0; return 0; }
-static duk_ret_t nb_ss_key(duk_context *ctx) {
-    int i = (int)duk_get_number_default(ctx, 0, -1);
-    if (i < 0 || i >= g_ss_count) duk_push_null(ctx); else duk_push_string(ctx, g_ss[i].key);
-    return 1;
+static JSValue nb_ss_clear(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { g_ss_count = 0; return JS_UNDEFINED; }
+static JSValue nb_ss_key(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    int i = js_arg_index(ctx, argv, argc, 0);
+    if (i < 0 || i >= g_ss_count) return JS_NULL;
+    return JS_NewString(ctx, g_ss[i].key);
 }
-static duk_ret_t nb_ss_length(duk_context *ctx) { duk_push_int(ctx, g_ss_count); return 1; }
+static JSValue nb_ss_length(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { return JS_NewInt32(ctx, g_ss_count); }
+
+/* ---- DOM class hierarchy (2026-09-18) ----
+ * Real bundles feature-detect via `instanceof Element/Node` and read
+ * `Element.prototype` at load. We expose browser constructor globals
+ * and chain their prototypes in the standard order
+ * (EventTarget <- Node <- Element <- HTMLElement / SVGElement),
+ * plus Text, Document and Animation. Wrappers produced by push_node()
+ * ride those prototypes (keyed in the __nb_protos holder), and the
+ * global `document` object rides Document.prototype with a minimal
+ * timeline for web-animations feature code. Constructors are inert
+ * here — illegal-constructor throws are out of scope for this step. */
+static JSValue class_noop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    /* quickjs.c: C constructors receive new_target as this_val, so build the
+     * instance off its .prototype (the fresh object already carries f.prototype)
+     * — `new Element()` then yields an Element instance and instanceof works.
+     * Generic method calls get a non-function receiver and return undefined. */
+    if (JS_IsFunction(ctx, this_val)) {
+        JSValue proto = JS_GetPropertyStr(ctx, this_val, "prototype");
+        JSValue obj = JS_IsObject(proto) ? JS_NewObjectProto(ctx, proto) : JS_NewObject(ctx);
+        JS_FreeValue(ctx, proto);
+        return obj;
+    }
+    return JS_UNDEFINED;
+}
+/* whenDefined must return a thenable, so hand back a resolved Promise. */
+static JSValue nb_promise_resolved(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue funcs[2];
+    JSValue p = JS_NewPromiseCapability(ctx, funcs);
+    if (JS_IsException(p)) return p;
+    JS_Call(ctx, funcs[0], JS_UNDEFINED, 1, argv ? argv : &this_val);
+    JS_FreeValue(ctx, funcs[0]);
+    JS_FreeValue(ctx, funcs[1]);
+    return p;
+}
+static JSValue nb_empty_array(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return JS_NewArray(ctx);
+}
+static JSValue nb_empty_object(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return JS_NewObject(ctx);
+}
+/* construct an inert constructor whose .prototype chains off `parent`
+ * (or Object.prototype when parent is not an object). Returns an owned
+ * function object; calling it yields undefined (see class_noop). */
+static JSValue add_class(JSContext *ctx, const char *name, JSValueConst parent) {
+    JSValue f = JS_NewCFunction2(ctx, class_noop, name, 1, JS_CFUNC_constructor, 0);
+    JSValue p = JS_NewObject(ctx);
+    if (JS_IsObject(parent)) JS_SetPrototype(ctx, p, parent);
+    JS_SetPropertyStr(ctx, f, "prototype", p);
+    return f;
+}
+/* register a constructor global only if the name is still free — the prelude
+ * already defines Event (nb_el_click builds clicks through it) and URL-family
+ * globals; clobbering them breaks dispatch and parsing. */
+static void add_global_class(JSContext *ctx, JSValueConst g, const char *name, JSValueConst parent) {
+    JSValue ex = JS_GetPropertyStr(ctx, g, name);
+    int present = !JS_IsUndefined(ex);
+    JS_FreeValue(ctx, ex);
+    if (present) return;
+    JS_SetPropertyStr(ctx, g, name, add_class(ctx, name, parent));
+}
+static void install_dom_classes(JSContext *ctx) {
+    JSValue ETf = JS_NewCFunction2(ctx, class_noop, "EventTarget", 1, JS_CFUNC_constructor, 0);
+    JSValue Nf = JS_NewCFunction2(ctx, class_noop, "Node", 1, JS_CFUNC_constructor, 0);
+    JSValue Ef = JS_NewCFunction2(ctx, class_noop, "Element", 1, JS_CFUNC_constructor, 0);
+    JSValue Hf = JS_NewCFunction2(ctx, class_noop, "HTMLElement", 1, JS_CFUNC_constructor, 0);
+    JSValue Sf = JS_NewCFunction2(ctx, class_noop, "SVGElement", 1, JS_CFUNC_constructor, 0);
+    JSValue Tf = JS_NewCFunction2(ctx, class_noop, "Text", 1, JS_CFUNC_constructor, 0);
+    JSValue Df = JS_NewCFunction2(ctx, class_noop, "Document", 1, JS_CFUNC_constructor, 0);
+    JSValue Af = JS_NewCFunction2(ctx, class_noop, "Animation", 1, JS_CFUNC_constructor, 0);
+
+    JSValue ETp = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, ETf, "prototype", JS_DupValue(ctx, ETp));
+    JSValue Np = JS_NewObject(ctx);
+    JS_SetPrototype(ctx, Np, ETp);
+    JS_SetPropertyStr(ctx, Nf, "prototype", JS_DupValue(ctx, Np));
+    JSValue Ep = JS_NewObject(ctx);
+    JS_SetPrototype(ctx, Ep, Np);
+    JS_SetPropertyStr(ctx, Ef, "prototype", JS_DupValue(ctx, Ep));
+    /* Element.prototype.attachShadow (2026-09-20): C-backed ShadowRoot, see
+     * the customElements section. Native path so kevlar can stamp after
+     * upgrade. */
+    JS_SetPropertyStr(ctx, Ep, "attachShadow", JS_NewCFunction(ctx, nb_el_attachShadow, "attachShadow", 1));
+    JSValue Hp = JS_NewObject(ctx);
+    JS_SetPrototype(ctx, Hp, Ep);
+    JS_SetPropertyStr(ctx, Hf, "prototype", JS_DupValue(ctx, Hp));
+    JSValue Sp = JS_NewObject(ctx);
+    JS_SetPrototype(ctx, Sp, Ep);
+    JS_SetPropertyStr(ctx, Sf, "prototype", JS_DupValue(ctx, Sp));
+    JSValue Tp = JS_NewObject(ctx);
+    JS_SetPrototype(ctx, Tp, Np);
+    JS_SetPropertyStr(ctx, Tf, "prototype", JS_DupValue(ctx, Tp));
+    JSValue Dp = JS_NewObject(ctx);
+    JS_SetPrototype(ctx, Dp, Np);
+    JS_SetPropertyStr(ctx, Df, "prototype", JS_DupValue(ctx, Dp));
+    JSValue Ap = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, Af, "prototype", JS_DupValue(ctx, Ap));
+
+    JSValue g = JS_GetGlobalObject(ctx);
+    JSValue holder = JS_NewObject(ctx);
+    JS_SetPropertyUint32(ctx, holder, PROTO_EL, JS_DupValue(ctx, Hp));
+    JS_SetPropertyUint32(ctx, holder, PROTO_TEXT, JS_DupValue(ctx, Tp));
+    JS_SetPropertyUint32(ctx, holder, PROTO_DOC, JS_DupValue(ctx, Dp));
+    JS_SetPropertyStr(ctx, g, PROTONAME, holder);
+
+    JS_SetPropertyStr(ctx, g, "EventTarget", ETf);
+    JS_SetPropertyStr(ctx, g, "Node", Nf);
+    JS_SetPropertyStr(ctx, g, "Element", Ef);
+    JS_SetPropertyStr(ctx, g, "HTMLElement", Hf);
+    JS_SetPropertyStr(ctx, g, "SVGElement", Sf);
+    JS_SetPropertyStr(ctx, g, "Text", Tf);
+    JS_SetPropertyStr(ctx, g, "Document", Df);
+    JS_SetPropertyStr(ctx, g, "Animation", Af);
+
+    /* the document object rides Document.prototype; web-animations reads
+     * document.timeline at load, so give it a minimal one. */
+    {
+        JSValue doc = JS_GetPropertyStr(ctx, g, "document");
+        if (JS_IsObject(doc)) {
+            JS_SetPrototype(ctx, doc, Dp);
+            JSValue tl = JS_NewObject(ctx);
+            JS_SetPropertyStr(ctx, tl, "currentTime", JS_NewFloat64(ctx, 0));
+            JS_SetPropertyStr(ctx, tl, "getAnimations", JS_NewCFunction(ctx, class_noop, "getAnimations", 0));
+            JS_SetPropertyStr(ctx, tl, "play", JS_NewCFunction(ctx, class_noop, "play", 1));
+            JS_SetPropertyStr(ctx, tl, "reverse", JS_NewCFunction(ctx, class_noop, "reverse", 0));
+            JS_SetPropertyStr(ctx, tl, "_play", JS_NewCFunction(ctx, class_noop, "_play", 1));
+            JS_SetPropertyStr(ctx, doc, "timeline", tl);
+        }
+        JS_FreeValue(ctx, doc);
+    }
+
+    /* customElements (2026-09-20: REAL define/get/whenDefined/upgrade so
+     * kevlar's deferred registration path activates — see the CE section
+     * below) + CSSStyleSheet (inert; feature detection only). */
+    {
+        JSValue ce = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, ce, "define", JS_NewCFunction(ctx, ce_define, "define", 2));
+        JS_SetPropertyStr(ctx, ce, "get", JS_NewCFunction(ctx, ce_get, "get", 1));
+        JS_SetPropertyStr(ctx, ce, "whenDefined", JS_NewCFunction(ctx, ce_when_def, "whenDefined", 1));
+        JS_SetPropertyStr(ctx, ce, "upgrade", JS_NewCFunction(ctx, ce_upgrade, "upgrade", 1));
+        JS_SetPropertyStr(ctx, g, "customElements", ce);
+
+        JSValue CSf = JS_NewCFunction2(ctx, class_noop, "CSSStyleSheet", 1, JS_CFUNC_constructor, 0);
+        JSValue CSp = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, CSp, "replaceSync", JS_NewCFunction(ctx, class_noop, "replaceSync", 1));
+        JS_SetPropertyStr(ctx, CSp, "replace", JS_NewCFunction(ctx, nb_promise_resolved, "replace", 1));
+        JS_SetPropertyStr(ctx, CSp, "insertRule", JS_NewCFunction(ctx, class_noop, "insertRule", 2));
+        JS_SetPropertyStr(ctx, CSp, "deleteRule", JS_NewCFunction(ctx, class_noop, "deleteRule", 1));
+        JS_SetPropertyStr(ctx, CSf, "prototype", CSp);
+        JS_SetPropertyStr(ctx, g, "CSSStyleSheet", CSf);
+    }
+
+    /* standard element/event constructor globals: bundles load-time-read
+     * X.prototype (Object.create / extends) and branch on instanceof for a
+     * long list of names. All inert; prototypes chain onto the hierarchy. */
+    {
+        static const char *html_els[] = {
+            "HTMLTemplateElement", "HTMLUnknownElement", "HTMLScriptElement",
+            "HTMLStyleElement", "HTMLDivElement", "HTMLSpanElement",
+            "HTMLAnchorElement", "HTMLImageElement", "HTMLInputElement",
+            "HTMLButtonElement", "HTMLFormElement", "HTMLLinkElement",
+            "HTMLMetaElement", "HTMLHeadElement", "HTMLBodyElement",
+            "HTMLHtmlElement", "HTMLCanvasElement", "HTMLVideoElement",
+            "HTMLAudioElement", "HTMLMediaElement", "HTMLIFrameElement",
+            "HTMLSelectElement", "HTMLOptionElement", "HTMLTextAreaElement",
+            "HTMLLabelElement", "HTMLUListElement", "HTMLLIElement",
+            "HTMLTableElement", "HTMLParagraphElement", "HTMLHeadingElement",
+            "HTMLTitleElement", "HTMLSlotElement", "HTMLPictureElement",
+            "HTMLSourceElement", "HTMLTrackElement", "HTMLBRElement",
+            "HTMLHRElement", "HTMLPreElement", "HTMLOListElement",
+            "HTMLDListElement", "HTMLMenuElement", "HTMLDialogElement"
+        };
+        for (size_t i = 0; i < sizeof(html_els) / sizeof(html_els[0]); i++)
+            add_global_class(ctx, g, html_els[i], Hp);
+        static const char *svg_els[] = {
+            "SVGSVGElement", "SVGGraphicsElement", "SVGGeometryElement",
+            "SVGPathElement", "SVGUseElement", "SVGImageElement",
+            "SVGTextElement", "SVGGElement", "SVGRectElement",
+            "SVGCircleElement", "SVGDefsElement", "SVGSymbolElement"
+        };
+        for (size_t i = 0; i < sizeof(svg_els) / sizeof(svg_els[0]); i++)
+            add_global_class(ctx, g, svg_els[i], Ep);
+        static const char *node_els[] = {
+            "DocumentFragment", "ShadowRoot", "CharacterData", "Comment",
+            "ProcessingInstruction", "DocumentType", "Attr", "CDATASection"
+        };
+        for (size_t i = 0; i < sizeof(node_els) / sizeof(node_els[0]); i++)
+            add_global_class(ctx, g, node_els[i], Np);
+        static const char *plain[] = {
+            "NodeList", "HTMLCollection", "DOMTokenList", "NamedNodeMap",
+            "MutationObserver", "MutationRecord", "CustomElementRegistry",
+            "DOMParser", "XMLSerializer", "Range", "Selection",
+            "Event", "CustomEvent", "MouseEvent", "KeyboardEvent",
+            "PointerEvent", "TouchEvent", "FocusEvent", "InputEvent",
+            "WheelEvent", "UIEvent", "ProgressEvent", "ErrorEvent",
+            "MessageEvent", "DragEvent", "AnimationEvent", "TransitionEvent"
+        };
+        for (size_t i = 0; i < sizeof(plain) / sizeof(plain[0]); i++)
+            add_global_class(ctx, g, plain[i], JS_UNDEFINED);
+        /* MutationObserver / DOMParser are newable with instance methods */
+        JSValue f = add_class(ctx, "MutationObserver", JS_UNDEFINED);
+        JSValue p = JS_GetPropertyStr(ctx, f, "prototype");
+        JS_SetPropertyStr(ctx, p, "observe", JS_NewCFunction(ctx, class_noop, "observe", 2));
+        JS_SetPropertyStr(ctx, p, "disconnect", JS_NewCFunction(ctx, class_noop, "disconnect", 0));
+        JS_SetPropertyStr(ctx, p, "takeRecords", JS_NewCFunction(ctx, nb_empty_array, "takeRecords", 0));
+        JS_FreeValue(ctx, p);
+        JS_SetPropertyStr(ctx, g, "MutationObserver", f);
+        f = add_class(ctx, "DOMParser", JS_UNDEFINED);
+        p = JS_GetPropertyStr(ctx, f, "prototype");
+        JS_SetPropertyStr(ctx, p, "parseFromString", JS_NewCFunction(ctx, nb_empty_object, "parseFromString", 2));
+        JS_FreeValue(ctx, p);
+        JS_SetPropertyStr(ctx, g, "DOMParser", f);
+    }
+
+    JS_FreeValue(ctx, g);
+    /* the constructor function refs were consumed by JS_SetPropertyStr on the
+     * global; the prototype objects are still ours (dups chain/holder). */
+    JS_FreeValue(ctx, Ap);
+    JS_FreeValue(ctx, Dp);
+    JS_FreeValue(ctx, Tp);
+    JS_FreeValue(ctx, Sp);
+    JS_FreeValue(ctx, Hp);
+    JS_FreeValue(ctx, Ep);
+    JS_FreeValue(ctx, Np);
+    JS_FreeValue(ctx, ETp);
+}
+
+/* ---- canvas 2D ---- */
+static JSValue nb_c2d_noop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { return JS_UNDEFINED; }
+static JSValue nb_c2d_getImageData(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    int w = js_arg_index(ctx, argv, argc, 0);
+    int h = js_arg_index(ctx, argv, argc, 1);
+    if (w < 0) w = 0;
+    if (h < 0) h = 0;
+    JSValue img = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, img, "width", JS_NewInt32(ctx, w));
+    JS_SetPropertyStr(ctx, img, "height", JS_NewInt32(ctx, h));
+    JSValue len = JS_NewInt32(ctx, 4 * w * h);
+    JSValue g = JS_GetGlobalObject(ctx);
+    JSValue ctor = JS_GetPropertyStr(ctx, g, "Uint8ClampedArray");
+    JS_FreeValue(ctx, g);
+    JSValue data = (JS_IsObject(ctor) && !JS_IsNull(ctor))
+                       ? JS_CallConstructor(ctx, ctor, 1, &len)
+                       : JS_NewArray(ctx);
+    JS_FreeValue(ctx, ctor);
+    if (JS_IsException(data)) { JS_FreeValue(ctx, JS_GetException(ctx)); data = JS_NewArray(ctx); }
+    JS_SetPropertyStr(ctx, img, "data", data);
+    JS_FreeValue(ctx, len);
+    return img;
+}
+static JSValue nb_c2d_measureText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue m = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, m, "width", JS_NewFloat64(ctx, 0));
+    JS_SetPropertyStr(ctx, m, "actualBoundingBoxAscent", JS_NewFloat64(ctx, 0));
+    JS_SetPropertyStr(ctx, m, "actualBoundingBoxDescent", JS_NewFloat64(ctx, 0));
+    return m;
+}
+static JSValue nb_c2d_gradient(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue g = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, g, "addColorStop", JS_NewCFunction(ctx, nb_c2d_noop, "addColorStop", 2));
+    return g;
+}
+static JSValue nb_c2d_createPattern(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return JS_NewObject(ctx);
+}
+static JSValue nb_c2d_lineDash(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return JS_NewArray(ctx);
+}
+static JSValue nb_el_getContext(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue cached = JS_GetPropertyStr(ctx, this_val, "__nb_ctx");
+    if (JS_IsObject(cached)) return cached;
+    JS_FreeValue(ctx, cached);
+    JSValue c = JS_NewObject(ctx);
+    const char *strprops[] = {
+        "fillStyle", "strokeStyle", "filter", "font", "textAlign", "textBaseline",
+        "lineCap", "lineJoin", "globalCompositeOperation", "shadowColor",
+        "letterSpacing", "wordSpacing", "textTransform", "direction"
+    };
+    for (size_t i = 0; i < sizeof(strprops) / sizeof(strprops[0]); i++)
+        JS_SetPropertyStr(ctx, c, strprops[i], JS_NewString(ctx, ""));
+    const char *numprops[] = {
+        "lineWidth", "globalAlpha", "shadowBlur", "shadowOffsetX", "shadowOffsetY",
+        "miterLimit", "lineDashOffset"
+    };
+    for (size_t i = 0; i < sizeof(numprops) / sizeof(numprops[0]); i++)
+        JS_SetPropertyStr(ctx, c, numprops[i], JS_NewInt32(ctx, 0));
+    const char *noops[] = {
+        "fillRect", "clearRect", "strokeRect", "save", "restore", "translate",
+        "rotate", "scale", "setTransform", "transform", "resetTransform",
+        "drawImage", "putImageData", "beginPath", "closePath", "moveTo",
+        "lineTo", "rect", "arc", "arcTo", "bezierCurveTo", "quadraticCurveTo",
+        "fill", "stroke", "clip", "fillText", "strokeText", "setLineDash",
+        "reset", "isPointInPath", "setTransformMatrix", "drawFocusIfNeeded"
+    };
+    for (size_t i = 0; i < sizeof(noops) / sizeof(noops[0]); i++)
+        JS_SetPropertyStr(ctx, c, noops[i], JS_NewCFunction(ctx, nb_c2d_noop, noops[i], 0));
+    JS_SetPropertyStr(ctx, c, "getImageData", JS_NewCFunction(ctx, nb_c2d_getImageData, "getImageData", 4));
+    JS_SetPropertyStr(ctx, c, "createImageData", JS_NewCFunction(ctx, nb_c2d_getImageData, "createImageData", 2));
+    JS_SetPropertyStr(ctx, c, "getLineDash", JS_NewCFunction(ctx, nb_c2d_lineDash, "getLineDash", 0));
+    JS_SetPropertyStr(ctx, c, "measureText", JS_NewCFunction(ctx, nb_c2d_measureText, "measureText", 1));
+    JS_SetPropertyStr(ctx, c, "createLinearGradient", JS_NewCFunction(ctx, nb_c2d_gradient, "createLinearGradient", 4));
+    JS_SetPropertyStr(ctx, c, "createRadialGradient", JS_NewCFunction(ctx, nb_c2d_gradient, "createRadialGradient", 6));
+    JS_SetPropertyStr(ctx, c, "createPattern", JS_NewCFunction(ctx, nb_c2d_createPattern, "createPattern", 2));
+    JS_SetPropertyStr(ctx, this_val, "__nb_ctx", JS_DupValue(ctx, c));
+    return c;
+}
+static JSValue nb_canvas_toDataURL(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return JS_NewString(ctx, "data:,");
+}
+
+/* ---- DOM class one JS object per C node (see PROTONAME) ---- */
 
 /* Attach the DOM natives to the global `document` object. */
-static void install_dom(duk_context *ctx) {
-    duk_get_global_string(ctx, "document");
-    duk_push_c_function(ctx, nb_dom_getElementById, 1);        duk_put_prop_string(ctx, -2, "getElementById");
-    duk_push_c_function(ctx, nb_dom_getElementsByTagName, 1);  duk_put_prop_string(ctx, -2, "getElementsByTagName");
-    duk_push_c_function(ctx, nb_dom_querySelector, 1);         duk_put_prop_string(ctx, -2, "querySelector");
-    duk_push_c_function(ctx, nb_dom_querySelectorAll, 1);      duk_put_prop_string(ctx, -2, "querySelectorAll");
-    duk_push_c_function(ctx, nb_dom_createElement, 1);         duk_put_prop_string(ctx, -2, "createElement");
-    duk_push_c_function(ctx, nb_dom_createTextNode, 1);        duk_put_prop_string(ctx, -2, "createTextNode");
-    duk_push_c_function(ctx, nb_dom_getElementsByClassName, 1); duk_put_prop_string(ctx, -2, "getElementsByClassName");
-    duk_push_string(ctx, "documentElement");
-    duk_push_c_function(ctx, nb_dom_documentElement, 0);
-    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
-    duk_push_string(ctx, "body");
-    duk_push_c_function(ctx, nb_dom_body, 0);
-    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
-    duk_push_string(ctx, "head");
-    duk_push_c_function(ctx, nb_dom_head, 0);
-    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_ENUMERABLE);
-    /* rung-6: document.cookie — file-backed jar. The prelude's configurable
-     * empty-jar stub is replaced by real C natives (survive across LOADs
-     * because the jar is on disk; each LOAD runs a fresh heap). */
-    duk_push_string(ctx, "cookie");
-    duk_push_c_function(ctx, nb_dom_cookie_get, 0);
-    duk_push_c_function(ctx, nb_dom_cookie_set, 1);
-    duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
-    duk_pop(ctx);
+static void install_dom(JSContext *ctx) {
+    install_dom_classes(ctx);
+    JSValue g = JS_GetGlobalObject(ctx);
+    JSValue doc = JS_GetPropertyStr(ctx, g, "document");
+    if (JS_IsObject(doc)) {
+        JS_SetPropertyStr(ctx, doc, "getElementById", JS_NewCFunction(ctx, nb_dom_getElementById, "getElementById", 1));
+        JS_SetPropertyStr(ctx, doc, "getElementsByTagName", JS_NewCFunction(ctx, nb_dom_getElementsByTagName, "getElementsByTagName", 1));
+        JS_SetPropertyStr(ctx, doc, "querySelector", JS_NewCFunction(ctx, nb_dom_querySelector, "querySelector", 1));
+        JS_SetPropertyStr(ctx, doc, "querySelectorAll", JS_NewCFunction(ctx, nb_dom_querySelectorAll, "querySelectorAll", 1));
+        JS_SetPropertyStr(ctx, doc, "createTreeWalker", JS_NewCFunction(ctx, nb_doc_createTreeWalker, "createTreeWalker", 1));
+        {
+            JSValue impl = JS_NewObject(ctx);
+            JS_SetPropertyStr(ctx, impl, "createHTMLDocument", JS_NewCFunction(ctx, nb_impl_createHTMLDocument, "createHTMLDocument", 1));
+            JS_SetPropertyStr(ctx, impl, "createDocument", JS_NewCFunction(ctx, nb_impl_createDocument, "createDocument", 3));
+            JS_SetPropertyStr(ctx, impl, "createDocumentType", JS_NewCFunction(ctx, nb_impl_createDocumentType, "createDocumentType", 3));
+            JS_SetPropertyStr(ctx, impl, "hasFeature", JS_NewCFunction(ctx, nb_impl_hasFeature, "hasFeature", 2));
+            JS_SetPropertyStr(ctx, doc, "implementation", impl);
+        }
+        JS_SetPropertyStr(ctx, doc, "createElement", JS_NewCFunction(ctx, nb_dom_createElement, "createElement", 1));
+        JS_SetPropertyStr(ctx, doc, "createElementNS", JS_NewCFunction(ctx, nb_dom_createElementNS, "createElementNS", 2));
+        JS_SetPropertyStr(ctx, doc, "createTextNode", JS_NewCFunction(ctx, nb_dom_createTextNode, "createTextNode", 1));
+        JS_SetPropertyStr(ctx, doc, "getElementsByClassName", JS_NewCFunction(ctx, nb_dom_getElementsByClassName, "getElementsByClassName", 1));
+        {
+            JSAtom nm = JS_NewAtom(ctx, "documentElement");
+            JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_dom_documentElement, "get documentElement", 0), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+        }
+        {
+            JSAtom nm = JS_NewAtom(ctx, "body");
+            JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_dom_body, "get body", 0), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+        }
+        {
+            JSAtom nm = JS_NewAtom(ctx, "head");
+            JS_DefinePropertyGetSet(ctx, doc, nm, JS_NewCFunction(ctx, nb_dom_head, "get head", 0), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+        }
+        /* rung-6: document.cookie — file-backed jar. The prelude's empty-jar
+         * stub is replaced by real C natives (survive across LOADs because the
+         * jar is on disk; each LOAD runs a fresh heap). */
+        {
+            JSAtom nm = JS_NewAtom(ctx, "cookie");
+            JS_DefinePropertyGetSet(ctx, doc, nm,
+                JS_NewCFunction(ctx, nb_dom_cookie_get, "get cookie", 0),
+                JS_NewCFunction(ctx, nb_dom_cookie_set, "set cookie", 1),
+                JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+        }
+    }
+    JS_FreeValue(ctx, doc);
 
     /* rung 6: localStorage/sessionStorage — the prelude's twin no-op stubs
      * become two real objects: localStorage (disk jar, survives LOADs) and
      * sessionStorage (in-memory, cleared per LOAD). Fresh objects are created
-     * here and replace the globals, so no interaction with the prelude stubs'
-     * attributes (a duk_def_prop on the prelude's object throws
-     * 'not configurable'). Both share the shape getItem/setItem/removeItem/
-     * clear/key + a length getter. */
-    duk_push_object(ctx);
-    duk_push_c_function(ctx, nb_ls_getItem, 1);    duk_put_prop_string(ctx, -2, "getItem");
-    duk_push_c_function(ctx, nb_ls_setItem, 2);    duk_put_prop_string(ctx, -2, "setItem");
-    duk_push_c_function(ctx, nb_ls_removeItem, 1); duk_put_prop_string(ctx, -2, "removeItem");
-    duk_push_c_function(ctx, nb_ls_clear, 0);      duk_put_prop_string(ctx, -2, "clear");
-    duk_push_c_function(ctx, nb_ls_key, 1);        duk_put_prop_string(ctx, -2, "key");
-    duk_push_string(ctx, "length");
-    duk_push_c_function(ctx, nb_ls_length, 0);
-    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_CONFIGURABLE | DUK_DEFPROP_ENUMERABLE);
-    duk_put_global_string(ctx, "localStorage");
-
-    duk_push_object(ctx);
-    duk_push_c_function(ctx, nb_ss_getItem, 1);    duk_put_prop_string(ctx, -2, "getItem");
-    duk_push_c_function(ctx, nb_ss_setItem, 2);    duk_put_prop_string(ctx, -2, "setItem");
-    duk_push_c_function(ctx, nb_ss_removeItem, 1); duk_put_prop_string(ctx, -2, "removeItem");
-    duk_push_c_function(ctx, nb_ss_clear, 0);      duk_put_prop_string(ctx, -2, "clear");
-    duk_push_c_function(ctx, nb_ss_key, 1);        duk_put_prop_string(ctx, -2, "key");
-    duk_push_string(ctx, "length");
-    duk_push_c_function(ctx, nb_ss_length, 0);
-    duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_CONFIGURABLE | DUK_DEFPROP_ENUMERABLE);
-    duk_put_global_string(ctx, "sessionStorage");
+     * here and replace the globals (redefining a non-configurable stub prop
+     * would throw). Both share the shape getItem/setItem/removeItem/clear/key
+     * + a length getter. */
+    {
+        JSValue obj = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, obj, "getItem", JS_NewCFunction(ctx, nb_ls_getItem, "getItem", 1));
+        JS_SetPropertyStr(ctx, obj, "setItem", JS_NewCFunction(ctx, nb_ls_setItem, "setItem", 2));
+        JS_SetPropertyStr(ctx, obj, "removeItem", JS_NewCFunction(ctx, nb_ls_removeItem, "removeItem", 1));
+        JS_SetPropertyStr(ctx, obj, "clear", JS_NewCFunction(ctx, nb_ls_clear, "clear", 0));
+        JS_SetPropertyStr(ctx, obj, "key", JS_NewCFunction(ctx, nb_ls_key, "key", 1));
+        {
+            JSAtom nm = JS_NewAtom(ctx, "length");
+            JS_DefinePropertyGetSet(ctx, obj, nm, JS_NewCFunction(ctx, nb_ls_length, "get length", 0), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_CONFIGURABLE | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+        }
+        JS_SetPropertyStr(ctx, g, "localStorage", obj);
+    }
+    {
+        JSValue obj = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, obj, "getItem", JS_NewCFunction(ctx, nb_ss_getItem, "getItem", 1));
+        JS_SetPropertyStr(ctx, obj, "setItem", JS_NewCFunction(ctx, nb_ss_setItem, "setItem", 2));
+        JS_SetPropertyStr(ctx, obj, "removeItem", JS_NewCFunction(ctx, nb_ss_removeItem, "removeItem", 1));
+        JS_SetPropertyStr(ctx, obj, "clear", JS_NewCFunction(ctx, nb_ss_clear, "clear", 0));
+        JS_SetPropertyStr(ctx, obj, "key", JS_NewCFunction(ctx, nb_ss_key, "key", 1));
+        {
+            JSAtom nm = JS_NewAtom(ctx, "length");
+            JS_DefinePropertyGetSet(ctx, obj, nm, JS_NewCFunction(ctx, nb_ss_length, "get length", 0), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_CONFIGURABLE | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+        }
+        JS_SetPropertyStr(ctx, g, "sessionStorage", obj);
+    }
+    JS_FreeValue(ctx, g);
 }
 
 #define EVAL_BUDGET_SEC 2   /* plan step 5: watchdog for runaway page.js */
+/* NB_EVAL_BUDGET env override (row-31): a real 10.8MB single-IIFE bundle
+ * legitimately needs more than 2s to parse, so receipt runs can raise the
+ * watchdog (NB_EVAL_BUDGET=120); production default stays 2s. */
+static int nb_budget(void) {
+    static int b = -1;
+    if (b < 0) {
+        const char *e = getenv("NB_EVAL_BUDGET");
+        b = e ? atoi(e) : EVAL_BUDGET_SEC;
+        if (b < 1) b = EVAL_BUDGET_SEC;
+    }
+    return b;
+}
 #define MAX_DRAIN_MS 800    /* commit 7: bounded wait so short timers fire pre-RENDER */
 static void sigalrm(int sig);   /* used by run_event_loop below */
 
 /* ===================== Phase 2 (commit 7): timers + microtasks + events ================ */
 
 #define MAX_TIMERS 2048
-#define MAX_MICRO  2048
 #define MAX_EVENTS 4096
 #define MAX_ONPROPS 1024
 #define MAX_TIMER_INVOCATIONS 5000   /* plan §2 CPU safety */
 #define MAX_RAF_FRAMES 120           /* plan §2: ~2s of rAF */
 #define RAF_MS 16
 
-typedef struct { int id, active; long interval; uint64_t due; int slot; } Timer;
-typedef struct { int kind; NbNode *node; char type[48]; int slot, active; } EvL;
+typedef struct { int id, active; long interval; uint64_t due; int slot; JSValue cb; } Timer;
+typedef struct { int kind; NbNode *node; char type[48]; int slot, active; JSValue cb; } EvL;
 /* el.on<type> handlers CANNOT live as data props on the wrapper objects:
  * push_node() creates a fresh JS object per wrap, so the C side must own the
- * callback (stashed, keyed by node+kind+type). */
-typedef struct { int kind; NbNode *node; char type[48]; int slot, active; } OnProp;
+ * callback (held as a JSValue, keyed by node+kind+type). */
+typedef struct { int kind; NbNode *node; char type[48]; int slot, active; JSValue cb; } OnProp;
 
-#define STASH_TIMER 0     /* stash index base per table (fixed, non-overlapping) */
-#define STASH_MICRO 10000
-#define STASH_EVT   20000
-#define STASH_ONPROP 30000
 #define EVT_NODE 1
 #define EVT_WIN  2
 #define EVT_DOC  3
 
 static Timer g_timers[MAX_TIMERS];
 static int g_timer_count = 0;
-static int g_micro_n = 0, g_micro_head = 0;   /* microtask FIFO lives in the global stash */
 static EvL g_evl[MAX_EVENTS];
 static int g_evl_count = 0;
 static OnProp g_onprop[MAX_ONPROPS];
@@ -2136,97 +2949,567 @@ static int g_invocations = 0;
 static int g_raf_fires = 0;
 static int g_pending_err = 0;   /* set when an event-loop callback throws */
 static char g_pending_errmsg[512];
+static int g_trace_cb = 0;      /* NB_TRACE_CB=1: dump full callback exceptions */
 
 static uint64_t now_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000 + (uint64_t)(ts.tv_nsec / 1000000);
 }
-static void stash_set(duk_context *ctx, int base, int slot, duk_idx_t fn) {
-    duk_push_global_stash(ctx);
-    duk_dup(ctx, fn);
-    duk_put_prop_index(ctx, -2, (duk_uarridx_t)(base + slot));
-    duk_pop(ctx);
-}
-static void stash_del(duk_context *ctx, int base, int slot) {
-    duk_push_global_stash(ctx);
-    duk_del_prop_index(ctx, -1, (duk_uarridx_t)(base + slot));
-    duk_pop(ctx);
-}
-static void stash_push(duk_context *ctx, int base, int slot) {
-    duk_push_global_stash(ctx);
-    duk_get_prop_index(ctx, -1, (duk_uarridx_t)(base + slot));
-    duk_remove(ctx, -2);
+
+/* Format + clear the current context exception into buf; returns buf. */
+static const char *js_error_to_cstr(JSContext *ctx, char *buf, size_t bl) {
+    JSValue e = JS_GetException(ctx);
+    const char *s = JS_ToCString(ctx, e);
+    if (!s) {
+        JS_FreeValue(ctx, e);
+        snprintf(buf, bl, "unknown error");
+        return buf;
+    }
+    snprintf(buf, bl, "%s", s);
+    JS_FreeCString(ctx, s);
+    /* diagnosis aid: NB_STACK=1 appends the JS exception stack so a bare
+     * "TypeError: not a function" in a real bundle is traceable. */
+    if (getenv("NB_STACK")) {
+        JSValue st = JS_GetPropertyStr(ctx, e, "stack");
+        if (JS_IsString(st)) {
+            const char *stc = JS_ToCString(ctx, st);
+            if (stc) {
+                snprintf(buf + strlen(buf), bl - strlen(buf), " @ %s", stc);
+                JS_FreeCString(ctx, stc);
+            }
+        }
+        JS_FreeValue(ctx, st);
+    }
+    JS_FreeValue(ctx, e);
+    return buf;
 }
 
-/* Run the callback currently on the stack (below the top) with this=globalThis,
- * 0 args. Duktape pcall_method layout is [args][func][this], this ON TOP: func
- * at top-2, this at top-1. Caller pushes the cb, we push global on top.
- * Returns 0 on success, 1 on thrown error (message captured, stack popped). */
-static int invoke_cb0(duk_context *ctx) {
-    duk_push_global_object(ctx);   /* [cb][global], global on top = the this */
-    if (duk_pcall_method(ctx, 0) != 0) {
+/* ---- customElements registry + ShadowRoot / template-content fragments
+ * (2026-09-20) ----
+ * kevlar DEFERS element registration: the ytd-masthead class (with its
+ * searchbox <template> string) is wired by
+ * `_.f9({disableElementRegistration:!0,...})(ZW); _.OV(ZW,"ytd-masthead",...)`
+ * only when `window.customElements` is present, and the masthead + search UI
+ * then get created at upgrade time (createElement("template") + innerHTML +
+ * attachShadow + stamp). A REAL define/get/whenDefined/upgrade + C-backed
+ * ShadowRoot is the slice that starts that path; the registry is a plain
+ * object customElements.__registry (plus an ordered ""__names"" array) so
+ * C holds NO JSValues across calls (no GC rooting hazards). Upgraded
+ * wrappers carry __nb_upgraded; the lifecycle runs best-effort (prototype
+ * swap + _initializeProperties/ready/connectedCallback) with exceptions
+ * dumped to the TRACE_CB channel so the bundle keeps bootstrapping. */
+#define CE_UPGRD "__nb_upgraded"
+
+static JSValue ce_registry(JSContext *ctx, int create) {
+    JSValue g = JS_GetGlobalObject(ctx);
+    JSValue ce = JS_GetPropertyStr(ctx, g, "customElements");
+    JS_FreeValue(ctx, g);
+    if (JS_IsObject(ce)) {
+        JSValue r = JS_GetPropertyStr(ctx, ce, "__registry");
+        if (!JS_IsObject(r)) {
+            JS_FreeValue(ctx, r);
+            r = JS_NewObject(ctx);
+            JS_SetPropertyStr(ctx, ce, "__registry", JS_DupValue(ctx, r));
+        }
+        JS_FreeValue(ctx, ce);
+        return r;
+    }
+    JS_FreeValue(ctx, ce);
+    return JS_UNDEFINED;
+}
+
+static void ce_call_lifecycle(JSContext *ctx, JSValue wrapper, const char *mname) {
+    JSValue fn = JS_GetPropertyStr(ctx, wrapper, mname);
+    if (JS_IsFunction(ctx, fn)) {
+        JSValue r = JS_Call(ctx, fn, wrapper, 0, NULL);
+        if (JS_IsException(r)) {
+            char buf[1536];
+            const char *m = js_error_to_cstr(ctx, buf, sizeof(buf));
+            if (g_trace_cb) fprintf(stderr, "CE|%s: %s\n", mname, m ? m : buf);
+        }
+        JS_FreeValue(ctx, r);
+    }
+    JS_FreeValue(ctx, fn);
+}
+
+static void ce_upgrade_one(JSContext *ctx, NbNode *n, JSValue ctor) {
+    JSValue wrapper = push_node(ctx, n);
+    if (!JS_IsObject(wrapper)) return;
+    JSValue up = JS_GetPropertyStr(ctx, wrapper, CE_UPGRD);
+    int done = JS_ToBool(ctx, up);
+    JS_FreeValue(ctx, up);
+    if (done || !JS_IsObject(ctor)) return;
+    JSValue proto = JS_GetPropertyStr(ctx, ctor, "prototype");
+    if (JS_IsObject(proto)) JS_SetPrototype(ctx, wrapper, proto);
+    JS_SetPropertyStr(ctx, wrapper, CE_UPGRD, JS_NewBool(ctx, 1));
+    ce_call_lifecycle(ctx, wrapper, "_initializeProperties");
+    ce_call_lifecycle(ctx, wrapper, "ready");
+    ce_call_lifecycle(ctx, wrapper, "connectedCallback");
+    JS_FreeValue(ctx, proto);
+}
+
+static void ce_walk_upgrade(JSContext *ctx, NbNode *root, JSValue reg, const char *name) {
+    if (!root) return;
+    if (root->tag && !strcmp(root->tag, name)) {
+        JSValue ctor = JS_GetPropertyStr(ctx, reg, name);
+        if (JS_IsObject(ctor)) ce_upgrade_one(ctx, root, ctor);
+        JS_FreeValue(ctx, ctor);
+    }
+    for (const NbNode *c = root->first_child; c; c = c->next_sibling)
+        ce_walk_upgrade(ctx, (NbNode *)c, reg, name);
+}
+
+static int ce_valid_name(const char *name) {
+    if (!name || !name[0] || !strchr(name, '-')) return 0;
+    for (const char *p = name; *p; p++) {
+        if (!((*p >= 'a' && *p <= 'z') || (*p >= '0' && *p <= '9') || *p == '-' || *p == '_'))
+            return 0;
+    }
+    return 1;
+}
+
+static void ce_registry_push_name(JSContext *ctx, JSValue reg, const char *name) {
+    JSValue names = JS_GetPropertyStr(ctx, reg, "__names");
+    if (!JS_IsObject(names)) { JS_FreeValue(ctx, names); names = JS_NewArray(ctx); }
+    int have = 0;
+    JSValue lenv = JS_GetPropertyStr(ctx, names, "length");
+    int32_t len = 0;
+    if (JS_IsNumber(lenv)) JS_ToInt32(ctx, &len, lenv);
+    JS_FreeValue(ctx, lenv);
+    for (int32_t i = 0; i < len && !have; i++) {
+        JSValue nm = JS_GetPropertyUint32(ctx, names, (uint32_t)i);
+        if (JS_IsString(nm)) {
+            char *owned = NULL;
+            const char *s = (owned = JS_ToCString(ctx, nm));
+            if (s && !strcmp(s, name)) have = 1;
+            JS_FreeCString(ctx, owned);
+        }
+        JS_FreeValue(ctx, nm);
+    }
+    if (!have) JS_SetPropertyUint32(ctx, names, (uint32_t)len, JS_NewString(ctx, name));
+    JS_SetPropertyStr(ctx, reg, "__names", names);
+}
+
+static JSValue ce_define(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *owned = NULL;
+    const char *name = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    if (!ce_valid_name(name)) {
+        JS_FreeCString(ctx, owned);
+        JSValue e = JS_NewError(ctx);
+        if (!JS_IsException(e))
+            JS_SetPropertyStr(ctx, e, "message", JS_NewString(ctx, "SyntaxError: invalid custom element name"));
+        return JS_Throw(ctx, e);
+    }
+    JSValue reg = ce_registry(ctx, 1);
+    if (JS_IsObject(reg)) {
+        JSValue ex = JS_GetPropertyStr(ctx, reg, name);
+        int dup = JS_IsObject(ex);
+        JS_FreeValue(ctx, ex);
+        if (dup && g_trace_cb)
+            fprintf(stderr, "CE|define redefined (last wins): %s\n", name);
+        /* kevlar's .f9({disableElementRegistration}) + .OV() flow registers a
+         * placeholder class FIRST and replaces it with the real lazy-loaded
+         * class; last-define-wins (browsers would throw NotSupportedError). */
+        if (argc > 1) {
+            JS_SetPropertyStr(ctx, reg, name, JS_DupValue(ctx, argv[1]));
+            ce_registry_push_name(ctx, reg, name);
+        }
+    }
+    JS_FreeValue(ctx, reg);
+    /* upgrade every existing matching node (parse-time elements) */
+    if (g_dom_root) {
+        reg = ce_registry(ctx, 0);
+        if (JS_IsObject(reg)) {
+            for (const NbNode *c = g_dom_root->first_child; c; c = c->next_sibling)
+                ce_walk_upgrade(ctx, (NbNode *)c, reg, name);
+            JS_FreeValue(ctx, reg);
+        }
+    }
+    JS_FreeCString(ctx, owned);
+    return JS_UNDEFINED;
+}
+
+static JSValue ce_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *owned = NULL;
+    const char *name = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    JSValue reg = ce_registry(ctx, 0);
+    JSValue r = JS_UNDEFINED;
+    if (JS_IsObject(reg) && name) r = JS_GetPropertyStr(ctx, reg, name);
+    JS_FreeValue(ctx, reg);
+    JS_FreeCString(ctx, owned);
+    return r;
+}
+
+static JSValue ce_when_def(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return nb_promise_resolved(ctx, this_val, argc, argv);
+}
+
+static JSValue ce_upgrade(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *root = g_dom_root;
+    if (argc > 0 && JS_IsObject(argv[0])) {
+        NbNode *n = get_node(ctx, argv[0]);
+        if (n) root = n;
+    }
+    JSValue reg = ce_registry(ctx, 0);
+    if (JS_IsObject(reg) && root) {
+        JSValue names = JS_GetPropertyStr(ctx, reg, "__names");
+        if (JS_IsObject(names)) {
+            JSValue lenv = JS_GetPropertyStr(ctx, names, "length");
+            int32_t len = 0;
+            if (JS_IsNumber(lenv)) JS_ToInt32(ctx, &len, lenv);
+            JS_FreeValue(ctx, lenv);
+            for (int32_t i = 0; i < len; i++) {
+                JSValue nm = JS_GetPropertyUint32(ctx, names, (uint32_t)i);
+                char *owned = NULL;
+                const char *s = JS_IsString(nm) ? (owned = JS_ToCString(ctx, nm)) : NULL;
+                if (s) {
+                    for (const NbNode *c = root->first_child; c; c = c->next_sibling)
+                        ce_walk_upgrade(ctx, (NbNode *)c, reg, s);
+                }
+                JS_FreeCString(ctx, owned);
+                JS_FreeValue(ctx, nm);
+            }
+        }
+        JS_FreeValue(ctx, names);
+        JS_FreeValue(ctx, reg);
+    }
+    return JS_UNDEFINED;
+}
+
+/* ---- fragment helpers (ShadowRoot + <template>.content) ----
+ * A fragment is a detached NbNode tagged "#shadow-root"/"#document-fragment"
+ * whose wrapper reuses the element natives (appendChild/removeChild/
+ * innerHTML/children/firstChild/... all read the C node behind the NODEKEY)
+ * plus root-scoped query natives that walk the fragment's OWN subtree (the
+ * document natives are hard-wired to g_dom_root). */
+static JSValue nb_el_lastChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (n && n->last_child) return push_node(ctx, n->last_child);
+    return JS_NULL;
+}
+static JSValue nb_el_hasChildNodes(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    return JS_NewBool(ctx, n && n->first_child != NULL);
+}
+static JSValue nb_frag_querySelector(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *sel = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    if (!n || !sel) { JS_FreeCString(ctx, owned); return JS_NULL; }
+    NbNode *r = query_first(n, sel);
+    JS_FreeCString(ctx, owned);
+    if (r) return push_node(ctx, r);
+    return JS_NULL;
+}
+static JSValue nb_frag_querySelectorAll(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *sel = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    JSValue arr = JS_NewArray(ctx);
+    if (n && sel) {
+        int i = 0;
+        qsa_into(ctx, n, sel, arr, &i);
+        JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
+    }
+    JS_FreeCString(ctx, owned);
+    return arr;
+}
+static JSValue nb_frag_getElementById(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *id = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    if (!n || !id) { JS_FreeCString(ctx, owned); return JS_NULL; }
+    NbNode *r = find_by_id(n, id);
+    JS_FreeCString(ctx, owned);
+    if (r) return push_node(ctx, r);
+    return JS_NULL;
+}
+static JSValue nb_frag_getElementsByTagName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *tag = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    JSValue arr = JS_NewArray(ctx);
+    if (n) {
+        int i = 0;
+        collect_tag_into(ctx, n, tag, arr, &i);
+        JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
+    }
+    JS_FreeCString(ctx, owned);
+    return arr;
+}
+static JSValue nb_frag_getElementsByClassName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *tok = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    JSValue arr = JS_NewArray(ctx);
+    if (n && tok && *tok) {
+        int i = 0;
+        collect_cls_into(ctx, n, tok, arr, &i);
+        JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
+    }
+    JS_FreeCString(ctx, owned);
+    return arr;
+}
+
+static NbNode *node_deep_copy(const NbNode *n) {
+    NbNode *c = calloc(1, sizeof(*c));
+    if (!c) return NULL;
+    if (n->tag) c->tag = strdup(n->tag);
+    if (n->id) c->id = strdup(n->id);
+    if (n->cls) c->cls = strdup(n->cls);
+    if (n->attrs) c->attrs = strdup(n->attrs);
+    if (n->text) c->text = strdup(n->text);
+    for (const NbNode *ch = n->first_child; ch; ch = ch->next_sibling) {
+        NbNode *cc = node_deep_copy(ch);
+        if (cc) local_append(c, cc);
+    }
+    return c;
+}
+static JSValue nb_frag_clone(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    NbNode *frag = calloc(1, sizeof(*frag));
+    if (!frag) return JS_NULL;
+    frag->tag = strdup("#document-fragment");
+    if (n) {
+        for (const NbNode *c = n->first_child; c; c = c->next_sibling) {
+            NbNode *cc = node_deep_copy(c);
+            if (cc) local_append(frag, cc);
+        }
+    }
+    orphan_add(frag);
+    return make_fragment_wrapper(ctx, frag, "#document-fragment");
+}
+
+static JSValue make_fragment_wrapper(JSContext *ctx, NbNode *frag, const char *nodeName) {
+    int nidx = node_index(frag);
+    if (nidx < 0) { orphan_add(frag); return JS_NULL; }
+    JSValue w = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, w, NODEKEY, JS_NewInt32(ctx, nidx));
+    JS_SetPropertyStr(ctx, w, "nodeType", JS_NewInt32(ctx, 11));
+    JS_SetPropertyStr(ctx, w, "nodeName", JS_NewString(ctx, nodeName));
+    JS_SetPropertyStr(ctx, w, "appendChild", JS_NewCFunction(ctx, nb_el_appendChild, "appendChild", 1));
+    JS_SetPropertyStr(ctx, w, "removeChild", JS_NewCFunction(ctx, nb_el_removeChild, "removeChild", 1));
+    JS_SetPropertyStr(ctx, w, "insertBefore", JS_NewCFunction(ctx, nb_el_insertBefore, "insertBefore", 2));
+    JS_SetPropertyStr(ctx, w, "replaceChild", JS_NewCFunction(ctx, nb_el_replaceChild, "replaceChild", 2));
+    JS_SetPropertyStr(ctx, w, "querySelector", JS_NewCFunction(ctx, nb_frag_querySelector, "querySelector", 1));
+    JS_SetPropertyStr(ctx, w, "querySelectorAll", JS_NewCFunction(ctx, nb_frag_querySelectorAll, "querySelectorAll", 1));
+    JS_SetPropertyStr(ctx, w, "getElementById", JS_NewCFunction(ctx, nb_frag_getElementById, "getElementById", 1));
+    JS_SetPropertyStr(ctx, w, "getElementsByTagName", JS_NewCFunction(ctx, nb_frag_getElementsByTagName, "getElementsByTagName", 1));
+    JS_SetPropertyStr(ctx, w, "getElementsByClassName", JS_NewCFunction(ctx, nb_frag_getElementsByClassName, "getElementsByClassName", 1));
+    JS_SetPropertyStr(ctx, w, "cloneNode", JS_NewCFunction(ctx, nb_frag_clone, "cloneNode", 1));
+    JS_SetPropertyStr(ctx, w, "addEventListener", JS_NewCFunction(ctx, nb_el_addEventListener, "addEventListener", 2));
+    JS_SetPropertyStr(ctx, w, "removeEventListener", JS_NewCFunction(ctx, nb_el_removeEventListener, "removeEventListener", 2));
+    JS_SetPropertyStr(ctx, w, "dispatchEvent", JS_NewCFunction(ctx, nb_el_dispatchEvent, "dispatchEvent", 1));
+    JS_SetPropertyStr(ctx, w, "hasChildNodes", JS_NewCFunction(ctx, nb_el_hasChildNodes, "hasChildNodes", 0));
+    JS_SetPropertyStr(ctx, w, "click", JS_NewCFunction(ctx, nb_el_click, "click", 0));
+    {
+        JSAtom nm;
+#define FRAG_GET(nmstr, fn) do { nm = JS_NewAtom(ctx, nmstr); \
+            JS_DefinePropertyGetSet(ctx, w, nm, JS_NewCFunction(ctx, fn, "get " nmstr, 0), JS_UNDEFINED, \
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE); JS_FreeAtom(ctx, nm); } while (0)
+        FRAG_GET("children", nb_el_children);
+        FRAG_GET("childNodes", nb_el_childNodes);
+        FRAG_GET("firstChild", nb_el_firstChild);
+        FRAG_GET("lastChild", nb_el_lastChild);
+        FRAG_GET("parentNode", nb_el_parentNode);
+        FRAG_GET("nextSibling", nb_el_nextSibling);
+#undef FRAG_GET
+    }
+    {
+        JSAtom nm = JS_NewAtom(ctx, "innerHTML");
+        JS_DefinePropertyGetSet(ctx, w, nm,
+            JS_NewCFunction(ctx, nb_el_innerHTML_get, "get innerHTML", 0),
+            JS_NewCFunction(ctx, nb_el_innerHTML_set, "set innerHTML", 1),
+            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
+    return w;
+}
+
+/* <template>.innerHTML / appendChild land in template.content, which is a
+ * C-backed #document-fragment wrapper (overrides the prelude's inert JS
+ * docfrag so stamping can read firstChild/cloneNode/querySelector). */
+static NbNode *nb_template_content_frag(JSContext *ctx, JSValue el, NbNode *n) {
+    if (!n || !n->tag || strcmp(n->tag, "template") != 0) return NULL;
+    JSValue ex = JS_GetPropertyStr(ctx, el, "content");
+    NbNode *frag = JS_IsObject(ex) ? get_node(ctx, ex) : NULL;
+    if (!frag) {
+        frag = calloc(1, sizeof(*frag));
+        if (frag) {
+            frag->tag = strdup("#document-fragment");
+            orphan_add(frag);
+            JSValue w = make_fragment_wrapper(ctx, frag, "#document-fragment");
+            if (JS_IsObject(w)) JS_SetPropertyStr(ctx, el, "content", w);
+        }
+    }
+    JS_FreeValue(ctx, ex);
+    return frag;
+}
+
+/* Element.prototype.attachShadow (C-backed ShadowRoot; el.shadowRoot). */
+static JSValue nb_el_attachShadow(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_NULL;
+    JSValue ex = JS_GetPropertyStr(ctx, this_val, "shadowRoot");
+    if (JS_IsObject(ex)) { JSValue r = JS_DupValue(ctx, ex); JS_FreeValue(ctx, ex); return r; }
+    JS_FreeValue(ctx, ex);
+    NbNode *frag = calloc(1, sizeof(*frag));
+    if (!frag) return JS_NULL;
+    frag->tag = strdup("#shadow-root");
+    orphan_add(frag);
+    JSValue w = make_fragment_wrapper(ctx, frag, "#shadow-root");
+    if (!JS_IsObject(w)) return JS_NULL;
+    const char *mode = "open";
+    if (argc > 0 && JS_IsObject(argv[0])) {
+        JSValue mv = JS_GetPropertyStr(ctx, argv[0], "mode");
+        char *mo = NULL;
+        if (JS_IsString(mv)) { mo = JS_ToCString(ctx, mv); if (mo) mode = mo; }
+        JS_FreeValue(ctx, mv);
+        JS_FreeCString(ctx, mo);
+    }
+    JS_SetPropertyStr(ctx, w, "mode", JS_NewString(ctx, mode));
+    JS_SetPropertyStr(ctx, w, "host", JS_DupValue(ctx, this_val));
+    JS_SetPropertyStr(ctx, w, "nodeType", JS_NewInt32(ctx, 11));
+    JS_SetPropertyStr(ctx, this_val, "shadowRoot", JS_DupValue(ctx, w));
+    JS_SetPropertyStr(ctx, this_val, "__nb_shadow", JS_NewBool(ctx, 1));
+    return w;
+}
+
+/* Release every JS callback this file currently holds (timers/events/on-props).
+ * Must run BEFORE the owning context is freed; idempotent (slots are set to
+ * JS_UNDEFINED after releasing, so a second call / a later per-LOAD reset
+ * cannot double-free). */
+static void free_held_callbacks(JSContext *ctx) {
+    for (int i = 0; i < g_timer_count; i++)
+        if (!JS_IsUndefined(g_timers[i].cb) && JS_IsFunction(ctx, g_timers[i].cb)) {
+            JS_FreeValue(ctx, g_timers[i].cb);
+            g_timers[i].cb = JS_UNDEFINED;
+        }
+    for (int i = 0; i < g_evl_count; i++)
+        if (!JS_IsUndefined(g_evl[i].cb) && JS_IsFunction(ctx, g_evl[i].cb)) {
+            JS_FreeValue(ctx, g_evl[i].cb);
+            g_evl[i].cb = JS_UNDEFINED;
+        }
+    for (int i = 0; i < g_onprop_count; i++)
+        if (!JS_IsUndefined(g_onprop[i].cb) && JS_IsFunction(ctx, g_onprop[i].cb)) {
+            JS_FreeValue(ctx, g_onprop[i].cb);
+            g_onprop[i].cb = JS_UNDEFINED;
+        }
+}
+
+/* Run the callback held in `cb` with this=globalThis, 0 args.
+ * Returns 0 on success, 1 on thrown error (message captured, exception freed). */
+static int invoke_cb0(JSContext *ctx, JSValue cb) {
+    JSValue g = JS_GetGlobalObject(ctx);
+    JSValue r = JS_Call(ctx, cb, g, 0, NULL);
+    JS_FreeValue(ctx, g);
+    if (JS_IsException(r)) {
         if (!g_pending_err) {
             g_pending_err = 1;
-            snprintf(g_pending_errmsg, sizeof(g_pending_errmsg), "%s",
-                     duk_safe_to_string(ctx, -1));
+            char buf[512];
+            const char *m = js_error_to_cstr(ctx, buf, sizeof(buf));
+            snprintf(g_pending_errmsg, sizeof(g_pending_errmsg), "%s", m);
         }
-        duk_pop(ctx);
+        /* diagnosis aid: NB_TRACE_CB=1 prints the FULL callback exception
+         * (message + stack when NB_STACK=1) to stderr, even when the page's
+         * own error handler swallows it into a truncated console line. */
+        if (g_trace_cb) {
+            char buf[512];
+            const char *m = js_error_to_cstr(ctx, buf, sizeof(buf));
+            fprintf(stderr, "TRACE_CB| %s\n", m);
+        }
+        JS_FreeValue(ctx, r);
         return 1;
     }
-    duk_pop(ctx);
+    JS_FreeValue(ctx, r);
     return 0;
 }
 
 /* ---- timers ---- */
-static void timer_schedule(duk_context *ctx, long interval, int repeat) {
-    if (!duk_is_callable(ctx, 0) || g_timer_count >= MAX_TIMERS) { duk_push_int(ctx, 0); return; }
+static int timer_schedule(JSContext *ctx, JSValueConst cb, long interval, int repeat) {
+    if (!JS_IsFunction(ctx, cb) || g_timer_count >= MAX_TIMERS) return 0;
     int slot = g_timer_count++;
     g_timers[slot].id = g_next_id++;
     g_timers[slot].active = 1;
     g_timers[slot].interval = repeat ? (interval > 0 ? interval : 1) : 0;
     g_timers[slot].due = now_ms() + (uint64_t)(interval > 0 ? interval : 1);
     g_timers[slot].slot = slot;
-    stash_set(ctx, STASH_TIMER, slot, 0);
-    duk_push_int(ctx, g_timers[slot].id);
+    g_timers[slot].cb = JS_DupValue(ctx, cb);
+    return g_timers[slot].id;
 }
-static duk_ret_t nb_timer_setTimeout(duk_context *ctx) {
-    double ms = duk_is_number(ctx, 1) ? duk_get_number(ctx, 1) : 0;
+static JSValue nb_timer_setTimeout(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    double ms = 0;
+    if (argc > 1 && JS_IsNumber(argv[1])) (void)JS_ToFloat64(ctx, &ms, argv[1]);
     if (ms < 0) ms = 0;
-    timer_schedule(ctx, (long)ms, 0);
-    return 1;
+    return JS_NewInt32(ctx, timer_schedule(ctx, argc > 0 ? argv[0] : JS_UNDEFINED, (long)ms, 0));
 }
-static duk_ret_t nb_timer_setInterval(duk_context *ctx) {
-    double ms = duk_is_number(ctx, 1) ? duk_get_number(ctx, 1) : 0;
+static JSValue nb_timer_setInterval(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    double ms = 0;
+    if (argc > 1 && JS_IsNumber(argv[1])) (void)JS_ToFloat64(ctx, &ms, argv[1]);
     if (ms < 1) ms = 1;
-    timer_schedule(ctx, (long)ms, 1);
-    return 1;
+    return JS_NewInt32(ctx, timer_schedule(ctx, argc > 0 ? argv[0] : JS_UNDEFINED, (long)ms, 1));
 }
-static void timer_clear(duk_context *ctx, int want_oneshot) {
-    int id = (int)duk_get_int(ctx, 0);
+static void timer_clear(JSContext *ctx, int want_oneshot, JSValueConst idv) {
+    if (!JS_IsNumber(idv)) return;
+    double d;
+    if (JS_ToFloat64(ctx, &d, idv) != 0) return;
+    int id = (int)d;
     for (int i = 0; i < g_timer_count; i++)
         if (g_timers[i].active && g_timers[i].id == id &&
             (want_oneshot ? g_timers[i].interval == 0 : g_timers[i].interval > 0)) {
             g_timers[i].active = 0;
-            stash_del(ctx, STASH_TIMER, i);
+            JS_FreeValue(ctx, g_timers[i].cb);
+            g_timers[i].cb = JS_UNDEFINED;
             break;
         }
 }
-static duk_ret_t nb_timer_clearTimeout(duk_context *ctx) { timer_clear(ctx, 1); return 0; }
-static duk_ret_t nb_timer_clearInterval(duk_context *ctx) { timer_clear(ctx, 0); return 0; }
+static JSValue nb_timer_clearTimeout(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    timer_clear(ctx, 1, argc > 0 ? argv[0] : JS_UNDEFINED);
+    return JS_UNDEFINED;
+}
+static JSValue nb_timer_clearInterval(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    timer_clear(ctx, 0, argc > 0 ? argv[0] : JS_UNDEFINED);
+    return JS_UNDEFINED;
+}
 
 /* ---- microtasks + rAF ---- */
-static duk_ret_t nb_queueMicrotask(duk_context *ctx) {
-    if (duk_is_callable(ctx, 0) && g_micro_n < MAX_MICRO)
-        stash_set(ctx, STASH_MICRO, g_micro_n++, 0);
-    return 0;
-}
-static duk_ret_t nb_raf(duk_context *ctx) {
-    if (duk_is_callable(ctx, 0) && g_raf_fires < MAX_RAF_FRAMES) {
-        g_raf_fires++;
-        timer_schedule(ctx, RAF_MS, 0);
+/* A queueMicrotask() callback, executed by the QuickJS native job queue
+ * (JS_EnqueueJob) inside run_event_loop's drain; `this` = globalThis. */
+static JSValue microtask_job(JSContext *ctx, int argc, JSValueConst *argv) {
+    JSValue g = JS_GetGlobalObject(ctx);
+    JSValue r = JS_Call(ctx, argv[0], g, 0, NULL);
+    JS_FreeValue(ctx, g);
+    if (JS_IsException(r)) {
+        if (!g_pending_err) {
+            g_pending_err = 1;
+            char buf[512];
+            const char *m = js_error_to_cstr(ctx, buf, sizeof(buf));
+            snprintf(g_pending_errmsg, sizeof(g_pending_errmsg), "%s", m);
+        }
+        JS_FreeValue(ctx, r);
+    } else {
+        JS_FreeValue(ctx, r);
     }
-    return 0;
+    return JS_UNDEFINED;
+}
+static JSValue nb_queueMicrotask(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    if (argc < 1 || !JS_IsFunction(ctx, argv[0])) {
+        JS_ThrowTypeError(ctx, "queueMicrotask requires a function argument");
+        return JS_EXCEPTION;
+    }
+    if (JS_EnqueueJob(ctx, microtask_job, 1, argv) < 0) {
+        JS_ThrowOutOfMemory(ctx);
+        return JS_EXCEPTION;
+    }
+    return JS_UNDEFINED;
+}
+static JSValue nb_raf(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    if (argc > 0 && JS_IsFunction(ctx, argv[0]) && g_raf_fires < MAX_RAF_FRAMES) {
+        g_raf_fires++;
+        timer_schedule(ctx, argv[0], RAF_MS, 0);
+    }
+    return JS_UNDEFINED;
 }
 /* ---- rung 4: fetch / XHR transport — blocking curl child, Promise-shaped ---- */
 /* The JS prelude (nb_host.h) wraps this in a Promise polyfill + fetch() +
@@ -2295,11 +3578,21 @@ static void resolve_doc_url(const char *rel, char *out, size_t olen) {
     }
 }
 
-static duk_ret_t nb_fetch_sync(duk_context *ctx) {
-    const char *method = duk_require_string(ctx, 0);
-    const char *url = duk_require_string(ctx, 1);
-    const char *headers = duk_get_string(ctx, 2); if (!headers) headers = "";
-    const char *body = duk_get_string(ctx, 3); if (!body) body = "";
+static JSValue nb_fetch_sync(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *m_own = NULL, *u_own = NULL, *h_own = NULL, *b_own = NULL;
+    const char *method = NULL, *url = NULL, *headers = NULL, *body = NULL;
+    if (argc > 0) method = (m_own = JS_ToCString(ctx, argv[0]));
+    if (argc > 1) url = (u_own = JS_ToCString(ctx, argv[1]));
+    if (argc > 2) headers = (h_own = JS_ToCString(ctx, argv[2]));
+    if (argc > 3) body = (b_own = JS_ToCString(ctx, argv[3]));
+    if (!method || !url) {
+        JS_FreeCString(ctx, m_own); JS_FreeCString(ctx, u_own);
+        JS_FreeCString(ctx, h_own); JS_FreeCString(ctx, b_own);
+        JS_ThrowTypeError(ctx, "nbFetchSync needs method and url strings");
+        return JS_EXCEPTION;
+    }
+    if (!headers) headers = "";
+    if (!body) body = "";
 
     char urlb[2300];
     resolve_doc_url(url, urlb, sizeof(urlb));
@@ -2423,100 +3716,139 @@ static duk_ret_t nb_fetch_sync(duk_context *ctx) {
         } else snprintf(errbuf, sizeof(errbuf), "unsupported scheme in %s", url);
     }
 
-    alarm(EVAL_BUDGET_SEC);   /* re-arm the budget for the rest of the drain */
+    alarm(nb_budget());   /* re-arm the budget for the rest of the drain */
 
-    duk_push_object(ctx);
-    duk_push_boolean(ctx, status >= 200 && status < 300 && rb != NULL);
-    duk_put_prop_string(ctx, -2, "ok");
-    duk_push_int(ctx, status);
-    duk_put_prop_string(ctx, -2, "status");
-    duk_push_string(ctx, rb ? rb : "");
-    duk_put_prop_string(ctx, -2, "body");
-    duk_push_string(ctx, errbuf[0] ? errbuf : "");
-    duk_put_prop_string(ctx, -2, "error");
+    JSValue o = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, o, "ok", JS_NewBool(ctx, status >= 200 && status < 300 && rb != NULL));
+    JS_SetPropertyStr(ctx, o, "status", JS_NewInt32(ctx, status));
+    JS_SetPropertyStr(ctx, o, "body", JS_NewString(ctx, rb ? rb : ""));
+    JS_SetPropertyStr(ctx, o, "error", JS_NewString(ctx, errbuf[0] ? errbuf : ""));
     free(rb);
-    return 1;
+    JS_FreeCString(ctx, m_own); JS_FreeCString(ctx, u_own);
+    JS_FreeCString(ctx, h_own); JS_FreeCString(ctx, b_own);
+    return o;
 }
 
-static int drain_microtasks(duk_context *ctx) {
-    int ran = 0;
-    while (g_micro_head < g_micro_n) {
-        if (g_invocations >= MAX_TIMER_INVOCATIONS) break;
-        int slot = g_micro_head++;
-        stash_push(ctx, STASH_MICRO, slot);
-        if (duk_is_callable(ctx, -1)) {
-            if (invoke_cb0(ctx)) { g_invocations++; break; }
-            g_invocations++; ran = 1;
-        } else duk_pop(ctx);
-    }
-    return ran;
-}
 static uint64_t timer_min_due(void) {
     uint64_t m = 0; int have = 0;
     for (int i = 0; i < g_timer_count; i++)
         if (g_timers[i].active) { if (!have || g_timers[i].due < m) { m = g_timers[i].due; have = 1; } }
     return have ? m : 0;
 }
-static int run_due_timers(duk_context *ctx, uint64_t now) {
+/* Drain the native job queue (promise reactions + queueMicrotask callbacks). */
+static void drain_jobs(JSContext *ctx) {
+    JSRuntime *rt = JS_GetRuntime(ctx);
+    JSContext *jctx;
+    while (JS_IsJobPending(rt)) {
+        if (g_pending_err) return;
+        if (JS_ExecutePendingJob(rt, &jctx) < 0) {
+            if (jctx && !g_pending_err) {
+                g_pending_err = 1;
+                char buf[512];
+                const char *m = js_error_to_cstr(jctx, buf, sizeof(buf));
+                snprintf(g_pending_errmsg, sizeof(g_pending_errmsg), "%s", m);
+            }
+            if (g_trace_cb && jctx) {
+                char buf[512];
+                const char *m = js_error_to_cstr(jctx, buf, sizeof(buf));
+                fprintf(stderr, "TRACE_CB| %s\n", m);
+            }
+        }
+    }
+}
+static int run_due_timers(JSContext *ctx, uint64_t now) {
     int ran = 0;
     for (int i = 0; i < g_timer_count; i++) {
         if (!g_timers[i].active || g_timers[i].due > now) continue;
         if (g_invocations >= MAX_TIMER_INVOCATIONS) break;
         long iv = g_timers[i].interval;
-        stash_push(ctx, STASH_TIMER, i);          /* callback on stack */
-        if (duk_is_callable(ctx, -1)) {
-            if (invoke_cb0(ctx)) { g_invocations++; break; }
-            g_invocations++; ran = 1;
-        } else duk_pop(ctx);
+        if (invoke_cb0(ctx, g_timers[i].cb)) { g_invocations++; break; }
+        g_invocations++; ran = 1;
         if (iv > 0) g_timers[i].due = now + (uint64_t)iv;   /* repeating — re-arm */
-        else { g_timers[i].active = 0; stash_del(ctx, STASH_TIMER, i); } /* oneshot */
+        else {
+            g_timers[i].active = 0;                          /* oneshot */
+            JS_FreeValue(ctx, g_timers[i].cb);
+            g_timers[i].cb = JS_UNDEFINED;
+        }
     }
     return ran;
 }
 
 /* ---- events (EventTarget add/removeEventListener; dispatch is commit 8) ---- */
-static void evl_add(duk_context *ctx, int kind, NbNode *n) {
-    const char *type = duk_get_string(ctx, 0);
-    if (!type || !type[0] || !duk_is_callable(ctx, 1) || g_evl_count >= MAX_EVENTS) return;
+/* Fetch an attribute from the JS global object (returns owned value). */
+static JSValue get_global_attr(JSContext *ctx, const char *name) {
+    JSValue g = JS_GetGlobalObject(ctx);
+    JSValue v = JS_GetPropertyStr(ctx, g, name);
+    JS_FreeValue(ctx, g);
+    return v;
+}
+static void evl_add(JSContext *ctx, int kind, NbNode *n, JSValueConst typev, JSValueConst cb) {
+    char *to = NULL;
+    const char *type = NULL;
+    if (JS_IsString(typev)) type = (to = JS_ToCString(ctx, typev));
+    if (!type || !type[0] || !JS_IsFunction(ctx, cb) || g_evl_count >= MAX_EVENTS) { JS_FreeCString(ctx, to); return; }
     int slot = g_evl_count++;
     g_evl[slot].kind = kind; g_evl[slot].node = n; g_evl[slot].slot = slot; g_evl[slot].active = 1;
     snprintf(g_evl[slot].type, sizeof(g_evl[slot].type), "%s", type);
-    stash_set(ctx, STASH_EVT, slot, 1);
+    g_evl[slot].cb = JS_DupValue(ctx, cb);
+    JS_FreeCString(ctx, to);
 }
-static void evl_del(duk_context *ctx, int kind, NbNode *n) {
-    const char *type = duk_get_string(ctx, 0);
+static void evl_del(JSContext *ctx, int kind, NbNode *n, JSValueConst typev) {
+    char *to = NULL;
+    const char *type = NULL;
+    if (JS_IsString(typev)) type = (to = JS_ToCString(ctx, typev));
     for (int i = 0; i < g_evl_count; i++)
         if (g_evl[i].active && g_evl[i].kind == kind && g_evl[i].node == n &&
             (!type || !type[0] || !strcmp(g_evl[i].type, type))) {
             g_evl[i].active = 0;
-            stash_del(ctx, STASH_EVT, i);
+            JS_FreeValue(ctx, g_evl[i].cb);
+            g_evl[i].cb = JS_UNDEFINED;
             break;
         }
+    JS_FreeCString(ctx, to);
 }
-static duk_ret_t nb_el_addEventListener(duk_context *ctx)  { evl_add(ctx, EVT_NODE, get_this(ctx)); return 0; }
-static duk_ret_t nb_el_removeEventListener(duk_context *ctx) { evl_del(ctx, EVT_NODE, get_this(ctx)); return 0; }
-static duk_ret_t nb_doc_addEventListener(duk_context *ctx)  { evl_add(ctx, EVT_DOC, NULL); return 0; }
-static duk_ret_t nb_doc_removeEventListener(duk_context *ctx) { evl_del(ctx, EVT_DOC, NULL); return 0; }
-static duk_ret_t nb_win_addEventListener(duk_context *ctx)  { evl_add(ctx, EVT_WIN, NULL); return 0; }
-static duk_ret_t nb_win_removeEventListener(duk_context *ctx) { evl_del(ctx, EVT_WIN, NULL); return 0; }
-static duk_ret_t nb_event_preventDefault(duk_context *ctx) {
-    duk_push_this(ctx);
-    if (duk_is_object(ctx, -1)) {
-        duk_get_prop_string(ctx, -1, "cancelable");
-        int can = duk_to_boolean(ctx, -1); duk_pop(ctx);
-        if (can) { duk_push_boolean(ctx, 1); duk_put_prop_string(ctx, -2, "defaultPrevented"); }
-    }
-    duk_pop(ctx);
-    return 0;
+static JSValue nb_el_addEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    evl_add(ctx, EVT_NODE, get_this(ctx, this_val),
+            argc > 0 ? argv[0] : JS_UNDEFINED, argc > 1 ? argv[1] : JS_UNDEFINED);
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_event_stopPropagation(duk_context *ctx) {
-    duk_push_this(ctx);
-    if (duk_is_object(ctx, -1)) { duk_push_boolean(ctx, 1); duk_put_prop_string(ctx, -2, "propagationStopped"); }
-    duk_pop(ctx);
-    return 0;
+static JSValue nb_el_removeEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    evl_del(ctx, EVT_NODE, get_this(ctx, this_val), argc > 0 ? argv[0] : JS_UNDEFINED);
+    return JS_UNDEFINED;
+}
+static JSValue nb_doc_addEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    evl_add(ctx, EVT_DOC, NULL, argc > 0 ? argv[0] : JS_UNDEFINED, argc > 1 ? argv[1] : JS_UNDEFINED);
+    return JS_UNDEFINED;
+}
+static JSValue nb_doc_removeEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    evl_del(ctx, EVT_DOC, NULL, argc > 0 ? argv[0] : JS_UNDEFINED);
+    return JS_UNDEFINED;
+}
+static JSValue nb_win_addEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    evl_add(ctx, EVT_WIN, NULL, argc > 0 ? argv[0] : JS_UNDEFINED, argc > 1 ? argv[1] : JS_UNDEFINED);
+    return JS_UNDEFINED;
+}
+static JSValue nb_win_removeEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    evl_del(ctx, EVT_WIN, NULL, argc > 0 ? argv[0] : JS_UNDEFINED);
+    return JS_UNDEFINED;
+}
+static JSValue nb_event_preventDefault(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue c;
+    if (JS_IsObject(this_val) && !JS_IsException((c = JS_GetPropertyStr(ctx, this_val, "cancelable")))) {
+        int can = JS_ToBool(ctx, c);
+        if (can < 0) can = 0;
+        JS_FreeValue(ctx, c);
+        if (can) JS_SetPropertyStr(ctx, this_val, "defaultPrevented", JS_NewBool(ctx, 1));
+    } else if (JS_IsObject(this_val)) JS_FreeValue(ctx, c);
+    return JS_UNDEFINED;
+}
+static JSValue nb_event_stopPropagation(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    if (JS_IsObject(this_val)) JS_SetPropertyStr(ctx, this_val, "propagationStopped", JS_NewBool(ctx, 1));
+    return JS_UNDEFINED;
 }
 /* ---- on-* handlers: el.onclick = fn (C-side registry, per kind+node+type).
- * Duktape passes the property key as arg0 to getter/setter natives. */
+ * The wrapper objects carry a generic accessor per key; magic identifies the
+ * ONPROPS key (native signature gains `int magic`). */
 static int onprop_find(int kind, NbNode *n, const char *type) {
     for (int i = 0; i < g_onprop_count; i++) {
         if (!g_onprop[i].active) continue;
@@ -2526,67 +3858,85 @@ static int onprop_find(int kind, NbNode *n, const char *type) {
     }
     return -1;
 }
-static const char *onprop_type_from_magic(duk_context *ctx) {
-    int idx = duk_get_current_magic(ctx);
-    if (idx < 0 || !ONPROPS[idx]) return NULL;
-    return ONPROPS[idx];
+static const char *onprop_type_from_magic(int magic) {
+    if (magic < 0 || !ONPROPS[magic]) return NULL;
+    return ONPROPS[magic];
 }
-static int onprop_set_core(duk_context *ctx, int kind, NbNode *n) {
-    const char *type = onprop_type_from_magic(ctx);
-    if (!type || !duk_is_callable(ctx, 0)) return 0;
+static int onprop_set_core(JSContext *ctx, int kind, NbNode *n, int magic, JSValueConst cb) {
+    const char *type = onprop_type_from_magic(magic);
+    if (!type || !JS_IsFunction(ctx, cb)) return 0;
     int i = onprop_find(kind, n, type);
     if (i < 0) {
         if (g_onprop_count >= MAX_ONPROPS) return 0;
         i = g_onprop_count++;
         g_onprop[i].kind = kind; g_onprop[i].node = n;
         snprintf(g_onprop[i].type, sizeof(g_onprop[i].type), "%s", type);
+        g_onprop[i].cb = JS_DupValue(ctx, cb);
+    } else {
+        JS_FreeValue(ctx, g_onprop[i].cb);
+        g_onprop[i].cb = JS_DupValue(ctx, cb);
     }
     g_onprop[i].active = 1;
     g_onprop[i].slot = i;
-    stash_set(ctx, STASH_ONPROP, i, 0);
     return 0;
 }
-static duk_ret_t nb_el_onprop_set(duk_context *ctx)   { return onprop_set_core(ctx, EVT_NODE, get_this(ctx)); }
-static duk_ret_t nb_doc_onprop_set(duk_context *ctx)   { return onprop_set_core(ctx, EVT_DOC, NULL); }
-static duk_ret_t nb_win_onprop_set(duk_context *ctx)   { return onprop_set_core(ctx, EVT_WIN, NULL); }
-static duk_ret_t nb_onprop_get_core(duk_context *ctx, int kind, NbNode *n) {
-    const char *type = onprop_type_from_magic(ctx);
-    if (!type) { duk_push_undefined(ctx); return 1; }
-    int i = onprop_find(kind, n, type);
-    if (i < 0 || !g_onprop[i].active) { duk_push_undefined(ctx); return 1; }
-    stash_push(ctx, STASH_ONPROP, g_onprop[i].slot);
-    return 1;
+static JSValue nb_el_onprop_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic) {
+    onprop_set_core(ctx, EVT_NODE, get_this(ctx, this_val), magic, argc > 0 ? argv[0] : JS_UNDEFINED);
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_el_onprop_get(duk_context *ctx)   { return nb_onprop_get_core(ctx, EVT_NODE, get_this(ctx)); }
-static duk_ret_t nb_doc_onprop_get(duk_context *ctx)   { return nb_onprop_get_core(ctx, EVT_DOC, NULL); }
-static duk_ret_t nb_win_onprop_get(duk_context *ctx)   { return nb_onprop_get_core(ctx, EVT_WIN, NULL); }
+static JSValue nb_doc_onprop_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic) {
+    onprop_set_core(ctx, EVT_DOC, NULL, magic, argc > 0 ? argv[0] : JS_UNDEFINED);
+    return JS_UNDEFINED;
+}
+static JSValue nb_win_onprop_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic) {
+    onprop_set_core(ctx, EVT_WIN, NULL, magic, argc > 0 ? argv[0] : JS_UNDEFINED);
+    return JS_UNDEFINED;
+}
+static JSValue nb_onprop_get_core(JSContext *ctx, int kind, NbNode *n, int magic) {
+    const char *type = onprop_type_from_magic(magic);
+    if (!type) return JS_UNDEFINED;
+    int i = onprop_find(kind, n, type);
+    if (i < 0 || !g_onprop[i].active) return JS_UNDEFINED;
+    return JS_DupValue(ctx, g_onprop[i].cb);
+}
+static JSValue nb_el_onprop_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic) {
+    return nb_onprop_get_core(ctx, EVT_NODE, get_this(ctx, this_val), magic);
+}
+static JSValue nb_doc_onprop_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic) {
+    return nb_onprop_get_core(ctx, EVT_DOC, NULL, magic);
+}
+static JSValue nb_win_onprop_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic) {
+    return nb_onprop_get_core(ctx, EVT_WIN, NULL, magic);
+}
 /* one dispatch level for a single node/window/document: exact evl registrations,
  * then the on-* callback. Each target scans the registers from scratch (an
  * entry's kind+node binds it to exactly one target), so bubbling reaches the
  * document/window levels without a shared cursor skipping their listeners. */
-static void dispatch_level(duk_context *ctx, int kind, NbNode *node, duk_idx_t ev,
+static void dispatch_level(JSContext *ctx, int kind, NbNode *node, JSValue ev,
                            const char *type, int *stopped) {
-    ev = duk_normalize_index(ctx, ev);
     for (int i = 0; i < g_evl_count; i++) {
         if (!g_evl[i].active || g_evl[i].kind != kind || g_evl[i].node != node) continue;
         if (strcmp(g_evl[i].type, type)) continue;
         if (g_invocations >= MAX_TIMER_INVOCATIONS) return;
-        /* Duktape 2.x pcall_method layout: [func][this][arg1..argN], arg ON TOP */
-        stash_push(ctx, STASH_EVT, i);                /* cb */
-        if (kind == EVT_NODE && node) push_node(ctx, node);
-        else duk_get_global_string(ctx, kind == EVT_WIN ? "window" : "document");   /* this */
-        duk_dup(ctx, ev);                             /* event arg on top */
-        if (duk_pcall_method(ctx, 1) != 0) {
+        JSValue thr = (kind == EVT_NODE && node) ? push_node(ctx, node)
+                     : get_global_attr(ctx, kind == EVT_WIN ? "window" : "document");   /* this */
+        JSValue argv[1]; argv[0] = ev;                     /* event argument */
+        JSValue r = JS_Call(ctx, g_evl[i].cb, thr, 1, argv);
+        JS_FreeValue(ctx, thr);
+        if (JS_IsException(r)) {
             if (!g_pending_err) {
                 g_pending_err = 1;
-                snprintf(g_pending_errmsg, sizeof(g_pending_errmsg), "%s",
-                         duk_safe_to_string(ctx, -1));
+                char buf[512];
+                const char *m = js_error_to_cstr(ctx, buf, sizeof(buf));
+                snprintf(g_pending_errmsg, sizeof(g_pending_errmsg), "%s", m);
             }
-            duk_pop(ctx); g_invocations++; return;
+            JS_FreeValue(ctx, r); g_invocations++; return;
         }
-        duk_pop(ctx); g_invocations++;
-        duk_get_prop_string(ctx, ev, "propagationStopped");
-        *stopped = duk_to_boolean(ctx, -1); duk_pop(ctx);
+        JS_FreeValue(ctx, r); g_invocations++;
+        JSValue sp = JS_GetPropertyStr(ctx, ev, "propagationStopped");
+        *stopped = JS_ToBool(ctx, sp);
+        if (*stopped < 0) *stopped = 0;
+        JS_FreeValue(ctx, sp);
         if (*stopped) return;
     }
     for (int oi = 0; oi < g_onprop_count; oi++) {
@@ -2594,138 +3944,177 @@ static void dispatch_level(duk_context *ctx, int kind, NbNode *node, duk_idx_t e
         if (!o->active || o->kind != kind || o->node != node) continue;
         if (strcmp(o->type, type)) continue;
         if (g_invocations >= MAX_TIMER_INVOCATIONS) return;
-        stash_push(ctx, STASH_ONPROP, o->slot);       /* cb */
-        if (kind == EVT_NODE && node) push_node(ctx, node);
-        else duk_get_global_string(ctx, kind == EVT_WIN ? "window" : "document");   /* this */
-        duk_dup(ctx, ev);                             /* event arg on top */
-        if (duk_pcall_method(ctx, 1) != 0) {
+        JSValue thr = (kind == EVT_NODE && node) ? push_node(ctx, node)
+                     : get_global_attr(ctx, kind == EVT_WIN ? "window" : "document");   /* this */
+        JSValue argv[1]; argv[0] = ev;                     /* event argument */
+        JSValue r = JS_Call(ctx, o->cb, thr, 1, argv);
+        JS_FreeValue(ctx, thr);
+        if (JS_IsException(r)) {
             if (!g_pending_err) {
                 g_pending_err = 1;
-                snprintf(g_pending_errmsg, sizeof(g_pending_errmsg), "%s",
-                         duk_safe_to_string(ctx, -1));
+                char buf[512];
+                const char *m = js_error_to_cstr(ctx, buf, sizeof(buf));
+                snprintf(g_pending_errmsg, sizeof(g_pending_errmsg), "%s", m);
             }
-            duk_pop(ctx); g_invocations++; return;
+            JS_FreeValue(ctx, r); g_invocations++; return;
         }
-        duk_pop(ctx); g_invocations++;
-        duk_get_prop_string(ctx, ev, "propagationStopped");
-        *stopped = duk_to_boolean(ctx, -1); duk_pop(ctx);
+        JS_FreeValue(ctx, r); g_invocations++;
+        JSValue sp = JS_GetPropertyStr(ctx, ev, "propagationStopped");
+        *stopped = JS_ToBool(ctx, sp);
+        if (*stopped < 0) *stopped = 0;
+        JS_FreeValue(ctx, sp);
         if (*stopped) return;
     }
 }
-static int dispatch_event(duk_context *ctx, int kind, NbNode *node, duk_idx_t ev, int bubbles) {
-    ev = duk_normalize_index(ctx, ev);
-    duk_get_prop_string(ctx, ev, "type");
-    const char *type = duk_get_string(ctx, -1);
-    duk_pop(ctx);
+static int dispatch_event(JSContext *ctx, int kind, NbNode *node, JSValue ev, int bubbles) {
+    JSValue tv = JS_GetPropertyStr(ctx, ev, "type");
+    char *to = NULL;
+    const char *type = JS_IsString(tv) ? (to = JS_ToCString(ctx, tv)) : NULL;
+    JS_FreeValue(ctx, tv);
     if (!type) return 1;
     int stopped = 0;
 
     if (kind == EVT_NODE && node) {
-        push_node(ctx, node);        duk_put_prop_string(ctx, ev, "target");
-        push_node(ctx, node);        duk_put_prop_string(ctx, ev, "currentTarget");
+        JS_SetPropertyStr(ctx, ev, "target", push_node(ctx, node));
+        JS_SetPropertyStr(ctx, ev, "currentTarget", push_node(ctx, node));
         dispatch_level(ctx, EVT_NODE, node, ev, type, &stopped);
         if (!stopped && bubbles) {               /* bubble node->...->root->document->window */
             NbNode *a = node->parent;
             while (a) {
                 if (g_invocations >= MAX_TIMER_INVOCATIONS) break;
-                push_node(ctx, a);   duk_put_prop_string(ctx, ev, "currentTarget");
+                JS_SetPropertyStr(ctx, ev, "currentTarget", push_node(ctx, a));
                 dispatch_level(ctx, EVT_NODE, a, ev, type, &stopped);
                 if (stopped) break;
                 a = a->parent;
             }
             if (!stopped) {
-                duk_get_global_string(ctx, "document"); duk_put_prop_string(ctx, ev, "currentTarget");
+                JS_SetPropertyStr(ctx, ev, "currentTarget", get_global_attr(ctx, "document"));
                 dispatch_level(ctx, EVT_DOC, NULL, ev, type, &stopped);
             }
             if (!stopped) {
-                duk_get_global_string(ctx, "window");   duk_put_prop_string(ctx, ev, "currentTarget");
+                JS_SetPropertyStr(ctx, ev, "currentTarget", get_global_attr(ctx, "window"));
                 dispatch_level(ctx, EVT_WIN, NULL, ev, type, &stopped);
             }
         }
     } else if (kind == EVT_DOC) {
-        duk_get_global_string(ctx, "document"); duk_put_prop_string(ctx, ev, "target");
-        duk_get_global_string(ctx, "document"); duk_put_prop_string(ctx, ev, "currentTarget");
+        JS_SetPropertyStr(ctx, ev, "target", get_global_attr(ctx, "document"));
+        JS_SetPropertyStr(ctx, ev, "currentTarget", get_global_attr(ctx, "document"));
         dispatch_level(ctx, EVT_DOC, NULL, ev, type, &stopped);
         if (!stopped) {
-            duk_get_global_string(ctx, "window"); duk_put_prop_string(ctx, ev, "currentTarget");
+            JS_SetPropertyStr(ctx, ev, "currentTarget", get_global_attr(ctx, "window"));
             dispatch_level(ctx, EVT_WIN, NULL, ev, type, &stopped);
         }
     } else {                                       /* EVT_WIN */
-        duk_get_global_string(ctx, "window");   duk_put_prop_string(ctx, ev, "target");
-        duk_get_global_string(ctx, "window");   duk_put_prop_string(ctx, ev, "currentTarget");
+        JS_SetPropertyStr(ctx, ev, "target", get_global_attr(ctx, "window"));
+        JS_SetPropertyStr(ctx, ev, "currentTarget", get_global_attr(ctx, "window"));
         dispatch_level(ctx, EVT_WIN, NULL, ev, type, &stopped);
     }
-    duk_get_prop_string(ctx, ev, "defaultPrevented");
-    int dp = duk_to_boolean(ctx, -1); duk_pop(ctx);
+    JS_FreeCString(ctx, to);
+    JSValue dpv = JS_GetPropertyStr(ctx, ev, "defaultPrevented");
+    int dp = JS_ToBool(ctx, dpv);
+    if (dp < 0) dp = 0;
+    JS_FreeValue(ctx, dpv);
     return !dp;
 }
-static duk_ret_t nb_el_dispatchEvent(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    if (!n) { duk_push_boolean(ctx, 0); return 1; }
-    duk_get_prop_string(ctx, 0, "bubbles");
-    int bubbles = duk_to_boolean(ctx, -1); duk_pop(ctx);
-    duk_push_boolean(ctx, dispatch_event(ctx, EVT_NODE, n, 0, bubbles));
-    return 1;
+static JSValue nb_el_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_NewBool(ctx, 0);
+    JSValue ev = argc > 0 ? argv[0] : JS_UNDEFINED;
+    JSValue bv = JS_GetPropertyStr(ctx, ev, "bubbles");
+    int bubbles = JS_ToBool(ctx, bv);
+    if (bubbles < 0) bubbles = 0;
+    JS_FreeValue(ctx, bv);
+    return JS_NewBool(ctx, dispatch_event(ctx, EVT_NODE, n, ev, bubbles));
 }
-static duk_ret_t nb_doc_dispatchEvent(duk_context *ctx) {
-    duk_get_prop_string(ctx, 0, "bubbles");
-    int bubbles = duk_to_boolean(ctx, -1); duk_pop(ctx);
-    duk_push_boolean(ctx, dispatch_event(ctx, EVT_DOC, NULL, 0, bubbles));
-    return 1;
+static JSValue nb_doc_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue ev = argc > 0 ? argv[0] : JS_UNDEFINED;
+    JSValue bv = JS_GetPropertyStr(ctx, ev, "bubbles");
+    int bubbles = JS_ToBool(ctx, bv);
+    if (bubbles < 0) bubbles = 0;
+    JS_FreeValue(ctx, bv);
+    return JS_NewBool(ctx, dispatch_event(ctx, EVT_DOC, NULL, ev, bubbles));
 }
-static duk_ret_t nb_win_dispatchEvent(duk_context *ctx) {
-    duk_get_prop_string(ctx, 0, "bubbles");
-    int bubbles = duk_to_boolean(ctx, -1); duk_pop(ctx);
-    duk_push_boolean(ctx, dispatch_event(ctx, EVT_WIN, NULL, 0, bubbles));
-    return 1;
+/* Node.contains (row-31): webcomponents-lite.js does
+ * `document.contains ? document.contains.bind(document)
+ *  : document.documentElement.contains.bind(...)` and Polymer/Closure
+ * ask it during upgrades. Ancestry walk over the C tree. */
+static JSValue nb_el_contains(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *self = get_this(ctx, this_val);
+    NbNode *other = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
+    if (!self || !other) return JS_NewBool(ctx, 0);
+    for (NbNode *n = other; n; n = n->parent)
+        if (n == self) return JS_NewBool(ctx, 1);
+    return JS_NewBool(ctx, 0);
 }
-static duk_ret_t nb_el_click(duk_context *ctx) {
-    NbNode *n = get_this(ctx);
-    if (!n) { duk_push_undefined(ctx); return 1; }
-    duk_get_global_string(ctx, "Event");
-    if (!duk_is_callable(ctx, -1)) { duk_pop(ctx); duk_push_undefined(ctx); return 1; }
-    duk_push_string(ctx, "click");
-    duk_push_object(ctx);
-    duk_push_boolean(ctx, 1); duk_put_prop_string(ctx, -2, "bubbles");
-    duk_push_boolean(ctx, 1); duk_put_prop_string(ctx, -2, "cancelable");
-    if (duk_pnew(ctx, 2) == 0) {
-        duk_push_boolean(ctx, dispatch_event(ctx, EVT_NODE, n, -1, 1));
-        return 1;
-    }
-    duk_pop(ctx); duk_push_undefined(ctx);
-    return 1;
+static JSValue nb_doc_contains(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *other = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
+    if (!other || !g_dom_root) return JS_NewBool(ctx, 0);
+    for (NbNode *n = other; n; n = n->parent)
+        if (n == g_dom_root) return JS_NewBool(ctx, 1);
+    return JS_NewBool(ctx, 0);
 }
-static void fire_event(duk_context *ctx, int kind, NbNode *n, const char *type) {
+static JSValue nb_win_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue ev = argc > 0 ? argv[0] : JS_UNDEFINED;
+    JSValue bv = JS_GetPropertyStr(ctx, ev, "bubbles");
+    int bubbles = JS_ToBool(ctx, bv);
+    if (bubbles < 0) bubbles = 0;
+    JS_FreeValue(ctx, bv);
+    return JS_NewBool(ctx, dispatch_event(ctx, EVT_WIN, NULL, ev, bubbles));
+}
+static JSValue nb_el_click(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_UNDEFINED;
+    JSValue Event = get_global_attr(ctx, "Event");
+    if (!JS_IsFunction(ctx, Event)) { JS_FreeValue(ctx, Event); return JS_UNDEFINED; }
+    JSValue opts = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, opts, "bubbles", JS_NewBool(ctx, 1));
+    JS_SetPropertyStr(ctx, opts, "cancelable", JS_NewBool(ctx, 1));
+    JSValue cargv[2];
+    cargv[0] = JS_NewString(ctx, "click");
+    cargv[1] = opts;
+    JSValue ev = JS_CallConstructor(ctx, Event, 2, cargv);
+    JS_FreeValue(ctx, Event);
+    JS_FreeValue(ctx, cargv[0]);
+    JS_FreeValue(ctx, opts);
+    if (JS_IsException(ev)) { JS_FreeValue(ctx, ev); return JS_UNDEFINED; }
+    int r = dispatch_event(ctx, EVT_NODE, n, ev, 1);
+    JS_FreeValue(ctx, ev);
+    return JS_NewBool(ctx, r);
+}
+static void fire_event(JSContext *ctx, int kind, NbNode *n, const char *type) {
     for (int i = 0; i < g_evl_count; i++) {
         if (!g_evl[i].active || g_evl[i].kind != kind || g_evl[i].node != n) continue;
         if (strcmp(g_evl[i].type, type)) continue;
         if (g_invocations >= MAX_TIMER_INVOCATIONS) break;
-        /* Duktape 2.x pcall_method layout is [func][this][arg1..argN], arg ON TOP.
-         * Push the cb first (bottom), then `this` (element/document/window), then
-         * the Event argument on top -> [cb][this][Event]. */
-        stash_push(ctx, STASH_EVT, i);              /* cb (func) at bottom */
-        if (kind == EVT_NODE && n) push_node(ctx, n);
-        else duk_get_global_string(ctx, kind == EVT_WIN ? "window" : "document");
-        duk_push_object(ctx);                       /* minimal Event (argument) on top */
-        duk_push_string(ctx, type);      duk_put_prop_string(ctx, -2, "type");
-        duk_push_boolean(ctx, 0);        duk_put_prop_string(ctx, -2, "defaultPrevented");
-        duk_push_boolean(ctx, 0);        duk_put_prop_string(ctx, -2, "cancelable");
-        if (kind == EVT_NODE && n) { push_node(ctx, n); duk_put_prop_string(ctx, -2, "target"); }
-        else { duk_get_global_string(ctx, kind == EVT_WIN ? "window" : "document");
-               duk_put_prop_string(ctx, -2, "target"); }
-        duk_push_c_function(ctx, nb_event_preventDefault, 0); duk_put_prop_string(ctx, -2, "preventDefault");
-        duk_push_c_function(ctx, nb_event_stopPropagation, 0); duk_put_prop_string(ctx, -2, "stopPropagation");
-        if (duk_pcall_method(ctx, 1) != 0) {
+        JSValue ev = JS_NewObject(ctx);            /* minimal Event (argument) */
+        JS_SetPropertyStr(ctx, ev, "type", JS_NewString(ctx, type));
+        JS_SetPropertyStr(ctx, ev, "defaultPrevented", JS_NewBool(ctx, 0));
+        JS_SetPropertyStr(ctx, ev, "cancelable", JS_NewBool(ctx, 0));
+        if (kind == EVT_NODE && n) JS_SetPropertyStr(ctx, ev, "target", push_node(ctx, n));
+        else JS_SetPropertyStr(ctx, ev, "target",
+             get_global_attr(ctx, kind == EVT_WIN ? "window" : "document"));
+        JS_SetPropertyStr(ctx, ev, "preventDefault",
+             JS_NewCFunction(ctx, nb_event_preventDefault, "preventDefault", 0));
+        JS_SetPropertyStr(ctx, ev, "stopPropagation",
+             JS_NewCFunction(ctx, nb_event_stopPropagation, "stopPropagation", 0));
+        JSValue thr = (kind == EVT_NODE && n) ? push_node(ctx, n)
+                     : get_global_attr(ctx, kind == EVT_WIN ? "window" : "document");
+        JSValue argv[1]; argv[0] = ev;             /* callback arg */
+        JSValue r = JS_Call(ctx, g_evl[i].cb, thr, 1, argv);
+        JS_FreeValue(ctx, thr);
+        JS_FreeValue(ctx, ev);
+        if (JS_IsException(r)) {
             if (!g_pending_err) {
                 g_pending_err = 1;
-                snprintf(g_pending_errmsg, sizeof(g_pending_errmsg), "%s",
-                         duk_safe_to_string(ctx, -1));
+                char buf[512];
+                const char *m = js_error_to_cstr(ctx, buf, sizeof(buf));
+                snprintf(g_pending_errmsg, sizeof(g_pending_errmsg), "%s", m);
             }
-            duk_pop(ctx);
+            JS_FreeValue(ctx, r);
             g_invocations++;
             break;
         }
-        duk_pop(ctx);
+        JS_FreeValue(ctx, r);
         g_invocations++;
     }
     /* lifecycle on-* props: window.onload, document.onDOMContentLoaded (commit 8) */
@@ -2734,47 +4123,71 @@ static void fire_event(duk_context *ctx, int kind, NbNode *n, const char *type) 
         if (!o->active || o->kind != kind || o->node != n) continue;
         if (strcmp(o->type, type)) continue;
         if (g_invocations >= MAX_TIMER_INVOCATIONS) break;
-        stash_push(ctx, STASH_ONPROP, o->slot);               /* cb at bottom */
-        if (kind == EVT_NODE && n) push_node(ctx, n);
-        else duk_get_global_string(ctx, kind == EVT_WIN ? "window" : "document"); /* this */
-        duk_push_object(ctx);                       /* minimal Event (arg) on top */
-        duk_push_string(ctx, type);      duk_put_prop_string(ctx, -2, "type");
-        duk_push_boolean(ctx, 0);        duk_put_prop_string(ctx, -2, "defaultPrevented");
-        duk_push_boolean(ctx, 0);        duk_put_prop_string(ctx, -2, "cancelable");
-        duk_push_c_function(ctx, nb_event_preventDefault, 0); duk_put_prop_string(ctx, -2, "preventDefault");
-        duk_push_c_function(ctx, nb_event_stopPropagation, 0); duk_put_prop_string(ctx, -2, "stopPropagation");
-        if (duk_pcall_method(ctx, 1) != 0) {
+        JSValue ev = JS_NewObject(ctx);            /* minimal Event (argument) */
+        JS_SetPropertyStr(ctx, ev, "type", JS_NewString(ctx, type));
+        JS_SetPropertyStr(ctx, ev, "defaultPrevented", JS_NewBool(ctx, 0));
+        JS_SetPropertyStr(ctx, ev, "cancelable", JS_NewBool(ctx, 0));
+        JS_SetPropertyStr(ctx, ev, "preventDefault",
+             JS_NewCFunction(ctx, nb_event_preventDefault, "preventDefault", 0));
+        JS_SetPropertyStr(ctx, ev, "stopPropagation",
+             JS_NewCFunction(ctx, nb_event_stopPropagation, "stopPropagation", 0));
+        JSValue thr = (kind == EVT_NODE && n) ? push_node(ctx, n)
+                     : get_global_attr(ctx, kind == EVT_WIN ? "window" : "document");
+        JSValue argv[1]; argv[0] = ev;             /* callback arg */
+        JSValue r = JS_Call(ctx, o->cb, thr, 1, argv);
+        JS_FreeValue(ctx, thr);
+        JS_FreeValue(ctx, ev);
+        if (JS_IsException(r)) {
             if (!g_pending_err) {
                 g_pending_err = 1;
-                snprintf(g_pending_errmsg, sizeof(g_pending_errmsg), "%s",
-                         duk_safe_to_string(ctx, -1));
+                char buf[512];
+                const char *m = js_error_to_cstr(ctx, buf, sizeof(buf));
+                snprintf(g_pending_errmsg, sizeof(g_pending_errmsg), "%s", m);
             }
-            duk_pop(ctx);
+            JS_FreeValue(ctx, r);
             g_invocations++;
             break;
         }
-        duk_pop(ctx);
+        JS_FreeValue(ctx, r);
         g_invocations++;
     }
 }
 
-/* ---- the loop: lifecycle -> microtask/timer drain until quiescent or budget ---- */
+/* ---- the loop: lifecycle -> job/timer drain until quiescent or budget ---- */
 /* returns nonzero if an event-loop callback threw (caller -> STATUS err) */
-static int run_event_loop(duk_context *ctx) {
+static int run_event_loop(JSContext *ctx) {
+    /* The page's timer queue can keep this loop busy for minutes under the
+     * resident worker (no JIT), and the manager guards its LOAD read with a
+     * 3s stall watchdog. Emit a LIVE| beat every ~1.8s so a slow-but-alive
+     * drain is never mistaken for a dead worker; RENDER still follows once
+     * the loop is actually quiescent. */
+    static uint64_t keep_last = 0;
+    #define NB_KEEPALIVE_LIVE() do { \
+        if (!g_cli) { \
+            uint64_t _k = now_ms(); \
+            if (_k - keep_last >= 1800) { \
+                keep_last = _k; \
+                char _b[96]; \
+                int _n = snprintf(_b, sizeof(_b), "LIVE|drain|%u", g_invocations); \
+                send_payload(_b, (size_t)_n); \
+            } \
+        } \
+    } while (0)
     signal(SIGALRM, sigalrm);
-    alarm(EVAL_BUDGET_SEC);   /* phase-1 backstop also covers timer/microtask callbacks */
-    drain_microtasks(ctx);
+    alarm(nb_budget());   /* phase-1 backstop also covers timer/job callbacks */
+    drain_jobs(ctx);
     if (!g_pending_err) fire_event(ctx, EVT_DOC, NULL, "DOMContentLoaded");
-    drain_microtasks(ctx);
+    drain_jobs(ctx);
     if (!g_pending_err) fire_event(ctx, EVT_WIN, NULL, "load");
-    drain_microtasks(ctx);
+    drain_jobs(ctx);
     uint64_t start = now_ms();
     for (int guard = 0; guard < 100000 && !g_pending_err; guard++) {
         if (g_invocations >= MAX_TIMER_INVOCATIONS) break;
         if (now_ms() - start > MAX_DRAIN_MS) break;   /* bound page_load wait */
+        NB_KEEPALIVE_LIVE();
         uint64_t now = now_ms();
         int ran = run_due_timers(ctx, now);
-        if (drain_microtasks(ctx)) ran = 1;
+        drain_jobs(ctx);
         if (!ran) {
             uint64_t m = timer_min_due();
             if (!m) break;                    /* nothing scheduled — quiescent */
@@ -2798,91 +4211,147 @@ static int run_event_loop(duk_context *ctx) {
  * script does the crypto). But the page needs a SHA-1 primitive to do so.
  * This is the engine-generic one: `__nb_sha1(utf8)->base64(digest)`, exposed
  * to any page. Not youtube-specific; the page JS handles the SAPISIDHASH
- * composition purely in JS (btoa exists too, but Duktape strings are CESU-8,
- * so the digest is pre-encoded ASCII base64 here — verified against openssl
+ * composition purely in JS. Raw digest bytes can't round-trip through a JS
+ * string, so the digest is pre-encoded ASCII base64 here — verified against openssl
  * in worker_sapisid_test).  Shared impl in nb_sha1.h so fixture servers
  * recompute the SAME digest when verifying a received signature. */
 #include "nb_sha1.h"
 
 /* __nb_sha1(str) -> base64 of the 20-byte SHA-1 digest (plain ASCII). */
-static duk_ret_t nb_sha1_native(duk_context *ctx) {
-    duk_size_t n = 0;
-    const char *t = duk_safe_to_lstring(ctx, 0, &n);
+static JSValue nb_sha1_native(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    size_t n = 0;
+    char *own = NULL;
+    const char *t = "";
+    if (argc > 0) t = (own = JS_ToCStringLen(ctx, &n, argv[0]));
     uint8_t out[20];
     nbsha1((const uint8_t *)t, n, out);
     char b64[29];
     nbsha1_b64_20(out, b64);
-    duk_push_string(ctx, b64);
-    return 1;
+    JS_FreeCString(ctx, own);
+    return JS_NewString(ctx, b64);
 }
 
-static void install_events_timers(duk_context *ctx) {
-    duk_get_global_string(ctx, "document");
-    duk_push_c_function(ctx, nb_doc_addEventListener, 2);    duk_put_prop_string(ctx, -2, "addEventListener");
-    duk_push_c_function(ctx, nb_doc_removeEventListener, 2); duk_put_prop_string(ctx, -2, "removeEventListener");
-    duk_push_c_function(ctx, nb_doc_dispatchEvent, 1);       duk_put_prop_string(ctx, -2, "dispatchEvent");
+static void install_events_timers(JSContext *ctx) {
+    JSValue doc = get_global_attr(ctx, "document");
+    JS_SetPropertyStr(ctx, doc, "addEventListener",
+        JS_NewCFunction(ctx, nb_doc_addEventListener, "addEventListener", 2));
+    JS_SetPropertyStr(ctx, doc, "removeEventListener",
+        JS_NewCFunction(ctx, nb_doc_removeEventListener, "removeEventListener", 2));
+    JS_SetPropertyStr(ctx, doc, "dispatchEvent",
+        JS_NewCFunction(ctx, nb_doc_dispatchEvent, "dispatchEvent", 1));
+    JS_SetPropertyStr(ctx, doc, "contains",
+        JS_NewCFunction(ctx, nb_doc_contains, "contains", 1));
     for (int i = 0; ONPROPS[i]; i++) {
         char onname[64];
         snprintf(onname, sizeof(onname), "on%s", ONPROPS[i]);
-        duk_push_string(ctx, onname);
-        duk_push_c_function(ctx, nb_doc_onprop_get, 0); duk_set_magic(ctx, -1, i);
-        duk_push_c_function(ctx, nb_doc_onprop_set, 1); duk_set_magic(ctx, -1, i);
-        duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
+        JSAtom key = JS_NewAtom(ctx, onname);
+        JS_DefinePropertyGetSet(ctx, doc, key,
+            JS_NewCFunctionMagic(ctx, nb_doc_onprop_get, onname, 0, JS_CFUNC_generic_magic, i),
+            JS_NewCFunctionMagic(ctx, nb_doc_onprop_set, onname, 1, JS_CFUNC_generic_magic, i),
+            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, key);
     }
-    duk_pop(ctx);
-    duk_push_global_object(ctx);
-    duk_push_c_function(ctx, nb_sha1_native, 1);         duk_put_prop_string(ctx, -2, "__nb_sha1");
-    duk_push_c_function(ctx, nb_timer_setTimeout, 2);    duk_put_prop_string(ctx, -2, "setTimeout");
-    duk_push_c_function(ctx, nb_timer_setInterval, 2);   duk_put_prop_string(ctx, -2, "setInterval");
-    duk_push_c_function(ctx, nb_timer_clearTimeout, 1);  duk_put_prop_string(ctx, -2, "clearTimeout");
-    duk_push_c_function(ctx, nb_timer_clearInterval, 1); duk_put_prop_string(ctx, -2, "clearInterval");
-    duk_push_c_function(ctx, nb_queueMicrotask, 1);      duk_put_prop_string(ctx, -2, "queueMicrotask");
-    duk_push_c_function(ctx, nb_raf, 1);                 duk_put_prop_string(ctx, -2, "requestAnimationFrame");
-    duk_push_c_function(ctx, nb_fetch_sync, 4);          duk_put_prop_string(ctx, -2, "nbFetchSync");
-    duk_push_c_function(ctx, nb_win_addEventListener, 2);    duk_put_prop_string(ctx, -2, "addEventListener");
-    duk_push_c_function(ctx, nb_win_removeEventListener, 2); duk_put_prop_string(ctx, -2, "removeEventListener");
-    duk_push_c_function(ctx, nb_win_dispatchEvent, 1);       duk_put_prop_string(ctx, -2, "dispatchEvent");
+    JS_FreeValue(ctx, doc);
+    JSValue g = JS_GetGlobalObject(ctx);
+    JS_SetPropertyStr(ctx, g, "__nb_sha1",   JS_NewCFunction(ctx, nb_sha1_native, "__nb_sha1", 1));
+    JS_SetPropertyStr(ctx, g, "setTimeout",  JS_NewCFunction(ctx, nb_timer_setTimeout, "setTimeout", 2));
+    JS_SetPropertyStr(ctx, g, "setInterval", JS_NewCFunction(ctx, nb_timer_setInterval, "setInterval", 2));
+    JS_SetPropertyStr(ctx, g, "clearTimeout",  JS_NewCFunction(ctx, nb_timer_clearTimeout, "clearTimeout", 1));
+    JS_SetPropertyStr(ctx, g, "clearInterval", JS_NewCFunction(ctx, nb_timer_clearInterval, "clearInterval", 1));
+    JS_SetPropertyStr(ctx, g, "queueMicrotask", JS_NewCFunction(ctx, nb_queueMicrotask, "queueMicrotask", 1));
+    JS_SetPropertyStr(ctx, g, "requestAnimationFrame", JS_NewCFunction(ctx, nb_raf, "requestAnimationFrame", 1));
+    JS_SetPropertyStr(ctx, g, "nbFetchSync", JS_NewCFunction(ctx, nb_fetch_sync, "nbFetchSync", 4));
+    JS_SetPropertyStr(ctx, g, "addEventListener",    JS_NewCFunction(ctx, nb_win_addEventListener, "addEventListener", 2));
+    JS_SetPropertyStr(ctx, g, "removeEventListener", JS_NewCFunction(ctx, nb_win_removeEventListener, "removeEventListener", 2));
+    JS_SetPropertyStr(ctx, g, "dispatchEvent",       JS_NewCFunction(ctx, nb_win_dispatchEvent, "dispatchEvent", 1));
+    /* ShadyDOM (webcomponents-lite.js) captures "native" methods by copying
+     * property descriptors off prototypes (L(Window.prototype, ...)); our
+     * natives are own props on window/elements, so the copy is empty and
+     * window.__shady_native_addEventListener stays undefined → Ae() throws
+     * "not a function" at init. Define the aliases on window directly. */
+    JS_SetPropertyStr(ctx, g, "__shady_native_addEventListener",    JS_NewCFunction(ctx, nb_win_addEventListener, "__shady_native_addEventListener", 2));
+    JS_SetPropertyStr(ctx, g, "__shady_native_removeEventListener", JS_NewCFunction(ctx, nb_win_removeEventListener, "__shady_native_removeEventListener", 2));
+    JS_SetPropertyStr(ctx, g, "__shady_native_dispatchEvent",       JS_NewCFunction(ctx, nb_win_dispatchEvent, "__shady_native_dispatchEvent", 1));
     for (int i = 0; ONPROPS[i]; i++) {
         char onname[64];
         snprintf(onname, sizeof(onname), "on%s", ONPROPS[i]);
-        duk_push_string(ctx, onname);
-        duk_push_c_function(ctx, nb_win_onprop_get, 0); duk_set_magic(ctx, -1, i);
-        duk_push_c_function(ctx, nb_win_onprop_set, 1); duk_set_magic(ctx, -1, i);
-        duk_def_prop(ctx, -4, DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER | DUK_DEFPROP_ENUMERABLE);
+        JSAtom key = JS_NewAtom(ctx, onname);
+        JS_DefinePropertyGetSet(ctx, g, key,
+            JS_NewCFunctionMagic(ctx, nb_win_onprop_get, onname, 0, JS_CFUNC_generic_magic, i),
+            JS_NewCFunctionMagic(ctx, nb_win_onprop_set, onname, 1, JS_CFUNC_generic_magic, i),
+            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, key);
     }
-    duk_pop(ctx);
+    JS_FreeValue(ctx, g);
 }
 
-/* boot hygiene (2026-09-09): install_dom / install_events_timers run under a
- * protected call so a throw (e.g. 'not configurable' from a duk_def_prop on a
- * prelude stub) is caught, reported to stderr as WERR|, and the page still
- * loads instead of the worker dying silently mid-boot. */
-static duk_ret_t boot_duk_install(duk_context *ctx) {
+/* boot hygiene (2026-09-09): install_dom / install_events_timers ran under a
+ * protected call so a throw was reported to stderr as WERR| and the
+ * page still loaded. QuickJS property definitions don't throw on non-writable
+ * targets (JS_DefinePropertyGetSet just returns FALSE), so the direct calls
+ * are enough; keep the name for call-site clarity. */
+static void boot_install_safe(JSContext *ctx) {
     install_dom(ctx);
     install_events_timers(ctx);
-    return 0;
-}
-static void boot_install_safe(duk_context *ctx) {
-    duk_push_c_function(ctx, boot_duk_install, 0);
-    if (duk_pcall(ctx, 0) != 0) {   /* nargs=0: callable at -1, this=undefined */
-        fprintf(stderr, "WERR| boot install: %s\n",
-                duk_safe_to_string(ctx, -1));
-        duk_pop(ctx);
-    }
-    duk_pop(ctx);
 }
 
 /* plan step 5: CPU budget for script eval. If page.js burns through
  * EVAL_BUDGET_SEC of CPU (while(true) {} and friends) SIGALRM fires while
- * Duktape is running; the deadly default _exit kills the worker mid-eval, the
+ * the engine is running; the deadly default _exit kills the worker mid-eval, the
  * manager sees the socket close and respawns on the next LOAD. */
 static void sigalrm(int sig) { _exit(128 + sig); }
-static int peval_budget(duk_context *ctx, const char *src) {
+/* Evaluate src with a SIGALRM CPU budget. Returns 0 on success; on error
+ * returns 1 and, if errbuf is non-NULL, formats the exception message into
+ * it (the exception is always consumed/cleared). The completion value is
+ * discarded — use peval_budget_value() when the result is wanted. */
+static int peval_budget(JSContext *ctx, const char *src, size_t src_n,
+                        char *errbuf, size_t errlen) {
     signal(SIGALRM, sigalrm);
-    alarm(EVAL_BUDGET_SEC);
-    int rc = src ? duk_peval_string(ctx, src) : duk_peval(ctx);
+    alarm(nb_budget());
+    JSValue r = JS_Eval(ctx, src, src_n, "<script>", JS_EVAL_TYPE_GLOBAL);
     alarm(0);
-    return rc;
+    if (JS_IsException(r)) {
+        if (errbuf && errlen) {
+            char tmp[512];
+            const char *m = js_error_to_cstr(ctx, tmp, sizeof(tmp));
+            snprintf(errbuf, errlen, "%s", m);
+        } else {
+            JSValue e = JS_GetException(ctx);
+            JS_FreeValue(ctx, e);
+        }
+        JS_FreeValue(ctx, r);
+        return 1;
+    }
+    JS_FreeValue(ctx, r);
+    return 0;
+}
+/* Like peval_budget but returns the completion JSValue (owned; freed by the
+ * caller — also on JS_EXCEPTION). No exception is consumed here. */
+static JSValue peval_budget_value(JSContext *ctx, const char *src, size_t src_n) {
+    signal(SIGALRM, sigalrm);
+    alarm(nb_budget());
+    JSValue r = JS_Eval(ctx, src, src_n, "<script>", JS_EVAL_TYPE_GLOBAL);
+    alarm(0);
+    return r;
+}
+/* Format a value for console display (duk_safe_to_string semantics); clears
+ * any exception a throwing toString() may have left behind. */
+static const char *js_display_cstr(JSContext *ctx, JSValueConst v, char *buf, size_t bl) {
+    if (JS_IsUndefined(v)) { snprintf(buf, bl, "undefined"); return buf; }
+    char *s = JS_ToCString(ctx, v);
+    if (!s) {
+        JSValue e = JS_GetException(ctx);
+        JS_FreeValue(ctx, e);
+        snprintf(buf, bl, "undefined");
+        return buf;
+    }
+    snprintf(buf, bl, "%s", s);
+    JS_FreeCString(ctx, s);
+    if (JS_HasException(ctx)) {
+        JSValue e = JS_GetException(ctx);
+        JS_FreeValue(ctx, e);
+    }
+    return buf;
 }
 
 /* Run the page script; sends STATUS ok|err across the wire. */
@@ -2901,13 +4370,18 @@ static void dom_teardown(void) {
 }
 
 /* devtools console EVAL: tear down everything a previous LOAD left live
- * (resident Duktape heap + its DOM tree). run_page() keeps those alive on
+ * (resident QuickJS runtime + its DOM tree). run_page() keeps those alive on
  * the success path so an eval:<js> snippet can run against the page; this
  * helper is the disciplined cleanup for the next LOAD, errors and QUIT. */
 static void live_teardown(void) {
     if (g_live_ctx) {
-        duk_destroy_heap(g_live_ctx);
+        free_held_callbacks(g_live_ctx);   /* release refs before the heap dies */
+        JS_FreeContext(g_live_ctx);
         g_live_ctx = NULL;
+    }
+    if (g_live_rt) {
+        JS_FreeRuntime(g_live_rt);
+        g_live_rt = NULL;
     }
     dom_teardown();
 }
@@ -2933,16 +4407,14 @@ static const char *find_script_boundary(const char *p, const char *end,
     }
     return NULL;
 }
-static void run_scripts_slices(duk_context *ctx, char *src, size_t src_n) {
+static void run_scripts_slices(JSContext *ctx, char *src, size_t src_n) {
     const char *p = src, *end = src + src_n;
     const char *after = NULL;
+    char errbuf[512];
     if (!find_script_boundary(p, end, &after)) {
         /* legacy single-program page.js */
-        duk_push_lstring(ctx, src, src_n);
-        if (peval_budget(ctx, NULL) != 0) {
-            fprintf(stderr, "WERR| script 0: %s\n", duk_safe_to_string(ctx, -1));
-            duk_pop(ctx);
-        } else duk_pop(ctx);
+        if (peval_budget(ctx, src, src_n, errbuf, sizeof(errbuf)) != 0)
+            fprintf(stderr, "WERR| script 0: %s\n", errbuf[0] ? errbuf : "eval error");
         return;
     }
     p = after;
@@ -2953,12 +4425,13 @@ static void run_scripts_slices(duk_context *ctx, char *src, size_t src_n) {
         const char *bn = find_script_boundary(p, end, &next);
         if (bn) slice = (size_t)(bn - p);
         if (slice > 0) {
-            duk_push_lstring(ctx, p, slice);
-            if (peval_budget(ctx, NULL) != 0) {
-                fprintf(stderr, "WERR| script %d: %s\n", idx,
-                        duk_safe_to_string(ctx, -1));
-                duk_pop(ctx);
-            } else duk_pop(ctx);
+            /* QuickJS's lexer peeks input[input_len] for EOI, so each slice
+             * must be NUL-terminated at its eval length. Slices own one
+             * contiguous buffer, so terminate in place; the boundary's first
+             * byte is never read again (next = the position after it). */
+            ((char *)p)[slice] = 0;
+            if (peval_budget(ctx, p, slice, errbuf, sizeof(errbuf)) != 0)
+                fprintf(stderr, "WERR| script %d: %s\n", idx, errbuf[0] ? errbuf : "eval error");
         }
         idx++;
         if (!bn) break;
@@ -2966,9 +4439,11 @@ static void run_scripts_slices(duk_context *ctx, char *src, size_t src_n) {
     }
 }
 static void run_page(void) {
-    /* phase-2 (commit 7): per-page event/timer/microtask state */
-    g_timer_count = 0; g_micro_n = 0; g_micro_head = 0; g_evl_count = 0;
-    g_onprop_count = 0;
+    /* phase-2 (commit 7): per-page event/timer/microtask state. The previous
+     * LOAD's held callbacks belong to the old heap — release them FIRST, then
+     * reset the counters so live_teardown()'s free_held_callbacks is a no-op. */
+    if (g_live_ctx) free_held_callbacks(g_live_ctx);
+    g_timer_count = 0; g_evl_count = 0; g_onprop_count = 0;
     g_next_id = 1; g_invocations = 0; g_raf_fires = 0;
     g_pending_err = 0; g_pending_errmsg[0] = 0;
 
@@ -3012,27 +4487,29 @@ static void run_page(void) {
         }
     }
 
-    duk_context *ctx = duk_create_heap(NULL, NULL, NULL, NULL, fatal_handler);
-    if (!ctx) { live_teardown(); send_status("STATUS err:heap"); return; }
+    JSRuntime *rt = JS_NewRuntime();
+    if (!rt) { live_teardown(); send_status("STATUS err:heap"); return; }
+    JSContext *ctx = JS_NewContext(rt);
+    if (!ctx) { JS_FreeRuntime(rt); live_teardown(); send_status("STATUS err:heap"); return; }
+    g_live_rt = rt;
     g_live_ctx = ctx;   /* resident from here on — kept alive for EVAL */
     install_host(ctx);
 
     /* rung 7: the resident worker's CSS resolve wins over install_host's
      * minimal __nb_ges default (the prelude reads __nb_ges at call time). */
-    duk_push_global_object(ctx);
-    duk_push_c_function(ctx, nb_ges_rich, 1);
-    duk_put_prop_string(ctx, -2, "__nb_ges");
-    duk_pop(ctx);
+    JSValue ge = JS_GetGlobalObject(ctx);
+    JS_SetPropertyStr(ctx, ge, "__nb_ges",
+                      JS_NewCFunction(ctx, nb_ges_rich, "__nb_ges", 1));
+    JS_FreeValue(ctx, ge);
 
     /* rung-6 prelude: swallow its own failure, page continues */
-    if (peval_budget(ctx, g_js_prelude) != 0) duk_pop(ctx);
-    duk_pop(ctx);
+    (void)peval_budget(ctx, g_js_prelude, strlen(g_js_prelude), NULL, 0);
 
     boot_install_safe(ctx);
 
     char *src = NULL;
     size_t src_n = 0;
-    if (!read_file(g_page_js, &src, &src_n)) {
+    if (!read_file_big(g_page_js, &src, &src_n)) {
         send_status("STATUS err:cannot read page.js");
         live_teardown();
         return;
@@ -3109,20 +4586,21 @@ static void run_page(void) {
 static void cmd_eval(const char *js) {
     if (!g_live_ctx) { send_status("STATUS err:no page loaded"); return; }
     if (g_out) { fprintf(g_out, ">%s\n", js); fflush(g_out); }
-    duk_push_lstring(g_live_ctx, js, strlen(js));
-    int rc = peval_budget(g_live_ctx, NULL);
-    if (rc != 0) {
-        const char *m = duk_safe_to_string(g_live_ctx, -1);
+    JSValue rv = peval_budget_value(g_live_ctx, js, strlen(js));
+    if (JS_IsException(rv)) {
+        char tmp[512];
+        const char *m = js_error_to_cstr(g_live_ctx, tmp, sizeof(tmp));
         char msg[1100];
         snprintf(msg, sizeof(msg), "STATUS err:%s", m ? m : "eval error");
         if (g_out) { fprintf(g_out, "!>%s\n", m ? m : "eval error"); fflush(g_out); }
-        duk_pop(g_live_ctx);
+        JS_FreeValue(g_live_ctx, rv);
         send_status(msg);
         return;
     }
-    const char *r = duk_safe_to_string(g_live_ctx, -1);
+    char disp[512];
+    const char *r = js_display_cstr(g_live_ctx, rv, disp, sizeof(disp));
     if (g_out) { fprintf(g_out, "=>%s\n", r ? r : ""); fflush(g_out); }
-    duk_pop(g_live_ctx);
+    JS_FreeValue(g_live_ctx, rv);
 
     /* re-emit post-eval RENDER rows so mutated DOM is reflected */
     SB rr = {0, 0, 0};
@@ -3163,43 +4641,59 @@ static void cmd_eval(const char *js) {
  * Exits on EOF or exit/quit/.exit. Non-tty stdin stays the framed daemon, but
  * `duk -i` forces the REPL even when stdin is piped. */
 /* CLI-2/CLI-3 native hook used by both the REPL and node mode. */
-static duk_ret_t nb_cjs_read_file(duk_context *ctx);
-static void      nb_install_fs(duk_context *ctx);
+static JSValue nb_cjs_read_file(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static void      nb_install_fs(JSContext *ctx);
 static const char g_cjs_prelude[];
 static int repl_main(void) {
-    duk_context *ctx = duk_create_heap(NULL, NULL, NULL, NULL, fatal_handler);
-    if (!ctx) return 1;
+    JSRuntime *rt = JS_NewRuntime();
+    if (!rt) return 1;
+    JSContext *ctx = rt ? JS_NewContext(rt) : NULL;
+    if (!ctx) { if (rt) JS_FreeRuntime(rt); return 1; }
     g_cli = 1; g_cli_log = 1;
     g_out = stdout; setvbuf(g_out, NULL, _IONBF, 0);
     install_host(ctx);
-    if (peval_budget(ctx, g_js_prelude) != 0) duk_pop(ctx);
-    duk_pop(ctx);
+    (void)peval_budget(ctx, g_js_prelude, strlen(g_js_prelude), NULL, 0);
     /* CLI-2/CLI-3 in the REPL too: require() + fs work line-by-line,
      * sharing the browser prelude above (window/document still present). */
-    duk_push_c_function(ctx, nb_cjs_read_file, 1);
-    duk_put_global_string(ctx, "__nb_read_file");
+    JSValue rg = JS_GetGlobalObject(ctx);
+    JS_SetPropertyStr(ctx, rg, "__nb_read_file",
+                      JS_NewCFunction(ctx, nb_cjs_read_file, "__nb_read_file", 1));
+    JS_FreeValue(ctx, rg);
     nb_install_fs(ctx);
-    if (peval_budget(ctx, g_cjs_prelude) != 0) {
-        const char *m = duk_safe_to_string(ctx, -1);
-        fprintf(stderr, "err:%s\n", m ? m : "loader error");
-        duk_pop(ctx); duk_destroy_heap(ctx); dom_teardown(); return 1;
+    char errbuf[512];
+    if (peval_budget(ctx, g_cjs_prelude, strlen(g_cjs_prelude), errbuf, sizeof(errbuf)) != 0) {
+        fprintf(stderr, "err:%s\n", errbuf[0] ? errbuf : "loader error");
+        free_held_callbacks(ctx);
+        JS_FreeContext(ctx); JS_FreeRuntime(rt); dom_teardown(); return 1;
     }
-    duk_pop(ctx);
-    duk_get_global_string(ctx, "__nb_install_cjs");
+    JSValue install = get_global_attr(ctx, "__nb_install_cjs");
+    if (!JS_IsFunction(ctx, install)) {
+        JS_FreeValue(ctx, install);
+        free_held_callbacks(ctx);
+        JS_FreeContext(ctx); JS_FreeRuntime(rt); dom_teardown(); return 1;
+    }
     char cwd_buf[PATH_MAX];
     if (!getcwd(cwd_buf, sizeof(cwd_buf))) snprintf(cwd_buf, sizeof(cwd_buf), ".");
-    duk_push_string(ctx, cwd_buf);
-    duk_push_string(ctx, "[repl]");
-    int cinc = 0;
+    JSValue av[2];
+    av[0] = JS_NewString(ctx, cwd_buf);
+    av[1] = JS_NewString(ctx, "[repl]");
+    JSValue g0 = JS_GetGlobalObject(ctx);
     signal(SIGALRM, sigalrm);
-    alarm(EVAL_BUDGET_SEC);
-    cinc = duk_pcall(ctx, 2);
+    alarm(nb_budget());
+    JSValue rr = JS_Call(ctx, install, g0, 2, av);
+    JS_FreeValue(ctx, g0);
+    JS_FreeValue(ctx, install);
     alarm(0);
-    if (cinc != 0) {
-        fprintf(stderr, "err:%s\n", duk_safe_to_string(ctx, -1));
-        duk_pop(ctx); duk_destroy_heap(ctx); dom_teardown(); return 1;
+    JS_FreeValue(ctx, av[0]); JS_FreeValue(ctx, av[1]);
+    if (JS_IsException(rr)) {
+        char tmp[512];
+        const char *m = js_error_to_cstr(ctx, tmp, sizeof(tmp));
+        fprintf(stderr, "err:%s\n", m ? m : "loader error");
+        JS_FreeValue(ctx, rr);
+        free_held_callbacks(ctx);
+        JS_FreeContext(ctx); JS_FreeRuntime(rt); dom_teardown(); return 1;
     }
-    duk_pop(ctx);
+    JS_FreeValue(ctx, rr);
     static const char empty_html[] = "<html><body></body></html>";
     g_dom_root = nb_parse_html(empty_html, sizeof(empty_html) - 1);
     boot_install_safe(ctx);
@@ -3216,44 +4710,61 @@ static int repl_main(void) {
         if (!strcmp(line, "exit") || !strcmp(line, "quit") || !strcmp(line, ".exit")) break;
 
         /* don't leak listeners/timers across lines */
-        g_timer_count = 0; g_micro_n = 0; g_micro_head = 0; g_evl_count = 0;
-        g_onprop_count = 0; g_invocations = 0; g_raf_fires = 0;
+        free_held_callbacks(ctx);
+        g_timer_count = 0; g_evl_count = 0; g_onprop_count = 0;
+        g_invocations = 0; g_raf_fires = 0;
         g_pending_err = 0; g_pending_errmsg[0] = 0;
 
         /* CLI-4: single-line ESM (import/export) → CJS in the REPL too.
          * Multi-line import/export statements are out of scope here. */
-        duk_get_global_string(ctx, "__nb_esm_prepare");
-        if (duk_is_callable(ctx, -1)) {
-            duk_push_string(ctx, line);
-            int epc = duk_pcall(ctx, 1);
-            if (epc == 0 && duk_is_string(ctx, -1)) {
-                size_t sl;
-                const char *ps = duk_safe_to_lstring(ctx, -1, &sl);
-                if (sl < sizeof(line)) { memcpy(line, ps, sl); line[sl] = 0; }
+        JSValue prep = get_global_attr(ctx, "__nb_esm_prepare");
+        if (JS_IsFunction(ctx, prep)) {
+            JSValue av2[1]; av2[0] = JS_NewString(ctx, line);
+            JSValue g1 = JS_GetGlobalObject(ctx);
+            JSValue rp = JS_Call(ctx, prep, g1, 1, av2);
+            JS_FreeValue(ctx, g1);
+            JS_FreeValue(ctx, av2[0]);
+            if (!JS_IsException(rp)) {
+                if (JS_IsString(rp)) {
+                    size_t sl;
+                    char *ps = JS_ToCStringLen(ctx, &sl, rp);
+                    if (ps) {
+                        if (sl < sizeof(line)) { memcpy(line, ps, sl); line[sl] = 0; }
+                        JS_FreeCString(ctx, ps);
+                    }
+                }
+            } else {
+                JSValue e = JS_GetException(ctx);
+                JS_FreeValue(ctx, e);
             }
-            duk_pop(ctx);
-        } else { duk_pop(ctx); }
-
-        int rc = peval_budget(ctx, line);
-        if (rc != 0) {
-            const char *m = duk_safe_to_string(ctx, -1);
-            printf("err:%s\n", m ? m : "script error");
-        } else if (duk_get_type(ctx, -1) != DUK_TYPE_UNDEFINED) {
-            const char *s = duk_safe_to_string(ctx, -1);
-            printf("%s\n", s ? s : "");
+            JS_FreeValue(ctx, rp);
         }
-        duk_pop(ctx);
+        JS_FreeValue(ctx, prep);
+
+        JSValue rv = peval_budget_value(ctx, line, strlen(line));
+        if (JS_IsException(rv)) {
+            char tmp[512];
+            const char *m = js_error_to_cstr(ctx, tmp, sizeof(tmp));
+            printf("err:%s\n", m ? m : "script error");
+        } else {
+            if (!JS_IsUndefined(rv)) {
+                char disp[512];
+                const char *s = js_display_cstr(ctx, rv, disp, sizeof(disp));
+                printf("%s\n", s ? s : "");
+            }
+        }
+        JS_FreeValue(ctx, rv);
         fflush(stdout);
 
-        /* drain microtasks + timers (no lifecycle events), CPU-bounded */
+        /* drain jobs + timers (no lifecycle events), CPU-bounded */
         signal(SIGALRM, sigalrm);
-        alarm(EVAL_BUDGET_SEC);
+        alarm(nb_budget());
         uint64_t start = now_ms();
         for (int guard = 0; guard < 10000 && !g_pending_err; guard++) {
             if (now_ms() - start > 200) break;
             uint64_t now = now_ms();
             int ran = run_due_timers(ctx, now);
-            if (drain_microtasks(ctx)) ran = 1;
+            drain_jobs(ctx);
             if (!ran) {
                 uint64_t m = timer_min_due();
                 if (!m) break;
@@ -3265,166 +4776,209 @@ static int repl_main(void) {
         }
         alarm(0);
     }
-    duk_destroy_heap(ctx);
+    free_held_callbacks(ctx);
+    JS_FreeContext(ctx);
+    JS_FreeRuntime(rt);
     dom_teardown();
     return 0;
 }
 
 /* ---- CLI-1: node-like runner (nbjs file.js [args...]) ---- */
-static duk_ret_t nb_cli_stdout(duk_context *ctx) {
-    const char *s = duk_safe_to_string(ctx, 0);
+static JSValue nb_cli_stdout(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *own = NULL;
+    const char *s = NULL;
+    if (argc > 0) s = (own = JS_ToCString(ctx, argv[0]));
     if (g_out) { fputs(s ? s : "", g_out); fflush(g_out); }
-    return 0;
+    JS_FreeCString(ctx, own);
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_cli_stderr(duk_context *ctx) {
-    const char *s = duk_safe_to_string(ctx, 0);
+static JSValue nb_cli_stderr(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *own = NULL;
+    const char *s = NULL;
+    if (argc > 0) s = (own = JS_ToCString(ctx, argv[0]));
     if (s) { fputs(s, stderr); fflush(stderr); }
-    return 0;
+    JS_FreeCString(ctx, own);
+    return JS_UNDEFINED;
 }
 /* console.error -> stderr (node parity; log/info/warn stay on stdout) */
-static duk_ret_t nb_cli_error(duk_context *ctx) {
-    duk_idx_t n = duk_get_top(ctx);
-    for (duk_idx_t i = 0; i < n; i++) {
-        const char *s = duk_safe_to_string(ctx, i);
+static JSValue nb_cli_error(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    for (int i = 0; i < argc; i++) {
+        char *own = NULL;
+        const char *s = (own = JS_ToCString(ctx, argv[i]));
         if (s) fputs(s, stderr);
-        if (i + 1 < n) fputs(" ", stderr);
+        JS_FreeCString(ctx, own);
+        if (i + 1 < argc) fputs(" ", stderr);
     }
     fputs("\n", stderr);
     fflush(stderr);
-    return 0;
+    return JS_UNDEFINED;
 }
 /* CLI-2: read a module file for require(). Returns the source string, or
  * undefined if the path is missing/unreadable (loader turns that into a
  * "Cannot find module" error). Same 512 kB cap as the page loader. */
-static duk_ret_t nb_cjs_read_file(duk_context *ctx) {
-    const char *p = duk_safe_to_string(ctx, 0);
+static JSValue nb_cjs_read_file(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *own = NULL;
+    const char *p = NULL;
+    if (argc > 0) p = (own = JS_ToCString(ctx, argv[0]));
     char *s = NULL; size_t n = 0;
+    JSValue r;
     if (p && p[0] && read_file(p, &s, &n)) {
-        duk_push_lstring(ctx, s, n);
+        r = JS_NewStringLen(ctx, s, n);
         free(s);
-        return 1;
+    } else {
+        r = JS_UNDEFINED;
     }
-    duk_push_undefined(ctx);
-    return 1;
+    JS_FreeCString(ctx, own);
+    return r;
 }
-static duk_ret_t nb_cli_exit(duk_context *ctx) {
+static JSValue nb_cli_exit(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     int code = 0;
-    if (duk_get_top(ctx) > 0 && duk_is_number(ctx, 0)) code = (int)duk_get_int(ctx, 0);
+    if (argc > 0 && JS_IsNumber(argv[0])) {
+        double d;
+        if (JS_ToFloat64(ctx, &d, argv[0]) == 0) code = (int)d;
+    }
     if (g_out) fflush(g_out);
-    duk_destroy_heap(ctx);
     exit(code);
-    return 0;
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_cli_cwd(duk_context *ctx) {
+static JSValue nb_cli_cwd(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     char buf[PATH_MAX];
-    if (getcwd(buf, sizeof(buf))) duk_push_string(ctx, buf);
-    else duk_push_string(ctx, "/");
-    return 1;
+    if (getcwd(buf, sizeof(buf))) return JS_NewString(ctx, buf);
+    return JS_NewString(ctx, "/");
 }
 /* ---- CLI-3: fs-lite natives (sync-only, over the same read_file cap).
- * String-only payloads (no Buffer type in this Duktape); an optional
- * encoding arg is accepted so node-style call sites keep working. */
-static duk_ret_t nb_fs_readfile(duk_context *ctx) {
-    const char *p = duk_safe_to_string(ctx, 0);
+ * String-only payloads (no Buffer type); an optional encoding arg is
+ * accepted so node-style call sites keep working. */
+static JSValue nb_fs_readfile(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *own = NULL;
+    const char *p = NULL;
+    if (argc > 0) p = (own = JS_ToCString(ctx, argv[0]));
     char *s = NULL; size_t n = 0;
-    if (!p || !p[0] || !read_file(p, &s, &n))
-        return duk_error(ctx, DUK_ERR_ERROR, "ENOENT: cannot read '%s'", p ? p : "(empty)");
-    duk_push_lstring(ctx, s, n);
+    if (!p || !p[0] || !read_file(p, &s, &n)) {
+        char eb[512];
+        snprintf(eb, sizeof(eb), "ENOENT: cannot read '%s'", p ? p : "(empty)");
+        JSValue e = JS_NewError(ctx);
+        JS_SetPropertyStr(ctx, e, "message", JS_NewString(ctx, eb));
+        JS_Throw(ctx, e);
+        JS_FreeCString(ctx, own);
+        return JS_EXCEPTION;
+    }
+    JSValue r = JS_NewStringLen(ctx, s, n);
     free(s);
-    return 1;
+    JS_FreeCString(ctx, own);
+    return r;
 }
-static duk_ret_t nb_fs_writefile(duk_context *ctx) {
-    const char *p = duk_safe_to_string(ctx, 0);
-    const char *d = duk_safe_to_string(ctx, 1);
+static JSValue nb_fs_writefile(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *po = NULL, *do_ = NULL;
+    const char *p = argc > 0 ? (po = JS_ToCString(ctx, argv[0])) : NULL;
+    const char *d = argc > 1 ? (do_ = JS_ToCString(ctx, argv[1])) : NULL;
     FILE *f = fopen(p, "wb");
-    if (!f) return duk_error(ctx, DUK_ERR_ERROR, "EIO: cannot write '%s'", p ? p : "(empty)");
+    if (!f) {
+        char eb[512];
+        snprintf(eb, sizeof(eb), "EIO: cannot write '%s'", p ? p : "(empty)");
+        JSValue e = JS_NewError(ctx);
+        JS_SetPropertyStr(ctx, e, "message", JS_NewString(ctx, eb));
+        JS_Throw(ctx, e);
+        JS_FreeCString(ctx, po); JS_FreeCString(ctx, do_);
+        return JS_EXCEPTION;
+    }
     if (d) fwrite(d, 1, strlen(d), f);
     fclose(f);
-    return 0;
+    JS_FreeCString(ctx, po); JS_FreeCString(ctx, do_);
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_fs_appendfile(duk_context *ctx) {
-    const char *p = duk_safe_to_string(ctx, 0);
-    const char *d = duk_safe_to_string(ctx, 1);
+static JSValue nb_fs_appendfile(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *po = NULL, *do_ = NULL;
+    const char *p = argc > 0 ? (po = JS_ToCString(ctx, argv[0])) : NULL;
+    const char *d = argc > 1 ? (do_ = JS_ToCString(ctx, argv[1])) : NULL;
     FILE *f = fopen(p, "ab");
-    if (!f) return duk_error(ctx, DUK_ERR_ERROR, "EIO: cannot append '%s'", p ? p : "(empty)");
+    if (!f) {
+        char eb[512];
+        snprintf(eb, sizeof(eb), "EIO: cannot append '%s'", p ? p : "(empty)");
+        JSValue e = JS_NewError(ctx);
+        JS_SetPropertyStr(ctx, e, "message", JS_NewString(ctx, eb));
+        JS_Throw(ctx, e);
+        JS_FreeCString(ctx, po); JS_FreeCString(ctx, do_);
+        return JS_EXCEPTION;
+    }
     if (d) fwrite(d, 1, strlen(d), f);
     fclose(f);
-    return 0;
+    JS_FreeCString(ctx, po); JS_FreeCString(ctx, do_);
+    return JS_UNDEFINED;
 }
-static duk_ret_t nb_fs_exists(duk_context *ctx) {
-    const char *p = duk_safe_to_string(ctx, 0);
-    duk_push_boolean(ctx, p && p[0] && access(p, F_OK) == 0);
-    return 1;
+static JSValue nb_fs_exists(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *own = NULL;
+    const char *p = argc > 0 ? (own = JS_ToCString(ctx, argv[0])) : NULL;
+    JSValue r = JS_NewBool(ctx, p && p[0] && access(p, F_OK) == 0);
+    JS_FreeCString(ctx, own);
+    return r;
 }
-static duk_ret_t nb_fs_mkdir(duk_context *ctx) {
-    const char *p = duk_safe_to_string(ctx, 0);
-    if (!p || !p[0]) return duk_error(ctx, DUK_ERR_ERROR, "EINVAL: empty mkdir path");
+static JSValue nb_fs_mkdir(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *own = NULL;
+    const char *p = argc > 0 ? (own = JS_ToCString(ctx, argv[0])) : NULL;
+    if (!p || !p[0]) {
+        JSValue e = JS_NewError(ctx);
+        JS_SetPropertyStr(ctx, e, "message", JS_NewString(ctx, "EINVAL: empty mkdir path"));
+        JS_Throw(ctx, e);
+        JS_FreeCString(ctx, own);
+        return JS_EXCEPTION;
+    }
     char tmp[PATH_MAX];
     snprintf(tmp, sizeof(tmp), "%s", p);
     for (char *q = tmp + 1; *q; q++) {
         if (*q == '/') { *q = '\0'; mkdir(tmp, 0755); *q = '/'; }
     }
     mkdir(tmp, 0755);
-    return 0;
+    JS_FreeCString(ctx, own);
+    return JS_UNDEFINED;
 }
-static void nb_install_fs(duk_context *ctx) {
-    duk_push_object(ctx);                     /* fs (abs index 0) */
-    duk_push_c_function(ctx, nb_fs_readfile, 1);
-    duk_put_prop_string(ctx, 0, "readFileSync");
-    duk_push_c_function(ctx, nb_fs_writefile, 2);
-    duk_put_prop_string(ctx, 0, "writeFileSync");
-    duk_push_c_function(ctx, nb_fs_appendfile, 2);
-    duk_put_prop_string(ctx, 0, "appendFileSync");
-    duk_push_c_function(ctx, nb_fs_exists, 1);
-    duk_put_prop_string(ctx, 0, "existsSync");
-    duk_push_c_function(ctx, nb_fs_mkdir, 1);
-    duk_put_prop_string(ctx, 0, "mkdirSync");
-    duk_push_global_object(ctx);              /* [fs, G] */
-    duk_dup(ctx, -2);                         /* [fs, G, fs] */
-    duk_put_prop_string(ctx, -2, "__nb_fs");  /* G.__nb_fs = fs; -> [fs, G] */
-    duk_pop_2(ctx);
+static void nb_install_fs(JSContext *ctx) {
+    JSValue fs = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, fs, "readFileSync",   JS_NewCFunction(ctx, nb_fs_readfile, "readFileSync", 1));
+    JS_SetPropertyStr(ctx, fs, "writeFileSync",  JS_NewCFunction(ctx, nb_fs_writefile, "writeFileSync", 2));
+    JS_SetPropertyStr(ctx, fs, "appendFileSync", JS_NewCFunction(ctx, nb_fs_appendfile, "appendFileSync", 2));
+    JS_SetPropertyStr(ctx, fs, "existsSync",     JS_NewCFunction(ctx, nb_fs_exists, "existsSync", 1));
+    JS_SetPropertyStr(ctx, fs, "mkdirSync",      JS_NewCFunction(ctx, nb_fs_mkdir, "mkdirSync", 1));
+    JSValue fsg = JS_GetGlobalObject(ctx);
+    JS_SetPropertyStr(ctx, fsg, "__nb_fs", fs);
+    JS_FreeValue(ctx, fsg);
 }
+
 /* build a JS object from the process environment (not the full sys env —
  * see getenv below). Env exposure is opt-in via require('os')-free helper;
  * CLI-1 keeps it simple: expose a snapshot under process.env. */
-static void nb_cli_install(duk_context *ctx, int argc, char **argv) {
-    duk_push_object(ctx);                    /* process (abs index 0) */
+static void nb_cli_install(JSContext *ctx, int argc, char **argv) {
+    JSValue process = JS_NewObject(ctx);
     /* argv — node convention: [interpreter, script, args...] */
-    duk_idx_t argv_arr = duk_push_array(ctx);
+    JSValue argv_arr = JS_NewArray(ctx);
     for (int i = 0; i < argc; i++) {
-        duk_push_string(ctx, argv[i]);
-        duk_put_prop_index(ctx, argv_arr, (duk_uarridx_t)i);
+        JS_SetPropertyUint32(ctx, argv_arr, (uint32_t)i, JS_NewString(ctx, argv[i]));
     }
-    duk_put_prop_string(ctx, 0, "argv");     /* process.argv = [strings] */
+    JS_SetPropertyStr(ctx, process, "argv", argv_arr);
 
     /* env (snapshot of environ, ENAME="value" pairs) */
-    duk_idx_t env_obj = duk_push_object(ctx);   /* abs index 1 */
+    JSValue env_obj = JS_NewObject(ctx);
     for (char **e = environ; e && *e; e++) {
         const char *eq = strchr(*e, '=');
         if (!eq) continue;
         char *k = strndup(*e, (size_t)(eq - *e));
-        if (k) { duk_push_string(ctx, k); duk_push_string(ctx, eq + 1); duk_put_prop(ctx, env_obj); free(k); }
+        if (k) { JS_SetPropertyStr(ctx, env_obj, k, JS_NewString(ctx, eq + 1)); free(k); }
     }
-    duk_put_prop_string(ctx, 0, "env");      /* process.env = {...} */
-    duk_push_c_function(ctx, nb_cli_cwd, 0);
-    duk_put_prop_string(ctx, 0, "cwd");      /* process.cwd = fn */
+    JS_SetPropertyStr(ctx, process, "env", env_obj);
+    JS_SetPropertyStr(ctx, process, "cwd", JS_NewCFunction(ctx, nb_cli_cwd, "cwd", 0));
     /* stdout / stderr — each a small object with write() */
-    duk_push_object(ctx);                    /* abs index 1 */
-    duk_push_c_function(ctx, nb_cli_stdout, DUK_VARARGS);
-    duk_put_prop_string(ctx, 1, "write");
-    duk_put_prop_string(ctx, 0, "stdout");
-    duk_push_object(ctx);                    /* abs index 1 */
-    duk_push_c_function(ctx, nb_cli_stderr, DUK_VARARGS);
-    duk_put_prop_string(ctx, 1, "write");
-    duk_put_prop_string(ctx, 0, "stderr");
-    duk_push_c_function(ctx, nb_cli_exit, DUK_VARARGS);
-    duk_put_prop_string(ctx, 0, "exit");     /* process.exit = fn */
+    JSValue so = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, so, "write", JS_NewCFunction(ctx, nb_cli_stdout, "write", 1));
+    JS_SetPropertyStr(ctx, process, "stdout", so);
+    JSValue se = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, se, "write", JS_NewCFunction(ctx, nb_cli_stderr, "write", 1));
+    JS_SetPropertyStr(ctx, process, "stderr", se);
+    JS_SetPropertyStr(ctx, process, "exit", JS_NewCFunction(ctx, nb_cli_exit, "exit", 1));
 
     /* expose as global `process` */
-    duk_push_global_object(ctx);
-    duk_dup(ctx, -2);
-    duk_put_prop_string(ctx, -2, "process");
-    duk_pop_2(ctx);
+    JSValue pg = JS_GetGlobalObject(ctx);
+    JS_SetPropertyStr(ctx, pg, "process", process);
+    JS_FreeValue(ctx, pg);
 }
 
 /* The released browser page runner: duk --browser page.js [fetch.dom]
@@ -3453,8 +5007,8 @@ static int browser_cli_main(int argc, char **argv) {
     return g_cli_status_ok ? 0 : 1;
 }
 
-/* CLI-2 CommonJS loader + CLI-4 source-level ESM transpiler. Pure ES5.1
- * JS so it works on Duktape 2.7.0 (no arrows/let): relative/absolute
+/* CLI-2 CommonJS loader + CLI-4 source-level ESM transpiler. Written in
+ * conservative ES5.1 (no arrows/let): relative/absolute
  * resolution, module/exports wrapper, JSON require, cycles, and a line-
  * based import/export → CJS rewrite. Exposes `require`/`__dirname`/`__filename`
  * plus `__nb_esm_prepare(src)` for the C entry hook and REPL. */
@@ -3487,7 +5041,7 @@ static const char g_cjs_prelude[] =
 " * Heuristic: a line starting (after ws) with `import` or `export` triggers\n"
 " * transpile. Handles: default/named/namespace/side-effect imports,\n"
 " * function/variable/const/default/named/re-export/export-star-from.\n"
-" * Output uses `var` (Duktape-safe). Does NOT support multi-line imports,\n"
+" * Output uses `var` (conservative). Does NOT support multi-line imports,\n"
 " * decorators, type annotations, or dynamic `import()`. */\n"
 "function esmLooks(s){\n"
 "  return /(^|\\n)\\s*(import|export)\\b/.test(s);\n"
@@ -3686,31 +5240,30 @@ static int cli_main(int argc, char **argv) {
         return 2;
     }
 
-    duk_context *ctx = duk_create_heap(NULL, NULL, NULL, NULL, fatal_handler);
-    if (!ctx) return 1;
+    JSRuntime *rt = JS_NewRuntime();
+    if (!rt) return 1;
+    JSContext *ctx = JS_NewContext(rt);
+    if (!ctx) { JS_FreeRuntime(rt); return 1; }
 
     /* node-like host: console/print only, plus process. No DOM, no events,
      * no timers, no browser prelude — window/document/location are absent. */
-    duk_push_global_object(ctx);
-    duk_push_c_function(ctx, native_log, DUK_VARARGS);
-    duk_put_prop_string(ctx, -2, "print");
-    duk_push_object(ctx);
-    duk_push_c_function(ctx, native_log, DUK_VARARGS);
-    duk_put_prop_string(ctx, -2, "log");
-    duk_push_c_function(ctx, native_log, DUK_VARARGS);
-    duk_put_prop_string(ctx, -2, "info");
-    duk_push_c_function(ctx, native_log, DUK_VARARGS);
-    duk_put_prop_string(ctx, -2, "warn");
-    duk_push_c_function(ctx, nb_cli_error, DUK_VARARGS);
-    duk_put_prop_string(ctx, -2, "error");
-    duk_put_prop_string(ctx, -2, "console");
-    duk_pop(ctx);
+    {
+        JSValue g = JS_GetGlobalObject(ctx);
+        JSValue console = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, console, "log",   JS_NewCFunction(ctx, native_log, "log", 1));
+        JS_SetPropertyStr(ctx, console, "info",  JS_NewCFunction(ctx, native_log, "info", 1));
+        JS_SetPropertyStr(ctx, console, "warn",  JS_NewCFunction(ctx, native_log, "warn", 1));
+        JS_SetPropertyStr(ctx, console, "error", JS_NewCFunction(ctx, nb_cli_error, "error", 1));
+        JS_SetPropertyStr(ctx, g, "print",  JS_NewCFunction(ctx, native_log, "print", 1));
+        JS_SetPropertyStr(ctx, g, "console", console);
+        JS_FreeValue(ctx, g);
+    }
 
     /* process.argv = [interp, script, args...] (node convention) */
     {
         int nargv = 1 + (argc - script_i);
         char **a = calloc((size_t)nargv, sizeof(char *));
-        if (!a) { duk_destroy_heap(ctx); return 1; }
+        if (!a) { JS_FreeContext(ctx); JS_FreeRuntime(rt); return 1; }
         a[0] = argv[0];
         for (int i = 0; i + script_i < argc; i++) a[i + 1] = argv[script_i + i];
         nb_cli_install(ctx, nargv, a);
@@ -3720,8 +5273,10 @@ static int cli_main(int argc, char **argv) {
     /* CLI-2 CommonJS + CLI-3 fs: the only host hook the JS loader needs is
      * a module file reader; it defines `require`/`__dirname`/`__filename`
      * itself. `require('fs')` resolves to the fs-lite natives below. */
-    duk_push_c_function(ctx, nb_cjs_read_file, 1);
-    duk_put_global_string(ctx, "__nb_read_file");
+    JSValue rg = JS_GetGlobalObject(ctx);
+    JS_SetPropertyStr(ctx, rg, "__nb_read_file",
+                      JS_NewCFunction(ctx, nb_cjs_read_file, "__nb_read_file", 1));
+    JS_FreeValue(ctx, rg);
     nb_install_fs(ctx);
 
     /* Entry directory/file, absolute, for the entry script's require base. */
@@ -3741,28 +5296,38 @@ static int cli_main(int argc, char **argv) {
             else if (!getcwd(entry_dir, sizeof(entry_dir))) snprintf(entry_dir, sizeof(entry_dir), ".");
         }
     }
-    if (peval_budget(ctx, g_cjs_prelude) != 0) {
-        const char *m = duk_safe_to_string(ctx, -1);
-        fprintf(stderr, "%s\n", m ? m : "loader error");
-        duk_destroy_heap(ctx);
+    char errbuf[512];
+    if (peval_budget(ctx, g_cjs_prelude, strlen(g_cjs_prelude), errbuf, sizeof(errbuf)) != 0) {
+        fprintf(stderr, "%s\n", errbuf[0] ? errbuf : "loader error");
+        JS_FreeContext(ctx); JS_FreeRuntime(rt);
         return 1;
     }
-    duk_pop(ctx);
-    duk_get_global_string(ctx, "__nb_install_cjs");
-    duk_push_string(ctx, entry_dir);
-    duk_push_string(ctx, entry_file);
-    int lrc;
+    JSValue install = get_global_attr(ctx, "__nb_install_cjs");
+    if (!JS_IsFunction(ctx, install)) {
+        JS_FreeValue(ctx, install);
+        JS_FreeContext(ctx); JS_FreeRuntime(rt);
+        return 1;
+    }
+    JSValue av[2];
+    av[0] = JS_NewString(ctx, entry_dir);
+    av[1] = JS_NewString(ctx, entry_file);
+    JSValue g1 = JS_GetGlobalObject(ctx);
     signal(SIGALRM, sigalrm);
-    alarm(EVAL_BUDGET_SEC);
-    lrc = duk_pcall(ctx, 2);
+    alarm(nb_budget());
+    JSValue rr = JS_Call(ctx, install, g1, 2, av);
+    JS_FreeValue(ctx, g1);
+    JS_FreeValue(ctx, install);
     alarm(0);
-    if (lrc != 0) {
-        const char *m = duk_safe_to_string(ctx, -1);
+    JS_FreeValue(ctx, av[0]); JS_FreeValue(ctx, av[1]);
+    if (JS_IsException(rr)) {
+        char tmp[512];
+        const char *m = js_error_to_cstr(ctx, tmp, sizeof(tmp));
         fprintf(stderr, "%s\n", m ? m : "loader error");
-        duk_destroy_heap(ctx);
+        JS_FreeValue(ctx, rr);
+        JS_FreeContext(ctx); JS_FreeRuntime(rt);
         return 1;
     }
-    duk_pop(ctx);
+    JS_FreeValue(ctx, rr);
 
     char *src = NULL; size_t n = 0;
     if (strcmp(pg, "-") == 0) {
@@ -3770,69 +5335,69 @@ static int cli_main(int argc, char **argv) {
         {
             size_t cap = 1 << 16, len = 0;
             char *b = malloc(cap);
-            if (!b) { duk_destroy_heap(ctx); return 1; }
+            if (!b) { JS_FreeContext(ctx); JS_FreeRuntime(rt); return 1; }
             for (;;) {
                 size_t got = fread(b + len, 1, cap - len, stdin);
                 len += got;
-                if (len == cap) { cap *= 2; b = realloc(b, cap); if (!b) { duk_destroy_heap(ctx); return 1; } }
+                if (len == cap) { cap *= 2; b = realloc(b, cap); if (!b) { JS_FreeContext(ctx); JS_FreeRuntime(rt); return 1; } }
                 if (feof(stdin) || got == 0) break;
             }
             b[len] = 0; src = b; n = len;
         }
     } else if (!read_file(pg, &src, &n)) {
         fprintf(stderr, "nbjs: cannot read %s\n", pg);
-        duk_destroy_heap(ctx);
+        JS_FreeContext(ctx); JS_FreeRuntime(rt);
         return 2;
     }
 
     /* CLI-4: source-level ESM — ask the loader's __nb_esm_prepare for
      * transpiled source (or the original unchanged). The loader prelude
      * must have run already (__nb_install_cjs installs it). */
-    duk_get_global_string(ctx, "__nb_esm_prepare");
-    if (duk_is_callable(ctx, -1)) {
-        duk_push_lstring(ctx, src, n);
-        int epc = duk_pcall(ctx, 1);
-        if (epc == 0 && duk_is_string(ctx, -1)) {
+    JSValue prep = get_global_attr(ctx, "__nb_esm_prepare");
+    if (JS_IsFunction(ctx, prep)) {
+        JSValue av2[1]; av2[0] = JS_NewStringLen(ctx, src, n);
+        JSValue g2 = JS_GetGlobalObject(ctx);
+        JSValue rp = JS_Call(ctx, prep, g2, 1, av2);
+        JS_FreeValue(ctx, g2);
+        if (JS_IsException(rp)) {
+            JSValue e = JS_GetException(ctx);
+            JS_FreeValue(ctx, e);
+        } else if (JS_IsString(rp)) {
             size_t sl;
-            const char *ps = duk_safe_to_lstring(ctx, -1, &sl);
-            char *ns = malloc(sl + 1);
-            if (ns) { memcpy(ns, ps, sl + 1); free(src); src = ns; n = sl; }
+            char *ps = JS_ToCStringLen(ctx, &sl, rp);
+            if (ps) {
+                char *ns = malloc(sl + 1);
+                if (ns) { memcpy(ns, ps, sl + 1); free(src); src = ns; n = sl; }
+                JS_FreeCString(ctx, ps);
+            }
         }
-        duk_pop(ctx);
-    } else { duk_pop(ctx); }
+        JS_FreeValue(ctx, rp);
+        JS_FreeValue(ctx, av2[0]);
+    }
+    JS_FreeValue(ctx, prep);
 
-    /* Compile with shebang support, then call the module body. */
-    duk_push_string(ctx, pg);   /* filename arg (stack shape: [filename]) */
-    int rc = duk_pcompile_lstring_filename(ctx, DUK_COMPILE_SHEBANG, src, n);
+    /* Strip a leading shebang line (the page runner has the same rule), then
+     * run the module body with a CPU budget. */
+    if (n > 2 && src[0] == '#' && src[1] == '!') {
+        char *nl = strchr(src, '\n');
+        if (nl) { size_t off = (size_t)(nl + 1 - src); n -= off; memmove(src, nl + 1, n); src[n] = 0; }
+    }
+    if (peval_budget(ctx, src, n, errbuf, sizeof(errbuf)) != 0) {
+        fprintf(stderr, "%s\n", errbuf[0] ? errbuf : "script error");
+        free(src);
+        JS_FreeContext(ctx); JS_FreeRuntime(rt);
+        return 1;
+    }
     free(src);
-    if (rc != 0) {
-        const char *m = duk_safe_to_string(ctx, -1);
-        fprintf(stderr, "%s\n", m ? m : "script error");
-        duk_destroy_heap(ctx);
-        return 1;
-    }
-    /* CPU guard: a while(true){} script must be killed, same guarantee as
-     * the page runner. sigalrm() hard-exits the worker; in CLI mode that's
-     * a clean-enough "runaway script" stop (exit via signal). */
-    int rc2;
-    signal(SIGALRM, sigalrm);
-    alarm(EVAL_BUDGET_SEC);
-    rc2 = duk_pcall(ctx, 0);
-    alarm(0);
-    if (rc2 != 0) {
-        const char *m = duk_safe_to_string(ctx, -1);
-        fprintf(stderr, "%s\n", m ? m : "script error");
-        duk_destroy_heap(ctx);
-        return 1;
-    }
-    duk_pop(ctx);
     if (g_out) fflush(g_out);
-    duk_destroy_heap(ctx);
+    JS_FreeContext(ctx);
+    JS_FreeRuntime(rt);
     return 0;
 }
 
 int main(int argc, char **argv) {
     g_out = NULL;   /* step 2: no effects file yet; console goes nowhere */
+    if (getenv("NB_TRACE_CB")) g_trace_cb = 1;   /* full callback exceptions to stderr */
     {
         const char *nbw_out = getenv("NBW_CONSOLE");
         if (nbw_out && nbw_out[0]) {

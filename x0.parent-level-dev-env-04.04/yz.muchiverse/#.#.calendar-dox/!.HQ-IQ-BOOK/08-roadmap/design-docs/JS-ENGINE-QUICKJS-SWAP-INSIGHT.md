@@ -1,8 +1,10 @@
 # JS engine swap insight — Duktape is the floor, QuickJS is the door (row 31)
 
-**Status:** graft IN PROGRESS — QuickJS vendored, code edits NOT yet
-started. If you are a NEW instance resuming this: read §8 (RESUME PACK)
-before anything else.
+**Status:** graft **DONE** — engine transplanted and green (full
+`make check` 44 PASS / 0 FAIL on QuickJS 2026-06-04, commits
+`5d1e8bd7` engine headers + `07aa2200` full graft). §8's resume pack is
+**historical** (it described the pre-graft state); the graft receipts
+and engine file list are in §10.
 **Date:** 2026-09-17 (updated 2026-09-18)
 **Scope:** `44.xyz.01.00/&.hq-apps/network/` — the `nbjs` JS engine
 (`&.hq-apps/js/duktape.*`) and its C boundary in `ops/nb_js_worker.c`.
@@ -390,10 +392,11 @@ NOT STARTED:
 
 ### 8.6 Rollback anchor (adjusted 2026-09-18)
 
-`duktape.c/.h/duk_config.h` remain vendored in `&.hq-apps/js/`; the
-pre-graft `opencode` commits are the recovery point. `nb_js_eval.c` is
-now QuickJS too — do NOT leave it Duktape against a QuickJS `nb_host.h`
-(it won't compile).
+`duktape.c/.h/duk_config.h` are gone from the working tree (deleted in the
+graft cleanup commit) — they remain recoverable from git history, as does
+the pre-graft `nb_js_worker.c`/`nb_host.h`/`nb_js_eval.c`. `nb_js_eval.c`
+is QuickJS; there is no Duktape build to fall back to. `stb_image.h` in
+`&.hq-apps/js/` stays (media ops include it).
 
 ### 8.7 Where to prove / other pointers
 
@@ -472,6 +475,43 @@ the worker (translate via the table above and mirror shape).
 
 ## 10. Work log (appended by session)
 
+### 2026-09-18 — graft DONE (receipts, commits `5d1e8bd7` + `07aa2200`)
+- **Engine files** live in `&.hq-apps/js/` (committed `5d1e8bd7`):
+  `quickjs.c/.h`, `quickjs-atom.h`, `quickjs-opcode.h`, `cutils.c/.h`,
+  `libregexp.c/.h`, `libregexp-opcode.h`, `libunicode.c/.h`,
+  `libunicode-table.h`, `dtoa.c/.h`, `list.h`. `duktape.c/.h` + `duk_config.h` + the old
+  `install-duk.sh` were REMOVED in the 2026-09-18 cleanup (rollback now =
+  git history, not on-disk files); `stb_image.h` stays (nb_media_to_sprite
+  still includes it).
+- **Boundary transplant** (`07aa2200`, 5 files): nb_js_worker.c +
+  nb_host.h fully duk→QuickJS (105 natives, heap lifecycle, event loop,
+  registrations); microtask FIFO + prelude Promise polyfill **deleted**,
+  drain = `while(JS_IsJobPending(rt)) JS_ExecutePendingJob(rt,&jctx)`;
+  stash timers → C-held `JSValue` dup/free; nb_js_eval.c ported (shares
+  nb_host.h). Makefile `nbjs` + build.sh ops lines: 5 engine TUs,
+  `-std=gnu11 -D_GNU_SOURCE -DCONFIG_VERSION=\"2026-06-04\" -fwrapv
+  -pthread`.
+- **Bug fixes found by the transplant + suites:**
+  - `JS_IsCallable` is not in public quickjs.h — use `JS_IsFunction`.
+  - 5 leaked `JS_GetGlobalObject` refs (run_page `__nb_ges`, install_fs
+    `__nb_fs`, repl/cli `__nb_read_file`, cli `process`) + the
+    `esmPrepare` handle (`prep` freed only in the else branch) — all
+    fixed; a single leaked handle makes `JS_FreeRuntime` assert
+    (`list_empty(&rt->gc_obj_list)`, quickjs.c ~2464). Diagnosed with a
+    `-DDUMP_LEAKS` build (prints "Object leaks: …").
+  - **wps slice bug:** QuickJS's lexer peeks `input[input_len]` for EOI
+    checks, so `JS_Eval` must receive NUL-terminated input. Script
+    slices are mid-malloc-buffer; the byte after a slice was `/` (start
+    of the next boundary), manufacturing bogus
+    "unexpected end of string"/`'<<'` SyntaxErrors. Fix:
+    `((char*)p)[slice] = 0;` before each slice eval in
+    `run_scripts_slices` (slices own one contiguous buffer).
+- **Evidence:** `make check` exit 0 — 44 suites, 60 PASS lines, 0 FAIL
+  (fresh `make nbjs` + fresh run; wps repro pages `/tmp/nbjs-check/
+  caseA.js`/`caseB.js` byte-verified). Deployable ops binaries rebuilt
+  via `build.sh`; eval op probe `print("eval-op-ok")` → `OK|1`.
+- Safe to resume §8.5 step 8's row-31 real-bundle receipt.
+
 ### 2026-09-18 — vendor DONE + full API map + resume-pack handoff
 - Vendored official QuickJS **2026-06-04** into `&.hq-apps/js/` (13
   files; duktape kept for rollback). *Commit pending — the vendored
@@ -487,3 +527,72 @@ the worker (translate via the table above and mirror shape).
 - This RESUME PACK (§8) + translation table (§9) written so a fresh
   instance can restart the graft cold. Next action on resume: commit
   vendored files, then run §8.5 steps 2→8.
+
+### 2026-09-18 — row-31 real-bundle receipts (graft proven on youtube's code)
+- Fetched real youtube bundle files to `/tmp/yt` (`home.html`, `spf.js`,
+  `network.js`, `scheduler.js`, `web-animations.min.js`, `kevlar_base.js`)
+  and ran them under `./nbjs --browser <file> [fetch.dom]`. spf/network/
+  scheduler/web-animations eval clean; `kevlar_base.js` (10,790,631 bytes,
+  one IIFE) is loaded and parsed whole.
+- Commits on `opencode` (scoped, `make check` re-run green each time):
+  - `0c5a24a7` DOM class hierarchy + `createElementNS` + canvas 2D stub +
+    `NB_STACK` traces. Root-cause chain for web-animations: missing
+    `document.createElementNS` → `Element` global undefined
+    (`Element.prototype` read at load) → `<canvas>.getContext` absent.
+  - `fddc91b7` `read_file_big` page-only stream load (64MB ceiling; 512KB
+    `read_file` kept for fs-lite/CJS) + `NB_EVAL_BUDGET` override. Kevlar
+    whole-file load: 8.3s wall, 104MB peak RSS.
+  - `18943d95` constructors (quickjs.c:17642 gives C constructors
+    `new_target` as `this_val`; they must build the instance) +
+    `customElements`/`CSSStyleSheet` + standard element/event globals +
+    `hasAttribute` + prelude `MessageChannel` / `<template>.content`.
+    Note: `add_global_class` deliberately does NOT clobber the prelude's
+    `Event` (nb_el_click builds clicks through it — clobbering broke rung-3
+    events, caught by `make check`).
+  - `b6129605` computed-style `fontSize` (kevlar font metrics).
+- **Where kevlar stops:** line 26741 `querySelector('ytd-app')` with the
+  minimal DOM (fixture-content gap); with a `fetch.dom` built from the real
+  `home.html` it boots its Polymer element system (real Polymer console
+  output) and stops at line 1314's bundle-URL assertion (`Error: Tc`,
+  `_F_jsUrl` mismatch vs the file-loaded script) — app/config-specific, not
+  an engine gap. `make check` remains 60 PASS / 0 FAIL.
+
+### 2026-09-18 — kevlar boots + renders (the `_F_jsUrl` stop cleared)
+- Diagnosed the line-1314 byter (`Nkz`, closure module loader): it computes
+  the bundle URL as `D = O.src ? O.src : O.getAttribute("href")` where
+  `O = getElementById("base-js")`, then requires `Vsi(D)` (URL must match
+  `/(_/js/|_/ss/)…/k=/`). `window._F_jsUrl` (`_.$c._F_jsUrl`) is unset in
+  the fetched page, so the `base-js` script element is the source of truth —
+  and the HTML parser was dropping it (is_skip covered `script`+`head`).
+- Fix `0063797e`: `nb_dom.c` keeps raw-text elements (script/style/title/
+  noscript) as DOM nodes and no longer skips `<head>`; `push_node` exposes
+  `.src`/`.href` from the raw attribute (closure reads these directly).
+- **Receipt:** `./nbjs --browser kevlar_base.js fetch.home.dom`
+  (fetch.dom from the real `home.html`, 419 nodes incl 42 scripts) now runs
+  kevlar to completion: Polymer boots, the app renders the youtube footer
+  (15 `LINK|` frames + `© 2026 Google LLC` `TEXT|`), exit 0. `make check`
+  60/0.
+- Follow-up `09fc27b9`: the one logged `TypeError` came from youtube's
+  error reporter (`C2y`) doing `script.src.indexOf("/debug-")` on inline
+  scripts (no src attr → our accessor was undefined). `.src`/`.href` are
+  now strings (`""` when absent) on the tags that own them; kevlar runs with
+  ZERO logged errors. `native_log` also appends a caught `.stack` under
+  `NB_STACK=1`.
+### 2026-09-19 — row-31 acceptance: real youtube zero-error through the manager
+- Full script graph (43 slices, 11.9 MB page.js) fetched by the manager and
+  run end-to-end with the visitor+signature context. New host surfaces the
+  real bundles pulled out, each fixed in one loop iteration: global
+  `Image`; `document.createEvent` + `initEvent`/`initCustomEvent`;
+  `querySelector` attribute selectors (before: trailing `[...]` dropped,
+  wrong truthy tag match); `Node.contains`/`document.contains`;
+  `document.createTreeWalker` + `NodeFilter` constants + working walker
+  (ShadyDOM's `M`/`N`); `document.implementation.createHTMLDocument`
+  (ShadyDOM's "inert" scratch doc); the `Window` interface; and
+  `window.__shady_native_*` aliases (ShadyDOM copies natives off
+  prototypes, ours are own props → `Ae()` threw at init).
+- **Receipt:** `worker.err.log` 0 bytes; `TITLE|YouTube` + 15 `LINK|`
+  footer + `© 2026 Google LLC` `TEXT|` via the manager. `make check` 60/0.
+- Insight: webcomponents-lite's ShadyDOM is the deepest standard-surface
+  consumer on youtube's home page (TreeWalker, Node contains, DynamicProto
+  `__shady_native_*` descriptor-copy capture, scratch documents); its
+  init exposes holes one at a time in load order.

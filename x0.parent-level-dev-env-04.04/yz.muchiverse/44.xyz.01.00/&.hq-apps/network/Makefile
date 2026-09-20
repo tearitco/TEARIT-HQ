@@ -13,15 +13,19 @@
 # mode (manager back-end) is the same binary with no arguments.
 
 CC      ?= cc
-CFLAGS  ?= -std=c11 -Wall -O2
+CFLAGS  ?= -std=gnu11 -Wall -O2
+QWFLAGS := -D_GNU_SOURCE -DCONFIG_VERSION=\"2026-06-04\" -fwrapv
 PREFIX  ?= /usr/local
 BINDIR  ?= $(PREFIX)/bin
 JS_DIR  ?= ../js
 
 SRC := ops/nb_js_worker.c nb_dom.c nb_css.c
+# QuickJS 2026-06-04 engine (replaces Duktape 2.7.0 for ES2020+ page code).
+QJS := $(JS_DIR)/quickjs.c $(JS_DIR)/cutils.c $(JS_DIR)/libregexp.c \
+       $(JS_DIR)/libunicode.c $(JS_DIR)/dtoa.c
 
-nbjs: $(SRC) ops/nb_host.h nb_dom.h $(JS_DIR)/duktape.c
-	$(CC) $(CFLAGS) -I$(JS_DIR) -o $@ $(SRC) $(JS_DIR)/duktape.c -lm
+nbjs: $(SRC) ops/nb_host.h nb_dom.h $(QJS) $(JS_DIR)/quickjs.h
+	$(CC) $(CFLAGS) $(QWFLAGS) -pthread -I$(JS_DIR) -o $@ $(SRC) $(QJS) -lm
 
 # headless test drivers (same framing the manager speaks over sockets)
 nbw: nbjs

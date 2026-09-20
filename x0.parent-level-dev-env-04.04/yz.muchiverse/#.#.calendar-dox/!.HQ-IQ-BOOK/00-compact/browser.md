@@ -7,17 +7,47 @@ the two docs at the bottom. Current session verbatim state (what was
 said/done, pending decisions) is in the **Work log** section — update
 it at the end of every block.
 
-**Last updated:** 2026-09-18 (QuickJS graft IN PROGRESS — engine cell
-touched, suites NOT yet run on the new engine)
+**Last updated:** 2026-09-18 (QuickJS graft DONE — engine cell fully
+translated, full `make check` GREEN on the new engine)
 
 **Branch:** `opencode` (this agent's own branch; never commit to
 `main`/`claude`/`grok`). Nothing is ever pushed without the user's
 explicit "push" verb.
 **Build:** `make nbjs` (workspace `44.xyz.01.00/&.hq-apps/network`).
-**Full suite:** `make check` — currently **44 PASS / 0 FAIL** (wfp added
-this set, no regressions).
+**Engine:** QuickJS **2026-06-04** (vendored `&.hq-apps/js/`; duktape
+files removed 2026-09-18, recoverable from git history). Build needs
+`-std=gnu11 -D_GNU_SOURCE -DCONFIG_VERSION="2026-06-04" -fwrapv
+-pthread`.
+**Full suite:** `make check` — **44 PASS / 0 FAIL** on the QuickJS
+build (fresh build + fresh run, commit `07aa2200`).
 
 ---
+
+## Autonomous loop (row 31 → row 31 done)
+
+The user authorized a self-driven loop (`2026-09-18`): *test, push, move on
+to the next task, repeat until done*. Each task runs the SAME cycle, and no
+step is skipped:
+
+1. **Diagnose** — reproduce with a fresh run; read the real bundle/engine
+   source, don't guess.
+2. **Fix** — smallest change at the right layer (engine > DOM > fixture;
+   no per-site hardcoding).
+3. **Rebuild + fresh evidence** — `make nbjs`, re-run the real bundle to a
+   log under `/tmp/yt/`, quote the actual frames/lines (a clean compile is
+   not evidence).
+4. **`make check`** — must stay **60 PASS / 0 FAIL**.
+5. **Commit** — scoped `git add <path>` on `opencode` only, `fix:`/`docs:`
+   message with the receipt inline; update this Work log.
+6. **Push** — `git push` (user pre-authorized this loop).
+
+**Definition of done (row 31):**
+- **A.** kevlar runs with no logged errors. **DONE** (`09fc27b9`).
+- **B.** the real `home.html` **module graph** is fetched + executed
+  **through the manager** (not `/tmp` files) with the visitor+signature
+  context attached, and renders the page. **DONE** (`62ea0332`) — 43
+  slices run zero-error; `TITLE|YouTube` + footer renders via manager.
+- **C.** keep `make check` green and this doc current after every block.
 
 ## The browser shape (Chromium parity — the standard, no drift)
 
@@ -42,6 +72,132 @@ this set, no regressions).
 | 32f | same feed through the **fetch()** surface (row 31's bundle uses fetch(), not XHR) | **BUILT** — `worker_fetch_post_test`/`wfp` (Promise-chain `fetch(url,{method,headers,body})` → same signed innerTube POST → `response.json()` + fetch() 401 rejection surfaced; no engine changes) |
 
 ## Work log (most recent first)
+
+### 2026-09-19 watch page + multi-navigation session (same engine, zero errors)
+- **Watch page runs clean through the manager, no code changes:**
+  `go:https://www.youtube.com/watch?v=dQw4w9WgXcQ` on an isolated house
+  (`/tmp/nbhouse31k`, `NB_STACK=1`): ready in 5 s, **0-byte** worker
+  error log, and page.state renders the real page —
+  `TITLE|Rick Astley - Never Gonna Give You Up (Official Video)
+  (4K Remaster)`, `MEDIA|V|` player frame + 2 `MEDIA|I|` thumbnail
+  frames, 2 `LINK|` suggested-video rows, and **56 `TEXT|` rows** (real
+  description, lyrics, `1,817,815,553 views`, `4.54M subscribers`).
+  The same 43-slice real bundle graph that renders the home page handles
+  the watch page with zero host-surface gaps.
+- **Multi-navigation in ONE resident worker session**
+  (`/tmp/nbhouse31l`): `go:/` → ready → `go:/watch?v=…` → ready; both
+  loads 0-byte errors, watch render = 81 rows + full title; the session
+  jar (`nb_curl_cookies.txt`, 926 B) persisted across both navigations —
+  rows 32/34/35 (fetch surface, jar, signed innerTube attach) hold
+  end-to-end over two real pages in a single manager house.
+
+### 2026-09-19 row-31 acceptance: real youtube runs zero-error through the manager
+- **Through-manager end-to-end on the real page**, each iteration
+  diagnosing the newest host gap the real scripts expose (autonomous
+  loop): global `Image` (youtube's inline `ytPrewarmYtimg`); 
+  `document.createEvent` + `initEvent`/`initCustomEvent` (closure
+  base feature-detect); `querySelector` **attribute selectors**
+  (`[src*="..."]` — previously the trailing `[...]` was dropped and the
+  first `<script>` was wrongly matched truthy → ShadyDOM deref'd it);
+  `Node.contains` + `document.contains` (webcomponents-lite's
+  `document.contains.bind(document)` fallback chain); **TreeWalker** +
+  `NodeFilter` SHOW_* constants + `document.createTreeWalker`
+  (ShadyDOM drives its Node.prototype accessors through `M`/`N`
+  walkers); `document.implementation.createHTMLDocument` (the "inert"
+  scratch doc ShadyDOM parses HTML strings through); the `Window`
+  interface (ShadyDOM patches `Window.prototype`); and the
+  `window.__shady_native_addEventListener`/`removeEventListener`/
+  `dispatchEvent` aliases — ShadyDOM copies *native* methods off
+  prototypes via `L()`, but our natives are own props on
+  window/elements, so the capture came up empty and `Ae()` threw
+  "not a function" at init.
+- Manager caps raised so the real graph fits: `NB_MAX_SCRIPTS 64`,
+  `NB_MAX_EXT_SCRIPTS 48` (was hardcoded 8 / 4) in
+  `network_browser_manager.c`.
+- **Receipt:** `go:https://www.youtube.com/` through the manager on an
+  isolated house (`/tmp/nbhouse31j`, `NB_STACK=1`): status `ready` in
+  15 s; `page.js` 11,898,337 bytes / **43 script slices**; page state =
+  `TITLE|YouTube`, 15 `LINK|` frames (footer incl `/t/terms`,
+  `/t/privacy`, `/new`, `developers.google.com/youtube`,
+  `tv.youtube.com/learn/nflsundayticket`), 3 `TEXT|` rows incl the
+  `© 2026 Google LLC` copyright and the search `#search` input;
+  `worker.err.log` is **0 bytes** (zero logged errors, whole graph).
+- `make check` stays **60 PASS / 0 FAIL**.
+
+### 2026-09-18 row-31 kevlar BOOTS + renders the youtube footer
+- The `_F_jsUrl` stop is cleared (`0063797e`). Root cause: kevlar's
+  closure module loader (`Nkz`) resolves its own bundle URL from
+  `getElementById("base-js").src` when `window._F_jsUrl` is unset, but the
+  HTML parser dropped every `<script>`/`<link>` (and `<head>` whole), so
+  the lookup returned null and it threw `Error: Tc` (line 1314).
+  - `nb_dom.c`: `is_skip` → `is_rawtext` (script/style/title/noscript keep
+    the element + id/src/href attrs, body never parsed as markup); `<head>`
+    no longer skipped.
+  - `push_node`: expose `.src`/`.href` off the raw attribute (closure reads
+    these directly, not via `getAttribute`).
+- **Receipt:** `kevlar_base.js` over a `fetch.dom` built from the real
+  `home.html` now boots its Polymer element system and renders the real
+  youtube footer — 15 `LINK|` frames incl `/t/terms`, `/t/privacy`,
+  `/new`, plus the `© 2026 Google LLC` `TEXT|` frame; process exits 0.
+- One non-fatal logged error remained until `09fc27b9`: youtube's error
+  reporter (`C2y`) walks `getElementsByTagName("script")` and does
+  `script.src.indexOf("/debug-")`; inline scripts have no `src` attr so our
+  present-only accessor returned `undefined` and threw. Fixed by exposing
+  `.src`/`.href` as strings (`""` when absent) on the tags that own them
+  (script/img/iframe/input/…, a/link/area/base). Also `native_log` now
+  appends a caught Error's `.stack` under `NB_STACK=1`. **kevlar now runs
+  with ZERO logged errors.** `make check` stays **60 PASS / 0 FAIL**.
+
+### 2026-09-18 row-31 real-bundle receipts (engine runs youtube's code)
+- Engine now executes real youtube bundle files staged in `/tmp/yt`:
+  `spf.js`, `network.js`, `scheduler.js`, `web-animations.min.js` all eval
+  clean under `./nbjs --browser <file> [fetch.dom]`; `kevlar_base.js` (the
+  10,790,631-byte single IIFE) loads whole. Host-surface gaps filled across
+  four commits on `opencode`:
+  - `0c5a24a7` DOM class hierarchy (`Element`/`Node`/`HTMLElement` chains →
+    `instanceof` works), `createElementNS`, canvas 2D `getContext` stub,
+    `NB_STACK=1` exception-stack traces.
+  - `fddc91b7` page-only stream load (`nb_host.h` `read_file_big`, 64MB
+    ceiling) — the 512KB `read_file` guard stays for fs-lite/CJS; plus
+    `NB_EVAL_BUDGET` watchdog override for the 10.8MB parse.
+  - `18943d95` construction fix (quickjs gives C constructors `new_target`),
+    `customElements`/`CSSStyleSheet`, the standard element/event globals,
+    `hasAttribute`, prelude `MessageChannel` + `<template>.content`
+    fragments.
+  - `b6129605` computed-style `fontSize` (kevlar font metrics).
+- **kevlar_base receipt:** with a `fetch.dom` built from the real
+  `home.html`, kevlar boots its Polymer element system (real Polymer
+  console output) and stops at line 1314's bundle-URL assertion
+  (`Error: Tc`, `_F_jsUrl` mismatch vs the file-loaded script) —
+  app/config-specific, not an engine gap. With the minimal DOM it stopped
+  earlier at `querySelector('ytd-app')` (fixture-content gap).
+- `make check` still **60 PASS / 0 FAIL** after every commit. Push through
+  `71de3fd9` (via `git-login-push.sh`); later commits local on `opencode`.
+
+### 2026-09-18 QuickJS graft DONE (row-31 parser floor removed)
+- Full duk→QuickJS transplant landed in-session per the approved plan:
+  `nb_host.h` + `nb_js_worker.c` (105 natives, heap lifecycle, event
+  loop) + `nb_js_eval.c` translated; microtask FIFO + prelude Promise
+  polyfill DELETED in favor of the native job queue
+  (`JS_ExecutePendingJob` drain); stash timers → C-held `JSValue`s.
+  Makefile `nbjs` + build.sh ops lines rewired to the 5 engine TUs +
+  gnu11/QWFLAGS flags.
+- **Leak fixes:** 5 leaked `JS_GetGlobalObject` refs + the `esmPrepare`
+  handle (a leaked handle asserts in `JS_FreeRuntime` teardown —
+  verified with a `-DDUMP_LEAKS` build).
+- **wps bug (root-caused, not papered):** QuickJS's lexer peeks
+  `input[input_len]` for EOI, so mid-buffer script slices must be
+  NUL-terminated at their eval length (`((char*)p)[slice] = 0;` in
+  `run_scripts_slices`). Repro pages `/tmp/nbjs-check/caseA.js` +
+  `caseB.js` now behave: genuine slice errors only on genuinely-bad
+  slices, later slices run.
+- **Evidence:** `make check` exit 0, **60 PASS lines / 0 FAIL** (44
+  suites, fresh QuickJS build); deployable ops binaries rebuilt via
+  `build.sh` (nb_js_eval/nb_js_worker probes run; nb_video_play still
+  skipped for missing libav/alsa — pre-existing).
+- Committed `07aa2200` (5 files) on `opencode`; engine headers
+  `5d1e8bd7`. Rollback anchor = git history (duktape.* + install-duk.sh
+  removed in the 2026-09-18 cleanup commit).
 
 ### 2026-09-18 QuickJS graft started (engine cell) — handoff written
 - Vendored official QuickJS **2026-06-04** into
@@ -171,11 +327,12 @@ for "render+drive youtube.com" (roadmap rows):
    strings, not grammar). Architecture is safe: ~750/3912 lines are the
    duk boundary; protocol, DOM, jars, sha1, and all 44 pipe-driven test
    harnesses survive as-is.
-   **GRAFT STATUS (2026-09-18): IN PROGRESS — quickjs vendored into
-   `&.hq-apps/js/`, code edits not started.** `make check` on this
-   worktree is STALE until the graft + fresh run is done. If resuming
-   cold, read the full plan + resume pack + translation table:
-   `08-roadmap/design-docs/JS-ENGINE-QUICKJS-SWAP-INSIGHT.md` §6-§9.
+   **GRAFT STATUS (2026-09-18): DONE — engine transplanted and green.**
+   Read `08-roadmap/design-docs/JS-ENGINE-QUICKJS-SWAP-INSIGHT.md`
+   §9-§10 (translation table + graft-DONE receipt, commits
+   `5d1e8bd7`/`07aa2200`). The row-31 parser floor is gone; the next
+   receipt is executing a real slice of the youtube bundle on the new
+   engine with the visitor+signature context attached.
 2. **Page CSS** (partial) — `.css` files, not full page CSS.
 3. **Websocket chat** (row 32 mentions websocket chat) — page-originated
    XHR is built, but a websocket client surface is not.
@@ -219,9 +376,10 @@ Steps:
 - SHA-1: `44.xyz.01.00/&.hq-apps/network/ops/nb_sha1.h`
 - Prelude: `44.xyz.01.00/&.hq-apps/network/ops/nb_host.h`
 - Makefile: `44.xyz.01.00/&.hq-apps/network/Makefile`
-- Engine libs: `44.xyz.01.00/&.hq-apps/js/` (quickjs.* + cutils/
-  libregexp*/libunicode*/dtoa/list.h — NEW, uncommitted as of
-  2026-09-18; duktape.* kept for rollback)
+- Engine libs: `44.xyz.01.00/&.hq-apps/js/` (quickjs.c/.h + cutils/
+  libregexp*/libunicode*/dtoa/list.h + quickjs-atom/opcode.h —
+  committed `5d1e8bd7`; duktape.* + install-duk.sh removed in the
+  2026-09-18 cleanup, recoverable from git history)
 - Tests: `44.xyz.01.00/&.hq-apps/network/tests/worker_login_test.c|.js`,
   `worker_sapisid_test.c|.js`, `worker_innertube_test.c|.js`,
   `worker_fetch_post_test.c|.js`
