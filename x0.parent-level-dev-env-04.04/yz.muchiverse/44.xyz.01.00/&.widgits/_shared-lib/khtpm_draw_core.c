@@ -222,7 +222,14 @@ static HqSprite *hq_sprite(const char *dir) {
     return &g_hq_sprite_cache[slot];
 }
 
-static void hq_blit_sprite(HqSprite *sp, int x0, int y0, int px, unsigned long bg_pixel) {
+/* sample_backdrop: when set, composite transparent pixels over the pixels
+ * ACTUALLY already painted in `buf` behind the sprite (read back with
+ * XGetImage), not over the flat bg_pixel. bg_pixel is only a guess at
+ * what is behind the tile (theme colour), and is wrong wherever a window
+ * body is deliberately tinted differently from the theme/header colour
+ * (File Explorer body vs header). Falls back to bg_pixel for any pixel
+ * outside the buffer or if the readback fails. */
+static void hq_blit_sprite(HqSprite *sp, int x0, int y0, int px, unsigned long bg_pixel, int sample_backdrop) {
     Visual *vis = DefaultVisual(dpy, DefaultScreen(dpy));
     int depth = DefaultDepth(dpy, DefaultScreen(dpy));
     unsigned long rmask = vis->red_mask, gmask = vis->green_mask, bmask = vis->blue_mask;
@@ -236,6 +243,20 @@ static void hq_blit_sprite(HqSprite *sp, int x0, int y0, int px, unsigned long b
     int res = sp->res;
     unsigned char *bufpx = calloc((size_t)px * px, 4);
     if (!bufpx) return;
+    XImage *back = NULL;
+    int back_x = 0, back_y = 0, back_w = 0, back_h = 0;
+    if (sample_backdrop) {
+        Window root_ret; int gx, gy; unsigned int gw, gh, gb, gd;
+        if (XGetGeometry(dpy, buf, &root_ret, &gx, &gy, &gw, &gh, &gb, &gd)) {
+            int bx0 = x0 < 0 ? 0 : x0, by0 = y0 < 0 ? 0 : y0;
+            int bx1 = x0 + px > (int)gw ? (int)gw : x0 + px;
+            int by1 = y0 + px > (int)gh ? (int)gh : y0 + px;
+            if (bx1 > bx0 && by1 > by0) {
+                back = XGetImage(dpy, buf, bx0, by0, (unsigned)(bx1 - bx0), (unsigned)(by1 - by0), AllPlanes, ZPixmap);
+                back_x = bx0; back_y = by0; back_w = bx1 - bx0; back_h = by1 - by0;
+            }
+        }
+    }
     for (int y = 0; y < px; y++) {
         int sy = (y * res) / px;
         if (sy >= res) sy = res - 1;
@@ -244,9 +265,19 @@ static void hq_blit_sprite(HqSprite *sp, int x0, int y0, int px, unsigned long b
             if (sx >= res) sx = res - 1;
             const unsigned char *pix = &sp->rgba[(sy * res + sx) * 4];
             int a = pix[3];
-            int r = (pix[0] * a + (int)br * (255 - a)) / 255;
-            int g = (pix[1] * a + (int)bg2 * (255 - a)) / 255;
-            int b = (pix[2] * a + (int)bb * (255 - a)) / 255;
+            int pr = (int)br, pg = (int)bg2, pb = (int)bb;
+            if (back) {
+                int ax = x0 + x - back_x, ay = y0 + y - back_y;
+                if (ax >= 0 && ay >= 0 && ax < back_w && ay < back_h) {
+                    unsigned long bp = XGetPixel(back, ax, ay);
+                    pr = (int)((bp >> rshift) & 0xff);
+                    pg = (int)((bp >> gshift) & 0xff);
+                    pb = (int)((bp >> bshift) & 0xff);
+                }
+            }
+            int r = (pix[0] * a + pr * (255 - a)) / 255;
+            int g = (pix[1] * a + pg * (255 - a)) / 255;
+            int b = (pix[2] * a + pb * (255 - a)) / 255;
             unsigned long word = ((unsigned long)r << rshift) | ((unsigned long)g << gshift) | ((unsigned long)b << bshift);
             bufpx[(y * px + x) * 4 + 0] = (unsigned char)(word & 0xff);
             bufpx[(y * px + x) * 4 + 1] = (unsigned char)((word >> 8) & 0xff);
@@ -262,6 +293,7 @@ static void hq_blit_sprite(HqSprite *sp, int x0, int y0, int px, unsigned long b
     } else {
         free(bufpx);
     }
+    if (back) XDestroyImage(back);
 }
 
 /* Real, generic, CSS-driven single-element draw: background fill,
@@ -1199,7 +1231,7 @@ static void draw_elem(Elem *e, int hover_id_hash) {
                         ? (e->y + pad_s)
                         : (e->y + (e->h - px) / 2);
                 }
-                hq_blit_sprite(sp, blit_x, blit_y, px, bg_pixel);
+                hq_blit_sprite(sp, blit_x, blit_y, px, bg_pixel, !e->style.has_bg_color);
                 drew_sprite = 1;
             }
         }
