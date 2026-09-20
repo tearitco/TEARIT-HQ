@@ -3843,6 +3843,14 @@ static void install_events_timers(JSContext *ctx) {
     JS_SetPropertyStr(ctx, g, "addEventListener",    JS_NewCFunction(ctx, nb_win_addEventListener, "addEventListener", 2));
     JS_SetPropertyStr(ctx, g, "removeEventListener", JS_NewCFunction(ctx, nb_win_removeEventListener, "removeEventListener", 2));
     JS_SetPropertyStr(ctx, g, "dispatchEvent",       JS_NewCFunction(ctx, nb_win_dispatchEvent, "dispatchEvent", 1));
+    /* ShadyDOM (webcomponents-lite.js) captures "native" methods by copying
+     * property descriptors off prototypes (L(Window.prototype, ...)); our
+     * natives are own props on window/elements, so the copy is empty and
+     * window.__shady_native_addEventListener stays undefined → Ae() throws
+     * "not a function" at init. Define the aliases on window directly. */
+    JS_SetPropertyStr(ctx, g, "__shady_native_addEventListener",    JS_NewCFunction(ctx, nb_win_addEventListener, "__shady_native_addEventListener", 2));
+    JS_SetPropertyStr(ctx, g, "__shady_native_removeEventListener", JS_NewCFunction(ctx, nb_win_removeEventListener, "__shady_native_removeEventListener", 2));
+    JS_SetPropertyStr(ctx, g, "__shady_native_dispatchEvent",       JS_NewCFunction(ctx, nb_win_dispatchEvent, "__shady_native_dispatchEvent", 1));
     for (int i = 0; ONPROPS[i]; i++) {
         char onname[64];
         snprintf(onname, sizeof(onname), "on%s", ONPROPS[i]);
