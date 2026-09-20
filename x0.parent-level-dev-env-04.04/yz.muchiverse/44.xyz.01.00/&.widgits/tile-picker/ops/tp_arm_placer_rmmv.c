@@ -55,6 +55,7 @@
 #include <sys/select.h>
 #include <sys/time.h>
 #include "self_exe.h" /* macOS leg: portable /proc/self/exe replacement */
+#include "khtpm_ui_scale.c" /* screen click -> reference px for desktop_pos.txt */
 
 #define PATH_BUF 4352
 
@@ -372,6 +373,17 @@ int main(int argc, char **argv) {
      * on why - a real, caller-agnostic op), so this write IS the real
      * hand-off, not just a debug trail. */
     if (cancelled) return 0;
+    /* click_x/click_y are SCREEN px (hit-tests above used them as such). Every
+     * consumer below (RMMV_CLICK ledger row -> tp_place_desktop_rmmv.+x ->
+     * desktop_pos.txt, and the File Explorer click file) records a saved entity
+     * position, which is REFERENCE px (khtpm_ui_scale.c; identity on the
+     * reference screen). */
+    {
+        int a = 100, c = 80;
+        kps_load_for_tool(desktop_root, sw, sh, &a, &c);
+        click_x = kps_screen_to_ref(click_x, c, a);
+        click_y = kps_screen_to_ref(click_y, c, a);
+    }
     {
         /* Real, NEW 2026-09-03 - size-capped ledger write. Same
          * convention khtpm_core_render.c's nav_ledger_write() uses:

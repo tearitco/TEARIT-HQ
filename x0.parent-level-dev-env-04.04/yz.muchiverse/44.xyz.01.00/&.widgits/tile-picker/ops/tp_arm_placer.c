@@ -41,7 +41,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <dirent.h>
-#include "self_exe.h" /* macOS leg: portable /proc/self/exe replacement */
+#include "self_exe.h"
+#include "khtpm_ui_scale.c" /* screen click -> reference px for desktop_pos.txt */ /* macOS leg: portable /proc/self/exe replacement */
 
 #define PATH_BUF 4352
 #define MAX_LINE 2048
@@ -253,6 +254,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     Window root = RootWindow(dpy, DefaultScreen(dpy));
+    const int scr_w = DisplayWidth(dpy, DefaultScreen(dpy)), scr_h = DisplayHeight(dpy, DefaultScreen(dpy));
 
     if (XGrabPointer(dpy, root, False, ButtonPressMask, GrabModeAsync, GrabModeAsync,
                       None, None, CurrentTime) != GrabSuccess) {
@@ -324,6 +326,14 @@ int main(int argc, char **argv) {
     /* Not on a board-viewer - place on the bare desktop at the real
      * click point (grid-snapped by tp_desktop_window.c itself). */
     char cmd[PATH_BUF * 3], envx[32], envy[32];
+    /* screen px -> reference px: tp_place_desktop.+x writes these straight into
+     * desktop_pos.txt, which is reference px (khtpm_ui_scale.c). */
+    {
+        int a = 100, c = 80;
+        kps_load_for_tool(desktop_root, scr_w, scr_h, &a, &c);
+        click_x = kps_screen_to_ref(click_x, c, a);
+        click_y = kps_screen_to_ref(click_y, c, a);
+    }
     snprintf(envx, sizeof(envx), "%d", click_x);
     snprintf(envy, sizeof(envy), "%d", click_y);
     setenv("TP_INITIAL_X", envx, 1);

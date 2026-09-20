@@ -56,7 +56,9 @@
 #include <unistd.h>
 #include <limits.h>
 #include <sys/wait.h>
+#include <X11/Xlib.h>
 #include "self_exe.h" /* macOS leg: portable /proc/self/exe replacement */
+#include "khtpm_ui_scale.c" /* reference-space -> screen px (desktop_pos.txt is reference px) */
 
 #define PATH_BUF 4352
 #define POLL_TIMEOUT_SEC 120
@@ -211,6 +213,21 @@ int main(int argc, char **argv) {
         fprintf(stderr, "khtpm_show_choices: no choices loaded from %s\n", choices_file);
         unlink(chtpm_path);
         return 1;
+    }
+
+    /* desktop_pos.txt is REFERENCE px (khtpm_ui_scale.c); the renderer's
+     * position args are screen px. Identity on the reference screen. */
+    if (pos_x >= 0 && pos_y >= 0) {
+        Display *xd = XOpenDisplay(NULL);
+        if (xd) {
+            int auto_pct = 100, cell = 80;
+            char dd[PATH_BUF];
+            snprintf(dd, sizeof(dd), "%s/#.desktop", house_root);
+            kps_load_for_tool(dd, DisplayWidth(xd, DefaultScreen(xd)), DisplayHeight(xd, DefaultScreen(xd)), &auto_pct, &cell);
+            XCloseDisplay(xd);
+            snprintf(pos_x_str, sizeof(pos_x_str), "%d", kps_ref_to_screen(pos_x, cell, auto_pct));
+            snprintf(pos_y_str, sizeof(pos_y_str), "%d", kps_ref_to_screen(pos_y, cell, auto_pct));
+        }
     }
 
     pid_t pid = fork();

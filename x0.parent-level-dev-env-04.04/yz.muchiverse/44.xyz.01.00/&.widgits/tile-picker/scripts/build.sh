@@ -7,6 +7,9 @@ cd "$SCRIPT_DIR"
 
 mkdir -p ops/+x
 
+# Shared canonical sources (khtpm_ui_scale.c etc.), compiled in place via -I.
+SHARED_LIB="$(cd "$SCRIPT_DIR/../_shared-lib" && pwd)"
+
 CFLAGS="-Wall -Wextra -O2"
 
 echo "--- Building tile-picker ops ---"
@@ -51,7 +54,7 @@ gcc $CFLAGS -o "ops/+x/tp_find_window_by_pid.+x" "ops/tp_find_window_by_pid.c" -
 gcc $CFLAGS -o "ops/+x/tp_find_window_by_navtab.+x" "ops/tp_find_window_by_navtab.c" -lX11
 gcc $CFLAGS -o "ops/+x/tp_set_wm_pid.+x" "ops/tp_set_wm_pid.c" -lX11
 gcc $CFLAGS -o "ops/+x/ledger_peers.+x" "ops/ledger_peers.c"
-gcc $CFLAGS -o "ops/+x/tp_arm_placer.+x" "ops/tp_arm_placer.c" -lX11
+gcc $CFLAGS -I "$SHARED_LIB" -o "ops/+x/tp_arm_placer.+x" "ops/tp_arm_placer.c" -lX11
 gcc -Wall -O2 -o "ops/+x/tp_rmmv_character_extract.+x" "ops/tp_rmmv_character_extract.c" -lm
 # Real RMMV-tile "armed brush, click desktop to place" chain
 # (TILE-SYSTEM-DESIGN.md §6 item 6, built 2026-08-29 - the one real
@@ -60,7 +63,7 @@ gcc -Wall -O2 -o "ops/+x/tp_rmmv_character_extract.+x" "ops/tp_rmmv_character_ex
 # generalization of the glyph-brush ones above).
 gcc $CFLAGS -o "ops/+x/tp_set_brush_rmmv.+x" "ops/tp_set_brush_rmmv.c"
 gcc $CFLAGS -o "ops/+x/tp_place_desktop_rmmv.+x" "ops/tp_place_desktop_rmmv.c"
-gcc $CFLAGS -o "ops/+x/tp_arm_placer_rmmv.+x" "ops/tp_arm_placer_rmmv.c" -lX11
+gcc $CFLAGS -I "$SHARED_LIB" -o "ops/+x/tp_arm_placer_rmmv.+x" "ops/tp_arm_placer_rmmv.c" -lX11
 # Real standalone debug tool, 2026-08-29, direct instruction ("a simple
 # op that, when on, detects clicks on desktop, and writes them to
 # debug/debug.txt") - built to isolate the real Mutter/XWayland click-
@@ -81,7 +84,7 @@ SHARED_LIB="$(cd "$SCRIPT_DIR/../_shared-lib" && pwd)"
 # shared source in place via -I; no local copy in ops/. khtpm_show_
 # choices.c text-includes khtpm_render_core.c and #includes
 # khtpm_css_parser.h, both resolved from $SHARED_LIB.
-gcc -Wall -O2 -I "$SHARED_LIB" -o "ops/+x/khtpm_show_choices.+x" "ops/khtpm_show_choices.c"
+gcc -Wall -O2 -I "$SHARED_LIB" -o "ops/+x/khtpm_show_choices.+x" "ops/khtpm_show_choices.c" -lX11
 
 echo "--- Copying system binaries (local copies for dev) ---"
 WSR="$(cd "$SCRIPT_DIR/../.." && pwd)/014.wsr-pal💸️📌️+2"
