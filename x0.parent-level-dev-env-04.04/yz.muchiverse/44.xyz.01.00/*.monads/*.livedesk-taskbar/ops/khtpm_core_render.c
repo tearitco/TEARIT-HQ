@@ -2357,58 +2357,16 @@ static int reparse_chtpm_if_changed(void) {
  * (see that comment for why) - defining it again here would conflict. */
 static Window win;
 static int screen;
-/* Historical always-on-top (pre shared-loop strip): write pdl, SIGTERM+
- * re-exec living renderers so override_redirect is create-time, then
- * XRaise/XLower nav_tab windows and tile:* entities. */
-static void ktb_zorder_apply_tree(int raise) {
-    Window root, root_ret, parent_ret, *children = NULL;
-    unsigned int n = 0, i;
+/* Always-on-top ("@") toggle, renderer half. The process-management half (scan
+ * /proc, SIGTERM, re-exec entity windows so their create-time-only
+ * override_redirect picks up the new mode, raise/lower tile:* entities) moved out
+ * 2026-09-20 to the standalone op ktb_zorder_op.+x (ktb_zorder_op.c) - see
+ * 08-roadmap/design-docs/DOCK-UNFACTOR-AUDIT.md sections 1/4/6. What stays here is
+ * only what needs THIS process's X connection and window ids: raising/lowering the
+ * strip's own dock windows, and spawning the op detached (fork+setsid, stdio to
+ * /dev/null, no waiting - the popen-freeze lesson in prisc-x-popen-custom-op-freeze). */
+static void kh_zorder_raise_dock(int raise) {
     if (!dpy) return;
-    root = RootWindow(dpy, screen);
-    if (!XQueryTree(dpy, root, &root_ret, &parent_ret, &children, &n) || !children) return;
-    for (i = 0; i < n; i++) {
-        char *nm = NULL;
-        if (!XFetchName(dpy, children[i], &nm) || !nm) continue;
-        if (strncmp(nm, "tile:", 5) == 0) {
-            if (raise) XRaiseWindow(dpy, children[i]);
-            else XLowerWindow(dpy, children[i]);
-        }
-        XFree(nm);
-    }
-    XFree(children);
-}
-static void ktb_toggle_zorder_apply(int raise) {
-    char dir[PATH_BUF];
-    DIR *d;
-    if (!dpy) return;
-    snprintf(dir, sizeof(dir), "%s/#.desktop/nav_tab", g_house_root);
-    d = opendir(dir);
-    if (d) {
-        struct dirent *de;
-        while ((de = readdir(d))) {
-            char fp[PATH_BUF];
-            pid_t pid;
-            FILE *f;
-            int ord = 0;
-            unsigned long xid = 0;
-            if (de->d_name[0] == '.') continue;
-            snprintf(fp, sizeof(fp), "%s/%s", dir, de->d_name);
-            pid = (pid_t)atoi(de->d_name);
-            if (pid > 1 && kill(pid, 0) != 0 && errno == ESRCH) {
-                unlink(fp);
-                continue;
-            }
-            f = fopen(fp, "r");
-            if (!f) continue;
-            if (fscanf(f, "%d %lx", &ord, &xid) >= 2 && xid) {
-                if (raise) XRaiseWindow(dpy, (Window)xid);
-                else XLowerWindow(dpy, (Window)xid);
-            }
-            fclose(f);
-        }
-        closedir(d);
-    }
-    ktb_zorder_apply_tree(raise);
     if (raise) {
         XRaiseWindow(dpy, win);
         if (g_dock_peer_win) XRaiseWindow(dpy, g_dock_peer_win);
@@ -2420,189 +2378,30 @@ static void ktb_toggle_zorder_apply(int raise) {
     }
     XFlush(dpy);
 }
-static void ktb_toggle_zorder_respawn(void) {
-    char bin0[PATH_BUF], bin1[PATH_BUF], bin2[PATH_BUF];
-    const char *bins[3];
-    const char *needles[3] = { "tp_desktop_window_rgb", "khtpm_core_render", "network_browser_render" };
-    struct { pid_t pid; int which; char arg[8][PATH_BUF]; int argc; } found[64];
-    int n_found = 0, i;
-    pid_t self = getpid();
-    DIR *pd;
-    struct dirent *ent;
-    snprintf(bin0, sizeof(bin0), "%s/*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x", g_house_root);
-    snprintf(bin1, sizeof(bin1), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", g_house_root);
-    snprintf(bin2, sizeof(bin2), "%s/&.hq-apps/network/+x/network_browser_render.+x", g_house_root);
-    bins[0] = bin0; bins[1] = bin1; bins[2] = bin2;
-    pd = opendir("/proc");
-    if (!pd) return;
-    while ((ent = readdir(pd)) != NULL) {
-        char cpath[64], cmdbuf[PATH_BUF * 8];
-        FILE *cf;
-        size_t got;
-        const char *a0, *p;
-        size_t a0len;
-        int which = -1, k;
-        if (ent->d_name[0] < '0' || ent->d_name[0] > '9') continue;
-        snprintf(cpath, sizeof(cpath), "/proc/%s/cmdline", ent->d_name);
-        cf = fopen(cpath, "r");
-        if (!cf) continue;
-        got = fread(cmdbuf, 1, sizeof(cmdbuf) - 1, cf);
-        fclose(cf);
-        if (got == 0) continue;
-        cmdbuf[got] = '\0';
-        a0 = cmdbuf;
-        a0len = strlen(a0);
-        if (a0len == 0) continue;
-        for (k = 0; k < 3; k++) if (strstr(a0, needles[k])) { which = k; break; }
-        if (which < 0) continue;
-        if (n_found >= 64) break;
-        found[n_found].pid = (pid_t)atoi(ent->d_name);
-        found[n_found].which = which;
-        found[n_found].argc = 0;
-        p = cmdbuf;
-        for (k = 0; k < 8; k++) {
-            size_t l = strlen(p);
-            if (l == 0) break;
-            snprintf(found[n_found].arg[k], PATH_BUF, "%s", p);
-            found[n_found].argc++;
-            p += l + 1;
-            if (p >= cmdbuf + (int)got) break;
-        }
-        /* REAL FIX 2026-09-13, direct live report ("just the bottom
-         * toolbar that is taking long to populate... we dont even need
-         * to respawn the bottom toolbar tho for ontop. get it? we dont
-         * need to respawn top tb either. just entities") - correct: the
-         * always-on-top toggle is real, per-ENTITY window state
-         * (swa.override_redirect = g_override_redirect, tp_main() only).
-         * The strip's own two windows (khtpm_strip_header.xhtpm's
-         * process, which also renders the bottom peer template in the
-         * SAME process - see g_dock_peer_path) are unconditionally WM-
-         * managed already (2026-09-13, "dock strip windows... completely
-         * independent of the global g_override_redirect PDL" - see
-         * dock_managed in main()) - this toggle can never change their
-         * z-order behavior at all, so killing+respawning them here was
-         * always pure waste: real process teardown, a full re-launch
-         * (re-parse strip_header/bottom.xhtpm, re-walk the registry,
-         * reload every tab), for a window whose own state this toggle
-         * doesn't touch - exactly the real, visible "bottom toolbar
-         * takes long to populate" cost. Same real /proc cmdline-
-         * substring identity check khtpm_taskbar_manager.c's own
-         * livedesk_kill_strip_renderers() already uses for this same
-         * "is this process the strip" question - ported here rather
-         * than re-invented. */
-        {
-            int is_strip = 0;
-            for (k = 0; k < found[n_found].argc; k++) {
-                const char *av = found[n_found].arg[k];
-                if (strstr(av, "khtpm_strip_header.xhtpm") ||
-                    strstr(av, "khtpm_strip_bottom.xhtpm") ||
-                    strstr(av, "strip_header.chtpm") ||
-                    strstr(av, "strip_bottom.chtpm")) { is_strip = 1; break; }
-            }
-            if (is_strip) continue;
-        }
-        n_found++;
+static void kh_spawn_zorder_op(int above) {
+    char bin[PATH_BUF];
+    pid_t p;
+    snprintf(bin, sizeof(bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/ktb_zorder_op.+x", g_house_root);
+    if (access(bin, X_OK) != 0) {
+        kh_focus_debug_log("ZORDER_TOGGLE: %s missing - build_core_render.sh builds it; entities not respawned", bin);
+        return;
     }
-    closedir(pd);
-    for (i = 0; i < n_found; i++)
-        if (found[i].pid != self) kill(found[i].pid, SIGTERM);
-    /* REAL FIX 2026-09-13, direct live report ("1.2 seconds is really
-     * long"): this used to be a flat, unconditional usleep(300000) -
-     * 300ms of pure dead time on EVERY toggle, no matter how fast the
-     * old processes actually died. That number wasn't arbitrary - it
-     * matches POLL_INTERVAL_USEC (each entity's own select() timeout)
-     * exactly, as if SIGTERM had to wait for the next poll tick to be
-     * noticed. It doesn't: sigaction() (handle_shutdown_signal_info(),
-     * no SA_RESTART) makes a pending SIGTERM interrupt a blocking
-     * select() immediately (real, standard POSIX EINTR behavior, not
-     * an assumption) - g_shutdown_requested gets set and the old
-     * process's own loop exits on its very next condition check,
-     * typically sub-millisecond, not 300ms later. Real fix: poll for
-     * actual death (kill(pid,0)) instead of guessing a fixed delay -
-     * returns the instant every old process is confirmed gone, with a
-     * short real ceiling (30ms x up to 6 = 180ms) as a safety margin
-     * for the rare slow case, not the common-case cost. */
-    for (int wait_i = 0; wait_i < 6; wait_i++) {
-        int all_dead = 1;
-        for (i = 0; i < n_found; i++) {
-            if (found[i].pid == self) continue;
-            if (kill(found[i].pid, 0) == 0 || errno != ESRCH) { all_dead = 0; break; }
+    p = fork();
+    if (p < 0) return;
+    if (p == 0) {
+        pid_t g = fork();
+        int devnull;
+        if (g != 0) _exit(0);
+        setsid();
+        devnull = open("/dev/null", O_RDWR);
+        if (devnull >= 0) {
+            dup2(devnull, 0); dup2(devnull, 1); dup2(devnull, 2);
+            if (devnull > 2) close(devnull);
         }
-        if (all_dead) break;
-        usleep(30000);
+        execl(bin, bin, g_house_root, above ? "above" : "normal", (char *)NULL);
+        _exit(127);
     }
-    /* REAL FIX 2026-09-13, direct live report ("it populated eventually
-     * after a long time. why would it take so long?... the old legacy
-     * tb would populate all immediately") - researched, not a compile
-     * step (confirmed directly: execve() here re-runs the SAME binary,
-     * no build call anywhere in this path). Two real, separate causes
-     * closed here:
-     * 1. The strip/dock renderer itself used to respawn LAST, after
-     *    every entity - the one window the user is actually staring at
-     *    (and the ONLY one showing the real, already-correct tab list -
-     *    every earlier round in tb-bug-doc.txt already proved the DATA
-     *    side is fine) sat blank the whole time entities were still
-     *    coming up. Moved first.
-     * 2. Zero stagger, zero nice - launching 7-8 real GUI processes
-     *    (each doing genuine startup work: sprite/phymoji atlas load,
-     *    X11 window+GC+Pixmap creation, font loading) all at once with
-     *    default scheduling priority is exactly the shape this house's
-     *    own standing rule already names (project memory,
-     *    "nice-heavy-background-work": "weak CPU machine... wrap
-     *    multi-minute background work with nice... so the taskbar/
-     *    desktop stays responsive") - never applied to this respawn
-     *    burst specifically. Real fix: the strip stays at normal
-     *    priority (it must repaint immediately, it's the UI shell);
-     *    every entity gets a real, small stagger (`usleep`) between
-     *    forks and a real, mild `nice()` bump in the child before
-     *    `execve` - keeps the burst from saturating the CPU all at
-     *    once without meaningfully slowing any one entity's own
-     *    startup. */
-    {
-        pid_t np = fork();
-        if (np == 0) {
-            int self_i = -1, n, j, devnull;
-            char *av[9];
-            for (i = 0; i < n_found; i++) if (found[i].pid == self) { self_i = i; break; }
-            setsid();
-            devnull = open("/dev/null", O_RDWR);
-            if (devnull >= 0) {
-                dup2(devnull, 0); dup2(devnull, 1); dup2(devnull, 2);
-                if (devnull > 2) close(devnull);
-            }
-            if (self_i >= 0) {
-                av[0] = (char *)bins[found[self_i].which];
-                n = found[self_i].argc < 8 ? found[self_i].argc : 8;
-                for (j = 1; j < n; j++) av[j] = found[self_i].arg[j];
-                av[n] = NULL;
-                execve(av[0], av, environ);
-            }
-            _exit(1);
-        }
-    }
-    for (i = 0; i < n_found; i++) {
-        pid_t pid;
-        if (found[i].pid == self) continue;
-        usleep(30000); /* real stagger - see this function's own header comment; 30ms direct instruction 2026-09-13 (was 120ms) */
-        pid = fork();
-        if (pid == 0) {
-            char *av[9];
-            int n, j, devnull;
-            setsid();
-            nice(8); /* real, mild CPU-priority yield to the strip above - see header comment */
-            devnull = open("/dev/null", O_RDWR);
-            if (devnull >= 0) {
-                dup2(devnull, 0); dup2(devnull, 1); dup2(devnull, 2);
-                if (devnull > 2) close(devnull);
-            }
-            av[0] = (char *)bins[found[i].which];
-            n = found[i].argc < 8 ? found[i].argc : 8;
-            for (j = 1; j < n; j++) av[j] = found[i].arg[j];
-            av[n] = NULL;
-            execve(av[0], av, environ);
-            _exit(1);
-        }
-    }
+    (void)waitpid(p, NULL, 0);
 }
 static GC gc;
 static Pixmap buf;
@@ -6647,15 +6446,15 @@ static void dispatch(const char *action) {
         g_zorder_above = !g_zorder_above;
         save_zorder_mode(g_house_root, g_zorder_above);
         g_override_redirect = g_zorder_above ? 1 : 0;
-        ktb_toggle_zorder_apply(g_zorder_above);
-        ktb_toggle_zorder_respawn();
+        kh_zorder_raise_dock(g_zorder_above);
+        kh_spawn_zorder_op(g_zorder_above);
         /* REAL FIX 2026-09-13, direct live report ("we dont even need
          * to respawn the bottom toolbar tho for ontop... we dont need
          * to respawn top tb either. just entities") - correct: always-
          * on-top is real per-ENTITY window state (swa.override_redirect,
          * tp_main() only) - the strip's own two windows are
          * unconditionally WM-managed regardless of this setting (see
-         * dock_managed in main()), so ktb_toggle_zorder_respawn() above
+         * dock_managed in main()), so ktb_zorder_op.+x (spawned above)
          * now skips them entirely (real /proc cmdline identity check,
          * same one khtpm_taskbar_manager.c's own
          * livedesk_kill_strip_renderers() already uses). This @ button
@@ -6663,8 +6462,8 @@ static void dispatch(const char *action) {
          * grepped - no other window ever wires ZORDER_TOGGLE), so the
          * process running THIS handler is always the strip - it must
          * NOT g_quit anymore: nothing above it in
-         * ktb_toggle_zorder_respawn() forked a replacement (the strip is
-         * excluded from that respawn list now), so setting g_quit here
+         * ktb_zorder_op.+x forks a replacement (the strip is excluded
+         * from its respawn list), so setting g_quit here
          * would just kill the taskbar with nothing left to bring it
          * back. Re-apply the strip's own persistent EWMH ABOVE hint live
          * instead (XChangeProperty, no window recreation needed - unlike
@@ -10929,7 +10728,7 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
  * (g_click_two_step updated in place) and any future launch that
  * reads the file fresh - does NOT live-propagate to other already-
  * open windows (that would need the same respawn-all-processes
- * mechanism ktb_toggle_zorder_respawn() uses for override_redirect;
+ * mechanism ktb_zorder_op.+x (ktb_zorder_op.c) uses for override_redirect;
  * deliberately not built here, scope kept to "settable at all"). */
 /* REAL FIX 2026-09-10 (direct instruction: "diamond standard isn't
  * mtime, its fsize by appending to a marker file... can u find and do"

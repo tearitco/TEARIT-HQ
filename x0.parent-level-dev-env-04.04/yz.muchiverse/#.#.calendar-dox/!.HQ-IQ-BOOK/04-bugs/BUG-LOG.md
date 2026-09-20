@@ -6,6 +6,8 @@ note under it — don't silently edit it away.*
 
 ## Open
 
+- **FIXED 2026-09-20 (dock unfactor stage 2): the "@" always-on-top toggle stopped respawning desktop pals, and its process scan was not house-scoped.** Found by the DOCK-UNFACTOR-AUDIT. (1) Since the pal unfactor (`da57ae00`) pals run as `khtpm_entity.+x`, but `ktb_toggle_zorder_respawn()` in `khtpm_core_render.c` only matched `tp_desktop_window_rgb`/`khtpm_core_render`/`network_browser_render`, so pals kept their old `override_redirect` (a create-time-only property) after the toggle. (2) It matched by `strstr(argv0, needle)` across ALL of `/proc`, so any other house (a private/test one) could SIGTERM the live desktop's windows. Fix: the ~250 lines moved to a standalone op `ktb_zorder_op.+x` (`ktb_zorder_op.c`, built by `build_core_render.sh`), spawned detached by the renderer's `ZORDER_TOGGLE` handler; it matches only binaries under the given house root, includes `khtpm_entity`, and has `--dry-run`. Verified in a private Xephyr + private house: a relay click on a `ZORDER_TOGGLE` cell flips `khtpm_zorder_mode.state.txt`/`livedesk_override_redirect.pdl`, respawns the private pal (new PID, same argv), the dock stays up, and the pal window reads `Override Redirect State: yes` after "above" and `no` after "normal"; the live desktop's 6 pals were untouched. Dry-run against the live house matches exactly the 6 pals and not the strip. **Not verified on the user's real desktop** (needs one real click of "@" after restarting the taskbar/renderers on the new binary).
+
 - **piececraft-hq board window renders only a thin ".main" tab, no
   board content** (found 2026-09-18, kilo's first WSR-CIV session per
   the `claude-2-kilo-9.17.md` handoff, `kilo-post-mortem-s17.md`).

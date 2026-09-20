@@ -47,7 +47,7 @@ Since the pal unfactor (`da57ae00`) desktop pals run as **`khtpm_entity.+x`**, b
 |---|---|---|
 | 0 | This audit | done |
 | 1 | Delete the dead statics in §2 (+ the helpers/vars that became dead, + two stale comment blocks) | **done** - 12,550 → 12,172 lines, warnings 160 → 146, dock frames pixel-identical to the pre-change binary at 4 sizes (only the clock digits differ, same as run-to-run noise) |
-| 2 | Z-order toggle → standalone op `ktb_zorder_op` (renderer keeps only the mode flip + spawn + own dock hints); house-scoped; `khtpm_entity` fixed | see commit log |
+| 2 | Z-order toggle → standalone op `ktb_zorder_op` (renderer keeps only the mode flip + own dock raise/lower + detached spawn); house-scoped; `khtpm_entity` fixed | **done** - renderer 12,172 → 11,971 lines; dock frames pixel-identical at 4 sizes; e2e relay click verified in private Xephyr (BUG-LOG 2026-09-20) |
 | 3 | Terminal-mirror producer: reuse the generic frame serializer for the dock | not started (medium risk) |
 | 4 | Layout A-bucket (shrink-to-fit, pager) as generic flex/CSS features | **blocked**: needs generic flex "shrink to container" + pager element in the engine |
 | 5 | Peer/menu paint A/C-bucket | **blocked**: needs a generic "secondary surface" (multi-window-per-process) concept |

@@ -45,6 +45,11 @@ $CC -std=c11 -Wall -O2 -o +x/swatch_picker_manager.+x swatch_picker_manager.c
 # $.restart keeps it fresh alongside its only caller.
 echo "-- apply_theme_op -> +x/apply_theme_op.+x"
 $CC -std=c11 -Wall -O2 -o +x/apply_theme_op.+x apply_theme_op.c
+# ktb_zorder_op.+x - process-management half of the "@" always-on-top toggle
+# (dock unfactor stage 2, 2026-09-20): the renderer spawns it detached on
+# ZORDER_TOGGLE. See ktb_zorder_op.c's header + DOCK-UNFACTOR-AUDIT.md.
+echo "-- ktb_zorder_op -> +x/ktb_zorder_op.+x"
+$CC -std=c11 -Wall -O2 $X11_FLAGS -o +x/ktb_zorder_op.+x ktb_zorder_op.c -lX11
 OPS_BIN="$SHARED/ops/+x/dump_frame_png_op.+x"
 if [ ! -x "$OPS_BIN" ]; then
   (cd "$SHARED/ops" && sh build_dump_frame_png_op.sh)
