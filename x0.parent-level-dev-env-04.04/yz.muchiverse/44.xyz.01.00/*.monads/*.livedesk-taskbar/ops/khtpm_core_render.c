@@ -5038,6 +5038,14 @@ static int layout_sidebar_panel(Elem *page) {
  * hand-packed pack[] array, deleted along with it now that
  * css_layout_pass's flex-wrap engine owns that job. */
 
+static int kh_tree_has_text_input(Elem *e) {
+    if (!e) return 0;
+    if (!strcmp(e->tag, "cli_io") || !strcmp(e->tag, "text_area") || !strcmp(e->tag, "grid")) return 1;
+    for (int i = 0; i < e->n_children; i++)
+        if (kh_tree_has_text_input(e->children[i])) return 1;
+    return 0;
+}
+
 static int window_is_dock(void) {
     return g_window && (elem_has_class(g_window, "dock-header") || elem_has_class(g_window, "dock-bottom"));
 }
@@ -5049,7 +5057,9 @@ static int dock_is_our_win(Window w) {
 
 static void dock_grab_keyboard(Window cw) {
     if (!cw || !dpy) return;
-    XGrabKeyboard(dpy, cw, True, GrabModeAsync, GrabModeAsync, CurrentTime);
+    int rc = XGrabKeyboard(dpy, cw, True, GrabModeAsync, GrabModeAsync, CurrentTime);
+    if (rc != GrabSuccess)
+        kh_focus_debug_log("DOCK GRAB win=0x%lx rc=%d(0=success; 1=another client holds the keyboard)", (unsigned long)cw, rc);
     g_dock_kbd_win = cw;
 }
 
@@ -10601,6 +10611,20 @@ static void kh_raise_and_focus(Window w) {
     }
     XSetInputFocus(dpy, w, RevertToParent, ts);
     XFlush(dpy);
+    /* Evidence for the next hardware attempt (no user action needed): what the
+     * WM considers active and who has X focus right after a click. If keys still
+     * never arrive, compare with `xrecord`-style delivery in bug_bounty.md. */
+    {
+        Window fw = None; int rev = 0; XGetInputFocus(dpy, &fw, &rev);
+        Atom na = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False), at; int af; unsigned long nit, ba;
+        unsigned char *pp = NULL; Window act = 0;
+        XSync(dpy, False);
+        if (XGetWindowProperty(dpy, RootWindow(dpy, DefaultScreen(dpy)), na, 0, 1, False, XA_WINDOW, &at, &af, &nit, &ba, &pp) == Success && pp) {
+            if (nit > 0) act = *(Window *)pp;
+            XFree(pp);
+        }
+        kh_focus_debug_log("CLICK-FOCUS target=0x%lx x_focus=0x%lx wm_active=0x%lx", (unsigned long)w, (unsigned long)fw, (unsigned long)act);
+    }
 }
 
 
@@ -12323,7 +12347,12 @@ int main(int argc, char **argv) {
     int dock_managed = window_is_dock();
     /* pc-hq-leg-vs-nu-fix.md §5-A-ii: <window class="managed"> is
      * WM-managed like the dock. Only pchq-board sets the class. */
-    int win_managed = dock_managed || elem_has_class(g_window, "managed");
+    /* Any window holding a text field / grid must be WM-managed regardless of
+     * the always-on-top PDL: Mutter/XWayland never routes keyboard focus to
+     * override_redirect windows (pc-hq-leg-vs-nu-fix.md, csv-hq bug_bounty).
+     * class="unmanaged" opts out. */
+    int win_managed = dock_managed || elem_has_class(g_window, "managed") ||
+                      (!elem_has_class(g_window, "unmanaged") && kh_tree_has_text_input(g_window));
     g_win_managed_focus = win_managed && !dock_managed;
     swa.override_redirect = win_managed ? False : (Bool)g_override_redirect;
     /* REAL FIX 2026-08-29 (live report: "toolbar doesn't allow drag

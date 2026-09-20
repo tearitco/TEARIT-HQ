@@ -54,6 +54,53 @@ cli_io, an open popup, the taskbar) by running csv-hq alone.
 reaches an armed field despite rc=0), and the Place-overlay Esc fix
 (same ignored/failed `XGrabKeyboard` pattern).
 
+### 🎯 2026-09-20 ROOT CAUSE FOUND (supersedes the override_redirect theory below): a stuck display-wide keyboard grab held by the Cursword pal
+
+Measured on the user's real GNOME/Wayland session, no user action needed:
+- **Throwaway-window experiment** (5 windows on DISPLAY=:0: managed with/without
+  WM_HINTS, +WM_TAKE_FOCUS, DOCK-typed like the taskbar, override_redirect): Mutter
+  activated and X-focused ALL of them (`_NET_ACTIVE_WINDOW` == window) and
+  `XGrabKeyboard` returned `AlreadyGrabbed` for ALL of them, both owner_events values,
+  with `FocusIn mode=NotifyWhileGrabbed`. So window properties (WM_HINTS, window type,
+  override_redirect) are NOT what decides keyboard delivery; some client held the
+  keyboard grab the whole time.
+- **Who:** X RECORD with the `delivered_events` range (not `device_events`, which
+  reports client 0 = the server) while XTest injected one Shift tap: KeyPress/
+  KeyRelease were delivered to `id_base=0xc00000`; XRes maps that to PID 28935 =
+  `khtpm_entity.+x ...pals/cursword` (started 00:41, the only house process the 03:08
+  taskbar reset did not replace). Its history.txt ends `CURSWORD_ARMED ... CURSWORD_PLACED`.
+- **Bug:** `khtpm_entity.c` had a file-scope `static Display *dpy = NULL;` and
+  `kh_ungrab_kbd()` = `if (dpy) XUngrabKeyboard(dpy, ...)`, but `tp_main()` opens its
+  own LOCAL `Display *dpy` (the global stays NULL - see the khtpm tp_main globals
+  footgun). So every `kh_ungrab_kbd()` in the pal process (Cursword Esc / placed /
+  disarm / focus-lost, close_context_menu) was a silent no-op, while the matching
+  `XGrabKeyboard(dpy, ...)` (Cursword's deliberate "stingy focus" armed mode, ~line
+  5653) used the local one. Once armed, Cursword owned every keystroke on the desktop
+  until its process died: csv-hq's Enter/arrows/Esc, the grid arming, `AlreadyGrabbed` in
+  every log, and the placer Esc failure all follow. (The unfactor comment even said
+  "no-op ... same as before the split": pre-existing, not caused by the split.)
+- **Fix (khtpm_entity.c):** `g_kbd_dpy` set by tp_main; `kh_ungrab_kbd()` releases on
+  it (+XFlush). **Verified** in a private Xephyr with a Cursword-like pal (`log_mode=1`):
+  old binary - arm: grab held, Esc → `CURSWORD_DISARMED`, grab STILL held; new binary -
+  arm: held, Esc → released. Test scripts: /tmp/claude-1000/grabfix/t2.sh.
+- **The running Cursword (PID 28935) still holds the grab until it is restarted**;
+  a taskbar reset does not restart it. Restart Cursword (or log out) once; new
+  binaries release properly.
+- **Hardening added in khtpm_core_render.c:** any window whose page has a
+  cli_io/text_area/grid is now forced WM-managed regardless of livedesk_override_redirect.pdl
+  (`class="unmanaged"` opts out; verified: window comes up `Override Redirect State: no`
+  with the PDL set true); `dock_grab_keyboard()` logs a failed grab; every HQ click logs
+  `CLICK-FOCUS target x_focus wm_active` into kh_focus_debug.log (evidence next time).
+- **Diff table (dock vs generic managed HQ window) - measured NOT to matter for the
+  keyboard:** WM_HINTS input=True (dock: yes, HQ: none), _NET_WM_WINDOW_TYPE_DOCK (dock:
+  yes, HQ: none), WM_NORMAL_HINTS position (dock yes), click path (dock: XRaiseWindow +
+  XGrabKeyboard(owner_events=True) + XSetInputFocus; HQ: kh_raise_and_focus =
+  _NET_ACTIVE_WINDOW + XSetInputFocus with real timestamp). All five variants behaved
+  identically in the experiment.
+- **How to find a stuck grab next time:** `xres`(XRes) client list + XRECORD
+  delivered_events probe (sources in /tmp/claude-1000/focustest/rec.c, xres.c) - see
+  03-pitfalls/X11-AND-SESSION-PITFALLS.md.
+
 ### 🔍 2026-09-20 (later, live on the user's real session): the keyboard never reaches csv-hq at all - override_redirect
 
 The fix below is real but is NOT why the user's csv-hq stayed dead. Live

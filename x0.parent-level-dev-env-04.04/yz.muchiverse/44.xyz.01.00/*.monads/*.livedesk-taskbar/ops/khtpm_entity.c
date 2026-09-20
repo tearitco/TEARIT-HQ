@@ -43,10 +43,19 @@ extern char **environ;
 #define PATH_BUF 4096
 #include "khtpm_ui_common.c"
 
-/* tile mode never sets a global Display (tp_main uses a local one), so dpy
- * stays NULL here and kh_ungrab_kbd() is a no-op - same as before the split. */
+/* tp_main uses a LOCAL Display and never sets the global dpy, so the global
+ * stays NULL. kh_ungrab_kbd() used to test that global and was therefore a
+ * silent no-op: Cursword's armed-mode grab and every pal context menu with
+ * grab_keyboard=1 kept a display-wide XGrabKeyboard until the process died,
+ * so no other window (csv-hq, text fields...) got a single key. tp_main now
+ * publishes its connection in g_kbd_dpy so the release goes to the same
+ * connection that took the grab. */
 static Display *dpy = NULL;
-static void kh_ungrab_kbd(void) { if (dpy) XUngrabKeyboard(dpy, CurrentTime); }
+static Display *g_kbd_dpy = NULL;
+static void kh_ungrab_kbd(void) {
+    Display *d = g_kbd_dpy ? g_kbd_dpy : dpy;
+    if (d) { XUngrabKeyboard(d, CurrentTime); XFlush(d); }
+}
 
 /* Same append-only size-cursor gate the HQ renderer uses (never mtime):
  * when hq_ui.pdl's marker grows, reload the shared keys and, if the UI scale
@@ -3926,6 +3935,7 @@ static int tp_main(int argc, char **argv) {
         fprintf(stderr, "tp_desktop_window: cannot open display\n");
         return 1;
     }
+    g_kbd_dpy = dpy; /* see kh_ungrab_kbd() */
     TP_TIMING_MARK("XOpenDisplay");
     load_popup_fontset(dpy);
     TP_TIMING_MARK("load_popup_fontset");

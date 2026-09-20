@@ -243,3 +243,19 @@ has stopped recurring in review.*
   burst per restack over an override-redirect window. Drain the whole
   burst (`XCheckTypedWindowEvent(... Expose ...)`) before repainting
   once; never `redraw()` per `Expose` event.
+
+- **2026-09-20 - a stuck `XGrabKeyboard` in one pal process silently kills the
+  keyboard for EVERY other window (csv-hq: "arrows/Enter/Esc dead, only mouse works").**
+  Symptoms: `XGrabKeyboard` returns `AlreadyGrabbed` from any client (even a
+  throwaway test window), armed fields log `GRAB ... rc=1`, windows see
+  `FocusIn mode=NotifyWhileGrabbed(3)` and zero `KeyPress`. Window properties
+  (WM_HINTS, window type, override_redirect) did not change any of it in a 5-variant
+  test on the real display. Cause: `khtpm_entity.c`'s `kh_ungrab_kbd()` tested a global
+  `dpy` that is always NULL in the pal process (tp_main owns a local Display), so
+  Cursword's armed-mode grab was never released. Fixed with `g_kbd_dpy`. **Rule: any
+  helper that ungrabs must use the same Display connection that grabbed; a helper that
+  reads a global which "tile mode never sets" is a no-op.** Restart the pal to drop an
+  already-held grab. **Finding the holder without ptrace/gdb (Xwayland is not
+  attachable, ptrace_scope=1):** XRes lists clients->PIDs; XRECORD with
+  `delivered_events` KeyPress..KeyRelease plus one XTest key tap prints the receiving
+  client's `id_base` - that is the grab holder. (`device_events` only reports client 0.)
