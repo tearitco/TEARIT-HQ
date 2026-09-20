@@ -48,6 +48,7 @@
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
 #include <stdio.h>
+#include <dirent.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -75,6 +76,60 @@ static void resolve_ops_dir(char *out, size_t out_sz) {
     char *slash = strrchr(self_path, '/');
     if (slash) *slash = '\0';
     snprintf(out, out_sz, "%s", self_path);
+}
+
+/* Optional (FE_PLACE_ZONES=1, set by File Explorer's Place): while the overlay is up,
+ * an open HQ window that published a drop zone (#.desktop/khtpm_drop_zones/<pid>.txt,
+ * same registry a dragged desk pal hit-tests) highlights under the pointer via
+ * #.desktop/drag_hover_pid.txt, and a click inside it reports that zone's dest dir
+ * instead of a desk position. Zones whose dest == FE_PLACE_SKIP_DIR (the source's own
+ * folder) are ignored. Rect test only: the overlay covers the windows underneath. */
+static int pz_hit(const char *root, int rx, int ry, const char *skip_dir,
+                  char *dest, size_t destsz) {
+    char dirp[PATH_BUF];
+    snprintf(dirp, sizeof(dirp), "%s/#.desktop/khtpm_drop_zones", root);
+    DIR *d = opendir(dirp);
+    if (!d) return 0;
+    struct dirent *de;
+    int found = 0;
+    while (!found && (de = readdir(d)) != NULL) {
+        if (!strstr(de->d_name, ".txt")) continue;
+        char fp[PATH_BUF], line[PATH_BUF], zdest[PATH_BUF];
+        int pid = 0, x = 0, y = 0, w = 0, h = 0;
+        zdest[0] = 0;
+        snprintf(fp, sizeof(fp), "%s/%s", dirp, de->d_name);
+        FILE *f = fopen(fp, "r");
+        if (!f) continue;
+        while (fgets(line, sizeof(line), f)) {
+            char *nl = strchr(line, '\n'); if (nl) *nl = 0;
+            if (!strncmp(line, "pid=", 4)) pid = atoi(line + 4);
+            else if (!strncmp(line, "x=", 2)) x = atoi(line + 2);
+            else if (!strncmp(line, "y=", 2)) y = atoi(line + 2);
+            else if (!strncmp(line, "w=", 2)) w = atoi(line + 2);
+            else if (!strncmp(line, "h=", 2)) h = atoi(line + 2);
+            else if (!strncmp(line, "dest=", 5)) snprintf(zdest, sizeof(zdest), "%s", line + 5);
+        }
+        fclose(f);
+        if (!zdest[0] || pid <= 0) continue;
+        if (skip_dir && skip_dir[0] && !strcmp(zdest, skip_dir)) continue;
+        if (w > 0 && h > 0 && rx >= x && rx < x + w && ry >= y && ry < y + h) {
+            snprintf(dest, destsz, "%s", zdest);
+            found = pid;
+        }
+    }
+    closedir(d);
+    return found;
+}
+
+static void pz_write_hover(const char *root, int pid, const char *name) {
+    char path[PATH_BUF], tmp[PATH_BUF + 8];
+    snprintf(path, sizeof(path), "%s/#.desktop/drag_hover_pid.txt", root);
+    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+    FILE *f = fopen(tmp, "w");
+    if (!f) return;
+    fprintf(f, "pid=%d\nname=%s\n", pid, name ? name : "");
+    fclose(f);
+    rename(tmp, path);
 }
 
 int main(int argc, char **argv) {
@@ -148,7 +203,7 @@ int main(int argc, char **argv) {
     XSetWindowAttributes swa;
     memset(&swa, 0, sizeof(swa));
     swa.override_redirect = True;
-    swa.event_mask = ButtonPressMask | KeyPressMask | ExposureMask;
+    swa.event_mask = ButtonPressMask | KeyPressMask | ExposureMask | PointerMotionMask;
     swa.colormap = cmap;
     swa.border_pixel = 0;
     swa.background_pixel = 0; /* ARGB: transparent; default: black, no amber wash */
@@ -201,10 +256,20 @@ int main(int argc, char **argv) {
     XSync(dpy, False);
 
     int click_x = -1, click_y = -1, cancelled = 0;
+    const int use_zones = getenv("FE_PLACE_ZONES") && getenv("FE_PLACE_ZONES")[0] == '1';
+    const char *skip_dir = getenv("FE_PLACE_SKIP_DIR");
+    const char *place_name = getenv("FE_PLACE_NAME");
+    char zone_dest[PATH_BUF];
+    int zone_pid = 0, hover_pid = 0;
+    zone_dest[0] = 0;
     while (1) {
         XEvent xev;
         XNextEvent(dpy, &xev);
-        if (xev.type == Expose) {
+        if (xev.type == MotionNotify && use_zones) {
+            char zd[PATH_BUF];
+            int zp = pz_hit(desktop_root, xev.xmotion.x_root, xev.xmotion.y_root, skip_dir, zd, sizeof(zd));
+            if (zp != hover_pid) { hover_pid = zp; pz_write_hover(desktop_root, zp, place_name); }
+        } else if (xev.type == Expose) {
             for (int i = 0; i < n_wins; i++)
                 if (panes[i].w == xev.xexpose.window)
                     draw_wire_grid(dpy, panes[i].w, gcs[i], panes[i].x, panes[i].y, panes[i].ww, panes[i].wh);
@@ -214,9 +279,12 @@ int main(int argc, char **argv) {
         } else if (xev.type == ButtonPress) {
             click_x = xev.xbutton.x_root;
             click_y = xev.xbutton.y_root;
+            if (use_zones)
+                zone_pid = pz_hit(desktop_root, click_x, click_y, skip_dir, zone_dest, sizeof(zone_dest));
             break;
         }
     }
+    if (use_zones && hover_pid) pz_write_hover(desktop_root, 0, "");
     XUngrabKeyboard(dpy, CurrentTime);
     for (int i = 0; i < n_wins; i++) {
         XFreeGC(dpy, gcs[i]);
@@ -278,6 +346,7 @@ int main(int argc, char **argv) {
             FILE *cf = fopen(clickf, "w");
             if (cf) {
                 fprintf(cf, "x=%d\ny=%d\n", click_x, click_y);
+                if (zone_pid) fprintf(cf, "zone_pid=%d\nzone_dest=%s\n", zone_pid, zone_dest);
                 fclose(cf);
             }
             return 0;

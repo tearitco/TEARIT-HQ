@@ -98,3 +98,12 @@ also apply there or crumbs stay broken in Grid View. Not a new
 - Cursword **Inventory** METHOD landed (opens File Explorer at
   `cursword/inventory/`). Slow migrate of `inventory.txt` / `qolq` still
   open. File METHOD stub + 📁 icon mode still wait. New 🤖️ pal later.
+
+## 2026-09-19 — inventory follow-ups (user, deferred)
+
+- **Cli-io experimental option on ALL entity context menus** (mv <nav#> <nav#> and further verbs) — later. Only `mv` exists (manager `CLIIO_MV:`); the auto-added "Cli-io" row in `load_methods()` has no pal-side handler yet; File Explorer's `meta.pdl` Cli-io row stays out until it does.
+- **File Explorer "Search" cli-io** as its own toolbar button above Back (same style as Back / Grid View) — later.
+- Real sprite in Inventory tiles — **done** (0eda3dc5, transparency a53ddb80).
+- Inventory row on every entity — **done** (e8a5baa4); named explorer instances (`button.sh run-instance <dir>`) so several Inventory windows can be open.
+- Cross-window Cut/Paste (global `#.desktop/fe_clipboard.txt`) — **done** (711a3c46). Place into an open Inventory (pointer-over-window highlight + click moves item in) — **done**, see commit for Task 4.
+- Not yet: right-click methods for a PAL that has no `sprite.csv` (menu keys off the tile's sprite= dir); Place from the desk (only from an explorer); dragging between explorer windows (cut/paste and Place cover it).
