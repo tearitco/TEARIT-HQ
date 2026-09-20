@@ -3359,6 +3359,11 @@ static void drain_jobs(JSContext *ctx) {
                 const char *m = js_error_to_cstr(jctx, buf, sizeof(buf));
                 snprintf(g_pending_errmsg, sizeof(g_pending_errmsg), "%s", m);
             }
+            if (g_trace_cb && jctx) {
+                char buf[512];
+                const char *m = js_error_to_cstr(jctx, buf, sizeof(buf));
+                fprintf(stderr, "TRACE_CB| %s\n", m);
+            }
         }
     }
 }

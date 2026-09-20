@@ -517,6 +517,23 @@ static void install_location_parts(JSContext *ctx, JSValue obj, const char *href
  * nb_js_eval.c's comments for provenance. */
 static const char g_js_prelude[] =
 "/* NB-JS host prelude: URL + URLSearchParams polyfill (ES5.1) */\n"
+"/* diagnosis aid (passive; NB_TRACE_CB=1 activates C-side dumps): install a\n"
+" * capture-phase window 'error' listener that re-logs the RAW Error so\n"
+" * quickjs's full message (incl. redacted property names) + stack survive\n"
+" * the page's own sanitising error reporter. */\n"
+"(function(){\n"
+"  try {\n"
+"    if (window && window.addEventListener) {\n"
+"      window.addEventListener('error', function (ev) {\n"
+"        try {\n"
+"          var err = ev && ev.error ? ev.error : null;\n"
+"          var txt = err && err.stack ? err.stack : (ev && ev.message ? ev.message : String(ev));\n"
+"          console.error('[NBTRACE] ' + txt);\n"
+"        } catch (e) {}\n"
+"      }, true);\n"
+"    }\n"
+"  } catch (e) {}\n"
+"})();\n"
 "(function(){\n"
 "var EMPTY_URL='about:blank';\n"
 "function enc(s){ return encodeURIComponent(String(s)); }\n"
@@ -948,10 +965,19 @@ static void install_host(JSContext *ctx) {
     JS_SetPropertyStr(ctx, g, "sessionStorage", JS_DupValue(ctx, stor));
     JS_SetPropertyStr(ctx, g, "localStorage", stor);
 
-    /* window / self / globalThis ARE the real QuickJS global object. */
+    /* window / self / globalThis ARE the real QuickJS global object.
+     * Inter-frame self-references: kevlar reads window.top and derives
+     * D=window.top when not top; with top undefined, `D[O]` in bevasrs
+     * init threw "cannot read property of undefined" at <script>:1031. */
     JS_SetPropertyStr(ctx, g, "window", JS_DupValue(ctx, g));
     JS_SetPropertyStr(ctx, g, "self", JS_DupValue(ctx, g));
     JS_SetPropertyStr(ctx, g, "globalThis", JS_DupValue(ctx, g));
+    JS_SetPropertyStr(ctx, g, "top", JS_DupValue(ctx, g));
+    JS_SetPropertyStr(ctx, g, "parent", JS_DupValue(ctx, g));
+    JS_SetPropertyStr(ctx, g, "frames", JS_DupValue(ctx, g));
+    JS_SetPropertyStr(ctx, g, "opener", JS_NULL);
+    JS_SetPropertyStr(ctx, g, "frameElement", JS_NULL);
+    JS_SetPropertyStr(ctx, g, "length", JS_NewInt32(ctx, 0));
 
     /* rung-6 slice 2: history prelude hooks. The prelude's history object
      * calls these to hand back/forward/go/ADDR to the worker (which turns

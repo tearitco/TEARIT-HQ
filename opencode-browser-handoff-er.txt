@@ -46,9 +46,45 @@ WHAT WORKS (all committed + pushed to origin/opencode, HEAD = commit
 - Home page static render ~18-19 rows (footer + TEXT css). `make check`
   = 60 PASS / 0 FAIL (verified twice).
 
-THE ACTIVE BUG (the reason the element tree isn't fully wired):
-- TWO page-bootstrap exceptions during the home LOAD drain, caught by the
-  page's own error handler (so we only see the page-formatted summary):
+FIXED 2026-09-20: the two init TypeErrors are GONE (see below for root
+cause record). Home loads fully error-free, console clean, value-set +
+input dispatch work through the manager.
+
+THE NEXT GAP (functional parity, chromium target): the search UI is not
+interactive yet. `#search` input exists (name="search_query") but
+`#search-icon-legacy` / the enclosing `<form action="/results">` are NOT
+in the fetched markup — they are built by kevlar when it UPGRADES the
+custom elements `ytd-masthead` / `ytd-searchbox-spt` (customElements +
+ShadowRoot + `<template>`). Until that host exists, Enter/click on search
+is inert; the working search drive is `eval:location.href="/results?search_query=..."`.
+This milestone (custom-element upgrade) is the biggest remaining feature.
+
+DIAGNOSTIC RECORD (why the two "cannot read property of undefined" init
+TypeErrors happened — now FIXED):
+- ROOT CAUSE: kevlar's bevasrs bootstrap reads
+  `D=window===window.top?window:jyq()?window:window.top` then `g=D[O]`.
+  Our window host defined window/self/globalThis but NOT top/parent/frames,
+  so `window.top` was undefined -> jyq() false -> D=window.top=undefined ->
+  `D[O]` threw (stack: <anonymous> <script>:1031:145 at h at laz ...).
+  Error 2 (HGa at <script>:1042:82, forEach over `_.j_(O,aaZ,6,_.qO())`)
+  was the same bevasrs bootstrap stream.
+- FIX: install_host() now sets window.top/parent/frames = window,
+  opener/frameElement = null, window.length = 0, in ops/nb_host.h.
+- STACK DECODING (for future matches): the whole kevlar bundle
+  (page.js.ext8.js, 42,993 lines) is eval'd as ONE <script>; every
+  `<script>:<line>` in a stack is an OFFSET-LINE into that bundle
+  (line 1031 in a stack = file line ~1030; small +1 shift), NOT a
+  line of page.js. The deepest frame `at <eval> (<script>:42993:8)` is
+  just the top-level eval of the bundle's final line.
+- DIAGNOSTIC TOOLING added: NB_TRACE_CB=1 env, g_trace_cb in
+  nb_js_worker.c dumps full callback/pending-job exceptions to stderr
+  (invoke_cb0 + drain_jobs); prelude installs a capture-phase window
+  'error' listener that re-logs the RAW quickjs Error as [NBTRACE]
+  (the page sanitizes its own copies, stripping quoted property names).
+- NOTE: the standalone worker driver is hit-or-miss at reproduction;
+  the MANAGER flow reproduces reliably (see /tmp/opencode/drive_load.py,
+  which now sends correct frames: length prefix counts the whole body
+  incl. the "LOAD\n" line).
   1. `TypeError: cannot read property of undefined @ at <anonymous>
      (<script>:1031:145) at h (<script>:5298:169) at laz
      (<script>:1031:72)`
