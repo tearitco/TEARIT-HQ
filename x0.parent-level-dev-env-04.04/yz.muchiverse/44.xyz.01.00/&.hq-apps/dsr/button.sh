@@ -6,11 +6,13 @@
 # generic renderer draws it, zero new per-project C in the renderer).
 #   button.sh <house_root>
 set -e
-HOUSE_ROOT="${1:-}"
-[ -n "$HOUSE_ROOT" ] && [ -d "$HOUSE_ROOT" ] || { echo "dsr: need house_root as argv[1]" >&2; exit 1; }
-HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
-
 HERE="$(cd "$(dirname "$0")" && pwd)"
+# The taskbar toys menu runs `button.sh run` (argv[1]="run", not a path),
+# so fall back to the house root derived from this script's own location.
+HOUSE_ROOT="${1:-}"
+[ -n "$HOUSE_ROOT" ] && [ -d "$HOUSE_ROOT" ] || HOUSE_ROOT="$HERE/../.."
+[ -d "$HOUSE_ROOT" ] || { echo "dsr: cannot resolve house_root" >&2; exit 1; }
+HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 XHTPM="$HERE/dsr.xhtpm"
 RENDER_OPS="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
 BIN="$RENDER_OPS/+x/khtpm_core_render.+x"

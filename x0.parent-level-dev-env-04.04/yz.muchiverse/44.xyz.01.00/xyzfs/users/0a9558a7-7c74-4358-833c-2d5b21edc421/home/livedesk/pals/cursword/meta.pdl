@@ -11,5 +11,6 @@ METHOD       | Inventory          | sh -c 'mkdir -p "$0/inventory"; printf "mode
 METHOD       | Chat               | sh -c 'exec sh "$1/&.widgits/open-hai/chat_button.sh" "$1" "$0/chat" cursword-chat'
 METHOD       | Bookmarks          | sh -c 'exec sh "$1/&.widgits/bookmarks/bm_menu.sh" "$1" "$0"'
 METHOD       | Play               | sh -c 'exec sh "$1/*.monads/*.muchi-pet/ops/play_event.sh" "$0"'
+METHOD       | Cli-io             | CLI_IO
 METHOD       | Close              | CLOSE
 METHOD       | Cancel             | void

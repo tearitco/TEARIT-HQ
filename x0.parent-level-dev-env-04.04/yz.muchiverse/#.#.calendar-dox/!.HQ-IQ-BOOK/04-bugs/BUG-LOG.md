@@ -26,6 +26,20 @@ note under it — don't silently edit it away.*
   common false "still broken" report in this house). Real blocker for
   WSR-CIV Step B (file:desk creation) until resolved.
 
+- **DSR toy did nothing when clicked in the toys menu — FOUND+FIXED
+  2026-09-19.** Root cause: the toys menu launches every toy with
+  `sh <toy>/button.sh run` (`livedesk:open-toy:` in
+  `khtpm_taskbar_manager.c`, output to /dev/null), so `argv[1]` is the
+  literal string `run`; `&.hq-apps/dsr/button.sh` treated `argv[1]` as
+  the house root, failed `[ -d run ]`, printed "dsr: need house_root as
+  argv[1]" and exited 1 — invisibly. Reproduced by running the exact
+  command. Fix: `button.sh` now falls back to `HERE/../..` when argv[1]
+  is not a directory. Verified: launched as the taskbar does, manager +
+  renderer came up, window mapped (820x900, PNG captured, Desk Street
+  Raider UI drawn). **Same bug likely affects `&.hq-apps/db-hq-pal/
+  button.sh`** (same `HOUSE_ROOT="${1:-}"` guard, has a toy.pdl) —
+  not changed here, check its toys-menu entry.
+
 - **UI does not scale to the monitor: taskbar too big + cut off, entities
   huge on a different computer** (user report 2026-09-19: same OS, second
   machine with a different monitor size/resolution; TB overflows the
