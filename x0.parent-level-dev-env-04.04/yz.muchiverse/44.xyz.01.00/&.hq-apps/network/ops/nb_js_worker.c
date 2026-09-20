@@ -3753,6 +3753,23 @@ static void fire_event(JSContext *ctx, int kind, NbNode *n, const char *type) {
 /* ---- the loop: lifecycle -> job/timer drain until quiescent or budget ---- */
 /* returns nonzero if an event-loop callback threw (caller -> STATUS err) */
 static int run_event_loop(JSContext *ctx) {
+    /* The page's timer queue can keep this loop busy for minutes under the
+     * resident worker (no JIT), and the manager guards its LOAD read with a
+     * 3s stall watchdog. Emit a LIVE| beat every ~1.8s so a slow-but-alive
+     * drain is never mistaken for a dead worker; RENDER still follows once
+     * the loop is actually quiescent. */
+    static uint64_t keep_last = 0;
+    #define NB_KEEPALIVE_LIVE() do { \
+        if (!g_cli) { \
+            uint64_t _k = now_ms(); \
+            if (_k - keep_last >= 1800) { \
+                keep_last = _k; \
+                char _b[96]; \
+                int _n = snprintf(_b, sizeof(_b), "LIVE|drain|%u", g_invocations); \
+                send_payload(_b, (size_t)_n); \
+            } \
+        } \
+    } while (0)
     signal(SIGALRM, sigalrm);
     alarm(nb_budget());   /* phase-1 backstop also covers timer/job callbacks */
     drain_jobs(ctx);
@@ -3764,6 +3781,7 @@ static int run_event_loop(JSContext *ctx) {
     for (int guard = 0; guard < 100000 && !g_pending_err; guard++) {
         if (g_invocations >= MAX_TIMER_INVOCATIONS) break;
         if (now_ms() - start > MAX_DRAIN_MS) break;   /* bound page_load wait */
+        NB_KEEPALIVE_LIVE();
         uint64_t now = now_ms();
         int ran = run_due_timers(ctx, now);
         drain_jobs(ctx);

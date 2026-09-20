@@ -1330,10 +1330,10 @@ static int worker_send(const char *payload, size_t n) {
     return write(g_worker_fd, "\n", 1) == 1;
 }
 
-static int worker_recv_line(char *out, size_t cap) {
+static int worker_recv_line_to(char *out, size_t cap, int timeout_ms) {
     if (g_worker_fd < 0) return 0;
     struct pollfd p = { g_worker_fd, POLLIN, 0 };
-    int pr = poll(&p, 1, WORKER_RECV_TIMEOUT_MS);
+    int pr = poll(&p, 1, timeout_ms);
     if (pr <= 0) return 0;   /* worker stalled: caller closes + respawns */
     char lb[16]; size_t i = 0; char c;
     while (read(g_worker_fd, &c, 1) == 1) {
@@ -1353,6 +1353,18 @@ static int worker_recv_line(char *out, size_t cap) {
     if (read(g_worker_fd, &c, 1) != 1) return 0;
     return 1;
 }
+
+static int worker_recv_line(char *out, size_t cap) {
+    return worker_recv_line_to(out, cap, WORKER_RECV_TIMEOUT_MS);
+}
+
+/* A resident LOAD can spend a long quiet stretch evaluating one page slice
+ * (the 11.9MB kevlar head alone is seconds) before its first RENDER/LIVE
+ * frame; the interactive 3s watchdog would kill a healthy worker mid-LOAD.
+ * The per-slice NB_EVAL_BUDGET (60s, set in worker_spawn) still bounds any
+ * genuinely stuck slice, and a dead worker EOFs instantly rather than
+ * timing out — so a generous LOAD quiet-budget is safe. */
+#define WORKER_LOAD_QUIET_MS 90000
 
 static void worker_close(void) {
     if (g_worker_fd >= 0) { close(g_worker_fd); g_worker_fd = -1; }
@@ -1430,6 +1442,14 @@ static void worker_spawn(void) {
         char con[PATH_BUF];
         snprintf(con, sizeof(con), "%s/#.desktop/network_browser_console.txt", g_house);
         setenv("NBW_CONSOLE", con, 1);
+        /* row-31 live incident (2026-09-19): the resident worker's page-slice
+         * budget defaults to EVAL_BUDGET_SEC=2s; the real 10.8MB kevlar head
+         * occasionally crosses it, sigalrm() _exit()s the whole worker
+         * mid-LOAD, and the manager is left with a dead worker — static rows
+         * merge, then "eval" reports "no page loaded". The one-shot row-31
+         * path already overrides NB_EVAL_BUDGET for the same bundle; give the
+         * RESIDENT browser a generous-but-bounded per-slice ceiling too. */
+        setenv("NB_EVAL_BUDGET", "60", 1);
         execl(g_js_worker_path, g_js_worker_path, (char *)NULL);
         _exit(127);
     }
@@ -1457,7 +1477,8 @@ static int worker_load(const char *js_path, const char *dom_path,
     g_pending_nav_kind[0] = 0; g_pending_nav_url[0] = 0; g_pending_nav_count = 1;
     char resp[65536];
     for (;;) {
-        if (!worker_recv_line(resp, sizeof(resp))) { worker_close(); return 0; }
+        if (!worker_recv_line_to(resp, sizeof(resp), WORKER_LOAD_QUIET_MS)) { worker_close(); return 0; }
+        if (strncmp(resp, "LIVE|", 5) == 0) continue;   /* drain keepalive */
         if (strncmp(resp, "RENDER\n", 7) == 0) {
             size_t rn = strlen(resp + 7);
             if (rn + 1 < sizeof(g_worker_render))
@@ -1519,7 +1540,11 @@ static int worker_eval(const char *js) {
 
     char resp[65536];
     for (;;) {
-        if (!worker_recv_line(resp, sizeof(resp))) { worker_close(); return 0; }
+        /* A console command can run the page's own handlers (input/click),
+         * which may then drain a long quiet stretch — same generous budget
+         * as LOAD. A dead worker still EOFs immediately. */
+        if (!worker_recv_line_to(resp, sizeof(resp), WORKER_LOAD_QUIET_MS)) { worker_close(); return 0; }
+        if (strncmp(resp, "LIVE|", 5) == 0) continue;   /* drain keepalive */
         if (strncmp(resp, "RENDER\n", 7) == 0) {
             size_t rn = strlen(resp + 7);
             if (rn + 1 < sizeof(g_worker_render))

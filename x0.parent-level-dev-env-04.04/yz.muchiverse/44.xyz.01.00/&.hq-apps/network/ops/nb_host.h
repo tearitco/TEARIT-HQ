@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <time.h>
 #include "../js/quickjs.h"
 
 #ifndef NB_HOST_DEFINE_GLOBALS
@@ -161,6 +162,67 @@ static JSValue native_noop(JSContext *ctx, JSValueConst this_val,
                            int argc, JSValueConst *argv) {
     (void)ctx; (void)this_val; (void)argc; (void)argv;
     return JS_UNDEFINED;
+}
+
+/* ---- performance (browser host). youtube's kevlar + every real SPA call
+ * performance.now()/mark() at boot; a bare ReferenceError otherwise. now()
+ * is monotonic ms (same base as the worker's timers). User marks are kept
+ * in a tiny C store so getEntriesByType("mark")/getEntriesByName return
+ * real entries (kevlar's `100ms` tracker reads them). */
+static double perf_mono_ms(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1000000.0;
+}
+static JSValue nb_perf_now(JSContext *ctx, JSValueConst this_val,
+                           int argc, JSValueConst *argv) {
+    (void)this_val; (void)argc; (void)argv;
+    return JS_NewFloat64(ctx, perf_mono_ms());
+}
+#define NB_PERF_MARKS_MAX 256
+static char g_perf_mark_name[NB_PERF_MARKS_MAX][64];
+static double g_perf_mark_t[NB_PERF_MARKS_MAX];
+static int g_perf_mark_n = 0;
+static JSValue nb_perf_mark(JSContext *ctx, JSValueConst this_val,
+                            int argc, JSValueConst *argv) {
+    (void)this_val;
+    int idx = g_perf_mark_n;
+    double t = perf_mono_ms();
+    const char *name = argc > 0 ? JS_ToCString(ctx, argv[0]) : NULL;
+    if (g_perf_mark_n < NB_PERF_MARKS_MAX) {
+        snprintf(g_perf_mark_name[g_perf_mark_n], sizeof(g_perf_mark_name[0]),
+                 "%s", name ? name : "");
+        g_perf_mark_t[g_perf_mark_n] = t;
+        g_perf_mark_n++;
+    }
+    if (name) JS_FreeCString(ctx, name);
+    JSValue o = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, o, "name",     JS_NewString(ctx, g_perf_mark_name[idx]));
+    JS_SetPropertyStr(ctx, o, "entryType",JS_NewString(ctx, "mark"));
+    JS_SetPropertyStr(ctx, o, "startTime",JS_NewFloat64(ctx, idx < g_perf_mark_n ? g_perf_mark_t[idx] : t));
+    JS_SetPropertyStr(ctx, o, "duration", JS_NewFloat64(ctx, 0));
+    return o;
+}
+static JSValue nb_perf_get_mark_entries(JSContext *ctx, JSValueConst this_val,
+                                        int argc, JSValueConst *argv) {
+    (void)this_val;
+    const char *type = argc > 0 ? JS_ToCString(ctx, argv[0]) : NULL;
+    int only_mark = !type || strcmp(type, "mark") == 0;
+    if (type) JS_FreeCString(ctx, type);
+    JSValue a = JS_NewArray(ctx);
+    int k = 0;
+    for (int i = 0; i < g_perf_mark_n; i++) {
+        if (!only_mark) continue;
+        JSValue o = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, o, "name",      JS_NewString(ctx, g_perf_mark_name[i]));
+        JS_SetPropertyStr(ctx, o, "entryType", JS_NewString(ctx, "mark"));
+        JS_SetPropertyStr(ctx, o, "startTime", JS_NewFloat64(ctx, g_perf_mark_t[i]));
+        JS_SetPropertyStr(ctx, o, "duration",  JS_NewFloat64(ctx, 0));
+        JS_SetPropertyUint32(ctx, a, (uint32_t)k, o);
+        k++;
+        if (k > NB_PERF_MARKS_MAX) break;
+    }
+    return a;
 }
 
 /* ---- rung-6 slice 2: real navigation request plumbing. The page's
@@ -854,6 +916,26 @@ static void install_host(JSContext *ctx) {
     JS_SetPropertyStr(ctx, scr, "colorDepth",  JS_NewInt32(ctx, 24));
     JS_SetPropertyStr(ctx, scr, "pixelDepth",  JS_NewInt32(ctx, 24));
     JS_SetPropertyStr(ctx, g, "screen", scr);
+
+    /* performance — real now()/mark()/getEntriesByType, inert navigation
+     * & timing biscuits (no complete nav timing model yet). */
+    JSValue perf = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, perf, "now",            JS_NewCFunction(ctx, nb_perf_now, "now", 0));
+    JS_SetPropertyStr(ctx, perf, "timeOrigin",     JS_NewInt64(ctx, 0));
+    JS_SetPropertyStr(ctx, perf, "mark",           JS_NewCFunction(ctx, nb_perf_mark, "mark", 1));
+    JS_SetPropertyStr(ctx, perf, "measure",        JS_NewCFunction(ctx, native_noop, "measure", 3));
+    JS_SetPropertyStr(ctx, perf, "clearMarks",     JS_NewCFunction(ctx, native_noop, "clearMarks", 0));
+    JS_SetPropertyStr(ctx, perf, "getEntries",     JS_NewCFunction(ctx, nb_perf_get_mark_entries, "getEntries", 0));
+    JS_SetPropertyStr(ctx, perf, "getEntriesByType",JS_NewCFunction(ctx, nb_perf_get_mark_entries, "getEntriesByType", 1));
+    JS_SetPropertyStr(ctx, perf, "getEntriesByName",JS_NewCFunction(ctx, nb_perf_get_mark_entries, "getEntriesByName", 2));
+    JSValue pnav = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, pnav, "type", JS_NewInt32(ctx, 0));
+    JS_SetPropertyStr(ctx, pnav, "redirectCount", JS_NewInt32(ctx, 0));
+    JS_SetPropertyStr(ctx, perf, "navigation", pnav);
+    JSValue ptime = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, ptime, "navigationStart", JS_NewInt64(ctx, 0));
+    JS_SetPropertyStr(ctx, perf, "timing", ptime);
+    JS_SetPropertyStr(ctx, g, "performance", perf);
 
     /* localStorage / sessionStorage share one inert storage object */
     JSValue stor = JS_NewObject(ctx);

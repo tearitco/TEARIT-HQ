@@ -65,6 +65,7 @@ static int wreply(int fd, char *buf, size_t cap) {
     if (n < 0 || (size_t)n >= cap) return 0;
     if (!rread(fd, buf, (size_t)n)) return 0;
     char t; if (read(fd, &t, 1) != 1) return 0;   /* trailing '\n' */
+    if (strncmp(buf, "LIVE|", 5) == 0) return wreply(fd, buf, cap);  /* keepalive */
     return 1;
 }
 
@@ -126,6 +127,7 @@ int main(int argc, char **argv) {
                 fprintf(stderr, "harness: worker killed by signal %d - see WERR| stderr above\n", WTERMSIG(st));
             return 1;
         }
+        if (strncmp(reply, "LIVE|", 5) == 0) continue;   /* drain keepalive */
         if (strncmp(reply, "RENDER\n", 7) == 0) continue;  /* step 4 rows */
         status = reply;
         break;
