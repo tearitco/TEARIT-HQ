@@ -1882,60 +1882,6 @@ static void tab_after_fetch_ok(const char *url) {
     }
 }
 
-/* REAL FIX 2026-09-13, direct live report: "making new tab in network
- * populated search bar with same old address... cant we make sure it
- * populates blank? or populates with the address of last page in
- * event of loading history." Root cause, found live while testing
- * h-ai-lab's own cli_io fix: write_ui_projection()'s addr_label
- * always DOES carry the right value (blank on tab_new, the real
- * stored URL on tab_switch/history) - the manager's own tab state was
- * never wrong. But khtpm_core_render.c's kh_cli_io_reload() restores
- * a cli_io's input_buffer from <package_dir>/cli_io_state.txt
- * UNCONDITIONALLY on every reparse, keyed by target_id ("address"
- * here) - overwriting content="${addr_label}"'s seed with whatever
- * was last MANUALLY TYPED, forever, for the life of that file. Once
- * a human ever types a URL by hand, every future tab_new()/
- * tab_switch() keeps showing that same stale typed value, regardless
- * of what addr_label says, since the renderer's own restore always
- * runs after the seed and always wins. Real fix: the manager
- * proactively keeps cli_io_state.txt's own "address" key in sync with
- * g_current_url at the exact two real moments it changes for a
- * reason OTHER than the user typing (new tab, tab switch) - same
- * read-modify-write shape khtpm_core_render.c's own
- * default_cli_io_save() already uses for this exact file, so this
- * isn't a new convention, it's applying the existing one from the
- * other real writer's side. Typing a URL in the SAME tab needs no
- * sync call - the renderer's own per-keystroke save already keeps
- * that path consistent. */
-static void sync_address_cli_io_state(const char *url) {
-    if (!g_package_dir[0]) return;
-    char path[PATH_BUF], tmp[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/cli_io_state.txt", g_package_dir);
-    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
-    char lines[64][PATH_BUF];
-    int n = 0;
-    FILE *f = fopen(path, "r");
-    if (f) {
-        char line[PATH_BUF];
-        while (n < 64 && fgets(line, sizeof(line), f)) {
-            line[strcspn(line, "\r\n")] = '\0';
-            char *eq = strchr(line, '=');
-            if (!eq) continue;
-            *eq = '\0';
-            if (strcmp(line, "address") == 0) continue; /* real value replaced below */
-            snprintf(lines[n], sizeof(lines[n]), "%s=%s", line, eq + 1);
-            n++;
-        }
-        fclose(f);
-    }
-    FILE *w = fopen(tmp, "w");
-    if (!w) return;
-    for (int i = 0; i < n; i++) fprintf(w, "%s\n", lines[i]);
-    fprintf(w, "address=%s\n", url ? url : "");
-    fclose(w);
-    rename(tmp, path);
-}
-
 static void tab_switch(int n) {
     if (n < 0 || n >= g_tab_count) {
         publish_status("error: no such tab");
@@ -1948,7 +1894,6 @@ static void tab_switch(int n) {
     if (!tab_load_snapshot(n)) {
         if (g_tabs[n].url[0]) {
             do_fetch(g_tabs[n].url, 0);
-            sync_address_cli_io_state(g_current_url);
             return;
         }
         write_blank_page_state();
@@ -1957,7 +1902,6 @@ static void tab_switch(int n) {
     } else {
         publish_status("ready");
     }
-    sync_address_cli_io_state(g_current_url);
     write_chtpm_projection();
 }
 
@@ -1975,7 +1919,6 @@ static void tab_new(void) {
     g_tab_current = n;
     write_blank_page_state();
     g_current_url[0] = 0;
-    sync_address_cli_io_state(g_current_url);
     tab_save_snapshot(n);
     tabs_write();
     publish_status("idle");
@@ -2002,7 +1945,6 @@ static void tab_close_current(void) {
     if (!tab_load_snapshot(g_tab_current)) {
         if (g_tabs[g_tab_current].url[0]) {
             do_fetch(g_tabs[g_tab_current].url, 0);
-            sync_address_cli_io_state(g_current_url);
             return;
         }
         write_blank_page_state();
@@ -2011,7 +1953,6 @@ static void tab_close_current(void) {
     } else {
         publish_status("ready");
     }
-    sync_address_cli_io_state(g_current_url);
     write_chtpm_projection();
 }
 

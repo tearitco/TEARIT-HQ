@@ -55,7 +55,7 @@
      <panel>, just <tabbar> (breadcrumbs) + a real top-level
      <scrolllist> that fills the rest of the window. -->
 
-<window label="File Explorer - ${mode}" class="file-explorer-pal database-window user-resizable" vars="file_explorer_ui.txt">
+<window label="File Explorer - ${mode}" class="file-explorer-pal database-window user-resizable" vars="file_explorer_ui.txt" drop_highlight="#88ff66" drop_action="sh -c 'exec sh &quot;$1/&amp;.widgits/file-explorer/ops/fe_drop.sh&quot; &quot;$0&quot; &quot;$1&quot;'">
   <!-- REAL, NEW 2026-09-05 - launch_module() passes house_root then
        package_dir automatically, then this <module>'s own id= as a
        THIRD, single extra argv slot (kh_collect_and_launch_modules()'s
@@ -67,21 +67,11 @@
        start_dir isn't wired up yet). -->
   <module src="&.widgits/file-explorer/ops/+x/file_explorer_manager.+x" id="LOAD"/>
   <page name="main">
-    <!-- REAL, NEW 2026-09-15, direct live report ("this one is missing
-         chrome buttons" / "that is not the typical chrome that all
-         other windows in house use") - the flat-page layout path (no
-         <sidebar>/<panel>) does NOT auto-inject a chrome X/!/_ trio
-         the way layout_sidebar_panel() does - a real chrome button
-         here must be an explicit <item>. First attempt used its own
-         invented id/class ("close"/"close-btn"), which picked up none
-         of the house's real shared chrome look - entity_menu_
-         default.css's own `#chrome-close { border: 1px solid
-         #888888; }` (confirmed live: this is the exact same id
-         g_default_close_elem uses for the auto-injected trio every
-         other window gets) keys off the id specifically, not a class.
-         Real id now, same real shared style every other window's own
-         close button already has. -->
-    <item id="chrome-close" label="X" onclick="CLOSE"/>
+    <!-- 2026-09-18: do NOT put an <item id="chrome-close"> here.
+         Grid mode (any class="swatch") synthesizes g_default_close_elem
+         already; list/flat does too when found_close is 0. An extra
+         template X was laid as a chip ([ ]1) beside the real chrome X
+         ([ ]100) — never intended. Auto chrome only. -->
     <tabbar class="fe-crumbs-bar">
       <repeat count="${n_crumbs}" bind="crumb">
       <tab id="crumb${crumb.#}" label="${crumb.label}" action="FE_CRUMB:${crumb.#}"/>

@@ -10,7 +10,7 @@ ACTION="${1:-help}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 HOUSE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-TPWIN="$HOUSE_DIR/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
+TPWIN="$HOUSE_DIR/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity.+x"
 # 2026-09-08: the hardcoded "+18.01" was renamed to "19.00" (see
 # 19.00-VOXEL-3D-ARCHITECTURE.md) - resolve the prisc runner by a
 # cheap maxdepth-1 glob instead, matching entities/book-stack/menu.chtpm's

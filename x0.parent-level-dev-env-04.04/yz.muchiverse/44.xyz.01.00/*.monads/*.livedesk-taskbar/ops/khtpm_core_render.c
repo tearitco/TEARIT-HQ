@@ -128,6 +128,7 @@ static void reload_font_ui(void); /* fwd - hq_ui_pdl_reload_if_changed() re-size
 static void kh_text_areas_reload(Elem *root); /* fwd - reparse_chtpm_if_changed() re-hydrates <text_area> buffers, defined near default_text_area_save */
 static void kh_ensure_dock_peer_window(void); /* fwd - hq_idle_tick()'s own per-tick self-heal call; real def + header comment near main() */
 static void kh_cli_io_reload(Elem *root); /* fwd - reparse_chtpm_if_changed() re-hydrates <cli_io> buffers, defined near kh_text_areas_reload */
+static void kh_drop_zone_unregister(void);
 static Elem *kh_find_input_by_key(Elem *root, const char *key); /* fwd - reparse_chtpm_if_changed() re-arms a cli_io/text_area across a live reparse without releasing the keyboard grab it already holds */
 static void kh_focus_debug_log(const char *fmt, ...); /* fwd - TEMPORARY diagnostic logging, see its own definition comment (network-browser recurring focus bug) */
 static Elem *elem_new(const char *tag); /* fwd - kh_pool_alloc() (CHTPM-INCREMENTAL-REPARSE-DESIGN.md) calls this before its real definition */
@@ -955,6 +956,9 @@ static void decode_entities(char *s) {
  * lookup), and the popup loop below is a blocking select()+XNextEvent
  * with a 150ms cap - attaching XDND costs zero idle CPU. */
 static char g_drop_action[1024] = "";
+static char g_drop_highlight_color[16] = "#88ff66";
+static int g_drop_highlight = 0;
+static char g_drop_hover_name[128] = "";
 
 static void apply_attr(Elem *e, const char *name, const char *val) {
     if (strcmp(name, "id") == 0 || strcmp(name, "name") == 0) {
@@ -1149,6 +1153,8 @@ static void apply_attr(Elem *e, const char *name, const char *val) {
         snprintf(decoded, sizeof(decoded), "%s", val);
         decode_entities(decoded);
         snprintf(g_drop_action, sizeof(g_drop_action), "%s", decoded);
+    } else if (strcmp(name, "drop_highlight") == 0) {
+        snprintf(g_drop_highlight_color, sizeof(g_drop_highlight_color), "%s", val[0] ? val : "#88ff66");
     }
 }
 
@@ -3997,6 +4003,75 @@ static int g_hq_minimized = 0;
 static int g_default_is_fullscreen = 0;
 static int g_default_pre_fullscreen_x = 0, g_default_pre_fullscreen_y = 0;
 
+static int window_is_entity_menu(void) {
+    int i;
+    if (!g_window) return 0;
+    for (i = 0; i < g_window->n_classes; i++)
+        if (strcmp(g_window->classes[i], "entity-menu") == 0) return 1;
+    return 0;
+}
+
+/* Auto chrome trio for swatch-grid / flat-page (2026-09-18): same
+ * g_default_*_elem as sidebar+panel. Place right-to-left from *chrome_x
+ * (X then ! then _ → visual _ ! X). No template items.
+ * Entity menus: chrome on the TOP row; nametag/focus one row below
+ * (user 2026-09-18). */
+static void kh_place_chrome_btn(Elem *e, const char *id, const char *label,
+                                const char *onclick, int *chrome_x, int chrome_y) {
+    memset(e, 0, sizeof(*e));
+    snprintf(e->tag, sizeof(e->tag), "item");
+    snprintf(e->id, sizeof(e->id), "%s", id);
+    snprintf(e->label, sizeof(e->label), "%s", label);
+    snprintf(e->onclick, sizeof(e->onclick), "%s", onclick);
+    css_compute_style(&g_sheet, "item", id, NULL, 0, 0, &e->style);
+    int cw = kh_measure_text_px(&e->style, label) + 52;
+    if (cw < 48) cw = 48;
+    *chrome_x -= cw;
+    e->x = *chrome_x; e->y = chrome_y; e->w = cw; e->h = CHROME_H - 4;
+    kh_clamp_elem_onscreen(e);
+    *chrome_x = e->x - 4;
+    e->nav_index = ++g_n_nav;
+    g_nav[g_n_nav - 1] = e;
+}
+
+/* Wrap <tab> children like palette chips (2026-09-18 breadcrumbs).
+ * Returns pixel height of the tabbar box. Does not grow g_win_w —
+ * extra crumbs take new rows; user-resizable windows keep their width. */
+static int kh_layout_tabbar_wrap(Elem *tabbar, int x0, int y0) {
+    int row_h = scaled(28);
+    int th = row_h - scaled(4);
+    int tx = x0, ty = y0 + scaled(2);
+    int rows = 1;
+    int i;
+    if (!tabbar || tabbar->n_children <= 0) return 0;
+    for (i = 0; i < tabbar->n_children; i++) {
+        Elem *tab = tabbar->children[i];
+        if (strcmp(tab->tag, "tab") != 0) continue;
+        css_compute_style(&g_sheet, tab->tag, tab->id, tab->classes, tab->n_classes, 0, &tab->style);
+        int tw = scaled(52);
+        if (font_ui && tab->label[0]) {
+            XGlyphInfo gi;
+            XftTextExtentsUtf8(dpy, font_ui, (const FcChar8 *)tab->label, (int)strlen(tab->label), &gi);
+            tw += gi.xOff;
+        }
+        if (tx > x0 && tx + tw > g_win_w - 8) {
+            tx = x0;
+            ty += row_h;
+            rows++;
+        }
+        tab->x = tx; tab->y = ty; tab->w = tw; tab->h = th;
+        tab->nav_index = ++g_n_nav;
+        g_nav[g_n_nav - 1] = tab;
+        tx += tw + scaled(3);
+    }
+    {
+        int h = rows * row_h;
+        tabbar->x = 0; tabbar->y = y0; tabbar->w = g_win_w; tabbar->h = h;
+        css_compute_style(&g_sheet, tabbar->tag, tabbar->id, tabbar->classes, tabbar->n_classes, 0, &tabbar->style);
+        return h;
+    }
+}
+
 /* Lays out `container`'s own direct item/text children as a real,
  * generic scrollable list clipped to the given box - only `visible_rows`
  * of them (h/ROW_H) are ever given a real position/nav_index; the rest
@@ -5709,10 +5784,40 @@ static void dock_paint_menu(void) {
         /* 2px theme-secondary window frame in a dedicated margin,
          * drawn LAST, right before the present. */
         {
-            XSetForeground(dpy, gc, alloc_pixel(g_theme_fg[0] ? g_theme_fg : "#888888"));
-            for (int _fb = 0; _fb < KH_WIN_FRAME; _fb++)
-                XDrawRectangle(dpy, buf, gc, _fb, _fb,
-                               (unsigned)(g_win_w - 1 - 2 * _fb), (unsigned)(g_win_h - 1 - 2 * _fb));
+            {
+                const char *fc = (g_drop_highlight && g_drop_highlight_color[0])
+                    ? g_drop_highlight_color
+                    : (g_theme_fg[0] ? g_theme_fg : "#888888");
+                XSetForeground(dpy, gc, alloc_pixel(fc));
+                if (g_drop_highlight) {
+                    int i;
+                    XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)g_win_w, 28);
+                    XSetLineAttributes(dpy, gc, 3, LineOnOffDash, CapButt, JoinMiter);
+                    for (i = 4; i <= 10; i += 3)
+                        XDrawRectangle(dpy, buf, gc, i, i,
+                                       (unsigned)(g_win_w - 1 - 2 * i), (unsigned)(g_win_h - 1 - 2 * i));
+                    XSetLineAttributes(dpy, gc, 1, LineSolid, CapButt, JoinMiter);
+                    if (font_ui && xftdraw_buf) {
+                        char banner[160];
+                        XftColor tcol;
+                        XRenderColor xr;
+                        xr.red = 0; xr.green = 0; xr.blue = 0; xr.alpha = 0xffff;
+                        XftColorAllocValue(dpy, DefaultVisual(dpy, DefaultScreen(dpy)),
+                                           DefaultColormap(dpy, DefaultScreen(dpy)), &xr, &tcol);
+                        snprintf(banner, sizeof(banner), "[ drop: %s ]",
+                                 g_drop_hover_name[0] ? g_drop_hover_name : "...");
+                        XftDrawStringUtf8(xftdraw_buf, &tcol, font_ui, 12, 20,
+                                          (const FcChar8 *)banner, (int)strlen(banner));
+                        XftColorFree(dpy, DefaultVisual(dpy, DefaultScreen(dpy)),
+                                     DefaultColormap(dpy, DefaultScreen(dpy)), &tcol);
+                    }
+                } else {
+                    int _fb;
+                    for (_fb = 0; _fb < KH_WIN_FRAME; _fb++)
+                        XDrawRectangle(dpy, buf, gc, _fb, _fb,
+                                       (unsigned)(g_win_w - 1 - 2 * _fb), (unsigned)(g_win_h - 1 - 2 * _fb));
+                }
+            }
         }
         {
             XImage *frame = XGetImage(dpy, buf, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h, AllPlanes, ZPixmap);
@@ -6175,24 +6280,14 @@ static void assign_nav_and_layout(void) {
          * declared none, synthesise the same g_default_close_elem the
          * sidebar+panel path uses - drawn/clicked/serialised through the
          * exact machinery that already exists for it. */
-        if (!found_close) {
-            memset(g_default_close_elem, 0, sizeof(*g_default_close_elem));
-            snprintf(g_default_close_elem->tag, sizeof(g_default_close_elem->tag), "item");
-            snprintf(g_default_close_elem->id, sizeof(g_default_close_elem->id), "chrome-close");
-            snprintf(g_default_close_elem->label, sizeof(g_default_close_elem->label), "X");
-            snprintf(g_default_close_elem->onclick, sizeof(g_default_close_elem->onclick), "CLOSE");
-            css_compute_style(&g_sheet, "item", "chrome-close", NULL, 0, 0, &g_default_close_elem->style);
-            int cw = kh_measure_text_px(&g_default_close_elem->style, "X") + 52;
-            if (cw < 48) cw = 48;
-            chrome_x -= cw;
-            g_default_close_elem->x = chrome_x; g_default_close_elem->y = 2;
-            g_default_close_elem->w = cw; g_default_close_elem->h = CHROME_H - 4;
-            kh_clamp_elem_onscreen(g_default_close_elem);
-            chrome_x = g_default_close_elem->x - 4;
-            g_default_close_elem->nav_index = ++g_n_nav;
-            g_nav[g_n_nav - 1] = g_default_close_elem;
-        } else {
-            g_default_close_elem->w = 0;   /* template has its own; keep the synth one inert */
+        {
+            int cy = 2; /* chrome on the nametag's former row; entity-menu draws nametag below */
+            if (!found_close)
+                kh_place_chrome_btn(g_default_close_elem, "chrome-close", "X", "CLOSE", &chrome_x, cy);
+            else
+                g_default_close_elem->w = 0;
+            kh_place_chrome_btn(g_default_fullscreen_elem, "chrome-fullscreen", "!", "TOGGLE_FULLSCREEN", &chrome_x, cy);
+            kh_place_chrome_btn(g_default_minimize_elem, "chrome-minimize", "_", "MINIMIZE", &chrome_x, cy);
         }
         /* helper: does this <item> carry class="pal-dir" (the long folder
          * list - pinned to the FOOTER; sheet A/B/C + tileset choosers go
@@ -6203,6 +6298,15 @@ static void assign_nav_and_layout(void) {
         /* pass 2a: sheet (A/B/C) + tileset choosers, above the grid,
          * each family on its own row */
         int chips_top = CHROME_H + 6;
+        {
+            int crumb_h = 0;
+            for (i = 0; i < page->n_children; i++) {
+                Elem *tb = page->children[i];
+                if (strcmp(tb->tag, "tabbar") != 0 || tb->n_children <= 0) continue;
+                crumb_h += kh_layout_tabbar_wrap(tb, x0, CHROME_H + crumb_h);
+            }
+            if (crumb_h) chips_top = CHROME_H + crumb_h + 6;
+        }
         {
             int cx = x0, cy = chips_top;
             const char *prev_fam = NULL;
@@ -6334,35 +6438,15 @@ static void assign_nav_and_layout(void) {
          * true no-op, unchanged from before. */
         int canvas_tabbar_h = 0;
         {
-            int row_h_tb = scaled(28);
-            int th = row_h_tb - scaled(4);
             for (int ci = 0; ci < page->n_children; ci++) {
                 Elem *tabbar = page->children[ci];
                 if (strcmp(tabbar->tag, "tabbar") != 0 || tabbar->n_children <= 0) continue;
-                int ty = CHROME_H + canvas_tabbar_h + scaled(2);
-                int tx = scaled(6);
-                for (int i = 0; i < tabbar->n_children; i++) {
-                    Elem *tab = tabbar->children[i];
-                    if (strcmp(tab->tag, "tab") != 0) continue;
-                    css_compute_style(&g_sheet, tab->tag, tab->id, tab->classes, tab->n_classes, 0, &tab->style);
-                    int tw = scaled(52);
-                    if (font_ui && tab->label[0]) {
-                        XGlyphInfo gi;
-                        XftTextExtentsUtf8(dpy, font_ui, (const FcChar8 *)tab->label, (int)strlen(tab->label), &gi);
-                        tw += gi.xOff;
-                    }
-                    tab->x = tx; tab->y = ty; tab->w = tw; tab->h = th;
-                    tab->nav_index = ++g_n_nav; g_nav[g_n_nav - 1] = tab;
-                    tx += tw + scaled(3);
-                }
-                if (!g_user_resizable && tx + scaled(6) > g_win_w) { g_win_w = tx + scaled(6); g_window->w = g_win_w; }
-                tabbar->x = 0; tabbar->y = CHROME_H + canvas_tabbar_h; tabbar->w = g_win_w; tabbar->h = row_h_tb;
-                css_compute_style(&g_sheet, tabbar->tag, tabbar->id, tabbar->classes, tabbar->n_classes, 0, &tabbar->style);
-                canvas_tabbar_h += row_h_tb;
+                canvas_tabbar_h += kh_layout_tabbar_wrap(tabbar, scaled(6), CHROME_H + canvas_tabbar_h);
             }
         }
 
         int y = CHROME_H + canvas_tabbar_h;
+        if (window_is_entity_menu()) y = CHROME_H * 2; /* chrome row, nametag row, then items */
         int chrome_x = g_win_w - 8;      /* has_canvas only */
         int row_x = 0, row_h = 0;        /* has_canvas horizontal-row cursor */
         int found_close = 0;
@@ -6550,22 +6634,14 @@ static void assign_nav_and_layout(void) {
          * declares no explicit chrome item at all now still gets one,
          * synthesized through the exact same g_default_close_elem
          * machinery, real id="chrome-close" CSS look included. */
-        if (!found_close) {
-            memset(g_default_close_elem, 0, sizeof(*g_default_close_elem));
-            snprintf(g_default_close_elem->tag, sizeof(g_default_close_elem->tag), "item");
-            snprintf(g_default_close_elem->id, sizeof(g_default_close_elem->id), "chrome-close");
-            snprintf(g_default_close_elem->label, sizeof(g_default_close_elem->label), "X");
-            snprintf(g_default_close_elem->onclick, sizeof(g_default_close_elem->onclick), "CLOSE");
-            css_compute_style(&g_sheet, "item", "chrome-close", NULL, 0, 0, &g_default_close_elem->style);
-            int cw = kh_measure_text_px(&g_default_close_elem->style, "X") + 52;
-            if (cw < 48) cw = 48;
-            chrome_x -= cw;
-            g_default_close_elem->x = chrome_x; g_default_close_elem->y = 2;
-            g_default_close_elem->w = cw; g_default_close_elem->h = CHROME_H - 4;
-            kh_clamp_elem_onscreen(g_default_close_elem);
-            chrome_x = g_default_close_elem->x - 4;
-            g_default_close_elem->nav_index = ++g_n_nav;
-            g_nav[g_n_nav - 1] = g_default_close_elem;
+        {
+            int cy = 2; /* chrome on the nametag's former row; entity-menu draws nametag below */
+            if (!found_close)
+                kh_place_chrome_btn(g_default_close_elem, "chrome-close", "X", "CLOSE", &chrome_x, cy);
+            else
+                g_default_close_elem->w = 0;
+            kh_place_chrome_btn(g_default_fullscreen_elem, "chrome-fullscreen", "!", "TOGGLE_FULLSCREEN", &chrome_x, cy);
+            kh_place_chrome_btn(g_default_minimize_elem, "chrome-minimize", "_", "MINIMIZE", &chrome_x, cy);
         }
         /* user owns the height when class="user-resizable". No
          * "never clip content" fallback here: the canvas is sized to
@@ -8457,6 +8533,7 @@ static void kh_ascii_frame_unregister(void) {
     unlink(p);
     snprintf(p, sizeof(p), "%s/#.desktop/ascii_frames/%d.pulse.txt", g_house_root, (int)getpid());
     unlink(p);
+    kh_drop_zone_unregister();
 }
 
 static void redraw(void) {
@@ -8534,8 +8611,18 @@ static void redraw(void) {
     XSetForeground(dpy, gc, alloc_pixel(g_theme_bg));
     XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h);
     if (!window_is_dock()) {
-    XSetForeground(dpy, gc, alloc_pixel(kh_shade_hex(g_theme_bg, 14)));
-    XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)g_win_w, CHROME_H);
+        /* Header bar: slightly lifted theme. File/body area: duller /
+         * washed so the list is visibly not the same slab as chrome. */
+        XSetForeground(dpy, gc, alloc_pixel(kh_shade_hex(g_theme_bg, 18)));
+        XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)g_win_w, CHROME_H);
+        {
+            const char *body = (g_drop_highlight && g_drop_highlight_color[0])
+                ? g_drop_highlight_color
+                : kh_shade_hex(g_theme_bg, 48);
+            XSetForeground(dpy, gc, alloc_pixel(body));
+            XFillRectangle(dpy, buf, gc, 0, CHROME_H, (unsigned)g_win_w,
+                           (unsigned)(g_win_h > CHROME_H ? g_win_h - CHROME_H : 0));
+        }
     }
 
     /* REAL Stage 5 §5d.3 step 6 (2026-08-16) - real, data-selected
@@ -8611,7 +8698,8 @@ static void redraw(void) {
             XDrawLine(dpy, buf, gc, DOCK_FOCUS_BOX_W, 0, DOCK_FOCUS_BOX_W, g_win_h);
         } else {
         XftColor title_col = xft_color(g_theme_fg);  /* themed (was hardcoded #eeeeee) - see the base-fill comment above */
-        XftDrawStringUtf8(xftdraw_buf, &title_col, font_ui, 8, 16,
+        XftDrawStringUtf8(xftdraw_buf, &title_col, font_ui, 8,
+                           window_is_entity_menu() ? (CHROME_H + 16) : 16,
                            (const FcChar8 *)title, (int)strlen(title));
         XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &title_col);
         /* REAL, NEW 2026-09-05 - "copied" tag top-right (left of the
@@ -8742,6 +8830,76 @@ static void redraw(void) {
         }
         draw_generic_scrollbars();
         if (window_is_dock()) dock_draw_separators(page);
+        /* Drop-hover UX: fill already used drop color for the file
+         * area; paint a dashed frame + name on TOP of the list so it
+         * cannot hide under swatch/scrolllist cells. */
+        if (g_drop_highlight && !window_is_dock()) {
+            int i;
+            const char *fc = g_drop_highlight_color[0] ? g_drop_highlight_color : "#88ff66";
+            XSetForeground(dpy, gc, alloc_pixel(fc));
+            XFillRectangle(dpy, buf, gc, 8, CHROME_H + 8, (unsigned)(g_win_w > 16 ? g_win_w - 16 : 0), 36);
+            XSetLineAttributes(dpy, gc, 4, LineOnOffDash, CapButt, JoinMiter);
+            for (i = 2; i <= 8; i += 3)
+                XDrawRectangle(dpy, buf, gc, i, i,
+                               (unsigned)(g_win_w - 1 - 2 * i), (unsigned)(g_win_h - 1 - 2 * i));
+            XSetLineAttributes(dpy, gc, 1, LineSolid, CapButt, JoinMiter);
+            if (font_ui && xftdraw_buf) {
+                char banner[192];
+                XftColor tcol = xft_color("#111111");
+                snprintf(banner, sizeof(banner), "[ drop into inventory: %s ]",
+                         g_drop_hover_name[0] ? g_drop_hover_name : "...");
+                XftDrawStringUtf8(xftdraw_buf, &tcol, font_ui, 16, CHROME_H + 32,
+                                  (const FcChar8 *)banner, (int)strlen(banner));
+                XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &tcol);
+            }
+            /* Dotted cell where the file will land (next grid/list slot). */
+            {
+                int sx = 16, sy = CHROME_H + 88, sw = 176, sh = 40;
+                int n = 0, maxx = 0, maxy = 0, tw = 176, th = 40, minx = 24, miny = 0, grid = 0, ni;
+                for (ni = 0; ni < g_n_nav; ni++) {
+                    Elem *e = g_nav[ni];
+                    int ge, en;
+                    if (!e || e->w <= 0) continue;
+                    ge = !strncmp(e->id, "gentry", 6);
+                    en = !strncmp(e->id, "entry", 5) && e->id[5] >= '0' && e->id[5] <= '9';
+                    if (!ge && !en) continue;
+                    if (ge) grid = 1;
+                    n++;
+                    tw = e->w; th = e->h;
+                    if (e->x < minx) minx = e->x;
+                    if (!miny || e->y < miny) miny = e->y;
+                    if (e->y > maxy || (e->y == maxy && e->x >= maxx)) {
+                        maxx = e->x; maxy = e->y;
+                    }
+                }
+                if (n > 0) {
+                    if (grid) {
+                        sx = maxx + tw + 8; sy = maxy;
+                        if (sx + tw > g_win_w - 20) { sx = minx; sy = maxy + th + 8; }
+                        sw = tw; sh = th;
+                    } else {
+                        sx = minx; sy = maxy + th + 4; sw = tw; sh = th;
+                    }
+                } else if (!grid) {
+                    sw = g_win_w > 48 ? g_win_w - 48 : 120;
+                    sh = 28;
+                }
+                XSetForeground(dpy, gc, alloc_pixel("#111111"));
+                XSetLineAttributes(dpy, gc, 2, LineOnOffDash, CapButt, JoinMiter);
+                XDrawRectangle(dpy, buf, gc, sx, sy, (unsigned)sw, (unsigned)sh);
+                XSetLineAttributes(dpy, gc, 1, LineOnOffDash, CapButt, JoinMiter);
+                XDrawRectangle(dpy, buf, gc, sx + 3, sy + 3,
+                               (unsigned)(sw > 6 ? sw - 6 : 1), (unsigned)(sh > 6 ? sh - 6 : 1));
+                XSetLineAttributes(dpy, gc, 1, LineSolid, CapButt, JoinMiter);
+                if (font_ui && xftdraw_buf && g_drop_hover_name[0]) {
+                    XftColor tcol = xft_color("#111111");
+                    XftDrawStringUtf8(xftdraw_buf, &tcol, font_ui, sx + 8, sy + sh / 2 + 4,
+                                      (const FcChar8 *)g_drop_hover_name,
+                                      (int)strlen(g_drop_hover_name));
+                    XftColorFree(dpy, DefaultVisual(dpy, screen), cmap, &tcol);
+                }
+            }
+        }
     }
     if (g_dock_peer && !g_dock_in_peer_paint) dock_paint_peer();
     if (window_is_dock() && !g_dock_in_peer_paint && !g_dock_in_menu_paint)
@@ -9918,6 +10076,168 @@ static void xdnd_handle_selection(Display *dpy, Window win) {
         XSendEvent(dpy, g_xdnd_source, False, NoEventMask, &fin);
     }
     g_xdnd_source = None;
+    g_drop_highlight = 0;
+}
+
+static int kh_is_drop_target_window(void) {
+    if (g_drop_action[0]) return 1;
+    return g_window && elem_has_class(g_window, "file-explorer-pal");
+}
+
+static void kh_write_drop_zone(void) {
+    char dirp[PATH_BUF], path[PATH_BUF], dest[PATH_BUF];
+    FILE *f;
+    if (!kh_is_drop_target_window() || !g_house_root[0]) return;
+    snprintf(dirp, sizeof(dirp), "%s/#.desktop/khtpm_drop_zones", g_house_root);
+    mkdir(dirp, 0777);
+    dest[0] = 0;
+    if (g_package_dir[0]) {
+        char ui[PATH_BUF];
+        snprintf(ui, sizeof(ui), "%s/file_explorer_ui.txt", g_package_dir);
+        FILE *uf = fopen(ui, "r");
+        if (uf) {
+            char line[PATH_BUF];
+            while (fgets(line, sizeof(line), uf)) {
+                if (!strncmp(line, "dir=", 4)) {
+                    char *nl = strchr(line, '\n'); if (nl) *nl = 0;
+                    snprintf(dest, sizeof(dest), "%s", line + 4);
+                }
+            }
+            fclose(uf);
+        }
+    }
+    snprintf(path, sizeof(path), "%s/%d.txt", dirp, (int)getpid());
+    f = fopen(path, "w");
+    if (!f) return;
+    {
+        int zx = g_win_x, zy = g_win_y, zw = g_win_w, zh = g_win_h;
+        if (dpy && win) {
+            Window child = None;
+            int rx = 0, ry = 0;
+            XTranslateCoordinates(dpy, win, RootWindow(dpy, DefaultScreen(dpy)),
+                                  0, 0, &rx, &ry, &child);
+            zx = rx; zy = ry;
+        }
+        fprintf(f, "pid=%d\nwin=0x%lx\nx=%d\ny=%d\nw=%d\nh=%d\ndest=%s\ncolor=%s\n",
+                (int)getpid(), (unsigned long)win, zx, zy, zw, zh, dest, g_drop_highlight_color);
+    }
+    fclose(f);
+}
+
+static void kh_drop_zone_unregister(void) {
+    char path[PATH_BUF];
+    if (!g_house_root[0]) return;
+    snprintf(path, sizeof(path), "%s/#.desktop/khtpm_drop_zones/%d.txt", g_house_root, (int)getpid());
+    unlink(path);
+}
+
+static void kh_write_drag_hover(int pid, const char *name) {
+    char path[PATH_BUF], tmp[PATH_BUF];
+    FILE *f;
+    if (!g_house_root[0]) return;
+    snprintf(path, sizeof(path), "%s/#.desktop/drag_hover_pid.txt", g_house_root);
+    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+    f = fopen(tmp, "w");
+    if (!f) return;
+    fprintf(f, "pid=%d\nname=%s\n", pid, name ? name : "");
+    fclose(f);
+    rename(tmp, path);
+}
+
+static int kh_read_drag_hover(void) {
+    char path[PATH_BUF], line[PATH_BUF];
+    FILE *f;
+    int pid = 0;
+    g_drop_hover_name[0] = 0;
+    if (!g_house_root[0]) return 0;
+    snprintf(path, sizeof(path), "%s/#.desktop/drag_hover_pid.txt", g_house_root);
+    f = fopen(path, "r");
+    if (!f) return 0;
+    while (fgets(line, sizeof(line), f)) {
+        char *nl = strchr(line, '\n'); if (nl) *nl = 0;
+        if (!strncmp(line, "pid=", 4)) pid = atoi(line + 4);
+        else if (!strncmp(line, "name=", 5))
+            snprintf(g_drop_hover_name, sizeof(g_drop_hover_name), "%s", line + 5);
+        else if (line[0] >= '0' && line[0] <= '9')
+            pid = atoi(line); /* old one-line format */
+    }
+    fclose(f);
+    return pid;
+}
+
+/* Pointer over a published drop zone? Match the X window under the
+ * pointer (walk parent chain) to zone `win=`, not the often-stale
+ * x/y/w/h (WM-moved File Explorer sat at 90,90 in the file while the
+ * pointer was at y=1476). Fall back to rect if no win id. */
+static int kh_drop_zone_hit(Display *dpy_hit, int rx, int ry, char *dest, size_t destsz,
+                            unsigned long *out_win) {
+    char dirp[PATH_BUF];
+    DIR *d;
+    struct dirent *de;
+    int self = (int)getpid();
+    unsigned long stack[64];
+    int nstack = 0;
+    if (out_win) *out_win = 0;
+    if (!g_house_root[0]) return 0;
+    if (dpy_hit) {
+        Window current = RootWindow(dpy_hit, DefaultScreen(dpy_hit));
+        int x = rx, y = ry;
+        while (nstack < 63) {
+            Window child = None;
+            int nx = 0, ny = 0;
+            if (!XTranslateCoordinates(dpy_hit, current, current, x, y, &nx, &ny, &child))
+                break;
+            if (child == None) break;
+            stack[nstack++] = (unsigned long)child;
+            current = child;
+            x = nx;
+            y = ny;
+        }
+    }
+    snprintf(dirp, sizeof(dirp), "%s/#.desktop/khtpm_drop_zones", g_house_root);
+    d = opendir(dirp);
+    if (!d) return 0;
+    while ((de = readdir(d)) != NULL) {
+        char fp[PATH_BUF], line[PATH_BUF];
+        FILE *f;
+        int pid = 0, x = 0, y = 0, w = 0, h = 0, i;
+        unsigned long zwin = 0;
+        char zdest[PATH_BUF];
+        int hit = 0;
+        zdest[0] = 0;
+        if (!strstr(de->d_name, ".txt")) continue;
+        snprintf(fp, sizeof(fp), "%s/%s", dirp, de->d_name);
+        f = fopen(fp, "r");
+        if (!f) continue;
+        while (fgets(line, sizeof(line), f)) {
+            if (!strncmp(line, "pid=", 4)) pid = atoi(line + 4);
+            else if (!strncmp(line, "win=", 4)) zwin = strtoul(line + 4, NULL, 0);
+            else if (!strncmp(line, "x=", 2)) x = atoi(line + 2);
+            else if (!strncmp(line, "y=", 2)) y = atoi(line + 2);
+            else if (!strncmp(line, "w=", 2)) w = atoi(line + 2);
+            else if (!strncmp(line, "h=", 2)) h = atoi(line + 2);
+            else if (!strncmp(line, "dest=", 5)) {
+                char *nl = strchr(line, '\n'); if (nl) *nl = 0;
+                snprintf(zdest, sizeof(zdest), "%s", line + 5);
+            }
+        }
+        fclose(f);
+        if (pid == self || !zdest[0]) continue;
+        if (zwin) {
+            for (i = 0; i < nstack; i++)
+                if (stack[i] == zwin) { hit = 1; break; }
+        }
+        if (!hit && w > 0 && h > 0 && rx >= x && rx < x + w && ry >= y && ry < y + h)
+            hit = 1;
+        if (hit) {
+            if (dest && destsz) snprintf(dest, destsz, "%s", zdest);
+            if (out_win) *out_win = zwin;
+            closedir(d);
+            return pid;
+        }
+    }
+    closedir(d);
+    return 0;
 }
 
 static void hq_request_redraw(void) {
@@ -9980,6 +10300,17 @@ static void hq_ui_pdl_reload_if_changed(const char *house_root) {
 }
 
 static void hq_idle_tick(void) {
+    if (kh_is_drop_target_window()) {
+        int hp = kh_read_drag_hover();
+        int want = (hp == (int)getpid()) || (g_xdnd_source != None);
+        if (want != g_drop_highlight) {
+            g_drop_highlight = want;
+            hq_request_redraw();
+        } else if (want) {
+            hq_request_redraw(); /* keep the hover fill live every tick */
+        }
+        kh_write_drop_zone();
+    }
     /* PC-HQ-FOCUS-AND-INTERACT-ACTIVATE.md: idle pointer-over
      * XSetInputFocus deleted (that was the focus hog). One-shot
      * take-focus is ButtonPress / post-map only.
@@ -10386,6 +10717,57 @@ static void kh_raise_and_focus(Window w) {
     XFlush(dpy);
 }
 
+/* Pal-on-inventory: Raise cannot beat a WM window — desk pals live
+ * in a lower compositor layer. Redraw does not change stacking.
+ * Reparent the pal onto the File Explorer window so it paints in
+ * THAT window's tree (always on top of the file list). */
+static int g_drag_reparented = 0;
+static Window g_drag_host = None;
+static int g_drag_host_pid = 0;
+static int kh_xerr_ign(Display *d, XErrorEvent *e) { (void)d; (void)e; return 0; }
+static int kh_pointer_in_window(Display *d, Window w, int rx, int ry) {
+    XWindowAttributes at;
+    int lx = 0, ly = 0;
+    Window ch = None;
+    if (!d || !w) return 0;
+    if (!XGetWindowAttributes(d, w, &at) || at.width <= 0 || at.height <= 0) return 0;
+    XTranslateCoordinates(d, DefaultRootWindow(d), w, rx, ry, &lx, &ly, &ch);
+    return lx >= 0 && ly >= 0 && lx < at.width && ly < at.height;
+}
+static void kh_drag_stack_above(Display *d, Window pal, Window target,
+                                int on, int rx, int ry) {
+    Window root;
+    int pw, ph, lx, ly;
+    Window ch = None;
+    XErrorHandler old;
+    if (!d || !pal) return;
+    root = DefaultRootWindow(d);
+    pw = 64;
+    ph = pw;
+    old = XSetErrorHandler(kh_xerr_ign);
+    if (on && target && target != pal) {
+        XTranslateCoordinates(d, root, target, rx, ry, &lx, &ly, &ch);
+        if (!g_drag_reparented) {
+            XReparentWindow(d, pal, target, lx - pw / 2, ly - ph / 2);
+            g_drag_reparented = 1;
+            g_drag_host = target;
+        } else {
+            XMoveWindow(d, pal, lx - pw / 2, ly - ph / 2);
+        }
+        XMapRaised(d, pal);
+    } else {
+        if (g_drag_reparented) {
+            XReparentWindow(d, pal, root, rx - pw / 2, ry - ph / 2);
+            g_drag_reparented = 0;
+            g_drag_host = None;
+            g_drag_host_pid = 0;
+        }
+        XMapRaised(d, pal);
+    }
+    XSync(d, False);
+    XSetErrorHandler(old);
+}
+
 static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
     /* real, current server timestamp - see g_last_event_time's own decl
      * comment. Every event type that carries one uses the same struct
@@ -10594,12 +10976,14 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
              * g_default_*_elem synth ones - use its captured leftmost x
              * so a mouse click on "!" / "_" hit-tests instead of being
              * swallowed as a window drag. */
-            int chrome_zone_x = (g_default_has_sidebar_panel && g_default_minimize_elem->w > 0)
+            int chrome_zone_x = (g_default_minimize_elem->w > 0)
                                  ? g_default_minimize_elem->x
-                                 : ((g_default_has_sidebar_panel && g_default_fullscreen_elem->w > 0)
+                                 : ((g_default_fullscreen_elem->w > 0)
                                     ? g_default_fullscreen_elem->x
-                                    : (g_canvas_chrome_left_x ? g_canvas_chrome_left_x - 4
-                                                              : g_win_w - 60));
+                                    : ((g_default_close_elem->w > 0)
+                                       ? g_default_close_elem->x
+                                       : (g_canvas_chrome_left_x ? g_canvas_chrome_left_x - 4
+                                                                 : g_win_w - 60)));
             if (!window_is_dock() && ev->xbutton.button == 1 && ev->xbutton.y >= KH_WIN_FRAME && ev->xbutton.y < CHROME_H + KH_WIN_FRAME &&
                 !(ev->xbutton.x >= chrome_zone_x && ev->xbutton.x < g_win_w)) {
                 g_popup_dragging = 1;
@@ -10657,9 +11041,9 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                 Elem *hit = NULL;
                 for (int i = 0; i < g_n_nav; i++) {
                     Elem *it = g_nav[i];
-                    if (!it) continue;
-                    if ((strcmp(it->tag, "cli_io") == 0 || strcmp(it->tag, "text_area") == 0) &&
-                        ev->xbutton.x >= it->x && ev->xbutton.x < it->x + it->w &&
+                    if (!it || it->w <= 0) continue;
+                    if (strncmp(it->id, "chrome-", 7) == 0) continue;
+                    if (ev->xbutton.x >= it->x && ev->xbutton.x < it->x + it->w &&
                         ev->xbutton.y >= it->y && ev->xbutton.y < it->y + it->h) {
                         hit = it;
                         break;
@@ -10895,6 +11279,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
     if (ev->type == ClientMessage && g_drop_action[0] &&
         (Atom)ev->xclient.message_type == ga_xdnd_enter) {
         g_xdnd_source = (Window)ev->xclient.data.l[0];
+        if (!g_drop_highlight) { g_drop_highlight = 1; if (!g_quit) redraw(); }
         return;
     }
     if (ev->type == ClientMessage && g_drop_action[0] &&
@@ -10917,6 +11302,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
     if (ev->type == ClientMessage && g_drop_action[0] &&
         (Atom)ev->xclient.message_type == ga_xdnd_leave) {
         g_xdnd_source = None;
+        if (g_drop_highlight) { g_drop_highlight = 0; if (!g_quit) redraw(); }
         return;
     }
     if (ev->type == ClientMessage && g_drop_action[0] &&
@@ -11015,8 +11401,9 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
          * the user reported. TPMOS's own reference renderer.c polls its
          * pulse marker at 60Hz (usleep(16667)); 33ms here is the same
          * marker/dirty idea, one cheap stat() per tick, no extra file. */
-        struct timeval tv = (g_has_canvas || window_is_dock())
-                                ? (struct timeval){ 0, 33000 }
+        struct timeval tv = (g_has_canvas || window_is_dock() || g_drop_highlight
+                             || kh_is_drop_target_window())
+                                ? (struct timeval){ 0, 16667 }
                                 : (struct timeval){ 0, 150000 };
         select(xfd + 1, &fds, NULL, NULL, &tv);
         /* Events that arrive during THIS select() wait are deliberately
@@ -12147,8 +12534,9 @@ static void ensure_taskbar_running(const char *house_root) {
     }
     if (!alive) {
         char cmd[TP_PATH_BUF * 2];
-        snprintf(cmd, sizeof(cmd), "'%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x' '%s' >/dev/null 2>&1 &",
-                 house_root, house_root);
+        snprintf(cmd, sizeof(cmd),
+                 "'%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x' '%s' '%s/*.monads/*.livedesk-taskbar/khtpm_strip_header.xhtpm' >/dev/null 2>&1 &",
+                 house_root, house_root, house_root);
         int rc = system(cmd);
         (void)rc;
     }
@@ -14051,6 +14439,16 @@ static int load_methods(const char *package_dir, MethodItem *items, int max) {
         n++;
     }
     fclose(f);
+    if (n < max) {
+        int has = 0, j;
+        for (j = 0; j < n; j++)
+            if (!strcmp(items[j].action, "CLI_IO") || !strcmp(items[j].label, "Cli-io")) has = 1;
+        if (!has) {
+            snprintf(items[n].label, sizeof(items[n].label), "Cli-io");
+            snprintf(items[n].action, sizeof(items[n].action), "CLI_IO");
+            n++;
+        }
+    }
     return n;
 }
 
@@ -14737,19 +15135,33 @@ static int kh_load_cli_io_context_menu(MethodItem *items, int max) {
 
 static void kh_open_cli_io_context_menu(Elem *target, int win_px, int win_py) {
     if (!dpy) return;
-    MethodItem items[8];
-    int n = kh_load_cli_io_context_menu(items, 8);
+    MethodItem items[12];
+    int n = kh_load_cli_io_context_menu(items, 12);
     if (n == 0) {
         int i = 0;
+        int is_text = target && (strcmp(target->tag, "cli_io") == 0 || strcmp(target->tag, "text_area") == 0);
         if (target) {
             snprintf(items[i].label, sizeof(items[i].label), "Cut");   snprintf(items[i].action, sizeof(items[i].action), "CUT");   i++;
             snprintf(items[i].label, sizeof(items[i].label), "Copy");  snprintf(items[i].action, sizeof(items[i].action), "COPY");  i++;
             snprintf(items[i].label, sizeof(items[i].label), "Paste"); snprintf(items[i].action, sizeof(items[i].action), "PASTE"); i++;
+            if (!is_text) {
+                snprintf(items[i].label, sizeof(items[i].label), "Delete"); snprintf(items[i].action, sizeof(items[i].action), "DELETE"); i++;
+                snprintf(items[i].label, sizeof(items[i].label), "Place");  snprintf(items[i].action, sizeof(items[i].action), "PLACE");  i++;
+            }
         }
         snprintf(items[i].label, sizeof(items[i].label), "Cancel"); snprintf(items[i].action, sizeof(items[i].action), "void"); i++;
         n = i;
     }
     g_cliio_ctx_target = target;
+    if (g_package_dir[0] && target) {
+        char tp[TP_PATH_BUF];
+        snprintf(tp, sizeof(tp), "%s/fe_ctx_target.txt", g_package_dir);
+        FILE *tf = fopen(tp, "w");
+        if (tf) {
+            fprintf(tf, "id=%s\nlabel=%s\ntag=%s\n", target->id, target->label, target->tag);
+            fclose(tf);
+        }
+    }
 
     /* real .hq_manager/ subdir, same convention this file's other
      * per-window state (ui.txt/cli_io_active.txt) already lives in. */
@@ -14766,10 +15178,23 @@ static void kh_open_cli_io_context_menu(Elem *target, int win_px, int win_py) {
     snprintf(menu_path, sizeof(menu_path), "%s/menu.chtpm", subdir);
     FILE *cf = fopen(menu_path, "w");
     if (!cf) return;
-    fprintf(cf, "<window class=\"entity-menu\">\n  <page name=\"main\">\n");
+    {
+        char wlab[96];
+        wlab[0] = 0;
+        if (target && target->label[0]) {
+            const char *s = target->label;
+            while (*s && !isalnum((unsigned char)*s) && *s != '_' && *s != '.') s++;
+            snprintf(wlab, sizeof(wlab), "%s", s[0] ? s : target->label);
+            char *sp = strchr(wlab, ' ');
+            if (sp) *sp = 0;
+        }
+        if (!wlab[0]) snprintf(wlab, sizeof(wlab), "item");
+        fprintf(cf, "<window class=\"entity-menu\" label=\"%s\">\n  <page name=\"main\">\n", wlab);
+    }
     for (int i = 0; i < n; i++) {
         const char *act = items[i].action;
-        if (strcmp(act, "CUT") == 0 || strcmp(act, "COPY") == 0 || strcmp(act, "PASTE") == 0) {
+        if (strcmp(act, "CUT") == 0 || strcmp(act, "COPY") == 0 || strcmp(act, "PASTE") == 0 ||
+            strcmp(act, "DELETE") == 0 || strcmp(act, "PLACE") == 0) {
             /* real, house-standard cross-process bridge (see this
              * block's own header comment) - "$0" is package_dir,
              * matching sh -c's own real convention every entity menu
@@ -14806,22 +15231,35 @@ static void kh_open_cli_io_context_menu(Elem *target, int win_px, int win_py) {
  * this function at all, they run straight in the popup process. */
 static void kh_run_cli_io_context_action(const char *action) {
     Elem *e = g_cliio_ctx_target;
-    if (strcmp(action, "COPY") == 0 || strcmp(action, "CUT") == 0) {
-        if (e) {
-            int is_area = (strcmp(e->tag, "text_area") == 0);
-            char *buf = is_area ? e->text_area_buffer : e->input_buffer;
-            int lo, hi;
-            if (kh_text_selection_range(e, buf, &lo, &hi)) {
-                char tmp[4096];
-                int nlen = hi - lo; if (nlen > (int)sizeof(tmp) - 1) nlen = (int)sizeof(tmp) - 1;
-                memcpy(tmp, buf + lo, (size_t)nlen); tmp[nlen] = '\0';
-                kh_clipboard_copy(tmp);
-                if (strcmp(action, "CUT") == 0) kh_text_delete_selection(e, buf);
-            }
-        } /* no target element under a window-level right-click: real, honest no-op */
-    } else if (strcmp(action, "PASTE") == 0) {
-        if (e) kh_set_default_input_elem(e); /* paste lands at whichever field is armed - make sure it's really this one, if there is one */
+    int is_text = e && (strcmp(e->tag, "cli_io") == 0 || strcmp(e->tag, "text_area") == 0);
+    if (is_text && (strcmp(action, "COPY") == 0 || strcmp(action, "CUT") == 0)) {
+        int is_area = (strcmp(e->tag, "text_area") == 0);
+        char *buf = is_area ? e->text_area_buffer : e->input_buffer;
+        int lo, hi;
+        if (kh_text_selection_range(e, buf, &lo, &hi)) {
+            char tmp[4096];
+            int nlen = hi - lo; if (nlen > (int)sizeof(tmp) - 1) nlen = (int)sizeof(tmp) - 1;
+            memcpy(tmp, buf + lo, (size_t)nlen); tmp[nlen] = '\0';
+            kh_clipboard_copy(tmp);
+            if (strcmp(action, "CUT") == 0) kh_text_delete_selection(e, buf);
+        }
+    } else if (is_text && strcmp(action, "PASTE") == 0) {
+        if (e) kh_set_default_input_elem(e);
         kh_clipboard_request_paste();
+    } else if (is_text && strcmp(action, "DELETE") == 0) {
+        int is_area = (strcmp(e->tag, "text_area") == 0);
+        char *buf = is_area ? e->text_area_buffer : e->input_buffer;
+        kh_text_delete_selection(e, buf);
+    } else if (!is_text && g_package_dir[0]) {
+        /* File-explorer (and any other non-text right-click): same
+         * verbs, manager owns the FS. Piececraft CTX_* sibling. */
+        char ap[TP_PATH_BUF];
+        snprintf(ap, sizeof(ap), "%s/file_explorer_action.txt", g_package_dir);
+        FILE *af = fopen(ap, "w");
+        if (af) {
+            fprintf(af, "seq=%u\ncmd=CTX_%s\n", ++g_swatch_action_seq, action);
+            fclose(af);
+        }
     }
     g_cliio_ctx_target = NULL;
     if (!g_quit) redraw();
@@ -15675,9 +16113,55 @@ static int tp_main(int argc, char **argv) {
         fd_set fds;
         FD_ZERO(&fds);
         FD_SET(xfd, &fds);
-        struct timeval tv = { 0, POLL_INTERVAL_USEC };
+        struct timeval tv = { 0, dragging ? 16667 : POLL_INTERVAL_USEC };
         select(xfd + 1, &fds, NULL, NULL, &tv);
 #endif
+        if (dragging && dpy) {
+            Window rr, ch;
+            int rx = 0, ry = 0, wx = 0, wy = 0;
+            unsigned mask = 0;
+            if (XQueryPointer(dpy, RootWindow(dpy, DefaultScreen(dpy)),
+                              &rr, &ch, &rx, &ry, &wx, &wy, &mask)) {
+                char dest[PATH_BUF];
+                dest[0] = 0;
+                const char *bn = strrchr(package_dir, '/');
+                bn = bn ? bn + 1 : package_dir;
+                unsigned long zwin = 0;
+                int zpid = kh_drop_zone_hit(dpy, rx, ry, dest, sizeof(dest), &zwin);
+                int want = 0;
+                Window host = None;
+                /* Once reparented, window-walk always hits FE (pal is
+                 * its child). Leave = pointer outside the host rect. */
+                if (g_drag_reparented && g_drag_host) {
+                    if (kh_pointer_in_window(dpy, g_drag_host, rx, ry)) {
+                        want = 1;
+                        host = g_drag_host;
+                        zpid = g_drag_host_pid;
+                    }
+                } else if (zpid && zwin) {
+                    want = 1;
+                    host = (Window)zwin;
+                    g_drag_host_pid = zpid;
+                }
+                kh_write_drag_hover(want ? zpid : 0, bn);
+                kh_drag_stack_above(dpy, win, host, want, rx, ry);
+                if (!g_drag_reparented) {
+                    win_x = rx - 32;
+                    win_y = ry - 32;
+                }
+                {
+                    char tp[PATH_BUF];
+                    FILE *tf;
+                    snprintf(tp, sizeof(tp), "%s/#.desktop/drop_poll.txt", g_house_root);
+                    tf = fopen(tp, "w");
+                    if (tf) {
+                        fprintf(tf, "rx=%d ry=%d zpid=%d name=%s dest=%s nstack_hint=winwalk\n",
+                                rx, ry, zpid, bn, dest);
+                        fclose(tf);
+                    }
+                }
+            }
+        }
 
         /* REAL FIX 2026-09-10, direct report ("why didnt bible pop up
          * change size when house size was changed? doesn't it read
@@ -15951,8 +16435,12 @@ static int tp_main(int argc, char **argv) {
                                     popup_nav_base = nav_claim_rows(g_house_root, getpid(), package_dir, methods, n_methods);
                                         popup_focus_row = 0; popup_digit_accum = 0;
                                 }
-                            } else if (using_objects && strncmp(methods[i].action, "STATE:", 6) == 0) {
-                                snprintf(input_key, sizeof(input_key), "%s", methods[i].action + 6);
+                            } else if ((using_objects && strncmp(methods[i].action, "STATE:", 6) == 0) ||
+                                       strcmp(methods[i].action, "CLI_IO") == 0) {
+                                if (strcmp(methods[i].action, "CLI_IO") == 0)
+                                    snprintf(input_key, sizeof(input_key), "cliio");
+                                else
+                                    snprintf(input_key, sizeof(input_key), "%s", methods[i].action + 6);
                                 input_buffer[0] = '\0';
                                 input_active = 1;
                                 append_history("INPUT_ACTIVATE key=%s", input_key);
@@ -16012,7 +16500,8 @@ static int tp_main(int argc, char **argv) {
                                     popup_nav_base = nav_claim_rows(g_house_root, getpid(), package_dir, methods, n_methods);
                                         popup_focus_row = 0; popup_digit_accum = 0;
                                 }
-                            } else if (using_objects && strncmp(methods[row].action, "STATE:", 6) == 0) {
+                            } else if ((using_objects && strncmp(methods[row].action, "STATE:", 6) == 0) ||
+                                       strcmp(methods[row].action, "CLI_IO") == 0) {
                                 snprintf(input_key, sizeof(input_key), "%s", methods[row].action + 6);
                                 input_buffer[0] = '\0';
                                 input_active = 1;
@@ -16121,7 +16610,8 @@ static int tp_main(int argc, char **argv) {
                                         popup_nav_base = nav_claim_rows(g_house_root, getpid(), package_dir, methods, n_methods);
                                         popup_focus_row = 0; popup_digit_accum = 0;
                                     }
-                                } else if (using_objects && strncmp(methods[row].action, "STATE:", 6) == 0) {
+                                } else if ((using_objects && strncmp(methods[row].action, "STATE:", 6) == 0) ||
+                                       strcmp(methods[row].action, "CLI_IO") == 0) {
                                     snprintf(input_key, sizeof(input_key), "%s", methods[row].action + 6);
                                     input_buffer[0] = '\0';
                                     input_active = 1;
@@ -16534,7 +17024,8 @@ static int tp_main(int argc, char **argv) {
                             popup_nav_base = nav_claim_rows(g_house_root, getpid(), package_dir, methods, n_methods);
                                         popup_focus_row = 0; popup_digit_accum = 0;
                         }
-                    } else if (using_objects && strncmp(methods[row].action, "STATE:", 6) == 0) {
+                    } else if ((using_objects && strncmp(methods[row].action, "STATE:", 6) == 0) ||
+                                       strcmp(methods[row].action, "CLI_IO") == 0) {
                         /* REAL, 2026-08-05: objects.pdl real text-input
                          * row - same click-to-activate/Escape-to-commit
                          * shape this house's own cli_io field convention
@@ -16697,7 +17188,8 @@ static int tp_main(int argc, char **argv) {
                             popup_nav_base = nav_claim_rows(g_house_root, getpid(), package_dir, methods, n_methods);
                             popup_focus_row = 0; popup_digit_accum = 0;
                         }
-                    } else if (using_objects && strncmp(methods[row].action, "STATE:", 6) == 0) {
+                    } else if ((using_objects && strncmp(methods[row].action, "STATE:", 6) == 0) ||
+                                       strcmp(methods[row].action, "CLI_IO") == 0) {
                         snprintf(input_key, sizeof(input_key), "%s", methods[row].action + 6);
                         input_buffer[0] = '\0';
                         input_active = 1;
@@ -16850,8 +17342,16 @@ static int tp_main(int argc, char **argv) {
                 press_root_x = xev.xbutton.x_root;
                 press_root_y = xev.xbutton.y_root;
                 gettimeofday(&press_tv, NULL);
+                /* Keep motion/release on THIS pal even when the pointer
+                 * is over File Explorer (otherwise events go to FE). */
+                XGrabPointer(dpy, win, False,
+                             ButtonReleaseMask | ButtonMotionMask | PointerMotionMask,
+                             GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
             } else if (xev.type == ButtonRelease && xev.xbutton.button == 1) {
                 dragging = 0;
+                kh_drag_stack_above(dpy, win, None, 0,
+                                    xev.xbutton.x_root, xev.xbutton.y_root);
+                XUngrabPointer(dpy, CurrentTime);
                 /* Real click-vs-drag distinction, cursword only - see
                  * g_is_cursword's own declaration comment
                  * (CURSWORD-DESKTOP-3D-AND-PIECECRAFT-INSCENE-DESKS-
@@ -16968,6 +17468,22 @@ static int tp_main(int argc, char **argv) {
                      * XUngrabPointer call. */
                     need_redraw = 1;
                 } else {
+                {
+                    char dest[PATH_BUF];
+                    int zpid = kh_drop_zone_hit(dpy, xev.xbutton.x_root, xev.xbutton.y_root, dest, sizeof(dest), NULL);
+                    kh_write_drag_hover(0, "");
+                    if (zpid && dest[0] && package_dir[0]) {
+                        const char *base = strrchr(package_dir, '/');
+                        base = base ? base + 1 : package_dir;
+                        if (strncmp(dest, package_dir, strlen(package_dir)) != 0) {
+                            char dst[PATH_BUF];
+                            snprintf(dst, sizeof(dst), "%s/%s", dest, base);
+                            if (rename(package_dir, dst) == 0)
+                                running = 0;
+                        }
+                    }
+                }
+                if (!running) { dragging = 0; continue; }
                 /* REAL FIX 2026-08-04, direct instruction ("egg-pets
                  * snap to grid... do u see that logic"): same
                  * round-to-nearest-cell technique egg_window.c's own
@@ -16984,6 +17500,7 @@ static int tp_main(int argc, char **argv) {
                 win_y = grid_y * GRID_CELL_PX;
                 XMoveWindow(dpy, win, win_x, win_y);
                 write_pos(package_dir, win_x, win_y);
+                XRaiseWindow(dpy, win);
                 need_redraw = 1;
                 }
             } else if (xev.type == ButtonPress && xev.xbutton.button == 3) {
@@ -17026,9 +17543,20 @@ static int tp_main(int argc, char **argv) {
                 int dx = xev.xmotion.x_root - drag_start_x;
                 int dy = xev.xmotion.y_root - drag_start_y;
                 win_x += dx; win_y += dy;
-                XMoveWindow(dpy, win, win_x, win_y);
+                if (!g_drag_reparented)
+                    XMoveWindow(dpy, win, win_x, win_y);
                 drag_start_x = xev.xmotion.x_root;
                 drag_start_y = xev.xmotion.y_root;
+                {
+                    char dest[PATH_BUF];
+                    int zpid = kh_drop_zone_hit(dpy, xev.xmotion.x_root, xev.xmotion.y_root, dest, sizeof(dest), NULL);
+                    {
+                        const char *bn = strrchr(package_dir, '/');
+                        bn = bn ? bn + 1 : package_dir;
+                        kh_write_drag_hover(zpid, bn);
+                    }
+                    (void)dest;
+                }
                 need_redraw = 1;
             } else if (xev.type == FocusOut && g_is_cursword && g_cursword_armed &&
                        xev.xfocus.mode == NotifyNormal) {
@@ -17325,8 +17853,9 @@ static int tp_main(int argc, char **argv) {
              * switch to shared scene just yet"). */
             {
                 static int z_was_mapped = 1; /* window starts real, mapped (XMapWindow already ran earlier in main()) */
-                int z_should_show = (g_entity_z == g_active_z);
-                if (z_should_show && !z_was_mapped) { XMapWindow(dpy, win); z_was_mapped = 1; }
+                int z_should_show = (g_entity_z == g_active_z) || dragging;
+                if (dragging) { XMapWindow(dpy, win); XRaiseWindow(dpy, win); z_was_mapped = 1; }
+                else if (z_should_show && !z_was_mapped) { XMapWindow(dpy, win); z_was_mapped = 1; }
                 else if (!z_should_show && z_was_mapped) { XUnmapWindow(dpy, win); z_was_mapped = 0; }
                 if (!z_should_show) goto skip_zfiltered_draw;
             }
@@ -17675,6 +18204,14 @@ static void kh_ensure_dock_peer_window(void) {
     kh_focus_debug_log("DOCK_PEER_WINDOW (re)created id=0x%lx", (unsigned long)g_dock_peer_win);
 }
 
+#ifdef KHTPM_ENTITY_BIN
+/* Unfactor piece 1 (2026-09-18): pal process is its own +x, same
+ * source, -DKHTPM_ENTITY_BIN. HQ binary still has argc==2 -> tp_main
+ * until spawners switch (piece 2). */
+int main(int argc, char **argv) {
+    return tp_main(argc, argv);
+}
+#else
 int main(int argc, char **argv) {
     /* Scan + strip the flag tokens so the positional parsing below sees
      * a clean <house_root> <chtpm_path> [x] [y] regardless of where the
@@ -17704,10 +18241,10 @@ int main(int argc, char **argv) {
      * consolidation rationale (khtpm_strip_parser.c/.../
      * tp_desktop_window_rgb.c folded in verbatim, zero linking). */
     if (argc == 2) {
-        /* Tile/pal windows only. The taskbar strip is a normal
-         * <house_root> <chtpm_path> launch of this same loop
-         * (class=dock-header / dock-bottom), not a second engine. */
-        return tp_main(argc, argv);
+        fprintf(stderr,
+                "khtpm_core_render: pal/tile process is khtpm_entity.+x <package_dir>\n"
+                "usage: %s <house_root> <chtpm_path> [x] [y]\n", argv[0]);
+        return 1;
     }
     /* REAL Stage 5 step 3/4 (2026-08-16, khtpm-merge-how2.md §5d.3) -
      * was <package_dir> <house_root> [x] [y] (house_root NOT first,
@@ -18333,3 +18870,4 @@ int main(int argc, char **argv) {
     XCloseDisplay(dpy);
     return 0;
 }
+#endif /* !KHTPM_ENTITY_BIN */

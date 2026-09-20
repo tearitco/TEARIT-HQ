@@ -1,0 +1,11 @@
+# File Explorer right-click — same CTXMENU layout as HQ entity menus
+# (khtpm_core_render.c kh_open_cli_io_context_menu, 2026-09-14) and
+# piececraft pc_entity_ctx.sh Copy/Paste/Delete. Window is an entity.
+# CUT/COPY/PASTE/DELETE/PLACE are bridged; manager owns the FS.
+CTXMENU | Cut | CUT
+CTXMENU | Copy | COPY
+CTXMENU | Paste | PASTE
+CTXMENU | Delete | DELETE
+CTXMENU | Place | PLACE
+CTXMENU | Cli-io | CLI_IO
+CTXMENU | Cancel | CANCEL

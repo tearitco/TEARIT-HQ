@@ -29,6 +29,51 @@
 #define MAX_NAME 300
 #define MAX_CMD_BUFFER 4096
 
+/* Right-click Cut/Copy/Paste/Delete/Place (2026-09-18). Same verbs as
+ * HQ CTXMENU / piececraft CTX_*. Target id from fe_ctx_target.txt. */
+static int fe_ctx_entry_idx(const char *package_dir) {
+    char p[MAX_PATH];
+    snprintf(p, sizeof(p), "%s/fe_ctx_target.txt", package_dir);
+    FILE *f = fopen(p, "r");
+    if (!f) return -1;
+    char line[MAX_PATH];
+    int idx = -1;
+    while (fgets(line, sizeof(line), f)) {
+        if (!strncmp(line, "id=", 3)) {
+            const char *id = line + 3;
+            if (!strncmp(id, "gentry", 6)) idx = atoi(id + 6);
+            else if (!strncmp(id, "entry", 5)) idx = atoi(id + 5);
+        }
+    }
+    fclose(f);
+    return idx;
+}
+
+static void fe_clip_write(const char *package_dir, const char *mode, const char *path) {
+    char p[MAX_PATH];
+    snprintf(p, sizeof(p), "%s/fe_clipboard.txt", package_dir);
+    FILE *f = fopen(p, "w");
+    if (!f) return;
+    fprintf(f, "mode=%s\npath=%s\n", mode, path);
+    fclose(f);
+}
+
+static int fe_clip_read(const char *package_dir, char *mode, size_t msz, char *path, size_t psz) {
+    char p[MAX_PATH];
+    snprintf(p, sizeof(p), "%s/fe_clipboard.txt", package_dir);
+    FILE *f = fopen(p, "r");
+    if (!f) return 0;
+    char line[MAX_PATH];
+    mode[0] = 0; path[0] = 0;
+    while (fgets(line, sizeof(line), f)) {
+        char *nl = strchr(line, '\n'); if (nl) *nl = 0;
+        if (!strncmp(line, "mode=", 5)) snprintf(mode, msz, "%s", line + 5);
+        else if (!strncmp(line, "path=", 5)) snprintf(path, psz, "%s", line + 5);
+    }
+    fclose(f);
+    return path[0] != 0;
+}
+
 typedef struct {
     char name[MAX_NAME];
     char type[4];
@@ -53,7 +98,16 @@ typedef struct {
     int n_crumbs;
     int grid_view; /* 0=list (default), 1=grid - REAL, NEW 2026-09-15, direct live report ("we wanted list/grid toggle") */
     int has_back; /* REAL, NEW 2026-09-15 - Back is its own toolbar button now, not a list entry; see list_directory()'s own comment. */
+    time_t dir_mtime;
+    nlink_t dir_nlink;
 } State;
+
+static void fe_note_dir(State *state) {
+    struct stat st;
+    if (!state || stat(state->current_dir, &st) != 0) return;
+    state->dir_mtime = st.st_mtime;
+    state->dir_nlink = st.st_nlink;
+}
 
 /* REAL, NEW 2026-09-15, direct live report ("show current file path,
  * as button of each path that allows clicking and will jump to that
@@ -214,6 +268,7 @@ void list_directory(const char *dir, State *state) {
     state->has_back = strcmp(dir, "/") != 0;
 
     build_crumbs(state);
+    fe_note_dir(state);
 }
 
 void write_ui_file(const char *package_dir, State *state,
@@ -414,6 +469,15 @@ int main(int argc, char *argv[]) {
     while (1) {
         usleep(50000);
 
+        {
+            struct stat dst;
+            if (stat(state.current_dir, &dst) == 0 &&
+                (dst.st_mtime != state.dir_mtime || dst.st_nlink != state.dir_nlink)) {
+                list_directory(state.current_dir, &state);
+                write_ui_file(package_dir, &state, "", "");
+            }
+        }
+
         int seq;
         char cmd[MAX_CMD_BUFFER];
         read_action_file(package_dir, &seq, cmd);
@@ -494,6 +558,55 @@ int main(int argc, char *argv[]) {
             write_ui_file(package_dir, &state, "", "CANCEL");
             fe_write_result_file(g_fe_result_file, "");
             return 0;
+        } else if (!strncmp(cmd, "CTX_", 4)) {
+            const char *verb = cmd + 4;
+            int idx = fe_ctx_entry_idx(package_dir);
+            char src[MAX_PATH]; src[0] = 0;
+            if (idx >= 0 && idx < state.count)
+                snprintf(src, sizeof(src), "%s/%s", state.current_dir, state.entries[idx].name);
+            if (!strcmp(verb, "CUT") || !strcmp(verb, "COPY")) {
+                if (src[0]) fe_clip_write(package_dir, !strcmp(verb, "CUT") ? "cut" : "copy", src);
+            } else if (!strcmp(verb, "PASTE")) {
+                char mode[16], clip[MAX_PATH];
+                if (fe_clip_read(package_dir, mode, sizeof(mode), clip, sizeof(clip))) {
+                    const char *base = strrchr(clip, '/');
+                    base = base ? base + 1 : clip;
+                    char dst[MAX_PATH];
+                    snprintf(dst, sizeof(dst), "%s/%s", state.current_dir, base);
+                    if (!strcmp(mode, "cut")) {
+                        if (rename(clip, dst) == 0) fe_clip_write(package_dir, "copy", dst);
+                    } else {
+                        char sh[MAX_PATH * 2 + 32];
+                        snprintf(sh, sizeof(sh), "cp -a '%s' '%s'", clip, dst);
+                        (void)system(sh);
+                    }
+                    list_directory(state.current_dir, &state);
+                    write_ui_file(package_dir, &state, "", "");
+                }
+            } else if (!strcmp(verb, "DELETE") && src[0]) {
+                struct stat st;
+                if (stat(src, &st) == 0) {
+                    if (S_ISDIR(st.st_mode)) (void)rmdir(src); /* empty dirs only */
+                    else (void)unlink(src);
+                }
+                list_directory(state.current_dir, &state);
+                write_ui_file(package_dir, &state, "", "");
+            } else if (!strcmp(verb, "PLACE") && src[0]) {
+                char pp[MAX_PATH];
+                snprintf(pp, sizeof(pp), "%s/fe_place_armed.txt", package_dir);
+                FILE *pf = fopen(pp, "w");
+                if (pf) { fprintf(pf, "path=%s\n", src); fclose(pf); }
+                fe_clip_write(package_dir, "place", src);
+                {
+                    char sh[MAX_PATH * 4];
+                    snprintf(sh, sizeof(sh),
+                             "sh '%s/ops/fe_place_on_desk.sh' '%s' '%s' '%s'",
+                             package_dir, house_root, package_dir, src);
+                    (void)system(sh);
+                }
+                list_directory(state.current_dir, &state);
+                write_ui_file(package_dir, &state, "", "");
+            }
         }
     }
 

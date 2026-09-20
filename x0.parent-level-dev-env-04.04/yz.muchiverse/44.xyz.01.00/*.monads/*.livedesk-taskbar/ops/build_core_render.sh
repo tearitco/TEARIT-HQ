@@ -65,3 +65,9 @@ $CC $CFLAGS $X11_FLAGS -I "$SHARED" -o +x/khtpm_core_render.+x \
   khtpm_core_render.c "$SHARED/khtpm_css_parser.c" $LIBS
 
 echo "OK +x/khtpm_core_render.+x"
+
+# Unfactor piece 4: pal compile unit khtpm_entity.c (#include engine).
+echo "-- entity pal renderer -> +x/khtpm_entity.+x"
+$CC $CFLAGS $X11_FLAGS -I "$SHARED" -I . -o +x/khtpm_entity.+x \
+  khtpm_entity.c "$SHARED/khtpm_css_parser.c" $LIBS
+echo "OK +x/khtpm_entity.+x"

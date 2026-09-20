@@ -1408,7 +1408,7 @@ void ktb_reap_launched(const char *house_root) {
             cb[nb] = '\0';
             for (size_t i = 0; i < nb; i++) if (cb[i] == '\0') cb[i] = ' ';
             if (strstr(cb, house_root) &&
-                strstr(cb, "khtpm_core_render.+x") &&
+                (strstr(cb, "khtpm_entity.+x") || strstr(cb, "khtpm_core_render.+x")) &&
                 strstr(cb, "/pals/cursword")) {
                 int pid = atoi(e->d_name);
                 if (pid > 1 && cn < (int)(sizeof(cw) / sizeof(cw[0])))
@@ -2416,7 +2416,7 @@ static void livedesk_ensure_cursword(const char *house_root) {
      * Same real invocation shape (<package_dir>), zero argv changes
      * needed here. */
     char exe[KTB_PATH_BUF];
-    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", house_root);
+    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity.+x", house_root);
 #ifdef _WIN32
     win_star_alias(exe);
     win_exe_suffix(exe);
@@ -2504,7 +2504,7 @@ static void livedesk_spawn_desk(const char *house_root, const char *sroot, const
      * mode - see this file's own first spawn site (livedesk_ensure_
      * cursword) for the full comment. */
     char exe[KTB_PATH_BUF];
-    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", house_root);
+    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity.+x", house_root);
 #ifdef _WIN32
     win_star_alias(exe);
     win_exe_suffix(exe);
@@ -2770,7 +2770,7 @@ static int ktb_find_live_pid_for_pal(const char *pal_path) {
         if (nb == 0) continue;
         cmdbuf[nb] = '\0';
         for (size_t i = 0; i < nb; i++) if (cmdbuf[i] == '\0') cmdbuf[i] = ' ';
-        if (strstr(cmdbuf, "khtpm_core_render.+x") && strstr(cmdbuf, pal_path)) {
+        if ((strstr(cmdbuf, "khtpm_entity.+x") || strstr(cmdbuf, "khtpm_core_render.+x")) && strstr(cmdbuf, pal_path)) {
             found = atoi(ent->d_name);
             break;
         }
@@ -3664,7 +3664,7 @@ static void livedesk_place_pal(const char *house_root, const char *name) {
      * a separate binary, folded into khtpm_core_render.c's own
      * tp_main() mode - see this file's own first spawn site
      * (livedesk_ensure_cursword) for the full comment. */
-    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", house_root);
+    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity.+x", house_root);
 #ifdef _WIN32
     win_star_alias(exe);
     win_exe_suffix(exe);
