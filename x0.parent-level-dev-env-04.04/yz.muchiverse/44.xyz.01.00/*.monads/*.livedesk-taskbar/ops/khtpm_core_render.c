@@ -101,6 +101,7 @@ extern char **environ;
 
 #define PATH_BUF 4096
 #include "khtpm_ui_common.c" /* shared with khtpm_entity.c - see its header */
+#include "khtpm_grid_jump.c" /* pure <grid> jump/cursor logic, shared with overlay pickers - see its header */
 /* REAL Stage 5 §5d.10 (2026-08-16) - bumped 256->512 to match db-hq's
  * own original headroom (khtpm_hq_render.c) now that db-hq mode's own
  * 15-tab/sidebar/panel tree shares this same pool. */
@@ -7726,51 +7727,8 @@ static void default_cli_io_handle_key(KeySym ks, char ch) {
  * jump-buffer parser below and by draw_elem()'s own grid header-row
  * rendering (step 3, not yet built). */
 static void grid_col_to_letters(int col, char *out, size_t outsz) {
-    char tmp[8]; int n = 0;
-    long v = col + 1; /* 1-based for this algorithm */
-    while (v > 0 && n < (int)sizeof(tmp)) {
-        long rem = (v - 1) % 26;
-        tmp[n++] = (char)('A' + rem);
-        v = (v - 1) / 26;
-    }
-    int i = 0;
-    for (; i < n && (size_t)i < outsz - 1; i++) out[i] = tmp[n - 1 - i];
-    out[i] = '\0';
+    gj_col_to_letters(col, out, outsz); /* codec lives in _shared-lib/khtpm_grid_jump.c */
 }
-static int grid_letters_to_col(const char *s, int len) {
-    long col = 0;
-    for (int i = 0; i < len; i++) {
-        char c = (char)toupper((unsigned char)s[i]);
-        if (c < 'A' || c > 'Z') return -1;
-        col = col * 26 + (c - 'A' + 1);
-        if (col > 1000000) return -1; /* sane runaway guard, not a real cap */
-    }
-    return (int)(col - 1);
-}
-/* Real jump-buffer resolver - letters and digits may arrive in EITHER
- * order ("a11" or "11a", direct instruction) since a human doesn't
- * reliably type a spreadsheet ref in one fixed order under pressure;
- * parsed as a whole on Enter, not position-sensitively. Returns 1 and
- * fills *row_out/*col_out on success (0-based); 0 on anything
- * unparseable (empty/no letters/no digits/bad letters) - caller treats
- * this as a no-op, matching the design doc's own "clears the buffer,
- * doesn't crash/move" rule. */
-static int grid_parse_jump(const char *buf, int *row_out, int *col_out) {
-    char letters[16]; int nl = 0;
-    char digits[16]; int nd = 0;
-    for (const char *p = buf; *p; p++) {
-        if (isalpha((unsigned char)*p) && nl < (int)sizeof(letters) - 1) letters[nl++] = *p;
-        else if (isdigit((unsigned char)*p) && nd < (int)sizeof(digits) - 1) digits[nd++] = *p;
-    }
-    if (nl == 0 || nd == 0) return 0;
-    int col = grid_letters_to_col(letters, nl);
-    if (col < 0) return 0;
-    int row = atoi(digits) - 1; /* refs are 1-based, same as csv_hq_manager.c's own parse_cell_ref() */
-    if (row < 0) return 0;
-    *row_out = row; *col_out = col;
-    return 1;
-}
-
 /* REAL, NEW 2026-09-05 (GRID-ELEMENT-DESIGN.md) - the grid's own key
  * handler, routed to from the same armed-field call site cli_io/
  * text_area use, but with genuinely different semantics (a 2D cursor
@@ -7814,56 +7772,43 @@ static void default_grid_handle_key(KeySym ks, char ch) {
         if (ch >= 32 && ch < 127) kh_text_insert_at_cursor(e->grid_cell_buffer, sizeof(e->grid_cell_buffer), &e->cursor, ch);
         return;
     }
-    /* State 0: navigating. */
-    if (ks == XK_Escape) { kh_set_default_input_elem(NULL); kh_ungrab_kbd(); return; }
-    if (ks == XK_Up)    { if (e->grid_cur_row > 0) e->grid_cur_row--; return; }
-    if (ks == XK_Down)  { e->grid_cur_row++; return; } /* no hard upper cap here - the MANAGER is the real bounds authority (SETCELL already rejects out-of-range refs), same as csv_hq_manager.c's own parse_cell_ref() */
-    if (ks == XK_Left)  { if (e->grid_cur_col > 0) e->grid_cur_col--; return; }
-    if (ks == XK_Right) { e->grid_cur_col++; return; }
-    if (ks == XK_BackSpace) {
-        size_t len = strlen(e->grid_jump_buffer);
-        if (len > 0) e->grid_jump_buffer[len - 1] = '\0';
-        return;
-    }
-    if (ks == XK_Return || ks == XK_KP_Enter) {
-        if (e->grid_jump_buffer[0]) {
-            int row, col;
-            if (grid_parse_jump(e->grid_jump_buffer, &row, &col)) {
-                e->grid_cur_row = row;
-                e->grid_cur_col = col;
-            }
-            e->grid_jump_buffer[0] = '\0';
-        } else {
-            /* Nothing pending - a second real Enter ENTERS the cell
-             * under the cursor (state 0 -> state 1), matching the
-             * design doc's own disambiguation (two different "Enter
-             * does something" cases, not two different keys).
-             * REAL, NEW 2026-09-05 (step 5, GRID-ELEMENT-DESIGN.md's
-             * own build order) - grid_cell_buffer is SEEDED here with
-             * the cursor's current real cell value (published by the
-             * app's own manager as a per-cell var, e.g. "cell_2_1"),
-             * same as activate_focused()'s own cli_io/text_area arm
-             * already seeds the cursor from the real current buffer.
-             * The var-name PREFIX is read from this grid's own
-             * target_id= attribute (reusing that existing generic
-             * field rather than adding a new one just for this -
-             * defaults to "cell_" if unset) - keeps the element itself
-             * generic (any consumer picks its own prefix), matching
-             * commit_action already reusing onclick= the same way. */
-            char varname[80];
-            snprintf(varname, sizeof(varname), "%s%d_%d", e->target_id[0] ? e->target_id : "cell_", e->grid_cur_row, e->grid_cur_col);
-            snprintf(e->grid_cell_buffer, sizeof(e->grid_cell_buffer), "%s", kh_get_var(varname));
-            e->grid_edit_mode = 1;
-            e->cursor = (int)strlen(e->grid_cell_buffer);
-        }
-        return;
-    }
-    if ((isalnum((unsigned char)ch)) && ch >= 32 && ch < 127) {
-        size_t len = strlen(e->grid_jump_buffer);
-        if (len + 1 < sizeof(e->grid_jump_buffer)) {
-            e->grid_jump_buffer[len] = ch;
-            e->grid_jump_buffer[len + 1] = '\0';
-        }
+    /* State 0: navigating - the pure cursor/jump-buffer logic is the shared
+     * khtpm_grid_jump.c step function (also usable by overlay pickers). No hard
+     * upper cap on the cursor here - the MANAGER is the real bounds authority
+     * (SETCELL already rejects out-of-range refs), so rows/cols stay 0. */
+    GjState gs;
+    memset(&gs, 0, sizeof(gs));
+    snprintf(gs.jump, sizeof(gs.jump), "%s", e->grid_jump_buffer);
+    gs.row = e->grid_cur_row;
+    gs.col = e->grid_cur_col;
+    GjKey gk = GJ_KEY_CHAR;
+    if (ks == XK_Escape) gk = GJ_KEY_ESC;
+    else if (ks == XK_Up) gk = GJ_KEY_UP;
+    else if (ks == XK_Down) gk = GJ_KEY_DOWN;
+    else if (ks == XK_Left) gk = GJ_KEY_LEFT;
+    else if (ks == XK_Right) gk = GJ_KEY_RIGHT;
+    else if (ks == XK_BackSpace) gk = GJ_KEY_BACKSPACE;
+    else if (ks == XK_Return || ks == XK_KP_Enter) gk = GJ_KEY_ENTER;
+    else if (!(ch >= 32 && ch < 127)) return;
+    GjAction ga = gj_step(&gs, gk, ch);
+    snprintf(e->grid_jump_buffer, sizeof(e->grid_jump_buffer), "%s", gs.jump);
+    e->grid_cur_row = gs.row;
+    e->grid_cur_col = gs.col;
+    if (ga == GJ_DISARM) { kh_set_default_input_elem(NULL); kh_ungrab_kbd(); return; }
+    if (ga == GJ_ENTER_CELL) {
+        /* Nothing pending - a second real Enter ENTERS the cell under the
+         * cursor (state 0 -> state 1), matching the design doc's own
+         * disambiguation (two different "Enter does something" cases, not
+         * two different keys). grid_cell_buffer is SEEDED with the cursor's
+         * current real cell value (published by the app's own manager as a
+         * per-cell var, e.g. "cell_2_1"); the var-name PREFIX is read from
+         * this grid's own target_id= (defaults to "cell_"), keeping the
+         * element generic, same as commit_action reusing onclick=. */
+        char varname[80];
+        snprintf(varname, sizeof(varname), "%s%d_%d", e->target_id[0] ? e->target_id : "cell_", e->grid_cur_row, e->grid_cur_col);
+        snprintf(e->grid_cell_buffer, sizeof(e->grid_cell_buffer), "%s", kh_get_var(varname));
+        e->grid_edit_mode = 1;
+        e->cursor = (int)strlen(e->grid_cell_buffer);
     }
 }
 

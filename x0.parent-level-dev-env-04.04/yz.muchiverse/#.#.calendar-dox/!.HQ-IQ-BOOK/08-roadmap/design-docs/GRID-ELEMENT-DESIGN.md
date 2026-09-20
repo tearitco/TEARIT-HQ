@@ -238,3 +238,40 @@ while in state 3 the current cell shows its OWN live text-cursor bar
    a real cell edit commit, Escape-out-of-cell, Escape-out-of-grid, all
    independently confirmed via a text-state read (the published
    `cell_R_C` vars) before trusting a PNG dump alone.
+
+## Reuse by overlay pickers (2026-09-20)
+
+The pure part of the jump behaviour now lives in
+`44.xyz.01.00/&.widgits/_shared-lib/khtpm_grid_jump.c` (text-included canonical
+helper; plain C + `<string.h>/<ctype.h>/<stdlib.h>`, no Elem/X11/khtpm
+dependency; standalone test: `_shared-lib/tests/test_grid_jump.c`).
+`default_grid_handle_key()` (khtpm_core_render.c) already drives its
+navigating state through it, so behaviour is defined in exactly one place.
+
+API: `GjState {jump[16], row, col, rows, cols}` (rows/cols 0 = unbounded),
+`gj_step(&st, key, ch)` with `GjKey` = CHAR/UP/DOWN/LEFT/RIGHT/ENTER/ESC/
+BACKSPACE returning `GjAction` = NONE / MOVED / BUFFER / JUMPED / ENTER_CELL /
+DISARM; plus `gj_parse()` (a11 / 11a / AA5 -> 0-based row,col, bounds-checked),
+`gj_col_to_letters()` / `gj_letters_to_col()` (bijective base-26, A=0, AA=26),
+`gj_buf_append()` (only `[A-Za-z0-9]`, capped) and `gj_clamp()`.
+
+How the Place overlay (`tp_arm_placer_rmmv.c`, a standalone X process with a
+labelled wire grid) should use it - NOT wired yet:
+1. `#include "khtpm_grid_jump.c"` (add `-I ../../_shared-lib` to its build
+   line, same as build_core_render.sh does) and keep one `GjState` with
+   `rows`/`cols` = the number of grid cells on screen (pane size / cell px).
+2. Draw column letters (`gj_col_to_letters`) along the top and 1-based row
+   numbers down the side of the wire grid, and a highlight box on
+   `(st.col, st.row)`; show `st.jump` in a small status label so the user sees
+   what they typed.
+3. In the existing keyboard loop map `XK_Up/Down/Left/Right`, `XK_Return`,
+   `XK_Escape`, `XK_BackSpace` and printable characters to `GjKey`, call
+   `gj_step`, and react: `MOVED/BUFFER/JUMPED` -> redraw the highlight;
+   `ENTER_CELL` (Enter with an empty buffer = the second Enter) -> place at the
+   cell centre, i.e. the same result a click there produces (write the same
+   `RMMV_CLICK` ledger line with that pixel); `DISARM` -> cancel exactly like
+   today's Esc.
+4. Type `c7` (or `7c`) + Enter to jump, Enter again to place. Bounds come from
+   `rows/cols`, so an off-grid ref is a no-op instead of a stray placement.
+   Keep the existing click-to-place, Esc handling (`XQueryKeymap` poll) and
+   drop-zone hover untouched.
