@@ -34,7 +34,7 @@
      pal.xhtpm's own header for the full diagnosis) - armed by clicking
      in and typing, same ^-cursor convention as every other cli_io/
      text_area in the house. -->
-<window label="text-edit-hq - ${file_path}" class="text-edit-hq-pal database-window" vars="text_edit_ui.txt">
+<window label="text-edit-hq - ${file_path}" class="text-edit-hq-pal database-window managed" vars="text_edit_ui.txt">
   <module src="@.apps/text-edit-hq/ops/+x/text_edit_manager.+x" id="_"/>
   <page name="main">
     <tabbar class="tab-bar">

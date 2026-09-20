@@ -47,7 +47,7 @@
      other two apps (CSVH_OPENFILE, khtpm_core_render.c) - its own
      separate real X11 window; this manager polls File Explorer's own
      published result the same way pdl_read_manager.c already does. -->
-<window label="csv-hq - ${file_path}" class="csv-hq-pal database-window" vars="csv_hq_ui.txt">
+<window label="csv-hq - ${file_path}" class="csv-hq-pal database-window managed" vars="csv_hq_ui.txt">
   <module src="@.apps/csv-hq/ops/+x/csv_hq_manager.+x" id="_"/>
   <page name="main">
     <tabbar class="tab-bar">

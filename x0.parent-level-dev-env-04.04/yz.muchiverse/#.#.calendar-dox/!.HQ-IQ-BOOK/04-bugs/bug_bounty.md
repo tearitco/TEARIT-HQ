@@ -54,6 +54,36 @@ cli_io, an open popup, the taskbar) by running csv-hq alone.
 reaches an armed field despite rc=0), and the Place-overlay Esc fix
 (same ignored/failed `XGrabKeyboard` pattern).
 
+### 🔍 2026-09-20 (later, live on the user's real session): the keyboard never reaches csv-hq at all - override_redirect
+
+The fix below is real but is NOT why the user's csv-hq stayed dead. Live
+evidence from the user's real GNOME/Wayland session, with the fixed binary:
+- csv-hq log: `GRAB ... rc=1` x5 then `late-retry gave up (another client
+  still holds the keyboard)`; a grab probe from a third client also got
+  `AlreadyGrabbed` every time, even while a real X window had focus.
+- A passive listener (`XSelectInput` KeyPress|FocusChange on csv-hq's
+  window, no grab) recorded ZERO KeyPress events while the user clicked in,
+  pressed Enter, typed and pressed Esc - only `FocusIn/FocusOut mode=3`
+  (NotifyWhileGrabbed). Arrows, Enter and Esc all dead; mouse clicks work.
+- `#.desktop/livedesk_override_redirect.pdl` was `override_redirect=true`
+  (taskbar "@" always-on-top), and csv-hq's `<window>` had no `managed`
+  class, so its window was created override_redirect. This is the DOCUMENTED
+  cause: Mutter/XWayland never routes keyboard focus to override_redirect
+  windows (`09-appendix/pc-hq-leg-vs-nu-fix.md` §3-A/§4, `03-pitfalls/
+  X11-AND-SESSION-PITFALLS.md` 2026-09-05 "arrows control nav broke again",
+  and the 2026-09-14 text-edit-hq entry). XWayland also restricts
+  XGrabKeyboard for such clients (khtpm_entity.c ~3354 comment), which is
+  what the `AlreadyGrabbed` was.
+- Fix applied: `class="... managed"` on csv-hq's and text-edit-hq's
+  `<window>` (same mechanism pchq-board / export-hq already use; honored at
+  window creation, so the window must be closed and reopened). Cheap
+  diagnostic without any code: turn the taskbar "@" always-on-top OFF
+  (override_redirect=false) and reopen the window.
+- NOT verified on hardware yet. Wider follow-up: any HQ window with a
+  cli_io/text_area/grid should probably be forced managed regardless of the
+  PDL (like the dock windows, `dock_managed`); open-hai/chat-hai/network
+  browser share the risk.
+
 ### 🛠️ 2026-09-20 root cause + fix (found by reproducing in a private Xephyr + private house)
 
 **What was NOT broken:** the grid state machine. Driven through the
