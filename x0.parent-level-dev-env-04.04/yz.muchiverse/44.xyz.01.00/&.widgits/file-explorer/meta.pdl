@@ -7,5 +7,5 @@ CTXMENU | Copy | COPY
 CTXMENU | Paste | PASTE
 CTXMENU | Delete | DELETE
 CTXMENU | Place | PLACE
-CTXMENU | Cli-io | CLI_IO
+# Cli-io row (CLI_IO) deferred: no manager handler yet, see PLACEMENT-FROM-EXPLORER.md
 CTXMENU | Cancel | CANCEL
