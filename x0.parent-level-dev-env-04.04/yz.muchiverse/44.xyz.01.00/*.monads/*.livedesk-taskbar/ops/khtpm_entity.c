@@ -2894,14 +2894,11 @@ static int read_initial_pos(const char *package_dir, int *out_x, int *out_y) {
     }
     fclose(f);
     if (x < 0 || y < 0) return 0;
-    /* A position saved on a bigger screen must not land off a smaller one.
-     * Only when the screen-relative scale is active (auto != 100), so the
-     * reference screen behaves exactly as before. */
-    if (g_ui_auto_pct != 100 && g_ui_screen_w > 0 && g_ui_screen_h > 0) {
-        int maxx = g_ui_screen_w - WIN_PX, maxy = g_ui_screen_h - WIN_PX;
-        if (x > maxx) x = maxx > 0 ? maxx : 0;
-        if (y > maxy) y = maxy > 0 ? maxy : 0;
-    }
+    /* desktop_pos.txt is in REFERENCE px (khtpm_ui_scale.c): convert to this
+     * screen (identity on the reference screen). The caller snaps to the
+     * scaled grid and clamps to the visible grid. */
+    x = kh_pos_ref_to_screen(x);
+    y = kh_pos_ref_to_screen(y);
     *out_x = x; *out_y = y;
     return 1;
 }
@@ -3713,9 +3710,10 @@ static void desktop_check_touch_trigger(const char *house_root, const char *pack
             else if (strncmp(line, "y=", 2) == 0) py = atoi(line + 2);
         }
         fclose(pf);
-        if (px == x && py == y) {
+        /* sibling file is reference px, x/y here are this screen's px */
+        if (kh_pos_ref_to_screen(px) == x && kh_pos_ref_to_screen(py) == y) {
             char details[128];
-            snprintf(details, sizeof(details), "target:%s,x:%d,y:%d", ent->d_name, x, y);
+            snprintf(details, sizeof(details), "target:%s,x:%d,y:%d", ent->d_name, kh_pos_screen_to_ref(x), kh_pos_screen_to_ref(y));
             desktop_ledger_append(house_root, self_name, "touched_npc", details);
         }
     }
@@ -3735,7 +3733,10 @@ static void write_pos(const char *package_dir, int x, int y) {
      * of write_pos() (drag/arrow-nudge/click-to-place) only ever
      * changes x/y, never z - preserving it here, with zero call-site
      * changes needed anywhere else in this file. */
-    fprintf(f, "x=%d\ny=%d\nz=%d\n", x, y, g_entity_z);
+    /* x/y are this screen's px; the file is reference px (identity on the
+     * reference screen) so a smaller/bigger monitor never rewrites what
+     * another machine sees. */
+    fprintf(f, "x=%d\ny=%d\nz=%d\n", kh_pos_screen_to_ref(x), kh_pos_screen_to_ref(y), g_entity_z);
     fclose(f);
     /* Real, single choke point every real position change already
      * passes through (drag/arrow-nudge/click-to-place/MOVE_TO) - see
@@ -3862,8 +3863,8 @@ static int tp_main(int argc, char **argv) {
     /* Entity grid/window size is screen-relative (hq_ui.pdl ui_scale/
      * ui_ref_*; auto = 100 on the reference screen). This mode has a local
      * Display and never sets the dpy global, so probe the screen size with
-     * a throwaway connection. Saved desktop_pos.txt values stay absolute
-     * screen px; read_initial_pos() clamps them onto the visible screen. */
+     * a throwaway connection. Saved desktop_pos.txt values are REFERENCE px
+     * (khtpm_ui_scale.c); read_initial_pos()/write_pos() convert. */
     {
         Display *pd = XOpenDisplay(NULL);
         if (pd) {
@@ -3873,7 +3874,8 @@ static int tp_main(int argc, char **argv) {
             kh_ui_apply_scale();
         }
     }
-    GRID_CELL_PX = kh_auto_px(read_grid_cell_px(g_house_root));
+    g_grid_cell_base = read_grid_cell_px(g_house_root);
+    GRID_CELL_PX = kh_auto_px(g_grid_cell_base);
     /* Stage 2c PROOF - see launch_khtpm_menu()'s own header comment. */
     {
         char menu_chtpm_path[TP_PATH_BUF];
@@ -4037,13 +4039,17 @@ static int tp_main(int argc, char **argv) {
      * once at startup (see g_entity_z's own declaration comment). */
     g_entity_z = read_entity_z(package_dir);
     int win_x = 3 * GRID_CELL_PX, win_y = 3 * GRID_CELL_PX; /* grid-aligned spawn, matching egg_window.c's own default */
+    int pos_from_file = 0, pos_clamped = 0;
     {
         int ix, iy;
         if (read_initial_pos(package_dir, &ix, &iy)) {
             int gx = (ix + GRID_CELL_PX / 2) / GRID_CELL_PX;
             int gy = (iy + GRID_CELL_PX / 2) / GRID_CELL_PX;
+            int gx0 = gx, gy0 = gy;
             if (gx < 0) gx = 0; if (gx > max_col) gx = max_col;
             if (gy < 0) gy = 0; if (gy > max_row) gy = max_row;
+            pos_from_file = 1;
+            pos_clamped = (gx != gx0 || gy != gy0);
             win_x = gx * GRID_CELL_PX;
             win_y = gy * GRID_CELL_PX;
         }
@@ -4080,7 +4086,17 @@ static int tp_main(int argc, char **argv) {
          * saved Linux grid value can sit past this display's edge, and
          * downstream consumers (khtpm_show_choices.c's picker spawn
          * reads this same file) must not inherit an off-screen x/y. */
+#if defined(_WIN32) || defined(__APPLE__)
         write_pos(package_dir, win_x, win_y);
+#else
+        /* Persist the grid-snapped position, EXCEPT when this screen is not the
+         * reference one and the saved spot was only clamped onto the visible
+         * grid: that file is reference px shared with other machines, and a
+         * smaller monitor must not rewrite where the entity lives. On the
+         * reference screen this always writes, exactly as before. */
+        if (!(g_ui_auto_pct != 100 && pos_from_file && pos_clamped))
+            write_pos(package_dir, win_x, win_y);
+#endif
     }
 
     TP_TIMING_MARK("pos-compute/colormap");
@@ -4626,6 +4642,10 @@ static int tp_main(int argc, char **argv) {
                          * slightly-off caller can't park this off-grid. */
                         int tx = 0, ty = 0;
                         sscanf(line + 8, "%d,%d", &tx, &ty);
+                        /* MOVE_TO coordinates are reference px (they come from
+                         * desktop_pos.txt files); convert to this screen. */
+                        tx = kh_pos_ref_to_screen(tx);
+                        ty = kh_pos_ref_to_screen(ty);
                         int gx = (tx + GRID_CELL_PX / 2) / GRID_CELL_PX;
                         int gy = (ty + GRID_CELL_PX / 2) / GRID_CELL_PX;
                         if (gx < 0) gx = 0;

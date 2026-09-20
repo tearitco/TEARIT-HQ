@@ -9,6 +9,8 @@
 #ifndef KHTPM_UI_COMMON_C
 #define KHTPM_UI_COMMON_C
 
+#include "khtpm_ui_scale.c" /* pure screen-scale + reference-space position math, shared with the placer ops */
+
 /* ---- types ---- */
 #define TP_PATH_BUF 4352
 
@@ -261,21 +263,20 @@ static void load_theme_colors(void) {
 }
 
 static void kh_ui_apply_scale(void) {
-    int a = 100;
-    if (g_ui_override_pct > 0) a = g_ui_override_pct;
-    else if (g_ui_screen_w > 0 && g_ui_screen_h > 0 && g_ui_ref_w > 0 && g_ui_ref_h > 0) {
-        int rw = (int)((long)g_ui_screen_w * 100 / g_ui_ref_w);
-        int rh = (int)((long)g_ui_screen_h * 100 / g_ui_ref_h);
-        a = rw < rh ? rw : rh;
-    }
-    if (a < 50) a = 50;
-    if (a > 300) a = 300;
+    int a = kps_auto_pct(g_ui_override_pct, g_ui_screen_w, g_ui_screen_h, g_ui_ref_w, g_ui_ref_h);
     g_ui_auto_pct = a;
     int p = (g_ui_user_pct * a + 50) / 100;
     if (p < 25) p = 25;
     if (p > 400) p = 400;
     g_ui_scale_pct = p;
 }
+
+/* Saved entity positions (desktop_pos.txt) are REFERENCE px - see
+ * khtpm_ui_scale.c. g_grid_cell_base = desk_grid.pdl cell_px (unscaled; the
+ * entity sets it next to GRID_CELL_PX). Identity when auto == 100. */
+static int g_grid_cell_base = 80;
+static KPS_UNUSED int kh_pos_ref_to_screen(int ref) { return kps_ref_to_screen(ref, g_grid_cell_base, g_ui_auto_pct); }
+static KPS_UNUSED int kh_pos_screen_to_ref(int scr) { return kps_screen_to_ref(scr, g_grid_cell_base, g_ui_auto_pct); }
 
 /* Screen-relative px (entity grid/window sizes, which font_scale must not
  * change): base * auto / 100, min 1. */
