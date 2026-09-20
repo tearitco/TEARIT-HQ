@@ -14,6 +14,8 @@
 
 ## Next — ordered
 
+**User's stated direction (2026-09-20):** the next push is (a) the labeled Place grid + other placing, (b) events working from inside an Inventory, (c) the IRL/AI track that wraps gameplay activity. Also: finish UI scaling, then push everything to the `opencode` branch.
+
 ### Verify first (cheap, might close bugs)
 1. Restart the other pals (started 02:21 with older binaries) so nothing else holds a stale grab.
 2. Re-test **text-edit-hq** typing — the 2026-09-14 "keyboard never arrives" entry (`bug_bounty.md`) is very likely the same Cursword-grab cause; close it if it types.
@@ -28,7 +30,7 @@
 
 ### Engine / architecture
 9. UI scaling: `desktop_pos.txt` is absolute pixels and ~10 tools write it — convert to reference-space; look at an entity window on a small screen.
-10. `XHTPM-RE.md` plan: `.xhtpm` → `.xhtm` rename; keep shrinking `khtpm_core_render.c` (still 12.5k) and cut `khtpm_entity.c`'s dependence on shared includes.
+10. ~~`.xhtpm` -> `.xhtm` rename~~ **CANCELLED by the user (2026-09-20) - never do it.** Renderer shrink candidates (measured: `khtpm_core_render.c` = 12,550 lines = 5,010 comment + 7,196 code): dock/strip/`ktb_*` ~1,350 function lines (own compile unit like the entity split), ASCII frame mirror ~500, input widgets `cli_io`/`text_area`/`grid` ~660 (also reusable by overlay pickers), clipboard/XDND ~145; and `main()` (666 lines) split into window-creation helpers.
 11. Unfactor leftovers not re-verified: Cursword 3D/phymoji camera keys, z-layer changes, XDND drops from other apps.
 12. `livedesk_override_redirect.pdl=true` ("@" always-on-top) is still a separate documented cause of dead keys for override_redirect windows; text-field windows are now forced managed, but consider the wider policy.
 
@@ -37,6 +39,6 @@
 14. Cursword IRL/watch layer (LLMUD-HACK / DUSTOPIA-HACK): first slice = relay watcher + Synonym Bank fed by kilo's own event authoring.
 
 ### Housekeeping
-15. The main tree still has ~775 uncommitted deletions (old docs, NIGHT_12–16 mp3s, network fixtures) and ~200 untracked files (asset dirs, notes, the 638KB `kilo-post-mortem-s17.md`) — nobody committed them on purpose; decide keep/delete.
+15. ~~Uncommitted deletions~~ **committed 2026-09-20 (`b2cd08ad`, 743 files, recoverable from history).** Still dirty by design: ~248 modified runtime-state files and ~190 untracked (asset dirs, notes, the 638KB `kilo-post-mortem-s17.md`).
 16. Older open bugs: piececraft-hq board tab, network-browser address bar (recurring), pc-hq board focus vs taskbar, toys-launch PID tracking, `ktb_pid_alive()` zombie false-positive, `nav.sh` `row`/`type` not exercised on live rows.
 17. `db-hq-pal` toy fix was only syntax-checked, not launched.

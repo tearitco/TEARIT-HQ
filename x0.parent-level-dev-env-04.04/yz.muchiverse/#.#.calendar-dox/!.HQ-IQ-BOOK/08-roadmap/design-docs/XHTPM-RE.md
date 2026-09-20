@@ -135,20 +135,19 @@ Do **not** start this extract in the same burst as Place-grid. Land
 small FE fixes, then a dedicated extract PR with a golden pal
 (`m8` / ninja) still dragging.
 
-## Name: chtpm → xhtpm → xhtm
+## Name: stays `.xhtpm` - the `.xhtm` rename is CANCELLED (2026-09-20)
 
-House already moved markup toward **`.xhtpm`**. You want the
-convention finished as **`xhtm`** (HTML-shaped, X11). Fine, but it is
-a **rename campaign**, not a refactor:
+**Decision (user, 2026-09-20): do NOT rename `.xhtpm` -> `.xhtm`. It was a
+mistaken answer to a clarification question, not a real requirement.** Keep
+`.xhtpm` templates and `khtpm_*` engine names exactly as they are; nothing in
+any unfactor/split plan should include a markup rename or a `button.sh` that
+accepts a second extension.
 
-- Templates: `.xhtpm` → `.xhtm` (or keep xhtpm if grep cost is the
-  enemy — pick one and freeze).
-- Docs/binary names: `khtpm_*` is the *engine*; `xhtm` is the *markup*.
-  Don’t rename the C symbol soup in the same PR as `tp_main` extract.
+<details><summary>Original (withdrawn) text</summary>
 
-If we refactor, **complete the markup name in that same campaign**,
-file-by-file, with a tiny `button.sh` still accepting the old
-extension for one cycle.
+House already moved markup toward `.xhtpm`; an earlier reading of a
+clarification answer proposed finishing it as `xhtm`. Withdrawn.
+</details>
 
 ## What I did vs what I did not
 
