@@ -1,0 +1,168 @@
+# opencode-browser-handoff-er.txt
+
+Emergency / generalized handoff for the QUICKJS NETWORK BROWSER work.
+Read this first on any fresh session. Goal: functional parity with the
+chromium-based browser path — real pages render + are interactive through
+the manager, zero JS errors, end-to-end — then keep going.
+
+-------------------------------
+## 1. THE TASK / ACCEPTANCE
+-------------------------------
+Drive real web pages (YouTube is the shakedown target) through the
+quickjs-based network browser:
+  `network_browser_manager.c` (manager / orchestrator, split into the
+  ./.desktop +x manager; resident worker, curl, cookies)
+  `ops/nb_js_worker.c` (the resident quickjs worker: DOM engine, page
+  scripts, event loop, render-back) + `nb_dom.c` `nb_css.c` + vendored
+  quickjs in `../js/`.
+
+Acceptance line (paraphrased, ongoing): opening https://www.youtube.com/
+must yield a static render with NO js errors, the home element tree wired
+(bootstrap incl. `#search-icon-legacy` live), native search click/enter
+drives a page NAV, results URL lands in page.state, cookies persist,
+`make check` stays 60 PASS / 0 FAIL. Bugs are fixed as they surface until
+that is true.
+
+## 2. TOP-LEVEL STATE (2026-09-19 evening)
+WHAT WORKS (all committed + pushed to origin/opencode, HEAD = commit
+`38efd12f`):
+- Resident worker keepalive: worker emits `LIVE|drain|%u` every ~1800 ms
+  during long drains (resident mode only); manager + all 13 worker test
+  harnesses skip LIVE frames. `run_event_loop()` in nb_js_worker.c.
+- Manager LOAD/EVAL quiet budget: `WORKER_LOAD_QUIET_MS 90000` for the
+  LOAD and EVAL read loops, via `worker_recv_line_to(fd, buf, cap, ms)`
+  (3 s wrapper default) in network_browser_manager.c.
+- `performance` host (nb_host.h): now/timeOrigin/mark/measure/clearMarks/
+  getEntries/getEntriesByType/getEntriesByName/navigation{type,redirectCount}
+  /timing{navigationStart} — killed youtube kevlar's
+  `ReferenceError: 'performance' is not defined`.
+- `NB_EVAL_BUDGET=60` setenv'd on the resident worker child in
+  `worker_spawn()` (~line 1440).
+- End-to-end milestone (VERIFIED through the manager): go:youtube home ->
+  ready; `eval:` sets `#search` value ("never gonna give you up") and
+  dispatches input -> `=>BOX_SET ... btn=0`; `eval:location.href="/results?search_query=..."` ->
+  `=>NAV_REQUESTED` -> page.state URL = the /results URL; cookies in
+  `nb_curl_cookies`; err log 0 bytes.
+- Home page static render ~18-19 rows (footer + TEXT css). `make check`
+  = 60 PASS / 0 FAIL (verified twice).
+
+THE ACTIVE BUG (the reason the element tree isn't fully wired):
+- TWO page-bootstrap exceptions during the home LOAD drain, caught by the
+  page's own error handler (so we only see the page-formatted summary):
+  1. `TypeError: cannot read property of undefined @ at <anonymous>
+     (<script>:1031:145) at h (<script>:5298:169) at laz
+     (<script>:1031:72)`
+  2. `... @ at HGa (<script>:1042:82) at GZl (<script>:26430:4) at lH6
+     (<script>:26435:4) ...`
+- Stack line numbers point into the kevlar bundle. page.js is assembled
+  from 23 slices (799 lines, sentinel `/*nbjs-script-boundary*/`,
+  `run_scripts_slices()`); the stack numbers instead refer to the
+  per-script kevlar: `page.js.ext8.js` = 42,993 lines / 10.8 MB (ext0 127,
+  ext1 332, ext2 51, ext3 20, ext4 59, ext5 18, ext6 88, ext7 41 resp.).
+  Lines 1031/1042/5298/26417/26747 are all inside page.js.ext8.js. The
+  exact file->stack line mapping has a small offset (laz is file line
+  1030 while the stack says 1031) — not fully pinned yet.
+- Because the page swallows the errors, the full quickjs message
+  (property name) is hidden. In-progress fix tooling:
+
+  DIAGNOSTIC AID JUST ADDED (uncommitted):
+  - `g_trace_cb` + `NB_TRACE_CB=1` env: invoke_cb0() now dumps the FULL
+    callback exception (message + stack with NB_STACK=1) to stderr as
+    `TRACE_CB| <msg>`. Declared ~line 2954, set in main() top, print in
+    invoke_cb0() if-IsException block. REBUILD the worker before use.
+  - Build cmd (NOTE the escaped quotes — plain -D strips them and the
+    macro value becomes NUMERIC 2026-06-04 -> quickjs.c compile error):
+    `gcc -std=gnu11 -O2 -D_GNU_SOURCE "-DCONFIG_VERSION=\"2026-06-04\""
+     -fwrapv -pthread -I"../js" -o ops/+x/nb_js_worker.+x
+     ops/nb_js_worker.c nb_dom.c nb_css.c ../js/quickjs.c ../js/cutils.c
+     ../js/libregexp.c ../js/libunicode.c ../js/dtoa.c -lm`
+  - To reproduce: run the worker RESIDENT (NOT `--browser`; the one-shot
+    CLI path does not run the kevlar async bootstrap that throws), i.e.
+    spawn bare `nb_js_worker.+x` over a pipe and send the LOAD frame.
+  - LOAD FRAME CONTRACT (file PATHS, not inline bytes!) — the worker
+    reads the files itself:
+        body = <page.js path>\n<fetch.dom path>\n\n   (field1=page.js,
+        field2=fetch.dom, field3=href, field4=title, field5=style.css)
+    sent as: `%05d\n` + "LOAD\n" + body.
+  - Driver script: /tmp/opencode/drive_load.py (detached, nohup + poll,
+    survives bash timeout; the LOAD takes minutes — kevlar is slow). The
+    page.js + fetch.dom sources live in the last test house:
+    `/tmp/nbhouse31u/&.hq-apps/network/tmp/`.
+    (A PC crash wiped /tmp/nbhouseira — reconstruct from nbhouse31u.)
+- Next step (was running when the machine crashed): capture TRACE_CB lines
+  from the resident LOAD, get the two property names, map them to a
+  missing host surface (pattern from `performance`/kevlar), wire it in
+  nb_host.h/nb_js_worker.c, rebuild worker+manager, re-drive go: youtube,
+  verify zero errors + `#search-icon-legacy` present, then native search
+  click/enter NAV, then make check 60/0, commit, push.
+
+MINOR OPEN ITEMS:
+- Worker RENDER sometimes lacks the TITLE row (manager merge then drops
+  it) — cosmetic, low priority.
+- The grep `error:` false-positive when building the manager (the source
+  contains the string "error: curl failed") — not a compile error.
+- Taskbar still needs the user to run `$.crypts/install-deps.sh` (sudo;
+  installs libxft-dev so +x/khtpm_core_render.+x lands). Committed
+  b3b2019b.
+
+## 3. PROTOCOL + FILE CONTRACT (manager <-> worker)
+- Worker daemon protocol over a socketpair/stdin-pipe; frames are
+  `XXXXX\n` length+`\n` content. Commands: `LOAD\n<body>` (fields
+  page_js/fetch_dom/href/title/style.css), `EVAL\n<js>` (single line),
+  `QUIT`. Worker replies `STATUS ok|err:...`, `LIVE|drain|%u`,
+  `RENDER\n<rows>`, `WERR| script %d: ...`, `=>BOX_SET ...`,
+  `=>NAV_REQUESTED` etc. In resident mode the worker stays alive for
+  repeated EVALs; run_event_loop() keeps the drain going.
+- Manager side: `#.desktop/network_browser_request.txt` one line per
+  tick; `go:<url>` -> do_fetch (curl -> fetch.html/fetch.dom -> LOAD);
+  `eval:<js>` / `go:eval:<js>` -> worker EVAL + merge_render_rows;
+  NAV frames (`NAV\n<kind>\n<url>`) -> do_fetch again. Status file
+  `network_browser_status.state.txt`; page.state rows `TITLE|`,
+  `URL|`, `TEXT|`, `LINK|`, `BOX|`...
+- Houses (the manager's working dir): `/tmp/nbhouseNN` — each holds
+  `&.hq-apps/network/tmp/{page.js,page.js.ext*.js,fetch.dom,fetch.html,
+  style.css,nb_curl_cookies}` + err/state files. Latest useful:
+  nbhouse31u. IMPORTANT: crash/reboot wipes /tmp houses; artifacts are
+  ephemeral. `nb_curl_cookies` persists cookies across navs.
+- Quoted-path rule: house paths contain `&`, `#`, `!`, spaces — always
+  quote; a bare `&` in the shell backgrounds the command.
+
+## 4. KEY FILES / SYMBOLS
+- ops/nb_js_worker.c — g_trace_cb (~2954), invoke_cb0 (~3017), js_error_to_cstr
+  (~2962), run_event_loop (~3760), run_scripts_slices (~4010, SCRIPT_BOUNDARY
+  ~3997), peval_budget (~3898), WERR ~4034, run_page (~4090), LOAD parse (~5048),
+  main (~5007).
+- ops/nb_host.h — install_host, performance host block, __nb_ges stub.
+- network_browser_manager.c — worker_spawn (~1397, NB_EVAL_BUDGET ~1440),
+  worker_recv_line_to (~1333), WORKER_LOAD_QUIET_MS, worker_load, worker_eval,
+  merge_render_rows (~979), run_page_scripts (~1578).
+- tests/worker_*_test.c — 13 harnesses; all wreply() skip LIVE frames.
+- Builds: worker see §2; manager: `gcc -std=c11 -Wall -O2 -o "+x/network_browser_manager.+x"
+  network_browser_manager.c nb_dom.c` (run from the network workspace dir).
+- Docs: `HANDOFF-JS-ENGINE-QUICKJS.md` (root), HQ-IQ-BOOK standards.
+
+## 5. HOUSE RULES / GOTCHAS (AGENTS.md)
+- Commit scoped at end of every block: `git add <path>` per file, NEVER
+  -A. Branch = `opencode` (never main/claude). Commit inline:
+  `-c user.name="tearitco" -c user.email="88365268+tearitco@users.noreply.github.com"`.
+  Message style: `fix:` / `docs:` / `wip:`. Push only when asked/user
+  expects it (established: push to origin/opencode after commits).
+- `make check` = the 13 harness tests; expect 60 PASS / 0 FAIL. Rebuild
+  worker + manager + re-run + real evidence before reporting "fixed".
+- Python `select() + buffered read(1)` harnesses LIE about frame delivery —
+  redirect worker stdout/stderr to files to inspect frames instead.
+- The compiled binaries are `+x/` `.+x` files in the network tree
+  (untracked by git, treated as runtime state).
+- Clean compile is NOT evidence; a fresh run + state-file/render/err-log
+  inspection is.
+
+## 6. SANITY COMMANDS
+- make check from the network tree.
+- Rebuild worker: §2 command (escaped quotes!).
+- Rebuild manager: §4 command.
+- Drive the browser: write `go:https://www.youtube.com/` to
+  `#.desktop/network_browser_request.txt`, poll the status file, then
+  `eval:<js>`; read page.state + err log + nb_curl_cookies.
+- Diagnose kevlar errors resident: NB_TRACE_CB=1 NB_STACK=1 spawn worker,
+  LOAD with paths, watch TRACE_CB| on stderr (see /tmp/opencode/
+  drive_load.py).

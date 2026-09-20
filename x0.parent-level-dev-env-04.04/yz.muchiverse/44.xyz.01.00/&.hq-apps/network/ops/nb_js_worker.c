@@ -2951,6 +2951,7 @@ static int g_invocations = 0;
 static int g_raf_fires = 0;
 static int g_pending_err = 0;   /* set when an event-loop callback throws */
 static char g_pending_errmsg[512];
+static int g_trace_cb = 0;      /* NB_TRACE_CB=1: dump full callback exceptions */
 
 static uint64_t now_ms(void) {
     struct timespec ts;
@@ -3020,6 +3021,14 @@ static int invoke_cb0(JSContext *ctx, JSValue cb) {
             char buf[512];
             const char *m = js_error_to_cstr(ctx, buf, sizeof(buf));
             snprintf(g_pending_errmsg, sizeof(g_pending_errmsg), "%s", m);
+        }
+        /* diagnosis aid: NB_TRACE_CB=1 prints the FULL callback exception
+         * (message + stack when NB_STACK=1) to stderr, even when the page's
+         * own error handler swallows it into a truncated console line. */
+        if (g_trace_cb) {
+            char buf[512];
+            const char *m = js_error_to_cstr(ctx, buf, sizeof(buf));
+            fprintf(stderr, "TRACE_CB| %s\n", m);
         }
         JS_FreeValue(ctx, r);
         return 1;
@@ -4994,6 +5003,7 @@ static int cli_main(int argc, char **argv) {
 
 int main(int argc, char **argv) {
     g_out = NULL;   /* step 2: no effects file yet; console goes nowhere */
+    if (getenv("NB_TRACE_CB")) g_trace_cb = 1;   /* full callback exceptions to stderr */
     {
         const char *nbw_out = getenv("NBW_CONSOLE");
         if (nbw_out && nbw_out[0]) {
