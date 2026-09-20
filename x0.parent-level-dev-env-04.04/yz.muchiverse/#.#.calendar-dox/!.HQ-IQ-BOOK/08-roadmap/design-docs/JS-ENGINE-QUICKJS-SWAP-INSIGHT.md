@@ -578,3 +578,21 @@ the worker (translate via the table above and mirror shape).
   now strings (`""` when absent) on the tags that own them; kevlar runs with
   ZERO logged errors. `native_log` also appends a caught `.stack` under
   `NB_STACK=1`.
+### 2026-09-19 — row-31 acceptance: real youtube zero-error through the manager
+- Full script graph (43 slices, 11.9 MB page.js) fetched by the manager and
+  run end-to-end with the visitor+signature context. New host surfaces the
+  real bundles pulled out, each fixed in one loop iteration: global
+  `Image`; `document.createEvent` + `initEvent`/`initCustomEvent`;
+  `querySelector` attribute selectors (before: trailing `[...]` dropped,
+  wrong truthy tag match); `Node.contains`/`document.contains`;
+  `document.createTreeWalker` + `NodeFilter` constants + working walker
+  (ShadyDOM's `M`/`N`); `document.implementation.createHTMLDocument`
+  (ShadyDOM's "inert" scratch doc); the `Window` interface; and
+  `window.__shady_native_*` aliases (ShadyDOM copies natives off
+  prototypes, ours are own props → `Ae()` threw at init).
+- **Receipt:** `worker.err.log` 0 bytes; `TITLE|YouTube` + 15 `LINK|`
+  footer + `© 2026 Google LLC` `TEXT|` via the manager. `make check` 60/0.
+- Insight: webcomponents-lite's ShadyDOM is the deepest standard-surface
+  consumer on youtube's home page (TreeWalker, Node contains, DynamicProto
+  `__shady_native_*` descriptor-copy capture, scratch documents); its
+  init exposes holes one at a time in load order.

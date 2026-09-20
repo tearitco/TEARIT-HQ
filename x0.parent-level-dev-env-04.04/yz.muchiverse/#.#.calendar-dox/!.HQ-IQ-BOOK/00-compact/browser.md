@@ -45,7 +45,8 @@ step is skipped:
 - **A.** kevlar runs with no logged errors. **DONE** (`09fc27b9`).
 - **B.** the real `home.html` **module graph** is fetched + executed
   **through the manager** (not `/tmp` files) with the visitor+signature
-  context attached, and renders the page. ← row-31 acceptance
+  context attached, and renders the page. **DONE** (`62ea0332`) — 43
+  slices run zero-error; `TITLE|YouTube` + footer renders via manager.
 - **C.** keep `make check` green and this doc current after every block.
 
 ## The browser shape (Chromium parity — the standard, no drift)
@@ -71,6 +72,39 @@ step is skipped:
 | 32f | same feed through the **fetch()** surface (row 31's bundle uses fetch(), not XHR) | **BUILT** — `worker_fetch_post_test`/`wfp` (Promise-chain `fetch(url,{method,headers,body})` → same signed innerTube POST → `response.json()` + fetch() 401 rejection surfaced; no engine changes) |
 
 ## Work log (most recent first)
+
+### 2026-09-19 row-31 acceptance: real youtube runs zero-error through the manager
+- **Through-manager end-to-end on the real page**, each iteration
+  diagnosing the newest host gap the real scripts expose (autonomous
+  loop): global `Image` (youtube's inline `ytPrewarmYtimg`); 
+  `document.createEvent` + `initEvent`/`initCustomEvent` (closure
+  base feature-detect); `querySelector` **attribute selectors**
+  (`[src*="..."]` — previously the trailing `[...]` was dropped and the
+  first `<script>` was wrongly matched truthy → ShadyDOM deref'd it);
+  `Node.contains` + `document.contains` (webcomponents-lite's
+  `document.contains.bind(document)` fallback chain); **TreeWalker** +
+  `NodeFilter` SHOW_* constants + `document.createTreeWalker`
+  (ShadyDOM drives its Node.prototype accessors through `M`/`N`
+  walkers); `document.implementation.createHTMLDocument` (the "inert"
+  scratch doc ShadyDOM parses HTML strings through); the `Window`
+  interface (ShadyDOM patches `Window.prototype`); and the
+  `window.__shady_native_addEventListener`/`removeEventListener`/
+  `dispatchEvent` aliases — ShadyDOM copies *native* methods off
+  prototypes via `L()`, but our natives are own props on
+  window/elements, so the capture came up empty and `Ae()` threw
+  "not a function" at init.
+- Manager caps raised so the real graph fits: `NB_MAX_SCRIPTS 64`,
+  `NB_MAX_EXT_SCRIPTS 48` (was hardcoded 8 / 4) in
+  `network_browser_manager.c`.
+- **Receipt:** `go:https://www.youtube.com/` through the manager on an
+  isolated house (`/tmp/nbhouse31j`, `NB_STACK=1`): status `ready` in
+  15 s; `page.js` 11,898,337 bytes / **43 script slices**; page state =
+  `TITLE|YouTube`, 15 `LINK|` frames (footer incl `/t/terms`,
+  `/t/privacy`, `/new`, `developers.google.com/youtube`,
+  `tv.youtube.com/learn/nflsundayticket`), 3 `TEXT|` rows incl the
+  `© 2026 Google LLC` copyright and the search `#search` input;
+  `worker.err.log` is **0 bytes** (zero logged errors, whole graph).
+- `make check` stays **60 PASS / 0 FAIL**.
 
 ### 2026-09-18 row-31 kevlar BOOTS + renders the youtube footer
 - The `_F_jsUrl` stop is cleared (`0063797e`). Root cause: kevlar's
