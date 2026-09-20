@@ -1103,3 +1103,47 @@ mismatch — BadMatch on RenderCreatePicture, every single time.
 
 *Append new entries here as they're found — this file exists so the
 next session doesn't re-discover the same mistake from scratch.*
+
+## 24. One process's stuck `XGrabKeyboard` silently kills the keyboard for EVERY window — and looks like each window's own "focus bug" (2026-09-20)
+
+**Symptom (csv-hq, but any armed field/grid/nav could show it):** mouse
+clicks work; arrows, Enter, Esc and typing do nothing; the window shows `^`/`#`
+as if armed. Logs: `GRAB key=... rc=1` (`AlreadyGrabbed`), later `late-retry
+gave up`. A passive listener (`XSelectInput` KeyPress|FocusChange on the
+window, no grab) sees `FocusIn mode=NotifyWhileGrabbed(3)` and **zero
+`KeyPress`**. A throwaway third-party client also gets `AlreadyGrabbed`.
+
+**Real cause:** the Cursword pal (`khtpm_entity.+x`, running since 00:41)
+took a deliberate display-wide `XGrabKeyboard` when armed and never released
+it, because its `kh_ungrab_kbd()` tested a file-scope `dpy` that is **always
+NULL in the pal process** (tile/entity mode opens its own local Display - see
+the `khtpm tp_main globals footgun` note) - so every release was a silent
+no-op. Every key went to that pal. Fixed with `g_kbd_dpy` (`2c1301ab`). Restart
+the pal to drop an already-held grab.
+
+**What sent us the wrong way (about two hours):** `override_redirect`
+(`livedesk_override_redirect.pdl=true` really is a separate documented bug -
+still fix it), missing `WM_HINTS`, the dock's stale grab, `ding.js`, a
+"Mutter/XWayland lies" theory. A 5-variant window-property test on the real
+display proved window properties did not matter. **Relay/Xephyr tests all
+passed** because relay injection bypasses grabs - this is the
+`relay-testing-may-mask-real-focus-bugs` rule again, so a passing agent test
+proved nothing here.
+
+**Rules:**
+1. Any helper that ungrabs must use the SAME `Display*` that grabbed. A helper
+   reading a global that "tile mode never sets" is a no-op - grep every
+   `XUngrab*`/`XCloseDisplay`/`dpy` use in `khtpm_entity.c` for this.
+2. **Before touching window flags or focus code for a "keyboard is dead"
+   report, prove whether some client holds the keyboard:** a tiny probe that
+   calls `XGrabKeyboard(root)` and prints the return code (`Success` = nobody
+   holds it; `AlreadyGrabbed` while a real X window has focus = someone does).
+   Note a native Wayland window (your terminal) having focus also makes this
+   read HELD - test with an X window focused.
+3. Find the holder without ptrace (Xwayland isn't attachable): XRes lists
+   clients->PIDs; XRECORD with `delivered_events` KeyPress..KeyRelease plus one
+   XTest key tap prints the receiving client's `id_base`. Details in
+   `X11-AND-SESSION-PITFALLS.md` (2026-09-20 entry).
+4. `kh_focus_debug.log` now records `x_focus` and `_NET_ACTIVE_WINDOW` on every
+   HQ click and logs a failed dock grab - read it first next time.
+

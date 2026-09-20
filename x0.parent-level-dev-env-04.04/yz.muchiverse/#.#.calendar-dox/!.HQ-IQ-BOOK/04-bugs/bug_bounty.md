@@ -2,7 +2,9 @@
 
 ---
 
-## 🛠️ FIXED 2026-09-20 (real-hardware confirmation pending): csv-hq `<grid>` - Enter on the grid nav item doesn't activate it (needs a double click) and no typed input arrives afterward
+## ✅ CLOSED 2026-09-20 (verified on the user's hardware: "that actually fixed it"): csv-hq `<grid>` - Enter on the grid nav item doesn't activate it (needs a double click) and no typed input arrives afterward
+
+**FINAL ROOT CAUSE (confirmed on hardware): the Cursword pal's never-released display-wide keyboard grab (`2c1301ab`) - see `03-pitfalls/HOUSE_CODE_PITFALLS.md` #24. The grid re-arm fix (`3895ff77`) was also a real, separate bug. The `managed` class (`17f8da40`), the WM_HINTS/override_redirect theories and the dock were NOT the cause. Fix took effect after restarting the Cursword pal once.**
 
 **Reported:** direct live report, csv-hq (`@.apps/csv-hq/`): the grid is
 nav item **10**; pressing Enter on it does **not** arm it (user has to
@@ -337,6 +339,8 @@ matching the "how it used to look" reference screenshot.
 ---
 
 ## ⚠️ OPEN 2026-09-14: real physical keyboard input silently never arrives at an armed cli_io/text_area, despite grab+focus both reporting success
+
+🔄 **2026-09-20 LIKELY SAME CAUSE, NOT YET RE-TESTED:** the csv-hq keyboard-dead report was a stuck display-wide grab held by the Cursword pal (`03-pitfalls/HOUSE_CODE_PITFALLS.md` #24, fixed `2c1301ab`). This text-edit-hq entry matches (armed field, focus looks fine, zero keys). Re-test text-edit-hq with the fixed binaries and a restarted Cursword; if it types, close this entry.
 
 **Reported:** direct live report on `text-edit-hq` - "i tried selecting it
 didn't work" → (after two separate, real selection-preservation bugs were
