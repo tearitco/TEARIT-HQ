@@ -1799,6 +1799,42 @@ static int sprite_scale_index(int screen_px, int sprite_res, int win_px) {
     return idx;
 }
 
+/* 2026-09-20 - publish the entity's own sprite as _NET_WM_ICON so the desktop's
+ * dock/overview (GNOME's left dash when always-on-top is OFF, i.e. the pal is a
+ * WM-managed window) shows the real entity image instead of the generic app
+ * image it falls back to when a window has no icon. Two sizes (64, 32),
+ * nearest-neighbour from the sprite grid so pixel art stays crisp; EWMH wants
+ * CARDINAL/32 = width, height, then non-premultiplied ARGB (what Mutter
+ * expects), one unsigned long per pixel; alpha-0 pixels are zeroed. No sprite
+ * (glyph-only pal) = property left unset: nothing is written, the generic image
+ * stays. The sprite is loaded once per process, so there is no reload path to
+ * refresh this. WM_CLASS stays "MuchiverseLivedesk" on purpose: the Mutter
+ * xwayland-grab-access-rules allowlist matches it ($.crypts/
+ * enable_xwayland_grabs.sh). Design note: 12.calendar/2026-09-20/2do.md 8a. */
+static void set_net_wm_icon(Display *dpy, Window win) {
+    if (!dpy || !g_sprite_pixels || g_sprite_res <= 0) return;
+    static const int sizes[2] = { 64, 32 };
+    unsigned long icon[2 + 64 * 64 + 2 + 32 * 32];
+    size_t n = 0;
+    for (int s = 0; s < 2; s++) {
+        int sz = sizes[s];
+        icon[n++] = (unsigned long)sz;
+        icon[n++] = (unsigned long)sz;
+        for (int y = 0; y < sz; y++) {
+            int sy = sprite_scale_index(y, g_sprite_res, sz);
+            for (int x = 0; x < sz; x++) {
+                int sx = sprite_scale_index(x, g_sprite_res, sz);
+                const unsigned char *p = &g_sprite_pixels[(sy * g_sprite_res + sx) * 4];
+                icon[n++] = p[3] == 0 ? 0UL
+                    : (((unsigned long)p[3] << 24) | ((unsigned long)p[0] << 16) |
+                       ((unsigned long)p[1] << 8) | (unsigned long)p[2]);
+            }
+        }
+    }
+    XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_ICON", False), XA_CARDINAL, 32,
+                    PropModeReplace, (const unsigned char *)icon, (int)n);
+}
+
 /* REAL FIX 2026-09-04 (RENDERER-MODULARITY-AND-PERF-AUDIT.md §1.3) -
  * generic replacement for what used to be two separate, near-identical
  * mask-builder functions (this one's own sprite-alpha-driven test, and
@@ -4205,6 +4241,7 @@ static int tp_main(int argc, char **argv) {
     snprintf(sprite_path, sizeof(sprite_path), "%s/sprite.csv", package_dir);
     g_has_sprite = load_sprite_csv(sprite_path);
     TP_TIMING_MARK("load_sprite_csv");
+    if (g_has_sprite) set_net_wm_icon(dpy, win);
     /* Real, new 2026-08-30 - real per-voxel phymoji asset, generated
      * on demand from this entity's own real sprite.csv if it doesn't
      * exist yet (see load_entity_phymoji()/ensure_entity_phymoji_
