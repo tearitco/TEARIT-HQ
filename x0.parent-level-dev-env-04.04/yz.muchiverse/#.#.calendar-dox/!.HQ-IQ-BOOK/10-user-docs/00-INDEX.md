@@ -11,3 +11,6 @@
 - `PRESENTATION-VIDEO-PIPELINE.md` — how to make a paced, TTS-narrated
   proof MP4 from PNG dumps (`dump_frame_png_op` + `make_presentation_video.py`),
   the manifest format, and the honest status of browser media.
+- `2026-09-18/WHY-DSR-WSR-PAUSED.md` — why Dustopia civ (WSR-CIV) and
+  DSR menu-class are **paused, not cancelled**: inventory/robot-bag
+  bootstrap first so those tracks have a real container.

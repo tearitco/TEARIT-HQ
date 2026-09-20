@@ -177,11 +177,14 @@ gold-ops retarget unless you ask.
 Palette left-click-to-place is the *old* one-way tile picker. Inventory
 and file-explorer grid are the *bag*: look first, arm drag on purpose.
 
-**Placement grid vs browse grid (user 2026-09-18):** they are not the
-same. Browse grid = file-explorer Grid View (icon+name+size, same
-payload as list). **Placement grid SHOULD be its own layout** (future):
-a **wireframe grid**, not an all-yellow fill. Not built this burst.
-Do not add that layout until asked.
+**Placement grid vs browse grid (user 2026-09-18, corrected):** they
+are not the same. Browse grid = file-explorer Grid View (icon+name+
+size). User confirmed browse grid "looks better."
+
+The **yellow field** is the **desk placement overlay** while dragging
+an entity — a solid yellow screen today. It should become a
+**tic-tac-toe / wireframe grid** layout, not a fill. That layout is
+not built this burst. Do not confuse it with file-explorer Grid View.
 
 Disconnect log (plain text): `12.calendar/2026-09-18/answers.txt`
 

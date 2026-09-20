@@ -79,6 +79,37 @@ and `-yt-summary.txt` into the feature dir.
   (e.g. `events-hq-task2-test-20260826-211501`: snapshots/ +
   manifest.txt + mp4 + yt-summary).
 
+## Proof: file-explorer Grid View (2026-09-18)
+
+Widget: `44.xyz.01.00/&.widgits/file-explorer/`.
+Dir: `&.widgits/file-explorer/presentations/file-explorer-grid-20260918/`.
+
+Relay-only (k9 order: history file, then `'p'` / code 112). No python
+capture, no xdotool.
+
+1. `sh button.sh run` — relaunch so the new `khtpm_core_render.+x` is
+   the process (rebuilds do not hot-reload).
+2. PID from `pgrep -f 'khtpm_core_render.+x .*file-explorer-pal.xhtpm'`.
+3. Append to `#.desktop/entity_menu_history/<pid>.txt` (never truncate):
+   - `KEY_PRESSED: 112` → `/tmp/entity-menu-frame.png` (list). Copied to
+     `snapshots/03_relay_p.png`.
+   - Digits `49` `51` then `13` (nav **13** = Grid View on that frame)
+     then `112` again → `snapshots/04_grid_after_nav13.png`.
+4. Text receipts (trust these if a PNG looks stale, k9 § PNG last):
+   `file_explorer_ui.txt` `is_grid_view=1` `n_grid_entries=96`;
+   `/tmp/entity-menu-frame.png.receipt.txt` `nav=13`;
+   `.frame.txt` `item|gentry0|swatch|📁  #.DOX |...|176|40`.
+
+**What 04 proves:** named 176×40 swatch cells (folder emoji + name),
+toggle reads **List View** (we are in grid). Dual chrome X (`[ ]1` and
+`[ ]100`) still on screen — not fixed this pass.
+
+**Not this proof:** the desk **placement overlay** (solid yellow while
+dragging an entity). That should become a tic-tac-toe wireframe layout;
+it is not the file-explorer grid.
+
+REPRODUCE.md lives next to the snapshots.
+
 ## Media capability note (2026-09-10)
 
 The network browser is TEXT-only: no `<img>` / `<video>` decode or

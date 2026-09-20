@@ -26,6 +26,25 @@ note under it — don't silently edit it away.*
   common false "still broken" report in this house). Real blocker for
   WSR-CIV Step B (file:desk creation) until resolved.
 
+- **UI does not scale to the monitor: taskbar too big + cut off, entities
+  huge on a different computer** (user report 2026-09-19: same OS, second
+  machine with a different monitor size/resolution; TB overflows the
+  screen, entity/pal windows render far too large). Design goal stated
+  by the user: sizes should be "the right size in pixels relative to the
+  screen, no matter the screen size." **Not investigated yet** — leads
+  only: entity/pal size is a fixed `static int WIN_PX = 64` in
+  `khtpm_core_render.c` (~line 11781) with no screen-relative factor;
+  several files already call `DisplayWidth/Height` (taskbar strip
+  `khtpm_strip_x11_win.c`, `khtpm_core_render.c`, `livedesk_splash.c`),
+  so some screen-aware sizing exists but clearly doesn't cover strip
+  height/cell width or entity size. Suggested first step: compare the
+  two machines' `xdpyinfo | grep -E 'dimensions|resolution'`, then find
+  which sizes are absolute px vs derived from `DisplayWidth`; likely fix
+  = one shared `ui_scale` (screen-height-relative, overridable in
+  `hq_ui.pdl`) applied to strip height, cell width, `WIN_PX`, and font
+  sizes. Beware `assign_nav_and_layout` idempotency (see
+  `khtpm-shared-layout-caution`) if scale touches layout mutations.
+
 - **`nav.sh`'s primary test commands (`nav`/`row`/`key`/`esc`/`type`)
   are silent no-ops — they write to a dead relay file** (found
   2026-09-18, chasing kilo's real WSR-CIV testing confusion). Confirmed
