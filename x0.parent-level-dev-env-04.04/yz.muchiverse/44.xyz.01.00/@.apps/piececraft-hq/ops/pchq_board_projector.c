@@ -272,7 +272,15 @@ int main(int argc, char **argv) {
             snprintf(overlay, sizeof(overlay), "%s/pieces/display/rgb_frame_3d_overlay.raw", bv);
             snprintf(flat2d,  sizeof(flat2d),  "%s/pieces/display/rgb_frame_2d.raw", bv);
             char rm[8] = ""; read_kv(st_path, "render_mode", rm, sizeof(rm));
-            int mode3d = (rm[0] == '\0' || atoi(rm) != 0);   /* default 3D */
+            /* REAL FIX 2026-09-15, direct live request ("we wanted to
+             * add a 5th [camera mode] for side scroll") - render_mode
+             * ==2 (the new side-scroll slice) is flat/2D, same
+             * bv_render_2d pipeline as mode 0, NOT the 3D overlay - the
+             * old "any nonzero value means 3D" default would have
+             * misrouted it to rgb_frame_3d_overlay.raw, which mode 2
+             * never writes. */
+            int rm_val = atoi(rm);
+            int mode3d = (rm[0] == '\0') ? 1 : (rm_val == 1);
             struct stat so, sc;
             int have_o = (stat(overlay, &so) == 0 && so.st_size > 0);
             int have_c = (stat(flat2d,  &sc) == 0 && sc.st_size > 0);

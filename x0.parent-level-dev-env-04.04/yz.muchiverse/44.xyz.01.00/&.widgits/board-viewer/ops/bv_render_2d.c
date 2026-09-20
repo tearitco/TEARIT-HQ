@@ -292,7 +292,13 @@ static void read_first_line(const char *path, char *out, size_t osz) {
  * below it (its feet stand on that surface - a plain z==cur_z match
  * hides every surface-standing piece whenever you look at the ground
  * layer, which is exactly "why don't I see the player"). */
+/* REAL, NEW 2026-09-15 - render_mode==2 (side view, see load_side_
+ * board()'s own header comment) wants EVERY actor regardless of
+ * height (it filters by ROW instead, in main()), not the normal
+ * single-height-slice match every other render_mode uses. */
+static int g_any_z = 0;
 static int actor_on_z(int actor_z, int cur_z) {
+    if (g_any_z) return 1;
     return actor_z == cur_z || actor_z == cur_z + 1;
 }
 static void add_actor(const char *asset_id, int x, int y, int z) {
@@ -371,6 +377,52 @@ static void load_board(int current_z) {
     fclose(f);
 }
 
+/* REAL, NEW 2026-09-15, direct live request ("we wanted to add a 5th
+ * [camera mode] for 'side scroll' (mario) type mode... its supposed to
+ * use 'emoji mode' like camera option '0'") - render_mode==2, a real
+ * side-on slice of the SAME flat/2D data this file already draws
+ * top-down for render_mode==0. Reuses g_board[MAX_DIM][MAX_DIM], but
+ * here the first index is a Z-LAYER (height), not a board row: for one
+ * fixed board row (the "depth" the view is sliced through - the
+ * xelector's own current row, so the slice always shows exactly what
+ * you're standing in front of), read that same row's glyph from EVERY
+ * real z-layer file (board_manifest.txt's z_base/z_count, the same
+ * manifest load_board() already reads for a single z) - g_board[z][col]
+ * instead of g_board[row][col]. No manifest = no side view possible
+ * (the flat, non-extruded board.txt case has no per-height data to
+ * slice at all) - caller falls back to render_mode 0's normal draw. */
+static void load_side_board(int fixed_row, int *zcount_out) {
+    *zcount_out = 0;
+    char man[PATH_BUF], zbase[256] = "";
+    snprintf(man, sizeof(man), "%s/pieces/system/board_manifest.txt", focused_root);
+    read_kv_str(man, "z_base", zbase, sizeof(zbase));
+    int zcount = read_kv_int(man, "z_count", 0);
+    if (!zbase[0] || zcount <= 0) return;
+    if (zcount > MAX_DIM) zcount = MAX_DIM;
+    if (fixed_row < 0) fixed_row = 0;
+    for (int z = 0; z < zcount; z++) {
+        char path[PATH_BUF];
+        snprintf(path, sizeof(path), "%s/%s%d.txt", focused_root, zbase, z);
+        FILE *f = host_fopen(path, "r");
+        if (!f) continue;
+        char line[MAX_LINE];
+        int row = 0;
+        while (row <= fixed_row && fgets(line, sizeof(line), f)) {
+            if (row == fixed_row) {
+                line[strcspn(line, "\r\n")] = '\0';
+                int len = (int)strlen(line);
+                if (len > MAX_DIM) len = MAX_DIM;
+                memcpy(g_board[z], line, (size_t)len);
+                if (len > g_bw) g_bw = len;
+            }
+            row++;
+        }
+        fclose(f);
+    }
+    g_bh = zcount;   /* reused by main()'s existing "by < g_bh" bounds check below */
+    *zcount_out = zcount;
+}
+
 static void write_atomic(const char *path, const void *data, size_t len) {
     char tmp[PATH_BUF];
     snprintf(tmp, sizeof(tmp), "%s.tmp", path);
@@ -398,15 +450,26 @@ int main(void) {
     int sel_x    = read_kv_int(st, "selector_x", -1);
     int sel_y    = read_kv_int(st, "selector_y", -1);
     int cur_z    = read_kv_int(st, "current_z", 0);
+    /* render_mode==2: real side-scroll/Mario slice (see load_side_
+     * board()'s own header comment) - same flat-render philosophy as
+     * render_mode==0 (this whole file), sliced from the side instead
+     * of top-down. Any other value (0, or an unrecognized future one)
+     * falls back to the normal top-down draw this file always did. */
+    int render_mode = read_kv_int(st, "render_mode", 0);
+    int side_mode = (render_mode == 2);
+    int fixed_row = (sel_y >= 0) ? sel_y : 0;   /* the "depth" this slice is through */
 
     load_legend();
     load_entities();
-    load_actors(cur_z);          /* hero_01 + world_01 animals, this z-slice */
-    load_board(cur_z);
+    g_any_z = side_mode;
+    load_actors(cur_z);          /* hero_01 + world_01 animals - all heights in side_mode, this z-slice otherwise */
+    int side_zcount = 0;
+    if (side_mode) load_side_board(fixed_row, &side_zcount);
+    else           load_board(cur_z);
 
     /* Empty / not-yet-generated board -> still show a grid so `0` isn't blank. */
     int bw = g_bw > 0 ? g_bw : 20;
-    int bh = g_bh > 0 ? g_bh : 15;
+    int bh = side_mode ? (side_zcount > 0 ? side_zcount : 15) : (g_bh > 0 ? g_bh : 15);
 
     /* cell size: the house desktop grid (desk_grid.pdl GRID|cell_px|N,
      * default 80) - a board cell is the same on-screen size as a desk
@@ -442,9 +505,13 @@ int main(void) {
     if (cols < 1) cols = 1;
     if (rows < 1) rows = 1;
 
-    /* viewport origin cell (top-left), centred on the xelector, clamped */
+    /* viewport origin cell (top-left), centred on the xelector, clamped.
+     * side_mode: the vertical axis is height, not board row, and the
+     * xelector has no height of its own - center on the mid-height
+     * (same as this file's own long-standing "no selector position"
+     * fallback, reused deliberately rather than inventing a new rule). */
     int ox = (sel_x >= 0 ? sel_x : bw / 2) - cols / 2;
-    int oy = (sel_y >= 0 ? sel_y : bh / 2) - rows / 2;
+    int oy = (side_mode || sel_y < 0) ? (bh / 2 - rows / 2) : (sel_y - rows / 2);
     if (bw > cols) { if (ox < 0) ox = 0; if (ox > bw - cols) ox = bw - cols; } else ox = -(cols - bw) / 2;
     if (bh > rows) { if (oy < 0) oy = 0; if (oy > bh - rows) oy = bh - rows; } else oy = -(rows - bh) / 2;
 
@@ -472,7 +539,14 @@ int main(void) {
     /* --- ground tiles --- */
     for (int scy = 0; scy < rows; scy++) {
         for (int scx = 0; scx < cols; scx++) {
-            int bx = ox + scx, by = oy + scy;
+            int bx = ox + scx;
+            /* side_mode: 'by' here means a Z-LAYER index, not a board
+             * row - inverted so higher z (taller) draws nearer the TOP
+             * of the screen and z=0 (ground) draws nearer the BOTTOM,
+             * the real visual convention a side view needs (g_board[]
+             * itself was already filled indexed by z, not row, in
+             * load_side_board() above). */
+            int by = side_mode ? (side_zcount - 1 - (oy + scy)) : (oy + scy);
             if (bx < 0 || by < 0 || bx >= bw || by >= bh) continue;
             unsigned char r = air_r, g = air_g, b = air_b;
             const unsigned char *e16 = NULL;
@@ -509,7 +583,21 @@ int main(void) {
     /* --- entities / hero / animals: emoji sprite if we have one, else
      * a solid colour square (inner 60%) --- */
     for (int i = 0; i < g_nent; i++) {
-        int scx = g_ent[i].x - ox, scy = g_ent[i].y - oy;
+        /* side_mode: only entities standing in THIS depth slice (same
+         * row the terrain slice is through) are visible at all - real
+         * depth culling, not a simplification, matches what a real
+         * side-scroll camera would actually show. Screen height comes
+         * from the entity's own real z (g_any_z above loaded every
+         * height, not just one slice), inverted the same way ground
+         * tiles are just above. */
+        int scx, scy;
+        if (side_mode) {
+            if (g_ent[i].y != fixed_row) continue;
+            scx = g_ent[i].x - ox;
+            scy = (side_zcount - 1 - g_ent[i].z) - oy;
+        } else {
+            scx = g_ent[i].x - ox; scy = g_ent[i].y - oy;
+        }
         if (scx < 0 || scy < 0 || scx >= cols || scy >= rows) continue;
         if (want_ascii && g_ent[i].cjk[0]) {
             unsigned int cp = bv_cjk_utf8_first(g_ent[i].cjk);
@@ -538,8 +626,12 @@ int main(void) {
         for (int x = 0; x < W; x++) { unsigned char *p = VP_PXR(x, y); p[0]=gl_r; p[1]=gl_g; p[2]=gl_b; p[3]=255; }
     }
 
-    /* --- xelector: 2px inset border, bright accent --- */
-    {
+    /* --- xelector: 2px inset border, bright accent ---
+     * side_mode: honestly skipped for v1 - the xelector has no real
+     * height of its own (only x/row), so there's no correct screen
+     * position to draw its highlight at on this view's vertical
+     * (height) axis. Ground/entities above already draw fully. */
+    if (!side_mode) {
         int scx = sel_x - ox, scy = sel_y - oy;
         if (sel_x >= 0 && sel_y >= 0 && scx >= 0 && scy >= 0 && scx < cols && scy < rows) {
             unsigned char xr = 255, xg = 204, xb = 0;

@@ -322,7 +322,11 @@ int main(void) {
          * (bv_render_2d), NOT the raymarch and NOT bv_compose_frame
          * (that's the legend/status text chrome we're dropping). It's a
          * cheap pixel-fill so it runs every change tick, no coalescing. */
-        if (read_state_int("render_mode", 1) == 0) {
+        /* render_mode==2: real side-scroll/Mario slice, same flat
+         * bv_render_2d pipeline as mode 0 - see that file's own
+         * load_side_board() header comment for the real reasoning. */
+        int rm = read_state_int("render_mode", 1);
+        if (rm == 0 || rm == 2) {
             pj(op_path, sizeof(op_path), "ops/+x/bv_render_2d.+x");
             run_op(op_path, NULL);
             FILE *mk = fopen(marker_path, "a");

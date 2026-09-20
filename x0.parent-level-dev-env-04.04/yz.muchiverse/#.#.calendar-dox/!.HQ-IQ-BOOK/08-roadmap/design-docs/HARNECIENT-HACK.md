@@ -134,6 +134,16 @@ naive text-JSON tool-call requests on 1B/270m/3B are nondeterministic and halluc
 (the 3B invented `read_file ./example.txt` on a "say hello" prompt), and the native-tool
 8B does parallel read+edit and hallucinates success. The hack is the reliable option.
 
+## An evolved, more advanced mutation family exists — see LLMUD-HACK.md
+
+2026-09-18: this doc stays the simple, six-component base pattern —
+don't bloat it. A real, more advanced mutation family (watching
+action sequences, not just text; behavior banks with weights; the
+hack used recursively on itself to build its own banks; a real bridge
+to the famous-llm/IRL-bootstrap work) is documented separately in
+`LLMUD-HACK.md`, same directory. Read this doc first — everything in
+LLMUD-HACK.md is this same recipe, applied one level up.
+
 ## Grounding / further reading
 - Live-verified implementation: `@.apps/my-lawyer/` (ops sources, personas,
   `data/cases/1/` real outputs) — and its sibling `@.apps/my-biotech/`

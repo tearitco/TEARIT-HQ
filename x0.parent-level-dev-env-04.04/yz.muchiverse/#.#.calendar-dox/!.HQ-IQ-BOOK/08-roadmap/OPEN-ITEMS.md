@@ -4,7 +4,13 @@
 short version.*
 
 1. Events/db-hq: registry grew 2026-09-08 (`mr_world` — transfer/shop/battle/fade are **kv only**). db-hq still only Common Events is an editable tab. Catalog: `TILESETS-EVENTS-AND-GAME-CLONES.md`.
-2. Cross-platform (Windows/Mac) work: pending.
+2. Cross-platform (Windows/Mac) work: **more specific now** — Windows
+   has real partial coverage (`win_posix_shim.h` in 4 apps, 3 real
+   `*_win.c` files incl. the taskbar strip's Win32 GDI twin), biggest
+   gap is `khtpm_core_render.c` (8 window modes) having no Windows
+   twin at all. Mac has zero native platform-specific files — works
+   today only via XQuartz. See `00-compact/compact-win-mac.md` for the
+   verified summary + real doc pointers.
 3. Generic khtpm dispatch table (replace `g_is_<mode>` flags):
    designed, not built.
 4. ASCII/headless khtpm renderer: DONE (2026-09-06). `cli` strip
@@ -168,3 +174,34 @@ short version.*
     the registry's first FSM-kind entry — full spec: `design-docs/
     H-AI-LAB-DESIGN.md`. Not started — full list + file pointers:
     `design-docs/HARNECIENT-NIGHT-TRACK-HORIZON-ITEMS.md`.
+21. ~~pc-hq camera_mode 5 (side-scroll/Mario)~~ **BUILT 2026-09-15**:
+    a real `render_mode==2` (not a 5th 3D camera_mode - flat/side-view,
+    kin to `render_mode==0`'s 2D philosophy, per direct confirmation).
+    `bv_render_2d.c`'s new `load_side_board()` slices the same
+    per-height chunk data by Z-layer at the xelector's own row;
+    `bv_dispatch.c`/`pchq_board_projector.c` route it same as mode 0.
+    Key: **Tab** (not `'5'` - already double-bound to reset_view_alt/
+    file_menu in `bv_menu_input.c`, found before picking a key).
+    Xelector highlight honestly skipped in v1 (no height of its own).
+    Live-tested against pc-hq's real chunk data, PNG-verified. See
+    `&.widgits/5-pov-widgit.md` §2g.
+22. LLMUD fold-in (external `XO/LLMUD_CODE/0.LLMUD.md` +
+    `1.BANK_SYSTEMS.md` architecture proposals, 2026-09-17): folded
+    into this house's own plan, not copy-pasted. Real finding: LLMUD's
+    FSM/event/reward-loop layer independently re-derives what
+    `H-AI-LAB-DESIGN.md` Part 4/5 and `IRL-BOOTSTRAP-RECURSION-SPEC.md`
+    already scoped (validation, not new work). Genuinely new: a
+    Synonym/Relation/Sentence Bank layer this house has no equivalent
+    of, and a Rollback/StateSnapshot gap in Part 4's Review Queue.
+    Smallest real first step named: a Synonym Bank file + lookup op,
+    wired into Part 5's own `ai_fsm_transition` smallest-first-step.
+    Not started. `design-docs/LLMUD-INTEGRATION-DESIGN.md`.
+23. AI-Function-Crafting db-hq tab (direct owner ask, 2026-09-17): a
+    new db-hq tab, Canvas-Craft's bench/recipe/inventory UI pattern
+    (`design-docs/CANVAS-CRAFT-DESIGN.md`) pointed at constructing new
+    events-hq AI command rows (`H-AI-LAB-DESIGN.md` Part 5) from real
+    input/variable names instead of chemistry ingredients — a bounded,
+    Propose-never-auto-merge "deterministic coding agent for events."
+    Explicitly gated on Part 5's own `ai_fsm_transition` smallest-
+    first-step landing first. Not started.
+    `design-docs/AI-FUNCTION-CRAFTING-DB-HQ-DESIGN.md`.

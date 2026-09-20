@@ -391,12 +391,24 @@ static void publish_var_fragments(const KtbState *s, const char *house_root) {
          * fell back to plain text-only, pals included - not a missing
          * drawing capability, just a missing attribute on this one
          * fragment. Fixed here, scoped to ONLY the pals cell
-         * (s->hq_open==5, ktb_hq_open()'s own real "which" value,
-         * confirmed via khtpm_taskbar_manager.h's own "hq_open is 0
-         * (closed) or which" comment) - every other cell's rows
-         * (session/desk/etc.) have no real per-row image and keep
-         * their exact current text-only rendering, unaffected. */
-        int is_pals = (s->hq_open == 5);
+         * (ktb_hq_open()'s own real "which" value, confirmed via
+         * khtpm_taskbar_manager.h's own "hq_open is 0 (closed) or
+         * which" comment) - every other cell's rows (session/desk/etc.)
+         * have no real per-row image and keep their exact current
+         * text-only rendering, unaffected.
+         *
+         * REAL FIX 2026-09-17, direct live report ("h-ai... clock...
+         * dropdown missing") led to finding this same stale-5 bug in
+         * TWO places (this one + publish_strip_ui()'s own duplicate
+         * check) - pals moved from 5 to 6 when 5.menu was inserted
+         * 2026-09-14, this comment's own citation was already stale
+         * the day it was written. Now resolves via ktb_cell_id() (the
+         * real, data-declared position->id lookup,
+         * livedesk_header_cell_ids.txt's own "6|pals" row) first, the
+         * literal 6 kept only as the fallback for a missing/deleted
+         * row - same incremental-adoption convention as
+         * ktb_hq_open()'s own cid-first dispatch. */
+        int is_pals = (strcmp(ktb_cell_id(s, s->hq_open), "pals") == 0 || s->hq_open == 6);
         char pals_root[KTB_PATH_BUF] = "";
         if (is_pals) livedesk_pals_root(s->house_root, pals_root, sizeof(pals_root));
         for (int i = 0; i < s->hq_n_menu && off < sizeof(frag); i++) {
@@ -537,7 +549,22 @@ static void publish_strip_ui(const KtbState *s, const char *house_root) {
         format_datetime(dt, sizeof(dt), datetime_lang);
     }
     drop[0] = '\0';
-    if (s->hq_open >= 1 && s->hq_open <= 15)
+    /* REAL FIX 2026-09-17, direct live report ("clock entered active
+     * mode (shows '^' and locks to number)... doesn't show a
+     * dropdown") - same stale-numbering class as khtpm_taskbar_
+     * manager.c's own notes-row fallback switch (fixed same day), but
+     * here it silently broke every dropdown for the highest-numbered
+     * cell: hardcoded `<= 15` predates 5.menu's 2026-09-14 insertion
+     * (which pushed clock from 15 to 16) - hq_open==16 (clock) failed
+     * this check, so drop_target published EMPTY. The xhtpm template's
+     * dropdown-child rows (target_id="${drop_target}") then had
+     * nowhere to attach and never rendered, even though n_hqitems
+     * itself was correct - the cell's own nav focus still highlighted
+     * (the "^"), because THAT'S driven by hq_open directly, not
+     * drop_target. Real fix: use the real shared cell-count macro,
+     * not another hand-counted literal - the exact bug class this
+     * literal already was. */
+    if (s->hq_open >= 1 && s->hq_open <= KTB_STRIP_N_CELLS)
         snprintf(drop, sizeof(drop), "strip-cell-%d", s->hq_open);
 
     ui_put(body, &off, sizeof(body), "username", user_lab);
@@ -553,7 +580,17 @@ static void publish_strip_ui(const KtbState *s, const char *house_root) {
         ui_put(body, &off, sizeof(body), "n_hqitems", nbuf);
     }
     if (s->hq_open) {
-        int is_pals = (s->hq_open == 5);
+        /* REAL FIX 2026-09-17, same stale-numbering drift as
+         * publish_strip_ui()'s own drop_target check just above -
+         * pals moved from 5 to 6 when 5.menu was inserted 2026-09-14.
+         * This one didn't break the dropdown itself (that's driven by
+         * n_hqitems/drop_target, already correct), just meant pals
+         * rows never got their real per-pal sprite icon (is_pals was
+         * true for "menu" instead of "pals"). Now resolves via
+         * ktb_cell_id() first, literal 6 kept as fallback - see the
+         * other is_pals site's own header comment for the full
+         * reasoning. */
+        int is_pals = (strcmp(ktb_cell_id(s, s->hq_open), "pals") == 0 || s->hq_open == 6);
         char pals_root[KTB_PATH_BUF] = "";
         if (is_pals) livedesk_pals_root(s->house_root, pals_root, sizeof(pals_root));
         for (i = 0; i < s->hq_n_menu; i++) {

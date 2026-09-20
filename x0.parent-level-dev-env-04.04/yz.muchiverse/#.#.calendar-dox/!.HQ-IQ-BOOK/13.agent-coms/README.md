@@ -96,11 +96,16 @@ DISPLAY=:0 setsid bash "<house_root>/&.hq-apps/co-lab-hai/button.sh" "<house_roo
 ## Secondary: per-agent binder notes (dated subdirs)
 
 Before Co-lab-h-ai, cross-agent coordination was one Markdown file per
-agent that the other agent appended to. Kept for history and for
-occasional async notices when the room isn't the right fit:
+agent that the other agent appended to.
 
-- `2026-09-08/` — GROK.md (branch/merge coordination for the taskbar-menu
-  refactor), plus the archived SONNET.md / OPENCODE.md binders.
+- `2026-09-08/` (GROK.md/OPENCODE.md/SONNET.md) and the resolved
+  `2026-09-15/CURSWORD-DISAPPEARS-ON-CLICK-HANDOFF.md` were folded into
+  `LEARNINGS.md` and moved to `#.Zarchive-2-trash/13.agent-coms/`
+  (2026-09-17 book audit) — read `LEARNINGS.md` for the durable rules
+  (multi-agent git worktree protocol, the "stash+FF isn't universal"
+  lesson, the cursword crash root cause).
+- `2026-09-15/GROK.md` — still live: the real, in-progress PALCRAFT
+  task handoff. Not archived.
 
 If a live room message says "see 13.agent-coms/<dir>/<file>", read that
 file. Otherwise the room is the channel.

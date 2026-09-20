@@ -83,6 +83,62 @@ Switching `camera_mode` (via `'1'`-`'4'`, only live while `render_mode==1`) rese
 
 **For this widget**: since board-viewer has no "hero" (only a selector cursor, §7), modes 1/2 (hero-locked) don't map cleanly — mode 4 (bird's-eye, absolute map coords, camera detachable from any single entity) is the natural default and the one explicitly requested as most relevant to a board-overview widget. Modes 1-3 should still be built (per the resolved open item in §6 — "all 4 needed for debugging, not scoped down"), but the widget's own selector should likely stand in for "hero" in modes 1/2's hero-lock logic, same role mutaclysm's own hero plays there.
 
+### 2g. render_mode 2 — side-scroll/platformer view (BUILT 2026-09-15)
+
+2026-09-15, direct live request: "in pc-hq, there are 4 camera modes,
+we wanted to add a 5th for 'side scroll' (mario) type mode." Confirmed
+via direct code read at the time: only `camera_mode` 1-4 existed, no
+5th mode, no prior design doc. Docs-scoped first (this section,
+originally "planned, not yet built"), then built the same session
+after direct follow-up ("do you understand its supposed to use 'emoji
+mode' like camera option 0?" → "can you confidently do it in code?").
+
+**What it actually is, confirmed correct**: NOT a 5th angle on the
+existing 3D raymarch (modes 1-4, all inside `render_mode==1`). It's a
+real new `render_mode` value — **`render_mode==2`** — in the SAME
+flat-render family as `render_mode==0` (the top-down "emoji mode" 2D
+tile view, §2a/§2c), sliced **from the side** instead of top-down. The
+two real open design questions below got real, concrete answers during
+the build, not guessed ahead of it:
+- **render_mode==1's camera_mode switch vs. its own value**: settled
+  as its own value (`render_mode==2`), exactly as flagged as the more
+  likely fork — `bv_render_2d.c` (the same file that already draws
+  `render_mode==0`) gained a real `load_side_board()` that reads the
+  SAME per-height chunk files the top-down draw already uses
+  (`board_manifest.txt`'s `z_base`/`z_count`), but indexed by Z-LAYER
+  for one fixed board row instead of by board row for one fixed
+  height. `bv_dispatch.c` routes `render_mode==2` to `bv_render_2d.+x`,
+  same as 0.
+- **What "side" means**: the fixed "depth" row is the xelector's own
+  current row (`selector_y`) — the slice always shows exactly the
+  column of terrain the player is standing in front of. X stays the
+  horizontal screen axis; height (Z-layer) becomes the vertical screen
+  axis, inverted so taller draws higher on screen.
+- **Selector-tracking parity with modes 1/2**: entities ARE positioned
+  by their own real height (`g_ent[].z`, already tracked in the
+  `Ent` struct) and depth-culled to the same row as the slice — real,
+  not approximated. The xelector's own highlight box is honestly
+  **skipped** in this v1 — it has no height of its own to position at
+  on this view's vertical axis, unlike a real entity.
+
+**Key**: NOT `'5'` — that key is already double-bound in
+`bv_menu_input.c` (`key_reset_view_alt` AND `key_file_menu`), found by
+direct code read before picking a key, not assumed. **Tab** (raw code
+9) toggles `render_mode` 0↔2 directly — confirmed free in this file
+and confirmed to survive khtpm's own Interact-Mode relay intercept the
+same way keys `'1'`-`'4'` already do.
+
+Live-tested end to end: ran `bv_render_2d.+x` directly against pc-hq's
+own real chunk data, rendered the output raw frame to PNG, and visually
+confirmed a real dirt-over-stone vertical cross-section with correct
+air past the board edge.
+
+**Build-order note, once these are answered**: same sequencing lesson
+as §2f above — a `camera_mode`/`render_mode` value with no matching
+render pass produces an empty/undefined view. Wire the key + state
+persistence first (testable via state-file inspection alone, same as
+§2f recommends), then build the actual flat-side-view render pass.
+
 ### 2f. render_mode requires real extrusion to be visible — sequencing note
 
 Toggling `render_mode` to 1 (3D) with no raymarch renderer built yet produces an empty/undefined 3D pass — it is not visually meaningful until §3's extrusion work (raymarch walls/terrain + entity extrusion) is actually implemented for this widget. Build order should be: (a) camera state + full key dispatch (this section) wired and persisting correctly — testable even before any 3D pixels exist, by inspecting the state file directly or via the receipt/PNG mechanism in §8 — then (b) the actual 3D render pass, so `'0'` has something real to reveal.
