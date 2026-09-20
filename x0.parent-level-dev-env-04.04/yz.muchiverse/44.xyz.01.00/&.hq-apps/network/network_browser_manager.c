@@ -326,6 +326,72 @@ static void resolve_url(const char *base, const char *href, char *out, size_t ou
 }
 
 
+/* Address-bar convenience (2026-09-20): free text that is clearly not a
+ * URL becomes a YouTube search (the on-page searchbox needs Polymer's
+ * custom-element upgrade to exist; the address bar is the immediate path).
+ * Bare hostnames (no scheme, no slash, has a dot, no spaces) get https://
+ * prepended. Real URLs and path/query strings pass through untouched. */
+static int looks_like_bare_host(const char *t) {
+    if (!t[0] || strstr(t, "://") || strchr(t, ' ') || strchr(t, '/'))
+        return 0;
+    if (t[0] == '?' || t[0] == '#') return 0;
+    if (strncasecmp(t, "file:", 5) && strncasecmp(t, "mailto:", 7) &&
+        strncasecmp(t, "tel:", 4) && strncasecmp(t, "data:", 5) &&
+        strncasecmp(t, "blob:", 5) && strncasecmp(t, "javascript:", 11) &&
+        strncasecmp(t, "yt:", 3) && strncasecmp(t, "watch?", 6) && strncasecmp(t, "about:", 6)) {
+        if (t[0] != '.') return (strchr(t, '.') != NULL);
+    }
+    return 0;
+}
+static int is_searchish(const char *t) {
+    if (!t[0]) return 0;
+    if (strchr(t, ' ')) return 1;                          /* free text -> search */
+    if (strstr(t, "://")) return 0;
+    if (t[0] == '/' || t[0] == '?' || t[0] == '#') return 0;
+    if (strncasecmp(t, "file:", 5) == 0 || strncasecmp(t, "mailto:", 7) == 0 ||
+        strncasecmp(t, "tel:", 4) == 0 || strncasecmp(t, "data:", 5) == 0 ||
+        strncasecmp(t, "blob:", 5) == 0 || strncasecmp(t, "javascript:", 11) == 0 ||
+        strncasecmp(t, "yt:", 3) == 0 || strncasecmp(t, "about:", 6) == 0)
+        return 0;
+    if (strchr(t, '/') || strchr(t, '=') || strchr(t, '?')) return 0;  /* path/query -> navigate */
+    if (strchr(t, '.')) return 0;                          /* bare hostname handled above */
+    return 1;
+}
+static void urlenc_query(char *dst, size_t dstsz, const char *s) {
+    size_t i = 0, o = 0;
+    static const char hx[] = "0123456789ABCDEF";
+    while (s[i] && o + 3 < dstsz - 1) {
+        unsigned char c = (unsigned char)s[i];
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || strchr("-_.~", (char)c))
+            dst[o++] = (char)c;
+        else if (c == ' ') dst[o++] = '+';
+        else { dst[o++] = '%'; dst[o++] = hx[c >> 4]; dst[o++] = hx[c & 15]; }
+        i++;
+    }
+    dst[o] = 0;
+}
+static void go_target_or_search(char *out, size_t outsz, const char *t) {
+    if (looks_like_bare_host(t)) { snprintf(out, outsz, "https://%s", t); return; }
+    if (!is_searchish(t)) { snprintf(out, outsz, "%s", t); return; }
+    const char *base = g_current_url[0] ? g_current_url : "https://www.youtube.com/";
+    char host[256];
+    const char *se = strstr(base, "://");
+    if (se) {
+        const char *hs = se + 3;
+        const char *pe = strchr(hs, '/');
+        size_t hl = pe ? (size_t)(pe - hs) : strlen(hs);
+        if (hl >= sizeof(host)) hl = sizeof(host) - 1;
+        memcpy(host, hs, hl); host[hl] = 0;
+    } else snprintf(host, sizeof(host), "www.youtube.com");
+    char q[PATH_BUF];
+    urlenc_query(q, sizeof(q), t);
+    if (strstr(host, "youtube.com") || strstr(host, "youtu.be"))
+        snprintf(out, outsz, "https://%s/results?search_query=%s", host, q);
+    else
+        snprintf(out, outsz, "https://www.youtube.com/results?search_query=%s", q);
+}
+
+
 static const char *skip_named_element(const char *p, const char *name) {
     size_t nlen = strlen(name);
     int depth = 0;
@@ -3066,8 +3132,10 @@ static void handle_request(void) {
         publish_status(worker_eval(line + 5) ? "ready" : "eval error");
         (void)merge_render_rows();
     } else if (strncmp(line, "go:", 3) == 0) {
+        char target[PATH_BUF];
+        go_target_or_search(target, sizeof(target), line + 3);
         stack_clear(g_forward_path);
-        do_fetch(line + 3, 1);
+        do_fetch(target, 1);
     } else if (strcmp(line, "back:") == 0 || strcmp(line, "back") == 0) {
         char prev[PATH_BUF];
         if (stack_pop(g_back_path, prev, sizeof(prev))) {

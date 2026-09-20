@@ -187,6 +187,17 @@ static void node_index_reset(void) {
     g_nodecap = 0;
 }
 
+/* Forward decls for the customElements / ShadowRoot / template-content
+ * section (2026-09-20). Defined AFTER js_error_to_cstr so lifecycle hooks
+ * reuse the g_trace_cb dump channel. */
+static JSValue ce_define(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue ce_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue ce_when_def(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue ce_upgrade(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_el_attachShadow(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static NbNode *nb_template_content_frag(JSContext *ctx, JSValue el, NbNode *n);
+static JSValue make_fragment_wrapper(JSContext *ctx, NbNode *frag, const char *nodeName);
+
 /* ---- small string builder ---- */
 typedef struct { char *s; size_t len, cap; } SB;
 static void sb_grow(SB *b, size_t need) {
@@ -1321,6 +1332,10 @@ static JSValue nb_el_innerHTML_get(JSContext *ctx, JSValueConst this_val, int ar
 static JSValue nb_el_innerHTML_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
     if (!n) return JS_UNDEFINED;
+    if (n->tag && !strcmp(n->tag, "template")) {   /* <template>.innerHTML lands in content */
+        NbNode *frag = nb_template_content_frag(ctx, this_val, n);
+        if (frag) n = frag;
+    }
     char *vl = NULL;
     const char *v = (argc > 0 && JS_IsString(argv[0])) ? (vl = JS_ToCString(ctx, argv[0])) : "";
     NbNode *frag = nb_parse_html(v, strlen(v));
@@ -1385,6 +1400,10 @@ static JSValue nb_el_nextSibling(JSContext *ctx, JSValueConst this_val, int argc
 static JSValue nb_el_appendChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
     NbNode *ch = (argc > 0 && JS_IsObject(argv[0])) ? get_node(ctx, argv[0]) : NULL;
+    if (n && n->tag && !strcmp(n->tag, "template")) {   /* appends land in content */
+        NbNode *frag = nb_template_content_frag(ctx, this_val, n);
+        if (frag) n = frag;
+    }
     if (!n || !ch || ch == n) return JS_NULL;
     node_detach(ch);
     orphan_remove(ch);
@@ -1635,16 +1654,12 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
         JS_SetPropertyStr(ctx, el, "toDataURL", JS_NewCFunction(ctx, nb_canvas_toDataURL, "toDataURL", 0));
     }
     if (n->tag && strcmp(n->tag, "template") == 0) {
-        /* <template>.content is a DocumentFragment (prelude __nb_docfrag) */
-        JSValue g2 = JS_GetGlobalObject(ctx);
-        JSValue mf = JS_GetPropertyStr(ctx, g2, "__nb_docfrag");
-        JS_FreeValue(ctx, g2);
-        if (JS_IsFunction(ctx, mf)) {
-            JSValue frag = JS_Call(ctx, mf, JS_UNDEFINED, 0, NULL);
-            if (JS_IsException(frag)) JS_FreeValue(ctx, JS_GetException(ctx));
-            else JS_SetPropertyStr(ctx, el, "content", frag);
-        }
-        JS_FreeValue(ctx, mf);
+        /* <template>.content = C-backed #document-fragment (2026-09-20).
+         * kevlar does template.content.insertBefore(content.cloneNode(true),
+         * firstChild) while wiring its css style tags; the old prelude JS
+         * docfrag couldn't produce/accept C nodes and the insert threw
+         * HierarchyRequestError at bundle line 16063. */
+        (void)nb_template_content_frag(ctx, el, n);
     }
 
     /* el.on<type> = cb accessors; native magic carries the ONPROPS index
@@ -2580,6 +2595,10 @@ static void install_dom_classes(JSContext *ctx) {
     JSValue Ep = JS_NewObject(ctx);
     JS_SetPrototype(ctx, Ep, Np);
     JS_SetPropertyStr(ctx, Ef, "prototype", JS_DupValue(ctx, Ep));
+    /* Element.prototype.attachShadow (2026-09-20): C-backed ShadowRoot, see
+     * the customElements section. Native path so kevlar can stamp after
+     * upgrade. */
+    JS_SetPropertyStr(ctx, Ep, "attachShadow", JS_NewCFunction(ctx, nb_el_attachShadow, "attachShadow", 1));
     JSValue Hp = JS_NewObject(ctx);
     JS_SetPrototype(ctx, Hp, Ep);
     JS_SetPropertyStr(ctx, Hf, "prototype", JS_DupValue(ctx, Hp));
@@ -2628,16 +2647,15 @@ static void install_dom_classes(JSContext *ctx) {
         JS_FreeValue(ctx, doc);
     }
 
-    /* customElements + CSSStyleSheet: real bundles read
-     * window.customElements.polyfillWrapFlushCallback and probe
-     * CSSStyleSheet.prototype at load; both globals must exist even if
-     * inert (feature detection then takes the non-native fallback). */
+    /* customElements (2026-09-20: REAL define/get/whenDefined/upgrade so
+     * kevlar's deferred registration path activates — see the CE section
+     * below) + CSSStyleSheet (inert; feature detection only). */
     {
         JSValue ce = JS_NewObject(ctx);
-        JS_SetPropertyStr(ctx, ce, "define", JS_NewCFunction(ctx, class_noop, "define", 2));
-        JS_SetPropertyStr(ctx, ce, "get", JS_NewCFunction(ctx, class_noop, "get", 1));
-        JS_SetPropertyStr(ctx, ce, "whenDefined", JS_NewCFunction(ctx, nb_promise_resolved, "whenDefined", 1));
-        JS_SetPropertyStr(ctx, ce, "upgrade", JS_NewCFunction(ctx, class_noop, "upgrade", 1));
+        JS_SetPropertyStr(ctx, ce, "define", JS_NewCFunction(ctx, ce_define, "define", 2));
+        JS_SetPropertyStr(ctx, ce, "get", JS_NewCFunction(ctx, ce_get, "get", 1));
+        JS_SetPropertyStr(ctx, ce, "whenDefined", JS_NewCFunction(ctx, ce_when_def, "whenDefined", 1));
+        JS_SetPropertyStr(ctx, ce, "upgrade", JS_NewCFunction(ctx, ce_upgrade, "upgrade", 1));
         JS_SetPropertyStr(ctx, g, "customElements", ce);
 
         JSValue CSf = JS_NewCFunction2(ctx, class_noop, "CSSStyleSheet", 1, JS_CFUNC_constructor, 0);
@@ -2985,6 +3003,397 @@ static const char *js_error_to_cstr(JSContext *ctx, char *buf, size_t bl) {
     }
     JS_FreeValue(ctx, e);
     return buf;
+}
+
+/* ---- customElements registry + ShadowRoot / template-content fragments
+ * (2026-09-20) ----
+ * kevlar DEFERS element registration: the ytd-masthead class (with its
+ * searchbox <template> string) is wired by
+ * `_.f9({disableElementRegistration:!0,...})(ZW); _.OV(ZW,"ytd-masthead",...)`
+ * only when `window.customElements` is present, and the masthead + search UI
+ * then get created at upgrade time (createElement("template") + innerHTML +
+ * attachShadow + stamp). A REAL define/get/whenDefined/upgrade + C-backed
+ * ShadowRoot is the slice that starts that path; the registry is a plain
+ * object customElements.__registry (plus an ordered ""__names"" array) so
+ * C holds NO JSValues across calls (no GC rooting hazards). Upgraded
+ * wrappers carry __nb_upgraded; the lifecycle runs best-effort (prototype
+ * swap + _initializeProperties/ready/connectedCallback) with exceptions
+ * dumped to the TRACE_CB channel so the bundle keeps bootstrapping. */
+#define CE_UPGRD "__nb_upgraded"
+
+static JSValue ce_registry(JSContext *ctx, int create) {
+    JSValue g = JS_GetGlobalObject(ctx);
+    JSValue ce = JS_GetPropertyStr(ctx, g, "customElements");
+    JS_FreeValue(ctx, g);
+    if (JS_IsObject(ce)) {
+        JSValue r = JS_GetPropertyStr(ctx, ce, "__registry");
+        if (!JS_IsObject(r)) {
+            JS_FreeValue(ctx, r);
+            r = JS_NewObject(ctx);
+            JS_SetPropertyStr(ctx, ce, "__registry", JS_DupValue(ctx, r));
+        }
+        JS_FreeValue(ctx, ce);
+        return r;
+    }
+    JS_FreeValue(ctx, ce);
+    return JS_UNDEFINED;
+}
+
+static void ce_call_lifecycle(JSContext *ctx, JSValue wrapper, const char *mname) {
+    JSValue fn = JS_GetPropertyStr(ctx, wrapper, mname);
+    if (JS_IsFunction(ctx, fn)) {
+        JSValue r = JS_Call(ctx, fn, wrapper, 0, NULL);
+        if (JS_IsException(r)) {
+            char buf[1536];
+            const char *m = js_error_to_cstr(ctx, buf, sizeof(buf));
+            if (g_trace_cb) fprintf(stderr, "CE|%s: %s\n", mname, m ? m : buf);
+        }
+        JS_FreeValue(ctx, r);
+    }
+    JS_FreeValue(ctx, fn);
+}
+
+static void ce_upgrade_one(JSContext *ctx, NbNode *n, JSValue ctor) {
+    JSValue wrapper = push_node(ctx, n);
+    if (!JS_IsObject(wrapper)) return;
+    JSValue up = JS_GetPropertyStr(ctx, wrapper, CE_UPGRD);
+    int done = JS_ToBool(ctx, up);
+    JS_FreeValue(ctx, up);
+    if (done || !JS_IsObject(ctor)) return;
+    JSValue proto = JS_GetPropertyStr(ctx, ctor, "prototype");
+    if (JS_IsObject(proto)) JS_SetPrototype(ctx, wrapper, proto);
+    JS_SetPropertyStr(ctx, wrapper, CE_UPGRD, JS_NewBool(ctx, 1));
+    ce_call_lifecycle(ctx, wrapper, "_initializeProperties");
+    ce_call_lifecycle(ctx, wrapper, "ready");
+    ce_call_lifecycle(ctx, wrapper, "connectedCallback");
+    JS_FreeValue(ctx, proto);
+}
+
+static void ce_walk_upgrade(JSContext *ctx, NbNode *root, JSValue reg, const char *name) {
+    if (!root) return;
+    if (root->tag && !strcmp(root->tag, name)) {
+        JSValue ctor = JS_GetPropertyStr(ctx, reg, name);
+        if (JS_IsObject(ctor)) ce_upgrade_one(ctx, root, ctor);
+        JS_FreeValue(ctx, ctor);
+    }
+    for (const NbNode *c = root->first_child; c; c = c->next_sibling)
+        ce_walk_upgrade(ctx, (NbNode *)c, reg, name);
+}
+
+static int ce_valid_name(const char *name) {
+    if (!name || !name[0] || !strchr(name, '-')) return 0;
+    for (const char *p = name; *p; p++) {
+        if (!((*p >= 'a' && *p <= 'z') || (*p >= '0' && *p <= '9') || *p == '-' || *p == '_'))
+            return 0;
+    }
+    return 1;
+}
+
+static void ce_registry_push_name(JSContext *ctx, JSValue reg, const char *name) {
+    JSValue names = JS_GetPropertyStr(ctx, reg, "__names");
+    if (!JS_IsObject(names)) { JS_FreeValue(ctx, names); names = JS_NewArray(ctx); }
+    int have = 0;
+    JSValue lenv = JS_GetPropertyStr(ctx, names, "length");
+    int32_t len = 0;
+    if (JS_IsNumber(lenv)) JS_ToInt32(ctx, &len, lenv);
+    JS_FreeValue(ctx, lenv);
+    for (int32_t i = 0; i < len && !have; i++) {
+        JSValue nm = JS_GetPropertyUint32(ctx, names, (uint32_t)i);
+        if (JS_IsString(nm)) {
+            char *owned = NULL;
+            const char *s = (owned = JS_ToCString(ctx, nm));
+            if (s && !strcmp(s, name)) have = 1;
+            JS_FreeCString(ctx, owned);
+        }
+        JS_FreeValue(ctx, nm);
+    }
+    if (!have) JS_SetPropertyUint32(ctx, names, (uint32_t)len, JS_NewString(ctx, name));
+    JS_SetPropertyStr(ctx, reg, "__names", names);
+}
+
+static JSValue ce_define(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *owned = NULL;
+    const char *name = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    if (!ce_valid_name(name)) {
+        JS_FreeCString(ctx, owned);
+        JSValue e = JS_NewError(ctx);
+        if (!JS_IsException(e))
+            JS_SetPropertyStr(ctx, e, "message", JS_NewString(ctx, "SyntaxError: invalid custom element name"));
+        return JS_Throw(ctx, e);
+    }
+    JSValue reg = ce_registry(ctx, 1);
+    if (JS_IsObject(reg)) {
+        JSValue ex = JS_GetPropertyStr(ctx, reg, name);
+        int dup = JS_IsObject(ex);
+        JS_FreeValue(ctx, ex);
+        if (dup && g_trace_cb)
+            fprintf(stderr, "CE|define redefined (last wins): %s\n", name);
+        /* kevlar's .f9({disableElementRegistration}) + .OV() flow registers a
+         * placeholder class FIRST and replaces it with the real lazy-loaded
+         * class; last-define-wins (browsers would throw NotSupportedError). */
+        if (argc > 1) {
+            JS_SetPropertyStr(ctx, reg, name, JS_DupValue(ctx, argv[1]));
+            ce_registry_push_name(ctx, reg, name);
+        }
+    }
+    JS_FreeValue(ctx, reg);
+    /* upgrade every existing matching node (parse-time elements) */
+    if (g_dom_root) {
+        reg = ce_registry(ctx, 0);
+        if (JS_IsObject(reg)) {
+            for (const NbNode *c = g_dom_root->first_child; c; c = c->next_sibling)
+                ce_walk_upgrade(ctx, (NbNode *)c, reg, name);
+            JS_FreeValue(ctx, reg);
+        }
+    }
+    JS_FreeCString(ctx, owned);
+    return JS_UNDEFINED;
+}
+
+static JSValue ce_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    char *owned = NULL;
+    const char *name = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    JSValue reg = ce_registry(ctx, 0);
+    JSValue r = JS_UNDEFINED;
+    if (JS_IsObject(reg) && name) r = JS_GetPropertyStr(ctx, reg, name);
+    JS_FreeValue(ctx, reg);
+    JS_FreeCString(ctx, owned);
+    return r;
+}
+
+static JSValue ce_when_def(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    return nb_promise_resolved(ctx, this_val, argc, argv);
+}
+
+static JSValue ce_upgrade(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *root = g_dom_root;
+    if (argc > 0 && JS_IsObject(argv[0])) {
+        NbNode *n = get_node(ctx, argv[0]);
+        if (n) root = n;
+    }
+    JSValue reg = ce_registry(ctx, 0);
+    if (JS_IsObject(reg) && root) {
+        JSValue names = JS_GetPropertyStr(ctx, reg, "__names");
+        if (JS_IsObject(names)) {
+            JSValue lenv = JS_GetPropertyStr(ctx, names, "length");
+            int32_t len = 0;
+            if (JS_IsNumber(lenv)) JS_ToInt32(ctx, &len, lenv);
+            JS_FreeValue(ctx, lenv);
+            for (int32_t i = 0; i < len; i++) {
+                JSValue nm = JS_GetPropertyUint32(ctx, names, (uint32_t)i);
+                char *owned = NULL;
+                const char *s = JS_IsString(nm) ? (owned = JS_ToCString(ctx, nm)) : NULL;
+                if (s) {
+                    for (const NbNode *c = root->first_child; c; c = c->next_sibling)
+                        ce_walk_upgrade(ctx, (NbNode *)c, reg, s);
+                }
+                JS_FreeCString(ctx, owned);
+                JS_FreeValue(ctx, nm);
+            }
+        }
+        JS_FreeValue(ctx, names);
+        JS_FreeValue(ctx, reg);
+    }
+    return JS_UNDEFINED;
+}
+
+/* ---- fragment helpers (ShadowRoot + <template>.content) ----
+ * A fragment is a detached NbNode tagged "#shadow-root"/"#document-fragment"
+ * whose wrapper reuses the element natives (appendChild/removeChild/
+ * innerHTML/children/firstChild/... all read the C node behind the NODEKEY)
+ * plus root-scoped query natives that walk the fragment's OWN subtree (the
+ * document natives are hard-wired to g_dom_root). */
+static JSValue nb_el_lastChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (n && n->last_child) return push_node(ctx, n->last_child);
+    return JS_NULL;
+}
+static JSValue nb_el_hasChildNodes(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    return JS_NewBool(ctx, n && n->first_child != NULL);
+}
+static JSValue nb_frag_querySelector(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *sel = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    if (!n || !sel) { JS_FreeCString(ctx, owned); return JS_NULL; }
+    NbNode *r = query_first(n, sel);
+    JS_FreeCString(ctx, owned);
+    if (r) return push_node(ctx, r);
+    return JS_NULL;
+}
+static JSValue nb_frag_querySelectorAll(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *sel = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    JSValue arr = JS_NewArray(ctx);
+    if (n && sel) {
+        int i = 0;
+        qsa_into(ctx, n, sel, arr, &i);
+        JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
+    }
+    JS_FreeCString(ctx, owned);
+    return arr;
+}
+static JSValue nb_frag_getElementById(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *id = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    if (!n || !id) { JS_FreeCString(ctx, owned); return JS_NULL; }
+    NbNode *r = find_by_id(n, id);
+    JS_FreeCString(ctx, owned);
+    if (r) return push_node(ctx, r);
+    return JS_NULL;
+}
+static JSValue nb_frag_getElementsByTagName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *tag = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    JSValue arr = JS_NewArray(ctx);
+    if (n) {
+        int i = 0;
+        collect_tag_into(ctx, n, tag, arr, &i);
+        JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
+    }
+    JS_FreeCString(ctx, owned);
+    return arr;
+}
+static JSValue nb_frag_getElementsByClassName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    char *owned = NULL;
+    const char *tok = (argc > 0 && JS_IsString(argv[0])) ? (owned = JS_ToCString(ctx, argv[0])) : NULL;
+    JSValue arr = JS_NewArray(ctx);
+    if (n && tok && *tok) {
+        int i = 0;
+        collect_cls_into(ctx, n, tok, arr, &i);
+        JS_SetPropertyStr(ctx, arr, "length", JS_NewInt32(ctx, i));
+    }
+    JS_FreeCString(ctx, owned);
+    return arr;
+}
+
+static NbNode *node_deep_copy(const NbNode *n) {
+    NbNode *c = calloc(1, sizeof(*c));
+    if (!c) return NULL;
+    if (n->tag) c->tag = strdup(n->tag);
+    if (n->id) c->id = strdup(n->id);
+    if (n->cls) c->cls = strdup(n->cls);
+    if (n->attrs) c->attrs = strdup(n->attrs);
+    if (n->text) c->text = strdup(n->text);
+    for (const NbNode *ch = n->first_child; ch; ch = ch->next_sibling) {
+        NbNode *cc = node_deep_copy(ch);
+        if (cc) local_append(c, cc);
+    }
+    return c;
+}
+static JSValue nb_frag_clone(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    NbNode *frag = calloc(1, sizeof(*frag));
+    if (!frag) return JS_NULL;
+    frag->tag = strdup("#document-fragment");
+    if (n) {
+        for (const NbNode *c = n->first_child; c; c = c->next_sibling) {
+            NbNode *cc = node_deep_copy(c);
+            if (cc) local_append(frag, cc);
+        }
+    }
+    orphan_add(frag);
+    return make_fragment_wrapper(ctx, frag, "#document-fragment");
+}
+
+static JSValue make_fragment_wrapper(JSContext *ctx, NbNode *frag, const char *nodeName) {
+    int nidx = node_index(frag);
+    if (nidx < 0) { orphan_add(frag); return JS_NULL; }
+    JSValue w = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, w, NODEKEY, JS_NewInt32(ctx, nidx));
+    JS_SetPropertyStr(ctx, w, "nodeType", JS_NewInt32(ctx, 11));
+    JS_SetPropertyStr(ctx, w, "nodeName", JS_NewString(ctx, nodeName));
+    JS_SetPropertyStr(ctx, w, "appendChild", JS_NewCFunction(ctx, nb_el_appendChild, "appendChild", 1));
+    JS_SetPropertyStr(ctx, w, "removeChild", JS_NewCFunction(ctx, nb_el_removeChild, "removeChild", 1));
+    JS_SetPropertyStr(ctx, w, "insertBefore", JS_NewCFunction(ctx, nb_el_insertBefore, "insertBefore", 2));
+    JS_SetPropertyStr(ctx, w, "replaceChild", JS_NewCFunction(ctx, nb_el_replaceChild, "replaceChild", 2));
+    JS_SetPropertyStr(ctx, w, "querySelector", JS_NewCFunction(ctx, nb_frag_querySelector, "querySelector", 1));
+    JS_SetPropertyStr(ctx, w, "querySelectorAll", JS_NewCFunction(ctx, nb_frag_querySelectorAll, "querySelectorAll", 1));
+    JS_SetPropertyStr(ctx, w, "getElementById", JS_NewCFunction(ctx, nb_frag_getElementById, "getElementById", 1));
+    JS_SetPropertyStr(ctx, w, "getElementsByTagName", JS_NewCFunction(ctx, nb_frag_getElementsByTagName, "getElementsByTagName", 1));
+    JS_SetPropertyStr(ctx, w, "getElementsByClassName", JS_NewCFunction(ctx, nb_frag_getElementsByClassName, "getElementsByClassName", 1));
+    JS_SetPropertyStr(ctx, w, "cloneNode", JS_NewCFunction(ctx, nb_frag_clone, "cloneNode", 1));
+    JS_SetPropertyStr(ctx, w, "addEventListener", JS_NewCFunction(ctx, nb_el_addEventListener, "addEventListener", 2));
+    JS_SetPropertyStr(ctx, w, "removeEventListener", JS_NewCFunction(ctx, nb_el_removeEventListener, "removeEventListener", 2));
+    JS_SetPropertyStr(ctx, w, "dispatchEvent", JS_NewCFunction(ctx, nb_el_dispatchEvent, "dispatchEvent", 1));
+    JS_SetPropertyStr(ctx, w, "hasChildNodes", JS_NewCFunction(ctx, nb_el_hasChildNodes, "hasChildNodes", 0));
+    JS_SetPropertyStr(ctx, w, "click", JS_NewCFunction(ctx, nb_el_click, "click", 0));
+    {
+        JSAtom nm;
+#define FRAG_GET(nmstr, fn) do { nm = JS_NewAtom(ctx, nmstr); \
+            JS_DefinePropertyGetSet(ctx, w, nm, JS_NewCFunction(ctx, fn, "get " nmstr, 0), JS_UNDEFINED, \
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE); JS_FreeAtom(ctx, nm); } while (0)
+        FRAG_GET("children", nb_el_children);
+        FRAG_GET("childNodes", nb_el_childNodes);
+        FRAG_GET("firstChild", nb_el_firstChild);
+        FRAG_GET("lastChild", nb_el_lastChild);
+        FRAG_GET("parentNode", nb_el_parentNode);
+        FRAG_GET("nextSibling", nb_el_nextSibling);
+#undef FRAG_GET
+    }
+    {
+        JSAtom nm = JS_NewAtom(ctx, "innerHTML");
+        JS_DefinePropertyGetSet(ctx, w, nm,
+            JS_NewCFunction(ctx, nb_el_innerHTML_get, "get innerHTML", 0),
+            JS_NewCFunction(ctx, nb_el_innerHTML_set, "set innerHTML", 1),
+            JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+    }
+    return w;
+}
+
+/* <template>.innerHTML / appendChild land in template.content, which is a
+ * C-backed #document-fragment wrapper (overrides the prelude's inert JS
+ * docfrag so stamping can read firstChild/cloneNode/querySelector). */
+static NbNode *nb_template_content_frag(JSContext *ctx, JSValue el, NbNode *n) {
+    if (!n || !n->tag || strcmp(n->tag, "template") != 0) return NULL;
+    JSValue ex = JS_GetPropertyStr(ctx, el, "content");
+    NbNode *frag = JS_IsObject(ex) ? get_node(ctx, ex) : NULL;
+    if (!frag) {
+        frag = calloc(1, sizeof(*frag));
+        if (frag) {
+            frag->tag = strdup("#document-fragment");
+            orphan_add(frag);
+            JSValue w = make_fragment_wrapper(ctx, frag, "#document-fragment");
+            if (JS_IsObject(w)) JS_SetPropertyStr(ctx, el, "content", w);
+        }
+    }
+    JS_FreeValue(ctx, ex);
+    return frag;
+}
+
+/* Element.prototype.attachShadow (C-backed ShadowRoot; el.shadowRoot). */
+static JSValue nb_el_attachShadow(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_NULL;
+    JSValue ex = JS_GetPropertyStr(ctx, this_val, "shadowRoot");
+    if (JS_IsObject(ex)) { JSValue r = JS_DupValue(ctx, ex); JS_FreeValue(ctx, ex); return r; }
+    JS_FreeValue(ctx, ex);
+    NbNode *frag = calloc(1, sizeof(*frag));
+    if (!frag) return JS_NULL;
+    frag->tag = strdup("#shadow-root");
+    orphan_add(frag);
+    JSValue w = make_fragment_wrapper(ctx, frag, "#shadow-root");
+    if (!JS_IsObject(w)) return JS_NULL;
+    const char *mode = "open";
+    if (argc > 0 && JS_IsObject(argv[0])) {
+        JSValue mv = JS_GetPropertyStr(ctx, argv[0], "mode");
+        char *mo = NULL;
+        if (JS_IsString(mv)) { mo = JS_ToCString(ctx, mv); if (mo) mode = mo; }
+        JS_FreeValue(ctx, mv);
+        JS_FreeCString(ctx, mo);
+    }
+    JS_SetPropertyStr(ctx, w, "mode", JS_NewString(ctx, mode));
+    JS_SetPropertyStr(ctx, w, "host", JS_DupValue(ctx, this_val));
+    JS_SetPropertyStr(ctx, w, "nodeType", JS_NewInt32(ctx, 11));
+    JS_SetPropertyStr(ctx, this_val, "shadowRoot", JS_DupValue(ctx, w));
+    JS_SetPropertyStr(ctx, this_val, "__nb_shadow", JS_NewBool(ctx, 1));
+    return w;
 }
 
 /* Release every JS callback this file currently holds (timers/events/on-props).

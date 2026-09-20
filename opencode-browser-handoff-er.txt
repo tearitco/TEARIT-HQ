@@ -59,6 +59,87 @@ ShadowRoot + `<template>`). Until that host exists, Enter/click on search
 is inert; the working search drive is `eval:location.href="/results?search_query=..."`.
 This milestone (custom-element upgrade) is the biggest remaining feature.
 
+===============================
+2026-09-20 SESSION RECORD (committed with this doc)
+===============================
+SHIPPED (verified through the MANAGER flow, real runs of the new
+binaries):
+- ADDRESS-BAR SEARCH FALLBACK (network_browser_manager.c): the `go:`
+  handler now sends free text (not a URL) to `/results?search_query=...`.
+  Selected via new helpers after resolve_url (~line 328):
+  `looks_like_bare_host`, `is_searchish`, `urlenc_query`,
+  `go_target_or_search`. VERIFIED: request `go:never gonna give you up`
+  -> page.state URL `https://www.youtube.com/results?search_query=never+
+  gonna+give+you+up`, status ready. BEHAVIOR: bare host -> https://host;
+  non-URL free text -> <host>/results?search_query=<enc> where host =
+  the CURRENT page host (or www.youtube.com when empty); paths/queries
+  pass through; full URLs unchanged. NOTES: `&`-free search string shown
+  above; a query with `&` would need the manager's URL space-encoding to
+  also handle it (URL_ENCODE keeps `&` -> curl query already correct).
+- customElements ENGINE SLICE (ops/nb_js_worker.c):
+  - REAL `customElements` on window: define/get/whenDefined/upgrade with
+    registry = plain object `customElements.__registry`, names array
+    `customElements.__names`, upgrade WALK over g_dom_root marking
+    `node->__nb_upgraded` and swapping prototype to the class's proto
+    (ce_define/ce_upgrade/ce_upgrade_one/ce_walk_upgrade/ce_registry.
+    ~after js_error_to_cstr, +:-2000 lines INTO nb_js_worker.c after the
+    2026-09-19 section). Lifecycle best-effort per upgrade:
+    _initializeProperties -> ready -> connectedCallback via property
+    lookups (CE| lines go to worker stderr under NB_TRACE_CB=1).
+  - LATE-REDEFINE LAST-WINS: kevlar's `.f9({disableElementRegistration})
+    (ctor) + _.OV(ctor,name,templateFn)` flow registers a stub first and
+    replaces it later; define() now REPLACES the ctor (+ CE|redefined
+    trace) instead of returning early on dup.
+  - `Element.prototype.attachShadow` (+ C-backed #shadow-root NbNode):
+    returns a C-backed DocumentFragment wrapper with root-scoped
+    querySelector/All, getElementById, getElementsByTagName/ByClassName,
+    childNodes/children/firstChild/lastChild/parentNode/nextSibling,
+    cloneNode(deep), appendChild/insertBefore/removeChild/replaceChild,
+    innerHTML. Element is SET to shadowRoot (no composition rules yet).
+  - `<template>.content` is now ALWAYS C-backed from creation (push_node)
+    via nb_template_content_frag — the prelude JS `__nb_docfrag` bag is
+    NO LONGER used for template.content. FIXES bundle-line-16063
+    HierarchyRequestError: `insertBefore needs a real new node` caused by
+    `C6X.content.insertBefore(oyD().content.cloneNode(!0), firstChild)`
+    where oyD().content was the inert JS docfrag (cloneNode returned a
+    non-node). VERIFIED: that error is GONE; home LOAD err log 0 bytes
+    (~25-30 s home, ~15 s results through the manager).
+  - Forward decls + `nb_el_lastChild`/`hasChildNodes` + fragment
+    query/qsa + `node_deep_copy`/`nb_frag_clone` +
+    `make_fragment_wrapper` + `nb_template_content_frag` +
+    `nb_el_attachShadow`.
+- VERIFIED EMPIRICALLY: `customElements.get('ytd-masthead')` -> defined;
+  the light-DOM ytd-masthead node reports `__nb_upgraded`. Home + results
+  load through the manager with err log 0 bytes (post template fix).
+- `make check` = 60 PASS / 0 FAIL (verified twice this session).
+- REBUILT binaries: worker 1,248,752 B, manager 118,744 B.
+
+CURRENT KNOWN GAPS (next session):
+- Masthead (and most kevlar components) upgrade to a STUB class (ctor
+  name "D", no Polymer methods): kevlar registers the real masthead class
+  via its Nyy/w REGISTRATION WRAPPER — `customElements.define(name, w)`
+  where `w = function(){ G=HTMLElement.call(this); G.inst = new realCtor();
+  forward... }` builds the REAL instance INSIDE its own constructor and
+  forwards methods to it. We do NOT run constructors on upgrade (our
+  upgrade only sets prototype + property-hooks), so `inst` is never
+  created, no Polymer lifecycle, no attachShadow (probe: shadow-no,
+  init/ready/cc all undefined on the upgraded node). Reachable real class
+  = `w`-style only. A FULL native-constructor upgrade semantics is the
+  next engine step (Sprent; would need running the ctor without `new` on
+  the existing C wrapper or a QuickJS-facing trick).
+- ALSO relevant: kevlar flag `kevlar_delay_component_registration` gate at
+  line 10078054 — `_.f(...) || (f9(disableElementRegistration)(ZW),
+  _.OV(ZW,"ytd-masthead",tplFn))` skips when the flag is set; masthead's
+  define then only happens through the delayed queue / Nyy-w wrapper.
+- JS_FreeRuntime `gc_obj_list` assertion appears on the WORKER EXIT after
+  the results-page load (shutdown-time leak; worker is per-load,
+  respawned by the manager, so it's cosmetic — but worth tracking).
+- The on-page search box still renders flat light-DOM only
+  (`input#search` present, `name="search_query"`); no `<form action=
+  "/results">` / `#search-icon-legacy` yet — address-bar fallback is the
+  current working search path.
+- `JS_FreeRuntime` assert + empty TITLE row on results page = follow-ups.
+
 DIAGNOSTIC RECORD (why the two "cannot read property of undefined" init
 TypeErrors happened — now FIXED):
 - ROOT CAUSE: kevlar's bevasrs bootstrap reads
