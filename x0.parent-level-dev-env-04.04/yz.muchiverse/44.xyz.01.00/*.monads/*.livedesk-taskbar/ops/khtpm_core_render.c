@@ -2850,6 +2850,18 @@ static struct timespec g_map_time;
 static int g_focus_nav = 1;
 static int g_n_nav = 0;
 static Elem *g_nav[MAX_ELEMS];
+
+/* Right-click hit-test shared by the real ButtonPress path and the relayed
+ * `MOUSE_EVENT: 3 x y 1` path, so a human and an agent open the same menu. */
+static Elem *kh_ctx_hit(int x, int y) {
+    for (int i = 0; i < g_n_nav; i++) {
+        Elem *it = g_nav[i];
+        if (!it || it->w <= 0) continue;
+        if (strncmp(it->id, "chrome-", 7) == 0) continue;
+        if (x >= it->x && x < it->x + it->w && y >= it->y && y < it->y + it->h) return it;
+    }
+    return NULL;
+}
 /* REAL, NEW 2026-09-14 (generic `<bar>` click-to-seek) - the raw
  * window-local click X a human hit a <bar> with, relative to the bar's
  * own x so the fraction is (click_x - e->x)/e->w. Set by popup_handle_
@@ -9940,6 +9952,9 @@ static int poll_agent_history(void) {
                         g_default_scrolllist_scroll += (button == 5) ? 1 : -1;
                         n++;
                     }
+                } else if (nf >= 3 && is_press && button == 3) {
+                    kh_open_cli_io_context_menu(kh_ctx_hit(mx, my), mx, my);
+                    n++;
                 } else if (nf >= 3 && is_press && button != 3 && button != 4 && button != 5) {
                     popup_handle_click(mx, my);
                     n++;
@@ -11038,18 +11053,8 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
              * to popup_handle_click() (that's a left-click activation
              * path) - real right-click hit-testing lives here instead. */
             if (ev->xbutton.button == 3) {
-                Elem *hit = NULL;
-                for (int i = 0; i < g_n_nav; i++) {
-                    Elem *it = g_nav[i];
-                    if (!it || it->w <= 0) continue;
-                    if (strncmp(it->id, "chrome-", 7) == 0) continue;
-                    if (ev->xbutton.x >= it->x && ev->xbutton.x < it->x + it->w &&
-                        ev->xbutton.y >= it->y && ev->xbutton.y < it->y + it->h) {
-                        hit = it;
-                        break;
-                    }
-                }
-                kh_open_cli_io_context_menu(hit, ev->xbutton.x, ev->xbutton.y);
+                kh_open_cli_io_context_menu(kh_ctx_hit(ev->xbutton.x, ev->xbutton.y),
+                                            ev->xbutton.x, ev->xbutton.y);
                 return;
             }
             XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
@@ -15196,11 +15201,20 @@ static void kh_open_cli_io_context_menu(Elem *target, int win_px, int win_py) {
         if (strcmp(act, "CUT") == 0 || strcmp(act, "COPY") == 0 || strcmp(act, "PASTE") == 0 ||
             strcmp(act, "DELETE") == 0 || strcmp(act, "PLACE") == 0) {
             /* real, house-standard cross-process bridge (see this
-             * block's own header comment) - "$0" is package_dir,
-             * matching sh -c's own real convention every entity menu
-             * item's action= already relies on. */
-            fprintf(cf, "    <item label=\"%s\" action=\"sh -c &apos;echo %s &gt; &quot;$0/.hq_manager/cli_io_ctxmenu_action.txt&quot;&apos;\"/>\n",
-                    items[i].label, act);
+             * block's own header comment). The popup is launched with the
+             * <house_root> <chtpm_path> contract, so inside its items
+             * "$0" is just "sh" - NOT package_dir - and a "$0/..." path
+             * silently never reached this window. Emit the absolute
+             * action-file path instead (& XML-escaped). */
+            char eact[TP_PATH_BUF * 2];
+            size_t ew = 0;
+            for (const char *r = actfile; *r && ew + 6 < sizeof(eact); r++) {
+                if (*r == '&') { memcpy(eact + ew, "&amp;", 5); ew += 5; }
+                else eact[ew++] = *r;
+            }
+            eact[ew] = '\0';
+            fprintf(cf, "    <item label=\"%s\" action=\"sh -c &apos;echo %s &gt; &quot;%s&quot;&apos;\"/>\n",
+                    items[i].label, act, eact);
         } else if (strcmp(act, "CANCEL") == 0) {
             fprintf(cf, "    <item label=\"%s\" action=\"void\"/>\n", items[i].label);
         } else {

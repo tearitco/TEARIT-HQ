@@ -23,6 +23,8 @@
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
+#include <fcntl.h>
 
 #define MAX_PATH 4096
 #define MAX_ENTRIES 512
@@ -47,6 +49,25 @@ static int fe_ctx_entry_idx(const char *package_dir) {
     }
     fclose(f);
     return idx;
+}
+
+/* Run `sh <script> a b c` fully detached (setsid, double-fork so nothing
+ * is left to reap, stdio to /dev/null) and return immediately. system()
+ * here froze the whole explorer for as long as the Place overlay waited
+ * for a click. The script's own result shows up via the 50ms relist. */
+static void fe_spawn_detached(const char *script, const char *a, const char *b, const char *c) {
+    pid_t p = fork();
+    if (p < 0) return;
+    if (p == 0) {
+        pid_t g = fork();
+        if (g != 0) _exit(0);
+        setsid();
+        int fd = open("/dev/null", O_RDWR);
+        if (fd >= 0) { dup2(fd, 0); dup2(fd, 1); dup2(fd, 2); if (fd > 2) close(fd); }
+        execl("/bin/sh", "sh", script, a, b, c, (char *)NULL);
+        _exit(127);
+    }
+    (void)waitpid(p, NULL, 0);
 }
 
 static void fe_clip_write(const char *package_dir, const char *mode, const char *path) {
@@ -598,14 +619,10 @@ int main(int argc, char *argv[]) {
                 if (pf) { fprintf(pf, "path=%s\n", src); fclose(pf); }
                 fe_clip_write(package_dir, "place", src);
                 {
-                    char sh[MAX_PATH * 4];
-                    snprintf(sh, sizeof(sh),
-                             "sh '%s/ops/fe_place_on_desk.sh' '%s' '%s' '%s'",
-                             package_dir, house_root, package_dir, src);
-                    (void)system(sh);
+                    char script[MAX_PATH];
+                    snprintf(script, sizeof(script), "%s/ops/fe_place_on_desk.sh", package_dir);
+                    fe_spawn_detached(script, house_root, package_dir, src);
                 }
-                list_directory(state.current_dir, &state);
-                write_ui_file(package_dir, &state, "", "");
             }
         }
     }

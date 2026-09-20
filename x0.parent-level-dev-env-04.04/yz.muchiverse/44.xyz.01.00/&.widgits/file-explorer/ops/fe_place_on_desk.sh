@@ -8,6 +8,9 @@ SRC="${3:-}"
 [ -n "$HOUSE" ] && [ -n "$PKG" ] && [ -n "$SRC" ] || exit 1
 [ -e "$SRC" ] || exit 1
 
+REG="$HOUSE/&.widgits/_shared-lib/ops/+x/kh_proc_register_op.+x"
+[ -x "$REG" ] && "$REG" "$HOUSE" "$$" fe_place_on_desk >/dev/null 2>&1 || true
+
 CLICK="$PKG/fe_place_click.txt"
 rm -f "$CLICK"
 export FE_PLACE_CLICK="$CLICK"
