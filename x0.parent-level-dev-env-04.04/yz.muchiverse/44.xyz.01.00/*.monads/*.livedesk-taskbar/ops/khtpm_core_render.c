@@ -6479,7 +6479,7 @@ static void assign_nav_and_layout(void) {
             for (i = 0; i < page->n_children; i++) {
                 Elem *item = page->children[i];
                 int is_sw = 0, is_close = 0, c;
-                if (strcmp(item->tag, "item") != 0) continue;
+                if (strcmp(item->tag, "item") != 0 && strcmp(item->tag, "cli_io") != 0) continue;
                 for (c = 0; c < item->n_classes; c++) {
                     if (strcmp(item->classes[c], "swatch") == 0) is_sw = 1;
                     if (strcmp(item->classes[c], "close-btn") == 0 ||
@@ -6494,6 +6494,7 @@ static void assign_nav_and_layout(void) {
                 int w = kh_measure_text_px(&item->style, item->label) + 46;
                 if (item->style.has_width && item->style.width > w) w = item->style.width;
                 if (w < 44) w = 44;
+                if (strcmp(item->tag, "cli_io") == 0 && w < 280) w = 280; /* room to type */
                 int rh = item->style.has_height ? item->style.height : ROW_H;
                 if (prev_fam && strcmp(prev_fam, fam) != 0) { cx = x0; cy += rh + KH_CHIP_ROW_GAP; }
                 else if (cx > x0) cx += 6;
@@ -6556,12 +6557,11 @@ static void assign_nav_and_layout(void) {
             int cx = x0, cy = foot0;
             for (i = 0; i < page->n_children; i++) {
                 Elem *item = page->children[i];
-                if (strcmp(item->tag, "item") != 0 && strcmp(item->tag, "cli_io") != 0) continue;
+                if (strcmp(item->tag, "item") != 0) continue;
                 if (!KH_IS_FOOTER_CHIP(item)) continue;
                 /* room for draw_elem's "[ ]NN. " nav badge (~46px) PLUS
                  * the whole label, or the CSS width if it asks for more -
                  * a too-narrow chip clipped "A"/"B" to just the badge. */
-                if (strcmp(item->tag, "cli_io") == 0 && w < 280) w = 280; /* room to type */
                 int w = kh_measure_text_px(&item->style, item->label) + 46;
                 if (item->style.has_width && item->style.width > w) w = item->style.width;
                 if (w < 44) w = 44;
