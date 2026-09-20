@@ -70,18 +70,27 @@ static void fe_spawn_detached(const char *script, const char *a, const char *b, 
     (void)waitpid(p, NULL, 0);
 }
 
-static void fe_clip_write(const char *package_dir, const char *mode, const char *path) {
-    char p[MAX_PATH];
-    snprintf(p, sizeof(p), "%s/fe_clipboard.txt", package_dir);
-    FILE *f = fopen(p, "w");
+/* Clipboard is GLOBAL (one file for every explorer window) so Cut in one
+ * entity's Inventory window and Paste in another's moves the item across.
+ * Written tmp+rename so a reader never sees a half-written file. */
+static void fe_clip_path(const char *house_root, char *out, size_t sz) {
+    snprintf(out, sz, "%s/#.desktop/fe_clipboard.txt", house_root);
+}
+
+static void fe_clip_write(const char *house_root, const char *mode, const char *path) {
+    char p[MAX_PATH], tmp[MAX_PATH + 8];
+    fe_clip_path(house_root, p, sizeof(p));
+    snprintf(tmp, sizeof(tmp), "%s.tmp", p);
+    FILE *f = fopen(tmp, "w");
     if (!f) return;
     fprintf(f, "mode=%s\npath=%s\n", mode, path);
     fclose(f);
+    rename(tmp, p);
 }
 
-static int fe_clip_read(const char *package_dir, char *mode, size_t msz, char *path, size_t psz) {
+static int fe_clip_read(const char *house_root, char *mode, size_t msz, char *path, size_t psz) {
     char p[MAX_PATH];
-    snprintf(p, sizeof(p), "%s/fe_clipboard.txt", package_dir);
+    fe_clip_path(house_root, p, sizeof(p));
     FILE *f = fopen(p, "r");
     if (!f) return 0;
     char line[MAX_PATH];
@@ -93,6 +102,30 @@ static int fe_clip_read(const char *package_dir, char *mode, size_t msz, char *p
     }
     fclose(f);
     return path[0] != 0;
+}
+
+/* Run argv (fork+execvp+waitpid, no shell, so paths need no quoting). */
+static int fe_run_wait(char *const argv[]) {
+    pid_t p = fork();
+    if (p < 0) return -1;
+    if (p == 0) {
+        int fd = open("/dev/null", O_RDWR);
+        if (fd >= 0) { dup2(fd, 0); dup2(fd, 1); dup2(fd, 2); if (fd > 2) close(fd); }
+        execvp(argv[0], argv);
+        _exit(127);
+    }
+    int st = 0;
+    if (waitpid(p, &st, 0) < 0) return -1;
+    return WIFEXITED(st) ? WEXITSTATUS(st) : -1;
+}
+
+/* Move src to dst: rename, and if that fails (cross-device) copy then remove. */
+static int fe_move_path(const char *src, const char *dst) {
+    if (rename(src, dst) == 0) return 0;
+    char *cp[] = { "cp", "-a", "--", (char *)src, (char *)dst, NULL };
+    if (fe_run_wait(cp) != 0) return -1;
+    char *rm[] = { "rm", "-rf", "--", (char *)src, NULL };
+    return fe_run_wait(rm);
 }
 
 typedef struct {
@@ -677,20 +710,23 @@ int main(int argc, char *argv[]) {
             if (idx >= 0 && idx < state.count)
                 snprintf(src, sizeof(src), "%s/%s", state.current_dir, state.entries[idx].name);
             if (!strcmp(verb, "CUT") || !strcmp(verb, "COPY")) {
-                if (src[0]) fe_clip_write(package_dir, !strcmp(verb, "CUT") ? "cut" : "copy", src);
+                if (src[0]) fe_clip_write(house_root, !strcmp(verb, "CUT") ? "cut" : "copy", src);
             } else if (!strcmp(verb, "PASTE")) {
                 char mode[16], clip[MAX_PATH];
-                if (fe_clip_read(package_dir, mode, sizeof(mode), clip, sizeof(clip))) {
+                if (fe_clip_read(house_root, mode, sizeof(mode), clip, sizeof(clip))) {
                     const char *base = strrchr(clip, '/');
                     base = base ? base + 1 : clip;
                     char dst[MAX_PATH];
                     snprintf(dst, sizeof(dst), "%s/%s", state.current_dir, base);
-                    if (!strcmp(mode, "cut")) {
-                        if (rename(clip, dst) == 0) fe_clip_write(package_dir, "copy", dst);
+                    if (!strcmp(clip, dst)) {
+                        /* pasting onto itself: nothing to do */
+                    } else if (!strncmp(dst, clip, strlen(clip)) && dst[strlen(clip)] == '/') {
+                        /* into its own subtree: refuse */
+                    } else if (!strcmp(mode, "cut")) {
+                        if (fe_move_path(clip, dst) == 0) fe_clip_write(house_root, "copy", dst);
                     } else {
-                        char sh[MAX_PATH * 2 + 32];
-                        snprintf(sh, sizeof(sh), "cp -a '%s' '%s'", clip, dst);
-                        (void)system(sh);
+                        char *cp[] = { "cp", "-a", "--", clip, dst, NULL };
+                        (void)fe_run_wait(cp);
                     }
                     list_directory(state.current_dir, &state);
                     write_ui_file(package_dir, &state, "", "");
@@ -708,10 +744,10 @@ int main(int argc, char *argv[]) {
                 snprintf(pp, sizeof(pp), "%s/fe_place_armed.txt", package_dir);
                 FILE *pf = fopen(pp, "w");
                 if (pf) { fprintf(pf, "path=%s\n", src); fclose(pf); }
-                fe_clip_write(package_dir, "place", src);
+                fe_clip_write(house_root, "place", src);
                 {
                     char script[MAX_PATH];
-                    snprintf(script, sizeof(script), "%s/ops/fe_place_on_desk.sh", package_dir);
+                    snprintf(script, sizeof(script), "%s/&.widgits/file-explorer/ops/fe_place_on_desk.sh", house_root);
                     fe_spawn_detached(script, house_root, package_dir, src);
                 }
             }
