@@ -27,6 +27,7 @@
 6. **Cli-io on all entity context menus** (experimental; more verbs than `mv`; re-add the Cli-io row to File Explorer's `meta.pdl` once a human-typable field exists).
 7. Place from the **desk** into an Inventory; drag between explorer windows; right-click methods for a pal with no `sprite.csv`.
 8. Robot/puzzle-piece entities carrying events, dropped into inventories, methods run from the Inventory right-click; slow migrate of `inventory.txt`/`qolq`; File METHOD stub + 📁 icon mode.
+8a. **Pal icons in the Linux dock (always-on-top OFF):** pal windows show the generic app image because they have no `_NET_WM_ICON` (title `tile:<id>:<glyph>`, class `MuchiverseLivedesk`). Set `_NET_WM_ICON` from the entity's `sprite.csv` pixels at window creation in `khtpm_entity.c` (~line 4178, where `XStoreName` is called). **Keep WM_CLASS class `MuchiverseLivedesk`** - the xwayland-grab-access-rules allowlist matches it (comment at ~3362). Optionally make the instance name (res_name) unique per entity so the dock doesn't group them. Queued behind the dock unfactor (same binaries).
 
 ### Engine / architecture
 9. ~~UI scaling~~ **done 2026-09-20** (`7b7474b7`,`3f78c94d`,`0a030d62`): `desktop_pos.txt` is reference-space px, entity/dock verified in private Xephyr at 4 sizes; **still unverified on the real second computer + real Wayland; Windows entity twin `tp_desktop_window_win.c` still absolute px.**
