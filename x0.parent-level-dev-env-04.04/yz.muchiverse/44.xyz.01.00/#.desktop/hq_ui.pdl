@@ -17,6 +17,16 @@ win_top_y=96
 click_two_step=1
 font_scale=1.25
 
+# Screen-relative UI scale (2026-09-19). On top of font_scale, taskbar size,
+# entity/grid size and the strip's left margin scale with the monitor:
+#   auto = min(screen_w / ui_ref_width, screen_h / ui_ref_height), 0.5-3.0
+# ui_ref_* is the screen the layouts were tuned on (auto = 1.0 there, so
+# that machine looks exactly as before). Defaults are built in; uncomment
+# to change. ui_scale = 0 means auto; a value like 0.8 forces that factor.
+# ui_scale=0
+# ui_ref_width=2496
+# ui_ref_height=1664
+
 # font_family: house-wide DEFAULT font (fontconfig name, e.g. "DejaVu
 # Sans" / "Times New Roman" / "Comic Sans MS" / "Helvetica"). A window's
 # own CSS font-family (if it sets one) always wins - this is only the

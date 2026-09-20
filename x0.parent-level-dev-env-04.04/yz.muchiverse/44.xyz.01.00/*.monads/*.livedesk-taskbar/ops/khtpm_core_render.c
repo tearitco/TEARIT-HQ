@@ -2915,6 +2915,43 @@ static int g_click_two_step = 1;
  * font-size, row heights, paddings) picks this up for free. Settings
  * 'Size -'/'Size +' step it via the UI_SCALE_MINUS/PLUS verbs. */
 static int g_ui_scale_pct = 100;
+/* Screen-relative auto scale (2026-09-19, BUG-LOG "UI does not scale to
+ * the monitor"). g_ui_scale_pct = g_ui_user_pct (hq_ui.pdl font_scale,
+ * what the Settings Size -/+ buttons edit) * g_ui_auto_pct / 100, where
+ * g_ui_auto_pct = min(screen_w/ui_ref_width, screen_h/ui_ref_height)
+ * clamped 50..300, or ui_scale*100 when the ui_scale override is > 0.
+ * The reference (hq_ui.pdl ui_ref_width/ui_ref_height, default 2496x1664)
+ * is the screen the layouts were tuned on, so auto = 100 there and
+ * nothing changes on that machine. Always recomputed from these bases,
+ * never accumulated, so repeated layout passes are idempotent. */
+static int g_ui_user_pct = 100;
+static int g_ui_auto_pct = 100;
+static int g_ui_screen_w = 0, g_ui_screen_h = 0; /* 0 = not probed yet -> auto 100 */
+static int g_ui_ref_w = 2496, g_ui_ref_h = 1664;
+static int g_ui_override_pct = 0; /* hq_ui.pdl ui_scale (0 = auto) */
+static void kh_ui_apply_scale(void) {
+    int a = 100;
+    if (g_ui_override_pct > 0) a = g_ui_override_pct;
+    else if (g_ui_screen_w > 0 && g_ui_screen_h > 0 && g_ui_ref_w > 0 && g_ui_ref_h > 0) {
+        int rw = (int)((long)g_ui_screen_w * 100 / g_ui_ref_w);
+        int rh = (int)((long)g_ui_screen_h * 100 / g_ui_ref_h);
+        a = rw < rh ? rw : rh;
+    }
+    if (a < 50) a = 50;
+    if (a > 300) a = 300;
+    g_ui_auto_pct = a;
+    int p = (g_ui_user_pct * a + 50) / 100;
+    if (p < 25) p = 25;
+    if (p > 400) p = 400;
+    g_ui_scale_pct = p;
+}
+/* Screen-relative px (entity grid/window sizes, which font_scale must not
+ * change): base * auto / 100, min 1. */
+static int kh_auto_px(int base_px) {
+    if (g_ui_auto_pct == 100) return base_px;
+    int v = (base_px * g_ui_auto_pct + 50) / 100;
+    return (base_px > 0 && v < 1) ? 1 : v;
+}
 /* REAL, NEW 2026-09-10, direct instruction ("when should we add font
  * picker to settings") - house-wide DEFAULT font family, same real
  * role font_scale already plays for size. Any window/CSS that sets its
@@ -5183,10 +5220,10 @@ static int layout_sidebar_panel(Elem *page) {
 /* ============ end generic sidebar+panel scroll ============ */
 
 #define DOCK_BAR_H scaled(36)  /* UI-scaled, LIVEDESK-UI-SCALE.md (base 36) */
-#define DOCK_SPRITE_PX 24
-#define DOCK_CELL_GAP 16
-#define DOCK_NAV_BADGE_PX 36
-#define DOCK_FOCUS_BOX_W 64
+#define DOCK_SPRITE_PX kh_auto_px(24) /* screen-relative only (not font_scale), see kh_ui_apply_scale() */
+#define DOCK_CELL_GAP kh_auto_px(16) /* screen-relative only (not font_scale), see kh_ui_apply_scale() */
+#define DOCK_NAV_BADGE_PX kh_auto_px(36) /* screen-relative only (not font_scale), see kh_ui_apply_scale() */
+#define DOCK_FOCUS_BOX_W kh_auto_px(64) /* screen-relative only (not font_scale), see kh_ui_apply_scale() */
 /* REAL FIX 2026-09-14, direct live report ("the +- is not centered in
  * the space for it either... u may want to make the space for it
  * wider to accomodate"): 80px was sized back when nav badges on this
@@ -5195,7 +5232,7 @@ static int layout_sidebar_panel(Elem *page) {
  * 30s - two digits - and the old margin left the pair cramped against
  * the last cell. Widened; dock_place_pager() below now centers the
  * pair within this margin instead of hugging the right edge. */
-#define DOCK_PAGER_W 110
+#define DOCK_PAGER_W kh_auto_px(110) /* screen-relative only (not font_scale), see kh_ui_apply_scale() */
 /* DOCK_MAX_PACK removed 2026-09-14 (DOCK-BAR-GENERIC-LAYOUT-MIGRATION.md
  * phase 1) - was the fixed-size bound for the bottom bar's own
  * hand-packed pack[] array, deleted along with it now that
@@ -5300,11 +5337,44 @@ static int dock_text_px(const char *s) {
     }
 }
 
-/* Compact left-packed cells (old strip), not equal-split across the screen. */
+/* A cell's natural (unshrunk) width; the two shapes layout_dock_toolbar_row()
+ * used inline before. */
+static int dock_cell_natural_w(Elem *t) {
+    int cw;
+    if (elem_has_class(t, "no-nav")) {
+        cw = 6 + dock_text_px(t->label) + 10;
+        if (cw < 40) cw = 40;
+        return cw;
+    }
+    cw = 6 + DOCK_NAV_BADGE_PX;
+    if (t->sprite[0]) cw += DOCK_SPRITE_PX + 4;
+    cw += dock_text_px(t->label) + 10;
+    if (cw < 52) cw = 52;
+    if (cw > 180) cw = 180;
+    return cw;
+}
+
+/* Compact left-packed cells (old strip), not equal-split across the screen.
+ * If the natural widths + gaps would run past max_w (a smaller screen than
+ * the layouts were tuned on), every cell is shrunk by the same ratio so the
+ * whole row fits instead of being cut off at the screen edge. Recomputed
+ * from the natural widths every pass, so it is idempotent. */
 static int layout_dock_toolbar_row(Elem *row, int x, int y, int max_w) {
     int j, col_x = x, used = 0;
+    int nat_total = 0, n_cells = 0, shr_num = 1, shr_den = 1;
     row->x = x; row->y = y; row->h = DOCK_BAR_H; row->nav_index = 0;
     css_compute_style(&g_sheet, row->tag, row->id, row->classes, row->n_classes, 0, &row->style);
+    for (j = 0; j < row->n_children; j++) {
+        Elem *t = row->children[j];
+        if (strcmp(t->tag, "item") != 0) continue;
+        nat_total += dock_cell_natural_w(t);
+        n_cells++;
+    }
+    if (n_cells > 0 && max_w > 0) {
+        int avail = max_w - n_cells * DOCK_CELL_GAP;
+        if (avail < n_cells * 24) avail = n_cells * 24;
+        if (nat_total > avail) { shr_num = avail; shr_den = nat_total; }
+    }
     for (j = 0; j < row->n_children; j++) {
         Elem *t = row->children[j];
         int cw;
@@ -5316,8 +5386,8 @@ static int layout_dock_toolbar_row(Elem *row, int x, int y, int max_w) {
          * readout after the clock): laid out and drawn, but no nav
          * index, so it gets no "[ ]N." badge and arrows/digits skip it. */
         if (elem_has_class(t, "no-nav")) {
-            cw = 6 + dock_text_px(t->label) + 10;
-            if (cw < 40) cw = 40;
+            cw = dock_cell_natural_w(t);
+            if (shr_den > 1) cw = cw * shr_num / shr_den;
             t->x = col_x; t->y = y; t->w = cw; t->h = DOCK_BAR_H; t->nav_index = 0;
             css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
             col_x += cw + DOCK_CELL_GAP;
@@ -5325,11 +5395,8 @@ static int layout_dock_toolbar_row(Elem *row, int x, int y, int max_w) {
             if (used > max_w) used = max_w;
             continue;
         }
-        cw = 6 + DOCK_NAV_BADGE_PX;
-        if (t->sprite[0]) cw += DOCK_SPRITE_PX + 4;
-        cw += dock_text_px(t->label) + 10;
-        if (cw < 52) cw = 52;
-        if (cw > 180) cw = 180;
+        cw = dock_cell_natural_w(t);
+        if (shr_den > 1) cw = cw * shr_num / shr_den;
         t->x = col_x;
         t->y = y;
         t->w = cw;
@@ -5458,6 +5525,7 @@ static int layout_dock_bar(Elem *page) {
     sh = kh_screen_h();
     load_theme_colors();
     load_dock_strip_offset(&ox, &oy);
+    ox = kh_auto_px(ox); /* left margin follows the screen-relative scale (oy stays: it clears the desktop's own top panel) */
     if (is_bottom) {
         int inset = ox;
         if (inset < 8) inset = 8;
@@ -7167,7 +7235,7 @@ static void dispatch(const char *action) {
         /* LIVEDESK-UI-SCALE.md - step font_scale in hq_ui.pdl by 0.25,
          * clamp 0.75..2.0, re-size the chrome font, relayout, repaint.
          * Other open windows follow via hq_ui_pdl_reload_if_changed(). */
-        int s = g_ui_scale_pct + (action[9] == 'P' ? 25 : -25);
+        int s = g_ui_user_pct + (action[9] == 'P' ? 25 : -25); /* the user's font_scale, not the screen-auto-scaled effective pct */
         if (s < 75) s = 75;
         if (s > 200) s = 200;
         desktop_set_font_scale(g_house_root, s);
@@ -11770,7 +11838,8 @@ static void desktop_set_font_scale(const char *house_root, int pct) {
     for (int i = 0; i < n; i++) fputs(lines[i], wf);
     if (!replaced) fprintf(wf, "font_scale=%.2f\n", pct / 100.0);
     fclose(wf);
-    g_ui_scale_pct = pct;
+    g_ui_user_pct = pct;
+    kh_ui_apply_scale();
     hq_ui_pdl_touch_marker(house_root);
 }
 
@@ -11833,8 +11902,19 @@ static void desktop_load_click_two_step(const char *house_root) {
             int p = (int)(atof(val) * 100.0 + 0.5);
             if (p < 50) p = 50;      /* the hq_ui.pdl comment's own 0.5-3.0 range */
             if (p > 300) p = 300;
-            g_ui_scale_pct = p;
+            g_ui_user_pct = p;
+            kh_ui_apply_scale();
         }
+        /* ui_scale: manual screen-scale override (0 = auto from the screen
+         * size); ui_ref_width/ui_ref_height: the screen the layouts were
+         * tuned on. See kh_ui_apply_scale(). */
+        else if (strcmp(line, "ui_scale") == 0) {
+            int p = (int)(atof(val) * 100.0 + 0.5);
+            g_ui_override_pct = p > 0 ? p : 0;
+            kh_ui_apply_scale();
+        }
+        else if (strcmp(line, "ui_ref_width") == 0 && atoi(val) > 0) { g_ui_ref_w = atoi(val); kh_ui_apply_scale(); }
+        else if (strcmp(line, "ui_ref_height") == 0 && atoi(val) > 0) { g_ui_ref_h = atoi(val); kh_ui_apply_scale(); }
         else if (strcmp(line, "font_family") == 0 && val[0]) {
             snprintf(g_ui_font_family, sizeof(g_ui_font_family), "%s", val);
         }
@@ -14475,6 +14555,14 @@ static int read_initial_pos(const char *package_dir, int *out_x, int *out_y) {
     }
     fclose(f);
     if (x < 0 || y < 0) return 0;
+    /* A position saved on a bigger screen must not land off a smaller one.
+     * Only when the screen-relative scale is active (auto != 100), so the
+     * reference screen behaves exactly as before. */
+    if (g_ui_auto_pct != 100 && g_ui_screen_w > 0 && g_ui_screen_h > 0) {
+        int maxx = g_ui_screen_w - WIN_PX, maxy = g_ui_screen_h - WIN_PX;
+        if (x > maxx) x = maxx > 0 ? maxx : 0;
+        if (y > maxy) y = maxy > 0 ? maxy : 0;
+    }
     *out_x = x; *out_y = y;
     return 1;
 }
@@ -15789,7 +15877,21 @@ static int tp_main(int argc, char **argv) {
      * optional, house-wide grid cell size as early as possible (right
      * after g_house_root resolves, before anything below uses
      * GRID_CELL_PX). */
-    GRID_CELL_PX = read_grid_cell_px(g_house_root);
+    /* Entity grid/window size is screen-relative (hq_ui.pdl ui_scale/
+     * ui_ref_*; auto = 100 on the reference screen). This mode has a local
+     * Display and never sets the dpy global, so probe the screen size with
+     * a throwaway connection. Saved desktop_pos.txt values stay absolute
+     * screen px; read_initial_pos() clamps them onto the visible screen. */
+    {
+        Display *pd = XOpenDisplay(NULL);
+        if (pd) {
+            g_ui_screen_w = DisplayWidth(pd, DefaultScreen(pd));
+            g_ui_screen_h = DisplayHeight(pd, DefaultScreen(pd));
+            XCloseDisplay(pd);
+            kh_ui_apply_scale();
+        }
+    }
+    GRID_CELL_PX = kh_auto_px(read_grid_cell_px(g_house_root));
     /* Stage 2c PROOF - see launch_khtpm_menu()'s own header comment. */
     {
         char menu_chtpm_path[TP_PATH_BUF];
@@ -18707,6 +18809,9 @@ int main(int argc, char **argv) {
     XSetErrorHandler(kh_nonfatal_x_error);
     screen = DefaultScreen(dpy);
     cmap = DefaultColormap(dpy, screen);
+    g_ui_screen_w = DisplayWidth(dpy, screen);
+    g_ui_screen_h = DisplayHeight(dpy, screen);
+    kh_ui_apply_scale(); /* screen-relative UI scale, see kh_ui_apply_scale() */
     /* class="user-resizable" opens at a modest fixed size, offset from
      * the corner so the chrome (x / ! / _) is always reachable. NOT
      * derived from DisplayWidth/Height - those read the framebuffer,
@@ -18718,8 +18823,8 @@ int main(int argc, char **argv) {
         int sw = DisplayWidth(dpy, screen), sh = DisplayHeight(dpy, screen);
         g_win_x = 90;
         g_win_y = WM_MANAGED_DRAG_MIN_Y;
-        g_win_w = 1120;
-        g_win_h = 720;
+        g_win_w = kh_auto_px(1120);
+        g_win_h = kh_auto_px(720);
         if (g_win_w > sw - g_win_x - 60)  g_win_w = sw - g_win_x - 60;
         if (g_win_h > sh - g_win_y - 40)  g_win_h = sh - g_win_y - 40;
         if (g_win_w < KH_WIN_MIN_W) g_win_w = KH_WIN_MIN_W;

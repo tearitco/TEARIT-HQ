@@ -59,6 +59,39 @@ note under it — don't silently edit it away.*
   sizes. Beware `assign_nav_and_layout` idempotency (see
   `khtpm-shared-layout-caution`) if scale touches layout mutations.
 
+  🔄 **2026-09-19 FIXED (screen-relative scale; positions + real second
+  monitor still to confirm).** `khtpm_core_render.c` now has one
+  screen-relative factor: `auto = min(screen_w/ui_ref_width,
+  screen_h/ui_ref_height)`, clamped 50..300%, reference = this machine's
+  2496x1664 (so auto is 100 here and nothing changes). Keys in
+  `#.desktop/hq_ui.pdl`: `ui_scale` (0 = auto, or a forced factor),
+  `ui_ref_width`, `ui_ref_height`. Effective UI scale =
+  `font_scale` (the Settings Size -/+ value) x auto, recomputed from those
+  bases each time (`kh_ui_apply_scale()`), so layout passes stay
+  idempotent; Size -/+ now steps `font_scale` itself, not the combined
+  value. Applied to: strip/row/chrome heights and fonts (via `scaled()`),
+  the dock's sprite/gap/badge/focus-box/pager sizes, the strip's left
+  margin (`strip_x_offset`), entity grid cell + window size (`WIN_PX`,
+  from `desk_grid.pdl cell_px`), and the default user-resizable window
+  size. The dock row also now shrinks its cells proportionally if it would
+  run past the screen edge. Verified in a private Xephyr with a private
+  house root (never the live desktop): 2496x1664 gives the same dock
+  geometry as the live old-binary dock (2082x45+200+50 top,
+  2096x45+200+1619 bottom); 1366x768 fits with no wrapped labels
+  (1166x23); 1920x1080 and 3840x2160 also render at proportional sizes.
+  **Not done / unverified:** (1) `desktop_pos.txt` stays absolute screen
+  px (about ten tools write it: tp_place_desktop*.c, tp_arm_placer_rmmv.c,
+  fe_place_on_desk.sh, mr_move_to_entity.c, taskbar manager, pet
+  button.sh...), so an entity saved on a bigger screen is only clamped onto
+  the visible screen and re-snapped, not re-spaced; converting to
+  reference-space coordinates means updating all of those writers.
+  (2) The entity window itself was not observed on screen under Xephyr
+  (the process exited early there); only its clamp/snap of the saved
+  position and the grid math were checked. (3) `win_top_y` (96) and
+  `oy` (`strip_y_offset` 50) stay absolute on purpose: they clear the
+  desktop's own top panel. (4) Not tried on the user's real second
+  computer.
+
 - **`nav.sh`'s primary test commands (`nav`/`row`/`key`/`esc`/`type`)
   are silent no-ops — they write to a dead relay file** (found
   2026-09-18, chasing kilo's real WSR-CIV testing confusion). Confirmed
