@@ -105,13 +105,10 @@ extern char **environ;
 /* REAL Stage 5 §5d.10 (2026-08-16) - bumped 256->512 to match db-hq's
  * own original headroom (khtpm_hq_render.c) now that db-hq mode's own
  * 15-tab/sidebar/panel tree shares this same pool. */
-static void nav_tab_unregister(void);
-static void nav_ledger_publish(void);
 static void popup_handle_click(int px, int py);
 static void handle_key(KeySym ks, char ch);
 static void grid_col_to_letters(int col, char *out, size_t outsz); /* defined near default_grid_handle_key() - needed earlier by dispatch()'s own CSVH_GRIDCOMMIT-style handlers */
 static void history_path(char *out, size_t outsz);
-static void history_unregister(void); /* REAL, NEW 2026-08-29 - see its own real definition/comment near history_path() */
 static void zero_nav_subtree(Elem *e); /* generic: recursively zero nav_index (see its definition) */
 static void kh_grab_keyboard_retry(void);
 static void kh_capture_click(int x, int y, int button);
@@ -671,25 +668,6 @@ static Elem *elem_new(const char *tag) {
      * call - see that function's own comment. */
     if (*g_elem_n_target >= MAX_ELEMS) return NULL;
     Elem *e = &g_elem_pool_target[(*g_elem_n_target)++];
-    memset(e, 0, sizeof(*e));
-    snprintf(e->tag, sizeof(e->tag), "%s", tag);
-    return e;
-}
-
-/* REAL BUG FIX 2026-08-26 (live user report: "all visual from common-
- * events disappears... after show-choices has been open a while") -
- * elem_new()'s single shared g_pool[MAX_ELEMS] never recycles slots.
- * Dynamic, frequently-rebuilt UI content (command lists, sidebar items)
- * must NOT consume that shared pool on every rebuild, or a long enough
- * real session exhausts it and the affected panel silently goes blank
- * (elem_new() returns NULL, guarded call sites just skip adding
- * content). Fix: give each frequently-rebuilt list its OWN small,
- * fixed, NEVER-freed array of real Elem structs (declared separately
- * from g_pool, sized generously for realistic use), and reuse the SAME
- * struct instances every rebuild instead of allocating fresh ones. */
-static Elem *reusable_slot(Elem *slots, int max_slots, int index, const char *tag) {
-    if (index < 0 || index >= max_slots) return NULL;
-    Elem *e = &slots[index];
     memset(e, 0, sizeof(*e));
     snprintf(e->tag, sizeof(e->tag), "%s", tag);
     return e;
@@ -3128,11 +3106,6 @@ static void kh_shift_subtree_xy(Elem *e, int dx, int dy) {
 }
 
 
-static void nav_tab_register(const char *type, const char *title);
-static void nav_tab_unregister(void);
-static void nav_tab_cycle(void);
-static void nav_tab_poll_active(void);
-static void nav_ledger_publish(void);
 
 /* ============================================================
  * REAL FRAME-HISTORY-DERIVED PAINT (2026-08-28, Phase 2 of
@@ -3505,47 +3478,6 @@ static void kh_paint_frame_line(const char *line) {
     draw_elem(&tmp, 0);
 }
 
-/* Palette content signature - drives the layout/serialize cache below.
- * A palette tile grid is 256+ Elems; re-running dbhq_layout_pass() +
- * re-serialising the whole grid to palettes_frame.txt on EVERY redraw
- * (focus move, unrelated tick, ...) is what made palettes "incredibly
- * slow". Only these inputs change the laid-out grid; when they are
- * unchanged we repaint straight from the already-written frame file. */
-/* REAL, ported verbatim 2026-08-25 (Stage 3 bookmarks port) from
- * khtpm_hq_render.c's own hq_run_detached()/g_input_elem mechanism -
- * bookmarks' own onClick="open:<path>" row-open and
- * onClick="input:<file>|<postcmd>" New+ field both depend on this;
- * neither existed anywhere in this binary before. Kept generic (not
- * db-hq-specific) since any future database-window consumer gets it
- * for free, same reasoning khtpm_hq_render.c's own header used. */
-static void hq_run_detached(int is_open, const char *arg) {
-    pid_t mid = fork();
-    if (mid < 0) return;
-    if (mid == 0) {
-        pid_t gc = fork();
-        if (gc < 0) _exit(127);
-        if (gc == 0) {
-            setsid();
-            if (is_open) {
-                setenv("GDK_BACKEND", "x11", 1);
-                execlp("xdg-open", "xdg-open", arg, (char *)NULL);
-            } else {
-                execl("/bin/sh", "sh", "-c", arg, (char *)NULL);
-            }
-            _exit(127);
-        }
-        _exit(0);
-    }
-    waitpid(mid, NULL, 0);
-}
-
-static Elem *g_input_elem = NULL;
-static char g_input_buf[256];
-
-static void input_disarm(void) {
-    g_input_elem = NULL;
-    g_input_buf[0] = '\0';
-}
 
 
 
@@ -3559,24 +3491,11 @@ static void input_disarm(void) {
  * window for that instead). */
 /* ====================== end db-hq mode block ========================= */
 
-/* ======================================================================
- * REAL, events-hq-mode-only state + functions (§5d.11, 2026-08-16) -
- * ported from khtpm_events_hq_render.c. UNLIKE db-hq's own port, this
- * app's own draw_elem()/render_tree()/font_for()/alloc_pixel()/
- * xft_color() turned out NOT to be behaviorally identical to the
- * shared khtpm_draw_core.c versions (single-arg signatures, no hover
- * state, inline tab-active-fill special case) - kept here as real,
- * evhq_-prefixed per-mode copies rather than silently reusing the
- * shared ones, a real, documented exception to the "already shared via
- * khtpm_draw_core.c" assumption that held for db-hq. Also real,
- * genuinely different from db-hq: events-hq is legitimately
- * MULTI-INSTANCE (one window per entity's event_pkg, scoped by
- * pkg_dir - see button.sh's own same_entity_pids()), takes 2 extra
- * real argv params (pkg_dir/entity_label) db-hq doesn't have, and its
- * own module launch passes 3 args not 1. Harmless, unused, when
- * g_is_events_hq is 0.
- * ====================================================================== */
-static const int g_is_events_hq = 0; /* events-hq C deleted 2026-09-03 - ported to events-hq.xhtpm + projector; kept as a const 0 so the pure-flag guards below constant-fold */
+/* events-hq's C mode (its own evhq_-prefixed draw/render copies and the
+ * g_is_events_hq flag) was deleted 2026-09-03 - events-hq is now
+ * events-hq.xhtpm + a projector on this generic renderer. The dead flag was
+ * removed 2026-09-20 in the dock-unfactor dead-code pass
+ * (08-roadmap/design-docs/DOCK-UNFACTOR-AUDIT.md §2). */
 /* g_is_chat_hai removed 2026-09-01 - chat-hai's own hardcoded mode is
  * gone (migrated onto the generic sidebar/panel/scrolllist/cli_io
  * path, see chat_hai_projector.sh's own header comment); it now
@@ -6668,7 +6587,6 @@ static void switch_page(const char *name) {
  * exactly - CLOSE/void/GOTO:/BACK are handled here, everything else is a
  * real shell command run with package_dir/house_root as args, same
  * "%s '%s' '%s'" shape). */
-static void apply_theme(const char *bg_hex, const char *fg_hex);
 static void dispatch(const char *action) {
     /* REAL, NEW 2026-09-03 (HQ-WINDOW-TASKBAR-ENTRIES-AND-MINIMIZE-2026-09-
      * 03.md §2.2) - HQ window taskbar entry click, handled LOCALLY in the
@@ -7184,16 +7102,6 @@ static void dispatch_no_quit(const char *action) {
     snprintf(cmd, sizeof(cmd), "%s '%s' '%s' >/dev/null 2>&1 &", action, g_package_dir, g_house_root);
     int rc = system(cmd);
     (void)rc;
-}
-
-/* REAL, ported verbatim from taskbar-settings' own real apply_theme()
- * - builds the full apply_theme_op command string (bg/fg baked in)
- * and fires it through the SAME shared dispatch() every mode uses. */
-static void apply_theme(const char *bg_hex, const char *fg_hex) {
-    char cmd[PATH_BUF * 3];
-    snprintf(cmd, sizeof(cmd), "'%s/*.monads/*.livedesk-taskbar/ops/+x/apply_theme_op.+x' '%s' '%s' '%s'",
-             g_house_root, g_house_root, bg_hex, fg_hex);
-    dispatch(cmd);
 }
 
 /* REAL, generic capability #2 (2026-08-31, xperiments/khtpm-generic-
@@ -9385,17 +9293,19 @@ static long g_history_cursor = -1;
  * was keyed by MODE NAME ONLY, so every window of the same mode - real
  * user window, a test window, a second agent's window - read the exact
  * same file. Real fix, mirrors nav_tab's own existing per-pid
- * convention EXACTLY (nav_tab_dir()/nav_tab_register(), same file):
+ * convention of the (since removed, 2026-09-20) nav_tab registry EXACTLY:
  * one real file per PROCESS, not per mode. Every consumer (a real
  * human's own X11 input via kh_capture_key()/kh_capture_click(),
  * or an external agent's relay write) now only ever reaches the ONE
  * window it actually targets - no possible cross-window bleed
  * regardless of how many windows of the same mode are open at once.
  * Discovery for an external writer that needs to find "the db-hq
- * window showing X": nav_master_current.txt already publishes
- * "<pid> <tab_ordinal> <nav_index> <id>" rows (see nav_ledger_
- * publish()), and nav_tab/<pid> holds that pid's real window title -
- * cross-reference the two, no new registry needed. */
+ * window showing X": the old nav_master_current.txt / nav_tab/<pid>
+ * registries (nav_ledger_publish()/nav_tab_register()) were dead code and
+ * were removed 2026-09-20 (DOCK-UNFACTOR-AUDIT.md §2). Today an agent
+ * resolves the PID from `ps`/the window's module_parent.pid or
+ * livedesk_hq_windows_<pid>.txt - see 08-roadmap/design-docs/
+ * RELAY-WINDOW-TARGETING-DESIGN.md §1/§3b. */
 static void history_dir(char *out, size_t outsz) {
     snprintf(out, outsz, "%s/#.desktop/entity_menu_history", g_house_root);
 }
@@ -9405,15 +9315,6 @@ static void history_path(char *out, size_t outsz) {
     mkdir(dir, 0777);
     snprintf(out, outsz, "%s/%d.txt", dir, (int)getpid());
 }
-/* Real cleanup counterpart to nav_tab_unregister() - called from the
- * same 4 real quit paths that call it, so a closed window's history
- * file doesn't sit around forever. Harmless if never opened. */
-static void history_unregister(void) {
-    char path[PATH_BUF];
-    history_path(path, sizeof(path));
-    unlink(path);
-}
-
 /* Create this process's relay file empty at startup and seed the cursor
  * to 0, so the FIRST keystroke a generic terminal keyboard
  * (khtpm_kbd_ascii.+x) sends into a brand-new relay isn't mistaken for
@@ -9436,280 +9337,6 @@ static void history_init_empty(void) {
  * Printable ASCII as-is; Tab=9; Return/Esc/BS same as existing relay;
  * arrows/page 200-205 (already in dispatch_relay_code). Other keys
  * write the raw X11 KeySym so consume can handle_key(ks,0). */
-/* Tab-cycle: live registry is per-pid files (so two processes cannot
- * clobber one rewrite). Ledger is append-only audit. */
-static int g_nav_tab_ordinal;
-
-static void nav_tab_dir(char *out, size_t n) {
-    snprintf(out, n, "%s/#.desktop/nav_tab", g_house_root);
-}
-
-/* Real, NEW 2026-09-03 - size-capped appender for the append-only master
- * ledger (nav_master_ledger.txt). Written by THREE sites in this file
- * (nav_tab_register's REG rows, the nav SNAP snapshots, the RMMV click
- * rows) plus tp_arm_placer_rmmv.c - it previously grew unbounded (a real
- * live case hit 5.9MB / 24k lines in a single session). Consumers
- * (tp_place_desktop_rmmv.c / tp_arm_placer_rmmv.c) only ever read the
- * NEWEST rows, so each write keeps the newest NAV_LEDGER_CAP bytes and
- * drops the head - real, atomic tmp+rename, the same roof shape this
- * file-family already uses elsewhere. */
-#define NAV_LEDGER_CAP (250u * 1024u)
-static void nav_ledger_trim(const char *house_root) {
-    char led[PATH_BUF], tmp[PATH_BUF];
-    snprintf(led, sizeof(led), "%s/#.desktop/nav_master_ledger.txt", house_root);
-    long sz = 0;
-    FILE *sf = fopen(led, "rb");
-    if (!sf) return;
-    fseek(sf, 0, SEEK_END);
-    sz = ftell(sf);
-    fclose(sf);
-    if (sz <= (long)NAV_LEDGER_CAP) return;
-    long start = sz - (long)NAV_LEDGER_CAP;
-    if (start < 0) start = 0;
-    snprintf(tmp, sizeof(tmp), "%s.tmp.%d", led, (int)getpid());
-    FILE *rf = fopen(led, "rb");
-    FILE *wf = fopen(tmp, "wb");
-    if (rf && wf) {
-        fseek(rf, start, SEEK_SET);
-        int copy = 0;
-        char ch;
-        while ((ch = fgetc(rf)) != EOF) {
-            if (ch == '\n') copy = 1;
-            if (copy) fputc(ch, wf);
-        }
-        fclose(rf); rf = NULL;
-        fclose(wf); wf = NULL;
-        if (rename(tmp, led) != 0) unlink(tmp);
-    }
-    if (rf) fclose(rf);
-    if (wf) fclose(wf);
-}
-static void nav_ledger_write(const char *house_root, const char *s) {
-    char led[PATH_BUF];
-    snprintf(led, sizeof(led), "%s/#.desktop/nav_master_ledger.txt", house_root);
-    FILE *lf = fopen(led, "a");
-    if (lf) {
-        fputs(s, lf);
-        fclose(lf);
-        nav_ledger_trim(house_root);
-    }
-}
-
-static void nav_tab_register(const char *type, const char *title) {
-    char dir[PATH_BUF], path[PATH_BUF];
-    nav_tab_dir(dir, sizeof(dir));
-    mkdir(dir, 0777);
-    int max_ord = 0;
-    DIR *d = opendir(dir);
-    if (d) {
-        struct dirent *de;
-        while ((de = readdir(d))) {
-            if (de->d_name[0] == '.') continue;
-            char fp[PATH_BUF];
-            snprintf(fp, sizeof(fp), "%s/%s", dir, de->d_name);
-            pid_t pid = (pid_t)atoi(de->d_name);
-            if (pid > 1 && kill(pid, 0) != 0 && errno == ESRCH) {
-                unlink(fp);
-                continue;
-            }
-            FILE *rf = fopen(fp, "r");
-            if (!rf) continue;
-            int ord = 0;
-            unsigned long xid = 0;
-            if (fscanf(rf, "%d %lx", &ord, &xid) >= 1 && ord > max_ord) max_ord = ord;
-            fclose(rf);
-        }
-        closedir(d);
-    }
-    g_nav_tab_ordinal = max_ord + 1;
-    snprintf(path, sizeof(path), "%s/%d", dir, (int)getpid());
-    FILE *f = fopen(path, "w");
-    if (f) {
-        fprintf(f, "%d %lx %s %s\n", g_nav_tab_ordinal, (unsigned long)win,
-                type && type[0] ? type : "hq",
-                title ? title : "hq");
-        fclose(f);
-    }
-    {
-        char regline[512];
-        snprintf(regline, sizeof(regline), "REG pid=%d tab=%d xid=%lx type=%s %s\n",
-                 (int)getpid(), g_nav_tab_ordinal, (unsigned long)win,
-                 (type && type[0]) ? type : "hq",
-                 (title && title[0]) ? title : "hq");
-        nav_ledger_write(g_house_root, regline);
-    }
-}
-
-static void nav_tab_unregister(void) {
-    char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/#.desktop/nav_tab/%d", g_house_root, (int)getpid());
-    unlink(path);
-}
-
-static void nav_tab_cycle(void) {
-    char dir[PATH_BUF];
-    nav_tab_dir(dir, sizeof(dir));
-    typedef struct { int ord; unsigned long xid; pid_t pid; } Ent;
-    Ent ents[64];
-    int n = 0;
-    DIR *d = opendir(dir);
-    if (!d) return;
-    struct dirent *de;
-    while ((de = readdir(d)) && n < 64) {
-        if (de->d_name[0] == '.') continue;
-        pid_t pid = (pid_t)atoi(de->d_name);
-        char fp[PATH_BUF];
-        snprintf(fp, sizeof(fp), "%s/%s", dir, de->d_name);
-        if (pid > 1 && kill(pid, 0) != 0 && errno == ESRCH) {
-            unlink(fp);
-            continue;
-        }
-        FILE *rf = fopen(fp, "r");
-        if (!rf) continue;
-        int ord = 0;
-        unsigned long xid = 0;
-        if (fscanf(rf, "%d %lx", &ord, &xid) >= 2 && xid) {
-            ents[n].ord = ord;
-            ents[n].xid = xid;
-            ents[n].pid = pid;
-            n++;
-        }
-        fclose(rf);
-    }
-    closedir(d);
-    if (n < 1) return;
-    /* insertion sort by ordinal */
-    for (int i = 1; i < n; i++) {
-        Ent t = ents[i];
-        int j = i;
-        while (j > 0 && ents[j - 1].ord > t.ord) { ents[j] = ents[j - 1]; j--; }
-        ents[j] = t;
-    }
-    int me = -1;
-    pid_t selfpid = getpid();
-    for (int i = 0; i < n; i++) if (ents[i].pid == selfpid) { me = i; break; }
-    int nxt = (me >= 0) ? (me + 1) % n : 0;
-    char want[PATH_BUF];
-    snprintf(want, sizeof(want), "%s/#.desktop/nav_tab_active.txt", g_house_root);
-    unsigned long seq = 1;
-    FILE *rf2 = fopen(want, "r");
-    if (rf2) {
-        int t=0,p=0; unsigned long s=0;
-        if (fscanf(rf2, "tab=%d pid=%d seq=%lu", &t, &p, &s) >= 3) seq = s + 1;
-        fclose(rf2);
-    }
-    FILE *wf = fopen(want, "w");
-    if (!wf) return;
-    fprintf(wf, "tab=%d pid=%d seq=%lu\n", ents[nxt].ord, (int)ents[nxt].pid, seq);
-    fclose(wf);
-    /* Self-claim is handled by nav_tab_poll_active() in the loop so
-     * the TARGET process focuses its OWN window (X11 won't let us
-     * reliably activate a foreign client). */
-    if (ents[nxt].pid == selfpid)
-        nav_tab_poll_active();
-}
-
-static void nav_tab_poll_active(void) {
-    char want[PATH_BUF];
-    snprintf(want, sizeof(want), "%s/#.desktop/nav_tab_active.txt", g_house_root);
-    FILE *f = fopen(want, "r");
-    if (!f) return;
-    int tab = 0, pid = 0;
-    unsigned long seq = 0;
-    static unsigned long last_seq = 0;
-    if (fscanf(f, "tab=%d pid=%d seq=%lu", &tab, &pid, &seq) < 2) { fclose(f); return; }
-    fclose(f);
-    if (seq && seq == last_seq) return;
-    last_seq = seq;
-    if (tab != g_nav_tab_ordinal && pid != (int)getpid()) return;
-    kh_ungrab_kbd();
-    XRaiseWindow(dpy, win);
-    XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
-    XFlush(dpy);
-}
-
-
-
-static unsigned long g_nav_ledger_ck;
-
-static void nav_ledger_publish(void) {
-    unsigned long ck = 5381;
-    ck = ((ck << 5) + ck) + (unsigned)g_n_nav;
-    ck = ((ck << 5) + ck) + (unsigned)g_nav_tab_ordinal;
-    for (int i = 0; i < g_n_nav; i++) {
-        Elem *e = g_nav[i];
-        if (!e) continue;
-        const char *s = e->id[0] ? e->id : (e->onclick[0] ? e->onclick : e->tag);
-        ck = ((ck << 5) + ck) + (unsigned)e->nav_index;
-        for (const char *p = s; *p; p++) ck = ((ck << 5) + ck) + (unsigned char)*p;
-    }
-    if (ck == g_nav_ledger_ck) return;
-    g_nav_ledger_ck = ck;
-
-    char cur[PATH_BUF], led[PATH_BUF];
-    snprintf(cur, sizeof(cur), "%s/#.desktop/nav_master_current.txt", g_house_root);
-    snprintf(led, sizeof(led), "%s/#.desktop/nav_master_ledger.txt", g_house_root);
-    FILE *cf = fopen(cur, "w");
-    FILE *lf = fopen(led, "a");
-    if (lf) fprintf(lf, "SNAP pid=%d tab=%d n=%d\n", (int)getpid(), g_nav_tab_ordinal, g_n_nav);
-    for (int i = 0; i < g_n_nav; i++) {
-        Elem *e = g_nav[i];
-        if (!e) continue;
-        const char *s = e->id[0] ? e->id : (e->onclick[0] ? e->onclick : e->tag);
-        char line[512];
-        snprintf(line, sizeof(line), "%d %d %d %s\n",
-                 (int)getpid(), g_nav_tab_ordinal, e->nav_index, s);
-        if (cf) fputs(line, cf);
-        if (lf) fputs(line, lf);
-    }
-    if (cf) fclose(cf);
-    if (lf) fclose(lf);
-    nav_ledger_trim(g_house_root);
-}
-
-/* Phase 4: wraith-alpha frame_changed.txt — FILE marker, size-only.
- * Helpers are mode-agnostic (path table, same shape as history_path()).
- * Pilot WIRING is db-hq's loop only; other loops still call redraw()
- * directly. Do not bake g_is_db_hq into mark/consume. */
-static long g_frame_changed_last_size = -1;
-
-static void frame_changed_path(char *out, size_t outsz) {
-    snprintf(out, outsz, "%s/#.desktop/entity_menu_frame_changed.txt", g_house_root);
-}
-
-static void mark_frame_changed(void) {
-    char path[PATH_BUF];
-    frame_changed_path(path, sizeof(path));
-    FILE *f = fopen(path, "a");
-    if (!f) return;
-    fputc('.', f);
-    fclose(f);
-}
-
-static int consume_frame_changed(void) {
-    char path[PATH_BUF];
-    struct stat st;
-    frame_changed_path(path, sizeof(path));
-    if (stat(path, &st) != 0) {
-        g_frame_changed_last_size = 0;
-        return 0;
-    }
-    if (g_frame_changed_last_size < 0) {
-        g_frame_changed_last_size = st.st_size;
-        return 0;
-    }
-    if (st.st_size < g_frame_changed_last_size) {
-        g_frame_changed_last_size = st.st_size;
-        return 0;
-    }
-    if (st.st_size > g_frame_changed_last_size) {
-        g_frame_changed_last_size = st.st_size;
-        return 1;
-    }
-    return 0;
-}
-
-
 static void dispatch_relay_code(int code) {
     /* REAL, NEW 2026-09-05 - a relay-driven key is Shift-held only if
      * it's one of the explicit shifted-selection codes (220-225 below).
@@ -9772,10 +9399,6 @@ static void dispatch_relay_code(int code) {
              code != 203 && code != 204 && code != 205 && code != 210)
         handle_key((KeySym)code, 0);
 }
-static int hq_window_has_x_focus(void) {
-    return 1;
-}
-
 /* REAL, NEW 2026-09-11 - TEMPORARY diagnostic-only logging (direct
  * instruction: network-browser's cli_io focus/backspace bug has been
  * "fixed" 3 times now, every fix passing this house's own relay-driven
@@ -10573,7 +10196,6 @@ static void popup_handle_click(int px, int py) {
  * event-loop tick (~150ms, see hq_run_event_loop) only while armed;
  * detects a real 0->1 edge on Button1 so a single physical click
  * triggers exactly once, not once per poll tick while held down. */
-static int g_pal_rmmv_button1_was_down = 0;
 
 /* REAL, NEW 2026-09-04 (direct instruction: a taskbar-nav click, or a
  * click on a buried window, should bring it to the top even with
