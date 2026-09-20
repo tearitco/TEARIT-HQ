@@ -15233,7 +15233,11 @@ static int kh_load_cli_io_context_menu(MethodItem *items, int max) {
 
 static void kh_open_cli_io_context_menu(Elem *target, int win_px, int win_py) {
     if (!dpy) return;
-    MethodItem items[12];
+    MethodItem items[12 + MAX_METHODS];
+    char ent_dir[TP_PATH_BUF];
+    int is_ent[12 + MAX_METHODS];
+    ent_dir[0] = 0;
+    memset(is_ent, 0, sizeof(is_ent));
     int n = kh_load_cli_io_context_menu(items, 12);
     if (n == 0) {
         int i = 0;
@@ -15249,6 +15253,34 @@ static void kh_open_cli_io_context_menu(Elem *target, int win_px, int win_py) {
         }
         snprintf(items[i].label, sizeof(items[i].label), "Cancel"); snprintf(items[i].action, sizeof(items[i].action), "void"); i++;
         n = i;
+    }
+    /* A tile that carries an entity dir in sprite= (a pal shown in an Inventory)
+     * also offers that entity's own METHOD rows, inserted before the trailing
+     * Cancel. Only real shell actions are offered; built-in keywords the desktop
+     * handles in-process (CLOSE/void/OPEN_USER/CLI_IO ...) are skipped. */
+    if (target && target->sprite[0] && n > 0) {
+        char mp[TP_PATH_BUF];
+        snprintf(mp, sizeof(mp), "%s/meta.pdl", target->sprite);
+        if (access(mp, R_OK) == 0) {
+            MethodItem em[MAX_METHODS];
+            int en = load_methods(target->sprite, em, MAX_METHODS);
+            int keep_cancel = (n > 0 && strcmp(items[n - 1].action, "void") == 0);
+            int base = keep_cancel ? n - 1 : n;
+            int w = base;
+            for (int k = 0; k < en && w < 12 + MAX_METHODS - 1; k++) {
+                const char *a = em[k].action;
+                int keyword = 1;
+                for (const char *c = a; *c; c++)
+                    if (!((*c >= 'A' && *c <= 'Z') || *c == '_' || *c == ':')) { keyword = 0; break; }
+                if (keyword || strcmp(a, "void") == 0 || strchr(em[k].label, '\'')) continue;
+                items[w] = em[k];
+                is_ent[w] = 1;
+                w++;
+            }
+            if (keep_cancel) { snprintf(items[w].label, sizeof(items[w].label), "Cancel"); snprintf(items[w].action, sizeof(items[w].action), "void"); w++; }
+            n = w;
+            snprintf(ent_dir, sizeof(ent_dir), "%s", target->sprite);
+        }
     }
     g_cliio_ctx_target = target;
     if (g_package_dir[0] && target) {
@@ -15291,6 +15323,20 @@ static void kh_open_cli_io_context_menu(Elem *target, int win_px, int win_py) {
     }
     for (int i = 0; i < n; i++) {
         const char *act = items[i].action;
+        if (is_ent[i]) {
+            char raw[TP_PATH_BUF * 2], esc[TP_PATH_BUF * 3];
+            snprintf(raw, sizeof(raw), "sh '%s/&.widgits/file-explorer/ops/fe_entity_method.sh' '%s' '%s'",
+                     g_house_root, ent_dir, items[i].label);
+            size_t ew = 0;
+            for (const char *r = raw; *r && ew + 8 < sizeof(esc); r++) {
+                if (*r == '&') { memcpy(esc + ew, "&amp;", 5); ew += 5; }
+                else if (*r == '"') { memcpy(esc + ew, "&quot;", 6); ew += 6; }
+                else esc[ew++] = *r;
+            }
+            esc[ew] = '\0';
+            fprintf(cf, "    <item label=\"%s\" action=\"%s\"/>\n", items[i].label, esc);
+            continue;
+        }
         if (strcmp(act, "CUT") == 0 || strcmp(act, "COPY") == 0 || strcmp(act, "PASTE") == 0 ||
             strcmp(act, "DELETE") == 0 || strcmp(act, "PLACE") == 0) {
             /* real, house-standard cross-process bridge (see this
