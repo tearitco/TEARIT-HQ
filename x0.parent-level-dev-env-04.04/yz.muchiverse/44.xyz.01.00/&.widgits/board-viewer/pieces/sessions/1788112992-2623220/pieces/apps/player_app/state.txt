@@ -1,5 +1,0 @@
-module_path=system/prisc+x pal/main_module.pal
-project_id=board-viewer
-active_target_id=board_viewer
-last_click_x=20
-last_click_y=8

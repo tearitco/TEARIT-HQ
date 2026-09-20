@@ -1,1 +1,0 @@
-pieces/chtpm/layouts/board_viewer.chtpm
