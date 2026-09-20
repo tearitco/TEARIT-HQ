@@ -140,6 +140,45 @@ CURRENT KNOWN GAPS (next session):
   current working search path.
 - `JS_FreeRuntime` assert + empty TITLE row on results page = follow-ups.
 
+--- 2026-09-20 CONTINUATION (upgrade-on-creation + sxs createElement) ---
+VERIFIED / SHIPPED in this continuation block:
+- CE|define TRACE: `CE|define <name> as <ctor>` lines (all 1108 defines traced
+  with their ctor NAME + `(redefine)` marker) under NB_TRACE_CB=1. Ground
+  truth: ~1108 components register as kevlar's shared upgrade wrapper `D`;
+  a handful (ytd-app, ytd-search, yt-searchbox, ytd-miniplayer, ...) register
+  a REAL class `h`. NO redefines ever occur.
+- COMPONENT-REGISTRATION ROOT CAUSE found (bundle lines ~701512): every *
+  delayed* component registers through `sxs(O, name)`:
+    `sxs=function(O,S){GLa.add(S); var D=function(){var g=HTMLElement.call(
+     this)||this; g.is=S; if(mQz===S)return g.isInert=!0,g; g.createElement();
+     return g}; _.Y(D,HTMLElement); D.prototype.createElement=function(){
+     ... return h = _.l(eUV(function(){return _.a(O,null)})).next().value,
+     lmV(this), h}; customElements.define(S,D)}`
+  So kevlar exposes the WHOLE constructor body as `prototype.createElement()`
+  (render fn `O` via `_.a(O,null)` + `lmV(this)` attach). No native-ctor
+  semantics needed.
+- UPGRADE-ON-CREATION (push_node): elements built at RUNTIME (createElement/
+  appendChild/innerHTML after classes define) now look up the registry and
+  upgrade as a browser does — fast path only for hyphenated tags
+  (`che_upgrade_node_if_registered`, forward-decl ~line 1568, call at end of
+  push_node ~line 1796). VERIFIED: `document.createElement('ytd-search')`
+  returns an element with `constructor.name === 'h'`, `__nb_upgraded=true`,
+  prototype has `connectedCallback` + `ready` functions. The real searchbox
+  class is REACHABLE at runtime.
+- ce_upgrade_one now calls `prototype.createElement` (if a JS function) on
+  the upgraded wrapper after the lifecycle hooks, guarded + CE|createElement
+  exception dump. No exceptions, zero regression (home still ready/19 rows).
+CURRENT EMPIRICAL SNAPSHOT (masthead):
+- `<ytd-masthead>` upgrades to its `sxs` wrapper `D` ({constructor,
+  createElement}). Calling `m.createElement()` returns UNDEFINED — the
+  masthead render `_.a(O,null)` resolves to undefined, so lmV attaches
+  nothing, no shadow, no `<form>`/`#search-icon-legacy`. The domain node
+  stays the flat shell (#search-container / input#search, name=search_query).
+- `_.a(O,null) -> undefined` is the PRECISE next gap for materializing the
+  search UI. Next session: find why kevlar's structured renderer `_.a`
+  returns undefined for the masthead config (trace `_.a` input/output; check
+  it needs `_.Fe`/dom-sink host or an inner `document.createElement` path).
+
 DIAGNOSTIC RECORD (why the two "cannot read property of undefined" init
 TypeErrors happened — now FIXED):
 - ROOT CAUSE: kevlar's bevasrs bootstrap reads

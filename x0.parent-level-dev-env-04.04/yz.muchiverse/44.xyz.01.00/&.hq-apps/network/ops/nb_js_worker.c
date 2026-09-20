@@ -1567,6 +1567,11 @@ static JSValue nb_cl_contains(JSContext *ctx, JSValueConst this_val, int argc, J
 #define PROTO_TEXT 1 /* text nodes ride Text.prototype */
 #define PROTO_DOC 2  /* the document object rides Document.prototype */
 
+/* upgrade a freshly built wrapper if a custom-element class is registered
+ * for its tag (customElements upgrade-on-creation). Defined in the CE
+ * section below (line ~3070). */
+static void ce_upgrade_node_if_registered(JSContext *ctx, JSValue el, NbNode *n);
+
 /* Build a JS element object wrapping a C NbNode. */
 static JSValue push_node(JSContext *ctx, NbNode *n) {
     int nidx = node_index(n);
@@ -1789,6 +1794,11 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
      * stored the wrapper into itself -> identity broke). */
     JS_SetPropertyUint32(ctx, map, (uint32_t)nidx, JS_DupValue(ctx, el));
     JS_FreeValue(ctx, map);
+    /* customElements upgrade-on-creation (2026-09-20): elements built at
+     * runtime (createElement/appendChild/innerHTML after classes define) get
+     * the registered class + lifecycle like a browser; hyphenated tags only. */
+    if (n->tag && strchr(n->tag, '-'))
+        ce_upgrade_node_if_registered(ctx, el, n);
     return el;
 }
 
@@ -3066,7 +3076,37 @@ static void ce_upgrade_one(JSContext *ctx, NbNode *n, JSValue ctor) {
     ce_call_lifecycle(ctx, wrapper, "_initializeProperties");
     ce_call_lifecycle(ctx, wrapper, "ready");
     ce_call_lifecycle(ctx, wrapper, "connectedCallback");
+    /* sxs-style kevlar wrappers (2026-09-20): components register via
+     * `sxs(O, name)` which defines `D.prototype.createElement` that runs the
+     * component's render fn `_.a(O,null)` + lmV(this) attach — the whole
+     * constructor work without native ctor semantics. Masthead's D proto is
+     * exactly {constructor, createElement}; calling it materializes the UI. */
+    if (JS_IsObject(proto)) {
+        JSValue ce = JS_GetPropertyStr(ctx, proto, "createElement");
+        if (JS_IsFunction(ctx, ce)) {
+            JSValue r = JS_Call(ctx, ce, wrapper, 0, NULL);
+            if (JS_IsException(r)) {
+                char buf[1536];
+                const char *m = js_error_to_cstr(ctx, buf, sizeof(buf));
+                if (g_trace_cb) fprintf(stderr, "CE|createElement(%s): %s\n", n->tag ? n->tag : "?", m ? m : buf);
+            }
+            JS_FreeValue(ctx, r);
+        }
+        JS_FreeValue(ctx, ce);
+    }
     JS_FreeValue(ctx, proto);
+}
+
+static void ce_upgrade_node_if_registered(JSContext *ctx, JSValue el, NbNode *n) {
+    (void)el;
+    if (!n || !n->tag || !strchr(n->tag, '-')) return;
+    JSValue reg = ce_registry(ctx, 0);
+    if (JS_IsObject(reg)) {
+        JSValue ctor = JS_GetPropertyStr(ctx, reg, n->tag);
+        if (JS_IsObject(ctor)) ce_upgrade_one(ctx, n, ctor);
+        JS_FreeValue(ctx, ctor);
+    }
+    JS_FreeValue(ctx, reg);
 }
 
 static void ce_walk_upgrade(JSContext *ctx, NbNode *root, JSValue reg, const char *name) {
@@ -3132,6 +3172,14 @@ static JSValue ce_define(JSContext *ctx, JSValueConst this_val, int argc, JSValu
          * placeholder class FIRST and replaces it with the real lazy-loaded
          * class; last-define-wins (browsers would throw NotSupportedError). */
         if (argc > 1) {
+            if (g_trace_cb) {
+                size_t nl = 0;
+                const char *nn = NULL;
+                if (JS_IsFunction(ctx, argv[1]))
+                    nn = JS_ToCStringLen(ctx, &nl, JS_GetPropertyStr(ctx, argv[1], "name"));
+                fprintf(stderr, "CE|define %s as %s%s\n", name, nn ? nn : "?", dup ? " (redefine)" : "");
+                if (nn) JS_FreeCString(ctx, nn);
+            }
             JS_SetPropertyStr(ctx, reg, name, JS_DupValue(ctx, argv[1]));
             ce_registry_push_name(ctx, reg, name);
         }
