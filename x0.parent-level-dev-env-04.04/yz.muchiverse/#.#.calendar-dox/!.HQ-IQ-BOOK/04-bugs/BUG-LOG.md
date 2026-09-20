@@ -87,6 +87,21 @@ note under it — don't silently edit it away.*
   and treat any past test result that used bare `nav`/`row` as
   UNVERIFIED, not passing.
 
+  ✅ **FIXED 2026-09-19:** `nav.sh` now writes to the LIVE paths. Default
+  (no env) = `#.desktop/strip_history.txt` as bare decimal codes (digits,
+  Enter 13, Esc 27, Backspace 8, printable — exactly what
+  `dispatch_code()` still handles); `NAV_PID=<pid>` = that window's
+  `entity_menu_history/<pid>.txt` as `KEY_PRESSED:` lines (arrows 200-203).
+  New: `click <x> <y> [b]` and `string <text>` (window mode). Verified:
+  strip mode `nav 12` opened the live toys menu (`strip_state.txt` gained the
+  HQITEM rows) and `esc` returned it to baseline; window mode `nav 20` toggled
+  File Explorer's Grid View, `click 300 300 3` opened its context menu,
+  `key Escape` (NAV_PID=popup pid) closed it, `string mv 1 2` reached the
+  Cli-io resolver. Not exercised: `row`/`type` against a live menu row/armed
+  field. Related: relayed right-click (`MOUSE_EVENT: 3`) now opens the
+  context menu (was deliberately unrouted). Earlier "unverified" test results
+  that used bare `nav`/`row` before this date are still unverified.
+
   🔄 **2026-09-18 follow-up (Grok, live probe):** `nav.sh nav 9` grew
   `livedesk_agent_relay.txt` with zero `lsof` readers; `strip_history.txt`
   mtime unchanged. `mgrcode 27` did append. Dated corrections now sit at

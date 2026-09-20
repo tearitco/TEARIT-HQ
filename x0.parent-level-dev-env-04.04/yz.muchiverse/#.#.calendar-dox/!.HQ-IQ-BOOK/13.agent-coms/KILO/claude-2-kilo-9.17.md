@@ -224,6 +224,13 @@ documenting them, which cost real time:
    you're resuming from), treat it as stale and use `strip_history.txt`
    (item 2) instead.
 
+✅ **2026-09-19: `nav.sh` is fixed** (`#.desktop/harnesses/khtpm-livedesk-taskbar/
+nav.sh`, `HOUSE=<house_root>` set). `bash nav.sh nav 12` / `esc` drive the
+taskbar strip through file 2; `NAV_PID=<pid> bash nav.sh nav 20|key Down|click
+x y [3=right-click]|string "mv 25 26"` drive one window through file 1. Digit
+codes are ASCII (`'5'` = 53; `nav`/`key` handle that for you). Read real nav
+numbers from a `dump_frame_png_op` frame first; numbers are per window.
+
 ### 3c. 🔒 NEW RULE: a checkpoint is not "started"/"in progress" until relay-verified
 
 A real prior kilo session declared "WSR-CIV Step A: IN PROGRESS" after

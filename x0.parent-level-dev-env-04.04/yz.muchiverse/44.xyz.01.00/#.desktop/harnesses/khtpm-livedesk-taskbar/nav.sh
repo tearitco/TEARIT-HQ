@@ -1,91 +1,63 @@
 #!/bin/bash
-# nav.sh - agent-relay harness for the NEW khtpm layout-based taskbar
-# (khtpm_strip_parser.c), modeled directly on
-# #.desktop/harnesses/livedesk-taskbar/nav.sh (the legacy tp_taskbar.c
-# harness), reviewed in full before writing this — same relay file, same
-# bare-decimal-ASCII-per-line contract, same command shape. Ported rather
-# than reinvented (2026-08-11, direct instruction: "there were some test
-# harnesses for legacy desk, u may review them and make ur own for this
-# new desk").
+# nav.sh - agent-relay harness for the khtpm taskbar strip and HQ windows.
 #
-# The relay itself (#.desktop/livedesk_agent_relay.txt) is the SAME file
-# legacy's harness uses — khtpm_strip_parser.c grew its own
-# poll_agent_relay()/dispatch_key_code() reading it this same session (see
-# that file's own header comment for the full contract: digits 48-57,
-# Enter=13, Escape=27, Backspace=8, printable 32-126, no arrow codes).
+# 2026-09-19 RETARGET (BUG-LOG "nav.sh's primary test commands ... silent
+# no-ops"): khtpm_strip_parser.c and its poll_agent_relay() - the only reader
+# of #.desktop/livedesk_agent_relay.txt - were folded into khtpm_core_render.c
+# (2026-09-01/06, see khtpm_strip_keyboard_ascii.c's header), so that file has
+# NO reader any more. The commands below now write to the LIVE paths:
 #
-# Difference from legacy's harness: khtpm has ONE combined frame-history
-# log (#.desktop/khtpm_strip_frame_history.txt), not separate
-# strip_frame_log.txt/popup_frame_log.txt — 'frame' replaces 'cells'/
-# 'popups' here.
+#   default (taskbar strip):  #.desktop/strip_history.txt, one bare decimal
+#     code per line, read by khtpm_taskbar_manager_main.c poll_strip_history()
+#     -> dispatch_code(). It still handles ASCII digits 48-57, Enter 13,
+#     Escape 27, Backspace 8, printable 32-126, KSC_FOCUS_LEFT/RIGHT 1001/1002,
+#     KSC_HQ_HEADER_BASE 4000+n, KSC_HQ_ITEM_BASE 5000+n.
+#
+#   NAV_PID=<pid> (any khtpm_core_render.c / khtpm_entity window):
+#     #.desktop/entity_menu_history/<pid>.txt, `KEY_PRESSED: <decimal>` /
+#     `MOUSE_EVENT: <button> <x> <y> <is_press>` / `STRING: <text>` lines.
+#     Find the pid with `ps -eo pid,args | grep khtpm_core_render`. Arrows are
+#     200/201/202/203 (Up/Down/Left/Right), PageUp/Down 204/205. Dispatch does
+#     not need X focus (see RELAY-WINDOW-TARGETING-DESIGN.md).
+#     NOTE digits: the code for the character '5' is 53, not 5 (`nav`/`key`
+#     do this for you).
 #
 # Commands:
-#   nav.sh nav <n>            type digits <n>, Enter -> global nav jump or
-#                              (if a submenu is open) select+run that
-#                              submenu row — server-side state (which one
-#                              applies) resolves this, same as legacy
-#   nav.sh row <n>             alias of 'nav' (see above — khtpm's own
-#                              digit_buf/hq_focus split decides which
-#                              applies, matching legacy's own "context
-#                              resolved server-side" design)
-#   nav.sh key <name>         send one key: Return/Enter, Escape/Esc,
-#                              BackSpace, or a single literal character
-#   nav.sh esc                send Escape
-#   nav.sh type <text>        type each character of <text> in turn (for
-#                              cli-io text entry, e.g. a save-as name) -
-#                              does NOT send a trailing Enter; call
-#                              'nav.sh key Return' after if you want to
-#                              commit
-#   nav.sh frame               print last frame-history line
-#   nav.sh wait [sec]           sleep (default 0.6)
+#   nav.sh nav <n> | row <n>   type digits <n>, then Enter (global nav jump, or
+#                              select that row of an open menu)
+#   nav.sh key <name>          Return/Enter, Escape/Esc, BackSpace, Up/Down/
+#                              Left/Right/PageUp/PageDown (NAV_PID mode only),
+#                              or a single character
+#   nav.sh esc                 Escape
+#   nav.sh type <text>         each char in turn (no trailing Enter)
+#   nav.sh click <x> <y> [b]   NAV_PID only: press+release (b default 1;
+#                              b=3 opens the window's context menu)
+#   nav.sh string <text>       NAV_PID only: `STRING: <text>` (Cli-io text
+#                              commands, e.g. `string mv 25 26`)
+#   nav.sh frame [n]           last n lines of the strip frame history
+#   nav.sh wait [sec]
+#   nav.sh hqcell <n>          strip: resolved header-cell click (4000+n)
+#   nav.sh mgrcode <code>      strip: any resolved decimal code
 #
-#   nav.sh hqcell <n>          manager-relay-level: inject the RESOLVED
-#                              header-cell-click code (4000+n, see
-#                              khtpm_strip_codes.h's KSC_HQ_HEADER_BASE)
-#                              directly into strip_history.txt instead of
-#                              a raw keycode into livedesk_agent_relay.txt.
-#   nav.sh mgrcode <code>      manager-relay-level: inject any raw decimal
-#                              code straight into strip_history.txt.
-#
-# TWO RELAY LAYERS (real architecture, found live 2026-08-11 debugging why
-# `nav.sh nav 2` didn't open the USER header cell — it instead jumped a
-# DIFFERENT, unrelated nav-claim number, because digit+Enter over THIS
-# relay drives ktb_digit_push()/ktb_jump_nav()'s nav-CLAIM system, not
-# header-cell indices at all):
-#   1) PARSER layer (`nav`/`row`/`key`/`esc`/`type`, this file's original
-#      contract) — raw ASCII-ish keycodes into livedesk_agent_relay.txt,
-#      read by khtpm_strip_parser.c, which resolves clicks/keys locally
-#      (hit-testing, ACTIVATE scope, etc.) and forwards a RESOLVED action
-#      code to strip_history.txt for the manager. Real header-cell arrow
-#      navigation (ktb_nav_arm + KSC_FOCUS_LEFT/RIGHT) happens as REAL X11
-#      key events inside the parser's own event loop and has NO file-relay
-#      equivalent — arrow keys are explicitly unsupported over this file
-#      (see poll_agent_relay()'s own contract: digits/Enter/Escape/
-#      Backspace/printable only, no arrow codes).
-#   2) MANAGER layer (`hqcell`/`mgrcode`, added 2026-08-11) — inject an
-#      already-resolved code straight into strip_history.txt, the SAME
-#      file/format/dispatch_code() path a real click's resolved output
-#      would use. This is still real relay/IPC injection into the actual
-#      production file boundary between the two real binaries — NOT a
-#      shortcut into either binary's internals — it's the correct way to
-#      reach header-cell ACTIVATE (KSC_HQ_HEADER_BASE=4000+which) and any
-#      other manager-side code when the parser-layer contract has no path
-#      there (e.g. no arrow-key relay support).
-#
-# Env: HOUSE=<house_root> (defaults to $PWD)
+# Env: HOUSE=<house_root> (defaults to $PWD), NAV_PID=<pid> (optional)
 
 set -u
 HOUSE="${HOUSE:-$PWD}"
-RELAY="$HOUSE/#.desktop/livedesk_agent_relay.txt"
 MGR_RELAY="$HOUSE/#.desktop/strip_history.txt"
+NAV_PID="${NAV_PID:-}"
+if [ -n "$NAV_PID" ]; then
+  RELAY="$HOUSE/#.desktop/entity_menu_history/$NAV_PID.txt"
+else
+  RELAY="$MGR_RELAY"
+fi
 FRAME_LOG="$HOUSE/#.desktop/khtpm_strip_frame_history.txt"
 
-# One decimal ASCII code per line - exact contract of poll_agent_relay()
-# in khtpm_strip_parser.c. The parser polls on a ~300ms tick (matches
-# legacy's own POLL_INTERVAL_USEC=300000), so a small sleep after each
-# send lets it actually get consumed before the next one.
+# One code per line. Strip mode: bare decimal. Window mode: KEY_PRESSED: <dec>.
+emit_code() {
+  if [ -n "$NAV_PID" ]; then echo "KEY_PRESSED: $1" >> "$RELAY"; else echo "$1" >> "$RELAY"; fi
+}
 send_code() {
-  echo "$1" >> "$RELAY"
+  emit_code "$1"
   sleep 0.35
 }
 
@@ -96,8 +68,7 @@ send_digits() {
   local n="$1" i c
   for ((i = 0; i < ${#n}; i++)); do
     c="${n:$i:1}"
-    echo -n "${c}" | od -An -tu1 | tr -d ' ' >> "$RELAY"
-    printf '\n' >> "$RELAY"
+    emit_code "$(printf '%d' "'$c")"
     sleep 0.1
   done
 }
@@ -136,6 +107,12 @@ case "${1:-}" in
       Return|Enter) send_code 13 ;;
       Escape|Esc)   send_code 27 ;;
       BackSpace)    send_code 8 ;;
+      Up)           send_code 200 ;;
+      Down)         send_code 201 ;;
+      Left)         send_code 202 ;;
+      Right)        send_code 203 ;;
+      PageUp)       send_code 204 ;;
+      PageDown)     send_code 205 ;;
       [0-9])        send_code "$(printf '%d' "'$k")" ;;
       ?)            send_char "$k" ;;
       *)            echo "key: unrecognized '$k' (use Return/Escape/BackSpace or a single char)" >&2; exit 1 ;;
@@ -149,6 +126,17 @@ case "${1:-}" in
     for ((i = 0; i < ${#text}; i++)); do
       send_char "${text:$i:1}"
     done
+    ;;
+  click)
+    [ -n "$NAV_PID" ] || { echo "click needs NAV_PID=<pid>" >&2; exit 1; }
+    x="${2:?usage: nav.sh click <x> <y> [button]}"; y="${3:?usage: nav.sh click <x> <y> [button]}"; b="${4:-1}"
+    printf 'MOUSE_EVENT: %s %s %s 1\nMOUSE_EVENT: %s %s %s 0\n' "$b" "$x" "$y" "$b" "$x" "$y" >> "$RELAY"
+    sleep 0.5
+    ;;
+  string)
+    [ -n "$NAV_PID" ] || { echo "string needs NAV_PID=<pid>" >&2; exit 1; }
+    printf 'STRING: %s\n' "${2:?usage: nav.sh string <text>}" >> "$RELAY"
+    sleep 0.5
     ;;
   frame)
     tail -n "${2:-1}" "$FRAME_LOG" 2>/dev/null
@@ -167,7 +155,7 @@ case "${1:-}" in
     sleep 0.5
     ;;
   *)
-    echo "usage: nav.sh {nav <n>|row <n>|key <name>|esc|type <text>|frame [n]|wait [sec]|hqcell <n>|mgrcode <code>}" >&2
+    echo "usage: nav.sh {nav <n>|row <n>|key <name>|esc|type <text>|click <x> <y> [b]|string <text>|frame [n]|wait [sec]|hqcell <n>|mgrcode <code>}" >&2
     exit 1
     ;;
 esac

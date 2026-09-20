@@ -44,10 +44,10 @@ Full writeup: `04-bugs/BUG-LOG.md`'s "`nav.sh`'s primary test commands
 ... are silent no-ops" entry (2026-09-18). Corrected list below.
 
 - ~~`#.desktop/livedesk_agent_relay.txt` — parser-layer~~ **DEAD, do
-  not use.** `nav.sh`'s `nav`/`row`/`key`/`esc`/`type` commands still
-  write here and are currently silent no-ops as a result — do not
-  trust a past or future test that used those specific `nav.sh`
-  commands without confirming this got fixed first.
+  not use.** ✅ 2026-09-19: `nav.sh` no longer writes here — `nav`/`row`/
+  `key`/`esc`/`type` now target `strip_history.txt` (default) or
+  `entity_menu_history/<pid>.txt` (`NAV_PID=<pid>`), plus `click`/`string`.
+  See the FIXED note in `04-bugs/BUG-LOG.md`.
 - `#.desktop/strip_history.txt` — manager-layer, already-resolved
   decimal action codes (`KSC_HQ_HEADER_BASE`+n for a header cell,
   `KSC_HQ_ITEM_BASE`+n for a submenu row). **This is the real, live
