@@ -2,6 +2,14 @@
 
 **Status: PLAN, not started. Written 2026-09-20 from the user's direction; source facts verified by reading the code, not from summaries.**
 
+> ## SCOPE CLARIFICATION (user answers, 2026-09-20) - READ THIS FIRST
+> - **The DB is only *necessary* for video/streaming** (webcam and similar frame feeds). It is an **OPTION and a DEMO, not a rewrite.**
+> - **Files stay the default** ("we like to-file"): the DB should **write through to files** (mirror mode) wherever it holds state, so tools, shell scripts and the audit trail keep working unchanged.
+> - So **P2-P4 below (moving UI state, replacing includes with published state) are OPTIONAL/DEFERRED**, not scheduled. The scheduled work is P0 (freeze includes) and a **streaming demo** (P1/P5): DB blob API + mirror-to-file, proven with a frame feed.
+> - **Decisions:** client model = **both** (unix-socket protocol by default, optional thin fast-path library for hot loops); capacity = **design for growth** (hashed, growable store), size defaults modestly; audit ledgers **stay file-native**.
+> - The transitional-include removal (§5) remains the direction but is not urgent and does not depend on the DB.
+
+
 ## 0. Direction (user, 2026-09-20)
 
 - File read/write is too slow for hot paths (webcam frames, per-keystroke `cli_io_state.txt`). The fast path is **wraith-alpha's in-memory DB**, ported into khtpm/livedesk, **not** hand-rolled per-feature shared-memory blocks.
@@ -35,11 +43,11 @@ Not present: tables/rows, SQL, change notification for **text** keys (only blob 
 ## 3. Phased plan (each phase independently shippable)
 
 - **P0 – Freeze.** Add a check script listing the allowed cross-binary `#include`s (§5 inventory); no new ones. (Small; do first.)
-- **P1 – Port + harden.** Extract `tpmos_share_kvp` into a new house op set (daemon + CLI ops + client), fix §2 items 1–5. Keep `mirror` mode default so nothing changes for shell users.
-- **P2 – First real consumer: `cli_io_state.txt`.** The per-keystroke full read-modify-write that started this idea (2026-09-11). Dual-write (mirror), verify parity for a week, flip reads to memory. Success = backspace/typing latency measurably lower, files still produced for tools.
-- **P3 – Dock first (mandatory rollout order from `CHTPM-INCREMENTAL-REPARSE-DESIGN.md`).** See §6.
-- **P4 – Remove the transitional includes** using published state (§5).
-- **P5 – Frames/media on the blob API** (already proven by wraith-alpha) for any future webcam/canvas feed.
+- **P1 – Port + harden (scoped to the streaming demo).** Extract `tpmos_share_kvp` into a new house op set (daemon + CLI ops + client), fix §2 items 1–5. Keep `mirror` mode default so nothing changes for shell users.
+- **P2 – (OPTIONAL, deferred) First state consumer: `cli_io_state.txt`.** The per-keystroke full read-modify-write that started this idea (2026-09-11). Dual-write (mirror), verify parity for a week, flip reads to memory. Success = backspace/typing latency measurably lower, files still produced for tools.
+- **P3 – Dock unfactor (independent of the DB; slated).** Uses manager + template + existing file IPC. See §6.
+- **P4 – (OPTIONAL, deferred) Remove the transitional includes** using published state (§5); files/mirror remain the source.
+- **P5 – SCHEDULED DEMO: frames/media on the blob API** (already proven by wraith-alpha), with write-through to files, for a webcam/canvas feed.
 - **P6 – SQL layer** over the same store.
 
 ## 4. What this replaces (and doesn't)
@@ -68,12 +76,12 @@ Replaces: per-key file RMW for UI state, marker-file polling for change detectio
 
 Per-feature raw shm blocks; SQL in P1–P5; changing audit-ledger-on-disk guarantees; renaming markup (`.xhtpm` stays — the `.xhtm` rename is cancelled).
 
-## 8. Open questions for the user
+## 8. Decisions (user, 2026-09-20)
 
-1. **Client model:** unix-socket protocol for state (no shared code, slightly slower) with direct-shm only for blobs/frames, **or** a thin shared client library? (Socket keeps the "no includes" goal; a lib is faster for per-key hot state.)
-2. **Capacity target:** how many windows/keys should one desktop DB hold (drives hashing/growth design)?
-3. **Scope of P2:** OK to start with `cli_io_state.txt` as the first mirrored consumer?
-4. Should audit ledgers (`master_ledger`, `entity_menu_history`) move into the DB with file dump, or stay file-native and only *UI state* move?
+1. **Client model: both.** Unix-socket protocol for state/control (no shared code), plus an optional thin fast-path client library for hot loops.
+2. **Capacity: design for growth**, size later (hashed, growable store; modest default).
+3. **First scope: streaming/video only** - not a rewrite of state files. Files remain default; DB writes through to file.
+4. **Audit ledgers stay file-native** (`master_ledger`, `entity_menu_history`, ...).
 
 ## 9. Grounding
 
