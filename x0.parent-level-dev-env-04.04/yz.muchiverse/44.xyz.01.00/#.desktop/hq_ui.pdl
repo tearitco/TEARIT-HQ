@@ -23,6 +23,11 @@ font_scale=1.25
 # ui_ref_* is the screen the layouts were tuned on (auto = 1.0 there, so
 # that machine looks exactly as before). Defaults are built in; uncomment
 # to change. ui_scale = 0 means auto; a value like 0.8 forces that factor.
+# Saved entity positions (desktop_pos.txt x/y) are REFERENCE px: the screen the
+# layouts were tuned on. They are converted to this screen when an entity opens
+# and back when it is moved/placed (mapping uses the grid cell, so grid alignment
+# is exact). On the reference screen nothing changes. Changing ui_ref_* or
+# desk_grid.pdl cell_px moves every saved entity accordingly.
 # ui_scale=0
 # ui_ref_width=2496
 # ui_ref_height=1664

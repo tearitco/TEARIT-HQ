@@ -117,6 +117,44 @@ note under it — don't silently edit it away.*
   desktop's own top panel. (4) Not tried on the user's real second
   computer.
 
+  🔄 **2026-09-20 FIXED (saved positions + entity window observed; still
+  unverified on the user's real second computer).** (1) `desktop_pos.txt`
+  x/y are now REFERENCE px (`ui_ref_width/height`, default 2496x1664 - the
+  main machine, where every conversion is the identity, so its files and
+  behaviour are byte-identical). Shared pure math in
+  `_shared-lib/khtpm_ui_scale.c` (`kps_*`, test:
+  `_shared-lib/tests/test_ui_scale.c`); mapping is ref * scaled_cell /
+  base_cell (grid-cell based, so k*80 lands exactly on k*scaled_cell and
+  exact-equality touch triggers keep working). `khtpm_entity.c`:
+  `read_initial_pos()` ref->screen, `write_pos()` screen->ref, `MOVE_TO:` is
+  reference px, touch-trigger compares in screen space and logs reference
+  px. The placers that turn a screen click into a saved position convert at
+  the source: `tp_arm_placer_rmmv.c` (RMMV_CLICK ledger row + File Explorer
+  click file) and `tp_arm_placer.c` (TP_INITIAL_X/Y); `khtpm_show_choices.c`
+  converts ref->screen for the picker it spawns. Already reference-space and
+  untouched: launcher constants (GRID_X*80), `tp_paste_tile.sh` (+80),
+  `fe_place_on_desk.sh` (copies the click), `mr_move_to_entity.c` /
+  `mr_transfer_desk.c`, the taskbar manager (grid constants + DESK rows).
+  Idempotence: the startup grid-snap rewrite is skipped when this screen is
+  not the reference one AND the saved spot was only clamped onto the visible
+  grid, so a smaller monitor never rewrites where the entity lives for the
+  bigger one (on the reference screen it still always writes, as before).
+  (2) Entity window IS observed now (the earlier early exit was a test-house
+  artifact: an incomplete private house): private Xephyr + private house,
+  ninja pal saved at ref (1200,800): 2496x1664 -> 160x160 at (1200,800)
+  (identical to reference); 1920x1080 -> 102x102 at (765,510); 3840x2160 ->
+  206x206 at (1545,1030); 1366x768 -> 80x80 at (600,400), sprite crisp at all
+  sizes (PNGs in /tmp/claude-1000/scaletest/entity_*.png). A ref position off
+  the small grid (2400,1600 on 1366x768) is clamped on screen to (1200,720)
+  while the file stays 2400/1600; a mouse drag on that screen wrote
+  x=2000,y=1120 (multiples of 80). (3) Dock geometry: reference size bottom
+  dock 2096x45+200+1619 = the live one, top at +200+50 h45 (its width depends
+  on cells the manager publishes); 1366x768 1091/1166 wide x23, 1920x1080
+  x29, 3840x2160 x58 - all inside the screen, one row, no wrapped labels.
+  **Not done / unverified:** the real second computer; `tp_desktop_window_win.c`
+  (Windows entity twin) still treats the file as absolute px; the entity
+  under a real WM/Wayland session (only Xephyr, no WM).
+
 - **`nav.sh`'s primary test commands (`nav`/`row`/`key`/`esc`/`type`)
   are silent no-ops — they write to a dead relay file** (found
   2026-09-18, chasing kilo's real WSR-CIV testing confusion). Confirmed
