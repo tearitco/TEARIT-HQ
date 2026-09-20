@@ -2,7 +2,7 @@
 
 ---
 
-## ⚠️ OPEN 2026-09-20: csv-hq `<grid>` - Enter on the grid nav item doesn't activate it (needs a double click) and no typed input arrives afterward
+## 🛠️ FIXED 2026-09-20 (real-hardware confirmation pending): csv-hq `<grid>` - Enter on the grid nav item doesn't activate it (needs a double click) and no typed input arrives afterward
 
 **Reported:** direct live report, csv-hq (`@.apps/csv-hq/`): the grid is
 nav item **10**; pressing Enter on it does **not** arm it (user has to
@@ -53,6 +53,67 @@ cli_io, an open popup, the taskbar) by running csv-hq alone.
 **Related:** the OPEN 2026-09-14 entry below (physical keyboard never
 reaches an armed field despite rc=0), and the Place-overlay Esc fix
 (same ignored/failed `XGrabKeyboard` pattern).
+
+### 🛠️ 2026-09-20 root cause + fix (found by reproducing in a private Xephyr + private house)
+
+**What was NOT broken:** the grid state machine. Driven through the
+per-window relay it matches the spec end to end: Enter on nav 10 arms
+(`[#]10. jump: _`, A1 highlighted), arrows move the cursor, `a` `1` `1`
+shows `jump: a11_`, Enter jumps to A11, a second Enter enters the cell
+(`[^]`), typed text lands, Esc commits `SETCELL:A11` (csv_hq_ui.txt gets
+`cell_10_0=hi`). Nothing in `default_grid_handle_key()` needed changing.
+
+**Root cause 1 (confirmed, both symptoms): the grid was disarmed by every
+full reparse.** `reparse_chtpm_if_changed()`'s full-rebuild path re-arms the
+armed field by saved key via `kh_find_input_by_key()`, which only matched
+`cli_io` and `text_area` - never `<grid>`. So any reparse while the grid was
+armed logged `REPARSE key=cell_ NOT_FOUND - ungrabbed`, dropped
+`g_default_input_elem`, and released the keyboard grab. That path is taken
+on EVERY reparse because `incremental_reparse=0` has been house-wide since
+2026-09-15 (`#.desktop/hq_ui.pdl`, pool-leak revert). csv-hq's manager
+republishes `csv_hq_ui.txt` on every status/SETCELL change, so the grid lost
+`#`/`^` right after arming (or right after the first commit): "Enter doesn't
+activate, double click works" (each click re-arms; the log's five arm lines
+inside 3 seconds), and typed input "not taken" (armed state already gone).
+Reproduced: after the Esc-commit the badge fell back to `[>]10.` and the log
+showed the NOT_FOUND line.
+
+**Fix 1** (`khtpm_core_render.c`): `kh_find_input_by_key()` also matches
+`<grid>`; before the rebuild the armed grid's cell cursor, edit mode, jump
+buffer and cell buffer are captured and restored on the re-found element (the
+grab is never released). After the fix the same run ends in `[#]10. jump: _`
+with `REPARSE key=cell_ FOUND grid row=10 col=0 edit=0`, matching the spec
+(Esc commits and returns to `#`; a second Esc disarms).
+
+**Root cause 2 (reproduced on the log signature; who holds the grab on the
+real desktop is NOT confirmed): the grab burst was too short.**
+`kh_grab_keyboard_retry()` tried `XGrabKeyboard` 5 times over ~25ms and gave
+up, leaving the field armed but with no grab. The user's log
+(`GRAB key=cell_ attempts=6 rc=1`) is exactly what a foreign client holding
+the keyboard produces - reproduced here with a small holder program. Prime
+suspect for the holder: the dock's display-wide grab (`dock_grab_keyboard()`)
+whose release only fired on FocusOut/keypress/reparse, so a missed FocusOut
+left it stale (see the 2026-09-04 comment in `handle_key()`).
+
+**Fix 2** (`khtpm_core_render.c`): (a) a failed grab now keeps retrying from
+`hq_idle_tick()` every ~30ms for up to 3s (`kh_grab_retry_tick()`); with a
+holder that releases after ~2s the log shows `GRAB late-retry succeeded`
+(with a holder that never releases: `late-retry gave up`, by design);
+(b) the dock re-checks live focus every ~100ms and releases a stale grab
+itself instead of waiting for a key.
+
+**Verified:** relay end-to-end sequence above; grab contention with a
+foreign holder (both outcomes); build clean. **NOT verified on real
+hardware:** (1) that the dock (or which client) really holds the grab on the
+user's session - I did not probe the live display; (2) the dock's new
+proactive release (no taskbar in the private house); (3) real keystrokes
+(relay bypasses grabs). **What to check:** in csv-hq press Enter on nav 10
+once (badge should become `#` and stay), type `a1` Enter, Enter, text, Esc;
+then read `@.apps/csv-hq/kh_focus_debug.log` - expect `REPARSE ... FOUND grid`
+lines and no `NOT_FOUND`; `GRAB ... rc=1` followed by `late-retry succeeded`
+means a foreign holder was outlasted, `gave up` means something still holds
+the keyboard for 3s+ (then find it: run `xdotool`-free probe or close other
+armed windows).
 
 ---
 

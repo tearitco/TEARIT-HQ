@@ -1818,7 +1818,17 @@ static int g_headless;  /* fwd (real def near g_dump_and_exit) - referenced by t
 /* Every XUngrabKeyboard(dpy,...) in this file goes through here so a
  * --headless run (dpy == NULL) can't segfault Xlib on a NULL Display,
  * and so the call is a clean no-op before any display is open. */
-static void kh_ungrab_kbd(void) { if (dpy) XUngrabKeyboard(dpy, CurrentTime); }
+/* >0: an armed field's XGrabKeyboard lost a race to another client (a dock's
+ * stale display-wide grab, a closing popup) and keeps retrying from
+ * hq_idle_tick() until this CLOCK_MONOTONIC ms deadline - the old 5x5ms burst
+ * gave up before anything could release it, leaving csv-hq's grid armed but
+ * deaf (kh_focus_debug.log: "GRAB key=cell_ attempts=6 rc=1"). */
+static long long g_kbd_grab_retry_deadline_ms;
+static long long kh_mono_ms(void) {
+    struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+static void kh_ungrab_kbd(void) { g_kbd_grab_retry_deadline_ms = 0; if (dpy) XUngrabKeyboard(dpy, CurrentTime); }
 /* 2026-09-11, CHTPM-INCREMENTAL-REPARSE-DESIGN.md §1 - parses `path`
  * into the SCRATCH pool (g_pool_next) instead of the live g_pool,
  * leaving g_window/every existing live pointer completely untouched.
@@ -2190,6 +2200,22 @@ static int reparse_chtpm_if_changed(void) {
      * identical" (the real selection should survive). */
     char saved_input_buf[4096] = "";
     int saved_cursor = 0, saved_sel_anchor = 0;
+    /* A <grid> armed across a full rebuild (csv-hq's manager republishes
+     * csv_hq_ui.txt on every SETCELL/status change) must come back exactly as
+     * it was: same cell cursor, same jump buffer, same nested cell-edit state.
+     * Before this, kh_find_input_by_key() never matched a <grid>, so every
+     * full reparse silently disarmed it and released the keyboard grab. */
+    int saved_is_grid = 0, saved_grid_row = 0, saved_grid_col = 0, saved_grid_mode = 0;
+    char saved_grid_jump[sizeof(((Elem *)0)->grid_jump_buffer)] = "";
+    char saved_grid_cell[sizeof(((Elem *)0)->grid_cell_buffer)] = "";
+    if (g_default_input_elem && strcmp(g_default_input_elem->tag, "grid") == 0) {
+        saved_is_grid = 1;
+        saved_grid_row = g_default_input_elem->grid_cur_row;
+        saved_grid_col = g_default_input_elem->grid_cur_col;
+        saved_grid_mode = g_default_input_elem->grid_edit_mode;
+        snprintf(saved_grid_jump, sizeof(saved_grid_jump), "%s", g_default_input_elem->grid_jump_buffer);
+        snprintf(saved_grid_cell, sizeof(saved_grid_cell), "%s", g_default_input_elem->grid_cell_buffer);
+    }
     if (g_default_input_elem) {
         const char *k = g_default_input_elem->target_id[0] ? g_default_input_elem->target_id : g_default_input_elem->id;
         snprintf(saved_input_key, sizeof(saved_input_key), "%s", k);
@@ -2231,7 +2257,16 @@ static int reparse_chtpm_if_changed(void) {
     kh_cli_io_reload(new_window);
     if (saved_input_key[0]) {
         Elem *reelem = kh_find_input_by_key(new_window, saved_input_key);
-        if (reelem) {
+        if (reelem && saved_is_grid && strcmp(reelem->tag, "grid") == 0) {
+            kh_set_default_input_elem(reelem);
+            reelem->grid_cur_row = saved_grid_row;
+            reelem->grid_cur_col = saved_grid_col;
+            reelem->grid_edit_mode = saved_grid_mode;
+            snprintf(reelem->grid_jump_buffer, sizeof(reelem->grid_jump_buffer), "%s", saved_grid_jump);
+            snprintf(reelem->grid_cell_buffer, sizeof(reelem->grid_cell_buffer), "%s", saved_grid_cell);
+            reelem->cursor = saved_cursor;
+            kh_focus_debug_log("REPARSE key=%s FOUND grid row=%d col=%d edit=%d", saved_input_key, saved_grid_row, saved_grid_col, saved_grid_mode);
+        } else if (reelem) {
             kh_set_default_input_elem(reelem);
             char *rbuf = strcmp(reelem->tag, "text_area") == 0 ? reelem->text_area_buffer : reelem->input_buffer;
             int rlen = (int)strlen(rbuf);
@@ -7312,7 +7347,8 @@ static void kh_cli_io_reload(Elem *root) {
  * find_by_id()'s plain e->id match) since target_id and id can differ. */
 static Elem *kh_find_input_by_key(Elem *root, const char *key) {
     if (!root || !key || !key[0]) return NULL;
-    if (strcmp(root->tag, "cli_io") == 0 || strcmp(root->tag, "text_area") == 0) {
+    if (strcmp(root->tag, "cli_io") == 0 || strcmp(root->tag, "text_area") == 0 ||
+        strcmp(root->tag, "grid") == 0) {
         const char *k = root->target_id[0] ? root->target_id : root->id;
         if (k[0] && strcmp(k, key) == 0) return root;
     }
@@ -9831,6 +9867,27 @@ static void kh_grab_keyboard_retry(void) {
     kh_focus_debug_log("GRAB key=%s attempts=%d rc=%d(0=success) real_focus_is_us=%d",
                         g_default_input_elem ? (g_default_input_elem->target_id[0] ? g_default_input_elem->target_id : g_default_input_elem->id) : "?",
                         a + 1, rc, fw == win);
+    g_kbd_grab_retry_deadline_ms = (rc == GrabSuccess) ? 0 : kh_mono_ms() + 3000;
+}
+/* Finish a grab that lost the race in kh_grab_keyboard_retry(): one attempt
+ * every ~30ms for up to 3s while the field is still armed. */
+static void kh_grab_retry_tick(void) {
+    static long long last_ms;
+    if (!g_kbd_grab_retry_deadline_ms || !dpy) return;
+    long long now = kh_mono_ms();
+    if (!g_default_input_elem || now > g_kbd_grab_retry_deadline_ms) {
+        if (g_default_input_elem)
+            kh_focus_debug_log("GRAB late-retry gave up (another client still holds the keyboard)");
+        g_kbd_grab_retry_deadline_ms = 0;
+        return;
+    }
+    if (now - last_ms < 30) return;
+    last_ms = now;
+    if (XGrabKeyboard(dpy, win, True, GrabModeAsync, GrabModeAsync, CurrentTime) == GrabSuccess) {
+        g_kbd_grab_retry_deadline_ms = 0;
+        kh_focus_debug_log("GRAB late-retry succeeded key=%s",
+                           g_default_input_elem->target_id[0] ? g_default_input_elem->target_id : g_default_input_elem->id);
+    }
 }
 static int kh_key_history_code(KeySym ks, char ch) {
     if (ch >= 32 && ch <= 126) return (unsigned char)ch;
@@ -10174,6 +10231,16 @@ static void hq_ui_pdl_reload_if_changed(const char *house_root) {
 }
 
 static void hq_idle_tick(void) {
+    kh_grab_retry_tick();
+    /* A dock whose grab release was missed (FocusOut swallowed, mode ==
+     * NotifyGrab) used to keep its display-wide XGrabKeyboard until the next
+     * KEY reached it - so an armed field in another window (csv-hq's grid)
+     * kept losing the grab. Check live focus every ~100ms instead. */
+    if (window_is_dock() && g_dock_kbd_win) {
+        static long long last_dock_chk_ms;
+        long long nowm = kh_mono_ms();
+        if (nowm - last_dock_chk_ms >= 100) { last_dock_chk_ms = nowm; dock_release_keyboard_if_left(); }
+    }
     if (kh_is_drop_target_window()) {
         int hp = kh_read_drag_hover();
         int want = (hp == (int)getpid()) || (g_xdnd_source != None);

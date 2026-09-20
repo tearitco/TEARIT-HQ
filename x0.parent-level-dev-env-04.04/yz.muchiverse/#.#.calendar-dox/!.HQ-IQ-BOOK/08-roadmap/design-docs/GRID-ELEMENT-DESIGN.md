@@ -1,6 +1,11 @@
 # `<grid>` element design — real in-place spreadsheet cell editing
 
-**Status: DESIGN ONLY, not implemented.** Direct request, 2026-09-05,
+**Status: IMPLEMENTED 2026-09-05 (csv-hq's `<grid>`; the "DESIGN ONLY"
+header this doc used to carry was stale). 2026-09-20: fixed the armed
+state being dropped on every full reparse (`kh_find_input_by_key()` never
+matched `<grid>`) plus a persistent keyboard-grab retry - see
+`04-bugs/bug_bounty.md` "FIXED 2026-09-20: csv-hq `<grid>`". The state
+machine below is accurate to the code.** Direct request, 2026-09-05,
 after csv-hq's own real grid rendering (formatted `<scrolllist>` rows,
 see `csv_hq_manager.c`'s own header) shipped but doesn't allow editing
 a cell in place — today's csv-hq requires typing a cell ref into a
