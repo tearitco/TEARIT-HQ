@@ -192,6 +192,39 @@ int has_toy_pdl(const char *dir_path) {
     return stat(toy_path, &st) == 0 && S_ISREG(st.st_mode);
 }
 
+/* An in-game entity (pal) dir is recognized by markers every pal already
+ * carries: glyph.txt (its real icon) plus pal.pdl or meta.pdl. Such a dir
+ * is shown with its own glyph, never as a folder, and is not a valid
+ * mv destination. On success icon_out gets the first line of glyph.txt,
+ * cut on a UTF-8 codepoint boundary to fit icon_sz. */
+static int pal_glyph(const char *dir_path, char *icon_out, size_t icon_sz) {
+    char p[MAX_PATH];
+    struct stat st;
+    snprintf(p, sizeof(p), "%s/glyph.txt", dir_path);
+    if (stat(p, &st) != 0 || !S_ISREG(st.st_mode)) return 0;
+    char q[MAX_PATH];
+    snprintf(q, sizeof(q), "%s/pal.pdl", dir_path);
+    snprintf(p, sizeof(p), "%s/meta.pdl", dir_path);
+    if (stat(q, &st) != 0 && stat(p, &st) != 0) return 0;
+    snprintf(p, sizeof(p), "%s/glyph.txt", dir_path);
+    FILE *f = fopen(p, "r");
+    if (!f) return 0;
+    char line[64];
+    if (!fgets(line, sizeof(line), f)) { fclose(f); return 0; }
+    fclose(f);
+    size_t n = strcspn(line, "\r\n"), out = 0, i = 0;
+    while (i < n) {
+        unsigned char c = (unsigned char)line[i];
+        size_t len = c < 0x80 ? 1 : c >= 0xF0 ? 4 : c >= 0xE0 ? 3 : c >= 0xC0 ? 2 : 1;
+        if (i + len > n || out + len >= icon_sz) break;
+        memcpy(icon_out + out, line + i, len);
+        out += len;
+        i += len;
+    }
+    icon_out[out] = '\0';
+    return out > 0;
+}
+
 void get_parent_dir(const char *path, char *parent) {
     strcpy(parent, path);
     char *last_slash = strrchr(parent, '/');
@@ -226,7 +259,8 @@ int entry_cmp(const void *a, const void *b) {
     const Entry *ea = (const Entry *)a;
     const Entry *eb = (const Entry *)b;
 
-    int a_dir = is_dir_like(ea->type), b_dir = is_dir_like(eb->type);
+    int a_dir = is_dir_like(ea->type) || !strcmp(ea->type, "PAL");
+    int b_dir = is_dir_like(eb->type) || !strcmp(eb->type, "PAL");
     if (a_dir && !b_dir) return -1;
     if (!a_dir && b_dir) return 1;
 
@@ -255,7 +289,10 @@ void list_directory(const char *dir, State *state) {
         state->entries[state->count].name[MAX_NAME - 1] = '\0';
 
         if (S_ISDIR(st.st_mode)) {
-            if (has_toy_pdl(full_path)) {
+            if (pal_glyph(full_path, state->entries[state->count].icon,
+                          sizeof(state->entries[state->count].icon))) {
+                strcpy(state->entries[state->count].type, "PAL");
+            } else if (has_toy_pdl(full_path)) {
                 strcpy(state->entries[state->count].type, "PRJ");
                 strcpy(state->entries[state->count].icon, "\xf0\x9f\x92\xbe"); /* 💾 */
             } else {
