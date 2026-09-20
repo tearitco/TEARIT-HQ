@@ -66,8 +66,10 @@ $CC $CFLAGS $X11_FLAGS -I "$SHARED" -o +x/khtpm_core_render.+x \
 
 echo "OK +x/khtpm_core_render.+x"
 
-# Unfactor piece 4: pal compile unit khtpm_entity.c (#include engine).
+# Unfactor piece 5: khtpm_entity.c is the real pal process source (tp_main and
+# its tile/sprite/popup code). It shares khtpm_ui_common.c with the HQ engine
+# via -I "$SHARED" and needs neither the CSS parser nor the Elem/render core.
 echo "-- entity pal renderer -> +x/khtpm_entity.+x"
 $CC $CFLAGS $X11_FLAGS -I "$SHARED" -I . -o +x/khtpm_entity.+x \
-  khtpm_entity.c "$SHARED/khtpm_css_parser.c" $LIBS
+  khtpm_entity.c $LIBS
 echo "OK +x/khtpm_entity.+x"
