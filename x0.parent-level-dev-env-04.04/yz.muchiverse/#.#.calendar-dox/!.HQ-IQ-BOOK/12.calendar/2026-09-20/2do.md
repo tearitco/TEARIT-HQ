@@ -29,8 +29,10 @@
 8. Robot/puzzle-piece entities carrying events, dropped into inventories, methods run from the Inventory right-click; slow migrate of `inventory.txt`/`qolq`; File METHOD stub + 📁 icon mode.
 
 ### Engine / architecture
-9. UI scaling: `desktop_pos.txt` is absolute pixels and ~10 tools write it — convert to reference-space; look at an entity window on a small screen.
-10. ~~`.xhtpm` -> `.xhtm` rename~~ **CANCELLED by the user (2026-09-20) - never do it.** Renderer shrink candidates (measured: `khtpm_core_render.c` = 12,550 lines = 5,010 comment + 7,196 code): dock/strip/`ktb_*` ~1,350 function lines (own compile unit like the entity split), ASCII frame mirror ~500, input widgets `cli_io`/`text_area`/`grid` ~660 (also reusable by overlay pickers), clipboard/XDND ~145; and `main()` (666 lines) split into window-creation helpers.
+9. ~~UI scaling~~ **done 2026-09-20** (`7b7474b7`,`3f78c94d`,`0a030d62`): `desktop_pos.txt` is reference-space px, entity/dock verified in private Xephyr at 4 sizes; **still unverified on the real second computer + real Wayland; Windows entity twin `tp_desktop_window_win.c` still absolute px.**
+10. ~~`.xhtpm` -> `.xhtm` rename~~ **CANCELLED by the user (2026-09-20) - never do it.**
+10a. **Dock unfactor - SLATED (user 2026-09-20).** Move dock/strip layout+paint+behaviour (~1,350 lines: `layout_dock_bar`, `dock_paint_*`, `dock_*`, `ktb_*`) out of `khtpm_core_render.c` into manager + template data, NOT a new binary that `#include`s the engine. Details: `08-roadmap/design-docs/INMEM-DB-STATE-LAYER-PLAN.md` §6.
+10b. **In-memory DB state layer** (port of wraith-alpha's `tpmos_share_kvp`, which is itself POSIX-shm-backed with file mirror/dump; no raw per-feature shmem, SQL later) + removal of the transitional text includes (`khtpm_ui_common.c`, `khtpm_ui_scale.c`, `kh_proc_registry.h`, …): full phased plan and 4 open questions in `INMEM-DB-STATE-LAYER-PLAN.md`. Renderer stats: 12,550 lines = 5,010 comment + 7,196 code; input widgets stay in-process.
 11. Unfactor leftovers not re-verified: Cursword 3D/phymoji camera keys, z-layer changes, XDND drops from other apps.
 12. `livedesk_override_redirect.pdl=true` ("@" always-on-top) is still a separate documented cause of dead keys for override_redirect windows; text-field windows are now forced managed, but consider the wider policy.
 
