@@ -14439,6 +14439,16 @@ static int load_methods(const char *package_dir, MethodItem *items, int max) {
         n++;
     }
     fclose(f);
+    if (n < max) {
+        int has = 0, j;
+        for (j = 0; j < n; j++)
+            if (!strcmp(items[j].action, "CLI_IO") || !strcmp(items[j].label, "Cli-io")) has = 1;
+        if (!has) {
+            snprintf(items[n].label, sizeof(items[n].label), "Cli-io");
+            snprintf(items[n].action, sizeof(items[n].action), "CLI_IO");
+            n++;
+        }
+    }
     return n;
 }
 
@@ -15168,7 +15178,19 @@ static void kh_open_cli_io_context_menu(Elem *target, int win_px, int win_py) {
     snprintf(menu_path, sizeof(menu_path), "%s/menu.chtpm", subdir);
     FILE *cf = fopen(menu_path, "w");
     if (!cf) return;
-    fprintf(cf, "<window class=\"entity-menu\">\n  <page name=\"main\">\n");
+    {
+        char wlab[96];
+        wlab[0] = 0;
+        if (target && target->label[0]) {
+            const char *s = target->label;
+            while (*s && !isalnum((unsigned char)*s) && *s != '_' && *s != '.') s++;
+            snprintf(wlab, sizeof(wlab), "%s", s[0] ? s : target->label);
+            char *sp = strchr(wlab, ' ');
+            if (sp) *sp = 0;
+        }
+        if (!wlab[0]) snprintf(wlab, sizeof(wlab), "item");
+        fprintf(cf, "<window class=\"entity-menu\" label=\"%s\">\n  <page name=\"main\">\n", wlab);
+    }
     for (int i = 0; i < n; i++) {
         const char *act = items[i].action;
         if (strcmp(act, "CUT") == 0 || strcmp(act, "COPY") == 0 || strcmp(act, "PASTE") == 0 ||
@@ -16413,8 +16435,12 @@ static int tp_main(int argc, char **argv) {
                                     popup_nav_base = nav_claim_rows(g_house_root, getpid(), package_dir, methods, n_methods);
                                         popup_focus_row = 0; popup_digit_accum = 0;
                                 }
-                            } else if (using_objects && strncmp(methods[i].action, "STATE:", 6) == 0) {
-                                snprintf(input_key, sizeof(input_key), "%s", methods[i].action + 6);
+                            } else if ((using_objects && strncmp(methods[i].action, "STATE:", 6) == 0) ||
+                                       strcmp(methods[i].action, "CLI_IO") == 0) {
+                                if (strcmp(methods[i].action, "CLI_IO") == 0)
+                                    snprintf(input_key, sizeof(input_key), "cliio");
+                                else
+                                    snprintf(input_key, sizeof(input_key), "%s", methods[i].action + 6);
                                 input_buffer[0] = '\0';
                                 input_active = 1;
                                 append_history("INPUT_ACTIVATE key=%s", input_key);
@@ -16474,7 +16500,8 @@ static int tp_main(int argc, char **argv) {
                                     popup_nav_base = nav_claim_rows(g_house_root, getpid(), package_dir, methods, n_methods);
                                         popup_focus_row = 0; popup_digit_accum = 0;
                                 }
-                            } else if (using_objects && strncmp(methods[row].action, "STATE:", 6) == 0) {
+                            } else if ((using_objects && strncmp(methods[row].action, "STATE:", 6) == 0) ||
+                                       strcmp(methods[row].action, "CLI_IO") == 0) {
                                 snprintf(input_key, sizeof(input_key), "%s", methods[row].action + 6);
                                 input_buffer[0] = '\0';
                                 input_active = 1;
@@ -16583,7 +16610,8 @@ static int tp_main(int argc, char **argv) {
                                         popup_nav_base = nav_claim_rows(g_house_root, getpid(), package_dir, methods, n_methods);
                                         popup_focus_row = 0; popup_digit_accum = 0;
                                     }
-                                } else if (using_objects && strncmp(methods[row].action, "STATE:", 6) == 0) {
+                                } else if ((using_objects && strncmp(methods[row].action, "STATE:", 6) == 0) ||
+                                       strcmp(methods[row].action, "CLI_IO") == 0) {
                                     snprintf(input_key, sizeof(input_key), "%s", methods[row].action + 6);
                                     input_buffer[0] = '\0';
                                     input_active = 1;
@@ -16996,7 +17024,8 @@ static int tp_main(int argc, char **argv) {
                             popup_nav_base = nav_claim_rows(g_house_root, getpid(), package_dir, methods, n_methods);
                                         popup_focus_row = 0; popup_digit_accum = 0;
                         }
-                    } else if (using_objects && strncmp(methods[row].action, "STATE:", 6) == 0) {
+                    } else if ((using_objects && strncmp(methods[row].action, "STATE:", 6) == 0) ||
+                                       strcmp(methods[row].action, "CLI_IO") == 0) {
                         /* REAL, 2026-08-05: objects.pdl real text-input
                          * row - same click-to-activate/Escape-to-commit
                          * shape this house's own cli_io field convention
@@ -17159,7 +17188,8 @@ static int tp_main(int argc, char **argv) {
                             popup_nav_base = nav_claim_rows(g_house_root, getpid(), package_dir, methods, n_methods);
                             popup_focus_row = 0; popup_digit_accum = 0;
                         }
-                    } else if (using_objects && strncmp(methods[row].action, "STATE:", 6) == 0) {
+                    } else if ((using_objects && strncmp(methods[row].action, "STATE:", 6) == 0) ||
+                                       strcmp(methods[row].action, "CLI_IO") == 0) {
                         snprintf(input_key, sizeof(input_key), "%s", methods[row].action + 6);
                         input_buffer[0] = '\0';
                         input_active = 1;
