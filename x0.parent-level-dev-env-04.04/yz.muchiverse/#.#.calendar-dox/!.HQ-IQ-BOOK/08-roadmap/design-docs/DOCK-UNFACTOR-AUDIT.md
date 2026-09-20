@@ -55,6 +55,22 @@ Since the pal unfactor (`da57ae00`) desktop pals run as **`khtpm_entity.+x`**, b
 
 Realistic outcome of this pass: Stages 1–2 (≈260–500 lines out of the renderer, one real bug fixed). Stages 3–5 are design work on the *generic engine*, not dock moves; they should be planned with the user before code.
 
+## 5b. Results of this pass (2026-09-20)
+
+| Metric | Before (`03404a08`) | After (`6fa6f1b8`) |
+|---|---:|---:|
+| `khtpm_core_render.c` total lines | 12,550 | **11,971** (-579) |
+| code lines (excl. comments/blank) | 7,196 | **6,759** (-437) |
+| comment-only lines | 5,010 | 4,891 (-119: removed with dead code; refreshed ones now point at docs) |
+| dock/strip/ktb/zorder function lines | 1,347 | 1,141 |
+| `-O2 -Wall` warnings (renderer only) | 160 | 140 |
+| `window_is_dock()` sites | 55 | 55 (unchanged: the remaining coupling is layout/paint/keys, stages 3-5) |
+| new standalone op | - | `ktb_zorder_op.c` (231 lines) |
+
+Not touched on purpose (semantics must not change): keyboard grab/focus code, `dock_managed`, nav numbering, layout/paint. Stage 3-5 are **engine design work** (generic ASCII frame writer, flex shrink-to-fit + pager element, secondary-surface support) rather than mechanical moves; plan them with the user before code.
+
+**Only the user's real hardware can verify:** (1) one real click of the strip's `@` after restarting the renderers/taskbar on the new binary (pals now respawn; Wayland stacking behaviour is not reproducible in Xephyr); (2) real keyboard/arrow navigation of the dock (relay and Xephyr bypass X grabs; the grab/focus code was deliberately left untouched, pitfall #24); (3) that the strip still looks/behaves normally next to the live manager (the private test house had no manager, so header dropdowns/pager/toys menu were not exercised - the changes cannot reach them, but they were not clicked).
+
 ## 6. Comment/history mirrored from removed code (so docs-only readers keep it)
 
 - `ktb_toggle_zorder_respawn` history (2026-09-13 live reports): the strip windows are WM-managed regardless of the always-on-top setting, so the toggle must **not** respawn the strip (only entities); death is polled with `kill(pid,0)` (≤6×30 ms) instead of a flat 300 ms sleep because SIGTERM interrupts `select()` immediately (sigaction without `SA_RESTART`); the strip respawn came first historically and is now moot; entities are staggered (30 ms) and `nice(8)` so a burst of GUI launches doesn't saturate the CPU (project note: weak-CPU machine). Carried into the op's header comment.

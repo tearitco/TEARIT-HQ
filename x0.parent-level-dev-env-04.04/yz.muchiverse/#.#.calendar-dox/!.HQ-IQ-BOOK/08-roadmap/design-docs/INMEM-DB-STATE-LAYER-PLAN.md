@@ -68,7 +68,9 @@ Replaces: per-key file RMW for UI state, marker-file polling for change detectio
 | `khtpm_ui_common.c` | split: config loaders → published state; METHOD reader → manager op; entity-menu launcher → small op |
 | `khtpm_css_parser.h` | last; needs a render server (or stays as the one engine library) |
 
-## 6. Dock unfactor (SLATED)
+## 6. Dock unfactor (IN PROGRESS - stages 1-2 done 2026-09-20; audit + stage table: `DOCK-UNFACTOR-AUDIT.md`)
+
+**Status:** stage 1 (dead code, -378 lines) and stage 2 (always-on-top respawn -> standalone op `ktb_zorder_op.+x`, -201 lines, fixes pals no longer being respawned) are committed and verified in a private Xephyr; renderer 12,550 -> 11,971 lines. Layout/paint/pager/peer-window code (~880 lines) is **blocked on generic engine features** (flex shrink-to-fit + pager element, secondary surfaces), not on the DB.
 
 `khtpm_core_render.c` is 12,550 lines (5,010 comment, 7,196 code). The dock/strip mode is ~1,350 function lines (`layout_dock_bar`, `dock_paint_menu`, `dock_paint_peer`, `dock_*`, `ktb_*`, `ktb_toggle_zorder_respawn`, `write_theme_opacity`, plus dock globals). The dock's *logic* already lives in `khtpm_taskbar_manager*` (talking over `strip_history.txt`); the violation is dock **layout/paint/behaviour code inside the shared renderer**. Approach: move dock behaviour to manager + template data (CENTROID style), not to another binary that `#include`s the engine. Pitfalls to respect: dock windows are WM-managed (`dock_managed`), dock keyboard grab/focus rules (pitfall #24, `X11-AND-SESSION-PITFALLS.md`), nav numbering across header/bottom, the `assign_nav_and_layout` idempotency rule. Verify with the golden geometry (`2082x45+200+50` top, `2096x45+200+1619` bottom at the 2496x1664 reference) and a real-hardware keyboard check.
 

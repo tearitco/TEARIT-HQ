@@ -76,3 +76,7 @@ writes `desktop_pos.txt`, drag over an open Inventory registers the drop zone
 + `drag_hover_pid.txt` and the drop moves the pal, File Explorer (Search,
 sprite icons) unchanged, `khtpm_core_render.+x <one path>` prints usage.
 Not re-verified: cursword 3D/phymoji camera keys, z-layer changes, XDND.
+
+## Dock (2026-09-20)
+
+The dock/strip is a separate unfactor track: `DOCK-UNFACTOR-AUDIT.md` (audit, stage table, results). Stages 1-2 done (dead code; `ktb_zorder_op.+x`); stages 3-5 blocked on generic engine features.
