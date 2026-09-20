@@ -1377,17 +1377,17 @@ static int href_parts(char *hostb, size_t hl, char *pathb, size_t pl) {
     const char *a = strstr(p, "://");
     const char *s = a ? a + 3 : p;
     const char *q = s;
-    int port = 0;
     while (*q) {
-        if (*q == ':' && !port) { port = 1; q++; continue; }
-        if (port && *q >= '0' && *q <= '9') { q++; continue; }
-        port = 0;
         if (*q == '/' || *q == '?' || *q == '#') break;
         q++;
     }
     size_t hn = (size_t)(q - s);
     if (hn >= hl) hn = hl - 1;
     memcpy(hostb, s, hn); hostb[hn] = 0;
+    /* RFC 6265 §1: cookie scope is host-only — cut a ":port" suffix if the
+     * colon slice between scheme and path is entirely digits. */
+    for (char *c = hostb; *c; c++) if (*c == ':') { *c = 0; break; }
+    for (char *c = hostb; *c; c++) *c = (char)tolower((unsigned char)*c);
     const char *ph = q;
     while (*ph && *ph != '?' && *ph != '#') ph++;
     size_t pn = (size_t)(ph - q);
@@ -1532,6 +1532,171 @@ static void cookie_save_file(const CookieEnt *ents, int n) {
         rename(tmp, g_cookie_path);
     }
     free(b.s);
+}
+
+/* ======================== rung 6 seam: unified cookie store =============
+ * ONE authoritative jar shared by document.cookie AND the network layer
+ * (nb_fetch_sync).  Chromium-parity: the old two-store split (NB_COOKIES_FILE
+ * for document.cookie, NB_CURL_COOKIES_FILE for curl -b/-c) is eliminated;
+ * all Set-Cookie ingress and Cookie egress goes through our jar.  The manager
+ * may still set NB_CURL_COOKIES_FILE for its own curls; the worker ignores it
+ * from here forward.
+ *
+ * cookie_header_for_url()  — scope-match + emit Cookie: for outgoing request
+ * cookie_set_from_wire()   — parse response Set-Cookie into the jar
+ */
+
+/* Extract host and path from an arbitrary URL (scheme://host[:port]/path).
+ * Port is stripped for cookie scoping (RFC 6265 section 1). */
+static int url_host_path(const char *url, char *hostb, size_t hl,
+                         char *pathb, size_t pl) {
+    hostb[0] = 0; pathb[0] = 0;
+    const char *a = strstr(url, "://");
+    if (!a) return 0;
+    const char *s = a + 3;
+    const char *q = s;
+    while (*q && *q != '/' && *q != '?') q++;
+    const char *col = NULL;
+    for (const char *p = s; p < q; p++) if (*p == ':') { col = p; break; }
+    size_t hn = col ? (size_t)(col - s) : (size_t)(q - s);
+    if (hn >= hl) hn = hl - 1;
+    memcpy(hostb, s, hn); hostb[hn] = 0;
+    for (char *c = hostb; *c; c++) *c = (char)tolower((unsigned char)*c);
+    const char *pp = (*q == '/') ? q : "/";
+    snprintf(pathb, pl, "%s", pp);
+    return 1;
+}
+
+/* Scope-match cookies from the jar for an outgoing request URL.
+ * Writes "Cookie: n1=v1; n2=v2" into out.  Respects Domain/Path/Secure. */
+static void cookie_header_for_url(const char *url, char *out, size_t olen) {
+    out[0] = 0;
+    if (!g_cookie_path_set) cookie_jar_init();
+    if (!g_cookie_path[0]) return;
+    char host[128], rp[512];
+    if (!url_host_path(url, host, sizeof(host), rp, sizeof(rp))) return;
+    int is_https = (strncmp(url, "https://", 8) == 0);
+    CookieEnt ents[COOKIE_MAX_ENT];
+    int n = cookie_load_file(ents, COOKIE_MAX_ENT);
+    time_t now = time(NULL);
+    SB b = {0, 0, 0};
+    for (int i = 0; i < n; i++) {
+        if (ents[i].expires && ents[i].expires <= now) continue;
+        if (ents[i].secure && !is_https) continue;
+        if (strcmp(ents[i].host, "*") != 0 &&
+            strcasecmp(ents[i].host, host) != 0) continue;
+        if (!cookie_path_match(ents[i].path, rp)) continue;
+        if (ents[i].name[0] == 0) continue;
+        if (b.len) sb_put(&b, "; ");
+        sb_put(&b, ents[i].name);
+        sb_put(&b, "=");
+        sb_put(&b, ents[i].value);
+    }
+    if (b.len && b.len + 10 < olen) {
+        snprintf(out, olen, "Cookie: %.*s", (int)b.len, b.s);
+    }
+    free(b.s);
+}
+
+/* Parse a raw Set-Cookie header value and upsert into the jar.
+ * request_url provides the default Domain/Path when the header omits them. */
+static void cookie_set_from_wire(const char *header_val, const char *request_url) {
+    if (!g_cookie_path_set) cookie_jar_init();
+    if (!g_cookie_path[0] || !header_val || !*header_val) return;
+
+    char buf[2048];
+    snprintf(buf, sizeof(buf), "%s", header_val);
+    char name[128] = "", value[1024] = "";
+    char scope_host[128] = "", scope_path[256] = "";
+    char expire_s[256] = "";
+    long maxage = -1;
+    int secure = 0;
+
+    char *tok = strtok(buf, ";");
+    if (!tok) return;
+    while (*tok == ' ') tok++;
+    char *eq = strchr(tok, '=');
+    if (!eq || eq == tok) return;
+    *eq = 0;
+    snprintf(name, sizeof(name), "%s", tok);
+    sanitize_cookie_value(eq + 1, value, sizeof(value));
+    if (!name[0]) return;
+
+    while ((tok = strtok(NULL, ";")) != NULL) {
+        while (*tok == ' ') tok++;
+        if (!strncasecmp(tok, "domain=", 7))
+            snprintf(scope_host, sizeof(scope_host), "%s", tok + 7);
+        else if (!strncasecmp(tok, "path=", 5))
+            snprintf(scope_path, sizeof(scope_path), "%s", tok + 5);
+        else if (!strncasecmp(tok, "max-age=", 8)) maxage = atol(tok + 8);
+        else if (!strncasecmp(tok, "expires=", 8))
+            snprintf(expire_s, sizeof(expire_s), "%s", tok + 8);
+        else if (!strcasecmp(tok, "secure")) secure = 1;
+    }
+
+    if (scope_host[0]) {
+        char *sh = scope_host;
+        while (*sh == '.') sh++;
+        snprintf(scope_host, sizeof(scope_host), "%s", sh);
+    }
+    if (!scope_host[0]) {
+        char dh[128], dp[512];
+        if (url_host_path(request_url, dh, sizeof(dh), dp, sizeof(dp)))
+            snprintf(scope_host, sizeof(scope_host), "%s", dh);
+    }
+    if (!scope_path[0]) {
+        char dh[128], dp[512];
+        if (url_host_path(request_url, dh, sizeof(dh), dp, sizeof(dp)))
+            default_cookie_path(dp, scope_path, sizeof(scope_path));
+        else
+            snprintf(scope_path, sizeof(scope_path), "/");
+    }
+
+    time_t exp = 0;
+    int delete = 0;
+    time_t nowt = time(NULL);
+    if (maxage >= 0) {
+        if (maxage == 0) delete = 1;
+        else exp = nowt + maxage;
+    } else if (expire_s[0]) {
+        exp = cookie_datetime(trim_c(expire_s));
+        if (exp == (time_t)-1) exp = 0;
+        else if (exp <= nowt) delete = 1;
+    }
+
+    CookieEnt ents[COOKIE_MAX_ENT];
+    int n = cookie_load_file(ents, COOKIE_MAX_ENT);
+
+    int found = -1;
+    for (int i = 0; i < n; i++) {
+        if (strcasecmp(ents[i].host, scope_host) != 0) continue;
+        if (ents[i].path[0] && strcmp(ents[i].path, scope_path) != 0) continue;
+        if (strcmp(ents[i].name, name) != 0) continue;
+        found = i;
+        break;
+    }
+    if (delete) {
+        if (found >= 0) {
+            for (int i = found; i + 1 < n; i++) ents[i] = ents[i + 1];
+            n--;
+        }
+    } else {
+        if (found >= 0) {
+            snprintf(ents[found].value, sizeof(ents[found].value), "%s", value);
+            ents[found].expires = exp;
+            ents[found].secure = secure;
+        } else if (n < COOKIE_MAX_ENT) {
+            CookieEnt *e = &ents[n++];
+            memset(e, 0, sizeof(*e));
+            snprintf(e->host, sizeof(e->host), "%s", scope_host);
+            snprintf(e->path, sizeof(e->path), "%s", scope_path);
+            snprintf(e->name, sizeof(e->name), "%s", name);
+            snprintf(e->value, sizeof(e->value), "%s", value);
+            e->expires = exp;
+            e->secure = secure;
+        }
+    }
+    cookie_save_file(ents, n);
 }
 
 static duk_ret_t nb_dom_cookie_get(duk_context *ctx) {
@@ -2169,16 +2334,21 @@ static duk_ret_t nb_fetch_sync(duk_context *ctx) {
                 cfg_line(cf, "user-agent", "Mozilla/5.0 (NNEST network-browser-hq nb-js-worker rung4)");
                 cfg_line(cf, "max-time", "8");
                 fputs("silent\nlocation\nfail\n", cf);
-                /* same-origin cookie parity: send + persist the shared per-
-                 * house jar so JS-side fetch/XHR see server Set-Cookie (and
-                 * set — cross-navigation) cookies like the manager's curls. */
+                /* unified cookie jar: attach matching cookies from our jar
+                 * (Chromium-parity — one store, both directions). */
                 {
-                    const char *cjar = getenv("NB_CURL_COOKIES_FILE");
-                    if (cjar && cjar[0]) {
-                        cfg_line(cf, "cookie", cjar);
-                        cfg_line(cf, "cookie-jar", cjar);
-                    }
+                    char ckhdr[4096];
+                    cookie_header_for_url(url, ckhdr, sizeof(ckhdr));
+                    if (ckhdr[0]) cfg_line(cf, "header", ckhdr);
                 }
+                /* dump response headers so we can parse Set-Cookie into jar */
+                char hdrpath[256] = "";
+                {
+                    char t3[] = "/tmp/nbfetchhdr.XXXXXX";
+                    int fd3 = mkstemp(t3);
+                    if (fd3 >= 0) { close(fd3); snprintf(hdrpath, sizeof(hdrpath), "%s", t3); }
+                }
+                if (hdrpath[0]) cfg_line(cf, "dump-header", hdrpath);
                 /* one header = line per raw "Name: value" line (no strtok_r) */
                 for (const char *p = headers; *p; ) {
                     const char *nl = strchr(p, '\n');
@@ -2218,8 +2388,29 @@ static duk_ret_t nb_fetch_sync(duk_context *ctx) {
                                       "curl rc=%d status=%d url=%s",
                                       rc, status, url);
                 } else snprintf(errbuf, sizeof(errbuf), "popen curl failed");
+                /* ingest Set-Cookie response headers into the unified jar */
+                if (hdrpath[0] && status >= 200 && status < 400) {
+                    char *hbuf = NULL; size_t hbn = 0;
+                    if (read_file(hdrpath, &hbuf, &hbn)) {
+                        char *hp = hbuf;
+                        while (hp && *hp) {
+                            char *nl = strchr(hp, '\n');
+                            if (nl) *nl = 0;
+                            char *cr = hp + strlen(hp);
+                            if (cr > hp && cr[-1] == '\r') cr[-1] = 0;
+                            if (strncasecmp(hp, "Set-Cookie:", 11) == 0) {
+                                const char *val = hp + 11;
+                                while (*val == ' ') val++;
+                                cookie_set_from_wire(val, url);
+                            }
+                            hp = nl ? nl + 1 : NULL;
+                        }
+                        free(hbuf);
+                    }
+                }
                 unlink(cfgpath);
                 unlink(bodypath);
+                if (hdrpath[0]) unlink(hdrpath);
             }
         }
     } else {
@@ -2600,6 +2791,31 @@ static int run_event_loop(duk_context *ctx) {
     return g_pending_err;
 }
 
+/* ==================== rung 6 seam: generic SHA-1 primitive =============
+ * Row-34 login: Google's page JS signs SAPISIDHASH =
+ *   <ts>_<base64(sha1(<ts> " " <SAPISID> " " <origin>))>
+ * by itself (Chromium parity — browsers have no LOGIN op; the site's own
+ * script does the crypto). But the page needs a SHA-1 primitive to do so.
+ * This is the engine-generic one: `__nb_sha1(utf8)->base64(digest)`, exposed
+ * to any page. Not youtube-specific; the page JS handles the SAPISIDHASH
+ * composition purely in JS (btoa exists too, but Duktape strings are CESU-8,
+ * so the digest is pre-encoded ASCII base64 here — verified against openssl
+ * in worker_sapisid_test).  Shared impl in nb_sha1.h so fixture servers
+ * recompute the SAME digest when verifying a received signature. */
+#include "nb_sha1.h"
+
+/* __nb_sha1(str) -> base64 of the 20-byte SHA-1 digest (plain ASCII). */
+static duk_ret_t nb_sha1_native(duk_context *ctx) {
+    duk_size_t n = 0;
+    const char *t = duk_safe_to_lstring(ctx, 0, &n);
+    uint8_t out[20];
+    nbsha1((const uint8_t *)t, n, out);
+    char b64[29];
+    nbsha1_b64_20(out, b64);
+    duk_push_string(ctx, b64);
+    return 1;
+}
+
 static void install_events_timers(duk_context *ctx) {
     duk_get_global_string(ctx, "document");
     duk_push_c_function(ctx, nb_doc_addEventListener, 2);    duk_put_prop_string(ctx, -2, "addEventListener");
@@ -2615,6 +2831,7 @@ static void install_events_timers(duk_context *ctx) {
     }
     duk_pop(ctx);
     duk_push_global_object(ctx);
+    duk_push_c_function(ctx, nb_sha1_native, 1);         duk_put_prop_string(ctx, -2, "__nb_sha1");
     duk_push_c_function(ctx, nb_timer_setTimeout, 2);    duk_put_prop_string(ctx, -2, "setTimeout");
     duk_push_c_function(ctx, nb_timer_setInterval, 2);   duk_put_prop_string(ctx, -2, "setInterval");
     duk_push_c_function(ctx, nb_timer_clearTimeout, 1);  duk_put_prop_string(ctx, -2, "clearTimeout");

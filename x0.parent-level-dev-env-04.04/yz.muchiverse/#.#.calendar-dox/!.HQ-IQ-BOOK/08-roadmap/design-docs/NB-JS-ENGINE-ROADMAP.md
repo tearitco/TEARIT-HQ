@@ -341,18 +341,67 @@ plausible stub, `MutationObserver` (can no-op then improve),
 > **Rung 6 remainder hardening — cookie parity, script-tag edges, real
 > remote breadths: LANDED 2026-09-10.** Three follow-ups to the localhost
 > http proof, each E2E-verified against live servers:
-> - **Same-origin cookie parity.** Page loads, `<script src>` fetches, and
->   the worker's JS-side `fetch`/XHR now share ONE per-house Netscape jar,
->   `<house>/#.desktop/nb_curl_cookies.txt` (manager curls pass `-b/-c`;
->   the worker gets it via `NB_CURL_COOKIES_FILE` and emits `cookie` +
->   `cookie-jar` in its curl config). Server `Set-Cookie` byte-persists
->   across navigations and is retransmitted; worker fetch sees the same
->   cookies. Live E2E (custom fixture server): fresh house `guard` →
->   `guard-fail`; page sets `sess=abc123` via `Set-Cookie`; next request to
->   a guarded route → `guard-ok`; JS `fetch()` to a guarded API →
->   `ok:true`. Scope note: this jar is separate from the rung-6
->   `document.cookie` jar (`NB_COOKIES_FILE`, `wck`) — JS-written cookies
->   and wire cookies are not yet merged.
+> - **Same-origin cookie parity / UNIFIED cookie store (2026-09-16): ONE
+>   authoritative jar for `document.cookie` AND the network layer.**
+>   The old two-store split (line below) is eliminated: `nb_js_worker`
+>   `nb_fetch_sync` now attaches a `Cookie:` header scoped from OUR jar
+>   (`cookie_header_for_url`, RFC 6265 §5.1.4 path-match + Domain/Secure/
+>   expiry) and ingests response `Set-Cookie` straight into the same jar
+>   (`cookie_set_from_wire`, `dump-header` → per-line parse). The worker
+>   NEVER uses `NB_CURL_COOKIES_FILE` from here forward (curl `-b/-c`
+>   delegation removed); the manager may still set it for its OWN curls.
+>   **Long-term standard (no drift): one jar — `NB_COOKIES_FILE` —
+>   serves `document.cookie`, wire `Set-Cookie` ingress, and `Cookie`
+>   egress; response `Set-Cookie` is the only wire ingress.** Also fixed
+>   a latent port bug in `href_parts` (host from `g_href` previously kept
+>   the `:port` suffix, so port-scoped pages never matched jar cookies —
+>   invisible while set/get both used the same wrong host; the unified
+>   store exposed it). E2E loopback receipt (`worker_login_test`, `wlt`,
+>   hermetic 127.0.0.1 ephemeral port): `/auth` → `Set-Cookie: sid=wlt456`
+>   → page `document.cookie` reads `sid=wlt456` → `/guard` reattaches it
+>   → `guard-ok`; jar bytes byte-verified. Full `make check` (41 suites)
+>   green.
+> - **Real-shape login handshake / engine-generic SHA-1 (2026-09-17):**
+>   the page JS itself performs google's `SAPISIDHASH` signing (Chromium
+>   parity — browsers have no LOGIN op; the site's script does the
+>   crypto). To let it, the engine now exposes ONE engine-generic crypto
+>   primitive, `__nb_sha1(str)` → `base64(sha1(str))` (shared impl in
+>   `ops/nb_sha1.h`, pinned against openssl vectors inside
+>   `worker_sapisid_test`; raw bytes would be CESU-8-mangled in a Duktape
+>   string, so the digest is pre-encoded as ASCII base64). Page JS builds
+>   `SAPISIDHASH = <ts>_<base64(sha1(<ts> " " <SAPISID> " " <origin>))>`
+>   with stock `Date.now()` and sends it as `Authorization`. Hermetic
+>   loopback receipt (`worker_sapisid_test`, `wss`, 127.0.0.1 ephemeral):
+>   `/login` grants `Set-Cookie: SAPISID=…; sid=ssr77` → page reads
+>   `document.cookie`, signs, `/guard` RE-COMPUTES the sha1 server-side
+>   from received ts + granted SAPISID + received `Origin:` and replies
+>   `guard-ok` only on exact match → `/reagent` re-attaches the session
+>   cookie. No per-site hardcode in the engine. Full `make check` (42
+>   suites) green.
+> - **In-page InnerTube feed (2026-09-17):** roadmap row 35. The page's
+>   own JS POSTs a google-shaped `/youtubei/v1/browse?key=…` through the
+>   browser XHR wall — `yt-visitor_data` cookie + `X-Goog-Visitor-Id`
+>   header + SAPISIDHASH-signed `Authorization` + a real innerTube JSON
+>   browse body. The hermetic fixture (`worker_innertube_test`, `wit`,
+>   127.0.0.1 ephemeral) accepts (`innerYes`) only when ALL notes of the
+>   bottleneck verify: visitor-data cookie, matching API key, signature
+>   recomputed from granted SAPISID + received ts + Origin, and a
+>   well-formed browse body; then `/visitor` proves the jar re-attaches.
+>   No engine change needed — everything row 35 required was already
+>   provided by the unified jar + `__nb_sha1`. Full `make check` (43
+>   suites) green.
+> - **innerTube via the `fetch()` surface (2026-09-17):** row 31's real
+>   youtube bundle issues innerTube calls through `fetch()`+Promise, not
+>   XHR — so `worker_fetch_post_test` / `wfp` drives the SAME signed
+>   browse through host `fetch(url, {method, headers, body})` from
+>   `nb_host.h` (line 552+): `/login` grants the jar, the page Promise-
+>   chains `fetch()` → `response.json()` must parse `{"legs":"ok"}`, then
+>   a wrinkle-secret `/badsig` POST asserts the 401 → Promise rejection
+>   surfaces to page JS (browser-equivalent `.catch`). Fixture recomputes
+>   the signature (shared `nbsha1` in `ops/nb_sha1.h`) and honors only an
+>   exact match. ZERO engine changes — the fetch()→nbFetchSync path was
+>   already covered by rows 32/34/35's one-jar wall. Full `make check`
+>   (44 suites) green.
 > - **Script-tag edge audit.** `script_type_skip` was allowlisting
 >   (`module`/`json`/`ld+json`) and thus RAN unknown types like
 >   `text/template` as broken JS (WERR noise). Rewritten to browser rules:

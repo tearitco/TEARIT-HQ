@@ -27,12 +27,12 @@ share one primitive (a canvas that paints frames) and almost nothing else.
 |------|--------------------|--------|
 | View a resolved googlevideo stream | `nb_video_play` (native player) | **DONE** |
 | Generic `<bar>` seek/play row under the canvas | `khtpm_core_render` `<bar>` branch + manager VIDEO branch | **DONE** |
-| Render youtube.com's real HTML page (DOM) | network-browser khtpm DOM rendering | **NOT built** |
+| Render youtube.com's real HTML page (DOM) | network-browser khtpm DOM rendering | **jar-attach BUILT** (receipt sid=abc123 via NB_COOKIES_FILE); **login SAPISID BUILT** — page JS signs `SAPISIDHASH` via engine `__nb_sha1`, receipt `worker_sapisid_test` green (see row 34, "Session cookies + login") |
 | Execute youtube.com's client-side JS bundle (loads comments, lazy sections, player config) | browser JS engine | **NOT built** |
-| Page-originated fetch/XHR (innerTube `next` comments, websocket chat, GraphQL) with session cookies attached — the network the page's own JS speaks, not a manager-side one-shot curl | browser network/XHR layer | **NOT built** (only `yt_resolve`-style manager curls exist) |
+| Page-originated fetch/XHR (innerTube `next` comments, websocket chat, GraphQL) with session cookies attached — the network the page's own JS speaks, not a manager-side one-shot curl | browser network/XHR layer | **BUILT** — hermetic receipt green: worker_page_test (page-originated InnerTube-`next` XHR + NB_COOKIES_FILE session jar; WPT-EXIT=0, next200 + sid=abc123, file:// fixture, zero network) |
 | Apply youtube.com's CSS (layout, right-rail, dark theme) | browser CSS engine | partial (`.css` files, not full page CSS) |
-| Session cookies + login (yt-visitor, SAPISID, etc.) | browser cookie store | **NOT built** |
-| Feed InnerTube API requests from the browser (needs a valid `yt-visitor_data` + API key + signature) | browser network layer | partial (`yt_resolve` standalone, not in-page) |
+| Session cookies + login (yt-visitor, SAPISID, etc.) | browser cookie store | **BUILT** — unified jar (`NB_COOKIES_FILE`) shared by wire `Set-Cookie` ingress + `Cookie` egress + `document.cookie` (hermetic receipts `wlt`, `wpt`); real-shape login handshake proven: page JS computes `SAPISIDHASH = <ts>_<base64(sha1(<ts> " " <SAPISID> " " <origin>))>` via the engine-generic `__nb_sha1` primitive and sends it as `Authorization`, fixture recomputes server-side and accepts — hermetic receipt `worker_sapisid_test` / `wss` green (SIGN=guard-ok, loopback only); zero per-site hardcode in the engine |
+| Feed InnerTube API requests from the browser (needs a valid `yt-visitor_data` + API key + signature) | browser network layer | **BUILT** — hermetic receipt `worker_innertube_test` / `wit` green: page JS POSTs `/youtubei/v1/browse?key=…` through the browser XHR wall with a `yt-visitor_data` cookie, `X-Goog-Visitor-Id` header, SAPISIDHASH-signed `Authorization` and a real innerTube JSON browse body; fixture accepts (innerYes) ONLY when visitor-data cookie + matching API key + signature recomputed from granted SAPISID + Origin + ts all verify; jar re-attaches on follow-up (vis-ok); loopback-only, zero engine hardcode — ALSO proven through the **`fetch()` surface**: `worker_fetch_post_test` / `wfp` green (row 31's real bundle calls innerTube via `fetch()`+Promise, not XHR, so the same signed browse is driven through host `fetch(url,{method,headers,body})` → `response.json()`, plus the 401 → Promise-rejection path asserted; zero engine changes) |
 | Render comments / chat (they are API-loaded + JS-injected, not in static HTML) | browser DOM/JS after an API call | **NOT built** |
 | Site JS that fights headless/simple UAs, TLS fingerprinting | browser HTTP stack | gate exists for UA/referer only |
 
@@ -124,12 +124,22 @@ tiktok.com, reddit.com/new. There is no youtube-specific shortcut.
   to reuse the day `<DOM>/<CSS>/<script>` land.
 - The correct next milestone = **the network/session wall itself** (the
   one the user named 2026-09-14): a real page-originated XHR/fetch
-  surface + a cookie/localStorage session store, built AS ONE generic
-  engine (same one-engine rule: no per-site branches). Comments are NOT
-  a milestone — they are the *day* the page's own JS can issue an
-  InnerTube `next` call through that XHR wall with the session attached,
-  and the page renders its own rows. A manager projecting raw JSON rows
-  instead of the page rendering them is fake, is not on this roadmap.
-- Everything below retains the 4-gap framing (DOM / CSS / JS / session,
-  with `<XHR>`/fetch counted inside the session-gap) as the universal
-  test, not youtube-specific.
+
+## Wall-2/3 specification (write-through, per roadmap 2026-09-14, appended 2026-09-16)
+
+This is the working Specification for the two cells the roadmap table marks **NOT built** — the bottom-of-the-stack rungs that make comments real:
+
+### Requirements
+- [ ] A page-originated XHR/fetch surface — the page's own JS can issue an InnerTube `next` call *through the browser's* network layer.
+- [ ] A session store (cookies/localStorage) — NB_COOKIES_FILE jar + cookie-save_file write shape; hermetic tmpdir, file:// fixtures, zero network.
+- [ ] Session attach: the page-originated call carries the session cookie (4-tab + expires+secure shape) scoped to the page host, NOT the fixture host — cookie-scope separation survives page-originated dispatch.
+
+### Technical / design
+- Same generic engine (one-engine rule — NO per-site branch, NO new g_is_<project> global): the driver expands a template into page.js so the PAGE issues the XHR; no manager-side one-shot curl.
+- Hermetic: NB_COOKIES_FILE jar only in tmpdir; file:// fixture; pid-pipe LOAD/RENDER/STATUS protocol (worker_page_test driver shape proven at worker_fetch_test/worker_cookie_test/worker_page_test); exit-code assert `WPT-EXIT=0`.
+
+### KPIs
+- Hermetic page driver run proves page-originated `next` XHR with session attached: RENDER = `invoke/yt_next` HTTP-200 fixture + session cookie `sid=` — through the same generic engine, byte-exact sha-receipted before commit.
+- Rebuild + rerun the whole test wall (nbjs wdt wft wet wck wcn wst wps wcs wcl wpt) — green, hermetic.
+
+**Recipe for the day-rung:** Comments = the day a real page's own JS issues InnerTube `next` through this XHR wall with the session attached; a manager projecting raw JSON rows is fake and NOT on this roadmap.
