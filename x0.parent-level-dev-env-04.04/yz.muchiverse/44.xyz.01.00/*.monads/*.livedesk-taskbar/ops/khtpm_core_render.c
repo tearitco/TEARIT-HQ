@@ -9208,6 +9208,23 @@ static void handle_key(KeySym ks, char ch) {
      * pending multi-digit nav jump (tpmos digit_accum "reset on
      * non-digit keys"). */
     if (!(ch >= '0' && ch <= '9')) g_nav_digit_accum = 0;
+    /* Space: on the dock/strip it is Enter (a focused pal cell opens its context
+     * menu, a header cell opens its dropdown, same path as Enter below); in any
+     * other HQ window it opens the same context menu a mouse button-3 click on the
+     * focused nav item opens. Armed fields returned above (Space stays a literal
+     * there); an entity-menu popup ignores Space. */
+    if (ks == XK_space || ch == ' ') {
+        if (window_is_dock()) {
+            ks = XK_Return;
+            ch = 0;
+        } else if (g_focus_nav >= 1 && g_focus_nav <= g_n_nav && !window_is_entity_menu()) {
+            Elem *f = g_nav[g_focus_nav - 1];
+            if (f && f->w > 0 && strncmp(f->id, "chrome-", 7) != 0) {
+                kh_open_cli_io_context_menu(f, f->x + f->w / 2, f->y + f->h / 2);
+                return;
+            }
+        }
+    }
     if (ks == XK_Return || ks == XK_KP_Enter) {
         activate_focused();
         /* activate_focused() may have just entered/left a scope (<tab>,

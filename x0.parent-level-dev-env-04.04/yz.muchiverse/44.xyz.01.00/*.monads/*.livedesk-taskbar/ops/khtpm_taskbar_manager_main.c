@@ -754,6 +754,9 @@ static void run_shortcut(const char *cmd) { (void)cmd; }
  * potentially-mutating, matching how cheap ktb_reload()/ktb_focus_delta()
  * etc. already are). */
 static void dispatch_code(KtbState *s, int code) {
+    /* Space is Enter on the strip (same as the dock's own handle_key), except
+     * while a cli-io field is being typed into, where it stays a literal. */
+    if (code == 32 && !(s->cliio_active && s->cliio_typing)) code = KSC_ENTER;
     /* Same precedence order as tp_taskbar.c's agent_relay_dispatch():
      * cli-io modal > hq popup > (else) the pre-existing bottom-bar
      * digit/focus/tab/shortcut dispatch below, unchanged. */

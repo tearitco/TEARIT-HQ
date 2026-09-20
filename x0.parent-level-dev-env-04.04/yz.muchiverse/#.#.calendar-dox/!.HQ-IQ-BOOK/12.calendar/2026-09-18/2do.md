@@ -106,4 +106,5 @@ also apply there or crumbs stay broken in Grid View. Not a new
 - Real sprite in Inventory tiles — **done** (0eda3dc5, transparency a53ddb80).
 - Inventory row on every entity — **done** (e8a5baa4); named explorer instances (`button.sh run-instance <dir>`) so several Inventory windows can be open.
 - Cross-window Cut/Paste (global `#.desktop/fe_clipboard.txt`) — **done** (711a3c46). Place into an open Inventory (pointer-over-window highlight + click moves item in) — **done**, see commit for Task 4.
+- ✅ **Keyboard/relay context menu (2026-09-20):** Space on the focused nav item opens the right-click menu in HQ windows; on the dock/strip Space = Enter (pal cell → its menu, header cell → dropdown). Armed text fields keep Space literal. Not covered: desk pal windows themselves (no nav focus; they open from the dock cell).
 - Not yet: right-click methods for a PAL that has no `sprite.csv` (menu keys off the tile's sprite= dir); Place from the desk (only from an explorer); dragging between explorer windows (cut/paste and Place cover it).

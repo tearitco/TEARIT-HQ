@@ -78,6 +78,16 @@ inside whichever window has `^`) — one level above LayDoc's own
 `active_index`/`focus_index` split. Tab is agent-drivable for free
 through the same `KEY_PRESSED:` file mailbox as any other key.
 
+**Space (2026-09-20)**: the keyboard/relay equivalent of a right-click.
+In an HQ window with a focused nav item (and no text field armed), Space
+(`KEY_PRESSED: 32`) opens the same context menu a button-3 click on that
+item opens; the popup is its own process, driven by digits + Enter and
+closed with Esc through its own `entity_menu_history/<pid>.txt`. On the
+dock/strip Space is Enter: a focused pal cell opens that pal's menu, a
+header cell opens its dropdown (via `strip_history.txt` the manager maps
+code 32 to Enter too). In an armed text field (or a strip cli-io being
+typed into) Space stays a literal character.
+
 ## Two tree/render systems, not one
 
 - **LayDoc** (`khtpm_strip_layout.h`/`.c`) — the taskbar's own engine:

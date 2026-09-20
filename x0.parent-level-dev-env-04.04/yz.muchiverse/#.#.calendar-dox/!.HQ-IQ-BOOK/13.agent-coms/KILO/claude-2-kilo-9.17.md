@@ -231,6 +231,12 @@ x y [3=right-click]|string "mv 25 26"` drive one window through file 1. Digit
 codes are ASCII (`'5'` = 53; `nav`/`key` handle that for you). Read real nav
 numbers from a `dump_frame_png_op` frame first; numbers are per window.
 
+⌨️ **2026-09-20: Space opens the context menu without a mouse.** Focus an item
+(digits), then `NAV_PID=<pid> bash nav.sh key ' '` (or `KEY_PRESSED: 32`): the
+same menu as a right-click appears as its own window/pid; pick a row with
+digits + Enter on THAT pid, Esc closes. On the strip, code `32` = Enter (a
+focused pal cell opens its menu). Inside a typing field Space is a literal.
+
 ### 3c. 🔒 NEW RULE: a checkpoint is not "started"/"in progress" until relay-verified
 
 A real prior kilo session declared "WSR-CIV Step A: IN PROGRESS" after
