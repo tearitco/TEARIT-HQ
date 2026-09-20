@@ -2,6 +2,60 @@
 
 ---
 
+## ⚠️ OPEN 2026-09-20: csv-hq `<grid>` - Enter on the grid nav item doesn't activate it (needs a double click) and no typed input arrives afterward
+
+**Reported:** direct live report, csv-hq (`@.apps/csv-hq/`): the grid is
+nav item **10**; pressing Enter on it does **not** arm it (user has to
+double click), and once it is in `#` mode nothing typed is taken as
+input. User's own note: the grid "wasn't tested very thoroughly, it may
+need a bugfix." Also: the user first asked how `#` mode is supposed to
+work - answer is in `08-roadmap/design-docs/GRID-ELEMENT-DESIGN.md`
+("Three real states") and csv-hq-pal.xhtpm's header: Enter arms (`#`,
+navigating), arrows move the cell cursor, letters/digits build a jump
+buffer (`a11` or `11a`) resolved by Enter, a second Enter with an empty
+buffer enters the cell (`^`, real text input), Esc commits (`SETCELL:`)
+and returns to `#`, Esc in `#` disarms. The design doc's own header still
+says "DESIGN ONLY", which is stale - csv-hq shows it shipped 2026-09-05.
+
+**Evidence so far (one lead, not confirmed):** `@.apps/csv-hq/
+kh_focus_debug.log` ends with repeated
+`GRAB key=cell_ attempts=6 rc=1(0=success) real_focus_is_us=1`
+(time-of-day 02:36). `rc=1` is `AlreadyGrabbed`: some other X client was
+holding the keyboard grab when the grid tried to take it, so cell
+editing never received keys. This is NOT the same signature as the
+2026-09-14 entry below (text-edit-hq logged `rc=0` success yet got no
+keys) - but it is the same *class* ("armed field gets no keyboard"),
+and it is the same failure mode the Place-overlay Esc bug had (its
+`XGrabKeyboard` result was ignored while another client held a grab).
+
+**Two separate symptoms, possibly two causes:**
+1. *Enter doesn't arm.* A double click works, so the mouse path reaches
+   the grid's activation but the Enter / `KEY_PRESSED: 13` path on a
+   focused `<grid>` nav item may not route to `activate_focused()` for
+   the grid tag (Enter path: `handle_key()` `XK_Return` branch in
+   `khtpm_core_render.c`; grid state machine: `default_grid_handle_key()`
+   ~line 7744).
+2. *Armed but no input.* Grab failure above, or keys reaching
+   `handle_key()` but the grid handler not consuming letters/digits/
+   arrows in `#` state, or the jump-buffer status line not updating.
+
+**Not yet done - next steps:** reproduce with a private Xephyr + house
+root via relay: focus the grid nav item, send `KEY_PRESSED: 13`, read
+the frame for the `#` badge; then arrows (200-203), `a`,`1`,`1`, `13`
+and check `jump: a11_` and the cursor; then a second `13` and typed
+text, Esc, and confirm `csv_hq_action.txt` gets `SETCELL:`. Then repeat
+with a REAL keyboard - relay injection bypasses X grabs (see
+`RELAY-WINDOW-TARGETING-DESIGN.md` and the house rule
+`relay-testing-may-mask-real-focus-bugs`), so a relay-only pass proves
+nothing about symptom 2. Check who else holds the grab (other armed
+cli_io, an open popup, the taskbar) by running csv-hq alone.
+
+**Related:** the OPEN 2026-09-14 entry below (physical keyboard never
+reaches an armed field despite rc=0), and the Place-overlay Esc fix
+(same ignored/failed `XGrabKeyboard` pattern).
+
+---
+
 ## ✅ CLOSED 2026-09-17: taskbar HQ header cells drifted after 5.menu's insertion - wrong labels, missing dropdowns, wrong reopen target
 
 **Reported:** direct live report - "i clicked h-ai, and i noticed it
