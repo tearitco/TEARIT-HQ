@@ -71,6 +71,13 @@ Not touched on purpose (semantics must not change): keyboard grab/focus code, `d
 
 **Only the user's real hardware can verify:** (1) one real click of the strip's `@` after restarting the renderers/taskbar on the new binary (pals now respawn; Wayland stacking behaviour is not reproducible in Xephyr); (2) real keyboard/arrow navigation of the dock (relay and Xephyr bypass X grabs; the grab/focus code was deliberately left untouched, pitfall #24); (3) that the strip still looks/behaves normally next to the live manager (the private test house had no manager, so header dropdowns/pager/toys menu were not exercised - the changes cannot reach them, but they were not clicked).
 
+## 5c. DECISION (user, 2026-09-20): stages 3-5 DEFERRED, documented
+
+- **Stages 1-2 stay done. Stages 3-5 are deferred** - the win is architectural purity (removing the 55 `window_is_dock()` special cases), not user-visible, and it is high risk because it means adding new *generic* engine features (shrink-to-fit rows, pager element, secondary surface) that every window shares, verified only on real hardware.
+- **HARD REQUIREMENT: unified nav across the header strip, bottom row and toys dropdown must be preserved** (user: "unified nav is a must"). This rules out the process-split alternative for stage 5 (separate window processes for bottom row/dropdown) unless the relay fully replicates one shared nav space; the "secondary surface" engine concept is the only route that keeps it natively.
+- **Revisit trigger:** when a second window genuinely needs a pager, shrink-to-fit rows, or multiple X windows per process. Before that, do not start 4-5.
+- **Why it matters for agents:** editing any generic layout/paint/key function means checking the dock branch too - see §3 and pitfalls #14/#20/#24, and the `khtpm-shared-layout-caution` note. If you add a `window_is_dock()` branch, add it to the audit table instead of growing the count silently (currently 55).
+
 ## 6. Comment/history mirrored from removed code (so docs-only readers keep it)
 
 - `ktb_toggle_zorder_respawn` history (2026-09-13 live reports): the strip windows are WM-managed regardless of the always-on-top setting, so the toggle must **not** respawn the strip (only entities); death is polled with `kill(pid,0)` (≤6×30 ms) instead of a flat 300 ms sleep because SIGTERM interrupts `select()` immediately (sigaction without `SA_RESTART`); the strip respawn came first historically and is now moot; entities are staggered (30 ms) and `nice(8)` so a burst of GUI launches doesn't saturate the CPU (project note: weak-CPU machine). Carried into the op's header comment.
