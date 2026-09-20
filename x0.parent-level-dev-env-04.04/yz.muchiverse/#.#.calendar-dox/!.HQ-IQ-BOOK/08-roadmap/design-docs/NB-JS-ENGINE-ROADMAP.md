@@ -762,3 +762,17 @@ Rung 1 in `nb_js_eval.c` `install_host()`: make `window`/`self`/
 (parsed from `argv[3]` href). ~40 lines, no manager changes, kills a
 large share of the current `js: script error` rows immediately. Then
 decide one-shot-plus vs worker (§3) before starting rung 2.
+
+## 2026-09-19 — watch page + resident multi-nav session, zero engine gaps
+
+The same engine that renders youtube's home renders the real **watch**
+page through the manager with no code changes: `TITLE|Rick Astley -
+Never Gonna Give You Up (Official Video) (4K Remaster)`, `MEDIA|V|`
+player frame, 2 thumbnail `MEDIA|I|` frames, 2 suggested `LINK|` rows,
+56 `TEXT|` rows (real description + lyrics + view/subscriber counts),
+0-byte worker error log. And a single resident worker served **two
+consecutive navigations** (home → watch) in one manager house with the
+session jar persisting across both — the rung-4 fetch surface, jar
+ingress, and signed innerTube attach hold end-to-end over real pages.
+`make check` 60/0. Next wall on the REAL-SPA roadmap is CSS/layout; the
+engine's host-surface coverage is now well ahead of the renderer.

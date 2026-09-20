@@ -73,6 +73,24 @@ step is skipped:
 
 ## Work log (most recent first)
 
+### 2026-09-19 watch page + multi-navigation session (same engine, zero errors)
+- **Watch page runs clean through the manager, no code changes:**
+  `go:https://www.youtube.com/watch?v=dQw4w9WgXcQ` on an isolated house
+  (`/tmp/nbhouse31k`, `NB_STACK=1`): ready in 5 s, **0-byte** worker
+  error log, and page.state renders the real page —
+  `TITLE|Rick Astley - Never Gonna Give You Up (Official Video)
+  (4K Remaster)`, `MEDIA|V|` player frame + 2 `MEDIA|I|` thumbnail
+  frames, 2 `LINK|` suggested-video rows, and **56 `TEXT|` rows** (real
+  description, lyrics, `1,817,815,553 views`, `4.54M subscribers`).
+  The same 43-slice real bundle graph that renders the home page handles
+  the watch page with zero host-surface gaps.
+- **Multi-navigation in ONE resident worker session**
+  (`/tmp/nbhouse31l`): `go:/` → ready → `go:/watch?v=…` → ready; both
+  loads 0-byte errors, watch render = 81 rows + full title; the session
+  jar (`nb_curl_cookies.txt`, 926 B) persisted across both navigations —
+  rows 32/34/35 (fetch surface, jar, signed innerTube attach) hold
+  end-to-end over two real pages in a single manager house.
+
 ### 2026-09-19 row-31 acceptance: real youtube runs zero-error through the manager
 - **Through-manager end-to-end on the real page**, each iteration
   diagnosing the newest host gap the real scripts expose (autonomous
