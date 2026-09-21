@@ -209,50 +209,49 @@ IN SCOPE at the sxs closure in OUR runtime is NOT the global ASZ one. Leading
 hypothesis: kevlar module-local shadowing of `_`/`a` in the masthead module
 (its own DOM-builder `_.a("yt-searchbox", {...}, [...])`, offset ~10047389)
 returns undefined for (FUNCTION, null).
-NEXT SESSION (ordered experiments):
-1. Determine the REAL `_.a` S (=O,C)-scope: add a temporary CE| instrument at
-   ce_upgrade_one that ALSO evals nothing... instead: patch ce_upgrade_one to
-   first set flag `web_monomer_web_component_wrapper_handle_errors` FALSE via
-   experiments if reachable, else expose the true return via
-   `JS_GetProperty+JS_Call` and log `CE|createElement(<tag>): rctype=`; record
-   whether rc is object/array — the source says array, observed undefined =>
-   if still undefined, module-local `_.a` confirmed.
-2. If module-local confirmed: find the masthead module's own `a` DOM-builder
-   (~10047389 region) and make `_.a(fn, null)` fall through to the global
-   ASZ descriptor path (patch the module init in the bundle, e.g. extend
-   masthead module so its local `_.a` delegates to ASZ for function kinds) or
-   demo the equivalent render at app level.
-3. REMEMBER: there is NO typed-input driver in this headless browser (only
-   `go:` commands) — an on-page search FORM is cosmetic today; the WORKING
-   user path remains the verified address-bar fallback
-   (`go:<query>` -> /results?search_query=). Do NOT sink an evening into
-   making the form visible until input pinning exists.
-RESOLVED TONIGHT (definitive empirics):
-- rc-tracer landed in ce_upgrade_one: `CE|createElement(<tag>): rc=<type>`
-  (rc=undefined|array|object|function|...). Built + live under NB_TRACE_CB=1.
-- REAL-LOAD run: only `<ytd-masthead>` has createElement() invoked during a
-  full HOME load (rc=undefined); the other sxs-registered components never
-  reach the createElement call at upgrade time during load — they're built
-  from light-DOM stamps and never materialized. Runtime `x.createElement()`
-  still rc=undefined for all sxs components (matches earlier manual probes).
-- SMOKING GUN: monkeypatched document.createElement (log tags) around
-  `m.createelemF()` — the masthead createElement made ZERO document.createElement
-  calls and returned undefined. => the sxs closure's `_.a(O,null)` returns
-  undefined with NO DOM work and NO exception: a module-local `a` no-op, NOT
-  an engine error, NOT the global ASZ/I9c descriptor path. The I9c->rSC->f9b
-  build pipeline NEVER runs for the masthead in our runtime.
-- The search UI (form+icon) markup lives in the masthead's OWN `_.om` template
-  string (offset ~10078082); Chrome stamps it server-side; our flat DOM gets
-  the "search-container/input shell" without form+icon.
-NEXT SESSION (now precisely constrained):
-1. Find WHICH sxs-call defines masthead and WHAT O it passes, then make the
-   masthead module's local `_.a(function-ish, null)` build the descriptor
-   (patch that module's `a` to delegate function-kinds to the global ASZ).
-2. OR stamp the masthead `_.om` template into <ytd-masthead> at our level
-   (cosmetic UI; no input driver yet — see warning above).
-3. Flat-DOM alternative with REAL value: inject a working `#search-form`
-   (`action=/results`) + wired submit that maps to the existing go:-fallback
-   — probably the best user-visible outcome until input pinning lands.
+--- 2026-09-21 PRE-DAWN (kevlar render Error("Oc") killed; createElement returns array) ---
+ SOLVED: the night-autopsy "module-local _.a no-op" hypothesis was WRONG.
+ The eval-time bundle probe (nb_bundle_probe(), env NB_BUNDLE_TRACE=1, wired
+ into run_scripts_slices) decoded the real flow on a live HOME load:
+   NBT|enter:ytd-masthead flag=1
+     -> NBT|euv: a=function(O,S){return ASZ.apply(null,[O,S...  (REAL global ASZ)
+     -> NBT|euv: ret=object    (_.a(O,null) DID build the I9c descriptor)
+     -> NBT|qkq c=I9c instcSc=true render=function   (I9c passes Gry/Qkq gate)
+     -> NBT|qkq c=D instcSc=false render=undefined   (render OUTPUT -> element)
+     -> NBT|ERR:Oc             (Qkq final `throw t8(Error("Oc"),4)`, swallowed
+        by the sxs try/catch -> createElement returned undefined)
+ ROOT CAUSE: kevlar's node gate is `BD(O)=_.qh(O)&&"nodeType" in O`
+ (_.qh is just a typeof-object check). Our C-backed DOM wrappers (push_node)
+ carried nodeName/tagName but NO nodeType property -> `"nodeType" in O` was
+ false -> EVERY Qkq element branch fell through to Error("Oc") -> the sxs
+ catch gutted the result to undefined. (wrz(O)=BD(O)&&O.nodeType===Node.
+ ELEMENT_NODE additionally needs the Node.* static constants.)
+ FIX (ops/nb_js_worker.c, committed):
+   - push_node(): nodeType = 1 on element wrappers, 3 on #text wrappers
+   - install_dom_classes(): Node statics ELEMENT_NODE=1 TEXT_NODE=3
+     DOCUMENT_NODE=9 DOCUMENT_FRAGMENT_NODE=11 ATTRIBUTE_NODE=2
+     COMMENT_NODE=8 DOCUMENT_TYPE_NODE=10
+   - document object gets nodeType=9 (fragments + shadow roots already 11)
+ EVIDENCE (fresh load, NB_TRACE_CB=1 NB_BUNDLE_TRACE=1): NO NBT|ERR:Oc
+ anymore; `CE|createElement(ytd-masthead): rc=array` (was undefined);
+ masthead children went from flat shell to 5 structural divisions
+ (`div#search-container.ytd-searchbox-spt`, `div#search-input.ytd-searchbox-spt`,
+ `svg#menu-icon.external-icon`, `div#masthead-logo.`, `div#masthead-skeleton-icons.`);
+ minuscule manual eval: prototype chains built exactly like _.Y (Object.create
+ and temp-ctor) resolve `new I9c() instanceof cSc` TRUE in our engine, so
+ `instanceof` itself is sound — it was purely the missing nodeType property.
+ REMNANT (next refinement, COSMETIC-until-input-pinning): <yt-searchbox>
+ (CE|define yt-searchbox as h) is created during masthead render BEFORE its
+ define() fires; we upgrade custom elements only on-creation, so yt-searchbox
+ never materializes and #search-input stays an empty container (no <form>,
+ no icon). Real behavior: define() should auto-upgrade matching elements
+ already in the document/skeleton. Do NOT sink an evening into the visible
+ form until a typed-input driver exists — the WORKING user path remains the
+ verified address-bar fallback (`go:<query>` -> /results?search_query=).
+ DEBUG OWNERSHIP: nb_bundle_probe() stays behind NB_BUNDLE_TRACE=1. It
+ replaces the failed "patch the bundle FILE" idea — page.js.ext8.js is
+ RE-EXTRACTED every load, so only eval-time injection in the worker works.
+ Needle-count mismatch makes the patch safe-decline (logs "NBT|declined:").
 
 DIAGNOSTIC RECORD (why the two "cannot read property of undefined" init
 TypeErrors happened — now FIXED):

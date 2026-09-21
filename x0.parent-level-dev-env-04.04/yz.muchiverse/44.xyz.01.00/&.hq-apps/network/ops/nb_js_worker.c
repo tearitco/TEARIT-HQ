@@ -1590,6 +1590,12 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
     JS_SetPropertyStr(ctx, el, NODEKEY, JS_NewInt32(ctx, nidx));
     {
         const char *label = (n->tag && n->tag[0]) ? n->tag : "#text";
+        /* nodeType (2026-09-20): kevlar's materializer gate is
+         * BD(O)=_.qh(O)&&"nodeType" in O — elements without a nodeType
+         * property fall through every Qkq branch and the render dies with
+         * Error("Oc"). Browsers expose it on the prototype; our wrappers
+         * are plain objects so an own data property is the equivalent. */
+        JS_SetPropertyStr(ctx, el, "nodeType", JS_NewInt32(ctx, (n->tag && n->tag[0]) ? 1 : 3));
         JS_SetPropertyStr(ctx, el, "nodeName", JS_NewString(ctx, label));
         if (n->tag && n->tag[0])
             JS_SetPropertyStr(ctx, el, "tagName", JS_NewString(ctx, label));
@@ -2620,12 +2626,25 @@ static void install_dom_classes(JSContext *ctx) {
     JS_SetPropertyStr(ctx, g, "Document", Df);
     JS_SetPropertyStr(ctx, g, "Animation", Af);
 
+    /* Node static constants (2026-09-20): kevlar's wrz() compares
+     * O.nodeType === Node.ELEMENT_NODE when deciding to wrap a lone node into
+     * an array before materialization. Without these the comparison is
+     * false-on-undefined and rendered elements are silently dropped. */
+    JS_SetPropertyStr(ctx, Nf, "ELEMENT_NODE", JS_NewInt32(ctx, 1));
+    JS_SetPropertyStr(ctx, Nf, "TEXT_NODE", JS_NewInt32(ctx, 3));
+    JS_SetPropertyStr(ctx, Nf, "DOCUMENT_NODE", JS_NewInt32(ctx, 9));
+    JS_SetPropertyStr(ctx, Nf, "DOCUMENT_FRAGMENT_NODE", JS_NewInt32(ctx, 11));
+    JS_SetPropertyStr(ctx, Nf, "ATTRIBUTE_NODE", JS_NewInt32(ctx, 2));
+    JS_SetPropertyStr(ctx, Nf, "COMMENT_NODE", JS_NewInt32(ctx, 8));
+    JS_SetPropertyStr(ctx, Nf, "DOCUMENT_TYPE_NODE", JS_NewInt32(ctx, 10));
+
     /* the document object rides Document.prototype; web-animations reads
      * document.timeline at load, so give it a minimal one. */
     {
         JSValue doc = JS_GetPropertyStr(ctx, g, "document");
         if (JS_IsObject(doc)) {
             JS_SetPrototype(ctx, doc, Dp);
+            JS_SetPropertyStr(ctx, doc, "nodeType", JS_NewInt32(ctx, 9));
             JSValue tl = JS_NewObject(ctx);
             JS_SetPropertyStr(ctx, tl, "currentTime", JS_NewFloat64(ctx, 0));
             JS_SetPropertyStr(ctx, tl, "getAnimations", JS_NewCFunction(ctx, class_noop, "getAnimations", 0));
@@ -4458,14 +4477,84 @@ static const char *find_script_boundary(const char *p, const char *end,
     }
     return NULL;
 }
+/* Debug-only (NB_BUNDLE_TRACE=1): inject console probes into kevlar's sxs
+ * customElement wrapper (D.prototype.createElement) so a real LOAD reveals
+ * what `_.a(O,null)` returns, the live binding of `_.a`/`O`, and whether the
+ * wrapper's try threw (the catch swallows the error and RETURNS UNDEFINED).
+ * The page bundle is re-extracted every load, so injection happens here at
+ * eval time against the materialized slice text. Returns a malloc'd patched
+ * buffer via *out (caller frees), or 0 when the env is off / needles absent.
+ * Needle counts must match exactly, else the patch is declined. */
+static int nb_bundle_probe(const char *src, size_t src_n,
+                           char **out, size_t *out_n) {
+    static const char *env = NULL;
+    if (!env) env = getenv("NB_BUNDLE_TRACE");
+    if (!env || !env[0] || env[0] == '0') return 0;
+    static const struct { const char *nd; const char *rp; int want; } pat[] = {
+        { "if(!this.isInert)if(_.f(\"web_monomer_web_component_wrapper_handle_errors\")){WI=this;try{",
+          "if(!this.isInert)if(_.f(\"web_monomer_web_component_wrapper_handle_errors\")){try{console.log(\"NBT|enter:\"+this.tagName+\" flag=1\");}catch(e0){}WI=this;try{", 1 },
+        { "function(){return _.a(O,null)}",
+          "function(){var r=_.a(O,null);try{console.log(\"NBT|euv:a=\"+(typeof _.a)+\"|\"+String(_.a).slice(0,40)+\"|O=\"+(typeof O)+\"|\"+String(O).slice(0,40)+\"|nS=\"+(_.nS===void 0?\"u\":_.nS?1:0)+\"|ret=\"+(typeof r)+\"|\"+String(r).slice(0,40));}catch(e1){}return r}", 2 },
+        { "catch(L){h=function(B)",
+          "catch(L){try{console.log(\"NBT|ERR:\"+String(L&&L.message||L));}catch(e2){}h=function(B)", 1 },
+        { "if(O instanceof cSc)return L=O.render(),Qkq(L,S,D,g,h);",
+          "try{console.log(\"NBT|qkq c=\"+(O&&O.constructor&&O.constructor.name)+\" instcSc=\"+(O instanceof cSc)+\" render=\"+(typeof (O&&O.render)));}catch(eQ){console.log(\"NBT|qkqT:\"+eQ)}if(O instanceof cSc)return L=O.render(),Qkq(L,S,D,g,h);", 1 },
+    };
+    const int pat_n = (int)(sizeof(pat) / sizeof(pat[0]));
+    int cnt[4] = { 0, 0, 0, 0 };
+    const char *q = src, *end = src + src_n;
+    for (int i = 0; i < pat_n; i++) {
+        size_t nl = strlen(pat[i].nd);
+        for (const char *z = src; z + nl <= end; ) {
+            const char *hit = memmem(z, (size_t)(end - z), pat[i].nd, nl);
+            if (!hit) break;
+            cnt[i]++;
+            q = hit + 1;
+            z = q;
+        }
+    }
+    for (int i = 0; i < pat_n; i++)
+        if (cnt[i] != pat[i].want) {
+            fprintf(stderr, "NBT|declined: counts %d/%d/%d/%d (want %d/%d/%d/%d)\n",
+                    cnt[0], cnt[1], cnt[2], cnt[3],
+                    pat[0].want, pat[1].want, pat[2].want, pat[3].want);
+            return 0;
+        }
+    size_t out_cap = src_n + 4096, off = 0;
+    char *b = malloc(out_cap);
+    if (!b) return 0;
+    const char *z = src;
+    while (z < end) {
+        int done = 0;
+        for (int i = 0; i < pat_n && !done; i++) {
+            size_t nl = strlen(pat[i].nd);
+            if ((size_t)(end - z) >= nl && memcmp(z, pat[i].nd, nl) == 0) {
+                size_t rl = strlen(pat[i].rp);
+                if (off + rl >= out_cap) { free(b); return 0; }
+                memcpy(b + off, pat[i].rp, rl); off += rl; z += nl; done = 1;
+            }
+        }
+        if (!done) { b[off++] = *z++; }
+    }
+    b[off] = 0;
+    fprintf(stderr, "NBT|patch applied (%zu bytes)\n", off);
+    *out = b; *out_n = off;
+    return 1;
+}
 static void run_scripts_slices(JSContext *ctx, char *src, size_t src_n) {
     const char *p = src, *end = src + src_n;
     const char *after = NULL;
     char errbuf[512];
+    char *probe = NULL; size_t probe_n = 0;
+    if (nb_bundle_probe(src, src_n, &probe, &probe_n) && probe) {
+        src = probe; src_n = probe_n;
+        p = probe; end = probe + probe_n;
+    }
     if (!find_script_boundary(p, end, &after)) {
         /* legacy single-program page.js */
         if (peval_budget(ctx, src, src_n, errbuf, sizeof(errbuf)) != 0)
             fprintf(stderr, "WERR| script 0: %s\n", errbuf[0] ? errbuf : "eval error");
+        free(probe);
         return;
     }
     p = after;
@@ -4488,6 +4577,7 @@ static void run_scripts_slices(JSContext *ctx, char *src, size_t src_n) {
         if (!bn) break;
         p = next;
     }
+    free(probe);
 }
 static void run_page(void) {
     /* phase-2 (commit 7): per-page event/timer/microtask state. The previous
