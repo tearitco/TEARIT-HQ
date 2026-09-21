@@ -294,6 +294,53 @@ REMNANT (next refinement, COSMETIC-until-input-pinning): <yt-searchbox>
   <yt-searchbox> host) — cosmetic until typed-input pinning. Check via
   querySelector('#search-input').childNodes and video search via the
   address-bar fallback `go:<query>`.
+--- 2026-09-21 EVENING (typed-input drivers: Event subclasses + focus/blur; nav works) ---
+  Next-step diagnosis COMPLETE, one gap remains. What got FIXED (committed):
+  1. KEYBOARD/INPUT EVENT SUBCLASSES WERE EMPTY. The prelude defines a real
+     `Event(type,opts)`; KeyboardEvent/InputEvent/MouseEvent/... fell through
+     to the C `class_noop` stub, so `new KeyboardEvent('keydown')` had NO
+     `.type` -> dispatch_event bailed (`.type` missing) and NO listener ever
+     fired. FIX in ops/nb_host.h (rung 3b): wireSub() installs each subclass
+     as `C.prototype=Object.create(Event.prototype)`; C ctor does
+     `Event.call(this,type,opts)` then copies an init-key allowlist
+     (KeyboardEvent: key,code,keyCode,which,ctrlKey,shiftKey,altKey,metaKey,
+     repeat,isComposing,location; InputEvent: data,inputType,isComposing;
+     MouseEvent, FocusEvent, PointerEvent, TouchEvent, WheelEvent, UIEvent,
+     DragEvent, ProgressEvent, ErrorEvent, MessageEvent, CustomEvent,
+     AnimationEvent, TransitionEvent). Passing isTrusted:true (not in the
+     allowlist, but any init key IS copied via `k in o`) emulates user
+     events for kevlar's history gating.
+  2. ELEMENT FOCUS/BLUR NATIVES + activeElement. push_node now wires
+     `el.focus()`/`el.blur()` (nb_el_focus/nb_el_blur near fire_event);
+     focus tracks g_active_node, sets document.activeElement to the wrapper,
+     blur of the prior active element, then dispatches 'focus'/'blur'
+     (non-bubbling, cancelable=false) at the node level.
+  VERIFIED LIVE: `new KeyboardEvent('keydown').type==='keydown'`,
+  `new InputEvent('input').type==='input'`; typed-input eval on the masthead
+  input: value writes, `dispatchEvent(new InputEvent('input'))` and
+  `KeyboardEvent('keydown')` BOTH fire element+document+window listeners
+  (in=1 doc=1 win=1); `i.focus()` sets document.activeElement===i;
+  `location.href='/results?search_query=…'` NAVIGATES (status flips to
+  loading/ready — the C nav layer works).
+  REMAINING GAP (the actual "next step", now precisely located): kevlar's
+  masthead STATIC input (`input[name="search_query"]`, the sole input in the
+  live tree) has NO `on:*` handlers attached — `typeof i.onkeydown` is
+  undefined AND dispatching Enter on it never preventDefaults (kevlar's
+  on:keydown F never runs; ret=true def=false). kevlar's translator binds
+  `on:keydown` via `el.onkeydown===undefined?el.addEventListener('keydown',
+  P):el.onkeydown=P` (~<script>:155011), i.e. the handlers attach only during
+  PROGRAMMATIC element build; but our masthead materializes the input from
+  the template STRING parse (createElement(ytd-masthead) -> rc=array -> html
+  flatten), so kevlar's closure handlers are lost before attach. Attaching
+  Enter would have kevlar preventDefault+submit -> navigation (location
+  setter verified). NEXT-STEP OPTIONS: (a) run kevlar's own attach/hydrate
+  step for the static search input (the real site binds yt-searchbox/
+  SearchBox attach to the static input post-render), or (b) in the C plant,
+  when kevlar assigns descriptors with on:* to CREATED nodes, mirror the
+  `el["on"+g]=P`/addEventListener attach against the C node list so the
+  parse-materialized input picks them up. Do NOT burn an evening here — the
+  address-bar fallback `go:<query>` -> /results?search_query= remains the
+  WORKING user path.
  DEBUG OWNERSHIP: nb_bundle_probe() stays behind NB_BUNDLE_TRACE=1. It
  replaces the failed "patch the bundle FILE" idea — page.js.ext8.js is
  RE-EXTRACTED every load, so only eval-time injection in the worker works.

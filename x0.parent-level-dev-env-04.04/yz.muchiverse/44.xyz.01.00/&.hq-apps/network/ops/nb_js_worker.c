@@ -158,6 +158,7 @@ static void split_lines(char *fields[8]) {
  * holds opaque pointer handles; the tree is C-side. No shared memory. */
 
 static NbNode *g_dom_root = NULL;  /* current page's DOM tree (#document) */
+static NbNode *g_active_node = NULL;  /* element.focus()/blur() tracker */
 static NbNode *g_orphans = NULL;   /* detached createElement() nodes still to free */
 #define NODEKEY "_nbnode"
 
@@ -735,6 +736,8 @@ static JSValue push_node(JSContext *ctx, NbNode *n);
 static JSValue nb_el_addEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_el_removeEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_el_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_el_focus(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_el_blur(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_el_contains(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_el_click(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 /* canvas 2D natives defined with the other DOM natives (getBoundingClientRect
@@ -1662,6 +1665,8 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
     JS_SetPropertyStr(ctx, el, "dispatchEvent", JS_NewCFunction(ctx, nb_el_dispatchEvent, "dispatchEvent", 1));
     JS_SetPropertyStr(ctx, el, "contains", JS_NewCFunction(ctx, nb_el_contains, "contains", 1));
     JS_SetPropertyStr(ctx, el, "click", JS_NewCFunction(ctx, nb_el_click, "click", 0));
+    JS_SetPropertyStr(ctx, el, "focus", JS_NewCFunction(ctx, nb_el_focus, "focus", 0));
+    JS_SetPropertyStr(ctx, el, "blur", JS_NewCFunction(ctx, nb_el_blur, "blur", 0));
     /* resource/URL attributes real bundles read directly off the element.
      * Browsers expose src/href as STRINGS even when the attribute is absent
      * (an inline <script>.src is ""), and youtube's global error reporter
@@ -4259,6 +4264,54 @@ static JSValue nb_el_click(JSContext *ctx, JSValueConst this_val, int argc, JSVa
     JS_FreeValue(ctx, ev);
     return JS_NewBool(ctx, r);
 }
+/* element.focus()/blur() (2026-09-21): typed-input path needs the search
+ * input focusable (kevlar reads document.activeElement and toggles the
+ * yt-searchbox focused classes) and focus/blur listeners come and go. */
+static JSValue nb_el_focus(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_UNDEFINED;
+    if (g_active_node != n) {
+        if (g_active_node) {
+            JSValue fb = JS_NewObject(ctx);
+            JS_SetPropertyStr(ctx, fb, "type", JS_NewString(ctx, "blur"));
+            JS_SetPropertyStr(ctx, fb, "bubbles", JS_NewBool(ctx, 0));
+            JS_SetPropertyStr(ctx, fb, "cancelable", JS_NewBool(ctx, 0));
+            dispatch_event(ctx, EVT_NODE, g_active_node, fb, 0);
+            JS_FreeValue(ctx, fb);
+        }
+        g_active_node = n;
+        JSValue doc = get_global_attr(ctx, "document");
+        if (JS_IsObject(doc)) JS_SetPropertyStr(ctx, doc, "activeElement", push_node(ctx, n));
+        JS_FreeValue(ctx, doc);
+    }
+    JSValue e = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, e, "type", JS_NewString(ctx, "focus"));
+    JS_SetPropertyStr(ctx, e, "bubbles", JS_NewBool(ctx, 0));
+    JS_SetPropertyStr(ctx, e, "cancelable", JS_NewBool(ctx, 0));
+    dispatch_event(ctx, EVT_NODE, n, e, 0);
+    JS_FreeValue(ctx, e);
+    return JS_UNDEFINED;
+}
+static JSValue nb_el_blur(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_UNDEFINED;
+    if (g_active_node == n) {
+        JSValue doc = get_global_attr(ctx, "document");
+        if (JS_IsObject(doc)) JS_SetPropertyStr(ctx, doc, "activeElement", JS_NULL);
+        JS_FreeValue(ctx, doc);
+        g_active_node = NULL;
+    }
+    JSValue e = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, e, "type", JS_NewString(ctx, "blur"));
+    JS_SetPropertyStr(ctx, e, "bubbles", JS_NewBool(ctx, 0));
+    JS_SetPropertyStr(ctx, e, "cancelable", JS_NewBool(ctx, 0));
+    dispatch_event(ctx, EVT_NODE, n, e, 0);
+    JS_FreeValue(ctx, e);
+    return JS_UNDEFINED;
+}
+/* el.blur is wired to nb_el_blur (magic 1); keep the click/misc natives below. */
 static void fire_event(JSContext *ctx, int kind, NbNode *n, const char *type) {
     for (int i = 0; i < g_evl_count; i++) {
         if (!g_evl[i].active || g_evl[i].kind != kind || g_evl[i].node != n) continue;
