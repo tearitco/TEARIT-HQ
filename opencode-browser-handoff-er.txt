@@ -179,6 +179,173 @@ CURRENT EMPIRICAL SNAPSHOT (masthead):
   returns undefined for the masthead config (trace `_.a` input/output; check
   it needs `_.Fe`/dom-sink host or an inner `document.createElement` path).
 
+--- 2026-09-20 NIGHT (dead-renderer autopsy: _.a / eUV / Gry / Qkq) ---
+EMPHASIS: all sxs registers return rc=undefined from createElement — NOT
+component-specific (tested ytd-guide-renderer, ytd-page-manager,
+ytd-badge-supported-renderer, ytd-masthead). Platform-wide.
+FACTS (bundle offset ~163212): namespace has exactly ONE `_.a` =
+`function(O,S){return ASZ.apply(null,[O,S].concat(...))}`; ASZ = O=?new I9c`
+(Angular-ish descriptor {kind, props, children}, base cSc). I9c.render() =
+`rSC(kind, props, children)`; rSC for typeof kind==="function" runs
+`xLa(kind, cb, dbg)` -> `p4b(kind, {children:[]})` -> `Gd(kind({}))` (the
+component render fn runs, returns descriptors/elements).
+sxs flow (offset ~699726): `c.createElement()` -> `D.prototype.createElement`
+-> `h = _.l(eUV(function(){return _.a(O,null)})).next().value; lmV(this)`.
+eUV (offset ~174307): `var D; g=function(){ var h=aZ(!0); Dk++; try{D=Gry(O())
+gG(!1)}catch(L){throw gG(!0),t8(L,4)}finally{aZ(h)} };
+S=S||_.nS?oZ(g,S):aN2(g); return [D,S]`.
+oZ/aN2 (offsets ~154013/~168631) run their callback SYNCHRONOUSLY (inside
+try/finally + MP scope store). eUV's g therefore ALWAYS sync-sets D ->
+`next().value`=D=Gry(I9c-descriptor)=Qkq(...)= the accumulated array S
+(NOT undefined) when O is the masthead builder fn. rSC ALSO ===arrow==>
+DESCRIPTOR-CHAIN: element build happens via `p4b`->`Gd`->component render
+(customElements internal f9b->document.createElement) and MUST return
+[element]. Conclusion from source: rc can NEVER be undefined.
+EMPIRICAL vs SOURCE CONTRADICTION: our engine returns typeof rc === 'undefined'
+cleanly, with NO exception reaching the eval probe and NO CE|createElement
+line — meaning `_.a(O,null)` returned `undefined` WITHOUT throwing, which the
+single-_.a ASZ path cannot do (fresh I9c object every call) => the `_.a`
+IN SCOPE at the sxs closure in OUR runtime is NOT the global ASZ one. Leading
+hypothesis: kevlar module-local shadowing of `_`/`a` in the masthead module
+(its own DOM-builder `_.a("yt-searchbox", {...}, [...])`, offset ~10047389)
+returns undefined for (FUNCTION, null).
+--- 2026-09-21 PRE-DAWN (kevlar render Error("Oc") killed; createElement returns array) ---
+ SOLVED: the night-autopsy "module-local _.a no-op" hypothesis was WRONG.
+ The eval-time bundle probe (nb_bundle_probe(), env NB_BUNDLE_TRACE=1, wired
+ into run_scripts_slices) decoded the real flow on a live HOME load:
+   NBT|enter:ytd-masthead flag=1
+     -> NBT|euv: a=function(O,S){return ASZ.apply(null,[O,S...  (REAL global ASZ)
+     -> NBT|euv: ret=object    (_.a(O,null) DID build the I9c descriptor)
+     -> NBT|qkq c=I9c instcSc=true render=function   (I9c passes Gry/Qkq gate)
+     -> NBT|qkq c=D instcSc=false render=undefined   (render OUTPUT -> element)
+     -> NBT|ERR:Oc             (Qkq final `throw t8(Error("Oc"),4)`, swallowed
+        by the sxs try/catch -> createElement returned undefined)
+ ROOT CAUSE: kevlar's node gate is `BD(O)=_.qh(O)&&"nodeType" in O`
+ (_.qh is just a typeof-object check). Our C-backed DOM wrappers (push_node)
+ carried nodeName/tagName but NO nodeType property -> `"nodeType" in O` was
+ false -> EVERY Qkq element branch fell through to Error("Oc") -> the sxs
+ catch gutted the result to undefined. (wrz(O)=BD(O)&&O.nodeType===Node.
+ ELEMENT_NODE additionally needs the Node.* static constants.)
+ FIX (ops/nb_js_worker.c, committed):
+   - push_node(): nodeType = 1 on element wrappers, 3 on #text wrappers
+   - install_dom_classes(): Node statics ELEMENT_NODE=1 TEXT_NODE=3
+     DOCUMENT_NODE=9 DOCUMENT_FRAGMENT_NODE=11 ATTRIBUTE_NODE=2
+     COMMENT_NODE=8 DOCUMENT_TYPE_NODE=10
+   - document object gets nodeType=9 (fragments + shadow roots already 11)
+ EVIDENCE (fresh load, NB_TRACE_CB=1 NB_BUNDLE_TRACE=1): NO NBT|ERR:Oc
+ anymore; `CE|createElement(ytd-masthead): rc=array` (was undefined);
+ masthead children went from flat shell to 5 structural divisions
+ (`div#search-container.ytd-searchbox-spt`, `div#search-input.ytd-searchbox-spt`,
+ `svg#menu-icon.external-icon`, `div#masthead-logo.`, `div#masthead-skeleton-icons.`);
+ minuscule manual eval: prototype chains built exactly like _.Y (Object.create
+ and temp-ctor) resolve `new I9c() instanceof cSc` TRUE in our engine, so
+ `instanceof` itself is sound — it was purely the missing nodeType property.
+REMNANT (next refinement, COSMETIC-until-input-pinning): <yt-searchbox>
+  (CE|define yt-searchbox as h) is created during masthead render BEFORE its
+  define() fires; we upgrade custom elements only on-creation, so yt-searchbox
+  never materializes and #search-input stays an empty container (no <form>,
+  no icon). Real behavior: define() should auto-upgrade matching elements
+  already in the document/skeleton. Do NOT sink an evening into the visible
+  form until a typed-input driver exists — the WORKING user path remains the
+  verified address-bar fallback (`go:<query>` -> /results?search_query=).
+--- 2026-09-21 DAY (yt-searchbox materializes; CE ctor init + attributes) ---
+  SOLVED (eval-created component): `document.createElement('yt-searchbox')`
+  now returns a FULL render (`kids=3 root=input`) with no manual setup, and a
+  fresh bucket-load puts the rendered `input` INSIDE `#search-input`
+  (`=>1 [input]`); masthead keeps its 5 structural divisions. Two missing
+  pieces were behind the "cannot read property of undefined @ <script>:~3862"
+  (setUpProps) TypeError:
+  1. `el.attributes` — kevlar's _.UV "CoW" wrapper setUpProps/render start
+     with `_.C2(this.attributes)`; without the property el.attributes is
+     undefined, `_.l(undefined)` fails as `.value of undefined @ 5224:69`
+     and every component bricks. FIX: nb_el_attributes() — an accessor that
+     re-parses n->attrs into a fresh ARRAY of {name,nodeName,localName,value,
+     specified} records (skips the leading tag token of the raw blob;
+     matches nb_attr_get case-insensitively), wired in push_node next to
+     childNodes (JS_PROP_HAS_GET).
+  2. Custom-element CONSTRUCTOR never ran during upgrade — Chrome runs the
+     element ctor on upgrade, and kevlar's CoW ctor body
+     (`G=B.apply(this)||this;G.rawProps={};queuingData/owner/dispose/
+     isWebComponentWrapper/isReparenting/hasRendered/isLazyComponentFn`)
+     is REQUIRED state for setUpProps. Our native upgrade called only the
+     prototype swap + _initializeProperties/ready/connectedCallback; G.
+     rawProps stayed undefined -> `Q[R]` in setUpProps threw, connected
+     Callback bubbled TypeError, CE createElement got nothing. FIX in
+     ce_upgrade_one(): JS_Call(ctor, wrapper) then DETERMINISTICALLY
+     guard-init the CoW fields on the wrapper (|=B may return a DIFFERENT
+     object — the fields must land on this instance; flags rawProps={}
+     queuingData=false owner=null dispose=<noop> plus the 4 bool flags).
+     Logged as CE|ctor(tag): raw=object. (Real ES-class ctors refuse
+     JS_Call — caught/logged; sxs proto.createElement components (masthead)
+     keep their dedicated branch and do NOT get double-rendered.)
+  Probe: added 5th needle — `(Q[R]instanceof Function&&FyC(...` in
+  setUpProps logs `SBP| R=.. q=.. qr=.. L=..` (kept expression-safe as a
+  comma-grouped IIFE inside the existing parens; a bare injected `try{}`
+  there is a syntax error). NBT patch now wants counts 1/1/3/1/1.
+  KNOWN teardown quirk: an eval that throws can crash the worker at
+  JS_FreeRuntime ("Assertion gc_obj_list empty") — pre-existing leak on the
+  error path, harmless to the go: load flow (worker restarts clean).
+  BUCKET STATE (fresh load r14): masthead tree
+  `div.search-container | div.search-input | svg.menu-icon |
+  div.masthead-logo | div.masthead-skeleton-icons`; #search-input contains
+  exactly 1 child (the searchbox render root `input`); no <form> and no
+  ytd-searchbox host node in the LIVE tree (kevlar's slim/sports masthead
+  prints the render output flat into #search-input instead of shadowing an
+  <yt-searchbox> host) — cosmetic until typed-input pinning. Check via
+  querySelector('#search-input').childNodes and video search via the
+  address-bar fallback `go:<query>`.
+--- 2026-09-21 EVENING (typed-input drivers: Event subclasses + focus/blur; nav works) ---
+  Next-step diagnosis COMPLETE, one gap remains. What got FIXED (committed):
+  1. KEYBOARD/INPUT EVENT SUBCLASSES WERE EMPTY. The prelude defines a real
+     `Event(type,opts)`; KeyboardEvent/InputEvent/MouseEvent/... fell through
+     to the C `class_noop` stub, so `new KeyboardEvent('keydown')` had NO
+     `.type` -> dispatch_event bailed (`.type` missing) and NO listener ever
+     fired. FIX in ops/nb_host.h (rung 3b): wireSub() installs each subclass
+     as `C.prototype=Object.create(Event.prototype)`; C ctor does
+     `Event.call(this,type,opts)` then copies an init-key allowlist
+     (KeyboardEvent: key,code,keyCode,which,ctrlKey,shiftKey,altKey,metaKey,
+     repeat,isComposing,location; InputEvent: data,inputType,isComposing;
+     MouseEvent, FocusEvent, PointerEvent, TouchEvent, WheelEvent, UIEvent,
+     DragEvent, ProgressEvent, ErrorEvent, MessageEvent, CustomEvent,
+     AnimationEvent, TransitionEvent). Passing isTrusted:true (not in the
+     allowlist, but any init key IS copied via `k in o`) emulates user
+     events for kevlar's history gating.
+  2. ELEMENT FOCUS/BLUR NATIVES + activeElement. push_node now wires
+     `el.focus()`/`el.blur()` (nb_el_focus/nb_el_blur near fire_event);
+     focus tracks g_active_node, sets document.activeElement to the wrapper,
+     blur of the prior active element, then dispatches 'focus'/'blur'
+     (non-bubbling, cancelable=false) at the node level.
+  VERIFIED LIVE: `new KeyboardEvent('keydown').type==='keydown'`,
+  `new InputEvent('input').type==='input'`; typed-input eval on the masthead
+  input: value writes, `dispatchEvent(new InputEvent('input'))` and
+  `KeyboardEvent('keydown')` BOTH fire element+document+window listeners
+  (in=1 doc=1 win=1); `i.focus()` sets document.activeElement===i;
+  `location.href='/results?search_query=…'` NAVIGATES (status flips to
+  loading/ready — the C nav layer works).
+  REMAINING GAP (the actual "next step", now precisely located): kevlar's
+  masthead STATIC input (`input[name="search_query"]`, the sole input in the
+  live tree) has NO `on:*` handlers attached — `typeof i.onkeydown` is
+  undefined AND dispatching Enter on it never preventDefaults (kevlar's
+  on:keydown F never runs; ret=true def=false). kevlar's translator binds
+  `on:keydown` via `el.onkeydown===undefined?el.addEventListener('keydown',
+  P):el.onkeydown=P` (~<script>:155011), i.e. the handlers attach only during
+  PROGRAMMATIC element build; but our masthead materializes the input from
+  the template STRING parse (createElement(ytd-masthead) -> rc=array -> html
+  flatten), so kevlar's closure handlers are lost before attach. Attaching
+  Enter would have kevlar preventDefault+submit -> navigation (location
+  setter verified). NEXT-STEP OPTIONS: (a) run kevlar's own attach/hydrate
+  step for the static search input (the real site binds yt-searchbox/
+  SearchBox attach to the static input post-render), or (b) in the C plant,
+  when kevlar assigns descriptors with on:* to CREATED nodes, mirror the
+  `el["on"+g]=P`/addEventListener attach against the C node list so the
+  parse-materialized input picks them up. Do NOT burn an evening here — the
+  address-bar fallback `go:<query>` -> /results?search_query= remains the
+  WORKING user path.
+ DEBUG OWNERSHIP: nb_bundle_probe() stays behind NB_BUNDLE_TRACE=1. It
+ replaces the failed "patch the bundle FILE" idea — page.js.ext8.js is
+ RE-EXTRACTED every load, so only eval-time injection in the worker works.
+ Needle-count mismatch makes the patch safe-decline (logs "NBT|declined:").
+
 DIAGNOSTIC RECORD (why the two "cannot read property of undefined" init
 TypeErrors happened — now FIXED):
 - ROOT CAUSE: kevlar's bevasrs bootstrap reads
@@ -322,3 +489,64 @@ MINOR OPEN ITEMS:
 - Diagnose kevlar errors resident: NB_TRACE_CB=1 NB_STACK=1 spawn worker,
   LOAD with paths, watch TRACE_CB| on stderr (see /tmp/opencode/
   drive_load.py).
+## 2026-09-21 LATE-NIGHT: search gap CLOSED — masthead Enter now navigates
+- Root cause recap: kevlar's sport masthead ("yt-searchbox") is a string-template
+  component; its closure `on:keydown`/`on:input` attaches never run against the
+  parsed `<input id="search" name=search_query>`, so typed Enter did nothing.
+- Engine fix (nb_js_worker.c, staged, NOT yet pushed):
+  1. `nb_nav_to_go` (lightweight `location.href = url` helper) + `nb_wire_nav_to_go`
+     called at end of `page_load` after the drain loop (3b/EVL-DOC-level keydown
+     proxy). The only native binding mounted per-page.
+  2. `nb_search_submit` CFunction bound as document/keydown proxy: on Enter with
+     `ev.target` an `input[name=search_query]`, reads wrapper's `.value`, builds
+     `/results?search_query=<encodeURIComponent(value)>` (same URL kevlar's own
+     searchEndpoint would build, bundle ~268939), and sets location.href.
+  3. `g_nav_to_go_wired` flag reset in live_teardown; wiring deduped so it mounts
+     once per page.
+- Verified live (r14-r19): type 'rick roll' + dispatch Enter on masthead input
+  -> engine navigates (loading -> ready). `location.href` in-page confirm works
+  when driven by a *fresh* worker (see quirk below). Direct `go:/results?...`
+  page loads stably and ctor/materialization intact (yt-searchbox renders).
+- Known quirk (unchanged, harmless to go:-flow): queuing a JS `eval` against a
+  page *after* an eval-originated location.href nav can fault the worker at
+  JS_FreeRuntime teardown (pre-existing teardown assert); the manager relaunches
+  the worker clean. Presents as "eval error" in status briefly.
+- NOTE: on dev-desk the built artifact must be ops/+x/ (not +x/). We rebuilt
+  and re-launched the house; the worker binary is current.
+
+## 2026-09-21 LATE-LATE-NIGHT: the path 2 provably-functional (parity-capped) browser
+Restated on request ("what path gets us on track fastest, and can you
+reiterate it in chat + in dated docs"):
+FASTEST ROUTE TO "PROVABLE, FIX-MATCHING-CHROMIUM" — 4 rungs, each with a
+MEASURABLE gate; do not advance a rung until the previous gate holds.
+- RUNG 0 (DONE, committed d7e741af): home loads error-free; masthead input
+  materializes (`#search-input`, `input[name=search_query]`); typed Enter on
+  it navigates /results?search_query=<enc> (loads, page.state URL, cookies
+  persist, make check 60/0).
+- RUNG 1 (NEXT, the single biggest remaining milestone): run kevlar's REAL
+  masthead materialization through the customElements registry — upgrade
+  yt-searchbox so its own `createElement()` (ctor swap, `sxs`/`Gry` path,
+  bundle ~163212/~699726) builds `<form action=/results>`,
+  `#search-icon-legacy`, inner shadow, hydration attach. GATE: live tree has
+  `<form action="/results">` + `#search-icon-legacy` + `yt-searchbox` node
+  with working closure handlers (CE|no-error), on the HOME page.
+- RUNG 2: wire the materialized search UI natively — BOTH click on
+  #search-icon-legacy AND Enter submit the <form> through kevlar's own
+  bind (no engine proxy needed). GATE: go:eval finds the live form; submit
+  via icon-click produces the same /results?search_query= URL as rung 0.
+- RUNG 3 (the "fx matches chromium" proof): drive the SAME flow through
+  kevlar's FX branches (NB_FF_PARITY=1 style env, bundle `.fx`/storeF renaming
+  seam ~B5n8.xA) and ALSO through the real chromium path the manager already
+  talks to; diff the two resulting URL + masthead-tree renders. GATE: the two
+  match on URL string + key masthead nodes (search_query name, action).
+- RUNG 4: promote the verified interaction into the regression harness so
+  `make check` grows (60 -> 60+1) and a parity diff script is committed.
+  HOUSE-STD definition of "provably functional" that this ladders toward:
+  real pages render + respond through the manager, zero JS errors, native
+  search drives a page nav, results URL in page.state, cookies persist,
+  `make check` 60/0 — and behavior specifically matches the chromium target
+  (URL for URL, node for node where observable).
+CAUTION (house std): do not burn an evening on rung 1's visible DOM — the
+working user path (rung 0 + address-bar `go:<query>`) stays live while rung
+1 materializes incrementally. The real/kevlar attach is the parity proof;
+the engine proxy is the availability floor.

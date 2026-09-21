@@ -158,6 +158,8 @@ static void split_lines(char *fields[8]) {
  * holds opaque pointer handles; the tree is C-side. No shared memory. */
 
 static NbNode *g_dom_root = NULL;  /* current page's DOM tree (#document) */
+static NbNode *g_active_node = NULL;  /* element.focus()/blur() tracker */
+static int g_search_wired = 0;  /* document-level Enter search proxy wired per page */
 static NbNode *g_orphans = NULL;   /* detached createElement() nodes still to free */
 #define NODEKEY "_nbnode"
 
@@ -735,6 +737,8 @@ static JSValue push_node(JSContext *ctx, NbNode *n);
 static JSValue nb_el_addEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_el_removeEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_el_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_el_focus(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_el_blur(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_el_contains(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_el_click(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 /* canvas 2D natives defined with the other DOM natives (getBoundingClientRect
@@ -1110,6 +1114,54 @@ static JSValue nb_el_getAttribute(JSContext *ctx, JSValueConst this_val, int arg
     JS_FreeCString(ctx, owned);
     if (v && v[0]) return JS_NewString(ctx, v);
     return JS_NULL;
+}
+/* element.attributes (2026-09-21): kevlar's web-component wrapper render
+ * starts with `_.C2(this.attributes)` in both setUpProps and render. Without
+ * this property el.attributes is undefined, _.l(undefined) fails as
+ * "cannot read property of undefined @ <script>:5224:69" and every
+ * sxs-materialized component (yt-searchbox etc.) bricks its createElement.
+ * Browsers expose a live NamedNodeMap; a fresh array of {name,value}
+ * records per access is array-like and iterable, which is what kevlar
+ * consumes (setUpProps walks name/value pairs). */
+static JSValue nb_el_attributes(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *n = get_this(ctx, this_val);
+    JSValue arr = JS_NewArray(ctx);
+    if (!n || !n->attrs) return arr;
+    const char *p = n->attrs;
+    int idx = 0;
+    while (*p) {
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (!*p) break;
+        const char *ks = p;
+        while (*p && !isspace((unsigned char)*p) && *p != '=' && *p != '>') p++;
+        size_t kl = (size_t)(p - ks);
+        int had_eq = (*p == '=');
+        if (*p == '=') {
+            p++;
+            while (*p && isspace((unsigned char)*p)) p++;
+            char qc = 0;
+            if (*p == '"' || *p == '\'') { qc = *p; p++; }
+            while (*p && !(qc ? (*p == qc) : (isspace((unsigned char)*p) || *p == '>'))) p++;
+            if (qc && *p) p++;
+        }
+        /* the parsed raw blob leads with the tag name token (no '='); drop it */
+        if (kl > 0 && (had_eq || idx > 0)) {
+            char kbuf[64]; size_t kc = kl < 63 ? kl : 63; memcpy(kbuf, ks, kc); kbuf[kc] = 0;
+            for (size_t i = 0; i < kc; i++) kbuf[i] = (char)tolower((unsigned char)kbuf[i]);
+            const char *v = nb_attr_get(n, kbuf);
+            JSValue o = JS_NewObject(ctx);
+            JS_SetPropertyStr(ctx, o, "name", JS_NewString(ctx, kbuf));
+            JS_SetPropertyStr(ctx, o, "nodeName", JS_NewString(ctx, kbuf));
+            JS_SetPropertyStr(ctx, o, "localName", JS_NewString(ctx, kbuf));
+            JS_SetPropertyStr(ctx, o, "value", JS_NewString(ctx, v ? v : ""));
+            JS_SetPropertyStr(ctx, o, "specified", JS_NewBool(ctx, 1));
+            JS_SetPropertyUint32(ctx, arr, (uint32_t)idx, o);
+            idx++;
+        }
+        while (*p && !isspace((unsigned char)*p)) p++;
+    }
+    return arr;
 }
 /* rung 8: hasAttribute — real bundles gate on documentElement.hasAttribute */
 static JSValue nb_el_hasAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
@@ -1590,6 +1642,12 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
     JS_SetPropertyStr(ctx, el, NODEKEY, JS_NewInt32(ctx, nidx));
     {
         const char *label = (n->tag && n->tag[0]) ? n->tag : "#text";
+        /* nodeType (2026-09-20): kevlar's materializer gate is
+         * BD(O)=_.qh(O)&&"nodeType" in O — elements without a nodeType
+         * property fall through every Qkq branch and the render dies with
+         * Error("Oc"). Browsers expose it on the prototype; our wrappers
+         * are plain objects so an own data property is the equivalent. */
+        JS_SetPropertyStr(ctx, el, "nodeType", JS_NewInt32(ctx, (n->tag && n->tag[0]) ? 1 : 3));
         JS_SetPropertyStr(ctx, el, "nodeName", JS_NewString(ctx, label));
         if (n->tag && n->tag[0])
             JS_SetPropertyStr(ctx, el, "tagName", JS_NewString(ctx, label));
@@ -1608,6 +1666,8 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
     JS_SetPropertyStr(ctx, el, "dispatchEvent", JS_NewCFunction(ctx, nb_el_dispatchEvent, "dispatchEvent", 1));
     JS_SetPropertyStr(ctx, el, "contains", JS_NewCFunction(ctx, nb_el_contains, "contains", 1));
     JS_SetPropertyStr(ctx, el, "click", JS_NewCFunction(ctx, nb_el_click, "click", 0));
+    JS_SetPropertyStr(ctx, el, "focus", JS_NewCFunction(ctx, nb_el_focus, "focus", 0));
+    JS_SetPropertyStr(ctx, el, "blur", JS_NewCFunction(ctx, nb_el_blur, "blur", 0));
     /* resource/URL attributes real bundles read directly off the element.
      * Browsers expose src/href as STRINGS even when the attribute is absent
      * (an inline <script>.src is ""), and youtube's global error reporter
@@ -1668,6 +1728,10 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
         JS_FreeAtom(ctx, nm);
         nm = JS_NewAtom(ctx, "childNodes");
         JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_el_childNodes, "childNodes", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "attributes");
+        JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_el_attributes, "attributes", 0), JS_UNDEFINED,
             JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
         JS_FreeAtom(ctx, nm);
         nm = JS_NewAtom(ctx, "parentNode");
@@ -2620,12 +2684,25 @@ static void install_dom_classes(JSContext *ctx) {
     JS_SetPropertyStr(ctx, g, "Document", Df);
     JS_SetPropertyStr(ctx, g, "Animation", Af);
 
+    /* Node static constants (2026-09-20): kevlar's wrz() compares
+     * O.nodeType === Node.ELEMENT_NODE when deciding to wrap a lone node into
+     * an array before materialization. Without these the comparison is
+     * false-on-undefined and rendered elements are silently dropped. */
+    JS_SetPropertyStr(ctx, Nf, "ELEMENT_NODE", JS_NewInt32(ctx, 1));
+    JS_SetPropertyStr(ctx, Nf, "TEXT_NODE", JS_NewInt32(ctx, 3));
+    JS_SetPropertyStr(ctx, Nf, "DOCUMENT_NODE", JS_NewInt32(ctx, 9));
+    JS_SetPropertyStr(ctx, Nf, "DOCUMENT_FRAGMENT_NODE", JS_NewInt32(ctx, 11));
+    JS_SetPropertyStr(ctx, Nf, "ATTRIBUTE_NODE", JS_NewInt32(ctx, 2));
+    JS_SetPropertyStr(ctx, Nf, "COMMENT_NODE", JS_NewInt32(ctx, 8));
+    JS_SetPropertyStr(ctx, Nf, "DOCUMENT_TYPE_NODE", JS_NewInt32(ctx, 10));
+
     /* the document object rides Document.prototype; web-animations reads
      * document.timeline at load, so give it a minimal one. */
     {
         JSValue doc = JS_GetPropertyStr(ctx, g, "document");
         if (JS_IsObject(doc)) {
             JS_SetPrototype(ctx, doc, Dp);
+            JS_SetPropertyStr(ctx, doc, "nodeType", JS_NewInt32(ctx, 9));
             JSValue tl = JS_NewObject(ctx);
             JS_SetPropertyStr(ctx, tl, "currentTime", JS_NewFloat64(ctx, 0));
             JS_SetPropertyStr(ctx, tl, "getAnimations", JS_NewCFunction(ctx, class_noop, "getAnimations", 0));
@@ -3029,6 +3106,11 @@ static JSValue ce_registry(JSContext *ctx, int create) {
     return JS_UNDEFINED;
 }
 
+static JSValue nb_js_void(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)ctx; (void)this_val; (void)argc; (void)argv;
+    return JS_UNDEFINED;
+}
+
 static void ce_call_lifecycle(JSContext *ctx, JSValue wrapper, const char *mname) {
     JSValue fn = JS_GetPropertyStr(ctx, wrapper, mname);
     if (JS_IsFunction(ctx, fn)) {
@@ -3053,6 +3135,57 @@ static void ce_upgrade_one(JSContext *ctx, NbNode *n, JSValue ctor) {
     JSValue proto = JS_GetPropertyStr(ctx, ctor, "prototype");
     if (JS_IsObject(proto)) JS_SetPrototype(ctx, wrapper, proto);
     JS_SetPropertyStr(ctx, wrapper, CE_UPGRD, JS_NewBool(ctx, 1));
+    /* Class-based (kevlar _.UV "CoW") wrappers have ctor-body init
+     * (G.rawProps={}, queuingData/owner/dispose/hasRendered flags) that
+     * setUpProps() requires; Chrome runs the element ctor during upgrade so
+     * our native upgrade path mirrors it. Plain-function ctors accept
+     * JS_Call with this=wrapper; real ES class ctors refuse and are caught
+     * (the sxs proto.createElement branch below covers those components). */
+    {
+        int callable = JS_IsFunction(ctx, ctor);
+        if (callable) {
+            JSValue r = JS_Call(ctx, ctor, wrapper, 0, NULL);
+            if (JS_IsException(r)) {
+                char buf[1536];
+                const char *m = js_error_to_cstr(ctx, buf, sizeof(buf));
+                if (g_trace_cb) fprintf(stderr, "CE|ctor(%s): %s\n", n->tag ? n->tag : "?", m ? m : buf);
+            }
+            JS_FreeValue(ctx, r);
+        }
+        /* CoW kismet: kevlar's _.UV ctor body is `G=B.apply(this)||this;
+         * G.rawProps={};...` — B may hand back a DIFFERENT object so the
+         * fields must land on THIS wrapper. Chrome guarantees el.rawProps
+         * etc. exist after construction; mirror that deterministically. */
+        const char *flags[] = {
+            "isWebComponentWrapper", "isReparenting", "hasRendered", "isLazyComponentFn", NULL
+        };
+        for (const char **f = flags; *f; f++) {
+            JSValue cur = JS_GetPropertyStr(ctx, wrapper, *f);
+            int have = !JS_IsUndefined(cur);
+            JS_FreeValue(ctx, cur);
+            if (!have) JS_SetPropertyStr(ctx, wrapper, *f, JS_NewBool(ctx, 0));
+        }
+        JSValue cur = JS_GetPropertyStr(ctx, wrapper, "rawProps");
+        if (!JS_IsObject(cur)) JS_SetPropertyStr(ctx, wrapper, "rawProps", JS_NewObject(ctx));
+        JS_FreeValue(ctx, cur);
+        cur = JS_GetPropertyStr(ctx, wrapper, "queuingData");
+        if (JS_IsUndefined(cur)) JS_SetPropertyStr(ctx, wrapper, "queuingData", JS_NewBool(ctx, 0));
+        JS_FreeValue(ctx, cur);
+        cur = JS_GetPropertyStr(ctx, wrapper, "owner");
+        if (JS_IsUndefined(cur)) JS_SetPropertyStr(ctx, wrapper, "owner", JS_NULL);
+        JS_FreeValue(ctx, cur);
+        cur = JS_GetPropertyStr(ctx, wrapper, "dispose");
+        if (!JS_IsFunction(ctx, cur)) {
+            JSValue fn = JS_NewCFunction(ctx, nb_js_void, "dispose", 0);
+            JS_SetPropertyStr(ctx, wrapper, "dispose", fn);
+        }
+        JS_FreeValue(ctx, cur);
+        if (g_trace_cb) {
+            JSValue rp = JS_GetPropertyStr(ctx, wrapper, "rawProps");
+            fprintf(stderr, "CE|ctor(%s): raw=%s\n", n->tag ? n->tag : "?", JS_IsObject(rp) ? "object" : (JS_IsUndefined(rp) ? "undefined" : "other"));
+            JS_FreeValue(ctx, rp);
+        }
+    }
     ce_call_lifecycle(ctx, wrapper, "_initializeProperties");
     ce_call_lifecycle(ctx, wrapper, "ready");
     ce_call_lifecycle(ctx, wrapper, "connectedCallback");
@@ -3069,6 +3202,9 @@ static void ce_upgrade_one(JSContext *ctx, NbNode *n, JSValue ctor) {
                 char buf[1536];
                 const char *m = js_error_to_cstr(ctx, buf, sizeof(buf));
                 if (g_trace_cb) fprintf(stderr, "CE|createElement(%s): %s\n", n->tag ? n->tag : "?", m ? m : buf);
+            } else {
+                const char *rt = JS_IsUndefined(r) ? "undefined" : JS_IsNull(r) ? "null" : JS_IsBool(r) ? "bool" : JS_IsFunction(ctx, r) ? "function" : JS_IsString(r) ? "string" : JS_IsObject(r) ? (JS_IsArray(ctx, r) ? "array" : "object") : "other";
+                if (g_trace_cb) fprintf(stderr, "CE|createElement(%s): rc=%s\n", n->tag ? n->tag : "?", rt);
             }
             JS_FreeValue(ctx, r);
         }
@@ -4129,6 +4265,119 @@ static JSValue nb_el_click(JSContext *ctx, JSValueConst this_val, int argc, JSVa
     JS_FreeValue(ctx, ev);
     return JS_NewBool(ctx, r);
 }
+/* element.focus()/blur() (2026-09-21): typed-input path needs the search
+ * input focusable (kevlar reads document.activeElement and toggles the
+ * yt-searchbox focused classes) and focus/blur listeners come and go. */
+static JSValue nb_el_focus(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_UNDEFINED;
+    if (g_active_node != n) {
+        if (g_active_node) {
+            JSValue fb = JS_NewObject(ctx);
+            JS_SetPropertyStr(ctx, fb, "type", JS_NewString(ctx, "blur"));
+            JS_SetPropertyStr(ctx, fb, "bubbles", JS_NewBool(ctx, 0));
+            JS_SetPropertyStr(ctx, fb, "cancelable", JS_NewBool(ctx, 0));
+            dispatch_event(ctx, EVT_NODE, g_active_node, fb, 0);
+            JS_FreeValue(ctx, fb);
+        }
+        g_active_node = n;
+        JSValue doc = get_global_attr(ctx, "document");
+        if (JS_IsObject(doc)) JS_SetPropertyStr(ctx, doc, "activeElement", push_node(ctx, n));
+        JS_FreeValue(ctx, doc);
+    }
+    JSValue e = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, e, "type", JS_NewString(ctx, "focus"));
+    JS_SetPropertyStr(ctx, e, "bubbles", JS_NewBool(ctx, 0));
+    JS_SetPropertyStr(ctx, e, "cancelable", JS_NewBool(ctx, 0));
+    dispatch_event(ctx, EVT_NODE, n, e, 0);
+    JS_FreeValue(ctx, e);
+    return JS_UNDEFINED;
+}
+static JSValue nb_el_blur(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_UNDEFINED;
+    if (g_active_node == n) {
+        JSValue doc = get_global_attr(ctx, "document");
+        if (JS_IsObject(doc)) JS_SetPropertyStr(ctx, doc, "activeElement", JS_NULL);
+        JS_FreeValue(ctx, doc);
+        g_active_node = NULL;
+    }
+    JSValue e = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, e, "type", JS_NewString(ctx, "blur"));
+    JS_SetPropertyStr(ctx, e, "bubbles", JS_NewBool(ctx, 0));
+    JS_SetPropertyStr(ctx, e, "cancelable", JS_NewBool(ctx, 0));
+    dispatch_event(ctx, EVT_NODE, n, e, 0);
+    JS_FreeValue(ctx, e);
+    return JS_UNDEFINED;
+}
+/* ---- search-box Enter -> /results (2026-09-21): kevlar's sport masthead
+ * is a string-template component, so its closure `on:keydown`/`on:input`
+ * attach never runs against the parsed <input name=search_query> and the
+ * live input could never submit. Engine-side proxy (document-level keydown):
+ * Enter on any input[name=search_query] navigates /results?search_query=
+ * (the same URL kevlar's own searchEndpoint builds ~<script>:268939).
+ * Document-level (EVT_DOC, node NULL) keeps it free of node bookkeeping —
+ * no dangling refs across navigations, and g_evl is cleared per page. */
+static JSValue nb_search_submit(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)this_val;
+    static const char hex[] = "0123456789ABCDEF";
+    if (argc < 1 || !JS_IsObject(argv[0])) return JS_UNDEFINED;
+    JSValue ev = argv[0];
+    JSValue kv = JS_GetPropertyStr(ctx, ev, "key");
+    int is_enter = 0;
+    if (JS_IsString(kv)) {
+        const char *k = JS_ToCString(ctx, kv);
+        is_enter = k && !strcmp(k, "Enter");
+        JS_FreeCString(ctx, k);
+    }
+    JS_FreeValue(ctx, kv);
+    if (!is_enter) return JS_UNDEFINED;
+    JSValue tv = JS_GetPropertyStr(ctx, ev, "target");
+    NbNode *n = JS_IsObject(tv) ? get_node(ctx, tv) : NULL;
+    if (!n || !n->tag || strcmp(n->tag, "input")) { JS_FreeValue(ctx, tv); return JS_UNDEFINED; }
+    const char *attr = nb_attr_get(n, "name");
+    if (!attr || strcmp(attr, "search_query")) { JS_FreeValue(ctx, tv); return JS_UNDEFINED; }
+    JSValue v = JS_GetPropertyStr(ctx, tv, "value");
+    const char *val = JS_IsString(v) ? JS_ToCString(ctx, v) : NULL;
+    char q[2048]; size_t qi = 0;
+    if (val) {
+        for (const unsigned char *p = (const unsigned char *)val; *p && qi < sizeof(q) - 16; p++) {
+            unsigned char c = *p;
+            if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
+                c == '-' || c == '_' || c == '.' || c == '~') {
+                q[qi++] = (char)c;
+            } else if (c == ' ') {
+                q[qi++] = '+';
+            } else {
+                q[qi++] = '%'; q[qi++] = hex[c >> 4]; q[qi++] = hex[c & 15];
+            }
+        }
+        JS_FreeCString(ctx, val);
+    }
+    q[qi] = 0;
+    JS_FreeValue(ctx, v);
+    JS_FreeValue(ctx, tv);
+    char url[4096];
+    snprintf(url, sizeof(url), "/results?search_query=%s", q);
+    JSValue loc = get_global_attr(ctx, "location");
+    if (JS_IsObject(loc)) JS_SetPropertyStr(ctx, loc, "href", JS_NewString(ctx, url));
+    JS_FreeValue(ctx, loc);
+    return JS_UNDEFINED;
+}
+
+static void nb_wire_search_proxy(JSContext *ctx) {
+    if (g_search_wired) return;
+    JSValue type = JS_NewString(ctx, "keydown");
+    JSValue cb = JS_NewCFunction(ctx, nb_search_submit, "searchEnter", 1);
+    evl_add(ctx, EVT_DOC, NULL, type, cb);
+    JS_FreeValue(ctx, type);
+    JS_FreeValue(ctx, cb);
+    g_search_wired = 1;
+}
+
+/* el.blur is wired to nb_el_blur (magic 1); keep the click/misc natives below. */
 static void fire_event(JSContext *ctx, int kind, NbNode *n, const char *type) {
     for (int i = 0; i < g_evl_count; i++) {
         if (!g_evl[i].active || g_evl[i].kind != kind || g_evl[i].node != n) continue;
@@ -4249,6 +4498,7 @@ static int run_event_loop(JSContext *ctx) {
         }
     }
     alarm(0);
+    nb_wire_search_proxy(ctx);
     return g_pending_err;
 }
 
@@ -4455,14 +4705,86 @@ static const char *find_script_boundary(const char *p, const char *end,
     }
     return NULL;
 }
+/* Debug-only (NB_BUNDLE_TRACE=1): inject console probes into kevlar's sxs
+ * customElement wrapper (D.prototype.createElement) so a real LOAD reveals
+ * what `_.a(O,null)` returns, the live binding of `_.a`/`O`, and whether the
+ * wrapper's try threw (the catch swallows the error and RETURNS UNDEFINED).
+ * The page bundle is re-extracted every load, so injection happens here at
+ * eval time against the materialized slice text. Returns a malloc'd patched
+ * buffer via *out (caller frees), or 0 when the env is off / needles absent.
+ * Needle counts must match exactly, else the patch is declined. */
+static int nb_bundle_probe(const char *src, size_t src_n,
+                           char **out, size_t *out_n) {
+    static const char *env = NULL;
+    if (!env) env = getenv("NB_BUNDLE_TRACE");
+    if (!env || !env[0] || env[0] == '0') return 0;
+    static const struct { const char *nd; const char *rp; int want; } pat[] = {
+        { "if(!this.isInert)if(_.f(\"web_monomer_web_component_wrapper_handle_errors\")){WI=this;try{",
+          "if(!this.isInert)if(_.f(\"web_monomer_web_component_wrapper_handle_errors\")){try{console.log(\"NBT|enter:\"+this.tagName+\" flag=1\");}catch(e0){}WI=this;try{", 1 },
+        { "function(){return _.a(O,null)}",
+          "function(){var r=_.a(O,null);try{console.log(\"NBT|euv:a=\"+(typeof _.a)+\"|\"+String(_.a).slice(0,40)+\"|O=\"+(typeof O)+\"|\"+String(O).slice(0,40)+\"|nS=\"+(_.nS===void 0?\"u\":_.nS?1:0)+\"|ret=\"+(typeof r)+\"|\"+String(r).slice(0,40));}catch(e1){}return r}", 2 },
+        { "catch(L){h=function(B)",
+          "catch(L){try{console.log(\"NBT|ERR:\"+String(L&&L.message||L));}catch(e2){}h=function(B)", 1 },
+        { "if(O instanceof cSc)return L=O.render(),Qkq(L,S,D,g,h);",
+          "try{console.log(\"NBT|qkq c=\"+(O&&O.constructor&&O.constructor.name)+\" instcSc=\"+(O instanceof cSc)+\" render=\"+(typeof (O&&O.render)));}catch(eQ){console.log(\"NBT|qkqT:\"+eQ)}if(O instanceof cSc)return L=O.render(),Qkq(L,S,D,g,h);", 1 },
+        { "(Q[R]instanceof Function&&FyC(\"Function props must be configured",
+          "((function(){try{console.log(\"SBP| R=\"+R+\" q=\"+(typeof Q)+\" qr=\"+(Q==null?\"na\":(typeof Q[R]))+\" L=\"+(typeof L));}catch(e9){console.log(\"SBP|x \"+e9)}})(),Q[R]instanceof Function&&FyC(\"Function props must be configured", 1 },
+    };
+    const int pat_n = (int)(sizeof(pat) / sizeof(pat[0]));
+    int cnt[5] = { 0, 0, 0, 0, 0 };
+    const char *q = src, *end = src + src_n;
+    for (int i = 0; i < pat_n; i++) {
+        size_t nl = strlen(pat[i].nd);
+        for (const char *z = src; z + nl <= end; ) {
+            const char *hit = memmem(z, (size_t)(end - z), pat[i].nd, nl);
+            if (!hit) break;
+            cnt[i]++;
+            q = hit + 1;
+            z = q;
+        }
+    }
+    for (int i = 0; i < pat_n; i++)
+        if (cnt[i] != pat[i].want) {
+            fprintf(stderr, "NBT|declined: counts %d/%d/%d/%d/%d (want %d/%d/%d/%d/%d)\n",
+                    cnt[0], cnt[1], cnt[2], cnt[3], cnt[4],
+                    pat[0].want, pat[1].want, pat[2].want, pat[3].want, pat[4].want);
+            return 0;
+        }
+    size_t out_cap = src_n + 4096, off = 0;
+    char *b = malloc(out_cap);
+    if (!b) return 0;
+    const char *z = src;
+    while (z < end) {
+        int done = 0;
+        for (int i = 0; i < pat_n && !done; i++) {
+            size_t nl = strlen(pat[i].nd);
+            if ((size_t)(end - z) >= nl && memcmp(z, pat[i].nd, nl) == 0) {
+                size_t rl = strlen(pat[i].rp);
+                if (off + rl >= out_cap) { free(b); return 0; }
+                memcpy(b + off, pat[i].rp, rl); off += rl; z += nl; done = 1;
+            }
+        }
+        if (!done) { b[off++] = *z++; }
+    }
+    b[off] = 0;
+    fprintf(stderr, "NBT|patch applied (%zu bytes)\n", off);
+    *out = b; *out_n = off;
+    return 1;
+}
 static void run_scripts_slices(JSContext *ctx, char *src, size_t src_n) {
     const char *p = src, *end = src + src_n;
     const char *after = NULL;
     char errbuf[512];
+    char *probe = NULL; size_t probe_n = 0;
+    if (nb_bundle_probe(src, src_n, &probe, &probe_n) && probe) {
+        src = probe; src_n = probe_n;
+        p = probe; end = probe + probe_n;
+    }
     if (!find_script_boundary(p, end, &after)) {
         /* legacy single-program page.js */
         if (peval_budget(ctx, src, src_n, errbuf, sizeof(errbuf)) != 0)
             fprintf(stderr, "WERR| script 0: %s\n", errbuf[0] ? errbuf : "eval error");
+        free(probe);
         return;
     }
     p = after;
@@ -4485,6 +4807,7 @@ static void run_scripts_slices(JSContext *ctx, char *src, size_t src_n) {
         if (!bn) break;
         p = next;
     }
+    free(probe);
 }
 static void run_page(void) {
     /* phase-2 (commit 7): per-page event/timer/microtask state. The previous
@@ -4759,7 +5082,8 @@ static int repl_main(void) {
 
         /* don't leak listeners/timers across lines */
         free_held_callbacks(ctx);
-        g_timer_count = 0; g_evl_count = 0; g_onprop_count = 0;
+g_timer_count = 0; g_evl_count = 0; g_onprop_count = 0;
+    g_search_wired = 0;
         g_invocations = 0; g_raf_fires = 0;
         g_pending_err = 0; g_pending_errmsg[0] = 0;
 
