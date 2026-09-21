@@ -179,6 +179,81 @@ CURRENT EMPIRICAL SNAPSHOT (masthead):
   returns undefined for the masthead config (trace `_.a` input/output; check
   it needs `_.Fe`/dom-sink host or an inner `document.createElement` path).
 
+--- 2026-09-20 NIGHT (dead-renderer autopsy: _.a / eUV / Gry / Qkq) ---
+EMPHASIS: all sxs registers return rc=undefined from createElement — NOT
+component-specific (tested ytd-guide-renderer, ytd-page-manager,
+ytd-badge-supported-renderer, ytd-masthead). Platform-wide.
+FACTS (bundle offset ~163212): namespace has exactly ONE `_.a` =
+`function(O,S){return ASZ.apply(null,[O,S].concat(...))}`; ASZ = O=?new I9c`
+(Angular-ish descriptor {kind, props, children}, base cSc). I9c.render() =
+`rSC(kind, props, children)`; rSC for typeof kind==="function" runs
+`xLa(kind, cb, dbg)` -> `p4b(kind, {children:[]})` -> `Gd(kind({}))` (the
+component render fn runs, returns descriptors/elements).
+sxs flow (offset ~699726): `c.createElement()` -> `D.prototype.createElement`
+-> `h = _.l(eUV(function(){return _.a(O,null)})).next().value; lmV(this)`.
+eUV (offset ~174307): `var D; g=function(){ var h=aZ(!0); Dk++; try{D=Gry(O())
+gG(!1)}catch(L){throw gG(!0),t8(L,4)}finally{aZ(h)} };
+S=S||_.nS?oZ(g,S):aN2(g); return [D,S]`.
+oZ/aN2 (offsets ~154013/~168631) run their callback SYNCHRONOUSLY (inside
+try/finally + MP scope store). eUV's g therefore ALWAYS sync-sets D ->
+`next().value`=D=Gry(I9c-descriptor)=Qkq(...)= the accumulated array S
+(NOT undefined) when O is the masthead builder fn. rSC ALSO ===arrow==>
+DESCRIPTOR-CHAIN: element build happens via `p4b`->`Gd`->component render
+(customElements internal f9b->document.createElement) and MUST return
+[element]. Conclusion from source: rc can NEVER be undefined.
+EMPIRICAL vs SOURCE CONTRADICTION: our engine returns typeof rc === 'undefined'
+cleanly, with NO exception reaching the eval probe and NO CE|createElement
+line — meaning `_.a(O,null)` returned `undefined` WITHOUT throwing, which the
+single-_.a ASZ path cannot do (fresh I9c object every call) => the `_.a`
+IN SCOPE at the sxs closure in OUR runtime is NOT the global ASZ one. Leading
+hypothesis: kevlar module-local shadowing of `_`/`a` in the masthead module
+(its own DOM-builder `_.a("yt-searchbox", {...}, [...])`, offset ~10047389)
+returns undefined for (FUNCTION, null).
+NEXT SESSION (ordered experiments):
+1. Determine the REAL `_.a` S (=O,C)-scope: add a temporary CE| instrument at
+   ce_upgrade_one that ALSO evals nothing... instead: patch ce_upgrade_one to
+   first set flag `web_monomer_web_component_wrapper_handle_errors` FALSE via
+   experiments if reachable, else expose the true return via
+   `JS_GetProperty+JS_Call` and log `CE|createElement(<tag>): rctype=`; record
+   whether rc is object/array — the source says array, observed undefined =>
+   if still undefined, module-local `_.a` confirmed.
+2. If module-local confirmed: find the masthead module's own `a` DOM-builder
+   (~10047389 region) and make `_.a(fn, null)` fall through to the global
+   ASZ descriptor path (patch the module init in the bundle, e.g. extend
+   masthead module so its local `_.a` delegates to ASZ for function kinds) or
+   demo the equivalent render at app level.
+3. REMEMBER: there is NO typed-input driver in this headless browser (only
+   `go:` commands) — an on-page search FORM is cosmetic today; the WORKING
+   user path remains the verified address-bar fallback
+   (`go:<query>` -> /results?search_query=). Do NOT sink an evening into
+   making the form visible until input pinning exists.
+RESOLVED TONIGHT (definitive empirics):
+- rc-tracer landed in ce_upgrade_one: `CE|createElement(<tag>): rc=<type>`
+  (rc=undefined|array|object|function|...). Built + live under NB_TRACE_CB=1.
+- REAL-LOAD run: only `<ytd-masthead>` has createElement() invoked during a
+  full HOME load (rc=undefined); the other sxs-registered components never
+  reach the createElement call at upgrade time during load — they're built
+  from light-DOM stamps and never materialized. Runtime `x.createElement()`
+  still rc=undefined for all sxs components (matches earlier manual probes).
+- SMOKING GUN: monkeypatched document.createElement (log tags) around
+  `m.createelemF()` — the masthead createElement made ZERO document.createElement
+  calls and returned undefined. => the sxs closure's `_.a(O,null)` returns
+  undefined with NO DOM work and NO exception: a module-local `a` no-op, NOT
+  an engine error, NOT the global ASZ/I9c descriptor path. The I9c->rSC->f9b
+  build pipeline NEVER runs for the masthead in our runtime.
+- The search UI (form+icon) markup lives in the masthead's OWN `_.om` template
+  string (offset ~10078082); Chrome stamps it server-side; our flat DOM gets
+  the "search-container/input shell" without form+icon.
+NEXT SESSION (now precisely constrained):
+1. Find WHICH sxs-call defines masthead and WHAT O it passes, then make the
+   masthead module's local `_.a(function-ish, null)` build the descriptor
+   (patch that module's `a` to delegate function-kinds to the global ASZ).
+2. OR stamp the masthead `_.om` template into <ytd-masthead> at our level
+   (cosmetic UI; no input driver yet — see warning above).
+3. Flat-DOM alternative with REAL value: inject a working `#search-form`
+   (`action=/results`) + wired submit that maps to the existing go:-fallback
+   — probably the best user-visible outcome until input pinning lands.
+
 DIAGNOSTIC RECORD (why the two "cannot read property of undefined" init
 TypeErrors happened — now FIXED):
 - ROOT CAUSE: kevlar's bevasrs bootstrap reads

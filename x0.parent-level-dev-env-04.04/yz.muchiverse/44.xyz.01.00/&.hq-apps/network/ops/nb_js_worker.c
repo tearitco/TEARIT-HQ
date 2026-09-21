@@ -3069,6 +3069,9 @@ static void ce_upgrade_one(JSContext *ctx, NbNode *n, JSValue ctor) {
                 char buf[1536];
                 const char *m = js_error_to_cstr(ctx, buf, sizeof(buf));
                 if (g_trace_cb) fprintf(stderr, "CE|createElement(%s): %s\n", n->tag ? n->tag : "?", m ? m : buf);
+            } else {
+                const char *rt = JS_IsUndefined(r) ? "undefined" : JS_IsNull(r) ? "null" : JS_IsBool(r) ? "bool" : JS_IsFunction(ctx, r) ? "function" : JS_IsString(r) ? "string" : JS_IsObject(r) ? (JS_IsArray(ctx, r) ? "array" : "object") : "other";
+                if (g_trace_cb) fprintf(stderr, "CE|createElement(%s): rc=%s\n", n->tag ? n->tag : "?", rt);
             }
             JS_FreeValue(ctx, r);
         }
