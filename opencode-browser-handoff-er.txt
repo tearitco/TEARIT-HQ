@@ -489,3 +489,27 @@ MINOR OPEN ITEMS:
 - Diagnose kevlar errors resident: NB_TRACE_CB=1 NB_STACK=1 spawn worker,
   LOAD with paths, watch TRACE_CB| on stderr (see /tmp/opencode/
   drive_load.py).
+## 2026-09-21 LATE-NIGHT: search gap CLOSED — masthead Enter now navigates
+- Root cause recap: kevlar's sport masthead ("yt-searchbox") is a string-template
+  component; its closure `on:keydown`/`on:input` attaches never run against the
+  parsed `<input id="search" name=search_query>`, so typed Enter did nothing.
+- Engine fix (nb_js_worker.c, staged, NOT yet pushed):
+  1. `nb_nav_to_go` (lightweight `location.href = url` helper) + `nb_wire_nav_to_go`
+     called at end of `page_load` after the drain loop (3b/EVL-DOC-level keydown
+     proxy). The only native binding mounted per-page.
+  2. `nb_search_submit` CFunction bound as document/keydown proxy: on Enter with
+     `ev.target` an `input[name=search_query]`, reads wrapper's `.value`, builds
+     `/results?search_query=<encodeURIComponent(value)>` (same URL kevlar's own
+     searchEndpoint would build, bundle ~268939), and sets location.href.
+  3. `g_nav_to_go_wired` flag reset in live_teardown; wiring deduped so it mounts
+     once per page.
+- Verified live (r14-r19): type 'rick roll' + dispatch Enter on masthead input
+  -> engine navigates (loading -> ready). `location.href` in-page confirm works
+  when driven by a *fresh* worker (see quirk below). Direct `go:/results?...`
+  page loads stably and ctor/materialization intact (yt-searchbox renders).
+- Known quirk (unchanged, harmless to go:-flow): queuing a JS `eval` against a
+  page *after* an eval-originated location.href nav can fault the worker at
+  JS_FreeRuntime teardown (pre-existing teardown assert); the manager relaunches
+  the worker clean. Presents as "eval error" in status briefly.
+- NOTE: on dev-desk the built artifact must be ops/+x/ (not +x/). We rebuilt
+  and re-launched the house; the worker binary is current.
