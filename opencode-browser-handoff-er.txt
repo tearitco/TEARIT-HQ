@@ -240,14 +240,60 @@ returns undefined for (FUNCTION, null).
  minuscule manual eval: prototype chains built exactly like _.Y (Object.create
  and temp-ctor) resolve `new I9c() instanceof cSc` TRUE in our engine, so
  `instanceof` itself is sound — it was purely the missing nodeType property.
- REMNANT (next refinement, COSMETIC-until-input-pinning): <yt-searchbox>
- (CE|define yt-searchbox as h) is created during masthead render BEFORE its
- define() fires; we upgrade custom elements only on-creation, so yt-searchbox
- never materializes and #search-input stays an empty container (no <form>,
- no icon). Real behavior: define() should auto-upgrade matching elements
- already in the document/skeleton. Do NOT sink an evening into the visible
- form until a typed-input driver exists — the WORKING user path remains the
- verified address-bar fallback (`go:<query>` -> /results?search_query=).
+REMNANT (next refinement, COSMETIC-until-input-pinning): <yt-searchbox>
+  (CE|define yt-searchbox as h) is created during masthead render BEFORE its
+  define() fires; we upgrade custom elements only on-creation, so yt-searchbox
+  never materializes and #search-input stays an empty container (no <form>,
+  no icon). Real behavior: define() should auto-upgrade matching elements
+  already in the document/skeleton. Do NOT sink an evening into the visible
+  form until a typed-input driver exists — the WORKING user path remains the
+  verified address-bar fallback (`go:<query>` -> /results?search_query=).
+--- 2026-09-21 DAY (yt-searchbox materializes; CE ctor init + attributes) ---
+  SOLVED (eval-created component): `document.createElement('yt-searchbox')`
+  now returns a FULL render (`kids=3 root=input`) with no manual setup, and a
+  fresh bucket-load puts the rendered `input` INSIDE `#search-input`
+  (`=>1 [input]`); masthead keeps its 5 structural divisions. Two missing
+  pieces were behind the "cannot read property of undefined @ <script>:~3862"
+  (setUpProps) TypeError:
+  1. `el.attributes` — kevlar's _.UV "CoW" wrapper setUpProps/render start
+     with `_.C2(this.attributes)`; without the property el.attributes is
+     undefined, `_.l(undefined)` fails as `.value of undefined @ 5224:69`
+     and every component bricks. FIX: nb_el_attributes() — an accessor that
+     re-parses n->attrs into a fresh ARRAY of {name,nodeName,localName,value,
+     specified} records (skips the leading tag token of the raw blob;
+     matches nb_attr_get case-insensitively), wired in push_node next to
+     childNodes (JS_PROP_HAS_GET).
+  2. Custom-element CONSTRUCTOR never ran during upgrade — Chrome runs the
+     element ctor on upgrade, and kevlar's CoW ctor body
+     (`G=B.apply(this)||this;G.rawProps={};queuingData/owner/dispose/
+     isWebComponentWrapper/isReparenting/hasRendered/isLazyComponentFn`)
+     is REQUIRED state for setUpProps. Our native upgrade called only the
+     prototype swap + _initializeProperties/ready/connectedCallback; G.
+     rawProps stayed undefined -> `Q[R]` in setUpProps threw, connected
+     Callback bubbled TypeError, CE createElement got nothing. FIX in
+     ce_upgrade_one(): JS_Call(ctor, wrapper) then DETERMINISTICALLY
+     guard-init the CoW fields on the wrapper (|=B may return a DIFFERENT
+     object — the fields must land on this instance; flags rawProps={}
+     queuingData=false owner=null dispose=<noop> plus the 4 bool flags).
+     Logged as CE|ctor(tag): raw=object. (Real ES-class ctors refuse
+     JS_Call — caught/logged; sxs proto.createElement components (masthead)
+     keep their dedicated branch and do NOT get double-rendered.)
+  Probe: added 5th needle — `(Q[R]instanceof Function&&FyC(...` in
+  setUpProps logs `SBP| R=.. q=.. qr=.. L=..` (kept expression-safe as a
+  comma-grouped IIFE inside the existing parens; a bare injected `try{}`
+  there is a syntax error). NBT patch now wants counts 1/1/3/1/1.
+  KNOWN teardown quirk: an eval that throws can crash the worker at
+  JS_FreeRuntime ("Assertion gc_obj_list empty") — pre-existing leak on the
+  error path, harmless to the go: load flow (worker restarts clean).
+  BUCKET STATE (fresh load r14): masthead tree
+  `div.search-container | div.search-input | svg.menu-icon |
+  div.masthead-logo | div.masthead-skeleton-icons`; #search-input contains
+  exactly 1 child (the searchbox render root `input`); no <form> and no
+  ytd-searchbox host node in the LIVE tree (kevlar's slim/sports masthead
+  prints the render output flat into #search-input instead of shadowing an
+  <yt-searchbox> host) — cosmetic until typed-input pinning. Check via
+  querySelector('#search-input').childNodes and video search via the
+  address-bar fallback `go:<query>`.
  DEBUG OWNERSHIP: nb_bundle_probe() stays behind NB_BUNDLE_TRACE=1. It
  replaces the failed "patch the bundle FILE" idea — page.js.ext8.js is
  RE-EXTRACTED every load, so only eval-time injection in the worker works.

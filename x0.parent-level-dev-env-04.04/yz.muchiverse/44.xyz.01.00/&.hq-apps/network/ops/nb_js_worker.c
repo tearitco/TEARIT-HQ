@@ -1111,6 +1111,54 @@ static JSValue nb_el_getAttribute(JSContext *ctx, JSValueConst this_val, int arg
     if (v && v[0]) return JS_NewString(ctx, v);
     return JS_NULL;
 }
+/* element.attributes (2026-09-21): kevlar's web-component wrapper render
+ * starts with `_.C2(this.attributes)` in both setUpProps and render. Without
+ * this property el.attributes is undefined, _.l(undefined) fails as
+ * "cannot read property of undefined @ <script>:5224:69" and every
+ * sxs-materialized component (yt-searchbox etc.) bricks its createElement.
+ * Browsers expose a live NamedNodeMap; a fresh array of {name,value}
+ * records per access is array-like and iterable, which is what kevlar
+ * consumes (setUpProps walks name/value pairs). */
+static JSValue nb_el_attributes(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)argc; (void)argv;
+    NbNode *n = get_this(ctx, this_val);
+    JSValue arr = JS_NewArray(ctx);
+    if (!n || !n->attrs) return arr;
+    const char *p = n->attrs;
+    int idx = 0;
+    while (*p) {
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (!*p) break;
+        const char *ks = p;
+        while (*p && !isspace((unsigned char)*p) && *p != '=' && *p != '>') p++;
+        size_t kl = (size_t)(p - ks);
+        int had_eq = (*p == '=');
+        if (*p == '=') {
+            p++;
+            while (*p && isspace((unsigned char)*p)) p++;
+            char qc = 0;
+            if (*p == '"' || *p == '\'') { qc = *p; p++; }
+            while (*p && !(qc ? (*p == qc) : (isspace((unsigned char)*p) || *p == '>'))) p++;
+            if (qc && *p) p++;
+        }
+        /* the parsed raw blob leads with the tag name token (no '='); drop it */
+        if (kl > 0 && (had_eq || idx > 0)) {
+            char kbuf[64]; size_t kc = kl < 63 ? kl : 63; memcpy(kbuf, ks, kc); kbuf[kc] = 0;
+            for (size_t i = 0; i < kc; i++) kbuf[i] = (char)tolower((unsigned char)kbuf[i]);
+            const char *v = nb_attr_get(n, kbuf);
+            JSValue o = JS_NewObject(ctx);
+            JS_SetPropertyStr(ctx, o, "name", JS_NewString(ctx, kbuf));
+            JS_SetPropertyStr(ctx, o, "nodeName", JS_NewString(ctx, kbuf));
+            JS_SetPropertyStr(ctx, o, "localName", JS_NewString(ctx, kbuf));
+            JS_SetPropertyStr(ctx, o, "value", JS_NewString(ctx, v ? v : ""));
+            JS_SetPropertyStr(ctx, o, "specified", JS_NewBool(ctx, 1));
+            JS_SetPropertyUint32(ctx, arr, (uint32_t)idx, o);
+            idx++;
+        }
+        while (*p && !isspace((unsigned char)*p)) p++;
+    }
+    return arr;
+}
 /* rung 8: hasAttribute — real bundles gate on documentElement.hasAttribute */
 static JSValue nb_el_hasAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
@@ -1674,6 +1722,10 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
         JS_FreeAtom(ctx, nm);
         nm = JS_NewAtom(ctx, "childNodes");
         JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_el_childNodes, "childNodes", 0), JS_UNDEFINED,
+            JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, nm);
+        nm = JS_NewAtom(ctx, "attributes");
+        JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_el_attributes, "attributes", 0), JS_UNDEFINED,
             JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
         JS_FreeAtom(ctx, nm);
         nm = JS_NewAtom(ctx, "parentNode");
@@ -3048,6 +3100,11 @@ static JSValue ce_registry(JSContext *ctx, int create) {
     return JS_UNDEFINED;
 }
 
+static JSValue nb_js_void(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    (void)ctx; (void)this_val; (void)argc; (void)argv;
+    return JS_UNDEFINED;
+}
+
 static void ce_call_lifecycle(JSContext *ctx, JSValue wrapper, const char *mname) {
     JSValue fn = JS_GetPropertyStr(ctx, wrapper, mname);
     if (JS_IsFunction(ctx, fn)) {
@@ -3072,6 +3129,57 @@ static void ce_upgrade_one(JSContext *ctx, NbNode *n, JSValue ctor) {
     JSValue proto = JS_GetPropertyStr(ctx, ctor, "prototype");
     if (JS_IsObject(proto)) JS_SetPrototype(ctx, wrapper, proto);
     JS_SetPropertyStr(ctx, wrapper, CE_UPGRD, JS_NewBool(ctx, 1));
+    /* Class-based (kevlar _.UV "CoW") wrappers have ctor-body init
+     * (G.rawProps={}, queuingData/owner/dispose/hasRendered flags) that
+     * setUpProps() requires; Chrome runs the element ctor during upgrade so
+     * our native upgrade path mirrors it. Plain-function ctors accept
+     * JS_Call with this=wrapper; real ES class ctors refuse and are caught
+     * (the sxs proto.createElement branch below covers those components). */
+    {
+        int callable = JS_IsFunction(ctx, ctor);
+        if (callable) {
+            JSValue r = JS_Call(ctx, ctor, wrapper, 0, NULL);
+            if (JS_IsException(r)) {
+                char buf[1536];
+                const char *m = js_error_to_cstr(ctx, buf, sizeof(buf));
+                if (g_trace_cb) fprintf(stderr, "CE|ctor(%s): %s\n", n->tag ? n->tag : "?", m ? m : buf);
+            }
+            JS_FreeValue(ctx, r);
+        }
+        /* CoW kismet: kevlar's _.UV ctor body is `G=B.apply(this)||this;
+         * G.rawProps={};...` — B may hand back a DIFFERENT object so the
+         * fields must land on THIS wrapper. Chrome guarantees el.rawProps
+         * etc. exist after construction; mirror that deterministically. */
+        const char *flags[] = {
+            "isWebComponentWrapper", "isReparenting", "hasRendered", "isLazyComponentFn", NULL
+        };
+        for (const char **f = flags; *f; f++) {
+            JSValue cur = JS_GetPropertyStr(ctx, wrapper, *f);
+            int have = !JS_IsUndefined(cur);
+            JS_FreeValue(ctx, cur);
+            if (!have) JS_SetPropertyStr(ctx, wrapper, *f, JS_NewBool(ctx, 0));
+        }
+        JSValue cur = JS_GetPropertyStr(ctx, wrapper, "rawProps");
+        if (!JS_IsObject(cur)) JS_SetPropertyStr(ctx, wrapper, "rawProps", JS_NewObject(ctx));
+        JS_FreeValue(ctx, cur);
+        cur = JS_GetPropertyStr(ctx, wrapper, "queuingData");
+        if (JS_IsUndefined(cur)) JS_SetPropertyStr(ctx, wrapper, "queuingData", JS_NewBool(ctx, 0));
+        JS_FreeValue(ctx, cur);
+        cur = JS_GetPropertyStr(ctx, wrapper, "owner");
+        if (JS_IsUndefined(cur)) JS_SetPropertyStr(ctx, wrapper, "owner", JS_NULL);
+        JS_FreeValue(ctx, cur);
+        cur = JS_GetPropertyStr(ctx, wrapper, "dispose");
+        if (!JS_IsFunction(ctx, cur)) {
+            JSValue fn = JS_NewCFunction(ctx, nb_js_void, "dispose", 0);
+            JS_SetPropertyStr(ctx, wrapper, "dispose", fn);
+        }
+        JS_FreeValue(ctx, cur);
+        if (g_trace_cb) {
+            JSValue rp = JS_GetPropertyStr(ctx, wrapper, "rawProps");
+            fprintf(stderr, "CE|ctor(%s): raw=%s\n", n->tag ? n->tag : "?", JS_IsObject(rp) ? "object" : (JS_IsUndefined(rp) ? "undefined" : "other"));
+            JS_FreeValue(ctx, rp);
+        }
+    }
     ce_call_lifecycle(ctx, wrapper, "_initializeProperties");
     ce_call_lifecycle(ctx, wrapper, "ready");
     ce_call_lifecycle(ctx, wrapper, "connectedCallback");
@@ -4499,9 +4607,11 @@ static int nb_bundle_probe(const char *src, size_t src_n,
           "catch(L){try{console.log(\"NBT|ERR:\"+String(L&&L.message||L));}catch(e2){}h=function(B)", 1 },
         { "if(O instanceof cSc)return L=O.render(),Qkq(L,S,D,g,h);",
           "try{console.log(\"NBT|qkq c=\"+(O&&O.constructor&&O.constructor.name)+\" instcSc=\"+(O instanceof cSc)+\" render=\"+(typeof (O&&O.render)));}catch(eQ){console.log(\"NBT|qkqT:\"+eQ)}if(O instanceof cSc)return L=O.render(),Qkq(L,S,D,g,h);", 1 },
+        { "(Q[R]instanceof Function&&FyC(\"Function props must be configured",
+          "((function(){try{console.log(\"SBP| R=\"+R+\" q=\"+(typeof Q)+\" qr=\"+(Q==null?\"na\":(typeof Q[R]))+\" L=\"+(typeof L));}catch(e9){console.log(\"SBP|x \"+e9)}})(),Q[R]instanceof Function&&FyC(\"Function props must be configured", 1 },
     };
     const int pat_n = (int)(sizeof(pat) / sizeof(pat[0]));
-    int cnt[4] = { 0, 0, 0, 0 };
+    int cnt[5] = { 0, 0, 0, 0, 0 };
     const char *q = src, *end = src + src_n;
     for (int i = 0; i < pat_n; i++) {
         size_t nl = strlen(pat[i].nd);
@@ -4515,9 +4625,9 @@ static int nb_bundle_probe(const char *src, size_t src_n,
     }
     for (int i = 0; i < pat_n; i++)
         if (cnt[i] != pat[i].want) {
-            fprintf(stderr, "NBT|declined: counts %d/%d/%d/%d (want %d/%d/%d/%d)\n",
-                    cnt[0], cnt[1], cnt[2], cnt[3],
-                    pat[0].want, pat[1].want, pat[2].want, pat[3].want);
+            fprintf(stderr, "NBT|declined: counts %d/%d/%d/%d/%d (want %d/%d/%d/%d/%d)\n",
+                    cnt[0], cnt[1], cnt[2], cnt[3], cnt[4],
+                    pat[0].want, pat[1].want, pat[2].want, pat[3].want, pat[4].want);
             return 0;
         }
     size_t out_cap = src_n + 4096, off = 0;
