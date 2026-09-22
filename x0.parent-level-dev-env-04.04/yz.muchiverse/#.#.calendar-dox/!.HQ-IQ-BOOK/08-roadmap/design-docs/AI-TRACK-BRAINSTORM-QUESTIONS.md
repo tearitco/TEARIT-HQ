@@ -146,9 +146,99 @@ compose with an `ai_describe`/`ai_*` primitive later. Worth asking the
 user directly what the rest of that sentence was, since it may name a
 specific first robot use case already in mind.
 
+## Question 5: the JEV docs (2026-09-22) — reviewed, honest take
+
+User asked me to read and react to
+`XO/LLMUD_CODE/8.0.JEV=class-4-describe.md` and
+`8.1.harn+jev-diagram.md`. Both read as output from an external
+session (unclear which model/tool), not house-authored. My real
+review, not just agreement:
+
+**What's genuinely useful:** `8.1`'s full-stack diagram (User Input →
+Parser/Synonym-Bank-lookup → Bank Layer [Synonym/Relation/Behavior/
+Sentence] → FSM Sequencer → Event Executor → Action Manifest → User
+Feedback loop, plus a parallel Watch Layer and a Primitive Layer at
+the floor) is the first single picture tying together everything this
+session already built piecemeal across `HARNECIENT-HACK.md`,
+`LLMUD-HACK.md`, `DUSTOPIA-HACK.md`, `LLMUD-INTEGRATION-DESIGN.md`, and
+the kilo handoff's `ai_*` primitive plan. It doesn't contradict
+anything real: the Laplace-smoothed weight formula matches
+`LLMUD-HACK.md` §5 exactly, the Watch Layer matches `LLMUD-HACK.md`
+§2's resolved design (relay + tool transcript, no new capture infra),
+and the Primitive Layer names match the kilo handoff exactly
+(`ai_describe`/`ai_fsm_transition`/`ai_goap_plan`, registry AI category
+confirmed empty this session).
+
+**What I won't accept uncritically:**
+- **"JEV the product" (TypeSafe AI, $0.042/M tokens, Choice/Score/Noul
+  primitives) is asserted, not independently verified by me** — I have
+  no confirmation this external product's specs are accurate. The
+  value of the "mini-JEV" framing doesn't depend on JEV being real or
+  correctly described — it's useful purely as a naming/analogy device
+  ("System 1"/Kahneman fast-thinking, calibrated structured decisions),
+  not as evidence the house should model anything against a real
+  competitor's exact spec.
+- **The diagram presents all four banks as equally real** — they
+  aren't, per `DUSTOPIA-HACK.md` §3's own honest table: Synonym Bank
+  has a real smallest-first-step, Behavior Bank fully reuses
+  `LLMUD-HACK.md`'s schema, but Relation Bank and Sentence Bank are
+  still just named ideas with zero house-side design work. Any
+  house-native version of this diagram should keep that honesty, not
+  smooth it over.
+- **The restated rule** ("classification must happen in a
+  non-autoregressive, owned layer, never inside an LLM call") is a
+  clean, correct restatement of `HARNECIENT-HACK.md`'s existing
+  DESCRIBE-not-CLASSIFY law — not new, but a good sharper phrasing
+  worth reusing.
+
+**Recommendation, not yet done**: once item 3 actually starts, fold a
+cleaned, house-native version of the `8.1` diagram (JEV-as-analogy
+only, banks table honestly marked partial) into a real design doc as
+the canonical "one architecture picture" — this house has needed
+exactly this since `NIGHT_16` was first critiqued for lacking
+mechanical depth.
+
+## Question 6: transparency, KPIs, and the "teach humans the same tools" product angle (2026-09-22)
+
+Direct, longer user message, real and not yet acted on — recorded in
+full spirit here so it isn't lost before the item-3 conversation:
+
+- **Test the famous LLM (tomom) and other pipeline aspects** — already
+  a named next step in Question 3 above.
+- **Train the FSM/RL/IRL loop to do real minor jobs, iterating and
+  stacking "till we are saving real tokens"** — i.e. the watch-and-
+  learn loop isn't just a research curiosity, its explicit success
+  metric is measurable Claude-token savings over time, via Harnecient-
+  Hack-style automation/delegation.
+- **Keep parallel human-facing documentation of the same tools/
+  harnesses** — explicitly named as a real, intended product/selling
+  point of this house: not just "Claude can do X automatically" but
+  "here's how a human operator can drive the exact same harness by
+  hand," so the automation story is legible and reproducible, not a
+  black box.
+- **Wants real, transparent KPIs** — to be worked through together,
+  not assumed — covering: what's being tested/fixed/trained and why,
+  how it drives measurable Claude-token savings, and a path toward
+  real independence for (a) understanding the codebase/docs via chat
+  and tool-use, (b) eventually even minor bug fixes, (c) game
+  programming, (d) agentic user-behavior emulation.
+- **A new NIGHT script may be warranted** to address these concerns —
+  user's own words, not yet started; would naturally pair with a
+  house-native version of the Question 5 architecture diagram once
+  that exists, so the NIGHT has a real picture to dramatize rather
+  than only prose.
+
+**Not yet done, deliberately**: no KPI list has been drafted, no
+training loop started. This is exactly item 3's own conversation,
+now with real material (the JEV docs' synthesis + this KPI/product
+framing) to start from once items 4/2 are confirmed solid and the
+user is ready to have it.
+
 ## Grounding
 
 `HARNECIENT-HACK.md`, `LLMUD-HACK.md`, `DUSTOPIA-HACK.md`,
 `LLMUD-INTEGRATION-DESIGN.md`, `IRL-BOOTSTRAP-RECURSION-SPEC.md`,
 `13.agent-coms/KILO/claude-2-kilo-9.17.md` §5/§11,
-`12.calendar/2026-09-20/2do.md` §8.
+`12.calendar/2026-09-20/2do.md` §8,
+`XO/LLMUD_CODE/8.0.JEV=class-4-describe.md`,
+`XO/LLMUD_CODE/8.1.harn+jev-diagram.md`.
