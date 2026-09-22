@@ -2260,16 +2260,28 @@ static void livedesk_snapshot_desk(const char *house_root, const char *sroot, co
      * entities was already an empty file before this call, so this
      * only changes behavior for the dangerous case, never the normal
      * one. */
-    if (n == 0) {
+    /* REAL FIX 2026-09-21, direct live incident: the 2026-08-30 guard above
+     * only covered n==0. DSR's desk lost all 16 real building rows down to
+     * just `cursword` the same way - `mr_transfer_desk.c`'s spawn_desk()
+     * launches every DESK row async via kh_spawn(); if a snapshot (desk
+     * switch/auto-save) fires before all of them finish registering as
+     * "open", n is small-but-nonzero and this function happily overwrote
+     * the real, larger file with a truncated one. Same "can't tell
+     * transient-undercount from a real deletion" problem as n==0, so the
+     * same safe answer: never let a snapshot write FEWER real DESK rows
+     * than the file already has - skip the write and let a later, fully-
+     * registered snapshot catch up. A genuine user deletion still shrinks
+     * the file next time n reaches (or exceeds) the new real count. */
+    {
         FILE *check = fopen(sp, "r");
         if (check) {
             char cline[256];
-            int has_real_rows = 0;
+            int existing_rows = 0;
             while (fgets(cline, sizeof(cline), check)) {
-                if (strncmp(cline, "DESK", 4) == 0) { has_real_rows = 1; break; }
+                if (strncmp(cline, "DESK", 4) == 0) existing_rows++;
             }
             fclose(check);
-            if (has_real_rows) return;
+            if (n < existing_rows) return;
         }
     }
     FILE *w = fopen(sp, "w");
