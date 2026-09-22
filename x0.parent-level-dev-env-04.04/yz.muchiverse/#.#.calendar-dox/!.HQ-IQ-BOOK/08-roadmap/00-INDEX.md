@@ -137,6 +137,19 @@
   (not a maze), weights living only at the spoke with a derived mirror
   at the master, and the FSM/RL/GOAP meta-level extension — design
   shape found through real back-and-forth, nothing built yet.
+- `design-docs/A-TEARIT-IS-ALL-YOU-NEED.md` — **2026-09-22, real
+  technical spec, not a dramatization**: the full propose → validate →
+  replay → promote loop that lets Gemma (constant, cheap, DESCRIBE)
+  and Claude/tomom (occasional, deep judgment) jointly hand-tune the
+  Concept Bank from real feedback instead of GPU-brute-force training
+  — real record formats (`OBS`/`FEEDBACK`/`EDIT`), why FSM/GOAP
+  self-authoring reuses the existing Events compiler instead of a new
+  code-gen path, the bootstrapping/trust-tier order (mirrors the
+  grade-level curriculum idea), and where classic FF/BP/QKV-style
+  training still has a real, scoped role (magnitude-refinement within
+  an already-named topology only, routed through the same promotion
+  gate as any other proposer — never topology discovery). Explicit
+  OPEN vs. decided sections, not papered over.
 - `design-docs/RELAY-WINDOW-TARGETING-DESIGN.md` — **2026-09-18
   design, not started**: formalizes how a relay-driving agent picks
   the right window/PID. Real current mechanism confirmed by direct
