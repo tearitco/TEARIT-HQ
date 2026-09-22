@@ -4529,6 +4529,38 @@ static int layout_sidebar_panel(Elem *page) {
             }
         }
     }
+
+    /* REAL FIX 2026-09-21 (piececraft-hq board bug, BUG-LOG.md
+     * "renders only a thin .main tab, no board content" - root-caused
+     * by direct code read, no piececraft-specific change needed here):
+     * a bare `<text show="${cond}">` direct child of `<page>` (a
+     * fallback/hint message that isn't inside sidebar/panel/footer/
+     * tabbar - e.g. pchq-board.xhtpm's own "No live board-viewer
+     * session..." line) was never laid out anywhere in this function -
+     * only a <footer>'s OWN <text> children get real x/y/w/h above.
+     * draw_elem() (khtpm_draw_core.c) already skips any element with
+     * w<=0||h<=0 - painting is fully generic, gated only on real
+     * geometry existing, so the only gap was this missing layout pass.
+     * A `show=` that evaluates false already drops the element from
+     * the tree entirely at PARSE time (see the `drop_elem` handling
+     * above `apply_attr()`), so every text reaching here is meant to
+     * be visible right now - no visibility check needed, only geometry.
+     * Placed inside the panel's own content area (single line, near
+     * the top, padded) so it reads as "why the panel is empty/whatever
+     * it's explaining" rather than floating over the sidebar or footer. */
+    for (int i = 0; i < page->n_children; i++) {
+        Elem *t = page->children[i];
+        if (strcmp(t->tag, "text") != 0) continue;
+        css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
+        int pad = scaled(10);
+        int th = t->style.has_height ? t->style.height : scaled(20);
+        t->x = panel->x + pad;
+        t->y = panel->y + pad;
+        t->w = panel->w - 2 * pad; if (t->w < 0) t->w = 0;
+        t->h = th;
+        t->nav_index = 0; /* a hint, not a focusable/clickable item */
+    }
+
     /* REAL, NEW 2026-08-31 (live report: "no separation elements") -
      * a real visible divider between the two regions belongs in CSS
      * (entity_menu_default.css's own generic `sidebar`/`cli_io` rules),
