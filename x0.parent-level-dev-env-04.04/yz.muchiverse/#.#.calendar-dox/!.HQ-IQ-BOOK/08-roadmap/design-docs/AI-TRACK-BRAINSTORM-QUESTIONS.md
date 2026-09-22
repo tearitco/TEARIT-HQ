@@ -307,20 +307,31 @@ permanently fixed floor. This reframes "primitive" as *the smallest
 thing still allowed to grow*, not a hard architectural floor the way
 Question 5's diagram currently draws the Primitive Layer.
 
-**7f. `FILE:DESK` naming.** The user noted the `FILE` half of
-`FILE:DESK` causes real confusion (collides with the OS sense of
-"file" constantly) and proposed renaming it, floating `ROOM` and
-`WORLD` as options, landing on `WORLD`. Agreed and recommended:
-`WORLD` is the better fit — `ROOM` undersells the scope (implies one
-bounded space, when entities/pieces are meant to scale up to whole
-game boards), while `WORLD` matches the game-engine vocabulary this
-track is already heading toward and reads unambiguously next to
-`ENTITY`/`PIECE`. **Not yet done**: this is a naming recommendation
-only — no rename has been performed anywhere in code, docs, or the
-`FILE:DESK` term's existing usages. Given `10. .xhtpm -> .xhtm rename
-- CANCELLED` in `12.calendar/2026-09-20/2do.md` §10, any actual rename
-must be treated as a deliberate, separately-scoped decision, not
-silently folded into an unrelated commit.
+**7f. `FILE:DESK` naming — ADOPTED 2026-09-22, `WORLD`.** The user
+noted the `FILE` half of `FILE:DESK` causes real confusion (collides
+with the OS sense of "file" constantly) and proposed renaming it,
+floating `ROOM` and `WORLD` as options, landing on `WORLD`. `ROOM`
+undersells the scope (implies one bounded space, when entities/pieces
+are meant to scale up to whole game boards); `WORLD` matches the
+game-engine vocabulary this track is already heading toward and reads
+unambiguously next to `ENTITY`/`PIECE`.
+
+**What this rename actually is**: `FILE:DESK` was never a literal
+code/file identifier anywhere in the house (confirmed by grep across
+`.c`/`.h`/`.sh`/`.xhtpm`/`.pdl` — one loose comment match in
+`piececraft-hq/pchq-board.xhtpm`, nothing load-bearing). It's a
+documentation/vocabulary term, used across design docs and other
+agents' handoffs (kilo, grok). So this decision is: **`WORLD` is now
+the house's adopted term going forward, in new/current docs and
+conversation.** It is deliberately NOT a retroactive rewrite —
+existing dated records (NIGHT scripts, kilo/grok handoffs, prior
+brainstorm entries) that say `file:desk`/`FILE:DESK` are left as-is,
+same as any other historical record; only forward usage changes. This
+is a lighter action than `10. .xhtpm -> .xhtm rename - CANCELLED`
+(`12.calendar/2026-09-20/2do.md` §10) precisely because there's no
+actual file/identifier to rename and thus no real breakage risk —
+that precedent's caution was about renaming something load-bearing,
+which this term never was.
 
 **Not yet done, deliberately**: no Corpus/Training Layer has been
 designed or built; no school/curriculum format has been defined; no
