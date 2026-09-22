@@ -85,7 +85,21 @@ case "$ACTION" in
         khtpm_pids | xargs -r kill -TERM
         sleep 1
         khtpm_pids | xargs -r kill -KILL 2>/dev/null || true
-        [ -x "$TB_DIR/build_khtpm_strip.sh" ] && sh "$TB_DIR/build_khtpm_strip.sh"
+        # REAL FIX 2026-09-21, direct instruction ("i dont want it to run
+        # the old binaries if theres a compile fail or it may mislead me
+        # into thinking things are ok, when they aren't"): this used to
+        # run build_khtpm_strip.sh and ignore its exit status, then only
+        # check the binary EXISTS - which a STALE binary from a prior
+        # successful build also satisfies, so a compile failure here
+        # silently relaunched old code with no sign anything was wrong.
+        # We already just killed every running process above, so on a
+        # build failure leave the desktop DOWN and say so, the same
+        # already-proven pattern run_khtpm_strip.sh's own `new` mode uses
+        # (`|| { echo "BUILD FAILED — not launching"; exit 1; }`) - never
+        # fall through to launching whatever binary happens to exist.
+        if [ -x "$TB_DIR/build_khtpm_strip.sh" ]; then
+            sh "$TB_DIR/build_khtpm_strip.sh" || { echo "BUILD FAILED — desktop left stopped, not relaunched with a stale binary"; exit 1; }
+        fi
         [ -x "$KHTPM_PARSER" ] || { echo "MISSING $KHTPM_PARSER (build failed?)"; exit 1; }
         mkdir -p "$SCRIPT_DIR/ops/+x"
         [ -x "$BIN" ] || gcc -Wall -O2 -o "$BIN" "$SCRIPT_DIR/ops/crypt_autostart.c"
