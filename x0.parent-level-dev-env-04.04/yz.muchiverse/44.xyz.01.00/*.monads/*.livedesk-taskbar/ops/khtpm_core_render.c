@@ -11005,6 +11005,34 @@ static int kh_load_cli_io_context_menu(MethodItem *items, int max) {
     return n;
 }
 
+/* REAL, NEW 2026-09-21 (item-2 vertical slice: a robot/puzzle-piece
+ * entity dropped into another entity's Inventory needs its own event
+ * to act on the HOST, not on itself). A robot living in someone's
+ * Inventory always has the shape <host_dir>/inventory/<robot_name> -
+ * this house's own real convention (same one fe_place_on_desk.sh's
+ * "pals = dirname(dirname(dirname(SRC)))" already uses for the mirror
+ * case, moving OUT of inventory). Pure string math, no cross-process
+ * state needed: if ent_dir's parent's basename is "inventory", its
+ * grandparent is the host. Returns 1 and fills host_out if ent_dir is
+ * inside an inventory; 0 (host_out untouched) otherwise - the normal
+ * "this entity, not in anyone's inventory" case, unaffected. */
+static int kh_inventory_host_dir(const char *ent_dir, char *host_out, size_t host_sz) {
+    if (!ent_dir || !ent_dir[0]) return 0;
+    char buf[TP_PATH_BUF];
+    snprintf(buf, sizeof(buf), "%s", ent_dir);
+    char *slash1 = strrchr(buf, '/');
+    if (!slash1 || slash1 == buf) return 0;
+    *slash1 = '\0'; /* buf = dirname(ent_dir) */
+    char *slash2 = strrchr(buf, '/');
+    if (!slash2) return 0;
+    const char *parent_base = slash2 + 1; /* basename(dirname(ent_dir)) */
+    if (strcmp(parent_base, "inventory") != 0) return 0;
+    *slash2 = '\0'; /* buf = dirname(dirname(ent_dir)) = host */
+    if (!buf[0]) return 0;
+    snprintf(host_out, host_sz, "%s", buf);
+    return 1;
+}
+
 static void kh_open_cli_io_context_menu(Elem *target, int win_px, int win_py) {
     if (!dpy) return;
     MethodItem items[12 + MAX_METHODS];
@@ -11099,8 +11127,22 @@ static void kh_open_cli_io_context_menu(Elem *target, int win_px, int win_py) {
         const char *act = items[i].action;
         if (is_ent[i]) {
             char raw[TP_PATH_BUF * 2], esc[TP_PATH_BUF * 3];
-            snprintf(raw, sizeof(raw), "sh '%s/&.widgits/file-explorer/ops/fe_entity_method.sh' '%s' '%s'",
-                     g_house_root, ent_dir, items[i].label);
+            char host_dir[TP_PATH_BUF];
+            /* If this item is a robot/entity sitting in someone else's
+             * Inventory, export MUCHI_TARGET_ENT=<host> so an event this
+             * entity's own METHOD row runs (e.g. the real "Play" ->
+             * play_event.sh precedent) can act on the host instead of
+             * the robot itself - see kh_inventory_host_dir()'s own
+             * header comment and khtpm_events_hq_manager.c's matching
+             * ENT="${MUCHI_TARGET_ENT:-$PWD}" opt-in override. */
+            if (kh_inventory_host_dir(ent_dir, host_dir, sizeof(host_dir))) {
+                snprintf(raw, sizeof(raw),
+                         "MUCHI_TARGET_ENT='%s' sh '%s/&.widgits/file-explorer/ops/fe_entity_method.sh' '%s' '%s'",
+                         host_dir, g_house_root, ent_dir, items[i].label);
+            } else {
+                snprintf(raw, sizeof(raw), "sh '%s/&.widgits/file-explorer/ops/fe_entity_method.sh' '%s' '%s'",
+                         g_house_root, ent_dir, items[i].label);
+            }
             size_t ew = 0;
             for (const char *r = raw; *r && ew + 8 < sizeof(esc); r++) {
                 if (*r == '&') { memcpy(esc + ew, "&amp;", 5); ew += 5; }

@@ -642,7 +642,22 @@ static void compile_page(int page_idx) {
             if (wf) {
                 fprintf(wf, "#!/bin/sh\n");
                 fprintf(wf, "cd \"$(dirname \"$0\")/../../..\" || exit 1\n");
-                fprintf(wf, "ENT=\"$PWD\"\n");
+                /* REAL, NEW 2026-09-21 (item-2 vertical slice: a robot/
+                 * puzzle-piece entity's own event_pkg needs to act on the
+                 * HOST entity whose Inventory it was run from, not on
+                 * itself - ENT was always derived purely from cmd_N.sh's
+                 * own on-disk path (3 levels up from event_pkg/pages/
+                 * page_N/), so an event physically living inside
+                 * <host>/inventory/<robot>/event_pkg/ could only ever
+                 * target the robot's own dir, never the host. Opt-in
+                 * override, zero behavior change when unset - every
+                 * already-compiled AND every future-compiled event_pkg
+                 * with no caller setting this env var resolves ENT
+                 * exactly as before. See khtpm_core_render.c's
+                 * kh_open_cli_io_context_menu() is_ent dispatch, which
+                 * sets this for a robot's METHOD row run from another
+                 * entity's Inventory right-click. */
+                fprintf(wf, "ENT=\"${MUCHI_TARGET_ENT:-$PWD}\"\n");
                 fprintf(wf, "D=\"$ENT\"\n");
                 fprintf(wf, "while [ \"$D\" != \"/\" ] && [ ! -d \"$D/xyzfs\" ]; do D=\"$(dirname \"$D\")\"; done\n");
                 if (def) {
