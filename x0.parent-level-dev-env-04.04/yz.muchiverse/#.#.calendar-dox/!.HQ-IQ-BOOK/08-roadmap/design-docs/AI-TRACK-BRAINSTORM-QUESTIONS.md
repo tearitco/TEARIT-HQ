@@ -83,11 +83,41 @@ Direct question, 2026-09-21: is anything training Gemma into a smaller
 "famous" model in the background right now, "as was originally
 intended," so it's making progress while other work happens?
 
-**Verified answer: no.** `IRL-BOOTSTRAP-RECURSION-SPEC.md` is still
-"RESEARCH/DESIGN ONLY, not started" — no code exists. `ollama serve`
-is running on the machine (the model server daemon), but nothing calls
-it for training; the only real gemma-touching script found in a repo
-search is `my-biotech`'s one-off classify-vs-describe demo, unrelated.
+🔄 **CORRECTION (2026-09-21, same day - my first answer here was
+wrong, don't repeat it):** I originally wrote "no, nothing exists" for
+this question, based only on checking `IRL-BOOTSTRAP-RECURSION-SPEC.md`
+(genuinely still "RESEARCH/DESIGN ONLY, not started" - that part was
+right) and a repo grep for gemma-training scripts, which missed the
+REAL project entirely because it doesn't have "gemma" in its name.
+Direct correction from the user: **it already exists**, real and
+substantial, at
+`44.xyz.01.00/#.Z.HUMAN_LLM/3.stage.llm.tomom@qroq.fame]921🐋️/` (also
+referenced as "tomom" / "famous : 3.stage.llm.tomom@qroq.fame"). This is
+a from-scratch, hand-built small LLM/training pipeline in C — real
+`attention.c`/`forward_prop.c`/`backward_prop.c`/`optimizer.c`/
+`mlp_layer.c`, a `chatbot_moe_v1.c`, an `http_server.c`, and real
+directories for `curriculum/` (23 entries incl. per-subject Astronomy/
+Biology/Chemistry/Economics/Geography train sets), `corpuses/`,
+`distil/` (knowledge distillation), `meta_rl/`. It has its own honest
+internal status doc (`dox/goals_report.md`): causal attention is
+**partially implemented** (works, but a real bug — `causal_attention`
+hardcoded to 0 in one call path inconsistently with the `config.txt`
+setting) and per that same self-assessment, **not yet implemented**:
+full knowledge distillation, Meta-RL as a core component, the MoE
+architecture with multiple experts, behavior-trees-with-LLM-proxy, and
+an SD-Emoji renderer — despite scaffolding files for several of these
+already existing. No recent-activity evidence of it currently training
+(nothing found newer than its own reference files) — real, substantial,
+but **currently idle**, not actively running right now either. Whether
+this project uses (or should use) the SAME recursive bootstrap
+mechanism `IRL-BOOTSTRAP-RECURSION-SPEC.md` describes is NOT
+established - flagging as open rather than assuming equivalence.
+
+**New, real user request to fold into the item-3 conversation**: test
+and confirm tomom's actual capabilities, then give it a real spot in
+h-ai (a live surface, not just files on disk) AND in an "h-ai studio"
+view where its Banks and training processes can be monitored. This is
+a concrete, scoped next step once item 3 starts - not yet done.
 
 **For the item-3 conversation**: the user explicitly wants this
 running as a standing background discipline once started ("delegate
