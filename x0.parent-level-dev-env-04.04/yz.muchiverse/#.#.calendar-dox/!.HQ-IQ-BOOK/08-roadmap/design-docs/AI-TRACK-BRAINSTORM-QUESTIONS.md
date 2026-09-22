@@ -307,37 +307,45 @@ permanently fixed floor. This reframes "primitive" as *the smallest
 thing still allowed to grow*, not a hard architectural floor the way
 Question 5's diagram currently draws the Primitive Layer.
 
-**7f. `FILE:DESK` naming — ADOPTED 2026-09-22, `WORLD`.** The user
-noted the `FILE` half of `FILE:DESK` causes real confusion (collides
-with the OS sense of "file" constantly) and proposed renaming it,
-floating `ROOM` and `WORLD` as options, landing on `WORLD`. `ROOM`
-undersells the scope (implies one bounded space, when entities/pieces
-are meant to scale up to whole game boards); `WORLD` matches the
-game-engine vocabulary this track is already heading toward and reads
-unambiguously next to `ENTITY`/`PIECE`.
+**7f. `FILE:DESK` naming — ADOPTED 2026-09-22, `BOOK:PAGE` (superseded
+`WORLD` same day).** The user noted the `FILE` half of `FILE:DESK`
+causes real confusion (collides with the OS sense of "file"
+constantly). First landed on `WORLD` (floated against `ROOM`, which
+undersells the scope). Later the same day, superseded again by
+`BOOK:PAGE` — a session (a container holding multiple desks) is a
+`BOOK`, an individual desk is a `PAGE` — the book-contains-pages
+analogy read better than world/desk once actually live on screen.
 
-**What this rename actually is**: `FILE:DESK` was never a literal
-code/file identifier anywhere in the house (confirmed by grep across
-`.c`/`.h`/`.sh`/`.xhtpm`/`.pdl` — one loose comment match in
-`piececraft-hq/pchq-board.xhtpm`, nothing load-bearing). It's a
-documentation/vocabulary term, used across design docs and other
-agents' handoffs (kilo, grok). So this decision is: **`WORLD` is now
-the house's adopted term going forward, in new/current docs and
-conversation.** It is deliberately NOT a retroactive rewrite —
-existing dated records (NIGHT scripts, kilo/grok handoffs, prior
-brainstorm entries) that say `file:desk`/`FILE:DESK` are left as-is,
-same as any other historical record; only forward usage changes. This
-is a lighter action than `10. .xhtpm -> .xhtm rename - CANCELLED`
-(`12.calendar/2026-09-20/2do.md` §10) precisely because there's no
-actual file/identifier to rename and thus no real breakage risk —
-that precedent's caution was about renaming something load-bearing,
-which this term never was.
+**Correction to this section's own earlier claim**: `FILE:DESK` was
+initially reported here as "never a literal code identifier, pure
+vocabulary." That was wrong — a grep for the compound string
+`FILE:DESK` missed it because the real code pair is two separate
+functions with a shared colon-suffix convention:
+`ktb_get_file_label()`/`ktb_get_desks_label()` in
+`khtpm_taskbar_manager.c`, which literally render `file:<session>` /
+`desks:<desk>` in the live taskbar strip. This WAS real, load-bearing,
+user-visible code, not just documentation vocabulary. Both are now
+`ktb_get_file_label()` → `book:<session>` and `ktb_get_desks_label()`
+→ `page:<desk>` (function/variable names unchanged, only the emitted
+label text). Committed `16710365`.
+
+**A real process lesson from this rename** (worth keeping, not just
+the outcome): the first pass swapped the wrong half — `desks:` became
+`world:` instead of `file:` becoming `world:` — caught only because
+the user compared actual on-screen text against what was intended.
+Verifying via the text receipt (`strip_ui.txt`) alone wasn't enough
+either: a frame dumped immediately after a khtpm restart showed stale
+pixels from before the repaint (same X11 window ID persisting across
+restart, backing-store lag), which briefly looked like a second,
+unrelated bug. Real fix for that class of mistake going forward:
+after any khtpm restart, wait for an actual repaint before trusting a
+`dump_frame_png_op` capture — a text receipt updating is not proof
+the drawn pixels have caught up.
 
 **Not yet done, deliberately**: no Corpus/Training Layer has been
-designed or built; no school/curriculum format has been defined; no
-`FILE:DESK` rename has been executed. This section is the record of
-the conversation, for item 3 and any future architecture-diagram or
-renaming work to start from.
+designed or built; no school/curriculum format has been defined. The
+naming itself IS done (code-level, not just a doc recommendation) —
+see `khtpm_taskbar_manager.c`'s two label functions.
 
 ## Question 8: the gameplay injection gap — where does tomom's learned output actually change gameplay? (2026-09-22)
 
