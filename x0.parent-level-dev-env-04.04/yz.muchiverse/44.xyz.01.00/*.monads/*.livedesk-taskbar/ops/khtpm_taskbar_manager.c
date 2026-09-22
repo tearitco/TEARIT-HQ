@@ -1876,11 +1876,18 @@ void ktb_get_username(const KtbState *s, char *out, size_t sz) {
  * this session, never wired to anything until now) — non-static so
  * khtpm_taskbar_manager_main.c can call them. */
 void ktb_get_file_label(const KtbState *s, char *out, size_t sz) {
+    /* "file:" -> "world:" 2026-09-22 (AI-TRACK-BRAINSTORM-QUESTIONS.md
+     * Q7 7f, ADOPTED, corrected same day): WORLD replaces the old
+     * FILE:DESK vocabulary's FILE half (the session/project label) -
+     * NOT the desk label, which stays "desk:" (see
+     * ktb_get_desks_label() below). Function/variable names
+     * (livedesk_current_session_name, etc.) are left as-is - only the
+     * user-visible label text changes here. */
     char name[256];
     if (livedesk_current_session_name(s->house_root, name, sizeof(name)) && name[0])
-        snprintf(out, sz, "file:%s", name);
+        snprintf(out, sz, "world:%s", name);
     else
-        snprintf(out, sz, "file");
+        snprintf(out, sz, "world");
 }
 
 /* Real gap fix (2026-08-11, direct request: "user should have a sprite at
@@ -1910,17 +1917,18 @@ void ktb_get_avatar_dir(const KtbState *s, char *out, size_t sz) {
 }
 
 void ktb_get_desks_label(const KtbState *s, char *out, size_t sz) {
-    /* "desks:" -> "world:" 2026-09-22 (AI-TRACK-BRAINSTORM-QUESTIONS.md
-     * Q7 7f, ADOPTED): WORLD replaces the old FILE:DESK vocabulary for
-     * what a desk actually is - a single loadable, re-referenceable
-     * board. Function/variable names (livedesk_current_desk_name,
+    /* "desks:" -> "desk:" 2026-09-22 (AI-TRACK-BRAINSTORM-QUESTIONS.md
+     * Q7 7f, ADOPTED, corrected same day): singular, since WORLD took
+     * the FILE slot instead (ktb_get_file_label() above) - the pair
+     * is now "world:<session>" / "desk:<desk>", not the other way
+     * round. Function/variable names (livedesk_current_desk_name,
      * active_desk, desks/ dir) are left as-is - only the user-visible
      * label text changes here. */
     char name[64];
     if (livedesk_current_desk_name(s->house_root, name, sizeof(name)) && name[0])
-        snprintf(out, sz, "world:%s", name);
+        snprintf(out, sz, "desk:%s", name);
     else
-        snprintf(out, sz, "world");
+        snprintf(out, sz, "desk");
 }
 
 static void livedesk_root_write(const char *sroot, const char *active, const char *last) {
