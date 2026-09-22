@@ -328,6 +328,130 @@ designed or built; no school/curriculum format has been defined; no
 the conversation, for item 3 and any future architecture-diagram or
 renaming work to start from.
 
+## Question 8: the gameplay injection gap — where does tomom's learned output actually change gameplay? (2026-09-22)
+
+Real gap, caught by a video-prep agent reviewing Question 7/NIGHT_20
+before scripting a 20-min technical video
+(`🧩️Piecemark-IT/中.SP_00.00/🗡️.crswrd.media-archive/!.gemini-llm-sept/6.JEV-IRL/augment-docs-prompt.md`).
+Correct catch: Q7 established that a Corpus/Training Layer needs to
+exist and feed tomom, but never traced the **return path** — how
+tomom's learned output gets back into the FSM SEQUENCER / EVENT
+EXECUTOR loop and actually changes what a player experiences. The
+Bank Layer has this return path (reward/punish → weight update →
+next lookup uses it); tomom's training loop, as drawn so far, does
+not. This section answers it, with real honesty-marked uncertainty —
+most of this is DESIGN-LEVEL, not SPECIFIED, and one sub-answer is
+flagged UNBUILT with no shape yet, per that agent's own instruction
+not to invent an answer where one isn't clear.
+
+### 8a. Injection points
+
+- **FSM path selection — DESIGN-LEVEL.** tomom should not write
+  directly into a live FSM table. The house-consistent shape: tomom's
+  candidate sequences get filed as new, low-weighted entries into the
+  **existing Sentence/Behavior Bank format** (not a separate store),
+  and only reach the FSM SEQUENCER through the *same* Laplace-smoothed
+  reward/punish promotion mechanism the Bank Layer already uses for
+  everything else. This keeps one promotion mechanism house-wide
+  instead of inventing a second one. **Unbuilt**: no file format for a
+  "candidate, not yet promoted" Bank entry exists yet; the current
+  Bank format doesn't distinguish that state.
+- **Event parameter tuning — DESIGN-LEVEL, most concrete of the
+  four.** Events already read parameters from real `.pdl` files (the
+  house's existing "real files, not hidden state" convention). The
+  natural extension: tomom writes a per-entity/per-event
+  `learned_params.pdl` override row; the Event Executor reads it at
+  execution time and falls back to the hardcoded C default when the
+  row is absent or the override hasn't been promoted. Cleanest of the
+  four because it requires zero new C and zero new FSM-table
+  mechanics — it's an ordinary optional-config read, a pattern that
+  already exists elsewhere in the house.
+- **Event generation — UNBUILT, real open decision, not invented
+  here.** Two shapes are in real tension: (a) tomom DESCRIBEs a
+  desired Event in natural language, and a deterministic
+  compiler/scorer (the same DESCRIBE-then-owned-code-decides shape the
+  Parser Layer already uses) turns that into a real, compiled Event
+  package — keeps the house's "model never routes, never picks the
+  path" law intact; (b) tomom emits Event file content directly — this
+  would make the model the author of executable logic, which conflicts
+  with that same law as currently stated. **(a) is the only shape
+  consistent with existing house rules**, but this is a real decision
+  point for item 3, not something decided here.
+- **Primitive behavior approximation (e.g. a learned physics
+  substitute) — UNBUILT, no shape yet.** The only house-consistent
+  starting idea: run any learned approximation as a shadow/candidate
+  scored against the real primitive's output or against live user
+  reward, using the same promotion-gate pattern as the other three —
+  never live by default. Flagged explicitly as unshaped; do not treat
+  this as decided.
+
+### 8b. Concrete walkthrough — physics training, start to finish
+
+1. **Initial state**: a game's jump/gravity calc is the hardcoded C
+   physics primitive, fixed constants.
+2. **User action**: a player does a stunt jump; the existing Action
+   Manifest shows before/after state; the player presses one of the
+   existing feedback buttons (👍/👎/🔙/✅ Lock In).
+3. **tomom learns (design-level, not built)**: the Watch Layer
+   observes the same action sequence + outcome + feedback it already
+   watches for the Behavior Bank. Instead of (or alongside) filing
+   into the Behavior Bank, the sequence becomes a training example
+   added to a per-entity, per-skill "physics class" corpus chunk (the
+   Corpus/Training Layer named in Q7). tomom retrains/re-attends
+   incrementally on that growing, skill-scoped corpus — this is the
+   literal mechanism the "school" model's curriculum/class framing
+   from Q7 was describing, made concrete.
+4. **Next gameplay (unbuilt — this is the actual open injection
+   mechanism)**: tomom's updated output would need to write a new
+   candidate row into that entity's `physics_learned_overrides.pdl`.
+   The real physics primitive's read path checks for a promoted
+   override there before falling back to its hardcoded default — gated
+   by the same reward-weighted promotion logic as 8a, so a learned
+   override doesn't go live until it's earned it through repeated
+   positive feedback. What changed, concretely: one new `.pdl` row,
+   one conditional read added to the primitive's parameter lookup —
+   still a real file, still fully inspectable/overridable/reversible,
+   never hidden state.
+
+### 8c. Staying Event-based, not hand-written C
+
+The parameter-tuning path (8a) stays cleanly Event-based — Events
+already read `.pdl` parameters, so this needs zero new C. The two
+real tension points are FSM-path-selection and Event-generation
+(8a): both are only house-consistent if tomom's raw output goes
+through a DESCRIBE step and a deterministic compiler/promotion gate
+before anything executes — never a direct write into a live FSM table
+or a hand-emitted `.c` file. This is the same DESCRIBE-then-owned-
+code-decides law the Parser Layer already enforces, applied one layer
+further down the stack.
+
+### 8d. Honesty checkpoint
+
+| Mechanism | Status |
+|---|---|
+| FSM path selection (candidate → Bank entry → promotion) | DESIGN-LEVEL |
+| Event parameter tuning (`.pdl` override + fallback read) | DESIGN-LEVEL, most concrete |
+| Event generation (DESCRIBE + compiler, vs. direct emission) | UNBUILT — real open decision |
+| Primitive approximation (shadow-scored substitute) | UNBUILT — no shape yet |
+
+Nothing in this section is SPECIFIED (fully decided, ready to
+implement). Nothing here should be read as built or in progress.
+
+### 8e. The three-layer table, Gameplay Execution row filled in
+
+| Layer | Input | Processing | Output | Stored where? |
+|---|---|---|---|---|
+| Bank Layer | User reward signal | Laplace-smoothed weight updates | Weight changes only (no new entries) | Synonym/Relation/Sentence/Behavior Banks |
+| Corpus/Training Layer | Action sequences from Watch Layer | tomom retrains on new examples | New corpus chunks, improved attention | tomom's Corpus/Training store (Q7, not yet built) |
+| Gameplay Execution | tomom's learned output (candidate FSM paths / parameter overrides / DESCRIBE'd Event specs) + existing FSM + hardcoded C | Reward-weighted promotion gate (same pattern as Bank Layer) before anything goes live; DESCRIBE + deterministic compiler for anything Event-shaped | In-game behavior change via a promoted FSM path, a promoted parameter override, or a newly compiled Event | Extended Behavior Bank format (candidate paths) + new per-entity `learned_params.pdl` files + compiled Event packages (if 8a's Event-generation decision lands on shape (a)) |
+
+**Not yet done, deliberately**: no candidate/promotion state added to
+the Bank format; no `learned_params.pdl` convention created; the
+Event-generation decision point (8a) not resolved; no shadow-scoring
+mechanism for primitive approximation designed. This is the honest
+shape of the gap, for item 3 to resolve — not a spec to build from
+yet.
+
 ## Grounding
 
 `HARNECIENT-HACK.md`, `LLMUD-HACK.md`, `DUSTOPIA-HACK.md`,
@@ -335,4 +459,5 @@ renaming work to start from.
 `13.agent-coms/KILO/claude-2-kilo-9.17.md` §5/§11,
 `12.calendar/2026-09-20/2do.md` §8/§10,
 `XO/LLMUD_CODE/8.0.JEV=class-4-describe.md`,
-`XO/LLMUD_CODE/8.1.harn+jev-diagram.md`.
+`XO/LLMUD_CODE/8.1.harn+jev-diagram.md`,
+`🧩️Piecemark-IT/中.SP_00.00/🗡️.crswrd.media-archive/!.gemini-llm-sept/6.JEV-IRL/augment-docs-prompt.md`.
