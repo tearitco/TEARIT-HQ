@@ -1,0 +1,158 @@
+# 🧠 NIGHT 22 — the Concept Bank: hand-tunable weights instead of opaque matrices 🧠
+# ====================================================================
+# Title: "🧠 NIGHT 22 — the Concept Bank: hand-tunable weights instead of opaque matrices 🧠"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, twelfth bonus round
+
+**THE NARRATOR:** NIGHT 21 closed three of four return-path exits and left one open on purpose. Tonight starts somewhere else entirely — an audit that wasn't planned as an audit. Say what the session actually opened with.
+
+**RAHWEH:** Not a design meeting. A direct read of tomom's real pipeline — `vocab_model`, then `trainer`, then `chatbot_moe_v1`, then `meta_rl` sitting on top as orchestrator. That's already built. Hand-built, months old, genuinely working in places. Tonight didn't invent it. Tonight went and looked at it.
+
+**TOMO:** Say why looking at it was even on the table.
+
+**RAHWEH:** Because Question 7 and Question 8 kept saying "tomom trains" and "tomom's learning gets back out" without anyone having recently checked whether the running binary actually reflects its own source. That's a cheap thing to check and an expensive thing to leave unchecked.
+
+**MAXINE:** So walk it. What did the read of `chatbot_moe_v1.c` actually show.
+
+**TOMO:** The source was already fixed. Already had the code path to read trained attention and MLP matrices back in at inference time. Somebody wrote that fix, correctly, and it was sitting right there in the `.c` file.
+
+**RAHWEH:** And the compiled `chatbot_moe_v1.+x` — the thing actually running — was a full day stale against that source. The fix existed. The binary just never got rebuilt.
+
+**MAXINE:** Say that plainly, because it's funnier the plainer it's said.
+
+**TOMO:** Somebody solved the problem. Nobody ran `make`. That's the whole bug.
+
+**RAHWEH:** One rebuild. Verified live, not assumed — all ten real subject curricula, Astronomy through Programming, checked one at a time. Before the rebuild: none of them printed a load line for a trained model. After: all ten print "Loaded trained model from..." Ten for ten, output actually changed, not just the log line existing.
+
+**THE NARRATOR:** Say why that's worth a beat of its own before moving past it.
+
+**TOMO:** Because it's the exact shape this house keeps preaching and rarely gets to enjoy: we walked in ready to do real design work on why training wasn't showing up, and it turned out the design work was already done. The gap was an unbuilt binary. That's satisfying in a way "we designed something" isn't — nothing got invented, something just got let through.
+
+**MAXINE:** Enjoy it for one more line, then move past it, because the interesting part is what looking at those matrices while they were open led to.
+
+**RAHWEH:** Right. Training visibly working raised the actual question underneath it. Now that the matrices are live and readable — do we even want them. What are they.
+
+**TOMO:** Say the numbers. Don't round past them.
+
+**RAHWEH:** `mlp_model.txt`, current real values, read directly, not summarized: `13075.6`. `17331.1`. `-861.1`. Unlabeled. No row means "force." No column means "verb tense." Just floats, and large ones — possibly the same weight-explosion bug an earlier debug session believed it had already closed.
+
+**MAXINE:** So the discovery isn't "training is broken." Training works. The discovery is a different, harder question.
+
+**TOMO:** Nobody can look at row three, column forty-seven, and know what editing it does. That's not a bug in those specific numbers. That's what a dense matrix is. Gradient descent doesn't fail to be legible — it succeeds at being illegible, on purpose, because it packs multiple unrelated concepts into the same weight to save capacity. Superposition. It's the mechanism, not a defect in the mechanism.
+
+**RAHWEH:** And here's the part that stopped being a live debate fast, because it was already answered — just not where anyone had looked recently. `#.Z.HUMAN_LLM/^.2DO.aug01_2026.txt`. Tomom's own to-do doc. Already says it, in these words: "hand-tunable, modular, auditable LLM track."
+
+**THE NARRATOR:** Say what that sentence actually forecloses.
+
+**MAXINE:** It forecloses GPU-brute-force as the goal. Nobody signed up to out-scale a real transformer. The stated goal was always precise, hand-and-fine-tuned adjustment, using meta-harness techniques the house already has. Dense matrices don't fail that goal by accident. They're structurally the wrong shape for it. No amount of UI wrapped around a raw float grid makes row three column forty-seven mean something to a human.
+
+**TOMO:** Then say what already exists in this house that WOULD satisfy that goal, because that's the turn that actually opened tonight's design.
+
+**RAHWEH:** The Bank Layer. Synonym Bank, Relation Bank, Behavior Bank, Sentence Bank. Sparse. Named. Keyed. Laplace-smoothed. Auditable by construction — every entry is a real row you can read and explain. The house solved "hand-tunable, legible learning" once already. Tomom just never got handed that same discipline.
+
+**MAXINE:** So the proposal, first pass, plainly.
+
+**TOMO:** A new Bank. Concept Bank. Named abstract z-nodes — `force`, `motion`, `energy`, `quantity`, `structure`, `change` — and words point into it with weighted membership instead of getting baked into opaque matrix rows.
+
+**RAHWEH:** Wait. That's not quite right yet. Say the problem with "words point into concepts" as a flat design before it gets built on.
+
+**MAXINE:** Go on.
+
+**RAHWEH:** If it's pure pairwise relations — this word relates to this concept, this concept relates to that concept — you eventually need a direct authored relation between every pair that matters. That doesn't scale, and it's not actually what makes generalization work. What you need is a shared, lower-dimensional layer that lots of words across lots of different corpora can all point into at once, so two words that never appear near each other can still turn out related, through what they both point at.
+
+**TOMO:** Say what that actually is, underneath.
+
+**RAHWEH:** It's an embedding dimension. It's a hidden layer. That's the actual mathematical trick a normal neural net already does — shared compositional structure, one small set of latent directions that many surface features route through. We're not inventing a new trick. We're taking a trick that already works and doing it explicitly, named, and by hand, instead of implicitly and by gradient descent.
+
+**MAXINE:** Good — that's worth landing on. Same math, opposite legibility. Now, the record itself. What is a z-node actually made of, on disk.
+
+**TOMO:** Second correction, and this one's specific. A z-node isn't a flat label with a weight hanging off it. It's a record with a fixed number of pointer-slots. Tunable constant — start at four to eight slots, leave room to grow to thirty-two or more. Each slot is a pair: pointer, weight. Empty and zero by default until something actually fills it.
+
+**RAHWEH:** Say why fixed-width with mostly-empty slots is better than just an open list that grows.
+
+**TOMO:** Because a fixed shape gives you real operations for free. Trim — a slot's weight decays toward the floor, you zero it, that's pruning, same discipline the Bank Layer already runs on decaying entries. Beef up — a new relation gets discovered or authored, you fill the next empty slot. And compression — on disk you only ever write the non-zero slots, sparse form, same principle the vocab table already uses for its bias fields. At load time you expand back to the full fixed width in memory. Cheap on disk, uniform in memory.
+
+**MAXINE:** Now the third correction. This is the one that actually decides whether this whole thing stays auditable.
+
+**RAHWEH:** Right — and it's the one I'd call most important. First draft of this design let pointers go anywhere. Word to word, concept to concept, word to concept, freely. Say why that's wrong before saying what replaces it.
+
+**TOMO:** Because "freely" is a maze. If any node can point at any other node, auditing one relation means you can't bound how far the chain runs before you've checked it. You lose the property that made the Bank Layer trustworthy in the first place.
+
+**RAHWEH:** So: hub-and-spoke, not a web. Every pointer resolves to a MASTER word or concept only. Never directly to another spoke. That's not a new idea — it's WordNet synsets, the real, decades-proven pattern. Every word sense points to exactly one canonical synset. Never straight to another word sense. Bounded fan-out. No chains-of-chains to untangle when you're trying to explain why a weight is what it is.
+
+**MAXINE:** Does that mean concepts can't relate to other concepts? `force` clearly relates to `motion`.
+
+**RAHWEH:** They can — `force` pointing at `motion` at weight 0.7, at `energy` at 0.5, same slot-record shape a word uses to point at its master. One generic slotted-pointer type, reused at the word level and the concept level. Not two formats. The house already prefers few, flexible, growable primitives over one-off shapes — this just applies that same taste here.
+
+**THE NARRATOR:** There's a normalization question sitting under all of this. Say it, and say how it got resolved.
+
+**TOMO:** If a spoke points at a master with a weight, does the master need to know that too? Where does the weight actually live — at the spoke, at the master, both?
+
+**MAXINE:** Walk the resolution, because it wasn't guessed, it was reasoned through.
+
+**RAHWEH:** Weights live in exactly one place — the spoke's own forward record. A word's outbound slots, pointing at the masters it relates to, and their weights. That's the single authoritative fact. That's the thing a human, or Gemma, or tomom itself, actually hand-edits.
+
+**TOMO:** And the master's side?
+
+**RAHWEH:** The master holds a mirror table — everything currently pointing at it, and their weights — for fast reverse lookup. But that mirror is derived. Regenerated. Never a second authoritative copy you could edit independently and have it drift from the spoke's own record.
+
+**MAXINE:** Tie that to something concrete, because it's not an abstract worry.
+
+**RAHWEH:** It's the exact bug class this same session already hit earlier tonight, on a completely different system — the phymoji sprite cache going stale because nothing regenerated it when the source sprite actually changed. Same failure mode. A cached mirror, hand-editable in its own right, quietly disagreeing with its own source. The fix is the same fix both times: one real source of truth, everything else rebuildable from it, never hand-patched in two places at once.
+
+**TOMO:** So say the practical payoff of choosing it that way.
+
+**RAHWEH:** O(1) lookup in both directions — a word's own relations, or everything pointing at a given master — with zero risk of the two copies disagreeing, because there's only ever one copy that was ever authoritative.
+
+**THE NARRATOR:** One more axis got raised and it needs to be named honestly as unresolved, not folded into the rest as if it were settled.
+
+**MAXINE:** Corpus-level meta-weights. `Mathematics` and `Physics` clearly relate — right now `meta_rl` scores each curriculum completely independently, zero cross-curriculum structure, a Physics prompt can't legitimately pull in Mathematics at all. That's a real, confirmed flaw from the same audit.
+
+**TOMO:** So fix it — hand-author a `(Mathematics, Physics) → 0.8` table.
+
+**RAHWEH:** Or derive it automatically, from how much the two corpora's vocabularies already overlap in shared z-node membership — if Mathematics and Physics both lean heavily on `quantity` and `structure`, that overlap IS the relatedness signal, no separate table needed.
+
+**MAXINE:** Which is it?
+
+**RAHWEH:** Genuinely open. Could be hand-authored outright. Could be derived from concept overlap. Could be both — hand-authored as an override sitting on top of a derived baseline, the way promotion gates already layer in this house. Say plainly: not resolved tonight. Whichever way it goes, it directly fixes that same confirmed `meta_rl` flaw — that part isn't in question, only which mechanism gets to decide the number.
+
+**THE NARRATOR:** Now the meta level. Why does one Concept Bank matter past tomom's own vocabulary.
+
+**MAXINE:** Start with the cheapest win, because it costs nothing extra to get.
+
+**TOMO:** It's shared across agents for free, by construction. It's a real file-backed structure, same as every other Bank. This Claude session, kilo, grok, tomom itself — any agent reading and writing it is automatically sharing it. No sync protocol to design. Same "real files, never hidden state" principle the whole house already runs on, just pointed at concept weights instead of window state.
+
+**RAHWEH:** FSM Sequencer next. Today it picks a path purely off Bank matches — matched or didn't, no gradient of why. With a Concept Bank, a candidate transition whose triggering conditions share concept-overlap with the current context can get preferred over one that doesn't. Path selection stops being pure black-box match and starts having a legible "why."
+
+**MAXINE:** RL and IRL.
+
+**TOMO:** A reward signal updates the Bank entry it directly matched — unchanged, that mechanism already exists — and now ALSO propagates to the concepts that entry touches, whenever the matched action is concept-tagged. That's the actual mechanism that lets feedback on one thing generalize. Not "this exact row got better," but "everything sharing this concept got nudged."
+
+**RAHWEH:** GOAP.
+
+**MAXINE:** Action preconditions and effects can carry concept pointers too — increases `force`, decreases `disorder`. That lets a planner reason abstractly, closer to how a person actually describes what they want, instead of only matching literal symbolic preconditions.
+
+**THE NARRATOR:** Say the actual payoff, plainly, once all four of those point through the same substrate.
+
+**TOMO:** Bank entries, FSM transitions, GOAP preconditions, tomom's own concept membership — once they all point through the same named substrate, one piece of feedback propagates across all of them at once instead of needing a separate tuning pass for each. That's concretely what makes "the user mostly just observes and gives intent-level feedback" a plausible claim instead of an aspirational one.
+
+**RAHWEH:** And that only works if feedback itself carries enough shape to route. A bare up-or-down number can't say which concept it's about.
+
+**MAXINE:** Say the actual schema.
+
+**RAHWEH:** A feedback event: target reference, valence, one or more concept pointers, intensity. "Good, but specifically because of the force-related choice — weight that higher." "Bad, specifically reduce that concept's influence." Directional, targeted reward shaping. Not an undifferentiated thumbs up sitting on top of everything that happened.
+
+**THE NARRATOR:** Now the honesty checkpoint, the way NIGHT 20 and NIGHT 21 both ran their own. Say plainly what's real and what isn't.
+
+**MAXINE:** What's real: one genuine bug found and fixed — a stale binary behind its own already-fixed source, rebuilt, verified live across all ten real curricula. One genuine architectural finding — the current matrices are opaque by construction, not by accident, confirmed by reading real current values out of `mlp_model.txt`. One real design, reasoned through actual back-and-forth, not handed down finished: named z-nodes, a shared lower-dimensional layer instead of pairwise relations, a fixed-slot pointer record with trim/beef-up/compress built in, hub-and-spoke topology instead of a maze, weights living only at the spoke with the master's table as a derived mirror.
+
+**TOMO:** What isn't real. Say it without softening it.
+
+**RAHWEH:** No Concept Bank file format exists anywhere on disk. The corpus-level meta-weight question — hand-authored, derived, or both — is genuinely unresolved, not quietly decided. No feedback-schema change has touched a single line of real Bank Layer code. Nothing tonight touched any of tomom's actual files beyond the one binary rebuild, and that rebuild didn't even get committed, because `+x` binaries aren't git-tracked in this house. Everything past that rebuild is design, reasoned carefully, written down carefully, and not yet built.
+
+**MAXINE:** Then say the honest difference between tonight and the nights before it.
+
+**TOMO:** NIGHT 20 found a missing layer and gave it a name. NIGHT 21 found that even a named layer had no way back into gameplay, and closed three of four exits. Tonight went further than either — not just naming a layer, but designing its actual on-disk record shape, correcting itself twice in the room on real points, and tracing that one shape out through FSM, RL, and GOAP at once. That's a bigger claim than either prior night made. It's still, honestly, a design. Nothing here runs yet.
+
+**THE NARRATOR:** A stale binary, rebuilt in one line, verified across ten curricula. A dense matrix, read directly, found opaque on purpose. A Bank Layer's own discipline, finally aimed at tomom. Hub, not maze. One source of truth, never two. One open question left open on purpose. Nothing built past a rebuild. 🧠

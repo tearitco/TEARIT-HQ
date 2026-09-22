@@ -127,7 +127,16 @@
   candidates promoted through the existing Bank reward-weight gate,
   an unresolved DESCRIBE-vs-direct-emission decision for Event
   generation, and an unshaped shadow-scored primitive approximation —
-  design shape found, nothing built yet.
+  design shape found, nothing built yet. Direct follow-up, same day:
+  `1-1.HARNECIENT.SMOL/NIGHT_22_THE_CONCEPT_BANK.txt`/`.mp3` — opens
+  with a real, unplanned discovery (tomom's `chatbot_moe_v1.+x` binary
+  was a day stale behind its own already-fixed source; one rebuild,
+  verified live across all 10 real subject curricula), then designs
+  the Concept Bank (`AI-TRACK-BRAINSTORM-QUESTIONS.md` Question 9):
+  named z-nodes, fixed-slot pointer records, hub-and-spoke topology
+  (not a maze), weights living only at the spoke with a derived mirror
+  at the master, and the FSM/RL/GOAP meta-level extension — design
+  shape found through real back-and-forth, nothing built yet.
 - `design-docs/RELAY-WINDOW-TARGETING-DESIGN.md` — **2026-09-18
   design, not started**: formalizes how a relay-driving agent picks
   the right window/PID. Real current mechanism confirmed by direct
