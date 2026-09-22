@@ -46,6 +46,26 @@ HOUSE="$KHTPM_HOUSE"
 PARSER="$SCRIPT_DIR/+x/khtpm_core_render.+x"
 ACTION="${1:-help}"
 
+# REAL FIX 2026-09-21, direct follow-up to the BUILD FAILED splash
+# (livedesk_splash.c): "yes, log it" - a restart triggered from the
+# taskbar UI runs in the background with no visible terminal, so the
+# splash's "check the terminal/log" advice pointed nowhere real. This
+# runs a build under `tee` so live terminal output for an interactive
+# `run_khtpm_strip.sh new` is unchanged, AND writes the same real gcc/
+# script output to a durable file next to the build's own +x/ output.
+# POSIX-safe (dash has no `set -o pipefail`, so a pipeline's own $?
+# would reflect `tee`, not the build) - the real exit code is captured
+# via a temp file instead.
+BUILD_LOG="$SCRIPT_DIR/+x/build_error.log"
+run_build_logged() {
+    mkdir -p "$SCRIPT_DIR/+x"
+    _rcfile="$(mktemp 2>/dev/null || echo "/tmp/khtpm_build_rc.$$")"
+    { "$@"; echo $? > "$_rcfile"; } 2>&1 | tee "$BUILD_LOG"
+    _rc="$(cat "$_rcfile" 2>/dev/null || echo 1)"
+    rm -f "$_rcfile"
+    return "$_rc"
+}
+
 strip_parser_pids() {
     for p in /proc/[0-9]*; do
         pid="${p#/proc/}"
@@ -135,10 +155,10 @@ case "$ACTION" in
         # actually needing a build) so a restart click isn't a silent
         # 30-second freeze.
         if [ "$ACTION" != "boot" ]; then
-            KHTPM_FORCE_BUILD=1 LIVEDESK_START_SPLASH=1 sh "$SCRIPT_DIR/build_khtpm_strip.sh" || { echo "BUILD FAILED — not launching"; exit 1; }
+            KHTPM_FORCE_BUILD=1 LIVEDESK_START_SPLASH=1 run_build_logged sh "$SCRIPT_DIR/build_khtpm_strip.sh" || { echo "BUILD FAILED — not launching (full output: $BUILD_LOG)"; exit 1; }
         elif [ ! -x "$SCRIPT_DIR/+x/khtpm_core_render.+x" ] || [ ! -x "$SCRIPT_DIR/+x/khtpm_taskbar_manager_main.+x" ]; then
             # first-ever boot with no binaries: fall back to a build
-            sh "$SCRIPT_DIR/build_khtpm_strip.sh" || { echo "BUILD FAILED — not launching"; exit 1; }
+            run_build_logged sh "$SCRIPT_DIR/build_khtpm_strip.sh" || { echo "BUILD FAILED — not launching (full output: $BUILD_LOG)"; exit 1; }
         fi
         kill_khtpm
         rm -f "$KHTPM_LOG"

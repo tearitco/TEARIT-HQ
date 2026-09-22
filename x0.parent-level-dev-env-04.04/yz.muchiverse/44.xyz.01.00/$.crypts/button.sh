@@ -98,7 +98,20 @@ case "$ACTION" in
         # (`|| { echo "BUILD FAILED — not launching"; exit 1; }`) - never
         # fall through to launching whatever binary happens to exist.
         if [ -x "$TB_DIR/build_khtpm_strip.sh" ]; then
-            sh "$TB_DIR/build_khtpm_strip.sh" || { echo "BUILD FAILED — desktop left stopped, not relaunched with a stale binary"; exit 1; }
+            # REAL FIX 2026-09-21, direct follow-up ("yes, log it"): a
+            # reset triggered from the desktop runs with no visible
+            # terminal, so a plain "BUILD FAILED" message had nowhere
+            # real to point to. `tee` to a durable log next to the
+            # build's own +x/ output; exit code captured via a temp
+            # file since dash has no `set -o pipefail` (a pipeline's
+            # own $? would reflect `tee`, not the build).
+            _blog="$TB_DIR/+x/build_error.log"
+            _brc="$(mktemp 2>/dev/null || echo "/tmp/khtpm_build_rc.$$")"
+            mkdir -p "$TB_DIR/+x"
+            { sh "$TB_DIR/build_khtpm_strip.sh"; echo $? > "$_brc"; } 2>&1 | tee "$_blog"
+            _brc_val="$(cat "$_brc" 2>/dev/null || echo 1)"
+            rm -f "$_brc"
+            [ "$_brc_val" = 0 ] || { echo "BUILD FAILED — desktop left stopped, not relaunched with a stale binary (full output: $_blog)"; exit 1; }
         fi
         [ -x "$KHTPM_PARSER" ] || { echo "MISSING $KHTPM_PARSER (build failed?)"; exit 1; }
         mkdir -p "$SCRIPT_DIR/ops/+x"

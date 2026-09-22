@@ -229,8 +229,8 @@ int main(int argc, char **argv) {
             XFillRectangle(dpy, win, gc, 0, 0, W, 6);
             {
                 const char *l1 = "BUILD FAILED";
-                const char *l2 = "Old binaries were NOT relaunched - check the";
-                const char *l3 = "terminal/log for the real compile error.";
+                const char *l2 = "Old binaries were NOT relaunched. Real error:";
+                const char *l3 = "+x/build_error.log (next to this build's output).";
                 const char *l4 = "Click anywhere (or press a key) to dismiss.";
                 XftDrawStringUtf8(xft, &xfail, fbig, 20, 34, (const FcChar8 *)l1, (int)strlen(l1));
                 XftDrawStringUtf8(xft, &xdimc, fsm, 20, 58, (const FcChar8 *)l2, (int)strlen(l2));
