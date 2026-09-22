@@ -41,6 +41,21 @@ if [ "$_fresh" = 1 ] && [ -z "${KHTPM_FORCE_BUILD:-}" ]; then
     fi
 fi
 
+# ── build-failure marker (2026-09-21) ─────────────────────────────────
+# Direct instruction: "i actually dont want it to run the old binaries
+# if theres a compile fail... could [alert] go [in the splash]." A
+# dead-man's-switch marker, not an ERR trap (this is a plain #!/bin/sh
+# script - dash has no `trap ERR`): written BEFORE the real build starts,
+# removed on the LAST line of this file (reached only if every command
+# above it succeeded, since `set -e` aborts immediately on the first
+# failure). If the script exits for ANY reason - a failed compile, a
+# killed process - without reaching that last line, the marker is still
+# there. livedesk_splash.c polls for it and switches to a persistent
+# "BUILD FAILED" state instead of quietly closing; the EXIT trap below
+# checks the SAME file to decide whether it's safe to kill the splash.
+mkdir -p +x
+echo "BUILD IN PROGRESS - build_khtpm_strip.sh started $(date +%H:%M:%S) and has not finished yet. If this file still exists after the build should be done, it FAILED partway (check the terminal/log for the real gcc error) - the splash/caller must not treat a stale binary as success." > +x/.build_failed.txt
+
 # ── "Building livedesk…" splash ───────────────────────────────────────
 # Only when invoked from the desktop start button / $.restart (which
 # export LIVEDESK_START_SPLASH=1) AND we got past the freshness gate, so
@@ -65,6 +80,7 @@ if [ -n "${LIVEDESK_START_SPLASH:-}" ]; then
     if [ -x "+x/livedesk_splash.+x" ] && [ -n "${DISPLAY:-}" ]; then
         "+x/livedesk_splash.+x" "$_HOUSE_DIR" "$_XDIR" >/dev/null 2>&1 &
         _splash_pid=$!
+        _real_splash=1
     elif command -v xmessage >/dev/null 2>&1; then
         xmessage -center -timeout 120 "Building livedesk…  (~30s)" >/dev/null 2>&1 &
         _splash_pid=$!
@@ -73,7 +89,19 @@ if [ -n "${LIVEDESK_START_SPLASH:-}" ]; then
                --text="Building livedesk…  (~30s the first time)" >/dev/null 2>&1 &
         _splash_pid=$!
     fi
-    [ -n "${_splash_pid:-}" ] && trap 'kill "$_splash_pid" 2>/dev/null || true' EXIT INT TERM
+    # Only the real X11 splash (livedesk_splash.+x) knows how to poll
+    # +x/.build_failed.txt and switch to a "BUILD FAILED" state that
+    # waits for a real dismissal - so it alone is left running on
+    # failure. xmessage/zenity can't be told anything after they're
+    # launched, so a failure there is no worse than before (their own
+    # --timeout still closes them; the terminal/log has the real error).
+    if [ -n "${_splash_pid:-}" ]; then
+        if [ "${_real_splash:-}" = 1 ]; then
+            trap 'if [ -f "+x/.build_failed.txt" ]; then :; else kill "$_splash_pid" 2>/dev/null || true; fi' EXIT INT TERM
+        else
+            trap 'kill "$_splash_pid" 2>/dev/null || true' EXIT INT TERM
+        fi
+    fi
 fi
 
 set -e
@@ -209,3 +237,6 @@ echo "-- house-wide joystick arrow-input daemon -> +x/khtpm_joystick_daemon.+x"
 $CC $CFLAGS -o +x/khtpm_joystick_daemon.+x khtpm_joystick_daemon.c
 
 echo "OK +x/khtpm_taskbar_manager_main.+x and +x/khtpm_core_render.+x (strip mode + entity/tile mode, plus helpers)"
+# Every real step above succeeded (set -e would have aborted otherwise) -
+# clear the build-failure marker so the splash/caller know it's real.
+rm -f +x/.build_failed.txt

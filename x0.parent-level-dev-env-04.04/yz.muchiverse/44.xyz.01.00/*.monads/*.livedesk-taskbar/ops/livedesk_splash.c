@@ -18,6 +18,21 @@
  * Lifetime: exits on SIGTERM/SIGINT (build_khtpm_strip.sh's EXIT trap
  * kills it the instant the build ends), on all binaries fresh, or after
  * a hard safety timeout.
+ *
+ * FAILURE STATE (2026-09-21, direct instruction: "i dont want it to run
+ * the old binaries if theres a compile fail or it may mislead me...
+ * there is a display for loading while compiling, could go there"):
+ * <ops_+x_dir>/.build_failed.txt is a dead-man's-switch marker written
+ * by build_khtpm_strip.sh before it starts and removed on its own last
+ * line, reached only on full success. If this process ever sees that
+ * file still present, the build didn't finish cleanly - it switches to
+ * a red "BUILD FAILED" banner, ignores the normal all-binaries-fresh
+ * auto-close, and stays up until a KEY or CLICK dismisses it (never
+ * silently auto-closes on a failure - the whole point is to be
+ * impossible to miss/dismiss by accident). build_khtpm_strip.sh's own
+ * EXIT trap checks the same marker and skips killing this process when
+ * it's present, so this state is reachable even if the parent script
+ * has already exited.
  */
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -34,6 +49,10 @@
 #define H 132
 #define EXPECT_SECONDS 30.0
 #define HARD_TIMEOUT_SECONDS 240
+/* A BUILD FAILED banner waits for a real click/key dismissal, not this -
+ * long enough that it is effectively "stays until dismissed" for any
+ * normal dev session, while still not running forever unattended. */
+#define FAIL_HARD_TIMEOUT_SECONDS 1800
 
 /* The binaries build_khtpm_strip.sh + build_core_render.sh produce.
  * Order roughly matches build order; the big silent one is
@@ -95,6 +114,18 @@ static const char *shade(const char *hex, int d) {
     return out;
 }
 
+/* Whether +x/.build_failed.txt (the dead-man's-switch marker
+ * build_khtpm_strip.sh writes/clears - see this file's header comment)
+ * is present right now. main()'s loop LATCHES this into a local flag
+ * once true and never clears it on its own - a failure banner that
+ * already appeared must be dismissed by the user, not vanish because an
+ * unrelated later build started and removed/rewrote the marker. */
+static int build_failed(const char *xdir) {
+    char p[4096]; struct stat st;
+    snprintf(p, sizeof(p), "%s/.build_failed.txt", xdir);
+    return stat(p, &st) == 0;
+}
+
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: livedesk_splash <house_root> <ops_+x_dir>\n"); return 2; }
     const char *house = argv[1];
@@ -125,18 +156,33 @@ int main(int argc, char **argv) {
     Colormap cmap = DefaultColormap(dpy, scr);
     XColor c;
     unsigned long bg = BlackPixel(dpy, scr), fg = WhitePixel(dpy, scr),
-                  trough = bg, barfill = fg, dim = fg;
+                  trough = bg, barfill = fg, dim = fg, failbar = fg, failbg = bg;
     if (XParseColor(dpy, cmap, bg_hex, &c) && XAllocColor(dpy, cmap, &c)) bg = c.pixel;
     if (XParseColor(dpy, cmap, fg_hex, &c) && XAllocColor(dpy, cmap, &c)) fg = c.pixel;
     if (XParseColor(dpy, cmap, shade(bg_hex, 22), &c) && XAllocColor(dpy, cmap, &c)) trough = c.pixel;
     if (XParseColor(dpy, cmap, fg_hex, &c) && XAllocColor(dpy, cmap, &c)) barfill = c.pixel;
     if (XParseColor(dpy, cmap, shade(fg_hex, -70), &c) && XAllocColor(dpy, cmap, &c)) dim = c.pixel;
+    /* Failure colors are fixed (not theme-derived) so a broken/half-applied
+     * theme can never make the failure banner blend in and go unnoticed. */
+    if (XParseColor(dpy, cmap, "#e05252", &c) && XAllocColor(dpy, cmap, &c)) failbar = c.pixel;
+    if (XParseColor(dpy, cmap, "#2a1414", &c) && XAllocColor(dpy, cmap, &c)) failbg = c.pixel;
+    XftColor xfail;
+    XftColorAllocName(dpy, DefaultVisual(dpy, scr), cmap, "#ffb3b3", &xfail);
 
     XSetWindowAttributes swa;
     swa.override_redirect = True;
     swa.background_pixel = bg;
     swa.border_pixel = dim;
-    swa.event_mask = ExposureMask;
+    /* ButtonPress is the PRIMARY dismiss path for the failure banner - a
+     * click routes to whatever window is under the pointer regardless of
+     * WM focus, unlike KeyPress, which this override_redirect window may
+     * never receive on some real WM/Wayland sessions (the exact class of
+     * bug HOUSE_CODE_PITFALLS.md #24 and the override_redirect entries in
+     * X11-AND-SESSION-PITFALLS.md document - a banner that can ONLY be
+     * dismissed by a key that might never arrive would be worse than the
+     * bug it fixes). KeyPress is still selected as a best-effort second
+     * path when it does work. */
+    swa.event_mask = ExposureMask | ButtonPressMask | KeyPressMask;
     Window win = XCreateWindow(dpy, root, (sw - W) / 2, (sh - H) / 3, W, H, 1,
                                CopyFromParent, InputOutput, CopyFromParent,
                                CWOverrideRedirect | CWBackPixel | CWBorderPixel | CWEventMask, &swa);
@@ -154,16 +200,47 @@ int main(int argc, char **argv) {
     XftColorAllocName(dpy, DefaultVisual(dpy, scr), cmap, shade(fg_hex, -70), &xdimc);
 
     struct timespec t0; clock_gettime(CLOCK_MONOTONIC, &t0);
+    int failed = 0;    /* latched true once .build_failed.txt is seen - never unlatched */
+    int dismissed = 0; /* a click/key while failed - the only normal way out of that state */
 
     for (;;) {
         if (g_stop) break;
+        if (!failed && build_failed(xdir)) failed = 1;
 
-        /* drain expose events */
-        while (XPending(dpy)) { XEvent ev; XNextEvent(dpy, &ev); }
+        /* drain events - Expose always; ButtonPress/KeyPress only matter
+         * once failed (dismissal), harmless no-ops before that. */
+        while (XPending(dpy)) {
+            XEvent ev; XNextEvent(dpy, &ev);
+            if (failed && (ev.type == ButtonPress || ev.type == KeyPress)) dismissed = 1;
+        }
+        if (dismissed) break;
 
         struct timespec now; clock_gettime(CLOCK_MONOTONIC, &now);
         double elapsed = (now.tv_sec - t0.tv_sec) + (now.tv_nsec - t0.tv_nsec) / 1e9;
-        if (elapsed > HARD_TIMEOUT_SECONDS) break;
+        /* A failure banner must wait for a real dismissal, not the normal
+         * ~4-minute safety timeout - but it still isn't infinite, in case
+         * a click/key genuinely never reaches this window on some session. */
+        if (failed ? (elapsed > FAIL_HARD_TIMEOUT_SECONDS) : (elapsed > HARD_TIMEOUT_SECONDS)) break;
+
+        if (failed) {
+            XSetForeground(dpy, gc, failbg);
+            XFillRectangle(dpy, win, gc, 0, 0, W, H);
+            XSetForeground(dpy, gc, failbar);
+            XFillRectangle(dpy, win, gc, 0, 0, W, 6);
+            {
+                const char *l1 = "BUILD FAILED";
+                const char *l2 = "Old binaries were NOT relaunched - check the";
+                const char *l3 = "terminal/log for the real compile error.";
+                const char *l4 = "Click anywhere (or press a key) to dismiss.";
+                XftDrawStringUtf8(xft, &xfail, fbig, 20, 34, (const FcChar8 *)l1, (int)strlen(l1));
+                XftDrawStringUtf8(xft, &xdimc, fsm, 20, 58, (const FcChar8 *)l2, (int)strlen(l2));
+                XftDrawStringUtf8(xft, &xdimc, fsm, 20, 76, (const FcChar8 *)l3, (int)strlen(l3));
+                XftDrawStringUtf8(xft, &xdimc, fsm, 20, 104, (const FcChar8 *)l4, (int)strlen(l4));
+            }
+            XFlush(dpy);
+            usleep(120000);
+            continue;
+        }
 
         /* how many targets have been (re)written since we started */
         int done = 0, last_done = -1;
