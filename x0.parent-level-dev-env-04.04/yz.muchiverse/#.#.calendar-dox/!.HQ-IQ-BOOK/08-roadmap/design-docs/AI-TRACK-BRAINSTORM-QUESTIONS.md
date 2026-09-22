@@ -480,3 +480,171 @@ yet.
 `XO/LLMUD_CODE/8.0.JEV=class-4-describe.md`,
 `XO/LLMUD_CODE/8.1.harn+jev-diagram.md`,
 `🧩️Piecemark-IT/中.SP_00.00/🗡️.crswrd.media-archive/!.gemini-llm-sept/6.JEV-IRL/augment-docs-prompt.md`.
+
+## Question 9: the Concept Bank — hand-tunable weights instead of opaque matrices, and how the whole learning network shares one substrate (2026-09-22)
+
+Real, substantial architecture session, directly requested to be
+written up "as detailed as we can" before any of it gets coded — this
+is the material NIGHT_22 dramatizes. Grounded in a real, unplanned
+finding first: tomom's actual attention/MLP matrices were audited
+directly (`chatbot_moe_v1.c`/`trainer.c`/`mlp_model.txt` read in full,
+not summarized) and the `chatbot_moe_v1.+x` binary running them turned
+out to be a full day stale relative to its own already-fixed source —
+rebuilt and verified live (all 10 real subject curricula now show
+`Loaded trained model from ...`, confirmed by output changing). That
+fix needed zero design work, just a rebuild; not committed since `+x/`
+binaries aren't git-tracked. Full separate audit findings (meta_rl
+hardcoded to 2 test curricula not the real 10; grade-level curricula
+confirmed fully greenfield; `_train` folders are training sandboxes,
+not difficulty tiers) are preserved in this session's transcript, not
+duplicated here — the load-bearing finding for THIS question is what
+came next.
+
+### 9a. Why dense attention/MLP matrices are the wrong substrate here
+
+Direct, explicit house decision: **no opaque weight matrices, anywhere,
+ever, in tomom.** Not because dense matrices don't work — they do,
+that's the entire premise of GPU-scale training — but because the
+house's actual intent for tomom was never "train at scale via brute
+force." It's **precise, hand/fine-tuned adjustment via meta-harness
+techniques** (Track C, `#.Z.HUMAN_LLM/^.2DO.aug01_2026.txt`, already
+states this goal outright: *"hand-tunable, modular, auditable LLM
+track"*). Dense matrices are opaque by construction, not by accident —
+gradient descent distributes each concept across many weights and
+packs multiple unrelated concepts into the same weight (superposition).
+There is no version of "make attention/MLP matrices legible" that
+doesn't fight the architecture itself. Confirmed directly during this
+same audit: `mlp_model.txt`'s real current values include `13075.6`,
+`17331.1`, `-861.1` — unlabeled, uninspectable, and quite possibly a
+recurrence of the exact weight-explosion bug the Aug 1 session
+believed it had fixed. That's not a hand-tunable file; nobody could
+look at row 3 column 47 and know what editing it would do.
+
+The house already has the right shape for this goal, just not applied
+to tomom yet: the **Bank Layer** (Synonym/Relation/Behavior/Sentence
+Banks) is sparse, named, keyed, Laplace-smoothed, auditable by
+construction. This question's whole design is: give tomom the Bank
+Layer's discipline instead of a transformer's.
+
+### 9b. The Concept Bank — schema, arrived at through real back-and-forth
+
+**Z-nodes are named abstract concepts** (`force`, `motion`, `energy`,
+`quantity`, `structure`, `change`, ...), hand-authored to start,
+extensible later the same way any Bank grows (by Gemma, by tomom
+itself once bootstrapped, by any agent).
+
+**Hub-and-spoke topology, not a maze** — direct correction mid-design,
+real and important: pointers do NOT go word-to-word or
+concept-to-concept freely. Every pointer resolves to a **master
+word/concept** only. This is the same real, proven pattern as WordNet
+synsets (every word sense points to one canonical synset, never to
+another word sense directly) — bounded fan-out, no chains-of-chains to
+untangle when auditing. Concepts themselves can point to OTHER
+concepts (`force` → `motion` at 0.7, `energy` at 0.5) using the exact
+same record shape spokes use to point at masters — one generic
+slotted-pointer record type, reused at both the word level and the
+concept level, matching the house's existing "few, flexible, growable
+primitives" discipline (Q7) rather than inventing two formats.
+
+**The slot record itself** — fixed-width, N slots (tunable constant,
+start at 4-8, room to grow to 32+), each slot = `(pointer, weight)`,
+defaulting to zero/empty until actually used:
+- **Growable without a format break** — more slots, not a redesign.
+- **Trim** — zero a low-weight slot (pruning), same discipline as
+  letting a Bank entry's weight decay toward the floor.
+- **Beef up** — fill previously-empty slots as new relations get
+  authored or observed.
+- **Compress/decompress** — on-disk storage writes only the active
+  (non-zero) slots (sparse form), expanded to the full fixed-width
+  record in memory at load time. Same principle the vocab table
+  already uses today (only non-zero bias fields get written per row).
+
+**Normalization — where do weights actually live, forward vs.
+mirror**: resolved directly, this was a real open question, not
+guessed. **Weights live in exactly one place: the spoke's own forward
+record** (a word's own outbound slots to the masters it relates to,
+and their weights) — that's the single authoritative fact, the thing a
+human/Gemma/tomom actually hand-edits. **The master's own record holds
+a mirror table — everything currently pointing at it, and their
+weights — but that mirror table is a derived, regenerated index, never
+a second authoritative copy.** Storing the same weight in two
+independently-editable places is exactly the bug class this house
+already got bitten by tonight (the phymoji sprite cache going stale
+because nothing regenerated it when `sprite.csv` changed) — same
+failure mode, same fix: one real source of truth, everything else
+rebuildable from it, never hand-patched. This gives O(1) lookup in
+both directions (a word's own outbound relations; "what points at this
+master") without any risk of the two copies disagreeing.
+
+**Corpus-level meta-weights** (`(Mathematics, Physics) → 0.8`) — real,
+explicitly requested second axis, distinct from word-level z-nodes.
+**Still an open decision, not resolved in this session**: hand-authored
+directly as its own table, derived automatically from how much two
+corpora's vocabularies overlap in shared z-node/concept membership, or
+both (hand-authored as an override on top of a derived baseline).
+Whichever is chosen, this directly fixes a real, confirmed flaw the
+tomom audit found: `meta_rl` currently scores each curriculum
+completely independently with zero cross-curriculum structure — a
+Physics prompt can't legitimately pull in Mathematics at all right
+now.
+
+### 9c. The meta level — how this one substrate strengthens everything else, not just tomom
+
+This is the direct extension asked for: how do these weights get used
+across agents, FSMs, RL/IRL harnesses, and GOAP, so autonomy actually
+compounds instead of each subsystem needing separate tuning.
+
+- **Shared across agents, for free, by construction.** The Concept
+  Bank is a real file-backed structure, same as every other Bank —
+  multiple agents (this Claude session, kilo, grok, tomom itself)
+  reading and writing it are automatically sharing it, no sync
+  protocol to build. Any agent's edit is just a new/updated spoke
+  entry, auditable via git/diff exactly like any other house content —
+  the same "real files, never hidden state" principle this whole house
+  already runs on, just applied to concept weights instead of window
+  state.
+- **FSM Sequencer.** Today it picks paths purely from Bank matches
+  (Q5's diagram). With a Concept Bank, a candidate FSM transition whose
+  triggering conditions share high concept-overlap with the current
+  context can be preferred over one that doesn't — FSM path selection
+  gets the same legible "why" as everything else, instead of being a
+  black-box match/no-match.
+- **RL/IRL harnesses.** A reward signal (user feedback, or a Watch
+  Layer observation) updates the Bank entry it directly matched
+  (existing mechanism, unchanged) **and** propagates to the concepts
+  that entry touches, when the matched word/action is concept-tagged.
+  This is the actual mechanism that makes IRL (inferring the user's
+  real intent from feedback) generalize past the single literal
+  instance that got rewarded — feedback on one thing meaningfully
+  informs everything sharing its concepts, not just its own exact Bank
+  row.
+- **GOAP.** Action preconditions/effects can carry concept pointers
+  too (`increases: force`, `decreases: disorder`), letting a planner
+  reason about actions abstractly, the way a person would describe
+  intent, instead of only matching literal symbolic preconditions.
+- **The actual "meaningful autonomy" mechanism.** Once Bank entries,
+  FSM transitions, GOAP preconditions, and tomom's own concept
+  membership all point through the *same* named concept substrate, one
+  piece of feedback can propagate across every one of these systems at
+  once, instead of needing separate tuning passes for each. That's
+  concretely what makes "the user mostly just observes and gives
+  intent-level feedback" plausible rather than aspirational — the
+  concept substrate is the thing doing the generalizing.
+- **Feedback needs a real shape to do this — not a bare scalar.**
+  "Good, but do more of THIS" / "bad, do more of THIS" is a real,
+  richer feedback schema than a single reward number: a feedback event
+  is `(target_reference, valence, concept_pointer(s), intensity)` —
+  e.g. `(this generated response, positive, force, high)` or `(this
+  FSM transition, negative, verbosity, medium)`. The `concept_pointer`
+  field is what lets one piece of feedback update the *right* concept
+  weight specifically, rather than only the single literal action/word
+  it was attached to — directional, targeted reward shaping instead of
+  an undifferentiated up/down signal.
+
+**Not yet done, deliberately**: no Concept Bank file format has been
+built; the corpus-meta-weight hand-authored/derived/both decision is
+still open; no feedback-schema change has been made to any real Bank
+Layer code; nothing here has touched tomom's actual files yet. This
+section is the honest shape of the design, for NIGHT_22 to dramatize
+and for real implementation to start from once the corpus-meta-weight
+question is answered.
