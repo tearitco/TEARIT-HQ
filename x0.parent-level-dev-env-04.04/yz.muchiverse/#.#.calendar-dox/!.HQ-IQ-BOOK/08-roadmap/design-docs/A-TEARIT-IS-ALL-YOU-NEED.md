@@ -374,6 +374,136 @@ a measured track record, never granted by default.
 
 ---
 
+## 8. TEARIT is not just a game — the real domain breadth this substrate serves
+
+Everything above was framed through game-shaped examples (physics,
+stunt jumps, FSM/GOAP). That undersells the point. TEARIT-HQ is a
+real, running house/OS-shaped substrate, and the apps built on it
+already span domains that normally require entirely separate tech
+stacks, each with its own bespoke ML/infra investment. Named
+concretely, not asserted vaguely — every category below is a real,
+existing app in this house, checked directly, not summarized from
+memory:
+
+- **Social**: `forum-hq`, `irc-chat-hq`, `co-lab-hai` (a real, live,
+  multi-agent chat room with approve/reject gating and per-agent
+  visibility filtering — tested with 4 separate real agents joined
+  cold).
+- **Blockchain / crypto**: `chain-hq` (a real chain/ledger app) and
+  `myne-qrypto` — not a toy: `qtc/` is a full, working, real SHA-256
+  proof-of-work engine with real wallet cryptography and a passing
+  21-check test harness across two scenarios, wrapped in its own
+  player-facing game shell (mining, ASICs, exchange).
+- **AI chat agents**: `chat-hai`, `co-lab-hai`, `h-ai-lab` — real
+  houses for agent-driven conversation, already the substrate this
+  very session runs inside of.
+- **Chemistry simulation**: a real tile/combination-based chemistry
+  system (`chemistry_tiles🏆.csv`, a periodic-table picker, a
+  Little-Alchemy-style combination mockup) — chemistry-as-gameplay,
+  already tiled and playable, not just a design doc.
+- **Media editing/creation suites**: `media-img-hq`, `media-img3d-hq`,
+  `media-vid`, `media-vid-hq`, `media-daw`/`media-daw-hq`,
+  `media-canvas`, `media-3d-hq`, `aomorai-editor`, plus a real, working
+  **audio synthesis engine** (`lab-audio/synth.c` + `fft.c` + `wav_io.c`
+  — actual signal synthesis, not just a player). **Honest distinction,
+  not glossed over**: what's real today across image/audio/video is
+  editing, composition, and synthesis infrastructure — full
+  diffusion-style *generative* image/video is not yet built. That gap
+  is exactly what this document's loop is *for*: once the Concept
+  Bank and the propose→validate→replay→promote loop exist, the same
+  hand-tunable substrate that lets tomom refine a `force`↔`motion`
+  weight is the substrate that would let a music-gen or image-gen
+  model be steered and corrected the same legible way — one shared
+  learning discipline instead of a separate bespoke ML pipeline per
+  media type.
+- **Game programming from prompts, already real for humans, specified
+  for agents**: `&.widgits/events-hq/` is a real, working
+  DESCRIBE-then-compile pipeline (confirmed by direct code read this
+  same session) — a human author already turns natural-language intent
+  into real, compiled, running game logic (`event.ir.pdl` →
+  `cmd_N.sh`) without hand-writing C. §2.6 of this document specifies,
+  concretely, how an agent does the exact same thing through the exact
+  same compiler — not a new, separate, less-trusted code-generation
+  path. **`piececraft-hq` (pc-hq) is where this house's actual game
+  development happens** — a real board-viewer engine, real terrain
+  generation, real entity placement, already wired to the Events
+  pipeline — and it's meant to be **highly automated**: the natural
+  target for the propose→validate→replay→promote loop once it exists,
+  not a hypothetical future app.
+
+The point isn't "TEARIT has a lot of apps." It's that **one shared,
+legible, hand-tunable learning substrate (Bank Layer → Concept Bank →
+this document's loop) is positioned to serve every one of these
+domains at once**, instead of each domain needing its own model,
+own training infra, own opacity tradeoffs. A concept relation learned
+from tuning tomom's chemistry curriculum is the same kind of object,
+in the same Concept Bank, as a relation that steers a GOAP action in
+`pc-hq` or a tone-shaping weight in `co-lab-hai` — cross-domain reuse
+that's structurally impossible when each domain runs its own opaque
+model.
+
+---
+
+## 9. Why this is worth comparing to "Attention Is All You Need" — for two different audiences, honestly
+
+"Attention Is All You Need" mattered because it found **one simple,
+general mechanism that, applied at scale, replaced a zoo of bespoke
+architectures** (RNNs, LSTMs, CNN-for-sequences) — a single reusable
+primitive that unlocked massive capability gains once given enough
+compute. It scaled along one axis: more GPU-hours over bigger opaque
+matrices, buying more capability.
+
+This document's claim is not "we found a better attention mechanism."
+It's structurally the *inverse* bet, and it's worth being precise
+about why that's a real, different, and — for a specific set of
+real-world constraints — more valuable axis to scale along:
+
+**For AI researchers and investors**: the original paper's axis
+(scale + opacity) has a well-known, real cost that the entire industry
+is currently fighting — opaque models are expensive to retrain, hard
+to audit, hard to correct precisely, and hard to safely deploy across
+many different verticals at once without either a separate model per
+vertical or an enormous, general, still-opaque foundation model. This
+document specifies the other axis: **capability that already exists**
+(Claude, Gemma) **gets reused, not retrained, and its outputs
+accumulate into a small, named, auditable, hand-correctable substrate**
+that gets *better* the more it's used, without ever needing a
+from-scratch retrain. That's not a research curiosity — it's a direct answer
+to the actual, current, expensive problem of "how do we deploy AI
+behavior across many product verticals without either N separate
+opaque models or one enormous one we can't audit or fix." Scaling by
+accumulated, legible judgment instead of by GPU-hours is a genuinely
+different curve, and for anyone trying to ship real, correctable,
+multi-domain AI products rather than chase a benchmark, it's arguably
+the more commercially relevant one.
+
+**For gamers and developers**: the pitch is concrete, not abstract —
+one house, one shared AI learning substrate, powering a game engine, a
+chat platform, a real crypto/blockchain app, a chemistry sim, and a
+full media-creation suite *at once*, where teaching tomom something in
+one context (say, physics) can genuinely inform behavior in another
+(say, a crafting system in `pc-hq`) because they share the same named
+concept substrate — something structurally impossible in the current
+norm of "every app ships its own separate, disconnected AI feature."
+Game mechanics themselves become taught behavior instead of hardcoded
+logic (Q7's "school model"), authored from natural language through
+the same compiler a human already uses (§2.6), and correctable by
+anyone who can read a named weight, not just whoever originally
+trained the model.
+
+Both pitches rest on the same underlying, already-specified
+architecture. Neither is aspirational hand-waving — every mechanism
+cited above (the Bank Layer, the Concept Bank's schema, the Events
+compiler, the promotion-gate discipline) is either already real and
+working in this house, or specified concretely enough in this
+document to build. That is the actual basis for the comparison: not
+that this document is as *famous* as the 2017 paper, but that it is
+attempting to be as *foundational* — one real, reusable, well-specified
+mechanism, positioned to change what an entire category of products
+can do next, the same way that paper's mechanism did.
+
+---
+
 ## Grounding
 
 `AI-TRACK-BRAINSTORM-QUESTIONS.md` Q5–Q9 (same house, same session,
@@ -383,4 +513,7 @@ not summarized, same session), `&.widgits/events-hq/ops/` (Events
 compiler, read directly), `#.Z.HUMAN_LLM/^.2DO.aug01_2026.txt` Track
 C, NIGHT_20/21/22 (dramatized companions to Q7/Q8/Q9 — this document
 is the technical spec those episodes are based on, not the other way
-around).
+around). §8's domain citations checked directly: `&.hq-apps/chain-hq/`,
+`@.apps/myne-qrypto/MYNE_QRYPTO_DESIGN.md`, `#.ref/menu/palletes/
+chemistry_tiles🏆.csv`, `045.muchi-pal-agent🤖️+1++/lab-audio/`,
+`@.apps/piececraft-hq/BOARD-CONTROLS.md`.
