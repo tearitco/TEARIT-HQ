@@ -200,12 +200,26 @@ int main(int argc, char **argv) {
     XftColorAllocName(dpy, DefaultVisual(dpy, scr), cmap, shade(fg_hex, -70), &xdimc);
 
     struct timespec t0; clock_gettime(CLOCK_MONOTONIC, &t0);
-    int failed = 0;    /* latched true once .build_failed.txt is seen - never unlatched */
+    /* REAL FIX 2026-09-22, direct live report ("also i got a compile
+     * error warning when u restarted" - on a build that actually
+     * succeeded): the marker is a dead-man's-switch, present for the
+     * ENTIRE normal build by design (written before the build starts,
+     * cleared only on its last line) - so the old code below, which
+     * checked build_failed() unconditionally on every single poll from
+     * t=0 and latched `failed` true forever on first sighting, saw the
+     * marker on its very first iteration of EVERY build (that's the
+     * marker doing its job, not a failure) and showed the red banner
+     * for the entire build, success or not. Real fix: only ask "did
+     * this actually fail" at the two real decision points below - when
+     * the build looks done (all target binaries fresh) and at the
+     * normal timeout - matching the header comment's own intent ("if
+     * this process ever sees that file still present" at the point it
+     * would otherwise conclude success). */
+    int failed = 0;
     int dismissed = 0; /* a click/key while failed - the only normal way out of that state */
 
     for (;;) {
         if (g_stop) break;
-        if (!failed && build_failed(xdir)) failed = 1;
 
         /* drain events - Expose always; ButtonPress/KeyPress only matter
          * once failed (dismissal), harmless no-ops before that. */
@@ -220,7 +234,14 @@ int main(int argc, char **argv) {
         /* A failure banner must wait for a real dismissal, not the normal
          * ~4-minute safety timeout - but it still isn't infinite, in case
          * a click/key genuinely never reaches this window on some session. */
-        if (failed ? (elapsed > FAIL_HARD_TIMEOUT_SECONDS) : (elapsed > HARD_TIMEOUT_SECONDS)) break;
+        if (!failed && elapsed > HARD_TIMEOUT_SECONDS) {
+            /* Normal build allowance exceeded and still not marked done
+             * below - only NOW is the marker's presence actually
+             * suspicious (a genuinely hung/crashed build), not before. */
+            if (build_failed(xdir)) { failed = 1; }
+            else break; /* marker already clear - ordinary silent timeout close */
+        }
+        if (failed && elapsed > FAIL_HARD_TIMEOUT_SECONDS) break;
 
         if (failed) {
             XSetForeground(dpy, gc, failbg);
@@ -287,7 +308,15 @@ int main(int argc, char **argv) {
                           (const FcChar8 *)right, (int)strlen(right));
 
         XFlush(dpy);
-        if (done >= N_TARGETS) { usleep(400000); break; }   /* let "100%" show a beat */
+        if (done >= N_TARGETS) {
+            /* All target binaries look fresh - the real decision point
+             * the header comment means by "if this process ever sees
+             * that file still present": only NOW does marker-present
+             * mean something's actually wrong (stale binaries from an
+             * earlier build, current one never finished), not before. */
+            if (build_failed(xdir)) { failed = 1; }
+            else { usleep(400000); break; }   /* let "100%" show a beat */
+        }
         usleep(180000);
     }
 

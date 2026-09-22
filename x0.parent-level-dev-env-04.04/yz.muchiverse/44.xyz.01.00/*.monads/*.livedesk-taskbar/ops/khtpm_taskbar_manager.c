@@ -1876,18 +1876,17 @@ void ktb_get_username(const KtbState *s, char *out, size_t sz) {
  * this session, never wired to anything until now) — non-static so
  * khtpm_taskbar_manager_main.c can call them. */
 void ktb_get_file_label(const KtbState *s, char *out, size_t sz) {
-    /* "file:" -> "world:" 2026-09-22 (AI-TRACK-BRAINSTORM-QUESTIONS.md
-     * Q7 7f, ADOPTED, corrected same day): WORLD replaces the old
-     * FILE:DESK vocabulary's FILE half (the session/project label) -
-     * NOT the desk label, which stays "desk:" (see
-     * ktb_get_desks_label() below). Function/variable names
-     * (livedesk_current_session_name, etc.) are left as-is - only the
-     * user-visible label text changes here. */
+    /* "file:" -> "world:" -> "book:" 2026-09-22 (AI-TRACK-BRAINSTORM-
+     * QUESTIONS.md Q7 7f, superseded same day): BOOK:PAGE replaces the
+     * short-lived WORLD:DESK pair - a session (this label) is a BOOK,
+     * an individual desk (ktb_get_desks_label() below) is a PAGE.
+     * Function/variable names (livedesk_current_session_name, etc.)
+     * are left as-is - only the user-visible label text changes. */
     char name[256];
     if (livedesk_current_session_name(s->house_root, name, sizeof(name)) && name[0])
-        snprintf(out, sz, "world:%s", name);
+        snprintf(out, sz, "book:%s", name);
     else
-        snprintf(out, sz, "world");
+        snprintf(out, sz, "book");
 }
 
 /* Real gap fix (2026-08-11, direct request: "user should have a sprite at
@@ -1917,18 +1916,18 @@ void ktb_get_avatar_dir(const KtbState *s, char *out, size_t sz) {
 }
 
 void ktb_get_desks_label(const KtbState *s, char *out, size_t sz) {
-    /* "desks:" -> "desk:" 2026-09-22 (AI-TRACK-BRAINSTORM-QUESTIONS.md
-     * Q7 7f, ADOPTED, corrected same day): singular, since WORLD took
-     * the FILE slot instead (ktb_get_file_label() above) - the pair
-     * is now "world:<session>" / "desk:<desk>", not the other way
-     * round. Function/variable names (livedesk_current_desk_name,
-     * active_desk, desks/ dir) are left as-is - only the user-visible
-     * label text changes here. */
+    /* "desks:" -> "desk:" -> "page:" 2026-09-22 (AI-TRACK-BRAINSTORM-
+     * QUESTIONS.md Q7 7f, superseded same day): BOOK:PAGE replaces the
+     * short-lived WORLD:DESK pair - an individual desk (this label) is
+     * a PAGE, a session (ktb_get_file_label() above) is a BOOK.
+     * Function/variable names (livedesk_current_desk_name, active_desk,
+     * desks/ dir) are left as-is - only the user-visible label text
+     * changes here. */
     char name[64];
     if (livedesk_current_desk_name(s->house_root, name, sizeof(name)) && name[0])
-        snprintf(out, sz, "desk:%s", name);
+        snprintf(out, sz, "page:%s", name);
     else
-        snprintf(out, sz, "desk");
+        snprintf(out, sz, "page");
 }
 
 static void livedesk_root_write(const char *sroot, const char *active, const char *last) {
