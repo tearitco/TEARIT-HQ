@@ -118,7 +118,16 @@
   learner instances, curriculum classes, teacher now the user/Gemma
   later, pass/fail gating, growable primitives) from
   `AI-TRACK-BRAINSTORM-QUESTIONS.md` Question 7 — design shape found,
-  nothing built yet.
+  nothing built yet. Direct follow-up, same day:
+  `1-1.HARNECIENT.SMOL/NIGHT_21_THE_RETURN_PATH.txt`/`.mp3` — a
+  video-prep agent reviewing NIGHT_20 catches the real hole: no
+  return path from tomom's learning back into gameplay. Names and
+  orders four injection points (`AI-TRACK-BRAINSTORM-QUESTIONS.md`
+  Question 8) — `.pdl` parameter overrides (most concrete), FSM path
+  candidates promoted through the existing Bank reward-weight gate,
+  an unresolved DESCRIBE-vs-direct-emission decision for Event
+  generation, and an unshaped shadow-scored primitive approximation —
+  design shape found, nothing built yet.
 - `design-docs/RELAY-WINDOW-TARGETING-DESIGN.md` — **2026-09-18
   design, not started**: formalizes how a relay-driving agent picks
   the right window/PID. Real current mechanism confirmed by direct
