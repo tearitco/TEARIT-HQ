@@ -1,0 +1,171 @@
+# 🐾 NIGHT 23 — terumon open their own classroom 🐾
+# ====================================================================
+# Title: "🐾 NIGHT 23 — terumon open their own classroom 🐾"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, twelfth bonus round
+
+**THE NARRATOR:** A dev prompt landed, working title `8.TERUMON`.
+It asked for a new evolvable pet — dustball start, owner-set learning
+limits, chatbot mode, milkable for molecules, sellable on a store.
+Before any of that got designed, the prompt asked for something
+sharper: go confirm, file by file, how it actually slots into what
+this house already built. Say what got confirmed and what didn't,
+same discipline NIGHT 20 through NIGHT 22 already hold themselves to.
+
+**MAXINE:** Start with the name. Three aliases were floating around —
+fuzzpets, dustpets, muchipets — same creature, no agreement on what
+to call it.
+
+**TOMO:** Checked all three against the house directly. No file, no
+code, no doc under the game trees uses any of them. Zero prior art,
+all three. So the fourth name — terumon, the prompt's own working
+title — won by default, not by vote. Cheapest possible commitment.
+Costs nothing to rename later if one of the other three turns out to
+have real history somewhere this pass didn't reach.
+
+**RAHWEH:** Then the part that actually earns tonight's title. Where
+does a terumon's "schools" learning-limit sit?
+
+**TOMO:** Read NIGHT 20 and NIGHT 21 again, in full, not from memory.
+NIGHT 20 named the school model directly — every entity gets its own
+learner instance, a class is a literal curriculum folder of examples,
+pass or fail, repeat until it passes. NIGHT 21 traced the return
+path — a promoted lesson becomes one new row in a per-entity override
+file, gated by the same reward-weighted ledger as everything else in
+this house. A terumon's "schools" limit is that model, used literally
+instead of metaphorically for the first time: an owner enrolls a
+terumon in named class folders, same shape tomom itself attends.
+
+**MAXINE:** Say the honest part, the part that keeps this from
+sounding more finished than it is.
+
+**RAHWEH:** NIGHT 20 already said it about itself — no curriculum
+format was ever built. Not one class, not one lesson, not one
+pass/fail check, written anywhere as a real file. So tonight's
+`schools/` folders aren't a copy of a working format. They're this
+house's first real attempt at filling a folder NIGHT 20 only ever drew
+the outline of. Say that plainly instead of borrowing NIGHT 20's
+finished-sounding language for something that still doesn't exist.
+
+**THE NARRATOR:** Now the mechanic the prompt called the actual novel
+part. Owner-set learning limits — not open-ended drift, a controlled
+pet.
+
+**MAXINE:** Five named dimensions — direction, size, strength of
+training, schools, environment. `A TEARIT Is All You Need` already
+drew the shape every candidate edit has to pass through — Watch Layer
+observes, Gemma describes, a deterministic scorer turns that into a
+candidate edit, a validator checks it, a replay scores it, and only
+then does it reach live state. `learning_limits.pdl` sits one step
+before all of that. It's not a second gate parallel to the validator.
+It's the owner's own filter on what a terumon's learner instance is
+even allowed to *propose* in the first place, before the house's own
+universal validator ever sees it.
+
+**TOMO:** Walk one example instead of staying abstract. Say what
+happens when a terumon learns a skill.
+
+**RAHWEH:** Take the first seed, Ember. Direction is capped tight —
+force, motion, the gravity constant, nothing else. Strength is set
+high. Ember watches a player do something physics-shaped near it,
+same Watch Layer observation NIGHT 21 already walked for the stunt
+jump. That observation becomes a candidate edit — a small weight
+delta on an existing `gravity_constant` slot, not a new concept, not a
+new skill out of nowhere. `learning_limits.pdl` checks it against
+Ember's own allow-list first — force and motion are both on it, so it
+isn't blocked at the door. Then it goes through the same validator,
+replay, and promotion ledger every other candidate edit in this house
+already goes through. If it earns its weight, it lands as one new row
+in Ember's own override file. Ember doesn't get smarter in the
+abstract. Ember gets one more inspectable, revertible line in one
+real file.
+
+**MAXINE:** Now the one about feed and chemical output, since the
+prompt asked for something concrete there too.
+
+**TOMO:** A terumon can be milked for raw molecules, and what comes
+out depends on what it was fed — that part of the brief. Checked the
+real chemistry tile file directly, the one with the trophy emoji in
+its name. Flat CSV, one row per compound, an emoji, a name, a formula,
+a color, physical properties. Nothing in that format assumes a
+compound came from a lab recipe versus a fed, milked terumon. A
+terumon-produced molecule is just another row. No new chemistry system
+needed. The open question left honestly open — whether that row gets
+a new column marking it as terumon-sourced, or just a note in the
+hint field — is a formatting choice, not a design gap.
+
+**RAHWEH:** And the one the prompt itself called the harder case —
+evolving in a direction its owner didn't cap tightly enough.
+
+**MAXINE:** Take the second seed, Glacine. Broad direction, low
+strength, deliberately loose — cooking, farming, basic chemistry,
+general science, all allowed at once, each one capped small. That
+looseness is the point of the seed, not a mistake in it — it's built
+to test what happens at the edge of a wide-but-shallow limit set. If
+an edit ever tried to reach past what's allowed — say, toward combat,
+which is explicitly denied on that file — the direction check rejects
+it before it's even scored. The owner's mistake, if there is one,
+isn't a silent drift past the fence. It's a fence drawn too wide on
+purpose, and the honest failure mode of a wide fence is "learns a
+little of everything, slowly," not "learns something forbidden."
+That's a real difference, and it's the one this house's gate structure
+is built to guarantee.
+
+**THE NARRATOR:** Say the part that makes tonight's title literal, not
+just decorative.
+
+**TOMO:** Four seeds were planted tonight, not one. Ember, tight and
+deep. Glacine, broad and shallow. A third, Murmur, given almost no
+direction or schools of its own at all — its learning comes from
+proximity to the other two instead, an environment-driven condition,
+not a curriculum-driven one. A fourth, Solvent, never touches the
+Watch Layer at all — isolation mode only, a standalone chatbot proposer
+feeding the exact same learner instance and the exact same promotion
+ledger as everything else, resolved tonight as a second input channel,
+not a second, separate creature. Four different classrooms, four
+different students, one shared gate deciding what any of them actually
+gets to keep.
+
+**RAHWEH:** Now the honesty checkpoint, same as every NIGHT before
+this one.
+
+**MAXINE:** What's real: the canonical name is picked, with its reason
+recorded. The five-dimension `learning_limits.pdl` schema exists as a
+real field list, checked against `A TEARIT Is All You Need`'s own
+proposal-versus-validation split instead of invented loose. Four real
+seed files exist, dustball state and learning limits both, meaningfully
+different from each other. A track directory exists, placed by
+checking real dev-track precedent first, not by keeping the prompt's
+untested working name.
+
+**TOMO:** What isn't real. Say it without softening it.
+
+**MAXINE:** No terumon has been observed by a real Watch Layer event.
+No candidate edit has been proposed, validated, replayed, or promoted
+for any of the four. No curriculum folder holds a single real lesson —
+they're placeholders, marked as such in their own files. The
+entity-system question — whether a terumon needs its own C-level
+subclass or is a plain new entity type — wasn't found answered in code
+this pass and is left open rather than guessed. And the store — chain-hq
+and myne-qrypto both exist, both real, neither one is a storefront;
+which one hosts a terumon sale, or whether a third app has to be built,
+is still undecided.
+
+**THE NARRATOR:** So say the actual difference between tonight and the
+two NIGHTs before it.
+
+**RAHWEH:** NIGHT 21 found that a properly-named layer can still have
+no return path back into gameplay, and closed three of its four exits.
+NIGHT 22 opened the Concept Bank's own schema. Tonight took a creature
+that didn't exist an hour before this document was read, and instead
+of inventing a system for it, checked it against seven real pieces of
+this house one at a time — and for every one of them, either found the
+real seam it already fits through, or said plainly that the seam isn't
+built yet. That's the whole claim tonight gets to make. Four dustballs,
+sitting in four real files, waiting on a Watch Layer event that hasn't
+happened yet.
+
+**THE NARRATOR:** A classroom with four seats, all filled, none of
+them taught a single lesson yet. The gate is real. The fence is real.
+Nothing has walked through either one. 🐾🎒

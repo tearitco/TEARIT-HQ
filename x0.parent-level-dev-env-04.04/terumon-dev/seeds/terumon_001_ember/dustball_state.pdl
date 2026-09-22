@@ -1,0 +1,19 @@
+# dustball_state.pdl — terumon_001_ember
+# Starting state: minimal, undifferentiated base form, per
+# TERUMON-SPEC.md §0. No promoted traits yet — this is seed state,
+# nothing here has passed the A-TEARIT-IS-ALL-YOU-NEED.md §2.7
+# promotion gate.
+
+terumon_id: terumon_001_ember
+owner_id: OPEN (no real player/account wired to this track yet)
+canonical_name: terumon
+known_aliases: fuzzpets, dustpets, muchipets
+form: dustball
+color_hex: #b8b8b8
+size_units: 1
+visible_traits: []
+skills_promoted: []
+chemical_output_current: none
+mode: in_game_watch_layer=true, isolation_chatbot=false
+seeded: 2026-09-22
+experiment_role: narrow-direction / high-strength control

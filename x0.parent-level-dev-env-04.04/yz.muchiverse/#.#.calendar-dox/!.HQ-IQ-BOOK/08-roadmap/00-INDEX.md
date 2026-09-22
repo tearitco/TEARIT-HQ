@@ -136,7 +136,22 @@
   named z-nodes, fixed-slot pointer records, hub-and-spoke topology
   (not a maze), weights living only at the spoke with a derived mirror
   at the master, and the FSM/RL/GOAP meta-level extension — design
-  shape found through real back-and-forth, nothing built yet.
+  shape found through real back-and-forth, nothing built yet. Direct
+  follow-up, same day: `1-1.HARNECIENT.SMOL/
+  NIGHT_23_TERUMON_OPEN_THEIR_OWN_CLASSROOM.txt`/`.mp3` — a new
+  evolvable pet class (terumon, formerly circulated as fuzzpets/
+  dustpets/muchipets) checked directly against seven real house
+  pieces (entity system, tomom's school model, the `A-TEARIT-IS-ALL-
+  YOU-NEED.md` promotion loop, Watch Layer, chemistry tiles, Events
+  pipeline, chain-hq/myne-qrypto); designs the owner-set
+  `learning_limits.pdl` schema (direction/size/strength/schools/
+  environment) as a proposal-side filter sitting in front of the
+  existing validator, resolves isolation-chatbot mode as a second
+  proposer into the same learner instance rather than a separate one,
+  and opens `x0.parent-level-dev-env-04.04/terumon-dev/` with four
+  seeded dustball terumon carrying meaningfully different learning
+  limits — design shape found and four experiment seeds filed, no
+  Watch Layer observation or promotion run yet.
 - `design-docs/A-TEARIT-IS-ALL-YOU-NEED.md` — **2026-09-22, real
   technical spec, not a dramatization**: the full propose → validate →
   replay → promote loop that lets Gemma (constant, cheap, DESCRIBE)

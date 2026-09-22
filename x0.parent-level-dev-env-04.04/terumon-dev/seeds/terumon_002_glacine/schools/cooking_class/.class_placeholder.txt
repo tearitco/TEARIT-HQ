@@ -1,0 +1,3 @@
+cooking_class — curriculum folder placeholder, terumon_002_glacine.
+See TERUMON-SPEC.md §1 (tomom/school-model row) — curriculum format
+not built house-wide yet. OPEN.

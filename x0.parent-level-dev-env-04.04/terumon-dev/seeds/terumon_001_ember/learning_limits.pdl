@@ -1,0 +1,30 @@
+# learning_limits.pdl — terumon_001_ember
+# Schema per TERUMON-SPEC.md §2. Profile: narrow-direction, high-strength.
+
+terumon_id: terumon_001_ember
+owner_id: OPEN
+
+direction:
+  allow: [force, motion, gravity_constant]
+  deny: []
+
+size:
+  max_state_bytes: 262144
+  max_corpus_examples_per_class: 200
+
+strength_of_training:
+  max_delta_per_edit: 0.15
+  max_tier: master_phd
+  edits_per_day_cap: 40
+
+schools:
+  enrolled: [terumon-dev/seeds/terumon_001_ember/schools/physics_class]
+  pass_required_before_next: true
+
+environment:
+  proximity_sources: []
+  influence_weight: 0.0
+
+mode:
+  in_game_watch_layer: true
+  isolation_chatbot: false
