@@ -110,7 +110,15 @@
   product claims, banks table overstated vs `DUSTOPIA-HACK.md` §3's
   real status) and records the user's KPI/token-saving/human-parity-
   docs conversation from `AI-TRACK-BRAINSTORM-QUESTIONS.md` Questions
-  5-6 as still unresolved, on purpose.
+  5-6 as still unresolved, on purpose. Direct follow-up, same day:
+  `1-1.HARNECIENT.SMOL/NIGHT_20_THE_SCHOOL.txt`/`.mp3` — a BREAKTHROUGH
+  episode: finds the missing Corpus/Training Layer (belongs to Famous
+  LLM/tomom, not the Bank Layer or frozen Gemma), confirms all-four-
+  Banks/every-app scope, and names the "school" model (per-entity
+  learner instances, curriculum classes, teacher now the user/Gemma
+  later, pass/fail gating, growable primitives) from
+  `AI-TRACK-BRAINSTORM-QUESTIONS.md` Question 7 — design shape found,
+  nothing built yet.
 - `design-docs/RELAY-WINDOW-TARGETING-DESIGN.md` — **2026-09-18
   design, not started**: formalizes how a relay-driving agent picks
   the right window/PID. Real current mechanism confirmed by direct
