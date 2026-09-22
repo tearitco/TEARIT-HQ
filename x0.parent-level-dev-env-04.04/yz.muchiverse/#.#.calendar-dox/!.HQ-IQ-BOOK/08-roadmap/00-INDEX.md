@@ -103,7 +103,14 @@
   house-wide "never write C for what an event can do" rule with its one
   exception (new `ai_*` event-command primitives), the DSR/WSR-CIV
   parallel-track multi-copy event-reuse experiment, and the confirmed
-  zero-recompile context-menu-as-event scaffolding.
+  zero-recompile context-menu-as-event scaffolding. Follow-up:
+  `1-1.HARNECIENT.SMOL/NIGHT_19_THE_UNFINISHED_LEDGER.txt`/`.mp3` —
+  an explicitly OPEN episode (no closed loop, unlike 16-18): reviews
+  the external JEV docs honestly (useful diagram, unverified external
+  product claims, banks table overstated vs `DUSTOPIA-HACK.md` §3's
+  real status) and records the user's KPI/token-saving/human-parity-
+  docs conversation from `AI-TRACK-BRAINSTORM-QUESTIONS.md` Questions
+  5-6 as still unresolved, on purpose.
 - `design-docs/RELAY-WINDOW-TARGETING-DESIGN.md` — **2026-09-18
   design, not started**: formalizes how a relay-driving agent picks
   the right window/PID. Real current mechanism confirmed by direct
