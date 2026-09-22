@@ -1910,11 +1910,17 @@ void ktb_get_avatar_dir(const KtbState *s, char *out, size_t sz) {
 }
 
 void ktb_get_desks_label(const KtbState *s, char *out, size_t sz) {
+    /* "desks:" -> "world:" 2026-09-22 (AI-TRACK-BRAINSTORM-QUESTIONS.md
+     * Q7 7f, ADOPTED): WORLD replaces the old FILE:DESK vocabulary for
+     * what a desk actually is - a single loadable, re-referenceable
+     * board. Function/variable names (livedesk_current_desk_name,
+     * active_desk, desks/ dir) are left as-is - only the user-visible
+     * label text changes here. */
     char name[64];
     if (livedesk_current_desk_name(s->house_root, name, sizeof(name)) && name[0])
-        snprintf(out, sz, "desks:%s", name);
+        snprintf(out, sz, "world:%s", name);
     else
-        snprintf(out, sz, "desks");
+        snprintf(out, sz, "world");
 }
 
 static void livedesk_root_write(const char *sroot, const char *active, const char *last) {
