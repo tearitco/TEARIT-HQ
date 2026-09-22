@@ -1,0 +1,7 @@
+# CONCEPT_MASTER — energy.pdl (hand-authored stub, referenced by force.pdl
+# SLOT 1). See force.pdl's header for the real schema explanation.
+NODE | energy
+KIND | master
+N_SLOTS | 8
+MIRROR_GENERATED_AT | 2026-09-22 16:16:19
+# (no spoke currently points at this master)

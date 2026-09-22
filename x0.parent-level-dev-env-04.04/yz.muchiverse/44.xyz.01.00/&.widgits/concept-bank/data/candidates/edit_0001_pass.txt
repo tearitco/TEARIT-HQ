@@ -1,0 +1,1 @@
+EDIT | id=e0001-real-smoketest | type=spoke_weight_delta | target=gravity_constant | slot=force | delta=+0.05 | reason="Watch Layer: stunt jump height increased when gravity_constant's force weight was lower" | proposer=gemma | status=candidate

@@ -1,0 +1,1 @@
+EDIT | id=e0002-real-rejecttest | type=spoke_weight_delta | target=gravity_constant | slot=force | delta=+5.0 | reason="deliberately out-of-bounds delta to prove the validator's clamp" | proposer=gemma | status=candidate
