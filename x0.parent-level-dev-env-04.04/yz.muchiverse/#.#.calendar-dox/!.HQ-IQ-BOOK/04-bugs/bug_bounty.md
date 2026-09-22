@@ -2,6 +2,21 @@
 
 ---
 
+## ⚠️ OPEN 2026-09-22: taskbar takes a long time to appear on launch, even though desktop entities (which the user expected to be the slower/bigger thing) appear instantly
+
+**Reported:** direct live report - "it took a long time for tb to populate... doesn't make sense that it took so long when desktop entities, which are larger, were instant." Asked for a "loading" indicator as a possible mitigation, and to track this at minimum.
+
+**Real, evidenced root cause (found by direct code read, not yet fixed):**
+`khtpm_taskbar_manager_main.c`'s `main()` calls `ktb_init()` synchronously, before the manager writes its pidfile or reaches the event loop that publishes `#.desktop/strip_ui.txt` — the file the renderer polls to draw the taskbar strip at all. `ktb_init()` (`khtpm_taskbar_manager.c` ~line 441) calls `livedesk_ensure_cursword()` then `livedesk_spawn_active_desk()` → `livedesk_spawn_desk()` (~line 2474), which loops over every `DESK` row in the active desk's `.pdl`. For **each entity**, before its (fire-and-forget, `setsid nohup ... &`) spawn, it runs `ktb_find_live_pid_for_pal()` (~line 2768) — a **full scan of `/proc`**, opening and `fread`ing `/proc/<pid>/cmdline` for every process on the machine, to check whether that one entity is already running.
+
+This explains the exact reported shape: each entity's own spawn is genuinely fast once its turn comes (X11 window mapping doesn't wait on anything else), so entities visibly "pop in" quickly one at a time. But the *next* entity's spawn doesn't start until the *current* entity's full `/proc` scan finishes, and the taskbar's own UI can't be published until the ENTIRE loop — one full-process-table scan per entity — completes. A desk with N entities does N full `/proc` scans, fully serialized, before the taskbar can draw anything, on a documented weak-CPU machine (`nice-heavy-background-work` house note).
+
+**Not yet fixed. Real directions, not yet chosen/implemented:**
+1. **The user's own "loading" idea, cheapest to ship**: have the manager publish a minimal placeholder `strip_ui.txt` immediately, before `ktb_init()`'s entity-spawn loop even runs, so the renderer has something real to draw right away instead of nothing until the whole sequence finishes.
+2. **Fix the real inefficiency directly**: the `/proc` scan is redone from scratch, once per entity, inside one tight loop over the SAME desk file. Scan `/proc` ONCE, build a pid→cmdline map, and check every desk entity against that one map — turns N full scans into 1.
+3. **Move entity spawning off the manager's own synchronous startup path** entirely (defer it to right after the manager starts publishing its own UI), so the taskbar's own appearance is never gated on how many entities the active desk has.
+Any of these three, or a combination, would fix the user-visible symptom; (2) is the most surgical/lowest-risk since it doesn't change ordering or add new published state, just removes the redundant re-scanning.
+
 ## ✅ CLOSED 2026-09-20 (verified on the user's hardware: "that actually fixed it"): csv-hq `<grid>` - Enter on the grid nav item doesn't activate it (needs a double click) and no typed input arrives afterward
 
 **FINAL ROOT CAUSE (confirmed on hardware): the Cursword pal's never-released display-wide keyboard grab (`2c1301ab`) - see `03-pitfalls/HOUSE_CODE_PITFALLS.md` #24. The grid re-arm fix (`3895ff77`) was also a real, separate bug. The `managed` class (`17f8da40`), the WM_HINTS/override_redirect theories and the dock were NOT the cause. Fix took effect after restarting the Cursword pal once.**
