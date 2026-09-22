@@ -234,11 +234,105 @@ now with real material (the JEV docs' synthesis + this KPI/product
 framing) to start from once items 4/2 are confirmed solid and the
 user is ready to have it.
 
+## Question 7: the training-layer gap, the "school" model, growable primitives, and FILE:DESK → WORLD (2026-09-22)
+
+Direct follow-up conversation after Question 5's diagram review, real
+and substantial — the user called this "a huge breakthru." Recorded
+in full so item 3 has real material to start from.
+
+**7a. The corpus-chunk / retraining / attention gap in the `8.1`
+diagram.** Checked the diagram directly before answering (not from
+memory). Confirmed: the Bank Layer is deliberately *not* a model — it
+is four weighted dictionaries updated by Laplace-smoothed reward
+counts, and the LLM Layer (Gemma 270M) is drawn as a **frozen,
+inference-only fallback** with no arrow feeding training into it, no
+corpus/chunk store, no attention mechanism anywhere in the picture.
+That's a real, honest gap, not an oversight in this review — the
+diagram never had a training loop in its scope at all.
+
+Where it actually belongs: this is Famous LLM (tomom)'s concern, not
+the Bank Layer's and not Gemma's. It needs a **new layer** — a
+Corpus/Training Layer, sitting alongside the Watch Layer, feeding
+tomom specifically — because tomom is the one component meant to grow
+by retraining, as distinct from the Bank Layer's "learning" (which is
+only weight updates on existing entries, never new structure) and
+Gemma's role (permanently frozen, DESCRIBE-only, never fine-tuned in
+this design). Adding new corpus chunks and retraining attention is a
+structurally different kind of growth than anything currently drawn.
+
+**7b. Scope confirmed: all four Banks, used everywhere.** Not a single
+demo feature — intended for games and any other application as the
+house grows. Explicit, lowered bar for now: a working demo doesn't
+need to "cure cancer," it needs to (a) be genuinely impressive to a
+technical ("greybeard") audience and (b) actually help a user save
+real tokens, or show them how to build more FSM/GOAP scaffolding to
+grow the token-saving foundation further. This matches Question 6's
+own token-savings KPI framing — restated here because it now applies
+to all four Banks, not just the Behavior Bank alone.
+
+**7c. Famous LLM (tomom): same bar, plus the "school" model.** Goal is
+"basically works" — able to do the most basic real conversation and
+math, later taught to code in Events and/or a binary form of prisc as
+a bootstrapping curriculum — always augmented by the existing
+FSM/IRL/GOAP machinery specifically to make tomom's current weak parts
+useful as **growing/learning joints**, not dead weight waiting on a
+future rewrite.
+
+The real long-term structure, named explicitly by the user: **school-
+based training**. Tomom (and later, one instance per entity) attends
+"classes" with curricula authored by a teacher — the user now, Gemma
+later — and is tested pass/fail on each one until it passes, rather
+than being globally fine-tuned all at once. This reframes training as
+discrete, gated, per-skill lessons instead of one undifferentiated
+loop.
+
+**7d. Bootstrapping is universal policy, not a one-off.** Every piece
+of work that crosses the Events threshold should, wherever possible,
+(a) build its own tools in Events rather than only being driven by
+Events, and (b) simultaneously train IRL/tomom/attention/whatever
+applies — the goal being to find how soon the house can bootstrap
+itself and delegate its own actions. This applies to game-building via
+relay (users building games should exercise and train the same loop)
+and to the house's own tooling work, symmetrically.
+
+**7e. The real long-term goal, stated directly: as few hardcoded game
+mechanics as possible.** Every entity gets its own learner instance,
+which can attend different "schools" depending on the skill a given
+game or context needs (farming, cooking, science, physics, ...) —
+mechanics become taught behavior, not hardcoded C. Even the
+**primitives themselves should stay flexible enough to grow** — e.g. a
+user should be able to "train" a game's physics engine to get more
+advanced physics, rather than the physics primitive being a hard,
+permanently fixed floor. This reframes "primitive" as *the smallest
+thing still allowed to grow*, not a hard architectural floor the way
+Question 5's diagram currently draws the Primitive Layer.
+
+**7f. `FILE:DESK` naming.** The user noted the `FILE` half of
+`FILE:DESK` causes real confusion (collides with the OS sense of
+"file" constantly) and proposed renaming it, floating `ROOM` and
+`WORLD` as options, landing on `WORLD`. Agreed and recommended:
+`WORLD` is the better fit — `ROOM` undersells the scope (implies one
+bounded space, when entities/pieces are meant to scale up to whole
+game boards), while `WORLD` matches the game-engine vocabulary this
+track is already heading toward and reads unambiguously next to
+`ENTITY`/`PIECE`. **Not yet done**: this is a naming recommendation
+only — no rename has been performed anywhere in code, docs, or the
+`FILE:DESK` term's existing usages. Given `10. .xhtpm -> .xhtm rename
+- CANCELLED` in `12.calendar/2026-09-20/2do.md` §10, any actual rename
+must be treated as a deliberate, separately-scoped decision, not
+silently folded into an unrelated commit.
+
+**Not yet done, deliberately**: no Corpus/Training Layer has been
+designed or built; no school/curriculum format has been defined; no
+`FILE:DESK` rename has been executed. This section is the record of
+the conversation, for item 3 and any future architecture-diagram or
+renaming work to start from.
+
 ## Grounding
 
 `HARNECIENT-HACK.md`, `LLMUD-HACK.md`, `DUSTOPIA-HACK.md`,
 `LLMUD-INTEGRATION-DESIGN.md`, `IRL-BOOTSTRAP-RECURSION-SPEC.md`,
 `13.agent-coms/KILO/claude-2-kilo-9.17.md` §5/§11,
-`12.calendar/2026-09-20/2do.md` §8,
+`12.calendar/2026-09-20/2do.md` §8/§10,
 `XO/LLMUD_CODE/8.0.JEV=class-4-describe.md`,
 `XO/LLMUD_CODE/8.1.harn+jev-diagram.md`.
