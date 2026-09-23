@@ -23,6 +23,9 @@
 #include "../nb_css.h"
 #include "../nb_dom.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "../js/stb_image.h"
+
 #include <unistd.h>
 #include <errno.h>
 #include <stdint.h>
@@ -762,6 +765,9 @@ static JSValue nb_el_getBoundingClientRect(JSContext *ctx, JSValueConst this_val
 static JSValue push_node(JSContext *ctx, NbNode *n);
 static JSValue nb_img_src_get(JSContext *ctx, JSValueConst this_val);
 static JSValue nb_img_src_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_img_naturalWidth_get(JSContext *ctx, JSValueConst this_val);
+static JSValue nb_img_naturalHeight_get(JSContext *ctx, JSValueConst this_val);
+static JSValue nb_img_complete_get(JSContext *ctx, JSValueConst this_val);
 static JSValue nb_image_ctor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_fetch_sync(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static int dispatch_event(JSContext *ctx, int kind, NbNode *node, JSValue ev, int bubbles);
@@ -1718,6 +1724,18 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
                 JS_NewCFunction(ctx, nb_img_src_get, "get src", 0),
                 JS_NewCFunction(ctx, nb_img_src_set, "set src", 1),
                 JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+            nm = JS_NewAtom(ctx, "naturalWidth");
+            JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_img_naturalWidth_get, "get naturalWidth", 0), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+            nm = JS_NewAtom(ctx, "naturalHeight");
+            JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_img_naturalHeight_get, "get naturalHeight", 0), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+            nm = JS_NewAtom(ctx, "complete");
+            JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_img_complete_get, "get complete", 0), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
             JS_FreeAtom(ctx, nm);
         } else {
             static const char *src_tags[] = { "script","iframe","input",
@@ -4320,6 +4338,67 @@ static const char *img_get_src(const NbNode *n) {
     for (int i = 0; i < g_img_src_count; i++) if (g_img_src[i].n == n) return g_img_src[i].src;
     return nb_attr_get(n, "src");
 }
+#define MAX_IMG_DECODED 256
+static struct { NbNode *n; int w, h; unsigned char *data; } g_img_decoded[256];
+static int g_img_decoded_count = 0;
+static void img_set_decoded(NbNode *n, int w, int h, unsigned char *data) {
+    for (int i = 0; i < g_img_decoded_count; i++) if (g_img_decoded[i].n == n) {
+        free(g_img_decoded[i].data); g_img_decoded[i].w = w; g_img_decoded[i].h = h; g_img_decoded[i].data = data; return;
+    }
+    if (g_img_decoded_count < MAX_IMG_DECODED) {
+        g_img_decoded[g_img_decoded_count].n = n; g_img_decoded[g_img_decoded_count].w = w;
+        g_img_decoded[g_img_decoded_count].h = h; g_img_decoded[g_img_decoded_count].data = data; g_img_decoded_count++;
+    } else free(data);
+}
+static int img_get_decoded(const NbNode *n, int *w, int *h) {
+    for (int i = 0; i < g_img_decoded_count; i++) if (g_img_decoded[i].n == n) {
+        if (w) *w = g_img_decoded[i].w; if (h) *h = g_img_decoded[i].h; return g_img_decoded[i].data != NULL;
+    }
+    return 0;
+}
+static int b64_val(char c) {
+    if (c >= 'A' && c <= 'Z') return c - 'A';
+    if (c >= 'a' && c <= 'z') return c - 'a' + 26;
+    if (c >= '0' && c <= '9') return c - '0' + 52;
+    if (c == '+') return 62;
+    if (c == '/') return 63;
+    return -1;
+}
+static unsigned char *b64_decode(const char *in, size_t *out_len) {
+    size_t len = strlen(in);
+    size_t out_cap = (len * 3) / 4 + 4;
+    unsigned char *out = (unsigned char *)malloc(out_cap);
+    if (!out) return NULL;
+    size_t o = 0; int v = 0, bits = -8;
+    for (size_t i = 0; i < len; i++) {
+        char c = in[i];
+        if (c == '=' || c == '\n' || c == '\r' || c == ' ') continue;
+        int d = b64_val(c);
+        if (d < 0) continue;
+        v = (v << 6) + d;
+        bits += 6;
+        if (bits >= 0) { out[o++] = (unsigned char)((v >> bits) & 0xFF); bits -= 8; }
+    }
+    *out_len = o;
+    return out;
+}
+static JSValue nb_img_naturalWidth_get(JSContext *ctx, JSValueConst this_val) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_NewInt32(ctx, 0);
+    int w, h; if (img_get_decoded(n, &w, &h)) return JS_NewInt32(ctx, w);
+    return JS_NewInt32(ctx, 0);
+}
+static JSValue nb_img_naturalHeight_get(JSContext *ctx, JSValueConst this_val) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_NewInt32(ctx, 0);
+    int w, h; if (img_get_decoded(n, &w, &h)) return JS_NewInt32(ctx, h);
+    return JS_NewInt32(ctx, 0);
+}
+static JSValue nb_img_complete_get(JSContext *ctx, JSValueConst this_val) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_NewBool(ctx, 0);
+    int w, h; return JS_NewBool(ctx, img_get_decoded(n, &w, &h));
+}
 /* HTMLImageElement src accessor — Step 1: fetch via nb_fetch_sync and fire load/error.
  * No decode yet; just verifies that img src triggers network and onload. */
 static JSValue nb_img_src_get(JSContext *ctx, JSValueConst this_val) {
@@ -4345,6 +4424,29 @@ static JSValue nb_img_src_set(JSContext *ctx, JSValueConst this_val, int argc, J
             JSValue okv = JS_GetPropertyStr(ctx, res, "ok");
             int ok = JS_ToBool(ctx, okv);
             JS_FreeValue(ctx, okv);
+            if (ok) {
+                JSValue bodyv = JS_GetPropertyStr(ctx, res, "body");
+                char *bstr = JS_ToCString(ctx, bodyv);
+                if (bstr) {
+                    unsigned char *png_data = NULL; size_t png_len = 0;
+                    if (strncmp(s, "data:image/", 11) == 0) {
+                        const char *comma = strchr(s, ',');
+                        if (comma && strstr(s, ";base64,")) png_data = b64_decode(comma+1, &png_len);
+                        else if (comma) { png_data = (unsigned char *)strdup(comma+1); png_len = strlen(comma+1); }
+                    } else {
+                        png_data = (unsigned char *)strdup(bstr);
+                        png_len = strlen(bstr);
+                    }
+                    if (png_data && png_len) {
+                        int w = 0, h = 0, comp = 0;
+                        unsigned char *rgba = stbi_load_from_memory(png_data, (int)png_len, &w, &h, &comp, 4);
+                        if (rgba) img_set_decoded(n, w, h, rgba);
+                        free(png_data);
+                    }
+                    JS_FreeCString(ctx, bstr);
+                }
+                JS_FreeValue(ctx, bodyv);
+            }
             const char *evtype = ok ? "load" : "error";
             char js[64];
             snprintf(js, sizeof(js), "new Event('%s',{bubbles:false})", evtype);
@@ -4360,7 +4462,7 @@ static JSValue nb_img_src_set(JSContext *ctx, JSValueConst this_val, int argc, J
     }
     return JS_UNDEFINED;
 }
-static JSValue nb_image_ctor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+static __attribute__((used)) JSValue nb_image_ctor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     JSValue global = JS_GetGlobalObject(ctx);
     JSValue doc = JS_GetPropertyStr(ctx, global, "document");
     JSValue ce = JS_GetPropertyStr(ctx, doc, "createElement");
