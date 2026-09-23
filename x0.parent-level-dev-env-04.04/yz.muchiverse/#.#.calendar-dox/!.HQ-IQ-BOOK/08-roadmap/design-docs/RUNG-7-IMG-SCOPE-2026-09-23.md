@@ -1,0 +1,41 @@
+# Rung 7 — <img> support — Scope 2026-09-23
+
+**Branch:** `opencode` @ `8bfe921e` parity 0 0, `make nbjs` GREEN.
+**Gate:** `PRESENTATION-VIDEO-PIPELINE.md:115` — network browser is TEXT-only today; image support is next before normal-browser presentation.
+
+## Current state (TEXT-only)
+
+- **DOM:** `nb_dom.c:83` lists `img` as void element, `nb_js_worker.c:505` emits `IMG|<sprite_dir>|<alt>` rows (house sprite.csv, no decode). `nb_dom.h` has no `img` fetch.
+- **Wire:** `IMG|<sprite_dir>|<alt>` text rows via `page.state.txt` (`network_browser_manager.c:30`), not binary.
+- **Renderer:** `khtpm_draw_core.c` draws sprite tiles, no `stb_image` decode, no `draw-image` op with clip.
+- **Decoder:** `stb_image.h` already in house (`44.xyz.01.00/&.hq-apps/js/stb_image.h`, `101.mutaclsym.../ops/lib/stb_image.h`, `stb_image_write.h` in same lib) — per `PIPELINE:115` ready to wire.
+
+## Required per PIPELINE:115 (in order)
+
+1. **Decoder in worker** — vendor `stb_image.h` into `&.hq-apps/network` (copy from `&.hq-apps/js/`), `stbi_load` from `fetch` body bytes.
+2. **`img` element + fetch in `nb_dom.c`** — `HTMLImageElement` (src, onload/onerror, complete), fetch `src` via existing `nb_fetch_sync` / `FETCH` RPC `7e55fc8b`, decode to RGBA, store in node.
+3. **Binary `IMG` wire frame** — extend `RENDER` rows or add `IMG_BIN|<w>|<h>|<rgba-b64>` (or file path under `#.desktop/nb_images/`), keep text `IMG|...` as fallback for TEXT-only readers.
+4. **Draw-image op + clip in renderer** — `khtpm_draw_core.c` / manager `network_browser_manager.c:3456` `IMG`/`VIDEO` run handling: decode `w/h`, `stbi` RGBA → XImage, clip to `getBoundingClientRect` (`514b8ab9` layout), draw.
+
+Video (`ffmpeg` demux/decode) after `<img>` — deferred, not in this scope.
+
+## Scope verdict
+
+**Not SHIPPED — next green frontier.** All 4 steps are new code; no in-tree `stb_image` decode for network browser, no `img` fetch, no binary wire, no draw-image. `TEXT-only` is correct per `PIPELINE:115`.
+
+## Next bounded steps (each GREEN, parity 0 0, one push)
+
+1. **Step 1 — img element + fetch (no decode yet):** `nb_dom.c` `HTMLImageElement`, `src` setter triggers `nb_fetch_sync`, stores bytes, `onload` fires, `RENDER` emits `IMG|<url>|<status>` — `make nbjs` GREEN, `wcs` still 9/9.
+2. **Step 2 — stb_image decode + binary wire:** vendor `stb_image.h`, decode in worker, emit `IMG_BIN` or temp file, manager reads, `RENDER` rows carry `w/h`.
+3. **Step 3 — renderer draw + clip:** `khtpm_draw_core.c` `draw-image` with `getBoundingClientRect` layout, clip, `make nbjs` + `dump_frame_png_op` proof.
+
+## House law
+
+- Verify `stb_image.h` already in house; do not vendor duplicate if `&.hq-apps/network` can include from `&.hq-apps/js/`.
+- One commit per step, `make nbjs` GREEN, `wcs` GREEN, parity 0 0, non-force push.
+- Presentation parked until `<img>` lands — see `FRESH-AGENT-HANDOFF` Future Todo.
+
+## Timeline / KPIs (for go-ahead)
+
+- **Timeline:** Step 1 `≈1 week` (dom + fetch), Step 2 `≈1 week` (decode + wire), Step 3 `≈1 week` (renderer) — **3 weeks total** to `<img>` GREEN, based on `rungs 3-6` velocity (7 commits in 19 days).
+- **KPIs:** `make nbjs` GREEN, `wcs` 9/9, new `worker_img_test` 3/3 PASS (file:// png, http png, onload fires), `dump_frame_png_op` shows `IMG` rendered at `getBoundingClientRect` position (not 0,0), `page.state.txt` `IMG|...` rows carry `w/h`.
