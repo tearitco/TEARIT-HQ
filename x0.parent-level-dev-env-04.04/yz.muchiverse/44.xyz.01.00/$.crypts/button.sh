@@ -44,6 +44,36 @@ KHTPM_PARSER="$TB_DIR/+x/khtpm_core_render.+x"
 KHTPM_PAT="khtpm_core_render\.\+x|khtpm_strip_parser\.\+x|khtpm_taskbar_manager_main\.\+x|khtpm_hq_render\.\+x|tp_desktop_window_rgb\.\+x|tp_desktop_window\.\+x"
 khtpm_pids() { pgrep -f "$KHTPM_PAT" 2>/dev/null; }
 
+# REAL FIX 2026-09-23, direct live report ("reset should be killing
+# x11-hq windows as well"): khtpm_pids() above already covers every
+# x11-hq window's own RENDERER (they all share khtpm_core_render.+x,
+# confirmed live - chat-hai/network-browser/co-lab-hai/etc. all launch
+# it, matching this pattern already). The real gap is each app's own
+# MANAGER child (colab_hai_manager.+x, network_browser_manager.+x, every
+# other &.hq-apps/*/+x/*_manager.+x) - a separate binary, tied to its
+# renderer's lifetime only through the renderer's own graceful
+# window-close path. quit/reset here bypass that (a raw external
+# kill -TERM/-KILL on the renderer, not a real window-close event), so
+# those managers were silently left running/orphaned - exactly what
+# happened to Cursword's own entity process earlier tonight, same real
+# shape. Scoped generically by PATH (any live process whose cmdline
+# runs a real +x/ binary from under this house's own &.hq-apps/), not a
+# hardcoded per-app binary-name list - matches this house's own stated
+# preference (see reset's own comment below: "no hardcoded entity list
+# duplicated here") and needs zero edits when a new HQ app is added.
+hq_app_manager_pids() {
+    for p in /proc/[0-9]*; do
+        pid="${p#/proc/}"
+        [ -r "$p/cmdline" ] || continue
+        args="$(tr '\0' ' ' < "$p/cmdline" 2>/dev/null)"
+        [ -z "$args" ] && continue
+        case "$args" in
+            *"$HOUSE/"*"&.hq-apps/"*"/+x/"*) echo "$pid" ;;
+        esac
+    done
+}
+all_khtpm_and_hq_pids() { { khtpm_pids; hq_app_manager_pids; } 2>/dev/null | sort -u; }
+
 read_restore_mode() {
     awk -F'|' '
         $1 ~ /^STATE[[:space:]]*$/ {
@@ -68,9 +98,9 @@ case "$ACTION" in
         ;;
     quit|close)
         # Kill all running toolbars and entities (no relaunch)
-        khtpm_pids | xargs -r kill -TERM
+        all_khtpm_and_hq_pids | xargs -r kill -TERM
         sleep 1
-        khtpm_pids | xargs -r kill -KILL 2>/dev/null || true
+        all_khtpm_and_hq_pids | xargs -r kill -KILL 2>/dev/null || true
         echo "closed all toolbars and entities"
         ;;
     reset)
@@ -82,9 +112,9 @@ case "$ACTION" in
         # autostart.pdl — same single source of truth as `run` (the pdl
         # LAUNCH rows own the tool-bar AND all entity paths, no hardcoded
         # entity list duplicated here).
-        khtpm_pids | xargs -r kill -TERM
+        all_khtpm_and_hq_pids | xargs -r kill -TERM
         sleep 1
-        khtpm_pids | xargs -r kill -KILL 2>/dev/null || true
+        all_khtpm_and_hq_pids | xargs -r kill -KILL 2>/dev/null || true
         # REAL FIX 2026-09-21, direct instruction ("i dont want it to run
         # the old binaries if theres a compile fail or it may mislead me
         # into thinking things are ok, when they aren't"): this used to
