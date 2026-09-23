@@ -25,7 +25,7 @@ Video (`ffmpeg` demux/decode) after `<img>` — deferred, not in this scope.
 
 ## Next bounded steps (each GREEN, parity 0 0, one push)
 
-1. **Step 1 — img element + fetch (no decode yet) — SHIPPED e4428e13:** `HTMLImageElement` src accessor (`nb_img_src_get/set` + `img_get_src` map, `window.Image` alias), fetch via `nb_fetch_sync` (data:/http(s) via manager RPC), fires `load`/`error` via `dispatch_event`; `wcs[img]` 10/10 PASS — `make nbjs` GREEN.
+1. **Step 1 — img element + fetch (no decode yet) — SHIPPED e4428e13 + fix c1a72fdd:** `HTMLImageElement` src accessor (`nb_img_src_get/set` + `img_get_src` map, `window.Image` alias), fetch via `nb_fetch_sync` (data:/http(s) via manager RPC), fires `load`/`error` via `dispatch_event`; `wcs[img]` 10/10 PASS (`c1a72fdd` fix) — `make nbjs` GREEN.
 2. **Step 2 — stb_image decode + binary wire:** vendor `stb_image.h`, decode in worker, emit `IMG_BIN` or temp file, manager reads, `RENDER` rows carry `w/h`.
 3. **Step 3 — renderer draw + clip:** `khtpm_draw_core.c` `draw-image` with `getBoundingClientRect` layout, clip, `make nbjs` + `dump_frame_png_op` proof.
 
