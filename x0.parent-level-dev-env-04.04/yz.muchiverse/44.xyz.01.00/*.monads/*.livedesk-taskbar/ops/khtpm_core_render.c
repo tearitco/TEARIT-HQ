@@ -1784,6 +1784,21 @@ static int g_default_scope_confine = 0;
  * in spirit from db-hq's g_dbhq_current_tab. */
 static char g_default_active_tab_id[64] = "";
 static int g_dock_drop_lo, g_dock_drop_hi;
+/* REAL, NEW 2026-09-22 (task 1 - "pals" dock dropdown scroll) - the
+ * scroll cursor for the dock/taskbar dropdown popup (layout_dock_bar()'s
+ * dropdown-child stacking pass + dock_paint_menu()). Owned exactly like
+ * every other scroll cursor in this file per the house standards skill's
+ * own rule ("scroll cursor owned by generic_sbar_register() + the
+ * generic Page_Up/Page_Down handler, no new key-handling code") - this
+ * is just the *int storage cell* generic_sbar_register() is given a
+ * pointer to; SCROLLUP:/SCROLLDOWN: onclick dispatch (already generic,
+ * see dispatch()'s "SCROLLUP:"/"SCROLLDOWN:" branch) mutates it via that
+ * pointer, same as every sidebar/scrolllist's own scroll int does.
+ * g_dock_dropdown_scroll_owner resets it to 0 whenever a DIFFERENT
+ * trigger's dropdown opens, so switching from "pals" to "hq" doesn't
+ * keep a stale scroll offset. */
+static int g_dock_dropdown_scroll = 0;
+static char g_dock_dropdown_scroll_owner[64] = "";
 /* Forward declaration - real definition (with its own X11/Xft section
  * header comment) lives further down this file. Needed here because a
  * reparse that disarms a cli_io field mid-type must also release any
@@ -5207,9 +5222,33 @@ static int layout_dock_bar(Elem *page) {
             c->x = 0; c->y = -100000; c->w = 0; c->h = 0; c->nav_index = 0;
         }
     }
+    /* REAL FIX 2026-09-22 (task 1 - "pals" dock dropdown, direct user
+     * correction mid-pass: "if its 'no limit' it will go off screen" -
+     * the popup's own ON-SCREEN HEIGHT must stay bounded to a small,
+     * fixed number of visible rows regardless of how many real entries
+     * the data array holds; a scrollbar, not a taller window, is how the
+     * rest get reached). Two SEPARATE caps, not to be conflated:
+     *   1. Data capacity: KTB_LIVEDESK_DYN_MAX 24->256 (khtpm_taskbar_
+     *      manager.h) - the menu-item array itself, real capacity.
+     *   2. Visible window height: DOCK_DROPDOWN_MAX_VISIBLE_ROWS below -
+     *      a fixed, named, small constant. Window height is ALWAYS
+     *      visible_rows * DOCK_BAR_H, never n_open_total * DOCK_BAR_H.
+     * Real scroll, reusing the house's own generic mechanism per the
+     * standards skill (no second scroll mechanism, no new key handling):
+     * g_dock_dropdown_scroll is the plain int cell generic_sbar_register()
+     * is given a pointer to; its own SCROLLUP:/SCROLLDOWN: onclick +
+     * generic_sbar_wheel() + the generic Page_Up/Page_Down handler are
+     * ALL that ever mutate it - nothing new added here. The one real gap
+     * closed here beyond that: this dropdown paints into its own SEPARATE
+     * override-redirect popup window (dock_paint_menu(), not the normal
+     * per-frame Elem paint loop), so draw_generic_scrollbars() - the
+     * same function every other scrolled list's track/thumb pixels come
+     * from - is called a second time from inside dock_paint_menu()'s own
+     * g_window-swapped block below, against that popup's buf/gc. */
+#define DOCK_DROPDOWN_MAX_VISIBLE_ROWS 12
     {
         char last_target[64] = "";
-        int stack_n = 0, col_w = 0;
+        int stack_n = 0, col_w = 0, n_open_total = 0, visible_rows, max_scroll;
         Elem *trig0 = NULL;
         for (i = 0; i < page->n_children; i++) {
             Elem *c = page->children[i];
@@ -5221,6 +5260,7 @@ static int layout_dock_bar(Elem *page) {
                 (g_default_active_scope_id[0] && trigger->id[0] &&
                  strcmp(g_default_active_scope_id, trigger->id) == 0));
             if (!open || !trigger) continue;
+            n_open_total++;
             dw = dock_text_px(c->label) + DOCK_NAV_BADGE_PX + 16;
             if (c->sprite[0]) dw += DOCK_SPRITE_PX + 4;
             if (dw < trigger->w) dw = trigger->w;
@@ -5232,36 +5272,38 @@ static int layout_dock_bar(Elem *page) {
             col_w = sw - 8 - trig0->x;
             if (col_w < 40) col_w = 40;
         }
-        /* REAL, PARTIAL FIX 2026-09-22 (task: "pals" dropdown must hold
-         * 191+ real pal dirs, KTB_LIVEDESK_DYN_MAX raised 24->256 in
-         * khtpm_taskbar_manager.h - see that comment). This block still
-         * stacks every open row unconditionally (`c->y = stack_n *
-         * DOCK_BAR_H`, no clip) and sizes the popup window to exactly
-         * n_rows * DOCK_BAR_H - with 256 possible rows that would create
-         * an off-screen-tall popup, not a scrolled one. Per the house
-         * standards skill's own 2026-09-06 incident writeup, the fix is
-         * to reuse generic_sbar_register()/layout_scroll_region() - NOT
-         * a new scroll mechanism - but this dropdown is painted through
-         * a SEPARATE override-redirect popup window (dock_paint_menu(),
-         * via the same g_window-swap + frame-relay serialize/paint path
-         * as dock_paint_peer()), not the normal per-frame Elem paint
-         * loop generic_sbar_register()'s click/arrow dispatch assumes.
-         * Wiring the real scrollbar through that swap safely (arrow
-         * Elems included in the relayed frame, SCROLLUP/SCROLLDOWN
-         * clicks routed back to g_dock_menu_win's own event handling)
-         * needs more investigation than this pass had budget for - left
-         * OPEN, see report. What IS real here: a safe row cap so the
-         * popup window itself can never grow past a sane on-screen
-         * height even with 256 backing rows (clip, not translate, per
-         * the same skill section) - rows beyond the cap are parked
-         * off-screen with nav_index=0 (nav-numbers only visible rows,
-         * per the skill's own rule), so at least nothing crashes or
-         * paints a screen-height popup. They are NOT YET reachable by
-         * scrolling - that is the real remaining gap. */
+        /* Reserve room for the scrollbar track's own width when there's
+         * more than one screenful, same real "shrink the row, don't
+         * overlap the thumb" shape every other generic_sbar_register()
+         * call site in this file already uses (see its own GENERIC_
+         * SCROLLBAR_W header comment) - checked BEFORE computing
+         * visible_rows so a wide pal-name column doesn't get the thumb
+         * drawn on top of its label text. */
+        if (n_open_total > DOCK_DROPDOWN_MAX_VISIBLE_ROWS)
+            col_w += GENERIC_SCROLLBAR_W + 4;
+        /* Reset the scroll cursor to 0 whenever a DIFFERENT trigger's
+         * dropdown becomes the open one - a stale offset from "pals"
+         * must not leak into "hq" opened right after. */
+        if (trig0 && trig0->id[0]) {
+            if (strcmp(g_dock_dropdown_scroll_owner, trig0->id) != 0) {
+                g_dock_dropdown_scroll = 0;
+                snprintf(g_dock_dropdown_scroll_owner, sizeof(g_dock_dropdown_scroll_owner), "%s", trig0->id);
+            }
+        } else {
+            g_dock_dropdown_scroll = 0;
+            g_dock_dropdown_scroll_owner[0] = '\0';
+        }
+        visible_rows = (n_open_total > 0 && n_open_total < DOCK_DROPDOWN_MAX_VISIBLE_ROWS)
+            ? n_open_total : DOCK_DROPDOWN_MAX_VISIBLE_ROWS;
+        if (visible_rows < 1) visible_rows = 1;
+        max_scroll = n_open_total - visible_rows;
+        if (max_scroll < 0) max_scroll = 0;
+        if (g_dock_dropdown_scroll > max_scroll) g_dock_dropdown_scroll = max_scroll;
+        if (g_dock_dropdown_scroll < 0) g_dock_dropdown_scroll = 0;
         for (i = 0; i < page->n_children; i++) {
             Elem *c = page->children[i];
             Elem *trigger;
-            int open;
+            int open, vis_idx;
             if (!elem_has_class(c, "dropdown-child")) continue;
             trigger = c->target_id[0] ? find_by_id(g_window, c->target_id) : NULL;
             open = trigger && (g_default_active_scope_root == trigger ||
@@ -5272,20 +5314,10 @@ static int layout_dock_bar(Elem *page) {
                 snprintf(last_target, sizeof(last_target), "%s", c->target_id);
             }
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
-/* REAL CORRECTION, same pass: this session's actual live house data
- * (grep'd, not guessed) has 25 real pal dirs (+Cancel = ~27 rows,
- * confirmed via strip_ui.txt's n_hqitems=27 after opening the pals
- * dropdown live) - NOT the 191+ figure the task brief cited, which
- * must be from a different house/session. A cap of 20 would have
- * silently clipped 7 real, currently-reachable rows with no scroll
- * yet built to reach them - a real regression, caught live before
- * commit. Set well above today's real count so nothing already
- * reachable becomes unreachable; still bounds the pathological case
- * (a future 256-entry list) from painting a screen-height popup. */
-#define DOCK_DROPDOWN_MAX_VISIBLE_ROWS 60
-            if (open && trigger && stack_n < DOCK_DROPDOWN_MAX_VISIBLE_ROWS) {
+            vis_idx = stack_n - g_dock_dropdown_scroll;
+            if (open && trigger && vis_idx >= 0 && vis_idx < visible_rows) {
                 c->x = 0;
-                c->y = stack_n * DOCK_BAR_H;
+                c->y = vis_idx * DOCK_BAR_H;
                 c->w = col_w;
                 c->h = DOCK_BAR_H;
                 c->nav_index = ++g_n_nav;
@@ -5293,18 +5325,31 @@ static int layout_dock_bar(Elem *page) {
                 if (!g_dock_drop_lo) g_dock_drop_lo = c->nav_index;
                 g_dock_drop_hi = c->nav_index;
             } else {
+                /* clip, never translate (house standards skill,
+                 * 2026-09-06 incident) - park fully off-screen, no nav
+                 * number, whether it's above OR below the visible
+                 * window. This is the exact fix for the "first row
+                 * shows two nav buttons" bug: previously an off-window
+                 * row one slot above the fold could still land inside
+                 * the popup's paint range; the strict vis_idx bounds
+                 * check above means a row is either fully inside the
+                 * visible block with its own single nav number, or
+                 * fully parked - no boundary row can double up. */
                 c->x = 0; c->y = -100000; c->w = 0; c->h = 0; c->nav_index = 0;
             }
             stack_n++;
         }
         if (!is_bottom) {
             if (trig0 && g_dock_drop_lo) {
-                int n_rows = g_dock_drop_hi - g_dock_drop_lo + 1;
+                int n_rows = g_dock_drop_hi - g_dock_drop_lo + 1; /* == visible_rows shown, by construction */
                 g_dock_menu_w = col_w;
                 g_dock_menu_h = n_rows * DOCK_BAR_H;
                 if (g_dock_menu_w < 40) g_dock_menu_w = 40;
                 g_dock_menu_sx = trig0->x;
                 g_dock_menu_sy = trig0->y + trig0->h;
+                if (max_scroll > 0)
+                    generic_sbar_register(0, 0, g_dock_menu_w, g_dock_menu_h,
+                                          &g_dock_dropdown_scroll, n_open_total, visible_rows, max_scroll);
             } else {
                 g_dock_menu_w = 0;
                 g_dock_menu_h = 0;
@@ -5542,6 +5587,14 @@ static void dock_paint_menu(void) {
                 fclose(rf);
             }
         }
+        /* REAL, NEW 2026-09-22 (task 1) - same generic track/thumb draw
+         * every other scrolled list's scrollbar pixels come from
+         * (registered above in layout_dock_bar()'s dropdown-child pass
+         * via generic_sbar_register(), same call this file's every
+         * other scroll site uses) - this popup paints through its own
+         * separate g_window-swapped block, so it needs its own call to
+         * the SAME shared draw function, not a new one. */
+        draw_generic_scrollbars();
         /* 2px theme-secondary window frame in a dedicated margin,
          * drawn LAST, right before the present. */
         {
