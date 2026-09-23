@@ -76,7 +76,20 @@ typedef struct Elem {
     char id[64];
     char classes[CSS_MAX_CLASSES][32];
     int n_classes;
-    char label[256];
+    /* REAL FIX 2026-09-23, direct live report (co-lab-hai long agent
+     * posts clipping): the actual root cause was NOT missing word-wrap -
+     * a generic wrap for any <text>/<item> row tall enough to need it
+     * already existed house-wide since 2026-08-16/2026-09-03 (see
+     * wrap_line_count()/scroll_row_span() in this file's own siblings).
+     * The real cut point was upstream of wrap entirely: this field's
+     * old 256-byte size truncated a long ${pend_msg}/${msg.text} token
+     * substitution before the wrap logic ever saw the full string.
+     * colab_hai_manager.c itself keeps up to ~2048 bytes per real
+     * conversation line - sized to match, same reasoning as the
+     * 2026-08-16 action[] bump just below (grep-confirmed no fixed-256
+     * assumption reads this field elsewhere; every real site already
+     * uses sizeof(e->label)). */
+    char label[2048];
     /* REAL FIX 2026-08-16 (found live building khtpm_core_render.c,
      * Stage 2c proof): 64 was too small for a real objects.pdl-style
      * action= shell command (e.g. ava's real "Play" action is 200+

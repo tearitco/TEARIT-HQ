@@ -2,13 +2,40 @@
 
 ---
 
+## ⚠️ OPEN 2026-09-23: Co-lab-h-ai cuts off messages so the human cannot read them (4 real fixes applied, symptom UNCHANGED - see below)
+
+**Reported:** live, while approving agent posts in session `1790154594`. Long `@kilo` lines were queued. The window shows a cut-off sentence. The full text is only in `pending.txt` / `conversation.txt`.
+
+**Do not re-attempt the original direction below or re-diagnose from scratch - both were wrong, confirmed by direct code read:**
+
+1. **`session_label`'s 96-byte buffer is a red herring.** `session_label()` (`colab_hai_manager.c`) only ever formats a short date string (`"Sep 23 02:21"`-shaped, via `strftime`) into that buffer - it can never hold anything close to 96 bytes in real use.
+2. **`<text>` labels already word-wrap generically** for any row tall enough to need it - a real, house-wide capability since 2026-08-16/2026-09-03 (`wrap_line_count()`/`scroll_row_span()` in `khtpm_draw_core.c`/`khtpm_core_render.c`). Swapping to `<text_area>` (attempted mid-session, reverted) is NOT the fix - it makes the row nav-reachable/editable, which it shouldn't be. Don't re-try it.
+
+**4 real, verified-individually-correct fixes were applied tonight (all still in place, all necessary, none sufficient alone):**
+1. `khtpm_render_core.c`'s `Elem.label` was `char label[256]` → bumped to `2048` (matches the manager's own real per-line cap). Verified via a debug `fprintf` in `apply_attr()`'s `"label"` branch that the FULL, untruncated `val` (up to 649 real chars, confirmed ending exactly at the real message's true last words) reaches this point and is copied in with `sizeof(e->label)`.
+2. `khtpm_draw_core.c`'s draw-time wrap `avail_w` (~line 1474) only subtracted padding once (`(e->x+e->w)-badge_label_x`), while `scroll_row_span()`'s LAYOUT-time `avail_w` subtracts it twice (`w-pad*2`) - this real drift was causing the ORIGINAL bug symptom (overlap on some rows, gaps on others, before this fix). Matched to `-badge_label_x-pad`. This fix alone resolved the overlap/gap artifacts - rows now stack cleanly with no overlap. It did NOT resolve the truncation.
+3. `khtpm_draw_core.c`'s entity-decode step (~line 1258, `label_decoded[600]`, runs for every plain `<text>` tag) → bumped to `2048` to match `Elem.label`.
+4. `khtpm_draw_core.c`'s draw loop `max_lines = e->h/line_h` (floor division) → changed to ceiling division to match `scroll_row_span()`'s own ceiling-division guarantee, removing a possible off-by-one-line asymmetry.
+
+**After all 4 fixes, live frame dumps (`dump_frame_png_op`) still show the exact same truncation points, byte-for-byte identical to before any of these fixes** - e.g. a 649-char real message still cuts at the same point. This was checked with debug instrumentation (temporarily added, since removed) directly inside `scroll_row_span()`: for a 649-char message, it correctly computed `lines=8` (the real wrapped-line count) and `span=4` (a valid ROW_H-unit count, ceiling-division-guaranteed to hold 8 real lines at this window's font metrics) - so **the row IS being assigned enough height at layout time**, and the earlier `max_lines` asymmetry theory (fix #4) turned out not to be the live bug either (no visible change after applying it).
+
+**Real, confirmed-clean by direct code read (i.e. do NOT re-check these, they are not the bug):** `xml_escape()` (2200B dest), `kh_substitute_vars()` (huge dynamic cap), `kh_set_var()`/`KH_VAR_VALUE` (2048), `kh_load_vars()`'s fgets buffer (2120B), `parse_attr_value()`'s `val[1024]`, `kh_expand_repeats()`/`kh_emit_repeat_body()` (huge dynamic caps), `khtpm_reparse_diff.c`'s template-field copy (uses `sizeof(dst->label)`, tracks the 2048 bump automatically). The manager's own `ui.txt` output was directly read and confirmed byte-complete for the affected messages - this is NOT a manager-side bug.
+
+**Real, NOT YET checked - most likely next place to look:** whether `layout_scroll_region()`'s own visible-row window (the code that decides which rows are "visible" and positions them via `content_y + (row-*scroll)*ROW_H`) is somehow re-clipping or re-assigning `c->h` for a row that's only PARTIALLY within `visible_rows`, separately from the `scroll_row_span()` call already confirmed correct in isolation - i.e. the bug may be between `scroll_row_span()`'s correct RETURN VALUE and what actually lands in `c->h` for THIS specific row once the surrounding scroll/visibility bookkeeping runs, not in `scroll_row_span()` itself. Also worth checking: whether `e->style`/`font_for()` used at DRAW time is guaranteed to be the exact same font object/metrics as at LAYOUT time (both call `css_compute_style` separately - confirmed same class/tag/id inputs, but not yet proven bit-identical `line_h` output between the two call sites for this specific window).
+
+**Do not restart the buffer-size hunt - all obvious buffers in the chain are confirmed correctly sized (2048) or dynamically huge.** This is very likely a layout/visibility bookkeeping bug now, not a truncation bug.
+
+---
+
 ## ⚠️ OPEN 2026-09-22: HQ dropdown/menu lists (pals, palettes, edit, etc.) have no scrollbar at all
 
 **Reported:** direct live report, discovered while investigating a real overlap bug in the "pals" dropdown (see the `khtpm_core_render.c` scroll-boundary entry below, same session) — "drop downs should have a scroll bar (which has navs) if they dont yet. this was an oversight."
 
 **Confirmed by direct code check**: grepped `khtpm_core_render.c` for any scrollbar wiring on the HQ dropdown/menu (`hq_menu`) rendering path — zero hits. The generic scroll-region machinery this house already uses elsewhere (`layout_scroll_region()`/`generic_sbar_register()`, proven in file-explorer/board-viewer/etc.) is real and working, but the HQ dropdown cells (pals, palettes, edit, and any other `which == N` cell using `HQMenuItem[]`) don't call into it at all — a long list (the "pals" dropdown has 140+ real entries) has no visible thumb/track, no click-to-scroll, and the user has no way to know there's more below the last visible row short of scrolling blind.
 
-**Not yet fixed.** Real direction: wire the same `generic_sbar_register()`/`layout_scroll_region()` path every other scrollable list in this house already uses onto the HQ dropdown/menu rendering, rather than inventing a second scrollbar mechanism. Likely related to (may share a root cause with, or may be a separate follow-up from) the boundary-row overlap bug directly below this entry — check both together before considering either fully closed.
+**Partially fixed 2026-09-23 by Codex, built/merged/pushed to `main`.** Real, scoped implementation in `khtpm_core_render.c`'s `layout_dock_bar()`/`dock_paint_menu()` (the dropdown/menu path): reuses the existing generic `generic_sbar_register()`/`draw_generic_scrollbars()` machinery (not a second bespoke system, per the direction above); clips rows outside the visible window instead of translating (`vis_idx` bounds check, no nav_index for off-screen rows); wires mouse wheel, scrollbar-arrow clicks, and Page_Up/Page_Down, scoped to the dropdown via `g_dock_drop_lo`/`hi` so it doesn't touch other scroll regions. `KTB_LIVEDESK_DYN_MAX` raised 24→256 (`khtpm_taskbar_manager.h`, real house has 190+ pals) with a corrected Cancel-row reservation in `khtpm_taskbar_manager.c` (dry-runs the post-row count before the directory scan fills the array).
+
+**Live-verified 2026-09-23 by direct owner report:** the pals dropdown now shows a genuinely longer list (the 256-cap + clipping is working) - **but no scrollbar thumb/track is visible yet**, so a user still can't see there's more below the last visible row or click-drag to scroll (wheel/keys may still work - not yet confirmed either way). **Next step for whoever picks this up:** verify live whether `draw_generic_scrollbars()` is actually being called/rendering for this window (check `g_dock_menu_max_scroll > 0` is true when the real 190+-pal list is open - `dock_paint_menu()` only calls `generic_sbar_register()` when that's the case) and whether the thumb is being drawn but invisible (theme/color/z-order issue) vs never drawn at all (the register call not actually firing, or `g_n_generic_sbars` not being reached by the draw pass for this window). Real commit: `0b454145` on `codex`, merged to `main` via fast-forward, pushed.
 
 ---
 
