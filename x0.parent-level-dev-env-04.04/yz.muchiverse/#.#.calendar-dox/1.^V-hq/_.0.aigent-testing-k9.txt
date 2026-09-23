@@ -184,30 +184,28 @@ one did.
   `strip_input_history.txt` `KEY_PRESSED:1002` did **not** move
   `unified_nav_focus` in the 2026-08-28 re-prove.
 
-**ADDENDUM 2026-09-23 (db-hq-pal tabs — live, do not "fix" the GUI
-from an unactivated tab):**
-- This window is `class="db-hq-pal"`. `#.desktop/db_hq_history.txt`
-  and `harnesses/db-hq/nav.sh` drive the old `g_is_db_hq` path, which
-  this class leaves dormant. Keys for the live window go to
+**ADDENDUM 2026-09-23 (db-hq-pal — corrected the same day):**
+- How many clicks activate a row is `#.desktop/hq_ui.pdl`
+  `click_two_step`. Live value is `1`: first mouse click focuses,
+  second click activates. `0` is one click. Loaded by
+  `desktop_load_click_two_step()` into `g_click_two_step`. Mouse hits
+  go through `click_focus_then_activate()`. A window with
+  `class="single-click"` skips the setting. Keyboard Enter does not
+  read it: one Return calls `activate_focused()`.
+- `#.desktop/db_hq_history.txt` and `harnesses/db-hq/nav.sh` drive the
+  old `g_is_db_hq` path. `class="db-hq-pal"` leaves that path dormant.
+  Keys for this window go to
   `#.desktop/entity_menu_history/<renderer-pid>.txt` as
   `KEY_PRESSED: <decimal>` (Down=201, Up=200, Left=202, Right=203,
   Enter=13, Esc=27). That mailbox is truncated when the renderer
-  starts. The review copy is separate:
-  `&.hq-apps/db-hq-pal/debug/frames/session_frame_history.txt`
-  (wiped once per launch, then appended when `state/ui.txt` changes).
-- While scope is not confined, arrows step every nav item, including
-  the tab strip. Eight Downs and one Enter on 2026-09-23 opened the
-  States tab. Actors had not been activated. That is not evidence the
-  list arrows are broken.
-- A `<tab>` with `target_id="sidebar"` (every db-hq-pal content tab,
-  including Actors) locks nav into the sidebar on that one activation
-  and moves focus to the first row (`activate_focused` tab branch in
-  `khtpm_core_render.c`). Arrows before that Enter stay on the tabs.
-  Activate the tab you mean, then arrow. Do not change tab/arrow code
-  until a test that actually activates that tab fails to enter the list.
+  starts. Review copy:
+  `&.hq-apps/db-hq-pal/debug/frames/session_frame_history.txt`.
+- Eight Downs and one Enter opened the States tab. Actors had not
+  been clicked under `click_two_step`. Do not treat that as a
+  list-arrow bug. An earlier sentence here said one activation locks
+  the sidebar. That was wrong.
 - `state/ui.txt_focus.txt` stays `focus_label=` empty on this window.
-  Focus names are stored for swatch tiles only, so a digit probe
-  cannot tell you which element nav N is.
+  Focus names are stored for swatch tiles only.
 
 Principles
 ----------

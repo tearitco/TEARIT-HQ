@@ -30,19 +30,14 @@ and the renderer still truncates that one on startup.
    the data files were edited. There is no GUI gesture for IRL to
    learn that step from.
 
-2. **The States-tab result was not an activated Actors tab.** Eight
-   Downs and one Enter (`entity_menu_history/21938.txt`) walked the
-   tab strip while scope was not confined and activated States, the
-   tab focus had reached. Actors itself was never activated. A `<tab>`
-   with `target_id="sidebar"` (Actors has that) locks nav into the
-   sidebar on that activation and moves focus to the first row
-   (`activate_focused`, tab branch). A later probe focused nav 6,
-   pressed Enter twice, then Down: the window stayed on Actors and
-   `sel` stayed 0. That probe still does not name which element nav 6
-   was — `state/ui.txt_focus.txt` stays `focus_label=` empty, because
-   focus labels are stored for swatch tiles only. No tab-arrow change
-   until a test that actually activates the Actors tab fails to enter
-   the list.
+2. **Click count is a setting, not something to infer.**
+   `#.desktop/hq_ui.pdl` has `click_two_step=1`: first mouse click
+   focuses, second click activates. `0` would be one click. Keyboard
+   Enter does not read that key; one Return calls `activate_focused()`.
+   Eight Downs and one Enter opened States without a two-step click
+   on Actors. That is not a list-arrow bug, and it is not a reason to
+   edit tab code. The k9 addendum that said one activation locks the
+   sidebar was wrong and is corrected in the same file.
 
 3. **`db_hq_history.txt` does not drive this window.** The harness
    `nav.sh` appends there for the old `g_is_db_hq` path.
