@@ -5222,8 +5222,29 @@ static int layout_dock_bar(Elem *page) {
         }
     }
     {
-        char last_target[64] = "";
-        int stack_n = 0, col_w = 0;
+        /* REAL FIX 2026-09-23, direct live reports ("double asa" /
+         * duplicate row, and terumon_004_solvent silently missing from
+         * the pals dropdown, both traced to this loop). Root cause:
+         * stack_n used to reset only on a target_id CHANGE from the
+         * previous sibling, which silently assumed every dropdown-
+         * child with the same target_id sits contiguously in
+         * page->children[]. That assumption breaks under incremental
+         * reparse (khtpm_reparse_diff.c patches/keys elements in place
+         * rather than destroy-and-rebuild) - a stale dropdown-child
+         * left over from a PREVIOUSLY opened cell (e.g. palettes) can
+         * end up interleaved with freshly generated pals rows. When
+         * that happens stack_n resets mid-list, so two real pals rows
+         * land on the same y (the "double asa" overlap) and the tail
+         * of the list loses its slot to the collision (solvent). Fix:
+         * key stack_n per target_id directly (a small fixed table -
+         * there are only as many distinct target_ids as header cells,
+         * never more than a handful at once) instead of assuming
+         * adjacency, so ordering in page->children[] no longer
+         * matters. */
+        char stack_keys[16][64];
+        int stack_counts[16];
+        int n_stack_keys = 0;
+        int col_w = 0;
         Elem *trig0 = NULL;
         for (i = 0; i < page->n_children; i++) {
             Elem *c = page->children[i];
@@ -5249,16 +5270,20 @@ static int layout_dock_bar(Elem *page) {
         for (i = 0; i < page->n_children; i++) {
             Elem *c = page->children[i];
             Elem *trigger;
-            int open;
+            int open, stack_n, ki;
             if (!elem_has_class(c, "dropdown-child")) continue;
             trigger = c->target_id[0] ? find_by_id(g_window, c->target_id) : NULL;
             open = trigger && (g_default_active_scope_root == trigger ||
                 (g_default_active_scope_id[0] && trigger->id[0] &&
                  strcmp(g_default_active_scope_id, trigger->id) == 0));
-            if (strcmp(last_target, c->target_id) != 0) {
-                stack_n = 0;
-                snprintf(last_target, sizeof(last_target), "%s", c->target_id);
+            for (ki = 0; ki < n_stack_keys; ki++)
+                if (strcmp(stack_keys[ki], c->target_id) == 0) break;
+            if (ki == n_stack_keys && n_stack_keys < 16) {
+                snprintf(stack_keys[ki], sizeof(stack_keys[ki]), "%s", c->target_id);
+                stack_counts[ki] = 0;
+                n_stack_keys++;
             }
+            stack_n = (ki < n_stack_keys) ? stack_counts[ki] : 0;
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
             if (open && trigger) {
                 c->x = 0;
@@ -5272,7 +5297,7 @@ static int layout_dock_bar(Elem *page) {
             } else {
                 c->x = 0; c->y = -100000; c->w = 0; c->h = 0; c->nav_index = 0;
             }
-            stack_n++;
+            if (ki < n_stack_keys) stack_counts[ki]++;
         }
         if (!is_bottom) {
             if (trig0 && g_dock_drop_lo) {
