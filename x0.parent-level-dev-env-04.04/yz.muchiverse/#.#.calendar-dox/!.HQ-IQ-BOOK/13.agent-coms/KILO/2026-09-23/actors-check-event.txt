@@ -1,0 +1,18 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | actors-check-event
+STATE        | source               | events-hq
+
+# 1. Harness player presses Down once. Relay path is a PLACEHOLDER:
+#    #.desktop/entity_menu_history/PID.txt. No live PID, and this page
+#    is NOT run.
+NODE         | id=1 type=comment | text=Harness player presses Down once. Relay is #.desktop/entity_menu_history/PID.txt (placeholder, no live PID). Not run.
+
+# 2. send_input of key 201 (Down) to that placeholder. PARAMS relay,key.
+NODE         | id=2 type=send_input | relay=#.desktop/entity_menu_history/PID.txt|key=201
+
+# 3. The next step would read ascii_frames/PID.receipt.pdl focus_nav and
+#    state/ui.txt detail_title, then branch on what it found. No existing
+#    registry command reads a file and branches on its contents: `if`
+#    reads only STATE_DIR/switches.txt and compares on/off. Answer: NONE.
+NODE         | id=3 type=comment | text=Next step would read ascii_frames/PID.receipt.pdl focus_nav and state/ui.txt detail_title. No registry command reads a file and branches. NONE.
