@@ -257,13 +257,37 @@ this fix.
 
 ---
 
+## ✅ CLOSED 2026-09-23: Co-lab-h-ai cuts off long messages so the human cannot read them
+
+**Reported:** live, while approving agent posts in session `1790154594`. Long `@kilo`/`@sonnet` lines were queued/posted and the window showed a cut-off sentence, always around the same length regardless of message content.
+
+**Real root cause: co-lab-hai is a default/popup-mode window, and that mode never calls `render_tree()`/`draw_elem()` directly against the live Elem tree.** It serializes the tree to a text frame file (`kh_serialize_frame_elem()`/`kh_serialize_frame_subtree()`) and repaints ENTIRELY from that file (`kh_paint_frame_line()`, `khtpm_core_render.c`), rebuilding a fresh temporary `Elem` per line. This is `HOUSE_CODE_PITFALLS.md` #12's exact shape ("TWO draw paths exist, not one") - db-hq/events-hq mode uses the direct path, everything else (co-lab-hai/chat-hai/open-hai/entity-menu popups) uses this frame-file round trip.
+
+Two independent, hardcoded 256-byte buffers lived in that round trip, both unrelated to `Elem.label`'s own size:
+- `kh_serialize_frame_elem()`'s `label_esc[256*2]` (write side, escaping `e->label` into the frame file)
+- `kh_paint_frame_line()`'s `label_unesc[256]` (read side, unescaping the frame-file field back into the fresh `tmp.label` that actually gets drawn)
+
+Both bumped to `2048`/`2048*2` to match `Elem.label`. **Live-verified fixed** - a 649-char real message now renders complete, wrapped correctly, no truncation, no ellipsis, clean row spacing.
+
+**4 earlier fixes tonight, all in `khtpm_draw_core.c`, were real bugs worth keeping but were NOT this bug** (they operate on the direct `render_tree()`/`draw_elem()` path db-hq/events-hq mode uses - irrelevant to co-lab-hai's actual repaint path, which is why none of them changed anything when tested):
+1. `khtpm_render_core.c`'s `Elem.label` `256`→`2048` (matches the manager's own real per-line cap; still worth having for the direct-draw-path windows).
+2. `khtpm_draw_core.c`'s draw-time wrap `avail_w` didn't match `scroll_row_span()`'s layout-time `avail_w` (missing one side's padding) - fixed, matched.
+3. `khtpm_draw_core.c`'s `label_decoded[600]` → `2048`.
+4. `khtpm_draw_core.c`'s `max_lines = e->h/line_h` (floor) → ceiling division, matching `scroll_row_span()`'s own guarantee.
+
+**Lesson for next time, extending pitfall #12:** when a fix to the draw pipeline has zero visible effect on a window, check WHICH draw path that window actually uses before adding a 5th variation of the same fix - `grep` the window's redraw function for `kh_serialize_frame_subtree`/`kh_paint_frame_line` (frame-file round trip) vs a direct `render_tree()` call, per pitfall #12's own step 1. A `256`-byte cap surviving independently in BOTH the struct definition AND a completely separate serialization round-trip buffer is a real, repeatable shape in this codebase - grep for `\[256\]`/`\[256 \* 2\]` near any `label`-handling code, not just the one struct field, whenever this class of bug resurfaces on a different window.
+
+---
+
 ## ⚠️ OPEN 2026-09-22: HQ dropdown/menu lists (pals, palettes, edit, etc.) have no scrollbar at all
 
 **Reported:** direct live report, discovered while investigating a real overlap bug in the "pals" dropdown (see the `khtpm_core_render.c` scroll-boundary entry below, same session) — "drop downs should have a scroll bar (which has navs) if they dont yet. this was an oversight."
 
 **Confirmed by direct code check**: grepped `khtpm_core_render.c` for any scrollbar wiring on the HQ dropdown/menu (`hq_menu`) rendering path — zero hits. The generic scroll-region machinery this house already uses elsewhere (`layout_scroll_region()`/`generic_sbar_register()`, proven in file-explorer/board-viewer/etc.) is real and working, but the HQ dropdown cells (pals, palettes, edit, and any other `which == N` cell using `HQMenuItem[]`) don't call into it at all — a long list (the "pals" dropdown has 140+ real entries) has no visible thumb/track, no click-to-scroll, and the user has no way to know there's more below the last visible row short of scrolling blind.
 
-**Not yet fixed.** Real direction: wire the same `generic_sbar_register()`/`layout_scroll_region()` path every other scrollable list in this house already uses onto the HQ dropdown/menu rendering, rather than inventing a second scrollbar mechanism. Likely related to (may share a root cause with, or may be a separate follow-up from) the boundary-row overlap bug directly below this entry — check both together before considering either fully closed.
+**Not yet fixed on `claude`.** Real direction: wire the same `generic_sbar_register()`/`layout_scroll_region()` path every other scrollable list in this house already uses onto the HQ dropdown/menu rendering, rather than inventing a second scrollbar mechanism.
+
+**2026-09-28 evaluation: an attempt exists on `main` (commit `0b454145` on `codex`, "scoped feature: HQ dropdown/menu (pals/palettes) real scroll"), deliberately NOT cherry-picked here.** Direct live check on this same date (`run_khtpm_strip.sh new` against `main`, real click-through by the repo owner): no scrollbar is visible on the pals dropdown at all - matches this doc's own prior "Live-verified 2026-09-23" note below that the thumb/track never actually rendered even on `main`. Owner's own words: "i dont see scroll on dropdown of main and i see some problems... i think its safe to completely overwrite those things." `khtpm_core_render.c`/`khtpm_taskbar_manager.c`/`.h`'s real diff for this commit is preserved in `main`'s own history if it's ever worth revisiting, but `claude`'s own version of these files (this session's composer/toolbar-row and other layout work) is being kept instead of overwritten by it.
 
 ---
 

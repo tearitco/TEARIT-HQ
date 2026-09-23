@@ -171,8 +171,22 @@ case "$ACTION" in
         # case something genuinely does need rebuilding.
         if [ "$ACTION" != "boot" ]; then
             LIVEDESK_START_SPLASH=1 run_build_logged sh "$SCRIPT_DIR/build_khtpm_strip.sh" || { echo "BUILD FAILED — not launching (full output: $BUILD_LOG)"; exit 1; }
-        elif [ ! -x "$SCRIPT_DIR/+x/khtpm_core_render.+x" ] || [ ! -x "$SCRIPT_DIR/+x/khtpm_taskbar_manager_main.+x" ]; then
-            # first-ever boot with no binaries: fall back to a build
+        elif [ ! -s "$SCRIPT_DIR/+x/khtpm_core_render.+x" ] || [ ! -s "$SCRIPT_DIR/+x/khtpm_taskbar_manager_main.+x" ]; then
+            # first-ever boot with no binaries: fall back to a build.
+            # REAL FIX 2026-09-23, direct live report ("hq no longer
+            # starting from desktop shortcut"): -x alone is true for a
+            # 0-byte file that still carries the executable bit (exactly
+            # what a build killed mid-link/mid-write leaves behind, e.g.
+            # an interrupted `new` racing a CPU crash) - boot then tried
+            # to exec an empty "binary", failed instantly and silently in
+            # the background, and autostart reported success regardless
+            # (it only checks its OWN launch step, not whether khtpm
+            # actually came up). -s (non-empty) catches that dead-file
+            # case too, not just "missing outright" - a real, deliberate
+            # edge case fix, not just the common path. Independent of
+            # (and kept despite) not carrying over this same commit's
+            # KHTPM_FORCE_BUILD - that part is superseded by 2026-09-28's
+            # per-binary hash gating, this -s fix is not.
             run_build_logged sh "$SCRIPT_DIR/build_khtpm_strip.sh" || { echo "BUILD FAILED — not launching (full output: $BUILD_LOG)"; exit 1; }
         fi
         kill_khtpm

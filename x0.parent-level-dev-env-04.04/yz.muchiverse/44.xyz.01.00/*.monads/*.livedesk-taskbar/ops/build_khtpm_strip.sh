@@ -38,6 +38,15 @@ mkdir -p +x
 SHARED_DIR="$(cd "$(dirname "$0")/../../../&.widgits/_shared-lib" 2>/dev/null && pwd || echo /nonexistent)"
 MANIFEST="$(dirname "$0")/.build_hashes.pdl"
 . "$SHARED_DIR/hash_gate.sh"
+# NOTE 2026-09-28 (merged from ee6afba47/main during a cherry-pick,
+# dropdown-scroll commit 0b4541451 excluded - confirmed live not
+# actually working, safe to not carry over): that commit's OWN fix
+# here (clear .build_failed.txt on the old coarse gate's early-exit
+# path too, not just at the script's last line) is now moot by
+# construction - this script has no early-exit path left to leave a
+# stale marker behind on. It always runs to completion (each
+# hash_gate_stale check below just makes a no-op run fast), so the
+# existing "clear on the last line" behavior already covers every case.
 
 # ── build-failure marker (2026-09-21) ─────────────────────────────────
 # Direct instruction: "i actually dont want it to run the old binaries
