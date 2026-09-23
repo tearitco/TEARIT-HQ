@@ -138,5 +138,17 @@ left alone. New command `send_window_key` runs
 `mr_send_window_key.sh`, which appends `KEY_PRESSED: <decimal>`.
 Non-decimal codes are rejected. The fixture page's third node now
 uses it. `prisc+x`: receipt 32 writes `KEY_PRESSED: 201` and switch
-0; receipt 17 writes nothing and switch 1. The live window was not
-opened for this check.
+0; receipt 17 writes nothing and switch 1.
+
+**One live key, 2026-09-23, then stop.** Database window pid 240948.
+Receipt before: `focus_nav=1`, ascii marker `[>] 1. * Actors`,
+detail Harold, `tab_title=Actors (11)`. The page was pointed at that
+receipt and at `entity_menu_history/240948.txt` for one `prisc+x`
+run, then pointed back at the fixture. `focus_nav` was 1, not 17, so
+the switch was 0 and one `KEY_PRESSED: 201` was written. After it,
+the marker was `[>] 2. Classes` and the receipt said `focus_nav=2`.
+`tab_title` was still Actors and the detail was still Harold. The
+key moved the tab highlight. It did not activate Classes and it did
+not change the selected actor. No second key. `prisc+x` also printed
+that it could not open `101.mutaclsym…/system/default_op.txt`. The
+shell commands in the page still ran.
