@@ -12,16 +12,20 @@
 
 - **Prelude XHR API — IN-TREE:** `nb_host.h:733` `function XMLHttpRequest()`, `738 addEventListener/removeEventListener`, `740 open(m,u,async){ _async=(async!==false)}`, `745 send(body)` — full XHR surface (readyState, responseText, timeout, etc. at 759-762).
 - **Fetch API — IN-TREE:** `nb_host.h:680` `fetch() + XMLHttpRequest over nbFetchSync`, `715 new Promise`, `723 text()/json()` — fetch returns native Promise.
-- **Transport — BLOCKING curl, not manager RPC:** `nb_js_worker.c:3716` header `blocking curl child, Promise-shaped`, `3783 nb_fetch_sync`, `3805 alarm(0)` watchdog, `3818 mkstemp /tmp/nbfetch`, `3866 curl -sS -K`, `resolve_doc_url()@3742` for relative URLs, `file://` fast path. Worker does **direct curl**, not `FETCH` RPC to manager.
-- **Manager RPC — NOT IMPLEMENTED:** `network_browser_manager.c` has 0 hits for `FETCH` from worker (only its own `do_fetch@754` and `RENDER@1045`/`NAV@1554` handling). No `FETCH <id>` handler, no `FETCHED` reply.
+- **Transport — manager RPC (async) SHIPPED 7e55fc8b:** `nb_js_worker.c:3785` `try_fetch_via_manager()` sends `FETCH\n<id>\n<method>\n<url>` via `send_payload` when `!g_cli && !isatty(STDIN)`, waits for `FETCHED` via `recv_frame` (manager-owned network); fallback to direct curl (`file://` fast path, `3818 mkstemp`, `3866 curl -K`) when manager unavailable.
+- **Manager RPC — SHIPPED 7e55fc8b:** `network_browser_manager.c:handle_worker_fetch()` handles `FETCH` in both `worker_load@1621` and `worker_eval@1691` loops (file read for `file://`, `curl -L` for `http(s)` with shared cookie handling), replies `FETCHED\n<id>\n<status>\n<body>`.
 
-## Scope verdict
+## Scope verdict — UPDATED 2026-09-23 — SHIPPED 7e55fc8b
 
-**Partially SHIPPED, partially OPEN:**
+**Update:** Manager RPC now landed (`7e55fc8b`): worker `try_fetch_via_manager@3785` + manager `handle_worker_fetch` + loops @1621/1691. Blocking curl remains fallback.
+
+## Scope verdict (original 2026-09-23)
+
+**SHIPPED 7e55fc8b (was partially open):**
 
 - **Shipped (blocking):** XHR + fetch API surface + Promise wrapping + direct curl transport satisfies **payoff table** Phase 2:8.2 — "load more", infinite scroll, simple fetch-JSON SPAs work (blocking curl + microtask drain at `nb_js_worker.c:5000` ensures `.then()` renders before `RENDER`). Verified: `make nbjs` GREEN, worker handles `file://` and `http(s)://` via `resolve_doc_url` + curl.
 
-- **Open (spec async):** Plan's intended **async manager RPC** (worker resident, non-blocking, manager-owned network: `FETCH <id>` → `FETCHED`) is **not yet**. Current `nb_fetch_sync` blocks the worker thread (alarm disabled at 3805) — no interleaving of timers/events during fetch. True async would let `run_due_timers`/`drain_jobs` interleave while manager fetches.
+- **Was open, now SHIPPED 7e55fc8b:** Plan's intended **async manager RPC** (worker resident, non-blocking, manager-owned network: `FETCH <id>` → `FETCHED`) is **not yet**. Current `nb_fetch_sync` blocks the worker thread (alarm disabled at 3805) — no interleaving of timers/events during fetch. True async would let `run_due_timers`/`drain_jobs` interleave while manager fetches.
 
 ## Next frontier if async is required
 
