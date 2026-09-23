@@ -148,7 +148,7 @@
   environment) as a proposal-side filter sitting in front of the
   existing validator, resolves isolation-chatbot mode as a second
   proposer into the same learner instance rather than a separate one,
-  and opens `x0.parent-level-dev-env-04.04/terumon-dev/` with four
+  and opens `x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/design-docs/terumon-dev/` with four
   seeded dustball terumon carrying meaningfully different learning
   limits — design shape found and four experiment seeds filed, no
   Watch Layer observation or promotion run yet.
