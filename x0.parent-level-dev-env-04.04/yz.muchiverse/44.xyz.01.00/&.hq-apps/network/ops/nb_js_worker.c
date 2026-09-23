@@ -3780,6 +3780,44 @@ static void resolve_doc_url(const char *rel, char *out, size_t olen) {
     }
 }
 
+/* Try manager RPC for fetch (async per spec §8.2): worker -> manager FETCH, manager -> worker FETCHED.
+ * Returns 1 if manager handled it (out_body/status set), 0 to fallback to direct curl. */
+static int try_fetch_via_manager(const char *method, const char *url, char **out_body, size_t *out_len, int *out_status, char *errbuf, size_t errcap) {
+    if (g_cli) return 0;
+    if (isatty(STDIN_FILENO)) return 0;
+    static int next_id = 1;
+    int id = next_id++;
+    char payload[8192];
+    int n = snprintf(payload, sizeof(payload), "FETCH\n%d\n%s\n%s", id, method, url);
+    if (n < 0 || (size_t)n >= sizeof(payload)) return 0;
+    send_payload(payload, (size_t)n);
+    if (!recv_frame()) return 0;
+    if (strncmp(g_rbuf, "FETCHED\n", 8) != 0) return 0;
+    char *p = g_rbuf + 8;
+    char *n1 = strchr(p, '\n');
+    if (!n1) return 0;
+    *n1 = '\0';
+    int r_id = atoi(p);
+    if (r_id != id) { *n1 = '\n'; return 0; }
+    char *q2 = n1 + 1;
+    char *n2 = strchr(q2, '\n');
+    if (!n2) { *n1 = '\n'; return 0; }
+    *n2 = '\0';
+    int status = atoi(q2);
+    char *body = n2 + 1;
+    size_t body_len = g_rlen - (size_t)(body - g_rbuf);
+    char *rb = (char *)malloc(body_len + 1);
+    if (!rb) { *n1 = '\n'; *n2 = '\n'; return 0; }
+    memcpy(rb, body, body_len);
+    rb[body_len] = '\0';
+    *out_body = rb;
+    *out_len = body_len;
+    *out_status = status;
+    *n1 = '\n'; *n2 = '\n';
+    if (errbuf && errcap) errbuf[0] = '\0';
+    return 1;
+}
+
 static JSValue nb_fetch_sync(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     char *m_own = NULL, *u_own = NULL, *h_own = NULL, *b_own = NULL;
     const char *method = NULL, *url = NULL, *headers = NULL, *body = NULL;
@@ -3814,6 +3852,11 @@ static JSValue nb_fetch_sync(JSContext *ctx, JSValueConst this_val, int argc, JS
         if (read_file(abspath, &rb, &rn)) status = 200;
         else snprintf(errbuf, sizeof(errbuf), "cannot read %s", abspath);
     } else if (strncmp(url, "http:", 5) == 0 || strncmp(url, "https:", 6) == 0) {
+        char *mgr_body = NULL; size_t mgr_len = 0; int mgr_status = 0; char mgr_err[256] = "";
+        if (try_fetch_via_manager(method, url, &mgr_body, &mgr_len, &mgr_status, mgr_err, sizeof(mgr_err))) {
+            rb = mgr_body; rn = mgr_len; status = mgr_status;
+            if (mgr_err[0]) snprintf(errbuf, sizeof(errbuf), "%s", mgr_err);
+        } else {
         char cfgpath[1024] = "", bodypath[1024] = "";
         char t1[] = "/tmp/nbfetch.XXXXXX", t2[] = "/tmp/nbfetchbody.XXXXXX";
         int fd1 = mkstemp(t1), fd2 = mkstemp(t2);
@@ -3907,6 +3950,7 @@ static JSValue nb_fetch_sync(JSContext *ctx, JSValueConst this_val, int argc, JS
                 unlink(bodypath);
                 if (hdrpath[0]) unlink(hdrpath);
             }
+        }
         }
     } else {
         /* data: URLs can carry small inline blobs; everything else is refused */

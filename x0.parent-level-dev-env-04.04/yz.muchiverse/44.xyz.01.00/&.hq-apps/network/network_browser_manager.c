@@ -1407,6 +1407,86 @@ static int worker_send_event(const char *selector, const char *type) {
     return worker_send(payload, (size_t)n);
 }
 
+/* Handle FETCH from worker (async per spec §8.2): worker asks manager to fetch.
+ * Payload: FETCH\n<id>\n<method>\n<url> — do curl/file read and reply FETCHED\n<id>\n<status>\n<body> */
+static int handle_worker_fetch(const char *payload) {
+    if (!payload || strncmp(payload, "FETCH\n", 6) != 0) return 0;
+    const char *p = payload + 6;
+    const char *n1 = strchr(p, '\n');
+    if (!n1) return 0;
+    char idbuf[32]; size_t idlen = (size_t)(n1 - p);
+    if (idlen >= sizeof(idbuf)) idlen = sizeof(idbuf)-1;
+    memcpy(idbuf, p, idlen); idbuf[idlen] = '\0';
+    const char *q = n1 + 1;
+    const char *n2 = strchr(q, '\n');
+    if (!n2) return 0;
+    char method[16]; size_t mlen = (size_t)(n2 - q);
+    if (mlen >= sizeof(method)) mlen = sizeof(method)-1;
+    memcpy(method, q, mlen); method[mlen] = '\0';
+    const char *url = n2 + 1;
+    // url may have trailing \n, trim
+    char urlbuf[2300]; snprintf(urlbuf, sizeof(urlbuf), "%s", url);
+    char *nl = strchr(urlbuf, '\n'); if (nl) *nl = '\0';
+    // Do fetch: file:// -> read file, http(s):// -> curl
+    char *body = NULL; size_t body_len = 0; int status = 0;
+    char err[256] = "";
+    if (strncmp(urlbuf, "file:", 5) == 0) {
+        const char *pp = urlbuf + 5; while (*pp == '/') pp++;
+        if (strncmp(pp, "localhost", 9) == 0 && pp[9] == '/') pp += 10;
+        char abspath[2048]; snprintf(abspath, sizeof(abspath), "/%s", pp);
+        FILE *f = fopen(abspath, "rb");
+        if (f) {
+            fseek(f, 0, SEEK_END); long sz = ftell(f); fseek(f, 0, SEEK_SET);
+            if (sz >= 0 && sz < 60000) {
+                body = malloc((size_t)sz + 1);
+                if (body) { body_len = fread(body, 1, (size_t)sz, f); body[body_len] = '\0'; status = 200; }
+            }
+            fclose(f);
+        } else snprintf(err, sizeof(err), "cannot read %s", abspath);
+    } else if (strncmp(urlbuf, "http:", 5) == 0 || strncmp(urlbuf, "https:", 6) == 0) {
+        char t1[] = "/tmp/mgrfetch.XXXXXX", t2[] = "/tmp/mgrfetchbody.XXXXXX";
+        int fd1 = mkstemp(t1), fd2 = mkstemp(t2);
+        if (fd1 >= 0 && fd2 >= 0) {
+            close(fd1); close(fd2);
+            char cmd[2048];
+            snprintf(cmd, sizeof(cmd), "curl -sS -L --max-time 8 -A 'Mozilla/5.0 (NNEST manager rung4)' -o '%s' -w '%%{http_code}' '%s' 2>/dev/null", t2, urlbuf);
+            FILE *po = popen(cmd, "r");
+            char code[16] = "";
+            if (po) {
+                size_t got = 0;
+                int c;
+                while (got + 1 < sizeof(code) && (c = fgetc(po)) != EOF) code[got++] = (char)c;
+                code[got] = '\0';
+                pclose(po);
+                status = atoi(code);
+                FILE *bf = fopen(t2, "rb");
+                if (bf) {
+                    fseek(bf, 0, SEEK_END); long sz = ftell(bf); fseek(bf, 0, SEEK_SET);
+                    if (sz >= 0 && sz < 60000) {
+                        body = malloc((size_t)sz + 1);
+                        if (body) { body_len = fread(body, 1, (size_t)sz, bf); body[body_len] = '\0'; }
+                    }
+                    fclose(bf);
+                }
+            }
+            unlink(t1); unlink(t2);
+        }
+        if (!body && !status) { status = 0; snprintf(err, sizeof(err), "curl failed"); }
+    } else {
+        snprintf(err, sizeof(err), "unsupported scheme");
+    }
+    char out[65536];
+    int n = 0;
+    if (body) {
+        n = snprintf(out, sizeof(out), "FETCHED\n%s\n%d\n%s", idbuf, status, body);
+        free(body);
+    } else {
+        n = snprintf(out, sizeof(out), "FETCHED\n%s\n%d\n%s", idbuf, status, err[0] ? err : "");
+    }
+    if (n > 0 && (size_t)n < sizeof(out)) worker_send(out, (size_t)n);
+    return 1;
+}
+
 static int worker_recv_line_to(char *out, size_t cap, int timeout_ms) {
     if (g_worker_fd < 0) return 0;
     struct pollfd p = { g_worker_fd, POLLIN, 0 };
@@ -1556,6 +1636,10 @@ static int worker_load(const char *js_path, const char *dom_path,
     for (;;) {
         if (!worker_recv_line_to(resp, sizeof(resp), WORKER_LOAD_QUIET_MS)) { worker_close(); return 0; }
         if (strncmp(resp, "LIVE|", 5) == 0) continue;   /* drain keepalive */
+        if (strncmp(resp, "FETCH\n", 6) == 0) {
+            handle_worker_fetch(resp);
+            continue;
+        }
         if (strncmp(resp, "RENDER\n", 7) == 0) {
             size_t rn = strlen(resp + 7);
             if (rn + 1 < sizeof(g_worker_render))
@@ -1622,6 +1706,10 @@ static int worker_eval(const char *js) {
          * as LOAD. A dead worker still EOFs immediately. */
         if (!worker_recv_line_to(resp, sizeof(resp), WORKER_LOAD_QUIET_MS)) { worker_close(); return 0; }
         if (strncmp(resp, "LIVE|", 5) == 0) continue;   /* drain keepalive */
+        if (strncmp(resp, "FETCH\n", 6) == 0) {
+            handle_worker_fetch(resp);
+            continue;
+        }
         if (strncmp(resp, "RENDER\n", 7) == 0) {
             size_t rn = strlen(resp + 7);
             if (rn + 1 < sizeof(g_worker_render))
