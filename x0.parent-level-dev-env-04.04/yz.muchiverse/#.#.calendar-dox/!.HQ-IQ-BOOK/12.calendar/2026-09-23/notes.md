@@ -171,6 +171,14 @@ back at `/tmp` and `agent_history.txt`.
 and RPG Maker project load/save stay named in `16.game/GAME.md` and
 were not built.
 
+**The page now advances the fact.** Command `advance_fact` execs
+`two-facts/advance.sh`. `prisc+x` on that page: `which=page` made
+20/20 into 21/20, `which=numeric` made 20/20 into 20/21, `which=both`
+left 20/20 and wrote no `advanced=` line. Fixture reset to 20/20
+and `which=page`. Ember's actor row was not modified. `prisc+x`
+still prints that `default_op.txt` is missing. The shell command
+ran anyway.
+
 **Playtest is the taskbar Player menu, not `play_event.sh`.** Cell 9
 of the livedesk taskbar (`which == 9`, `livedesk_build_player_menu`)
 is the desk's play / stop / reset. Rows in code: `1.play: ON/OFF`

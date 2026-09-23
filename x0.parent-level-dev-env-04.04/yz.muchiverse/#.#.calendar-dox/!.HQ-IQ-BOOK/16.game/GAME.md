@@ -57,7 +57,10 @@ Fixture only, not a live actor. `#.desktop/harnesses/two-facts/`.
 `facts.txt` holds `id=ember-fixture`, `page_value`, and
 `numeric_value`. `weight.txt` holds `which=page` or `which=numeric`.
 `advance.sh` adds 1 to the chosen value and leaves the other alone.
-An unknown `which` exits 1 and does not write. Checked: page advance
-made 20/20 into 21/20; numeric advance then made 21/21; `which=both`
-was rejected and the 21/21 file stayed put. This is not chemistry
-and not 3D. It is the file shape the later weight has to keep.
+An unknown `which` exits 1 and does not write. The event command
+`advance_fact` runs that script. `prisc+x` on
+`two-facts/event_pkg/pages/page_1/event.pal` did the three checks:
+`which=page` made 20/20 into 21/20, `which=numeric` made 20/20 into
+20/21, and `which=both` left 20/20 with no `advanced=` line. The
+fixture was put back to 20/20 and `which=page`. Live actor rows were
+not written. This is not chemistry and not 3D.
