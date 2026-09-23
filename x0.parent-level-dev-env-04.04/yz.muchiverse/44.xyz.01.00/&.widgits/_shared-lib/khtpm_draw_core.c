@@ -1244,7 +1244,18 @@ static void draw_elem(Elem *e, int hover_id_hash) {
      * draw path. */
     char cli_io_shown[256 + 300];
     static char text_area_shown[4096 + 300]; /* static: too big for this function's own stack budget alongside everything else already declared here */
-    char label_decoded[600];
+    /* REAL FIX 2026-09-23, direct live report (co-lab-hai long messages
+     * STILL cutting off after both the Elem.label[] cap and the
+     * wrap-loop's own local buf[] were already bumped to match) - this
+     * is the real, third choke point: EVERY plain <text> label (not
+     * text_area, per the branch below) gets silently re-truncated to
+     * 600 bytes here for entity-decoding, downstream of Elem.label but
+     * upstream of the wrap loop that draws it - so neither earlier fix
+     * could have shown any visible difference. Same exact reasoning the
+     * comment right below already applies to text_area_shown (~4400B) -
+     * never extended to this plain-<text> path. Sized to match
+     * Elem.label. */
+    char label_decoded[2048];
     const char *shown_label = e->label;
     int cli_io_armed = 0;
     if (strcmp(e->tag, "text_area") == 0) {
@@ -1471,7 +1482,24 @@ static void draw_elem(Elem *e, int hover_id_hash) {
         XftColor col = xft_color(e->style.has_fg_color ? e->style.fg_color : default_fg);
         XGlyphInfo extents;
         XftTextExtentsUtf8(dpy, font, (const FcChar8 *)shown_label, (int)strlen(shown_label), &extents);
-        int avail_w = e->w > 0 ? (e->x + e->w) - badge_label_x : -1;
+        /* REAL FIX 2026-09-23, direct live report (co-lab-hai long
+         * messages overlapping/leaving gaps once real long text stopped
+         * getting silently truncated at the old 256-byte label[] cap):
+         * this MUST match scroll_row_span()'s own avail_w exactly
+         * (w - pad*2, khtpm_core_render.c) - that function decides how
+         * many ROW_H units this row gets laid out with, this is what
+         * actually draws into that space. It was previously only
+         * subtracting pad ONCE (the left side, via badge_label_x),
+         * never the matching right-side pad - invisible at 1-2 lines,
+         * but a small width drift changes word-wrap decisions right at
+         * a line boundary, so a long multi-line label could compute a
+         * different line count here than the layout pass reserved
+         * height for: MORE lines overflowed into the next row's own
+         * space (the overlap in the live report); FEWER lines left a
+         * gap. int pad mirrors scroll_row_span()'s own default (4) when
+         * no explicit CSS padding is set. */
+        int pad = e->style.has_padding ? e->style.padding : 4;
+        int avail_w = e->w > 0 ? (e->x + e->w) - badge_label_x - pad : -1;
         int line_h = font->ascent - font->descent > 0 ? font->ascent - font->descent : 12;
         line_h += 4; /* real, small leading - matches this file's own general text-row spacing feel */
         /* REAL, NEW 2026-09-01 (direct instruction: "build word-wrap/
@@ -1510,10 +1538,30 @@ static void draw_elem(Elem *e, int hover_id_hash) {
              * line gets a real "..." ellipsis if there's more text than
              * fits, same real convention the single-line clip path
              * already uses). */
-            Pixmap wrap_target_buf = buf; /* captured BEFORE the local `char buf[600]` below shadows the outer Pixmap `buf` for the rest of this block */
-            char buf[600];
+            Pixmap wrap_target_buf = buf; /* captured BEFORE the local `char buf[]` below shadows the outer Pixmap `buf` for the rest of this block */
+            /* REAL FIX 2026-09-23, direct live report (co-lab-hai long
+             * messages still cutting off mid-sentence, no "..." shown,
+             * even after the Elem.label[] cap and the avail_w drift
+             * above were both fixed): this local copy was still only
+             * 600 bytes - shown_label itself can legitimately be up to
+             * ~2047 bytes now (matches Elem.label[2048]), so THIS
+             * snprintf was silently re-truncating before a single word
+             * got wrapped, independent of both earlier fixes. Sized to
+             * match Elem.label exactly, same reasoning as that bump. */
+            char buf[2048];
             snprintf(buf, sizeof(buf), "%s", shown_label);
-            int max_lines = e->h / line_h;
+            /* REAL FIX 2026-09-23 - scroll_row_span() (khtpm_core_render.c)
+             * sizes e->h via CEILING division (lines*line_h+ROW_H-1)/ROW_H
+             * so a real message never gets less height than it needs. This
+             * floor division (e->h/line_h) could under-report by exactly
+             * one line whenever e->h isn't a clean multiple of line_h -
+             * silently dropping the box's own last real line of content
+             * with no ellipsis (the ellipsis path only fires when max_lines
+             * itself is already the final line, never sees the dropped
+             * one). Matching ceiling division here removes that
+             * asymmetry - this box is guaranteed enough real pixel height
+             * for one extra partial line if rounding needs it. */
+            int max_lines = (e->h + line_h - 1) / line_h;
             if (max_lines < 1) max_lines = 1;
             int ty = e->y + font->ascent + 2;
             int line_no = 0;

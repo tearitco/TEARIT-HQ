@@ -2,6 +2,61 @@
 
 ---
 
+## ✅ CLOSED 2026-09-23: Co-lab-h-ai cuts off long messages so the human cannot read them
+
+**Reported:** live, while approving agent posts in session `1790154594`. Long `@kilo`/`@sonnet` lines were queued/posted and the window showed a cut-off sentence, always around the same length regardless of message content.
+
+**Real root cause: co-lab-hai is a default/popup-mode window, and that mode never calls `render_tree()`/`draw_elem()` directly against the live Elem tree.** It serializes the tree to a text frame file (`kh_serialize_frame_elem()`/`kh_serialize_frame_subtree()`) and repaints ENTIRELY from that file (`kh_paint_frame_line()`, `khtpm_core_render.c`), rebuilding a fresh temporary `Elem` per line. This is `HOUSE_CODE_PITFALLS.md` #12's exact shape ("TWO draw paths exist, not one") - db-hq/events-hq mode uses the direct path, everything else (co-lab-hai/chat-hai/open-hai/entity-menu popups) uses this frame-file round trip.
+
+Two independent, hardcoded 256-byte buffers lived in that round trip, both unrelated to `Elem.label`'s own size:
+- `kh_serialize_frame_elem()`'s `label_esc[256*2]` (write side, escaping `e->label` into the frame file)
+- `kh_paint_frame_line()`'s `label_unesc[256]` (read side, unescaping the frame-file field back into the fresh `tmp.label` that actually gets drawn)
+
+Both bumped to `2048`/`2048*2` to match `Elem.label`. **Live-verified fixed** - a 649-char real message now renders complete, wrapped correctly, no truncation, no ellipsis, clean row spacing.
+
+**4 earlier fixes tonight, all in `khtpm_draw_core.c`, were real bugs worth keeping but were NOT this bug** (they operate on the direct `render_tree()`/`draw_elem()` path db-hq/events-hq mode uses - irrelevant to co-lab-hai's actual repaint path, which is why none of them changed anything when tested):
+1. `khtpm_render_core.c`'s `Elem.label` `256`→`2048` (matches the manager's own real per-line cap; still worth having for the direct-draw-path windows).
+2. `khtpm_draw_core.c`'s draw-time wrap `avail_w` didn't match `scroll_row_span()`'s layout-time `avail_w` (missing one side's padding) - fixed, matched.
+3. `khtpm_draw_core.c`'s `label_decoded[600]` → `2048`.
+4. `khtpm_draw_core.c`'s `max_lines = e->h/line_h` (floor) → ceiling division, matching `scroll_row_span()`'s own guarantee.
+
+**Lesson for next time, extending pitfall #12:** when a fix to the draw pipeline has zero visible effect on a window, check WHICH draw path that window actually uses before adding a 5th variation of the same fix - `grep` the window's redraw function for `kh_serialize_frame_subtree`/`kh_paint_frame_line` (frame-file round trip) vs a direct `render_tree()` call, per pitfall #12's own step 1. A `256`-byte cap surviving independently in BOTH the struct definition AND a completely separate serialization round-trip buffer is a real, repeatable shape in this codebase - grep for `\[256\]`/`\[256 \* 2\]` near any `label`-handling code, not just the one struct field, whenever this class of bug resurfaces on a different window.
+
+---
+
+## ⚠️ OPEN 2026-09-22: HQ dropdown/menu lists (pals, palettes, edit, etc.) have no scrollbar at all
+
+**Reported:** direct live report, discovered while investigating a real overlap bug in the "pals" dropdown (see the `khtpm_core_render.c` scroll-boundary entry below, same session) — "drop downs should have a scroll bar (which has navs) if they dont yet. this was an oversight."
+
+**Confirmed by direct code check**: grepped `khtpm_core_render.c` for any scrollbar wiring on the HQ dropdown/menu (`hq_menu`) rendering path — zero hits. The generic scroll-region machinery this house already uses elsewhere (`layout_scroll_region()`/`generic_sbar_register()`, proven in file-explorer/board-viewer/etc.) is real and working, but the HQ dropdown cells (pals, palettes, edit, and any other `which == N` cell using `HQMenuItem[]`) don't call into it at all — a long list (the "pals" dropdown has 140+ real entries) has no visible thumb/track, no click-to-scroll, and the user has no way to know there's more below the last visible row short of scrolling blind.
+
+**Partially fixed 2026-09-23 by Codex, built/merged/pushed to `main`.** Real, scoped implementation in `khtpm_core_render.c`'s `layout_dock_bar()`/`dock_paint_menu()` (the dropdown/menu path): reuses the existing generic `generic_sbar_register()`/`draw_generic_scrollbars()` machinery (not a second bespoke system, per the direction above); clips rows outside the visible window instead of translating (`vis_idx` bounds check, no nav_index for off-screen rows); wires mouse wheel, scrollbar-arrow clicks, and Page_Up/Page_Down, scoped to the dropdown via `g_dock_drop_lo`/`hi` so it doesn't touch other scroll regions. `KTB_LIVEDESK_DYN_MAX` raised 24→256 (`khtpm_taskbar_manager.h`, real house has 190+ pals) with a corrected Cancel-row reservation in `khtpm_taskbar_manager.c` (dry-runs the post-row count before the directory scan fills the array).
+
+**Live-verified 2026-09-23 by direct owner report:** the pals dropdown now shows a genuinely longer list (the 256-cap + clipping is working) - **but no scrollbar thumb/track is visible yet**, so a user still can't see there's more below the last visible row or click-drag to scroll (wheel/keys may still work - not yet confirmed either way). **Next step for whoever picks this up:** verify live whether `draw_generic_scrollbars()` is actually being called/rendering for this window (check `g_dock_menu_max_scroll > 0` is true when the real 190+-pal list is open - `dock_paint_menu()` only calls `generic_sbar_register()` when that's the case) and whether the thumb is being drawn but invisible (theme/color/z-order issue) vs never drawn at all (the register call not actually firing, or `g_n_generic_sbars` not being reached by the draw pass for this window). Real commit: `0b454145` on `codex`, merged to `main` via fast-forward, pushed.
+
+---
+
+## ✅ CLOSED (Cancel button half) / ⚠️ OPEN (overlap half) 2026-09-22: "pals" dropdown - missing Cancel row (real cap, fixed) + boundary row overlap (unreproduced)
+
+**Reported:** direct live screenshot (`/home/no/Pictures/Screenshots/Screenshot from 2026-09-22 17-08-22.png`) - scrolling the "pals" dropdown shows the topmost visible row rendering with just its nav number + selection highlight and no icon/label content, squeezed into a near-zero-height sliver overlapping the row below it. Also reported: no visible Cancel button in this same dropdown ("other dropdowns don't do this").
+
+**Cancel button — real root cause found, fixed, live-verified (commit `4584cc25`).** Not a scroll issue: `KTB_LIVEDESK_DYN_MAX` is 24 (`khtpm_taskbar_manager.h:71`), but the live house has 191 real pal directories — the alphabetical scan in `livedesk_build_pals_menu()` (`khtpm_taskbar_manager.c` ~line 3471) filled all 24 array slots before Cancel could ever be appended, with zero pdl-defined post rows to reserve room. Confirmed live before the fix: dumping `#.desktop/strip_var_hqitems.txt` with the dropdown genuinely open showed exactly 24 rows, the last a real pal (`tax_robot`), no Cancel. Fixed by dry-running the post-row count first and reserving at least 1 slot for Cancel up front; verified after rebuild+restart: 25 rows, last is `Cancel`.
+
+**Boundary row overlap — real finding: the original "140+ entries, scroll boundary" premise was wrong, and the symptom could not be reproduced against the real code.** The pals dropdown's actual render path (a `dropdown-child` repeat block, `khtpm_strip_header.xhtpm` + `khtpm_core_render.c` ~5210-5262/`dock_paint_menu()` ~5431) has **no scroll or clipping logic at all** — every row is drawn unconditionally, sized to fit all of them (and the 24-row cap above means it physically never exceeds 24 rows, so a scroll-boundary bug class doesn't obviously apply here today). Could not get the actual popup window to map live via the relay to capture direct pixel proof either way, and said so rather than guessing at a fix. **Still open** - if this is still visually reproducible, needs a human or an agent with more relay-protocol context (the real relay format has a 5th token, e.g. `hq_win`, not documented in the k9 testing-convention file) driving it interactively.
+
+---
+
+## ✅ CLOSED 2026-09-22 (fixed same day as reported, verified via live `strip_ui.txt` receipts and real timing, commit `60fd7920`): taskbar takes a long time to appear on launch, even though desktop entities (which the user expected to be the slower/bigger thing) appear instantly
+
+**Reported:** direct live report - "it took a long time for tb to populate... doesn't make sense that it took so long when desktop entities, which are larger, were instant." Asked for a "loading" indicator as a possible mitigation, and to track this at minimum.
+
+**Real, evidenced root cause (found by direct code read):**
+`khtpm_taskbar_manager_main.c`'s `main()` calls `ktb_init()` synchronously, before the manager writes its pidfile or reaches the event loop that publishes `#.desktop/strip_ui.txt` — the file the renderer polls to draw the taskbar strip at all. `ktb_init()` (`khtpm_taskbar_manager.c` ~line 441) calls `livedesk_ensure_cursword()` then `livedesk_spawn_active_desk()` → `livedesk_spawn_desk()` (~line 2474), which loops over every `DESK` row in the active desk's `.pdl`. For **each entity**, before its (fire-and-forget, `setsid nohup ... &`) spawn, it runs `ktb_find_live_pid_for_pal()` (~line 2768) — a **full scan of `/proc`**, opening and `fread`ing `/proc/<pid>/cmdline` for every process on the machine, to check whether that one entity is already running.
+
+This explains the exact reported shape: each entity's own spawn is genuinely fast once its turn comes (X11 window mapping doesn't wait on anything else), so entities visibly "pop in" quickly one at a time. But the *next* entity's spawn doesn't start until the *current* entity's full `/proc` scan finishes, and the taskbar's own UI can't be published until the ENTIRE loop — one full-process-table scan per entity — completes. A desk with N entities does N full `/proc` scans, fully serialized, before the taskbar can draw anything, on a documented weak-CPU machine (`nice-heavy-background-work` house note).
+
+**Fixed (option 2 of the three considered):** the `/proc` scan is now done ONCE per pass (`ktb_proc_snapshot()`/`_find()`/`_free()`, `khtpm_taskbar_manager.c`), not once per entity, at both real call sites (`livedesk_spawn_desk()`'s startup loop and `ktb_self_heal_active_desk_registry()`'s reconcile pass). Most surgical of the three options considered — no ordering change, no new published state, just removes the redundant re-scanning. Options 1 (placeholder UI) and 3 (defer spawning off the sync path) remain real, not-yet-needed alternatives if this ever regresses at a larger scale.
+
 ## ✅ CLOSED 2026-09-20 (verified on the user's hardware: "that actually fixed it"): csv-hq `<grid>` - Enter on the grid nav item doesn't activate it (needs a double click) and no typed input arrives afterward
 
 **FINAL ROOT CAUSE (confirmed on hardware): the Cursword pal's never-released display-wide keyboard grab (`2c1301ab`) - see `03-pitfalls/HOUSE_CODE_PITFALLS.md` #24. The grid re-arm fix (`3895ff77`) was also a real, separate bug. The `managed` class (`17f8da40`), the WM_HINTS/override_redirect theories and the dock were NOT the cause. Fix took effect after restarting the Cursword pal once.**

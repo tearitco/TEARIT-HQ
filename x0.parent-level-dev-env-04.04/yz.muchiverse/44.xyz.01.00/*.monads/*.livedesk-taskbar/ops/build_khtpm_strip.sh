@@ -37,6 +37,21 @@ if [ "$_fresh" = 1 ] && [ -z "${KHTPM_FORCE_BUILD:-}" ]; then
                      -newer "$_oldest_bin" -print; } 2>/dev/null | head -1 )"
     if [ -z "$_newer" ]; then
         echo "build_khtpm_strip.sh: binaries up to date — skipping (KHTPM_FORCE_BUILD=1 to force)"
+        # REAL FIX 2026-09-23, direct live report ("compile fail message
+        # on restart even tho we get a clean compile and run new hq"):
+        # the marker below is only written at the START of a real build
+        # (past this early-exit) and only cleared on this script's LAST
+        # line (reached only after every step succeeds). If an EARLIER
+        # attempt failed or was killed mid-build, it leaves the marker
+        # behind; the freshness gate above then keeps taking this skip
+        # path on every later, perfectly fine restart (current binaries
+        # are unchanged and working) without ever reaching the real
+        # clear at the bottom - so the splash/caller sees a stale
+        # failure forever. Reaching this skip path means the currently-
+        # built binaries are known-good (that's the whole point of the
+        # gate), so it's exactly as safe to clear the marker here as at
+        # the bottom.
+        rm -f +x/.build_failed.txt
         exit 0
     fi
 fi
