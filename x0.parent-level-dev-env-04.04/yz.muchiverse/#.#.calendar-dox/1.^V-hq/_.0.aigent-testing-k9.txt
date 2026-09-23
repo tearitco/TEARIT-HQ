@@ -164,6 +164,18 @@ dump way to quick. thats for emergency when text audit failed".
   wraith-alpha. `poll_dbhq_agent_relay()` is not the only name;
   do not require X focus to poll (that stole the human when agents
   used xdotool to satisfy the old gate).
+
+**ADDENDUM 2026-09-22 (real gap, found by a bugfix agent, not previously
+documented here):** `MOUSE_EVENT:` lines in the real, live
+`#.desktop/strip_input_history.txt` carry a 5th token this doc never
+named — the target window, e.g. `MOUSE_EVENT: 1 113 196 1 popup_win`
+vs `MOUSE_EVENT: 1 393 34 1 hq_win`. Confirmed live via direct
+`tail` of that file (both values seen for real). **Not yet fully
+understood** — which values are valid, and how a click is routed
+differently by this field, needs a real read of the C code that
+parses this line before relying on it; flagging its existence here so
+the next agent doesn't have to rediscover it from scratch the way this
+one did.
 - Map: override_redirect popups = `XMapRaised`, no SetInputFocus on
   map. WM-managed HQ = `XMapWindow` (not Raised). Cite
   `HQ-WINDOW-MAP-AND-AGENT-INPUT.md`.
@@ -171,6 +183,31 @@ dump way to quick. thats for emergency when text audit failed".
   codes **1002 / 1001** (KSC_FOCUS_RIGHT/LEFT). Writing
   `strip_input_history.txt` `KEY_PRESSED:1002` did **not** move
   `unified_nav_focus` in the 2026-08-28 re-prove.
+
+**ADDENDUM 2026-09-23 (db-hq-pal tabs — live, do not "fix" the GUI
+from an unactivated tab):**
+- This window is `class="db-hq-pal"`. `#.desktop/db_hq_history.txt`
+  and `harnesses/db-hq/nav.sh` drive the old `g_is_db_hq` path, which
+  this class leaves dormant. Keys for the live window go to
+  `#.desktop/entity_menu_history/<renderer-pid>.txt` as
+  `KEY_PRESSED: <decimal>` (Down=201, Up=200, Left=202, Right=203,
+  Enter=13, Esc=27). That mailbox is truncated when the renderer
+  starts. The review copy is separate:
+  `&.hq-apps/db-hq-pal/debug/frames/session_frame_history.txt`
+  (wiped once per launch, then appended when `state/ui.txt` changes).
+- While scope is not confined, arrows step every nav item, including
+  the tab strip. Eight Downs and one Enter on 2026-09-23 opened the
+  States tab. Actors had not been activated. That is not evidence the
+  list arrows are broken.
+- A `<tab>` with `target_id="sidebar"` (every db-hq-pal content tab,
+  including Actors) locks nav into the sidebar on that one activation
+  and moves focus to the first row (`activate_focused` tab branch in
+  `khtpm_core_render.c`). Arrows before that Enter stay on the tabs.
+  Activate the tab you mean, then arrow. Do not change tab/arrow code
+  until a test that actually activates that tab fails to enter the list.
+- `state/ui.txt_focus.txt` stays `focus_label=` empty on this window.
+  Focus names are stored for swatch tiles only, so a digit probe
+  cannot tell you which element nav N is.
 
 Principles
 ----------
