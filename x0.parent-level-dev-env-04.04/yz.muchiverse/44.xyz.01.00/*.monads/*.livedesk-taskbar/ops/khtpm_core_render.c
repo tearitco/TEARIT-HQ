@@ -1784,6 +1784,9 @@ static int g_default_scope_confine = 0;
  * in spirit from db-hq's g_dbhq_current_tab. */
 static char g_default_active_tab_id[64] = "";
 static int g_dock_drop_lo, g_dock_drop_hi;
+static int g_dock_dropdown_scroll;
+static char g_dock_dropdown_scroll_owner[64];
+static int g_dock_menu_total_rows, g_dock_menu_visible_rows, g_dock_menu_max_scroll;
 /* Forward declaration - real definition (with its own X11/Xft section
  * header comment) lives further down this file. Needed here because a
  * reparse that disarms a cli_io field mid-type must also release any
@@ -5209,7 +5212,7 @@ static int layout_dock_bar(Elem *page) {
     }
     {
         char last_target[64] = "";
-        int stack_n = 0, col_w = 0;
+        int stack_n = 0, col_w = 0, n_open_total = 0, visible_rows, max_scroll;
         Elem *trig0 = NULL;
         for (i = 0; i < page->n_children; i++) {
             Elem *c = page->children[i];
@@ -5221,6 +5224,7 @@ static int layout_dock_bar(Elem *page) {
                 (g_default_active_scope_id[0] && trigger->id[0] &&
                  strcmp(g_default_active_scope_id, trigger->id) == 0));
             if (!open || !trigger) continue;
+            n_open_total++;
             dw = dock_text_px(c->label) + DOCK_NAV_BADGE_PX + 16;
             if (c->sprite[0]) dw += DOCK_SPRITE_PX + 4;
             if (dw < trigger->w) dw = trigger->w;
@@ -5232,10 +5236,36 @@ static int layout_dock_bar(Elem *page) {
             col_w = sw - 8 - trig0->x;
             if (col_w < 40) col_w = 40;
         }
+#define DOCK_DROPDOWN_MAX_VISIBLE_ROWS 12
+        if (n_open_total > DOCK_DROPDOWN_MAX_VISIBLE_ROWS)
+            col_w += GENERIC_SCROLLBAR_W + 60;
+        if (trig0 && trig0->x + col_w > sw - 8) {
+            col_w = sw - 8 - trig0->x;
+            if (col_w < 40) col_w = 40;
+        }
+        if (trig0 && trig0->id[0]) {
+            if (strcmp(g_dock_dropdown_scroll_owner, trig0->id) != 0) {
+                g_dock_dropdown_scroll = 0;
+                snprintf(g_dock_dropdown_scroll_owner, sizeof(g_dock_dropdown_scroll_owner), "%s", trig0->id);
+            }
+        } else {
+            g_dock_dropdown_scroll = 0;
+            g_dock_dropdown_scroll_owner[0] = '\0';
+        }
+        visible_rows = (n_open_total > 0 && n_open_total < DOCK_DROPDOWN_MAX_VISIBLE_ROWS)
+            ? n_open_total : DOCK_DROPDOWN_MAX_VISIBLE_ROWS;
+        if (visible_rows < 1) visible_rows = 1;
+        max_scroll = n_open_total - visible_rows;
+        if (max_scroll < 0) max_scroll = 0;
+        if (g_dock_dropdown_scroll > max_scroll) g_dock_dropdown_scroll = max_scroll;
+        if (g_dock_dropdown_scroll < 0) g_dock_dropdown_scroll = 0;
+        g_dock_menu_total_rows = n_open_total;
+        g_dock_menu_visible_rows = visible_rows;
+        g_dock_menu_max_scroll = max_scroll;
         for (i = 0; i < page->n_children; i++) {
             Elem *c = page->children[i];
             Elem *trigger;
-            int open;
+            int open, vis_idx;
             if (!elem_has_class(c, "dropdown-child")) continue;
             trigger = c->target_id[0] ? find_by_id(g_window, c->target_id) : NULL;
             open = trigger && (g_default_active_scope_root == trigger ||
@@ -5246,9 +5276,10 @@ static int layout_dock_bar(Elem *page) {
                 snprintf(last_target, sizeof(last_target), "%s", c->target_id);
             }
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
-            if (open && trigger) {
+            vis_idx = stack_n - g_dock_dropdown_scroll;
+            if (open && trigger && vis_idx >= 0 && vis_idx < visible_rows) {
                 c->x = 0;
-                c->y = stack_n * DOCK_BAR_H;
+                c->y = vis_idx * DOCK_BAR_H;
                 c->w = col_w;
                 c->h = DOCK_BAR_H;
                 c->nav_index = ++g_n_nav;
@@ -5271,6 +5302,9 @@ static int layout_dock_bar(Elem *page) {
             } else {
                 g_dock_menu_w = 0;
                 g_dock_menu_h = 0;
+                g_dock_menu_total_rows = 0;
+                g_dock_menu_visible_rows = 0;
+                g_dock_menu_max_scroll = 0;
             }
         }
     }
@@ -5478,6 +5512,13 @@ static void dock_paint_menu(void) {
         gc = g_dock_menu_gc;
         g_win_w = g_dock_menu_w;
         g_win_h = g_dock_menu_h;
+        generic_sbar_reset();
+        if (g_dock_menu_max_scroll > 0)
+            generic_sbar_register(0, 0, g_dock_menu_w, g_dock_menu_h,
+                                  &g_dock_dropdown_scroll,
+                                  g_dock_menu_total_rows,
+                                  g_dock_menu_visible_rows,
+                                  g_dock_menu_max_scroll);
         XSetForeground(dpy, gc, alloc_pixel(g_theme_bg));
         XFillRectangle(dpy, buf, gc, 0, 0, (unsigned)g_win_w, (unsigned)g_win_h);
         {
@@ -5490,6 +5531,10 @@ static void dock_paint_menu(void) {
                 for (i = g_dock_drop_lo; i <= g_dock_drop_hi; i++) {
                     if (i >= 1 && i <= g_n_nav && g_nav[i - 1])
                         kh_serialize_frame_elem(ff, g_nav[i - 1]);
+                }
+                for (i = 0; i < g_n_generic_sbars; i++) {
+                    if (g_sbar_up_elem[i].w > 0) kh_serialize_frame_elem(ff, &g_sbar_up_elem[i]);
+                    if (g_sbar_down_elem[i].w > 0) kh_serialize_frame_elem(ff, &g_sbar_down_elem[i]);
                 }
                 fclose(ff);
                 rename(tmpp, fpath);
@@ -5505,6 +5550,7 @@ static void dock_paint_menu(void) {
                 fclose(rf);
             }
         }
+        draw_generic_scrollbars();
         /* 2px theme-secondary window frame in a dedicated margin,
          * drawn LAST, right before the present. */
         {
@@ -9076,7 +9122,11 @@ static void handle_key(KeySym ks, char ch) {
      * [0,0], never matching a real g_focus_nav >= 1). */
     if (ks == XK_Page_Up || ks == XK_Page_Down) {
         int dir = (ks == XK_Page_Down) ? 1 : -1;
-        if (g_focus_nav >= g_default_sidebar_nav_lo && g_focus_nav <= g_default_sidebar_nav_hi)
+        if (g_dock_drop_lo && g_default_active_scope_id[0] &&
+            g_focus_nav >= g_dock_drop_lo && g_focus_nav <= g_dock_drop_hi &&
+            g_n_generic_sbars > 0 && g_generic_sbars[0].scroll)
+            *g_generic_sbars[0].scroll += dir;
+        else if (g_focus_nav >= g_default_sidebar_nav_lo && g_focus_nav <= g_default_sidebar_nav_hi)
             g_default_sidebar_scroll += dir;
         else if (g_focus_nav >= g_default_scrolllist_nav_lo && g_focus_nav <= g_default_scrolllist_nav_hi)
             g_default_scrolllist_scroll += dir;
@@ -10205,11 +10255,17 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                     kh_interact_engage_if_needed();
             }
             if (window_is_dock() && g_dock_menu_win && cw == g_dock_menu_win &&
-                ev->xbutton.button == 1 && g_dock_drop_lo >= 1) {
+                (ev->xbutton.button == 1 || ev->xbutton.button == 4 || ev->xbutton.button == 5) &&
+                g_dock_drop_lo >= 1) {
                 /* Hit-test laid-out row boxes. y/DOCK_BAR_H was off-by-one
                  * on the long toys list (Piececraft-HQ vs Piececraft). */
                 int px = ev->xbutton.x, py = ev->xbutton.y;
                 int i0 = g_dock_drop_lo - 1, i1 = g_dock_drop_hi;
+                if ((ev->xbutton.button == 4 || ev->xbutton.button == 5) &&
+                    generic_sbar_wheel(px, py, (ev->xbutton.button == 5) ? 1 : -1)) {
+                    redraw();
+                    return;
+                }
                 if (i1 > g_n_nav) i1 = g_n_nav;
                 for (int i = i0; i < i1; i++) {
                     Elem *it = g_nav[i];
@@ -10233,6 +10289,20 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                         activate_focused();
                         if (!g_quit) redraw();
                         return;
+                    }
+                }
+                for (int sbi = 0; sbi < g_n_generic_sbars; sbi++) {
+                    Elem *arrows[2] = { &g_sbar_up_elem[sbi], &g_sbar_down_elem[sbi] };
+                    for (int ai = 0; ai < 2; ai++) {
+                        Elem *it = arrows[ai];
+                        if (!it || it->w <= 0 || !it->onclick[0]) continue;
+                        if (px >= it->x && px < it->x + it->w &&
+                            py >= it->y && py < it->y + it->h) {
+                            if (!click_focus_then_activate(it)) { redraw(); return; }
+                            activate_focused();
+                            if (!g_quit) redraw();
+                            return;
+                        }
                     }
                 }
             }
@@ -12042,4 +12112,3 @@ int main(int argc, char **argv) {
     XCloseDisplay(dpy);
     return 0;
 }
-

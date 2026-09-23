@@ -3476,6 +3476,11 @@ static int livedesk_build_pals_menu(const char *house_root, HQMenuItem *menu, in
      * hardcoded "Cancel" only when the pdl defines no post rows, so an
      * untouched house behaves exactly as before). */
     int n = livedesk_pdl_menu_rows_staged(house_root, "pals", "pre", menu, max);
+    HQMenuItem post_probe[KTB_LIVEDESK_DYN_MAX];
+    int reserved = (max - n > 0)
+        ? livedesk_pdl_menu_rows_staged(house_root, "pals", "post", post_probe, max - n)
+        : 0;
+    if (reserved < 1) reserved = 1;
 
     /* REAL FIX 2026-09-22, direct live report ("no visible Cancel
      * button in pals dropdown"). Root cause, confirmed live (dumped
