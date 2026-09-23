@@ -343,3 +343,89 @@ nothing below is silently answered anywhere in this document:
 - terumon-produced molecule provenance tracking in the chemistry CSV
   (new optional column vs. `hint`-field note) — format works either
   way as confirmed above, which convention to use is undecided.
+
+## 6. Organs, body simulation, and skills (2026-09-22, direct request, real design)
+
+Direct instruction: terumon should have basic organs (brain, stomach,
+bones, blood, nervous system, cardiovascular system, lungs, other
+organs as needed). Real clarifying answer given when asked whether
+these are Concept Bank nodes or simulated body-state: **both** —
+hand-coded to start, evolvable later, and the design below is how
+those two roles stay one real system instead of two things that can
+drift out of sync.
+
+**The split, precisely** (same single-source-of-truth discipline as
+the Concept Bank's own spoke/mirror normalization, Q9):
+- **`body_state.pdl`** (new, per-terumon, alongside
+  `dustball_state.pdl`/`learning_limits.pdl`): the actual current
+  numeric values — `blood_volume`, `lung_capacity`, `bone_density`,
+  `nervous_activity`, etc. This is state, hand-editable, the thing
+  gameplay (feeding, fighting, milking) directly changes.
+- **Concept Bank master nodes** (`brain`, `stomach`, `bones`, `blood`,
+  `nervous_system`, `cardiovascular_system`, `lungs`, ...): the named,
+  weighted RULES for how those values change and relate to each other
+  (e.g. how strongly `eating` affects `stomach` affects `blood`) — the
+  same propose→validate→replay→promote loop (A-TEARIT §2) governs
+  these exactly like any other Concept Bank relation. Hand-coded
+  starting weights, same as the Concept Bank's other seed relations
+  (`force`/`motion`/`energy`).
+
+`body_state.pdl` is the value; the Concept Bank is the behavior. One
+real file owns the number, one real substrate owns the rule for how it
+moves — never two independently-hand-edited copies of the same fact.
+
+**Game-time sync**: organs tick once per real house "turn" — a real,
+existing concept (`@.apps/my-chara-txt/test-harn-same/scenarios/
+demo_end_turn.sh` confirms a genuine turn-advance mechanism already
+exists in this app family). **OPEN**: the exact hook a terumon's
+`body_state.pdl` update should attach to on each turn-advance hasn't
+been confirmed against real code yet — named as the real next
+investigation, not assumed.
+
+**Audit channels — three real, different interfaces onto the same
+state, not three separate systems:**
+1. **Chat query** (isolation-mode channel, already resolved as a
+   second proposer into the same learner instance) — "are you
+   hungry" reads real `body_state.pdl` values and phrases a real
+   answer; the model describes real state, it doesn't invent one
+   (same DESCRIBE-not-CLASSIFY law as everywhere else).
+2. **Stats view** — a real dashboard panel (natural fit: extend
+   h-ai-lab's own per-instance viewer, since terumon are already
+   registered there per tonight's drop-wiring) reading
+   `body_state.pdl` + the relevant Concept Bank spoke weights
+   directly.
+3. **Special items** (e.g. a "stethoscope") — **the in-game
+   counterpart to h-ai-lab's out-of-game dashboard**, same underlying
+   loop, different interface: a real inventory item that, used on a
+   terumon, is itself an Event (same Events-pipeline mechanism as any
+   other item/action, A-TEARIT §2.6) which reveals or lets a player
+   hand-weigh a specific organ/skill weight. **Not yet built** — no
+   stethoscope-shaped item exists; this names the real mechanism
+   (item = Event, same compiler) it should use once built, not a new
+   one.
+
+**Skills — real correction, not a restatement of "weighted traits":**
+direct clarification given: a skill is **not** just a Concept Bank
+relation. A skill is **an actual, functional, compiled Event** — "a
+moving/growing/learning event page" — the same real
+`event.ir.pdl → cmd_N.sh` artifact any other Event already is (Q8
+8a's resolved DESCRIBE+compiler decision, never direct emission),
+stored as a real page in the terumon's own `event_pkg`. What makes a
+skill different from an ordinary hand-authored Event: it has its own
+Concept Bank weight(s) governing how reliably/powerfully it fires, it
+can be "leveled" via repeated successful use (the same reward-weighted
+promotion ledger as everything else in this house), and — the real
+extension — its own DEFINITION can change over time, not just its
+weight, through the same propose→validate→replay→promote loop. A
+skill growing is therefore not a metaphor: it's a real Event being
+re-proposed and re-compiled as it earns promotion, exactly the
+mechanism A-TEARIT §2.6 already specifies for any FSM/GOAP
+self-authoring, now named explicitly as what "a terumon learning a
+skill" concretely means.
+
+**Not yet done, deliberately**: `body_state.pdl`'s real field list and
+starting values; the turn-advance hook (OPEN above); the stethoscope
+item; any organ Concept Bank master nodes beyond tonight's seed set
+(`force`/`motion`/`energy` — none of the organs named here have real
+master node files yet). This section names the shape, not a finished
+build.

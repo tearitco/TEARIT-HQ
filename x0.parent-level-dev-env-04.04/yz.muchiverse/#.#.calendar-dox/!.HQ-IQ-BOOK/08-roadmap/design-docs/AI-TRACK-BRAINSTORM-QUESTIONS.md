@@ -648,3 +648,56 @@ Layer code; nothing here has touched tomom's actual files yet. This
 section is the honest shape of the design, for NIGHT_22 to dramatize
 and for real implementation to start from once the corpus-meta-weight
 question is answered.
+
+## Question 10: a house-wide entity-creation hook — Gemma corpus lookup + pricing (2026-09-22, real, house-wide scope confirmed)
+
+Real, direct request, scoped explicitly wider than terumon: whenever
+ANY new pal/entity is created, it should get (a) a Gemma lookup that
+proposes real corpus additions based on the creation prompt/context,
+and (b) a generated price, compared against similar existing
+items/elements. Confirmed directly: this is meant to apply house-wide
+from the start, not just to terumon.
+
+**Real finding before designing anything: there is no single "entity
+created" choke point to hang this on.** Checked directly — `palettes`
+(an asset/tile picker, not a creation flow), the taskbar's `pals` cell
+(just a listing of already-existing pals), and `create-package` (an
+unrelated app-export tool) were all checked and ruled out. Entities
+are actually spawned through several separate, real paths: the
+tile-picker's Place tool (picking an emoji/asset), events-hq spawning
+a robot/piece, and tonight's terumon seeding (currently hand-authored
+files, no reusable "create" tool yet). **This section names the
+mechanism to attach at each real spawn point, not a single new hook**
+— there isn't one place to put it.
+
+**The mechanism itself, reusing what already exists rather than
+inventing new infra:**
+1. **Corpus lookup** — Gemma DESCRIBE on the creation prompt/context
+   (whatever text/intent produced this entity), same DESCRIBE-not-
+   CLASSIFY law as everywhere else, → a deterministic scorer → real
+   candidate `EDIT`/`new_concept_node` records through the *same*
+   Concept Bank propose→validate→replay→promote loop (A-TEARIT §2) —
+   not a separate, parallel "creation-time learning" mechanism. A
+   newly-created entity's starting corpus is just its first batch of
+   candidate edits, reviewed the same way any later one is.
+2. **Pricing** — a real precedent exists to anchor this in, not
+   invented from nothing: `myne-qrypto`'s Exchange already designs
+   market-price discovery from trading volume, with an NPC-fixed-price
+   fallback (`MYNE_QRYPTO_DESIGN.md` §10, itself still an open
+   question there). **Real, honest cold-start problem, not glossed
+   over**: comparing a new entity "against similar existing
+   items/elements" requires there already to BE priced similar items
+   — the very first entity ever created has nothing to compare
+   against. Recommend the NPC-fixed-price fallback (a hand-set base
+   price per rough category) as the real starting rule, with
+   market-price comparison only becoming meaningful once enough real
+   entities/trades exist — this mirrors the same "hand-coded to start,
+   evolvable later" discipline already applied to terumon's organs
+   (`terumon-dev/TERUMON-SPEC.md` §6) and the Concept Bank's own seed
+   relations.
+
+**Not yet done, deliberately**: no code at any of the three real spawn
+points calls this yet; no pricing formula chosen; no real "similar
+item" comparison exists because no priced item corpus exists yet. This
+section names the real shape and the real precedent to build from, not
+a finished mechanism.
