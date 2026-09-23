@@ -39,6 +39,33 @@ and the renderer still truncates that one on startup.
    edit tab code. The k9 addendum that said one activation locks the
    sidebar was wrong and is corrected in the same file.
 
+## Intent 2026-09-23 — read a receipt so a page can branch
+
+**Intent.** An event page can already press Down (`send_input`). It
+cannot see where the cursor landed. Meta-AI / `ai_fsm_transition`
+stays unbuilt until a page can read `focus_nav` from a receipt and
+take one branch or the other with the `if` command that already
+exists. This is not a new AI stack and not a renderer change.
+
+**Steps.**
+1. Add command `read_receipt` to `event_commands.registry.pdl`. It
+   execs `mr_read_receipt.+x`.
+2. The op reads one `key=` line from a receipt path. It stores that
+   text in `variables.txt` under the name given. If an expected value
+   and a switch name are given, it writes that switch as `1` when the
+   text matches and `0` when it does not. `if` compares a switch to 1
+   or 0.
+3. Prove it on a fixture receipt in `/tmp`, not on the live Database
+   window. Missing file stores `NONE` and switch `0`, and exits 0.
+
+**KPI.** All three must pass before anyone adds `ai_fsm_transition`:
+- Fixture `focus_nav=17`, expect `17` → variable `17`, switch `1`.
+- Same file, expect `32` → variable `17`, switch `0`.
+- Missing receipt → variable `NONE`, switch `0`.
+
+**Not in this pass.** No live click. No `ai_describe`. No actor-row
+edits. Kilo's Co-lab wrap is a separate task.
+
 ## Meta AI does not click. The FSM does.
 
 The click checks above are the kind of repeated action that should

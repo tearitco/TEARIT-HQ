@@ -218,6 +218,17 @@ COMMAND send_input
   PAL ecall
 END
 
+# read_receipt: copy one key=value line from a frame receipt into
+# variables.txt, and optionally set a switch to 1 or 0 so `if` can
+# branch. Does not describe or classify the frame. ai_* stays absent.
+COMMAND read_receipt
+  LABEL Read Receipt
+  FIELD1 Receipt path:
+  FIELD2 Key:
+  PARAMS receipt,key,var_name,expect,switch_name
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_read_receipt.+x" "$ENT" "$D" '{receipt}' '{key}' '{var_name}' '{expect}' '{switch_name}'
+END
+
 # ------------------------------------------------------------------
 # MESSAGE commands (Task 1, 2026-08-29 - docs: the 2do doc's Task 1
 # section, gap #0 design resolution). These compile to `exec cmd_N.sh`
