@@ -1,10 +1,10 @@
 /* mr_read_receipt — copy one key from a frame receipt into event state.
  * Usage:
- *   mr_read_receipt.+x <entity_dir> <house_root> <receipt> <key> <var_name> [expect] [switch_name]
- * house_root is accepted so the TEMPLATE matches the other ops. It is
- * not read. A missing receipt or a missing key stores NONE and, when
- * a switch name is given, writes that switch as 0. Match writes 1.
- * `if` compares switches.txt to 1 or 0.
+ *   mr_read_receipt.+x <entity_dir> <house_root> <receipt> <key> <var_name> [switch=expect]
+ * The compiler keeps four fields (MAX_FIELDS). The fourth is
+ * switch=expect, for example on_harold=17. house_root is unused.
+ * A missing receipt stores NONE and writes the switch as 0. A match
+ * writes 1. `if` compares switches.txt to 1 or 0.
  */
 #include <stdio.h>
 #include <string.h>
@@ -30,7 +30,7 @@ static void read_key(const char *path, const char *key, char *out, size_t n) {
 
 int main(int argc, char **argv) {
     if (argc < 6) {
-        fprintf(stderr, "Usage: mr_read_receipt.+x <entity_dir> <house_root> <receipt> <key> <var_name> [expect] [switch_name]\n");
+        fprintf(stderr, "Usage: mr_read_receipt.+x <entity_dir> <house_root> <receipt> <key> <var_name> [switch=expect]\n");
         return 1;
     }
     const char *entity = argv[1];
@@ -38,8 +38,19 @@ int main(int argc, char **argv) {
     const char *receipt = argv[3];
     const char *key = argv[4];
     const char *var_name = argv[5];
-    const char *expect = argc >= 7 ? argv[6] : "";
-    const char *sw = argc >= 8 ? argv[7] : "";
+    const char *match = argc >= 7 ? argv[6] : "";
+    char sw_buf[128] = "";
+    char expect_buf[128] = "";
+    const char *eq = strchr(match, '=');
+    if (eq) {
+        size_t n = (size_t)(eq - match);
+        if (n >= sizeof(sw_buf)) n = sizeof(sw_buf) - 1;
+        memcpy(sw_buf, match, n);
+        sw_buf[n] = '\0';
+        snprintf(expect_buf, sizeof(expect_buf), "%s", eq + 1);
+    }
+    const char *sw = sw_buf;
+    const char *expect = expect_buf;
 
     char value[256];
     read_key(receipt, key, value, sizeof(value));

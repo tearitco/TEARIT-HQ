@@ -225,8 +225,8 @@ COMMAND read_receipt
   LABEL Read Receipt
   FIELD1 Receipt path:
   FIELD2 Key:
-  PARAMS receipt,key,var_name,expect,switch_name
-  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_read_receipt.+x" "$ENT" "$D" '{receipt}' '{key}' '{var_name}' '{expect}' '{switch_name}'
+  PARAMS receipt,key,var_name,match
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_read_receipt.+x" "$ENT" "$D" '{receipt}' '{key}' '{var_name}' '{match}'
 END
 
 # ------------------------------------------------------------------

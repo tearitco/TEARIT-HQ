@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | read-receipt-ent
+STATE        | source               | events-hq
+NODE         | id=1 type=read_receipt | receipt=/tmp/rr.receipt.pdl|key=focus_nav|var_name=focus_nav|match=on_harold=17

@@ -63,6 +63,16 @@ exists. This is not a new AI stack and not a renderer change.
 - Same file, expect `32` → variable `17`, switch `0`.
 - Missing receipt → variable `NONE`, switch `0`.
 
+**Passed 2026-09-23 through the compiler, not only the shell.**
+The events manager appended the node on
+`#.desktop/harnesses/read-receipt-ent` and wrote `event.pal` plus
+`cmd_1.sh`, same shape as Change Gold on `m8_redhorned`. The compiler
+keeps four fields (`MAX_FIELDS` is 4), so the fourth field is
+`match=on_harold=17` (switch name, then the value to compare). `prisc+x`
+ran that page alone. All three rows above passed. `play_event.sh` was
+not used for the recorded run: it also fires every other `on-click`
+common event (`palcraft_sign_onclick` is a sign message).
+
 **Not in this pass.** No live click. No `ai_describe`. No actor-row
 edits. Kilo's Co-lab wrap is a separate task.
 
