@@ -274,6 +274,21 @@ int main(int argc, char **argv) {
         "O.textContent=\"I-ok\";\n",
         "I-ok");
 
+    /* J: img src triggers fetch and onload (Step 1, no decode yet) */
+    rc |= run_case(worker, tmpdir,
+        "wcs[img] Image src triggers load",
+        "<html><body><div id=\"out\">o</div></body></html>",
+        "",
+        "var O=document.getElementById(\"out\");\n"
+        "var img=new Image();\n"
+        "var fired=false;\n"
+        "img.onload=function(){ fired=true; };\n"
+        "img.onerror=function(){ throw \"J err\"; };\n"
+        "img.src=\"data:text/plain,hello\";\n"
+        "if(!fired) throw \"J1 not fired\";\n"
+        "O.textContent=\"img-ok\";\n",
+        "img-ok");
+
     printf("%s\n", rc ? "FAIL: worker_css_test" : "PASS: worker_css_test");
     return rc ? 1 : 0;
 }

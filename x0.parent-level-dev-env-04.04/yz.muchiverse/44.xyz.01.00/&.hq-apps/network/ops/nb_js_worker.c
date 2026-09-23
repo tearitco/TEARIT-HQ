@@ -444,6 +444,11 @@ static NbNode *find_tag_first(const NbNode *n, const char *tag) {
     return NULL;
 }
 
+static const char *img_get_src(const NbNode *n);
+static void img_set_src(struct NbNode *n, const char *s);
+static int layout_hidden_anc(struct NbNode *n);
+static void layout_xy(struct NbNode *n, double *out_x, double *out_y);
+
 /* ---- step 4: RENDER — serialize the (post-JS) DOM into page.state.txt
  * rows exactly as the manager's projector consumes them (TITLE/TEXT/LINK/IMG).
  * Only the worker's own tree is authoritative here, so JS mutations
@@ -497,7 +502,7 @@ static void dom_walk_render(const NbNode *n, int *titled, SB *b) {
         }
     } else if (tg && !strcasecmp(tg, "img")) {
         char srcbuf[1024] = "", altbuf[1024] = "";
-        snprintf(srcbuf, sizeof(srcbuf), "%s", nb_attr_get(n, "src"));
+        snprintf(srcbuf, sizeof(srcbuf), "%s", img_get_src(n));
         snprintf(altbuf, sizeof(altbuf), "%s", nb_attr_get(n, "alt"));
         if (srcbuf[0]) {
             char imgbuf[2048];
@@ -755,6 +760,16 @@ static JSValue nb_el_getBoundingClientRect(JSContext *ctx, JSValueConst this_val
 }
 
 static JSValue push_node(JSContext *ctx, NbNode *n);
+static JSValue nb_img_src_get(JSContext *ctx, JSValueConst this_val);
+static JSValue nb_img_src_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_image_ctor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_fetch_sync(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static int dispatch_event(JSContext *ctx, int kind, NbNode *node, JSValue ev, int bubbles);
+static JSValue peval_budget_value(JSContext *ctx, const char *src, size_t src_n);
+static const char *img_get_src(const NbNode *n);
+static void img_set_src(NbNode *n, const char *s);
+static int layout_hidden_anc(NbNode *n);
+static void layout_xy(NbNode *n, double *out_x, double *out_y);
 static JSValue nb_el_addEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_el_removeEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_el_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -766,6 +781,7 @@ static JSValue nb_el_click(JSContext *ctx, JSValueConst this_val, int argc, JSVa
  * already ships on every wrapper via the existing definition above) */
 static JSValue nb_el_getContext(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_canvas_toDataURL(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+
 static JSValue nb_el_onprop_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic);
 static JSValue nb_el_onprop_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic);
 
@@ -1696,19 +1712,28 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
      * ("script") — undefined there throws. closure's module loader also does
      * `O.src ? O.src : O.getAttribute("href")` on <script id="base-js">. */
     if (n->tag) {
-        static const char *src_tags[] = { "script","img","iframe","input",
-            "source","track","embed","video","audio","frame", NULL };
-        static const char *href_tags[] = { "a","link","area","base", NULL };
-        for (int i = 0; src_tags[i]; i++)
-            if (!strcmp(n->tag, src_tags[i])) {
-                JS_SetPropertyStr(ctx, el, "src", JS_NewString(ctx, nb_attr_get(n, "src")));
-                break;
-            }
-        for (int i = 0; href_tags[i]; i++)
-            if (!strcmp(n->tag, href_tags[i])) {
-                JS_SetPropertyStr(ctx, el, "href", JS_NewString(ctx, nb_attr_get(n, "href")));
-                break;
-            }
+        if (!strcmp(n->tag, "img")) {
+            JSAtom nm = JS_NewAtom(ctx, "src");
+            JS_DefinePropertyGetSet(ctx, el, nm,
+                JS_NewCFunction(ctx, nb_img_src_get, "get src", 0),
+                JS_NewCFunction(ctx, nb_img_src_set, "set src", 1),
+                JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+        } else {
+            static const char *src_tags[] = { "script","iframe","input",
+                "source","track","embed","video","audio","frame", NULL };
+            static const char *href_tags[] = { "a","link","area","base", NULL };
+            for (int i = 0; src_tags[i]; i++)
+                if (!strcmp(n->tag, src_tags[i])) {
+                    JS_SetPropertyStr(ctx, el, "src", JS_NewString(ctx, nb_attr_get(n, "src")));
+                    break;
+                }
+            for (int i = 0; href_tags[i]; i++)
+                if (!strcmp(n->tag, href_tags[i])) {
+                    JS_SetPropertyStr(ctx, el, "href", JS_NewString(ctx, nb_attr_get(n, "href")));
+                    break;
+                }
+        }
     }
     /* canvas 2D (2026-09-18): real bundles probe <canvas> via
      * createElementNS('...','canvas') and immediately call getContext('2d')
@@ -2816,6 +2841,7 @@ static void install_dom_classes(JSContext *ctx) {
         JS_SetPropertyStr(ctx, p, "parseFromString", JS_NewCFunction(ctx, nb_empty_object, "parseFromString", 2));
         JS_FreeValue(ctx, p);
         JS_SetPropertyStr(ctx, g, "DOMParser", f);
+        JS_SetPropertyStr(ctx, g, "Image", JS_NewCFunction2(ctx, nb_image_ctor, "Image", 0, JS_CFUNC_constructor, 0));
     }
 
     JS_FreeValue(ctx, g);
@@ -4282,6 +4308,66 @@ static int dispatch_event(JSContext *ctx, int kind, NbNode *node, JSValue ev, in
     if (dp < 0) dp = 0;
     JS_FreeValue(ctx, dpv);
     return !dp;
+}
+#define MAX_IMG_SRC 256
+static struct { NbNode *n; char src[1024]; } g_img_src[256];
+static int g_img_src_count = 0;
+static void img_set_src(NbNode *n, const char *s) {
+    for (int i = 0; i < g_img_src_count; i++) if (g_img_src[i].n == n) { snprintf(g_img_src[i].src, sizeof(g_img_src[i].src), "%s", s); return; }
+    if (g_img_src_count < MAX_IMG_SRC) { g_img_src[g_img_src_count].n = n; snprintf(g_img_src[g_img_src_count].src, sizeof(g_img_src[g_img_src_count].src), "%s", s); g_img_src_count++; }
+}
+static const char *img_get_src(const NbNode *n) {
+    for (int i = 0; i < g_img_src_count; i++) if (g_img_src[i].n == n) return g_img_src[i].src;
+    return nb_attr_get(n, "src");
+}
+/* HTMLImageElement src accessor — Step 1: fetch via nb_fetch_sync and fire load/error.
+ * No decode yet; just verifies that img src triggers network and onload. */
+static JSValue nb_img_src_get(JSContext *ctx, JSValueConst this_val) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_UNDEFINED;
+    return JS_NewString(ctx, img_get_src(n));
+}
+static JSValue nb_img_src_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_UNDEFINED;
+    if (argc < 1) return JS_UNDEFINED;
+    JSValueConst val2 = argv[0];
+    JSValue tmp = JS_ToString(ctx, val2);
+    char *s = JS_ToCString(ctx, tmp);
+    JS_FreeValue(ctx, tmp);
+    if (s) {
+        img_set_src(n, s);
+        if (s[0]) {
+            JSValue args[2];
+            args[0] = JS_NewString(ctx, "GET");
+            args[1] = JS_NewString(ctx, s);
+            JSValue res = nb_fetch_sync(ctx, JS_UNDEFINED, 2, args);
+            JSValue okv = JS_GetPropertyStr(ctx, res, "ok");
+            int ok = JS_ToBool(ctx, okv);
+            JS_FreeValue(ctx, okv);
+            const char *evtype = ok ? "load" : "error";
+            char js[64];
+            snprintf(js, sizeof(js), "new Event('%s',{bubbles:false})", evtype);
+            JSValue ev = JS_Eval(ctx, js, strlen(js), "<img src>", JS_EVAL_TYPE_GLOBAL);
+            if (!JS_IsException(ev)) {
+                dispatch_event(ctx, EVT_NODE, n, ev, 0);
+                JS_FreeValue(ctx, ev);
+            } else JS_FreeValue(ctx, JS_GetException(ctx));
+            JS_FreeValue(ctx, res);
+            JS_FreeValue(ctx, args[0]); JS_FreeValue(ctx, args[1]);
+        }
+        JS_FreeCString(ctx, s);
+    }
+    return JS_UNDEFINED;
+}
+static JSValue nb_image_ctor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue global = JS_GetGlobalObject(ctx);
+    JSValue doc = JS_GetPropertyStr(ctx, global, "document");
+    JSValue ce = JS_GetPropertyStr(ctx, doc, "createElement");
+    JSValue arg = JS_NewString(ctx, "img");
+    JSValue el = JS_Call(ctx, ce, doc, 1, &arg);
+    JS_FreeValue(ctx, arg); JS_FreeValue(ctx, ce); JS_FreeValue(ctx, doc); JS_FreeValue(ctx, global);
+    return el;
 }
 static JSValue nb_el_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
