@@ -2,28 +2,25 @@
 
 ---
 
-## ⚠️ OPEN 2026-09-23: Co-lab-h-ai cuts off messages so the human cannot read them (4 real fixes applied, symptom UNCHANGED - see below)
+## ✅ CLOSED 2026-09-23: Co-lab-h-ai cuts off long messages so the human cannot read them
 
-**Reported:** live, while approving agent posts in session `1790154594`. Long `@kilo` lines were queued. The window shows a cut-off sentence. The full text is only in `pending.txt` / `conversation.txt`.
+**Reported:** live, while approving agent posts in session `1790154594`. Long `@kilo`/`@sonnet` lines were queued/posted and the window showed a cut-off sentence, always around the same length regardless of message content.
 
-**Do not re-attempt the original direction below or re-diagnose from scratch - both were wrong, confirmed by direct code read:**
+**Real root cause: co-lab-hai is a default/popup-mode window, and that mode never calls `render_tree()`/`draw_elem()` directly against the live Elem tree.** It serializes the tree to a text frame file (`kh_serialize_frame_elem()`/`kh_serialize_frame_subtree()`) and repaints ENTIRELY from that file (`kh_paint_frame_line()`, `khtpm_core_render.c`), rebuilding a fresh temporary `Elem` per line. This is `HOUSE_CODE_PITFALLS.md` #12's exact shape ("TWO draw paths exist, not one") - db-hq/events-hq mode uses the direct path, everything else (co-lab-hai/chat-hai/open-hai/entity-menu popups) uses this frame-file round trip.
 
-1. **`session_label`'s 96-byte buffer is a red herring.** `session_label()` (`colab_hai_manager.c`) only ever formats a short date string (`"Sep 23 02:21"`-shaped, via `strftime`) into that buffer - it can never hold anything close to 96 bytes in real use.
-2. **`<text>` labels already word-wrap generically** for any row tall enough to need it - a real, house-wide capability since 2026-08-16/2026-09-03 (`wrap_line_count()`/`scroll_row_span()` in `khtpm_draw_core.c`/`khtpm_core_render.c`). Swapping to `<text_area>` (attempted mid-session, reverted) is NOT the fix - it makes the row nav-reachable/editable, which it shouldn't be. Don't re-try it.
+Two independent, hardcoded 256-byte buffers lived in that round trip, both unrelated to `Elem.label`'s own size:
+- `kh_serialize_frame_elem()`'s `label_esc[256*2]` (write side, escaping `e->label` into the frame file)
+- `kh_paint_frame_line()`'s `label_unesc[256]` (read side, unescaping the frame-file field back into the fresh `tmp.label` that actually gets drawn)
 
-**4 real, verified-individually-correct fixes were applied tonight (all still in place, all necessary, none sufficient alone):**
-1. `khtpm_render_core.c`'s `Elem.label` was `char label[256]` → bumped to `2048` (matches the manager's own real per-line cap). Verified via a debug `fprintf` in `apply_attr()`'s `"label"` branch that the FULL, untruncated `val` (up to 649 real chars, confirmed ending exactly at the real message's true last words) reaches this point and is copied in with `sizeof(e->label)`.
-2. `khtpm_draw_core.c`'s draw-time wrap `avail_w` (~line 1474) only subtracted padding once (`(e->x+e->w)-badge_label_x`), while `scroll_row_span()`'s LAYOUT-time `avail_w` subtracts it twice (`w-pad*2`) - this real drift was causing the ORIGINAL bug symptom (overlap on some rows, gaps on others, before this fix). Matched to `-badge_label_x-pad`. This fix alone resolved the overlap/gap artifacts - rows now stack cleanly with no overlap. It did NOT resolve the truncation.
-3. `khtpm_draw_core.c`'s entity-decode step (~line 1258, `label_decoded[600]`, runs for every plain `<text>` tag) → bumped to `2048` to match `Elem.label`.
-4. `khtpm_draw_core.c`'s draw loop `max_lines = e->h/line_h` (floor division) → changed to ceiling division to match `scroll_row_span()`'s own ceiling-division guarantee, removing a possible off-by-one-line asymmetry.
+Both bumped to `2048`/`2048*2` to match `Elem.label`. **Live-verified fixed** - a 649-char real message now renders complete, wrapped correctly, no truncation, no ellipsis, clean row spacing.
 
-**After all 4 fixes, live frame dumps (`dump_frame_png_op`) still show the exact same truncation points, byte-for-byte identical to before any of these fixes** - e.g. a 649-char real message still cuts at the same point. This was checked with debug instrumentation (temporarily added, since removed) directly inside `scroll_row_span()`: for a 649-char message, it correctly computed `lines=8` (the real wrapped-line count) and `span=4` (a valid ROW_H-unit count, ceiling-division-guaranteed to hold 8 real lines at this window's font metrics) - so **the row IS being assigned enough height at layout time**, and the earlier `max_lines` asymmetry theory (fix #4) turned out not to be the live bug either (no visible change after applying it).
+**4 earlier fixes tonight, all in `khtpm_draw_core.c`, were real bugs worth keeping but were NOT this bug** (they operate on the direct `render_tree()`/`draw_elem()` path db-hq/events-hq mode uses - irrelevant to co-lab-hai's actual repaint path, which is why none of them changed anything when tested):
+1. `khtpm_render_core.c`'s `Elem.label` `256`→`2048` (matches the manager's own real per-line cap; still worth having for the direct-draw-path windows).
+2. `khtpm_draw_core.c`'s draw-time wrap `avail_w` didn't match `scroll_row_span()`'s layout-time `avail_w` (missing one side's padding) - fixed, matched.
+3. `khtpm_draw_core.c`'s `label_decoded[600]` → `2048`.
+4. `khtpm_draw_core.c`'s `max_lines = e->h/line_h` (floor) → ceiling division, matching `scroll_row_span()`'s own guarantee.
 
-**Real, confirmed-clean by direct code read (i.e. do NOT re-check these, they are not the bug):** `xml_escape()` (2200B dest), `kh_substitute_vars()` (huge dynamic cap), `kh_set_var()`/`KH_VAR_VALUE` (2048), `kh_load_vars()`'s fgets buffer (2120B), `parse_attr_value()`'s `val[1024]`, `kh_expand_repeats()`/`kh_emit_repeat_body()` (huge dynamic caps), `khtpm_reparse_diff.c`'s template-field copy (uses `sizeof(dst->label)`, tracks the 2048 bump automatically). The manager's own `ui.txt` output was directly read and confirmed byte-complete for the affected messages - this is NOT a manager-side bug.
-
-**Real, NOT YET checked - most likely next place to look:** whether `layout_scroll_region()`'s own visible-row window (the code that decides which rows are "visible" and positions them via `content_y + (row-*scroll)*ROW_H`) is somehow re-clipping or re-assigning `c->h` for a row that's only PARTIALLY within `visible_rows`, separately from the `scroll_row_span()` call already confirmed correct in isolation - i.e. the bug may be between `scroll_row_span()`'s correct RETURN VALUE and what actually lands in `c->h` for THIS specific row once the surrounding scroll/visibility bookkeeping runs, not in `scroll_row_span()` itself. Also worth checking: whether `e->style`/`font_for()` used at DRAW time is guaranteed to be the exact same font object/metrics as at LAYOUT time (both call `css_compute_style` separately - confirmed same class/tag/id inputs, but not yet proven bit-identical `line_h` output between the two call sites for this specific window).
-
-**Do not restart the buffer-size hunt - all obvious buffers in the chain are confirmed correctly sized (2048) or dynamically huge.** This is very likely a layout/visibility bookkeeping bug now, not a truncation bug.
+**Lesson for next time, extending pitfall #12:** when a fix to the draw pipeline has zero visible effect on a window, check WHICH draw path that window actually uses before adding a 5th variation of the same fix - `grep` the window's redraw function for `kh_serialize_frame_subtree`/`kh_paint_frame_line` (frame-file round trip) vs a direct `render_tree()` call, per pitfall #12's own step 1. A `256`-byte cap surviving independently in BOTH the struct definition AND a completely separate serialization round-trip buffer is a real, repeatable shape in this codebase - grep for `\[256\]`/`\[256 \* 2\]` near any `label`-handling code, not just the one struct field, whenever this class of bug resurfaces on a different window.
 
 ---
 

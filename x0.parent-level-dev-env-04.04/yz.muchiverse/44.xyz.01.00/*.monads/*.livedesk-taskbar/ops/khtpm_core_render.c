@@ -3013,7 +3013,12 @@ static void kh_serialize_frame_elem(FILE *f, Elem *e) {
      * is simpler than re-anchoring the front split (unlike onclick,
      * label has other real fields BOTH before and after it, so it
      * can't just become "whatever's left in the middle"). */
-    char label_esc[256 * 2];
+    /* REAL FIX 2026-09-23 - sized to match Elem.label (2048, bumped
+     * earlier tonight) plus escaping headroom (worst case every byte
+     * needs escaping) - 512 silently re-truncated a long co-lab-hai
+     * message here too, upstream of kh_paint_frame_line()'s own
+     * label_unesc[] fix (see that fix's comment for the full chain). */
+    char label_esc[2048 * 2];
     frame_field_escape_pipe(e->label, label_esc, sizeof(label_esc));
     /* REAL FIX 2026-09-04 (pc-hq-bugs.md Bug 3 - "^" badge never shows
      * for an Interact Mode trigger even though its class/label are
@@ -3232,7 +3237,23 @@ static void kh_paint_frame_line(const char *line) {
             cp = comma ? comma + 1 : NULL;
         }
     }
-    { char label_unesc[256]; frame_field_unescape_pipe(front[3], label_unesc, sizeof(label_unesc));
+    /* REAL FIX 2026-09-23, direct live report (co-lab-hai long messages
+     * cutting off at the exact same point through 4 separate fixes to
+     * khtpm_draw_core.c, none of which had any visible effect) - the
+     * real root cause, per HOUSE_CODE_PITFALLS.md #12 ("TWO draw paths
+     * exist, not one"): co-lab-hai is a default/popup-mode window, so
+     * its real repaint goes through THIS function (kh_paint_frame_
+     * line(), the frame-file round-trip path), never khtpm_draw_core.c's
+     * render_tree()/draw_elem() directly against the live tree (that's
+     * db-hq/events-hq mode only). This local `label_unesc[256]` was an
+     * independent, hardcoded 256-byte cap, separate from Elem.label
+     * (already bumped to 2048 earlier tonight) - it silently truncated
+     * `tmp.label` to 255 real chars BEFORE any of the wrap/multiline
+     * fixes downstream ever saw the string, which is why none of them
+     * changed anything: they were all operating on data that was
+     * already cut by the time it reached them. Sized to match
+     * Elem.label. */
+    { char label_unesc[2048]; frame_field_unescape_pipe(front[3], label_unesc, sizeof(label_unesc));
       snprintf(tmp.label, sizeof(tmp.label), "%s", label_unesc); }
     snprintf(tmp.sprite, sizeof(tmp.sprite), "%s", front[4]);
     snprintf(tmp.onclick, sizeof(tmp.onclick), "%s", onclick_field);

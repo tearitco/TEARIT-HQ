@@ -3500,12 +3500,6 @@ static int livedesk_build_pals_menu(const char *house_root, HQMenuItem *menu, in
      * hardcoded Cancel fallback) off the scan cap up front, so the
      * post/Cancel row(s) always have a guaranteed slot regardless of
      * how many real pal directories exist. */
-    HQMenuItem post_probe[KTB_LIVEDESK_DYN_MAX];
-    int reserved = (max - n > 0)
-        ? livedesk_pdl_menu_rows_staged(house_root, "pals", "post", post_probe, max - n)
-        : 0;
-    if (reserved < 1) reserved = 1;
-
     char pr[KTB_PATH_BUF];
     if (!livedesk_pals_root(house_root, pr, sizeof(pr))) return n;
     char names[KTB_LIVEDESK_DYN_MAX][64];
