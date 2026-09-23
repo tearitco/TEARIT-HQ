@@ -156,3 +156,18 @@ K9 activates with Enter, code 13. The fixture page now writes
 `KEY_PRESSED: 13`. Proved on the fixture only: receipt 32 writes
 that line, receipt 17 writes nothing. Enter was not sent to pid
 240948. The highlight there is still on Classes.
+
+**Playtest is the taskbar Player menu, not `play_event.sh`.** Cell 9
+of the livedesk taskbar (`which == 9`, `livedesk_build_player_menu`)
+is the desk's play / stop / reset. Rows in code: `1.play: ON/OFF`
+(`livedesk:play-toggle`), `stop` (`livedesk:play-stop`), `reset`
+(`livedesk:reset-entities`), Cancel. That is the RPG Maker play
+button for the book:page currently on the desk: start, stop, and
+reset playback for the entities and common events on that page.
+PC-HQ's `tb-player` dropdown was added 2026-09-15 to match it
+(`pchq-board.xhtpm`). Some entities also carry their own play
+control so one entity can be playtested without the rest of the
+page. `play_event.sh` is a harness that runs one `event.pal` and
+also every other on-click common event. It is not this menu. The
+receipt-page proofs used `prisc+x` on one pal. They did not flip
+taskbar play mode.
