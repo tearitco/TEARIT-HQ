@@ -1,0 +1,16 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+LEVEL        | init_lv            | 1
+LEVEL        | exp                | 0
+LEVEL        | exp_to_next        | 100
+HP           | hp                 | 20
+HP           | mhp                | 20
+STAT         | atk                | 5
+STAT         | def                | 5
+STAT         | mat                | 3
+STAT         | mdf                | 4
+STAT         | agi                | 8
+STAT         | luk                | 4
+DB           | file               | db_hq_actors.state.txt
+DB           | tag                | ACTOR
+DB           | id                 | 8

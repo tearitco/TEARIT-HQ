@@ -1,0 +1,1 @@
+2026-09-22 16:19:03 | mode=propose_weights | instance=terumon_001_ember | verdict_rc=0 | PASS target=gravity_constant slot=force delta=0.0100 resolves against real master 'force' and existing spoke slot — clears validator bounds
