@@ -6,7 +6,8 @@ numeric step). The AI that may later append a command is chapter
 `17.ai`. This chapter does not own that. It owns the machine the
 command runs on.
 
-- `GAME.md` — start here.
+- `GAME.md` — start here. Includes the open parity gaps: the
+  battle screen, and loading or saving an RPG Maker project.
 - `../02-architecture/PLAYTEST-DESK-AND-PCHQ.md` — taskbar cell 9 and
   the PC-HQ Player menu. The playtest button.
 - `../08-roadmap/design-docs/DUSTOPIA-HACK.md` — chemistry, astronomy,

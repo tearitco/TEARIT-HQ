@@ -30,3 +30,21 @@ there, and in `GS-23-HQ-TECH.md` in the timeline packet.
 The part that decides the next command, including a local model, is
 not this chapter. It is `17.ai`. When that chapter's loop appends an
 event command, the command runs here.
+
+## Open parity gaps
+
+Named so a later agent does not invent them in the middle of a
+smaller test.
+
+**Battle screen.** Not built. The 2026-09-02 handoff names Battle
+Processing as unbuilt, and names the Enemies, Troops, States, and
+Animations database tabs as the data behind it. There is no spec for
+what the screen shows, when it opens, or how a troop is chosen.
+
+**RPG Maker project load and save.** Not documented as a procedure,
+and not shown to work. What exists instead: Mutaclysm user save slots
+and a demo-project seed (`01-orientation/XYZOS_README.md`), and
+`07-install-and-ship/USER-PROJECT-GIT-SYNC.md` for backing up this
+house's own files to git. K9 mentions "local play from a created or
+saved project" and gives no steps. Nothing here says how to open an
+RPG Maker MV or MZ project, or how to write one back out.
