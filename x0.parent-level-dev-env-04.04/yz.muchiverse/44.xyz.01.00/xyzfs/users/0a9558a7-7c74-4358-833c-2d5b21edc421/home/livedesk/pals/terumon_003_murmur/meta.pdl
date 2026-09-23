@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | terumon_003_murmur
+META         | cli_io_default     | on
+METHOD       | Close                | CLOSE
+METHOD       | Cancel               | void

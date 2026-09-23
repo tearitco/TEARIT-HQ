@@ -1,0 +1,13 @@
+# teru-test - sandbox desk for the terumon-dev track's 4 seeded terumon
+# (terumon_001_ember, terumon_002_glacine, terumon_003_murmur,
+# terumon_004_solvent). Each is a pixelated round entity of its own
+# color, cropped from #.NNEST_ASSETS/tearit-co/terumon/
+# 10.TERU_ROYGBIVBWB_charas.PNG and converted via tp_asset_to_sprite.+x
+# (the same real image-to-sprite pipeline used earlier for arbitrary
+# non-emoji images). No building/structure sprite - the round sprite IS
+# the whole identity, unlike dsr-dev's castles/banks/stores. Simple 2x2
+# grid layout, GRID_CELL_PX=80 spacing, mirrors dsr-dev.pdl's row format.
+DESK | terumon_001_ember | xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/terumon_001_ember | 800 | 80 | 10 | 1 | 🔴 | 70
+DESK | terumon_002_glacine | xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/terumon_002_glacine | 880 | 80 | 11 | 1 | 🔵 | 71
+DESK | terumon_003_murmur | xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/terumon_003_murmur | 800 | 160 | 10 | 2 | 🟣 | 72
+DESK | terumon_004_solvent | xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/terumon_004_solvent | 880 | 160 | 11 | 2 | 🟢 | 73

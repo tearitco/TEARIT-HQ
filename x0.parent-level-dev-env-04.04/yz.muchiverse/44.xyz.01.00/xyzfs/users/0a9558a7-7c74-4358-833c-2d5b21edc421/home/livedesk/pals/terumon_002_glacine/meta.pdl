@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | terumon_002_glacine
+META         | cli_io_default     | on
+METHOD       | Close                | CLOSE
+METHOD       | Cancel               | void
