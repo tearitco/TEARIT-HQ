@@ -39,6 +39,43 @@ and the renderer still truncates that one on startup.
    edit tab code. The k9 addendum that said one activation locks the
    sidebar was wrong and is corrected in the same file.
 
+## Meta AI does not click. The FSM does.
+
+The click checks above are the kind of repeated action that should
+leave this chat. The architecture is already written. Do not start a
+second one.
+
+- New C is allowed only for AI event-command types in
+  `44.xyz.01.00/#.ref/menu/event_commands.registry.pdl`:
+  `ai_describe` (describe only, never classify), `ai_fsm_transition`,
+  `ai_goap_plan`. That permission is kilo's, in
+  `13.agent-coms/KILO/claude-2-kilo-9.17.md` §2b. The registry still
+  has zero `ai_*` commands. A behavior composed of those commands is
+  an event page, not a new `.c`.
+- tomom is the learner (school, corpus, return path into gameplay).
+  It is not the thing that issues the click. NIGHT_20 through NIGHT_23
+  in `08-roadmap/00-INDEX.md`. The return path is still design-only.
+- A harness player is the flag in that same kilo note: the turn is
+  driven by `ai_fsm_transition` / `ai_goap_plan` instead of a human
+  relay. The human-vs-harness flag can be scaffolded. The IRL
+  start/stop control is later, in hai-lab's game tab.
+- What the FSM would own for the Database window, once those
+  primitives exist: read `ascii_frames/<pid>.frame.txt` for the
+  `[>]` row and `state/ui.txt` for `detail_title`. If the marker is
+  not on the tab, click that tab's box from
+  `entity_menu_frame_<pid>.txt`. With `click_two_step=1`, the first
+  click only focuses, so the transition is "click the same box
+  again," then read the frame again. Down is a separate transition,
+  and it currently walks detail fields, not the actor list. The meta
+  layer may describe that frame. It does not emit the click, and it
+  does not decide that the GUI is broken.
+
+Checked 2026-09-23, not delegated yet: two clicks on the Actors tab
+box left `[>]` on a detail field and `sel` 0 (Harold). Escape moved
+`[>]` to `17. 1. Harold`. A click inside that row's published box
+moved `[>]` to the blank detail field. Down never changed the
+selected actor.
+
 3. **`db_hq_history.txt` does not drive this window.** The harness
    `nav.sh` appends there for the old `g_is_db_hq` path.
    `class="db-hq-pal"` leaves that path dormant. Keys for this window
