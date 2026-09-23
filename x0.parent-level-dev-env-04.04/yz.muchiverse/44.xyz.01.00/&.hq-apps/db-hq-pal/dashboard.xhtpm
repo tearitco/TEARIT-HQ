@@ -38,7 +38,6 @@
       <tab id="tab-system"     label="System"        target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_system.state.txt' 'SYSTEM' 'System'"/>
       <tab id="tab-types"      label="Types"         target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_types.state.txt' 'TYPE' 'Types'"/>
       <tab id="tab-terms"      label="Terms"         target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_terms.state.txt' 'TERM' 'Terms'"/>
-      <tab id="tab-terumon"    label="Terumon"       target_id="sidebar" action="'${PKG}/ops/dbhq_action.sh' 'tab' 'db_hq_terumon.state.txt' 'TERUMON' 'Terumon'"/>
     </tabbar>
     <sidebar id="sidebar" class="sidebar">
       <text label="${tab_title}" class="quiet"/>
