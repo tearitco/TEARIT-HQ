@@ -365,3 +365,11 @@ Each of A–G is independently hand-off-able.
 3. Should the static non-JS extractor stay as-is (both paths) for the
    first cut, or be re-derived from the new DOM immediately? → keep both,
    reconcile later (lower risk).
+
+
+## 8.6 SHIPPED-LOG
+
+**SHIPPED-LOG 2026-09-23 (verified in-tree, not prose):**
+1. **Rung 3 (events + event loop + timers + lifecycle) — SHIPPED.** In-tree: `nb_js_worker.c` add/remove/dispatchEvent (1666-1668), EventTarget (2635), resident min-heap timers (3632+), microtask drain (3681), resident resident loop (3946-3971).
+2. **Rung 4 (XHR / fetch via manager RPC) — SHIPPED.** In-tree: rung-4 transport header (3716), `nb_fetch_sync` (3783), tmp-file body transport (3818/3842) — the §8.2 `FETCH <id> <method> <url>` / `FETCHED <id> <status>\n<len>\n<body>` shape, as a Promise-shaped blocking child. Next=prose-verify-only before any further rung claim.
+*Rule restated: any future 'next rung' claim must first grep the worker file; the plan prose has twice lagged the tree (rungs 3 and 4).*
