@@ -60,4 +60,5 @@ Commits land GREEN, each independently shippable, one per bounded pass.
 
 ---
 
-**Update 2026-09-23 — Rung 6 + Rung 4 C/D scoped and landed:** see `RUNG-6-REMAINDER-SCOPE-2026-09-23.md` and `RUNG-4-C-SCOPE-2026-09-23.md` — Rung 5 SHIPPED, Rung 6 remainder largely SHIPPED; **§8.5 B EVENT RPC SHIPPED 43c72099**, **§8.5 C/D async FETCH RPC SHIPPED 7e55fc8b** (manager-owned network, blocking curl fallback). Next is **§8.5 E/F history/location/cookies verify-only or Phase 3 Rung 7** — see Phase 3 briefing below.
+**Update 2026-09-23 — Rung 6 + Rung 4 C/D scoped and landed:** see `RUNG-6-REMAINDER-SCOPE-2026-09-23.md` and `RUNG-4-C-SCOPE-2026-09-23.md` — Rung 5 SHIPPED, Rung 6 remainder largely SHIPPED; **§8.5 B EVENT RPC SHIPPED 43c72099**, **§8.5 C/D async FETCH RPC SHIPPED 7e55fc8b** (manager-owned network, blocking curl fallback). **Update 2026-09-23 — Phase 3 slice 2 SHIPPED 514b8ab9:** simple block layout for `getBoundingClientRect` (`layout_xy` parent y + siblings) — `wcs` 9/9 PASS, `make nbjs` GREEN. Next is Phase 3 flex/grid or Rung 7 full layout if needed.
+Next is **§8.5 E/F history/location/cookies verify-only or Phase 3 Rung 7** — see Phase 3 briefing below.
