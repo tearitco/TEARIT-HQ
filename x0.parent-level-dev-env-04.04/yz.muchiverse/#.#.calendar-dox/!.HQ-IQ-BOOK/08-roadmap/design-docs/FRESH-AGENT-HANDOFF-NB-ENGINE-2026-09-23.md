@@ -55,3 +55,7 @@ Commits land GREEN, each independently shippable, one per bounded pass.
 - **Rung 6 remainder (§8.3 / §8.5 E-F):** `history.pushState/replaceState` + `location.assign/reload` navigation RPC, file-backed `document.cookie` jar (`nb_js_worker.c:1849` cookie_jar_init — verify read/write persistence across LOADs), `MutationObserver` (may stay no-op)
 
 **Scope instruction for fresh agent:** Before claiming any Phase-2 rung as "next," grep `nb_js_worker.c` for its anchors. The plan prose lagged the tree twice already (rungs 3+4, now 5). Verify in-tree vs prose, then update §8.6 — one green commit at a time.
+
+---
+
+**Update 2026-09-23 — Rung 6 scoped:** see distinct `RUNG-6-REMAINDER-SCOPE-2026-09-23.md` — Rung 5 SHIPPED, Rung 6 remainder largely SHIPPED; **open is §8.5 B EVENT RPC (Commit 8)**. Next agent should start there.
