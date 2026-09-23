@@ -327,23 +327,16 @@ static int load_methods(const char *package_dir, MethodItem *items, int max) {
      * real and wired (khtpm_entity.c's real armed/typed/committed
      * handling at every RUN_METHOD/ACTIVATE_NAV/Enter dispatch site,
      * grep 'CLI_IO' in that file) - it was just unconditionally
-     * auto-appended to EVERY entity's context menu with no opt-out,
-     * which is the opposite of what was asked (off by default, real
-     * per-entity opt-in). This reads a new META row, same real
-     * SECTION|KEY|VALUE shape this file's own header row already
-     * documents (matches the META|piece_id|... row every real
-     * meta.pdl already has - not a new format):
-     *   META | cli_io_default | on
-     * Absent, or any value other than exactly "on", = off (the
-     * required default). Chosen as a per-entity META field rather
-     * than a house-wide default because the task scope was "ONE
-     * entity showing it, one entity without" - a per-entity opt-in
-     * is the direct, minimal answer to that; a house-wide default
-     * with a per-entity override was considered but adds a second
-     * pdl (hq_ui.pdl-style) read this pass had no budget to wire and
-     * verify live, so it's left as a possible future layer, not
-     * built. */
-    int cli_io_default_on = 0;
+     * auto-appended to EVERY entity's context menu with no opt-out.
+     * REAL FIX 2026-09-22 (direct correction, "not just dsr, but all
+     * entities would get the cli-io"): flipped from opt-in to
+     * opt-OUT. Default is now ON for every entity (absent field =
+     * on); a real META row lets ONE entity turn it off:
+     *   META | cli_io_default | off
+     * Same real SECTION|KEY|VALUE shape this file's own header row
+     * already documents (matches the META|piece_id|... row every
+     * real meta.pdl already has - not a new format). */
+    int cli_io_default_on = 1;
     while (n < max && fgets(line, sizeof(line), f)) {
         if (strncmp(line, "META", 4) == 0 && strncmp(line, "METHOD", 6) != 0) {
             char *mp = strchr(line, '|');
@@ -361,7 +354,7 @@ static int load_methods(const char *package_dir, MethodItem *items, int max) {
                         char *va_end = va + strcspn(va, "\r\n");
                         while (va_end > va && va_end[-1] == ' ') va_end--;
                         size_t vlen = (size_t)(va_end - va);
-                        if (vlen == 2 && strncmp(va, "on", 2) == 0) cli_io_default_on = 1;
+                        if (vlen == 3 && strncmp(va, "off", 3) == 0) cli_io_default_on = 0;
                     }
                 }
             }
