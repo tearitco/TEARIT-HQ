@@ -171,3 +171,18 @@ page. `play_event.sh` is a harness that runs one `event.pal` and
 also every other on-click common event. It is not this menu. The
 receipt-page proofs used `prisc+x` on one pal. They did not flip
 taskbar play mode.
+
+**Both play paths write the same file. Checked 2026-09-23.** The
+file is `#.desktop/khtpm_play_mode.state.txt` (`mode=on` or
+`mode=off`). It started `on` and was put back to `on`.
+
+- Desk: taskbar strip pid 132125, cell nav 9 (`strip-cell-9`,
+  label player). Focus that cell and Enter, then Enter again.
+  `mode` went `on` → `off`. The same gesture restored `on`.
+- PC-HQ: `pchq_board_action.sh <session_dir> player stop` forced
+  `off`. `player toggle` brought it back to `on`. A second stop
+  and toggle did the same. Reset left the flag `on`. Calling
+  `player` without a real session directory exits before that
+  branch and does not touch the flag.
+
+A per-entity play control was not driven in this check.
