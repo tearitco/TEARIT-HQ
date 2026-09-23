@@ -1,6 +1,6 @@
 # NB-JS persistent-worker plan — rung 2 (DOM) + roadmap §3
 
-**Status:** PLAN — pending approval / step-by-step execution
+**Status:** RETIRED — shipped / superseded (2026-09-23) — see §8.6 SHIPPED-LOG and distinct handoff `FRESH-AGENT-HANDOFF-NB-ENGINE-2026-09-23.md` (branch `opencode`, parity 0 0, make nbjs GREEN)
 **Branch:** `chtpm-delete-per-app-c` (carries JS rung-6 prep + dbhq deletion)
 **Date:** 2026-09-04
 **Author:** oc
@@ -335,7 +335,9 @@ G. Docs: phase 2 status in the roadmap — *Commit 13*
 
 Each of A–G is independently hand-off-able.
 
-## 9. Explicit non-goals (Phase 1 milestone)
+## 9. Explicit non-goals (Phase 1 milestone) — RETIRED 2026-09-23
+
+> **RETIRED:** The non-goals below described Phase-1 milestone boundaries. The rungs listed as non-goals here — rung 3 (real event loop / timers) and rung 4 (fetch()/XHR) — are now **SHIPPED** per §8.6 (verified in-tree). Retained verbatim for archaeology; do not treat as current scope.
 
 - No `fetch()`/XHR (rung 4), no real event loop / timers firing callbacks
   (rung 3 — we run top-level scripts + one microtask drain only), no
@@ -372,4 +374,6 @@ Each of A–G is independently hand-off-able.
 **SHIPPED-LOG 2026-09-23 (verified in-tree, not prose):**
 1. **Rung 3 (events + event loop + timers + lifecycle) — SHIPPED.** In-tree: `nb_js_worker.c` add/remove/dispatchEvent (1666-1668), EventTarget (2635), resident min-heap timers (3632+), microtask drain (3681), resident resident loop (3946-3971).
 2. **Rung 4 (XHR / fetch via manager RPC) — SHIPPED.** In-tree: rung-4 transport header (3716), `nb_fetch_sync` (3783), tmp-file body transport (3818/3842) — the §8.2 `FETCH <id> <method> <url>` / `FETCHED <id> <status>\n<len>\n<body>` shape, as a Promise-shaped blocking child. Next=prose-verify-only before any further rung claim.
+3. **Rung 5 (render feedback loop — re-serialize mutated DOM → page.state.txt) — SHIPPED.** In-tree: worker emits `RENDER\n<rows>` (step 4, nb_js_worker.c:447 RENDER_MAX 60000, 4921 emit, 4994 re-emit) and manager merges via `merge_render_rows()` — post-JS DOM is authoritative (ROADMAP Rung 5 DONE 2026-09-05, ea864cea). No new work — glue already landed; see 09-appendix/PROGRESS-nb-js-worker-phase1.md.
+
 *Rule restated: any future 'next rung' claim must first grep the worker file; the plan prose has twice lagged the tree (rungs 3 and 4).*
