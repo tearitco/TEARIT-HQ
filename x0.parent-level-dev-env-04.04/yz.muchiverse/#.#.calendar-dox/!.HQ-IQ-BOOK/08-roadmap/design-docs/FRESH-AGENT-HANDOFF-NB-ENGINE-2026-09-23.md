@@ -50,12 +50,14 @@ Commits land GREEN, each independently shippable, one per bounded pass.
 - In-tree: `nb_js_worker.c:447 RENDER_MAX 60000`, emit at `:4921`, re-emit `:4994`, manager `merge_render_rows()` overlays onto `page.state.txt`. Post-JS DOM is authoritative; no new work.
 - Added to plan §8.6 as entry 3 (2026-09-23). Next is **not** Rung 5.
 
-**Actual next frontier (per plan §8.5 D-G, still open):**
-- Rung 4 remainder `fetch()+Promise` (Commit 10) — if not already covered by XHR shape at :3716/3783
-- **Rung 6 remainder (§8.3 / §8.5 E-F):** `history.pushState/replaceState` + `location.assign/reload` navigation RPC, file-backed `document.cookie` jar (`nb_js_worker.c:1849` cookie_jar_init — verify read/write persistence across LOADs), `MutationObserver` (may stay no-op)
+**Actual next frontier (per plan §8.5 — updated 2026-09-23):**
+- **§8.5 C/D Rung 4 XHR/fetch async RPC — SHIPPED 7e55fc8b** (see `RUNG-4-C-SCOPE` — blocking curl + manager RPC)
+- **§8.5 B EVENT RPC — SHIPPED 43c72099**
+- **Rung 6 remainder (§8.3 / §8.5 E-F) — largely SHIPPED/verify-only:** `history.pushState`/`location` NAV (`g_pending_nav@1032`), `document.cookie` (`1849` file-backed), `MutationObserver` stub (`2776`)
+- **Next green frontier: Phase 3 Rung 7 — CSS/layout awareness (getBoundingClientRect etc.) — see briefing below**
 
 **Scope instruction for fresh agent:** Before claiming any Phase-2 rung as "next," grep `nb_js_worker.c` for its anchors. The plan prose lagged the tree twice already (rungs 3+4, now 5). Verify in-tree vs prose, then update §8.6 — one green commit at a time.
 
 ---
 
-**Update 2026-09-23 — Rung 6 scoped:** see distinct `RUNG-6-REMAINDER-SCOPE-2026-09-23.md` — Rung 5 SHIPPED, Rung 6 remainder largely SHIPPED; **open is §8.5 B EVENT RPC (Commit 8)**. Next agent should start there.
+**Update 2026-09-23 — Rung 6 + Rung 4 C/D scoped and landed:** see `RUNG-6-REMAINDER-SCOPE-2026-09-23.md` and `RUNG-4-C-SCOPE-2026-09-23.md` — Rung 5 SHIPPED, Rung 6 remainder largely SHIPPED; **§8.5 B EVENT RPC SHIPPED 43c72099**, **§8.5 C/D async FETCH RPC SHIPPED 7e55fc8b** (manager-owned network, blocking curl fallback). Next is **§8.5 E/F history/location/cookies verify-only or Phase 3 Rung 7** — see Phase 3 briefing below.
