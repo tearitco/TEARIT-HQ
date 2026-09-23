@@ -205,10 +205,85 @@ ACTOR        | agi                | 8
 ACTOR        | luk                | 4
 ACTOR        | note               | skills 1 = Attack
 ACTOR        | id                 | 9
-ACTOR        | name               |
+ACTOR        | name               | Asa
+ACTOR        | nickname           | asa
+ACTOR        | class              | Hero
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 100
+ACTOR        | skills             | 1
+ACTOR        | profile            | page:office
+ACTOR        | face               |
+ACTOR        | character          |
+ACTOR        | battler            |
+ACTOR        | weapon             |
+ACTOR        | shield             |
+ACTOR        | head               |
+ACTOR        | body               |
+ACTOR        | accessory          |
+ACTOR        | mhp                | 40
+ACTOR        | mmp                | 12
+ACTOR        | atk                | 8
+ACTOR        | def                | 6
+ACTOR        | mat                | 5
+ACTOR        | mdf                | 5
+ACTOR        | agi                | 6
+ACTOR        | luk                | 5
+ACTOR        | note               | skills 1 = Attack
 ACTOR        | id                 | 10
-ACTOR        | name               |
+ACTOR        | name               | Ava
+ACTOR        | nickname           | ava
+ACTOR        | class              | Mage
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 100
+ACTOR        | skills             | 1
+ACTOR        | profile            | page:office
+ACTOR        | face               |
+ACTOR        | character          |
+ACTOR        | battler            |
+ACTOR        | weapon             |
+ACTOR        | shield             |
+ACTOR        | head               |
+ACTOR        | body               |
+ACTOR        | accessory          |
+ACTOR        | mhp                | 36
+ACTOR        | mmp                | 16
+ACTOR        | atk                | 5
+ACTOR        | def                | 5
+ACTOR        | mat                | 8
+ACTOR        | mdf                | 7
+ACTOR        | agi                | 6
+ACTOR        | luk                | 6
+ACTOR        | note               | skills 1 = Attack
 ACTOR        | id                 | 11
-ACTOR        | name               |
+ACTOR        | name               | Cursword
+ACTOR        | nickname           | cursword
+ACTOR        | class              | Hero
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 100
+ACTOR        | skills             | 1
+ACTOR        | profile            | page:office
+ACTOR        | face               |
+ACTOR        | character          |
+ACTOR        | battler            |
+ACTOR        | weapon             |
+ACTOR        | shield             |
+ACTOR        | head               |
+ACTOR        | body               |
+ACTOR        | accessory          |
+ACTOR        | mhp                | 38
+ACTOR        | mmp                | 14
+ACTOR        | atk                | 7
+ACTOR        | def                | 5
+ACTOR        | mat                | 6
+ACTOR        | mdf                | 5
+ACTOR        | agi                | 9
+ACTOR        | luk                | 7
+ACTOR        | note               | skills 1 = Attack
 ACTOR        | id                 | 12
 ACTOR        | name               |
