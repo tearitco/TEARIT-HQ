@@ -97,13 +97,113 @@ ACTOR        | agi                | 24
 ACTOR        | luk                | 26
 ACTOR        | note               |
 ACTOR        | id                 | 5
-ACTOR        | name               |
+ACTOR        | name               | Ember
+ACTOR        | nickname           | terumon_001_ember
+ACTOR        | class              | Warrior
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 100
+ACTOR        | skills             | 1
+ACTOR        | profile            | page:teru-test
+ACTOR        | face               |
+ACTOR        | character          |
+ACTOR        | battler            |
+ACTOR        | weapon             |
+ACTOR        | shield             |
+ACTOR        | head               |
+ACTOR        | body               |
+ACTOR        | accessory          |
+ACTOR        | mhp                | 20
+ACTOR        | mmp                | 10
+ACTOR        | atk                | 6
+ACTOR        | def                | 4
+ACTOR        | mat                | 4
+ACTOR        | mdf                | 3
+ACTOR        | agi                | 5
+ACTOR        | luk                | 3
+ACTOR        | note               | skills 1 = Attack
 ACTOR        | id                 | 6
-ACTOR        | name               |
+ACTOR        | name               | Glacine
+ACTOR        | nickname           | terumon_002_glacine
+ACTOR        | class              | Warrior
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 100
+ACTOR        | skills             | 1
+ACTOR        | profile            | page:teru-test
+ACTOR        | face               |
+ACTOR        | character          |
+ACTOR        | battler            |
+ACTOR        | weapon             |
+ACTOR        | shield             |
+ACTOR        | head               |
+ACTOR        | body               |
+ACTOR        | accessory          |
+ACTOR        | mhp                | 20
+ACTOR        | mmp                | 10
+ACTOR        | atk                | 4
+ACTOR        | def                | 7
+ACTOR        | mat                | 5
+ACTOR        | mdf                | 6
+ACTOR        | agi                | 3
+ACTOR        | luk                | 4
+ACTOR        | note               | skills 1 = Attack
 ACTOR        | id                 | 7
-ACTOR        | name               |
+ACTOR        | name               | Murmur
+ACTOR        | nickname           | terumon_003_murmur
+ACTOR        | class              | Mage
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 100
+ACTOR        | skills             | 1
+ACTOR        | profile            | page:teru-test
+ACTOR        | face               |
+ACTOR        | character          |
+ACTOR        | battler            |
+ACTOR        | weapon             |
+ACTOR        | shield             |
+ACTOR        | head               |
+ACTOR        | body               |
+ACTOR        | accessory          |
+ACTOR        | mhp                | 20
+ACTOR        | mmp                | 12
+ACTOR        | atk                | 3
+ACTOR        | def                | 3
+ACTOR        | mat                | 8
+ACTOR        | mdf                | 5
+ACTOR        | agi                | 4
+ACTOR        | luk                | 6
+ACTOR        | note               | skills 1 = Attack
 ACTOR        | id                 | 8
-ACTOR        | name               |
+ACTOR        | name               | Solvent
+ACTOR        | nickname           | terumon_004_solvent
+ACTOR        | class              | Warrior
+ACTOR        | init_lv            | 1
+ACTOR        | max_lv             | 99
+ACTOR        | exp                | 0
+ACTOR        | exp_to_next        | 100
+ACTOR        | skills             | 1
+ACTOR        | profile            | page:teru-test
+ACTOR        | face               |
+ACTOR        | character          |
+ACTOR        | battler            |
+ACTOR        | weapon             |
+ACTOR        | shield             |
+ACTOR        | head               |
+ACTOR        | body               |
+ACTOR        | accessory          |
+ACTOR        | mhp                | 20
+ACTOR        | mmp                | 8
+ACTOR        | atk                | 5
+ACTOR        | def                | 5
+ACTOR        | mat                | 3
+ACTOR        | mdf                | 4
+ACTOR        | agi                | 8
+ACTOR        | luk                | 4
+ACTOR        | note               | skills 1 = Attack
 ACTOR        | id                 | 9
 ACTOR        | name               |
 ACTOR        | id                 | 10

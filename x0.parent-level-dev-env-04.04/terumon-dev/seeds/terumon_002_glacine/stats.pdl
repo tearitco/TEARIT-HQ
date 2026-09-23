@@ -11,6 +11,6 @@ STAT         | mat                | 5
 STAT         | mdf                | 6
 STAT         | agi                | 3
 STAT         | luk                | 4
-DB           | file               | db_hq_terumon.state.txt
-DB           | tag                | TERUMON
-DB           | id                 | 2
+DB           | file               | db_hq_actors.state.txt
+DB           | tag                | ACTOR
+DB           | id                 | 6
