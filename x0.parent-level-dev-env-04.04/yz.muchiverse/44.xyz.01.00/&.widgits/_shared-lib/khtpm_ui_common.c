@@ -322,7 +322,51 @@ static int load_methods(const char *package_dir, MethodItem *items, int max) {
     if (!f) return 0;
     char line[TP_PATH_BUF];
     int n = 0;
+    /* REAL, NEW 2026-09-22 (task 2 - per-entity Cli-io on/off) - the
+     * Cli-io row itself (below, action="CLI_IO") was already fully
+     * real and wired (khtpm_entity.c's real armed/typed/committed
+     * handling at every RUN_METHOD/ACTIVATE_NAV/Enter dispatch site,
+     * grep 'CLI_IO' in that file) - it was just unconditionally
+     * auto-appended to EVERY entity's context menu with no opt-out,
+     * which is the opposite of what was asked (off by default, real
+     * per-entity opt-in). This reads a new META row, same real
+     * SECTION|KEY|VALUE shape this file's own header row already
+     * documents (matches the META|piece_id|... row every real
+     * meta.pdl already has - not a new format):
+     *   META | cli_io_default | on
+     * Absent, or any value other than exactly "on", = off (the
+     * required default). Chosen as a per-entity META field rather
+     * than a house-wide default because the task scope was "ONE
+     * entity showing it, one entity without" - a per-entity opt-in
+     * is the direct, minimal answer to that; a house-wide default
+     * with a per-entity override was considered but adds a second
+     * pdl (hq_ui.pdl-style) read this pass had no budget to wire and
+     * verify live, so it's left as a possible future layer, not
+     * built. */
+    int cli_io_default_on = 0;
     while (n < max && fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "META", 4) == 0 && strncmp(line, "METHOD", 6) != 0) {
+            char *mp = strchr(line, '|');
+            if (mp) {
+                mp++;
+                while (*mp == ' ') mp++;
+                char *mend = strchr(mp, '|');
+                if (mend) {
+                    char *klabel_end = mend;
+                    while (klabel_end > mp && klabel_end[-1] == ' ') klabel_end--;
+                    size_t klen = (size_t)(klabel_end - mp);
+                    if (klen == 14 && strncmp(mp, "cli_io_default", 14) == 0) {
+                        char *va = mend + 1;
+                        while (*va == ' ') va++;
+                        char *va_end = va + strcspn(va, "\r\n");
+                        while (va_end > va && va_end[-1] == ' ') va_end--;
+                        size_t vlen = (size_t)(va_end - va);
+                        if (vlen == 2 && strncmp(va, "on", 2) == 0) cli_io_default_on = 1;
+                    }
+                }
+            }
+            continue;
+        }
         if (strncmp(line, "METHOD", 6) != 0) continue;
         char *p = strchr(line, '|');
         if (!p) continue;
@@ -348,7 +392,7 @@ static int load_methods(const char *package_dir, MethodItem *items, int max) {
         n++;
     }
     fclose(f);
-    if (n < max) {
+    if (cli_io_default_on && n < max) {
         int has = 0, j;
         for (j = 0; j < n; j++)
             if (!strcmp(items[j].action, "CLI_IO") || !strcmp(items[j].label, "Cli-io")) has = 1;
