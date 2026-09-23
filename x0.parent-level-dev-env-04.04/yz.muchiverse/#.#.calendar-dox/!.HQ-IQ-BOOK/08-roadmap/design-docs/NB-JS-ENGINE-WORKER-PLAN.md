@@ -324,7 +324,7 @@ JSON then render become usable. *≈200 lines + RPC cases.*
 
 ### 8.5 Phase-2 execution order (each green + shippable)
 
-A. Rung 3 event loop + timers + lifecycle — *Commit 7*
+A. Rung 3 event loop + timers + lifecycle + resident run loop — **SHIPPED** = **Commit 7** (landed 5536d118 / re-anchored eac9fad6; materialized in-tree in nb_js_worker.c: add/remove/dispatchEvent 1666-1668, EventTarget 2635, real min-heap timers 3632+, microtask drain 3681, resident loop 3946-3971). Next arrow re-pointed to:
 B. `dispatchEvent` + on-property handlers + `EVENT <selector>` RPC
    (user click in the window reaches a scripted el) — *Commit 8*
 C. Rung 4 XHR (async) — *Commit 9*
