@@ -1721,7 +1721,8 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             XFillRectangle(dpy, buf, gc, chip_x0, chip_y0, (unsigned)chip_w, (unsigned)chip_h);
             chip_drawn = 1;
         } else if ((e->sprite[0] || is_swatch_tile) && e->y >= 16 && !elem_has_class(e, "dock-cell") &&
-                   !elem_has_class(e, "sprite-inline")) { /* sprite-inline rows keep the inline chip */
+                   !elem_has_class(e, "dropdown-child") &&
+                   !elem_has_class(e, "sprite-inline")) { /* sprite-inline rows keep the inline chip; REAL FIX 2026-09-23 (bug_bounty.md "tax_robot nav badge missing") - dropdown-child rows (khtpm_core_render.c's dock-menu popup, layout_dock_bar()'s stacking loop) pack with ZERO vertical gap exactly like dock-cell rows already excluded above on 2026-09-15, but that exclusion never covered this newer row class - a dropdown-child WITH a real (even if unloadable, e.g. tax_robot's sprite path pointing at a pal dir with no sprite.csv) e->sprite path fell into this above-tile bleed branch, shifting its badge chip up into the PREVIOUS row's box where it visually vanished. Every dropdown row shares this zero-gap packing, so exclude the whole class the same way dock-cell already is. */
             /* Sprite tiles and swatch-picker tiles: draw badge ABOVE the tile
              * with a dark backing chip for contrast.
              *
