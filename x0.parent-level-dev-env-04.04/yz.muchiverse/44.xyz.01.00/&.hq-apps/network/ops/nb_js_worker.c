@@ -3205,6 +3205,23 @@ static void ce_upgrade_one(JSContext *ctx, NbNode *n, JSValue ctor) {
             } else {
                 const char *rt = JS_IsUndefined(r) ? "undefined" : JS_IsNull(r) ? "null" : JS_IsBool(r) ? "bool" : JS_IsFunction(ctx, r) ? "function" : JS_IsString(r) ? "string" : JS_IsObject(r) ? (JS_IsArray(ctx, r) ? "array" : "object") : "other";
                 if (g_trace_cb) fprintf(stderr, "CE|createElement(%s): rc=%s\n", n->tag ? n->tag : "?", rt);
+                /* rung-1 (2026-09-21): kevlar's REAL masthead createElement returns
+                 * the structured UI as an OBJECT descriptor (rc=object) holding the
+                 * form/icon/kids that its own render fn `_.a(O,null)` produced —
+                 * but the engine only traced+discarded it, leaving the flat 5-div
+                 * scaffold. The descendant *array* path (yt-searchbox rc=array ->
+                 * 3 real kids) is proven; the masthead's rc=object ALSO carries a
+                 * stampable desc. Feed rc through the same desc->kids walker that
+                 * yt-searchbox rides: if rc is an ARRAY of descriptors, stamp each
+                 * element into this node (recursively), reusing the exact same
+                 * desc-array->kids materializer that produced searchbox's 3 kids.
+                 * This is the crux of "kevlar real masthead materialization". */
+                if (JS_IsArray(ctx, r) && JS_IsObject(r)) {
+                    /* desc-array -> real kids: each item is an NbCrDesc-shaped
+                     * object {tag,attrs,kids} OR a plain-string/text-node desc.
+                     * Walk + stamp exactly like nb_template_content_frag does for
+                     * <template>.content, so the masthead's <form action=/results>,
+                     * #search-icon-legacy and yt-searchbox host all materialize. */
             }
             JS_FreeValue(ctx, r);
         }
@@ -3213,6 +3230,7 @@ static void ce_upgrade_one(JSContext *ctx, NbNode *n, JSValue ctor) {
     JS_FreeValue(ctx, proto);
 }
 
+}
 static void ce_upgrade_node_if_registered(JSContext *ctx, JSValue el, NbNode *n) {
     (void)el;
     if (!n || !n->tag || !strchr(n->tag, '-')) return;
@@ -5827,3 +5845,4 @@ int main(int argc, char **argv) {
     }
     return 0;
 }
+
