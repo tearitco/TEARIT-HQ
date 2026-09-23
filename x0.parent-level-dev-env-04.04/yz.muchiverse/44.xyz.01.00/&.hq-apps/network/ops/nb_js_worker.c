@@ -707,28 +707,49 @@ static JSValue nb_el_offset_parent(JSContext *ctx, JSValueConst this_val, int ar
     return push_node(ctx, p);
 }
 
+/* Phase 3 slice 2: simple block layout for getBoundingClientRect.
+ * x is 0 for now (no inline flow), y is stacked: parent y + sum of
+ * previous siblings' CSS heights. Hidden ancestors (display:none) give 0,0,0,0. */
+static int layout_hidden_anc(NbNode *n) {
+    for (NbNode *a = n; a; a = a->parent) if (css_hidden(a)) return 1;
+    return 0;
+}
+static void layout_xy(NbNode *n, double *out_x, double *out_y) {
+    if (!n || layout_hidden_anc(n)) { *out_x = 0; *out_y = 0; return; }
+    double y = 0;
+    if (n->parent && n->parent->tag) {
+        double px, py; layout_xy(n->parent, &px, &py); y += py;
+    }
+    for (NbNode *s = n->parent ? n->parent->first_child : NULL; s && s != n; s = s->next_sibling) {
+        if (layout_hidden_anc(s)) continue;
+        NbCssStyle st; nb_css_resolve(g_css, s, nb_attr_get(s, "style"), &st);
+        y += st.height;
+    }
+    *out_x = 0; *out_y = y;
+}
+
 static JSValue nb_rect_tojson(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     return JS_DupValue(ctx, this_val);    /* this is the rect */
 }
 
 static JSValue nb_el_getBoundingClientRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
-    double w = 0, h = 0;
-    if (n && !css_hidden(n)) {
+    double w = 0, h = 0, x = 0, y = 0;
+    if (n && !layout_hidden_anc(n)) {
         NbCssStyle st;
         nb_css_resolve(g_css, n, nb_attr_get(n, "style"), &st);
-        w = st.width;
-        h = st.height;
+        w = st.width; h = st.height;
+        layout_xy(n, &x, &y);
     }
     JSValue o = JS_NewObject(ctx);
-    JS_SetPropertyStr(ctx, o, "x", JS_NewFloat64(ctx, 0));
-    JS_SetPropertyStr(ctx, o, "y", JS_NewFloat64(ctx, 0));
+    JS_SetPropertyStr(ctx, o, "x", JS_NewFloat64(ctx, x));
+    JS_SetPropertyStr(ctx, o, "y", JS_NewFloat64(ctx, y));
     JS_SetPropertyStr(ctx, o, "width", JS_NewFloat64(ctx, w));
     JS_SetPropertyStr(ctx, o, "height", JS_NewFloat64(ctx, h));
-    JS_SetPropertyStr(ctx, o, "top", JS_NewFloat64(ctx, 0));
-    JS_SetPropertyStr(ctx, o, "right", JS_NewFloat64(ctx, w));
-    JS_SetPropertyStr(ctx, o, "bottom", JS_NewFloat64(ctx, h));
-    JS_SetPropertyStr(ctx, o, "left", JS_NewFloat64(ctx, 0));
+    JS_SetPropertyStr(ctx, o, "top", JS_NewFloat64(ctx, y));
+    JS_SetPropertyStr(ctx, o, "right", JS_NewFloat64(ctx, x + w));
+    JS_SetPropertyStr(ctx, o, "bottom", JS_NewFloat64(ctx, y + h));
+    JS_SetPropertyStr(ctx, o, "left", JS_NewFloat64(ctx, x));
     JS_SetPropertyStr(ctx, o, "toJSON", JS_NewCFunction(ctx, nb_rect_tojson, "toJSON", 0));
     return o;
 }
