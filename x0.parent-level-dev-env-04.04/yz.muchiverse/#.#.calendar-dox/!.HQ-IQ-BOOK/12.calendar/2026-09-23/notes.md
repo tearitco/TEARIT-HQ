@@ -30,13 +30,19 @@ and the renderer still truncates that one on startup.
    the data files were edited. There is no GUI gesture for IRL to
    learn that step from.
 
-2. **Arrow keys hit the tab strip.** With Actors on screen, eight
-   `KEY_PRESSED: 201` (Down) and Enter in
-   `entity_menu_history/21938.txt` opened the States tab
-   (`detail_title=#1 Knockout`). Focus was on the tabs, not the list.
-   Actors was restored with `dbhq_action.sh tab`, the same command the
-   Actors tab click runs. `actor_list_check.sh` then saw all seven
-   names. A key sequence that selects a row is still missing.
+2. **The States-tab result was not an activated Actors tab.** Eight
+   Downs and one Enter (`entity_menu_history/21938.txt`) walked the
+   tab strip while scope was not confined and activated States, the
+   tab focus had reached. Actors itself was never activated. A `<tab>`
+   with `target_id="sidebar"` (Actors has that) locks nav into the
+   sidebar on that activation and moves focus to the first row
+   (`activate_focused`, tab branch). A later probe focused nav 6,
+   pressed Enter twice, then Down: the window stayed on Actors and
+   `sel` stayed 0. That probe still does not name which element nav 6
+   was — `state/ui.txt_focus.txt` stays `focus_label=` empty, because
+   focus labels are stored for swatch tiles only. No tab-arrow change
+   until a test that actually activates the Actors tab fails to enter
+   the list.
 
 3. **`db_hq_history.txt` does not drive this window.** The harness
    `nav.sh` appends there for the old `g_is_db_hq` path.
