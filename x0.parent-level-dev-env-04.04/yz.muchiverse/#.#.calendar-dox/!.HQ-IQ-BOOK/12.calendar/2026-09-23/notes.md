@@ -151,4 +151,8 @@ the marker was `[>] 2. Classes` and the receipt said `focus_nav=2`.
 key moved the tab highlight. It did not activate Classes and it did
 not change the selected actor. No second key. `prisc+x` also printed
 that it could not open `101.mutaclsym…/system/default_op.txt`. The
-shell commands in the page still ran.
+shell commands in the page still ran. Down was the wrong key.
+K9 activates with Enter, code 13. The fixture page now writes
+`KEY_PRESSED: 13`. Proved on the fixture only: receipt 32 writes
+that line, receipt 17 writes nothing. Enter was not sent to pid
+240948. The highlight there is still on Classes.
