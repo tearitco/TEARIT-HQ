@@ -3348,6 +3348,11 @@ static int livedesk_build_pals_menu(const char *house_root, HQMenuItem *menu, in
      * hardcoded "Cancel" only when the pdl defines no post rows, so an
      * untouched house behaves exactly as before). */
     int n = livedesk_pdl_menu_rows_staged(house_root, "pals", "pre", menu, max);
+    HQMenuItem post_probe[KTB_LIVEDESK_DYN_MAX];
+    int reserved = (max - n > 0)
+        ? livedesk_pdl_menu_rows_staged(house_root, "pals", "post", post_probe, max - n)
+        : 0;
+    if (reserved < 1) reserved = 1;
 
     char pr[KTB_PATH_BUF];
     if (!livedesk_pals_root(house_root, pr, sizeof(pr))) return n;
@@ -3357,7 +3362,7 @@ static int livedesk_build_pals_menu(const char *house_root, HQMenuItem *menu, in
     if (d) {
         struct dirent *e;
         while ((e = readdir(d))) {
-            if (scan_n >= max - n || scan_n >= KTB_LIVEDESK_DYN_MAX) break;
+            if (scan_n >= max - n - reserved || scan_n >= KTB_LIVEDESK_DYN_MAX) break;
             if (e->d_name[0] == '.') continue;
             char mp[KTB_PATH_BUF];
             snprintf(mp, sizeof(mp), "%s/%s/pal.pdl", pr, e->d_name);

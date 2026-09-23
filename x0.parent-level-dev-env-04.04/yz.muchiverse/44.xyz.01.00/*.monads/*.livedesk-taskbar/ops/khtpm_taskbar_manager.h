@@ -68,7 +68,7 @@ extern "C" {
  * LIVEDESK_GRID_PX / LIVEDESK_DYN_MAX / LIVEDESK_MAX_OPEN, KTB-prefixed
  * to match this file's naming convention). */
 #define KTB_LIVEDESK_GRID_PX 80   /* matches GRID_CELL_PX in tp_desktop_window.c */
-#define KTB_LIVEDESK_DYN_MAX 24
+#define KTB_LIVEDESK_DYN_MAX 256
 #define KTB_LIVEDESK_MAX_OPEN 64
 /* REAL FIX 2026-08-12, direct report ("some showed up on bottom tb then
  * dissapeared. only 2 are registered"): this was OFF, so the manager's
