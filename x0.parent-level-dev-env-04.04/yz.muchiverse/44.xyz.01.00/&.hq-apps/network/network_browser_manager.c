@@ -1396,6 +1396,17 @@ static int worker_send(const char *payload, size_t n) {
     return write(g_worker_fd, "\n", 1) == 1;
 }
 
+/* Commit 8 (Rung 6 slice 1): EVENT RPC — manager -> worker: EVENT\n<selector>\n<type> */
+static int worker_send_event(const char *selector, const char *type) {
+    if (g_worker_fd < 0) return 0;
+    if (!selector || !selector[0]) return 0;
+    const char *t = (type && type[0]) ? type : "click";
+    char payload[4096];
+    int n = snprintf(payload, sizeof(payload), "EVENT\n%s\n%s", selector, t);
+    if (n < 0 || (size_t)n >= sizeof(payload)) return 0;
+    return worker_send(payload, (size_t)n);
+}
+
 static int worker_recv_line_to(char *out, size_t cap, int timeout_ms) {
     if (g_worker_fd < 0) return 0;
     struct pollfd p = { g_worker_fd, POLLIN, 0 };
