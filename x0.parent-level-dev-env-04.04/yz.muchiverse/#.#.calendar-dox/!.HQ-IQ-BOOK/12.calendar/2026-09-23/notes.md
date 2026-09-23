@@ -157,6 +157,20 @@ K9 activates with Enter, code 13. The fixture page now writes
 that line, receipt 17 writes nothing. Enter was not sent to pid
 240948. The highlight there is still on Classes.
 
+**Enter on Actors, pid 369123, one key.** The window was restarted.
+Receipt `focus_nav=1`, marker `[>] 1. * Actors`, detail Harold.
+The page wrote one `KEY_PRESSED: 13`. After it the marker was
+`[>] 16. 1. Harold` and `focus_nav=16`. Tab title stayed Actors (11).
+Detail stayed Harold. No second key. The fixture page was pointed
+back at `/tmp` and `agent_history.txt`.
+
+**Two facts.** `harnesses/two-facts/advance.sh` reads `which=` from
+`weight.txt` and increments only `page_value` or only
+`numeric_value` in `facts.txt`. Page then numeric went 20/20 →
+21/20 → 21/21. `which=both` exited 1 and left 21/21. Battle screen
+and RPG Maker project load/save stay named in `16.game/GAME.md` and
+were not built.
+
 **Playtest is the taskbar Player menu, not `play_event.sh`.** Cell 9
 of the livedesk taskbar (`which == 9`, `livedesk_build_player_menu`)
 is the desk's play / stop / reset. Rows in code: `1.play: ON/OFF`

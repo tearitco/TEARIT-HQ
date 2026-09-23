@@ -1,0 +1,3 @@
+id=ember-fixture
+page_value=20
+numeric_value=20

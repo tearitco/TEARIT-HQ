@@ -16,9 +16,11 @@ What is proven, as of 2026-09-23:
   `if`. `send_window_key` appends `KEY_PRESSED: 13`, which is the
   K9 activate key. `send_input` still writes the bare code and was
   left alone.
-- One live key was sent. It was a Down, which was the wrong key, and
-  it only moved the tab highlight. Enter has been proven on the
-  fixture, not on that window.
+- One Enter was sent with the highlight on the Actors tab (pid
+  369123, `focus_nav` 1). After `KEY_PRESSED: 13` the marker was
+  `16. 1. Harold` and `focus_nav` was 16. The tab title stayed
+  Actors and the detail stayed Harold. No second key. The earlier
+  Down that walked onto Classes is a separate, older result.
 - The compiler keeps four fields and drops a fifth without an error.
 
 Dustopia is this same machine holding one fact two ways: the page,
@@ -48,3 +50,14 @@ and a demo-project seed (`01-orientation/XYZOS_README.md`), and
 house's own files to git. K9 mentions "local play from a created or
 saved project" and gives no steps. Nothing here says how to open an
 RPG Maker MV or MZ project, or how to write one back out.
+
+## Two facts, one weight
+
+Fixture only, not a live actor. `#.desktop/harnesses/two-facts/`.
+`facts.txt` holds `id=ember-fixture`, `page_value`, and
+`numeric_value`. `weight.txt` holds `which=page` or `which=numeric`.
+`advance.sh` adds 1 to the chosen value and leaves the other alone.
+An unknown `which` exits 1 and does not write. Checked: page advance
+made 20/20 into 21/20; numeric advance then made 21/21; `which=both`
+was rejected and the 21/21 file stayed put. This is not chemistry
+and not 3D. It is the file shape the later weight has to keep.
