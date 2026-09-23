@@ -132,3 +132,11 @@ then reads the receipt again. `prisc+x` only. Not `play_event.sh`.
 live window mailbox wants the longer line. This page proves the
 branch. It does not drive the Database window. `ai_fsm_transition`
 is still absent.
+
+**Window line, passed on the fixture the same day.** `send_input` was
+left alone. New command `send_window_key` runs
+`mr_send_window_key.sh`, which appends `KEY_PRESSED: <decimal>`.
+Non-decimal codes are rejected. The fixture page's third node now
+uses it. `prisc+x`: receipt 32 writes `KEY_PRESSED: 201` and switch
+0; receipt 17 writes nothing and switch 1. The live window was not
+opened for this check.

@@ -218,6 +218,16 @@ COMMAND send_input
   PAL ecall
 END
 
+# send_window_key: append KEY_PRESSED: <code> the way entity_menu_history
+# is read. send_input above is unchanged and still writes the bare code.
+COMMAND send_window_key
+  LABEL Send Window Key
+  FIELD1 Relay file path (absolute):
+  FIELD2 Decimal key code:
+  PARAMS relay,key
+  TEMPLATE exec sh "$D/&.widgits/events-hq/ops/mr_send_window_key.sh" '{relay}' '{key}'
+END
+
 # read_receipt: copy one key=value line from a frame receipt into
 # variables.txt, and optionally set a switch to 1 or 0 so `if` can
 # branch. Does not describe or classify the frame. ai_* stays absent.
