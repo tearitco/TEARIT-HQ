@@ -5232,6 +5232,32 @@ static int layout_dock_bar(Elem *page) {
             col_w = sw - 8 - trig0->x;
             if (col_w < 40) col_w = 40;
         }
+        /* REAL, PARTIAL FIX 2026-09-22 (task: "pals" dropdown must hold
+         * 191+ real pal dirs, KTB_LIVEDESK_DYN_MAX raised 24->256 in
+         * khtpm_taskbar_manager.h - see that comment). This block still
+         * stacks every open row unconditionally (`c->y = stack_n *
+         * DOCK_BAR_H`, no clip) and sizes the popup window to exactly
+         * n_rows * DOCK_BAR_H - with 256 possible rows that would create
+         * an off-screen-tall popup, not a scrolled one. Per the house
+         * standards skill's own 2026-09-06 incident writeup, the fix is
+         * to reuse generic_sbar_register()/layout_scroll_region() - NOT
+         * a new scroll mechanism - but this dropdown is painted through
+         * a SEPARATE override-redirect popup window (dock_paint_menu(),
+         * via the same g_window-swap + frame-relay serialize/paint path
+         * as dock_paint_peer()), not the normal per-frame Elem paint
+         * loop generic_sbar_register()'s click/arrow dispatch assumes.
+         * Wiring the real scrollbar through that swap safely (arrow
+         * Elems included in the relayed frame, SCROLLUP/SCROLLDOWN
+         * clicks routed back to g_dock_menu_win's own event handling)
+         * needs more investigation than this pass had budget for - left
+         * OPEN, see report. What IS real here: a safe row cap so the
+         * popup window itself can never grow past a sane on-screen
+         * height even with 256 backing rows (clip, not translate, per
+         * the same skill section) - rows beyond the cap are parked
+         * off-screen with nav_index=0 (nav-numbers only visible rows,
+         * per the skill's own rule), so at least nothing crashes or
+         * paints a screen-height popup. They are NOT YET reachable by
+         * scrolling - that is the real remaining gap. */
         for (i = 0; i < page->n_children; i++) {
             Elem *c = page->children[i];
             Elem *trigger;
@@ -5246,7 +5272,18 @@ static int layout_dock_bar(Elem *page) {
                 snprintf(last_target, sizeof(last_target), "%s", c->target_id);
             }
             css_compute_style(&g_sheet, c->tag, c->id, c->classes, c->n_classes, 0, &c->style);
-            if (open && trigger) {
+/* REAL CORRECTION, same pass: this session's actual live house data
+ * (grep'd, not guessed) has 25 real pal dirs (+Cancel = ~27 rows,
+ * confirmed via strip_ui.txt's n_hqitems=27 after opening the pals
+ * dropdown live) - NOT the 191+ figure the task brief cited, which
+ * must be from a different house/session. A cap of 20 would have
+ * silently clipped 7 real, currently-reachable rows with no scroll
+ * yet built to reach them - a real regression, caught live before
+ * commit. Set well above today's real count so nothing already
+ * reachable becomes unreachable; still bounds the pathological case
+ * (a future 256-entry list) from painting a screen-height popup. */
+#define DOCK_DROPDOWN_MAX_VISIBLE_ROWS 60
+            if (open && trigger && stack_n < DOCK_DROPDOWN_MAX_VISIBLE_ROWS) {
                 c->x = 0;
                 c->y = stack_n * DOCK_BAR_H;
                 c->w = col_w;
