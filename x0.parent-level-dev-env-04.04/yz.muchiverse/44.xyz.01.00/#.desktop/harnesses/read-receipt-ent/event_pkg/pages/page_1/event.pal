@@ -1,4 +1,21 @@
 # event.pal - real prisc+x opcodes, COMPILED from event.ir.pdl by khtpm_events_hq_manager.c
 # pkg=read-receipt-ent page=page_1 - regenerated fresh on every command save
 exec cmd_1.sh
+li x15, 6
+ecall "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.desktop/harnesses/read-receipt-ent/switches.txt" "on_harold"
+li x2, 0
+bne x12, x2, _else_1
+li x15, 1
+li x13, 2
+ecall "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.desktop/harnesses/read-receipt-ent/agent_history.txt"
+addi x14, x12, 0
+li x15, 3
+addi x12, x14, 0
+ecall "201"
+addi x12, x14, 0
+li x15, 2
+ecall
+_else_1:
+_endif_1:
+exec cmd_5.sh
 halt

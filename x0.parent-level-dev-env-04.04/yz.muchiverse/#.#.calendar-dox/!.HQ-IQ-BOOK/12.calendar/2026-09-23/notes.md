@@ -118,3 +118,17 @@ selected actor.
    `class="db-hq-pal"` leaves that path dormant. Keys for this window
    go to `entity_menu_history/<pid>.txt`, and that file is truncated
    when the renderer starts. The frame log above is the review copy.
+
+## Look, then one key — passed 2026-09-23
+
+`read-receipt-ent` page 1 now reads the receipt, and if `on_harold`
+is `0` it injects key `201` into that entity's `agent_history.txt`,
+then reads the receipt again. `prisc+x` only. Not `play_event.sh`.
+
+- Receipt `focus_nav=32` → switch `0`, history contains `201`.
+- Receipt `focus_nav=17` → switch `1`, history stays empty.
+
+`send_input` wrote the bare code `201`, not `KEY_PRESSED: 201`. The
+live window mailbox wants the longer line. This page proves the
+branch. It does not drive the Database window. `ai_fsm_transition`
+is still absent.
