@@ -1,4 +1,27 @@
-<!-- palettes-my-palettes.xhtpm — personal imports only (MVP). -->
+<!-- palettes-my-palettes.xhtpm — personal imports only (MVP).
+     2026-09-22 (direct instruction, scoped to THIS category only -
+     "we can give it to the others later once its proven working"):
+       - every imported image is now its own real swatch tile (real
+         cropped thumbnail via the sprite= attribute, same generic
+         blit RPG Maker Tiles' own grid already uses) instead of a
+         bare ${s.label} text row in a "pick one active tileset"
+         chooser - see publish_mypal() in palettes_manager.c.
+       - the old myset-${s.#} pal-tileset repeat (one bare text row
+         per imported file, picking a single "active" image to view)
+         is dropped - it's what the bare-text-row bug report was
+         actually seeing; every file is a swatch now, all at once.
+       - no permanent per-tile label (sprite blanks it, same as rmmv).
+         Instead ${hover_label} - a shared "selection var" the
+         renderer's generic swatch-grid focus-echo writes on every
+         real nav-focus change (see kh_write_focus_label() in
+         khtpm_core_render.c) and this category's own projector reads
+         back (palettes_projector.c's "my-palettes ONLY" branch) -
+         shows whichever swatch currently has focus in the chrome
+         status line below, instead of a static label under every
+         tile. Confirmed (2026-09-22): no other palette category
+         already had this pattern (grepped rmmv/elements/emojis) - new,
+         but built generic/reusable so those categories can opt in
+         later by reading their own ${hover_label} var. -->
 <window label="palettes: My Palettes" class="palettes-pal database-window" vars="state/palettes-my-palettes_ui.txt">
   <module src="*.monads/*.livedesk-taskbar/ops/+x/palettes_manager.+x" args="my-palettes"/>
   <module src="&.widgits/palettes/ops/+x/palettes_projector.+x" id="my-palettes"/>
@@ -10,10 +33,7 @@
       <item id="mydir-${d.#}" class="pal-dir ${d.active}" label="${d.label}"
             action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'set-mypal-dir' '${PKG}' '${d.key}'"/>
     </repeat>
-    <repeat count="${n_tilesets}" bind="s">
-      <item id="myset-${s.#}" class="pal-tileset ${s.active}" label="${s.label}"
-            action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'set-mypal-mod' '${PKG}' '${s.key}'"/>
-    </repeat>
+    <text id="hover-status" label="${hover_label}" class="quiet"/>
     <repeat count="${n_tiles}" bind="t">
       <item id="pt${t.#}" class="swatch" sprite="${t.sprite}" label="${t.glyph}"
             action="'${HOUSE}/&.widgits/palettes/palettes_menu.sh' 'arm-pc' '${t.sprite}' '${t.glyph}'"/>

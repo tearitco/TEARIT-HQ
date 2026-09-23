@@ -2717,6 +2717,20 @@ static CssSheet g_sheet;
 #define SWATCH_COLS 6
 static char g_palette_name_buf[12][32];
 static const char *g_palette_name[12];
+/* REAL, NEW 2026-09-22 (direct instruction: "My Palettes" swatches
+ * show real thumbnails instead of bare text rows; no permanent
+ * per-tile label - instead a shared "selection var" echoes whichever
+ * item currently has nav focus, for the window's own chrome/status
+ * area to display). Generic, keyed by nav_index (1-based), NOT by any
+ * app/category flag - any swatch-grid window gets its original label
+ * preserved here before the swatch-grid draw path below blanks
+ * item->label for tiles that have a real sprite (line ~5978's "sprite
+ * IS the cell" wipe). See kh_write_focus_label() (near redraw()) for
+ * the write-out half - it only ever WRITES a file; nothing reads it
+ * back unless a template's own projector opts in (currently only
+ * palettes-my-palettes.xhtpm's manager/projector do), so this changes
+ * zero pixels for rmmv/elements/emojis/etc. */
+static char g_nav_focus_label[MAX_ELEMS][64];
 /* "PICK:<n>" is a generic, always-on dispatch() action token (not
  * gated by any window-class flag) - taskbar-settings-pal.xhtpm's own
  * swatch items use it, consumed by swatch_picker_manager.+x via
@@ -5975,6 +5989,16 @@ static void assign_nav_and_layout(void) {
                  * sprite, label is icon+name+size same as list mode.
                  * Blanking those made a field of empty (often yellow)
                  * 34px tiles. Keep the label when there is no sprite. */
+                /* item->label gets wiped to "" below the FIRST frame a
+                 * real sprite is present, and the Elem tree persists
+                 * across frames (khtpm_reparse_diff.c patches in place,
+                 * doesn't rebuild) - so on every LATER frame item->label
+                 * is already "". Only capture when non-empty, or every
+                 * frame after the first would clobber the real stored
+                 * name with blank. */
+                if (item->nav_index >= 1 && item->nav_index <= MAX_ELEMS && item->label[0])
+                    snprintf(g_nav_focus_label[item->nav_index - 1],
+                             sizeof(g_nav_focus_label[0]), "%s", item->label);
                 if (item->sprite[0])
                     item->label[0] = '\0';
                 if (n_sw < MAX_CHILDREN) sw_items[n_sw] = item;
@@ -6952,6 +6976,58 @@ static void dispatch_no_quit(const char *action) {
 
 static void default_cli_io_state_path(char *out, size_t outsz) {
     snprintf(out, outsz, "%s/cli_io_state.txt", g_package_dir);
+}
+
+/* REAL, NEW 2026-09-22 - shared "selection var" echo for a swatch-grid
+ * window's currently-focused tile/row (g_nav_focus_label[], filled
+ * above where the swatch-grid draw path stashes a tile's original
+ * label before wiping it for the real-sprite case). Same real
+ * write-a-state-file-next-to-the-window's-own-vars convention as
+ * cli_io_state.txt/text_area_<key>.txt above, just keyed off
+ * g_vars_path's own basename (swap the trailing "_ui.txt" for
+ * "_focus.txt") so two concurrently-open categories never collide -
+ * palettes' own package_dir is shared by every category ("&.widgits/
+ * palettes"), only the per-category filename differs. Only writes on
+ * an actual focus change (content-gated like every other projector in
+ * this house) - never spins. Nothing reads this file back unless a
+ * category's own manager/projector opts in (see palettes_projector.c's
+ * "my-palettes" branch) - a category that never reads it sees zero
+ * behavior change. */
+static void kh_write_focus_label(void) {
+    static int s_last_nav = -1;
+    if (g_focus_nav == s_last_nav) return;
+    s_last_nav = g_focus_nav;
+    if (!g_package_dir[0] || !g_vars_path[0]) return;
+    const char *label = "";
+    if (g_focus_nav >= 1 && g_focus_nav <= MAX_ELEMS)
+        label = g_nav_focus_label[g_focus_nav - 1];
+    /* g_vars_path may be space-joined with g_extra_vars_path (first
+     * path only, the window's own primary vars=), and by this point in
+     * parse_chtpm() it's already the fully-RESOLVED path (package_dir
+     * + the template's own relative vars= attr, e.g. ".../palettes/
+     * state/palettes-my-palettes_ui.txt") - not the raw relative attr
+     * text. So take the basename, not the whole string, or this landed
+     * fopen() on a bogus doubled path and silently no-opped (real,
+     * caught-live bug, 2026-09-22: first cut of this function used the
+     * raw path as a "%s/%s"-joined suffix under g_package_dir again). */
+    char first[PATH_BUF];
+    { const char *sp = strchr(g_vars_path, ' ');
+      size_t n = sp ? (size_t)(sp - g_vars_path) : strlen(g_vars_path);
+      if (n >= sizeof(first)) n = sizeof(first) - 1;
+      memcpy(first, g_vars_path, n); first[n] = '\0'; }
+    const char *slash = strrchr(first, '/');
+    char stem[PATH_BUF];
+    snprintf(stem, sizeof(stem), "%s", slash ? slash + 1 : first);
+    size_t sl = strlen(stem);
+    if (sl > 7 && strcmp(stem + sl - 7, "_ui.txt") == 0) stem[sl - 7] = '\0';
+    char path[PATH_BUF], tmp[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/state/%s_focus.txt", g_package_dir, stem);
+    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+    FILE *f = fopen(tmp, "w");
+    if (!f) return;
+    fprintf(f, "focus_label=%s\n", label);
+    fclose(f);
+    rename(tmp, path);
 }
 
 /* Real, generic read-modify-write - same real shape as the reference's
@@ -8212,6 +8288,7 @@ static void redraw(void) {
      * works headless with no per-caller guard. */
     if (g_headless) {
         assign_nav_and_layout();
+        kh_write_focus_label();
         if (window_is_dock()) dock_write_ascii_frame();
         else kh_write_ascii_frame();
         return;
@@ -8234,6 +8311,7 @@ static void redraw(void) {
      * draw (chrome/tabbar/sidebar/panel), same shared present
      * (XGetImage->XPutImage) below every mode already uses. */
     assign_nav_and_layout();
+    kh_write_focus_label();
     /* REAL FIX 2026-09-05, direct live report ("fullscreen breaks
      * pdl-read layout - content stays squished bottom-left, most of
      * the window black"). Root cause (found by a parallel
