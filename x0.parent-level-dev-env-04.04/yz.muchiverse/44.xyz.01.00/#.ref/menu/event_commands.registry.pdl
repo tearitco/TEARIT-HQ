@@ -238,6 +238,16 @@ COMMAND advance_fact
   TEMPLATE exec sh "$D/#.desktop/harnesses/two-facts/advance.sh" '{facts}' '{weight}'
 END
 
+# apply_range: NxN square from origin cell. A target cell inside it
+# subtracts 1 from that actor's page_value. Out of range changes nothing.
+COMMAND apply_range
+  LABEL Apply Range
+  FIELD1 Origin cell:
+  FIELD2 Target cell:
+  PARAMS origin,target,range,actor
+  TEMPLATE exec sh "$D/#.desktop/harnesses/two-facts/apply_range.sh" '{origin}' '{target}' '{range}' '{actor}' "$D/#.desktop/db_hq_actors.state.txt" "$D/&.widgits/db-hq/data/actors.pdl"
+END
+
 # read_receipt: copy one key=value line from a frame receipt into
 # variables.txt, and optionally set a switch to 1 or 0 so `if` can
 # branch. Does not describe or classify the frame. ai_* stays absent.

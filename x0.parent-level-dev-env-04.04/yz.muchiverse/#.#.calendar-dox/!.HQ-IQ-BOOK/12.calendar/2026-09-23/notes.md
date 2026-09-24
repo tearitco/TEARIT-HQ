@@ -181,7 +181,9 @@ and `which=page`. Ember's actor row was not modified.
 `db_hq_actors.state.txt` and `actors.pdl`. `numeric_value` is
 `terumon_001_ember/numeric_fact.txt`. The same `advance_fact` page
 moved only the actor field, then only the numeric file, then neither
-when `which=both`. `mhp` stayed 20. Values were restored to 20 and 20. `prisc+x`
+when `which=both`. `mhp` stayed 20. Values were restored to 20 and 20.
+
+**Range hit.** `apply_range` on `two-facts` page 2. Square is NxN from the origin cell. `a1` to `b2` at range 2 dropped Glacine's `page_value` from 20 to 19. `a1` to `c3` at range 2 left it at 20. Ember's page fact, `mhp`, and `numeric_value` stayed 20. Glacine restored to 20. `tp_arm_placer_rmmv` fills that square when `PLACE_RANGE` is set or the jump buffer is only digits. The overlay was not opened. Skill rows from a `.pdl` are not built. `prisc+x`
 still prints that `default_op.txt` is missing. The shell command
 ran anyway.
 
