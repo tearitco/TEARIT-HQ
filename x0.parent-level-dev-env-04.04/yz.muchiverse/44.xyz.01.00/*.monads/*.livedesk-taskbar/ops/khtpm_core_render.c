@@ -45,6 +45,9 @@
 #include "khtpm_css_parser.h"
 #include "khtpm_render_core.c" /* real .c, not a header - see that file's own comment */
 #include "khtpm_reparse_diff.c" /* 2026-09-11 - real keyed tree diff/patch, see 08-roadmap/design-docs/CHTPM-INCREMENTAL-REPARSE-DESIGN.md. Wired in behind g_use_incremental_reparse, OFF by default - see that flag's own declaration comment. */
+static int kh_auto_px(int base_px) {
+    return (base_px * 70 + 50) / 100;
+}
 /* khtpm_taskbar_manager.h/.c removed 2026-09-01 - real, confirmed dead
  * linkage: ktb_init()/ktb_quit_and_save() (the only reason db-hq mode
  * ever needed it) were already removed from this file in an earlier
