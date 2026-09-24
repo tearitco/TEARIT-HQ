@@ -7,7 +7,8 @@ numeric step). The AI that may later append a command is chapter
 command runs on.
 
 - `GAME.md` — start here. Includes the open parity gaps: the
-  battle screen, and loading or saving an RPG Maker project.
+  battle screen, loading or saving an RPG Maker project, and range
+  on the placing grid (not built; tactics proof waits on Ember's HP).
 - `../02-architecture/PLAYTEST-DESK-AND-PCHQ.md` — taskbar cell 9 and
   the PC-HQ Player menu. The playtest button.
 - `../08-roadmap/design-docs/DUSTOPIA-HACK.md` — chemistry, astronomy,

@@ -64,6 +64,8 @@ house's own files to git. K9 mentions "local play from a created or
 saved project" and gives no steps. Nothing here says how to open an
 RPG Maker MV or MZ project, or how to write one back out.
 
+**Range on the placing grid.** Not built. The tic-tac-toe placing grid already exists for Palettes Place and is only partly wired for explorer Place (`INVENTORY-DROP-AND-WINDOW-HIGHLIGHT-2026-09-18.md`). What is missing is a range a skill can show on that grid. Move, Use, Attack, and the other rows come from a `.pdl` on the entity. Jump input should fill that many squares, not only draw the lines. An event command must aim and confirm the grid whether taskbar play mode is on or off. The first proof, once Ember's two facts are real HP, is tactics: one entity in range spends an attack and the other entity's page fact drops. A side-view battle screen stays the RPG Maker parity item. It is not this proof. The 2026-09-02 handoff names Battle Processing and does not describe range.
+
 ## Two facts, one weight
 
 Fixture only, not a live actor. `#.desktop/harnesses/two-facts/`.
