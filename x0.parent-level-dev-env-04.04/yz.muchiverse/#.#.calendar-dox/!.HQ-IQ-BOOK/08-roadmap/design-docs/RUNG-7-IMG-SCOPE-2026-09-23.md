@@ -27,7 +27,7 @@ Video (`ffmpeg` demux/decode) after `<img>` — deferred, not in this scope.
 
 1. **Step 1 — img element + fetch (no decode yet) — SHIPPED e4428e13 + fix c1a72fdd:** `HTMLImageElement` src accessor (`nb_img_src_get/set` + `img_get_src` map, `window.Image` alias), fetch via `nb_fetch_sync` (data:/http(s) via manager RPC), fires `load`/`error` via `dispatch_event`; `wcs[img]` 10/10 PASS (`c1a72fdd` fix) — `make nbjs` GREEN.
 2. **Step 2 — stb_image decode + binary wire — SHIPPED cdb51504:** vendor `stb_image.h` (`../js/stb_image.h`), `b64_decode` + `stbi_load_from_memory` for `data:image/png;base64` in `nb_img_src_set`, store `g_img_decoded`, `naturalWidth`/`complete` — `wcs[img-png]` 1x1 PASS.
-3. **Step 3 — renderer draw + clip — wire SHIPPED d8bc3378 (draw still open):** `khtpm_draw_core.c` `draw-image` with `getBoundingClientRect` layout, clip, `make nbjs` + `dump_frame_png_op` proof — worker wire now `IMG|<src>|<w>|<h>|<path>|<alt>` with file, manager parses and sets `sprite=path`.
+3. **Step 3 — renderer draw + clip — SHIPPED 6e8d5308 (wire d8bc3378 + draw):** `khtpm_draw_core.c:1187` `stbi_load`/`XPutImage` for `/tmp/nb_img_*.png` at `e->x,y` clipped, `make nbjs` GREEN, `wcs` 12/12, `dump_frame_png_op` verifiable — wire `IMG|<src>|<w>|<h>|<path>|<alt>` (d8bc3378) + draw (6e8d5308).
 
 ## House law
 

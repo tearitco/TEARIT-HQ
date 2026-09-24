@@ -69,11 +69,11 @@ Next is **§8.5 E/F history/location/cookies verify-only or Phase 3 Rung 7** —
 
 **Owner rule** `PRESENTATION-VIDEO-PIPELINE.md:8` — *"prove harnesses as we go... presentations being made when we are done of proof each major feature is working"* — `dump_frame_png_op` → `snapshots/` + `manifest.txt` (`<png> | <sec> | <caption>` ) → `make_presentation_video.py` → `presentation.mp4` + `REPRODUCE.md`.
 
-**Parked until images land:** Per `PIPELINE:115` network browser is `TEXT-only` today — no `<img>`/`<video>` decode. Image support is next (see below), then full `normal browser` presentation:
+**Unparked — <img> Steps 1-3 SHIPPED e4428e13/cdb51504/d8bc3378/6e8d5308 (wcs 12/12):** Per `PIPELINE:115` network browser was `TEXT-only` until today — now `wcs` with `stb_image` decode (`naturalWidth` 1x1) and `khtpm` draw (`stbi_write_png` → `/tmp/nb_img_*.png` → `XPutImage` at `getBoundingClientRect`) are GREEN. Full `normal browser` presentation is now ready:
 - Dir: `presentations/network-browser-normal-YYYYMMDD/` with 4–6 live snapshots via `dump_frame_png_op --root` on `opencode` (go:example.com → fetch JSON → click via EVENT RPC `43c72099` → pushState → getBoundingClientRect carousel), `manifest.txt` 5–8s holds, `REPRODUCE.md` with `page.state.txt`/`RENDER`/`NAV` receipts, `make_presentation_video.py --width 1280` → `presentation.mp4`.
 
-**Next green frontier before presentation: <img> Steps 1-2 SHIPPED e4428e13/cdb51504, Step 3 wire SHIPPED d8bc3378 — next is Step 3 draw (khtpm_draw_core.c clip at getBoundingClientRect)**
+**Next green frontier before presentation: <img> Steps 1-3 SHIPPED e4428e13/cdb51504/d8bc3378/6e8d5308 — presentation unparked (see Future Todo)**
 - Decoder in worker (`stb_image.h` — house already ships `stb_image_write.h`), `img` element + fetch in `nb_dom.c`, binary `IMG` wire frame, draw-image op + clip in renderer. Video (`ffmpeg` demux/decode) after `<img>`. Scope doc to be added as `RUNG-7-IMG-SCOPE-*.md` before code.
 
-**Instruction for fresh agent:** Do **not** start presentation capture until `<img>` Steps 1-3 land (Step 1 SHIPPED e4428e13) and `make nbjs` + `wcs` are GREEN for it. Then follow `PIPELINE:35` directory shape verbatim — never template `scrot`.
+**Instruction for fresh agent:** Presentation unparked (Step 1 SHIPPED e4428e13) and `make nbjs` + `wcs` are GREEN for it. Then follow `PIPELINE:35` directory shape verbatim — never template `scrot`.
 
