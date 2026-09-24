@@ -306,6 +306,18 @@ int main(int argc, char **argv) {
         "O.textContent=\"img-png-ok\";\n",
         "img-png-ok");
 
+    /* L: HTML <img src=data:> — RENDER emits IMG with w/h via decoded file */
+    rc |= run_case(worker, tmpdir,
+        "wcs[img-html] HTML img data: PNG in RENDER",
+        "<html><body><div id=\"out\">o</div><img id=\"im\" src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=\" alt=\"x\"></body></html>",
+        "",
+        "var O=document.getElementById(\"out\");\n"
+        "var im=document.getElementById(\"im\");\n"
+        "if(im.naturalWidth!==1) throw \"L1 nw=\"+im.naturalWidth;\n"
+        "if(im.naturalHeight!==1) throw \"L2 nh=\"+im.naturalHeight;\n"
+        "O.textContent=\"img-html-ok\";\n",
+        "img-html-ok");
+
     printf("%s\n", rc ? "FAIL: worker_css_test" : "PASS: worker_css_test");
     return rc ? 1 : 0;
 }
