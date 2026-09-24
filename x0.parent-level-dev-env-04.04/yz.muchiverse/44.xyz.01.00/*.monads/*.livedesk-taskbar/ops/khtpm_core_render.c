@@ -18139,7 +18139,7 @@ static int headless_run(void) {
     fprintf(stderr, "[khtpm --headless] %s  pid %d\n",
             g_chtpm_path[0] ? g_chtpm_path : "(dock)", (int)getpid());
     g_win_x = 0; g_win_y = 0;
-    g_win_w = window_is_dock() ? kh_screen_w() : 960;
+    g_win_w = window_is_dock() ? kh_screen_w() : 600;
     g_win_h = window_is_dock() ? 40 : 640;
 
     /* If this window has <module>s that publish its vars= file, give
