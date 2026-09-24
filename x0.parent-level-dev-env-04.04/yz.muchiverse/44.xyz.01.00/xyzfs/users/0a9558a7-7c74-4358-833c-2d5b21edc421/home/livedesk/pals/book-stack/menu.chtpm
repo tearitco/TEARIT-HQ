@@ -1,17 +1,12 @@
-<!-- menu.chtpm — book-stack's real entity context menu, Stage 2c
-     ROLLOUT (2026-08-16, direct instruction "yes we need to finish those" -
-     entity-context-menu rollout beyond ava). Converted 1:1 from this
-     entity's own real meta.pdl (same METHOD rows, same action strings
-     verbatim) via the same real mechanical conversion rule proven on ava/asa
-     (scratchpad meta_to_chtpm.py) - action= values reuse the real shell
-     commands as-is, &quot;/&amp; entity-decoded by khtpm_entity_menu_
-     render.c's own apply_attr(), the same 2 entities that parser already
-     supports. -->
+<!-- menu.chtpm - real, generated entity context menu (meta_to_menu_chtpm.py, 2026-08-28 permanent converter). Converted 1:1 from /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/book-stack/meta.pdl's own real METHOD rows - same real mechanical rule proven on ava/asa/book-stack's own hand conversions. Regenerate by deleting this file and re-running the converter; a real hand-edit here will be lost on the next regenerate, same tradeoff every generated file in this house already has. -->
 <window class="entity-menu">
   <page name="main">
-    <item label="Read" action="sh -c 'export PACKAGE_DIR=&quot;$0&quot;; H=&quot;$1&quot;; exec &quot;$(find &quot;$H&quot; -maxdepth 1 -name &quot;101.mutaclsym🧟‍♂️️*&quot; -type d 2&gt;/dev/null | head -1)/system/prisc+x&quot; &quot;$(find &quot;$H&quot; -path &quot;*monads/*book-stack/pieces/reader/event_pkg/pages/page_1/event.pal&quot; 2&gt;/dev/null | head -1)&quot;'"/>
+    <item label="Read" action="sh -c 'export PACKAGE_DIR=&quot;$0&quot;; H=&quot;$1&quot;; READER_PATH=$(find &quot;$H&quot; -path &quot;*monads/*book-stack/pieces/reader/event_pkg/pages/page_1/event.pal&quot; 2>/dev/null|head -1); MUTA_ROOT=&quot;$(find &quot;$H&quot; -maxdepth 1 -name &quot;101.mutaclsym🧟‍♂️️*&quot; -type d 2>/dev/null|head -1)&quot;; cd &quot;$MUTA_ROOT&quot; &amp;&amp; exec &quot;$MUTA_ROOT/system/prisc+x&quot; &quot;$READER_PATH&quot;'"/>
     <item label="Dir" action="sh -c 'exec xdg-open &quot;$0&quot;'"/>
+    <item label="Inventory" action="sh -c 'H=&quot;$1&quot;; I=&quot;$H/&amp;.widgits/file-explorer/instances/inv-$(basename &quot;$(dirname &quot;$0&quot;)&quot;)-$(basename &quot;$0&quot;)&quot;; mkdir -p &quot;$0/inventory&quot; &quot;$I&quot;; printf &quot;mode=LOAD\nstart_dir=%s/inventory\n&quot; &quot;$0&quot; > &quot;$I/fe_request.txt&quot;; exec sh &quot;$H/&amp;.widgits/file-explorer/button.sh&quot; run-instance &quot;$I&quot;'"/>
     <item label="Close" action="CLOSE"/>
     <item label="Cancel" action="void"/>
+    <item label="Act" action="sh -c 'exec &quot;$1/&amp;.widgits/entity-cli/open_entity_act.sh&quot; &quot;$0&quot; &quot;$1&quot;'"/>
+    <item label="Cli-io" action="sh -c 'exec &quot;$1/&amp;.widgits/entity-cli/open_entity_cli.sh&quot; &quot;$0&quot; &quot;$1&quot;'"/>
   </page>
 </window>
