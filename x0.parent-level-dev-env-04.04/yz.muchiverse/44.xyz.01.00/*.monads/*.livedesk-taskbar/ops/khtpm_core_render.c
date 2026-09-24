@@ -18597,8 +18597,8 @@ int main(int argc, char **argv) {
         int sw = DisplayWidth(dpy, screen), sh = DisplayHeight(dpy, screen);
         g_win_x = 90;
         g_win_y = WM_MANAGED_DRAG_MIN_Y;
-        g_win_w = kh_auto_px(1120);
-        g_win_h = kh_auto_px(720);
+        g_win_w = 600;
+        g_win_h = 400;
         if (g_win_w > sw - g_win_x - 60)  g_win_w = sw - g_win_x - 60;
         if (g_win_h > sh - g_win_y - 40)  g_win_h = sh - g_win_y - 40;
         if (g_win_w < KH_WIN_MIN_W) g_win_w = KH_WIN_MIN_W;
