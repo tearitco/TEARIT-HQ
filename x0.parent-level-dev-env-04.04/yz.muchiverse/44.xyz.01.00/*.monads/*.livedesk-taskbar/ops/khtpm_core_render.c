@@ -18139,7 +18139,7 @@ static int headless_run(void) {
     fprintf(stderr, "[khtpm --headless] %s  pid %d\n",
             g_chtpm_path[0] ? g_chtpm_path : "(dock)", (int)getpid());
     g_win_x = 0; g_win_y = 0;
-    g_win_w = window_is_dock() ? kh_screen_w() : 600;
+    g_win_w = window_is_dock() ? kh_screen_w() : 500;
     g_win_h = window_is_dock() ? 40 : 640;
 
     /* If this window has <module>s that publish its vars= file, give
@@ -18597,8 +18597,8 @@ int main(int argc, char **argv) {
         int sw = DisplayWidth(dpy, screen), sh = DisplayHeight(dpy, screen);
         g_win_x = 90;
         g_win_y = WM_MANAGED_DRAG_MIN_Y;
-        g_win_w = 600;
-        g_win_h = 400;
+        g_win_w = 500;
+        g_win_h = 350;
         if (g_win_w > sw - g_win_x - 60)  g_win_w = sw - g_win_x - 60;
         if (g_win_h > sh - g_win_y - 40)  g_win_h = sh - g_win_y - 40;
         if (g_win_w < KH_WIN_MIN_W) g_win_w = KH_WIN_MIN_W;
