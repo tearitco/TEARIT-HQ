@@ -3477,6 +3477,30 @@ static int livedesk_build_pals_menu(const char *house_root, HQMenuItem *menu, in
      * untouched house behaves exactly as before). */
     int n = livedesk_pdl_menu_rows_staged(house_root, "pals", "pre", menu, max);
 
+    /* REAL FIX 2026-09-22, direct live report ("no visible Cancel
+     * button in pals dropdown"). Root cause, confirmed live (dumped
+     * the running #.desktop/strip_var_hqitems.txt while the pals
+     * dropdown was actually open): KTB_LIVEDESK_DYN_MAX is 24, the
+     * real pals dir under xyzfs/users/<uuid>/home/livedesk/pals has
+     * 191 real entries today, and with zero pals_menu_post_N_* rows
+     * declared in the pdl, the scan loop below used to cap itself only
+     * against `max - n` (pre rows only) - so the alphabetical scan
+     * alone filled all 24 slots (item 23 was confirmed live to be a
+     * REAL pal, "tax_robot", not the "Cancel" fallback), and the
+     * `if (n < max)` guard at the bottom of this function was always
+     * false. Not a "just scroll further" discoverability issue - the
+     * array itself never had room for Cancel. Fix: do a real dry-run
+     * count of how many post rows the pdl actually defines BEFORE
+     * scanning, and reserve that many slots (at least 1, for the
+     * hardcoded Cancel fallback) off the scan cap up front, so the
+     * post/Cancel row(s) always have a guaranteed slot regardless of
+     * how many real pal directories exist. */
+    HQMenuItem post_probe[KTB_LIVEDESK_DYN_MAX];
+    int reserved = (max - n > 0)
+        ? livedesk_pdl_menu_rows_staged(house_root, "pals", "post", post_probe, max - n)
+        : 0;
+    if (reserved < 1) reserved = 1;
+
     char pr[KTB_PATH_BUF];
     if (!livedesk_pals_root(house_root, pr, sizeof(pr))) return n;
     char names[KTB_LIVEDESK_DYN_MAX][64];
@@ -3485,7 +3509,7 @@ static int livedesk_build_pals_menu(const char *house_root, HQMenuItem *menu, in
     if (d) {
         struct dirent *e;
         while ((e = readdir(d))) {
-            if (scan_n >= max - n || scan_n >= KTB_LIVEDESK_DYN_MAX) break;
+            if (scan_n >= max - n - reserved || scan_n >= KTB_LIVEDESK_DYN_MAX) break;
             if (e->d_name[0] == '.') continue;
             char mp[KTB_PATH_BUF];
             snprintf(mp, sizeof(mp), "%s/%s/pal.pdl", pr, e->d_name);

@@ -68,7 +68,23 @@ extern "C" {
  * LIVEDESK_GRID_PX / LIVEDESK_DYN_MAX / LIVEDESK_MAX_OPEN, KTB-prefixed
  * to match this file's naming convention). */
 #define KTB_LIVEDESK_GRID_PX 80   /* matches GRID_CELL_PX in tp_desktop_window.c */
-#define KTB_LIVEDESK_DYN_MAX 24
+/* REAL FIX 2026-09-22, direct request (task: "pals" dropdown must hold
+ * 191+ real pal directories, not silently cap at 24) - raised from 24.
+ * Checked every real dependent before bumping (grep KTB_LIVEDESK_DYN_MAX):
+ * all uses are either (a) HQMenuItem hq_menu[...] as a member of KtbState
+ * st, a ONE-TIME local in main() that never returns until process exit
+ * (khtpm_taskbar_manager_main.c:1010) - safe at any size, one-time cost;
+ * or (b) small char[..][64] scratch arrays local to individual
+ * livedesk_build_*_menu() calls (non-recursive, one call deep) - at 256
+ * entries the largest of these (HQMenuItem post_probe[], ~4.4KB/entry)
+ * is ~1.1MB on the stack for the single call's lifetime, well inside an
+ * 8MB thread stack. 256 covers the real 191+ pal count with headroom.
+ * Real scroll+clip UI wiring for the "pals" dropdown itself is tracked
+ * separately (see khtpm_core_render.c's dock-dropdown block comment,
+ * 2026-09-22) - this line only removes the hard data-cap; it does not
+ * by itself make all 256 reachable via the popup, which currently still
+ * stacks every open row unconditionally with no clip/scroll (OPEN). */
+#define KTB_LIVEDESK_DYN_MAX 256
 #define KTB_LIVEDESK_MAX_OPEN 64
 /* REAL FIX 2026-08-12, direct report ("some showed up on bottom tb then
  * dissapeared. only 2 are registered"): this was OFF, so the manager's

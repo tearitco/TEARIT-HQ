@@ -22,7 +22,15 @@
      deliberately does NOT pretend cursword's real conditional
      transitions are events-hq "choices" - it's h-ai-lab's own real
      viewer, styled the same way. -->
-<window label="h-ai-lab" class="h-ai-lab database-window" vars="state/ui.txt">
+<window label="h-ai-lab" class="h-ai-lab database-window" vars="state/ui.txt"
+        drop_action="sh '&.hq-apps/h-ai-lab/ai_lab_register_drop.sh'">
+  <!-- drop_action: real, already-generic XDND mechanism (see
+       khtpm_core_render.c's own g_drop_action block comment) - drag a
+       terumon seed dir (terumon-dev/seeds/<name>/) onto this window to
+       register it into the house-wide AI registry. $DROP_PATH is
+       exported by the renderer; ai_lab_register_drop.sh does the real
+       validation + ai_registry.sh add call. See that script's own
+       header comment for the KIND=other decision. -->
   <module id="ai_lab_refresh" src="&.hq-apps/h-ai-lab/ai_lab_refresh.sh"/>
   <page name="main">
     <!-- H-AI-LAB-DESIGN.md Part 7: real <tabbar>/<tab> - MUST be a
@@ -53,6 +61,23 @@
       <text label="${detail_name}  —  kind: ${detail_kind}" class="block-title" show="${has_detail}"/>
       <text label="PATH: ${detail_path}" class="quiet" show="${has_detail}"/>
       <text label="IFACE: ${detail_iface}" class="quiet" show="${has_detail}"/>
+
+      <!-- H-AI-LAB-DESIGN.md Part 4: db-hq-inspired structured action
+           rows, NOT a chat box. This task's own instruction: reuse
+           THESE two buttons (no new ones) - when the selected
+           instance is Concept-Bank-backed (KIND=other + a real
+           learning_limits.pdl, is_terumon=1, see ai_lab_scan.sh),
+           both call ai_lab_concept_bank_propose.sh, which produces +
+           validates a real candidate EDIT record (A-TEARIT §2.3/§2.4)
+           against the concept-bank/ this pass built, instead of the
+           Gemma call itself (still stubbed - see that script's own
+           header comment). Real, separate review-queue artifact per
+           Part 4's own rule: appends to <instance PATH>/pending_
+           review.txt, never writes live state. -->
+      <text label="Concept Bank actions (${detail_name})" class="block-title" show="${is_terumon}"/>
+      <item id="btn-propose-weights" class="btn" label="  Propose weights (Gemma)  " show="${is_terumon}" action="sh '${PKG}/ai_lab_concept_bank_propose.sh' '${PKG}' '${HOUSE}' propose_weights"/>
+      <item id="btn-score-curriculum" class="btn" label="  Score curriculum (Gemma)  " show="${is_terumon}" action="sh '${PKG}/ai_lab_concept_bank_propose.sh' '${PKG}' '${HOUSE}' score_curriculum"/>
+      <text label="${last_result}" class="quiet" show="${is_terumon}"/>
 
       <text label="live state: ${fsm_live_state}" class="block-title" show="${show_blocks}"/>
       <scrolllist show="${show_blocks}">

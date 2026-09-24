@@ -2,20 +2,36 @@
 
 ---
 
-## ⚠️ OPEN 2026-09-22: taskbar takes a long time to appear on launch, even though desktop entities (which the user expected to be the slower/bigger thing) appear instantly
+## ⚠️ OPEN 2026-09-22: HQ dropdown/menu lists (pals, palettes, edit, etc.) have no scrollbar at all
+
+**Reported:** direct live report, discovered while investigating a real overlap bug in the "pals" dropdown (see the `khtpm_core_render.c` scroll-boundary entry below, same session) — "drop downs should have a scroll bar (which has navs) if they dont yet. this was an oversight."
+
+**Confirmed by direct code check**: grepped `khtpm_core_render.c` for any scrollbar wiring on the HQ dropdown/menu (`hq_menu`) rendering path — zero hits. The generic scroll-region machinery this house already uses elsewhere (`layout_scroll_region()`/`generic_sbar_register()`, proven in file-explorer/board-viewer/etc.) is real and working, but the HQ dropdown cells (pals, palettes, edit, and any other `which == N` cell using `HQMenuItem[]`) don't call into it at all — a long list (the "pals" dropdown has 140+ real entries) has no visible thumb/track, no click-to-scroll, and the user has no way to know there's more below the last visible row short of scrolling blind.
+
+**Not yet fixed.** Real direction: wire the same `generic_sbar_register()`/`layout_scroll_region()` path every other scrollable list in this house already uses onto the HQ dropdown/menu rendering, rather than inventing a second scrollbar mechanism. Likely related to (may share a root cause with, or may be a separate follow-up from) the boundary-row overlap bug directly below this entry — check both together before considering either fully closed.
+
+---
+
+## ✅ CLOSED (Cancel button half) / ⚠️ OPEN (overlap half) 2026-09-22: "pals" dropdown - missing Cancel row (real cap, fixed) + boundary row overlap (unreproduced)
+
+**Reported:** direct live screenshot (`/home/no/Pictures/Screenshots/Screenshot from 2026-09-22 17-08-22.png`) - scrolling the "pals" dropdown shows the topmost visible row rendering with just its nav number + selection highlight and no icon/label content, squeezed into a near-zero-height sliver overlapping the row below it. Also reported: no visible Cancel button in this same dropdown ("other dropdowns don't do this").
+
+**Cancel button — real root cause found, fixed, live-verified (commit `4584cc25`).** Not a scroll issue: `KTB_LIVEDESK_DYN_MAX` is 24 (`khtpm_taskbar_manager.h:71`), but the live house has 191 real pal directories — the alphabetical scan in `livedesk_build_pals_menu()` (`khtpm_taskbar_manager.c` ~line 3471) filled all 24 array slots before Cancel could ever be appended, with zero pdl-defined post rows to reserve room. Confirmed live before the fix: dumping `#.desktop/strip_var_hqitems.txt` with the dropdown genuinely open showed exactly 24 rows, the last a real pal (`tax_robot`), no Cancel. Fixed by dry-running the post-row count first and reserving at least 1 slot for Cancel up front; verified after rebuild+restart: 25 rows, last is `Cancel`.
+
+**Boundary row overlap — real finding: the original "140+ entries, scroll boundary" premise was wrong, and the symptom could not be reproduced against the real code.** The pals dropdown's actual render path (a `dropdown-child` repeat block, `khtpm_strip_header.xhtpm` + `khtpm_core_render.c` ~5210-5262/`dock_paint_menu()` ~5431) has **no scroll or clipping logic at all** — every row is drawn unconditionally, sized to fit all of them (and the 24-row cap above means it physically never exceeds 24 rows, so a scroll-boundary bug class doesn't obviously apply here today). Could not get the actual popup window to map live via the relay to capture direct pixel proof either way, and said so rather than guessing at a fix. **Still open** - if this is still visually reproducible, needs a human or an agent with more relay-protocol context (the real relay format has a 5th token, e.g. `hq_win`, not documented in the k9 testing-convention file) driving it interactively.
+
+---
+
+## ✅ CLOSED 2026-09-22 (fixed same day as reported, verified via live `strip_ui.txt` receipts and real timing, commit `60fd7920`): taskbar takes a long time to appear on launch, even though desktop entities (which the user expected to be the slower/bigger thing) appear instantly
 
 **Reported:** direct live report - "it took a long time for tb to populate... doesn't make sense that it took so long when desktop entities, which are larger, were instant." Asked for a "loading" indicator as a possible mitigation, and to track this at minimum.
 
-**Real, evidenced root cause (found by direct code read, not yet fixed):**
+**Real, evidenced root cause (found by direct code read):**
 `khtpm_taskbar_manager_main.c`'s `main()` calls `ktb_init()` synchronously, before the manager writes its pidfile or reaches the event loop that publishes `#.desktop/strip_ui.txt` — the file the renderer polls to draw the taskbar strip at all. `ktb_init()` (`khtpm_taskbar_manager.c` ~line 441) calls `livedesk_ensure_cursword()` then `livedesk_spawn_active_desk()` → `livedesk_spawn_desk()` (~line 2474), which loops over every `DESK` row in the active desk's `.pdl`. For **each entity**, before its (fire-and-forget, `setsid nohup ... &`) spawn, it runs `ktb_find_live_pid_for_pal()` (~line 2768) — a **full scan of `/proc`**, opening and `fread`ing `/proc/<pid>/cmdline` for every process on the machine, to check whether that one entity is already running.
 
 This explains the exact reported shape: each entity's own spawn is genuinely fast once its turn comes (X11 window mapping doesn't wait on anything else), so entities visibly "pop in" quickly one at a time. But the *next* entity's spawn doesn't start until the *current* entity's full `/proc` scan finishes, and the taskbar's own UI can't be published until the ENTIRE loop — one full-process-table scan per entity — completes. A desk with N entities does N full `/proc` scans, fully serialized, before the taskbar can draw anything, on a documented weak-CPU machine (`nice-heavy-background-work` house note).
 
-**Not yet fixed. Real directions, not yet chosen/implemented:**
-1. **The user's own "loading" idea, cheapest to ship**: have the manager publish a minimal placeholder `strip_ui.txt` immediately, before `ktb_init()`'s entity-spawn loop even runs, so the renderer has something real to draw right away instead of nothing until the whole sequence finishes.
-2. **Fix the real inefficiency directly**: the `/proc` scan is redone from scratch, once per entity, inside one tight loop over the SAME desk file. Scan `/proc` ONCE, build a pid→cmdline map, and check every desk entity against that one map — turns N full scans into 1.
-3. **Move entity spawning off the manager's own synchronous startup path** entirely (defer it to right after the manager starts publishing its own UI), so the taskbar's own appearance is never gated on how many entities the active desk has.
-Any of these three, or a combination, would fix the user-visible symptom; (2) is the most surgical/lowest-risk since it doesn't change ordering or add new published state, just removes the redundant re-scanning.
+**Fixed (option 2 of the three considered):** the `/proc` scan is now done ONCE per pass (`ktb_proc_snapshot()`/`_find()`/`_free()`, `khtpm_taskbar_manager.c`), not once per entity, at both real call sites (`livedesk_spawn_desk()`'s startup loop and `ktb_self_heal_active_desk_registry()`'s reconcile pass). Most surgical of the three options considered — no ordering change, no new published state, just removes the redundant re-scanning. Options 1 (placeholder UI) and 3 (defer spawning off the sync path) remain real, not-yet-needed alternatives if this ever regresses at a larger scale.
 
 ## ✅ CLOSED 2026-09-20 (verified on the user's hardware: "that actually fixed it"): csv-hq `<grid>` - Enter on the grid nav item doesn't activate it (needs a double click) and no typed input arrives afterward
 

@@ -322,7 +322,44 @@ static int load_methods(const char *package_dir, MethodItem *items, int max) {
     if (!f) return 0;
     char line[TP_PATH_BUF];
     int n = 0;
+    /* REAL, NEW 2026-09-22 (task 2 - per-entity Cli-io on/off) - the
+     * Cli-io row itself (below, action="CLI_IO") was already fully
+     * real and wired (khtpm_entity.c's real armed/typed/committed
+     * handling at every RUN_METHOD/ACTIVATE_NAV/Enter dispatch site,
+     * grep 'CLI_IO' in that file) - it was just unconditionally
+     * auto-appended to EVERY entity's context menu with no opt-out.
+     * REAL FIX 2026-09-22 (direct correction, "not just dsr, but all
+     * entities would get the cli-io"): flipped from opt-in to
+     * opt-OUT. Default is now ON for every entity (absent field =
+     * on); a real META row lets ONE entity turn it off:
+     *   META | cli_io_default | off
+     * Same real SECTION|KEY|VALUE shape this file's own header row
+     * already documents (matches the META|piece_id|... row every
+     * real meta.pdl already has - not a new format). */
+    int cli_io_default_on = 1;
     while (n < max && fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "META", 4) == 0 && strncmp(line, "METHOD", 6) != 0) {
+            char *mp = strchr(line, '|');
+            if (mp) {
+                mp++;
+                while (*mp == ' ') mp++;
+                char *mend = strchr(mp, '|');
+                if (mend) {
+                    char *klabel_end = mend;
+                    while (klabel_end > mp && klabel_end[-1] == ' ') klabel_end--;
+                    size_t klen = (size_t)(klabel_end - mp);
+                    if (klen == 14 && strncmp(mp, "cli_io_default", 14) == 0) {
+                        char *va = mend + 1;
+                        while (*va == ' ') va++;
+                        char *va_end = va + strcspn(va, "\r\n");
+                        while (va_end > va && va_end[-1] == ' ') va_end--;
+                        size_t vlen = (size_t)(va_end - va);
+                        if (vlen == 3 && strncmp(va, "off", 3) == 0) cli_io_default_on = 0;
+                    }
+                }
+            }
+            continue;
+        }
         if (strncmp(line, "METHOD", 6) != 0) continue;
         char *p = strchr(line, '|');
         if (!p) continue;
@@ -348,7 +385,7 @@ static int load_methods(const char *package_dir, MethodItem *items, int max) {
         n++;
     }
     fclose(f);
-    if (n < max) {
+    if (cli_io_default_on && n < max) {
         int has = 0, j;
         for (j = 0; j < n; j++)
             if (!strcmp(items[j].action, "CLI_IO") || !strcmp(items[j].label, "Cli-io")) has = 1;

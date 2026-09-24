@@ -208,6 +208,18 @@ publish)
                 echo "has_detail=1"
                 echo "no_detail=0"
 
+                # H-AI-LAB-DESIGN.md Part 4 + this task's own step 3:
+                # a Concept-Bank-backed instance (terumon, registered
+                # KIND=other via ai_lab_register_drop.sh - see that
+                # script's own header comment for why KIND=other, not
+                # a new KIND value) shows the real "Propose weights"/
+                # "Score curriculum" buttons. Detected the same
+                # PATH-existence way ai_lab_register_drop.sh already
+                # validates a drop (learning_limits.pdl present, per
+                # TERUMON-SPEC.md §3's real seed layout) - not a new
+                # registry field.
+                echo "is_terumon=$([ "$d_kind" = "other" ] && [ -f "$d_path/learning_limits.pdl" ] && echo 1 || echo 0)"
+
                 # H-AI-LAB-DESIGN.md Part 5/6: real "scratch block" view
                 # for a KIND=fsm entry - reuses events-hq's own real,
                 # live publish_scratch_blocks() precedent (labeled,
@@ -321,12 +333,14 @@ $(ls -1 "$d_path" | head -30)"
                 echo "show_blocks=0"
                 echo "show_raw_text=0"
                 echo "n_blocks=0"
+                echo "is_terumon=0"
                 echo "as_open=0"; echo "as_name="; echo "n_as_pick=0"; echo "no_as_pick=1"
             fi
         else
             echo "has_detail=0"
             echo "no_detail=1"
             echo "detail_text=(select an instance from the list)"
+            echo "is_terumon=0"
             echo "show_blocks=0"
             echo "show_raw_text=0"
             echo "as_open=0"; echo "as_name="; echo "n_as_pick=0"; echo "no_as_pick=1"

@@ -1,0 +1,8 @@
+# CONCEPT_MASTER — motion.pdl (hand-authored stub, referenced by force.pdl
+# SLOT 0 and needed for the "target/slot must resolve to a real master"
+# validator smoke test — A-TEARIT-IS-ALL-YOU-NEED.md §2.4).
+NODE | motion
+KIND | master
+N_SLOTS | 8
+MIRROR_GENERATED_AT | 2026-09-22 16:16:19
+# (no spoke currently points at this master)
