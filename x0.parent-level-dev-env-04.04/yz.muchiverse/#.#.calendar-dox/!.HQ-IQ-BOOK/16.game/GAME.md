@@ -33,6 +33,19 @@ The part that decides the next command, including a local model, is
 not this chapter. It is `17.ai`. When that chapter's loop appends an
 event command, the command runs here.
 
+## Picker
+
+The events editor lists every `COMMAND` in
+`#.ref/menu/event_commands.registry.pdl`. `evhq_projector.c` loads
+that file. The cap is 128 types. The file has fewer than that.
+`read_receipt`, `send_window_key`, and `advance_fact` are in it, so
+they show up next to the RPG Maker commands the next time the editor
+opens. House-specific commands are allowed. Networking, and anything
+else a page must name, can be a command when it has to be. A window
+can exist before the command does. hq-ftp is that case: a network
+menu row and a placeholder window, design in
+`08-roadmap/design-docs/HQ-FTP.md`, no transfer code yet.
+
 ## Open parity gaps
 
 Named so a later agent does not invent them in the middle of a

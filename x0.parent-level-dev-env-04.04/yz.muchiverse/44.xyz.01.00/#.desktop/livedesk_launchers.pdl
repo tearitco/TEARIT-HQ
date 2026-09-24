@@ -8,6 +8,8 @@
 SECTION | launcher_settings | *.monads/*.livedesk-taskbar/ops/button_taskbar_settings.sh
 SECTION | launcher_stats    | &.hq-apps/stats-hq/open_stats_hq.sh
 SECTION | launcher_ai       | &.widgits/open-hai/button.sh
+# H-AI-LAB-DESIGN.md Part 3 - real ai-instance registry viewer.
+SECTION | launcher_h_ai_lab | &.hq-apps/h-ai-lab/button.sh
 # 2026-09-03: retargeted to the ported static-template db-hq-pal window
 # (dashboard.xhtpm + pal/dbhq_projector.pal). Record field EDITING is
 # still read-only in the -pal window; rollback = restore the old path:
@@ -22,3 +24,4 @@ SECTION | launcher_network_irc     | &.hq-apps/irc-chat-hq/open_irc_chat_hq.sh
 SECTION | launcher_network_forum   | &.hq-apps/network/open_forum_cli.sh
 SECTION | launcher_network_browser | &.hq-apps/network/button.sh
 SECTION | launcher_network_chain   | &.hq-apps/chain-hq/open_chain_hq.sh
+SECTION | launcher_network_hqftp  | &.hq-apps/hq-ftp/open_hq_ftp.sh

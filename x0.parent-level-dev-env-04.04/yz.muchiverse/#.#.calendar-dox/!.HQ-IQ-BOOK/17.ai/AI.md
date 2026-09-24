@@ -30,7 +30,11 @@ model does not classify the world in one token. The same loop is
 what would let it append one event command, open a dev task, or file
 a productivity note. The command, the task, and the note are
 different machines. The permission to append one of them is this
-chapter.
+chapter. A house-specific event command is allowed when a page must
+name the act. A house app is allowed when the act is not a page.
+hq-ftp is the second kind: LAN peer drop, design only, row on the
+network menu. See `08-roadmap/design-docs/HQ-FTP.md` and `16.game`
+for the picker rule.
 
 ## What stays next door
 
