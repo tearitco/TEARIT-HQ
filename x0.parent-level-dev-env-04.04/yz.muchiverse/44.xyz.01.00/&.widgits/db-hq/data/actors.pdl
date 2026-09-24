@@ -115,6 +115,7 @@ ACTOR        | head               |
 ACTOR        | body               |
 ACTOR        | accessory          |
 ACTOR        | mhp                | 20
+ACTOR        | page_value         | 20
 ACTOR        | mmp                | 10
 ACTOR        | atk                | 6
 ACTOR        | def                | 4

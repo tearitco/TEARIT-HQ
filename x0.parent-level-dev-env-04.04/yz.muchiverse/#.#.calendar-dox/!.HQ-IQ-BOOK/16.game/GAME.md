@@ -68,14 +68,13 @@ RPG Maker MV or MZ project, or how to write one back out.
 
 ## Two facts, one weight
 
-Fixture only, not a live actor. `#.desktop/harnesses/two-facts/`.
-`facts.txt` holds `id=ember-fixture`, `page_value`, and
-`numeric_value`. `weight.txt` holds `which=page` or `which=numeric`.
-`advance.sh` adds 1 to the chosen value and leaves the other alone.
-An unknown `which` exits 1 and does not write. The event command
-`advance_fact` runs that script. `prisc+x` on
-`two-facts/event_pkg/pages/page_1/event.pal` did the three checks:
-`which=page` made 20/20 into 21/20, `which=numeric` made 20/20 into
-20/21, and `which=both` left 20/20 with no `advanced=` line. The
-fixture was put back to 20/20 and `which=page`. Live actor rows were
-not written. This is not chemistry and not 3D.
+`#.desktop/harnesses/two-facts/facts.txt` names actor id 5, Ember.
+`page_value` is a field on that actor in `db_hq_actors.state.txt`
+and in `actors.pdl` (both stay even). `numeric_value` is
+`terumon_001_ember/numeric_fact.txt`. `weight.txt` is `which=page`
+or `which=numeric`. `advance_fact` runs `advance.sh`. `prisc+x`:
+`which=page` made the actor 21 and left the numeric file at 20.
+`which=numeric` made the file 21 and left the actor at 20. `mhp`
+stayed 20. `which=both` wrote nothing. All three were put back to
+20. This is Ember's HP-shaped pair. It is not a battle and not a
+range grid.

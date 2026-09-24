@@ -175,7 +175,13 @@ were not built.
 `two-facts/advance.sh`. `prisc+x` on that page: `which=page` made
 20/20 into 21/20, `which=numeric` made 20/20 into 20/21, `which=both`
 left 20/20 and wrote no `advanced=` line. Fixture reset to 20/20
-and `which=page`. Ember's actor row was not modified. `prisc+x`
+and `which=page`. Ember's actor row was not modified.
+
+**Ember is the id.** `page_value` is on actor 5 in
+`db_hq_actors.state.txt` and `actors.pdl`. `numeric_value` is
+`terumon_001_ember/numeric_fact.txt`. The same `advance_fact` page
+moved only the actor field, then only the numeric file, then neither
+when `which=both`. `mhp` stayed 20. Values were restored to 20 and 20. `prisc+x`
 still prints that `default_op.txt` is missing. The shell command
 ran anyway.
 
