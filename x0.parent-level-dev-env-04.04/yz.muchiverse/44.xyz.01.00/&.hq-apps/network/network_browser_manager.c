@@ -3478,10 +3478,32 @@ static void write_chtpm_projection(void) {
                 f1[nst][0] = f2[nst][0] = f3[nst][0] = '\0';
                 if (strcmp(line, "TITLE") == 0 || strcmp(line, "TEXT") == 0) {
                     snprintf(f1[nst], sizeof(f1[nst]), "%s", rest);
-                } else if (strcmp(line, "LINK") == 0 || strcmp(line, "IMG") == 0) {
+                } else if (strcmp(line, "LINK") == 0) {
                     char *bar2 = strchr(rest, '|');
                     if (bar2) { *bar2 = '\0'; snprintf(f2[nst], sizeof(f2[nst]), "%s", bar2 + 1); }
                     snprintf(f1[nst], sizeof(f1[nst]), "%s", rest);
+                } else if (strcmp(line, "IMG") == 0) {
+                    // New wire: IMG|<src>|<w>|<h>|<path>|<alt> (decoded) vs old IMG|<src>|<alt>
+                    char *q1 = strchr(rest, '|');
+                    if (q1) {
+                        *q1 = '\0';
+                        snprintf(f1[nst], sizeof(f1[nst]), "%s", rest);
+                        char *q2 = q1 + 1;
+                        char *q3 = strchr(q2, '|');
+                        char *q4 = q3 ? strchr(q3+1, '|') : NULL;
+                        char *q5 = q4 ? strchr(q4+1, '|') : NULL;
+                        if (q3 && q4 && q5) {
+                            *q3 = '\0'; *q4 = '\0'; *q5 = '\0';
+                            snprintf(f2[nst], sizeof(f2[nst]), "%s", q4+1);
+                            snprintf(f3[nst], sizeof(f3[nst]), "%s", q5+1);
+                        } else {
+                            snprintf(f2[nst], sizeof(f2[nst]), "%s", q2);
+                            f3[nst][0] = '\0';
+                        }
+                    } else {
+                        snprintf(f1[nst], sizeof(f1[nst]), "%s", rest);
+                        f2[nst][0] = '\0'; f3[nst][0] = '\0';
+                    }
                 } else if (strcmp(line, "VIDEO") == 0) {
                     char *bar2 = strchr(rest, '|');
                     snprintf(f1[nst], sizeof(f1[nst]), "%s", rest);
@@ -3881,9 +3903,27 @@ static void write_ui_projection(void) {
                     UI_PUT("c_%d_kind=link\nc_%d_is_link=1\nc_%d_text=%s\n", rc, rc, rc, lab_s);
                     UI_PUT("c_%d_action='%s/ops/nb_write_go.sh' 'go' '%s'\n", rc, g_package_dir, url_sq);
                 } else if (strcmp(kind, "IMG") == 0) {
-                    char *b2 = strchr(rest, '|');
-                    if (b2) { *b2 = 0; snprintf(s2, sizeof(s2), "%s", b2 + 1); } else s2[0] = 0;
-                    uisan(rest, s1, sizeof(s1));        /* sprite dir */
+                    char *q1 = strchr(rest, '|');
+                    char *img_path = NULL; char *img_alt = NULL;
+                    if (q1) {
+                        *q1 = '\0';
+                        char *q2 = q1 + 1;
+                        char *q3 = strchr(q2, '|');
+                        char *q4 = q3 ? strchr(q3+1, '|') : NULL;
+                        char *q5 = q4 ? strchr(q4+1, '|') : NULL;
+                        if (q3 && q4 && q5) {
+                            *q3 = '\0'; *q4 = '\0'; *q5 = '\0';
+                            img_path = q4 + 1; img_alt = q5 + 1;
+                            snprintf(s2, sizeof(s2), "%s", img_alt);
+                            uisan(img_path, s1, sizeof(s1));
+                        } else {
+                            snprintf(s2, sizeof(s2), "%s", q2);
+                            uisan(rest, s1, sizeof(s1));
+                        }
+                    } else {
+                        uisan(rest, s1, sizeof(s1));
+                        s2[0] = '\0';
+                    }
                     char lab_s[700]; uisan(s2[0] ? s2 : " ", lab_s, sizeof(lab_s));
                     UI_PUT("c_%d_kind=img\nc_%d_is_media=1\nc_%d_sprite=%s\nc_%d_label=%s\n", rc, rc, rc, s1, rc, lab_s);
                     /* V4 2026-09-12: an IMG immediately tailed by a LINK
