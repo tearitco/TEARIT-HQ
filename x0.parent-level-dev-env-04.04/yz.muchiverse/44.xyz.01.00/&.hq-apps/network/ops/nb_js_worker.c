@@ -25,6 +25,8 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "../js/stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 
 #include <unistd.h>
 #include <errno.h>
@@ -455,6 +457,36 @@ static void img_set_decoded(NbNode *n, int w, int h, unsigned char *data);
 static int img_get_decoded(const NbNode *n, int *w, int *h);
 static unsigned char *b64_decode(const char *in, size_t *out_len);
 
+#define MAX_IMG_SRC 256
+static struct { NbNode *n; char src[1024]; } g_img_src[256];
+static int g_img_src_count = 0;
+static void img_set_src(NbNode *n, const char *s) {
+    for (int i = 0; i < g_img_src_count; i++) if (g_img_src[i].n == n) { snprintf(g_img_src[i].src, sizeof(g_img_src[i].src), "%s", s); return; }
+    if (g_img_src_count < MAX_IMG_SRC) { g_img_src[g_img_src_count].n = n; snprintf(g_img_src[g_img_src_count].src, sizeof(g_img_src[g_img_src_count].src), "%s", s); g_img_src_count++; }
+}
+static const char *img_get_src(const NbNode *n) {
+    for (int i = 0; i < g_img_src_count; i++) if (g_img_src[i].n == n) return g_img_src[i].src;
+    return nb_attr_get(n, "src");
+}
+#define MAX_IMG_DECODED 256
+static struct { NbNode *n; int w, h; unsigned char *data; } g_img_decoded[256];
+static int g_img_decoded_count = 0;
+static void img_set_decoded(NbNode *n, int w, int h, unsigned char *data) {
+    for (int i = 0; i < g_img_decoded_count; i++) if (g_img_decoded[i].n == n) {
+        free(g_img_decoded[i].data); g_img_decoded[i].w = w; g_img_decoded[i].h = h; g_img_decoded[i].data = data; return;
+    }
+    if (g_img_decoded_count < MAX_IMG_DECODED) {
+        g_img_decoded[g_img_decoded_count].n = n; g_img_decoded[g_img_decoded_count].w = w;
+        g_img_decoded[g_img_decoded_count].h = h; g_img_decoded[g_img_decoded_count].data = data; g_img_decoded_count++;
+    } else free(data);
+}
+static int img_get_decoded(const NbNode *n, int *w, int *h) {
+    for (int i = 0; i < g_img_decoded_count; i++) if (g_img_decoded[i].n == n) {
+        if (w) *w = g_img_decoded[i].w; if (h) *h = g_img_decoded[i].h; return g_img_decoded[i].data != NULL;
+    }
+    return 0;
+}
+
 /* ---- step 4: RENDER — serialize the (post-JS) DOM into page.state.txt
  * rows exactly as the manager's projector consumes them (TITLE/TEXT/LINK/IMG).
  * Only the worker's own tree is authoritative here, so JS mutations
@@ -529,7 +561,14 @@ static void dom_walk_render(const NbNode *n, int *titled, SB *b) {
             }
             char imgbuf[2048];
             if (img_get_decoded(n, &dw, &dh) && dw > 0 && dh > 0) {
-                snprintf(imgbuf, sizeof(imgbuf), "%s|%d|%d|%s", srcbuf, dw, dh, altbuf);
+                // Write decoded RGBA to temp file for renderer (Step 3 wire)
+                char imgpath[256];
+                snprintf(imgpath, sizeof(imgpath), "/tmp/nb_img_%p.png", (void*)n);
+                // Find decoded data
+                unsigned char *rgba = NULL;
+                for (int i = 0; i < g_img_decoded_count; i++) if (g_img_decoded[i].n == n) { rgba = g_img_decoded[i].data; break; }
+                if (rgba) stbi_write_png(imgpath, dw, dh, 4, rgba, dw * 4);
+                snprintf(imgbuf, sizeof(imgbuf), "%s|%d|%d|%s|%s", srcbuf, dw, dh, imgpath, altbuf);
             } else {
                 snprintf(imgbuf, sizeof(imgbuf), "%s|%s", srcbuf, altbuf);
             }
@@ -4350,35 +4389,7 @@ static int dispatch_event(JSContext *ctx, int kind, NbNode *node, JSValue ev, in
     JS_FreeValue(ctx, dpv);
     return !dp;
 }
-#define MAX_IMG_SRC 256
-static struct { NbNode *n; char src[1024]; } g_img_src[256];
-static int g_img_src_count = 0;
-static void img_set_src(NbNode *n, const char *s) {
-    for (int i = 0; i < g_img_src_count; i++) if (g_img_src[i].n == n) { snprintf(g_img_src[i].src, sizeof(g_img_src[i].src), "%s", s); return; }
-    if (g_img_src_count < MAX_IMG_SRC) { g_img_src[g_img_src_count].n = n; snprintf(g_img_src[g_img_src_count].src, sizeof(g_img_src[g_img_src_count].src), "%s", s); g_img_src_count++; }
-}
-static const char *img_get_src(const NbNode *n) {
-    for (int i = 0; i < g_img_src_count; i++) if (g_img_src[i].n == n) return g_img_src[i].src;
-    return nb_attr_get(n, "src");
-}
-#define MAX_IMG_DECODED 256
-static struct { NbNode *n; int w, h; unsigned char *data; } g_img_decoded[256];
-static int g_img_decoded_count = 0;
-static void img_set_decoded(NbNode *n, int w, int h, unsigned char *data) {
-    for (int i = 0; i < g_img_decoded_count; i++) if (g_img_decoded[i].n == n) {
-        free(g_img_decoded[i].data); g_img_decoded[i].w = w; g_img_decoded[i].h = h; g_img_decoded[i].data = data; return;
-    }
-    if (g_img_decoded_count < MAX_IMG_DECODED) {
-        g_img_decoded[g_img_decoded_count].n = n; g_img_decoded[g_img_decoded_count].w = w;
-        g_img_decoded[g_img_decoded_count].h = h; g_img_decoded[g_img_decoded_count].data = data; g_img_decoded_count++;
-    } else free(data);
-}
-static int img_get_decoded(const NbNode *n, int *w, int *h) {
-    for (int i = 0; i < g_img_decoded_count; i++) if (g_img_decoded[i].n == n) {
-        if (w) *w = g_img_decoded[i].w; if (h) *h = g_img_decoded[i].h; return g_img_decoded[i].data != NULL;
-    }
-    return 0;
-}
+
 static int b64_val(char c) {
     if (c >= 'A' && c <= 'Z') return c - 'A';
     if (c >= 'a' && c <= 'z') return c - 'a' + 26;
