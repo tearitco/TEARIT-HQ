@@ -39,4 +39,5 @@ Live dated dirs again (book audit had folded 2026-09-05..15):
   Inventory/qolq-dir bootstrap runs; resume conditions listed there.
 - `2026-09-20/2do.md` — what landed 09-19/20 (Grok+opencode merges, Inventory/Explorer work, UI scaling, unfactor, Space menu) and the ordered next-steps list; includes the Cursword stuck-keyboard-grab fix (`HOUSE_CODE_PITFALLS.md` #24).
 - `2026-09-21/next-steps.md` — the agreed ordered plan (hardware pass + re-test of old keyboard bugs, events-from-inside-Inventory slice, first IRL/AI slice, piececraft board bug), a tick-box real-hardware checklist, what's deferred, and the working agreements (evidence-first debugging, token cost, comments policy).
-- `2026-09-23/notes.md` — Actors 5–11 on the live list; TPMOS-style frame log for db-hq-pal; three open issues (no add-actor control, arrows move the tab strip, `db_hq_history.txt` does not drive this window).
+- `2026-09-23/notes.md` — the day log for the receipt page, playtest, Ember's two facts, and range.
+- `2026-09-23/grok-to-claude.txt` — stop-point for the next agent. Merge branch `grok`. Do not commit onto it. Same text as the external handoff.

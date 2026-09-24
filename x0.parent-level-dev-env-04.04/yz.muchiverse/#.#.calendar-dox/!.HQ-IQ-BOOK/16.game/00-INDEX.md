@@ -18,3 +18,6 @@ command runs on.
   clones are event pages, not a second engine.
 - `../12.calendar/2026-09-23/notes.md` — the day the receipt page and
   the play flag were proven.
+- `../12.calendar/2026-09-23/grok-to-claude.txt` — the stop-point
+  for the next agent. Same text as the external handoff. Merge
+  branch `grok`. Do not commit onto it.
