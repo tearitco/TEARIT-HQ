@@ -451,6 +451,9 @@ static const char *img_get_src(const NbNode *n);
 static void img_set_src(struct NbNode *n, const char *s);
 static int layout_hidden_anc(struct NbNode *n);
 static void layout_xy(struct NbNode *n, double *out_x, double *out_y);
+static void img_set_decoded(NbNode *n, int w, int h, unsigned char *data);
+static int img_get_decoded(const NbNode *n, int *w, int *h);
+static unsigned char *b64_decode(const char *in, size_t *out_len);
 
 /* ---- step 4: RENDER — serialize the (post-JS) DOM into page.state.txt
  * rows exactly as the manager's projector consumes them (TITLE/TEXT/LINK/IMG).
@@ -508,8 +511,28 @@ static void dom_walk_render(const NbNode *n, int *titled, SB *b) {
         snprintf(srcbuf, sizeof(srcbuf), "%s", img_get_src(n));
         snprintf(altbuf, sizeof(altbuf), "%s", nb_attr_get(n, "alt"));
         if (srcbuf[0]) {
+            int dw = 0, dh = 0;
+            if (!img_get_decoded(n, &dw, &dh) && srcbuf[0]) {
+                if (strncmp(srcbuf, "data:image/", 11) == 0) {
+                    const char *comma = strchr(srcbuf, ',');
+                    if (comma && strstr(srcbuf, ";base64,")) {
+                        size_t png_len = 0;
+                        unsigned char *png_data = b64_decode(comma+1, &png_len);
+                        if (png_data && png_len) {
+                            int w = 0, h = 0, comp = 0;
+                            unsigned char *rgba = stbi_load_from_memory(png_data, (int)png_len, &w, &h, &comp, 4);
+                            if (rgba) { img_set_decoded((NbNode *)n, w, h, rgba); dw = w; dh = h; }
+                            free(png_data);
+                        }
+                    }
+                }
+            }
             char imgbuf[2048];
-            snprintf(imgbuf, sizeof(imgbuf), "%s|%s", srcbuf, altbuf);
+            if (img_get_decoded(n, &dw, &dh) && dw > 0 && dh > 0) {
+                snprintf(imgbuf, sizeof(imgbuf), "%s|%d|%d|%s", srcbuf, dw, dh, altbuf);
+            } else {
+                snprintf(imgbuf, sizeof(imgbuf), "%s|%s", srcbuf, altbuf);
+            }
             rw_row(b, "IMG", imgbuf);
             caption_used = 1;
         }
