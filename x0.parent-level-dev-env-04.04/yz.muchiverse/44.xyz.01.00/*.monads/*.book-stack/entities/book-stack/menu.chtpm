@@ -6,7 +6,6 @@
     <item label="Inventory" action="sh -c 'H=&quot;$1&quot;; I=&quot;$H/&amp;.widgits/file-explorer/instances/inv-$(basename &quot;$(dirname &quot;$0&quot;)&quot;)-$(basename &quot;$0&quot;)&quot;; mkdir -p &quot;$0/inventory&quot; &quot;$I&quot;; printf &quot;mode=LOAD\nstart_dir=%s/inventory\n&quot; &quot;$0&quot; > &quot;$I/fe_request.txt&quot;; exec sh &quot;$H/&amp;.widgits/file-explorer/button.sh&quot; run-instance &quot;$I&quot;'"/>
     <item label="Close" action="CLOSE"/>
     <item label="Cancel" action="void"/>
-      <item label="Act" action="sh -c 'exec &quot;$1/&amp;.widgits/entity-cli/open_entity_act.sh&quot; &quot;$0&quot; &quot;$1&quot;'"/>
     <item label="Cli-io" action="sh -c 'exec &quot;$1/&amp;.widgits/entity-cli/open_entity_cli.sh&quot; &quot;$0&quot; &quot;$1&quot;'"/>
   </page>
 </window>
