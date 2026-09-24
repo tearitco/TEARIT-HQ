@@ -1,0 +1,12 @@
+# network-browser-normal — Chromium-like parity within house standards
+# PIPELINE:35 — dump_frame_png_op -> snapshots/ + manifest.txt -> presentation.mp4
+# Each row: <png> | <sec> | <caption>  (sec is MIN, TTS extends to narration length)
+# Captured live via dump_frame_png_op --root on opencode 4c652af7 (wcs 12/12)
+
+01_load_example.png | 6 | Network Browser loads example.com — TEXT and LINK rows from page.state.txt via RENDER
+02_fetch_json.png | 6 | Fetch JSON via XHR/fetch through manager RPC 7e55fc8b — load more renders without reload
+03_click_event.png | 6 | Click dispatched via EVENT RPC 43c72099 — scripted tab widget handles click, RENDER re-emits
+04_history_nav.png | 6 | History pushState and NAV via g_pending_nav — back-forward without fetch, address bar updates
+05_image_png.png | 6 | Image 1x1 PNG via data:image/png;base64 decoded by stbi, naturalWidth 1, drawn at getBoundingClientRect 514b8ab9 via khtpm_draw_core stbi_load
+06_layout_rect.png | 6 | Layout: getBoundingClientRect returns stacked y from layout_xy, display:none ancestors give 0,0,0,0
+
