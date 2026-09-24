@@ -66,6 +66,8 @@ RPG Maker MV or MZ project, or how to write one back out.
 
 **Range.** The hit is real. The skill menu is not. `apply_range` is an event command. An NxN square starts at the origin cell (range 2 from `a1` covers `b2` and not `c3`). A cell inside it subtracts 1 from that actor's `page_value` only. `prisc+x` on page 2: Glacine (actor 6) went from 20 to 19 on `a1`→`b2` range 2, and stayed 20 on `a1`→`c3` range 2. Ember's `page_value`, her `mhp`, and Ember's `numeric_value` stayed 20. Glacine was restored to 20. The placing grid fills that same square when `PLACE_RANGE` is set, or when the jump buffer is only digits. The placer binary was rebuilt. The overlay was not opened, so there is no frame of the fill. Move, Use, and Attack rows from a `.pdl` are still not built. Play mode is not required. The side-view battle screen is still the separate parity gap.
 
+**Cli-io and Act, Ember only.** The old `CLI_IO` action opened a bare popup. Ember's menu now opens `&.widgits/entity-cli/entity-cli.xhtpm`, a real `<cli_io>`. Enter runs the typed line (`range a1 b2 2 6` calls `apply_range`; `advance page` calls `advance_fact`'s script). The shared renderer supplies the `^` lock when that field is armed. The frame listed the `cli_io` element. Act is a second window built from `skills.pdl` (Move, Use, Attack). Attack calls the same range hit. `objects.pdl` has `PAGE | act` and `GOTO:act` for the legacy menu path. An already-running Ember does not see the new menu until it is restarted.
+
 ## Two facts, one weight
 
 `#.desktop/harnesses/two-facts/facts.txt` names actor id 5, Ember.
