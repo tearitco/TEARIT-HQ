@@ -19,7 +19,7 @@ plain `<name>-dev`, sitting directly under `x0.parent-level-dev-env-
 ones). `x0.moke-pet-project-04.04/` is a separate, unrelated pet-sim
 project (an existing `x0.` top-level dir, not a naming precedent for
 terumon). This track is therefore placed at
-`x0.parent-level-dev-env-04.04/terumon-dev/`, matching `xyz-installer-
+`x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/design-docs/terumon-dev/`, matching `xyz-installer-
 dev`'s pattern exactly (top-level, `-dev` suffix, lowercase, no
 letter+digit prefix).
 
