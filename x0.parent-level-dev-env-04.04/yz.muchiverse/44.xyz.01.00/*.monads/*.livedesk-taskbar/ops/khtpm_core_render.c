@@ -18426,6 +18426,24 @@ int main(int argc, char **argv) {
         }
     }
 
+    /* REAL FIX 2026-09-24, direct live report ("i just checked act,
+     * its still not in same place") - the SAME argv[3]/argv[4] x/y
+     * assignment already exists a few hundred lines down (2026-08-16),
+     * but it runs AFTER parse_chtpm() just below. ${WIN_X}/${WIN_Y}
+     * (kh_get_var(), added earlier today for the Act-window-position
+     * fix) are substituted INTO the template text DURING that parse,
+     * so reading g_win_x/g_win_y there before this ran always saw the
+     * compile-time 300,300 default, never the real launched position -
+     * the actual root cause of the position fix not working live.
+     * g_arg3_dir is already fully resolved by this point (set above),
+     * so this early copy is safe; the original later assignment is
+     * left in place (same value, harmless no-op re-assignment) rather
+     * than removed, since its own comment says it's deliberately
+     * positioned after mode detection for other real reasons. */
+    if (argc >= 5 && !g_arg3_dir[0]) {
+        g_win_x = atoi(argv[3]); g_win_y = atoi(argv[4]);
+    }
+
     g_window = parse_chtpm(g_chtpm_path);
     if (!g_window) { fprintf(stderr, "khtpm_core_render: failed to parse %s\n", g_chtpm_path); return 1; }
     { struct stat gcst; if (stat(g_chtpm_path, &gcst) == 0) g_chtpm_mtime = gcst.st_mtim; }
