@@ -56,21 +56,19 @@ App-web (Gmail/Figma/WebGL) is explicitly out of scope (`ROADMAP.md:668`).
 
 **Verify:** `make nbjs` + headless `greet_player`-style dump: `google.com` fetch renders one `sprite-grid-row` with 2 images, `&copy;` shows `©`, zero `js:` rows without flag. `dump_frame_png_op` confirms.
 
-### F2 — Image sprite pipeline (1 pass, touches worker + renderer, ~120 lines)
-**Gap:** `IMG|` rows carry `src` text today; no pixels. Backend Rung7 Steps 1-2 already decode `data:` but not wired to `c_sprite`.
+### F2 — Image sprite pipeline (network wire DONE, renderer handed off)
+**Gap:** `IMG|` rows carry `src` text today; no pixels.
 
-- Worker `nb_js_worker.c:dom_walk_render` for `img`: when tag `img` resolve `src` via `resolve_doc_url(g_href)` (mirrors manager `resolve_url`), fetch via `nb_fetch_sync` (curl with `cookie_header_for_url` jar, `dump-header` Set-Cookie ingress), sniff `Content-Type`, write to `tmp/nb_img_<hash>.png` (or `.jpg` via stb_image), keep `w/h` from `stb_image` or `width/height` attrs. Emit `IMG|<src> <alt> <localpath> <w> <h>` (extend `RENDER` row format; cap 60k).
-- Manager `write_ui_projection()`: parse `IMG|... <localpath>` -> `c_<i>_sprite=<localpath>` (absolute path; renderer `kh_draw_sprite` already handles `sprite` as image path). Keep `TEXT|` fallback if fetch fails.
-- Renderer `khtpm_core_render.c:kh_draw_sprite` — verify it loads `localpath` via `stb_image` or existing sprite loader; no new `g_is_*`.
+- **Network DONE on opencode:a9edaef30 (from earlier Rung7 Steps):** `nb_js_worker.c:452` `img_get_src` `HTMLImageElement` `src` `fetch` `data:` `e4428e13` `c1a72fdd` `10/10`, `cdb51504` `stb_image` `b64_decode` `naturalWidth` `11/11`, `d8bc3378` `stbi_write_png` `/tmp/nb_img_*.png` `12/12` `dom_walk_render:565` `IMG|src|w|h|path|alt` `wcs[img-html]` `12/12` — `page.state.txt` already carries `localpath`, `network_browser_manager.c` already parses `IMG|` `src|w|h|path|alt` `is_media` `sprite=path`.
+- **Handed to renderer agent:** `khtpm_draw_core.c:1187` `stbi_load` `XPutImage` `c_sprite` `sprite.csv` fallback — no `g_is_*` `CENTROID_GOLD_STD.md:249`.
 
 **Verify:** fixture `file://` page with `<img src="data:image/png;base64,iVBOR...">` + `http` page with real `http://example.com/img.png` — `page.state.txt` shows `IMG|... tmp/nb_img_*.png 1 1`, `ui.txt` `c_N_sprite=...png`, X11 shows pixels at `Elem.x/y` (rect 0,0 today is fine — F3 fixes pos).
 
-### F3 — Minimal layout for real positions (1 pass, the frontend long pole, ~250 lines)
-**Gap:** `ROADMAP.md:447` slice1 gave cascade but `getBoundingClientRect` is 0,0; w/h 0 unless CSS px. Frontend needs `x/y/w/h` so image/text rows aren't all stacked at 0.
+### F3 — Minimal layout for real positions (network DONE, renderer handed off)
+**Gap:** `ROADMAP.md:447` slice1 gave cascade but `getBoundingClientRect` is 0,0; w/h 0 unless CSS px.
 
-- Extend `nb_css.c` + worker layout pass (or manager-side `khtpm` layout — keep one source per `CENTROID_GOLD_STD.md:160` Elem already has `x,y,w,h` + `CssStyle`): implement `layout_xy()` parent `y + siblings' heights` simple block flow for `network-browser-hq.xhtpm`'s own `nb-content` scrolllist (not full flex/grid — `ROADMAP.md:275` deferred). `display:none` ancestors 0,0,0,0 already correct.
-- Expose `getBoundingClientRect` via `layout_xy()` so JS carousels that measure (`ROADMAP.md:447` slice1 KPI) get real `w/h`; `offsetWidth/Height` already CSS-px correct (`nb_js_worker.c:686`).
-- Publish metrics into `RENDER` as `LAYOUT|<id> <x> <y> <w> <h>` or pack into `IMG|` w/h — projector consumes for `Elem` placement; document choice in this doc's amendment.
+- **Network DONE:** `nb_js_worker.c:783` `layout_hidden_anc` `787` `layout_xy()` `514b8ab9` `parent y + siblings heights` `display:none 0,0,0,0` `css_hidden` `9/9` + `wcs[img]` `514b8ab9`, `nb_css.c` `display:none` `visibility` `opacity` `w/h` `wcs 9/9` `2026-09-10` — `getBoundingClientRect` `805` already returns `x/y` via `layout_xy`, `offsetWidth/Height` `759` `CSS px` `CENTROID_GOLD_STD.md:160`.
+- **Handed to renderer agent:** full `flex`/`grid` `litehtml` remains `ROADMAP.md:275` deferred; `Elem x/y/w/h` tree already `CENTROID_GOLD_STD.md:38`.
 
 **Verify:** `wcs` 9/9 + new `worker_img_test` 3/3 (`file://` png 1x1, `http` png, `onload`), `dump_frame_png_op` shows two stacked `TEXT|` blocks at `y=0` and `y=line_h`, `IMG` at `y=text_h`.
 
