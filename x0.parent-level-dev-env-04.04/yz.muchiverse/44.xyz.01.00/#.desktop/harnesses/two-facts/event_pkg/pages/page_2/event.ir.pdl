@@ -1,0 +1,5 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | two-facts
+STATE        | source               | events-hq
+NODE         | id=1 type=apply_range | origin=a1|target=b2|range=2|actor=6

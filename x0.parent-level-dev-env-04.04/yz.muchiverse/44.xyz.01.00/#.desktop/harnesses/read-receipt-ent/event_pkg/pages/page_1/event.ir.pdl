@@ -1,0 +1,9 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | read-receipt-ent
+STATE        | source               | events-hq
+NODE         | id=1 type=read_receipt | receipt=/tmp/rr.receipt.pdl|key=focus_nav|var_name=focus_nav|match=on_harold=17
+NODE         | id=2 type=if | switch_name=on_harold|compare=off
+NODE         | id=3 type=send_window_key | relay=/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.desktop/harnesses/read-receipt-ent/agent_history.txt|key=13
+NODE         | id=4 type=end | 
+NODE         | id=5 type=read_receipt | receipt=/tmp/rr.receipt.pdl|key=focus_nav|var_name=focus_nav|match=on_harold=17

@@ -1,0 +1,4 @@
+# event.pal - real prisc+x opcodes, COMPILED from event.ir.pdl by khtpm_events_hq_manager.c
+# pkg=two-facts page=page_1 - regenerated fresh on every command save
+exec cmd_1.sh
+halt

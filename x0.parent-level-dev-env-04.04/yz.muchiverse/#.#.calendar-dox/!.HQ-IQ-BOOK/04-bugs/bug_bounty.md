@@ -2,6 +2,18 @@
 
 ---
 
+## ⚠️ OPEN 2026-09-23: Co-lab-h-ai cuts off messages so the human cannot read them
+
+**Reported:** live, while approving agent posts in session `1790154594`. Long `@kilo` lines were queued. The window shows a cut-off sentence. The full text is only in `pending.txt` / `conversation.txt`.
+
+**Where:** `&.hq-apps/co-lab-hai/co-lab-hai.xhtpm` draws the pending line and each conversation row as a single `<text label="...">` (`PENDING (${pend_agent}): ${pend_msg}` and `${msg.text}`). Those labels do not wrap. `colab_hai_manager.c` also builds each session sidebar label in a 96-byte buffer (`session_label` → `char label[96]`). The manager keeps a longer `pend_msg` (escaped into 1200 bytes) and reads conversation lines up to 2048, so the files are whole and the window is not.
+
+**Note from `claude` branch's own history**: a DIFFERENT co-lab-hai long-message-clipping bug (the frame-file round trip's two independent 256-byte buffers in `khtpm_core_render.c`) was found and fixed 2026-09-23 - see this file's own "✅ CLOSED 2026-09-23: Co-lab-h-ai cuts off long messages" entry elsewhere in this doc if this looks like a duplicate; check whether that fix already resolves what's described here before doing more work on it.
+
+**Not fixed.** Direction: show `pend_msg` and `msg.text` in a wrapping `<text_area>` (or a row tall enough to wrap), and stop clipping session labels at 96 bytes. Do not shorten agent posts to fit the label.
+
+---
+
 ## ⚠️ OPEN 2026-09-22: HQ dropdown/menu lists (pals, palettes, edit, etc.) have no scrollbar at all
 
 **Reported:** direct live report, discovered while investigating a real overlap bug in the "pals" dropdown (see the `khtpm_core_render.c` scroll-boundary entry below, same session) — "drop downs should have a scroll bar (which has navs) if they dont yet. this was an oversight."

@@ -115,6 +115,7 @@ static void resolve_settings_dir(const char *root, char *out, size_t outsz) {
 
 /* TP_PLACE_DEBUG=1: one stderr line per key event/edge (for diagnosing key delivery). */
 static int g_dbg = -1;
+static int g_range = 1; /* PLACE_RANGE: NxN fill, origin at the jumped cell */
 #define PDBG(...) do { if (g_dbg < 0) g_dbg = (getenv("TP_PLACE_DEBUG") && getenv("TP_PLACE_DEBUG")[0] == '1'); \
                        if (g_dbg) { fprintf(stderr, "[placer] " __VA_ARGS__); fputc('\n', stderr); } } while (0)
 
@@ -210,6 +211,30 @@ static void ov_draw_pane(Ov *o, int i) {
     }
     if (o->kb_active) {
         int r = o->gj.row, c = o->gj.col;
+        int n = g_range;
+        if (n < 1) n = 1;
+        /* Jump buffer of only digits previews that square (range 2 = 2x2
+         * with this cell at the top-left). PLACE_RANGE is the event's N. */
+        if (o->gj.jump[0]) {
+            const char *p = o->gj.jump;
+            int digits = 1;
+            for (; *p; p++) if (!isdigit((unsigned char)*p)) { digits = 0; break; }
+            if (digits) n = atoi(o->gj.jump);
+            if (n < 1) n = 1;
+        }
+        if (o->use_argb && n > 0) {
+            int dr, dc;
+            for (dr = 0; dr < n && r + dr < g_rows; dr++) {
+                for (dc = 0; dc < n && c + dc < g_cols; dc++) {
+                    int rr = r + dr, cc = c + dc;
+                    int x0 = cell_edge(cc) - ox, y0 = cell_edge(rr) - oy;
+                    int cw = cell_edge(cc + 1) - cell_edge(cc);
+                    int ch = cell_edge(rr + 1) - cell_edge(rr);
+                    XSetForeground(dpy, gc, o->c_okfill);
+                    XFillRectangle(dpy, w, gc, x0, y0, (unsigned)cw, (unsigned)ch);
+                }
+            }
+        }
         int ok = ov_cell_valid(o, r, c, NULL, NULL);
         int x0 = cell_edge(c) - ox, y0 = cell_edge(r) - oy;
         int cw = cell_edge(c + 1) - cell_edge(c), ch = cell_edge(r + 1) - cell_edge(r);
@@ -470,6 +495,8 @@ int main(int argc, char **argv) {
     }
     const char *widget_state_dir = argv[1];
     const char *desktop_root = argv[2];
+    if (getenv("PLACE_RANGE") && atoi(getenv("PLACE_RANGE")) > 0)
+        g_range = atoi(getenv("PLACE_RANGE"));
     /* REAL, NEW 2026-08-29 - the picker window's own real rect
      * (optional - a caller with no picker window at all, e.g. a future
      * non-palettes use of this same op, just gets one true full-screen
