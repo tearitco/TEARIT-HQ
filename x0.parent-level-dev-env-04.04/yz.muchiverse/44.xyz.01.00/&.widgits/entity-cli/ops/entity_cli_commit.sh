@@ -1,10 +1,17 @@
 #!/bin/sh
 # argv from the renderer: package_dir house_root typed_text
+#
+# REAL FIX 2026-09-24: the cli_io field is now embedded directly in
+# each entity's own menu.chtpm (${PKG} in the action= there resolves
+# to the renderer's g_package_dir, which IS the entity's own dir when
+# invoked from that window) instead of a separate open_entity_cli.sh-
+# launched window that read the target back out of a state file. $pkg
+# (argv[1]) is the entity dir itself now - no indirection needed.
 set -u
 pkg="${1:-}"
 house="${2:-}"
 text="${3:-}"
-ent=$(cat "$pkg/state/target_entity.txt" 2>/dev/null || true)
+ent="$pkg"
 [ -n "$ent" ] && [ -d "$ent" ] || { echo "entity-cli: no target entity" >&2; exit 1; }
 mkdir -p "$ent"
 printf '%s\n' "$text" >> "$ent/cli_commands.txt"

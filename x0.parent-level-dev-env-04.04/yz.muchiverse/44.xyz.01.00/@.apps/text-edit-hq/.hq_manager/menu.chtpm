@@ -1,0 +1,9 @@
+<window class="entity-menu">
+  <page name="main">
+    <item label="Cut" action="sh -c &apos;echo CUT &gt; &quot;$0/.hq_manager/cli_io_ctxmenu_action.txt&quot;&apos;"/>
+    <item label="Copy" action="sh -c &apos;echo COPY &gt; &quot;$0/.hq_manager/cli_io_ctxmenu_action.txt&quot;&apos;"/>
+    <item label="Paste" action="sh -c &apos;echo PASTE &gt; &quot;$0/.hq_manager/cli_io_ctxmenu_action.txt&quot;&apos;"/>
+    <item label="Cancel" action="void"/>
+    <cli_io id="cmd" target_id="cmd" label="Cli-io: " action="${HOUSE}/&amp;.widgits/entity-cli/ops/entity_cli_commit.sh"/>
+  </page>
+</window>
