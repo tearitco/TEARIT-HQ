@@ -3124,6 +3124,17 @@ static int elem_has_class(Elem *e, const char *cls) {
  * reported display, whatever the WM / HiDPI coord weirdness (direct
  * instruction: "when in doubt dont go far, stop short"). */
 #define WM_FS_MAX_PCT 90
+/* REAL FIX 2026-09-24 (bug_bounty.md-adjacent, 12.calendar/2026-09-24/
+ * notes.md item 1) - a "user-resizable" window's own DEFAULT open size
+ * used to be one hardcoded constant (1120x720, this house's own real
+ * screen) that a different, smaller-screen machine (opencode's dev
+ * box, 1360 wide) had to override with a DIFFERENT hardcoded constant
+ * (500x350) to avoid getting cut off - neither is right for a THIRD
+ * machine. Same real percentage-of-screen convention WM_FS_MAX_PCT
+ * above already uses for fullscreen, just for the modest/default case
+ * instead of the max-allowed case. */
+#define WM_DEFAULT_PCT_W 58
+#define WM_DEFAULT_PCT_H 67
 
 
 /* Real, single-slot font cache for text measurement, ported verbatim
@@ -18131,13 +18142,15 @@ static int headless_run(void) {
     fprintf(stderr, "[khtpm --headless] %s  pid %d\n",
             g_chtpm_path[0] ? g_chtpm_path : "(dock)", (int)getpid());
     g_win_x = 0; g_win_y = 0;
-    /* TODO same real per-machine sizing gap as the g_user_resizable
-     * default a few thousand lines down (960 here was this machine's
-     * value, opencode's own smaller dev screen silently changed it to
-     * 500 during a 2026-09-24 merge) - kept 960, not a fix, just not
-     * silently taking a different machine's constant. */
-    g_win_w = window_is_dock() ? kh_screen_w() : 960;
-    g_win_h = window_is_dock() ? 40 : 640;
+    /* REAL FIX 2026-09-24 - same WM_DEFAULT_PCT_W/H convention as the
+     * g_user_resizable default a few thousand lines down. Lower-stakes
+     * here than that site: kh_screen_w()/h() return a fixed synthetic
+     * 1920x1080 in headless mode regardless of the real machine, so
+     * this was never actually machine-variable in practice - fixed for
+     * consistency (no surprising bare constant) rather than because it
+     * was reproducibly broken. */
+    g_win_w = window_is_dock() ? kh_screen_w() : kh_screen_w() * WM_DEFAULT_PCT_W / 100;
+    g_win_h = window_is_dock() ? 40 : kh_screen_h() * WM_DEFAULT_PCT_H / 100;
 
     /* If this window has <module>s that publish its vars= file, give
      * them a beat to write it before the first layout. The windowed
@@ -18594,18 +18607,18 @@ int main(int argc, char **argv) {
         int sw = DisplayWidth(dpy, screen), sh = DisplayHeight(dpy, screen);
         g_win_x = 90;
         g_win_y = WM_MANAGED_DRAG_MIN_Y;
-        /* TODO real, permanent fix needed: a hardcoded window size
-         * here can't be right for every machine - opencode's own dev
-         * box wanted 500x350 (2026-09-24, "tb cut off at 1360
-         * display"), this house's own machine wants 1120x720. This
-         * should read the real screen size (sw/sh, already computed
-         * two lines up) and scale a real default from THAT, not pick
-         * one hardcoded constant and hope. Kept 1120x720 for now
-         * (this machine's real value) rather than silently taking
-         * opencode's smaller-screen constant - flagging instead of
-         * guessing which one is "right" globally. */
-        g_win_w = 1120;
-        g_win_h = 720;
+        /* REAL FIX 2026-09-24 (was a hardcoded 1120x720 that opencode's
+         * own smaller-screen dev box had to override with a DIFFERENT
+         * hardcoded 500x350 - see WM_DEFAULT_PCT_W/H's own comment).
+         * Real per-machine default: a percentage of the real screen,
+         * same convention WM_FS_MAX_PCT already uses for the fullscreen
+         * case. On a 1920x1080 screen this lands at ~1113x723 - close
+         * to this house's old real-machine constant, not a coincidence
+         * (the percentages were picked to match it), and it now scales
+         * down correctly for a smaller display instead of needing a
+         * second hardcoded override. */
+        g_win_w = sw * WM_DEFAULT_PCT_W / 100;
+        g_win_h = sh * WM_DEFAULT_PCT_H / 100;
         if (g_win_w > sw - g_win_x - 60)  g_win_w = sw - g_win_x - 60;
         if (g_win_h > sh - g_win_y - 40)  g_win_h = sh - g_win_y - 40;
         if (g_win_w < KH_WIN_MIN_W) g_win_w = KH_WIN_MIN_W;
