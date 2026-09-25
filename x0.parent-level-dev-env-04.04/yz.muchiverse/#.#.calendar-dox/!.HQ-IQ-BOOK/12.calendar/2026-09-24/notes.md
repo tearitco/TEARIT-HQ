@@ -102,17 +102,25 @@ item from today)
    through `palettes_menu.sh`'s own real brush-arm flow first (can't
    invoke `tp_arm_placer_rmmv.+x` standalone against a fresh
    `STATE_DIR`).
-4. Move/Use/Attack (`skills.pdl`/`act_row.sh` rows) only record a word
-   today - they don't aim the grid yet. Natural next slice once #3 is
-   verified, since it reuses the same `apply_range`/`PLACE_RANGE`
-   machinery.
-5. `prisc+x` still prints a missing `default_op.txt` warning even
+4. ⚠️ **NEW, direct live report** - the "Act" menu opens in the wrong
+   screen location (`open_entity_act.sh` launches a brand-new
+   `khtpm_core_render.+x` with no `-x`/`-y`, unlike Cli-io's now-fixed
+   inline approach - full writeup in `04-bugs/bug_bounty.md`'s
+   2026-09-24 entry). Needs a design call first: inline like Cli-io, or
+   keep it a separate window but pass real position through.
+5. Move/Use/Attack (`skills.pdl`/`act_row.sh` rows) only record a word
+   today - they don't aim the grid yet (confirmed again by the same
+   live report: "clicking move after does nothing"). Natural next
+   slice once #3 is verified, since it reuses the same `apply_range`/
+   `PLACE_RANGE` machinery. Full writeup in the same bug_bounty.md
+   entry as #4.
+6. `prisc+x` still prints a missing `default_op.txt` warning even
    though commands run fine anyway - cosmetic, not yet silenced.
-6. Battle screen, and RPG Maker project load/save, remain named,
+7. Battle screen, and RPG Maker project load/save, remain named,
    undesigned parity gaps in `16.game/GAME.md`.
-7. The "one weight, two representations" (page vs. numeric/3D) switch
+8. The "one weight, two representations" (page vs. numeric/3D) switch
    from `DUSTOPIA-HACK.md`'s addendum - not built.
-8. `ai_describe`/score/store loop before a local model may append one
+9. `ai_describe`/score/store loop before a local model may append one
    real event command - not built, and per the handoff's own "do not"
    list, don't add `ai_fsm_transition` before a person can read a
    one-command diff.

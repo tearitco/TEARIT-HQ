@@ -2,6 +2,52 @@
 
 ---
 
+## ⚠️ OPEN 2026-09-24: Act menu opens in the wrong location; Move does nothing (no grid)
+
+Direct live report: "the act button opens new window in entirely
+wrong location. it should open in same position as last window.
+clicking move after does nothing (no grid)".
+
+**Part 1 - wrong window location.** Same architectural shape as the
+now-fixed Cli-io bug (`d1e630bf`/`f379e233`), NOT yet fixed: the "Act"
+menu row (`OBJECT | label=Act | action=GOTO:act` for the legacy
+`objects.pdl`-driven entities, or the `menu.chtpm` item wired to
+`open_entity_act.sh`) shells out to `&.widgits/entity-cli/
+open_entity_act.sh`, which builds `state/act.xhtpm` on the fly and
+launches it as a brand-new `khtpm_core_render.+x` process:
+```
+setsid nohup "$BIN" "$HOUSE" "$OUT" >/dev/null 2>&1 < /dev/null &
+```
+(`open_entity_act.sh`, near end of file). No `-x`/`-y`/geometry arg is
+passed at all, so the new window opens wherever `khtpm_core_render.c`'s
+own generic startup default places it (unrelated to the entity's own
+current on-screen position) - hence "entirely wrong location." Unlike
+Cli-io, Act's own content (a dynamic list built from `skills.pdl`) may
+be a real reason a *separate* window still makes sense here rather
+than inlining - needs a design call, not assumed to be the same
+"just inline it" fix. If a separate window stays, the real fix is
+passing the entity's own current `-x`/`-y` (or window id to position
+relative to) through to the launch, not silently defaulting.
+
+**Part 2 - Move does nothing.** Not a new bug - this is the
+already-tracked, already-documented gap
+(`12.calendar/2026-09-24/notes.md` next-steps #4): `act_row.sh`'s own
+`move|use)` branch is a literal no-op placeholder:
+```sh
+  move|use)
+    echo "$cmd recorded"
+    ;;
+```
+(`&.widgits/entity-cli/ops/act_row.sh`). It records the word to
+`cli_commands.txt` and nothing else - no grid interaction is wired up
+at all yet. `attack` is the only command with real logic
+(`apply_range.sh`). Fixing this is real, undesigned work: Move/Use need
+their own version of what `attack` already does (open/target the grid,
+apply a real effect) - not a quick patch, tracked as its own next-steps
+item, not folded into Part 1's window-position fix.
+
+---
+
 ## ⚠️ OPEN 2026-09-23: Co-lab-h-ai cuts off messages so the human cannot read them
 
 **Reported:** live, while approving agent posts in session `1790154594`. Long `@kilo` lines were queued. The window shows a cut-off sentence. The full text is only in `pending.txt` / `conversation.txt`.
