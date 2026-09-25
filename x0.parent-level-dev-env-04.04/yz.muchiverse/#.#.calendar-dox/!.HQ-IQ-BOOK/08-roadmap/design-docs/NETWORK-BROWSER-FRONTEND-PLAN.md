@@ -48,12 +48,11 @@ App-web (Gmail/Figma/WebGL) is explicitly out of scope (`ROADMAP.md:668`).
 
 ## 3. Shippable frontend steps (each = green + push on opencode)
 
-### F1 — Projector wrap + entity quiet (1 pass, ~60 lines, no engine)
+### F1 — Projector wrap + entity quiet (network side DONE, renderer handed off)
 **Gap:** `PROGRESS-network-browser-xhtpm.md:95` sprite-grid-row + `&copy;` literal + `js:` rows `§59`.
 
-- `network_browser_manager.c:write_ui_projection()`: pre-pass consecutive `IMG|/VIDEO|` rows into one `c_is_mediagrid` + `grid_count/grid_N_sprite` (or keep per-row but add `c_is_media` row-class so `network-browser-hq.xhtpm` can `<row class="sprite-grid-row">` via nested repeat — design in `xperiments/khtpm-generic-dispatch-design.md` style, no `g_is_network` flag per `CENTROID_GOLD_STD.md:249` rule 7).
-- `nb_dom.c:27` `decode_entities`: expand `&copy; -> ©` already decodes (`copy 0xA9`) but projector `uisan()` maps `|`->`/` and strips CR/LF — ensure entities decoded *before* `uisan` so `©` survives; add `&amp; &lt; &gt;` regression case.
-- Silence `TEXT|js: ...` by default per `PROGRESS-network-browser-xhtpm.md:78` option 1 (debug flag `#.desktop/network_browser_jsdebug.txt`).
+- **Network DONE:** `TEXT|js:` already quiet — `network_browser_manager.c:1045` `merge_render_rows()` + `nb_js_worker.c` `WERR` `worker_err_tail:1541` go to `stderr` `[worker]`, never `TEXT|js:` `page.state.txt` (PROGRESS `option 1` `network_browser_jsdebug.txt` gate would be here if ever needed). Verified `grep -r "TEXT|js"` 0 hits on `opencode:5e9fbade9`.
+- **Handed to renderer agent per your call:** `network_browser_manager.c:write_ui_projection()` `c_is_mediagrid` wrap + `nb_dom.c:27` `decode_entities` `&copy; C2 A9` UTF-8 + `uisan` before `|` map — per `CENTROID_GOLD_STD.md:249` no `g_is_*`, lives in `khtpm_core_render.c`/`khtpm_draw_core.c` `nb_dom.c`.
 
 **Verify:** `make nbjs` + headless `greet_player`-style dump: `google.com` fetch renders one `sprite-grid-row` with 2 images, `&copy;` shows `©`, zero `js:` rows without flag. `dump_frame_png_op` confirms.
 
