@@ -51,31 +51,61 @@
   `git add` silently aborted the whole staging call, leaving 3 real
   edits uncommitted for a couple commits until caught by checking
   `git status`.
+- **Cli-io field fixed, live-confirmed working**: every entity/app's
+  "Cli-io" menu row used to shell out to `open_entity_cli.sh`, which
+  killed any prior instance and spawned a WHOLE SEPARATE
+  `khtpm_core_render.+x` window - direct report ("it opens a new
+  window... should just be a text input on the current existing
+  field"). The `<cli_io>` element itself was already correct
+  (`entity-cli.xhtpm`'s own working field); the fix embeds that same
+  tag directly in each entity's own `menu.chtpm` instead, using
+  `${HOUSE}`/`${PKG}` template vars. Applied to 18 source templates + 38
+  live instances + Ember's older `objects.pdl` format. Deleted the
+  now-unused `open_entity_cli.sh`/`entity-cli.xhtpm`. Commits
+  `d1e630bf`/`f379e233`.
+- **Window auto-sizing, the REAL fix, live-confirmed working**: this
+  morning's fix (below) only covered 2 of 3 real hardcoded-size sites
+  and didn't actually work live - direct report. The site that
+  mattered for most normal windows was `DEFAULT_WIN_W`/`H`, a flat
+  700x520 never touched by that fix. Replaced all three sites with
+  `kh_default_win_w()`/`h()`: a real `default_win_w`/`default_win_h`
+  key in `#.desktop/hq_ui.pdl` when set (per-machine, no recompile),
+  else the existing percentage-of-screen fallback. Commit `557ab727`.
+- **`rezip-house.sh` hardened** against a transient live-file 7z race
+  (`.tmp` atomic-write files from live entity windows) with a real
+  one-retry fallback. Commit `38022438`.
 - Everything pushed to `origin/claude`.
 
 ## Real, open next steps (ranked, from the still-valid grok handoff -
 `XO/1.TERUMON_HANDOFF/^.grok-to-claude-2026-09-23.txt` - plus one new
 item from today)
 
-1. ✅ **DONE 2026-09-24 - per-machine window auto-sizing**: both
-   hardcoded sites (`g_user_resizable`'s `1120x720` default open size,
-   `headless_run()`'s `960` non-dock fallback) now scale from real
-   screen size via new `WM_DEFAULT_PCT_W`/`WM_DEFAULT_PCT_H` (58%/67%)
-   constants, same convention `WM_FS_MAX_PCT` already used for the
-   fullscreen-clamp case. Rebuilt clean, live session restarted and
-   confirmed opening at a real-screen-relative size (no crash, no
-   off-screen window). `headless_run()`'s site is lower-stakes than it
-   looked - `kh_screen_w()`/`h()` return a fixed synthetic 1920x1080 in
-   headless mode regardless of the real machine, so it was never
-   actually machine-variable in practice; fixed anyway for consistency
-   (no surprising bare constant). Commit `47996524`.
-2. Open the pals-dropdown-style placing grid once with `PLACE_RANGE`
+1. ✅ **DONE 2026-09-24, live-confirmed - per-machine window
+   auto-sizing**: the first pass (commit `47996524`) only covered 2 of
+   3 real hardcoded-size sites and didn't actually work live. The real
+   culprit, `DEFAULT_WIN_W`/`H` (flat 700x520, the fallback for most
+   normal windows), fixed in commit `557ab727` - see "What landed
+   today" above for the real shape (`kh_default_win_w()`/`h()`,
+   `hq_ui.pdl` `default_win_w`/`default_win_h` override).
+2. ✅ **DONE 2026-09-24, live-confirmed - Cli-io field is inline, not a
+   separate window**: see "What landed today" above (commits
+   `d1e630bf`/`f379e233`). The `^` lock-mark badge itself was already
+   generic/working code (`khtpm_draw_core.c`, `kh_set_default_input_
+   elem()`) - no new C needed, just removing the window-launching
+   indirection. Not yet separately screenshotted/pixel-verified with
+   the badge visibly armed, but the field itself is confirmed working
+   live by direct report.
+3. Open the pals-dropdown-style placing grid once with `PLACE_RANGE`
    set and save a real frame of the filled square - the draw code is
-   compiled, never actually shown live.
-3. Move/Use/Attack (`skills.pdl` rows) only record a word today - they
-   don't aim the grid yet.
-4. Arm the Cli-io field on a real entity and confirm the `^` lock mark
-   shows on a captured frame - never actually screenshotted.
+   compiled, never actually shown live. Recipe already scouted
+   (2026-09-24 investigation): needs `PLACE_RANGE` env var AND going
+   through `palettes_menu.sh`'s own real brush-arm flow first (can't
+   invoke `tp_arm_placer_rmmv.+x` standalone against a fresh
+   `STATE_DIR`).
+4. Move/Use/Attack (`skills.pdl`/`act_row.sh` rows) only record a word
+   today - they don't aim the grid yet. Natural next slice once #3 is
+   verified, since it reuses the same `apply_range`/`PLACE_RANGE`
+   machinery.
 5. `prisc+x` still prints a missing `default_op.txt` warning even
    though commands run fine anyway - cosmetic, not yet silenced.
 6. Battle screen, and RPG Maker project load/save, remain named,
