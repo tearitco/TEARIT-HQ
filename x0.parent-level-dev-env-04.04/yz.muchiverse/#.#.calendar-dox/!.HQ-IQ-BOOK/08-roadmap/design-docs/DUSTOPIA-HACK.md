@@ -292,7 +292,14 @@ What is done, and what it is allowed to count as:
   chemistry and it is not 3D.
 - `send_input` wrote the bare code `201`. The live window wants
   `KEY_PRESSED: 201`. Do not call the desk "driven by the page"
-  until those match.
+  until those match. **UPDATE 2026-09-24: met.** A separate
+  `send_window_key` command (registry + `mr_send_window_key.sh`,
+  commit `ff456637`) now writes the correct `KEY_PRESSED: <code>`
+  line; `read-receipt-ent`'s own page 1 node 3 already uses it
+  (commit `cf666582`), not the old bare-code `send_input`. Both
+  landed on `grok`, merged into `claude` 2026-09-24. `send_input`
+  itself is intentionally left unchanged as a lower-level primitive
+  for other uses, not a lingering bug.
 - λ is still undefined, as §4 says. Do not let a later doc treat the
   receipt work as a definition of λ.
 - This pass did not re-open `xo-pets` or `Mar$.$treetRace` and did
@@ -303,7 +310,8 @@ Accountability ladder, abstract and checkable, full writeup in the
 tech companion:
 
 1. A page branches on a receipt. **Met.**
-2. The key line matches the window mailbox. **Not met.**
+2. The key line matches the window mailbox. **Met 2026-09-24**
+   (`send_window_key`, commit `ff456637`/`cf666582`).
 3. One live window, one key, stop. **Not met.**
 4. One material id has both an event-page fact and a numeric fact.
    **Not met.**
