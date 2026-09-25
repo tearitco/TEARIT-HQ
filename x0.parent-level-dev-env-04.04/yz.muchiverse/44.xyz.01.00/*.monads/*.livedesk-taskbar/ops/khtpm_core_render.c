@@ -1369,6 +1369,8 @@ static unsigned long kh_file_hash(const char *path) {
     return h ? h : 1;
 }
 
+static int g_win_x, g_win_y; /* fwd - real definition/initializer below; kh_get_var() (here) needs ${WIN_X}/${WIN_Y} before that point in the file */
+
 static const char *kh_get_var(const char *name) {
     /* built-ins so a static template can name house-relative paths in
      * an action= without the manager having to bake in an absolute
@@ -1376,6 +1378,32 @@ static const char *kh_get_var(const char *name) {
      * (what the renderer passes as $1 to every action anyway). */
     if (strcmp(name, "HOUSE") == 0) return g_house_root;
     if (strcmp(name, "PKG") == 0)   return g_package_dir;
+    /* ${WIN_X}/${WIN_Y} = this window's own real, currently-launched
+     * screen position - REAL FIX 2026-09-24, direct live report ("the
+     * act button opens new window in entirely wrong location. it
+     * should open in same position as last window"). Lets a static
+     * template pass ITS OWN real position on to a script that launches
+     * a follow-on window (e.g. Act's open_entity_act.sh), matching
+     * this exact same real x/y this file already threads through as
+     * argv[3]/argv[4] for the "opens by her actual position" context-
+     * menu fix (see launch_khtpm_menu()'s own header comment,
+     * 2026-08-16) - same contract, reused, not a new one. Resolved at
+     * template-parse time (kh_substitute_vars() runs once over the raw
+     * .chtpm text before the Elem tree is built), so it reflects this
+     * window's position as of its last (re)parse - correct for the
+     * common case (click Act shortly after the menu opens, no drag in
+     * between); a drag with no reparse since won't be picked up until
+     * the reason to reparse the following note. */
+    if (strcmp(name, "WIN_X") == 0) {
+        static char kh_winx_buf[16];
+        snprintf(kh_winx_buf, sizeof(kh_winx_buf), "%d", g_win_x);
+        return kh_winx_buf;
+    }
+    if (strcmp(name, "WIN_Y") == 0) {
+        static char kh_winy_buf[16];
+        snprintf(kh_winy_buf, sizeof(kh_winy_buf), "%d", g_win_y);
+        return kh_winy_buf;
+    }
     /* ${PID} = this renderer process's own pid - the id the frame dump
      * (entity_menu_frame_<pid>.txt) and the agent history injector
      * (entity_menu_history/<pid>.txt) are keyed by. Lets a static
