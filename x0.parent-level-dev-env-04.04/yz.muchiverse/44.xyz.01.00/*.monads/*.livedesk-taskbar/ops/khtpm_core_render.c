@@ -3803,6 +3803,22 @@ static int g_resize_start_xr = 0, g_resize_start_yr = 0, g_resize_start_w = 0, g
 #define SIDEBAR_W 220
 #define DEFAULT_WIN_W 700
 #define DEFAULT_WIN_H 520
+/* REAL FIX 2026-09-24, direct correction ("the window size fix didn't
+ * work... can we just read a size from .pdl instead of hardcoding?"):
+ * DEFAULT_WIN_W/H above was the actual real fallback for most normal
+ * windows (any window that is neither fullscreen nor g_user_resizable,
+ * with no CSS width/height of its own) - a flat compile-time 700x520,
+ * completely untouched by the earlier WM_DEFAULT_PCT_W/H percentage
+ * fix, which only covered the g_user_resizable and headless_run sites.
+ * 0 = unset -> falls back to a percentage of the real screen (see
+ * kh_default_win_w()/h() below); a real, non-zero `default_win_w`/
+ * `default_win_h` key in #.desktop/hq_ui.pdl overrides that with an
+ * exact, per-machine, no-recompile value - matching this file's own
+ * existing win_top_y/font_scale convention exactly. */
+static int g_default_win_w = 0;
+static int g_default_win_h = 0;
+static int kh_default_win_w(void) { return g_default_win_w > 0 ? g_default_win_w : kh_screen_w() * WM_DEFAULT_PCT_W / 100; }
+static int kh_default_win_h(void) { return g_default_win_h > 0 ? g_default_win_h : kh_screen_h() * WM_DEFAULT_PCT_H / 100; }
 
 static int g_default_sidebar_scroll = 0;
 /* g_default_scrolllist_scroll itself is forward-declared earlier, right
@@ -4659,8 +4675,8 @@ static int layout_sidebar_panel(Elem *page) {
          * relayout must NOT snap it back to the CSS/default ("resize
          * wont grow at all" report 2026-09-10). */
     } else {
-        g_win_w = g_window->style.has_width ? g_window->style.width : DEFAULT_WIN_W;
-        g_win_h = g_window->style.has_height ? g_window->style.height : DEFAULT_WIN_H;
+        g_win_w = g_window->style.has_width ? g_window->style.width : kh_default_win_w();
+        g_win_h = g_window->style.has_height ? g_window->style.height : kh_default_win_h();
     }
     g_window->w = g_win_w;
     g_window->h = g_win_h;
@@ -11775,6 +11791,12 @@ static void desktop_load_click_two_step(const char *house_root) {
         else if (strcmp(line, "font_family") == 0 && val[0]) {
             snprintf(g_ui_font_family, sizeof(g_ui_font_family), "%s", val);
         }
+        /* REAL FIX 2026-09-24, direct correction ("the window size fix
+         * didn't work... can we just read a size from .pdl instead of
+         * hardcoding?") - see kh_default_win_w()/h()'s own header
+         * comment. 0 (absent) keeps the percentage-of-screen fallback. */
+        else if (strcmp(line, "default_win_w") == 0) g_default_win_w = atoi(val);
+        else if (strcmp(line, "default_win_h") == 0) g_default_win_h = atoi(val);
     }
     fclose(f);
 }
@@ -18142,15 +18164,15 @@ static int headless_run(void) {
     fprintf(stderr, "[khtpm --headless] %s  pid %d\n",
             g_chtpm_path[0] ? g_chtpm_path : "(dock)", (int)getpid());
     g_win_x = 0; g_win_y = 0;
-    /* REAL FIX 2026-09-24 - same WM_DEFAULT_PCT_W/H convention as the
-     * g_user_resizable default a few thousand lines down. Lower-stakes
-     * here than that site: kh_screen_w()/h() return a fixed synthetic
-     * 1920x1080 in headless mode regardless of the real machine, so
-     * this was never actually machine-variable in practice - fixed for
-     * consistency (no surprising bare constant) rather than because it
-     * was reproducibly broken. */
-    g_win_w = window_is_dock() ? kh_screen_w() : kh_screen_w() * WM_DEFAULT_PCT_W / 100;
-    g_win_h = window_is_dock() ? 40 : kh_screen_h() * WM_DEFAULT_PCT_H / 100;
+    /* REAL FIX 2026-09-24 - kh_default_win_w()/h() (hq_ui.pdl
+     * default_win_w/h, percentage-of-screen fallback). Lower-stakes
+     * here than the g_user_resizable/DEFAULT_WIN_W sites: kh_screen_w()/
+     * h() return a fixed synthetic 1920x1080 in headless mode regardless
+     * of the real machine, so this was never actually machine-variable
+     * in practice - fixed for consistency (no surprising bare constant)
+     * rather than because it was reproducibly broken. */
+    g_win_w = window_is_dock() ? kh_screen_w() : kh_default_win_w();
+    g_win_h = window_is_dock() ? 40 : kh_default_win_h();
 
     /* If this window has <module>s that publish its vars= file, give
      * them a beat to write it before the first layout. The windowed
@@ -18609,16 +18631,12 @@ int main(int argc, char **argv) {
         g_win_y = WM_MANAGED_DRAG_MIN_Y;
         /* REAL FIX 2026-09-24 (was a hardcoded 1120x720 that opencode's
          * own smaller-screen dev box had to override with a DIFFERENT
-         * hardcoded 500x350 - see WM_DEFAULT_PCT_W/H's own comment).
-         * Real per-machine default: a percentage of the real screen,
-         * same convention WM_FS_MAX_PCT already uses for the fullscreen
-         * case. On a 1920x1080 screen this lands at ~1113x723 - close
-         * to this house's old real-machine constant, not a coincidence
-         * (the percentages were picked to match it), and it now scales
-         * down correctly for a smaller display instead of needing a
-         * second hardcoded override. */
-        g_win_w = sw * WM_DEFAULT_PCT_W / 100;
-        g_win_h = sh * WM_DEFAULT_PCT_H / 100;
+         * hardcoded 500x350). kh_default_win_w()/h() - an explicit
+         * hq_ui.pdl default_win_w/h when set (per-machine, no recompile),
+         * else a percentage of the real screen, same convention
+         * WM_FS_MAX_PCT already uses for the fullscreen case. */
+        g_win_w = kh_default_win_w();
+        g_win_h = kh_default_win_h();
         if (g_win_w > sw - g_win_x - 60)  g_win_w = sw - g_win_x - 60;
         if (g_win_h > sh - g_win_y - 40)  g_win_h = sh - g_win_y - 40;
         if (g_win_w < KH_WIN_MIN_W) g_win_w = KH_WIN_MIN_W;
