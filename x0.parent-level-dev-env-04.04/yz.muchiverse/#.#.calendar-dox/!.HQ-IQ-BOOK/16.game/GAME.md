@@ -56,6 +56,17 @@ Processing as unbuilt, and names the Enemies, Troops, States, and
 Animations database tabs as the data behind it. There is no spec for
 what the screen shows, when it opens, or how a troop is chosen.
 
+**Design decision 2026-09-24 (user-confirmed):** both models are
+wanted, not one - a turn-based menu (Move/Use/Attack rows resolving
+one actor at a time, RPG Maker style) AND a real-time fight directly
+on the live grid using range/targeting (the same `apply_range`/
+`PLACE_RANGE` machinery §"Range" above already exercises), selectable
+**per dev-set** - i.e. which content a given troop/scene belongs to
+picks the mode, not a single house-wide switch. No further spec
+written yet for the selection mechanism itself (e.g. a per-troop flag
+in the Troops database tab) - still open, but the two-model shape is
+now decided, not to be re-litigated by a later agent.
+
 **RPG Maker project load and save.** Not documented as a procedure,
 and not shown to work. What exists instead: Mutaclysm user save slots
 and a demo-project seed (`01-orientation/XYZOS_README.md`), and
