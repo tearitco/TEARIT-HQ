@@ -57,13 +57,18 @@
 `XO/1.TERUMON_HANDOFF/^.grok-to-claude-2026-09-23.txt` - plus one new
 item from today)
 
-1. **Per-machine window auto-sizing** (new today, not in the grok
-   handoff): a hardcoded `1120x720`/`960` default window size can't be
-   right for every machine - opencode's own dev box needed `500x350`
-   for a 1360-wide display. Should read real screen size (`sw`/`sh`,
-   already computed right where both hardcoded sites live in
-   `khtpm_core_render.c`) and scale a real default from that. Two
-   `TODO` comments mark the exact spots.
+1. ✅ **DONE 2026-09-24 - per-machine window auto-sizing**: both
+   hardcoded sites (`g_user_resizable`'s `1120x720` default open size,
+   `headless_run()`'s `960` non-dock fallback) now scale from real
+   screen size via new `WM_DEFAULT_PCT_W`/`WM_DEFAULT_PCT_H` (58%/67%)
+   constants, same convention `WM_FS_MAX_PCT` already used for the
+   fullscreen-clamp case. Rebuilt clean, live session restarted and
+   confirmed opening at a real-screen-relative size (no crash, no
+   off-screen window). `headless_run()`'s site is lower-stakes than it
+   looked - `kh_screen_w()`/`h()` return a fixed synthetic 1920x1080 in
+   headless mode regardless of the real machine, so it was never
+   actually machine-variable in practice; fixed anyway for consistency
+   (no surprising bare constant). Commit `47996524`.
 2. Open the pals-dropdown-style placing grid once with `PLACE_RANGE`
    set and save a real frame of the filled square - the draw code is
    compiled, never actually shown live.
