@@ -3,7 +3,7 @@ OBJECT | label=Events (hq) | action=sh -c 'exec "$1/&.widgits/events-hq/button.s
 OBJECT | label=Dir | action=sh -c 'exec xdg-open "$0"'
 OBJECT | label=Inventory | action=sh -c 'H="$1"; I="$H/&.widgits/file-explorer/instances/inv-$(basename "$(dirname "$0")")-$(basename "$0")"; mkdir -p "$0/inventory" "$I"; printf "mode=LOAD\nstart_dir=%s/inventory\n" "$0" > "$I/fe_request.txt"; exec sh "$H/&.widgits/file-explorer/button.sh" run-instance "$I"'
 OBJECT | label=Act | action=GOTO:act
-OBJECT | label=Cli-io | action=sh -c 'exec "$1/&.widgits/entity-cli/open_entity_cli.sh" "$0" "$1"'
+OBJECT | label=Cli-io | action=CLI_IO
 OBJECT | label=Close | action=CLOSE
 OBJECT | label=Cancel | action=void
 PAGE | act

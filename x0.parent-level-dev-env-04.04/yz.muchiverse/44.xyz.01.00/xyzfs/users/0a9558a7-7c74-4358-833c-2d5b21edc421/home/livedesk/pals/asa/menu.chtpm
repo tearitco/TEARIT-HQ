@@ -13,6 +13,6 @@
     <item label="Close" action="CLOSE"/>
     <item label="Cancel" action="void"/>
     <item label="Act" action="sh -c 'exec &quot;$1/&amp;.widgits/entity-cli/open_entity_act.sh&quot; &quot;$0&quot; &quot;$1&quot;'"/>
-    <item label="Cli-io" action="sh -c 'exec &quot;$1/&amp;.widgits/entity-cli/open_entity_cli.sh&quot; &quot;$0&quot; &quot;$1&quot;'"/>
+    <cli_io id="cmd" target_id="cmd" label="Cli-io: " action="${HOUSE}/&amp;.widgits/entity-cli/ops/entity_cli_commit.sh"/>
   </page>
 </window>
