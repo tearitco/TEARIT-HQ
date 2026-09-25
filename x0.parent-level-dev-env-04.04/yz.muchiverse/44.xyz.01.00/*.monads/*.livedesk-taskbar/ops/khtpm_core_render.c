@@ -45,6 +45,9 @@
 #include "khtpm_css_parser.h"
 #include "khtpm_render_core.c" /* real .c, not a header - see that file's own comment */
 #include "khtpm_reparse_diff.c" /* 2026-09-11 - real keyed tree diff/patch, see 08-roadmap/design-docs/CHTPM-INCREMENTAL-REPARSE-DESIGN.md. Wired in behind g_use_incremental_reparse, OFF by default - see that flag's own declaration comment. */
+static int kh_auto_px(int base_px) {
+    return (base_px * 70 + 50) / 100;
+}
 /* khtpm_taskbar_manager.h/.c removed 2026-09-01 - real, confirmed dead
  * linkage: ktb_init()/ktb_quit_and_save() (the only reason db-hq mode
  * ever needed it) were already removed from this file in an earlier
@@ -18128,6 +18131,11 @@ static int headless_run(void) {
     fprintf(stderr, "[khtpm --headless] %s  pid %d\n",
             g_chtpm_path[0] ? g_chtpm_path : "(dock)", (int)getpid());
     g_win_x = 0; g_win_y = 0;
+    /* TODO same real per-machine sizing gap as the g_user_resizable
+     * default a few thousand lines down (960 here was this machine's
+     * value, opencode's own smaller dev screen silently changed it to
+     * 500 during a 2026-09-24 merge) - kept 960, not a fix, just not
+     * silently taking a different machine's constant. */
     g_win_w = window_is_dock() ? kh_screen_w() : 960;
     g_win_h = window_is_dock() ? 40 : 640;
 
@@ -18586,6 +18594,16 @@ int main(int argc, char **argv) {
         int sw = DisplayWidth(dpy, screen), sh = DisplayHeight(dpy, screen);
         g_win_x = 90;
         g_win_y = WM_MANAGED_DRAG_MIN_Y;
+        /* TODO real, permanent fix needed: a hardcoded window size
+         * here can't be right for every machine - opencode's own dev
+         * box wanted 500x350 (2026-09-24, "tb cut off at 1360
+         * display"), this house's own machine wants 1120x720. This
+         * should read the real screen size (sw/sh, already computed
+         * two lines up) and scale a real default from THAT, not pick
+         * one hardcoded constant and hope. Kept 1120x720 for now
+         * (this machine's real value) rather than silently taking
+         * opencode's smaller-screen constant - flagging instead of
+         * guessing which one is "right" globally. */
         g_win_w = 1120;
         g_win_h = 720;
         if (g_win_w > sw - g_win_x - 60)  g_win_w = sw - g_win_x - 60;

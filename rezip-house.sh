@@ -47,5 +47,6 @@ rm -f ${SRC}_*.7z
     -xr'!*.pulse.txt' -xr'!renderer_pulse.txt' -xr'!*_changed.txt' \
     -xr'!*_ledger.txt' -xr'!pending_tx.txt' \
     -xr'!*.seq' \
-    -xr'!*.frame.txt'
+    -xr'!*.frame.txt' \
+    -xr'!*.tmp'
 echo "OK $OUT"

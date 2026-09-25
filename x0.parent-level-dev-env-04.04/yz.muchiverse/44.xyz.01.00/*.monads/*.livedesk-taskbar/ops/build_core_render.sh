@@ -67,7 +67,7 @@ fi
 # of khtpm_taskbar_manager.c is that legitimate case, untouched).
 echo "-- entity-menu renderer -> +x/khtpm_core_render.+x"
 $CC $CFLAGS $X11_FLAGS -I "$SHARED" -o +x/khtpm_core_render.+x \
-  khtpm_core_render.c "$SHARED/khtpm_css_parser.c" $LIBS
+  khtpm_core_render.c "$SHARED/khtpm_css_parser.c" "$SHARED/khtpm_ui_scale.c" $LIBS
 
 echo "OK +x/khtpm_core_render.+x"
 

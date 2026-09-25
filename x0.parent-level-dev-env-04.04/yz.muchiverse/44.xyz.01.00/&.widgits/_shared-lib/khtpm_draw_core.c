@@ -22,6 +22,8 @@
  * hot-path logic that needs direct access to the caller's own live X11
  * connection/drawable every single frame — real ops/fork-exec doesn't
  * fit here, this isn't a discrete one-shot action. */
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 /* Colour caches. cmap never changes after startup (DefaultColormap), so a
  * pixel/XftColor allocated for a given spec stays valid for the process
@@ -1184,7 +1186,25 @@ static void draw_elem(Elem *e, int hover_id_hash) {
      * matrix. Sprite draws BEFORE the badge (see above) so the badge is
      * never painted over. */
     int drew_sprite = 0;
-    if (e->sprite[0]) {
+    if (e->sprite[0] && strlen(e->sprite) > 4 && !strcmp(e->sprite + strlen(e->sprite) - 4, ".png")) {
+        int pw = 0, ph = 0, comp = 0;
+        unsigned char *rgba = stbi_load(e->sprite, &pw, &ph, &comp, 4);
+        if (rgba) {
+            int pad_s = e->style.has_padding ? e->style.padding : 4;
+            int box_w = e->w - 2 * pad_s, box_h = e->h - 2 * pad_s;
+            int dst_w = pw, dst_h = ph;
+            if (dst_w > box_w) dst_w = box_w;
+            if (dst_h > box_h) dst_h = box_h;
+            if (dst_w > 0 && dst_h > 0) {
+                int blit_x = e->x + (e->w - dst_w) / 2;
+                int blit_y = e->y + (e->h - dst_h) / 2;
+                XImage *xim = XCreateImage(dpy, DefaultVisual(dpy, screen), DefaultDepth(dpy, screen), ZPixmap, 0, (char *)rgba, dst_w, dst_h, 32, 0);
+                if (xim) { XPutImage(dpy, buf, gc, xim, 0, 0, blit_x, blit_y, dst_w, dst_h); XDestroyImage(xim); drew_sprite = 1; }
+                else free(rgba);
+            } else free(rgba);
+            if (!drew_sprite) free(rgba);
+        }
+    } else if (e->sprite[0]) {
         HqSprite *sp = hq_sprite(e->sprite);
         if (sp) {
             int pad_s = e->style.has_padding ? e->style.padding : 4;

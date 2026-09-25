@@ -23,6 +23,11 @@
 #include "../nb_css.h"
 #include "../nb_dom.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "../js/stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
 #include <unistd.h>
 #include <errno.h>
 #include <stdint.h>
@@ -444,6 +449,44 @@ static NbNode *find_tag_first(const NbNode *n, const char *tag) {
     return NULL;
 }
 
+static const char *img_get_src(const NbNode *n);
+static void img_set_src(struct NbNode *n, const char *s);
+static int layout_hidden_anc(struct NbNode *n);
+static void layout_xy(struct NbNode *n, double *out_x, double *out_y);
+static void img_set_decoded(NbNode *n, int w, int h, unsigned char *data);
+static int img_get_decoded(const NbNode *n, int *w, int *h);
+static unsigned char *b64_decode(const char *in, size_t *out_len);
+
+#define MAX_IMG_SRC 256
+static struct { NbNode *n; char src[1024]; } g_img_src[256];
+static int g_img_src_count = 0;
+static void img_set_src(NbNode *n, const char *s) {
+    for (int i = 0; i < g_img_src_count; i++) if (g_img_src[i].n == n) { snprintf(g_img_src[i].src, sizeof(g_img_src[i].src), "%s", s); return; }
+    if (g_img_src_count < MAX_IMG_SRC) { g_img_src[g_img_src_count].n = n; snprintf(g_img_src[g_img_src_count].src, sizeof(g_img_src[g_img_src_count].src), "%s", s); g_img_src_count++; }
+}
+static const char *img_get_src(const NbNode *n) {
+    for (int i = 0; i < g_img_src_count; i++) if (g_img_src[i].n == n) return g_img_src[i].src;
+    return nb_attr_get(n, "src");
+}
+#define MAX_IMG_DECODED 256
+static struct { NbNode *n; int w, h; unsigned char *data; } g_img_decoded[256];
+static int g_img_decoded_count = 0;
+static void img_set_decoded(NbNode *n, int w, int h, unsigned char *data) {
+    for (int i = 0; i < g_img_decoded_count; i++) if (g_img_decoded[i].n == n) {
+        free(g_img_decoded[i].data); g_img_decoded[i].w = w; g_img_decoded[i].h = h; g_img_decoded[i].data = data; return;
+    }
+    if (g_img_decoded_count < MAX_IMG_DECODED) {
+        g_img_decoded[g_img_decoded_count].n = n; g_img_decoded[g_img_decoded_count].w = w;
+        g_img_decoded[g_img_decoded_count].h = h; g_img_decoded[g_img_decoded_count].data = data; g_img_decoded_count++;
+    } else free(data);
+}
+static int img_get_decoded(const NbNode *n, int *w, int *h) {
+    for (int i = 0; i < g_img_decoded_count; i++) if (g_img_decoded[i].n == n) {
+        if (w) *w = g_img_decoded[i].w; if (h) *h = g_img_decoded[i].h; return g_img_decoded[i].data != NULL;
+    }
+    return 0;
+}
+
 /* ---- step 4: RENDER — serialize the (post-JS) DOM into page.state.txt
  * rows exactly as the manager's projector consumes them (TITLE/TEXT/LINK/IMG).
  * Only the worker's own tree is authoritative here, so JS mutations
@@ -497,11 +540,38 @@ static void dom_walk_render(const NbNode *n, int *titled, SB *b) {
         }
     } else if (tg && !strcasecmp(tg, "img")) {
         char srcbuf[1024] = "", altbuf[1024] = "";
-        snprintf(srcbuf, sizeof(srcbuf), "%s", nb_attr_get(n, "src"));
+        snprintf(srcbuf, sizeof(srcbuf), "%s", img_get_src(n));
         snprintf(altbuf, sizeof(altbuf), "%s", nb_attr_get(n, "alt"));
         if (srcbuf[0]) {
+            int dw = 0, dh = 0;
+            if (!img_get_decoded(n, &dw, &dh) && srcbuf[0]) {
+                if (strncmp(srcbuf, "data:image/", 11) == 0) {
+                    const char *comma = strchr(srcbuf, ',');
+                    if (comma && strstr(srcbuf, ";base64,")) {
+                        size_t png_len = 0;
+                        unsigned char *png_data = b64_decode(comma+1, &png_len);
+                        if (png_data && png_len) {
+                            int w = 0, h = 0, comp = 0;
+                            unsigned char *rgba = stbi_load_from_memory(png_data, (int)png_len, &w, &h, &comp, 4);
+                            if (rgba) { img_set_decoded((NbNode *)n, w, h, rgba); dw = w; dh = h; }
+                            free(png_data);
+                        }
+                    }
+                }
+            }
             char imgbuf[2048];
-            snprintf(imgbuf, sizeof(imgbuf), "%s|%s", srcbuf, altbuf);
+            if (img_get_decoded(n, &dw, &dh) && dw > 0 && dh > 0) {
+                // Write decoded RGBA to temp file for renderer (Step 3 wire)
+                char imgpath[256];
+                snprintf(imgpath, sizeof(imgpath), "/tmp/nb_img_%p.png", (void*)n);
+                // Find decoded data
+                unsigned char *rgba = NULL;
+                for (int i = 0; i < g_img_decoded_count; i++) if (g_img_decoded[i].n == n) { rgba = g_img_decoded[i].data; break; }
+                if (rgba) stbi_write_png(imgpath, dw, dh, 4, rgba, dw * 4);
+                snprintf(imgbuf, sizeof(imgbuf), "%s|%d|%d|%s|%s", srcbuf, dw, dh, imgpath, altbuf);
+            } else {
+                snprintf(imgbuf, sizeof(imgbuf), "%s|%s", srcbuf, altbuf);
+            }
             rw_row(b, "IMG", imgbuf);
             caption_used = 1;
         }
@@ -707,33 +777,67 @@ static JSValue nb_el_offset_parent(JSContext *ctx, JSValueConst this_val, int ar
     return push_node(ctx, p);
 }
 
+/* Phase 3 slice 2: simple block layout for getBoundingClientRect.
+ * x is 0 for now (no inline flow), y is stacked: parent y + sum of
+ * previous siblings' CSS heights. Hidden ancestors (display:none) give 0,0,0,0. */
+static int layout_hidden_anc(NbNode *n) {
+    for (NbNode *a = n; a; a = a->parent) if (css_hidden(a)) return 1;
+    return 0;
+}
+static void layout_xy(NbNode *n, double *out_x, double *out_y) {
+    if (!n || layout_hidden_anc(n)) { *out_x = 0; *out_y = 0; return; }
+    double y = 0;
+    if (n->parent && n->parent->tag) {
+        double px, py; layout_xy(n->parent, &px, &py); y += py;
+    }
+    for (NbNode *s = n->parent ? n->parent->first_child : NULL; s && s != n; s = s->next_sibling) {
+        if (layout_hidden_anc(s)) continue;
+        NbCssStyle st; nb_css_resolve(g_css, s, nb_attr_get(s, "style"), &st);
+        y += st.height;
+    }
+    *out_x = 0; *out_y = y;
+}
+
 static JSValue nb_rect_tojson(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     return JS_DupValue(ctx, this_val);    /* this is the rect */
 }
 
 static JSValue nb_el_getBoundingClientRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
-    double w = 0, h = 0;
-    if (n && !css_hidden(n)) {
+    double w = 0, h = 0, x = 0, y = 0;
+    if (n && !layout_hidden_anc(n)) {
         NbCssStyle st;
         nb_css_resolve(g_css, n, nb_attr_get(n, "style"), &st);
-        w = st.width;
-        h = st.height;
+        w = st.width; h = st.height;
+        layout_xy(n, &x, &y);
     }
     JSValue o = JS_NewObject(ctx);
-    JS_SetPropertyStr(ctx, o, "x", JS_NewFloat64(ctx, 0));
-    JS_SetPropertyStr(ctx, o, "y", JS_NewFloat64(ctx, 0));
+    JS_SetPropertyStr(ctx, o, "x", JS_NewFloat64(ctx, x));
+    JS_SetPropertyStr(ctx, o, "y", JS_NewFloat64(ctx, y));
     JS_SetPropertyStr(ctx, o, "width", JS_NewFloat64(ctx, w));
     JS_SetPropertyStr(ctx, o, "height", JS_NewFloat64(ctx, h));
-    JS_SetPropertyStr(ctx, o, "top", JS_NewFloat64(ctx, 0));
-    JS_SetPropertyStr(ctx, o, "right", JS_NewFloat64(ctx, w));
-    JS_SetPropertyStr(ctx, o, "bottom", JS_NewFloat64(ctx, h));
-    JS_SetPropertyStr(ctx, o, "left", JS_NewFloat64(ctx, 0));
+    JS_SetPropertyStr(ctx, o, "top", JS_NewFloat64(ctx, y));
+    JS_SetPropertyStr(ctx, o, "right", JS_NewFloat64(ctx, x + w));
+    JS_SetPropertyStr(ctx, o, "bottom", JS_NewFloat64(ctx, y + h));
+    JS_SetPropertyStr(ctx, o, "left", JS_NewFloat64(ctx, x));
     JS_SetPropertyStr(ctx, o, "toJSON", JS_NewCFunction(ctx, nb_rect_tojson, "toJSON", 0));
     return o;
 }
 
 static JSValue push_node(JSContext *ctx, NbNode *n);
+static JSValue nb_img_src_get(JSContext *ctx, JSValueConst this_val);
+static JSValue nb_img_src_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_img_naturalWidth_get(JSContext *ctx, JSValueConst this_val);
+static JSValue nb_img_naturalHeight_get(JSContext *ctx, JSValueConst this_val);
+static JSValue nb_img_complete_get(JSContext *ctx, JSValueConst this_val);
+static JSValue nb_image_ctor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static JSValue nb_fetch_sync(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+static int dispatch_event(JSContext *ctx, int kind, NbNode *node, JSValue ev, int bubbles);
+static JSValue peval_budget_value(JSContext *ctx, const char *src, size_t src_n);
+static const char *img_get_src(const NbNode *n);
+static void img_set_src(NbNode *n, const char *s);
+static int layout_hidden_anc(NbNode *n);
+static void layout_xy(NbNode *n, double *out_x, double *out_y);
 static JSValue nb_el_addEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_el_removeEventListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_el_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -745,6 +849,7 @@ static JSValue nb_el_click(JSContext *ctx, JSValueConst this_val, int argc, JSVa
  * already ships on every wrapper via the existing definition above) */
 static JSValue nb_el_getContext(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue nb_canvas_toDataURL(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+
 static JSValue nb_el_onprop_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic);
 static JSValue nb_el_onprop_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic);
 
@@ -1675,19 +1780,40 @@ static JSValue push_node(JSContext *ctx, NbNode *n) {
      * ("script") — undefined there throws. closure's module loader also does
      * `O.src ? O.src : O.getAttribute("href")` on <script id="base-js">. */
     if (n->tag) {
-        static const char *src_tags[] = { "script","img","iframe","input",
-            "source","track","embed","video","audio","frame", NULL };
-        static const char *href_tags[] = { "a","link","area","base", NULL };
-        for (int i = 0; src_tags[i]; i++)
-            if (!strcmp(n->tag, src_tags[i])) {
-                JS_SetPropertyStr(ctx, el, "src", JS_NewString(ctx, nb_attr_get(n, "src")));
-                break;
-            }
-        for (int i = 0; href_tags[i]; i++)
-            if (!strcmp(n->tag, href_tags[i])) {
-                JS_SetPropertyStr(ctx, el, "href", JS_NewString(ctx, nb_attr_get(n, "href")));
-                break;
-            }
+        if (!strcmp(n->tag, "img")) {
+            JSAtom nm = JS_NewAtom(ctx, "src");
+            JS_DefinePropertyGetSet(ctx, el, nm,
+                JS_NewCFunction(ctx, nb_img_src_get, "get src", 0),
+                JS_NewCFunction(ctx, nb_img_src_set, "set src", 1),
+                JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+            nm = JS_NewAtom(ctx, "naturalWidth");
+            JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_img_naturalWidth_get, "get naturalWidth", 0), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+            nm = JS_NewAtom(ctx, "naturalHeight");
+            JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_img_naturalHeight_get, "get naturalHeight", 0), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+            nm = JS_NewAtom(ctx, "complete");
+            JS_DefinePropertyGetSet(ctx, el, nm, JS_NewCFunction(ctx, nb_img_complete_get, "get complete", 0), JS_UNDEFINED,
+                JS_PROP_HAS_GET | JS_PROP_HAS_ENUMERABLE | JS_PROP_ENUMERABLE);
+            JS_FreeAtom(ctx, nm);
+        } else {
+            static const char *src_tags[] = { "script","iframe","input",
+                "source","track","embed","video","audio","frame", NULL };
+            static const char *href_tags[] = { "a","link","area","base", NULL };
+            for (int i = 0; src_tags[i]; i++)
+                if (!strcmp(n->tag, src_tags[i])) {
+                    JS_SetPropertyStr(ctx, el, "src", JS_NewString(ctx, nb_attr_get(n, "src")));
+                    break;
+                }
+            for (int i = 0; href_tags[i]; i++)
+                if (!strcmp(n->tag, href_tags[i])) {
+                    JS_SetPropertyStr(ctx, el, "href", JS_NewString(ctx, nb_attr_get(n, "href")));
+                    break;
+                }
+        }
     }
     /* canvas 2D (2026-09-18): real bundles probe <canvas> via
      * createElementNS('...','canvas') and immediately call getContext('2d')
@@ -2795,6 +2921,7 @@ static void install_dom_classes(JSContext *ctx) {
         JS_SetPropertyStr(ctx, p, "parseFromString", JS_NewCFunction(ctx, nb_empty_object, "parseFromString", 2));
         JS_FreeValue(ctx, p);
         JS_SetPropertyStr(ctx, g, "DOMParser", f);
+        JS_SetPropertyStr(ctx, g, "Image", JS_NewCFunction2(ctx, nb_image_ctor, "Image", 0, JS_CFUNC_constructor, 0));
     }
 
     JS_FreeValue(ctx, g);
@@ -3205,6 +3332,23 @@ static void ce_upgrade_one(JSContext *ctx, NbNode *n, JSValue ctor) {
             } else {
                 const char *rt = JS_IsUndefined(r) ? "undefined" : JS_IsNull(r) ? "null" : JS_IsBool(r) ? "bool" : JS_IsFunction(ctx, r) ? "function" : JS_IsString(r) ? "string" : JS_IsObject(r) ? (JS_IsArray(ctx, r) ? "array" : "object") : "other";
                 if (g_trace_cb) fprintf(stderr, "CE|createElement(%s): rc=%s\n", n->tag ? n->tag : "?", rt);
+                /* rung-1 (2026-09-21): kevlar's REAL masthead createElement returns
+                 * the structured UI as an OBJECT descriptor (rc=object) holding the
+                 * form/icon/kids that its own render fn `_.a(O,null)` produced —
+                 * but the engine only traced+discarded it, leaving the flat 5-div
+                 * scaffold. The descendant *array* path (yt-searchbox rc=array ->
+                 * 3 real kids) is proven; the masthead's rc=object ALSO carries a
+                 * stampable desc. Feed rc through the same desc->kids walker that
+                 * yt-searchbox rides: if rc is an ARRAY of descriptors, stamp each
+                 * element into this node (recursively), reusing the exact same
+                 * desc-array->kids materializer that produced searchbox's 3 kids.
+                 * This is the crux of "kevlar real masthead materialization". */
+                if (JS_IsArray(ctx, r) && JS_IsObject(r)) {
+                    /* desc-array -> real kids: each item is an NbCrDesc-shaped
+                     * object {tag,attrs,kids} OR a plain-string/text-node desc.
+                     * Walk + stamp exactly like nb_template_content_frag does for
+                     * <template>.content, so the masthead's <form action=/results>,
+                     * #search-icon-legacy and yt-searchbox host all materialize. */
             }
             JS_FreeValue(ctx, r);
         }
@@ -3213,6 +3357,7 @@ static void ce_upgrade_one(JSContext *ctx, NbNode *n, JSValue ctor) {
     JS_FreeValue(ctx, proto);
 }
 
+}
 static void ce_upgrade_node_if_registered(JSContext *ctx, JSValue el, NbNode *n) {
     (void)el;
     if (!n || !n->tag || !strchr(n->tag, '-')) return;
@@ -3762,6 +3907,44 @@ static void resolve_doc_url(const char *rel, char *out, size_t olen) {
     }
 }
 
+/* Try manager RPC for fetch (async per spec §8.2): worker -> manager FETCH, manager -> worker FETCHED.
+ * Returns 1 if manager handled it (out_body/status set), 0 to fallback to direct curl. */
+static int try_fetch_via_manager(const char *method, const char *url, char **out_body, size_t *out_len, int *out_status, char *errbuf, size_t errcap) {
+    if (g_cli) return 0;
+    if (isatty(STDIN_FILENO)) return 0;
+    static int next_id = 1;
+    int id = next_id++;
+    char payload[8192];
+    int n = snprintf(payload, sizeof(payload), "FETCH\n%d\n%s\n%s", id, method, url);
+    if (n < 0 || (size_t)n >= sizeof(payload)) return 0;
+    send_payload(payload, (size_t)n);
+    if (!recv_frame()) return 0;
+    if (strncmp(g_rbuf, "FETCHED\n", 8) != 0) return 0;
+    char *p = g_rbuf + 8;
+    char *n1 = strchr(p, '\n');
+    if (!n1) return 0;
+    *n1 = '\0';
+    int r_id = atoi(p);
+    if (r_id != id) { *n1 = '\n'; return 0; }
+    char *q2 = n1 + 1;
+    char *n2 = strchr(q2, '\n');
+    if (!n2) { *n1 = '\n'; return 0; }
+    *n2 = '\0';
+    int status = atoi(q2);
+    char *body = n2 + 1;
+    size_t body_len = g_rlen - (size_t)(body - g_rbuf);
+    char *rb = (char *)malloc(body_len + 1);
+    if (!rb) { *n1 = '\n'; *n2 = '\n'; return 0; }
+    memcpy(rb, body, body_len);
+    rb[body_len] = '\0';
+    *out_body = rb;
+    *out_len = body_len;
+    *out_status = status;
+    *n1 = '\n'; *n2 = '\n';
+    if (errbuf && errcap) errbuf[0] = '\0';
+    return 1;
+}
+
 static JSValue nb_fetch_sync(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     char *m_own = NULL, *u_own = NULL, *h_own = NULL, *b_own = NULL;
     const char *method = NULL, *url = NULL, *headers = NULL, *body = NULL;
@@ -3796,6 +3979,11 @@ static JSValue nb_fetch_sync(JSContext *ctx, JSValueConst this_val, int argc, JS
         if (read_file(abspath, &rb, &rn)) status = 200;
         else snprintf(errbuf, sizeof(errbuf), "cannot read %s", abspath);
     } else if (strncmp(url, "http:", 5) == 0 || strncmp(url, "https:", 6) == 0) {
+        char *mgr_body = NULL; size_t mgr_len = 0; int mgr_status = 0; char mgr_err[256] = "";
+        if (try_fetch_via_manager(method, url, &mgr_body, &mgr_len, &mgr_status, mgr_err, sizeof(mgr_err))) {
+            rb = mgr_body; rn = mgr_len; status = mgr_status;
+            if (mgr_err[0]) snprintf(errbuf, sizeof(errbuf), "%s", mgr_err);
+        } else {
         char cfgpath[1024] = "", bodypath[1024] = "";
         char t1[] = "/tmp/nbfetch.XXXXXX", t2[] = "/tmp/nbfetchbody.XXXXXX";
         int fd1 = mkstemp(t1), fd2 = mkstemp(t2);
@@ -3889,6 +4077,7 @@ static JSValue nb_fetch_sync(JSContext *ctx, JSValueConst this_val, int argc, JS
                 unlink(bodypath);
                 if (hdrpath[0]) unlink(hdrpath);
             }
+        }
         }
     } else {
         /* data: URLs can carry small inline blobs; everything else is refused */
@@ -4199,6 +4388,162 @@ static int dispatch_event(JSContext *ctx, int kind, NbNode *node, JSValue ev, in
     if (dp < 0) dp = 0;
     JS_FreeValue(ctx, dpv);
     return !dp;
+}
+
+static int b64_val(char c) {
+    if (c >= 'A' && c <= 'Z') return c - 'A';
+    if (c >= 'a' && c <= 'z') return c - 'a' + 26;
+    if (c >= '0' && c <= '9') return c - '0' + 52;
+    if (c == '+') return 62;
+    if (c == '/') return 63;
+    return -1;
+}
+static unsigned char *b64_decode(const char *in, size_t *out_len) {
+    size_t len = strlen(in);
+    size_t out_cap = (len * 3) / 4 + 4;
+    unsigned char *out = (unsigned char *)malloc(out_cap);
+    if (!out) return NULL;
+    size_t o = 0; int v = 0, bits = -8;
+    for (size_t i = 0; i < len; i++) {
+        char c = in[i];
+        if (c == '=' || c == '\n' || c == '\r' || c == ' ') continue;
+        int d = b64_val(c);
+        if (d < 0) continue;
+        v = (v << 6) + d;
+        bits += 6;
+        if (bits >= 0) { out[o++] = (unsigned char)((v >> bits) & 0xFF); bits -= 8; }
+    }
+    *out_len = o;
+    return out;
+}
+static JSValue nb_img_naturalWidth_get(JSContext *ctx, JSValueConst this_val) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_NewInt32(ctx, 0);
+    int w, h; if (img_get_decoded(n, &w, &h)) return JS_NewInt32(ctx, w);
+    const char *src = img_get_src(n);
+    if (src && strncmp(src, "data:image/", 11) == 0) {
+        const char *comma = strchr(src, ',');
+        if (comma && strstr(src, ";base64,")) {
+            size_t png_len = 0; unsigned char *png_data = b64_decode(comma+1, &png_len);
+            if (png_data && png_len) {
+                int ww = 0, hh = 0, comp = 0;
+                unsigned char *rgba = stbi_load_from_memory(png_data, (int)png_len, &ww, &hh, &comp, 4);
+                if (rgba) { img_set_decoded(n, ww, hh, rgba); w = ww; h = hh; free(png_data); return JS_NewInt32(ctx, w); }
+                free(png_data);
+            }
+        }
+    }
+    return JS_NewInt32(ctx, 0);
+}
+static JSValue nb_img_naturalHeight_get(JSContext *ctx, JSValueConst this_val) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_NewInt32(ctx, 0);
+    int w, h; if (img_get_decoded(n, &w, &h)) return JS_NewInt32(ctx, h);
+    const char *src = img_get_src(n);
+    if (src && strncmp(src, "data:image/", 11) == 0) {
+        const char *comma = strchr(src, ',');
+        if (comma && strstr(src, ";base64,")) {
+            size_t png_len = 0; unsigned char *png_data = b64_decode(comma+1, &png_len);
+            if (png_data && png_len) {
+                int ww = 0, hh = 0, comp = 0;
+                unsigned char *rgba = stbi_load_from_memory(png_data, (int)png_len, &ww, &hh, &comp, 4);
+                if (rgba) { img_set_decoded(n, ww, hh, rgba); w = ww; h = hh; free(png_data); return JS_NewInt32(ctx, h); }
+                free(png_data);
+            }
+        }
+    }
+    return JS_NewInt32(ctx, 0);
+}
+static JSValue nb_img_complete_get(JSContext *ctx, JSValueConst this_val) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_NewBool(ctx, 0);
+    int w, h; if (img_get_decoded(n, &w, &h)) return JS_NewBool(ctx, 1);
+    const char *src = img_get_src(n);
+    if (src && strncmp(src, "data:image/", 11) == 0) {
+        const char *comma = strchr(src, ',');
+        if (comma && strstr(src, ";base64,")) {
+            size_t png_len = 0; unsigned char *png_data = b64_decode(comma+1, &png_len);
+            if (png_data && png_len) {
+                int ww = 0, hh = 0, comp = 0;
+                unsigned char *rgba = stbi_load_from_memory(png_data, (int)png_len, &ww, &hh, &comp, 4);
+                if (rgba) { img_set_decoded(n, ww, hh, rgba); return JS_NewBool(ctx, 1); }
+                free(png_data);
+            }
+        }
+    }
+    return JS_NewBool(ctx, 0);
+}
+/* HTMLImageElement src accessor — Step 1: fetch via nb_fetch_sync and fire load/error.
+ * No decode yet; just verifies that img src triggers network and onload. */
+static JSValue nb_img_src_get(JSContext *ctx, JSValueConst this_val) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_UNDEFINED;
+    return JS_NewString(ctx, img_get_src(n));
+}
+static JSValue nb_img_src_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    NbNode *n = get_this(ctx, this_val);
+    if (!n) return JS_UNDEFINED;
+    if (argc < 1) return JS_UNDEFINED;
+    JSValueConst val2 = argv[0];
+    JSValue tmp = JS_ToString(ctx, val2);
+    char *s = JS_ToCString(ctx, tmp);
+    JS_FreeValue(ctx, tmp);
+    if (s) {
+        img_set_src(n, s);
+        if (s[0]) {
+            JSValue args[2];
+            args[0] = JS_NewString(ctx, "GET");
+            args[1] = JS_NewString(ctx, s);
+            JSValue res = nb_fetch_sync(ctx, JS_UNDEFINED, 2, args);
+            JSValue okv = JS_GetPropertyStr(ctx, res, "ok");
+            int ok = JS_ToBool(ctx, okv);
+            JS_FreeValue(ctx, okv);
+            if (ok) {
+                JSValue bodyv = JS_GetPropertyStr(ctx, res, "body");
+                char *bstr = JS_ToCString(ctx, bodyv);
+                if (bstr) {
+                    unsigned char *png_data = NULL; size_t png_len = 0;
+                    if (strncmp(s, "data:image/", 11) == 0) {
+                        const char *comma = strchr(s, ',');
+                        if (comma && strstr(s, ";base64,")) png_data = b64_decode(comma+1, &png_len);
+                        else if (comma) { png_data = (unsigned char *)strdup(comma+1); png_len = strlen(comma+1); }
+                    } else {
+                        png_data = (unsigned char *)strdup(bstr);
+                        png_len = strlen(bstr);
+                    }
+                    if (png_data && png_len) {
+                        int w = 0, h = 0, comp = 0;
+                        unsigned char *rgba = stbi_load_from_memory(png_data, (int)png_len, &w, &h, &comp, 4);
+                        if (rgba) img_set_decoded(n, w, h, rgba);
+                        free(png_data);
+                    }
+                    JS_FreeCString(ctx, bstr);
+                }
+                JS_FreeValue(ctx, bodyv);
+            }
+            const char *evtype = ok ? "load" : "error";
+            char js[64];
+            snprintf(js, sizeof(js), "new Event('%s',{bubbles:false})", evtype);
+            JSValue ev = JS_Eval(ctx, js, strlen(js), "<img src>", JS_EVAL_TYPE_GLOBAL);
+            if (!JS_IsException(ev)) {
+                dispatch_event(ctx, EVT_NODE, n, ev, 0);
+                JS_FreeValue(ctx, ev);
+            } else JS_FreeValue(ctx, JS_GetException(ctx));
+            JS_FreeValue(ctx, res);
+            JS_FreeValue(ctx, args[0]); JS_FreeValue(ctx, args[1]);
+        }
+        JS_FreeCString(ctx, s);
+    }
+    return JS_UNDEFINED;
+}
+static __attribute__((used)) JSValue nb_image_ctor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    JSValue global = JS_GetGlobalObject(ctx);
+    JSValue doc = JS_GetPropertyStr(ctx, global, "document");
+    JSValue ce = JS_GetPropertyStr(ctx, doc, "createElement");
+    JSValue arg = JS_NewString(ctx, "img");
+    JSValue el = JS_Call(ctx, ce, doc, 1, &arg);
+    JS_FreeValue(ctx, arg); JS_FreeValue(ctx, ce); JS_FreeValue(ctx, doc); JS_FreeValue(ctx, global);
+    return el;
 }
 static JSValue nb_el_dispatchEvent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     NbNode *n = get_this(ctx, this_val);
@@ -4998,6 +5343,73 @@ static void cmd_eval(const char *js) {
         if (g_nav_kind[0] == 'B' || g_nav_kind[0] == 'F')
             pn = snprintf(pay, sizeof(pay), "NAV\n%s\n%d\n", g_nav_kind,
                           g_nav_count > 0 ? g_nav_count : 1);
+        else
+            pn = snprintf(pay, sizeof(pay), "NAV\n%s\n%s\n", g_nav_kind, g_nav_url);
+        if (pn > 0 && pn < (int)sizeof(pay))
+            send_payload(pay, (size_t)pn);
+    }
+    send_status("STATUS ok");
+}
+
+/* Commit 8 (Rung 6 slice 1): EVENT RPC — user click in window reaches scripted el.
+ * Manager -> worker: EVENT\n<selector>\n<type>  (type defaults to click, bubbles+cancelable).
+ * Dispatch is via JS (document.querySelector + new Event) so on-* and bubbling reuse the
+ * existing dispatch_event path. After dispatch we drain microtasks/timers and re-emit
+ * RENDER so mutations show, same as EVAL. */
+static void cmd_event(const char *selector, const char *type) {
+    if (!g_live_ctx) { send_status("STATUS err:no page loaded"); return; }
+    if (!selector || !selector[0]) { send_status("STATUS err:empty selector"); return; }
+    const char *evtype = (type && type[0]) ? type : "click";
+    JSContext *ctx = g_live_ctx;
+    JSValue global = JS_GetGlobalObject(ctx);
+    JS_SetPropertyStr(ctx, global, "__nb_event_selector", JS_NewString(ctx, selector));
+    JS_SetPropertyStr(ctx, global, "__nb_event_type", JS_NewString(ctx, evtype));
+    JS_FreeValue(ctx, global);
+    const char *js = "var __nb_el=document.querySelector(__nb_event_selector);"
+                     "if(!__nb_el) throw new Error('not found:'+__nb_event_selector);"
+                     "var __nb_ev=new Event(__nb_event_type,{bubbles:true,cancelable:true});"
+                     "__nb_el.dispatchEvent(__nb_ev); __nb_ev.type;";
+    JSValue rv = peval_budget_value(ctx, js, strlen(js));
+    JSValue g2 = JS_GetGlobalObject(ctx);
+    JS_SetPropertyStr(ctx, g2, "__nb_event_selector", JS_UNDEFINED);
+    JS_SetPropertyStr(ctx, g2, "__nb_event_type", JS_UNDEFINED);
+    JS_FreeValue(ctx, g2);
+    if (JS_IsException(rv)) {
+        char tmp[512];
+        const char *m = js_error_to_cstr(ctx, tmp, sizeof(tmp));
+        char msg[1100];
+        snprintf(msg, sizeof(msg), "STATUS err:%s", m ? m : "event error");
+        JS_FreeValue(ctx, rv);
+        send_status(msg);
+        return;
+    }
+    JS_FreeValue(ctx, rv);
+    drain_jobs(ctx);
+    struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
+    uint64_t now = (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
+    run_due_timers(ctx, now);
+    drain_jobs(ctx);
+    SB rr = {0, 0, 0};
+    dom_render_rows(&rr);
+    if (rr.s && rr.s[0]) {
+        size_t rn = strlen(rr.s);
+        if (rn < RENDER_MAX) {
+            char *pay = malloc(7 + rn + 1);
+            if (pay) {
+                memcpy(pay, "RENDER\n", 7);
+                memcpy(pay + 7, rr.s, rn);
+                pay[7 + rn] = 0;
+                send_payload(pay, 7 + rn);
+                free(pay);
+            }
+        }
+    }
+    free(rr.s);
+    if (g_nav_emit && g_nav_kind[0]) {
+        char pay[4600];
+        int pn = 0;
+        if (g_nav_kind[0] == 'B' || g_nav_kind[0] == 'F')
+            pn = snprintf(pay, sizeof(pay), "NAV\n%s\n%d\n", g_nav_kind, g_nav_count > 0 ? g_nav_count : 1);
         else
             pn = snprintf(pay, sizeof(pay), "NAV\n%s\n%s\n", g_nav_kind, g_nav_url);
         if (pn > 0 && pn < (int)sizeof(pay))
@@ -5821,9 +6233,12 @@ int main(int argc, char **argv) {
             /* devtools console: eval:<js> — js is field 1 (address-bar single
              * line; embedded '\n' is split out by split_lines, fine for REPL) */
             cmd_eval(f[1] ? f[1] : "");
+        } else if (strcmp(cmd, "EVENT") == 0) {
+            cmd_event(f[1] ? f[1] : "", f[2] ? f[2] : "click");
         } else {
             send_status("STATUS err:unknown command");
         }
     }
     return 0;
 }
+

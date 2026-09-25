@@ -1,6 +1,6 @@
 # NB-JS persistent-worker plan — rung 2 (DOM) + roadmap §3
 
-**Status:** PLAN — pending approval / step-by-step execution
+**Status:** RETIRED — shipped / superseded (2026-09-23) — see §8.6 SHIPPED-LOG and distinct handoff `FRESH-AGENT-HANDOFF-NB-ENGINE-2026-09-23.md` (branch `opencode`, parity 0 0, make nbjs GREEN)
 **Branch:** `chtpm-delete-per-app-c` (carries JS rung-6 prep + dbhq deletion)
 **Date:** 2026-09-04
 **Author:** oc
@@ -324,7 +324,7 @@ JSON then render become usable. *≈200 lines + RPC cases.*
 
 ### 8.5 Phase-2 execution order (each green + shippable)
 
-A. Rung 3 event loop + timers + lifecycle — *Commit 7*
+A. Rung 3 event loop + timers + lifecycle + resident run loop — **SHIPPED** = **Commit 7** (landed 5536d118 / re-anchored eac9fad6; materialized in-tree in nb_js_worker.c: add/remove/dispatchEvent 1666-1668, EventTarget 2635, real min-heap timers 3632+, microtask drain 3681, resident loop 3946-3971). Next arrow re-pointed to:
 B. `dispatchEvent` + on-property handlers + `EVENT <selector>` RPC
    (user click in the window reaches a scripted el) — *Commit 8*
 C. Rung 4 XHR (async) — *Commit 9*
@@ -335,7 +335,9 @@ G. Docs: phase 2 status in the roadmap — *Commit 13*
 
 Each of A–G is independently hand-off-able.
 
-## 9. Explicit non-goals (Phase 1 milestone)
+## 9. Explicit non-goals (Phase 1 milestone) — RETIRED 2026-09-23
+
+> **RETIRED:** The non-goals below described Phase-1 milestone boundaries. The rungs listed as non-goals here — rung 3 (real event loop / timers) and rung 4 (fetch()/XHR) — are now **SHIPPED** per §8.6 (verified in-tree). Retained verbatim for archaeology; do not treat as current scope.
 
 - No `fetch()`/XHR (rung 4), no real event loop / timers firing callbacks
   (rung 3 — we run top-level scripts + one microtask drain only), no
@@ -365,3 +367,20 @@ Each of A–G is independently hand-off-able.
 3. Should the static non-JS extractor stay as-is (both paths) for the
    first cut, or be re-derived from the new DOM immediately? → keep both,
    reconcile later (lower risk).
+
+
+## 8.6 SHIPPED-LOG
+
+**SHIPPED-LOG 2026-09-23 (verified in-tree, not prose):**
+1. **Rung 3 (events + event loop + timers + lifecycle) — SHIPPED.** In-tree: `nb_js_worker.c` add/remove/dispatchEvent (1666-1668), EventTarget (2635), resident min-heap timers (3632+), microtask drain (3681), resident resident loop (3946-3971).
+2. **Rung 4 (XHR / fetch via manager RPC) — SHIPPED.** In-tree: rung-4 transport header (3716), `nb_fetch_sync` (3783), tmp-file body transport (3818/3842) — the §8.2 `FETCH <id> <method> <url>` / `FETCHED <id> <status>\n<len>\n<body>` shape, as a Promise-shaped blocking child. Next=prose-verify-only before any further rung claim.
+3. **Rung 5 (render feedback loop — re-serialize mutated DOM → page.state.txt) — SHIPPED.** In-tree: worker emits `RENDER\n<rows>` (step 4, nb_js_worker.c:447 RENDER_MAX 60000, 4921 emit, 4994 re-emit) and manager merges via `merge_render_rows()` — post-JS DOM is authoritative (ROADMAP Rung 5 DONE 2026-09-05, ea864cea). No new work — glue already landed; see 09-appendix/PROGRESS-nb-js-worker-phase1.md.
+
+4. **§8.5 B EVENT RPC (Commit 8) — SHIPPED 43c72099.** Manager -> worker `EVENT\n<selector>\n<type>` via `worker_send_event()` (`network_browser_manager.c`), worker `cmd_event()` dispatches via `document.querySelector` + `new Event({bubbles:true})` through `dispatch_event`/`on-property` path, drains microtasks/timers and re-emits `RENDER`. User click in window → scripted el is now wired.
+5. **§8.5 C/D Rung 4 XHR/fetch async RPC (Commit 9/10) — SHIPPED 7e55fc8b.** Worker `try_fetch_via_manager()` (`nb_js_worker.c:3785`) sends `FETCH\n<id>\n<method>\n<url>` via `send_payload` and waits for `FETCHED\n<id>\n<status>\n<body>` (manager-owned network); fallback to direct curl for `file://` and when manager unavailable. Manager `handle_worker_fetch()` (`network_browser_manager.c`) handles `FETCH` in both `worker_load@1621` and `worker_eval@1691` loops, does `file` read or `curl -L` for `http(s)` and replies `FETCHED`. JS `fetch()`/`XHR` via `nb_host.h:680/733` now truly async via manager; payoff `simple fetch-JSON SPAs` verified.
+6. **Phase 3 slice 2 — simple block layout for getBoundingClientRect — SHIPPED 514b8ab9.** `nb_js_worker.c:714` now returns computed `x/y` via `layout_xy()` (parent y + sum previous siblings' heights, `display:none` ancestors 0,0,0,0) instead of 0,0; `offsetWidth/Height` already CSS-px correct (`686`). `wcs` 9/9 PASS — enables stacked block flow for carousels/lazy loaders; full flex/grid deferred per roadmap.
+7. **Rung 7 <img> Step 1 — HTMLImageElement src fetch + onload — SHIPPED e4428e13.** `nb_js_worker.c:HTMLImageElement` src accessor (`nb_img_src_get/set` + `img_get_src` map), `window.Image` alias, fetch via `nb_fetch_sync` (data:/http(s) via manager RPC `7e55fc8b`), fires `load`/`error` via `dispatch_event`; `wcs[img]` 10/10 PASS (`new Image().src=data:` triggers load) — fix `c1a72fdd` corrected setter calling convention (`generic` `argc/argv`) and `window.Image` alias.
+8. **Rung 7 <img> Step 2 — stb_image decode + naturalWidth/complete — SHIPPED cdb51504.** `stb_image.h` decode (`b64_decode` + `stbi_load_from_memory` for `data:image/png;base64`), store via `img_set_decoded` (`g_img_decoded`), expose `naturalWidth`/`naturalHeight`/`complete`; `wcs[img-png]` 1x1 PNG `data:` URL decodes to 1x1, `wcs` 11/11 PASS — fix `c1b9ae45` makes HTML `<img src=data:>` also decode on demand for `naturalWidth` (`wcs[img-html]` 12/12 PASS).
+9. **Rung 7 <img> Step 3 wire — IMG w/h/path for decoded images — SHIPPED d8bc3378.** Worker `dom_walk_render` for `img` now decodes `data:image/png;base64` via `b64_decode`+`stbi_load` even for HTML `<img src>` (not just JS `new Image()`), writes `/tmp/nb_img_*.png` via `stbi_write_png`, emits `IMG|<src>|<w>|<h>|<path>|<alt>`; manager parses new wire (`src|w|h|path|alt`) in `page.state` merge and `write_ui_projection` (`is_media` → `sprite=path`), `wcs[img-html]` 12/12 PASS with file 70b.
+10. **Rung 7 <img> Step 3 draw — khtpm_draw_core PNG blit — SHIPPED 6e8d5308.** `khtpm_draw_core.c:1187` now handles `e->sprite` ending `.png` (`/tmp/nb_img_*.png` from worker `stbi_write_png`) via `stbi_load` + `XCreateImage`/`XPutImage` clipped at `e->x,y`/`e->w/h` (`getBoundingClientRect` `514b8ab9` layout); `hq_sprite` fallback for palette sprites unchanged. `make nbjs` GREEN, `wcs` 12/12, `dump_frame_png_op` verifiable.
+*Rule restated: any future 'next rung' claim must first grep the worker file; the plan prose has twice lagged the tree (rungs 3 and 4).*
