@@ -464,6 +464,87 @@ playrm, user) checked before it lands.
     I have not observed this happening; it is a latent risk only.
 
 ================================================================================
+## TESTING METHOD — WHAT RELAY INPUT CAN AND CANNOT PROVE
+================================================================================
+
+Added after being pointed at
+#.dev-storage/#.dox/TPMOSTEXTBOOK_v05.01/CH9_TESTING.md, which describes a
+Testing Bot that "plays" the OS by injecting keys into history.txt.
+
+STATE OF THAT HARNESS, checked this session:
+  pieces/apps/bot_tester/   DOES NOT EXIST
+  nav_bot / state.txt        DOES NOT EXIST anywhere in the repo
+  interact_relay.txt         exists in 2 livedesk pals, 0 bytes, and NO code
+                             in pieces/ or projects/ reads it (grep for
+                             "relay" returns only unrelated comments in
+                             playrm_module.c:336 and chtpm_parser.c:445,
+                             :1742, :1768, :1776)
+
+So CH9 is a design chapter, not a working harness. The MECHANISM it describes
+does exist and works today with no bot binary: the parser tails
+pieces/keyboard/history.txt (chtpm_parser.c:3060) and acts on lines containing
+"KEY_PRESSED: ". Appending a correctly formatted line to that file IS a relay
+injector. That is the whole of it.
+
+*** THE CRITICAL LIMIT — A RELAY TEST CANNOT DETECT BUG B ***
+The input chain has two halves, and a relay bot only ever exercises one:
+
+  HALF 1  capture        WINDOWS-ONLY, NEEDS A REAL KEYBOARD
+    physical key -> ReadConsoleInput -> AsciiChar / wVirtualKeyCode
+    -> keyboard_input_win.c -> append "KEY_PRESSED: N" to history.txt
+
+  HALF 2  relay/consume  PLATFORM-IDENTICAL, FULLY SYNTHESISABLE
+    history.txt -> chtpm_parser.c process_key -> inject_raw_key
+    -> app history.txt -> agy process_key -> handle_interact_key
+
+history.txt is the BOUNDARY BETWEEN THE TWO HALVES. A relay injector writes
+there, so it enters at the top of half 2 and never executes a single
+instruction of half 1. It cannot observe AsciiChar, the six-virtual-key map at
+keyboard_input_win.c:83-87, the console mode flags at :30, or the
+dwRepeatCount gap at :78. Every one of the four candidate mechanisms in B.4
+lives in half 1 and is therefore invisible to it.
+
+CONSEQUENCE, and this is the dangerous one: a relay test will report PASS on
+a machine whose physical keyboard is completely broken in interact mode. It
+is a false green, and it is worse than no test, because it would let us close
+Bug B while the reported symptom is still there. Do not let a relay result be
+cited as evidence that Bug B is fixed.
+
+Therefore:
+  B.4 (the muscle)       HUMAN AT THE KEYBOARD. No bot can substitute.
+  B.2 backspace          RELAY-TESTABLE. Should fail on BOTH platforms.
+  B.3 '2'/'6' hijack     RELAY-TESTABLE. Should fail on BOTH platforms.
+  B.5 no interact bit    RELAY-TESTABLE, but it is a protocol change so it
+                         needs the other app managers checked too.
+  Bug A (frame unicode)  NOT a key-path bug at all. It is tested by reading
+                         current_frame.txt bytes and the console output code
+                         page, not by injecting keys.
+
+Running the relay test for B.2/B.3 on this Windows box is still worth doing,
+precisely because it is the control: if backspace fails identically here and
+on Linux, that is a clean cross-platform bug and is NOT the Windows
+regression, which keeps the two findings separate.
+
+IF A RELAY INJECTOR IS WRITTEN, these four details will bite:
+  1. Format must match keyboard_input_win.c:56 exactly --
+        [<YYYY-MM-DD HH:MM:SS>] KEY_PRESSED: <int>
+     The parser matches on the literal substring "KEY_PRESSED: "
+     (chtpm_parser.c:3066) and atoi's the text after the first colon.
+  2. CH9 Pitfall 1 applies verbatim: the pipeline is polled, not pushed, so
+     sleep 100-200ms between injections or keys are coalesced.
+  3. The CRLF debounce at chtpm_parser.c:3073-3077 will eat a 13 immediately
+     following a 10, or a 10 immediately following a 13. Do not script a
+     10/13 pair and conclude the second one is lost.
+  4. chtpm_parser.c:3072 is `if (key > 0)`, so key 0 can never be delivered
+     by any injector, scripted or physical.
+
+WHAT I HAVE ACTUALLY DONE SO FAR, stated plainly: nothing has been executed.
+No test, no run, no build. Every finding in this document comes from reading
+source and from reading log files that already existed on disk. The Bug B
+histogram quoted in B.7 is a read of a previous session's
+pieces/keyboard/history.txt, not a test I performed.
+
+================================================================================
 ## PRIORITY ORDER I RECOMMEND (for discussion, not decided)
 ================================================================================
 
@@ -492,10 +573,17 @@ STEP 0 (do this first, it is free): reproduce Bug B exactly as described in
 ## WHAT I DID NOT DO
 ================================================================================
 
-No source file was edited. No binary was rebuilt. This document is the only
-thing added. The runtime state files already showing as modified in
-`git status` (pieces/**/*.txt ledgers, prisc+x.exe, livedesk pal state) were
-already dirty before this session and are not mine.
+No source file was edited. No binary was rebuilt. No test was run. This
+document is the only thing added, plus the TESTING METHOD section above,
+which was added in response to a pointer to CH9_TESTING.md. The runtime state
+files already showing as modified in `git status`
+(pieces/**/*.txt ledgers, prisc+x.exe, livedesk pal state) were already dirty
+before this session and are not mine.
+
+Two commits sit on top of 6a8c9151 on branch windows, unpushed:
+  feac6d72  this document
+  ddee363f  the MarS.StreetRace directory rename, which was already staged in
+            the index before this session and is unrelated to these bugs
 
 ## SEE ALSO
 
