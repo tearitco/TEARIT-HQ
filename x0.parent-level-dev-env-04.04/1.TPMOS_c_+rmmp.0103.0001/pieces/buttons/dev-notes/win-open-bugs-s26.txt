@@ -200,107 +200,90 @@ A1 and A2 are complementary. A1 is the root fix; A2 is the guarantee.
 ## BUG B — KEYS NOT GETTING THROUGH IN agy INTERACT MODE
 ================================================================================
 
-*** CORRECTION, added after review: the user reports interact mode WORKS on
-Linux. I checked, and they are right. B.2 and B.3 below are real defects but
-they CANNOT be the cause of a Windows-only failure, because the code that
-contains them has zero platform divergence. I originally listed them as the
-explanation; that was wrong. See B.0 for the proof and B.7 for what is
-actually left. ***
+*** ROOT CAUSED AND PROVEN BY LIVE TEST 2026-09-26 15:19-15:40. ***
 
-### B.0 PROOF: the parser and the agy manager are NOT platform-divergent
+*** THE ANSWER IS NOT WHAT I SPENT MOST OF THIS DOCUMENT GUESSING. ***
 
-I grepped both files for every conditional-compilation directive:
+  agy-text-editor_manager.+x DOES NOT EXIST ON WINDOWS, and
+  agy-text-editor is ABSENT FROM THE WINDOWS BUILD SCRIPT.
 
-  projects/agy-text-editor/manager/agy-text-editor_manager.c
-      only hit is line 1-3, `#ifndef _GNU_SOURCE` for a header. There is
-      NOT ONE #ifdef _WIN32 in the entire 1013-line file.
+  projects/agy-text-editor/manager/ contains only the .c source and
+  gui_state.txt. There is no +x\ directory.
 
-  pieces/chtpm/plugins/chtpm_parser.c
-      #ifdef _WIN32 at 9, 118, 151, 283
-      #ifndef _WIN32 at 582, 1421, 1543, 1562, 1593, 1643, 3055
-      Every one of those is process launch (fork/exec vs _spawnl), path
-      building, or the waitpid at 3055. NONE of them is in process_key(),
-      in the interact-mode branch, or in inject_raw_key().
+  button.ps1 c -> pieces/buttons/windows/compile.ps1 (8 lines)
+    -> pieces/buttons/windows/legacy/compile_all.ps1 (92 lines)
+  That script lists project managers by HAND at lines 39-44:
+      op-ed_manager.c, fuzz-op_manager.c, user_manager.c, man-pal_module.c
+  "agy" appears ZERO times in the file. It is a hardcoded list, not a glob,
+  and agy-text-editor was never added to it.
 
-So the chain from "key arrives" to "key reaches handle_interact_key()" runs
-byte-identical code on both platforms. If interact mode works on Linux, the
-break must be BEFORE that chain — in the Windows keyboard muscle, which is
-the only platform-specific link in the whole path.
+  So editor.chtpm:2's
+      <module>.../manager/+x/agy-text-editor_manager.+x</module>
+  points at a binary that does not exist. The parser cannot launch it.
+  Nothing consumes pieces/apps/player_app/history.txt. Every key forwarded
+  into interact mode goes nowhere.
 
-I also checked the spawn and it is NOT the problem. orchestrator.c
-launch_and_register, Windows branch:
+  THAT is why it works on Linux and not here. Not a logic difference in the
+  key path - a missing build target.
 
-    int mode = quiet ? _P_DETACH : _P_NOWAIT;
-    pid = _spawnl(mode, win_path, win_path, NULL);
+  PROVEN LIVE: with relay injection (which never touches the Windows capture
+  code at all), interact mode engaged correctly, inject_raw_key forwarded
+  104/105/120 into player_app/history.txt, and document.txt did not change
+  because no agy process existed to consume it.
 
-The keyboard is registered with quiet=false, so it gets _P_NOWAIT, which per
-MSDN DOES inherit the calling process's console. GetStdHandle(STD_INPUT_HANDLE)
-in the child therefore returns the real console input buffer. This is
-confirmed empirically: pieces/keyboard/history.txt contains real, correctly
-timestamped key events. (For contrast, win_spawn.h:62 uses _P_DETACH, which
-does NOT inherit a console — but win_spawn is only used for project managers,
-which do not read stdin, so it does not bite here.)
+  FULL EVIDENCE: FRAME_REPORT_20260926-1540_agy-interact-inject.txt
 
-### B.7 WHAT IS LEFT: the muscle, and the one test that settles it
+*** WHAT I WITHDRAW ***
 
-Everything from keyboard history.txt onward is platform-identical. So the
-suspect is confined to pieces/keyboard/src/keyboard_input_win.c, 97 lines,
-compiled only on Windows (compile_all.ps1 picks the _win.c variant; the
-_linux.c variant is not built).
+  The AsciiChar / six-virtual-key theory (B.4, and section B.7's ranked list)
+  is WITHDRAWN as the cause of the reported interact-mode symptom. Interact
+  mode fails identically when keys arrive by file injection, which bypasses
+  keyboard_input_win.c completely. So that code cannot be the cause.
 
-THE TEST I NEED FROM YOU. The current history.txt holds 33 key events and a
-histogram of every single one is:
+  It remains a real, untested Windows-only weakness that may affect the
+  PHYSICAL keyboard, and it is still worth fixing - but it is a separate
+  issue from what the user reported, and it must be tested with a real
+  synthetic keypress (SendInput), not with a file append.
 
-      13 (Enter)  x3
-      27 (Esc)    x2
-    1000 (Left)   x4
-    1001 (Right)  x3
-    1002 (Up)    x10
-    1003 (Down)  x11
-    ---------------------
-    printable chars (32-126)   ZERO
+  I also withdraw the framing that the parser/agy key path is
+  "platform-identical, so the fault must be upstream." It was platform-
+  identical AND it was broken, because the consumer was never built.
 
-That is consistent with a session spent only navigating, so it does not yet
-prove anything. But it is exactly the shape of the reported bug. To settle
-it: launch, go into agy, press Enter on EDIT TEXT (INTERACT), then type
-"hello123" and press Backspace, then stop. I will read the resulting
-history.txt histogram. If 32-126 is still empty, the muscle is dropping every
-printable key and the cause is one of      the four mechanisms in B.4. If the
-characters are all there, the fault is further down and I keep looking.
+### B.0 WHAT RELAY INJECTION PROVED (and the one thing it still cannot)
+The relay half works on Windows. Verified this session:
+  - 2x ARROW_DOWN moved the focus marker [>] 1 -> [>] 3, frame mtime
+    advanced. K9 Pitfall 7 satisfied: the key is visible in the frame, so the
+    input pipeline is functional.
+  - ENTER on the INTERACT button engaged the gate: the frame switched to
+    "[^] 1. [EDIT TEXT (INTERACT)]" plus "Active [^]:  (ESC to exit)".
+  - Printable keys in interact mode reached inject_raw_key and landed in
+    pieces/apps/player_app/history.txt as bare decimals 104/105/120.
+Only the final consumption hop failed, for the reason above.
+Relay still cannot test keyboard_input_win.c (see B.7) - but that turned out
+not to matter for this bug.
 
-The four candidate mechanisms in the muscle, in the order I would bet on them:
+### B.8 CONFIRMED LIVE: the exported gate field cannot be trusted
+New finding, and it substantiates B.5 with evidence.
 
-  1. AsciiChar is a single ANSI byte (line 81). Any key whose AsciiChar is 0
-     is discarded outright by `else if (c != 0)` on line 88, with nothing
-     logged. The correct field to read is
-     ir[i].Event.KeyEvent.uChar.UnicodeChar, falling back to
-     wVirtualKeyCode when that is also 0. This is the single most likely
-     cause and it is a two-line change.
+K9 Rule 10 says to read the actual interact-gate field at the moment you send
+the test key. The obvious candidate, pieces/display/active_gui_index.txt, is
+INSUFFICIENT. It read "1" in nav mode AND "1" in active interact mode - it
+did not change when the gate engaged.
 
-  2. Only six virtual keys are mapped (lines 83-87): the four arrows and
-     Escape. Every other non-ASCII key — F1-F12, Insert, Delete, Home, End,
-     PageUp/PageDown, numpad operators, and all modifier-only presses — is
-     dropped. Note Delete is the interesting one: it arrives with AsciiChar
-     127 so it survives by accident, but it is unmapped by intent.
+Cause, chtpm_parser.c:2242-2243:
+    if (active_index != -1) active_gui_idx = elements[active_index].interactive_idx;
+    else                   active_gui_idx = elements[focus_index].interactive_idx;
+When focus and active are the same element, both branches write the same
+value, so the file cannot distinguish nav-focus from active-mode.
 
-  3. Console mode flags (line 30). ENABLE_VIRTUAL_TERMINAL_INPUT is not set,
-     so VT-native and pasted input never arrives. ENABLE_QUICK_EDIT_MODE is
-     not explicitly cleared, so dragging a text selection in the window can
-     swallow keystrokes outright — a Windows-only "some keys just don't
-     register" that has no Linux equivalent at all.
-     ENABLE_PROCESSED_INPUT is set and line 35 turns key 3 into a
-     GenerateConsoleCtrlEvent, so Ctrl+C never arrives as a key.
+The only reliable gate signal found is the FRAME TEXT: the "[^]" marker
+replacing "[>]", and the "Active [^]:  (ESC to exit)" line.
 
-  4. No dwRepeatCount filter (line 78 tests bKeyDown only). Auto-repeat
-     floods the log with duplicates — visible above as 1002 x10 and 1003 x11.
-     Not a drop, but it makes the log harder to read and can double-insert
-     characters in the editor.
-
-Note that the two defects I originally blamed, B.2 (backspace swallowed at
-agy-text-editor_manager.c:580) and B.3 ('2'/'6' stolen as commands at
-:652-657), are still genuine bugs worth fixing on both platforms — but they
-are not why Windows differs from Linux, and I withdraw them as the
-explanation.
+This matters because agy-text-editor_manager.c cannot read the frame, and
+the exported gate file cannot tell it either. So the manager really does have
+no way to know whether interact mode is engaged - which is the root of both
+B.2 and B.3, and it is the protocol gap B.5 describes. Fixing B.2/B.3
+properly requires the fix in B.5, not a local branch reorder.
 
 ### B.1 The forwarding chain (verified end to end, platform-identical)
 
@@ -548,25 +531,31 @@ pieces/keyboard/history.txt, not a test I performed.
 ## PRIORITY ORDER I RECOMMEND (for discussion, not decided)
 ================================================================================
 
-STEP 0 (do this first, it is free): reproduce Bug B exactly as described in
-   B.7 — enter agy interact mode, type "hello123", press Backspace, stop.
-   Then read the keyboard history.txt histogram. This decides whether the
-   muscle is dropping the keys or the fault is further down. Do not start
-   fixing until this is known.
+STEP 0 (DONE 2026-09-26, root caused - see FRAME_REPORT_20260926-1540):
+   Bug B is not a key-path bug at all. The agy manager is never compiled on
+   Windows. Fix is one line in the hardcoded project list in
+   pieces/buttons/windows/legacy/compile_all.ps1:39-44, then rebuild.
 
-1. B.4 points 1 and 2 — read UnicodeChar instead of AsciiChar, and add the
-   missing virtual key codes, in keyboard_input_win.c. Contained to one
-   file, and it is the only platform-specific link in the key chain.
-2. B.4 point 3 — fix the console mode flags (add ENABLE_VIRTUAL_TERMINAL_INPUT,
-   clear ENABLE_QUICK_EDIT_MODE). Same file, one line.
-3. A1 SetConsoleOutputCP(65001) in the orchestrator Windows branch, plus the
-   A.5 diagnostic, to confirm A. One line, most likely the whole of Bug A.
-4. B.4 point 4 — filter dwRepeatCount so held keys stop flooding the log.
-5. B.2 backspace in agy. One branch reorder in agy-text-editor_manager.c.
-   Real bug, but cross-platform, so it is not the Windows regression.
-6. B.5 the interact-mode protocol bit, which then unblocks a correct B.3.
-7. B.3 '2'/'6' stealing. Must come after B.5 or it will regress.
-8. A3 the ASCII conversion, if the product wants to abandon the glyphs
+0. Add agy-text-editor to compile_all.ps1:39-44 and rebuild. This is the
+   actual Bug B fix, and it is the prerequisite for testing anything else in
+   the agy manager.
+1. THEN re-run the FRAME_REPORT T3 test (printable keys in interact mode).
+   document.txt should change. If it does, B.2/B.3 become observable for the
+   first time and can be fixed with live evidence.
+2. B.5 the interact-mode protocol bit, which unblocks a correct B.2 and B.3.
+   Now evidence-backed by B.8 - the exported gate file provably cannot carry
+   the state, so this needs a real protocol change, not a branch reorder.
+3. B.2 backspace, and B.3 '2'/'6' - both cross-platform, both currently
+   untestable because the binary does not exist.
+4. A1 SetConsoleOutputCP(65001) in the orchestrator Windows branch, plus the
+   A.5 diagnostic, to confirm A. Unrelated to Bug B; still untouched.
+5. B.4 points 1-3 in keyboard_input_win.c - the AsciiChar weakness. STILL
+   WORTH FIXING but NO LONGER the reported symptom. To test it at all you
+   need a real synthetic keypress: per K9 Rule 11 a file append gives a
+   false PASS on the capture path, so use SendInput, the Windows equivalent
+   of the XTest injector K9 prescribes on Linux.
+6. B.4 point 4 - filter dwRepeatCount so held keys stop flooding the log.
+7. A3 the ASCII conversion, if the product wants to abandon the glyphs
    instead of fixing the encoding.
 
 ================================================================================
