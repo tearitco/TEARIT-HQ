@@ -1,5 +1,5 @@
 # Custom operations for wsr-pal's prisc+x program (the pal/prisc+x
-# port, per Mar$.$treetRace.wsr]Q]k32/dox/00-overview.md's own 5-phase
+# port, per MarS.StreetRace.wsr]Q]k32/dox/00-overview.md's own 5-phase
 # plan - this is phases 1-2, "entities become pieces, verbs become
 # ops," starting with ONE corporation as the vertical slice).
 # Format: name type handler {description}

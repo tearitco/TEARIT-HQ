@@ -1,4 +1,4 @@
-/* wsr_news_op - real port of Mar$.$treetRace.wsr]Q]k32/news_loop.c's
+/* wsr_news_op - real port of MarS.StreetRace.wsr]Q]k32/news_loop.c's
  * genuinely-working mechanic: scan every corp's latest price move,
  * sort by biggest |change%| first, write a real "FINANCIAL NEWS
  * HEADLINES" report - this is the exact thing the real game.c's main

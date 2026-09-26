@@ -6,7 +6,7 @@
  *
  * decision_mode=1 (weighted) is a REAL PORT, not a stub - see
  * fundamental_value() below, ported directly from wsr-pal's own
- * Mar$.$treetRace.wsr]Q]k32/analysis_loop.c's compute_new_stock_price()
+ * MarS.StreetRace.wsr]Q]k32/analysis_loop.c's compute_new_stock_price()
  * (book value per share x market cap multiplier x leverage factor x
  * risk-bias factor, blended 70/30 with current price momentum) - same
  * formula, same risk_bias weights.txt convention wsr-pal already uses

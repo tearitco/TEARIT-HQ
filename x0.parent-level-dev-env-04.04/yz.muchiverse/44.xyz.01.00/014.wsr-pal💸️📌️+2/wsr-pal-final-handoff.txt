@@ -7,7 +7,7 @@ any prior session. Read this whole file before touching code.
 --------------------------------------------------------------------------
 wsr-pal is a port of a real, locally-written stock-market/corporate-
 economy game ("Wall Street Raider" clone, original C source at
-`Mar$.$treetRace.wsr]Q]k32/` inside this same wsr-pal directory) onto
+`MarS.StreetRace.wsr]Q]k32/` inside this same wsr-pal directory) onto
 this whole family's own pal/prisc+x bytecode-VM architecture (the same
 one muchi-evo-pal, muchi-pal-chat, mutaclsym use). The goal, per the
 user's own framing: an eventual realistic economic sim where
@@ -80,7 +80,7 @@ covers ONLY wsr-pal's own state; the bigger vision docs are named in
 
 2. THE SINGLE MOST IMPORTANT FINDING OF THIS WHOLE PROJECT
 --------------------------------------------------------------------------
-**The real original C source (`Mar$.$treetRace.wsr]Q]k32/`) is FAR
+**The real original C source (`MarS.StreetRace.wsr]Q]k32/`) is FAR
 sparser than its own menu text promises. Read `game.c` directly (485
 lines, especially the numbered-choice dispatch around lines 355-455)
 before assuming ANYTHING in the original game actually works.**

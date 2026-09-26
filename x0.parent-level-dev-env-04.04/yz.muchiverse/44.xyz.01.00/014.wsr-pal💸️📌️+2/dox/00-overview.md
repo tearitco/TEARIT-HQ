@@ -1,4 +1,4 @@
-# wsr-pal ("Wall $treet Race") — overview + editor-ops rewrite scope
+# wsr-pal ("Wall Street Race") — overview + editor-ops rewrite scope
 
 Localized doc for this project specifically. Cross-reference:
 `2.muchi-verse/GRAND-ARCHITECTURE.md` (the family-wide plan this project
@@ -10,11 +10,13 @@ not exhaustive.
 **Where the real content lives**: the actual project is NOT at this
 directory's top level - it's one level down, in a directory with a
 decorated/garbled name:
-`wsr-pal/Mar$.$treetRace.wsr]Q]k32/`. That's almost certainly an
-artifact of how it got exported/zipped at some point, not an
-intentional name. Consider renaming it to something plain
-(`wsr-pal/game/` or similar) during the eventual rewrite - not done
-here, this doc just documents where things are today.
+`wsr-pal/MarS.StreetRace.wsr]Q]k32/`. That name was almost certainly an
+artifact of how it got exported/zipped at some point, not an intentional
+name. It was renamed 2026-09-26 from `Mar$.$treetRace.wsr]Q]k32`: the two
+`$` characters were shell-variable metacharacters, so the directory could
+not be opened without `-LiteralPath` and single quotes in both PowerShell
+and bash. The house's `]` bracket-glitch is intentional house style and was
+kept deliberately.
 
 
 ## 1. What this actually is, architecturally

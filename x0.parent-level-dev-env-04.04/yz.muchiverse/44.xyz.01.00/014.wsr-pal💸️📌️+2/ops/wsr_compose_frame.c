@@ -267,9 +267,9 @@ static void compose_wizard_frame(const char *menu_state_path, FILE *out, const c
     if (step == 1 || step == 2) {
         char list_path[PATH_BUF];
         if (step == 1) {
-            snprintf(list_path, sizeof(list_path), "%s/Mar$.$treetRace.wsr]Q]k32/corporations/36_industries_wsr.txt", project_root);
+            snprintf(list_path, sizeof(list_path), "%s/MarS.StreetRace.wsr]Q]k32/corporations/36_industries_wsr.txt", project_root);
         } else {
-            snprintf(list_path, sizeof(list_path), "%s/Mar$.$treetRace.wsr]Q]k32/governments/generated/gov-list.txt", project_root);
+            snprintf(list_path, sizeof(list_path), "%s/MarS.StreetRace.wsr]Q]k32/governments/generated/gov-list.txt", project_root);
         }
         FILE *lf = fopen(list_path, "r");
         if (lf) {

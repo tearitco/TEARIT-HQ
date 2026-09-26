@@ -3,9 +3,10 @@
 
 $ErrorActionPreference = "Continue"
 $SCRIPT_DIR = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-# Source tree uses a $ in the name; match ensure_entities.sh path literally.
-$CORP_SRC = Join-Path $SCRIPT_DIR 'Mar$.$treetRace.wsr]Q]k32\corporations\generated'
-$GOV_SRC  = Join-Path $SCRIPT_DIR 'Mar$.$treetRace.wsr]Q]k32\governments\generated'
+# Source tree renamed 2026-09-26 to drop the $ metacharacters; still match
+# ensure_entities.sh path literally, and the house's ] is not a glob char.
+$CORP_SRC = Join-Path $SCRIPT_DIR 'MarS.StreetRace.wsr]Q]k32\corporations\generated'
+$GOV_SRC  = Join-Path $SCRIPT_DIR 'MarS.StreetRace.wsr]Q]k32\governments\generated'
 $DEST     = Join-Path $SCRIPT_DIR "projects\wsr-pal\pieces"
 
 function Get-FirstDecimal([string]$text, [string]$label) {

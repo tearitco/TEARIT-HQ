@@ -47,7 +47,7 @@ OPTIONAL / NOT REQUIRED FOR CORE PLAY
 -------------------------------------
   emoji_gen_atlas  needs FreeType (ft2build.h) — install
                    mingw-w64-x86_64-freetype if you want runtime emoji gen.
-  ensure_entities  only seeds from Mar$.$treetRace.../generated if present;
+  ensure_entities  only seeds from MarS.StreetRace.../generated if present;
                    this tree already has projects/wsr-pal/pieces/* populated.
 
 KNOWN WINDOWS LIMITS (from 1.TPMOS WINDOWS-RUN-GUIDE)
