@@ -40,6 +40,7 @@
 #ifndef _WIN32
 #include <dirent.h>
 #include <sys/stat.h>
+#endif
 
 /* Forward decl - ktb_init() (below) needs this before its own real
  * definition, further down this file (see that definition's own header
@@ -88,6 +89,7 @@ static int ktb_proc_snapshot_find(const KtbProcSnapEntry *snap, int n, const cha
  * beside ktb_reload(). */
 static void ktb_load_zorder_mode(KtbState *s);
 
+#ifndef _WIN32
 /* REAL, NEW 2026-08-25 (direct request: a general "kill hq" menu row that
  * covers EVERYTHING the taskbar launches, not just a fixed -hq binary
  * name list — real live test proved the fixed-list kill_hq_windows.sh
@@ -264,6 +266,50 @@ static int win_spawn_cwd(const char *exe, const char *arg) {
     const char *a = arg ? arg : ".";
     return win_spawn_n(exe, &a, 1);
 }
+static int ktb_win_pid_alive(int pid) {
+    HANDLE h;
+    DWORD code = 0;
+    if (pid <= 1) return 0;
+    h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, (DWORD)pid);
+    if (!h) return 0;
+    if (!GetExitCodeProcess(h, &code)) { CloseHandle(h); return 0; }
+    CloseHandle(h);
+    return code == STILL_ACTIVE;
+}
+
+/* POSIX kill() shim. sig==0 is a LIVENESS PROBE, not a kill - the
+ * SIGTERM-then-SIGKILL escalation sites (load_tabs dup handling, quit
+ * sweeps) branch on it, so treating it as a kill would reap live PIDs. */
+static int ktb_win_kill(int pid, int sig) {
+    HANDLE h;
+    if (pid <= 1) return -1;
+    if (sig == 0) return ktb_win_pid_alive(pid) ? 0 : -1;
+    h = OpenProcess(PROCESS_TERMINATE, FALSE, (DWORD)pid);
+    if (!h) return -1;
+    TerminateProcess(h, (UINT)sig);
+    CloseHandle(h);
+    return 0;
+}
+#define kill(pid, sig) ktb_win_kill((int)(pid), (int)(sig))
+#define getpid() ((int)GetCurrentProcessId())
+#  ifndef SIGTERM
+#    define SIGTERM 15
+#  endif
+#  ifndef SIGKILL
+#    define SIGKILL 9
+#  endif
+
+/* POSIX-only helper: wraps a `setsid nohup sh -c '...' &` string and
+ * registers the setsid group-leader PID. No Windows equivalent exists -
+ * cmd.exe cannot parse that form, and the Windows launch path is
+ * win_spawn_n() above. The one call site (the `widget:` menu row) is a
+ * POSIX-shell-only feature and discards rc with (void)rc, so returning
+ * -1 leaves that row inert rather than half-firing. */
+static int ktb_system_recorded(const char *house_root, const char *cmd) {
+    (void)house_root; (void)cmd;
+    return -1;
+}
+
 static void ktb_kill_by_exe(const char *stem) {
     HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (snap == INVALID_HANDLE_VALUE) return;

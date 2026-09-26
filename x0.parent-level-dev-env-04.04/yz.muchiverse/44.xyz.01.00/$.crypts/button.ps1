@@ -122,6 +122,7 @@ function Invoke-CompileKhtpm {
     # Do NOT resurrect archived tp_taskbar_win.c / khtpm_taskbar_plat_win.c.
     $tbOps = ConvertTo-WinHousePath (Join-Path $HOUSE "_.monads\_.livedesk-taskbar\ops")
     $tbOutDir = ConvertTo-WinHousePath (Join-Path $tbOps "+x")
+    $shared = ConvertTo-WinHousePath (Join-Path $HOUSE "&.widgits\_shared-lib")
     Write-Host "  taskbar ops: $tbOps"
 
     if (-not (Test-Path -LiteralPath $tbOutDir)) {
@@ -135,7 +136,10 @@ function Invoke-CompileKhtpm {
         Write-Host "gcc khtpm_taskbar_manager_main.c + manager.c -> khtpm_taskbar_manager_main.exe"
         Push-Location -LiteralPath $tbOutDir
         try {
-            & gcc -Wall -O2 -mwindows -o "khtpm_taskbar_manager_main.exe" `
+            # -I "$shared" is required: khtpm_taskbar_manager.c includes
+            # kh_proc_registry.h from &.widgits/_shared-lib, same as
+            # build_khtpm_strip.sh's own manager line on Linux.
+            & gcc -Wall -O2 -mwindows -I "$shared" -o "khtpm_taskbar_manager_main.exe" `
                 "..\khtpm_taskbar_manager_main.c" "..\khtpm_taskbar_manager.c"
             if ($LASTEXITCODE -ne 0) { $rc = 1; Write-Host "FAIL khtpm_taskbar_manager_main" }
             else { Write-Host "OK khtpm_taskbar_manager_main" }
@@ -159,8 +163,17 @@ function Invoke-CompileKhtpm {
             else { Write-Host "OK khtpm_strip_parser (shared core + win shim)" }
         } finally { Pop-Location }
     } else {
-        Write-Host "MISS khtpm_strip_parser.c / layout / x11_win shim"
-        $rc = 1
+        # khtpm_strip_parser.c + khtpm_strip_layout.c were deleted upstream in
+        # 19774224 ("delete dead source files from the consolidation"). The
+        # tracked .exe still runs, so keep it and say so rather than failing
+        # the whole compile over a source that is intentionally gone.
+        $pre = Join-Path $tbOutDir "khtpm_strip_parser.exe"
+        if (Test-Path -LiteralPath $pre) {
+            Write-Host "SKIP khtpm_strip_parser - sources deleted in 19774224; keeping tracked binary"
+        } else {
+            Write-Host "FAIL khtpm_strip_parser - sources deleted upstream and no tracked binary"
+            $rc = 1
+        }
     }
 
     $rgb = Join-Path $tbOps "tp_desktop_window_rgb.c"
@@ -180,8 +193,18 @@ function Invoke-CompileKhtpm {
             }
         } finally { Pop-Location }
     } else {
-        Write-Host "MISS tp_desktop_window_rgb.c"
-        $rc = 1
+        # tp_desktop_window_rgb.c was deleted upstream in 19774224 (folded into
+        # khtpm_core_render.c, which is X11-only: 0 _WIN32, 93 X11 refs).
+        # khtpm_entity.c is its designated successor and is partially ported, but
+        # still includes POSIX sys/wait.h + sys/select.h, so it cannot build
+        # under MinGW without a real port. Keep the tracked binary and say so.
+        $pre = Join-Path $tbOutDir "tp_desktop_window_rgb.exe"
+        if (Test-Path -LiteralPath $pre) {
+            Write-Host "SKIP tp_desktop_window_rgb - source deleted in 19774224, successor khtpm_entity.c still needs POSIX sys/wait.h; keeping tracked binary"
+        } else {
+            Write-Host "FAIL tp_desktop_window_rgb - sources deleted upstream and no tracked binary"
+            $rc = 1
+        }
     }
     return $rc
 }

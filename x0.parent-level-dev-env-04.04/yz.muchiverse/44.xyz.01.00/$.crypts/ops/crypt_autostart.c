@@ -672,6 +672,35 @@ static void quit_current_livedesk(const char *house_root) {
 }
 #endif
 
+#ifdef _WIN32
+/* Registry hygiene only - deliberately NOT the full quit_current_livedesk().
+ * That routine emits entity CLOSE records under #.desktop/, and the live
+ * manager matches them by entity NAME, so it reaped the very instances
+ * win-start-livedesk.ps1 had just launched (pals flickering 1 -> 0 -> 1
+ * -> 0 and settling at 0). Its step 5 is still required, though:
+ * #.desktop/livedesk_open.txt is append-only, so without a truncate it
+ * grows every boot - 160 stale PID entries after 10 boots - until a
+ * recycled stale PID collides with a freshly spawned pal and the manager's
+ * duplicate handler SIGTERMs a live one. And the process teardown here
+ * would be redundant anyway: win-start-livedesk.ps1 already force-kills
+ * the runtime processes by name before it reads the pdl. */
+static void clear_livedesk_registries(const char *house_root) {
+    char open_path[PATH_BUF], claims_path[PATH_BUF], tbar_pid_path[PATH_BUF];
+    FILE *wf;
+    join_path(open_path, sizeof(open_path), house_root, "#.desktop/livedesk_open.txt");
+    join_path(claims_path, sizeof(claims_path), house_root,
+              "#.desktop/livedesk-nav-claims/livedesk_nav_claims.txt");
+    join_path(tbar_pid_path, sizeof(tbar_pid_path), house_root, "#.desktop/livedesk_taskbar.pid");
+    path_norm_slashes(open_path);
+    path_norm_slashes(claims_path);
+    path_norm_slashes(tbar_pid_path);
+    wf = fopen(open_path, "w"); if (wf) fclose(wf);
+    wf = fopen(claims_path, "w"); if (wf) fclose(wf);
+    remove(tbar_pid_path);
+    printf("crypt_autostart: cleared livedesk PID registries (win)\n");
+}
+#endif
+
 static int launch_one(const char *house_root, const char *label, const char *cmd_raw) {
     char args[MAX_ARGS][PATH_BUF];
     int n = tokenize_cmd(cmd_raw, args, MAX_ARGS);
@@ -822,7 +851,9 @@ int main(int argc, char **argv) {
     }
     printf("crypt_autostart: house_root=%s pdl=%s\n", house_root, pdl_path);
 
-#ifndef _WIN32
+#ifdef _WIN32
+    if (house_root[0]) clear_livedesk_registries(house_root);
+#else
     if (house_root[0]) quit_current_livedesk(house_root);
 #endif
 
