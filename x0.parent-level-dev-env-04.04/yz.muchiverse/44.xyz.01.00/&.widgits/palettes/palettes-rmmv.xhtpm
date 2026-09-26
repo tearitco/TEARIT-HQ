@@ -12,7 +12,7 @@
      caps the tile grid to the leftover budget after the choosers/counts
      and sets truncated=1 when it had to drop tiles. -->
 <window label="palettes: RPG Maker Tiles" class="palettes-pal database-window" vars="state/palettes-rmmv_ui.txt">
-  <module src="*.monads/*.livedesk-taskbar/ops/+x/palettes_manager.+x" args="rmmv"/>
+  <module src="_.monads/_.livedesk-taskbar/ops/+x/palettes_manager.+x" args="rmmv"/>
   <module src="&.widgits/palettes/ops/+x/palettes_projector.+x" id="rmmv"/>
   <page name="main">
     <!-- Chrome: a close button declared IN the template (generic CLOSE

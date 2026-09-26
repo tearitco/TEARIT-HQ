@@ -1,4 +1,4 @@
-# build.ps1 - Windows twin of build_db_hq.sh (*.livedesk-taskbar)
+# build.ps1 - Windows twin of build_db_hq.sh (_.livedesk-taskbar)
 # ASCII only.
 
 $ErrorActionPreference = "Continue"
@@ -51,7 +51,7 @@ Write-Host "OK +x/khtpm_hq_render.+x"
 
 # ===== NEXT SCRIPT =====
 
-# build.ps1 - Windows twin of build_db_hq_manager.sh (*.livedesk-taskbar)
+# build.ps1 - Windows twin of build_db_hq_manager.sh (_.livedesk-taskbar)
 # ASCII only.
 
 $ErrorActionPreference = "Continue"
@@ -88,7 +88,7 @@ Write-Host "OK +x/khtpm_hq_manager.+x"
 
 # ===== NEXT SCRIPT =====
 
-# build.ps1 - Windows twin of build_core_render.sh (*.livedesk-taskbar)
+# build.ps1 - Windows twin of build_core_render.sh (_.livedesk-taskbar)
 # ASCII only.
 
 $ErrorActionPreference = "Continue"
@@ -150,7 +150,7 @@ Write-Host "OK +x/khtpm_core_render.+x"
 
 # ===== NEXT SCRIPT =====
 
-# build.ps1 - Windows twin of build_khtpm_strip.sh (*.livedesk-taskbar)
+# build.ps1 - Windows twin of build_khtpm_strip.sh (_.livedesk-taskbar)
 # ASCII only.
 
 $ErrorActionPreference = "Continue"
@@ -174,7 +174,7 @@ if (-not (Get-Command gcc -ErrorAction SilentlyContinue)) {
 #
 # PRODUCTION BINARY NAMES (2026-08-11): legacy tp_taskbar.c has been
 # retired (archived to
-# *.monads/*.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip, originals
+# _.monads/_.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip, originals
 # deleted — direct instruction: "id like to deprecate the old toolbar
 # system now"). This khtpm pair is now the real, only taskbar — dropped
 # the "_test" suffix these binaries carried through the whole build-out

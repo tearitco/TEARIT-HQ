@@ -6,7 +6,7 @@
      own dbhq_inject_palette_tiles(), reading palettes_manager.c's own
      published palettes-emojis_state.txt - not baked into this file. -->
 <window class="database-window palettes">
-  <module src="*.monads/*.livedesk-taskbar/ops/+x/palettes_manager.+x" args="emojis" />
+  <module src="_.monads/_.livedesk-taskbar/ops/+x/palettes_manager.+x" args="emojis" />
   <panel class="settings-block">
     <title class="block-title" label="palettes: Emojis"/>
     <text class="pal-hint" label="Click an emoji to place it on the desk."/>

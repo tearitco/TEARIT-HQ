@@ -42,7 +42,7 @@ current plan. Each carries a top-of-file HISTORIC banner.
 - `&.widgits/board-viewer/` — `pal/main_module.pal` (the loop to port),
   `default_op.txt`, `ops/bv_render_3d.c` (raymarch), `ops/bv_menu_input.c`,
   `ops/bv_compose_frame.c`.
-- `*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c` — the shared X11
+- `_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c` — the shared X11
   window binary: `handle_key` Interact forward (~7060), `kh_scan_interact_relay`
   (~4510), `kh_interact_append_13` (~4595), `hq_run_event_loop` (~8524).
 - Reference: `1.TPMOS…/projects/fuzz-op/`, `pieces/chtpm/plugins/chtpm_parser.c`,

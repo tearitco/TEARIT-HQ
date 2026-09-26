@@ -5,7 +5,7 @@
 #
 # PRODUCTION BINARY NAMES (2026-08-11): legacy tp_taskbar.c has been
 # retired (archived to
-# *.monads/*.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip, originals
+# _.monads/_.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip, originals
 # deleted — direct instruction: "id like to deprecate the old toolbar
 # system now"). This khtpm pair is now the real, only taskbar — dropped
 # the "_test" suffix these binaries carried through the whole build-out

@@ -29,7 +29,7 @@ $BIN_EXE = Join-Path $BIN_DIR "crypt_autostart.+x.exe"
 $SRC = Join-Path $SCRIPT_DIR "ops\crypt_autostart.c"
 $HOUSE = Split-Path -Parent $SCRIPT_DIR
 
-# Linux house dirs are named "*.monads", "*.livedesk-taskbar", ...
+# Linux house dirs are named "_.monads", "_.livedesk-taskbar", ...
 # Windows forbids "*" in a path component; this checkout uses "_.monads", ...
 # Alias at resolve time so PDL/Linux spelling can stay "*.foo".
 function ConvertTo-WinHousePath {
@@ -115,12 +115,12 @@ function Invoke-InstallDesktop {
 }
 
 function Invoke-CompileKhtpm {
-    # Current taskbar lives in *.monads/*.livedesk-taskbar/ops (Win: _.monads\...).
+    # Current taskbar lives in _.monads/_.livedesk-taskbar/ops (Win: _.monads\...).
     # Linux build_khtpm_strip.sh is unchanged. We compile:
     #   khtpm_taskbar_manager_main.exe  (shared C, already has _WIN32 shims)
     #   khtpm_strip_parser.exe          (same khtpm_strip_parser.c as Linux + x11_win shim)
     # Do NOT resurrect archived tp_taskbar_win.c / khtpm_taskbar_plat_win.c.
-    $tbOps = ConvertTo-WinHousePath (Join-Path $HOUSE "*.monads\*.livedesk-taskbar\ops")
+    $tbOps = ConvertTo-WinHousePath (Join-Path $HOUSE "_.monads\_.livedesk-taskbar\ops")
     $tbOutDir = ConvertTo-WinHousePath (Join-Path $tbOps "+x")
     Write-Host "  taskbar ops: $tbOps"
 
@@ -240,8 +240,8 @@ function Invoke-Run {
     }
 
     Write-Host "[2/3] Ensure KHTPM Win stubs (if missing)..."
-    $tbParser = ConvertTo-WinHousePath (Join-Path $HOUSE "*.monads\*.livedesk-taskbar\ops\+x\khtpm_strip_parser.exe")
-    $tbMgr = ConvertTo-WinHousePath (Join-Path $HOUSE "*.monads\*.livedesk-taskbar\ops\+x\khtpm_taskbar_manager_main.exe")
+    $tbParser = ConvertTo-WinHousePath (Join-Path $HOUSE "_.monads\_.livedesk-taskbar\ops\+x\khtpm_strip_parser.exe")
+    $tbMgr = ConvertTo-WinHousePath (Join-Path $HOUSE "_.monads\_.livedesk-taskbar\ops\+x\khtpm_taskbar_manager_main.exe")
     $needK = -not (Test-Path -LiteralPath $tbParser) -or -not (Test-Path -LiteralPath $tbMgr)
     if ($needK) {
         $null = Invoke-CompileKhtpm
@@ -296,7 +296,7 @@ elseif ($act -eq "check") {
     $bin = Get-CryptBin
     if ($bin) { Write-Host "OK $bin" } else { Write-Host "MISSING crypt_autostart" }
     if (Test-Path -LiteralPath $PDL) { Write-Host "OK $PDL" } else { Write-Host "MISSING $PDL" }
-    $tb = ConvertTo-WinHousePath (Join-Path $HOUSE "*.monads\*.livedesk-taskbar\ops\+x")
+    $tb = ConvertTo-WinHousePath (Join-Path $HOUSE "_.monads\_.livedesk-taskbar\ops\+x")
     Get-ChildItem -LiteralPath $tb -Filter "khtpm_strip_parser*" -ErrorAction SilentlyContinue |
         ForEach-Object { Write-Host "OK $($_.FullName)" }
     Get-ChildItem -LiteralPath $tb -Filter "khtpm_taskbar_manager_main*" -ErrorAction SilentlyContinue |

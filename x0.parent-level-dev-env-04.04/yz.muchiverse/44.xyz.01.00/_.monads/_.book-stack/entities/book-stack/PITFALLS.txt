@@ -18,7 +18,7 @@ redirects (`2>/dev/null`, from nested `$(find ... 2>/dev/null)` command
 substitutions) INSIDE an XML/HTML attribute value, so they get entity-encoded
 as `2&gt;/dev/null` in the source .chtpm file (correct, required XML encoding
 for a literal `>` inside an attribute). The RENDERER's own decode_entities()
-(&.widgits/*.livedesk-taskbar/ops/khtpm_core_render.c) only decoded
+(&.widgits/_.livedesk-taskbar/ops/khtpm_core_render.c) only decoded
 `&quot;` and `&amp;` — `&gt;` fell through UNCHANGED, so the REAL command
 dispatch() ran contained the literal 4-character text `&gt;` where a real `>`
 was needed. `/bin/sh` parses `find ... -type d 2&gt;/dev/null` as: `find`

@@ -5,7 +5,7 @@
 # Voices: TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural), 2. 🧠 H-AI (HARNECIENT MODE) ROUTES DETERMINISTICALLY (en-US-AnaNeural), 3. ✅ THE HARNESS PROVES IT (en-US-AnaNeural), MAXINE (en-GB-MaisieNeural), IQA (en-US-AnaNeural)
 # Topic: HARNECIENT Training Session
 
-**TOMO:** The taskbar (`*.monads/*.livedesk-taskbar/`) is a two-process pair: the **parser** (rendering, hit-testing) and the manager (logic — tabs, desks, sessions). They talk over files in #.desktop/. Those files are our control surface. An agent with read/write tools can touch every one of them:
+**TOMO:** The taskbar (`_.monads/_.livedesk-taskbar/`) is a two-process pair: the **parser** (rendering, hit-testing) and the manager (logic — tabs, desks, sessions). They talk over files in #.desktop/. Those files are our control surface. An agent with read/write tools can touch every one of them:
 
 **RAHWEH:** And h-ai's tools — read/write/edit/run — can operate on all of these.
 

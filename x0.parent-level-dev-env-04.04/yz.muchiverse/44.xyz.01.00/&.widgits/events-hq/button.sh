@@ -38,7 +38,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 [ -z "${EZ_PKG_DIR:-}" ] && [ -n "${1:-}" ] && exec sh "$HERE/button-pal.sh" "$@"
 # ----------------------------------------------------------------------
 
-OPS_DIR="$HERE/../../*.monads/*.livedesk-taskbar/ops"
+OPS_DIR="$HERE/../../_.monads/_.livedesk-taskbar/ops"
 BIN="$OPS_DIR/+x/khtpm_core_render.+x"
 CHTPM="$HERE/pieces/dashboard.chtpm"
 

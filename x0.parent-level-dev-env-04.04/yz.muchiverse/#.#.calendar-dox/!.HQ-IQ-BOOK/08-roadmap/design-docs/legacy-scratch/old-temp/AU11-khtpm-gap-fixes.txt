@@ -103,7 +103,7 @@ LEADING HYPOTHESIS — concrete, reasoned, NOT YET CONFIRMED, check this
 FIRST
 ===========================================================================
 khtpm_strip_header.chtpm's real structure (read the file directly,
-*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm):
+_.monads/_.livedesk-taskbar/khtpm_strip_header.chtpm):
 
     <panel>                                          <- likely index 0
       <button label="HQ" onClick="ACTIVATE:1">        <- likely index 1
@@ -207,7 +207,7 @@ refresh on new session or 256kb limit"): #.desktop/khtpm_strip_frame_history.txt
   was added specifically because the investigation above kept guessing at
   tree indices instead of just reading them. USE IT.
 
-To use: launch the new pair (sh *.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh new,
+To use: launch the new pair (sh _.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh new,
 or the house-root delegator sh run-khtpm-strip.sh new), then read
 #.desktop/khtpm_strip_frame_history.txt directly — no live human
 interaction needed to see the very first line's fresh-load state.
@@ -223,9 +223,9 @@ after a real sleep, don't trust the launch command's own exit code.
 FILES INVOLVED, WITH LINE NUMBERS (as of this handoff — re-check if the
 file has been edited since)
 ===========================================================================
-- khtpm_strip_header.chtpm (*.monads/*.livedesk-taskbar/, the layout
+- khtpm_strip_header.chtpm (_.monads/_.livedesk-taskbar/, the layout
   markup itself)
-- khtpm_strip_layout.c / .h (*.monads/*.livedesk-taskbar/ops/):
+- khtpm_strip_layout.c / .h (_.monads/_.livedesk-taskbar/ops/):
   - lay_build_tree()        line 264 — tag tree construction, index
                              assignment happens here
   - lay_is_interactive()    line 406
@@ -682,7 +682,7 @@ pre-monad-relocation path (&.widgits/livedesk-taskbar/...) — silently
 undoing the earlier hand-fix to autostart.pdl every time the khtpm
 manager shut down (including every button_khtpm.sh run's own quit_all
 step). Fixed: corrected the hardcoded string to the real current path
-(*.monads/*.livedesk-taskbar/ops/+x/tp_taskbar.+x).
+(_.monads/_.livedesk-taskbar/ops/+x/tp_taskbar.+x).
 
 VERIFIED LIVE, full clean cycle: killed everything, rebuilt all 3
 binaries (tp_desktop_window.+x, khtpm_strip_parser_test.+x,
@@ -1064,7 +1064,7 @@ deleting the original."
 ===========================================================================
 
 ARCHIVED (zip verified via `unzip -t`, 67 files, no errors) to
-*.monads/*.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip, originals
+_.monads/_.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip, originals
 deleted:
 - tp_taskbar.c (legacy source, 199KB), tp_taskbar.+x, tp_taskbar.exe,
   tp_taskbar_win.c (Windows port, explicitly marked "LEGACY: do not add
@@ -1127,7 +1127,7 @@ the sole autostart target):
    binary. Also fixed the SAME stale path in tp_desktop_window_win.c
    (Windows port, still live/unrelated to legacy — found it ALSO had a
    second, independent bug: a pre-monad-relocation directory on the same
-   line, &.widgits\livedesk-taskbar\ instead of *.monads\*.livedesk-taskbar\
+   line, &.widgits\livedesk-taskbar\ instead of _.monads\_.livedesk-taskbar\
    — not build-tested, no Windows environment available this session).
 
 3. $.crypts/ops/crypt_autostart.c's own process-name kill-sweep (both

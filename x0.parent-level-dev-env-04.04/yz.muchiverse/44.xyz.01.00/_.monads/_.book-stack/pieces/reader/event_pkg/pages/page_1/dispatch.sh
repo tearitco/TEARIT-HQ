@@ -15,7 +15,7 @@ HOUSE="$(cd "$SCRIPT_DIR/../../../../../../.." 2>/dev/null && pwd)" || { echo "E
 # warm, several seconds cold or when the tree grew). All three targets
 # are at fixed, known locations - resolve those directly and only fall
 # back to `find` if a direct path is missing.
-BS_ROOT="$(cd "$SCRIPT_DIR/../../../../.." 2>/dev/null && pwd)"   # .../*.monads/*.book-stack
+BS_ROOT="$(cd "$SCRIPT_DIR/../../../../.." 2>/dev/null && pwd)"   # .../_.monads/_.book-stack
 
 # PACKAGE_DIR: prefer the env (meta.pdl), then the fixed entity dir,
 # then a scoped find.

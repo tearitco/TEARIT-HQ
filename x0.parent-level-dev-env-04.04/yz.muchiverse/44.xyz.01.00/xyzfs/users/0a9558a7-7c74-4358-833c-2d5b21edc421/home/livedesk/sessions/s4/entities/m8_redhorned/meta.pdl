@@ -5,8 +5,8 @@ STATE        | kind                 | monster
 STATE        | glyph                | ðŸ‘º
 STATE        | instance_id          | 4TSG
 STATE        | footprint_tiles      | 2
-METHOD       | Ledger               | gedit "*.monads/*.muchi-pet/entities/m8_redhorned/master_ledger.txt"
-METHOD       | Events (ez)          | *.monads/*.muchi-pet/ops/open_event_ez.sh
+METHOD       | Ledger               | gedit "_.monads/_.muchi-pet/entities/m8_redhorned/master_ledger.txt"
+METHOD       | Events (ez)          | _.monads/_.muchi-pet/ops/open_event_ez.sh
 METHOD       | Dir                  | xdg-open
 METHOD       | Inventory          | sh -c 'H="$1"; I="$H/&.widgits/file-explorer/instances/inv-$(basename "$(dirname "$0")")-$(basename "$0")"; mkdir -p "$0/inventory" "$I"; printf "mode=LOAD\nstart_dir=%s/inventory\n" "$0" > "$I/fe_request.txt"; exec sh "$H/&.widgits/file-explorer/button.sh" run-instance "$I"'
 METHOD       | Close                | CLOSE

@@ -2381,7 +2381,7 @@ static void kh_zorder_raise_dock(int raise) {
 static void kh_spawn_zorder_op(int above) {
     char bin[PATH_BUF];
     pid_t p;
-    snprintf(bin, sizeof(bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/ktb_zorder_op.+x", g_house_root);
+    snprintf(bin, sizeof(bin), "%s/_.monads/_.livedesk-taskbar/ops/+x/ktb_zorder_op.+x", g_house_root);
     if (access(bin, X_OK) != 0) {
         kh_focus_debug_log("ZORDER_TOGGLE: %s missing - build_core_render.sh builds it; entities not respawned", bin);
         return;
@@ -11627,7 +11627,7 @@ int main(int argc, char **argv) {
      * not a fixed ops-dir filename like the other 2 modes. */
     {
         char css_path[PATH_BUF];
-        snprintf(css_path, sizeof(css_path), "%s/*.monads/*.livedesk-taskbar/ops/entity_menu_default.css",
+        snprintf(css_path, sizeof(css_path), "%s/_.monads/_.livedesk-taskbar/ops/entity_menu_default.css",
                  g_house_root);
         memset(&g_sheet, 0, sizeof(g_sheet));
         css_load(css_path, &g_sheet);

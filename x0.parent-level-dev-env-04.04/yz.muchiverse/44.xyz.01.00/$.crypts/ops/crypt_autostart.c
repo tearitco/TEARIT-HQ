@@ -64,7 +64,7 @@ static void path_norm_slashes(char *s) {
 }
 
 #ifdef _WIN32
-/* Linux dir names "*.monads" are "_.monads" on this Windows checkout
+/* Linux dir names "_.monads" are "_.monads" on this Windows checkout
  * (* is illegal in an NTFS component). Alias at resolve time so PDL
  * keeps the Linux spelling. Do not call this on Linux. */
 static void win_star_alias(char *path) {
@@ -197,7 +197,7 @@ static void make_rel_to_house(const char *house_root, const char *in, char *out,
         snprintf(out, out_sz, "%s", rest[0] ? rest : ".");
         goto done;
     }
-    /* After yz.muchiverse/<house-folder>/ keep the rest (xyzfs/..., *.monads/...). */
+    /* After yz.muchiverse/<house-folder>/ keep the rest (xyzfs/..., _.monads/...). */
     {
         const char *yz = strstr(in, "/yz.muchiverse/");
         if (!yz) yz = strstr(in, "\\yz.muchiverse\\");
@@ -219,7 +219,7 @@ static void make_rel_to_house(const char *house_root, const char *in, char *out,
         "/@.apps/", "\\@.apps\\",
         "/$.crypts/", "\\$.crypts\\",
         "/xyzfs/", "\\xyzfs\\",
-        "/*.monads/", "\\*.monads\\",
+        "/_.monads/", "\\_.monads\\",
         "/_.monads/", "\\_.monads\\",
         "/101.", "\\101.",
         NULL

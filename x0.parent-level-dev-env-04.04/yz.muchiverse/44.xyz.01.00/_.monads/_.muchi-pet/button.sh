@@ -1,10 +1,10 @@
 #!/bin/bash
 # button.sh - muchi-pet launcher (standalone open).
-# muchi-pet is a MONAD: *.monads/*.muchi-pet/ is the app bundle, its
-# entities live at *.monads/*.muchi-pet/entities/<name>, and the active
+# muchi-pet is a MONAD: _.monads/_.muchi-pet/ is the app bundle, its
+# entities live at _.monads/_.muchi-pet/entities/<name>, and the active
 # monster is chosen by active_monster.pdl (see pieces/monster/button.sh).
 # This root button.sh is the house-standard monad entry point, matching
-# *.monads/*.book-stack/button.sh: window opens the active monster, run
+# _.monads/_.book-stack/button.sh: window opens the active monster, run
 # opens it too (muchi-pet has no always-on reader like book-stack).
 ACTION="${1:-help}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

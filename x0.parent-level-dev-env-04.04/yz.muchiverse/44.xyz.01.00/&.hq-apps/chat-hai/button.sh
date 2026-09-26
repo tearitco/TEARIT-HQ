@@ -19,7 +19,7 @@ OPS_DIR="$HERE/ops"
 # REAL §5d.12 (2026-08-16, khtpm-merge-how2.md) - chat-hai merged into
 # the shared khtpm_core_render.+x binary (last of the 5 window
 # apps). Old chat_hai_hq_render.+x kept as reference/rollback, unused.
-BIN="$(cd "$HERE/../../*.monads/*.livedesk-taskbar/ops" && pwd)/+x/khtpm_core_render.+x"
+BIN="$(cd "$HERE/../../_.monads/_.livedesk-taskbar/ops" && pwd)/+x/khtpm_core_render.+x"
 CHTPM="$HERE/chat-hai.chtpm"
 BOOTSTRAP_TEMPLATE="$HERE/chat-hai.chtpm.bootstrap"
 

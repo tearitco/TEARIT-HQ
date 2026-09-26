@@ -7,11 +7,11 @@ HOUSE_ROOT="${1:-}"
 HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 XHTPM="$HERE/sql-hq.xhtpm"
-BIN="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
+BIN="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
 ENGINE="$HERE/ops/+x/sql_hq.+x"
 PROJ="$HERE/ops/+x/sql_hq_projector.+x"
 
-[ -x "$BIN" ]    || (cd "$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops" && sh build_core_render.sh) || true
+[ -x "$BIN" ]    || (cd "$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops" && sh build_core_render.sh) || true
 [ -x "$ENGINE" ] || sh "$HERE/ops/build_sql_hq.sh" || true
 [ -x "$PROJ" ]   || sh "$HERE/ops/build_sql_hq.sh" || true
 [ -x "$BIN" ]    || { echo "sql-hq: missing $BIN" >&2; exit 1; }

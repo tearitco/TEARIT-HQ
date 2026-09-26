@@ -1833,7 +1833,7 @@ static int poll_agent_relay(void) {
  * this binary's process given the emoji-laden house-root path in
  * argv - a pidfile + graceful SIGTERM handler + button.sh doing a
  * real pgrep -f kill-before-launch (mirroring
- * *.livedesk-taskbar/ops/run_khtpm_strip.sh's own proven pattern) is
+ * _.livedesk-taskbar/ops/run_khtpm_strip.sh's own proven pattern) is
  * the fix, not a bigger hammer. */
 /* REAL module launch (Stage 2d, 2026-08-16) - same real fork()+execv()
  * mechanism as db-hq/events-hq/chat-hai's own launch_module(), adapted

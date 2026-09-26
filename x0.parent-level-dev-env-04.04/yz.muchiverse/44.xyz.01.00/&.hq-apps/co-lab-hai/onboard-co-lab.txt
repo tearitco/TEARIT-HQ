@@ -62,7 +62,7 @@ STALE in the design doc §4.3 — ignore it:
 - Manager process = business logic + publish .chtpm. Renderer = shared
   khtpm_core_render.c only.
 - Build/launch ONLY from:
-    <house_root>/*.monads/*.livedesk-taskbar/ops/
+    <house_root>/_.monads/_.livedesk-taskbar/ops/
     DISPLAY=:0 sh run_khtpm_strip.sh new
   Never gcc from repo root or from &.widgits/_shared-lib.
 - Chrome "_" uses CSS id #chrome-minimize (same pattern as
@@ -75,13 +75,13 @@ STALE in the design doc §4.3 — ignore it:
 ------------------------------------------------
 4. Files you will actually touch
 ------------------------------------------------
-  *.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c
-  *.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager_main.c
+  _.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+  _.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager_main.c
     (merge livedesk_hq_windows_*.txt, publish bottom-strip window cells,
      click -> focus/raise or write restore request)
-  *.monads/*.livedesk-taskbar/ops/khtpm_core_render.c
+  _.monads/_.livedesk-taskbar/ops/khtpm_core_render.c
     (chrome "_", MINIMIZE in dispatch, poll restore file, keep registry)
-  *.monads/*.livedesk-taskbar/ops/entity_menu_default.css
+  _.monads/_.livedesk-taskbar/ops/entity_menu_default.css
     (#chrome-minimize)
 
 ------------------------------------------------

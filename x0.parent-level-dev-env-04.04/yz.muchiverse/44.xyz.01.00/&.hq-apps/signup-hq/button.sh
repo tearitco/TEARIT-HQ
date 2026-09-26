@@ -14,7 +14,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 # signup-hq.xhtpm is a STATIC template (x11-hq style; the projector
 # writes state/ui.txt, never this file) - no bootstrap/restore dance.
 XHTPM="$HERE/signup-hq.xhtpm"
-RENDER_OPS="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
+RENDER_OPS="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops"
 BIN="$RENDER_OPS/+x/khtpm_core_render.+x"
 MGR="$HERE/+x/signup_hq_manager.+x"
 

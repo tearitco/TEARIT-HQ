@@ -43,9 +43,9 @@
 | `&.widgits/event-ez/ops/ez_compose_frame.c` | How event-ez renders the event editor GUI |
 | `xyzfs/bin/muchi-pet/ops/play_event.sh` | The runtime dispatcher — multi-page, multi-trigger |
 | `xyzfs/bin/muchi-pet/ops/+x/mr_change_gold.+x` | The ONLY proven event command op. Study its shape. |
-| `.monads/*.livedesk-taskbar/ops/+x/khtpm_show_text.+x` | Show Text relay writer (already built, no build script) |
-| `.monads/*.livedesk-taskbar/ops/+x/khtpm_show_choices.+x` | Show Choices picker (already built) |
-| `.monads/*.book-stack/entities/book-stack/meta.pdl` | Example entity meta.pdl (METHOD dispatch format) |
+| `.monads/_.livedesk-taskbar/ops/+x/khtpm_show_text.+x` | Show Text relay writer (already built, no build script) |
+| `.monads/_.livedesk-taskbar/ops/+x/khtpm_show_choices.+x` | Show Choices picker (already built) |
+| `.monads/_.book-stack/entities/book-stack/meta.pdl` | Example entity meta.pdl (METHOD dispatch format) |
 | `#.ref/menu/event.commands.1.txt` | RPG Maker event command reference list |
 
 ---
@@ -162,7 +162,7 @@ Look for a **3 rows × 4 columns** animation tile strip (12 frames total, **24×
 > regenerated at 64×64 and synced to template + owned pal.
 
 ### 4.2 — Entity template
-Copy an existing simple entity (e.g., `book-stack` under `*.monads/*.book-stack/entities/book-stack/`) as your starting template. It needs:
+Copy an existing simple entity (e.g., `book-stack` under `_.monads/_.book-stack/entities/book-stack/`) as your starting template. It needs:
 - `atlas.png` — your sword sprite sheet
 - `desktop_pos.txt` — starting position
 - `glyph.txt` — optional, for the strip tile

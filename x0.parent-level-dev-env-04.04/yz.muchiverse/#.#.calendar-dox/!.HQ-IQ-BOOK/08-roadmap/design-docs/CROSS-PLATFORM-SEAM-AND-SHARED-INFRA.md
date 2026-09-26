@@ -115,7 +115,7 @@ that returns non-zero — a Windows build links, managers run, only the
 **Read this before a Windows or macOS pass. Do not pre-build it.**
 
 ### What this file is
-`*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c` (~12k lines) is
+`_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c` (~12k lines) is
 the single shared renderer for ~8 window modes (db-hq, events-hq,
 chat-hai, Settings/swatch-picker, palettes, generic popup, entity
 menu, Debug). It has **no `_WIN32` guard anywhere** and no Windows

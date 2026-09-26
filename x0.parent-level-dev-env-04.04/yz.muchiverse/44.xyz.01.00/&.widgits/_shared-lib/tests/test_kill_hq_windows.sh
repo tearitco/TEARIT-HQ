@@ -8,7 +8,7 @@ set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 # tests/ -> _shared-lib/ -> &.widgits/ -> 44.xyz.01.00/
 HOUSEBASE="$(cd "$HERE/../../.." && pwd)"
-KILL_SH="$(echo "$HOUSEBASE"/*.monads/*.livedesk-taskbar/ops/kill_hq_windows.sh)"
+KILL_SH="$(echo "$HOUSEBASE"/_.monads/_.livedesk-taskbar/ops/kill_hq_windows.sh)"
 [ -f "$KILL_SH" ] || { echo "FAIL: kill_hq_windows.sh not found ($KILL_SH)"; exit 2; }
 
 fails=0

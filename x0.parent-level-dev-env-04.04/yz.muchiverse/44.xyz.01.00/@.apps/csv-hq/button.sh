@@ -18,7 +18,7 @@ HOUSE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 OPS_DIR="$SCRIPT_DIR/ops"
 XHTPM="$SCRIPT_DIR/csv-hq-pal.xhtpm"
 
-RENDER_OPS_DIR="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
+RENDER_OPS_DIR="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops"
 BIN="$RENDER_OPS_DIR/+x/khtpm_core_render.+x"
 MANAGER_BIN="$OPS_DIR/+x/csv_hq_manager.+x"
 

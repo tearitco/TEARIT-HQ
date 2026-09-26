@@ -53,7 +53,7 @@
        g_is_db_hq branch, same convention as taskbar-settings' own
        "swatch-picker" class. "database-window" kept, still used by
        dashboard.css selectors. -->
-  <module src="*.monads/*.livedesk-taskbar/ops/+x/khtpm_hq_manager.+x" />
+  <module src="_.monads/_.livedesk-taskbar/ops/+x/khtpm_hq_manager.+x" />
   <tabbar class="tab-bar">
     <tab label="Actors" class="active"/>
     <tab label="Classes"/>

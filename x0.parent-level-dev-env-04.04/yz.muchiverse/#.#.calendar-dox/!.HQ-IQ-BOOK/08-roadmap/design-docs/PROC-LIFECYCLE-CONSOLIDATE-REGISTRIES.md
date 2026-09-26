@@ -206,6 +206,6 @@ harness (spawns its own `/tmp` children, touches no house process):
 - `PRISC-X-FORK-CONSOLIDATION.md` (`chtpm_parser_pal.c` is the same
   vendored-copy problem — a shared follow-up).
 - `&.widgits/_shared-lib/kh_proc_registry.h` / `kh_spawn.h`.
-- `*.monads/*.livedesk-taskbar/ops/kill_hq_windows.sh`,
+- `_.monads/_.livedesk-taskbar/ops/kill_hq_windows.sh`,
   `khtpm_taskbar_manager.c` (`ktb_system_recorded`,
   `ktb_merge_hq_windows`).

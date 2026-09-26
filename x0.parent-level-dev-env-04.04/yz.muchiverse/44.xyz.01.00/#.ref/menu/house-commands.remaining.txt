@@ -13,7 +13,7 @@ ops that make this house more than a plain RMMV clone.
 
 Pipeline reminder: event-ez authors NODE rows -> compiles event.pal ->
 play_event.sh -> prisc+x -> cmd_N.sh wrapper -> shared op in
-*.monads/*.muchi-pet/ops/. A command is only "done" when it has BOTH an
+_.monads/_.muchi-pet/ops/. A command is only "done" when it has BOTH an
 event-ez palette entry AND a real op binary wired into the event dispatch.
 
 STATUS LEGEND

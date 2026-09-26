@@ -301,7 +301,7 @@ neither guessed:**
 
 **Real gap found in the launch mechanism itself (`gnome-terminal -- <path>`):** `gnome-terminal --
 <path>` calls `execve()` on `<path>` DIRECTLY — no shell, no glob expansion — so this project's own
-real, literal directory names containing `*` (`*.monads/*.livedesk-taskbar`) were passed through
+real, literal directory names containing `*` (`_.monads/_.livedesk-taskbar`) were passed through
 unexpanded and failed with "Failed to execve: No such file or directory". A SECOND, separate
 discovery while chasing this: the manager process's actual `cwd` is `ops/` itself, not `house_root` —
 so even a correctly-shell-wrapped glob would have resolved from the wrong directory. Fixed with

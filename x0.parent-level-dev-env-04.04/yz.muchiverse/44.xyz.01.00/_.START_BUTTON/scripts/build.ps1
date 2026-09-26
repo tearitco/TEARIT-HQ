@@ -1,4 +1,4 @@
-# build.ps1 - Windows twin of build.sh (*.START_BUTTON)
+# build.ps1 - Windows twin of build.sh (_.START_BUTTON)
 # ASCII only.
 
 $ErrorActionPreference = "Continue"

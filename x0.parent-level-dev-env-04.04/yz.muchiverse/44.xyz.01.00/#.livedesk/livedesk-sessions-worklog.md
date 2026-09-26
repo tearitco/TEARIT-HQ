@@ -42,7 +42,7 @@ read it first if the session was interrupted.
   snapshotting the incoming desk from a dead/empty live registry wiped
   desk_01.pdl (live-caught), then spawn read an empty file.
 - **Desk pdl paths are HOUSE-RELATIVE** (`livedesk_rel_path` on snapshot,
-  `livedesk_join_path` on spawn). `*.monads/*.muchi-pet/...` are LITERAL
+  `livedesk_join_path` on spawn). `_.monads/_.muchi-pet/...` are LITERAL
   dirnames (real asterisks in the fs), so `access()` on them works.
 - **File button = current session**: `file:<name>` (e.g. `file:pre-design`),
   refreshed on the 1s poll tick, `mark_strip_frame_changed` only on change.

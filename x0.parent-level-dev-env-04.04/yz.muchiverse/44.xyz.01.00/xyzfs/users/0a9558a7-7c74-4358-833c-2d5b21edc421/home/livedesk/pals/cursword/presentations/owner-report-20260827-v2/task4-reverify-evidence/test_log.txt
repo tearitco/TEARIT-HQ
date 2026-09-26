@@ -5,7 +5,7 @@
 [16:40:53] created test_parallel_event
 [16:40:53] created switches.txt with both switches OFF
 [16:40:53] === Step 2: Launch common_events_manager ===
-[16:40:53] Starting manager: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.muchi-pet/ops/+x/common_events_manager.+x /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17
+[16:40:53] Starting manager: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/_.monads/_.muchi-pet/ops/+x/common_events_manager.+x /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17
 [16:40:55] ✓ PASS: manager started (PID 632418)
 [16:40:55] === Step 3: Test Autorun edge-triggered ===
 [16:40:55] flipped ce_test_autorun_event 0→1

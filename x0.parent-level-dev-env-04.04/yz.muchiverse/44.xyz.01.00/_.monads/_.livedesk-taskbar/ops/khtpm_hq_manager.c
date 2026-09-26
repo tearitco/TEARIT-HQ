@@ -105,10 +105,10 @@ static void publish_common_events(void) {
  * root dirs for an app by name) - not invented fresh. Scans a short
  * list of known real app-root directories under house_root for a
  * subdirectory whose name contains app_name, so the NEXT time an app
- * moves between *.monads/&.widgits/&.hq-apps/@.apps this call site
+ * moves between _.monads/&.widgits/&.hq-apps/@.apps this call site
  * doesn't need a source edit at all. */
 static int find_app_dir(const char *house_root, const char *app_name, char *out, size_t outsz) {
-    static const char *roots[] = { "*.monads", "&.widgits", "&.hq-apps", "@.apps", NULL };
+    static const char *roots[] = { "_.monads", "&.widgits", "&.hq-apps", "@.apps", NULL };
     for (int i = 0; roots[i]; i++) {
         char parent[PATH_BUF];
         snprintf(parent, sizeof(parent), "%s/%s", house_root, roots[i]);

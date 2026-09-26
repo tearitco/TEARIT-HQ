@@ -48,7 +48,7 @@ QUICK ORIENTATION FOR NEXT SESSION:
   bookmarks, events-hq, chat-hai, taskbar-settings — one binary, mode flags
   (g_is_db_hq/g_is_stats_hq/g_is_palettes/g_is_bookmarks/g_is_events_hq/g_is_chat_hai/
   g_is_swatch_picker) branch behavior. khtpm_hq_render.c no longer exists.
-- Rebuild via: *.monads/*.livedesk-taskbar/ops/build_entity_menu.sh
-- Emergency kill-all-hq-windows: sh *.monads/*.livedesk-taskbar/ops/kill_hq_windows.sh <house_root>
+- Rebuild via: _.monads/_.livedesk-taskbar/ops/build_entity_menu.sh
+- Emergency kill-all-hq-windows: sh _.monads/_.livedesk-taskbar/ops/kill_hq_windows.sh <house_root>
   (use this before relaunching anything — stray/ghost X11 windows caused real
   confusion tonight until this was used to clean up)

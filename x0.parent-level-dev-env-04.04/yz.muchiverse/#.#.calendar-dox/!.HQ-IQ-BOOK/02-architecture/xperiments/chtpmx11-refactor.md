@@ -88,7 +88,7 @@ state ... `current_frame.txt`, `frame_history.txt`, `rgb_frame.raw`,
 own internal audit docs — with one notable, partial exception.**
 
 - `khtpm_entity_menu_render.c` (found at
-  `*.monads/*.livedesk-taskbar/ops/khtpm_entity_menu_render.c`, header read in
+  `_.monads/_.livedesk-taskbar/ops/khtpm_entity_menu_render.c`, header read in
   full, lines 1-45) is raw Xlib/Xft — includes `X11/Xlib.h`, `X11/Xft/Xft.h`
   directly — has its **own** tag vocabulary (`<window class="...">`,
   `<page name="...">`, `<item label="..." action="...">`), its own attribute
@@ -130,7 +130,7 @@ own internal audit docs — with one notable, partial exception.**
   unification work (§4).
 
 **The partial exception**: `khtpm-strip-parser-SCOPE.md` (read in full,
-`*.monads/*.livedesk-taskbar/khtpm-strip-parser-SCOPE.md`) shows that when the
+`_.monads/_.livedesk-taskbar/khtpm-strip-parser-SCOPE.md`) shows that when the
 taskbar's own strip parser was *designed*, its author explicitly modeled the
 tag vocabulary and the `ACTIVATE`/`active_index`/`focus_index` scope mechanism
 directly on `chtpm_parser.c`'s real behavior ("Modeled directly on
@@ -690,14 +690,14 @@ for new work.
 - `101.mutaclsym🧟‍♂️️19.00/system/gl_mirror.c` — header comment, lines 1-60
 - `101.mutaclsym🧟‍♂️️19.00/ops/compose_frame.c` — header + top, lines 1-80
 - `101.mutaclsym🧟‍♂️️19.00/ops/compose_rgb_frame.c` — header + top, lines 1-80
-- `*.monads/*.livedesk-taskbar/ops/khtpm_entity_menu_render.c` — header, lines 1-79
-- `*.monads/*.livedesk-taskbar/khtpm-strip-parser-SCOPE.md` — lines 1-40
+- `_.monads/_.livedesk-taskbar/ops/khtpm_entity_menu_render.c` — header, lines 1-79
+- `_.monads/_.livedesk-taskbar/khtpm-strip-parser-SCOPE.md` — lines 1-40
 - `44.xyz.01.00/!.HOUSE_STDS.md` — lines 130-242 (pipeline + 3D overlay race),
   lines 495-531 (khtpm-vs-chtpm family history and decision rule),
   line 398 (WM-managed X11 window fix), line 424 (sprite.csv portrait loading)
 - `#.#.calendar-dox/1.^V-hq/khtpm-merge-how2.md` — full file read (94 lines)
 - `101.ledger-player-npc-simple+3/system/chtpm_parser.c` — top of file (confirmed real location of the non-PAL chtpm_parser.c referenced by house docs)
-- `*.monads/*.livedesk-taskbar/ops/khtpm_entity_menu_render.c` — lines ~10182-10214 (real `<interact src="..."/>`/`<module>` X11-side equivalents, §4b correction), `dbhq_load_actors()` (§5, exact line not re-cited here, see `TPMOS-COMPLIANCE-DEBT.md` §4)
+- `_.monads/_.livedesk-taskbar/ops/khtpm_entity_menu_render.c` — lines ~10182-10214 (real `<interact src="..."/>`/`<module>` X11-side equivalents, §4b correction), `dbhq_load_actors()` (§5, exact line not re-cited here, see `TPMOS-COMPLIANCE-DEBT.md` §4)
 - `&.hq-apps/chat-hai/chat-hai.chtpm` — line 30 (`<module src="..."/>` real usage)
 - `&.widgits/db-hq/data/actors.pdl` — real data file `dbhq_load_actors()` reads (§5)
 - `TPMOS-COMPLIANCE-DEBT.md` §4 — the real, condemned `dbhq_load_actors()` finding, added same day as this report

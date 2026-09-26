@@ -225,7 +225,7 @@ zero disruption to the live desktop.
 
 ## 3. Real files touched
 
-- `*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c` - `g_arg4_entity_label` capture + wiring (commit `ac10a579`)
+- `_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c` - `g_arg4_entity_label` capture + wiring (commit `ac10a579`)
 - `xyzfs/users/.../pals/cursword/harnesses/run_visible_window_events_hq_demo.sh` - safe stray-kill scoping (`ac10a579`), real relay path + PNG signature check (`3e621a4d`)
 - `xyzfs/users/.../pals/cursword/harnesses/pal/visible_window_events_hq_demo.pal` - dynamic path lookup, dead-feature/dead-relay/wrong-nav/wrong-PNG-path fixes (`3e621a4d`)
 - `101.mutaclsym🧟‍♂️️+18.0G/system/prisc+x` - rebuilt from current source (`3e621a4d`)

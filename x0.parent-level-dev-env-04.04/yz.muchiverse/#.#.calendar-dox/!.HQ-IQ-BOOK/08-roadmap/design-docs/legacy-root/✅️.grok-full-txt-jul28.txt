@@ -5450,7 +5450,7 @@ cd 102.editor-📄️00.00
 
 ## User
 
-ok now same kinda thing. this will be done in /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.13/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.09/*.START_BUTTON , it should find every runnable sh.button.r or better yet , use the .pdl pattern from 1.tpmos where it shows this menu , based on "projects" folder (tho we are using the ./ folder for this for now, but , set that in a .pdl / config, so we can change it later : 
+ok now same kinda thing. this will be done in /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST-11.13/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.09/_.START_BUTTON , it should find every runnable sh.button.r or better yet , use the .pdl pattern from 1.tpmos where it shows this menu , based on "projects" folder (tho we are using the ./ folder for this for now, but , set that in a .pdl / config, so we can change it later : 
 
 --- FRAME UPDATE at 2026-07-27 22:17:11 ---
 ╔══════════════ P I E C E M A R K   L O A D E R ════════════╗
@@ -5517,7 +5517,7 @@ Investigating TPMOS piecemark loader and the house project layout, then writing 
 
 - Execute: # Locate START_BUTTON and TPMOS loader-related paths
 ls -la | head -50
-ls -la '*.START_BUTTON' 2>/dev/null; ls -la *START* 2>/dev/null; find . -maxdepth 2 -iname '*start*' 2>/dev/null | head -30
+ls -la '_.START_BUTTON' 2>/dev/null; ls -la *START* 2>/dev/null; find . -maxdepth 2 -iname '*start*' 2>/dev/null | head -30
 TPMOS="/home/no/Desktop/🤖️✨️🏠️/🎮️🧩️/✨️-00.00/NNEST-11.13/x0.parent-level-dev-env-04.04/1.TPMOS_c_+rmmp.0103.0001"
 # try correct path variants
 ls /home/no/Desktop/ 2>/dev/null | head -5
@@ -5603,7 +5603,7 @@ grep -n 'project_list\|LOAD_PROJECT\|loader.pdl\|active_target_id.*loader' "$TPM
 grep -n 'project_list\|LOAD_PROJECT' 0.user-pal👤️/00.login-signup/system/chtpm_parser_pal.c | head -30
  (Sample project.pdl and LOAD_PROJECT/parser hooks)
 - Read: ../../1.TPMOS_c_+rmmp.0103.0001/button.sh (1-63)
-- Execute: ls -la '*.START_BUTTON'
+- Execute: ls -la '_.START_BUTTON'
 # discover runnable button.sh under house
 find . -maxdepth 3 -name 'button.sh' -type f 2>/dev/null | head -40
 # any project.pdl already?
@@ -5640,35 +5640,35 @@ Writing the plan from TPMOS loader parity and house constraints.The write failed
 
 ## Tools
 
-- Edit: *.START_BUTTON/*.start-button-plan.md
-- Execute: # Write plan into *.START_BUTTON via shell (glob-safe)
-OUT='*.START_BUTTON/*.start-button-plan.md'
+- Edit: _.START_BUTTON/*.start-button-plan.md
+- Execute: # Write plan into _.START_BUTTON via shell (glob-safe)
+OUT='_.START_BUTTON/*.start-button-plan.md'
 cat > "$OUT" << 'PLAN_EOF'
 # START BUTTON — Piecemark-style Project Loader (Plan)
 
 **Status:** plan only — implement after approval  
-**Target:** `*.START_BUTTON/` under house root `44.xyz❤️ (Write start-button plan via shell heredoc)
-- Execute: ls -la '*.START_BUTTON/'
-wc -l '*.START_BUTTON/'* 2>/dev/null
-head -50 '*.START_BUTTON/'*.start-button-plan.md 2>/dev/null
+**Target:** `_.START_BUTTON/` under house root `44.xyz❤️ (Write start-button plan via shell heredoc)
+- Execute: ls -la '_.START_BUTTON/'
+wc -l '_.START_BUTTON/'* 2>/dev/null
+head -50 '_.START_BUTTON/'*.start-button-plan.md 2>/dev/null
 # if incomplete rewrite with python
 python3 << 'PY'
 from pathlib import Path
-out = Path("*.START_BUTTON") / "*.start-button-plan.md"
+out = Path("_.START_BUTTON") / "*.start-button-plan.md"
 text = r'''# START BUTTON — Piecemark-style Project Loader (Plan)
 
 **Status:** plan only — implement after approval  
-**Target:** `*.START_BUTTON/` under house root `44.xyz❤️ (Check plan file and rewrite if truncated)
+**Target:** `_.START_BUTTON/` under house root `44.xyz❤️ (Check plan file and rewrite if truncated)
 - Execute: python3 -c '
 from pathlib import Path
-p = list(Path(".").glob("*.START_BUTTON"))[0]
+p = list(Path(".").glob("_.START_BUTTON"))[0]
 out = p / "start-button-plan.md"
 # also keep starred name the user asked for
 out2 = p / "*.start-button-plan.md"
 content = """# START BUTTON — Piecemark-style Project Loader (Plan)
 
 **Status:** plan only — implement after approval  
-**Target dir:** `*.START_BUTTON/` under house root (44.xyz)  
+**Target dir:** `_.START_BUTTON/` under house root (44.xyz)  
 **TPMOS reference:** `1.TPMOS_c_+rmmp.0103.0001`  
   - layout: `pieces/apps/playrm/layouts/loader.chtpm`  
   - scanner: `pieces/apps/playrm/loader/loader_module.c`  
@@ -5745,7 +5745,7 @@ So pure `LOAD_PROJECT:` (same-process layout switch) is the wrong default launch
 
 ## 3. Goals (v1 — nothing more, nothing less)
 
-1. **Pal-native launcher UI** in `*.START_BUTTON/` matching the loader chrome (box + numbered project rows + nav).  
+1. **Pal-native launcher UI** in `_.START_BUTTON/` matching the loader chrome (box + numbered project rows + nav).  
 2. **Config in PDL** so catalog root / filters are not hardcoded.  
 3. **Regenerate catalog PDL** by scanning (TPMOS `update_loader_pdl` parity).  
 4. **Select a row → launch** that app via its `button.sh run` (or record message if missing).  
@@ -5756,7 +5756,7 @@ So pure `LOAD_PROJECT:` (same-process layout switch) is the wrong default launch
 
 ## 4. Config PDL (change scan root later)
 
-**File:** `*.START_BUTTON/config/start_button.pdl` (or `pieces/system/start_button_config.pdl`)
+**File:** `_.START_BUTTON/config/start_button.pdl` (or `pieces/system/start_button_config.pdl`)
 
 ```
 SECTION      | KEY                | VALUE
@@ -5768,7 +5768,7 @@ STATE        | scan_root          | ..
 STATE        | scan_depth         | 2
 STATE        | require_project_pdl| 0
 STATE        | require_button_sh  | 1
-STATE        | skip_names         | *.START_BUTTON,.claude,#.notes,#.DOX,#.haiku+,#.w8,#.media-library,net,exchange,xer,-1.metatree,404.architecture-bible,drag-drop-test,&.widgits
+STATE        | skip_names         | _.START_BUTTON,.claude,#.notes,#.DOX,#.haiku+,#.w8,#.media-library,net,exchange,xer,-1.metatree,404.architecture-bible,drag-drop-test,&.widgits
 STATE        | skip_prefix        | #.,.
 STATE        | launch_action      | run
 STATE        | label_mode         | dir_name
@@ -5778,7 +5778,7 @@ STATE        | max_entries        | 64
 
 **Notes**
 
-- `scan_root=..` means parent of `*.START_BUTTON` = house root (44.xyz). Change later to `projects` or an absolute path without code changes.  
+- `scan_root=..` means parent of `_.START_BUTTON` = house root (44.xyz). Change later to `projects` or an absolute path without code changes.  
 - `require_project_pdl=0` + `require_button_sh=1` for v1 (discover runnables now).  
 - When house projects gain proper `project.pdl` cards, flip `require_project_pdl=1` for pure TPMOS gate.  
 - Nested apps (`0.user-pal/00.login-signup`) appear if `scan_depth>=2` and have `button.sh`.
@@ -5798,7 +5798,7 @@ META | hide_from_loader | 0
 ## 5. Architecture (house pal shape)
 
 ```
-*.START_BUTTON/
+_.START_BUTTON/
   button.sh
   scripts/build.sh
   default_op.txt
@@ -5963,7 +5963,7 @@ Skip harness-only trees (`test-harn-same`) always.
 
 ## 11. Recommended first slice after approval
 
-1. Scaffold `*.START_BUTTON` like `102.editor`.  
+1. Scaffold `_.START_BUTTON` like `102.editor`.  
 2. Implement `start_scan` + compose list UI.  
 3. Menu select writes `last_launch.txt` (no spawn).  
 4. Harness frames green.  
@@ -5983,7 +5983,7 @@ print("wrote", out2, "bytes", out2.stat().st_size)
  (Write full start-button plan via Python)
 - Execute: python3 << 'ENDPY'
 from pathlib import Path
-p = list(Path(".").glob("*.START_BUTTON"))[0]
+p = list(Path(".").glob("_.START_BUTTON"))[0]
 out = p / "start-button-plan.md"
 out2 = p / "*.start-button-plan.md"
 lines = []
@@ -5992,7 +5992,7 @@ def w(s=""):
 w("# START BUTTON — Piecemark-style Project Loader (Plan)")
 w()
 w("**Status:** plan only — implement after approval")
-w("**Target dir:** `*.START_BUTTON/` under house root (44.xyz)")
+w("**Target dir:** `_.START_BUTTON/` under house root (44.xyz)")
 w("**TPMOS reference:** `1.TPMOS_c_+rmmp.0103.0001`")
 w("  - layout: `pieces/apps/playrm/layouts/loader.chtpm`")
 w("  - scanner: `pieces/apps/playrm/loader/loader_module.c`")
@@ -6066,7 +6066,7 @@ w("---")
 w()
 w("## 3. Goals (v1 — nothing more, nothing less)")
 w()
-w("1. Pal-native launcher UI in `*.START_BUTTON/` matching loader chrome")
+w("1. Pal-native launcher UI in `_.START_BUTTON/` matching loader chrome")
 w("   (box + numbered project rows + nav).")
 w("2. **Config in PDL** so catalog root / filters are not hardcoded.")
 w("3. **Regenerate catalog PDL** by scanning (TPMOS `update_loader_pdl` parity).")
@@ -6078,7 +6078,7 @@ w("---")
 w()
 w("## 4. Config PDL (change scan root later)")
 w()
-w("**File:** `*.START_BUTTON/config/start_button.pdl`")
+w("**File:** `_.START_BUTTON/config/start_button.pdl`")
 w()
 w("```")
 w("SECTION      | KEY                | VALUE")
@@ -6090,7 +6090,7 @@ w("STATE        | scan_root          | ..")
 w("STATE        | scan_depth         | 2")
 w("STATE        | require_project_pdl| 0")
 w("STATE        | require_button_sh  | 1")
-w("STATE        | skip_names         | *.START_BUTTON,.claude,net,exchange,...")
+w("STATE        | skip_names         | _.START_BUTTON,.claude,net,exchange,...")
 w("STATE        | skip_prefix        | #.,.")
 w("STATE        | launch_action      | run")
 w("STATE        | sort               | alpha")
@@ -6118,7 +6118,7 @@ w()
 w("## 5. Architecture (house pal shape)")
 w()
 w("```")
-w("*.START_BUTTON/")
+w("_.START_BUTTON/")
 w("  button.sh")
 w("  scripts/build.sh")
 w("  default_op.txt")
@@ -6250,7 +6250,7 @@ w("---")
 w()
 w("## 11. First slice after approval")
 w()
-w("1. Scaffold `*.START_BUTTON` like `102.editor`.")
+w("1. Scaffold `_.START_BUTTON` like `102.editor`.")
 w("2. Implement start_scan + compose list UI.")
 w("3. Menu select writes last_launch.txt (no spawn).")
 w("4. Harness frames green.")
@@ -6271,7 +6271,7 @@ out2.write_text(text)
 print("OK", out, out.stat().st_size)
 print("OK", out2, out2.stat().st_size)
 ENDPY
-ls -la *.START_BUTTON/ 2>/dev/null || ls -la './'*.START_BUTTON/
+ls -la _.START_BUTTON/ 2>/dev/null || ls -la './'_.START_BUTTON/
  (Write complete plan file with Python line builder)
 
 ## Assistant
@@ -6313,14 +6313,14 @@ So for START_BUTTON:
 
 Both copies:
 
-- `*.START_BUTTON/start-button-plan.md`
-- `*.START_BUTTON/*.start-button-plan.md`
+- `_.START_BUTTON/start-button-plan.md`
+- `_.START_BUTTON/*.start-button-plan.md`
 
 ### Thesis
 **House-local Piecemark Loader:** config PDL sets catalog root (`scan_root=..`), scan regenerates a METHOD catalog like TPMOS `loader.pdl`, UI is pal-native (chtpm + compose + methods), select runs that project’s `button.sh` — not same-process `LOAD_PROJECT`.
 
 ### v1 slice
-1. Scaffold `*.START_BUTTON` like editor/login  
+1. Scaffold `_.START_BUTTON` like editor/login  
 2. `config/start_button.pdl` with `scan_root=..`, depth, skip lists  
 3. `start_scan` regenerates loader piece.pdl  
 4. Select → write `last_launch.txt` (harness-safe; real spawn = Phase B)  
@@ -6359,7 +6359,7 @@ Updating the design for the four sections (system / widgets / apps / app-store),
 
 ## Tools
 
-- Read: *.START_BUTTON/start-button-plan.md (1-80)
+- Read: _.START_BUTTON/start-button-plan.md (1-80)
 - Execute: ls -la | head -40
 ls -la '&.widgits' '&.widgets' '@.apps' '@.app-store' 2>/dev/null
 # href usage in house layouts
@@ -6397,12 +6397,12 @@ Updating the design, then scaffolding: home via href, section lists via `${piece
 
 - Execute: python3 << 'ENDPY'
 from pathlib import Path
-p = list(Path(".").glob("*.START_BUTTON"))[0]
+p = list(Path(".").glob("_.START_BUTTON"))[0]
 for name in ("start-button-plan.md", "*.start-button-plan.md"):
     (p / name).write_text(r'''# START BUTTON — House Launcher (Design)
 
 **Status:** active design — implementation follows this doc  
-**Target:** `*.START_BUTTON/` under house root (44.xyz)  
+**Target:** `_.START_BUTTON/` under house root (44.xyz)  
 **TPMOS refs:** `loader.chtpm` / `loader_module.c` / `loader.pdl`, plus `os.chtpm` (pre-menu hrefs)  
 **House refs:** avatar `href` screens + `write_chtpm_bridge` / `request_layout` / `${piece_methods}`  
 **Sibling folders:** `@.apps/`, `@.app-store/`, `&.widgits/` (widgets; house spelling)
@@ -6560,7 +6560,7 @@ Shared: sort alpha, skip `#.*` / `.*` / `test-harn*`, max_entries from config.
 
 | Section | Root | Include | Exclude |
 |---------|------|---------|---------|
-| system | `scan_root` (`..`) | dirs with `button.sh` (depth 1–2) | `*.START_BUTTON`, `&.widgits`, `@.apps`, `@.app-store`, notes/docs/net/exchange/metatree/architecture-bible, harness-only |
+| system | `scan_root` (`..`) | dirs with `button.sh` (depth 1–2) | `_.START_BUTTON`, `&.widgits`, `@.apps`, `@.app-store`, notes/docs/net/exchange/metatree/architecture-bible, harness-only |
 | widgets | `widgets_root` | child dirs (optional `button.sh` / `project.pdl`) | — |
 | apps | `apps_root` | child dirs with launch entry | — |
 | store | `store_root` | child dirs / package cards | do not RUN; list only |
@@ -6572,7 +6572,7 @@ Shared: sort alpha, skip `#.*` / `.*` / `test-harn*`, max_entries from config.
 ## 4. Architecture
 
 ```
-*.START_BUTTON/
+_.START_BUTTON/
   button.sh                 # session + same-TTY handoff loop
   config/start_button.pdl   # roots + skip lists
   pal/main_loop_chtpm.pal
@@ -6624,48 +6624,48 @@ not background forks, not in-process LOAD_PROJECT for foreign apps.**
 print("design updated", p)
 ENDPY
  (Rewrite design doc with 4-section + href + same-TTY)
-- Execute: SB=$(echo *.START_BUTTON)
+- Execute: SB=$(echo _.START_BUTTON)
 # If glob expands wrong:
-SB=$(ls -d *.START_BUTTON 2>/dev/null | head -1)
-# actually the dir name is literally *.START_BUTTON
-SB='*.START_BUTTON'
+SB=$(ls -d _.START_BUTTON 2>/dev/null | head -1)
+# actually the dir name is literally _.START_BUTTON
+SB='_.START_BUTTON'
 mkdir -p "$SB"/{system,ops/+x,pal,scripts,config,pieces/{chtpm/layouts,system,apps/player_app,keyboard,display,sessions},projects/start-button/pieces/{home,system,widgets,apps,store},docs,test-harn-same/{ops,scenarios},proof}
 cp -a 102.editor-📄️00.00/system/{prisc+x.c,keyboard_input.c,renderer.c,chtpm_parser_pal.c} "$SB/system/"
 cp -a 102.editor-📄️00.00/test-harn-same/ops/*.c "$SB/test-harn-same/ops/"
 ls -la "$SB" "$SB/system" | head -40
  (Scaffold START_BUTTON dirs and copy system sources)
-- Read: *.START_BUTTON/system/keyboard_input.c (221-238)
-- Read: *.START_BUTTON/system/keyboard_input.c (2-51)
-- Read: *.START_BUTTON/system/keyboard_input.c (101-190)
-- Edit: *.START_BUTTON/system/keyboard_input.c
-- Edit: *.START_BUTTON/system/keyboard_input.c
-- Edit: *.START_BUTTON/system/keyboard_input.c
-- Edit: *.START_BUTTON/config/start_button.pdl
-- Edit: *.START_BUTTON/pieces/chtpm/layouts/system.chtpm
-- Edit: *.START_BUTTON/pieces/chtpm/layouts/home.chtpm
-- Edit: *.START_BUTTON/pieces/chtpm/layouts/widgets.chtpm
-- Edit: *.START_BUTTON/pieces/chtpm/layouts/apps.chtpm
-- Edit: *.START_BUTTON/pal/main_loop_chtpm.pal
-- Edit: *.START_BUTTON/default_op.txt
-- Edit: *.START_BUTTON/pieces/chtpm/layouts/store.chtpm
-- Edit: *.START_BUTTON/ops/start_scan.c
-- Edit: *.START_BUTTON/ops/start_compose_frame.c
-- Edit: *.START_BUTTON/button.sh
-- Edit: *.START_BUTTON/ops/start_menu_input.c
-- Edit: *.START_BUTTON/scripts/build.sh
-- Edit: *.START_BUTTON/projects/start-button/pieces/home/piece.pdl
-- Edit: *.START_BUTTON/projects/start-button/pieces/store/piece.pdl
-- Edit: *.START_BUTTON/test-harn-same/button.sh
-- Edit: *.START_BUTTON/button.sh
-- Edit: *.START_BUTTON/projects/start-button/pieces/widgets/piece.pdl
-- Edit: *.START_BUTTON/projects/start-button/pieces/system/piece.pdl
-- Edit: *.START_BUTTON/test-harn-same/scenarios/demo_loader_home.sh
-- Edit: *.START_BUTTON/projects/start-button/pieces/apps/piece.pdl
-- Edit: *.START_BUTTON/button.sh
-- Execute: chmod +x '*.START_BUTTON/button.sh' '*.START_BUTTON/scripts/build.sh' '*.START_BUTTON/test-harn-same/button.sh' '*.START_BUTTON/test-harn-same/scenarios/demo_loader_home.sh'
-cd '*.START_BUTTON' && bash scripts/build.sh 2>&1
+- Read: _.START_BUTTON/system/keyboard_input.c (221-238)
+- Read: _.START_BUTTON/system/keyboard_input.c (2-51)
+- Read: _.START_BUTTON/system/keyboard_input.c (101-190)
+- Edit: _.START_BUTTON/system/keyboard_input.c
+- Edit: _.START_BUTTON/system/keyboard_input.c
+- Edit: _.START_BUTTON/system/keyboard_input.c
+- Edit: _.START_BUTTON/config/start_button.pdl
+- Edit: _.START_BUTTON/pieces/chtpm/layouts/system.chtpm
+- Edit: _.START_BUTTON/pieces/chtpm/layouts/home.chtpm
+- Edit: _.START_BUTTON/pieces/chtpm/layouts/widgets.chtpm
+- Edit: _.START_BUTTON/pieces/chtpm/layouts/apps.chtpm
+- Edit: _.START_BUTTON/pal/main_loop_chtpm.pal
+- Edit: _.START_BUTTON/default_op.txt
+- Edit: _.START_BUTTON/pieces/chtpm/layouts/store.chtpm
+- Edit: _.START_BUTTON/ops/start_scan.c
+- Edit: _.START_BUTTON/ops/start_compose_frame.c
+- Edit: _.START_BUTTON/button.sh
+- Edit: _.START_BUTTON/ops/start_menu_input.c
+- Edit: _.START_BUTTON/scripts/build.sh
+- Edit: _.START_BUTTON/projects/start-button/pieces/home/piece.pdl
+- Edit: _.START_BUTTON/projects/start-button/pieces/store/piece.pdl
+- Edit: _.START_BUTTON/test-harn-same/button.sh
+- Edit: _.START_BUTTON/button.sh
+- Edit: _.START_BUTTON/projects/start-button/pieces/widgets/piece.pdl
+- Edit: _.START_BUTTON/projects/start-button/pieces/system/piece.pdl
+- Edit: _.START_BUTTON/test-harn-same/scenarios/demo_loader_home.sh
+- Edit: _.START_BUTTON/projects/start-button/pieces/apps/piece.pdl
+- Edit: _.START_BUTTON/button.sh
+- Execute: chmod +x '_.START_BUTTON/button.sh' '_.START_BUTTON/scripts/build.sh' '_.START_BUTTON/test-harn-same/button.sh' '_.START_BUTTON/test-harn-same/scenarios/demo_loader_home.sh'
+cd '_.START_BUTTON' && bash scripts/build.sh 2>&1
  (chmod and build START_BUTTON)
-- Execute: cd '*.START_BUTTON' && bash test-harn-same/button.sh demo 2>&1 (Run START_BUTTON harness demo)
+- Execute: cd '_.START_BUTTON' && bash test-harn-same/button.sh demo 2>&1 (Run START_BUTTON harness demo)
 
 ## Assistant
 
@@ -6673,22 +6673,22 @@ Scan roots were resolving from the session dir instead of the install root — f
 
 ## Tools
 
-- Edit: *.START_BUTTON/button.sh
-- Edit: *.START_BUTTON/ops/start_scan.c
-- Edit: *.START_BUTTON/test-harn-same/scenarios/demo_loader_home.sh
-- Edit: *.START_BUTTON/ops/start_menu_input.c
-- Edit: *.START_BUTTON/ops/start_scan.c
-- Edit: *.START_BUTTON/test-harn-same/scenarios/demo_loader_home.sh
-- Edit: *.START_BUTTON/ops/start_menu_input.c
-- Edit: *.START_BUTTON/ops/start_scan.c
-- Edit: *.START_BUTTON/ops/start_menu_input.c
-- Execute: cd '*.START_BUTTON' && bash scripts/build.sh 2>&1 | tail -5 && bash test-harn-same/button.sh demo 2>&1 (Rebuild and re-run START_BUTTON harness)
+- Edit: _.START_BUTTON/button.sh
+- Edit: _.START_BUTTON/ops/start_scan.c
+- Edit: _.START_BUTTON/test-harn-same/scenarios/demo_loader_home.sh
+- Edit: _.START_BUTTON/ops/start_menu_input.c
+- Edit: _.START_BUTTON/ops/start_scan.c
+- Edit: _.START_BUTTON/test-harn-same/scenarios/demo_loader_home.sh
+- Edit: _.START_BUTTON/ops/start_menu_input.c
+- Edit: _.START_BUTTON/ops/start_scan.c
+- Edit: _.START_BUTTON/ops/start_menu_input.c
+- Execute: cd '_.START_BUTTON' && bash scripts/build.sh 2>&1 | tail -5 && bash test-harn-same/button.sh demo 2>&1 (Rebuild and re-run START_BUTTON harness)
 
 ## Assistant
 
 ## Design updated
 
-`*.START_BUTTON/start-button-plan.md` now describes the **category pre-screen**:
+`_.START_BUTTON/start-button-plan.md` now describes the **category pre-screen**:
 
 | Category | Root | Notes |
 |----------|------|--------|
@@ -6735,7 +6735,7 @@ scan system: 15 | widgets: 1 | apps: 0 | store: 0
 
 ### Run
 ```bash
-cd '*.START_BUTTON'
+cd '_.START_BUTTON'
 ./button.sh compile
 ./button.sh run
 # or
@@ -6750,7 +6750,7 @@ does run auto compile? should for now during dev
 
 ## Tools
 
-- Read: *.START_BUTTON/button.sh (1-30)
+- Read: _.START_BUTTON/button.sh (1-30)
 - Execute: # check how other house apps do auto-compile on run
 grep -n 'compile\|build.sh' 102.editor-📄️00.00/button.sh 0.user-pal👤️/00.login-signup/button.sh 2>/dev/null | head -20
  (Check if run already compiles; house patterns)
@@ -6762,8 +6762,8 @@ No — `run` only starts the session; compile is a separate action. Wiring auto-
 
 ## Tools
 
-- Edit: *.START_BUTTON/button.sh
-- Edit: *.START_BUTTON/button.sh
+- Edit: _.START_BUTTON/button.sh
+- Edit: _.START_BUTTON/button.sh
 
 ## Assistant
 
@@ -6792,30 +6792,30 @@ ls '#.haiku+' 2>/dev/null
 ls '#.haiku+/' 2>/dev/null | head -40
  (Find frame-history and haiku standards docs)
 - Read: 101.mutaclsym🧟‍♂️️+18.01/pal/main_loop_chtpm.pal
-- Read: *.START_BUTTON/pal/main_loop_chtpm.pal
+- Read: _.START_BUTTON/pal/main_loop_chtpm.pal
 - Execute: # who writes frame_history
 grep -rn 'frame_history' 101.mutaclsym🧟‍♂️️+18.01/system 101.mutaclsym🧟‍♂️️+18.01/ops --include='*.c' 2>/dev/null | head -25
 grep -n 'frame_history\|FRAME UPDATE' 101.mutaclsym🧟‍♂️️+18.01/system/renderer.c 2>/dev/null | head -30
 grep -n 'frame_history\|FRAME UPDATE' 0.user-pal👤️/00.login-signup/system/renderer.c 2>/dev/null | head -30
-grep -n 'frame_history\|FRAME UPDATE' '*.START_BUTTON/system/renderer.c' 2>/dev/null | head -30
+grep -n 'frame_history\|FRAME UPDATE' '_.START_BUTTON/system/renderer.c' 2>/dev/null | head -30
 # standards mentions
 grep -n 'frame\|spam\|recompose\|throttle\|dirty\|ONE VISIBLE' '#.haiku+/!.pal-standards+1.txt' 2>/dev/null | head -40
 grep -n 'frame\|spam\|recompose\|throttle\|dirty' '#.haiku+/!.pal-pitfalls+1.txt' 2>/dev/null | head -40
  (Frame history writers and standards coverage)
 - Read: 101.mutaclsym🧟‍♂️️+18.01/system/renderer.c (1-50)
-- Read: *.START_BUTTON/system/renderer.c (1-50)
+- Read: _.START_BUTTON/system/renderer.c (1-50)
 - Read: 0.user-pal👤️/00.login-signup/pal/main_loop_chtpm.pal
-- Read: *.START_BUTTON/ops/start_menu_input.c (251-300)
+- Read: _.START_BUTTON/ops/start_menu_input.c (251-300)
 - Execute: # session clear of frame_history in button.sh examples
 grep -n 'frame_history' 101.mutaclsym🧟‍♂️️+18.01/button.sh 0.user-pal👤️/00.login-signup/button.sh 102.editor-📄️00.00/button.sh 2>/dev/null
 grep -n 'frame_history\|: >' 101.mutaclsym🧟‍♂️️+18.01/button.sh 2>/dev/null | head -20
 # chtpm also pulses every key - process_key
-grep -n 'frame_changed' '*.START_BUTTON/system/chtpm_parser_pal.c' | head -15
+grep -n 'frame_changed' '_.START_BUTTON/system/chtpm_parser_pal.c' | head -15
 # does idle always bump?
-grep -n 'bump_screen\|idle_bridge' '*.START_BUTTON/ops/start_menu_input.c'
+grep -n 'bump_screen\|idle_bridge' '_.START_BUTTON/ops/start_menu_input.c'
  (frame_history session clear and idle bump behavior)
 - Read: 0.user-pal👤️/00.login-signup/ops/userpal_menu_input.c (211-240)
-- Read: *.START_BUTTON/system/renderer.c (91-190)
+- Read: _.START_BUTTON/system/renderer.c (91-190)
 - Search: key == 0|idle|bump_screen
 - Execute: # how muta/button clears history
 grep -n 'frame_history\|: > pieces/display' 101.mutaclsym🧟‍♂️️+18.01/button.sh | head -25
@@ -6839,11 +6839,11 @@ Confirming: renderer already writes `frame_history.txt` and clears it at start; 
 
 ## Tools
 
-- Edit: *.START_BUTTON/system/renderer.c
+- Edit: _.START_BUTTON/system/renderer.c
 - Edit: 0.user-pal👤️/00.login-signup/ops/userpal_menu_input.c
 - Edit: #.haiku+/!.pal-pitfalls+1.txt
-- Edit: *.START_BUTTON/button.sh
-- Edit: *.START_BUTTON/button.sh
+- Edit: _.START_BUTTON/button.sh
+- Edit: _.START_BUTTON/button.sh
 - Execute: # Append standards note near ONE VISIBLE FRAME section or at a sensible place
 # Find a good anchor near end of standards or after sec 20
 grep -n 'frame_history\|AUDIT\|RENDERER' '#.haiku+/!.pal-standards+1.txt' | head -15
@@ -6884,7 +6884,7 @@ chtpm owns current_frame.txt; renderer only reads and logs.
 EOF
 # rebuild user-pal menu input and start_button renderer
 bash 0.user-pal👤️/00.login-signup/scripts/build.sh 2>&1 | tail -8
-bash '*.START_BUTTON/scripts/build.sh' 2>&1 | tail -8
+bash '_.START_BUTTON/scripts/build.sh' 2>&1 | tail -8
  (Append standards §34; rebuild fixed binaries)
 
 ## Assistant
@@ -6932,7 +6932,7 @@ Added if missing:
 
 ### After this change
 - **user-pal:** rebuild applied; idle should stay quiet unless accounts change  
-- **START_BUTTON:** `./button.sh run` → empty then fill `*.START_BUTTON/debug/frame_history.txt` for audits  
+- **START_BUTTON:** `./button.sh run` → empty then fill `_.START_BUTTON/debug/frame_history.txt` for audits  
 
 If spam continues after a real keypress flood, that’s expected (nav keys still recompose); idle alone should not.
 
@@ -8098,7 +8098,7 @@ Canonical examples (copy shape, not necessarily files):
   0.user-pal/00.login-signup/test-harn-same/
   0.user-pal/01.avatar-creation…/test-harn-same/
   102.editor-…/test-harn-same/
-  *.START_BUTTON/test-harn-same/
+  _.START_BUTTON/test-harn-same/
 
 Also seen: `test-harn/` (older / shorter name) — same idea
 (0.a-z-pets-plan, 150.gl-canvas, 151.screen-rec). Prefer
@@ -8122,7 +8122,7 @@ Architecture of the harness itself (thin button.sh → ops → scenarios):
 | file-menu UI alone (chrome, browser, focus)  | &.widgits/file-menu/test-harn-same/ |
 | editor INTERACT canvas alone                 | 102.editor-…/test-harn-same/        |
 | login / signup alone                         | 0.user-pal/00.login-signup/test-harn-same/ |
-| START_BUTTON category list                   | *.START_BUTTON/test-harn-same/      |
+| START_BUTTON category list                   | _.START_BUTTON/test-harn-same/      |
 
 Each owns:
   - its own tk_* (or dd_*) ops copy or local variants
@@ -8259,7 +8259,7 @@ Same pattern as:
 - `0.user-pal/00.login-signup/test-harn-same/`
 - `044.pal-chat-irc…/test-harn-same/`
 - `102.editor-…/test-harn-same/`
-- `*.START_BUTTON/test-harn-same/`
+- `_.START_BUTTON/test-harn-same/`
 
 **Yes — each project/instance gets its own harness.** Editor canvas tests stay under the editor; file-menu chrome tests stay under the widget.
 
@@ -10491,7 +10491,7 @@ for p in \
   '&.widgits/map-picker/ops/+x' \
   '&.widgits/tile-picker/ops/+x' \
   '&.widgits/proc-monitor/ops/+x' \
-  '*.START_BUTTON/ops/+x' \
+  '_.START_BUTTON/ops/+x' \
   '%.harnesses/file-menu+editor/ops/+x'
 do
   echo "-- $p"
@@ -11103,8 +11103,8 @@ ls '102.editor-📄️00.00' | head -30
 head -100 '102.editor-📄️00.00/button.sh' 2>/dev/null
 ls '102.editor-📄️00.00/pal' 2>/dev/null
 ls '102.editor-📄️00.00/pieces/chtpm' 2>/dev/null
-ls '*.START_BUTTON' | head -20
-grep -n 'gl_mirror\|chtpm\|rgb\|run-widget\|compose' '*.START_BUTTON/button.sh' 2>/dev/null | head -40
+ls '_.START_BUTTON' | head -20
+grep -n 'gl_mirror\|chtpm\|rgb\|run-widget\|compose' '_.START_BUTTON/button.sh' 2>/dev/null | head -40
  (Inspect editor/START_BUTTON GL+chtpm boot)
 - Execute: # find chtpm_parser and how numbering works
 find . -name 'chtpm_parser*.c' 2>/dev/null | head -8
@@ -11118,7 +11118,7 @@ head -80 '102.editor-📄️00.00/button.sh' 2>/dev/null | head -80
 - Read: 102.editor-📄️00.00/pieces/chtpm/layouts/editor.chtpm (1-9)
 - Read: 102.editor-📄️00.00/ops/editor_compose_frame.c (1-100)
 - Execute: # START_BUTTON gl path / widget profile
-grep -n 'gl_mirror\|run-widget\|NO_GL\|ascii\|rgb' '*.START_BUTTON/button.sh' 2>/dev/null | head -40
+grep -n 'gl_mirror\|run-widget\|NO_GL\|ascii\|rgb' '_.START_BUTTON/button.sh' 2>/dev/null | head -40
 ls '102.editor-📄️00.00/system' | head -30
 ls '101.mutaclsym🧟‍♂️️+18.01/system' | head -30
 # does editor have gl_mirror?

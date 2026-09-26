@@ -16,7 +16,7 @@ seem to take effect, or an old bug you already fixed "comes back."
 
 **Real cause:** `pkill -f <pattern>` is not reliable against this
 house's own emoji-laden, star-globbed paths (`44.xyz.01.00/`,
-`*.monads/*.livedesk-taskbar/`, etc.) — it silently fails to match in
+`_.monads/_.livedesk-taskbar/`, etc.) — it silently fails to match in
 some shells/environments, confirmed live more than once this session.
 A `pkill` call that reports success (or reports nothing, which looks
 like success) can leave the old process running untouched. The next

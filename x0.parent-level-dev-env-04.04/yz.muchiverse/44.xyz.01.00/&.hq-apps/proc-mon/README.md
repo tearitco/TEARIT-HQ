@@ -18,7 +18,7 @@ below.
 | `mon-hq.xhtpm` / `mon-hq.css` | the window, rendered by the shared `khtpm_core_render.+x` |
 | `mon_refresh.sh` | the `<module>` backend — re-runs `mon_scan.sh publish` every 2 s |
 | `button.sh` | launcher (single-instance guard + seed + `setsid` the renderer) |
-| `../../*.monads/*.livedesk-taskbar/ops/open_mon.sh` | glob-safe HQ-menu entry (a leading `&` in an `sh -c` menu row is job-control) |
+| `../../_.monads/_.livedesk-taskbar/ops/open_mon.sh` | glob-safe HQ-menu entry (a leading `&` in an `sh -c` menu row is job-control) |
 | `state/ui.txt` | runtime projection (git-ignored) |
 
 Run it by hand any time:
@@ -137,6 +137,6 @@ the monitor window structurally excluded.
 - `03-pitfalls/00-INDEX.md` → **CPU safety**.
 - `04-bugs` — the engine-split leak entry.
 - `#.desktop/livedesk_proc_list.txt` — the proc-ledger `kill-all` cross-checks.
-- `../../*.monads/*.livedesk-taskbar/ops/kill_hq_windows.sh` — the
+- `../../_.monads/_.livedesk-taskbar/ops/kill_hq_windows.sh` — the
   ledger-based emergency reaper (`!kill hq` row); mon-hq is the
   observable, engine-aware companion to it.

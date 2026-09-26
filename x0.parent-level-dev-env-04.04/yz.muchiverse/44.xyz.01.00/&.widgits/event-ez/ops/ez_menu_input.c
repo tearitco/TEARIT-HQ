@@ -374,9 +374,9 @@ int main(int argc, char **argv) {
                              * ("../../ops/+x/", i.e. exactly 2 levels up
                              * from the entity root) - true ONLY for the
                              * original @.apps/MUCHI_RANCHER/entities/<name>/
-                             * and *.monads/*.muchi-pet/entities/<name>/
+                             * and _.monads/_.muchi-pet/entities/<name>/
                              * template layouts (entity's grandparent ==
-                             * MUCHI_RANCHER/*.muchi-pet, which has its own
+                             * MUCHI_RANCHER/_.muchi-pet, which has its own
                              * ops/+x/ sibling). Silently WRONG the moment
                              * an entity is deployed/migrated to
                              * xyzfs/users/<uuid>/home/livedesk/{pals,
@@ -397,7 +397,7 @@ int main(int argc, char **argv) {
                              * genuinely 3 levels above this wrapper - that
                              * part was always correct, matches
                              * inventory.txt's real location) searching for
-                             * the literal `*.monads` directory - a stable
+                             * the literal `_.monads` directory - a stable
                              * anchor that sits directly under house_root
                              * regardless of how deep the entity itself is
                              * nested. Same search-for-a-known-anchor
@@ -411,14 +411,14 @@ int main(int argc, char **argv) {
                              * instruction "migration makes sense now"):
                              * mr_change_gold.+x itself moved from the
                              * legacy per-game dev folder
-                             * (*.monads/*.muchi-pet/ops/+x/) to
-                             * *.monads/*.muchi-pet/ops/+x/ - a shared,
+                             * (_.monads/_.muchi-pet/ops/+x/) to
+                             * _.monads/_.muchi-pet/ops/+x/ - a shared,
                              * house-wide location (not per-user, not
                              * per-session), matching the stated direction
                              * that ops/code should be shared across all
                              * sessions/desks/users going forward (see
                              * au11-hq/EVENTS_RUNTIME.md's ops-vs-events
-                             * table). Anchor changed from `*.monads` to
+                             * table). Anchor changed from `_.monads` to
                              * `xyzfs` (also always a direct child of
                              * house_root) - still hardcodes
                              * mr_change_gold.+x's own name/relative
@@ -431,7 +431,7 @@ int main(int argc, char **argv) {
                              * project using events (probably the first)
                              * but it doesn't own events"): mr_change_gold
                              * and its sibling event-command ops moved a
-                             * second time, from *.monads/*.muchi-pet/ops/
+                             * second time, from _.monads/_.muchi-pet/ops/
                              * (still a single project's own dir, false
                              * ownership) to &.widgits/events-hq/ops/ - the
                              * already-existing SHARED events-hq ops dir

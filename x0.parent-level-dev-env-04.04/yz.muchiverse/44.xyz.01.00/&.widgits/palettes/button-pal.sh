@@ -33,7 +33,7 @@ case "$CAT" in
     emojis|elements|piececraft|cdda|debug|rmmv|tiled|ohrrpgce|my-palettes|tile-editor) XHTPM="$HERE/palettes-$CAT.xhtpm" ;;
     *)  CAT=stub; XHTPM="$HERE/palettes-stub.xhtpm" ;;
 esac
-OPS="$HOUSE/*.monads/*.livedesk-taskbar/ops"
+OPS="$HOUSE/_.monads/_.livedesk-taskbar/ops"
 BIN="$OPS/+x/khtpm_core_render.+x"
 MGR="$OPS/+x/palettes_manager.+x"
 PROJ="$HERE/ops/+x/palettes_projector.+x"

@@ -15,8 +15,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CRYPTS_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 HOUSE_DIR="$(cd "$CRYPTS_DIR/.." && pwd)"
 
-TPWIN="$HOUSE_DIR/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity.+x"
-TASKBAR="$HOUSE_DIR/*.monads/*.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x"
+TPWIN="$HOUSE_DIR/_.monads/_.livedesk-taskbar/ops/+x/khtpm_entity.+x"
+TASKBAR="$HOUSE_DIR/_.monads/_.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x"
 RESTORE_LIST="$CRYPTS_DIR/restore-list.txt"
 
 # Ensure the shared asset drive is mounted (book-stack's bible assets
@@ -29,7 +29,7 @@ ensure_mount() {
     local uuid="b7ced73c-5231-4462-b98d-64e38fe2df9e"
     local mp="/media/no/$uuid"
     [ -d "$mp" ] && mountpoint -q "$mp" 2>/dev/null && return 0
-    local shared="$HOUSE_DIR/*.monads/*.book-stack/pieces/_shared/ensure_book_mount.sh"
+    local shared="$HOUSE_DIR/_.monads/_.book-stack/pieces/_shared/ensure_book_mount.sh"
     if [ -f "$shared" ]; then
         # shellcheck disable=SC1090  # sourced path is computed
         . "$shared"
@@ -49,7 +49,7 @@ ensure_mount() {
 }
 
 # pgrep -f treats its pattern as a regex, and the literal '*' globs in
-# monad paths (*.monads/*.book-stack/...) would be eaten as metachars,
+# monad paths (_.monads/_.book-stack/...) would be eaten as metachars,
 # making idempotency checks miss running windows. Escape regex specials
 # so full literal paths match.
 escape_re() {
@@ -79,10 +79,10 @@ launch_by_name() {
         tool-bar) echo "skipping toolbar row" ;;
         ava) setsid nohup bash "$HOUSE_DIR/@.apps/asa-&-ava/pieces/ava/button.sh" run >/dev/null 2>&1 & echo "opened: ava" ;;
         asa) setsid nohup bash "$HOUSE_DIR/@.apps/asa-&-ava/pieces/asa/button.sh" run >/dev/null 2>&1 & echo "opened: asa" ;;
-        hard-vvar-agent-Q0000) launch_entity "$HOUSE_DIR/*.monads/*.hard-vvar-agent-Q0000/entities/self" ;;
-        m1_ninjadragon) launch_entity "$HOUSE_DIR/*.monads/*.muchi-pet/entities/m1_ninjadragon" ;;
-        m8_redhorned) launch_entity "$HOUSE_DIR/*.monads/*.muchi-pet/entities/m8_redhorned" ;;
-        book-stack) launch_entity "$HOUSE_DIR/*.monads/*.book-stack/entities/book-stack" ;;
+        hard-vvar-agent-Q0000) launch_entity "$HOUSE_DIR/_.monads/_.hard-vvar-agent-Q0000/entities/self" ;;
+        m1_ninjadragon) launch_entity "$HOUSE_DIR/_.monads/_.muchi-pet/entities/m1_ninjadragon" ;;
+        m8_redhorned) launch_entity "$HOUSE_DIR/_.monads/_.muchi-pet/entities/m8_redhorned" ;;
+        book-stack) launch_entity "$HOUSE_DIR/_.monads/_.book-stack/entities/book-stack" ;;
         *) echo "unknown restore target: $1" ;;
     esac
 }

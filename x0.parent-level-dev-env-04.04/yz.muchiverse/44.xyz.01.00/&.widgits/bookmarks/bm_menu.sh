@@ -192,17 +192,17 @@ for p in /proc/[0-9]*; do
 done
 sleep 0.2
 
-BIN="$HOUSE/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
+BIN="$HOUSE/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
 if [ ! -x "$BIN" ]; then
-    (cd "$HOUSE/*.monads/*.livedesk-taskbar/ops" && sh build_core_render.sh) || true
+    (cd "$HOUSE/_.monads/_.livedesk-taskbar/ops" && sh build_core_render.sh) || true
 fi
 if [ ! -x "$BIN" ]; then
     echo "bm_menu: build failed, missing $BIN" >&2
     exit 1
 fi
-MGRBIN="$HOUSE/*.monads/*.livedesk-taskbar/ops/+x/bookmarks_manager.+x"
+MGRBIN="$HOUSE/_.monads/_.livedesk-taskbar/ops/+x/bookmarks_manager.+x"
 if [ ! -x "$MGRBIN" ]; then
-    (cd "$HOUSE/*.monads/*.livedesk-taskbar/ops" && sh build_bookmarks_manager.sh) || true
+    (cd "$HOUSE/_.monads/_.livedesk-taskbar/ops" && sh build_bookmarks_manager.sh) || true
 fi
 
 log "$PAL" "bookmarks window launched (real manager, TPMOS-compliant)"

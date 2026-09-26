@@ -6,7 +6,7 @@
 **Symptom (user):** while the window is active it does *complete
 redraws for no reason* — repaints "#1 Harold" / the sidebar / both,
 with no state change. "None of the other x11-hq windows do this."
-**Renderer:** `44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c`
+**Renderer:** `44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c`
 (the shared generic renderer; `g_is_db_hq` is **false** for this
 window — it rides the generic default/sidebar+panel path).
 **Status:** FIXED. Commits on branch `chtpm-var-substitution`
@@ -76,7 +76,7 @@ db-hq-pal.
 | hypothesis | verdict | evidence |
 |---|---|---|
 | Reader catches a **partial / truncated `ui.txt`** from a non-atomic projector write → hash flip-flop → reparse every tick | **DISPROVEN** | 1,442,943 `os.path.getsize()` samples over 4 s: size was **726 every single time**, never 0, never short. The prisc+x `sfopen`/`swrite` sequence is not observably non-atomic at this size. (Kept a defensive 2-consecutive-reads debounce on the vars hash anyway — see §5.) |
-| **Dual writer** of the frame round-trip file `#.desktop/entity_menu_frame_<pid>.txt` (tpmos #17) | **DISPROVEN for the current code** | `grep` across `*.monads/` `.c`/`.sh`: the renderer is the only writer, and it is PID-scoped (the 2026-09-03 chat-hai/open-hai race fix). BUT the round-trip itself is an architectural smell — see §6. |
+| **Dual writer** of the frame round-trip file `#.desktop/entity_menu_frame_<pid>.txt` (tpmos #17) | **DISPROVEN for the current code** | `grep` across `_.monads/` `.c`/`.sh`: the renderer is the only writer, and it is PID-scoped (the 2026-09-03 chat-hai/open-hai race fix). BUT the round-trip itself is an architectural smell — see §6. |
 | Renderer **process respawning** (button.sh / manager keep-alive) | **DISPROVEN** | `/proc` `ppid` scan: renderer pid stable for the whole watch, exactly one stable prisc+x child, flat RSS (~11.7 MB). Earlier "new pid every 0.5 s" was `pgrep -f` matching the watcher shell. |
 | Projector (`.pal`) **crashing/restarting** | **DISPROVEN** | same watch — child pid never changed. |
 | `reparse_chtpm_if_changed()` firing every tick on a churny `vars=` file | **DISPROVEN** | `ui.txt` md5 stable across samples; content-hash gate (`g_vars_hash`) holds; trace showed `dirty=0` and no reparse-path redraws when idle. |
@@ -166,11 +166,11 @@ Migrating the generic panel draw off the file round-trip and onto
 ```sh
 HOUSE=…/44.xyz.01.00
 # 1. rebuild
-sh "$HOUSE/*.monads/*.livedesk-taskbar/ops/build_core_render.sh"
+sh "$HOUSE/_.monads/_.livedesk-taskbar/ops/build_core_render.sh"
 # 2. kill EVERY renderer (a window opened before the rebuild is still the old process)
 for p in $(ls "$HOUSE/#.desktop"/livedesk_hq_windows_*.txt 2>/dev/null); do
   kill "$(sed -n 's/.*pid=\([0-9]*\).*/\1/p' "$p")" 2>/dev/null; done
-sh "$HOUSE/*.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh" new   # whole stack on the new binary
+sh "$HOUSE/_.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh" new   # whole stack on the new binary
 # 3. open db-hq-pal, leave it focused and untouched, then:
 KH_REDRAW_TRACE=1 …  # (or just watch) — an idle window must log ZERO redraws after the first ~2
 ```

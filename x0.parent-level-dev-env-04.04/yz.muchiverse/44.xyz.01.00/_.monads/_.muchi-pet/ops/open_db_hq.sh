@@ -51,7 +51,7 @@ HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 # real process, still launched by the shell itself via the <module>
 # tag's own real fork()+execl() (dbhq_launch_module() in
 # khtpm_core_render.c, ported verbatim from the original).
-OPS_DIR="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
+OPS_DIR="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops"
 BIN="$OPS_DIR/+x/khtpm_core_render.+x"
 MGR_BIN="$OPS_DIR/+x/khtpm_hq_manager.+x"
 CHTPM="$HOUSE_ROOT/&.hq-apps/db-hq/dashboard.chtpm"

@@ -1,7 +1,7 @@
 # START BUTTON — House Launcher (Design)
 
 **Status:** active design — implementation follows this doc  
-**Target:** `*.START_BUTTON/` under house root (44.xyz)  
+**Target:** `_.START_BUTTON/` under house root (44.xyz)  
 **TPMOS refs:** `loader.chtpm` / `loader_module.c` / `loader.pdl`, plus `os.chtpm` (pre-menu hrefs)  
 **House refs:** avatar `href` screens + `write_chtpm_bridge` / `request_layout` / `${piece_methods}`  
 **Sibling folders:** `@.apps/`, `@.app-store/`, `&.widgits/` (widgets; house spelling)
@@ -159,7 +159,7 @@ Shared: sort alpha, skip `#.*` / `.*` / `test-harn*`, max_entries from config.
 
 | Section | Root | Include | Exclude |
 |---------|------|---------|---------|
-| system | `scan_root` (`..`) | dirs with `button.sh` (depth 1–2) | `*.START_BUTTON`, `&.widgits`, `@.apps`, `@.app-store`, notes/docs/net/exchange/metatree/architecture-bible, harness-only |
+| system | `scan_root` (`..`) | dirs with `button.sh` (depth 1–2) | `_.START_BUTTON`, `&.widgits`, `@.apps`, `@.app-store`, notes/docs/net/exchange/metatree/architecture-bible, harness-only |
 | widgets | `widgets_root` | child dirs (optional `button.sh` / `project.pdl`) | — |
 | apps | `apps_root` | child dirs with launch entry | — |
 | store | `store_root` | child dirs / package cards | do not RUN; list only |
@@ -171,7 +171,7 @@ Shared: sort alpha, skip `#.*` / `.*` / `test-harn*`, max_entries from config.
 ## 4. Architecture
 
 ```
-*.START_BUTTON/
+_.START_BUTTON/
   button.sh                 # session + same-TTY handoff loop
   config/start_button.pdl   # roots + skip lists
   pal/main_loop_chtpm.pal

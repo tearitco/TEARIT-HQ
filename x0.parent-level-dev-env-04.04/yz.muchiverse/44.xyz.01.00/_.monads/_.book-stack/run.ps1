@@ -6,7 +6,7 @@ $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $BookStack = $Here
 $House = (Resolve-Path (Join-Path $BookStack "..\..")).Path
 $TpWin = Join-Path $House "&.widgits\tile-picker\ops\+x\tp_desktop_window.exe"
-$Entity = Join-Path $House "*.monads\*.book-stack\entities\book-stack"
+$Entity = Join-Path $House "_.monads\_.book-stack\entities\book-stack"
 $Event = Join-Path $BookStack "pieces\reader\event_pkg\pages\page_1\event.pal"
 
 # Resolve the prisc runner without literal emoji in source (wildcard)

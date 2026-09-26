@@ -31,7 +31,7 @@ SETSID="setsid"
 # pgrep.
 #
 # 2026-08-11: legacy tp_taskbar.c retired (archived to
-# *.monads/*.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip, originals
+# _.monads/_.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip, originals
 # deleted). Binaries dropped their "_test" suffix now that khtpm is the
 # real, only taskbar. The `legacy`/`restore` action this script used to
 # have (relaunch tp_taskbar.c as a fallback) is gone — there is no legacy

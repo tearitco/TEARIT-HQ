@@ -1,6 +1,6 @@
 # Renderer Modularity + Performance Audit (2026-09-04)
 
-**Scope:** `*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c` (~12,200
+**Scope:** `_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c` (~12,200
 lines) + the three shared-lib authoritative files
 (`&.widgits/_shared-lib/khtpm_render_core.c`/`khtpm_draw_core.c`/
 `khtpm_css_parser.c`). Measures compliance against `CENTROID_GOLD_STD.md`

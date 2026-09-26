@@ -15,7 +15,7 @@ rm`'d + `.gitignore`d `**/system/prisc+x.c` with a
   `041.pal-forum`, `041.pal-chain`, `044.pal-chat-irc`,
   `045.muchi-pal-agent`, `101.mutaclsym19.00` (muta-neo),
   `101.mutaclsym+18.0G`, `102.editor-00.00`, `0.user-pal/00.login-signup`,
-  `0.user-pal/01.avatar-creation`, `002.zoo/…INK…PEN`, `*.START_BUTTON`,
+  `0.user-pal/01.avatar-creation`, `002.zoo/…INK…PEN`, `_.START_BUTTON`,
   `@.apps/my-biotech`, `@.apps/my-chara-txt`, `@.apps/my-lawyer`,
   `@.apps/myne-qrypto/qtc`. Per project: every `.pal` in it run through
   the OLD fork binary vs the NEW canonical binary (stdout+stderr) —

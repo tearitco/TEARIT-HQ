@@ -308,7 +308,7 @@ static int setup_paths(void) {
 
     /* cursword package dir (literal '*' chars in the path names) */
     snprintf(g_pkg, sizeof(g_pkg),
-             "%s/*.monads/*.cursword/entities/cursword", g_house);
+             "%s/_.monads/_.cursword/entities/cursword", g_house);
     { struct stat st; if (stat(g_pkg, &st) != 0) { logline("FATAL", "cursword pkg dir not found"); return 0; } }
 
     snprintf(g_relay,    sizeof(g_relay),    "%s/#.desktop/livedesk_agent_relay.txt", g_house);

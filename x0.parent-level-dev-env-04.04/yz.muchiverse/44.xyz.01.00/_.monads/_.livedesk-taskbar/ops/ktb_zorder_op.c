@@ -64,9 +64,9 @@ typedef struct {
 
 /* needle in argv0 -> binary (relative to house_root) used to re-exec it */
 static const struct { const char *needle; const char *rel; } kKinds[] = {
-    { "tp_desktop_window_rgb", "/*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x" },
-    { "khtpm_entity",          "/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity.+x" },
-    { "khtpm_core_render",     "/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x" },
+    { "tp_desktop_window_rgb", "/_.monads/_.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x" },
+    { "khtpm_entity",          "/_.monads/_.livedesk-taskbar/ops/+x/khtpm_entity.+x" },
+    { "khtpm_core_render",     "/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x" },
     { "network_browser_render", "/&.hq-apps/network/+x/network_browser_render.+x" },
 };
 #define N_KINDS ((int)(sizeof(kKinds) / sizeof(kKinds[0])))

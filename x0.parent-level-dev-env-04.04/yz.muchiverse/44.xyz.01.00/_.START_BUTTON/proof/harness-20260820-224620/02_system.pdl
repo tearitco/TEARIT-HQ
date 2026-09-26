@@ -13,9 +13,9 @@ METHOD       | %.harnesses/map-picker+mutaclysm | RUN:system:%.harnesses/map-pic
 METHOD       | %.harnesses/proc-monitor | RUN:system:%.harnesses/proc-monitor
 METHOD       | %.harnesses/tile-picker+mutaclysm | RUN:system:%.harnesses/tile-picker+mutaclysm
 METHOD       | &.hq-apps/chat-hai | RUN:system:&.hq-apps/chat-hai
-METHOD       | *.monads/*.book-stack | RUN:system:*.monads/*.book-stack
-METHOD       | *.monads/*.hard-vvar-agent-Q0000 | RUN:system:*.monads/*.hard-vvar-agent-Q0000
-METHOD       | *.monads/*.muchi-pet | RUN:system:*.monads/*.muchi-pet
+METHOD       | _.monads/_.book-stack | RUN:system:_.monads/_.book-stack
+METHOD       | _.monads/_.hard-vvar-agent-Q0000 | RUN:system:_.monads/_.hard-vvar-agent-Q0000
+METHOD       | _.monads/_.muchi-pet | RUN:system:_.monads/_.muchi-pet
 METHOD       | +.TSOTS-ALPHA-OMEGA/TSOTS-OG+01.00 | RUN:system:+.TSOTS-ALPHA-OMEGA/TSOTS-OG+01.00
 METHOD       | 0.user-pal👤️/00.login-signup | RUN:system:0.user-pal👤️/00.login-signup
 METHOD       | 0.user-pal👤️/01.avatar-creation👤️ | RUN:system:0.user-pal👤️/01.avatar-creation👤️

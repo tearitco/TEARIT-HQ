@@ -5,9 +5,9 @@
 # REAL BUG FIX 2026-08-18, found live-testing the HQ menu's "cli" row:
 # `gnome-terminal -- <path>` execve()s <path> DIRECTLY - it never invokes
 # a shell for that argument, so this project's own real, literal directory
-# names containing '*' characters (*.monads/*.livedesk-taskbar) were never
+# names containing '*' characters (_.monads/_.livedesk-taskbar) were never
 # resolved (confirmed live: "Failed to execute child process
-# '*.monads/*.livedesk-taskbar/...': Failed to execve: No such file or
+# '_.monads/_.livedesk-taskbar/...': Failed to execve: No such file or
 # directory"). Same real fix shape as run_khtpm_strip.sh already uses
 # (SCRIPT_DIR via $0, not a glob relied on at the exec site) - this script
 # itself IS still invoked the same glob-relative way "$.restart"'s own row

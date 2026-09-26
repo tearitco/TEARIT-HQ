@@ -400,7 +400,7 @@
         </p>
         <pre><code>static int find_app_dir(const char *house_root, const char *app_name,
                          char *out, size_t outsz) {
-    static const char *roots[] = { "*.monads", "&amp;.widgits", "&amp;.hq-apps", "@.apps", NULL };
+    static const char *roots[] = { "_.monads", "&amp;.widgits", "&amp;.hq-apps", "@.apps", NULL };
     for (int i = 0; roots[i]; i++) {
         char parent[PATH_BUF];
         snprintf(parent, sizeof(parent), "%s/%s", house_root, roots[i]);
@@ -440,7 +440,7 @@
           <h2>Taskbar &amp; Window Apps</h2>
           <span class="pill done">Current</span>
         </div>
-        <p class="section-path">*.monads/*.livedesk-taskbar/</p>
+        <p class="section-path">_.monads/_.livedesk-taskbar/</p>
 
         <p>
           The taskbar itself is two real, separate OS processes with no shared memory —
@@ -511,7 +511,7 @@
             <code>gnome-terminal -- &lt;path&gt;</code> calls <code>execve()</code> on
             <code>&lt;path&gt;</code> DIRECTLY — no shell, no glob expansion. This house's own
             real, literal directory names containing <code>*</code>
-            (<code>*.monads/*.livedesk-taskbar</code>) fail silently there. Fix: a tiny wrapper
+            (<code>_.monads/_.livedesk-taskbar</code>) fail silently there. Fix: a tiny wrapper
             script that resolves its own absolute path via <code>$0</code> (same real pattern
             <code>run_khtpm_strip.sh</code> already uses) before exec'ing <code>gnome-terminal</code>
             — never rely on glob expansion at the exec site.

@@ -23,6 +23,6 @@ regression apart from a pre-existing, unrelated bug before acting on any FAIL be
 | FAIL | `@.apps/tactics-txt/test-harn-same` | `$.crypts/harness-reports/20260820-223029/@.apps_tactics-txt_test-harn-same.log` |
 | FAIL | `@.apps/text-editor-xyz/test-harn-ed-app` | `$.crypts/harness-reports/20260820-223029/@.apps_text-editor-xyz_test-harn-ed-app.log` |
 | FAIL | `@.apps/TSC_ELO/test-harn-same` | `$.crypts/harness-reports/20260820-223029/@.apps_TSC_ELO_test-harn-same.log` |
-| PASS | `*.START_BUTTON/test-harn-same` | `$.crypts/harness-reports/20260820-223029/*.START_BUTTON_test-harn-same.log` |
+| PASS | `_.START_BUTTON/test-harn-same` | `$.crypts/harness-reports/20260820-223029/_.START_BUTTON_test-harn-same.log` |
 
 **Summary**: 18 harness(es) found — 1 PASS, 14 FAIL, 0 SKIP, 3 other (TIMEOUT/ERROR).

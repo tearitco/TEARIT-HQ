@@ -44,7 +44,7 @@ forever — ~10 % of a core, per stack, indefinitely. Two of them survived
   window process.
 - `HOUSE_CODE_PITFALLS.md` #17 — the grey-frame flash (a *different*
   weak-box symptom: a producer/consumer file-handoff gap).
-- `44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/kill_hq_windows.sh` —
+- `44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/kill_hq_windows.sh` —
   the ledger-pgid emergency reaper behind the `!kill hq` row; blind
   (kills by registry, shows nothing). `proc-mon` is the observable,
   engine-aware companion.

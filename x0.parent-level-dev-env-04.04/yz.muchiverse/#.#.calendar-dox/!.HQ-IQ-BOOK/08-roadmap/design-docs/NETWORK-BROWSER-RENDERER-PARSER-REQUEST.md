@@ -3,7 +3,7 @@
 **Date:** 2026-09-25
 **Branch:** `opencode` (main) `c8ce0ee38` `0 0` `opencode-fix: e748edbb8` safe `5e9fbade9` fix-small
 **Requesting cell:** `44.xyz.01.00/&.hq-apps/network/` (network browser) — `opencode` agent stays off parser/renderer per your call, needs your lane
-**Your lane:** `*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c` `&.widgits/_shared-lib/khtpm_draw_core.c` `&.hq-apps/network/nb_dom.c` `nb_css.c` `network-browser-hq.xhtpm` `khtpm_css_parser.c` `CENTROID_GOLD_STD.md:38`
+**Your lane:** `_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c` `&.widgits/_shared-lib/khtpm_draw_core.c` `&.hq-apps/network/nb_dom.c` `nb_css.c` `network-browser-hq.xhtpm` `khtpm_css_parser.c` `CENTROID_GOLD_STD.md:38`
 **Our lane (done, do not touch):** `ops/nb_js_worker.c` `network_browser_manager.c` `js/quickjs/*` `tests/worker_*` `presentations/network-browser-normal-20260923/`
 
 ## 0. Lane split (why this doc exists)

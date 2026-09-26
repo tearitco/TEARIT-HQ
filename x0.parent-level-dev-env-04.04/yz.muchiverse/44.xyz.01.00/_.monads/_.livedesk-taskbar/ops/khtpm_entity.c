@@ -752,7 +752,7 @@ static int self_exe_path(char *out, size_t out_sz) {
  * and &.widgits/ is found - the same marker-walk khtpm_vars.sh uses, so it
  * survives any relocation (the binary used to live at
  * <house>/&.widgits/tile-picker/ops/+x/ and was consolidated into
- * *.monads/*.livedesk-taskbar/ops/+x/ - the fixed dirname-step climb is
+ * _.monads/_.livedesk-taskbar/ops/+x/ - the fixed dirname-step climb is
  * gone, position no longer matters). */
 static void resolve_livedesk_paths(char *ops_dir_out, size_t ops_sz, char *house_root_out, size_t house_sz) {
     ops_dir_out[0] = '\0';
@@ -998,7 +998,7 @@ static void livedesk_registry_remove(const char *house_root, pid_t pid) {
  * REAL FIX 2026-08-05, direct correction ("why dont i see task bar in
  * &.widgits dir? thats where its ment to be... its not a member of
  * tile-picker"): the taskbar is its own real widget
- * (*.monads/*.livedesk-taskbar/), matching every other real widget's own
+ * (_.monads/_.livedesk-taskbar/), matching every other real widget's own
  * top-level layout (event-editor/, event-ez/, tile-picker/ itself) -
  * NOT nested inside tile-picker/ops/ just because tp_desktop_window.c
  * happens to be the one that launches it. Located via house_root
@@ -1060,7 +1060,7 @@ static void ensure_taskbar_running(const char *house_root) {
                  *
                  * REAL UPDATE 2026-08-11, same session, later: legacy
                  * tp_taskbar.c retired (archived to
-                 * *.monads/*.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip,
+                 * _.monads/_.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip,
                  * originals deleted) — khtpm_strip_parser.+x is the real,
                  * only taskbar now. The fallback launch command below
                  * used to hardcode tp_taskbar.+x's path, which no longer
@@ -1085,7 +1085,7 @@ static void ensure_taskbar_running(const char *house_root) {
     if (!alive) {
         char cmd[TP_PATH_BUF * 2];
         snprintf(cmd, sizeof(cmd),
-                 "'%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x' '%s' '%s/*.monads/*.livedesk-taskbar/khtpm_strip_header.xhtpm' >/dev/null 2>&1 &",
+                 "'%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x' '%s' '%s/_.monads/_.livedesk-taskbar/khtpm_strip_header.xhtpm' >/dev/null 2>&1 &",
                  house_root, house_root, house_root);
         int rc = system(cmd);
         (void)rc;
@@ -1104,7 +1104,7 @@ static void ensure_taskbar_running(const char *house_root) {
  * context menu claims one contiguous NAV range for its own rows the
  * moment it opens (nav_claim_rows()), releases that same range the
  * moment it closes (nav_release_pid()) - the taskbar (a separate real
- * process, *.monads/*.livedesk-taskbar/ops/tp_taskbar.c) claims its own
+ * process, _.monads/_.livedesk-taskbar/ops/tp_taskbar.c) claims its own
  * tab numbers from this exact same pool, so a tab and a menu row can
  * never show the same live number at once. */
 
@@ -5342,7 +5342,7 @@ static int tp_main(int argc, char **argv) {
                          * longer shows verse, event-ez button no longer
                          * opens event editor - path issue"): pals migration
                          * moved entities out of the dev-tree's fixed nesting
-                         * depth (*.monads/*.widget/entities/<name>, always
+                         * depth (_.monads/*.widget/entities/<name>, always
                          * 4 levels under house_root) into
                          * xyzfs/users/<uuid>/home/livedesk/pals/<name>
                          * (a different depth entirely). METHOD/OBJECT

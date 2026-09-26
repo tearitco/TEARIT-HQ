@@ -61,7 +61,7 @@ own setup flow, and the house desktop).
   desktop pal as the desktop's own equivalent of piececraft's xelector -
   same pattern reused, wholesale, at a different layer (desktop instead of
   in-game board).
-- **`*.monads/*.livedesk-taskbar/ops/tp_desktop_window_rgb.c`** - every real
+- **`_.monads/_.livedesk-taskbar/ops/tp_desktop_window_rgb.c`** - every real
   desktop entity's own renderer/event-loop. Real, existing click dispatch
   (confirmed ~line 3312-3341): **left-click (button 1) currently means
   drag-to-move** (press arms `dragging=1`, release snaps to the 80px grid

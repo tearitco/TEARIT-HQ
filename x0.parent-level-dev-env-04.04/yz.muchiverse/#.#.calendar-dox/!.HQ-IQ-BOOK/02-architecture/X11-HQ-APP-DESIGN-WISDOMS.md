@@ -34,7 +34,7 @@ the renderer + `<module>` + `vars=` + `<repeat>` + `action=` path.
    `SIGTERM`ed on window close. Omit the tag for a static window.
 5. **HQ-menu `cmd` runs through `sh -c`** — a leading `&` in a path is
    job-control. An app under `&.hq-apps/` needs a glob-safe
-   `*.monads/*.livedesk-taskbar/ops/open_<app>.sh` shim in its `.pdl`
+   `_.monads/_.livedesk-taskbar/ops/open_<app>.sh` shim in its `.pdl`
    row (pattern: `open_mon.sh`). `vars=` and `${PKG}` resolve against
    the `.xhtpm`'s own directory.
 
@@ -154,7 +154,7 @@ the published `_ui.txt`, not just a PNG (PNG dumps can look stale).
 ## 8. Rebuild + restart flow for shared render changes
 
 Editing `&.widgits/_shared-lib/khtpm_render_core.c` /
-`khtpm_draw_core.c` / `*.monads/*.livedesk-taskbar/ops/
+`khtpm_draw_core.c` / `_.monads/_.livedesk-taskbar/ops/
 khtpm_core_render.c` needs `sh build_core_render.sh` AND `sh
 build_khtpm_strip.sh`, then restart the taskbar (`sh
 run_khtpm_strip.sh new`) for the live desktop to pick it up. Running

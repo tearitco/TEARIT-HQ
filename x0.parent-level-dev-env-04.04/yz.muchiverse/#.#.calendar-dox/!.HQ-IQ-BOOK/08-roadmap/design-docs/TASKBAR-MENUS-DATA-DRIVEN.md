@@ -13,7 +13,7 @@ Yes. This doc is the plan to get there. Decide scope after reading.
 ## 1. Where we are now
 
 The strip / HQ menu system in
-`44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c`
+`44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c`
 is almost entirely hardcoded C:
 
 - **~20 `livedesk_build_*_menu()` functions** — each one hand-writes its

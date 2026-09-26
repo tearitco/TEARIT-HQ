@@ -1077,7 +1077,7 @@ static void handle_action_request(void) {
 
         /* REAL FIX 2026-08-29 ("mr was just one project using events
          * (probably the first) but it doesn't own events"): play_event.sh
-         * moved from *.monads/*.muchi-pet/ops/ (muchi-pet's own project
+         * moved from _.monads/_.muchi-pet/ops/ (muchi-pet's own project
          * dir - false ownership, every entity/project uses Play, not just
          * muchi-pet) to this manager's own events-hq/ops/ dir, right next
          * to the manager that already drives every entity's event

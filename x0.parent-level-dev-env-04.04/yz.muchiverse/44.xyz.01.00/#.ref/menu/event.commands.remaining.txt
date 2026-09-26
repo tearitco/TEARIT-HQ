@@ -7,7 +7,7 @@ by the same categories, each with what it does.
 
 Pipeline reminder: event-ez authors NODE rows -> compiles event.pal ->
 play_event.sh -> prisc+x -> cmd_N.sh wrapper -> shared op in
-*.monads/*.muchi-pet/ops/. A command is only "done" when it has BOTH an
+_.monads/_.muchi-pet/ops/. A command is only "done" when it has BOTH an
 event-ez palette entry AND a real op binary.
 
 PARITY RULE (2026-08-24, direct instruction): every runtime op we land

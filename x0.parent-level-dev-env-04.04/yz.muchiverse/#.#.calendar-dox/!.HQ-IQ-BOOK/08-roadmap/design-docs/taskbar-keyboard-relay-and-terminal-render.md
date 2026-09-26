@@ -13,7 +13,7 @@ metadata:
 `archive/` folder removed) — recoverable only via `git log --diff-filter=D`.
 
 **Original finding (2026-08-18):** the real, current taskbar implementation
-(`*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c` + `khtpm_taskbar_manager.c`/
+(`_.monads/_.livedesk-taskbar/ops/khtpm_strip_parser.c` + `khtpm_taskbar_manager.c`/
 `khtpm_taskbar_manager_main.c`) is a split-process pair, a real intentional port of the
 older `tp_taskbar.c`'s relay/dispatch shape. Two tasks were scoped from that finding:
 

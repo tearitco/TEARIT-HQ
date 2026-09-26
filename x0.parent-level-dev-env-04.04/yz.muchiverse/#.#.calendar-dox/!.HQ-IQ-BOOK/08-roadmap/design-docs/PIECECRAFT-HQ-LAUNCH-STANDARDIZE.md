@@ -67,7 +67,7 @@ engine, only a live board-viewer session to point at.**
 → **kills instance #1's orchestrator**. Nothing kills instance #1's
 `khtpm_core_render` board window or `pchq_board_projector` (neither is
 matched by any `kill_own_*` pattern — the window is the *shared*
-`*.livedesk-taskbar/ops/+x/khtpm_core_render.+x`). The window survives,
+`_.livedesk-taskbar/ops/+x/khtpm_core_render.+x`). The window survives,
 now data-starved. Instance #1's `keyboard_input` then exits → its
 `trap … rm -rf "$SESSION_DIR"` deletes the session out from under the
 still-mapped window → `canvas_raw` file gone → **blank canvas**.

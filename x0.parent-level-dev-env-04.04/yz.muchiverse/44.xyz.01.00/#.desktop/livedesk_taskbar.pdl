@@ -8,7 +8,7 @@ SECTION      | hq_label            | HQ
 SECTION      | hq_menu_1_label     | @ always-on-top
 SECTION      | hq_menu_1_cmd       | livedesk:zorder-toggle
 SECTION      | hq_menu_2_label     | $.restart
-SECTION      | hq_menu_2_cmd       | sh *.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh new
+SECTION      | hq_menu_2_cmd       | sh _.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh new
 SECTION      | hq_menu_3_label     | hide/show
 SECTION      | hq_menu_3_cmd       | sh $.crypts/scripts/hide-show-desks.sh
 SECTION      | hq_menu_4_label     | dir
@@ -20,11 +20,11 @@ SECTION      | hq_menu_6_cmd       | livedesk:open-settings
 SECTION      | hq_menu_7_label     | stats
 SECTION      | hq_menu_7_cmd       | livedesk:open-stats
 SECTION      | hq_menu_8_label     | cli
-SECTION      | hq_menu_8_cmd       | sh *.monads/*.livedesk-taskbar/ops/open_cli.sh
+SECTION      | hq_menu_8_cmd       | sh _.monads/_.livedesk-taskbar/ops/open_cli.sh
 SECTION      | hq_menu_9_label     | cursword
 SECTION      | hq_menu_9_cmd       | livedesk:spawn-cursword
 SECTION      | hq_menu_10_label    | !kill hq
-SECTION      | hq_menu_10_cmd      | sh *.monads/*.livedesk-taskbar/ops/kill_hq_windows.sh .
+SECTION      | hq_menu_10_cmd      | sh _.monads/_.livedesk-taskbar/ops/kill_hq_windows.sh .
 SECTION      | hq_menu_11_label    | debug
 SECTION      | hq_menu_11_cmd      | livedesk:open-palette:debug
 # proc-mon - "session monitor": lists every board/engine/hq process the
@@ -37,7 +37,7 @@ SECTION      | hq_menu_11_cmd      | livedesk:open-palette:debug
 # never tied to the mon-hq -> proc-mon rename (a separate, standalone
 # string), just never updated for consistency until now.
 SECTION      | hq_menu_13_label    | proc-mon
-SECTION      | hq_menu_13_cmd      | sh *.monads/*.livedesk-taskbar/ops/open_mon.sh
+SECTION      | hq_menu_13_cmd      | sh _.monads/_.livedesk-taskbar/ops/open_mon.sh
 SECTION      | hq_menu_14_label    | cancel
 
 SECTION      | file_menu_1_label   | new-desk

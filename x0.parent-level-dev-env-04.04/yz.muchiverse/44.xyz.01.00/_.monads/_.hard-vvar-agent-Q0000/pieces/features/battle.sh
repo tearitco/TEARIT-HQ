@@ -6,7 +6,7 @@
 TARGET="$1"
 [ -z "$TARGET" ] && TARGET="m6_golddeity"
 
-ENTITY_DIR="$HOUSE_ROOT/*.monads/*.muchi-pet/entities/$TARGET"
+ENTITY_DIR="$HOUSE_ROOT/_.monads/_.muchi-pet/entities/$TARGET"
 if [ ! -f "$ENTITY_DIR/hp.txt" ]; then
     ledger_append "Battle" "no such muchi entity: $TARGET" "battle.sh"
     echo "Battle: no such entity $TARGET"

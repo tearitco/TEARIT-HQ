@@ -20,7 +20,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 # writes state/ui.txt, never this file, so no bootstrap/restore dance.
 XHTPM="$HERE/co-lab-hai.xhtpm"
 
-RENDER_OPS_DIR="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
+RENDER_OPS_DIR="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops"
 BIN="$RENDER_OPS_DIR/+x/khtpm_core_render.+x"
 MANAGER_BIN="$HERE/+x/colab_hai_manager.+x"
 

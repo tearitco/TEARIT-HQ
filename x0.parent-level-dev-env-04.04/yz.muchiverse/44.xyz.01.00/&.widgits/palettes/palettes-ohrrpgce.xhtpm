@@ -1,6 +1,6 @@
 <!-- palettes-ohrrpgce.xhtpm — 20x20 / 320x200 pages (scaled if needed). -->
 <window label="palettes: OHR Tiles" class="palettes-pal database-window" vars="state/palettes-ohrrpgce_ui.txt">
-  <module src="*.monads/*.livedesk-taskbar/ops/+x/palettes_manager.+x" args="ohrrpgce"/>
+  <module src="_.monads/_.livedesk-taskbar/ops/+x/palettes_manager.+x" args="ohrrpgce"/>
   <module src="&.widgits/palettes/ops/+x/palettes_projector.+x" id="ohrrpgce"/>
   <page name="main">
     <item id="close" class="chrome-btn" label="x" onclick="CLOSE"/>

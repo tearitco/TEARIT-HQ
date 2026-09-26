@@ -22,7 +22,7 @@
 #define MAX_NAME 512
 
 static char project_root[MAX_PATH] = ".";   /* session (writable piece.pdl) */
-static char install_root[MAX_PATH] = ".";   /* *.START_BUTTON install — config + relative roots */
+static char install_root[MAX_PATH] = ".";   /* _.START_BUTTON install — config + relative roots */
 static char scan_root[MAX_PATH] = "..";
 static char widgets_root[MAX_PATH] = "../&.widgits";
 static char apps_root[MAX_PATH] = "../@.apps";
@@ -32,7 +32,7 @@ static int require_button_sh = 1;
 static int require_project_pdl = 0;
 static int max_entries = MAX_ENTRIES;
 static char skip_names[2048] =
-    "*.START_BUTTON,@.apps,@.app-store,&.widgits,&.widgets";
+    "_.START_BUTTON,@.apps,@.app-store,&.widgits,&.widgets";
 
 static void resolve_root(void) {
     const char *env = getenv("PRISC_PROJECT_ROOT");
@@ -264,7 +264,7 @@ static void scan_section(const char *section) {
     int is_store = 0;
     int depth = 1;
 
-    /* Roots are relative to install_root (*.START_BUTTON), NOT the session. */
+    /* Roots are relative to install_root (_.START_BUTTON), NOT the session. */
     if (strcmp(section, "system") == 0) {
         abspath_from(install_root, scan_root, root_abs, sizeof(root_abs));
         depth = scan_depth;

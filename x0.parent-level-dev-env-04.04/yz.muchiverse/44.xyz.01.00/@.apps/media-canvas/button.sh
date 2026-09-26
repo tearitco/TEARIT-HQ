@@ -14,7 +14,7 @@ else
   exit 1
 fi
 XHTPM="$HERE/media-canvas.xhtpm"
-RENDER_OPS="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
+RENDER_OPS="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops"
 BIN="$RENDER_OPS/+x/khtpm_core_render.+x"
 [ -x "$BIN" ] || (cd "$RENDER_OPS" && sh build_core_render.sh) || true
 [ -x "$BIN" ] || { echo "media-canvas: missing $BIN" >&2; exit 1; }

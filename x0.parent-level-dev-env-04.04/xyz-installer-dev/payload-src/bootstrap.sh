@@ -37,7 +37,7 @@ echo "toolchain OK: $(gcc --version | head -1)"
 # --- 1. taskbar (parser/manager + shared core + helpers) ----------------
 echo
 echo "--- [1/3] taskbar ---"
-( cd "$ROOT/*.monads/*.livedesk-taskbar/ops" && sh build_khtpm_strip.sh )
+( cd "$ROOT/_.monads/_.livedesk-taskbar/ops" && sh build_khtpm_strip.sh )
 
 # --- 2. login / signup app --------------------------------------------------
 echo
@@ -62,8 +62,8 @@ echo
 echo "--- verify ---"
 ok=1
 for f in \
-  "$ROOT/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x" \
-  "$ROOT/*.monads/*.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x" \
+  "$ROOT/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x" \
+  "$ROOT/_.monads/_.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x" \
   "$ROOT/0.user-pal👤️/00.login-signup/ops/+x/userpal_login.+x" \
   "$ROOT/0.user-pal👤️/00.login-signup/ops/+x/userpal_create_account.+x" ; do
     if [ -x "$f" ]; then echo "  OK  ${f#$ROOT/}"; else echo "  MISSING  ${f#$ROOT/}"; ok=0; fi

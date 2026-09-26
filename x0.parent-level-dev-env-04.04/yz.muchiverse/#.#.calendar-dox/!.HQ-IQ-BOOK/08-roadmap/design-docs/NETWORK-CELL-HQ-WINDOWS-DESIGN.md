@@ -269,7 +269,7 @@ network
    - `launcher_network_irc    | 044.pal-chat-irc👥️+2/button.sh`
    - `launcher_network_forum  | 041.pal-forum👥️/button.sh`
    - `launcher_network_chain  | 041.pal-chain⛓️/button.sh`
-   - `launcher_network_browser| *.monads/*.livedesk-taskbar/ops/open_network_browser_stub.sh` (new stub, §7)
+   - `launcher_network_browser| _.monads/_.livedesk-taskbar/ops/open_network_browser_stub.sh` (new stub, §7)
 4. **Rebuild** `khtpm_taskbar_manager_main.+x` / `khtpm_strip_parser.+x`
    per the taskbar build recipe, restart via
    `run_khtpm_strip.sh`, and verify visually + via `nav.sh` test harness.
@@ -425,10 +425,10 @@ the 2do doc's handoff section for the boundary owner (Sonnet):
 | Network cell label | `#.desktop/livedesk_taskbar.pdl:100` (`strip_btn_9_label`) |
 | h-ai cell rows precedent | `#.desktop/livedesk_taskbar.pdl:104-109` |
 | Launcher registry | `#.desktop/livedesk_launchers.pdl` (4 rows today) |
-| Inert-cell comment | `*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c:3142-3156` |
+| Inert-cell comment | `_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c:3142-3156` |
 | Inert catch-all | `…/khtpm_taskbar_manager.c:3291` (index 12 → network) |
 | Dispatch chain | `…/khtpm_taskbar_manager.c:3360+` (`ktb_hq_activate`); model branch db-hq `:3642-3673` |
-| Strip layout | `*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm` (index comment: `12=network`) |
+| Strip layout | `_.monads/_.livedesk-taskbar/khtpm_strip_header.chtpm` (index comment: `12=network`) |
 | Click codes | `…/khtpm_strip_codes.h` (network = `4000+13`) |
 | DB-hq tab array (boundary) | `…/khtpm_entity_menu_render.c:932-952`, `dbhq_tab_is_real():983-991`, dispatch `:3163`/`:3036-3038` |
 | Primary planning doc | `#.#.calendar-dox/1.^V-hq/TASKBAR-MENU-ARCHITECTURE.md` |

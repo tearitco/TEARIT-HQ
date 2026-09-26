@@ -120,11 +120,11 @@ static int csv_split(char *line, char **fields, int max_fields) {
  * palettes_menu.sh's own EMOJI_TOOLS loop used. */
 static void find_emoji_tools(void) {
     char probe[PATH_BUF];
-    snprintf(probe, sizeof(probe), "%s/*.monads/*.livedesk-taskbar/ops/+x", g_house_root);
+    snprintf(probe, sizeof(probe), "%s/_.monads/_.livedesk-taskbar/ops/+x", g_house_root);
     /* the literal '*' in this house's own dir names isn't a shell glob
      * here (no shell involved) - it's a real, fixed directory name (see
      * !.HOUSE_STDS.md's own convention) - use it verbatim. */
-    snprintf(g_emoji_tools, sizeof(g_emoji_tools), "%s/*.monads/*.livedesk-taskbar/ops/+x", g_house_root);
+    snprintf(g_emoji_tools, sizeof(g_emoji_tools), "%s/_.monads/_.livedesk-taskbar/ops/+x", g_house_root);
     (void)probe;
 }
 

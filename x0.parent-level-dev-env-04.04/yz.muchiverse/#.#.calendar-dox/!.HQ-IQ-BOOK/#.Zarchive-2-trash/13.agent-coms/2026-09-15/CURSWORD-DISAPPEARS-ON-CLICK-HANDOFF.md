@@ -47,7 +47,7 @@ reference.
 Current, broken house:
 `/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00`
 
-Relevant file both sides: `*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c`
+Relevant file both sides: `_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c`
 (current: ~17-18k lines; the ButtonPress/ButtonRelease/KeyPress block
 for tile/entity mode is around current line ~16642-16960, old snapshot
 ~12359-12650 — line numbers will have drifted further since this
@@ -59,7 +59,7 @@ doc was written, re-locate by content, not by line number alone).
   `strcmp(basename, "cursword")` to a data-driven
   `read_log_mode(package_dir)` reading `STATE|log_mode|1` from
   `meta.pdl` — a deliberate, documented 09-04-dated refactor. Verified
-  both real `meta.pdl` files (`*.monads/*.cursword/entities/cursword/meta.pdl`
+  both real `meta.pdl` files (`_.monads/_.cursword/entities/cursword/meta.pdl`
   and the live `xyzfs/.../livedesk/pals/cursword/meta.pdl`) both carry
   the row correctly, parser logic correct. **Not the bug.**
 - **`build_shape_mask()` → `kh_build_shape_mask_generic()`** (inline
@@ -332,7 +332,7 @@ any unexpected path) would likely show the real trigger directly.
 
 Once the actual click regression is found and fixed:
 1. Rebuild `khtpm_core_render.c` via `build_khtpm_strip.sh`
-   (`*.monads/*.livedesk-taskbar/ops/`), confirm clean.
+   (`_.monads/_.livedesk-taskbar/ops/`), confirm clean.
 2. Live-verify: click cursword for real, confirm the yellow highlight
    circle draws and `c`/`v` still changes Z-level (check
    `#.desktop/desktop_active_z.txt` actually updates and sibling

@@ -12,7 +12,7 @@
 #   - the xhtpm's one <module> is the projector; it reads KHTPM_ARG3
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
-OPS_DIR="$HERE/../../*.monads/*.livedesk-taskbar/ops"
+OPS_DIR="$HERE/../../_.monads/_.livedesk-taskbar/ops"
 BIN="$OPS_DIR/+x/khtpm_core_render.+x"
 PROJ="$HERE/ops/+x/evhq_projector.+x"
 MGR="$HERE/ops/+x/khtpm_events_hq_manager.+x"

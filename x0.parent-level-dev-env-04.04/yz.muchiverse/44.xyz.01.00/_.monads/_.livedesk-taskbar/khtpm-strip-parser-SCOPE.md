@@ -62,7 +62,7 @@ Multi-line values in a pipe-delimited `.pdl`-style row are awkward (embedded new
 
 ## The layout file itself
 
-A NEW static file, e.g. `*.monads/*.livedesk-taskbar/khtpm_strip.chtpm` (or `.pdl` extension if `.chtpm` feels presumptuous outside the real CHTPM tree — house convention question, not a technical one, ask if unsure). Hand-authored, checked into the repo like any other config — this is the actual "users and devs create layouts" deliverable the whole refactor was for. Rough shape (illustrative, not final — write the real one once the tag vocabulary above is locked and reviewed):
+A NEW static file, e.g. `_.monads/_.livedesk-taskbar/khtpm_strip.chtpm` (or `.pdl` extension if `.chtpm` feels presumptuous outside the real CHTPM tree — house convention question, not a technical one, ask if unsure). Hand-authored, checked into the repo like any other config — this is the actual "users and devs create layouts" deliverable the whole refactor was for. Rough shape (illustrative, not final — write the real one once the tag vocabulary above is locked and reviewed):
 
 ```
 <panel>

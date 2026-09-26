@@ -1,4 +1,4 @@
-# build.ps1 - Windows twin of build_self.sh (*.hard-vvar-agent-Q0000)
+# build.ps1 - Windows twin of build_self.sh (_.hard-vvar-agent-Q0000)
 # ASCII only.
 
 $ErrorActionPreference = "Continue"

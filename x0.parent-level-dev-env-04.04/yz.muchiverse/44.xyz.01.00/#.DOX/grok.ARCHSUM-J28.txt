@@ -84,7 +84,7 @@ then optional **live human** smoke if green.
   - Registry root is **caller-supplied** (not auto-wired into mutaclysm/editor
     button.sh yet)
 
-1.7 *.START_BUTTON
+1.7 _.START_BUTTON
   - Category pre-screen: System / Widgets / Apps / App Store
   - Auto-compile on run (dev)
   - Same-TTY handoff for launching System apps
@@ -168,7 +168,7 @@ From house root (44.xyz…):
   # NOTE: uses short-lived sleep PIDs; should clean up. If not, kill those PIDs.
 
 --- P6 START_BUTTON (optional human) ---
-  cd *.START_BUTTON
+  cd _.START_BUTTON
   ./button.sh compile
   ./button.sh run
   # EXPECT: HOUSE LOADER; System lists house apps; Esc/Ctrl+C clean
@@ -414,7 +414,7 @@ What was coded and re-verified ALL PASS (exit 0, 0 missing bins):
   6. %.harnesses/proc-monitor ............... ./button.sh demo
 
 Also present (not re-run this stamp, built earlier):
-  - *.START_BUTTON categories + same-TTY handoff + auto-compile
+  - _.START_BUTTON categories + same-TTY handoff + auto-compile
   - &.widgits ops: file-menu, map-picker, tile-picker, proc-monitor
   - 101.mutaclsym muta_world_io / muta_widget_cmds / muta_map_io / muta_place_tile
 

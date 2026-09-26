@@ -1,7 +1,7 @@
 # Events Runtime — Investigation, Bug Fix, and Architecture (2026-08-11/12)
 
 **Status:** ✅ Change Gold verified working end-to-end via real relay injection. ✅ Ops migration
-(`*.monads/*.muchi-pet/ops/` → `xyzfs/bin/muchi-pet/ops/`) COMPLETE and verified. ✅ Multi-page/
+(`_.monads/_.muchi-pet/ops/` → `xyzfs/bin/muchi-pet/ops/`) COMPLETE and verified. ✅ Multi-page/
 multi-trigger runtime COMPLETE and verified. ✅ Session-level common events COMPLETE and verified —
 zero new runtime code needed, pure reuse. Four real bugs found and fixed total.
 **Owner:** claude-0001
@@ -130,10 +130,10 @@ writing.
 
 ## ✅ UPDATE 2026-08-12 (earlier) — Ops Migration Complete
 
-Direct instruction: "migration makes sense now" — moved `*.monads/*.muchi-pet/ops/` (the whole
+Direct instruction: "migration makes sense now" — moved `_.monads/_.muchi-pet/ops/` (the whole
 folder: `.c` sources, compiled `+x/` binaries, and helper shell scripts) to
 `xyzfs/bin/muchi-pet/ops/`, matching house convention (`<app>/ops/+x/`) and the "ops are shared,
-house-wide, even cross-user" direction from the Ops-vs-Events table below. `*.monads/*.muchi-pet/`
+house-wide, even cross-user" direction from the Ops-vs-Events table below. `_.monads/_.muchi-pet/`
 itself still holds `entities/` (the template/demo monster definitions) — only `ops/` moved; the
 entity-template migration is a separate, not-yet-done task.
 
@@ -144,7 +144,7 @@ after the move rather than assuming the earlier fix pattern was universally appl
 
 1. **`play_event.sh`'s own `HOUSE_ROOT` derivation** used a fixed `"../.."` walk from its own script
    location to reach house_root (needed to find `101.mutaclsym*/system/prisc+x`). Correct when the
-   script lived at `*.monads/*.muchi-pet/ops/` (2 levels under house_root) — broke silently once
+   script lived at `_.monads/_.muchi-pet/ops/` (2 levels under house_root) — broke silently once
    moved to `xyzfs/bin/muchi-pet/ops/` (3 levels under house_root, one deeper). Fixed the same way as
    the `cmd_N.sh` wrappers: search upward for a stable anchor (`101.mutaclsym*/system`) instead of
    assuming a fixed depth. Verified via direct script execution AND full relay re-test.
@@ -190,7 +190,7 @@ echo "RUN_METHOD:Menu" > interact_relay.txt   # → objects.pdl self-regenerated
 - Found and fixed a REAL bug: the compiled `cmd_N.sh` wrapper scripts (event-ez's own compiler
   output) hardcoded a fixed directory-depth assumption to locate `mr_change_gold.+x`, which broke
   the moment an entity got deployed to `xyzfs/users/<uuid>/home/livedesk/pals/<name>/` (a different
-  depth than the original `@.apps/`/`*.monads/*.muchi-pet/` template layout). Fixed with an
+  depth than the original `@.apps/`/`_.monads/_.muchi-pet/` template layout). Fixed with an
   anchor-search pattern instead of a fixed-depth walk.
 - Verified end-to-end via pure relay injection: reset gold to 0, triggered Play through
   `interact_relay.txt`, confirmed `qolq` went `0 → 35` (real execution, not a fixture).
@@ -200,7 +200,7 @@ echo "RUN_METHOD:Menu" > interact_relay.txt   # → objects.pdl self-regenerated
   1. **Ops (code) are shared, house-wide, and even cross-user** — this is the model for how apps
      and user-apps will work going forward. `mr_change_gold.+x` should eventually live in a shared
      location like `xyzfs/bin/` (already seeded as an empty dir by `userpal_create_account.c`), not
-     the current per-game `*.monads/*.muchi-pet/ops/+x/` dev folder.
+     the current per-game `_.monads/_.muchi-pet/ops/+x/` dev folder.
   2. **Events (authored content — event.ir.pdl, common_events.pdl) are session-private by default**,
      only becoming shared/cross-user when the owning user explicitly publishes them to the **store**
      (the `store` header cell, currently an inert placeholder — likely its real intended purpose).
@@ -221,7 +221,7 @@ There is no automatic "fires when clicked" behavior yet, despite the trigger bei
 Each entity has an `objects.pdl` (multi-page right-click menu, read live by `tp_desktop_window.c`).
 For m8_redhorned, `PAGE|main` includes:
 ```
-OBJECT | label=Play | action=*.monads/*.muchi-pet/ops/play_event.sh
+OBJECT | label=Play | action=_.monads/_.muchi-pet/ops/play_event.sh
 ```
 Right-clicking the entity and selecting "Play" (or injecting `RUN_METHOD:Play` into the entity's own
 `interact_relay.txt`, which `tp_desktop_window.c` polls and dispatches identically to a real click)
@@ -260,8 +260,8 @@ exec ../../ops/+x/mr_change_gold.+x "$PWD" '10'
 The first `cd` (3 levels up from `event_pkg/pages/page_1/`) correctly reaches the entity's own root
 directory — that part was always right, and matches where `inventory.txt` really lives. The SECOND
 relative hop (`../../ops/+x/`) assumed the entity's grandparent directory has an `ops/+x/` sibling —
-true for the original `@.apps/MUCHI_RANCHER/entities/<name>/` and `*.monads/*.muchi-pet/entities/
-<name>/` template layouts (grandparent = `MUCHI_RANCHER`/`*.muchi-pet`, which does have that
+true for the original `@.apps/MUCHI_RANCHER/entities/<name>/` and `_.monads/_.muchi-pet/entities/
+<name>/` template layouts (grandparent = `MUCHI_RANCHER`/`_.muchi-pet`, which does have that
 sibling), but FALSE the moment the entity is deployed to `xyzfs/users/<uuid>/home/livedesk/pals/
 <name>/` (grandparent = `home/`, no `ops/` there at all) — exactly the layout this house's own
 sessions/xyzfs migration produces. Running the wrapper directly showed the real failure:
@@ -273,20 +273,20 @@ sessions/xyzfs migration produces. Running the wrapper directly showed the real 
 Changed the wrapper generation in `ez_menu_input.c` (and manually re-applied the same fix to the
 already-broken `cmd_1.sh`/`cmd_2.sh` on disk for m8_redhorned's live copy, so the fix is testable
 without re-running the full event-ez GUI save flow) to search upward from the entity root for a
-stable anchor (`*.monads`, always a direct child of house_root regardless of entity depth) instead of
+stable anchor (`_.monads`, always a direct child of house_root regardless of entity depth) instead of
 assuming a fixed hop count:
 ```sh
 cd "$(dirname "$0")/../../.." || exit 1
 ENT="$PWD"
 D="$ENT"
-while [ "$D" != "/" ] && [ ! -d "$D/*.monads" ]; do D="$(dirname "$D")"; done
-exec "$D/*.monads/*.muchi-pet/ops/+x/mr_change_gold.+x" "$ENT" '10'
+while [ "$D" != "/" ] && [ ! -d "$D/_.monads" ]; do D="$(dirname "$D")"; done
+exec "$D/_.monads/_.muchi-pet/ops/+x/mr_change_gold.+x" "$ENT" '10'
 ```
 Same anchor-search pattern `khtpm_taskbar_manager.c`'s `livedesk_login_root()` already uses for the
 identical class of problem (finding a fixed-location tool from a variable-depth caller). Rebuilt
 event-ez (`sh button.sh compile`) — clean, only pre-existing truncation warnings.
 
-**Note:** `mr_change_gold.+x`'s location (`*.monads/*.muchi-pet/ops/+x/`) is still hardcoded — this
+**Note:** `mr_change_gold.+x`'s location (`_.monads/_.muchi-pet/ops/+x/`) is still hardcoded — this
 fix makes path RESOLUTION depth-independent, it does not relocate the binary. See "Open Migration
 Task" below for what that would actually require.
 
@@ -298,9 +298,9 @@ Direct instruction, 2026-08-11: "in the future ops will be shared between all us
 desks... can even be shared between users, and this is how apps and user apps will work." Direct
 instruction, 2026-08-12: "migration makes sense now."
 
-`*.monads/*.muchi-pet/ops/` → `xyzfs/bin/muchi-pet/ops/`, completed and verified (see top of doc for
+`_.monads/_.muchi-pet/ops/` → `xyzfs/bin/muchi-pet/ops/`, completed and verified (see top of doc for
 the two additional bugs this surfaced and how they were fixed). `mr_change_gold.+x` and its sibling
-scripts now live in the shared, house-wide location. `*.monads/*.muchi-pet/entities/` (the template
+scripts now live in the shared, house-wide location. `_.monads/_.muchi-pet/entities/` (the template
 monster definitions) was deliberately NOT moved — that's a separate, still-open migration (moving
 demo/template content into the sessions model), not conflated with the ops move.
 
@@ -356,7 +356,7 @@ All testing below via real relay/injection — no direct binary calls, no C func
    trip — state persisted correctly across a real desk swap.
 
 ### How `qolq=35` Originally Got There (a dead end worth recording so no one re-investigates it)
-The template source (`*.monads/*.muchi-pet/entities/m8_redhorned/`) has an IDENTICAL, byte-for-byte
+The template source (`_.monads/_.muchi-pet/entities/m8_redhorned/`) has an IDENTICAL, byte-for-byte
 `event.ir.pdl` and its own pre-baked `inventory.txt` showing `qolq=35`, with all files sharing the
 same sub-second timestamp — proving the value was seeded once (likely from a real manual
 `prisc+x event.pal` terminal run, per the existing `HOW2_event-ez_change_gold_k3.txt` guide's
@@ -370,5 +370,5 @@ fixture. The REAL, live-verified proof is the test log above.
 **Status:** ✅ Change Gold runtime bug found + fixed + verified end-to-end via relay. Persistence
 verified. Two architecture decisions (shared ops location, event-sharing-via-store) logged for future
 work, not yet implemented — don't guess at the target locations, they need a real decision.
-**Follow-up:** the muchi-pet ops migration (`*.monads/*.muchi-pet/ops/+x/` → `xyzfs/bin/` or similar)
+**Follow-up:** the muchi-pet ops migration (`_.monads/_.muchi-pet/ops/+x/` → `xyzfs/bin/` or similar)
 and the `store` cell's real implementation are the two biggest levers unlocked by tonight's findings.

@@ -12,7 +12,7 @@ Current (livedesk strip)
   Desktop: livedesk-start-button.exe (+ livedesk-house-root.txt)
 
   autostart.pdl pal args are HOUSE-RELATIVE (xyzfs/users/.../pals/<name>).
-  Linux spelling *.monads stays; Win aliases to _.monads.
+  Linux spelling _.monads stays; Win aliases to _.monads.
   Taskbar = khtpm_strip_parser.c + x11_win shim, not tp_taskbar / parser_win sketch.
   Entity rgb.exe not built yet.
 

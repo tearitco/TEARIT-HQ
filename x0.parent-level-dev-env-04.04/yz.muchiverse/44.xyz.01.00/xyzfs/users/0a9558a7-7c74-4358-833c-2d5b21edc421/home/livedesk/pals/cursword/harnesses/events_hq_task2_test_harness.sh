@@ -129,7 +129,7 @@ rm -f /tmp/ce_test_marker.txt
 # Step 1: launch events-hq
 # =========================================================================
 log "=== step 1: launch events-hq ==="
-BIN="$HOUSE/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
+BIN="$HOUSE/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
 CHTPM="$HOUSE/&.widgits/events-hq/pieces/dashboard.chtpm"
 
 setsid nohup "$BIN" "$HOUSE" "$CHTPM" "$PKG_DIR" "cursword" \
@@ -340,7 +340,7 @@ log "event.pal for runtime test:"
 cat "$PAL_FILE"
 
 # Play the event
-PLAY="$HOUSE/*.monads/*.muchi-pet/ops/play_event.sh"
+PLAY="$HOUSE/_.monads/_.muchi-pet/ops/play_event.sh"
 rm -f /tmp/ce_test_marker.txt
 cd "$HOUSE/101.mutaclsym🧟‍♂️️+18.0G/system" && \
   MUCHI_CALLER_PKG="$PKG_DIR" bash "$PLAY" "$PAL" "$HOUSE" 2>&1 | tee -a "$RESULTS/log.txt"

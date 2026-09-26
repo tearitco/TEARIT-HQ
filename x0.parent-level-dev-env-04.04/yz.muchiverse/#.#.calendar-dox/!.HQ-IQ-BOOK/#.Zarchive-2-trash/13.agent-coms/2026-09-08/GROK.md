@@ -103,7 +103,7 @@ working tree.
 2. Is everything you intend already committed to `grok`, or is the
    working tree the real latest (needs a commit from you)?
 3. The refactor will touch
-   `44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c`,
+   `44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c`,
    `khtpm_taskbar_manager.h`, `khtpm_taskbar_manager_main.c` and add
    `#.desktop/livedesk_menus.pdl` — see design doc
    `08-roadmap/design-docs/TASKBAR-MENUS-DATA-DRIVEN.md`

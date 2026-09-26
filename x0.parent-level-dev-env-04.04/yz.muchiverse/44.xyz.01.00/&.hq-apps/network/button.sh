@@ -46,7 +46,7 @@ fi
 # The shared renderer lives in the taskbar's own ops dir (khtpm_core_
 # render.+x is shared house-wide, not network-browser's own binary) - real,
 # same path every other default-mode consumer's own launcher uses.
-RENDER_OPS_DIR="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
+RENDER_OPS_DIR="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops"
 BIN="$RENDER_OPS_DIR/+x/khtpm_core_render.+x"
 MANAGER_BIN="$HERE/+x/network_browser_manager.+x"
 

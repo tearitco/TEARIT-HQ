@@ -21,7 +21,7 @@ PAL_DIR="$(cd "$PAL_DIR" && pwd)"
 H="${2:-}"
 if [ -z "$H" ] || [ ! -d "$H" ]; then H="$(cd "$HERE/../.." && pwd)"; fi
 
-RENDER_OPS="$H/*.monads/*.livedesk-taskbar/ops"
+RENDER_OPS="$H/_.monads/_.livedesk-taskbar/ops"
 BIN="$RENDER_OPS/+x/khtpm_core_render.+x"
 PRISC="$H/&.widgits/_shared-lib/system/+x/prisc+x.+x"
 MGR="$RENDER_OPS/+x/bookmarks_manager.+x"

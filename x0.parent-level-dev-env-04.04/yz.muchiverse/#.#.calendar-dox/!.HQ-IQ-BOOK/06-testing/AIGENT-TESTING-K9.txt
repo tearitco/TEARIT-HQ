@@ -15,7 +15,7 @@ LIVE PROBE 2026-09-17 19:18 against a running
     `livedesk_agent_relay.txt` 284→338 bytes (digits 57 + Enter 13).
   - `strip_history.txt` mtime did NOT change.
   - `lsof` on `livedesk_agent_relay.txt`: ZERO readers.
-  - grep of live `*.livedesk-taskbar/ops/khtpm_core_render.c`: no
+  - grep of live `_.livedesk-taskbar/ops/khtpm_core_render.c`: no
     `poll_agent_relay` / no `livedesk_agent_relay`.
   - `nav.sh mgrcode 27` DID append to `strip_history.txt` (29795→29798)
     and entity `khtpm_core_render` fds sat at EOF on that file.

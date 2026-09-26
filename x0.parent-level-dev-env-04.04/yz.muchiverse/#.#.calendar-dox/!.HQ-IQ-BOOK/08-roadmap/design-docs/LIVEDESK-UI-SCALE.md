@@ -245,7 +245,7 @@ one exists).
 
 | File | Change |
 |---|---|
-| `*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c` | `g_ui_scale_pct`, real `scaled()`, read `font_scale` in `hq_ui_pdl_reload_if_changed()` + tp_main, `load_font_ui()` + reload, wrap `ROW_H`/`POPUP_ROW_H`(/`DOCK_BAR_H`), `write_hq_ui_pdl_key()`, `UI_SCALE_±` in `dispatch()` |
+| `_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c` | `g_ui_scale_pct`, real `scaled()`, read `font_scale` in `hq_ui_pdl_reload_if_changed()` + tp_main, `load_font_ui()` + reload, wrap `ROW_H`/`POPUP_ROW_H`(/`DOCK_BAR_H`), `write_hq_ui_pdl_key()`, `UI_SCALE_±` in `dispatch()` |
 | `&.widgits/taskbar-settings/taskbar-settings-pal.xhtpm` | `Size -` / `Size +` items |
 | `&.widgits/taskbar-settings/ops/taskbar_settings_projector.c` | (optional) publish `${ui_scale}` readout |
 | `#.desktop/hq_ui.pdl` | the `font_scale` key already exists (ships `1.25`); the stepper rewrites its value (runtime data, not committed) |

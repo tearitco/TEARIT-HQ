@@ -37,7 +37,7 @@ task: delete the `g_is_*` / `evhq_*` / `dbhq_*` layout-as-C from
   `piececraft` / `user-pallet` stay on `palettes_menu.sh` (not ported;
   plan in `PROGRESS-palettes-xhtpm.md`).
 - `#.desktop/livedesk_launchers.pdl` `launcher_db`
-  (`*.monads/*.muchi-pet/ops/open_db_hq.sh`) → `&.hq-apps/db-hq-pal/button.sh`.
+  (`_.monads/_.muchi-pet/ops/open_db_hq.sh`) → `&.hq-apps/db-hq-pal/button.sh`.
   db-hq-pal DB-record field editing is still read-only (see below) — if
   that's a blocker for the owner, keep `launcher_db` old and ship the
   rest; the C can still be deleted (the read-only panel is generic).
@@ -162,7 +162,7 @@ both so every window takes the generic `layout_sidebar_panel` path.
   (still on the old path) — only remove `palettes-emojis.chtpm` /
   `palettes-elements.chtpm` if `dbhq_inject_palette_tiles` is truly gone
 - `&.hq-apps/stats-hq/dashboard.chtpm`, `&.widgits/bookmarks/bookmarks.template.chtpm`,
-  `*.monads/*.livedesk-taskbar/ops/taskbar_settings.chtpm` — remove after
+  `_.monads/_.livedesk-taskbar/ops/taskbar_settings.chtpm` — remove after
   confirming nothing else provisions/reads them
 
 ### 5. Procedure

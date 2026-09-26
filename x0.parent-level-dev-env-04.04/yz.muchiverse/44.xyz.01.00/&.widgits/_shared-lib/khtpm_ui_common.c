@@ -411,7 +411,7 @@ static void launch_khtpm_menu(int px, int py) {
         g_khtpm_menu_pid = -1;
     }
     char bin_path[TP_PATH_BUF];
-    snprintf(bin_path, sizeof(bin_path), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", g_khtpm_menu_house_root);
+    snprintf(bin_path, sizeof(bin_path), "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x", g_khtpm_menu_house_root);
     /* REAL Stage 5 step 3/4 (2026-08-16, khtpm-merge-how2.md §5d.3) -
      * real, unified <house_root> <chtpm_path> [x] [y] contract (was
      * <package_dir> <house_root> [x] [y]) - khtpm_core_render's

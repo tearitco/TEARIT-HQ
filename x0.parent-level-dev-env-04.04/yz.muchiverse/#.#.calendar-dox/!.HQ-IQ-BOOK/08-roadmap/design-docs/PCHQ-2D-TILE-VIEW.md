@@ -305,7 +305,7 @@ Guidance for the later menu work — build it once, mode-agnostic:
 | `&.widgits/board-viewer/ops/bv_menu_input.c` | `` ` `` (96) → toggle `view_2d_style` in `bv_state.txt` (no-op if `render_mode==1`). `grid_2d` keys optional. |
 | `@.apps/piececraft-hq/ops/pchq_board_projector.c` | `render_mode==0` → `canvas_raw = …/rgb_frame_2d.raw`; drop the B1 block; publish `view_x/view_y` if the viewport lives here. |
 | `@.apps/piececraft-hq/pieces/system/keybinds.pdl` | `KEY | view_2d_style_toggle | 96` (`` ` ``); document `0` as 2D⇄3D. |
-| `*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c` | interact-forward for the board window gates on focus alone (no arm); `In:` → indicator. |
+| `_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c` | interact-forward for the board window gates on focus alone (no arm); `In:` → indicator. |
 | `@.apps/piececraft-hq/pieces/system/board_config.txt` | `tile_family` / `tile_set` rows for the tile-view binding. |
 | `@.apps/piececraft-hq/ops/pc_generate_chunk.c` | 38×38 default (or a param). |
 | `@.apps/piececraft-hq/BOARD-CONTROLS.md` | document `0` / `` ` `` / the 2D view. |

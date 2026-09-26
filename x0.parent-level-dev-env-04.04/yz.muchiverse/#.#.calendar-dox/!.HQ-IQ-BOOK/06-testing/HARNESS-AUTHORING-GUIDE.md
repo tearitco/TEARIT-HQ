@@ -29,7 +29,7 @@ real POV/camera.
   self-contained script per feature, copy-paste-and-adapt from the
   closest existing one, not a `source`d shared library.
 - Real, working examples to copy from: `cursword/harnesses/
-  events_hq_task3_test_harness.sh`, `*.monads/*.muchi-pet/harnesses/
+  events_hq_task3_test_harness.sh`, `_.monads/_.muchi-pet/harnesses/
   common_events_manager_test_harness.sh`,
   `cursword/harnesses/bookmark_badge_contrast_fix_harness.sh`.
 - Order of preference for driving/verifying a khtpm-family window: (1)
@@ -322,7 +322,7 @@ harness's own header comment.
 | Feature | Launch | Input relay | Capture |
 |---|---|---|---|
 | Taskbar HQ menu | already running (real desktop) | `#.desktop/livedesk_agent_relay.txt`, bare-decimal ASCII | `#.desktop/livedesk_open.txt` registry; live desktop, no dump needed |
-| db-hq (+ Task 5 view-tabs) | `*.monads/*.muchi-pet/ops/open_db_hq.sh <house_root>` | `#.desktop/db_hq_history.txt`, bare-decimal ASCII | `dbhq_dump_debug_state()` (code 210) + `dump_frame_png()` (112, forced-redraw-fixed) + `db_hq_frame_history.txt` |
+| db-hq (+ Task 5 view-tabs) | `_.monads/_.muchi-pet/ops/open_db_hq.sh <house_root>` | `#.desktop/db_hq_history.txt`, bare-decimal ASCII | `dbhq_dump_debug_state()` (code 210) + `dump_frame_png()` (112, forced-redraw-fixed) + `db_hq_frame_history.txt` |
 | events-hq | see `cursword/harnesses/events_hq_task3_test_harness.sh` for the exact launch line | `#.desktop/events_hq_history.txt` | same pattern + `events_hq_frame_history.txt` |
 | Palettes (incl. chemistry) | runs inside db-hq mode, `livedesk:open-palette:<category>` | `db_hq_history.txt` | same as db-hq |
 | Bookmarks | runs inside db-hq mode | `db_hq_history.txt` | same as db-hq |

@@ -422,10 +422,10 @@ after it, quietly.
 
 - `1.TPMOS_c_+rmmp.0103.0001/pieces/chtpm/plugins/orchestrator.c`
   (`log_pid`, `kill_all_tracked_processes`), `pieces/os/kill_all.sh`.
-- `*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c`
+- `_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c`
   (`ktb_system_recorded`, `ktb_stop_strip_renderers`,
   `ktb_pid_alive`, `ktb_quit_and_save`).
-- `*.monads/*.livedesk-taskbar/ops/kill_hq_windows.sh`.
+- `_.monads/_.livedesk-taskbar/ops/kill_hq_windows.sh`.
 - `03-pitfalls/OPERATIONAL-LANDMINES.md` #9, `HOUSE_CODE_PITFALLS.md`
   #13 (module orphans) / #15 (`kill(getppid())` logout).
 - `08-roadmap/OPEN-ITEMS.md` #7, #10.

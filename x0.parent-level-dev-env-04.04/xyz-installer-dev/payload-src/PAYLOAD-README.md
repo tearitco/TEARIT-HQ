@@ -12,9 +12,9 @@ on the next regen.
 House subtrees, kept at their original house-relative paths (the C code
 resolves everything from one `house_root`):
 
-- `*.monads/*.livedesk-taskbar/` — the taskbar (parser + manager +
+- `_.monads/_.livedesk-taskbar/` — the taskbar (parser + manager +
   shared render core + helpers)
-- `*.monads/*.cursword/` — the cursword entity
+- `_.monads/_.cursword/` — the cursword entity
 - `&.widgits/_shared-lib/` — shared C sources the taskbar build syncs in
 - `&.widgits/livedesk-clock/`
 - `0.user-pal👤️/00.login-signup/` — the account system (fresh, empty

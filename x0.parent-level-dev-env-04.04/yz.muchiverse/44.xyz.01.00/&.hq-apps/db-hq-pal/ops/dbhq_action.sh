@@ -85,7 +85,7 @@ PY
     open-ce)
         HOUSE="${3:-}"
         [ -n "$HOUSE" ] && [ -d "$HOUSE" ] || { echo "dbhq_action: open-ce needs house" >&2; exit 1; }
-        CE="$HOUSE/*.monads/*.muchi-pet/ops/open_db_hq.sh"
+        CE="$HOUSE/_.monads/_.muchi-pet/ops/open_db_hq.sh"
         [ -f "$CE" ] && setsid nohup sh "$CE" "$HOUSE" >/dev/null 2>&1 &
         ;;
     *)

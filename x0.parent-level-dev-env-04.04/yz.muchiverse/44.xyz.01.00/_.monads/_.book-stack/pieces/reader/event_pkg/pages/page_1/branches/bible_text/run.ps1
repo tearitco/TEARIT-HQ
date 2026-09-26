@@ -1,7 +1,7 @@
 # bible_text branch (Windows) — assets from Desktop\assets-4win
 $ErrorActionPreference = "Continue"
 $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
-# Walk up to *.monads/*.book-stack
+# Walk up to _.monads/_.book-stack
 $BookStack = (Resolve-Path (Join-Path $Here "..\..\..\..\..\..")).Path
 $AssetRootFile = Join-Path $BookStack "assets_root_win.txt"
 $AssetRoot = "C:\Users\jbro8\OneDrive\Desktop\assets-4win\bible-ench.twins+ai]b2"

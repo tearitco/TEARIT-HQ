@@ -13,5 +13,5 @@ STATE        | require_project_pdl  | 0
 STATE        | launch_action        | run
 STATE        | sort                 | alpha
 STATE        | max_entries          | 64
-STATE        | skip_names           | *.START_BUTTON,@.apps,@.app-store,&.widgits,&.widgets,#.DOX,#.haiku+,#.notes,#.w8,#.media-library,net,exchange,xer,-1.metatree,404.architecture-bible,drag-drop-test,docs,proof,pieces,system,ops,pal,config,projects,test-harn-same
+STATE        | skip_names           | _.START_BUTTON,@.apps,@.app-store,&.widgits,&.widgets,#.DOX,#.haiku+,#.notes,#.w8,#.media-library,net,exchange,xer,-1.metatree,404.architecture-bible,drag-drop-test,docs,proof,pieces,system,ops,pal,config,projects,test-harn-same
 STATE        | skip_prefix          | #.,.

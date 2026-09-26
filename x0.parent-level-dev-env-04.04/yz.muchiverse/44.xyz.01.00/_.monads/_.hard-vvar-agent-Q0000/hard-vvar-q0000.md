@@ -70,7 +70,7 @@
 
 ## Monad layout (mirrors book-stack/muchi-pet)
 ```
-*.monads/*.hard-vvar-agent-Q0000/
+_.monads/_.hard-vvar-agent-Q0000/
 ├── button.sh                  # house-standard monad entry (run|window|kill|check|help)
 ├── pieces/brain/              # brain loop: state.txt, master_ledger.txt, goal_queue.txt, run.sh
 ├── pieces/brain/corpus/       # learned corpus files

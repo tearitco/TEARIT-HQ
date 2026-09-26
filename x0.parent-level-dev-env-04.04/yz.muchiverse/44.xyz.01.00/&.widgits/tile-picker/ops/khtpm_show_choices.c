@@ -149,7 +149,7 @@ int main(int argc, char **argv) {
     { char resolved[PATH_BUF]; if (realpath(house_root, resolved)) snprintf(house_root, sizeof(house_root), "%s", resolved); }
     char renderer_path[PATH_BUF];
     snprintf(renderer_path, sizeof(renderer_path),
-             "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", house_root);
+             "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x", house_root);
 
     /* Real, generated .chtpm - one <item> per real choice row, each
      * action= a real shell one-liner writing the caller's own real

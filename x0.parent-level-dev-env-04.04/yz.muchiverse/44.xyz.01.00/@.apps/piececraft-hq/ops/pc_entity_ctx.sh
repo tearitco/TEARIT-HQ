@@ -19,15 +19,15 @@ ROOT="$(cd "$ROOT" && pwd)"
 LOG="$ROOT/pieces/display/ctx_menu.log"
 mkdir -p "$ROOT/pieces/display"
 
-# house root = the dir that holds *.monads
+# house root = the dir that holds _.monads
 HOUSE=""
 d="$ROOT"
 while [ "$d" != "/" ]; do
-    [ -d "$d/*.monads/*.livedesk-taskbar" ] && { HOUSE="$d"; break; }
+    [ -d "$d/_.monads/_.livedesk-taskbar" ] && { HOUSE="$d"; break; }
     d=$(dirname "$d")
 done
 [ -n "$HOUSE" ] || HOUSE="$(cd "$ROOT/../../.." && pwd)"
-BIN="$HOUSE/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
+BIN="$HOUSE/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
 if [ ! -x "$BIN" ]; then
     echo "$(date '+%H:%M:%S') ERROR no renderer at $BIN" >> "$LOG"
     echo "pc_entity_ctx: missing renderer $BIN" >&2

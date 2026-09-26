@@ -199,7 +199,7 @@ static void write_active_desk(const char *sess_dir, const char *target_desk) {
 
 static void spawn_desk(const char *house_root, const char *desk_pdl) {
     char exe[PB];
-    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity.+x", house_root);
+    snprintf(exe, sizeof(exe), "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_entity.+x", house_root);
     if (access(exe, F_OK) != 0) return;
 
     FILE *f = fopen(desk_pdl, "r");

@@ -12,7 +12,7 @@ driven by the real common-events system already built.
 Verified there is genuinely **no existing 2D tile-grid/map-placement
 canvas anywhere in this codebase** — grepped for
 `tile_grid`/`TileMap`/`map_grid`/`tile_placement`/`MapGrid`/`autotile`
-across `&.widgits/` and `*.monads/`: zero hits. Real, adjacent-but-
+across `&.widgits/` and `_.monads/`: zero hits. Real, adjacent-but-
 different things that exist and are namechecked below where relevant,
 but are NOT this system:
 - `&.widgits/palettes/`'s `rmmv` category — a tile-picker SOURCE (pick
@@ -474,7 +474,7 @@ assumed silently.
    map-print file format shared between a desk's own optional load and
    boardview's real play/sharing load (§4).
 3. **DONE (2026-08-27)** — real `tile_autotile.c` built at
-   `*.monads/*.livedesk-taskbar/ops/tile_autotile.c`: all three real
+   `_.monads/_.livedesk-taskbar/ops/tile_autotile.c`: all three real
    tables ported verbatim (48/16/4 rows, confirmed by a real
    `sizeof`-based structural check, not eyeballed), the real
    quadrant-compositing blit-rect math ported from `_drawAutotile`
@@ -506,7 +506,7 @@ assumed silently.
    today — "World Map" keyed `outside`, "Inside" keyed `inside`, each
    with a real `a2` category path to the actual copied assets; other
    categories legitimately absent, not fabricated) + a real loader,
-   `*.monads/*.livedesk-taskbar/ops/tile_registry.c` (groups
+   `_.monads/_.livedesk-taskbar/ops/tile_registry.c` (groups
    `TILESET | <key>.<field> | <value>` rows into per-tileset entries,
    same real SECTION\|KEY\|VALUE convention as every other house PDL
    reader). Compiled clean, standalone test independently verified:

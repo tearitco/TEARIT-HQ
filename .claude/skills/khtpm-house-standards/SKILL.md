@@ -20,7 +20,7 @@ improvised, instead of working through the house's own living index.
 
 **Do not repeat this.** Before writing or editing any code that
 touches:
-- `khtpm_core_render.c` or anything in `*.monads/*.livedesk-taskbar/ops/`
+- `khtpm_core_render.c` or anything in `_.monads/_.livedesk-taskbar/ops/`
 - any `<app>_manager.c` / `<app>_render.c` pair
 - any `.chtpm`/`.css` file, or the generic `<cli_io>`/nav-index/
   layout-pass machinery

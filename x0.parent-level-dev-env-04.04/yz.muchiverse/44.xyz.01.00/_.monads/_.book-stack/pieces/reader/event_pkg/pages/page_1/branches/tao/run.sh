@@ -42,4 +42,4 @@ awk -v n="$PICK" '
 ' "$TAO_FILE" | fold -s -w 70 > "$TMP"
 # REAL FIX 2026-08-10 (same class as bible_text/run.sh): use the live
 # PACKAGE_DIR exported by meta.pdl's "Read" method, not the dev-tree guess.
-"$HOUSE/&.widgits/tile-picker/ops/+x/khtpm_show_text.+x" "${PACKAGE_DIR:-$HOUSE/*.monads/*.book-stack/entities/book-stack}" "$TMP"
+"$HOUSE/&.widgits/tile-picker/ops/+x/khtpm_show_text.+x" "${PACKAGE_DIR:-$HOUSE/_.monads/_.book-stack/entities/book-stack}" "$TMP"

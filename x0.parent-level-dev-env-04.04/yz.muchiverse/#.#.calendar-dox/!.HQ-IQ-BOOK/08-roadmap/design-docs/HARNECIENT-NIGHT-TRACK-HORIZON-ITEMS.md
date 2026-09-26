@@ -33,7 +33,7 @@ per real proposal, no re-narration of the lessons themselves.
    against whatever's actually there instead of a new ledger.
 
 3. **`cursword_say()` — finish the real stub** (NIGHT_07) —
-   `*.monads/*.cursword/ops/cursword_fsm.c` already documents the
+   `_.monads/_.cursword/ops/cursword_fsm.c` already documents the
    real FSM-first/Gemma-optional pattern (model optional, canned-
    string fallback always present) but `cursword_say()` itself is
    still a stub. Proposed: implement it for real, then PROVE the

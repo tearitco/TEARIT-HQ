@@ -1,7 +1,7 @@
 #!/bin/bash
 # button.sh - hard-vvar-agent-Q0000 (vvarware) launcher. House-standard
-# monad entry point (matches *.monads/*.book-stack/button.sh and
-# *.monads/*.muchi-pet/button.sh).
+# monad entry point (matches _.monads/_.book-stack/button.sh and
+# _.monads/_.muchi-pet/button.sh).
 #
 #   run|start|brain  - start the brain loop + open the self entity window
 #   window|w         - same as run
@@ -18,7 +18,7 @@ HOUSE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BRAIN="$SCRIPT_DIR/pieces/brain/run.sh"
 LEDGER="$SCRIPT_DIR/pieces/brain/master_ledger.txt"
 STATE="$SCRIPT_DIR/pieces/brain/state.txt"
-TPWIN="$HOUSE_DIR/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity.+x"
+TPWIN="$HOUSE_DIR/_.monads/_.livedesk-taskbar/ops/+x/khtpm_entity.+x"
 ENTITY_DIR="$SCRIPT_DIR/entities/self"
 ASSET_DIR="$ENTITY_DIR/assets"
 # REAL 2026-08-08: robot portrait source moved off the Desktop into the

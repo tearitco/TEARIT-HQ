@@ -16,6 +16,6 @@
 # Fixed for real this time and committed.
 set -u
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# ops -> *.livedesk-taskbar -> *.monads -> house_root
+# ops -> _.livedesk-taskbar -> _.monads -> house_root
 HOUSE_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 exec sh "$HOUSE_ROOT/&.hq-apps/proc-mon/button.sh" "$HOUSE_ROOT"

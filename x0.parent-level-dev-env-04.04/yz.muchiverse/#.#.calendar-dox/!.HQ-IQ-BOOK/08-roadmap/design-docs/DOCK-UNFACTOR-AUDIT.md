@@ -1,6 +1,6 @@
 # Dock unfactor — audit and staged plan (2026-09-20)
 
-**Scope:** the dock/strip mode (`window_is_dock()`: header strip + bottom "pals" row + toys dropdown) inside `*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c`. Parent plan: `INMEM-DB-STATE-LAYER-PLAN.md` §6 (files stay default; nothing here depends on any DB). Style goal: **manager + template data + generic renderer**, standalone ops for process management, **no new cross-binary `#include`** and no new binary that includes the engine (text-includes are transitional — see `INMEM-DB-STATE-LAYER-PLAN.md` §0/§5).
+**Scope:** the dock/strip mode (`window_is_dock()`: header strip + bottom "pals" row + toys dropdown) inside `_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c`. Parent plan: `INMEM-DB-STATE-LAYER-PLAN.md` §6 (files stay default; nothing here depends on any DB). Style goal: **manager + template data + generic renderer**, standalone ops for process management, **no new cross-binary `#include`** and no new binary that includes the engine (text-includes are transitional — see `INMEM-DB-STATE-LAYER-PLAN.md` §0/§5).
 
 **Baseline (commit `03404a08`):** `khtpm_core_render.c` = 12,550 lines (5,010 comment, 344 blank, 7,196 code). 1,347 function lines are dock-related. `window_is_dock()` is referenced at **55** sites, so the dock is woven through the generic event loop, layout, paint and key handling, not a clean module. -O2 baseline: 160 warnings.
 

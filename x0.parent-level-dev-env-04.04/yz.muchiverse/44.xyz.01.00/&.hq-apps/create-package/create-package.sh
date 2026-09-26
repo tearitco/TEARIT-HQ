@@ -34,7 +34,7 @@
 #
 # A package is the SAME real shape the browser/pc-hq packages already
 # use: 44.xyz.01.00/ containing &.widgits/_shared-lib + the renderer
-# binary from *.monads/*.livedesk-taskbar (the generic rendering
+# binary from _.monads/_.livedesk-taskbar (the generic rendering
 # ENGINE every khtpm window needs - NOT the desktop taskbar/shell
 # itself, a separate thing per direct live correction: "she doesn't
 # need tb, that's a separate thing") + the chosen app(s) + their
@@ -112,9 +112,9 @@ MANIFEST="$DEST/MANIFEST.txt"
 mkdir -p "$OUT/&.widgits"
 cp -r "$HOUSE/&.widgits/_shared-lib" "$OUT/&.widgits/"
 printf 'BASELINE &.widgits/_shared-lib\n' >> "$MANIFEST"
-mkdir -p "$OUT/*.monads/*.livedesk-taskbar"
-cp -r "$HOUSE/"*.monads/*.livedesk-taskbar/ops "$OUT/"*.monads/*.livedesk-taskbar/
-printf 'BASELINE *.monads/*.livedesk-taskbar/ops\n' >> "$MANIFEST"
+mkdir -p "$OUT/_.monads/_.livedesk-taskbar"
+cp -r "$HOUSE/"_.monads/_.livedesk-taskbar/ops "$OUT/"_.monads/_.livedesk-taskbar/
+printf 'BASELINE _.monads/_.livedesk-taskbar/ops\n' >> "$MANIFEST"
 mkdir -p "$OUT/#.desktop"
 
 LAUNCH_TARGETS=""
@@ -191,7 +191,7 @@ cat > "$DEST/reintegrate.sh" <<'RGEN'
 #   ./reintegrate.sh <path-to-real-house-root> --apply --include-baseline
 #       also copies BASELINE-tagged paths (the shared renderer/lib) -
 #       only do this if you KNOW you edited something under
-#       &.widgits/_shared-lib or *.monads/*.livedesk-taskbar, since
+#       &.widgits/_shared-lib or _.monads/_.livedesk-taskbar, since
 #       those are shared by every app in the house, not just this one.
 #
 # SAFE BY DESIGN, on purpose ("lets be careful that we wont break any
@@ -321,7 +321,7 @@ in \`MANIFEST.txt\` next to this doc:
   also synced back by default, but touches more than just "your" app -
   worth a closer look in \`git diff\` before committing.
 - **BASELINE** - the shared rendering engine + shared library
-  (\`&.widgits/_shared-lib\`, \`*.monads/*.livedesk-taskbar\`). Every
+  (\`&.widgits/_shared-lib\`, \`_.monads/_.livedesk-taskbar\`). Every
   app in the whole house uses these, so editing them is unusual -
   \`reintegrate.sh\` skips this tier unless you pass
   \`--include-baseline\`, specifically so an accidental edit here (or

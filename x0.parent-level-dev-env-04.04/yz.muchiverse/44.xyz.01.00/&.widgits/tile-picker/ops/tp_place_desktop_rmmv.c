@@ -328,7 +328,7 @@ int main(int argc, char **argv) {
      * every new entity gets one the same moment it's created. */
     {
         char conv_path[PATH_BUF], conv_cmd[PATH_BUF * 2];
-        snprintf(conv_path, sizeof(conv_path), "%s/*.monads/*.livedesk-taskbar/ops/meta_to_menu_chtpm.py", house_root);
+        snprintf(conv_path, sizeof(conv_path), "%s/_.monads/_.livedesk-taskbar/ops/meta_to_menu_chtpm.py", house_root);
         snprintf(conv_cmd, sizeof(conv_cmd), "python3 '%s' '%s' >/dev/null 2>&1", conv_path, dir);
         int rc = system(conv_cmd);
         (void)rc; /* honest no-op on failure, same fallback tp_place_desktop.c documents */
@@ -428,7 +428,7 @@ int main(int argc, char **argv) {
      * convention tp_place_desktop.c uses (outlive the calling terminal). */
     {
         char exe_path[PATH_BUF], spawn_cmd[PATH_BUF * 2];
-        snprintf(exe_path, sizeof(exe_path), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", house_root);
+        snprintf(exe_path, sizeof(exe_path), "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x", house_root);
         snprintf(spawn_cmd, sizeof(spawn_cmd), "setsid '%s' '%s' >/dev/null 2>&1 < /dev/null &", exe_path, dir);
         int rc = system(spawn_cmd);
         (void)rc;

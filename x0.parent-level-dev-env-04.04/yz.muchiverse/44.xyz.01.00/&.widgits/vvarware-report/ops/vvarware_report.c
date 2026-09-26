@@ -117,7 +117,7 @@ int main(int argc, char **argv) {
 
     char ledger_path[PATH_BUF];
     snprintf(ledger_path, sizeof(ledger_path),
-             "%s/*.monads/*.hard-vvar-agent-Q0000/pieces/brain/master_ledger.txt",
+             "%s/_.monads/_.hard-vvar-agent-Q0000/pieces/brain/master_ledger.txt",
              house_root);
 
     Display *dpy = XOpenDisplay(NULL);

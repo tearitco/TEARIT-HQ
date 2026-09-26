@@ -2455,7 +2455,7 @@ static void livedesk_ensure_cursword(const char *house_root) {
      * Same real invocation shape (<package_dir>), zero argv changes
      * needed here. */
     char exe[KTB_PATH_BUF];
-    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity.+x", house_root);
+    snprintf(exe, sizeof(exe), "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_entity.+x", house_root);
 #ifdef _WIN32
     win_star_alias(exe);
     win_exe_suffix(exe);
@@ -2543,7 +2543,7 @@ static void livedesk_spawn_desk(const char *house_root, const char *sroot, const
      * mode - see this file's own first spawn site (livedesk_ensure_
      * cursword) for the full comment. */
     char exe[KTB_PATH_BUF];
-    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity.+x", house_root);
+    snprintf(exe, sizeof(exe), "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_entity.+x", house_root);
 #ifdef _WIN32
     win_star_alias(exe);
     win_exe_suffix(exe);
@@ -3718,7 +3718,7 @@ static int livedesk_build_hq_menu(const char *house_root, HQMenuItem *menu, int 
      * resolve to the wrong thing regardless of this process's own cwd. */
     snprintf(menu[0].label, sizeof(menu[0].label), "$.restart");
     snprintf(menu[0].command, sizeof(menu[0].command),
-             KTB_SETSID "nohup sh '%s/*.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh' new",
+             KTB_SETSID "nohup sh '%s/_.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh' new",
              house_root);
     snprintf(menu[1].label, sizeof(menu[1].label), "X.quit");
     snprintf(menu[1].command, sizeof(menu[1].command), "quit");
@@ -3828,7 +3828,7 @@ static void livedesk_place_pal(const char *house_root, const char *name) {
      * a separate binary, folded into khtpm_core_render.c's own
      * tp_main() mode - see this file's own first spawn site
      * (livedesk_ensure_cursword) for the full comment. */
-    snprintf(exe, sizeof(exe), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity.+x", house_root);
+    snprintf(exe, sizeof(exe), "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_entity.+x", house_root);
 #ifdef _WIN32
     win_star_alias(exe);
     win_exe_suffix(exe);
@@ -4896,7 +4896,7 @@ void ktb_hq_digit(KtbState *s, int d) {
  * name contains app_name, so the next move doesn't need a source edit
  * here again. */
 static int find_app_dir(const char *house_root, const char *app_name, char *out, size_t outsz) {
-    static const char *roots[] = { "*.monads", "&.widgits", "&.hq-apps", "@.apps", NULL };
+    static const char *roots[] = { "_.monads", "&.widgits", "&.hq-apps", "@.apps", NULL };
     for (int i = 0; roots[i]; i++) {
         char parent[KTB_PATH_BUF];
         snprintf(parent, sizeof(parent), "%s/%s", house_root, roots[i]);
@@ -5195,9 +5195,9 @@ void ktb_hq_activate(KtbState *s, int row) {
         /* CURSword personal-assistant entity (AU24-oc-handon.md §4.4),
          * HQ-menu row "cursword" (#.desktop/livedesk_taskbar.pdl
          * hq_menu_8_*). First click: copy the template entity
-         * (<house_root>/*.monads/*.cursword/entities/cursword - house-
+         * (<house_root>/_.monads/_.cursword/entities/cursword - house-
          * relative literal star-dir path, same convention as every other
-         * *.monads/*. reference in this file, no absolute paths) into the
+         * _.monads/*. reference in this file, no absolute paths) into the
          * logged-in user's pals root, then place/spawn on the active desk
          * via the exact same livedesk_place_pal() path the pals cell uses
          * (DESK row append + livedesk_index assignment + desktop_pos.txt +
@@ -5220,7 +5220,7 @@ void ktb_hq_activate(KtbState *s, int row) {
             snprintf(pal, sizeof(pal), "%s/cursword", pr);
             if (access(pal, F_OK) != 0) {
                 char tpl[KTB_PATH_BUF];
-                snprintf(tpl, sizeof(tpl), "%s/*.monads/*.cursword/entities/cursword", s->house_root);
+                snprintf(tpl, sizeof(tpl), "%s/_.monads/_.cursword/entities/cursword", s->house_root);
                 if (access(tpl, F_OK) == 0)
                     livedesk_copy_full(tpl, pal);
             }
@@ -5382,7 +5382,7 @@ void ktb_hq_activate(KtbState *s, int row) {
          * Launched via button.sh (mirrors open-hai pattern exactly). */
 #ifdef _WIN32
         char bin[KTB_PATH_BUF], chtpm[KTB_PATH_BUF];
-        snprintf(bin, sizeof(bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", s->house_root);
+        snprintf(bin, sizeof(bin), "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x", s->house_root);
         snprintf(chtpm, sizeof(chtpm), "%s/&.hq-apps/chat-hai/chat-hai.chtpm", s->house_root);
         const char *aa[2] = { s->house_root, chtpm };
         win_spawn_n(bin, aa, 2);
@@ -5400,7 +5400,7 @@ void ktb_hq_activate(KtbState *s, int row) {
          * chat-hai/open-hai above. */
 #ifdef _WIN32
         char bin[KTB_PATH_BUF], chtpm[KTB_PATH_BUF];
-        snprintf(bin, sizeof(bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", s->house_root);
+        snprintf(bin, sizeof(bin), "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x", s->house_root);
         snprintf(chtpm, sizeof(chtpm), "%s/&.hq-apps/co-lab-hai/co-lab-hai.chtpm", s->house_root);
         const char *aa[2] = { s->house_root, chtpm };
         win_spawn_n(bin, aa, 2);
@@ -5420,7 +5420,7 @@ void ktb_hq_activate(KtbState *s, int row) {
          * &.hq-apps path safe (a bare & is the shell bg operator). */
 #ifdef _WIN32
         char bin[KTB_PATH_BUF], chtpm[KTB_PATH_BUF];
-        snprintf(bin, sizeof(bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", s->house_root);
+        snprintf(bin, sizeof(bin), "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x", s->house_root);
         snprintf(chtpm, sizeof(chtpm), "%s/&.hq-apps/db-hq-pal/dashboard.xhtpm", s->house_root);
         const char *aa[2] = { s->house_root, chtpm };
         win_spawn_n(bin, aa, 2);
@@ -5438,7 +5438,7 @@ void ktb_hq_activate(KtbState *s, int row) {
          * &.hq-apps path safe). SQL-HQ-DESIGN.md. */
 #ifdef _WIN32
         char bin[KTB_PATH_BUF], chtpm[KTB_PATH_BUF];
-        snprintf(bin, sizeof(bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", s->house_root);
+        snprintf(bin, sizeof(bin), "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x", s->house_root);
         snprintf(chtpm, sizeof(chtpm), "%s/&.hq-apps/sql-hq/sql-hq.xhtpm", s->house_root);
         const char *aa[2] = { s->house_root, chtpm };
         win_spawn_n(bin, aa, 2);
@@ -5682,7 +5682,7 @@ void ktb_hq_activate(KtbState *s, int row) {
             ShellExecuteA(NULL, "open", abs, NULL, NULL, SW_SHOWNORMAL);
         } else if (strstr(portable, "open_cli") || strstr(m->command, "open_cli")) {
             char cli[KTB_PATH_BUF];
-            snprintf(cli, sizeof(cli), "%s/*.monads/*.livedesk-taskbar/ops/open_cli.ps1", s->house_root);
+            snprintf(cli, sizeof(cli), "%s/_.monads/_.livedesk-taskbar/ops/open_cli.ps1", s->house_root);
             win_star_alias(cli);
             for (char *p = cli; *p; p++) if (*p == '/') *p = '\\';
             wchar_t wfile[KTB_PATH_BUF], wh[KTB_PATH_BUF], wcmd[KTB_PATH_BUF * 2];

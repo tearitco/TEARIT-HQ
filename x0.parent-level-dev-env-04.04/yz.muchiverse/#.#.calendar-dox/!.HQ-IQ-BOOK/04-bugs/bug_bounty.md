@@ -502,7 +502,7 @@ non-collapsed selection range would render zero visible highlight.
 **Fixed**: added the same sel_lo/sel_hi band draw to the single-line
 cli_io path, same `#2f5f8f` fill, same scoping as the existing cursor
 bar (armed + unclipped label only). Rebuilt clean via
-`build_core_render.sh` in `*.monads/*.livedesk-taskbar/ops/` (pre-
+`build_core_render.sh` in `_.monads/_.livedesk-taskbar/ops/` (pre-
 existing snprintf-truncation warnings only, no new warnings, no
 errors). **Not independently re-verified against real hardware input**
 because of the keyboard-delivery bug documented in this same entry -

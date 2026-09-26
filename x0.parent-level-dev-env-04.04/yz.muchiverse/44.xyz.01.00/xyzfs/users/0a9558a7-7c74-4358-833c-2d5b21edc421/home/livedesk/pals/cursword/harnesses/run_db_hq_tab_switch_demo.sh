@@ -49,7 +49,7 @@ HOUSE="${HOUSE:-$(find_house_root)}"
 
 PAL_DIR="$HERE/pal"
 PAL_FILE="$PAL_DIR/db_hq_tab_switch_demo.pal"
-LAUNCHER="$HOUSE/*.monads/*.muchi-pet/ops/open_db_hq.sh"
+LAUNCHER="$HOUSE/_.monads/_.muchi-pet/ops/open_db_hq.sh"
 
 D="$HOUSE/#.desktop"
 RELAY="$D/db_hq_history.txt"            # git-TRACKED real relay (restore reqd)

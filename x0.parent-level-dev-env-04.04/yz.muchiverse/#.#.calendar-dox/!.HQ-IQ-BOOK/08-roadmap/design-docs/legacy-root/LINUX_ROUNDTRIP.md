@@ -17,13 +17,13 @@ The macOS leg rebuilt **~75 binaries as Mach-O** (macOS format) under the house 
 
 | Cluster | Count | Location |
 |---|---|---|
-| livedesk-taskbar ops | 6 | `*.monads/*.livedesk-taskbar/ops/+x/` |
+| livedesk-taskbar ops | 6 | `_.monads/_.livedesk-taskbar/ops/+x/` |
 | tile-picker | 16 | `&.widgits/tile-picker/ops/+x/` |
 | `_shared-lib` | 5 | `&.widgits/_shared-lib/ops/+x/` and bare `+x/` |
 | open-hai | 2 | `&.widgits/open-hai/ops/+x/` |
 | events-hq | 1 | `&.widgits/events-hq/ops/+x/` |
 | livedesk-clock | 2 | `&.widgits/livedesk-clock/ops/+x/` |
-| START_BUTTON | 6 | `*.START_BUTTON/ops/+x/` + `system/` bare names |
+| START_BUTTON | 6 | `_.START_BUTTON/ops/+x/` + `system/` bare names |
 | mutaclsym +18.0G | 11 | `ops/+x/` + `system/prisc+x` + 4 bare system binaries |
 | mutaclsym 19.00 | 2 | `ops/+x/mua_menu_input.+x` + `system/prisc+x` |
 | Mar$.$treetRace | 12 | `xdb/+x/`, `ai/+x/`, `dev/+x/`, `+/+x/` |
@@ -45,10 +45,10 @@ The macOS leg rebuilt **~75 binaries as Mach-O** (macOS format) under the house 
 
 | Script | Status |
 |---|---|
-| `*.monads/*.livedesk-taskbar/ops/build_db_hq_manager.sh` | PASS |
-| `*.monads/*.livedesk-taskbar/ops/build_db_hq.sh` | PASS |
-| `*.monads/*.livedesk-taskbar/ops/build_entity_menu.sh` | PASS |
-| `*.monads/*.livedesk-taskbar/ops/build_khtpm_strip.sh` | PASS |
+| `_.monads/_.livedesk-taskbar/ops/build_db_hq_manager.sh` | PASS |
+| `_.monads/_.livedesk-taskbar/ops/build_db_hq.sh` | PASS |
+| `_.monads/_.livedesk-taskbar/ops/build_entity_menu.sh` | PASS |
+| `_.monads/_.livedesk-taskbar/ops/build_khtpm_strip.sh` | PASS |
 | `&.widgits/tile-picker/scripts/build.sh` | PASS |
 | `&.widgits/_shared-lib/ops/build_chtpm_rgb_render.sh` | PASS |
 | `&.widgits/_shared-lib/ops/build_dump_frame_png_op.sh` | PASS |
@@ -57,7 +57,7 @@ The macOS leg rebuilt **~75 binaries as Mach-O** (macOS format) under the house 
 | `&.widgits/open-hai/ops/build_open_hai.sh` | PASS |
 | `&.widgits/events-hq/ops/build_events_hq_manager.sh` | PASS |
 | `&.widgits/livedesk-clock/ops/build_lc_clock.sh` | PASS |
-| `*.START_BUTTON/scripts/build.sh` | PASS |
+| `_.START_BUTTON/scripts/build.sh` | PASS |
 | `101.mutaclsym🧟‍♂️️+18.0G/scripts/build.sh` | PASS |
 | `101.mutaclsym🧟‍♂️️19.00/scripts/build.sh` | PASS |
 | `102.editor-📄️00.00/scripts/build.sh` | PASS |

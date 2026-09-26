@@ -4,7 +4,7 @@ META         | piece_id           | book-stack
 STATE        | menu_stay_open     | 1
 STATE        | grab_pointer       | 1
 STATE        | grab_keyboard      | 1
-METHOD       | Read                 | sh -c 'H="$1" && export PACKAGE_DIR="$0" && exec "$(find "$H" -maxdepth 1 -name "101.mutaclsym🧟‍♂️️*" -type d 2>/dev/null | head -1)/system/prisc+x" "$H/*.monads/*.book-stack/pieces/reader/event_pkg/pages/page_1/event.pal"'
+METHOD       | Read                 | sh -c 'H="$1" && export PACKAGE_DIR="$0" && exec "$(find "$H" -maxdepth 1 -name "101.mutaclsym🧟‍♂️️*" -type d 2>/dev/null | head -1)/system/prisc+x" "$H/_.monads/_.book-stack/pieces/reader/event_pkg/pages/page_1/event.pal"'
 METHOD       | Dir                  | xdg-open
 METHOD       | Inventory          | sh -c 'H="$1"; I="$H/&.widgits/file-explorer/instances/inv-$(basename "$(dirname "$0")")-$(basename "$0")"; mkdir -p "$0/inventory" "$I"; printf "mode=LOAD\nstart_dir=%s/inventory\n" "$0" > "$I/fe_request.txt"; exec sh "$H/&.widgits/file-explorer/button.sh" run-instance "$I"'
 METHOD       | Close                | CLOSE

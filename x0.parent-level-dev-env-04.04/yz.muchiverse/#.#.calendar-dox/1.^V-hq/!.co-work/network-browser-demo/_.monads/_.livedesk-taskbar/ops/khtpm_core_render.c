@@ -6662,7 +6662,7 @@ static void dispatch_no_quit(const char *action) {
  * and fires it through the SAME shared dispatch() every mode uses. */
 static void apply_theme(const char *bg_hex, const char *fg_hex) {
     char cmd[PATH_BUF * 3];
-    snprintf(cmd, sizeof(cmd), "'%s/*.monads/*.livedesk-taskbar/ops/+x/apply_theme_op.+x' '%s' '%s' '%s'",
+    snprintf(cmd, sizeof(cmd), "'%s/_.monads/_.livedesk-taskbar/ops/+x/apply_theme_op.+x' '%s' '%s' '%s'",
              g_house_root, g_house_root, bg_hex, fg_hex);
     dispatch(cmd);
 }
@@ -10299,9 +10299,9 @@ static void build_uid_init(char *out, size_t outsz, const char *house_root) {
     snprintf(atlas, sizeof(atlas), "%s/atlas.png", dir);
     snprintf(csv, sizeof(csv), "%s/sprite.csv", dir);
     char gen_atlas[KTB_PATH_BUF * 2], gen_xtract[KTB_PATH_BUF * 2];
-    snprintf(gen_atlas, sizeof(gen_atlas), "'%s/*.monads/*.livedesk-taskbar/ops/+x/emoji_gen_atlas.+x' '%s' '%s' >/dev/null 2>&1",
+    snprintf(gen_atlas, sizeof(gen_atlas), "'%s/_.monads/_.livedesk-taskbar/ops/+x/emoji_gen_atlas.+x' '%s' '%s' >/dev/null 2>&1",
              house_root, glyph, atlas);
-    snprintf(gen_xtract, sizeof(gen_xtract), "'%s/*.monads/*.livedesk-taskbar/ops/+x/emoji_xtract.+x' '%s' 0 64 '%s' >/dev/null 2>&1",
+    snprintf(gen_xtract, sizeof(gen_xtract), "'%s/_.monads/_.livedesk-taskbar/ops/+x/emoji_xtract.+x' '%s' 0 64 '%s' >/dev/null 2>&1",
              house_root, atlas, csv);
     if (system(gen_atlas) == 0 && system(gen_xtract) == 0)
         snprintf(g_build_uid_sprite_dir, sizeof(g_build_uid_sprite_dir), "%s", dir);
@@ -10310,7 +10310,7 @@ static void build_uid_init(char *out, size_t outsz, const char *house_root) {
 static void launch_manager(void) {
     char exe[KTB_PATH_BUF];
     path_join2(exe, sizeof(exe), g_house_root,
-               "*.monads/*.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x");
+               "_.monads/_.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x");
 
     pid_t pid = fork();
     if (pid == 0) {
@@ -10646,8 +10646,8 @@ static void ktb_toggle_zorder_apply(int raise) {
 
 static void ktb_toggle_zorder_respawn(void) {
     char bin0[KTB_PATH_BUF], bin1[KTB_PATH_BUF], bin2[KTB_PATH_BUF];
-    snprintf(bin0, sizeof(bin0), "%s/*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x", g_house_root);
-    snprintf(bin1, sizeof(bin1), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", g_house_root);
+    snprintf(bin0, sizeof(bin0), "%s/_.monads/_.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x", g_house_root);
+    snprintf(bin1, sizeof(bin1), "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x", g_house_root);
     snprintf(bin2, sizeof(bin2), "%s/&.hq-apps/network/+x/network_browser_render.+x", g_house_root);
     const char *bins[3] = { bin0, bin1, bin2 };
     const char *needles[3] = { "tp_desktop_window_rgb", "khtpm_core_render", "network_browser_render" };
@@ -11403,7 +11403,7 @@ static int sp_hit_test(SpHitRect *hits, int n, int x, int y) {
 
 static void layout_path(char *out, size_t n, const char *filename) {
     char rel[256];
-    snprintf(rel, sizeof(rel), "*.monads/*.livedesk-taskbar/%s", filename);
+    snprintf(rel, sizeof(rel), "_.monads/_.livedesk-taskbar/%s", filename);
     path_join2(out, n, g_house_root, rel);
 }
 
@@ -12212,7 +12212,7 @@ static void launch_khtpm_menu(int px, int py) {
         g_khtpm_menu_pid = -1;
     }
     char bin_path[TP_PATH_BUF];
-    snprintf(bin_path, sizeof(bin_path), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", g_khtpm_menu_house_root);
+    snprintf(bin_path, sizeof(bin_path), "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x", g_khtpm_menu_house_root);
     /* REAL Stage 5 step 3/4 (2026-08-16, khtpm-merge-how2.md §5d.3) -
      * real, unified <house_root> <chtpm_path> [x] [y] contract (was
      * <package_dir> <house_root> [x] [y]) - khtpm_core_render's
@@ -12424,7 +12424,7 @@ static int self_exe_path(char *out, size_t out_sz) {
  * and &.widgits/ is found - the same marker-walk khtpm_vars.sh uses, so it
  * survives any relocation (the binary used to live at
  * <house>/&.widgits/tile-picker/ops/+x/ and was consolidated into
- * *.monads/*.livedesk-taskbar/ops/+x/ - the fixed dirname-step climb is
+ * _.monads/_.livedesk-taskbar/ops/+x/ - the fixed dirname-step climb is
  * gone, position no longer matters). */
 static void resolve_livedesk_paths(char *ops_dir_out, size_t ops_sz, char *house_root_out, size_t house_sz) {
     ops_dir_out[0] = '\0';
@@ -12629,7 +12629,7 @@ static void livedesk_registry_remove(const char *house_root, pid_t pid) {
  * REAL FIX 2026-08-05, direct correction ("why dont i see task bar in
  * &.widgits dir? thats where its ment to be... its not a member of
  * tile-picker"): the taskbar is its own real widget
- * (*.monads/*.livedesk-taskbar/), matching every other real widget's own
+ * (_.monads/_.livedesk-taskbar/), matching every other real widget's own
  * top-level layout (event-editor/, event-ez/, tile-picker/ itself) -
  * NOT nested inside tile-picker/ops/ just because tp_desktop_window.c
  * happens to be the one that launches it. Located via house_root
@@ -12691,7 +12691,7 @@ static void ensure_taskbar_running(const char *house_root) {
                  *
                  * REAL UPDATE 2026-08-11, same session, later: legacy
                  * tp_taskbar.c retired (archived to
-                 * *.monads/*.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip,
+                 * _.monads/_.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip,
                  * originals deleted) — khtpm_strip_parser.+x is the real,
                  * only taskbar now. The fallback launch command below
                  * used to hardcode tp_taskbar.+x's path, which no longer
@@ -12715,7 +12715,7 @@ static void ensure_taskbar_running(const char *house_root) {
     }
     if (!alive) {
         char cmd[TP_PATH_BUF * 2];
-        snprintf(cmd, sizeof(cmd), "'%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x' '%s' >/dev/null 2>&1 &",
+        snprintf(cmd, sizeof(cmd), "'%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x' '%s' >/dev/null 2>&1 &",
                  house_root, house_root);
         int rc = system(cmd);
         (void)rc;
@@ -12734,7 +12734,7 @@ static void ensure_taskbar_running(const char *house_root) {
  * context menu claims one contiguous NAV range for its own rows the
  * moment it opens (nav_claim_rows()), releases that same range the
  * moment it closes (nav_release_pid()) - the taskbar (a separate real
- * process, *.monads/*.livedesk-taskbar/ops/tp_taskbar.c) claims its own
+ * process, _.monads/_.livedesk-taskbar/ops/tp_taskbar.c) claims its own
  * tab numbers from this exact same pool, so a tab and a menu row can
  * never show the same live number at once. */
 /* action widened 2026-08-04, direct instruction (fo-menu-sys.md's real
@@ -16240,7 +16240,7 @@ static int tp_main(int argc, char **argv) {
                          * longer shows verse, event-ez button no longer
                          * opens event editor - path issue"): pals migration
                          * moved entities out of the dev-tree's fixed nesting
-                         * depth (*.monads/*.widget/entities/<name>, always
+                         * depth (_.monads/*.widget/entities/<name>, always
                          * 4 levels under house_root) into
                          * xyzfs/users/<uuid>/home/livedesk/pals/<name>
                          * (a different depth entirely). METHOD/OBJECT
@@ -17417,7 +17417,7 @@ int main(int argc, char **argv) {
             char *dot = strrchr(css_path, '.');
             if (dot) snprintf(dot, sizeof(css_path) - (size_t)(dot - css_path), ".css");
         } else {
-            snprintf(css_path, sizeof(css_path), "%s/*.monads/*.livedesk-taskbar/ops/%s",
+            snprintf(css_path, sizeof(css_path), "%s/_.monads/_.livedesk-taskbar/ops/%s",
                      g_house_root, g_is_swatch_picker ? "taskbar_settings.css" : "entity_menu_default.css");
         }
         memset(&g_sheet, 0, sizeof(g_sheet));
@@ -17458,7 +17458,7 @@ int main(int argc, char **argv) {
             snprintf(g_dbhq_terms_state_path, sizeof(g_dbhq_terms_state_path),
                      "%s/#.desktop/db_hq_terms.state.txt", g_house_root);
             char terms_bin[PATH_BUF];
-            snprintf(terms_bin, sizeof(terms_bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/terms_hq_manager.+x", g_house_root);
+            snprintf(terms_bin, sizeof(terms_bin), "%s/_.monads/_.livedesk-taskbar/ops/+x/terms_hq_manager.+x", g_house_root);
             char terms_pkgdir[PATH_BUF];
             snprintf(terms_pkgdir, sizeof(terms_pkgdir), "%s/#.desktop", g_house_root);
             pid_t terms_pid = fork();
@@ -17469,7 +17469,7 @@ int main(int argc, char **argv) {
             snprintf(g_dbhq_actors_state_path, sizeof(g_dbhq_actors_state_path),
                      "%s/#.desktop/db_hq_actors.state.txt", g_house_root);
             char actors_bin[PATH_BUF];
-            snprintf(actors_bin, sizeof(actors_bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/actors_hq_manager.+x", g_house_root);
+            snprintf(actors_bin, sizeof(actors_bin), "%s/_.monads/_.livedesk-taskbar/ops/+x/actors_hq_manager.+x", g_house_root);
             pid_t actors_pid = fork();
             if (actors_pid == 0) {
                 execl(actors_bin, actors_bin, g_house_root, terms_pkgdir, (char *)NULL);
@@ -17479,7 +17479,7 @@ int main(int argc, char **argv) {
             {
                 char pub_bin[PATH_BUF];
                 snprintf(pub_bin, sizeof(pub_bin),
-                         "%s/*.monads/*.livedesk-taskbar/ops/+x/dbhq_pdl_publish_manager.+x", g_house_root);
+                         "%s/_.monads/_.livedesk-taskbar/ops/+x/dbhq_pdl_publish_manager.+x", g_house_root);
                 for (int li = 0; li < DBHQ_N_LIST_TABS; li++) {
                     snprintf(g_dbhq_list_state_path[li], sizeof(g_dbhq_list_state_path[li]),
                              "%s/#.desktop/%s", g_house_root, g_dbhq_list_cfg[li].state_name);
@@ -18105,7 +18105,7 @@ int main(int argc, char **argv) {
             g_chosen_fg_idx = -1;
         }
         char mb[PATH_BUF];
-        snprintf(mb, sizeof(mb), "%s/*.monads/*.livedesk-taskbar/ops/+x/swatch_picker_manager.+x", g_house_root);
+        snprintf(mb, sizeof(mb), "%s/_.monads/_.livedesk-taskbar/ops/+x/swatch_picker_manager.+x", g_house_root);
         g_swatch_mgr_pid = fork();
         if (g_swatch_mgr_pid == 0) {
             execl(mb, mb, g_house_root, (char *)NULL);

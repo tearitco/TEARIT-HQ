@@ -72,7 +72,7 @@ Weakest area. What exists:
 - `@.app-store/` — a folder that exists under the current house
   (`44.xyz.01.00/@.app-store`) but its actual contents/wiring haven't
   been read yet as part of this doc — real next step, not yet done.
-- `store.chtpm` under `*.START_BUTTON/` — another layout-only artifact.
+- `store.chtpm` under `_.START_BUTTON/` — another layout-only artifact.
 - Nothing found yet that actually fetches an app/toy/pal FROM a
   network source (GitHub or otherwise) INTO a running house. Every
   real "install" mechanism found so far is dev-tree → local-machine

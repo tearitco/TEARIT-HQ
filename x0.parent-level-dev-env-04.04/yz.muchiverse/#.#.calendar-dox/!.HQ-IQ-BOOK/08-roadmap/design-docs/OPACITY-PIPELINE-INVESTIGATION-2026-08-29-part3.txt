@@ -104,7 +104,7 @@ still zero visible effect) with zero remaining unexplained variance.
 
 ## 5. FIX APPLIED (live, rebuilt, re-verified)
 
-File: *.monads/*.livedesk-taskbar/ops/khtpm_entity_menu_render.c
+File: _.monads/_.livedesk-taskbar/ops/khtpm_entity_menu_render.c
 
 Added, immediately after each branch's first `redraw();` call (i.e.
 after the window has been mapped AND painted at least one real frame,
@@ -122,7 +122,7 @@ Applied to all FOUR window-creation branches in this file:
   - popup / context-menu / swatch-picker       (after redraw(), ~line 10482)
 
 Rebuilt: `bash build_entity_menu.sh` in
-*.monads/*.livedesk-taskbar/ops/ -> "OK +x/khtpm_entity_menu_render.+x"
+_.monads/_.livedesk-taskbar/ops/ -> "OK +x/khtpm_entity_menu_render.+x"
 (compiled clean, only pre-existing unrelated snprintf-truncation
 warnings from khtpm_taskbar_manager.c, no new warnings/errors from this
 change).

@@ -21,7 +21,7 @@ REQUIRED READING FIRST, IN ORDER
 3. This doc's own task sections below, oldest to newest.
 
 HARD BOUNDARY — READ THIS BEFORE TOUCHING ANY FILE
-The target file, `*.monads/*.livedesk-taskbar/ops/khtpm_entity_menu_
+The target file, `_.monads/_.livedesk-taskbar/ops/khtpm_entity_menu_
 render.c`, is being actively, concurrently edited by BOTH sides of this
 handoff at different times. It is NOT safe for both of us to have
 uncommitted edits to this file at the same time - a concurrent edit
@@ -283,7 +283,7 @@ db-hq ButtonPress only: capture helper, prefix parse in
 KeyPress, no other modes.
 
 ⛔ EXECUTION RECORD — Grok, Phase 3a (db-hq ButtonPress)
-Done in `*.monads/*.livedesk-taskbar/ops/khtpm_entity_menu_render.c`
+Done in `_.monads/_.livedesk-taskbar/ops/khtpm_entity_menu_render.c`
 only (not shared-lib).
 
 What landed:
@@ -528,7 +528,7 @@ plan first; they have a question about it. Here is the exact plan,
 including two judgment calls I was about to make without asking.
 
 **File I would edit:** only
-`*.monads/*.livedesk-taskbar/ops/khtpm_entity_menu_render.c`
+`_.monads/_.livedesk-taskbar/ops/khtpm_entity_menu_render.c`
 (not shared-lib).
 
 **Marker file (letter of wraith-alpha, not spirit):**
@@ -2866,7 +2866,7 @@ for both files below (git diff HEAD = 0 lines).
 ### What was done this pass (2026-08-29)
 
 1. **Debugged + fixed the missing Change Gold blocks.** Post-regener
-   ation, Change Gold shims are `exec "$D/*.monads/*.muchi-pet/ops/
+   ation, Change Gold shims are `exec "$D/_.monads/_.muchi-pet/ops/
    +x/mr_change_gold.+x" "$ENT" '10'` (FULL dynamic path). A standalone
    harness replay of the exact C scanner showed the true bug: the shim
    sscanf scan-set `%79[0-9A-Za-z_.-]` over-greedily captured `1.sh`
@@ -2897,7 +2897,7 @@ for both files below (git diff HEAD = 0 lines).
 ### Files:
 - `&.widgits/events-hq/ops/khtpm_events_hq_manager.c` (M) — exec-shim
   + switch SCRATCHBLOCK publishers; `[0-9_]` sscanf fix this pass.
-- `*.monads/*.livedesk-taskbar/ops/khtpm_entity_menu_render.c` (M) —
+- `_.monads/_.livedesk-taskbar/ops/khtpm_entity_menu_render.c` (M) —
   decls/parse/fill applied (raw-status form), verified in HEAD.
 
 🔓 RELEASED both files. Next-step note for anyone continuing: the

@@ -53,12 +53,12 @@ SHOW_TEXT queued file=/tmp/test_verse.txt
 [2026-08-24 03:25:33] INJECTED: SHOW_TEXT_FILE:/tmp/test_verse.txt
 [2026-08-24 03:25:33] SHOW_TEXT_FILE /tmp/test_verse.txt (3 lines)
 [2026-08-24 03:25:37] SHOW_TEXT_DISMISSED
-[2026-08-24 03:26:32] CLICK method=Play action=sh -c 'exec sh "$1/*.monads/*.muchi-pet/ops/play_event.sh" "$0"'
+[2026-08-24 03:26:32] CLICK method=Play action=sh -c 'exec sh "$1/_.monads/_.muchi-pet/ops/play_event.sh" "$0"'
 SHOW_TEXT queued file=/tmp/test_verse.txt
 [2026-08-24 03:26:33] INJECTED: SHOW_TEXT_FILE:/tmp/test_verse.txt
 [2026-08-24 03:26:33] SHOW_TEXT_FILE /tmp/test_verse.txt (3 lines)
 [2026-08-24 03:26:42] SHOW_TEXT_DISMISSED
-[2026-08-24 03:28:52] CLICK method=Play action=sh -c 'exec sh "$1/*.monads/*.muchi-pet/ops/play_event.sh" "$0"'
+[2026-08-24 03:28:52] CLICK method=Play action=sh -c 'exec sh "$1/_.monads/_.muchi-pet/ops/play_event.sh" "$0"'
 SHOW_TEXT queued file=/tmp/test_verse.txt
 [2026-08-24 03:28:53] INJECTED: SHOW_TEXT_FILE:/tmp/test_verse.txt
 [2026-08-24 03:28:53] SHOW_TEXT_FILE /tmp/test_verse.txt (3 lines)
@@ -68,7 +68,7 @@ SHOW_TEXT queued file=/tmp/test_verse.txt
 [2026-08-24 03:34:09] INJECTED: SHOW_TEXT_FILE:/tmp/test_verse.txt
 [2026-08-24 03:34:09] SHOW_TEXT_FILE /tmp/test_verse.txt (3 lines)
 [2026-08-24 03:35:07] SHOW_TEXT_DISMISSED
-[2026-08-24 03:35:11] CLICK method=Play action=sh -c 'exec sh "$1/*.monads/*.muchi-pet/ops/play_event.sh" "$0"'
+[2026-08-24 03:35:11] CLICK method=Play action=sh -c 'exec sh "$1/_.monads/_.muchi-pet/ops/play_event.sh" "$0"'
 SHOW_TEXT queued file=/tmp/test_verse.txt
 [2026-08-24 03:35:12] INJECTED: SHOW_TEXT_FILE:/tmp/test_verse.txt
 [2026-08-24 03:35:12] SHOW_TEXT_FILE /tmp/test_verse.txt (3 lines)

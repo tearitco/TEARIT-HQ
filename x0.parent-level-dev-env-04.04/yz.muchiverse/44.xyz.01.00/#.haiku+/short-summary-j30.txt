@@ -134,7 +134,7 @@ what YOU should personally click through before trusting it.
     real movement/interaction was never confirmed working (the arrow-
     code keypress convention used elsewhere didn't move anything; may
     need literal WASD keys instead - untested).
-  - *.START_BUTTON: never tested this pass at all.
+  - _.START_BUTTON: never tested this pass at all.
   - Tier 2 follow-up: no PAL-driven manager built on top of the new
     read_history_str opcode yet - it exists and works, but nothing
     uses it.

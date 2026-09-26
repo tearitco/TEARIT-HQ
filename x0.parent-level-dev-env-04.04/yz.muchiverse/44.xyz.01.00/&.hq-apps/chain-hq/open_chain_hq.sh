@@ -21,7 +21,7 @@ HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 XHTPM="$HERE/chain-hq.xhtpm"
 MGR="$HERE/ops/+x/chain_manager.+x"
-RENDER_OPS_DIR="$HOUSE_ROOT"/*.monads/*.livedesk-taskbar/ops
+RENDER_OPS_DIR="$HOUSE_ROOT"/_.monads/_.livedesk-taskbar/ops
 BIN="$(cd $RENDER_OPS_DIR && pwd)/+x/khtpm_core_render.+x"
 
 [ -x "$BIN" ] || (cd $RENDER_OPS_DIR && sh build_core_render.sh) || true

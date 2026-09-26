@@ -84,7 +84,7 @@ name half exists.
 
 ### 3. Player/map runtime loop — does not exist in the real house code
 No "walk a map, touch-trigger an event" loop exists anywhere under
-`*.monads/`, `&.widgits/`, or `xyzfs/`. It exists only in two
+`_.monads/`, `&.widgits/`, or `xyzfs/`. It exists only in two
 disconnected prototypes:
 - `201.rpg-maker-clone/` — real collision/touch-vs-action triggers,
   but its own `CRITIC_REPORT.md` rates it 6/10 play loop, 4/10 editor

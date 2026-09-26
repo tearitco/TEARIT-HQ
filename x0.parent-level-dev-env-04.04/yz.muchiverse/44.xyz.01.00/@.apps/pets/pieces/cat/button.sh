@@ -9,7 +9,7 @@ GRID_Y=3
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 HOUSE_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
-TP="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
+TP="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops"
 DESK="$HOUSE_ROOT/#.desktop"
 ACTION="${1:-run}"
 PKG="$DESK/entities/$NAME"
@@ -61,7 +61,7 @@ case "$ACTION" in
             disown
             echo "$NAME spawned: $PKG"
         else
-            echo "MISSING: $TP/+x/khtpm_entity.+x (run *.monads/*.livedesk-taskbar/ops/build_khtpm_strip.sh first)"
+            echo "MISSING: $TP/+x/khtpm_entity.+x (run _.monads/_.livedesk-taskbar/ops/build_khtpm_strip.sh first)"
         fi
         ;;
     kill|k|stop)

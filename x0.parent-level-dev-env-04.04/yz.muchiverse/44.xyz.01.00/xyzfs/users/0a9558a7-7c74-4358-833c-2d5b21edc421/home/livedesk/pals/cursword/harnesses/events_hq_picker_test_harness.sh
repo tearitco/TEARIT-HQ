@@ -144,7 +144,7 @@ fi
 # Step 1: launch events-hq
 # =========================================================================
 log "=== step 1: launch events-hq ==="
-BIN="$HOUSE/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
+BIN="$HOUSE/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
 CHTPM="$HOUSE/&.widgits/events-hq/pieces/dashboard.chtpm"
 
 if [ ! -x "$BIN" ]; then

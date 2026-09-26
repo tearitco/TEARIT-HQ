@@ -1,8 +1,8 @@
 PAGE | main
 OBJECT | label=Feed | action=void
 OBJECT | label=Menu | action=sh -c 'cd "$0" && exec ../../ops/open_rp_menu.sh "$0"'
-OBJECT | label=Play | action=sh -c 'exec "$1/*.monads/*.muchi-pet/ops/play_event.sh" "$0" "$1"'
-OBJECT | label=Events (ez) | action=sh -c 'exec "$1/*.monads/*.muchi-pet/ops/open_event_ez.sh" "$0" "$1"'
+OBJECT | label=Play | action=sh -c 'exec "$1/_.monads/_.muchi-pet/ops/play_event.sh" "$0" "$1"'
+OBJECT | label=Events (ez) | action=sh -c 'exec "$1/_.monads/_.muchi-pet/ops/open_event_ez.sh" "$0" "$1"'
 OBJECT | label=Events (hq) | action=sh -c 'exec "$1/&.widgits/events-hq/button.sh" "$0" "$1"'
 OBJECT | label=More | action=GOTO:activities
 OBJECT | label=Rename | action=STATE:pending_name

@@ -329,7 +329,7 @@ Template (optional if mouse already activates canvas): `action=` on `#view` matc
 ## References
 
 - `#.#.calendar-dox/!.HQ-IQ-BOOK/09-appendix/pc-hq-leg-vs-nu-fix.md` especially §2-B, §5-A/B, §6, §6c
-- `44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c` — `g_win_managed_focus`, `hq_idle_tick` ~7745, `kh_scan_interact_relay` ~4424, `handle_key` ~6884, FocusIn/Out ~8181, create ~14409
+- `44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c` — `g_win_managed_focus`, `hq_idle_tick` ~7745, `kh_scan_interact_relay` ~4424, `handle_key` ~6884, FocusIn/Out ~8181, create ~14409
 - `@.apps/piececraft-hq/pchq-board.xhtpm`, `ops/pchq_board_projector.c`, `ops/pchq_board_action.sh`
 - `03-pitfalls/X11-AND-SESSION-PITFALLS.md` (display-wide grab)
 - `CENTROID_GOLD_STD.md` / khtpm-house-standards (no new layout branches; hardware test later)
@@ -341,7 +341,7 @@ Template (optional if mouse already activates canvas): `action=` on `#view` matc
 ### PR 1 — Stop idle focus steal; track real X11 focus
 
 - **Title:** `fix(khtpm): managed windows must not XSetInputFocus on pointer-over`
-- **Files:** `44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c`
+- **Files:** `44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c`
 - **Depends on:** none (`828b0cfe` already on branch)
 - **Changes:** Remove or latch-gate `hq_idle_tick` pointer-over `XSetInputFocus`. Set `g_x11_window_focused` on real FocusIn/Out (keep grab ignore). `ButtonPress` on this window sets latch + one `XSetInputFocus`. `handle_key` forwards Interact only if focused. **Do not** change `class="managed"` create path.
 

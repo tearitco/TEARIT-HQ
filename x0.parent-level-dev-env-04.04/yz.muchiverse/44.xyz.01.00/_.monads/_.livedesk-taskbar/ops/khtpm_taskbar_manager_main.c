@@ -537,7 +537,7 @@ static void publish_strip_ui(const KtbState *s, const char *house_root) {
     size_t off = 0;
     int i;
     snprintf(relay, sizeof(relay),
-             "%s/*.monads/*.livedesk-taskbar/ops/strip_relay.sh", house_root);
+             "%s/_.monads/_.livedesk-taskbar/ops/strip_relay.sh", house_root);
     ktb_get_username(s, user_lab, sizeof(user_lab));
     ktb_get_file_label(s, file_lab, sizeof(file_lab));
     ktb_get_desks_label(s, desks_lab, sizeof(desks_lab));

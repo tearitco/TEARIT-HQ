@@ -10,7 +10,7 @@
      manager.+x every other category shares, publishing rows in the
      same real label\tlabel\tpath format. -->
 <window class="database-window palettes" label="palettes: Debug">
-  <module src="*.monads/*.livedesk-taskbar/ops/+x/palettes_manager.+x" args="debug" />
+  <module src="_.monads/_.livedesk-taskbar/ops/+x/palettes_manager.+x" args="debug" />
   <panel class="settings-block">
     <title class="block-title" label="Debug"/>
     <text class="pal-hint" label="Click an op to start/stop it. debug.txt content below."/>

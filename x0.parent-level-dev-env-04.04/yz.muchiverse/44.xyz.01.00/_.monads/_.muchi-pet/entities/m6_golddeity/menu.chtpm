@@ -1,8 +1,8 @@
-<!-- menu.chtpm - real, generated entity context menu (meta_to_menu_chtpm.py, 2026-08-28 permanent converter). Converted 1:1 from *.monads/*.muchi-pet/entities/m6_golddeity/meta.pdl's own real METHOD rows - same real mechanical rule proven on ava/asa/book-stack's own hand conversions. Regenerate by deleting this file and re-running the converter; a real hand-edit here will be lost on the next regenerate, same tradeoff every generated file in this house already has. -->
+<!-- menu.chtpm - real, generated entity context menu (meta_to_menu_chtpm.py, 2026-08-28 permanent converter). Converted 1:1 from _.monads/_.muchi-pet/entities/m6_golddeity/meta.pdl's own real METHOD rows - same real mechanical rule proven on ava/asa/book-stack's own hand conversions. Regenerate by deleting this file and re-running the converter; a real hand-edit here will be lost on the next regenerate, same tradeoff every generated file in this house already has. -->
 <window class="entity-menu">
   <page name="main">
     <item label="Ledger" action="sh -c 'cd &quot;$0&quot; &amp;&amp; exec gedit master_ledger.txt'"/>
-    <item label="Events (ez)" action="sh -c 'exec &quot;$1/*.monads/*.muchi-pet/ops/open_event_ez.sh&quot; &quot;$0&quot; &quot;$1&quot;'"/>
+    <item label="Events (ez)" action="sh -c 'exec &quot;$1/_.monads/_.muchi-pet/ops/open_event_ez.sh&quot; &quot;$0&quot; &quot;$1&quot;'"/>
     <item label="Dir" action="xdg-open"/>
     <item label="Inventory" action="sh -c 'H=&quot;$1&quot;; I=&quot;$H/&amp;.widgits/file-explorer/instances/inv-$(basename &quot;$(dirname &quot;$0&quot;)&quot;)-$(basename &quot;$0&quot;)&quot;; mkdir -p &quot;$0/inventory&quot; &quot;$I&quot;; printf &quot;mode=LOAD\nstart_dir=%s/inventory\n&quot; &quot;$0&quot; > &quot;$I/fe_request.txt&quot;; exec sh &quot;$H/&amp;.widgits/file-explorer/button.sh&quot; run-instance &quot;$I&quot;'"/>
     <item label="Close" action="CLOSE"/>

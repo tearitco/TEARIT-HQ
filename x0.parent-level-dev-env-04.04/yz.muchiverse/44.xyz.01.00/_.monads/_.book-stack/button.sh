@@ -1,8 +1,8 @@
 #!/bin/bash
 # button.sh - book-stack launcher (standalone open).
-# book-stack is a MONAD: *.monads/*.book-stack/entities/book-stack is the
+# book-stack is a MONAD: _.monads/_.book-stack/entities/book-stack is the
 # window (hosted by tp_desktop_window), and its Read method runs the
-# reader app (*.monads/*.book-stack/pieces/reader/event_pkg/pages/page_1/
+# reader app (_.monads/_.book-stack/pieces/reader/event_pkg/pages/page_1/
 # event.pal) via 101.mutaclsym.../system/prisc+x. Opening book-stack on
 # its own therefore means: start the entity window, then start the
 # reader so the Choose-Read/Hear/Tao dispatch appears.
@@ -10,18 +10,18 @@ ACTION="${1:-help}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 HOUSE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-TPWIN="$HOUSE_DIR/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity.+x"
+TPWIN="$HOUSE_DIR/_.monads/_.livedesk-taskbar/ops/+x/khtpm_entity.+x"
 # 2026-09-08: the hardcoded "+18.01" was renamed to "19.00" (see
 # 19.00-VOXEL-3D-ARCHITECTURE.md) - resolve the prisc runner by a
 # cheap maxdepth-1 glob instead, matching entities/book-stack/menu.chtpm's
 # own "Read" action. Survives the next rename too.
 PRISC="$(find "$HOUSE_DIR" -maxdepth 1 -name '101.mutaclsym🧟‍♂️️*' -type d 2>/dev/null | head -1)/system/prisc+x"
-ENTITY_DIR="$HOUSE_DIR/*.monads/*.book-stack/entities/book-stack"
+ENTITY_DIR="$HOUSE_DIR/_.monads/_.book-stack/entities/book-stack"
 EVENT_PAL="$SCRIPT_DIR/pieces/reader/event_pkg/pages/page_1/event.pal"
 
 entity_window_up() {
     # escape regex specials — monad paths contain literal '*' globs
-    # (*.monads/...) that pgrep -f would otherwise treat as metachars
+    # (_.monads/...) that pgrep -f would otherwise treat as metachars
     local re
     re=$(printf '%s' "$ENTITY_DIR" | sed 's/[][{}.*+?^$|\\]/\\&/g')
     pgrep -f "$re" >/dev/null 2>&1

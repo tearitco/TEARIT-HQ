@@ -311,7 +311,7 @@ beyond file-menu (confirmed) and agy-txt (confirmed, being fixed).
 
   002.zoo__🦓️🐒️0000/02.z00-INK.lo.sur]PEN🏟️
   041.pal-chain⛓️
-  *.START_BUTTON
+  _.START_BUTTON
 
   None of Tier 4 needs its OWN op/manager code touched for the Tier 2
   prisc+x.c change - a plain rebuild (their own scripts/build.sh) picks
@@ -420,7 +420,7 @@ beyond file-menu (confirmed) and agy-txt (confirmed, being fixed).
     (e.g. 115 = 's') - not yet tried. STILL NEEDS: finish this one
     basic interaction smoke test.
 
-  *.START_BUTTON                 - NOT YET STARTED this pass (existing
+  _.START_BUTTON                 - NOT YET STARTED this pass (existing
     test-harn-same/button.sh present, not yet run).
 
 --------------------------------------------------------------------------------

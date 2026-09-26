@@ -32,7 +32,7 @@ SETSID="setsid"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 XHTPM="$HERE/taskbar-settings-pal.xhtpm"
-OPS_DIR="$(ls -d "$HOUSE_ROOT"/*.monads/*.livedesk-taskbar/ops)"
+OPS_DIR="$(ls -d "$HOUSE_ROOT"/_.monads/_.livedesk-taskbar/ops)"
 BIN="$OPS_DIR/+x/khtpm_core_render.+x"
 MGR="$OPS_DIR/+x/swatch_picker_manager.+x"
 PROJ="$HERE/ops/+x/taskbar_settings_projector.+x"

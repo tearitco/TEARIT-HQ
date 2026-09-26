@@ -23,7 +23,7 @@ WHAT HAS BEEN ATTEMPTED
    - Impact: Allows binary discovery regardless of version directory name
 
 2. FIXED GLOB EXPANSION IN QUOTED STRINGS
-   - Problem: $H/*.monads/*.book-stack/... doesn't expand inside double quotes
+   - Problem: $H/_.monads/_.book-stack/... doesn't expand inside double quotes
    - Solution: Uses find commands instead
    - Status: DONE in meta.pdl (for finding event.pal path)
 
@@ -56,15 +56,15 @@ CURRENT FILE STATE - ALL VERIFIED
    Status: ✅ Correct - HTML entity encoded version of meta.pdl
 
 3. EVENT.PAL (entry point script)
-   Path: *.monads/*.book-stack/pieces/reader/event_pkg/pages/page_1/event.pal
+   Path: _.monads/_.book-stack/pieces/reader/event_pkg/pages/page_1/event.pal
    Content:
    | # event.pal - page_1's real top-level script - Show Choices dispatch
-   | exec /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/*.monads/*.book-stack/pieces/reader/event_pkg/pages/page_1/dispatch.sh
+   | exec /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/_.monads/_.book-stack/pieces/reader/event_pkg/pages/page_1/dispatch.sh
    | halt
    Status: ✅ Correct - absolute path with literal asterisks
 
 4. DISPATCH.SH (orchestrator for choices)
-   Path: *.monads/*.book-stack/pieces/reader/event_pkg/pages/page_1/dispatch.sh
+   Path: _.monads/_.book-stack/pieces/reader/event_pkg/pages/page_1/dispatch.sh
    Key lines:
    | SCRIPT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)" || { echo "Error: can't find script dir"; exit 1; }
    | HOUSE="$(cd "$SCRIPT_DIR/../../../../../../.." 2>/dev/null && pwd)" || { echo "Error: can't find house"; exit 1; }
@@ -74,7 +74,7 @@ CURRENT FILE STATE - ALL VERIFIED
    Status: ✅ Correct - all paths resolve without errors
 
 5. CHOICES.OBJECTS.PDL (menu definition for picker)
-   Path: *.monads/*.book-stack/pieces/reader/event_pkg/pages/page_1/choices.objects.pdl
+   Path: _.monads/_.book-stack/pieces/reader/event_pkg/pages/page_1/choices.objects.pdl
    Size: 169 bytes
    Status: ✅ File exists and is readable
 
@@ -97,14 +97,14 @@ All paths tested and verified to resolve correctly:
    Executable: YES
 
 2. EVENT.PAL FILE:
-   ✅ /home/no/Desktop/.../44.xyz❤️‍🔥️00.17/*.monads/*.book-stack/pieces/reader/event_pkg/pages/page_1/event.pal
+   ✅ /home/no/Desktop/.../44.xyz❤️‍🔥️00.17/_.monads/_.book-stack/pieces/reader/event_pkg/pages/page_1/event.pal
    (Path contains literal asterisks in directory names)
    Exists: YES
    Readable: YES
    Content: Valid prisc script
 
 3. DISPATCH.SH SCRIPT:
-   ✅ /home/no/Desktop/.../44.xyz❤️‍🔥️00.17/*.monads/*.book-stack/pieces/reader/event_pkg/pages/page_1/dispatch.sh
+   ✅ /home/no/Desktop/.../44.xyz❤️‍🔥️00.17/_.monads/_.book-stack/pieces/reader/event_pkg/pages/page_1/dispatch.sh
    (Path contains literal asterisks in directory names)
    Exists: YES
    Readable: YES
@@ -112,13 +112,13 @@ All paths tested and verified to resolve correctly:
    Error checking: Added (validates all paths before executing)
 
 4. PACKAGE_DIR (entity directory):
-   ✅ /home/no/Desktop/.../44.xyz❤️‍🔥️00.17/*.monads/*.book-stack/entities/book-stack
+   ✅ /home/no/Desktop/.../44.xyz❤️‍🔥️00.17/_.monads/_.book-stack/entities/book-stack
    (Path contains literal asterisks)
    Exists: YES
    Is directory: YES
 
 5. CHOICES_FILE:
-   ✅ /home/no/Desktop/.../44.xyz❤️‍🔥️00.17/*.monads/*.book-stack/pieces/reader/event_pkg/pages/page_1/choices.objects.pdl
+   ✅ /home/no/Desktop/.../44.xyz❤️‍🔥️00.17/_.monads/_.book-stack/pieces/reader/event_pkg/pages/page_1/choices.objects.pdl
    (Path contains literal asterisks)
    Exists: YES
    Is file: YES
@@ -134,11 +134,11 @@ DIRECTORY STRUCTURE NOTE
 ================================================================================
 
 IMPORTANT: Directory names contain LITERAL ASTERISKS
-- *.monads (directory is literally named with an asterisk prefix)
-- *.book-stack (directory is literally named with an asterisk prefix)
+- _.monads (directory is literally named with an asterisk prefix)
+- _.book-stack (directory is literally named with an asterisk prefix)
 
 This means paths like:
-  /house/root/*.monads/*.book-stack/pieces/...
+  /house/root/_.monads/_.book-stack/pieces/...
 
 are VALID filesystem paths, not glob patterns. When passed to programs, they
 need to be quoted properly to prevent shell interpretation of the asterisks.

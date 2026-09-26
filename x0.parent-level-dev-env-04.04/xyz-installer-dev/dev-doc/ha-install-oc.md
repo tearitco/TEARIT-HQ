@@ -698,8 +698,8 @@ _.0.aigent-testing-k9.txt
 .gitignore
 @.app-store/
 @.apps/
-*.monads/
-*.START_BUTTON/
+_.monads/
+_.START_BUTTON/
 \.monads/
 &.widgits/
 #.a0]🪄️.🎩️(tson)]0000=ctrl+h/
@@ -1406,7 +1406,7 @@ livedesk-sessions-worklog.md
 132: | 🧟 | Games | `101.mutaclsym…` — maps, entities, GL mirror |
 133: | 📝 | Tools | `102.editor…` — INTERACT canvas, widget cmd bus |
 134: | 👤 | Identity | `0.user-pal…` — login, xyzfs users, avatars |
-135: | 🚀 | Loader | `*.START_BUTTON` — System / Widgets / Apps / App Store |
+135: | 🚀 | Loader | `_.START_BUTTON` — System / Widgets / Apps / App Store |
 136: | 🧩 | Widgets | `&.widgits/file-menu`, tile-picker, map-picker, **proc-monitor** |
 137: | 🧪 | Harnesses | `%.harnesses/file-menu+editor`, `file-menu+mutaclysm` |
 138: | 📦 | Future apps | `@.apps/`, `@.app-store/` (mostly empty — by design) |
@@ -1440,7 +1440,7 @@ livedesk-sessions-worklog.md
 166: | Editor INTERACT canvas (type, arrows, BS, newline) | `102.editor…/test-harn-same` |
 167: | file-menu → editor LOAD / SAVE_AS / NEW | `%.harnesses/file-menu+editor` |
 168: | file-menu → mutaclysm user save slots + **demo-project** seed | `%.harnesses/file-menu+mutaclysm` |
-169: | START_BUTTON categories (System / Widgets / Apps / Store) | `*.START_BUTTON` + harness |
+169: | START_BUTTON categories (System / Widgets / Apps / Store) | `_.START_BUTTON` + harness |
 170: | Login / xyzfs identity trees | `0.user-pal/00.login-signup` |
 171: | Mutaclysm live world + GL culture | install game + docs |
 172: 
@@ -1579,7 +1579,7 @@ livedesk-sessions-worklog.md
 305: 102.editor-…/test-harn-same/button.sh demo
 306: 
 307: # START_BUTTON catalog
-308: *.START_BUTTON/button.sh compile && # then run in a real TTY
+308: _.START_BUTTON/button.sh compile && # then run in a real TTY
 309: ```
 310: 
 311: Read proof under each harness’s `proof/harness-…/`.
@@ -1868,7 +1868,7 @@ Let me examine the livedesk documentation and find where the current lived
 169: ```
 170: 
 171: - **House-relative** entity paths in desk pdl files (`livedesk_rel_path` on
-172:   snapshot, `livedesk_join_path` on spawn) — `*.monads/*.muchi-pet/...` are
+172:   snapshot, `livedesk_join_path` on spawn) — `_.monads/_.muchi-pet/...` are
 173:   literal dirnames (real asterisks), so `access()` works on them.
 174: - `uuid` = jb `0a9558a7-7c74-4358-833c-2d5b21edc421`, resolved by walking
 175:   `0.user-pal*` (emoji-free), no hardcoded id.
@@ -2129,12 +2129,12 @@ Now let me look at the actual livedesk/khtpm implementation and how it builds
 1: #!/bin/sh
 2: # run-khtpm-strip.sh — house-root-level starter for the new khtpm strip
 3: # parser/manager pair (the 2026-08-11 taskbar refactor). Delegates to the
-4: # real script at *.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh — see
+4: # real script at _.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh — see
 5: # that file's own header comment, and
 6: # #.#.calendar-dox/aug-11-refactor-finish.md, for the full story.
 7: set -e
 8: HOUSE_DIR="$(cd "$(dirname "$0")" && pwd)"
-9: exec sh "$HOUSE_DIR/*.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh" "$@"
+9: exec sh "$HOUSE_DIR/_.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh" "$@"
 
 (End of file - total 9 lines)
 </content>
@@ -2201,28 +2201,28 @@ yahoo-chart/
 
 _Thinking:_
 
-The livedesk-taskbar is in `*.monads/*.livedesk-taskbar/`. Let me look at that.
+The livedesk-taskbar is in `_.monads/_.livedesk-taskbar/`. Let me look at that.
 
 **Tool: read**
 
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads</path>
 <type>directory</type>
 <entries>
-*.#.misingno./
-*.book-stack/
-*.cogmind-clone/
-*.hard-vvar-agent-Q0000/
-*.livedesk-taskbar/
-*.muchi-pet/
+_.#.misingno/
+_.book-stack/
+_.cogmind-clone/
+_.hard-vvar-agent-Q0000/
+_.livedesk-taskbar/
+_.muchi-pet/
 *.music-player/
 
 (7 entries)
@@ -2252,13 +2252,13 @@ File not found: /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar</path>
 <type>directory</type>
 <entries>
 khtpm_strip_bottom.chtpm
@@ -2729,13 +2729,13 @@ Let me dig into the khtpm livedesk ops and its build
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops</path>
 <type>directory</type>
 <entries>
 +x/
@@ -2759,13 +2759,13 @@ run_khtpm_strip.sh
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/README.md"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/README.md"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/README.md</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/README.md</path>
 <type>file</type>
 <content>
 1: # livedesk-taskbar
@@ -2920,13 +2920,13 @@ Let me look at the build_khtpm_strip.sh and run_khtpm_strip.sh to understand wha
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/build_khtpm_strip.sh"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/build_khtpm_strip.sh"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/build_khtpm_strip.sh</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/build_khtpm_strip.sh</path>
 <type>file</type>
 <content>
 1: #!/bin/sh
@@ -2936,7 +2936,7 @@ Let me look at the build_khtpm_strip.sh and run_khtpm_strip.sh to understand wha
 5: #
 6: # PRODUCTION BINARY NAMES (2026-08-11): legacy tp_taskbar.c has been
 7: # retired (archived to
-8: # *.monads/*.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip, originals
+8: # _.monads/_.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip, originals
 9: # deleted — direct instruction: "id like to deprecate the old toolbar
 10: # system now"). This khtpm pair is now the real, only taskbar — dropped
 11: # the "_test" suffix these binaries carried through the whole build-out
@@ -2968,13 +2968,13 @@ Let me look at the build_khtpm_strip.sh and run_khtpm_strip.sh to understand wha
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh</path>
 <type>file</type>
 <content>
 1: #!/bin/sh
@@ -2988,7 +2988,7 @@ Let me look at the build_khtpm_strip.sh and run_khtpm_strip.sh to understand wha
 9: # pgrep.
 10: #
 11: # 2026-08-11: legacy tp_taskbar.c retired (archived to
-12: # *.monads/*.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip, originals
+12: # _.monads/_.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip, originals
 13: # deleted). Binaries dropped their "_test" suffix now that khtpm is the
 14: # real, only taskbar. The `legacy`/`restore` action this script used to
 15: # have (relaunch tp_taskbar.c as a fallback) is gone — there is no legacy
@@ -3191,7 +3191,7 @@ Let me read the key config files and the parser design to understand the runtime
 <content>
 1: SECTION      | hq_label            | HQ
 2: SECTION      | hq_menu_1_label     | $.restart
-3: SECTION      | hq_menu_1_cmd       | sh *.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh new
+3: SECTION      | hq_menu_1_cmd       | sh _.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh new
 4: SECTION      | hq_menu_2_label     | hide/show
 5: SECTION      | hq_menu_2_cmd       | sh $.crypts/scripts/hide-show-desks.sh
 6: SECTION      | hq_menu_3_label     | dir
@@ -3274,13 +3274,13 @@ Let me read the key config files and the parser design to understand the runtime
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/khtpm-strip-parser-SCOPE.md"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/khtpm-strip-parser-SCOPE.md"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/khtpm-strip-parser-SCOPE.md</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/khtpm-strip-parser-SCOPE.md</path>
 <type>file</type>
 <content>
 1: # khtpm strip parser — locked scope, 2026-08-11
@@ -3341,7 +3341,7 @@ Let me read the key config files and the parser design to understand the runtime
 56: 
 57: ## The layout file itself
 58: 
-59: A NEW static file, e.g. `*.monads/*.livedesk-taskbar/khtpm_strip.chtpm` (or `.pdl` extension if `.chtpm` feels presumptuous outside the real CHTPM tree — house convention question, not a technical one, ask if unsure). Hand-authored, checked into the repo like any other config — this is the actual "users and devs create layouts" deliverable the whole refactor was for. Rough shape (illustrative, not final — write the real one once the tag vocabulary above is locked and reviewed):
+59: A NEW static file, e.g. `_.monads/_.livedesk-taskbar/khtpm_strip.chtpm` (or `.pdl` extension if `.chtpm` feels presumptuous outside the real CHTPM tree — house convention question, not a technical one, ask if unsure). Hand-authored, checked into the repo like any other config — this is the actual "users and devs create layouts" deliverable the whole refactor was for. Rough shape (illustrative, not final — write the real one once the tag vocabulary above is locked and reviewed):
 60: 
 61: ```
 62: <panel>
@@ -3394,7 +3394,7 @@ Now I have a good understanding of the project. Let me understand the goal:
 2. The goal: user runs 1 script, and it installs a completely fresh version of "livedesk-xyz" (the khtpm-based livedesk taskbar system).
 
 Let me understand what "livedesk-xyz" would naturally be called. The current system:
-- `*.monads/*.livedesk-taskbar/` = the khtpm livedesk taskbar (parser + manager, 3 windows)
+- `_.monads/_.livedesk-taskbar/` = the khtpm livedesk taskbar (parser + manager, 3 windows)
 - It needs:
   - The compiled binaries (`+x/khtpm_strip_parser.+x`, `+x/khtpm_taskbar_manager_main.+x`, and probably `tp_desktop_window.+x` for entities)
   - Config pdl files (`livedesk_taskbar.pdl`, `livedesk_theme.pdl`) in `#.desktop/`
@@ -3424,7 +3424,7 @@ Let me understand the entity window system that livedesk depends on, and check h
 ```json
 {
   "pattern": "livedesk_taskbar\\.pdl|#\\.desktop|HOUSE|house_root|argv\\[1\\]",
-  "path": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "include": "*.c"
 }
 ```
@@ -3432,7 +3432,7 @@ Let me understand the entity window system that livedesk depends on, and check h
 **Output:**
 ```
 Found 216 matches (showing first 100)
-/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c:
+/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c:
   Line 80: void ktb_init(KtbState *s, const char *house_root) {
 
   Line 82:     snprintf(s->house_root, sizeof(s->house_root), "%s",
@@ -3772,7 +3772,7 @@ tp_test_send_key.c
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c",
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_strip_parser.c",
   "offset": 1,
   "limit": 120
 }
@@ -3780,7 +3780,7 @@ tp_test_send_key.c
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_strip_parser.c</path>
 <type>file</type>
 <content>
 1: /* khtpm_strip_parser.c — the new outer process, playing chtpm_parser.c's
@@ -3916,7 +3916,7 @@ _Thinking:_
 
 I now have a decent understanding. Let me understand what the "current livedesk-xyz" actually is and its dependencies. This is the khtpm parser/manager pair. Let me now check what files/dirs a fresh livedesk install needs:
 
-1. `*.monads/*.livedesk-taskbar/` — the source + build scripts + the .chtpm layout files
+1. `_.monads/_.livedesk-taskbar/` — the source + build scripts + the .chtpm layout files
 2. `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x` — the entity/desktop window binary (needed by the manager for spawning desks)
 3. `#.desktop/` — runtime state dir (config pdl files, relay files, sessions etc.)
 4. User pal `0.user-pal👤️/` — login/signup, avatar
@@ -3983,7 +3983,7 @@ xo-human.md
 7: 
 8: ## 1. The trigger (context, not the point)
 9: 
-10: The livedesk taskbar moved from spawning entities directly out of their dev-tree location (`*.monads/*.widget/entities/<name>`, always the same fixed nesting depth) to spawning them from a per-user **pals registry** (`xyzfs/users/<uuid>/home/livedesk/pals/<name>`, a completely different depth). This is a real, deliberate, good architectural change — but it exposed something worse than one bug: an entire **class** of latent fragility that had been silently correct only by coincidence (the old location happened to always be at a fixed depth), never because the code was actually portable.
+10: The livedesk taskbar moved from spawning entities directly out of their dev-tree location (`_.monads/*.widget/entities/<name>`, always the same fixed nesting depth) to spawning them from a per-user **pals registry** (`xyzfs/users/<uuid>/home/livedesk/pals/<name>`, a completely different depth). This is a real, deliberate, good architectural change — but it exposed something worse than one bug: an entire **class** of latent fragility that had been silently correct only by coincidence (the old location happened to always be at a fixed depth), never because the code was actually portable.
 11: 
 12: ## 2. The bug class, precisely
 13: 
@@ -4015,7 +4015,7 @@ xo-human.md
 39: 
 40: Every hop after `prisc+x` had **no positional argument available** to receive the entity's real live location — `prisc+x`'s own `exec` opcode can't forward it. `dispatch.sh` (correctly reading its OWN fixed location) computed `HOUSE_ROOT` fine, but then **hardcoded a guess** at the entity's package dir, because it had no other way to know it:
 41: ```bash
-42: PACKAGE_DIR="$HOUSE/*.monads/*.book-stack/entities/book-stack"   # a guess, not derived
+42: PACKAGE_DIR="$HOUSE/_.monads/_.book-stack/entities/book-stack"   # a guess, not derived
 43: ```
 44: **The fix:** environment variables survive `exec` even when positional arguments can't be forwarded. The top of the chain (`meta.pdl`'s `Read` method) now does:
 45: ```bash
@@ -4030,8 +4030,8 @@ xo-human.md
 54: ## 4. What was actually fixed (2026-08-10)
 55: 
 56: - `&.widgits/tile-picker/ops/tp_desktop_window.c` — METHOD/OBJECT dispatch now passes `house_root` as an explicit second argument (it already had it in scope; the fix cost nothing, and every downstream script can now use it instead of guessing).
-57: - `*.monads/*.muchi-pet/ops/open_event_ez.sh` — reads the new explicit arg; old climb kept only as a fallback for anything not yet updated.
-58: - `*.monads/*.muchi-pet/ops/open_rp_menu.sh` — the self-perpetuating generator, fixed to derive its root from its own script location (§2b pattern), not the entity's variable location.
+57: - `_.monads/_.muchi-pet/ops/open_event_ez.sh` — reads the new explicit arg; old climb kept only as a fallback for anything not yet updated.
+58: - `_.monads/_.muchi-pet/ops/open_rp_menu.sh` — the self-perpetuating generator, fixed to derive its root from its own script location (§2b pattern), not the entity's variable location.
 59: - `book-stack`'s `meta.pdl` (both dev-tree source and the live pals copy) — "Read" now exports `PACKAGE_DIR` before exec'ing `prisc+x` (§2c pattern).
 60: - `dispatch.sh`, `branches/bible_text/run.sh`, `branches/tao/run.sh` — read `$PACKAGE_DIR` from environment, falling back to the old guess only if unset.
 61: - `m8_redhorned`'s pals `meta.pdl` "Ledger" line — rewritten to reference its own data via `$0` (its own live package dir), the simplest possible fix since that file already lives *inside* the entity's own package.
@@ -4229,7 +4229,7 @@ So the key deliverable here is understanding + a naming recommendation + likely 
 
 Let me check the current house version — the pointers.pdl points to `44.xyz❤️‍🔥️00.10` but the working dir is `44.xyz.01.00` — an outdated pointer. The installer reads FROM this dev tree.
 
-The current livedesk = the khtpm two-process pair (`*.monads/*.livedesk-taskbar/`), which:
+The current livedesk = the khtpm two-process pair (`_.monads/_.livedesk-taskbar/`), which:
 - depends on X11, 
 - needs `#.desktop/` runtime dir (config: livedesk_taskbar.pdl, livedesk_theme.pdl, shortcuts)
 - depends on `0.user-pal👤️/00.login-signup` for users/uuid
@@ -4567,7 +4567,7 @@ Let me check the current naming and focus docs, plus the USER_CREATION for how t
 198: 
 199: Current Player Integration:
 200: - player cell in livedesk checks entity events on "play" action
-201: - Location: likely in 44.xyz.../*.monads/*.livedesk-taskbar/ops/ (dispatch_event.c pattern)
+201: - Location: likely in 44.xyz.../_.monads/_.livedesk-taskbar/ops/ (dispatch_event.c pattern)
 202: - Execution: runs .pal scripts (compiled event output)
 203: - Status: Works for per-entity events; common_events not yet integrated
 204: 
@@ -4651,23 +4651,23 @@ Let me check the current naming and focus docs, plus the USER_CREATION for how t
 282:       injection (RUN_METHOD:Play into the entity's interact_relay.txt) exactly like a real click.
 283:     - Found a REAL bug via that exact relay test: compiled cmd_N.sh wrapper scripts (event-ez's own
 284:       compiler output in ez_menu_input.c) hardcoded a FIXED directory-depth walk to find
-285:       mr_change_gold.+x, correct only for the old @.apps/*.monads template layout, silently broken
+285:       mr_change_gold.+x, correct only for the old @.apps/_.monads template layout, silently broken
 286:       for the current xyzfs/users/<uuid>/home/livedesk/pals/<name>/ deployment depth - exactly the
 287:       kind of drift this house's own ongoing dev-folder-to-xyzfs migration produces.
-288:     - Fixed: wrapper now searches upward for a stable *.monads anchor instead of assuming a fixed
+288:     - Fixed: wrapper now searches upward for a stable _.monads anchor instead of assuming a fixed
 289:       depth (same pattern khtpm's own livedesk_login_root() already uses). Rebuilt event-ez clean.
 290:     - Verified via PURE relay injection (no direct binary calls): reset gold to 0, triggered
 291:       RUN_METHOD:Play, confirmed qolq went 0->35 for real.
 292:     - Verified persistence (the original ask): switched desk away (confirmed entity process died),
 293:       switched back - qolq=35 survived the round trip.
 294:     - Found that qolq=35's ORIGINAL appearance (before any of tonight's testing) was a static
-295:       template fixture (byte-identical event.ir.pdl + inventory.txt in the *.monads/*.muchi-pet
+295:       template fixture (byte-identical event.ir.pdl + inventory.txt in the _.monads/_.muchi-pet
 296:       template, all matching sub-second timestamps), not proof of a prior working live run -
 297:       documented as a dead end so no future agent re-investigates it.
 298:     - Two architecture points clarified by direct instruction, logged (not built):
 299:       (1) ops/code should be shared house-wide and even cross-user (xyzfs/bin/ - already seeded as
 300:           an empty dir by userpal_create_account.c - is the likely future home for game ops
-301:           binaries like mr_change_gold.+x, replacing *.monads/*.muchi-pet/ops/+x/)
+301:           binaries like mr_change_gold.+x, replacing _.monads/_.muchi-pet/ops/+x/)
 302:       (2) events/authored-content are session-PRIVATE by default, only shared when the user
 303:           publishes to the "store" header cell (cell 12, confirmed inert placeholder today) - other
 304:           users can then browse/download/install. This is likely the store cell's real purpose,
@@ -4678,10 +4678,10 @@ Let me check the current naming and focus docs, plus the USER_CREATION for how t
 309: 
 310: 00:xx UTC: Ops migration - DONE (direct instruction: "migration makes sense now"). Full writeup
 311:     at top of au11-hq/EVENTS_RUNTIME.md. Summary:
-312:     - Moved *.monads/*.muchi-pet/ops/ (whole folder: .c sources, compiled +x/ binaries, helper
+312:     - Moved _.monads/_.muchi-pet/ops/ (whole folder: .c sources, compiled +x/ binaries, helper
 313:       shell scripts) to xyzfs/bin/muchi-pet/ops/ - shared, house-wide location, matching
 314:       "<app>/ops/+x/" house convention and the ops-are-shared-across-sessions/users direction.
-315:       *.monads/*.muchi-pet/entities/ (template monster defs) deliberately left in place - separate
+315:       _.monads/_.muchi-pet/entities/ (template monster defs) deliberately left in place - separate
 316:       future migration, not conflated with this one.
 317:     - Updated ez_menu_input.c's cmd_N.sh wrapper generator + already-generated cmd_1.sh/cmd_2.sh
 318:       (live pal + session snapshot copies) + meta.pdl/objects.pdl action strings (live, session,
@@ -4689,7 +4689,7 @@ Let me check the current naming and focus docs, plus the USER_CREATION for how t
 320:     - Found 2 MORE real bugs during migration testing (same underlying class as the original
 321:       Change Gold bug - fixed-depth relative-path assumptions, broken by relocation):
 322:       (1) play_event.sh's own HOUSE_ROOT derivation used a fixed "../.." walk, broke when the
-323:           script moved one directory level deeper (*.monads/*.muchi-pet = 2 levels under
+323:           script moved one directory level deeper (_.monads/_.muchi-pet = 2 levels under
 324:           house_root, xyzfs/bin/muchi-pet = 3). Fixed with the same anchor-search pattern
 325:           (search for 101.mutaclsym*/system instead of assuming a fixed depth).
 326:       (2) Stale in-memory cache: fixing every file on disk wasn't enough - the ALREADY-RUNNING
@@ -4773,7 +4773,7 @@ Let me summarize what I've learned:
 
 **The project:**
 - The house root is `44.xyz.01.00` — an "XYZOS" local operating culture, file-mediated truth, GL windows, pal/chtpm/ops architecture.
-- The **livedesk taskbar** (`*.monads/*.livedesk-taskbar/`) is the current desktop. It's a two-process khtpm strip parser+manager (Xlib). It has 15 header cells: HQ, USER, file, desks, pals, palettes, edit, player, db, plugins, store, network, ai, date-time.
+- The **livedesk taskbar** (`_.monads/_.livedesk-taskbar/`) is the current desktop. It's a two-process khtpm strip parser+manager (Xlib). It has 15 header cells: HQ, USER, file, desks, pals, palettes, edit, player, db, plugins, store, network, ai, date-time.
 - Sessions/desks/events = games. USER creation via `0.user-pal👤️/00.login-signup`. Entities launched via `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x`.
 - Storage: same machine, `xyzfs/users/<uuid>/home/livedesk/sessions/`.
 
@@ -4788,7 +4788,7 @@ Key gaps in the old installer vs current reality:
 1. The old installer pointed at `44.xyz❤️‍🔥️00.10` (stale pointer; house is now `00.17`).
 2. The old installer installed the login-signup + avatar apps into `~/xyzos/` — but now livedesk is the khtpm taskbar, and user creation is wired into the USER cell.
 3. The modern system depends on lots of house-tree pieces:
-   - `*.monads/*.livedesk-taskbar/` (source + .chtpm layouts + build script)
+   - `_.monads/_.livedesk-taskbar/` (source + .chtpm layouts + build script)
    - `#.desktop/livedesk_taskbar.pdl`, `livedesk_theme.pdl` config
    - `0.user-pal👤️/00.login-signup` ops + users
    - `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x` for entity spawning
@@ -4828,7 +4828,7 @@ I'll keep it reasonably short but informative. Given this is a "detail" request 
 
 Got it. Here's my read after going through the project:
 
-**What this is:** The house root `44.xyz.01.00` is **XYZOS** — a file-truth, local-first OS for games/makers. The desktop is **livedesk**: a two-process khtpm taskbar (`*.monads/*.livedesk-taskbar/` — Xlib strip parser + pure-logic manager), with the USER cell now doing real signup (via `0.user-pal👤️/00.login-signup` ops), sessions/desks/events as the game model, and entities spawned through `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x`.
+**What this is:** The house root `44.xyz.01.00` is **XYZOS** — a file-truth, local-first OS for games/makers. The desktop is **livedesk**: a two-process khtpm taskbar (`_.monads/_.livedesk-taskbar/` — Xlib strip parser + pure-logic manager), with the USER cell now doing real signup (via `0.user-pal👤️/00.login-signup` ops), sessions/desks/events as the game model, and entities spawned through `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x`.
 
 **The old installer problem:** `xyzos-starter-install.sh` (install v1) predates khtpm. It copies just two apps (login + avatar) into `~/xyzos/` and compiles a *strip-less* taskbar. Since then, the whole desktop was rewritten as the khtpm parser/manager pair, the house moved `00.10` → `00.17` (your `pointers.pdl` still points at `.10`), and user creation moved into the USER cell. So v1 no longer installs the thing that "livedesk" actually is today.
 
@@ -5054,7 +5054,7 @@ Let me map the runtime dependencies precisely — what the parser launches, what
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops\" && grep -n \"khtpm_taskbar_manager_main\\|_chtpm\\|\\.chtpm\\|khtpm_strip_header\\|khtpm_strip_bottom\" khtpm_strip_parser.c | head -40",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops\" && grep -n \"khtpm_taskbar_manager_main\\|_chtpm\\|\\.chtpm\\|khtpm_strip_header\\|khtpm_strip_bottom\" khtpm_strip_parser.c | head -40",
   "description": "Find parser's layout file and manager paths"
 }
 ```
@@ -5066,7 +5066,7 @@ Let me map the runtime dependencies precisely — what the parser launches, what
 69: * either .chtpm file references ${theme_bg}/${theme_fg}, matching
 77: * khtpm_taskbar_manager_main.c per that file's own comment): one small
 204:/* The layout engine's ${var} lookup, backed by the vars the two .chtpm
-237:               "*.monads/*.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x");
+237:               "_.monads/_.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x");
 501: * khtpm_strip_bottom.chtpm's real structure wraps its tab buttons one
 853: * longer has numbering"): the .chtpm layout's <button label="..."> is
 1228:/* Bottom bar: walks khtpm_strip_bottom.chtpm's two <row> groups (tabs,
@@ -5080,7 +5080,7 @@ Let me map the runtime dependencies precisely — what the parser launches, what
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops\" && grep -n \"livedesk_taskbar\\.pdl\\|#\\.desktop\\|strip_state\\|strip_history\\|strip_var_\\|xyzfs/\"\n\", \"description\": \"\"}"
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops\" && grep -n \"livedesk_taskbar\\.pdl\\|#\\.desktop\\|strip_state\\|strip_history\\|strip_var_\\|xyzfs/\"\n\", \"description\": \"\"}"
 }
 ```
 
@@ -5100,7 +5100,7 @@ Please rewrite the input so it satisfies the expected schema.
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops\" && grep -n \"SP_PATH\\|g_house_root\\|layout_file\\|header_chtpm\\|bottom_chtpm\\|fonts\\|cwd\\|getcwd\\|chdir\" khtpm_strip_parser.c | head -50",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops\" && grep -n \"SP_PATH\\|g_house_root\\|layout_file\\|header_chtpm\\|bottom_chtpm\\|fonts\\|cwd\\|getcwd\\|chdir\" khtpm_strip_parser.c | head -50",
   "description": "Find parser path derivation"
 }
 ```
@@ -5147,7 +5147,7 @@ Please rewrite the input so it satisfies the expected schema.
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops\" && grep -n \"livedesk_taskbar\\.pdl\\|livedesk_theme\\.pdl\\|livedesk_shortcuts\\|strip_history\\|strip_state\\|strip_var_\\|log_path\\|pid_path\\|#\\.desktop\" khtpm_taskbar_manager_main.c khtpm_taskbar_manager.c | head -60",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops\" && grep -n \"livedesk_taskbar\\.pdl\\|livedesk_theme\\.pdl\\|livedesk_shortcuts\\|strip_history\\|strip_state\\|strip_var_\\|log_path\\|pid_path\\|#\\.desktop\" khtpm_taskbar_manager_main.c khtpm_taskbar_manager.c | head -60",
   "description": "Find manager path dependencies"
 }
 ```
@@ -5223,7 +5223,7 @@ Let me look at the parser's argv handling and the layout path resolution (line 1
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c",
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_strip_parser.c",
   "offset": 1400,
   "limit": 70
 }
@@ -5231,7 +5231,7 @@ Let me look at the parser's argv handling and the layout path resolution (line 1
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_strip_parser.c</path>
 <type>file</type>
 <content>
 1400:     for (int i = 0; i < header_doc->element_count; i++) {
@@ -5322,7 +5322,7 @@ Let me check the layout_path() function to see where it looks for the .chtpm fil
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c",
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_strip_parser.c",
   "limit": 80,
   "offset": 130
 }
@@ -5330,7 +5330,7 @@ Let me check the layout_path() function to see where it looks for the .chtpm fil
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_strip_parser.c</path>
 <type>file</type>
 <content>
 130: static int g_has_real_focus = 0;
@@ -5431,7 +5431,7 @@ Let me check the layout_path function to know where the .chtpm files are looked 
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops\" && grep -n \"static void layout_path\\|layout_path(\" khtpm_strip_parser.c",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops\" && grep -n \"static void layout_path\\|layout_path(\" khtpm_strip_parser.c",
   "description": "Find layout_path definition"
 }
 ```
@@ -5453,7 +5453,7 @@ Let me check the layout_path function to know where the .chtpm files are looked 
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c",
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_strip_parser.c",
   "limit": 20,
   "offset": 1300
 }
@@ -5461,16 +5461,16 @@ Let me check the layout_path function to know where the .chtpm files are looked 
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_strip_parser.c</path>
 <type>file</type>
 <content>
 1300:     return -1;
 1301: }
 1302: 
-1303: /* Layout file paths, sibling to this ops/ dir's parent (*.livedesk-taskbar/). */
+1303: /* Layout file paths, sibling to this ops/ dir's parent (_.livedesk-taskbar/). */
 1304: static void layout_path(char *out, size_t n, const char *filename) {
 1305:     char rel[256];
-1306:     snprintf(rel, sizeof(rel), "*.monads/*.livedesk-taskbar/%s", filename);
+1306:     snprintf(rel, sizeof(rel), "_.monads/_.livedesk-taskbar/%s", filename);
 1307:     path_join2(out, n, g_house_root, rel);
 1308: }
 1309: 
@@ -5504,8 +5504,8 @@ _Thinking:_
 The user added: "it should also have a terminal shortcut to open livedesk is fine". So the installer should also create a terminal shortcut command to open livedesk. Let me continue mapping dependencies and then build the installer.
 
 Let me finish mapping dependencies:
-- Layout files at `*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm` + `khtpm_strip_bottom.chtpm` (relative to house_root)
-- Manager binary is launched by parser at `*.monads/*.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x` (line 237)
+- Layout files at `_.monads/_.livedesk-taskbar/khtpm_strip_header.chtpm` + `khtpm_strip_bottom.chtpm` (relative to house_root)
+- Manager binary is launched by parser at `_.monads/_.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x` (line 237)
 - `#.desktop/livedesk_taskbar.pdl`, `livedesk_theme.pdl`, `livedesk_shortcuts.pdl`
 - `#.desktop/strip_history.txt`, `strip_state.txt`, `strip_frame_changed.txt`, strip_var_*.txt
 - User pal: `0.user-pal👤️/00.login-signup/` — user creation via userpal ops
@@ -5516,7 +5516,7 @@ Let me finish mapping dependencies:
 
 Let me check what tp_desktop_window needs to build (dependencies), and what the userpal ops need. Let me also check the current login-signup ops to know what to compile. But given context budget, I have enough to design the installer. Let me check a couple more things quickly:
 
-1. The manager launch path in parser (line 236-237) — it's relative to house_root: `*.monads/*.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`
+1. The manager launch path in parser (line 236-237) — it's relative to house_root: `_.monads/_.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`
 2. tp_desktop_window.+x path — `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x` (line 1286 of manager)
 3. avatar dir: `0.user-pal👤️/00.login-signup` + `xyzfs/users/<uuid>/home/avatars/<avatar_uuid>`
 
@@ -5525,7 +5525,7 @@ Now, for a self-contained installed copy, we need to preserve the SAME directory
 ```
 ~/xyz-livedesk/                    <- house_root
 ├── button.sh                      <- boot launcher (compiles + runs khtpm)
-├── *.monads/*.livedesk-taskbar/   <- khtpm parser/manager sources + layouts
+├── _.monads/_.livedesk-taskbar/   <- khtpm parser/manager sources + layouts
 │   └── ops/...
 ├── &.widgits/tile-picker/ops/     <- tp_desktop_window
 │   └── +x/tp_desktop_window.+x
@@ -5537,7 +5537,7 @@ Now, for a self-contained installed copy, we need to preserve the SAME directory
 
 Wait — but there are also many other dependencies: entities, menus, exits etc. Let me check what the manager needs to render and what `livedesk_*` functions reference. Actually the manager references house_root-relative paths. Also the house has things like `$.crypts/scripts/hide-show-desks.sh` in hq_menu_2_cmd, `xdg-open #.desktop`. For a fresh install, we can set config to not have those.
 
-Also `strip_user_cmd` etc. Let me check what's referenced by default in config. The taskbar.pdl has hq_menu commands referencing dev-tree things (`sh *.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh new`, `sh $.crypts/scripts/hide-show-desks.sh`). For the installed copy we'd write a fresh taskbar.pdl without those, or with safe versions.
+Also `strip_user_cmd` etc. Let me check what's referenced by default in config. The taskbar.pdl has hq_menu commands referencing dev-tree things (`sh _.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh new`, `sh $.crypts/scripts/hide-show-desks.sh`). For the installed copy we'd write a fresh taskbar.pdl without those, or with safe versions.
 
 Let me also check entity spawn: sessions, desks. And the `tp_desktop_window` requires compiling many .c files. Let me check how it builds — is there a build script?
 
@@ -5941,7 +5941,7 @@ So the installer is `hq-install.sh` or `xyzos-hq-install.sh`, installs to `~/xyz
 Let me continue mapping dependencies. I need to check how the khtpm parser reads login-signup paths and what tp_desktop_window needs. I already have enough context to design the installer. Let me think about what's needed:
 
 The installed "HQ" desktop needs at runtime:
-1. `*.monads/*.livedesk-taskbar/` — the khtpm parser/manager sources + compiled binaries + layouts (`.chtpm`)
+1. `_.monads/_.livedesk-taskbar/` — the khtpm parser/manager sources + compiled binaries + layouts (`.chtpm`)
 2. `#.desktop/` config: `livedesk_taskbar.pdl`, `livedesk_theme.pdl`, `livedesk_shortcuts.pdl`, plus created runtime files
 3. `0.user-pal👤️/00.login-signup/` — account registry (users/, current_login.txt, xyzfs/)
 4. `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x` — entity window binary (spells entities)
@@ -5950,7 +5950,7 @@ The installed "HQ" desktop needs at runtime:
 
 Key insight from portability doc: everything must be house-root-relative, not climb-fixed-hops. The installed house root becomes the install dir.
 
-Since parser reads config from `<house>/#.desktop/...` and layouts from `<house>/*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm`, the install must replicate the same relative layout. That's the cleanest approach: copy the needed subdirs preserving their relative paths under a new house root.
+Since parser reads config from `<house>/#.desktop/...` and layouts from `<house>/_.monads/_.livedesk-taskbar/khtpm_strip_header.chtpm`, the install must replicate the same relative layout. That's the cleanest approach: copy the needed subdirs preserving their relative paths under a new house root.
 
 Now let me check what log path / `#.desktop` files the parser/manager writes to know what to pre-create or leave to first-run. The manager writes pid, registry, nav claims, strip files. First run will create most. Let me confirm what must PRE-exist so it launches clean. From live desk: `#.desktop/livedesk_theme.pdl`, `livedesk_taskbar.pdl` are read. Sessions under `xyzfs/users/<uuid>/home/livedesk/sessions`.
 
@@ -5969,7 +5969,7 @@ Got it — product name: **HQ** (installs a thing called HQ, the livedesk HQ des
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops\" && sed -n '850,940p' khtpm_taskbar_manager.c",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops\" && sed -n '850,940p' khtpm_taskbar_manager.c",
   "description": "Read userpal invocation + avatar path code"
 }
 ```
@@ -6180,9 +6180,9 @@ The user says HQ stands for "HAI-Q". So the product name is HQ / HAI-Q. Let me c
 
 I have enough info now. Let me figure out what a fresh install needs:
 
-1. The khtpm taskbar pair: `*.monads/*.livedesk-taskbar/` — the whole folder (sources, layouts, ops, build script). At runtime:
-   - Parser needs: `<house_root>/*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm` and `khtpm_strip_bottom.chtpm` (layout_path resolution)
-   - Parser launches manager at `<house_root>/*.monads/*.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`
+1. The khtpm taskbar pair: `_.monads/_.livedesk-taskbar/` — the whole folder (sources, layouts, ops, build script). At runtime:
+   - Parser needs: `<house_root>/_.monads/_.livedesk-taskbar/khtpm_strip_header.chtpm` and `khtpm_strip_bottom.chtpm` (layout_path resolution)
+   - Parser launches manager at `<house_root>/_.monads/_.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`
    - Manager reads/writes `<house_root>/#.desktop/*` (livedesk_taskbar.pdl, livedesk_theme.pdl, livedesk_shortcuts.pdl, livedesk_open.txt, strip_*.txt, livedesk-nav-claims/)
    - Manager shells out to userpal: `<house_root>/0.user-pal👤️/00.login-signup/ops/+x/userpal_whoami.+x` with `PRISC_PROJECT_ROOT` = login dir
    - Entities spawn via `<house_root>/&.widgits/tile-picker/ops/+x/tp_desktop_window.+x`
@@ -6190,7 +6190,7 @@ I have enough info now. Let me figure out what a fresh install needs:
    - also `#.desktop` needs to exist with pid, etc.
 
 So a full self-contained "HQ" install needs:
-- `*.monads/*.livedesk-taskbar/` full folder (with compiled +x binaries)
+- `_.monads/_.livedesk-taskbar/` full folder (with compiled +x binaries)
 - `#.desktop/` runtime dir with config pdl files + empty registries
 - `0.user-pal👤️/00.login-signup/` with compiled ops + users/ + current_login.txt + xyzfs/
 - `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x` (and its compile deps)
@@ -6203,7 +6203,7 @@ Also set `#.desktop/hq` or a config naming. Let me also make sure session.pdl gu
 
 The HQ name — user says it stands for HAI-Q. So call the installed product "HQ" / "HAI-Q". Install to e.g. `~/xyz-hq/` or `~/hq/`. The script `hq-install.sh`. Terminal shortcut `hq` command opens it.
 
-Let me now design the installer and write it. I should keep the structure that preserves relative paths (house-root-relative) since the C code resolves `*.monads/*.livedesk-taskbar/...` relative to house_root. Best approach: replicate the same folder layout under a new install root, including the emoji dirs. That avoids deep-linking AND avoids path-arithmetic fragility.
+Let me now design the installer and write it. I should keep the structure that preserves relative paths (house-root-relative) since the C code resolves `_.monads/_.livedesk-taskbar/...` relative to house_root. Best approach: replicate the same folder layout under a new install root, including the emoji dirs. That avoids deep-linking AND avoids path-arithmetic fragility.
 
 Key question: do I copy source + recompile in place (like v1 which compiled), or copy precompiled binaries? v1 compiled in place. For a fresh install, compiling in place is better (matches house standards, ensures binaries match the machine's libs — X11/GL dev headers needed). But requires gcc + X11 headers + GL. The house runs on machines with X11 anyway. I'll compile in place: copy sources, run build_khtpm_strip.sh and tile-picker's build of tp_desktop_window, and login's scripts/build.sh (but login build also needs system/prisc+x etc — those come from that project's own source copies, fine).
 
@@ -6213,7 +6213,7 @@ Actually simplest robust scope: copy the minimal tree that the runtime truly bin
 
 Under install root `HQ_ROOT`:
 ```
-*.monads/*.livedesk-taskbar/    (entire folder: chtpm layouts, ops src, +x binaries, README, build script)
+_.monads/_.livedesk-taskbar/    (entire folder: chtpm layouts, ops src, +x binaries, README, build script)
 #.desktop/                       (config pdl + empty runtime files + livedesk-nav-claims/)
 0.user-pal👤️/00.login-signup/    (login app: ops src + button.sh + users/ empty + current_login.txt + xyzfs)
 &.widgits/tile-picker/ops/       (tp_desktop_window + deps: ops src, khtpm_core.h, stb_image.h, +x binaries)
@@ -6253,10 +6253,10 @@ Understood — **HQ = "HAI-Q"**. Good, that's the product name. Let me finish th
 222: * to reach the house root, not just the ops/ dir. */
 231:    dirname_step(self_path, step, sizeof(step)); /* .../ops/+x */
 400: * NOT nested inside tile-picker/ops/ just because tp_desktop_window.c
-449:                 * *.monads/*.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip,
-466:        snprintf(cmd, sizeof(cmd), "'%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x' '%s' >/dev/null 2>&1 &",
+449:                 * _.monads/_.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip,
+466:        snprintf(cmd, sizeof(cmd), "'%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x' '%s' >/dev/null 2>&1 &",
 468:        int rc = system(cmd);
-484: * process, *.monads/*.livedesk-taskbar/ops/tp_taskbar.c) claims its own
+484: * process, _.monads/_.livedesk-taskbar/ops/tp_taskbar.c) claims its own
 491: * from this house's own long, emoji-heavy absolute paths.
 763: * colored square). No sprite/texture pipeline exists for tile-picker yet
 844: * the same emoji that user picked?"): load_sprite/upload_texture/
@@ -6317,12 +6317,12 @@ walk-off-au5.md
 
 _Thinking:_
 
-The tp_desktop_window self-locates house root by climbing from its own fixed location: `<house_root>/&.widgits/tile-picker/ops/+x/`. So for the installed copy, we need to preserve the exact relative layout: house_root needs a `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x` path, a `*.monads/*.livedesk-taskbar/...` path, a `0.user-pal👤️/00.login-signup/...` path, and a `#.desktop/...`.
+The tp_desktop_window self-locates house root by climbing from its own fixed location: `<house_root>/&.widgits/tile-picker/ops/+x/`. So for the installed copy, we need to preserve the exact relative layout: house_root needs a `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x` path, a `_.monads/_.livedesk-taskbar/...` path, a `0.user-pal👤️/00.login-signup/...` path, and a `#.desktop/...`.
 
 Key insight: the khtpm code resolves paths relative to house_root via hardcoded relative paths:
 - `#.desktop/strip_state.txt`, etc.
-- `*.monads/*.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`
-- `*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm` / `khtpm_strip_bottom.chtpm`
+- `_.monads/_.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`
+- `_.monads/_.livedesk-taskbar/khtpm_strip_header.chtpm` / `khtpm_strip_bottom.chtpm`
 - `0.user-pal👤️/00.login-signup` 
 - `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x`
 - `xyzfs/users/<uuid>/home/livedesk/sessions`
@@ -6330,13 +6330,13 @@ Key insight: the khtpm code resolves paths relative to house_root via hardcoded 
 So the installed HQ must replicate this structure under an install root. The cleanest approach: the installer creates a new "house root" directory and copies the needed subdirs into it, preserving relative structure.
 
 Let me check what the manager needs under #.desktop and how it resolves the login root and xyzfs. Also check the avatar-creation app is separate. The old installer copied 00.login-signup and 01.avatar-creation👤️ apps. For HQ, we need:
-- `*.monads/*.livedesk-taskbar/` (full folder: ops sources + compiled +x, layouts, build scripts)
+- `_.monads/_.livedesk-taskbar/` (full folder: ops sources + compiled +x, layouts, build scripts)
 - `&.widgits/tile-picker/ops/` (for tp_desktop_window + its system/pieces deps — actually tp_desktop_window needs system binaries? It uses GL for rendering, likely needs the sprite pipeline but self-contained). Actually the tile-picker has system/ and pieces/ that came from wsr-pal. tp_desktop_window.c resolves paths relative to house_root — `&.widgits/tile-picker/ops/+x/`. It also uses emoji_gen_atlas/emoji_xtract which live in ops/+x. Need those.
 
 This is getting complex. Let me decide the minimal-but-complete set of what to copy. The user wants a self-contained install. Given complexity, I think the best approach is:
 
 Copy these subtrees preserving relative paths under install root (a fresh "HQ" house):
-1. `*.monads/*.livedesk-taskbar/` — taskbar source + layouts + build
+1. `_.monads/_.livedesk-taskbar/` — taskbar source + layouts + build
 2. `&.widgits/tile-picker/ops/` — tp_desktop_window source + built +x + emoji ops + system
 3. `&.widgits/tile-picker/system/` and `&.widgits/tile-picker/pieces/` (glyph registry fonts)
 4. `0.user-pal👤️/00.login-signup/` — userpal ops + button.sh (minus dev state: users/, current_login.txt, xyzfs emptied)
@@ -6344,7 +6344,7 @@ Copy these subtrees preserving relative paths under install root (a fresh "HQ" h
 
 Wait but the manager resolves login via `0.user-pal👤️/00.login-signup` and sessions via `xyzfs/users/<uuid>/...`. So the install root must have `0.user-pal👤️/00.login-signup` as a real dir with ops compiled, and `xyzfs/`.
 
-Also the HQ menu in livedesk_taskbar.pdl references `sh *.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh new` and `sh $.crypts/scripts/hide-show-desks.sh` and `xdg-open #.desktop`. For a fresh install we should rewrite livedesk_taskbar.pdl with clean commands that don't reference dev-only stuff ($.crypts etc.).
+Also the HQ menu in livedesk_taskbar.pdl references `sh _.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh new` and `sh $.crypts/scripts/hide-show-desks.sh` and `xdg-open #.desktop`. For a fresh install we should rewrite livedesk_taskbar.pdl with clean commands that don't reference dev-only stuff ($.crypts etc.).
 
 Also datetime_lang etc.
 
@@ -6410,7 +6410,7 @@ schar_1744476
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00\" && sed -n '765,805p' \"*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c\"",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00\" && sed -n '765,805p' \"_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c\"",
   "description": "Read sessions root resolution code"
 }
 ```
@@ -6483,7 +6483,7 @@ Wait but userpal_create_account provisions an xyzfs home too: `xyzfs/users/<uuid
 
 Two different xyzfs! Unless login_root == house_root... no. OR userpal's "install root" resolution actually lands on house root via symlink. Let me check the house: does `0.user-pal👤️/00.login-signup/xyzfs` contain a `users` symlink pointing to `../../../xyzfs/users`? Let me actually inspect. This is important for faithful install.
 
-Actually, let me not over-analyze. The key insight for a faithful install: replicate the exact relative structure of the house root as a "fresh HQ" — copy the required subtrees (khtpm taskbar, tile-picker ops, user-pal login-signup) preserving relative paths, strip state, and point everything at a fresh root. The runtime code hardcodes relative paths off house_root (`.monads/*.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x`, `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x`, `0.user-pal👤️/00.login-signup`, `#.desktop/`, `xyzfs/`, `.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm`, `at least khtpm_show_text/khtpm_show_choices for popups`).
+Actually, let me not over-analyze. The key insight for a faithful install: replicate the exact relative structure of the house root as a "fresh HQ" — copy the required subtrees (khtpm taskbar, tile-picker ops, user-pal login-signup) preserving relative paths, strip state, and point everything at a fresh root. The runtime code hardcodes relative paths off house_root (`.monads/_.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x`, `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x`, `0.user-pal👤️/00.login-signup`, `#.desktop/`, `xyzfs/`, `.monads/_.livedesk-taskbar/khtpm_strip_header.chtpm`, `at least khtpm_show_text/khtpm_show_choices for popups`).
 
 Let me check the essential runtime deps quickly — does tp_desktop_window need khtpm_show_choices/khtpm_show_text? And does the manager shell out to other binaries for dialogs? Let me grep the manager + parser for system()/popen() calls to binaries outside the copied set.
 
@@ -6531,7 +6531,7 @@ xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00\" && grep -n 'system(\\|popen(' \"*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c\" \"*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c\" | grep -oE \"'[^']*\\.\\+x'|'[^']*sh'|shell|userpal_dir|script|\\.sh\" | sort -u | head -40",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00\" && grep -n 'system(\\|popen(' \"_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c\" \"_.monads/_.livedesk-taskbar/ops/khtpm_strip_parser.c\" | grep -oE \"'[^']*\\.\\+x'|'[^']*sh'|shell|userpal_dir|script|\\.sh\" | sort -u | head -40",
   "description": "Find external program calls in taskbar"
 }
 ```
@@ -6814,14 +6814,14 @@ Got it — product name: **HARNECIENT** (provisional). Let me lock that in and c
 _Thinking:_
 
 Let me finish map dependencies. I need:
-1. The khtpm taskbar folder (`*.monads/*.livedesk-taskbar/`) — sources + layouts + build script
+1. The khtpm taskbar folder (`_.monads/_.livedesk-taskbar/`) — sources + layouts + build script
 2. tile-picker ops (tp_desktop_window, khtpm_show_text, khtpm_show_choices, etc.) — the entity window binary
 3. user-pal login-signup (0.user-pal👤️/00.login-signup) — account registry + userpal ops
 4. The `#.desktop` runtime dir — config pdl files
 5. The `xyzfs/` house root skeleton + a fresh `session.pdl`
 6. Terminal shortcut to open livedesk
 
-Let me check what the tp_desktop_window needs at runtime — it looks at house_root/xyzfs, and it spawns the taskbar via `*.monads/*.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x`. So a "fresh HQ" install must replicate the relative layout: `*.monads/*.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x` path expects house root structure. And tp_desktop_window resolves house root by climbing from its own location `.../&.widgits/tile-picker/ops/+x/`. Let me verify the resolve_livedesk_paths function to see exact climbing logic.
+Let me check what the tp_desktop_window needs at runtime — it looks at house_root/xyzfs, and it spawns the taskbar via `_.monads/_.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x`. So a "fresh HQ" install must replicate the relative layout: `_.monads/_.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x` path expects house root structure. And tp_desktop_window resolves house root by climbing from its own location `.../&.widgits/tile-picker/ops/+x/`. Let me verify the resolve_livedesk_paths function to see exact climbing logic.
 
 Let me verify how tp_desktop_window resolves its own paths to know what directory structure the install must preserve
 
@@ -6880,16 +6880,16 @@ _Thinking:_
 
 So tp_desktop_window resolves house root by climbing from its own location: `<house>/&.widgits/tile-picker/ops/+x/tp_desktop_window.+x`. This means the install must preserve the exact relative structure: `<install_root>/&.widgits/tile-picker/ops/+x/tp_desktop_window.+x`.
 
-Similarly the taskbar lives at `<install_root>/*.monads/*.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x` and reads layouts at `<install_root>/*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm`.
+Similarly the taskbar lives at `<install_root>/_.monads/_.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x` and reads layouts at `<install_root>/_.monads/_.livedesk-taskbar/khtpm_strip_header.chtpm`.
 
 The user pal root is `<install_root>/0.user-pal👤️/00.login-signup`.
 
 So the install must replicate this relative structure — the simplest way to a fully self-contained install is to copy these specific subtrees into the install root maintaining the same relative layout:
-- `*.monads/*.livedesk-taskbar/` (taskbar sources + layouts + ops)
+- `_.monads/_.livedesk-taskbar/` (taskbar sources + layouts + ops)
 - `&.widgits/tile-picker/ops/` (entity window!) — but tp_desktop_window also needs pieces/system? Let me check. The build copies system binaries (prisc+x, renderer, etc.) into `&.widgits/tile-picker/system/`. And glyphs into `pieces/registry/fonts/ascii`. Hmm. But tp_desktop_window itself is a GL window. Does it spawn entity processes itself, or does the taskbar? Entity windows are spawned by the taskbar's livedesk_spawn_desk which launches `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x` — each entity is a process. The entity's own sprites etc. come from the entity's package dir (which lives under sessions/<id>/entities/<basename>/ after spawn). tp_desktop_window reads sprite from the package dir. It also may reference emoji_gen_atlas/emoji_xtract for sprite pipeline.
 
 So the truly minimal-but-complete set for a "fresh HQ desktop that boots and lets user sign up + open a desk":
-1. Taskbar subtree: `*.monads/*.livedesk-taskbar/` entire dir (had ~? size)
+1. Taskbar subtree: `_.monads/_.livedesk-taskbar/` entire dir (had ~? size)
 2. Entity window subtree: `&.widgits/tile-picker/` — at least ops + system + pieces (fonts/glyphs). Simplest: copy whole `&.widgits/tile-picker/` minus proof/sessions.
 3. user-pal: `0.user-pal👤️/00.login-signup/` (account registry + userpal ops), fresh users/ + current_login.txt + xyzfs skeleton. Also possibly avatar-creation.
 4. Runtime config skeleton: `#.desktop/` with live config pdl files (livedesk_taskbar.pdl, livedesk_theme.pdl, livedesk_shortcuts.pdl, livedesk_master_ledger.txt? no — fresh) plus empty dirs (livedesk-nav-claims/, etc.)
@@ -6914,14 +6914,14 @@ Let me check sizes and the existing khtpm harness for the relay-based KPI
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00\" && du -sh \"*.monads/*.livedesk-taskbar\" \"&.widgits/tile-picker\" \"0.user-pal👤️/00.login-signup\" 2>/dev/null; echo \"=== harness ===\"; ls \"#.desktop/harnesses/khtpm-livedesk-taskbar/\" 2>/dev/null",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00\" && du -sh \"_.monads/_.livedesk-taskbar\" \"&.widgits/tile-picker\" \"0.user-pal👤️/00.login-signup\" 2>/dev/null; echo \"=== harness ===\"; ls \"#.desktop/harnesses/khtpm-livedesk-taskbar/\" 2>/dev/null",
   "description": "Check source sizes and harness"
 }
 ```
 
 **Output:**
 ```
-920K	*.monads/*.livedesk-taskbar
+920K	_.monads/_.livedesk-taskbar
 4.0M	&.widgits/tile-picker
 1.5M	0.user-pal👤️/00.login-signup
 === harness ===
@@ -7100,14 +7100,14 @@ _Thinking:_
 I now have a complete picture. Let me summarize the dependency map for a fresh HARNECIENT install:
 
 **What the taskbar (khtpm) needs at runtime, all resolved relative to `house_root`:**
-1. `*.monads/*.livedesk-taskbar/` — the taskbar program dir (parser/manager sources, layouts `.chtpm`, build/run scripts, `+x/` binaries). Parser reads layouts via `layout_path()` → `<root>/*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm` and `khtpm_strip_bottom.chtpm`. Parser launches manager via `<root>/*.monads/*.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`.
+1. `_.monads/_.livedesk-taskbar/` — the taskbar program dir (parser/manager sources, layouts `.chtpm`, build/run scripts, `+x/` binaries). Parser reads layouts via `layout_path()` → `<root>/_.monads/_.livedesk-taskbar/khtpm_strip_header.chtpm` and `khtpm_strip_bottom.chtpm`. Parser launches manager via `<root>/_.monads/_.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`.
 2. `#.desktop/` — runtime config + state: `livedesk_taskbar.pdl`, `livedesk_theme.pdl`, `livedesk_shortcuts.pdl`, `strip_history.txt`, `strip_state.txt`, `strip_frame_changed.txt`, `livedesk_open.txt`, `livedesk-nav-claims/`, pid file, etc. The parser reads theme.pdl and taskbar.pdl; manager reads/writes everything.
 3. `0.user-pal👤️/00.login-signup/` — login dir: `current_login.txt`, `users/`, `xyzfs/session.pdl`. USER cell calls `userpal_whoami`, `userpal_create_account`, etc. with `PRISC_PROJECT_ROOT` pointing here.
 4. `xyzfs/users/<uuid>/home/livedesk/sessions` + `pals` — for sessions/desks. (For a fresh install: empty until first login).
 5. `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x` — the entity window binary that actually renders desks. It resolves house root from its own location (`<root>/&.widgits/tile-picker/ops/+x/`).
 6. When tp_desktop_window launches entities, they run event scripts etc. but for a fresh install with no entities yet, not needed.
 
-So the FULL self-contained install must preserve the relative directory structure: the install root looks like a mini house with `*.monads/*.livedesk-taskbar/`, `&.widgits/tile-picker/`, `0.user-pal👤️/00.login-signup/`, `#.desktop/`, `xyzfs/`.
+So the FULL self-contained install must preserve the relative directory structure: the install root looks like a mini house with `_.monads/_.livedesk-taskbar/`, `&.widgits/tile-picker/`, `0.user-pal👤️/00.login-signup/`, `#.desktop/`, `xyzfs/`.
 
 The cleanest approach that respects "copy FROM dev tree, never writes" and "fully self-contained": copy the needed subtrees preserving relative paths, rebuild binaries in place (X11 + GL deps), strip dev-only state (users, sessions, current_login, app state), write fresh configs + guest session.pdl, create `button.sh` launcher, and a terminal shortcut.
 
@@ -7134,7 +7134,7 @@ Structure installed:
 <dest>/harnecient/
 ├── button.sh                      # boot: run khtpm
 ├── paths.pdl                      # pointer map
-├── *.monads/*.livedesk-taskbar/   # taskbar sources + layouts + +x binaries
+├── _.monads/_.livedesk-taskbar/   # taskbar sources + layouts + +x binaries
 ├── &.widgits/tile-picker/         # tp_desktop_window + sprites + system
 ├── 0.user-pal👤️/00.login-signup/  # login app (users/, xyzfs/, ops) fresh
 ├── #.desktop/                     # runtime config + state (fresh)
@@ -7145,7 +7145,7 @@ Steps:
 1. Resolve dev-tree from pointers.pdl (and update pointer to 00.17).
 2. Resolve dest (default ~/harnecient; refuse if exists — non-destructive).
 3. mkdir root structure.
-4. Copy `*.monads/*.livedesk-taskbar` → root.
+4. Copy `_.monads/_.livedesk-taskbar` → root.
 5. Copy needed parts of `&.widgits/tile-picker` → root (ops, pieces, system needed for tp_desktop_window + sprite pipeline). Actually copy whole tile-picker minus junk? The tile-picker has #.desktop, scenarios, proofs — dev state. But tp_desktop_window needs pieces/registry/fonts (glyphs) and system/ stuff? Let me check what tp_desktop_window loads at runtime. It loads sprite.csv via emoji_gen_atlas/emoji_xtract pipeline. For a fresh install with no entities, minimal. But to be safe & self-contained, copy the whole `&.widgits/tile-picker` project (4MB) and strip dev-only subdirs (scenarios, #.desktop, test stuff). Hmm, but build.sh references wsr-pal. We won't run the full build; we'll just compile the needed binary OR keep prebuilt +x binaries. Actually the +x binaries are Linux ELF already and arch-correct for this machine. Simplest: copy the whole tree, then recompile khtpm pair + tp_desktop_window in place (needs X11, GL headers) to be safe.
 
 Hmm, but rebuilding tp_desktop_window requires those .c sources present, which they are in tile-picker/ops/. Fine.
@@ -7153,21 +7153,21 @@ Hmm, but rebuilding tp_desktop_window requires those .c sources present, which t
 6. Copy `0.user-pal👤️/00.login-signup` → root. Strip: users/ empty, current_login.txt empty, xyzfs/session.pdl guest, remove sessions/proofs/test-harn-same, rebuild userpal ops maybe. Actually login-signup has its own build.sh that also builds system/ processes (prisc+x, renderer, etc.) which are cheap. We can copy as-is and strip state. Rebuild not strictly needed since +x binaries already present + arch-correct. But to be thorough, we could rebuild. Keep to copying existing +x binaries (they're Linux ELF here) — but "fresh install on arbitrary machine" would need source rebuild. Best: rebuild the small userpal ops + khtpm pair + tp_desktop_window in place (documented requirement: gcc + X11 + GL dev headers). That matches "compiles in place" philosophy of v1.
 
 Hmm, that's more robust and matches house culture ("compiled in place"). Let me do rebuild of the key binaries:
-- khtpm pair: `sh *.monads/*.livedesk-taskbar/ops/build_khtpm_strip.sh`
+- khtpm pair: `sh _.monads/_.livedesk-taskbar/ops/build_khtpm_strip.sh`
 - tile-picker tp_desktop_window: compile just that binary (full tile-picker build.sh drags wsr-pal dep we don't want). We'll compile `tp_desktop_window.+x` directly with the same flags.
 - userpal ops: compile the 6 userpal binaries via login's scripts/build.sh (self-contained, no external refs).
 
 7. Write fresh #.desktop files: livedesk_taskbar.pdl (fresh, with strip_user_cmd empty, datetime_lang en, and hq_menu commands pointing to relative script), livedesk_theme.pdl, livedesk_shortcuts.pdl empty, livedesk_open.txt, livedesk-nav-claims/, strip_history.txt empty, etc. Actually the manager creates most on first run; but parser reads livedesk_taskbar.pdl + theme.pdl at startup. So we must provide those two at least. Shortcuts too (manager reads). Keep them.
 
-Note: hq_menu commands reference `$.crypts/scripts/hide-show-desks.sh` and `xdg-open #.desktop` and `sh *.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh new`. For fresh install we should write a clean livedesk_taskbar.pdl that only includes what exists: the $.restart command as `sh *.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh new` works since that path exists in install; hide/show references $.crypts which won't exist → skip or keep harmless. I'll write a fresh minimal pdl.
+Note: hq_menu commands reference `$.crypts/scripts/hide-show-desks.sh` and `xdg-open #.desktop` and `sh _.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh new`. For fresh install we should write a clean livedesk_taskbar.pdl that only includes what exists: the $.restart command as `sh _.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh new` works since that path exists in install; hide/show references $.crypts which won't exist → skip or keep harmless. I'll write a fresh minimal pdl.
 
 8. Root session.pdl guest (xyzfs/), login xyzfs/session.pdl guest, empty users.
-9. button.sh launcher: `cd install_root && sh *.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh new` (that script already kills + builds + launches; but it does rebuild each time — fine, it's the house's own runner; houses safety). Actually run_khtpm_strip.sh builds every run. That's OK per house culture. But for an installed product we might prefer launch-only. Simplest and house-authentic: use it as-is. It resolves HOUSE from its own location (`$SCRIPT_DIR/../../..`) — which is correct for the installed path! Great, no path arith bug.
+9. button.sh launcher: `cd install_root && sh _.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh new` (that script already kills + builds + launches; but it does rebuild each time — fine, it's the house's own runner; houses safety). Actually run_khtpm_strip.sh builds every run. That's OK per house culture. But for an installed product we might prefer launch-only. Simplest and house-authentic: use it as-is. It resolves HOUSE from its own location (`$SCRIPT_DIR/../../..`) — which is correct for the installed path! Great, no path arith bug.
 10. paths.pdl (pointer map).
 11. Terminal shortcut: create `~/.local/bin/harnecient` — a tiny script that does `cd <install_root> && setsid nohup sh button.sh` and maybe `exec bash`? "terminal shortcut to open livedesk" → create `harnecient` command that opens it. Also create a `.desktop` file `~/.local/share/applications/harnecient.desktop` with `Exec=bash -c ...` Terminal=true. Provide both, guard failures.
 12. Print summary.
 
-Wait, one more check: does run_khtpm_strip.sh resolve HOUSE correctly from install? Its SCRIPT_DIR = `$install/*.monads/*.livedesk-taskbar/ops`, so HOUSE = `../..` of ops => `$install/*.monads/*.livedesk-taskbar/ops/../../..`... let me compute: ops → 1 `..` = *.livedesk-taskbar → 2 = *.monads → 3 = install root. It uses `$SCRIPT_DIR/../../..` (3 hops) = install root. Correct since it's fixed. Good.
+Wait, one more check: does run_khtpm_strip.sh resolve HOUSE correctly from install? Its SCRIPT_DIR = `$install/_.monads/_.livedesk-taskbar/ops`, so HOUSE = `../..` of ops => `$install/_.monads/_.livedesk-taskbar/ops/../../..`... let me compute: ops → 1 `..` = _.livedesk-taskbar → 2 = _.monads → 3 = install root. It uses `$SCRIPT_DIR/../../..` (3 hops) = install root. Correct since it's fixed. Good.
 
 And tp_desktop_window resolves house root from its own path via 4 dirname hops which is fixed/stable per its comment. Good — matches "climbing from your own permanent location is safe" rule.
 
@@ -7238,7 +7238,7 @@ _Thinking:_
 Now I have a full picture. Let me design the installer.
 
 **Product name:** HARNECIENT (provisional). Installed thing = a self-contained "house" directory containing:
-- `*.monads/*.livedesk-taskbar/` — sources + layouts + build scripts for parser/manager
+- `_.monads/_.livedesk-taskbar/` — sources + layouts + build scripts for parser/manager
 - `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x` — entity window (compiled) + khtpm_show_* helpers
 - `0.user-pal👤️/00.login-signup/` — user registry, ops, fresh users/
 - `#.desktop/` config dir — livedesk_taskbar.pdl, livedesk_theme.pdl, livedesk_shortcuts.pdl
@@ -7247,8 +7247,8 @@ Now I have a full picture. Let me design the installer.
 - terminal shortcut (e.g. a `harnecient` command in PATH that opens it)
 
 Key decisions from the code:
-1. Parser binary: `khtpm_strip_parser.c` run with argv[1] = house_root. Lives at `<root>/&.widgits/tile-picker/ops/+x/`... no wait. It lives at `*.monads/*.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x`. Manager at same dir. Parser launches manager there.
-2. Parser reads layouts relative to house_root: `*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm` and `khtpm_strip_bottom.chtpm`. So the layouts must be copied but keep the `*.monads/*.livedesk-taskbar/` relative path.
+1. Parser binary: `khtpm_strip_parser.c` run with argv[1] = house_root. Lives at `<root>/&.widgits/tile-picker/ops/+x/`... no wait. It lives at `_.monads/_.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x`. Manager at same dir. Parser launches manager there.
+2. Parser reads layouts relative to house_root: `_.monads/_.livedesk-taskbar/khtpm_strip_header.chtpm` and `khtpm_strip_bottom.chtpm`. So the layouts must be copied but keep the `_.monads/_.livedesk-taskbar/` relative path.
 3. Parser reads/writes `#.desktop/strip_state.txt`, `livedesk_theme.pdl`, `livedesk_taskbar.pdl`, `strip_history.txt`, `strip_var_*.txt`, `khtpm_strip_frame_history.txt`.
 4. Manager uses house_root: `#.desktop/livedesk_taskbar.pid`, `livedesk_shortcuts.pdl`, `livedesk_theme.pdl`, `livedesk_open.txt`, `livedesk-nav-claims/livedesk_nav_claims.txt`, `livedesk_registry.lock`.
 5. Manager finds login: scan house_root for dirs starting `0.user-pal` → `00.login-signup`. Reads `current_login.txt` for current_user_uuid, and xyzfs/session.pdl for avatar.
@@ -7258,8 +7258,8 @@ Key decisions from the code:
 9. tp_desktop_window also spawns entities from xyzfs users' pals registry + sessions entities.
 
 So the install needs to preserve the house-relative structure. The cleanest approach: create `<dest>/harnecient/` (the "house root"), and replicate the essential subdirs preserving the emoji names and relative paths:
-- `*.monads/*.livedesk-taskbar/` (with `khtpm_strip_header.chtpm`, `khtpm_strip_bottom.chtpm`, `ops/` sources, build scripts)
-- `&.widgits/tile-picker/ops/` (for tp_desktop_window sources + build.sh, and +x binaries — the entity window build also compiles many ops; but for a minimal install maybe just tp_desktop_window? tp_desktop_window launches ensure_taskbar_running which looks for `*.monads/*.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x`. And it spawns entities.)
+- `_.monads/_.livedesk-taskbar/` (with `khtpm_strip_header.chtpm`, `khtpm_strip_bottom.chtpm`, `ops/` sources, build scripts)
+- `&.widgits/tile-picker/ops/` (for tp_desktop_window sources + build.sh, and +x binaries — the entity window build also compiles many ops; but for a minimal install maybe just tp_desktop_window? tp_desktop_window launches ensure_taskbar_running which looks for `_.monads/_.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x`. And it spawns entities.)
 - `0.user-pal👤️/00.login-signup/` (ops + button.sh + scripts/build.sh + system — the userpal ops resolve their root from PRISC_PROJECT_ROOT; the USER cell calls userpal via PRISC_PROJECT_ROOT=login_root. userpal_create_account needs to write `users/`, `current_login.txt`, `xyzfs/users/<uuid>/...`).
 - `#.desktop/` dir (created fresh with config pdl files + empty runtime state files)
 - `xyzfs/` (fresh session.pdl + empty user dirs)
@@ -7383,17 +7383,17 @@ Good - the account creation uses HOUSE_ROOT env var if set, else derives by clim
 
 So the block of what's needed:
 - `0.user-pal👤️/00.login-signup/` — the login app with users/ + current_login.txt + xyzfs/session.pdl; needs ops compiled (userpal_whoami etc). The USER cell shells out to `$login_root/ops/+x/userpal_whoami.+x` with `PRISC_PROJECT_ROOT=$login_root`.
-- `*.monads/*.livedesk-taskbar/` — parser + manager + layouts (whole folder is 920K, includes sources and built binaries + x).
-- `&.widgits/tile-picker/ops/` — tp_desktop_window.+x (entity window). But also, manager spawns `tp_desktop_window.+x` at `<house>/&.widgits/tile-picker/ops/+x/tp_desktop_window.+x`. It needs the compiled binary and possibly system/ binaries. Also `khtpm_show_text/choices` are in tiles ops? Actually those are in tile-picker/ops/+x. The taskbar may shell to them. Also the entities themselves spawn `*.monads/*.muchi-pet` but that's the demo content - not needed for a fresh install (empty desks).
+- `_.monads/_.livedesk-taskbar/` — parser + manager + layouts (whole folder is 920K, includes sources and built binaries + x).
+- `&.widgits/tile-picker/ops/` — tp_desktop_window.+x (entity window). But also, manager spawns `tp_desktop_window.+x` at `<house>/&.widgits/tile-picker/ops/+x/tp_desktop_window.+x`. It needs the compiled binary and possibly system/ binaries. Also `khtpm_show_text/choices` are in tiles ops? Actually those are in tile-picker/ops/+x. The taskbar may shell to them. Also the entities themselves spawn `_.monads/_.muchi-pet` but that's the demo content - not needed for a fresh install (empty desks).
 - `xyzfs/` at house root - for sessions (`<house>/xyzfs/users/<uuid>/home/livedesk/sessions`).
 - `#.desktop/` config files: `livedesk_taskbar.pdl`, `livedesk_theme.pdl`, `livedesk_shortcuts.pdl`, plus the runtime relay files. Actually the manager creates most of these at startup? Let me check what it needs to PRE-exist. `load_strip_config` reads livedesk_taskbar.pdl. The theme read by parser. shortcuts read but optional.
 
-Now — the layout files: parser loads `*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm` and `khtpm_strip_bottom.chtpm`. And `launch_manager()` joins `g_house_root` with `*.monads/*.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`.
+Now — the layout files: parser loads `_.monads/_.livedesk-taskbar/khtpm_strip_header.chtpm` and `khtpm_strip_bottom.chtpm`. And `launch_manager()` joins `g_house_root` with `_.monads/_.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`.
 
-So the installed structure must mimic the house-root layout: `*.monads/*.livedesk-taskbar/...`, `&.widgits/tile-picker/ops/...`, `0.user-pal👤️/00.login-signup/...`, `#.desktop/`, `xyzfs/`.
+So the installed structure must mimic the house-root layout: `_.monads/_.livedesk-taskbar/...`, `&.widgits/tile-picker/ops/...`, `0.user-pal👤️/00.login-signup/...`, `#.desktop/`, `xyzfs/`.
 
 For a fully self-contained install, we replicate the relative paths. The install root = "house root". Copy:
-1. `*.monads/*.livedesk-taskbar` (source + layouts + +x). Build in place.
+1. `_.monads/_.livedesk-taskbar` (source + layouts + +x). Build in place.
 2. `&.widgits/tile-picker/ops` + `system`? tp_desktop_window needs system binaries? Let me confirm. tp_desktop_window is pure X11/GL and resolves house root from own exe path. It spawns via ensure_taskbar_running the parser. Entities come from pals/sessions. The compiled `tp_desktop_window.+x` is in ops/+x. But does it need `system/prisc+x` etc? It renders sprites via emoji_gen_atlas. Those ops are in tile-picker/ops/+x. Let me check if it calls system binaries.
 
 Actually let me just check the tile-picker `system/` usage. The build script copies system binaries from wsr-pal (prisc+x, chtpm_parser_pal, etc.) — those are for the CHTPM-based widget UI, not needed for the desktop window running entities? Entities use their own ops. Hmm, but to keep it simpler and safe, I'll include the whole `&.widgits/tile-picker` tree (it's 4MB) minus dev junk, OR just ops + system. Let me quickly check tp_desktop_window's dependence on `system/`.
@@ -7425,7 +7425,7 @@ Good — `HOUSE_ROOT` env or parent-of-login derivation. Let me confirm tp_deskt
 166:     * "$H/.../prisc+x" ...'`) worked via mouse (real click path) but
 217:/* This binary always lives at <house_root>/&.widgits/tile-picker/ops/+x/
 231:    dirname_step(self_path, step, sizeof(step)); /* .../ops/+x */
-466:        snprintf(cmd, sizeof(cmd), "'%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x' '%s' >/dev/null 2>&1 &",
+466:        snprintf(cmd, sizeof(cmd), "'%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x' '%s' >/dev/null 2>&1 &",
 848: * sprite.csv via the same emoji_gen_atlas.+x -> emoji_xtract.+x pipeline
 982: * Editor" once event-editor exists, need no renderer changes here). */
 1037: * just like chtpm" - see TILE_PICKER_DESIGN.md §11 for the wraith-alpha
@@ -7458,14 +7458,14 @@ Key insight: the khtpm parser/manager and tp_desktop_window resolve house_root b
 - parser: `g_house_root` passed as argv[1] (so it's flexible)
 - manager: house_root argv[1] 
 - tp_desktop_window: climbs from `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x`
-- parser launches manager at `*.monads/*.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`
-- parser reads layouts at `*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm` / `khtpm_strip_bottom.chtpm`
+- parser launches manager at `_.monads/_.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`
+- parser reads layouts at `_.monads/_.livedesk-taskbar/khtpm_strip_header.chtpm` / `khtpm_strip_bottom.chtpm`
 - manager reads `0.user-pal👤️/00.login-signup` (prefix scan `0.user-pal*`)
 - manager sessions at `<house>/xyzfs/users/<uuid>/home/livedesk/sessions`
 - tp_desktop_window needs `&.widgits/tile-picker/ops/+x/emoji_gen_atlas.+x` and `emoji_xtract.+x` — actually those get resolved relative to its ops dir. Let me check line 1562 context.
 
 Given path resolution is relative to house_root and uses the same relative layout, the cleanest approach: replicate the house's relative directory structure inside a fresh install root. So install-to `<dest>/harnecient/` with:
-- `*.monads/*.livedesk-taskbar/` (the whole folder — it's only 920K, has layouts + ops + build scripts)
+- `_.monads/_.livedesk-taskbar/` (the whole folder — it's only 920K, has layouts + ops + build scripts)
 - `&.widgits/tile-picker/ops/` (tp_desktop_window + emoji tools + other ops; needed for entity spawning) — 2.8M
 - `&.widgits/tile-picker/pieces/` for font glyph registry? emoji_gen_atlas needs pieces/registry/fonts/ascii? Let me not overthink; the tile-picker's own system + pieces needed for emoji pipeline. But that's for sprite rendering. For a fresh boot that's optional (sprites optional). But to be safe for "full desktop", copy tile-picker pieces + system too? That's 4MB total. Fine.
 - `0.user-pal👤️/00.login-signup/` (1.5M) with users/ current_login.txt xyzfs stripped
@@ -7484,7 +7484,7 @@ Let me simplify: rather than re-running tile-picker's full build (which has exte
 
 Actually the emoji_gen_atlas/emoji_xtract are already compiled binaries in tile-picker/ops/+x (I saw them: `emoji_gen_atlas.+x emoji_xtract.+x`). They were copied from wsr-pal. So copying ops/+x wholesale gives them.
 
-For the khtpm taskbar: copy `*.monads/*.livedesk-taskbar/` wholesale, then run `sh ops/build_khtpm_strip.sh` (self-contained, only needs gcc + X11 headers).
+For the khtpm taskbar: copy `_.monads/_.livedesk-taskbar/` wholesale, then run `sh ops/build_khtpm_strip.sh` (self-contained, only needs gcc + X11 headers).
 
 For user-pal: copy `0.user-pal👤️/00.login-signup/` wholesale, then run `bash scripts/build.sh` to compile ops (needs gcc). But its build.sh also builds system/ processes (prisc+x, keyboard_input, etc.) from sources in that dir — self-contained. Good. Actually the USER cell in khtpm shells out to userpal_*.+x binaries. Those just need the ops built. system/ stuff is for the standalone login app UI (button.sh run). For the HQ desktop the USER cell handles signup; but the login app itself needs system binaries to run as a standalone. To keep it simple and self-contained, compile everything via the login's own build.sh.
 
@@ -7494,7 +7494,7 @@ Also `#.desktop` needs `livedesk-nav-claims/` for claims. The manager mkdirs pro
 
 Fresh guest session: `xyzfs/session.pdl` (guest). Also login's own `xyzfs/session.pdl`.
 
-Now the launcher button.sh: run khtpm with house_root = install root: `sh *.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh new` — but run_khtpm_strip.sh derives HOUSE from its own location (`$SCRIPT_DIR/../../..`). That works if layout is replicated! But it also does a full build each run. For an installed product we might want a leaner launcher. But per house convention, the run script is fine. Actually run_khtpm_strip.sh `new` = build + kill + launch. Since we installed build deps anyway, fine. But we also want entiry window dependency: if a user opens an entity, tp_desktop_window ensure_taskbar_running will find parser at the same relative path. Good.
+Now the launcher button.sh: run khtpm with house_root = install root: `sh _.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh new` — but run_khtpm_strip.sh derives HOUSE from its own location (`$SCRIPT_DIR/../../..`). That works if layout is replicated! But it also does a full build each run. For an installed product we might want a leaner launcher. But per house convention, the run script is fine. Actually run_khtpm_strip.sh `new` = build + kill + launch. Since we installed build deps anyway, fine. But we also want entiry window dependency: if a user opens an entity, tp_desktop_window ensure_taskbar_running will find parser at the same relative path. Good.
 
 Also strip: they want "a terminal shortcut to open livedesk is fine". So installer should create a `harnecient` (or `livedesk`) command in e.g. ~/.local/bin that opens the installed HQ. Let me create `~/.local/bin/harnecient` -> runs button.sh.
 
@@ -7504,14 +7504,14 @@ Let me check the khtpm_strip_header.chtpm + bottom to know if they reference ass
 
 Let me also check `load_strip_offset` reads livedesk_taskbar.pdl (strip_x_offset/y_offset keys). Good, we provide those.
 
-Now let me look at how run_khtpm_strip.sh resolves HOUSE and whether the parser fork-manager uses relative path — yes launch_manager uses `*.monads/*.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x` joined to g_house_root. So relative layout must be preserved at house root. Good.
+Now let me look at how run_khtpm_strip.sh resolves HOUSE and whether the parser fork-manager uses relative path — yes launch_manager uses `_.monads/_.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x` joined to g_house_root. So relative layout must be preserved at house root. Good.
 
 Now let me design paths. Install lives under e.g. `$HOME/harnecient/` (flag `--dest`). Inside:
 ```
 harnecient/
 ├── button.sh                 # boot HQ
 ├── paths.pdl                 # pointer map (optional)
-├── *.monads/*.livedesk-taskbar/   (taskbar)
+├── _.monads/_.livedesk-taskbar/   (taskbar)
 ├── &.widgits/tile-picker/ops/   (entity window + emoji ops)
 ├── &.widgits/tile-picker/system  + pieces  (glyphs)
 ├── 0.user-pal👤️/00.login-signup/  (login + userpal ops, users/ empty)
@@ -7598,10 +7598,10 @@ The emoji ops resolve relative to ops_dir (the tile-picker ops dir). The system 
 
 Now, key design decision. The cleanest "self-contained" approach that preserves relative layout is to copy the needed subdirs preserving their house-relative paths under the install root, so all the "climb N levels" (which are actually fixed-depth from house root — the OK pattern in portability doc: the code climbs from the script's own fixed location? No — tp_desktop_window climbs from /proc/self/exe up to house root, which is FIXED because tp_desktop_window always lives at `<house>/&.widgits/tile-picker/ops/+x/`). So the installed tree MUST preserve that relative path: `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x`.
 
-Similarly khtpm parser must live at `<house>/*.monads/*.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x`, and layouts at `<house>/*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm`.
+Similarly khtpm parser must live at `<house>/_.monads/_.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x`, and layouts at `<house>/_.monads/_.livedesk-taskbar/khtpm_strip_header.chtpm`.
 
 So the install root must replicate the house layout:
-- `*.monads/*.livedesk-taskbar/` (parser, manager, layouts, +x binaries, build script)
+- `_.monads/_.livedesk-taskbar/` (parser, manager, layouts, +x binaries, build script)
 - `&.widgits/tile-picker/ops/` (tp_desktop_window + emoji ops + ledgers) plus `system/`? tp_desktop_window spawns entities; entities need prisc+x etc. from their package. For a fresh desktop with no entities, maybe minimal. But "full desktop" scope: copy tile-picker ops + system + pieces (glyphs).
 - `0.user-pal👤️/00.login-signup/` (userpal ops, login app) — for USER cell.
 - `xyzfs/` at house root (session.pdl + users)
@@ -7611,7 +7611,7 @@ The parser/manager derive paths from house_root passed as argv[1] and joining re
 
 So installer does:
 1. mkdir root
-2. copy `*.monads/*.livedesk-taskbar` -> root
+2. copy `_.monads/_.livedesk-taskbar` -> root
 3. copy `&.widgits/tile-picker` (ops, system, pieces, ops/+x) -> root (or at least the parts)
 4. copy `0.user-pal👤️/00.login-signup` -> root (strip users/current_login/session state)
 5. create fresh `#.desktop/` with config pdl + empty runtime files
@@ -7628,7 +7628,7 @@ Let me check what the USER cell needs from login-signup at runtime: userpal_whoa
 
 Also the manager reads `current_login.txt` for uuid, and builds avatar dir under `<house>/xyzfs/users/<uuid>/home/avatars/`. So xyzfs/users must exist.
 
-Now, what about `#.desktop/livedesk-taskbar.pdl` hq_menu commands referencing `$.crypts/scripts/hide-show-desks.sh` and `xdg-open #.desktop`? In a fresh install, $.crypts doesn't exist. I should ship a cleaned taskbar config. The pdl's hq_menu_1_cmd runs `sh *.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh new` — that works if we ship that path. hide-show-desks may fail — acceptable? Better to ship a config without dev-only commands, or keep it simple: ship minimal pdl with just restart + a couple working items. Actually the parser reads hq config from #.desktop/livedesk_taskbar.pdl. We'll ship a clean default.
+Now, what about `#.desktop/livedesk-taskbar.pdl` hq_menu commands referencing `$.crypts/scripts/hide-show-desks.sh` and `xdg-open #.desktop`? In a fresh install, $.crypts doesn't exist. I should ship a cleaned taskbar config. The pdl's hq_menu_1_cmd runs `sh _.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh new` — that works if we ship that path. hide-show-desks may fail — acceptable? Better to ship a config without dev-only commands, or keep it simple: ship minimal pdl with just restart + a couple working items. Actually the parser reads hq config from #.desktop/livedesk_taskbar.pdl. We'll ship a clean default.
 
 Also `datetime_lang=zh` — fine default.
 
@@ -7651,13 +7651,13 @@ Dependencies mapped. Let me quickly check the two layout files and the login `sc
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/khtpm_strip_header.chtpm"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/khtpm_strip_header.chtpm</path>
 <type>file</type>
 <content>
 1: <!-- khtpm_strip_header.chtpm — layout for the persistent top-left header
@@ -7784,13 +7784,13 @@ Dependencies mapped. Let me quickly check the two layout files and the login `sc
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/khtpm_strip_bottom.chtpm"
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/khtpm_strip_bottom.chtpm"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/khtpm_strip_bottom.chtpm</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/khtpm_strip_bottom.chtpm</path>
 <type>file</type>
 <content>
 1: <!-- khtpm_strip_bottom.chtpm — layout for the bottom tab-bar window (win),
@@ -7879,30 +7879,30 @@ I now have the complete picture. Let me design the installer.
 Key dependencies for a self-contained install:
 
 **Runtime structure — the install root must be a "mini-house" with the same relative layout, because code paths are all house-relative:**
-- `<root>/*.monads/*.livedesk-taskbar/` — parser + manager sources/layouts (khtpm_strip_header.chtpm, khtpm_strip_bottom.chtpm), ops sources, build scripts, +x binaries
+- `<root>/_.monads/_.livedesk-taskbar/` — parser + manager sources/layouts (khtpm_strip_header.chtpm, khtpm_strip_bottom.chtpm), ops sources, build scripts, +x binaries
   - parser runs with house_root as argv[1]; reads config at `<house>/#.desktop/...`
-  - parser launches manager at `<house>/*.monads/*.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`
+  - parser launches manager at `<house>/_.monads/_.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`
   - manager writes to `<house>/#.desktop/strip_state.txt`, reads livedesk_taskbar.pdl, theme.pdl, shortcuts.pdl, livedesk_open.txt, nav claims
 - `<root>/#.desktop/` — config: livedesk_taskbar.pdl, livedesk_theme.pdl, livedesk_shortcuts.pdl + runtime state files (created fresh or by manager)
 - `<root>/0.user-pal👤️/00.login-signup/` — userpal ops (+x binaries), current_login.txt, users/, xyzfs/session.pdl. The USER cell shells out `userpal_whoami.+x` with PRISC_PROJECT_ROOT=login dir.
 - `<root>/xyzfs/` — session.pdl guest, users/<uuid>/... created at signup
 - `<root>/&.widgits/tile-picker/ops/` — tp_desktop_window.+x for entity windows + emoji ops (ops/+x/emoji_gen_atlas.+x, emoji_xtract.+x, tp_asset_to_sprite.+x) + system/?
   - tp_desktop_window resolves house root by climbing from its own path: `<root>/&.widgits/tile-picker/ops/+x/tp_desktop_window.+x` → climbs 4 levels. So tile-picker must be at that depth.
-  - It also references `*.monads/*.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x` to launch taskbar.
+  - It also references `_.monads/_.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x` to launch taskbar.
   - emoji pipeline: ops_dir relative.
 
 But wait — the sessions: manager links sessions under `<house>/xyzfs/users/<uuid>/home/livedesk/sessions`. So the installed root needs `xyzfs/users/` and a way for a user to log in (userpal).
 
 **Path preservation criticality:**
 - tp_desktop_window climbs `/proc/self/exe` up 5 dirname steps: `+x` → `ops` → `tile-picker` → `&.widgits` → house root. So it MUST be at `<root>/&.widgits/tile-picker/ops/+x/`.
-- layout files at `<root>/*.monads/*.livedesk-taskbar/*.chtpm` (layout_path joins house_root + that rel path).
-- manager binary spawned at `<root>/*.monads/*.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`.
+- layout files at `<root>/_.monads/_.livedesk-taskbar/*.chtpm` (layout_path joins house_root + that rel path).
+- manager binary spawned at `<root>/_.monads/_.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`.
 - userpal under `<root>/0.user-pal👤️/00.login-signup/`.
 
 So the installed "HQ" root replicates the house's relative layout with just the needed payloads. This makes the portability doc's "climb from your own permanent location" safe.
 
 **Payload list:**
-1. `*.monads/*.livedesk-taskbar/` (whole dir; includes ops sources, layouts, +x binaries, build scripts, LEGACY zip — could strip the zip)
+1. `_.monads/_.livedesk-taskbar/` (whole dir; includes ops sources, layouts, +x binaries, build scripts, LEGACY zip — could strip the zip)
 2. `&.widgits/tile-picker/ops/` (for tp_desktop_window + emoji ops + its system/pieces?) — need to decide how much of tile-picker. tp_desktop_window needs: ops/+x/tp_desktop_window.+x, ops/+x/emoji_gen_atlas.+x, ops/+x/emoji_xtract.+x, ops/+x/tp_asset_to_sprite.+x, plus maybe `pieces/registry/fonts/ascii` glyphs? Let's check where glyph registry lives and whether sprite loading needs it at runtime. Actually emoji_gen_atlas uses a glyph file. Existing installed copy's emoji ops read from the entity's own dirs mostly. To be safe, include `&.widgits/tile-picker/` full (it's 4MB) minus dev junk (scenarios, #.desktop, proof). Or build tp_desktop_window fresh from source. Since we compile in place, we should include the sources needed. Simplest robust approach: copy whole tile-picker subtree, then rebuild tp ops? But build.sh copies system binaries from wsr-pal (014.wsr-pal💸️📌️+2), which is a sibling in the parent dev env — that may not exist in install. So don't run tile-picker build.sh. Instead copy the already-built +x binaries (they're built for Linux) OR build just tp_desktop_window.c with the right libs.
 
 Hmm — a truly fresh install should compile from source. But compiling tp_desktop_window requires `-lX11 -lXext -lGL -lGLX` (GL dev libs) plus its sources + stb_image.h + khtpm_core.h etc. all in ops/. That's doable: copy ops/ sources + headers, compile tp_desktop_window only. But entities also use emoji_gen_atlas/emoji_xtract — those are separate binaries in ops/+x. Building them requires their source (tp_asset_to_sprite.c etc.). Their sources are in ops/. So compile the needed tile-picker ops too, OR copy the prebuilt +x binaries.
@@ -7970,7 +7970,7 @@ The install root must replicate the relative layout that the code hardcodes via 
 <dest>/harnecient/                      <- the "house root" of the installed product
 ├── button.sh                           <- boot HQ (launch khtpm parser/manager)
 ├── paths.pdl                           <- pointer map (logical name -> real path)
-├── *.monads/*.livedesk-taskbar/        <- parser + manager + layouts + ops sources
+├── _.monads/_.livedesk-taskbar/        <- parser + manager + layouts + ops sources
 │   ├── khtpm_strip_header.chtpm
 │   ├── khtpm_strip_bottom.chtpm
 │   └── ops/...
@@ -7979,16 +7979,16 @@ The install root must replicate the relative layout that the code hardcodes via 
 └── #.desktop/                           <- runtime config (livedesk_taskbar.pdl, theme, etc.)
 ```
 
-Wait — the layout files are loaded relative to house root at `*.monads/*.livedesk-taskbar/*.chtpm`. The manager binary is exec'd at `*.monads/*.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`. And userpal is looked up via `livedesk_login_root` scanning for `0.user-pal*`. Sessions at `xyzfs/users/<uuid>/home/livedesk/sessions`. tp_desktop_window at `&.widgits/tile-picker/ops/+x/`.
+Wait — the layout files are loaded relative to house root at `_.monads/_.livedesk-taskbar/*.chtpm`. The manager binary is exec'd at `_.monads/_.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`. And userpal is looked up via `livedesk_login_root` scanning for `0.user-pal*`. Sessions at `xyzfs/users/<uuid>/home/livedesk/sessions`. tp_desktop_window at `&.widgits/tile-picker/ops/+x/`.
 
 So the install must preserve these house-relative paths. This is the classic "replicate the house structure" design — the same approach docs describe. So the installed root is a mini-house.
 
 Key components to copy:
-1. `*.monads/*.livedesk-taskbar/` — need parser/manager sources + compiled +x binaries + chtpm layouts + build script. (920K - can copy whole folder)
+1. `_.monads/_.livedesk-taskbar/` — need parser/manager sources + compiled +x binaries + chtpm layouts + build script. (920K - can copy whole folder)
 2. `0.user-pal👤️/00.login-signup/` — need ops (userpal_create_account, whoami, login, logout) + compiled +x binaries. Fresh users/, current_login.txt, xyzfs/session.pdl. The full login app also has button.sh but the HQ USER cell shells out directly to userpal ops, so we need ops/+x/userpal_*.+x and the login structure.
 3. `&.widgits/tile-picker/ops/` — tp_desktop_window.+x + ops_dir deps (emoji ops etc). Actually for the entity windows the full tile-picker folder might matter. Let me keep it lean but functional: copy the whole `&.widgits/tile-picker` folder (4MB) minus dev-only junk, OR just ops/ + system/ + pieces. The tp_desktop_window binary climbing from its own path needs `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x` as an anchor. To keep the climb valid, we must preserve that exact path. So copy the whole `&.widgits/tile-picker` folder, or at least ops/.
 
-Actually to be safe and self-contained: copy the whole `&.widgits/tile-picker` subtree (it's 4MB, small). And the whole `*.monads/*.livedesk-taskbar` folder. And the login folder minus dev state.
+Actually to be safe and self-contained: copy the whole `&.widgits/tile-picker` subtree (it's 4MB, small). And the whole `_.monads/_.livedesk-taskbar` folder. And the login folder minus dev state.
 
 4. `xyzfs/` at house root — fresh, with session.pdl (guest) + users/ empty + bin/.
 5. `#.desktop/` — fresh config: livedesk_taskbar.pdl (default: strip_x/y_offset, datetime_lang, hq_menu etc), livedesk_theme.pdl, livedesk_shortcuts.pdl (empty), livedesk_open.txt (empty), livedesk-nav-claims/ (empty), etc. Created at first manager run? The manager requires some to exist or creates them. Safer to precreate the essential ones (taskbar.pdl, theme.pdl, shortcuts.pdl, and dirs).
@@ -8027,7 +8027,7 @@ This is the last dependency question — what does the entity window shell out t
 **Output:**
 ```
 189:        snprintf(cmd, sizeof(cmd), "%s '%s' '%s' >/dev/null 2>&1 &", action, package_dir, house_root);
-466:        snprintf(cmd, sizeof(cmd), "'%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x' '%s' >/dev/null 2>&1 &",
+466:        snprintf(cmd, sizeof(cmd), "'%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x' '%s' >/dev/null 2>&1 &",
 1554:        snprintf(cmd, sizeof(cmd), "'%s/tp_asset_to_sprite.+x' '%s' 64 '%s' >/dev/null 2>&1",
 1561:        snprintf(cmd, sizeof(cmd),
 2474:                        snprintf(cmd, sizeof(cmd), "%s '%s' '%s' >/dev/null 2>&1 &",
@@ -8047,19 +8047,19 @@ The entity window shells out to:
 - `tp_asset_to_sprite.+x`, `emoji_*`, `tp_range_grid.+x` — all in the same ops/+x dir (which we'd copy with the tile-picker ops folder).
 
 So core runtime deps for the taskbar boot + signup:
-1. `*.monads/*.livedesk-taskbar/` folder — parser, manager, layouts, +x binaries, build script
+1. `_.monads/_.livedesk-taskbar/` folder — parser, manager, layouts, +x binaries, build script
 2. `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x` + its ops_dir siblings (emoji, asset, range grid) for entity windows
 3. `0.user-pal👤️/00.login-signup/` — userpal ops + users registry + current_login.txt + xyzfs/session.pdl
 4. `#.desktop/` — config pdl files (livedesk_taskbar.pdl, livedesk_theme.pdl, livedesk_shortcuts.pdl) + runtime relay files + livedesk_open.txt + livedesk_master_ledger.txt + livedesk-next-index etc.
 5. `xyzfs/` — house-root session.pdl + users dir
 
-Now, the parser is run with `<house_root>` as argv[1]. The manager is launched by parser at `<house_root>/*.monads/*.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`. tp_desktop_window resolves house root from its own location by climbing: `.../&.widgits/tile-picker/ops/+x/` → house root. So the installed layout MUST preserve the `&.widgits/tile-picker/ops/+x/` relative path and the `*.monads/*.livedesk-taskbar/ops/+x/` relative path AND the `#.desktop/` + `0.user-pal` + `xyzfs/` structure under a common "house root".
+Now, the parser is run with `<house_root>` as argv[1]. The manager is launched by parser at `<house_root>/_.monads/_.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`. tp_desktop_window resolves house root from its own location by climbing: `.../&.widgits/tile-picker/ops/+x/` → house root. So the installed layout MUST preserve the `&.widgits/tile-picker/ops/+x/` relative path and the `_.monads/_.livedesk-taskbar/ops/+x/` relative path AND the `#.desktop/` + `0.user-pal` + `xyzfs/` structure under a common "house root".
 
 So the install is essentially: copy those sub-trees into an installed "house root" preserving relative layout, compile in place, strip state, write fresh session.pdl/current_login, and create a launcher + terminal shortcut.
 
 This is like the khtpm-era equivalent of the original installer: instead of copying two apps, copy the whole livedesk subsystem while preserving the house-relative paths that the compiled code relies on.
 
-KEY INSIGHT: the compiled C code hardcodes house-relative paths (e.g. `*.monads/*.livedesk-taskbar/...`, `&.widgits/tile-picker/ops/+x/...`). The portability doc warns about this. For the installer, the pragmatic approach that matches existing code: create the install as a miniature "house root" that mirrors the needed subtree structure. The tp_desktop_window.c comment even says: "This binary always lives at <house_root>/&.widgits/tile-picker/ops/+x/". So preserving relative layout is required, and expected by the design.
+KEY INSIGHT: the compiled C code hardcodes house-relative paths (e.g. `_.monads/_.livedesk-taskbar/...`, `&.widgits/tile-picker/ops/+x/...`). The portability doc warns about this. For the installer, the pragmatic approach that matches existing code: create the install as a miniature "house root" that mirrors the needed subtree structure. The tp_desktop_window.c comment even says: "This binary always lives at <house_root>/&.widgits/tile-picker/ops/+x/". So preserving relative layout is required, and expected by the design.
 
 Let me now design the install script. I'll write it to be fully self-contained (copies what's needed), preserving the house-relative layout, installing terminal shortcut `livedesk` (user said "have a terminal shortcut to open livedesk is fine").
 
@@ -8074,13 +8074,13 @@ Let me check how the manager/main reads/writes the relay file, and confirm what 
 Manager ktb_init uses pid_path (#.desktop/livedesk_taskbar.pid). Registry: livedesk_open.txt. nav claims dir. And 0.user-pal login — current_login.txt, xyzfs/session.pdl.
 
 For a fresh install, I should:
-1. Copy the three subsystem folders: `*.monads/*.livedesk-taskbar`, `&.widgits/tile-picker/ops` (only needed ops + headers; the whole ops dir is 2.8M, fine), and `0.user-pal👤️/00.login-signup` (login ops + users registry base).
+1. Copy the three subsystem folders: `_.monads/_.livedesk-taskbar`, `&.widgits/tile-picker/ops` (only needed ops + headers; the whole ops dir is 2.8M, fine), and `0.user-pal👤️/00.login-signup` (login ops + users registry base).
    - Actually tile-picker also needs its `pieces` (glyph fonts registry) for sprite/emoji rendering? The emoji pipeline references ops/+x/emoji_gen_atlas which reads font ascii dirs. Let me check quickly. But maybe simpler: copy the entire `&.widgits/tile-picker` folder. It's 4MB. Same with login — copy whole login folder (1.5M). And livedesk-taskbar (920K). Total <7MB. That's fine and safest — "fully self-contained".
 
 But login folder contains users/, current_login.txt, xyzfs, projects, pieces/sessions — strip dev state, fresh users and xyzfs like v1 did.
 
 2. Compile in place: 
-   - `*.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh` → but this is designed to run from the DEV tree with HOUSE derived as `../../..` from ops dir. In the installed layout, `$SCRIPT_DIR/../../..` = `<inst_root>` (since ops is at `<inst_root>/*.monads/*.livedesk-taskbar/ops`). Wait: SCRIPT_DIR = ops; `../../..` = from ops → livedesk-taskbar → *.monads → inst_root. Yes! That resolves to the installed house root correctly. But that script's `build` just runs build_khtpm_strip.sh (gcc) — building in place works. However it also rm's `$HOUSE/#.desktop/khtpm_strip_parser.log` and writes logs there. Fine.
+   - `_.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh` → but this is designed to run from the DEV tree with HOUSE derived as `../../..` from ops dir. In the installed layout, `$SCRIPT_DIR/../../..` = `<inst_root>` (since ops is at `<inst_root>/_.monads/_.livedesk-taskbar/ops`). Wait: SCRIPT_DIR = ops; `../../..` = from ops → livedesk-taskbar → _.monads → inst_root. Yes! That resolves to the installed house root correctly. But that script's `build` just runs build_khtpm_strip.sh (gcc) — building in place works. However it also rm's `$HOUSE/#.desktop/khtpm_strip_parser.log` and writes logs there. Fine.
    - tile-picker build.sh has a wsr-pal dependency to copy system binaries. In installed context there's no wsr-pal sibling. I need a whitelist compile instead: compile ONLY the needed ops: tp_desktop_window, tp_range_grid, tp_asset_to_sprite + copy emoji_gen_atlas/emoji_xtract (already compiled, or compile from source? emoji ops source lives in wsr-pal, not tile-picker ops. The tile-picker +x has precompiled emoji binaries that were copied FROM wsr-pal at build time).
    
    So for tile-picker I should just COPY the precompiled +x binaries (they're machine-identical) and NOT rebuild, OR rebuild tp_desktop_window from its own source (it's in tile-picker/ops). Compiling tp_desktop_window needs -lX11 -lXext -lGL -lGLX and khtpm_core.h etc (all in ops dir). But it also links stb_image.h etc. — all present. Actually simplest: copy the whole tile-picker ops folder (which already contains compiled +x) + pieces + system. The system binaries (prisc+x, renderer etc.) are needed by ENTITY packages at runtime? Entity methods call ops/+x and system stuff... For a fresh install with no entities, not needed at boot, but to be safe, copy them — they're in tile-picker/system and pieces. Only 4MB total. Copy whole folder and skip the wsr-pal rebuild. But we should rebuild to be safe for a "fresh compile" claim? The user's goal: "completely fresh version". I think copying + recompiling the core (khtpm pair from source is the main win) is right; the tile-picker we copy wholesale including +x binaries (they're already the real compiled product). Actually we can rebuild tp_desktop_window from source too — it's self-contained in that ops dir (only needs -lX11 -lXext -lGL -lGLX and local headers). Let me verify tp_desktop_window compiles standalone.
@@ -8105,9 +8105,9 @@ Actually, let me be pragmatic. I'll write the installer to:
 
 - Write `paths.pdl` in install root mapping.
 
-- Launcher `button.sh` that runs the parser/manager with HOUSE as cwd: basically exec `*.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh new`. That script already: builds, kills, launches with DISPLAY. But it writes to `$HOUSE/#.desktop/khtpm_strip_parser.log`. Fine.
+- Launcher `button.sh` that runs the parser/manager with HOUSE as cwd: basically exec `_.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh new`. That script already: builds, kills, launches with DISPLAY. But it writes to `$HOUSE/#.desktop/khtpm_strip_parser.log`. Fine.
 
-  Actually careful: run_khtpm_strip.sh's `kill_khtpm` uses pgrep -f "khtpm_strip_parser" — globally kills any khtpm on the whole machine, including the dev tree's! That's dangerous in an installed context. For the installed HQ I'll write a dedicated launcher that launches the installed parser binary directly (setsid env DISPLAY ... `<inst_root>`). But entities auto-launch the taskbar via ensure_taskbar_running → `khtpm_strip_parser.+x <house_root>`. That's the house-root-tagged path. Good. So launcher = `cd inst_root && setsid nohup env DISPLAY="$DISPLAY" *.monads/*.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x "$inst_root"`. Plus a stop/status helper. I'll keep it minimal but reuse the safe cycle in a small local `run-hq.sh`.
+  Actually careful: run_khtpm_strip.sh's `kill_khtpm` uses pgrep -f "khtpm_strip_parser" — globally kills any khtpm on the whole machine, including the dev tree's! That's dangerous in an installed context. For the installed HQ I'll write a dedicated launcher that launches the installed parser binary directly (setsid env DISPLAY ... `<inst_root>`). But entities auto-launch the taskbar via ensure_taskbar_running → `khtpm_strip_parser.+x <house_root>`. That's the house-root-tagged path. Good. So launcher = `cd inst_root && setsid nohup env DISPLAY="$DISPLAY" _.monads/_.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x "$inst_root"`. Plus a stop/status helper. I'll keep it minimal but reuse the safe cycle in a small local `run-hq.sh`.
 
 - Terminal shortcut: install a small script `livedesk` (user said "have a terminal shortcut to open livedesk is fine") into `~/.local/bin/livedesk` that runs the launcher. Wait "open livedesk" — user wants a terminal command to open livedesk. I'll create `~/.local/bin/livedesk` (or `harnecient`) → `exec <inst_root>/run-hq.sh start` / run the button.sh. Good.
 
@@ -8165,14 +8165,14 @@ tp_desktop_window.c is self-contained with only system headers. Emoji ops are pr
 
 I have enough. Let me now decide the installer scope & design and write it.
 
-**Scope (my decision):** Full desktop — copy the khtpm taskbar subsystem (parser + manager + layouts + build), the tile-picker ops (tp_desktop_window for entity windows + emoji ops), the user-pal login (for account creation/USER cell), plus fresh #.desktop config + xyzfs skeleton. Preserve the house-relative layout (`*.monads/*.livedesk-taskbar`, `&.widgits/tile-picker/ops`, `0.user-pal👤️/00.login-signup`, `#.desktop`) because tp_desktop_window and the parser/manager resolve paths relative to house_root. This makes the install "fully self-contained" — the code already derives house_root via /proc/self/exe climbing or explicit argv, and all its hardcoded paths are relative to house_root.
+**Scope (my decision):** Full desktop — copy the khtpm taskbar subsystem (parser + manager + layouts + build), the tile-picker ops (tp_desktop_window for entity windows + emoji ops), the user-pal login (for account creation/USER cell), plus fresh #.desktop config + xyzfs skeleton. Preserve the house-relative layout (`_.monads/_.livedesk-taskbar`, `&.widgits/tile-picker/ops`, `0.user-pal👤️/00.login-signup`, `#.desktop`) because tp_desktop_window and the parser/manager resolve paths relative to house_root. This makes the install "fully self-contained" — the code already derives house_root via /proc/self/exe climbing or explicit argv, and all its hardcoded paths are relative to house_root.
 
-Wait — but the /proc/self/exe climb string: `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x` → 5 levels up. If the installed tree keeps the SAME relative layout under a new root, that climb still works. Good. And the parser gets house_root as argv[1], and it launches manager via `<house>/*.monads/*.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`. So relative layout must be preserved. 
+Wait — but the /proc/self/exe climb string: `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x` → 5 levels up. If the installed tree keeps the SAME relative layout under a new root, that climb still works. Good. And the parser gets house_root as argv[1], and it launches manager via `<house>/_.monads/_.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`. So relative layout must be preserved. 
 
 The login flow: USER cell shells out to `<house>/0.user-pal👤️/00.login-signup/ops/+x/userpal_whoami.+x` with `PRISC_PROJECT_ROOT='<house>/0.user-pal👤️/00.login-signup'`. And userpal_create_account needs users/ + xyzfs under the login root. And khtpm reads `current_login.txt` there. Sessions live at `<house>/xyzfs/users/<uuid>/home/livedesk/sessions`.
 
 So the install is essentially a compact "house" structure. The cleanest approach: create `<dest>/harnecient/` as the new house root, copy only the needed subtrees:
-- `*.monads/*.livedesk-taskbar/`
+- `_.monads/_.livedesk-taskbar/`
 - `&.widgits/tile-picker/ops/` (tp_desktop_window + deps) — actually also `system`? tp_desktop_window shells to `emoji_gen_atlas`, `emoji_xtract`, `tp_asset_to_sprite`, `tp_range_grid` (all in ops/+x). It doesn't need system/. But wait — does tp_desktop_window need `system/prisc+x`? Line 166 mention is in a comment about legacy. The entity window itself is self-contained with GL. Entities' own ops live at `xyzfs/bin/<game>/ops` now. For the demo games, those move eventually. For a fresh HQ install, we copy the ops binaries so entity windows can launch. And `#.desktop/tiles` maybe. Let me not over-engineer; copy tile-picker/ops and tile-picker/system (small, 276K) and pieces? Actually the sprite pipeline needs `emoji_gen_atlas` which reads font glyphs from `pieces/registry/fonts/ascii`? Let me check. The emoji ops might read glyph registry. But that's for sprites — optional at boot. For the KPI harness (boot + signup + entity window opens), sprites are a fallback (colored square). I'll copy tile-picker fully minus dev state to be safe-it's only 4MB.
 
 Actually, let me be careful about scope creep. The user said "install a completely fresh version of livedesk-xyz with 1 script". The essential deliverable: a fresh install folder that boots the khtpm taskbar, with working account creation via USER cell, terminal shortcut.
@@ -8185,7 +8185,7 @@ Let me define the install layout:
 ├── paths.pdl                 # pointer map
 ├── xyzfs/                    # empty guest session + users
 ├── 0.user-pal👤️/00.login-signup/   # login app subtree (with ops, users/, xyzfs/)
-├── *.monads/*.livedesk-taskbar/    # taskbar source + layouts + +x
+├── _.monads/_.livedesk-taskbar/    # taskbar source + layouts + +x
 │   ├── khtpm_strip_header.chtpm
 │   ├── khtpm_strip_bottom.chtpm
 │   └── ops/ (build_khtpm_strip.sh, sources, +x binaries, run_khtpm_strip.sh)
@@ -8196,7 +8196,7 @@ Let me define the install layout:
 Terminal shortcut: `livedesk` command → `~/.local/bin/livedesk` that cd's to the install and runs button.sh. Or a `.desktop` entry. User said "a terminal shortcut". I'll create a `harnecient` (or `livedesk`) command in `~/.local/bin` that launches the install.
 
 Compile steps:
-1. `*.monads/*.livedesk-taskbar/ops/build_khtpm_strip.sh` (needs gcc + X11 headers)
+1. `_.monads/_.livedesk-taskbar/ops/build_khtpm_strip.sh` (needs gcc + X11 headers)
 2. `&.widgits/tile-picker/ops/` — tp_desktop_window needs GL headers + X11 + Xext. Its build.sh also copies emoji ops from wsr-pal (014.wsr-pal). For fresh install, copy the prebuilt +x binaries (already built in dev tree) into install. Actually simpler: copy the whole tile-picker/ops + +x as-is (binaries already compiled), no rebuild needed. Same for emoji ops — they're prebuilt in +x. But a "fresh" recompile is nicer. tile-picker build.sh has external wsr-pal dep; the binary approach avoids that. I'll copy prebuilt +x binaries and only recompile the khtpm pair + userpal ops (since those are the "brain").
 
 Hmm, but user said "it should be buildable from source". Let me keep it pragmatic: copy built binaries that have no in-tree source (emoji ops, tp_desktop_window self-contained → actually tp_desktop_window.c IS in tree, can recompile). The tile-picker build.sh only builds tp_desktop_window + others from in-tree sources and copies emoji from wsr-pal — the emoji ops have no source in tile-picker. I'll copy emoji binaries from +x directly (already built), rebuild tp_desktop_window from source.
@@ -8258,7 +8258,7 @@ The installed structure replicates the house-relative layout the code depends on
 <dest>/harnecient/                      <- new house root
 ├── button.sh                           <- boot: khtpm strip launch
 ├── paths.pdl
-├── *.monads/*.livedesk-taskbar/        <- parser/manager sources, layouts, build, +x
+├── _.monads/_.livedesk-taskbar/        <- parser/manager sources, layouts, build, +x
 │   ├── khtpm_strip_header.chtpm
 │   ├── khtpm_strip_bottom.chtpm
 │   └── ops/...
@@ -8270,10 +8270,10 @@ The installed structure replicates the house-relative layout the code depends on
 ```
 
 Wait — the code paths:
-- parser reads layouts via `layout_path()` → `g_house_root + "*.monads/*.livedesk-taskbar/" + filename`. So installed tree must have `*.monads/*.livedesk-taskbar/` relative to install root. Good, replicate.
-- parser launches manager at `*.monads/*.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`.
+- parser reads layouts via `layout_path()` → `g_house_root + "_.monads/_.livedesk-taskbar/" + filename`. So installed tree must have `_.monads/_.livedesk-taskbar/` relative to install root. Good, replicate.
+- parser launches manager at `_.monads/_.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x`.
 - manager reads/writes `<house>/#.desktop/strip_state.txt`, `livedesk_taskbar.pdl`, `livedesk_theme.pdl`, `livedesk_shyrtcuts.pdl`, `livedesk_open.txt`, `livedesk-nav-claims/...`.
-- manager lives at `*.monads/*.livedesk-taskbar/ops/+x/` (written by parser).
+- manager lives at `_.monads/_.livedesk-taskbar/ops/+x/` (written by parser).
 - userpal: manager runs userpal_whoami at `0.user-pal👤️/00.login-signup/ops/+x/userpal_whoami.+x` with PRISC_PROJECT_ROOT set to that login dir. The USER cell creates accounts via userpal ops, which resolved install_root via users/ or current_login.txt or PRISC_PROJECT_ROOT (set by khtpm to the login dir). It writes xyzfs under house root (HOUSE_ROOT env or derived parent-of-login).
 - tp_desktop_window spawn: `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x`, and it resolves house root by climbing from its own exe path: `&.widgits/tile-picker/ops/+x/` → house root. So installed tree must have `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x`.
 - sessions: `<house>/xyzfs/users/<uuid>/home/livedesk/sessions`.
@@ -8285,7 +8285,7 @@ Actually login has its own `xyzfs/session.pdl` at `0.user-pal👤️/00.login-si
 
 Now what minimal set do I copy?
 
-**A. `*.monads/*.livedesk-taskbar/`** — whole folder (920K): parser/manager sources + layouts + build script + ops. Build in place to produce +x binaries.
+**A. `_.monads/_.livedesk-taskbar/`** — whole folder (920K): parser/manager sources + layouts + build script + ops. Build in place to produce +x binaries.
 
 **B. `&.widgits/tile-picker/ops/`** — needs tp_desktop_window.+x and the emoji/asset ops (tp_asset_to_sprite, emoji_gen_atlas, emoji_xtract, tp_range_grid) that tp_desktop_window shells to at runtime. Those live in ops/+x already (prebuilt in dev tree). The simplest: copy `&.widgits/tile-picker/ops/` including its +x, and rebuild tp_desktop_window from source for freshness. But emoji ops have no sources in tile-picker (prebuilt only, source in wsr-pal). So copy the prebuilt +x binaries for emoji ops; rebuild tp_desktop_window from source.
 
@@ -8301,7 +8301,7 @@ Wait — but for the KPI (boot + sign up on relay), all we need is: parser + man
 
 **E. `xyzfs/`** at house root — fresh guest session.pdl + empty users/.
 
-**F. boot**: `button.sh` that compiles-as-needed? The old installer compiled in place at install time. For an installed product, button.sh should just run (not rebuild every time) — but keep parity with the run script. I'll build at install time, and button.sh launches the parser directly (like run_khtpm_strip.sh does without rebuild). Provide `--rebuild` maybe. Actually simplest: button.sh = `sh *.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh new` — but that script rebuilds every time (gcc needed). For a clean install UX, better button.sh does a fast launch checking binary presence; rebuild only if missing. I'll write a dedicated `button.sh` in the install root that mirrors run_khtpm_strip but without forced rebuild.
+**F. boot**: `button.sh` that compiles-as-needed? The old installer compiled in place at install time. For an installed product, button.sh should just run (not rebuild every time) — but keep parity with the run script. I'll build at install time, and button.sh launches the parser directly (like run_khtpm_strip.sh does without rebuild). Provide `--rebuild` maybe. Actually simplest: button.sh = `sh _.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh new` — but that script rebuilds every time (gcc needed). For a clean install UX, better button.sh does a fast launch checking binary presence; rebuild only if missing. I'll write a dedicated `button.sh` in the install root that mirrors run_khtpm_strip but without forced rebuild.
 
 Hmm, but keep it simple: the run_khtpm_strip.sh actually does full build+kill+launch+verify. Since our target user runs `livedesk` terminal shortcut, I'll make the shortcut/button.sh call a small launcher that: ensures built, kills any prior, launches parser with the install root as `$HOUSE`.
 
@@ -8410,7 +8410,7 @@ Let me plan the installer design:
 │   ├── livedesk_taskbar.pdl     # taskbar config (fresh)
 │   ├── livedesk_theme.pdl       # theme (fresh)
 │   └── livedesk_shortcuts.pdl   # empty
-├── *.monads/*.livedesk-taskbar/ # khtpm taskbar (sources + layouts + compiled +x)
+├── _.monads/_.livedesk-taskbar/ # khtpm taskbar (sources + layouts + compiled +x)
 │   ├── khtpm_strip_header.chtpm
 │   ├── khtpm_strip_bottom.chtpm
 │   └── ops/                     # sources + +x binaries
@@ -8424,7 +8424,7 @@ Let me plan the installer design:
 ```
 
 Since the installed code resolves house_root from argv[1] (parser) and passed house_root (manager branches out), and tp_desktop_window climbs from its own exe path `&.widgits/tile-picker/ops/+x/`, the relative layout under the install root MUST match the dev tree structure:
-- `*.monads/*.livedesk-taskbar/...`
+- `_.monads/_.livedesk-taskbar/...`
 - `&.widgits/tile-picker/...`
 - `0.user-pal👤️/00.login-signup/...` (manager scans house root for dirs starting "0.user-pal")
 - `#.desktop/`
@@ -8485,13 +8485,13 @@ Let me now write everything. I'll:
 4. Update the INDEX/HANDOFF? Maybe minimal — the au11-hq docs link to xyz-installer-dev. I'll add a short note/doc in xyz-installer-dev.
 
 Let me first design the exact copy list. Sources (all relative to house root 44.xyz.01.00):
-- `*.monads/*.livedesk-taskbar/` (full dir; includes ops, layouts, +x, README, legacy zip — exclude the LEGACY zip?  maybe keep out to reduce size; but it's small. Actually for a fresh install we don't need LEGACY-ARCHIVE zip. Exclude it.)
+- `_.monads/_.livedesk-taskbar/` (full dir; includes ops, layouts, +x, README, legacy zip — exclude the LEGACY zip?  maybe keep out to reduce size; but it's small. Actually for a fresh install we don't need LEGACY-ARCHIVE zip. Exclude it.)
 - `&.widgits/tile-picker/ops/` — but tp_desktop_window also needs `&.widgits/tile-picker/pieces/registry/fonts/ascii`? For sprite fallback it reads glyph via package_dir/glyph.txt (per-entity), and emoji pipeline uses glyph_override from package assets. The emoji ops reference `pieces/registry/fonts/ascii`? Let me check quickly what emoji_prebuilt needs. Actually simpler: copy whole `&.widgits/tile-picker/` minus dev junk (scenarios, proof). It's 4MB — fine for a self-contained install. Hmm but it contains system/ binaries (prisc+x etc.) that tile-picker build copies from wsr-pal; those are per-project system copies. Do we need them for the installed HQ? tp_desktop_window for entity windows needs rendering, not chtpm system binaries. Entities themselves (the games) use xyzfs/bin/<game>/ops. The system binaries (prisc+x, chtpm_parser_pal, renderer, keyboard_input) are for the CLI login app / chtpm-family apps. The khtpm taskbar is pure Xlib GL — doesn't need them. 
 
 But 0.user-pal login needs its own system/ (prisc+x etc.) for its standalone login UI run via button.sh run. However — in the HQ desktop, the USER cell invokes userpal_*.+x directly (via PRISC_PROJECT_ROOT), NOT the full login button.sh run. So we need userpal ops compiled, and users/ + current_login.txt + xyzfs/session.pdl. The system/ prisc+x binaries aren't needed for khtpm USER cell flows. But to keep the option to run the standalone login app, we could include them. To be lean and correct, I'll copy the whole login app dir (it's 1.5M) and compile it in place (build.sh builds system + ops). That keeps the standalone option and ensures userpal ops exist. Good.
 
 For tile-picker: copy `&.widgits/tile-picker/ops/` only (for tp_desktop_window) + the needed runtime: entity windows open packages from sessions/xyzfs; ops dir has tp_*.+x. Also emoji ops prebuilt +x in tile-picker/ops/+x. So copy full ops dir. Also need `&.widgits/tile-picker/pieces/registry/fonts/ascii`? The emoji_gen_atlas reads a glyph registry? Let me just include tile-picker/pieces to be safe — 876K. And system/? Not needed for taskbar/entity windows. I'll include pieces + ops. Actually simplest and safest for self-contained: define a small list. Let me check size of needed things and just copy exactly:
-- `*.monads/*.livedesk-taskbar`
+- `_.monads/_.livedesk-taskbar`
 - `&.widgits/tile-picker/ops`
 - `&.widgits/tile-picker/pieces` (glyph registry, emoji fonts)
 - `0.user-pal👤️/00.login-signup`
@@ -8500,7 +8500,7 @@ For tile-picker: copy `&.widgits/tile-picker/ops/` only (for tp_desktop_window) 
 Now, the #.desktop config: new taskbar.pdl with safe defaults (no references to dev-only $.crypts hide/show script? Actually hq_menu_2_cmd references `sh $.crypts/scripts/hide-show-desks.sh` which won't exist in install. I should write a fresh taskbar.pdl that only includes working commands: restart, dir, quit, cancel; and strip config keys). Also theme.pdl. Let me check what keys the parser/manager read from config: strip_x_offset/strip_y_offset, strip_user_cmd, datetime_lang, hq_menu_N_label/cmd, hq_label. Manager builds menus dynamically though (livedesk_build_*_menu), and reads hq config for HQ menu. So a fresh taskbar.pdl with hq menu + offsets + datetime_lang suffices.
 
 Now compile steps (from install dir, chdir appropriately):
-1. `cd *.monads/*.livedesk-taskbar/ops && sh build_khtpm_strip.sh`
+1. `cd _.monads/_.livedesk-taskbar/ops && sh build_khtpm_strip.sh`
 2. `cd 0.user-pal👤️/00.login-signup && bash scripts/build.sh`
 3. `cd &.widgits/tile-picker/ops && gcc ... tp_desktop_window.c -lX11 -lXext -lGL -lGLX` (only this binary needed; copy the rest +x prebuilt from source tree)
 
@@ -8525,7 +8525,7 @@ Let me verify exactly how the manager invokes userpal and whether the two xyzfs 
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops\" && grep -n \"HOUSE_ROOT\\|PRISC_PROJECT_ROOT\\|userpal_create\\|userpal_login\\|userpal_logout\\|userpal_whoami\\|cd '\\\"\" khtpm_taskbar_manager.c | head -30",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops\" && grep -n \"HOUSE_ROOT\\|PRISC_PROJECT_ROOT\\|userpal_create\\|userpal_login\\|userpal_logout\\|userpal_whoami\\|cd '\\\"\" khtpm_taskbar_manager.c | head -30",
   "description": "Find userpal invocation env in manager"
 }
 ```
@@ -8560,7 +8560,7 @@ Wait, but userpal also writes `users/` under install_root (`<house>/0.user-pal�
 So the installed layout must replicate:
 - `<root>/0.user-pal👤️/00.login-signup/` with `users/`, `current_login.txt`, `xyzfs/session.pdl`, `ops/+x/userpal_*.+x`
 - `<root>/xyzfs/users/<uuid>/home/livedesk/sessions` (created at signup via userpal, sessions created later)
-- `<root>/*.monads/*.livedesk-taskbar/` with parser/manager +layouts
+- `<root>/_.monads/_.livedesk-taskbar/` with parser/manager +layouts
 - `<root>/&.widgits/tile-picker/ops/+x/tp_desktop_window.+x` etc.
 - `<root>/#.desktop/` config
 - `<root>/xyzfs/` skeleton
@@ -8574,12 +8574,12 @@ Now let me design the installer. I'll write one script `harnecient-install.sh`:
   1. Resolve dev tree / verify it looks like house root
   2. mkdir dest skeleton
   3. Copy the 4 subtrees:
-     - `*.monads/*.livedesk-taskbar` (parser+manager+layouts+ops) — 920K
+     - `_.monads/_.livedesk-taskbar` (parser+manager+layouts+ops) — 920K
      - `&.widgits/tile-picker/ops` (tp_desktop_window + emoji ops +x) — 2.8M. Actually tp_desktop_window is built from sources in ops. The unrelated ops (ledger_peers etc.) may be needed by entities. Let me copy whole `&.widgits/tile-picker` (4M) minus dev junk (scenarios, #.desktop, proof) — simpler and safe. Actually just ops + pieces (fonts/glyph registry) + system? The tp_desktop_window needs pieces/registry/fonts/ascii glyph registry for emoji pipeline, and system binaries (prisc+x etc.) for entity windows? Entities launched from pals use `scripts` and `system` referencing house root. Hmm, but the manuals... For a fully self-contained HQ, copying whole tile-picker (4M) is fine and safest.
      - `0.user-pal👤️/00.login-signup` (1.5M) — copy, then strip `users/*`, `current_login.txt`, `xyzfs` children, `pieces/sessions`, `proof`, `test-harn-same`
      - config + runtime: `#.desktop` isn't entirely copyable (it has live runtime state) — I'll create a fresh one: livedesk_taskbar.pdl, livedesk_theme.pdl, livedesk_shortcuts.pdl (empty), and dirs livedesk-nav-claims/ etc.
   4. Compile in place:
-     - `sh ops/build_khtpm_strip.sh` in installed `*.monads/*.livedesk-taskbar/ops` (builds parser+manager; needs gcc + X11 headers)
+     - `sh ops/build_khtpm_strip.sh` in installed `_.monads/_.livedesk-taskbar/ops` (builds parser+manager; needs gcc + X11 headers)
      - build tp_desktop_window: the tile-picker build.sh also copies system binaries from wsr-pal and needs `014.wsr-pal` sibling... That's a dev-tree dependency. For self-contained, I should compile tp_desktop_window directly with gcc line, and copy the needed system/ + pieces/registry/fonts from dev tree. Since we copy whole tile-picker, the system/ folder already has prisc+x etc binaries. But those are compiled Linux binaries — fine to copy. And emoji ops (emoji_gen_atlas, emoji_xtract) prebuilt — copy as-is (they're in ops/+x). Good, no need to rebuild emoji ops.
      - So: compile only `tp_desktop_window.+x` from source (needs -lX11 -lXext -lGL -lGLX), plus maybe the small ones if trivial. Actually simplest correct: copy the whole `&.widgits/tile-picker` INCLUDING its `ops/+x` already-built binaries? No — "fresh version" means compile. But emoji ops have no source in tile-picker (only prebuilt). The tile-picker build.sh copies them from wsr-pal and the system binaries too. For faithfulness and self-containment, I'll copy whole tile-picker, then rebuild tp_desktop_window from source, and keep the rest of the copied +x prebuilts (they're the real production binaries).
      - login: run `scripts/build.sh` in installed login (compiles system + userpal ops). This is self-contained (sources present).
@@ -8614,7 +8614,7 @@ The two xyzfs roots are consistent (both resolve to `<house>/xyzfs/users/<uuid>`
 **Input:**
 ```json
 {
-  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops\" && grep -n \"pid\\|pgrep\\|singleton\\|already running\\|/proc\" khtpm_strip_parser.c | head -20; echo \"=== manager pid log path ===\"; sed -n '80,105p' khtpm_taskbar_manager.c",
+  "command": "cd \"/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops\" && grep -n \"pid\\|pgrep\\|singleton\\|already running\\|/proc\" khtpm_strip_parser.c | head -20; echo \"=== manager pid log path ===\"; sed -n '80,105p' khtpm_taskbar_manager.c",
   "description": "Check parser pid/singleton logic"
 }
 ```
@@ -8674,20 +8674,20 @@ _Thinking:_
 
 The pid file is per-house-root (`#.desktop/livedesk_taskbar.pid` under the installed root). So an installed HQ can run alongside the dev house — different `#.desktop`.
 
-The parser launches the manager at `*.monads/*.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x` relative to house_root. So the installed layout must preserve the `*.monads/*.livedesk-taskbar/` path under the install root. tp_desktop_window resolves house root by climbing from its own path `<house>/&.widgits/tile-picker/ops/+x/`. So install must preserve `&.widgits/tile-picker/ops/` path. The manager finds login by scanning for `0.user-pal*`. Sessions under `<house>/xyzfs/users/<uuid>/...`. Config in `#.desktop/`.
+The parser launches the manager at `_.monads/_.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x` relative to house_root. So the installed layout must preserve the `_.monads/_.livedesk-taskbar/` path under the install root. tp_desktop_window resolves house root by climbing from its own path `<house>/&.widgits/tile-picker/ops/+x/`. So install must preserve `&.widgits/tile-picker/ops/` path. The manager finds login by scanning for `0.user-pal*`. Sessions under `<house>/xyzfs/users/<uuid>/...`. Config in `#.desktop/`.
 
 So the faithful approach: replicate the needed house-relative structure under a new install root. This is what the old installer did partially (it made apps/). But now the code expects these per-house paths:
 - `<house>/#.desktop/`
-- `<house>/*.monads/*.livedesk-taskbar/`
+- `<house>/_.monads/_.livedesk-taskbar/`
 - `<house>/&.widgits/tile-picker/ops/`
 - `<house>/0.user-pal👤️/00.login-signup/`
 - `<house>/xyzfs/`
 
 So the install root IS the house root. I'll copy the needed subtrees preserving their relative locations:
-- `*.monads/*.livedesk-taskbar` (whole folder, source + layouts + build script)
+- `_.monads/_.livedesk-taskbar` (whole folder, source + layouts + build script)
 - `&.widgits/tile-picker/ops` (tp_desktop_window sources + +x) — maybe also `&.widgits/tile-picker/pieces` for font registry? Let me check: tp_desktop_window reads glyph from entity package dir; sprites via emoji ops in ops_dir. The `pieces/registry/fonts/ascii` is used by chtpm_rgb_render... tp_desktop_window uses colored squares / sprite.csv via emoji ops. Probably not needed for entity windows but harmless to copy pieces? The build for tile-picker copies system binaries from wsr-pal (prisc+x etc) into tile-picker/system/. Those system binaries ARE needed by entities (they run via prisc+x / renderer). Actually entities spawn ops scripts that call system binaries. Hmm.
 
-Let me keep it pragmatic. I'll copy the full `&.widgits/tile-picker` tree (4MB) which includes ops sources, +x, system binaries, pieces, glyph registry. And `*.monads/*.livedesk-taskbar` full tree (920K). And `0.user-pal👤️/00.login-signup` (1.5M, strip users/sessions/proof). Plus fresh `#.desktop` config, `xyzfs/`, `paths.pdl`, `button.sh`.
+Let me keep it pragmatic. I'll copy the full `&.widgits/tile-picker` tree (4MB) which includes ops sources, +x, system binaries, pieces, glyph registry. And `_.monads/_.livedesk-taskbar` full tree (920K). And `0.user-pal👤️/00.login-signup` (1.5M, strip users/sessions/proof). Plus fresh `#.desktop` config, `xyzfs/`, `paths.pdl`, `button.sh`.
 
 I'll compile in place:
 - khtpm pair via `build_khtpm_strip.sh` (needs gcc + X11 headers) ✓
@@ -8714,7 +8714,7 @@ So the design is coherent:
 - login app at `<root>/0.user-pal👤️/00.login-signup/` with its own users/, xyzfs/session.pdl, current_login.txt, ops/+x.
 - `<root>/xyzfs/` house-level (session.pdl + users + bin).
 - `<root>/#.desktop/` config + runtime.
-- `<root>/*.monads/*.livedesk-taskbar/` taskbar.
+- `<root>/_.monads/_.livedesk-taskbar/` taskbar.
 - `<root>/&.widgits/tile-picker/` entity windows.
 
 Launcher: `<root>/button.sh` → run the parser via a local run script. I'll write a dedicated `run.sh` that launches the installed parser directly (with proper house root), avoiding the global pgrep-based kill of run_khtpm_strip.sh (which kills ALL khtpm on the machine — dangerous for the parallel dev install). I'll do a pidfile-based stop for just this install.
@@ -9029,7 +9029,7 @@ I have the full picture now. Here's a concise plan + the relay sequence I'll bak
 Now let me write everything. Mark mapping done, design documented. Let me write the installer script, the pointer fix, a design doc, and the relay KPI harness.
 
 The installed layout: install root = a mini "house" with the same relative paths the code expects:
-- `<root>/*.monads/*.livedesk-taskbar/` (taskbar sources + layouts + build)
+- `<root>/_.monads/_.livedesk-taskbar/` (taskbar sources + layouts + build)
 - `<root>/&.widgits/tile-picker/ops/` (tp_desktop_window + emoji ops + system) — I'll copy the whole tile-picker tree minus dev junk
 - `<root>/0.user-pal👤️/00.login-signup/` (login app, fresh users/)
 - `<root>/#.desktop/` (config pdl files: livedesk_taskbar.pdl, livedesk_theme.pdl, livedesk_shortcuts.pdl, fresh runtime state)
@@ -9052,7 +9052,7 @@ Let me first re-check the tile-picker/system dir exists in dev (yes, 276K). And 
 
 Let me write the installer script. I'll make it robust.
 
-For the fresh `livedesk_taskbar.pdl`, I need to include working hq_menu commands. The parser reads hq_label, hq_menu_N_label/cmd. Default config has hq_menu_2 = hide-show-desks.sh (dev-only) and hq_menu_3 = xdg-open #.desktop (works). For a fresh install I'll keep hq_menu_1 = restart (`sh *.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh new`) — but that script kills ALL khtpm globally. Hmm. Better: write restart cmd as `sh <root>/button.sh restart`. I'll generate the pdl with the actual install root substituted. Actually simpler: keep hq_menu commands using relative paths from house root that exist in the install: restart → `sh *.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh new` is fine for the dev-era but global kill is bad. I'll instead point restart at `<root>/button.sh restart`. Since button.sh is at install root, relative `sh button.sh restart` from house root works. And dir → `sh -c "cd . && xdg-open #.desktop || nautilus #.desktop || open #.desktop"` works. And quit → `quit`.
+For the fresh `livedesk_taskbar.pdl`, I need to include working hq_menu commands. The parser reads hq_label, hq_menu_N_label/cmd. Default config has hq_menu_2 = hide-show-desks.sh (dev-only) and hq_menu_3 = xdg-open #.desktop (works). For a fresh install I'll keep hq_menu_1 = restart (`sh _.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh new`) — but that script kills ALL khtpm globally. Hmm. Better: write restart cmd as `sh <root>/button.sh restart`. I'll generate the pdl with the actual install root substituted. Actually simpler: keep hq_menu commands using relative paths from house root that exist in the install: restart → `sh _.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh new` is fine for the dev-era but global kill is bad. I'll instead point restart at `<root>/button.sh restart`. Since button.sh is at install root, relative `sh button.sh restart` from house root works. And dir → `sh -c "cd . && xdg-open #.desktop || nautilus #.desktop || open #.desktop"` works. And quit → `quit`.
 
 I'll generate pdl with the literal `button.sh` restart command (works because the manager runs commands from house_root, and button.sh is at house root). Good.
 
@@ -9066,7 +9066,7 @@ I'll write now.</think:6124c78e>Mapping complete. Summary of what I found, then 
 
 **What HARNECIENT is / dependencies:**
 - It's the **khtpm livedesk taskbar** (two-process X11 shell) + the **user-pal** account system + the **tile-picker entity window** (`tp_desktop_window`), all wired through `#.desktop/` config + `xyzfs/` storage.
-- The compiled C code resolves *everything* relative to one `house_root`. So a self-contained install isn't a flattened copy — it must **preserve the house-relative layout**: `*.monads/*.livedesk-taskbar/`, `&.widgits/tile-picker/ops/`, `0.user-pal👤️/00.login-signup/`, `#.desktop/`, `xyzfs/`. (This satisfies the portability rule in `dev-doc/03` — no fixed-depth climbs from the install script; paths come from `argv`/self-exe.)
+- The compiled C code resolves *everything* relative to one `house_root`. So a self-contained install isn't a flattened copy — it must **preserve the house-relative layout**: `_.monads/_.livedesk-taskbar/`, `&.widgits/tile-picker/ops/`, `0.user-pal👤️/00.login-signup/`, `#.desktop/`, `xyzfs/`. (This satisfies the portability rule in `dev-doc/03` — no fixed-depth climbs from the install script; paths come from `argv`/self-exe.)
 - Accounts: `USER cell → New User… → type id → type name`. Relay sequence verified in `USER_CREATION.md`.
 
 Now writing the installer:
@@ -9137,7 +9137,7 @@ Writing design docs first — full plan committed to disk before touching code
 ```json
 {
   "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/xyz-installer-dev/dev-doc/04.harnecient-fresh-install-design.md",
-  "content": "# 04. HARNECIENT — Fresh-Install Design (khtpm/livedesk era)\n\n> **Product name (provisional):** HARNECIENT\n> Previously called: \"livedesk-xyz\" → \"HQ\" → \"HAI-Q\"/\"hi-iq\"/\"haiku\" — all taken.\n> **Date:** 2026-08-12\n> **Status:** DESIGN (docs first, code second — written offline so work survives a disconnect)\n\n---\n\n## 1. What we are doing (one line)\n\nMake it so an end user runs **ONE script** and gets a completely fresh,\nfully self-contained install of the HARNECIENT desktop — the current\nkhtpm/livedesk taskbar + user-pal account system + entity windows — with a\nterminal shortcut to open it.\n\n---\n\n## 2. The old installer is obsolete (why we're rewriting, not patching)\n\n`xyzos-starter-install.sh` (install v1) predates the khtpm taskbar:\n\n| v1 assumed | Today's reality |\n|---|---|\n| The product is two apps: `00.login-signup` + `01.avatar-creation👤️` | The product is the whole **khtpm livedesk desktop** (parser + manager + layouts + user-pal + entity window + xyzfs) |\n| Taskbar was `tp_taskbar.c` | `tp_taskbar.c` is **retired/archived** (`LEGACY-ARCHIVE-20260811.zip`). The real taskbar is now `*.monads/*.livedesk-taskbar/ops/` — a **two-process** pair: `khtpm_strip_parser.c` (Xlib) forks `khtpm_taskbar_manager_main.c` (pure logic) |\n| Pointers point at `44.xyz❤️‍🔥️00.10` | House is now `44.xyz.01.00` — `pointers.pdl` is stale |\n| User creation is an app you open | User creation lives inside the **USER header cell** (`ACTIVATE:2` submenu, 2-stage cli-io) |\n| Installed layout: `apps/`, `app-store/` | Right shape is: preserve the **house-relative layout** the C code expects |\n\nSo: keep the spirit of v1 (read FROM dev tree, never write; non-destructive;\ncompile in place; KPI harness), but rebuild the payload around the khtpm\ndesktop.\n\n---\n\n## 3. Scope decision (locked by owner)\n\n- **Install target:** Full desktop — taskbar + user-pal ops + entity window +\n  xyzfs skeleton + config, all self-contained under one root.\n- **Self-contained:** copies everything it needs; works even if dev tree moves.\n  `house_root` is passed as argv / derived from self-exe (portability rule §7 of\n  `03.hardcoded-path-fragility-and-portability.md` — no fixed-depth `../..`\n  climbs in the installer).\n- **Install root:** flag-able (`--dest`, default `$HOME/harnecient`).\n- **Boot:** `<root>/button.sh` (launch khtpm parser with install root).\n- **Terminal shortcut:** `~/.local/bin/harnecient` (and `~/.local/bin/livedesk`\n  alias) opens it from a terminal.\n- **Testing:** relay-only KPI harness (no direct CLI), per house testing rules.\n\n---\n\n## 4. The installed layout (why it looks like the dev tree)\n\nThe C code resolves paths relative to **one `house_root`** passed to the parser\n(`argv[1]`) or recovered from `/proc/self/exe` (tile-picker). Verified in source:\n\n- `khtpm_strip_parser.c` line 1415: `g_house_root = argv[1]`, then joins\n  `#.desktop/*`, `*.monads/*.livedesk-taskbar/...`, plus rel paths.\n- `khtpm_taskbar_manager.c`: `house_root/#.desktop/livedesk_taskbar.pid`,\n  `.../livedesk_shortcuts.pdl`, `.../livedesk_theme.pdl`,\n  `.../livedesk_open.txt`, `.../livedesk-nav-claims/livedesk_nav_claims.txt`.\n  Reads login via `house_root/0.user-pal*/00.login-signup`.\n  Sessions at `house_root/xyzfs/users/<uuid>/home/livedesk/sessions`.\n- `tp_desktop_window.c` (`resolve_livedesk_paths`): hardcoding is **fixed-depth\n  from its own exe**, expecting `<root>/&.widgits/tile-picker/ops/+x/` — so the\n  tile-picker ops dir MUST sit at that same house-relative depth in the install.\n- `layout_path()` in parser: `*.monads/*.livedesk-taskbar/khtpm_strip_{header,bottom}.chtpm`\n  — layouts must sit at that same relative depth.\n\n**Consequence:** the install root IS a mini \"house\". We copy the needed\nsubtrees preserving their house-relative dir names (emoji dirs included):\n\n```\n<dest>/harnecient/                            <- install root = house_root\n├── button.sh                                 # boot HQ (launch parser, verify pid)\n├── paths.pdl                                 # pointer map (logical name -> real path)\n├── *.monads/*.livedesk-taskbar/              # taskbar: sources + layouts + build\n│   ├── khtpm_strip_header.chtpm\n│   ├── khtpm_strip_bottom.chtpm\n│   └── ops/                                  # parser/manager .c + build_khtpm_strip.sh\n├── &.widgits/tile-picker/ops/                # entity window + emoji/asset ops\n│   └── +x/                                   # tp_desktop_window.+x etc. (compiled in place)\n├── 0.user-pal👤️/00.login-signup/            # account system (fresh users/)\n│   ├── ops/                                  # userpal_*.c, build via its own scripts/build.sh\n│   └── system/                               # prisc+x, chtpm_parser_pal, renderer...\n├── #.desktop/                                # fresh config + runtime state\n│   ├── livedesk_taskbar.pdl\n│   ├── livedesk_theme.pdl\n│   └── livedesk_shortcuts.pdl\n└── xyzfs/                                    # guest session.pdl + empty users/ + bin/\n```\n\n---\n\n## 5. What gets copied (payload), and what's regenerated fresh\n\n### 5.1 Copy FROM dev tree (read-only)\n- `*.monads/*.livedesk-taskbar/` — whole tree (sources, layouts, build script,\n  design docs). Excludes nothing critical; small (~920K).\n- `&.widgits/tile-picker/ops/` — .c sources + stb_image.h/khtpm_core.h etc.\n- `&.widgits/tile-picker/system/` — the shared system binaries the login app's\n  build.sh produces/copies (prisc+x, chtpm_parser_pal, renderer, keyboard_input,\n  gl_mirror, default_op.txt).\n- `0.user-pal👤️/00.login-signup/` — app tree (ops sources, system sources,\n  pal/default_op/pieces). Dev state inside it is STRIPPED (5.3).\n\n### 5.2 Regenerated fresh (NOT copied — would carry dev identity)\n- `#.desktop/livedesk_taskbar.pdl` — config. Written fresh so hq-menu commands\n  point at install-local paths (restart = `sh button.sh restart`, dir = xdg-open\n  `#.desktop`, quit). `strip_y_offset` 50, `datetime_lang`. No dev-only\n  `$.crypts/...` commands.\n- `#.desktop/livedesk_theme.pdl` — fresh defaults (bg #000000, fg #00ff00).\n- `#.desktop/livedesk_shortcuts.pdl` — empty.\n- `xyzfs/session.pdl` — guest session (mode guest, no user), the same shape\n  the login app's own `button.sh` seeds.\n- `0.user-pal👤️/00.login-signup/current_login.txt` — empty.\n- `0.user-pal👤️/00.login-signup/xyzfs/session.pdl` — guest.\n- `0.user-pal👤️/00.login-signup/users/` — empty dir.\n- `<root>/xyzfs/users/` — empty dir. `<root>/xyzfs/bin/` — empty dir.\n\n### 5.3 Dev-only state stripped right after copy (mirror v1's \"stripping dev-only state\")\n- login app: `pieces/sessions/`, `proof/`, `test-harn-same/` removed; `users/*`\n  removed; `current_login.txt` emptied; `xyzfs/users/*` removed.\n- tile-picker: `scenarios/`, any proof/session junk removed (check on build).\n\n### 5.4 Compile in place (uses each component's own real build script)\n- Taskbar: `cd <root>/*.monads/*.livedesk-taskbar/ops && sh build_khtpm_strip.sh`\n- Tile-picker: compile `tp_desktop_window` (+ friends) in place:\n  `gcc -Wall -Wextra -O2 -o ops/+x/tp_desktop_window.+x ops/tp_desktop_window.c -lX11 -lXext -lGL -lGLX`\n  (needs X11 + GL dev headers; present on this machine).\n- Login: `cd <root>/0.user-pal👤️/00.login-signup && bash scripts/build.sh`\n  (builds system processes + userpal ops).\n\n---\n\n## 6. Runtime truth (what the installed desktop reads/writes)\n\nAll paths relative to install root `house_root`:\n\n| Program | Reads/Writes |\n|---|---|\n| parser | `#.desktop/khtpm_strip_frame_history.txt`, `#.desktop/livedesk_theme.pdl`, `#.desktop/livedesk_taskbar.pdl`, `#.desktop/livedesk_agent_relay.txt` (input), `#.desktop/strip_state.txt`, `#.desktop/strip_var_*.txt`, layouts |\n| manager | `#.desktop/livedesk_taskbar.pid`, `#.desktop/livedesk_shortcuts.pdl`, `#.desktop/livedesk_open.txt`, `#.desktop/livedesk-nav-claims/`, `#.desktop/strip_history.txt`; login via `0.user-pal*/00.login-signup`; sessions via `xyzfs/users/<uuid>/home/livedesk/sessions`; entities via `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x` |\n| tp_desktop_window | `&.widgits/tile-picker/ops/+x/` for own location + emoji/asset ops; stores positions/packages in session dirs |\n\nAccount creation shells out to `0.user-pal👤️/00.login-signup/ops/+x/userpal_*.+x`\nwith `cd \"<login_root>\"` + `PRISC_PROJECT_ROOT` (the `cd` is REQUIRED — real bug,\nsee `USER_CREATION.md`).\n\n---\n\n## 7. Boot / launcher design\n\n`<root>/button.sh` (self-contained; MUST NOT reuse run_khtpm_strip.sh's global\n`pgrep -f` kill — that sweeps OTHER installs' khtpm processes too):\n\n```\nactions:\n  start   (default)  build-if-stale? (no — installer already built), launch parser:\n                     setsid env DISPLAY=... <root>/*.monads/*.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x <root>\n                     write <root>/#.desktop/harnecient.pid, depend on parser's own pidfile\n                     pgrep-confirm real pid, print log path\n  status              show installed parser/manager pids for THIS root only\n  stop               TERM the parser (+ its child manager), then KILL fallback; cleanup entities?\n  restart            stop + start\n  help\n```\n\nTerminal shortcut script `~/.local/bin/harnecient` (and `~/.local/bin/livedesk`):\n`exec <root>/button.sh` (foreground, shows live logs in the terminal).\n\nNote: `khtpm_strip_parser.c` writes its own pidfile\n`#.desktop/livedesk_taskbar.pid` (per-house-root) and tp_desktop_window's\n`ensure_taskbar_running()` checks the same — so multiple installs coexist; any\n\"which taskbar is this\" helper must match cmdline + house_root, NOT bare pgrep.\n\n---\n\n## 8. KPI harness — relay-only (house testing rule)\n\nNew harness `%.harnesses/install-harnecient/` (live in house root, next to the\nexisting `install-xyzos`), driving the INSTALLED copy only through\n`<root>/#.desktop/livedesk_agent_relay.txt` via prov nav.sh, i.e. the same\nbare-decimal contract as `#.desktop/harnesses/khtpm-livedesk-taskbar/nav.sh`.\n\nKPIs:\n- **K1 — clean install:** run installer with dest=/tmp temp home → assert layout\n  exists (`button.sh`, `*.monads/*.livedesk-taskbar/`, `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x`,\n  `0.user-pal*/00.login-signup/`, `#.desktop/*`), binaries compiled,\n  `current_login.txt` empty, guest session.pdl.\n- **K2 — boot + signup via relay:** `esc` → `nav 2` (USER) → Return (New User…) →\n  Return (arm typing) → `type alice` → Return → `type Alice` → Return. Assert:\n  `0.user-pal👤️/00.login-signup/users/alice/profile.txt`, `xyzfs/users/<uuid>/`\n  (meta.txt, home/, projects/), `current_login.txt` auto-login, header shows\n  `username` label.\n- **K3 — persistence/shutdown:** stop cleanly; restart; user still there,\n  frame renders.\n\nHarness output: `proof/k1-…/`, `proof/k2-…/`, frame-history excerpts, relay log,\nfilesystem proof (same format as `install-xyzos`).\n\n---\n\n## 9. Phases / execution order (build after this doc is reviewed)\n\n1. **Phase 0 — write this design doc + user-quick update.** (DONE here.)\n2. **Phase 1 — pointer + installer script.** Fix `pointers.pdl` →\n   `yz.muchiverse/44.xyz.01.00`. Write `xyz-installer-dev/harnecient-install.sh`\n   per §4–§6 with `--dest` flag, non-destructive (refuse if dest exists),\n   compile-in-place, fresh-state regeneration, terminal-shortcut install.\n   Validate by dry listing + a real install into /tmp.\n3. **Phase 2 — KPI harness.** `%.harnesses/install-harnecient/` per §8.\n   Run K1/K2/K3 on a /tmp install; capture proof.\n4. **Phase 3 — docs/rollout.** Update `user-quick.txt`, note gitlet\n   versioning still-future; document real-install command + terminal shortcut.\n5. **Phase 4 — follow-ups (not in this pass):** avatar-creation app hookup,\n   cross-machine/Windows port story, external-asset resolution (§6 of doc 03),\n   self-update via gitlet.\n\n---\n\n## 10. Risks / things to verify while building (not assumed)\n\n1. **Parser pidfile/`ensure_taskbar_running` interplay** — entity window may\n   auto-launch the taskbar; ensure installed launcher doesn't conflict with a\n   running dev-instance on the same DISPLAY (per-house pidfile should isolate;\n   verify two installs coexist on one display).\n2. **GL/GLX dev headers** required to compile tp_desktop_window — present here,\n   must be documented as a build dependency.\n3. **Login `system/prisc+x.c` etc.** only exist as SOURCE in the login app;\n   `scripts/build.sh` compiles them locally (no shared-ops download). Coping\n   whole login subtree then building must work offline.\n4. **Emoji dir names in bash** (`0.user-pal👤️`, `❤️‍🔥️`, `*.monads/*.livedesk-taskbar`)\n   — always quote; use robust globs; never hardcode these in the installer\n   beyond what source code already requires.\n5. **`run_khtpm_strip.sh` global kill** — DO NOT reuse for the installed\n   launcher; scope stop/status/pgrep to this root's own cmdline + pidfile.\n\n---\n\n## 11. What we call things (naming, locked 2026-08-12)\n\n- **Product:** HARNECIENT (provisional; supersedes HQ / HAI-Q / hi-iq / haiku —\n  all taken).\n- **Install dirs:** `$HOME/harnecient/` (flag-overridable), boot `button.sh`.\n- **Terminal shortcut:** `harnecient` and `livedesk` in `~/.local/bin`.\n- The taskbar component remains \"livedesk\" / the KHTPM strip; \"HARNECIENT\"\n  names the whole installable desktop.\n\n---\n\n*End 04.harnecient-fresh-install-design.md — next agent: read §9, start Phase 1.*"
+  "content": "# 04. HARNECIENT — Fresh-Install Design (khtpm/livedesk era)\n\n> **Product name (provisional):** HARNECIENT\n> Previously called: \"livedesk-xyz\" → \"HQ\" → \"HAI-Q\"/\"hi-iq\"/\"haiku\" — all taken.\n> **Date:** 2026-08-12\n> **Status:** DESIGN (docs first, code second — written offline so work survives a disconnect)\n\n---\n\n## 1. What we are doing (one line)\n\nMake it so an end user runs **ONE script** and gets a completely fresh,\nfully self-contained install of the HARNECIENT desktop — the current\nkhtpm/livedesk taskbar + user-pal account system + entity windows — with a\nterminal shortcut to open it.\n\n---\n\n## 2. The old installer is obsolete (why we're rewriting, not patching)\n\n`xyzos-starter-install.sh` (install v1) predates the khtpm taskbar:\n\n| v1 assumed | Today's reality |\n|---|---|\n| The product is two apps: `00.login-signup` + `01.avatar-creation👤️` | The product is the whole **khtpm livedesk desktop** (parser + manager + layouts + user-pal + entity window + xyzfs) |\n| Taskbar was `tp_taskbar.c` | `tp_taskbar.c` is **retired/archived** (`LEGACY-ARCHIVE-20260811.zip`). The real taskbar is now `_.monads/_.livedesk-taskbar/ops/` — a **two-process** pair: `khtpm_strip_parser.c` (Xlib) forks `khtpm_taskbar_manager_main.c` (pure logic) |\n| Pointers point at `44.xyz❤️‍🔥️00.10` | House is now `44.xyz.01.00` — `pointers.pdl` is stale |\n| User creation is an app you open | User creation lives inside the **USER header cell** (`ACTIVATE:2` submenu, 2-stage cli-io) |\n| Installed layout: `apps/`, `app-store/` | Right shape is: preserve the **house-relative layout** the C code expects |\n\nSo: keep the spirit of v1 (read FROM dev tree, never write; non-destructive;\ncompile in place; KPI harness), but rebuild the payload around the khtpm\ndesktop.\n\n---\n\n## 3. Scope decision (locked by owner)\n\n- **Install target:** Full desktop — taskbar + user-pal ops + entity window +\n  xyzfs skeleton + config, all self-contained under one root.\n- **Self-contained:** copies everything it needs; works even if dev tree moves.\n  `house_root` is passed as argv / derived from self-exe (portability rule §7 of\n  `03.hardcoded-path-fragility-and-portability.md` — no fixed-depth `../..`\n  climbs in the installer).\n- **Install root:** flag-able (`--dest`, default `$HOME/harnecient`).\n- **Boot:** `<root>/button.sh` (launch khtpm parser with install root).\n- **Terminal shortcut:** `~/.local/bin/harnecient` (and `~/.local/bin/livedesk`\n  alias) opens it from a terminal.\n- **Testing:** relay-only KPI harness (no direct CLI), per house testing rules.\n\n---\n\n## 4. The installed layout (why it looks like the dev tree)\n\nThe C code resolves paths relative to **one `house_root`** passed to the parser\n(`argv[1]`) or recovered from `/proc/self/exe` (tile-picker). Verified in source:\n\n- `khtpm_strip_parser.c` line 1415: `g_house_root = argv[1]`, then joins\n  `#.desktop/*`, `_.monads/_.livedesk-taskbar/...`, plus rel paths.\n- `khtpm_taskbar_manager.c`: `house_root/#.desktop/livedesk_taskbar.pid`,\n  `.../livedesk_shortcuts.pdl`, `.../livedesk_theme.pdl`,\n  `.../livedesk_open.txt`, `.../livedesk-nav-claims/livedesk_nav_claims.txt`.\n  Reads login via `house_root/0.user-pal*/00.login-signup`.\n  Sessions at `house_root/xyzfs/users/<uuid>/home/livedesk/sessions`.\n- `tp_desktop_window.c` (`resolve_livedesk_paths`): hardcoding is **fixed-depth\n  from its own exe**, expecting `<root>/&.widgits/tile-picker/ops/+x/` — so the\n  tile-picker ops dir MUST sit at that same house-relative depth in the install.\n- `layout_path()` in parser: `_.monads/_.livedesk-taskbar/khtpm_strip_{header,bottom}.chtpm`\n  — layouts must sit at that same relative depth.\n\n**Consequence:** the install root IS a mini \"house\". We copy the needed\nsubtrees preserving their house-relative dir names (emoji dirs included):\n\n```\n<dest>/harnecient/                            <- install root = house_root\n├── button.sh                                 # boot HQ (launch parser, verify pid)\n├── paths.pdl                                 # pointer map (logical name -> real path)\n├── _.monads/_.livedesk-taskbar/              # taskbar: sources + layouts + build\n│   ├── khtpm_strip_header.chtpm\n│   ├── khtpm_strip_bottom.chtpm\n│   └── ops/                                  # parser/manager .c + build_khtpm_strip.sh\n├── &.widgits/tile-picker/ops/                # entity window + emoji/asset ops\n│   └── +x/                                   # tp_desktop_window.+x etc. (compiled in place)\n├── 0.user-pal👤️/00.login-signup/            # account system (fresh users/)\n│   ├── ops/                                  # userpal_*.c, build via its own scripts/build.sh\n│   └── system/                               # prisc+x, chtpm_parser_pal, renderer...\n├── #.desktop/                                # fresh config + runtime state\n│   ├── livedesk_taskbar.pdl\n│   ├── livedesk_theme.pdl\n│   └── livedesk_shortcuts.pdl\n└── xyzfs/                                    # guest session.pdl + empty users/ + bin/\n```\n\n---\n\n## 5. What gets copied (payload), and what's regenerated fresh\n\n### 5.1 Copy FROM dev tree (read-only)\n- `_.monads/_.livedesk-taskbar/` — whole tree (sources, layouts, build script,\n  design docs). Excludes nothing critical; small (~920K).\n- `&.widgits/tile-picker/ops/` — .c sources + stb_image.h/khtpm_core.h etc.\n- `&.widgits/tile-picker/system/` — the shared system binaries the login app's\n  build.sh produces/copies (prisc+x, chtpm_parser_pal, renderer, keyboard_input,\n  gl_mirror, default_op.txt).\n- `0.user-pal👤️/00.login-signup/` — app tree (ops sources, system sources,\n  pal/default_op/pieces). Dev state inside it is STRIPPED (5.3).\n\n### 5.2 Regenerated fresh (NOT copied — would carry dev identity)\n- `#.desktop/livedesk_taskbar.pdl` — config. Written fresh so hq-menu commands\n  point at install-local paths (restart = `sh button.sh restart`, dir = xdg-open\n  `#.desktop`, quit). `strip_y_offset` 50, `datetime_lang`. No dev-only\n  `$.crypts/...` commands.\n- `#.desktop/livedesk_theme.pdl` — fresh defaults (bg #000000, fg #00ff00).\n- `#.desktop/livedesk_shortcuts.pdl` — empty.\n- `xyzfs/session.pdl` — guest session (mode guest, no user), the same shape\n  the login app's own `button.sh` seeds.\n- `0.user-pal👤️/00.login-signup/current_login.txt` — empty.\n- `0.user-pal👤️/00.login-signup/xyzfs/session.pdl` — guest.\n- `0.user-pal👤️/00.login-signup/users/` — empty dir.\n- `<root>/xyzfs/users/` — empty dir. `<root>/xyzfs/bin/` — empty dir.\n\n### 5.3 Dev-only state stripped right after copy (mirror v1's \"stripping dev-only state\")\n- login app: `pieces/sessions/`, `proof/`, `test-harn-same/` removed; `users/*`\n  removed; `current_login.txt` emptied; `xyzfs/users/*` removed.\n- tile-picker: `scenarios/`, any proof/session junk removed (check on build).\n\n### 5.4 Compile in place (uses each component's own real build script)\n- Taskbar: `cd <root>/_.monads/_.livedesk-taskbar/ops && sh build_khtpm_strip.sh`\n- Tile-picker: compile `tp_desktop_window` (+ friends) in place:\n  `gcc -Wall -Wextra -O2 -o ops/+x/tp_desktop_window.+x ops/tp_desktop_window.c -lX11 -lXext -lGL -lGLX`\n  (needs X11 + GL dev headers; present on this machine).\n- Login: `cd <root>/0.user-pal👤️/00.login-signup && bash scripts/build.sh`\n  (builds system processes + userpal ops).\n\n---\n\n## 6. Runtime truth (what the installed desktop reads/writes)\n\nAll paths relative to install root `house_root`:\n\n| Program | Reads/Writes |\n|---|---|\n| parser | `#.desktop/khtpm_strip_frame_history.txt`, `#.desktop/livedesk_theme.pdl`, `#.desktop/livedesk_taskbar.pdl`, `#.desktop/livedesk_agent_relay.txt` (input), `#.desktop/strip_state.txt`, `#.desktop/strip_var_*.txt`, layouts |\n| manager | `#.desktop/livedesk_taskbar.pid`, `#.desktop/livedesk_shortcuts.pdl`, `#.desktop/livedesk_open.txt`, `#.desktop/livedesk-nav-claims/`, `#.desktop/strip_history.txt`; login via `0.user-pal*/00.login-signup`; sessions via `xyzfs/users/<uuid>/home/livedesk/sessions`; entities via `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x` |\n| tp_desktop_window | `&.widgits/tile-picker/ops/+x/` for own location + emoji/asset ops; stores positions/packages in session dirs |\n\nAccount creation shells out to `0.user-pal👤️/00.login-signup/ops/+x/userpal_*.+x`\nwith `cd \"<login_root>\"` + `PRISC_PROJECT_ROOT` (the `cd` is REQUIRED — real bug,\nsee `USER_CREATION.md`).\n\n---\n\n## 7. Boot / launcher design\n\n`<root>/button.sh` (self-contained; MUST NOT reuse run_khtpm_strip.sh's global\n`pgrep -f` kill — that sweeps OTHER installs' khtpm processes too):\n\n```\nactions:\n  start   (default)  build-if-stale? (no — installer already built), launch parser:\n                     setsid env DISPLAY=... <root>/_.monads/_.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x <root>\n                     write <root>/#.desktop/harnecient.pid, depend on parser's own pidfile\n                     pgrep-confirm real pid, print log path\n  status              show installed parser/manager pids for THIS root only\n  stop               TERM the parser (+ its child manager), then KILL fallback; cleanup entities?\n  restart            stop + start\n  help\n```\n\nTerminal shortcut script `~/.local/bin/harnecient` (and `~/.local/bin/livedesk`):\n`exec <root>/button.sh` (foreground, shows live logs in the terminal).\n\nNote: `khtpm_strip_parser.c` writes its own pidfile\n`#.desktop/livedesk_taskbar.pid` (per-house-root) and tp_desktop_window's\n`ensure_taskbar_running()` checks the same — so multiple installs coexist; any\n\"which taskbar is this\" helper must match cmdline + house_root, NOT bare pgrep.\n\n---\n\n## 8. KPI harness — relay-only (house testing rule)\n\nNew harness `%.harnesses/install-harnecient/` (live in house root, next to the\nexisting `install-xyzos`), driving the INSTALLED copy only through\n`<root>/#.desktop/livedesk_agent_relay.txt` via prov nav.sh, i.e. the same\nbare-decimal contract as `#.desktop/harnesses/khtpm-livedesk-taskbar/nav.sh`.\n\nKPIs:\n- **K1 — clean install:** run installer with dest=/tmp temp home → assert layout\n  exists (`button.sh`, `_.monads/_.livedesk-taskbar/`, `&.widgits/tile-picker/ops/+x/tp_desktop_window.+x`,\n  `0.user-pal*/00.login-signup/`, `#.desktop/*`), binaries compiled,\n  `current_login.txt` empty, guest session.pdl.\n- **K2 — boot + signup via relay:** `esc` → `nav 2` (USER) → Return (New User…) →\n  Return (arm typing) → `type alice` → Return → `type Alice` → Return. Assert:\n  `0.user-pal👤️/00.login-signup/users/alice/profile.txt`, `xyzfs/users/<uuid>/`\n  (meta.txt, home/, projects/), `current_login.txt` auto-login, header shows\n  `username` label.\n- **K3 — persistence/shutdown:** stop cleanly; restart; user still there,\n  frame renders.\n\nHarness output: `proof/k1-…/`, `proof/k2-…/`, frame-history excerpts, relay log,\nfilesystem proof (same format as `install-xyzos`).\n\n---\n\n## 9. Phases / execution order (build after this doc is reviewed)\n\n1. **Phase 0 — write this design doc + user-quick update.** (DONE here.)\n2. **Phase 1 — pointer + installer script.** Fix `pointers.pdl` →\n   `yz.muchiverse/44.xyz.01.00`. Write `xyz-installer-dev/harnecient-install.sh`\n   per §4–§6 with `--dest` flag, non-destructive (refuse if dest exists),\n   compile-in-place, fresh-state regeneration, terminal-shortcut install.\n   Validate by dry listing + a real install into /tmp.\n3. **Phase 2 — KPI harness.** `%.harnesses/install-harnecient/` per §8.\n   Run K1/K2/K3 on a /tmp install; capture proof.\n4. **Phase 3 — docs/rollout.** Update `user-quick.txt`, note gitlet\n   versioning still-future; document real-install command + terminal shortcut.\n5. **Phase 4 — follow-ups (not in this pass):** avatar-creation app hookup,\n   cross-machine/Windows port story, external-asset resolution (§6 of doc 03),\n   self-update via gitlet.\n\n---\n\n## 10. Risks / things to verify while building (not assumed)\n\n1. **Parser pidfile/`ensure_taskbar_running` interplay** — entity window may\n   auto-launch the taskbar; ensure installed launcher doesn't conflict with a\n   running dev-instance on the same DISPLAY (per-house pidfile should isolate;\n   verify two installs coexist on one display).\n2. **GL/GLX dev headers** required to compile tp_desktop_window — present here,\n   must be documented as a build dependency.\n3. **Login `system/prisc+x.c` etc.** only exist as SOURCE in the login app;\n   `scripts/build.sh` compiles them locally (no shared-ops download). Coping\n   whole login subtree then building must work offline.\n4. **Emoji dir names in bash** (`0.user-pal👤️`, `❤️‍🔥️`, `_.monads/_.livedesk-taskbar`)\n   — always quote; use robust globs; never hardcode these in the installer\n   beyond what source code already requires.\n5. **`run_khtpm_strip.sh` global kill** — DO NOT reuse for the installed\n   launcher; scope stop/status/pgrep to this root's own cmdline + pidfile.\n\n---\n\n## 11. What we call things (naming, locked 2026-08-12)\n\n- **Product:** HARNECIENT (provisional; supersedes HQ / HAI-Q / hi-iq / haiku —\n  all taken).\n- **Install dirs:** `$HOME/harnecient/` (flag-overridable), boot `button.sh`.\n- **Terminal shortcut:** `harnecient` and `livedesk` in `~/.local/bin`.\n- The taskbar component remains \"livedesk\" / the KHTPM strip; \"HARNECIENT\"\n  names the whole installable desktop.\n\n---\n\n*End 04.harnecient-fresh-install-design.md — next agent: read §9, start Phase 1.*"
 }
 ```
 

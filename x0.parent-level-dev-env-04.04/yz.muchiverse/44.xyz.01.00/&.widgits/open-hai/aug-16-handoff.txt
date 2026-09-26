@@ -197,7 +197,7 @@ needs its own top-level tab strip, not just a sidebar rearrangement.
 Direct instruction: "investigate how to turn the 'book text' dark like
 everything else."
 
-Real, confirmed location: *.monads/*.livedesk-taskbar/ops/
+Real, confirmed location: _.monads/_.livedesk-taskbar/ops/
 tp_desktop_window_rgb.c, the SHOW_TEXT_FILE relay handler's own popup
 window creation (~line 2286):
 
@@ -413,7 +413,7 @@ for a while. (but the bars are still there.)"
 Real investigation done this session (2026-08-16), real findings, NOT
 a fix — could not reproduce live in the time available:
 
-  - Checked *.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c's real
+  - Checked _.monads/_.livedesk-taskbar/ops/khtpm_strip_parser.c's real
     text-drawing path (strip_draw_utf8()) — XftColorAllocValue/
     XftColorFree are correctly PAIRED, called and freed every single
     text draw. Not leaking.

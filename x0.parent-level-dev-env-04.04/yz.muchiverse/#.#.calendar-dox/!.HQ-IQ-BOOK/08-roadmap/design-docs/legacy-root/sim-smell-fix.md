@@ -843,7 +843,7 @@ action now points at it. Confirmed honestly passing end-to-end.
 
 **Final verified state after all six fixes above, full house-wide sweep, 2026-08-20**: 7 of 18
 harnesses PASS for real - `civ-txt`, `my-biotech`, `my-chara-txt`, `my-lawyer`, `myne-qrypto/qtc`,
-`tactics-txt`, `*.START_BUTTON`. The remaining 11 `FAIL`s are ALL confirmed pre-existing and/or
+`tactics-txt`, `_.START_BUTTON`. The remaining 11 `FAIL`s are ALL confirmed pre-existing and/or
 already-known-pending, NOT fixed as part of this (and should not be benchmarked around either -
 each is a real, distinct thing worth someone's attention on its own, not this task's scope):
 - `0.user-pal👤️/00.login-signup` and `@.apps/text-editor-xyz` - two of the 20 projects in the "STEP 2

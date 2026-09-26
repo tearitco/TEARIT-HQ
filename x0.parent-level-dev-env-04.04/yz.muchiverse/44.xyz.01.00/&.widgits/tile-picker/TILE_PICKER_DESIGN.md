@@ -278,7 +278,7 @@ Verified live end-to-end against `m6_golddeity` (MUCHI_RANCHER): `GOTO:activitie
 (`tp_taskbar.c`, tab-bar only, predates the header strip and the real
 declarative-layout parser). That file is now fully retired and archived
 — the real, current taskbar is `khtpm_strip_parser.c` +
-`khtpm_taskbar_manager.c` under `*.monads/*.livedesk-taskbar/ops/`; see
+`khtpm_taskbar_manager.c` under `_.monads/_.livedesk-taskbar/ops/`; see
 that dir's own `README.md` and
 `#.#.calendar-dox/AU11-khtpm-gap-fixes.txt`. Kept below as an accurate
 historical record of the original build, not current guidance — the

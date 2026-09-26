@@ -45,7 +45,7 @@ handling:
   real `#ifdef _WIN32` branches (`FindFirstFileW`, `win_spawn_cwd`,
   `MultiByteToWideChar`) for the exact same job - these two new ops did
   not get that treatment and would need it before a Windows pass.
-- `*.monads/*.livedesk-taskbar/ops/tp_desktop_window_rgb.c` — real
+- `_.monads/_.livedesk-taskbar/ops/tp_desktop_window_rgb.c` — real
   `WIN_PX`/opacity fixes landed this session; unclear whether
   `tp_desktop_window_win.c` (its apparent Windows twin) received the
   equivalent fixes — needs a diff pass, not assumed in sync.

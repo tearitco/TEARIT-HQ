@@ -5,7 +5,7 @@ byte-identical, across multiple widget `ops/` dirs (found + confirmed
 via md5sum during the 2026-08-12 duplication-inventory pass):
 
 - `khtpm_css_parser.c` / `.h` — the `.chtpm` stylesheet parser, was a
-  hand copy in both `*.monads/*.livedesk-taskbar/ops/` (used by
+  hand copy in both `_.monads/_.livedesk-taskbar/ops/` (used by
   khtpm_strip_parser AND khtpm_hq_render/db-hq) and
   `&.widgits/events-hq/ops/`.
 - `stb_image_write.h` — same two consumers, PNG dump support.

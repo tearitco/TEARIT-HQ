@@ -255,7 +255,7 @@ Everything a session editor needs UI-wise already exists here. The work is
   placements then live under `desks/` (§4.9). The existing **palettes**
   cell is separate (the palette app) — `pals` is the owned-tile library, a
   distinct button.
-- **Dev folders are the STORE's catalog** (user, 2026-08-10): `*.monads`,
+- **Dev folders are the STORE's catalog** (user, 2026-08-10): `_.monads`,
   app/widget packages populate the store for selection; they are never a
   runtime home (see §4.8). Acquiring from the store copies the package into
   the user's pals registry.
@@ -329,7 +329,7 @@ building.
 
 **Entity OWNERSHIP (intent, 2026-08-10):** long-term the entity's permanent
 home is the USER's own livedesk storage, not a dev dir. Today entities sit
-in dev locations (`*.monads/*.muchi-pet/entities/…`,
+in dev locations (`_.monads/_.muchi-pet/entities/…`,
 `#.desktop/entities/…`) as scaffolding; super-long-term the user
 **downloads the entity from the "store"** and it lands **permanently in
 their own storage**. Consequences for the snapshot model:
@@ -430,7 +430,7 @@ K11 + harness): `#.livedesk/livedesk-report-2026-08-10.md`.
   `desk_NN` convention and keeps shell/tool paths safe). Emoji/space names
   would need a `name` field + spawn/glob changes — deferred.
 - **Desk pdl paths are HOUSE-RELATIVE** (portable save files, no machine
-  paths): `*.monads/*.muchi-pet/entities/...`. Spawn re-joins with
+  paths): `_.monads/_.muchi-pet/entities/...`. Spawn re-joins with
   `house_root`; the live registry `livedesk_open.txt` stays absolute (runtime
   state owned by the entity windows).
   > Superseded for sessions created after 2026-08-10: desk pdl `path=` points
@@ -439,7 +439,7 @@ K11 + harness): `#.livedesk/livedesk-report-2026-08-10.md`.
 ### 4.8 Runtime ownership — entities RUN from user xyzfs (2026-08-10)
 
 **The requirement (user, stated 2026-08-10):** what we test must be what
-ships. The dev folders (`*.monads/*.muchi-pet/entities/...`,
+ships. The dev folders (`_.monads/_.muchi-pet/entities/...`,
 `#.desktop/entities/...`) are dev-time fixtures — they do NOT exist for a
 user on independent cloud storage. The entity's canonical home is its
 session FULL copy in user xyzfs, and entities must RUN from that copy so

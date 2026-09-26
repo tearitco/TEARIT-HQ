@@ -11,7 +11,7 @@ ENT="$PWD"
 D="$ENT"
 while [ "$D" != "/" ] && [ ! -d "$D/xyzfs" ]; do D="$(dirname "$D")"; done
 HOUSE_ROOT="$D"
-BIN="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
+BIN="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
 # Gameplay menu (Civ I city options), NOT the standard right-click
 # menu.chtpm - see menu_gameplay.chtpm's own header comment.
 CHTPM="$ENT/menu_gameplay.chtpm"

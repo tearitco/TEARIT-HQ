@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
                 if (apply) {
                     char cmd[PATH_BUF * 3];
                     snprintf(cmd, sizeof(cmd),
-                             "'%s/*.monads/*.livedesk-taskbar/ops/+x/apply_theme_op.+x' '%s' '%s' '%s'",
+                             "'%s/_.monads/_.livedesk-taskbar/ops/+x/apply_theme_op.+x' '%s' '%s' '%s'",
                              house, house, g_hex[bg], g_hex[fg]);
                     (void)system(cmd);
                     return 0;

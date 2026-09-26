@@ -65,7 +65,7 @@ SHOW="$HOUSE/&.widgits/tile-picker/ops/+x/khtpm_show_text.+x"
 # to the dev-tree entity location, wrong once book-stack runs from pals.
 # PACKAGE_DIR is exported by meta.pdl's "Read" method and inherited
 # through every exec (prisc+x -> dispatch.sh -> this script) - use it.
-PKG="${PACKAGE_DIR:-$HOUSE/*.monads/*.book-stack/entities/book-stack}"
+PKG="${PACKAGE_DIR:-$HOUSE/_.monads/_.book-stack/entities/book-stack}"
 if [ -x "$SHOW" ]; then
     "$SHOW" "$PKG" "$TMP"
 else

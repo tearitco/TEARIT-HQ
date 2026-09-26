@@ -66,7 +66,7 @@ Img+blender as one 2D/3D app (piececraft-style camera), then DAW, then video. Iâ
 - Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/open-hai.chtpm.bootstrap (1-39)
 - Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/human-dev.md (261-315)
 - Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/open-hai/button.sh (1-100)
-- Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c (3477-3576)
+- Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c (3477-3576)
 - ListDir: 44.xyz.01.00/&.widgits/open-hai
 - Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/103.media-studio/103.img-editor/HOW2_IMAGE.md (1-40)
 - Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/human-dev.md (106-145)
@@ -76,18 +76,18 @@ Img+blender as one 2D/3D app (piececraft-style camera), then DAW, then video. Iâ
 - Search: launch_module
 - Search: write_chtpm|fprintf.*sidebar
 - Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/co-lab-hai/colab_hai_manager.c (479-558)
-- Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c (376-415)
-- Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c (17991-17895)
+- Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c (376-415)
+- Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c (17991-17895)
 - Search: toy.pdl
 - Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/toy.pdl
 - Search: static pid_t launch_module
 - Search: ^META
 - Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/button.sh (1-40)
-- Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c (488-537)
-- Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c (17971-17895)
-- Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c (3946-3985)
+- Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c (488-537)
+- Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c (17971-17895)
+- Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c (3946-3985)
 - Search: open-toy
-- Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c (3989-4028)
+- Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c (3989-4028)
 
 ## Assistant
 
@@ -96,7 +96,7 @@ Writing the combined img+3D spec and gold-std khtpm skeletons for img, DAW, and 
 ## Tools
 
 - Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/co-lab-hai/build.sh (1-14)
-- Edit: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c
+- Edit: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c
 - Read: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/co-lab-hai/colab_hai_manager.c (681-743)
 
 ## User

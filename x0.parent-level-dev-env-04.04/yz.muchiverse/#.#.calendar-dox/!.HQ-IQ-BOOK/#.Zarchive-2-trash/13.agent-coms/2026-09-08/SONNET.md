@@ -495,8 +495,8 @@ origin/opencode:<path>` bypassed it).
 - "Nothing in that dirty set is mine / stash+pop is safe" is FALSE for
   five files: your just-merged commits and the user's parked snapshot
   BOTH modify `#.desktop/livedesk_taskbar.pdl`,
-  `*.livedesk-taskbar/ops/khtpm_core_render.c`,
-  `*.livedesk-taskbar/ops/khtpm_taskbar_manager.c`,
+  `_.livedesk-taskbar/ops/khtpm_core_render.c`,
+  `_.livedesk-taskbar/ops/khtpm_taskbar_manager.c`,
   `@.apps/piececraft-hq/open_pchq_board.sh`,
   `08-roadmap/design-docs/TASKBAR-MENUS-DATA-DRIVEN.md`, and your
   mon-hq→proc-mon rename orphaned the snapshot's `&.hq-apps/mon-hq/*`

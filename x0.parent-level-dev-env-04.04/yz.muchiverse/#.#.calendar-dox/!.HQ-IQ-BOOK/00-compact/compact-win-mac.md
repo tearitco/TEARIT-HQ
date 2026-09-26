@@ -16,7 +16,7 @@ exists in 4 real app trees — `101.mutaclsym🧟‍♂️️19.00/ops/`,
 `@.apps/piececraft-hq/ops/` (plus stale copies inside two
 piececraft-xyz/piececraft-hq session dirs — those are runtime, not
 source). And 3 real `*_win.c` Windows-specific source files exist:
-`*.monads/*.livedesk-taskbar/ops/khtpm_strip_x11_win.c`,
+`_.monads/_.livedesk-taskbar/ops/khtpm_strip_x11_win.c`,
 `.../khtpm_strip_parser_win.c` (the livedesk taskbar strip's real Win32
 GDI reimplementation of the Xlib/Xft subset it needs), and
 `&.widgits/tile-picker/ops/tp_desktop_window_win.c`. Per
@@ -70,7 +70,7 @@ native Cocoa/Metal work has started or is currently planned.
 
 ## 3. The established porting pattern — copy this shape
 
-Reference example: `*.monads/*.livedesk-taskbar/ops/khtpm_strip_x11_win.c`
+Reference example: `_.monads/_.livedesk-taskbar/ops/khtpm_strip_x11_win.c`
 paired with `khtpm_strip_parser.c` — a small Win32 GDI file
 implementing just the Xlib/Xft subset (`Display`, `XEvent`, window +
 pixmap + text primitives) that the *shared, unmodified* parser/layout

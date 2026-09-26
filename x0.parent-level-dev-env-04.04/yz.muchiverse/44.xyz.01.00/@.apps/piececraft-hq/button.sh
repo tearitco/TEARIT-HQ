@@ -439,7 +439,7 @@ EOSTATE
             # a second one here (that was the "two board windows / two
             # projectors" bug). Terminal `run` still opens one for
             # convenience.
-            KHTPM_BIN="$HOUSE_DIR/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
+            KHTPM_BIN="$HOUSE_DIR/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
             BOARD_TPL="$SCRIPT_DIR/pchq-board.xhtpm"
             if [ -z "${PCHQ_ENGINE_MODE:-}" ] && [ -x "$KHTPM_BIN" ] && [ -f "$BOARD_TPL" ]; then
                 # projector build-on-demand

@@ -9,7 +9,7 @@ with the whole `archive/` folder; recoverable only via `git log
 F-19 is "bare XSetInputFocus on override_redirect does not deliver keys
 under Mutter" — the opposite direction of "do not steal the human."
 
-Target binary: `*.monads/*.livedesk-taskbar/ops/khtpm_entity_menu_render.c`
+Target binary: `_.monads/_.livedesk-taskbar/ops/khtpm_entity_menu_render.c`
 (+ `+x/khtpm_entity_menu_render.+x`).
 
 ---

@@ -225,7 +225,7 @@ static void do_run(const char *section, const char *relpath) {
     }
 
     char joined[PATH_BUF], absdir[PATH_BUF];
-    /* root_rel is relative to install_root (*.START_BUTTON) */
+    /* root_rel is relative to install_root (_.START_BUTTON) */
     snprintf(joined, sizeof(joined), "%s/%s/%s", install_root, root_rel, relpath);
     if (!realpath(joined, absdir)) {
         snprintf(absdir, sizeof(absdir), "%s", joined);

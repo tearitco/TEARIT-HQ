@@ -8,7 +8,7 @@ first** — this folder is the proof that it's real, not just theory.
 simplified stand-in. This is genuinely how the real network browser
 runs in the real house today, byte-for-byte:
 
-- **`*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c`** — the
+- **`_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c`** — the
   actual, complete, unmodified shared renderer (~18,000 lines). It also
   serves 7 other, unrelated apps in the real house (a database editor,
   a chat window, a palette picker...) — none of those code paths are

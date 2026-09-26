@@ -72,7 +72,7 @@ These docs support the main system:
 ├── &.widgits/open-hai/ (hai chat UI)
 ├── &.hq-apps/stats-hq/ (stats dashboard)
 ├── %.harnesses/harnecient-fsm/ (delegation tracking)
-└── *.monads/*.livedesk-taskbar/ (toolbar/process mgmt)
+└── _.monads/_.livedesk-taskbar/ (toolbar/process mgmt)
 ```
 
 ## Common Tasks
