@@ -32,21 +32,40 @@ OUT="${SRC}_$(date +%Y%m%d-%H%M%S).7z"
 
 rm -f ${SRC}_*.7z
 
-7z a -mx=5 "$OUT" "$SRC" \
-    -xr'!.git' \
-    -xr'!#.NNEST_ASSETS' \
-    -xr'!*.+x' -xr'!*.exe' -xr'!*.o' -xr'!*.a' -xr'!*.so' \
-    -xr'!*.mp3' \
-    -xr'!*.raw' -xr'!*.rgba32' \
-    -xr'!ascii_frames' \
-    -xr'!*.log' -xr'!*frame_history.txt' -xr'!gl_cli_out.txt' \
-    -xr'!node_modules' \
-    -xr'!history.txt' \
-    -xr'!entity_menu_history' -xr'!entity_menu_frame_*.txt' \
-    -xr'!strip_history.txt' -xr'!strip_ascii_pulse.txt' -xr'!strip_frame_changed.txt' \
-    -xr'!*.pulse.txt' -xr'!renderer_pulse.txt' -xr'!*_changed.txt' \
-    -xr'!*_ledger.txt' -xr'!pending_tx.txt' \
-    -xr'!*.seq' \
-    -xr'!*.frame.txt' \
-    -xr'!*.tmp'
+# REAL FIX 2026-09-24, direct live report ("ERROR: stat error for
+# .../livedesk_open.txt.tmp (No such file or directory)"): every open
+# entity window (khtpm_entity.c) atomic-writes livedesk_open.txt via a
+# write-then-rename through a .tmp scratch file - excluded above
+# (*.tmp), but 7z 16.02 still stat()s an entry during its directory-
+# scan pass BEFORE applying the exclude filter, so a .tmp file that
+# gets renamed away in the gap between scan and stat (routine on a
+# live house, worse right after a session restart's write burst) makes
+# 7z hard-fail instead of silently skipping it - not a torn-copy risk
+# (the excluded file was never going in the archive either way), just
+# a spurious exit. One retry is a real, sufficient fix: the same race
+# hitting twice in a row on two different files is not realistic.
+zip_once() {
+    7z a -mx=5 "$OUT" "$SRC" \
+        -xr'!.git' \
+        -xr'!#.NNEST_ASSETS' \
+        -xr'!*.+x' -xr'!*.exe' -xr'!*.o' -xr'!*.a' -xr'!*.so' \
+        -xr'!*.mp3' \
+        -xr'!*.raw' -xr'!*.rgba32' \
+        -xr'!ascii_frames' \
+        -xr'!*.log' -xr'!*frame_history.txt' -xr'!gl_cli_out.txt' \
+        -xr'!node_modules' \
+        -xr'!history.txt' \
+        -xr'!entity_menu_history' -xr'!entity_menu_frame_*.txt' \
+        -xr'!strip_history.txt' -xr'!strip_ascii_pulse.txt' -xr'!strip_frame_changed.txt' \
+        -xr'!*.pulse.txt' -xr'!renderer_pulse.txt' -xr'!*_changed.txt' \
+        -xr'!*_ledger.txt' -xr'!pending_tx.txt' \
+        -xr'!*.seq' \
+        -xr'!*.frame.txt' \
+        -xr'!*.tmp'
+}
+if ! zip_once; then
+    echo "rezip-house.sh: first pass hit a live-file race, retrying once..." >&2
+    rm -f "$OUT"
+    zip_once
+fi
 echo "OK $OUT"

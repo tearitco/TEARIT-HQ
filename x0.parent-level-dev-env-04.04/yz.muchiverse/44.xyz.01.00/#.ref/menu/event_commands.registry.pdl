@@ -218,6 +218,47 @@ COMMAND send_input
   PAL ecall
 END
 
+# send_window_key: append KEY_PRESSED: <code> the way entity_menu_history
+# is read. send_input above is unchanged and still writes the bare code.
+COMMAND send_window_key
+  LABEL Send Window Key
+  FIELD1 Relay file path (absolute):
+  FIELD2 Decimal key code:
+  PARAMS relay,key
+  TEMPLATE exec sh "$D/&.widgits/events-hq/ops/mr_send_window_key.sh" '{relay}' '{key}'
+END
+
+# advance_fact: add 1 to page_value or numeric_value. weight file
+# which=page|numeric chooses. Unknown which exits 1 and does not write.
+COMMAND advance_fact
+  LABEL Advance Fact
+  FIELD1 Facts file:
+  FIELD2 Weight file:
+  PARAMS facts,weight
+  TEMPLATE exec sh "$D/#.desktop/harnesses/two-facts/advance.sh" '{facts}' '{weight}'
+END
+
+# apply_range: NxN square from origin cell. A target cell inside it
+# subtracts 1 from that actor's page_value. Out of range changes nothing.
+COMMAND apply_range
+  LABEL Apply Range
+  FIELD1 Origin cell:
+  FIELD2 Target cell:
+  PARAMS origin,target,range,actor
+  TEMPLATE exec sh "$D/#.desktop/harnesses/two-facts/apply_range.sh" '{origin}' '{target}' '{range}' '{actor}' "$D/#.desktop/db_hq_actors.state.txt" "$D/&.widgits/db-hq/data/actors.pdl"
+END
+
+# read_receipt: copy one key=value line from a frame receipt into
+# variables.txt, and optionally set a switch to 1 or 0 so `if` can
+# branch. Does not describe or classify the frame. ai_* stays absent.
+COMMAND read_receipt
+  LABEL Read Receipt
+  FIELD1 Receipt path:
+  FIELD2 Key:
+  PARAMS receipt,key,var_name,match
+  TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_read_receipt.+x" "$ENT" "$D" '{receipt}' '{key}' '{var_name}' '{match}'
+END
+
 # ------------------------------------------------------------------
 # MESSAGE commands (Task 1, 2026-08-29 - docs: the 2do doc's Task 1
 # section, gap #0 design resolution). These compile to `exec cmd_N.sh`

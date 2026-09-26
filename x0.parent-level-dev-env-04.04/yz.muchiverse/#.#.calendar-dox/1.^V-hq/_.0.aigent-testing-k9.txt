@@ -184,6 +184,29 @@ one did.
   `strip_input_history.txt` `KEY_PRESSED:1002` did **not** move
   `unified_nav_focus` in the 2026-08-28 re-prove.
 
+**ADDENDUM 2026-09-23 (db-hq-pal — corrected the same day):**
+- How many clicks activate a row is `#.desktop/hq_ui.pdl`
+  `click_two_step`. Live value is `1`: first mouse click focuses,
+  second click activates. `0` is one click. Loaded by
+  `desktop_load_click_two_step()` into `g_click_two_step`. Mouse hits
+  go through `click_focus_then_activate()`. A window with
+  `class="single-click"` skips the setting. Keyboard Enter does not
+  read it: one Return calls `activate_focused()`.
+- `#.desktop/db_hq_history.txt` and `harnesses/db-hq/nav.sh` drive the
+  old `g_is_db_hq` path. `class="db-hq-pal"` leaves that path dormant.
+  Keys for this window go to
+  `#.desktop/entity_menu_history/<renderer-pid>.txt` as
+  `KEY_PRESSED: <decimal>` (Down=201, Up=200, Left=202, Right=203,
+  Enter=13, Esc=27). That mailbox is truncated when the renderer
+  starts. Review copy:
+  `&.hq-apps/db-hq-pal/debug/frames/session_frame_history.txt`.
+- Eight Downs and one Enter opened the States tab. Actors had not
+  been clicked under `click_two_step`. Do not treat that as a
+  list-arrow bug. An earlier sentence here said one activation locks
+  the sidebar. That was wrong.
+- `state/ui.txt_focus.txt` stays `focus_label=` empty on this window.
+  Focus names are stored for swatch tiles only.
+
 Principles
 ----------
 1) Test existing behavior first (regression baseline), then test new behavior.
@@ -1209,3 +1232,84 @@ reference table - now lives in `HARNESS-AUTHORING-GUIDE.md` (indexed in
 `INDEX.md`). Read that BEFORE designing any new harness, single-feature
 or multi-feature; this file remains the reference for the low-level
 injection/dump/frame-history mechanics themselves.
+
+UPDATE 2026-09-23 - the dock/taskbar STRIP has TWO SEPARATE input
+systems; the manager-relay forms (nav/hqcell/mgrcode) can flip its
+DATA but never open the real popup - use KEY_PRESSED arrow+Enter on
+the RENDERER's own relay instead, exactly like a real keyboard does
+------------------------------------------------------------------------
+**Real, direct incident this session, corrected after a live owner
+report ("i am able to navigate using arrows and open pals dropdown
+with one enter press") caught this doc's own first draft being
+wrong** - the first version of this entry claimed the renderer's
+`entity_menu_history/<pid>.txt` relay "does not work" for this window
+at all. That was a real mistake: it works fine. The failure was in
+WHICH relay line was tried, not the mechanism.
+
+**Two genuinely separate systems, know which one you're driving:**
+1. `nav.sh`'s digit-jump (`nav <n>`)/`hqcell <n>`/`mgrcode <code>`
+   forms all write to `#.desktop/strip_history.txt`, read ONLY by the
+   taskbar **manager** process (`khtpm_taskbar_manager_main.c`'s
+   `poll_strip_history()`). This reliably flips the MANAGER's own
+   `hq_open`/`n_hqitems` and republishes `#.desktop/strip_ui.txt` -
+   real, useful, confirmed live (`hqcell 6` took `n_hqitems` 0->31
+   instantly, correct content). **But the manager never touches the
+   RENDERER's own `g_default_active_scope_id`/`g_default_active_
+   scope_root`** - the renderer-local state `layout_dock_bar()` reads
+   to decide whether to lay out the dropdown rows and
+   `XCreateWindow`/`XMapRaised` the real popup (`dock_paint_menu()`,
+   `g_dock_menu_win`). Use this path ONLY to check the manager's own
+   data (`hi_N_*` in `strip_ui.txt`, `strip_var_hqitems.txt`) - it will
+   never produce a visible, screenshot-able popup, no matter how long
+   you poke at it.
+2. **The real, working path**: send `KEY_PRESSED:` lines to the
+   RENDERER's OWN per-PID relay, `#.desktop/entity_menu_history/
+   <pid>.txt` (find the pid via that same dir's most-recently-written
+   file, or `joystick_focused_pid.txt` while the window has real X
+   focus) - `203` (Right) / `202` (Left) walks focus across header
+   cells exactly like a physical arrow key, THEN `13` (Enter) activates
+   the focused cell via `activate_focused()`'s `ACTIVATE` branch
+   (~line 7760 `khtpm_core_render.c`) - the ONLY code path that
+   actually sets `g_default_active_scope_id` and creates the popup
+   window for this cell family. **Confirmed live, one arrow-walk + one
+   Enter, in a private Xephyr**: focus moved `[>]1.HQ` -> `[>]6.pals`
+   in 5 `KEY_PRESSED: 203` lines, then a single `KEY_PRESSED: 13`
+   created a brand-new `219x744` override-redirect popup window
+   (`g_dock_menu_win`) with the real 31-row pals list rendered inside
+   it, captured with `dump_frame_png_op` for a genuine pixel-level
+   check. This is the exact same mechanism a real keyboard drives - no
+   difference in kind, just relay instead of hardware.
+
+**What actually went wrong the first time, named plainly so it isn't
+repeated**: `MOUSE_EVENT: 1 <x> <y> <press>` was tried at more than a
+dozen guessed coordinates (including directly on the already-open "HQ"
+cell, which a working click should have visibly toggled closed) and
+produced zero effect every time - genuinely a dead end for THIS mouse-
+click form on THIS window family (still true, still worth knowing:
+`popup_handle_click()`'s hit-test likely wants coordinates in a frame
+raw relay clicks don't supply for a dock window - not root-caused, low
+priority now that the KEY_PRESSED path is confirmed working). The
+mistake was concluding "the relay is broken" from that one negative
+result instead of trying the OTHER real input shape (keys, not clicks)
+before writing it up - the exact "one failed result is not proof, retry
+clean" lesson this doc already states elsewhere (Rule 7 environs),
+just not applied to switching INPUT KIND, only to retrying the same
+kind. If keys fail too on a future window, try both before concluding
+anything is broken.
+
+**Recipe to reproduce, safely, without touching the live session:**
+build a scratch house root (every top-level entry symlinked to the
+real house EXCEPT `#.desktop`, which must be a real writable copy -
+see this session's commits for the exact shape), launch the manager
+and renderer directly against a private `Xephyr -ac -br -noreset
+-screen 2200x900 :<N>` display, bypassing `run_khtpm_strip.sh`
+entirely (its `kill_khtpm()` matches by PROCESS PATTERN across the
+WHOLE machine, not by display or house root - running it against a
+test house kills the real live session too, a repeat, documented
+risk). Get the renderer's real PID from a fresh `ps`/`joystick_
+focused_pid.txt` read, never from memory of an earlier command in the
+same session - killing the WRONG window's PID during Xephyr cleanup
+happened for real this session (recovered immediately via
+`run_khtpm_strip.sh new` on the real house, no data loss, but a real
+near-miss worth naming so the next agent double-checks with a fresh
+`ps` before every kill in a mixed test/real-session shell).

@@ -1,0 +1,12 @@
+<!-- Placeholder window. hq-ftp is not a transfer program yet.
+     The network menu row exists so the name is not only in a doc. -->
+<window label="hq-ftp" class="hq-ftp">
+  <page name="main">
+    <panel id="body" class="settings-block">
+      <text label="hq-ftp — LAN peer drop. Not built."/>
+      <text label="Two houses on the same LAN open this window. A file dragged onto one is offered to the other. No server in the middle."/>
+      <text label="Test later by running this on a second machine and dropping one file each way."/>
+      <text label="Design: 08-roadmap/design-docs/HQ-FTP.md"/>
+    </panel>
+  </page>
+</window>
