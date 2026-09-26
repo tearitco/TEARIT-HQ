@@ -11,11 +11,42 @@
 #include <unistd.h>
 #include <limits.h>
 #include <sys/stat.h>
+#ifdef _WIN32
+#include <direct.h>
+#else
+#include <limits.h>
+#endif
 
 #define MAX_LINE 2048
 #define MAX_PATH 4096
 #define PATH_BUF (MAX_PATH + 256)
 #define MAX_MENU 64
+
+/* Windows: realpath() does not exist (mingw has _fullpath), and the
+ * resolved path is backslash-separated, so a strrchr(buf,'/') walk
+ * would never find a separator and install_root would silently stay
+ * equal to the session dir. Both the call and the walk are wrapped
+ * rather than #ifdef'd at each use site, so the logic below reads the
+ * same on both platforms.
+ *
+ * _fullpath is a 3-arg function while realpath is 2-arg, so this has to
+ * be a real wrapper function, not a macro. */
+#ifdef _WIN32
+static int path_realpath(const char *in, char *out, size_t outsz) {
+    return _fullpath(out, in, outsz) != NULL;
+}
+static char *last_path_sep(char *p) {
+    char *s = strrchr(p, '\\');
+    char *f = strrchr(p, '/');
+    return (s && f) ? (s > f ? s : f) : (s ? s : f);
+}
+#else
+static int path_realpath(const char *in, char *out, size_t outsz) {
+    (void)outsz;
+    return realpath(in, out) != NULL;
+}
+static char *last_path_sep(char *p) { return strrchr(p, '/'); }
+#endif
 
 typedef struct {
     char label[160];
@@ -34,11 +65,11 @@ static void resolve_root(void) {
     } else {
         char cfg[PATH_BUF], resolved[MAX_PATH];
         snprintf(cfg, sizeof(cfg), "%s/config/start_button.pdl", project_root);
-        if (realpath(cfg, resolved)) {
-            char *slash = strrchr(resolved, '/');
+        if (path_realpath(cfg, resolved, sizeof(resolved))) {
+            char *slash = last_path_sep(resolved);
             if (slash) {
                 *slash = '\0';
-                slash = strrchr(resolved, '/');
+                slash = last_path_sep(resolved);
                 if (slash) {
                     *slash = '\0';
                     snprintf(install_root, sizeof(install_root), "%s", resolved);
@@ -227,15 +258,31 @@ static void do_run(const char *section, const char *relpath) {
     char joined[PATH_BUF], absdir[PATH_BUF];
     /* root_rel is relative to install_root (_.START_BUTTON) */
     snprintf(joined, sizeof(joined), "%s/%s/%s", install_root, root_rel, relpath);
-    if (!realpath(joined, absdir)) {
+    if (!path_realpath(joined, absdir, sizeof(absdir))) {
         snprintf(absdir, sizeof(absdir), "%s", joined);
     }
 
+    /* Handoff target probe. On Windows a target app is launched by
+     * button.ps1, not button.sh, so accepting only button.sh would make
+     * every Windows child look "missing" and silently refuse to launch
+     * (set_message + return, no handoff file written) - the menu would
+     * appear to do nothing at all. Probe both. */
     char button[PATH_BUF + 32];
+    int have_button = 0;
+#ifdef _WIN32
+    snprintf(button, sizeof(button), "%s/button.ps1", absdir);
+    have_button = (access(button, F_OK) == 0);
+    if (!have_button) {
+        snprintf(button, sizeof(button), "%s/button.sh", absdir);
+        have_button = (access(button, F_OK) == 0);
+    }
+#else
     snprintf(button, sizeof(button), "%s/button.sh", absdir);
-    if (access(button, X_OK) != 0 && access(button, F_OK) != 0) {
+    have_button = (access(button, X_OK) == 0) || (access(button, F_OK) == 0);
+#endif
+    if (!have_button) {
         char msg[MAX_LINE];
-        snprintf(msg, sizeof(msg), "No button.sh: %s", relpath);
+        snprintf(msg, sizeof(msg), "No button.sh/button.ps1: %s", relpath);
         set_message(msg);
         bump_screen();
         return;
