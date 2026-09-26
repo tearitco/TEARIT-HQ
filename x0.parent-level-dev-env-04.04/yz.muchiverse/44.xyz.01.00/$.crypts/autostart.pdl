@@ -27,4 +27,20 @@ MOUNT        | mountpoint           | /media/no/b7ced73c-5231-4462-b98d-64e38fe2
 # own real startup path now owns spawning every desk entity, cursword
 # included (see livedesk_ensure_cursword()'s own real dedup, unaffected
 # by this change).
-LAUNCH       | tool-bar             | '_.monads/_.livedesk-taskbar/ops/+x/khtpm_strip_parser.exe' '.'
+LAUNCH       | tool-bar              | '_.monads/_.livedesk-taskbar/ops/+x/khtpm_strip_parser.+x' '.'
+LAUNCH       | dsr_castle_a          | '_.monads/_.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_castle_a'
+LAUNCH       | dsr_bank_a1           | '_.monads/_.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_a1'
+LAUNCH       | dsr_bank_a2           | '_.monads/_.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_a2'
+LAUNCH       | dsr_store_a1          | '_.monads/_.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a1'
+LAUNCH       | dsr_store_a2          | '_.monads/_.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a2'
+LAUNCH       | dsr_store_a3          | '_.monads/_.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a3'
+LAUNCH       | dsr_store_a4          | '_.monads/_.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a4'
+LAUNCH       | dsr_population_a      | '_.monads/_.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_population_a'
+LAUNCH       | dsr_castle_b          | '_.monads/_.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_castle_b'
+LAUNCH       | dsr_bank_b1           | '_.monads/_.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_b1'
+LAUNCH       | dsr_bank_b2           | '_.monads/_.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_b2'
+LAUNCH       | dsr_store_b1          | '_.monads/_.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b1'
+LAUNCH       | dsr_store_b2          | '_.monads/_.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b2'
+LAUNCH       | dsr_store_b3          | '_.monads/_.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b3'
+LAUNCH       | dsr_store_b4          | '_.monads/_.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b4'
+LAUNCH       | dsr_population_b      | '_.monads/_.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x' 'xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_population_b'
