@@ -114,3 +114,6 @@ x0.parent-level-dev-env-04.04_*.7z
 # &.widgits/_shared-lib/system/prisc+x.c; no vendored per-project copy.
 **/system/prisc+x.c
 !**/_shared-lib/system/prisc+x.c
+# per-machine window override, do not commit your default_win_w/h - keep it local
+*.local.pdl
+# hq_ui.local.pdl per-machine window size, see MACHINE-SPECIFIC-WINDOW-SIZING-2026-09-25.md
