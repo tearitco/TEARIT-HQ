@@ -114,6 +114,27 @@ function Invoke-InstallDesktop {
     return 0
 }
 
+function Test-ExeLocked([string]$Path) {
+    # Windows holds an exclusive lock on a running .exe, so ld.exe cannot
+    # overwrite it and dies with "cannot open output file: Permission denied".
+    # Detect that up front so we can say so plainly instead of printing a
+    # linker error that looks like a toolchain problem.
+    if (-not (Test-Path -LiteralPath $Path)) { return $false }
+    try {
+        $fs = [System.IO.File]::Open($Path, 'Open', 'Write', 'None')
+        $fs.Close()
+        return $false
+    } catch { return $true }
+}
+
+function Write-LockedAdvice([string]$What) {
+    Write-Host "SKIP $What - locked by the running desktop."
+    Write-Host "     Windows will not let a linker overwrite a live .exe. Stop the strip"
+    Write-Host "     first, then re-run compile:"
+    Write-Host "         .\button.ps1 kill      # stop strip/parser/manager by name"
+    Write-Host "         .\button.ps1 compile  # then rebuild"
+}
+
 function Invoke-CompileKhtpm {
     # Current taskbar lives in _.monads/_.livedesk-taskbar/ops (Win: _.monads\...).
     # Linux build_khtpm_strip.sh is unchanged. We compile:
@@ -133,6 +154,11 @@ function Invoke-CompileKhtpm {
     $mgrMain = Join-Path $tbOps "khtpm_taskbar_manager_main.c"
     $mgrCore = Join-Path $tbOps "khtpm_taskbar_manager.c"
     if ((Test-Path -LiteralPath $mgrMain) -and (Test-Path -LiteralPath $mgrCore)) {
+        $mgrOut = Join-Path $tbOutDir "khtpm_taskbar_manager_main.exe"
+        if (Test-ExeLocked $mgrOut) {
+            Write-LockedAdvice "khtpm_taskbar_manager_main"
+            $rc = 1
+        } else {
         Write-Host "gcc khtpm_taskbar_manager_main.c + manager.c -> khtpm_taskbar_manager_main.exe"
         Push-Location -LiteralPath $tbOutDir
         try {
@@ -144,6 +170,7 @@ function Invoke-CompileKhtpm {
             if ($LASTEXITCODE -ne 0) { $rc = 1; Write-Host "FAIL khtpm_taskbar_manager_main" }
             else { Write-Host "OK khtpm_taskbar_manager_main" }
         } finally { Pop-Location }
+        }
     } else {
         Write-Host "MISS khtpm_taskbar_manager sources"
         $rc = 1
@@ -196,14 +223,61 @@ function Invoke-CompileKhtpm {
         # tp_desktop_window_rgb.c was deleted upstream in 19774224 (folded into
         # khtpm_core_render.c, which is X11-only: 0 _WIN32, 93 X11 refs).
         # khtpm_entity.c is its designated successor and is partially ported, but
-        # still includes POSIX sys/wait.h + sys/select.h, so it cannot build
-        # under MinGW without a real port. Keep the tracked binary and say so.
+        # its X11 includes are unconditional (lines 31-36) and it still needs
+        # POSIX sys/wait.h + sys/select.h, so it cannot build under MinGW without
+        # a real port. Keep the tracked binary.
         $pre = Join-Path $tbOutDir "tp_desktop_window_rgb.exe"
         if (Test-Path -LiteralPath $pre) {
-            Write-Host "SKIP tp_desktop_window_rgb - source deleted in 19774224, successor khtpm_entity.c still needs POSIX sys/wait.h; keeping tracked binary"
+            Write-Host "SKIP tp_desktop_window_rgb - source deleted in 19774224, successor khtpm_entity.c still needs X11 + POSIX sys/wait.h; keeping tracked binary"
         } else {
             Write-Host "FAIL tp_desktop_window_rgb - sources deleted upstream and no tracked binary"
             $rc = 1
+        }
+
+        # The rgb binary above is NOT rebuildable (its source never existed in
+        # git - it was untracked, so 19774224 could only remove it from disk).
+        # There IS a tracked, buildable Windows pal renderer, following the same
+        # _win convention as khtpm_strip_parser_win.c:
+        #   &.widgits/tile-picker/ops/tp_desktop_window_win.c  (765 lines, 0 X11)
+        # It reads the same pal protocol (package_dir argv[1], find_house_root,
+        # sprite.csv, history.txt, interact_relay.txt) and renders real sprite
+        # art. We build it here so the tree can reproduce a Windows pal renderer,
+        # but we deliberately do NOT point autostart.pdl at it: feature parity
+        # against the rgb binary is unproven, and swapping a working desktop on
+        # faith is not worth it. Inert until someone verifies it by eye.
+        $tpOps = ConvertTo-WinHousePath (Join-Path $HOUSE "&.widgits\tile-picker\ops")
+        $tpOutDir = ConvertTo-WinHousePath (Join-Path $tpOps "+x")
+        $tpWin = Join-Path $tpOps "tp_desktop_window_win.c"
+        $tpOut = Join-Path $tpOutDir "tp_desktop_window.exe"
+        if (Test-ExeLocked $tpOut) {
+            Write-LockedAdvice "tp_desktop_window (tile-picker pal renderer)"
+            $rc = 1
+        } elseif (Test-Path -LiteralPath $tpWin) {
+            Write-Host "gcc tp_desktop_window_win.c -> tp_desktop_window.exe (reproducible pal renderer, not wired into the pdl)"
+            # Same emoji-path hazard as the rgb build above: compile to TEMP, then copy.
+            $tpTmp = Join-Path $env:TEMP "tp_desktop_window_win_build.exe"
+            Push-Location -LiteralPath $tpOps
+            try {
+                # opengl32's import lib ships in mingw64\lib rather than the
+                # target triple dir on some MSYS2 layouts, so resolve it.
+                $ogl = (& gcc -print-file-name=libopengl32.a 2>$null)
+                $oglDir = $null
+                if ($ogl -and (Test-Path -LiteralPath $ogl)) { $oglDir = Split-Path $ogl -Parent }
+                $oglArgs = @()
+                if ($oglDir) { $oglArgs += @("-L", $oglDir) }
+                & gcc -Wall -O2 -mwindows @oglArgs -o $tpTmp ".\tp_desktop_window_win.c" `
+                    -lgdi32 -luser32 -lshell32 -lopengl32
+                if ($LASTEXITCODE -ne 0) { $rc = 1; Write-Host "FAIL tp_desktop_window (win pal renderer)" }
+                else {
+                    if (-not (Test-Path -LiteralPath $tpOutDir)) {
+                        New-Item -ItemType Directory -LiteralPath $tpOutDir -Force | Out-Null
+                    }
+                    Copy-Item -LiteralPath $tpTmp -Destination $tpOut -Force
+                    Write-Host "OK tp_desktop_window (win pal renderer)"
+                }
+            } finally { Pop-Location }
+        } else {
+            Write-Host "MISS tp_desktop_window_win.c"
         }
     }
     return $rc
