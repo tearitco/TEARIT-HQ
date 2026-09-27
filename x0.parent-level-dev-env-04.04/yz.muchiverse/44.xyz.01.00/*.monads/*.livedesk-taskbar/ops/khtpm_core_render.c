@@ -3785,6 +3785,48 @@ static int sprite_grid_visual_lines(const Elem *c, int w) {
     return lines < 1 ? 1 : lines;
 }
 
+/* REAL, NEW 2026-09-25 - class="sprite-flow": a run of CONSECUTIVE siblings
+ * that all carry it lay out as ONE wrapping sprite grid inside a <scrolllist>,
+ * using the exact same tile math (SPRITE_GRID_TILE_W/H, sprite_grid_cols) as
+ * <row class="sprite-grid-row"> above, so an app that emits a flat data-driven
+ * child list (a <repeat> over N content rows, where show="0" drops the
+ * non-matching ones from the tree entirely - see parse_element()'s own drop_elem
+ * path) gets a real wrapping media grid with NO wrapper element and NO
+ * per-app check anywhere in this file: the opt-in is the class name alone,
+ * and any window may use it. Without the class, a sprite item keeps its own
+ * full-width stacked slot exactly as before, so nothing else changes. */
+static int elem_is_sprite_flow(const Elem *c) {
+    if (!c) return 0;
+    if (strcmp(c->tag, "item") != 0 && strcmp(c->tag, "text") != 0) return 0;
+    if (!c->sprite[0]) return 0;
+    return elem_has_class((Elem *)c, "sprite-flow");
+}
+
+/* Length of the maximal consecutive sprite-flow run starting at child `start`. */
+static int sprite_flow_run_n(const Elem *container, int start) {
+    int n = 0;
+    if (!container) return 0;
+    for (int i = start; i < container->n_children; i++) {
+        if (!elem_is_sprite_flow(container->children[i])) break;
+        n++;
+    }
+    return n;
+}
+
+static int sprite_flow_lines(int n, int w) {
+    int cols = sprite_grid_cols(w);
+    int lines = n > 0 ? (n + cols - 1) / cols : 1;
+    return lines < 1 ? 1 : lines;
+}
+
+/* One flow run costs the same number of ROW_H units as the equivalent
+ * sprite-grid-row would - identical accounting, so scrollbar math, max_scroll
+ * and the visible-row band all stay in agreement with the grid path. */
+static int sprite_flow_span(int n, int w) {
+    int line_span = (SPRITE_GRID_TILE_H + ROW_H - 1) / ROW_H;
+    return sprite_flow_lines(n, w) * line_span;
+}
+
 /* REAL, NEW 2026-09-12 (NETWORK-BROWSER-VIDEO-V3-DESIGN.md §2/§2.3) - a
  * canvas INSIDE a <scrolllist> gets a real multi-row span so the live
  * video surface is scrollable content, not a 1-row sliver. Frame height
@@ -3916,6 +3958,32 @@ static void layout_scroll_sprite_grid_row(Elem *row, int x, int y, int w, int h_
     }
 }
 
+static void layout_scroll_sprite_flow(Elem *container, int start, int n, int x, int y, int w, int visible, int *out_lo, int *out_hi) {
+    int col = 0, line = 0;
+    int cols = sprite_grid_cols(w);
+    int tile_w = (cols > 0) ? (w / cols) : SPRITE_GRID_TILE_W;
+    int tile_h = SPRITE_GRID_TILE_H;
+    if (tile_w < SPRITE_GRID_TILE_W) tile_w = SPRITE_GRID_TILE_W;
+    for (int k = 0; k < n; k++) {
+        Elem *t = container->children[start + k];
+        t->w = tile_w;
+        t->h = tile_h;
+        t->x = x + col * tile_w;
+        t->y = visible ? (y + line * tile_h) : -100000;
+        css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
+        if (visible && strcmp(t->tag, "item") == 0) {
+            t->nav_index = ++g_n_nav;
+            g_nav[g_n_nav - 1] = t;
+            if (*out_lo == 0) *out_lo = t->nav_index;
+            *out_hi = t->nav_index;
+        } else {
+            t->nav_index = 0;
+        }
+        col++;
+        if (col >= cols) { col = 0; line++; }
+    }
+}
+
 static void layout_scroll_region(Elem *container, int x, int y, int w, int h, int *scroll, int *out_lo, int *out_hi) {
     *out_lo = 0; *out_hi = 0;
     if (!container || h <= 0) return;
@@ -3925,6 +3993,12 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
     int inner_w = w;
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
+        if (elem_is_sprite_flow(c)) {
+            int n = sprite_flow_run_n(container, i);
+            total += sprite_flow_span(n, w);
+            i += n - 1;
+            continue;
+        }
         if (strcmp(c->tag, "item") == 0 || strcmp(c->tag, "text") == 0 ||
             strcmp(c->tag, "cli_io") == 0 || strcmp(c->tag, "text_area") == 0 ||
             strcmp(c->tag, "canvas") == 0 || strcmp(c->tag, "bar") == 0 ||
@@ -3963,6 +4037,15 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
     int row = 0;
     for (int i = 0; i < container->n_children; i++) {
         Elem *c = container->children[i];
+        if (elem_is_sprite_flow(c)) {
+            int n = sprite_flow_run_n(container, i);
+            int span = sprite_flow_span(n, inner_w);
+            int run_visible = (row + span > *scroll && row < *scroll + visible_rows);
+            layout_scroll_sprite_flow(container, i, n, x, content_y + (row - *scroll) * ROW_H, inner_w, run_visible, out_lo, out_hi);
+            row += span;
+            i += n - 1;
+            continue;
+        }
         int is_grid = scroll_is_sprite_grid_row(c);
         /* a canvas inside a scroll window is a real content row too
          * (V3 video): same clip rules + own span from the receipt */
