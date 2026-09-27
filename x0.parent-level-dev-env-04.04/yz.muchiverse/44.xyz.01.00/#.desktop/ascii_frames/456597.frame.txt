@@ -1,0 +1,9 @@
+--- menu.chtpm  pid 456597  2026-09-27 06:48:00 ---
+--- page: main ---
+    [>] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Act
+    [ ] 7. Cli-io: 

@@ -1,0 +1,14 @@
+--- events-hq.xhtpm  pid 456180  2026-09-27 06:47:15 ---
+--- page: main ---
+terumon_001_ember
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+          Trigger
+          (unset)
+      [ ] 5. + Add Command
+      [ ] 6. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)

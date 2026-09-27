@@ -1,0 +1,42 @@
+
+=== events-hq.xhtpm pid 454320  2026-09-27 06:39:45 ===
+--- events-hq.xhtpm  pid 454320  2026-09-27 06:39:45 ---
+--- page: main ---
+      [>] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+          Trigger
+      [ ] 4. + Add Command
+      [ ] 5. Play
+
+=== events-hq.xhtpm pid 454320  2026-09-27 06:39:45 ===
+--- events-hq.xhtpm  pid 454320  2026-09-27 06:39:45 ---
+--- page: main ---
+terumon_001_ember
+      [>] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+          Trigger
+          (unset)
+      [ ] 5. + Add Command
+      [ ] 6. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 454320  2026-09-27 06:39:47 ===
+--- events-hq.xhtpm  pid 454320  2026-09-27 06:39:47 ---
+--- page: main ---
+terumon_001_ember
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+          Trigger
+          (unset)
+      [ ] 5. + Add Command
+      [ ] 6. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
