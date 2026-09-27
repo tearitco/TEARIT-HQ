@@ -485,6 +485,81 @@ playrm, user) checked before it lands.
     I have not observed this happening; it is a latent risk only.
 
 ================================================================================
+## B.2 BACKSPACE + B.3 STOLEN DIGITS — FIXED AND PROVEN 2026-09-26 17:45
+================================================================================
+
+*** BOTH FIXED, VERIFIED LIVE, committed to kilo. ***
+*** NOT a Windows bug — this class fails identically on Linux. Windows testing
+    merely reached it first, because until the previous fix agy did not run on
+    Windows at all. Two separate classes of bug, not one. ***
+
+THE ANSWER WAS ALREADY IN THE HOUSE. This pass began by looking for an
+interact-mode signal, and nearly went to build a new shared helper for one.
+The signal already existed and one sibling manager already used it:
+
+  pieces/display/active_gui_is_typing.txt
+    chtpm_parser.c export_active_index() :2259 writes it EVERY FRAME (it is
+    called from compose_frame(), so it cannot go stale). "1" = the focused
+    element is genuinely active and accepting keystrokes. "0" = merely
+    focused. Its own comment cites 2fix-july6.txt bug 3.
+
+  wraith-alpha_manager.c is the ONLY manager that reads it
+  (sync_active_gui_index_from_display() :6247, defaulting to 0 as the safe
+  fallback). The other seven -- agy, cpp-llm, fuzz-op, gem-dev, groq-ollama,
+  op-ed, slop-ed-dev -- read only active_gui_index.txt, which is precisely
+  the conflated signal this companion file exists to disambiguate.
+
+ROOT CAUSE (one bug, two symptoms). process_key() applied NAVIGATION-mode key
+semantics while a text element held the keyboard, because it had no way to
+tell the two apart:
+
+  B.2 backspace was intercepted and routed to a cli_buffers.txt "e"-prefixed
+      line. But the typing path never writes an "e" line -- it calls
+      text_edit_key.+x, which edits the document directly. So that buffer was
+      always stale/empty, the len > 0 test never passed, and the key was
+      dropped with processed left at 0. Swallowed, silently.
+  B.3 '2' and '6' ran SET_CLEAR_FILE / SET_NEW_FILE, so those two characters
+      were literally untypeable into a document.
+
+FIX. Added get_active_gui_is_typing() to agy-text-editor_manager.c and one
+early gate in process_key(): when the layout is editor.chtpm AND that signal
+is 1, EVERY key goes to handle_interact_key() -> text_edit_key.+x. When the
+signal is 0 the existing command handling is untouched, so nav digits still
+drive the buttons. text_edit_key already had a correct cursor-aware backspace
+(text_edit_key.c :183-201 -- delete before the cursor, merge lines at column
+0) that had simply never been reachable. Delegating is strictly better than
+reimplementing it in the manager. The dead cli_buffers branch was deleted
+rather than left behind as misleading code.
+
+VERIFIED LIVE (single parser, zero prior processes, signal observed flipping):
+  active_gui_is_typing.txt  0 -> 1 on engaging INTERACT  (gate proven live)
+  typed H,2,I,6  ->  line2 " H2I6", cursor_x 1->5  => 2 and 6 NOT stolen
+  backspace x3   ->  " H2I6"/x5 -> " H2I"/4 -> " H2"/3 -> " H"/2
+                    (both key codes 8 and 127; cursor decrements with the
+                     delete, so it is genuinely cursor-aware)
+  lowercase 105  ->  0x69 'i'. I first injected 73 and briefly reported a
+                    phantom uppercase bug; 73 is 'I', ASCII 'i' is 105. The
+                    system was correct and my test code was wrong.
+  Build 0 errors. All processes killed, zero confirmed, document/cursor
+  restored from backup, stray .tmp removed.
+
+SCOPE NOTE, DELIBERATELY NOT DONE HERE. A shared
+pieces/system/active_gui_state.h helper was considered and rejected for now:
+no manager currently #includes anything from pieces/, and Compile-Piece has
+no -I at all, so it would mean introducing a new build convention to save
+~6 lines that are already correct and identical in all seven managers.
+Worse, wraith-alpha could not adopt it -- its read is entangled with
+read_project_map_control() and max-index raising (:6247-6290) -- so it would
+leave two implementations, not one. Copying the compliant sibling pattern
+into agy is the right-sized move. Revisit if more managers prove broken.
+
+STILL OPEN, unchanged: op-ed and slop-ed-dev carry a structurally identical
+dead cli_buffers.txt backspace branch in their file_browser path (op-ed:960),
+and all six non-wraith managers still read only the conflated signal. SAME
+SHAPE, NOT VERIFIED BROKEN -- each needs its own audit before anyone calls it
+a bug. Not touched.
+
+================================================================================
 ## TESTING METHOD — WHAT RELAY INPUT CAN AND CANNOT PROVE
 ================================================================================
 

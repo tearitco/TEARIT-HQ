@@ -168,6 +168,34 @@ static int get_active_gui_index(void) {
     return idx;
 }
 
+/* Whether the element active_gui_index points at is genuinely ACTIVE (a
+   focused INTERACT element actually accepting keystrokes right now) as
+   opposed to merely focused. This is a SEPARATE signal from
+   get_active_gui_index() above, and the separation is the whole point:
+   active_gui_index.txt alone conflates "just focused" and "genuinely
+   active/typing" into one number, so it cannot tell this file whether
+   digits and control keys should be treated as navigation commands or
+   handed to the text editor. chtpm_parser.c's export_active_index() already
+   publishes the unambiguous answer as a companion file, rewritten every
+   frame from compose_frame() -- see that function's own comment and
+   2fix-july6.txt bug 3. wraith-alpha_manager.c is the one sibling manager
+   that already reads it (sync_active_gui_index_from_display()); this is the
+   same pattern. Defaults to 0 (not typing) if the file is missing, which is
+   the safe fallback: keys keep their existing command meanings rather than
+   silently leaking into the document. */
+static int get_active_gui_is_typing(void) {
+    char *path = NULL;
+    int typing = 0;
+    if (asprintf(&path, "%s/pieces/display/active_gui_is_typing.txt", project_root) == -1) return 0;
+    FILE *f = fopen(path, "r");
+    if (f) {
+        if (fscanf(f, "%d", &typing) != 1) typing = 0;
+        fclose(f);
+    }
+    free(path);
+    return typing != 0;
+}
+
 static void read_editor_line(void) {
     char *path = NULL;
     if (asprintf(&path, "%s/pieces/apps/player_app/cli_buffers.txt", project_root) == -1) return;
@@ -632,24 +660,38 @@ static int process_key(int key) {
     char layout[MAX_LINE];
     get_current_layout_name(layout, sizeof(layout));
 
+    /* In editor.chtpm, once an INTERACT element is genuinely active, EVERY key
+       belongs to the text editor -- including the keys that are navigation
+       commands everywhere else in this file. This one gate is the shared root
+       of two long-standing bugs:
+
+         B.2 backspace was swallowed. It used to be intercepted above and
+             routed to a cli_buffers.txt "e" line that the typing path never
+             writes, so it was always stale/empty and the key was dropped.
+         B.3 '2' and '6' were stolen as SET_CLEAR_FILE / SET_NEW_FILE, so you
+             literally could not type those two characters into a document.
+
+       Both are the same mistake: applying navigation-mode key semantics
+       while a text element holds the keyboard. The reliable signal that an
+       element is genuinely active -- not merely focused -- is
+       active_gui_is_typing.txt; see get_active_gui_is_typing() above. When it
+       is 0 (navigation mode) the command handling below stays exactly as it
+       was, so nav digits still work for the buttons.
+
+       handle_interact_key() -> text_edit_key.+x already implements backspace
+       correctly and cursor-aware (delete before the cursor, merge lines at
+       column 0), so delegating is strictly better than reimplementing it
+       here. Unhandled codes (e.g. ESC, if it ever reaches us) are a harmless
+       no-op inside that Op. */
+    if (strcmp(layout, "editor.chtpm") == 0 && get_active_gui_is_typing()) {
+        handle_interact_key(key);
+        return 1;
+    }
+
     if (key == 127 || key == 8) {
-        if (strcmp(layout, "editor.chtpm") == 0) {
-            read_editor_line();
-            int len = strlen(input_line_buffer);
-            if (len > 0) {
-                input_line_buffer[len - 1] = '\0';
-                char *path = NULL;
-                if (asprintf(&path, "%s/pieces/apps/player_app/cli_buffers.txt", project_root) != -1) {
-                    FILE *bf = fopen(path, "a");
-                    if (bf) {
-                        fprintf(bf, "e%s\n", input_line_buffer);
-                        fclose(bf);
-                    }
-                    free(path);
-                }
-                processed = 1;
-            }
-        } else if (strcmp(layout, "file_browser.chtpm") == 0) {
+        /* editor.chtpm never reaches here -- the gate above owns it. Only
+           file_browser.chtpm's two discrete text fields are handled below. */
+        if (strcmp(layout, "file_browser.chtpm") == 0) {
             int active_idx = get_active_gui_index();
             if (active_idx == 1) { // search_query
                 read_search_query_input();
