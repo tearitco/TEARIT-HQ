@@ -185,8 +185,22 @@ switch ($ACTION) {
         # concurrent clicks race on the same +x/ output and the same PIDs.
         $need_build = ($ACTION -ne "boot")
         if (-not $need_build) {
-            if (-not (Test-Path -LiteralPath $RENDER) -or -not (Test-Path -LiteralPath $MANAGER) -or -not (Test-Path -LiteralPath $ENTITY)) {
+            # NOTE: khtpm_entity.exe is deliberately NOT in this check.
+            # It does not compile yet (khtpm_entity.c needs a much wider
+            # Xlib slice than the strip renderer), so testing for it here
+            # would make "is anything missing?" permanently true and every
+            # `boot` - i.e. every desktop-start-button click - would run a
+            # full ~40s rebuild and then spew the entity's compile errors
+            # at the user. That is exactly what happened on 2026-09-26
+            # before this was fixed. Only the two bar binaries gate boot;
+            # the entity's status is reported as a warning, not treated
+            # as a missing prerequisite.
+            if (-not (Test-Path -LiteralPath $RENDER) -or -not (Test-Path -LiteralPath $MANAGER)) {
                 $need_build = $true   # first-ever boot with no binaries
+            } else {
+                Write-Warning "khtpm_entity.exe absent - khtpm_entity.c is not ported to Windows yet."
+                Write-Warning "  The taskbar starts, but with NO entities, so the bottom bar has no cells."
+                Write-Warning "  This is a known gap, not a build failure. See WINDOWS-TASKBAR-PORT.md."
             }
         }
 
