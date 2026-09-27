@@ -117,6 +117,29 @@ int main(int argc, char **argv) {
         }
         fclose(pf);
     }
+    /* REAL FIX 2026-09-24, direct live report ("its new window is
+     * slightly off - not as bad as before"): desktop_pos.txt is the
+     * entity's own saved TILE position, only an approximation of
+     * wherever the currently-open menu window that triggered this
+     * picker actually is (real if the tile hasn't been re-positioned
+     * since, off if it has). KHTPM_WIN_X/KHTPM_WIN_Y - the calling
+     * khtpm_core_render.c window's own real ${WIN_X}/${WIN_Y}
+     * (kh_get_var()), threaded through as env vars across the
+     * menu.chtpm action -> prisc+x -> dispatch.sh -> here chain (all
+     * plain exec/execl, environment inherited at every hop) - are
+     * already real absolute screen px, not desktop_pos.txt's reference
+     * px, so they skip the kps_ref_to_screen() conversion below
+     * entirely when both are present and valid. */
+    int explicit_pos = 0;
+    {
+        const char *ex = getenv("KHTPM_WIN_X");
+        const char *ey = getenv("KHTPM_WIN_Y");
+        if (ex && ex[0] && ey && ey[0]) {
+            pos_x = atoi(ex);
+            pos_y = atoi(ey);
+            explicit_pos = 1;
+        }
+    }
     char pos_x_str[16], pos_y_str[16];
     if (pos_x >= 0) snprintf(pos_x_str, sizeof(pos_x_str), "%d", pos_x);
     if (pos_y >= 0) snprintf(pos_y_str, sizeof(pos_y_str), "%d", pos_y);
@@ -216,8 +239,13 @@ int main(int argc, char **argv) {
     }
 
     /* desktop_pos.txt is REFERENCE px (khtpm_ui_scale.c); the renderer's
-     * position args are screen px. Identity on the reference screen. */
-    if (pos_x >= 0 && pos_y >= 0) {
+     * position args are screen px. Identity on the reference screen.
+     * KHTPM_WIN_X/Y (explicit_pos) are already real screen px - skip
+     * this conversion for them entirely. */
+    if (explicit_pos) {
+        snprintf(pos_x_str, sizeof(pos_x_str), "%d", pos_x);
+        snprintf(pos_y_str, sizeof(pos_y_str), "%d", pos_y);
+    } else if (pos_x >= 0 && pos_y >= 0) {
         Display *xd = XOpenDisplay(NULL);
         if (xd) {
             int auto_pct = 100, cell = 80;
