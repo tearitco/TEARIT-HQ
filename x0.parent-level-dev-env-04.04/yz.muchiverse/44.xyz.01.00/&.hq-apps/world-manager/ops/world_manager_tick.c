@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <glob.h>
 #include <stdarg.h>
 
@@ -366,7 +367,17 @@ int main(int argc, char *argv[]) {
     // Sync entity positions from desktop_pos.txt to entities_live.txt (master ledger)
     char sync_path[MAX_PATH];
     snprintf(sync_path, sizeof(sync_path), "%s/ops/sync_entity_positions", page_root);
-    int sync_ret = system(sync_path);
+
+    pid_t sync_pid = fork();
+    if (sync_pid == 0) {
+        // Child process
+        execvp(sync_path, (char *[]) { sync_path, NULL });
+        exit(1);  // execvp only returns on error
+    } else if (sync_pid > 0) {
+        // Parent process: wait for child
+        int sync_status;
+        waitpid(sync_pid, &sync_status, 0);
+    }
 
     // Auto-detect position changes in entities_live.txt
     typedef struct {

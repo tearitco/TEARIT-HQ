@@ -4,6 +4,7 @@
 #include <libgen.h>
 #include <unistd.h>
 #include <time.h>
+#include <sys/wait.h>
 
 int main(int argc, char *argv[]) {
     char script_path[2048];
@@ -44,9 +45,27 @@ int main(int argc, char *argv[]) {
     snprintf(cursor_file, sizeof(cursor_file), "%s/page_manager.cursor", state_dir);
     
     // Create directories
-    char mkdir_cmd[2048];
-    snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p '%s' '%s/event_pkg'", state_dir, page_root);
-    system(mkdir_cmd);
+    pid_t mkdir_pid = fork();
+    if (mkdir_pid == 0) {
+        // Child process: create state directory
+        execvp("mkdir", (char *[]) { "mkdir", "-p", state_dir, NULL });
+        exit(1);
+    } else if (mkdir_pid > 0) {
+        int mkdir_status;
+        waitpid(mkdir_pid, &mkdir_status, 0);
+    }
+
+    // Create event_pkg directory
+    mkdir_pid = fork();
+    if (mkdir_pid == 0) {
+        char event_pkg_dir[2048];
+        snprintf(event_pkg_dir, sizeof(event_pkg_dir), "%s/event_pkg", page_root);
+        execvp("mkdir", (char *[]) { "mkdir", "-p", event_pkg_dir, NULL });
+        exit(1);
+    } else if (mkdir_pid > 0) {
+        int mkdir_status;
+        waitpid(mkdir_pid, &mkdir_status, 0);
+    }
     
     // Create empty ledger files
     const char *ledgers[] = {"entities_live", "world_events", "animation_queue"};
