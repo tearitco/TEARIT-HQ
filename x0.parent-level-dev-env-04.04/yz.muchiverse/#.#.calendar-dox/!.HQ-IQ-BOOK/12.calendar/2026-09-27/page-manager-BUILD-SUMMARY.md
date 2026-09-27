@@ -1,4 +1,4 @@
-# Page Manager Build Summary — 2026-09-27
+# Page Manager Build Summary — 2026-09-27 (UPDATED)
 
 ## What's Built
 
@@ -9,41 +9,49 @@
 ```
 pages/test_page_001/
 ├── manager/
-│   └── page_manager.pal              (main loop, ledger polling, cursor tracking)
+│   └── page_manager.sh               (shell script: main loop, ledger polling, cursor tracking)
 ├── state/
 │   ├── page_state.pdl                (static config: entities, zones)
 │   ├── entities_live.txt             (append-only: entity positions)
 │   ├── world_events.txt              (append-only: triggered events)
 │   ├── animation_queue.txt           (append-only: pending animations)
-│   └── page_manager.cursor           (cursor markers for each ledger)
+│   ├── page_manager.cursor           (cursor markers for each ledger)
+│   └── page_manager.log              (debug log)
 └── event_pkg/
     ├── common_events.pal             (reusable event functions)
     └── event_triggers.pdl            (trigger table)
 ```
 
-### page_manager.pal (Main Loop)
+### page_manager.sh (Main Loop)
 
-**Tcl/Prisc script** that:
+**Shell script** that:
 1. ✅ Initializes all ledger files on startup
-2. ✅ Maintains cursor markers (one per ledger file)
+2. ✅ Maintains cursor markers (one per ledger file) — idempotent polling
 3. ✅ Polls `entities_live.txt` for new position changes
-4. ✅ Checks triggers (e.g., entity enters zone)
-5. ✅ Queues common events (writes to `world_events.txt`)
-6. ✅ Polls `animation_queue.txt` for pending animations
-7. ✅ Updates cursors (avoids reprocessing)
-8. ✅ Main loop: 16ms tick (~60fps), runs infinitely
+4. ✅ Parses entity position (x, y) from each line
+5. ✅ Loads trigger table from `event_triggers.pdl` dynamically
+6. ✅ Matches triggers (entity_moved, zone_enter) against entity position
+7. ✅ Calls event functions from `common_events.pal` via shell function invocation
+8. ✅ Polls `animation_queue.txt` for pending animations
+9. ✅ Invokes `move_entity_with_animation.sh` for queued animations (background)
+10. ✅ Updates cursors (avoids reprocessing)
+11. ✅ Main loop: 16ms tick (~60fps), runs indefinitely
 
 **Features implemented:**
-- Cursor-based ledger polling (idempotent, append-only audit trail)
-- Simple trigger: "if player moves to (150, 200), queue event"
-- Ready to call `move_entity_with_animation.sh` for animations
-- Extensible: add more triggers, events, logic
+- ✅ Cursor-based idempotent polling (never reprocesses same event)
+- ✅ Append-only ledger architecture (audit trail)
+- ✅ Dynamic trigger table loading from PDL
+- ✅ Entity position parsing (x=N, y=N format)
+- ✅ Zone boundary checking (e.g., zone_1: x∈[140,160], y∈[190,210])
+- ✅ Event function calling (event_entity_moved, event_entity_zone_enter)
+- ✅ Animation queue processing
+- ✅ Debug logging to page_manager.log (separate from stdout for capture safety)
 
-**Known limitations (for next phase):**
-- Animation calling is commented out (stub)
-- Trigger checking is hardcoded (demo only, needs trigger table integration)
-- No common event calling yet (stubs in place)
-- No world state mutations yet (writes only to cursor file)
+**Verified working (2026-09-27 02:20):**
+- Entity movement detection works (player at x=150, y=200)
+- Cursor advances correctly (0 → 1)
+- Trigger matching activates on zone entry
+- Log output shows all events
 
 ### common_events.pal (Event Functions)
 
