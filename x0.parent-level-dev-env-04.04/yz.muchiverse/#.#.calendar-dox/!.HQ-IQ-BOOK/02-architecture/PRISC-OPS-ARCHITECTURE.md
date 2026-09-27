@@ -132,9 +132,35 @@ This ensures **idempotent polling**: rerunning the op won't reprocess the same e
 ❌ **Hardcoding absolute paths** — use dynamic path derivation from `argv[0]`  
 ❌ **Not using append-only ledgers** — leads to race conditions and lost events  
 
+## Bootstrap vs. Production: The Shell Script Boundary
+
+**Shell scripts are a bootstrapping convenience only.** Use them to get the system running before prisc+ops infrastructure is available:
+
+```bash
+# Bootstrap: quick setup before prisc VM is live
+./page_manager_bootstrap.sh
+
+# Production: prisc VM + compiled C ops
+prisc page_manager.pal
+```
+
+Once prisc VM and compiled ops are live, **never use shell orchestration again**. The production state converges entirely to prisc+ops:
+
+- **No shell scripts** driving the game loop or event dispatch
+- **No shell ops** (only compiled C binaries)
+- **Everything** driven by `.pal` assembly + C ops
+
+This rule exists because shell is fragile at scale (no bounded memory, no type safety, easy race conditions), while prisc+C is:
+- Fast (RISC-V VM + compiled C)
+- Safe (bounded memory, static types, idempotent via ledgers)
+- Verifiable (assembly is explicit; C is compiled)
+
+**The long-term goal:** even the `.pal` files will become internal — ops themselves may eventually be written in and compiled from higher-level languages, but the rule remains the same: never shell orchestration at scale.
+
 ## Future Work
 
 - [ ] Standardize op template / boilerplate (e.g., `op_template.c`)
 - [ ] Document prisc syscall set (SYS_GET_KV_INT, SYS_SET_KV_INT, etc.)
 - [ ] Write ops for common game commands (Change Gold, Show Text, etc.)
 - [ ] Real multi-page book manager using prisc coordination
+- [ ] Long-term: compile `.pal` from higher-level DSL; keep ops as compiled binaries
