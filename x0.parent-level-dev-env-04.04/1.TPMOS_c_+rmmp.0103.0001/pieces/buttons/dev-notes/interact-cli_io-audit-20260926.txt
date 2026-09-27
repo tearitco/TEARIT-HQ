@@ -1,0 +1,194 @@
+================================================================================
+INTERACT-MODE AUDIT -- WHICH MANAGERS ACTUALLY HAVE THE B.2/B.3 DEFECT
+================================================================================
+
+Written 2026-09-26, on branch kilo. Audited after fixing agy-text-editor's
+backspace and stolen digits, because that fix turned out to rest on a signal
+only ONE of eight managers was reading. This file records which of the others
+share the defect, which do not, and -- importantly -- which could not be
+verified at all on Windows, so nobody repeats the work or assumes a verdict
+that was never tested.
+
+THE SIGNAL, FOR REFERENCE. chtpm_parser.c's export_active_index() (:2259)
+writes pieces/display/active_gui_is_typing.txt every frame: "1" when the
+focused element is genuinely active and accepting keystrokes, "0" when merely
+focused. active_gui_index.txt alone cannot express that difference. Only
+wraith-alpha_manager.c read the companion file
+(sync_active_gui_index_from_display(), :6247, default 0). The other seven read
+only the conflated file.
+
+Reading the conflated file is NOT automatically a bug. It only matters where a
+manager uses it to decide "is a text element holding the keyboard?" So each
+manager was checked for that specifically, not pattern-matched.
+
+--------------------------------------------------------------------------------
+VERDICT TABLE
+--------------------------------------------------------------------------------
+
+  PROJECT      BUILT ON WIN  INTERACT ELEMENT        TEXT FIELD     VERDICT
+  -----------  ------------  ----------------------  -------------  ------------
+  wraith-alpha  yes          cli_io, INTERACT        yes            NOT A BUG
+                                                    (reads the correct
+                                                     signal already)
+  agy-text-ed   yes (fixed)  button onClick=INTERACT document via   FIXED, twice
+                                                    text_edit_key    - see below
+  op-ed         yes          button onClick=INTERACT cli_io x2       FIXED (shared
+                                                    (file_browser)   parser fix)
+  fuzz-op       yes          button onClick=INTERACT none            NOT A BUG
+  cpp-llm       NO            cli_io id=input_text   cli_io          NOT VERIFIED
+  gem-dev       NO            cli_io id=input_text   cli_io          NOT VERIFIED
+  groq-ollama   NO            cli_io id=input_text   cli_io          NOT VERIFIED
+  slop-ed-dev   NO            button + cli_io x2     cli_io          NOT VERIFIED
+
+--------------------------------------------------------------------------------
+1. wraith-alpha -- NOT A BUG (the reference implementation)
+--------------------------------------------------------------------------------
+Already reads active_gui_is_typing.txt and defaults to 0. Nothing to do. It is
+the pattern the others should follow if they ever gain a text field that
+competes with nav keys.
+
+--------------------------------------------------------------------------------
+2. agy-text-editor -- FIXED (two separate commits)
+--------------------------------------------------------------------------------
+TWO genuinely different bugs, often conflated:
+
+  a) Its editor is a plain document edited by text_edit_key.+x, not a cli_io.
+     Backspace was intercepted and routed to a cli_buffers.txt "e"-prefixed
+     line, but the typing path never writes an "e" line, so that buffer was
+     always empty and the key was dropped in silence. And '2'/'6' ran
+     SET_CLEAR_FILE/SET_NEW_FILE, so those characters were untypeable. One
+     early gate in process_key() -- when the layout is editor.chtpm AND
+     active_gui_is_typing is 1, every key goes to handle_interact_key() --
+     fixed both at the shared root. Commit 3a2a0027.
+
+  b) Its file_browser cli_io fields were hit by the shared parser bug below.
+
+  LANDMINE, NOT FIXED, NEEDS AN OWNER DECISION:
+  projects/agy-text-editor/agy-text-editor_manager.c (the TOP-LEVEL copy) is a
+  near-duplicate of projects/agy-text-editor/manager/agy-text-editor_manager.c
+  and still contains the ORIGINAL unfixed backspace branch and the original
+  stolen '2'/'6' handling. It is not built (compile_all.ps1 builds the
+  manager/ one), and editor.chtpm points at manager/+x/, so it is inert today.
+  But it is the file with the most obvious name, and editing it would change
+  nothing while looking correct. Either delete it or replace it with a
+  one-line pointer to the real file. NOT DONE HERE: deleting a source file is
+  not this audit's call, and a stale duplicate is a trap worth flagging
+  loudly rather than quietly removing.
+
+--------------------------------------------------------------------------------
+3. op-ed -- FIXED by the shared parser change; its own branch is dead-but-kept
+--------------------------------------------------------------------------------
+file_browser.chtpm has cli_io id="search_query" and id="file_path_input".
+
+CORRECTION TO AN EARLIER CLAIM IN win-open-bugs-s26.txt: I previously wrote
+that op-ed and slop-ed-dev carry "a structurally identical DEAD
+cli_buffers.txt backspace branch". That was wrong about "dead". The branch
+writes "s"- and "f"-prefixed lines, and chtpm_parser.c keys cli_buffers
+prefixes by the element id (username->U, password->P, answer->A, else the
+first character of the id -- :2990-2992). op-ed's ids start with 's' and 'f',
+so those lines ARE the live wire format. The branch is correct; it is merely
+unreachable, because the parser never forwards key 8/127 to the manager (see
+section 8). Left in place as a no-op fallback rather than deleted, since a
+future path that does forward the key would want it.
+
+Verified live on op-ed (it is built and runs on Windows): typed x,y,z
+published 'sx'/'sxy'/'sxyz'; backspace published 'sxy'. Before the fix,
+nothing was appended at all.
+
+--------------------------------------------------------------------------------
+4. fuzz-op -- NOT A BUG
+--------------------------------------------------------------------------------
+Has a button onClick="INTERACT" but NO cli_io and no text field anywhere, and
+no cli_buffers reference at all. Its key handling is entirely map-control:
+'9'/ESC/2008 exit, WASD and 1000-1003/2100-2103 movement, 'x'/'z' actions,
+'6' an action, Enter confirm. There is no typing surface for a key to be
+stolen FROM, so the whole bug class is inapplicable. Its use of
+active_gui_index.txt (sync_focus(), :297) is legitimate focus tracking for its
+own gui_state, not a mode decision. Nothing changed. Do not "fix" this one.
+
+--------------------------------------------------------------------------------
+5-7. cpp-llm, gem-dev, groq-ollama -- NOT VERIFIED (cannot run on Windows)
+--------------------------------------------------------------------------------
+None of the three is in pieces/buttons/windows/legacy/compile_all.ps1 and none
+has a built manager, so none of them can be launched or tested here. They have
+the same shape agy had -- absent from the Windows build list -- which is
+itself a finding: these three apps do not run on Windows at all.
+
+All three use <cli_io id="input_text">, the legacy single-slot form with no
+target_id, and none has an onClick="INTERACT" element, so the B.2/B.3 shape
+(backspace swallowed, nav digits stolen) does not obviously apply: with no
+INTERACT element there is no key-forwarding path that a manager could
+misinterpret. That is reasoning from the code, NOT a test result.
+
+Two specific suspicions were found by reading, and are recorded as UNVERIFIED:
+
+  a) gem-dev, at :1288-1289 and :1301-1322, polls cli_buffers.txt, strips only
+     the trailing newline, and uses the raw line as the input text. The parser
+     publishes that field under the generic fallback, i.e. prefixed with the
+     first character of the id -- 'i' for id="input_text". gem-dev appears
+     never to strip that prefix, so its notion of the user's text would begin
+     with a spurious 'i'. This is exactly the class of bug the khtpm skill
+     warns about, where two halves of the system seed and read different
+     buffers. NOT CONFIRMED: verifying needs gem-dev built and running.
+
+  b) cpp-llm (:363) and groq-ollama (:376) both open cli_buffers.txt with "w"
+     -- truncating it -- and write a bare, UNPREFIXED value when the user picks
+     an autocomplete suggestion. That destroys every prefixed line the parser
+     had written, including the log gem-dev-style readers depend on. It also
+     means the file momentarily contains a line no prefix-reader will match.
+     NOT CONFIRMED, same reason.
+
+  Both of these also write pieces/display/active_gui_index.txt themselves
+  (cpp-llm :339/:371, gem-dev :667/:719/:1246, groq-ollama :352/:384) while
+  chtpm_parser.c rewrites that same file every frame. Two writers of one file
+  is a genuine design conflict, but whether it misbehaves depends on ordering
+  this audit did not measure. gem-dev additionally TRUNCATES the file at
+  startup (:1244). Flagged, not fixed, not tested.
+
+--------------------------------------------------------------------------------
+8. THE ONE THAT WAS ACTUALLY SHARED -- cli_io backspace, chtpm_parser.c
+--------------------------------------------------------------------------------
+This is the real find of the audit, and it is not a per-manager bug at all.
+
+A cli_io has two sinks:
+  - cli_buffers.txt -- what managers actually READ their field values from.
+  - gui_state.txt   -- written via save_cli_io_gui_state().
+
+Printable characters wrote to BOTH, so the sinks agreed. Backspace truncated
+the element's own input_buffer and wrote gui_state.txt ONLY, and -- unlike the
+Enter branch, which calls inject_raw_key(13) -- it never called
+inject_raw_key() and never touched cli_buffers.txt. So the keystroke reached no
+manager at all, the field looked correct on screen, and every manager went on
+serving the pre-backspace value. Affects every project with a cli_io.
+
+Verified live BEFORE the fix: typing "abc" published sa/sab/sabc, and a
+following backspace left cli_buffers.txt still ending in "sabc" while the field
+correctly showed "ab".
+
+Fix (commit 2aabe1cb): the prefix rule was extracted into
+append_cli_buffer_line() and called from the backspace path too, so both edits
+publish identically. star_count is a separate parameter because the password
+mask historically counted from the length BEFORE the newly typed character was
+appended; the printable path passes the pre-append length to preserve that
+exact output, and backspace passes the post-truncate length so the mask matches
+the characters that remain.
+
+Verified live AFTER, agy file_browser: typed a,b,c -> 'sababa','sababab',
+'sabababc'; backspace x2 -> 'sababab','sababa'; on-screen field "ababa_",
+matching the last published value exactly. Also verified on op-ed (section 3).
+
+--------------------------------------------------------------------------------
+9. STILL OPEN
+--------------------------------------------------------------------------------
+  - Bug A, the frame unicode/codepage path. Untouched throughout. Still needs
+    the GetConsoleOutputCP diagnostic in win-open-bugs-s26.txt section A.5.
+  - Physical-keyboard capture (keyboard_input_win.c AsciiChar weakness). Still
+    untested; relay injection bypasses it entirely. Needs a SendInput harness.
+  - The four unbuilt projects (cpp-llm, gem-dev, groq-ollama, slop-ed-dev).
+    Adding them to compile_all.ps1 is the prerequisite to verifying anything
+    about them, and agy needed four separate Windows fixes before it would
+    compile at all, so this should be scoped as its own piece of work.
+  - agy-text-editor's duplicate top-level manager source (section 2).
+  - The active_gui_index.txt two-writers conflict (section 5-7b).
+
+================================================================================
