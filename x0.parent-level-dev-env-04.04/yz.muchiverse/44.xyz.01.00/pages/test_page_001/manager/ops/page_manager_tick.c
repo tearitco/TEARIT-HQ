@@ -353,6 +353,11 @@ int main(int argc, char *argv[]) {
     char trigger_file[MAX_PATH];
     snprintf(trigger_file, sizeof(trigger_file), "%s/event_pkg/event_triggers.pdl", page_root);
 
+    // Sync entity positions from desktop_pos.txt to entities_live.txt (master ledger)
+    char sync_cmd[MAX_PATH];
+    snprintf(sync_cmd, sizeof(sync_cmd), "'%s/ops/sync_entity_positions' >/dev/null 2>&1", page_root);
+    system(sync_cmd);
+
     // Auto-detect position changes in entities_live.txt
     typedef struct {
         char entity_id[256];
