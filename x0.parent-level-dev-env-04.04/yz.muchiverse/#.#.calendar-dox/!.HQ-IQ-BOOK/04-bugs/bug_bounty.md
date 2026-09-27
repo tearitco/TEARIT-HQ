@@ -29,7 +29,32 @@ than inlining - needs a design call, not assumed to be the same
 passing the entity's own current `-x`/`-y` (or window id to position
 relative to) through to the launch, not silently defaulting.
 
-**Part 2 - Move does nothing.** Not a new bug - this is the
+**UPDATE 2026-09-26, direct clarification of intent**: Move is
+*supposed* to arm `PLACE_RANGE` and open the placing grid - this is
+the real, missing link between this bug and the separately-tracked
+`PLACE_RANGE` gap (§1b below / `12.calendar/2026-09-24/notes.md` #3).
+Confirmed house-wide: `PLACE_RANGE` has ZERO real UI trigger anywhere
+in the codebase today (`grep -rn PLACE_RANGE` house-wide hits only
+`tp_arm_placer_rmmv.c`'s own `getenv()` read) - it has only ever been
+testable by manually exporting the env var before launching the placer
+binary by hand. Real fix needs: `act_row.sh`'s `move` case to set
+`PLACE_RANGE` and drive `tp_arm_placer_rmmv.+x` through
+`&.widgits/palettes/palettes_menu.sh`'s own real brush-arm flow (can't
+invoke the placer standalone - needs a real armed `rmmv_armed.txt`
+state first). Real, scoped, NOT YET BUILT - needs its own session, not
+a quick patch.
+
+**Also found and fixed, same investigation (2026-09-26)**: Act itself
+was showing a real "⚠ malformed template" warning, root-caused to
+`open_entity_act.sh`'s awk-generated template using a literal
+backslash-quote instead of `&quot;` inside its `action="..."` XML
+attributes - pre-existing bug, not from the earlier position fix.
+Fixed, commit `b4315f0d`. This alone may explain part of "Move does
+nothing" (a malformed template can misparse which action string
+belongs to which row) independent of the real `PLACE_RANGE` gap above.
+
+**Part 2 - Move does nothing (act_row.sh's own no-op, separate from
+both fixes above).** Not a new bug - this is the
 already-tracked, already-documented gap
 (`12.calendar/2026-09-24/notes.md` next-steps #4): `act_row.sh`'s own
 `move|use)` branch is a literal no-op placeholder:
