@@ -42,13 +42,30 @@ Compile-Piece "projects\op-ed\manager\op-ed_manager.c" "projects\op-ed\manager\+
 Compile-Piece "projects\fuzz-op\manager\fuzz-op_manager.c" "projects\fuzz-op\manager\+x\fuzz-op_manager.+x"
 Compile-Piece "projects\user\manager\user_manager.c" "projects\user\manager\+x\user_manager.+x"
 Compile-Piece "projects\man-pal\manager\man-pal_module.c" "projects\man-pal\manager\+x\man-pal_module.+x"
+# agy-text-editor: was MISSING from this list entirely, so
+# agy-text-editor_manager.+x was never built on Windows and
+# editor.chtpm's <module> tag pointed at a nonexistent binary. That is why
+# INTERACT mode forwarded keys into player_app/history.txt with nothing
+# consuming them. Evidence: FRAME_REPORT_20260926-1540_agy-interact-inject.txt
+Compile-Piece "projects\agy-text-editor\manager\agy-text-editor_manager.c" "projects\agy-text-editor\manager\+x\agy-text-editor_manager.+x"
+
+# Shared file Ops. Also MISSING from this list, and agy-text-editor invokes
+# all four at runtime through run_op() -- without them the manager builds but
+# every keystroke silently no-ops because its Op binary is absent.
+$file_ops = @("text_edit_key", "text_editor_view", "file_copy", "dir_browse")
+foreach ($op in $file_ops) {
+    Compile-Piece "pieces\system\file_ops\$op.c" "pieces\system\file_ops\+x\$op.+x"
+}
 
 # --- Keyboard & Joystick ---
 Compile-Piece "pieces\keyboard\src\keyboard_input_win.c" "pieces\keyboard\plugins\+x\keyboard_input.+x"
 # Windows: Use XInput for Xbox controllers
 Write-Host "Compiling joystick_input (Windows/XInput)..." -ForegroundColor Gray
 if (Test-Path "pieces\joystick\plugins\joystick_input_win.c") {
-    & gcc -D_WIN32 -std=gnu11 "pieces\joystick\plugins\joystick_input_win.c" -o "pieces\joystick\plugins\+x\joystick_input.+x" -lxinput -lpthread
+    # Was a raw gcc call, so unlike every Compile-Piece target it never got
+    # its +x\ directory created and failed to link on a clean tree. Compile-Piece
+    # creates the output dir (see its New-Item above) and adds -lpthread.
+    Compile-Piece "pieces\joystick\plugins\joystick_input_win.c" "pieces\joystick\plugins\+x\joystick_input.+x" "-lxinput"
 }
 
 # --- CHTPM Core ---

@@ -6,6 +6,22 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+/* POSIX rename() atomically replaces an existing destination; MSVCRT's does
+   not, and fails outright if the target already exists. That silently broke
+   agy-text-editor's load/save on Windows -- the copy landed in <dst>.tmp and
+   the real file was never replaced. Same fix as text_edit_key.c. */
+static int replace_file(const char *src, const char *dst) {
+#ifdef _WIN32
+    return MoveFileExA(src, dst, MOVEFILE_REPLACE_EXISTING) ? 0 : -1;
+#else
+    return rename(src, dst);
+#endif
+}
+
 /*
  * file_copy.+x -- all-purpose, reusable file copy Op (Bible section 11's
  * REUSE RULE). Used for both "load" (copy a chosen file INTO a project's
@@ -52,7 +68,10 @@ int main(int argc, char *argv[]) {
 
     fclose(src);
     fclose(dst);
-    rename(tmp_path, dst_path);
+    if (replace_file(tmp_path, dst_path) != 0) {
+        fprintf(stderr, "file_copy: cannot replace %s\n", dst_path);
+        return 2;
+    }
 
     return 0;
 }

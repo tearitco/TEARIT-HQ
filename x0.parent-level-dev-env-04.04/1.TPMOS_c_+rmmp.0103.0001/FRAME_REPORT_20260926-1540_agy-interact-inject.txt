@@ -192,18 +192,101 @@ NOT YESTESTED, do not claim as fixed:
     exercised at all until that binary is actually built and running
 
 ================================================================================
-7. EVIDENCE FILES
+7. VERIFICATION PASS - FIX APPLIED AND PROVEN (2026-09-26 16:42-17:10)
 ================================================================================
 
-  pieces/keyboard/history.txt            injected KEY_PRESSED lines
-  pieces/apps/player_app/history.txt     104/105/120 - forwarding proven
-  projects/agy-text-editor/pieces/document.txt   UNCHANGED - consumption absent
-  pieces/display/current_frame.txt       [^] / "Active [^]:" - gate proven
-  pieces/display/active_gui_index.txt    shown INSUFFICIENT as a gate signal
-  pieces/buttons/windows/legacy/compile_all.ps1:39-44   the omission
-  projects/agy-text-editor/manager/      no +x\ dir - binary absent
+Committed to branch `kilo` (not `windows` -- see section 9). `windows` is
+untouched at 6a8c9151, same as origin/windows.
 
-  All runtime state touched during this test was backed up beforehand and
-  restored afterward. Zero stray processes confirmed post-test. The only
-  repo change from this cycle is this report and the bug-log update.
+THE FIX WAS NOT ONE LINE. Fixing the build target exposed THREE further
+Windows-only defects underneath it, all of which had to be fixed before any
+key could reach the document. Each was found by running, not by reading.
+
+FIX 1 - build targets missing (compile_all.ps1)
+  Added agy-text-editor_manager.c to the hardcoded project-manager list, AND
+  the four shared Ops it invokes at runtime, which were ALSO absent from the
+  list: text_edit_key, text_editor_view, file_copy, dir_browse.
+  Without the Ops the manager would have built and still no-oped on every key,
+  because run_op()'s binary would not exist.
+
+FIX 2 - agy-text-editor_manager.c could not compile on Windows at all
+  It had never been built here, so it was POSIX-only in four places:
+    - line 12  #include <sys/wait.h>            -> guarded with #ifndef _WIN32
+    - line 991 setpgid(0, 0)                    -> guarded, no Windows equivalent
+    - run_op() used fork()/execv()/waitpid()    -> replaced with a CreateProcess
+                                                   + WaitForSingleObject path,
+                                                   mirroring orchestrator.c:33
+    - MAX_PATH collision with windows.h          -> #undef MAX_PATH after include
+  run_op was deliberately kept LOCAL rather than reusing
+  pieces/system/win_spawn.h: that header's win_spawn() assembles a cmd_line
+  and then passes NULL to _spawnl(), silently dropping every argument -- fatal
+  here, because all four Ops require arguments. chtpm_parser.c calls that same
+  win_spawn() live, so repairing the shared header is its own riskier change
+  and is deliberately NOT bundled in.
+
+FIX 3 - dir_browse.c: strcasestr() is a GNU extension MinGW does not provide
+  Added a small ASCII case-insensitive fallback under #ifdef _WIN32.
+
+FIX 4 - THE REAL SECOND-LAYER BUG: rename() does not overwrite on Windows
+  text_edit_key.c:96 and :120 and file_copy.c:55 all did the standard
+  write-.tmp-then-rename idiom to get an atomic replace. On POSIX rename()
+  atomically replaces the destination. MSVCRT's rename() FAILS if the
+  destination already exists, leaving the .tmp stranded beside the untouched
+  original.
+  Observed directly: document.txt.tmp was created at 34 bytes (the edit WAS
+  computed) while document.txt stayed at 33 bytes, unchanged since Sept 25.
+  Every keystroke was being computed correctly and then silently discarded,
+  which is precisely what "the editor is dead" looks like from the outside.
+  Fixed with a replace_file() helper: MoveFileExA(..., MOVEFILE_REPLACE_EXISTING)
+  on Windows, plain rename() on POSIX. file_copy.c additionally now reports
+  failure to stderr and returns exit 2 instead of silently returning 0.
+
+FIX 5 (incidental, pre-existing) - joystick_input never linked on Windows
+  compile_all.ps1 called gcc directly for it instead of via Compile-Piece, so
+  unlike every other target it never got its +x\ directory created. Routed
+  through Compile-Piece. Same defect class, same file.
+
+VERIFICATION RUN (clean state, single parser, zero prior processes):
+  procs        chtpm_parser.+x AND agy-text-editor_manager.+x BOTH present
+               (before the fix, agy-text-editor_manager.+x never existed)
+  interact     frame shows "[^] 1." and "Active [^]:  (ESC to exit)"
+  inject 72,73 ('H','I')
+  document.txt BEFORE   ... "? ne"                        (33 bytes)
+  document.txt AFTER    ... "HI"                          (new line inserted)
+  cursor.txt    BEFORE   cursor_x=1
+  cursor.txt    AFTER    cursor_x=3                       (two chars inserted)
+
+  => KEYS NOW REACH THE DOCUMENT IN INTERACT MODE. Bug B is FIXED and
+     PROVEN, not merely compiled.
+
+BUILD: 0 errors, "Compilation Complete".
+
+CLEANUP: all processes killed and zero confirmed; document.txt, cursor.txt and
+history files restored from backup; stray .tmp files removed.
+
+================================================================================
+8. STILL OPEN AFTER THIS PASS
+================================================================================
+  - B.2 backspace swallowed at agy-text-editor_manager.c:580, and
+    B.3 '2'/'6' stolen as commands at :652-657. Both are now COMPILED AND
+    RUNNING, so they are observable for the first time. Neither was exercised
+    by this pass -- T3 typed H and I only, deliberately avoiding 2 and 6.
+  - B.5 / B.8 the interact-mode protocol bit. Still the shared root of B.2 and
+    B.3; fixing those two properly needs this, not a branch reorder.
+  - Bug A, the frame unicode/codepage path. Entirely untouched. Still needs
+    the GetConsoleOutputCP diagnostic from the bug log's section A.5.
+  - The physical-keyboard capture half (keyboard_input_win.c AsciiChar
+    weakness). Still untested; needs a SendInput harness per K9 Rule 11.
+
+================================================================================
+9. BRANCH NOTE
+================================================================================
+Four of these commits were initially made while `windows` was the checked-out
+branch, which violates the house rule that each tool commits only to its own
+branch. `windows` has since been restored to 6a8c9151 -- identical to
+origin/windows and to where this session started -- so that branch is
+pristine and nothing was ever pushed. All this work now lives on `kilo` only.
+A concurrent `opencode-windows` agent shares this checkout and its index; its
+files do not overlap these, but two agents committing into one index is a
+known hazard here (it already produced one 255-file accidental commit today).
 # END OF REPORT

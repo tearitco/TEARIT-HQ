@@ -200,7 +200,45 @@ A1 and A2 are complementary. A1 is the root fix; A2 is the guarantee.
 ## BUG B — KEYS NOT GETTING THROUGH IN agy INTERACT MODE
 ================================================================================
 
-*** ROOT CAUSED AND PROVEN BY LIVE TEST 2026-09-26 15:19-15:40. ***
+*** STATUS: FIXED AND PROVEN 2026-09-26 17:10, on branch kilo. ***
+
+*** VERIFIED, NOT MERELY COMPILED: with the fix in place both
+    chtpm_parser.+x and agy-text-editor_manager.+x run, and injecting 72/73
+    ('H','I') in interact mode inserted "HI" into document.txt and advanced
+    cursor_x from 1 to 3. Build: 0 errors. ***
+
+*** IT WAS NOT A ONE-LINE FIX. Adding the missing build target exposed three
+    further Windows-only defects that each independently blocked every
+    keystroke. Full detail and evidence in
+    FRAME_REPORT_20260926-1540_agy-interact-inject.txt section 7. ***
+
+  1. BUILD TARGET MISSING. agy-text-editor was absent from the hardcoded
+     project-manager list in compile_all.ps1 -- and so were all four shared
+     Ops it invokes (text_edit_key, text_editor_view, file_copy,
+     dir_browse). It could not have worked with only the manager built,
+     because run_op()'s binaries would not exist either.
+  2. THE MANAGER NEVER COMPILED ON WINDOWS. Being unbuilt, it was POSIX-only
+     in four places: <sys/wait.h>, setpgid(), and a fork/execv/waitpid
+     run_op(). Replaced with a CreateProcess path mirroring orchestrator.c:33.
+     Also had to #undef windows.h's MAX_PATH. run_op was kept LOCAL on
+     purpose: pieces/system/win_spawn.h's win_spawn() drops every argument
+     (it builds a cmd_line then passes NULL to _spawnl), and
+     chtpm_parser.c calls that live -- so fixing the shared header is a
+     separate, riskier change and is deliberately not bundled here.
+  3. dir_browse.c used strcasestr(), a GNU extension MinGW does not provide.
+     Added a small ASCII case-insensitive fallback.
+  4. THE REAL SECOND-LAYER BUG, and the one that actually made the editor
+     look dead: text_edit_key.c:96,:120 and file_copy.c:55 used the standard
+     write-.tmp-then-rename idiom. POSIX rename() atomically replaces the
+     destination; MSVCRT's rename() FAILS if the destination exists, leaving
+     the .tmp stranded beside the untouched original. Observed live:
+     document.txt.tmp was written at 34 bytes (the edit WAS computed) while
+     document.txt sat unchanged at 33 bytes. Every keystroke was computed
+     correctly and then silently thrown away. Fixed with a replace_file()
+     helper using MoveFileExA(MOVEFILE_REPLACE_EXISTING) on Windows.
+  5. Incidental, pre-existing: joystick_input called gcc directly instead of
+     via Compile-Piece, so it never got its +x\ dir and never linked. Routed
+     through Compile-Piece.
 
 *** THE ANSWER IS NOT WHAT I SPENT MOST OF THIS DOCUMENT GUESSING. ***
 

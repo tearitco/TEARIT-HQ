@@ -9,10 +9,19 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#ifndef _WIN32
 #include <sys/wait.h>
+#endif
 #include <signal.h>
 #include <time.h>
 #include <ctype.h>
+
+#ifdef _WIN32
+#include <windows.h>
+/* windows.h defines MAX_PATH as 260; this file uses its own 4096 below.
+   Drop the Windows one so the house-sized value wins. */
+#undef MAX_PATH
+#endif
 
 #define MODULE_NAME "agy-text-editor"
 #define MAX_PATH 4096
@@ -282,10 +291,55 @@ static void transition_to_layout(const char *layout_path) {
    execute" -- this is the ONE place that knows how to run one) ---- */
 static int run_op(const char *op_rel_path, char *const op_argv[]) {
     char full_path[MAX_PATH];
+
+    snprintf(full_path, sizeof(full_path), "%s/%s", project_root, op_rel_path);
+
+#ifdef _WIN32
+    /* Windows has no fork()/execv()/waitpid(). Build one quoted command
+     * line and spawn it synchronously, mirroring the CreateProcess path
+     * orchestrator.c already uses successfully on this platform.
+     *
+     * Deliberately LOCAL rather than reusing pieces/system/win_spawn.h:
+     * that header's win_spawn() assembles a cmd_line and then passes NULL
+     * to _spawnl(), so every argument is silently dropped -- fatal here,
+     * because all four of agy's Ops take arguments (doc path, cursor
+     * path, key code). chtpm_parser.c calls that same win_spawn() live, so
+     * repairing the shared header is its own change with its own risk and
+     * is deliberately NOT bundled into this build fix.
+     *
+     * CREATE_NO_WINDOW matches how the orchestrator launches other
+     * helpers. None of these Ops write to stdout -- they all communicate
+     * through the files named in their arguments -- so nothing is lost. */
+    char cmd[8192];
+    size_t off = 0;
+    cmd[0] = '\0';
+    for (int i = 0; op_argv[i] != NULL && off + 2 < sizeof(cmd); i++) {
+        int n = snprintf(cmd + off, sizeof(cmd) - off, "%s\"%s\"",
+                         i ? " " : "", op_argv[i]);
+        if (n < 0) break;
+        off += (size_t)n;
+    }
+
+    STARTUPINFO si;
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    ZeroMemory(&pi, sizeof(pi));
+
+    if (!CreateProcess(full_path, cmd, NULL, NULL, FALSE, CREATE_NO_WINDOW,
+                       NULL, NULL, &si, &pi)) {
+        return -1;
+    }
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    DWORD code = 0;
+    GetExitCodeProcess(pi.hProcess, &code);
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
+    return (int)code;
+#else
     pid_t pid;
     int status;
 
-    snprintf(full_path, sizeof(full_path), "%s/%s", project_root, op_rel_path);
     pid = fork();
     if (pid == 0) {
         execv(full_path, op_argv);
@@ -295,6 +349,7 @@ static int run_op(const char *op_rel_path, char *const op_argv[]) {
         return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
     }
     return -1;
+#endif
 }
 
 static void get_document_path(char *out, size_t sz) {
@@ -933,7 +988,12 @@ static void update_gui_state(void) {
 int main(void) {
     signal(SIGINT, handle_sigint);
     signal(SIGTERM, handle_sigint);
+#ifndef _WIN32
+    /* Detach into our own process group so terminal signals aimed at the
+       launching shell don't reach us. No Windows equivalent and none
+       needed: CREATE_NO_WINDOW children are already signal-isolated. */
     setpgid(0, 0);
+#endif
     resolve_paths();
 
     /* Seed the working document/cursor files on first run if they don't
