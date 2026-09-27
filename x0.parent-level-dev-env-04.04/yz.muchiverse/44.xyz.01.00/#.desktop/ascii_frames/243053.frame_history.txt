@@ -1,0 +1,22 @@
+
+=== menu.chtpm pid 243053  2026-09-18 13:10:36 ===
+--- menu.chtpm  pid 243053  2026-09-18 13:10:36 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 243053  2026-09-18 13:10:39 ===
+--- menu.chtpm  pid 243053  2026-09-18 13:10:39 ---
+--- page: main ---
+    [ ] 1. Dir
+    [>] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel

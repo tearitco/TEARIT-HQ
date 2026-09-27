@@ -1,0 +1,35 @@
+
+=== menu.chtpm pid 189811  2026-09-18 07:46:51 ===
+--- menu.chtpm  pid 189811  2026-09-18 07:46:51 ---
+--- page: main ---
+    [>] 1. Events (hq)
+    [ ] 2. Close
+    [ ] 3. Cancel
+
+=== menu.chtpm pid 189811  2026-09-18 07:46:52 ===
+--- menu.chtpm  pid 189811  2026-09-18 07:46:52 ---
+--- page: main ---
+    [>] 1. Events (hq)
+    [ ] 2. Close
+    [ ] 3. Cancel
+
+=== menu.chtpm pid 189811  2026-09-18 07:46:54 ===
+--- menu.chtpm  pid 189811  2026-09-18 07:46:54 ---
+--- page: main ---
+    [>] 1. Events (hq)
+    [ ] 2. Close
+    [ ] 3. Cancel
+
+=== menu.chtpm pid 189811  2026-09-18 07:47:02 ===
+--- menu.chtpm  pid 189811  2026-09-18 07:47:02 ---
+--- page: main ---
+    [>] 1. Events (hq)
+    [ ] 2. Close
+    [ ] 3. Cancel
+
+=== menu.chtpm pid 189811  2026-09-18 07:47:03 ===
+--- menu.chtpm  pid 189811  2026-09-18 07:47:03 ---
+--- page: main ---
+    [ ] 1. Events (hq)
+    [ ] 2. Close
+    [>] 3. Cancel

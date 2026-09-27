@@ -1,0 +1,88 @@
+
+=== menu.chtpm pid 1822204  2026-09-24 20:43:09 ===
+--- menu.chtpm  pid 1822204  2026-09-24 20:43:09 ---
+--- page: main ---
+    [>] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Act
+    [ ] 7. Cli-io: 
+
+=== menu.chtpm pid 1822204  2026-09-24 20:43:10 ===
+--- menu.chtpm  pid 1822204  2026-09-24 20:43:10 ---
+--- page: main ---
+    [>] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Act
+    [ ] 7. Cli-io: 
+
+=== menu.chtpm pid 1822204  2026-09-24 20:43:11 ===
+--- menu.chtpm  pid 1822204  2026-09-24 20:43:11 ---
+--- page: main ---
+    [>] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Act
+    [ ] 7. Cli-io: 
+
+=== menu.chtpm pid 1822204  2026-09-24 20:43:12 ===
+--- menu.chtpm  pid 1822204  2026-09-24 20:43:12 ---
+--- page: main ---
+    [ ] 1. Events (hq)
+    [>] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Act
+    [ ] 7. Cli-io: 
+
+=== menu.chtpm pid 1822204  2026-09-24 20:43:12 ===
+--- menu.chtpm  pid 1822204  2026-09-24 20:43:12 ---
+--- page: main ---
+    [ ] 1. Events (hq)
+    [ ] 2. Dir
+    [>] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Act
+    [ ] 7. Cli-io: 
+
+=== menu.chtpm pid 1822204  2026-09-24 20:43:13 ===
+--- menu.chtpm  pid 1822204  2026-09-24 20:43:13 ---
+--- page: main ---
+    [ ] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [>] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Act
+    [ ] 7. Cli-io: 
+
+=== menu.chtpm pid 1822204  2026-09-24 20:43:13 ===
+--- menu.chtpm  pid 1822204  2026-09-24 20:43:13 ---
+--- page: main ---
+    [ ] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [>] 5. Cancel
+    [ ] 6. Act
+    [ ] 7. Cli-io: 
+
+=== menu.chtpm pid 1822204  2026-09-24 20:43:13 ===
+--- menu.chtpm  pid 1822204  2026-09-24 20:43:13 ---
+--- page: main ---
+    [ ] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [>] 6. Act
+    [ ] 7. Cli-io: 

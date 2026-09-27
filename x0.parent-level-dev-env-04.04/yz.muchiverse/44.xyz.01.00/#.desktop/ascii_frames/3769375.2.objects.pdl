@@ -1,0 +1,19 @@
+OBJECT tag=text id=- class=quiet x=0 y=30 w=220 h=30 nav=0 active=0 label=scanned 08:31:29
+OBJECT tag=text id=- class=block-title x=0 y=60 w=220 h=30 nav=0 active=0 label=10 good  /  0 bad
+OBJECT tag=item id=b_refresh class=btn x=0 y=90 w=220 h=30 nav=1 active=0 label=  refresh now  
+OBJECT tag=item id=b_kill class=btn,danger x=0 y=120 w=220 h=30 nav=2 active=0 label=  KILL ALL BAD  
+OBJECT tag=item id=b_kill2 class=btn,danger x=0 y=150 w=220 h=30 nav=3 active=0 label= + pals/singletons 
+OBJECT tag=text id=- class=block-title x=0 y=180 w=220 h=30 nav=0 active=0 label=BAD - stray / leaked
+OBJECT tag=text id=- class=quiet x=0 y=210 w=220 h=30 nav=0 active=0 label=(none - nothing leaked)
+OBJECT tag=text id=- class=block-title x=220 y=30 w=480 h=30 nav=0 active=0 label=GOOD - owned / accounted for
+OBJECT tag=text id=- class=quiet x=220 y=60 w=480 h=30 nav=0 active=0 label=taskbar group, registered pals, house-wide managers, live -hq windows
+OBJECT tag=text id=- class=- x=220 y=90 w=480 h=30 nav=0 active=0 label=1526265 [singleton] 8h57m  cpu:0.2  unreg  swatch_picker_manager /home/no/Desktop/github/
+OBJECT tag=text id=- class=- x=220 y=120 w=480 h=30 nav=0 active=0 label=3573877 [pal]       1h16m  cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=150 w=480 h=30 nav=0 active=0 label=3573883 [pal]       1h16m  cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=180 w=480 h=30 nav=0 active=0 label=3649177 [pal]       0m     cpu:0.2  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=210 w=480 h=30 nav=0 active=0 label=3649179 [pal]       0m     cpu:0.3  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=240 w=480 h=30 nav=0 active=0 label=3649181 [pal]       0m     cpu:0.2  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=270 w=480 h=30 nav=0 active=0 label=3649183 [pal]       0m     cpu:0.5  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=300 w=480 h=30 nav=0 active=0 label=3649185 [pal]       0m     cpu:0.2  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=330 w=480 h=30 nav=0 active=0 label=3649187 [pal]       0m     cpu:0.3  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=360 w=480 h=30 nav=0 active=0 label=3649189 [pal]       0m     cpu:0.1  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43

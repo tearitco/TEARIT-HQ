@@ -1,0 +1,30 @@
+
+=== menu.chtpm pid 67713  2026-09-27 03:29:56 ===
+--- menu.chtpm  pid 67713  2026-09-27 03:29:56 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Cli-io: 
+
+=== menu.chtpm pid 67713  2026-09-27 03:29:57 ===
+--- menu.chtpm  pid 67713  2026-09-27 03:29:57 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Cli-io: 
+
+=== menu.chtpm pid 67713  2026-09-27 03:30:01 ===
+--- menu.chtpm  pid 67713  2026-09-27 03:30:01 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Cli-io: 

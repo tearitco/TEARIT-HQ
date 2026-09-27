@@ -1,0 +1,72 @@
+
+=== proc-mon.xhtpm pid 121271  2026-09-18 02:28:53 ===
+--- proc-mon.xhtpm  pid 121271  2026-09-18 02:28:53 ---
+--- page: main ---
+Session Monitor
+          scanned 23:16:53
+          2 good  /  0 bad
+      [>] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            216519  [pal]       31m    cpu:0.1  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            216521  [pal]       31m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+
+=== proc-mon.xhtpm pid 121271  2026-09-18 02:28:54 ===
+--- proc-mon.xhtpm  pid 121271  2026-09-18 02:28:54 ---
+--- page: main ---
+Session Monitor
+          scanned 23:16:53
+          2 good  /  0 bad
+      [>] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            216519  [pal]       31m    cpu:0.1  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            216521  [pal]       31m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+
+=== proc-mon.xhtpm pid 121271  2026-09-18 02:28:58 ===
+--- proc-mon.xhtpm  pid 121271  2026-09-18 02:28:58 ---
+--- page: main ---
+Session Monitor
+          scanned 23:16:53
+          2 good  /  0 bad
+      [ ] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            216519  [pal]       31m    cpu:0.1  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            216521  [pal]       31m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+
+=== proc-mon.xhtpm pid 121271  2026-09-18 02:28:59 ===
+--- proc-mon.xhtpm  pid 121271  2026-09-18 02:28:59 ---
+--- page: main ---
+Session Monitor
+          scanned 23:16:53
+          2 good  /  0 bad
+      [ ] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            216519  [pal]       31m    cpu:0.1  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            216521  [pal]       31m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43

@@ -5,32 +5,32 @@ FINANCIAL BALANCE SHEET: SKYFORGE AEROSPACE (SKF)
 (Amounts in millions of U.S. Dollars, except per share amounts)
 
 ASSETS:
-  Free Cash and Equivalents:		948.82
-  Working Capital (A/R, Inven.):	158.39
-  Business Assets/Equipment:		1195.27
+  Free Cash and Equivalents:		584.21
+  Working Capital (A/R, Inven.):	207.35
+  Business Assets/Equipment:		1608.76
   Stock in Subsidiary Cos.:		0.00
   Options Long/Short: Net Value:	0.00
   ---------------------------------------------
-  Total Assets:				2302.49
+  Total Assets:				2400.33
   ---------------------------------------------
 
 LIABILITIES AND EQUITY:
   Long-Term Bonds Issued:		0.00
-  Bank Loan:				457.66
+  Bank Loan:				483.57
   Accrued Income Tax Payable:		0.00
   ---------------------------------------------
-  Total Liabilities:			457.66
+  Total Liabilities:			483.57
   ---------------------------------------------
-  Equity (Net Worth):			1844.82
+  Equity (Net Worth):			1916.76
   =============================================
 
 STOCK AND EARNINGS DATA:
 ------------------------
-  Net Worth Per Share:			151.76
-  Current Stock Price:			169.69
-  52-Week High/Low Stock Price:		227.80 / 134.02
-  Shares of Stock Outstanding:		12.16 million
-  Total Stock Capitalization:		2062.76 million
+  Net Worth Per Share:			71.78
+  Current Stock Price:			98.51
+  52-Week High/Low Stock Price:		173.85 / 78.68
+  Shares of Stock Outstanding:		26.70 million
+  Total Stock Capitalization:		2630.27 million
   2021 Earnings Per Share:		0.00 (Operating Earnings)
   2022 Earnings Per Share:		0.00 (Operating Earnings)
   2023 Earnings Per Share:		0.00 (Operating Earnings)
@@ -49,7 +49,7 @@ VARIOUS FINANCIAL RATIOS:
 *** CREDIT INFO: ***
 -------------------
   Credit Rating:			AA
-  Unused Bank Line of Credit:		1660.82 million
+  Unused Bank Line of Credit:		562.84 million
   Borrowing Rate (Interest):		10.50% (Prime is: 10.00%)
   Lending Bank:				MARTIAN TRUST BANK (MTB)
   ---------------------------------------------
@@ -64,11 +64,11 @@ VARIABLE SETTINGS (Changeable by controlling player):
 MISCELLANEOUS INFO:
 -------------------
   Industry Group:			DEFENSE & AEROSPACE
-  Incorporated in:			Inland
+  Incorporated in:			Solar Empire
   Controlled (and actively managed) by:	public
   Public Owns:			%
-  Accrued R&D and/or Investment Tax Credits:	$133.89 million
-  Annual CEO Salary (approx.):		$0.83 million (Plus possible bonuses)
+  Accrued R&D and/or Investment Tax Credits:	$96.98 million
+  Annual CEO Salary (approx.):		$0.43 million (Plus possible bonuses)
   Today's (Game) Date:			January 1, 2025
   Next Earnings Report:			January 27, 2025
   ---------------------------------------------

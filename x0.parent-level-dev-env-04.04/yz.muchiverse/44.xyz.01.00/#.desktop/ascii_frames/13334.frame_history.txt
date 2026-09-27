@@ -1,0 +1,612 @@
+
+=== file-explorer-pal.xhtpm pid 13334  2026-09-15 12:45:37 ===
+--- file-explorer-pal.xhtpm  pid 13334  2026-09-15 12:45:37 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📁  #.DOX 
+      [ ] 17. 📁  #.Z.HUMAN_LLM 
+      [ ] 18. 📁  #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+      [ ] 19. 📁  #.desktop 
+      [ ] 20. 📁  #.haiku+ 
+      [ ] 21. 📁  #.livedesk 
+      [ ] 22. 📁  #.notes 
+      [ ] 23. 📁  #.ref 
+      [ ] 24. 📁  #.resume 
+      [ ] 25. 📁  #.tmp 
+      [ ] 26. 📁  #.user-test-how2 
+      [ ] 27. 📁  #.w8 
+      [ ] 28. 📁  #.xer 
+      [ ] 29. 📁  #.z.mirror_llm]z5]IQABOD🪞️+4 
+      [ ] 30. 📁  $.crypts 
+      [ ] 31. 📁  %.harnesses 
+      [ ] 32. 📁  &.hq-apps 
+
+=== file-explorer-pal.xhtpm pid 13334  2026-09-15 12:45:39 ===
+--- file-explorer-pal.xhtpm  pid 13334  2026-09-15 12:45:39 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📁  #.DOX 
+      [ ] 17. 📁  #.Z.HUMAN_LLM 
+      [ ] 18. 📁  #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+      [ ] 19. 📁  #.desktop 
+      [ ] 20. 📁  #.haiku+ 
+      [ ] 21. 📁  #.livedesk 
+      [ ] 22. 📁  #.notes 
+      [ ] 23. 📁  #.ref 
+      [ ] 24. 📁  #.resume 
+      [>] 25. 📁  #.tmp 
+      [ ] 26. 📁  #.user-test-how2 
+      [ ] 27. 📁  #.w8 
+      [ ] 28. 📁  #.xer 
+      [ ] 29. 📁  #.z.mirror_llm]z5]IQABOD🪞️+4 
+      [ ] 30. 📁  $.crypts 
+      [ ] 31. 📁  %.harnesses 
+      [ ] 32. 📁  &.hq-apps 
+
+=== file-explorer-pal.xhtpm pid 13334  2026-09-15 12:45:40 ===
+--- file-explorer-pal.xhtpm  pid 13334  2026-09-15 12:45:40 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📁  #.DOX 
+      [ ] 17. 📁  #.Z.HUMAN_LLM 
+      [ ] 18. 📁  #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+      [ ] 19. 📁  #.desktop 
+      [ ] 20. 📁  #.haiku+ 
+      [ ] 21. 📁  #.livedesk 
+      [ ] 22. 📁  #.notes 
+      [ ] 23. 📁  #.ref 
+      [ ] 24. 📁  #.resume 
+      [ ] 25. 📁  #.tmp 
+      [>] 26. 📁  #.user-test-how2 
+      [ ] 27. 📁  #.w8 
+      [ ] 28. 📁  #.xer 
+      [ ] 29. 📁  #.z.mirror_llm]z5]IQABOD🪞️+4 
+      [ ] 30. 📁  $.crypts 
+      [ ] 31. 📁  %.harnesses 
+      [ ] 32. 📁  &.hq-apps 
+
+=== file-explorer-pal.xhtpm pid 13334  2026-09-15 12:45:40 ===
+--- file-explorer-pal.xhtpm  pid 13334  2026-09-15 12:45:40 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📁  #.DOX 
+      [ ] 17. 📁  #.Z.HUMAN_LLM 
+      [ ] 18. 📁  #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+      [ ] 19. 📁  #.desktop 
+      [ ] 20. 📁  #.haiku+ 
+      [ ] 21. 📁  #.livedesk 
+      [ ] 22. 📁  #.notes 
+      [ ] 23. 📁  #.ref 
+      [ ] 24. 📁  #.resume 
+      [ ] 25. 📁  #.tmp 
+      [ ] 26. 📁  #.user-test-how2 
+      [>] 27. 📁  #.w8 
+      [ ] 28. 📁  #.xer 
+      [ ] 29. 📁  #.z.mirror_llm]z5]IQABOD🪞️+4 
+      [ ] 30. 📁  $.crypts 
+      [ ] 31. 📁  %.harnesses 
+      [ ] 32. 📁  &.hq-apps 
+
+=== file-explorer-pal.xhtpm pid 13334  2026-09-15 12:45:41 ===
+--- file-explorer-pal.xhtpm  pid 13334  2026-09-15 12:45:41 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📁  #.DOX 
+      [ ] 17. 📁  #.Z.HUMAN_LLM 
+      [ ] 18. 📁  #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+      [ ] 19. 📁  #.desktop 
+      [ ] 20. 📁  #.haiku+ 
+      [ ] 21. 📁  #.livedesk 
+      [ ] 22. 📁  #.notes 
+      [ ] 23. 📁  #.ref 
+      [ ] 24. 📁  #.resume 
+      [ ] 25. 📁  #.tmp 
+      [>] 26. 📁  #.user-test-how2 
+      [ ] 27. 📁  #.w8 
+      [ ] 28. 📁  #.xer 
+      [ ] 29. 📁  #.z.mirror_llm]z5]IQABOD🪞️+4 
+      [ ] 30. 📁  $.crypts 
+      [ ] 31. 📁  %.harnesses 
+      [ ] 32. 📁  &.hq-apps 
+
+=== file-explorer-pal.xhtpm pid 13334  2026-09-15 12:45:41 ===
+--- file-explorer-pal.xhtpm  pid 13334  2026-09-15 12:45:41 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📁  #.DOX 
+      [ ] 17. 📁  #.Z.HUMAN_LLM 
+      [ ] 18. 📁  #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+      [ ] 19. 📁  #.desktop 
+      [ ] 20. 📁  #.haiku+ 
+      [ ] 21. 📁  #.livedesk 
+      [ ] 22. 📁  #.notes 
+      [ ] 23. 📁  #.ref 
+      [ ] 24. 📁  #.resume 
+      [>] 25. 📁  #.tmp 
+      [ ] 26. 📁  #.user-test-how2 
+      [ ] 27. 📁  #.w8 
+      [ ] 28. 📁  #.xer 
+      [ ] 29. 📁  #.z.mirror_llm]z5]IQABOD🪞️+4 
+      [ ] 30. 📁  $.crypts 
+      [ ] 31. 📁  %.harnesses 
+      [ ] 32. 📁  &.hq-apps 
+
+=== file-explorer-pal.xhtpm pid 13334  2026-09-15 12:45:41 ===
+--- file-explorer-pal.xhtpm  pid 13334  2026-09-15 12:45:41 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📁  #.DOX 
+      [ ] 17. 📁  #.Z.HUMAN_LLM 
+      [ ] 18. 📁  #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+      [ ] 19. 📁  #.desktop 
+      [ ] 20. 📁  #.haiku+ 
+      [ ] 21. 📁  #.livedesk 
+      [ ] 22. 📁  #.notes 
+      [ ] 23. 📁  #.ref 
+      [>] 24. 📁  #.resume 
+      [ ] 25. 📁  #.tmp 
+      [ ] 26. 📁  #.user-test-how2 
+      [ ] 27. 📁  #.w8 
+      [ ] 28. 📁  #.xer 
+      [ ] 29. 📁  #.z.mirror_llm]z5]IQABOD🪞️+4 
+      [ ] 30. 📁  $.crypts 
+      [ ] 31. 📁  %.harnesses 
+      [ ] 32. 📁  &.hq-apps 
+
+=== file-explorer-pal.xhtpm pid 13334  2026-09-15 12:45:42 ===
+--- file-explorer-pal.xhtpm  pid 13334  2026-09-15 12:45:42 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📁  #.DOX 
+      [ ] 17. 📁  #.Z.HUMAN_LLM 
+      [ ] 18. 📁  #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+      [ ] 19. 📁  #.desktop 
+      [ ] 20. 📁  #.haiku+ 
+      [ ] 21. 📁  #.livedesk 
+      [ ] 22. 📁  #.notes 
+      [>] 23. 📁  #.ref 
+      [ ] 24. 📁  #.resume 
+      [ ] 25. 📁  #.tmp 
+      [ ] 26. 📁  #.user-test-how2 
+      [ ] 27. 📁  #.w8 
+      [ ] 28. 📁  #.xer 
+      [ ] 29. 📁  #.z.mirror_llm]z5]IQABOD🪞️+4 
+      [ ] 30. 📁  $.crypts 
+      [ ] 31. 📁  %.harnesses 
+      [ ] 32. 📁  &.hq-apps 
+
+=== file-explorer-pal.xhtpm pid 13334  2026-09-15 12:45:42 ===
+--- file-explorer-pal.xhtpm  pid 13334  2026-09-15 12:45:42 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📁  #.DOX 
+      [ ] 17. 📁  #.Z.HUMAN_LLM 
+      [ ] 18. 📁  #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+      [ ] 19. 📁  #.desktop 
+      [ ] 20. 📁  #.haiku+ 
+      [ ] 21. 📁  #.livedesk 
+      [>] 22. 📁  #.notes 
+      [ ] 23. 📁  #.ref 
+      [ ] 24. 📁  #.resume 
+      [ ] 25. 📁  #.tmp 
+      [ ] 26. 📁  #.user-test-how2 
+      [ ] 27. 📁  #.w8 
+      [ ] 28. 📁  #.xer 
+      [ ] 29. 📁  #.z.mirror_llm]z5]IQABOD🪞️+4 
+      [ ] 30. 📁  $.crypts 
+      [ ] 31. 📁  %.harnesses 
+      [ ] 32. 📁  &.hq-apps 
+
+=== file-explorer-pal.xhtpm pid 13334  2026-09-15 12:45:42 ===
+--- file-explorer-pal.xhtpm  pid 13334  2026-09-15 12:45:42 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📁  #.DOX 
+      [ ] 17. 📁  #.Z.HUMAN_LLM 
+      [ ] 18. 📁  #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+      [ ] 19. 📁  #.desktop 
+      [ ] 20. 📁  #.haiku+ 
+      [ ] 21. 📁  #.livedesk 
+      [ ] 22. 📁  #.notes 
+      [>] 23. 📁  #.ref 
+      [ ] 24. 📁  #.resume 
+      [ ] 25. 📁  #.tmp 
+      [ ] 26. 📁  #.user-test-how2 
+      [ ] 27. 📁  #.w8 
+      [ ] 28. 📁  #.xer 
+      [ ] 29. 📁  #.z.mirror_llm]z5]IQABOD🪞️+4 
+      [ ] 30. 📁  $.crypts 
+      [ ] 31. 📁  %.harnesses 
+      [ ] 32. 📁  &.hq-apps 
+
+=== file-explorer-pal.xhtpm pid 13334  2026-09-15 12:45:42 ===
+--- file-explorer-pal.xhtpm  pid 13334  2026-09-15 12:45:42 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📁  #.DOX 
+      [ ] 17. 📁  #.Z.HUMAN_LLM 
+      [ ] 18. 📁  #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+      [ ] 19. 📁  #.desktop 
+      [ ] 20. 📁  #.haiku+ 
+      [ ] 21. 📁  #.livedesk 
+      [ ] 22. 📁  #.notes 
+      [ ] 23. 📁  #.ref 
+      [>] 24. 📁  #.resume 
+      [ ] 25. 📁  #.tmp 
+      [ ] 26. 📁  #.user-test-how2 
+      [ ] 27. 📁  #.w8 
+      [ ] 28. 📁  #.xer 
+      [ ] 29. 📁  #.z.mirror_llm]z5]IQABOD🪞️+4 
+      [ ] 30. 📁  $.crypts 
+      [ ] 31. 📁  %.harnesses 
+      [ ] 32. 📁  &.hq-apps 
+
+=== file-explorer-pal.xhtpm pid 13334  2026-09-15 12:45:43 ===
+--- file-explorer-pal.xhtpm  pid 13334  2026-09-15 12:45:43 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📁  #.DOX 
+      [ ] 17. 📁  #.Z.HUMAN_LLM 
+      [ ] 18. 📁  #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+      [ ] 19. 📁  #.desktop 
+      [ ] 20. 📁  #.haiku+ 
+      [ ] 21. 📁  #.livedesk 
+      [ ] 22. 📁  #.notes 
+      [ ] 23. 📁  #.ref 
+      [ ] 24. 📁  #.resume 
+      [>] 25. 📁  #.tmp 
+      [ ] 26. 📁  #.user-test-how2 
+      [ ] 27. 📁  #.w8 
+      [ ] 28. 📁  #.xer 
+      [ ] 29. 📁  #.z.mirror_llm]z5]IQABOD🪞️+4 
+      [ ] 30. 📁  $.crypts 
+      [ ] 31. 📁  %.harnesses 
+      [ ] 32. 📁  &.hq-apps 
+
+=== file-explorer-pal.xhtpm pid 13334  2026-09-15 12:45:43 ===
+--- file-explorer-pal.xhtpm  pid 13334  2026-09-15 12:45:43 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📁  #.DOX 
+      [ ] 17. 📁  #.Z.HUMAN_LLM 
+      [ ] 18. 📁  #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+      [ ] 19. 📁  #.desktop 
+      [ ] 20. 📁  #.haiku+ 
+      [ ] 21. 📁  #.livedesk 
+      [ ] 22. 📁  #.notes 
+      [ ] 23. 📁  #.ref 
+      [ ] 24. 📁  #.resume 
+      [ ] 25. 📁  #.tmp 
+      [>] 26. 📁  #.user-test-how2 
+      [ ] 27. 📁  #.w8 
+      [ ] 28. 📁  #.xer 
+      [ ] 29. 📁  #.z.mirror_llm]z5]IQABOD🪞️+4 
+      [ ] 30. 📁  $.crypts 
+      [ ] 31. 📁  %.harnesses 
+      [ ] 32. 📁  &.hq-apps 
+
+=== file-explorer-pal.xhtpm pid 13334  2026-09-15 12:45:44 ===
+--- file-explorer-pal.xhtpm  pid 13334  2026-09-15 12:45:44 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📁  #.DOX 
+      [ ] 17. 📁  #.Z.HUMAN_LLM 
+      [ ] 18. 📁  #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+      [ ] 19. 📁  #.desktop 
+      [ ] 20. 📁  #.haiku+ 
+      [ ] 21. 📁  #.livedesk 
+      [ ] 22. 📁  #.notes 
+      [ ] 23. 📁  #.ref 
+      [ ] 24. 📁  #.resume 
+      [ ] 25. 📁  #.tmp 
+      [>] 26. 📁  #.user-test-how2 
+      [ ] 27. 📁  #.w8 
+      [ ] 28. 📁  #.xer 
+      [ ] 29. 📁  #.z.mirror_llm]z5]IQABOD🪞️+4 
+      [ ] 30. 📁  $.crypts 
+      [ ] 31. 📁  %.harnesses 
+      [ ] 32. 📁  &.hq-apps 
+
+=== file-explorer-pal.xhtpm pid 13334  2026-09-15 12:45:52 ===
+--- file-explorer-pal.xhtpm  pid 13334  2026-09-15 12:45:52 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📁  #.DOX 
+      [ ] 17. 📁  #.Z.HUMAN_LLM 
+      [ ] 18. 📁  #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+      [ ] 19. 📁  #.desktop 
+      [ ] 20. 📁  #.haiku+ 
+      [ ] 21. 📁  #.livedesk 
+      [ ] 22. 📁  #.notes 
+      [ ] 23. 📁  #.ref 
+      [ ] 24. 📁  #.resume 
+      [ ] 25. 📁  #.tmp 
+      [>] 26. 📁  #.user-test-how2 
+      [ ] 27. 📁  #.w8 
+      [ ] 28. 📁  #.xer 
+      [ ] 29. 📁  #.z.mirror_llm]z5]IQABOD🪞️+4 
+      [ ] 30. 📁  $.crypts 
+      [ ] 31. 📁  %.harnesses 
+      [ ] 32. 📁  &.hq-apps 
+
+=== file-explorer-pal.xhtpm pid 13334  2026-09-15 12:45:57 ===
+--- file-explorer-pal.xhtpm  pid 13334  2026-09-15 12:45:57 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📁  #.DOX 
+      [ ] 17. 📁  #.Z.HUMAN_LLM 
+      [ ] 18. 📁  #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+      [ ] 19. 📁  #.desktop 
+      [ ] 20. 📁  #.haiku+ 
+      [ ] 21. 📁  #.livedesk 
+      [ ] 22. 📁  #.notes 
+      [ ] 23. 📁  #.ref 
+      [ ] 24. 📁  #.resume 
+      [ ] 25. 📁  #.tmp 
+      [>] 26. 📁  #.user-test-how2 
+      [ ] 27. 📁  #.w8 
+      [ ] 28. 📁  #.xer 
+      [ ] 29. 📁  #.z.mirror_llm]z5]IQABOD🪞️+4 
+      [ ] 30. 📁  $.crypts 
+      [ ] 31. 📁  %.harnesses 
+      [ ] 32. 📁  &.hq-apps 
+
+=== file-explorer-pal.xhtpm pid 13334  2026-09-15 12:55:27 ===
+--- file-explorer-pal.xhtpm  pid 13334  2026-09-15 12:55:27 ---
+--- page: main ---
+File Explorer - LOAD
+    [>] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📁  #.DOX 
+      [ ] 17. 📁  #.Z.HUMAN_LLM 
+      [ ] 18. 📁  #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+      [ ] 19. 📁  #.desktop 
+      [ ] 20. 📁  #.haiku+ 
+      [ ] 21. 📁  #.livedesk 
+      [ ] 22. 📁  #.notes 
+      [ ] 23. 📁  #.ref 
+      [ ] 24. 📁  #.resume 
+      [ ] 25. 📁  #.tmp 
+      [ ] 26. 📁  #.user-test-how2 
+      [ ] 27. 📁  #.w8 
+      [ ] 28. 📁  #.xer 
+      [ ] 29. 📁  #.z.mirror_llm]z5]IQABOD🪞️+4 
+      [ ] 30. 📁  $.crypts 
+      [ ] 31. 📁  %.harnesses 
+      [ ] 32. 📁  &.hq-apps 

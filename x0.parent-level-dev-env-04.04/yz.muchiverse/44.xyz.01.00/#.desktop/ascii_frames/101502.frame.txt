@@ -1,0 +1,15 @@
+--- file-explorer-pal.xhtpm  pid 101502  2026-09-15 10:37:45 ---
+--- page: main ---
+File Explorer - LOAD
+        [>] 3. ⬅  ..  Back 
+        [ ] 4. 📁  #.DOX 
+        [ ] 5. 📁  #.Z.HUMAN_LLM 
+        [ ] 6. 📁  #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+        [ ] 7. 📁  #.desktop 
+        [ ] 8. 📁  #.haiku+ 
+        [ ] 9. 📁  #.livedesk 
+        [ ] 10. 📁  #.notes 
+        [ ] 11. 📁  #.ref 
+        [ ] 12. 📁  #.resume 
+        [ ] 13. 📁  #.tmp 
+          Pick a file to load.

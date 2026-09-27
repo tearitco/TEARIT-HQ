@@ -1,0 +1,12 @@
+OBJECT tag=item id=crumb0 class=fe-crumb x=0 y=0 w=0 h=0 nav=0 active=0 label=/
+OBJECT tag=item id=crumb1 class=fe-crumb x=0 y=0 w=0 h=0 nav=0 active=0 label=home
+OBJECT tag=item id=crumb2 class=fe-crumb x=0 y=0 w=0 h=0 nav=0 active=0 label=no
+OBJECT tag=item id=crumb3 class=fe-crumb x=0 y=0 w=0 h=0 nav=0 active=0 label=Desktop
+OBJECT tag=item id=crumb4 class=fe-crumb x=0 y=0 w=0 h=0 nav=0 active=0 label=github
+OBJECT tag=item id=crumb5 class=fe-crumb x=0 y=0 w=0 h=0 nav=0 active=0 label=work
+OBJECT tag=item id=crumb6 class=fe-crumb x=0 y=0 w=0 h=0 nav=0 active=0 label=NNEST-12.00
+OBJECT tag=item id=crumb7 class=fe-crumb x=0 y=0 w=0 h=0 nav=0 active=0 label=x0.parent-level-dev-env-04.04
+OBJECT tag=item id=crumb8 class=fe-crumb x=0 y=0 w=0 h=0 nav=0 active=0 label=yz.muchiverse
+OBJECT tag=item id=crumb9 class=fe-crumb x=0 y=0 w=0 h=0 nav=0 active=0 label=44.xyz.01.00
+OBJECT tag=item id=viewtoggle class=opacity-btn x=700 y=30 w=420 h=30 nav=1 active=0 label=-
+OBJECT tag=text id=- class=quiet x=700 y=60 w=420 h=30 nav=0 active=0 label=Pick a file to load.

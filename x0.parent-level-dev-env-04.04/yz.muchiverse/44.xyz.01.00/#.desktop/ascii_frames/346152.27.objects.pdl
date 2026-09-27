@@ -1,0 +1,34 @@
+OBJECT tag=tab id=tab-actors class=- x=8 y=33 w=112 h=30 nav=1 active=0 label=Actors
+OBJECT tag=tab id=tab-classes class=- x=124 y=33 w=119 h=30 nav=2 active=0 label=Classes
+OBJECT tag=tab id=tab-skills class=- x=247 y=33 w=105 h=30 nav=3 active=0 label=Skills
+OBJECT tag=tab id=tab-items class=- x=356 y=33 w=107 h=30 nav=4 active=0 label=Items
+OBJECT tag=tab id=tab-weapons class=- x=467 y=33 w=134 h=30 nav=5 active=0 label=Weapons
+OBJECT tag=tab id=tab-armors class=- x=605 y=33 w=119 h=30 nav=6 active=0 label=Armors
+OBJECT tag=tab id=tab-enemies class=- x=728 y=33 w=128 h=30 nav=7 active=0 label=Enemies
+OBJECT tag=tab id=tab-troops class=- x=860 y=33 w=118 h=30 nav=8 active=0 label=Troops
+OBJECT tag=tab id=tab-states class=- x=982 y=33 w=112 h=30 nav=9 active=0 label=States
+OBJECT tag=tab id=tab-animations class=- x=1098 y=33 w=150 h=30 nav=10 active=0 label=Animations
+OBJECT tag=tab id=tab-tilesets class=- x=1252 y=33 w=122 h=30 nav=11 active=0 label=Tilesets
+OBJECT tag=tab id=tab-ce class=active x=1378 y=33 w=188 h=30 nav=12 active=1 label=Common Events
+OBJECT tag=tab id=tab-system class=- x=1570 y=33 w=120 h=30 nav=13 active=0 label=System
+OBJECT tag=tab id=tab-types class=- x=1694 y=33 w=109 h=30 nav=14 active=0 label=Types
+OBJECT tag=tab id=tab-terms class=- x=1807 y=33 w=112 h=30 nav=15 active=0 label=Terms
+OBJECT tag=text id=- class=quiet x=0 y=65 w=220 h=30 nav=0 active=0 label=Common Events (4)
+OBJECT tag=item id=r0 class=data-item x=0 y=95 w=220 h=30 nav=16 active=0 label=greet_player
+OBJECT tag=item id=r1 class=data-item x=0 y=125 w=220 h=30 nav=17 active=0 label=nested_inner
+OBJECT tag=item id=r2 class=data-item x=0 y=155 w=220 h=30 nav=18 active=0 label=shop_open
+OBJECT tag=item id=r3 class=data-item x=0 y=185 w=220 h=30 nav=19 active=0 label=test_target
+OBJECT tag=text id=- class=block-title x=220 y=65 w=1711 h=30 nav=0 active=0 label=Trigger
+OBJECT tag=text id=- class=- x=220 y=95 w=1711 h=30 nav=0 active=0 label=Autorun
+OBJECT tag=item id=ce-add class=data-item x=220 y=125 w=1711 h=30 nav=20 active=0 label=+ Add Command
+OBJECT tag=item id=ce-play class=data-item x=220 y=155 w=1711 h=30 nav=21 active=0 label=Play
+OBJECT tag=text id=- class=quiet x=220 y=185 w=1711 h=30 nav=0 active=0 label=Add Command / Play - click a command to edit its fields
+OBJECT tag=text id=- class=block-title x=220 y=215 w=1711 h=30 nav=0 active=0 label=Add Command  -  pick a type
+OBJECT tag=item id=ce-picker-cancel class=data-item x=220 y=259 w=1703 h=30 nav=24 active=0 label=< Cancel
+OBJECT tag=item id=cpk0 class=data-item x=220 y=289 w=1703 h=30 nav=25 active=0 label=Change Gold
+OBJECT tag=item id=cpk1 class=data-item x=220 y=319 w=1703 h=30 nav=26 active=0 label=Show Text
+OBJECT tag=item id=cpk2 class=data-item x=220 y=349 w=1703 h=30 nav=27 active=0 label=Show Choices
+OBJECT tag=item id=cpk3 class=data-item x=220 y=379 w=1703 h=30 nav=28 active=0 label=Take Gold
+OBJECT tag=item id=cpk4 class=data-item x=220 y=409 w=1703 h=30 nav=29 active=0 label=Control Switch
+OBJECT tag=item id=cpk5 class=data-item x=220 y=439 w=1703 h=30 nav=30 active=0 label=Control Variable
+OBJECT tag=item id=cpk6 class=data-item x=220 y=469 w=1703 h=30 nav=31 active=0 label=Call Common Event

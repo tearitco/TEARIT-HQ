@@ -1,0 +1,232 @@
+
+=== taskbar-settings-pal.xhtpm pid 11658  2026-09-17 02:28:18 ===
+--- taskbar-settings-pal.xhtpm  pid 11658  2026-09-17 02:28:18 ---
+--- page: main ---
+taskbar settings - theme applied
+    [>] 1. item
+    [ ] 2. item
+    [ ] 3. item
+    [ ] 4. item
+    [ ] 5. item
+    [ ] 6. item
+    [ ] 7. item
+    [ ] 8. item
+    [ ] 9. item
+    [ ] 10. item
+    [ ] 11. item
+    [ ] 12. item
+    [ ] 13. item
+    [ ] 14. item
+    [ ] 15. item
+    [ ] 16. Opacity -
+    [ ] 17. Opacity +
+    [ ] 18. Size -
+    [ ] 19. Size +
+    [ ] 20. Font ◀
+    [ ] 21. DejaVu Sans
+    [ ] 22. Font ▶
+    [ ] 23. Click: 2-step
+    [ ] 24. x
+
+=== taskbar-settings-pal.xhtpm pid 11658  2026-09-17 02:28:19 ===
+--- taskbar-settings-pal.xhtpm  pid 11658  2026-09-17 02:28:19 ---
+--- page: main ---
+taskbar settings - theme applied
+    [>] 1. item
+    [ ] 2. item
+    [ ] 3. item
+    [ ] 4. item
+    [ ] 5. item
+    [ ] 6. item
+    [ ] 7. item
+    [ ] 8. item
+    [ ] 9. item
+    [ ] 10. item
+    [ ] 11. item
+    [ ] 12. item
+    [ ] 13. item
+    [ ] 14. item
+    [ ] 15. item
+    [ ] 16. Opacity -
+    [ ] 17. Opacity +
+    [ ] 18. Size -
+    [ ] 19. Size +
+    [ ] 20. Font ◀
+    [ ] 21. DejaVu Sans
+    [ ] 22. Font ▶
+    [ ] 23. Click: 2-step
+    [ ] 24. x
+
+=== taskbar-settings-pal.xhtpm pid 11658  2026-09-17 02:28:19 ===
+--- taskbar-settings-pal.xhtpm  pid 11658  2026-09-17 02:28:19 ---
+--- page: main ---
+taskbar settings - pick a background swatch
+    [>] 1. item
+    [ ] 2. item
+    [ ] 3. item
+    [ ] 4. item
+    [ ] 5. item
+    [ ] 6. item
+    [ ] 7. item
+    [ ] 8. item
+    [ ] 9. item
+    [ ] 10. item
+    [ ] 11. item
+    [ ] 12. item
+    [ ] 13. item
+    [ ] 14. item
+    [ ] 15. item
+    [ ] 16. Opacity -
+    [ ] 17. Opacity +
+    [ ] 18. Size -
+    [ ] 19. Size +
+    [ ] 20. Font ◀
+    [ ] 21. DejaVu Sans
+    [ ] 22. Font ▶
+    [ ] 23. Click: 2-step
+    [ ] 24. x
+
+=== taskbar-settings-pal.xhtpm pid 11658  2026-09-17 02:28:21 ===
+--- taskbar-settings-pal.xhtpm  pid 11658  2026-09-17 02:28:21 ---
+--- page: main ---
+taskbar settings - pick a background swatch
+    [ ] 1. item
+    [ ] 2. item
+    [ ] 3. item
+    [ ] 4. item
+    [ ] 5. item
+    [ ] 6. item
+    [ ] 7. item
+    [ ] 8. item
+    [ ] 9. item
+    [>] 10. item
+    [ ] 11. item
+    [ ] 12. item
+    [ ] 13. item
+    [ ] 14. item
+    [ ] 15. item
+    [ ] 16. Opacity -
+    [ ] 17. Opacity +
+    [ ] 18. Size -
+    [ ] 19. Size +
+    [ ] 20. Font ◀
+    [ ] 21. DejaVu Sans
+    [ ] 22. Font ▶
+    [ ] 23. Click: 2-step
+    [ ] 24. x
+
+=== taskbar-settings-pal.xhtpm pid 11658  2026-09-17 02:28:21 ===
+--- taskbar-settings-pal.xhtpm  pid 11658  2026-09-17 02:28:21 ---
+--- page: main ---
+taskbar settings - pick a text swatch
+    [ ] 1. item
+    [ ] 2. item
+    [ ] 3. item
+    [ ] 4. item
+    [ ] 5. item
+    [ ] 6. item
+    [ ] 7. item
+    [ ] 8. item
+    [ ] 9. item
+    [>] 10. item
+    [ ] 11. item
+    [ ] 12. item
+    [ ] 13. item
+    [ ] 14. item
+    [ ] 15. item
+    [ ] 16. Opacity -
+    [ ] 17. Opacity +
+    [ ] 18. Size -
+    [ ] 19. Size +
+    [ ] 20. Font ◀
+    [ ] 21. DejaVu Sans
+    [ ] 22. Font ▶
+    [ ] 23. Click: 2-step
+    [ ] 24. x
+
+=== taskbar-settings-pal.xhtpm pid 11658  2026-09-17 02:28:25 ===
+--- taskbar-settings-pal.xhtpm  pid 11658  2026-09-17 02:28:25 ---
+--- page: main ---
+taskbar settings - pick a text swatch
+    [ ] 1. item
+    [ ] 2. item
+    [ ] 3. item
+    [ ] 4. item
+    [ ] 5. item
+    [ ] 6. item
+    [>] 7. item
+    [ ] 8. item
+    [ ] 9. item
+    [ ] 10. item
+    [ ] 11. item
+    [ ] 12. item
+    [ ] 13. item
+    [ ] 14. item
+    [ ] 15. item
+    [ ] 16. Opacity -
+    [ ] 17. Opacity +
+    [ ] 18. Size -
+    [ ] 19. Size +
+    [ ] 20. Font ◀
+    [ ] 21. DejaVu Sans
+    [ ] 22. Font ▶
+    [ ] 23. Click: 2-step
+    [ ] 24. x
+
+=== taskbar-settings-pal.xhtpm pid 11658  2026-09-17 02:28:25 ===
+--- taskbar-settings-pal.xhtpm  pid 11658  2026-09-17 02:28:25 ---
+--- page: main ---
+taskbar settings - theme applied
+    [ ] 1. item
+    [ ] 2. item
+    [ ] 3. item
+    [ ] 4. item
+    [ ] 5. item
+    [ ] 6. item
+    [>] 7. item
+    [ ] 8. item
+    [ ] 9. item
+    [ ] 10. item
+    [ ] 11. item
+    [ ] 12. item
+    [ ] 13. item
+    [ ] 14. item
+    [ ] 15. item
+    [ ] 16. Opacity -
+    [ ] 17. Opacity +
+    [ ] 18. Size -
+    [ ] 19. Size +
+    [ ] 20. Font ◀
+    [ ] 21. DejaVu Sans
+    [ ] 22. Font ▶
+    [ ] 23. Click: 2-step
+    [ ] 24. x
+
+=== taskbar-settings-pal.xhtpm pid 11658  2026-09-17 02:28:28 ===
+--- taskbar-settings-pal.xhtpm  pid 11658  2026-09-17 02:28:28 ---
+--- page: main ---
+taskbar settings - theme applied
+    [ ] 1. item
+    [ ] 2. item
+    [ ] 3. item
+    [ ] 4. item
+    [ ] 5. item
+    [ ] 6. item
+    [ ] 7. item
+    [ ] 8. item
+    [ ] 9. item
+    [ ] 10. item
+    [ ] 11. item
+    [ ] 12. item
+    [ ] 13. item
+    [ ] 14. item
+    [ ] 15. item
+    [ ] 16. Opacity -
+    [ ] 17. Opacity +
+    [ ] 18. Size -
+    [ ] 19. Size +
+    [ ] 20. Font ◀
+    [ ] 21. DejaVu Sans
+    [ ] 22. Font ▶
+    [ ] 23. Click: 2-step
+    [>] 24. x

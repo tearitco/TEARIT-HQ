@@ -1,0 +1,1829 @@
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:26 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:26 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. *Google's products 
+        [ ] 22. New tab
+      [ ] 23. https://www.google.com/intl/en/about/products?tab=ih
+          Status: ready
+            Google's products and services - About Google
+            Helpful products, built with you in mind
+            Search in new ways
+            Chat with Gemini
+            Try AI tools
+            Explore more products
+        [ ] 26. Product support
+        [ ] 27. Google Store
+        [ ] 28. Google Account
+        [ ] 29. Accessibility support
+            Search in new ways
+            Download the Google app
+        [ ] 30. https://search.google/ways-to-search/circle-to-search/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+            Play silent looping video Pause silent looping video
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:27 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:27 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. *Google's products 
+        [ ] 22. New tab
+      [ ] 23. https://www.google.com/intl/en/about/products?tab=ih
+          Status: ready
+            Google's products and services - About Google
+            Helpful products, built with you in mind
+            Search in new ways
+            Chat with Gemini
+            Try AI tools
+            Explore more products
+        [ ] 26. Product support
+        [ ] 27. Google Store
+        [ ] 28. Google Account
+        [ ] 29. Accessibility support
+            Search in new ways
+            Download the Google app
+        [ ] 30. https://search.google/ways-to-search/circle-to-search/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+            Play silent looping video Pause silent looping video
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:31 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:31 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. *Google's products 
+        [ ] 22. New tab
+      [ ] 23. https://www.google.com/intl/en/about/products?tab=ih
+          Status: ready
+            Google's products and services - About Google
+            Helpful products, built with you in mind
+            Search in new ways
+            Chat with Gemini
+            Try AI tools
+            Explore more products
+        [ ] 26. Product support
+        [ ] 27. Google Store
+        [ ] 28. Google Account
+        [ ] 29. Accessibility support
+            Search in new ways
+            Download the Google app
+        [ ] 30. https://search.google/ways-to-search/circle-to-search/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+            Play silent looping video Pause silent looping video
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:32 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:32 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. *Google's products 
+        [ ] 22. New tab
+      [>] 23. https://www.google.com/intl/en/about/products?tab=ih
+          Status: ready
+            Google's products and services - About Google
+            Helpful products, built with you in mind
+            Search in new ways
+            Chat with Gemini
+            Try AI tools
+            Explore more products
+        [ ] 26. Product support
+        [ ] 27. Google Store
+        [ ] 28. Google Account
+        [ ] 29. Accessibility support
+            Search in new ways
+            Download the Google app
+        [ ] 30. https://search.google/ways-to-search/circle-to-search/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+            Play silent looping video Pause silent looping video
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:33 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:33 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. *Google's products 
+        [ ] 22. New tab
+      [>] 23. https://www.google.com/intl/en/about/products?tab=ih
+          Status: ready
+            Google's products and services - About Google
+            Helpful products, built with you in mind
+            Search in new ways
+            Chat with Gemini
+            Try AI tools
+            Explore more products
+        [ ] 26. Product support
+        [ ] 27. Google Store
+        [ ] 28. Google Account
+        [ ] 29. Accessibility support
+            Search in new ways
+            Download the Google app
+        [ ] 30. https://search.google/ways-to-search/circle-to-search/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+            Play silent looping video Pause silent looping video
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:43 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:43 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. *Google's products 
+        [>] 22. New tab
+      [ ] 23. https://www.google.com/intl/en/about/products?tab=ih
+          Status: ready
+            Google's products and services - About Google
+            Helpful products, built with you in mind
+            Search in new ways
+            Chat with Gemini
+            Try AI tools
+            Explore more products
+        [ ] 26. Product support
+        [ ] 27. Google Store
+        [ ] 28. Google Account
+        [ ] 29. Accessibility support
+            Search in new ways
+            Download the Google app
+        [ ] 30. https://search.google/ways-to-search/circle-to-search/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+            Play silent looping video Pause silent looping video
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:44 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:44 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [>] 22. *Network Browser
+        [ ] 23. New tab
+      [ ] 24. URL: 
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:50 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:50 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. URL: 
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:51 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:51 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. hello
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:52 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:52 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. hello
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:52 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:52 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. hell
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:53 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:53 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. hell
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:53 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:53 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. URL: 
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:54 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:54 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. w
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:54 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:54 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. ww
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:54 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:54 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. www
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:55 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:55 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. ww
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:55 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:55 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. w
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:56 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:56 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. w
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:56 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:56 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. ww
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:56 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:56 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. ww.
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:56 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:56 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. ww.y
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:57 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:57 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. ww.yo
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:58 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:58 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. ww.yo
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:58 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:58 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. ww.y
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:59 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:59 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. ww.y
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:59 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:59 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. ww
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:14:59 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:14:59 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. w
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:15:00 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:15:00 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. w
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:15:00 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:15:00 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. ww
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:15:01 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:15:01 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. ww.
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:15:01 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:15:01 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. ww.you
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:15:02 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:15:02 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. ww.you
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:15:02 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:15:02 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. ww.youtu
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:15:02 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:15:02 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. ww.youtub
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:15:02 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:15:02 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. ww.youtube.c
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:15:03 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:15:03 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. URL: 
+          Status: loading
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:15:03 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:15:03 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. URL: 
+          Status: error: curl failed (rc=1) for ww.youtube.com
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:15:06 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:15:06 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. URL: 
+          Status: error: curl failed (rc=1) for ww.youtube.com
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:15:07 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:15:07 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. URL: 
+          Status: error: curl failed (rc=1) for ww.youtube.com
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:15:07 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:15:07 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. ww
+          Status: error: curl failed (rc=1) for ww.youtube.com
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:15:07 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:15:07 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. www.
+          Status: error: curl failed (rc=1) for ww.youtube.com
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:15:08 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:15:08 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. www.
+          Status: error: curl failed (rc=1) for ww.youtube.com
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:15:08 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:15:08 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. www.you
+          Status: error: curl failed (rc=1) for ww.youtube.com
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:15:08 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:15:08 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. www.youtub
+          Status: error: curl failed (rc=1) for ww.youtube.com
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:15:08 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:15:08 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. www.youtube.
+          Status: error: curl failed (rc=1) for ww.youtube.com
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:15:08 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:15:08 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. www.youtube.co
+          Status: error: curl failed (rc=1) for ww.youtube.com
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:15:09 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:15:09 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. www.youtube.co
+          Status: error: curl failed (rc=1) for ww.youtube.com
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:15:09 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:15:09 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. URL: 
+          Status: loading
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1686577  2026-09-11 03:15:12 ===
+--- network-browser-hq.xhtpm  pid 1686577  2026-09-11 03:15:12 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. www.youtube.com
+        [ ] 4. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 5. https://example.com
+        [ ] 6. https://myaccount.google.com/126
+        [ ] 7. https://myaccount.google.com/015
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 11. https://example.com
+        [ ] 12. www.google.com
+        [ ] 13. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 14. Back
+        [ ] 15. Forward
+        [ ] 16. Stop
+        [ ] 17. Reload
+        [ ] 18. Home
+        [ ] 19. Bookmark
+        [ ] 20. Close tab
+        [ ] 21. Google's products 
+        [ ] 22. Google's products 
+        [ ] 23. *YouTube
+        [>] 24. New tab
+      [ ] 25. www.youtube.com
+          Status: ready
+            YouTube
+        [ ] 28. / /
+        [ ] 29. / /
+        [ ] 30. https://www.youtube.com/about/ About
+        [ ] 31. https://www.youtube.com/about/press/ Press
+        [ ] 32. https://www.youtube.com/about/copyright/ Copyright
+        [ ] 33. /t/contact_us/ Contact us
+        [ ] 34. https://www.youtube.com/creators/ Creators
+        [ ] 35. https://www.youtube.com/ads/ Advertise
+        [ ] 36. https://developers.google.com/youtube Developers
+        [ ] 37. /t/terms Terms
+        [ ] 38. /t/privacy Privacy
+        [ ] 39. https://www.youtube.com/about/policies/ Policy & Safety
+        [ ] 40. https://www.youtube.com/howyoutubeworks?utm_campaign=ytgen&utm_source=ythp&utm_medium=LeftNav&utm_content=txt&u=https%3A%2F%2Fwww.youtube.com%2Fhowyoutubeworks%3Futm_source%3Dythp%26utm_medium%3DLeftNav%26utm_campaign%3Dytgen How YouTube w
+          Console
+          Try: eval:1 + 1

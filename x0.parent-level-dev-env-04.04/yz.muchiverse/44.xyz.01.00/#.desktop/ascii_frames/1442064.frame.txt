@@ -1,0 +1,13 @@
+--- pchq-board.xhtpm  pid 1442064  2026-09-08 10:37:17 ---
+--- page: main ---
+piececraft-hq board
+    [>] 1. x
+    [ ] 2. !
+    [ ] 3. _
+    [ ] 4. In: off
+    [ ] 5. File
+    [ ] 6. Desk
+    [ ] 7. Menu
+    [ ] 8. Player
+    [ ] 9. 10:37
+        No live board-viewer session - open 'View Board' from the game first.

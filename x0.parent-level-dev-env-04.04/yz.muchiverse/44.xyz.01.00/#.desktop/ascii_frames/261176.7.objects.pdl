@@ -1,0 +1,17 @@
+OBJECT tag=text id=- class=quiet x=0 y=30 w=220 h=30 nav=0 active=0 label=scanned 06:22:04
+OBJECT tag=text id=- class=block-title x=0 y=60 w=220 h=30 nav=0 active=0 label=1 AI instance(s)
+OBJECT tag=item id=b_refresh class=btn x=0 y=90 w=220 h=30 nav=1 active=0 label=  refresh now  
+OBJECT tag=item id=inst0 class=data-item,inst-row,selected1 x=0 y=120 w=220 h=30 nav=2 active=0 label=cursword  [fsm]
+OBJECT tag=text id=- class=block-title x=220 y=30 w=480 h=30 nav=0 active=0 label=cursword  —  kind: fsm
+OBJECT tag=text id=- class=quiet x=220 y=60 w=480 h=60 nav=0 active=0 label=PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+OBJECT tag=text id=- class=quiet x=220 y=120 w=480 h=60 nav=0 active=0 label=IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+OBJECT tag=text id=- class=block-title x=220 y=180 w=480 h=30 nav=0 active=0 label=live state: IDLE
+OBJECT tag=item id=blk0 class=data-item,fsm-block,current x=220 y=224 w=472 h=30 nav=5 active=0 label=  →  
+OBJECT tag=item id=blk1 class=data-item,fsm-block,current x=220 y=254 w=472 h=30 nav=6 active=0 label=  →  
+OBJECT tag=item id=blk2 class=data-item,fsm-block,current x=220 y=284 w=472 h=30 nav=7 active=0 label=  →  
+OBJECT tag=item id=blk3 class=data-item,fsm-block,current x=220 y=314 w=472 h=30 nav=8 active=0 label=  →  
+OBJECT tag=item id=blk4 class=data-item,fsm-block,current x=220 y=344 w=472 h=30 nav=9 active=0 label=  →  
+OBJECT tag=item id=blk5 class=data-item,fsm-block,current x=220 y=374 w=472 h=30 nav=10 active=0 label=  →  
+OBJECT tag=item id=blk6 class=data-item,fsm-block,current x=220 y=404 w=472 h=30 nav=11 active=0 label=  →  
+OBJECT tag=item id=blk7 class=data-item,fsm-block,current x=220 y=434 w=472 h=30 nav=12 active=0 label=  →  
+OBJECT tag=item id=blk8 class=data-item,fsm-block,current x=220 y=464 w=472 h=30 nav=13 active=0 label=  →  

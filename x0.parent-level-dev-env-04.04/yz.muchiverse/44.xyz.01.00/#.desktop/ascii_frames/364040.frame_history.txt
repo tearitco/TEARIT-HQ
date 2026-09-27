@@ -1,0 +1,32 @@
+
+=== menu.chtpm pid 364040  2026-09-15 15:23:38 ===
+--- menu.chtpm  pid 364040  2026-09-15 15:23:38 ---
+--- page: main ---
+    [>] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Close
+    [ ] 4. Cancel
+
+=== menu.chtpm pid 364040  2026-09-15 15:23:39 ===
+--- menu.chtpm  pid 364040  2026-09-15 15:23:39 ---
+--- page: main ---
+    [>] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Close
+    [ ] 4. Cancel
+
+=== menu.chtpm pid 364040  2026-09-15 15:23:40 ===
+--- menu.chtpm  pid 364040  2026-09-15 15:23:40 ---
+--- page: main ---
+    [ ] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Close
+    [>] 4. Cancel
+
+=== menu.chtpm pid 364040  2026-09-15 15:23:41 ===
+--- menu.chtpm  pid 364040  2026-09-15 15:23:41 ---
+--- page: main ---
+    [ ] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Close
+    [>] 4. Cancel

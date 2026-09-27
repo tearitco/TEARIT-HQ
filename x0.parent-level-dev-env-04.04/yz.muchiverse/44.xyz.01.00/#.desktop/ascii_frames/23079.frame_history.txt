@@ -1,0 +1,40 @@
+
+=== menu.chtpm pid 23079  2026-09-14 07:24:07 ===
+--- menu.chtpm  pid 23079  2026-09-14 07:24:07 ---
+--- page: main ---
+    [>] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Cancel
+
+=== menu.chtpm pid 23079  2026-09-14 07:24:08 ===
+--- menu.chtpm  pid 23079  2026-09-14 07:24:08 ---
+--- page: main ---
+    [>] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Cancel
+
+=== menu.chtpm pid 23079  2026-09-14 07:24:09 ===
+--- menu.chtpm  pid 23079  2026-09-14 07:24:09 ---
+--- page: main ---
+    [ ] 1. Cut
+    [>] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Cancel
+
+=== menu.chtpm pid 23079  2026-09-14 07:24:09 ===
+--- menu.chtpm  pid 23079  2026-09-14 07:24:09 ---
+--- page: main ---
+    [ ] 1. Cut
+    [ ] 2. Copy
+    [>] 3. Paste
+    [ ] 4. Cancel
+
+=== menu.chtpm pid 23079  2026-09-14 07:24:10 ===
+--- menu.chtpm  pid 23079  2026-09-14 07:24:10 ---
+--- page: main ---
+    [ ] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [>] 4. Cancel

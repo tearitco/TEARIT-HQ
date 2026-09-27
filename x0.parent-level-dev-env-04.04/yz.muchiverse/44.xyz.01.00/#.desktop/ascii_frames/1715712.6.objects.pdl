@@ -1,0 +1,25 @@
+OBJECT tag=tab id=tab-actors class=active x=8 y=33 w=112 h=30 nav=1 active=1 label=Actors
+OBJECT tag=tab id=tab-classes class=- x=124 y=33 w=119 h=30 nav=2 active=0 label=Classes
+OBJECT tag=tab id=tab-skills class=- x=247 y=33 w=105 h=30 nav=3 active=0 label=Skills
+OBJECT tag=tab id=tab-items class=- x=356 y=33 w=107 h=30 nav=4 active=0 label=Items
+OBJECT tag=tab id=tab-weapons class=- x=467 y=33 w=134 h=30 nav=5 active=0 label=Weapons
+OBJECT tag=tab id=tab-armors class=- x=605 y=33 w=119 h=30 nav=6 active=0 label=Armors
+OBJECT tag=tab id=tab-enemies class=- x=728 y=33 w=128 h=30 nav=7 active=0 label=Enemies
+OBJECT tag=tab id=tab-troops class=- x=860 y=33 w=118 h=30 nav=8 active=0 label=Troops
+OBJECT tag=tab id=tab-states class=- x=982 y=33 w=112 h=30 nav=9 active=0 label=States
+OBJECT tag=tab id=tab-animations class=- x=1098 y=33 w=150 h=30 nav=10 active=0 label=Animations
+OBJECT tag=tab id=tab-tilesets class=- x=1252 y=33 w=122 h=30 nav=11 active=0 label=Tilesets
+OBJECT tag=tab id=tab-ce class=- x=1378 y=33 w=188 h=30 nav=12 active=0 label=Common Events
+OBJECT tag=tab id=tab-system class=- x=1570 y=33 w=120 h=30 nav=13 active=0 label=System
+OBJECT tag=tab id=tab-types class=- x=1694 y=33 w=109 h=30 nav=14 active=0 label=Types
+OBJECT tag=tab id=tab-terms class=- x=1807 y=33 w=112 h=30 nav=15 active=0 label=Terms
+OBJECT tag=text id=- class=quiet x=0 y=65 w=220 h=30 nav=0 active=0 label=Classes (4)
+OBJECT tag=item id=r0 class=data-item x=0 y=95 w=220 h=30 nav=16 active=0 label=1. Hero
+OBJECT tag=item id=r1 class=data-item x=0 y=125 w=220 h=30 nav=17 active=0 label=2. Warrior
+OBJECT tag=item id=r2 class=data-item x=0 y=155 w=220 h=30 nav=18 active=0 label=3. Mage
+OBJECT tag=item id=r3 class=data-item x=0 y=185 w=220 h=30 nav=19 active=0 label=4. Priest
+OBJECT tag=text id=- class=block-title x=220 y=65 w=1711 h=30 nav=0 active=0 label=#1  Hero
+OBJECT tag=cli_io id=fld_ class=data-item x=220 y=95 w=1711 h=30 nav=20 active=0 label=  []  
+OBJECT tag=cli_io id=fld_name class=data-item x=220 y=125 w=1711 h=30 nav=21 active=0 label=name  [Hero]  
+OBJECT tag=cli_io id=fld_exp_curve class=data-item x=220 y=155 w=1711 h=30 nav=22 active=0 label=exp_curve  [Normal]  
+OBJECT tag=cli_io id=fld_note class=data-item x=220 y=185 w=1711 h=30 nav=23 active=0 label=note  []  

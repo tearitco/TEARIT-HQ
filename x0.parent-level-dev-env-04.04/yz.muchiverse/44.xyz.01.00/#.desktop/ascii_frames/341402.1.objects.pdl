@@ -1,0 +1,11 @@
+OBJECT tag=text id=- class=block-title x=2 y=32 w=260 h=30 nav=0 active=0 label=D S R  —  D E S K   S T R E E T   R A I D E R
+OBJECT tag=text id=- class=quiet x=2 y=62 w=260 h=30 nav=0 active=0 label=Turn: 0   Active: corp_AFL
+OBJECT tag=text id=- class=block-title x=2 y=92 w=260 h=30 nav=0 active=0 label=Your Wallet:
+OBJECT tag=text id=- class=- x=2 y=122 w=260 h=30 nav=0 active=0 label=Cash: 1613
+OBJECT tag=text id=- class=block-title x=2 y=152 w=260 h=30 nav=0 active=0 label=Active Corp Balance Sheet:
+OBJECT tag=text id=- class=- x=2 y=182 w=260 h=30 nav=0 active=0 label=Cash (CD's): 5000
+OBJECT tag=text id=- class=- x=2 y=212 w=260 h=30 nav=0 active=0 label=Stock Price: 115.04
+OBJECT tag=text id=- class=- x=2 y=242 w=260 h=30 nav=0 active=0 label=Owned By: (independent)
+OBJECT tag=text id=- class=quiet x=2 y=272 w=260 h=30 nav=0 active=0 label=FINANCIAL NEWS [CMZ: $0.10 (-99.38%)]
+OBJECT tag=text id=- class=block-title x=2 y=302 w=260 h=30 nav=0 active=0 label=WORLD STATUS
+OBJECT tag=text id=- class=- x=2 y=332 w=260 h=30 nav=0 active=0 label=Population: 10000          Temperature: 15C

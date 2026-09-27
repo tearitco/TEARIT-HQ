@@ -1,0 +1,33 @@
+
+=== menu.chtpm pid 181969  2026-09-18 06:32:39 ===
+--- menu.chtpm  pid 181969  2026-09-18 06:32:39 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 181969  2026-09-18 06:32:40 ===
+--- menu.chtpm  pid 181969  2026-09-18 06:32:40 ---
+--- page: main ---
+    [ ] 1. Dir
+    [>] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 181969  2026-09-18 06:32:41 ===
+--- menu.chtpm  pid 181969  2026-09-18 06:32:41 ---
+--- page: main ---
+    [ ] 1. Dir
+    [>] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel

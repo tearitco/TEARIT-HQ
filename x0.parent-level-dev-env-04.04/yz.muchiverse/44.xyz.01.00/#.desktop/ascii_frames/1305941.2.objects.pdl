@@ -1,0 +1,33 @@
+OBJECT tag=text id=- class=quiet x=0 y=38 w=212 h=24 nav=0 active=0 label=SOURCE
+OBJECT tag=item id=sql-open class=- x=0 y=62 w=212 h=24 nav=3 active=0 label=+ Open CSV / PDL
+OBJECT tag=item id=sql-open-dir class=- x=0 y=86 w=212 h=24 nav=4 active=0 label=+ Open Folder
+OBJECT tag=item id=sql-close class=- x=0 y=110 w=212 h=24 nav=5 active=0 label=- Close Table
+OBJECT tag=text id=- class=quiet x=0 y=134 w=212 h=24 nav=0 active=0 label=TABLES
+OBJECT tag=item id=sql-tb-0 class=data-item,sql-active x=0 y=158 w=212 h=24 nav=6 active=0 label=people
+OBJECT tag=text id=- class=quiet x=0 y=182 w=212 h=24 nav=0 active=0 label=MACROS
+OBJECT tag=item id=sql-mac-0 class=data-item x=0 y=206 w=212 h=24 nav=7 active=0 label=SELECT              
+OBJECT tag=item id=sql-mac-1 class=data-item x=0 y=230 w=212 h=24 nav=8 active=0 label=SELECT cols         
+OBJECT tag=item id=sql-mac-2 class=data-item x=0 y=254 w=212 h=24 nav=9 active=0 label=SELECT DISTINCT     
+OBJECT tag=item id=sql-mac-3 class=data-item x=0 y=278 w=212 h=24 nav=10 active=0 label=WHERE               
+OBJECT tag=item id=sql-mac-4 class=data-item x=0 y=302 w=212 h=24 nav=11 active=0 label=ORDER BY            
+OBJECT tag=item id=sql-mac-5 class=data-item x=0 y=326 w=212 h=24 nav=12 active=0 label=LIMIT               
+OBJECT tag=item id=sql-mac-6 class=data-item x=0 y=350 w=212 h=24 nav=13 active=0 label=LIKE                
+OBJECT tag=item id=sql-mac-7 class=data-item x=0 y=374 w=212 h=24 nav=14 active=0 label=BETWEEN             
+OBJECT tag=item id=sql-mac-8 class=data-item x=0 y=398 w=212 h=24 nav=15 active=0 label=IN                  
+OBJECT tag=item id=sql-mac-9 class=data-item x=0 y=422 w=212 h=24 nav=16 active=0 label=IS NULL             
+OBJECT tag=item id=sql-mac-10 class=data-item x=0 y=446 w=212 h=24 nav=17 active=0 label=COUNT / AVG / SUM   
+OBJECT tag=item id=sql-mac-11 class=data-item x=0 y=470 w=212 h=24 nav=18 active=0 label=MIN / MAX           
+OBJECT tag=item id=sql-run class=- x=220 y=24 w=96 h=24 nav=19 active=0 label=Run
+OBJECT tag=item id=sql-commit class=- x=316 y=24 w=96 h=24 nav=20 active=0 label=Commit
+OBJECT tag=item id=sql-rollback class=- x=412 y=24 w=96 h=24 nav=21 active=0 label=Rollback
+OBJECT tag=item id=sql-export class=- x=508 y=24 w=96 h=24 nav=22 active=0 label=Export
+OBJECT tag=item id=sql-clear class=- x=604 y=24 w=96 h=24 nav=23 active=0 label=Clear
+OBJECT tag=text_area id=editor class=top,sql-editor x=220 y=48 w=480 h=168 nav=24 active=0 label=-
+OBJECT tag=text id=- class=sql-status x=220 y=216 w=480 h=24 nav=0 active=0 label=ran ok (7 grid lines)
+OBJECT tag=text id=- class=grid-head x=220 y=240 w=480 h=24 nav=0 active=0 label=city     | n
+OBJECT tag=text id=- class=grid-sep x=220 y=264 w=480 h=24 nav=0 active=0 label=---------+--
+OBJECT tag=text id=- class=grid-row x=220 y=288 w=480 h=24 nav=0 active=0 label=Boston   | 1
+OBJECT tag=text id=- class=grid-row x=220 y=312 w=480 h=24 nav=0 active=0 label=Chicago  | 1
+OBJECT tag=text id=- class=grid-row x=220 y=336 w=480 h=24 nav=0 active=0 label=Denver   | 1
+OBJECT tag=text id=- class=grid-row x=220 y=360 w=480 h=24 nav=0 active=0 label=New York | 1
+OBJECT tag=text id=- class=grid-row x=220 y=384 w=480 h=24 nav=0 active=0 label=(4 rows)

@@ -1,0 +1,78 @@
+
+=== taskbar-settings-pal.xhtpm pid 1455269  2026-09-10 21:43:37 ===
+--- taskbar-settings-pal.xhtpm  pid 1455269  2026-09-10 21:43:37 ---
+--- page: main ---
+taskbar settings - pick a background swatch
+    [>] 1. item
+    [ ] 2. item
+    [ ] 3. item
+    [ ] 4. item
+    [ ] 5. item
+    [ ] 6. item
+    [ ] 7. item
+    [ ] 8. item
+    [ ] 9. item
+    [ ] 10. item
+    [ ] 11. item
+    [ ] 12. item
+    [ ] 13. item
+    [ ] 14. item
+    [ ] 15. item
+    [ ] 16. Opacity -
+    [ ] 17. Opacity +
+    [ ] 18. Size -
+    [ ] 19. Size +
+    [ ] 20. Click: 2-step
+    [ ] 21. x
+
+=== taskbar-settings-pal.xhtpm pid 1455269  2026-09-10 21:43:41 ===
+--- taskbar-settings-pal.xhtpm  pid 1455269  2026-09-10 21:43:41 ---
+--- page: main ---
+taskbar settings - pick a background swatch
+    [>] 1. item
+    [ ] 2. item
+    [ ] 3. item
+    [ ] 4. item
+    [ ] 5. item
+    [ ] 6. item
+    [ ] 7. item
+    [ ] 8. item
+    [ ] 9. item
+    [ ] 10. item
+    [ ] 11. item
+    [ ] 12. item
+    [ ] 13. item
+    [ ] 14. item
+    [ ] 15. item
+    [ ] 16. Opacity -
+    [ ] 17. Opacity +
+    [ ] 18. Size -
+    [ ] 19. Size +
+    [ ] 20. Click: 2-step
+    [ ] 21. x
+
+=== taskbar-settings-pal.xhtpm pid 1455269  2026-09-10 21:44:10 ===
+--- taskbar-settings-pal.xhtpm  pid 1455269  2026-09-10 21:44:10 ---
+--- page: main ---
+taskbar settings - pick a background swatch
+    [ ] 1. item
+    [ ] 2. item
+    [ ] 3. item
+    [ ] 4. item
+    [ ] 5. item
+    [ ] 6. item
+    [ ] 7. item
+    [ ] 8. item
+    [ ] 9. item
+    [ ] 10. item
+    [ ] 11. item
+    [ ] 12. item
+    [ ] 13. item
+    [ ] 14. item
+    [ ] 15. item
+    [ ] 16. Opacity -
+    [ ] 17. Opacity +
+    [ ] 18. Size -
+    [ ] 19. Size +
+    [ ] 20. Click: 2-step
+    [>] 21. x

@@ -1,0 +1,912 @@
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:02:46 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:02:46 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:02:47 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:02:47 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:02:48 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:02:48 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:02:49 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:02:49 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:02:50 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:02:50 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:02:51 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:02:51 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:02:52 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:02:52 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:02:53 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:02:53 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:02:54 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:02:54 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:02:55 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:02:55 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:02:56 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:02:56 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:02:57 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:02:57 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:02:58 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:02:58 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:02:59 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:02:59 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:00 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:00 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:01 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:01 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:02 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:02 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:03 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:03 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:04 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:04 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:05 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:05 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:06 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:06 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:07 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:07 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:08 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:08 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:09 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:09 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:10 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:10 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:11 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:11 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:12 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:12 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:13 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:13 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:14 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:14 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:15 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:15 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:16 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:16 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:17 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:17 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:18 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:18 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:19 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:19 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:20 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:20 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:21 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:21 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:22 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:22 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:23 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:23 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:24 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:24 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:25 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:25 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:26 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:26 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:27 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:27 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:28 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:28 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:29 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:29 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:30 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:30 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:31 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:31 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:32 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:32 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 530529  2026-09-10 19:03:33 ===
+--- pchq-board.xhtpm  pid 530529  2026-09-10 19:03:33 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.

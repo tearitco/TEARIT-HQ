@@ -1,0 +1,23 @@
+
+=== dashboard.chtpm pid 645990  2026-09-13 14:16:42 ===
+--- dashboard.chtpm  pid 645990  2026-09-13 14:16:42 ---
+--- page: main ---
+db-hq
+        * Actors
+        Classes
+        Skills
+        Items
+        Weapons
+        Armors
+        Enemies
+        Troops
+        States
+        Animations
+        Tilesets
+        Common Events
+        System
+        Types
+        Terms
+        (loading)
+        Common Event
+        (select an event to edit it)

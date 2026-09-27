@@ -1,0 +1,18 @@
+
+=== khtpm_show_choices_18616.chtpm pid 18617  2026-09-27 00:34:52 ===
+--- khtpm_show_choices_18616.chtpm  pid 18617  2026-09-27 00:34:52 ---
+--- page: main ---
+Choose
+    [>] 1. Bible verse (text)
+    [ ] 2. Bible verse (with TTS)
+    [ ] 3. Tao Te Ching (random chapter)
+    [ ] 4. Cancel
+
+=== khtpm_show_choices_18616.chtpm pid 18617  2026-09-27 00:34:53 ===
+--- khtpm_show_choices_18616.chtpm  pid 18617  2026-09-27 00:34:53 ---
+--- page: main ---
+Choose
+    [>] 1. Bible verse (text)
+    [ ] 2. Bible verse (with TTS)
+    [ ] 3. Tao Te Ching (random chapter)
+    [ ] 4. Cancel

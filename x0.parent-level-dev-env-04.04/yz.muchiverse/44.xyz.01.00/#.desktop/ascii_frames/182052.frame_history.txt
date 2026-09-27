@@ -1,0 +1,234 @@
+
+=== file-explorer-pal.xhtpm pid 182052  2026-09-18 06:32:41 ===
+--- file-explorer-pal.xhtpm  pid 182052  2026-09-18 06:32:41 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 182052  2026-09-18 06:32:43 ===
+--- file-explorer-pal.xhtpm  pid 182052  2026-09-18 06:32:43 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 182052  2026-09-18 06:32:44 ===
+--- file-explorer-pal.xhtpm  pid 182052  2026-09-18 06:32:44 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 182052  2026-09-18 06:32:46 ===
+--- file-explorer-pal.xhtpm  pid 182052  2026-09-18 06:32:46 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 182052  2026-09-18 06:32:47 ===
+--- file-explorer-pal.xhtpm  pid 182052  2026-09-18 06:32:47 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 182052  2026-09-18 06:32:51 ===
+--- file-explorer-pal.xhtpm  pid 182052  2026-09-18 06:32:51 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 182052  2026-09-18 06:35:50 ===
+--- file-explorer-pal.xhtpm  pid 182052  2026-09-18 06:35:50 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 182052  2026-09-18 06:35:51 ===
+--- file-explorer-pal.xhtpm  pid 182052  2026-09-18 06:35:51 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 182052  2026-09-18 06:39:23 ===
+--- file-explorer-pal.xhtpm  pid 182052  2026-09-18 06:39:23 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.

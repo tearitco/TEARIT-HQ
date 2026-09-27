@@ -1,0 +1,15 @@
+OBJECT tag=item id=chrome-close class=- x=1110 y=4 w=64 h=26 nav=11 active=0 label=X
+OBJECT tag=tab id=crumb0 class=- x=10 y=35 w=71 h=30 nav=1 active=0 label=/
+OBJECT tag=tab id=crumb1 class=- x=85 y=35 w=109 h=30 nav=2 active=0 label=home
+OBJECT tag=tab id=crumb2 class=- x=198 y=35 w=85 h=30 nav=3 active=0 label=no
+OBJECT tag=tab id=crumb3 class=- x=287 y=35 w=127 h=30 nav=4 active=0 label=Desktop
+OBJECT tag=tab id=crumb4 class=- x=418 y=35 w=114 h=30 nav=5 active=0 label=github
+OBJECT tag=tab id=crumb5 class=- x=536 y=35 w=103 h=30 nav=6 active=0 label=work
+OBJECT tag=tab id=crumb6 class=- x=643 y=35 w=164 h=30 nav=7 active=0 label=NNEST-12.00
+OBJECT tag=tab id=crumb7 class=- x=811 y=35 w=290 h=30 nav=8 active=0 label=x0.parent-level-dev-env-04.04
+OBJECT tag=tab id=crumb8 class=- x=1105 y=35 w=171 h=30 nav=9 active=0 label=yz.muchiverse
+OBJECT tag=tab id=crumb9 class=- x=1280 y=35 w=155 h=30 nav=10 active=0 label=44.xyz.01.00
+OBJECT tag=item id=back class=opacity-btn x=2 y=67 w=1180 h=30 nav=12 active=0 label=⬅️ Back
+OBJECT tag=item id=viewtoggle class=opacity-btn x=2 y=97 w=1180 h=30 nav=13 active=0 label=Grid View
+OBJECT tag=text id=- class=quiet x=2 y=127 w=1180 h=30 nav=0 active=0 label=Pick a file to load.
+OBJECT tag=item id=entry95 class=fe-entry x=2 y=157 w=1172 h=30 nav=14 active=0 label=📄  simlink-fix.txt 1KB

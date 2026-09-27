@@ -1,0 +1,20 @@
+
+=== menu.chtpm pid 9629  2026-09-25 21:31:28 ===
+--- menu.chtpm  pid 9629  2026-09-25 21:31:28 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Cli-io: 
+
+=== menu.chtpm pid 9629  2026-09-25 21:31:29 ===
+--- menu.chtpm  pid 9629  2026-09-25 21:31:29 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Cli-io: 

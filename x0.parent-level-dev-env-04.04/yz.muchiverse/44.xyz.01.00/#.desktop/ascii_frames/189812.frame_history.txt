@@ -1,0 +1,30 @@
+
+=== menu.chtpm pid 189812  2026-09-18 07:46:56 ===
+--- menu.chtpm  pid 189812  2026-09-18 07:46:56 ---
+--- page: main ---
+    [>] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Delete
+    [ ] 5. Place
+    [ ] 6. Cancel
+
+=== menu.chtpm pid 189812  2026-09-18 07:46:58 ===
+--- menu.chtpm  pid 189812  2026-09-18 07:46:58 ---
+--- page: main ---
+    [ ] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Delete
+    [>] 5. Place
+    [ ] 6. Cancel
+
+=== menu.chtpm pid 189812  2026-09-18 07:46:59 ===
+--- menu.chtpm  pid 189812  2026-09-18 07:46:59 ---
+--- page: main ---
+    [ ] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Delete
+    [>] 5. Place
+    [ ] 6. Cancel

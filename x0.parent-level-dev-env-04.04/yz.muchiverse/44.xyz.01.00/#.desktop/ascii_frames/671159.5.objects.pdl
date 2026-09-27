@@ -1,0 +1,27 @@
+OBJECT tag=text id=- class=- x=0 y=30 w=220 h=30 nav=0 active=0 label=Export package
+OBJECT tag=text id=- class=quiet x=0 y=60 w=220 h=30 nav=0 active=0 label=pick app(s), a dest dir, then Package
+OBJECT tag=text id=- class=title x=220 y=30 w=900 h=30 nav=0 active=0 label=Candidates (same list the taskbar's Toys menu shows):
+OBJECT tag=item id=cand-0 class=- x=220 y=60 w=900 h=30 nav=1 active=0 label=⬜ Mutaclysm-Neo
+OBJECT tag=item id=cand-1 class=- x=220 y=90 w=900 h=30 nav=2 active=0 label=⬜ csv-hq
+OBJECT tag=item id=cand-2 class=- x=220 y=120 w=900 h=30 nav=3 active=0 label=⬜ Media DAW
+OBJECT tag=item id=cand-3 class=- x=220 y=150 w=900 h=30 nav=4 active=0 label=⬜ Media Canvas
+OBJECT tag=item id=cand-4 class=- x=220 y=180 w=900 h=30 nav=5 active=0 label=⬜ My Lawyer
+OBJECT tag=item id=cand-5 class=- x=220 y=210 w=900 h=30 nav=6 active=0 label=⬜ music-player-hq
+OBJECT tag=item id=cand-6 class=- x=220 y=240 w=900 h=30 nav=7 active=0 label=⬜ media-3d-hq
+OBJECT tag=item id=cand-7 class=- x=220 y=270 w=900 h=30 nav=8 active=0 label=⬜ text-edit-hq
+OBJECT tag=item id=cand-8 class=- x=220 y=300 w=900 h=30 nav=9 active=0 label=⬜ pdl-read
+OBJECT tag=item id=cand-9 class=- x=220 y=330 w=900 h=30 nav=10 active=0 label=⬜ media-daw-hq
+OBJECT tag=item id=cand-10 class=- x=220 y=360 w=900 h=30 nav=11 active=0 label=⬜ Media Video
+OBJECT tag=item id=cand-11 class=- x=220 y=390 w=900 h=30 nav=12 active=0 label=⬜ screen-rec-hq
+OBJECT tag=item id=cand-12 class=- x=220 y=420 w=900 h=30 nav=13 active=0 label=⬜ My Chara
+OBJECT tag=item id=cand-13 class=- x=220 y=450 w=900 h=30 nav=14 active=0 label=⬜ Piececraft-HQ
+OBJECT tag=item id=cand-14 class=- x=220 y=480 w=900 h=30 nav=15 active=0 label=⬜ media-img-hq
+OBJECT tag=item id=cand-15 class=- x=220 y=510 w=900 h=30 nav=16 active=0 label=⬜ media-vid-hq
+OBJECT tag=item id=cand-16 class=- x=220 y=540 w=900 h=30 nav=17 active=0 label=⬜ File Explorer
+OBJECT tag=item id=cand-17 class=- x=220 y=570 w=900 h=30 nav=18 active=0 label=⬜ Actors (PAL demo)
+OBJECT tag=item id=cand-18 class=- x=220 y=600 w=900 h=30 nav=19 active=0 label=⬜ Desk Street Raider (DSR)
+OBJECT tag=item id=cand-19 class=- x=220 y=630 w=900 h=30 nav=20 active=0 label=⬜ Database (PAL)
+OBJECT tag=item id=cand-20 class=- x=220 y=660 w=900 h=30 nav=21 active=0 label=⬜ Export Package
+OBJECT tag=item id=- class=quiet x=220 y=690 w=900 h=30 nav=22 active=0 label=rescan
+OBJECT tag=cli_io id=destf class=- x=220 y=690 w=900 h=30 nav=23 active=0 label=dest dir: 
+OBJECT tag=item id=btn-package class=- x=220 y=720 w=900 h=30 nav=24 active=0 label=Package

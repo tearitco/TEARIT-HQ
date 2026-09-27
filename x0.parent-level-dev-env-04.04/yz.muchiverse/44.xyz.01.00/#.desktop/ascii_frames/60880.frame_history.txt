@@ -1,0 +1,24 @@
+
+=== menu.chtpm pid 60880  2026-09-20 02:23:09 ===
+--- menu.chtpm  pid 60880  2026-09-20 02:23:09 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Cli-io
+    [ ] 7. Close
+    [ ] 8. Cancel
+
+=== menu.chtpm pid 60880  2026-09-20 02:23:11 ===
+--- menu.chtpm  pid 60880  2026-09-20 02:23:11 ---
+--- page: main ---
+    [ ] 1. Dir
+    [>] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Cli-io
+    [ ] 7. Close
+    [ ] 8. Cancel

@@ -1,0 +1,149 @@
+
+=== palettes-my-palettes.xhtpm pid 409132  2026-09-22 19:39:16 ===
+--- palettes-my-palettes.xhtpm  pid 409132  2026-09-22 19:39:16 ---
+--- page: main ---
+palettes: My Palettes
+    [>] 1. x
+    [ ] 2. Import…
+        No imports yet — Import opens File Explorer; pick a PNG/BMP then wait a tick.
+
+=== palettes-my-palettes.xhtpm pid 409132  2026-09-22 19:39:17 ===
+--- palettes-my-palettes.xhtpm  pid 409132  2026-09-22 19:39:17 ---
+--- page: main ---
+palettes: My Palettes
+    [>] 1. x
+    [ ] 2. Import…
+        No imports yet — Import opens File Explorer; pick a PNG/BMP then wait a tick.
+
+=== palettes-my-palettes.xhtpm pid 409132  2026-09-22 19:39:17 ===
+--- palettes-my-palettes.xhtpm  pid 409132  2026-09-22 19:39:17 ---
+--- page: main ---
+palettes: My Palettes
+    [>] 1. x
+    [ ] 2. Import…
+    [ ] 3. terumon
+    [ ] 4. teru_10_brown
+    [ ] 5. teru_07_pink
+    [ ] 6. teru_04_green
+    [ ] 7. teru_08_black
+    [ ] 8. teru_09_white
+    [ ] 9. teru_03_yellow
+    [ ] 10. teru_05_blue
+    [ ] 11. teru_06_purple
+    [ ] 12. teru_02_orange
+    [ ] 13. teru_01_red
+    [ ] 14. item
+
+=== palettes-my-palettes.xhtpm pid 409132  2026-09-22 19:39:20 ===
+--- palettes-my-palettes.xhtpm  pid 409132  2026-09-22 19:39:20 ---
+--- page: main ---
+palettes: My Palettes
+    [ ] 1. x
+    [ ] 2. Import…
+    [ ] 3. terumon
+    [ ] 4. teru_10_brown
+    [ ] 5. teru_07_pink
+    [ ] 6. teru_04_green
+    [>] 7. teru_08_black
+    [ ] 8. teru_09_white
+    [ ] 9. teru_03_yellow
+    [ ] 10. teru_05_blue
+    [ ] 11. teru_06_purple
+    [ ] 12. teru_02_orange
+    [ ] 13. teru_01_red
+    [ ] 14. item
+
+=== palettes-my-palettes.xhtpm pid 409132  2026-09-22 19:39:24 ===
+--- palettes-my-palettes.xhtpm  pid 409132  2026-09-22 19:39:24 ---
+--- page: main ---
+palettes: My Palettes
+    [ ] 1. x
+    [ ] 2. Import…
+    [ ] 3. terumon
+    [ ] 4. teru_10_brown
+    [ ] 5. teru_07_pink
+    [ ] 6. teru_04_green
+    [>] 7. teru_08_black
+    [ ] 8. teru_09_white
+    [ ] 9. teru_03_yellow
+    [ ] 10. teru_05_blue
+    [ ] 11. teru_06_purple
+    [ ] 12. teru_02_orange
+    [ ] 13. teru_01_red
+    [ ] 14. item
+
+=== palettes-my-palettes.xhtpm pid 409132  2026-09-22 19:40:03 ===
+--- palettes-my-palettes.xhtpm  pid 409132  2026-09-22 19:40:03 ---
+--- page: main ---
+palettes: My Palettes
+    [ ] 1. x
+    [ ] 2. Import…
+    [ ] 3. terumon
+    [ ] 4. teru_10_brown
+    [ ] 5. teru_07_pink
+    [ ] 6. teru_04_green
+    [>] 7. teru_08_black
+    [ ] 8. teru_09_white
+    [ ] 9. teru_03_yellow
+    [ ] 10. teru_05_blue
+    [ ] 11. teru_06_purple
+    [ ] 12. teru_02_orange
+    [ ] 13. teru_01_red
+    [ ] 14. item
+
+=== palettes-my-palettes.xhtpm pid 409132  2026-09-22 19:40:05 ===
+--- palettes-my-palettes.xhtpm  pid 409132  2026-09-22 19:40:05 ---
+--- page: main ---
+palettes: My Palettes
+    [ ] 1. x
+    [ ] 2. Import…
+    [ ] 3. terumon
+    [ ] 4. teru_10_brown
+    [ ] 5. teru_07_pink
+    [ ] 6. teru_04_green
+    [>] 7. teru_08_black
+    [ ] 8. teru_09_white
+    [ ] 9. teru_03_yellow
+    [ ] 10. teru_05_blue
+    [ ] 11. teru_06_purple
+    [ ] 12. teru_02_orange
+    [ ] 13. teru_01_red
+    [ ] 14. item
+
+=== palettes-my-palettes.xhtpm pid 409132  2026-09-22 19:41:58 ===
+--- palettes-my-palettes.xhtpm  pid 409132  2026-09-22 19:41:58 ---
+--- page: main ---
+palettes: My Palettes
+    [>] 1. x
+    [ ] 2. Import…
+    [ ] 3. terumon
+    [ ] 4. teru_10_brown
+    [ ] 5. teru_07_pink
+    [ ] 6. teru_04_green
+    [ ] 7. teru_08_black
+    [ ] 8. teru_09_white
+    [ ] 9. teru_03_yellow
+    [ ] 10. teru_05_blue
+    [ ] 11. teru_06_purple
+    [ ] 12. teru_02_orange
+    [ ] 13. teru_01_red
+    [ ] 14. item
+
+=== palettes-my-palettes.xhtpm pid 409132  2026-09-22 19:41:59 ===
+--- palettes-my-palettes.xhtpm  pid 409132  2026-09-22 19:41:59 ---
+--- page: main ---
+palettes: My Palettes
+    [>] 1. x
+    [ ] 2. Import…
+    [ ] 3. terumon
+    [ ] 4. teru_10_brown
+    [ ] 5. teru_07_pink
+    [ ] 6. teru_04_green
+    [ ] 7. teru_08_black
+    [ ] 8. teru_09_white
+    [ ] 9. teru_03_yellow
+    [ ] 10. teru_05_blue
+    [ ] 11. teru_06_purple
+    [ ] 12. teru_02_orange
+    [ ] 13. teru_01_red
+    [ ] 14. item

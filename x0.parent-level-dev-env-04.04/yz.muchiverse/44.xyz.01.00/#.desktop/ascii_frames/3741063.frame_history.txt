@@ -1,0 +1,679 @@
+
+=== network-browser-hq.xhtpm pid 3741063  2026-09-11 17:13:02 ===
+--- network-browser-hq.xhtpm  pid 3741063  2026-09-11 17:13:02 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 5. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 6. www.4chan.org/b/
+        [ ] 7. www.youtube.com
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. https://myaccount.google.com/126
+        [ ] 11. https://myaccount.google.com/015
+        [ ] 12. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [ ] 23. *Sign in - Google A
+        [ ] 24. New tab
+      [ ] 25. cli_io
+          Status: ready
+        [ ] 28. Google
+            Sign in - Google Accounts
+        [ ] 29. item
+            Sign in
+            Use your Google Account
+            Email or phone
+        [ ] 30. /signin/usernamerecovery?continue=https://myaccount.google.com/general-light&dsh=S87393148:1789129128153692&flowEntry=ServiceLogin&flowName=WebLiteSignIn&followup=https://myaccount.google.com/general-light&osid=1 Forgot email?
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 3741063  2026-09-11 17:13:24 ===
+--- network-browser-hq.xhtpm  pid 3741063  2026-09-11 17:13:24 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 5. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 6. www.4chan.org/b/
+        [ ] 7. www.youtube.com
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. https://myaccount.google.com/126
+        [ ] 11. https://myaccount.google.com/015
+        [ ] 12. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [ ] 23. *Sign in - Google A
+        [ ] 24. New tab
+      [ ] 25. cli_io
+          Status: ready
+        [ ] 28. Google
+            Sign in - Google Accounts
+        [ ] 29. item
+            Sign in
+            Use your Google Account
+            Email or phone
+        [ ] 30. /signin/usernamerecovery?continue=https://myaccount.google.com/general-light&dsh=S87393148:1789129128153692&flowEntry=ServiceLogin&flowName=WebLiteSignIn&followup=https://myaccount.google.com/general-light&osid=1 Forgot email?
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 3741063  2026-09-11 17:14:35 ===
+--- network-browser-hq.xhtpm  pid 3741063  2026-09-11 17:14:35 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 5. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 6. www.4chan.org/b/
+        [ ] 7. www.youtube.com
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. https://myaccount.google.com/126
+        [ ] 11. https://myaccount.google.com/015
+        [ ] 12. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [ ] 23. *Sign in - Google A
+        [ ] 24. New tab
+      [ ] 25. cli_io
+          Status: ready
+        [ ] 28. Google
+            Sign in - Google Accounts
+        [ ] 29. item
+            Sign in
+            Use your Google Account
+            Email or phone
+        [ ] 30. /signin/usernamerecovery?continue=https://myaccount.google.com/general-light&dsh=S87393148:1789129128153692&flowEntry=ServiceLogin&flowName=WebLiteSignIn&followup=https://myaccount.google.com/general-light&osid=1 Forgot email?
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 3741063  2026-09-11 17:14:37 ===
+--- network-browser-hq.xhtpm  pid 3741063  2026-09-11 17:14:37 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 5. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 6. www.4chan.org/b/
+        [ ] 7. www.youtube.com
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. https://myaccount.google.com/126
+        [ ] 11. https://myaccount.google.com/015
+        [ ] 12. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [ ] 23. *Sign in - Google A
+        [ ] 24. New tab
+      [ ] 25. cli_io
+          Status: ready
+        [ ] 28. Google
+            Sign in - Google Accounts
+        [ ] 29. item
+            Sign in
+            Use your Google Account
+            Email or phone
+        [ ] 30. /signin/usernamerecovery?continue=https://myaccount.google.com/general-light&dsh=S87393148:1789129128153692&flowEntry=ServiceLogin&flowName=WebLiteSignIn&followup=https://myaccount.google.com/general-light&osid=1 Forgot email?
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 3741063  2026-09-11 17:15:07 ===
+--- network-browser-hq.xhtpm  pid 3741063  2026-09-11 17:15:07 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 5. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 6. www.4chan.org/b/
+        [ ] 7. www.youtube.com
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. https://myaccount.google.com/126
+        [ ] 11. https://myaccount.google.com/015
+        [ ] 12. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [ ] 23. *Sign in - Google A
+        [ ] 24. New tab
+      [ ] 25. cli_io
+          Status: ready
+        [ ] 28. Google
+            Sign in - Google Accounts
+        [ ] 29. item
+            Sign in
+            Use your Google Account
+            Email or phone
+        [ ] 30. /signin/usernamerecovery?continue=https://myaccount.google.com/general-light&dsh=S87393148:1789129128153692&flowEntry=ServiceLogin&flowName=WebLiteSignIn&followup=https://myaccount.google.com/general-light&osid=1 Forgot email?
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 3741063  2026-09-11 17:15:29 ===
+--- network-browser-hq.xhtpm  pid 3741063  2026-09-11 17:15:29 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 5. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 6. www.4chan.org/b/
+        [ ] 7. www.youtube.com
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. https://myaccount.google.com/126
+        [ ] 11. https://myaccount.google.com/015
+        [ ] 12. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [ ] 23. *Sign in - Google A
+        [ ] 24. New tab
+      [ ] 25. cli_io
+          Status: ready
+        [ ] 28. Google
+            Sign in - Google Accounts
+        [ ] 29. item
+            Sign in
+            Use your Google Account
+            Email or phone
+        [ ] 30. /signin/usernamerecovery?continue=https://myaccount.google.com/general-light&dsh=S87393148:1789129128153692&flowEntry=ServiceLogin&flowName=WebLiteSignIn&followup=https://myaccount.google.com/general-light&osid=1 Forgot email?
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 3741063  2026-09-11 17:15:54 ===
+--- network-browser-hq.xhtpm  pid 3741063  2026-09-11 17:15:54 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 5. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 6. www.4chan.org/b/
+        [ ] 7. www.youtube.com
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. https://myaccount.google.com/126
+        [ ] 11. https://myaccount.google.com/015
+        [ ] 12. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [ ] 23. *Sign in - Google A
+        [ ] 24. New tab
+      [ ] 25. cli_io
+          Status: ready
+        [ ] 28. Google
+            Sign in - Google Accounts
+        [ ] 29. item
+            Sign in
+            Use your Google Account
+            Email or phone
+        [ ] 30. /signin/usernamerecovery?continue=https://myaccount.google.com/general-light&dsh=S87393148:1789129128153692&flowEntry=ServiceLogin&flowName=WebLiteSignIn&followup=https://myaccount.google.com/general-light&osid=1 Forgot email?
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 3741063  2026-09-11 17:16:06 ===
+--- network-browser-hq.xhtpm  pid 3741063  2026-09-11 17:16:06 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 5. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 6. www.4chan.org/b/
+        [ ] 7. www.youtube.com
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. https://myaccount.google.com/126
+        [ ] 11. https://myaccount.google.com/015
+        [ ] 12. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [ ] 23. *Sign in - Google A
+        [ ] 24. New tab
+      [ ] 25. cli_io
+          Status: ready
+        [ ] 28. Google
+            Sign in - Google Accounts
+        [ ] 29. item
+            Sign in
+            Use your Google Account
+            Email or phone
+        [ ] 30. /signin/usernamerecovery?continue=https://myaccount.google.com/general-light&dsh=S87393148:1789129128153692&flowEntry=ServiceLogin&flowName=WebLiteSignIn&followup=https://myaccount.google.com/general-light&osid=1 Forgot email?
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 3741063  2026-09-11 17:16:18 ===
+--- network-browser-hq.xhtpm  pid 3741063  2026-09-11 17:16:18 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 5. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 6. www.4chan.org/b/
+        [ ] 7. www.youtube.com
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. https://myaccount.google.com/126
+        [ ] 11. https://myaccount.google.com/015
+        [ ] 12. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [ ] 23. *Sign in - Google A
+        [ ] 24. New tab
+      [ ] 25. cli_io
+          Status: loading
+        [ ] 28. Google
+            Sign in - Google Accounts
+        [ ] 29. item
+            Sign in
+            Use your Google Account
+            Email or phone
+        [ ] 30. /signin/usernamerecovery?continue=https://myaccount.google.com/general-light&dsh=S87393148:1789129128153692&flowEntry=ServiceLogin&flowName=WebLiteSignIn&followup=https://myaccount.google.com/general-light&osid=1 Forgot email?
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 3741063  2026-09-11 17:16:18 ===
+--- network-browser-hq.xhtpm  pid 3741063  2026-09-11 17:16:18 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. https://www.example.com/
+        [ ] 5. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. www.4chan.org/b/
+        [ ] 8. www.youtube.com
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. https://myaccount.google.com/126
+        [ ] 12. https://myaccount.google.com/015
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [ ] 23. *Example Domain
+        [ ] 24. New tab
+      [ ] 25. cli_io
+          Status: ready
+            Example Domain
+            This domain is for use in documentation examples without needing permission. Avoid use
+            in operations.
+        [ ] 26. Learn more
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 3741063  2026-09-11 17:17:20 ===
+--- network-browser-hq.xhtpm  pid 3741063  2026-09-11 17:17:20 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 5. https://www.example.com/
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. www.4chan.org/b/
+        [ ] 9. www.youtube.com
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. *Image Test
+        [ ] 21. New tab
+      [ ] 22. cli_io
+          Status: ready
+            Image Test
+            Static img test
+            After the image should be a tile.
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 3741063  2026-09-11 17:17:21 ===
+--- network-browser-hq.xhtpm  pid 3741063  2026-09-11 17:17:21 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 5. https://www.example.com/
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. www.4chan.org/b/
+        [ ] 9. www.youtube.com
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. *Image Test
+        [ ] 21. New tab
+      [ ] 22. cli_io
+          Status: ready
+            Image Test
+            Static img test
+            After the image should be a tile.
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 3741063  2026-09-11 17:17:42 ===
+--- network-browser-hq.xhtpm  pid 3741063  2026-09-11 17:17:42 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 5. https://www.example.com/
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. www.4chan.org/b/
+        [ ] 9. www.youtube.com
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. *Image Test
+        [ ] 21. New tab
+      [ ] 22. cli_io
+          Status: ready
+            Image Test
+            Static img test
+            After the image should be a tile.
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 3741063  2026-09-11 17:17:43 ===
+--- network-browser-hq.xhtpm  pid 3741063  2026-09-11 17:17:43 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 5. https://www.example.com/
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. www.4chan.org/b/
+        [ ] 9. www.youtube.com
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. *Image Test
+        [ ] 21. New tab
+      [ ] 22. cli_io
+          Status: ready
+            Image Test
+            Static img test
+            After the image should be a tile.
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 3741063  2026-09-11 17:18:53 ===
+--- network-browser-hq.xhtpm  pid 3741063  2026-09-11 17:18:53 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 5. https://www.example.com/
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. www.4chan.org/b/
+        [ ] 9. www.youtube.com
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. *Image Test
+        [ ] 21. New tab
+      [ ] 22. cli_io
+          Status: ready
+            Image Test
+            Static img test
+            After the image should be a tile.
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 3741063  2026-09-11 17:19:00 ===
+--- network-browser-hq.xhtpm  pid 3741063  2026-09-11 17:19:00 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 5. https://www.example.com/
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. www.4chan.org/b/
+        [ ] 9. www.youtube.com
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. *Image Test
+        [ ] 21. New tab
+      [ ] 22. cli_io
+          Status: ready
+            Image Test
+            Static img test
+            After the image should be a tile.
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 3741063  2026-09-11 17:20:44 ===
+--- network-browser-hq.xhtpm  pid 3741063  2026-09-11 17:20:44 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 5. https://www.example.com/
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. www.4chan.org/b/
+        [ ] 9. www.youtube.com
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. *Image Test
+        [ ] 21. New tab
+      [ ] 22. cli_io
+          Status: ready
+            Image Test
+            Static img test
+            After the image should be a tile.
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 3741063  2026-09-11 17:20:53 ===
+--- network-browser-hq.xhtpm  pid 3741063  2026-09-11 17:20:53 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 5. https://www.example.com/
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. www.4chan.org/b/
+        [ ] 9. www.youtube.com
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. *Image Test
+        [ ] 21. New tab
+      [ ] 22. cli_io
+          Status: ready
+            Image Test
+            Static img test
+            After the image should be a tile.
+          Console
+          Try: eval:1 + 1

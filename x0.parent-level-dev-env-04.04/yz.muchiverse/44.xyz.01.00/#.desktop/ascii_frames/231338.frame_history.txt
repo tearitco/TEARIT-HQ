@@ -1,0 +1,20 @@
+
+=== menu.chtpm pid 231338  2026-09-18 12:39:40 ===
+--- menu.chtpm  pid 231338  2026-09-18 12:39:40 ---
+--- page: main ---
+    [>] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Delete
+    [ ] 5. Place
+    [ ] 6. Cancel
+
+=== menu.chtpm pid 231338  2026-09-18 12:39:44 ===
+--- menu.chtpm  pid 231338  2026-09-18 12:39:44 ---
+--- page: main ---
+    [ ] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Delete
+    [>] 5. Place
+    [ ] 6. Cancel

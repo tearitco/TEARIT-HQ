@@ -1,0 +1,578 @@
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:04:24 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:04:24 ---
+--- page: main ---
+asa
+      [>] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:04:26 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:04:26 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [>] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:04:27 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:04:27 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [>] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:04:28 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:04:28 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [>] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:04:29 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:04:29 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [>] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:04:34 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:04:34 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [>] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:04:35 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:04:35 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [>] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:04:37 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:04:37 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [>] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:05:31 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:05:31 ---
+--- page: main ---
+asa
+      [>] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:05:31 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:05:31 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:05:32 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:05:32 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:05:33 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:05:33 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:05:34 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:05:34 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:05:35 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:05:35 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:05:36 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:05:36 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:05:37 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:05:37 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:05:37 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:05:37 ---
+--- page: main ---
+asa
+      [>] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:05:38 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:05:38 ---
+--- page: main ---
+asa
+      [>] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:05:39 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:05:39 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [>] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:05:39 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:05:39 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:05:40 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:05:40 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:05:41 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:05:41 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:05:42 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:05:42 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:05:42 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:05:42 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [>] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:05:45 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:05:45 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [>] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:06:32 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:06:32 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [>] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:06:33 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:06:33 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [>] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:06:34 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:06:34 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [>] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:06:35 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:06:35 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [ ] 5. page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [>] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:06:37 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:06:37 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+      [>] 5. page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:06:37 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:06:37 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. page_1
+      [ ] 5. * page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:06:38 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:06:38 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. page_1
+      [ ] 5. * page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:06:41 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:06:41 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. page_1
+      [ ] 5. * page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 325685  2026-09-13 07:10:33 ===
+--- events-hq.xhtpm  pid 325685  2026-09-13 07:10:33 ---
+--- page: main ---
+asa
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. page_1
+      [ ] 5. * page_2
+          Trigger
+          (unset)
+      [ ] 6. + Add Command
+      [ ] 7. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)

@@ -1,0 +1,203 @@
+
+=== export-hq.xhtpm pid 671159  2026-09-15 18:36:18 ===
+--- export-hq.xhtpm  pid 671159  2026-09-15 18:36:18 ---
+--- page: main ---
+Export package
+          Export package
+          pick app(s), a dest dir, then Package
+          Candidates (same list the taskbar's Toys menu shows):
+      [>] 1. rescan
+      [ ] 2. dest dir: 
+      [ ] 3. Package
+
+=== export-hq.xhtpm pid 671159  2026-09-15 18:36:19 ===
+--- export-hq.xhtpm  pid 671159  2026-09-15 18:36:19 ---
+--- page: main ---
+Export package
+          Export package
+          pick app(s), a dest dir, then Package
+          Candidates (same list the taskbar's Toys menu shows):
+      [>] 1. ⬜ Mutaclysm-Neo
+      [ ] 2. ⬜ csv-hq
+      [ ] 3. ⬜ Media DAW
+      [ ] 4. ⬜ Media Canvas
+      [ ] 5. ⬜ My Lawyer
+      [ ] 6. ⬜ music-player-hq
+      [ ] 7. ⬜ media-3d-hq
+      [ ] 8. ⬜ text-edit-hq
+      [ ] 9. ⬜ pdl-read
+      [ ] 10. ⬜ media-daw-hq
+      [ ] 11. ⬜ Media Video
+      [ ] 12. ⬜ screen-rec-hq
+      [ ] 13. ⬜ My Chara
+      [ ] 14. ⬜ Piececraft-HQ
+      [ ] 15. ⬜ media-img-hq
+      [ ] 16. ⬜ media-vid-hq
+      [ ] 17. ⬜ File Explorer
+      [ ] 18. ⬜ Actors (PAL demo)
+      [ ] 19. ⬜ Desk Street Raider (DSR)
+      [ ] 20. ⬜ Database (PAL)
+      [ ] 21. ⬜ Export Package
+      [ ] 22. rescan
+      [ ] 23. dest dir: 
+      [ ] 24. Package
+
+=== export-hq.xhtpm pid 671159  2026-09-15 18:36:20 ===
+--- export-hq.xhtpm  pid 671159  2026-09-15 18:36:20 ---
+--- page: main ---
+Export package
+          Export package
+          pick app(s), a dest dir, then Package
+          Candidates (same list the taskbar's Toys menu shows):
+      [>] 1. ⬜ Mutaclysm-Neo
+      [ ] 2. ⬜ csv-hq
+      [ ] 3. ⬜ Media DAW
+      [ ] 4. ⬜ Media Canvas
+      [ ] 5. ⬜ My Lawyer
+      [ ] 6. ⬜ music-player-hq
+      [ ] 7. ⬜ media-3d-hq
+      [ ] 8. ⬜ text-edit-hq
+      [ ] 9. ⬜ pdl-read
+      [ ] 10. ⬜ media-daw-hq
+      [ ] 11. ⬜ Media Video
+      [ ] 12. ⬜ screen-rec-hq
+      [ ] 13. ⬜ My Chara
+      [ ] 14. ⬜ Piececraft-HQ
+      [ ] 15. ⬜ media-img-hq
+      [ ] 16. ⬜ media-vid-hq
+      [ ] 17. ⬜ File Explorer
+      [ ] 18. ⬜ Actors (PAL demo)
+      [ ] 19. ⬜ Desk Street Raider (DSR)
+      [ ] 20. ⬜ Database (PAL)
+      [ ] 21. ⬜ Export Package
+      [ ] 22. rescan
+      [ ] 23. dest dir: 
+      [ ] 24. Package
+
+=== export-hq.xhtpm pid 671159  2026-09-15 18:36:27 ===
+--- export-hq.xhtpm  pid 671159  2026-09-15 18:36:27 ---
+--- page: main ---
+Export package
+          Export package
+          pick app(s), a dest dir, then Package
+          Candidates (same list the taskbar's Toys menu shows):
+      [>] 1. ⬜ Mutaclysm-Neo
+      [ ] 2. ⬜ csv-hq
+      [ ] 3. ⬜ Media DAW
+      [ ] 4. ⬜ Media Canvas
+      [ ] 5. ⬜ My Lawyer
+      [ ] 6. ⬜ music-player-hq
+      [ ] 7. ⬜ media-3d-hq
+      [ ] 8. ⬜ text-edit-hq
+      [ ] 9. ⬜ pdl-read
+      [ ] 10. ⬜ media-daw-hq
+      [ ] 11. ⬜ Media Video
+      [ ] 12. ⬜ screen-rec-hq
+      [ ] 13. ⬜ My Chara
+      [ ] 14. ⬜ Piececraft-HQ
+      [ ] 15. ⬜ media-img-hq
+      [ ] 16. ⬜ media-vid-hq
+      [ ] 17. ⬜ File Explorer
+      [ ] 18. ⬜ Actors (PAL demo)
+      [ ] 19. ⬜ Desk Street Raider (DSR)
+      [ ] 20. ⬜ Database (PAL)
+      [ ] 21. ⬜ Export Package
+      [ ] 22. rescan
+      [ ] 23. dest dir: 
+      [ ] 24. Package
+
+=== export-hq.xhtpm pid 671159  2026-09-15 18:39:27 ===
+--- export-hq.xhtpm  pid 671159  2026-09-15 18:39:27 ---
+--- page: main ---
+Export package
+          Export package
+          pick app(s), a dest dir, then Package
+          Candidates (same list the taskbar's Toys menu shows):
+      [>] 1. ⬜ Mutaclysm-Neo
+      [ ] 2. ⬜ csv-hq
+      [ ] 3. ⬜ Media DAW
+      [ ] 4. ⬜ Media Canvas
+      [ ] 5. ⬜ My Lawyer
+      [ ] 6. ⬜ music-player-hq
+      [ ] 7. ⬜ media-3d-hq
+      [ ] 8. ⬜ text-edit-hq
+      [ ] 9. ⬜ pdl-read
+      [ ] 10. ⬜ media-daw-hq
+      [ ] 11. ⬜ Media Video
+      [ ] 12. ⬜ screen-rec-hq
+      [ ] 13. ⬜ My Chara
+      [ ] 14. ⬜ Piececraft-HQ
+      [ ] 15. ⬜ media-img-hq
+      [ ] 16. ⬜ media-vid-hq
+      [ ] 17. ⬜ File Explorer
+      [ ] 18. ⬜ Actors (PAL demo)
+      [ ] 19. ⬜ Desk Street Raider (DSR)
+      [ ] 20. ⬜ Database (PAL)
+      [ ] 21. ⬜ Export Package
+      [ ] 22. rescan
+      [ ] 23. dest dir: 
+      [ ] 24. Package
+
+=== export-hq.xhtpm pid 671159  2026-09-15 18:39:27 ===
+--- export-hq.xhtpm  pid 671159  2026-09-15 18:39:27 ---
+--- page: main ---
+Export package
+          Export package
+          pick app(s), a dest dir, then Package
+          Candidates (same list the taskbar's Toys menu shows):
+      [ ] 1. ⬜ Mutaclysm-Neo
+      [ ] 2. ⬜ csv-hq
+      [ ] 3. ⬜ Media DAW
+      [ ] 4. ⬜ Media Canvas
+      [ ] 5. ⬜ My Lawyer
+      [ ] 6. ⬜ music-player-hq
+      [ ] 7. ⬜ media-3d-hq
+      [ ] 8. ⬜ text-edit-hq
+      [ ] 9. ⬜ pdl-read
+      [ ] 10. ⬜ media-daw-hq
+      [ ] 11. ⬜ Media Video
+      [ ] 12. ⬜ screen-rec-hq
+      [ ] 13. ⬜ My Chara
+      [ ] 14. ⬜ Piececraft-HQ
+      [ ] 15. ⬜ media-img-hq
+      [ ] 16. ⬜ media-vid-hq
+      [ ] 17. ⬜ File Explorer
+      [ ] 18. ⬜ Actors (PAL demo)
+      [ ] 19. ⬜ Desk Street Raider (DSR)
+      [ ] 20. ⬜ Database (PAL)
+      [ ] 21. ⬜ Export Package
+      [ ] 22. rescan
+      [ ] 23. dest dir: 
+      [ ] 24. Package
+
+=== export-hq.xhtpm pid 671159  2026-09-15 18:39:28 ===
+--- export-hq.xhtpm  pid 671159  2026-09-15 18:39:28 ---
+--- page: main ---
+Export package
+          Export package
+          pick app(s), a dest dir, then Package
+          Candidates (same list the taskbar's Toys menu shows):
+      [ ] 1. ⬜ Mutaclysm-Neo
+      [ ] 2. ⬜ csv-hq
+      [ ] 3. ⬜ Media DAW
+      [ ] 4. ⬜ Media Canvas
+      [ ] 5. ⬜ My Lawyer
+      [ ] 6. ⬜ music-player-hq
+      [ ] 7. ⬜ media-3d-hq
+      [ ] 8. ⬜ text-edit-hq
+      [ ] 9. ⬜ pdl-read
+      [ ] 10. ⬜ media-daw-hq
+      [ ] 11. ⬜ Media Video
+      [ ] 12. ⬜ screen-rec-hq
+      [ ] 13. ⬜ My Chara
+      [ ] 14. ⬜ Piececraft-HQ
+      [ ] 15. ⬜ media-img-hq
+      [ ] 16. ⬜ media-vid-hq
+      [ ] 17. ⬜ File Explorer
+      [ ] 18. ⬜ Actors (PAL demo)
+      [ ] 19. ⬜ Desk Street Raider (DSR)
+      [ ] 20. ⬜ Database (PAL)
+      [ ] 21. ⬜ Export Package
+      [ ] 22. rescan
+      [ ] 23. dest dir: 
+      [ ] 24. Package

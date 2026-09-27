@@ -1,0 +1,1176 @@
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:42:27 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:42:27 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. sessions
+    [ ] 17. ⬅️ Back
+    [ ] 18. Grid View
+        Pick a file to load.
+      [ ] 19. 📁  s1 
+      [ ] 20. 📁  s2 
+      [ ] 21. 📁  s3 
+      [ ] 22. 📁  s4 
+      [ ] 23. 📁  s5 
+      [ ] 24. 📁  s6 
+      [ ] 25. 📁  s7 
+      [ ] 26. 📄  session.pdl 28B
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:42:27 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:42:27 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:42:28 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:42:28 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:42:35 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:42:35 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:42:36 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:42:36 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:42:37 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:42:37 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:42:38 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:42:38 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:42:39 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:42:39 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:42:40 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:42:40 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:42:41 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:42:41 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:42:42 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:42:42 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:42:50 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:42:50 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:06 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:06 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [>] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:07 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:07 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+    [ ] 18. ⬅️ Back
+    [>] 19. Grid View
+        Pick a file to load.
+      [ ] 22. 📄  gold.txt 3B
+      [ ] 23. 📄  history.txt 50KB
+      [ ] 24. 📄  instance_id.txt 5B
+      [ ] 25. 📄  interact_relay.txt 0B
+      [ ] 26. 📄  inventory.txt 9B
+      [ ] 27. 📄  last_signal.txt 22B
+      [ ] 28. 📄  livedesk_index.txt 3B
+      [ ] 29. 📄  master_ledger.txt 7KB
+      [ ] 30. 📄  menu.chtpm 1KB
+      [ ] 31. 📄  meta.pdl 1KB
+      [ ] 32. 📄  module_parent.pid 7B
+      [ ] 33. 📄  pal.pdl 122B
+      [ ] 34. 📄  sprite.csv 42KB
+      [ ] 35. 📄  switches.txt 14B
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:09 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:09 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+    [ ] 18. ⬅️ Back
+    [>] 19. Grid View
+        Pick a file to load.
+      [ ] 22. 📄  gold.txt 3B
+      [ ] 23. 📄  history.txt 50KB
+      [ ] 24. 📄  instance_id.txt 5B
+      [ ] 25. 📄  interact_relay.txt 0B
+      [ ] 26. 📄  inventory.txt 9B
+      [ ] 27. 📄  last_signal.txt 22B
+      [ ] 28. 📄  livedesk_index.txt 3B
+      [ ] 29. 📄  master_ledger.txt 7KB
+      [ ] 30. 📄  menu.chtpm 1KB
+      [ ] 31. 📄  meta.pdl 1KB
+      [ ] 32. 📄  module_parent.pid 7B
+      [ ] 33. 📄  pal.pdl 122B
+      [ ] 34. 📄  sprite.csv 42KB
+      [ ] 35. 📄  switches.txt 14B
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:10 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:10 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+    [ ] 18. ⬅️ Back
+    [>] 19. Grid View
+        Pick a file to load.
+      [ ] 22. 📄  glyph.txt 8B
+      [ ] 23. 📄  gold.txt 3B
+      [ ] 24. 📄  history.txt 50KB
+      [ ] 25. 📄  instance_id.txt 5B
+      [ ] 26. 📄  interact_relay.txt 0B
+      [ ] 27. 📄  inventory.txt 9B
+      [ ] 28. 📄  last_signal.txt 22B
+      [ ] 29. 📄  livedesk_index.txt 3B
+      [ ] 30. 📄  master_ledger.txt 7KB
+      [ ] 31. 📄  menu.chtpm 1KB
+      [ ] 32. 📄  meta.pdl 1KB
+      [ ] 33. 📄  module_parent.pid 7B
+      [ ] 34. 📄  pal.pdl 122B
+      [ ] 35. 📄  sprite.csv 42KB
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:10 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:10 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+    [ ] 18. ⬅️ Back
+    [>] 19. Grid View
+        Pick a file to load.
+      [ ] 22. 📄  desktop_pos.txt.bak 2B
+      [ ] 23. 📄  glyph.txt 8B
+      [ ] 24. 📄  gold.txt 3B
+      [ ] 25. 📄  history.txt 50KB
+      [ ] 26. 📄  instance_id.txt 5B
+      [ ] 27. 📄  interact_relay.txt 0B
+      [ ] 28. 📄  inventory.txt 9B
+      [ ] 29. 📄  last_signal.txt 22B
+      [ ] 30. 📄  livedesk_index.txt 3B
+      [ ] 31. 📄  master_ledger.txt 7KB
+      [ ] 32. 📄  menu.chtpm 1KB
+      [ ] 33. 📄  meta.pdl 1KB
+      [ ] 34. 📄  module_parent.pid 7B
+      [ ] 35. 📄  pal.pdl 122B
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:10 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:10 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+    [ ] 18. ⬅️ Back
+    [>] 19. Grid View
+        Pick a file to load.
+      [ ] 22. 📄  desktop_pos.txt 12B
+      [ ] 23. 📄  desktop_pos.txt.bak 2B
+      [ ] 24. 📄  glyph.txt 8B
+      [ ] 25. 📄  gold.txt 3B
+      [ ] 26. 📄  history.txt 50KB
+      [ ] 27. 📄  instance_id.txt 5B
+      [ ] 28. 📄  interact_relay.txt 0B
+      [ ] 29. 📄  inventory.txt 9B
+      [ ] 30. 📄  last_signal.txt 22B
+      [ ] 31. 📄  livedesk_index.txt 3B
+      [ ] 32. 📄  master_ledger.txt 7KB
+      [ ] 33. 📄  menu.chtpm 1KB
+      [ ] 34. 📄  meta.pdl 1KB
+      [ ] 35. 📄  module_parent.pid 7B
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:10 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:10 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+    [ ] 18. ⬅️ Back
+    [>] 19. Grid View
+        Pick a file to load.
+      [ ] 22. 📄  bookmarks_state.txt 278B
+      [ ] 23. 📄  desktop_pos.txt 12B
+      [ ] 24. 📄  desktop_pos.txt.bak 2B
+      [ ] 25. 📄  glyph.txt 8B
+      [ ] 26. 📄  gold.txt 3B
+      [ ] 27. 📄  history.txt 50KB
+      [ ] 28. 📄  instance_id.txt 5B
+      [ ] 29. 📄  interact_relay.txt 0B
+      [ ] 30. 📄  inventory.txt 9B
+      [ ] 31. 📄  last_signal.txt 22B
+      [ ] 32. 📄  livedesk_index.txt 3B
+      [ ] 33. 📄  master_ledger.txt 7KB
+      [ ] 34. 📄  menu.chtpm 1KB
+      [ ] 35. 📄  meta.pdl 1KB
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:10 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:10 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+    [ ] 18. ⬅️ Back
+    [>] 19. Grid View
+        Pick a file to load.
+      [ ] 22. 📄  bookmarks.pdl 402B
+      [ ] 23. 📄  bookmarks_state.txt 278B
+      [ ] 24. 📄  desktop_pos.txt 12B
+      [ ] 25. 📄  desktop_pos.txt.bak 2B
+      [ ] 26. 📄  glyph.txt 8B
+      [ ] 27. 📄  gold.txt 3B
+      [ ] 28. 📄  history.txt 50KB
+      [ ] 29. 📄  instance_id.txt 5B
+      [ ] 30. 📄  interact_relay.txt 0B
+      [ ] 31. 📄  inventory.txt 9B
+      [ ] 32. 📄  last_signal.txt 22B
+      [ ] 33. 📄  livedesk_index.txt 3B
+      [ ] 34. 📄  master_ledger.txt 7KB
+      [ ] 35. 📄  menu.chtpm 1KB
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:10 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:10 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+    [ ] 18. ⬅️ Back
+    [>] 19. Grid View
+        Pick a file to load.
+      [ ] 22. 📄  bookmarks.css 1KB
+      [ ] 23. 📄  bookmarks.pdl 402B
+      [ ] 24. 📄  bookmarks_state.txt 278B
+      [ ] 25. 📄  desktop_pos.txt 12B
+      [ ] 26. 📄  desktop_pos.txt.bak 2B
+      [ ] 27. 📄  glyph.txt 8B
+      [ ] 28. 📄  gold.txt 3B
+      [ ] 29. 📄  history.txt 50KB
+      [ ] 30. 📄  instance_id.txt 5B
+      [ ] 31. 📄  interact_relay.txt 0B
+      [ ] 32. 📄  inventory.txt 9B
+      [ ] 33. 📄  last_signal.txt 22B
+      [ ] 34. 📄  livedesk_index.txt 3B
+      [ ] 35. 📄  master_ledger.txt 7KB
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:10 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:10 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+    [ ] 18. ⬅️ Back
+    [>] 19. Grid View
+        Pick a file to load.
+      [ ] 22. 📄  bookmarks.chtpm 3KB
+      [ ] 23. 📄  bookmarks.css 1KB
+      [ ] 24. 📄  bookmarks.pdl 402B
+      [ ] 25. 📄  bookmarks_state.txt 278B
+      [ ] 26. 📄  desktop_pos.txt 12B
+      [ ] 27. 📄  desktop_pos.txt.bak 2B
+      [ ] 28. 📄  glyph.txt 8B
+      [ ] 29. 📄  gold.txt 3B
+      [ ] 30. 📄  history.txt 50KB
+      [ ] 31. 📄  instance_id.txt 5B
+      [ ] 32. 📄  interact_relay.txt 0B
+      [ ] 33. 📄  inventory.txt 9B
+      [ ] 34. 📄  last_signal.txt 22B
+      [ ] 35. 📄  livedesk_index.txt 3B
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:10 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:10 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+    [ ] 18. ⬅️ Back
+    [>] 19. Grid View
+        Pick a file to load.
+      [ ] 22. 📄  atlas.png 812B
+      [ ] 23. 📄  bookmarks.chtpm 3KB
+      [ ] 24. 📄  bookmarks.css 1KB
+      [ ] 25. 📄  bookmarks.pdl 402B
+      [ ] 26. 📄  bookmarks_state.txt 278B
+      [ ] 27. 📄  desktop_pos.txt 12B
+      [ ] 28. 📄  desktop_pos.txt.bak 2B
+      [ ] 29. 📄  glyph.txt 8B
+      [ ] 30. 📄  gold.txt 3B
+      [ ] 31. 📄  history.txt 50KB
+      [ ] 32. 📄  instance_id.txt 5B
+      [ ] 33. 📄  interact_relay.txt 0B
+      [ ] 34. 📄  inventory.txt 9B
+      [ ] 35. 📄  last_signal.txt 22B
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:10 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:10 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+    [ ] 18. ⬅️ Back
+    [>] 19. Grid View
+        Pick a file to load.
+      [ ] 22. 📁  user-notes 
+      [ ] 23. 📄  atlas.png 812B
+      [ ] 24. 📄  bookmarks.chtpm 3KB
+      [ ] 25. 📄  bookmarks.css 1KB
+      [ ] 26. 📄  bookmarks.pdl 402B
+      [ ] 27. 📄  bookmarks_state.txt 278B
+      [ ] 28. 📄  desktop_pos.txt 12B
+      [ ] 29. 📄  desktop_pos.txt.bak 2B
+      [ ] 30. 📄  glyph.txt 8B
+      [ ] 31. 📄  gold.txt 3B
+      [ ] 32. 📄  history.txt 50KB
+      [ ] 33. 📄  instance_id.txt 5B
+      [ ] 34. 📄  interact_relay.txt 0B
+      [ ] 35. 📄  inventory.txt 9B
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:10 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:10 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+    [ ] 18. ⬅️ Back
+    [>] 19. Grid View
+        Pick a file to load.
+      [ ] 22. 📁  presentations 
+      [ ] 23. 📁  user-notes 
+      [ ] 24. 📄  atlas.png 812B
+      [ ] 25. 📄  bookmarks.chtpm 3KB
+      [ ] 26. 📄  bookmarks.css 1KB
+      [ ] 27. 📄  bookmarks.pdl 402B
+      [ ] 28. 📄  bookmarks_state.txt 278B
+      [ ] 29. 📄  desktop_pos.txt 12B
+      [ ] 30. 📄  desktop_pos.txt.bak 2B
+      [ ] 31. 📄  glyph.txt 8B
+      [ ] 32. 📄  gold.txt 3B
+      [ ] 33. 📄  history.txt 50KB
+      [ ] 34. 📄  instance_id.txt 5B
+      [ ] 35. 📄  interact_relay.txt 0B
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:10 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:10 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+    [ ] 18. ⬅️ Back
+    [>] 19. Grid View
+        Pick a file to load.
+      [ ] 22. 📁  pieces 
+      [ ] 23. 📁  presentations 
+      [ ] 24. 📁  user-notes 
+      [ ] 25. 📄  atlas.png 812B
+      [ ] 26. 📄  bookmarks.chtpm 3KB
+      [ ] 27. 📄  bookmarks.css 1KB
+      [ ] 28. 📄  bookmarks.pdl 402B
+      [ ] 29. 📄  bookmarks_state.txt 278B
+      [ ] 30. 📄  desktop_pos.txt 12B
+      [ ] 31. 📄  desktop_pos.txt.bak 2B
+      [ ] 32. 📄  glyph.txt 8B
+      [ ] 33. 📄  gold.txt 3B
+      [ ] 34. 📄  history.txt 50KB
+      [ ] 35. 📄  instance_id.txt 5B
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:10 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:10 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+    [ ] 18. ⬅️ Back
+    [>] 19. Grid View
+        Pick a file to load.
+      [ ] 22. 📁  inventory 
+      [ ] 23. 📁  pieces 
+      [ ] 24. 📁  presentations 
+      [ ] 25. 📁  user-notes 
+      [ ] 26. 📄  atlas.png 812B
+      [ ] 27. 📄  bookmarks.chtpm 3KB
+      [ ] 28. 📄  bookmarks.css 1KB
+      [ ] 29. 📄  bookmarks.pdl 402B
+      [ ] 30. 📄  bookmarks_state.txt 278B
+      [ ] 31. 📄  desktop_pos.txt 12B
+      [ ] 32. 📄  desktop_pos.txt.bak 2B
+      [ ] 33. 📄  glyph.txt 8B
+      [ ] 34. 📄  gold.txt 3B
+      [ ] 35. 📄  history.txt 50KB
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:10 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:10 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+    [ ] 18. ⬅️ Back
+    [>] 19. Grid View
+        Pick a file to load.
+      [ ] 22. 📁  harnesses 
+      [ ] 23. 📁  inventory 
+      [ ] 24. 📁  pieces 
+      [ ] 25. 📁  presentations 
+      [ ] 26. 📁  user-notes 
+      [ ] 27. 📄  atlas.png 812B
+      [ ] 28. 📄  bookmarks.chtpm 3KB
+      [ ] 29. 📄  bookmarks.css 1KB
+      [ ] 30. 📄  bookmarks.pdl 402B
+      [ ] 31. 📄  bookmarks_state.txt 278B
+      [ ] 32. 📄  desktop_pos.txt 12B
+      [ ] 33. 📄  desktop_pos.txt.bak 2B
+      [ ] 34. 📄  glyph.txt 8B
+      [ ] 35. 📄  gold.txt 3B
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:10 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:10 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+    [ ] 18. ⬅️ Back
+    [>] 19. Grid View
+        Pick a file to load.
+      [ ] 22. 📁  event_pkg 
+      [ ] 23. 📁  harnesses 
+      [ ] 24. 📁  inventory 
+      [ ] 25. 📁  pieces 
+      [ ] 26. 📁  presentations 
+      [ ] 27. 📁  user-notes 
+      [ ] 28. 📄  atlas.png 812B
+      [ ] 29. 📄  bookmarks.chtpm 3KB
+      [ ] 30. 📄  bookmarks.css 1KB
+      [ ] 31. 📄  bookmarks.pdl 402B
+      [ ] 32. 📄  bookmarks_state.txt 278B
+      [ ] 33. 📄  desktop_pos.txt 12B
+      [ ] 34. 📄  desktop_pos.txt.bak 2B
+      [ ] 35. 📄  glyph.txt 8B
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:10 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:10 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+    [ ] 18. ⬅️ Back
+    [>] 19. Grid View
+        Pick a file to load.
+      [ ] 22. 📁  chat 
+      [ ] 23. 📁  event_pkg 
+      [ ] 24. 📁  harnesses 
+      [ ] 25. 📁  inventory 
+      [ ] 26. 📁  pieces 
+      [ ] 27. 📁  presentations 
+      [ ] 28. 📁  user-notes 
+      [ ] 29. 📄  atlas.png 812B
+      [ ] 30. 📄  bookmarks.chtpm 3KB
+      [ ] 31. 📄  bookmarks.css 1KB
+      [ ] 32. 📄  bookmarks.pdl 402B
+      [ ] 33. 📄  bookmarks_state.txt 278B
+      [ ] 34. 📄  desktop_pos.txt 12B
+      [ ] 35. 📄  desktop_pos.txt.bak 2B
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:10 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:10 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+    [ ] 18. ⬅️ Back
+    [>] 19. Grid View
+        Pick a file to load.
+      [ ] 22. 📁  audit 
+      [ ] 23. 📁  chat 
+      [ ] 24. 📁  event_pkg 
+      [ ] 25. 📁  harnesses 
+      [ ] 26. 📁  inventory 
+      [ ] 27. 📁  pieces 
+      [ ] 28. 📁  presentations 
+      [ ] 29. 📁  user-notes 
+      [ ] 30. 📄  atlas.png 812B
+      [ ] 31. 📄  bookmarks.chtpm 3KB
+      [ ] 32. 📄  bookmarks.css 1KB
+      [ ] 33. 📄  bookmarks.pdl 402B
+      [ ] 34. 📄  bookmarks_state.txt 278B
+      [ ] 35. 📄  desktop_pos.txt 12B
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:10 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:10 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+    [ ] 18. ⬅️ Back
+    [>] 19. Grid View
+        Pick a file to load.
+      [ ] 22. 📁  anim 
+      [ ] 23. 📁  audit 
+      [ ] 24. 📁  chat 
+      [ ] 25. 📁  event_pkg 
+      [ ] 26. 📁  harnesses 
+      [ ] 27. 📁  inventory 
+      [ ] 28. 📁  pieces 
+      [ ] 29. 📁  presentations 
+      [ ] 30. 📁  user-notes 
+      [ ] 31. 📄  atlas.png 812B
+      [ ] 32. 📄  bookmarks.chtpm 3KB
+      [ ] 33. 📄  bookmarks.css 1KB
+      [ ] 34. 📄  bookmarks.pdl 402B
+      [ ] 35. 📄  bookmarks_state.txt 278B
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:12 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:12 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+    [ ] 18. ⬅️ Back
+    [ ] 19. Grid View
+        Pick a file to load.
+      [ ] 22. 📁  anim 
+      [ ] 23. 📁  audit 
+      [ ] 24. 📁  chat 
+      [ ] 25. 📁  event_pkg 
+      [ ] 26. 📁  harnesses 
+      [>] 27. 📁  inventory 
+      [ ] 28. 📁  pieces 
+      [ ] 29. 📁  presentations 
+      [ ] 30. 📁  user-notes 
+      [ ] 31. 📄  atlas.png 812B
+      [ ] 32. 📄  bookmarks.chtpm 3KB
+      [ ] 33. 📄  bookmarks.css 1KB
+      [ ] 34. 📄  bookmarks.pdl 402B
+      [ ] 35. 📄  bookmarks_state.txt 278B
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:12 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:12 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 127765  2026-09-18 02:44:47 ===
+--- file-explorer-pal.xhtpm  pid 127765  2026-09-18 02:44:47 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.

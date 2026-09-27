@@ -1,0 +1,10 @@
+--- file-explorer-pal.xhtpm  pid 77377  2026-09-15 10:34:17 ---
+--- page: main ---
+File Explorer - LOAD
+          /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/101.drag-drop-test=ON🀄️
+        [ ] 1. ⬅  ..  Back 
+        [ ] 2. 📁  ops 
+        [ ] 3. 📁  scenarios 
+        [ ] 4. 📄  README.txt 3KB
+        [>] 5. 📄  button.sh 2KB
+          Pick a file to load.

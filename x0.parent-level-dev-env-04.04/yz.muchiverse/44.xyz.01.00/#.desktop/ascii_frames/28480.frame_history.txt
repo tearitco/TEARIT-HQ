@@ -1,0 +1,10 @@
+
+=== menu.chtpm pid 28480  2026-09-27 00:52:56 ===
+--- menu.chtpm  pid 28480  2026-09-27 00:52:56 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Cli-io: 

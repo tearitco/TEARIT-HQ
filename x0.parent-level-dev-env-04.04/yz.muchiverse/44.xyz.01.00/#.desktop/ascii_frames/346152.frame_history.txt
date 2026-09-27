@@ -1,0 +1,1643 @@
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:30:26 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:30:26 ---
+--- page: main ---
+DB (PAL)
+      [>] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          Autorun
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:30:27 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:30:27 ---
+--- page: main ---
+DB (PAL)
+      [>] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          Autorun
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:30:27 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:30:27 ---
+--- page: main ---
+DB (PAL)
+      [>] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          Autorun
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 24. < Cancel
+        [ ] 25. Change Gold
+        [ ] 26. Show Text
+        [ ] 27. Show Choices
+        [ ] 28. Take Gold
+        [ ] 29. Control Switch
+        [ ] 30. Control Variable
+        [ ] 31. Call Common Event
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:30:44 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:30:44 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          Autorun
+      [>] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 24. < Cancel
+        [ ] 25. Change Gold
+        [ ] 26. Show Text
+        [ ] 27. Show Choices
+        [ ] 28. Take Gold
+        [ ] 29. Control Switch
+        [ ] 30. Control Variable
+        [ ] 31. Call Common Event
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:30:57 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:30:57 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. * Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [>] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          Autorun
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 24. < Cancel
+        [ ] 25. Change Gold
+        [ ] 26. Show Text
+        [ ] 27. Show Choices
+        [ ] 28. Take Gold
+        [ ] 29. Control Switch
+        [ ] 30. Control Variable
+        [ ] 31. Call Common Event
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:30:58 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:30:58 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. * Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [>] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          Autorun
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 24. < Cancel
+        [ ] 25. Change Gold
+        [ ] 26. Show Text
+        [ ] 27. Show Choices
+        [ ] 28. Take Gold
+        [ ] 29. Control Switch
+        [ ] 30. Control Variable
+        [ ] 31. Call Common Event
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:30:58 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:30:58 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. * Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Armors (4)
+        [>] 16. 1. Leather Armor
+        [ ] 17. 2. Leather Cap
+        [ ] 18. 3. Wooden Shield
+        [ ] 19. 4. Amulet
+          #1  Leather Armor
+        [ ] 20.   []  
+        [ ] 21. name  [Leather Armor]  
+        [ ] 22. atype  [Light Armor]  
+        [ ] 23. etype  [Body]  
+        [ ] 24. price  [300]  
+        [ ] 25. def  [10]  
+        [ ] 26. description  []  
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:31:12 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:31:12 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. * Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Armors (4)
+        [>] 16. 1. Leather Armor
+        [ ] 17. 2. Leather Cap
+        [ ] 18. 3. Wooden Shield
+        [ ] 19. 4. Amulet
+          #1  Leather Armor
+        [ ] 20.   []  
+        [ ] 21. name  [Leather Armor]  
+        [ ] 22. atype  [Light Armor]  
+        [ ] 23. etype  [Body]  
+        [ ] 24. price  [300]  
+        [ ] 25. def  [10]  
+        [ ] 26. description  []  
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:22 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:22 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. * Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Armors (4)
+        [>] 16. 1. Leather Armor
+        [ ] 17. 2. Leather Cap
+        [ ] 18. 3. Wooden Shield
+        [ ] 19. 4. Amulet
+          #1  Leather Armor
+        [ ] 20.   []  
+        [ ] 21. name  [Leather Armor]  
+        [ ] 22. atype  [Light Armor]  
+        [ ] 23. etype  [Body]  
+        [ ] 24. price  [300]  
+        [ ] 25. def  [10]  
+        [ ] 26. description  []  
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:23 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:23 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. * Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Armors (4)
+        [>] 16. 1. Leather Armor
+        [ ] 17. 2. Leather Cap
+        [ ] 18. 3. Wooden Shield
+        [ ] 19. 4. Amulet
+          #1  Leather Armor
+        [ ] 20.   []  
+        [ ] 21. name  [Leather Armor]  
+        [ ] 22. atype  [Light Armor]  
+        [ ] 23. etype  [Body]  
+        [ ] 24. price  [300]  
+        [ ] 25. def  [10]  
+        [ ] 26. description  []  
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:24 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:24 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [>] 6. * Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Armors (4)
+        [ ] 16. 1. Leather Armor
+        [ ] 17. 2. Leather Cap
+        [ ] 18. 3. Wooden Shield
+        [ ] 19. 4. Amulet
+          #1  Leather Armor
+        [ ] 20.   []  
+        [ ] 21. name  [Leather Armor]  
+        [ ] 22. atype  [Light Armor]  
+        [ ] 23. etype  [Body]  
+        [ ] 24. price  [300]  
+        [ ] 25. def  [10]  
+        [ ] 26. description  []  
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:25 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:25 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. * Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [>] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Armors (4)
+        [ ] 16. 1. Leather Armor
+        [ ] 17. 2. Leather Cap
+        [ ] 18. 3. Wooden Shield
+        [ ] 19. 4. Amulet
+          #1  Leather Armor
+        [ ] 20.   []  
+        [ ] 21. name  [Leather Armor]  
+        [ ] 22. atype  [Light Armor]  
+        [ ] 23. etype  [Body]  
+        [ ] 24. price  [300]  
+        [ ] 25. def  [10]  
+        [ ] 26. description  []  
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:25 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:25 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Armors (4)
+        [>] 16. 1. Leather Armor
+        [ ] 17. 2. Leather Cap
+        [ ] 18. 3. Wooden Shield
+        [ ] 19. 4. Amulet
+          #1  Leather Armor
+        [ ] 20.   []  
+        [ ] 21. name  [Leather Armor]  
+        [ ] 22. atype  [Light Armor]  
+        [ ] 23. etype  [Body]  
+        [ ] 24. price  [300]  
+        [ ] 25. def  [10]  
+        [ ] 26. description  []  
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:26 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:26 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Armors (4)
+        [>] 16. 1. Leather Armor
+        [ ] 17. 2. Leather Cap
+        [ ] 18. 3. Wooden Shield
+        [ ] 19. 4. Amulet
+          #1  Leather Armor
+              []  
+            name  [Leather Armor]  
+            atype  [Light Armor]  
+            etype  [Body]  
+            price  [300]  
+            def  [10]  
+            description  []  
+          Add Command  -  pick a type
+        [ ] 22. < Cancel
+        [ ] 23. Change Gold
+        [ ] 24. Show Text
+        [ ] 25. Show Choices
+        [ ] 26. Take Gold
+        [ ] 27. Control Switch
+        [ ] 28. Control Variable
+        [ ] 29. Call Common Event
+        [ ] 30. If
+        [ ] 31. Else
+        [ ] 32. End
+        [ ] 33. Loop
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:26 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:26 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [>] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          Autorun
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 24. < Cancel
+        [ ] 25. Change Gold
+        [ ] 26. Show Text
+        [ ] 27. Show Choices
+        [ ] 28. Take Gold
+        [ ] 29. Control Switch
+        [ ] 30. Control Variable
+        [ ] 31. Call Common Event
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:28 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:28 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [>] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          Autorun
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 24. < Cancel
+        [ ] 25. Change Gold
+        [ ] 26. Show Text
+        [ ] 27. Show Choices
+        [ ] 28. Take Gold
+        [ ] 29. Control Switch
+        [ ] 30. Control Variable
+        [ ] 31. Call Common Event
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:29 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:29 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [>] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          Autorun
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 24. < Cancel
+        [ ] 25. Change Gold
+        [ ] 26. Show Text
+        [ ] 27. Show Choices
+        [ ] 28. Take Gold
+        [ ] 29. Control Switch
+        [ ] 30. Control Variable
+        [ ] 31. Call Common Event
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:30 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:30 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [>] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          Autorun
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 24. < Cancel
+        [ ] 25. Change Gold
+        [ ] 26. Show Text
+        [ ] 27. Show Choices
+        [ ] 28. Take Gold
+        [ ] 29. Control Switch
+        [ ] 30. Control Variable
+        [ ] 31. Call Common Event
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:31 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:31 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [>] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          Autorun
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 24. < Cancel
+        [ ] 25. Change Gold
+        [ ] 26. Show Text
+        [ ] 27. Show Choices
+        [ ] 28. Take Gold
+        [ ] 29. Control Switch
+        [ ] 30. Control Variable
+        [ ] 31. Call Common Event
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:31 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:31 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [>] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          Autorun
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 24. < Cancel
+        [ ] 25. Change Gold
+        [ ] 26. Show Text
+        [ ] 27. Show Choices
+        [ ] 28. Take Gold
+        [ ] 29. Control Switch
+        [ ] 30. Control Variable
+        [ ] 31. Call Common Event
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:31 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:31 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [>] 19. test_target
+          Trigger
+          Autorun
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 24. < Cancel
+        [ ] 25. Change Gold
+        [ ] 26. Show Text
+        [ ] 27. Show Choices
+        [ ] 28. Take Gold
+        [ ] 29. Control Switch
+        [ ] 30. Control Variable
+        [ ] 31. Call Common Event
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:31 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:31 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          Autorun
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 24. < Cancel
+        [ ] 25. Change Gold
+        [ ] 26. Show Text
+        [ ] 27. Show Choices
+        [ ] 28. Take Gold
+        [ ] 29. Control Switch
+        [ ] 30. Control Variable
+        [ ] 31. Call Common Event
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:32 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:32 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          Autorun
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 24. < Cancel
+        [ ] 25. Change Gold
+        [ ] 26. Show Text
+        [ ] 27. Show Choices
+        [ ] 28. Take Gold
+        [ ] 29. Control Switch
+        [ ] 30. Control Variable
+        [ ] 31. Call Common Event
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:33 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:33 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [>] 19. test_target
+          Trigger
+          Autorun
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 24. < Cancel
+        [ ] 25. Change Gold
+        [ ] 26. Show Text
+        [ ] 27. Show Choices
+        [ ] 28. Take Gold
+        [ ] 29. Control Switch
+        [ ] 30. Control Variable
+        [ ] 31. Call Common Event
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:33 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:33 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [>] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          Autorun
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 24. < Cancel
+        [ ] 25. Change Gold
+        [ ] 26. Show Text
+        [ ] 27. Show Choices
+        [ ] 28. Take Gold
+        [ ] 29. Control Switch
+        [ ] 30. Control Variable
+        [ ] 31. Call Common Event
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:34 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:34 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [>] 19. test_target
+          Trigger
+          Autorun
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 24. < Cancel
+        [ ] 25. Change Gold
+        [ ] 26. Show Text
+        [ ] 27. Show Choices
+        [ ] 28. Take Gold
+        [ ] 29. Control Switch
+        [ ] 30. Control Variable
+        [ ] 31. Call Common Event
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:34 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:34 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          Autorun
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 24. < Cancel
+        [ ] 25. Change Gold
+        [ ] 26. Show Text
+        [ ] 27. Show Choices
+        [ ] 28. Take Gold
+        [ ] 29. Control Switch
+        [ ] 30. Control Variable
+        [ ] 31. Call Common Event
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:34 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:34 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [>] 19. test_target
+          Trigger
+          Autorun
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 24. < Cancel
+        [ ] 25. Change Gold
+        [ ] 26. Show Text
+        [ ] 27. Show Choices
+        [ ] 28. Take Gold
+        [ ] 29. Control Switch
+        [ ] 30. Control Variable
+        [ ] 31. Call Common Event
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:37 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:37 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [>] 19. test_target
+          Trigger
+          Autorun
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 24. < Cancel
+        [ ] 25. Change Gold
+        [ ] 26. Show Text
+        [ ] 27. Show Choices
+        [ ] 28. Take Gold
+        [ ] 29. Control Switch
+        [ ] 30. Control Variable
+        [ ] 31. Call Common Event
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:41 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:41 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [>] 19. test_target
+          Trigger
+          Autorun
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 24. < Cancel
+        [ ] 25. Change Gold
+        [ ] 26. Show Text
+        [ ] 27. Show Choices
+        [ ] 28. Take Gold
+        [ ] 29. Control Switch
+        [ ] 30. Control Variable
+        [ ] 31. Call Common Event
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:42 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:42 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [>] 19. test_target
+          Trigger
+          Autorun
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 24. < Cancel
+        [ ] 25. Change Gold
+        [ ] 26. Show Text
+        [ ] 27. Show Choices
+        [ ] 28. Take Gold
+        [ ] 29. Control Switch
+        [ ] 30. Control Variable
+        [ ] 31. Call Common Event
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:51 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:51 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          Autorun
+      [>] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 24. < Cancel
+        [ ] 25. Change Gold
+        [ ] 26. Show Text
+        [ ] 27. Show Choices
+        [ ] 28. Take Gold
+        [ ] 29. Control Switch
+        [ ] 30. Control Variable
+        [ ] 31. Call Common Event
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:52 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:52 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          on-click
+      [>] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this event yet)
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:53 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:53 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          on-click
+      [>] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this event yet)
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:54 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:54 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          on-click
+      [>] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this event yet)
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:55 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:55 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          on-click
+      [ ] 20. + Add Command
+      [>] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this event yet)
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:56 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:56 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          on-click
+      [>] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this event yet)
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:57 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:57 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          on-click
+      [>] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this event yet)
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:58 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:58 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          on-click
+      [>] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this event yet)
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:32:59 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:32:59 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [>] 19. test_target
+          Trigger
+          on-click
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this event yet)
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:33:00 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:33:00 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [>] 19. test_target
+          Trigger
+          on-click
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this event yet)
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:33:02 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:33:02 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          on-click
+      [>] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this event yet)
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:33:03 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:33:03 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          on-click
+      [>] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this event yet)
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:33:05 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:33:05 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          on-click
+      [>] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this event yet)
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:33:27 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:33:27 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          on-click
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this event yet)
+
+=== dashboard.xhtpm pid 346152  2026-09-13 07:33:28 ===
+--- dashboard.xhtpm  pid 346152  2026-09-13 07:33:28 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. * Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Common Events (4)
+        [ ] 16. greet_player
+        [ ] 17. nested_inner
+        [ ] 18. shop_open
+        [ ] 19. test_target
+          Trigger
+          on-click
+      [ ] 20. + Add Command
+      [ ] 21. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this event yet)

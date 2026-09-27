@@ -1,0 +1,110 @@
+
+=== media-3d-hq.xhtpm pid 889113  2026-09-14 06:21:47 ===
+--- media-3d-hq.xhtpm  pid 889113  2026-09-14 06:21:47 ---
+--- page: main ---
+Muchi Blend - 3D  cursword.voxels.csv  tool=SEL  sel=cursword  yaw=0.70 pit=0.40 dist=6.0
+    [ ] 13. x
+    [ ] 14. !
+    [ ] 15. _
+      [>] 1. New
+      [ ] 2. Demo
+      [ ] 3. + Cube
+      [ ] 4. + Sph
+      [ ] 5. * Sel
+      [ ] 6. Grab
+      [ ] 7. Rot
+      [ ] 8. Scl
+      [ ] 9. orb <
+      [ ] 10. orb >
+      [ ] 11. z+
+      [ ] 12. z-
+        Sel select   Grab grab   Rot rotate   Scl scale     now: select
+    [ ] 16. * cursword  0.0,0.0,0.0 s=1.0
+
+=== media-3d-hq.xhtpm pid 889113  2026-09-14 06:21:48 ===
+--- media-3d-hq.xhtpm  pid 889113  2026-09-14 06:21:48 ---
+--- page: main ---
+Muchi Blend - 3D  cursword.voxels.csv  tool=SEL  sel=cursword  yaw=0.70 pit=0.40 dist=6.0
+    [ ] 13. x
+    [ ] 14. !
+    [ ] 15. _
+      [>] 1. New
+      [ ] 2. Demo
+      [ ] 3. + Cube
+      [ ] 4. + Sph
+      [ ] 5. * Sel
+      [ ] 6. Grab
+      [ ] 7. Rot
+      [ ] 8. Scl
+      [ ] 9. orb <
+      [ ] 10. orb >
+      [ ] 11. z+
+      [ ] 12. z-
+        Sel select   Grab grab   Rot rotate   Scl scale     now: select
+    [ ] 16. * cursword  0.0,0.0,0.0 s=1.0
+
+=== media-3d-hq.xhtpm pid 889113  2026-09-14 06:21:49 ===
+--- media-3d-hq.xhtpm  pid 889113  2026-09-14 06:21:49 ---
+--- page: main ---
+Muchi Blend - 3D  cursword.voxels.csv  tool=SEL  sel=cursword  yaw=0.70 pit=0.40 dist=6.0
+    [ ] 13. x
+    [ ] 14. !
+    [ ] 15. _
+      [>] 1. New
+      [ ] 2. Demo
+      [ ] 3. + Cube
+      [ ] 4. + Sph
+      [ ] 5. * Sel
+      [ ] 6. Grab
+      [ ] 7. Rot
+      [ ] 8. Scl
+      [ ] 9. orb <
+      [ ] 10. orb >
+      [ ] 11. z+
+      [ ] 12. z-
+        Sel select   Grab grab   Rot rotate   Scl scale     now: select
+    [ ] 16. * cursword  0.0,0.0,0.0 s=1.0
+
+=== media-3d-hq.xhtpm pid 889113  2026-09-14 06:21:50 ===
+--- media-3d-hq.xhtpm  pid 889113  2026-09-14 06:21:50 ---
+--- page: main ---
+Muchi Blend - 3D  cursword.voxels.csv  tool=SEL  sel=cursword  yaw=0.70 pit=0.40 dist=6.0
+    [>] 13. x
+    [ ] 14. !
+    [ ] 15. _
+      [ ] 1. New
+      [ ] 2. Demo
+      [ ] 3. + Cube
+      [ ] 4. + Sph
+      [ ] 5. * Sel
+      [ ] 6. Grab
+      [ ] 7. Rot
+      [ ] 8. Scl
+      [ ] 9. orb <
+      [ ] 10. orb >
+      [ ] 11. z+
+      [ ] 12. z-
+        Sel select   Grab grab   Rot rotate   Scl scale     now: select
+    [ ] 16. * cursword  0.0,0.0,0.0 s=1.0
+
+=== media-3d-hq.xhtpm pid 889113  2026-09-14 06:21:51 ===
+--- media-3d-hq.xhtpm  pid 889113  2026-09-14 06:21:51 ---
+--- page: main ---
+Muchi Blend - 3D  cursword.voxels.csv  tool=SEL  sel=cursword  yaw=0.70 pit=0.40 dist=6.0
+    [>] 13. x
+    [ ] 14. !
+    [ ] 15. _
+      [ ] 1. New
+      [ ] 2. Demo
+      [ ] 3. + Cube
+      [ ] 4. + Sph
+      [ ] 5. * Sel
+      [ ] 6. Grab
+      [ ] 7. Rot
+      [ ] 8. Scl
+      [ ] 9. orb <
+      [ ] 10. orb >
+      [ ] 11. z+
+      [ ] 12. z-
+        Sel select   Grab grab   Rot rotate   Scl scale     now: select
+    [ ] 16. * cursword  0.0,0.0,0.0 s=1.0

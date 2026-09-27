@@ -1,0 +1,10 @@
+name=egg_11
+type=egg
+species_id=sp_owl
+species_emoji=🦉
+species_name=Owl
+rarity=2
+movement=flying
+serial=11
+owner=user_01
+hatched=0

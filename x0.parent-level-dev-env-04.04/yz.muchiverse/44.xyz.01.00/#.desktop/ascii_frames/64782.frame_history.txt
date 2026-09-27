@@ -1,0 +1,56 @@
+
+=== menu.chtpm pid 64782  2026-09-14 13:15:28 ===
+--- menu.chtpm  pid 64782  2026-09-14 13:15:28 ---
+--- page: main ---
+    [>] 1. Chat
+    [ ] 2. Events
+    [ ] 3. Events (mock)
+    [ ] 4. Events (ez)
+    [ ] 5. Play
+    [ ] 6. Stop
+    [ ] 7. Ledger
+    [ ] 8. Dir
+    [ ] 9. Close
+    [ ] 10. Cancel
+
+=== menu.chtpm pid 64782  2026-09-14 13:15:30 ===
+--- menu.chtpm  pid 64782  2026-09-14 13:15:30 ---
+--- page: main ---
+    [>] 1. Chat
+    [ ] 2. Events
+    [ ] 3. Events (mock)
+    [ ] 4. Events (ez)
+    [ ] 5. Play
+    [ ] 6. Stop
+    [ ] 7. Ledger
+    [ ] 8. Dir
+    [ ] 9. Close
+    [ ] 10. Cancel
+
+=== menu.chtpm pid 64782  2026-09-14 13:16:03 ===
+--- menu.chtpm  pid 64782  2026-09-14 13:16:03 ---
+--- page: main ---
+    [ ] 1. Chat
+    [ ] 2. Events
+    [ ] 3. Events (mock)
+    [ ] 4. Events (ez)
+    [ ] 5. Play
+    [ ] 6. Stop
+    [ ] 7. Ledger
+    [ ] 8. Dir
+    [ ] 9. Close
+    [>] 10. Cancel
+
+=== menu.chtpm pid 64782  2026-09-14 13:16:04 ===
+--- menu.chtpm  pid 64782  2026-09-14 13:16:04 ---
+--- page: main ---
+    [ ] 1. Chat
+    [ ] 2. Events
+    [ ] 3. Events (mock)
+    [ ] 4. Events (ez)
+    [ ] 5. Play
+    [ ] 6. Stop
+    [ ] 7. Ledger
+    [ ] 8. Dir
+    [ ] 9. Close
+    [>] 10. Cancel

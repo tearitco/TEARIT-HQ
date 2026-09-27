@@ -5,32 +5,32 @@ FINANCIAL BALANCE SHEET: ASTROZON COMMERCE (AZN)
 (Amounts in millions of U.S. Dollars, except per share amounts)
 
 ASSETS:
-  Free Cash and Equivalents:		256.04
-  Working Capital (A/R, Inven.):	74.33
-  Business Assets/Equipment:		1533.27
+  Free Cash and Equivalents:		736.85
+  Working Capital (A/R, Inven.):	58.33
+  Business Assets/Equipment:		1871.27
   Stock in Subsidiary Cos.:		0.00
   Options Long/Short: Net Value:	0.00
   ---------------------------------------------
-  Total Assets:				1863.64
+  Total Assets:				2666.45
   ---------------------------------------------
 
 LIABILITIES AND EQUITY:
   Long-Term Bonds Issued:		0.00
-  Bank Loan:				368.07
+  Bank Loan:				351.97
   Accrued Income Tax Payable:		0.00
   ---------------------------------------------
-  Total Liabilities:			368.07
+  Total Liabilities:			351.97
   ---------------------------------------------
-  Equity (Net Worth):			1495.57
+  Equity (Net Worth):			2314.48
   =============================================
 
 STOCK AND EARNINGS DATA:
 ------------------------
-  Net Worth Per Share:			20.72
-  Current Stock Price:			21.24
-  52-Week High/Low Stock Price:		38.10 / 16.88
-  Shares of Stock Outstanding:		72.20 million
-  Total Stock Capitalization:		1533.32 million
+  Net Worth Per Share:			43.43
+  Current Stock Price:			39.38
+  52-Week High/Low Stock Price:		57.07 / 26.15
+  Shares of Stock Outstanding:		53.30 million
+  Total Stock Capitalization:		2098.70 million
   2021 Earnings Per Share:		0.00 (Operating Earnings)
   2022 Earnings Per Share:		0.00 (Operating Earnings)
   2023 Earnings Per Share:		0.00 (Operating Earnings)
@@ -42,14 +42,14 @@ VARIOUS FINANCIAL RATIOS:
 -------------------------
   Price/Earnings Ratio:			NMF (No Meaningful Figure)
   Dividend Yield:			0.00%
-  Debt to Equity Ratio:			0.25 to 1
+  Debt to Equity Ratio:			0.15 to 1
   Return on Equity (2024):		NMF (No Meaningful Figure)
   ---------------------------------------------
 
 *** CREDIT INFO: ***
 -------------------
   Credit Rating:			AA
-  Unused Bank Line of Credit:		505.01 million
+  Unused Bank Line of Credit:		340.59 million
   Borrowing Rate (Interest):		10.50% (Prime is: 10.00%)
   Lending Bank:				MARTIAN TRUST BANK (MTB)
   ---------------------------------------------
@@ -64,11 +64,11 @@ VARIABLE SETTINGS (Changeable by controlling player):
 MISCELLANEOUS INFO:
 -------------------
   Industry Group:			INTERNET SERV. / CONTENT
-  Incorporated in:			Robot State
+  Incorporated in:			United Clones
   Controlled (and actively managed) by:	public
   Public Owns:			%
-  Accrued R&D and/or Investment Tax Credits:	$150.33 million
-  Annual CEO Salary (approx.):		$1.59 million (Plus possible bonuses)
+  Accrued R&D and/or Investment Tax Credits:	$119.44 million
+  Annual CEO Salary (approx.):		$0.19 million (Plus possible bonuses)
   Today's (Game) Date:			January 1, 2025
   Next Earnings Report:			January 27, 2025
   ---------------------------------------------

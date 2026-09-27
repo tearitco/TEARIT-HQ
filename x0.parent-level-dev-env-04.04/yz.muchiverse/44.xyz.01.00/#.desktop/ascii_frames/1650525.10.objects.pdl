@@ -1,0 +1,72 @@
+OBJECT tag=text id=- class=block-title x=0 y=30 w=200 h=30 nav=0 active=0 label=Bookmarks
+OBJECT tag=text id=- class=quiet x=0 y=0 w=0 h=0 nav=0 active=0 label=No bookmarks yet
+OBJECT tag=text id=- class=block-title x=0 y=60 w=200 h=30 nav=0 active=0 label=History
+OBJECT tag=item id=hist0 class=- x=0 y=90 w=200 h=60 nav=1 active=0 label=https://www.google.com/intl/en/about/products?tab=ih
+OBJECT tag=item id=hist1 class=- x=0 y=150 w=200 h=30 nav=2 active=0 label=https://example.com
+OBJECT tag=item id=hist2 class=- x=0 y=180 w=200 h=30 nav=3 active=0 label=https://myaccount.google.com/126
+OBJECT tag=item id=hist3 class=- x=0 y=210 w=200 h=30 nav=4 active=0 label=https://myaccount.google.com/015
+OBJECT tag=item id=hist4 class=- x=0 y=240 w=200 h=120 nav=5 active=0 label=https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+OBJECT tag=item id=hist5 class=- x=0 y=360 w=200 h=60 nav=6 active=0 label=https://www.google.com/intl/en/about/products?tab=ih
+OBJECT tag=item id=hist6 class=- x=0 y=420 w=200 h=60 nav=7 active=0 label=https://www.google.com/intl/en/about/products?tab=ih
+OBJECT tag=item id=hist7 class=- x=0 y=480 w=200 h=30 nav=8 active=0 label=https://example.com
+OBJECT tag=item id=hist8 class=- x=0 y=510 w=200 h=30 nav=9 active=0 label=www.google.com
+OBJECT tag=item id=hist9 class=- x=0 y=540 w=200 h=60 nav=10 active=0 label=https://www.google.com/intl/en/about/products?tab=ih
+OBJECT tag=item id=hist10 class=- x=0 y=600 w=200 h=60 nav=11 active=0 label=https://www.google.com/imghp?hl=en&ogbl
+OBJECT tag=item id=hist11 class=- x=0 y=660 w=200 h=30 nav=12 active=0 label=www.google.com
+OBJECT tag=item id=nb-back class=quiet x=200 y=30 w=194 h=30 nav=13 active=0 label=Back
+OBJECT tag=item id=nb-fwd class=quiet x=394 y=30 w=194 h=30 nav=14 active=0 label=Forward
+OBJECT tag=item id=nb-stop class=quiet x=588 y=30 w=194 h=30 nav=15 active=0 label=Stop
+OBJECT tag=item id=nb-reload class=quiet x=782 y=30 w=194 h=30 nav=16 active=0 label=Reload
+OBJECT tag=item id=nb-home class=quiet x=976 y=30 w=194 h=30 nav=17 active=0 label=Home
+OBJECT tag=item id=nb-bm class=quiet x=1170 y=30 w=194 h=30 nav=18 active=0 label=Bookmark
+OBJECT tag=item id=nb-close class=quiet x=1364 y=30 w=194 h=30 nav=19 active=0 label=Close tab
+OBJECT tag=item id=tab0 class=quiet x=200 y=60 w=454 h=30 nav=20 active=0 label=Google's products 
+OBJECT tag=item id=tab1 class=quiet x=654 y=60 w=454 h=30 nav=21 active=0 label=*Google's products 
+OBJECT tag=item id=nb-newtab class=quiet x=1108 y=60 w=454 h=30 nav=22 active=0 label=New tab
+OBJECT tag=cli_io id=address class=top,nb-address x=200 y=90 w=1364 h=30 nav=23 active=0 label=https://www.google.com/intl/en/about/products?tab=ih
+OBJECT tag=text id=status class=nb-status x=200 y=120 w=1364 h=30 nav=0 active=0 label=Status: ready
+OBJECT tag=text id=ct0 class=page-title x=200 y=164 w=1356 h=30 nav=0 active=0 label=Google's products and services - About Google
+OBJECT tag=text id=cx1 class=- x=200 y=194 w=1356 h=30 nav=0 active=0 label=Helpful products, built with you in mind
+OBJECT tag=text id=cx2 class=- x=200 y=224 w=1356 h=30 nav=0 active=0 label=Search in new ways
+OBJECT tag=text id=cx3 class=- x=200 y=254 w=1356 h=30 nav=0 active=0 label=Chat with Gemini
+OBJECT tag=text id=cx4 class=- x=200 y=284 w=1356 h=30 nav=0 active=0 label=Try AI tools
+OBJECT tag=text id=cx5 class=- x=200 y=314 w=1356 h=30 nav=0 active=0 label=Explore more products
+OBJECT tag=item id=cl6 class=- x=200 y=344 w=1356 h=30 nav=26 active=0 label=Product support
+OBJECT tag=item id=cl7 class=- x=200 y=374 w=1356 h=30 nav=27 active=0 label=Google Store
+OBJECT tag=item id=cl8 class=- x=200 y=404 w=1356 h=30 nav=28 active=0 label=Google Account
+OBJECT tag=item id=cl9 class=- x=200 y=434 w=1356 h=30 nav=29 active=0 label=Accessibility support
+OBJECT tag=text id=cx10 class=- x=200 y=464 w=1356 h=30 nav=0 active=0 label=Search in new ways
+OBJECT tag=text id=cx11 class=- x=200 y=494 w=1356 h=30 nav=0 active=0 label=Download the Google app
+OBJECT tag=item id=cl12 class=- x=200 y=524 w=1356 h=30 nav=30 active=0 label=https://search.google/ways-to-search/circle-to-search/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+OBJECT tag=text id=cx13 class=- x=200 y=554 w=1356 h=30 nav=0 active=0 label=Play silent looping video Pause silent looping video
+OBJECT tag=text id=cx14 class=- x=200 y=584 w=1356 h=30 nav=0 active=0 label=AI Mode Ask anything and get an AI-powered response. Then, keep exploring with follow-up
+OBJECT tag=text id=cx15 class=- x=200 y=614 w=1356 h=30 nav=0 active=0 label=questions and web links.
+OBJECT tag=text id=cx16 class=- x=200 y=644 w=1356 h=30 nav=0 active=0 label=How Search Works Get the details on how Search works — from the approach we take, to
+OBJECT tag=text id=cx17 class=- x=200 y=674 w=1356 h=30 nav=0 active=0 label=the technology behind it.
+OBJECT tag=text id=cx18 class=- x=200 y=704 w=1356 h=30 nav=0 active=0 label=Lens Go beyond words: Search with your camera, an image or whatever’s on your screen.
+OBJECT tag=text id=cx19 class=- x=200 y=734 w=1356 h=30 nav=0 active=0 label=Chat with Gemini, your personal AI assistant
+OBJECT tag=text id=cx20 class=- x=200 y=764 w=1356 h=30 nav=0 active=0 label=Try it now
+OBJECT tag=text id=cx21 class=- x=200 y=794 w=1356 h=30 nav=0 active=0 label=Play silent looping video Pause silent looping video
+OBJECT tag=text id=cx22 class=- x=200 y=824 w=1356 h=30 nav=0 active=0 label=Gemini Live
+OBJECT tag=text id=cx23 class=- x=200 y=854 w=1356 h=30 nav=0 active=0 label=Have a conversation about anything around you or on your screen.
+OBJECT tag=text id=cx24 class=- x=200 y=884 w=1356 h=30 nav=0 active=0 label=Talk it out
+OBJECT tag=text id=cx25 class=- x=200 y=914 w=1356 h=30 nav=0 active=0 label=Play silent looping video Pause silent looping video
+OBJECT tag=text id=cx26 class=- x=200 y=944 w=1356 h=30 nav=0 active=0 label=Canvas
+OBJECT tag=text id=cx27 class=- x=200 y=974 w=1356 h=30 nav=0 active=0 label=Go from prompt to prototype: Create games, apps, infographics and more.
+OBJECT tag=text id=cx28 class=- x=200 y=1004 w=1356 h=30 nav=0 active=0 label=See how it works
+OBJECT tag=text id=cx29 class=- x=200 y=1034 w=1356 h=30 nav=0 active=0 label=Play silent looping video Pause silent looping video
+OBJECT tag=text id=cx30 class=- x=200 y=1064 w=1356 h=30 nav=0 active=0 label=Image generation
+OBJECT tag=text id=cx31 class=- x=200 y=1094 w=1356 h=30 nav=0 active=0 label=Turn your ideas into stunning images in seconds.
+OBJECT tag=text id=cx32 class=- x=200 y=1124 w=1356 h=30 nav=0 active=0 label=Create
+OBJECT tag=text id=cx33 class=- x=200 y=1154 w=1356 h=30 nav=0 active=0 label=Play silent looping video Pause silent looping video
+OBJECT tag=text id=cx34 class=- x=200 y=1184 w=1356 h=30 nav=0 active=0 label=Video generation
+OBJECT tag=text id=cx35 class=- x=200 y=1214 w=1356 h=30 nav=0 active=0 label=Transform your photos into short video clips.
+OBJECT tag=text id=cx36 class=- x=200 y=1244 w=1356 h=30 nav=0 active=0 label=Take a look
+OBJECT tag=text id=cx37 class=- x=200 y=1274 w=1356 h=30 nav=0 active=0 label=1
+OBJECT tag=text id=cx38 class=- x=200 y=1304 w=1356 h=30 nav=0 active=0 label=/
+OBJECT tag=text id=cx39 class=- x=200 y=1334 w=1356 h=30 nav=0 active=0 label=Get more done with Android and Pixel
+OBJECT tag=item id=cl40 class=- x=200 y=1364 w=1356 h=30 nav=31 active=0 label=All things Android Check out a whole world of devices that work better together, plus AI features to help thr
+OBJECT tag=item id=cl41 class=- x=200 y=1394 w=1356 h=30 nav=32 active=0 label=Our Pixel portfolio See the latest Pixel lineup — from phones and watches, to earbuds and tablets.
+OBJECT tag=text id=cx42 class=- x=200 y=1424 w=1356 h=30 nav=0 active=0 label=Try new AI products and experiments
+OBJECT tag=text id=- class=block-title x=1564 y=30 w=682 h=30 nav=0 active=0 label=Console
+OBJECT tag=text id=- class=quiet x=1564 y=60 w=682 h=30 nav=0 active=0 label=Try: eval:1 + 1

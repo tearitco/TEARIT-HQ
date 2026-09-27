@@ -1,0 +1,30 @@
+
+=== menu.chtpm pid 1608668  2026-09-24 17:22:37 ===
+--- menu.chtpm  pid 1608668  2026-09-24 17:22:37 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Cli-io
+
+=== menu.chtpm pid 1608668  2026-09-24 17:22:38 ===
+--- menu.chtpm  pid 1608668  2026-09-24 17:22:38 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Cli-io
+
+=== menu.chtpm pid 1608668  2026-09-24 17:22:39 ===
+--- menu.chtpm  pid 1608668  2026-09-24 17:22:39 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Cli-io

@@ -1,0 +1,247 @@
+
+=== h-ai-lab.xhtpm pid 253604  2026-09-13 05:55:27 ===
+--- h-ai-lab.xhtpm  pid 253604  2026-09-13 05:55:27 ---
+--- page: main ---
+h-ai-lab
+          scanned 05:51:53
+          1 AI instance(s)
+      [>] 1.   refresh now  
+        [ ] 2. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: -
+      [ ] 3. text_area
+
+=== h-ai-lab.xhtpm pid 253604  2026-09-13 05:55:27 ===
+--- h-ai-lab.xhtpm  pid 253604  2026-09-13 05:55:27 ---
+--- page: main ---
+h-ai-lab
+          scanned 05:55:27
+          1 AI instance(s)
+      [>] 1.   refresh now  
+        [ ] 2. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: -
+      [ ] 3. text_area
+
+=== h-ai-lab.xhtpm pid 253604  2026-09-13 05:55:31 ===
+--- h-ai-lab.xhtpm  pid 253604  2026-09-13 05:55:31 ---
+--- page: main ---
+h-ai-lab
+          scanned 05:55:31
+          1 AI instance(s)
+      [>] 1.   refresh now  
+        [ ] 2. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: -
+      [ ] 3. text_area
+
+=== h-ai-lab.xhtpm pid 253604  2026-09-13 05:55:35 ===
+--- h-ai-lab.xhtpm  pid 253604  2026-09-13 05:55:35 ---
+--- page: main ---
+h-ai-lab
+          scanned 05:55:35
+          1 AI instance(s)
+      [>] 1.   refresh now  
+        [ ] 2. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: -
+      [ ] 3. text_area
+
+=== h-ai-lab.xhtpm pid 253604  2026-09-13 05:55:39 ===
+--- h-ai-lab.xhtpm  pid 253604  2026-09-13 05:55:39 ---
+--- page: main ---
+h-ai-lab
+          scanned 05:55:39
+          1 AI instance(s)
+      [>] 1.   refresh now  
+        [ ] 2. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: -
+      [ ] 3. text_area
+
+=== h-ai-lab.xhtpm pid 253604  2026-09-13 05:55:43 ===
+--- h-ai-lab.xhtpm  pid 253604  2026-09-13 05:55:43 ---
+--- page: main ---
+h-ai-lab
+          scanned 05:55:43
+          1 AI instance(s)
+      [>] 1.   refresh now  
+        [ ] 2. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: -
+      [ ] 3. text_area
+
+=== h-ai-lab.xhtpm pid 253604  2026-09-13 05:55:47 ===
+--- h-ai-lab.xhtpm  pid 253604  2026-09-13 05:55:47 ---
+--- page: main ---
+h-ai-lab
+          scanned 05:55:47
+          1 AI instance(s)
+      [>] 1.   refresh now  
+        [ ] 2. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: -
+      [ ] 3. text_area
+
+=== h-ai-lab.xhtpm pid 253604  2026-09-13 05:55:51 ===
+--- h-ai-lab.xhtpm  pid 253604  2026-09-13 05:55:51 ---
+--- page: main ---
+h-ai-lab
+          scanned 05:55:51
+          1 AI instance(s)
+      [>] 1.   refresh now  
+        [ ] 2. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: -
+      [ ] 3. text_area
+
+=== h-ai-lab.xhtpm pid 253604  2026-09-13 05:55:55 ===
+--- h-ai-lab.xhtpm  pid 253604  2026-09-13 05:55:55 ---
+--- page: main ---
+h-ai-lab
+          scanned 05:55:55
+          1 AI instance(s)
+      [>] 1.   refresh now  
+        [ ] 2. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: -
+      [ ] 3. text_area
+
+=== h-ai-lab.xhtpm pid 253604  2026-09-13 05:55:59 ===
+--- h-ai-lab.xhtpm  pid 253604  2026-09-13 05:55:59 ---
+--- page: main ---
+h-ai-lab
+          scanned 05:55:59
+          1 AI instance(s)
+      [>] 1.   refresh now  
+        [ ] 2. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: -
+      [ ] 3. text_area
+
+=== h-ai-lab.xhtpm pid 253604  2026-09-13 05:56:03 ===
+--- h-ai-lab.xhtpm  pid 253604  2026-09-13 05:56:03 ---
+--- page: main ---
+h-ai-lab
+          scanned 05:56:03
+          1 AI instance(s)
+      [>] 1.   refresh now  
+        [ ] 2. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: -
+      [ ] 3. text_area
+
+=== h-ai-lab.xhtpm pid 253604  2026-09-13 05:56:07 ===
+--- h-ai-lab.xhtpm  pid 253604  2026-09-13 05:56:07 ---
+--- page: main ---
+h-ai-lab
+          scanned 05:56:07
+          1 AI instance(s)
+      [>] 1.   refresh now  
+        [ ] 2. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: -
+      [ ] 3. text_area
+
+=== h-ai-lab.xhtpm pid 253604  2026-09-13 05:56:12 ===
+--- h-ai-lab.xhtpm  pid 253604  2026-09-13 05:56:12 ---
+--- page: main ---
+h-ai-lab
+          scanned 05:56:11
+          1 AI instance(s)
+      [>] 1.   refresh now  
+        [ ] 2. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: -
+      [ ] 3. text_area
+
+=== h-ai-lab.xhtpm pid 253604  2026-09-13 05:56:16 ===
+--- h-ai-lab.xhtpm  pid 253604  2026-09-13 05:56:16 ---
+--- page: main ---
+h-ai-lab
+          scanned 05:56:15
+          1 AI instance(s)
+      [>] 1.   refresh now  
+        [ ] 2. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: -
+      [ ] 3. text_area
+
+=== h-ai-lab.xhtpm pid 253604  2026-09-13 05:56:20 ===
+--- h-ai-lab.xhtpm  pid 253604  2026-09-13 05:56:20 ---
+--- page: main ---
+h-ai-lab
+          scanned 05:56:19
+          1 AI instance(s)
+      [>] 1.   refresh now  
+        [ ] 2. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: -
+      [ ] 3. text_area
+
+=== h-ai-lab.xhtpm pid 253604  2026-09-13 05:56:20 ===
+--- h-ai-lab.xhtpm  pid 253604  2026-09-13 05:56:20 ---
+--- page: main ---
+h-ai-lab
+          scanned 05:56:20
+          1 AI instance(s)
+      [>] 1.   refresh now  
+        [ ] 2. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: -
+      [ ] 3. text_area
+
+=== h-ai-lab.xhtpm pid 253604  2026-09-13 05:56:24 ===
+--- h-ai-lab.xhtpm  pid 253604  2026-09-13 05:56:24 ---
+--- page: main ---
+h-ai-lab
+          scanned 05:56:23
+          1 AI instance(s)
+      [>] 1.   refresh now  
+        [ ] 2. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: -
+      [ ] 3. text_area
+
+=== h-ai-lab.xhtpm pid 253604  2026-09-13 05:56:28 ===
+--- h-ai-lab.xhtpm  pid 253604  2026-09-13 05:56:28 ---
+--- page: main ---
+h-ai-lab
+          scanned 05:56:27
+          1 AI instance(s)
+      [>] 1.   refresh now  
+        [ ] 2. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: -
+      [ ] 3. text_area
+
+=== h-ai-lab.xhtpm pid 253604  2026-09-13 05:56:32 ===
+--- h-ai-lab.xhtpm  pid 253604  2026-09-13 05:56:32 ---
+--- page: main ---
+h-ai-lab
+          scanned 05:56:32
+          1 AI instance(s)
+      [>] 1.   refresh now  
+        [ ] 2. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: -
+      [ ] 3. text_area

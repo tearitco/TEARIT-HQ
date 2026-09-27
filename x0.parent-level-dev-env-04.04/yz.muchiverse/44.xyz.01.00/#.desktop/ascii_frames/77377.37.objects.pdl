@@ -1,0 +1,10 @@
+OBJECT tag=text id=- class=dir-label x=0 y=30 w=220 h=60 nav=0 active=0 label=/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00
+OBJECT tag=item id=entry30 class=fe-entry x=0 y=104 w=212 h=30 nav=3 active=0 label=📁  041.pal-chain⛓️ 
+OBJECT tag=item id=entry31 class=fe-entry x=0 y=134 w=212 h=30 nav=4 active=0 label=📁  041.pal-forum👥️ 
+OBJECT tag=item id=entry32 class=fe-entry x=0 y=164 w=212 h=30 nav=5 active=0 label=📁  044.pal-chat-irc👥️+2 
+OBJECT tag=item id=entry33 class=fe-entry x=0 y=194 w=212 h=60 nav=6 active=0 label=📁  045.muchi-pal-agent🤖️+1++ 
+OBJECT tag=item id=entry34 class=fe-entry x=0 y=254 w=212 h=30 nav=7 active=0 label=📁  046.open-gema🤖️+1 
+OBJECT tag=item id=entry35 class=fe-entry x=0 y=284 w=212 h=30 nav=8 active=0 label=📁  047.scm🎓️+1 
+OBJECT tag=item id=entry36 class=fe-entry x=0 y=314 w=212 h=60 nav=9 active=0 label=📁  101.drag-drop-test=ON🀄️ 
+OBJECT tag=item id=entry37 class=fe-entry x=0 y=374 w=212 h=60 nav=10 active=0 label=📁  101.ledger-player-npc-simple+3 
+OBJECT tag=text id=- class=quiet x=220 y=30 w=260 h=30 nav=0 active=0 label=Pick a file to load.

@@ -1,0 +1,39 @@
+OBJECT tag=text id=side-hdr class=cc-side-hdr x=0 y=30 w=220 h=30 nav=0 active=0 label=Recipes
+OBJECT tag=item id=rc0 class=cc-recipe x=0 y=74 w=212 h=30 nav=3 active=0 label=Up_quark
+OBJECT tag=item id=rc1 class=cc-recipe x=0 y=104 w=212 h=30 nav=4 active=0 label=Down_quark
+OBJECT tag=item id=rc2 class=cc-recipe x=0 y=134 w=212 h=30 nav=5 active=0 label=Electron
+OBJECT tag=item id=rc3 class=cc-recipe x=0 y=164 w=212 h=30 nav=6 active=0 label=Pair_up_quarks
+OBJECT tag=item id=rc4 class=cc-recipe x=0 y=194 w=212 h=30 nav=7 active=0 label=Pair_down_quarks
+OBJECT tag=item id=rc5 class=cc-recipe x=0 y=224 w=212 h=30 nav=8 active=0 label=Proton
+OBJECT tag=item id=rc6 class=cc-recipe x=0 y=254 w=212 h=30 nav=9 active=0 label=Neutron
+OBJECT tag=item id=rc7 class=cc-recipe x=0 y=284 w=212 h=30 nav=10 active=0 label=Hydrogen
+OBJECT tag=item id=rc8 class=cc-recipe x=0 y=314 w=212 h=30 nav=11 active=0 label=Helium
+OBJECT tag=item id=rc9 class=cc-recipe x=0 y=344 w=212 h=30 nav=12 active=0 label=Lithium
+OBJECT tag=item id=rc10 class=cc-recipe x=0 y=374 w=212 h=30 nav=13 active=0 label=Beryllium
+OBJECT tag=item id=rc11 class=cc-recipe x=0 y=404 w=212 h=30 nav=14 active=0 label=Boron
+OBJECT tag=item id=rc12 class=cc-recipe x=0 y=434 w=212 h=30 nav=15 active=0 label=Carbon
+OBJECT tag=item id=rc13 class=cc-recipe x=0 y=464 w=212 h=30 nav=16 active=0 label=Nitrogen
+OBJECT tag=item id=rc14 class=cc-recipe x=0 y=494 w=212 h=30 nav=17 active=0 label=Oxygen
+OBJECT tag=item id=rc15 class=cc-recipe x=0 y=524 w=212 h=30 nav=18 active=0 label=Fluorine
+OBJECT tag=item id=rc16 class=cc-recipe x=0 y=554 w=212 h=30 nav=19 active=0 label=Neon
+OBJECT tag=item id=rc17 class=cc-recipe x=0 y=584 w=212 h=30 nav=20 active=0 label=Sodium
+OBJECT tag=text id=pick-hint class=cc-quiet x=220 y=30 w=546 h=30 nav=0 active=0 label=Pick a recipe on the left.
+OBJECT tag=text id=inv-hdr class=cc-side-hdr x=766 y=30 w=273 h=30 nav=0 active=0 label=Inventory
+OBJECT tag=item id=iv0 class=cc-inv x=766 y=74 w=265 h=30 nav=23 active=0 label=[]1  Up_quark  x999   $1
+OBJECT tag=item id=iv1 class=cc-inv x=766 y=104 w=265 h=30 nav=24 active=0 label=[]2  Down_quark  x999   $1
+OBJECT tag=item id=iv2 class=cc-inv x=766 y=134 w=265 h=30 nav=25 active=0 label=[]3  Electron  x999   $2
+OBJECT tag=item id=iv3 class=cc-inv x=766 y=164 w=265 h=30 nav=26 active=0 label=[]4  Proton  x400   $12
+OBJECT tag=item id=iv4 class=cc-inv x=766 y=194 w=265 h=30 nav=27 active=0 label=[]5  Neutron  x400   $14
+OBJECT tag=item id=iv5 class=cc-inv x=766 y=224 w=265 h=30 nav=28 active=0 label=[]6  Hydrogen  x60   $25
+OBJECT tag=item id=iv6 class=cc-inv x=766 y=254 w=265 h=30 nav=29 active=0 label=[]7  Helium  x10   $40
+OBJECT tag=item id=iv7 class=cc-inv x=766 y=284 w=265 h=30 nav=30 active=0 label=[]8  Carbon  x24   $90
+OBJECT tag=item id=iv8 class=cc-inv x=766 y=314 w=265 h=30 nav=31 active=0 label=[]9  Nitrogen  x12   $95
+OBJECT tag=item id=iv9 class=cc-inv x=766 y=344 w=265 h=30 nav=32 active=0 label=[]10  Oxygen  x20   $110
+OBJECT tag=item id=iv10 class=cc-inv x=766 y=374 w=265 h=30 nav=33 active=0 label=[]11  Sodium  x6   $130
+OBJECT tag=item id=iv11 class=cc-inv x=766 y=404 w=265 h=30 nav=34 active=0 label=[]12  Silicon  x8   $140
+OBJECT tag=item id=iv12 class=cc-inv x=766 y=434 w=265 h=30 nav=35 active=0 label=[]13  Sulfur  x6   $150
+OBJECT tag=item id=iv13 class=cc-inv x=766 y=464 w=265 h=30 nav=36 active=0 label=[]14  Iron  x8   $260
+OBJECT tag=item id=iv14 class=cc-inv x=766 y=494 w=265 h=30 nav=37 active=0 label=[]15  Copper  x6   $290
+OBJECT tag=item id=iv15 class=cc-inv x=766 y=524 w=265 h=30 nav=38 active=0 label=[]16  Silver  x2   $610
+OBJECT tag=item id=iv16 class=cc-inv x=766 y=554 w=265 h=30 nav=39 active=0 label=[]17  Water  x8   $30
+OBJECT tag=item id=iv17 class=cc-inv x=766 y=584 w=265 h=30 nav=40 active=0 label=[]18  Methane  x2   $55

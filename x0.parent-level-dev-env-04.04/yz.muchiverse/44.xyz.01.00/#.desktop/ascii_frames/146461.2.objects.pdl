@@ -1,0 +1,25 @@
+OBJECT tag=text id=- class=quiet x=0 y=30 w=220 h=30 nav=0 active=0 label=scanned 06:27:05
+OBJECT tag=text id=- class=block-title x=0 y=60 w=220 h=30 nav=0 active=0 label=12 good  /  7 bad
+OBJECT tag=item id=b_refresh class=btn x=0 y=90 w=220 h=30 nav=1 active=0 label=  refresh now  
+OBJECT tag=item id=b_kill class=btn,danger x=0 y=120 w=220 h=30 nav=2 active=0 label=  KILL ALL BAD  
+OBJECT tag=item id=b_kill2 class=btn,danger x=0 y=150 w=220 h=30 nav=3 active=0 label= + pals/singletons 
+OBJECT tag=text id=- class=block-title x=0 y=180 w=220 h=30 nav=0 active=0 label=OTHER SESSION - real, not stray, not this one
+OBJECT tag=text id=- class=quiet x=0 y=0 w=0 h=0 nav=0 active=0 label=(none - no other live taskbar session)
+OBJECT tag=text id=- class=block-title x=0 y=210 w=220 h=30 nav=0 active=0 label=BAD - stray / leaked
+OBJECT tag=item id=bad0 class=data-item x=0 y=254 w=212 h=60 nav=6 active=0 label=883514  [detached]  6m     cpu:0.0  reg    sh button.sh run
+OBJECT tag=item id=bad1 class=data-item x=0 y=314 w=212 h=60 nav=7 active=0 label=883560  [child]     6m     cpu:0.0  reg    orchestrator
+OBJECT tag=item id=bad2 class=data-item x=0 y=374 w=212 h=120 nav=8 active=0 label=883561  [child]     6m     cpu:0.0  unreg  bash button.sh run-widget @.apps/piececraft-hq
+OBJECT tag=text id=- class=block-title x=220 y=30 w=480 h=30 nav=0 active=0 label=GOOD - owned / accounted for
+OBJECT tag=text id=- class=quiet x=220 y=60 w=480 h=30 nav=0 active=0 label=taskbar group, registered pals, house-wide managers, live -hq windows
+OBJECT tag=text id=- class=- x=220 y=90 w=480 h=30 nav=0 active=0 label=343230  [singleton] 23h7m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+OBJECT tag=text id=- class=- x=220 y=120 w=480 h=30 nav=0 active=0 label=345336  [singleton] 22h59m cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+OBJECT tag=text id=- class=- x=220 y=150 w=480 h=30 nav=0 active=0 label=345826  [singleton] 22h57m cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+OBJECT tag=text id=- class=- x=220 y=180 w=480 h=30 nav=0 active=0 label=350904  [singleton] 22h43m cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+OBJECT tag=text id=- class=- x=220 y=210 w=480 h=30 nav=0 active=0 label=883078  [hq-window] 6m     cpu:0.1  unreg  khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=240 w=480 h=30 nav=0 active=0 label=883079  [hq-window] 6m     cpu:0.1  unreg  khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=270 w=480 h=30 nav=0 active=0 label=883080  [hq-window] 6m     cpu:0.1  unreg  khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=300 w=480 h=30 nav=0 active=0 label=883081  [hq-window] 6m     cpu:0.1  unreg  khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=330 w=480 h=30 nav=0 active=0 label=883082  [hq-window] 6m     cpu:0.1  unreg  khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=360 w=480 h=30 nav=0 active=0 label=883083  [hq-window] 6m     cpu:0.1  unreg  khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=390 w=480 h=30 nav=0 active=0 label=883084  [hq-window] 6m     cpu:0.1  unreg  khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=420 w=480 h=30 nav=0 active=0 label=890977  [hq-window] 4m     cpu:1.1  unreg  khtpm_core_render /home/no/Desktop/github/work

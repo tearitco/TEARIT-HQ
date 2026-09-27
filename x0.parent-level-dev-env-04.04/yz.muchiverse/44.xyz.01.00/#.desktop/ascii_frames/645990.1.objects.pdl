@@ -1,0 +1,18 @@
+OBJECT tag=tab id=- class=active x=0 y=0 w=0 h=0 nav=0 active=0 label=Actors
+OBJECT tag=tab id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Classes
+OBJECT tag=tab id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Skills
+OBJECT tag=tab id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Items
+OBJECT tag=tab id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Weapons
+OBJECT tag=tab id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Armors
+OBJECT tag=tab id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Enemies
+OBJECT tag=tab id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Troops
+OBJECT tag=tab id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=States
+OBJECT tag=tab id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Animations
+OBJECT tag=tab id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Tilesets
+OBJECT tag=tab id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Common Events
+OBJECT tag=tab id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=System
+OBJECT tag=tab id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Types
+OBJECT tag=tab id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Terms
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=(loading)
+OBJECT tag=title id=- class=block-title x=0 y=0 w=0 h=0 nav=0 active=0 label=Common Event
+OBJECT tag=text id=- class=event-name x=0 y=0 w=0 h=0 nav=0 active=0 label=(select an event to edit it)

@@ -1,0 +1,28 @@
+OBJECT tag=item id=chrome-close class=- x=14 y=38 w=58 h=30 nav=1 active=0 label=X
+OBJECT tag=tab id=crumb0 class=- x=10 y=10 w=0 h=0 nav=0 active=0 label=/
+OBJECT tag=tab id=crumb1 class=- x=10 y=10 w=0 h=0 nav=0 active=0 label=home
+OBJECT tag=tab id=crumb2 class=- x=10 y=10 w=0 h=0 nav=0 active=0 label=no
+OBJECT tag=tab id=crumb3 class=- x=10 y=10 w=0 h=0 nav=0 active=0 label=Desktop
+OBJECT tag=tab id=crumb4 class=- x=10 y=10 w=0 h=0 nav=0 active=0 label=github
+OBJECT tag=tab id=crumb5 class=- x=10 y=10 w=0 h=0 nav=0 active=0 label=work
+OBJECT tag=tab id=crumb6 class=- x=10 y=10 w=0 h=0 nav=0 active=0 label=NNEST-12.00
+OBJECT tag=tab id=crumb7 class=- x=10 y=10 w=0 h=0 nav=0 active=0 label=x0.parent-level-dev-env-04.04
+OBJECT tag=tab id=crumb8 class=- x=10 y=10 w=0 h=0 nav=0 active=0 label=yz.muchiverse
+OBJECT tag=tab id=crumb9 class=- x=10 y=10 w=0 h=0 nav=0 active=0 label=44.xyz.01.00
+OBJECT tag=tab id=crumb10 class=- x=10 y=10 w=0 h=0 nav=0 active=0 label=xyzfs
+OBJECT tag=tab id=crumb11 class=- x=10 y=10 w=0 h=0 nav=0 active=0 label=users
+OBJECT tag=tab id=crumb12 class=- x=10 y=10 w=0 h=0 nav=0 active=0 label=0a9558a7-7c74-4358-833c-2d5b21edc421
+OBJECT tag=tab id=crumb13 class=- x=10 y=10 w=0 h=0 nav=0 active=0 label=home
+OBJECT tag=tab id=crumb14 class=- x=10 y=10 w=0 h=0 nav=0 active=0 label=livedesk
+OBJECT tag=tab id=crumb15 class=- x=10 y=10 w=0 h=0 nav=0 active=0 label=sessions
+OBJECT tag=item id=back class=opacity-btn x=14 y=78 w=102 h=30 nav=2 active=0 label=⬅️ Back
+OBJECT tag=item id=viewtoggle class=opacity-btn x=122 y=78 w=113 h=30 nav=3 active=0 label=List View
+OBJECT tag=text id=- class=quiet x=10 y=10 w=0 h=0 nav=0 active=0 label=Pick a file to load.
+OBJECT tag=item id=gentry0 class=swatch x=14 y=136 w=34 h=34 nav=4 active=0 label=-
+OBJECT tag=item id=gentry1 class=swatch x=56 y=136 w=34 h=34 nav=5 active=0 label=-
+OBJECT tag=item id=gentry2 class=swatch x=98 y=136 w=34 h=34 nav=6 active=0 label=-
+OBJECT tag=item id=gentry3 class=swatch x=140 y=136 w=34 h=34 nav=7 active=0 label=-
+OBJECT tag=item id=gentry4 class=swatch x=182 y=136 w=34 h=34 nav=8 active=0 label=-
+OBJECT tag=item id=gentry5 class=swatch x=224 y=136 w=34 h=34 nav=9 active=0 label=-
+OBJECT tag=item id=gentry6 class=swatch x=266 y=136 w=34 h=34 nav=10 active=0 label=-
+OBJECT tag=item id=gentry7 class=swatch x=308 y=136 w=34 h=34 nav=11 active=0 label=-

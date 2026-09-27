@@ -1,0 +1,68 @@
+
+=== events-hq.xhtpm pid 309194  2026-09-26 23:47:37 ===
+--- events-hq.xhtpm  pid 309194  2026-09-26 23:47:37 ---
+--- page: main ---
+      [>] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+          Trigger
+      [ ] 4. + Add Command
+      [ ] 5. Play
+
+=== events-hq.xhtpm pid 309194  2026-09-26 23:47:38 ===
+--- events-hq.xhtpm  pid 309194  2026-09-26 23:47:38 ---
+--- page: main ---
+      [>] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+          Trigger
+      [ ] 4. + Add Command
+      [ ] 5. Play
+
+=== events-hq.xhtpm pid 309194  2026-09-26 23:47:38 ===
+--- events-hq.xhtpm  pid 309194  2026-09-26 23:47:38 ---
+--- page: main ---
+terumon_002_glacine
+      [>] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+          Trigger
+          (unset)
+      [ ] 5. + Add Command
+      [ ] 6. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 309194  2026-09-26 23:47:40 ===
+--- events-hq.xhtpm  pid 309194  2026-09-26 23:47:40 ---
+--- page: main ---
+terumon_002_glacine
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+          Trigger
+          (unset)
+      [ ] 5. + Add Command
+      [ ] 6. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 309194  2026-09-26 23:47:41 ===
+--- events-hq.xhtpm  pid 309194  2026-09-26 23:47:41 ---
+--- page: main ---
+terumon_002_glacine
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+          Trigger
+          (unset)
+      [ ] 5. + Add Command
+      [ ] 6. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)

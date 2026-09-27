@@ -1,0 +1,44 @@
+
+=== menu.chtpm pid 231235  2026-09-18 12:38:37 ===
+--- menu.chtpm  pid 231235  2026-09-18 12:38:37 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 231235  2026-09-18 12:38:38 ===
+--- menu.chtpm  pid 231235  2026-09-18 12:38:38 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 231235  2026-09-18 12:38:39 ===
+--- menu.chtpm  pid 231235  2026-09-18 12:38:39 ---
+--- page: main ---
+    [ ] 1. Dir
+    [>] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 231235  2026-09-18 12:38:40 ===
+--- menu.chtpm  pid 231235  2026-09-18 12:38:40 ---
+--- page: main ---
+    [ ] 1. Dir
+    [>] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel

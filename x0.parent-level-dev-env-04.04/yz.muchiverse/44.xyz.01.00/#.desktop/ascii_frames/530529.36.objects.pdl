@@ -1,0 +1,14 @@
+OBJECT tag=tab id=tb-in class=pchq-tb x=6 y=26 w=87 h=24 nav=1 active=0 label=In: off
+OBJECT tag=tab id=tb-file class=pchq-tb x=96 y=26 w=74 h=24 nav=2 active=0 label=File
+OBJECT tag=tab id=tb-desk class=pchq-tb x=173 y=26 w=97 h=24 nav=3 active=0 label=Desk ▾
+OBJECT tag=tab id=tb-menu class=pchq-tb x=273 y=26 w=102 h=24 nav=4 active=0 label=Menu ▾
+OBJECT tag=tab id=tb-player class=pchq-tb x=378 y=26 w=90 h=24 nav=5 active=0 label=Player
+OBJECT tag=tab id=tb-clock class=pchq-tb x=471 y=26 w=84 h=24 nav=6 active=0 label=12:00
+OBJECT tag=text id=- class=quiet x=6 y=694 w=40 h=20 nav=0 active=0 label=ents
+OBJECT tag=item id=e0 class=pchq-ft x=50 y=694 w=96 h=20 nav=7 active=0 label=hero
+OBJECT tag=item id=e1 class=pchq-ft x=150 y=694 w=96 h=20 nav=8 active=0 label=chicken
+OBJECT tag=item id=e2 class=pchq-ft x=250 y=694 w=96 h=20 nav=9 active=0 label=tree_small
+OBJECT tag=item id=e3 class=pchq-ft x=350 y=694 w=96 h=20 nav=10 active=0 label=tree_small
+OBJECT tag=item id=e4 class=pchq-ft x=450 y=694 w=96 h=20 nav=11 active=0 label=tree_small
+OBJECT tag=item id=e5 class=pchq-ft x=550 y=694 w=96 h=20 nav=12 active=0 label=tree_small
+OBJECT tag=text id=- class=quiet x=0 y=0 w=0 h=0 nav=0 active=0 label=No live board-viewer session - open 'View Board' from the game first.

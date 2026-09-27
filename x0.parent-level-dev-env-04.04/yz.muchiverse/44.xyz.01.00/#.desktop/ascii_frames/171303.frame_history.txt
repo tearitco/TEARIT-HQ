@@ -1,0 +1,18 @@
+
+=== menu.chtpm pid 171303  2026-09-21 10:25:19 ===
+--- menu.chtpm  pid 171303  2026-09-21 10:25:19 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+
+=== menu.chtpm pid 171303  2026-09-21 10:25:20 ===
+--- menu.chtpm  pid 171303  2026-09-21 10:25:20 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel

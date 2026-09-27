@@ -1,0 +1,86 @@
+OBJECT tag=item id=chrome-close class=- x=14 y=38 w=58 h=30 nav=1 active=0 label=X
+OBJECT tag=tab id=crumb0 class=- x=22 y=22 w=0 h=0 nav=0 active=0 label=/
+OBJECT tag=tab id=crumb1 class=- x=22 y=22 w=0 h=0 nav=0 active=0 label=home
+OBJECT tag=tab id=crumb2 class=- x=22 y=22 w=0 h=0 nav=0 active=0 label=no
+OBJECT tag=tab id=crumb3 class=- x=22 y=22 w=0 h=0 nav=0 active=0 label=Desktop
+OBJECT tag=tab id=crumb4 class=- x=22 y=22 w=0 h=0 nav=0 active=0 label=github
+OBJECT tag=tab id=crumb5 class=- x=22 y=22 w=0 h=0 nav=0 active=0 label=work
+OBJECT tag=tab id=crumb6 class=- x=22 y=22 w=0 h=0 nav=0 active=0 label=NNEST-12.00
+OBJECT tag=tab id=crumb7 class=- x=22 y=22 w=0 h=0 nav=0 active=0 label=x0.parent-level-dev-env-04.04
+OBJECT tag=tab id=crumb8 class=- x=22 y=22 w=0 h=0 nav=0 active=0 label=yz.muchiverse
+OBJECT tag=tab id=crumb9 class=- x=22 y=22 w=0 h=0 nav=0 active=0 label=44.xyz.01.00
+OBJECT tag=item id=back class=opacity-btn x=14 y=78 w=102 h=30 nav=2 active=0 label=⬅️ Back
+OBJECT tag=item id=viewtoggle class=opacity-btn x=122 y=78 w=113 h=30 nav=3 active=0 label=List View
+OBJECT tag=text id=- class=quiet x=22 y=22 w=0 h=0 nav=0 active=0 label=Pick a file to load.
+OBJECT tag=item id=gentry0 class=swatch x=14 y=136 w=176 h=40 nav=4 active=0 label=📁  #.DOX 
+OBJECT tag=item id=gentry1 class=swatch x=198 y=136 w=176 h=40 nav=5 active=0 label=📁  #.Z.HUMAN_LLM 
+OBJECT tag=item id=gentry2 class=swatch x=382 y=136 w=176 h=40 nav=6 active=0 label=📁  #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+OBJECT tag=item id=gentry3 class=swatch x=566 y=136 w=176 h=40 nav=7 active=0 label=📁  #.desktop 
+OBJECT tag=item id=gentry4 class=swatch x=750 y=136 w=176 h=40 nav=8 active=0 label=📁  #.haiku+ 
+OBJECT tag=item id=gentry5 class=swatch x=934 y=136 w=176 h=40 nav=9 active=0 label=📁  #.livedesk 
+OBJECT tag=item id=gentry6 class=swatch x=14 y=184 w=176 h=40 nav=10 active=0 label=📁  #.notes 
+OBJECT tag=item id=gentry7 class=swatch x=198 y=184 w=176 h=40 nav=11 active=0 label=📁  #.ref 
+OBJECT tag=item id=gentry8 class=swatch x=382 y=184 w=176 h=40 nav=12 active=0 label=📁  #.resume 
+OBJECT tag=item id=gentry9 class=swatch x=566 y=184 w=176 h=40 nav=13 active=0 label=📁  #.tmp 
+OBJECT tag=item id=gentry10 class=swatch x=750 y=184 w=176 h=40 nav=14 active=0 label=📁  #.user-test-how2 
+OBJECT tag=item id=gentry11 class=swatch x=934 y=184 w=176 h=40 nav=15 active=0 label=📁  #.w8 
+OBJECT tag=item id=gentry12 class=swatch x=14 y=232 w=176 h=40 nav=16 active=0 label=📁  #.xer 
+OBJECT tag=item id=gentry13 class=swatch x=198 y=232 w=176 h=40 nav=17 active=0 label=📁  #.z.mirror_llm]z5]IQABOD🪞️+4 
+OBJECT tag=item id=gentry14 class=swatch x=382 y=232 w=176 h=40 nav=18 active=0 label=📁  $.crypts 
+OBJECT tag=item id=gentry15 class=swatch x=566 y=232 w=176 h=40 nav=19 active=0 label=📁  %.harnesses 
+OBJECT tag=item id=gentry16 class=swatch x=750 y=232 w=176 h=40 nav=20 active=0 label=📁  &.hq-apps 
+OBJECT tag=item id=gentry17 class=swatch x=934 y=232 w=176 h=40 nav=21 active=0 label=📁  &.widgits 
+OBJECT tag=item id=gentry18 class=swatch x=14 y=280 w=176 h=40 nav=22 active=0 label=📁  *.START_BUTTON 
+OBJECT tag=item id=gentry19 class=swatch x=198 y=280 w=176 h=40 nav=23 active=0 label=📁  *.monads 
+OBJECT tag=item id=gentry20 class=swatch x=382 y=280 w=176 h=40 nav=24 active=0 label=📁  +.TSOTS-ALPHA-OMEGA 
+OBJECT tag=item id=gentry21 class=swatch x=566 y=280 w=176 h=40 nav=25 active=0 label=📁  -1.metatree_👼️_⭐️_🎄️_🎁️ 
+OBJECT tag=item id=gentry22 class=swatch x=750 y=280 w=176 h=40 nav=26 active=0 label=📁  0.a-z-pets-plan 
+OBJECT tag=item id=gentry23 class=swatch x=934 y=280 w=176 h=40 nav=27 active=0 label=📁  0.user-pal👤️ 
+OBJECT tag=item id=gentry24 class=swatch x=14 y=328 w=176 h=40 nav=28 active=0 label=📁  002.zoo__🦓️🐒️0000 
+OBJECT tag=item id=gentry25 class=swatch x=198 y=328 w=176 h=40 nav=29 active=0 label=📁  007-goldeye+01.00 
+OBJECT tag=item id=gentry26 class=swatch x=382 y=328 w=176 h=40 nav=30 active=0 label=📁  01.muchi-pals-🥚️-13.01 
+OBJECT tag=item id=gentry27 class=swatch x=566 y=328 w=176 h=40 nav=31 active=0 label=📁  014.wsr-pal💸️📌️+2 
+OBJECT tag=item id=gentry28 class=swatch x=750 y=328 w=176 h=40 nav=32 active=0 label=📁  040.net-health 
+OBJECT tag=item id=gentry29 class=swatch x=934 y=328 w=176 h=40 nav=33 active=0 label=📁  041.pal-chain⛓️ 
+OBJECT tag=item id=gentry30 class=swatch x=14 y=376 w=176 h=40 nav=34 active=0 label=📁  041.pal-forum👥️ 
+OBJECT tag=item id=gentry31 class=swatch x=198 y=376 w=176 h=40 nav=35 active=0 label=📁  044.pal-chat-irc👥️+2 
+OBJECT tag=item id=gentry32 class=swatch x=382 y=376 w=176 h=40 nav=36 active=0 label=📁  045.muchi-pal-agent🤖️+1++ 
+OBJECT tag=item id=gentry33 class=swatch x=566 y=376 w=176 h=40 nav=37 active=0 label=📁  046.open-gema🤖️+1 
+OBJECT tag=item id=gentry34 class=swatch x=750 y=376 w=176 h=40 nav=38 active=0 label=📁  047.scm🎓️+1 
+OBJECT tag=item id=gentry35 class=swatch x=934 y=376 w=176 h=40 nav=39 active=0 label=📁  101.drag-drop-test=ON🀄️ 
+OBJECT tag=item id=gentry36 class=swatch x=14 y=424 w=176 h=40 nav=40 active=0 label=📁  101.ledger-player-npc-simple+3 
+OBJECT tag=item id=gentry37 class=swatch x=198 y=424 w=176 h=40 nav=41 active=0 label=📁  101.lpns+map+4 
+OBJECT tag=item id=gentry38 class=swatch x=382 y=424 w=176 h=40 nav=42 active=0 label=📁  101.mutaclsym🧟‍♂️️+18.0G 
+OBJECT tag=item id=gentry39 class=swatch x=566 y=424 w=176 h=40 nav=43 active=0 label=💾  101.mutaclsym🧟‍♂️️19.00 
+OBJECT tag=item id=gentry40 class=swatch x=750 y=424 w=176 h=40 nav=44 active=0 label=📁  102.agy-txt 
+OBJECT tag=item id=gentry41 class=swatch x=934 y=424 w=176 h=40 nav=45 active=0 label=📁  102.editor-📄️00.00 
+OBJECT tag=item id=gentry42 class=swatch x=14 y=472 w=176 h=40 nav=46 active=0 label=📁  103.media-studio 
+OBJECT tag=item id=gentry43 class=swatch x=198 y=472 w=176 h=40 nav=47 active=0 label=📁  150.gl-canvas 
+OBJECT tag=item id=gentry44 class=swatch x=382 y=472 w=176 h=40 nav=48 active=0 label=📁  151.screen-rec+01.02 
+OBJECT tag=item id=gentry45 class=swatch x=566 y=472 w=176 h=40 nav=49 active=0 label=📁  2.muchi-verse 
+OBJECT tag=item id=gentry46 class=swatch x=750 y=472 w=176 h=40 nav=50 active=0 label=📁  200.glut-craft 
+OBJECT tag=item id=gentry47 class=swatch x=934 y=472 w=176 h=40 nav=51 active=0 label=📁  201.dwarf-fortress 
+OBJECT tag=item id=gentry48 class=swatch x=14 y=520 w=176 h=40 nav=52 active=0 label=📁  201.rpg-maker-clone 
+OBJECT tag=item id=gentry49 class=swatch x=198 y=520 w=176 h=40 nav=53 active=0 label=📁  202.snes-civ 
+OBJECT tag=item id=gentry50 class=swatch x=382 y=520 w=176 h=40 nav=54 active=0 label=📁  203.gb-pokemon 
+OBJECT tag=item id=gentry51 class=swatch x=566 y=520 w=176 h=40 nav=55 active=0 label=📁  204.sw-battlefront 
+OBJECT tag=item id=gentry52 class=swatch x=750 y=520 w=176 h=40 nav=56 active=0 label=📁  205.ttg-tactics 
+OBJECT tag=item id=gentry53 class=swatch x=934 y=520 w=176 h=40 nav=57 active=0 label=📁  209.sp-irl 
+OBJECT tag=item id=gentry54 class=swatch x=14 y=568 w=176 h=40 nav=58 active=0 label=📁  300.rpg-xyz 
+OBJECT tag=item id=gentry55 class=swatch x=198 y=568 w=176 h=40 nav=59 active=0 label=📁  300.rtp-xyz 
+OBJECT tag=item id=gentry56 class=swatch x=382 y=568 w=176 h=40 nav=60 active=0 label=📁  404.architecture-bible 
+OBJECT tag=item id=gentry57 class=swatch x=566 y=568 w=176 h=40 nav=61 active=0 label=📁  @.app-store 
+OBJECT tag=item id=gentry58 class=swatch x=750 y=568 w=176 h=40 nav=62 active=0 label=📁  @.apps 
+OBJECT tag=item id=gentry59 class=swatch x=934 y=568 w=176 h=40 nav=63 active=0 label=📁  YAHOO_XYZ 
+OBJECT tag=item id=gentry60 class=swatch x=14 y=616 w=176 h=40 nav=64 active=0 label=📁  ^.buttons 
+OBJECT tag=item id=gentry61 class=swatch x=198 y=616 w=176 h=40 nav=65 active=0 label=📁  common_events 
+OBJECT tag=item id=gentry62 class=swatch x=382 y=616 w=176 h=40 nav=66 active=0 label=📁  default 
+OBJECT tag=item id=gentry63 class=swatch x=566 y=616 w=176 h=40 nav=67 active=0 label=📁  exchange 
+OBJECT tag=item id=gentry64 class=swatch x=750 y=616 w=176 h=40 nav=68 active=0 label=📁  home 
+OBJECT tag=item id=gentry65 class=swatch x=934 y=616 w=176 h=40 nav=69 active=0 label=📁  iqa-fork 
+OBJECT tag=item id=gentry66 class=swatch x=14 y=664 w=176 h=40 nav=70 active=0 label=📁  net 
+OBJECT tag=item id=gentry67 class=swatch x=198 y=664 w=176 h=40 nav=71 active=0 label=📁  shared 
+OBJECT tag=item id=gentry68 class=swatch x=382 y=664 w=176 h=40 nav=72 active=0 label=📁  tmp 
+OBJECT tag=item id=gentry69 class=swatch x=566 y=664 w=176 h=40 nav=73 active=0 label=📁  trash 
+OBJECT tag=item id=gentry70 class=swatch x=750 y=664 w=176 h=40 nav=74 active=0 label=📁  xyzfs 
+OBJECT tag=item id=gentry71 class=swatch x=934 y=664 w=176 h=40 nav=75 active=0 label=📁  📚️.docs 

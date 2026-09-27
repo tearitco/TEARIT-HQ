@@ -1,0 +1,20 @@
+
+=== menu.chtpm pid 1536062  2026-09-24 15:55:20 ===
+--- menu.chtpm  pid 1536062  2026-09-24 15:55:20 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Cli-io
+
+=== menu.chtpm pid 1536062  2026-09-24 15:55:21 ===
+--- menu.chtpm  pid 1536062  2026-09-24 15:55:21 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Cli-io

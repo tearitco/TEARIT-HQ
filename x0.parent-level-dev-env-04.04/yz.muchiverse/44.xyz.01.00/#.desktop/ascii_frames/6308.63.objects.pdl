@@ -1,0 +1,16 @@
+OBJECT tag=tab id=tb-in class=pchq-tb x=8 y=33 w=108 h=30 nav=1 active=0 label=In: off
+OBJECT tag=tab id=tb-file class=pchq-tb x=120 y=33 w=92 h=30 nav=2 active=0 label=File
+OBJECT tag=tab id=tb-desk class=pchq-tb,active x=216 y=33 w=121 h=30 nav=3 active=1 label=Desk ▾
+OBJECT tag=tab id=tb-menu class=pchq-tb x=341 y=33 w=127 h=30 nav=4 active=0 label=Menu ▾
+OBJECT tag=tab id=tb-player class=pchq-tb x=472 y=33 w=164 h=30 nav=5 active=0 label=Player: ON ▾
+OBJECT tag=tab id=tb-clock class=pchq-tb x=640 y=33 w=105 h=30 nav=6 active=0 label=12:00
+OBJECT tag=item id=do-0 class=pchq-menu-row,dropdown-child,pchq-menu-active x=216 y=63 w=121 h=30 nav=13 active=0 label=Desk 1
+OBJECT tag=item id=do-1 class=pchq-menu-row,dropdown-child x=216 y=93 w=121 h=30 nav=14 active=0 label=Desk 2
+OBJECT tag=item id=dm-cancel class=pchq-menu-row,dropdown-child,quiet x=216 y=123 w=121 h=30 nav=15 active=0 label=- cancel -
+OBJECT tag=text id=- class=quiet x=8 y=688 w=48 h=25 nav=0 active=0 label=ents
+OBJECT tag=item id=e0 class=pchq-ft x=61 y=688 w=96 h=25 nav=7 active=0 label=hero
+OBJECT tag=item id=e1 class=pchq-ft x=162 y=688 w=96 h=25 nav=8 active=0 label=chicken
+OBJECT tag=item id=e2 class=pchq-ft x=263 y=688 w=96 h=25 nav=9 active=0 label=tree_small
+OBJECT tag=item id=e3 class=pchq-ft x=364 y=688 w=96 h=25 nav=10 active=0 label=tree_small
+OBJECT tag=item id=e4 class=pchq-ft x=465 y=688 w=96 h=25 nav=11 active=0 label=tree_small
+OBJECT tag=item id=e5 class=pchq-ft x=566 y=688 w=96 h=25 nav=12 active=0 label=tree_small

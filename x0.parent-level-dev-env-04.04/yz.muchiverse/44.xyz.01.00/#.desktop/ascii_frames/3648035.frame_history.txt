@@ -1,0 +1,21 @@
+
+=== menu.chtpm pid 3648035  2026-09-11 08:29:33 ===
+--- menu.chtpm  pid 3648035  2026-09-11 08:29:33 ---
+--- page: main ---
+    [>] 1. Events (hq)
+    [ ] 2. Close
+    [ ] 3. Cancel
+
+=== menu.chtpm pid 3648035  2026-09-11 08:29:34 ===
+--- menu.chtpm  pid 3648035  2026-09-11 08:29:34 ---
+--- page: main ---
+    [ ] 1. Events (hq)
+    [ ] 2. Close
+    [>] 3. Cancel
+
+=== menu.chtpm pid 3648035  2026-09-11 08:29:36 ===
+--- menu.chtpm  pid 3648035  2026-09-11 08:29:36 ---
+--- page: main ---
+    [ ] 1. Events (hq)
+    [ ] 2. Close
+    [>] 3. Cancel

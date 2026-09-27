@@ -1,0 +1,48 @@
+
+=== menu.chtpm pid 253046  2026-09-23 14:05:33 ===
+--- menu.chtpm  pid 253046  2026-09-23 14:05:33 ---
+--- page: main ---
+    [>] 1. Chat
+    [ ] 2. Events
+    [ ] 3. Events (mock)
+    [ ] 4. Events (ez)
+    [ ] 5. Play
+    [ ] 6. Stop
+    [ ] 7. Ledger
+    [ ] 8. Dir
+    [ ] 9. Inventory
+    [ ] 10. Close
+    [ ] 11. Cancel
+    [ ] 12. Cli-io
+
+=== menu.chtpm pid 253046  2026-09-23 14:05:36 ===
+--- menu.chtpm  pid 253046  2026-09-23 14:05:36 ---
+--- page: main ---
+    [ ] 1. Chat
+    [ ] 2. Events
+    [ ] 3. Events (mock)
+    [ ] 4. Events (ez)
+    [ ] 5. Play
+    [ ] 6. Stop
+    [ ] 7. Ledger
+    [ ] 8. Dir
+    [ ] 9. Inventory
+    [ ] 10. Close
+    [>] 11. Cancel
+    [ ] 12. Cli-io
+
+=== menu.chtpm pid 253046  2026-09-23 14:05:37 ===
+--- menu.chtpm  pid 253046  2026-09-23 14:05:37 ---
+--- page: main ---
+    [ ] 1. Chat
+    [ ] 2. Events
+    [ ] 3. Events (mock)
+    [ ] 4. Events (ez)
+    [ ] 5. Play
+    [ ] 6. Stop
+    [ ] 7. Ledger
+    [ ] 8. Dir
+    [ ] 9. Inventory
+    [ ] 10. Close
+    [>] 11. Cancel
+    [ ] 12. Cli-io

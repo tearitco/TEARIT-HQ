@@ -1,0 +1,32 @@
+
+=== file-explorer-pal.xhtpm pid 870557  2026-09-14 05:40:13 ===
+--- file-explorer-pal.xhtpm  pid 870557  2026-09-14 05:40:13 ---
+--- page: main ---
+File Explorer - LOAD
+          /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00
+        [ ] 3. DIR .. 
+        [ ] 4. DIR #.DOX 
+        [ ] 5. DIR #.Z.HUMAN_LLM 
+        [ ] 6. DIR #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+        [ ] 7. DIR #.desktop 
+        [ ] 8. DIR #.haiku+ 
+        [ ] 9. DIR #.livedesk 
+        [ ] 10. DIR #.notes 
+        [ ] 11. DIR #.ref 
+          Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 870557  2026-09-14 05:40:14 ===
+--- file-explorer-pal.xhtpm  pid 870557  2026-09-14 05:40:14 ---
+--- page: main ---
+File Explorer - LOAD
+          /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00
+        [ ] 3. DIR .. 
+        [ ] 4. DIR #.DOX 
+        [ ] 5. DIR #.Z.HUMAN_LLM 
+        [ ] 6. DIR #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+        [ ] 7. DIR #.desktop 
+        [ ] 8. DIR #.haiku+ 
+        [ ] 9. DIR #.livedesk 
+        [ ] 10. DIR #.notes 
+        [ ] 11. DIR #.ref 
+          Pick a file to load.

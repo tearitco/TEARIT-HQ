@@ -1,0 +1,18 @@
+
+=== menu.chtpm pid 274614  2026-09-22 17:55:31 ===
+--- menu.chtpm  pid 274614  2026-09-22 17:55:31 ---
+--- page: main ---
+    [>] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+
+=== menu.chtpm pid 274614  2026-09-22 17:55:32 ===
+--- menu.chtpm  pid 274614  2026-09-22 17:55:32 ---
+--- page: main ---
+    [>] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel

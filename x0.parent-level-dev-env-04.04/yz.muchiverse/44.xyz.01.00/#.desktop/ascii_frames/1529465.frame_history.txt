@@ -1,0 +1,90 @@
+
+=== chain-hq.xhtpm pid 1529465  2026-09-10 23:45:29 ===
+--- chain-hq.xhtpm  pid 1529465  2026-09-10 23:45:29 ---
+--- page: main ---
+chain  ·  jb  :9951  ·  0 mc
+          wallet: jb
+      [>] 1. Wallet
+      [ ] 2. Send
+      [ ] 3. Mine
+      [ ] 4. * History
+      [ ] 5. ↻ refresh
+          jb   ·   :9951   ·   0 mc
+          chain: 14000 blocks/tx   ·   showing latest 600
+            BLOCK 13999 03476f63674afc396334c3b525e8be631d2a235e1ce8ea27016b0abe001d9442 15 0c61ca2f8e18b2416568e3244011e727ab8803a4e0d9d69fa426a7d718c0f512 1785117796 walletA_537791 
+            BLOCK 13998 0bd14abac222cf20ad931bf8bb882933202d1df0533ba15a9271141aa2775d09 1 03476f63674afc396334c3b525e8be631d2a235e1ce8ea27016b0abe001d9442 1785117796 walletA_537791 
+            BLOCK 13997 06f63d6f6436f8e239be5222da1e7818514b3749eb0ffbe873857be50c5e2404 7 0bd14abac222cf20ad931bf8bb882933202d1df0533ba15a9271141aa2775d09 1785117796 walletA_537791 
+            BLOCK 13996 04f48301ddfade3b97706b1d82211a857a841d1e384b601d1610c273cec081be 13 06f63d6f6436f8e239be5222da1e7818514b3749eb0ffbe873857be50c5e2404 1785117796 walletA_537791 
+            BLOCK 13995 0cd68ef8e75ee38c7c5c0b91df50f1bbc1aedc12f184636adccd822743fd0b45 5 04f48301ddfade3b97706b1d82211a857a841d1e384b601d1610c273cec081be 1785117796 walletA_537791 
+            BLOCK 13994 0753f4e67d6e689433e7b363539911f29262632687b4669a02bbabdced20ba43 1 0cd68ef8e75ee38c7c5c0b91df50f1bbc1aedc12f184636adccd822743fd0b45 1785117796 walletA_537791 
+            BLOCK 13993 0578a0d74dcdeb5e88e1579b809c4bea1fecbc21b6cbc94a12ad7fc88267b96e 22 0753f4e67d6e689433e7b363539911f29262632687b4669a02bbabdced20ba43 1785117796 walletA_537791 
+
+=== chain-hq.xhtpm pid 1529465  2026-09-10 23:45:30 ===
+--- chain-hq.xhtpm  pid 1529465  2026-09-10 23:45:30 ---
+--- page: main ---
+chain  ·  jb  :9951  ·  0 mc
+          wallet: jb
+      [>] 1. Wallet
+      [ ] 2. Send
+      [ ] 3. Mine
+      [ ] 4. * History
+      [ ] 5. ↻ refresh
+          jb   ·   :9951   ·   0 mc
+          chain: 14000 blocks/tx   ·   showing latest 600
+            BLOCK 13999 03476f63674afc396334c3b525e8be631d2a235e1ce8ea27016b0abe001d9442 15 0c61ca2f8e18b2416568e3244011e727ab8803a4e0d9d69fa426a7d718c0f512 1785117796 walletA_537791 
+            BLOCK 13998 0bd14abac222cf20ad931bf8bb882933202d1df0533ba15a9271141aa2775d09 1 03476f63674afc396334c3b525e8be631d2a235e1ce8ea27016b0abe001d9442 1785117796 walletA_537791 
+            BLOCK 13997 06f63d6f6436f8e239be5222da1e7818514b3749eb0ffbe873857be50c5e2404 7 0bd14abac222cf20ad931bf8bb882933202d1df0533ba15a9271141aa2775d09 1785117796 walletA_537791 
+            BLOCK 13996 04f48301ddfade3b97706b1d82211a857a841d1e384b601d1610c273cec081be 13 06f63d6f6436f8e239be5222da1e7818514b3749eb0ffbe873857be50c5e2404 1785117796 walletA_537791 
+            BLOCK 13995 0cd68ef8e75ee38c7c5c0b91df50f1bbc1aedc12f184636adccd822743fd0b45 5 04f48301ddfade3b97706b1d82211a857a841d1e384b601d1610c273cec081be 1785117796 walletA_537791 
+            BLOCK 13994 0753f4e67d6e689433e7b363539911f29262632687b4669a02bbabdced20ba43 1 0cd68ef8e75ee38c7c5c0b91df50f1bbc1aedc12f184636adccd822743fd0b45 1785117796 walletA_537791 
+            BLOCK 13993 0578a0d74dcdeb5e88e1579b809c4bea1fecbc21b6cbc94a12ad7fc88267b96e 22 0753f4e67d6e689433e7b363539911f29262632687b4669a02bbabdced20ba43 1785117796 walletA_537791 
+
+=== chain-hq.xhtpm pid 1529465  2026-09-10 23:45:31 ===
+--- chain-hq.xhtpm  pid 1529465  2026-09-10 23:45:31 ---
+--- page: main ---
+chain  ·  jb  :9951  ·  0 mc
+          wallet: jb
+      [>] 1. Wallet
+      [ ] 2. Send
+      [ ] 3. Mine
+      [ ] 4. * History
+      [ ] 5. ↻ refresh
+          jb   ·   :9951   ·   0 mc
+          chain: 14000 blocks/tx   ·   showing latest 600
+            BLOCK 13999 03476f63674afc396334c3b525e8be631d2a235e1ce8ea27016b0abe001d9442 15 0c61ca2f8e18b2416568e3244011e727ab8803a4e0d9d69fa426a7d718c0f512 1785117796 walletA_537791 
+            BLOCK 13998 0bd14abac222cf20ad931bf8bb882933202d1df0533ba15a9271141aa2775d09 1 03476f63674afc396334c3b525e8be631d2a235e1ce8ea27016b0abe001d9442 1785117796 walletA_537791 
+            BLOCK 13997 06f63d6f6436f8e239be5222da1e7818514b3749eb0ffbe873857be50c5e2404 7 0bd14abac222cf20ad931bf8bb882933202d1df0533ba15a9271141aa2775d09 1785117796 walletA_537791 
+            BLOCK 13996 04f48301ddfade3b97706b1d82211a857a841d1e384b601d1610c273cec081be 13 06f63d6f6436f8e239be5222da1e7818514b3749eb0ffbe873857be50c5e2404 1785117796 walletA_537791 
+            BLOCK 13995 0cd68ef8e75ee38c7c5c0b91df50f1bbc1aedc12f184636adccd822743fd0b45 5 04f48301ddfade3b97706b1d82211a857a841d1e384b601d1610c273cec081be 1785117796 walletA_537791 
+            BLOCK 13994 0753f4e67d6e689433e7b363539911f29262632687b4669a02bbabdced20ba43 1 0cd68ef8e75ee38c7c5c0b91df50f1bbc1aedc12f184636adccd822743fd0b45 1785117796 walletA_537791 
+            BLOCK 13993 0578a0d74dcdeb5e88e1579b809c4bea1fecbc21b6cbc94a12ad7fc88267b96e 22 0753f4e67d6e689433e7b363539911f29262632687b4669a02bbabdced20ba43 1785117796 walletA_537791 
+
+=== chain-hq.xhtpm pid 1529465  2026-09-10 23:45:31 ===
+--- chain-hq.xhtpm  pid 1529465  2026-09-10 23:45:31 ---
+--- page: main ---
+chain  ·  jb  :9950  ·  0 mc
+          wallet: jb
+      [>] 1. * Wallet
+      [ ] 2. Send
+      [ ] 3. Mine
+      [ ] 4. History
+      [ ] 5. ↻ refresh
+          jb   ·   node :9950   ·   0 mc   ·   shared ledger
+          0 millicones
+          wallet id:  jb
+          This session's wallet is auto-created + logged in. Mine on the Mine tab to earn.
+
+=== chain-hq.xhtpm pid 1529465  2026-09-10 23:45:52 ===
+--- chain-hq.xhtpm  pid 1529465  2026-09-10 23:45:52 ---
+--- page: main ---
+chain  ·  jb  :9950  ·  0 mc
+          wallet: jb
+      [ ] 1. * Wallet
+      [ ] 2. Send
+      [ ] 3. Mine
+      [ ] 4. History
+      [ ] 5. ↻ refresh
+          jb   ·   node :9950   ·   0 mc   ·   shared ledger
+          0 millicones
+          wallet id:  jb
+          This session's wallet is auto-created + logged in. Mine on the Mine tab to earn.

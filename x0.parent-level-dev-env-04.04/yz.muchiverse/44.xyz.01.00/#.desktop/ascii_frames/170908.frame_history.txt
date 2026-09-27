@@ -1,0 +1,22 @@
+
+=== menu.chtpm pid 170908  2026-09-18 06:19:43 ===
+--- menu.chtpm  pid 170908  2026-09-18 06:19:43 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 170908  2026-09-18 06:19:44 ===
+--- menu.chtpm  pid 170908  2026-09-18 06:19:44 ---
+--- page: main ---
+    [ ] 1. Dir
+    [>] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel

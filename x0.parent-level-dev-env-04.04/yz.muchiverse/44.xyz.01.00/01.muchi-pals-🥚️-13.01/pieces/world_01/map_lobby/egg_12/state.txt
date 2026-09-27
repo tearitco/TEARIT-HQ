@@ -1,0 +1,10 @@
+name=egg_12
+type=egg
+species_id=sp_chick
+species_emoji=🐣
+species_name=Chick
+rarity=1
+movement=ground
+serial=12
+owner=user_01
+hatched=0

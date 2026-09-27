@@ -1,0 +1,110 @@
+OBJECT tag=item id=crumb0 class=fe-crumb x=0 y=0 w=0 h=0 nav=0 active=0 label=/
+OBJECT tag=item id=crumb1 class=fe-crumb x=0 y=0 w=0 h=0 nav=0 active=0 label=home
+OBJECT tag=item id=crumb2 class=fe-crumb x=0 y=0 w=0 h=0 nav=0 active=0 label=no
+OBJECT tag=item id=crumb3 class=fe-crumb x=0 y=0 w=0 h=0 nav=0 active=0 label=Desktop
+OBJECT tag=item id=crumb4 class=fe-crumb x=0 y=0 w=0 h=0 nav=0 active=0 label=github
+OBJECT tag=item id=crumb5 class=fe-crumb x=0 y=0 w=0 h=0 nav=0 active=0 label=work
+OBJECT tag=item id=crumb6 class=fe-crumb x=0 y=0 w=0 h=0 nav=0 active=0 label=NNEST-12.00
+OBJECT tag=item id=crumb7 class=fe-crumb x=0 y=0 w=0 h=0 nav=0 active=0 label=x0.parent-level-dev-env-04.04
+OBJECT tag=item id=crumb8 class=fe-crumb x=0 y=0 w=0 h=0 nav=0 active=0 label=yz.muchiverse
+OBJECT tag=item id=crumb9 class=fe-crumb x=0 y=0 w=0 h=0 nav=0 active=0 label=44.xyz.01.00
+OBJECT tag=item id=gentry0 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=⬅ ..  Back
+OBJECT tag=item id=gentry1 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 #.DOX
+OBJECT tag=item id=gentry2 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 #.Z.HUMAN_LLM
+OBJECT tag=item id=gentry3 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 #.a0]🪄️.🎩️(tson)]0000=ctrl+h
+OBJECT tag=item id=gentry4 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 #.desktop
+OBJECT tag=item id=gentry5 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 #.haiku+
+OBJECT tag=item id=gentry6 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 #.livedesk
+OBJECT tag=item id=gentry7 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 #.notes
+OBJECT tag=item id=gentry8 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 #.ref
+OBJECT tag=item id=gentry9 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 #.resume
+OBJECT tag=item id=gentry10 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 #.tmp
+OBJECT tag=item id=gentry11 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 #.user-test-how2
+OBJECT tag=item id=gentry12 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 #.w8
+OBJECT tag=item id=gentry13 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 #.xer
+OBJECT tag=item id=gentry14 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 #.z.mirror_llm]z5]IQABOD🪞️+4
+OBJECT tag=item id=gentry15 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 $.crypts
+OBJECT tag=item id=gentry16 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 %.harnesses
+OBJECT tag=item id=gentry17 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 &.hq-apps
+OBJECT tag=item id=gentry18 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 &.widgits
+OBJECT tag=item id=gentry19 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 *.START_BUTTON
+OBJECT tag=item id=gentry20 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 *.monads
+OBJECT tag=item id=gentry21 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 +.TSOTS-ALPHA-OMEGA
+OBJECT tag=item id=gentry22 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 -1.metatree_👼️_⭐️_🎄️_🎁️
+OBJECT tag=item id=gentry23 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 0.a-z-pets-plan
+OBJECT tag=item id=gentry24 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 0.user-pal👤️
+OBJECT tag=item id=gentry25 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 002.zoo__🦓️🐒️0000
+OBJECT tag=item id=gentry26 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 007-goldeye+01.00
+OBJECT tag=item id=gentry27 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 01.muchi-pals-🥚️-13.01
+OBJECT tag=item id=gentry28 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 014.wsr-pal💸️📌️+2
+OBJECT tag=item id=gentry29 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 040.net-health
+OBJECT tag=item id=gentry30 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 041.pal-chain⛓️
+OBJECT tag=item id=gentry31 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 041.pal-forum👥️
+OBJECT tag=item id=gentry32 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 044.pal-chat-irc👥️+2
+OBJECT tag=item id=gentry33 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 045.muchi-pal-agent🤖️+1++
+OBJECT tag=item id=gentry34 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 046.open-gema🤖️+1
+OBJECT tag=item id=gentry35 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 047.scm🎓️+1
+OBJECT tag=item id=gentry36 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 101.drag-drop-test=ON🀄️
+OBJECT tag=item id=gentry37 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 101.ledger-player-npc-simple+3
+OBJECT tag=item id=gentry38 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 101.lpns+map+4
+OBJECT tag=item id=gentry39 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 101.mutaclsym🧟‍♂️️+18.0G
+OBJECT tag=item id=gentry40 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=💾 101.mutaclsym🧟‍♂️️19.00
+OBJECT tag=item id=gentry41 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 102.agy-txt
+OBJECT tag=item id=gentry42 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 102.editor-📄️00.00
+OBJECT tag=item id=gentry43 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 103.media-studio
+OBJECT tag=item id=gentry44 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 150.gl-canvas
+OBJECT tag=item id=gentry45 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 151.screen-rec+01.02
+OBJECT tag=item id=gentry46 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 2.muchi-verse
+OBJECT tag=item id=gentry47 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 200.glut-craft
+OBJECT tag=item id=gentry48 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 201.dwarf-fortress
+OBJECT tag=item id=gentry49 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 201.rpg-maker-clone
+OBJECT tag=item id=gentry50 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 202.snes-civ
+OBJECT tag=item id=gentry51 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 203.gb-pokemon
+OBJECT tag=item id=gentry52 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 204.sw-battlefront
+OBJECT tag=item id=gentry53 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 205.ttg-tactics
+OBJECT tag=item id=gentry54 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 209.sp-irl
+OBJECT tag=item id=gentry55 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 300.rpg-xyz
+OBJECT tag=item id=gentry56 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 300.rtp-xyz
+OBJECT tag=item id=gentry57 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 404.architecture-bible
+OBJECT tag=item id=gentry58 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 @.app-store
+OBJECT tag=item id=gentry59 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 @.apps
+OBJECT tag=item id=gentry60 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 YAHOO_XYZ
+OBJECT tag=item id=gentry61 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 ^.buttons
+OBJECT tag=item id=gentry62 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 common_events
+OBJECT tag=item id=gentry63 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 default
+OBJECT tag=item id=gentry64 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 exchange
+OBJECT tag=item id=gentry65 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 home
+OBJECT tag=item id=gentry66 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 iqa-fork
+OBJECT tag=item id=gentry67 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 net
+OBJECT tag=item id=gentry68 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 shared
+OBJECT tag=item id=gentry69 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 tmp
+OBJECT tag=item id=gentry70 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 trash
+OBJECT tag=item id=gentry71 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 xyzfs
+OBJECT tag=item id=gentry72 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📁 📚️.docs
+OBJECT tag=item id=gentry73 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 !.!.tpmos-first.txt
+OBJECT tag=item id=gentry74 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 #.wussup.4xyz.txt
+OBJECT tag=item id=gentry75 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 &a
+OBJECT tag=item id=gentry76 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 +-picker.txt
+OBJECT tag=item id=gentry77 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 +3_ARCHITECTURE_SUMMARY.txt
+OBJECT tag=item id=gentry78 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 007-goldeye+01.00.7z
+OBJECT tag=item id=gentry79 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 014.wsr-pal💸️📌️+2+win1.7z
+OBJECT tag=item id=gentry80 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 18651.log
+OBJECT tag=item id=gentry81 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 AUTO_DELEGATION.TXT
+OBJECT tag=item id=gentry82 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 EMERGENCY_CLEAN.sh
+OBJECT tag=item id=gentry83 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 EMERGENCY_CLOSE.ps1
+OBJECT tag=item id=gentry84 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 EMERGENCY_CLOSE.sh
+OBJECT tag=item id=gentry85 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 EMERGENCY_KILL.sh
+OBJECT tag=item id=gentry86 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 ^.START_BUTTON_4.sh
+OBJECT tag=item id=gentry87 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 bookmarks_state.txt
+OBJECT tag=item id=gentry88 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 bookstack-path-bug.txt
+OBJECT tag=item id=gentry89 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 check-symlinks.sh
+OBJECT tag=item id=gentry90 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 interact_relay.txt
+OBJECT tag=item id=gentry91 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 khtpm-win-fix.txt
+OBJECT tag=item id=gentry92 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 khtpm_events_hq_manager.+x
+OBJECT tag=item id=gentry93 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 livedesk-win-fix-lvl2.txt
+OBJECT tag=item id=gentry94 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 local-2do-15.txt
+OBJECT tag=item id=gentry95 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 run-khtpm-strip.sh
+OBJECT tag=item id=gentry96 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 scrypts.sh
+OBJECT tag=item id=gentry97 class=fe-grid-item x=0 y=0 w=0 h=0 nav=0 active=0 label=📄 simlink-fix.txt
+OBJECT tag=item id=viewtoggle class=opacity-btn x=700 y=30 w=420 h=30 nav=1 active=0 label=List View
+OBJECT tag=text id=- class=quiet x=700 y=60 w=420 h=30 nav=0 active=0 label=Pick a file to load.

@@ -1,0 +1,33 @@
+
+=== menu_gameplay.chtpm pid 81766  2026-09-14 13:53:20 ===
+--- menu_gameplay.chtpm  pid 81766  2026-09-14 13:53:20 ---
+--- page: main ---
+    [>] 1. City
+    [ ] 2. Production
+    [ ] 3. Armed Forces
+    [ ] 4. View
+    [ ] 5. Happy
+    [ ] 6. Rename
+    [ ] 7. Cancel
+
+=== menu_gameplay.chtpm pid 81766  2026-09-14 13:53:21 ===
+--- menu_gameplay.chtpm  pid 81766  2026-09-14 13:53:21 ---
+--- page: main ---
+    [>] 1. City
+    [ ] 2. Production
+    [ ] 3. Armed Forces
+    [ ] 4. View
+    [ ] 5. Happy
+    [ ] 6. Rename
+    [ ] 7. Cancel
+
+=== menu_gameplay.chtpm pid 81766  2026-09-14 13:53:35 ===
+--- menu_gameplay.chtpm  pid 81766  2026-09-14 13:53:35 ---
+--- page: main ---
+    [>] 1. City
+    [ ] 2. Production
+    [ ] 3. Armed Forces
+    [ ] 4. View
+    [ ] 5. Happy
+    [ ] 6. Rename
+    [ ] 7. Cancel

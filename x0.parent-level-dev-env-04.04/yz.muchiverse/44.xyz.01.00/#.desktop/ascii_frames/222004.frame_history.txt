@@ -1,0 +1,22 @@
+
+=== menu.chtpm pid 222004  2026-09-18 12:26:13 ===
+--- menu.chtpm  pid 222004  2026-09-18 12:26:13 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 222004  2026-09-18 12:26:15 ===
+--- menu.chtpm  pid 222004  2026-09-18 12:26:15 ---
+--- page: main ---
+    [ ] 1. Dir
+    [>] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel

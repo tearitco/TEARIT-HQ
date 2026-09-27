@@ -1,0 +1,30 @@
+
+=== menu.chtpm pid 47356  2026-09-14 12:21:36 ===
+--- menu.chtpm  pid 47356  2026-09-14 12:21:36 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Chat
+    [ ] 3. Bookmarks
+    [ ] 4. Play
+    [ ] 5. Close
+    [ ] 6. Cancel
+
+=== menu.chtpm pid 47356  2026-09-14 12:21:38 ===
+--- menu.chtpm  pid 47356  2026-09-14 12:21:38 ---
+--- page: main ---
+    [ ] 1. Dir
+    [ ] 2. Chat
+    [ ] 3. Bookmarks
+    [ ] 4. Play
+    [ ] 5. Close
+    [>] 6. Cancel
+
+=== menu.chtpm pid 47356  2026-09-14 12:21:39 ===
+--- menu.chtpm  pid 47356  2026-09-14 12:21:39 ---
+--- page: main ---
+    [ ] 1. Dir
+    [ ] 2. Chat
+    [ ] 3. Bookmarks
+    [ ] 4. Play
+    [ ] 5. Close
+    [>] 6. Cancel

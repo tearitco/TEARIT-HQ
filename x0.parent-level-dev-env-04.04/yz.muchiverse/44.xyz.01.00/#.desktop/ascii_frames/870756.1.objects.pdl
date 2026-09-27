@@ -1,0 +1,2 @@
+OBJECT tag=cli_io id=search class=- x=2 y=32 w=1120 h=30 nav=1 active=0 label=🔍 Search: 
+OBJECT tag=item id=viewtoggle class=opacity-btn x=2 y=62 w=1120 h=30 nav=2 active=0 label=-

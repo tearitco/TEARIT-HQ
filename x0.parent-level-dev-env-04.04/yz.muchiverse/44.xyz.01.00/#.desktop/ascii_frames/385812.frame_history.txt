@@ -1,0 +1,4038 @@
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:09:49 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:09:49 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. Viewer
+      [ ] 2. New State
+          scanned 08:09:26
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:09:50 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:09:50 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. Viewer
+      [ ] 2. New State
+          scanned 08:09:26
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:09:50 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:09:50 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. Viewer
+      [ ] 2. New State
+          scanned 08:09:49
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:09:54 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:09:54 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. Viewer
+      [ ] 2. New State
+          scanned 08:09:53
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:09:58 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:09:58 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. Viewer
+      [ ] 2. New State
+          scanned 08:09:58
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:10:02 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:10:02 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. Viewer
+      [ ] 2. New State
+          scanned 08:10:02
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:10:06 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:10:06 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. Viewer
+      [ ] 2. New State
+          scanned 08:10:06
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:10:09 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:10:09 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. Viewer
+      [ ] 2. New State
+          scanned 08:10:06
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:10:10 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:10:10 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. Viewer
+      [ ] 2. New State
+          scanned 08:10:10
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:10:11 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:10:11 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. Viewer
+      [ ] 2. New State
+          scanned 08:10:10
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:10:15 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:10:15 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. Viewer
+      [ ] 2. New State
+          scanned 08:10:14
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:10:17 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:10:17 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:10:14
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:10:17 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:10:17 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:10:17
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:10:19 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:10:19 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:10:18
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:10:23 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:10:23 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:10:23
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:10:27 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:10:27 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:10:27
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:10:32 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:10:32 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:10:31
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:10:36 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:10:36 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:10:35
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:10:40 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:10:40 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:10:40
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:10:44 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:10:44 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:10:44
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:10:49 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:10:49 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:10:48
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:10:53 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:10:53 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:10:52
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:10:57 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:10:57 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:10:57
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:11:01 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:11:01 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:11:01
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:11:05 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:11:05 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:11:05
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:11:10 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:11:10 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:11:09
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:11:14 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:11:14 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:11:13
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:11:18 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:11:18 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:11:18
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:11:22 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:11:22 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:11:22
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:11:27 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:11:27 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:11:26
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:11:31 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:11:31 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:11:30
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:11:35 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:11:35 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:11:35
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:11:39 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:11:39 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:11:39
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:11:44 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:11:44 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:11:43
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:11:48 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:11:48 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:11:47
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:11:52 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:11:52 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:11:52
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:11:56 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:11:56 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:11:56
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+          name
+      [ ] 6. []  
+          NEXT targets - click to toggle
+        [ ] 11.   
+      [ ] 7. Save state
+      [ ] 8. < Cancel
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:12:00 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:12:00 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:11:56
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:12:00 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:12:00 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:12:00
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:12:01 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:12:01 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:12:00
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:12:05 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:12:05 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:12:04
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:12:09 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:12:09 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:12:08
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:12:13 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:12:13 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:12:13
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:12:17 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:12:17 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:12:17
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:12:22 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:12:22 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:12:21
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:12:26 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:12:26 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:12:25
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:12:30 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:12:30 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:12:30
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:12:34 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:12:34 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:12:34
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:12:39 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:12:39 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:12:38
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:12:41 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:12:41 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:12:41
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:12:43 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:12:43 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:12:42
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:12:47 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:12:47 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:12:47
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:12:51 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:12:51 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:12:51
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:12:55 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:12:55 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:12:55
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:13:00 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:13:00 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:12:59
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:13:04 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:13:04 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:13:03
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:13:08 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:13:08 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:13:08
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:13:12 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:13:12 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:13:12
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:13:17 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:13:17 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:13:16
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:13:21 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:13:21 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:13:20
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:13:25 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:13:25 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:13:25
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:13:29 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:13:29 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:13:29
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:13:33 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:13:33 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:13:33
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:13:38 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:13:38 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. New State
+          scanned 08:13:37
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [>] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:13:41 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:13:41 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:13:37
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:13:41 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:13:41 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:13:41
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:13:46 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:13:46 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:13:46
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:13:50 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:13:50 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:13:50
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:13:55 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:13:55 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:13:54
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:13:59 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:13:59 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:13:58
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:14:03 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:14:03 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:14:03
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:14:07 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:14:07 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:14:07
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:14:12 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:14:12 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:14:11
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:14:16 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:14:16 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:14:15
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:14:20 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:14:20 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:14:20
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:14:24 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:14:24 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:14:24
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:14:28 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:14:28 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:14:28
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:14:29 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:14:29 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:14:28
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:14:33 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:14:33 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:14:32
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:14:37 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:14:37 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:14:37
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:14:41 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:14:41 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:14:41
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:14:45 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:14:45 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:14:45
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:14:50 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:14:50 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:14:49
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:14:54 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:14:54 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:14:53
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:14:58 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:14:58 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:14:58
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:15:02 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:15:02 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:15:02
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:15:07 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:15:07 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:15:06
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:15:11 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:15:11 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:15:10
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+            (start)  →  OFFER,IDLE
+            OFFER  →  OPEN_USER
+            OPEN_USER  →  NEW_USER,ERROR
+            NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+            AUTO_ID  →  AUTO_NAME
+            AUTO_NAME  →  WATCH_DONE
+            WATCH_SIGNUP  →  WATCH_DONE
+            WATCH_DONE  →  IDLE,DONE
+            DONE  →  IDLE
+            ERROR  →  (terminal - no NEXT states)
+            IDLE  →  (terminal - no NEXT states)
+            name
+        [ ] 7. []  
+            NEXT targets - click to toggle
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:15:15 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:15:15 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:15:15
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+        [ ] 7. (start)  →  OFFER,IDLE
+        [ ] 8. OFFER  →  OPEN_USER
+        [ ] 9. OPEN_USER  →  NEW_USER,ERROR
+        [ ] 10. NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+        [ ] 11. AUTO_ID  →  AUTO_NAME
+        [ ] 12. AUTO_NAME  →  WATCH_DONE
+        [ ] 13. WATCH_SIGNUP  →  WATCH_DONE
+        [ ] 14. WATCH_DONE  →  IDLE,DONE
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:15:17 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:15:17 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:15:17
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+        [ ] 7. (start)  →  OFFER,IDLE
+        [ ] 8. OFFER  →  OPEN_USER
+        [ ] 9. OPEN_USER  →  NEW_USER,ERROR
+        [ ] 10. NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+        [ ] 11. AUTO_ID  →  AUTO_NAME
+        [ ] 12. AUTO_NAME  →  WATCH_DONE
+        [ ] 13. WATCH_SIGNUP  →  WATCH_DONE
+        [ ] 14. WATCH_DONE  →  IDLE,DONE
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:15:19 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:15:19 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:15:19
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+        [ ] 7. (start)  →  OFFER,IDLE
+        [ ] 8. OFFER  →  OPEN_USER
+        [ ] 9. OPEN_USER  →  NEW_USER,ERROR
+        [ ] 10. NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+        [ ] 11. AUTO_ID  →  AUTO_NAME
+        [ ] 12. AUTO_NAME  →  WATCH_DONE
+        [ ] 13. WATCH_SIGNUP  →  WATCH_DONE
+        [ ] 14. WATCH_DONE  →  IDLE,DONE
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:15:23 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:15:23 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:15:19
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+        [ ] 7. (start)  →  OFFER,IDLE
+        [ ] 8. OFFER  →  OPEN_USER
+        [ ] 9. OPEN_USER  →  NEW_USER,ERROR
+        [ ] 10. NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+        [ ] 11. AUTO_ID  →  AUTO_NAME
+        [ ] 12. AUTO_NAME  →  WATCH_DONE
+        [ ] 13. WATCH_SIGNUP  →  WATCH_DONE
+        [ ] 14. WATCH_DONE  →  IDLE,DONE
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:15:23 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:15:23 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:15:23
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:15:24 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:15:24 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:15:23
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:15:28 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:15:28 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:15:23
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:15:28 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:15:28 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:15:27
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:15:32 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:15:32 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:15:32
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:15:36 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:15:36 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:15:36
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:15:41 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:15:41 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:15:40
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:15:45 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:15:45 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:15:44
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+            name
+        [ ] 8. []  
+            NEXT targets - click to toggle
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:15:46 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:15:46 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:15:44
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:15:49 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:15:49 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:15:49
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:15:53 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:15:53 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:15:53
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:15:58 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:15:58 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:15:57
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:16:02 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:16:02 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:16:01
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:16:02 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:16:02 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:16:01
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:16:03 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:16:03 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:16:02
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+        [ ] 7. (start)  →  OFFER,IDLE
+        [ ] 8. OFFER  →  OPEN_USER
+        [ ] 9. OPEN_USER  →  NEW_USER,ERROR
+        [ ] 10. NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+        [ ] 11. AUTO_ID  →  AUTO_NAME
+        [ ] 12. AUTO_NAME  →  WATCH_DONE
+        [ ] 13. WATCH_SIGNUP  →  WATCH_DONE
+        [ ] 14. WATCH_DONE  →  IDLE,DONE
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:16:06 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:16:06 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:16:06
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+        [ ] 7. (start)  →  OFFER,IDLE
+        [ ] 8. OFFER  →  OPEN_USER
+        [ ] 9. OPEN_USER  →  NEW_USER,ERROR
+        [ ] 10. NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+        [ ] 11. AUTO_ID  →  AUTO_NAME
+        [ ] 12. AUTO_NAME  →  WATCH_DONE
+        [ ] 13. WATCH_SIGNUP  →  WATCH_DONE
+        [ ] 14. WATCH_DONE  →  IDLE,DONE
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:16:10 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:16:10 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:16:10
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+        [ ] 7. (start)  →  OFFER,IDLE
+        [ ] 8. OFFER  →  OPEN_USER
+        [ ] 9. OPEN_USER  →  NEW_USER,ERROR
+        [ ] 10. NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+        [ ] 11. AUTO_ID  →  AUTO_NAME
+        [ ] 12. AUTO_NAME  →  WATCH_DONE
+        [ ] 13. WATCH_SIGNUP  →  WATCH_DONE
+        [ ] 14. WATCH_DONE  →  IDLE,DONE
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:16:13 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:16:13 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:16:10
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+        [ ] 7. (start)  →  OFFER,IDLE
+        [ ] 8. OFFER  →  OPEN_USER
+        [ ] 9. OPEN_USER  →  NEW_USER,ERROR
+        [ ] 10. NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+        [ ] 11. AUTO_ID  →  AUTO_NAME
+        [ ] 12. AUTO_NAME  →  WATCH_DONE
+        [ ] 13. WATCH_SIGNUP  →  WATCH_DONE
+        [ ] 14. WATCH_DONE  →  IDLE,DONE
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:16:14 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:16:14 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:16:14
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+        [ ] 7. (start)  →  OFFER,IDLE
+        [ ] 8. OFFER  →  OPEN_USER
+        [ ] 9. OPEN_USER  →  NEW_USER,ERROR
+        [ ] 10. NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+        [ ] 11. AUTO_ID  →  AUTO_NAME
+        [ ] 12. AUTO_NAME  →  WATCH_DONE
+        [ ] 13. WATCH_SIGNUP  →  WATCH_DONE
+        [ ] 14. WATCH_DONE  →  IDLE,DONE
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:16:19 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:16:19 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. * Viewer
+      [ ] 2. New State
+          scanned 08:16:18
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+        [ ] 7. (start)  →  OFFER,IDLE
+        [ ] 8. OFFER  →  OPEN_USER
+        [ ] 9. OPEN_USER  →  NEW_USER,ERROR
+        [ ] 10. NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+        [ ] 11. AUTO_ID  →  AUTO_NAME
+        [ ] 12. AUTO_NAME  →  WATCH_DONE
+        [ ] 13. WATCH_SIGNUP  →  WATCH_DONE
+        [ ] 14. WATCH_DONE  →  IDLE,DONE
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:16:19 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:16:19 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:16:18
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+        [ ] 7. (start)  →  OFFER,IDLE
+        [ ] 8. OFFER  →  OPEN_USER
+        [ ] 9. OPEN_USER  →  NEW_USER,ERROR
+        [ ] 10. NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+        [ ] 11. AUTO_ID  →  AUTO_NAME
+        [ ] 12. AUTO_NAME  →  WATCH_DONE
+        [ ] 13. WATCH_SIGNUP  →  WATCH_DONE
+        [ ] 14. WATCH_DONE  →  IDLE,DONE
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:16:19 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:16:19 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:16:19
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:16:23 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:16:23 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:16:22
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:16:27 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:16:27 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:16:27
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:16:31 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:16:31 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:16:31
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:16:36 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:16:36 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:16:35
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:16:40 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:16:40 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:16:39
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:16:44 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:16:44 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:16:44
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:16:48 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:16:48 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:16:48
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:16:49 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:16:49 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:16:48
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:16:53 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:16:53 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:16:52
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:16:57 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:16:57 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:16:56
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:17:01 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:17:01 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:17:01
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:17:05 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:17:05 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:17:05
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:17:09 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:17:09 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:17:09
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:17:14 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:17:14 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:17:13
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:17:18 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:17:18 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:17:17
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:17:22 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:17:22 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:17:22
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:17:26 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:17:26 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:17:26
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:17:31 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:17:31 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:17:30
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:17:35 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:17:35 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:17:34
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:17:39 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:17:39 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:17:39
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:17:43 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:17:43 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:17:43
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:17:48 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:17:48 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:17:47
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:17:52 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:17:52 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:17:51
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:17:56 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:17:56 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:17:56
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:18:00 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:18:00 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:18:00
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:18:05 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:18:05 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:18:04
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:18:09 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:18:09 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:18:08
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:18:13 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:18:13 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:18:13
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:18:17 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:18:17 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:18:17
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:18:22 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:18:22 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:18:21
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8.   
+        [ ] 9.   
+        [ ] 10.   
+        [ ] 11.   
+        [ ] 12.   
+        [ ] 13.   
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:18:22 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:18:22 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:18:21
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8. .  (start)
+        [ ] 9. .  OFFER
+        [ ] 10. .  OPEN_USER
+        [ ] 11. .  NEW_USER
+        [ ] 12. .  AUTO_ID
+        [ ] 13. .  AUTO_NAME
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:18:26 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:18:26 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:18:25
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8. .  (start)
+        [ ] 9. .  OFFER
+        [ ] 10. .  OPEN_USER
+        [ ] 11. .  NEW_USER
+        [ ] 12. .  AUTO_ID
+        [ ] 13. .  AUTO_NAME
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:18:30 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:18:30 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:18:30
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8. .  (start)
+        [ ] 9. .  OFFER
+        [ ] 10. .  OPEN_USER
+        [ ] 11. .  NEW_USER
+        [ ] 12. .  AUTO_ID
+        [ ] 13. .  AUTO_NAME
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:18:34 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:18:34 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:18:34
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8. .  (start)
+        [ ] 9. .  OFFER
+        [ ] 10. .  OPEN_USER
+        [ ] 11. .  NEW_USER
+        [ ] 12. .  AUTO_ID
+        [ ] 13. .  AUTO_NAME
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:18:38 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:18:38 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [>] 2. * New State
+          scanned 08:18:38
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8. .  (start)
+        [ ] 9. .  OFFER
+        [ ] 10. .  OPEN_USER
+        [ ] 11. .  NEW_USER
+        [ ] 12. .  AUTO_ID
+        [ ] 13. .  AUTO_NAME
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:18:39 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:18:39 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. * New State
+          scanned 08:18:38
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8. .  (start)
+        [>] 9. .  OFFER
+        [ ] 10. .  OPEN_USER
+        [ ] 11. .  NEW_USER
+        [ ] 12. .  AUTO_ID
+        [ ] 13. .  AUTO_NAME
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:18:40 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:18:40 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. * New State
+          scanned 08:18:39
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8. .  (start)
+        [>] 9. x  OFFER
+        [ ] 10. .  OPEN_USER
+        [ ] 11. .  NEW_USER
+        [ ] 12. .  AUTO_ID
+        [ ] 13. .  AUTO_NAME
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:18:43 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:18:43 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. * New State
+          scanned 08:18:42
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8. .  (start)
+        [>] 9. x  OFFER
+        [ ] 10. .  OPEN_USER
+        [ ] 11. .  NEW_USER
+        [ ] 12. .  AUTO_ID
+        [ ] 13. .  AUTO_NAME
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:18:47 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:18:47 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. * New State
+          scanned 08:18:46
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8. .  (start)
+        [>] 9. x  OFFER
+        [ ] 10. .  OPEN_USER
+        [ ] 11. .  NEW_USER
+        [ ] 12. .  AUTO_ID
+        [ ] 13. .  AUTO_NAME
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:18:51 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:18:51 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. * New State
+          scanned 08:18:51
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8. .  (start)
+        [>] 9. x  OFFER
+        [ ] 10. .  OPEN_USER
+        [ ] 11. .  NEW_USER
+        [ ] 12. .  AUTO_ID
+        [ ] 13. .  AUTO_NAME
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:18:55 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:18:55 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. * New State
+          scanned 08:18:51
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8. .  (start)
+        [>] 9. x  OFFER
+        [ ] 10. .  OPEN_USER
+        [ ] 11. .  NEW_USER
+        [ ] 12. .  AUTO_ID
+        [ ] 13. .  AUTO_NAME
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:18:55 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:18:55 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. * New State
+          scanned 08:18:55
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8. .  (start)
+        [>] 9. x  OFFER
+        [ ] 10. .  OPEN_USER
+        [ ] 11. .  NEW_USER
+        [ ] 12. .  AUTO_ID
+        [ ] 13. .  AUTO_NAME
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:19:00 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:19:00 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. * New State
+          scanned 08:18:59
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8. .  (start)
+        [>] 9. x  OFFER
+        [ ] 10. .  OPEN_USER
+        [ ] 11. .  NEW_USER
+        [ ] 12. .  AUTO_ID
+        [ ] 13. .  AUTO_NAME
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:19:04 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:19:04 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. * New State
+          scanned 08:19:03
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8. .  (start)
+        [>] 9. x  OFFER
+        [ ] 10. .  OPEN_USER
+        [ ] 11. .  NEW_USER
+        [ ] 12. .  AUTO_ID
+        [ ] 13. .  AUTO_NAME
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:19:06 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:19:06 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. * New State
+          scanned 08:19:03
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8. .  (start)
+        [ ] 9. x  OFFER
+        [ ] 10. .  OPEN_USER
+        [ ] 11. .  NEW_USER
+        [ ] 12. .  AUTO_ID
+        [ ] 13. .  AUTO_NAME
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:19:08 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:19:08 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. * New State
+          scanned 08:19:08
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8. .  (start)
+        [ ] 9. x  OFFER
+        [ ] 10. .  OPEN_USER
+        [ ] 11. .  NEW_USER
+        [ ] 12. .  AUTO_ID
+        [ ] 13. .  AUTO_NAME
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:19:12 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:19:12 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. * New State
+          scanned 08:19:12
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8. .  (start)
+        [ ] 9. x  OFFER
+        [ ] 10. .  OPEN_USER
+        [ ] 11. .  NEW_USER
+        [ ] 12. .  AUTO_ID
+        [ ] 13. .  AUTO_NAME
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:19:17 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:19:17 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. * New State
+          scanned 08:19:16
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8. .  (start)
+        [ ] 9. x  OFFER
+        [ ] 10. .  OPEN_USER
+        [ ] 11. .  NEW_USER
+        [ ] 12. .  AUTO_ID
+        [ ] 13. .  AUTO_NAME
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:19:21 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:19:21 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. * New State
+          scanned 08:19:20
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8. .  (start)
+        [ ] 9. x  OFFER
+        [ ] 10. .  OPEN_USER
+        [ ] 11. .  NEW_USER
+        [ ] 12. .  AUTO_ID
+        [ ] 13. .  AUTO_NAME
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:19:25 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:19:25 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. * New State
+          scanned 08:19:24
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+        [ ] 8. .  (start)
+        [ ] 9. x  OFFER
+        [ ] 10. .  OPEN_USER
+        [ ] 11. .  NEW_USER
+        [ ] 12. .  AUTO_ID
+        [ ] 13. .  AUTO_NAME
+          added state 'LIVE_TEST' (NEXT=IDLE) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:19:28 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:19:28 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. * New State
+          scanned 08:19:28
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+          added state 'LIVE_TEST2' (NEXT=OFFER) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:19:29 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:19:29 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. * New State
+          scanned 08:19:29
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+          added state 'LIVE_TEST2' (NEXT=OFFER) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:19:33 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:19:33 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. * New State
+          scanned 08:19:33
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+          added state 'LIVE_TEST2' (NEXT=OFFER) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:19:37 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:19:37 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. * New State
+          scanned 08:19:37
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+          added state 'LIVE_TEST2' (NEXT=OFFER) to cursword
+
+=== h-ai-lab.xhtpm pid 385812  2026-09-13 08:19:42 ===
+--- h-ai-lab.xhtpm  pid 385812  2026-09-13 08:19:42 ---
+--- page: main ---
+h-ai-lab
+      [ ] 1. Viewer
+      [ ] 2. * New State
+          scanned 08:19:41
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          Add a new STATE to cursword
+      [ ] 5. + Add State
+          added state 'LIVE_TEST2' (NEXT=OFFER) to cursword

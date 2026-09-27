@@ -1,0 +1,368 @@
+
+=== dsr.xhtpm pid 350508  2026-09-14 20:49:53 ===
+--- dsr.xhtpm  pid 350508  2026-09-14 20:49:53 ---
+--- page: main ---
+Desk Street Raider
+        D S R  —  D E S K   S T R E E T   R A I D E R
+        Turn: 0   Active: corp_AFL
+        Your Wallet:
+        Cash: 1613
+        Active Corp Balance Sheet:
+        Cash (CD's): 5000
+        Stock Price: 115.04
+        Owned By: (independent)
+        FINANCIAL NEWS [CMZ: $0.10 (-99.38%)]
+        WORLD STATUS
+        Population: 10000          Temperature: 15C
+
+=== dsr.xhtpm pid 350508  2026-09-14 20:50:06 ===
+--- dsr.xhtpm  pid 350508  2026-09-14 20:50:06 ---
+--- page: main ---
+Desk Street Raider
+        D S R  —  D E S K   S T R E E T   R A I D E R
+        Turn: 0   Active: corp_AFL
+        Your Wallet:
+        Cash: 1613
+        Active Corp Balance Sheet:
+        Cash (CD's): 5000
+        Stock Price: 115.04
+        Owned By: (independent)
+        FINANCIAL NEWS [CMZ: $0.10 (-99.38%)]
+        WORLD STATUS
+        Population: 10000          Temperature: 15C
+
+=== dsr.xhtpm pid 350508  2026-09-14 20:50:32 ===
+--- dsr.xhtpm  pid 350508  2026-09-14 20:50:32 ---
+--- page: main ---
+Desk Street Raider
+          D S R
+          Desk Street Raider
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet:
+          Cash: 1613
+          Active Corp Balance Sheet:
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          FINANCIAL NEWS
+          CMZ: $0.10 (-99.38%)
+          WORLD STATUS
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 3. item
+        [ ] 4. item
+        [ ] 5. item
+        [ ] 6. item
+        [ ] 7. item
+        [ ] 8. item
+        [ ] 9. item
+        [ ] 10. item
+        [ ] 11. item
+        [ ] 12. item
+        [ ] 13. item
+        [ ] 14. item
+        [ ] 15. item
+        [ ] 16. item
+        [ ] 17. item
+        [ ] 18. item
+        [ ] 19. item
+        [ ] 20. item
+        [ ] 21. item
+        [ ] 22. item
+        [ ] 23. item
+        [ ] 24. item
+        [ ] 25. item
+        [ ] 26. item
+        [ ] 27. item
+        [ ] 28. item
+        [ ] 29. item
+
+=== dsr.xhtpm pid 350508  2026-09-14 20:50:40 ===
+--- dsr.xhtpm  pid 350508  2026-09-14 20:50:40 ---
+--- page: main ---
+Desk Street Raider
+          D S R
+          Desk Street Raider
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet:
+          Cash: 1613
+          Active Corp Balance Sheet:
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          FINANCIAL NEWS
+          CMZ: $0.10 (-99.38%)
+          WORLD STATUS
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 3. item
+        [ ] 4. item
+        [ ] 5. item
+        [ ] 6. item
+        [ ] 7. item
+        [ ] 8. item
+        [ ] 9. item
+        [ ] 10. item
+        [ ] 11. item
+        [ ] 12. item
+        [ ] 13. item
+        [ ] 14. item
+        [ ] 15. item
+        [ ] 16. item
+        [ ] 17. item
+        [ ] 18. item
+        [>] 19. item
+        [ ] 20. item
+        [ ] 21. item
+        [ ] 22. item
+        [ ] 23. item
+        [ ] 24. item
+        [ ] 25. item
+        [ ] 26. item
+        [ ] 27. item
+        [ ] 28. item
+        [ ] 29. item
+
+=== dsr.xhtpm pid 350508  2026-09-14 20:50:42 ===
+--- dsr.xhtpm  pid 350508  2026-09-14 20:50:42 ---
+--- page: main ---
+Desk Street Raider
+          D S R
+          Desk Street Raider
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet:
+          Cash: 1613
+          Active Corp Balance Sheet:
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          FINANCIAL NEWS
+          CMZ: $0.10 (-99.38%)
+          WORLD STATUS
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 3. item
+        [ ] 4. item
+        [ ] 5. item
+        [ ] 6. item
+        [ ] 7. item
+        [ ] 8. item
+        [ ] 9. item
+        [ ] 10. item
+        [ ] 11. item
+        [ ] 12. item
+        [ ] 13. item
+        [ ] 14. item
+        [ ] 15. item
+        [ ] 16. item
+        [ ] 17. item
+        [ ] 18. item
+        [ ] 19. item
+        [ ] 20. item
+        [ ] 21. item
+        [ ] 22. item
+        [>] 23. item
+        [ ] 24. item
+        [ ] 25. item
+        [ ] 26. item
+        [ ] 27. item
+        [ ] 28. item
+        [ ] 29. item
+
+=== dsr.xhtpm pid 350508  2026-09-14 20:50:46 ===
+--- dsr.xhtpm  pid 350508  2026-09-14 20:50:46 ---
+--- page: main ---
+Desk Street Raider
+          D S R
+          Desk Street Raider
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet:
+          Cash: 1613
+          Active Corp Balance Sheet:
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          FINANCIAL NEWS
+          CMZ: $0.10 (-99.38%)
+          WORLD STATUS
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 3. item
+        [ ] 4. item
+        [ ] 5. item
+        [ ] 6. item
+        [ ] 7. item
+        [ ] 8. item
+        [ ] 9. item
+        [ ] 10. item
+        [ ] 11. item
+        [ ] 12. item
+        [ ] 13. item
+        [ ] 14. item
+        [ ] 15. item
+        [ ] 16. item
+        [ ] 17. item
+        [ ] 18. item
+        [ ] 19. item
+        [ ] 20. item
+        [ ] 21. item
+        [ ] 22. item
+        [ ] 23. item
+        [ ] 24. item
+        [ ] 25. item
+        [ ] 26. item
+        [ ] 27. item
+        [>] 28. item
+        [ ] 29. item
+
+=== dsr.xhtpm pid 350508  2026-09-14 20:50:48 ===
+--- dsr.xhtpm  pid 350508  2026-09-14 20:50:48 ---
+--- page: main ---
+Desk Street Raider
+          D S R
+          Desk Street Raider
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet:
+          Cash: 1613
+          Active Corp Balance Sheet:
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          FINANCIAL NEWS
+          CMZ: $0.10 (-99.38%)
+          WORLD STATUS
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 3. item
+        [ ] 4. item
+        [ ] 5. item
+        [ ] 6. item
+        [ ] 7. item
+        [ ] 8. item
+        [ ] 9. item
+        [ ] 10. item
+        [ ] 11. item
+        [ ] 12. item
+        [ ] 13. item
+        [ ] 14. item
+        [ ] 15. item
+        [ ] 16. item
+        [ ] 17. item
+        [ ] 18. item
+        [ ] 19. item
+        [ ] 20. item
+        [ ] 21. item
+        [ ] 22. item
+        [ ] 23. item
+        [ ] 24. item
+        [ ] 25. item
+        [ ] 26. item
+        [ ] 27. item
+        [>] 28. item
+        [ ] 29. item
+
+=== dsr.xhtpm pid 350508  2026-09-14 20:50:54 ===
+--- dsr.xhtpm  pid 350508  2026-09-14 20:50:54 ---
+--- page: main ---
+Desk Street Raider
+          D S R
+          Desk Street Raider
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet:
+          Cash: 1613
+          Active Corp Balance Sheet:
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          FINANCIAL NEWS
+          CMZ: $0.10 (-99.38%)
+          WORLD STATUS
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 3. item
+        [ ] 4. item
+        [ ] 5. item
+        [ ] 6. item
+        [ ] 7. item
+        [ ] 8. item
+        [ ] 9. item
+        [ ] 10. item
+        [ ] 11. item
+        [ ] 12. item
+        [ ] 13. item
+        [ ] 14. item
+        [ ] 15. item
+        [ ] 16. item
+        [ ] 17. item
+        [ ] 18. item
+        [ ] 19. item
+        [ ] 20. item
+        [ ] 21. item
+        [ ] 22. item
+        [ ] 23. item
+        [ ] 24. item
+        [ ] 25. item
+        [ ] 26. item
+        [ ] 27. item
+        [>] 28. item
+        [ ] 29. item
+
+=== dsr.xhtpm pid 350508  2026-09-14 20:50:55 ===
+--- dsr.xhtpm  pid 350508  2026-09-14 20:50:55 ---
+--- page: main ---
+Desk Street Raider
+          D S R
+          Desk Street Raider
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet:
+          Cash: 1613
+          Active Corp Balance Sheet:
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          FINANCIAL NEWS
+          CMZ: $0.10 (-99.38%)
+          WORLD STATUS
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 3. item
+        [ ] 4. item
+        [ ] 5. item
+        [ ] 6. item
+        [ ] 7. item
+        [ ] 8. item
+        [ ] 9. item
+        [ ] 10. item
+        [ ] 11. item
+        [ ] 12. item
+        [ ] 13. item
+        [ ] 14. item
+        [ ] 15. item
+        [ ] 16. item
+        [ ] 17. item
+        [ ] 18. item
+        [ ] 19. item
+        [ ] 20. item
+        [ ] 21. item
+        [ ] 22. item
+        [ ] 23. item
+        [ ] 24. item
+        [ ] 25. item
+        [ ] 26. item
+        [ ] 27. item
+        [>] 28. item
+        [ ] 29. item

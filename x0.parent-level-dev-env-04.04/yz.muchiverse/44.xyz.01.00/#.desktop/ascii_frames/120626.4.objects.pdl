@@ -1,0 +1,27 @@
+OBJECT tag=tab id=crumb0 class=- x=10 y=35 w=71 h=30 nav=1 active=0 label=/
+OBJECT tag=tab id=crumb1 class=- x=85 y=35 w=109 h=30 nav=2 active=0 label=home
+OBJECT tag=tab id=crumb2 class=- x=198 y=35 w=85 h=30 nav=3 active=0 label=no
+OBJECT tag=tab id=crumb3 class=- x=287 y=35 w=127 h=30 nav=4 active=0 label=Desktop
+OBJECT tag=tab id=crumb4 class=- x=418 y=35 w=114 h=30 nav=5 active=0 label=github
+OBJECT tag=tab id=crumb5 class=- x=536 y=35 w=103 h=30 nav=6 active=0 label=work
+OBJECT tag=tab id=crumb6 class=- x=643 y=35 w=164 h=30 nav=7 active=0 label=NNEST-12.00
+OBJECT tag=tab id=crumb7 class=- x=811 y=35 w=290 h=30 nav=8 active=0 label=x0.parent-level-dev-env-04.04
+OBJECT tag=tab id=crumb8 class=- x=1105 y=35 w=171 h=30 nav=9 active=0 label=yz.muchiverse
+OBJECT tag=tab id=crumb9 class=- x=1280 y=35 w=155 h=30 nav=10 active=0 label=44.xyz.01.00
+OBJECT tag=tab id=crumb10 class=- x=1439 y=35 w=101 h=30 nav=11 active=0 label=xyzfs
+OBJECT tag=tab id=crumb11 class=- x=1544 y=35 w=104 h=30 nav=12 active=0 label=users
+OBJECT tag=tab id=crumb12 class=- x=1652 y=35 w=377 h=30 nav=13 active=0 label=0a9558a7-7c74-4358-833c-2d5b21edc421
+OBJECT tag=tab id=crumb13 class=- x=2033 y=35 w=109 h=30 nav=14 active=0 label=home
+OBJECT tag=tab id=crumb14 class=- x=2146 y=35 w=126 h=30 nav=15 active=0 label=livedesk
+OBJECT tag=tab id=crumb15 class=- x=2276 y=35 w=126 h=30 nav=16 active=0 label=sessions
+OBJECT tag=item id=back class=opacity-btn x=2 y=67 w=1180 h=30 nav=17 active=0 label=⬅️ Back
+OBJECT tag=item id=viewtoggle class=opacity-btn x=2 y=97 w=1180 h=30 nav=18 active=0 label=Grid View
+OBJECT tag=text id=- class=quiet x=2 y=127 w=1180 h=30 nav=0 active=0 label=Pick a file to load.
+OBJECT tag=item id=entry0 class=fe-entry x=2 y=157 w=1180 h=30 nav=19 active=0 label=📁  s1 
+OBJECT tag=item id=entry1 class=fe-entry x=2 y=187 w=1180 h=30 nav=20 active=0 label=📁  s2 
+OBJECT tag=item id=entry2 class=fe-entry x=2 y=217 w=1180 h=30 nav=21 active=0 label=📁  s3 
+OBJECT tag=item id=entry3 class=fe-entry x=2 y=247 w=1180 h=30 nav=22 active=0 label=📁  s4 
+OBJECT tag=item id=entry4 class=fe-entry x=2 y=277 w=1180 h=30 nav=23 active=0 label=📁  s5 
+OBJECT tag=item id=entry5 class=fe-entry x=2 y=307 w=1180 h=30 nav=24 active=0 label=📁  s6 
+OBJECT tag=item id=entry6 class=fe-entry x=2 y=337 w=1180 h=30 nav=25 active=0 label=📁  s7 
+OBJECT tag=item id=entry7 class=fe-entry x=2 y=367 w=1180 h=30 nav=26 active=0 label=📄  session.pdl 28B

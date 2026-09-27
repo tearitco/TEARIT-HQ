@@ -1,0 +1,86 @@
+
+=== dashboard.xhtpm pid 143878  2026-09-23 03:33:27 ===
+--- dashboard.xhtpm  pid 143878  2026-09-23 03:33:27 ---
+--- page: main ---
+DB (PAL)
+      [>] 1. * Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Actors (11)
+        [ ] 16. 1. Harold
+        [ ] 17. 2. Therese
+        [ ] 18. 3. Marsha
+        [ ] 19. 4. Lucius
+        [ ] 20. 5. Ember
+        [ ] 21. 6. Glacine
+        [ ] 22. 7. Murmur
+        [ ] 23. 8. Solvent
+        [ ] 24. 9. Asa
+        [ ] 25. 10. Ava
+        [ ] 26. 11. Cursword
+          #1  Harold
+        [ ] 29.   []  
+        [ ] 30. name  [Harold]  
+        [ ] 31. nickname  [The Brave]  
+        [ ] 32. class  [Hero]  
+        [ ] 33. init_lv  [1]  
+        [ ] 34. max_lv  [99]  
+        [ ] 35. profile  [A young warrior seeking adventure.]  
+        [ ] 36. face
+        [ ] 37. face  [Actor1_1]  
+        [ ] 38. character
+
+=== dashboard.xhtpm pid 143878  2026-09-23 03:33:31 ===
+--- dashboard.xhtpm  pid 143878  2026-09-23 03:33:31 ---
+--- page: main ---
+DB (PAL)
+      [>] 1. * Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Actors (11)
+        [ ] 16. 1. Harold
+        [ ] 17. 2. Therese
+        [ ] 18. 3. Marsha
+        [ ] 19. 4. Lucius
+        [ ] 20. 5. Ember
+        [ ] 21. 6. Glacine
+        [ ] 22. 7. Murmur
+        [ ] 23. 8. Solvent
+        [ ] 24. 9. Asa
+        [ ] 25. 10. Ava
+        [ ] 26. 11. Cursword
+          #1  Harold
+        [ ] 29.   []  
+        [ ] 30. name  [Harold]  
+        [ ] 31. nickname  [The Brave]  
+        [ ] 32. class  [Hero]  
+        [ ] 33. init_lv  [1]  
+        [ ] 34. max_lv  [99]  
+        [ ] 35. profile  [A young warrior seeking adventure.]  
+        [ ] 36. face
+        [ ] 37. face  [Actor1_1]  
+        [ ] 38. character

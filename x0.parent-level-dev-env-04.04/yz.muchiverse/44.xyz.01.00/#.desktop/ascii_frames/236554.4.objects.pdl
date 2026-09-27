@@ -1,0 +1,11 @@
+OBJECT tag=text id=event-name class=event-name x=0 y=0 w=0 h=0 nav=0 active=0 label=(entity)
+OBJECT tag=tab id=viewtab-0 class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Scripting
+OBJECT tag=tab id=viewtab-1 class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Scratch
+OBJECT tag=tab id=viewtab-2 class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Blueprints
+OBJECT tag=tab id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=(no pages yet)
+OBJECT tag=title id=- class=block-title x=0 y=0 w=0 h=0 nav=0 active=0 label=Trigger
+OBJECT tag=text id=trigger-value class=prop-value x=0 y=0 w=0 h=0 nav=0 active=0 label=(unknown)
+OBJECT tag=title id=- class=block-title x=0 y=0 w=0 h=0 nav=0 active=0 label=Commands
+OBJECT tag=text id=cmd-empty class=empty-msg x=0 y=0 w=0 h=0 nav=0 active=0 label=(no commands yet)
+OBJECT tag=button id=add-command class=btn-primary x=0 y=0 w=0 h=0 nav=0 active=0 label=+ Add Command
+OBJECT tag=button id=play-test class=btn-play x=0 y=0 w=0 h=0 nav=0 active=0 label=▶ Play

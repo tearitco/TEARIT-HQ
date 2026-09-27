@@ -1,0 +1,37 @@
+OBJECT tag=item id=close class=chrome-btn x=1111 y=4 w=63 h=26 nav=1 active=0 label=x
+OBJECT tag=item id=emogrp-0 class=pal-dir x=14 y=181 w=164 h=19 nav=2 active=0 label=Smileys & Emotion
+OBJECT tag=item id=emogrp-1 class=pal-dir,pal-dir-active x=184 y=181 w=138 h=19 nav=3 active=0 label=People & Body
+OBJECT tag=item id=emogrp-2 class=pal-dir x=328 y=181 w=157 h=19 nav=4 active=0 label=Animals & Nature
+OBJECT tag=item id=emogrp-3 class=pal-dir x=491 y=181 w=131 h=19 nav=5 active=0 label=Food & Drink
+OBJECT tag=item id=emogrp-4 class=pal-dir x=628 y=181 w=143 h=19 nav=6 active=0 label=Travel & Places
+OBJECT tag=item id=emogrp-5 class=pal-dir x=777 y=181 w=106 h=19 nav=7 active=0 label=Activities
+OBJECT tag=item id=emogrp-6 class=pal-dir x=889 y=181 w=94 h=19 nav=8 active=0 label=Objects
+OBJECT tag=item id=emogrp-7 class=pal-dir x=989 y=181 w=99 h=19 nav=9 active=0 label=Symbols
+OBJECT tag=item id=emogrp-8 class=pal-dir x=14 y=210 w=92 h=19 nav=10 active=0 label=Flags
+OBJECT tag=item id=emosub-0 class=pal-tileset,pal-tileset-active x=14 y=38 w=162 h=19 nav=11 active=0 label=hand-fingers-open
+OBJECT tag=item id=emosub-1 class=pal-tileset x=182 y=38 w=171 h=19 nav=12 active=0 label=hand-fingers-partial
+OBJECT tag=item id=emosub-2 class=pal-tileset x=359 y=38 w=164 h=19 nav=13 active=0 label=hand-single-finger
+OBJECT tag=item id=emosub-3 class=pal-tileset x=529 y=38 w=172 h=19 nav=14 active=0 label=hand-fingers-closed
+OBJECT tag=item id=emosub-4 class=pal-tileset x=707 y=38 w=108 h=19 nav=15 active=0 label=hands
+OBJECT tag=item id=emosub-5 class=pal-tileset x=821 y=38 w=112 h=19 nav=16 active=0 label=hand-prop
+OBJECT tag=item id=emosub-6 class=pal-tileset x=939 y=38 w=114 h=19 nav=17 active=0 label=body-parts
+OBJECT tag=item id=emosub-7 class=pal-tileset x=1059 y=38 w=108 h=19 nav=18 active=0 label=person
+OBJECT tag=item id=emosub-8 class=pal-tileset x=14 y=67 w=142 h=19 nav=19 active=0 label=person-gesture
+OBJECT tag=item id=emosub-9 class=pal-tileset x=162 y=67 w=119 h=19 nav=20 active=0 label=person-role
+OBJECT tag=item id=emosub-10 class=pal-tileset x=287 y=67 w=141 h=19 nav=21 active=0 label=person-fantasy
+OBJECT tag=item id=emosub-11 class=pal-tileset x=434 y=67 w=141 h=19 nav=22 active=0 label=person-activity
+OBJECT tag=item id=emosub-12 class=pal-tileset x=581 y=67 w=128 h=19 nav=23 active=0 label=person-sport
+OBJECT tag=item id=emosub-13 class=pal-tileset x=715 y=67 w=138 h=19 nav=24 active=0 label=person-resting
+OBJECT tag=item id=emosub-14 class=pal-tileset x=859 y=67 w=108 h=19 nav=25 active=0 label=family
+OBJECT tag=item id=emosub-15 class=pal-tileset x=973 y=67 w=139 h=19 nav=26 active=0 label=person-symbol
+OBJECT tag=item id=pt0 class=swatch x=14 y=125 w=34 h=34 nav=27 active=0 label=-
+OBJECT tag=item id=pt1 class=swatch x=56 y=125 w=34 h=34 nav=28 active=0 label=-
+OBJECT tag=item id=pt2 class=swatch x=98 y=125 w=34 h=34 nav=29 active=0 label=-
+OBJECT tag=item id=pt3 class=swatch x=140 y=125 w=34 h=34 nav=30 active=0 label=-
+OBJECT tag=item id=pt4 class=swatch x=182 y=125 w=34 h=34 nav=31 active=0 label=-
+OBJECT tag=item id=pt5 class=swatch x=224 y=125 w=34 h=34 nav=32 active=0 label=-
+OBJECT tag=item id=pt6 class=swatch x=266 y=125 w=34 h=34 nav=33 active=0 label=-
+OBJECT tag=item id=pt7 class=swatch x=308 y=125 w=34 h=34 nav=34 active=0 label=-
+OBJECT tag=item id=pt8 class=swatch x=350 y=125 w=34 h=34 nav=35 active=0 label=-
+OBJECT tag=item id=pt9 class=swatch x=392 y=125 w=34 h=34 nav=36 active=0 label=-
+OBJECT tag=item id=pt10 class=swatch x=434 y=125 w=34 h=34 nav=37 active=0 label=-

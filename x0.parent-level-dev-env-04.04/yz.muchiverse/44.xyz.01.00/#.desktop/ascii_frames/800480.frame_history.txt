@@ -1,0 +1,16 @@
+
+=== menu.chtpm pid 800480  2026-09-14 22:48:22 ===
+--- menu.chtpm  pid 800480  2026-09-14 22:48:22 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Close
+    [ ] 4. Cancel
+
+=== menu.chtpm pid 800480  2026-09-14 22:48:23 ===
+--- menu.chtpm  pid 800480  2026-09-14 22:48:23 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Close
+    [ ] 4. Cancel

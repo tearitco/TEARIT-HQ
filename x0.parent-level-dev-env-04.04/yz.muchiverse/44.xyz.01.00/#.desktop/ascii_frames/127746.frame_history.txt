@@ -1,0 +1,33 @@
+
+=== menu.chtpm pid 127746  2026-09-18 02:42:24 ===
+--- menu.chtpm  pid 127746  2026-09-18 02:42:24 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 127746  2026-09-18 02:42:25 ===
+--- menu.chtpm  pid 127746  2026-09-18 02:42:25 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 127746  2026-09-18 02:42:26 ===
+--- menu.chtpm  pid 127746  2026-09-18 02:42:26 ---
+--- page: main ---
+    [ ] 1. Dir
+    [>] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel

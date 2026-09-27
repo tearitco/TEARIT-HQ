@@ -1,0 +1,20 @@
+
+=== menu.chtpm pid 41614  2026-09-27 01:46:56 ===
+--- menu.chtpm  pid 41614  2026-09-27 01:46:56 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Cli-io: 
+
+=== menu.chtpm pid 41614  2026-09-27 01:46:57 ===
+--- menu.chtpm  pid 41614  2026-09-27 01:46:57 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Cli-io: 

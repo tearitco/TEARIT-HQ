@@ -1,8 +1,8 @@
 entity_type=xelector
-pos_x=5
-pos_y=10
+pos_x=2
+pos_y=5
 pos_z=17
-possessed_id=none
+possessed_id=hero_01
 chunk_x=0
 chunk_y=0
 pre_possess_x=9

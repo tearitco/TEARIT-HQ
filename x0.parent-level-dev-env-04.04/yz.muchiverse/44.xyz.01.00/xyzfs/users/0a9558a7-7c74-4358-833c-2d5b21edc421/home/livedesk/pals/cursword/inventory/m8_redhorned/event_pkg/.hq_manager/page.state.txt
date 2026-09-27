@@ -1,0 +1,6 @@
+TRIGGER|on-click
+CMD|1|change_gold|amount=10
+CMD|2|change_gold|amount=25
+CMD|3|change_gold|amount=7
+CMD|4|show_text|text=Hi|speaker=|speaker=
+CMD|5|take_gold|amount=8

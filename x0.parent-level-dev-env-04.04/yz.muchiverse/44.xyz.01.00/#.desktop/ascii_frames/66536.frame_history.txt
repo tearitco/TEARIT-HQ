@@ -1,0 +1,30 @@
+
+=== menu.chtpm pid 66536  2026-09-17 06:25:33 ===
+--- menu.chtpm  pid 66536  2026-09-17 06:25:33 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Chat
+    [ ] 3. Bookmarks
+    [ ] 4. Play
+    [ ] 5. Close
+    [ ] 6. Cancel
+
+=== menu.chtpm pid 66536  2026-09-17 06:25:35 ===
+--- menu.chtpm  pid 66536  2026-09-17 06:25:35 ---
+--- page: main ---
+    [ ] 1. Dir
+    [ ] 2. Chat
+    [ ] 3. Bookmarks
+    [ ] 4. Play
+    [ ] 5. Close
+    [>] 6. Cancel
+
+=== menu.chtpm pid 66536  2026-09-17 06:25:36 ===
+--- menu.chtpm  pid 66536  2026-09-17 06:25:36 ---
+--- page: main ---
+    [ ] 1. Dir
+    [ ] 2. Chat
+    [ ] 3. Bookmarks
+    [ ] 4. Play
+    [ ] 5. Close
+    [>] 6. Cancel

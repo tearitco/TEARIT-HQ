@@ -1,0 +1,26 @@
+OBJECT tag=text id=- class=quiet x=0 y=30 w=220 h=30 nav=0 active=0 label=scanned 16:26:41
+OBJECT tag=text id=- class=block-title x=0 y=60 w=220 h=30 nav=0 active=0 label=17 good  /  7 bad
+OBJECT tag=item id=b_refresh class=btn x=0 y=90 w=220 h=30 nav=1 active=0 label=  refresh now  
+OBJECT tag=item id=b_kill class=btn,danger x=0 y=120 w=220 h=30 nav=2 active=0 label=  KILL ALL BAD  
+OBJECT tag=item id=b_kill2 class=btn,danger x=0 y=150 w=220 h=30 nav=3 active=0 label= + pals/singletons 
+OBJECT tag=text id=- class=block-title x=0 y=180 w=220 h=30 nav=0 active=0 label=OTHER SESSION - real, not stray, not this one
+OBJECT tag=text id=- class=quiet x=0 y=0 w=0 h=0 nav=0 active=0 label=(none - no other live taskbar session)
+OBJECT tag=text id=- class=block-title x=0 y=210 w=220 h=30 nav=0 active=0 label=BAD - stray / leaked
+OBJECT tag=item id=bad0 class=data-item x=0 y=254 w=212 h=60 nav=6 active=0 label=370297  [detached]  29m    cpu:0.0  reg    sh button.sh run
+OBJECT tag=item id=bad1 class=data-item x=0 y=314 w=212 h=60 nav=7 active=0 label=370336  [child]     29m    cpu:0.0  reg    orchestrator
+OBJECT tag=item id=bad2 class=data-item x=0 y=374 w=212 h=120 nav=8 active=0 label=370337  [child]     29m    cpu:0.0  unreg  bash button.sh run-widget @.apps/piececraft-hq
+OBJECT tag=text id=- class=block-title x=220 y=30 w=480 h=30 nav=0 active=0 label=GOOD - owned / accounted for
+OBJECT tag=text id=- class=quiet x=220 y=60 w=480 h=30 nav=0 active=0 label=taskbar group, registered pals, house-wide managers, live -hq windows
+OBJECT tag=text id=- class=- x=220 y=104 w=472 h=30 nav=0 active=0 label=451176  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=134 w=472 h=30 nav=0 active=0 label=451178  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=164 w=472 h=30 nav=0 active=0 label=451182  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=194 w=472 h=30 nav=0 active=0 label=451186  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=224 w=472 h=30 nav=0 active=0 label=451190  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=254 w=472 h=30 nav=0 active=0 label=451192  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=284 w=472 h=30 nav=0 active=0 label=451196  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=314 w=472 h=30 nav=0 active=0 label=451200  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=344 w=472 h=30 nav=0 active=0 label=451204  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=374 w=472 h=30 nav=0 active=0 label=451206  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=404 w=472 h=30 nav=0 active=0 label=451212  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=434 w=472 h=30 nav=0 active=0 label=451214  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=464 w=472 h=30 nav=0 active=0 label=451216  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43

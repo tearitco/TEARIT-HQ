@@ -1,0 +1,31 @@
+OBJECT tag=tab id=tab-file class=- x=8 y=33 w=92 h=30 nav=1 active=0 label=File
+OBJECT tag=tab id=tab-options class=- x=104 y=33 w=172 h=30 nav=2 active=0 label=Game Options
+OBJECT tag=tab id=tab-settings class=- x=280 y=33 w=126 h=30 nav=3 active=0 label=Settings
+OBJECT tag=tab id=tab-help class=- x=410 y=33 w=101 h=30 nav=4 active=0 label=Help
+OBJECT tag=text id=- class=block-title x=0 y=100 w=270 h=30 nav=0 active=0 label=Active Entity Selected
+OBJECT tag=text id=- class=quiet x=0 y=130 w=270 h=30 nav=0 active=0 label=Turn: 0
+OBJECT tag=text id=- class=quiet x=0 y=160 w=270 h=30 nav=0 active=0 label=Active: corp_AFL
+OBJECT tag=text id=- class=block-title x=270 y=100 w=270 h=30 nav=0 active=0 label=Your Wallet
+OBJECT tag=text id=- class=- x=270 y=130 w=270 h=30 nav=0 active=0 label=Cash: 1613
+OBJECT tag=text id=- class=block-title x=540 y=100 w=270 h=30 nav=0 active=0 label=My Balance Sheet
+OBJECT tag=text id=- class=- x=540 y=130 w=270 h=30 nav=0 active=0 label=Cash (CD's): 5000
+OBJECT tag=text id=- class=- x=540 y=160 w=270 h=30 nav=0 active=0 label=Stock Price: 115.04
+OBJECT tag=text id=- class=- x=540 y=190 w=270 h=30 nav=0 active=0 label=Owned By: (independent)
+OBJECT tag=text id=- class=block-title x=0 y=230 w=270 h=30 nav=0 active=0 label=Financial News Headlines
+OBJECT tag=text id=- class=quiet x=0 y=260 w=270 h=30 nav=0 active=0 label=CMZ: $0.10 (-99.38%)
+OBJECT tag=text id=- class=block-title x=270 y=230 w=270 h=30 nav=0 active=0 label=World Status
+OBJECT tag=text id=- class=quiet x=270 y=260 w=270 h=30 nav=0 active=0 label=Population: 10000
+OBJECT tag=text id=- class=quiet x=270 y=290 w=270 h=30 nav=0 active=0 label=Temperature: 15C
+OBJECT tag=text id=- class=block-title x=0 y=360 w=860 h=30 nav=0 active=0 label=Actions
+OBJECT tag=item id=- class=- x=0 y=404 w=852 h=30 nav=7 active=0 label=Select Player
+OBJECT tag=item id=- class=- x=0 y=434 w=852 h=30 nav=8 active=0 label=Culture
+OBJECT tag=item id=- class=- x=0 y=464 w=852 h=30 nav=9 active=0 label=Entity Info
+OBJECT tag=item id=- class=- x=0 y=494 w=852 h=30 nav=10 active=0 label=Select Corp.
+OBJECT tag=item id=- class=- x=0 y=524 w=852 h=30 nav=11 active=0 label=History
+OBJECT tag=item id=- class=- x=0 y=554 w=852 h=30 nav=12 active=0 label=General
+OBJECT tag=item id=- class=- x=0 y=584 w=852 h=30 nav=13 active=0 label=Tools
+OBJECT tag=item id=- class=- x=0 y=614 w=852 h=30 nav=14 active=0 label=Private
+OBJECT tag=item id=- class=- x=0 y=644 w=852 h=30 nav=15 active=0 label=Other Trans
+OBJECT tag=item id=- class=- x=0 y=674 w=852 h=30 nav=16 active=0 label=End Turn
+OBJECT tag=item id=- class=- x=0 y=704 w=852 h=30 nav=17 active=0 label=Misc. Menu
+OBJECT tag=item id=- class=- x=0 y=734 w=852 h=30 nav=18 active=0 label=Chart

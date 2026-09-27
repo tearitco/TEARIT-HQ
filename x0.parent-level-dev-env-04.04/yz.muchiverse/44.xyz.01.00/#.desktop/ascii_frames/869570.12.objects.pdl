@@ -1,0 +1,25 @@
+OBJECT tag=tab id=newbtn class=tab x=8 y=33 w=99 h=30 nav=1 active=0 label=New
+OBJECT tag=tab id=openbtn class=tab x=111 y=33 w=155 h=30 nav=2 active=0 label=[file] Open...
+OBJECT tag=tab id=savebtn class=tab x=270 y=33 w=101 h=30 nav=3 active=0 label=Save
+OBJECT tag=tab id=saveasbtn class=tab,active x=375 y=33 w=122 h=30 nav=4 active=1 label=Save As
+OBJECT tag=text id=- class=lineno x=0 y=65 w=46 h=30 nav=0 active=0 label=1
+OBJECT tag=text id=- class=lineno x=0 y=95 w=46 h=30 nav=0 active=0 label=2
+OBJECT tag=text id=- class=lineno x=0 y=125 w=46 h=30 nav=0 active=0 label=3
+OBJECT tag=text id=- class=lineno x=0 y=155 w=46 h=30 nav=0 active=0 label=4
+OBJECT tag=text id=- class=lineno x=0 y=185 w=46 h=30 nav=0 active=0 label=5
+OBJECT tag=text id=- class=lineno x=0 y=215 w=46 h=30 nav=0 active=0 label=6
+OBJECT tag=text id=- class=lineno x=0 y=245 w=46 h=30 nav=0 active=0 label=7
+OBJECT tag=text id=- class=lineno x=0 y=275 w=46 h=30 nav=0 active=0 label=8
+OBJECT tag=text id=- class=lineno x=0 y=305 w=46 h=30 nav=0 active=0 label=9
+OBJECT tag=text id=- class=lineno x=0 y=335 w=46 h=30 nav=0 active=0 label=10
+OBJECT tag=text id=- class=lineno x=0 y=365 w=46 h=30 nav=0 active=0 label=11
+OBJECT tag=text id=- class=lineno x=0 y=395 w=46 h=30 nav=0 active=0 label=12
+OBJECT tag=text id=- class=lineno x=0 y=425 w=46 h=30 nav=0 active=0 label=13
+OBJECT tag=text id=- class=lineno x=0 y=455 w=46 h=30 nav=0 active=0 label=14
+OBJECT tag=text id=- class=lineno x=0 y=485 w=46 h=30 nav=0 active=0 label=15
+OBJECT tag=text id=- class=lineno x=0 y=515 w=46 h=30 nav=0 active=0 label=16
+OBJECT tag=text id=- class=lineno x=0 y=545 w=46 h=30 nav=0 active=0 label=17
+OBJECT tag=text id=- class=lineno x=0 y=575 w=46 h=30 nav=0 active=0 label=18
+OBJECT tag=text id=- class=lineno x=0 y=605 w=46 h=30 nav=0 active=0 label=19
+OBJECT tag=text id=- class=lineno x=0 y=635 w=46 h=30 nav=0 active=0 label=20
+OBJECT tag=text_area id=editor class=- x=46 y=65 w=574 h=455 nav=5 active=0 label=-

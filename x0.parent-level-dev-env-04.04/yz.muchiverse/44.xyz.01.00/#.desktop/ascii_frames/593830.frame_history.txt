@@ -1,0 +1,105 @@
+
+=== proc-mon.xhtpm pid 593830  2026-09-13 12:17:05 ===
+--- proc-mon.xhtpm  pid 593830  2026-09-13 12:17:05 ---
+--- page: main ---
+Session Monitor
+          scanned 21:00:21
+          8 good  /  0 bad
+      [>] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            12341   [pal]       42m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            12343   [pal]       42m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            12345   [pal]       42m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            12347   [pal]       42m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            12349   [pal]       42m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            12351   [pal]       42m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            12353   [pal]       42m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            34868   [hq-window] 19m    cpu:52.1 unreg  khtpm_core_render /home/no/Desktop/github/work
+
+=== proc-mon.xhtpm pid 593830  2026-09-13 12:17:06 ===
+--- proc-mon.xhtpm  pid 593830  2026-09-13 12:17:06 ---
+--- page: main ---
+Session Monitor
+          scanned 12:17:06
+          11 good  /  0 bad
+      [>] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            343230  [singleton] 4h57m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            345336  [singleton] 4h49m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            345826  [singleton] 4h47m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            350904  [singleton] 4h34m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            551735  [pal]       50m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585539  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585541  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585543  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585545  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585547  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585549  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+
+=== proc-mon.xhtpm pid 593830  2026-09-13 12:17:10 ===
+--- proc-mon.xhtpm  pid 593830  2026-09-13 12:17:10 ---
+--- page: main ---
+Session Monitor
+          scanned 12:17:06
+          11 good  /  0 bad
+      [ ] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            343230  [singleton] 4h57m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            345336  [singleton] 4h49m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            345826  [singleton] 4h47m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            350904  [singleton] 4h34m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            551735  [pal]       50m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585539  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585541  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585543  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585545  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585547  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585549  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+
+=== proc-mon.xhtpm pid 593830  2026-09-13 12:17:11 ===
+--- proc-mon.xhtpm  pid 593830  2026-09-13 12:17:11 ---
+--- page: main ---
+Session Monitor
+          scanned 12:17:06
+          11 good  /  0 bad
+      [ ] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            343230  [singleton] 4h57m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            345336  [singleton] 4h49m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            345826  [singleton] 4h47m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            350904  [singleton] 4h34m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            551735  [pal]       50m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585539  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585541  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585543  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585545  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585547  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585549  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43

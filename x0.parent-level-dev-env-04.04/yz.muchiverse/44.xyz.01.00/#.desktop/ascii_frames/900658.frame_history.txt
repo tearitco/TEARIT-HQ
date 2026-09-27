@@ -1,0 +1,810 @@
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:48:50 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:48:50 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 10. /
+      [ ] 11. tmp
+      [ ] 12. claude-1000
+      [ ] 13. fe-search
+      [ ] 14. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  applepie 
+    [ ] 5. 📄  APPLE_notes.md 0B
+    [ ] 6. 📄  apple.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:48:50 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:48:50 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. tmp
+      [ ] 3. claude-1000
+      [ ] 4. fe-search
+      [ ] 5. data
+    [ ] 6. Search: 
+    [ ] 7. ⬅️ Back
+    [ ] 8. Grid View
+        Pick a file to load.
+      [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:48:53 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:48:53 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. tmp
+      [ ] 3. claude-1000
+      [ ] 4. fe-search
+      [ ] 5. data
+    [ ] 6. Search: 
+    [ ] 7. ⬅️ Back
+    [>] 8. Grid View
+        Pick a file to load.
+      [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:48:54 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:48:54 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. tmp
+      [ ] 3. claude-1000
+      [ ] 4. fe-search
+      [ ] 5. data
+    [ ] 6. Search: 
+    [ ] 7. ⬅️ Back
+    [>] 8. Grid View
+        Pick a file to load.
+      [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:48:54 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:48:54 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 13. /
+      [ ] 14. tmp
+      [ ] 15. claude-1000
+      [ ] 16. fe-search
+      [ ] 17. data
+    [ ] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  applepie 
+    [ ] 5. 📁  zebra_dir 
+    [ ] 6. 📄  APPLE_notes.md 0B
+    [ ] 7. 📄  Banana.txt 0B
+    [>] 8. 📄  apple.txt 0B
+    [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:48:56 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:48:56 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 13. /
+      [ ] 14. tmp
+      [ ] 15. claude-1000
+      [ ] 16. fe-search
+      [ ] 17. data
+    [ ] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  applepie 
+    [ ] 5. 📁  zebra_dir 
+    [ ] 6. 📄  APPLE_notes.md 0B
+    [ ] 7. 📄  Banana.txt 0B
+    [>] 8. 📄  apple.txt 0B
+    [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:49:09 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:49:09 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 13. /
+      [ ] 14. tmp
+      [ ] 15. claude-1000
+      [ ] 16. fe-search
+      [ ] 17. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  applepie 
+    [ ] 5. 📁  zebra_dir 
+    [ ] 6. 📄  APPLE_notes.md 0B
+    [ ] 7. 📄  Banana.txt 0B
+    [ ] 8. 📄  apple.txt 0B
+    [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:49:10 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:49:10 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 13. /
+      [ ] 14. tmp
+      [ ] 15. claude-1000
+      [ ] 16. fe-search
+      [ ] 17. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  applepie 
+    [ ] 5. 📁  zebra_dir 
+    [ ] 6. 📄  APPLE_notes.md 0B
+    [ ] 7. 📄  Banana.txt 0B
+    [ ] 8. 📄  apple.txt 0B
+    [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:49:11 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:49:11 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 13. /
+      [ ] 14. tmp
+      [ ] 15. claude-1000
+      [ ] 16. fe-search
+      [ ] 17. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  applepie 
+    [ ] 5. 📁  zebra_dir 
+    [ ] 6. 📄  APPLE_notes.md 0B
+    [ ] 7. 📄  Banana.txt 0B
+    [ ] 8. 📄  apple.txt 0B
+    [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:49:13 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:49:13 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 13. /
+      [ ] 14. tmp
+      [ ] 15. claude-1000
+      [ ] 16. fe-search
+      [ ] 17. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  applepie 
+    [ ] 5. 📁  zebra_dir 
+    [ ] 6. 📄  APPLE_notes.md 0B
+    [ ] 7. 📄  Banana.txt 0B
+    [ ] 8. 📄  apple.txt 0B
+    [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:49:14 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:49:14 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 13. /
+      [ ] 14. tmp
+      [ ] 15. claude-1000
+      [ ] 16. fe-search
+      [ ] 17. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  applepie 
+    [ ] 5. 📁  zebra_dir 
+    [ ] 6. 📄  APPLE_notes.md 0B
+    [ ] 7. 📄  Banana.txt 0B
+    [ ] 8. 📄  apple.txt 0B
+    [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:49:15 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:49:15 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 13. /
+      [ ] 14. tmp
+      [ ] 15. claude-1000
+      [ ] 16. fe-search
+      [ ] 17. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  applepie 
+    [ ] 5. 📁  zebra_dir 
+    [ ] 6. 📄  APPLE_notes.md 0B
+    [ ] 7. 📄  Banana.txt 0B
+    [ ] 8. 📄  apple.txt 0B
+    [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:49:16 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:49:16 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 13. /
+      [ ] 14. tmp
+      [ ] 15. claude-1000
+      [ ] 16. fe-search
+      [ ] 17. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  applepie 
+    [ ] 5. 📁  zebra_dir 
+    [ ] 6. 📄  APPLE_notes.md 0B
+    [ ] 7. 📄  Banana.txt 0B
+    [ ] 8. 📄  apple.txt 0B
+    [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:49:18 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:49:18 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 13. /
+      [ ] 14. tmp
+      [ ] 15. claude-1000
+      [ ] 16. fe-search
+      [ ] 17. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  applepie 
+    [ ] 5. 📁  zebra_dir 
+    [ ] 6. 📄  APPLE_notes.md 0B
+    [ ] 7. 📄  Banana.txt 0B
+    [ ] 8. 📄  apple.txt 0B
+    [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:49:49 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:49:49 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. tmp
+      [ ] 3. claude-1000
+      [ ] 4. fe-search
+      [ ] 5. data
+    [ ] 6. Search: 
+    [ ] 7. ⬅️ Back
+    [ ] 8. Grid View
+        Pick a file to load.
+      [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:49:51 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:49:51 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. tmp
+      [ ] 3. claude-1000
+      [ ] 4. fe-search
+      [ ] 5. data
+    [ ] 6. Search: 
+    [ ] 7. ⬅️ Back
+    [ ] 8. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:49:51 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:49:51 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. tmp
+      [ ] 3. claude-1000
+      [ ] 4. fe-search
+      [ ] 5. data
+    [ ] 6. Search: 
+    [ ] 7. ⬅️ Back
+    [ ] 8. Grid View
+        Pick a file to load.
+      [ ] 9. 📄  Banana.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:49:52 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:49:52 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. tmp
+      [ ] 3. claude-1000
+      [ ] 4. fe-search
+      [ ] 5. data
+    [ ] 6. Search: 
+    [ ] 7. ⬅️ Back
+    [ ] 8. Grid View
+        Pick a file to load.
+      [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:05 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:05 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. tmp
+      [ ] 3. claude-1000
+      [ ] 4. fe-search
+      [ ] 5. data
+    [ ] 6. Search: 
+    [ ] 7. ⬅️ Back
+    [ ] 8. Grid View
+        Pick a file to load.
+      [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:06 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:06 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. tmp
+      [ ] 3. claude-1000
+      [ ] 4. fe-search
+      [ ] 5. data
+    [ ] 6. Search: 
+    [ ] 7. ⬅️ Back
+    [ ] 8. Grid View
+        Pick a file to load.
+      [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:06 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:06 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+    [ ] 2. Search: 
+    [ ] 3. Grid View
+        Pick a file to load.
+      [ ] 6. 📁  var 
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:07 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:07 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+    [ ] 2. Search: 
+    [ ] 3. Grid View
+        Pick a file to load.
+      [ ] 6. 📁  var 
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:08 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:08 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+    [ ] 2. Search: 
+    [ ] 3. Grid View
+        Pick a file to load.
+      [ ] 6. 📁  var 
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:10 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:10 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+    [ ] 2. Search: 
+    [ ] 3. Grid View
+        Pick a file to load.
+      [ ] 6. 📁  var 
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:11 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:11 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+    [ ] 2. Search: 
+    [ ] 3. Grid View
+        Pick a file to load.
+      [ ] 6. 📁  var 
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:13 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:13 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+    [ ] 2. Search: 
+    [ ] 3. Grid View
+        Pick a file to load.
+      [ ] 6. 📁  var 
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:14 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:14 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+    [ ] 2. Search: 
+    [ ] 3. Grid View
+        Pick a file to load.
+      [ ] 6. 📁  var 
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:16 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:16 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+    [ ] 2. Search: 
+    [ ] 3. Grid View
+        Pick a file to load.
+      [ ] 6. 📁  var 
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:33 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:33 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. tmp
+      [ ] 3. claude-1000
+      [ ] 4. fe-search
+      [ ] 5. data
+    [ ] 6. Search: 
+    [ ] 7. ⬅️ Back
+    [ ] 8. Grid View
+        Pick a file to load.
+      [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:35 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:35 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. tmp
+      [ ] 3. claude-1000
+      [ ] 4. fe-search
+      [ ] 5. data
+    [ ] 6. Search: 
+    [ ] 7. ⬅️ Back
+    [>] 8. Grid View
+        Pick a file to load.
+      [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:35 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:35 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 13. /
+      [ ] 14. tmp
+      [ ] 15. claude-1000
+      [ ] 16. fe-search
+      [ ] 17. data
+    [ ] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  applepie 
+    [ ] 5. 📁  zebra_dir 
+    [ ] 6. 📄  APPLE_notes.md 0B
+    [ ] 7. 📄  Banana.txt 0B
+    [>] 8. 📄  apple.txt 0B
+    [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:37 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:37 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 13. /
+      [ ] 14. tmp
+      [ ] 15. claude-1000
+      [ ] 16. fe-search
+      [ ] 17. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  applepie 
+    [ ] 5. 📁  zebra_dir 
+    [ ] 6. 📄  APPLE_notes.md 0B
+    [ ] 7. 📄  Banana.txt 0B
+    [ ] 8. 📄  apple.txt 0B
+    [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:38 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:38 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 13. /
+      [ ] 14. tmp
+      [ ] 15. claude-1000
+      [ ] 16. fe-search
+      [ ] 17. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  applepie 
+    [ ] 5. 📁  zebra_dir 
+    [ ] 6. 📄  APPLE_notes.md 0B
+    [ ] 7. 📄  Banana.txt 0B
+    [ ] 8. 📄  apple.txt 0B
+    [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:39 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:39 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 13. /
+      [ ] 14. tmp
+      [ ] 15. claude-1000
+      [ ] 16. fe-search
+      [ ] 17. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  applepie 
+    [ ] 5. 📁  zebra_dir 
+    [ ] 6. 📄  APPLE_notes.md 0B
+    [ ] 7. 📄  Banana.txt 0B
+    [ ] 8. 📄  apple.txt 0B
+    [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:39 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:39 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 9. /
+      [ ] 10. tmp
+      [ ] 11. claude-1000
+      [ ] 12. fe-search
+      [ ] 13. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  zebra_dir 
+    [ ] 5. 📄  Banana.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:39 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:39 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 8. /
+      [ ] 9. tmp
+      [ ] 10. claude-1000
+      [ ] 11. fe-search
+      [ ] 12. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📄  Banana.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:40 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:40 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 8. /
+      [ ] 9. tmp
+      [ ] 10. claude-1000
+      [ ] 11. fe-search
+      [ ] 12. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📄  Banana.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:42 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:42 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 8. /
+      [ ] 9. tmp
+      [ ] 10. claude-1000
+      [ ] 11. fe-search
+      [ ] 12. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📄  Banana.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:43 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:43 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 8. /
+      [ ] 9. tmp
+      [ ] 10. claude-1000
+      [ ] 11. fe-search
+      [ ] 12. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📄  Banana.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:43 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:43 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 9. /
+      [ ] 10. tmp
+      [ ] 11. claude-1000
+      [ ] 12. fe-search
+      [ ] 13. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  zebra_dir 
+    [ ] 5. 📄  Banana.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:58 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:58 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 9. /
+      [ ] 10. tmp
+      [ ] 11. claude-1000
+      [ ] 12. fe-search
+      [ ] 13. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  zebra_dir 
+    [ ] 5. 📄  Banana.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:58 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:58 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 13. /
+      [ ] 14. tmp
+      [ ] 15. claude-1000
+      [ ] 16. fe-search
+      [ ] 17. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  applepie 
+    [ ] 5. 📁  zebra_dir 
+    [ ] 6. 📄  APPLE_notes.md 0B
+    [ ] 7. 📄  Banana.txt 0B
+    [ ] 8. 📄  apple.txt 0B
+    [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:59 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:59 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 13. /
+      [ ] 14. tmp
+      [ ] 15. claude-1000
+      [ ] 16. fe-search
+      [ ] 17. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  applepie 
+    [ ] 5. 📁  zebra_dir 
+    [ ] 6. 📄  APPLE_notes.md 0B
+    [ ] 7. 📄  Banana.txt 0B
+    [ ] 8. 📄  apple.txt 0B
+    [ ] 9. 📄  cherry.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:50:59 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:50:59 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 12. /
+      [ ] 13. tmp
+      [ ] 14. claude-1000
+      [ ] 15. fe-search
+      [ ] 16. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  applepie 
+    [ ] 5. 📁  zebra_dir 
+    [ ] 6. 📄  APPLE_notes.md 0B
+    [ ] 7. 📄  Banana.txt 0B
+    [ ] 8. 📄  apple.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:51:00 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:51:00 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 12. /
+      [ ] 13. tmp
+      [ ] 14. claude-1000
+      [ ] 15. fe-search
+      [ ] 16. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  applepie 
+    [ ] 5. 📁  zebra_dir 
+    [ ] 6. 📄  APPLE_notes.md 0B
+    [ ] 7. 📄  Banana.txt 0B
+    [ ] 8. 📄  apple.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:51:00 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:51:00 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 10. /
+      [ ] 11. tmp
+      [ ] 12. claude-1000
+      [ ] 13. fe-search
+      [ ] 14. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  applepie 
+    [ ] 5. 📄  APPLE_notes.md 0B
+    [ ] 6. 📄  apple.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:51:02 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:51:02 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 10. /
+      [ ] 11. tmp
+      [ ] 12. claude-1000
+      [ ] 13. fe-search
+      [ ] 14. data
+    [>] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [ ] 4. 📁  applepie 
+    [ ] 5. 📄  APPLE_notes.md 0B
+    [ ] 6. 📄  apple.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:51:03 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:51:03 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 10. /
+      [ ] 11. tmp
+      [ ] 12. claude-1000
+      [ ] 13. fe-search
+      [ ] 14. data
+    [ ] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [>] 4. 📁  applepie 
+    [ ] 5. 📄  APPLE_notes.md 0B
+    [ ] 6. 📄  apple.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:51:04 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:51:04 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 10. /
+      [ ] 11. tmp
+      [ ] 12. claude-1000
+      [ ] 13. fe-search
+      [ ] 14. data
+    [ ] 1. Search: 
+    [ ] 2. ⬅️ Back
+    [ ] 3. List View
+        Pick a file to load.
+    [>] 4. 📁  applepie 
+    [ ] 5. 📄  APPLE_notes.md 0B
+    [ ] 6. 📄  apple.txt 0B
+
+=== file-explorer-pal.xhtpm pid 900658  2026-09-19 22:51:04 ===
+--- file-explorer-pal.xhtpm  pid 900658  2026-09-19 22:51:04 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. tmp
+      [ ] 3. claude-1000
+      [>] 4. fe-search
+      [ ] 5. data
+      [ ] 6. applepie
+    [ ] 7. Search: 
+    [ ] 8. ⬅️ Back
+    [ ] 9. List View
+        Pick a file to load.

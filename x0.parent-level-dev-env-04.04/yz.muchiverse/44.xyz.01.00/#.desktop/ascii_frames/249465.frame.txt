@@ -1,0 +1,12 @@
+--- pchq-board.xhtpm  pid 249465  2026-09-08 07:54:49 ---
+--- page: main ---
+piececraft-hq board
+    [ ] 1. x
+    [ ] 2. !
+    [ ] 3. _
+    [>] 4. In: ON
+    [ ] 5. File
+    [ ] 6. Desk
+    [ ] 7. Menu
+    [ ] 8. Player
+    [ ] 9. 07:54

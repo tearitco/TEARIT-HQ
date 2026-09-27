@@ -1,0 +1,411 @@
+
+=== proc-mon.xhtpm pid 950977  2026-09-15 17:09:26 ===
+--- proc-mon.xhtpm  pid 950977  2026-09-15 17:09:26 ---
+--- page: main ---
+Session Monitor
+          scanned 16:26:41
+          17 good  /  7 bad
+      [>] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+        [ ] 6. 370297  [detached]  29m    cpu:0.0  reg    sh button.sh run
+        [ ] 7. 370336  [child]     29m    cpu:0.0  reg    orchestrator
+        [ ] 8. 370337  [child]     29m    cpu:0.0  unreg  bash button.sh run-widget @.apps/piececraft-hq
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            451176  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451178  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451182  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451186  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451190  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451192  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451196  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451200  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451204  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451206  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451212  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451214  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451216  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+
+=== proc-mon.xhtpm pid 950977  2026-09-15 17:09:27 ===
+--- proc-mon.xhtpm  pid 950977  2026-09-15 17:09:27 ---
+--- page: main ---
+Session Monitor
+          scanned 16:26:41
+          17 good  /  7 bad
+      [>] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+        [ ] 6. 370297  [detached]  29m    cpu:0.0  reg    sh button.sh run
+        [ ] 7. 370336  [child]     29m    cpu:0.0  reg    orchestrator
+        [ ] 8. 370337  [child]     29m    cpu:0.0  unreg  bash button.sh run-widget @.apps/piececraft-hq
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            451176  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451178  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451182  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451186  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451190  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451192  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451196  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451200  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451204  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451206  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451212  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451214  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451216  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+
+=== proc-mon.xhtpm pid 950977  2026-09-15 17:09:28 ===
+--- proc-mon.xhtpm  pid 950977  2026-09-15 17:09:28 ---
+--- page: main ---
+Session Monitor
+          scanned 16:26:41
+          17 good  /  7 bad
+      [ ] 1.   refresh now  
+      [>] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+        [ ] 6. 370297  [detached]  29m    cpu:0.0  reg    sh button.sh run
+        [ ] 7. 370336  [child]     29m    cpu:0.0  reg    orchestrator
+        [ ] 8. 370337  [child]     29m    cpu:0.0  unreg  bash button.sh run-widget @.apps/piececraft-hq
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            451176  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451178  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451182  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451186  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451190  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451192  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451196  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451200  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451204  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451206  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451212  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451214  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451216  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+
+=== proc-mon.xhtpm pid 950977  2026-09-15 17:09:29 ===
+--- proc-mon.xhtpm  pid 950977  2026-09-15 17:09:29 ---
+--- page: main ---
+Session Monitor
+          scanned 16:26:41
+          17 good  /  7 bad
+      [ ] 1.   refresh now  
+      [>] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+        [ ] 6. 370297  [detached]  29m    cpu:0.0  reg    sh button.sh run
+        [ ] 7. 370336  [child]     29m    cpu:0.0  reg    orchestrator
+        [ ] 8. 370337  [child]     29m    cpu:0.0  unreg  bash button.sh run-widget @.apps/piececraft-hq
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            451176  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451178  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451182  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451186  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451190  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451192  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451196  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451200  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451204  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451206  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451212  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451214  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451216  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+
+=== proc-mon.xhtpm pid 950977  2026-09-15 17:09:31 ===
+--- proc-mon.xhtpm  pid 950977  2026-09-15 17:09:31 ---
+--- page: main ---
+Session Monitor
+          scanned 16:26:41
+          17 good  /  7 bad
+      [ ] 1.   refresh now  
+      [>] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+        [ ] 6. 370297  [detached]  29m    cpu:0.0  reg    sh button.sh run
+        [ ] 7. 370336  [child]     29m    cpu:0.0  reg    orchestrator
+        [ ] 8. 370337  [child]     29m    cpu:0.0  unreg  bash button.sh run-widget @.apps/piececraft-hq
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            451176  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451178  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451182  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451186  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451190  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451192  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451196  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451200  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451204  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451206  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451212  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451214  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451216  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+
+=== proc-mon.xhtpm pid 950977  2026-09-15 17:09:36 ===
+--- proc-mon.xhtpm  pid 950977  2026-09-15 17:09:36 ---
+--- page: main ---
+Session Monitor
+          scanned 16:26:41
+          17 good  /  7 bad
+      [ ] 1.   refresh now  
+      [>] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+        [ ] 6. 370297  [detached]  29m    cpu:0.0  reg    sh button.sh run
+        [ ] 7. 370336  [child]     29m    cpu:0.0  reg    orchestrator
+        [ ] 8. 370337  [child]     29m    cpu:0.0  unreg  bash button.sh run-widget @.apps/piececraft-hq
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            451176  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451178  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451182  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451186  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451190  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451192  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451196  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451200  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451204  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451206  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451212  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451214  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451216  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+
+=== proc-mon.xhtpm pid 950977  2026-09-15 17:09:37 ===
+--- proc-mon.xhtpm  pid 950977  2026-09-15 17:09:37 ---
+--- page: main ---
+Session Monitor
+          scanned 16:26:41
+          17 good  /  7 bad
+      [ ] 1.   refresh now  
+      [>] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+        [ ] 6. 370297  [detached]  29m    cpu:0.0  reg    sh button.sh run
+        [ ] 7. 370336  [child]     29m    cpu:0.0  reg    orchestrator
+        [ ] 8. 370337  [child]     29m    cpu:0.0  unreg  bash button.sh run-widget @.apps/piececraft-hq
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            451176  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451178  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451182  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451186  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451190  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451192  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451196  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451200  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451204  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451206  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451212  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451214  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451216  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+
+=== proc-mon.xhtpm pid 950977  2026-09-15 17:09:38 ===
+--- proc-mon.xhtpm  pid 950977  2026-09-15 17:09:38 ---
+--- page: main ---
+Session Monitor
+          scanned 16:26:41
+          17 good  /  7 bad
+      [ ] 1.   refresh now  
+      [>] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+        [ ] 6. 370297  [detached]  29m    cpu:0.0  reg    sh button.sh run
+        [ ] 7. 370336  [child]     29m    cpu:0.0  reg    orchestrator
+        [ ] 8. 370337  [child]     29m    cpu:0.0  unreg  bash button.sh run-widget @.apps/piececraft-hq
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            451176  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451178  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451182  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451186  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451190  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451192  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451196  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451200  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451204  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451206  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451212  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451214  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            451216  [pal]       21m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+
+=== proc-mon.xhtpm pid 950977  2026-09-15 17:09:38 ===
+--- proc-mon.xhtpm  pid 950977  2026-09-15 17:09:38 ---
+--- page: main ---
+Session Monitor
+          scanned 17:09:36
+          3 good  /  6 bad
+      [ ] 1.   refresh now  
+      [>] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+        [ ] 6. 370297  [detached]  1h12m  cpu:0.0  reg    sh button.sh run
+        [ ] 7. 370336  [child]     1h12m  cpu:0.0  reg    orchestrator
+        [ ] 8. 370337  [child]     1h12m  cpu:0.0  unreg  bash button.sh run-widget @.apps/piececraft-hq
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            936467  [pal]       2m     cpu:0.2  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            936469  [pal]       2m     cpu:0.1  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            943933  [child]     1m     cpu:0.6  unreg  pchq_board_projector /home/no/Desktop/github/w
+
+=== proc-mon.xhtpm pid 950977  2026-09-15 17:09:48 ===
+--- proc-mon.xhtpm  pid 950977  2026-09-15 17:09:48 ---
+--- page: main ---
+Session Monitor
+          scanned 17:09:36
+          3 good  /  6 bad
+      [ ] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+        [ ] 6. 370297  [detached]  1h12m  cpu:0.0  reg    sh button.sh run
+        [ ] 7. 370336  [child]     1h12m  cpu:0.0  reg    orchestrator
+        [ ] 8. 370337  [child]     1h12m  cpu:0.0  unreg  bash button.sh run-widget @.apps/piececraft-hq
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            936467  [pal]       2m     cpu:0.2  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            936469  [pal]       2m     cpu:0.1  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            943933  [child]     1m     cpu:0.6  unreg  pchq_board_projector /home/no/Desktop/github/w
+
+=== proc-mon.xhtpm pid 950977  2026-09-15 17:09:49 ===
+--- proc-mon.xhtpm  pid 950977  2026-09-15 17:09:49 ---
+--- page: main ---
+Session Monitor
+          scanned 17:09:36
+          3 good  /  6 bad
+      [ ] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+        [ ] 6. 370297  [detached]  1h12m  cpu:0.0  reg    sh button.sh run
+        [ ] 7. 370336  [child]     1h12m  cpu:0.0  reg    orchestrator
+        [ ] 8. 370337  [child]     1h12m  cpu:0.0  unreg  bash button.sh run-widget @.apps/piececraft-hq
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            936467  [pal]       2m     cpu:0.2  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            936469  [pal]       2m     cpu:0.1  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            943933  [child]     1m     cpu:0.6  unreg  pchq_board_projector /home/no/Desktop/github/w
+
+=== proc-mon.xhtpm pid 950977  2026-09-15 17:09:50 ===
+--- proc-mon.xhtpm  pid 950977  2026-09-15 17:09:50 ---
+--- page: main ---
+Session Monitor
+          scanned 17:09:49
+          3 good  /  2 bad
+      [ ] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+        [>] 4. 370297  [detached]  1h12m  cpu:0.0  reg    sh button.sh run
+        [ ] 5. 370337  [detached]  1h12m  cpu:0.0  unreg  bash button.sh run-widget @.apps/piececraft-hq
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            936467  [pal]       3m     cpu:0.2  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            936469  [pal]       3m     cpu:0.1  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            943933  [child]     2m     cpu:0.6  unreg  pchq_board_projector /home/no/Desktop/github/w
+
+=== proc-mon.xhtpm pid 950977  2026-09-15 17:09:52 ===
+--- proc-mon.xhtpm  pid 950977  2026-09-15 17:09:52 ---
+--- page: main ---
+Session Monitor
+          scanned 17:09:49
+          3 good  /  2 bad
+      [ ] 1.   refresh now  
+      [>] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+        [ ] 4. 370297  [detached]  1h12m  cpu:0.0  reg    sh button.sh run
+        [ ] 5. 370337  [detached]  1h12m  cpu:0.0  unreg  bash button.sh run-widget @.apps/piececraft-hq
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            936467  [pal]       3m     cpu:0.2  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            936469  [pal]       3m     cpu:0.1  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            943933  [child]     2m     cpu:0.6  unreg  pchq_board_projector /home/no/Desktop/github/w
+
+=== proc-mon.xhtpm pid 950977  2026-09-15 17:09:53 ===
+--- proc-mon.xhtpm  pid 950977  2026-09-15 17:09:53 ---
+--- page: main ---
+Session Monitor
+          scanned 17:09:49
+          3 good  /  2 bad
+      [ ] 1.   refresh now  
+      [>] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+        [ ] 4. 370297  [detached]  1h12m  cpu:0.0  reg    sh button.sh run
+        [ ] 5. 370337  [detached]  1h12m  cpu:0.0  unreg  bash button.sh run-widget @.apps/piececraft-hq
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            936467  [pal]       3m     cpu:0.2  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            936469  [pal]       3m     cpu:0.1  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            943933  [child]     2m     cpu:0.6  unreg  pchq_board_projector /home/no/Desktop/github/w
+
+=== proc-mon.xhtpm pid 950977  2026-09-15 17:09:54 ===
+--- proc-mon.xhtpm  pid 950977  2026-09-15 17:09:54 ---
+--- page: main ---
+Session Monitor
+          scanned 17:09:52
+          4 good  /  0 bad
+      [ ] 1.   refresh now  
+      [>] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            936467  [pal]       3m     cpu:0.2  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            936469  [pal]       3m     cpu:0.1  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            943933  [child]     2m     cpu:0.6  unreg  pchq_board_projector /home/no/Desktop/github/w
+            950977  [hq-window] 0m     cpu:13.2 unreg  khtpm_core_render /home/no/Desktop/github/work
+
+=== proc-mon.xhtpm pid 950977  2026-09-15 17:09:56 ===
+--- proc-mon.xhtpm  pid 950977  2026-09-15 17:09:56 ---
+--- page: main ---
+Session Monitor
+          scanned 17:09:52
+          4 good  /  0 bad
+      [ ] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            936467  [pal]       3m     cpu:0.2  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            936469  [pal]       3m     cpu:0.1  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            943933  [child]     2m     cpu:0.6  unreg  pchq_board_projector /home/no/Desktop/github/w
+            950977  [hq-window] 0m     cpu:13.2 unreg  khtpm_core_render /home/no/Desktop/github/work

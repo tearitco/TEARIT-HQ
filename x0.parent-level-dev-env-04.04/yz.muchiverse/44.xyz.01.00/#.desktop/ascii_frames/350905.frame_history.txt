@@ -1,0 +1,171 @@
+
+=== events-hq.xhtpm pid 350905  2026-09-13 07:43:03 ===
+--- events-hq.xhtpm  pid 350905  2026-09-13 07:43:03 ---
+--- page: main ---
+      [>] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+          Trigger
+      [ ] 4. + Add Command
+      [ ] 5. Play
+
+=== events-hq.xhtpm pid 350905  2026-09-13 07:43:03 ===
+--- events-hq.xhtpm  pid 350905  2026-09-13 07:43:03 ---
+--- page: main ---
+ava
+      [>] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+          Trigger
+          (unset)
+      [ ] 5. + Add Command
+      [ ] 6. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 350905  2026-09-13 07:43:06 ===
+--- events-hq.xhtpm  pid 350905  2026-09-13 07:43:06 ---
+--- page: main ---
+ava
+      [>] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+          Trigger
+          (unset)
+      [ ] 5. + Add Command
+      [ ] 6. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 350905  2026-09-13 07:43:14 ===
+--- events-hq.xhtpm  pid 350905  2026-09-13 07:43:14 ---
+--- page: main ---
+ava
+      [>] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+          Trigger
+          (unset)
+      [ ] 5. + Add Command
+      [ ] 6. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 350905  2026-09-13 07:43:18 ===
+--- events-hq.xhtpm  pid 350905  2026-09-13 07:43:18 ---
+--- page: main ---
+ava
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+          Trigger
+          (unset)
+      [>] 5. + Add Command
+      [ ] 6. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 350905  2026-09-13 07:43:19 ===
+--- events-hq.xhtpm  pid 350905  2026-09-13 07:43:19 ---
+--- page: main ---
+ava
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+          Trigger
+          (unset)
+      [>] 5. + Add Command
+      [ ] 6. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 350905  2026-09-13 07:43:19 ===
+--- events-hq.xhtpm  pid 350905  2026-09-13 07:43:19 ---
+--- page: main ---
+ava
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+          Trigger
+          (unset)
+      [>] 5. + Add Command
+      [ ] 6. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 9. < Cancel
+        [ ] 10. Change Gold
+        [ ] 11. Show Text
+        [ ] 12. Show Choices
+        [ ] 13. Take Gold
+        [ ] 14. Control Switch
+        [ ] 15. Control Variable
+        [ ] 16. Call Common Event
+        [ ] 17. If
+        [ ] 18. Else
+        [ ] 19. End
+        [ ] 20. Loop
+
+=== events-hq.xhtpm pid 350905  2026-09-13 07:43:20 ===
+--- events-hq.xhtpm  pid 350905  2026-09-13 07:43:20 ---
+--- page: main ---
+ava
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+          Trigger
+          (unset)
+      [>] 5. + Add Command
+      [ ] 6. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 9. < Cancel
+        [ ] 10. Change Gold
+        [ ] 11. Show Text
+        [ ] 12. Show Choices
+        [ ] 13. Take Gold
+        [ ] 14. Control Switch
+        [ ] 15. Control Variable
+        [ ] 16. Call Common Event
+        [ ] 17. If
+        [ ] 18. Else
+        [ ] 19. End
+        [ ] 20. Loop
+
+=== events-hq.xhtpm pid 350905  2026-09-13 07:43:22 ===
+--- events-hq.xhtpm  pid 350905  2026-09-13 07:43:22 ---
+--- page: main ---
+ava
+      [ ] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+          Trigger
+          (unset)
+      [ ] 5. + Add Command
+      [ ] 6. Play
+          Add Command / Play - click a command to edit its fields
+          Add Command  -  pick a type
+        [ ] 9. < Cancel
+        [ ] 10. Change Gold
+        [ ] 11. Show Text
+        [ ] 12. Show Choices
+        [ ] 13. Take Gold
+        [ ] 14. Control Switch
+        [ ] 15. Control Variable
+        [ ] 16. Call Common Event
+        [ ] 17. If
+        [ ] 18. Else
+        [ ] 19. End
+        [ ] 20. Loop

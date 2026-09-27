@@ -1,0 +1,33 @@
+
+=== menu.chtpm pid 63328  2026-09-14 13:09:37 ===
+--- menu.chtpm  pid 63328  2026-09-14 13:09:37 ---
+--- page: main ---
+    [>] 1. City
+    [ ] 2. Production
+    [ ] 3. Armed Forces
+    [ ] 4. View
+    [ ] 5. Happy
+    [ ] 6. Rename
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 63328  2026-09-14 13:11:12 ===
+--- menu.chtpm  pid 63328  2026-09-14 13:11:12 ---
+--- page: main ---
+    [ ] 1. City
+    [ ] 2. Production
+    [ ] 3. Armed Forces
+    [ ] 4. View
+    [ ] 5. Happy
+    [ ] 6. Rename
+    [>] 7. Cancel
+
+=== menu.chtpm pid 63328  2026-09-14 13:11:13 ===
+--- menu.chtpm  pid 63328  2026-09-14 13:11:13 ---
+--- page: main ---
+    [ ] 1. City
+    [ ] 2. Production
+    [ ] 3. Armed Forces
+    [ ] 4. View
+    [ ] 5. Happy
+    [ ] 6. Rename
+    [>] 7. Cancel

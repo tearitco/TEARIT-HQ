@@ -1,0 +1,22 @@
+
+=== menu_gameplay.chtpm pid 82337  2026-09-14 13:54:00 ===
+--- menu_gameplay.chtpm  pid 82337  2026-09-14 13:54:00 ---
+--- page: main ---
+    [>] 1. City
+    [ ] 2. Production
+    [ ] 3. Armed Forces
+    [ ] 4. View
+    [ ] 5. Happy
+    [ ] 6. Rename
+    [ ] 7. Cancel
+
+=== menu_gameplay.chtpm pid 82337  2026-09-14 13:54:01 ===
+--- menu_gameplay.chtpm  pid 82337  2026-09-14 13:54:01 ---
+--- page: main ---
+    [>] 1. City
+    [ ] 2. Production
+    [ ] 3. Armed Forces
+    [ ] 4. View
+    [ ] 5. Happy
+    [ ] 6. Rename
+    [ ] 7. Cancel

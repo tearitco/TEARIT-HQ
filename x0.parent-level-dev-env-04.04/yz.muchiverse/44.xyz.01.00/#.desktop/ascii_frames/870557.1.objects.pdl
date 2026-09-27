@@ -1,0 +1,11 @@
+OBJECT tag=text id=- class=dir-label x=0 y=30 w=220 h=60 nav=0 active=0 label=/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00
+OBJECT tag=item id=entry0 class=fe-entry x=0 y=104 w=212 h=30 nav=3 active=0 label=DIR .. 
+OBJECT tag=item id=entry1 class=fe-entry x=0 y=134 w=212 h=30 nav=4 active=0 label=DIR #.DOX 
+OBJECT tag=item id=entry2 class=fe-entry x=0 y=164 w=212 h=30 nav=5 active=0 label=DIR #.Z.HUMAN_LLM 
+OBJECT tag=item id=entry3 class=fe-entry x=0 y=194 w=212 h=60 nav=6 active=0 label=DIR #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+OBJECT tag=item id=entry4 class=fe-entry x=0 y=254 w=212 h=30 nav=7 active=0 label=DIR #.desktop 
+OBJECT tag=item id=entry5 class=fe-entry x=0 y=284 w=212 h=30 nav=8 active=0 label=DIR #.haiku+ 
+OBJECT tag=item id=entry6 class=fe-entry x=0 y=314 w=212 h=30 nav=9 active=0 label=DIR #.livedesk 
+OBJECT tag=item id=entry7 class=fe-entry x=0 y=344 w=212 h=30 nav=10 active=0 label=DIR #.notes 
+OBJECT tag=item id=entry8 class=fe-entry x=0 y=374 w=212 h=30 nav=11 active=0 label=DIR #.ref 
+OBJECT tag=text id=- class=quiet x=220 y=30 w=260 h=30 nav=0 active=0 label=Pick a file to load.

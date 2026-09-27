@@ -5,32 +5,32 @@ FINANCIAL BALANCE SHEET: CYBERLINK ONLINE (CYB)
 (Amounts in millions of U.S. Dollars, except per share amounts)
 
 ASSETS:
-  Free Cash and Equivalents:		753.67
-  Working Capital (A/R, Inven.):	470.39
-  Business Assets/Equipment:		1237.10
+  Free Cash and Equivalents:		556.11
+  Working Capital (A/R, Inven.):	67.72
+  Business Assets/Equipment:		1410.77
   Stock in Subsidiary Cos.:		0.00
   Options Long/Short: Net Value:	0.00
   ---------------------------------------------
-  Total Assets:				2461.16
+  Total Assets:				2034.60
   ---------------------------------------------
 
 LIABILITIES AND EQUITY:
   Long-Term Bonds Issued:		0.00
-  Bank Loan:				447.32
+  Bank Loan:				310.16
   Accrued Income Tax Payable:		0.00
   ---------------------------------------------
-  Total Liabilities:			447.32
+  Total Liabilities:			310.16
   ---------------------------------------------
-  Equity (Net Worth):			2013.84
+  Equity (Net Worth):			1724.44
   =============================================
 
 STOCK AND EARNINGS DATA:
 ------------------------
-  Net Worth Per Share:			31.33
-  Current Stock Price:			31.09
-  52-Week High/Low Stock Price:		51.59 / 24.25
-  Shares of Stock Outstanding:		64.28 million
-  Total Stock Capitalization:		1998.60 million
+  Net Worth Per Share:			31.24
+  Current Stock Price:			39.26
+  52-Week High/Low Stock Price:		52.64 / 20.98
+  Shares of Stock Outstanding:		55.21 million
+  Total Stock Capitalization:		2167.23 million
   2021 Earnings Per Share:		0.00 (Operating Earnings)
   2022 Earnings Per Share:		0.00 (Operating Earnings)
   2023 Earnings Per Share:		0.00 (Operating Earnings)
@@ -42,16 +42,16 @@ VARIOUS FINANCIAL RATIOS:
 -------------------------
   Price/Earnings Ratio:			NMF (No Meaningful Figure)
   Dividend Yield:			0.00%
-  Debt to Equity Ratio:			0.22 to 1
+  Debt to Equity Ratio:			0.18 to 1
   Return on Equity (2024):		NMF (No Meaningful Figure)
   ---------------------------------------------
 
 *** CREDIT INFO: ***
 -------------------
   Credit Rating:			AA
-  Unused Bank Line of Credit:		986.14 million
+  Unused Bank Line of Credit:		2000.54 million
   Borrowing Rate (Interest):		10.50% (Prime is: 10.00%)
-  Lending Bank:				MARTIAN TRUST BANK (MTB)
+  Lending Bank:				LUNAR FINANCE (LUN)
   ---------------------------------------------
 
 VARIABLE SETTINGS (Changeable by controlling player):
@@ -64,11 +64,11 @@ VARIABLE SETTINGS (Changeable by controlling player):
 MISCELLANEOUS INFO:
 -------------------
   Industry Group:			INTERNET SERV. / CONTENT
-  Incorporated in:			Red African Union
+  Incorporated in:			Sinder Rouge Monarchy
   Controlled (and actively managed) by:	public
   Public Owns:			%
-  Accrued R&D and/or Investment Tax Credits:	$103.90 million
-  Annual CEO Salary (approx.):		$0.59 million (Plus possible bonuses)
+  Accrued R&D and/or Investment Tax Credits:	$123.54 million
+  Annual CEO Salary (approx.):		$1.96 million (Plus possible bonuses)
   Today's (Game) Date:			January 1, 2025
   Next Earnings Report:			January 27, 2025
   ---------------------------------------------

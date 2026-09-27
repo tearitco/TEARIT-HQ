@@ -1,0 +1,22 @@
+
+=== menu.chtpm pid 207459  2026-09-18 12:07:48 ===
+--- menu.chtpm  pid 207459  2026-09-18 12:07:48 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 207459  2026-09-18 12:07:49 ===
+--- menu.chtpm  pid 207459  2026-09-18 12:07:49 ---
+--- page: main ---
+    [ ] 1. Dir
+    [>] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel

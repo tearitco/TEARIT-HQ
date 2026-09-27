@@ -1,0 +1,18 @@
+
+=== act.xhtpm pid 258756  2026-09-27 04:09:55 ===
+--- act.xhtpm  pid 258756  2026-09-27 04:09:55 ---
+--- page: main ---
+Act
+    [>] 1. Move
+    [ ] 2. Use
+    [ ] 3. Attack
+    [ ] 4. Back
+
+=== act.xhtpm pid 258756  2026-09-27 04:09:56 ===
+--- act.xhtpm  pid 258756  2026-09-27 04:09:56 ---
+--- page: main ---
+Act
+    [>] 1. Move
+    [ ] 2. Use
+    [ ] 3. Attack
+    [ ] 4. Back

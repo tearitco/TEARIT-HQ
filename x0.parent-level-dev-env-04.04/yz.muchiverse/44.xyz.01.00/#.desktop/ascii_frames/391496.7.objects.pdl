@@ -1,0 +1,43 @@
+OBJECT tag=text id=- class=block-title x=0 y=30 w=220 h=30 nav=0 active=0 label=D S R
+OBJECT tag=text id=- class=quiet x=0 y=60 w=220 h=30 nav=0 active=0 label=Desk Street Raider
+OBJECT tag=text id=- class=quiet x=0 y=90 w=220 h=30 nav=0 active=0 label=Turn: 0
+OBJECT tag=text id=- class=quiet x=0 y=120 w=220 h=30 nav=0 active=0 label=Active: corp_AFL
+OBJECT tag=text id=- class=block-title x=0 y=150 w=220 h=30 nav=0 active=0 label=Your Wallet:
+OBJECT tag=text id=- class=- x=0 y=180 w=220 h=30 nav=0 active=0 label=Cash: 1613
+OBJECT tag=text id=- class=block-title x=0 y=210 w=220 h=30 nav=0 active=0 label=Active Corp Balance Sheet:
+OBJECT tag=text id=- class=- x=0 y=240 w=220 h=30 nav=0 active=0 label=Cash (CD's): 5000
+OBJECT tag=text id=- class=- x=0 y=270 w=220 h=30 nav=0 active=0 label=Stock Price: 115.04
+OBJECT tag=text id=- class=- x=0 y=300 w=220 h=30 nav=0 active=0 label=Owned By: (independent)
+OBJECT tag=text id=- class=block-title x=0 y=330 w=220 h=30 nav=0 active=0 label=FINANCIAL NEWS
+OBJECT tag=text id=- class=quiet x=0 y=360 w=220 h=30 nav=0 active=0 label=CMZ: $0.10 (-99.38%)
+OBJECT tag=text id=- class=block-title x=0 y=390 w=220 h=30 nav=0 active=0 label=WORLD STATUS
+OBJECT tag=text id=- class=quiet x=0 y=420 w=220 h=30 nav=0 active=0 label=Population: 10000
+OBJECT tag=text id=- class=quiet x=0 y=450 w=220 h=30 nav=0 active=0 label=Temperature: 15C
+OBJECT tag=text id=- class=block-title x=220 y=30 w=400 h=30 nav=0 active=0 label=Actions
+OBJECT tag=item id=- class=- x=220 y=74 w=392 h=30 nav=3 active=0 label=Culture
+OBJECT tag=item id=- class=- x=220 y=104 w=392 h=30 nav=4 active=0 label=Entity Info
+OBJECT tag=item id=- class=- x=220 y=134 w=392 h=30 nav=5 active=0 label=Select Corp.
+OBJECT tag=item id=- class=- x=220 y=164 w=392 h=30 nav=6 active=0 label=History
+OBJECT tag=item id=- class=- x=220 y=194 w=392 h=30 nav=7 active=0 label=General
+OBJECT tag=item id=- class=- x=220 y=224 w=392 h=30 nav=8 active=0 label=Tools
+OBJECT tag=item id=- class=- x=220 y=254 w=392 h=30 nav=9 active=0 label=Private
+OBJECT tag=item id=- class=- x=220 y=284 w=392 h=30 nav=10 active=0 label=Other Trans
+OBJECT tag=item id=- class=- x=220 y=314 w=392 h=30 nav=11 active=0 label=End Turn
+OBJECT tag=item id=- class=- x=220 y=344 w=392 h=30 nav=12 active=0 label=Misc. Menu
+OBJECT tag=item id=- class=- x=220 y=374 w=392 h=30 nav=13 active=0 label=Chart
+OBJECT tag=item id=- class=- x=220 y=404 w=392 h=30 nav=14 active=0 label=Auto
+OBJECT tag=item id=- class=- x=220 y=434 w=392 h=30 nav=15 active=0 label=Watchlist
+OBJECT tag=item id=- class=- x=220 y=464 w=392 h=30 nav=16 active=0 label=TICKER
+OBJECT tag=item id=- class=- x=220 y=494 w=392 h=30 nav=17 active=0 label=Research Report
+OBJECT tag=item id=- class=- x=220 y=524 w=392 h=30 nav=18 active=0 label=List Portfolio
+OBJECT tag=item id=- class=- x=220 y=554 w=392 h=30 nav=19 active=0 label=Financial Profile
+OBJECT tag=item id=- class=- x=220 y=584 w=392 h=30 nav=20 active=0 label=List Options
+OBJECT tag=item id=- class=- x=220 y=614 w=392 h=30 nav=21 active=0 label=Earnings Report
+OBJECT tag=item id=- class=- x=220 y=644 w=392 h=30 nav=22 active=0 label=Shareholder List
+OBJECT tag=item id=- class=- x=220 y=674 w=392 h=30 nav=23 active=0 label=My Corporations
+OBJECT tag=item id=- class=- x=220 y=704 w=392 h=30 nav=24 active=0 label=New Game
+OBJECT tag=text id=- class=- x=220 y=734 w=392 h=30 nav=0 active=0 label=--- Navigation ---
+OBJECT tag=item id=- class=- x=220 y=764 w=392 h=30 nav=25 active=0 label=Buy/Sell
+OBJECT tag=item id=- class=- x=220 y=794 w=392 h=30 nav=26 active=0 label=List Futures
+OBJECT tag=item id=- class=- x=220 y=824 w=392 h=30 nav=27 active=0 label=Financing
+OBJECT tag=item id=- class=- x=220 y=854 w=392 h=30 nav=28 active=0 label=Management

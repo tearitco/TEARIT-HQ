@@ -1,0 +1,50 @@
+
+=== menu.chtpm pid 66567  2026-09-17 06:25:41 ===
+--- menu.chtpm  pid 66567  2026-09-17 06:25:41 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Chat
+    [ ] 3. Bookmarks
+    [ ] 4. Play
+    [ ] 5. Close
+    [ ] 6. Cancel
+
+=== menu.chtpm pid 66567  2026-09-17 06:25:42 ===
+--- menu.chtpm  pid 66567  2026-09-17 06:25:42 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Chat
+    [ ] 3. Bookmarks
+    [ ] 4. Play
+    [ ] 5. Close
+    [ ] 6. Cancel
+
+=== menu.chtpm pid 66567  2026-09-17 06:25:44 ===
+--- menu.chtpm  pid 66567  2026-09-17 06:25:44 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Chat
+    [ ] 3. Bookmarks
+    [ ] 4. Play
+    [ ] 5. Close
+    [ ] 6. Cancel
+
+=== menu.chtpm pid 66567  2026-09-17 06:25:44 ===
+--- menu.chtpm  pid 66567  2026-09-17 06:25:44 ---
+--- page: main ---
+    [ ] 1. Dir
+    [ ] 2. Chat
+    [ ] 3. Bookmarks
+    [ ] 4. Play
+    [ ] 5. Close
+    [>] 6. Cancel
+
+=== menu.chtpm pid 66567  2026-09-17 06:25:45 ===
+--- menu.chtpm  pid 66567  2026-09-17 06:25:45 ---
+--- page: main ---
+    [ ] 1. Dir
+    [ ] 2. Chat
+    [ ] 3. Bookmarks
+    [ ] 4. Play
+    [ ] 5. Close
+    [>] 6. Cancel

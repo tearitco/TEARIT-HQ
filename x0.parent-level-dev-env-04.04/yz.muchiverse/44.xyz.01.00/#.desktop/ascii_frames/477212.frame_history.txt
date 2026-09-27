@@ -1,0 +1,33 @@
+
+=== menu.chtpm pid 477212  2026-09-27 04:14:22 ===
+--- menu.chtpm  pid 477212  2026-09-27 04:14:22 ---
+--- page: main ---
+    [>] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Act
+    [ ] 7. Cli-io: 
+
+=== menu.chtpm pid 477212  2026-09-27 04:14:24 ===
+--- menu.chtpm  pid 477212  2026-09-27 04:14:24 ---
+--- page: main ---
+    [ ] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [>] 6. Act
+    [ ] 7. Cli-io: 
+
+=== menu.chtpm pid 477212  2026-09-27 04:14:25 ===
+--- menu.chtpm  pid 477212  2026-09-27 04:14:25 ---
+--- page: main ---
+    [ ] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [>] 6. Act
+    [ ] 7. Cli-io: 

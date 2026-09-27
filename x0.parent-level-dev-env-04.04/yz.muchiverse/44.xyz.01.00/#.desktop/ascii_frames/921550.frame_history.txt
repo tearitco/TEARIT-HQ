@@ -1,0 +1,108 @@
+
+=== proc-mon.xhtpm pid 921550  2026-09-14 06:26:41 ===
+--- proc-mon.xhtpm  pid 921550  2026-09-14 06:26:41 ---
+--- page: main ---
+Session Monitor
+          scanned 12:17:11
+          11 good  /  0 bad
+      [>] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            343230  [singleton] 4h58m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            345336  [singleton] 4h49m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            345826  [singleton] 4h47m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            350904  [singleton] 4h34m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            551735  [pal]       50m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585539  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585541  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585543  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585545  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585547  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585549  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+
+=== proc-mon.xhtpm pid 921550  2026-09-14 06:26:42 ===
+--- proc-mon.xhtpm  pid 921550  2026-09-14 06:26:42 ---
+--- page: main ---
+Session Monitor
+          scanned 12:17:11
+          11 good  /  0 bad
+      [>] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            343230  [singleton] 4h58m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            345336  [singleton] 4h49m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            345826  [singleton] 4h47m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            350904  [singleton] 4h34m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            551735  [pal]       50m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585539  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585541  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585543  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585545  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585547  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585549  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+
+=== proc-mon.xhtpm pid 921550  2026-09-14 06:26:51 ===
+--- proc-mon.xhtpm  pid 921550  2026-09-14 06:26:51 ---
+--- page: main ---
+Session Monitor
+          scanned 12:17:11
+          11 good  /  0 bad
+      [ ] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            343230  [singleton] 4h58m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            345336  [singleton] 4h49m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            345826  [singleton] 4h47m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            350904  [singleton] 4h34m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            551735  [pal]       50m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585539  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585541  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585543  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585545  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585547  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585549  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+
+=== proc-mon.xhtpm pid 921550  2026-09-14 06:26:52 ===
+--- proc-mon.xhtpm  pid 921550  2026-09-14 06:26:52 ---
+--- page: main ---
+Session Monitor
+          scanned 12:17:11
+          11 good  /  0 bad
+      [ ] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            343230  [singleton] 4h58m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            345336  [singleton] 4h49m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            345826  [singleton] 4h47m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            350904  [singleton] 4h34m  cpu:0.1  unreg  khtpm_events_hq_manager /home/no/Desktop/githu
+            551735  [pal]       50m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585539  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585541  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585543  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585545  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585547  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            585549  [pal]       24m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43

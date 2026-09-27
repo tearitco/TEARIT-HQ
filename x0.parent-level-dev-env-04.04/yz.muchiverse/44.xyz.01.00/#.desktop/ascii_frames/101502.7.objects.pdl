@@ -1,0 +1,7 @@
+OBJECT tag=text id=- class=dir-label x=0 y=30 w=220 h=90 nav=0 active=0 label=/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.DOX
+OBJECT tag=item id=entry0 class=fe-entry x=0 y=134 w=212 h=30 nav=3 active=0 label=⬅  ..  Back 
+OBJECT tag=item id=entry1 class=fe-entry x=0 y=164 w=212 h=60 nav=4 active=0 label=📄  00.lpns+map-BLUEPRINT.txt 17KB
+OBJECT tag=item id=entry2 class=fe-entry x=0 y=224 w=212 h=60 nav=5 active=0 label=📄  CHTPM_ARCHITECTURE_GUIDE.txt 12KB
+OBJECT tag=item id=entry3 class=fe-entry x=0 y=284 w=212 h=60 nav=6 active=0 label=📄  LEDGER_ADVANCED_STUDY.txt 29KB
+OBJECT tag=item id=entry4 class=fe-entry x=0 y=344 w=212 h=60 nav=7 active=0 label=📄  TPMOS_PATTERN_FINAL.md 3KB
+OBJECT tag=text id=- class=quiet x=220 y=30 w=260 h=30 nav=0 active=0 label=Pick a file to load.

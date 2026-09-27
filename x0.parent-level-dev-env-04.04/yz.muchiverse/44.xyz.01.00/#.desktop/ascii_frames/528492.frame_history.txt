@@ -1,0 +1,44 @@
+
+=== menu.chtpm pid 528492  2026-09-19 22:10:33 ===
+--- menu.chtpm  pid 528492  2026-09-19 22:10:33 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 528492  2026-09-19 22:10:34 ===
+--- menu.chtpm  pid 528492  2026-09-19 22:10:34 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 528492  2026-09-19 22:10:35 ===
+--- menu.chtpm  pid 528492  2026-09-19 22:10:35 ---
+--- page: main ---
+    [ ] 1. Dir
+    [>] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 528492  2026-09-19 22:10:36 ===
+--- menu.chtpm  pid 528492  2026-09-19 22:10:36 ---
+--- page: main ---
+    [ ] 1. Dir
+    [>] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel

@@ -1,1 +1,1 @@
-risk 25
+risk 8

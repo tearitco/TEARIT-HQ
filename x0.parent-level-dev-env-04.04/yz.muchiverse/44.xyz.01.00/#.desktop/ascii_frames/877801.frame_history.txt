@@ -1,0 +1,28 @@
+
+=== menu.chtpm pid 877801  2026-09-14 06:05:58 ===
+--- menu.chtpm  pid 877801  2026-09-14 06:05:58 ---
+--- page: main ---
+    [>] 1. Chat
+    [ ] 2. Events
+    [ ] 3. Events (mock)
+    [ ] 4. Events (ez)
+    [ ] 5. Play
+    [ ] 6. Stop
+    [ ] 7. Ledger
+    [ ] 8. Dir
+    [ ] 9. Close
+    [ ] 10. Cancel
+
+=== menu.chtpm pid 877801  2026-09-14 06:06:12 ===
+--- menu.chtpm  pid 877801  2026-09-14 06:06:12 ---
+--- page: main ---
+    [ ] 1. Chat
+    [ ] 2. Events
+    [ ] 3. Events (mock)
+    [ ] 4. Events (ez)
+    [>] 5. Play
+    [ ] 6. Stop
+    [ ] 7. Ledger
+    [ ] 8. Dir
+    [ ] 9. Close
+    [ ] 10. Cancel

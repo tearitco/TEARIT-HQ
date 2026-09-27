@@ -1,0 +1,48 @@
+
+=== menu.chtpm pid 156412  2026-09-20 08:57:40 ===
+--- menu.chtpm  pid 156412  2026-09-20 08:57:40 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Cli-io
+    [ ] 7. Close
+    [ ] 8. Cancel
+
+=== menu.chtpm pid 156412  2026-09-20 08:57:41 ===
+--- menu.chtpm  pid 156412  2026-09-20 08:57:41 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Cli-io
+    [ ] 7. Close
+    [ ] 8. Cancel
+
+=== menu.chtpm pid 156412  2026-09-20 08:57:44 ===
+--- menu.chtpm  pid 156412  2026-09-20 08:57:44 ---
+--- page: main ---
+    [ ] 1. Dir
+    [>] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Cli-io
+    [ ] 7. Close
+    [ ] 8. Cancel
+
+=== menu.chtpm pid 156412  2026-09-20 08:57:45 ===
+--- menu.chtpm  pid 156412  2026-09-20 08:57:45 ---
+--- page: main ---
+    [ ] 1. Dir
+    [>] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Cli-io
+    [ ] 7. Close
+    [ ] 8. Cancel

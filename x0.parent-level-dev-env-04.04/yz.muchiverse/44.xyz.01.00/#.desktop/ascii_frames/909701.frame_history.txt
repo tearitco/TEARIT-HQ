@@ -1,0 +1,4630 @@
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:36 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:36 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:37 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:37 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:38 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:38 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:38 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:38 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [>] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:39 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:39 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [>] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:40 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:40 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [>] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:40 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:40 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [>] 2. * File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:41 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:41 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [>] 2. * File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:42 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:42 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [>] 2. * File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:43 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:43 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [>] 2. * File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:44 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:44 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [>] 2. * File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:45 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:45 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [>] 2. * File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:46 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:46 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [>] 2. * File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:47 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:47 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [>] 2. * File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:48 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:48 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [>] 2. * File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:49 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:49 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [>] 2. * File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:50 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:50 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [>] 2. * File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:51 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:51 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [>] 2. * File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:52 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:52 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [>] 2. * File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:53 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:53 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [>] 2. * File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:54 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:54 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [>] 2. * File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:55 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:55 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. * File
+      [>] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:55 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:55 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:56 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:56 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:57 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:57 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:58 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:58 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:02:59 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:02:59 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:00 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:00 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:01 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:01 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:02 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:02 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:03 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:03 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:04 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:04 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:05 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:05 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:06 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:06 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:07 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:07 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:08 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:08 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:09 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:09 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:10 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:10 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:11 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:11 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:12 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:12 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:13 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:13 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:14 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:14 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:15 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:15 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:16 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:16 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:17 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:17 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:18 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:18 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:19 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:19 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:20 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:20 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:21 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:21 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:22 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:22 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:23 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:23 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:24 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:24 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:25 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:25 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:26 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:26 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:27 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:27 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:28 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:28 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:29 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:29 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:30 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:30 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:31 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:31 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:32 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:32 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:33 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:33 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:34 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:34 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:35 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:35 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:36 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:36 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:37 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:37 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:38 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:38 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:39 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:39 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:40 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:40 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:41 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:41 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:42 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:42 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:43 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:43 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:44 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:44 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:45 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:45 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:46 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:46 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:47 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:47 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:48 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:48 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:49 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:49 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:50 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:50 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:51 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:51 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:52 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:52 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:53 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:53 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:54 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:54 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:55 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:55 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:56 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:56 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:57 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:57 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:58 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:58 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:03:59 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:03:59 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:00 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:00 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:01 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:01 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:02 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:02 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:03 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:03 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:04 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:04 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:05 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:05 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:06 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:06 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:07 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:07 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:08 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:08 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:09 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:09 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:10 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:10 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:11 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:11 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:12 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:12 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:13 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:13 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:14 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:14 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:15 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:15 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:16 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:16 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:17 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:17 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:18 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:18 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:19 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:19 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:20 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:20 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:21 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:21 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:22 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:22 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:23 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:23 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:24 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:24 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:25 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:25 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:26 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:26 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:27 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:27 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:28 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:28 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:29 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:29 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:30 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:30 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:31 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:31 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:32 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:32 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:33 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:33 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:34 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:34 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:35 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:35 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:36 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:36 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:37 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:37 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:38 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:38 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:39 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:39 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:40 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:40 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:41 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:41 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:42 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:42 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:43 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:43 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:44 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:44 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:45 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:45 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:46 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:46 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:47 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:47 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:48 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:48 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:49 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:49 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:50 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:50 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:51 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:51 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:52 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:52 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:53 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:53 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:54 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:54 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:55 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:55 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:56 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:56 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:57 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:57 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:58 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:58 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:04:59 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:04:59 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:00 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:00 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:01 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:01 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:02 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:02 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:03 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:03 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:04 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:04 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:05 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:05 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:06 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:06 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:07 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:07 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:08 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:08 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:09 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:09 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:10 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:10 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:11 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:11 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:12 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:12 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:13 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:13 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:14 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:14 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:15 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:15 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:16 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:16 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:17 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:17 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:18 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:18 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:19 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:19 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:20 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:20 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:21 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:21 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:22 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:22 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:23 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:23 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:24 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:24 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:25 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:25 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:26 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:26 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:27 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:27 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:28 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:28 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:29 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:29 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:30 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:30 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:31 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:31 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:32 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:32 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:33 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:33 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:34 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:34 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:35 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:35 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:36 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:36 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:37 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:37 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:38 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:38 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:39 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:39 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:40 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:40 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:41 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:41 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:42 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:42 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:43 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:43 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:44 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:44 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:45 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:45 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:46 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:46 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:47 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:47 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:48 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:48 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:49 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:49 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:50 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:50 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:51 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:51 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:52 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:52 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:53 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:53 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:54 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:54 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:55 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:55 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:56 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:56 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:57 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:57 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:58 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:58 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:05:59 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:05:59 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:00 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:00 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:01 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:01 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:02 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:02 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:03 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:03 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:04 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:04 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:05 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:05 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:06 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:06 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:07 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:07 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:08 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:08 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:09 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:09 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:10 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:10 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:11 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:11 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:12 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:12 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:13 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:13 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:14 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:14 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:15 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:15 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:16 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:16 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:17 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:17 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:18 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:18 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:19 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:19 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:20 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:20 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:21 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:21 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:22 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:22 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [>] 13. mineclonia_sample
+      [ ] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:22 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:22 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+      [ ] 13. mineclonia_sample
+      [>] 14. - cancel -
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:23 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:23 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:24 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:24 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 909701  2026-09-15 17:06:25 ===
+--- pchq-board.xhtpm  pid 909701  2026-09-15 17:06:25 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. In: ON
+      [ ] 2. File
+      [ ] 3. * Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small

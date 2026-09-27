@@ -1,0 +1,27 @@
+
+=== menu.chtpm pid 228644  2026-09-13 04:47:13 ===
+--- menu.chtpm  pid 228644  2026-09-13 04:47:13 ---
+--- page: main ---
+    [>] 1. Ledger
+    [ ] 2. Brain log
+    [ ] 3. Dir
+    [ ] 4. Close
+    [ ] 5. Cancel
+
+=== menu.chtpm pid 228644  2026-09-13 04:47:17 ===
+--- menu.chtpm  pid 228644  2026-09-13 04:47:17 ---
+--- page: main ---
+    [ ] 1. Ledger
+    [ ] 2. Brain log
+    [ ] 3. Dir
+    [ ] 4. Close
+    [>] 5. Cancel
+
+=== menu.chtpm pid 228644  2026-09-13 04:47:18 ===
+--- menu.chtpm  pid 228644  2026-09-13 04:47:18 ---
+--- page: main ---
+    [ ] 1. Ledger
+    [ ] 2. Brain log
+    [ ] 3. Dir
+    [ ] 4. Close
+    [>] 5. Cancel

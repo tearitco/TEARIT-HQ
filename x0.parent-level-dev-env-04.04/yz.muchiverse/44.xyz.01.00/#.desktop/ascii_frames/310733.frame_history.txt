@@ -1,0 +1,36 @@
+
+=== act.xhtpm pid 310733  2026-09-26 23:49:19 ===
+--- act.xhtpm  pid 310733  2026-09-26 23:49:19 ---
+--- page: main ---
+Act
+    [>] 1. Move
+    [ ] 2. Use
+    [ ] 3. Attack
+    [ ] 4. Back
+
+=== act.xhtpm pid 310733  2026-09-26 23:49:20 ===
+--- act.xhtpm  pid 310733  2026-09-26 23:49:20 ---
+--- page: main ---
+Act
+    [>] 1. Move
+    [ ] 2. Use
+    [ ] 3. Attack
+    [ ] 4. Back
+
+=== act.xhtpm pid 310733  2026-09-26 23:49:20 ===
+--- act.xhtpm  pid 310733  2026-09-26 23:49:20 ---
+--- page: main ---
+Act
+    [ ] 1. Move
+    [>] 2. Use
+    [ ] 3. Attack
+    [ ] 4. Back
+
+=== act.xhtpm pid 310733  2026-09-26 23:49:20 ===
+--- act.xhtpm  pid 310733  2026-09-26 23:49:20 ---
+--- page: main ---
+Act
+    [>] 1. Move
+    [ ] 2. Use
+    [ ] 3. Attack
+    [ ] 4. Back

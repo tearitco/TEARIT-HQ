@@ -1,0 +1,4 @@
+OBJECT tag=item id=- class=- x=2 y=32 w=260 h=30 nav=1 active=0 label=Events (hq)
+OBJECT tag=item id=- class=- x=2 y=62 w=260 h=30 nav=2 active=0 label=Dir
+OBJECT tag=item id=- class=- x=2 y=92 w=260 h=30 nav=3 active=0 label=Close
+OBJECT tag=item id=- class=- x=2 y=122 w=260 h=30 nav=4 active=0 label=Cancel

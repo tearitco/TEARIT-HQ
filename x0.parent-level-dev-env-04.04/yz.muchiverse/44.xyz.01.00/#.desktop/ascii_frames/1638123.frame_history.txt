@@ -1,0 +1,540 @@
+
+=== text-edit-hq-pal.xhtpm pid 1638123  2026-09-11 01:02:14 ===
+--- text-edit-hq-pal.xhtpm  pid 1638123  2026-09-11 01:02:14 ---
+--- page: main ---
+text-edit-hq - 
+      [>] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+      [ ] 4. Save As
+          1
+          2
+          3
+          4
+          5
+          6
+          7
+          8
+          9
+          10
+          11
+          12
+          13
+          14
+          15
+          16
+          17
+          18
+          19
+          20
+      [ ] 5. text_area
+
+=== text-edit-hq-pal.xhtpm pid 1638123  2026-09-11 01:02:17 ===
+--- text-edit-hq-pal.xhtpm  pid 1638123  2026-09-11 01:02:17 ---
+--- page: main ---
+text-edit-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+      [ ] 4. Save As
+          1
+          2
+          3
+          4
+          5
+          6
+          7
+          8
+          9
+          10
+          11
+          12
+          13
+          14
+          15
+          16
+          17
+          18
+          19
+          20
+      [>] 5. text_area
+
+=== text-edit-hq-pal.xhtpm pid 1638123  2026-09-11 01:02:51 ===
+--- text-edit-hq-pal.xhtpm  pid 1638123  2026-09-11 01:02:51 ---
+--- page: main ---
+text-edit-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+      [ ] 4. Save As
+          1
+          2
+          3
+          4
+          5
+          6
+          7
+          8
+          9
+          10
+          11
+          12
+          13
+          14
+          15
+          16
+          17
+          18
+          19
+          20
+      [>] 5. text_area
+
+=== text-edit-hq-pal.xhtpm pid 1638123  2026-09-11 01:04:12 ===
+--- text-edit-hq-pal.xhtpm  pid 1638123  2026-09-11 01:04:12 ---
+--- page: main ---
+text-edit-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+      [ ] 4. Save As
+          1
+          2
+          3
+          4
+          5
+          6
+          7
+          8
+          9
+          10
+          11
+          12
+          13
+          14
+          15
+          16
+          17
+          18
+          19
+          20
+      [>] 5. text_area
+
+=== text-edit-hq-pal.xhtpm pid 1638123  2026-09-11 01:04:13 ===
+--- text-edit-hq-pal.xhtpm  pid 1638123  2026-09-11 01:04:13 ---
+--- page: main ---
+text-edit-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+      [ ] 4. Save As
+          1
+          2
+          3
+          4
+          5
+          6
+          7
+          8
+          9
+          10
+          11
+          12
+          13
+          14
+          15
+          16
+          17
+          18
+          19
+          20
+      [>] 5. text_area
+
+=== text-edit-hq-pal.xhtpm pid 1638123  2026-09-11 01:04:14 ===
+--- text-edit-hq-pal.xhtpm  pid 1638123  2026-09-11 01:04:14 ---
+--- page: main ---
+text-edit-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+      [ ] 4. Save As
+          1
+          2
+          3
+          4
+          5
+          6
+          7
+          8
+          9
+          10
+          11
+          12
+          13
+          14
+          15
+          16
+          17
+          18
+          19
+          20
+      [>] 5. text_area
+
+=== text-edit-hq-pal.xhtpm pid 1638123  2026-09-11 01:04:15 ===
+--- text-edit-hq-pal.xhtpm  pid 1638123  2026-09-11 01:04:15 ---
+--- page: main ---
+text-edit-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+      [ ] 4. Save As
+          1
+          2
+          3
+          4
+          5
+          6
+          7
+          8
+          9
+          10
+          11
+          12
+          13
+          14
+          15
+          16
+          17
+          18
+          19
+          20
+      [>] 5. text_area
+
+=== text-edit-hq-pal.xhtpm pid 1638123  2026-09-11 01:04:16 ===
+--- text-edit-hq-pal.xhtpm  pid 1638123  2026-09-11 01:04:16 ---
+--- page: main ---
+text-edit-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+      [ ] 4. Save As
+          1
+          2
+          3
+          4
+          5
+          6
+          7
+          8
+          9
+          10
+          11
+          12
+          13
+          14
+          15
+          16
+          17
+          18
+          19
+          20
+      [>] 5. text_area
+
+=== text-edit-hq-pal.xhtpm pid 1638123  2026-09-11 01:04:17 ===
+--- text-edit-hq-pal.xhtpm  pid 1638123  2026-09-11 01:04:17 ---
+--- page: main ---
+text-edit-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+      [ ] 4. Save As
+          1
+          2
+          3
+          4
+          5
+          6
+          7
+          8
+          9
+          10
+          11
+          12
+          13
+          14
+          15
+          16
+          17
+          18
+          19
+          20
+      [>] 5. text_area
+
+=== text-edit-hq-pal.xhtpm pid 1638123  2026-09-11 01:04:18 ===
+--- text-edit-hq-pal.xhtpm  pid 1638123  2026-09-11 01:04:18 ---
+--- page: main ---
+text-edit-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+      [ ] 4. Save As
+          1
+          2
+          3
+          4
+          5
+          6
+          7
+          8
+          9
+          10
+          11
+          12
+          13
+          14
+          15
+          16
+          17
+          18
+          19
+          20
+      [>] 5. text_area
+
+=== text-edit-hq-pal.xhtpm pid 1638123  2026-09-11 01:04:19 ===
+--- text-edit-hq-pal.xhtpm  pid 1638123  2026-09-11 01:04:19 ---
+--- page: main ---
+text-edit-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+      [ ] 4. Save As
+          1
+          2
+          3
+          4
+          5
+          6
+          7
+          8
+          9
+          10
+          11
+          12
+          13
+          14
+          15
+          16
+          17
+          18
+          19
+          20
+      [>] 5. text_area
+
+=== text-edit-hq-pal.xhtpm pid 1638123  2026-09-11 01:04:20 ===
+--- text-edit-hq-pal.xhtpm  pid 1638123  2026-09-11 01:04:20 ---
+--- page: main ---
+text-edit-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+      [ ] 4. Save As
+          1
+          2
+          3
+          4
+          5
+          6
+          7
+          8
+          9
+          10
+          11
+          12
+          13
+          14
+          15
+          16
+          17
+          18
+          19
+          20
+      [>] 5. text_area
+
+=== text-edit-hq-pal.xhtpm pid 1638123  2026-09-11 01:04:21 ===
+--- text-edit-hq-pal.xhtpm  pid 1638123  2026-09-11 01:04:21 ---
+--- page: main ---
+text-edit-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+      [ ] 4. Save As
+          1
+          2
+          3
+          4
+          5
+          6
+          7
+          8
+          9
+          10
+          11
+          12
+          13
+          14
+          15
+          16
+          17
+          18
+          19
+          20
+      [>] 5. text_area
+
+=== text-edit-hq-pal.xhtpm pid 1638123  2026-09-11 01:04:22 ===
+--- text-edit-hq-pal.xhtpm  pid 1638123  2026-09-11 01:04:22 ---
+--- page: main ---
+text-edit-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+      [ ] 4. Save As
+          1
+          2
+          3
+          4
+          5
+          6
+          7
+          8
+          9
+          10
+          11
+          12
+          13
+          14
+          15
+          16
+          17
+          18
+          19
+          20
+      [>] 5. text_area
+
+=== text-edit-hq-pal.xhtpm pid 1638123  2026-09-11 01:04:23 ===
+--- text-edit-hq-pal.xhtpm  pid 1638123  2026-09-11 01:04:23 ---
+--- page: main ---
+text-edit-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+      [ ] 4. Save As
+          1
+          2
+          3
+          4
+          5
+          6
+          7
+          8
+          9
+          10
+          11
+          12
+          13
+          14
+          15
+          16
+          17
+          18
+          19
+          20
+      [>] 5. text_area
+
+=== text-edit-hq-pal.xhtpm pid 1638123  2026-09-11 01:04:25 ===
+--- text-edit-hq-pal.xhtpm  pid 1638123  2026-09-11 01:04:25 ---
+--- page: main ---
+text-edit-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+      [ ] 4. Save As
+          1
+          2
+          3
+          4
+          5
+          6
+          7
+          8
+          9
+          10
+          11
+          12
+          13
+          14
+          15
+          16
+          17
+          18
+          19
+          20
+      [>] 5. text_area
+
+=== text-edit-hq-pal.xhtpm pid 1638123  2026-09-11 01:04:26 ===
+--- text-edit-hq-pal.xhtpm  pid 1638123  2026-09-11 01:04:26 ---
+--- page: main ---
+text-edit-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+      [ ] 4. Save As
+          1
+          2
+          3
+          4
+          5
+          6
+          7
+          8
+          9
+          10
+          11
+          12
+          13
+          14
+          15
+          16
+          17
+          18
+          19
+          20
+      [>] 5. text_area
+
+=== text-edit-hq-pal.xhtpm pid 1638123  2026-09-11 01:04:27 ===
+--- text-edit-hq-pal.xhtpm  pid 1638123  2026-09-11 01:04:27 ---
+--- page: main ---
+text-edit-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+      [ ] 4. Save As
+          1
+          2
+          3
+          4
+          5
+          6
+          7
+          8
+          9
+          10
+          11
+          12
+          13
+          14
+          15
+          16
+          17
+          18
+          19
+          20
+      [>] 5. text_area

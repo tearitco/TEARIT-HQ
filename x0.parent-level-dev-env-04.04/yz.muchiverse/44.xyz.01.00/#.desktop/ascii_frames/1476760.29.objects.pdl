@@ -1,0 +1,24 @@
+OBJECT tag=item id=sw0 class=swatch x=14 y=108 w=34 h=34 nav=1 active=0 label=-
+OBJECT tag=item id=sw1 class=swatch x=56 y=108 w=34 h=34 nav=2 active=0 label=-
+OBJECT tag=item id=sw2 class=swatch x=98 y=108 w=34 h=34 nav=3 active=0 label=-
+OBJECT tag=item id=sw3 class=swatch x=140 y=108 w=34 h=34 nav=4 active=0 label=-
+OBJECT tag=item id=sw4 class=swatch x=182 y=108 w=34 h=34 nav=5 active=0 label=-
+OBJECT tag=item id=sw5 class=swatch x=224 y=108 w=34 h=34 nav=6 active=0 label=-
+OBJECT tag=item id=sw6 class=swatch x=266 y=108 w=34 h=34 nav=7 active=0 label=-
+OBJECT tag=item id=sw7 class=swatch x=308 y=108 w=34 h=34 nav=8 active=0 label=-
+OBJECT tag=item id=sw8 class=swatch x=350 y=108 w=34 h=34 nav=9 active=0 label=-
+OBJECT tag=item id=sw9 class=swatch x=392 y=108 w=34 h=34 nav=10 active=0 label=-
+OBJECT tag=item id=sw10 class=swatch x=434 y=108 w=34 h=34 nav=11 active=0 label=-
+OBJECT tag=item id=sw11 class=swatch x=476 y=108 w=34 h=34 nav=12 active=0 label=-
+OBJECT tag=item id=sw12 class=swatch x=518 y=108 w=34 h=34 nav=13 active=0 label=-
+OBJECT tag=item id=sw13 class=swatch x=560 y=108 w=34 h=34 nav=14 active=0 label=-
+OBJECT tag=item id=sw14 class=swatch x=602 y=108 w=34 h=34 nav=15 active=0 label=-
+OBJECT tag=item id=opacity-minus class=opacity-btn x=14 y=44 w=115 h=36 nav=16 active=0 label=Opacity -
+OBJECT tag=item id=opacity-plus class=opacity-btn x=135 y=44 w=118 h=36 nav=17 active=0 label=Opacity +
+OBJECT tag=item id=ui-scale-minus class=opacity-btn x=259 y=44 w=89 h=36 nav=18 active=0 label=Size -
+OBJECT tag=item id=ui-scale-plus class=opacity-btn x=354 y=44 w=92 h=36 nav=19 active=0 label=Size +
+OBJECT tag=item id=font-family-prev class=opacity-btn x=452 y=44 w=86 h=36 nav=20 active=0 label=Font ◀
+OBJECT tag=item id=font-family-name class=opacity-btn,no-nav x=544 y=44 w=189 h=36 nav=21 active=0 label=Times New Roman
+OBJECT tag=item id=font-family-next class=opacity-btn x=739 y=44 w=86 h=36 nav=22 active=0 label=Font ▶
+OBJECT tag=item id=click-twostep-toggle class=opacity-btn x=831 y=44 w=139 h=36 nav=23 active=0 label=Click: 2-step
+OBJECT tag=item id=close class=close-btn x=1111 y=4 w=63 h=32 nav=24 active=0 label=x

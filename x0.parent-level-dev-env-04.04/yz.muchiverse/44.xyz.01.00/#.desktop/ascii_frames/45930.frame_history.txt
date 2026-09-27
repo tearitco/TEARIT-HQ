@@ -1,0 +1,6363 @@
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:02:54 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:02:54 ---
+--- page: main ---
+Desk Street Raider
+      [>] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:02 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:02 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [>] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:04 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:04 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [>] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:07 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:07 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:08 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:08 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Game Options
+        [ ] 8. Settings
+        [ ] 9. Help
+        [ ] 10. Select Player
+        [ ] 11. Culture
+        [ ] 12. Entity Info
+        [ ] 13. Select Corp.
+        [ ] 14. History
+        [ ] 15. General
+        [ ] 16. Tools
+        [ ] 17. Private
+        [ ] 18. Other Trans
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:08 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:08 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Settings
+        [ ] 8. Help
+        [ ] 9. Select Player
+        [ ] 10. Culture
+        [ ] 11. Entity Info
+        [ ] 12. Select Corp.
+        [ ] 13. History
+        [ ] 14. General
+        [ ] 15. Tools
+        [ ] 16. Private
+        [ ] 17. Other Trans
+        [ ] 18. End Turn
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:08 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:08 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Help
+        [ ] 8. Select Player
+        [ ] 9. Culture
+        [ ] 10. Entity Info
+        [ ] 11. Select Corp.
+        [ ] 12. History
+        [ ] 13. General
+        [ ] 14. Tools
+        [ ] 15. Private
+        [ ] 16. Other Trans
+        [ ] 17. End Turn
+        [ ] 18. Misc. Menu
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:08 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:08 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Select Player
+        [ ] 8. Culture
+        [ ] 9. Entity Info
+        [ ] 10. Select Corp.
+        [ ] 11. History
+        [ ] 12. General
+        [ ] 13. Tools
+        [ ] 14. Private
+        [ ] 15. Other Trans
+        [ ] 16. End Turn
+        [ ] 17. Misc. Menu
+        [ ] 18. Chart
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:08 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:08 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Culture
+        [ ] 8. Entity Info
+        [ ] 9. Select Corp.
+        [ ] 10. History
+        [ ] 11. General
+        [ ] 12. Tools
+        [ ] 13. Private
+        [ ] 14. Other Trans
+        [ ] 15. End Turn
+        [ ] 16. Misc. Menu
+        [ ] 17. Chart
+        [ ] 18. Auto
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:09 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:09 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Entity Info
+        [ ] 8. Select Corp.
+        [ ] 9. History
+        [ ] 10. General
+        [ ] 11. Tools
+        [ ] 12. Private
+        [ ] 13. Other Trans
+        [ ] 14. End Turn
+        [ ] 15. Misc. Menu
+        [ ] 16. Chart
+        [ ] 17. Auto
+        [ ] 18. Watchlist
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:09 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:09 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Select Corp.
+        [ ] 8. History
+        [ ] 9. General
+        [ ] 10. Tools
+        [ ] 11. Private
+        [ ] 12. Other Trans
+        [ ] 13. End Turn
+        [ ] 14. Misc. Menu
+        [ ] 15. Chart
+        [ ] 16. Auto
+        [ ] 17. Watchlist
+        [ ] 18. TICKER
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:09 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:09 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. History
+        [ ] 8. General
+        [ ] 9. Tools
+        [ ] 10. Private
+        [ ] 11. Other Trans
+        [ ] 12. End Turn
+        [ ] 13. Misc. Menu
+        [ ] 14. Chart
+        [ ] 15. Auto
+        [ ] 16. Watchlist
+        [ ] 17. TICKER
+        [ ] 18. Research Report
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:09 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:09 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. General
+        [ ] 8. Tools
+        [ ] 9. Private
+        [ ] 10. Other Trans
+        [ ] 11. End Turn
+        [ ] 12. Misc. Menu
+        [ ] 13. Chart
+        [ ] 14. Auto
+        [ ] 15. Watchlist
+        [ ] 16. TICKER
+        [ ] 17. Research Report
+        [ ] 18. List Portfolio
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:09 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:09 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Tools
+        [ ] 8. Private
+        [ ] 9. Other Trans
+        [ ] 10. End Turn
+        [ ] 11. Misc. Menu
+        [ ] 12. Chart
+        [ ] 13. Auto
+        [ ] 14. Watchlist
+        [ ] 15. TICKER
+        [ ] 16. Research Report
+        [ ] 17. List Portfolio
+        [ ] 18. Financial Profile
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:09 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:09 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Private
+        [ ] 8. Other Trans
+        [ ] 9. End Turn
+        [ ] 10. Misc. Menu
+        [ ] 11. Chart
+        [ ] 12. Auto
+        [ ] 13. Watchlist
+        [ ] 14. TICKER
+        [ ] 15. Research Report
+        [ ] 16. List Portfolio
+        [ ] 17. Financial Profile
+        [ ] 18. List Options
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:09 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:09 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Other Trans
+        [ ] 8. End Turn
+        [ ] 9. Misc. Menu
+        [ ] 10. Chart
+        [ ] 11. Auto
+        [ ] 12. Watchlist
+        [ ] 13. TICKER
+        [ ] 14. Research Report
+        [ ] 15. List Portfolio
+        [ ] 16. Financial Profile
+        [ ] 17. List Options
+        [ ] 18. Earnings Report
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:10 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:10 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Other Trans
+        [ ] 8. End Turn
+        [ ] 9. Misc. Menu
+        [ ] 10. Chart
+        [ ] 11. Auto
+        [ ] 12. Watchlist
+        [ ] 13. TICKER
+        [ ] 14. Research Report
+        [ ] 15. List Portfolio
+        [ ] 16. Financial Profile
+        [ ] 17. List Options
+        [ ] 18. Earnings Report
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:10 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:10 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. End Turn
+        [ ] 8. Misc. Menu
+        [ ] 9. Chart
+        [ ] 10. Auto
+        [ ] 11. Watchlist
+        [ ] 12. TICKER
+        [ ] 13. Research Report
+        [ ] 14. List Portfolio
+        [ ] 15. Financial Profile
+        [ ] 16. List Options
+        [ ] 17. Earnings Report
+        [ ] 18. Shareholder List
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:10 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:10 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Misc. Menu
+        [ ] 8. Chart
+        [ ] 9. Auto
+        [ ] 10. Watchlist
+        [ ] 11. TICKER
+        [ ] 12. Research Report
+        [ ] 13. List Portfolio
+        [ ] 14. Financial Profile
+        [ ] 15. List Options
+        [ ] 16. Earnings Report
+        [ ] 17. Shareholder List
+        [ ] 18. My Corporations
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:10 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:10 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Chart
+        [ ] 8. Auto
+        [ ] 9. Watchlist
+        [ ] 10. TICKER
+        [ ] 11. Research Report
+        [ ] 12. List Portfolio
+        [ ] 13. Financial Profile
+        [ ] 14. List Options
+        [ ] 15. Earnings Report
+        [ ] 16. Shareholder List
+        [ ] 17. My Corporations
+        [ ] 18. New Game
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:12 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:12 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Chart
+        [ ] 8. Auto
+        [ ] 9. Watchlist
+        [ ] 10. TICKER
+        [ ] 11. Research Report
+        [ ] 12. List Portfolio
+        [>] 13. Financial Profile
+        [ ] 14. List Options
+        [ ] 15. Earnings Report
+        [ ] 16. Shareholder List
+        [ ] 17. My Corporations
+        [ ] 18. New Game
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:14 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:14 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Misc. Menu
+        [ ] 8. Chart
+        [ ] 9. Auto
+        [ ] 10. Watchlist
+        [ ] 11. TICKER
+        [ ] 12. Research Report
+        [>] 13. List Portfolio
+        [ ] 14. Financial Profile
+        [ ] 15. List Options
+        [ ] 16. Earnings Report
+        [ ] 17. Shareholder List
+        [ ] 18. My Corporations
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:14 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:14 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. End Turn
+        [ ] 8. Misc. Menu
+        [ ] 9. Chart
+        [ ] 10. Auto
+        [ ] 11. Watchlist
+        [ ] 12. TICKER
+        [>] 13. Research Report
+        [ ] 14. List Portfolio
+        [ ] 15. Financial Profile
+        [ ] 16. List Options
+        [ ] 17. Earnings Report
+        [ ] 18. Shareholder List
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:14 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:14 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Other Trans
+        [ ] 8. End Turn
+        [ ] 9. Misc. Menu
+        [ ] 10. Chart
+        [ ] 11. Auto
+        [ ] 12. Watchlist
+        [>] 13. TICKER
+        [ ] 14. Research Report
+        [ ] 15. List Portfolio
+        [ ] 16. Financial Profile
+        [ ] 17. List Options
+        [ ] 18. Earnings Report
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:14 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:14 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Private
+        [ ] 8. Other Trans
+        [ ] 9. End Turn
+        [ ] 10. Misc. Menu
+        [ ] 11. Chart
+        [ ] 12. Auto
+        [>] 13. Watchlist
+        [ ] 14. TICKER
+        [ ] 15. Research Report
+        [ ] 16. List Portfolio
+        [ ] 17. Financial Profile
+        [ ] 18. List Options
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:14 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:14 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Tools
+        [ ] 8. Private
+        [ ] 9. Other Trans
+        [ ] 10. End Turn
+        [ ] 11. Misc. Menu
+        [ ] 12. Chart
+        [>] 13. Auto
+        [ ] 14. Watchlist
+        [ ] 15. TICKER
+        [ ] 16. Research Report
+        [ ] 17. List Portfolio
+        [ ] 18. Financial Profile
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:14 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:14 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. General
+        [ ] 8. Tools
+        [ ] 9. Private
+        [ ] 10. Other Trans
+        [ ] 11. End Turn
+        [ ] 12. Misc. Menu
+        [>] 13. Chart
+        [ ] 14. Auto
+        [ ] 15. Watchlist
+        [ ] 16. TICKER
+        [ ] 17. Research Report
+        [ ] 18. List Portfolio
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:14 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:14 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. History
+        [ ] 8. General
+        [ ] 9. Tools
+        [ ] 10. Private
+        [ ] 11. Other Trans
+        [ ] 12. End Turn
+        [>] 13. Misc. Menu
+        [ ] 14. Chart
+        [ ] 15. Auto
+        [ ] 16. Watchlist
+        [ ] 17. TICKER
+        [ ] 18. Research Report
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:14 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:14 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Select Corp.
+        [ ] 8. History
+        [ ] 9. General
+        [ ] 10. Tools
+        [ ] 11. Private
+        [ ] 12. Other Trans
+        [>] 13. End Turn
+        [ ] 14. Misc. Menu
+        [ ] 15. Chart
+        [ ] 16. Auto
+        [ ] 17. Watchlist
+        [ ] 18. TICKER
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:14 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:14 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Entity Info
+        [ ] 8. Select Corp.
+        [ ] 9. History
+        [ ] 10. General
+        [ ] 11. Tools
+        [ ] 12. Private
+        [>] 13. Other Trans
+        [ ] 14. End Turn
+        [ ] 15. Misc. Menu
+        [ ] 16. Chart
+        [ ] 17. Auto
+        [ ] 18. Watchlist
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:14 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:14 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Culture
+        [ ] 8. Entity Info
+        [ ] 9. Select Corp.
+        [ ] 10. History
+        [ ] 11. General
+        [ ] 12. Tools
+        [>] 13. Private
+        [ ] 14. Other Trans
+        [ ] 15. End Turn
+        [ ] 16. Misc. Menu
+        [ ] 17. Chart
+        [ ] 18. Auto
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:14 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:14 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Select Player
+        [ ] 8. Culture
+        [ ] 9. Entity Info
+        [ ] 10. Select Corp.
+        [ ] 11. History
+        [ ] 12. General
+        [>] 13. Tools
+        [ ] 14. Private
+        [ ] 15. Other Trans
+        [ ] 16. End Turn
+        [ ] 17. Misc. Menu
+        [ ] 18. Chart
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:14 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:14 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Help
+        [ ] 8. Select Player
+        [ ] 9. Culture
+        [ ] 10. Entity Info
+        [ ] 11. Select Corp.
+        [ ] 12. History
+        [>] 13. General
+        [ ] 14. Tools
+        [ ] 15. Private
+        [ ] 16. Other Trans
+        [ ] 17. End Turn
+        [ ] 18. Misc. Menu
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:15 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:15 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Settings
+        [ ] 8. Help
+        [ ] 9. Select Player
+        [ ] 10. Culture
+        [ ] 11. Entity Info
+        [ ] 12. Select Corp.
+        [>] 13. History
+        [ ] 14. General
+        [ ] 15. Tools
+        [ ] 16. Private
+        [ ] 17. Other Trans
+        [ ] 18. End Turn
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:15 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:15 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Game Options
+        [ ] 8. Settings
+        [ ] 9. Help
+        [ ] 10. Select Player
+        [ ] 11. Culture
+        [ ] 12. Entity Info
+        [>] 13. Select Corp.
+        [ ] 14. History
+        [ ] 15. General
+        [ ] 16. Tools
+        [ ] 17. Private
+        [ ] 18. Other Trans
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:15 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:15 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [>] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:16 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:16 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [>] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:17 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:17 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [>] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:17 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:17 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Game Options
+        [ ] 8. Settings
+        [ ] 9. Help
+        [ ] 10. Select Player
+        [ ] 11. Culture
+        [ ] 12. Entity Info
+        [>] 13. Select Corp.
+        [ ] 14. History
+        [ ] 15. General
+        [ ] 16. Tools
+        [ ] 17. Private
+        [ ] 18. Other Trans
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:17 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:17 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Settings
+        [ ] 8. Help
+        [ ] 9. Select Player
+        [ ] 10. Culture
+        [ ] 11. Entity Info
+        [ ] 12. Select Corp.
+        [>] 13. History
+        [ ] 14. General
+        [ ] 15. Tools
+        [ ] 16. Private
+        [ ] 17. Other Trans
+        [ ] 18. End Turn
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:17 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:17 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Help
+        [ ] 8. Select Player
+        [ ] 9. Culture
+        [ ] 10. Entity Info
+        [ ] 11. Select Corp.
+        [ ] 12. History
+        [>] 13. General
+        [ ] 14. Tools
+        [ ] 15. Private
+        [ ] 16. Other Trans
+        [ ] 17. End Turn
+        [ ] 18. Misc. Menu
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:17 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:17 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Select Player
+        [ ] 8. Culture
+        [ ] 9. Entity Info
+        [ ] 10. Select Corp.
+        [ ] 11. History
+        [ ] 12. General
+        [>] 13. Tools
+        [ ] 14. Private
+        [ ] 15. Other Trans
+        [ ] 16. End Turn
+        [ ] 17. Misc. Menu
+        [ ] 18. Chart
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:17 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:17 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Culture
+        [ ] 8. Entity Info
+        [ ] 9. Select Corp.
+        [ ] 10. History
+        [ ] 11. General
+        [ ] 12. Tools
+        [>] 13. Private
+        [ ] 14. Other Trans
+        [ ] 15. End Turn
+        [ ] 16. Misc. Menu
+        [ ] 17. Chart
+        [ ] 18. Auto
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:17 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:17 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Entity Info
+        [ ] 8. Select Corp.
+        [ ] 9. History
+        [ ] 10. General
+        [ ] 11. Tools
+        [ ] 12. Private
+        [>] 13. Other Trans
+        [ ] 14. End Turn
+        [ ] 15. Misc. Menu
+        [ ] 16. Chart
+        [ ] 17. Auto
+        [ ] 18. Watchlist
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:17 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:17 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Select Corp.
+        [ ] 8. History
+        [ ] 9. General
+        [ ] 10. Tools
+        [ ] 11. Private
+        [ ] 12. Other Trans
+        [>] 13. End Turn
+        [ ] 14. Misc. Menu
+        [ ] 15. Chart
+        [ ] 16. Auto
+        [ ] 17. Watchlist
+        [ ] 18. TICKER
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:17 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:17 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. History
+        [ ] 8. General
+        [ ] 9. Tools
+        [ ] 10. Private
+        [ ] 11. Other Trans
+        [ ] 12. End Turn
+        [>] 13. Misc. Menu
+        [ ] 14. Chart
+        [ ] 15. Auto
+        [ ] 16. Watchlist
+        [ ] 17. TICKER
+        [ ] 18. Research Report
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:17 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:17 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. General
+        [ ] 8. Tools
+        [ ] 9. Private
+        [ ] 10. Other Trans
+        [ ] 11. End Turn
+        [ ] 12. Misc. Menu
+        [>] 13. Chart
+        [ ] 14. Auto
+        [ ] 15. Watchlist
+        [ ] 16. TICKER
+        [ ] 17. Research Report
+        [ ] 18. List Portfolio
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:17 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:17 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Tools
+        [ ] 8. Private
+        [ ] 9. Other Trans
+        [ ] 10. End Turn
+        [ ] 11. Misc. Menu
+        [ ] 12. Chart
+        [>] 13. Auto
+        [ ] 14. Watchlist
+        [ ] 15. TICKER
+        [ ] 16. Research Report
+        [ ] 17. List Portfolio
+        [ ] 18. Financial Profile
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:17 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:17 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Private
+        [ ] 8. Other Trans
+        [ ] 9. End Turn
+        [ ] 10. Misc. Menu
+        [ ] 11. Chart
+        [ ] 12. Auto
+        [>] 13. Watchlist
+        [ ] 14. TICKER
+        [ ] 15. Research Report
+        [ ] 16. List Portfolio
+        [ ] 17. Financial Profile
+        [ ] 18. List Options
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:17 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:17 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Other Trans
+        [ ] 8. End Turn
+        [ ] 9. Misc. Menu
+        [ ] 10. Chart
+        [ ] 11. Auto
+        [ ] 12. Watchlist
+        [>] 13. TICKER
+        [ ] 14. Research Report
+        [ ] 15. List Portfolio
+        [ ] 16. Financial Profile
+        [ ] 17. List Options
+        [ ] 18. Earnings Report
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:17 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:17 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. End Turn
+        [ ] 8. Misc. Menu
+        [ ] 9. Chart
+        [ ] 10. Auto
+        [ ] 11. Watchlist
+        [ ] 12. TICKER
+        [>] 13. Research Report
+        [ ] 14. List Portfolio
+        [ ] 15. Financial Profile
+        [ ] 16. List Options
+        [ ] 17. Earnings Report
+        [ ] 18. Shareholder List
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:17 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:17 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Misc. Menu
+        [ ] 8. Chart
+        [ ] 9. Auto
+        [ ] 10. Watchlist
+        [ ] 11. TICKER
+        [ ] 12. Research Report
+        [>] 13. List Portfolio
+        [ ] 14. Financial Profile
+        [ ] 15. List Options
+        [ ] 16. Earnings Report
+        [ ] 17. Shareholder List
+        [ ] 18. My Corporations
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:17 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:17 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Chart
+        [ ] 8. Auto
+        [ ] 9. Watchlist
+        [ ] 10. TICKER
+        [ ] 11. Research Report
+        [ ] 12. List Portfolio
+        [>] 13. Financial Profile
+        [ ] 14. List Options
+        [ ] 15. Earnings Report
+        [ ] 16. Shareholder List
+        [ ] 17. My Corporations
+        [ ] 18. New Game
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:17 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:17 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Auto
+        [ ] 8. Watchlist
+        [ ] 9. TICKER
+        [ ] 10. Research Report
+        [ ] 11. List Portfolio
+        [ ] 12. Financial Profile
+        [>] 13. List Options
+        [ ] 14. Earnings Report
+        [ ] 15. Shareholder List
+        [ ] 16. My Corporations
+        [ ] 17. New Game
+            --- Navigation ---
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:18 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:18 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Watchlist
+        [ ] 8. TICKER
+        [ ] 9. Research Report
+        [ ] 10. List Portfolio
+        [ ] 11. Financial Profile
+        [ ] 12. List Options
+        [>] 13. Earnings Report
+        [ ] 14. Shareholder List
+        [ ] 15. My Corporations
+        [ ] 16. New Game
+            --- Navigation ---
+        [ ] 17. Buy/Sell
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:18 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:18 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. TICKER
+        [ ] 8. Research Report
+        [ ] 9. List Portfolio
+        [ ] 10. Financial Profile
+        [ ] 11. List Options
+        [ ] 12. Earnings Report
+        [>] 13. Shareholder List
+        [ ] 14. My Corporations
+        [ ] 15. New Game
+            --- Navigation ---
+        [ ] 16. Buy/Sell
+        [ ] 17. List Futures
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:18 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:18 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Research Report
+        [ ] 8. List Portfolio
+        [ ] 9. Financial Profile
+        [ ] 10. List Options
+        [ ] 11. Earnings Report
+        [ ] 12. Shareholder List
+        [>] 13. My Corporations
+        [ ] 14. New Game
+            --- Navigation ---
+        [ ] 15. Buy/Sell
+        [ ] 16. List Futures
+        [ ] 17. Financing
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:18 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:18 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. List Portfolio
+        [ ] 8. Financial Profile
+        [ ] 9. List Options
+        [ ] 10. Earnings Report
+        [ ] 11. Shareholder List
+        [ ] 12. My Corporations
+        [>] 13. New Game
+            --- Navigation ---
+        [ ] 14. Buy/Sell
+        [ ] 15. List Futures
+        [ ] 16. Financing
+        [ ] 17. Management
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:18 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:18 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Financial Profile
+        [ ] 8. List Options
+        [ ] 9. Earnings Report
+        [ ] 10. Shareholder List
+        [ ] 11. My Corporations
+        [ ] 12. New Game
+            --- Navigation ---
+        [>] 13. Buy/Sell
+        [ ] 14. List Futures
+        [ ] 15. Financing
+        [ ] 16. Management
+        [ ] 17. DB Search
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Financial Profile
+        [ ] 8. List Options
+        [ ] 9. Earnings Report
+        [ ] 10. Shareholder List
+        [ ] 11. My Corporations
+        [ ] 12. New Game
+            --- Navigation ---
+        [>] 13. Buy/Sell
+        [ ] 14. List Futures
+        [ ] 15. Financing
+        [ ] 16. Management
+        [ ] 17. DB Search
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. List Portfolio
+        [ ] 8. Financial Profile
+        [ ] 9. List Options
+        [ ] 10. Earnings Report
+        [ ] 11. Shareholder List
+        [ ] 12. My Corporations
+        [>] 13. New Game
+            --- Navigation ---
+        [ ] 14. Buy/Sell
+        [ ] 15. List Futures
+        [ ] 16. Financing
+        [ ] 17. Management
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Research Report
+        [ ] 8. List Portfolio
+        [ ] 9. Financial Profile
+        [ ] 10. List Options
+        [ ] 11. Earnings Report
+        [ ] 12. Shareholder List
+        [>] 13. My Corporations
+        [ ] 14. New Game
+            --- Navigation ---
+        [ ] 15. Buy/Sell
+        [ ] 16. List Futures
+        [ ] 17. Financing
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. TICKER
+        [ ] 8. Research Report
+        [ ] 9. List Portfolio
+        [ ] 10. Financial Profile
+        [ ] 11. List Options
+        [ ] 12. Earnings Report
+        [>] 13. Shareholder List
+        [ ] 14. My Corporations
+        [ ] 15. New Game
+            --- Navigation ---
+        [ ] 16. Buy/Sell
+        [ ] 17. List Futures
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Watchlist
+        [ ] 8. TICKER
+        [ ] 9. Research Report
+        [ ] 10. List Portfolio
+        [ ] 11. Financial Profile
+        [ ] 12. List Options
+        [>] 13. Earnings Report
+        [ ] 14. Shareholder List
+        [ ] 15. My Corporations
+        [ ] 16. New Game
+            --- Navigation ---
+        [ ] 17. Buy/Sell
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Auto
+        [ ] 8. Watchlist
+        [ ] 9. TICKER
+        [ ] 10. Research Report
+        [ ] 11. List Portfolio
+        [ ] 12. Financial Profile
+        [>] 13. List Options
+        [ ] 14. Earnings Report
+        [ ] 15. Shareholder List
+        [ ] 16. My Corporations
+        [ ] 17. New Game
+            --- Navigation ---
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Chart
+        [ ] 8. Auto
+        [ ] 9. Watchlist
+        [ ] 10. TICKER
+        [ ] 11. Research Report
+        [ ] 12. List Portfolio
+        [>] 13. Financial Profile
+        [ ] 14. List Options
+        [ ] 15. Earnings Report
+        [ ] 16. Shareholder List
+        [ ] 17. My Corporations
+        [ ] 18. New Game
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Misc. Menu
+        [ ] 8. Chart
+        [ ] 9. Auto
+        [ ] 10. Watchlist
+        [ ] 11. TICKER
+        [ ] 12. Research Report
+        [>] 13. List Portfolio
+        [ ] 14. Financial Profile
+        [ ] 15. List Options
+        [ ] 16. Earnings Report
+        [ ] 17. Shareholder List
+        [ ] 18. My Corporations
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. End Turn
+        [ ] 8. Misc. Menu
+        [ ] 9. Chart
+        [ ] 10. Auto
+        [ ] 11. Watchlist
+        [ ] 12. TICKER
+        [>] 13. Research Report
+        [ ] 14. List Portfolio
+        [ ] 15. Financial Profile
+        [ ] 16. List Options
+        [ ] 17. Earnings Report
+        [ ] 18. Shareholder List
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Other Trans
+        [ ] 8. End Turn
+        [ ] 9. Misc. Menu
+        [ ] 10. Chart
+        [ ] 11. Auto
+        [ ] 12. Watchlist
+        [>] 13. TICKER
+        [ ] 14. Research Report
+        [ ] 15. List Portfolio
+        [ ] 16. Financial Profile
+        [ ] 17. List Options
+        [ ] 18. Earnings Report
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Private
+        [ ] 8. Other Trans
+        [ ] 9. End Turn
+        [ ] 10. Misc. Menu
+        [ ] 11. Chart
+        [ ] 12. Auto
+        [>] 13. Watchlist
+        [ ] 14. TICKER
+        [ ] 15. Research Report
+        [ ] 16. List Portfolio
+        [ ] 17. Financial Profile
+        [ ] 18. List Options
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Tools
+        [ ] 8. Private
+        [ ] 9. Other Trans
+        [ ] 10. End Turn
+        [ ] 11. Misc. Menu
+        [ ] 12. Chart
+        [>] 13. Auto
+        [ ] 14. Watchlist
+        [ ] 15. TICKER
+        [ ] 16. Research Report
+        [ ] 17. List Portfolio
+        [ ] 18. Financial Profile
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. General
+        [ ] 8. Tools
+        [ ] 9. Private
+        [ ] 10. Other Trans
+        [ ] 11. End Turn
+        [ ] 12. Misc. Menu
+        [>] 13. Chart
+        [ ] 14. Auto
+        [ ] 15. Watchlist
+        [ ] 16. TICKER
+        [ ] 17. Research Report
+        [ ] 18. List Portfolio
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:20 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:20 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Tools
+        [ ] 8. Private
+        [ ] 9. Other Trans
+        [ ] 10. End Turn
+        [ ] 11. Misc. Menu
+        [ ] 12. Chart
+        [>] 13. Auto
+        [ ] 14. Watchlist
+        [ ] 15. TICKER
+        [ ] 16. Research Report
+        [ ] 17. List Portfolio
+        [ ] 18. Financial Profile
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:20 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:20 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Private
+        [ ] 8. Other Trans
+        [ ] 9. End Turn
+        [ ] 10. Misc. Menu
+        [ ] 11. Chart
+        [ ] 12. Auto
+        [>] 13. Watchlist
+        [ ] 14. TICKER
+        [ ] 15. Research Report
+        [ ] 16. List Portfolio
+        [ ] 17. Financial Profile
+        [ ] 18. List Options
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:20 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:20 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Other Trans
+        [ ] 8. End Turn
+        [ ] 9. Misc. Menu
+        [ ] 10. Chart
+        [ ] 11. Auto
+        [ ] 12. Watchlist
+        [>] 13. TICKER
+        [ ] 14. Research Report
+        [ ] 15. List Portfolio
+        [ ] 16. Financial Profile
+        [ ] 17. List Options
+        [ ] 18. Earnings Report
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:20 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:20 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. End Turn
+        [ ] 8. Misc. Menu
+        [ ] 9. Chart
+        [ ] 10. Auto
+        [ ] 11. Watchlist
+        [ ] 12. TICKER
+        [>] 13. Research Report
+        [ ] 14. List Portfolio
+        [ ] 15. Financial Profile
+        [ ] 16. List Options
+        [ ] 17. Earnings Report
+        [ ] 18. Shareholder List
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:20 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:20 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Misc. Menu
+        [ ] 8. Chart
+        [ ] 9. Auto
+        [ ] 10. Watchlist
+        [ ] 11. TICKER
+        [ ] 12. Research Report
+        [>] 13. List Portfolio
+        [ ] 14. Financial Profile
+        [ ] 15. List Options
+        [ ] 16. Earnings Report
+        [ ] 17. Shareholder List
+        [ ] 18. My Corporations
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:20 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:20 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Chart
+        [ ] 8. Auto
+        [ ] 9. Watchlist
+        [ ] 10. TICKER
+        [ ] 11. Research Report
+        [ ] 12. List Portfolio
+        [>] 13. Financial Profile
+        [ ] 14. List Options
+        [ ] 15. Earnings Report
+        [ ] 16. Shareholder List
+        [ ] 17. My Corporations
+        [ ] 18. New Game
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:20 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:20 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Auto
+        [ ] 8. Watchlist
+        [ ] 9. TICKER
+        [ ] 10. Research Report
+        [ ] 11. List Portfolio
+        [ ] 12. Financial Profile
+        [>] 13. List Options
+        [ ] 14. Earnings Report
+        [ ] 15. Shareholder List
+        [ ] 16. My Corporations
+        [ ] 17. New Game
+            --- Navigation ---
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:20 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:20 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Watchlist
+        [ ] 8. TICKER
+        [ ] 9. Research Report
+        [ ] 10. List Portfolio
+        [ ] 11. Financial Profile
+        [ ] 12. List Options
+        [>] 13. Earnings Report
+        [ ] 14. Shareholder List
+        [ ] 15. My Corporations
+        [ ] 16. New Game
+            --- Navigation ---
+        [ ] 17. Buy/Sell
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:20 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:20 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. TICKER
+        [ ] 8. Research Report
+        [ ] 9. List Portfolio
+        [ ] 10. Financial Profile
+        [ ] 11. List Options
+        [ ] 12. Earnings Report
+        [>] 13. Shareholder List
+        [ ] 14. My Corporations
+        [ ] 15. New Game
+            --- Navigation ---
+        [ ] 16. Buy/Sell
+        [ ] 17. List Futures
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:20 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:20 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Research Report
+        [ ] 8. List Portfolio
+        [ ] 9. Financial Profile
+        [ ] 10. List Options
+        [ ] 11. Earnings Report
+        [ ] 12. Shareholder List
+        [>] 13. My Corporations
+        [ ] 14. New Game
+            --- Navigation ---
+        [ ] 15. Buy/Sell
+        [ ] 16. List Futures
+        [ ] 17. Financing
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:20 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:20 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. List Portfolio
+        [ ] 8. Financial Profile
+        [ ] 9. List Options
+        [ ] 10. Earnings Report
+        [ ] 11. Shareholder List
+        [ ] 12. My Corporations
+        [>] 13. New Game
+            --- Navigation ---
+        [ ] 14. Buy/Sell
+        [ ] 15. List Futures
+        [ ] 16. Financing
+        [ ] 17. Management
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:20 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:20 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Financial Profile
+        [ ] 8. List Options
+        [ ] 9. Earnings Report
+        [ ] 10. Shareholder List
+        [ ] 11. My Corporations
+        [ ] 12. New Game
+            --- Navigation ---
+        [>] 13. Buy/Sell
+        [ ] 14. List Futures
+        [ ] 15. Financing
+        [ ] 16. Management
+        [ ] 17. DB Search
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:21 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:21 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Financial Profile
+        [ ] 8. List Options
+        [ ] 9. Earnings Report
+        [ ] 10. Shareholder List
+        [ ] 11. My Corporations
+        [ ] 12. New Game
+            --- Navigation ---
+        [>] 13. Buy/Sell
+        [ ] 14. List Futures
+        [ ] 15. Financing
+        [ ] 16. Management
+        [ ] 17. DB Search
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:21 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:21 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. List Portfolio
+        [ ] 8. Financial Profile
+        [ ] 9. List Options
+        [ ] 10. Earnings Report
+        [ ] 11. Shareholder List
+        [ ] 12. My Corporations
+        [>] 13. New Game
+            --- Navigation ---
+        [ ] 14. Buy/Sell
+        [ ] 15. List Futures
+        [ ] 16. Financing
+        [ ] 17. Management
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:21 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:21 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Research Report
+        [ ] 8. List Portfolio
+        [ ] 9. Financial Profile
+        [ ] 10. List Options
+        [ ] 11. Earnings Report
+        [ ] 12. Shareholder List
+        [>] 13. My Corporations
+        [ ] 14. New Game
+            --- Navigation ---
+        [ ] 15. Buy/Sell
+        [ ] 16. List Futures
+        [ ] 17. Financing
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:21 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:21 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. TICKER
+        [ ] 8. Research Report
+        [ ] 9. List Portfolio
+        [ ] 10. Financial Profile
+        [ ] 11. List Options
+        [ ] 12. Earnings Report
+        [>] 13. Shareholder List
+        [ ] 14. My Corporations
+        [ ] 15. New Game
+            --- Navigation ---
+        [ ] 16. Buy/Sell
+        [ ] 17. List Futures
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:21 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:21 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Watchlist
+        [ ] 8. TICKER
+        [ ] 9. Research Report
+        [ ] 10. List Portfolio
+        [ ] 11. Financial Profile
+        [ ] 12. List Options
+        [>] 13. Earnings Report
+        [ ] 14. Shareholder List
+        [ ] 15. My Corporations
+        [ ] 16. New Game
+            --- Navigation ---
+        [ ] 17. Buy/Sell
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:21 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:21 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Auto
+        [ ] 8. Watchlist
+        [ ] 9. TICKER
+        [ ] 10. Research Report
+        [ ] 11. List Portfolio
+        [ ] 12. Financial Profile
+        [>] 13. List Options
+        [ ] 14. Earnings Report
+        [ ] 15. Shareholder List
+        [ ] 16. My Corporations
+        [ ] 17. New Game
+            --- Navigation ---
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:21 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:21 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Chart
+        [ ] 8. Auto
+        [ ] 9. Watchlist
+        [ ] 10. TICKER
+        [ ] 11. Research Report
+        [ ] 12. List Portfolio
+        [>] 13. Financial Profile
+        [ ] 14. List Options
+        [ ] 15. Earnings Report
+        [ ] 16. Shareholder List
+        [ ] 17. My Corporations
+        [ ] 18. New Game
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:21 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:21 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Misc. Menu
+        [ ] 8. Chart
+        [ ] 9. Auto
+        [ ] 10. Watchlist
+        [ ] 11. TICKER
+        [ ] 12. Research Report
+        [>] 13. List Portfolio
+        [ ] 14. Financial Profile
+        [ ] 15. List Options
+        [ ] 16. Earnings Report
+        [ ] 17. Shareholder List
+        [ ] 18. My Corporations
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:21 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:21 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. End Turn
+        [ ] 8. Misc. Menu
+        [ ] 9. Chart
+        [ ] 10. Auto
+        [ ] 11. Watchlist
+        [ ] 12. TICKER
+        [>] 13. Research Report
+        [ ] 14. List Portfolio
+        [ ] 15. Financial Profile
+        [ ] 16. List Options
+        [ ] 17. Earnings Report
+        [ ] 18. Shareholder List
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:21 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:21 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Other Trans
+        [ ] 8. End Turn
+        [ ] 9. Misc. Menu
+        [ ] 10. Chart
+        [ ] 11. Auto
+        [ ] 12. Watchlist
+        [>] 13. TICKER
+        [ ] 14. Research Report
+        [ ] 15. List Portfolio
+        [ ] 16. Financial Profile
+        [ ] 17. List Options
+        [ ] 18. Earnings Report
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:21 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:21 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Private
+        [ ] 8. Other Trans
+        [ ] 9. End Turn
+        [ ] 10. Misc. Menu
+        [ ] 11. Chart
+        [ ] 12. Auto
+        [>] 13. Watchlist
+        [ ] 14. TICKER
+        [ ] 15. Research Report
+        [ ] 16. List Portfolio
+        [ ] 17. Financial Profile
+        [ ] 18. List Options
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:22 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:22 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Tools
+        [ ] 8. Private
+        [ ] 9. Other Trans
+        [ ] 10. End Turn
+        [ ] 11. Misc. Menu
+        [ ] 12. Chart
+        [>] 13. Auto
+        [ ] 14. Watchlist
+        [ ] 15. TICKER
+        [ ] 16. Research Report
+        [ ] 17. List Portfolio
+        [ ] 18. Financial Profile
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:22 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:22 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. General
+        [ ] 8. Tools
+        [ ] 9. Private
+        [ ] 10. Other Trans
+        [ ] 11. End Turn
+        [ ] 12. Misc. Menu
+        [>] 13. Chart
+        [ ] 14. Auto
+        [ ] 15. Watchlist
+        [ ] 16. TICKER
+        [ ] 17. Research Report
+        [ ] 18. List Portfolio
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:22 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:22 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. History
+        [ ] 8. General
+        [ ] 9. Tools
+        [ ] 10. Private
+        [ ] 11. Other Trans
+        [ ] 12. End Turn
+        [>] 13. Misc. Menu
+        [ ] 14. Chart
+        [ ] 15. Auto
+        [ ] 16. Watchlist
+        [ ] 17. TICKER
+        [ ] 18. Research Report
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:22 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:22 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Select Corp.
+        [ ] 8. History
+        [ ] 9. General
+        [ ] 10. Tools
+        [ ] 11. Private
+        [ ] 12. Other Trans
+        [>] 13. End Turn
+        [ ] 14. Misc. Menu
+        [ ] 15. Chart
+        [ ] 16. Auto
+        [ ] 17. Watchlist
+        [ ] 18. TICKER
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:22 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:22 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Entity Info
+        [ ] 8. Select Corp.
+        [ ] 9. History
+        [ ] 10. General
+        [ ] 11. Tools
+        [ ] 12. Private
+        [>] 13. Other Trans
+        [ ] 14. End Turn
+        [ ] 15. Misc. Menu
+        [ ] 16. Chart
+        [ ] 17. Auto
+        [ ] 18. Watchlist
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:22 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:22 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Culture
+        [ ] 8. Entity Info
+        [ ] 9. Select Corp.
+        [ ] 10. History
+        [ ] 11. General
+        [ ] 12. Tools
+        [>] 13. Private
+        [ ] 14. Other Trans
+        [ ] 15. End Turn
+        [ ] 16. Misc. Menu
+        [ ] 17. Chart
+        [ ] 18. Auto
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:22 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:22 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Select Player
+        [ ] 8. Culture
+        [ ] 9. Entity Info
+        [ ] 10. Select Corp.
+        [ ] 11. History
+        [ ] 12. General
+        [>] 13. Tools
+        [ ] 14. Private
+        [ ] 15. Other Trans
+        [ ] 16. End Turn
+        [ ] 17. Misc. Menu
+        [ ] 18. Chart
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:22 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:22 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Help
+        [ ] 8. Select Player
+        [ ] 9. Culture
+        [ ] 10. Entity Info
+        [ ] 11. Select Corp.
+        [ ] 12. History
+        [>] 13. General
+        [ ] 14. Tools
+        [ ] 15. Private
+        [ ] 16. Other Trans
+        [ ] 17. End Turn
+        [ ] 18. Misc. Menu
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:22 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:22 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Settings
+        [ ] 8. Help
+        [ ] 9. Select Player
+        [ ] 10. Culture
+        [ ] 11. Entity Info
+        [ ] 12. Select Corp.
+        [>] 13. History
+        [ ] 14. General
+        [ ] 15. Tools
+        [ ] 16. Private
+        [ ] 17. Other Trans
+        [ ] 18. End Turn
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:22 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:22 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Game Options
+        [ ] 8. Settings
+        [ ] 9. Help
+        [ ] 10. Select Player
+        [ ] 11. Culture
+        [ ] 12. Entity Info
+        [>] 13. Select Corp.
+        [ ] 14. History
+        [ ] 15. General
+        [ ] 16. Tools
+        [ ] 17. Private
+        [ ] 18. Other Trans
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:22 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:22 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [>] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:23 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:23 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [>] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:24 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:24 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [>] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:25 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:25 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [>] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:25 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:25 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [>] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:25 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:25 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [>] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:25 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:25 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [>] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:26 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:26 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [>] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:26 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:26 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [>] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:27 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:27 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [>] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:27 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:27 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [>] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:27 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:27 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [>] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:27 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:27 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [>] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:27 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:27 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [>] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:28 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:28 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:28 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:28 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [>] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:29 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:29 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [>] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:29 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:29 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [>] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:30 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:30 ---
+--- page: main ---
+Desk Street Raider
+      [>] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:33 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:33 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [>] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:34 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:34 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [>] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:34 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:34 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [>] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:34 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:34 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:35 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:35 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [>] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:35 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:35 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [>] 8. Game Options
+        [ ] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:36 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:36 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [>] 9. Settings
+        [ ] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:36 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:36 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [>] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:03:39 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:03:39 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [>] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Game Options
+        [ ] 8. Settings
+        [ ] 9. Help
+        [>] 10. Select Player
+        [ ] 11. Culture
+        [ ] 12. Entity Info
+        [ ] 13. Select Corp.
+        [ ] 14. History
+        [ ] 15. General
+        [ ] 16. Tools
+        [ ] 17. Private
+        [ ] 18. Other Trans
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Settings
+        [ ] 8. Help
+        [ ] 9. Select Player
+        [>] 10. Culture
+        [ ] 11. Entity Info
+        [ ] 12. Select Corp.
+        [ ] 13. History
+        [ ] 14. General
+        [ ] 15. Tools
+        [ ] 16. Private
+        [ ] 17. Other Trans
+        [ ] 18. End Turn
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Help
+        [ ] 8. Select Player
+        [ ] 9. Culture
+        [>] 10. Entity Info
+        [ ] 11. Select Corp.
+        [ ] 12. History
+        [ ] 13. General
+        [ ] 14. Tools
+        [ ] 15. Private
+        [ ] 16. Other Trans
+        [ ] 17. End Turn
+        [ ] 18. Misc. Menu
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Select Player
+        [ ] 8. Culture
+        [ ] 9. Entity Info
+        [>] 10. Select Corp.
+        [ ] 11. History
+        [ ] 12. General
+        [ ] 13. Tools
+        [ ] 14. Private
+        [ ] 15. Other Trans
+        [ ] 16. End Turn
+        [ ] 17. Misc. Menu
+        [ ] 18. Chart
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Culture
+        [ ] 8. Entity Info
+        [ ] 9. Select Corp.
+        [>] 10. History
+        [ ] 11. General
+        [ ] 12. Tools
+        [ ] 13. Private
+        [ ] 14. Other Trans
+        [ ] 15. End Turn
+        [ ] 16. Misc. Menu
+        [ ] 17. Chart
+        [ ] 18. Auto
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Entity Info
+        [ ] 8. Select Corp.
+        [ ] 9. History
+        [>] 10. General
+        [ ] 11. Tools
+        [ ] 12. Private
+        [ ] 13. Other Trans
+        [ ] 14. End Turn
+        [ ] 15. Misc. Menu
+        [ ] 16. Chart
+        [ ] 17. Auto
+        [ ] 18. Watchlist
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Select Corp.
+        [ ] 8. History
+        [ ] 9. General
+        [>] 10. Tools
+        [ ] 11. Private
+        [ ] 12. Other Trans
+        [ ] 13. End Turn
+        [ ] 14. Misc. Menu
+        [ ] 15. Chart
+        [ ] 16. Auto
+        [ ] 17. Watchlist
+        [ ] 18. TICKER
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. History
+        [ ] 8. General
+        [ ] 9. Tools
+        [>] 10. Private
+        [ ] 11. Other Trans
+        [ ] 12. End Turn
+        [ ] 13. Misc. Menu
+        [ ] 14. Chart
+        [ ] 15. Auto
+        [ ] 16. Watchlist
+        [ ] 17. TICKER
+        [ ] 18. Research Report
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. General
+        [ ] 8. Tools
+        [ ] 9. Private
+        [>] 10. Other Trans
+        [ ] 11. End Turn
+        [ ] 12. Misc. Menu
+        [ ] 13. Chart
+        [ ] 14. Auto
+        [ ] 15. Watchlist
+        [ ] 16. TICKER
+        [ ] 17. Research Report
+        [ ] 18. List Portfolio
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Tools
+        [ ] 8. Private
+        [ ] 9. Other Trans
+        [>] 10. End Turn
+        [ ] 11. Misc. Menu
+        [ ] 12. Chart
+        [ ] 13. Auto
+        [ ] 14. Watchlist
+        [ ] 15. TICKER
+        [ ] 16. Research Report
+        [ ] 17. List Portfolio
+        [ ] 18. Financial Profile
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:19 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:19 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Private
+        [ ] 8. Other Trans
+        [ ] 9. End Turn
+        [>] 10. Misc. Menu
+        [ ] 11. Chart
+        [ ] 12. Auto
+        [ ] 13. Watchlist
+        [ ] 14. TICKER
+        [ ] 15. Research Report
+        [ ] 16. List Portfolio
+        [ ] 17. Financial Profile
+        [ ] 18. List Options
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:20 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:20 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Other Trans
+        [ ] 8. End Turn
+        [ ] 9. Misc. Menu
+        [>] 10. Chart
+        [ ] 11. Auto
+        [ ] 12. Watchlist
+        [ ] 13. TICKER
+        [ ] 14. Research Report
+        [ ] 15. List Portfolio
+        [ ] 16. Financial Profile
+        [ ] 17. List Options
+        [ ] 18. Earnings Report
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:20 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:20 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. End Turn
+        [ ] 8. Misc. Menu
+        [ ] 9. Chart
+        [>] 10. Auto
+        [ ] 11. Watchlist
+        [ ] 12. TICKER
+        [ ] 13. Research Report
+        [ ] 14. List Portfolio
+        [ ] 15. Financial Profile
+        [ ] 16. List Options
+        [ ] 17. Earnings Report
+        [ ] 18. Shareholder List
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:20 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:20 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Misc. Menu
+        [ ] 8. Chart
+        [ ] 9. Auto
+        [>] 10. Watchlist
+        [ ] 11. TICKER
+        [ ] 12. Research Report
+        [ ] 13. List Portfolio
+        [ ] 14. Financial Profile
+        [ ] 15. List Options
+        [ ] 16. Earnings Report
+        [ ] 17. Shareholder List
+        [ ] 18. My Corporations
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:20 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:20 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Chart
+        [ ] 8. Auto
+        [ ] 9. Watchlist
+        [>] 10. TICKER
+        [ ] 11. Research Report
+        [ ] 12. List Portfolio
+        [ ] 13. Financial Profile
+        [ ] 14. List Options
+        [ ] 15. Earnings Report
+        [ ] 16. Shareholder List
+        [ ] 17. My Corporations
+        [ ] 18. New Game
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:20 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:20 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Auto
+        [ ] 8. Watchlist
+        [ ] 9. TICKER
+        [>] 10. Research Report
+        [ ] 11. List Portfolio
+        [ ] 12. Financial Profile
+        [ ] 13. List Options
+        [ ] 14. Earnings Report
+        [ ] 15. Shareholder List
+        [ ] 16. My Corporations
+        [ ] 17. New Game
+            --- Navigation ---
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:20 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:20 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Watchlist
+        [ ] 8. TICKER
+        [ ] 9. Research Report
+        [>] 10. List Portfolio
+        [ ] 11. Financial Profile
+        [ ] 12. List Options
+        [ ] 13. Earnings Report
+        [ ] 14. Shareholder List
+        [ ] 15. My Corporations
+        [ ] 16. New Game
+            --- Navigation ---
+        [ ] 17. Buy/Sell
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:20 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:20 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. TICKER
+        [ ] 8. Research Report
+        [ ] 9. List Portfolio
+        [>] 10. Financial Profile
+        [ ] 11. List Options
+        [ ] 12. Earnings Report
+        [ ] 13. Shareholder List
+        [ ] 14. My Corporations
+        [ ] 15. New Game
+            --- Navigation ---
+        [ ] 16. Buy/Sell
+        [ ] 17. List Futures
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:20 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:20 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Research Report
+        [ ] 8. List Portfolio
+        [ ] 9. Financial Profile
+        [>] 10. List Options
+        [ ] 11. Earnings Report
+        [ ] 12. Shareholder List
+        [ ] 13. My Corporations
+        [ ] 14. New Game
+            --- Navigation ---
+        [ ] 15. Buy/Sell
+        [ ] 16. List Futures
+        [ ] 17. Financing
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:21 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:21 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. List Portfolio
+        [ ] 8. Financial Profile
+        [ ] 9. List Options
+        [>] 10. Earnings Report
+        [ ] 11. Shareholder List
+        [ ] 12. My Corporations
+        [ ] 13. New Game
+            --- Navigation ---
+        [ ] 14. Buy/Sell
+        [ ] 15. List Futures
+        [ ] 16. Financing
+        [ ] 17. Management
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:21 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:21 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Financial Profile
+        [ ] 8. List Options
+        [ ] 9. Earnings Report
+        [>] 10. Shareholder List
+        [ ] 11. My Corporations
+        [ ] 12. New Game
+            --- Navigation ---
+        [ ] 13. Buy/Sell
+        [ ] 14. List Futures
+        [ ] 15. Financing
+        [ ] 16. Management
+        [ ] 17. DB Search
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:22 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:22 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Financial Profile
+        [ ] 8. List Options
+        [ ] 9. Earnings Report
+        [>] 10. Shareholder List
+        [ ] 11. My Corporations
+        [ ] 12. New Game
+            --- Navigation ---
+        [ ] 13. Buy/Sell
+        [ ] 14. List Futures
+        [ ] 15. Financing
+        [ ] 16. Management
+        [ ] 17. DB Search
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:22 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:22 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. List Portfolio
+        [ ] 8. Financial Profile
+        [ ] 9. List Options
+        [>] 10. Earnings Report
+        [ ] 11. Shareholder List
+        [ ] 12. My Corporations
+        [ ] 13. New Game
+            --- Navigation ---
+        [ ] 14. Buy/Sell
+        [ ] 15. List Futures
+        [ ] 16. Financing
+        [ ] 17. Management
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:22 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:22 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Research Report
+        [ ] 8. List Portfolio
+        [ ] 9. Financial Profile
+        [>] 10. List Options
+        [ ] 11. Earnings Report
+        [ ] 12. Shareholder List
+        [ ] 13. My Corporations
+        [ ] 14. New Game
+            --- Navigation ---
+        [ ] 15. Buy/Sell
+        [ ] 16. List Futures
+        [ ] 17. Financing
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:22 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:22 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. TICKER
+        [ ] 8. Research Report
+        [ ] 9. List Portfolio
+        [>] 10. Financial Profile
+        [ ] 11. List Options
+        [ ] 12. Earnings Report
+        [ ] 13. Shareholder List
+        [ ] 14. My Corporations
+        [ ] 15. New Game
+            --- Navigation ---
+        [ ] 16. Buy/Sell
+        [ ] 17. List Futures
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:22 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:22 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Watchlist
+        [ ] 8. TICKER
+        [ ] 9. Research Report
+        [>] 10. List Portfolio
+        [ ] 11. Financial Profile
+        [ ] 12. List Options
+        [ ] 13. Earnings Report
+        [ ] 14. Shareholder List
+        [ ] 15. My Corporations
+        [ ] 16. New Game
+            --- Navigation ---
+        [ ] 17. Buy/Sell
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:23 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:23 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Auto
+        [ ] 8. Watchlist
+        [ ] 9. TICKER
+        [>] 10. Research Report
+        [ ] 11. List Portfolio
+        [ ] 12. Financial Profile
+        [ ] 13. List Options
+        [ ] 14. Earnings Report
+        [ ] 15. Shareholder List
+        [ ] 16. My Corporations
+        [ ] 17. New Game
+            --- Navigation ---
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:23 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:23 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Chart
+        [ ] 8. Auto
+        [ ] 9. Watchlist
+        [>] 10. TICKER
+        [ ] 11. Research Report
+        [ ] 12. List Portfolio
+        [ ] 13. Financial Profile
+        [ ] 14. List Options
+        [ ] 15. Earnings Report
+        [ ] 16. Shareholder List
+        [ ] 17. My Corporations
+        [ ] 18. New Game
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:23 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:23 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Misc. Menu
+        [ ] 8. Chart
+        [ ] 9. Auto
+        [>] 10. Watchlist
+        [ ] 11. TICKER
+        [ ] 12. Research Report
+        [ ] 13. List Portfolio
+        [ ] 14. Financial Profile
+        [ ] 15. List Options
+        [ ] 16. Earnings Report
+        [ ] 17. Shareholder List
+        [ ] 18. My Corporations
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:23 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:23 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. End Turn
+        [ ] 8. Misc. Menu
+        [ ] 9. Chart
+        [>] 10. Auto
+        [ ] 11. Watchlist
+        [ ] 12. TICKER
+        [ ] 13. Research Report
+        [ ] 14. List Portfolio
+        [ ] 15. Financial Profile
+        [ ] 16. List Options
+        [ ] 17. Earnings Report
+        [ ] 18. Shareholder List
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:23 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:23 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Other Trans
+        [ ] 8. End Turn
+        [ ] 9. Misc. Menu
+        [>] 10. Chart
+        [ ] 11. Auto
+        [ ] 12. Watchlist
+        [ ] 13. TICKER
+        [ ] 14. Research Report
+        [ ] 15. List Portfolio
+        [ ] 16. Financial Profile
+        [ ] 17. List Options
+        [ ] 18. Earnings Report
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:23 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:23 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Private
+        [ ] 8. Other Trans
+        [ ] 9. End Turn
+        [>] 10. Misc. Menu
+        [ ] 11. Chart
+        [ ] 12. Auto
+        [ ] 13. Watchlist
+        [ ] 14. TICKER
+        [ ] 15. Research Report
+        [ ] 16. List Portfolio
+        [ ] 17. Financial Profile
+        [ ] 18. List Options
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:23 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:23 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Tools
+        [ ] 8. Private
+        [ ] 9. Other Trans
+        [>] 10. End Turn
+        [ ] 11. Misc. Menu
+        [ ] 12. Chart
+        [ ] 13. Auto
+        [ ] 14. Watchlist
+        [ ] 15. TICKER
+        [ ] 16. Research Report
+        [ ] 17. List Portfolio
+        [ ] 18. Financial Profile
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:23 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:23 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. General
+        [ ] 8. Tools
+        [ ] 9. Private
+        [>] 10. Other Trans
+        [ ] 11. End Turn
+        [ ] 12. Misc. Menu
+        [ ] 13. Chart
+        [ ] 14. Auto
+        [ ] 15. Watchlist
+        [ ] 16. TICKER
+        [ ] 17. Research Report
+        [ ] 18. List Portfolio
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:23 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:23 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. History
+        [ ] 8. General
+        [ ] 9. Tools
+        [>] 10. Private
+        [ ] 11. Other Trans
+        [ ] 12. End Turn
+        [ ] 13. Misc. Menu
+        [ ] 14. Chart
+        [ ] 15. Auto
+        [ ] 16. Watchlist
+        [ ] 17. TICKER
+        [ ] 18. Research Report
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:23 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:23 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Select Corp.
+        [ ] 8. History
+        [ ] 9. General
+        [>] 10. Tools
+        [ ] 11. Private
+        [ ] 12. Other Trans
+        [ ] 13. End Turn
+        [ ] 14. Misc. Menu
+        [ ] 15. Chart
+        [ ] 16. Auto
+        [ ] 17. Watchlist
+        [ ] 18. TICKER
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:23 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:23 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Entity Info
+        [ ] 8. Select Corp.
+        [ ] 9. History
+        [>] 10. General
+        [ ] 11. Tools
+        [ ] 12. Private
+        [ ] 13. Other Trans
+        [ ] 14. End Turn
+        [ ] 15. Misc. Menu
+        [ ] 16. Chart
+        [ ] 17. Auto
+        [ ] 18. Watchlist
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:23 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:23 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Culture
+        [ ] 8. Entity Info
+        [ ] 9. Select Corp.
+        [>] 10. History
+        [ ] 11. General
+        [ ] 12. Tools
+        [ ] 13. Private
+        [ ] 14. Other Trans
+        [ ] 15. End Turn
+        [ ] 16. Misc. Menu
+        [ ] 17. Chart
+        [ ] 18. Auto
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:23 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:23 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Select Player
+        [ ] 8. Culture
+        [ ] 9. Entity Info
+        [>] 10. Select Corp.
+        [ ] 11. History
+        [ ] 12. General
+        [ ] 13. Tools
+        [ ] 14. Private
+        [ ] 15. Other Trans
+        [ ] 16. End Turn
+        [ ] 17. Misc. Menu
+        [ ] 18. Chart
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:23 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:23 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Help
+        [ ] 8. Select Player
+        [ ] 9. Culture
+        [>] 10. Entity Info
+        [ ] 11. Select Corp.
+        [ ] 12. History
+        [ ] 13. General
+        [ ] 14. Tools
+        [ ] 15. Private
+        [ ] 16. Other Trans
+        [ ] 17. End Turn
+        [ ] 18. Misc. Menu
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:23 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:23 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Settings
+        [ ] 8. Help
+        [ ] 9. Select Player
+        [>] 10. Culture
+        [ ] 11. Entity Info
+        [ ] 12. Select Corp.
+        [ ] 13. History
+        [ ] 14. General
+        [ ] 15. Tools
+        [ ] 16. Private
+        [ ] 17. Other Trans
+        [ ] 18. End Turn
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:24 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:24 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. Game Options
+        [ ] 8. Settings
+        [ ] 9. Help
+        [>] 10. Select Player
+        [ ] 11. Culture
+        [ ] 12. Entity Info
+        [ ] 13. Select Corp.
+        [ ] 14. History
+        [ ] 15. General
+        [ ] 16. Tools
+        [ ] 17. Private
+        [ ] 18. Other Trans
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:04:24 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:04:24 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 7. File
+        [ ] 8. Game Options
+        [ ] 9. Settings
+        [>] 10. Help
+        [ ] 11. Select Player
+        [ ] 12. Culture
+        [ ] 13. Entity Info
+        [ ] 14. Select Corp.
+        [ ] 15. History
+        [ ] 16. General
+        [ ] 17. Tools
+        [ ] 18. Private
+
+=== dsr.xhtpm pid 45930  2026-09-15 03:06:14 ===
+--- dsr.xhtpm  pid 45930  2026-09-15 03:06:14 ---
+--- page: main ---
+Desk Street Raider
+      [ ] 1. File
+      [ ] 2. Game Options
+      [ ] 3. Settings
+      [ ] 4. Help
+          Active Entity Selected
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet
+          Cash: 1613
+          My Balance Sheet
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          Financial News Headlines
+          CMZ: $0.10 (-99.38%)
+          World Status
+          Population: 10000
+          Temperature: 15C
+          Research Menus and Tools
+          Transactions
+          Other
+          Quick Search Functions

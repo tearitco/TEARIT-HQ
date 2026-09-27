@@ -17,8 +17,11 @@ case "$ACTION" in
         # Create system directory if needed
         mkdir -p "$SCRIPT_DIR/system"
 
-        # Execute world_manager.pal via prisc+x
-        exec "$SCRIPT_DIR/system/prisc+x" "$SCRIPT_DIR/world_manager.pal"
+        # cd into world_manager directory so prisc+x resolves relative paths correctly
+        cd "$SCRIPT_DIR"
+
+        # Execute world_manager.pal via prisc+x with relative paths
+        exec "./system/prisc+x" "./world_manager.pal"
         ;;
 
     kill|stop)

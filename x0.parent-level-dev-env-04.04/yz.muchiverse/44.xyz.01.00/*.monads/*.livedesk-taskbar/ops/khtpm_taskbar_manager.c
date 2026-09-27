@@ -3530,15 +3530,27 @@ static int livedesk_build_pals_menu(const char *house_root, HQMenuItem *menu, in
                 }
     }
     for (int i = 0; i < scan_n && n < max; i++, n++) {
-        char mp[KTB_PATH_BUF], glyph[64] = "", hash[128] = "";
+        char mp[KTB_PATH_BUF], hash[128] = "";
         snprintf(mp, sizeof(mp), "%s/%s/pal.pdl", pr, names[i]);
-        read_key_value(mp, "glyph", glyph, sizeof(glyph));
         read_key_value(mp, "hash", hash, sizeof(hash));
         char short_hash[16] = "";
         snprintf(short_hash, sizeof(short_hash), "%s", hash);
         short_hash[10] = '\0';
-        snprintf(menu[n].label, sizeof(menu[n].label), "%s %s #%s",
-                 glyph[0] ? glyph : "•", names[i], short_hash);
+        /* REAL FIX 2026-09-24, direct live report ("pals seems 2 try 2
+         * show 2 images. 1rst png is fine, second glyph by name") -
+         * the raw glyph character used to be embedded directly in the
+         * label TEXT, on top of the real per-pal icon the dropdown
+         * row already draws from its own directory path (hi_N_sprite,
+         * khtpm_taskbar_manager_main.c - fed to draw_elem() via
+         * e->sprite, hq_sprite()/the phymoji pipeline). Confirmed
+         * preexisting, not from today's merges. Two representations of
+         * the same glyph rendered on the same row - the raw Xft text
+         * glyph (often missing/tofu for less common emoji, the "failed"
+         * one) was pure redundancy once a real converted icon exists.
+         * Label now carries only the name/hash; the icon is real-image-
+         * or-nothing, not real-image-plus-raw-text-glyph. */
+        snprintf(menu[n].label, sizeof(menu[n].label), "%s #%s",
+                 names[i], short_hash);
         snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:pal:%s", names[i]);
     }
     if (n < max) {

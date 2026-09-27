@@ -1,0 +1,14 @@
+OBJECT tag=item id=close class=chrome-btn x=1111 y=4 w=63 h=26 nav=1 active=0 label=x
+OBJECT tag=item id=imp class=pal-dir x=14 y=181 w=98 h=19 nav=2 active=0 label=Import…
+OBJECT tag=item id=mydir-0 class=pal-dir,pal-dir-active x=118 y=181 w=99 h=19 nav=3 active=0 label=terumon
+OBJECT tag=item id=myset-0 class=pal-tileset x=14 y=38 w=139 h=19 nav=4 active=0 label=teru_10_brown
+OBJECT tag=item id=myset-1 class=pal-tileset x=159 y=38 w=129 h=19 nav=5 active=0 label=teru_07_pink
+OBJECT tag=item id=myset-2 class=pal-tileset x=294 y=38 w=135 h=19 nav=6 active=0 label=teru_04_green
+OBJECT tag=item id=myset-3 class=pal-tileset x=435 y=38 w=135 h=19 nav=7 active=0 label=teru_08_black
+OBJECT tag=item id=myset-4 class=pal-tileset x=576 y=38 w=135 h=19 nav=8 active=0 label=teru_09_white
+OBJECT tag=item id=myset-5 class=pal-tileset x=717 y=38 w=141 h=19 nav=9 active=0 label=teru_03_yellow
+OBJECT tag=item id=myset-6 class=pal-tileset x=864 y=38 w=128 h=19 nav=10 active=0 label=teru_05_blue
+OBJECT tag=item id=myset-7 class=pal-tileset x=998 y=38 w=141 h=19 nav=11 active=0 label=teru_06_purple
+OBJECT tag=item id=myset-8 class=pal-tileset x=14 y=67 w=144 h=19 nav=12 active=0 label=teru_02_orange
+OBJECT tag=item id=myset-9 class=pal-tileset x=164 y=67 w=120 h=19 nav=13 active=0 label=teru_01_red
+OBJECT tag=item id=pt0 class=swatch x=14 y=125 w=34 h=34 nav=14 active=0 label=-

@@ -1,0 +1,25 @@
+OBJECT tag=text id=- class=block-title x=0 y=36 w=200 h=36 nav=0 active=0 label=Bookmarks
+OBJECT tag=text id=- class=quiet x=0 y=0 w=0 h=0 nav=0 active=0 label=No bookmarks yet
+OBJECT tag=text id=- class=block-title x=0 y=72 w=200 h=36 nav=0 active=0 label=History
+OBJECT tag=item id=hist0 class=- x=0 y=108 w=200 h=36 nav=1 active=0 label=https://example.com
+OBJECT tag=item id=hist1 class=- x=0 y=144 w=200 h=36 nav=2 active=0 label=www.google.com
+OBJECT tag=item id=hist2 class=- x=0 y=180 w=200 h=72 nav=3 active=0 label=https://www.google.com/intl/en/about/products?tab=ih
+OBJECT tag=item id=hist3 class=- x=0 y=252 w=200 h=72 nav=4 active=0 label=https://www.google.com/imghp?hl=en&ogbl
+OBJECT tag=item id=hist4 class=- x=0 y=324 w=200 h=36 nav=5 active=0 label=www.google.com
+OBJECT tag=item id=nb-back class=quiet x=200 y=36 w=72 h=36 nav=6 active=0 label=Back
+OBJECT tag=item id=nb-fwd class=quiet x=272 y=36 w=72 h=36 nav=7 active=0 label=Forward
+OBJECT tag=item id=nb-stop class=quiet x=344 y=36 w=72 h=36 nav=8 active=0 label=Stop
+OBJECT tag=item id=nb-reload class=quiet x=416 y=36 w=72 h=36 nav=9 active=0 label=Reload
+OBJECT tag=item id=nb-home class=quiet x=488 y=36 w=72 h=36 nav=10 active=0 label=Home
+OBJECT tag=item id=nb-bm class=quiet x=560 y=36 w=72 h=36 nav=11 active=0 label=Bookmark
+OBJECT tag=item id=nb-close class=quiet x=632 y=36 w=72 h=36 nav=12 active=0 label=Close tab
+OBJECT tag=item id=tab0 class=quiet x=200 y=72 w=168 h=36 nav=13 active=0 label=Google's products 
+OBJECT tag=item id=tab1 class=quiet x=368 y=72 w=168 h=36 nav=14 active=0 label=*Example Domain
+OBJECT tag=item id=nb-newtab class=quiet x=536 y=72 w=168 h=36 nav=15 active=0 label=New tab
+OBJECT tag=cli_io id=address class=top,nb-address x=200 y=108 w=506 h=36 nav=16 active=0 label=https://example.com
+OBJECT tag=text id=status class=nb-status x=200 y=144 w=506 h=36 nav=0 active=0 label=Status: ready
+OBJECT tag=text id=ct0 class=page-title x=200 y=180 w=506 h=36 nav=0 active=0 label=Example Domain
+OBJECT tag=text id=cx1 class=- x=200 y=216 w=506 h=36 nav=0 active=0 label=This domain is for use in documentation examples without needing permission. Avoid use
+OBJECT tag=text id=cx2 class=- x=200 y=252 w=506 h=36 nav=0 active=0 label=in operations.
+OBJECT tag=item id=cl3 class=- x=200 y=288 w=506 h=36 nav=17 active=0 label=Learn more
+OBJECT tag=text id=- class=block-title x=706 y=36 w=253 h=36 nav=0 active=0 label=Console

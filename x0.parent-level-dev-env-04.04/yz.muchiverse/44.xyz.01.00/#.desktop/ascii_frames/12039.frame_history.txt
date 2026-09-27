@@ -1,0 +1,132 @@
+
+=== file-explorer-pal.xhtpm pid 12039  2026-09-15 11:35:54 ===
+--- file-explorer-pal.xhtpm  pid 12039  2026-09-15 11:35:54 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 17. X
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. sessions
+    [ ] 18. ⬅️ Back
+    [ ] 19. Grid View
+        Pick a file to load.
+      [ ] 20. 📁  s1 
+      [ ] 21. 📁  s2 
+      [ ] 22. 📁  s3 
+      [ ] 23. 📁  s4 
+      [ ] 24. 📁  s5 
+      [ ] 25. 📁  s6 
+      [ ] 26. 📁  s7 
+      [ ] 27. 📄  session.pdl 28B
+
+=== file-explorer-pal.xhtpm pid 12039  2026-09-15 11:35:55 ===
+--- file-explorer-pal.xhtpm  pid 12039  2026-09-15 11:35:55 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 17. X
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. sessions
+    [ ] 18. ⬅️ Back
+    [ ] 19. Grid View
+        Pick a file to load.
+      [ ] 20. 📁  s1 
+      [ ] 21. 📁  s2 
+      [ ] 22. 📁  s3 
+      [ ] 23. 📁  s4 
+      [ ] 24. 📁  s5 
+      [ ] 25. 📁  s6 
+      [ ] 26. 📁  s7 
+      [ ] 27. 📄  session.pdl 28B
+
+=== file-explorer-pal.xhtpm pid 12039  2026-09-15 11:35:59 ===
+--- file-explorer-pal.xhtpm  pid 12039  2026-09-15 11:35:59 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 17. X
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. sessions
+    [ ] 18. ⬅️ Back
+    [ ] 19. Grid View
+        Pick a file to load.
+      [ ] 20. 📁  s1 
+      [ ] 21. 📁  s2 
+      [ ] 22. 📁  s3 
+      [ ] 23. 📁  s4 
+      [ ] 24. 📁  s5 
+      [ ] 25. 📁  s6 
+      [ ] 26. 📁  s7 
+      [ ] 27. 📄  session.pdl 28B
+
+=== file-explorer-pal.xhtpm pid 12039  2026-09-15 11:37:18 ===
+--- file-explorer-pal.xhtpm  pid 12039  2026-09-15 11:37:18 ---
+--- page: main ---
+File Explorer - LOAD
+    [>] 17. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. sessions
+    [ ] 18. ⬅️ Back
+    [ ] 19. Grid View
+        Pick a file to load.
+      [ ] 20. 📁  s1 
+      [ ] 21. 📁  s2 
+      [ ] 22. 📁  s3 
+      [ ] 23. 📁  s4 
+      [ ] 24. 📁  s5 
+      [ ] 25. 📁  s6 
+      [ ] 26. 📁  s7 
+      [ ] 27. 📄  session.pdl 28B

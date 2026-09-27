@@ -1,0 +1,52 @@
+
+=== events-hq.xhtpm pid 232891  2026-09-17 16:04:15 ===
+--- events-hq.xhtpm  pid 232891  2026-09-17 16:04:15 ---
+--- page: main ---
+      [>] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+          Trigger
+      [ ] 4. + Add Command
+      [ ] 5. Play
+
+=== events-hq.xhtpm pid 232891  2026-09-17 16:04:16 ===
+--- events-hq.xhtpm  pid 232891  2026-09-17 16:04:16 ---
+--- page: main ---
+      [>] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+          Trigger
+      [ ] 4. + Add Command
+      [ ] 5. Play
+
+=== events-hq.xhtpm pid 232891  2026-09-17 16:04:17 ===
+--- events-hq.xhtpm  pid 232891  2026-09-17 16:04:17 ---
+--- page: main ---
+piececraft-hq
+      [>] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+          Trigger
+          (unset)
+      [ ] 5. + Add Command
+      [ ] 6. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)
+
+=== events-hq.xhtpm pid 232891  2026-09-17 16:04:30 ===
+--- events-hq.xhtpm  pid 232891  2026-09-17 16:04:30 ---
+--- page: main ---
+piececraft-hq
+      [>] 1. * Scripting
+      [ ] 2. Scratch
+      [ ] 3. Blueprints
+      [ ] 4. * page_1
+          Trigger
+          (unset)
+      [ ] 5. + Add Command
+      [ ] 6. Play
+          Add Command / Play - click a command to edit its fields
+          Commands (0)
+            (no commands on this page yet)

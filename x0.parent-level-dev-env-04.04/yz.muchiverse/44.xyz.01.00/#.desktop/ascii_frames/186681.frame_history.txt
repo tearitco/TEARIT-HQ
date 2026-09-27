@@ -1,0 +1,33 @@
+
+=== menu.chtpm pid 186681  2026-09-18 06:39:25 ===
+--- menu.chtpm  pid 186681  2026-09-18 06:39:25 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 186681  2026-09-18 06:39:26 ===
+--- menu.chtpm  pid 186681  2026-09-18 06:39:26 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 186681  2026-09-18 06:39:29 ===
+--- menu.chtpm  pid 186681  2026-09-18 06:39:29 ---
+--- page: main ---
+    [ ] 1. Dir
+    [>] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel

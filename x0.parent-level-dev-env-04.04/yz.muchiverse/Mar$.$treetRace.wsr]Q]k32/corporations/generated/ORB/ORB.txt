@@ -5,32 +5,32 @@ FINANCIAL BALANCE SHEET: ORBITAL EXPRESS (ORB)
 (Amounts in millions of U.S. Dollars, except per share amounts)
 
 ASSETS:
-  Free Cash and Equivalents:		685.49
-  Working Capital (A/R, Inven.):	113.71
-  Business Assets/Equipment:		1832.49
+  Free Cash and Equivalents:		725.84
+  Working Capital (A/R, Inven.):	153.51
+  Business Assets/Equipment:		1254.62
   Stock in Subsidiary Cos.:		0.00
   Options Long/Short: Net Value:	0.00
   ---------------------------------------------
-  Total Assets:				2631.69
+  Total Assets:				2133.97
   ---------------------------------------------
 
 LIABILITIES AND EQUITY:
   Long-Term Bonds Issued:		0.00
-  Bank Loan:				13.18
+  Bank Loan:				299.83
   Accrued Income Tax Payable:		0.00
   ---------------------------------------------
-  Total Liabilities:			13.18
+  Total Liabilities:			299.83
   ---------------------------------------------
-  Equity (Net Worth):			2618.51
+  Equity (Net Worth):			1834.14
   =============================================
 
 STOCK AND EARNINGS DATA:
 ------------------------
-  Net Worth Per Share:			39.13
-  Current Stock Price:			55.07
-  52-Week High/Low Stock Price:		100.32 / 29.73
-  Shares of Stock Outstanding:		66.92 million
-  Total Stock Capitalization:		3685.48 million
+  Net Worth Per Share:			18.52
+  Current Stock Price:			26.12
+  52-Week High/Low Stock Price:		28.87 / 14.44
+  Shares of Stock Outstanding:		99.03 million
+  Total Stock Capitalization:		2586.76 million
   2021 Earnings Per Share:		0.00 (Operating Earnings)
   2022 Earnings Per Share:		0.00 (Operating Earnings)
   2023 Earnings Per Share:		0.00 (Operating Earnings)
@@ -42,14 +42,14 @@ VARIOUS FINANCIAL RATIOS:
 -------------------------
   Price/Earnings Ratio:			NMF (No Meaningful Figure)
   Dividend Yield:			0.00%
-  Debt to Equity Ratio:			0.01 to 1
+  Debt to Equity Ratio:			0.16 to 1
   Return on Equity (2024):		NMF (No Meaningful Figure)
   ---------------------------------------------
 
 *** CREDIT INFO: ***
 -------------------
   Credit Rating:			AA
-  Unused Bank Line of Credit:		2657.23 million
+  Unused Bank Line of Credit:		1175.43 million
   Borrowing Rate (Interest):		10.50% (Prime is: 10.00%)
   Lending Bank:				LUNAR FINANCE (LUN)
   ---------------------------------------------
@@ -64,11 +64,11 @@ VARIABLE SETTINGS (Changeable by controlling player):
 MISCELLANEOUS INFO:
 -------------------
   Industry Group:			AIR FREIGHT COURIERS
-  Incorporated in:			United Clones
+  Incorporated in:			Robot State
   Controlled (and actively managed) by:	public
   Public Owns:			%
-  Accrued R&D and/or Investment Tax Credits:	$69.09 million
-  Annual CEO Salary (approx.):		$0.30 million (Plus possible bonuses)
+  Accrued R&D and/or Investment Tax Credits:	$164.81 million
+  Annual CEO Salary (approx.):		$1.99 million (Plus possible bonuses)
   Today's (Game) Date:			January 1, 2025
   Next Earnings Report:			January 27, 2025
   ---------------------------------------------

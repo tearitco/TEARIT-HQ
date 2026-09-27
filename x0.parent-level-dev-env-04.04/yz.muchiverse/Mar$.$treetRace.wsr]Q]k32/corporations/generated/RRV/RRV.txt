@@ -5,32 +5,32 @@ FINANCIAL BALANCE SHEET: REDROCK VENTURES (RRV)
 (Amounts in millions of U.S. Dollars, except per share amounts)
 
 ASSETS:
-  Free Cash and Equivalents:		696.04
-  Working Capital (A/R, Inven.):	291.44
-  Business Assets/Equipment:		1221.71
+  Free Cash and Equivalents:		274.53
+  Working Capital (A/R, Inven.):	371.16
+  Business Assets/Equipment:		641.86
   Stock in Subsidiary Cos.:		0.00
   Options Long/Short: Net Value:	0.00
   ---------------------------------------------
-  Total Assets:				2209.19
+  Total Assets:				1287.56
   ---------------------------------------------
 
 LIABILITIES AND EQUITY:
   Long-Term Bonds Issued:		0.00
-  Bank Loan:				206.55
+  Bank Loan:				447.69
   Accrued Income Tax Payable:		0.00
   ---------------------------------------------
-  Total Liabilities:			206.55
+  Total Liabilities:			447.69
   ---------------------------------------------
-  Equity (Net Worth):			2002.65
+  Equity (Net Worth):			839.87
   =============================================
 
 STOCK AND EARNINGS DATA:
 ------------------------
-  Net Worth Per Share:			35.21
-  Current Stock Price:			41.36
-  52-Week High/Low Stock Price:		60.95 / 36.19
-  Shares of Stock Outstanding:		56.88 million
-  Total Stock Capitalization:		2352.45 million
+  Net Worth Per Share:			26.10
+  Current Stock Price:			36.60
+  52-Week High/Low Stock Price:		59.45 / 29.88
+  Shares of Stock Outstanding:		32.18 million
+  Total Stock Capitalization:		1177.85 million
   2021 Earnings Per Share:		0.00 (Operating Earnings)
   2022 Earnings Per Share:		0.00 (Operating Earnings)
   2023 Earnings Per Share:		0.00 (Operating Earnings)
@@ -42,14 +42,14 @@ VARIOUS FINANCIAL RATIOS:
 -------------------------
   Price/Earnings Ratio:			NMF (No Meaningful Figure)
   Dividend Yield:			0.00%
-  Debt to Equity Ratio:			0.10 to 1
+  Debt to Equity Ratio:			0.53 to 1
   Return on Equity (2024):		NMF (No Meaningful Figure)
   ---------------------------------------------
 
 *** CREDIT INFO: ***
 -------------------
   Credit Rating:			AA
-  Unused Bank Line of Credit:		1688.29 million
+  Unused Bank Line of Credit:		2988.99 million
   Borrowing Rate (Interest):		10.50% (Prime is: 10.00%)
   Lending Bank:				LUNAR FINANCE (LUN)
   ---------------------------------------------
@@ -64,11 +64,11 @@ VARIABLE SETTINGS (Changeable by controlling player):
 MISCELLANEOUS INFO:
 -------------------
   Industry Group:			AGRICULTURE
-  Incorporated in:			Inland
+  Incorporated in:			Red African Union
   Controlled (and actively managed) by:	public
   Public Owns:			%
-  Accrued R&D and/or Investment Tax Credits:	$145.55 million
-  Annual CEO Salary (approx.):		$1.30 million (Plus possible bonuses)
+  Accrued R&D and/or Investment Tax Credits:	$119.38 million
+  Annual CEO Salary (approx.):		$0.55 million (Plus possible bonuses)
   Today's (Game) Date:			January 1, 2025
   Next Earnings Report:			January 27, 2025
   ---------------------------------------------

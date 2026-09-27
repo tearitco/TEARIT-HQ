@@ -1,0 +1,33 @@
+
+=== menu.chtpm pid 495452  2026-09-19 22:07:10 ===
+--- menu.chtpm  pid 495452  2026-09-19 22:07:10 ---
+--- page: main ---
+m8_redhorned
+    [>] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Delete
+    [ ] 5. Place
+    [ ] 6. Cancel
+
+=== menu.chtpm pid 495452  2026-09-19 22:07:11 ===
+--- menu.chtpm  pid 495452  2026-09-19 22:07:11 ---
+--- page: main ---
+m8_redhorned
+    [>] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Delete
+    [ ] 5. Place
+    [ ] 6. Cancel
+
+=== menu.chtpm pid 495452  2026-09-19 22:07:17 ===
+--- menu.chtpm  pid 495452  2026-09-19 22:07:17 ---
+--- page: main ---
+m8_redhorned
+    [>] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Delete
+    [ ] 5. Place
+    [ ] 6. Cancel

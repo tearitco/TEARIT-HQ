@@ -1,0 +1,192 @@
+
+=== network-browser-hq.xhtpm pid 1714433  2026-09-11 03:20:16 ===
+--- network-browser-hq.xhtpm  pid 1714433  2026-09-11 03:20:16 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. www.youtube.com
+        [ ] 4. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 5. https://example.com
+        [ ] 6. https://myaccount.google.com/126
+        [ ] 7. https://myaccount.google.com/015
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 11. https://example.com
+        [ ] 12. www.google.com
+        [ ] 13. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 14. Back
+        [ ] 15. Forward
+        [ ] 16. Stop
+        [ ] 17. Reload
+        [ ] 18. Home
+        [ ] 19. Bookmark
+        [ ] 20. Close tab
+        [ ] 21. Google's products 
+        [ ] 22. Google's products 
+        [ ] 23. *YouTube
+        [ ] 24. New tab
+      [ ] 25. hi 
+          Status: ready
+            YouTube
+        [ ] 28. / /
+        [ ] 29. / /
+        [ ] 30. https://www.youtube.com/about/ About
+        [ ] 31. https://www.youtube.com/about/press/ Press
+        [ ] 32. https://www.youtube.com/about/copyright/ Copyright
+        [ ] 33. /t/contact_us/ Contact us
+        [ ] 34. https://www.youtube.com/creators/ Creators
+        [ ] 35. https://www.youtube.com/ads/ Advertise
+        [ ] 36. https://developers.google.com/youtube Developers
+        [ ] 37. /t/terms Terms
+        [ ] 38. /t/privacy Privacy
+        [ ] 39. https://www.youtube.com/about/policies/ Policy & Safety
+        [ ] 40. https://www.youtube.com/howyoutubeworks?utm_campaign=ytgen&utm_source=ythp&utm_medium=LeftNav&utm_content=txt&u=https%3A%2F%2Fwww.youtube.com%2Fhowyoutubeworks%3Futm_source%3Dythp%26utm_medium%3DLeftNav%26utm_campaign%3Dytgen How YouTube w
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1714433  2026-09-11 03:20:16 ===
+--- network-browser-hq.xhtpm  pid 1714433  2026-09-11 03:20:16 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. www.youtube.com
+        [ ] 4. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 5. https://example.com
+        [ ] 6. https://myaccount.google.com/126
+        [ ] 7. https://myaccount.google.com/015
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 11. https://example.com
+        [ ] 12. www.google.com
+        [ ] 13. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 14. Back
+        [ ] 15. Forward
+        [ ] 16. Stop
+        [ ] 17. Reload
+        [ ] 18. Home
+        [ ] 19. Bookmark
+        [ ] 20. Close tab
+        [ ] 21. Google's products 
+        [ ] 22. Google's products 
+        [ ] 23. *YouTube
+        [ ] 24. New tab
+      [ ] 25. www.youtube.com
+          Status: ready
+            YouTube
+        [ ] 28. / /
+        [ ] 29. / /
+        [ ] 30. https://www.youtube.com/about/ About
+        [ ] 31. https://www.youtube.com/about/press/ Press
+        [ ] 32. https://www.youtube.com/about/copyright/ Copyright
+        [ ] 33. /t/contact_us/ Contact us
+        [ ] 34. https://www.youtube.com/creators/ Creators
+        [ ] 35. https://www.youtube.com/ads/ Advertise
+        [ ] 36. https://developers.google.com/youtube Developers
+        [ ] 37. /t/terms Terms
+        [ ] 38. /t/privacy Privacy
+        [ ] 39. https://www.youtube.com/about/policies/ Policy & Safety
+        [ ] 40. https://www.youtube.com/howyoutubeworks?utm_campaign=ytgen&utm_source=ythp&utm_medium=LeftNav&utm_content=txt&u=https%3A%2F%2Fwww.youtube.com%2Fhowyoutubeworks%3Futm_source%3Dythp%26utm_medium%3DLeftNav%26utm_campaign%3Dytgen How YouTube w
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1714433  2026-09-11 03:20:18 ===
+--- network-browser-hq.xhtpm  pid 1714433  2026-09-11 03:20:18 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. www.youtube.com
+        [ ] 4. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 5. https://example.com
+        [ ] 6. https://myaccount.google.com/126
+        [ ] 7. https://myaccount.google.com/015
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 11. https://example.com
+        [ ] 12. www.google.com
+        [ ] 13. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 14. Back
+        [ ] 15. Forward
+        [ ] 16. Stop
+        [ ] 17. Reload
+        [ ] 18. Home
+        [ ] 19. Bookmark
+        [ ] 20. Close tab
+        [ ] 21. Google's products 
+        [ ] 22. Google's products 
+        [ ] 23. *YouTube
+        [ ] 24. New tab
+      [ ] 25. www.youtube.com
+          Status: ready
+            YouTube
+        [ ] 28. / /
+        [ ] 29. / /
+        [ ] 30. https://www.youtube.com/about/ About
+        [ ] 31. https://www.youtube.com/about/press/ Press
+        [ ] 32. https://www.youtube.com/about/copyright/ Copyright
+        [ ] 33. /t/contact_us/ Contact us
+        [ ] 34. https://www.youtube.com/creators/ Creators
+        [ ] 35. https://www.youtube.com/ads/ Advertise
+        [ ] 36. https://developers.google.com/youtube Developers
+        [ ] 37. /t/terms Terms
+        [ ] 38. /t/privacy Privacy
+        [ ] 39. https://www.youtube.com/about/policies/ Policy & Safety
+        [ ] 40. https://www.youtube.com/howyoutubeworks?utm_campaign=ytgen&utm_source=ythp&utm_medium=LeftNav&utm_content=txt&u=https%3A%2F%2Fwww.youtube.com%2Fhowyoutubeworks%3Futm_source%3Dythp%26utm_medium%3DLeftNav%26utm_campaign%3Dytgen How YouTube w
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 1714433  2026-09-11 03:20:19 ===
+--- network-browser-hq.xhtpm  pid 1714433  2026-09-11 03:20:19 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. www.youtube.com
+        [ ] 4. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 5. https://example.com
+        [ ] 6. https://myaccount.google.com/126
+        [ ] 7. https://myaccount.google.com/015
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 11. https://example.com
+        [ ] 12. www.google.com
+        [ ] 13. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 14. Back
+        [ ] 15. Forward
+        [ ] 16. Stop
+        [ ] 17. Reload
+        [ ] 18. Home
+        [ ] 19. Bookmark
+        [ ] 20. Close tab
+        [ ] 21. Google's products 
+        [ ] 22. Google's products 
+        [ ] 23. *YouTube
+        [ ] 24. New tab
+      [ ] 25. www.youtube.com
+          Status: ready
+            YouTube
+        [ ] 28. / /
+        [ ] 29. / /
+        [ ] 30. https://www.youtube.com/about/ About
+        [ ] 31. https://www.youtube.com/about/press/ Press
+        [ ] 32. https://www.youtube.com/about/copyright/ Copyright
+        [ ] 33. /t/contact_us/ Contact us
+        [ ] 34. https://www.youtube.com/creators/ Creators
+        [ ] 35. https://www.youtube.com/ads/ Advertise
+        [ ] 36. https://developers.google.com/youtube Developers
+        [ ] 37. /t/terms Terms
+        [ ] 38. /t/privacy Privacy
+        [ ] 39. https://www.youtube.com/about/policies/ Policy & Safety
+        [ ] 40. https://www.youtube.com/howyoutubeworks?utm_campaign=ytgen&utm_source=ythp&utm_medium=LeftNav&utm_content=txt&u=https%3A%2F%2Fwww.youtube.com%2Fhowyoutubeworks%3Futm_source%3Dythp%26utm_medium%3DLeftNav%26utm_campaign%3Dytgen How YouTube w
+          Console
+          Try: eval:1 + 1

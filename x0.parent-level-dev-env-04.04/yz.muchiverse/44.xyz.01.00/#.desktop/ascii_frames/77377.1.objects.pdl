@@ -1,0 +1,11 @@
+OBJECT tag=text id=- class=dir-label x=0 y=30 w=220 h=120 nav=0 active=0 label=/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/sessions
+OBJECT tag=item id=entry0 class=fe-entry x=0 y=150 w=220 h=30 nav=1 active=0 label=  .. 
+OBJECT tag=item id=entry1 class=fe-entry x=0 y=180 w=220 h=30 nav=2 active=0 label=  s1 
+OBJECT tag=item id=entry2 class=fe-entry x=0 y=210 w=220 h=30 nav=3 active=0 label=  s2 
+OBJECT tag=item id=entry3 class=fe-entry x=0 y=240 w=220 h=30 nav=4 active=0 label=  s3 
+OBJECT tag=item id=entry4 class=fe-entry x=0 y=270 w=220 h=30 nav=5 active=0 label=  s4 
+OBJECT tag=item id=entry5 class=fe-entry x=0 y=300 w=220 h=30 nav=6 active=0 label=  s5 
+OBJECT tag=item id=entry6 class=fe-entry x=0 y=330 w=220 h=30 nav=7 active=0 label=  s6 
+OBJECT tag=item id=entry7 class=fe-entry x=0 y=360 w=220 h=30 nav=8 active=0 label=  s7 
+OBJECT tag=item id=entry8 class=fe-entry x=0 y=390 w=220 h=30 nav=9 active=0 label=  session.pdl 28B
+OBJECT tag=text id=- class=quiet x=220 y=30 w=260 h=30 nav=0 active=0 label=Pick a file to load.

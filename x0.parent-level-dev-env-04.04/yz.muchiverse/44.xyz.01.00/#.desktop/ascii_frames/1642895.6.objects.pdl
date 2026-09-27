@@ -1,0 +1,17 @@
+OBJECT tag=text id=sidebar-header class=- x=0 y=30 w=220 h=30 nav=0 active=0 label=Sessions
+OBJECT tag=item id=new class=- x=0 y=60 w=220 h=30 nav=1 active=0 label=+ New session
+OBJECT tag=item id=togglesound class=- x=0 y=90 w=220 h=30 nav=2 active=0 label=Sound: on (click to toggle)
+OBJECT tag=item id=s0 class=- x=0 y=120 w=220 h=60 nav=3 active=0 label=&gt; 08-16 04:49 Reply with exactly one word: pong
+OBJECT tag=item id=s1 class=- x=0 y=180 w=220 h=60 nav=4 active=0 label=08-16 00:29 list files in &amp;.widgits/ai-cell
+OBJECT tag=item id=s2 class=- x=0 y=240 w=220 h=30 nav=5 active=0 label=08-14 22:45 hello from relay
+OBJECT tag=text id=status class=- x=220 y=30 w=480 h=30 nav=0 active=0 label=model: gemma3:1b | sound: on | idle
+OBJECT tag=item id=cyclemodel class=- x=220 y=60 w=480 h=30 nav=6 active=0 label=Model: gemma3:1b (click to cycle)
+OBJECT tag=text id=msg0 class=msg-user x=220 y=104 w=472 h=30 nav=0 active=0 label=you: Use your list_dir tool to list files in the current directory (path=.)
+OBJECT tag=text id=msg1 class=msg-hai x=220 y=134 w=472 h=60 nav=0 active=0 label=hai: [list_dir] /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/.:   #.resume/   0
+OBJECT tag=text id=msg2 class=msg-user x=220 y=194 w=472 h=30 nav=0 active=0 label=you: hi 
+OBJECT tag=text id=msg3 class=msg-hai x=220 y=224 w=472 h=60 nav=0 active=0 label=hai: [error: no 'content' field in OpenRouter reply - check model name / key / raw response in or-response-*.json under the audit dir]
+OBJECT tag=text id=msg4 class=msg-user x=220 y=284 w=472 h=30 nav=0 active=0 label=you: hi
+OBJECT tag=text id=msg5 class=msg-hai x=220 y=314 w=472 h=60 nav=0 active=0 label=hai: Hi there! It’s nice to be able to talk with you. How’s your day going, or how about yours? 😊  What's on your mind today? 👍✨
+OBJECT tag=text id=msg6 class=msg-user x=220 y=374 w=472 h=30 nav=0 active=0 label=you: third test signal removed
+OBJECT tag=text id=msg7 class=msg-hai x=220 y=404 w=472 h=60 nav=0 active=0 label=hai: Okay, I've seen your message - you're indicating that the third test signal is no longer available.  That means something happened with a piece of data related to testing. To understand better what's 
+OBJECT tag=cli_io id=composer class=- x=220 y=490 w=480 h=30 nav=7 active=0 label=> 

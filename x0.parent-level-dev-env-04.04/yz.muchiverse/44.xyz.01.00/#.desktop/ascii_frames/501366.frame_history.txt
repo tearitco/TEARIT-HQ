@@ -1,0 +1,192 @@
+
+=== menu.chtpm pid 501366  2026-09-13 10:41:52 ===
+--- menu.chtpm  pid 501366  2026-09-13 10:41:52 ---
+--- page: main ---
+    [>] 1. Feed
+    [ ] 2. Menu
+    [ ] 3. Play
+    [ ] 4. Events (ez)
+    [ ] 5. Events (hq)
+    [ ] 6. More
+    [ ] 7. Rename
+    [ ] 8. Dir
+    [ ] 9. Close
+    [ ] 10. Cancel
+        Train
+        Rest
+        Tournament
+        Errantry
+        Back
+        Cancel
+        -- m8_redhorned --
+        Level: 1
+        XP: 0 / 100 to next
+        qolq (gold): 35
+        HP: 42 / 100
+        MP: 50 / 50
+        Items
+        Skills
+        Status
+        Back
+        Cancel
+        -- Items (soon) --
+        (no items yet)
+        Back
+        Cancel
+        -- Skills (soon) --
+        (no skills yet)
+        Back
+        Cancel
+        -- Status --
+        Name: m8_redhorned
+        Level: 1
+        XP: 0 / 100
+        qolq (gold): 35
+        HP: 42 / 100
+        MP: 50 / 50
+        Back
+        Cancel
+
+=== menu.chtpm pid 501366  2026-09-13 10:42:40 ===
+--- menu.chtpm  pid 501366  2026-09-13 10:42:40 ---
+--- page: main ---
+    [>] 1. Feed
+    [ ] 2. Menu
+    [ ] 3. Play
+    [ ] 4. Events (ez)
+    [ ] 5. Events (hq)
+    [ ] 6. More
+    [ ] 7. Rename
+    [ ] 8. Dir
+    [ ] 9. Close
+    [ ] 10. Cancel
+        Train
+        Rest
+        Tournament
+        Errantry
+        Back
+        Cancel
+        -- m8_redhorned --
+        Level: 1
+        XP: 0 / 100 to next
+        qolq (gold): 35
+        HP: 42 / 100
+        MP: 50 / 50
+        Items
+        Skills
+        Status
+        Back
+        Cancel
+        -- Items (soon) --
+        (no items yet)
+        Back
+        Cancel
+        -- Skills (soon) --
+        (no skills yet)
+        Back
+        Cancel
+        -- Status --
+        Name: m8_redhorned
+        Level: 1
+        XP: 0 / 100
+        qolq (gold): 35
+        HP: 42 / 100
+        MP: 50 / 50
+        Back
+        Cancel
+
+=== menu.chtpm pid 501366  2026-09-13 10:42:42 ===
+--- menu.chtpm  pid 501366  2026-09-13 10:42:42 ---
+--- page: main ---
+    [>] 1. Feed
+    [ ] 2. Menu
+    [ ] 3. Play
+    [ ] 4. Events (ez)
+    [ ] 5. Events (hq)
+    [ ] 6. More
+    [ ] 7. Rename
+    [ ] 8. Dir
+    [ ] 9. Close
+    [ ] 10. Cancel
+        Train
+        Rest
+        Tournament
+        Errantry
+        Back
+        Cancel
+        -- m8_redhorned --
+        Level: 1
+        XP: 0 / 100 to next
+        qolq (gold): 35
+        HP: 42 / 100
+        MP: 50 / 50
+        Items
+        Skills
+        Status
+        Back
+        Cancel
+        -- Items (soon) --
+        (no items yet)
+        Back
+        Cancel
+        -- Skills (soon) --
+        (no skills yet)
+        Back
+        Cancel
+        -- Status --
+        Name: m8_redhorned
+        Level: 1
+        XP: 0 / 100
+        qolq (gold): 35
+        HP: 42 / 100
+        MP: 50 / 50
+        Back
+        Cancel
+
+=== menu.chtpm pid 501366  2026-09-13 10:42:42 ===
+--- menu.chtpm  pid 501366  2026-09-13 10:42:42 ---
+--- page: main ---
+    [ ] 1. Feed
+    [ ] 2. Menu
+    [ ] 3. Play
+    [ ] 4. Events (ez)
+    [ ] 5. Events (hq)
+    [ ] 6. More
+    [ ] 7. Rename
+    [ ] 8. Dir
+    [ ] 9. Close
+    [>] 10. Cancel
+        Train
+        Rest
+        Tournament
+        Errantry
+        Back
+        Cancel
+        -- m8_redhorned --
+        Level: 1
+        XP: 0 / 100 to next
+        qolq (gold): 35
+        HP: 42 / 100
+        MP: 50 / 50
+        Items
+        Skills
+        Status
+        Back
+        Cancel
+        -- Items (soon) --
+        (no items yet)
+        Back
+        Cancel
+        -- Skills (soon) --
+        (no skills yet)
+        Back
+        Cancel
+        -- Status --
+        Name: m8_redhorned
+        Level: 1
+        XP: 0 / 100
+        qolq (gold): 35
+        HP: 42 / 100
+        MP: 50 / 50
+        Back
+        Cancel

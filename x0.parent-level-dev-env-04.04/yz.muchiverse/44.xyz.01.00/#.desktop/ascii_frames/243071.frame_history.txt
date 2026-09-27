@@ -1,0 +1,36 @@
+
+=== menu.chtpm pid 243071  2026-09-18 13:10:41 ===
+--- menu.chtpm  pid 243071  2026-09-18 13:10:41 ---
+--- page: main ---
+self
+    [>] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Delete
+    [ ] 5. Place
+    [ ] 6. Cli-io
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 243071  2026-09-18 13:10:42 ===
+--- menu.chtpm  pid 243071  2026-09-18 13:10:42 ---
+--- page: main ---
+self
+    [ ] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Delete
+    [>] 5. Place
+    [ ] 6. Cli-io
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 243071  2026-09-18 13:10:43 ===
+--- menu.chtpm  pid 243071  2026-09-18 13:10:43 ---
+--- page: main ---
+self
+    [ ] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Delete
+    [>] 5. Place
+    [ ] 6. Cli-io
+    [ ] 7. Cancel

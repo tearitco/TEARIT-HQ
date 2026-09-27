@@ -1,0 +1,24 @@
+
+=== menu.chtpm pid 47341  2026-09-14 12:21:30 ===
+--- menu.chtpm  pid 47341  2026-09-14 12:21:30 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Close
+    [ ] 4. Cancel
+
+=== menu.chtpm pid 47341  2026-09-14 12:21:31 ===
+--- menu.chtpm  pid 47341  2026-09-14 12:21:31 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Close
+    [ ] 4. Cancel
+
+=== menu.chtpm pid 47341  2026-09-14 12:22:05 ===
+--- menu.chtpm  pid 47341  2026-09-14 12:22:05 ---
+--- page: main ---
+    [ ] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Close
+    [>] 4. Cancel

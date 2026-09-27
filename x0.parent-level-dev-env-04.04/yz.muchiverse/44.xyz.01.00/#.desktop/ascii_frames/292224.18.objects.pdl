@@ -1,0 +1,44 @@
+OBJECT tag=text id=- class=block-title x=0 y=30 w=200 h=30 nav=0 active=0 label=Bookmarks
+OBJECT tag=text id=- class=quiet x=0 y=0 w=0 h=0 nav=0 active=0 label=No bookmarks yet
+OBJECT tag=text id=- class=block-title x=0 y=60 w=200 h=30 nav=0 active=0 label=History
+OBJECT tag=item id=nb-clearhist class=- x=0 y=90 w=200 h=30 nav=1 active=0 label=Clear All History
+OBJECT tag=item id=hist7 class=- x=0 y=134 w=192 h=60 nav=4 active=0 label=https://www.google.com/intl/en/about/products?tab=ih
+OBJECT tag=item id=hist8 class=- x=0 y=194 w=192 h=30 nav=5 active=0 label=https://example.com
+OBJECT tag=item id=hist9 class=- x=0 y=224 w=192 h=30 nav=6 active=0 label=https://myaccount.google.com/126
+OBJECT tag=item id=hist10 class=- x=0 y=254 w=192 h=30 nav=7 active=0 label=https://myaccount.google.com/015
+OBJECT tag=item id=hist11 class=- x=0 y=284 w=192 h=120 nav=8 active=0 label=https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+OBJECT tag=item id=hist12 class=- x=0 y=404 w=192 h=60 nav=9 active=0 label=https://www.google.com/intl/en/about/products?tab=ih
+OBJECT tag=item id=hist13 class=- x=0 y=464 w=192 h=60 nav=10 active=0 label=https://www.google.com/intl/en/about/products?tab=ih
+OBJECT tag=item id=hist14 class=- x=0 y=524 w=192 h=30 nav=11 active=0 label=https://example.com
+OBJECT tag=item id=hist15 class=- x=0 y=554 w=192 h=30 nav=12 active=0 label=www.google.com
+OBJECT tag=item id=hist16 class=- x=0 y=584 w=192 h=60 nav=13 active=0 label=https://www.google.com/intl/en/about/products?tab=ih
+OBJECT tag=item id=nb-back class=quiet x=200 y=30 w=108 h=30 nav=14 active=0 label=Back
+OBJECT tag=item id=nb-fwd class=quiet x=308 y=30 w=108 h=30 nav=15 active=0 label=Forward
+OBJECT tag=item id=nb-stop class=quiet x=416 y=30 w=108 h=30 nav=16 active=0 label=Stop
+OBJECT tag=item id=nb-reload class=quiet x=524 y=30 w=108 h=30 nav=17 active=0 label=Reload
+OBJECT tag=item id=nb-home class=quiet x=632 y=30 w=108 h=30 nav=18 active=0 label=Home
+OBJECT tag=item id=nb-bm class=quiet x=740 y=30 w=108 h=30 nav=19 active=0 label=Bookmark
+OBJECT tag=item id=nb-close class=quiet x=848 y=30 w=108 h=30 nav=20 active=0 label=Close tab
+OBJECT tag=item id=tab0 class=quiet x=200 y=60 w=126 h=30 nav=21 active=0 label=Google's products 
+OBJECT tag=item id=tab1 class=quiet x=326 y=60 w=126 h=30 nav=22 active=0 label=Google's products 
+OBJECT tag=item id=tab2 class=quiet x=452 y=60 w=126 h=30 nav=23 active=0 label=YouTube
+OBJECT tag=item id=tab3 class=quiet x=578 y=60 w=126 h=30 nav=24 active=0 label=Image Test
+OBJECT tag=item id=tab4 class=quiet x=704 y=60 w=126 h=30 nav=25 active=0 label=*/b/ - Random - 4ch
+OBJECT tag=item id=nb-newtab class=quiet x=830 y=60 w=126 h=30 nav=26 active=0 label=New tab
+OBJECT tag=cli_io id=address class=top,nb-address x=200 y=90 w=760 h=30 nav=27 active=0 label=-
+OBJECT tag=text id=status class=nb-status x=200 y=120 w=760 h=30 nav=0 active=0 label=Status: ready
+OBJECT tag=text id=ct0 class=page-title x=200 y=164 w=752 h=30 nav=0 active=0 label=/b/ - Random - 4chan
+OBJECT tag=text id=cx1 class=- x=200 y=194 w=752 h=30 nav=0 active=0 label=[ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+OBJECT tag=text id=cx2 class=- x=200 y=224 w=752 h=30 nav=0 active=0 label=/ ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+OBJECT tag=text id=cx3 class=- x=200 y=254 w=752 h=30 nav=0 active=0 label=/  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+OBJECT tag=item id=cl4 class=- x=200 y=284 w=752 h=30 nav=30 active=0 label=/a/ a
+OBJECT tag=item id=cl5 class=- x=200 y=314 w=752 h=30 nav=31 active=0 label=/b/ b
+OBJECT tag=item id=cl6 class=- x=200 y=344 w=752 h=30 nav=32 active=0 label=/c/ c
+OBJECT tag=item id=cl7 class=- x=200 y=374 w=752 h=30 nav=33 active=0 label=/d/ d
+OBJECT tag=item id=cl8 class=- x=200 y=404 w=752 h=30 nav=34 active=0 label=/e/ e
+OBJECT tag=item id=cl9 class=- x=200 y=434 w=752 h=30 nav=35 active=0 label=/f/ f
+OBJECT tag=item id=cl10 class=- x=200 y=464 w=752 h=30 nav=36 active=0 label=/g/ g
+OBJECT tag=item id=cl11 class=- x=200 y=494 w=752 h=30 nav=37 active=0 label=/gif/ gif
+OBJECT tag=item id=cl12 class=- x=200 y=524 w=752 h=30 nav=38 active=0 label=/h/ h
+OBJECT tag=item id=cl13 class=- x=200 y=554 w=752 h=30 nav=39 active=0 label=/hr/ hr
+OBJECT tag=item id=cl14 class=- x=200 y=584 w=752 h=30 nav=40 active=0 label=/k/ k

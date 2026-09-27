@@ -1,0 +1,44 @@
+OBJECT tag=item id=- class=- x=2 y=62 w=260 h=30 nav=1 active=0 label=Feed
+OBJECT tag=item id=- class=- x=2 y=92 w=260 h=30 nav=2 active=0 label=Menu
+OBJECT tag=item id=- class=- x=2 y=122 w=260 h=30 nav=3 active=0 label=Play
+OBJECT tag=item id=- class=- x=2 y=152 w=260 h=30 nav=4 active=0 label=Events (ez)
+OBJECT tag=item id=- class=- x=2 y=182 w=260 h=30 nav=5 active=0 label=Events (hq)
+OBJECT tag=item id=- class=- x=2 y=212 w=260 h=30 nav=6 active=0 label=More
+OBJECT tag=item id=- class=- x=2 y=242 w=260 h=30 nav=7 active=0 label=Rename
+OBJECT tag=item id=- class=- x=2 y=272 w=260 h=30 nav=8 active=0 label=Dir
+OBJECT tag=item id=- class=- x=2 y=302 w=260 h=30 nav=9 active=0 label=Close
+OBJECT tag=item id=- class=- x=2 y=332 w=260 h=30 nav=10 active=0 label=Cancel
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Train
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Rest
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Tournament
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Errantry
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Back
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Cancel
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=-- m8_redhorned --
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Level: 1
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=XP: 0 / 100 to next
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=qolq (gold): 35
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=HP: 42 / 100
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=MP: 50 / 50
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Items
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Skills
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Status
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Back
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Cancel
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=-- Items (soon) --
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=(no items yet)
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Back
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Cancel
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=-- Skills (soon) --
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=(no skills yet)
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Back
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Cancel
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=-- Status --
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Name: m8_redhorned
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Level: 1
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=XP: 0 / 100
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=qolq (gold): 35
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=HP: 42 / 100
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=MP: 50 / 50
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Back
+OBJECT tag=item id=- class=- x=0 y=0 w=0 h=0 nav=0 active=0 label=Cancel

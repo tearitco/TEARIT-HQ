@@ -1,0 +1,35 @@
+--- network-browser-hq.xhtpm  pid 1715553  2026-09-11 03:23:37 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 3. www.youtube.com
+        [ ] 4. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 5. https://example.com
+        [ ] 6. https://myaccount.google.com/126
+        [ ] 7. https://myaccount.google.com/015
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 11. https://example.com
+        [ ] 12. www.google.com
+        [ ] 13. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 14. Back
+        [ ] 15. Forward
+        [ ] 16. Stop
+        [ ] 17. Reload
+        [ ] 18. Home
+        [ ] 19. Bookmark
+        [ ] 20. Close tab
+        [ ] 21. Google's products 
+        [ ] 22. Google's products 
+        [ ] 23. YouTube
+        [>] 24. *Network Browser
+        [ ] 25. New tab
+      [ ] 26. URL: 
+          Status: loading
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1

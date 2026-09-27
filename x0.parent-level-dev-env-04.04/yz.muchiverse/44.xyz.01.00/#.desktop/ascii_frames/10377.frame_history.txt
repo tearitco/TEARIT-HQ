@@ -1,0 +1,2130 @@
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:35:30 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:35:30 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 17. X
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. @.apps
+      [ ] 12. piececraft-hq
+      [ ] 13. pieces
+      [ ] 14. system
+      [ ] 15. maps
+      [ ] 16. mineclonia_sample
+    [ ] 18. ⬅️ Back
+    [ ] 19. Grid View
+        Pick a file to load.
+      [ ] 20. 📄  events.pdl 668B
+      [ ] 21. 📄  map.txt 272B
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:35:30 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:35:30 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:12 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:12 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:28 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:28 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [>] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:33 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:33 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [>] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:33 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:33 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [>] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:34 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:34 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [>] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:34 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:34 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [>] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:37 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:37 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [>] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:37 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:37 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [>] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:38 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:38 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [>] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:38 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:38 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [>] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:40 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:40 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [>] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:41 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:41 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [>] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:41 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:41 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [>] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:42 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:42 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [>] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:42 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:42 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [>] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:43 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:43 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [>] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:43 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:43 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [>] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:43 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:43 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [>] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:43 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:43 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [>] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:43 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:43 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [>] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:44 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:44 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [>] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:44 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:44 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [>] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:44 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:44 ---
+--- page: main ---
+File Explorer - LOAD
+    [>] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:44 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:44 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [>] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:45 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:45 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [>] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:45 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:45 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:46 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:46 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [>] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:46 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:46 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [>] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:46 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:46 ---
+--- page: main ---
+File Explorer - LOAD
+    [>] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:47 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:47 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [>] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:47 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:47 ---
+--- page: main ---
+File Explorer - LOAD
+    [>] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:48 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:48 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [>] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:48 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:48 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [>] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:53 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:53 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [>] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:56 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:56 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [>] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:56 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:56 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [>] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:37:59 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:37:59 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [>] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:38:01 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:38:01 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [>] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:38:32 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:38:32 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [>] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+      [ ] 32. 📄  scrypts.sh 2KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:38:32 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:38:32 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [>] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+      [ ] 31. 📄  run-khtpm-strip.sh 465B
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:38:32 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:38:32 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [>] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 30. 📄  local-2do-15.txt 444B
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:38:32 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:38:32 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [>] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:38:33 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:38:33 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [>] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:39:29 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:39:29 ---
+--- page: main ---
+File Explorer - LOAD
+    [>] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:39:30 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:39:30 ---
+--- page: main ---
+File Explorer - LOAD
+    [>] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:39:36 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:39:36 ---
+--- page: main ---
+File Explorer - LOAD
+    [>] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:39:38 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:39:38 ---
+--- page: main ---
+File Explorer - LOAD
+    [>] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:40:37 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:40:37 ---
+--- page: main ---
+File Explorer - LOAD
+    [>] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:40:39 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:40:39 ---
+--- page: main ---
+File Explorer - LOAD
+    [>] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:41:09 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:41:09 ---
+--- page: main ---
+File Explorer - LOAD
+    [>] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:41:10 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:41:10 ---
+--- page: main ---
+File Explorer - LOAD
+    [>] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:42:06 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:42:06 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [>] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:42:06 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:42:06 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [>] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:42:06 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:42:06 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [>] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:42:08 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:42:08 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [>] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:43:48 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:43:48 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [>] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:43:54 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:43:54 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [>] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:44:22 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:44:22 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [>] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB
+
+=== file-explorer-pal.xhtpm pid 10377  2026-09-15 12:44:24 ===
+--- file-explorer-pal.xhtpm  pid 10377  2026-09-15 12:44:24 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. ⬅️ Back
+    [ ] 13. Grid View
+        Pick a file to load.
+      [ ] 16. 📄  18651.log 170B
+      [ ] 17. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 18. 📄  EMERGENCY_CLEAN.sh 5KB
+      [>] 19. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 20. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 21. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 22. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 23. 📄  bookmarks_state.txt 0B
+      [ ] 24. 📄  bookstack-path-bug.txt 12KB
+      [ ] 25. 📄  check-symlinks.sh 3KB
+      [ ] 26. 📄  interact_relay.txt 295B
+      [ ] 27. 📄  khtpm-win-fix.txt 16KB
+      [ ] 28. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 29. 📄  livedesk-win-fix-lvl2.txt 34KB

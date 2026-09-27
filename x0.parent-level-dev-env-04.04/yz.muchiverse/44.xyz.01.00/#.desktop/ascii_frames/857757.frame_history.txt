@@ -1,0 +1,27 @@
+
+=== file-explorer-pal.xhtpm pid 857757  2026-09-15 16:52:31 ===
+--- file-explorer-pal.xhtpm  pid 857757  2026-09-15 16:52:31 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 16. X
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. @.apps
+      [ ] 12. piececraft-hq
+      [ ] 13. pieces
+      [ ] 14. system
+      [ ] 15. maps
+    [ ] 17. ⬅️ Back
+    [ ] 18. Grid View
+        Pick a file to load.
+      [ ] 19. 📁  cdda_sample 
+      [ ] 20. 📁  default 
+      [ ] 21. 📁  mineclonia_sample 

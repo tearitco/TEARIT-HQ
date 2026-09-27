@@ -1,0 +1,90 @@
+
+=== csv-hq-pal.xhtpm pid 75054  2026-09-20 02:53:51 ===
+--- csv-hq-pal.xhtpm  pid 75054  2026-09-20 02:53:51 ---
+--- page: main ---
+csv-hq - 
+      [>] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+          Ready.
+          Column letter for functions below:
+      [ ] 4. cli_io
+        [ ] 5. SUM
+        [ ] 6. AVG
+        [ ] 7. MIN
+        [ ] 8. MAX
+      [ ] 9. COUNT
+          Result: 
+      [ ] 10. grid
+
+=== csv-hq-pal.xhtpm pid 75054  2026-09-20 02:53:52 ===
+--- csv-hq-pal.xhtpm  pid 75054  2026-09-20 02:53:52 ---
+--- page: main ---
+csv-hq - 
+      [>] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+          Ready.
+          Column letter for functions below:
+      [ ] 4. cli_io
+        [ ] 5. SUM
+        [ ] 6. AVG
+        [ ] 7. MIN
+        [ ] 8. MAX
+      [ ] 9. COUNT
+          Result: 
+      [ ] 10. grid
+
+=== csv-hq-pal.xhtpm pid 75054  2026-09-20 02:53:53 ===
+--- csv-hq-pal.xhtpm  pid 75054  2026-09-20 02:53:53 ---
+--- page: main ---
+csv-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+          Ready.
+          Column letter for functions below:
+      [ ] 4. cli_io
+        [ ] 5. SUM
+        [ ] 6. AVG
+        [ ] 7. MIN
+        [ ] 8. MAX
+      [ ] 9. COUNT
+          Result: 
+      [>] 10. grid
+
+=== csv-hq-pal.xhtpm pid 75054  2026-09-20 02:53:55 ===
+--- csv-hq-pal.xhtpm  pid 75054  2026-09-20 02:53:55 ---
+--- page: main ---
+csv-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+          Ready.
+          Column letter for functions below:
+      [ ] 4. cli_io
+        [ ] 5. SUM
+        [ ] 6. AVG
+        [ ] 7. MIN
+        [ ] 8. MAX
+      [ ] 9. COUNT
+          Result: 
+      [>] 10. grid
+
+=== csv-hq-pal.xhtpm pid 75054  2026-09-20 02:53:59 ===
+--- csv-hq-pal.xhtpm  pid 75054  2026-09-20 02:53:59 ---
+--- page: main ---
+csv-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+          Ready.
+          Column letter for functions below:
+      [ ] 4. cli_io
+        [ ] 5. SUM
+        [ ] 6. AVG
+        [ ] 7. MIN
+        [ ] 8. MAX
+      [ ] 9. COUNT
+          Result: 
+      [ ] 10. grid

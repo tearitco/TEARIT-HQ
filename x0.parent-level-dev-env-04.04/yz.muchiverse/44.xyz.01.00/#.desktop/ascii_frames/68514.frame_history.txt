@@ -1,0 +1,126 @@
+
+=== csv-hq-pal.xhtpm pid 68514  2026-09-20 02:38:57 ===
+--- csv-hq-pal.xhtpm  pid 68514  2026-09-20 02:38:57 ---
+--- page: main ---
+csv-hq - 
+      [>] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+          Ready.
+          Column letter for functions below:
+      [ ] 4. cli_io
+        [ ] 5. SUM
+        [ ] 6. AVG
+        [ ] 7. MIN
+        [ ] 8. MAX
+      [ ] 9. COUNT
+          Result: 
+      [ ] 10. grid
+
+=== csv-hq-pal.xhtpm pid 68514  2026-09-20 02:38:58 ===
+--- csv-hq-pal.xhtpm  pid 68514  2026-09-20 02:38:58 ---
+--- page: main ---
+csv-hq - 
+      [>] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+          Ready.
+          Column letter for functions below:
+      [ ] 4. cli_io
+        [ ] 5. SUM
+        [ ] 6. AVG
+        [ ] 7. MIN
+        [ ] 8. MAX
+      [ ] 9. COUNT
+          Result: 
+      [ ] 10. grid
+
+=== csv-hq-pal.xhtpm pid 68514  2026-09-20 02:38:59 ===
+--- csv-hq-pal.xhtpm  pid 68514  2026-09-20 02:38:59 ---
+--- page: main ---
+csv-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+          Ready.
+          Column letter for functions below:
+      [ ] 4. cli_io
+        [ ] 5. SUM
+        [ ] 6. AVG
+        [ ] 7. MIN
+        [ ] 8. MAX
+      [ ] 9. COUNT
+          Result: 
+      [>] 10. grid
+
+=== csv-hq-pal.xhtpm pid 68514  2026-09-20 02:39:06 ===
+--- csv-hq-pal.xhtpm  pid 68514  2026-09-20 02:39:06 ---
+--- page: main ---
+csv-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+          Ready.
+          Column letter for functions below:
+      [ ] 4. cli_io
+        [ ] 5. SUM
+        [ ] 6. AVG
+        [ ] 7. MIN
+        [ ] 8. MAX
+      [ ] 9. COUNT
+          Result: 
+      [>] 10. grid
+
+=== csv-hq-pal.xhtpm pid 68514  2026-09-20 02:39:11 ===
+--- csv-hq-pal.xhtpm  pid 68514  2026-09-20 02:39:11 ---
+--- page: main ---
+csv-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+          Ready.
+          Column letter for functions below:
+      [ ] 4. cli_io
+        [ ] 5. SUM
+        [ ] 6. AVG
+        [ ] 7. MIN
+        [ ] 8. MAX
+      [ ] 9. COUNT
+          Result: 
+      [>] 10. grid
+
+=== csv-hq-pal.xhtpm pid 68514  2026-09-20 02:40:13 ===
+--- csv-hq-pal.xhtpm  pid 68514  2026-09-20 02:40:13 ---
+--- page: main ---
+csv-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+          Ready.
+          Column letter for functions below:
+      [ ] 4. cli_io
+        [ ] 5. SUM
+        [ ] 6. AVG
+        [ ] 7. MIN
+        [ ] 8. MAX
+      [ ] 9. COUNT
+          Result: 
+      [ ] 10. grid
+
+=== csv-hq-pal.xhtpm pid 68514  2026-09-20 02:40:14 ===
+--- csv-hq-pal.xhtpm  pid 68514  2026-09-20 02:40:14 ---
+--- page: main ---
+csv-hq - 
+      [ ] 1. New
+      [ ] 2. [file] Open...
+      [ ] 3. Save
+          Ready.
+          Column letter for functions below:
+      [ ] 4. cli_io
+        [ ] 5. SUM
+        [ ] 6. AVG
+        [ ] 7. MIN
+        [ ] 8. MAX
+      [ ] 9. COUNT
+          Result: 
+      [ ] 10. grid

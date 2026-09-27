@@ -1,0 +1,7 @@
+city     | n
+---------+--
+Boston   | 1
+Chicago  | 1
+Denver   | 1
+New York | 1
+(4 rows)

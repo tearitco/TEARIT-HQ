@@ -1,0 +1,22 @@
+
+=== menu.chtpm pid 189761  2026-09-18 07:46:35 ===
+--- menu.chtpm  pid 189761  2026-09-18 07:46:35 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 189761  2026-09-18 07:46:36 ===
+--- menu.chtpm  pid 189761  2026-09-18 07:46:36 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel

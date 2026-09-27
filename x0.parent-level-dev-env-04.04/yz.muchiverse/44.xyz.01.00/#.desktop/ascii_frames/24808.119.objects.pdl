@@ -1,0 +1,19 @@
+OBJECT tag=text id=- class=quiet x=0 y=30 w=220 h=30 nav=0 active=0 label=scanned 20:50:09
+OBJECT tag=text id=- class=block-title x=0 y=60 w=220 h=30 nav=0 active=0 label=8 good  /  0 bad
+OBJECT tag=item id=b_refresh class=btn x=0 y=90 w=220 h=30 nav=1 active=0 label=  refresh now  
+OBJECT tag=item id=b_kill class=btn,danger x=0 y=120 w=220 h=30 nav=2 active=0 label=  KILL ALL BAD  
+OBJECT tag=item id=b_kill2 class=btn,danger x=0 y=150 w=220 h=30 nav=3 active=0 label= + pals/singletons 
+OBJECT tag=text id=- class=block-title x=0 y=180 w=220 h=30 nav=0 active=0 label=OTHER SESSION - real, not stray, not this one
+OBJECT tag=text id=- class=quiet x=0 y=0 w=0 h=0 nav=0 active=0 label=(none - no other live taskbar session)
+OBJECT tag=text id=- class=block-title x=0 y=210 w=220 h=30 nav=0 active=0 label=BAD - stray / leaked
+OBJECT tag=text id=- class=quiet x=0 y=240 w=220 h=30 nav=0 active=0 label=(none - nothing leaked)
+OBJECT tag=text id=- class=block-title x=220 y=30 w=480 h=30 nav=0 active=0 label=GOOD - owned / accounted for
+OBJECT tag=text id=- class=quiet x=220 y=60 w=480 h=30 nav=0 active=0 label=taskbar group, registered pals, house-wide managers, live -hq windows
+OBJECT tag=text id=- class=- x=220 y=90 w=480 h=30 nav=0 active=0 label=12341   [pal]       32m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=120 w=480 h=30 nav=0 active=0 label=12343   [pal]       32m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=150 w=480 h=30 nav=0 active=0 label=12345   [pal]       32m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=180 w=480 h=30 nav=0 active=0 label=12347   [pal]       32m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=210 w=480 h=30 nav=0 active=0 label=12349   [pal]       32m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=240 w=480 h=30 nav=0 active=0 label=12351   [pal]       32m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=270 w=480 h=30 nav=0 active=0 label=12353   [pal]       32m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=300 w=480 h=30 nav=0 active=0 label=34868   [hq-window] 9m     cpu:51.6 unreg  khtpm_core_render /home/no/Desktop/github/work

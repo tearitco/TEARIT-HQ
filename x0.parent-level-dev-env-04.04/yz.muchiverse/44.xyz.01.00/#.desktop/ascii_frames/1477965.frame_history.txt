@@ -1,0 +1,36 @@
+
+=== khtpm_show_choices_1477964.chtpm pid 1477965  2026-09-10 22:49:47 ===
+--- khtpm_show_choices_1477964.chtpm  pid 1477965  2026-09-10 22:49:47 ---
+--- page: main ---
+Choose
+    [>] 1. Bible verse (text)
+    [ ] 2. Bible verse (with TTS)
+    [ ] 3. Tao Te Ching (random chapter)
+    [ ] 4. Cancel
+
+=== khtpm_show_choices_1477964.chtpm pid 1477965  2026-09-10 22:49:48 ===
+--- khtpm_show_choices_1477964.chtpm  pid 1477965  2026-09-10 22:49:48 ---
+--- page: main ---
+Choose
+    [>] 1. Bible verse (text)
+    [ ] 2. Bible verse (with TTS)
+    [ ] 3. Tao Te Ching (random chapter)
+    [ ] 4. Cancel
+
+=== khtpm_show_choices_1477964.chtpm pid 1477965  2026-09-10 22:49:48 ===
+--- khtpm_show_choices_1477964.chtpm  pid 1477965  2026-09-10 22:49:48 ---
+--- page: main ---
+Choose
+    [ ] 1. Bible verse (text)
+    [>] 2. Bible verse (with TTS)
+    [ ] 3. Tao Te Ching (random chapter)
+    [ ] 4. Cancel
+
+=== khtpm_show_choices_1477964.chtpm pid 1477965  2026-09-10 22:49:49 ===
+--- khtpm_show_choices_1477964.chtpm  pid 1477965  2026-09-10 22:49:49 ---
+--- page: main ---
+Choose
+    [ ] 1. Bible verse (text)
+    [>] 2. Bible verse (with TTS)
+    [ ] 3. Tao Te Ching (random chapter)
+    [ ] 4. Cancel

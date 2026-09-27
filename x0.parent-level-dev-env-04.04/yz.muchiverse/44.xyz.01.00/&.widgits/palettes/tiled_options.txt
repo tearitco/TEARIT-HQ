@@ -1,0 +1,17 @@
+ACTIVE_DIR|Tilesets
+ACTIVE_TILESET|Grass
+ACTIVE_CATEGORY|Grass
+DIR|Characters|Characters
+DIR|Objects|Objects
+DIR|Tilesets|Tilesets
+TILESET|Wooden_House_Walls_Tilset|Wooden_House_Walls_Tilset
+TILESET|Wooden_House_Roof_Tilset|Wooden_House_Roof_Tilset
+TILESET|Doors|Doors
+TILESET|Grass|Grass
+TILESET|Tilled_Dirt_Wide_v2|Tilled_Dirt_Wide_v2
+TILESET|Water|Water
+TILESET|Fences|Fences
+TILESET|Tilled_Dirt_v2|Tilled_Dirt_v2
+TILESET|Hills|Hills
+TILESET|Tilled_Dirt_Wide|Tilled_Dirt_Wide
+TILESET|Tilled_Dirt|Tilled_Dirt

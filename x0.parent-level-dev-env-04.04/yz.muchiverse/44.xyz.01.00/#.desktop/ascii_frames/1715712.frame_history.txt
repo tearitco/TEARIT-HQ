@@ -1,0 +1,235 @@
+
+=== dashboard.xhtpm pid 1715712  2026-09-11 03:24:31 ===
+--- dashboard.xhtpm  pid 1715712  2026-09-11 03:24:31 ---
+--- page: main ---
+DB (PAL)
+      [>] 1. * Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Classes (4)
+        [ ] 16. 1. Hero
+        [ ] 17. 2. Warrior
+        [ ] 18. 3. Mage
+        [ ] 19. 4. Priest
+
+=== dashboard.xhtpm pid 1715712  2026-09-11 03:24:31 ===
+--- dashboard.xhtpm  pid 1715712  2026-09-11 03:24:31 ---
+--- page: main ---
+DB (PAL)
+      [>] 1. * Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Classes (4)
+        [ ] 16. 1. Hero
+        [ ] 17. 2. Warrior
+        [ ] 18. 3. Mage
+        [ ] 19. 4. Priest
+          #1  Hero
+        [ ] 20.   []  
+        [ ] 21. name  [Hero]  
+        [ ] 22. exp_curve  [Normal]  
+        [ ] 23. note  []  
+
+=== dashboard.xhtpm pid 1715712  2026-09-11 03:24:33 ===
+--- dashboard.xhtpm  pid 1715712  2026-09-11 03:24:33 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. * Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Classes (4)
+        [ ] 16. 1. Hero
+        [ ] 17. 2. Warrior
+        [ ] 18. 3. Mage
+        [ ] 19. 4. Priest
+          #1  Hero
+        [>] 20.   []  
+        [ ] 21. name  [Hero]  
+        [ ] 22. exp_curve  [Normal]  
+        [ ] 23. note  []  
+
+=== dashboard.xhtpm pid 1715712  2026-09-11 03:24:34 ===
+--- dashboard.xhtpm  pid 1715712  2026-09-11 03:24:34 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. * Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Classes (4)
+        [ ] 16. 1. Hero
+        [ ] 17. 2. Warrior
+        [ ] 18. 3. Mage
+        [ ] 19. 4. Priest
+          #1  Hero
+        [>] 20.   []  
+        [ ] 21. name  [Hero]  
+        [ ] 22. exp_curve  [Normal]  
+        [ ] 23. note  []  
+
+=== dashboard.xhtpm pid 1715712  2026-09-11 03:24:35 ===
+--- dashboard.xhtpm  pid 1715712  2026-09-11 03:24:35 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. * Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Classes (4)
+        [ ] 16. 1. Hero
+        [ ] 17. 2. Warrior
+        [ ] 18. 3. Mage
+        [ ] 19. 4. Priest
+          #1  Hero
+        [>] 20.   []  
+        [ ] 21. name  [Hero]  
+        [ ] 22. exp_curve  [Normal]  
+        [ ] 23. note  []  
+
+=== dashboard.xhtpm pid 1715712  2026-09-11 03:24:36 ===
+--- dashboard.xhtpm  pid 1715712  2026-09-11 03:24:36 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. * Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Classes (4)
+        [ ] 16. 1. Hero
+        [ ] 17. 2. Warrior
+        [ ] 18. 3. Mage
+        [ ] 19. 4. Priest
+          #1  Hero
+        [>] 20.   []  
+        [ ] 21. name  [Hero]  
+        [ ] 22. exp_curve  [Normal]  
+        [ ] 23. note  []  
+
+=== dashboard.xhtpm pid 1715712  2026-09-11 03:24:37 ===
+--- dashboard.xhtpm  pid 1715712  2026-09-11 03:24:37 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. * Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Classes (4)
+        [ ] 16. 1. Hero
+        [ ] 17. 2. Warrior
+        [ ] 18. 3. Mage
+        [ ] 19. 4. Priest
+          #1  Hero
+        [ ] 20.   []  
+        [ ] 21. name  [Hero]  
+        [ ] 22. exp_curve  [Normal]  
+        [ ] 23. note  []  
+
+=== dashboard.xhtpm pid 1715712  2026-09-11 03:24:38 ===
+--- dashboard.xhtpm  pid 1715712  2026-09-11 03:24:38 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. * Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+          Classes (4)
+        [ ] 16. 1. Hero
+        [ ] 17. 2. Warrior
+        [ ] 18. 3. Mage
+        [ ] 19. 4. Priest
+          #1  Hero
+        [ ] 20.   []  
+        [ ] 21. name  [Hero]  
+        [ ] 22. exp_curve  [Normal]  
+        [ ] 23. note  []  

@@ -1,0 +1,581 @@
+
+=== network-browser-hq.xhtpm pid 150442  2026-09-15 20:43:50 ===
+--- network-browser-hq.xhtpm  pid 150442  2026-09-15 20:43:50 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [ ] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 150442  2026-09-15 20:43:50 ===
+--- network-browser-hq.xhtpm  pid 150442  2026-09-15 20:43:50 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [ ] 24. cli_io
+          Status: error: curl failed (rc=1) for URL: www.google.com
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 150442  2026-09-15 20:43:53 ===
+--- network-browser-hq.xhtpm  pid 150442  2026-09-15 20:43:53 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: error: curl failed (rc=1) for URL: www.google.com
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 150442  2026-09-15 20:43:55 ===
+--- network-browser-hq.xhtpm  pid 150442  2026-09-15 20:43:55 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: error: curl failed (rc=1) for URL: www.google.com
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 150442  2026-09-15 20:43:56 ===
+--- network-browser-hq.xhtpm  pid 150442  2026-09-15 20:43:56 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: error: curl failed (rc=1) for URL: www.google.com
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 150442  2026-09-15 20:43:57 ===
+--- network-browser-hq.xhtpm  pid 150442  2026-09-15 20:43:57 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: error: curl failed (rc=1) for URL: www.google.com
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 150442  2026-09-15 20:43:59 ===
+--- network-browser-hq.xhtpm  pid 150442  2026-09-15 20:43:59 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: error: curl failed (rc=1) for URL: www.google.com
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 150442  2026-09-15 20:44:00 ===
+--- network-browser-hq.xhtpm  pid 150442  2026-09-15 20:44:00 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: error: curl failed (rc=1) for URL: www.google.com
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 150442  2026-09-15 20:44:01 ===
+--- network-browser-hq.xhtpm  pid 150442  2026-09-15 20:44:01 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: error: curl failed (rc=1) for URL: www.google.com
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 150442  2026-09-15 20:44:02 ===
+--- network-browser-hq.xhtpm  pid 150442  2026-09-15 20:44:02 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: loading
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 150442  2026-09-15 20:44:05 ===
+--- network-browser-hq.xhtpm  pid 150442  2026-09-15 20:44:05 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.YOUTUBE.COM
+        [ ] 5. www.4chan.org/b/
+        [ ] 6. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 7. https://www.example.com/
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *YouTube
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: ready
+            YouTube
+        [ ] 27. / /
+        [ ] 28. / /
+        [ ] 29. https://www.youtube.com/about/ About
+        [ ] 30. https://www.youtube.com/about/press/ Press
+        [ ] 31. https://www.youtube.com/about/copyright/ Copyright
+        [ ] 32. /t/contact_us/ Contact us
+        [ ] 33. https://www.youtube.com/creators/ Creators
+        [ ] 34. https://www.youtube.com/ads/ Advertise
+        [ ] 35. https://developers.google.com/youtube Developers
+        [ ] 36. /t/terms Terms
+        [ ] 37. /t/privacy Privacy
+        [ ] 38. https://www.youtube.com/about/policies/ Policy & Safety
+        [ ] 39. https://www.youtube.com/howyoutubeworks?utm_campaign=ytgen&utm_source=ythp&utm_medium=LeftNav&utm_content=txt&u=https%3A%2F%2Fwww.youtube.com%2Fhowyoutubeworks%3Futm_source%3Dythp%26utm_medium%3DLeftNav%26utm_campaign%3Dytgen How YouTube w
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 150442  2026-09-15 20:44:06 ===
+--- network-browser-hq.xhtpm  pid 150442  2026-09-15 20:44:06 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.YOUTUBE.COM
+        [ ] 5. www.4chan.org/b/
+        [ ] 6. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 7. https://www.example.com/
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *YouTube
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: ready
+        [ ] 27. / /
+        [ ] 28. / /
+        [ ] 29. https://www.youtube.com/about/ About
+        [ ] 30. https://www.youtube.com/about/press/ Press
+        [ ] 31. https://www.youtube.com/about/copyright/ Copyright
+        [ ] 32. /t/contact_us/ Contact us
+        [ ] 33. https://www.youtube.com/creators/ Creators
+        [ ] 34. https://www.youtube.com/ads/ Advertise
+        [ ] 35. https://developers.google.com/youtube Developers
+        [ ] 36. /t/terms Terms
+        [ ] 37. /t/privacy Privacy
+        [ ] 38. https://www.youtube.com/about/policies/ Policy & Safety
+        [ ] 39. https://www.youtube.com/howyoutubeworks?utm_campaign=ytgen&utm_source=ythp&utm_medium=LeftNav&utm_content=txt&u=https%3A%2F%2Fwww.youtube.com%2Fhowyoutubeworks%3Futm_source%3Dythp%26utm_medium%3DLeftNav%26utm_campaign%3Dytgen How YouTube w
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 150442  2026-09-15 20:44:06 ===
+--- network-browser-hq.xhtpm  pid 150442  2026-09-15 20:44:06 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.YOUTUBE.COM
+        [ ] 5. www.4chan.org/b/
+        [ ] 6. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 7. https://www.example.com/
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *YouTube
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: ready
+        [ ] 27. / /
+        [ ] 28. https://www.youtube.com/about/ About
+        [ ] 29. https://www.youtube.com/about/press/ Press
+        [ ] 30. https://www.youtube.com/about/copyright/ Copyright
+        [ ] 31. /t/contact_us/ Contact us
+        [ ] 32. https://www.youtube.com/creators/ Creators
+        [ ] 33. https://www.youtube.com/ads/ Advertise
+        [ ] 34. https://developers.google.com/youtube Developers
+        [ ] 35. /t/terms Terms
+        [ ] 36. /t/privacy Privacy
+        [ ] 37. https://www.youtube.com/about/policies/ Policy & Safety
+        [ ] 38. https://www.youtube.com/howyoutubeworks?utm_campaign=ytgen&utm_source=ythp&utm_medium=LeftNav&utm_content=txt&u=https%3A%2F%2Fwww.youtube.com%2Fhowyoutubeworks%3Futm_source%3Dythp%26utm_medium%3DLeftNav%26utm_campaign%3Dytgen How YouTube w
+        [ ] 39. /new Test new features
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 150442  2026-09-15 20:44:06 ===
+--- network-browser-hq.xhtpm  pid 150442  2026-09-15 20:44:06 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.YOUTUBE.COM
+        [ ] 5. www.4chan.org/b/
+        [ ] 6. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 7. https://www.example.com/
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *YouTube
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: ready
+        [ ] 27. https://www.youtube.com/about/ About
+        [ ] 28. https://www.youtube.com/about/press/ Press
+        [ ] 29. https://www.youtube.com/about/copyright/ Copyright
+        [ ] 30. /t/contact_us/ Contact us
+        [ ] 31. https://www.youtube.com/creators/ Creators
+        [ ] 32. https://www.youtube.com/ads/ Advertise
+        [ ] 33. https://developers.google.com/youtube Developers
+        [ ] 34. /t/terms Terms
+        [ ] 35. /t/privacy Privacy
+        [ ] 36. https://www.youtube.com/about/policies/ Policy & Safety
+        [ ] 37. https://www.youtube.com/howyoutubeworks?utm_campaign=ytgen&utm_source=ythp&utm_medium=LeftNav&utm_content=txt&u=https%3A%2F%2Fwww.youtube.com%2Fhowyoutubeworks%3Futm_source%3Dythp%26utm_medium%3DLeftNav%26utm_campaign%3Dytgen How YouTube w
+        [ ] 38. /new Test new features
+        [ ] 39. https://tv.youtube.com/learn/nflsundayticket NFL Sunday Ticket
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 150442  2026-09-15 20:44:13 ===
+--- network-browser-hq.xhtpm  pid 150442  2026-09-15 20:44:13 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.YOUTUBE.COM
+        [ ] 5. www.4chan.org/b/
+        [ ] 6. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 7. https://www.example.com/
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *YouTube
+        [ ] 23. New tab
+      [ ] 24. cli_io
+          Status: ready
+        [ ] 27. https://www.youtube.com/about/ About
+        [ ] 28. https://www.youtube.com/about/press/ Press
+        [ ] 29. https://www.youtube.com/about/copyright/ Copyright
+        [ ] 30. /t/contact_us/ Contact us
+        [ ] 31. https://www.youtube.com/creators/ Creators
+        [ ] 32. https://www.youtube.com/ads/ Advertise
+        [ ] 33. https://developers.google.com/youtube Developers
+        [ ] 34. /t/terms Terms
+        [ ] 35. /t/privacy Privacy
+        [ ] 36. https://www.youtube.com/about/policies/ Policy & Safety
+        [ ] 37. https://www.youtube.com/howyoutubeworks?utm_campaign=ytgen&utm_source=ythp&utm_medium=LeftNav&utm_content=txt&u=https%3A%2F%2Fwww.youtube.com%2Fhowyoutubeworks%3Futm_source%3Dythp%26utm_medium%3DLeftNav%26utm_campaign%3Dytgen How YouTube w
+        [ ] 38. /new Test new features
+        [ ] 39. https://tv.youtube.com/learn/nflsundayticket NFL Sunday Ticket
+          Console
+          Try: eval:1 + 1

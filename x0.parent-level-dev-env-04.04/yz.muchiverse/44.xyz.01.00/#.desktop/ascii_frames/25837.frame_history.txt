@@ -1,0 +1,77 @@
+
+=== menu.chtpm pid 25837  2026-09-27 00:46:05 ===
+--- menu.chtpm  pid 25837  2026-09-27 00:46:05 ---
+--- page: main ---
+    [>] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Act
+    [ ] 7. Cli-io: 
+
+=== menu.chtpm pid 25837  2026-09-27 00:46:07 ===
+--- menu.chtpm  pid 25837  2026-09-27 00:46:07 ---
+--- page: main ---
+    [ ] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Act
+    [ ] 7. Cli-io: 
+
+=== menu.chtpm pid 25837  2026-09-27 00:46:07 ===
+--- menu.chtpm  pid 25837  2026-09-27 00:46:07 ---
+--- page: main ---
+    [ ] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Act
+    [>] 7. Cli-io: 
+
+=== menu.chtpm pid 25837  2026-09-27 00:46:08 ===
+--- menu.chtpm  pid 25837  2026-09-27 00:46:08 ---
+--- page: main ---
+    [ ] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [>] 6. Act
+    [ ] 7. Cli-io: 
+
+=== menu.chtpm pid 25837  2026-09-27 00:46:09 ===
+--- menu.chtpm  pid 25837  2026-09-27 00:46:09 ---
+--- page: main ---
+    [ ] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Act
+    [>] 7. Cli-io: 
+
+=== menu.chtpm pid 25837  2026-09-27 00:46:09 ===
+--- menu.chtpm  pid 25837  2026-09-27 00:46:09 ---
+--- page: main ---
+    [ ] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Act
+    [ ] 7. Cli-io: 
+
+=== menu.chtpm pid 25837  2026-09-27 00:46:19 ===
+--- menu.chtpm  pid 25837  2026-09-27 00:46:19 ---
+--- page: main ---
+    [ ] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Act
+    [ ] 7. Cli-io: 

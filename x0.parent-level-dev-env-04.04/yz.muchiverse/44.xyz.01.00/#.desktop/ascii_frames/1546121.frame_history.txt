@@ -1,0 +1,769 @@
+
+=== network-browser-hq.xhtpm pid 1546121  2026-09-11 00:03:55 ===
+--- network-browser-hq.xhtpm  pid 1546121  2026-09-11 00:03:55 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [>] 1. https://example.com
+        [ ] 2. www.google.com
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 5. www.google.com
+        [ ] 6. Back
+        [ ] 7. Forward
+        [ ] 8. Stop
+        [ ] 9. Reload
+        [ ] 10. Home
+        [ ] 11. Bookmark
+        [ ] 12. Close tab
+        [ ] 13. Google's products 
+        [ ] 14. *Example Domain
+        [ ] 15. New tab
+      [ ] 16. https://example.com
+          Status: ready
+            Example Domain
+            This domain is for use in documentation examples without needing permission. Avoid use
+            in operations.
+        [ ] 17. Learn more
+          Console
+
+=== network-browser-hq.xhtpm pid 1546121  2026-09-11 00:03:56 ===
+--- network-browser-hq.xhtpm  pid 1546121  2026-09-11 00:03:56 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [>] 1. https://example.com
+        [ ] 2. www.google.com
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 5. www.google.com
+        [ ] 6. Back
+        [ ] 7. Forward
+        [ ] 8. Stop
+        [ ] 9. Reload
+        [ ] 10. Home
+        [ ] 11. Bookmark
+        [ ] 12. Close tab
+        [ ] 13. Google's products 
+        [ ] 14. *Example Domain
+        [ ] 15. New tab
+      [ ] 16. https://example.com
+          Status: ready
+            Example Domain
+            This domain is for use in documentation examples without needing permission. Avoid use
+            in operations.
+        [ ] 17. Learn more
+          Console
+
+=== network-browser-hq.xhtpm pid 1546121  2026-09-11 00:03:58 ===
+--- network-browser-hq.xhtpm  pid 1546121  2026-09-11 00:03:58 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 1. https://example.com
+        [ ] 2. www.google.com
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 5. www.google.com
+        [ ] 6. Back
+        [ ] 7. Forward
+        [ ] 8. Stop
+        [ ] 9. Reload
+        [ ] 10. Home
+        [ ] 11. Bookmark
+        [ ] 12. Close tab
+        [ ] 13. Google's products 
+        [ ] 14. *Example Domain
+        [ ] 15. New tab
+      [>] 16. https://example.com
+          Status: ready
+            Example Domain
+            This domain is for use in documentation examples without needing permission. Avoid use
+            in operations.
+        [ ] 17. Learn more
+          Console
+
+=== network-browser-hq.xhtpm pid 1546121  2026-09-11 00:03:59 ===
+--- network-browser-hq.xhtpm  pid 1546121  2026-09-11 00:03:59 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 1. https://example.com
+        [ ] 2. www.google.com
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 5. www.google.com
+        [ ] 6. Back
+        [ ] 7. Forward
+        [ ] 8. Stop
+        [ ] 9. Reload
+        [ ] 10. Home
+        [ ] 11. Bookmark
+        [ ] 12. Close tab
+        [ ] 13. Google's products 
+        [ ] 14. *Example Domain
+        [ ] 15. New tab
+      [>] 16. https://example.com
+          Status: ready
+            Example Domain
+            This domain is for use in documentation examples without needing permission. Avoid use
+            in operations.
+        [ ] 17. Learn more
+          Console
+
+=== network-browser-hq.xhtpm pid 1546121  2026-09-11 00:04:20 ===
+--- network-browser-hq.xhtpm  pid 1546121  2026-09-11 00:04:20 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [>] 1. https://example.com
+        [ ] 2. www.google.com
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 5. www.google.com
+        [ ] 6. Back
+        [ ] 7. Forward
+        [ ] 8. Stop
+        [ ] 9. Reload
+        [ ] 10. Home
+        [ ] 11. Bookmark
+        [ ] 12. Close tab
+        [ ] 13. Google's products 
+        [ ] 14. *Example Domain
+        [ ] 15. New tab
+      [ ] 16. https://example.com
+          Status: ready
+            Example Domain
+            This domain is for use in documentation examples without needing permission. Avoid use
+            in operations.
+        [ ] 17. Learn more
+          Console
+
+=== network-browser-hq.xhtpm pid 1546121  2026-09-11 00:04:22 ===
+--- network-browser-hq.xhtpm  pid 1546121  2026-09-11 00:04:22 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 1. https://example.com
+        [ ] 2. www.google.com
+        [>] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 5. www.google.com
+        [ ] 6. Back
+        [ ] 7. Forward
+        [ ] 8. Stop
+        [ ] 9. Reload
+        [ ] 10. Home
+        [ ] 11. Bookmark
+        [ ] 12. Close tab
+        [ ] 13. Google's products 
+        [ ] 14. *Example Domain
+        [ ] 15. New tab
+      [ ] 16. https://example.com
+          Status: ready
+            Example Domain
+            This domain is for use in documentation examples without needing permission. Avoid use
+            in operations.
+        [ ] 17. Learn more
+          Console
+
+=== network-browser-hq.xhtpm pid 1546121  2026-09-11 00:04:23 ===
+--- network-browser-hq.xhtpm  pid 1546121  2026-09-11 00:04:23 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 1. https://example.com
+        [ ] 2. www.google.com
+        [>] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 5. www.google.com
+        [ ] 6. Back
+        [ ] 7. Forward
+        [ ] 8. Stop
+        [ ] 9. Reload
+        [ ] 10. Home
+        [ ] 11. Bookmark
+        [ ] 12. Close tab
+        [ ] 13. Google's products 
+        [ ] 14. *Example Domain
+        [ ] 15. New tab
+      [ ] 16. https://example.com
+          Status: ready
+            Example Domain
+            This domain is for use in documentation examples without needing permission. Avoid use
+            in operations.
+        [ ] 17. Learn more
+          Console
+
+=== network-browser-hq.xhtpm pid 1546121  2026-09-11 00:04:24 ===
+--- network-browser-hq.xhtpm  pid 1546121  2026-09-11 00:04:24 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 1. https://example.com
+        [ ] 2. www.google.com
+        [>] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 5. www.google.com
+        [ ] 6. Back
+        [ ] 7. Forward
+        [ ] 8. Stop
+        [ ] 9. Reload
+        [ ] 10. Home
+        [ ] 11. Bookmark
+        [ ] 12. Close tab
+        [ ] 13. Google's products 
+        [ ] 14. *Example Domain
+        [ ] 15. New tab
+      [ ] 16. https://example.com
+          Status: loading
+            Example Domain
+            This domain is for use in documentation examples without needing permission. Avoid use
+            in operations.
+        [ ] 17. Learn more
+          Console
+
+=== network-browser-hq.xhtpm pid 1546121  2026-09-11 00:04:29 ===
+--- network-browser-hq.xhtpm  pid 1546121  2026-09-11 00:04:29 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 1. https://example.com
+        [ ] 2. www.google.com
+        [ ] 3. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 4. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 5. www.google.com
+        [ ] 6. Back
+        [ ] 7. Forward
+        [ ] 8. Stop
+        [ ] 9. Reload
+        [ ] 10. Home
+        [ ] 11. Bookmark
+        [ ] 12. Close tab
+        [ ] 13. Google's products 
+        [ ] 14. *Example Domain
+        [ ] 15. New tab
+      [>] 16. https://example.com
+          Status: loading
+            Example Domain
+            This domain is for use in documentation examples without needing permission. Avoid use
+            in operations.
+        [ ] 17. Learn more
+          Console
+
+=== network-browser-hq.xhtpm pid 1546121  2026-09-11 00:04:29 ===
+--- network-browser-hq.xhtpm  pid 1546121  2026-09-11 00:04:29 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 1. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 2. https://example.com
+        [ ] 3. www.google.com
+        [ ] 4. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 5. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 6. www.google.com
+        [ ] 7. Back
+        [ ] 8. Forward
+        [ ] 9. Stop
+        [ ] 10. Reload
+        [ ] 11. Home
+        [ ] 12. Bookmark
+        [ ] 13. Close tab
+        [ ] 14. Google's products 
+        [ ] 15. *Google's products 
+        [>] 16. New tab
+      [ ] 17. https://www.google.com/intl/en/about/products?tab=ih
+          Status: ready
+            Google's products and services - About Google
+            Helpful products, built with you in mind
+            Search in new ways
+            Chat with Gemini
+            Try AI tools
+            Explore more products
+        [ ] 20. Product support
+        [ ] 21. Google Store
+        [ ] 22. Google Account
+        [ ] 23. Accessibility support
+            Search in new ways
+            Download the Google app
+        [ ] 24. https://search.google/ways-to-search/circle-to-search/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+            Play silent looping video Pause silent looping video
+          Console
+
+=== network-browser-hq.xhtpm pid 1546121  2026-09-11 00:04:29 ===
+--- network-browser-hq.xhtpm  pid 1546121  2026-09-11 00:04:29 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 1. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 2. https://example.com
+        [ ] 3. www.google.com
+        [ ] 4. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 5. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 6. www.google.com
+        [ ] 7. Back
+        [ ] 8. Forward
+        [ ] 9. Stop
+        [ ] 10. Reload
+        [ ] 11. Home
+        [ ] 12. Bookmark
+        [ ] 13. Close tab
+        [ ] 14. Google's products 
+        [ ] 15. *Google's products 
+        [ ] 16. New tab
+      [>] 17. https://www.google.com/intl/en/about/products?tab=ih
+          Status: ready
+            Google's products and services - About Google
+            Helpful products, built with you in mind
+            Search in new ways
+            Chat with Gemini
+            Try AI tools
+            Explore more products
+        [ ] 20. Product support
+        [ ] 21. Google Store
+        [ ] 22. Google Account
+        [ ] 23. Accessibility support
+            Search in new ways
+            Download the Google app
+        [ ] 24. https://search.google/ways-to-search/circle-to-search/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+            Play silent looping video Pause silent looping video
+          Console
+
+=== network-browser-hq.xhtpm pid 1546121  2026-09-11 00:04:30 ===
+--- network-browser-hq.xhtpm  pid 1546121  2026-09-11 00:04:30 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 1. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 2. https://example.com
+        [ ] 3. www.google.com
+        [ ] 4. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 5. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 6. www.google.com
+        [ ] 7. Back
+        [ ] 8. Forward
+        [ ] 9. Stop
+        [ ] 10. Reload
+        [ ] 11. Home
+        [ ] 12. Bookmark
+        [ ] 13. Close tab
+        [ ] 14. Google's products 
+        [ ] 15. *Google's products 
+        [ ] 16. New tab
+      [>] 17. https://www.google.com/intl/en/about/products?tab=ih
+          Status: ready
+            Google's products and services - About Google
+            Helpful products, built with you in mind
+            Search in new ways
+            Chat with Gemini
+            Try AI tools
+            Explore more products
+        [ ] 20. Product support
+        [ ] 21. Google Store
+        [ ] 22. Google Account
+        [ ] 23. Accessibility support
+            Search in new ways
+            Download the Google app
+        [ ] 24. https://search.google/ways-to-search/circle-to-search/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+            Play silent looping video Pause silent looping video
+          Console
+
+=== network-browser-hq.xhtpm pid 1546121  2026-09-11 00:04:30 ===
+--- network-browser-hq.xhtpm  pid 1546121  2026-09-11 00:04:30 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 1. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 2. https://example.com
+        [ ] 3. www.google.com
+        [ ] 4. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 5. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 6. www.google.com
+        [ ] 7. Back
+        [ ] 8. Forward
+        [ ] 9. Stop
+        [ ] 10. Reload
+        [ ] 11. Home
+        [ ] 12. Bookmark
+        [ ] 13. Close tab
+        [ ] 14. Google's products 
+        [ ] 15. *Google's products 
+        [ ] 16. New tab
+      [>] 17. https://www.google.com/intl/en/about/products?tab=ih
+          Status: loading
+            Google's products and services - About Google
+            Helpful products, built with you in mind
+            Search in new ways
+            Chat with Gemini
+            Try AI tools
+            Explore more products
+        [ ] 20. Product support
+        [ ] 21. Google Store
+        [ ] 22. Google Account
+        [ ] 23. Accessibility support
+            Search in new ways
+            Download the Google app
+        [ ] 24. https://search.google/ways-to-search/circle-to-search/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+            Play silent looping video Pause silent looping video
+          Console
+
+=== network-browser-hq.xhtpm pid 1546121  2026-09-11 00:04:34 ===
+--- network-browser-hq.xhtpm  pid 1546121  2026-09-11 00:04:34 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 1. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 2. https://example.com
+        [ ] 3. www.google.com
+        [ ] 4. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 5. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 6. www.google.com
+        [ ] 7. Back
+        [ ] 8. Forward
+        [ ] 9. Stop
+        [ ] 10. Reload
+        [ ] 11. Home
+        [ ] 12. Bookmark
+        [ ] 13. Close tab
+        [ ] 14. Google's products 
+        [ ] 15. *Google's products 
+        [ ] 16. New tab
+      [>] 17. https://www.google.com/intl/en/about/products?tab=ih
+          Status: loading
+            Google's products and services - About Google
+            Helpful products, built with you in mind
+            Search in new ways
+            Chat with Gemini
+            Try AI tools
+            Explore more products
+        [ ] 20. Product support
+        [ ] 21. Google Store
+        [ ] 22. Google Account
+        [ ] 23. Accessibility support
+            Search in new ways
+            Download the Google app
+        [ ] 24. https://search.google/ways-to-search/circle-to-search/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+            Play silent looping video Pause silent looping video
+          Console
+
+=== network-browser-hq.xhtpm pid 1546121  2026-09-11 00:04:35 ===
+--- network-browser-hq.xhtpm  pid 1546121  2026-09-11 00:04:35 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 1. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 2. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 3. https://example.com
+        [ ] 4. www.google.com
+        [ ] 5. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 6. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 7. www.google.com
+        [ ] 8. Back
+        [ ] 9. Forward
+        [ ] 10. Stop
+        [ ] 11. Reload
+        [ ] 12. Home
+        [ ] 13. Bookmark
+        [ ] 14. Close tab
+        [ ] 15. Google's products 
+        [ ] 16. *Google's products 
+        [>] 17. New tab
+      [ ] 18. https://www.google.com/intl/en/about/products?tab=ih
+          Status: ready
+            Google's products and services - About Google
+            Helpful products, built with you in mind
+            Search in new ways
+            Chat with Gemini
+            Try AI tools
+            Explore more products
+        [ ] 21. Product support
+        [ ] 22. Google Store
+        [ ] 23. Google Account
+        [ ] 24. Accessibility support
+            Search in new ways
+            Download the Google app
+        [ ] 25. https://search.google/ways-to-search/circle-to-search/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+            Play silent looping video Pause silent looping video
+          Console
+
+=== network-browser-hq.xhtpm pid 1546121  2026-09-11 00:04:36 ===
+--- network-browser-hq.xhtpm  pid 1546121  2026-09-11 00:04:36 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 1. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 2. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 3. https://example.com
+        [ ] 4. www.google.com
+        [ ] 5. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 6. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 7. www.google.com
+        [ ] 8. Back
+        [ ] 9. Forward
+        [ ] 10. Stop
+        [ ] 11. Reload
+        [ ] 12. Home
+        [ ] 13. Bookmark
+        [ ] 14. Close tab
+        [ ] 15. Google's products 
+        [ ] 16. *Google's products 
+        [ ] 17. New tab
+      [>] 18. https://www.google.com/intl/en/about/products?tab=ih
+          Status: ready
+            Google's products and services - About Google
+            Helpful products, built with you in mind
+            Search in new ways
+            Chat with Gemini
+            Try AI tools
+            Explore more products
+        [ ] 21. Product support
+        [ ] 22. Google Store
+        [ ] 23. Google Account
+        [ ] 24. Accessibility support
+            Search in new ways
+            Download the Google app
+        [ ] 25. https://search.google/ways-to-search/circle-to-search/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+            Play silent looping video Pause silent looping video
+          Console
+
+=== network-browser-hq.xhtpm pid 1546121  2026-09-11 00:04:37 ===
+--- network-browser-hq.xhtpm  pid 1546121  2026-09-11 00:04:37 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 1. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 2. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 3. https://example.com
+        [ ] 4. www.google.com
+        [ ] 5. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 6. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 7. www.google.com
+        [ ] 8. Back
+        [ ] 9. Forward
+        [ ] 10. Stop
+        [ ] 11. Reload
+        [ ] 12. Home
+        [ ] 13. Bookmark
+        [ ] 14. Close tab
+        [ ] 15. Google's products 
+        [ ] 16. *Google's products 
+        [ ] 17. New tab
+      [>] 18. https://www.google.com/intl/en/about/products?tab=ih
+          Status: ready
+            Google's products and services - About Google
+            Helpful products, built with you in mind
+            Search in new ways
+            Chat with Gemini
+            Try AI tools
+            Explore more products
+        [ ] 21. Product support
+        [ ] 22. Google Store
+        [ ] 23. Google Account
+        [ ] 24. Accessibility support
+            Search in new ways
+            Download the Google app
+        [ ] 25. https://search.google/ways-to-search/circle-to-search/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+            Play silent looping video Pause silent looping video
+          Console
+
+=== network-browser-hq.xhtpm pid 1546121  2026-09-11 00:04:38 ===
+--- network-browser-hq.xhtpm  pid 1546121  2026-09-11 00:04:38 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 1. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 2. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 3. https://example.com
+        [ ] 4. www.google.com
+        [ ] 5. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 6. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 7. www.google.com
+        [ ] 8. Back
+        [ ] 9. Forward
+        [ ] 10. Stop
+        [ ] 11. Reload
+        [ ] 12. Home
+        [ ] 13. Bookmark
+        [ ] 14. Close tab
+        [ ] 15. Google's products 
+        [ ] 16. *Google's products 
+        [ ] 17. New tab
+      [>] 18. https://www.google.com/intl/en/about/products?tab=ih
+          Status: ready
+            Google's products and services - About Google
+            Helpful products, built with you in mind
+            Search in new ways
+            Chat with Gemini
+            Try AI tools
+            Explore more products
+        [ ] 21. Product support
+        [ ] 22. Google Store
+        [ ] 23. Google Account
+        [ ] 24. Accessibility support
+            Search in new ways
+            Download the Google app
+        [ ] 25. https://search.google/ways-to-search/circle-to-search/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+            Play silent looping video Pause silent looping video
+          Console
+
+=== network-browser-hq.xhtpm pid 1546121  2026-09-11 00:04:39 ===
+--- network-browser-hq.xhtpm  pid 1546121  2026-09-11 00:04:39 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 1. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 2. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 3. https://example.com
+        [ ] 4. www.google.com
+        [ ] 5. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 6. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 7. www.google.com
+        [ ] 8. Back
+        [ ] 9. Forward
+        [ ] 10. Stop
+        [ ] 11. Reload
+        [ ] 12. Home
+        [ ] 13. Bookmark
+        [ ] 14. Close tab
+        [ ] 15. Google's products 
+        [ ] 16. *Google's products 
+        [ ] 17. New tab
+      [>] 18. https://www.google.com/intl/en/about/products?tab=ih
+          Status: ready
+            Google's products and services - About Google
+            Helpful products, built with you in mind
+            Search in new ways
+            Chat with Gemini
+            Try AI tools
+            Explore more products
+        [ ] 21. Product support
+        [ ] 22. Google Store
+        [ ] 23. Google Account
+        [ ] 24. Accessibility support
+            Search in new ways
+            Download the Google app
+        [ ] 25. https://search.google/ways-to-search/circle-to-search/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+            Play silent looping video Pause silent looping video
+          Console
+
+=== network-browser-hq.xhtpm pid 1546121  2026-09-11 00:04:41 ===
+--- network-browser-hq.xhtpm  pid 1546121  2026-09-11 00:04:41 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 1. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 2. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 3. https://example.com
+        [ ] 4. www.google.com
+        [ ] 5. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 6. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 7. www.google.com
+        [ ] 8. Back
+        [ ] 9. Forward
+        [ ] 10. Stop
+        [ ] 11. Reload
+        [ ] 12. Home
+        [ ] 13. Bookmark
+        [ ] 14. Close tab
+        [ ] 15. Google's products 
+        [ ] 16. *Google's products 
+        [ ] 17. New tab
+      [>] 18. https://www.google.com/intl/en/about/products?tab=ih
+          Status: ready
+            Google's products and services - About Google
+            Helpful products, built with you in mind
+            Search in new ways
+            Chat with Gemini
+            Try AI tools
+            Explore more products
+        [ ] 21. Product support
+        [ ] 22. Google Store
+        [ ] 23. Google Account
+        [ ] 24. Accessibility support
+            Search in new ways
+            Download the Google app
+        [ ] 25. https://search.google/ways-to-search/circle-to-search/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+            Play silent looping video Pause silent looping video
+          Console
+
+=== network-browser-hq.xhtpm pid 1546121  2026-09-11 00:05:28 ===
+--- network-browser-hq.xhtpm  pid 1546121  2026-09-11 00:05:28 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+        [ ] 1. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 2. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 3. https://example.com
+        [ ] 4. www.google.com
+        [ ] 5. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 6. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 7. www.google.com
+        [ ] 8. Back
+        [ ] 9. Forward
+        [ ] 10. Stop
+        [ ] 11. Reload
+        [ ] 12. Home
+        [ ] 13. Bookmark
+        [ ] 14. Close tab
+        [ ] 15. Google's products 
+        [ ] 16. *Google's products 
+        [ ] 17. New tab
+      [ ] 18. https://www.google.com/intl/en/about/products?tab=ih
+          Status: ready
+            Google's products and services - About Google
+            Helpful products, built with you in mind
+            Search in new ways
+            Chat with Gemini
+            Try AI tools
+            Explore more products
+        [ ] 21. Product support
+        [ ] 22. Google Store
+        [ ] 23. Google Account
+        [ ] 24. Accessibility support
+            Search in new ways
+            Download the Google app
+        [ ] 25. https://search.google/ways-to-search/circle-to-search/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+            Play silent looping video Pause silent looping video
+          Console

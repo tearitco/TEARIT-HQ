@@ -1,0 +1,50 @@
+
+=== menu.chtpm pid 9737  2026-09-25 21:31:54 ===
+--- menu.chtpm  pid 9737  2026-09-25 21:31:54 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Cli-io: 
+
+=== menu.chtpm pid 9737  2026-09-25 21:31:55 ===
+--- menu.chtpm  pid 9737  2026-09-25 21:31:55 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Cli-io: 
+
+=== menu.chtpm pid 9737  2026-09-25 22:02:07 ===
+--- menu.chtpm  pid 9737  2026-09-25 22:02:07 ---
+--- page: main ---
+    [ ] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [>] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Cli-io: 
+
+=== menu.chtpm pid 9737  2026-09-25 22:02:08 ===
+--- menu.chtpm  pid 9737  2026-09-25 22:02:08 ---
+--- page: main ---
+    [ ] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [>] 5. Cancel
+    [ ] 6. Cli-io: 
+
+=== menu.chtpm pid 9737  2026-09-25 22:02:09 ===
+--- menu.chtpm  pid 9737  2026-09-25 22:02:09 ---
+--- page: main ---
+    [ ] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [>] 5. Cancel
+    [ ] 6. Cli-io: 

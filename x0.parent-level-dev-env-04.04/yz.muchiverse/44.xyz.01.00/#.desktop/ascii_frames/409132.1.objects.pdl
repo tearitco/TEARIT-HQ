@@ -1,0 +1,3 @@
+OBJECT tag=item id=close class=chrome-btn x=191 y=4 w=63 h=26 nav=1 active=0 label=x
+OBJECT tag=item id=imp class=pal-dir x=8 y=32 w=92 h=19 nav=2 active=0 label=Import…
+OBJECT tag=text id=- class=quiet x=2 y=32 w=260 h=30 nav=0 active=0 label=No imports yet — Import opens File Explorer; pick a PNG/BMP then wait a tick.

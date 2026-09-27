@@ -1,0 +1,32 @@
+OBJECT tag=item id=chrome-close class=- x=1074 y=4 w=64 h=26 nav=11 active=0 label=X
+OBJECT tag=tab id=crumb0 class=- x=10 y=35 w=71 h=30 nav=1 active=0 label=/
+OBJECT tag=tab id=crumb1 class=- x=85 y=35 w=109 h=30 nav=2 active=0 label=home
+OBJECT tag=tab id=crumb2 class=- x=198 y=35 w=85 h=30 nav=3 active=0 label=no
+OBJECT tag=tab id=crumb3 class=- x=287 y=35 w=127 h=30 nav=4 active=0 label=Desktop
+OBJECT tag=tab id=crumb4 class=- x=418 y=35 w=114 h=30 nav=5 active=0 label=github
+OBJECT tag=tab id=crumb5 class=- x=536 y=35 w=103 h=30 nav=6 active=0 label=work
+OBJECT tag=tab id=crumb6 class=- x=643 y=35 w=164 h=30 nav=7 active=0 label=NNEST-12.00
+OBJECT tag=tab id=crumb7 class=- x=811 y=35 w=290 h=30 nav=8 active=0 label=x0.parent-level-dev-env-04.04
+OBJECT tag=tab id=crumb8 class=- x=1105 y=35 w=171 h=30 nav=9 active=0 label=yz.muchiverse
+OBJECT tag=tab id=crumb9 class=- x=1280 y=35 w=155 h=30 nav=10 active=0 label=44.xyz.01.00
+OBJECT tag=text id=- class=quiet x=2 y=67 w=1144 h=30 nav=0 active=0 label=Pick a file to load.
+OBJECT tag=item id=viewtoggle class=opacity-btn x=2 y=97 w=1144 h=30 nav=12 active=0 label=Grid View
+OBJECT tag=item id=entry2 class=fe-entry x=2 y=141 w=1136 h=30 nav=15 active=0 label=📁  #.Z.HUMAN_LLM 
+OBJECT tag=item id=entry3 class=fe-entry x=2 y=171 w=1136 h=30 nav=16 active=0 label=📁  #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+OBJECT tag=item id=entry4 class=fe-entry x=2 y=201 w=1136 h=30 nav=17 active=0 label=📁  #.desktop 
+OBJECT tag=item id=entry5 class=fe-entry x=2 y=231 w=1136 h=30 nav=18 active=0 label=📁  #.haiku+ 
+OBJECT tag=item id=entry6 class=fe-entry x=2 y=261 w=1136 h=30 nav=19 active=0 label=📁  #.livedesk 
+OBJECT tag=item id=entry7 class=fe-entry x=2 y=291 w=1136 h=30 nav=20 active=0 label=📁  #.notes 
+OBJECT tag=item id=entry8 class=fe-entry x=2 y=321 w=1136 h=30 nav=21 active=0 label=📁  #.ref 
+OBJECT tag=item id=entry9 class=fe-entry x=2 y=351 w=1136 h=30 nav=22 active=0 label=📁  #.resume 
+OBJECT tag=item id=entry10 class=fe-entry x=2 y=381 w=1136 h=30 nav=23 active=0 label=📁  #.tmp 
+OBJECT tag=item id=entry11 class=fe-entry x=2 y=411 w=1136 h=30 nav=24 active=0 label=📁  #.user-test-how2 
+OBJECT tag=item id=entry12 class=fe-entry x=2 y=441 w=1136 h=30 nav=25 active=0 label=📁  #.w8 
+OBJECT tag=item id=entry13 class=fe-entry x=2 y=471 w=1136 h=30 nav=26 active=0 label=📁  #.xer 
+OBJECT tag=item id=entry14 class=fe-entry x=2 y=501 w=1136 h=30 nav=27 active=0 label=📁  #.z.mirror_llm]z5]IQABOD🪞️+4 
+OBJECT tag=item id=entry15 class=fe-entry x=2 y=531 w=1136 h=30 nav=28 active=0 label=📁  $.crypts 
+OBJECT tag=item id=entry16 class=fe-entry x=2 y=561 w=1136 h=30 nav=29 active=0 label=📁  %.harnesses 
+OBJECT tag=item id=entry17 class=fe-entry x=2 y=591 w=1136 h=30 nav=30 active=0 label=📁  &.hq-apps 
+OBJECT tag=item id=entry18 class=fe-entry x=2 y=621 w=1136 h=30 nav=31 active=0 label=📁  &.widgits 
+OBJECT tag=item id=entry19 class=fe-entry x=2 y=651 w=1136 h=30 nav=32 active=0 label=📁  *.START_BUTTON 
+OBJECT tag=item id=entry20 class=fe-entry x=2 y=681 w=1136 h=30 nav=33 active=0 label=📁  *.monads 

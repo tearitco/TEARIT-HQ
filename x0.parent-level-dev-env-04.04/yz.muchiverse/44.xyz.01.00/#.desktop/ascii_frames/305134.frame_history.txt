@@ -1,0 +1,18 @@
+
+=== act.xhtpm pid 305134  2026-09-26 23:39:24 ===
+--- act.xhtpm  pid 305134  2026-09-26 23:39:24 ---
+--- page: main ---
+Act
+    [>] 1. Move
+    [ ] 2. Use
+    [ ] 3. Attack
+    [ ] 4. Back
+
+=== act.xhtpm pid 305134  2026-09-26 23:39:26 ===
+--- act.xhtpm  pid 305134  2026-09-26 23:39:26 ---
+--- page: main ---
+Act
+    [>] 1. Move
+    [ ] 2. Use
+    [ ] 3. Attack
+    [ ] 4. Back

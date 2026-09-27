@@ -1,0 +1,19 @@
+OBJECT tag=item id=crumb0 class=fe-crumb x=0 y=30 w=620 h=30 nav=1 active=0 label=/
+OBJECT tag=item id=crumb1 class=fe-crumb x=0 y=60 w=620 h=30 nav=2 active=0 label=home
+OBJECT tag=item id=crumb2 class=fe-crumb x=0 y=90 w=620 h=30 nav=3 active=0 label=no
+OBJECT tag=item id=crumb3 class=fe-crumb x=0 y=120 w=620 h=30 nav=4 active=0 label=Desktop
+OBJECT tag=item id=crumb4 class=fe-crumb x=0 y=150 w=620 h=30 nav=5 active=0 label=github
+OBJECT tag=item id=crumb5 class=fe-crumb x=0 y=180 w=620 h=30 nav=6 active=0 label=work
+OBJECT tag=item id=crumb6 class=fe-crumb x=0 y=210 w=620 h=30 nav=7 active=0 label=NNEST-12.00
+OBJECT tag=item id=crumb7 class=fe-crumb x=0 y=240 w=620 h=30 nav=8 active=0 label=x0.parent-level-dev-env-04.04
+OBJECT tag=item id=crumb8 class=fe-crumb x=0 y=270 w=620 h=30 nav=9 active=0 label=yz.muchiverse
+OBJECT tag=item id=crumb9 class=fe-crumb x=0 y=300 w=620 h=30 nav=10 active=0 label=44.xyz.01.00
+OBJECT tag=item id=entry26 class=fe-entry x=0 y=344 w=612 h=30 nav=13 active=0 label=📁  007-goldeye+01.00 
+OBJECT tag=item id=entry27 class=fe-entry x=0 y=374 w=612 h=30 nav=14 active=0 label=📁  01.muchi-pals-🥚️-13.01 
+OBJECT tag=item id=entry28 class=fe-entry x=0 y=404 w=612 h=30 nav=15 active=0 label=📁  014.wsr-pal💸️📌️+2 
+OBJECT tag=item id=entry29 class=fe-entry x=0 y=434 w=612 h=30 nav=16 active=0 label=📁  040.net-health 
+OBJECT tag=item id=entry30 class=fe-entry x=0 y=464 w=612 h=30 nav=17 active=0 label=📁  041.pal-chain⛓️ 
+OBJECT tag=item id=entry31 class=fe-entry x=0 y=494 w=612 h=30 nav=18 active=0 label=📁  041.pal-forum👥️ 
+OBJECT tag=item id=entry32 class=fe-entry x=0 y=524 w=612 h=30 nav=19 active=0 label=📁  044.pal-chat-irc👥️+2 
+OBJECT tag=item id=entry33 class=fe-entry x=0 y=554 w=612 h=30 nav=20 active=0 label=📁  045.muchi-pal-agent🤖️+1++ 
+OBJECT tag=text id=- class=quiet x=620 y=30 w=276 h=30 nav=0 active=0 label=Pick a file to load.

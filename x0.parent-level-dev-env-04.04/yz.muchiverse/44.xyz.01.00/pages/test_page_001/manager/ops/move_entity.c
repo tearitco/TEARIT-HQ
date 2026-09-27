@@ -2,13 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <time.h>
 
 #define MAX_PATH 2048
+#define MAX_LINE 1024
 
 int main(int argc, char *argv[]) {
-    // move_entity <entity_id> <target_x> <target_y>
-    if (argc != 4) {
+    if (argc < 4) {
         fprintf(stderr, "Usage: move_entity <entity_id> <target_x> <target_y>\n");
         return 1;
     }
@@ -27,19 +26,15 @@ int main(int argc, char *argv[]) {
 
     // Derive page_root from binary location
     char script_path[MAX_PATH];
-    if (argc > 0) {
-        realpath(argv[0], script_path);
-    } else {
-        strcpy(script_path, "./ops/move_entity");
-    }
+    realpath(argv[0], script_path);
 
-    // Find parent directory: ops/ -> manager/
+    // Navigate up: ops/ -> manager/
     char *last_slash = strrchr(script_path, '/');
     if (last_slash) {
-        *last_slash = '\0';  // Remove /move_entity
+        *last_slash = '\0';
         char *second_last = strrchr(script_path, '/');
         if (second_last) {
-            *second_last = '\0';  // Remove /ops
+            *second_last = '\0';
         }
     }
 
@@ -55,29 +50,26 @@ int main(int argc, char *argv[]) {
     char anim_queue_file[MAX_PATH];
     snprintf(anim_queue_file, sizeof(anim_queue_file), "%s/animation_queue.txt", state_dir);
 
-    // Read current position of entity from entities_live.txt
+    // Read current position of entity
     int current_x = 0, current_y = 0;
     FILE *fp = fopen(entities_file, "r");
     if (fp) {
-        char line[1024];
+        char line[MAX_LINE];
         while (fgets(line, sizeof(line), fp)) {
             char line_entity_id[256] = {0};
             int x_val = 0, y_val = 0;
 
-            // Parse: entity_id | x=N | y=N | ...
             char *pos = line;
             char *pipe = strchr(pos, '|');
             if (pipe) {
                 strncpy(line_entity_id, pos, pipe - pos);
                 line_entity_id[pipe - pos] = '\0';
-                // Trim whitespace
                 for (int i = strlen(line_entity_id) - 1; i >= 0 &&
                      (line_entity_id[i] == ' ' || line_entity_id[i] == '\t'); i--)
                     line_entity_id[i] = '\0';
             }
 
             if (strcmp(line_entity_id, entity_id) == 0) {
-                // Found the entity, extract current x and y
                 pos = line;
                 while ((pos = strstr(pos, "x=")) != NULL) {
                     if (sscanf(pos, "x=%d", &x_val) == 1) {
@@ -100,7 +92,7 @@ int main(int argc, char *argv[]) {
         fclose(fp);
     }
 
-    // Queue animation: entity_id | current_x | current_y | target_x | target_y
+    // Queue animation entry
     fp = fopen(anim_queue_file, "a");
     if (fp) {
         fprintf(fp, "%s | x=%d | y=%d | target_x=%d | target_y=%d\n",
@@ -115,7 +107,7 @@ int main(int argc, char *argv[]) {
     FILE *temp_fp = fopen(entities_file, "r");
     FILE *out_fp = fopen(temp_file, "w");
     if (temp_fp && out_fp) {
-        char line[1024];
+        char line[MAX_LINE];
         while (fgets(line, sizeof(line), temp_fp)) {
             char line_entity_id[256] = {0};
             char *pos = line;
@@ -129,7 +121,6 @@ int main(int argc, char *argv[]) {
             }
 
             if (strcmp(line_entity_id, entity_id) == 0) {
-                // Replace this line with updated position
                 fprintf(out_fp, "%s | x=%d | y=%d\n", entity_id, target_x, target_y);
             } else {
                 fputs(line, out_fp);

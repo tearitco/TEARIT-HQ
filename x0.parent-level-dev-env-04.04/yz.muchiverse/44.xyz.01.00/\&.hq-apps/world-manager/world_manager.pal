@@ -1,0 +1,21 @@
+# world_manager.pal - Central world state orchestrator
+# Manages shared game state: entities, animations, events
+# Runs as house-level service, available to all books and users
+#
+# Architecture:
+#   - Append-only ledgers: entities_live.txt, animation_queue.txt, world_events.txt
+#   - Cursor-based idempotent polling: page_manager.cursor tracks read positions
+#   - Sync external state (desktop_pos.txt) into entities_live.txt
+#   - Detect position changes and auto-queue animations
+#   - Process animation queue
+#
+# Follows RPG Maker GameManager pattern: central coordinator owns world state
+
+# Initial setup
+exec ./ops/world_manager_init
+hit_frame
+
+loop:
+  exec ./ops/world_manager_tick
+  sleep 16
+  j loop

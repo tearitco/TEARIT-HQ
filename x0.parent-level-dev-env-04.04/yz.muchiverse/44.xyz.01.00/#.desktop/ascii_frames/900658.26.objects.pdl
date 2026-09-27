@@ -1,0 +1,5 @@
+OBJECT tag=tab id=crumb0 class=- x=10 y=35 w=71 h=30 nav=1 active=0 label=/
+OBJECT tag=cli_io id=search class=- x=2 y=67 w=1180 h=30 nav=2 active=0 label=Search: 
+OBJECT tag=item id=viewtoggle class=opacity-btn x=2 y=97 w=1180 h=30 nav=3 active=0 label=Grid View
+OBJECT tag=text id=- class=quiet x=2 y=127 w=1180 h=30 nav=0 active=0 label=Pick a file to load.
+OBJECT tag=item id=entry23 class=fe-entry,sprite-inline x=2 y=171 w=1172 h=30 nav=6 active=0 label=📁  var 

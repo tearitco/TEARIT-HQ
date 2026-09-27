@@ -1,0 +1,21 @@
+
+=== menu.chtpm pid 65291  2026-09-14 13:17:41 ===
+--- menu.chtpm  pid 65291  2026-09-14 13:17:41 ---
+--- page: main ---
+    [>] 1. Events
+    [ ] 2. Delete
+    [ ] 3. Cancel
+
+=== menu.chtpm pid 65291  2026-09-14 13:17:42 ===
+--- menu.chtpm  pid 65291  2026-09-14 13:17:42 ---
+--- page: main ---
+    [>] 1. Events
+    [ ] 2. Delete
+    [ ] 3. Cancel
+
+=== menu.chtpm pid 65291  2026-09-14 13:17:43 ===
+--- menu.chtpm  pid 65291  2026-09-14 13:17:43 ---
+--- page: main ---
+    [ ] 1. Events
+    [ ] 2. Delete
+    [>] 3. Cancel

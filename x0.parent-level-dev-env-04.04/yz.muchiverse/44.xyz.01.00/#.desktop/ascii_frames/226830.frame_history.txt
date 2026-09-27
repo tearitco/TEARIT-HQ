@@ -1,0 +1,2224 @@
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:34 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:34 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:36 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:36 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:37 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:37 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:38 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:38 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:39 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:39 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:40 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:40 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:41 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:41 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:42 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:42 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:43 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:43 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:44 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:44 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:45 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:45 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:46 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:46 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:47 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:47 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:48 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:48 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:49 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:49 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:50 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:50 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:51 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:51 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:52 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:52 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:53 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:53 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:54 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:54 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:55 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:55 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:56 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:56 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:57 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:57 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:58 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:58 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:32:59 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:32:59 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:00 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:00 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:01 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:01 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:02 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:02 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:03 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:03 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:04 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:04 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:05 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:05 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:06 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:06 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:07 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:07 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:08 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:08 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:09 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:09 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:10 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:10 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:11 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:11 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:12 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:12 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:13 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:13 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:14 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:14 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:15 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:15 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:16 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:16 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:17 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:17 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:18 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:18 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:19 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:19 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:20 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:20 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:21 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:21 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:22 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:22 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:23 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:23 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:24 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:24 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:25 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:25 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:26 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:26 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:27 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:27 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:28 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:28 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:29 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:29 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:30 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:30 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:31 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:31 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:32 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:32 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:33 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:33 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:34 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:34 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:35 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:35 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:35 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:35 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+      [ ] 23. 📁  self 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:37 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:37 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+      [ ] 23. 📁  self 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:38 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:38 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+      [ ] 23. 📁  self 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:41 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:41 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+    [ ] 19. ⬅️ Back
+    [ ] 20. Grid View
+        Pick a file to load.
+      [ ] 21. 📁  m1_ninjadragon 
+      [ ] 22. 📁  m8_redhorned 
+      [>] 23. 📁  self 
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:41 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:41 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+      [ ] 19. self
+    [ ] 20. ⬅️ Back
+    [ ] 21. Grid View
+        Pick a file to load.
+      [ ] 22. 📁  assets 
+      [>] 23. 📁  pieces 
+      [ ] 24. 📄  asset.pal 32B
+      [ ] 25. 📄  desktop_pos.txt 17B
+      [ ] 26. 📄  glyph.txt 4B
+      [ ] 27. 📄  history.txt 77KB
+      [ ] 28. 📄  interact_relay.txt 0B
+      [ ] 29. 📄  livedesk_index.txt 3B
+      [ ] 30. 📄  menu.chtpm 1KB
+      [ ] 31. 📄  meta.pdl 556B
+      [ ] 32. 📄  module_parent.pid 6B
+      [ ] 33. 📄  pal.pdl 115B
+      [ ] 34. 📄  sprite.csv 45KB
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:44 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:44 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+      [ ] 19. self
+    [ ] 20. ⬅️ Back
+    [ ] 21. Grid View
+        Pick a file to load.
+      [ ] 22. 📁  assets 
+      [ ] 23. 📁  pieces 
+      [ ] 24. 📄  asset.pal 32B
+      [>] 25. 📄  desktop_pos.txt 17B
+      [ ] 26. 📄  glyph.txt 4B
+      [ ] 27. 📄  history.txt 77KB
+      [ ] 28. 📄  interact_relay.txt 0B
+      [ ] 29. 📄  livedesk_index.txt 3B
+      [ ] 30. 📄  menu.chtpm 1KB
+      [ ] 31. 📄  meta.pdl 556B
+      [ ] 32. 📄  module_parent.pid 6B
+      [ ] 33. 📄  pal.pdl 115B
+      [ ] 34. 📄  sprite.csv 45KB
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:45 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:45 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+      [ ] 19. self
+    [ ] 20. ⬅️ Back
+    [ ] 21. Grid View
+        Pick a file to load.
+      [ ] 22. 📁  assets 
+      [ ] 23. 📁  pieces 
+      [>] 24. 📄  asset.pal 32B
+      [ ] 25. 📄  desktop_pos.txt 17B
+      [ ] 26. 📄  glyph.txt 4B
+      [ ] 27. 📄  history.txt 77KB
+      [ ] 28. 📄  interact_relay.txt 0B
+      [ ] 29. 📄  livedesk_index.txt 3B
+      [ ] 30. 📄  menu.chtpm 1KB
+      [ ] 31. 📄  meta.pdl 556B
+      [ ] 32. 📄  module_parent.pid 6B
+      [ ] 33. 📄  pal.pdl 115B
+      [ ] 34. 📄  sprite.csv 45KB
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:46 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:46 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+      [ ] 19. self
+    [ ] 20. ⬅️ Back
+    [ ] 21. Grid View
+        Pick a file to load.
+      [ ] 22. 📁  assets 
+      [ ] 23. 📁  pieces 
+      [ ] 24. 📄  asset.pal 32B
+      [ ] 25. 📄  desktop_pos.txt 17B
+      [ ] 26. 📄  glyph.txt 4B
+      [ ] 27. 📄  history.txt 77KB
+      [ ] 28. 📄  interact_relay.txt 0B
+      [ ] 29. 📄  livedesk_index.txt 3B
+      [ ] 30. 📄  menu.chtpm 1KB
+      [>] 31. 📄  meta.pdl 556B
+      [ ] 32. 📄  module_parent.pid 6B
+      [ ] 33. 📄  pal.pdl 115B
+      [ ] 34. 📄  sprite.csv 45KB
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:47 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:47 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+      [ ] 19. self
+    [ ] 20. ⬅️ Back
+    [ ] 21. Grid View
+        Pick a file to load.
+      [ ] 22. 📁  assets 
+      [ ] 23. 📁  pieces 
+      [ ] 24. 📄  asset.pal 32B
+      [ ] 25. 📄  desktop_pos.txt 17B
+      [ ] 26. 📄  glyph.txt 4B
+      [ ] 27. 📄  history.txt 77KB
+      [ ] 28. 📄  interact_relay.txt 0B
+      [ ] 29. 📄  livedesk_index.txt 3B
+      [ ] 30. 📄  menu.chtpm 1KB
+      [>] 31. 📄  meta.pdl 556B
+      [ ] 32. 📄  module_parent.pid 6B
+      [ ] 33. 📄  pal.pdl 115B
+      [ ] 34. 📄  sprite.csv 45KB
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:51 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:51 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+      [ ] 19. self
+    [>] 20. ⬅️ Back
+    [ ] 21. Grid View
+        Pick a file to load.
+      [ ] 22. 📁  assets 
+      [ ] 23. 📁  pieces 
+      [ ] 24. 📄  asset.pal 32B
+      [ ] 25. 📄  desktop_pos.txt 17B
+      [ ] 26. 📄  glyph.txt 4B
+      [ ] 27. 📄  history.txt 77KB
+      [ ] 28. 📄  interact_relay.txt 0B
+      [ ] 29. 📄  livedesk_index.txt 3B
+      [ ] 30. 📄  menu.chtpm 1KB
+      [ ] 31. 📄  meta.pdl 556B
+      [ ] 32. 📄  module_parent.pid 6B
+      [ ] 33. 📄  pal.pdl 115B
+      [ ] 34. 📄  sprite.csv 45KB
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:52 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:52 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+      [ ] 19. self
+    [>] 20. ⬅️ Back
+    [ ] 21. Grid View
+        Pick a file to load.
+      [ ] 22. 📁  assets 
+      [ ] 23. 📁  pieces 
+      [ ] 24. 📄  asset.pal 32B
+      [ ] 25. 📄  desktop_pos.txt 17B
+      [ ] 26. 📄  glyph.txt 4B
+      [ ] 27. 📄  history.txt 77KB
+      [ ] 28. 📄  interact_relay.txt 0B
+      [ ] 29. 📄  livedesk_index.txt 3B
+      [ ] 30. 📄  menu.chtpm 1KB
+      [ ] 31. 📄  meta.pdl 556B
+      [ ] 32. 📄  module_parent.pid 6B
+      [ ] 33. 📄  pal.pdl 115B
+      [ ] 34. 📄  sprite.csv 45KB
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:53 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:53 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+      [ ] 19. self
+    [>] 20. ⬅️ Back
+    [ ] 21. Grid View
+        Pick a file to load.
+      [ ] 22. 📁  assets 
+      [ ] 23. 📁  pieces 
+      [ ] 24. 📄  asset.pal 32B
+      [ ] 25. 📄  desktop_pos.txt 17B
+      [ ] 26. 📄  glyph.txt 4B
+      [ ] 27. 📄  history.txt 77KB
+      [ ] 28. 📄  interact_relay.txt 0B
+      [ ] 29. 📄  livedesk_index.txt 3B
+      [ ] 30. 📄  menu.chtpm 1KB
+      [ ] 31. 📄  meta.pdl 556B
+      [ ] 32. 📄  module_parent.pid 6B
+      [ ] 33. 📄  pal.pdl 115B
+      [ ] 34. 📄  sprite.csv 45KB
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:54 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:54 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+      [ ] 19. self
+    [ ] 20. ⬅️ Back
+    [ ] 21. Grid View
+        Pick a file to load.
+      [ ] 22. 📁  assets 
+      [ ] 23. 📁  pieces 
+      [ ] 24. 📄  asset.pal 32B
+      [ ] 25. 📄  desktop_pos.txt 17B
+      [ ] 26. 📄  glyph.txt 4B
+      [ ] 27. 📄  history.txt 77KB
+      [ ] 28. 📄  interact_relay.txt 0B
+      [ ] 29. 📄  livedesk_index.txt 3B
+      [ ] 30. 📄  menu.chtpm 1KB
+      [ ] 31. 📄  meta.pdl 556B
+      [ ] 32. 📄  module_parent.pid 6B
+      [ ] 33. 📄  pal.pdl 115B
+      [ ] 34. 📄  sprite.csv 45KB
+
+=== file-explorer-pal.xhtpm pid 226830  2026-09-18 12:33:55 ===
+--- file-explorer-pal.xhtpm  pid 226830  2026-09-18 12:33:55 ---
+--- page: main ---
+File Explorer - LOAD
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. pals
+      [ ] 17. cursword
+      [ ] 18. inventory
+      [ ] 19. self
+    [ ] 20. ⬅️ Back
+    [ ] 21. Grid View
+        Pick a file to load.
+      [ ] 22. 📁  assets 
+      [ ] 23. 📁  pieces 
+      [ ] 24. 📄  asset.pal 32B
+      [ ] 25. 📄  desktop_pos.txt 17B
+      [ ] 26. 📄  glyph.txt 4B
+      [ ] 27. 📄  history.txt 77KB
+      [ ] 28. 📄  interact_relay.txt 0B
+      [ ] 29. 📄  livedesk_index.txt 3B
+      [ ] 30. 📄  menu.chtpm 1KB
+      [ ] 31. 📄  meta.pdl 556B
+      [ ] 32. 📄  module_parent.pid 6B
+      [ ] 33. 📄  pal.pdl 115B
+      [ ] 34. 📄  sprite.csv 45KB

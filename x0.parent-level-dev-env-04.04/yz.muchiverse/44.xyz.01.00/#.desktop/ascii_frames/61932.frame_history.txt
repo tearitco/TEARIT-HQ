@@ -1,0 +1,18 @@
+
+=== menu.chtpm pid 61932  2026-09-20 02:25:27 ===
+--- menu.chtpm  pid 61932  2026-09-20 02:25:27 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+
+=== menu.chtpm pid 61932  2026-09-20 02:25:29 ===
+--- menu.chtpm  pid 61932  2026-09-20 02:25:29 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel

@@ -1,0 +1,7 @@
+OBJECT tag=text id=- class=dir-label x=0 y=30 w=220 h=90 nav=0 active=0 label=/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/101.drag-drop-test=ON🀄️
+OBJECT tag=item id=entry0 class=fe-entry x=0 y=120 w=220 h=30 nav=1 active=0 label=⬅  ..  Back 
+OBJECT tag=item id=entry1 class=fe-entry x=0 y=150 w=220 h=30 nav=2 active=0 label=📁  ops 
+OBJECT tag=item id=entry2 class=fe-entry x=0 y=180 w=220 h=30 nav=3 active=0 label=📁  scenarios 
+OBJECT tag=item id=entry3 class=fe-entry x=0 y=210 w=220 h=30 nav=4 active=0 label=📄  README.txt 3KB
+OBJECT tag=item id=entry4 class=fe-entry x=0 y=240 w=220 h=30 nav=5 active=0 label=📄  button.sh 2KB
+OBJECT tag=text id=- class=quiet x=220 y=30 w=260 h=30 nav=0 active=0 label=Pick a file to load.

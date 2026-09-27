@@ -1,0 +1,3 @@
+OBJECT tag=text id=- class=- x=12 y=12 w=0 h=0 nav=0 active=0 label=Type a command. Enter commits. Escape leaves the field.
+OBJECT tag=text id=- class=- x=12 y=12 w=0 h=0 nav=0 active=0 label=range a1 b2 2 6   or   advance page
+OBJECT tag=cli_io id=cmd class=- x=12 y=12 w=0 h=0 nav=0 active=0 label=> 

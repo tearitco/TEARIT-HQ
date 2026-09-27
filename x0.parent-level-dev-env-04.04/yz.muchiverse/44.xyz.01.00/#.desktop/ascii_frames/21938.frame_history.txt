@@ -1,0 +1,403 @@
+
+=== dashboard.xhtpm pid 21938  2026-09-23 01:32:28 ===
+--- dashboard.xhtpm  pid 21938  2026-09-23 01:32:28 ---
+--- page: main ---
+DB (PAL)
+      [>] 1. Actors
+      [ ] 2. * Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+      [ ] 16. Terumon
+          Classes (4)
+        [ ] 17. 1. Hero
+        [ ] 18. 2. Warrior
+        [ ] 19. 3. Mage
+        [ ] 20. 4. Priest
+          #1  Hero
+        [ ] 21.   []  
+        [ ] 22. name  [Hero]  
+        [ ] 23. exp_curve  [Normal]  
+        [ ] 24. note  []  
+
+=== dashboard.xhtpm pid 21938  2026-09-23 01:32:28 ===
+--- dashboard.xhtpm  pid 21938  2026-09-23 01:32:28 ---
+--- page: main ---
+DB (PAL)
+      [>] 1. * Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+      [ ] 16. Terumon
+          Actors (11)
+        [ ] 17. 1. Harold
+        [ ] 18. 2. Therese
+        [ ] 19. 3. Marsha
+        [ ] 20. 4. Lucius
+        [ ] 21. 5. Ember
+        [ ] 22. 6. Glacine
+        [ ] 23. 7. Murmur
+        [ ] 24. 8. Solvent
+        [ ] 25. 9. Asa
+        [ ] 26. 10. Ava
+        [ ] 27. 11. Cursword
+          #1  Harold
+        [ ] 30.   []  
+        [ ] 31. name  [Harold]  
+        [ ] 32. nickname  [The Brave]  
+        [ ] 33. class  [Hero]  
+        [ ] 34. init_lv  [1]  
+        [ ] 35. max_lv  [99]  
+        [ ] 36. profile  [A young warrior seeking adventure.]  
+        [ ] 37. face
+        [ ] 38. face  [Actor1_1]  
+        [ ] 39. character
+
+=== dashboard.xhtpm pid 21938  2026-09-23 01:32:44 ===
+--- dashboard.xhtpm  pid 21938  2026-09-23 01:32:44 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. * Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [>] 9. States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+      [ ] 16. Terumon
+          Actors (11)
+        [ ] 17. 1. Harold
+        [ ] 18. 2. Therese
+        [ ] 19. 3. Marsha
+        [ ] 20. 4. Lucius
+        [ ] 21. 5. Ember
+        [ ] 22. 6. Glacine
+        [ ] 23. 7. Murmur
+        [ ] 24. 8. Solvent
+        [ ] 25. 9. Asa
+        [ ] 26. 10. Ava
+        [ ] 27. 11. Cursword
+          #1  Harold
+        [ ] 30.   []  
+        [ ] 31. name  [Harold]  
+        [ ] 32. nickname  [The Brave]  
+        [ ] 33. class  [Hero]  
+        [ ] 34. init_lv  [1]  
+        [ ] 35. max_lv  [99]  
+        [ ] 36. profile  [A young warrior seeking adventure.]  
+        [ ] 37. face
+        [ ] 38. face  [Actor1_1]  
+        [ ] 39. character
+
+=== dashboard.xhtpm pid 21938  2026-09-23 01:32:45 ===
+--- dashboard.xhtpm  pid 21938  2026-09-23 01:32:45 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. * States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+      [ ] 16. Terumon
+          Actors (11)
+        [>] 17. 1. Harold
+        [ ] 18. 2. Therese
+        [ ] 19. 3. Marsha
+        [ ] 20. 4. Lucius
+        [ ] 21. 5. Ember
+        [ ] 22. 6. Glacine
+        [ ] 23. 7. Murmur
+        [ ] 24. 8. Solvent
+        [ ] 25. 9. Asa
+        [ ] 26. 10. Ava
+        [ ] 27. 11. Cursword
+          #1  Harold
+        [ ] 30.   []  
+        [ ] 31. name  [Harold]  
+        [ ] 32. nickname  [The Brave]  
+        [ ] 33. class  [Hero]  
+        [ ] 34. init_lv  [1]  
+        [ ] 35. max_lv  [99]  
+        [ ] 36. profile  [A young warrior seeking adventure.]  
+        [ ] 37. face
+        [ ] 38. face  [Actor1_1]  
+        [ ] 39. character
+
+=== dashboard.xhtpm pid 21938  2026-09-23 01:32:45 ===
+--- dashboard.xhtpm  pid 21938  2026-09-23 01:32:45 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. * States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+      [ ] 16. Terumon
+          States (4)
+        [>] 17. 1. Knockout
+        [ ] 18. 2. Poison
+        [ ] 19. 3. Silence
+        [ ] 20. 4. Stun
+          #1  Knockout
+        [ ] 21.   []  
+        [ ] 22. name  [Knockout]  
+        [ ] 23. restriction  [Cannot move]  
+        [ ] 24. auto_remove  [Battle end]  
+        [ ] 25. note  []  
+
+=== dashboard.xhtpm pid 21938  2026-09-23 01:32:46 ===
+--- dashboard.xhtpm  pid 21938  2026-09-23 01:32:46 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. * States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+      [ ] 16. Terumon
+          States (4)
+        [>] 17. 1. Knockout
+        [ ] 18. 2. Poison
+        [ ] 19. 3. Silence
+        [ ] 20. 4. Stun
+          #1  Knockout
+        [ ] 21.   []  
+        [ ] 22. name  [Knockout]  
+        [ ] 23. restriction  [Cannot move]  
+        [ ] 24. auto_remove  [Battle end]  
+        [ ] 25. note  []  
+
+=== dashboard.xhtpm pid 21938  2026-09-23 01:32:57 ===
+--- dashboard.xhtpm  pid 21938  2026-09-23 01:32:57 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. * States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+      [ ] 16. Terumon
+          Actors (11)
+        [>] 17. 1. Harold
+        [ ] 18. 2. Therese
+        [ ] 19. 3. Marsha
+        [ ] 20. 4. Lucius
+        [ ] 21. 5. Ember
+        [ ] 22. 6. Glacine
+        [ ] 23. 7. Murmur
+        [ ] 24. 8. Solvent
+        [ ] 25. 9. Asa
+        [ ] 26. 10. Ava
+        [ ] 27. 11. Cursword
+          #1  Harold
+        [ ] 30.   []  
+        [ ] 31. name  [Harold]  
+        [ ] 32. nickname  [The Brave]  
+        [ ] 33. class  [Hero]  
+        [ ] 34. init_lv  [1]  
+        [ ] 35. max_lv  [99]  
+        [ ] 36. profile  [A young warrior seeking adventure.]  
+        [ ] 37. face
+        [ ] 38. face  [Actor1_1]  
+        [ ] 39. character
+
+=== dashboard.xhtpm pid 21938  2026-09-23 01:33:19 ===
+--- dashboard.xhtpm  pid 21938  2026-09-23 01:33:19 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. * States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+      [ ] 16. Terumon
+          Actors (11)
+        [>] 17. 1. Harold
+        [ ] 18. 2. Therese
+        [ ] 19. 3. Marsha
+        [ ] 20. 4. Lucius
+        [ ] 21. 5. Ember
+        [ ] 22. 6. Glacine
+        [ ] 23. 7. Murmur
+        [ ] 24. 8. Solvent
+        [ ] 25. 9. Asa
+        [ ] 26. 10. Ava
+        [ ] 27. 11. Cursword
+          #1  Harold
+        [ ] 30.   []  
+        [ ] 31. name  [Harold]  
+        [ ] 32. nickname  [The Brave]  
+        [ ] 33. class  [Hero]  
+        [ ] 34. init_lv  [1]  
+        [ ] 35. max_lv  [99]  
+        [ ] 36. profile  [A young warrior seeking adventure.]  
+        [ ] 37. face
+        [ ] 38. face  [Actor1_1]  
+        [ ] 39. character
+
+=== dashboard.xhtpm pid 21938  2026-09-23 01:36:03 ===
+--- dashboard.xhtpm  pid 21938  2026-09-23 01:36:03 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. * States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+      [ ] 16. Terumon
+          Actors (11)
+        [>] 17. 1. Harold
+        [ ] 18. 2. Therese
+        [ ] 19. 3. Marsha
+        [ ] 20. 4. Lucius
+        [ ] 21. 5. Ember
+        [ ] 22. 6. Glacine
+        [ ] 23. 7. Murmur
+        [ ] 24. 8. Solvent
+        [ ] 25. 9. Asa
+        [ ] 26. 10. Ava
+        [ ] 27. 11. Cursword
+          #1  Harold
+        [ ] 30.   []  
+        [ ] 31. name  [Harold]  
+        [ ] 32. nickname  [The Brave]  
+        [ ] 33. class  [Hero]  
+        [ ] 34. init_lv  [1]  
+        [ ] 35. max_lv  [99]  
+        [ ] 36. profile  [A young warrior seeking adventure.]  
+        [ ] 37. face
+        [ ] 38. face  [Actor1_1]  
+        [ ] 39. character
+
+=== dashboard.xhtpm pid 21938  2026-09-23 01:36:06 ===
+--- dashboard.xhtpm  pid 21938  2026-09-23 01:36:06 ---
+--- page: main ---
+DB (PAL)
+      [ ] 1. Actors
+      [ ] 2. Classes
+      [ ] 3. Skills
+      [ ] 4. Items
+      [ ] 5. Weapons
+      [ ] 6. Armors
+      [ ] 7. Enemies
+      [ ] 8. Troops
+      [ ] 9. * States
+      [ ] 10. Animations
+      [ ] 11. Tilesets
+      [ ] 12. Common Events
+      [ ] 13. System
+      [ ] 14. Types
+      [ ] 15. Terms
+      [ ] 16. Terumon
+          Actors (11)
+        [>] 17. 1. Harold
+        [ ] 18. 2. Therese
+        [ ] 19. 3. Marsha
+        [ ] 20. 4. Lucius
+        [ ] 21. 5. Ember
+        [ ] 22. 6. Glacine
+        [ ] 23. 7. Murmur
+        [ ] 24. 8. Solvent
+        [ ] 25. 9. Asa
+        [ ] 26. 10. Ava
+        [ ] 27. 11. Cursword
+          #1  Harold
+        [ ] 30.   []  
+        [ ] 31. name  [Harold]  
+        [ ] 32. nickname  [The Brave]  
+        [ ] 33. class  [Hero]  
+        [ ] 34. init_lv  [1]  
+        [ ] 35. max_lv  [99]  
+        [ ] 36. profile  [A young warrior seeking adventure.]  
+        [ ] 37. face
+        [ ] 38. face  [Actor1_1]  
+        [ ] 39. character

@@ -1,0 +1,19 @@
+OBJECT tag=tab id=crumb0 class=- x=8 y=33 w=71 h=30 nav=1 active=0 label=/
+OBJECT tag=tab id=crumb1 class=- x=83 y=33 w=109 h=30 nav=2 active=0 label=home
+OBJECT tag=tab id=crumb2 class=- x=196 y=33 w=85 h=30 nav=3 active=0 label=no
+OBJECT tag=tab id=crumb3 class=- x=285 y=33 w=127 h=30 nav=4 active=0 label=Desktop
+OBJECT tag=tab id=crumb4 class=- x=416 y=33 w=114 h=30 nav=5 active=0 label=github
+OBJECT tag=tab id=crumb5 class=- x=534 y=33 w=103 h=30 nav=6 active=0 label=work
+OBJECT tag=tab id=crumb6 class=active x=641 y=33 w=164 h=30 nav=7 active=1 label=NNEST-12.00
+OBJECT tag=item id=entry0 class=fe-entry x=0 y=65 w=700 h=30 nav=8 active=0 label=⬅  ..  Back 
+OBJECT tag=item id=entry1 class=fe-entry x=0 y=95 w=700 h=30 nav=9 active=0 label=📁  #.NNEST_ASSETS 
+OBJECT tag=item id=entry2 class=fe-entry x=0 y=125 w=700 h=30 nav=10 active=0 label=📁  #.nnedox 
+OBJECT tag=item id=entry3 class=fe-entry x=0 y=155 w=700 h=30 nav=11 active=0 label=📁  x0.parent-level-dev-env-04.04 
+OBJECT tag=item id=entry4 class=fe-entry x=0 y=185 w=700 h=30 nav=12 active=0 label=📁  x0.safe-dox 
+OBJECT tag=item id=entry5 class=fe-entry x=0 y=215 w=700 h=30 nav=13 active=0 label=📁  x0.temp-dox 
+OBJECT tag=item id=entry6 class=fe-entry x=0 y=245 w=700 h=30 nav=14 active=0 label=📄  #.temp-todo.txt 1KB
+OBJECT tag=item id=entry7 class=fe-entry x=0 y=275 w=700 h=30 nav=15 active=0 label=📄  #.wussup-Nest.txt 8KB
+OBJECT tag=item id=entry8 class=fe-entry x=0 y=305 w=700 h=30 nav=16 active=0 label=📄  AGENTS.md 1KB
+OBJECT tag=item id=entry9 class=fe-entry x=0 y=335 w=700 h=30 nav=17 active=0 label=📄  rezip-house.sh 2KB
+OBJECT tag=item id=entry10 class=fe-entry x=0 y=365 w=700 h=30 nav=18 active=0 label=📄  x0.parent-level-dev-env-04.04_20260915-024048.7z 39MB
+OBJECT tag=text id=- class=quiet x=700 y=65 w=745 h=30 nav=0 active=0 label=Pick a file to load.

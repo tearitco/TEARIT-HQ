@@ -5,32 +5,32 @@ FINANCIAL BALANCE SHEET: STARQUENCH BEVERAGES (STQ)
 (Amounts in millions of U.S. Dollars, except per share amounts)
 
 ASSETS:
-  Free Cash and Equivalents:		459.36
-  Working Capital (A/R, Inven.):	163.76
-  Business Assets/Equipment:		1837.48
+  Free Cash and Equivalents:		685.36
+  Working Capital (A/R, Inven.):	149.97
+  Business Assets/Equipment:		1454.49
   Stock in Subsidiary Cos.:		0.00
   Options Long/Short: Net Value:	0.00
   ---------------------------------------------
-  Total Assets:				2460.60
+  Total Assets:				2289.82
   ---------------------------------------------
 
 LIABILITIES AND EQUITY:
   Long-Term Bonds Issued:		0.00
-  Bank Loan:				468.84
+  Bank Loan:				333.87
   Accrued Income Tax Payable:		0.00
   ---------------------------------------------
-  Total Liabilities:			468.84
+  Total Liabilities:			333.87
   ---------------------------------------------
-  Equity (Net Worth):			1991.76
+  Equity (Net Worth):			1955.96
   =============================================
 
 STOCK AND EARNINGS DATA:
 ------------------------
-  Net Worth Per Share:			25.19
-  Current Stock Price:			32.64
-  52-Week High/Low Stock Price:		40.49 / 27.64
-  Shares of Stock Outstanding:		79.07 million
-  Total Stock Capitalization:		2581.20 million
+  Net Worth Per Share:			20.79
+  Current Stock Price:			21.21
+  52-Week High/Low Stock Price:		25.99 / 13.92
+  Shares of Stock Outstanding:		94.10 million
+  Total Stock Capitalization:		1995.87 million
   2021 Earnings Per Share:		0.00 (Operating Earnings)
   2022 Earnings Per Share:		0.00 (Operating Earnings)
   2023 Earnings Per Share:		0.00 (Operating Earnings)
@@ -42,16 +42,16 @@ VARIOUS FINANCIAL RATIOS:
 -------------------------
   Price/Earnings Ratio:			NMF (No Meaningful Figure)
   Dividend Yield:			0.00%
-  Debt to Equity Ratio:			0.24 to 1
+  Debt to Equity Ratio:			0.17 to 1
   Return on Equity (2024):		NMF (No Meaningful Figure)
   ---------------------------------------------
 
 *** CREDIT INFO: ***
 -------------------
   Credit Rating:			AA
-  Unused Bank Line of Credit:		2249.17 million
+  Unused Bank Line of Credit:		274.54 million
   Borrowing Rate (Interest):		10.50% (Prime is: 10.00%)
-  Lending Bank:				LUNAR FINANCE (LUN)
+  Lending Bank:				MARTIAN TRUST BANK (MTB)
   ---------------------------------------------
 
 VARIABLE SETTINGS (Changeable by controlling player):
@@ -64,11 +64,11 @@ VARIABLE SETTINGS (Changeable by controlling player):
 MISCELLANEOUS INFO:
 -------------------
   Industry Group:			BEVERAGE
-  Incorporated in:			Sinder Rouge Monarchy
+  Incorporated in:			Robot State
   Controlled (and actively managed) by:	public
   Public Owns:			%
-  Accrued R&D and/or Investment Tax Credits:	$172.78 million
-  Annual CEO Salary (approx.):		$1.77 million (Plus possible bonuses)
+  Accrued R&D and/or Investment Tax Credits:	$72.83 million
+  Annual CEO Salary (approx.):		$0.81 million (Plus possible bonuses)
   Today's (Game) Date:			January 1, 2025
   Next Earnings Report:			January 27, 2025
   ---------------------------------------------

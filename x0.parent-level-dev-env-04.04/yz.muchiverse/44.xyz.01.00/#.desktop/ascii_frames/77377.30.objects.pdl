@@ -1,0 +1,11 @@
+OBJECT tag=text id=- class=dir-label x=0 y=30 w=220 h=60 nav=0 active=0 label=/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00
+OBJECT tag=item id=entry24 class=fe-entry x=0 y=104 w=212 h=30 nav=3 active=0 label=📁  0.user-pal👤️ 
+OBJECT tag=item id=entry25 class=fe-entry x=0 y=134 w=212 h=30 nav=4 active=0 label=📁  002.zoo__🦓️🐒️0000 
+OBJECT tag=item id=entry26 class=fe-entry x=0 y=164 w=212 h=30 nav=5 active=0 label=📁  007-goldeye+01.00 
+OBJECT tag=item id=entry27 class=fe-entry x=0 y=194 w=212 h=60 nav=6 active=0 label=📁  01.muchi-pals-🥚️-13.01 
+OBJECT tag=item id=entry28 class=fe-entry x=0 y=254 w=212 h=30 nav=7 active=0 label=📁  014.wsr-pal💸️📌️+2 
+OBJECT tag=item id=entry29 class=fe-entry x=0 y=284 w=212 h=30 nav=8 active=0 label=📁  040.net-health 
+OBJECT tag=item id=entry30 class=fe-entry x=0 y=314 w=212 h=30 nav=9 active=0 label=📁  041.pal-chain⛓️ 
+OBJECT tag=item id=entry31 class=fe-entry x=0 y=344 w=212 h=30 nav=10 active=0 label=📁  041.pal-forum👥️ 
+OBJECT tag=item id=entry32 class=fe-entry x=0 y=374 w=212 h=30 nav=11 active=0 label=📁  044.pal-chat-irc👥️+2 
+OBJECT tag=text id=- class=quiet x=220 y=30 w=260 h=30 nav=0 active=0 label=Pick a file to load.

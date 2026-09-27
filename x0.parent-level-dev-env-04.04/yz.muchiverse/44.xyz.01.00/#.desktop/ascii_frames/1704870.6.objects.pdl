@@ -1,0 +1,43 @@
+OBJECT tag=text id=- class=block-title x=0 y=30 w=200 h=30 nav=0 active=0 label=Bookmarks
+OBJECT tag=text id=- class=quiet x=0 y=0 w=0 h=0 nav=0 active=0 label=No bookmarks yet
+OBJECT tag=text id=- class=block-title x=0 y=60 w=200 h=30 nav=0 active=0 label=History
+OBJECT tag=item id=hist0 class=- x=0 y=104 w=192 h=30 nav=3 active=0 label=www.youtube.com
+OBJECT tag=item id=hist1 class=- x=0 y=134 w=192 h=60 nav=4 active=0 label=https://www.google.com/intl/en/about/products?tab=ih
+OBJECT tag=item id=hist2 class=- x=0 y=194 w=192 h=30 nav=5 active=0 label=https://example.com
+OBJECT tag=item id=hist3 class=- x=0 y=224 w=192 h=30 nav=6 active=0 label=https://myaccount.google.com/126
+OBJECT tag=item id=hist4 class=- x=0 y=254 w=192 h=30 nav=7 active=0 label=https://myaccount.google.com/015
+OBJECT tag=item id=hist5 class=- x=0 y=284 w=192 h=120 nav=8 active=0 label=https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+OBJECT tag=item id=hist6 class=- x=0 y=404 w=192 h=60 nav=9 active=0 label=https://www.google.com/intl/en/about/products?tab=ih
+OBJECT tag=item id=hist7 class=- x=0 y=464 w=192 h=60 nav=10 active=0 label=https://www.google.com/intl/en/about/products?tab=ih
+OBJECT tag=item id=hist8 class=- x=0 y=524 w=192 h=30 nav=11 active=0 label=https://example.com
+OBJECT tag=item id=hist9 class=- x=0 y=554 w=192 h=30 nav=12 active=0 label=www.google.com
+OBJECT tag=item id=hist10 class=- x=0 y=584 w=192 h=60 nav=13 active=0 label=https://www.google.com/intl/en/about/products?tab=ih
+OBJECT tag=item id=nb-back class=quiet x=200 y=30 w=72 h=30 nav=14 active=0 label=Back
+OBJECT tag=item id=nb-fwd class=quiet x=272 y=30 w=72 h=30 nav=15 active=0 label=Forward
+OBJECT tag=item id=nb-stop class=quiet x=344 y=30 w=72 h=30 nav=16 active=0 label=Stop
+OBJECT tag=item id=nb-reload class=quiet x=416 y=30 w=72 h=30 nav=17 active=0 label=Reload
+OBJECT tag=item id=nb-home class=quiet x=488 y=30 w=72 h=30 nav=18 active=0 label=Home
+OBJECT tag=item id=nb-bm class=quiet x=560 y=30 w=72 h=30 nav=19 active=0 label=Bookmark
+OBJECT tag=item id=nb-close class=quiet x=632 y=30 w=72 h=30 nav=20 active=0 label=Close tab
+OBJECT tag=item id=tab0 class=quiet x=200 y=60 w=126 h=30 nav=21 active=0 label=Google's products 
+OBJECT tag=item id=tab1 class=quiet x=326 y=60 w=126 h=30 nav=22 active=0 label=Google's products 
+OBJECT tag=item id=tab2 class=quiet x=452 y=60 w=126 h=30 nav=23 active=0 label=*YouTube
+OBJECT tag=item id=nb-newtab class=quiet x=578 y=60 w=126 h=30 nav=24 active=0 label=New tab
+OBJECT tag=cli_io id=address class=top,nb-address x=200 y=90 w=506 h=30 nav=25 active=0 label=hello
+OBJECT tag=text id=status class=nb-status x=200 y=120 w=506 h=30 nav=0 active=0 label=Status: ready
+OBJECT tag=text id=ct0 class=page-title x=200 y=164 w=498 h=30 nav=0 active=0 label=YouTube
+OBJECT tag=item id=cl1 class=- x=200 y=194 w=498 h=30 nav=28 active=0 label=/ /
+OBJECT tag=item id=cl2 class=- x=200 y=224 w=498 h=30 nav=29 active=0 label=/ /
+OBJECT tag=item id=cl3 class=- x=200 y=254 w=498 h=30 nav=30 active=0 label=https://www.youtube.com/about/ About
+OBJECT tag=item id=cl4 class=- x=200 y=284 w=498 h=30 nav=31 active=0 label=https://www.youtube.com/about/press/ Press
+OBJECT tag=item id=cl5 class=- x=200 y=314 w=498 h=30 nav=32 active=0 label=https://www.youtube.com/about/copyright/ Copyright
+OBJECT tag=item id=cl6 class=- x=200 y=344 w=498 h=30 nav=33 active=0 label=/t/contact_us/ Contact us
+OBJECT tag=item id=cl7 class=- x=200 y=374 w=498 h=30 nav=34 active=0 label=https://www.youtube.com/creators/ Creators
+OBJECT tag=item id=cl8 class=- x=200 y=404 w=498 h=30 nav=35 active=0 label=https://www.youtube.com/ads/ Advertise
+OBJECT tag=item id=cl9 class=- x=200 y=434 w=498 h=30 nav=36 active=0 label=https://developers.google.com/youtube Developers
+OBJECT tag=item id=cl10 class=- x=200 y=464 w=498 h=30 nav=37 active=0 label=/t/terms Terms
+OBJECT tag=item id=cl11 class=- x=200 y=494 w=498 h=30 nav=38 active=0 label=/t/privacy Privacy
+OBJECT tag=item id=cl12 class=- x=200 y=524 w=498 h=30 nav=39 active=0 label=https://www.youtube.com/about/policies/ Policy & Safety
+OBJECT tag=item id=cl13 class=- x=200 y=554 w=498 h=90 nav=40 active=0 label=https://www.youtube.com/howyoutubeworks?utm_campaign=ytgen&utm_source=ythp&utm_medium=LeftNav&utm_content=txt&u=https%3A%2F%2Fwww.youtube.com%2Fhowyoutubeworks%3Futm_source%3Dythp%26utm_medium%3DLeftNav%26utm_campaign%3Dytgen How YouTube w
+OBJECT tag=text id=- class=block-title x=706 y=30 w=253 h=30 nav=0 active=0 label=Console
+OBJECT tag=text id=- class=quiet x=706 y=60 w=253 h=30 nav=0 active=0 label=Try: eval:1 + 1

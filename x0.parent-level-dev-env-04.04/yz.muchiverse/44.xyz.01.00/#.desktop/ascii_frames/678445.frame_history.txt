@@ -1,0 +1,30 @@
+
+=== dashboard.chtpm pid 678445  2026-09-13 16:15:37 ===
+--- dashboard.chtpm  pid 678445  2026-09-13 16:15:37 ---
+--- page: main ---
+        (entity)
+          Scripting
+          Scratch
+          Blueprints
+        (no pages yet)
+        Trigger
+        (unknown)
+        Commands
+        (no commands yet)
+        + Add Command
+        ▶ Play
+
+=== dashboard.chtpm pid 678445  2026-09-13 16:15:43 ===
+--- dashboard.chtpm  pid 678445  2026-09-13 16:15:43 ---
+--- page: main ---
+        (entity)
+          Scripting
+          Scratch
+          Blueprints
+        (no pages yet)
+        Trigger
+        (unknown)
+        Commands
+        (no commands yet)
+        + Add Command
+        ▶ Play

@@ -1,0 +1,20 @@
+OBJECT tag=text id=- class=quiet x=0 y=36 w=220 h=36 nav=0 active=0 label=scanned 21:02:16
+OBJECT tag=text id=- class=block-title x=0 y=72 w=220 h=36 nav=0 active=0 label=9 good  /  7 bad
+OBJECT tag=item id=b_refresh class=btn x=0 y=108 w=220 h=36 nav=1 active=0 label=  refresh now  
+OBJECT tag=item id=b_kill class=btn,danger x=0 y=144 w=220 h=36 nav=2 active=0 label=  KILL ALL BAD  
+OBJECT tag=item id=b_kill2 class=btn,danger x=0 y=180 w=220 h=36 nav=3 active=0 label= + pals/singletons 
+OBJECT tag=text id=- class=block-title x=0 y=216 w=220 h=36 nav=0 active=0 label=BAD - stray / leaked
+OBJECT tag=item id=bad0 class=data-item x=0 y=266 w=212 h=72 nav=6 active=0 label=1384810 [detached]  4m     cpu:0.0  reg    sh button.sh run
+OBJECT tag=item id=bad1 class=data-item x=0 y=338 w=212 h=72 nav=7 active=0 label=1384852 [child]     4m     cpu:0.0  reg    orchestrator
+OBJECT tag=item id=bad2 class=data-item x=0 y=410 w=212 h=144 nav=8 active=0 label=1384853 [child]     4m     cpu:0.0  unreg  bash button.sh run-widget @.apps/piececraft-hq
+OBJECT tag=text id=- class=block-title x=220 y=36 w=480 h=36 nav=0 active=0 label=GOOD - owned / accounted for
+OBJECT tag=text id=- class=quiet x=220 y=72 w=480 h=36 nav=0 active=0 label=taskbar group, registered pals, house-wide managers, live -hq windows
+OBJECT tag=text id=- class=- x=220 y=108 w=480 h=36 nav=0 active=0 label=463133  [pal]       1d17h  cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=144 w=480 h=36 nav=0 active=0 label=1190521 [pal]       40m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=180 w=480 h=36 nav=0 active=0 label=1190524 [pal]       40m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=216 w=480 h=36 nav=0 active=0 label=1190530 [pal]       40m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=252 w=480 h=36 nav=0 active=0 label=1190532 [pal]       40m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=288 w=480 h=36 nav=0 active=0 label=1190536 [pal]       40m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=324 w=480 h=36 nav=0 active=0 label=1190538 [pal]       40m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=360 w=480 h=36 nav=0 active=0 label=1392383 [singleton] 3m     cpu:0.1  unreg  swatch_picker_manager /home/no/Desktop/github/
+OBJECT tag=text id=- class=- x=220 y=396 w=480 h=36 nav=0 active=0 label=1392384 [hq-window] 3m     cpu:0.3  unreg  khtpm_core_render /home/no/Desktop/github/work

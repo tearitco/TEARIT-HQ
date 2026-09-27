@@ -1,0 +1,55 @@
+
+=== menu.chtpm pid 718290  2026-09-19 22:29:58 ===
+--- menu.chtpm  pid 718290  2026-09-19 22:29:58 ---
+--- page: main ---
+itemA
+    [>] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Delete
+    [ ] 5. Place
+    [ ] 6. Cancel
+
+=== menu.chtpm pid 718290  2026-09-19 22:29:59 ===
+--- menu.chtpm  pid 718290  2026-09-19 22:29:59 ---
+--- page: main ---
+itemA
+    [>] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Delete
+    [ ] 5. Place
+    [ ] 6. Cancel
+
+=== menu.chtpm pid 718290  2026-09-19 22:43:22 ===
+--- menu.chtpm  pid 718290  2026-09-19 22:43:22 ---
+--- page: main ---
+itemA
+    [>] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Delete
+    [ ] 5. Place
+    [ ] 6. Cancel
+
+=== menu.chtpm pid 718290  2026-09-19 22:43:31 ===
+--- menu.chtpm  pid 718290  2026-09-19 22:43:31 ---
+--- page: main ---
+itemA
+    [ ] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Delete
+    [ ] 5. Place
+    [>] 6. Cancel
+
+=== menu.chtpm pid 718290  2026-09-19 22:43:32 ===
+--- menu.chtpm  pid 718290  2026-09-19 22:43:32 ---
+--- page: main ---
+itemA
+    [ ] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Delete
+    [ ] 5. Place
+    [>] 6. Cancel

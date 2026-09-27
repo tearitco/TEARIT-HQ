@@ -1,0 +1,980 @@
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:15:03 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:15:03 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [ ] 24. cli_io
+          Status: loading
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:15:03 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:15:03 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [ ] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:15:08 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:15:08 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [ ] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:15:21 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:15:21 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [ ] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:15:38 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:15:38 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:15:39 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:15:39 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:15:39 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:15:39 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [>] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [ ] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:15:40 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:15:40 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [ ] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:16:03 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:16:03 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:16:04 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:16:04 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:16:05 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:16:05 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:16:06 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:16:06 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:16:25 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:16:25 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:16:26 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:16:26 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:16:27 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:16:27 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:16:28 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:16:28 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:18:51 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:18:51 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:19:00 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:19:00 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:19:01 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:19:01 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:19:02 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:19:02 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:19:03 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:19:03 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:19:05 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:19:05 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:19:06 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:19:06 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:19:07 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:19:07 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:19:08 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:19:08 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:19:09 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:19:09 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:19:10 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:19:10 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 860898  2026-09-14 05:19:11 ===
+--- network-browser-hq.xhtpm  pid 860898  2026-09-14 05:19:11 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. /b/ - Random - 4ch
+        [ ] 22. *Network Browser
+        [ ] 23. New tab
+      [>] 24. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1

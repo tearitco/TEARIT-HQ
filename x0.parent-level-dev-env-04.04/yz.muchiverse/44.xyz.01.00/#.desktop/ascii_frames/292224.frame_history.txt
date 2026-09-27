@@ -1,0 +1,1511 @@
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:09 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:09 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. */b/ - Random - 4ch
+        [ ] 22. New tab
+      [ ] 23. cli_io
+          Status: ready
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 26. /a/ a
+        [ ] 27. /b/ b
+        [ ] 28. /c/ c
+        [ ] 29. /d/ d
+        [ ] 30. /e/ e
+        [ ] 31. /f/ f
+        [ ] 32. /g/ g
+        [ ] 33. /gif/ gif
+        [ ] 34. /h/ h
+        [ ] 35. /hr/ hr
+        [ ] 36. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:10 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:10 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [>] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. */b/ - Random - 4ch
+        [ ] 22. New tab
+      [ ] 23. cli_io
+          Status: ready
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 26. /a/ a
+        [ ] 27. /b/ b
+        [ ] 28. /c/ c
+        [ ] 29. /d/ d
+        [ ] 30. /e/ e
+        [ ] 31. /f/ f
+        [ ] 32. /g/ g
+        [ ] 33. /gif/ gif
+        [ ] 34. /h/ h
+        [ ] 35. /hr/ hr
+        [ ] 36. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:16 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:16 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. */b/ - Random - 4ch
+        [ ] 22. New tab
+      [>] 23. cli_io
+          Status: ready
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 26. /a/ a
+        [ ] 27. /b/ b
+        [ ] 28. /c/ c
+        [ ] 29. /d/ d
+        [ ] 30. /e/ e
+        [ ] 31. /f/ f
+        [ ] 32. /g/ g
+        [ ] 33. /gif/ gif
+        [ ] 34. /h/ h
+        [ ] 35. /hr/ hr
+        [ ] 36. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:17 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:17 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. */b/ - Random - 4ch
+        [ ] 22. New tab
+      [>] 23. cli_io
+          Status: ready
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 26. /a/ a
+        [ ] 27. /b/ b
+        [ ] 28. /c/ c
+        [ ] 29. /d/ d
+        [ ] 30. /e/ e
+        [ ] 31. /f/ f
+        [ ] 32. /g/ g
+        [ ] 33. /gif/ gif
+        [ ] 34. /h/ h
+        [ ] 35. /hr/ hr
+        [ ] 36. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:18 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:18 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. */b/ - Random - 4ch
+        [ ] 22. New tab
+      [>] 23. cli_io
+          Status: ready
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 26. /a/ a
+        [ ] 27. /b/ b
+        [ ] 28. /c/ c
+        [ ] 29. /d/ d
+        [ ] 30. /e/ e
+        [ ] 31. /f/ f
+        [ ] 32. /g/ g
+        [ ] 33. /gif/ gif
+        [ ] 34. /h/ h
+        [ ] 35. /hr/ hr
+        [ ] 36. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:22 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:22 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 6. https://www.example.com/
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. www.4chan.org/b/
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. */b/ - Random - 4ch
+        [ ] 22. New tab
+      [>] 23. cli_io
+          Status: ready
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 26. /a/ a
+        [ ] 27. /b/ b
+        [ ] 28. /c/ c
+        [ ] 29. /d/ d
+        [ ] 30. /e/ e
+        [ ] 31. /f/ f
+        [ ] 32. /g/ g
+        [ ] 33. /gif/ gif
+        [ ] 34. /h/ h
+        [ ] 35. /hr/ hr
+        [ ] 36. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:22 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:22 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 5. https://www.example.com/
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. www.4chan.org/b/
+        [ ] 9. www.youtube.com
+        [ ] 10. Back
+        [ ] 11. Forward
+        [ ] 12. Stop
+        [ ] 13. Reload
+        [ ] 14. Home
+        [ ] 15. Bookmark
+        [ ] 16. Close tab
+        [ ] 17. Google's products 
+        [ ] 18. Google's products 
+        [ ] 19. YouTube
+        [ ] 20. Image Test
+        [ ] 21. */b/ - Random - 4ch
+        [ ] 22. New tab
+      [>] 23. cli_io
+          Status: ready
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 26. /a/ a
+        [ ] 27. /b/ b
+        [ ] 28. /c/ c
+        [ ] 29. /d/ d
+        [ ] 30. /e/ e
+        [ ] 31. /f/ f
+        [ ] 32. /g/ g
+        [ ] 33. /gif/ gif
+        [ ] 34. /h/ h
+        [ ] 35. /hr/ hr
+        [ ] 36. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:22 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:22 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 5. https://www.example.com/
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. www.4chan.org/b/
+        [ ] 9. www.youtube.com
+        [ ] 10. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 11. Back
+        [ ] 12. Forward
+        [ ] 13. Stop
+        [ ] 14. Reload
+        [ ] 15. Home
+        [ ] 16. Bookmark
+        [ ] 17. Close tab
+        [ ] 18. Google's products 
+        [ ] 19. Google's products 
+        [ ] 20. YouTube
+        [ ] 21. Image Test
+        [ ] 22. */b/ - Random - 4ch
+        [>] 23. New tab
+      [ ] 24. cli_io
+          Status: ready
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 27. /a/ a
+        [ ] 28. /b/ b
+        [ ] 29. /c/ c
+        [ ] 30. /d/ d
+        [ ] 31. /e/ e
+        [ ] 32. /f/ f
+        [ ] 33. /g/ g
+        [ ] 34. /gif/ gif
+        [ ] 35. /h/ h
+        [ ] 36. /hr/ hr
+        [ ] 37. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:23 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:23 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 5. https://www.example.com/
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. www.4chan.org/b/
+        [ ] 9. www.youtube.com
+        [ ] 10. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 11. Back
+        [ ] 12. Forward
+        [ ] 13. Stop
+        [ ] 14. Reload
+        [ ] 15. Home
+        [ ] 16. Bookmark
+        [ ] 17. Close tab
+        [ ] 18. Google's products 
+        [ ] 19. Google's products 
+        [ ] 20. YouTube
+        [ ] 21. Image Test
+        [ ] 22. */b/ - Random - 4ch
+        [>] 23. New tab
+      [ ] 24. cli_io
+          Status: ready
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 27. /a/ a
+        [ ] 28. /b/ b
+        [ ] 29. /c/ c
+        [ ] 30. /d/ d
+        [ ] 31. /e/ e
+        [ ] 32. /f/ f
+        [ ] 33. /g/ g
+        [ ] 34. /gif/ gif
+        [ ] 35. /h/ h
+        [ ] 36. /hr/ hr
+        [ ] 37. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:23 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:23 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 5. https://www.example.com/
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. www.4chan.org/b/
+        [ ] 9. www.youtube.com
+        [ ] 10. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 11. https://example.com
+        [ ] 12. Back
+        [ ] 13. Forward
+        [ ] 14. Stop
+        [ ] 15. Reload
+        [ ] 16. Home
+        [ ] 17. Bookmark
+        [ ] 18. Close tab
+        [ ] 19. Google's products 
+        [ ] 20. Google's products 
+        [ ] 21. YouTube
+        [ ] 22. Image Test
+        [>] 23. */b/ - Random - 4ch
+        [ ] 24. New tab
+      [ ] 25. cli_io
+          Status: ready
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 28. /a/ a
+        [ ] 29. /b/ b
+        [ ] 30. /c/ c
+        [ ] 31. /d/ d
+        [ ] 32. /e/ e
+        [ ] 33. /f/ f
+        [ ] 34. /g/ g
+        [ ] 35. /gif/ gif
+        [ ] 36. /h/ h
+        [ ] 37. /hr/ hr
+        [ ] 38. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:23 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:23 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. file:///home/no/Desktop/github/work/NNEST-12.00-opencode/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.hq-apps/network/tests/fixtures/img_test.html
+        [ ] 5. https://www.example.com/
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. www.4chan.org/b/
+        [ ] 9. www.youtube.com
+        [ ] 10. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 11. https://example.com
+        [ ] 12. https://myaccount.google.com/126
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [>] 23. Image Test
+        [ ] 24. */b/ - Random - 4ch
+        [ ] 25. New tab
+      [ ] 26. cli_io
+          Status: ready
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 29. /a/ a
+        [ ] 30. /b/ b
+        [ ] 31. /c/ c
+        [ ] 32. /d/ d
+        [ ] 33. /e/ e
+        [ ] 34. /f/ f
+        [ ] 35. /g/ g
+        [ ] 36. /gif/ gif
+        [ ] 37. /h/ h
+        [ ] 38. /hr/ hr
+        [ ] 39. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:23 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:23 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. https://www.example.com/
+        [ ] 5. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. www.4chan.org/b/
+        [ ] 8. www.youtube.com
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. https://myaccount.google.com/126
+        [ ] 12. https://myaccount.google.com/015
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [>] 23. Image Test
+        [ ] 24. */b/ - Random - 4ch
+        [ ] 25. New tab
+      [ ] 26. cli_io
+          Status: ready
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 29. /a/ a
+        [ ] 30. /b/ b
+        [ ] 31. /c/ c
+        [ ] 32. /d/ d
+        [ ] 33. /e/ e
+        [ ] 34. /f/ f
+        [ ] 35. /g/ g
+        [ ] 36. /gif/ gif
+        [ ] 37. /h/ h
+        [ ] 38. /hr/ hr
+        [ ] 39. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:23 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:23 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 5. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 6. www.4chan.org/b/
+        [ ] 7. www.youtube.com
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. https://myaccount.google.com/126
+        [ ] 11. https://myaccount.google.com/015
+        [ ] 12. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [>] 23. Image Test
+        [ ] 24. */b/ - Random - 4ch
+        [ ] 25. New tab
+      [ ] 26. cli_io
+          Status: ready
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 29. /a/ a
+        [ ] 30. /b/ b
+        [ ] 31. /c/ c
+        [ ] 32. /d/ d
+        [ ] 33. /e/ e
+        [ ] 34. /f/ f
+        [ ] 35. /g/ g
+        [ ] 36. /gif/ gif
+        [ ] 37. /h/ h
+        [ ] 38. /hr/ hr
+        [ ] 39. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:23 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:23 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 5. www.4chan.org/b/
+        [ ] 6. www.youtube.com
+        [ ] 7. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 8. https://example.com
+        [ ] 9. https://myaccount.google.com/126
+        [ ] 10. https://myaccount.google.com/015
+        [ ] 11. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [>] 23. Image Test
+        [ ] 24. */b/ - Random - 4ch
+        [ ] 25. New tab
+      [ ] 26. cli_io
+          Status: ready
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 29. /a/ a
+        [ ] 30. /b/ b
+        [ ] 31. /c/ c
+        [ ] 32. /d/ d
+        [ ] 33. /e/ e
+        [ ] 34. /f/ f
+        [ ] 35. /g/ g
+        [ ] 36. /gif/ gif
+        [ ] 37. /h/ h
+        [ ] 38. /hr/ hr
+        [ ] 39. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:23 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:23 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 5. www.4chan.org/b/
+        [ ] 6. www.youtube.com
+        [ ] 7. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 8. https://example.com
+        [ ] 9. https://myaccount.google.com/126
+        [ ] 10. https://myaccount.google.com/015
+        [ ] 11. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 14. Back
+        [ ] 15. Forward
+        [ ] 16. Stop
+        [ ] 17. Reload
+        [ ] 18. Home
+        [ ] 19. Bookmark
+        [ ] 20. Close tab
+        [ ] 21. Google's products 
+        [ ] 22. Google's products 
+        [>] 23. YouTube
+        [ ] 24. Image Test
+        [ ] 25. */b/ - Random - 4ch
+        [ ] 26. New tab
+      [ ] 27. cli_io
+          Status: ready
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 30. /a/ a
+        [ ] 31. /b/ b
+        [ ] 32. /c/ c
+        [ ] 33. /d/ d
+        [ ] 34. /e/ e
+        [ ] 35. /f/ f
+        [ ] 36. /g/ g
+        [ ] 37. /gif/ gif
+        [ ] 38. /h/ h
+        [ ] 39. /hr/ hr
+        [ ] 40. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:23 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:23 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.4chan.org/b/
+        [ ] 5. www.youtube.com
+        [ ] 6. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 7. https://example.com
+        [ ] 8. https://myaccount.google.com/126
+        [ ] 9. https://myaccount.google.com/015
+        [ ] 10. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 11. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. https://example.com
+        [ ] 14. Back
+        [ ] 15. Forward
+        [ ] 16. Stop
+        [ ] 17. Reload
+        [ ] 18. Home
+        [ ] 19. Bookmark
+        [ ] 20. Close tab
+        [ ] 21. Google's products 
+        [ ] 22. Google's products 
+        [>] 23. YouTube
+        [ ] 24. Image Test
+        [ ] 25. */b/ - Random - 4ch
+        [ ] 26. New tab
+      [ ] 27. cli_io
+          Status: ready
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 30. /a/ a
+        [ ] 31. /b/ b
+        [ ] 32. /c/ c
+        [ ] 33. /d/ d
+        [ ] 34. /e/ e
+        [ ] 35. /f/ f
+        [ ] 36. /g/ g
+        [ ] 37. /gif/ gif
+        [ ] 38. /h/ h
+        [ ] 39. /hr/ hr
+        [ ] 40. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:23 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:23 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. www.youtube.com
+        [ ] 5. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 6. https://example.com
+        [ ] 7. https://myaccount.google.com/126
+        [ ] 8. https://myaccount.google.com/015
+        [ ] 9. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 10. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 11. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 12. https://example.com
+        [ ] 13. www.google.com
+        [ ] 14. Back
+        [ ] 15. Forward
+        [ ] 16. Stop
+        [ ] 17. Reload
+        [ ] 18. Home
+        [ ] 19. Bookmark
+        [ ] 20. Close tab
+        [ ] 21. Google's products 
+        [ ] 22. Google's products 
+        [>] 23. YouTube
+        [ ] 24. Image Test
+        [ ] 25. */b/ - Random - 4ch
+        [ ] 26. New tab
+      [ ] 27. cli_io
+          Status: ready
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 30. /a/ a
+        [ ] 31. /b/ b
+        [ ] 32. /c/ c
+        [ ] 33. /d/ d
+        [ ] 34. /e/ e
+        [ ] 35. /f/ f
+        [ ] 36. /g/ g
+        [ ] 37. /gif/ gif
+        [ ] 38. /h/ h
+        [ ] 39. /hr/ hr
+        [ ] 40. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:24 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:24 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 5. https://example.com
+        [ ] 6. https://myaccount.google.com/126
+        [ ] 7. https://myaccount.google.com/015
+        [ ] 8. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 11. https://example.com
+        [ ] 12. www.google.com
+        [ ] 13. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 14. Back
+        [ ] 15. Forward
+        [ ] 16. Stop
+        [ ] 17. Reload
+        [ ] 18. Home
+        [ ] 19. Bookmark
+        [ ] 20. Close tab
+        [ ] 21. Google's products 
+        [ ] 22. Google's products 
+        [>] 23. YouTube
+        [ ] 24. Image Test
+        [ ] 25. */b/ - Random - 4ch
+        [ ] 26. New tab
+      [ ] 27. cli_io
+          Status: ready
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 30. /a/ a
+        [ ] 31. /b/ b
+        [ ] 32. /c/ c
+        [ ] 33. /d/ d
+        [ ] 34. /e/ e
+        [ ] 35. /f/ f
+        [ ] 36. /g/ g
+        [ ] 37. /gif/ gif
+        [ ] 38. /h/ h
+        [ ] 39. /hr/ hr
+        [ ] 40. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:24 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:24 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. https://example.com
+        [ ] 5. https://myaccount.google.com/126
+        [ ] 6. https://myaccount.google.com/015
+        [ ] 7. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 10. https://example.com
+        [ ] 11. www.google.com
+        [ ] 12. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 13. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 14. Back
+        [ ] 15. Forward
+        [ ] 16. Stop
+        [ ] 17. Reload
+        [ ] 18. Home
+        [ ] 19. Bookmark
+        [ ] 20. Close tab
+        [ ] 21. Google's products 
+        [ ] 22. Google's products 
+        [>] 23. YouTube
+        [ ] 24. Image Test
+        [ ] 25. */b/ - Random - 4ch
+        [ ] 26. New tab
+      [ ] 27. cli_io
+          Status: ready
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 30. /a/ a
+        [ ] 31. /b/ b
+        [ ] 32. /c/ c
+        [ ] 33. /d/ d
+        [ ] 34. /e/ e
+        [ ] 35. /f/ f
+        [ ] 36. /g/ g
+        [ ] 37. /gif/ gif
+        [ ] 38. /h/ h
+        [ ] 39. /hr/ hr
+        [ ] 40. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:24 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:24 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/126
+        [ ] 5. https://myaccount.google.com/015
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. www.google.com
+        [ ] 11. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 12. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [>] 23. Image Test
+        [ ] 24. */b/ - Random - 4ch
+        [ ] 25. New tab
+      [ ] 26. cli_io
+          Status: ready
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 29. /a/ a
+        [ ] 30. /b/ b
+        [ ] 31. /c/ c
+        [ ] 32. /d/ d
+        [ ] 33. /e/ e
+        [ ] 34. /f/ f
+        [ ] 35. /g/ g
+        [ ] 36. /gif/ gif
+        [ ] 37. /h/ h
+        [ ] 38. /hr/ hr
+        [ ] 39. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:45 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:45 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/126
+        [ ] 5. https://myaccount.google.com/015
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. www.google.com
+        [ ] 11. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 12. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [>] 23. Image Test
+        [ ] 24. */b/ - Random - 4ch
+        [ ] 25. New tab
+      [ ] 26. cli_io
+          Status: ready
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 29. /a/ a
+        [ ] 30. /b/ b
+        [ ] 31. /c/ c
+        [ ] 32. /d/ d
+        [ ] 33. /e/ e
+        [ ] 34. /f/ f
+        [ ] 35. /g/ g
+        [ ] 36. /gif/ gif
+        [ ] 37. /h/ h
+        [ ] 38. /hr/ hr
+        [ ] 39. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:46 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:46 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/126
+        [ ] 5. https://myaccount.google.com/015
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. www.google.com
+        [ ] 11. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 12. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [>] 23. Image Test
+        [ ] 24. */b/ - Random - 4ch
+        [ ] 25. New tab
+      [ ] 26. cli_io
+          Status: error: curl failed (rc=1) for www.4chan.org125
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 29. /a/ a
+        [ ] 30. /b/ b
+        [ ] 31. /c/ c
+        [ ] 32. /d/ d
+        [ ] 33. /e/ e
+        [ ] 34. /f/ f
+        [ ] 35. /g/ g
+        [ ] 36. /gif/ gif
+        [ ] 37. /h/ h
+        [ ] 38. /hr/ hr
+        [ ] 39. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:52 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:52 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/126
+        [ ] 5. https://myaccount.google.com/015
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. www.google.com
+        [ ] 11. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 12. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [ ] 23. Image Test
+        [ ] 24. */b/ - Random - 4ch
+        [>] 25. New tab
+      [ ] 26. cli_io
+          Status: error: curl failed (rc=1) for www.4chan.org125
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 29. /a/ a
+        [ ] 30. /b/ b
+        [ ] 31. /c/ c
+        [ ] 32. /d/ d
+        [ ] 33. /e/ e
+        [ ] 34. /f/ f
+        [ ] 35. /g/ g
+        [ ] 36. /gif/ gif
+        [ ] 37. /h/ h
+        [ ] 38. /hr/ hr
+        [ ] 39. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:53 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:53 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/126
+        [ ] 5. https://myaccount.google.com/015
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. www.google.com
+        [ ] 11. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 12. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [ ] 23. Image Test
+        [ ] 24. */b/ - Random - 4ch
+        [>] 25. New tab
+      [ ] 26. cli_io
+          Status: error: curl failed (rc=1) for www.4chan.org125
+            /b/ - Random - 4chan
+            [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] [ / ] [ / 
+            / ] [ /  /  / ] [ /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /  /
+            /  /  /  /  /  /  /  /  /  /  /  /  /  /  / ] 
+        [ ] 29. /a/ a
+        [ ] 30. /b/ b
+        [ ] 31. /c/ c
+        [ ] 32. /d/ d
+        [ ] 33. /e/ e
+        [ ] 34. /f/ f
+        [ ] 35. /g/ g
+        [ ] 36. /gif/ gif
+        [ ] 37. /h/ h
+        [ ] 38. /hr/ hr
+        [ ] 39. /k/ k
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 06:48:53 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 06:48:53 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/126
+        [ ] 5. https://myaccount.google.com/015
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. www.google.com
+        [ ] 11. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 12. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [ ] 23. Image Test
+        [ ] 24. /b/ - Random - 4ch
+        [>] 25. *Network Browser
+        [ ] 26. New tab
+      [ ] 27. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 07:03:33 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 07:03:33 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/126
+        [ ] 5. https://myaccount.google.com/015
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. www.google.com
+        [ ] 11. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 12. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [ ] 23. Image Test
+        [ ] 24. /b/ - Random - 4ch
+        [>] 25. *Network Browser
+        [ ] 26. New tab
+      [ ] 27. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 07:03:43 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 07:03:43 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/126
+        [ ] 5. https://myaccount.google.com/015
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. www.google.com
+        [ ] 11. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 12. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [ ] 23. Image Test
+        [ ] 24. /b/ - Random - 4ch
+        [>] 25. *Network Browser
+        [ ] 26. New tab
+      [ ] 27. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 07:04:08 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 07:04:08 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/126
+        [ ] 5. https://myaccount.google.com/015
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. www.google.com
+        [ ] 11. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 12. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [ ] 23. Image Test
+        [ ] 24. /b/ - Random - 4ch
+        [>] 25. *Network Browser
+        [ ] 26. New tab
+      [ ] 27. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 07:04:09 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 07:04:09 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/126
+        [ ] 5. https://myaccount.google.com/015
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. www.google.com
+        [ ] 11. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 12. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [ ] 23. Image Test
+        [ ] 24. /b/ - Random - 4ch
+        [>] 25. *Network Browser
+        [ ] 26. New tab
+      [ ] 27. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 07:04:11 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 07:04:11 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/126
+        [ ] 5. https://myaccount.google.com/015
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. www.google.com
+        [ ] 11. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 12. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [ ] 23. Image Test
+        [ ] 24. /b/ - Random - 4ch
+        [>] 25. *Network Browser
+        [ ] 26. New tab
+      [ ] 27. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 07:04:28 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 07:04:28 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/126
+        [ ] 5. https://myaccount.google.com/015
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. www.google.com
+        [ ] 11. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 12. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [ ] 23. Image Test
+        [ ] 24. /b/ - Random - 4ch
+        [>] 25. *Network Browser
+        [ ] 26. New tab
+      [ ] 27. cli_io
+          Status: idle
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 07:04:28 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 07:04:28 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/126
+        [ ] 5. https://myaccount.google.com/015
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. www.google.com
+        [ ] 11. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 12. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [ ] 23. Image Test
+        [ ] 24. /b/ - Random - 4ch
+        [>] 25. *Network Browser
+        [ ] 26. New tab
+      [ ] 27. cli_io
+          Status: loading
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 07:04:32 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 07:04:32 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/126
+        [ ] 5. https://myaccount.google.com/015
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. www.google.com
+        [ ] 11. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 12. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [ ] 23. Image Test
+        [ ] 24. /b/ - Random - 4ch
+        [ ] 25. *Network Browser
+        [ ] 26. New tab
+      [ ] 27. cli_io
+          Status: loading
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1
+
+=== network-browser-hq.xhtpm pid 292224  2026-09-13 07:04:33 ===
+--- network-browser-hq.xhtpm  pid 292224  2026-09-13 07:04:33 ---
+--- page: main ---
+Network Browser
+          Bookmarks
+            No bookmarks yet
+          History
+      [ ] 1. Clear All History
+        [ ] 4. https://myaccount.google.com/126
+        [ ] 5. https://myaccount.google.com/015
+        [ ] 6. https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+        [ ] 7. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 8. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 9. https://example.com
+        [ ] 10. www.google.com
+        [ ] 11. https://www.google.com/intl/en/about/products?tab=ih
+        [ ] 12. https://www.google.com/imghp?hl=en&ogbl
+        [ ] 13. Back
+        [ ] 14. Forward
+        [ ] 15. Stop
+        [ ] 16. Reload
+        [ ] 17. Home
+        [ ] 18. Bookmark
+        [ ] 19. Close tab
+        [ ] 20. Google's products 
+        [ ] 21. Google's products 
+        [ ] 22. YouTube
+        [ ] 23. Image Test
+        [ ] 24. /b/ - Random - 4ch
+        [ ] 25. *Network Browser
+        [ ] 26. New tab
+      [ ] 27. cli_io
+          Status: loading
+            Network Browser
+            Ready - enter a URL above
+          Console
+          Try: eval:1 + 1

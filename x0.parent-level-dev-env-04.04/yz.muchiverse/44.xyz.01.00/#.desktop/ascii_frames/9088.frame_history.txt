@@ -1,0 +1,267 @@
+
+=== file-explorer-pal.xhtpm pid 9088  2026-09-15 11:30:35 ===
+--- file-explorer-pal.xhtpm  pid 9088  2026-09-15 11:30:35 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+    [ ] 12. Grid View
+        Pick a file to load.
+      [ ] 15. ⬅  ..  Back 
+      [ ] 16. 📁  #.DOX 
+      [ ] 17. 📁  #.Z.HUMAN_LLM 
+      [ ] 18. 📁  #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+      [ ] 19. 📁  #.desktop 
+      [ ] 20. 📁  #.haiku+ 
+      [ ] 21. 📁  #.livedesk 
+      [ ] 22. 📁  #.notes 
+      [ ] 23. 📁  #.ref 
+      [ ] 24. 📁  #.resume 
+      [ ] 25. 📁  #.tmp 
+      [ ] 26. 📁  #.user-test-how2 
+      [ ] 27. 📁  #.w8 
+      [ ] 28. 📁  #.xer 
+      [ ] 29. 📁  #.z.mirror_llm]z5]IQABOD🪞️+4 
+      [ ] 30. 📁  $.crypts 
+      [ ] 31. 📁  %.harnesses 
+      [ ] 32. 📁  &.hq-apps 
+
+=== file-explorer-pal.xhtpm pid 9088  2026-09-15 11:30:35 ===
+--- file-explorer-pal.xhtpm  pid 9088  2026-09-15 11:30:35 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 17. X
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. sessions
+    [ ] 18. ⬅️ Back
+    [ ] 19. Grid View
+        Pick a file to load.
+      [ ] 20. 📁  s1 
+      [ ] 21. 📁  s2 
+      [ ] 22. 📁  s3 
+      [ ] 23. 📁  s4 
+      [ ] 24. 📁  s5 
+      [ ] 25. 📁  s6 
+      [ ] 26. 📁  s7 
+      [ ] 27. 📄  session.pdl 28B
+
+=== file-explorer-pal.xhtpm pid 9088  2026-09-15 11:30:44 ===
+--- file-explorer-pal.xhtpm  pid 9088  2026-09-15 11:30:44 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 17. X
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. sessions
+    [ ] 18. ⬅️ Back
+    [ ] 19. Grid View
+        Pick a file to load.
+      [ ] 20. 📁  s1 
+      [ ] 21. 📁  s2 
+      [ ] 22. 📁  s3 
+      [ ] 23. 📁  s4 
+      [ ] 24. 📁  s5 
+      [ ] 25. 📁  s6 
+      [ ] 26. 📁  s7 
+      [ ] 27. 📄  session.pdl 28B
+
+=== file-explorer-pal.xhtpm pid 9088  2026-09-15 11:31:33 ===
+--- file-explorer-pal.xhtpm  pid 9088  2026-09-15 11:31:33 ---
+--- page: main ---
+File Explorer - LOAD
+    [>] 17. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. sessions
+    [ ] 18. ⬅️ Back
+    [ ] 19. Grid View
+        Pick a file to load.
+      [ ] 20. 📁  s1 
+      [ ] 21. 📁  s2 
+      [ ] 22. 📁  s3 
+      [ ] 23. 📁  s4 
+      [ ] 24. 📁  s5 
+      [ ] 25. 📁  s6 
+      [ ] 26. 📁  s7 
+      [ ] 27. 📄  session.pdl 28B
+
+=== file-explorer-pal.xhtpm pid 9088  2026-09-15 11:31:36 ===
+--- file-explorer-pal.xhtpm  pid 9088  2026-09-15 11:31:36 ---
+--- page: main ---
+File Explorer - LOAD
+    [>] 17. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. sessions
+    [ ] 18. ⬅️ Back
+    [ ] 19. Grid View
+        Pick a file to load.
+      [ ] 20. 📁  s1 
+      [ ] 21. 📁  s2 
+      [ ] 22. 📁  s3 
+      [ ] 23. 📁  s4 
+      [ ] 24. 📁  s5 
+      [ ] 25. 📁  s6 
+      [ ] 26. 📁  s7 
+      [ ] 27. 📄  session.pdl 28B
+
+=== file-explorer-pal.xhtpm pid 9088  2026-09-15 11:31:37 ===
+--- file-explorer-pal.xhtpm  pid 9088  2026-09-15 11:31:37 ---
+--- page: main ---
+File Explorer - LOAD
+    [>] 17. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. sessions
+    [ ] 18. ⬅️ Back
+    [ ] 19. Grid View
+        Pick a file to load.
+      [ ] 20. 📁  s1 
+      [ ] 21. 📁  s2 
+      [ ] 22. 📁  s3 
+      [ ] 23. 📁  s4 
+      [ ] 24. 📁  s5 
+      [ ] 25. 📁  s6 
+      [ ] 26. 📁  s7 
+      [ ] 27. 📄  session.pdl 28B
+
+=== file-explorer-pal.xhtpm pid 9088  2026-09-15 11:31:44 ===
+--- file-explorer-pal.xhtpm  pid 9088  2026-09-15 11:31:44 ---
+--- page: main ---
+File Explorer - LOAD
+    [>] 17. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. sessions
+    [ ] 18. ⬅️ Back
+    [ ] 19. Grid View
+        Pick a file to load.
+      [ ] 20. 📁  s1 
+      [ ] 21. 📁  s2 
+      [ ] 22. 📁  s3 
+      [ ] 23. 📁  s4 
+      [ ] 24. 📁  s5 
+      [ ] 25. 📁  s6 
+      [ ] 26. 📁  s7 
+      [ ] 27. 📄  session.pdl 28B
+
+=== file-explorer-pal.xhtpm pid 9088  2026-09-15 11:35:43 ===
+--- file-explorer-pal.xhtpm  pid 9088  2026-09-15 11:35:43 ---
+--- page: main ---
+File Explorer - LOAD
+    [>] 17. X
+      [ ] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+      [ ] 11. xyzfs
+      [ ] 12. users
+      [ ] 13. 0a9558a7-7c74-4358-833c-2d5b21edc421
+      [ ] 14. home
+      [ ] 15. livedesk
+      [ ] 16. sessions
+    [ ] 18. ⬅️ Back
+    [ ] 19. Grid View
+        Pick a file to load.
+      [ ] 20. 📁  s1 
+      [ ] 21. 📁  s2 
+      [ ] 22. 📁  s3 
+      [ ] 23. 📁  s4 
+      [ ] 24. 📁  s5 
+      [ ] 25. 📁  s6 
+      [ ] 26. 📁  s7 
+      [ ] 27. 📄  session.pdl 28B

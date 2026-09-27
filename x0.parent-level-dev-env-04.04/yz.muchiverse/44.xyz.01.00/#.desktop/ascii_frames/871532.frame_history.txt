@@ -1,0 +1,16 @@
+
+=== menu.chtpm pid 871532  2026-09-14 23:04:25 ===
+--- menu.chtpm  pid 871532  2026-09-14 23:04:25 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Close
+    [ ] 4. Cancel
+
+=== menu.chtpm pid 871532  2026-09-14 23:04:26 ===
+--- menu.chtpm  pid 871532  2026-09-14 23:04:26 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Close
+    [ ] 4. Cancel

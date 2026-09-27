@@ -1,0 +1,24 @@
+
+=== menu.chtpm pid 595424  2026-09-13 12:20:14 ===
+--- menu.chtpm  pid 595424  2026-09-13 12:20:14 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Close
+    [ ] 4. Cancel
+
+=== menu.chtpm pid 595424  2026-09-13 12:20:16 ===
+--- menu.chtpm  pid 595424  2026-09-13 12:20:16 ---
+--- page: main ---
+    [ ] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Close
+    [>] 4. Cancel
+
+=== menu.chtpm pid 595424  2026-09-13 12:20:17 ===
+--- menu.chtpm  pid 595424  2026-09-13 12:20:17 ---
+--- page: main ---
+    [ ] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Close
+    [>] 4. Cancel

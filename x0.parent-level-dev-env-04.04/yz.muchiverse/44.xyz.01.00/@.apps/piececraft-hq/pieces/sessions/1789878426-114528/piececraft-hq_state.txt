@@ -1,0 +1,11 @@
+# piececraft-hq live status (2026-08-30)
+tick=1
+game_state=playing
+hero_hp=0
+hero_pos_x=0
+hero_pos_y=0
+hero_pos_z=0
+chunk_x=0
+chunk_y=0
+interact_mode=0
+possessed_id=none

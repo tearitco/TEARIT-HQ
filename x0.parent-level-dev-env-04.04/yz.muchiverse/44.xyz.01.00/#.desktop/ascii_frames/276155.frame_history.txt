@@ -1,0 +1,46 @@
+
+=== h-ai-lab.xhtpm pid 276155  2026-09-13 06:32:05 ===
+--- h-ai-lab.xhtpm  pid 276155  2026-09-13 06:32:05 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. Viewer
+      [ ] 2. New State
+          scanned 06:31:40
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+        [ ] 7. (start)  →  OFFER,IDLE
+        [ ] 8. OFFER  →  OPEN_USER
+        [ ] 9. OPEN_USER  →  NEW_USER,ERROR
+        [ ] 10. NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+        [ ] 11. AUTO_ID  →  AUTO_NAME
+        [ ] 12. AUTO_NAME  →  WATCH_DONE
+        [ ] 13. WATCH_SIGNUP  →  WATCH_DONE
+        [ ] 14. WATCH_DONE  →  IDLE,DONE
+
+=== h-ai-lab.xhtpm pid 276155  2026-09-13 06:32:05 ===
+--- h-ai-lab.xhtpm  pid 276155  2026-09-13 06:32:05 ---
+--- page: main ---
+h-ai-lab
+      [>] 1. Viewer
+      [ ] 2. New State
+          scanned 06:32:05
+          1 AI instance(s)
+      [ ] 3.   refresh now  
+        [ ] 4. cursword  [fsm]
+          cursword  —  kind: fsm
+          PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+          IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+          live state: IDLE
+        [ ] 7. (start)  →  OFFER,IDLE
+        [ ] 8. OFFER  →  OPEN_USER
+        [ ] 9. OPEN_USER  →  NEW_USER,ERROR
+        [ ] 10. NEW_USER  →  AUTO_ID,WATCH_SIGNUP
+        [ ] 11. AUTO_ID  →  AUTO_NAME
+        [ ] 12. AUTO_NAME  →  WATCH_DONE
+        [ ] 13. WATCH_SIGNUP  →  WATCH_DONE
+        [ ] 14. WATCH_DONE  →  IDLE,DONE

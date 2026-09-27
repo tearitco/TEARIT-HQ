@@ -1,0 +1,68 @@
+
+=== proc-mon.xhtpm pid 307404  2026-09-22 18:58:38 ===
+--- proc-mon.xhtpm  pid 307404  2026-09-22 18:58:38 ---
+--- page: main ---
+Session Monitor
+          scanned 17:12:53
+          0 good  /  0 bad
+      [>] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            (nothing running that this house spawned)
+
+=== proc-mon.xhtpm pid 307404  2026-09-22 18:58:38 ===
+--- proc-mon.xhtpm  pid 307404  2026-09-22 18:58:38 ---
+--- page: main ---
+Session Monitor
+          scanned 18:58:38
+          0 good  /  0 bad
+      [>] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            (nothing running that this house spawned)
+
+=== proc-mon.xhtpm pid 307404  2026-09-22 18:58:42 ===
+--- proc-mon.xhtpm  pid 307404  2026-09-22 18:58:42 ---
+--- page: main ---
+Session Monitor
+          scanned 18:58:42
+          0 good  /  0 bad
+      [>] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            (nothing running that this house spawned)
+
+=== proc-mon.xhtpm pid 307404  2026-09-22 18:58:43 ===
+--- proc-mon.xhtpm  pid 307404  2026-09-22 18:58:43 ---
+--- page: main ---
+Session Monitor
+          scanned 18:58:42
+          0 good  /  0 bad
+      [ ] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            (nothing running that this house spawned)

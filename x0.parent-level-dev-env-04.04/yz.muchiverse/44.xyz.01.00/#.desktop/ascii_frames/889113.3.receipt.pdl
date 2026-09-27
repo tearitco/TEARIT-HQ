@@ -1,0 +1,18 @@
+receipt_type=kh_x11_framesnapshot
+generated_by=khtpm_core_render
+generated_at_epoch=1789392109
+generated_at_iso_utc=2026-09-14T13:21:49Z
+receipt_generation_key=889113@1789392109
+window=Muchi Blend - 3D  cursword.voxels.csv  tool=SEL  sel=cursword  yaw=0.70 pit=0.40 dist=6.0
+chtpm=media-3d-hq.xhtpm
+page=main
+vars=/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/media-3d-hq/state/media_3d_hq_ui.txt
+source_frame_txt=ascii_frames/889113.frame.txt
+source_history_txt=ascii_frames/889113.frame_history.txt
+frame_checksum_fnv1a64=0x7bcc633a37c3fbc8
+viewport_w=790
+viewport_h=650
+focus_nav=1
+n_nav=16
+objects_pdl=ascii_frames/889113.3.objects.pdl
+png=-

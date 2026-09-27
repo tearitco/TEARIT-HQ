@@ -1,0 +1,110 @@
+
+=== open-hai.xhtpm pid 1643902  2026-09-11 01:25:34 ===
+--- open-hai.xhtpm  pid 1643902  2026-09-11 01:25:34 ---
+--- page: main ---
+open-hai
+          Sessions
+      [>] 1. + New session
+      [ ] 2. Sound: on (click to toggle)
+        [ ] 3. &gt; 08-16 04:49 Reply with exactly one word: pong
+        [ ] 4. 08-16 00:29 list files in &amp;.widgits/ai-cell
+        [ ] 5. 08-14 22:45 hello from relay
+          model: gemma3:1b | sound: on | idle
+      [ ] 6. Model: gemma3:1b (click to cycle)
+            you: Use your list_dir tool to list files in the current directory (path=.)
+            hai: [list_dir] /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/.:   #.resume/   0
+            you: hi 
+            hai: [error: no 'content' field in OpenRouter reply - check model name / key / raw response in or-response-*.json under the audit dir]
+            you: hi
+            hai: Hi there! It’s nice to be able to talk with you. How’s your day going, or how about yours? 😊  What's on your mind today? 👍✨
+            you: third test signal removed
+            hai: Okay, I've seen your message - you're indicating that the third test signal is no longer available.  That means something happened with a piece of data related to testing. To understand better what's 
+      [ ] 7. > 
+
+=== open-hai.xhtpm pid 1643902  2026-09-11 01:25:35 ===
+--- open-hai.xhtpm  pid 1643902  2026-09-11 01:25:35 ---
+--- page: main ---
+open-hai
+          Sessions
+      [>] 1. + New session
+      [ ] 2. Sound: on (click to toggle)
+        [ ] 3. &gt; 08-16 04:49 Reply with exactly one word: pong
+        [ ] 4. 08-16 00:29 list files in &amp;.widgits/ai-cell
+        [ ] 5. 08-14 22:45 hello from relay
+          model: gemma3:1b | sound: on | idle
+      [ ] 6. Model: gemma3:1b (click to cycle)
+            you: Use your list_dir tool to list files in the current directory (path=.)
+            hai: [list_dir] /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/.:   #.resume/   0
+            you: hi 
+            hai: [error: no 'content' field in OpenRouter reply - check model name / key / raw response in or-response-*.json under the audit dir]
+            you: hi
+            hai: Hi there! It’s nice to be able to talk with you. How’s your day going, or how about yours? 😊  What's on your mind today? 👍✨
+            you: third test signal removed
+            hai: Okay, I've seen your message - you're indicating that the third test signal is no longer available.  That means something happened with a piece of data related to testing. To understand better what's 
+      [ ] 7. > 
+
+=== open-hai.xhtpm pid 1643902  2026-09-11 01:25:37 ===
+--- open-hai.xhtpm  pid 1643902  2026-09-11 01:25:37 ---
+--- page: main ---
+open-hai
+          Sessions
+      [>] 1. + New session
+      [ ] 2. Sound: on (click to toggle)
+        [ ] 3. &gt; 08-16 04:49 Reply with exactly one word: pong
+        [ ] 4. 08-16 00:29 list files in &amp;.widgits/ai-cell
+        [ ] 5. 08-14 22:45 hello from relay
+          model: gemma3:1b | sound: on | idle
+      [ ] 6. Model: gemma3:1b (click to cycle)
+            you: Use your list_dir tool to list files in the current directory (path=.)
+            hai: [list_dir] /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/.:   #.resume/   0
+            you: hi 
+            hai: [error: no 'content' field in OpenRouter reply - check model name / key / raw response in or-response-*.json under the audit dir]
+            you: hi
+            hai: Hi there! It’s nice to be able to talk with you. How’s your day going, or how about yours? 😊  What's on your mind today? 👍✨
+            you: third test signal removed
+            hai: Okay, I've seen your message - you're indicating that the third test signal is no longer available.  That means something happened with a piece of data related to testing. To understand better what's 
+      [ ] 7. > 
+
+=== open-hai.xhtpm pid 1643902  2026-09-11 01:25:38 ===
+--- open-hai.xhtpm  pid 1643902  2026-09-11 01:25:38 ---
+--- page: main ---
+open-hai
+          Sessions
+      [ ] 1. + New session
+      [ ] 2. Sound: on (click to toggle)
+        [ ] 3. &gt; 08-16 04:49 Reply with exactly one word: pong
+        [ ] 4. 08-16 00:29 list files in &amp;.widgits/ai-cell
+        [ ] 5. 08-14 22:45 hello from relay
+          model: gemma3:1b | sound: on | idle
+      [ ] 6. Model: gemma3:1b (click to cycle)
+            you: Use your list_dir tool to list files in the current directory (path=.)
+            hai: [list_dir] /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/.:   #.resume/   0
+            you: hi 
+            hai: [error: no 'content' field in OpenRouter reply - check model name / key / raw response in or-response-*.json under the audit dir]
+            you: hi
+            hai: Hi there! It’s nice to be able to talk with you. How’s your day going, or how about yours? 😊  What's on your mind today? 👍✨
+            you: third test signal removed
+            hai: Okay, I've seen your message - you're indicating that the third test signal is no longer available.  That means something happened with a piece of data related to testing. To understand better what's 
+      [>] 7. > 
+
+=== open-hai.xhtpm pid 1643902  2026-09-11 01:25:49 ===
+--- open-hai.xhtpm  pid 1643902  2026-09-11 01:25:49 ---
+--- page: main ---
+open-hai
+          Sessions
+      [ ] 1. + New session
+      [ ] 2. Sound: on (click to toggle)
+        [ ] 3. &gt; 08-16 04:49 Reply with exactly one word: pong
+        [ ] 4. 08-16 00:29 list files in &amp;.widgits/ai-cell
+        [ ] 5. 08-14 22:45 hello from relay
+          model: gemma3:1b | sound: on | idle
+      [ ] 6. Model: gemma3:1b (click to cycle)
+            you: Use your list_dir tool to list files in the current directory (path=.)
+            hai: [list_dir] /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/.:   #.resume/   0
+            you: hi 
+            hai: [error: no 'content' field in OpenRouter reply - check model name / key / raw response in or-response-*.json under the audit dir]
+            you: hi
+            hai: Hi there! It’s nice to be able to talk with you. How’s your day going, or how about yours? 😊  What's on your mind today? 👍✨
+            you: third test signal removed
+            hai: Okay, I've seen your message - you're indicating that the third test signal is no longer available.  That means something happened with a piece of data related to testing. To understand better what's 
+      [>] 7. > 

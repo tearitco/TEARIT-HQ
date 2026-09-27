@@ -1,0 +1,4 @@
+[Prisc Error] Could not open ops file: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/101.mutaclsym🧟‍♂️️+18.0G/system/default_op.txt
+[2026-09-23 11:34:53] Play event page_1 (trigger=on-click) for read-receipt-ent | no inventory.txt yet
+[2026-09-23 11:34:53] Play: also triggered common event nested_inner (trigger=on-click)
+[2026-09-23 11:34:53] Play: also triggered common event palcraft_sign_onclick (trigger=on-click)

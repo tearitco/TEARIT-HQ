@@ -1,0 +1,4 @@
+OBJECT tag=item id=c0 class=- x=2 y=32 w=260 h=30 nav=1 active=0 label=Bible verse (text)
+OBJECT tag=item id=c1 class=- x=2 y=62 w=260 h=30 nav=2 active=0 label=Bible verse (with TTS)
+OBJECT tag=item id=c2 class=- x=2 y=92 w=260 h=30 nav=3 active=0 label=Tao Te Ching (random chapter)
+OBJECT tag=item id=cancel class=- x=2 y=122 w=260 h=30 nav=4 active=0 label=Cancel

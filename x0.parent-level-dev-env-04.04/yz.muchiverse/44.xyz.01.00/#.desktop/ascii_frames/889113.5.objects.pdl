@@ -1,0 +1,17 @@
+OBJECT tag=item id=close class=chrome-btn x=717 y=4 w=63 h=26 nav=13 active=0 label=x
+OBJECT tag=item id=fullscreen class=chrome-btn x=656 y=4 w=57 h=26 nav=14 active=0 label=!
+OBJECT tag=item id=minimize class=chrome-btn x=591 y=4 w=61 h=26 nav=15 active=0 label=_
+OBJECT tag=tab id=new class=tab x=10 y=35 w=99 h=30 nav=1 active=0 label=New
+OBJECT tag=tab id=demo class=tab x=113 y=35 w=110 h=30 nav=2 active=0 label=Demo
+OBJECT tag=tab id=addc class=tab x=227 y=35 w=117 h=30 nav=3 active=0 label=+ Cube
+OBJECT tag=tab id=adds class=tab x=348 y=35 w=108 h=30 nav=4 active=0 label=+ Sph
+OBJECT tag=tab id=tsel class=tab,active x=10 y=70 w=89 h=30 nav=5 active=0 label=Sel
+OBJECT tag=tab id=tgr class=tab x=103 y=70 w=101 h=30 nav=6 active=0 label=Grab
+OBJECT tag=tab id=trot class=tab x=208 y=70 w=91 h=30 nav=7 active=0 label=Rot
+OBJECT tag=tab id=tscl class=tab x=303 y=70 w=88 h=30 nav=8 active=0 label=Scl
+OBJECT tag=tab id=cL class=tab x=395 y=70 w=104 h=30 nav=9 active=0 label=orb <
+OBJECT tag=tab id=cR class=tab x=503 y=70 w=104 h=30 nav=10 active=0 label=orb >
+OBJECT tag=tab id=zin class=tab x=611 y=70 w=82 h=30 nav=11 active=0 label=z+
+OBJECT tag=tab id=zout class=tab x=697 y=70 w=79 h=30 nav=12 active=0 label=z-
+OBJECT tag=text id=- class=ms-gutter x=2 y=586 w=786 h=30 nav=0 active=0 label=Sel select   Grab grab   Rot rotate   Scl scale     now: select
+OBJECT tag=item id=row0 class=ms-row,active x=8 y=616 w=200 h=20 nav=16 active=0 label=cursword  0.0,0.0,0.0 s=1.0

@@ -1,0 +1,22 @@
+OBJECT tag=text id=- class=quiet x=0 y=30 w=220 h=30 nav=0 active=0 label=scanned 07:23:00
+OBJECT tag=text id=- class=block-title x=0 y=60 w=220 h=30 nav=0 active=0 label=15 good  /  0 bad
+OBJECT tag=item id=b_refresh class=btn x=0 y=90 w=220 h=30 nav=1 active=0 label=  refresh now  
+OBJECT tag=item id=b_kill class=btn,danger x=0 y=120 w=220 h=30 nav=2 active=0 label=  KILL ALL BAD  
+OBJECT tag=item id=b_kill2 class=btn,danger x=0 y=150 w=220 h=30 nav=3 active=0 label= + pals/singletons 
+OBJECT tag=text id=- class=block-title x=0 y=180 w=220 h=30 nav=0 active=0 label=BAD - stray / leaked
+OBJECT tag=text id=- class=quiet x=0 y=210 w=220 h=30 nav=0 active=0 label=(none - nothing leaked)
+OBJECT tag=text id=- class=block-title x=220 y=30 w=480 h=30 nav=0 active=0 label=GOOD - owned / accounted for
+OBJECT tag=text id=- class=quiet x=220 y=60 w=480 h=30 nav=0 active=0 label=taskbar group, registered pals, house-wide managers, live -hq windows
+OBJECT tag=text id=- class=- x=220 y=104 w=472 h=30 nav=0 active=0 label=1526265 [singleton] 7h48m  cpu:0.1  unreg  swatch_picker_manager /home/no/Desktop/github/
+OBJECT tag=text id=- class=- x=220 y=134 w=472 h=30 nav=0 active=0 label=3573877 [pal]       7m     cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=164 w=472 h=30 nav=0 active=0 label=3573880 [pal]       7m     cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=194 w=472 h=30 nav=0 active=0 label=3573883 [pal]       7m     cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=224 w=472 h=30 nav=0 active=0 label=3573885 [pal]       7m     cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=254 w=472 h=30 nav=0 active=0 label=3573889 [pal]       7m     cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=284 w=472 h=30 nav=0 active=0 label=3573893 [pal]       7m     cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=314 w=472 h=30 nav=0 active=0 label=3573895 [pal]       7m     cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=344 w=472 h=30 nav=0 active=0 label=3578856 [pal]       7m     cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=374 w=472 h=30 nav=0 active=0 label=3578858 [pal]       7m     cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=404 w=472 h=30 nav=0 active=0 label=3578862 [pal]       7m     cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=434 w=472 h=30 nav=0 active=0 label=3578865 [pal]       7m     cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=- x=220 y=464 w=472 h=30 nav=0 active=0 label=3578868 [pal]       7m     cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43

@@ -1,0 +1,192 @@
+
+=== dsr.xhtpm pid 354755  2026-09-14 20:50:58 ===
+--- dsr.xhtpm  pid 354755  2026-09-14 20:50:58 ---
+--- page: main ---
+Desk Street Raider
+          D S R
+          Desk Street Raider
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet:
+          Cash: 1613
+          Active Corp Balance Sheet:
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          FINANCIAL NEWS
+          CMZ: $0.10 (-99.38%)
+          WORLD STATUS
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 3. item
+        [ ] 4. item
+        [ ] 5. item
+        [ ] 6. item
+        [ ] 7. item
+        [ ] 8. item
+        [ ] 9. item
+        [ ] 10. item
+        [ ] 11. item
+        [ ] 12. item
+        [ ] 13. item
+        [ ] 14. item
+        [ ] 15. item
+        [ ] 16. item
+        [ ] 17. item
+        [ ] 18. item
+        [ ] 19. item
+        [ ] 20. item
+        [ ] 21. item
+        [ ] 22. item
+        [ ] 23. item
+        [ ] 24. item
+        [ ] 25. item
+        [ ] 26. item
+        [ ] 27. item
+        [ ] 28. item
+        [ ] 29. item
+
+=== dsr.xhtpm pid 354755  2026-09-14 20:50:59 ===
+--- dsr.xhtpm  pid 354755  2026-09-14 20:50:59 ---
+--- page: main ---
+Desk Street Raider
+          D S R
+          Desk Street Raider
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet:
+          Cash: 1613
+          Active Corp Balance Sheet:
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          FINANCIAL NEWS
+          CMZ: $0.10 (-99.38%)
+          WORLD STATUS
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 3. item
+        [ ] 4. item
+        [ ] 5. item
+        [ ] 6. item
+        [ ] 7. item
+        [ ] 8. item
+        [ ] 9. item
+        [ ] 10. item
+        [ ] 11. item
+        [ ] 12. item
+        [ ] 13. item
+        [ ] 14. item
+        [ ] 15. item
+        [ ] 16. item
+        [ ] 17. item
+        [ ] 18. item
+        [ ] 19. item
+        [ ] 20. item
+        [ ] 21. item
+        [ ] 22. item
+        [ ] 23. item
+        [ ] 24. item
+        [ ] 25. item
+        [ ] 26. item
+        [ ] 27. item
+        [ ] 28. item
+        [ ] 29. item
+
+=== dsr.xhtpm pid 354755  2026-09-14 20:51:38 ===
+--- dsr.xhtpm  pid 354755  2026-09-14 20:51:38 ---
+--- page: main ---
+Desk Street Raider
+          D S R
+          Desk Street Raider
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet:
+          Cash: 1613
+          Active Corp Balance Sheet:
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          FINANCIAL NEWS
+          CMZ: $0.10 (-99.38%)
+          WORLD STATUS
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 3. item
+        [ ] 4. item
+        [ ] 5. item
+        [ ] 6. item
+        [ ] 7. item
+        [ ] 8. item
+        [ ] 9. item
+        [ ] 10. item
+        [ ] 11. item
+        [ ] 12. item
+        [ ] 13. item
+        [ ] 14. item
+        [ ] 15. item
+        [ ] 16. item
+        [ ] 17. item
+        [ ] 18. item
+        [ ] 19. item
+        [ ] 20. item
+        [ ] 21. item
+        [ ] 22. item
+        [ ] 23. item
+        [ ] 24. item
+        [ ] 25. item
+        [ ] 26. item
+        [ ] 27. item
+        [ ] 28. item
+        [ ] 29. item
+
+=== dsr.xhtpm pid 354755  2026-09-14 20:51:43 ===
+--- dsr.xhtpm  pid 354755  2026-09-14 20:51:43 ---
+--- page: main ---
+Desk Street Raider
+          D S R
+          Desk Street Raider
+          Turn: 0
+          Active: corp_AFL
+          Your Wallet:
+          Cash: 1613
+          Active Corp Balance Sheet:
+          Cash (CD's): 5000
+          Stock Price: 115.04
+          Owned By: (independent)
+          FINANCIAL NEWS
+          CMZ: $0.10 (-99.38%)
+          WORLD STATUS
+          Population: 10000
+          Temperature: 15C
+          Actions
+        [ ] 3. item
+        [ ] 4. item
+        [ ] 5. item
+        [ ] 6. item
+        [ ] 7. item
+        [ ] 8. item
+        [ ] 9. item
+        [ ] 10. item
+        [ ] 11. item
+        [ ] 12. item
+        [ ] 13. item
+        [ ] 14. item
+        [ ] 15. item
+        [ ] 16. item
+        [ ] 17. item
+        [ ] 18. item
+        [ ] 19. item
+        [ ] 20. item
+        [ ] 21. item
+        [ ] 22. item
+        [ ] 23. item
+        [ ] 24. item
+        [ ] 25. item
+        [ ] 26. item
+        [ ] 27. item
+        [ ] 28. item
+        [ ] 29. item

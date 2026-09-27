@@ -1,0 +1,33 @@
+
+=== menu.chtpm pid 516458  2026-09-19 22:09:18 ===
+--- menu.chtpm  pid 516458  2026-09-19 22:09:18 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 516458  2026-09-19 22:09:26 ===
+--- menu.chtpm  pid 516458  2026-09-19 22:09:26 ---
+--- page: main ---
+    [ ] 1. Dir
+    [>] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 516458  2026-09-19 22:09:27 ===
+--- menu.chtpm  pid 516458  2026-09-19 22:09:27 ---
+--- page: main ---
+    [ ] 1. Dir
+    [>] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel

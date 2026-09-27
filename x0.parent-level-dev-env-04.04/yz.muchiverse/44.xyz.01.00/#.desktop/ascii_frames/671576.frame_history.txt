@@ -1,0 +1,44 @@
+
+=== file-explorer-pal.xhtpm pid 671576  2026-09-19 22:25:21 ===
+--- file-explorer-pal.xhtpm  pid 671576  2026-09-19 22:25:21 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. tmp
+      [ ] 3. claude-1000
+      [ ] 4. ent
+      [ ] 5. e2
+      [ ] 6. inventory
+    [ ] 7. ⬅️ Back
+    [ ] 8. Grid View
+        Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 671576  2026-09-19 22:25:26 ===
+--- file-explorer-pal.xhtpm  pid 671576  2026-09-19 22:25:26 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. tmp
+      [ ] 3. claude-1000
+      [ ] 4. ent
+      [ ] 5. e2
+      [ ] 6. inventory
+    [ ] 7. ⬅️ Back
+    [ ] 8. Grid View
+        Pick a file to load.
+      [ ] 9. 📁  itemA 
+
+=== file-explorer-pal.xhtpm pid 671576  2026-09-19 22:25:35 ===
+--- file-explorer-pal.xhtpm  pid 671576  2026-09-19 22:25:35 ---
+--- page: main ---
+File Explorer - LOAD
+      [>] 1. /
+      [ ] 2. tmp
+      [ ] 3. claude-1000
+      [ ] 4. ent
+      [ ] 5. e2
+      [ ] 6. inventory
+    [ ] 7. ⬅️ Back
+    [ ] 8. Grid View
+        Pick a file to load.
+      [ ] 9. 📁  itemA 

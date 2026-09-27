@@ -1,0 +1,6 @@
+OBJECT tag=text id=- class=- x=0 y=30 w=220 h=30 nav=0 active=0 label=Export package
+OBJECT tag=text id=- class=quiet x=0 y=60 w=220 h=30 nav=0 active=0 label=pick app(s), a dest dir, then Package
+OBJECT tag=text id=- class=title x=220 y=30 w=900 h=30 nav=0 active=0 label=Candidates (same list the taskbar's Toys menu shows):
+OBJECT tag=item id=- class=quiet x=220 y=60 w=900 h=30 nav=1 active=0 label=rescan
+OBJECT tag=cli_io id=destf class=- x=220 y=690 w=900 h=30 nav=2 active=0 label=dest dir: 
+OBJECT tag=item id=btn-package class=- x=220 y=90 w=900 h=30 nav=3 active=0 label=Package

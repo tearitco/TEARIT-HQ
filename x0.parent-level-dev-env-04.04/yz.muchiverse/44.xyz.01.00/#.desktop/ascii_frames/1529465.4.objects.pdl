@@ -1,0 +1,10 @@
+OBJECT tag=text id=who class=chain-who x=0 y=30 w=220 h=30 nav=0 active=0 label=wallet: jb
+OBJECT tag=item id=tw class=chain-tab,tab-active x=0 y=60 w=220 h=30 nav=1 active=0 label=Wallet
+OBJECT tag=item id=ts class=chain-tab x=0 y=90 w=220 h=30 nav=2 active=0 label=Send
+OBJECT tag=item id=tm class=chain-tab x=0 y=120 w=220 h=30 nav=3 active=0 label=Mine
+OBJECT tag=item id=th class=chain-tab x=0 y=150 w=220 h=30 nav=4 active=0 label=History
+OBJECT tag=item id=rf class=chain-tab x=0 y=180 w=220 h=30 nav=5 active=0 label=↻ refresh
+OBJECT tag=text id=status class=chain-status x=220 y=30 w=540 h=30 nav=0 active=0 label=jb   ·   node :9950   ·   0 mc   ·   shared ledger
+OBJECT tag=text id=w-bal class=chain-big x=220 y=60 w=540 h=30 nav=0 active=0 label=0 millicones
+OBJECT tag=text id=w-id class=chain-kv x=220 y=90 w=540 h=30 nav=0 active=0 label=wallet id:  jb
+OBJECT tag=text id=w-hint class=chain-quiet x=220 y=120 w=540 h=30 nav=0 active=0 label=This session's wallet is auto-created + logged in. Mine on the Mine tab to earn.

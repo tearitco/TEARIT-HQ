@@ -1,0 +1,80 @@
+
+=== file-explorer-pal.xhtpm pid 4066618  2026-09-15 10:10:58 ===
+--- file-explorer-pal.xhtpm  pid 4066618  2026-09-15 10:10:58 ---
+--- page: main ---
+File Explorer - LOAD
+          /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00
+        [ ] 3. DIR .. 
+        [ ] 4. DIR #.DOX 
+        [ ] 5. DIR #.Z.HUMAN_LLM 
+        [ ] 6. DIR #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+        [ ] 7. DIR #.desktop 
+        [ ] 8. DIR #.haiku+ 
+        [ ] 9. DIR #.livedesk 
+        [ ] 10. DIR #.notes 
+        [ ] 11. DIR #.ref 
+          Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 4066618  2026-09-15 10:10:59 ===
+--- file-explorer-pal.xhtpm  pid 4066618  2026-09-15 10:10:59 ---
+--- page: main ---
+File Explorer - LOAD
+          /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00
+        [ ] 3. DIR .. 
+        [ ] 4. DIR #.DOX 
+        [ ] 5. DIR #.Z.HUMAN_LLM 
+        [ ] 6. DIR #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+        [ ] 7. DIR #.desktop 
+        [ ] 8. DIR #.haiku+ 
+        [ ] 9. DIR #.livedesk 
+        [ ] 10. DIR #.notes 
+        [ ] 11. DIR #.ref 
+          Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 4066618  2026-09-15 10:10:59 ===
+--- file-explorer-pal.xhtpm  pid 4066618  2026-09-15 10:10:59 ---
+--- page: main ---
+File Explorer - LOAD
+          /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/sessions
+        [>] 1. DIR .. 
+        [ ] 2. DIR s1 
+        [ ] 3. DIR s2 
+        [ ] 4. DIR s3 
+        [ ] 5. DIR s4 
+        [ ] 6. DIR s5 
+        [ ] 7. DIR s6 
+        [ ] 8. DIR s7 
+        [ ] 9. FIL session.pdl 28B
+          Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 4066618  2026-09-15 10:11:41 ===
+--- file-explorer-pal.xhtpm  pid 4066618  2026-09-15 10:11:41 ---
+--- page: main ---
+File Explorer - LOAD
+          /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/sessions
+        [>] 1. DIR .. 
+        [ ] 2. DIR s1 
+        [ ] 3. DIR s2 
+        [ ] 4. DIR s3 
+        [ ] 5. DIR s4 
+        [ ] 6. DIR s5 
+        [ ] 7. DIR s6 
+        [ ] 8. DIR s7 
+        [ ] 9. FIL session.pdl 28B
+          Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 4066618  2026-09-15 10:11:49 ===
+--- file-explorer-pal.xhtpm  pid 4066618  2026-09-15 10:11:49 ---
+--- page: main ---
+File Explorer - LOAD
+          /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/sessions
+        [ ] 1. DIR .. 
+        [ ] 2. DIR s1 
+        [ ] 3. DIR s2 
+        [ ] 4. DIR s3 
+        [ ] 5. DIR s4 
+        [ ] 6. DIR s5 
+        [ ] 7. DIR s6 
+        [ ] 8. DIR s7 
+        [ ] 9. FIL session.pdl 28B
+          Pick a file to load.

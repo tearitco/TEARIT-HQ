@@ -1,0 +1,40 @@
+
+=== menu.chtpm pid 334434  2026-09-15 14:24:54 ===
+--- menu.chtpm  pid 334434  2026-09-15 14:24:54 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Chat
+    [ ] 3. Bookmarks
+    [ ] 4. Play
+    [ ] 5. Close
+    [ ] 6. Cancel
+
+=== menu.chtpm pid 334434  2026-09-15 14:24:55 ===
+--- menu.chtpm  pid 334434  2026-09-15 14:24:55 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Chat
+    [ ] 3. Bookmarks
+    [ ] 4. Play
+    [ ] 5. Close
+    [ ] 6. Cancel
+
+=== menu.chtpm pid 334434  2026-09-15 14:24:56 ===
+--- menu.chtpm  pid 334434  2026-09-15 14:24:56 ---
+--- page: main ---
+    [ ] 1. Dir
+    [ ] 2. Chat
+    [ ] 3. Bookmarks
+    [ ] 4. Play
+    [ ] 5. Close
+    [>] 6. Cancel
+
+=== menu.chtpm pid 334434  2026-09-15 14:24:57 ===
+--- menu.chtpm  pid 334434  2026-09-15 14:24:57 ---
+--- page: main ---
+    [ ] 1. Dir
+    [ ] 2. Chat
+    [ ] 3. Bookmarks
+    [ ] 4. Play
+    [ ] 5. Close
+    [>] 6. Cancel

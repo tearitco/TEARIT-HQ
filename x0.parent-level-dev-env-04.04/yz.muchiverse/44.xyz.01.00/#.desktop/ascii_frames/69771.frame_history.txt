@@ -1,0 +1,176 @@
+
+=== canvas-craft.xhtpm pid 69771  2026-09-17 06:37:55 ===
+--- canvas-craft.xhtpm  pid 69771  2026-09-17 06:37:55 ---
+--- page: main ---
+Canvas-Craft
+          Recipes
+        [ ] 3. Up_quark
+        [ ] 4. Down_quark
+        [ ] 5. Electron
+        [ ] 6. Pair_up_quarks
+        [ ] 7. Pair_down_quarks
+        [ ] 8. Proton
+        [ ] 9. Neutron
+        [ ] 10. Hydrogen
+        [ ] 11. Helium
+        [ ] 12. Lithium
+        [ ] 13. Beryllium
+        [ ] 14. Boron
+        [ ] 15. Carbon
+        [ ] 16. Nitrogen
+        [ ] 17. Oxygen
+        [ ] 18. Fluorine
+        [ ] 19. Neon
+        [ ] 20. Sodium
+          Pick a recipe on the left.
+          Inventory
+        [ ] 23. []1  Up_quark  x999   $1
+        [ ] 24. []2  Down_quark  x999   $1
+        [ ] 25. []3  Electron  x999   $2
+        [ ] 26. []4  Proton  x400   $12
+        [ ] 27. []5  Neutron  x400   $14
+        [ ] 28. []6  Hydrogen  x60   $25
+        [ ] 29. []7  Helium  x10   $40
+        [ ] 30. []8  Carbon  x24   $90
+        [ ] 31. []9  Nitrogen  x12   $95
+        [ ] 32. []10  Oxygen  x20   $110
+        [ ] 33. []11  Sodium  x6   $130
+        [ ] 34. []12  Silicon  x8   $140
+        [ ] 35. []13  Sulfur  x6   $150
+        [ ] 36. []14  Iron  x8   $260
+        [ ] 37. []15  Copper  x6   $290
+        [ ] 38. []16  Silver  x2   $610
+        [ ] 39. []17  Water  x8   $30
+        [ ] 40. []18  Methane  x2   $55
+
+=== canvas-craft.xhtpm pid 69771  2026-09-17 06:37:56 ===
+--- canvas-craft.xhtpm  pid 69771  2026-09-17 06:37:56 ---
+--- page: main ---
+Canvas-Craft
+          Recipes
+        [ ] 3. Up_quark
+        [ ] 4. Down_quark
+        [ ] 5. Electron
+        [ ] 6. Pair_up_quarks
+        [ ] 7. Pair_down_quarks
+        [ ] 8. Proton
+        [ ] 9. Neutron
+        [ ] 10. Hydrogen
+        [ ] 11. Helium
+        [ ] 12. Lithium
+        [ ] 13. Beryllium
+        [ ] 14. Boron
+        [ ] 15. Carbon
+        [ ] 16. Nitrogen
+        [ ] 17. Oxygen
+        [ ] 18. Fluorine
+        [ ] 19. Neon
+        [ ] 20. Sodium
+          Pick a recipe on the left.
+          Inventory
+        [ ] 23. []1  Up_quark  x999   $1
+        [ ] 24. []2  Down_quark  x999   $1
+        [ ] 25. []3  Electron  x999   $2
+        [ ] 26. []4  Proton  x400   $12
+        [ ] 27. []5  Neutron  x400   $14
+        [ ] 28. []6  Hydrogen  x60   $25
+        [ ] 29. []7  Helium  x10   $40
+        [ ] 30. []8  Carbon  x24   $90
+        [ ] 31. []9  Nitrogen  x12   $95
+        [ ] 32. []10  Oxygen  x20   $110
+        [ ] 33. []11  Sodium  x6   $130
+        [ ] 34. []12  Silicon  x8   $140
+        [ ] 35. []13  Sulfur  x6   $150
+        [ ] 36. []14  Iron  x8   $260
+        [ ] 37. []15  Copper  x6   $290
+        [ ] 38. []16  Silver  x2   $610
+        [ ] 39. []17  Water  x8   $30
+        [ ] 40. []18  Methane  x2   $55
+
+=== canvas-craft.xhtpm pid 69771  2026-09-17 06:37:58 ===
+--- canvas-craft.xhtpm  pid 69771  2026-09-17 06:37:58 ---
+--- page: main ---
+Canvas-Craft
+          Recipes
+        [ ] 3. Up_quark
+        [ ] 4. Down_quark
+        [ ] 5. Electron
+        [ ] 6. Pair_up_quarks
+        [ ] 7. Pair_down_quarks
+        [ ] 8. Proton
+        [ ] 9. Neutron
+        [ ] 10. Hydrogen
+        [ ] 11. Helium
+        [ ] 12. Lithium
+        [ ] 13. Beryllium
+        [ ] 14. Boron
+        [ ] 15. Carbon
+        [ ] 16. Nitrogen
+        [ ] 17. Oxygen
+        [ ] 18. Fluorine
+        [ ] 19. Neon
+        [ ] 20. Sodium
+          Pick a recipe on the left.
+          Inventory
+        [ ] 23. []1  Up_quark  x999   $1
+        [ ] 24. []2  Down_quark  x999   $1
+        [ ] 25. []3  Electron  x999   $2
+        [ ] 26. []4  Proton  x400   $12
+        [ ] 27. []5  Neutron  x400   $14
+        [ ] 28. []6  Hydrogen  x60   $25
+        [ ] 29. []7  Helium  x10   $40
+        [ ] 30. []8  Carbon  x24   $90
+        [ ] 31. []9  Nitrogen  x12   $95
+        [ ] 32. []10  Oxygen  x20   $110
+        [ ] 33. []11  Sodium  x6   $130
+        [ ] 34. []12  Silicon  x8   $140
+        [ ] 35. []13  Sulfur  x6   $150
+        [ ] 36. []14  Iron  x8   $260
+        [ ] 37. []15  Copper  x6   $290
+        [ ] 38. []16  Silver  x2   $610
+        [ ] 39. []17  Water  x8   $30
+        [ ] 40. []18  Methane  x2   $55
+
+=== canvas-craft.xhtpm pid 69771  2026-09-17 06:37:59 ===
+--- canvas-craft.xhtpm  pid 69771  2026-09-17 06:37:59 ---
+--- page: main ---
+Canvas-Craft
+          Recipes
+        [ ] 3. Up_quark
+        [ ] 4. Down_quark
+        [ ] 5. Electron
+        [ ] 6. Pair_up_quarks
+        [ ] 7. Pair_down_quarks
+        [ ] 8. Proton
+        [ ] 9. Neutron
+        [ ] 10. Hydrogen
+        [ ] 11. Helium
+        [ ] 12. Lithium
+        [ ] 13. Beryllium
+        [ ] 14. Boron
+        [ ] 15. Carbon
+        [ ] 16. Nitrogen
+        [ ] 17. Oxygen
+        [ ] 18. Fluorine
+        [ ] 19. Neon
+        [ ] 20. Sodium
+          Pick a recipe on the left.
+          Inventory
+        [ ] 23. []1  Up_quark  x999   $1
+        [ ] 24. []2  Down_quark  x999   $1
+        [ ] 25. []3  Electron  x999   $2
+        [ ] 26. []4  Proton  x400   $12
+        [ ] 27. []5  Neutron  x400   $14
+        [ ] 28. []6  Hydrogen  x60   $25
+        [ ] 29. []7  Helium  x10   $40
+        [ ] 30. []8  Carbon  x24   $90
+        [ ] 31. []9  Nitrogen  x12   $95
+        [ ] 32. []10  Oxygen  x20   $110
+        [ ] 33. []11  Sodium  x6   $130
+        [ ] 34. []12  Silicon  x8   $140
+        [ ] 35. []13  Sulfur  x6   $150
+        [ ] 36. []14  Iron  x8   $260
+        [ ] 37. []15  Copper  x6   $290
+        [ ] 38. []16  Silver  x2   $610
+        [ ] 39. []17  Water  x8   $30
+        [ ] 40. []18  Methane  x2   $55

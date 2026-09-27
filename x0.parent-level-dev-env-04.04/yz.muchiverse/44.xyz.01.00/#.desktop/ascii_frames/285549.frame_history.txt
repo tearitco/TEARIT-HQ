@@ -1,0 +1,58 @@
+
+=== proc-mon.xhtpm pid 285549  2026-09-15 14:08:24 ===
+--- proc-mon.xhtpm  pid 285549  2026-09-15 14:08:24 ---
+--- page: main ---
+Session Monitor
+          scanned 14:06:27
+          24 good  /  0 bad
+      [>] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            7319    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7322    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7324    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7326    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7328    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7330    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7332    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7334    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7336    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7340    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7344    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7346    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7350    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+
+=== proc-mon.xhtpm pid 285549  2026-09-15 14:08:27 ===
+--- proc-mon.xhtpm  pid 285549  2026-09-15 14:08:27 ---
+--- page: main ---
+Session Monitor
+          scanned 14:06:27
+          24 good  /  0 bad
+      [ ] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          OTHER SESSION - real, not stray, not this one
+            (none - no other live taskbar session)
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            7319    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7322    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7324    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7326    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7328    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7330    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7332    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7334    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7336    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7340    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7344    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7346    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            7350    [pal]       26m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43

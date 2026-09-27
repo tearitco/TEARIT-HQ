@@ -1,0 +1,48 @@
+
+=== menu.chtpm pid 60920  2026-09-20 02:23:18 ===
+--- menu.chtpm  pid 60920  2026-09-20 02:23:18 ---
+--- page: main ---
+m8_redhorned
+    [>] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Delete
+    [ ] 5. Place
+    [ ] 6. Ledger
+    [ ] 7. Events (ez)
+    [ ] 8. Events (hq)
+    [ ] 9. Dir
+    [ ] 10. Inventory
+    [ ] 11. Cancel
+
+=== menu.chtpm pid 60920  2026-09-20 02:23:19 ===
+--- menu.chtpm  pid 60920  2026-09-20 02:23:19 ---
+--- page: main ---
+m8_redhorned
+    [ ] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Delete
+    [>] 5. Place
+    [ ] 6. Ledger
+    [ ] 7. Events (ez)
+    [ ] 8. Events (hq)
+    [ ] 9. Dir
+    [ ] 10. Inventory
+    [ ] 11. Cancel
+
+=== menu.chtpm pid 60920  2026-09-20 02:23:20 ===
+--- menu.chtpm  pid 60920  2026-09-20 02:23:20 ---
+--- page: main ---
+m8_redhorned
+    [ ] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Delete
+    [>] 5. Place
+    [ ] 6. Ledger
+    [ ] 7. Events (ez)
+    [ ] 8. Events (hq)
+    [ ] 9. Dir
+    [ ] 10. Inventory
+    [ ] 11. Cancel

@@ -1,0 +1,24 @@
+
+=== menu.chtpm pid 804614  2026-09-14 22:49:26 ===
+--- menu.chtpm  pid 804614  2026-09-14 22:49:26 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Close
+    [ ] 4. Cancel
+
+=== menu.chtpm pid 804614  2026-09-14 22:49:27 ===
+--- menu.chtpm  pid 804614  2026-09-14 22:49:27 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Close
+    [ ] 4. Cancel
+
+=== menu.chtpm pid 804614  2026-09-14 22:49:29 ===
+--- menu.chtpm  pid 804614  2026-09-14 22:49:29 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Close
+    [ ] 4. Cancel

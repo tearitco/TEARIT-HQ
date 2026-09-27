@@ -1,0 +1,74 @@
+
+=== menu.chtpm pid 123647  2026-09-18 02:34:44 ===
+--- menu.chtpm  pid 123647  2026-09-18 02:34:44 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Chat
+    [ ] 3. Bookmarks
+    [ ] 4. Play
+    [ ] 5. Close
+    [ ] 6. Cancel
+
+=== menu.chtpm pid 123647  2026-09-18 02:34:45 ===
+--- menu.chtpm  pid 123647  2026-09-18 02:34:45 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Chat
+    [ ] 3. Bookmarks
+    [ ] 4. Play
+    [ ] 5. Close
+    [ ] 6. Cancel
+
+=== menu.chtpm pid 123647  2026-09-18 02:34:56 ===
+--- menu.chtpm  pid 123647  2026-09-18 02:34:56 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Chat
+    [ ] 3. Bookmarks
+    [ ] 4. Play
+    [ ] 5. Close
+    [ ] 6. Cancel
+
+=== menu.chtpm pid 123647  2026-09-18 02:39:19 ===
+--- menu.chtpm  pid 123647  2026-09-18 02:39:19 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 123647  2026-09-18 02:39:20 ===
+--- menu.chtpm  pid 123647  2026-09-18 02:39:20 ---
+--- page: main ---
+    [>] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [ ] 7. Cancel
+
+=== menu.chtpm pid 123647  2026-09-18 02:41:57 ===
+--- menu.chtpm  pid 123647  2026-09-18 02:41:57 ---
+--- page: main ---
+    [ ] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [>] 7. Cancel
+
+=== menu.chtpm pid 123647  2026-09-18 02:41:58 ===
+--- menu.chtpm  pid 123647  2026-09-18 02:41:58 ---
+--- page: main ---
+    [ ] 1. Dir
+    [ ] 2. Inventory
+    [ ] 3. Chat
+    [ ] 4. Bookmarks
+    [ ] 5. Play
+    [ ] 6. Close
+    [>] 7. Cancel

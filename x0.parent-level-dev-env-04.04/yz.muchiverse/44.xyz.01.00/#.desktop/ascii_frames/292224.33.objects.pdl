@@ -1,0 +1,33 @@
+OBJECT tag=text id=- class=block-title x=0 y=30 w=200 h=30 nav=0 active=0 label=Bookmarks
+OBJECT tag=text id=- class=quiet x=0 y=0 w=0 h=0 nav=0 active=0 label=No bookmarks yet
+OBJECT tag=text id=- class=block-title x=0 y=60 w=200 h=30 nav=0 active=0 label=History
+OBJECT tag=item id=nb-clearhist class=- x=0 y=90 w=200 h=30 nav=1 active=0 label=Clear All History
+OBJECT tag=item id=hist9 class=- x=0 y=134 w=192 h=30 nav=4 active=0 label=https://myaccount.google.com/126
+OBJECT tag=item id=hist10 class=- x=0 y=164 w=192 h=30 nav=5 active=0 label=https://myaccount.google.com/015
+OBJECT tag=item id=hist11 class=- x=0 y=194 w=192 h=120 nav=6 active=0 label=https://myaccount.google.com/?utm_source=about.google&amp;utm_medium=referral&amp;utm_campaign=productspage
+OBJECT tag=item id=hist12 class=- x=0 y=314 w=192 h=60 nav=7 active=0 label=https://www.google.com/intl/en/about/products?tab=ih
+OBJECT tag=item id=hist13 class=- x=0 y=374 w=192 h=60 nav=8 active=0 label=https://www.google.com/intl/en/about/products?tab=ih
+OBJECT tag=item id=hist14 class=- x=0 y=434 w=192 h=30 nav=9 active=0 label=https://example.com
+OBJECT tag=item id=hist15 class=- x=0 y=464 w=192 h=30 nav=10 active=0 label=www.google.com
+OBJECT tag=item id=hist16 class=- x=0 y=494 w=192 h=60 nav=11 active=0 label=https://www.google.com/intl/en/about/products?tab=ih
+OBJECT tag=item id=hist17 class=- x=0 y=554 w=192 h=60 nav=12 active=0 label=https://www.google.com/imghp?hl=en&ogbl
+OBJECT tag=item id=nb-back class=quiet x=200 y=30 w=72 h=30 nav=13 active=0 label=Back
+OBJECT tag=item id=nb-fwd class=quiet x=272 y=30 w=72 h=30 nav=14 active=0 label=Forward
+OBJECT tag=item id=nb-stop class=quiet x=344 y=30 w=72 h=30 nav=15 active=0 label=Stop
+OBJECT tag=item id=nb-reload class=quiet x=416 y=30 w=72 h=30 nav=16 active=0 label=Reload
+OBJECT tag=item id=nb-home class=quiet x=488 y=30 w=72 h=30 nav=17 active=0 label=Home
+OBJECT tag=item id=nb-bm class=quiet x=560 y=30 w=72 h=30 nav=18 active=0 label=Bookmark
+OBJECT tag=item id=nb-close class=quiet x=632 y=30 w=72 h=30 nav=19 active=0 label=Close tab
+OBJECT tag=item id=tab0 class=quiet x=200 y=60 w=72 h=30 nav=20 active=0 label=Google's products 
+OBJECT tag=item id=tab1 class=quiet x=272 y=60 w=72 h=30 nav=21 active=0 label=Google's products 
+OBJECT tag=item id=tab2 class=quiet x=344 y=60 w=72 h=30 nav=22 active=0 label=YouTube
+OBJECT tag=item id=tab3 class=quiet x=416 y=60 w=72 h=30 nav=23 active=0 label=Image Test
+OBJECT tag=item id=tab4 class=quiet x=488 y=60 w=72 h=30 nav=24 active=0 label=/b/ - Random - 4ch
+OBJECT tag=item id=tab5 class=quiet x=560 y=60 w=72 h=30 nav=25 active=0 label=*Network Browser
+OBJECT tag=item id=nb-newtab class=quiet x=632 y=60 w=72 h=30 nav=26 active=0 label=New tab
+OBJECT tag=cli_io id=address class=top,nb-address x=200 y=90 w=506 h=30 nav=27 active=0 label=-
+OBJECT tag=text id=status class=nb-status x=200 y=120 w=506 h=30 nav=0 active=0 label=Status: loading
+OBJECT tag=text id=ct0 class=page-title x=200 y=150 w=506 h=30 nav=0 active=0 label=Network Browser
+OBJECT tag=text id=cx1 class=- x=200 y=180 w=506 h=30 nav=0 active=0 label=Ready - enter a URL above
+OBJECT tag=text id=- class=block-title x=706 y=30 w=253 h=30 nav=0 active=0 label=Console
+OBJECT tag=text id=- class=quiet x=706 y=60 w=253 h=30 nav=0 active=0 label=Try: eval:1 + 1

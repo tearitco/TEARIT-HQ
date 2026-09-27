@@ -1,0 +1,55 @@
+PAGE | main
+OBJECT | label=Feed | action=void
+OBJECT | label=Menu | action=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.muchi-pet/ops/open_rp_menu.sh
+OBJECT | label=Play | action=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.muchi-pet/ops/play_event.sh
+OBJECT | label=Events (ez) | action=/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.muchi-pet/ops/open_event_ez.sh
+OBJECT | label=Events (hq) | action=sh -c 'exec "$1/&.widgits/events-hq/button.sh" "$0" "$1"'
+OBJECT | label=More | action=GOTO:activities
+OBJECT | label=Rename | action=STATE:pending_name
+OBJECT | label=Dir | action=xdg-open
+OBJECT | label=Close | action=CLOSE
+OBJECT | label=Cancel | action=void
+
+PAGE | activities
+OBJECT | label=Train | action=void
+OBJECT | label=Rest | action=void
+OBJECT | label=Tournament | action=void
+OBJECT | label=Errantry | action=void
+OBJECT | label=Back | action=BACK
+OBJECT | label=Cancel | action=void
+
+PAGE | menu
+OBJECT | label=-- m8_redhorned -- | action=void
+OBJECT | label=Level: 1 | action=void
+OBJECT | label=XP: 0 / 100 to next | action=void
+OBJECT | label=qolq (gold): 35 | action=void
+OBJECT | label=HP: 42 / 100 | action=void
+OBJECT | label=MP: 50 / 50 | action=void
+OBJECT | label=Items | action=GOTO:items
+OBJECT | label=Skills | action=GOTO:skills
+OBJECT | label=Status | action=GOTO:status
+OBJECT | label=Back | action=BACK
+OBJECT | label=Cancel | action=void
+
+PAGE | items
+OBJECT | label=-- Items (soon) -- | action=void
+OBJECT | label=(no items yet) | action=void
+OBJECT | label=Back | action=BACK
+OBJECT | label=Cancel | action=void
+
+PAGE | skills
+OBJECT | label=-- Skills (soon) -- | action=void
+OBJECT | label=(no skills yet) | action=void
+OBJECT | label=Back | action=BACK
+OBJECT | label=Cancel | action=void
+
+PAGE | status
+OBJECT | label=-- Status -- | action=void
+OBJECT | label=Name: m8_redhorned | action=void
+OBJECT | label=Level: 1 | action=void
+OBJECT | label=XP: 0 / 100 | action=void
+OBJECT | label=qolq (gold): 35 | action=void
+OBJECT | label=HP: 42 / 100 | action=void
+OBJECT | label=MP: 50 / 50 | action=void
+OBJECT | label=Back | action=BACK
+OBJECT | label=Cancel | action=void

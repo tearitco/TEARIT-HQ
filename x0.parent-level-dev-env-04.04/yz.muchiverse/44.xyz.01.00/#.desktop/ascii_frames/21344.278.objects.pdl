@@ -1,0 +1,13 @@
+OBJECT tag=text id=- class=quiet x=0 y=30 w=220 h=30 nav=0 active=0 label=scanned 19:21:36
+OBJECT tag=text id=- class=block-title x=0 y=60 w=220 h=30 nav=0 active=0 label=2 good  /  7 bad
+OBJECT tag=item id=b_refresh class=btn x=0 y=90 w=220 h=30 nav=1 active=0 label=  refresh now  
+OBJECT tag=item id=b_kill class=btn,danger x=0 y=120 w=220 h=30 nav=2 active=0 label=  KILL ALL BAD  
+OBJECT tag=item id=b_kill2 class=btn,danger x=0 y=150 w=220 h=30 nav=3 active=0 label= + pals/singletons 
+OBJECT tag=text id=- class=block-title x=0 y=180 w=220 h=30 nav=0 active=0 label=BAD - stray / leaked
+OBJECT tag=item id=bad0 class=data-item x=0 y=224 w=212 h=90 nav=6 active=0 label=25213   [pal-unreg] 33m    cpu:0.1  unreg  khtpm_core_render /home/no/Desktop/github/work
+OBJECT tag=item id=bad1 class=data-item x=0 y=314 w=212 h=90 nav=7 active=0 label=25215   [pal-unreg] 33m    cpu:0.1  unreg  khtpm_core_render /home/no/Desktop/github/work
+OBJECT tag=item id=bad2 class=data-item x=0 y=404 w=212 h=90 nav=8 active=0 label=25217   [pal-unreg] 33m    cpu:0.1  unreg  khtpm_core_render /home/no/Desktop/github/work
+OBJECT tag=text id=- class=block-title x=220 y=30 w=480 h=30 nav=0 active=0 label=GOOD - owned / accounted for
+OBJECT tag=text id=- class=quiet x=220 y=60 w=480 h=30 nav=0 active=0 label=taskbar group, registered pals, house-wide managers, live -hq windows
+OBJECT tag=text id=- class=- x=220 y=90 w=480 h=30 nav=0 active=0 label=15197   [hq-window] 38m    cpu:56.7 unreg  khtpm_core_render /home/no/Desktop/github/work
+OBJECT tag=text id=- class=- x=220 y=120 w=480 h=30 nav=0 active=0 label=20286   [pal]       33m    cpu:0.1  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43

@@ -1,0 +1,225 @@
+
+=== palettes-emojis.xhtpm pid 285655  2026-09-15 10:56:36 ===
+--- palettes-emojis.xhtpm  pid 285655  2026-09-15 10:56:36 ---
+--- page: main ---
+palettes: Emojis
+    [>] 1. x
+    [ ] 2. Smileys & Emotion
+    [ ] 3. People & Body
+    [ ] 4. Animals & Nature
+    [ ] 5. Food & Drink
+    [ ] 6. Travel & Places
+    [ ] 7. Activities
+    [ ] 8. Objects
+    [ ] 9. Symbols
+    [ ] 10. Flags
+    [ ] 11. face-smiling
+    [ ] 12. face-affection
+    [ ] 13. face-tongue
+    [ ] 14. face-hand
+    [ ] 15. face-neutral-skeptical
+    [ ] 16. face-sleepy
+    [ ] 17. face-unwell
+    [ ] 18. face-hat
+    [ ] 19. face-glasses
+    [ ] 20. face-concerned
+    [ ] 21. face-negative
+    [ ] 22. face-costume
+    [ ] 23. cat-face
+    [ ] 24. monkey-face
+    [ ] 25. heart
+    [ ] 26. emotion
+    [ ] 27. item
+    [ ] 28. item
+    [ ] 29. item
+    [ ] 30. item
+    [ ] 31. item
+    [ ] 32. item
+    [ ] 33. item
+    [ ] 34. item
+    [ ] 35. item
+    [ ] 36. item
+    [ ] 37. item
+    [ ] 38. item
+    [ ] 39. item
+    [ ] 40. item
+
+=== palettes-emojis.xhtpm pid 285655  2026-09-15 10:56:37 ===
+--- palettes-emojis.xhtpm  pid 285655  2026-09-15 10:56:37 ---
+--- page: main ---
+palettes: Emojis
+    [>] 1. x
+    [ ] 2. Smileys & Emotion
+    [ ] 3. People & Body
+    [ ] 4. Animals & Nature
+    [ ] 5. Food & Drink
+    [ ] 6. Travel & Places
+    [ ] 7. Activities
+    [ ] 8. Objects
+    [ ] 9. Symbols
+    [ ] 10. Flags
+    [ ] 11. face-smiling
+    [ ] 12. face-affection
+    [ ] 13. face-tongue
+    [ ] 14. face-hand
+    [ ] 15. face-neutral-skeptical
+    [ ] 16. face-sleepy
+    [ ] 17. face-unwell
+    [ ] 18. face-hat
+    [ ] 19. face-glasses
+    [ ] 20. face-concerned
+    [ ] 21. face-negative
+    [ ] 22. face-costume
+    [ ] 23. cat-face
+    [ ] 24. monkey-face
+    [ ] 25. heart
+    [ ] 26. emotion
+    [ ] 27. item
+    [ ] 28. item
+    [ ] 29. item
+    [ ] 30. item
+    [ ] 31. item
+    [ ] 32. item
+    [ ] 33. item
+    [ ] 34. item
+    [ ] 35. item
+    [ ] 36. item
+    [ ] 37. item
+    [ ] 38. item
+    [ ] 39. item
+    [ ] 40. item
+
+=== palettes-emojis.xhtpm pid 285655  2026-09-15 10:56:38 ===
+--- palettes-emojis.xhtpm  pid 285655  2026-09-15 10:56:38 ---
+--- page: main ---
+palettes: Emojis
+    [>] 1. x
+    [ ] 2. Smileys & Emotion
+    [ ] 3. People & Body
+    [ ] 4. Animals & Nature
+    [ ] 5. Food & Drink
+    [ ] 6. Travel & Places
+    [ ] 7. Activities
+    [ ] 8. Objects
+    [ ] 9. Symbols
+    [ ] 10. Flags
+    [ ] 11. face-smiling
+    [ ] 12. face-affection
+    [ ] 13. face-tongue
+    [ ] 14. face-hand
+    [ ] 15. face-neutral-skeptical
+    [ ] 16. face-sleepy
+    [ ] 17. face-unwell
+    [ ] 18. face-hat
+    [ ] 19. face-glasses
+    [ ] 20. face-concerned
+    [ ] 21. face-negative
+    [ ] 22. face-costume
+    [ ] 23. cat-face
+    [ ] 24. monkey-face
+    [ ] 25. heart
+    [ ] 26. emotion
+    [ ] 27. item
+    [ ] 28. item
+    [ ] 29. item
+    [ ] 30. item
+    [ ] 31. item
+    [ ] 32. item
+    [ ] 33. item
+    [ ] 34. item
+    [ ] 35. item
+    [ ] 36. item
+    [ ] 37. item
+    [ ] 38. item
+    [ ] 39. item
+    [ ] 40. item
+
+=== palettes-emojis.xhtpm pid 285655  2026-09-15 10:57:19 ===
+--- palettes-emojis.xhtpm  pid 285655  2026-09-15 10:57:19 ---
+--- page: main ---
+palettes: Emojis
+    [>] 1. x
+    [ ] 2. Smileys & Emotion
+    [ ] 3. People & Body
+    [ ] 4. Animals & Nature
+    [ ] 5. Food & Drink
+    [ ] 6. Travel & Places
+    [ ] 7. Activities
+    [ ] 8. Objects
+    [ ] 9. Symbols
+    [ ] 10. Flags
+    [ ] 11. face-smiling
+    [ ] 12. face-affection
+    [ ] 13. face-tongue
+    [ ] 14. face-hand
+    [ ] 15. face-neutral-skeptical
+    [ ] 16. face-sleepy
+    [ ] 17. face-unwell
+    [ ] 18. face-hat
+    [ ] 19. face-glasses
+    [ ] 20. face-concerned
+    [ ] 21. face-negative
+    [ ] 22. face-costume
+    [ ] 23. cat-face
+    [ ] 24. monkey-face
+    [ ] 25. heart
+    [ ] 26. emotion
+    [ ] 27. item
+    [ ] 28. item
+    [ ] 29. item
+    [ ] 30. item
+    [ ] 31. item
+    [ ] 32. item
+    [ ] 33. item
+    [ ] 34. item
+    [ ] 35. item
+    [ ] 36. item
+    [ ] 37. item
+    [ ] 38. item
+    [ ] 39. item
+    [ ] 40. item
+
+=== palettes-emojis.xhtpm pid 285655  2026-09-15 10:57:21 ===
+--- palettes-emojis.xhtpm  pid 285655  2026-09-15 10:57:21 ---
+--- page: main ---
+palettes: Emojis
+    [>] 1. x
+    [ ] 2. Smileys & Emotion
+    [ ] 3. People & Body
+    [ ] 4. Animals & Nature
+    [ ] 5. Food & Drink
+    [ ] 6. Travel & Places
+    [ ] 7. Activities
+    [ ] 8. Objects
+    [ ] 9. Symbols
+    [ ] 10. Flags
+    [ ] 11. face-smiling
+    [ ] 12. face-affection
+    [ ] 13. face-tongue
+    [ ] 14. face-hand
+    [ ] 15. face-neutral-skeptical
+    [ ] 16. face-sleepy
+    [ ] 17. face-unwell
+    [ ] 18. face-hat
+    [ ] 19. face-glasses
+    [ ] 20. face-concerned
+    [ ] 21. face-negative
+    [ ] 22. face-costume
+    [ ] 23. cat-face
+    [ ] 24. monkey-face
+    [ ] 25. heart
+    [ ] 26. emotion
+    [ ] 27. item
+    [ ] 28. item
+    [ ] 29. item
+    [ ] 30. item
+    [ ] 31. item
+    [ ] 32. item
+    [ ] 33. item
+    [ ] 34. item
+    [ ] 35. item
+    [ ] 36. item
+    [ ] 37. item
+    [ ] 38. item
+    [ ] 39. item
+    [ ] 40. item

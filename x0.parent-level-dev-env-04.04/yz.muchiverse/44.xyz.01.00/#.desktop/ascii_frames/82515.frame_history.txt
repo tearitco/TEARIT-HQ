@@ -1,0 +1,66 @@
+
+=== menu_gameplay.chtpm pid 82515  2026-09-14 13:54:09 ===
+--- menu_gameplay.chtpm  pid 82515  2026-09-14 13:54:09 ---
+--- page: main ---
+    [>] 1. City
+    [ ] 2. Production
+    [ ] 3. Armed Forces
+    [ ] 4. View
+    [ ] 5. Happy
+    [ ] 6. Rename
+    [ ] 7. Cancel
+
+=== menu_gameplay.chtpm pid 82515  2026-09-14 13:54:10 ===
+--- menu_gameplay.chtpm  pid 82515  2026-09-14 13:54:10 ---
+--- page: main ---
+    [>] 1. City
+    [ ] 2. Production
+    [ ] 3. Armed Forces
+    [ ] 4. View
+    [ ] 5. Happy
+    [ ] 6. Rename
+    [ ] 7. Cancel
+
+=== menu_gameplay.chtpm pid 82515  2026-09-14 13:54:22 ===
+--- menu_gameplay.chtpm  pid 82515  2026-09-14 13:54:22 ---
+--- page: main ---
+    [>] 1. City
+    [ ] 2. Production
+    [ ] 3. Armed Forces
+    [ ] 4. View
+    [ ] 5. Happy
+    [ ] 6. Rename
+    [ ] 7. Cancel
+
+=== menu_gameplay.chtpm pid 82515  2026-09-14 13:57:10 ===
+--- menu_gameplay.chtpm  pid 82515  2026-09-14 13:57:10 ---
+--- page: main ---
+    [>] 1. City
+    [ ] 2. Production
+    [ ] 3. Armed Forces
+    [ ] 4. View
+    [ ] 5. Happy
+    [ ] 6. Rename
+    [ ] 7. Cancel
+
+=== menu_gameplay.chtpm pid 82515  2026-09-14 13:57:11 ===
+--- menu_gameplay.chtpm  pid 82515  2026-09-14 13:57:11 ---
+--- page: main ---
+    [ ] 1. City
+    [ ] 2. Production
+    [ ] 3. Armed Forces
+    [ ] 4. View
+    [ ] 5. Happy
+    [ ] 6. Rename
+    [>] 7. Cancel
+
+=== menu_gameplay.chtpm pid 82515  2026-09-14 13:57:12 ===
+--- menu_gameplay.chtpm  pid 82515  2026-09-14 13:57:12 ---
+--- page: main ---
+    [ ] 1. City
+    [ ] 2. Production
+    [ ] 3. Armed Forces
+    [ ] 4. View
+    [ ] 5. Happy
+    [ ] 6. Rename
+    [>] 7. Cancel

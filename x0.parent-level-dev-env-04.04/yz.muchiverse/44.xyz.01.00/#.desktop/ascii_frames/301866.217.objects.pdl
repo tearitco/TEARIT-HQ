@@ -1,0 +1,13 @@
+OBJECT tag=tab id=tab_viewer class=- x=8 y=33 w=115 h=30 nav=1 active=0 label=Viewer
+OBJECT tag=tab id=tab_new class=active x=127 y=33 w=143 h=30 nav=2 active=1 label=New State
+OBJECT tag=text id=- class=quiet x=0 y=65 w=220 h=30 nav=0 active=0 label=scanned 07:09:01
+OBJECT tag=text id=- class=block-title x=0 y=95 w=220 h=30 nav=0 active=0 label=1 AI instance(s)
+OBJECT tag=item id=b_refresh class=btn x=0 y=125 w=220 h=30 nav=3 active=0 label=  refresh now  
+OBJECT tag=item id=inst0 class=data-item,inst-row,selected1 x=0 y=155 w=220 h=30 nav=4 active=0 label=cursword  [fsm]
+OBJECT tag=text id=- class=block-title x=220 y=65 w=480 h=30 nav=0 active=0 label=cursword  —  kind: fsm
+OBJECT tag=text id=- class=quiet x=220 y=95 w=480 h=60 nav=0 active=0 label=PATH: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/fsm_table.pdl
+OBJECT tag=text id=- class=quiet x=220 y=155 w=480 h=60 nav=0 active=0 label=IFACE: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.cursword/entities/cursword/cursword_fsm.state
+OBJECT tag=text id=- class=block-title x=220 y=215 w=480 h=30 nav=0 active=0 label=Add a new STATE to cursword
+OBJECT tag=text id=- class=quiet x=220 y=245 w=480 h=30 nav=0 active=0 label=type:  name   or   name|NEXT1,NEXT2   then Enter
+OBJECT tag=cli_io id=new_state_spec class=- x=220 y=490 w=480 h=30 nav=5 active=0 label=-
+OBJECT tag=text id=- class=quiet x=220 y=275 w=480 h=30 nav=0 active=0 label=added state 'LIVE_TEST' (NEXT=IDLE) to cursword

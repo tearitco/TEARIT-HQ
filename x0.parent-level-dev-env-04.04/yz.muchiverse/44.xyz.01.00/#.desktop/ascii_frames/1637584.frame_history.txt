@@ -1,0 +1,58 @@
+
+=== file-explorer-pal.xhtpm pid 1637584  2026-09-11 00:58:10 ===
+--- file-explorer-pal.xhtpm  pid 1637584  2026-09-11 00:58:10 ---
+--- page: main ---
+File Explorer - LOAD
+          /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/pieces/system/maps
+        [>] 1. DIR .. 
+        [ ] 2. DIR cdda_sample 
+        [ ] 3. DIR mineclonia_sample 
+          Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 1637584  2026-09-11 00:58:10 ===
+--- file-explorer-pal.xhtpm  pid 1637584  2026-09-11 00:58:10 ---
+--- page: main ---
+File Explorer - LOAD
+          /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00
+        [ ] 3. DIR .. 
+        [ ] 4. DIR #.DOX 
+        [ ] 5. DIR #.Z.HUMAN_LLM 
+        [ ] 6. DIR #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+        [ ] 7. DIR #.desktop 
+        [ ] 8. DIR #.haiku+ 
+        [ ] 9. DIR #.livedesk 
+        [ ] 10. DIR #.notes 
+        [ ] 11. DIR #.ref 
+          Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 1637584  2026-09-11 00:58:11 ===
+--- file-explorer-pal.xhtpm  pid 1637584  2026-09-11 00:58:11 ---
+--- page: main ---
+File Explorer - LOAD
+          /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00
+        [ ] 3. DIR .. 
+        [ ] 4. DIR #.DOX 
+        [ ] 5. DIR #.Z.HUMAN_LLM 
+        [ ] 6. DIR #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+        [ ] 7. DIR #.desktop 
+        [ ] 8. DIR #.haiku+ 
+        [ ] 9. DIR #.livedesk 
+        [ ] 10. DIR #.notes 
+        [ ] 11. DIR #.ref 
+          Pick a file to load.
+
+=== file-explorer-pal.xhtpm pid 1637584  2026-09-11 00:58:12 ===
+--- file-explorer-pal.xhtpm  pid 1637584  2026-09-11 00:58:12 ---
+--- page: main ---
+File Explorer - LOAD
+          /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00
+        [ ] 3. DIR .. 
+        [ ] 4. DIR #.DOX 
+        [ ] 5. DIR #.Z.HUMAN_LLM 
+        [ ] 6. DIR #.a0]🪄️.🎩️(tson)]0000=ctrl+h 
+        [ ] 7. DIR #.desktop 
+        [ ] 8. DIR #.haiku+ 
+        [ ] 9. DIR #.livedesk 
+        [ ] 10. DIR #.notes 
+        [ ] 11. DIR #.ref 
+          Pick a file to load.

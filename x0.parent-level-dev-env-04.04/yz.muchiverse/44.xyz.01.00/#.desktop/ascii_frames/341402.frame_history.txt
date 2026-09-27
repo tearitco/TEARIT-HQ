@@ -1,0 +1,16 @@
+
+=== dsr.xhtpm pid 341402  2026-09-14 20:47:29 ===
+--- dsr.xhtpm  pid 341402  2026-09-14 20:47:29 ---
+--- page: main ---
+Desk Street Raider
+        D S R  —  D E S K   S T R E E T   R A I D E R
+        Turn: 0   Active: corp_AFL
+        Your Wallet:
+        Cash: 1613
+        Active Corp Balance Sheet:
+        Cash (CD's): 5000
+        Stock Price: 115.04
+        Owned By: (independent)
+        FINANCIAL NEWS [CMZ: $0.10 (-99.38%)]
+        WORLD STATUS
+        Population: 10000          Temperature: 15C

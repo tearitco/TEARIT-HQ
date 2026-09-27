@@ -1,0 +1,33 @@
+--- file-explorer-pal.xhtpm  pid 396728  2026-09-15 11:13:27 ---
+--- page: main ---
+File Explorer - LOAD
+    [ ] 11. X
+      [>] 1. /
+      [ ] 2. home
+      [ ] 3. no
+      [ ] 4. Desktop
+      [ ] 5. github
+      [ ] 6. work
+      [ ] 7. NNEST-12.00
+      [ ] 8. x0.parent-level-dev-env-04.04
+      [ ] 9. yz.muchiverse
+      [ ] 10. 44.xyz.01.00
+        Pick a file to load.
+    [ ] 12. Grid View
+      [ ] 15. 📄  18651.log 170B
+      [ ] 16. 📄  AUTO_DELEGATION.TXT 8KB
+      [ ] 17. 📄  EMERGENCY_CLEAN.sh 5KB
+      [ ] 18. 📄  EMERGENCY_CLOSE.ps1 2KB
+      [ ] 19. 📄  EMERGENCY_CLOSE.sh 2KB
+      [ ] 20. 📄  EMERGENCY_KILL.sh 6KB
+      [ ] 21. 📄  ^.START_BUTTON_4.sh 184B
+      [ ] 22. 📄  bookmarks_state.txt 0B
+      [ ] 23. 📄  bookstack-path-bug.txt 12KB
+      [ ] 24. 📄  check-symlinks.sh 3KB
+      [ ] 25. 📄  interact_relay.txt 295B
+      [ ] 26. 📄  khtpm-win-fix.txt 16KB
+      [ ] 27. 📄  khtpm_events_hq_manager.+x 21KB
+      [ ] 28. 📄  livedesk-win-fix-lvl2.txt 34KB
+      [ ] 29. 📄  local-2do-15.txt 444B
+      [ ] 30. 📄  run-khtpm-strip.sh 465B
+      [ ] 31. 📄  scrypts.sh 2KB

@@ -1,0 +1,114 @@
+
+=== sql-hq.xhtpm pid 1305941  2026-09-10 20:29:49 ===
+--- sql-hq.xhtpm  pid 1305941  2026-09-10 20:29:49 ---
+--- page: main ---
+SQL-HQ
+            SOURCE
+        [ ] 3. + Open CSV / PDL
+        [ ] 4. + Open Folder
+        [ ] 5. - Close Table
+            TABLES
+        [ ] 6. people
+            MACROS
+        [ ] 7. SELECT              
+        [ ] 8. SELECT cols         
+        [ ] 9. SELECT DISTINCT     
+        [ ] 10. WHERE               
+        [ ] 11. ORDER BY            
+        [ ] 12. LIMIT               
+        [ ] 13. LIKE                
+        [ ] 14. BETWEEN             
+        [ ] 15. IN                  
+        [ ] 16. IS NULL             
+        [ ] 17. COUNT / AVG / SUM   
+        [ ] 18. MIN / MAX           
+        [ ] 19. Run
+        [ ] 20. Commit
+        [ ] 21. Rollback
+        [ ] 22. Export
+        [ ] 23. Clear
+      [ ] 24. text_area
+          ran ok (7 grid lines)
+            city     | n
+            ---------+--
+            Boston   | 1
+            Chicago  | 1
+            Denver   | 1
+            New York | 1
+            (4 rows)
+
+=== sql-hq.xhtpm pid 1305941  2026-09-10 20:29:50 ===
+--- sql-hq.xhtpm  pid 1305941  2026-09-10 20:29:50 ---
+--- page: main ---
+SQL-HQ
+            SOURCE
+        [ ] 3. + Open CSV / PDL
+        [ ] 4. + Open Folder
+        [ ] 5. - Close Table
+            TABLES
+        [ ] 6. people
+            MACROS
+        [ ] 7. SELECT              
+        [ ] 8. SELECT cols         
+        [ ] 9. SELECT DISTINCT     
+        [ ] 10. WHERE               
+        [ ] 11. ORDER BY            
+        [ ] 12. LIMIT               
+        [ ] 13. LIKE                
+        [ ] 14. BETWEEN             
+        [ ] 15. IN                  
+        [ ] 16. IS NULL             
+        [ ] 17. COUNT / AVG / SUM   
+        [ ] 18. MIN / MAX           
+        [ ] 19. Run
+        [ ] 20. Commit
+        [ ] 21. Rollback
+        [ ] 22. Export
+        [ ] 23. Clear
+      [ ] 24. text_area
+          ran ok (7 grid lines)
+            city     | n
+            ---------+--
+            Boston   | 1
+            Chicago  | 1
+            Denver   | 1
+            New York | 1
+            (4 rows)
+
+=== sql-hq.xhtpm pid 1305941  2026-09-10 20:29:51 ===
+--- sql-hq.xhtpm  pid 1305941  2026-09-10 20:29:51 ---
+--- page: main ---
+SQL-HQ
+            SOURCE
+        [ ] 3. + Open CSV / PDL
+        [ ] 4. + Open Folder
+        [ ] 5. - Close Table
+            TABLES
+        [ ] 6. people
+            MACROS
+        [ ] 7. SELECT              
+        [ ] 8. SELECT cols         
+        [ ] 9. SELECT DISTINCT     
+        [ ] 10. WHERE               
+        [ ] 11. ORDER BY            
+        [ ] 12. LIMIT               
+        [ ] 13. LIKE                
+        [ ] 14. BETWEEN             
+        [ ] 15. IN                  
+        [ ] 16. IS NULL             
+        [ ] 17. COUNT / AVG / SUM   
+        [ ] 18. MIN / MAX           
+        [ ] 19. Run
+        [ ] 20. Commit
+        [ ] 21. Rollback
+        [ ] 22. Export
+        [ ] 23. Clear
+      [ ] 24. text_area
+          ran ok (7 grid lines)
+            city     | n
+            ---------+--
+            Boston   | 1
+            Chicago  | 1
+            Denver   | 1
+            New York | 1
+            (4 rows)

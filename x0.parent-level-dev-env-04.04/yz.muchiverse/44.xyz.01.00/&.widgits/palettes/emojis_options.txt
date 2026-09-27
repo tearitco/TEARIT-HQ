@@ -1,0 +1,28 @@
+ACTIVE_DIR|People_Body
+ACTIVE_TILESET|person-gesture
+ACTIVE_CATEGORY|person-gesture
+DIR|Smileys_Emotion|Smileys & Emotion
+DIR|People_Body|People & Body
+DIR|Animals_Nature|Animals & Nature
+DIR|Food_Drink|Food & Drink
+DIR|Travel_Places|Travel & Places
+DIR|Activities|Activities
+DIR|Objects|Objects
+DIR|Symbols|Symbols
+DIR|Flags|Flags
+TILESET|hand-fingers-open|hand-fingers-open
+TILESET|hand-fingers-partial|hand-fingers-partial
+TILESET|hand-single-finger|hand-single-finger
+TILESET|hand-fingers-closed|hand-fingers-closed
+TILESET|hands|hands
+TILESET|hand-prop|hand-prop
+TILESET|body-parts|body-parts
+TILESET|person|person
+TILESET|person-gesture|person-gesture
+TILESET|person-role|person-role
+TILESET|person-fantasy|person-fantasy
+TILESET|person-activity|person-activity
+TILESET|person-sport|person-sport
+TILESET|person-resting|person-resting
+TILESET|family|family
+TILESET|person-symbol|person-symbol

@@ -1,0 +1,30 @@
+
+=== menu.chtpm pid 277534  2026-09-22 18:01:08 ===
+--- menu.chtpm  pid 277534  2026-09-22 18:01:08 ---
+--- page: main ---
+    [>] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Cli-io
+
+=== menu.chtpm pid 277534  2026-09-22 18:01:09 ===
+--- menu.chtpm  pid 277534  2026-09-22 18:01:09 ---
+--- page: main ---
+    [>] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Cli-io
+
+=== menu.chtpm pid 277534  2026-09-22 18:01:24 ===
+--- menu.chtpm  pid 277534  2026-09-22 18:01:24 ---
+--- page: main ---
+    [>] 1. Events (hq)
+    [ ] 2. Dir
+    [ ] 3. Inventory
+    [ ] 4. Close
+    [ ] 5. Cancel
+    [ ] 6. Cli-io

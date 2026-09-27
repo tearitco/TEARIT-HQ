@@ -1,0 +1,596 @@
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:56:44 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:56:44 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:56:45 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:56:45 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+        No live board-viewer session - open 'View Board' from the game first.
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:56:45 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:56:45 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:56:46 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:56:46 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:56:47 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:56:47 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:56:48 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:56:48 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:56:49 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:56:49 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:56:50 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:56:50 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:56:51 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:56:51 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:56:51 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:56:51 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. * In: off
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:56:51 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:56:51 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:56:52 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:56:52 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:56:53 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:56:53 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:56:54 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:56:54 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:56:55 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:56:55 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:56:56 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:56:56 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:56:57 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:56:57 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:56:58 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:56:58 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:56:59 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:56:59 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:57:00 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:57:00 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:57:01 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:57:01 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:57:02 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:57:02 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:57:03 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:57:03 ---
+--- page: main ---
+piececraft-hq board
+      [>] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:57:03 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:57:03 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [>] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:57:04 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:57:04 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [>] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:57:05 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:57:05 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [>] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:57:06 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:57:06 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [>] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:57:07 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:57:07 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [>] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:57:08 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:57:08 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [>] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:57:09 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:57:09 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [>] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:57:10 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:57:10 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [>] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:57:10 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:57:10 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small
+
+=== pchq-board.xhtpm pid 370389  2026-09-15 15:57:11 ===
+--- pchq-board.xhtpm  pid 370389  2026-09-15 15:57:11 ---
+--- page: main ---
+piececraft-hq board
+      [ ] 1. * In: ON
+      [ ] 2. File
+      [ ] 3. Desk ▾
+      [ ] 4. Menu ▾
+      [ ] 5. Player: ON ▾
+      [ ] 6. 12:00
+        ents
+    [ ] 7. hero
+    [ ] 8. chicken
+    [ ] 9. tree_small
+    [ ] 10. tree_small
+    [ ] 11. tree_small
+    [ ] 12. tree_small

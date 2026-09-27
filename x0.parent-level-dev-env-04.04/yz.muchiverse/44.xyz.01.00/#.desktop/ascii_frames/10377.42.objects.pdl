@@ -1,0 +1,30 @@
+OBJECT tag=item id=chrome-close class=- x=990 y=4 w=64 h=26 nav=11 active=0 label=X
+OBJECT tag=tab id=crumb0 class=- x=10 y=35 w=71 h=30 nav=1 active=0 label=/
+OBJECT tag=tab id=crumb1 class=- x=85 y=35 w=109 h=30 nav=2 active=0 label=home
+OBJECT tag=tab id=crumb2 class=- x=198 y=35 w=85 h=30 nav=3 active=0 label=no
+OBJECT tag=tab id=crumb3 class=- x=287 y=35 w=127 h=30 nav=4 active=0 label=Desktop
+OBJECT tag=tab id=crumb4 class=- x=418 y=35 w=114 h=30 nav=5 active=0 label=github
+OBJECT tag=tab id=crumb5 class=- x=536 y=35 w=103 h=30 nav=6 active=0 label=work
+OBJECT tag=tab id=crumb6 class=- x=643 y=35 w=164 h=30 nav=7 active=0 label=NNEST-12.00
+OBJECT tag=tab id=crumb7 class=- x=811 y=35 w=290 h=30 nav=8 active=0 label=x0.parent-level-dev-env-04.04
+OBJECT tag=tab id=crumb8 class=- x=1105 y=35 w=171 h=30 nav=9 active=0 label=yz.muchiverse
+OBJECT tag=tab id=crumb9 class=- x=1280 y=35 w=155 h=30 nav=10 active=0 label=44.xyz.01.00
+OBJECT tag=item id=back class=opacity-btn x=2 y=67 w=1060 h=30 nav=12 active=0 label=⬅️ Back
+OBJECT tag=item id=viewtoggle class=opacity-btn x=2 y=97 w=1060 h=30 nav=13 active=0 label=Grid View
+OBJECT tag=text id=- class=quiet x=2 y=127 w=1060 h=30 nav=0 active=0 label=Pick a file to load.
+OBJECT tag=item id=entry79 class=fe-entry x=2 y=171 w=1052 h=30 nav=16 active=0 label=📄  18651.log 170B
+OBJECT tag=item id=entry80 class=fe-entry x=2 y=201 w=1052 h=30 nav=17 active=0 label=📄  AUTO_DELEGATION.TXT 8KB
+OBJECT tag=item id=entry81 class=fe-entry x=2 y=231 w=1052 h=30 nav=18 active=0 label=📄  EMERGENCY_CLEAN.sh 5KB
+OBJECT tag=item id=entry82 class=fe-entry x=2 y=261 w=1052 h=30 nav=19 active=0 label=📄  EMERGENCY_CLOSE.ps1 2KB
+OBJECT tag=item id=entry83 class=fe-entry x=2 y=291 w=1052 h=30 nav=20 active=0 label=📄  EMERGENCY_CLOSE.sh 2KB
+OBJECT tag=item id=entry84 class=fe-entry x=2 y=321 w=1052 h=30 nav=21 active=0 label=📄  EMERGENCY_KILL.sh 6KB
+OBJECT tag=item id=entry85 class=fe-entry x=2 y=351 w=1052 h=30 nav=22 active=0 label=📄  ^.START_BUTTON_4.sh 184B
+OBJECT tag=item id=entry86 class=fe-entry x=2 y=381 w=1052 h=30 nav=23 active=0 label=📄  bookmarks_state.txt 0B
+OBJECT tag=item id=entry87 class=fe-entry x=2 y=411 w=1052 h=30 nav=24 active=0 label=📄  bookstack-path-bug.txt 12KB
+OBJECT tag=item id=entry88 class=fe-entry x=2 y=441 w=1052 h=30 nav=25 active=0 label=📄  check-symlinks.sh 3KB
+OBJECT tag=item id=entry89 class=fe-entry x=2 y=471 w=1052 h=30 nav=26 active=0 label=📄  interact_relay.txt 295B
+OBJECT tag=item id=entry90 class=fe-entry x=2 y=501 w=1052 h=30 nav=27 active=0 label=📄  khtpm-win-fix.txt 16KB
+OBJECT tag=item id=entry91 class=fe-entry x=2 y=531 w=1052 h=30 nav=28 active=0 label=📄  khtpm_events_hq_manager.+x 21KB
+OBJECT tag=item id=entry92 class=fe-entry x=2 y=561 w=1052 h=30 nav=29 active=0 label=📄  livedesk-win-fix-lvl2.txt 34KB
+OBJECT tag=item id=entry93 class=fe-entry x=2 y=591 w=1052 h=30 nav=30 active=0 label=📄  local-2do-15.txt 444B
+OBJECT tag=item id=entry94 class=fe-entry x=2 y=621 w=1052 h=30 nav=31 active=0 label=📄  run-khtpm-strip.sh 465B

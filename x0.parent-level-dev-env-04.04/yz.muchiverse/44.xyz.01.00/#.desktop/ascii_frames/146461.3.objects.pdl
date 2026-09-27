@@ -1,0 +1,13 @@
+OBJECT tag=text id=- class=quiet x=0 y=30 w=220 h=30 nav=0 active=0 label=scanned 15:58:40
+OBJECT tag=text id=- class=block-title x=0 y=60 w=220 h=30 nav=0 active=0 label=0 good  /  2 bad
+OBJECT tag=item id=b_refresh class=btn x=0 y=90 w=220 h=30 nav=1 active=0 label=  refresh now  
+OBJECT tag=item id=b_kill class=btn,danger x=0 y=120 w=220 h=30 nav=2 active=0 label=  KILL ALL BAD  
+OBJECT tag=item id=b_kill2 class=btn,danger x=0 y=150 w=220 h=30 nav=3 active=0 label= + pals/singletons 
+OBJECT tag=text id=- class=block-title x=0 y=180 w=220 h=30 nav=0 active=0 label=OTHER SESSION - real, not stray, not this one
+OBJECT tag=text id=- class=quiet x=0 y=0 w=0 h=0 nav=0 active=0 label=(none - no other live taskbar session)
+OBJECT tag=text id=- class=block-title x=0 y=210 w=220 h=30 nav=0 active=0 label=BAD - stray / leaked
+OBJECT tag=item id=bad0 class=data-item x=0 y=240 w=220 h=90 nav=4 active=0 label=94338   [pal-unreg] 1h48m  cpu:0.0  unreg  khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=item id=bad1 class=data-item x=0 y=330 w=220 h=90 nav=5 active=0 label=143026  [pal-unreg] 10m    cpu:0.0  unreg  khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+OBJECT tag=text id=- class=block-title x=220 y=30 w=480 h=30 nav=0 active=0 label=GOOD - owned / accounted for
+OBJECT tag=text id=- class=quiet x=220 y=60 w=480 h=30 nav=0 active=0 label=taskbar group, registered pals, house-wide managers, live -hq windows
+OBJECT tag=text id=- class=quiet x=220 y=90 w=480 h=30 nav=0 active=0 label=(nothing running that this house spawned)

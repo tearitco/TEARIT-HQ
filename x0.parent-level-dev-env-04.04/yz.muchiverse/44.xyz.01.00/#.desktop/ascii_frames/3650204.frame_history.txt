@@ -1,0 +1,123 @@
+
+=== proc-mon.xhtpm pid 3650204  2026-09-11 08:31:22 ===
+--- proc-mon.xhtpm  pid 3650204  2026-09-11 08:31:22 ---
+--- page: main ---
+Session Monitor
+          scanned 07:25:13
+          15 good  /  0 bad
+      [>] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            1526265 [singleton] 7h50m  cpu:0.1  unreg  swatch_picker_manager /home/no/Desktop/github/
+            3573877 [pal]       10m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3573880 [pal]       10m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3573883 [pal]       10m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3573885 [pal]       10m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3573889 [pal]       10m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3573893 [pal]       10m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3573895 [pal]       10m    cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3578856 [pal]       9m     cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3578858 [pal]       9m     cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3578862 [pal]       9m     cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3578865 [pal]       9m     cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3578868 [pal]       9m     cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+
+=== proc-mon.xhtpm pid 3650204  2026-09-11 08:31:24 ===
+--- proc-mon.xhtpm  pid 3650204  2026-09-11 08:31:24 ---
+--- page: main ---
+Session Monitor
+          scanned 08:31:23
+          10 good  /  0 bad
+      [>] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            1526265 [singleton] 8h57m  cpu:0.2  unreg  swatch_picker_manager /home/no/Desktop/github/
+            3573877 [pal]       1h16m  cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3573883 [pal]       1h16m  cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649177 [pal]       0m     cpu:0.2  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649179 [pal]       0m     cpu:0.4  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649181 [pal]       0m     cpu:0.4  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649183 [pal]       0m     cpu:0.4  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649185 [pal]       0m     cpu:0.4  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649187 [pal]       0m     cpu:0.4  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649189 [pal]       0m     cpu:0.2  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+
+=== proc-mon.xhtpm pid 3650204  2026-09-11 08:31:29 ===
+--- proc-mon.xhtpm  pid 3650204  2026-09-11 08:31:29 ---
+--- page: main ---
+Session Monitor
+          scanned 08:31:29
+          10 good  /  0 bad
+      [>] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            1526265 [singleton] 8h57m  cpu:0.2  unreg  swatch_picker_manager /home/no/Desktop/github/
+            3573877 [pal]       1h16m  cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3573883 [pal]       1h16m  cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649177 [pal]       0m     cpu:0.2  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649179 [pal]       0m     cpu:0.3  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649181 [pal]       0m     cpu:0.2  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649183 [pal]       0m     cpu:0.5  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649185 [pal]       0m     cpu:0.2  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649187 [pal]       0m     cpu:0.3  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649189 [pal]       0m     cpu:0.1  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+
+=== proc-mon.xhtpm pid 3650204  2026-09-11 08:31:29 ===
+--- proc-mon.xhtpm  pid 3650204  2026-09-11 08:31:29 ---
+--- page: main ---
+Session Monitor
+          scanned 08:31:29
+          10 good  /  0 bad
+      [ ] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            1526265 [singleton] 8h57m  cpu:0.2  unreg  swatch_picker_manager /home/no/Desktop/github/
+            3573877 [pal]       1h16m  cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3573883 [pal]       1h16m  cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649177 [pal]       0m     cpu:0.2  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649179 [pal]       0m     cpu:0.3  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649181 [pal]       0m     cpu:0.2  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649183 [pal]       0m     cpu:0.5  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649185 [pal]       0m     cpu:0.2  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649187 [pal]       0m     cpu:0.3  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649189 [pal]       0m     cpu:0.1  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+
+=== proc-mon.xhtpm pid 3650204  2026-09-11 08:31:31 ===
+--- proc-mon.xhtpm  pid 3650204  2026-09-11 08:31:31 ---
+--- page: main ---
+Session Monitor
+          scanned 08:31:29
+          10 good  /  0 bad
+      [ ] 1.   refresh now  
+      [ ] 2.   KILL ALL BAD  
+      [ ] 3.  + pals/singletons 
+          BAD - stray / leaked
+            (none - nothing leaked)
+          GOOD - owned / accounted for
+          taskbar group, registered pals, house-wide managers, live -hq windows
+            1526265 [singleton] 8h57m  cpu:0.2  unreg  swatch_picker_manager /home/no/Desktop/github/
+            3573877 [pal]       1h16m  cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3573883 [pal]       1h16m  cpu:0.0  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649177 [pal]       0m     cpu:0.2  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649179 [pal]       0m     cpu:0.3  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649181 [pal]       0m     cpu:0.2  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649183 [pal]       0m     cpu:0.5  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649185 [pal]       0m     cpu:0.2  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649187 [pal]       0m     cpu:0.3  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43
+            3649189 [pal]       0m     cpu:0.1  reg    khtpm_core_render xyzfs/users/0a9558a7-7c74-43

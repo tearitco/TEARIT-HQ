@@ -1,0 +1,11 @@
+
+=== menu.chtpm pid 234570  2026-09-19 21:40:19 ===
+--- menu.chtpm  pid 234570  2026-09-19 21:40:19 ---
+--- page: main ---
+zz_fe_test
+    [>] 1. Cut
+    [ ] 2. Copy
+    [ ] 3. Paste
+    [ ] 4. Delete
+    [ ] 5. Place
+    [ ] 6. Cancel

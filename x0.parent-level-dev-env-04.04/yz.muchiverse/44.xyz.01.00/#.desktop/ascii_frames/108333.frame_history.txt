@@ -1,0 +1,24 @@
+
+=== menu.chtpm pid 108333  2026-09-18 01:42:19 ===
+--- menu.chtpm  pid 108333  2026-09-18 01:42:19 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Close
+    [ ] 4. Cancel
+
+=== menu.chtpm pid 108333  2026-09-18 01:42:20 ===
+--- menu.chtpm  pid 108333  2026-09-18 01:42:20 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Close
+    [ ] 4. Cancel
+
+=== menu.chtpm pid 108333  2026-09-18 01:42:21 ===
+--- menu.chtpm  pid 108333  2026-09-18 01:42:21 ---
+--- page: main ---
+    [>] 1. Read
+    [ ] 2. Dir
+    [ ] 3. Close
+    [ ] 4. Cancel

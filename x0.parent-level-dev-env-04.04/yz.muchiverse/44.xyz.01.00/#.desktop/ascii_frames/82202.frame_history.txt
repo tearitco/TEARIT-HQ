@@ -1,0 +1,11 @@
+
+=== menu_gameplay.chtpm pid 82202  2026-09-14 13:53:58 ===
+--- menu_gameplay.chtpm  pid 82202  2026-09-14 13:53:58 ---
+--- page: main ---
+    [>] 1. City
+    [ ] 2. Production
+    [ ] 3. Armed Forces
+    [ ] 4. View
+    [ ] 5. Happy
+    [ ] 6. Rename
+    [ ] 7. Cancel

@@ -1,0 +1,92 @@
+
+=== palettes-piececraft.xhtpm pid 266359  2026-09-15 10:54:23 ===
+--- palettes-piececraft.xhtpm  pid 266359  2026-09-15 10:54:23 ---
+--- page: main ---
+palettes: Piececraft Blocks
+    [>] 1. x
+    [ ] 2. COMPAT
+    [ ] 3. CORE
+    [ ] 4. ENTITIES
+    [ ] 5. ENVIRONMENT
+    [ ] 6. HELP
+    [ ] 7. HUD
+    [ ] 8. ITEMS
+    [ ] 9. MAPGEN
+    [ ] 10. MISC
+    [ ] 11. PLAYER
+    [ ] 12. mcl_boats
+    [ ] 13. mcl_charges
+    [ ] 14. mcl_minecarts
+    [ ] 15. mcl_mobs
+    [ ] 16. mcl_paintings
+    [ ] 17. mobs_mc
+    [ ] 18. item
+    [ ] 19. item
+    [ ] 20. item
+    [ ] 21. item
+    [ ] 22. item
+    [ ] 23. item
+    [ ] 24. item
+    [ ] 25. item
+    [ ] 26. item
+    [ ] 27. item
+    [ ] 28. item
+    [ ] 29. item
+    [ ] 30. item
+    [ ] 31. item
+    [ ] 32. item
+    [ ] 33. item
+    [ ] 34. item
+    [ ] 35. item
+    [ ] 36. item
+    [ ] 37. item
+    [ ] 38. item
+    [ ] 39. item
+    [ ] 40. item
+    [ ] 41. item
+
+=== palettes-piececraft.xhtpm pid 266359  2026-09-15 10:54:26 ===
+--- palettes-piececraft.xhtpm  pid 266359  2026-09-15 10:54:26 ---
+--- page: main ---
+palettes: Piececraft Blocks
+    [>] 1. x
+    [ ] 2. COMPAT
+    [ ] 3. CORE
+    [ ] 4. ENTITIES
+    [ ] 5. ENVIRONMENT
+    [ ] 6. HELP
+    [ ] 7. HUD
+    [ ] 8. ITEMS
+    [ ] 9. MAPGEN
+    [ ] 10. MISC
+    [ ] 11. PLAYER
+    [ ] 12. mcl_boats
+    [ ] 13. mcl_charges
+    [ ] 14. mcl_minecarts
+    [ ] 15. mcl_mobs
+    [ ] 16. mcl_paintings
+    [ ] 17. mobs_mc
+    [ ] 18. item
+    [ ] 19. item
+    [ ] 20. item
+    [ ] 21. item
+    [ ] 22. item
+    [ ] 23. item
+    [ ] 24. item
+    [ ] 25. item
+    [ ] 26. item
+    [ ] 27. item
+    [ ] 28. item
+    [ ] 29. item
+    [ ] 30. item
+    [ ] 31. item
+    [ ] 32. item
+    [ ] 33. item
+    [ ] 34. item
+    [ ] 35. item
+    [ ] 36. item
+    [ ] 37. item
+    [ ] 38. item
+    [ ] 39. item
+    [ ] 40. item
+    [ ] 41. item
