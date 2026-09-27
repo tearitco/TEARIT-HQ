@@ -5958,8 +5958,15 @@ static void kh_nav_step(int dir) {
     int prev, n;
     if (g_n_nav < 1) return;
     if (!g_default_scope_confine) {
+        /* REAL FIX 2026-09-27, direct user request ("loop around index
+         * mod we wanted to do? it should loop both ways"): navigation now
+         * wraps at both boundaries instead of clamping - going below 1
+         * wraps to max, going above max wraps to 1, works in both
+         * directions. */
         int nv = g_focus_nav + dir;
-        if (nv >= 1 && nv <= g_n_nav) g_focus_nav = nv;
+        if (nv < 1) nv = g_n_nav;
+        if (nv > g_n_nav) nv = 1;
+        g_focus_nav = nv;
         return;
     }
     prev = g_focus_nav;
