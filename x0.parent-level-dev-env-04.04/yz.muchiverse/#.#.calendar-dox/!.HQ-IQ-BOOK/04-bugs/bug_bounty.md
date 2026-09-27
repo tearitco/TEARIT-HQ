@@ -2,7 +2,7 @@
 
 ---
 
-## ⚠️ OPEN 2026-09-24: Act menu opens in the wrong location; Move does nothing (no grid)
+## ✅ CLOSED 2026-09-26 (all real parts fixed and pixel/state-verified, including a full real Move feature - NOT deferred, see Part 2's own final update below): Act menu opens in the wrong location; Move does nothing (no grid)
 
 Direct live report: "the act button opens new window in entirely
 wrong location. it should open in same position as last window.
@@ -29,20 +29,15 @@ than inlining - needs a design call, not assumed to be the same
 passing the entity's own current `-x`/`-y` (or window id to position
 relative to) through to the launch, not silently defaulting.
 
-**UPDATE 2026-09-26, direct clarification of intent**: Move is
-*supposed* to arm `PLACE_RANGE` and open the placing grid - this is
-the real, missing link between this bug and the separately-tracked
-`PLACE_RANGE` gap (§1b below / `12.calendar/2026-09-24/notes.md` #3).
-Confirmed house-wide: `PLACE_RANGE` has ZERO real UI trigger anywhere
-in the codebase today (`grep -rn PLACE_RANGE` house-wide hits only
-`tp_arm_placer_rmmv.c`'s own `getenv()` read) - it has only ever been
-testable by manually exporting the env var before launching the placer
-binary by hand. Real fix needs: `act_row.sh`'s `move` case to set
-`PLACE_RANGE` and drive `tp_arm_placer_rmmv.+x` through
-`&.widgits/palettes/palettes_menu.sh`'s own real brush-arm flow (can't
-invoke the placer standalone - needs a real armed `rmmv_armed.txt`
-state first). Real, scoped, NOT YET BUILT - needs its own session, not
-a quick patch.
+**UPDATE 2026-09-26, direct clarification of intent (superseded by
+Part 2's final update below - kept for the real investigation trail)**:
+Move is *supposed* to arm `PLACE_RANGE` and open the placing grid.
+Confirmed house-wide at the time: `PLACE_RANGE` had ZERO real UI
+trigger anywhere in the codebase (only `tp_arm_placer_rmmv.c`'s own
+`getenv()` read). The FIRST fix attempt (commit `6e2a58d7`) wired this
+via the palette stamp/brush path, which the same day's live testing
+showed was the wrong mechanism (creates a new tile, not a real move) -
+see Part 2's final update for the real, correct fix that replaced it.
 
 **Also found and fixed, same investigation (2026-09-26)**: Act itself
 was showing a real "⚠ malformed template" warning, root-caused to
@@ -53,23 +48,48 @@ Fixed, commit `b4315f0d`. This alone may explain part of "Move does
 nothing" (a malformed template can misparse which action string
 belongs to which row) independent of the real `PLACE_RANGE` gap above.
 
-**Part 2 - Move does nothing (act_row.sh's own no-op, separate from
-both fixes above).** Not a new bug - this is the
-already-tracked, already-documented gap
-(`12.calendar/2026-09-24/notes.md` next-steps #4): `act_row.sh`'s own
-`move|use)` branch is a literal no-op placeholder:
-```sh
-  move|use)
-    echo "$cmd recorded"
-    ;;
-```
-(`&.widgits/entity-cli/ops/act_row.sh`). It records the word to
-`cli_commands.txt` and nothing else - no grid interaction is wired up
-at all yet. `attack` is the only command with real logic
-(`apply_range.sh`). Fixing this is real, undesigned work: Move/Use need
-their own version of what `attack` already does (open/target the grid,
-apply a real effect) - not a quick patch, tracked as its own next-steps
-item, not folded into Part 1's window-position fix.
+**Part 2 - Move does nothing - FULLY RESOLVED 2026-09-26, real feature,
+not a stamp/workaround (commit `de2170eb`), superseding every earlier
+note above about this being open/deferred:**
+
+- Move now does a real, reliable, single-entity relocation, not a
+  brand-new-tile stamp: `move_entity_on_desk.sh` (new) reuses
+  `FE_PLACE_CLICK` - the exact same real short-circuit File Explorer's
+  own drag-and-drop already relies on - to get a target cell back with
+  no stamping, then rewrites the ENTITY'S OWN `desktop_pos.txt` and
+  relaunches it there. `move_entity_to.sh` (new) is the NO-UI
+  companion: an agent/automated caller that already knows the target
+  reference px moves an entity directly, no grid/mouse/keyboard at all
+  - this is the real path for AI-driven or scripted movement.
+- The grid itself is no longer full-screen: `tp_arm_placer_rmmv.c` now
+  accepts `TP_ORIGIN_X`/`TP_ORIGIN_Y` (an entity's own position) + a
+  real range, limiting the overlay to a small box of cells around that
+  origin (direct live report: full-screen "is inconvenient when using
+  the computer, clicking other things on screen").
+- A single click now MOVES the target (same highlight arrows control),
+  not places immediately - a second click on the same cell, or Enter,
+  confirms (direct instruction: "clicking anywhere should move the
+  target... not place unless double clicked").
+- Real, per-house config, not just an env var: `desk_grid.pdl`'s new
+  `move_view_range`/`place_confirm` keys (direct instruction: "make the
+  limits and features .pdl toggle/customizable").
+- Confirmed live: arrow-key movement needs no explicit focus/click at
+  all - `XQueryKeymap` polls raw hardware key state independent of
+  window focus by design, verified by direct test (no click, no window
+  targeting, arrow key moved the target) - satisfies the direct
+  requirement "pressing arrow keys should move a placer, taking focus
+  from wherever its pressed... or it wont matter that it exists."
+
+Pixel-verified end-to-end: a real 560x560 range-limited window (vs. the
+old 2496x1664 full screen), a click moving a green target indicator to
+a named cell without placing, a confirmed double-click writing the
+entity's real new `desktop_pos.txt` and relaunching it there, and an
+arrow-key press moving the target with zero focus/click first.
+
+`attack` (`apply_range.sh`, still its own separate hardcoded a1/b2/2/6
+demo, untouched by this fix) and `use` (still a plain "recorded"
+no-op) are real, separate, not-yet-built follow-ups - not folded into
+this fix.
 
 ---
 
