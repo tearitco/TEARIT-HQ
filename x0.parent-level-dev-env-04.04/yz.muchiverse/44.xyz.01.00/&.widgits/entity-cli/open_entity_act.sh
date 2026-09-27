@@ -34,7 +34,18 @@ OUT="$HERE/state/act.xhtpm"
       if ($2 == "") next
       lab=$2; cmd=$3
       gsub(/&/, "\\&amp;", lab)
-      printf "    <item label=\"%s\" action=\"sh -c '\''exec \\\"%s/&.widgits/entity-cli/ops/act_row.sh\\\" \\\"%s\\\" \\\"%s\\\"'\''\"/>\n", lab, "'"$HOUSE"'", cmd, "'"$ENT"'"
+      # REAL FIX 2026-09-26, direct live report ("act says warning
+      # malformed template"): this used to emit a backslash-quote
+      # inside the action="..." XML attribute - XML has no backslash
+      # escaping, so the parser sees a real, unescaped closing quote
+      # there and the rest of that attribute value lands as stray
+      # bytes outside any attribute, tripping khtpm_core_render.c own
+      # NOT-WELL-FORMED / g_window_malformed check (see parse_chtpm()
+      # own comment there for the general shape of this class of bug).
+      # &quot; is the real, correct XML escape for a quote inside an
+      # already-double-quoted attribute value - pre-existing bug, not
+      # introduced by this same session Act-position fix.
+      printf "    <item label=\"%s\" action=\"sh -c '\''exec &quot;%s/&.widgits/entity-cli/ops/act_row.sh&quot; &quot;%s&quot; &quot;%s&quot;'\''\"/>\n", lab, "'"$HOUSE"'", cmd, "'"$ENT"'"
     }
   ' "$SRC"
   echo '    <item label="Back" action="CLOSE"/>'
