@@ -4408,6 +4408,13 @@ static int tp_main(int argc, char **argv) {
 
     TP_TIMING_MARK("setup-complete->entering event loop");
     while (running && !g_shutdown_requested) {
+#if 0
+        /* DISABLED 2026-09-27: XMoveWindow during event loop corrupts X11 window state
+           causing entity disappearance and infinite movement. Animation queue mechanism
+           works correctly in isolation (move_entity_animated.+x verified), but khtpm_entity.c
+           integration breaks on real windows. Keep position-file updates; skip animation.
+           See: XO/3.Move_animation/INVESTIGATION.md */
+
         /* Check for animation_queue.txt and process next waypoint */
         if (anim_waypoint_count > 0 && anim_queue_index < anim_waypoint_count) {
             win_x = anim_waypoints[anim_queue_index].x;
@@ -4449,6 +4456,7 @@ static int tp_main(int argc, char **argv) {
                 append_history("ANIM_LOAD count=%d", anim_waypoint_count);
             }
         }
+#endif
 #ifdef _WIN32
         x11_wait(dpy, POLL_INTERVAL_USEC);
         (void)xfd;
