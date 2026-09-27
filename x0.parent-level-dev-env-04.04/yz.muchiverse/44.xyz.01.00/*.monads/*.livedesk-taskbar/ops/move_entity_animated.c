@@ -2,8 +2,7 @@
  * move_entity_animated.c
  * 
  * Moves entity from current position to target with animation.
- * Uses A* pathfinding to generate waypoints, writes animation_queue.txt
- * for entity's game loop to read and animate through.
+ * Uses A* pathfinding to generate waypoints, clamps to screen bounds.
  * 
  * Usage: move_entity_animated.+x <package_dir> <target_x> <target_y>
  *   package_dir: entity's directory (contains desktop_pos.txt)
@@ -13,16 +12,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <unistd.h>
 
 #define MAX_PATH 4096
 #define MAX_WAYPOINTS 1024
 #define GRID_STEP 32
+#define SCREEN_WIDTH 2496
+#define SCREEN_HEIGHT 1664
 
 typedef struct {
     int x, y;
 } Point;
+
+static int clamp(int val, int min_val, int max_val) {
+    if (val < min_val) return min_val;
+    if (val > max_val) return max_val;
+    return val;
+}
 
 static int read_current_pos(const char *package_dir, int *x, int *y) {
     char path[MAX_PATH];
@@ -54,16 +60,12 @@ static int pathfind_astar(int sx, int sy, int tx, int ty, Point *waypoints) {
         waypoints[count].y = cy;
         count++;
         
-        /* Check if we've reached/passed target on both axes */
         int reached_x = (dx == 0) ? (cx == tx) : ((dx > 0) ? (cx >= tx) : (cx <= tx));
         int reached_y = (dy == 0) ? (cy == ty) : ((dy > 0) ? (cy >= ty) : (cy <= ty));
         
         if (reached_x && reached_y) {
-            /* Clamp final waypoint to exact target */
-            if (count > 1 || (cx != tx || cy != ty)) {
-                waypoints[count-1].x = tx;
-                waypoints[count-1].y = ty;
-            }
+            waypoints[count-1].x = tx;
+            waypoints[count-1].y = ty;
             break;
         }
         
@@ -117,6 +119,10 @@ int main(int argc, char *argv[]) {
     const char *package_dir = argv[1];
     int target_x = atoi(argv[2]);
     int target_y = atoi(argv[3]);
+    
+    /* Clamp target to screen bounds */
+    target_x = clamp(target_x, 0, SCREEN_WIDTH);
+    target_y = clamp(target_y, 0, SCREEN_HEIGHT);
     
     int cur_x = 0, cur_y = 0;
     if (!read_current_pos(package_dir, &cur_x, &cur_y)) {
