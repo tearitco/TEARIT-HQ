@@ -1,0 +1,21 @@
+# world_manager.pal - Central world state manager
+# Orchestrates house-level game state via append-only ledgers.
+# Syncs entity positions, detects movement, queues animations.
+# Mirrors RPG Maker GameManager + house prisc+op architecture.
+#
+# Pattern:
+#   C game_manager.c: polling_loop() -> poll_entities() -> sleep -> loop
+#   .pal equivalent:  exec ops/world_manager_tick -> sleep 16 -> j loop
+#
+# Each op (world_manager_init, world_manager_tick) handles its own
+# WORLD_ROOT derivation; relative paths work from the directory
+# where this .pal file lives (&.hq-apps/world-manager/).
+
+# Initial setup
+exec ./ops/world_manager_init
+hit_frame
+
+loop:
+  exec ./ops/world_manager_tick
+  sleep 16
+  j loop
