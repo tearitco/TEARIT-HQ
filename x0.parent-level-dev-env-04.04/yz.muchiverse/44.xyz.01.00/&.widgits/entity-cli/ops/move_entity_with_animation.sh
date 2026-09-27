@@ -46,27 +46,36 @@ WAYPOINTS="/tmp/waypoints_$$.txt"
 trap "rm -f '$WAYPOINTS'" EXIT
 "$PATHFIND" "$OX" "$OY" "$TX" "$TY" "$STEP" "$WAYPOINTS" || exit 1
 
-# Animate through waypoints: update entity's position file for each step,
-# with a small delay between writes to let the entity's game loop render each
-FRAME_MS=50  # ~50ms per frame (20fps) - tune for desired animation speed
+# Animate through waypoints: extract x/y pairs, update entity's position
+# file for each step with kill+relaunch, with frame delays between updates
 count=0
-while IFS= read -r line; do
-	case "$line" in x=*|y=*) ;; *) continue ;; esac
-	case "$line" in
-	x=*) x_val="${line#x=}" ;;
-	y=*) y_val="${line#y=}" ;;
+while IFS='=' read -r key val; do
+	case "$key" in
+	x) cx="$val" ;;
+	y) cy="$val" ;;
 	esac
-	if [ -n "${x_val:-}" ] && [ -n "${y_val:-}" ]; then
-		printf 'x=%s\ny=%s\nz=0\n' "$x_val" "$y_val" > "$ENT/desktop_pos.txt"
+	# When we have both x and y, write position and restart entity
+	if [ -n "${cx:-}" ] && [ -n "${cy:-}" ]; then
+		printf 'x=%s\ny=%s\nz=0\n' "$cx" "$cy" > "$ENT/desktop_pos.txt"
 		count=$((count + 1))
-		# Small delay to allow entity's game loop to render this frame
-		# Not a blocking sleep (which would lock the entity) - just marks
-		# time so the entity can read, render, and update display
-		if [ "$count" -lt $(wc -l < "$WAYPOINTS") ]; then
-			sleep 0.05  # ~50ms per waypoint
-		fi
-		x_val=""
-		y_val=""
+
+		# Kill old process and launch new one at this waypoint position
+		for p in /proc/[0-9]*; do
+			[ "$p" = "/proc/$$" ] && continue
+			[ -r "$p/cmdline" ] || continue
+			cl=$(tr '\0' ' ' < "$p/cmdline" 2>/dev/null) || continue
+			case "$cl" in *"$ENT"*) kill -9 "${p#/proc/}" 2>/dev/null || true ;; esac
+		done
+
+		# Relaunch entity at new waypoint
+		ENT_BIN="$(find "$HOUSE" -path "*livedesk-taskbar/ops/+x/khtpm_entity.+x" -o -path "*livedesk-taskbar/ops/+x/khtpm_core_render.+x" 2>/dev/null | head -1)"
+		[ -x "$ENT_BIN" ] || ENT_BIN="$HOUSE/"*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x
+		setsid nohup "$ENT_BIN" "$ENT" >/dev/null 2>&1 < /dev/null &
+
+		# Frame delay between waypoints (allows visual rendering)
+		sleep 0.1  # ~100ms per waypoint for visible animation
+		cx=""
+		cy=""
 	fi
 done < "$WAYPOINTS"
 

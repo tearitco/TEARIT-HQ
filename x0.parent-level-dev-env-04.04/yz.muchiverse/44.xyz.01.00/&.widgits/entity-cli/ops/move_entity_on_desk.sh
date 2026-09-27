@@ -86,21 +86,46 @@ case "$g" in ''|*[!0-9]*) g=80 ;; esac
 x=$(( (x / g) * g ))
 y=$(( (y / g) * g ))
 
-printf 'x=%s\ny=%s\n' "$x" "$y" > "$ENT/desktop_pos.txt"
-
-# Kill this entity's own currently-live process (it's showing at the
-# OLD position right now) before relaunching it at the new one - same
-# real kill-then-relaunch idiom this house already uses elsewhere
-# (palettes_menu.sh's launch_cat(), launch_khtpm_menu()).
-for p in /proc/[0-9]*; do
-    [ "$p" = "/proc/$$" ] && continue
-    [ -r "$p/cmdline" ] || continue
-    cl=$(tr '\0' ' ' < "$p/cmdline" 2>/dev/null) || continue
-    case "$cl" in *"$ENT"*) kill "${p#/proc/}" 2>/dev/null || true ;; esac
-done
-sleep 0.2
-
-ENT_BIN="$HOUSE/"*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity.+x
-[ -x "$ENT_BIN" ] || ENT_BIN="$HOUSE/"*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x
-setsid nohup "$ENT_BIN" "$ENT" >/dev/null 2>&1 < /dev/null &
+# REAL FIX 2026-09-27, direct instruction ("im still not seeing animated
+# move. lets do that"): instead of a direct one-shot kill/relaunch, animate
+# the entity sliding from its current position to the target via
+# move_entity_with_animation.sh. Writes sequential waypoints, entity
+# relaunches at each waypoint, creating smooth visible motion.
+ANIM_SCRIPT="$HOUSE/&.widgits/entity-cli/ops/move_entity_with_animation.sh"
+if [ -x "$ANIM_SCRIPT" ]; then
+	# Get current position (old pos, to animate FROM)
+	ox=$(grep '^x=' "$ENT/desktop_pos.txt" 2>/dev/null | head -1 | sed 's/^x=//' || echo "0")
+	oy=$(grep '^y=' "$ENT/desktop_pos.txt" 2>/dev/null | head -1 | sed 's/^y=//' || echo "0")
+	case "$ox" in ''|*[!0-9]*) ox=0 ;; esac
+	case "$oy" in ''|*[!0-9]*) oy=0 ;; esac
+	# Animate from old to new position
+	ANIM_STEP="${ANIM_STEP:-8}"  # 8px per frame
+	"$ANIM_SCRIPT" "$HOUSE" "$ENT" "$x" "$y" || {
+		# Fallback to instant move if animation script fails
+		printf 'x=%s\ny=%s\n' "$x" "$y" > "$ENT/desktop_pos.txt"
+		for p in /proc/[0-9]*; do
+			[ "$p" = "/proc/$$" ] && continue
+			[ -r "$p/cmdline" ] || continue
+			cl=$(tr '\0' ' ' < "$p/cmdline" 2>/dev/null) || continue
+			case "$cl" in *"$ENT"*) kill "${p#/proc/}" 2>/dev/null || true ;; esac
+		done
+		sleep 0.2
+		ENT_BIN="$HOUSE/"*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity.+x
+		[ -x "$ENT_BIN" ] || ENT_BIN="$HOUSE/"*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x
+		setsid nohup "$ENT_BIN" "$ENT" >/dev/null 2>&1 < /dev/null &
+	}
+else
+	# No animation script; fall back to instant move
+	printf 'x=%s\ny=%s\n' "$x" "$y" > "$ENT/desktop_pos.txt"
+	for p in /proc/[0-9]*; do
+		[ "$p" = "/proc/$$" ] && continue
+		[ -r "$p/cmdline" ] || continue
+		cl=$(tr '\0' ' ' < "$p/cmdline" 2>/dev/null) || continue
+		case "$cl" in *"$ENT"*) kill "${p#/proc/}" 2>/dev/null || true ;; esac
+	done
+	sleep 0.2
+	ENT_BIN="$HOUSE/"*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity.+x
+	[ -x "$ENT_BIN" ] || ENT_BIN="$HOUSE/"*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x
+	setsid nohup "$ENT_BIN" "$ENT" >/dev/null 2>&1 < /dev/null &
+fi
 echo "moved to x=$x y=$y"
