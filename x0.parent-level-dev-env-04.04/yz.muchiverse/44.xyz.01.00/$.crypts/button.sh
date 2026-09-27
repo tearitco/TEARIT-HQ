@@ -71,7 +71,10 @@ case "$ACTION" in
         khtpm_pids | xargs -r kill -TERM
         sleep 1
         khtpm_pids | xargs -r kill -KILL 2>/dev/null || true
-        echo "closed all toolbars and entities"
+        # Also kill world_manager service
+        [ -x "$HOUSE/&.hq-apps/world-manager/button.sh" ] && \
+            "$HOUSE/&.hq-apps/world-manager/button.sh" kill 2>/dev/null || true
+        echo "closed all toolbars, entities, and world_manager"
         ;;
     reset)
         # Guaranteed-clean kill-everything-then-relaunch — for when the
@@ -85,6 +88,9 @@ case "$ACTION" in
         khtpm_pids | xargs -r kill -TERM
         sleep 1
         khtpm_pids | xargs -r kill -KILL 2>/dev/null || true
+        # Also kill world_manager service
+        [ -x "$HOUSE/&.hq-apps/world-manager/button.sh" ] && \
+            "$HOUSE/&.hq-apps/world-manager/button.sh" kill 2>/dev/null || true
         # REAL FIX 2026-09-21, direct instruction ("i dont want it to run
         # the old binaries if theres a compile fail or it may mislead me
         # into thinking things are ok, when they aren't"): this used to
