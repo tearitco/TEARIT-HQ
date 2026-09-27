@@ -237,6 +237,27 @@ static int ov_cell_valid(const Ov *o, int r, int c, int *cx, int *cy) {
  * intentionally generic/shared, no khtpm-specific concept of a
  * sub-window lives there), so a real range limit needs this second,
  * caller-side clamp on top of it. */
+/* REAL FIX 2026-09-26, direct instruction ("the focus worked when
+ * opened, but not after i clicked and moved placer, it should have
+ * kept focus after that for sure"): a mouse ButtonPress on an
+ * override_redirect window is not guaranteed to keep/reclaim real X
+ * input focus the way opening the window did - same real class of
+ * problem khtpm_core_render.c's own click-driven re-focus fix already
+ * handles for its popups (grep that file for "if (had_focus == win)").
+ * Short retry, same shape as the real one used at open time - called
+ * again after every real click here so focus does not silently drift
+ * away mid-session. */
+static void ov_reassert_focus(Display *dpy, Window w) {
+    for (int attempt = 0; attempt < 5; attempt++) {
+        XSetInputFocus(dpy, w, RevertToParent, CurrentTime);
+        XSync(dpy, False);
+        Window focused; int revert;
+        XGetInputFocus(dpy, &focused, &revert);
+        if (focused == w) break;
+        usleep(5000);
+    }
+}
+
 static void ov_clamp_view(const Ov *o, GjState *st) {
     if (!o->has_view) return;
     if (st->col < o->view_c0) st->col = o->view_c0;
@@ -533,15 +554,16 @@ static int ov_key(Ov *o, GjKey k, char ch, int *cx, int *cy) {
     if (!o->kb_active) {
         o->kb_active = 1;
         if (o->has_view) {
-            /* REAL FIX 2026-09-26: the real pointer position is almost
-             * certainly OUTSIDE this small view window (it's wherever
-             * the Act menu that launched this was) - start the target
-             * at the view's own centre cell instead of the pointer's,
-             * same real reasoning as ov_cell_valid()'s view-bounds
-             * check just below (a cell outside the view can never be
-             * drawn - there is no window there to draw it into). */
-            o->gj.col = (o->view_c0 + o->view_c1) / 2;
-            o->gj.row = (o->view_r0 + o->view_r1) / 2;
+            /* REAL FIX 2026-09-26, direct instruction ("placer should
+             * start at 0,0 on the showing grid, not main screen"): the
+             * real pointer position is almost certainly OUTSIDE this
+             * small view window (it's wherever the Act menu that
+             * launched this was) - start the target at the view's own
+             * LOCAL (0,0), i.e. its own top-left cell (view_c0,
+             * view_r0), not the absolute screen grid's (0,0) and not
+             * the view's centre either. */
+            o->gj.col = o->view_c0;
+            o->gj.row = o->view_r0;
         } else {
             Window rr, cc; int rx, ry, wx, wy; unsigned int m;
             if (XQueryPointer(o->dpy, DefaultRootWindow(o->dpy), &rr, &cc, &rx, &ry, &wx, &wy, &m)) {
@@ -810,6 +832,19 @@ int main(int argc, char **argv) {
         ov.gcs[i] = XCreateGC(dpy, ov.panes[i].w, 0, NULL);
         if (ov.fs) XSetFont(dpy, ov.gcs[i], ov.fs->fid);
     }
+    /* REAL FIX 2026-09-26, direct instruction ("i dont actually see it
+     * till i click grid"): the target highlight used to only draw once
+     * kb_active was set by the first real key/click - in has_view mode
+     * (Move), arm it immediately so the target is visible from the
+     * very first frame, at the view's own local (0,0) (view_c0,
+     * view_r0 - see ov_key()'s own matching comment). The unlimited/
+     * full-screen palette-stamp tool is unaffected (has_view false
+     * there) - its own pointer-driven activation is unchanged. */
+    if (ov.has_view) {
+        ov.kb_active = 1;
+        ov.gj.col = ov.view_c0;
+        ov.gj.row = ov.view_r0;
+    }
     ov_redraw(&ov);
     XFlush(dpy);
     /* Real keyboard grab still needed for Escape - InputOnly windows
@@ -829,6 +864,19 @@ int main(int argc, char **argv) {
         usleep(50000);
     }
     XSync(dpy, False);
+    /* REAL FIX 2026-09-26, direct instruction ("it should be taking
+     * arrow focus like any x11-hq window does when it opens for nav...
+     * which it isn't yet doing"): the XGrabKeyboard above should
+     * already deliver every key regardless of real X focus, but this
+     * house's own established convention for a human-triggered popup
+     * (khtpm_core_render.c's main(), "restores [XSetInputFocus] scoped
+     * to popups only... a short retry" - grep that file for
+     * "F-19: a bare call can silently fail") is a real, additional
+     * XSetInputFocus with a short retry, not relying on the grab alone
+     * - belt-and-suspenders, same real reasoning, applied here too so
+     * this window behaves the same way on open as every other real
+     * x11-hq popup in this house. */
+    if (ov.has_view && ov.n > 0) ov_reassert_focus(dpy, ov.panes[0].w);
 
     int click_x = -1, click_y = -1, cancelled = 0;
     const int use_zones = ov.use_zones;
@@ -967,6 +1015,12 @@ int main(int argc, char **argv) {
                     ov.last_key_ms = t;
                     ov.ptr_x = mx; ov.ptr_y = my;
                     ov_update_hover(&ov);
+                    /* REAL FIX 2026-09-26, direct instruction ("the
+                     * focus worked when opened, but not after i
+                     * clicked and moved placer, it should have kept
+                     * focus after that for sure") - re-assert every
+                     * click, not just at open. */
+                    if (ov.has_view) ov_reassert_focus(dpy, ov.panes[0].w);
                     if (is_dbl && ov_cell_valid(&ov, ov.gj.row, ov.gj.col, &click_x, &click_y)) {
                         if (use_zones)
                             zone_pid = pz_hit(desktop_root, click_x, click_y, skip_dir, zone_dest, sizeof(zone_dest));

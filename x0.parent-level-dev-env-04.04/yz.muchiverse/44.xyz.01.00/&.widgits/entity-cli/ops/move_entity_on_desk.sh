@@ -40,6 +40,21 @@ HOUSE="${1:-}"
 ENT="${2:-}"
 [ -n "$HOUSE" ] && [ -d "$ENT" ] || { echo "move_entity_on_desk.sh: need house_root and entity_dir" >&2; exit 1; }
 
+# REAL FIX 2026-09-26, direct live report ("it places 2 green placers
+# on grid now"): two concurrent tp_arm_placer_rmmv.+x instances for the
+# SAME entity (each drawing its own overlapping grid) - nothing
+# stopped Move being triggered twice (e.g. clicking again because the
+# target used to not show immediately - now fixed separately) from
+# spawning a second placer alongside the first. Same real single-
+# instance kill-before-relaunch idiom this house already uses
+# elsewhere (palettes_menu.sh's launch_cat(), launch_khtpm_menu()).
+for p in /proc/[0-9]*; do
+    [ "$p" = "/proc/$$" ] && continue
+    [ -r "$p/cmdline" ] || continue
+    cl=$(tr '\0' ' ' < "$p/cmdline" 2>/dev/null) || continue
+    case "$cl" in *"tp_arm_placer_rmmv"*"$ENT"*) kill "${p#/proc/}" 2>/dev/null || true ;; esac
+done
+
 CLICK="$ENT/move_click.txt"
 rm -f "$CLICK"
 export FE_PLACE_CLICK="$CLICK"
