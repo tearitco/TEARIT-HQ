@@ -1,7 +1,7 @@
 /*
  * move_entity_animated.c
  *
- * Moves entity from current position to target with smooth animation.
+ * Moves entity from current position to target with animation.
  * Uses A* pathfinding to generate waypoints, writes animation_queue.txt
  * for entity's game loop to read and animate through.
  *
@@ -23,11 +23,6 @@
 typedef struct {
     int x, y;
 } Point;
-
-typedef struct {
-    int x, y;
-    int g, h;  /* g = cost from start, h = heuristic to goal */
-} Node;
 
 /* Read current position from desktop_pos.txt */
 static int read_current_pos(const char *package_dir, int *x, int *y) {
@@ -51,9 +46,6 @@ static int read_current_pos(const char *package_dir, int *x, int *y) {
 
 /* Simple A* pathfinding - returns waypoint count */
 static int pathfind_astar(int sx, int sy, int tx, int ty, Point *waypoints) {
-    /* For now: simple straight-line interpolation (Manhattan-style steps).
-     * Full A* with obstacle avoidance can be added later. */
-
     int count = 0;
     int dx = (tx > sx) ? GRID_STEP : (tx < sx) ? -GRID_STEP : 0;
     int dy = (ty > sy) ? GRID_STEP : (ty < sy) ? -GRID_STEP : 0;
