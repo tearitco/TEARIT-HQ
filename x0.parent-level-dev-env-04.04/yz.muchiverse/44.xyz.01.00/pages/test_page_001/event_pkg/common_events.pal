@@ -1,0 +1,33 @@
+# common_events.pal - Reusable event scripts for test_page_001
+#
+# Called by page_manager.pal when triggers fire.
+# Each event is a named function taking entity_id and event data.
+
+# Event: Entity entered a zone
+proc event_entity_zone_enter {entity_id zone_id} {
+    puts "Event: $entity_id entered zone $zone_id"
+
+    # Example: if it's the player and zone is "npc_area", move NPC toward player
+    if {$entity_id eq "player" && $zone_id eq "zone_1"} {
+        puts "  -> Queueing NPC reaction: npc_01 moves toward player"
+        # Would queue animation for npc_01
+    }
+}
+
+# Event: Entity moved
+proc event_entity_moved {entity_id old_x old_y new_x new_y} {
+    puts "Event: $entity_id moved from ($old_x, $old_y) to ($new_x, $new_y)"
+}
+
+# Event: Entity arrived at destination (after animation)
+proc event_entity_arrived {entity_id final_x final_y} {
+    puts "Event: $entity_id arrived at ($final_x, $final_y)"
+    # Could trigger dialogue, quest completion, etc.
+}
+
+# Event: Dialogue/Interaction
+proc event_entity_interact {entity_id target_entity_id} {
+    puts "Event: $entity_id interacted with $target_entity_id"
+}
+
+# More events can be added here as needed

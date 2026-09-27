@@ -1,0 +1,200 @@
+# page_manager.pal - Central page state manager
+#
+# Manages a single page's world state via append-only ledgers.
+# Polls entity positions, runs common events on triggers,
+# manages animations. Mirrors RPG Maker GameManager pattern.
+#
+# Run via: prisc page_manager.pal
+# Or launch from page_load event as: exec ./manager/page_manager.pal
+
+# Read house root and page id from environment
+set page_root $0
+set house_root [string range $page_root 0 [string last "/pages" $page_root]]
+set house_root [string range $house_root 0 [string last "/" [string range $house_root 0 end-1]]]
+
+# Initialize ledger files and cursor markers
+proc init_ledgers {} {
+    global page_root
+
+    # Create empty ledgers if they don't exist
+    foreach ledger {entities_live world_events animation_queue} {
+        set path "$page_root/state/${ledger}.txt"
+        if {![file exists $path]} {
+            set fp [open $path w]
+            close $fp
+        }
+    }
+
+    # Create cursor marker file
+    set cursor_file "$page_root/state/page_manager.cursor"
+    if {![file exists $cursor_file]} {
+        set fp [open $cursor_file w]
+        puts $fp "entities_live: 0"
+        puts $fp "world_events: 0"
+        puts $fp "animation_queue: 0"
+        close $fp
+    }
+}
+
+# Read cursor positions from marker file
+proc read_cursors {} {
+    global page_root
+    set cursors [list 0 0 0]  ;# default: [entities_line, events_line, anim_line]
+
+    set cursor_file "$page_root/state/page_manager.cursor"
+    if {[file exists $cursor_file]} {
+        set fp [open $cursor_file r]
+        set line_num 0
+        while {[gets $fp line] >= 0} {
+            if {[string match "entities_live:*" $line]} {
+                lset cursors 0 [string trim [string range $line 14 end]]
+            } elseif {[string match "world_events:*" $line]} {
+                lset cursors 1 [string trim [string range $line 12 end]]
+            } elseif {[string match "animation_queue:*" $line]} {
+                lset cursors 2 [string trim [string range $line 16 end]]
+            }
+        }
+        close $fp
+    }
+    return $cursors
+}
+
+# Write cursor positions back to marker file
+proc write_cursors {entities_line events_line anim_line} {
+    global page_root
+    set cursor_file "$page_root/state/page_manager.cursor"
+    set fp [open $cursor_file w]
+    puts $fp "entities_live: $entities_line"
+    puts $fp "world_events: $events_line"
+    puts $fp "animation_queue: $anim_line"
+    close $fp
+}
+
+# Poll entities_live.txt for new position changes
+proc poll_entities {start_line} {
+    global page_root
+    set entities_file "$page_root/state/entities_live.txt"
+    set current_line $start_line
+
+    if {![file exists $entities_file]} {
+        return $current_line
+    }
+
+    set fp [open $entities_file r]
+    set line_num 0
+    while {[gets $fp line] >= 0} {
+        incr line_num
+        if {$line_num > $start_line && [string length [string trim $line]] > 0} {
+            # Process this new entity position change
+            check_entity_triggers $line
+            set current_line $line_num
+        }
+    }
+    close $fp
+    return $current_line
+}
+
+# Check if entity movement triggers any events
+proc check_entity_triggers {entity_line} {
+    # Parse: entity_id | x | y | state | (optional extra data)
+    # Example: player_01 | x=150 | y=200 | state=idle
+
+    global page_root
+
+    # Extract entity_id and position
+    set parts [split $entity_line |]
+    set entity_id [string trim [lindex $parts 0]]
+
+    # For now, just log it; later check trigger table
+    # puts "Entity moved: $entity_id"
+
+    # Simple trigger: if entity enters zone at (150, 200)
+    # Queue a reaction event
+    if {$entity_id eq "player" && [string match "*x=150*" $entity_line]} {
+        queue_common_event "entity_zone_enter" "player zone_1"
+    }
+}
+
+# Queue a common event to run
+proc queue_common_event {event_name event_args} {
+    global page_root
+    set world_events_file "$page_root/state/world_events.txt"
+    set fp [open $world_events_file a]
+    puts $fp "$event_name | $event_args"
+    close $fp
+}
+
+# Poll animation queue and run animations
+proc poll_animations {start_line} {
+    global page_root house_root
+    set anim_file "$page_root/state/animation_queue.txt"
+    set current_line $start_line
+
+    if {![file exists $anim_file]} {
+        return $current_line
+    }
+
+    set fp [open $anim_file r]
+    set line_num 0
+    while {[gets $fp line] >= 0} {
+        incr line_num
+        if {$line_num > $start_line && [string length [string trim $line]] > 0} {
+            # Parse and execute animation
+            set parts [split $line |]
+            set entity_id [string trim [lindex $parts 0]]
+            set target_x [string trim [string range [lindex $parts 1] 2 end]]
+            set target_y [string trim [string range [lindex $parts 2] 2 end]]
+
+            # Call move_entity_with_animation.sh
+            set ent_path "$house_root/xyzfs/users/*/home/livedesk/pals/$entity_id"
+            set ent_path [lindex [glob -nocomplain $ent_path] 0]
+
+            if {[file exists $ent_path]} {
+                puts "Animating $entity_id to ($target_x, $target_y)"
+                # Would call move_entity_with_animation.sh here
+                # exec sh "$house_root/&.widgits/entity-cli/ops/move_entity_with_animation.sh" \
+                #     "$house_root" "$ent_path" "$target_x" "$target_y" &
+            }
+            set current_line $line_num
+        }
+    }
+    close $fp
+    return $current_line
+}
+
+# Main loop
+proc main_loop {} {
+    global page_root
+    set tick 0
+
+    puts "Page Manager started for: $page_root"
+
+    while {1} {
+        incr tick
+
+        # Read current cursors
+        set cursors [read_cursors]
+        set entities_cursor [lindex $cursors 0]
+        set events_cursor [lindex $cursors 1]
+        set anim_cursor [lindex $cursors 2]
+
+        # Poll each ledger
+        set entities_cursor [poll_entities $entities_cursor]
+        set anim_cursor [poll_animations $anim_cursor]
+
+        # Write updated cursors
+        write_cursors $entities_cursor $events_cursor $anim_cursor
+
+        # Sleep briefly to avoid busy-polling (16ms = ~60fps)
+        after 16
+
+        # Uncomment for debug: every 60 ticks, print status
+        if {$tick % 60 == 0} {
+            puts "Tick $tick: entities_cursor=$entities_cursor, events_cursor=$events_cursor, anim_cursor=$anim_cursor"
+        }
+    }
+}
+
+# Entry point
+init_ledgers
+main_loop
