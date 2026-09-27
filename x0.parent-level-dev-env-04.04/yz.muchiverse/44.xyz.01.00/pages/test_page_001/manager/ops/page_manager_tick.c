@@ -183,6 +183,56 @@ int poll_entities(const char *entities_file, const char *log_file,
     return current_line;
 }
 
+int poll_animations(const char *anim_file, const char *log_file, int start_line) {
+    FILE *fp = fopen(anim_file, "r");
+    if (!fp) return start_line;
+
+    char line[MAX_LINE];
+    int line_num = 0;
+    int current_line = start_line;
+
+    while (fgets(line, sizeof(line), fp)) {
+        line_num++;
+        if (line_num <= start_line) continue;
+
+        char *stripped = line;
+        while (*stripped == ' ' || *stripped == '\t') stripped++;
+        if (*stripped == '\0' || *stripped == '\n') continue;
+
+        // Parse animation line: "entity_id | x=N | y=N | target_x=N | target_y=N"
+        char entity_id[256] = {0};
+        int target_x = 0, target_y = 0;
+
+        char *pos = stripped;
+        char *pipe = strchr(pos, '|');
+        if (pipe) {
+            strncpy(entity_id, pos, pipe - pos);
+            entity_id[pipe - pos] = '\0';
+            for (int i = strlen(entity_id) - 1; i >= 0 &&
+                 (entity_id[i] == ' ' || entity_id[i] == '\t'); i--)
+                entity_id[i] = '\0';
+        }
+
+        // Find target positions
+        pos = stripped;
+        while ((pos = strstr(pos, "target_x=")) != NULL) {
+            if (sscanf(pos, "target_x=%d", &target_x) == 1) break;
+            pos++;
+        }
+        pos = stripped;
+        while ((pos = strstr(pos, "target_y=")) != NULL) {
+            if (sscanf(pos, "target_y=%d", &target_y) == 1) break;
+            pos++;
+        }
+
+        log_debug(log_file, "Animation queued: %s -> (%d, %d)", entity_id, target_x, target_y);
+
+        current_line = line_num;
+    }
+    fclose(fp);
+    return current_line;
+}
+
 int main(int argc, char *argv[]) {
     // Derive page_root from binary path
     char script_path[MAX_PATH];
@@ -222,6 +272,9 @@ int main(int argc, char *argv[]) {
     char entities_file[MAX_PATH];
     snprintf(entities_file, sizeof(entities_file), "%s/entities_live.txt", state_dir);
 
+    char anim_file[MAX_PATH];
+    snprintf(anim_file, sizeof(anim_file), "%s/animation_queue.txt", state_dir);
+
     char trigger_file[MAX_PATH];
     snprintf(trigger_file, sizeof(trigger_file), "%s/event_pkg/event_triggers.pdl", page_root);
 
@@ -236,6 +289,9 @@ int main(int argc, char *argv[]) {
     // Poll entities
     entities_cursor = poll_entities(entities_file, log_file, page_root, house_root,
                                      triggers, trigger_count, entities_cursor);
+
+    // Poll animations
+    anim_cursor = poll_animations(anim_file, log_file, anim_cursor);
 
     // Write updated cursors
     write_cursors(cursor_file, entities_cursor, events_cursor, anim_cursor);
