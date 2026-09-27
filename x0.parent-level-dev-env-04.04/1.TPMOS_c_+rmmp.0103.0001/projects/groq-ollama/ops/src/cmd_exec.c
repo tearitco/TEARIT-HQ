@@ -3,8 +3,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <windows.h>
+#include <io.h>
+#define access(p, m) _access(p, m)
+#else
 #include <unistd.h>
 #include <sys/wait.h>
+#endif
 
 static int get_sandbox_depth() {
     int depth = 1;
@@ -54,7 +60,52 @@ int main(int argc, char* argv[]) {
     
     printf("\033[90m[Action: exec_cmd]\033[0m\n");
     fflush(stdout);
-    
+
+#ifdef _WIN32
+    {
+        SECURITY_ATTRIBUTES sa = { sizeof(sa), NULL, TRUE };
+        HANDLE rd = NULL, wr = NULL;
+        if (!CreatePipe(&rd, &wr, &sa, 0)) {
+            printf("STDOUT/ERR:\n[pipe failed]\n");
+            return 1;
+        }
+        SetHandleInformation(rd, HANDLE_FLAG_INHERIT, 0);
+
+        char cmd[MAX_PATH * 2];
+        snprintf(cmd, sizeof(cmd), "cmd.exe /c \"%s\"", argv[1]);
+
+        STARTUPINFOA si; PROCESS_INFORMATION pi;
+        memset(&si, 0, sizeof(si));
+        memset(&pi, 0, sizeof(pi));
+        si.cb = sizeof(si);
+        si.dwFlags = STARTF_USESTDHANDLES;
+        si.hStdOutput = wr;
+        si.hStdError = wr;
+        si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+
+        if (!CreateProcessA(NULL, cmd, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+            CloseHandle(rd); CloseHandle(wr);
+            printf("STDOUT/ERR:\n[create failed: %lu]\n", GetLastError());
+            return 1;
+        }
+        CloseHandle(wr);
+
+        char buf[4096];
+        DWORD total = 0, got = 0;
+        while (ReadFile(rd, buf + total, (DWORD)(sizeof(buf) - 1 - total), &got, NULL) && got > 0) {
+            total += got;
+            if (total >= sizeof(buf) - 1) break;
+        }
+        buf[total] = '\0';
+        CloseHandle(rd);
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+
+        printf("STDOUT/ERR:\n%s\n", buf);
+        return 0;
+    }
+#else
     int pipefd[2];
     pipe(pipefd);
     pid_t pid = fork();
@@ -76,4 +127,5 @@ int main(int argc, char* argv[]) {
     
     printf("STDOUT/ERR:\n%s\n", buf);
     return 0;
+#endif
 }

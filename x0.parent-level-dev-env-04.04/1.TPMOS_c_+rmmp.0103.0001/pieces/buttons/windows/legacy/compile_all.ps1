@@ -75,6 +75,22 @@ foreach ($op in $cpp_llm_ops) {
     Compile-Piece "projects\cpp-llm\ops\src\$op.c" "projects\cpp-llm\ops\+x\$op.+x"
 }
 
+# --- groq-ollama ---
+# Also MISSING entirely, the same omission as cpp-llm. Needs -lws2_32 for the
+# same reason only if it resolves addresses; it does not (no ifaddrs.h use), so
+# the flag is omitted here rather than added on a guess. 9 of its 11 Ops
+# compiled unmodified; cmd_exec and search_in_files needed the same
+# Windows pipe-spawn and getline equivalents as cpp-llm's copies, which are
+# byte-for-byte the same source apart from a header comment.
+Compile-Piece "projects\groq-ollama\manager\groq-ollama_manager.c" "projects\groq-ollama\manager\+x\groq-ollama_manager.+x"
+$groq_ops = @("cmd_exec", "complete_path", "edit_file", "file_ops",
+              "gemini_payload_builder", "groq-ollama_bridge", "json_parser",
+              "json_state", "list_dir", "search_in_files", "web_search")
+foreach ($op in $groq_ops) {
+    Compile-Piece "projects\groq-ollama\ops\src\$op.c" "projects\groq-ollama\ops\+x\$op.+x"
+}
+
+
 
 # --- Keyboard & Joystick ---
 Compile-Piece "pieces\keyboard\src\keyboard_input_win.c" "pieces\keyboard\plugins\+x\keyboard_input.+x"
