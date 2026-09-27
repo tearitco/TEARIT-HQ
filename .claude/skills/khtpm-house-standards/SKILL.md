@@ -222,3 +222,33 @@ binary family):
 4. `xdotool`/XTest — **last resort only**, e.g. real mouse-drag physics
    the relay can't express. Reaching for it first is the exact mistake
    this section exists to prevent.
+
+## Prisc + Ops Architecture — Orchestrating Game State (2026-09-27)
+
+**When to use this pattern:** Page managers, event dispatchers, game loops, and any long-running process that coordinates world state through append-only ledgers.
+
+This house uses **prisc+ops** for state orchestration. It is orthogonal to (and often paired with) khtpm rendering:
+
+- **`.pal` files** are RISC-V assembly that coordinates main loops (NOT Tcl, NOT shell scripts). Prisc is a real RISC-V VM, not a script interpreter.
+- **`ops/` binaries** are compiled C programs that do the real work (NOT shell scripts). Each op reads/writes state files independently.
+- Pattern: one `.pal` file `exec`s multiple ops, sleeping and looping between ticks.
+
+**Why this pattern exists:**
+- Prisc+x is lightweight infrastructure already deployed everywhere in the house
+- RISC-V assembly is unambiguous; C ops are testable and performant
+- Append-only ledgers + cursor polling ensure idempotent event processing
+- Each op is standalone; no shared state corruption across ticks
+
+**What you MUST know before writing a page manager or game loop:**
+1. `.pal` files ARE assembly code: `exec ./ops/my_op`, `sleep 16`, `j loop` — not Tcl, not shell
+2. Path derivation in C ops: use `realpath(argv[0])` + manual path math with `strrchr()` to find parent directories (never `dirname()` without copying first — it modifies its argument)
+3. Ops pattern: read cursors from marker file, poll ledgers from last cursor position, process entries, write updated cursors — this is idempotent
+4. Append-only ledgers + cursor tracking: single source of truth for entities, events, animations (zero race conditions, zero lost events)
+
+**See the full standard:** `#.#.calendar-dox/!.HQ-IQ-BOOK/02-architecture/PRISC-OPS-ARCHITECTURE.md`
+
+**Common mistakes:**
+- Writing `.pal` files in Tcl or shell syntax instead of RISC-V assembly
+- Using shell scripts in `ops/` instead of compiled C binaries
+- Hardcoding absolute paths (derive them dynamically from `argv[0]`)
+- Not using append-only ledgers (leads to race conditions and lost events)
