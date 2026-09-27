@@ -57,6 +57,25 @@ foreach ($op in $file_ops) {
     Compile-Piece "pieces\system\file_ops\$op.c" "pieces\system\file_ops\+x\$op.+x"
 }
 
+# --- cpp-llm ---
+# Was MISSING entirely, so cpp-llm did not run on Windows at all. Its manager
+# needs -lws2_32: the MinGW toolchain has no ifaddrs.h, so resolve_my_ip() uses
+# gethostbyname() instead, which pulls in ws2_32. MinGW's own gcc rejects
+# -lwinsock2 in this sysroot; ws2_32 is the library name it actually ships.
+Compile-Piece "projects\cpp-llm\manager\cpp-llm_manager.c" "projects\cpp-llm\manager\+x\cpp-llm_manager.+x" "-lws2_32"
+# Its Ops. run_tool() resolves these under projects/cpp-llm/ops/+x at runtime,
+# so without them every tool call returns NULL and the manager no-ops. 10 of the
+# 13 compiled unmodified; cmd_exec, connect_op and search_in_files needed
+# Windows spawn/pipe/getline equivalents.
+$cpp_llm_ops = @("cmd_exec", "complete_path", "connect_op", "cpp-llm_bridge",
+                 "edit_file", "file_ops", "json_escaper", "json_parser",
+                 "json_state", "list_dir", "search_in_files",
+                 "text_to_llama3", "web_search")
+foreach ($op in $cpp_llm_ops) {
+    Compile-Piece "projects\cpp-llm\ops\src\$op.c" "projects\cpp-llm\ops\+x\$op.+x"
+}
+
+
 # --- Keyboard & Joystick ---
 Compile-Piece "pieces\keyboard\src\keyboard_input_win.c" "pieces\keyboard\plugins\+x\keyboard_input.+x"
 # Windows: Use XInput for Xbox controllers
