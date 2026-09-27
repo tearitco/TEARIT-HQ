@@ -9,10 +9,10 @@ case "$ACTION" in
     run|start|boot)
         echo "Starting world_manager..."
 
-        # Compile prisc+x from canonical location
+        # Compile prisc+x from canonical location (use -O0 to avoid optimizer issues)
         _pcd="$SCRIPT_DIR"; while [ "$_pcd" != "/" ] && [ ! -d "$_pcd/&.widgits/_shared-lib" ]; do _pcd="$(dirname "$_pcd")"; done
         [ -f "$_pcd/&.widgits/_shared-lib/system/prisc+x.c" ] && \
-            gcc -O2 -std=c11 -w -o "$SCRIPT_DIR/system/prisc+x" "$_pcd/&.widgits/_shared-lib/system/prisc+x.c" 2>/dev/null || true
+            gcc -O0 -std=c11 -w -o "$SCRIPT_DIR/system/prisc+x" "$_pcd/&.widgits/_shared-lib/system/prisc+x.c" 2>/dev/null || true
 
         # Create system directory if needed
         mkdir -p "$SCRIPT_DIR/system"
