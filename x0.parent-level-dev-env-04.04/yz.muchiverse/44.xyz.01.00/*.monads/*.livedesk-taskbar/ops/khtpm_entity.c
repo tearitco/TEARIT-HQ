@@ -41,6 +41,11 @@ extern char **environ;
 #include <sys/file.h> /* REAL, NEW 2026-09-01 - tile mode's own real flock() cross-process popup mutex */
 
 #define PATH_BUF 4096
+#define MAX_WAYPOINTS 1024
+
+typedef struct {
+    int x, y;
+} Point;
 #include "khtpm_ui_common.c"
 
 /* tp_main uses a LOCAL Display and never sets the global dpy, so the global
@@ -4376,7 +4381,7 @@ static int tp_main(int argc, char **argv) {
     int user_popup_x = 0, user_popup_y = 0;
     MethodItem user_methods[4];
     snprintf(user_methods[0].label, sizeof(user_methods[0].label), "Move");
-    snprintf(user_methods[0].action, sizeof(user_methods[0].action), "void");
+    snprintf(user_methods[0].action, sizeof(user_methods[0].action), "MOVE_TARGET");
     snprintf(user_methods[1].label, sizeof(user_methods[1].label), "Inventory");
     snprintf(user_methods[1].action, sizeof(user_methods[1].action), "void");
     snprintf(user_methods[2].label, sizeof(user_methods[2].label), "Skill");
@@ -4397,9 +4402,53 @@ static int tp_main(int argc, char **argv) {
     struct timeval press_tv = {0, 0};
     int running = 1;
     struct timeval last_frame = { 0, 0 };
+    int anim_queue_index = 0;
+    Point anim_waypoints[MAX_WAYPOINTS];
+    int anim_waypoint_count = 0;
 
     TP_TIMING_MARK("setup-complete->entering event loop");
     while (running && !g_shutdown_requested) {
+        /* Check for animation_queue.txt and process next waypoint */
+        if (anim_waypoint_count > 0 && anim_queue_index < anim_waypoint_count) {
+            win_x = anim_waypoints[anim_queue_index].x;
+            win_y = anim_waypoints[anim_queue_index].y;
+            anim_queue_index++;
+            if (dpy && win) {
+                XMoveWindow(dpy, win, win_x, win_y);
+                XFlush(dpy);
+            }
+        } else if (anim_waypoint_count > 0 && anim_queue_index >= anim_waypoint_count) {
+            /* Animation complete, clean up animation_queue.txt */
+            char anim_path[TP_PATH_BUF];
+            snprintf(anim_path, sizeof(anim_path), "%s/animation_queue.txt", package_dir);
+            unlink(anim_path);
+            anim_waypoint_count = 0;
+            anim_queue_index = 0;
+        } else {
+            /* Check if animation_queue.txt exists and load it */
+            char anim_path[TP_PATH_BUF];
+            snprintf(anim_path, sizeof(anim_path), "%s/animation_queue.txt", package_dir);
+            FILE *af = fopen(anim_path, "r");
+            if (af) {
+                anim_waypoint_count = 0;
+                char line[256];
+                int cur_x = 0, cur_y = 0;
+                while (fgets(line, sizeof(line), af) && anim_waypoint_count < MAX_WAYPOINTS) {
+                    if (sscanf(line, "x=%d", &cur_x) == 1 || sscanf(line, "y=%d", &cur_y) == 1) {
+                        if (line[0] == 'x') {
+                            anim_waypoints[anim_waypoint_count].x = cur_x;
+                            anim_waypoints[anim_waypoint_count].y = 0;
+                        } else {
+                            anim_waypoints[anim_waypoint_count].y = cur_y;
+                            anim_waypoint_count++;
+                        }
+                    }
+                }
+                fclose(af);
+                anim_queue_index = 0;
+                append_history("ANIM_LOAD count=%d", anim_waypoint_count);
+            }
+        }
 #ifdef _WIN32
         x11_wait(dpy, POLL_INTERVAL_USEC);
         (void)xfd;
@@ -4797,6 +4846,14 @@ static int tp_main(int argc, char **argv) {
                                     popup_win = open_context_menu(dpy, popup_gc, &popup_x, &popup_y, n_methods, methods);
                                     popup_nav_base = nav_claim_rows(g_house_root, getpid(), package_dir, methods, n_methods);
                                         popup_focus_row = 0; popup_digit_accum = 0;
+                                }
+                            } else if (strcmp(methods[row].action, "MOVE_TARGET") == 0) {
+                                snprintf(input_key, sizeof(input_key), "move_target");
+                                input_buffer[0] = '\0';
+                                input_active = 1;
+                                append_history("INPUT_ACTIVATE key=%s", input_key);
+                                if (!input_popup_win) {
+                                    input_popup_win = open_context_menu(dpy, popup_gc, (int[]){win_x}, (int[]){win_y + WIN_PX + 4}, 1, NULL) /* writeback discarded */;
                                 }
                             } else if ((using_objects && strncmp(methods[row].action, "STATE:", 6) == 0) ||
                                        strcmp(methods[row].action, "CLI_IO") == 0) {
@@ -5544,11 +5601,23 @@ static int tp_main(int argc, char **argv) {
                 KeySym ks;
                 int klen = XLookupString(&xev.xkey, kbuf, sizeof(kbuf) - 1, &ks, NULL);
                 if (ks == XK_Escape) {
-                    char statepath[TP_PATH_BUF];
-                    snprintf(statepath, sizeof(statepath), "%s/%s.txt", package_dir, input_key);
-                    FILE *sf = fopen(statepath, "w");
-                    if (sf) { fprintf(sf, "%s\n", input_buffer); fclose(sf); }
                     append_history("INPUT_COMMIT key=%s value=%s", input_key, input_buffer);
+                    if (strcmp(input_key, "move_target") == 0 && strlen(input_buffer) > 0) {
+                        int tx = 0, ty = 0;
+                        if (sscanf(input_buffer, "%d,%d", &tx, &ty) == 2 ||
+                            sscanf(input_buffer, "%d %d", &tx, &ty) == 2) {
+                            char cmd[TP_PATH_BUF * 2];
+                            snprintf(cmd, sizeof(cmd), "%s/\*.monads/\*.livedesk-taskbar/ops/+x/move_entity_animated.+x %s %d %d",
+                                     g_house_root ? g_house_root : ".", package_dir, tx, ty);
+                            system(cmd);
+                            append_history("MOVE_EXEC cmd=%s", cmd);
+                        }
+                    } else {
+                        char statepath[TP_PATH_BUF];
+                        snprintf(statepath, sizeof(statepath), "%s/%s.txt", package_dir, input_key);
+                        FILE *sf = fopen(statepath, "w");
+                        if (sf) { fprintf(sf, "%s\n", input_buffer); fclose(sf); }
+                    }
                     input_active = 0;
                     if (input_popup_win) { close_context_menu(dpy, input_popup_win); input_popup_win = 0; }
                 } else if (ks == XK_BackSpace) {
