@@ -944,9 +944,14 @@ int main(int argc, char **argv) {
                     /* the pointer moving away hands control back to the mouse. A motion event
                      * within 300 ms of a key is ignored: it is a late event from before the
                      * keyboard took over (seen once as an intermittent mode drop), and a real
-                     * mouse move keeps sending events, so it still takes effect a moment later. */
+                     * mouse move keeps sending events, so it still takes effect a moment later.
+                     * REAL FIX 2026-09-26, direct user report ("when i move mouse away
+                     * 'placer' disappears"): in has_view mode (Move), keep kb_active/highlight
+                     * visible always - the pointer should not hide it. In unlimited/full-screen
+                     * mode (palette stamp tool), the old behavior is preserved - the highlight
+                     * is pointer-driven only. */
                     if (abs(mx - ov.ptr_x) + abs(my - ov.ptr_y) < 6 || now_ms() - ov.last_key_ms < 300) moved = 0;
-                    else { ov.kb_active = 0; ov.gj.jump[0] = '\0'; ov.err[0] = '\0'; ov_update_hover(&ov); ov_redraw(&ov); }
+                    else if (!ov.has_view) { ov.kb_active = 0; ov.gj.jump[0] = '\0'; ov.err[0] = '\0'; ov_update_hover(&ov); ov_redraw(&ov); }
                 }
                 if (moved && use_zones) {
                     char zd[PATH_BUF];
