@@ -3,19 +3,15 @@
 # Syncs entity positions, detects movement, queues animations.
 # Mirrors RPG Maker GameManager + house prisc+op architecture.
 #
-# Pattern:
-#   C game_manager.c: polling_loop() -> poll_entities() -> sleep -> loop
-#   .pal equivalent:  exec ops/world_manager_tick -> sleep 16 -> j loop
-#
 # Each op (world_manager_init, world_manager_tick) handles its own
-# WORLD_ROOT derivation; relative paths work from the directory
-# where this .pal file lives (&.hq-apps/world-manager/).
+# world_root derivation; ops are invoked via absolute paths from
+# the world_manager directory in xyzfs.
 
-# Initial setup
-exec ./ops/world_manager_init
+# Initial setup: derive world_root and call init
+exec /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/\&.hq-apps/world-manager/ops/world_manager_init
 hit_frame
 
 loop:
-  exec ./ops/world_manager_tick
+  exec /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/\&.hq-apps/world-manager/ops/world_manager_tick
   sleep 16
   j loop
