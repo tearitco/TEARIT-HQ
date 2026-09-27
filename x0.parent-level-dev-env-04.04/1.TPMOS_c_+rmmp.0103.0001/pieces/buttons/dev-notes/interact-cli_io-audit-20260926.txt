@@ -35,9 +35,13 @@ VERDICT TABLE
   op-ed         yes          button onClick=INTERACT cli_io x2       FIXED (shared
                                                     (file_browser)   parser fix)
   fuzz-op       yes          button onClick=INTERACT none            NOT A BUG
-  cpp-llm       NO            cli_io id=input_text   cli_io          NOT VERIFIED
-  gem-dev       NO            cli_io id=input_text   cli_io          NOT VERIFIED
-  groq-ollama   NO            cli_io id=input_text   cli_io          NOT VERIFIED
+  cpp-llm       NO            cli_io id=input_text   cli_io          FIXED (write
+                                                                    side only)
+  gem-dev       NO            cli_io id=input_text   cli_io          NOT A BUG
+                                                                    (was suspected;
+                                                                     REFUTED)
+  groq-ollama   NO            cli_io id=input_text   cli_io          FIXED (write
+                                                                    side only)
   slop-ed-dev   NO            button + cli_io x2     cli_io          NOT VERIFIED
 
 --------------------------------------------------------------------------------
@@ -107,43 +111,93 @@ active_gui_index.txt (sync_focus(), :297) is legitimate focus tracking for its
 own gui_state, not a mode decision. Nothing changed. Do not "fix" this one.
 
 --------------------------------------------------------------------------------
-5-7. cpp-llm, gem-dev, groq-ollama -- NOT VERIFIED (cannot run on Windows)
+5-7. cpp-llm, gem-dev, groq-ollama -- NOT BUILT ON WINDOWS
 --------------------------------------------------------------------------------
 None of the three is in pieces/buttons/windows/legacy/compile_all.ps1 and none
-has a built manager, so none of them can be launched or tested here. They have
-the same shape agy had -- absent from the Windows build list -- which is
-itself a finding: these three apps do not run on Windows at all.
+has a built manager, so none can be launched or tested here. All three fail to
+compile with the same single pre-existing error at line 7,
+`#include <sys/wait.h>`, and each carries agy's exact POSIX profile: 3-4
+fork(), 8 execv, 3 waitpid, 4-5 setpgid, WEXITSTATUS. So porting them is
+tractable (agy needed four fixes of that shape) but is its own piece of work,
+not something to fold into an audit.
 
 All three use <cli_io id="input_text">, the legacy single-slot form with no
-target_id, and none has an onClick="INTERACT" element, so the B.2/B.3 shape
-(backspace swallowed, nav digits stolen) does not obviously apply: with no
-INTERACT element there is no key-forwarding path that a manager could
-misinterpret. That is reasoning from the code, NOT a test result.
+target_id, and none has an onClick="INTERACT" element -- so the B.2/B.3 shape
+(backspace swallowed, nav digits stolen) does not apply: with no INTERACT
+element there is no key-forwarding path a manager could misinterpret.
 
-Two specific suspicions were found by reading, and are recorded as UNVERIFIED:
+WIRE FORMAT, MEASURED LIVE. The parser writes cli_buffers.txt whether or not a
+manager is running, so this much is testable without any port. Running the
+parser alone against gem-dev.chtpm and typing a,b,c into its
+<cli_io id="input_text"> published exactly:
 
-  a) gem-dev, at :1288-1289 and :1301-1322, polls cli_buffers.txt, strips only
-     the trailing newline, and uses the raw line as the input text. The parser
-     publishes that field under the generic fallback, i.e. prefixed with the
-     first character of the id -- 'i' for id="input_text". gem-dev appears
-     never to strip that prefix, so its notion of the user's text would begin
-     with a spurious 'i'. This is exactly the class of bug the khtpm skill
-     warns about, where two halves of the system seed and read different
-     buffers. NOT CONFIRMED: verifying needs gem-dev built and running.
+    'ia'   [i=0x69 a=0x61]
+    'iab'  [i=0x69 a=0x61 b=0x62]
+    'iabc' [i=0x69 a=0x61 b=0x62 c=0x63]
 
-  b) cpp-llm (:363) and groq-ollama (:376) both open cli_buffers.txt with "w"
-     -- truncating it -- and write a bare, UNPREFIXED value when the user picks
-     an autocomplete suggestion. That destroys every prefixed line the parser
-     had written, including the log gem-dev-style readers depend on. It also
-     means the file momentarily contains a line no prefix-reader will match.
-     NOT CONFIRMED, same reason.
+The leading 'i' is the generic-fallback prefix (first character of the element
+id), confirmed at byte level. This is the format any consumer of that field
+has to expect.
 
-  Both of these also write pieces/display/active_gui_index.txt themselves
-  (cpp-llm :339/:371, gem-dev :667/:719/:1246, groq-ollama :352/:384) while
-  chtpm_parser.c rewrites that same file every frame. Two writers of one file
-  is a genuine design conflict, but whether it misbehaves depends on ordering
-  this audit did not measure. gem-dev additionally TRUNCATES the file at
-  startup (:1244). Flagged, not fixed, not tested.
+  a) gem-dev -- SUSPICION REFUTED, and the earlier claim in this file was
+     WRONG. I previously wrote that gem-dev "appears never to strip that
+     prefix, so its view of the user's text would begin with a spurious 'i'",
+     which would have meant a phantom 'i' reaching the model and, worse,
+     breaking the permission prompt at :1172 (strcasecmp(trimmed,"y") would
+     never match a typed "y"). That was based on a grep context window that
+     began at line 1288 and cut off the line above it. gem-dev actually does
+     it correctly at :1286:
+
+         if (line[0] == 'i') {
+             strncpy(last_line, line + 1, sizeof(last_line) - 1);
+             ...
+         }
+
+     It filters on the 'i' prefix AND strips it, then removes the trailing
+     newline. The chain to the model is sound: parser -> 'i'-prefixed line ->
+     stripped at :1286 -> g_last_buf_input -> set_input_text_override() ->
+     gui_state input_text= (:1141-1142) -> process_input_trigger(). There is
+     no phantom 'i'. gem-dev is NOT BUGGY on this point. The lesson is the
+     one the khtpm skill warns about -- do not diagnose from a truncated read
+     window, and above all verify before publishing a claim in writing.
+
+  b) cpp-llm and groq-ollama -- REAL, AND NOW FIXED. Both had this in their
+     autocomplete-accept path (cpp-llm :363, groq-ollama :376):
+
+         FILE *bfw = fopen("pieces/apps/player_app/cli_buffers.txt", "w");
+         if (bfw) { fprintf(bfw, "%s\n", chosen); fclose(bfw); }
+
+     Two defects. "w" TRUNCATES, and cli_buffers.txt is a single global file
+     shared by every project on the desktop, so accepting one autocomplete
+     suggestion in one app silently destroyed every other app's field
+     history. And the value was written with NO prefix, which is a format the
+     parser never emits and that every prefix-keyed consumer ignores -- so the
+     line could not be matched by the very "frontend" the adjacent comment
+     says it is keeping in sync, which defeated the stated purpose.
+
+     Fixed to append ("a") and to carry the 'i' prefix, matching the measured
+     wire format above. Note these two apps read their typed text from
+     get_gui_var("input_text") (cpp-llm :929) -- i.e. from gui_state, not from
+     cli_buffers -- so they were never themselves victims of the prefix, only
+     perpetrators of the truncation.
+
+     NOT RUNTIME-VERIFIED, and honestly so: neither app builds on Windows, so
+     the fix cannot be exercised here. What WAS verified is that the changed
+     statements compile clean under the project's own flags (-D_WIN32
+     -std=gnu11, exit 0) and that the append semantics are real -- a fragment
+     doing the same fopen("a")/fprintf into a file already containing
+     "preexisting-line" produced "preexisting-lineihello world", i.e. the
+     prior content survived. With "w" it would have been destroyed. The prefix
+     character itself was measured off the real parser, not assumed.
+
+  Also flagged, still unfixed and unmeasured: all three write
+  pieces/display/active_gui_index.txt themselves (cpp-llm :339/:371,
+  gem-dev :667/:719, groq-ollama :352/:384) while chtpm_parser.c rewrites that
+  same file every frame from compose_frame(). Two writers of one file is a
+  genuine design conflict; gem-dev additionally TRUNCATES it at startup
+  (:1244). Whether it misbehaves depends on ordering this audit did not
+  measure, and it cannot be measured on Windows while none of the three
+  build. NOT FIXED.
 
 --------------------------------------------------------------------------------
 8. THE ONE THAT WAS ACTUALLY SHARED -- cli_io backspace, chtpm_parser.c
@@ -187,8 +241,12 @@ matching the last published value exactly. Also verified on op-ed (section 3).
   - The four unbuilt projects (cpp-llm, gem-dev, groq-ollama, slop-ed-dev).
     Adding them to compile_all.ps1 is the prerequisite to verifying anything
     about them, and agy needed four separate Windows fixes before it would
-    compile at all, so this should be scoped as its own piece of work.
+    compile at all, so this should be scoped as its own piece of work. Until
+    then, treat every cpp-llm/gem-dev/groq-ollama conclusion above as
+    code-read plus, for the wire format, one real measurement -- not as
+    end-to-end testing. The cpp-llm/groq-ollama cli_buffers fix in particular
+    is proven to compile and to append, but has never been run.
   - agy-text-editor's duplicate top-level manager source (section 2).
-  - The active_gui_index.txt two-writers conflict (section 5-7b).
+  - The active_gui_index.txt two-writers conflict (section 5-7, end).
 
 ================================================================================

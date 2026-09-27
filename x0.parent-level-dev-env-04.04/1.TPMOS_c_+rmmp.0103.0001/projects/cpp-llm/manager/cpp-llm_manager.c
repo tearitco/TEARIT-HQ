@@ -360,8 +360,25 @@ static void handle_choose_path(int index) {
     // Re-inject the completed text into the shared keystroke-buffer file so
     // the frontend's own input tracking doesn't fall out of sync with what
     // we just set here.
-    FILE *bfw = fopen("pieces/apps/player_app/cli_buffers.txt", "w");
-    if (bfw) { fprintf(bfw, "%s\n", chosen); fclose(bfw); }
+    //
+    // Two corrections to what this used to do. It opened the file with "w",
+    // which TRUNCATES -- and cli_buffers.txt is a single global file shared
+    // by every project on the desktop, so accepting one autocomplete
+    // suggestion here silently destroyed every other app's field history
+    // (gem-dev polls it by file offset, agy/op-ed/slop-ed-dev scan it for
+    // their "s"/"f"-prefixed lines). It now appends.
+    //
+    // And it wrote the value with NO prefix character, which is the format
+    // the parser's own cli_io writer never emits and that every prefix-keyed
+    // consumer ignores -- so the line could not actually be matched by the
+    // "frontend" this comment is trying to keep in sync, defeating the
+    // stated purpose. chtpm_parser.c keys each line by the cli_io element's
+    // id (username->U, password->P, answer->A, otherwise the first character
+    // of the id); this layout's field is id="input_text", so the prefix is
+    // 'i'. Verified live against the parser: typing "abc" into a
+    // <cli_io id="input_text"> publishes exactly 'i' followed by the text.
+    FILE *bfw = fopen("pieces/apps/player_app/cli_buffers.txt", "a");
+    if (bfw) { fprintf(bfw, "i%s\n", chosen); fclose(bfw); }
 
     clear_completion_state();
 
