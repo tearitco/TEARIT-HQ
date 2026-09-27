@@ -7,24 +7,36 @@
 
 int main(int argc, char *argv[]) {
     char script_path[2048];
-    char script_copy[2048];
+    char *ops_dir_ptr;
+    char page_root[2048];
+    char normalized[2048];
     
-    if (argc > 0) {
-        realpath(argv[0], script_path);
+    // Get the absolute path of this binary
+    if (argc > 0 && realpath(argv[0], script_path)) {
+        // script_path is now: .../pages/test_page_001/manager/ops/page_manager_init
+        // We need the parent: .../pages/test_page_001/manager
+        // Then parent again: .../pages/test_page_001
+        
+        // Find last two slashes and extract parent of parent
+        char *last_slash = strrchr(script_path, '/');
+        if (last_slash) {
+            *last_slash = '\0';  // Remove /page_manager_init
+            char *second_last = strrchr(script_path, '/');
+            if (second_last) {
+                *second_last = '\0';  // Remove /ops
+                strcpy(page_root, script_path);  // page_root is now .../pages/test_page_001/manager
+                // We want parent of manager, so go up one more
+                last_slash = strrchr(page_root, '/');
+                if (last_slash) {
+                    *last_slash = '\0';  // Remove /manager
+                }
+            }
+        }
     } else {
-        strcpy(script_path, "./ops/page_manager_init");
+        strcpy(page_root, ".");
     }
     
-    // Make a copy before dirname() (it modifies the string)
-    strcpy(script_copy, script_path);
-    char *ops_dir = dirname(script_copy);
-    
-    // Build page_root: parent of ops dir
-    char page_root[2048];
-    snprintf(page_root, sizeof(page_root), "%s/..", ops_dir);
-    
-    // Normalize path
-    char normalized[2048];
+    // Normalize
     realpath(page_root, normalized);
     strcpy(page_root, normalized);
     

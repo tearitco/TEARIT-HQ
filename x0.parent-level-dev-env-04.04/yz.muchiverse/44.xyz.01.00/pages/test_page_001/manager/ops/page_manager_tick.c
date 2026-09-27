@@ -193,7 +193,7 @@ int main(int argc, char *argv[]) {
     }
 
     char *ops_dir = dirname(script_path);
-    char page_root[MAX_PATH];
+    char page_root[MAX_PATH]; char *last_slash, *second_last;
     snprintf(page_root, sizeof(page_root), "%s/..", ops_dir);
 
     char normalized[MAX_PATH];
