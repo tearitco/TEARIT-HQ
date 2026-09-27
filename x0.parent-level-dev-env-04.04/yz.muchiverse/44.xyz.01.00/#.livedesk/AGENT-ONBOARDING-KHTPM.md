@@ -209,9 +209,9 @@ Before submitting code:
 
 ---
 
-## Deferred Work Exposed This Session
+## Resolved: khtpm_ui_common.c unfactor (2026-09-27)
 
-**khtpm_ui_common.c unfactor:** See `#.livedesk/TODO-khtpm_ui_common-unfactor.md`. This text-include pattern violates the standard. Deferred to future session, but documented.
+Was a deferred text-include violation; see `#.livedesk/TODO-khtpm_ui_common-unfactor.md` for the full resolution. Short version: it was only ever included by khtpm_entity.c (the file's own header comment claiming khtpm_core_render.c also used it was stale) - with exactly one real consumer, it was inlined directly into khtpm_entity.c rather than split into a header+link pair or a separate op. House rule going forward: genuinely single-consumer code lives in one file; a real second consumer gets a separate compiled op + fork/exec/IPC (state files), never a text-include or a header+link split.
 
 ---
 

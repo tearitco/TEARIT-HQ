@@ -1,75 +1,66 @@
-# TODO: khtpm_ui_common.c Unfactor
+# RESOLVED: khtpm_ui_common.c Unfactor
 
-**Status:** Deferred - Move action implementation complete (2026-09-27)  
-**Priority:** Medium - eliminates text-include pattern, improves IPC architecture  
-**Scope:** Affects khtpm_entity.c AND khtpm_core_render.c
+**Status:** Resolved (2026-09-27)
+**Original scope claim:** "Affects khtpm_entity.c AND khtpm_core_render.c" - **this was wrong**, see below.
 
-## Problem
+## What Was Actually Wrong (vs. what this doc originally assumed)
 
-`khtpm_ui_common.c` (485 lines) is text-included by two binaries:
-- **khtpm_entity.c** (desktop entity process)
-- **khtpm_grid_jump.c** (shared-lib utility) 
-- Possibly **khtpm_core_render.c** (main HQ renderer) - verify
+This doc originally assumed `khtpm_ui_common.c` was a real, multi-binary
+shared file (per its own then-header-comment: "text-included by BOTH
+khtpm_core_render.c ... and khtpm_entity.c") and planned a header/config-
+file split to de-duplicate it across binaries.
 
-This violates house standard: text-includes are **transitional**, not intended (see memory: text-includes-not-the-standard.md).
+A grep audit before touching anything found that claim was **stale**:
+`khtpm_core_render.c` never included `khtpm_ui_common.c` at all - only
+`khtpm_entity.c` did. There was no real cross-binary duplication to fix,
+just a single-consumer file living in a separate location for no live
+reason.
 
-## Current Content
+## The Fix
 
-Shared globals:
-- Theme colors: g_theme_bg, g_theme_fg, g_theme_accent
-- UI scale settings: g_ui_scale_pct, g_ui_user_pct, g_ui_auto_pct, g_ui_screen_w/h, g_ui_ref_w/h
-- UI config: g_override_redirect, g_click_two_step, g_ui_font_family, g_grid_cell_base
-- Type definitions: MethodItem, MAX_METHODS
+Per direct instruction ("is there a reason the code isn't simply in the
+same codefile? we like to keep uniform conventions for readability...
+if its an exception lets make a note"):
 
-Per-process (should NOT be shared):
-- g_package_dir, g_house_root (per-binary specific)
-- g_frame_dirty (per-process dirty flag)
-- g_shutdown_requested (per-process signal)
-- g_khtpm_menu_* (per-process menu state)
+- `khtpm_ui_common.c`'s entire content (globals, theme/scale loaders,
+  `load_methods()`, `launch_khtpm_menu()`, etc.) is now inlined directly
+  into `khtpm_entity.c`, at the same spot the old `#include
+  "khtpm_ui_common.c"` line was.
+- The file `&.widgits/_shared-lib/khtpm_ui_common.c` was deleted.
+- Stale "shared with khtpm_core_render.c" comments in
+  `build_core_render.sh` and `khtpm_grid_jump.c` (which referenced
+  khtpm_ui_common.c as a shared-file example) were corrected.
+- Rebuilt `khtpm_entity.+x` - identical binary size (117656 bytes)
+  confirms nothing was lost or duplicated in the merge.
 
-## Refactor Pattern (Option A - house standard)
+**`khtpm_ui_scale.c` was NOT touched** - it's a genuine exception: real
+multiple consumers (khtpm_entity.c AND the placer ops, per its own header
+comment), so it correctly stays a text-included shared file.
 
-Follow the pattern already established in codebase (e.g., dock split, entity animation):
+## House Rule Going Forward (the actual standing note requested)
 
-1. **Extract shared types** into header file (MethodItem, MAX_METHODS, TP_PATH_BUF)
-2. **Extract shared state** into config files:
-   - Theme: read from hq_ui.pdl (already has this pattern)
-   - UI scale: read from hq_ui.pdl (already has this pattern)
-   - Grid cell base: read from desk_grid.pdl or new ui_config.pdl
-3. **Remove text-include** from both binaries
-4. **Load shared state** at startup from .pdl files (same pattern as khtpm_ui_scale.c)
-5. **Add khtpm_ui_manager.+x** if any runtime state changes need real IPC (unlikely - most is static config)
-
-## Implementation Steps
-
-- [ ] Audit all g_* globals: which are truly shared vs per-process
-- [ ] Extract MethodItem + MAX_METHODS to `khtpm_ui_common.h`
-- [ ] Move load_theme_colors() logic into hq_ui.pdl reader
-- [ ] Move UI scale logic into hq_ui.pdl reader (already done?)
-- [ ] Remove `#include "khtpm_ui_common.c"` from khtpm_entity.c
-- [ ] Remove `#include "khtpm_ui_common.c"` from khtpm_grid_jump.c
-- [ ] Verify khtpm_core_render.c doesn't use it (if it does, unfactor that too)
-- [ ] Rebuild both binaries
-- [ ] Test: entity menus still open, theme colors still apply, UI scale still works
-
-## Risk Assessment
-
-**High**: Both khtpm_entity.c and khtpm_core_render.c use this code
-- If unfactored incorrectly, both HQ window and desktop entity windows will break
-- Test must verify: context menus open, methods load, theme applied, UI scale correct
-
-**Mitigation**:
-- Unfactor one binary at a time (khtpm_entity.c first, then khtpm_core_render.c)
-- Keep hq_ui.pdl reader as source of truth (use existing pattern)
-- Test on real desktop before/after each step
+- Code used by exactly **one** binary lives directly in that binary's own
+  file. Do not create a separate file "for organization" if nothing else
+  will ever include it - that's what functions/sections within the one
+  file are for.
+- Code used by **two or more** binaries has two legitimate house patterns,
+  depending on what it is:
+  - **Pure, no-I/O, no-X11 logic** (e.g. `khtpm_ui_scale.c`'s scale math,
+    `khtpm_grid_jump.c`'s cell-jump parsing) - a real text-included
+    canonical `.c` file, same copy compiled into each binary, no linking.
+  - **Stateful behavior / orchestration** that could instead run as its
+    own process - a separate compiled **op** + fork/exec + file-based IPC
+    (state files/ledgers), same pattern as `move_entity_init.+x`/
+    `move_entity_tick.+x` (see `PRISC-OPS-ARCHITECTURE.md`).
+- **Never** a header+separately-linked-object split for in-house code
+  (no `.h` declaring `extern` globals across translation units) - this
+  was attempted mid-session for this exact file and reverted per direct
+  instruction; it doesn't match either house convention above.
 
 ## Related
 
-- **memory:** [[text-includes-not-the-standard]] - why this matters
-- **memory:** [[khtpm-shared-layout-caution]] - layout changes must be idempotent (applies to shared config loading)
-- **patterns:** desk_grid.pdl, hq_ui.pdl - existing config file patterns
-
-## Owner
-
-Blocked on: next session or owner availability  
-Triggered by: Move action implementation exposed text-include pattern (2026-09-27)
+- **memory:** [[text-includes-not-the-standard]]
+- **pattern:** `PRISC-OPS-ARCHITECTURE.md` - the real op+pal+IPC standard
+- **precedent:** `move_entity_init.+x`/`move_entity_tick.+x`/`move_entity.pal`
+  (2026-09-27) - the real multi-process pattern when something DOES need
+  to be a separate consumer

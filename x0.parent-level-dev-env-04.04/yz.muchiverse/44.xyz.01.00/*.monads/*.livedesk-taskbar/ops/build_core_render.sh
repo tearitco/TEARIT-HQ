@@ -71,9 +71,13 @@ $CC $CFLAGS $X11_FLAGS -I "$SHARED" -o +x/khtpm_core_render.+x \
 
 echo "OK +x/khtpm_core_render.+x"
 
-# Unfactor piece 5: khtpm_entity.c is the real pal process source (tp_main and
-# its tile/sprite/popup code). It shares khtpm_ui_common.c with the HQ engine
-# via -I "$SHARED" and needs neither the CSS parser nor the Elem/render core.
+# khtpm_entity.c is the real pal process source (tp_main and its tile/
+# sprite/popup code). It needs neither the CSS parser nor the Elem/render
+# core. Its former khtpm_ui_common.c text-include was inlined directly into
+# khtpm_entity.c (2026-09-27 unfactor, TODO-khtpm_ui_common-unfactor.md) -
+# it was never actually shared with khtpm_core_render.c despite this
+# comment's old claim (grep confirmed only khtpm_entity.c ever included it),
+# so there was no real sharing left to preserve via -I "$SHARED".
 echo "-- entity pal renderer -> +x/khtpm_entity.+x"
 $CC $CFLAGS $X11_FLAGS -I "$SHARED" -I . -o +x/khtpm_entity.+x \
   khtpm_entity.c $LIBS
