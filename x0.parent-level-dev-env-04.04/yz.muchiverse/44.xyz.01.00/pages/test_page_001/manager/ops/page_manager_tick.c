@@ -183,6 +183,78 @@ int poll_entities(const char *entities_file, const char *log_file,
     return current_line;
 }
 
+void detect_position_changes(const char *entities_file, const char *anim_queue_file, const char *log_file) {
+    FILE *fp = fopen(entities_file, "r");
+    if (!fp) return;
+
+    char line[MAX_LINE];
+    while (fgets(line, sizeof(line), fp)) {
+        char *stripped = line;
+        while (*stripped == ' ' || *stripped == '\t') stripped++;
+        if (*stripped == '\0' || *stripped == '\n') continue;
+
+        // Parse: entity_id | x=N | y=N | [prev_x=N | prev_y=N | ...]
+        char entity_id[256] = {0};
+        int current_x = 0, current_y = 0;
+        int prev_x = 0, prev_y = 0;
+
+        char *pos = stripped;
+        char *pipe = strchr(pos, '|');
+        if (pipe) {
+            strncpy(entity_id, pos, pipe - pos);
+            entity_id[pipe - pos] = '\0';
+            for (int i = strlen(entity_id) - 1; i >= 0 &&
+                 (entity_id[i] == ' ' || entity_id[i] == '\t'); i--)
+                entity_id[i] = '\0';
+        }
+
+        // Find current position
+        pos = stripped;
+        while ((pos = strstr(pos, "x=")) != NULL) {
+            if (sscanf(pos, "x=%d", &current_x) == 1) break;
+            pos++;
+        }
+        pos = stripped;
+        while ((pos = strstr(pos, "y=")) != NULL) {
+            if (sscanf(pos, "y=%d", &current_y) == 1) break;
+            pos++;
+        }
+
+        // Check if this entity has a prev_x/prev_y (indicates a position change detected)
+        pos = stripped;
+        while ((pos = strstr(pos, "prev_x=")) != NULL) {
+            if (sscanf(pos, "prev_x=%d", &prev_x) == 1) break;
+            pos++;
+        }
+
+        // If no prev_x, this is a new or unchanged entity - store current as previous for next tick
+        if (prev_x == 0 && prev_y == 0) {
+            // Create marker file to track this entity's last known position
+            char pos_marker[MAX_PATH];
+            snprintf(pos_marker, sizeof(pos_marker), "%s/../.positions/%s",
+                     anim_queue_file, entity_id);
+
+            // Don't create marker yet - just note that we saw this position
+            continue;
+        }
+
+        // If prev_x/prev_y exist and differ from current, position changed!
+        if (prev_x != current_x || prev_y != current_y) {
+            log_debug(log_file, "Position change detected: %s (%d,%d) -> (%d,%d)",
+                      entity_id, prev_x, prev_y, current_x, current_y);
+
+            // Queue animation for this position change
+            FILE *anim_fp = fopen(anim_queue_file, "a");
+            if (anim_fp) {
+                fprintf(anim_fp, "%s | x=%d | y=%d | target_x=%d | target_y=%d\n",
+                        entity_id, prev_x, prev_y, current_x, current_y);
+                fclose(anim_fp);
+            }
+        }
+    }
+    fclose(fp);
+}
+
 int poll_animations(const char *anim_file, const char *log_file, int start_line) {
     FILE *fp = fopen(anim_file, "r");
     if (!fp) return start_line;
@@ -275,8 +347,98 @@ int main(int argc, char *argv[]) {
     char anim_file[MAX_PATH];
     snprintf(anim_file, sizeof(anim_file), "%s/animation_queue.txt", state_dir);
 
+    char prev_state_file[MAX_PATH];
+    snprintf(prev_state_file, sizeof(prev_state_file), "%s/.prev_entity_state", state_dir);
+
     char trigger_file[MAX_PATH];
     snprintf(trigger_file, sizeof(trigger_file), "%s/event_pkg/event_triggers.pdl", page_root);
+
+    // Auto-detect position changes in entities_live.txt
+    typedef struct {
+        char entity_id[256];
+        int x, y;
+    } EntityState;
+
+    EntityState prev_states[MAX_TRIGGERS];
+    int prev_count = 0;
+
+    FILE *prev_fp = fopen(prev_state_file, "r");
+    if (prev_fp) {
+        char line[MAX_LINE];
+        while (fgets(line, sizeof(line), prev_fp) && prev_count < MAX_TRIGGERS) {
+            if (sscanf(line, "%255s %d %d", prev_states[prev_count].entity_id,
+                      &prev_states[prev_count].x, &prev_states[prev_count].y) == 3) {
+                prev_count++;
+            }
+        }
+        fclose(prev_fp);
+    }
+
+    // Save current entities and detect changes
+    FILE *new_state_fp = fopen(prev_state_file, "w");
+    FILE *curr_ent_fp = fopen(entities_file, "r");
+    if (curr_ent_fp) {
+        char line[MAX_LINE];
+        while (fgets(line, sizeof(line), curr_ent_fp)) {
+            char *stripped = line;
+            while (*stripped == ' ' || *stripped == '\t') stripped++;
+            if (*stripped == '\0' || *stripped == '\n') continue;
+
+            char entity_id[256] = {0};
+            int current_x = 0, current_y = 0;
+
+            char *pos = stripped;
+            char *pipe = strchr(pos, '|');
+            if (pipe) {
+                strncpy(entity_id, pos, pipe - pos);
+                entity_id[pipe - pos] = '\0';
+                for (int i = strlen(entity_id) - 1; i >= 0 &&
+                     (entity_id[i] == ' ' || entity_id[i] == '\t'); i--)
+                    entity_id[i] = '\0';
+            }
+
+            pos = stripped;
+            while ((pos = strstr(pos, "x=")) != NULL) {
+                if (sscanf(pos, "x=%d", &current_x) == 1) break;
+                pos++;
+            }
+            pos = stripped;
+            while ((pos = strstr(pos, "y=")) != NULL) {
+                if (sscanf(pos, "y=%d", &current_y) == 1) break;
+                pos++;
+            }
+
+            // Save current state
+            if (new_state_fp) {
+                fprintf(new_state_fp, "%s %d %d\n", entity_id, current_x, current_y);
+            }
+
+            // Detect position change
+            int prev_x = -1, prev_y = -1;
+            for (int i = 0; i < prev_count; i++) {
+                if (strcmp(prev_states[i].entity_id, entity_id) == 0) {
+                    prev_x = prev_states[i].x;
+                    prev_y = prev_states[i].y;
+                    break;
+                }
+            }
+
+            // Queue animation if position changed
+            if (prev_x != -1 && (prev_x != current_x || prev_y != current_y)) {
+                log_debug(log_file, "Position change: %s (%d,%d) -> (%d,%d)",
+                          entity_id, prev_x, prev_y, current_x, current_y);
+
+                FILE *anim_fp = fopen(anim_file, "a");
+                if (anim_fp) {
+                    fprintf(anim_fp, "%s | x=%d | y=%d | target_x=%d | target_y=%d\n",
+                            entity_id, prev_x, prev_y, current_x, current_y);
+                    fclose(anim_fp);
+                }
+            }
+        }
+        fclose(curr_ent_fp);
+    }
+    if (new_state_fp) fclose(new_state_fp);
 
     // Read current cursors
     int entities_cursor, events_cursor, anim_cursor;
