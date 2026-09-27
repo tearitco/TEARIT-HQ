@@ -1,0 +1,21 @@
+# page_manager.pal - Central page state manager
+# Orchestrates page world state via append-only ledgers.
+# Calls reusable ops to poll entities, check triggers, run animations.
+# Mirrors RPG Maker GameManager + house prisc+op architecture.
+#
+# Pattern:
+#   C game_manager.c: polling_loop() -> poll_entities() -> sleep -> loop
+#   .pal equivalent:  exec ops/page_manager_tick -> sleep 16 -> j loop
+#
+# Each op (page_manager_init, page_manager_tick) handles its own
+# PAGE_ROOT derivation; relative paths work from the directory
+# where this .pal file lives (pages/test_page_001/manager/).
+
+# Initial setup
+exec ./ops/page_manager_init
+hit_frame
+
+loop:
+  exec ./ops/page_manager_tick
+  sleep 16
+  j loop
