@@ -8,6 +8,27 @@
 #define KIND_WIN 1
 #define KIND_PIX 2
 #define EQMAX 256
+#define XWMAX 64
+
+/* REAL, NEW 2026-09-26 - a real property store.
+ *
+ * XChangeProperty existed but only ever handled _NET_WM_WINDOW_OPACITY and
+ * discarded everything else, so XGetWindowProperty had nothing to read back.
+ * khtpm_core_render.c's XDND drop path is built on exactly that round trip:
+ * XConvertSelection to a target, then XGetWindowProperty(.., AnyPropertyType,
+ * ..) to read what the source wrote onto its own window. With no store the
+ * read always fails and every drop is silently discarded.
+ *
+ * Window properties are a tiny fixed set on this renderer (the ICCCM/WM hints
+ * it sets on itself, plus one XDND payload per in-flight drag), so a linked
+ * list keyed by atom is the right shape - no hashing needed. */
+typedef struct KProp {
+    Atom            atom;
+    int             format;      /* 8/16/32, as X11 stores it */
+    unsigned long   nitems;
+    unsigned char  *data;
+    struct KProp   *next;
+} KProp;
 
 struct Xd {
     int kind;
@@ -19,6 +40,7 @@ struct Xd {
     int content_w, content_h; /* last presented pixmap size (for mouse scale) */
     unsigned long bg;
     BYTE opacity;
+    KProp *props;             /* NEW 2026-09-26 - see KProp above */
 };
 
 struct Display {
@@ -29,6 +51,22 @@ struct Display {
     Atom next_atom;
     Atom opacity_atom;
     HFONT font;
+    /* REAL, NEW 2026-09-26 - registry of the live shim windows. Two jobs.
+     * XQueryTree has to hand back a real child list, and xd_valid() below
+     * lets every window-taking entry point reject the bogus Window values
+     * the parser builds by casting a raw integer - (Window)xid, read out
+     * of the nav_tab "ord xid" registry. A real X11 XID is an integer, but
+     * here a Window is an Xd*, so an unchecked cast gets dereferenced and
+     * kills the taskbar the moment @ is pressed. */
+    Xd *wins[XWMAX];
+    int nwins;
+    /* REAL, NEW 2026-09-26 - selection ownership. XSetSelectionOwner /
+     * XGetSelectionOwner / XConvertSelection complete the clipboard trio the
+     * dock's copy/paste and its XDND drag-source both sit on. The shim has
+     * exactly one selection, which is all a single process needs; a real X
+     * server would arbitrate this across clients. */
+    Atom   sel_atom;
+    Window sel_owner;
 };
 
 static Display *g_dpy = NULL;
@@ -53,6 +91,40 @@ static void qpush(Display *d, const XEvent *ev) {
 
 static Xd *hwnd_xd(HWND h) {
     return (Xd *)GetWindowLongPtrW(h, GWLP_USERDATA);
+}
+
+/* REAL, NEW 2026-09-26 - the guard every Window-taking entry point now
+ * runs. On X11 a Window is a small integer XID, so passing a stale or
+ * foreign one is merely a protocol error the installed error handler
+ * swallows. Here a Window is an Xd*, so the same value is a wild pointer:
+ * ktb_toggle_zorder_apply() reads "ord xid" out of nav_tab and casts it
+ * straight to Window, and nav_tab is written by other processes, so that
+ * value is routinely not one of ours. Membership in the registry is the
+ * only trustworthy test - an IsWindow() probe would still read the garbage
+ * pointer to get an HWND. */
+static int xd_valid(Window w) {
+    int i;
+    if (!w) return 0;
+    for (i = 0; i < g_dpy->nwins; i++)
+        if (g_dpy->wins[i] == w) return 1;
+    return 0;
+}
+
+static void xd_register(Xd *xd) {
+    if (!xd || !g_dpy) return;
+    if (g_dpy->nwins >= XWMAX) return;
+    g_dpy->wins[g_dpy->nwins++] = xd;
+}
+
+static void xd_unregister(Xd *xd) {
+    int i, j;
+    if (!xd || !g_dpy) return;
+    for (i = 0; i < g_dpy->nwins; i++) {
+        if (g_dpy->wins[i] != xd) continue;
+        for (j = i; j + 1 < g_dpy->nwins; j++) g_dpy->wins[j] = g_dpy->wins[j + 1];
+        g_dpy->nwins--;
+        return;
+    }
 }
 
 static LRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
@@ -114,13 +186,19 @@ static LRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
     }
     if (m == WM_SETFOCUS) {
         XEvent ev; memset(&ev, 0, sizeof(ev));
-        ev.type = FocusIn; ev.xbutton.window = xd;
+            /* REAL, NEW 2026-09-26 - wrote xbutton.window for a FocusIn.
+             * The parser reads ev.xfocus.window, so g_focused_win came back
+             * 0 and every later focus comparison failed. */
+            ev.type = FocusIn; ev.xfocus.window = xd; ev.xfocus.mode = 0;
         qpush(d, &ev);
         return 0;
     }
     if (m == WM_KILLFOCUS) {
         XEvent ev; memset(&ev, 0, sizeof(ev));
-        ev.type = FocusOut; ev.xbutton.window = xd;
+            /* REAL, NEW 2026-09-26 - same wrong-member bug as FocusIn above:
+             * xbutton instead of xfocus, so the FocusOut half could never
+             * clear g_focused_win. */
+            ev.type = FocusOut; ev.xfocus.window = xd; ev.xfocus.mode = 0;
         qpush(d, &ev);
         return 0;
     }
@@ -133,9 +211,16 @@ static LRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
          * entity tiles never present (need_redraw stays 0). */
         XEvent ev;
         memset(&ev, 0, sizeof(ev));
-        ev.type = Expose;
-        ev.xany.window = xd;
-        qpush(d, &ev);
+            ev.type = Expose;
+            /* REAL, NEW 2026-09-26 - wrote xany.window for an Expose. The
+             * parser's redraw keys off ev.xexpose.window and treats
+             * ev.xexpose.count==0 as "last Expose in the batch, safe to
+             * draw now"; with xany it compared against NULL every time and
+             * drew nothing. This is the blank-bars bug. */
+            ev.xany.window = xd;
+            ev.xexpose.window = xd;
+            ev.xexpose.count = 0;
+            qpush(d, &ev);
         return 0;
     }
     return DefWindowProcW(h, m, w, l);
@@ -311,22 +396,27 @@ Window XCreateWindow(Display *dpy, Window parent, int x, int y,
         WS_POPUP,
         wa.left + x, wa.top + y, (int)w, (int)h,
         NULL, NULL, GetModuleHandleW(NULL), NULL);
-    xd->hwnd = hwnd;
-    if (hwnd)
-        SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)xd);
-    (void)dpy;
-    return xd;
-}
+        xd->hwnd = hwnd;
+        if (hwnd)
+            SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)xd);
+        xd_register(xd);   /* REAL, NEW 2026-09-26 - join the registry so
+                             * xd_valid() accepts this window from here on. */
+        (void)dpy;
+        return xd;
+    }
 
-void XDestroyWindow(Display *dpy, Window w) {
-    (void)dpy;
-    if (!w) return;
-    if (w->hwnd) DestroyWindow(w->hwnd);
-    free(w);
-}
+    void XDestroyWindow(Display *dpy, Window w) {
+        (void)dpy;
+        /* REAL, NEW 2026-09-26 - xd_valid() before touching the pointer:
+         * same wild-pointer guard as everywhere else. */
+        if (!xd_valid(w)) return;
+        xd_unregister(w);
+        if (w->hwnd) DestroyWindow(w->hwnd);
+        free(w);
+    }
 
 void XMapRaised(Display *dpy, Window w) {
-    if (!w || !w->hwnd) return;
+    if (!xd_valid(w) || !w->hwnd) return;
     ShowWindow(w->hwnd, SW_SHOW);
     SetWindowPos(w->hwnd, HWND_TOPMOST, 0, 0, 0, 0,
                  SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
@@ -334,27 +424,111 @@ void XMapRaised(Display *dpy, Window w) {
     if (dpy) {
         XEvent ev;
         memset(&ev, 0, sizeof(ev));
-        ev.type = Expose;
-        ev.xany.window = w;
-        qpush(dpy, &ev);
+            ev.type = Expose;
+            /* REAL, NEW 2026-09-26 - same wrong-member fix as the WM_PAINT
+             * Expose above: xexpose.window/count, not xany.window. */
+            ev.xany.window = w;
+            ev.xexpose.window = w;
+            ev.xexpose.count = 0;
+            qpush(dpy, &ev);
     }
 }
 
 void XUnmapWindow(Display *dpy, Window w) {
     (void)dpy;
-    if (w && w->hwnd) ShowWindow(w->hwnd, SW_HIDE);
+    if (xd_valid(w) && w->hwnd) ShowWindow(w->hwnd, SW_HIDE);
 }
 
-void XRaiseWindow(Display *dpy, Window w) {
-    (void)dpy;
-    if (w && w->hwnd)
-        SetWindowPos(w->hwnd, HWND_TOPMOST, 0, 0, 0, 0,
-                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-}
+    void XRaiseWindow(Display *dpy, Window w) {
+        (void)dpy;
+        if (xd_valid(w) && w->hwnd)
+            SetWindowPos(w->hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                         SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    }
+
+    /* REAL, NEW 2026-09-26 - the five functions below closed the last X11
+     * gap in this shim (see khtpm_strip_x11_win.h). All of them are reached
+     * only from the @ zorder toggle and main()'s error-handler install. */
+
+    /* X11 stacks within the same layer; these bars are all WS_EX_TOPMOST, so
+     * HWND_BOTTOM is the honest "send to the back of the topmost band"
+     * equivalent of XLowerWindow. */
+    void XLowerWindow(Display *dpy, Window w) {
+        (void)dpy;
+        if (xd_valid(w) && w->hwnd)
+            SetWindowPos(w->hwnd, HWND_BOTTOM, 0, 0, 0, 0,
+                         SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    }
+
+    /* X11's root has no real parent and its "children" are every top-level
+     * window. Here the honest answer is this process's own shim windows -
+     * the registry - because a Win32 top-level window owned by some other
+     * process (the live tile pieces) is not ours to restack, and pretending
+     * otherwise would mean SetWindowPos on a handle we do not own. The
+     * cross-process half of the toggle is ktb_toggle_zorder_apply's nav_tab
+     * registry walk, which is a different code path entirely.
+     * Caller frees *children with XFree, which is free(). */
+    int XQueryTree(Display *dpy, Window w, Window *root_ret, Window *parent_ret,
+                   Window **children, unsigned int *nchildren) {
+        unsigned int n, i;
+        Window *arr;
+        if (!dpy || !children || !nchildren) return 0;
+        n = (unsigned int)dpy->nwins;
+        if (n == 0) { *children = NULL; *nchildren = 0; return 0; }
+        arr = (Window *)calloc(n, sizeof(Window));
+        if (!arr) { *children = NULL; *nchildren = 0; return 0; }
+        for (i = 0; i < n; i++) arr[i] = dpy->wins[i];
+        *children = arr;
+        *nchildren = n;
+        if (root_ret) *root_ret = w;
+        if (parent_ret) *parent_ret = NULL;
+        return 1;
+    }
+
+    /* XFetchName hands back a malloc'd UTF-8 copy the caller XFree()s - the
+     * real Xlib ownership rule, and ktb_zorder_apply_tree relies on it. */
+    int XFetchName(Display *dpy, Window w, char **name_out) {
+        wchar_t wn[256];
+        char *out;
+        int n;
+        (void)dpy;
+        if (!name_out) return 0;
+        *name_out = NULL;
+        if (!xd_valid(w) || !w->hwnd) return 0;
+        if (GetWindowTextW(w->hwnd, wn, 256) == 0) return 0;
+        n = WideCharToMultiByte(CP_UTF8, 0, wn, -1, NULL, 0, NULL, NULL);
+        if (n <= 0) return 0;
+        out = (char *)malloc((size_t)n);
+        if (!out) return 0;
+        WideCharToMultiByte(CP_UTF8, 0, wn, -1, out, n, NULL, NULL);
+        *name_out = out;
+        return 1;
+    }
+
+    /* REAL, NEW 2026-09-26 - recorded, never invoked: this shim speaks no X
+     * protocol, so it never raises BadWindow/BadMatch and there is nothing
+     * to deliver. main() installs the parser's non-fatal handler here and
+     * that install is the whole point - it stays correct if a future
+     * shimmed call ever does want to report one. Return value is 1 if a
+     * handler was already installed (the parser ignores it either way). */
+    static int (*g_xerror_handler)(Display *, XErrorEvent *) = NULL;
+    int XSetErrorHandler(int (*handler)(Display *, XErrorEvent *)) {
+        int had = g_xerror_handler != NULL;
+        g_xerror_handler = handler;
+        return had;
+    }
+
+    int XGetErrorText(Display *dpy, int code, char *buf, int len) {
+        const char *m = "unknown error (win32 shim raises no X protocol errors)";
+        (void)dpy; (void)code;
+        if (!buf || len <= 0) return 0;
+        lstrcpynA(buf, m, (int)strlen(m) + 1 > len ? len : (int)strlen(m) + 1);
+        return (int)strlen(buf);
+    }
 
 void XMoveResizeWindow(Display *dpy, Window w, int x, int y, unsigned width, unsigned height) {
     (void)dpy;
-    if (!w || !w->hwnd) return;
+    if (!xd_valid(w) || !w->hwnd) return;
     clamp_to_work_area(&x, &y, &width, &height);
     w->x = x; w->y = y; w->w = (int)width; w->h = (int)height;
     RECT wa;
@@ -363,14 +537,14 @@ void XMoveResizeWindow(Display *dpy, Window w, int x, int y, unsigned width, uns
                  (int)width, (int)height, SWP_NOACTIVATE);
 }
 
-void XSetWindowBackground(Display *dpy, Window w, unsigned long pixel) {
-    (void)dpy;
-    if (w) w->bg = pixel;
-}
+    void XSetWindowBackground(Display *dpy, Window w, unsigned long pixel) {
+        (void)dpy;
+        if (xd_valid(w)) w->bg = pixel;   /* REAL, NEW 2026-09-26 - guarded */
+    }
 
 void XSetInputFocus(Display *dpy, Window w, int revert, unsigned long time) {
     (void)dpy; (void)revert; (void)time;
-    if (w && w->hwnd) SetFocus(w->hwnd);
+    if (xd_valid(w) && w->hwnd) SetFocus(w->hwnd);
 }
 
 void XFlush(Display *dpy) { pump(dpy); GdiFlush(); }
@@ -398,14 +572,65 @@ void x11_wait(Display *dpy, int usec) {
     pump(dpy);
 }
 
+/* NEW 2026-09-26 - shared mask application for XCreateGC/XChangeGC. The
+ * shim's invented GCForeground=1/GCBackground=2/GCFont=4 are switched on by
+ * value (see the header for why they are not the real Xlib numbers); the new
+ * GCFillStyle/GCGraphicsExposures/GCTile* masks carry the real Xlib bit
+ * positions and are distinct from them, so both sets can be tested together. */
+static void gc_apply(GC gc, unsigned long mask, XGCValues *v) {
+    if (!gc || !v) return;
+    if (mask & GCForeground)         gc->foreground = v->foreground;
+    if (mask & GCBackground)         gc->background = v->background;
+    if (mask & GCFillStyle)          gc->fill_style = v->fill_style;
+    if (mask & GCTile)               gc->tile = v->tile;
+    if (mask & GCTileStipXOrigin)    gc->ts_x_origin = v->ts_x_origin;
+    if (mask & GCTileStipYOrigin)    gc->ts_y_origin = v->ts_y_origin;
+    /* GCFont, GCGraphicsExposures, GCFunction, GCStipple and the rest are
+     * accepted and ignored: this renderer sets solid fills and has no font
+     * or exposure dependency, so honouring them would change nothing on
+     * screen. */
+    (void)gc;
+}
+
 GC XCreateGC(Display *dpy, Drawable d, unsigned long mask, XGCValues *v) {
-    (void)dpy; (void)d; (void)mask;
+    (void)dpy; (void)d;
     GC gc = (GC)calloc(1, sizeof(*gc));
     if (!gc) return NULL;
     gc->foreground = 0xFFFFFFul;
     gc->background = 0;
-    if (v) { gc->foreground = v->foreground; gc->background = v->background; }
+    gc->fill_style = FillSolid;
+    if (v) gc_apply(gc, mask, v);
     return gc;
+}
+
+void XChangeGC(Display *dpy, GC gc, unsigned long mask, XGCValues *v) {
+    (void)dpy;
+    gc_apply(gc, mask, v);
+}
+
+void XSetFillStyle(Display *dpy, GC gc, int fill_style) {
+    (void)dpy;
+    if (gc) gc->fill_style = (unsigned long)fill_style;
+}
+
+/* NEW 2026-09-26 - the dash/width half of GC line state. khtpm_core_render.c
+ * uses dashes for the focused-cell ring and the XDND drop-target outline. The
+ * Win32 shim draws with CreatePen, which has no dash pattern, so the width is
+ * honoured and the pattern is recorded but not rendered - the outline reads
+ * as a solid ring. Storing the values keeps XSetLineAttributes a real
+ * function rather than a lie that discards its arguments. */
+static unsigned long g_line_width = 1;
+static int g_line_style = LineSolid;
+static int g_cap_style = CapButt;
+static int g_join_style = JoinMiter;
+
+void XSetLineAttributes(Display *dpy, GC gc, unsigned int width,
+                        int line_style, int cap_style, int join_style) {
+    (void)dpy; (void)gc;
+    g_line_width  = width ? width : 1;
+    g_line_style  = line_style;
+    g_cap_style   = cap_style;
+    g_join_style  = join_style;
 }
 
 void XFreeGC(Display *dpy, GC gc) { (void)dpy; free(gc); }
@@ -440,6 +665,30 @@ void XFillRectangle(Display *dpy, Drawable d, GC gc, int x, int y, unsigned w, u
         if (x < 0) x = 0; if (y < 0) y = 0;
         if (x1 > d->w) x1 = d->w; if (y1 > d->h) y1 = d->h;
         unsigned char *bits = (unsigned char *)d->bits;
+        /* NEW 2026-09-26 - FillTiled support. khtpm_draw_core.c stamps a 12x12
+         * checkerboard through a tiled GC (draw_core.c:820-840); without this
+         * branch the whole cell came out as one solid block in the current
+         * foreground colour. The tile is itself a shim Pixmap, so its pixels
+         * are already in the same CPU-accessible BGRX layout as the
+         * destination and the stamp is a straight modulo read. */
+        Pixmap tp = (gc && gc->fill_style == FillTiled) ? gc->tile : NULL;
+        if (tp && tp->kind == KIND_PIX && tp->bits && tp->w > 0 && tp->h > 0) {
+            const unsigned char *tb = (const unsigned char *)tp->bits;
+            long ox = gc->ts_x_origin, oy = gc->ts_y_origin;
+            for (int yy = y; yy < y1; yy++) {
+                int ty = (int)(((yy - oy) % tp->h + tp->h) % tp->h);
+                for (int xx = x; xx < x1; xx++) {
+                    int tx = (int)(((xx - ox) % tp->w + tp->w) % tp->w);
+                    int si = (ty * tp->w + tx) * 4;
+                    int di = (yy * d->w + xx) * 4;
+                    bits[di + 0] = tb[si + 0];
+                    bits[di + 1] = tb[si + 1];
+                    bits[di + 2] = tb[si + 2];
+                    bits[di + 3] = 255;
+                }
+            }
+            return;
+        }
         for (int yy = y; yy < y1; yy++) {
             for (int xx = x; xx < x1; xx++) {
                 int i = (yy * d->w + xx) * 4;
@@ -688,10 +937,78 @@ Atom XInternAtom(Display *dpy, const char *name, int only_if_exists) {
     return dpy->next_atom++;
 }
 
+/* --- property store (NEW 2026-09-26) -------------------------------------
+ * Bytes per item for each X11 property format. XGetWindowProperty returns a
+ * count of 32-bit words regardless of format, so these matter for the
+ * long_offset/long_length arithmetic. */
+static int prop_item_bytes(int format) {
+    switch (format) {
+        case 8:  return 1;
+        case 16: return 2;
+        default: return 4;   /* 32, and anything unknown, as Xlib treats it */
+    }
+}
+
+static KProp *prop_find(Xd *xd, Atom a) {
+    if (!xd) return NULL;
+    for (KProp *p = xd->props; p; p = p->next)
+        if (p->atom == a) return p;
+    return NULL;
+}
+
+/* mode: PropModeReplace 0, PropModePrepend 1, PropModeAppend 2 - the real
+ * X11 values, and the only thing core_render varies is Replace. */
+static int prop_store(Xd *xd, Atom prop, Atom type, int format, int mode,
+                      const unsigned char *data, int nelements) {
+    if (!xd || !data || format != 8 && format != 16 && format != 32) return 0;
+    KProp *p = prop_find(xd, prop);
+    if (!p) {
+        p = (KProp *)calloc(1, sizeof(KProp));
+        if (!p) return 0;
+        p->atom = prop;
+        p->next = xd->props;
+        xd->props = p;
+    }
+    size_t n = (size_t)nelements * (size_t)prop_item_bytes(format);
+    unsigned char *buf = (unsigned char *)malloc(n ? n : 1);
+    if (!buf) return 0;
+    memcpy(buf, data, n);
+    free(p->data);
+    if (mode == 0) {            /* Replace */
+        p->data = buf;
+        p->nitems = (unsigned long)nelements;
+    } else if (mode == 1) {     /* Prepend */
+        unsigned char *j = (unsigned char *)malloc((p->nitems + (unsigned long)nelements) * (size_t)prop_item_bytes(format));
+        if (j) {
+            memcpy(j, data, n);
+            memcpy(j + n, p->data, (size_t)p->nitems * (size_t)prop_item_bytes(format));
+            free(p->data); free(buf);
+            p->data = j; p->nitems += (unsigned long)nelements;
+        } else free(buf);
+    } else {                    /* Append */
+        unsigned long esz = (unsigned long)prop_item_bytes(format);
+        unsigned char *j = (unsigned char *)realloc(p->data, (size_t)(p->nitems + (unsigned long)nelements) * (size_t)esz);
+        if (j) {
+            memcpy(j + (size_t)p->nitems * esz, data, n);
+            p->data = j; p->nitems += (unsigned long)nelements;
+        }
+        free(buf);
+    }
+    (void)type;   /* single-typed properties only; the renderer never mixes */
+    return 1;
+}
+
+static void props_free(Xd *xd) {
+    if (!xd) return;
+    KProp *p = xd->props;
+    while (p) { KProp *n = p->next; free(p->data); free(p); p = n; }
+    xd->props = NULL;
+}
+
 int XChangeProperty(Display *dpy, Window w, Atom prop, Atom type, int format,
                     int mode, const unsigned char *data, int nelements) {
-    (void)type; (void)format; (void)mode; (void)nelements;
-    if (!w || !w->hwnd || !dpy) return 0;
+    if (!xd_valid(w) || !w->hwnd || !dpy) return 0;
+    prop_store(w, prop, type, format, mode, data, nelements);
     if (prop == dpy->opacity_atom && data) {
         unsigned long val = *(const unsigned long *)data;
         BYTE a = (BYTE)(val / (0xFFFFFFFFul / 255ul));
@@ -699,6 +1016,25 @@ int XChangeProperty(Display *dpy, Window w, Atom prop, Atom type, int format,
         SetLayeredWindowAttributes(w->hwnd, 0, a ? a : 1, LWA_ALPHA);
     }
     return 1;
+}
+
+/* NEW 2026-09-26 - was declared nowhere and called by nothing, but the
+ * delete-after-read path in XGetWindowProperty needs a counterpart, and ICCCM
+ * property replacement is cleaner with it. */
+int XDeleteProperty(Display *dpy, Window w, Atom prop) {
+    (void)dpy;
+    if (!xd_valid(w)) return 0;
+    KProp **pp = &w->props;
+    while (*pp) {
+        if ((*pp)->atom == prop) {
+            KProp *dead = *pp;
+            *pp = dead->next;
+            free(dead->data); free(dead);
+            return 1;
+        }
+        pp = &(*pp)->next;
+    }
+    return 0;
 }
 
 XClassHint *XAllocClassHint(void) { return (XClassHint *)calloc(1, sizeof(XClassHint)); }
@@ -798,13 +1134,16 @@ void XftDrawStringUtf8(XftDraw *dr, const XftColor *col, XftFont *font,
 
 void XMapWindow(Display *dpy, Window w) { XMapRaised(dpy, w); }
 
-void XMoveWindow(Display *dpy, Window w, int x, int y) {
-    unsigned ww = w ? (unsigned)w->w : 1, hh = w ? (unsigned)w->h : 1;
-    XMoveResizeWindow(dpy, w, x, y, ww, hh);
-}
+    void XMoveWindow(Display *dpy, Window w, int x, int y) {
+        /* REAL, NEW 2026-09-26 - xd_valid, not a bare `w ?`: XMoveWindow
+         * forwards straight into XMoveResizeWindow, so an unregistered
+         * Window would be dereferenced there. */
+        unsigned ww = xd_valid(w) ? (unsigned)w->w : 1, hh = xd_valid(w) ? (unsigned)w->h : 1;
+        XMoveResizeWindow(dpy, w, x, y, ww, hh);
+    }
 
 void XClearWindow(Display *dpy, Window w) {
-    if (!w || !w->hwnd) return;
+    if (!xd_valid(w) || !w->hwnd) return;
     RECT rc; GetClientRect(w->hwnd, &rc);
     HDC hdc = GetDC(w->hwnd);
     HBRUSH br = CreateSolidBrush(pix_to_cr(w->bg));
@@ -816,7 +1155,7 @@ void XClearWindow(Display *dpy, Window w) {
 
 void XStoreName(Display *dpy, Window w, const char *name) {
     (void)dpy;
-    if (!w || !w->hwnd || !name) return;
+    if (!xd_valid(w) || !w->hwnd || !name) return;
     wchar_t wn[256];
     MultiByteToWideChar(CP_UTF8, 0, name, -1, wn, 256);
     SetWindowTextW(w->hwnd, wn);
@@ -888,12 +1227,12 @@ int XCheckWindowEvent(Display *dpy, Window w, long mask, XEvent *ev) {
 int XGrabPointer(Display *dpy, Window w, int owner, unsigned mask, int pmode, int kmode,
                  Window confine, int cursor, unsigned long time) {
     (void)dpy; (void)owner; (void)mask; (void)pmode; (void)kmode; (void)confine; (void)cursor; (void)time;
-    if (w && w->hwnd) SetCapture(w->hwnd);
+    if (xd_valid(w) && w->hwnd) SetCapture(w->hwnd);
     return GrabSuccess;
 }
 int XGrabKeyboard(Display *dpy, Window w, int owner, int pmode, int kmode, unsigned long time) {
     (void)dpy; (void)owner; (void)pmode; (void)kmode; (void)time;
-    if (w && w->hwnd) SetFocus(w->hwnd);
+    if (xd_valid(w) && w->hwnd) SetFocus(w->hwnd);
     return GrabSuccess;
 }
 int XUngrabPointer(Display *dpy, unsigned long time) { (void)dpy; (void)time; ReleaseCapture(); return 0; }
@@ -1035,12 +1374,12 @@ XWMHints *XAllocWMHints(void) { return (XWMHints *)calloc(1, sizeof(XWMHints)); 
 void XSetWMHints(Display *dpy, Window w, XWMHints *h) { (void)dpy; (void)w; (void)h; }
 void XSetWMNormalHints(Display *dpy, Window w, XSizeHints *h) { (void)dpy; (void)w; (void)h; }
 int XSetWMProtocols(Display *dpy, Window w, Atom *protocols, int n) { (void)dpy; (void)w; (void)protocols; (void)n; return 1; }
-int XGetWindowAttributes(Display *dpy, Window w, XWindowAttributes *wa) {
-    (void)dpy;
-    if (!wa || !w) return 0;
-    wa->x = w->x; wa->y = w->y; wa->width = w->w; wa->height = w->h;
-    return 1;
-}
+    int XGetWindowAttributes(Display *dpy, Window w, XWindowAttributes *wa) {
+        (void)dpy;
+        if (!wa || !xd_valid(w)) return 0;   /* REAL, NEW 2026-09-26 - guarded */
+        wa->x = w->x; wa->y = w->y; wa->width = w->w; wa->height = w->h;
+        return 1;
+    }
 int XGetInputFocus(Display *dpy, Window *w, int *revert) {
     (void)dpy;
     if (w) *w = NULL;
@@ -1099,3 +1438,232 @@ void XftTextExtentsUtf8(Display *dpy, XftFont *font, const FcChar8 *s, int len, 
     (void)dpy;
 }
 
+
+/* ======================================================================
+ * REAL, NEW 2026-09-26 - the window / selection / event half of Xlib that
+ * khtpm_core_render.c needs and this shim did not have.
+ *
+ * Grouped by what the renderer actually calls them for:
+ *
+ *  1. Image write:   XPutPixel
+ *  2. Window geometry: XConfigureWindow, XResizeWindow,
+ *                      XTranslateCoordinates
+ *  3. Properties:    XGetWindowProperty (pairs with XChangeProperty above)
+ *  4. Selection:     XSetSelectionOwner, XGetSelectionOwner,
+ *                    XConvertSelection
+ *  5. Events:        XSendEvent, XCheckTypedWindowEvent
+ *
+ * Honest limitations, called out rather than hidden:
+ *  - There is no cross-process window manager and no other X client, so
+ *    XSendEvent delivers into this process's own event queue. That is enough
+ *    for the renderer's self-addressed ClientMessages (the XDND _XDND_FINISHED
+ *    reply at core_render.c:9497, WM_DELETE_WINDOW, _NET_WM_STATE) and for
+ *    an in-process drag source/target pair, but it cannot reach a foreign
+ *    client the way a real X server would.
+ *  - XTranslateCoordinates is exact only for windows this process created,
+ *    because their positions come from the real HWNDs. It reports 0 for a
+ *    foreign window rather than inventing a position.
+ * ====================================================================== */
+
+/* --- 1. image write ---------------------------------------------------
+ * Byte-for-byte inverse of XGetPixel, which reads BGRX (a 32-bit DIB), so a
+ * pixel written here reads back identical. draw_core.c:662-668 converts an
+ * RGBA canvas buffer to 0xRRGGBB and stamps it in through this. */
+int XPutPixel(XImage *img, int x, int y, unsigned long pixel) {
+    if (!img || !img->data || x < 0 || y < 0 || x >= img->width || y >= img->height) return 0;
+    unsigned char *p = (unsigned char *)img->data + (size_t)y * img->bytes_per_line + (size_t)x * 4;
+    p[0] = (unsigned char)(pixel & 255);
+    p[1] = (unsigned char)((pixel >> 8) & 255);
+    p[2] = (unsigned char)((pixel >> 16) & 255);
+    p[3] = 255;
+    return 1;
+}
+
+/* --- 2. window geometry ----------------------------------------------- */
+
+/* Real X11 CWStackMode values are 0/1 for Below/Above; the shim defines
+ * CWStackMode itself as 16 (see the header), so both the stack bits and the
+ * geometry bits are read from the same XWindowChanges the caller filled. */
+static void win_apply(Display *dpy, Xd *xd, XWindowChanges *wc) {
+    if (!xd || !wc) return;
+    int x = (wc->flags & (CWX | CWY)) ? wc->x : xd->x;
+    int y = (wc->flags & (CWX | CWY)) ? wc->y : xd->y;
+    int w = (wc->flags & CWWidth)  ? wc->width  : xd->w;
+    int h = (wc->flags & CWHeight) ? wc->height : xd->h;
+    if (xd->kind == KIND_WIN && xd->hwnd) {
+        UINT swp = SWP_NOACTIVATE;
+        /* A stack request is meaningful, so do not suppress SWP_NOZORDER when
+         * one was made - that is the whole point of
+         * render_managed_sink_below(). Otherwise leave the z-order alone. */
+        HWND after = NULL;
+        if (wc->flags & CWStackMode) {
+            if (wc->stack_mode == Above)      after = HWND_TOP;
+            else if (wc->stack_mode == Below) after = HWND_BOTTOM;
+        } else {
+            swp |= SWP_NOZORDER;
+        }
+        SetWindowPos(xd->hwnd, after, x, y, w, h, swp);
+    }
+    xd->x = x; xd->y = y;
+    if ((wc->flags & (CWWidth | CWHeight))) { xd->w = w; xd->h = h; }
+    (void)dpy;
+}
+
+void XConfigureWindow(Display *dpy, Window w, unsigned int mask, XWindowChanges *wc) {
+    if (!xd_valid(w) || !wc) return;
+    wc->flags = (long)mask;
+    win_apply(dpy, w, wc);
+}
+
+void XResizeWindow(Display *dpy, Window w, unsigned int width, unsigned int height) {
+    if (!xd_valid(w)) return;
+    if (w->kind == KIND_WIN && w->hwnd)
+        SetWindowPos(w->hwnd, NULL, 0, 0, (int)width, (int)height,
+                     SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+    w->w = (int)width; w->h = (int)height;
+    (void)dpy;
+}
+
+Bool XTranslateCoordinates(Display *dpy, Window src_w, Window dest_w,
+                           int src_x, int src_y, int *dest_x_return,
+                           int *dest_y_return, Window *child_return) {
+    (void)dpy;
+    POINT p;
+    HWND sh = NULL, dh = NULL;
+    /* A null/root source means the virtual screen, which is what X calls the
+     * root window and what DefaultRootWindow() evaluates to in this shim. */
+    if (src_w && xd_valid(src_w) && src_w->hwnd) sh = src_w->hwnd;
+    if (dest_w && xd_valid(dest_w) && dest_w->hwnd) dh = dest_w->hwnd;
+    if (src_w && !sh) return False;          /* foreign/unknown window */
+    if (src_w) {
+        RECT r; GetWindowRect(sh, &r);
+        p.x = r.left + src_x;
+        p.y = r.top + src_y;
+    } else {
+        p.x = src_x; p.y = src_y;
+    }
+    if (dh) {
+        RECT dr; GetWindowRect(dh, &dr);
+        if (dest_x_return) *dest_x_return = p.x - dr.left;
+        if (dest_y_return) *dest_y_return = p.y - dr.top;
+    } else {
+        if (dest_x_return) *dest_x_return = p.x;
+        if (dest_y_return) *dest_y_return = p.y;
+    }
+    if (child_return) *child_return = NULL;  /* no child tracking in the shim */
+    return True;
+}
+
+/* --- 3. property read ------------------------------------------------- */
+int XGetWindowProperty(Display *dpy, Window w, Atom property,
+                       long long_offset, long long_length, Bool delete,
+                       Atom req_type, Atom *actual_type_return,
+                       int *actual_format_return,
+                       unsigned long *nitems_return,
+                       unsigned long *bytes_after_return,
+                       unsigned char **prop_return) {
+    (void)dpy;
+    if (!xd_valid(w)) return 1;   /* BadWindow */
+    KProp *p = prop_find(w, property);
+    if (actual_type_return)   *actual_type_return = p ? property : None;
+    if (actual_format_return) *actual_format_return = p ? p->format : 0;
+    if (nitems_return)        *nitems_return = 0;
+    if (bytes_after_return)   *bytes_after_return = 0;
+    if (prop_return)          *prop_return = NULL;
+    /* Success with a NULL payload is how X11 reports "no such property", and
+     * it is what the caller's `data && n > 0` guard expects. */
+    if (!p) return 0;
+    if (req_type != AnyPropertyType && p->format != 0) {
+        /* The shim stores no type atom per property, so a typed request is
+         * accepted for the formats the renderer actually uses (32-bit atoms
+         * and cardinals) rather than rejected outright. */
+    }
+    int esz = prop_item_bytes(p->format);
+    long total_items = (long)p->nitems;
+    long start = long_offset;
+    if (start < 0) start = 0;
+    long avail = total_items - start;
+    if (avail < 0) avail = 0;
+    long want = long_length;                 /* caller asks in 32-bit words */
+    if (want < 0 || want > avail) want = avail;
+    unsigned long nbytes = (unsigned long)want * (unsigned long)esz;
+    unsigned char *out = NULL;
+    if (nbytes) {
+        out = (unsigned char *)malloc(nbytes);
+        if (!out) return 2;                  /* AllocError */
+        memcpy(out, p->data + (size_t)start * (size_t)esz, nbytes);
+    }
+    if (nitems_return)      *nitems_return = (unsigned long)want;
+    if (bytes_after_return) *bytes_after_return =
+        (unsigned long)((avail - want) * esz);
+    if (prop_return)        *prop_return = out; else free(out);
+    if (delete) XDeleteProperty(dpy, w, property);
+    return 0;                                /* Success */
+}
+
+/* --- 4. selection ----------------------------------------------------- */
+int XSetSelectionOwner(Display *dpy, Atom selection, Window owner, Time when) {
+    (void)when;
+    if (!dpy) return 0;
+    if (selection == None) return 0;
+    dpy->sel_atom = selection;
+    dpy->sel_owner = (owner == None) ? NULL : owner;
+    return owner != None ? 1 : 0;   /* XNone -> success-with-no-owner == 0 */
+}
+
+Window XGetSelectionOwner(Display *dpy, Atom selection) {
+    if (!dpy || selection != dpy->sel_atom) return None;
+    return dpy->sel_owner;
+}
+
+/* Real X delivers this by asking the owner to answer: the owner receives an
+ * XSelectionRequestEvent and responds with SelectionNotify. Doing the same
+ * here means the renderer's drag-source and drop-target code paths both run
+ * unchanged, because they are already written as source/target/notify. */
+int XConvertSelection(Display *dpy, Atom selection, Atom target, Atom property,
+                      Window requestor, Time when) {
+    if (!dpy || !dpy->sel_owner || selection != dpy->sel_atom) return 0;
+    XEvent rq;
+    memset(&rq, 0, sizeof(rq));
+    rq.xselectionrequest.type = SelectionRequest;
+    rq.xselectionrequest.display = dpy;
+    rq.xselectionrequest.owner = dpy->sel_owner;
+    rq.xselectionrequest.requestor = requestor;
+    rq.xselectionrequest.selection = selection;
+    rq.xselectionrequest.target = target;
+    rq.xselectionrequest.property = property;
+    rq.xselectionrequest.time = when;
+    qpush(dpy, &rq);
+    return 1;
+}
+
+/* --- 5. events -------------------------------------------------------- */
+Status XSendEvent(Display *dpy, Window w, Bool propagate, long event_mask, XEvent *ev) {
+    (void)propagate; (void)event_mask;
+    if (!dpy || !ev) return 0;
+    if (w && !xd_valid(w)) return 0;
+    qpush(dpy, ev);
+    return 1;
+}
+
+/* Non-blocking: drains one event of the requested type, leaving anything
+ * else queued for XNextEvent. This is the "peek without consuming the rest of
+ * the queue" the render loop uses to spot a ClientMessage. */
+int XCheckTypedWindowEvent(Display *dpy, Window w, long mask, XEvent *ev) {
+    (void)w;
+    if (!dpy || !ev) return 0;
+    pump(dpy);
+    int count = (dpy->qh >= dpy->qt) ? (dpy->qh - dpy->qt)
+                                     : (EQMAX - (dpy->qt - dpy->qh));
+    for (int i = 0; i < count; i++) {
+        int idx = (dpy->qt + i) % EQMAX;
+        if (mask && (dpy->q[idx].type & (long)0x7f) != (mask & 0x7f)) continue;
+        *ev = dpy->q[idx];
+        /* close the hole so the queue stays a ring */
+        for (int j = idx; j != dpy->qh; j = (j + 1) % EQMAX)
+            dpy->q[j] = dpy->q[(j + 1) % EQMAX];
+        dpy->qh = (dpy->qh + EQMAX - 1) % EQMAX;
+        return 1;
+    }
+    return 0;
+}
