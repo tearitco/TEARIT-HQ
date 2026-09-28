@@ -4501,6 +4501,21 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
          * the trailing strip. class=top is laid at y_cursor below. */
         if ((strcmp(c->tag, "cli_io") == 0 || strcmp(c->tag, "text_area") == 0) && !elem_has_class(c, "top"))
             composer_rows = c->rows > 0 ? c->rows : 1;
+        /* REAL FIX 2026-09-28 (direct live report: "you accidentally
+         * moved cli-io from bottom input to being at the top of screen
+         * weirdly") - a cli_io/text_area nested inside a <row
+         * class="toolbar"> (the new item+composer row-sharing feature,
+         * same day) wasn't detected here at all, so composer_rows/
+         * composer_h stayed 0 and the row below got laid out top-down
+         * like any other fixed row instead of bottom-glued. Same
+         * detection, one level deeper. */
+        if (strcmp(c->tag, "row") == 0 && elem_has_class(c, "toolbar")) {
+            for (int k = 0; k < c->n_children; k++) {
+                Elem *rc = c->children[k];
+                if ((strcmp(rc->tag, "cli_io") == 0 || strcmp(rc->tag, "text_area") == 0) && !elem_has_class(rc, "top"))
+                    composer_rows = rc->rows > 0 ? rc->rows : 1;
+            }
+        }
         if (strcmp(c->tag, "scrolllist") == 0) scrolllist = c;
     }
     int composer_h = composer_rows * ROW_H;
@@ -4530,8 +4545,24 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
             else c->nav_index = 0;
             y_cursor += span * ROW_H;
         } else if (strcmp(c->tag, "row") == 0 && elem_has_class(c, "toolbar") && !elem_has_class(c, "pal-grid-row")) {
-            layout_toolbar_row(c, x, y_cursor, w);
-            y_cursor += ROW_H;
+            /* REAL FIX 2026-09-28 (same live report as the composer_rows
+             * detection above) - a toolbar row holding a composer is the
+             * composer's own row, and must bottom-glue exactly like a
+             * bare bottom cli_io does (c->y = y + h - composer_h below),
+             * not flow top-down with y_cursor like a normal fixed row -
+             * that's what put it "weirdly at the top of screen". */
+            int row_has_composer = 0;
+            for (int k = 0; k < c->n_children; k++) {
+                Elem *rc = c->children[k];
+                if ((strcmp(rc->tag, "cli_io") == 0 || strcmp(rc->tag, "text_area") == 0) && !elem_has_class(rc, "top"))
+                    row_has_composer = 1;
+            }
+            if (row_has_composer) {
+                layout_toolbar_row(c, x, y + h - composer_h, w);
+            } else {
+                layout_toolbar_row(c, x, y_cursor, w);
+                y_cursor += ROW_H;
+            }
         } else if (strcmp(c->tag, "cli_io") == 0 || strcmp(c->tag, "text_area") == 0) {
             int this_h = (c->rows > 0 ? c->rows : 1) * ROW_H;
             if (elem_has_class(c, "top")) {
