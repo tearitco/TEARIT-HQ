@@ -9,6 +9,16 @@ share the defect, which do not, and -- importantly -- which could not be
 verified at all on Windows, so nobody repeats the work or assumes a verdict
 that was never tested.
 
+*** CORRECTED 2026-09-28. READ THIS FIRST. ***
+The original version of this file said cpp-llm, gem-dev and groq-ollama were
+NOT BUILT ON WINDOWS and that their conclusions were code-read only. All three
+are now built, running and partly runtime-verified. That statement was correct
+when written and is now wrong, and it was wrong in the most expensive possible
+way: it invited the next agent to either repeat the ports or to distrust the
+results. Sections 5-7, the verdict table and section 9 have been rewritten
+against what was actually tested. slop-ed-dev is the only one of the four still
+unbuilt.
+
 THE SIGNAL, FOR REFERENCE. chtpm_parser.c's export_active_index() (:2259)
 writes pieces/display/active_gui_is_typing.txt every frame: "1" when the
 focused element is genuinely active and accepting keystrokes, "0" when merely
@@ -35,14 +45,19 @@ VERDICT TABLE
   op-ed         yes          button onClick=INTERACT cli_io x2       FIXED (shared
                                                     (file_browser)   parser fix)
   fuzz-op       yes          button onClick=INTERACT none            NOT A BUG
-  cpp-llm       NO            cli_io id=input_text   cli_io          FIXED (write
-                                                                    side only)
-  gem-dev       NO            cli_io id=input_text   cli_io          NOT A BUG
+  cpp-llm       yes (fixed)  cli_io id=input_text   cli_io          FIXED (write
+                                                                    side only);
+                                                                    RUNTIME-VERIFIED
+                                                                    2026-09-27
+  gem-dev       yes (fixed)  cli_io id=input_text   cli_io          NOT A BUG
                                                                     (was suspected;
                                                                      REFUTED)
-  groq-ollama   NO            cli_io id=input_text   cli_io          FIXED (write
-                                                                    side only)
+  groq-ollama   yes (fixed)  cli_io id=input_text   cli_io          FIXED (write
+                                                                    side only);
+                                                                    runs, but NOT
+                                                                    input-tested
   slop-ed-dev   NO            button + cli_io x2     cli_io          NOT VERIFIED
+
 
 --------------------------------------------------------------------------------
 1. wraith-alpha -- NOT A BUG (the reference implementation)
@@ -111,15 +126,53 @@ active_gui_index.txt (sync_focus(), :297) is legitimate focus tracking for its
 own gui_state, not a mode decision. Nothing changed. Do not "fix" this one.
 
 --------------------------------------------------------------------------------
-5-7. cpp-llm, gem-dev, groq-ollama -- NOT BUILT ON WINDOWS
+5-7. cpp-llm, gem-dev, groq-ollama -- NOW BUILT AND RUNNING (was: not built)
 --------------------------------------------------------------------------------
-None of the three is in pieces/buttons/windows/legacy/compile_all.ps1 and none
-has a built manager, so none can be launched or tested here. All three fail to
-compile with the same single pre-existing error at line 7,
-`#include <sys/wait.h>`, and each carries agy's exact POSIX profile: 3-4
-fork(), 8 execv, 3 waitpid, 4-5 setpgid, WEXITSTATUS. So porting them is
-tractable (agy needed four fixes of that shape) but is its own piece of work,
-not something to fold into an audit.
+SUPERSEDED IN PART. The original text here said none of the three was in
+compile_all.ps1, none had a built manager, none could be launched or tested
+here, and that their conclusions were code-read only. All three have since
+been ported and added to the build. Commits 2350046d (cpp-llm), f9d8820c
+(groq-ollama), c4751492 (gem-dev), all on kilo.
+
+THE OMISSION WAS REAL AND WAS THE ACTUAL BUG. None of the three was in
+pieces/buttons/windows/legacy/compile_all.ps1, so none had ever been built on
+Windows -- they could not run, not badly. All three failed to compile on the
+same pre-existing error at line 7, `#include <sys/wait.h>`, and each carried
+agy's exact POSIX profile: 3-4 fork(), 8 execv, 3 waitpid, 4-5 setpgid,
+WEXITSTATUS.
+
+WHAT THE PORT ACTUALLY REQUIRED, since this is the part a future agent will
+otherwise rediscover the hard way:
+  - The easy fixes are mechanical: guard sys/wait.h and unistd.h, #undef
+    MAX_PATH (windows.h defines it as 260, these files define it as 4096),
+    shim getline/mkdir/usleep, widen log_pid() to long and make flock()
+    POSIX-only.
+  - The NON-mechanical one is executable resolution. These managers call
+    their ops by BARE NAME ("connect_op") and let execvp find them. On
+    Windows there is no file of that name -- compile_all.ps1 writes
+    "connect_op.+x" -- and CreateProcess does not search PATH the way execvp
+    does. So win_resolve_tool() tries "", ".exe" and ".+x" against each base
+    path and walks PATH explicitly for real system tools like curl. Without
+    the ".+x" arm every op lookup returns NULL and the app silently does
+    nothing; without the PATH walk every curl call does. The first cpp-llm
+    build appeared to succeed and still found zero ops. That is what exposed
+    it.
+  - run_tool()'s pipe/fork/dup2/read loop becomes CreatePipe/CreateProcess,
+    and the pipe's read end needs HANDLE_FLAG_INHERIT cleared or the child
+    keeps a duplicate and the read loop never sees EOF.
+  - groq-ollama additionally fork()s and does ALL the work IN THE CHILD for
+    its gemini branch (popen the SSE stream, parse, flatten, _exit). There is
+    no fork on Windows, so that body moved verbatim onto a worker thread, and
+    g_ai_handle holds the THREAD handle -- still a HANDLE, so the existing
+    WaitForSingleObject poll in check_ai_status() keeps working. Because that
+    handle is a thread in one branch and a process in the other, their exit
+    codes need GetExitCodeThread vs GetExitCodeProcess respectively; that
+    split is tracked with g_ai_handle_is_thread. Getting it wrong returns a
+    meaningless value while looking like it worked.
+  - gem-dev built its curl argument vector INSIDE the forked child. A forked
+    child inherits the parent stack so that was free; a CreateProcess child
+    cannot see those locals at all, so the vector had to be hoisted into the
+    parent for both branches.
 
 All three use <cli_io id="input_text">, the legacy single-slot form with no
 target_id, and none has an onClick="INTERACT" element -- so the B.2/B.3 shape
@@ -127,7 +180,7 @@ target_id, and none has an onClick="INTERACT" element -- so the B.2/B.3 shape
 element there is no key-forwarding path a manager could misinterpret.
 
 WIRE FORMAT, MEASURED LIVE. The parser writes cli_buffers.txt whether or not a
-manager is running, so this much is testable without any port. Running the
+manager is running, so this much was testable without any port. Running the
 parser alone against gem-dev.chtpm and typing a,b,c into its
 <cli_io id="input_text"> published exactly:
 
@@ -137,7 +190,8 @@ parser alone against gem-dev.chtpm and typing a,b,c into its
 
 The leading 'i' is the generic-fallback prefix (first character of the element
 id), confirmed at byte level. This is the format any consumer of that field
-has to expect.
+has to expect. Re-measured independently on 2026-09-27 under cpp-llm and got
+the same 'i' prefix ('ih','ihe','ihel').
 
   a) gem-dev -- SUSPICION REFUTED, and the earlier claim in this file was
      WRONG. I previously wrote that gem-dev "appears never to strip that
@@ -160,6 +214,8 @@ has to expect.
      no phantom 'i'. gem-dev is NOT BUGGY on this point. The lesson is the
      one the khtpm skill warns about -- do not diagnose from a truncated read
      window, and above all verify before publishing a claim in writing.
+     STILL TRUE AFTER PORTING: re-checked against the ported file, gem-dev
+     strips the prefix correctly.
 
   b) cpp-llm and groq-ollama -- REAL, AND NOW FIXED. Both had this in their
      autocomplete-accept path (cpp-llm :363, groq-ollama :376):
@@ -181,23 +237,53 @@ has to expect.
      cli_buffers -- so they were never themselves victims of the prefix, only
      perpetrators of the truncation.
 
-     NOT RUNTIME-VERIFIED, and honestly so: neither app builds on Windows, so
-     the fix cannot be exercised here. What WAS verified is that the changed
-     statements compile clean under the project's own flags (-D_WIN32
-     -std=gnu11, exit 0) and that the append semantics are real -- a fragment
-     doing the same fopen("a")/fprintf into a file already containing
-     "preexisting-line" produced "preexisting-lineihello world", i.e. the
-     prior content survived. With "w" it would have been destroyed. The prefix
-     character itself was measured off the real parser, not assumed.
+     STILL NOT RUNTIME-VERIFIED, and the reason is specific rather than
+     general: handle_choose_path() returns before its write whenever no
+     completion labels are loaded, and the parser consumes digits while the
+     cli_io holds focus, so the autocomplete-accept path is not reachable
+     from this harness. What IS verified: the changed statements compile
+     clean, and the append semantics are real -- a fragment doing the same
+     fopen("a")/fprintf into a file already containing "preexisting-line"
+     produced "preexisting-lineihello world", i.e. the prior content
+     survived. With "w" it would have been destroyed. The prefix character
+     itself was measured off the real parser, not assumed.
 
-  Also flagged, still unfixed and unmeasured: all three write
+  RUNTIME EVIDENCE, 2026-09-27. This is the part that could not exist before.
+  Each manager was launched under the real chtpm_parser.+x against its own
+  layout, so the layout's <module> tag resolved to the built artifact:
+
+    - cpp-llm -- FULLY input-tested, and it is the one that demonstrates the
+      section 8 backspace fix in an app that previously could not run at all.
+      Typed h,e,l,l,o into <cli_io id="input_text">; cli_buffers.txt received
+      'ih','ihe','ihel','ihel','ihelo'. Backspace twice republished 'ihel'
+      then 'ihe', and the manager's gui_state read input_text=he -- current,
+      not the stale pre-backspace value. manager_debug.log confirmed
+      resolve_my_ip() detected 10.0.0.16 through the new gethostbyname path
+      (MinGW has no ifaddrs.h).
+
+    - groq-ollama -- manager and parser both alive, gui_state.txt written, all
+      18 keys published, 6 API endpoints resolved from config/apis.txt. NOT
+      input-tested.
+
+    - gem-dev -- manager and parser both alive, gui_state.txt written, the
+      Gemini endpoint resolved, completion slots published. NOT input-tested.
+
+  NOT VERIFIED FOR ANY OF THE THREE, and this is the load-bearing caveat: NO
+  LIVE AI ROUND TRIP. The endpoints in these projects' apis.txt are 10.0.0.x
+  machines not reachable from here. So for all three the curl spawn, the
+  exit-code handling and groq-ollama's thread-vs-process handle split are
+  proven ONLY by compilation and by the manager starting cleanly -- not by a
+  reply arriving. The groq-ollama handle-kind split in particular is the piece
+  most in need of a real gemini run before anyone relies on it.
+
+  Also flagged, still unfixed and now MEASURABLE: all three write
   pieces/display/active_gui_index.txt themselves (cpp-llm :339/:371,
   gem-dev :667/:719, groq-ollama :352/:384) while chtpm_parser.c rewrites that
   same file every frame from compose_frame(). Two writers of one file is a
   genuine design conflict; gem-dev additionally TRUNCATES it at startup
-  (:1244). Whether it misbehaves depends on ordering this audit did not
-  measure, and it cannot be measured on Windows while none of the three
-  build. NOT FIXED.
+  (:1244). Whether it misbehaves depends on ordering, which was NOT measured
+  in the runs above -- the runs confirmed the managers start and publish
+  state, they did not diff that file across a frame boundary. NOT FIXED.
 
 --------------------------------------------------------------------------------
 8. THE ONE THAT WAS ACTUALLY SHARED -- cli_io backspace, chtpm_parser.c
@@ -238,15 +324,38 @@ matching the last published value exactly. Also verified on op-ed (section 3).
     the GetConsoleOutputCP diagnostic in win-open-bugs-s26.txt section A.5.
   - Physical-keyboard capture (keyboard_input_win.c AsciiChar weakness). Still
     untested; relay injection bypasses it entirely. Needs a SendInput harness.
-  - The four unbuilt projects (cpp-llm, gem-dev, groq-ollama, slop-ed-dev).
-    Adding them to compile_all.ps1 is the prerequisite to verifying anything
-    about them, and agy needed four separate Windows fixes before it would
-    compile at all, so this should be scoped as its own piece of work. Until
-    then, treat every cpp-llm/gem-dev/groq-ollama conclusion above as
-    code-read plus, for the wire format, one real measurement -- not as
-    end-to-end testing. The cpp-llm/groq-ollama cli_buffers fix in particular
-    is proven to compile and to append, but has never been run.
+  - slop-ed-dev is the LAST of the four still unbuilt (was: all four). Its
+    B.2/B.3 shape is untested for the same reason the other three were: it has
+    never run on Windows. It is also the one with the least to port -- it has
+    NO ops/src of its own and calls the shared pieces/system/file_ops/ ops
+    (text_edit_key, file_copy, dir_browse), which were already ported for
+    agy-text-editor back in 70337e35/3a2a0027. So the remaining work is its
+    manager plus a runtime check of the backspace path that now goes through
+    the section 8 fix.
+  - NO LIVE AI ROUND TRIP on cpp-llm, groq-ollama or gem-dev. See section 5-7.
+    Everything about their curl/exit-code/thread-handle paths rests on
+    compilation and a clean start, not on a reply arriving. This is the single
+    biggest gap in what was verified, and it needs a reachable endpoint.
+  - The active_gui_index.txt two-writers conflict (section 5-7, end). Now
+    measurable, since the three apps run, but still not measured.
   - agy-text-editor's duplicate top-level manager source (section 2).
-  - The active_gui_index.txt two-writers conflict (section 5-7, end).
+  - A SECOND stale duplicate tree, found 2026-09-28 and left in place:
+    projects/#/groq-ollama/ is a complete older copy of projects/groq-ollama
+    (its own manager .c, layouts, config, state, scripts). It is TRACKED -- it
+    is in the repo's initial commit 93bfdd09, not an untracked artifact -- so
+    removing it is a deliberate repo change, not a cleanup of junk. Its only
+    unique content is aida-tpmos-fix-m25+1.txt, a substantive note about
+    Gemini acc_func accumulation across streamed chunks, which is directly
+    relevant to the handle_gemini_stream code that was just ported. DECISION
+    NEEDED: preserve that note into groq-ollama/#.dox/ and delete the tree, or
+    keep it. Not done here because it is not this audit's call.
+  - Duplicated op sources across the three LLM projects: cmd_exec.c and
+    search_in_files.c exist as byte-identical copies in cpp-llm, groq-ollama
+    and gem-dev. The same Windows bug was fixed in all three, and the gem-dev
+    commit took the reviewed cpp-llm copies verbatim to avoid re-deriving it a
+    third time. That is a workaround, not a fix. NOTE the scope, though: only
+    the three LLM projects ship their own ops -- slop-ed-dev, agy-text-editor
+    and op-ed have no ops/src and correctly use the shared pieces/ ops, so
+    this is a three-project smell and not an architectural failure.
 
 ================================================================================
