@@ -90,31 +90,68 @@ foundations to build on rather than starting from nothing:
   human's live chat as one more real observation source alongside the
   automated pc-hq test-bot (Track 2).
 
-**Real, unresolved gap, worth naming plainly:** `08-roadmap/design-docs/
-AI-TRACK-BRAINSTORM-QUESTIONS.md` Question 4 names this exact 🤖️ robot
-entity and quotes a cut-off instruction — *"we were gonna give the 🤖️
-..."* — and its own text recommends asking what the rest of that
-sentence was, rather than assuming. Nobody has yet. **Open question for
-the house, not answered by this doc.**
+### Question 4, resolved by context clues (2026-09-27 design session)
 
-**Real, confirmed technical gap:** a single chatbot entity dropped into
-one inventory works today — the host-context bridge above already
-resolves `$ENT` correctly for a nested copy. But there is **no
-prototype/inheritance system** for entities or inventory items in this
-codebase — confirmed by grep, zero hits for any `prototype`/
-`item_template`/`entity_template`/`inherits` pattern. Entities are
-literal filesystem directories; dropping one into an inventory is a
-real `mv`, a full directory copy, not a reference to a shared template.
-So: copying the chatbot entity into ten different entities' inventories
-today produces ten independently-drifting full copies, each with its
-own separately-accumulating personality/history/bank state — not one
-shared personality inherited everywhere, RPG Maker JS-prototype style.
-**If a single shared-personality-across-copies chatbot is wanted, a
-real template/instance split is new foundational work, not yet
-started** — the same "one real source of truth, everything else
-derived" discipline `NIGHT_22_THE_CONCEPT_BANK.txt` already applied to
-spoke/master resolution would be the right shape to reuse here, not a
-new one-off mechanism.
+`AI-TRACK-BRAINSTORM-QUESTIONS.md` Question 4 quotes a cut-off
+instruction — *"we were gonna give the 🤖️ ..."* — nested directly
+under item 2's own plan: "robot/puzzle-piece entities carrying events,
+dropped into inventories, methods run from the Inventory right-click."
+**Read in that context, the strongest inference is the missing words
+were about giving the robot its first real, concrete event/method to
+carry** — an MVP action, not personality. This is inference, not
+confirmed fact — the house should still say so if the real answer
+turns out to be something else. This session's own conversation has
+since organically grown that original, narrower idea into something
+considerably richer (below) — worth being honest that the richer
+version is a 2026-09-27 extension, not what the original sentence
+necessarily meant.
+
+### Design resolved this session (not yet built — a design, like every other item in this section)
+
+**Personality mechanism:** the entity's own accumulated data (history,
+state files) feeds `ai_describe` (Track 1's own Gemma call) to build
+an **instance-scoped Concept Bank** — the entity's personality IS its
+own bank, built the identical DESCRIBE→SCORE→VALIDATE→PROMOTE way
+everything else in this house's AI track works. Not a separate
+free-text personality channel alongside the bank — the bank IS the
+personality, same mechanism, no second thing to keep in sync.
+
+**Chat command shortcuts — two real modes, not one:**
+- Explicit `/command` syntax — a literal registered COMMAND, same
+  registry `apply_range`/`advance_fact` already live in, nothing new
+  to invent mechanically.
+- Free natural-language chat, dispatched through the exact
+  `HARNECIENT-HACK.md` mechanism (`DAY_05_THE_HARNECIENT_HACK.txt`) —
+  the model never gets to call a tool directly; it produces plain
+  text, and the house's own harness pattern-matches that text into a
+  real dispatch, the same illusion-of-tool-use trick already proven
+  house-wide. Both modes resolve to the same real COMMAND dispatch
+  underneath — `/command` is just the fast path that skips the
+  pattern-match step.
+
+**Template/instance split — designed, not punted:** reuses
+`NIGHT_26_EVERYTHING_IS_AN_EVENT.txt`'s own bot-DNA template+delta
+proposal, applied at the smallest real case (one chatbot "species," N
+copies): a shared TEMPLATE bank holds the starting personality: each
+dropped-in copy holds only a DELTA bank for what it's genuinely
+personalized through its own conversations. Resolution is the same
+two-step NIGHT 22 already specified for spoke/master lookup —
+template value, overridden by delta where a delta slot is non-empty.
+A promoted insight written to the TEMPLATE benefits every copy with no
+delta at that slot, same propagation payoff NIGHT 26 already argued
+for population-scale bots. Still not built — reasoned through as a
+real design in Night 27, same as hub-and-spoke was in Night 22.
+
+**Visibility / debugging — existing shapes first, charts later:**
+prefer reusing an existing house UI shape (a db-hq-style real editor
+window, or whatever pattern already renders an entity's own state) to
+show a chatbot's live bank weights, recent observations, and the
+reasoning behind a given response — rather than inventing a new
+bespoke visibility surface. Flagged as a real, explicit future
+direction, not started: **chart/dashboard generation as a compiled op**
+— a real, reusable house primitive for rendering bank/observation data
+visually, usable by this chatbot's own debug view and by any other
+future dashboard need house-wide, not a one-off built just for this.
 
 ---
 
@@ -247,7 +284,8 @@ as everything else above."
 | `ai_describe` registry + Gemma wiring | **Build now** | Nothing |
 | pc-hq automated test-bot harness | **Build now** | Nothing |
 | Drop-in chatbot entity (single copy, one inventory) | **Buildable now** as Track 1's test surface | Nothing (host-context bridge already exists) |
-| Chatbot entity template/inheritance (shared personality, many copies) | Document only, new foundational work | Nothing technical, but genuinely unbuilt |
+| Chatbot entity template/delta bank (shared personality, many copies) | **Designed** (2026-09-27, reuses NIGHT 26's bot-DNA shape) | Nothing technical, but genuinely unbuilt |
+| Chart/dashboard-generation op | Document only, flagged future primitive | Nothing, just not started |
 | Networking reuse (IRC/Forum/Chain/multiplayer/mining) | Document only | `palnet_peer.c` real cross-machine fix |
 | Per-game personal blockchain default | **Lock in now** (as a code convention, not infra) | Nothing |
 | Node-value-weighting + CONES exception | Document only | Real multi-node data |
