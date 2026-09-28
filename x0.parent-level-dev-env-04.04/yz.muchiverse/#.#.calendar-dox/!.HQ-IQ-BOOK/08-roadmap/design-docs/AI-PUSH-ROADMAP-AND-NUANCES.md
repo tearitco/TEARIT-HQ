@@ -12,11 +12,28 @@
 
 The concrete first step, and it's small on purpose:
 
-1. Fix `GEMMA_LAN_URL` (hardcoded in four C files across `my-lawyer`/
-   `my-biotech`, see `PIPELINE-EMOJI-DIAGRAM-REVISED.md`) into a shared
-   `.pdl` config, read once at startup. Do this first — the new op
-   needs the endpoint anyway, and it's the cheapest moment to kill four
-   hardcoded copies instead of adding a fifth.
+1. ✅ **Done, 2026-09-28.** Fixed `GEMMA_LAN_URL` into a shared
+   `#.desktop/ai_backend.pdl` config (`gemma_lan_url`/`gemma_lan_model`
+   keys, plain `key=value`, same convention `hq_ui.pdl` already uses),
+   read once at startup, falling back to the same default if the file
+   or key is missing. The original "four files" count (from
+   `PIPELINE-EMOJI-DIAGRAM-REVISED.md`) was itself incomplete — a full
+   house-wide grep after the first four were fixed found **9 more**
+   hardcoded sites. All 9 fixed the same way: `mylawyer_case_worker.c`,
+   `mylawyer_judge_worker.c`, `mybiotech_research_worker.c`,
+   `mybiotech_fda_verdict.c` (the original four), plus `gov_decide.c`,
+   `corp_decide.c`, `khtpm_open_hai_manager.c` (`g_ollama_host`, bare
+   `host:port` form — stripped from the shared config's `http://`
+   value at load time), `run_native_tools.c` (was a `#define` macro,
+   converted to a loaded variable), `verify_cell.c` (same). Each
+   duplicates the loader rather than sharing a header, matching this
+   house's own explicit per-worker-file convention (several of these
+   files' own header comments already say so). Deliberately left
+   alone: `tsc_answer.c` (already has an adequate `GEMMA_LAN_URL`/
+   `GEMMA_LAN_MODEL` env-var override, a test harness's normal
+   convention, not worth replacing) and `connect_op.c` (×2 — URL is
+   passed as `argv[1]`, never hardcoded, only a comment mentions the
+   IP). All rebuilt, all compile clean.
 2. Register `ai_describe` as a real COMMAND in the events registry
    (cap 128, confirmed room — `ai_describe`/`ai_fsm_transition`/
    `ai_goap_plan` are currently named in conversation but absent from

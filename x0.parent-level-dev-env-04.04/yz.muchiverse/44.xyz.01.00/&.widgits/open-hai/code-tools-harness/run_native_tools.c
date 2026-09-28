@@ -25,10 +25,48 @@
 #include <sys/wait.h>
 #include <errno.h>
 
-#define OLLAMA "http://10.0.0.144:11434/api/chat"
 #define WORK "/tmp/code-tools-harness-work"
 #define FIX "fixtures/sample.c"
 #define BASE_DIR "."
+
+/* REAL FIX 2026-09-27 (AI-PUSH-ROADMAP-AND-NUANCES.md): g_ollama_url used to
+ * be a hardcoded #define, duplicated house-wide. Now read from the
+ * house's one shared #.desktop/ai_backend.pdl at startup - falls back
+ * to this same default if the file/key is missing. This harness has no
+ * house_root argv (it's run from its own cwd), so it walks up from "."
+ * looking for the config file, same idiom the other fixed files in
+ * this pass use walking up from a project root instead. */
+#define KH_PATH_BUF 4096
+static char g_ollama_url[256] = "http://10.0.0.144:11434/api/chat";
+
+static void kh_load_gemma_lan_config(void) {
+    char cur[KH_PATH_BUF];
+    snprintf(cur, sizeof(cur), ".");
+    char resolved[KH_PATH_BUF];
+    if (getcwd(resolved, sizeof(resolved))) snprintf(cur, sizeof(cur), "%s", resolved);
+    for (;;) {
+        char probe_path[KH_PATH_BUF];
+        snprintf(probe_path, sizeof(probe_path), "%s/#.desktop/ai_backend.pdl", cur);
+        FILE *f = fopen(probe_path, "r");
+        if (f) {
+            char line[256];
+            while (fgets(line, sizeof(line), f)) {
+                char *eq = strchr(line, '=');
+                if (!eq) continue;
+                *eq = '\0';
+                char *val = eq + 1;
+                val[strcspn(val, "\r\n")] = '\0';
+                if (strcmp(line, "gemma_lan_url") == 0 && val[0])
+                    snprintf(g_ollama_url, sizeof(g_ollama_url), "%s/api/chat", val);
+            }
+            fclose(f);
+            return;
+        }
+        char *slash = strrchr(cur, '/');
+        if (!slash || slash == cur) return;
+        *slash = '\0';
+    }
+}
 #define MAX_TURNS 6
 #define MAX_MSGS 64
 #define BIG 65536
@@ -224,7 +262,7 @@ static void build_payload(const char *path, const char *model, Msg *msgs, int n,
 static char *http_chat(const char *payload_path) {
     char cmd[1024];
     snprintf(cmd, sizeof cmd, "curl -sS --max-time 300 %s -d @%s -o %s/response.json 2>/dev/null",
-             OLLAMA, payload_path, WORK);
+             g_ollama_url, payload_path, WORK);
     if (system(cmd) != 0) return NULL;
     char path[512];
     snprintf(path, sizeof path, "%s/response.json", WORK);
@@ -757,6 +795,7 @@ static void run_all(const char *model, int only, char **only_scen) {
 }
 
 int main(int argc, char **argv) {
+    kh_load_gemma_lan_config();
     mkdir("results", 0755);
     /* clear stale summary for this run set */
     FILE *s = fopen("results/summary.txt", "w");
