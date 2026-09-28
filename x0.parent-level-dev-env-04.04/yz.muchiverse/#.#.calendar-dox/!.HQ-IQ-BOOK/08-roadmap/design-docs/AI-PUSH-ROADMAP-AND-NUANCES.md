@@ -435,3 +435,70 @@ important"**:
 (§3.3 above), 2) THEN hotsprings voice mode on top of it - the ♨️ slot
 is reserved now so the symbol/intent aren't lost, not because it's
 next in line to be built.
+
+**UI landed same day**: the ♨️ placeholder now sits on the SAME row as
+open-hai's composer, right before it (direct request: "keeps them
+related... I feel more in control of that setup"), via a real, generic
+renderer capability (`layout_toolbar_row()` in `khtpm_core_render.c`
+now supports a `<cli_io>` sharing a `<row class="toolbar">` with
+`<item>` buttons - not an open-hai-specific hack, any window can use
+this). Verified live via real frame dumps; existing toolbar rows
+(sql-hq's 5-button row) confirmed unaffected. One known cosmetic gap,
+not fixed: the ♨️ glyph doesn't render as a visible character in this
+Xft text-draw path (empty nav badge) - a color-emoji font gap
+distinct from the phymoji voxel pipeline, which handles emoji fine.
+
+### A real, house-wide alternative worth designing instead of/alongside a single button (raised same day, opinion below)
+
+Direct question raised alongside the button placement: rather than
+(or in addition to) a single ♨️ button as open-hai's own one-off voice
+toggle, would it be better to give **every `<cli_io>` in the house** a
+real STT hotkey mode - press **Space** instead of the second
+Enter/click that currently **arms** a focused-but-unarmed cli_io for
+typing (the real, existing `"^"` armed / `">"` focused-only convention,
+`khtpm_core_render.c` ~line 2900), and have the field show **`"$"`**
+instead of `"^"` while armed for voice instead of text?
+
+**Opinion: yes, this is the better default, and it's not a lot of new
+mechanism** - it reuses the exact two-step nav-then-arm gesture every
+cli_io already has (2026-08-29's own "first nav should move and wait
+for second click" convention), just branching the SECOND key
+(Space = arm for voice, Enter = arm for text, same as today) rather
+than adding a new gesture to learn. Concretely:
+
+- **It's universal for free.** A single ♨️ button only gives open-hai's
+  own composer a voice mode. A cli_io-level hotkey gives EVERY cli_io
+  in the house (address bars, form fields, any future composer) real
+  voice input with zero per-app work - a much bigger win from roughly
+  the same amount of engineering (one state-machine branch + one
+  prefix-character swap, both already-existing mechanisms).
+- **No gesture collision.** Space is only special at the unarmed→arm
+  transition; once armed for TEXT, Space types a literal space exactly
+  as it does today - the branch only matters at the single moment the
+  arm decision is made, so this doesn't cost any existing typing
+  behavior.
+- **The `"$"` swap is cheap and honest.** The armed-state prefix
+  character is already a single rendered indicator
+  (`draw_elem()`'s cli_io branch) - swapping which literal character
+  it draws based on which arm-mode was entered is the same shape of
+  change as the ♨️ placeholder itself, not new infrastructure.
+- **Keep the ♨️ button too, don't choose one.** They're not
+  competing designs - the button is the discoverable, mouse-driven
+  entry point (good for a first-time user who doesn't know the
+  hotkey exists yet); Space-to-arm-voice is the power-user path once
+  they do. Exactly the same relationship a house menu item and its
+  keyboard shortcut usually have.
+
+**Not built. Open questions for whoever builds this**, same honesty
+standard as everything else in this doc:
+1. Does every cli_io get voice by default, or is it opt-in per
+   `<cli_io>` (e.g. a `voice="1"` attribute) for fields where dictating
+   genuinely makes no sense (a numeric amount field, a filename)?
+2. What does Space-armed-for-voice actually record into before
+   send/auto-send - the SAME real STT pipeline §3.3's hotsprings mode
+   needs anyway, so this should NOT be designed as a second, separate
+   STT integration; whichever gets built first should be built as the
+   one real mechanism the other one also calls.
+3. Auto-send-on-pause (from the hotsprings design above) presumably
+   applies here too - confirm it's the same pause-detection logic,
+   not a second implementation.

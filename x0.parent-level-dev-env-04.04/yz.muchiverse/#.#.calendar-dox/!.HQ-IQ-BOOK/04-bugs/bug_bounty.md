@@ -2,6 +2,48 @@
 
 ---
 
+## ⚠️ OPEN 2026-09-28: with an entity's always-on-top OFF, its context menu doesn't reliably pop to top either
+
+**Reported:** direct live report - "when always on top is not on
+context windows aren't popping 2 top, that's the one thing that should
+defy being hidden." A context menu is inherently transient popup UI -
+it should always be able to raise above other windows regardless of
+the ENTITY's own always-on-top preference; those are two different
+concerns (does this pal's persistent desktop window float above
+everything, vs. can a menu just opened from it actually be seen).
+
+**Real evidence gathered, not yet traced to a confirmed root cause:**
+`khtpm_core_render.c:278/299-312` load `#.desktop/
+livedesk_override_redirect.pdl` into `g_override_redirect` (true =
+always-on-top / `override_redirect` window, bypasses the WM's normal
+stacking; false = WM-managed, normal stacking rules apply). Line
+`~6882`: `g_override_redirect = g_zorder_above ? 1 : 0` - this is the
+SAME flag driven by an entity's own always-on-top toggle
+(`ktb_zorder_op.+x`/`ZORDER_TOGGLE`, see the 2026-09-20 dock-unfactor
+entry below). Context menus are spawned as a SEPARATE process via
+`launch_khtpm_menu()` (line ~12114) - not yet confirmed whether that
+spawned process independently loads its own always-on-top state (and
+if so, from where - the calling entity's, or its own default), or
+whether it's supposed to be unconditionally `override_redirect`
+regardless of any entity's toggle and something is overriding that.
+
+**Why this isn't a quick same-night patch:** this exact file has
+several documented past incidents in this immediate area (below: the
+Wayland `xwayland-allow-grabs` restriction on `XGrabKeyboard`, WM-
+managed windows mapping asynchronously breaking a same-tick focus
+retry, `override_redirect` being a create-time-only property that
+stale processes don't re-evaluate) - guessing at a fix here without
+first tracing the exact spawn/argv path risks reintroducing one of
+those. Needs a dedicated session: trace what `launch_khtpm_menu()`
+actually passes to/reads in the spawned menu process, confirm whether
+it's the entity's `g_zorder_above` leaking in or the menu's own
+independent (and wrong-by-default) pdl read, then decide the real fix
+- almost certainly "a context menu window is unconditionally
+`override_redirect=true`, full stop, never inherits the opening
+entity's own toggle."
+
+---
+
 ## ✅ CLOSED 2026-09-26 (all real parts fixed and pixel/state-verified, including a full real Move feature - NOT deferred, see Part 2's own final update below): Act menu opens in the wrong location; Move does nothing (no grid)
 
 Direct live report: "the act button opens new window in entirely
