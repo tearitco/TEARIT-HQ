@@ -354,9 +354,34 @@ int main(int argc, char *argv[]) {
     snprintf(trigger_file, sizeof(trigger_file), "%s/event_pkg/event_triggers.pdl", page_root);
 
     // Sync entity positions from desktop_pos.txt to entities_live.txt (master ledger)
-    char sync_cmd[MAX_PATH];
-    snprintf(sync_cmd, sizeof(sync_cmd), "'%s/ops/sync_entity_positions' >/dev/null 2>&1", page_root);
-    system(sync_cmd);
+    //
+    // REAL FIX 2026-09-28 (same bug found and fixed the same day in
+    // &.hq-apps/world-manager/ops/world_manager_tick.c - this file is
+    // that one's template/earlier twin, same header comments verbatim,
+    // same sync_entity_positions.c shape which itself does a recursive
+    // `find` over xyzfs/users + forks sed/grep per entity found).
+    // Measured on the world-manager copy: ~90-100% of a full CPU core,
+    // continuously, from calling this every ~16ms tick forever. This
+    // copy was NOT observed running live this session, but is exactly
+    // the kind of template a future page manager gets copied from -
+    // fixing it here too so the bug isn't silently propagated forward.
+    // Same throttle: at most once per SYNC_MIN_INTERVAL_SEC, gated by
+    // a marker file's mtime (self-healing, no counter).
+    {
+        #define SYNC_MIN_INTERVAL_SEC 1
+        char sync_marker[MAX_PATH];
+        snprintf(sync_marker, sizeof(sync_marker), "%s/.sync_last_run", state_dir);
+        struct stat mst;
+        time_t now = time(NULL);
+        int due = (stat(sync_marker, &mst) != 0) || (now - mst.st_mtime >= SYNC_MIN_INTERVAL_SEC);
+        if (due) {
+            FILE *mf = fopen(sync_marker, "w");
+            if (mf) fclose(mf);
+            char sync_cmd[MAX_PATH];
+            snprintf(sync_cmd, sizeof(sync_cmd), "'%s/ops/sync_entity_positions' >/dev/null 2>&1", page_root);
+            system(sync_cmd);
+        }
+    }
 
     // Auto-detect position changes in entities_live.txt
     typedef struct {
