@@ -2,6 +2,61 @@
 
 ---
 
+## 💡 PARKED 2026-09-28: no house-wide way to self-catch a rogue/runaway loop, without asking an agent to hand-measure it
+
+**Why this is here at all:** the SAME session that fixed
+`world_manager_tick.c` pegging a full CPU core (see `BUG-LOG.md`
+2026-09-28 - every tick forked a `system()`-shelled recursive `find`
+over the entire `xyzfs/users` tree, ~24x/second, ~90-100% of a core,
+plausibly a real contributor to several unplanned reboots) is direct,
+damning evidence that this house's own `proc-mon` - whose entire
+purpose is catching exactly this - did not catch it. Direct live
+framing: "that evaded the very usecase procmon exists to protect
+against, which is unprofessional." Real, fair criticism, worth fixing
+- but NOT rushed into proc-mon tonight (see below).
+
+**Real root cause of why it evaded detection, confirmed the same
+session:** `ps`/`top`-style tools (and this agent's own first
+measurement pass) report a process's OWN `utime+stime` by default -
+`world_manager.pal`'s own parent process was a flat ~1-2% the whole
+time. The expensive work was entirely in a forked-and-waited-for CHILD
+(`sync_entity_positions.+x` → `system()` → `bash` → `find`/`sort`/
+`sed`/`grep`), whose CPU time only shows up in the PARENT's
+`cutime`/`cstime` fields once reaped - a real, easy-to-miss blind spot
+for any simple "read this PID's CPU%" monitor, not just `proc-mon`
+specifically.
+
+**Direct question raised, NOT yet resolved - is proc-mon even the
+right place?** Alternative framing offered same session: rather than
+proc-mon trying to compute/interpret CPU% after the fact (which is
+exactly the blind-spot-prone approach above), what if any `.pal`
+polling loop had to **register its own declared tick speed** (e.g. a
+real line in `world_manager.pal` itself, or a small manifest each
+loop writes/touches on startup - "I intend to run at ~24 ticks/sec"),
+and a separate, simple watcher compared DECLARED speed against a real,
+measured tick cadence (like this session's own `page_manager.cursor`
+mtime-polling trick) - flagging any loop running hotter than its own
+declared rate, rather than proc-mon trying to guess what's normal for
+an arbitrary process it knows nothing about. This shifts the burden to
+"did this loop keep its own promise" instead of "is this CPU number
+suspicious," which is a real, different, possibly better-fitting
+design - genuinely undecided which approach (or a third one) is right.
+
+**Explicit direct instruction: let the world_manager fix "breathe"
+before building any of this.** Don't rush a monitoring feature into
+proc-mon (or anywhere else) under time pressure right after one real
+incident - confirm the fix holds first, then come back to whether/how
+a general self-service catch-mechanism gets built, and where it
+actually belongs.
+
+**Not yet decided:** proc-mon extension vs. a separate declared-speed
+registry+watcher vs. something else entirely; whether this belongs
+in `EVENT-MODULARITY-AND-BUILD-SPEED.md` (build-speed / house tooling
+territory) instead of here. Revisit once the world_manager fix has had
+real time to prove itself.
+
+---
+
 ## ⚠️ OPEN 2026-09-28: with an entity's always-on-top OFF, its context menu doesn't reliably pop to top either
 
 **Reported:** direct live report - "when always on top is not on
