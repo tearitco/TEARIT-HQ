@@ -1,4 +1,0 @@
-OBJECT tag=text id=- class=- x=10 y=10 w=0 h=0 nav=0 active=0 label=hq-ftp — LAN peer drop. Not built.
-OBJECT tag=text id=- class=- x=10 y=10 w=0 h=0 nav=0 active=0 label=Two houses on the same LAN open this window. A file dragged onto one is offered to the other. No server in the middle.
-OBJECT tag=text id=- class=- x=10 y=10 w=0 h=0 nav=0 active=0 label=Test later by running this on a second machine and dropping one file each way.
-OBJECT tag=text id=- class=- x=10 y=10 w=0 h=0 nav=0 active=0 label=Design: 08-roadmap/design-docs/HQ-FTP.md

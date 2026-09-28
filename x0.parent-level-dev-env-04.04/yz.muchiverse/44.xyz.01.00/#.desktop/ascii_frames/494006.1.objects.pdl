@@ -1,4 +1,0 @@
-OBJECT tag=item id=close class=chrome-btn x=1111 y=4 w=63 h=26 nav=1 active=0 label=x
-OBJECT tag=item id=imp class=pal-dir x=14 y=112 w=98 h=19 nav=2 active=0 label=Import…
-OBJECT tag=item id=mydir-0 class=pal-dir,pal-dir-active x=118 y=112 w=99 h=19 nav=3 active=0 label=terumon
-OBJECT tag=item id=pt0 class=swatch x=14 y=56 w=34 h=34 nav=4 active=0 label=-

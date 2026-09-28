@@ -8650,8 +8650,40 @@ static void kh_write_frame_receipt(const char *dir, int pid, const char *base, u
     int nl = 0;
     for (char *p = all; (p = strchr(p, '\n')) != NULL; p++) nl++;
     if (nl >= 50) {
+        /* REAL FIX 2026-09-28 (direct live report - #.desktop/ascii_frames
+         * had ~58,000 files on disk, most of them tracked in git): this
+         * block already trimmed the index.txt LEDGER to the documented
+         * 50-entry cap (comment above kh_write_frame_receipt()'s own
+         * declaration), but never deleted the actual <pid>.<seq>.
+         * objects.pdl/.receipt.pdl SNAPSHOT FILES those dropped lines
+         * pointed at - the cap existed on paper, never enforced on disk,
+         * so every real frame-change on every window left two more
+         * permanent files behind forever. Each dropped line's own
+         * "<iso> <pid> <base> <seq> <checksum>" fields are exactly what's
+         * needed to unlink its pair - parsed here before the line is
+         * discarded. */
         char *p = all;
-        for (int i = 0; i < nl - 49; i++) { char *n = strchr(p, '\n'); if (!n) break; p = n + 1; }
+        for (int i = 0; i < nl - 49; i++) {
+            char *n = strchr(p, '\n');
+            if (!n) break;
+            int line_len = (int)(n - p);
+            char line_copy[512];
+            if (line_len > 0 && line_len < (int)sizeof(line_copy)) {
+                memcpy(line_copy, p, (size_t)line_len);
+                line_copy[line_len] = '\0';
+                int old_pid = 0, old_seq = 0;
+                char old_base[128] = "";
+                /* fields: iso(has no spaces) pid base seq checksum */
+                if (sscanf(line_copy, "%*s %d %127s %d %*s", &old_pid, old_base, &old_seq) == 3) {
+                    char old_obj[PATH_BUF], old_rcp[PATH_BUF];
+                    snprintf(old_obj, sizeof(old_obj), "%s/%d.%d.objects.pdl", dir, old_pid, old_seq);
+                    snprintf(old_rcp, sizeof(old_rcp), "%s/%d.%d.receipt.pdl", dir, old_pid, old_seq);
+                    unlink(old_obj);
+                    unlink(old_rcp);
+                }
+            }
+            p = n + 1;
+        }
         FILE *fo = fopen(ipath, "w");
         if (fo) { fputs(p, fo); fclose(fo); }
     }

@@ -1,1 +1,0 @@
-rx=578 ry=194 zpid=0 name=door_civ dest= nstack_hint=winwalk

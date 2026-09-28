@@ -1,9 +1,0 @@
-
-=== khtpm_show_choices_60684.chtpm pid 60685  2026-09-27 02:59:51 ===
---- khtpm_show_choices_60684.chtpm  pid 60685  2026-09-27 02:59:51 ---
---- page: main ---
-Choose
-    [>] 1. Bible verse (text)
-    [ ] 2. Bible verse (with TTS)
-    [ ] 3. Tao Te Ching (random chapter)
-    [ ] 4. Cancel

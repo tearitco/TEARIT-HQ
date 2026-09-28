@@ -1,9 +1,0 @@
-
-=== act.xhtpm pid 897940  2026-09-27 04:29:35 ===
---- act.xhtpm  pid 897940  2026-09-27 04:29:35 ---
---- page: main ---
-Act
-    [>] 1. Move
-    [ ] 2. Use
-    [ ] 3. Attack
-    [ ] 4. Back
