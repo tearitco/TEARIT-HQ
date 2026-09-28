@@ -16,15 +16,51 @@ against, which is unprofessional." Real, fair criticism, worth fixing
 - but NOT rushed into proc-mon tonight (see below).
 
 **Real root cause of why it evaded detection, confirmed the same
-session:** `ps`/`top`-style tools (and this agent's own first
-measurement pass) report a process's OWN `utime+stime` by default -
-`world_manager.pal`'s own parent process was a flat ~1-2% the whole
-time. The expensive work was entirely in a forked-and-waited-for CHILD
-(`sync_entity_positions.+x` → `system()` → `bash` → `find`/`sort`/
-`sed`/`grep`), whose CPU time only shows up in the PARENT's
-`cutime`/`cstime` fields once reaped - a real, easy-to-miss blind spot
-for any simple "read this PID's CPU%" monitor, not just `proc-mon`
-specifically.
+session - TWO separate, compounding gaps, not one:**
+
+1. **The accounting gap.** `ps`/`top`-style tools (and this agent's
+   own first measurement pass) report a process's OWN `utime+stime`
+   from `/proc/<pid>/stat` by default - CPU time THAT process itself
+   spent executing. `world_manager.pal`'s own PID was a flat ~1-2% the
+   whole time, honestly - that number just wasn't measuring the right
+   thing. The expensive work ran entirely inside a forked-and-waited-
+   for CHILD (`sync_entity_positions.+x` → `system()` → `bash` →
+   `find`/`sort`/`sed`/`grep`, one full recursive filesystem walk plus
+   several forks PER ENTITY, every ~40ms tick). A child's CPU time only
+   gets added to the PARENT's `cutime`/`cstime` fields, and only AFTER
+   the child exits and is reaped via `waitpid()` - `top`'s default
+   CPU% column doesn't read those fields at all. This is a real,
+   easy-to-miss blind spot for ANY simple "read this PID's CPU%"
+   monitor, not `proc-mon` specifically - it only became visible here
+   by deliberately summing `utime+stime+cutime+cstime` across a real
+   measured wall-clock window (`/proc/<pid>/stat` fields 14-17), which
+   is not what `top`, `ps`, or (presumably, NOT YET CONFIRMED BY
+   READING ITS OWN SOURCE - that investigation was explicitly paused,
+   see below) `proc-mon` do by default.
+2. **The attribution gap, distinct from the accounting one.** Even a
+   human actively watching `top` in the exact instant this was
+   happening would NOT see a process named "world_manager" spike -
+   each real chunk of expensive work ran under a fresh, separate,
+   extremely short-lived PID named `bash`, `find`, `sort`, `sed`, or
+   `grep` (a new shell script, written to `/tmp` and `system()`'d,
+   every single tick), each alive for single-digit milliseconds before
+   exiting. `top`'s refresh interval (1-3s typically) would have to
+   catch one of these in the exact moment it's running, and even then,
+   nothing about a process named `grep` says "this is world_manager's
+   doing" - the connection back to the real cost center requires
+   already knowing to look for it, not something a glance at `top`
+   would surface on its own.
+
+**Explicitly not yet done, flagged so it isn't silently assumed
+resolved:** whether `proc-mon` itself reads standard `ps`/
+`/proc/<pid>/stat` fields the normal way (and therefore inherits gap 1
+verbatim) was never actually confirmed by reading its own C source -
+that specific investigation was interrupted and explicitly parked by
+direct instruction ("maybe were over engineering proc mon... lets give
+the manager fix some time to breath"), not completed. Whoever revisits
+this should start by actually reading `proc-mon`'s real source, not by
+assuming this write-up's reasoning about `top`/`ps` in general also
+describes `proc-mon`'s own specific implementation.
 
 **Direct question raised, NOT yet resolved - is proc-mon even the
 right place?** Alternative framing offered same session: rather than
