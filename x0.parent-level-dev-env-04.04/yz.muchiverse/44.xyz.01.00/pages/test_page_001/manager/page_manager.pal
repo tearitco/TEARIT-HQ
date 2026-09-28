@@ -15,7 +15,12 @@
 exec ./ops/page_manager_init
 hit_frame
 
+# REAL FIX 2026-09-28: `sleep 16` = 16 MICROSECONDS under prisc+x
+# (always usleep(), never ms) - identical bug found and fixed in the
+# real world_manager.pal twin (cpu_loop_analysis.txt) that let its
+# tick loop re-exec its own binary thousands of times/sec instead of
+# ~24/sec. Fixed here preemptively to the same 30Hz (33333us) cap.
 loop:
   exec ./ops/page_manager_tick
-  sleep 16
+  sleep 33333
   j loop

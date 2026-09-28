@@ -7,10 +7,14 @@
 #include <sys/wait.h>
 
 int main(int argc, char *argv[]) {
-    char script_path[2048];
+    // REAL FIX 2026-09-28 (cpu_loop_analysis.txt): these were 2048 -
+    // glibc FORTIFY_SOURCE aborts realpath() into any buffer < PATH_MAX
+    // (4096), regardless of the actual resolved path length. See the
+    // matching fix + full explanation in world_manager_tick.c.
+    char script_path[4096];
     char *ops_dir_ptr;
-    char page_root[2048];
-    char normalized[2048];
+    char page_root[4096];
+    char normalized[4096];
     
     // Get the absolute path of this binary
     if (argc > 0 && realpath(argv[0], script_path)) {
@@ -35,13 +39,13 @@ int main(int argc, char *argv[]) {
     realpath(page_root, normalized);
     strcpy(page_root, normalized);
     
-    char state_dir[2048];
+    char state_dir[4096];
     snprintf(state_dir, sizeof(state_dir), "%s/state", page_root);
     
-    char log_file[2048];
+    char log_file[4096];
     snprintf(log_file, sizeof(log_file), "%s/page_manager.log", state_dir);
     
-    char cursor_file[2048];
+    char cursor_file[4096];
     snprintf(cursor_file, sizeof(cursor_file), "%s/page_manager.cursor", state_dir);
     
     // Create directories
@@ -58,7 +62,7 @@ int main(int argc, char *argv[]) {
     // Create event_pkg directory
     mkdir_pid = fork();
     if (mkdir_pid == 0) {
-        char event_pkg_dir[2048];
+        char event_pkg_dir[4096];
         snprintf(event_pkg_dir, sizeof(event_pkg_dir), "%s/event_pkg", page_root);
         execvp("mkdir", (char *[]) { "mkdir", "-p", event_pkg_dir, NULL });
         exit(1);
@@ -70,7 +74,7 @@ int main(int argc, char *argv[]) {
     // Create empty ledger files
     const char *ledgers[] = {"entities_live", "world_events", "animation_queue"};
     for (int i = 0; i < 3; i++) {
-        char ledger_path[2048];
+        char ledger_path[4096];
         snprintf(ledger_path, sizeof(ledger_path), "%s/%s.txt", state_dir, ledgers[i]);
         FILE *fp = fopen(ledger_path, "a");
         if (fp) fclose(fp);

@@ -11,7 +11,20 @@
 
 #define MAX_LINE 1024
 #define MAX_TRIGGERS 16
-#define MAX_PATH 2048
+// REAL FIX 2026-09-28 (cpu_loop_analysis.txt): this was 2048. glibc's
+// FORTIFY_SOURCE hardens realpath() with a compile-time check that the
+// destination buffer is >= PATH_MAX (4096) - NOT based on the actual
+// resolved path length, so any build with fortify enabled (Ubuntu's
+// default hardening on many toolchains) made realpath(argv[0],
+// script_path) below abort with "*** buffer overflow detected ***"
+// on EVERY SINGLE invocation, regardless of how short the real path
+// was (147 bytes, confirmed live). Combined with the separate
+// world_manager.pal `sleep 16`-microseconds bug (same date), this
+// binary was crashing and being apport-caught thousands of times a
+// second - the real mechanism behind the sustained CPU/throttling
+// reports, confirmed via `gdb -batch -ex run -ex bt` backtrace
+// (__realpath_chk -> __chk_fail -> abort). Must be >= PATH_MAX.
+#define MAX_PATH 4096
 
 typedef struct {
     char trigger_name[256];

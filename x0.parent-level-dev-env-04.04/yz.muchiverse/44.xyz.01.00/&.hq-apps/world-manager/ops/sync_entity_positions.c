@@ -5,7 +5,11 @@
 #include <sys/wait.h>
 
 int main(int argc, char *argv[]) {
-    char script_path[1024];
+    // REAL FIX 2026-09-28 (cpu_loop_analysis.txt): was 1024 - glibc
+    // FORTIFY_SOURCE aborts realpath() into any buffer < PATH_MAX
+    // (4096), regardless of the actual resolved path length. See the
+    // matching fix + full explanation in world_manager_tick.c.
+    char script_path[4096];
     realpath(argv[0], script_path);
 
     char *p = strrchr(script_path, '/');
@@ -13,7 +17,7 @@ int main(int argc, char *argv[]) {
     p = strrchr(script_path, '/');
     if (p) *p = '\0';
 
-    char house_root[1024];
+    char house_root[4096];
     char *hqa = strstr(script_path, "/&.hq-apps");
     if (hqa) {
         strncpy(house_root, script_path, hqa - script_path);

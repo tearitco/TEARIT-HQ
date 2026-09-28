@@ -15,7 +15,20 @@
 exec ./ops/world_manager_init.+x
 hit_frame
 
+# REAL FIX 2026-09-28 (cpu_loop_analysis.txt): `sleep 16` was 16
+# MICROSECONDS, not 16ms - prisc+x's sleep opcode is always usleep()
+# (see prisc-x-popen-custom-op-freeze memory / khtpm-house-standards).
+# That made this loop re-exec world_manager_tick.+x as fast as
+# fork/exec/waitpid would allow (thousands/sec, not the ~24/sec an
+# earlier session's live measurement assumed) - the real cause of
+# sustained CPU throttling/apport-crash-loops that SURVIVED the
+# earlier sync_entity_positions throttle fix in world_manager_tick.c,
+# because that fix only gated the expensive CHILD fork, not this
+# outer loop's own exec rate. Fixed to a real 30Hz tick (33333us),
+# matching the same "30 fps cap" convention already used by
+# chtpm_rgb_render.c/renderer.c elsewhere in this house - plenty for
+# position/trigger polling, ~1000x slower exec rate than the bug.
 loop:
   exec ./ops/world_manager_tick.+x
-  sleep 16
+  sleep 33333
   j loop
