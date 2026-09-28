@@ -386,3 +386,52 @@ Full technical writeup, file map, and the build-order rationale for
 what comes next (the live chat window, then instance-scoped bank, then
 template/delta propagation): `XO/6.robot-blue-print/
 ROBOT-CHAT-BLUEPRINT.md`.
+
+---
+
+## Addendum 2026-09-28 (later) — live chat window will reuse open-hai's UI, plus a real, sequenced voice-mode design (♨️ "hotsprings")
+
+**Chat window UI decision**: rather than building a bespoke chat
+window for §3.3's live chat surface, direct instruction: reuse
+`&.widgits/open-hai/open-hai.xhtpm`'s own existing sidebar+panel+
+`<cli_io>` composer shape (already a real, working chat-style window -
+sessions list, transcript scroll, message composer) as the starting
+template for the robot's own chat window, rather than inventing a new
+layout. This is the same "check for a sibling shape first" discipline
+`khtpm-house-standards` already mandates for any new database-window
+consumer - `open-hai` already IS a real chat UI, just pointed at a
+different backend today.
+
+**Voice-mode design ("hotsprings" ♨️), sequenced explicitly AFTER the
+basic text chat window, but flagged now because it's "kind of
+important"**:
+
+- A ♨️ mic-mode toggle, alternative to the text composer - real,
+  designed, not built. Placeholder slot reserved 2026-09-28 in
+  `open-hai.xhtpm`'s own sidebar (`action="void"`, same honest inert-
+  stub convention `dsr.xhtpm` already uses), with the full design
+  written as a comment right there in the template so it isn't lost.
+- **Input**: tapping it swaps the text composer for a real "recording"
+  indicator (mic live, no chat bubbles shown) while the user talks.
+  Sends on either an explicit Send button or a real, sustained pause
+  (auto-send) - never a fixed timer that could cut someone off
+  mid-thought.
+- **Output**: the model's reply is spoken ONLY (real TTS) - no text
+  bubble shown live during a voice exchange.
+- **The data underneath is NOT a separate path**: every voice exchange
+  still writes to the exact same real timestamped session data any
+  text chat already uses (the same `chat_history.txt` shape
+  §2.1/§2.3 of `ROBOT-CHAT-BLUEPRINT.md` already established) - a user
+  can always open that session afterward and read the full transcript
+  like any other chat. Voice is an input/output MODE, not a second
+  data model to keep in sync with the first.
+- **TTS engine**: reuse the house's own existing `edge_tts` pipeline
+  (already used by `1-1.HARNECIENT.SMOL/convert_one_session.py` and
+  the presentation-video narration work, `_.0.aigent-testing-k9.txt`'s
+  own 2026-08-25 section) rather than standing up a second TTS engine.
+  STT engine: not yet chosen - open question for whoever builds this.
+
+**Sequencing, explicit**: build order stays 1) basic text chat window
+(§3.3 above), 2) THEN hotsprings voice mode on top of it - the ♨️ slot
+is reserved now so the symbol/intent aren't lost, not because it's
+next in line to be built.

@@ -16,6 +16,32 @@
       <text id="sidebar-header" label="Sessions"/>
       <item id="new" label="+ New session" action="${new_action}"/>
       <item id="togglesound" label="${sound_label}" action="${sound_action}"/>
+      <!-- ♨️ "hotsprings" - PLACEHOLDER ONLY, direct instruction
+           2026-09-28: reserve the symbol/slot now, build the real
+           behavior after the basic AI chat window is done (it's
+           "kind of important" but explicitly sequenced after).
+
+           Real, designed shape (not built - action="void" below is a
+           genuine no-op, not a bug): a voice-mode alternative to the
+           text chat window. Tapping it swaps the composer for a real
+           "recording" indicator (mic live, no chat bubbles) while the
+           user talks; a real, sustained pause auto-sends (or an
+           explicit Send button), same as a long-press-to-talk voice
+           UI elsewhere. The MODEL's reply is spoken ONLY (real TTS,
+           no text bubble shown live) - but the underlying exchange is
+           still logged to the SAME real timestamped session data
+           every text chat already uses (chat_history.txt / this
+           app's own session state), so a user can always open that
+           session afterward and read the full transcript like any
+           other chat - voice is an INPUT/OUTPUT MODE, not a separate
+           data path. STT for the mic side, TTS for the spoken reply -
+           this house already has a real TTS pipeline precedent
+           (edge_tts, used by 1-1.HARNECIENT.SMOL/
+           convert_one_session.py and the presentation-video narration
+           work, see _.0.aigent-testing-k9.txt's own 2026-08-25
+           section) worth reusing rather than adding a second TTS
+           engine. -->
+      <item id="hotsprings" label="♨️ Voice (planned)" action="void"/>
       <scrolllist>
         <repeat count="${sessions_count}" bind="session">
           <item id="s${session.#}" label="${session.label}" action="${session.action}" backspace_action="${session.del_action}"/>
