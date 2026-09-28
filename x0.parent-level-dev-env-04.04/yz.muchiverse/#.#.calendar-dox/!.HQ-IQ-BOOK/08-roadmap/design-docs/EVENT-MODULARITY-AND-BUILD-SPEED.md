@@ -20,7 +20,133 @@ Both items were documented together because they were raised together
 
 ---
 
-## 1. Events as real, draggable 🎬️ entities
+## 1. Events as real, draggable 🎬️/⚙️/🧩 entities
+
+**CORRECTION 2026-09-28 (later the same night, before any of §1 below
+was built): major architecture revision.** Direct instruction:
+
+> "ok, u said export page, but it should happen automatically, whenever
+> a 'new page' is added to event' inside the event dir (which would be
+> represented by the 'clacker' emoji in inventory, there would be
+> 'pages' which is where we will use ⚙️ for now. and thats a page, and
+> individual events will use a 'puzzle piece' in this way they are all
+> drag drop able (and then all exist in a 'russian doll world' style
+> emoji stack. does this nuance help inform the architecture here. its
+> very important. when a event/page is dropped in an 'event clacker'
+> it would hot load in window if event window was open or show up next
+> time. and we will retro actively create the dir structure within
+> events if needed for current events, however this mostly ties to
+> 'visual inventory' of entities."
+
+Two clarifying questions were asked and resolved before this rewrite:
+
+- **Are 🎬️/⚙️/🧩 standalone desktop pals (own directory + own
+  process) or lightweight inventory-only items (files inside another
+  entity's `inventory/` folder, no separate process)?** Answer: **"its
+  both. they are one and the same. get it?"** — **a pal and an
+  inventory item are the SAME real object/directory.** Placement (sitting
+  on a desk vs. sitting inside another entity's `inventory/` folder) is
+  the only difference, never a different storage shape. This resolves
+  the false dichotomy the original design (below) never asked: tonight's
+  `event_page_to_pal.sh` proof — a real pal with its own directory — was
+  the right underlying shape all along; it just also needs to be able to
+  live inside another entity's `inventory/`, not only on a desk.
+- **Is the 🎬️ clacker itself draggable/transferable between entities,
+  or fixed per-entity with only its contents draggable?** Answer:
+  **"Clacker is also draggable."** The whole event system can be
+  transplanted onto a different entity as a single action, not just its
+  individual pages/events.
+
+### The corrected three-tier "Russian doll" hierarchy
+
+Three real, separate, nested, drag-droppable object kinds, each the
+same real pal/inventory-item shape (per the resolution above), one
+inside the next:
+
+- **🎬️ "event clacker"** — the whole event system for one entity, all
+  its pages collectively. Maps to that entity's own `event_pkg/` as a
+  whole. Shown/represented as a real item in the entity's inventory.
+  **Draggable as a single unit** onto another entity — transplants the
+  entire event system, not one page.
+- **⚙️ "page"** — one individual page within a clacker. Maps 1:1 to
+  today's `event_pkg/pages/page_N/`. Lives nested inside its parent 🎬️'s
+  own inventory-shaped listing. Draggable on its own, independent of
+  the whole clacker.
+- **🧩 "individual event"** — one single command/action within a page
+  (previously the smallest granularity had no separate identity at all
+  — a page's `cmd_N.sh` was just "part of the page"). Nested inside its
+  parent ⚙️. This is the same 🧩 emoji the earlier same-day correction
+  (top of this doc) reserved for "future scratch-coding stuff" — that
+  reservation is superseded by this later, more informed instruction;
+  🧩 = individual event, real and in-scope now, not a future feature.
+
+All three are real objects of the identical underlying pal/inventory-
+item shape — a 🎬️ is not "made of" ⚙️ files in some special container
+format, it's a real directory whose own inventory happens to list ⚙️
+children, exactly the way any entity's inventory lists items today.
+
+### Creation is automatic, not manual export
+
+The original design below (now superseded) had a user-facing "Export
+as 🎬️" button as the trigger. Corrected: **creation happens
+automatically whenever a new page is added inside an event dir** — no
+explicit export action. The moment `pages/page_N/` gains a new page, a
+real ⚙️ object for it (and, if none exists yet, a real 🎬️ clacker for
+its parent entity) comes into existence and appears in that entity's
+inventory. `event_page_to_pal.sh`'s own underlying mechanism — copy
+skeleton, regenerate sprite via the real `emoji_gen_atlas`+
+`emoji_xtract` pipeline, rewrite the `pkg=`/`page=` header — is still
+the right copy logic, it just needs to be triggered automatically (by
+whatever already detects a new `pages/page_N/` being written, likely
+`khtpm_events_hq_manager.c`'s own compiler path) instead of by an
+explicit CLI/button call, and needs to produce a nested ⚙️-inside-🎬️
+object instead of a single flat pal.
+
+### Drop behavior: hot-load if open, persist if closed
+
+Dropping an event/page into an entity's 🎬️ event clacker:
+- **If that entity's events-hq window is currently open**, it hot-loads
+  live — the open window reflects the new page immediately, no
+  close/reopen needed. (Ties into the same real `reparse_chtpm_if_changed()`
+  / incremental-reparse machinery already covering other live-file-
+  change cases house-wide — see the `khtpm-house-standards` skill's
+  "Element identity across reparse" section — rather than inventing a
+  second live-reload mechanism.)
+- **If that window is closed**, it persists to disk and shows up next
+  time the window is opened — no special-casing needed beyond what
+  already happens today when `pages/page_N/` changes on disk between
+  sessions.
+
+### Retroactive dir-structure creation
+
+Existing events (every terumon's own events, `robot_chat_001`'s own
+`page_1`, anything authored before this feature existed) need the new
+⚙️/🧩-shaped dir structure created retroactively, same as the original
+design below already reasoned through for the flat 🎬️-only case — the
+same "no structural difference between a brand-new event and an old
+one" logic applies unchanged, just one tier deeper (a retroactive sweep
+now needs to also materialize the 🧩-level objects inside each ⚙️, not
+just the ⚙️ itself).
+
+### Why this matters: ties to visual inventory of entities
+
+Per the direct instruction, this design "mostly ties to 'visual
+inventory' of entities" — the real motivating use case is not event
+authoring in isolation, it's that an entity's inventory should visually
+and structurally show its own event system as real, inspectable,
+nested objects (🎬️ containing ⚙️ containing 🧩), the same way it already
+shows any other item. Event modularity is a special case of the
+general inventory system, not a separate mechanism bolted alongside it.
+
+### Original design (superseded by the correction above, kept for history)
+
+The section below was the FIRST design pass — flat, single-tier
+(🎬️ only, no ⚙️/🧩 split), manual "Export as 🎬️" button as the trigger.
+It's kept here because its underlying mechanics (skeleton copy, real
+sprite regeneration pipeline, `pkg=`/`page=` header rewrite, the
+copy-vs-link open question) are all still valid and still apply to the
+corrected three-tier design above — only the trigger (automatic vs.
+manual) and the shape (nested three-tier vs. flat) changed.
 
 ### The problem today
 
