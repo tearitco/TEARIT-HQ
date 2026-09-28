@@ -8,15 +8,15 @@ future feature, not this one. Anywhere below quoting the original
 same-day instruction verbatim keeps 🧩 in the quote (historical
 accuracy), but the real, current symbol for this feature is 🎬️.
 
-**Status: DESIGN ONLY, not started.** Two real, separate house-quality
-concerns raised 2026-09-28, deliberately parked here as work to do
-*before* continuing the AI push further, per direct instruction:
-address auditability/sharability/modularity/mutability of events going
-forward, and the embarrassingly slow compile times, before piling more
-AI feature work on top of the current event architecture.
+**Status, updated 2026-09-28 (later the same day): §2 (hash-based
+incremental compile) is BUILT** (`hash_gate.sh`, wired into
+`build_core_render.sh`) - direct instruction: "its not like it can
+break anything... wanna knock it out really quick." **§1 (🎬️ event
+pages) is still DESIGN ONLY, not started** - explicitly next in queue.
 
-Both items are documented together because they were raised together,
-but they are independent and can land in either order.
+Both items were documented together because they were raised together
+- they were always independent and always could land in either order;
+§2 simply turned out to be the quicker one to actually build.
 
 ---
 
@@ -209,6 +209,26 @@ examples alone.
 
 ## 2. Hash-based incremental compile
 
+**✅ BUILT 2026-09-28 (same day as designed) — `hash_gate.sh`
+(`&.widgits/_shared-lib/`), wired into `build_core_render.sh`.** All
+three open questions below are resolved (answers inline, struck
+through the questions themselves) and verified live. Everything below
+this point is now a historical record of the design, not a to-do list
+— see `hash_gate.sh`'s own header comment for the authoritative
+current description.
+
+**Verified live**: cold build 10.9s; unchanged re-run 0.45s (~24x
+faster); a `touch` (mtime only, no content change) correctly still
+skips, confirming this is genuinely content-hashed, not mtime-based;
+a real content edit to one source correctly rebuilds only its own
+dependent binary, leaving an unrelated one untouched.
+
+**Not yet done**: rolling this out to every OTHER `build_*.sh` in the
+house — only `build_core_render.sh` adopted it so far (real, working
+example to copy from, not a house-wide sweep). Do that incrementally,
+per-project, same as `SHARED-SOURCE-COMPILE-IN-PLACE.md`'s own rollout
+was.
+
 ### The problem today
 
 Every `build_*.sh` script in this house does a full recompile of its
@@ -264,20 +284,23 @@ Worth designing the hash manifest format with that reuse in mind from
 day one, rather than building a compile-cache-only format now and a
 separate content-addressing format later.
 
-### Open questions to resolve before building
+### Open questions — RESOLVED 2026-09-28, see `hash_gate.sh`'s own header for the full reasoning
 
-1. Per-file hash, or per-binary hash-of-all-inputs (handles the
-   shared-source fan-out case above more simply, at the cost of
-   re-hashing every input on every build check even when most are
-   unchanged)?
-2. Where does the manifest live — one house-wide file, or one per
-   project/binary (matching the per-project-duplication convention
-   already established for AI-caller ops)?
-3. Does a build script's own hash-check logic get written once as a
-   real shared shell function sourced by every `build_*.sh` (a genuine
-   case FOR sharing, unlike the AI-op duplication convention — build
-   scripts aren't compiled binaries, so the "no shared headers between
-   compiled units" rule doesn't obviously apply the same way here)?
+1. ~~Per-file hash, or per-binary hash-of-all-inputs?~~ **Resolved:
+   per-binary, combined hash of ALL real inputs.** Handles the
+   shared-source fan-out case for free (a shared file changing changes
+   the combined hash of every binary that lists it), no dependency
+   graph needed. Re-hashing a handful of `.c` files on every build
+   check is genuinely free (milliseconds) next to a real compile.
+2. ~~Where does the manifest live?~~ **Resolved: one per project**
+   (`.build_hashes.pdl`, next to the build script that owns it,
+   gitignored as derived build-cache state — same reasoning as the
+   `*.+x` binaries themselves).
+3. ~~Shared shell function, or duplicated per project?~~ **Resolved:
+   shared, sourced** (`hash_gate.sh`) — a build script is never linked
+   into a runtime binary, so there's no drift risk to guard against by
+   duplicating it; same shape as sourcing `khtpm_css_parser.c` via
+   `-I`.
 
 ---
 
