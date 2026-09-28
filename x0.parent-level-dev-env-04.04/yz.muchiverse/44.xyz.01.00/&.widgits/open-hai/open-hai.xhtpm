@@ -16,10 +16,32 @@
       <text id="sidebar-header" label="Sessions"/>
       <item id="new" label="+ New session" action="${new_action}"/>
       <item id="togglesound" label="${sound_label}" action="${sound_action}"/>
+      <scrolllist>
+        <repeat count="${sessions_count}" bind="session">
+          <item id="s${session.#}" label="${session.label}" action="${session.action}" backspace_action="${session.del_action}"/>
+        </repeat>
+      </scrolllist>
+    </sidebar>
+    <panel>
+      <text id="status" label="${status}"/>
+      <item id="cyclemodel" label="${model_label}" action="${model_action}"/>
+      <scrolllist>
+        <repeat count="${transcript_count}" bind="msg">
+          <text id="msg${msg.#}" class="${msg.class}" label="${msg.text}"/>
+        </repeat>
+        <text id="tool-banner" label="${tool_banner}" show="${tool_pending}"/>
+        <item id="approve" label="Approve" action="${approve_action}" show="${tool_pending}"/>
+        <item id="deny" label="Deny" action="${deny_action}" show="${tool_pending}"/>
+      </scrolllist>
       <!-- ♨️ "hotsprings" - PLACEHOLDER ONLY, direct instruction
            2026-09-28: reserve the symbol/slot now, build the real
            behavior after the basic AI chat window is done (it's
-           "kind of important" but explicitly sequenced after).
+           "kind of important" but explicitly sequenced after). Moved
+           onto the SAME row as the composer, right before it (direct
+           follow-up request: "put hotspring on same row as cli-io,
+           right before it, to bump cli io to the right") - this is
+           the first real consumer of layout_toolbar_row()'s new
+           item+cli_io row support (khtpm_core_render.c, same date).
 
            Real, designed shape (not built - action="void" below is a
            genuine no-op, not a bug): a voice-mode alternative to the
@@ -41,25 +63,10 @@
            work, see _.0.aigent-testing-k9.txt's own 2026-08-25
            section) worth reusing rather than adding a second TTS
            engine. -->
-      <item id="hotsprings" label="♨️ Voice (planned)" action="void"/>
-      <scrolllist>
-        <repeat count="${sessions_count}" bind="session">
-          <item id="s${session.#}" label="${session.label}" action="${session.action}" backspace_action="${session.del_action}"/>
-        </repeat>
-      </scrolllist>
-    </sidebar>
-    <panel>
-      <text id="status" label="${status}"/>
-      <item id="cyclemodel" label="${model_label}" action="${model_action}"/>
-      <scrolllist>
-        <repeat count="${transcript_count}" bind="msg">
-          <text id="msg${msg.#}" class="${msg.class}" label="${msg.text}"/>
-        </repeat>
-        <text id="tool-banner" label="${tool_banner}" show="${tool_pending}"/>
-        <item id="approve" label="Approve" action="${approve_action}" show="${tool_pending}"/>
-        <item id="deny" label="Deny" action="${deny_action}" show="${tool_pending}"/>
-      </scrolllist>
-      <cli_io id="composer" target_id="composer" label="&gt; " action="${send_action}"/>
+      <row class="toolbar">
+        <item id="hotsprings" label="♨️" action="void"/>
+        <cli_io id="composer" target_id="composer" label="&gt; " action="${send_action}"/>
+      </row>
     </panel>
   </page>
 </window>

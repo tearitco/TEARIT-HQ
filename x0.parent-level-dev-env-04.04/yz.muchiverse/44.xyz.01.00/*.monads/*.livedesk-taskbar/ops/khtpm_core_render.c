@@ -4425,13 +4425,36 @@ static void layout_scroll_region(Elem *container, int x, int y, int w, int h, in
  * (scrolllist starts at 0) and must not be used for this pin. */
 static void layout_toolbar_row(Elem *row, int x, int y, int w) {
     int j, n_items = 0, col = 0, iw;
+    Elem *composer = NULL;
     row->x = x; row->y = y; row->w = w; row->h = ROW_H; row->nav_index = 0;
     css_compute_style(&g_sheet, row->tag, row->id, row->classes, row->n_classes, 0, &row->style);
-    for (j = 0; j < row->n_children; j++)
+    for (j = 0; j < row->n_children; j++) {
         if (strcmp(row->children[j]->tag, "item") == 0) n_items++;
-    iw = n_items > 0 ? w / n_items : w;
+        /* REAL, NEW 2026-09-28 (direct request: put a button - e.g. a
+         * ♨️ voice-mode toggle - on the SAME row as a <cli_io>
+         * composer, right before it, "bump[ing] cli_io to the right").
+         * A toolbar row previously only ever held <item>s - anything
+         * else was hidden (see the old unconditional else-branch
+         * below, still the fallback for any OTHER unsupported child
+         * tag). At most ONE cli_io/text_area per row is meaningful
+         * here (it's the composer, not a repeatable action button);
+         * a second one would just overlap the first - not guarded
+         * against beyond "last one wins" since no template does this
+         * yet. */
+        if (strcmp(row->children[j]->tag, "cli_io") == 0 || strcmp(row->children[j]->tag, "text_area") == 0)
+            composer = row->children[j];
+    }
+    /* With a composer sharing the row, items become fixed-width square
+     * icon buttons (ROW_H, matching this house's other icon-button
+     * sizing, e.g. the grid element's own row height) instead of the
+     * even w/n_items split below - that split is only correct when
+     * items are the row's ENTIRE content (existing toolbars like
+     * sql-hq's 5-button row are untouched: no composer child there,
+     * so this branch is never taken for them). */
+    iw = composer ? ROW_H : (n_items > 0 ? w / n_items : w);
     for (j = 0; j < row->n_children; j++) {
         Elem *t = row->children[j];
+        if (t == composer) continue; /* placed in a second pass below, after item widths are final */
         if (strcmp(t->tag, "item") != 0) {
             t->x = x; t->y = -100000; t->w = 0; t->h = 0; t->nav_index = 0;
             continue;
@@ -4444,6 +4467,22 @@ static void layout_toolbar_row(Elem *row, int x, int y, int w) {
         t->nav_index = ++g_n_nav;
         g_nav[g_n_nav - 1] = t;
         col++;
+    }
+    if (composer) {
+        /* Same real x/y/h/nav_index bookkeeping the normal (non-toolbar)
+         * cli_io branch uses in layout_fixed_rows_and_scrolllist() -
+         * duplicated here rather than shared, since that branch also
+         * handles the bottom-glue/text_area-fill cases this row-scoped
+         * composer deliberately doesn't need (it's always a fixed,
+         * always-visible row, never a bottom-pinned composer). */
+        int used = col * iw;
+        composer->x = x + used;
+        composer->y = y;
+        composer->w = w - used > 0 ? w - used : 0;
+        composer->h = ROW_H;
+        css_compute_style(&g_sheet, composer->tag, composer->id, composer->classes, composer->n_classes, 0, &composer->style);
+        composer->nav_index = ++g_n_nav;
+        g_nav[g_n_nav - 1] = composer;
     }
 }
 
