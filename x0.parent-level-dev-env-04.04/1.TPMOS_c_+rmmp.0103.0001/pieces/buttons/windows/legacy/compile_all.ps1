@@ -90,6 +90,23 @@ foreach ($op in $groq_ops) {
     Compile-Piece "projects\groq-ollama\ops\src\$op.c" "projects\groq-ollama\ops\+x\$op.+x"
 }
 
+# --- gem-dev ---
+# Third of the same family, third of the same omission. 9 of 13 Ops compiled
+# unmodified; four needed work. cmd_exec and search_in_files are the shared
+# duplicated ops again (byte-identical to the cpp-llm copies apart from a
+# header comment). startup_reset_op only needed the one-argument MinGW mkdir
+# shim in ensure_dir(). web_search was the only genuinely new one: it
+# fork/execs curl through a pipe to read the DuckDuckGo response, so it took
+# the full CreatePipe/CreateProcess port plus its own PATH walk for curl.
+Compile-Piece "projects\gem-dev\manager\gem-dev_manager.c" "projects\gem-dev\manager\+x\gem-dev_manager.+x"
+$gem_ops = @("cmd_exec", "complete_path", "edit_file", "file_ops", "gem-dev",
+             "gemini_payload_builder", "get_completion_methods_op", "json_parser",
+             "json_state", "list_dir", "search_in_files", "startup_reset_op",
+             "web_search")
+foreach ($op in $gem_ops) {
+    Compile-Piece "projects\gem-dev\ops\src\$op.c" "projects\gem-dev\ops\+x\$op.+x"
+}
+
 
 
 # --- Keyboard & Joystick ---
