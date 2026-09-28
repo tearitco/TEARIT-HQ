@@ -45,6 +45,23 @@ mkdir -p "$LOG_DIR" "$STATE_DIR"
 [ -f "$TOGGLE" ] || echo "enabled=1" > "$TOGGLE"
 [ -f "$LOG" ] || : > "$LOG"
 
+# REAL, NEW - single-instance guard (direct live check found this
+# daemon's own launch had none, ironic given this whole feature exists
+# to catch stray/duplicate house processes - k9 doc's own "confirm
+# zero stray processes before launching" rule applies to this file
+# too). PID-file based, self-healing: a stale file (process no longer
+# alive) is overwritten, not trusted blindly.
+PIDFILE="$LOG_DIR/.cpu_watch_daemon.pid"
+if [ -f "$PIDFILE" ]; then
+    OLD_PID=$(cat "$PIDFILE" 2>/dev/null)
+    if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
+        echo "cpu_watch_daemon: already running as pid $OLD_PID - exiting" >&2
+        exit 0
+    fi
+fi
+echo "$$" > "$PIDFILE"
+trap 'rm -f "$PIDFILE"' EXIT
+
 # Same real house-process patterns proc-mon's own mon_scan.sh already
 # uses (duplicated, not sourced - this is a standalone daemon, and
 # mon_scan.sh's PATTERNS aren't exposed as an importable chunk without
