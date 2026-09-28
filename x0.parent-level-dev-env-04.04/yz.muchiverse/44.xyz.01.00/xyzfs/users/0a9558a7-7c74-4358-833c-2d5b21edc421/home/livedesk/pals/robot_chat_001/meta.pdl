@@ -1,0 +1,12 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | robot_chat_001
+STATE        | kind                 | deskpal
+STATE        | glyph                | 🤖
+STATE        | instance_id          | ROBOT1
+METHOD       | Events (hq)          | sh -c 'exec "$1/&.widgits/events-hq/button.sh" "$0" "$1"'
+METHOD       | Chat (test line)     | sh -c 'exec "$1/&.widgits/entity-cli/ops/ai_chat.+x" "$0" "$1" "Hello! What are you?"'
+METHOD       | Dir                  | sh -c 'exec xdg-open "$0"'
+METHOD       | Inventory          | sh -c 'H="$1"; I="$H/&.widgits/file-explorer/instances/inv-$(basename "$(dirname "$0")")-$(basename "$0")"; mkdir -p "$0/inventory" "$I"; printf "mode=LOAD\nstart_dir=%s/inventory\n" "$0" > "$I/fe_request.txt"; exec sh "$H/&.widgits/file-explorer/button.sh" run-instance "$I"'
+METHOD       | Close                | CLOSE
+METHOD       | Cancel               | void

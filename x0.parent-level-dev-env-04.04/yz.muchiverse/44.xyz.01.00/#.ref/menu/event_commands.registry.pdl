@@ -282,6 +282,30 @@ COMMAND ai_describe
   TEMPLATE exec "$D/&.widgits/entity-cli/ops/ai_describe.+x" "$ENT" "$D"
 END
 
+# ai_chat: MVP free-text chat round trip (2026-09-28, AI-PUSH-ROADMAP-
+# AND-NUANCES.md "Track 1's Natural Test Surface: the Drop-In Chatbot
+# Entity"). Direct correction the same day: chat is a registered
+# COMMAND like every other event action here, NOT a hardcoded binary
+# call - this entry is that fix. $ENT resolves to whichever pal this
+# event actually runs on (the real host-context bridge, 2do.md §8b/8c -
+# so a robot pal's own event, run from an inventory right-click,
+# resolves to the robot itself, not the host it's sitting inside).
+# ai_chat.+x appends the real turn to $ENT/chat_history.txt and prints
+# the reply - same real gemma_ask()/connect_op.+x/json_parser.+x
+# plumbing ai_describe.+x already proved live, genuinely free text (no
+# TARGET/STRENGTH parse - chat is meant to be free-form per the
+# roadmap's own "Free natural-language chat" mode). Scope, same
+# honesty checkpoint as ai_describe: this is ONLY the round trip, not
+# the instance-scoped personality bank / template-delta split - both
+# still real designs, not yet built.
+COMMAND ai_chat
+  LABEL AI Chat
+  FIELD1 Message:
+  FIELD2 -
+  PARAMS message
+  TEMPLATE exec "$D/&.widgits/entity-cli/ops/ai_chat.+x" "$ENT" "$D" '{message}'
+END
+
 # ------------------------------------------------------------------
 # MESSAGE commands (Task 1, 2026-08-29 - docs: the 2do doc's Task 1
 # section, gap #0 design resolution). These compile to `exec cmd_N.sh`

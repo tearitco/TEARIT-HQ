@@ -342,3 +342,47 @@ as everything else above."
 - `CROSS-MACHINE-NETWORKING-PLAN.md` — the real blocker for every networking-dependent item above.
 - `NIGHT_26_EVERYTHING_IS_AN_EVENT.txt` — the unifying "everything is an event" framing this whole doc applies.
 - `DUSTOPIA-HACK.md`, `NIGHT_02_WAGER_CHESS.txt`, `NIGHT_03_FPS_NIGHTS.txt` — existing vision docs cross-referenced above, not duplicated.
+- `XO/6.robot-blue-print/ROBOT-CHAT-BLUEPRINT.md` — the full technical writeup of the 2026-09-28 chat build below, written for other teams.
+
+---
+
+## Addendum 2026-09-28 — first real chat round trip, and a real course-correction mid-build
+
+**Direct correction, mid-session**: chat was drifting toward a
+hardcoded CLI op tested by direct binary invocation against an
+existing terumon (ember) — i.e. scaffolding-only, no event wiring, and
+not even the right entity (chat is supposed to live on a dedicated
+🤖 robot pal per `13.agent-coms/GROK/2026-09-17-cursword-file-
+inventory-chat.md`, not bolted onto an existing terumon). Caught before
+it shipped that way; fixed by registering a real `ai_chat` COMMAND in
+`event_commands.registry.pdl` (same registry `ai_describe`/
+`change_gold`/`show_text` all live in) and building a real, separate
+`robot_chat_001` pal (copied from `door_civ`'s minimal skeleton, placed
+on the `teru-test` desk, `LIVEDESK_INDEX=75`).
+
+**What's actually real now**: `ai_chat.c` (same `gemma_ask()`/
+`connect_op.+x`/`json_parser.+x` shape `ai_describe.c` already proved,
+free-text instead of constrained-format), registered as a real
+COMMAND, firing on a real robot pal's own event, verified live —
+`cmd_1.sh` produced a real Gemma reply and appended it to
+`robot_chat_001/chat_history.txt`. This is the **"/command" scripted-
+line mode** only (a fixed message baked in at authoring time, same as
+`show_text`'s own `text=` param) — **not** the live "type anything"
+chat window, which is still real, designed, un-built work (see the
+blueprint doc for the full mode breakdown).
+
+**A real, unrelated incident found and fixed along the way**:
+`terumon_001_ember`'s own desktop-icon process (`khtpm_entity.+x`) was
+found dead — every sibling pal on `teru-test` had a live process,
+ember didn't — so it silently vanished from the taskbar while its
+`DESK` line in `teru-test.pdl` stayed completely intact (a live-process
+gap, not data loss). Root cause not fully diagnosed; relaunched with
+the same one-argument invocation every other pal's process uses,
+confirmed back on the taskbar. Flagged in the blueprint doc as a real
+open gap: nothing currently health-checks these processes, and the
+same failure mode could hit a robot pal with the same silent symptom.
+
+Full technical writeup, file map, and the build-order rationale for
+what comes next (the live chat window, then instance-scoped bank, then
+template/delta propagation): `XO/6.robot-blue-print/
+ROBOT-CHAT-BLUEPRINT.md`.
