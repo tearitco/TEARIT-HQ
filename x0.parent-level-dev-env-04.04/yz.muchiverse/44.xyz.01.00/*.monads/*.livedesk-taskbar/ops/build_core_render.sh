@@ -34,6 +34,14 @@ SHARED="$(cd "$(dirname "$0")/../../../&.widgits/_shared-lib" && pwd)"
 mkdir -p lib
 cp "$SHARED/stb_image_write.h" lib/stb_image_write.h
 
+# REAL, NEW 2026-09-28 (EVENT-MODULARITY-AND-BUILD-SPEED.md §2, direct
+# instruction: "its embarrassing to have such slow compile time...
+# track last changed files thru a stored hash and only compile those").
+# See hash_gate.sh's own header for the full design (per-binary
+# combined hash over all real inputs, one manifest per project).
+MANIFEST="$(dirname "$0")/.build_hashes.pdl"
+. "$SHARED/hash_gate.sh"
+
 # REAL Stage 1 follow-up (2026-08-16) - dump_frame_png_op.+x is a real,
 # standalone, shared op binary (system()-invoked, not text-included -
 # see khtpm-merge-how2.md's own "HOUSE STANDARD" section), build it
@@ -65,11 +73,16 @@ fi
 # binary - genuinely the same file, or a separate fork/exec+file-IPC
 # process (khtpm_taskbar_manager_main.+x's own real, separate compile
 # of khtpm_taskbar_manager.c is that legitimate case, untouched).
-echo "-- entity-menu renderer -> +x/khtpm_core_render.+x"
-$CC $CFLAGS $X11_FLAGS -I "$SHARED" -o +x/khtpm_core_render.+x \
-  khtpm_core_render.c "$SHARED/khtpm_css_parser.c" "$SHARED/khtpm_ui_scale.c" $LIBS
-
-echo "OK +x/khtpm_core_render.+x"
+CR_SRCS="khtpm_core_render.c $SHARED/khtpm_css_parser.c $SHARED/khtpm_ui_scale.c $SHARED/khtpm_render_core.c $SHARED/khtpm_draw_core.c $SHARED/khtpm_reparse_diff.c"
+if hash_gate_stale "$MANIFEST" +x/khtpm_core_render.+x $CR_SRCS; then
+    echo "-- entity-menu renderer -> +x/khtpm_core_render.+x"
+    $CC $CFLAGS $X11_FLAGS -I "$SHARED" -o +x/khtpm_core_render.+x \
+      khtpm_core_render.c "$SHARED/khtpm_css_parser.c" "$SHARED/khtpm_ui_scale.c" $LIBS
+    hash_gate_commit "$MANIFEST" +x/khtpm_core_render.+x $CR_SRCS
+    echo "OK +x/khtpm_core_render.+x"
+else
+    echo "-- khtpm_core_render.+x up to date (hash unchanged), skipping compile"
+fi
 
 # khtpm_entity.c is the real pal process source (tp_main and its tile/
 # sprite/popup code). It needs neither the CSS parser nor the Elem/render
@@ -78,7 +91,12 @@ echo "OK +x/khtpm_core_render.+x"
 # it was never actually shared with khtpm_core_render.c despite this
 # comment's old claim (grep confirmed only khtpm_entity.c ever included it),
 # so there was no real sharing left to preserve via -I "$SHARED".
-echo "-- entity pal renderer -> +x/khtpm_entity.+x"
-$CC $CFLAGS $X11_FLAGS -I "$SHARED" -I . -o +x/khtpm_entity.+x \
-  khtpm_entity.c $LIBS
-echo "OK +x/khtpm_entity.+x"
+if hash_gate_stale "$MANIFEST" +x/khtpm_entity.+x khtpm_entity.c; then
+    echo "-- entity pal renderer -> +x/khtpm_entity.+x"
+    $CC $CFLAGS $X11_FLAGS -I "$SHARED" -I . -o +x/khtpm_entity.+x \
+      khtpm_entity.c $LIBS
+    hash_gate_commit "$MANIFEST" +x/khtpm_entity.+x khtpm_entity.c
+    echo "OK +x/khtpm_entity.+x"
+else
+    echo "-- khtpm_entity.+x up to date (hash unchanged), skipping compile"
+fi
