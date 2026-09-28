@@ -259,6 +259,29 @@ COMMAND read_receipt
   TEMPLATE exec "$D/&.widgits/events-hq/ops/+x/mr_read_receipt.+x" "$ENT" "$D" '{receipt}' '{key}' '{var_name}' '{match}'
 END
 
+# ai_describe: REAL first ai_* command (2026-09-28, AI-PUSH-ROADMAP-
+# AND-NUANCES.md Track 1). House law unchanged - DESCRIBE, never
+# CLASSIFY: Gemma picks ONLY from the real, existing Concept Bank
+# master nodes (read live from &.widgits/concept-bank/data/masters/,
+# never hardcoded/invented), in a fixed constrained-line format tested
+# against the real production LAN model. No fields needed - $ENT/$D
+# are already real shell vars this TEMPLATE reuses like every other
+# command here; the op reads the entity's OWN real history.txt as its
+# observation input, never user-typed event-authoring data.
+#
+# Scope, deliberately minimal, matching this house's own established
+# precedent (ai_lab_concept_bank_propose.sh's own header comment):
+# this proves the Gemma call + writes ONE candidate line to the
+# entity's own pending_review.txt. It does NOT call
+# concept_edit_validate.+x and does NOT touch any real spoke/master
+# file - promotion is a separate, later, not-yet-built step.
+COMMAND ai_describe
+  LABEL AI Describe
+  FIELD1 -
+  FIELD2 -
+  TEMPLATE exec "$D/&.widgits/entity-cli/ops/ai_describe.+x" "$ENT" "$D"
+END
+
 # ------------------------------------------------------------------
 # MESSAGE commands (Task 1, 2026-08-29 - docs: the 2do doc's Task 1
 # section, gap #0 design resolution). These compile to `exec cmd_N.sh`

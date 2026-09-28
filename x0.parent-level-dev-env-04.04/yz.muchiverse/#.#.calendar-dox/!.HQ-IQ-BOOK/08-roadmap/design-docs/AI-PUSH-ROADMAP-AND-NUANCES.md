@@ -34,22 +34,46 @@ The concrete first step, and it's small on purpose:
    convention, not worth replacing) and `connect_op.c` (×2 — URL is
    passed as `argv[1]`, never hardcoded, only a comment mentions the
    IP). All rebuilt, all compile clean.
-2. Register `ai_describe` as a real COMMAND in the events registry
-   (cap 128, confirmed room — `ai_describe`/`ai_fsm_transition`/
-   `ai_goap_plan` are currently named in conversation but absent from
-   the real registry).
-3. Wire it to the constrained-prompt pattern already tested against
-   production `gemma3:270m` (see the revised pipeline doc): real
-   candidate node list in, one fixed `TARGET: ... | STRENGTH: ... |
-   REASON: ...` line out.
-4. Feed that line through a scorer into the *existing*
-   `concept_edit_validate.+x` — unchanged, already validates
-   `spoke_weight_delta`.
-5. **Stop there.** Do not build `ai_fsm_transition`/`ai_goap_plan` in
-   the same pass — those depend on `fsm_transition_describe`/
-   `goap_action_describe` validator support, which doesn't exist yet.
-   One real end-to-end round trip on one real terumon, one real
-   observation type, before anything widens.
+2. ✅ **Done, 2026-09-28.** Registered `ai_describe` as a real
+   `COMMAND` in `#.ref/menu/event_commands.registry.pdl` — zero
+   recompile of the renderer/manager, same live-reload proof this
+   registry already documented for `take_gold`.
+3. ✅ **Done, 2026-09-28.** Wired to the constrained-prompt pattern
+   already tested against production `gemma3:270m`: real candidate
+   node list read LIVE from `&.widgits/concept-bank/data/masters/`
+   (real files: `energy`, `force`, `motion` — NOT the illustrative
+   `hunger`/`satiation` example from the design docs, which was never
+   actually created as real files; the roadmap's own earlier "no
+   Concept Bank file exists on disk" claim was stale — `force.pdl`,
+   `energy.pdl`, `motion.pdl`, and one real spoke `gravity_constant.pdl`
+   already exist). New op `ai_describe.+x`
+   (`&.widgits/entity-cli/ops/`), plus its own duplicated
+   `connect_op.c`/`json_parser.c` (matching this house's established
+   per-project duplication convention, same shape `mylawyer_case_worker.c`'s
+   own `gemma_ask()` already uses).
+4. **Deliberately NOT done, matching established precedent**: does not
+   call `concept_edit_validate.+x` or touch any real spoke/master file.
+   Writes one line to the entity's own `pending_review.txt` — same
+   scope `ai_lab_concept_bank_propose.sh`'s own header comment already
+   established for this exact step ("prove the Gemma call + the draft
+   write... NO accept/merge path yet"). Promotion wiring is a separate,
+   later, not-yet-built step.
+5. **Real round-trip result, ember, 2026-09-28**: the mechanism is
+   proven end-to-end — real call, real fixed-format parse, correct
+   reject-and-log on malformed output (never partial-applied). One
+   real, reproducible finding: ember's actual `history.txt` right now
+   is window-lifecycle noise (`WINDOW_OPEN`/`PHYMOJI_LOADED` from
+   today's Move testing), not rich behavioral content, and the model
+   consistently echoed the format template instead of filling it in
+   against that thin input. This is a **data problem, not a code
+   bug** — a real fix caught during a real bug hunt this session
+   (`gemma_ask()`'s `popen()`/`remove()` ordering had a genuine race:
+   the response file was deleted before `json_parser.+x` could open
+   it — fixed by moving the `remove()` to after `pclose()`).
+   **Next real step**: test against an entity with genuine behavioral
+   history (a real Move, a real interaction), or curate which
+   `history.txt` line types count as observation-worthy, before
+   drawing any conclusion about the prompt format itself.
 
 ### Track 2 — pc-hq automated test-bot harness
 
