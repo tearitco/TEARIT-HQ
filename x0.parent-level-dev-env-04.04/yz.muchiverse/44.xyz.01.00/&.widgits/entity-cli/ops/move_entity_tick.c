@@ -42,6 +42,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
+#include <time.h>
 
 #define MAX_PATH 4096
 
@@ -109,6 +110,50 @@ int main(void) {
     snprintf(marker_path, sizeof(marker_path), "%s/desktop_pos_changed.txt", entity_dir);
     FILE *mf = fopen(marker_path, "a");
     if (mf) { fprintf(mf, "x\n"); fclose(mf); }
+
+    /* REAL FIX 2026-09-28 (bug_bounty.md "world_manager sustained CPU
+     * throttling" entry, direct instruction: "we need some sort of
+     * master ledger trunking strategy early" for scaling to more
+     * entities). PRODUCER-owns-write half of the push model: append
+     * this entity's own move directly to a house-wide, append-only
+     * entities_live.ledger, so world_manager_tick.c can pick it up by
+     * reading forward from a cursor (O(moves since last tick)) instead
+     * of forking sync_entity_positions.+x to recursively `find` every
+     * entity's desktop_pos.txt house-wide every tick (O(all entities),
+     * gets slower as more entities are added regardless of how many
+     * actually moved - the real scaling problem, separate from the
+     * crash-loop bug fixed the same day). house_root is derived the
+     * same way sync_entity_positions.c already does (no HOUSE_ROOT env
+     * var is actually exported despite this file's own header comment
+     * claiming one is - confirmed by grep, not assumed) - entity_dir's
+     * own path always contains "/xyzfs/" between house_root and the
+     * per-user tree, same structural assumption already relied on
+     * house-wide. Best-effort (no fprintf return check) - a missed
+     * ledger append just means world_manager's next periodic full
+     * resync (still present as a self-healing fallback) catches it
+     * late, never a correctness or crash risk. */
+    {
+        char entity_dir_copy[MAX_PATH];
+        snprintf(entity_dir_copy, sizeof(entity_dir_copy), "%s", entity_dir);
+        char *xyzfs_ptr = strstr(entity_dir_copy, "/xyzfs/");
+        char *pals_ptr = strstr(entity_dir_copy, "/pals/");
+        if (xyzfs_ptr && pals_ptr) {
+            *xyzfs_ptr = '\0';
+            char entity_id[256];
+            snprintf(entity_id, sizeof(entity_id), "%s", pals_ptr + strlen("/pals/"));
+            char *next_slash = strchr(entity_id, '/');
+            if (next_slash) *next_slash = '\0';
+            char ledger_path[MAX_PATH];
+            snprintf(ledger_path, sizeof(ledger_path),
+                     "%s/&.hq-apps/world-manager/state/entities_live.ledger",
+                     entity_dir_copy);
+            FILE *lf = fopen(ledger_path, "a");
+            if (lf) {
+                fprintf(lf, "%s | x=%d | y=%d | ts=%ld\n", entity_id, target_x, target_y, (long)time(NULL));
+                fclose(lf);
+            }
+        }
+    }
 
     /* Advance cursor. */
     FILE *wc = fopen(cursor_path, "w");

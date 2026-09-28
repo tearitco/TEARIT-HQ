@@ -5,12 +5,24 @@
 #include <sys/wait.h>
 
 int main(int argc, char *argv[]) {
-    // REAL FIX 2026-09-28 (cpu_loop_analysis.txt): was 1024 - glibc
-    // FORTIFY_SOURCE aborts realpath() into any buffer < PATH_MAX
-    // (4096), regardless of the actual resolved path length. See the
-    // matching fix + full explanation in world_manager_tick.c.
+    // REAL FIX 2026-09-28 (bug_bounty.md, direct instruction: "we
+    // rather use malloc, and sizeof, but remember, linux automatically
+    // frees memory, so double free could occur"): realpath(path, NULL)
+    // MALLOCs exactly the resolved length itself, no fixed buffer to
+    // size (the earlier fix here was a fixed 4096 buffer, safe but a
+    // guess; this is the permanent, guess-free version). Read once (the
+    // snprintf below) and freed immediately after - matches TPMOS house
+    // precedent (`1.TPMOS.../#.docs/^.pmo.ld-faq+8/
+    // PITFALLS_ACTIVE_2026-03-18.txt` #20: never free before the read
+    // completes, never twice).
     char script_path[4096];
-    realpath(argv[0], script_path);
+    char *resolved = realpath(argv[0], NULL);
+    if (resolved) {
+        snprintf(script_path, sizeof(script_path), "%s", resolved);
+        free(resolved);
+    } else {
+        script_path[0] = '\0';
+    }
 
     char *p = strrchr(script_path, '/');
     if (p) *p = '\0';

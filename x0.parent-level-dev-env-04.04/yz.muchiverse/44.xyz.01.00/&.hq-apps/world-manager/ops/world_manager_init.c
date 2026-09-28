@@ -7,17 +7,27 @@
 #include <sys/wait.h>
 
 int main(int argc, char *argv[]) {
-    // REAL FIX 2026-09-28 (cpu_loop_analysis.txt): these were 2048 -
-    // glibc FORTIFY_SOURCE aborts realpath() into any buffer < PATH_MAX
-    // (4096), regardless of the actual resolved path length. See the
-    // matching fix + full explanation in world_manager_tick.c.
+    // REAL FIX 2026-09-28 (bug_bounty.md, direct instruction: "we
+    // rather use malloc, and sizeof, but remember, linux automatically
+    // frees memory, so double free could occur"): realpath(path, NULL)
+    // is a glibc extension that MALLOCs exactly the resolved length
+    // itself - no fixed destination buffer to size, ever (a fixed
+    // buffer under PATH_MAX tripping FORTIFY_SOURCE was the earlier fix
+    // here; this is the permanent version of that fix). Each resolved
+    // pointer is read exactly once (the strcpy/snprintf immediately
+    // below it) and freed right after, same scope, no branch - matches
+    // TPMOS house precedent (`1.TPMOS.../#.docs/^.pmo.ld-faq+8/
+    // PITFALLS_ACTIVE_2026-03-18.txt` #20: never free before the read
+    // completes, and never on more than one path).
     char script_path[4096];
     char *ops_dir_ptr;
     char page_root[4096];
-    char normalized[4096];
-    
+
     // Get the absolute path of this binary
-    if (argc > 0 && realpath(argv[0], script_path)) {
+    char *resolved_script = realpath(argv[0], NULL);
+    if (argc > 0 && resolved_script) {
+        snprintf(script_path, sizeof(script_path), "%s", resolved_script);
+        free(resolved_script);
         // script_path is now: ...&.hq-apps/world-manager/ops/world_manager_init
         // We need: ...&.hq-apps/world-manager/
 
@@ -32,12 +42,18 @@ int main(int argc, char *argv[]) {
             }
         }
     } else {
+        if (resolved_script) free(resolved_script);
         strcpy(page_root, ".");
     }
-    
+
     // Normalize
-    realpath(page_root, normalized);
-    strcpy(page_root, normalized);
+    {
+        char *resolved_root = realpath(page_root, NULL);
+        if (resolved_root) {
+            snprintf(page_root, sizeof(page_root), "%s", resolved_root);
+            free(resolved_root);
+        }
+    }
     
     char state_dir[4096];
     snprintf(state_dir, sizeof(state_dir), "%s/state", page_root);
