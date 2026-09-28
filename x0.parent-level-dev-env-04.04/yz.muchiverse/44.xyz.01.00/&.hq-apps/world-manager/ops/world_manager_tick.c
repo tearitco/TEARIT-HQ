@@ -365,18 +365,58 @@ int main(int argc, char *argv[]) {
     snprintf(trigger_file, sizeof(trigger_file), "%s/event_pkg/event_triggers.pdl", page_root);
 
     // Sync entity positions from desktop_pos.txt to entities_live.txt (master ledger)
-    char sync_path[MAX_PATH];
-    snprintf(sync_path, sizeof(sync_path), "%s/ops/sync_entity_positions", page_root);
+    //
+    // REAL FIX 2026-09-28 (direct live report: ongoing CPU throttling/
+    // reboots, user suspected "a cycle running faster than 30/60fps").
+    // Measured live: this tick runs ~24x/second (real, fork/waitpid-
+    // bounded, not a bad sleep value), but sync_entity_positions.+x
+    // itself writes and `system()`s a shell script that does a
+    // recursive `find` over the ENTIRE xyzfs/users tree + `sort`, then
+    // forks 3 more processes (sed, grep x2) PER ENTITY FOUND via a
+    // `while read` loop - with ~30+ real house pals, that's 100+
+    // process forks + a full recursive filesystem walk, EVERY SINGLE
+    // TICK. Measured: world_manager.pal + this child sustained ~90-
+    // 100% of a full CPU core continuously (/proc/<pid>/stat
+    // utime+stime+cutime+cstime delta over a real 2-3s wall-clock
+    // window) - the earlier same-session assessment of "~1% CPU, not
+    // dangerous" only measured the PARENT prisc+x process's own time
+    // and missed this forked child entirely.
+    //
+    // Real, minimal, safe fix (same pattern as the taskbar's own
+    // "one full /proc scan per pass, not per entity" fix, BUG-LOG.md
+    // 2026-09-22): throttle this expensive sync to run at most once
+    // per SYNC_MIN_INTERVAL_SEC, gated by a marker file's mtime -
+    // self-healing (no counter to get out of sync), no change to the
+    // sync binary itself, no change to entities_live.txt's own
+    // consumers (still the same file, just refreshed less often).
+    // Position/trigger polling below (poll_entities/poll_animations)
+    // still runs every tick - only the expensive full-tree rescan is
+    // throttled.
+    {
+        #define SYNC_MIN_INTERVAL_SEC 1
+        char sync_marker[MAX_PATH];
+        snprintf(sync_marker, sizeof(sync_marker), "%s/.sync_last_run", state_dir);
+        struct stat mst;
+        time_t now = time(NULL);
+        int due = (stat(sync_marker, &mst) != 0) || (now - mst.st_mtime >= SYNC_MIN_INTERVAL_SEC);
+        if (due) {
+            FILE *mf = fopen(sync_marker, "w");
+            if (mf) fclose(mf);
 
-    pid_t sync_pid = fork();
-    if (sync_pid == 0) {
-        // Child process
-        execvp(sync_path, (char *[]) { sync_path, NULL });
-        exit(1);  // execvp only returns on error
-    } else if (sync_pid > 0) {
-        // Parent process: wait for child
-        int sync_status;
-        waitpid(sync_pid, &sync_status, 0);
+            char sync_path[MAX_PATH];
+            snprintf(sync_path, sizeof(sync_path), "%s/ops/sync_entity_positions", page_root);
+
+            pid_t sync_pid = fork();
+            if (sync_pid == 0) {
+                // Child process
+                execvp(sync_path, (char *[]) { sync_path, NULL });
+                exit(1);  // execvp only returns on error
+            } else if (sync_pid > 0) {
+                // Parent process: wait for child
+                int sync_status;
+                waitpid(sync_pid, &sync_status, 0);
+            }
+        }
     }
 
     // Auto-detect position changes in entities_live.txt
