@@ -58,6 +58,66 @@ blocked on anything below this line.
 
 ---
 
+## Track 1's Natural Test Surface: the Drop-In Chatbot Entity
+
+**This is not a third track — it's the user-facing surface Track 1
+needs anyway**, and it already has real, separately-documented
+foundations to build on rather than starting from nothing:
+
+- `13.agent-coms/GROK/2026-09-17-cursword-file-inventory-chat.md`
+  already specs a 🤖️ emoji entity that IS a chat surface: "Robot chat
+  is a separate entity, events modified on that pal — not Cursword
+  main. Drag the robot into the Cursword folder (or out to desktop /
+  another inventory). Chat happens from Inventory, not Cursword main."
+- `12.calendar/2026-09-20/2do.md` §8b/8c documents a real,
+  **already-built** host-context bridge (`khtpm_events_hq_manager.c`/
+  `khtpm_core_render.c`, `MUCHI_TARGET_ENT`) so an entity's own method,
+  run from another entity's inventory right-click, correctly resolves
+  `$ENT` to itself rather than the host it's sitting inside.
+
+**Why this maps directly onto Track 1, not a new mechanism:**
+- The chatbot entity's own state files (glyph, history, whatever it
+  accumulates) ARE the Watch Layer's observation input — "consume the
+  data of the entity as part of its context" is exactly what an
+  `ai_describe` call already needs to be handed.
+- Chatting with it and reacting IS the feedback valence signal the
+  promotion ledger already expects.
+- "Chat command shortcuts" are just new registered COMMANDs — same
+  registry, same pattern as `apply_range`/`advance_fact`, nothing new
+  to invent.
+- "Teaching tomom / building out the Bank in parallel" is the same
+  promotion-ledger mechanism Track 1 already wires up, just with a
+  human's live chat as one more real observation source alongside the
+  automated pc-hq test-bot (Track 2).
+
+**Real, unresolved gap, worth naming plainly:** `08-roadmap/design-docs/
+AI-TRACK-BRAINSTORM-QUESTIONS.md` Question 4 names this exact 🤖️ robot
+entity and quotes a cut-off instruction — *"we were gonna give the 🤖️
+..."* — and its own text recommends asking what the rest of that
+sentence was, rather than assuming. Nobody has yet. **Open question for
+the house, not answered by this doc.**
+
+**Real, confirmed technical gap:** a single chatbot entity dropped into
+one inventory works today — the host-context bridge above already
+resolves `$ENT` correctly for a nested copy. But there is **no
+prototype/inheritance system** for entities or inventory items in this
+codebase — confirmed by grep, zero hits for any `prototype`/
+`item_template`/`entity_template`/`inherits` pattern. Entities are
+literal filesystem directories; dropping one into an inventory is a
+real `mv`, a full directory copy, not a reference to a shared template.
+So: copying the chatbot entity into ten different entities' inventories
+today produces ten independently-drifting full copies, each with its
+own separately-accumulating personality/history/bank state — not one
+shared personality inherited everywhere, RPG Maker JS-prototype style.
+**If a single shared-personality-across-copies chatbot is wanted, a
+real template/instance split is new foundational work, not yet
+started** — the same "one real source of truth, everything else
+derived" discipline `NIGHT_22_THE_CONCEPT_BANK.txt` already applied to
+spoke/master resolution would be the right shape to reuse here, not a
+new one-off mechanism.
+
+---
+
 ## Document-Only: Networking Reuse (IRC / Forum / Chain / Multiplayer / Blockchain-Mining)
 
 **Verdict: yes, one substrate — but it doesn't exist yet, so there is
@@ -186,6 +246,8 @@ as everything else above."
 |---|---|---|
 | `ai_describe` registry + Gemma wiring | **Build now** | Nothing |
 | pc-hq automated test-bot harness | **Build now** | Nothing |
+| Drop-in chatbot entity (single copy, one inventory) | **Buildable now** as Track 1's test surface | Nothing (host-context bridge already exists) |
+| Chatbot entity template/inheritance (shared personality, many copies) | Document only, new foundational work | Nothing technical, but genuinely unbuilt |
 | Networking reuse (IRC/Forum/Chain/multiplayer/mining) | Document only | `palnet_peer.c` real cross-machine fix |
 | Per-game personal blockchain default | **Lock in now** (as a code convention, not infra) | Nothing |
 | Node-value-weighting + CONES exception | Document only | Real multi-node data |
