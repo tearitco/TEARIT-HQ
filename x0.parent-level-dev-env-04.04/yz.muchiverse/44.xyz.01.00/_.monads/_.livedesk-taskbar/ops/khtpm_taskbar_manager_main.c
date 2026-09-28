@@ -297,11 +297,11 @@ static void format_datetime(char *out, size_t out_sz, const char *lang) {
     if (!tm_info) { snprintf(out, out_sz, "??:??"); return; }
 
     if (lang && strcmp(lang, "zh") == 0) {
-        static const char *zh_wday[] = {"日", "一", "二", "三", "四", "五", "六"};
+          static const char *zh_wday[] = { "\xe6\x97\xa5", "\xe4\xb8\x80", "\xe4\xba\x8c", "\xe4\xb8\x89", "\xe5\x9b\x9b", "\xe4\xba\x94", "\xe5\x85\xad" };
         int year = tm_info->tm_year + 1900;
         int mon = tm_info->tm_mon + 1;
         int mday = tm_info->tm_mday;
-        snprintf(out, out_sz, "%04d年%02d月%02d日 周%s %02d:%02d",
+        snprintf(out, out_sz, "%04d\xe5\xb9\xb4%02d\xe6\x9c\x88%02d\xe6\x97\xa5 \xe6\x98\x9f\xe6\x9c\x9f%s %02d:%02d",
                  year, mon, mday,
                  zh_wday[tm_info->tm_wday],
                  tm_info->tm_hour, tm_info->tm_min);
