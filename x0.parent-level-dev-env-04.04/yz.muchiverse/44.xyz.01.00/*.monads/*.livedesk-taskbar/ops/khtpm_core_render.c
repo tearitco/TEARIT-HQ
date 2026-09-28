@@ -4558,7 +4558,18 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
                     row_has_composer = 1;
             }
             if (row_has_composer) {
-                layout_toolbar_row(c, x, y + h - composer_h, w);
+                /* REAL FIX 2026-09-28 (direct live report: "open-hai
+                 * resize isn't visible cause input from clio covers
+                 * it... possible to have both?") - a bottom-glued
+                 * composer row spans the FULL container width by
+                 * default, which lands its right edge exactly where
+                 * the ⌟ resize grip draws (KH_RESIZE_GRIP, bottom-right
+                 * corner) on a user-resizable window - same real
+                 * reservation the <footer> element already makes for
+                 * itself (see its own "always stop short of the ⌟
+                 * drag-resize grip" comment above), applied here too. */
+                int grip_w = g_user_resizable ? KH_RESIZE_GRIP + scaled(4) : 0;
+                layout_toolbar_row(c, x, y + h - composer_h, w - grip_w);
             } else {
                 layout_toolbar_row(c, x, y_cursor, w);
                 y_cursor += ROW_H;

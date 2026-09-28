@@ -9,7 +9,7 @@
      its own state/ui.txt. button.sh restores this file from the
      .bootstrap if the <module> tag goes missing. Do not hand-generate
      this markup from the manager. -->
-<window label="open-hai" class="" vars="state/ui.txt">
+<window label="open-hai" class="user-resizable" vars="state/ui.txt">
   <module src="&.widgits/open-hai/ops/+x/khtpm_open_hai_manager.+x"/>
   <page name="main">
     <sidebar>
