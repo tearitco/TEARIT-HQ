@@ -185,22 +185,20 @@ switch ($ACTION) {
         # concurrent clicks race on the same +x/ output and the same PIDs.
         $need_build = ($ACTION -ne "boot")
         if (-not $need_build) {
-            # NOTE: khtpm_entity.exe is deliberately NOT in this check.
-            # It does not compile yet (khtpm_entity.c needs a much wider
-            # Xlib slice than the strip renderer), so testing for it here
-            # would make "is anything missing?" permanently true and every
-            # `boot` - i.e. every desktop-start-button click - would run a
-            # full ~40s rebuild and then spew the entity's compile errors
-            # at the user. That is exactly what happened on 2026-09-26
-            # before this was fixed. Only the two bar binaries gate boot;
-            # the entity's status is reported as a warning, not treated
-            # as a missing prerequisite.
-            if (-not (Test-Path -LiteralPath $RENDER) -or -not (Test-Path -LiteralPath $MANAGER)) {
+            # khtpm_entity.exe IS in this check now, and the reason the old
+            # comment here argued against it is gone. The entity leg used to
+            # fail permanently, so testing for it would have made "is
+            # anything missing?" permanently true and every `boot` - i.e.
+            # every desktop-start-button click - would have run a full ~40s
+            # rebuild and then spewed entity compile errors at the user (hit
+            # for real on 2026-09-26). The entity now builds, so a missing
+            # binary is real information and a fresh build is the right
+            # response. All three come out of one build script, so gating on
+            # any of them costs nothing extra.
+            if (-not (Test-Path -LiteralPath $RENDER) -or
+                -not (Test-Path -LiteralPath $MANAGER) -or
+                -not (Test-Path -LiteralPath $ENTITY)) {
                 $need_build = $true   # first-ever boot with no binaries
-            } else {
-                Write-Warning "khtpm_entity.exe absent - khtpm_entity.c is not ported to Windows yet."
-                Write-Warning "  The taskbar starts, but with NO entities, so the bottom bar has no cells."
-                Write-Warning "  This is a known gap, not a build failure. See WINDOWS-TASKBAR-PORT.md."
             }
         }
 
@@ -249,69 +247,74 @@ switch ($ACTION) {
         # Process.Create's CurrentDirectory is what does the `cd` here.
         $new = @()
 
-        # The manager writes #.desktop/strip_ui.txt, which the templates
-        # name as their vars= input. The bars have nothing to draw until
-        # that file exists and is non-empty, so wait for it - exactly the
-        # Linux runner's poll loop.
-        if (Test-Path -LiteralPath $MANAGER) {
-            $mp = Start-Detached $MANAGER @($HOUSE)
-            if ($mp) { $new += $mp }
-        }
-
+        # ORDER FIX 2026-09-27: BARS FIRST, MANAGER SECOND. This inverts
+        # the previous order (manager, wait for strip_ui.txt, then bars)
+        # and the inversion is the actual fix for the live report "no
+        # entries in top tb, and bottom one looks cluttered and mangled".
+        #
+        # Why the old order was broken: the manager is what spawns the
+        # desk entities (ktb_init -> livedesk_spawn_active_desk), and every
+        # entity runs ensure_taskbar_running() at startup. Under the old
+        # order NO bar existed yet at that moment, so each entity decided
+        # "no taskbar is running" and launched one itself - measured live
+        # at 10 simultaneous khtpm_core_render.exe processes all drawing
+        # the header template into the same spot, stacked on top of the
+        # two the runner itself then started. Ten renderers writing one
+        # window is precisely "cluttered and mangled".
+        #
+        # The old order existed only to guarantee the bars had a populated
+        # #.desktop/strip_ui.txt to draw on their first frame. That is
+        # not actually a requirement: verified live that
+        # khtpm_core_render.exe starts, stays up and keeps drawing with
+        # strip_ui.txt absent entirely (it re-reads the vars file as the
+        # manager publishes it). So the bars can safely go first, they
+        # are then guaranteed to exist before any entity looks for them,
+        # and the self-heal in ensure_taskbar_running() correctly finds a
+        # live bar and does nothing.
         $strip = Join-Path $STATE "strip_ui.txt"
         if (Test-Path -LiteralPath $strip) { Remove-Item -LiteralPath $strip -Force -ErrorAction SilentlyContinue }
-        $i = 0
-        while ($i -lt 50) {
-            if ((Test-Path -LiteralPath $strip) -and (Get-Item -LiteralPath $strip).Length -gt 0) { break }
-            Start-Sleep -Milliseconds 100
-            $i++
-        }
 
         $hp = Start-Detached $RENDER @($HOUSE, $HEADER)
         if ($hp) { $new += $hp }
         $bp = Start-Detached $RENDER @($HOUSE, $BOTTOM)
         if ($bp) { $new += $bp }
 
-        # Entities. The bottom bar's cells come from these, so with none
-        # running the bottom is correctly-drawn-but-empty (n_hqwins=0).
-        # Each pal is its own khtpm_entity process, invoked with the pal's
-        # own package_dir - khtpm_core_render.c's main() explicitly
-        # refuses to be the pal process and says so in its argc==2 usage
-        # text. Names come from the command line:
-        #     .\run_khtpm_strip_win.ps1 new cursword dsr_bank_a1
-        # Anything after the action verb is a pal name; with none given,
-        # a small default set is launched so the bar is never empty on a
-        # fresh boot. A pal with no package dir is reported, not skipped
-        # silently.
-        $pals = @()
-        if ($args.Count -ge 2) { $pals = $args[1..($args.Count - 1)] }
-        if ($pals.Count -eq 0) {
-            $pals = @("cursword", "dsr_bank_a1", "dsr_bank_b1", "book-stack")
+        if (Test-Path -LiteralPath $MANAGER) {
+            $mp = Start-Detached $MANAGER @($HOUSE)
+            if ($mp) { $new += $mp }
         }
-        if (-not (Test-Path -LiteralPath $ENTITY)) {
-            Write-Warning "no $ENTITY - khtpm_entity.c is not ported to Windows yet, so NO entities can run."
-            Write-Warning "  The bars will still start; the bottom bar's cells come from entities, so it stays empty."
-            Write-Warning "  See WINDOWS-TASKBAR-PORT.md for the full missing-Xlib list."
-            $pals = @()
-        }
-        $palsRoot = Join-Path $HOUSE "xyzfs\users"
-        $userDir = $null
-        if (Test-Path -LiteralPath $palsRoot) {
-            $ud = @(Get-ChildItem -LiteralPath $palsRoot -Directory -ErrorAction SilentlyContinue)
-            if ($ud.Count -ge 1) { $userDir = $ud[0].FullName }
-        }
-        foreach ($pal in $pals) {
-            if (-not $userDir) { Write-Error "no xyzfs/users dir - cannot resolve pals"; break }
-            $pkg = Join-Path $userDir "home\livedesk\pals\$pal"
-            if (-not (Test-Path -LiteralPath $pkg)) {
-                Write-Error "no such pal: $pal (looked in $pkg)"
-                continue
-            }
-            # khtpm_entity takes <package_dir>, not <house_root>, and has no
-            # template argument at all - a different shape from the bars.
-            $ep = Start-Detached $ENTITY @($pkg)
-            if ($ep) { $new += $ep }
-        }
+
+        # ENTITIES ARE NOT LAUNCHED FROM HERE, deliberately, and this comment
+        # exists so the next agent does not "helpfully" add them back.
+        #
+        # This runner used to spawn four default pals itself
+        # (cursword, dsr_bank_a1, dsr_bank_b1, book-stack) as a workaround
+        # for khtpm_entity.exe not existing. Both halves of that workaround
+        # are now wrong:
+        #
+        # 1. It duplicated. The MANAGER already owns entity spawning, via
+        #    livedesk_spawn_active_desk() which ktb_init() calls once at
+        #    startup (khtpm_taskbar_manager.c:539), which reads the active
+        #    session out of the livedesk session registry, reads that
+        #    session's active desk, and spawns one khtpm_entity.exe per pal
+        #    listed in the desk's .pdl. Spawning pals here as well meant two
+        #    independent sets of pal processes, which the manager's own
+        #    already-live guard cannot see (it keys on livedesk_open.txt,
+        #    not on process ownership), so duplicates accumulate on every
+        #    restart instead of being deduplicated.
+        #
+        # 2. It resolved the wrong pal directory. The old code guessed the
+        #    user by taking the FIRST directory under xyzfs/users/, which is
+        #    a UUID directory and therefore effectively random. On this
+        #    house the pals live under 0a9558a7-.../home/livedesk/pals (24
+        #    of them) and the first UUID directory has no livedesk/pals at
+        #    all, so every one of those four "default" launches was failing
+        #    with "no such pal" and being skipped.
+        #
+        # The manager's own resolution is the authoritative one - it follows
+        # the session registry, which is the same path the Linux manager
+        # uses. So: bars from here, entities from the manager. This also
+        # matches run_khtpm_strip.sh, which launches only the header.
 
         Start-Sleep -Seconds 2
 

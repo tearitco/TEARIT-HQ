@@ -1007,14 +1007,76 @@ static void livedesk_registry_remove(const char *house_root, pid_t pid) {
  * tp_desktop_window.c"). */
 static void ensure_taskbar_running(const char *house_root) {
 #ifdef _WIN32
-    if (x11_process_running("khtpm_strip_parser")) return;
+    /* REAL FIX 2026-09-27, from a live report ("launcher launches messed
+     * up tb now? no entries in top tb, and bottom one looks cluttered
+     * and mangled"). This Windows leg was stale in BOTH halves and was
+     * the root cause of that report, traced live rather than guessed:
+     *
+     * 1. The LIVENESS PROBE asked for "khtpm_strip_parser". That binary
+     *    was retired on 2026-09-01 (folded into khtpm_core_render.c as
+     *    strip_main() - see the REAL FIX 2026-09-01 note in the #else
+     *    leg below, which WAS updated). On Windows the real, live bar
+     *    processes are khtpm_core_render.exe, so this probe never matched
+     *    them.
+     * 2. So every entity reached the launch line below, concluded "no
+     *    taskbar is running", and spawned the retired
+     *    khtpm_strip_parser.exe - which still exists in +x/ on disk.
+     *
+     * The retired binary then drew ITS OWN bars on top of the two the
+     * runner had already started, and its own ensure_manager_running()
+     * started a SECOND khtpm_taskbar_manager_main.exe. Two renderers
+     * drawing two different layouts into the same two windows is what
+     * "cluttered and mangled" was; two managers republishing
+     * strip_ui.txt every tick against each other is what emptied the
+     * top bar; and the second manager spawned a second set of entities.
+     * Confirmed live by process-tree trace: the first
+     * khtpm_strip_parser.exe after a clean boot had
+     * khtpm_entity.exe (pals/cursword) as its parent, and the
+     * khtpm_entity.exe parent was the manager that had just spawned it.
+     *
+     * Both halves are brought in line with the #else leg below, which
+     * already named the correct current binary (khtpm_core_render) and
+     * the correct header template. The old name is still probed, so an
+     * entity that somehow meets a genuinely-live legacy bar does not
+     * stack a second one on top of it - same "harmless safety net"
+     * posture the #else leg's own 2026-08-11 note describes. */
+    if (x11_process_running("khtpm_core_render") ||
+        x11_process_running("khtpm_strip_parser")) return;
+    /* Cross-process dedup for the heal itself. The process-name probe
+     * above is necessary but not sufficient: a whole desk of entities
+     * starts at once (livedesk_spawn_active_desk), so on a genuinely
+     * bar-less desktop all of them pass that probe in the same
+     * millisecond and all of them launch a bar. Measured live at 10
+     * simultaneous header renderers before this lock existed. O_EXCL
+     * creation is the atomic primitive here - exactly the same guard
+     * shape run_khtpm_strip_win.ps1's own .khtpm_restart.lock uses for
+     * the same "N launchers race" problem - so the first entity heals
+     * and the rest back off. The lock is removed immediately after the
+     * spawn so a later genuine loss can still self-heal. */
+    char lockp[TP_PATH_BUF];
+    snprintf(lockp, sizeof(lockp), "%s\\#.desktop\\.khtpm_bar_heal.lock",
+             house_root && house_root[0] ? house_root : ".");
+    int lfd = open(lockp, O_CREAT | O_EXCL | O_WRONLY, 0644);
+    if (lfd < 0) return;   /* another entity is already healing the bar */
+    close(lfd);
     char exe[TP_PATH_BUF];
     DWORD n = GetModuleFileNameA(NULL, exe, TP_PATH_BUF);
-    if (!n) return;
+    if (!n) { remove(lockp); return; }
     char *slash = strrchr(exe, '\\');
-    if (!slash) return;
-    snprintf(slash + 1, TP_PATH_BUF - (size_t)(slash + 1 - exe), "khtpm_strip_parser.exe");
-    x11_spawn_cwd(exe, house_root && house_root[0] ? house_root : ".");
+    if (!slash) { remove(lockp); return; }
+    snprintf(slash + 1, TP_PATH_BUF - (size_t)(slash + 1 - exe), "khtpm_core_render.exe");
+    /* The renderer's real invocation is TWO arguments - house_root THEN
+     * template - which is why this uses the two-arg spawn helper rather
+     * than x11_spawn_cwd(). Header only, exactly like the #else leg's
+     * own fallback command: the bottom bar is this port's own extra
+     * window and run_khtpm_strip_win.ps1 owns it, so an entity self-heal
+     * must not spawn a second bottom bar over it. */
+    char tmpl[TP_PATH_BUF];
+    snprintf(tmpl, sizeof(tmpl),
+             "%s\\_.monads\\_.livedesk-taskbar\\khtpm_strip_header.xhtpm",
+             house_root && house_root[0] ? house_root : ".");
+    x11_spawn_cwd2(exe, house_root && house_root[0] ? house_root : ".", tmpl);
+    remove(lockp);
     return;
 #else
     char pid_path[TP_PATH_BUF];

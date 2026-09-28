@@ -112,9 +112,27 @@ $INCS = @(
 )
 
 # Win32 libraries the shim actually needs. -lX11/-lXft/-lXext are the
-# Linux set and have no meaning here.
+# Linux set and have no meaning here. -lm is for the cos()/sin() in the
+# shim's XDrawArc, which places X11's arc end angles onto the ellipse.
+# Windows gives a thread 1 MB of stack by default; Linux gives 8 MB. The
+# manager never noticed the difference on Linux because its own address-book
+# arrays are larger than a Windows stack: khtpm_taskbar_manager.h sets
+# KTB_PATH_BUF 4352 and KTB_LIVEDESK_MAX_OPEN 64, and six functions each hold
+# a `char paths[64][4352]` on the stack - 272 KB apiece, ~280 KB with `ents`.
+# The spawn path NESTS three of them:
+#     livedesk_spawn_active_desk -> livedesk_spawn_desk -> livedesk_ensure_cursword
+# which is ~840 KB before main()'s own frames, so the manager died with
+# 0xC00000FD (STACK_OVERFLOW) on this platform - before it could write a
+# single byte of #.desktop/strip_ui.txt, which is why the bottom bar stayed
+# empty. Confirmed by gdb backtrace (chkstk_ms -> livedesk_ensure_cursword).
+#
+# The fix is the linker's stack reservation, not a rewrite of six canonical
+# call sites onto the heap: 8 MB, matching the Linux default, so the code
+# keeps the stack footprint it was written against.
+$STACK = @("-Wl,--stack,0x800000")
+
 $LIBS = @("-lgdi32", "-luser32", "-lshlwapi", "-lshell32",
-          "-ladvapi32", "-lcomctl32", "-lcomdlg32")
+          "-ladvapi32", "-lcomctl32", "-lcomdlg32", "-lm")
 
 $SOURCES = @(
     (Join-Path $OPS "khtpm_core_render.c"),
@@ -136,8 +154,9 @@ Write-Host "-- khtpm manager driver (pure logic, no Xlib) -> +x/khtpm_taskbar_ma
 # which lives in &.widgits/_shared-lib (PROC-LIFECYCLE-ORCHESTRATOR-
 # TEARDOWN.md). Same reason the Linux line at build_khtpm_strip.sh:141
 # carries it. No X11 and no win-compat on this leg: the manager never
-# opens a window, it only reads and writes plain files.
-& gcc $CFLAGS @GUI -I $SHARED -o $MANAGER_OUT `
+# opens a window, it only reads and writes plain files. It is also the one
+# leg that needs $STACK - see the note there.
+& gcc $CFLAGS @GUI $STACK -I $SHARED -o $MANAGER_OUT `
     $GUISRC `
     (Join-Path $OPS "khtpm_taskbar_manager_main.c") `
     (Join-Path $OPS "khtpm_taskbar_manager.c")
@@ -160,24 +179,35 @@ if ($LASTEXITCODE -ne 0) {
 # you see on the desktop are one khtpm_entity process per pal, invoked
 # with the pal's own package_dir, and each renders its own window.
 #
-# STATUS: this leg does NOT compile yet. khtpm_entity.c needs a far
-# larger slice of Xlib than the strip renderer did - reparenting, visual
-# matching, bitmap-from-data, arcs, query-pointer, ~12 more keysyms, the
-# Shape extension's ShapeUnion - plus real POSIX flock/readlink/sigaction.
-# The full missing set is listed in the port doc. Because the bars
-# themselves are unaffected by that gap, a failure here is reported
-# loudly but does NOT block the taskbar from launching: a broken entity
-# build is a smaller problem than a taskbar that refuses to start.
-# Linux line (build_core_render.sh): -I "$SHARED" -I . , khtpm_entity.c
-# $LIBS, no CSS parser and no draw/render core - it needs neither.
+# STATUS: this leg now COMPILES and LINKS. It did not before, and for a
+# reason worth writing down: the entity leg was missing the whole Win32 X11
+# shim from its link line. It listed only khtpm_entity.c, so every Xlib
+# symbol the entity calls - all 40-odd of them, XCreateWindow, XftFontOpenName,
+# XShapeCombineMask, the lot - came back "undefined reference" and the leg
+# was written off as "needs a wider Xlib slice". The slice was not the
+# problem: khtpm_strip_x11_win.c already implements the entity's calls, it was
+# simply never passed to the linker. That shim grew the missing pieces
+# (XReparentWindow, XMatchVisualInfo, XCreateBitmapFromData, XDrawArc,
+# XQueryPointer, the extra keysyms, ShapeUnion) as part of this port, and
+# khtpm_win_compat.c grew flock/readlink/sigaction/win_package_rel.
+#
+# So the entity gets the same three shim sources the renderer does. It does
+# NOT get khtpm_core_render.c or the CSS parser: the entity needs neither,
+# matching the Linux line (build_core_render.sh).
+#
+# A failure here is still reported loudly but does NOT block the taskbar from
+# launching: a broken entity build is a smaller problem than a taskbar that
+# refuses to start.
+$ENTITY_SOURCES = @(
+    (Join-Path $OPS "khtpm_entity.c"),
+    (Join-Path $OPS "khtpm_strip_x11_win.c"),
+    (Join-Path $OPS "khtpm_strip_posix_win.c"),
+    (Join-Path $OPS "khtpm_win_compat.c")
+)
 Write-Host "-- khtpm entity pal renderer -> +x/khtpm_entity.exe"
-& gcc @CFLAGS @GUI @INCS -o $ENTITY_OUT $GUISRC `
-    (Join-Path $OPS "khtpm_entity.c") @LIBS
+& gcc @CFLAGS @GUI @INCS -o $ENTITY_OUT $GUISRC @ENTITY_SOURCES @LIBS
 if ($LASTEXITCODE -ne 0) {
     Write-Warning "ENTITY BUILD FAILED (exit $LASTEXITCODE) - bars will launch with NO entities."
-    Write-Warning "  khtpm_entity.c is not ported to Windows yet; it needs a wider Xlib slice"
-    Write-Warning "  (XReparentWindow, XVisualInfo/XMatchVisualInfo, XCreateBitmapFromData, XDrawArc,"
-    Write-Warning "  XQueryPointer, ShapeUnion, ~12 keysyms) and POSIX flock/readlink/sigaction."
     Write-Warning "  Continuing so the taskbar still starts. See WINDOWS-TASKBAR-PORT.md."
     $script:EntityBuilt = $false
 } else {

@@ -22,6 +22,33 @@
 #include <stdio.h>
 #include <sys/types.h>
 
+/* REAL, NEW 2026-09-26 - ShellExecuteA. Both canonical sources reach for it
+ * in their own _WIN32 blocks to open a directory in Explorer
+ * (khtpm_entity.c:634 and khtpm_taskbar_manager.c:5726), and neither
+ * includes <shellapi.h> on that path. It lives in shell32, which is already
+ * on the link line, so the declaration is all that is missing - and the
+ * prelude is the only place a Windows build can get one without editing
+ * canonical source.
+ *
+ * windows.h has to come first, and that ordering is not optional:
+ * shellapi.h uses DECLARE_HANDLE and DECLSPEC_IMPORT out of windef.h without
+ * including it itself, so on its own it fails with ~200 "unknown type name
+ * 'HWND'" errors. shellapi.h also guards on _INC_SHELLAPI, so getting that
+ * first parse wrong does not fail loudly and fall back - it caches a broken
+ * _INC_SHELLAPI and every later include of it (windows.h:89 does exactly
+ * that) becomes a no-op, leaving ShellExecuteA undeclared and every call site
+ * silently implicit.
+ *
+ * The same WIN32_LEAN_AND_MEAN the X11 shim sets is set here, so the Win32
+ * macro surface that ends up in the translation unit is byte-for-byte the one
+ * these sources already compile against - the X11 shim's own <windows.h>
+ * include later in the file is a no-op, because windows.h guards itself. */
+#ifndef WIN32_LEAN_AND_MEAN
+#  define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <shellapi.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -37,6 +64,33 @@ int unsetenv(const char *name);
 
 /* --- <unistd.h> --------------------------------------------------------- */
 int kill(pid_t pid, int sig);
+
+/* REAL, NEW 2026-09-26 - readlink. MinGW-w64 does not provide it, and
+ * khtpm_entity.c's self_exe_path() calls
+ *     readlink("/proc/self/exe", out, out_sz - 1)
+ * with no _WIN32 branch (entity.c:743), because the whole point of that
+ * function is portable self-discovery. Implemented for real in
+ * khtpm_win_compat.c over GetModuleFileNameW.
+ *
+ * The return is a byte count excluding the NUL, which is what readlink(2)
+ * does and what the caller needs to terminate the buffer itself. */
+ssize_t readlink(const char *path, char *buf, size_t bufsiz);
+
+/* --- house path helper, called under #ifdef _WIN32 by TWO canonical
+ * sources: khtpm_entity.c:3809 and khtpm_core_render.c:15043, both right
+ * after copying argv[1] into a mutable buffer as the pal's package_dir.
+ * Neither one defines it, and it was never in the tree - the original
+ * static definition lived in the now-deleted tp_desktop_window_rgb.c and was
+ * lost in the 2026-09-01 consolidation ("cleanup: delete dead source files
+ * from the consolidation"), which is why it has been an implicit-declaration
+ * error in the entity build ever since.
+ *
+ * It converts an absolute house path into the house-relative form the
+ * entity's own IPC files expect, in place. Declared here rather than in the
+ * X11 shim header because it is a path concern, not an X11 one, and this
+ * prelude is force-included into every Windows build that needs it.
+ * Implemented in khtpm_win_compat.c. */
+void win_package_rel(char *path);
 
 /* --- <stdio.h> ----------------------------------------------------------
  * core_render.c:8089 and :8164 build the frame snapshot/dump entirely

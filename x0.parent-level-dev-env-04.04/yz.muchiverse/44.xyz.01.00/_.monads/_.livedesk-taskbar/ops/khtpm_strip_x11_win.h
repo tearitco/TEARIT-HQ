@@ -49,6 +49,24 @@ extern "C" {
 #define GrabSuccess        0
 #define ShapeBounding      0
 #define ShapeSet           0
+/* REAL, NEW 2026-09-26 - the SHAPE-EXTENSION OPERATOR set (the last argument
+ * to XShapeCombineMask), which is a different enum from dest_kind above and
+ * so needs its own real X11 numbers. ShapeBounding/ShapeClip/ShapeInput (the
+ * dest_kind values) are 0/1/2; the op values are 0..4, so ShapeSet==0 above
+ * is the correct op spelling and does not collide with ShapeBounding==0
+ * because they never appear in the same enum position.
+ * khtpm_entity.c:2030 passes ShapeUnion when merging cursword's per-pixel
+ * silhouette disc into the mask it already built. */
+#define ShapeUnion         1
+#define ShapeIntersect     2
+#define ShapeSubtract      3
+#define ShapeInvert        4
+/* REAL, NEW 2026-09-26 - XVisualInfo.class for XMatchVisualInfo(). Real
+ * Xlib numbering (StaticGray 0, GrayScale 1, StaticColor 2, PseudoColor 3,
+ * TrueColor 4, DirectColor 5). The entity asks for a 32-bit TrueColor
+ * visual so its per-pixel alpha silhouette composites; see
+ * XMatchVisualInfo() in the .c for what the shim actually answers. */
+#define TrueColor          4
 
 #define CopyFromParent 0
 #define InputOutput    1
@@ -94,6 +112,30 @@ extern "C" {
 #define XK_End       0xff57
 #define XK_Delete    0xffff
 
+/* REAL, NEW 2026-09-26 - the Latin-1 keysyms khtpm_entity.c's cursword
+ * camera keys test. Real X11 derives these by arithmetic, and so does this:
+ * digits are 0x030+(c-'0') and lowercase letters are 0x061+(c-'a'), which is
+ * exactly the rule that produced the XK_space 0x0020 already above.
+ *
+ * These compare EQUAL to what the shim's own XLookupString() hands back for
+ * a typed character, because WM_CHAR is delivered with keycode 0x10000|ch
+ * and XLookupString's non-special path returns ks = keycode & 0xff, i.e. the
+ * character's own ASCII value - which is the same number as the keysym for
+ * every character in this group. So a real keypress really does reach
+ * cursword_handle_camera_key() as a matching XK_*, not as a miss. */
+#define XK_0 0x030
+#define XK_a 0x061
+#define XK_c 0x063
+#define XK_d 0x064
+#define XK_e 0x065
+#define XK_f 0x066
+#define XK_q 0x071
+#define XK_r 0x072
+#define XK_s 0x073
+#define XK_t 0x074
+#define XK_v 0x076
+#define XK_w 0x077
+
 /* --- GC value masks -----------------------------------------------------
  * The three already above (GCForeground 1, GCBackground 2, GCFont 4) are
  * this shim's own invented small values from the strip-parser era and are
@@ -130,6 +172,14 @@ extern "C" {
 #define Button1Mask             256L
 #define SubstructureNotifyMask  4096L
 #define SubstructureRedirectMask 8192L
+/* REAL, NEW 2026-09-26 - PointerMotionMask. Real Xlib spells this 1<<6 == 64,
+ * but 64 is already the strip-era invented StructureNotifyMask above and the
+ * WndProc/XSelectInput agree on 64, so the real value cannot be reused
+ * without breaking that. It takes the next free bit instead, which is safe
+ * because this constant is only ever read as an argument to
+ * XGrabPointer(), which the shim implements without consulting the mask at
+ * all (there is no real X server to select events on). */
+#define PointerMotionMask       2048L
 
 /* Event type codes (these match real Xlib and the ones already above). */
 #define KeyRelease        3
@@ -172,6 +222,15 @@ extern "C" {
 #define CWY      64
 #define CWWidth  128
 #define CWHeight 256
+/* REAL, NEW 2026-09-26 - CWBorderPixel, next in the same invented sequence
+ * (real Xlib uses 1<<3 == 8, which CWColormap above already took).
+ * khtpm_entity.c:4141 puts it in the same XCreateWindow valuemask as
+ * CWColormap/CWEventMask/CWOverrideRedirect/CWBackPixel when it creates its
+ * ARGB window. The shim creates every window as a WS_POPUP, which has no
+ * border at all, so there is nothing for this bit to do - it is declared so
+ * the mask compiles and the caller's intent stays legible, and win_apply()
+ * in the .c deliberately ignores it rather than pretending to honour it. */
+#define CWBorderPixel 512
 
 typedef unsigned long KeySym;
 typedef unsigned long Atom;
@@ -390,6 +449,41 @@ typedef struct {
     unsigned char minor_code;
 } XErrorEvent;
 
+/* REAL, NEW 2026-09-26 - XErrorHandler, and the reason XSetErrorHandler()'s
+ * signature had to change. Real Xlib declares
+ *     typedef int (*XErrorHandler)(Display *, XErrorEvent *);
+ *     XErrorHandler XSetErrorHandler(XErrorHandler);
+ * i.e. it returns the PREVIOUS handler so a caller can save/restore around a
+ * risky section. The shim's original stub returned int ("had a handler
+ * already"), which is fine for the two callers that ignore the result
+ * (core_render.c:11715, strip_parser.c:2727) but not for
+ * khtpm_entity.c:205-231, which does exactly the real save/restore dance
+ * around XReparentWindow() - saving into an XErrorHandler, then handing it
+ * back to restore. Under the old int-returning stub that value came back as
+ * 0 and the restore installed a NULL handler, so this typedef and the
+ * matching return type in the .c are load-bearing, not cosmetic.
+ * It must be declared AFTER XErrorEvent above, hence its position here. */
+typedef int (*XErrorHandler)(Display *, XErrorEvent *);
+
+/* REAL, NEW 2026-09-26 - XVisualInfo, for XMatchVisualInfo(). Field order and
+ * types mirror real Xlib exactly (including VisualID, which this shim has no
+ * use for but which sits in the middle of the struct there, so any
+ * positional initialiser a future caller writes keeps working).
+ * khtpm_entity.c only ever reads .visual and .depth out of it - once in
+ * popup_draw_text() for a 32-bit visual when the popup font needs one, and
+ * once in tp_main() to ask for an ARGB visual so the per-pixel silhouette
+ * composites. */
+typedef struct {
+    Visual       *visual;
+    unsigned long visualid;
+    int           screen;
+    int           depth;
+    int           class;
+    unsigned long red_mask, green_mask, blue_mask;
+    int           colormap;
+    int           bits_per_rgb;
+} XVisualInfo;
+
 /* REAL, NEW 2026-09-26 - XConfigureWindow's value struct. khtpm_core_render.c
  * moves/resizes the dock and popup windows through it (chained onto
  * XWindowChanges, exactly as real Xlib does). */
@@ -449,7 +543,10 @@ void XLowerWindow(Display *dpy, Window w);
 int XQueryTree(Display *dpy, Window w, Window *root_ret, Window *parent_ret,
                Window **children, unsigned int *nchildren);
 int XFetchName(Display *dpy, Window w, char **name_out);
-int XSetErrorHandler(int (*handler)(Display *, XErrorEvent *));
+/* REAL, NEW 2026-09-26 - returns the PREVIOUS handler (real Xlib's
+ * signature), not a "one already existed" flag. See the XErrorHandler
+ * typedef above for the call site that depends on it. */
+XErrorHandler XSetErrorHandler(XErrorHandler handler);
 int XGetErrorText(Display *dpy, int code, char *buf, int len);
 void XMoveResizeWindow(Display *dpy, Window w, int x, int y, unsigned width, unsigned height);
 void XSetWindowBackground(Display *dpy, Window w, unsigned long pixel);
@@ -534,6 +631,7 @@ void XFreeStringList(char **list);
 char *XSetLocaleModifiers(const char *mod);
 int x11_process_running(const char *name);
 int x11_spawn_cwd(const char *exe, const char *arg1);
+int x11_spawn_cwd2(const char *exe, const char *arg1, const char *arg2);
 
 
 typedef struct {
@@ -618,6 +716,37 @@ Bool XTranslateCoordinates(Display *dpy, Window src_w, Window dest_w,
  * FillSolid and FillTiled around the XFillRectangle that stamps it. */
 int  XPutPixel(XImage *img, int x, int y, unsigned long pixel);
 void XSetFillStyle(Display *dpy, GC gc, int fill_style);
+
+/* --- REAL, NEW 2026-09-26: the Xlib surface khtpm_entity.c needs ----------
+ * The pal/tile entity is a much bigger Xlib consumer than the strip parser
+ * was - it draws its own per-pixel-alpha sprite, has popups, and drags
+ * itself between desktop windows. These are the five entry points it calls
+ * that the shim did not declare, grouped by what each is for:
+ *
+ *  - drag-into-another-pal: XReparentWindow (the pal becomes a child of the
+ *    window it is dropped on, and goes back to root when it is dropped on
+ *    nothing - kh_drag_stack_above(), entity.c:214/223)
+ *  - ARGB window selection: XMatchVisualInfo (ask the server for a 32-bit
+ *    TrueColor visual, with the same graceful fallback to DefaultVisual the
+ *    entity already writes - entity.c:1644 and :4002)
+ *  - sprite silhouette:   XCreateBitmapFromData (1-bit-per-pixel mask ->
+ *    Pixmap; the entity then XCopyArea's it into the window's shape mask)
+ *  - cursword's round     XDrawArc (a 360-degree outline, stroked not
+ *    placement reticle:    filled, onto the same shape mask)
+ *  - drag tracking:       XQueryPointer (root-relative pointer position
+ *    while a drag is live: while the X loop is sleeping on select())
+ */
+void XReparentWindow(Display *dpy, Window w, Window parent, int x, int y);
+Status XMatchVisualInfo(Display *dpy, int screen, int depth, int class,
+                        XVisualInfo *vinfo_return);
+Pixmap XCreateBitmapFromData(Display *dpy, Drawable d, const char *data,
+                             unsigned width, unsigned height);
+void XDrawArc(Display *dpy, Drawable d, GC gc, int x, int y,
+              unsigned width, unsigned height, int angle1, int angle2);
+Bool XQueryPointer(Display *dpy, Window w, Window *root_return,
+                   Window *child_return, int *root_x_return, int *root_y_return,
+                   int *win_x_return, int *win_y_return,
+                   unsigned int *mask_return);
 
 #ifdef __cplusplus
 }

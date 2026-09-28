@@ -3,6 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+/* REAL, NEW 2026-09-26 - for the cos()/sin() that place X11's arc end
+ * angles onto the ellipse in XDrawArc. The -lm that goes with it is on both
+ * the renderer and entity link lines in build_khtpm_strip_win.ps1. */
+#include <math.h>
 #include <tlhelp32.h>
 
 #define KIND_WIN 1
@@ -41,6 +45,13 @@ struct Xd {
     unsigned long bg;
     BYTE opacity;
     KProp *props;             /* NEW 2026-09-26 - see KProp above */
+    /* REAL, NEW 2026-09-26 - current X11 parent, NULL for a top-level
+     * window. Only XReparentWindow() ever sets it, and only the entity's
+     * drag-into-another-pal path ever calls that; every taskbar window keeps
+     * it NULL, so their existing work-area-relative geometry below is
+     * untouched. A reparented window is a WS_CHILD, so its x/y are relative
+     * to this parent rather than to the work area. */
+    Window parent;
 };
 
 struct Display {
@@ -509,13 +520,21 @@ void XUnmapWindow(Display *dpy, Window w) {
      * protocol, so it never raises BadWindow/BadMatch and there is nothing
      * to deliver. main() installs the parser's non-fatal handler here and
      * that install is the whole point - it stays correct if a future
-     * shimmed call ever does want to report one. Return value is 1 if a
-     * handler was already installed (the parser ignores it either way). */
-    static int (*g_xerror_handler)(Display *, XErrorEvent *) = NULL;
-    int XSetErrorHandler(int (*handler)(Display *, XErrorEvent *)) {
-        int had = g_xerror_handler != NULL;
+     * shimmed call ever does want to report one.
+     *
+     * The RETURN value is the previous handler, matching real Xlib, and
+     * that is the part khtpm_entity.c depends on: its
+     * kh_drag_stack_above() saves the current handler into an XErrorHandler,
+     * installs its own ignore-everything handler across the XReparentWindow
+     * call, then passes the saved value back to restore. Returning a
+     * "had one already" int flag instead - which is what this used to do -
+     * would have that restore install NULL and silently disarm the process's
+     * error handling for the rest of its life. */
+    static XErrorHandler g_xerror_handler = NULL;
+    XErrorHandler XSetErrorHandler(XErrorHandler handler) {
+        XErrorHandler prev = g_xerror_handler;
         g_xerror_handler = handler;
-        return had;
+        return prev;
     }
 
     int XGetErrorText(Display *dpy, int code, char *buf, int len) {
@@ -529,8 +548,23 @@ void XUnmapWindow(Display *dpy, Window w) {
 void XMoveResizeWindow(Display *dpy, Window w, int x, int y, unsigned width, unsigned height) {
     (void)dpy;
     if (!xd_valid(w) || !w->hwnd) return;
-    clamp_to_work_area(&x, &y, &width, &height);
     w->x = x; w->y = y; w->w = (int)width; w->h = (int)height;
+    if (w->parent) {
+        /* A reparented window is a WS_CHILD (XReparentWindow), and for a child
+         * all three of the things the top-level path below does are wrong:
+         * x/y are relative to that parent rather than to the work area, so
+         * adding wa.left/wa.top would double the offset; there is no work area
+         * to clamp a child against, because clipping a child is the parent's
+         * job, not the window's; and HWND_TOPMOST is meaningless for a child
+         * (SetWindowPos silently ignores the z-order for WS_CHILD anyway).
+         * khtpm_entity.c drags a reparented tile around with XMoveWindow, so
+         * without this leg the tile would be flung off the parent's origin
+         * every time the pointer moved. */
+        SetWindowPos(w->hwnd, NULL, x, y, (int)width, (int)height,
+                     SWP_NOACTIVATE | SWP_NOZORDER);
+        return;
+    }
+    clamp_to_work_area(&x, &y, &width, &height);
     RECT wa;
     work_area(&wa);
     SetWindowPos(w->hwnd, HWND_TOPMOST, wa.left + x, wa.top + y,
@@ -1369,6 +1403,45 @@ int x11_spawn_cwd(const char *exe, const char *arg1) {
     return 1;
 }
 
+/* REAL, NEW 2026-09-27 - two-argument sibling of x11_spawn_cwd() above.
+ * Needed by khtpm_entity.c's ensure_taskbar_running() self-heal, which
+ * has to relaunch the strip renderer with its REAL two-argument
+ * invocation shape:
+ *     khtpm_core_render.exe <house_root> <template.xhtpm>
+ * x11_spawn_cwd() can only pass one argument, and passing the template
+ * in place of house_root (or dropping it) produced a renderer that
+ * either exited immediately or drew the wrong window - which is how
+ * "no taskbar at all" survived the first attempt at this fix.
+ *
+ * Same spawn posture as x11_spawn_cwd() (detached, no console, breaks
+ * away from a job object when the OS allows it) because this is the
+ * same "child must outlive its parent" requirement. arg2 may be NULL
+ * for callers that genuinely only need one argument. */
+int x11_spawn_cwd2(const char *exe, const char *arg1, const char *arg2) {
+    wchar_t wexe[4096], wcmd[4352], warg1[4096], warg2[4096];
+    MultiByteToWideChar(CP_UTF8, 0, exe, -1, wexe, 4096);
+    MultiByteToWideChar(CP_UTF8, 0, arg1 ? arg1 : ".", -1, warg1, 4096);
+    if (arg2 && arg2[0]) {
+        MultiByteToWideChar(CP_UTF8, 0, arg2, -1, warg2, 4096);
+        _snwprintf(wcmd, 4351, L"\"%s\" \"%s\" \"%s\"", wexe, warg1, warg2);
+    } else {
+        _snwprintf(wcmd, 4351, L"\"%s\" \"%s\"", wexe, warg1);
+    }
+    STARTUPINFOW si; PROCESS_INFORMATION pi;
+    ZeroMemory(&si, sizeof(si)); si.cb = sizeof(si);
+    si.dwFlags = STARTF_USESHOWWINDOW; si.wShowWindow = SW_HIDE;
+    ZeroMemory(&pi, sizeof(pi));
+    DWORD flags = CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW | CREATE_BREAKAWAY_FROM_JOB | DETACHED_PROCESS;
+    BOOL ok = CreateProcessW(NULL, wcmd, NULL, NULL, FALSE, flags, NULL, L".", &si, &pi);
+    if (!ok) {
+        flags = CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW | DETACHED_PROCESS;
+        ok = CreateProcessW(NULL, wcmd, NULL, NULL, FALSE, flags, NULL, L".", &si, &pi);
+    }
+    if (!ok) return 0;
+    CloseHandle(pi.hThread); CloseHandle(pi.hProcess);
+    return 1;
+}
+
 XSizeHints *XAllocSizeHints(void) { return (XSizeHints *)calloc(1, sizeof(XSizeHints)); }
 XWMHints *XAllocWMHints(void) { return (XWMHints *)calloc(1, sizeof(XWMHints)); }
 void XSetWMHints(Display *dpy, Window w, XWMHints *h) { (void)dpy; (void)w; (void)h; }
@@ -1666,4 +1739,238 @@ int XCheckTypedWindowEvent(Display *dpy, Window w, long mask, XEvent *ev) {
         return 1;
     }
     return 0;
+}
+
+/* =========================================================================
+ * REAL, NEW 2026-09-26 - the entity's extra Xlib surface.
+ *
+ * khtpm_entity.c (the pal/tile process) is a far heavier Xlib user than the
+ * strip parser this shim was first written for. It draws its own
+ * per-pixel-alpha sprite, opens popups, and drags itself between desktop
+ * windows, so it needs window reparenting, visual selection, 1-bit mask
+ * transfer, stroked arcs, and pointer position. Each of the five below is a
+ * real Win32 implementation, not a stub - a stub here would compile and then
+ * render a black rectangle, which is exactly the "it built but nothing
+ * appeared" failure mode this port has already hit once.
+ * ====================================================================== */
+
+/* --- pointer position --------------------------------------------------- */
+Bool XQueryPointer(Display *dpy, Window w, Window *root_return,
+                   Window *child_return, int *root_x_return, int *root_y_return,
+                   int *win_x_return, int *win_y_return,
+                   unsigned int *mask_return) {
+    POINT pt;
+    if (!GetCursorPos(&pt)) return False;
+
+    if (root_return) *root_return = NULL;   /* the shim's root is None */
+
+    /* child_return: the topmost shim window under the cursor, resolved
+     * through the HWND -> Xd back-pointer that XCreateWindow stashes in
+     * GWLP_USERDATA. WindowFromPoint can return a window that is not one of
+     * ours (or the desktop itself), in which case child is None - which is
+     * also what real X11 reports when the pointer is over the bare root. */
+    Window child = NULL;
+    HWND under = WindowFromPoint(pt);
+    if (under) {
+        Xd *probe = hwnd_xd(under);
+        /* Only accept it if it is a live registered shim window: a foreign
+         * HWND that happens to have a non-null GWLP_USERDATA (a Win32
+         * control, a tooltip) must not be handed back as a Window. */
+        if (probe && xd_valid(probe)) child = probe;
+    }
+    if (child_return) *child_return = child;
+
+    if (root_x_return) *root_x_return = pt.x;
+    if (root_y_return) *root_y_return = pt.y;
+
+    /* win_x/win_y are relative to the WINDOW ASKED ABOUT, not to the child.
+     * The entity asks about the root (which is None here), so this reduces to
+     * the screen coordinates - but honour `w` when it is a real window, so
+     * the answer is right for any caller. */
+    POINT local = pt;
+    HWND h = (w && xd_valid(w)) ? w->hwnd : NULL;
+    if (h) ScreenToClient(h, &local);
+    if (win_x_return) *win_x_return = local.x;
+    if (win_y_return) *win_y_return = local.y;
+
+    if (mask_return) {
+        /* Buttons and modifiers, in the real X11 bit order, so the entity's
+         * own mask tests (e.g. "is the left button still down") keep
+         * working. GetAsyncKeyState's high bit is the current state. */
+        unsigned int m = 0;
+        if (GetAsyncKeyState(VK_LBUTTON) & 0x8000) m |= 1u << 8;   /* Button1Mask  */
+        if (GetAsyncKeyState(VK_MBUTTON) & 0x8000) m |= 1u << 9;   /* Button2Mask  */
+        if (GetAsyncKeyState(VK_RBUTTON) & 0x8000) m |= 1u << 10;  /* Button3Mask  */
+        if (GetAsyncKeyState(VK_SHIFT)   & 0x8000) m |= ShiftMask;
+        if (GetAsyncKeyState(VK_CONTROL) & 0x8000) m |= ControlMask;
+        *mask_return = m;
+    }
+    (void)dpy;
+    return True;
+}
+
+/* --- reparenting -------------------------------------------------------- */
+void XReparentWindow(Display *dpy, Window w, Window parent, int x, int y) {
+    (void)dpy;
+    /* Both ends go through xd_valid. The entity's drag path deliberately
+     * feeds this a `host` Window that came from casting a raw integer out of
+     * a file (khtpm_entity.c:4437, `host = (Window)zwin`), so `parent` is
+     * routinely NOT one of ours. Unguarded, that is a wild pointer
+     * dereference - the same hazard xd_valid() was added for. */
+    if (!xd_valid(w) || !w->hwnd) return;
+    if (parent && !xd_valid(parent)) return;
+
+    HWND ph = (parent && xd_valid(parent)) ? parent->hwnd : NULL;
+
+    /* Real X11 reparenting makes the window a CHILD of the new parent, which
+     * on Win32 means the WS_CHILD style and a non-NULL parent handle. Going
+     * back to the root is the inverse. A child window cannot be TOPMOST, so
+     * the ex-style comes off with it. */
+    LONG ex = GetWindowLongW(w->hwnd, GWL_EXSTYLE);
+    if (ph) {
+        SetParent(w->hwnd, ph);
+        LONG st = GetWindowLongW(w->hwnd, GWL_STYLE);
+        SetWindowLongW(w->hwnd, GWL_STYLE, (st & ~WS_POPUP) | WS_CHILD);
+        SetWindowLongW(w->hwnd, GWL_EXSTYLE, ex & ~WS_EX_TOPMOST);
+    } else {
+        SetParent(w->hwnd, NULL);
+        LONG st = GetWindowLongW(w->hwnd, GWL_STYLE);
+        SetWindowLongW(w->hwnd, GWL_STYLE, (st & ~WS_CHILD) | WS_POPUP);
+        SetWindowLongW(w->hwnd, GWL_EXSTYLE, ex | WS_EX_TOPMOST);
+    }
+    w->parent = parent;
+
+    /* x/y are relative to the NEW parent, exactly as on X11. Position
+     * directly here rather than going through XMoveResizeWindow(), because
+     * that one adds the work-area origin on the assumption every window is a
+     * top-level popup - true for the taskbar, false for a reparented child. */
+    RECT base;
+    if (ph) {
+        RECT pr;
+        GetClientRect(ph, &pr);
+        ClientToScreen(ph, (POINT *)&pr.left);
+        base = pr;
+    } else {
+        work_area(&base);
+    }
+    w->x = x;
+    w->y = y;
+    SetWindowPos(w->hwnd, ph ? HWND_TOP : HWND_TOPMOST,
+                 base.left + x, base.top + y, 0, 0,
+                 SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+}
+
+/* --- visual selection --------------------------------------------------- */
+Status XMatchVisualInfo(Display *dpy, int screen, int depth, int class,
+                        XVisualInfo *vinfo_return) {
+    if (!dpy || !vinfo_return) return 0;
+    /* The shim has exactly ONE visual - a 32-bit one, and 32-bit is what a
+     * TrueColor request wants. So: a 32-bit TrueColor request is satisfied
+     * with the display's own visual, and anything else honestly reports
+     * "no such visual" so the caller's own fallback runs. The entity writes
+     * that fallback deliberately (entity.c:4003-4004 falls back to
+     * DefaultVisual/DefaultDepth, which return the same visual and depth 32),
+     * so both branches land on identical rendering. */
+    if (depth != 32 || class != TrueColor) return 0;
+    memset(vinfo_return, 0, sizeof(*vinfo_return));
+    vinfo_return->visual = &dpy->vis;
+    vinfo_return->visualid = 0;
+    vinfo_return->screen = screen;
+    vinfo_return->depth = 32;
+    vinfo_return->class = TrueColor;
+    vinfo_return->red_mask = 0xFF0000ul;
+    vinfo_return->green_mask = 0x00FF00ul;
+    vinfo_return->blue_mask = 0x0000FFul;
+    vinfo_return->colormap = (int)DefaultColormap(dpy, screen);
+    vinfo_return->bits_per_rgb = 8;
+    return 1;
+}
+
+/* --- 1-bit mask transfer ------------------------------------------------ */
+Pixmap XCreateBitmapFromData(Display *dpy, Drawable d, const char *data,
+                             unsigned width, unsigned height) {
+    if (!dpy || !data || !width || !height) return NULL;
+    Pixmap p = XCreatePixmap(dpy, d, width, height, 1);
+    if (!p || !p->bits) { if (p) XFreePixmap(dpy, p); return NULL; }
+    /* Real X11 stores a 1-bit bitmap MSB-first with a stride of
+     * (width+7)/8 bytes per scanline. The entity's own caller
+     * (kh_build_shape_mask_generic, entity.c:1873-1887) builds exactly that
+     * layout by hand, so the same stride/bit order is read back here.
+     *
+     * The shim's Pixmap is a 32-bit DIB, and the one consumer
+     * (XShapeCombineMask) treats ANY non-zero channel as "inside the
+     * silhouette" and all-zero as "outside". So a set bit becomes solid
+     * white and a clear bit solid black, which is a faithful widening of the
+     * 1-bit mask into the format this shim already speaks. */
+    int stride = (int)((width + 7) / 8);
+    unsigned char *px = (unsigned char *)p->bits;
+    const unsigned char *bits = (const unsigned char *)data;
+    for (unsigned y = 0; y < height; y++) {
+        for (unsigned x = 0; x < width; x++) {
+            unsigned long v =
+                (bits[(size_t)y * (size_t)stride + (x >> 3)] >> (x & 7)) & 1u;
+            unsigned char *q = px + ((size_t)y * (size_t)width + (size_t)x) * 4;
+            q[0] = q[1] = q[2] = v ? 0xFF : 0x00;
+            q[3] = 0xFF;
+        }
+    }
+    return p;
+}
+
+/* --- stroked arc -------------------------------------------------------- */
+void XDrawArc(Display *dpy, Drawable d, GC gc, int x, int y,
+              unsigned width, unsigned height, int angle1, int angle2) {
+    (void)dpy;
+    HDC hdc = dc_of(d);
+    if (!hdc) return;
+    unsigned long fg = gc ? gc->foreground : 0;
+    /* NULL_BRUSH is the whole point of XDrawArc: it STROKES the outline and
+     * leaves the interior untouched. XFillArc above deliberately fills, and
+     * using a solid brush here would erase the middle of cursword's
+     * silhouette instead of drawing a reticle on it. */
+    HBRUSH oldb = (HBRUSH)SelectObject(hdc, GetStockObject(NULL_BRUSH));
+    HPEN pen = CreatePen(PS_SOLID, 1, pix_to_cr(fg));
+    HPEN oldp = (HPEN)SelectObject(hdc, pen);
+    /* X11 measures arc angles in 64ths of a degree, 0 at 3 o'clock, growing
+     * COUNTER-clockwise, inscribed in the given rectangle as an ellipse.
+     *
+     * Neither GDI angle primitive maps onto that: AngleArc() takes a RADIUS
+     * about a centre point, so it can only ever draw a CIRCLE, and Arc()
+     * takes start/end POINT coordinates rather than angles. So the general
+     * case goes to Arc() with the two endpoints computed onto the ellipse.
+     *
+     * Direction needs no fixing up: AD_COUNTERCLOCKWISE is GDI's default arc
+     * direction, and the y-negation below puts the endpoints in screen space
+     * (y grows downward), which makes GDI's counter-clockwise screen sweep
+     * the same visual sweep as X11's counter-clockwise mathematical one.
+     *
+     * A full turn is special-cased to Ellipse() first, because the endpoints
+     * of a full turn coincide at 3 o'clock and GDI's degenerate-endpoint
+     * handling is not worth relying on. That case is also the ONLY one the
+     * entity uses today - both of its XDrawArc calls (khtpm_entity.c:2043 and
+     * :6282) are 0 .. 360*64 - and it is not cosmetic: those two calls are
+     * what stroke the 1-bit silhouette/click mask the entity is composited
+     * from, so a missed outline there leaves the pal with no visible shape
+     * and no hit area. 360 * 64 == 23040 X11 units per turn. */
+    long sweep = (long)angle2 - (long)angle1;
+    if (sweep % 23040L == 0) {
+        Ellipse(hdc, x, y, x + (int)width, y + (int)height);
+    } else {
+        const double kPi = 3.14159265358979323846;
+        double th1 = (double)angle1 / 64.0 * (kPi / 180.0);
+        double th2 = (double)angle2 / 64.0 * (kPi / 180.0);
+        double cx = (double)x + (double)width / 2.0;
+        double cy = (double)y + (double)height / 2.0;
+        double rx = (double)width / 2.0;
+        double ry = (double)height / 2.0;
+        int x3 = (int)(cx + rx * cos(th1) + 0.5);
+        int y3 = (int)(cy - ry * sin(th1) + 0.5);
+        int x4 = (int)(cx + rx * cos(th2) + 0.5);
+        int y4 = (int)(cy - ry * sin(th2) + 0.5);
+        Arc(hdc, x, y, x + (int)width, y + (int)height, x3, y3, x4, y4);
+    }
+    SelectObject(hdc, oldb);
+    SelectObject(hdc, oldp);
+    DeleteObject(pen);
+    dc_done(d, hdc);
 }
