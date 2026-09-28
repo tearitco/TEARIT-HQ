@@ -62,6 +62,25 @@ this should start by actually reading `proc-mon`'s real source, not by
 assuming this write-up's reasoning about `top`/`ps` in general also
 describes `proc-mon`'s own specific implementation.
 
+**Follow-up live check, same day, after the fix had a little time to
+breathe:** user reported hearing throttling again. Real re-investigation
+(cutime+cstime summed across every PID, full-system, twice) found no
+sustained house-side offender this time - `world_manager.pal` stayed
+at ~1-2%, confirming the earlier fix holds. Did catch
+`khtpm_taskbar_manager_main.+x` (the taskbar itself) and its strip
+renderer at 70-86%/31-36% in one measurement window - but three
+follow-up clean samples 2s apart, isolated to just those two PIDs,
+came back a stable ~4%/1.5% each time. Read as a real but TRANSIENT
+burst, not a hidden always-on loop like world_manager's was -
+plausibly correlated with the unusually high number of window launches/
+relaunches/kills this same session generated (events-hq x3, open-hai
+x4, proc-mon, sql-hq, two new pals, an entity relaunch...), which is
+real redraw/reparse work, not representative of normal desk usage.
+Not ruled out as a real pattern worth re-checking under NORMAL usage
+(not mid-heavy-agent-session) if the user keeps hearing it - flagging
+here rather than either calling it fixed or crying a new bug on
+one non-reproducing spike.
+
 **Direct question raised, NOT yet resolved - is proc-mon even the
 right place?** Alternative framing offered same session: rather than
 proc-mon trying to compute/interpret CPU% after the fact (which is
@@ -1622,3 +1641,24 @@ Once the pool is exhausted, every subsequent `elem_new()` call for the dock eith
 **If this specific symptom (stale paint despite a genuinely running, correctly-ticking process) ever resurfaces**: root-cause it for real with the `kh_focus_debug_log` targeted-probe technique this session proved out repeatedly (the nav-jump and pager bugs above), not another blind timer.
 
 **Files**: `khtpm_core_render.c` (removed code only - net negative diff).
+
+---
+
+## ✅ CLOSED — world_manager sustained CPU throttling/crash-loop, survived an earlier fix (2026-09-28)
+
+**Report**: `cpu_loop_analysis.txt` (user-supplied live capture) - two `world_manager_tick.+x` instances observed, both being caught/restarted by Ubuntu's apport crash reporter, direct instruction "fixing this is #1 priority."
+
+**Root cause, TWO compounding bugs, both confirmed live (not guessed):**
+
+1. **`world_manager.pal`'s tick loop used `sleep 16`.** prisc+x's `sleep` opcode is ALWAYS `usleep()` (confirmed at `prisc+x.c`'s `OP_SLEEP` handler) - so this was 16 **microseconds**, not 16ms. The loop re-exec'd `world_manager_tick.+x` as fast as fork/exec/waitpid would allow (thousands/sec), not the ~24/sec an earlier same-week session's live measurement had assumed (that measurement's methodology wasn't wrong, it just happened under different conditions than this one). An earlier house-wide sleep/usleep audit this same week checked for obviously-wrong literals and missed this one specifically because 16 "reads" like a normal ms tick value - the exact unit-confusion gotcha, on a file that looked fine at a glance.
+2. **`world_manager_tick.+x`, `world_manager_init.+x`, and `sync_entity_positions.+x` all called `realpath()` into a buffer smaller than `PATH_MAX`** (2048/2048/1024 respectively, needs >=4096). glibc's `_FORTIFY_SOURCE` hardening aborts unconditionally on this - **regardless of the actual resolved path length** (confirmed: the real path here was 147 bytes, aborted anyway) - any build compiled with fortify hardening enabled crashed on literally every tick. Root-caused precisely via `gdb -batch -ex run -ex bt` (`__realpath_chk -> __chk_fail -> abort`) and reproduced deterministically with `gcc -O2 -D_FORTIFY_SOURCE=2`. Combined with bug #1's exec rate, this was a crash-and-apport-report storm at extremely high frequency - genuinely capable of the sustained throttling reported, and explains why the earlier sync-throttle fix (marker-file gating the expensive child fork, still correct and still in place) didn't make the reports stop: that fix addressed a real, separate, already-measured cost, but this pair was still there underneath it the whole time.
+
+**Fix**: `world_manager.pal` (+ its `page_manager.pal` template twin) sleep bumped to `33333` (30Hz, matching the existing "30fps cap" convention already used elsewhere in this house). All three binaries' path buffers bumped to 4096. Also added a singleton-instance guard to `button.sh` (PID-file based, same self-healing pattern already proven in `cpu_watch_daemon.sh`) - the report's own live capture showed two tick processes running with nothing preventing a second launch.
+
+**Verified live**: rebuilt all three binaries under the exact `-O2 -D_FORTIFY_SOURCE=2` flags that reproduced the abort - all three now exit 0. Launched via `button.sh run`, confirmed a second `run` correctly refuses ("already running as pid N"), confirmed zero apport processes after 3+ seconds of live running (previously constant), measured real CPU via `/proc/<pid>/stat` utime+stime+cutime+cstime delta over a 3s window: **~9.3%**, down from the previously-measured ~90-100% crash-looping baseline.
+
+**Not fully closed - real follow-up, not a symptom of tonight's bug**: ~9.3% CPU at a correct, non-crashing 30Hz is legitimate fork/exec overhead (re-launching a whole C binary 30x/sec has real cost on its own), not a bug. Direct question asked alongside this fix: "is the poll speed reasonable but 2 many entities? there will be much more entities in the future so we need some sort of master ledger trunking strategy early." Recommendation, not yet built: replace the current pull model (`world_manager_tick` forking `sync_entity_positions`, which does a recursive `find` over the whole `xyzfs/users` tree + per-entity forks, now throttled to 1/sec but still O(all entities) every time it runs) with a **push model** - an append-only `entities_live.ledger` (`timestamp | entity_id | x | y | seq_num`) that each entity's own move op (`move_entity_tick.c`) appends to directly when it actually moves, and `world_manager_tick` only reads forward from its own last cursor (O(new moves since last tick), never O(total entities), never a filesystem walk). This is the same cursor-over-append-only-ledger shape `world_manager_tick.c` already uses for `entities_live.txt`/`world_events.txt`/`animation_queue.txt` - extending an already-proven house pattern, not inventing a new one - and scales correctly as entity count grows, unlike the current find-based sync which gets more expensive per tick as more entities are added regardless of how many actually moved.
+
+**Also found, real, house-wide, out of scope to fix tonight**: the undersized-realpath-buffer pattern in bug #2 above is NOT unique to world-manager - a house-wide grep found dozens of other files defining `MAX_PATH`/`PATH_BUF`-style macros well under 4096 (256/512/1024/2048, e.g. `101.ledger-player-npc-simple+3/ops/ledger_append.c` at 256, `014.wsr-pal.../system/chtpm_parser_pal.c` at 1024, `*.monads/*.livedesk-taskbar/ops/tile_registry.c` at 512) and passing them straight to `realpath()`. Every one of these is a latent, dormant crash that only manifests under a fortify-hardened build - exactly like this one did. Worth a dedicated house-wide sweep later; flagging here so it isn't lost, not fixing all of them under tonight's "#1 priority, we can't go forward" framing which was specifically about world_manager.
+
+**Files**: `&.hq-apps/world-manager/world_manager.pal`, `button.sh`, `ops/{world_manager_tick,world_manager_init,sync_entity_positions}.c`; `pages/test_page_001/manager/page_manager.pal` (twin). Design doc for the ledger-trunking recommendation: TBD, not yet written up separately - this entry is the design of record until it is.
