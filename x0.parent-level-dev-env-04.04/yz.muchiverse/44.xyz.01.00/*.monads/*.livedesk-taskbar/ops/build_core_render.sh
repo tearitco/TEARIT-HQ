@@ -46,18 +46,40 @@ MANIFEST="$(dirname "$0")/.build_hashes.pdl"
 # standalone, shared op binary (system()-invoked, not text-included -
 # see khtpm-merge-how2.md's own "HOUSE STANDARD" section), build it
 # once, centrally, if missing.
-echo "-- swatch_picker_manager -> +x/swatch_picker_manager.+x"
-$CC -std=c11 -Wall -O2 -o +x/swatch_picker_manager.+x swatch_picker_manager.c
+#
+# REAL FIX 2026-09-28 (direct instruction: "extend gate and not ignore
+# it" - these three were the last ungated compiles in this script,
+# recompiling unconditionally on every single build regardless of
+# whether their source changed). Now hash-gated the same as
+# khtpm_core_render.+x/khtpm_entity.+x below - same MANIFEST, same
+# hash_gate.sh already sourced above this block.
+if hash_gate_stale "$MANIFEST" +x/swatch_picker_manager.+x swatch_picker_manager.c; then
+    echo "-- swatch_picker_manager -> +x/swatch_picker_manager.+x"
+    $CC -std=c11 -Wall -O2 -o +x/swatch_picker_manager.+x swatch_picker_manager.c
+    hash_gate_commit "$MANIFEST" +x/swatch_picker_manager.+x swatch_picker_manager.c
+else
+    echo "-- swatch_picker_manager.+x up to date (hash unchanged), skipping compile"
+fi
 # apply_theme_op.+x - the standalone op swatch_picker_manager exec()s on a
 # swatch pick. Had no build hook (built by hand once); added here so
 # $.restart keeps it fresh alongside its only caller.
-echo "-- apply_theme_op -> +x/apply_theme_op.+x"
-$CC -std=c11 -Wall -O2 -o +x/apply_theme_op.+x apply_theme_op.c
+if hash_gate_stale "$MANIFEST" +x/apply_theme_op.+x apply_theme_op.c; then
+    echo "-- apply_theme_op -> +x/apply_theme_op.+x"
+    $CC -std=c11 -Wall -O2 -o +x/apply_theme_op.+x apply_theme_op.c
+    hash_gate_commit "$MANIFEST" +x/apply_theme_op.+x apply_theme_op.c
+else
+    echo "-- apply_theme_op.+x up to date (hash unchanged), skipping compile"
+fi
 # ktb_zorder_op.+x - process-management half of the "@" always-on-top toggle
 # (dock unfactor stage 2, 2026-09-20): the renderer spawns it detached on
 # ZORDER_TOGGLE. See ktb_zorder_op.c's header + DOCK-UNFACTOR-AUDIT.md.
-echo "-- ktb_zorder_op -> +x/ktb_zorder_op.+x"
-$CC -std=c11 -Wall -O2 $X11_FLAGS -o +x/ktb_zorder_op.+x ktb_zorder_op.c -lX11
+if hash_gate_stale "$MANIFEST" +x/ktb_zorder_op.+x ktb_zorder_op.c; then
+    echo "-- ktb_zorder_op -> +x/ktb_zorder_op.+x"
+    $CC -std=c11 -Wall -O2 $X11_FLAGS -o +x/ktb_zorder_op.+x ktb_zorder_op.c -lX11
+    hash_gate_commit "$MANIFEST" +x/ktb_zorder_op.+x ktb_zorder_op.c
+else
+    echo "-- ktb_zorder_op.+x up to date (hash unchanged), skipping compile"
+fi
 OPS_BIN="$SHARED/ops/+x/dump_frame_png_op.+x"
 if [ ! -x "$OPS_BIN" ]; then
   (cd "$SHARED/ops" && sh build_dump_frame_png_op.sh)

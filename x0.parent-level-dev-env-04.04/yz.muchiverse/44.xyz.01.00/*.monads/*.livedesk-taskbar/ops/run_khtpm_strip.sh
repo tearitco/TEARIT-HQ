@@ -125,12 +125,15 @@ case "$ACTION" in
         # Single-restart lock (2026-09-09, direct report: "i clicked
         # restart 3 times ... it took a very long time ... shouldn't
         # allow restarts while others are in progress"). Each restart
-        # runs a full KHTPM_FORCE_BUILD=1 gcc of the ~15k-line
-        # khtpm_core_render.c and then kill+relaunch; N concurrent ones
-        # race on the same +x/ output and the same PIDs. mkdir is an
-        # atomic test-and-set on every POSIX fs; a dead holder (crashed
-        # mid-build) is reclaimed by its recorded pid. `boot` (autostart)
-        # is exempt - it never rebuilds and only runs once at login.
+        # runs build_khtpm_strip.sh (hash-gated per binary as of
+        # 2026-09-28 - fast when nothing changed, a real gcc of
+        # whichever binaries actually need it otherwise) then
+        # kill+relaunch; N concurrent ones race on the same +x/ output
+        # and the same PIDs. mkdir is an atomic test-and-set on every
+        # POSIX fs; a dead holder (crashed mid-build) is reclaimed by
+        # its recorded pid. `boot` (autostart) is exempt - it never
+        # calls build_khtpm_strip.sh at all when both key binaries
+        # already exist, and only runs once at login.
         if [ "$ACTION" != "boot" ]; then
             _RS_LOCK="$HOUSE/#.desktop/.khtpm_restart.lock"
             if ! mkdir "$_RS_LOCK" 2>/dev/null; then
@@ -147,15 +150,27 @@ case "$ACTION" in
         fi
         # `boot` = launch-only, NO rebuild - for $.crypts/autostart.pdl so
         # the desktop start button is snappy. `new`/`run`/`test` are an
-        # explicit "build fresh" verb, so FORCE past build_khtpm_strip.sh's
-        # freshness gate (2026-09-09) - the desktop start button relies on
-        # that gate for speed, but a dev typing `new` wants an unconditional
-        # rebuild. LIVEDESK_START_SPLASH=1: same "Building livedesk…" window
-        # the desktop start button shows (build_khtpm_strip.sh gates it on
-        # actually needing a build) so a restart click isn't a silent
-        # 30-second freeze.
+        # explicit "build fresh" verb - they always RUN build_khtpm_strip.sh
+        # (unlike `boot`, which skips calling it at all when both key
+        # binaries already exist), but no longer FORCE past a gate.
+        #
+        # REAL FIX 2026-09-28 (direct instruction: "extend gate and not
+        # ignore it"): KHTPM_FORCE_BUILD used to bypass
+        # build_khtpm_strip.sh's old coarse, all-or-nothing mtime gate,
+        # because mtime alone couldn't distinguish "a real source edit"
+        # from "nothing actually changed" - so a dev typing `new` had no
+        # way to get a real rebuild without forcing EVERYTHING to
+        # recompile. That gate is gone; every binary build_khtpm_strip.sh
+        # builds is now individually hash-gated (content hash, not
+        # mtime - EVENT-MODULARITY-AND-BUILD-SPEED.md §2), so there is
+        # nothing left to force past: a real edit rebuilds exactly what
+        # depends on it, every time, with no flag needed, and a no-op
+        # `new` is now just as fast as `boot`. LIVEDESK_START_SPLASH=1:
+        # same "Building livedesk…" window the desktop start button
+        # shows, so a restart click is never a silent freeze on the rare
+        # case something genuinely does need rebuilding.
         if [ "$ACTION" != "boot" ]; then
-            KHTPM_FORCE_BUILD=1 LIVEDESK_START_SPLASH=1 run_build_logged sh "$SCRIPT_DIR/build_khtpm_strip.sh" || { echo "BUILD FAILED — not launching (full output: $BUILD_LOG)"; exit 1; }
+            LIVEDESK_START_SPLASH=1 run_build_logged sh "$SCRIPT_DIR/build_khtpm_strip.sh" || { echo "BUILD FAILED — not launching (full output: $BUILD_LOG)"; exit 1; }
         elif [ ! -x "$SCRIPT_DIR/+x/khtpm_core_render.+x" ] || [ ! -x "$SCRIPT_DIR/+x/khtpm_taskbar_manager_main.+x" ]; then
             # first-ever boot with no binaries: fall back to a build
             run_build_logged sh "$SCRIPT_DIR/build_khtpm_strip.sh" || { echo "BUILD FAILED — not launching (full output: $BUILD_LOG)"; exit 1; }
@@ -227,7 +242,12 @@ case "$ACTION" in
         fi
         ;;
     build)
-        KHTPM_FORCE_BUILD=1 sh "$SCRIPT_DIR/build_khtpm_strip.sh"
+        # KHTPM_FORCE_BUILD no longer means anything (2026-09-28,
+        # "extend gate and not ignore it" - build_khtpm_strip.sh's old
+        # coarse gate it used to bypass is gone, replaced by per-binary
+        # hash gating with nothing left to force past). Kept as a plain
+        # call for the same "just run the build directly" use case.
+        sh "$SCRIPT_DIR/build_khtpm_strip.sh"
         ;;
     help|h|-h|--help|*)
         cat <<EOF

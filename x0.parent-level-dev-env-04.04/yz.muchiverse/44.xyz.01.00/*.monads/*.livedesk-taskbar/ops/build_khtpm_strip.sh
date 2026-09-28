@@ -15,31 +15,29 @@ set -e
 cd "$(dirname "$0")"
 mkdir -p +x
 
-# ── freshness gate (2026-09-09) ───────────────────────────────────────
-# A full build is ~28s and it was run unconditionally on every desktop
-# start-button click (livedesk-start-button.c) and every `$.crypts/
-# button.sh run`. Skip it when the two binaries that actually matter are
-# already newer than every source that feeds them. `KHTPM_FORCE_BUILD=1`
-# overrides (used by `run_khtpm_strip.sh new`). Helpers (emoji atlas,
-# ascii mirrors) are cheap and rebuilt below only when we don't skip.
+# ── freshness gate ─────────────────────────────────────────────────────
+# REAL FIX 2026-09-28 (direct instruction: "extend gate and not ignore
+# it" - EVENT-MODULARITY-AND-BUILD-SPEED.md §2). The old gate here
+# (2026-09-09) was a single, coarse, ALL-OR-NOTHING mtime check: if
+# anything under this dir or the shared-lib was newer than the two main
+# binaries, the ENTIRE script recompiled every binary it builds,
+# unconditionally - and `run_khtpm_strip.sh new` set KHTPM_FORCE_BUILD=1
+# specifically to bypass even that, because mtime alone can't tell "a
+# real edit" from "a touch/checkout with no real content change," so a
+# dev asking for a real rebuild had no finer-grained way to get one.
+#
+# hash_gate.sh (§2, already proven: 24x speedup, content-hash not
+# mtime-based) removes that whole tension: every individual compile
+# below now gates on its OWN real source content, per binary, so a
+# real edit to one file rebuilds exactly the binaries that depend on
+# it and nothing else - no coarse whole-script bail-out needed, and
+# nothing for `new` to need to force past any more. `run_khtpm_strip.sh`
+# no longer sets KHTPM_FORCE_BUILD=1 for this reason (see its own
+# updated comment). This script now always runs to completion; each
+# hash_gate_stale check below is what makes a no-op run fast again.
 SHARED_DIR="$(cd "$(dirname "$0")/../../../&.widgits/_shared-lib" 2>/dev/null && pwd || echo /nonexistent)"
-_bins="+x/khtpm_core_render.+x +x/khtpm_taskbar_manager_main.+x"
-_fresh=1
-for _b in $_bins; do [ -x "$_b" ] || _fresh=0; done
-if [ "$_fresh" = 1 ] && [ -z "${KHTPM_FORCE_BUILD:-}" ]; then
-    _oldest_bin="$(ls -t $_bins 2>/dev/null | tail -1)"
-    # Our own first-party sources only: the ops *.c/*.h (NOT the vendored
-    # lib/ third-party headers, whose mtime the emoji-atlas step bumps
-    # every run) + the shared-lib *.c/*.h + the build scripts.
-    _newer="$( { find . -maxdepth 1 \( -name '*.c' -o -name '*.h' -o -name 'build_*.sh' \) \
-                     -newer "$_oldest_bin" -print;
-                 [ -d "$SHARED_DIR" ] && find "$SHARED_DIR" \( -name '*.c' -o -name '*.h' \) \
-                     -newer "$_oldest_bin" -print; } 2>/dev/null | head -1 )"
-    if [ -z "$_newer" ]; then
-        echo "build_khtpm_strip.sh: binaries up to date — skipping (KHTPM_FORCE_BUILD=1 to force)"
-        exit 0
-    fi
-fi
+MANIFEST="$(dirname "$0")/.build_hashes.pdl"
+. "$SHARED_DIR/hash_gate.sh"
 
 # ── build-failure marker (2026-09-21) ─────────────────────────────────
 # Direct instruction: "i actually dont want it to run the old binaries
@@ -58,8 +56,15 @@ echo "BUILD IN PROGRESS - build_khtpm_strip.sh started $(date +%H:%M:%S) and has
 
 # ── "Building livedesk…" splash ───────────────────────────────────────
 # Only when invoked from the desktop start button / $.restart (which
-# export LIVEDESK_START_SPLASH=1) AND we got past the freshness gate, so
-# a normal snappy start shows nothing.
+# export LIVEDESK_START_SPLASH=1). REAL, NEW 2026-09-28: since the old
+# coarse whole-script freshness gate (which used to `exit 0` before ever
+# reaching here on a no-op run) is gone in favor of per-binary hash
+# gating below, a fully-up-to-date run now shows this splash too - but
+# only very briefly, since every hash_gate_stale check below returns
+# false immediately and the script finishes in a fraction of a second.
+# Traded a near-instant flash for correctness (a real edit always
+# rebuilds exactly what changed, with no force flag needed anywhere) -
+# not treated as worth the complexity of a separate stale-precheck.
 #
 # 2026-09-09, direct instruction ("the popup should be x11 layout style,
 # not gl ... watching compile is most accurate"): a house-style X11
@@ -135,11 +140,21 @@ fi
 # via -I). Nothing in this script needs a local copy any more.
 SHARED="$(cd "$(dirname "$0")/../../../&.widgits/_shared-lib" && pwd)"
 
-echo "-- khtpm manager driver (pure logic, no Xlib) -> +x/khtpm_taskbar_manager_main.+x"
 # -I "$SHARED": khtpm_taskbar_manager.c now #includes kh_proc_registry.h
-# (PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md).
-$CC $CFLAGS -I "$SHARED" -o +x/khtpm_taskbar_manager_main.+x \
-  khtpm_taskbar_manager_main.c khtpm_taskbar_manager.c
+# (PROC-LIFECYCLE-ORCHESTRATOR-TEARDOWN.md). Hash-gated (2026-09-28,
+# "extend gate and not ignore it") - also depends on kh_proc_registry.h
+# itself, listed as a real input so a change there correctly rebuilds
+# this binary too (same fan-out handling -I'd shared files already get
+# in build_core_render.sh).
+MGR_SRCS="khtpm_taskbar_manager_main.c khtpm_taskbar_manager.c $SHARED/kh_proc_registry.h"
+if hash_gate_stale "$MANIFEST" +x/khtpm_taskbar_manager_main.+x $MGR_SRCS; then
+    echo "-- khtpm manager driver (pure logic, no Xlib) -> +x/khtpm_taskbar_manager_main.+x"
+    $CC $CFLAGS -I "$SHARED" -o +x/khtpm_taskbar_manager_main.+x \
+      khtpm_taskbar_manager_main.c khtpm_taskbar_manager.c
+    hash_gate_commit "$MANIFEST" +x/khtpm_taskbar_manager_main.+x $MGR_SRCS
+else
+    echo "-- khtpm_taskbar_manager_main.+x up to date (hash unchanged), skipping compile"
+fi
 
 # REAL FIX 2026-09-01 - khtpm_strip_parser.+x AND tp_desktop_window_rgb.+x
 # both retired as separate binaries. khtpm_strip_parser.c/khtpm_strip_
@@ -157,8 +172,13 @@ $CC $CFLAGS -I "$SHARED" -o +x/khtpm_taskbar_manager_main.+x \
 echo "-- shared khtpm_core_render.+x (now includes strip mode + entity/tile mode) -> +x/khtpm_core_render.+x"
 sh build_core_render.sh
 
-echo "-- emoji->sprite helper tp_asset_to_sprite.c -> +x/tp_asset_to_sprite.+x"
-$CC $CFLAGS -o +x/tp_asset_to_sprite.+x tp_asset_to_sprite.c -lm
+if hash_gate_stale "$MANIFEST" +x/tp_asset_to_sprite.+x tp_asset_to_sprite.c; then
+    echo "-- emoji->sprite helper tp_asset_to_sprite.c -> +x/tp_asset_to_sprite.+x"
+    $CC $CFLAGS -o +x/tp_asset_to_sprite.+x tp_asset_to_sprite.c -lm
+    hash_gate_commit "$MANIFEST" +x/tp_asset_to_sprite.+x tp_asset_to_sprite.c
+else
+    echo "-- tp_asset_to_sprite.+x up to date (hash unchanged), skipping compile"
+fi
 
 echo "-- emoji atlas helpers emoji_gen_atlas/emoji_xtract (copied from wsr-pal)"
 # emoji_gen_atlas.+x + emoji_xtract.+x ship as prebuilt binaries from the
@@ -210,31 +230,61 @@ fi
 # binaries, matching TPMOS's real renderer.c/keyboard_input.c split
 # (never combined - see khtpm_strip_render_ascii.c's own header comment
 # for the real \r\n/staircase bug this split fixes).
-echo "-- taskbar ASCII renderer (no termios) -> +x/khtpm_strip_render_ascii.+x"
-$CC $CFLAGS -o +x/khtpm_strip_render_ascii.+x khtpm_strip_render_ascii.c
+if hash_gate_stale "$MANIFEST" +x/khtpm_strip_render_ascii.+x khtpm_strip_render_ascii.c; then
+    echo "-- taskbar ASCII renderer (no termios) -> +x/khtpm_strip_render_ascii.+x"
+    $CC $CFLAGS -o +x/khtpm_strip_render_ascii.+x khtpm_strip_render_ascii.c
+    hash_gate_commit "$MANIFEST" +x/khtpm_strip_render_ascii.+x khtpm_strip_render_ascii.c
+else
+    echo "-- khtpm_strip_render_ascii.+x up to date (hash unchanged), skipping compile"
+fi
 
-echo "-- taskbar ASCII keyboard input (raw termios only, never prints) -> +x/khtpm_strip_keyboard_ascii.+x"
-$CC $CFLAGS -o +x/khtpm_strip_keyboard_ascii.+x khtpm_strip_keyboard_ascii.c
+if hash_gate_stale "$MANIFEST" +x/khtpm_strip_keyboard_ascii.+x khtpm_strip_keyboard_ascii.c; then
+    echo "-- taskbar ASCII keyboard input (raw termios only, never prints) -> +x/khtpm_strip_keyboard_ascii.+x"
+    $CC $CFLAGS -o +x/khtpm_strip_keyboard_ascii.+x khtpm_strip_keyboard_ascii.c
+    hash_gate_commit "$MANIFEST" +x/khtpm_strip_keyboard_ascii.+x khtpm_strip_keyboard_ascii.c
+else
+    echo "-- khtpm_strip_keyboard_ascii.+x up to date (hash unchanged), skipping compile"
+fi
 
 # 2026-09-06: GENERIC (any-window) siblings of the two above -
 # TERMINAL-MIRROR-PARITY-all-windows.md steps 2 & 3. Same renderer/
 # keyboard split, path templated on a target PID.
-echo "-- generic window ASCII presenter -> +x/khtpm_render_ascii.+x"
-$CC $CFLAGS -o +x/khtpm_render_ascii.+x khtpm_render_ascii.c
-echo "-- generic window ASCII keyboard relay -> +x/khtpm_kbd_ascii.+x"
-$CC $CFLAGS -o +x/khtpm_kbd_ascii.+x khtpm_kbd_ascii.c
+if hash_gate_stale "$MANIFEST" +x/khtpm_render_ascii.+x khtpm_render_ascii.c; then
+    echo "-- generic window ASCII presenter -> +x/khtpm_render_ascii.+x"
+    $CC $CFLAGS -o +x/khtpm_render_ascii.+x khtpm_render_ascii.c
+    hash_gate_commit "$MANIFEST" +x/khtpm_render_ascii.+x khtpm_render_ascii.c
+else
+    echo "-- khtpm_render_ascii.+x up to date (hash unchanged), skipping compile"
+fi
+if hash_gate_stale "$MANIFEST" +x/khtpm_kbd_ascii.+x khtpm_kbd_ascii.c; then
+    echo "-- generic window ASCII keyboard relay -> +x/khtpm_kbd_ascii.+x"
+    $CC $CFLAGS -o +x/khtpm_kbd_ascii.+x khtpm_kbd_ascii.c
+    hash_gate_commit "$MANIFEST" +x/khtpm_kbd_ascii.+x khtpm_kbd_ascii.c
+else
+    echo "-- khtpm_kbd_ascii.+x up to date (hash unchanged), skipping compile"
+fi
 
-echo "-- build/restart splash (X11) -> +x/livedesk_splash.+x"
-_sx="$(pkg-config --cflags --libs x11 xft 2>/dev/null)"
-[ -n "$_sx" ] || _sx="-I/usr/include/freetype2 -lX11 -lXft"
-$CC $CFLAGS -o +x/livedesk_splash.+x livedesk_splash.c $_sx
+if hash_gate_stale "$MANIFEST" +x/livedesk_splash.+x livedesk_splash.c; then
+    echo "-- build/restart splash (X11) -> +x/livedesk_splash.+x"
+    _sx="$(pkg-config --cflags --libs x11 xft 2>/dev/null)"
+    [ -n "$_sx" ] || _sx="-I/usr/include/freetype2 -lX11 -lXft"
+    $CC $CFLAGS -o +x/livedesk_splash.+x livedesk_splash.c $_sx
+    hash_gate_commit "$MANIFEST" +x/livedesk_splash.+x livedesk_splash.c
+else
+    echo "-- livedesk_splash.+x up to date (hash unchanged), skipping compile"
+fi
 
 # 2026-09-15: house-wide joystick arrow input, v1 (JOYSTICK-INPUT-
 # HOUSE-WIDE-DESIGN.md). Standalone, no X11 deps - reads the raw Linux
 # joystick API and appends to a shared relay file every window's own
 # poll_agent_history() already tail-polls.
-echo "-- house-wide joystick arrow-input daemon -> +x/khtpm_joystick_daemon.+x"
-$CC $CFLAGS -o +x/khtpm_joystick_daemon.+x khtpm_joystick_daemon.c
+if hash_gate_stale "$MANIFEST" +x/khtpm_joystick_daemon.+x khtpm_joystick_daemon.c; then
+    echo "-- house-wide joystick arrow-input daemon -> +x/khtpm_joystick_daemon.+x"
+    $CC $CFLAGS -o +x/khtpm_joystick_daemon.+x khtpm_joystick_daemon.c
+    hash_gate_commit "$MANIFEST" +x/khtpm_joystick_daemon.+x khtpm_joystick_daemon.c
+else
+    echo "-- khtpm_joystick_daemon.+x up to date (hash unchanged), skipping compile"
+fi
 
 echo "OK +x/khtpm_taskbar_manager_main.+x and +x/khtpm_core_render.+x (strip mode + entity/tile mode, plus helpers)"
 # Every real step above succeeded (set -e would have aborted otherwise) -
