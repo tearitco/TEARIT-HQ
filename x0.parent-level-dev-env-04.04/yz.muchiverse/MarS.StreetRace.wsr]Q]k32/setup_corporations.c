@@ -463,9 +463,14 @@ int main() {
         }
         printf("%d corporation sheets generated successfully.\n", num_corps);
         
-        // Run analysis loop once to set initial stock prices based on fundamentals
+        // Run analysis loop once to set initial stock prices based on fundamentals.
+        // The binary this project builds is analysis_loop.+x, not analysis_loop,
+        // so the bare name was dead on every platform: the shell failed, the
+        // non-zero status fell into the "Analysis failed" branch, and initial
+        // prices were silently left unset. day_loop.c:25 already spells it
+        // correctly; this now matches.
         printf("Running analysis to set initial stock prices...\n");
-        int result = system("./analysis_loop");
+        int result = system("./+x/analysis_loop.+x");
         if (result == 0) {
             printf("Analysis completed successfully. Initial prices set based on fundamentals.\n");
         } else {
