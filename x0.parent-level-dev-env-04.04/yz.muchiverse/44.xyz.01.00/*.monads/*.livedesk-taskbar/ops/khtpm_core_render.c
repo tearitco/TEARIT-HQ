@@ -18520,8 +18520,22 @@ int main(int argc, char **argv) {
      * selected by loaded data" shape, not a new attribute/parser
      * change - class= was already fully generic). */
     for (int i = 0; i < g_window->n_classes; i++) {
+        /* REAL, NEW 2026-09-28 (direct request: "all x11-hq windows
+         * should get [resize] default since initial sizes are set" -
+         * every real HQ app window in this house already carries
+         * "database-window" or "palettes-pal" (confirmed by grepping
+         * every <window class=...> under &.hq-apps/ and &.widgits/ -
+         * db-hq, events-hq, chat-hai, stats-hq, bookmarks, etc. all
+         * do; only transient popups/dropdowns/context menus don't).
+         * Two of them (export-hq, file-explorer-pal) already opted in
+         * to "user-resizable" by hand for the exact same reason - this
+         * makes that the default for the whole family instead of a
+         * per-app class an agent has to remember to add. An explicit
+         * "user-resizable" class below is now redundant but harmless
+         * (kept - "fixed-size" is the real opt-OUT for the rare
+         * popup-shaped exception, e.g. a genuinely fixed dialog). */
         if (strcmp(g_window->classes[i], "database-window") == 0 ||
-            strcmp(g_window->classes[i], "palettes-pal") == 0) g_default_persistent = 1;
+            strcmp(g_window->classes[i], "palettes-pal") == 0) { g_default_persistent = 1; g_user_resizable = 1; }
         if (strcmp(g_window->classes[i], "user-resizable") == 0) g_user_resizable = 1;
         /* REAL Stage 5 §5d.10 (2026-08-16) - db-hq mode, real, data-
          * driven detection (`<window class="db-hq">`, same convention
@@ -18555,6 +18569,11 @@ int main(int argc, char **argv) {
          * deprecated standalone khtpm_hq_render.c) - bm_menu.sh
          * composes <window class="database-window bookmarks">. */
     }
+    /* Opt-out checked in its own pass, after every class has been seen,
+     * so "fixed-size" always wins regardless of where it sits in the
+     * class list relative to "database-window"/"user-resizable" above -
+     * a single shared per-class loop can't guarantee that ordering. */
+    if (elem_has_class(g_window, "fixed-size")) g_user_resizable = 0;
 
     /* REAL FIX 2026-08-16, direct live report ("doesn't open by her
      * actual position like old context menu does") - launch_khtpm_menu()
@@ -18688,8 +18707,25 @@ int main(int argc, char **argv) {
          * hq_ui.pdl default_win_w/h when set (per-machine, no recompile),
          * else a percentage of the real screen, same convention
          * WM_FS_MAX_PCT already uses for the fullscreen case. */
-        g_win_w = kh_default_win_w();
-        g_win_h = kh_default_win_h();
+        /* REAL FIX 2026-09-28 (companion to making user-resizable the
+         * database-window default, above): this branch used to ignore a
+         * window's own CSS width/height entirely, ALWAYS starting from
+         * the global kh_default_win_w()/h() - fine when only a couple of
+         * hand-picked windows opted into user-resizable, but now that
+         * every database-window does, a per-app `window { width: ... }`
+         * (e.g. events-hq.css's own real 620px, set the same day) would
+         * get silently thrown away as soon as the class was added. g_sheet
+         * is already loaded by this point (~line 18589) - compute this
+         * window's own style here, same css_compute_style() call
+         * layout_sidebar_panel() already makes for it every frame, and
+         * prefer it as the INITIAL size when the app set one; the global
+         * default remains the fallback for windows that don't. The ⌟ drag
+         * still owns g_win_w/g_win_h from here on either way (line 4700's
+         * own resizable branch never snaps it back). */
+        css_compute_style(&g_sheet, g_window->tag, g_window->id[0] ? g_window->id : NULL,
+                          g_window->classes, g_window->n_classes, 0, &g_window->style);
+        g_win_w = g_window->style.has_width ? g_window->style.width : kh_default_win_w();
+        g_win_h = g_window->style.has_height ? g_window->style.height : kh_default_win_h();
         if (g_win_w > sw - g_win_x - 60)  g_win_w = sw - g_win_x - 60;
         if (g_win_h > sh - g_win_y - 40)  g_win_h = sh - g_win_y - 40;
         if (g_win_w < KH_WIN_MIN_W) g_win_w = KH_WIN_MIN_W;
