@@ -7,7 +7,7 @@
      vars= resolves against this file's own dir. button.sh restores
      this file from the .bootstrap if the module tag goes missing. Do
      not hand-generate this markup from the manager. -->
-<window label="Co-lab-h-ai" class="co-lab-hai" vars="state/ui.txt">
+<window label="Co-lab-h-ai" class="co-lab-hai database-window" vars="state/ui.txt">
   <module src="&.hq-apps/co-lab-hai/+x/colab_hai_manager.+x"/>
   <page name="main">
     <sidebar>
