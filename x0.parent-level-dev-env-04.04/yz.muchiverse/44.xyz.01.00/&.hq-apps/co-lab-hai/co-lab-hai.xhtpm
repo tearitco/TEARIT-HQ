@@ -28,6 +28,26 @@
       </row>
       <item id="ch-menu-dir" label="Dir" target_id="ch-menu" class="dropdown-child" action="${dir_action}"/>
       <item id="ch-menu-faq" label="FAQ" target_id="ch-menu" class="dropdown-child" action="${faq_action}"/>
+      <!-- REAL FIX 2026-09-29 (bug_bounty.md's OPEN co-lab-hai entry,
+           direct live report: "approval view can sometimes be bigger
+           than window for it"). Kilo's own 2026-09-23 plan (session
+           1790154594, never landed) was <text> -> <text_area> for
+           wrapping - tried that here first and confirmed live via
+           frame-dump it does NOT work in THIS panel's shape: this
+           panel already has both a <scrolllist> and a real bottom
+           <cli_io id="composer"> (khtpm_core_render.c's own "chat's
+           shape" branch, ~line 4869) - a second multirow field here
+           just inherits the SAME shared composer_h as the real
+           composer (1 row, since the composer sets no rows=), not its
+           own rows= value. That branch is deliberately scoped to ONE
+           multirow field per panel (text-edit-hq's bare, scrolllist-
+           less case) - exactly the concern Kilo's own header comment
+           already raised ("would verify... rather than assume") and
+           was right to. Real fix instead: truncate pend_msg itself,
+           server-side (colab_hai_manager.c), to a safe single-line
+           width with a trailing "..." - simpler and more robust than
+           fighting this layout branch's real constraints. Stayed a
+           plain <text>. -->
       <text label="PENDING (${pend_agent}): ${pend_msg}" class="pending-text" show="${has_pending}"/>
       <row class="toolbar" show="${has_pending}">
         <item id="ch-approve" label="Approve" action="${approve_action}"/>

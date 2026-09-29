@@ -547,9 +547,31 @@ static void write_chtpm_projection(void) {
     CH_APPEND("has_pending=%d\n", n_pending > 0 ? 1 : 0);
     CH_APPEND("n_pending=%d\n", n_pending);
     {
+        /* REAL FIX 2026-09-29 (bug_bounty.md's OPEN co-lab-hai entry,
+         * direct live report: "approval view can sometimes be bigger
+         * than window for it"): pend_msg is a bare <text> in
+         * co-lab-hai.xhtpm (never wraps), so a long message rendered
+         * as one unbroken line wider than the panel/window itself.
+         * Tried <text_area> first (co-lab-hai.xhtpm's own header
+         * comment on this line has the full story) - confirmed live it
+         * doesn't get its own height in this panel's shape (a second
+         * multirow field collapses to the real composer's 1-row
+         * height). Truncating here instead: simple, robust, no fight
+         * with the layout engine. ~100 chars is comfortably inside the
+         * panel's real observed width (~700-720px) at this house's
+         * default font - the full message is still readable afterward
+         * in the real conversation feed once approved, this is only
+         * the preview the owner uses to decide approve/reject. */
+        char pend_msg_trunc[128];
+        size_t pend_msg_len = strlen(pend_msg);
+        if (pend_msg_len > 100) {
+            snprintf(pend_msg_trunc, sizeof(pend_msg_trunc), "%.100s...", pend_msg);
+        } else {
+            snprintf(pend_msg_trunc, sizeof(pend_msg_trunc), "%s", pend_msg);
+        }
         char esc_agent[128], esc_msg[1200];
         xml_escape(pend_agent, esc_agent, sizeof(esc_agent));
-        xml_escape(pend_msg, esc_msg, sizeof(esc_msg));
+        xml_escape(pend_msg_trunc, esc_msg, sizeof(esc_msg));
         CH_APPEND("pend_agent=%s\n", esc_agent);
         CH_APPEND("pend_msg=%s\n", esc_msg);
     }
