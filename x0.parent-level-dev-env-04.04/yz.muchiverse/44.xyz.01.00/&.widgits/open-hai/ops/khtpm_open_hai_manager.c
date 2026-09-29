@@ -768,114 +768,86 @@ static void send_to_openrouter(const char *prompt, const char *model_name) {
  * argument (matches the 2 real tools currently offered - list_dir/
  * read_file, see send_to_openrouter()'s own tools array) - a real,
  * documented scope limit, not an oversight. */
-static int extract_openrouter_tool_call_raw(const char *json, char *name_out, size_t name_outsz, char *path_out, size_t path_outsz) {
-    const char *tc = strstr(json, "\"tool_calls\":[{");
-    if (!tc) return 0;
-    const char *name_key = strstr(tc, "\"name\":\"");
-    if (!name_key) return 0;
-    name_key += 8;
-    size_t ni = 0;
-    while (name_key[ni] && name_key[ni] != '"' && ni + 1 < name_outsz) { name_out[ni] = name_key[ni]; ni++; }
-    name_out[ni] = '\0';
+/* REAL FIX 2026-09-29 (12.calendar/2026-09-29/2do.md's "desired API
+ * fix"): every extractor below used to be a hand-rolled strstr byte-
+ * pattern match against the exact OpenAI-shaped escaping this house's
+ * first-tested models happened to emit. dots-studio/dots-3-note-
+ * preview:free broke it with a single space after a colon (legal
+ * JSON, just a different serialization style) - live milestone
+ * testing before adding new free models to HQ-IQ-BOOK caught it
+ * resolving every tool call to the house root instead of the real
+ * requested path. Root cause confirmed via a direct curl with the
+ * exact same request: the model's own argument was correct byte for
+ * byte, the extractor was not. Replaced with a real, generic,
+ * structurally-correct dot-notation JSON parser (json_parser.c,
+ * ported verbatim from a real, separate, unrelated project - see that
+ * file's own header) run as a real forked child, execvp'd with a real
+ * argv array (never a shell string - this house's own exec-with-a-
+ * literal-& footgun, f3d585396, is exactly why: g_house_root/
+ * g_audit_dir paths routinely contain a literal "&", which a shell
+ * string would silently mis-parse). One child process per dot-path
+ * looked up - simple over clever, and a parser crash can never take
+ * the long-running manager down with it. */
+static int run_json_parser(const char *file, const char *dotpath, char *out, size_t outsz) {
+    out[0] = '\0';
+    char bin[PATH_BUF];
+    snprintf(bin, sizeof(bin), "%s/&.widgits/open-hai/ops/+x/json_parser.+x", g_house_root);
+    int pipefd[2];
+    if (pipe(pipefd) != 0) return 0;
+    pid_t pid = fork();
+    if (pid < 0) { close(pipefd[0]); close(pipefd[1]); return 0; }
+    if (pid == 0) {
+        close(pipefd[0]);
+        dup2(pipefd[1], 1);
+        close(pipefd[1]);
+        int devnull = open("/dev/null", O_WRONLY);
+        if (devnull >= 0) { dup2(devnull, 2); close(devnull); }
+        execl(bin, bin, file, dotpath, (char *)NULL);
+        _exit(127);
+    }
+    close(pipefd[1]);
+    size_t n = 0;
+    ssize_t r;
+    while (n + 1 < outsz && (r = read(pipefd[0], out + n, outsz - 1 - n)) > 0) n += (size_t)r;
+    out[n] = '\0';
+    close(pipefd[0]);
+    int status;
+    waitpid(pid, &status, 0);
+    return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+}
+/* arguments (choices[0].message.tool_calls[0].function.arguments) is
+ * itself a JSON-string-ENCODED JSON object, real OpenAI shape - a
+ * second real parse pass on that extracted string, same real two-step
+ * gem-dev's own manager already uses (function_call.tmp -> "name"/
+ * "args") rather than a special-cased inline unescape. */
+static int extract_openrouter_tool_call_raw(const char *file, char *name_out, size_t name_outsz, char *path_out, size_t path_outsz) {
+    name_out[0] = '\0';
     path_out[0] = '\0';
-    /* REAL FIX 2026-08-16, caught before shipping: "arguments" is a
-     * JSON-STRING-ENCODED JSON object (real OpenAI shape - see this
-     * file's own extract_openrouter_tool_call() a few lines up, which
-     * already handles this for its own summary string), so its own
-     * quotes appear BACKSLASH-ESCAPED in the raw response bytes -
-     * \"path\":\" - not a bare "path":" like a real, unescaped JSON
-     * key. Searching for the unescaped form would never match real
-     * live responses (confirmed live: the un-harnessed relay test
-     * this fix was written to support). */
-    /* REAL FIX 2026-09-29, live milestone testing before adding new
-     * free models to HQ-IQ-BOOK: dots-studio/dots-3-note-preview:free
-     * always resolved to the house root instead of the real requested
-     * path - not a model reliability problem (confirmed via a direct
-     * curl against openrouter.ai with the exact same request: the
-     * model's own "arguments" value was correct byte for byte). Root
-     * cause was this exact strstr - dots-studio serializes its escaped
-     * JSON with a space after the colon (\"path\": \" - legal JSON,
-     * this house's other tested models just happen not to emit it),
-     * which the old literal "\"path\\\":\\\"" pattern (no space
-     * allowed) never matches, silently leaving path_out empty. Search
-     * for the colon and name-quote separately, then skip any
-     * whitespace before the value's opening backslash-quote, so this
-     * works regardless of a given model's own JSON formatting style.
-     * Real, deliberate scope limit: this is a minimal patch, not the
-     * real fix - see 12.calendar/2026-09-29/2do.md's "desired API fix"
-     * section for the actual plan (port gem-dev's real, generic,
-     * whitespace-safe dot-notation json_parser op instead of hand-
-     * patching this strstr one byte-pattern at a time). */
-    const char *path_key = strstr(name_key, "\\\"path\\\":");
-    if (path_key) {
-        path_key += strlen("\\\"path\\\":");
-        while (*path_key == ' ' || *path_key == '\t') path_key++;
-        if (path_key[0] == '\\' && path_key[1] == '"') path_key += 2;
-        else path_key = NULL;
-    }
-    if (path_key) {
-        size_t pi = 0;
-        while (*path_key && pi + 1 < path_outsz) {
-            if (path_key[0] == '\\' && path_key[1] == '"') break; /* end of the JSON-string-encoded value */
-            path_out[pi++] = *path_key++;
-        }
-        path_out[pi] = '\0';
-    }
-    return name_out[0] != '\0';
+    if (!run_json_parser(file, "choices[0].message.tool_calls[0].function.name", name_out, name_outsz))
+        return 0;
+    if (!name_out[0]) return 0;
+    char args_json[TOOL_MAX_ARG];
+    if (!run_json_parser(file, "choices[0].message.tool_calls[0].function.arguments", args_json, sizeof(args_json)))
+        return 1; /* real tool call, just no path arg this pass */
+    char args_path[PATH_BUF];
+    snprintf(args_path, sizeof(args_path), "%s/or-args-%d.json", g_audit_dir, (int)getpid());
+    FILE *af = fopen(args_path, "w");
+    if (af) { fputs(args_json, af); fclose(af); run_json_parser(args_path, "path", path_out, path_outsz); unlink(args_path); }
+    return 1;
 }
 
-static int extract_openrouter_tool_call(const char *json, char *out, size_t outsz) {
-    const char *tc = strstr(json, "\"tool_calls\":[{");
-    if (!tc) return 0;
-    const char *name_key = strstr(tc, "\"name\":\"");
-    const char *args_key = strstr(tc, "\"arguments\":\"");
-    if (!name_key) return 0;
-    name_key += 8;
-    char name[128] = "";
-    size_t ni = 0;
-    while (name_key[ni] && name_key[ni] != '"' && ni + 1 < sizeof(name)) { name[ni] = name_key[ni]; ni++; }
-    name[ni] = '\0';
-    char args[512] = "";
-    if (args_key) {
-        args_key += strlen("\"arguments\":\"");
-        size_t ai = 0;
-        while (*args_key && ai + 1 < sizeof(args)) {
-            if (*args_key == '\\' && args_key[1] == '"') { args[ai++] = '"'; args_key += 2; }
-            else if (*args_key == '"') break;
-            else args[ai++] = *args_key++;
-        }
-        args[ai] = '\0';
-    }
+static int extract_openrouter_tool_call(const char *file, char *out, size_t outsz) {
+    char name[128], args[512];
+    if (!extract_openrouter_tool_call_raw(file, name, sizeof(name), args, sizeof(args)) || !name[0]) return 0;
     snprintf(out, outsz, "[tool_call requested by model] %s(%s) - real API-native tool call, NOT executed (detection only this pass)", name, args);
     return 1;
 }
 
 /* Real OpenAI-compatible response shape: choices[0].message.content -
- * different key/nesting than Ollama's own flat "response" field, same
- * minimal strstr-based extraction style as extract_response_field()
- * below (this codebase doesn't use a real JSON parser anywhere yet -
- * not introduced here either, consistency over a bigger unrelated
- * change). */
-static void extract_openrouter_content(const char *json, char *out, size_t outsz) {
-    if (extract_openrouter_tool_call(json, out, outsz)) return;
-    const char *key = "\"content\":\"";
-    const char *p = strstr(json, key);
-    out[0] = '\0';
-    if (!p) return;
-    p += strlen(key);
-    size_t o = 0;
-    while (*p && *p != '"' && o + 1 < outsz) {
-        if (*p == '\\' && p[1]) {
-            p++;
-            if (*p == 'n') { out[o++] = '\n'; }
-            else if (*p == 't') { out[o++] = '\t'; }
-            else { out[o++] = *p; }
-            p++;
-        } else {
-            out[o++] = *p++;
-        }
-    }
-    out[o] = '\0';
+ * different key/nesting than Ollama's own flat "response" field. */
+static void extract_openrouter_content(const char *file, char *out, size_t outsz) {
+    if (extract_openrouter_tool_call(file, out, outsz)) return;
+    run_json_parser(file, "choices[0].message.content", out, outsz);
 }
 
 /* REAL 2026-08-16, direct instruction ("make sure we can get the
@@ -1068,13 +1040,20 @@ static void check_pending(void) {
         return;
     }
 
+    /* REAL FIX 2026-09-29 - the OpenRouter branch below now runs the
+     * real json_parser op AGAINST THIS FILE (a real, generic, dot-
+     * notation JSON parser needs a real file, not an in-memory buffer -
+     * see run_json_parser()'s own header), so the unlink() that used to
+     * happen right here is deferred to the end of that branch instead.
+     * Other backends still only ever need buf, so they unlink as
+     * before, right where the file's read into memory. */
     FILE *f = fopen(g_pending_outfile, "r");
     if (!f) { persist_msg(0, "[error: curl produced no output]"); return; }
     char buf[MSG_LEN * 4];
     size_t n = fread(buf, 1, sizeof(buf) - 1, f);
     buf[n] = '\0';
     fclose(f);
-    unlink(g_pending_outfile);
+    if (g_pending_backend_mode != BACKEND_OPENROUTER) unlink(g_pending_outfile);
 
     char resp[MSG_LEN];
     if (g_pending_backend_mode == BACKEND_OPENROUTER) {
@@ -1091,7 +1070,8 @@ static void check_pending(void) {
          * cmd_exec, this same real gate stops it from silently
          * auto-executing an API-originated request. */
         char tool_name[32], tool_path[TOOL_MAX_ARG];
-        if (extract_openrouter_tool_call_raw(buf, tool_name, sizeof(tool_name), tool_path, sizeof(tool_path))) {
+        if (extract_openrouter_tool_call_raw(g_pending_outfile, tool_name, sizeof(tool_name), tool_path, sizeof(tool_path))) {
+            unlink(g_pending_outfile);
             PendingTool pt;
             memset(&pt, 0, sizeof(pt));
             snprintf(pt.name, sizeof(pt.name), "%s", tool_name);
@@ -1108,7 +1088,8 @@ static void check_pending(void) {
             }
             return;
         }
-        extract_openrouter_content(buf, resp, sizeof(resp));
+        extract_openrouter_content(g_pending_outfile, resp, sizeof(resp));
+        unlink(g_pending_outfile);
         if (resp[0]) persist_msg(0, resp);
         else persist_msg(0, "[error: no 'content' field in OpenRouter reply - check model name / key / raw response in or-response-*.json under the audit dir]");
         return;

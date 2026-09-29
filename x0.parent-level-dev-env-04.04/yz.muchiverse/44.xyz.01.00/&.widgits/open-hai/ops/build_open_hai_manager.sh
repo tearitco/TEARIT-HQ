@@ -14,3 +14,12 @@ echo "-- open-hai manager -> +x/khtpm_open_hai_manager.+x"
 $CC $CFLAGS -o +x/khtpm_open_hai_manager.+x khtpm_open_hai_manager.c
 
 echo "OK +x/khtpm_open_hai_manager.+x"
+
+# REAL, NEW 2026-09-29 - generic dot-notation JSON parser, ported from
+# gem-dev (see json_parser.c's own header). The manager forks/execs
+# this as a real, separate binary (not a static-linked function) so a
+# raw response's parsing can't crash the long-running manager process.
+echo "-- json parser -> +x/json_parser.+x"
+$CC $CFLAGS -o +x/json_parser.+x json_parser.c
+
+echo "OK +x/json_parser.+x"
