@@ -1080,10 +1080,41 @@ int main(int argc, char **argv) {
          * stale ON/OFF label. Include it so a toggle republishes at once. */
         int prev_zorder = st.zorder_above;
         int prev_n_hq = st.n_hq_wins;
-        ktb_reload(&st);
-        int reload_changed = (st.n_tabs != prev_n_tabs || st.n_shortcuts != prev_n_sc ||
+        /* REAL FIX 2026-09-28 (cpu_loop_analysis.txt, direct live report:
+         * "getting throttling again... kilo analysis" - real, confirmed
+         * by direct code read, same shape as the earlier world_manager
+         * fix): ktb_reload() ran on EVERY tick, unconditionally, up to
+         * POLL_INTERVAL_ACTIVE_USEC's own ~60Hz - and it's not cheap:
+         * load_tabs() (flock + parse + per-line PID verify),
+         * sync_tab_claims()/sync_strip_claims() (claims file I/O),
+         * load_shortcuts()/load_theme(), ktb_load_zorder_mode(), and
+         * ktb_merge_hq_windows() (a real opendir/readdir scan of
+         * #.desktop/ plus a liveness check per HQ window found) - all of
+         * it re-run up to 60 times a second regardless of whether
+         * anything on disk actually changed. Throttled to once per 250ms
+         * (4Hz) - fast enough that no external writer (tab open/close, a
+         * shortcut edit, a theme change, the always-on-top toggle) needs
+         * faster-than-human-perceptible pickup, ~15x fewer redundant
+         * reloads than the previous unthrottled ceiling. Deliberately
+         * does NOT touch load_tabs()'s own disabled self-heal path (see
+         * ktb_reload()'s own header comment on that - three real
+         * incidents already came from touching that shape) - this only
+         * changes HOW OFTEN the whole read-only reload pass runs, not
+         * what it does once it runs. */
+        static struct timespec s_last_reload;
+        struct timespec now_reload;
+        clock_gettime(CLOCK_MONOTONIC, &now_reload);
+        double reload_elapsed_ms = (s_last_reload.tv_sec == 0 && s_last_reload.tv_nsec == 0) ? 1e9 :
+            (double)(now_reload.tv_sec - s_last_reload.tv_sec) * 1000.0 +
+            (double)(now_reload.tv_nsec - s_last_reload.tv_nsec) / 1e6;
+        int reload_changed = 0;
+        if (reload_elapsed_ms >= 250.0) {
+            s_last_reload = now_reload;
+            ktb_reload(&st);
+            reload_changed = (st.n_tabs != prev_n_tabs || st.n_shortcuts != prev_n_sc ||
                                st.tab_focus_idx != prev_focus || st.zorder_above != prev_zorder ||
                                st.n_hq_wins != prev_n_hq);
+        }
         {
             char pdl_path[KTB_PATH_BUF], datetime_lang[16] = "zh", dt[128];
             static char last_dt[128];
