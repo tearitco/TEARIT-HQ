@@ -1,0 +1,3 @@
+# event.pal - common_events page_1
+exec cmd_1.sh
+halt
