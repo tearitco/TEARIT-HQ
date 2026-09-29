@@ -119,7 +119,10 @@ foundation to hang wages on.
 - **GDP is static.** `gov_decide.c:222` reads `gdp` and `debt_to_gdp` and nothing
   ever writes them. Live values `gdp=426.0`, `debt_to_gdp=25.0` are template
   seeds. GDP is an input to policy that nothing produces, and is unaffected by
-  the policy it drives.
+  the policy it drives. **This observation is factually right and the conclusion
+  drawn from it was wrong** — the original computes GDP once at world generation
+  and never again, and ships the identical constant `25.0000` in every
+  government. Corrected at 2.2.
 
 Recorded for context, not as a defence: the original source's `tax_loop.c` was a
 placeholder ("Hello, TAX!") per `SOCIETY-ECONOMY-ARCHITECTURE.txt:18,454`, and
@@ -131,7 +134,9 @@ game's own macro layer.
 ### Why the order below is this order
 
 Every later step is downstream of an earlier one, and the dependency runs
-calendar -> GDP -> taxes -> bonds -> rate benchmark, not by appeal.
+calendar -> taxes -> bonds -> rate benchmark, not by appeal. **Real GDP was in
+this chain and has been struck** — see 2.2, which is the worked example of why
+the legacy gets asked first.
 
 - [x] **2.1 Calendar** — `ops/econ_calendar.c`, the single writer of time.
       **DONE 2026-09-29.** The design changed mid-flight, deliberately: the
@@ -152,14 +157,45 @@ calendar -> GDP -> taxes -> bonds -> rate benchmark, not by appeal.
       `PORT-FIDELITY.md` §3 for the full design and for the `ticker_speed`
       label trap (at `day`, one game day takes 24 real days — reproduced, not
       corrected, and `data/setting.txt` ships `hour`).
-- [ ] **2.2 Real GDP** — computed from actual economic activity (corporate
-      profits, payroll, capital formation) instead of seeded. Smallest change
-      with the largest effect: it is what makes the tax rate mean something and
-      stops `gov_decide.c` reading a constant.
+- [x] **2.2 Real GDP — STRUCK, do not implement.** Originally written as
+      "computed from actual economic activity instead of seeded". **The legacy
+      says the opposite, and the legacy wins.** `dev/setup_governments.c:131,215`
+      computes GDP **once at world generation** as `population × cash_per_cap`,
+      splits it across governments by a fixed percentage, and never recomputes
+      it; `Debt-to-GDP Ratio` is the literal constant `25.0000` in every
+      government file. wsr-pal's `gdp=426.0` / `debt_to_gdp=25.0` are therefore
+      already faithful, and "static GDP read by policy but written by nothing" is
+      a description of the original, not a regression.
+
+      It also would have broken the game. `gov_decide.c:134` acts only when
+      `deficit_ratio < -0.02`; the seed 426 sits *precisely* calibrated to trip
+      it, whereas the sum of 50 corps' `book_value` is 84,040 and drops the
+      ratio to -0.0001, permanently disabling every fiscal decision. And it is
+      the wrong basis regardless — GDP is a flow of output per period,
+      `book_value` is a balance-sheet stock, and no corp `state.txt` field
+      measures a flow (there is no `revenue` field at all).
+
+      Full working in `PORT-FIDELITY.md` gap 11. **Standing rule adopted as a
+      result: ask the legacy before designing a mechanic.** See
+      `PORT-FIDELITY.md` §0.
 - [ ] **2.3 Yearly tax collection** — on the calendar's year boundary, debit
       corporations and the player at `tax_rate_adj` and credit the government.
       Revenue becomes real cash and the deficit becomes real. Replaces the
       `gov_trade.c:92` self-inflation, which must go, not be left alongside.
+      **This is now the first open macro item**, and it is *new* modelling, not a
+      port: the original's `tax_loop.c` is 19 lines that write
+      `"Hello, TAX!"`. The original's governments were tax-setters and
+      bond-issuers (`PORT-FIDELITY.md` gap 4), so the lever is the game's own even
+      though the loop was never written.
+
+      **UNITS WARNING, measured before starting.** Tax receipts will be real
+      money, but the `deficit_ratio` denominator is the original's *seeded* GDP
+      (426), not a real one, because 2.2 is struck. Real tax money is on a
+      completely different scale from 426, so a naive implementation drives
+      `deficit_ratio` deeply negative and `gov_decide.c` will raise taxes
+      forever. The tax amount and the ratio basis have to be reconciled
+      deliberately — do not discover this halfway through and "fix" it by
+      fudging GDP back into fiction.
 - [ ] **2.4 Government bonds** — treasury issuance, a yield curve driven by
       debt/GDP and a policy rate, annual coupons. The existing `debt_to_gdp`
       becomes live because issuing debt finally costs something. The original

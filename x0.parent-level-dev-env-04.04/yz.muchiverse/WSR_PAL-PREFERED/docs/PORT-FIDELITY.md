@@ -15,6 +15,39 @@ bugs and are actually faithful reproductions of the original's own quirks.
 
 ---
 
+## 0. The standing rule: ask the legacy before asking yourself
+
+**Before implementing any mechanic in wsr-pal, read the original first and let
+its behaviour decide the design.** The legacy tree is now committed at
+`yz.muchiverse/MSR-DEPRACATED/` (branch `kilo-wsr-pal`, commit `ce8cacdf6`) —
+it used to be untracked, which is why a fresh clone could not check anything
+against it. It is the golden standard, so an unanswered question about
+"what should this do" is always answered there, and often the answer is
+"nothing, and that is correct."
+
+This is not a formality. It has already changed a decision once, and in the
+direction of *less* code:
+
+- ROADMAP 2.2 said "compute real GDP from actual economic activity instead of
+  the template seed", on the reasoning that a static GDP read by policy but
+  written by nothing must be a bug. Reading `dev/setup_governments.c:131,215`
+  showed the original computes GDP **once at world generation** as
+  `population × cash_per_cap`, split across governments by a fixed percentage,
+  and never recomputes it. `Debt-to-GDP Ratio` is the literal constant
+  `25.0000` in *every* government file. So wsr-pal was already faithful, and
+  implementing 2.2 would have made it *less* faithful while breaking the fiscal
+  rule — see gap 11.
+
+The pattern to watch for: a mechanic that looks obviously unfinished in the
+port is often a faithful copy of something the original also never finished.
+Fixing it unasked is a regression wearing the costume of progress.
+
+When the legacy has no answer — genuinely new modelling, as with the tax and
+payroll systems — say so explicitly and record it as new, so nobody goes
+looking for an original to diff against.
+
+---
+
 ## 1. Faithful — leave alone
 
 | Mechanic | Original | Port | Notes |
@@ -199,6 +232,63 @@ from two balance-sheet lines. `ensure_entities` reads
 `Equity (Net Worth):` directly. These agree only if the source profiles are
 internally consistent; the original derived it, the port trusts it.
 
+### Gap 11 — GDP is a setup-time constant in the original: leave it seeded
+
+Checked 2026-09-29, and it reverses a roadmap item.
+
+**The original never computes GDP during play.** `dev/setup_governments.c` derives
+it once at world generation and writes it into the government file:
+
+```c
+/* setup_governments.c:129-131 — once, from the population preset */
+if (strcmp(pool_name, "humanoid_bank") == 0) {
+    total_population = pool_pop;
+    total_gdp = pool_pop * cash_per_cap;
+}
+/* :212-215 — split across governments by a fixed share */
+double gdp_frac = atof(gdp_share_perc) / 100.0;
+gov.gdp = (long long)(gdp_frac * total_gdp + 0.5);
+```
+
+Nothing recomputes it. `governments/generated/Red African Union/Red African
+Union.txt:3` holds `GDP: 426` from then on, and `financial_profile.txt:53` holds
+`Debt-to-GDP Ratio: 25.0000` — the identical constant in **every** government,
+from Farland (GDP 287) to Solar Empire (GDP 2611). It is a seed, not a computed
+ratio.
+
+**So wsr-pal's `gdp=426.0` and `debt_to_gdp=25.0` are already faithful.** They
+are not unfinished business.
+
+**Why "just compute it from the economy" is the wrong fix, measured:**
+
+| basis | gdp | net_operating | deficit_ratio | 2% rule fires? |
+|---|---|---|---|---|
+| seeded (current) | 426 | -8.84 | **-0.0208** | **yes** |
+| sum of 50 corps' `book_value` | 84,040 | -8.84 | -0.0001 | **never** |
+
+`gov_decide.c:134` acts only when `deficit_ratio < -0.02`. The seed 426 is
+calibrated so the rule trips; a real corporate-equity GDP is ~200x larger and
+silently disables every fiscal decision forever. Two independent reasons it is
+wrong:
+
+1. **Wrong basis.** The original's GDP is `population × cash_per_cap`. Summing
+   corporate book value is not that, and is not GDP under any definition —
+   `book_value` is a balance-sheet *stock*, and GDP is a *flow* of output per
+   period. No runtime field in corp `state.txt` measures a flow; there is no
+   `revenue` field at all.
+2. **It would break a working rule.** The fake GDP is currently *load-bearing*,
+   and swapping it for an honest-but-incommensurable number replaces one dead
+   input with a more plausible-looking dead input.
+
+**Verdict: ROADMAP 2.2 is struck, not implemented.** The gap it was written to
+close is a gap in the original, in the same category as gap 4 (no taxes) and
+gap 5 (no working dividend/payroll loops).
+
+This does not mean GDP is a good number. It means it is the *right* number for
+this game, and any real fiscal mechanic has to be compared against the
+original's seeded basis or it will not fire. That constraint carries forward
+into 2.3 and 2.5 — see the units warning in gap 4.
+
 ---
 
 ## 3. Time and the schedule — now ported (was the biggest gap)
@@ -242,6 +332,8 @@ do get built, a `3_months` event can fire on a turn boundary that has not been
 recomputed yet. Fidelity was chosen over convenience. Re-sequencing the finance
 pass onto the clock is tracked as **ROADMAP Phase 2.6** rather than smuggled in
 with the clock port.
+
+---
 
 ---
 
