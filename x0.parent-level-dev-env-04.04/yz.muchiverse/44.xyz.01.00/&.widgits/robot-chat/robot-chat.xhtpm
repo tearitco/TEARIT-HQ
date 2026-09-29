@@ -1,0 +1,33 @@
+<!-- robot-chat.xhtpm - STATIC TEMPLATE (same real convention open-hai.xhtpm
+     and events-hq's own dashboard.chtpm already use, see CHTPM-ARCHITECTURE-
+     FIX.md). Real chat surface for a Drop-In Chatbot Entity (AI-PUSH-
+     ROADMAP-AND-NUANCES.md, "Track 1's Natural Test Surface"), built
+     2026-09-28 to replace robot_chat_001's hardcoded single test-line
+     METHOD with a real, typed, multi-turn chat window.
+
+     Launched exactly like events-hq: <house> <chtpm> <entity_dir> <label>
+     - argv[3]=entity_dir populates g_arg3_dir (the real, generic "instance
+     dir" hook, khtpm_core_render.c ~line 1330), so THIS ONE SHARED
+     template serves every chatbot entity's own real chat_history.txt,
+     never a per-entity copy. <entity_dir>/.hq_manager/ui.txt is
+     auto-appended to vars= by that same mechanism - no vars= needed here.
+
+     The <module> below forks khtpm_robot_chat_manager.+x with
+     (house_root, entity_dir, label) - the exact same argv shape
+     khtpm_events_hq_manager.c already requires, confirmed real via
+     kh_launch_window_modules()'s own g_arg3_dir/g_arg4_entity_label
+     passthrough. -->
+<window label="Robot Chat" class="user-resizable">
+  <module src="&.widgits/robot-chat/ops/+x/khtpm_robot_chat_manager.+x"/>
+  <page name="main">
+    <panel>
+      <text id="status" label="${status}"/>
+      <scrolllist>
+        <repeat count="${transcript_count}" bind="msg">
+          <text id="msg${msg.#}" class="${msg.class}" label="${msg.text}"/>
+        </repeat>
+      </scrolllist>
+      <cli_io id="composer" target_id="composer" label="&gt; " action="${send_action}"/>
+    </panel>
+  </page>
+</window>

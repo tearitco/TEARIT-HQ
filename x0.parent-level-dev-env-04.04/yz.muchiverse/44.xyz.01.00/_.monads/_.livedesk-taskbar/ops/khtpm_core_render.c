@@ -7730,7 +7730,17 @@ static void default_cli_io_run_action(const char *action, const char *value) {
         if (*p == '\'') { memcpy(val_esc + o, "'\\''", 4); o += 4; } else val_esc[o++] = (char)*p;
     } val_esc[o] = '\0'; }
     char cmd[PATH_BUF * 3 + 700];
-    snprintf(cmd, sizeof(cmd), "%s '%s' '%s' '%s' >/dev/null 2>&1 &", action, g_package_dir, g_house_root, val_esc);
+    /* REAL FIX 2026-09-28, same bug class as kh_cliio_result()/
+     * xdnd_handle_selection() (see those functions' own header
+     * comments) - g_package_dir is the shared .xhtpm template's own
+     * dir, wrong for any entity-scoped window (argv[3]=g_arg3_dir set)
+     * whose composer needs to act on the REAL per-instance dir, e.g.
+     * robot-chat's own composer needing the calling entity's own dir,
+     * not &.widgits/robot-chat/ itself. No-op for every existing
+     * cli_io consumer that never populates g_arg3_dir (open-hai,
+     * taskbar-settings, argc<5 launches). */
+    const char *dir = g_arg3_dir[0] ? g_arg3_dir : g_package_dir;
+    snprintf(cmd, sizeof(cmd), "%s '%s' '%s' '%s' >/dev/null 2>&1 &", action, dir, g_house_root, val_esc);
     int rc = system(cmd);
     (void)rc;
 }
