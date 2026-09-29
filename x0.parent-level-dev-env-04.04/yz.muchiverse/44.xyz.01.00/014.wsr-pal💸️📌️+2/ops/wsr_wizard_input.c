@@ -140,7 +140,7 @@ static void nth_industry(char *out, size_t out_sz, int n, int *count_out) {
     out[0] = '\0';
     *count_out = 0;
     char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/Mar$.$treetRace.wsr]Q]k32/corporations/36_industries_wsr.txt", project_root);
+    snprintf(path, sizeof(path), "%s/MarS.StreetRace.wsr]Q]k32/corporations/36_industries_wsr.txt", project_root);
     FILE *f = fopen(path, "r");
     if (!f) return;
     char line[MAX_LINE];
@@ -167,7 +167,7 @@ static void nth_country(char *out, size_t out_sz, int n, int *count_out) {
     out[0] = '\0';
     *count_out = 0;
     char path[PATH_BUF];
-    snprintf(path, sizeof(path), "%s/Mar$.$treetRace.wsr]Q]k32/governments/generated/gov-list.txt", project_root);
+    snprintf(path, sizeof(path), "%s/MarS.StreetRace.wsr]Q]k32/governments/generated/gov-list.txt", project_root);
     FILE *f = fopen(path, "r");
     if (!f) return;
     char line[MAX_LINE];
