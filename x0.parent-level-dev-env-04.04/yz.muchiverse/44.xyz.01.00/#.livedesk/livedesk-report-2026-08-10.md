@@ -169,7 +169,7 @@ EXIT 0; the only warnings are pre-existing `-Wformat-truncation` noise.
 ```
 
 - **House-relative** entity paths in desk pdl files (`livedesk_rel_path` on
-  snapshot, `livedesk_join_path` on spawn) — `*.monads/*.muchi-pet/...` are
+  snapshot, `livedesk_join_path` on spawn) — `_.monads/_.muchi-pet/...` are
   literal dirnames (real asterisks), so `access()` works on them.
 - `uuid` = jb `0a9558a7-7c74-4358-833c-2d5b21edc421`, resolved by walking
   `0.user-pal*` (emoji-free), no hardcoded id.

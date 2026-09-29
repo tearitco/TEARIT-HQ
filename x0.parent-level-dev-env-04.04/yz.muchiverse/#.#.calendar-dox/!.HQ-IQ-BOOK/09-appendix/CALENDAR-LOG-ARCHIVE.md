@@ -668,9 +668,9 @@ the same fact across files — link instead (`see HANDOFF.md §X`).
 **⚠️ PENDING (2026-08-29): a large body of Linux-only work has landed since the passes above and has NOT been ported/verified on Windows or macOS — most notably `khtpm_entity_menu_render.c` (the canonical merged renderer for 8 window modes) has NO Windows twin at all. Full delta list: `CROSS-PLATFORM-PENDING-2026-08-29.md`. Read this before the next Windows/macOS leg.**
 
 **The round-trip problem (bites EVERY Windows trip, caught 2026-08-22):** NTFS cannot store
-names containing `*`, so the house's `*.monads` / `*.START_BUTTON` trees must be renamed to `_.`
+names containing `*`, so the house's `_.monads` / `_.START_BUTTON` trees must be renamed to `_.`
 to travel; coming back they MUST be restored or every launch says "binary missing" (paths like
-`*.monads/*.livedesk-taskbar/ops/+x/...` stop resolving) and the whole tree comes back with
+`_.monads/_.livedesk-taskbar/ops/+x/...` stop resolving) and the whole tree comes back with
 stripped/locked permissions.
 
 **The fix — `$.crypts/win-trip.sh` (house root), run around every physical copy:**
@@ -764,7 +764,7 @@ DESIGN.md` FIRST for anything tile-related.) by claude
 
 **2026-08-29** (post-refactor audit, direct request: real explanation of
 "modes" + whether the 4-loop draw collapse held up at 9,950 lines -
-`*.monads/*.livedesk-taskbar/ops/parser-walkthru.md`, next to the
+`_.monads/_.livedesk-taskbar/ops/parser-walkthru.md`, next to the
 renderer itself. Confirmed clean: draw_elem()/render_tree() each still
 exactly 1 real definition; per-mode layout/click/key/nav functions
 (77 dbhq_/50 chai_/49 evhq_) are separate on purpose, not regrown

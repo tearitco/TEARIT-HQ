@@ -17,7 +17,7 @@ HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 XHTPM="$HERE/stats-hq-pal.xhtpm"
-RENDER_OPS="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
+RENDER_OPS="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops"
 BIN="$RENDER_OPS/+x/khtpm_core_render.+x"
 PRISC="$HOUSE_ROOT/&.widgits/_shared-lib/system/+x/prisc+x.+x"
 MGR="$RENDER_OPS/+x/stats_hq_manager.+x"

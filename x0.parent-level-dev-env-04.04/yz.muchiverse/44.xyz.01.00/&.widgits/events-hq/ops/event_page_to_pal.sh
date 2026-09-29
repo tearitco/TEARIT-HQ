@@ -102,7 +102,7 @@ METHOD       | Cancel               | void
 EOF
 
 echo "-- generating real sprite (emoji_gen_atlas + emoji_xtract)"
-OPS="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops/+x"
+OPS="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops/+x"
 if [ -x "$OPS/emoji_gen_atlas.+x" ] && [ -x "$OPS/emoji_xtract.+x" ]; then
     "$OPS/emoji_gen_atlas.+x" "$EMOJI" "$NEW_DIR/atlas.png" >/dev/null 2>&1
     "$OPS/emoji_xtract.+x" "$NEW_DIR/atlas.png" 0 64 "$NEW_DIR/sprite.csv" >/dev/null 2>&1

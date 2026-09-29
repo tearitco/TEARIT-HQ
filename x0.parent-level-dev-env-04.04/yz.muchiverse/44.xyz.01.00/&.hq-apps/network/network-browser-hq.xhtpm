@@ -7,10 +7,12 @@
 
      Heterogeneous page content (title / text / link / image / video)
      is one <repeat> whose body carries a show=-gated candidate per
-     kind; the projector sets exactly one c_<n>_is_* = 1 per row. The
-     sprite-grid-row wrap for consecutive media is NOT reproduced here
-     (each media is its own row) - acceptable first cut per
-     HANDOFF-scope-nav-and-chtpm-port.md §5. -->
+     kind; the projector sets exactly one c_<n>_is_* = 1 per row.
+     Consecutive media wrap as a grid via the renderer's generic
+     class="sprite-flow" (see khtpm_core_render.c): six 150x110 PNGs
+     lay out 3 columns by 2 lines at the 168px tile pitch, and text
+     rows before/after the run keep their own rows. No app-name
+     checks live in the renderer. -->
 <window label="Network Browser" class="network-browser-pal database-window"
         vars="#.desktop/network-browser-hq_ui.txt">
   <module src="&.hq-apps/network/+x/network_browser_manager.+x" id="ui"/>
@@ -72,7 +74,7 @@
           <text id="ct${c.#}" class="page-title" label="${c.text}"                          show="${c.is_title}"/>
           <text id="cx${c.#}"                    label="${c.text}"                          show="${c.is_text}"/>
           <item id="cl${c.#}" label="${c.text}"  action="${c.action}"                       show="${c.is_link}"/>
-          <item id="cm${c.#}" label="${c.label}" sprite="${c.sprite}" action="${c.action}"  show="${c.is_media}"/>
+          <item id="cm${c.#}" class="quiet sprite-flow" label="${c.label}" sprite="${c.sprite}" action="${c.action}"  show="${c.is_media}"/>
           <!-- V3 video (nb_video_play): live canvas row inside the content
                scrolllist. The op writes surface.raw + surface.receipt.txt
                into &.hq-apps/network/tmp/nb_video0; the renderer's layout

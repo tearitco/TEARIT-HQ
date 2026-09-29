@@ -466,7 +466,7 @@ Let me start by reading the file they mentioned to understand what this task is 
 430: fully data-driven and zero-recompile** — `meta.pdl` has plain
 431: `METHOD | <label> | <action>` rows, mechanically converted to
 432: `menu.chtpm` by `meta_to_menu_chtpm.py`
-433: (`44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/`). This means "remove
+433: (`44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/`). This means "remove
 434: an option, add a new one" already costs nothing architecturally — the
 435: real, new work is making that ADDITION itself a **house-specific
 436: event** (per the user's own framing: "add option to context menu"
@@ -814,7 +814,7 @@ improvised, instead of working through the house's own living index.
 
 **Do not repeat this.** Before writing or editing any code that
 touches:
-- `khtpm_core_render.c` or anything in `*.monads/*.livedesk-taskbar/ops/`
+- `khtpm_core_render.c` or anything in `_.monads/_.livedesk-taskbar/ops/`
 - any `<app>_manager.c` / `<app>_render.c` pair
 - any `.chtpm`/`.css` file, or the generic `<cli_io>`/nav-index/
   layout-pass machinery
@@ -1062,24 +1062,24 @@ But first, let me check if there's a running khtpm_core_render process
 
 **Output:**
 ```
-no         50857  1.5  0.0  62092 13144 ?        Ss   10:00   4:48 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/khtpm_strip_header.xhtpm
-no         50860  0.0  0.0  66652 11308 ?        Ss   10:00   0:13 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword
-no        134607  0.0  0.0  66660 11288 ?        Rs   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_castle_a
-no        134609  0.0  0.0  66656 11280 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_a1
-no        134611  0.0  0.0  66664 11296 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_a2
-no        134613  0.0  0.0  66660 11356 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a1
-no        134615  0.0  0.0  66656 11296 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a2
-no        134617  0.0  0.0  66656 11232 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a3
-no        134619  0.0  0.0  66664 11272 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a4
-no        134621  0.0  0.0  66652 11304 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_castle_b
-no        134623  0.0  0.0  66664 11180 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_b1
-no        134625  0.0  0.0  66652 11232 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_b2
-no        134627  0.0  0.0  66664 11288 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b1
-no        134629  0.0  0.0  66660 11252 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b2
-no        134631  0.0  0.0  66660 11204 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b3
-no        134633  0.0  0.0  66656 11228 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b4
-no        134635  0.0  0.0  66664 11296 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_population_a
-no        134637  0.0  0.0  66656 11248 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_population_b
+no         50857  1.5  0.0  62092 13144 ?        Ss   10:00   4:48 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/khtpm_strip_header.xhtpm
+no         50860  0.0  0.0  66652 11308 ?        Ss   10:00   0:13 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword
+no        134607  0.0  0.0  66660 11288 ?        Rs   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_castle_a
+no        134609  0.0  0.0  66656 11280 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_a1
+no        134611  0.0  0.0  66664 11296 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_a2
+no        134613  0.0  0.0  66660 11356 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a1
+no        134615  0.0  0.0  66656 11296 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a2
+no        134617  0.0  0.0  66656 11232 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a3
+no        134619  0.0  0.0  66664 11272 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a4
+no        134621  0.0  0.0  66652 11304 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_castle_b
+no        134623  0.0  0.0  66664 11180 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_b1
+no        134625  0.0  0.0  66652 11232 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_b2
+no        134627  0.0  0.0  66664 11288 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b1
+no        134629  0.0  0.0  66660 11252 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b2
+no        134631  0.0  0.0  66660 11204 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b3
+no        134633  0.0  0.0  66656 11228 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b4
+no        134635  0.0  0.0  66664 11296 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_population_a
+no        134637  0.0  0.0  66656 11248 ?        Ss   14:06   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_population_b
 no        150920  0.0  0.0  10332  3612 ?        Ss   15:09   0:00 /bin/bash -c ps aux | grep khtpm_core_render
 no        150922  0.0  0.0   9572  2664 ?        S    15:09   0:00 grep khtpm_core_render
 
@@ -2176,7 +2176,7 @@ The relay file has a single entry (KEY_PRESSED: 202 which is Left arrow). Now I 
 **Input:**
 ```json
 {
-  "command": "ls -la /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/",
+  "command": "ls -la /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/",
   "description": "List taskbar ops directory"
 }
 ```
@@ -2258,7 +2258,7 @@ Let me check the +x directory for the built binaries and also look for the toys 
 **Input:**
 ```json
 {
-  "command": "ls -la /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/",
+  "command": "ls -la /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/",
   "description": "List built binaries in +x directory"
 }
 ```
@@ -2313,7 +2313,7 @@ Let me search for the toys mechanism and the events-creation screen. I need to f
 ```json
 {
   "pattern": "toy",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar",
   "include": "*.sh"
 }
 ```
@@ -2321,7 +2321,7 @@ Let me search for the toys mechanism and the events-creation screen. I need to f
 **Output:**
 ```
 Found 2 matches
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/kill_hq_windows.sh:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/kill_hq_windows.sh:
   Line 40: # on toys: mutaclysm-neo... isn't there a way for making it work for all
 
   Line 42: # above can never cover arbitrary toys/future launches. Every real launch
@@ -2772,7 +2772,7 @@ Let me look at the TASKBAR-MENU-ARCHITECTURE.md to understand the toys menu stru
 137:    indistinguishable from a real bug and wastes the most time of anything
 138:    in this whole recipe:
 139:    ```sh
-140:    cd "*.monads/*.livedesk-taskbar/ops"
+140:    cd "_.monads/_.livedesk-taskbar/ops"
 141:    bash build_khtpm_strip.sh          # ~15s, warnings-only is a pass
 142:    bash run_khtpm_strip.sh new        # kills old, rebuilds, launches, confirms PID
 143:    ```
@@ -3347,7 +3347,7 @@ Now let me check the events-hq button.sh to see how it's launched, and also the 
 38: [ -z "${EZ_PKG_DIR:-}" ] && [ -n "${1:-}" ] && exec sh "$HERE/button-pal.sh" "$@"
 39: # ----------------------------------------------------------------------
 40: 
-41: OPS_DIR="$HERE/../../*.monads/*.livedesk-taskbar/ops"
+41: OPS_DIR="$HERE/../../_.monads/_.livedesk-taskbar/ops"
 42: BIN="$OPS_DIR/+x/khtpm_core_render.+x"
 43: CHTPM="$HERE/pieces/dashboard.chtpm"
 44: 
@@ -3687,7 +3687,7 @@ Now I understand how to use nav.sh to navigate the taskbar. Let me also check th
 **Input:**
 ```json
 {
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "pattern": "livedesk_build_toys_menu"
 }
 ```
@@ -3695,7 +3695,7 @@ Now I understand how to use nav.sh to navigate the taskbar. Let me also check th
 **Output:**
 ```
 Found 4 matches
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c:
   Line 4521: static int livedesk_build_toys_menu(const char *house_root, HQMenuItem *menu, int max) {
 
   Line 4597:     if (strcmp(cid, "toys") == 0 || which == 12) { n = livedesk_build_toys_menu(s->house_root, s->hq_menu, KTB_LIVEDESK_DYN_MAX); }
@@ -3703,7 +3703,7 @@ Found 4 matches
   Line 5109:          * is the full path already resolved by livedesk_build_toys_menu().
 
 
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_hq_manager.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_hq_manager.c:
   Line 104:  * livedesk_build_toys_menu()'s own toys_scan_one_root() (scans known
 
 ```
@@ -3723,13 +3723,13 @@ The toys menu is cell 12 (which == 12). Let me read the livedesk_build_toys_menu
 {
   "limit": 100,
   "offset": 4515,
-  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c"
+  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c</path>
+<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c</path>
 <type>file</type>
 <content>
 4515:         if (access(toy_pdl, F_OK) != 0) continue;
@@ -3938,7 +3938,7 @@ drwxr-xr-x  3 no no  4096 Aug 22 02:08 iqa-fork
 drwxr-xr-x  2 no no  4096 Aug 22 02:08 #.livedesk
 -rwxrwxrwx  1 no no 35557 Aug  6 22:05 livedesk-win-fix-lvl2.txt
 -rwxrwxrwx  1 no no   444 Aug 16 16:38 local-2do-15.txt
-drwxr-xr-x 10 no no  4096 Aug 24 01:06 *.monads
+drwxr-xr-x 10 no no  4096 Aug 24 01:06 _.monads
 drwxr-xr-x  3 no no  4096 Aug 22 02:08 net
 drwxr-xr-x  2 no no  4096 Sep 14 21:28 #.notes
 -rwxrwxrwx  1 no no 10887 Jul 27 17:59 +-picker.txt
@@ -3948,7 +3948,7 @@ drwxr-xr-x  2 no no  4096 Aug 22 02:08 #.resume
 -rwxrwxrwx  1 no no  2551 Aug  7 18:35 scrypts.sh
 drwxrwxr-x  2 no no  4096 Sep  8 22:56 shared
 -rwxrwxrwx  1 no no  1955 Aug 20 04:28 simlink-fix.txt
-drwxr-xr-x 13 no no  4096 Aug 22 02:08 *.START_BUTTON
+drwxr-xr-x 13 no no  4096 Aug 22 02:08 _.START_BUTTON
 -rwxrwxrwx  1 no no   184 Jul 28 23:22 ^.START_BUTTON_4.sh
 drwxr-xr-x  2 no no  4096 Aug 22 02:08 #.tmp
 drwxrwxrwx  3 no no  4096 Aug 22 03:11 tmp
@@ -4063,7 +4063,7 @@ drwxr-xr-x  3 no no  4096 Aug 22 02:08 iqa-fork
 drwxr-xr-x  2 no no  4096 Aug 22 02:08 #.livedesk
 -rwxrwxrwx  1 no no 35557 Aug  6 22:05 livedesk-win-fix-lvl2.txt
 -rwxrwxrwx  1 no no   444 Aug 16 16:38 local-2do-15.txt
-drwxr-xr-x 10 no no  4096 Aug 24 01:06 *.monads
+drwxr-xr-x 10 no no  4096 Aug 24 01:06 _.monads
 drwxr-xr-x  3 no no  4096 Aug 22 02:08 net
 drwxr-xr-x  2 no no  4096 Sep 14 21:28 #.notes
 -rwxrwxrwx  1 no no 10887 Jul 27 17:59 +-picker.txt
@@ -4073,7 +4073,7 @@ drwxr-xr-x  2 no no  4096 Aug 22 02:08 #.resume
 -rwxrwxrwx  1 no no  2551 Aug  7 18:35 scrypts.sh
 drwxrwxr-x  2 no no  4096 Sep  8 22:56 shared
 -rwxrwxrwx  1 no no  1955 Aug 20 04:28 simlink-fix.txt
-drwxr-xr-x 13 no no  4096 Aug 22 02:08 *.START_BUTTON
+drwxr-xr-x 13 no no  4096 Aug 22 02:08 _.START_BUTTON
 -rwxrwxrwx  1 no no   184 Jul 28 23:22 ^.START_BUTTON_4.sh
 drwxr-xr-x  2 no no  4096 Aug 22 02:08 #.tmp
 drwxrwxrwx  3 no no  4096 Aug 22 03:11 tmp
@@ -4251,7 +4251,7 @@ Let me check the open_pchq_board.sh to see what it does
 35: fi
 36: HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 37: 
-38: OPS_DIR="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
+38: OPS_DIR="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops"
 39: BIN="$OPS_DIR/+x/khtpm_core_render.+x"
 40: PROJECTOR="$PKG/ops/+x/pchq_board_projector.+x"
 41: # MILESTONE A: default is the sidebar+panel board window. Set
@@ -4726,7 +4726,7 @@ The khtpm_strip_parser process is not running! The taskbar uses khtpm_taskbar_ma
 
 **Output:**
 ```
-no         50855  4.6  0.0   3944  3164 ?        Ss   10:00  14:42 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00
+no         50855  4.6  0.0   3944  3164 ?        Ss   10:00  14:42 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00
 no        153642  0.0  0.0  10332  3576 ?        Ss   15:16   0:00 /bin/bash -c ps aux | grep khtpm_taskbar
 no        153644  0.0  0.0   9572  2664 ?        S    15:16   0:00 grep khtpm_taskbar
 
@@ -4752,7 +4752,7 @@ The taskbar manager main is running. Let me check if the strip_parser is part of
 
 **Output:**
 ```
-no         50857  1.5  0.0  62092 13552 ?        Ss   10:00   4:53 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/khtpm_strip_header.xhtpm
+no         50857  1.5  0.0  62092 13552 ?        Ss   10:00   4:53 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/khtpm_strip_header.xhtpm
 no        153661  0.0  0.0  10332  3592 ?        Ss   15:16   0:00 /bin/bash -c ps aux | grep khtpm_strip
 no        153663  0.0  0.0   9572  2664 ?        S    15:16   0:00 grep khtpm_strip
 
@@ -4772,18 +4772,18 @@ The khtpm_core_render is running the strip_header.xhtpm - this is the parser tha
 ```json
 {
   "pattern": "poll_agent_relay",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops"
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops"
 }
 ```
 
 **Output:**
 ```
 Found 3 matches
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_keyboard_ascii.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_strip_keyboard_ascii.c:
   Line 13:  *     khtpm_core_render.c on 2026-09-01; its poll_agent_relay() (which
 
 
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager_main.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager_main.c:
   Line 934:  * tp_taskbar.c's poll_agent_relay() (see that function, ~line 3368):
 
   Line 1054:     /* Fixed-interval polling, matching poll_agent_relay()'s own precedent
@@ -4804,7 +4804,7 @@ Let me look at the khtpm_core_render.c for the poll_agent_relay function - it se
 ```json
 {
   "pattern": "poll_agent_relay",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "include": "*.c"
 }
 ```
@@ -4812,11 +4812,11 @@ Let me look at the khtpm_core_render.c for the poll_agent_relay function - it se
 **Output:**
 ```
 Found 3 matches
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_keyboard_ascii.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_strip_keyboard_ascii.c:
   Line 13:  *     khtpm_core_render.c on 2026-09-01; its poll_agent_relay() (which
 
 
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager_main.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager_main.c:
   Line 934:  * tp_taskbar.c's poll_agent_relay() (see that function, ~line 3368):
 
   Line 1054:     /* Fixed-interval polling, matching poll_agent_relay()'s own precedent
@@ -4837,7 +4837,7 @@ Let me search for the poll_agent_relay function in khtpm_core_render.c
 ```json
 {
   "include": "khtpm_core_render.c",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "pattern": "poll_agent_relay"
 }
 ```
@@ -4860,7 +4860,7 @@ Let me search more
 **Input:**
 ```json
 {
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "include": "*.c",
   "pattern": "livedesk_agent_relay"
 }
@@ -4869,7 +4869,7 @@ Let me search more
 **Output:**
 ```
 Found 1 matches
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_keyboard_ascii.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_strip_keyboard_ascii.c:
   Line 14:  *     consumed livedesk_agent_relay.txt) went with it. The current
 
 ```
@@ -4887,13 +4887,13 @@ The relay function seems to be missing from khtpm_core_render.c. Let me check kh
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_keyboard_ascii.c"
+  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_strip_keyboard_ascii.c"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_keyboard_ascii.c</path>
+<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_strip_keyboard_ascii.c</path>
 <type>file</type>
 <content>
 1: /* khtpm_strip_keyboard_ascii.c — raw-terminal keyboard input capture for
@@ -5031,7 +5031,7 @@ This is the keyboard ASCII binary, not the main khtpm_core_render. The comment s
 {
   "include": "khtpm_core_render.c",
   "pattern": "agent_relay",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops"
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops"
 }
 ```
 
@@ -5054,14 +5054,14 @@ The khtpm_core_render.c doesn't have the agent_relay polling. This is a bug - th
 ```json
 {
   "offset": 1040,
-  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager_main.c",
+  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager_main.c",
   "limit": 100
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager_main.c</path>
+<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager_main.c</path>
 <type>file</type>
 <content>
 1040:                         "(%s)\n", existing, st.pid_path);
@@ -5157,7 +5157,7 @@ So the manager is polling strip_history.txt, but where does the livedesk_agent_r
 **Input:**
 ```json
 {
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "pattern": "strip_history",
   "include": "khtpm_core_render.c"
 }
@@ -5166,7 +5166,7 @@ So the manager is polling strip_history.txt, but where does the livedesk_agent_r
 **Output:**
 ```
 Found 7 matches
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c:
   Line 2914:  * poll_strip_history() consumes). Used to tell the manager "the on-screen
 
   Line 2921:     snprintf(hist, sizeof(hist), "%s/#.desktop/strip_history.txt", g_house_root);
@@ -5197,14 +5197,14 @@ So khtpm_core_render.c writes to strip_history.txt but doesn't seem to read from
 ```json
 {
   "offset": 7820,
-  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c",
+  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c",
   "limit": 50
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c</path>
+<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c</path>
 <type>file</type>
 <content>
 7820:      * BEFORE the generic dispatch() fallback (same real "an element
@@ -5275,7 +5275,7 @@ So khtpm_core_render.c writes to strip_history.txt when clicking on strip cells.
 **Input:**
 ```json
 {
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "pattern": "dispatch_key_code",
   "include": "khtpm_core_render.c"
 }
@@ -5300,14 +5300,14 @@ So the poll_agent_relay/dispatch_key_code functions are NOT in khtpm_core_render
 ```json
 {
   "pattern": "khtpm_strip_parser*",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops"
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops"
 }
 ```
 
 **Output:**
 ```
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser_win.c
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_strip_parser.exe
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_strip_parser_win.c
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_strip_parser.exe
 ```
 
 ---
@@ -5323,7 +5323,7 @@ There's a khtpm_strip_parser_win.c file. Let me check if that has the relay poll
 **Input:**
 ```json
 {
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "include": "khtpm_strip_parser_win.c",
   "pattern": "poll_agent_relay|agent_relay"
 }
@@ -5348,13 +5348,13 @@ The poll_agent_relay function is missing. This confirms the bug - the agent rela
 ```json
 {
   "limit": 100,
-  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser_win.c"
+  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_strip_parser_win.c"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser_win.c</path>
+<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_strip_parser_win.c</path>
 <type>file</type>
 <content>
 1: /* khtpm_strip_parser_win.c — Windows GDI surface for the livedesk strip.
@@ -5475,7 +5475,7 @@ This is the Windows version. Let me look for the Linux khtpm_strip_parser.c whic
 **Input:**
 ```json
 {
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "pattern": "khtpm_strip_parser.c"
 }
 ```
@@ -5500,13 +5500,13 @@ Let me check if there's a build script or if the parser is built differently.
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/build_khtpm_strip.sh"
+  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/build_khtpm_strip.sh"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/build_khtpm_strip.sh</path>
+<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/build_khtpm_strip.sh</path>
 <type>file</type>
 <content>
 1: #!/bin/sh
@@ -5516,7 +5516,7 @@ Let me check if there's a build script or if the parser is built differently.
 5: #
 6: # PRODUCTION BINARY NAMES (2026-08-11): legacy tp_taskbar.c has been
 7: # retired (archived to
-8: # *.monads/*.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip, originals
+8: # _.monads/_.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip, originals
 9: # deleted — direct instruction: "id like to deprecate the old toolbar
 10: # system now"). This khtpm pair is now the real, only taskbar — dropped
 11: # the "_test" suffix these binaries carried through the whole build-out
@@ -5746,14 +5746,14 @@ Let me check the khtpm_core_render.c for the strip mode entry point.
 {
   "pattern": "strip_main|strip_mode",
   "include": "khtpm_core_render.c",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops"
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops"
 }
 ```
 
 **Output:**
 ```
 Found 3 matches
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c:
   Line 10927:  * consolidation, phase 2 - see strip_main()'s own big header comment
 
   Line 11995:                  * strip_main(), see that function's own big header
@@ -5777,13 +5777,13 @@ Let me check the strip_main function in khtpm_core_render.c
 {
   "limit": 150,
   "offset": 17550,
-  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c"
+  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c</path>
+<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c</path>
 <type>file</type>
 <content>
 17550:         argc = w;
@@ -6069,24 +6069,24 @@ The frame history is empty. Let me check if the parser process is running proper
 
 **Output:**
 ```
-no         50857  1.6  0.0  62092 13552 ?        Ss   10:00   5:14 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/khtpm_strip_header.xhtpm
-no         50860  0.0  0.0  66652 11308 ?        Ss   10:00   0:14 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword
-no        134607  0.0  0.0  66660 11288 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_castle_a
-no        134609  0.0  0.0  66656 11280 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_a1
-no        134611  0.0  0.0  66664 11296 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_a2
-no        134613  0.0  0.0  66660 11356 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a1
-no        134615  0.0  0.0  66656 11296 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a2
-no        134617  0.0  0.0  66656 11232 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a3
-no        134619  0.0  0.0  66664 11272 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a4
-no        134621  0.0  0.0  66652 11304 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_castle_b
-no        134623  0.0  0.0  66664 11180 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_b1
-no        134625  0.0  0.0  66652 11232 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_b2
-no        134627  0.0  0.0  66664 11288 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b1
-no        134629  0.0  0.0  66660 11252 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b2
-no        134631  0.0  0.0  66660 11204 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b3
-no        134633  0.0  0.0  66656 11228 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b4
-no        134635  0.0  0.0  66664 11296 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_population_a
-no        134637  0.0  0.0  66656 11248 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_population_b
+no         50857  1.6  0.0  62092 13552 ?        Ss   10:00   5:14 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/khtpm_strip_header.xhtpm
+no         50860  0.0  0.0  66652 11308 ?        Ss   10:00   0:14 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword
+no        134607  0.0  0.0  66660 11288 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_castle_a
+no        134609  0.0  0.0  66656 11280 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_a1
+no        134611  0.0  0.0  66664 11296 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_a2
+no        134613  0.0  0.0  66660 11356 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a1
+no        134615  0.0  0.0  66656 11296 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a2
+no        134617  0.0  0.0  66656 11232 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a3
+no        134619  0.0  0.0  66664 11272 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_a4
+no        134621  0.0  0.0  66652 11304 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_castle_b
+no        134623  0.0  0.0  66664 11180 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_b1
+no        134625  0.0  0.0  66652 11232 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_bank_b2
+no        134627  0.0  0.0  66664 11288 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b1
+no        134629  0.0  0.0  66660 11252 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b2
+no        134631  0.0  0.0  66660 11204 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b3
+no        134633  0.0  0.0  66656 11228 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_store_b4
+no        134635  0.0  0.0  66664 11296 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_population_a
+no        134637  0.0  0.0  66656 11248 ?        Ss   14:06   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/dsr_population_b
 no        157963  0.0  0.0  10332  3576 ?        Ss   15:26   0:00 /bin/bash -c ps aux | grep khtpm_core_render
 no        157965  0.0  0.0   9572  2660 ?        S    15:26   0:00 grep khtpm_core_render
 
@@ -6158,7 +6158,7 @@ The frame history file is empty. Let me check the khtpm_strip_parser_main.c to s
 ```json
 {
   "include": "khtpm_taskbar_manager_main.c",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "pattern": "khtpm_strip_frame_history|frame_history"
 }
 ```
@@ -6181,7 +6181,7 @@ Let me search for where frame history is written.
 **Input:**
 ```json
 {
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "pattern": "strip_frame_history",
   "include": "*.c"
 }
@@ -6206,7 +6206,7 @@ Let me check the khtpm_core_render.c for where frame history is written - maybe 
 ```json
 {
   "include": "khtpm_core_render.c",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "pattern": "frame_history"
 }
 ```
@@ -6214,7 +6214,7 @@ Let me check the khtpm_core_render.c for where frame history is written - maybe 
 **Output:**
 ```
 Found 5 matches
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c:
   Line 8077:     snprintf(hpath, sizeof(hpath), "%s/#.desktop/strip_ascii_frame_history.txt", g_house_root);
 
   Line 8143:  * dock's own strip_ascii_frame_history.txt discipline (timestamped block
@@ -6241,7 +6241,7 @@ The frame history is for the ASCII mirror (strip_ascii_frame_history.txt), not t
 ```json
 {
   "include": "khtpm_strip_render_ascii.c",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "pattern": "strip_ascii_frame_history"
 }
 ```
@@ -6249,7 +6249,7 @@ The frame history is for the ASCII mirror (strip_ascii_frame_history.txt), not t
 **Output:**
 ```
 Found 3 matches
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_render_ascii.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_strip_render_ascii.c:
   Line 43:  *   - #.desktop/strip_ascii_frame_history.txt  (auditable, timestamped
 
   Line 162:     build_path(path, sizeof(path), "#.desktop/strip_ascii_frame_history.txt");
@@ -6582,7 +6582,7 @@ Let me check the khtpm_core_render.c for poll_agent_relay in strip mode.
 ```json
 {
   "include": "khtpm_core_render.c",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "pattern": "poll_agent_relay|agent_history"
 }
 ```
@@ -6590,7 +6590,7 @@ Let me check the khtpm_core_render.c for poll_agent_relay in strip mode.
 **Output:**
 ```
 Found 11 matches
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c:
   Line 3789:  * viewport is handled in poll_agent_history. Page_Up/Page_Down already
 
   Line 8121:  * PID, next to the per-PID input relay that poll_agent_history() already
@@ -6629,14 +6629,14 @@ There's a `poll_agent_history()` function that reads from the relay file. Let me
 ```json
 {
   "limit": 50,
-  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c",
+  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c",
   "offset": 9610
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c</path>
+<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c</path>
 <type>file</type>
 <content>
 9610:     if (g_history_cursor < 0) { struct stat st; g_history_cursor = (stat(path,&st)==0)?st.st_size:0; }
@@ -6708,7 +6708,7 @@ The `poll_agent_history()` function reads from a history file returned by `histo
 ```json
 {
   "pattern": "history_path",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "include": "khtpm_core_render.c"
 }
 ```
@@ -6716,7 +6716,7 @@ The `poll_agent_history()` function reads from a history file returned by `histo
 **Output:**
 ```
 Found 15 matches
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c:
   Line 111: static void history_path(char *out, size_t outsz);
 
   Line 112: static void history_unregister(void); /* REAL, NEW 2026-08-29 - see its own real definition/comment near history_path() */
@@ -6764,13 +6764,13 @@ Let me check the history_path function to see what file it uses
 {
   "offset": 9165,
   "limit": 30,
-  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c"
+  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c"
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c</path>
+<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c</path>
 <type>file</type>
 <content>
 9165:     snprintf(out, outsz, "%s/#.desktop/entity_menu_history", g_house_root);
@@ -7411,7 +7411,7 @@ Actually, looking at the code I read earlier, the strip mode (dock-header) in kh
 ```json
 {
   "include": "khtpm_core_render.c",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "pattern": "poll_strip_history"
 }
 ```
@@ -7419,7 +7419,7 @@ Actually, looking at the code I read earlier, the strip mode (dock-header) in kh
 **Output:**
 ```
 Found 1 matches
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c:
   Line 2914:  * poll_strip_history() consumes). Used to tell the manager "the on-screen
 
 ```
@@ -7439,7 +7439,7 @@ There's a `poll_strip_history()` function. Let me find it and see what it does
 {
   "include": "khtpm_core_render.c",
   "pattern": "static.*poll_strip_history",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops"
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops"
 }
 ```
 
@@ -7462,7 +7462,7 @@ Let me search for the function definition
 ```json
 {
   "include": "khtpm_core_render.c",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "pattern": "poll_strip_history\\("
 }
 ```
@@ -7470,7 +7470,7 @@ Let me search for the function definition
 **Output:**
 ```
 Found 1 matches
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c:
   Line 2914:  * poll_strip_history() consumes). Used to tell the manager "the on-screen
 
 ```
@@ -7489,7 +7489,7 @@ Let me search for the actual function definition
 ```json
 {
   "pattern": "int poll_strip_history",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "include": "khtpm_core_render.c"
 }
 ```
@@ -7512,7 +7512,7 @@ Let me check the khtpm_taskbar_manager_main.c for poll_strip_history
 **Input:**
 ```json
 {
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "pattern": "poll_strip_history",
   "include": "khtpm_taskbar_manager_main.c"
 }
@@ -7521,7 +7521,7 @@ Let me check the khtpm_taskbar_manager_main.c for poll_strip_history
 **Output:**
 ```
 Found 2 matches
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager_main.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager_main.c:
   Line 940: static int poll_strip_history(KtbState *s, const char *house_root) {
 
   Line 1060:         int mutated = poll_strip_history(&st, house_root);
@@ -7549,7 +7549,7 @@ The issue is that the parser in the strip mode might not be reading livedesk_age
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c",
+  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c",
   "offset": 17695,
   "limit": 100
 }
@@ -7557,7 +7557,7 @@ The issue is that the parser in the strip mode might not be reading livedesk_age
 
 **Output:**
 ```
-<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c</path>
+<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c</path>
 <type>file</type>
 <content>
 17695:         /* REAL FIX 2026-09-13 (direct live report: "task bar has an
@@ -7655,7 +7655,7 @@ The issue is that the parser in the strip mode might not be reading livedesk_age
 17787:      * not a fixed ops-dir filename like the other 2 modes. */
 17788:     {
 17789:         char css_path[PATH_BUF];
-17790:         snprintf(css_path, sizeof(css_path), "%s/*.monads/*.livedesk-taskbar/ops/entity_menu_default.css",
+17790:         snprintf(css_path, sizeof(css_path), "%s/_.monads/_.livedesk-taskbar/ops/entity_menu_default.css",
 17791:                  g_house_root);
 17792:         memset(&g_sheet, 0, sizeof(g_sheet));
 17793:         css_load(css_path, &g_sheet);
@@ -7680,14 +7680,14 @@ Let me find the main event loop for the strip mode to see if it polls the relay
 {
   "include": "khtpm_core_render.c",
   "pattern": "strip_main",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops"
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops"
 }
 ```
 
 **Output:**
 ```
 Found 3 matches
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c:
   Line 10927:  * consolidation, phase 2 - see strip_main()'s own big header comment
 
   Line 11995:                  * strip_main(), see that function's own big header
@@ -7709,7 +7709,7 @@ Let me find the strip_main function
 **Input:**
 ```json
 {
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "include": "khtpm_core_render.c",
   "pattern": "^strip_main\\("
 }
@@ -7735,14 +7735,14 @@ Let me search for the function definition
 {
   "pattern": "strip_main",
   "include": "khtpm_core_render.c",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops"
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops"
 }
 ```
 
 **Output:**
 ```
 Found 3 matches
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c:
   Line 10927:  * consolidation, phase 2 - see strip_main()'s own big header comment
 
   Line 11995:                  * strip_main(), see that function's own big header
@@ -7766,7 +7766,7 @@ Let me look at the tp_main function which is called for argc==2 (strip mode)
 {
   "pattern": "^tp_main\\(",
   "include": "khtpm_core_render.c",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops"
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops"
 }
 ```
 
@@ -7789,7 +7789,7 @@ Let me find the tp_main function
 ```json
 {
   "include": "khtpm_core_render.c",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "pattern": "tp_main"
 }
 ```
@@ -7797,7 +7797,7 @@ Let me find the tp_main function
 **Output:**
 ```
 Found 31 matches
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c:
   Line 486:  * tp_main() (tile/entity mode) has its own LOCAL Display and never
 
   Line 491:  * which is what tp_main's popup windows and popup_gc actually use
@@ -7878,7 +7878,7 @@ Let me check the main event loop for the default/HQ path which includes the stri
 ```json
 {
   "include": "khtpm_core_render.c",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "pattern": "hq_run_event_loop"
 }
 ```
@@ -7886,7 +7886,7 @@ Let me check the main event loop for the default/HQ path which includes the stri
 **Output:**
 ```
 Found 9 matches
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c:
   Line 2780:  * loop). Consumed at the bottom of hq_run_event_loop(). */
 
   Line 2810:  * honoured at the top of hq_run_event_loop() so every mode is covered
@@ -7920,7 +7920,7 @@ Let me read the hq_run_event_loop function
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c",
+  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c",
   "limit": 100,
   "offset": 10795
 }
@@ -7928,7 +7928,7 @@ Let me read the hq_run_event_loop function
 
 **Output:**
 ```
-<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c</path>
+<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c</path>
 <type>file</type>
 <content>
 10795:  * event loop and runs the shared cleanup path. */
@@ -8050,7 +8050,7 @@ I see - the strip mode uses `hq_run_event_loop` and in the idle tick it calls `h
 ```json
 {
   "include": "khtpm_core_render.c",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "pattern": "dock_poll_strip_state"
 }
 ```
@@ -8058,7 +8058,7 @@ I see - the strip mode uses `hq_run_event_loop` and in the idle tick it calls `h
 **Output:**
 ```
 Found 5 matches
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c:
   Line 2042:          * dock_poll_strip_state() below already watches that marker's
 
   Line 7939: static void dock_poll_strip_state(void) {
@@ -8085,14 +8085,14 @@ Let me read the dock_poll_strip_state function
 ```json
 {
   "offset": 7935,
-  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c",
+  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c",
   "limit": 100
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c</path>
+<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c</path>
 <type>file</type>
 <content>
 7935:  * frame_changed.txt). We watch that marker's SIZE growth - never mtime -
@@ -8220,7 +8220,7 @@ Let me check the hq_idle_tick function to see if it calls poll_agent_history
 ```json
 {
   "pattern": "hq_idle_tick",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "include": "khtpm_core_render.c"
 }
 ```
@@ -8228,7 +8228,7 @@ Let me check the hq_idle_tick function to see if it calls poll_agent_history
 **Output:**
 ```
 Found 22 matches
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c:
   Line 120: static void kh_poll_cli_io_ctxmenu_action(void); /* fwd - hq_idle_tick() polls this; defined near kh_open_cli_io_context_menu */
 
   Line 121: static pid_t g_khtpm_menu_pid; /* fwd - hq_idle_tick() reaps this; real definition (with initializer) near launch_khtpm_menu() */
@@ -8288,7 +8288,7 @@ Let me read the hq_idle_tick function
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c",
+  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c",
   "limit": 100,
   "offset": 9845
 }
@@ -8296,7 +8296,7 @@ Let me read the hq_idle_tick function
 
 **Output:**
 ```
-<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c</path>
+<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c</path>
 <type>file</type>
 <content>
 9845:             hq_request_redraw();
@@ -8417,7 +8417,7 @@ I see - the hq_idle_tick function doesn't call poll_agent_history() for the stri
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c",
+  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c",
   "offset": 9945,
   "limit": 100
 }
@@ -8425,7 +8425,7 @@ I see - the hq_idle_tick function doesn't call poll_agent_history() for the stri
 
 **Output:**
 ```
-<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c</path>
+<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c</path>
 <type>file</type>
 <content>
 9945:          * incident history. If the peer's DATA exists (`g_dock_peer`
@@ -8810,7 +8810,7 @@ Let me check the manager process
 
 **Output:**
 ```
-no         50855  5.0  0.0   3944  3164 ?        Ss   10:00  17:47 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00
+no         50855  5.0  0.0   3944  3164 ?        Ss   10:00  17:47 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_taskbar_manager_main.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00
 no        188667  0.0  0.0  10332  3528 ?        Ss   15:51   0:00 /bin/bash -c ps aux | grep khtpm_taskbar_manager_main
 no        188669  0.0  0.0   9580  2680 ?        S    15:51   0:00 grep khtpm_taskbar_manager_main
 
@@ -8844,7 +8844,7 @@ Let me check what poll_agent_history does with code 4012
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c",
+  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c",
   "limit": 100,
   "offset": 9655
 }
@@ -8852,7 +8852,7 @@ Let me check what poll_agent_history does with code 4012
 
 **Output:**
 ```
-<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c</path>
+<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c</path>
 <type>file</type>
 <content>
 9655:                     n++;
@@ -8973,7 +8973,7 @@ The `poll_agent_history()` calls `dispatch_relay_code(code)` for each KEY_PRESSE
 **Input:**
 ```json
 {
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "pattern": "dispatch_relay_code",
   "include": "khtpm_core_render.c"
 }
@@ -8982,7 +8982,7 @@ The `poll_agent_history()` calls `dispatch_relay_code(code)` for each KEY_PRESSE
 **Output:**
 ```
 Found 6 matches
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c:
   Line 1869:  * dispatch_relay_code() (relay codes 220-225 = shifted arrows/Home/
 
   Line 8758:  * instant it's read (dispatch_relay_code() -> handle_key()/
@@ -9011,14 +9011,14 @@ Let me read the dispatch_relay_code function
 ```json
 {
   "offset": 9475,
-  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c",
+  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c",
   "limit": 100
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c</path>
+<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c</path>
 <type>file</type>
 <content>
 9475: }
@@ -9342,7 +9342,7 @@ Let me add some debug output by checking the kh_focus_debug
 ```json
 {
   "description": "Check focus debug log",
-  "command": "cat /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/kh_focus_debug.log 2>/dev/null || echo \"No log\""
+  "command": "cat /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/kh_focus_debug.log 2>/dev/null || echo \"No log\""
 }
 ```
 
@@ -9506,7 +9506,7 @@ Let me check the dock_ascii_append_state function to see how it works
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c",
+  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c",
   "offset": 8030,
   "limit": 80
 }
@@ -9514,7 +9514,7 @@ Let me check the dock_ascii_append_state function to see how it works
 
 **Output:**
 ```
-<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c</path>
+<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c</path>
 <type>file</type>
 <content>
 8030:     while (fgets(line, sizeof(line), s)) {
@@ -10082,14 +10082,14 @@ Let me check the actual code again
 ```json
 {
   "offset": 8080,
-  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c",
+  "filePath": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c",
   "limit": 50
 }
 ```
 
 **Output:**
 ```
-<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c</path>
+<path>/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c</path>
 <type>file</type>
 <content>
 8080:     strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", localtime(&now));
@@ -10204,7 +10204,7 @@ This should launch Piececraft-HQ. Let me check if it launched by looking for the
 
 **Output:**
 ```
-no        191387 32.2  0.0  67960 18096 ?        Rs   15:56   0:17 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/pchq-board.xhtpm piececraft-hq
+no        191387 32.2  0.0  67960 18096 ?        Rs   15:56   0:17 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/pchq-board.xhtpm piececraft-hq
 no        191412  0.7  0.0   2820  1868 ?        S    15:56   0:00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/ops/+x/pchq_board_projector.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq piececraft-hq
 no        195257  0.5  0.0  10332  3552 ?        Ss   15:57   0:00 /bin/bash -c sleep 2 && ps aux | grep pchq
 no        195416  0.0  0.0   9440  2652 ?        S    15:57   0:00 grep pchq
@@ -10272,17 +10272,17 @@ Let me open the HQ menu (cell 1) and see what's there.
 **Output:**
 ```
 HQITEM | @ always-on-top | livedesk:zorder-toggle | 0
-HQITEM | $.restart | sh *.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh new | 0
+HQITEM | $.restart | sh _.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh new | 0
 HQITEM | hide/show | sh $.crypts/scripts/hide-show-desks.sh | 0
 HQITEM | dir | xdg-open . | 0
 HQITEM | X.quit | quit | 0
 HQITEM | settings | livedesk:open-settings | 0
 HQITEM | stats | livedesk:open-stats | 0
-HQITEM | cli | sh *.monads/*.livedesk-taskbar/ops/open_cli.sh | 0
+HQITEM | cli | sh _.monads/_.livedesk-taskbar/ops/open_cli.sh | 0
 HQITEM | cursword | livedesk:spawn-cursword | 0
-HQITEM | !kill hq | sh *.monads/*.livedesk-taskbar/ops/kill_hq_windows.sh . | 0
+HQITEM | !kill hq | sh _.monads/_.livedesk-taskbar/ops/kill_hq_windows.sh . | 0
 HQITEM | debug | livedesk:open-palette:debug | 0
-HQITEM | proc-mon | sh *.monads/*.livedesk-taskbar/ops/open_mon.sh | 0
+HQITEM | proc-mon | sh _.monads/_.livedesk-taskbar/ops/open_mon.sh | 0
 HQITEM | notes-hq | sh '/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.desktop/scripts/notes.sh' 'hq' | 0
 HQITEM | cancel |  | 0
 KEY | hq_open | 1
@@ -10582,7 +10582,7 @@ The user is saying "wait" - they want me to pause and not continue without their
 **Output:**
 ```
 no        232890  0.3  0.0   3056  1668 ?        Ss   16:04   0:00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/event_pkg piececraft-hq
-no        236554  0.8  0.0  60132 10852 ?        Ss   16:05   0:00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/events-hq/../../*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/events-hq/pieces/dashboard.chtpm /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/event_pkg piececraft-hq
+no        236554  0.8  0.0  60132 10852 ?        Ss   16:05   0:00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/events-hq/../../_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/events-hq/pieces/dashboard.chtpm /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/event_pkg piececraft-hq
 no        236631  0.2  0.0   3056  1668 ?        S    16:05   0:00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/event_pkg piececraft-hq
 no        244436  0.0  0.0  10332  3572 ?        Ss   16:05   0:00 /bin/bash -c ps aux | grep events-hq
 no        244438  0.0  0.0   9572  2660 ?        S    16:05   0:00 grep events-hq
@@ -10627,11 +10627,11 @@ The user is asking about a "dead window" that says "main" and is not deletable. 
 
 **Output:**
 ```
-no         50857  1.8  0.0  62096 13556 ?        Ss   10:00   6:46 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/khtpm_strip_header.xhtpm
-no         50860  0.0  0.0  66652 11308 ?        Ss   10:00   0:17 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword
-no        185548  0.1  0.0  66664 11308 ?        Ss   15:45   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/castle
-no        191387 23.4  0.0  67960 18096 ?        Rs   15:56   2:55 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/pchq-board.xhtpm piececraft-hq
-no        236554  0.3  0.0  60132 10852 ?        Ss   16:05   0:00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/events-hq/../../*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/events-hq/pieces/dashboard.chtpm /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/event_pkg piececraft-hq
+no         50857  1.8  0.0  62096 13556 ?        Ss   10:00   6:46 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/khtpm_strip_header.xhtpm
+no         50860  0.0  0.0  66652 11308 ?        Ss   10:00   0:17 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/cursword
+no        185548  0.1  0.0  66664 11308 ?        Ss   15:45   0:01 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/castle
+no        191387 23.4  0.0  67960 18096 ?        Rs   15:56   2:55 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/pchq-board.xhtpm piececraft-hq
+no        236554  0.3  0.0  60132 10852 ?        Ss   16:05   0:00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/events-hq/../../_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/events-hq/pieces/dashboard.chtpm /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/event_pkg piececraft-hq
 no        263674  0.0  0.0  10332  3620 ?        Ss   16:09   0:00 /bin/bash -c ps aux | grep khtpm_core_render
 no        263678  0.0  0.0   9572  2660 ?        S    16:09   0:00 grep khtpm_core_render
 
@@ -10941,7 +10941,7 @@ Let me check if there's code that renders page names.
 ```json
 {
   "include": "khtpm_core_render.c",
-  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops",
+  "path": "/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops",
   "pattern": "page.*name|name.*main"
 }
 ```
@@ -10949,7 +10949,7 @@ Let me check if there's code that renders page names.
 **Output:**
 ```
 Found 26 matches
-/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c:
+/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c:
   Line 16:  *     <page name="main">
 
   Line 20:  *     <page name="other-page"> ... </page>
@@ -12559,7 +12559,7 @@ Found it at a different path. Let me read it.
 430: fully data-driven and zero-recompile** — `meta.pdl` has plain
 431: `METHOD | <label> | <action>` rows, mechanically converted to
 432: `menu.chtpm` by `meta_to_menu_chtpm.py`
-433: (`44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/`). This means "remove
+433: (`44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/`). This means "remove
 434: an option, add a new one" already costs nothing architecturally — the
 435: real, new work is making that ADDITION itself a **house-specific
 436: event** (per the user's own framing: "add option to context menu"
@@ -12758,7 +12758,7 @@ The user wants me to find and kill any remaining livedesk taskbar processes. Let
 **Output:**
 ```
 no        232890  0.3  0.0   3056  1668 ?        Ss   16:04   0:03 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/event_pkg piececraft-hq
-no        236554  0.2  0.0  60132 10856 ?        Ss   16:05   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/events-hq/../../*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/events-hq/pieces/dashboard.chtpm /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/event_pkg piececraft-hq
+no        236554  0.2  0.0  60132 10856 ?        Ss   16:05   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/events-hq/../../_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/events-hq/pieces/dashboard.chtpm /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/event_pkg piececraft-hq
 no        236631  0.3  0.0      0     0 ?        Z    16:05   0:02 [khtpm_events_hq] <defunct>
 
 ```
@@ -12788,7 +12788,7 @@ The user mentioned they quit the livedesk taskbar but there's still a living pro
 
 **Output:**
 ```
-no        236554  0.2  0.0  60132 10856 ?        Ss   16:05   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/events-hq/../../*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/events-hq/pieces/dashboard.chtpm /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/event_pkg piececraft-hq
+no        236554  0.2  0.0  60132 10856 ?        Ss   16:05   0:02 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/events-hq/../../_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00 /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&.widgits/events-hq/pieces/dashboard.chtpm /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/@.apps/piececraft-hq/event_pkg piececraft-hq
 
 ```
 

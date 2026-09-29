@@ -49,9 +49,9 @@ compile in that directory:**
 
 | build script | copies into its own dir |
 |---|---|
-| `*.monads/*.livedesk-taskbar/ops/build_core_render.sh` | `khtpm_css_parser.c/.h`, `khtpm_render_core.c`, `khtpm_draw_core.c`, `lib/stb_image_write.h` |
-| `*.monads/*.livedesk-taskbar/ops/build_khtpm_strip.sh` | `khtpm_css_parser.c/.h` |
-| `*.monads/*.livedesk-taskbar/ops/build_db_hq.sh` | `khtpm_css_parser.c/.h`, `khtpm_render_core.c`, `lib/stb_image_write.h` |
+| `_.monads/_.livedesk-taskbar/ops/build_core_render.sh` | `khtpm_css_parser.c/.h`, `khtpm_render_core.c`, `khtpm_draw_core.c`, `lib/stb_image_write.h` |
+| `_.monads/_.livedesk-taskbar/ops/build_khtpm_strip.sh` | `khtpm_css_parser.c/.h` |
+| `_.monads/_.livedesk-taskbar/ops/build_db_hq.sh` | `khtpm_css_parser.c/.h`, `khtpm_render_core.c`, `lib/stb_image_write.h` |
 | `&.widgits/tile-picker` , `&.widgits/open-hai/ops` , `&.widgits/livedesk-clock/ops` build scripts | same family of files |
 
 Result: the same file name exists as a **canonical copy** in
@@ -60,7 +60,7 @@ dirs:
 
 ```
 &.widgits/_shared-lib/khtpm_css_parser.c        <- canonical
-*.monads/*.livedesk-taskbar/ops/khtpm_css_parser.c   <- copy (git-TRACKED)
+_.monads/_.livedesk-taskbar/ops/khtpm_css_parser.c   <- copy (git-TRACKED)
 &.widgits/events-hq/ops/khtpm_css_parser.c           <- copy
 &.hq-apps/chat-hai/ops/khtpm_css_parser.c            <- copy
 &.widgits/livedesk-clock/ops/khtpm_css_parser.c      <- copy
@@ -148,7 +148,7 @@ For every affected build script:
 
 ### 3.2 Remove the stale copies
 - `git rm` the tracked copy
-  (`*.monads/*.livedesk-taskbar/ops/khtpm_css_parser.c` and `.h`, plus
+  (`_.monads/_.livedesk-taskbar/ops/khtpm_css_parser.c` and `.h`, plus
   any other tracked ones the audit finds);
 - delete the untracked copies from the working tree;
 - add to the repo `.gitignore` (belt-and-braces so a stray future `cp`
@@ -271,7 +271,7 @@ expected runtime noise.
 ## 6. Related
 
 - `&.widgits/_shared-lib/README.md` (the rationale being revised).
-- `*.monads/*.livedesk-taskbar/ops/build_core_render.sh`,
+- `_.monads/_.livedesk-taskbar/ops/build_core_render.sh`,
   `build_khtpm_strip.sh`, `build_db_hq.sh`.
 - `02-architecture/X11-HQ-APP-DESIGN-WISDOMS.md` §8 (the workaround
   note), `CENTROID_GOLD_STD.md` §2 Stage 1 (the "no in-house `.h`,

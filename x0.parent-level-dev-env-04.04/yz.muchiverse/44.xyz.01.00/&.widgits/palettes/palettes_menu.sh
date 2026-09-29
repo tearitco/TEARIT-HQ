@@ -129,14 +129,14 @@ launch_cat() {  # launch_cat <house> <key>
         case "$_cl" in *"$_CHTPM"*) kill "${p#/proc/}" 2>/dev/null || true ;; esac
     done
     sleep 0.2
-    BIN=$(echo "$_h"/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x)
+    BIN=$(echo "$_h"/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x)
     if [ ! -x "$BIN" ]; then
-        (cd "$_h/*.monads/*.livedesk-taskbar/ops" && sh build_core_render.sh) || true
+        (cd "$_h/_.monads/_.livedesk-taskbar/ops" && sh build_core_render.sh) || true
     fi
     [ -x "$BIN" ] || { echo "palettes: renderer missing: $BIN" >&2; exit 1; }
-    MGRBIN="$_h/*.monads/*.livedesk-taskbar/ops/+x/palettes_manager.+x"
+    MGRBIN="$_h/_.monads/_.livedesk-taskbar/ops/+x/palettes_manager.+x"
     if [ ! -x "$MGRBIN" ]; then
-        (cd "$_h/*.monads/*.livedesk-taskbar/ops" && sh build_palettes_manager.sh) || true
+        (cd "$_h/_.monads/_.livedesk-taskbar/ops" && sh build_palettes_manager.sh) || true
     fi
     log "category window launched (real manager, TPMOS-compliant): $_k"
     exec "$BIN" "$_h" "$_CHTPM"

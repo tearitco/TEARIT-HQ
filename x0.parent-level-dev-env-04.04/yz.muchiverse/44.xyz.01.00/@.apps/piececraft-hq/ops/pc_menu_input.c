@@ -627,7 +627,7 @@ static void open_board_widget(const char *project_root, char *message, size_t me
          * before is retired (canvas rendering + Interact Mode both
          * live-verified against the new path this session). */
         char khtpm_bin[PATH_BUF], khtpm_xhtpm[PATH_BUF];
-        snprintf(khtpm_bin, sizeof(khtpm_bin), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", house_root);
+        snprintf(khtpm_bin, sizeof(khtpm_bin), "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x", house_root);
         snprintf(khtpm_xhtpm, sizeof(khtpm_xhtpm), "%s/pchq-board.xhtpm", real_root);
         if (access(khtpm_bin, F_OK) == 0 && access(khtpm_xhtpm, F_OK) == 0) {
             /* generic-mode launch, no argv[3]/[4] - pchq-board.xhtpm's

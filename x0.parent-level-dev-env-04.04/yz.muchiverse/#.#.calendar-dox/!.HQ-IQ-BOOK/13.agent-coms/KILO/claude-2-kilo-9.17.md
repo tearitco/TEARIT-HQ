@@ -543,7 +543,7 @@ Real, confirmed fact: **context menus in this house are ALREADY
 fully data-driven and zero-recompile** — `meta.pdl` has plain
 `METHOD | <label> | <action>` rows, mechanically converted to
 `menu.chtpm` by `meta_to_menu_chtpm.py`
-(`44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/`). This means "remove
+(`44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/`). This means "remove
 an option, add a new one" already costs nothing architecturally — the
 real, new work is making that ADDITION itself a **house-specific
 event** (per the user's own framing: "add option to context menu"

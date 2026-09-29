@@ -30,7 +30,7 @@ Datetime is baked into a cell **label** in the layout. Every
 because the **template** mtime moved.
 
 A unused-correct template already exists:
-`*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm` with `${username}`
+`_.monads/_.livedesk-taskbar/khtpm_strip_header.chtpm` with `${username}`
 etc. — but it uses the old strip-parser `<panel>/<button>` tags, not the
 live dock vocabulary (`<window class="dock-header">` / `<item class="dock-cell">`).
 
@@ -70,7 +70,7 @@ Built `khtpm_taskbar_manager_main.+x` + `khtpm_core_render.+x`.
 - `publish_strip_ui()` writes `#.desktop/strip_ui.txt` (key=value +
   `<repeat>` fields). `publish_live_chtpm()` `#if 0`.
 - Static templates:
-  `*.monads/*.livedesk-taskbar/khtpm_strip_header.xhtpm`
+  `_.monads/_.livedesk-taskbar/khtpm_strip_header.xhtpm`
   `khtpm_strip_bottom.xhtpm`
   `vars="#.desktop/strip_ui.txt"` (renderer resolves `#.` against house_root).
 - `g_dock_peer_path` = sibling `khtpm_strip_bottom.xhtpm` (not generated).
@@ -87,7 +87,7 @@ header cells with substituted labels; bottom dump shows 7 tab items from
 
 Recipe (from house `44.xyz.01.00`):
 ```
-sh "*.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh" run
+sh "_.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh" run
 ```
 That script rebuilds, kills the previous strip pair, waits for
 `strip_ui.txt`, launches renderer on the static header template.

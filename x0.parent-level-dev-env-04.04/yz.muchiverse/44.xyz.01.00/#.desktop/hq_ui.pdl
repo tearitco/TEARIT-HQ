@@ -1,6 +1,16 @@
 # hq_ui.pdl - per-desktop UI options read by khtpm_core_render (every
 # HQ / x11-hq window). Plain key=value. Live-reloaded.
 
+# EVENT_OBJECTS_VISIBLE: EVENT-MODULARITY-AND-BUILD-SPEED.md §1's
+# 🎬️/⚙️/🧩 event objects (real pal-shaped, nested inside an entity's own
+# inventory/) - direct instruction: "they dont need to show up on pals,
+# neither do pages, but they can, lets .pdl toggle as optional." House-
+# wide default is 0 (hidden) - structural drag-drop backing exists on
+# disk regardless, this only controls whether file-explorer's directory
+# listing (file_explorer_manager.c's list_directory()) shows them.
+# 0 = hidden (default), 1 = visible.
+EVENT_OBJECTS_VISIBLE=0
+
 # close_combo: the ONLY keyboard gesture that closes a focused window
 # (Escape deliberately does NOT - too easy to hit by accident). The
 # window's [X] chrome button always works too. Format: ctrl+<key>,

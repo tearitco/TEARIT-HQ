@@ -784,6 +784,35 @@ static int layout_hidden_anc(NbNode *n) {
     for (NbNode *a = n; a; a = a->parent) if (css_hidden(a)) return 1;
     return 0;
 }
+/* Text metrics for unstyled content. The khtpm renderer draws 12px text on a
+ * 14px baseline, so a line box is 14px tall and an average glyph advances
+ * ~7px; content wraps at the renderer's 640px column. */
+#define NB_FONT_PX     12
+#define NB_LINE_PX     14
+#define NB_CHAR_PX     7
+#define NB_CONTENT_PX  640
+
+/* Height of an element's content box. A declared CSS height wins (that is what
+ * the offset/client metrics report). Otherwise a block sums its children and a
+ * text node gets one line per full column of characters, so unstyled paragraphs
+ * stack the way they do in a browser instead of all reporting 0. */
+static double nb_content_h(NbNode *n) {
+    if (!n || layout_hidden_anc(n)) return 0;
+    NbCssStyle st;
+    nb_css_resolve(g_css, n, nb_attr_get(n, "style"), &st);
+    if (st.has_height && st.height > 0) return st.height;
+    double sum = 0;
+    for (NbNode *c = n->first_child; c; c = c->next_sibling) sum += nb_content_h(c);
+    if (sum > 0) return sum;
+    if (!n->text || !n->text[0]) return 0;
+    int len = (int)strlen(n->text);
+    int per_line = NB_CONTENT_PX / NB_CHAR_PX;
+    if (per_line < 1) per_line = 1;
+    int lines = (len + per_line - 1) / per_line;
+    if (lines < 1) lines = 1;
+    return (double)lines * NB_LINE_PX;
+}
+
 static void layout_xy(NbNode *n, double *out_x, double *out_y) {
     if (!n || layout_hidden_anc(n)) { *out_x = 0; *out_y = 0; return; }
     double y = 0;
@@ -792,8 +821,7 @@ static void layout_xy(NbNode *n, double *out_x, double *out_y) {
     }
     for (NbNode *s = n->parent ? n->parent->first_child : NULL; s && s != n; s = s->next_sibling) {
         if (layout_hidden_anc(s)) continue;
-        NbCssStyle st; nb_css_resolve(g_css, s, nb_attr_get(s, "style"), &st);
-        y += st.height;
+        y += nb_content_h(s);
     }
     *out_x = 0; *out_y = y;
 }
@@ -808,7 +836,8 @@ static JSValue nb_el_getBoundingClientRect(JSContext *ctx, JSValueConst this_val
     if (n && !layout_hidden_anc(n)) {
         NbCssStyle st;
         nb_css_resolve(g_css, n, nb_attr_get(n, "style"), &st);
-        w = st.width; h = st.height;
+        w = st.width;
+        h = st.has_height ? st.height : nb_content_h(n);
         layout_xy(n, &x, &y);
     }
     JSValue o = JS_NewObject(ctx);

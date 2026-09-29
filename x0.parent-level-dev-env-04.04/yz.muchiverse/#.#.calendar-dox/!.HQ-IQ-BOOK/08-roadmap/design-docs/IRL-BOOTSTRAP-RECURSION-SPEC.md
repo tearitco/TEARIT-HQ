@@ -25,7 +25,7 @@ re-narration — read the NIGHT file for the "why," this file for the
   to `<session_dir>/transcript.txt` — one line per turn, `U|<text>`
   (human) / `A|<text>` (Gemma via Ollama). This is Layer 0's real data
   source. No new logging needed.
-- `*.monads/*.cursword/ops/cursword_fsm.c` already documents the real
+- `_.monads/_.cursword/ops/cursword_fsm.c` already documents the real
   FSM-first/Gemma-optional pattern this spec's FSM reuses (model
   optional, canned fallback always present) — `cursword_say()` itself
   is still an open stub (horizon item 3), a separate, smaller gap from

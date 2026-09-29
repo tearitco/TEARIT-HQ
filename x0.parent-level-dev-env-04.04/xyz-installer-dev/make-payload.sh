@@ -26,7 +26,7 @@ OUT="${1:-$HERE/build/tearit-hq-payload}"
 echo "house : $HOUSE"
 echo "out   : $OUT"
 
-[ -d "$HOUSE/*.monads/*.livedesk-taskbar" ] || { echo "FATAL: taskbar dir not found under \$HOUSE"; exit 1; }
+[ -d "$HOUSE/_.monads/_.livedesk-taskbar" ] || { echo "FATAL: taskbar dir not found under \$HOUSE"; exit 1; }
 
 rm -rf "$OUT"
 mkdir -p "$OUT"
@@ -50,8 +50,8 @@ copy_rel() {
 }
 
 echo "--- copying code subtrees (house-relative paths preserved) ---"
-copy_rel "*.monads/*.livedesk-taskbar"
-copy_rel "*.monads/*.cursword"
+copy_rel "_.monads/_.livedesk-taskbar"
+copy_rel "_.monads/_.cursword"
 copy_rel "&.widgits/_shared-lib"
 copy_rel "&.widgits/livedesk-clock"
 copy_rel "0.user-pal👤️/00.login-signup"

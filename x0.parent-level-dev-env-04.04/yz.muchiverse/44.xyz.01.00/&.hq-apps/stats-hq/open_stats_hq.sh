@@ -36,7 +36,7 @@ SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
 # stats-hq's own former reference (au11-hq/khtpm-merge-how2.md's own
 # "kept live for stats-hq" note is now stale - see TPMOS-COMPLIANCE-
 # DEBT.md for the real, current status).
-OPS_DIR="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
+OPS_DIR="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops"
 BIN="$OPS_DIR/+x/khtpm_core_render.+x"
 MGR_BIN="$OPS_DIR/+x/stats_hq_manager.+x"
 CHTPM="$HOUSE_ROOT/&.hq-apps/stats-hq/dashboard.chtpm"

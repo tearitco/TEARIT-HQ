@@ -26,7 +26,7 @@ tools) — those are proven by state dumps, no navigation exists to show.
 
 Real cell source: `44.xyz.01.00/#.desktop/livedesk_taskbar.pdl` (labels/
 commands, editable without recompile) dispatched by
-`44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c`.
+`44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c`.
 Launcher targets for HQ-menu rows resolve via
 `44.xyz.01.00/#.desktop/livedesk_launchers.pdl`.
 
@@ -86,7 +86,7 @@ tiles.** Backed by a real, checked-in 50-row CSV of actual chemical
 compounds (formula, color hex, melting/boiling point, density, toxicity,
 reactivity columns) at `44.xyz.01.00/#.ref/menu/palletes/
 chemistry_tiles_expanded🏆.csv`, rendered via `publish_elements()` in
-`44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/palettes_manager.c`
+`44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/palettes_manager.c`
 (line ~194, `g_source_path` set at line ~244) into
 `44.xyz.01.00/&.widgits/palettes/palettes-elements.chtpm`. Today this
 is click-to-place emoji/glyph tiles from real chemistry data (same
@@ -113,7 +113,7 @@ empty commands in the C fallback — not confirmed wired beyond reset.
 **Verdict: real, working.** Confirmed extensively earlier this session
 (see `COMMON-EVENTS-MANAGER-HANDOFF.md`) — db-ez/db-hq submenu rows are
 real (`ktb_menu_db()` ~line 2737–2747 of `khtpm_taskbar_manager.c`),
-dispatching to `*.monads/*.muchi-pet/ops/open_db_hq.sh`
+dispatching to `_.monads/_.muchi-pet/ops/open_db_hq.sh`
 (`launcher_db` in `livedesk_launchers.pdl`).
 
 ### plugins

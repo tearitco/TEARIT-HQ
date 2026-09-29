@@ -6,7 +6,7 @@
 > - **Task 1 (tb cleanup) — consolidation DONE + verified.** The full
 >   single-folder consolidation + flexible-path work is COMPLETE (2026-08-14
 >   late session): entity renderer + helper set moved OUT of
->   `&.widgits/tile-picker/ops/` INTO `*.monads/*.livedesk-taskbar/ops/`
+>   `&.widgits/tile-picker/ops/` INTO `_.monads/_.livedesk-taskbar/ops/`
 >   (user-confirmed target: "should be in ld-tb ops probably"). Canonical
 >   state re-verified after `button.sh reset` + Desktop launcher run: exactly
 >   1 parser + 1 manager + 6 entities, ALL from the new path, no stale
@@ -53,10 +53,10 @@ Start script: `44.xyz.01.00/$.crypts/button.sh`
 | Concern | Location |
 |---|---|
 | House-wide launcher | `$.crypts/button.sh` + `ops/crypt_autostart.c` + `autostart.pdl` |
-| Taskbar runtime (C) | `*.monads/*.livedesk-taskbar/ops/*.c` (8.2k lines) |
-| Taskbar layout | `*.monads/*.livedesk-taskbar/*.chtpm` (header 120, bottom 14) |
+| Taskbar runtime (C) | `_.monads/_.livedesk-taskbar/ops/*.c` (8.2k lines) |
+| Taskbar layout | `_.monads/_.livedesk-taskbar/*.chtpm` (header 120, bottom 14) |
 | State/config (.pdl) | `#.desktop/` — livedesk_taskbar.pdl, theme.pdl, launchers.pdl, shortcuts.pdl, hq_ui.pdl, live state files |
-| Entity window binary | `*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x` (moved OUT of tile-picker 2026-08-14 — see results) |
+| Entity window binary | `_.monads/_.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x` (moved OUT of tile-picker 2026-08-14 — see results) |
 
 ### Standards we already hold (reference files skimmed)
 
@@ -140,7 +140,7 @@ Start script: `44.xyz.01.00/$.crypts/button.sh`
     `tp_range_grid.c`, `stb_image.h` + binaries `tp_desktop_window_rgb.+x`,
     `tp_asset_to_sprite.+x`, `tp_range_grid.+x`, `emoji_gen_atlas.+x`,
     `emoji_xtract.+x` from `&.widgits/tile-picker/ops/{,+x/}` to
-    `*.monads/*.livedesk-taskbar/ops/{,+x/}`. Tile-picker keeps ONLY its own
+    `_.monads/_.livedesk-taskbar/ops/{,+x/}`. Tile-picker keeps ONLY its own
     widget tools (tp_set_brush/place/place_desktop/import_from_desktop/etc.)
     + the Windows `.exe` port artifacts.
   - **Flexible path discovery (no hardcoded climbs):** `resolve_livedesk_paths()`
@@ -152,11 +152,11 @@ Start script: `44.xyz.01.00/$.crypts/button.sh`
     (+helpers, incl. wsr-pal emoji-tool copy-backup); removed the entity +
     emoji builds from `tile-picker/scripts/build.sh` (keeps only widget tools).
   - **Consumers updated:** `autostart.pdl` 6 LAUNCH rows →
-    `'*.monads/*.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x'`;
+    `'_.monads/_.livedesk-taskbar/ops/+x/tp_desktop_window_rgb.+x'`;
     `khtpm_taskbar_manager.c` both spawn sites (livedesk_spawn_desk +
     livedesk_place_pal, the latter now rgb not legacy GLX name);
-    harnesses `$.crypts/scrypts/openall/run.sh`, `*.hard-vvar-agent-Q0000/button.sh`,
-    `*.book-stack/button.sh`, `@.apps/asa-&-ava/pieces/{asa,ava}/button.sh`,
+    harnesses `$.crypts/scrypts/openall/run.sh`, `_.hard-vvar-agent-Q0000/button.sh`,
+    `_.book-stack/button.sh`, `@.apps/asa-&-ava/pieces/{asa,ava}/button.sh`,
     `@.apps/pets/pieces/{dog,cat,chicken}/button.sh` (all pointed at the
     RETIRED `tp_desktop_window.+x` GLX name + old tile-picker dir).
   - **Launcher rewrite:** `$.crypts/ops/button_launcher.c` (globbed a
@@ -172,7 +172,7 @@ Start script: `44.xyz.01.00/$.crypts/button.sh`
   - **End-to-end verified:** `sh button.sh reset` AND
     `~/Desktop/🔐-Livedesk-Start` both rebuild + relaunch the canonical state
     (1 parser + 1 manager + 6 entities) — every process launched from the NEW
-    `*.monads/*.livedesk-taskbar/ops/+x/` path; zero stale tile-picker entity
+    `_.monads/_.livedesk-taskbar/ops/+x/` path; zero stale tile-picker entity
     procs; emoji→sprite pipeline re-tested OK from the new location;
     `livedesk_open.txt` registry repopulated (self, m8_redhorned,
     m1_ninjadragon, book-stack, asa, ava).

@@ -45,14 +45,14 @@ c0516dfe  Revert ae9e7d14   <-- reverted same day; see §6
 
 **`run_pchq_board_mode()` still exists, verbatim and complete, in LEG.**
 It is also recoverable from this repo at
-`git show 35c1b0b1~1:x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c`.
+`git show 35c1b0b1~1:x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c`.
 
 ---
 
 ## 2. What LEG's `run_pchq_board_mode()` actually does
 
 LEG line references are into
-`44.xyz❤️‍🔥️00.17/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c`.
+`44.xyz❤️‍🔥️00.17/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c`.
 
 | # | behavior | LEG lines | detail |
 |---|---|---|---|
@@ -69,7 +69,7 @@ LEG line references are into
 ## 3. What NU replaced each with
 
 NU line references are into
-`44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c` unless noted.
+`44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c` unless noted.
 
 | # | NU mechanism | where | gap vs LEG |
 |---|---|---|---|
@@ -275,7 +275,7 @@ reverted `01f2dbef`. Results:
 ## 8. File / line index for the diff
 
 **LEG** (`.../NNEST-11.17/.../44.xyz❤️‍🔥️00.17/`):
-- `*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c`
+- `_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c`
   - `run_pchq_board_mode()` — **8709-9520**
   - `pchq_*` helpers — 8366-8707 (`pchq_is_interact_on` 8406,
     `pchq_map_special_key` 8663, `pchq_append_key` 8673,
@@ -285,7 +285,7 @@ reverted `01f2dbef`. Results:
 - `@.apps/piececraft-hq/button.sh` — launches `pchq-board.chtpm`
 
 **NU** (this repo):
-- `*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c`
+- `_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c`
   - `load_override_redirect` ~186; window create + `dock_managed`
     ~14383; `render_managed_wm_hints` call ~14400
   - `kh_scan_interact_relay` 4409-4462; `g_interact_relay_on` forward

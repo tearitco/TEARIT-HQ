@@ -7,7 +7,7 @@ Archive Location: /home/no/Desktop/🧩️Piecemark-IT/中.SP_00.00/🗡️.crsw
 Contents:
 - test_results.txt: Pass/fail summary
 - test_log.txt: Detailed test execution log
-- Common_events_manager.+x binary at 44.xyz❤️‍🔥️00.17/*.monads/*.muchi-pet/ops/+x/common_events_manager.+x
+- Common_events_manager.+x binary at 44.xyz❤️‍🔥️00.17/_.monads/_.muchi-pet/ops/+x/common_events_manager.+x
 
 Evidence:
 - Autorun: Fired exactly 1 time on OFF→ON transition (edge-triggered)
@@ -15,5 +15,5 @@ Evidence:
 - Cooldown confirmed: timestamps in ledger show 1-second spacing (512-516)
 - All KPIs met
 
-Manager Source: 44.xyz❤️‍🔥️00.17/*.monads/*.muchi-pet/ops/common_events_manager.c
-Test Harness: 44.xyz❤️‍🔥️00.17/*.monads/*.muchi-pet/harnesses/common_events_manager_test_harness.sh
+Manager Source: 44.xyz❤️‍🔥️00.17/_.monads/_.muchi-pet/ops/common_events_manager.c
+Test Harness: 44.xyz❤️‍🔥️00.17/_.monads/_.muchi-pet/harnesses/common_events_manager_test_harness.sh

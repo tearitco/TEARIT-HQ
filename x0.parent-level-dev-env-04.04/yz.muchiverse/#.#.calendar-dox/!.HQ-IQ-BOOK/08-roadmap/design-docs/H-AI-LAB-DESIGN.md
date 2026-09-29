@@ -39,7 +39,7 @@ automates them.
   decision-pal entry's "chat" tier is a direct call into this dispatch,
   not a generic chat box - different KINDs genuinely take different
   input, the UI must branch on that, not paper over it.
-- `*.monads/*.cursword/ops/cursword_fsm.c` - the one real, live FSM in
+- `_.monads/_.cursword/ops/cursword_fsm.c` - the one real, live FSM in
   the house today. NOT table-driven: `set_state("OFFER")` etc. are
   plain sequential string writes in procedural C, no transition table,
   no trigger/condition struct. Cannot appear in an event-shaped viewer
@@ -55,7 +55,7 @@ automates them.
   already has a wired dropdown (`strip_btn_14_menu_0/1_label/cmd`:
   "Open h-ai," "Chat-h-ai"). h-ai-lab is a third row in this same
   dropdown, not a new taskbar cell.
-- `*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c`
+- `_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c`
   `livedesk_registry_add()` - the real read-prune-write-rename pattern
   (just root-caused and fixed twice this same week, see `bug_bounty.md`)
   the new AI-instance registry reuses, not a new file-locking scheme.

@@ -1,0 +1,23 @@
+# robot_chat.pal - real prisc+x poll loop for the drop-in chatbot
+# entity's chat window (AI-PUSH-ROADMAP-AND-NUANCES.md, "Track 1's
+# Natural Test Surface"). Direct instruction 2026-09-28: "the manager
+# should be a pal script instead of C, and we will call event calling
+# ops to do the chat" - replaces khtpm_robot_chat_manager.c (retired)
+# with a real, thin poll loop matching this house's own established
+# shape (014.wsr-pal's pal/main_loop_chtpm.pal: the .pal script is
+# JUST the poll/dispatch loop, every real file-parsing/formatting job
+# lives in its own small compiled op).
+#
+# `exec <path>` (a real, generic prisc+x built-in, not a registered
+# custom op - see prisc+x.c's own OP_EXEC) resolves a relative path
+# against THIS SCRIPT's own directory (g_pal_dir), hence "../ops/+x/...".
+# Each op reads PRISC_PROJECT_ROOT (=this window's real entity_dir,
+# launch_module()'s own setenv) and KHTPM_HOUSE from its environment -
+# no args need passing from this script at all.
+li x1, 0
+
+loop:
+exec ../ops/+x/rc_check_request.+x
+exec ../ops/+x/rc_publish_ui.+x
+sleep 300000
+j loop

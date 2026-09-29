@@ -547,11 +547,60 @@ static void write_chtpm_projection(void) {
     CH_APPEND("has_pending=%d\n", n_pending > 0 ? 1 : 0);
     CH_APPEND("n_pending=%d\n", n_pending);
     {
+        /* REAL FIX 2026-09-29 (bug_bounty.md's OPEN co-lab-hai entry).
+         * An earlier pass here truncated pend_msg to ~100 chars - direct
+         * live correction, with a real screenshot: NOT acceptable,
+         * "user should be able to read the message they need to
+         * approve". Real fix landed in co-lab-hai.xhtpm instead
+         * (<text_area class="top">, see its own header comment) - the
+         * full message now genuinely wraps and is fully readable, so
+         * no truncation is needed here at all. Kept the full pend_msg
+         * untouched. */
         char esc_agent[128], esc_msg[1200];
         xml_escape(pend_agent, esc_agent, sizeof(esc_agent));
         xml_escape(pend_msg, esc_msg, sizeof(esc_msg));
         CH_APPEND("pend_agent=%s\n", esc_agent);
         CH_APPEND("pend_msg=%s\n", esc_msg);
+        /* REAL FIX 2026-09-29, direct live instruction: "we should let
+         * the approval area be as long as it needs be" - a fixed rows=
+         * either overlapped the row below it (too small for a long
+         * message) or, at rows=8, looked like it broke the whole panel
+         * (that specific failure turned out to be an unrelated
+         * malformed-XML-comment bug, since fixed and confirmed rows=8
+         * on its own is fine) - fixed AT ALL is still the wrong shape
+         * when messages vary this much in real length. Compute real
+         * rows needed from the real message length instead of guessing
+         * one constant: ~85 chars/line is what this panel's real
+         * observed width (~720px) at this house's default font
+         * actually wraps to (confirmed live: a 330-char test message
+         * wrapped to exactly 4 lines). Clamped to [2,12] - 12 leaves at
+         * least ~6 of the panel's ~19 total rows for the toolbar,
+         * approve/reject, and a few real scrolllist rows below it, so
+         * a very long message grows generously without ever repeating
+         * the "everything else vanishes" failure mode. */
+        {
+            /* REAL FIX 2026-09-29, direct live report with a real
+             * screenshot: 85 chars/line under-provisioned a real
+             * message, still overlapping the row below - "the pending
+             * is too transparent now. why? we never agreed on that."
+             * Root cause: word-wrap breaks at WORD boundaries, not a
+             * flat character count, so real wrapped lines run shorter
+             * than a naive chars/line estimate assumes - the exact
+             * amount varies with the message's own word-length
+             * distribution, so there is no single constant that's
+             * exactly right for every message. Biased hard toward
+             * over-provisioning instead (55 chars/line, well under the
+             * ~85 a dense/short-word message can actually reach) -
+             * empty space below a short message costs nothing, text
+             * overlap is the failure the owner explicitly does not
+             * want. Cap raised to 14 to match (12 was sized for the
+             * old, too-optimistic per-line estimate). */
+            int pend_len = (int)strlen(pend_msg) + (int)strlen("PENDING (): ") + (int)strlen(pend_agent);
+            int needed_rows = (pend_len + 54) / 55;
+            if (needed_rows < 2) needed_rows = 2;
+            if (needed_rows > 14) needed_rows = 14;
+            CH_APPEND("pend_rows=%d\n", needed_rows);
+        }
     }
 
     CH_APPEND("newsession_action='%s/ops/colab_hai_action.sh' 'newsession'\n", g_package_dir);

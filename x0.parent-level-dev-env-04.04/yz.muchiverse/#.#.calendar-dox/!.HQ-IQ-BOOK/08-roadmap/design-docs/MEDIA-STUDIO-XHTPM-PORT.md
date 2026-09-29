@@ -274,7 +274,7 @@ Read **in this order**, in full, then come back:
    Note: that doc’s “khtpm has no substitute_vars” is **stale**. On
    this branch `kh_substitute_vars` / `kh_load_vars_multi` /
    `kh_expand_repeats` **already exist** in
-   `*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c` (~L877–1247).
+   `_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c` (~L877–1247).
    `reparse_chtpm_if_changed()` content-hashes the vars file so
    identical rewrites do not rebuild the tree.
 
@@ -441,7 +441,7 @@ LayDoc taskbar retarget; new renderer modes.
 File: `&.hq-apps/db-hq-pal/button.sh`
 
 - HOUSE as argv[1] **or** (toys) derived `../..`
-- `BIN="$HOUSE/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x"`
+- `BIN="$HOUSE/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x"`
 - Build via `build_core_render.sh` if missing
 - `setsid nohup "$BIN" "$HOUSE" "$XHTPM"`
 - Kill only PIDs whose cmdline contains **this** xhtpm name

@@ -97,7 +97,7 @@ interact with it (see stats-hq below) or tries to extend it (the next dev copies
 This session found these 3 by grepping for the `__TOKEN__`-splice signature and manually
 checking a handful of `open_*.sh`/`*_menu.sh` launchers. **Not checked**: every other
 taskbar-launched window/menu in the house. A real, thorough audit should grep every
-`open_*.sh` and `*_menu.sh` under `*.monads/`, `&.hq-apps/`, `&.widgits/` for:
+`open_*.sh` and `*_menu.sh` under `_.monads/`, `&.hq-apps/`, `&.widgits/` for:
 - Direct `printf`/`echo`/heredoc of `<` XML tags into a `.chtpm` file (the tell-tale sign)
 - Absence of a corresponding real manager binary or `<module>` tag
 - One-shot generation with no live-update mechanism for content that implies interactivity
@@ -218,7 +218,7 @@ day) for the now-standing rule this produces, and the
 
 **Real, confirmed callers as of the original finding** (grep-confirmed) — this
 was live, load-bearing infrastructure, not dead code:
-- `*.monads/*.book-stack/pieces/reader/event_pkg/pages/page_1/dispatch.sh` —
+- `_.monads/_.book-stack/pieces/reader/event_pkg/pages/page_1/dispatch.sh` —
   book-stack's own real dialogue/menu-choice flow generates a real
   `choices_file` and calls `khtpm_show_choices.+x` to display it.
 - `khtpm_show_choices.+x` was the one real, direct caller of

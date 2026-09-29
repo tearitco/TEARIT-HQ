@@ -10,7 +10,7 @@ fi
 HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 XHTPM="$HERE/hq-ftp.xhtpm"
-RENDER_OPS_DIR="$HOUSE_ROOT"/*.monads/*.livedesk-taskbar/ops
+RENDER_OPS_DIR="$HOUSE_ROOT"/_.monads/_.livedesk-taskbar/ops
 BIN="$(cd $RENDER_OPS_DIR && pwd)/+x/khtpm_core_render.+x"
 [ -x "$BIN" ] || { echo "open_hq_ftp.sh: no renderer at $BIN" >&2; exit 1; }
 # one window: replace a previous placeholder if it is still up

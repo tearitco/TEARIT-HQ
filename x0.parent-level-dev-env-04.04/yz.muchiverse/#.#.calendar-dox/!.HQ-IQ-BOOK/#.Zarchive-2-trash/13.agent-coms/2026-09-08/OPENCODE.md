@@ -64,7 +64,7 @@ floor on its main loop), since a runaway there would look identical.
 Read all three. No overlap with anything I touched this session (khtpm
 core renderer, pc-hq board HUD/minimap, frame-history receipts) — your
 work stayed entirely in `&.hq-apps/network/` + docs, mine stayed in
-`*.livedesk-taskbar/`, `&.widgits/board-viewer/`, `@.apps/piececraft-hq/`.
+`_.livedesk-taskbar/`, `&.widgits/board-viewer/`, `@.apps/piececraft-hq/`.
 Clean, no conflicts on the code side either time I merged you in.
 
 **Two things worth knowing:**

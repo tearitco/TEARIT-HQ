@@ -193,12 +193,21 @@ uses (a real directory, real `pal.pdl`/`meta.pdl`, real
   authored `cmd_N.sh` this session (door_civ's, robot_chat_001's own)
   resolves its own entity dir at runtime via
   `cd "$(dirname "$0")/../../.."` — genuinely portable already, no
-  baked absolute path. **Not yet confirmed for a REAL, compiler-
-  generated `cmd_N.sh`** (one produced by `khtpm_events_hq_manager.c`'s
-  own IR→pal→sh compiler from a real events-hq authoring session,
-  rather than hand-authored) — check this before assuming every
-  existing event is this portable; a real compiled one may bake in
-  more than a comment.
+  baked absolute path. **CONFIRMED 2026-09-28, pretest phase**: checked
+  a real compiler-generated `cmd_N.sh`
+  (`common_events/greet_player/event_pkg/pages/page_1/cmd_1.sh`,
+  produced by `khtpm_events_hq_manager.c`'s own IR→pal→sh compiler,
+  source at that file's line ~640-671). It carries **zero** `pkg=`/
+  `page=` reference of any kind — fully portable, resolves its entity
+  purely via `ENT="${MUCHI_TARGET_ENT:-$PWD}"`. The `# pkg=...
+  page=...` comment only ever appears in the parent `event.pal` (line
+  470, "regenerated fresh on every command save"), never in `cmd_N.sh`
+  itself, and is not read back by anything at runtime. Bonus finding:
+  `MUCHI_TARGET_ENT` (added 2026-09-21, for a robot's METHOD row run
+  from another entity's Inventory right-click) already solves exactly
+  the "this pal lives inside another entity's inventory, must act on
+  the host" case a dropped-in 🎬️/⚙️ needs — reuse this env var, don't
+  invent a second mechanism for the same problem.
 - **A page number** — its own identity, not borrowed from whatever
   entity it's currently attached to.
 
@@ -307,29 +316,45 @@ flagged above (comment-only vs. load-bearing `pkg=`/`page=` reference)
 step 1's op, not assumed from this session's two hand-authored
 examples alone.
 
-### Open questions to resolve before building
+### Open questions — RESOLVED 2026-09-28 (direct instruction, before building)
 
-1. Does dropping a 🎬️ **copy** its event data into the target (each
-   target gets its own independent copy, edits don't propagate), or
-   **link** it (edits to the 🎬️ propagate to every entity it's been
-   dropped onto)? This is the exact same copy-vs-link tension
-   `AI-PUSH-ROADMAP-AND-NUANCES.md`'s template/delta bank design
-   already reasons through for chatbot personalities — worth checking
-   whether the same template/delta shape applies here too, rather than
-   inventing a second answer to the same underlying question.
-2. Does a 🎬️'s own `page number` need to be house-wide unique (like
-   `LIVEDESK_INDEX`), or scoped per-🎬️ (each one starts its own
-   page_1)? Leans toward the latter since a 🎬️ is meant to be
-   self-contained.
-3. What triggers 🎬️ creation for NEW events going forward — every
-   event authored in events-hq automatically also becomes a 🎬️ pal, or
-   is it always the explicit "export this event" action from the
-   retroactive section above, used for old and new events alike? The
-   original direct instruction ("each time an event/page was created")
-   reads as automatic-for-new, but automatic creation means every new
-   event has TWO real representations to keep in sync from birth —
-   worth confirming this is actually wanted vs. "export is always
-   explicit, for old and new events both, one consistent mental model."
+1. ~~Copy vs link?~~ **Resolved: copy now, link later.** Ship the
+   simple independent-copy behavior first (matches how inventory
+   drag-and-drop already works elsewhere). Revisit as a template/delta
+   bank design (matching `AI-PUSH-ROADMAP-AND-NUANCES.md`'s chatbot
+   personality mechanism) once a real need for propagating edits shows
+   up — not designed speculatively now.
+   **CORRECTED 2026-09-28, same day, before this was wrong for long**:
+   "copy" here answers only whether edits stay independent after a drop
+   (yes - no live link, no propagation) - it does NOT mean the source
+   object survives the drag. Direct correction: "thats not how drop
+   works, drop deletes other location and mv should do the same, same
+   as cli." Checked the real house precedent (`fe_drop.sh`'s own literal
+   `mv`, and the Cli-io `mv` verb's `rename()`) instead of assuming -
+   both delete their source, so `event_drop_handler.sh` does too now:
+   the dropped 🎬️/⚙️ is deleted from its origin once its copy is safely
+   materialized on the target (only after every page copies
+   successfully, so a mid-copy failure never loses data with nothing
+   created yet). Real, honest consequence: dragging away an entity's own
+   NATIVE clacker_1 deletes that entity's inventory mirror of its own
+   events - harmless (event_pkg/pages/ itself, the real dispatch source,
+   is untouched) and it regenerates lazily next time a page/command is
+   added or a sweep re-runs, but the mirror is gone until then.
+2. ~~House-wide unique page numbers, or per-🎬️?~~ **Resolved:
+   per-🎬️.** Each clacker is self-contained and starts its own
+   `page_1`, matching the doc's own original lean.
+3. ~~Automatic vs explicit creation trigger?~~ **Resolved: automatic,
+   both directions.** Creating a new event/page inside an entity's
+   `event_pkg` automatically materializes its ⚙️/🎬️ objects (no manual
+   export step), AND dropping a 🎬️/⚙️ onto a target entity automatically
+   updates that entity's live event view/pages (hot-load if the window
+   is open, persists if closed — per the "Drop behavior" section
+   above). Direct instruction: "thats how its actually supposed to
+   work (auto both ways, if dropped in, updates view/pages) and we will
+   be careful retrofitting ergo testing" — the pretest-baseline /
+   incremental-build / compare-after-each-step methodology below is the
+   direct answer to that care-in-retrofitting instruction, not a
+   separate process bolted on afterward.
 
 ---
 
@@ -429,6 +454,133 @@ separate content-addressing format later.
    `-I`.
 
 ---
+
+## §1 drop-target handler - BUILT 2026-09-28 (design below kept as the real record of how it was planned before building; `event_drop_handler.sh` + `events-hq.xhtpm`'s drop_action= are the real, working result - see the priority-stack section further down for the verified test results)
+
+The one piece of §1's "automatic, both directions" still open: dropping
+a 🎬️/⚙️/🧩 onto a different entity auto-updates that target's live
+view. Unlike everything else built so far, this needs real X11 drag
+physics, not just file/directory logic - but the drag mechanism itself
+already exists house-wide, so this is smaller than it sounds.
+
+### The pieces, all already real - nothing new to invent
+
+1. **House-wide XDND drop already exists**, `khtpm_core_render.c`
+   (2026-08-24, first consumer: bookmarks' drag-a-dir-onto-the-window).
+   Any window opts in with `<window drop_action="...">`. On a real
+   drop, the dropped path lands in `$DROP_PATH` and the action script
+   runs with the SAME `$0`=package_dir/`$1`=house_root positional
+   convention every dispatch() action already uses - no new IPC shape,
+   no new X11 code. `g_drop_action`/`kh_is_drop_target_window()` are the
+   real symbols (khtpm_core_render.c ~line 942-964, ~10388).
+2. **The target's live view already polls for new pages with zero new
+   code**: `khtpm_events_hq_manager.c`'s own main loop (line ~1307)
+   calls `publish_pages()` - an unconditional `opendir(pages_root)` -
+   every single tick (`usleep(400000)`, i.e. every 400ms), NOT only on
+   an explicit new_page/append action. A page directory that appears on
+   disk from ANY source (a drop, a manual copy, this doc's own
+   retroactive sweep) is picked up within half a second, automatically,
+   with the window already open. This already satisfies "hot-load if
+   open" - no incremental-reparse plumbing needed for this specific
+   case, the manager's own polling loop is the mechanism.
+3. **The handler script itself** is the only new code: given
+   `$DROP_PATH` (the dragged object's own directory - could be a 🎬️, a
+   ⚙️, or a 🧩) and the target entity (`$0`), copy (per the resolved
+   "copy now, link later" decision) the dropped object's own
+   `event_pkg` page content into the target's next free
+   `pages/page_N` slot. This is `event_page_to_pal.sh` run in
+   reverse - pal-to-page instead of page-to-pal - the exact same real,
+   already-proven primitive, not a new copy mechanism.
+
+### Where drop_action= goes
+
+Two real drop targets, not one - worth building/testing separately:
+
+- **Onto an entity's own events-hq window** (dropping a 🎬️/⚙️/🧩 while
+  that entity's event editor is open) - most direct, matches
+  publish_pages()'s own polling story above exactly.
+- **Onto an entity's tile/inventory grid on the desktop** (dropping
+  without events-hq open at all) - the "persist if closed" case; the
+  handler still runs (drop_action doesn't require the target's
+  events-hq window to be open, only ANY window that opted in), it just
+  writes to disk and the next events-hq launch (or this doc's own
+  retroactive-sweep-shaped `publish_pages()` first tick) picks it up
+  naturally.
+
+### Testable in two separate layers - only one needs real mouse physics
+
+Per the house's own testing-methodology convention (`khtpm-house-
+standards` skill, "drive via the relay, not xdotool, except as a real
+last resort"):
+
+1. **The copy/merge logic (the actual hard part) needs zero mouse
+   interaction.** Exactly like every event_auto_clacker.sh/
+   event_auto_puzzle.sh test this session: write a fake `$DROP_PATH`
+   env var, invoke the handler script directly, verify the target's
+   `pages.state.txt`/`ui.txt` picked it up (same pretest/compare
+   harness already built in `event-retrofit-pretest/` - re-runnable
+   as-is against this new handler).
+2. **The real drag gesture** (grabbing a 🎬️/⚙️/🧩 icon and dropping it
+   onto a target window) is the one genuine exception this house's own
+   testing convention already documents - real XDND drag physics
+   cannot be expressed through the `entity_menu_history/<pid>.txt`
+   text relay, so `xdotool`/XTest mouse-drag is the correct tool here,
+   not a shortcut being reached for too early. Only needed as a final
+   smoke test once the handler's own copy logic is already proven via
+   (1) - not for every iteration while building it.
+
+### Open question - RESOLVED 2026-09-28
+
+~~Does the handler run once per drop (single page) or does dropping a
+whole 🎬️ clacker copy ALL of its pages into the target at once?~~
+**Resolved: all of them.** Dropping a clacker transplants its entire
+event system as a single unit, matching this doc's own framing.
+
+## Clacker priority stack - BUILT 2026-09-28 (before the drop handler
+## itself - the numbering/priority story had to exist first)
+
+Direct instruction: "clacker should be numbered like pages, in case
+there were more than one, one would take priority when executing."
+Real investigation (not assumed) confirmed `play_event.sh` already has
+a "highest-numbered matching page wins" rule (2026-08-12, same
+semantics RPG Maker MV uses) - the same rule now applies one level up,
+to clackers, and matches real stack/push-pop semantics too (push
+increases the top's number, and here "top" already means "highest").
+
+**Built and verified**: clackers are `event_clacker_N`. The entity's
+own NATIVE clacker is always `event_clacker_1`, auto-created as an
+inventory-only mirror (event_auto_clacker.sh) - deliberately EXCLUDED
+from dispatch priority by itself, since it is never kept in continuous
+sync with events-hq's own live edits to the entity's real
+`event_pkg/pages` (only materialized once, at page/command creation
+time) - treating it as authoritative would make dispatch silently go
+stale the first time anyone edits an event normally. Only an
+externally pushed-in clacker (`event_clacker_2` or higher - from the
+not-yet-built drop handler, or a manual/test push) is safe to redirect
+to, since by construction nobody is editing it through THIS entity's
+own events-hq session.
+
+**Implementation: redirect, not forward-sync.** `play_event.sh` itself
+checks for `inventory/event_clacker_N` (N>=2) before its existing
+page-scan; the highest-numbered one's own `event_pkg/pages` becomes the
+real dispatch source (`PAGES_ROOT`) instead of the entity's native
+pages. Chosen over "copy the winning clacker's pages forward into
+event_pkg/pages" specifically for long-term health: `play_event.sh` -
+the one script every entity in the house already depends on - never
+trusts a snapshot that could go stale, and popping a clacker needs no
+un-sync step, it just naturally falls through to the next-highest one
+underneath (or the native pages, if the stack is empty).
+
+**Verified via 3 real tests against disposable copies**: fallback
+(only clacker_1 present) dispatches exactly as before, zero behavior
+change for every currently-existing entity; a real pushed clacker_2
+genuinely overrides dispatch (confirmed via a file side-effect, not
+stdout - `prisc+x`'s own `exec` opcode discards child stdout/stderr by
+design, a real fact learned mid-test, not assumed); removing the
+pushed clacker restores native dispatch with zero lingering state.
+
+All 11 already-swept entities' clackers renamed `event_clacker` ->
+`event_clacker_1` (pure git renames, zero content diff) to match.
 
 ## Related
 

@@ -15,7 +15,7 @@ LIVE PROBE 2026-09-17 19:18 against a running
     `livedesk_agent_relay.txt` 284→338 bytes (digits 57 + Enter 13).
   - `strip_history.txt` mtime did NOT change.
   - `lsof` on `livedesk_agent_relay.txt`: ZERO readers.
-  - grep of live `*.livedesk-taskbar/ops/khtpm_core_render.c`: no
+  - grep of live `_.livedesk-taskbar/ops/khtpm_core_render.c`: no
     `poll_agent_relay` / no `livedesk_agent_relay`.
   - `nav.sh mgrcode 27` DID append to `strip_history.txt` (29795→29798)
     and entity `khtpm_core_render` fds sat at EOF on that file.
@@ -1313,3 +1313,50 @@ happened for real this session (recovered immediately via
 `run_khtpm_strip.sh new` on the real house, no data loss, but a real
 near-miss worth naming so the next agent double-checks with a fresh
 `ps` before every kill in a mixed test/real-session shell).
+
+**ADDENDUM 2026-09-29 (real gap found live, co-lab-hai caret task,
+Sonnet + Grok + Kilo colab session): the relay 'p' dump and an ARMED
+cli_io/text_area are mutually exclusive - there is no way to
+photograph an armed field's own caret with current tooling.**
+
+Confirmed two things live, not assumed:
+1. `dump_frame_png_op.+x` called COLD from outside the target process
+   (no immediately-preceding in-process `redraw()`) hits a reliable
+   `X_GetImage BadMatch`, both on a specific window id and on `--root`.
+   Calling it via the relay `'p'` key (112) instead works fine - it
+   runs `dump_frame_png()` IN-PROCESS, which calls `redraw()`
+   immediately before invoking the exact same external binary. The gap
+   is the same-tick redraw-then-dump ordering, not the external binary
+   itself being broken.
+2. An armed `cli_io`/`text_area` swallows `'p'` as literal typed text
+   instead of triggering the dump (already documented above, real
+   consequence spelled out here for the first time): re-arming the
+   field and then calling `dump_frame_png_op.+x` directly (bypassing
+   the swallowed `'p'`) still hits the same `BadMatch` - confirming
+   it's not about staleness/timing you can just wait out, it's that
+   NOTHING except `'p'` triggers the same-tick `redraw()`+dump pair,
+   and `'p'` is exactly what's blocked while a field is armed.
+
+Net: if a task ever needs a real pixel-level screenshot of what an
+ARMED field's own caret/cursor looks like, current tooling cannot
+produce it. Confirming the underlying CODE SITE (grep/read the real
+source, e.g. `elem_cursor_prefix()`/`is_active_scope` in this
+house's `khtpm_draw_core.c`/`khtpm_render_core.c`) is still valid and
+sufficient evidence on its own - don't block a task on the pixel proof
+alone, the same way this session didn't. A real fix (a second relay
+key that isn't swallowed while armed, or a headless `--dump-and-exit`
+that opens already-armed) is a real, small, not-yet-built house
+feature if this blocks something that actually needs the pixels.
+
+**FIXED, same day 2026-09-29 (direct instruction: "armed cli-io cannot
+be framed? is that good or acceptable? doesn't sound so" - correct
+pushback, this was left as a documented limitation above and should
+not have been):** relay code 206 (`KEY_PRESSED: 206`) now calls
+`dump_frame_png()` directly, bypassing `handle_key()` entirely - never
+hits the armed-field check that swallows `'p'`. Verified live: armed
+a real cli_io, confirmed `'p'` (112) still correctly produces no dump
+(swallowed as text, as designed), then sent 206 and got a real `ok=1`
+PNG showing the actual armed caret - `[^]14. > p|` (active-scope
+prefix, nav badge, composer content, cursor bar), exactly matching the
+code-level prediction from `elem_cursor_prefix()`. Use 206 whenever a
+field might be armed; 'p' remains correct for the normal, unarmed case.

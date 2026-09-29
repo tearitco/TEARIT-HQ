@@ -42,11 +42,11 @@ hand-write `event.pal` — the app generates it for you when you save.
 ## Step 1 — launch db-hq
 
 ```
-bash "*.monads/*.muchi-pet/ops/open_db_hq.sh" "<house_root>"
+bash "_.monads/_.muchi-pet/ops/open_db_hq.sh" "<house_root>"
 ```
 
 (`<house_root>` = the absolute path to this whole repo's top folder —
-the one that contains `#.desktop/`, `&.hq-apps/`, `*.monads/`, etc.)
+the one that contains `#.desktop/`, `&.hq-apps/`, `_.monads/`, etc.)
 
 This launches TWO processes (a renderer window + a manager) and prints
 their PIDs. If it prints an error instead, `cat /tmp/db-hq.log` and
@@ -60,7 +60,7 @@ literally an RPG Maker-style event list — you'll see existing entries:
 `greet_player`, `nested_inner`, `shop_open`, `test_target`.
 
 Reference: the full real tab list is in
-`*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c` around line 1097
+`_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c` around line 1097
 (`DB_HQ_TAB_LABELS[]`) if you want to double check you're on the right
 tab by name.
 
@@ -170,7 +170,7 @@ real ledger file looks like after gold changes ran).
   registry first — see "WHAT'S ACTUALLY LEFT TO CODE" below. Most
   "new" commands are a registry-only edit (zero C, zero recompile),
   NOT a new op binary — check there before writing any C.
-- Don't touch `*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c`
+- Don't touch `_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c`
   unless you've confirmed (via the steps above) that the bug is
   actually in the shared renderer and not just in how you used it.
 
@@ -287,7 +287,7 @@ transparency/followers/animation) — not a new gap you're introducing.
 
 ## Full reference paths (all real, all checked to exist as of 2026-09-01)
 
-- Launch db-hq: `*.monads/*.muchi-pet/ops/open_db_hq.sh <house_root>`
+- Launch db-hq: `_.monads/_.muchi-pet/ops/open_db_hq.sh <house_root>`
 - Event palette (5 easy commands): `khtpm_core_render.c:3882`
   (`g_evhq_palette[]`)
 - "+ Add Common Event" button wiring: `khtpm_core_render.c:1790-1811`

@@ -34,7 +34,7 @@ Write-Host "--- Building tile-picker ops ---"
 # agents") - moved to !.deprecated-2026-08-12/, no longer built here.
 # tp_desktop_window_rgb.c + tp_asset_to_sprite.c + tp_range_grid.c +
 # stb_image.h moved OUT of tile-picker into the livedesk-taskbar runtime
-# (2026-08-14 consolidation: *.monads/*.livedesk-taskbar/ops/, built by
+# (2026-08-14 consolidation: _.monads/_.livedesk-taskbar/ops/, built by
 # that folder's build_khtpm_strip.sh) - the entity window has nothing to
 # do with this widget anymore. tp_place_desktop still spawns it; it now
 # resolves the binary dynamically (see tp_place_desktop.c).

@@ -1307,7 +1307,7 @@ drwxrwxr-x  2 no no   4096 Jul 28 00:41 #.notes
 -rw-rw-r--  1 no no  11155 Aug  3 18:19 progr-report-a2.md
 drwxrwxr-x  3 no no   4096 Aug  5 16:39 #.ref
 drwxrwxr-x  2 no no   4096 Aug  1 23:12 #.resume
-drwxrwxr-x 13 no no   4096 Jul 28 14:07 *.START_BUTTON
+drwxrwxr-x 13 no no   4096 Jul 28 14:07 _.START_BUTTON
 -rwxrwxr-x  1 no no    184 Jul 28 23:22 START_BUTTON_44.xyz
 -rw-rw-r--  1 no no    750 Jul 30 22:54 #.tiny-temp.txt
 drwxrwxr-x  2 no no   4096 Jul 30 21:03 tmp

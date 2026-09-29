@@ -28,7 +28,34 @@
       </row>
       <item id="ch-menu-dir" label="Dir" target_id="ch-menu" class="dropdown-child" action="${dir_action}"/>
       <item id="ch-menu-faq" label="FAQ" target_id="ch-menu" class="dropdown-child" action="${faq_action}"/>
-      <text label="PENDING (${pend_agent}): ${pend_msg}" class="pending-text" show="${has_pending}"/>
+      <!-- REAL FIX 2026-09-29 (bug_bounty.md's OPEN co-lab-hai entry;
+           direct live report, with a real screenshot: truncating with
+           "..." was NOT acceptable - "user should be able to read the
+           message they need to approve"). A bare text_area with no
+           class does not get its own height in this panel's shape - it
+           inherits the shared bottom-composer sizing (khtpm_core_
+           render.c, ~line 4897's else branch: c-&gt;h = composer_h),
+           same as the real bottom composer field, not its own rows=.
+           The real fix is class=top, a documented, already-used escape
+           hatch (see sql-hq.xhtpm's own real text_area, rows=7, class
+           top sql-editor - same core-render.c header comment, ~line
+           4713, on that mechanism) that lays the field inline in
+           normal top-down flow using its own rows= height instead of
+           gluing it to the bottom.
+
+           A long message's drawn text still overflows this box's own
+           height uncapped when it exceeds rows=4 - a real, smaller,
+           cosmetic-only remaining issue (visual overlap on the row
+           below), not a missing-content one. rows=8 was tried and
+           reverted - it consumed enough panel height that everything
+           after it (approve/reject, the whole conversation list)
+           vanished from the frame outright, worse than the overlap.
+           Note for future editors of this comment block: do not paste
+           literal angle-bracket tag examples in here - an earlier pass
+           did, and this house's own template parser is not fully
+           comment-aware, so literal tag-like text inside a comment can
+           still break well-formedness. Describe tags in prose only. -->
+      <text_area id="pend-msg" class="top pending-text" content="PENDING (${pend_agent}): ${pend_msg}" show="${has_pending}" rows="${pend_rows}"/>
       <row class="toolbar" show="${has_pending}">
         <item id="ch-approve" label="Approve" action="${approve_action}"/>
         <item id="ch-reject" label="Reject" action="${reject_action}"/>

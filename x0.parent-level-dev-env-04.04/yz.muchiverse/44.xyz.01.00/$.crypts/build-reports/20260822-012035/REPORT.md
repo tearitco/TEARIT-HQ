@@ -4,5 +4,5 @@
 
 | Status | Script | Log |
 |---|---|---|
-| PASS | *.START_BUTTON/scripts/build.sh | $.crypts/build-reports/20260822-012035/*.START_BUTTON_scripts_build.sh.log |
+| PASS | _.START_BUTTON/scripts/build.sh | $.crypts/build-reports/20260822-012035/_.START_BUTTON_scripts_build.sh.log |
 

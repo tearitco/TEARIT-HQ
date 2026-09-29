@@ -10,7 +10,7 @@ removed, since every real entity now has a `menu.chtpm`). Pushed to
 done for real, checked off one site at a time, with a safe rollback
 point already in git history if anything regresses.
 
-File: `*.monads/*.livedesk-taskbar/ops/tp_desktop_window_rgb.c`
+File: `_.monads/_.livedesk-taskbar/ops/tp_desktop_window_rgb.c`
 (3412 lines, 6 real live processes depend on it right now - confirmed
 via `ps aux` at plan time: self, m8_redhorned, m1_ninjadragon,
 book-stack, asa, ava, all under

@@ -806,7 +806,7 @@ AUDIT: system/renderer.c appends every painted frame to
   PRISC_FRAME_HISTORY (cleared each `./button.sh run`).
 
 FILES: 0.user-pal/00.login-signup/ops/userpal_menu_input.c,
-       *.START_BUTTON/ops/start_menu_input.c (idle already gated),
+       _.START_BUTTON/ops/start_menu_input.c (idle already gated),
        pal/main_loop_chtpm.pal family, system/renderer.c
 
 SEE ALSO: xyzos-standards sec. 20 (ONE VISIBLE FRAME WRITER), sec. below
@@ -2838,7 +2838,7 @@ the existing XSetWindowBackground() calls on the reload path, so the
 GC's cached background tracks the window's real background exactly
 like the one-time startup code already does.
 
-FILES: *.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c - reload
+FILES: _.monads/_.livedesk-taskbar/ops/khtpm_strip_parser.c - reload
   branch near line 1620 (frame_changed_dirty()), original one-time
   setup near line 1534
 
@@ -2900,7 +2900,7 @@ real config another live process reads) rather than its own private
 session dir, where the blast radius of a race is live user-visible
 breakage, not just a confusing test result.
 
-FILES: *.monads/*.livedesk-taskbar/ops/khtpm_taskbar_settings_render.c,
+FILES: _.monads/_.livedesk-taskbar/ops/khtpm_taskbar_settings_render.c,
   button_taskbar_settings.sh (the correct launcher, not used the first
   time), #.desktop/livedesk_theme.pdl (the corrupted shared state)
 
@@ -2997,7 +2997,7 @@ not activate/open the targeted header cell by itself. Confirmed via
 #.desktop/strip_state.txt's own "hq_open" key (0=closed, 1=open) and
 strip_var_hqitems.txt (only populated while hq_open=1).
 
-FILES: `*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c` -
+FILES: `_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c` -
 `read_key_value()` (~line 697)
 
 SEE ALSO: this bug likely affected EVERY OTHER caller of
@@ -3061,7 +3061,7 @@ FIX (2026-08-13):
     the new ktb_hq_launcher_path() - never cwd-dependent, never
     hardcoded in C.
   * open_stats_hq.sh now uses the literal house-standard ops path
-    `$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops` (exactly like
+    `$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops` (exactly like
     open_db_hq.sh/open_event_ez.sh), NOT find.
   * Launchers are invoked with `bash` (`setsid nohup sh -c 'bash
     "script" "house_root"'`), honoring the `#!/bin/bash` shebang every
@@ -3078,12 +3078,12 @@ FILES:
     `livedesk:open-stats` (was a relative shell row)
   * `#.desktop/livedesk_launchers.pdl` - NEW house-standard launcher
     registry (settings/stats/ai/db)
-  * `*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c` -
+  * `_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c` -
     ktb_hq_launcher_path() (~line 752), livedesk:open-settings and
     livedesk:open-stats branches (now bash-launch via the registry)
   * `&.hq-apps/stats-hq/open_stats_hq.sh` - OPS_DIR fix (find ->
     literal house path)
-  * `*.monads/*.livedesk-taskbar/ops/button_taskbar_stats.sh` -
+  * `_.monads/_.livedesk-taskbar/ops/button_taskbar_stats.sh` -
     STATS_SCRIPT path fixed (xyzfs/bin/stats-hq/ops/ -> &.hq-apps/)
 
 ========================================================================

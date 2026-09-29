@@ -27,7 +27,7 @@ here, not there.
 ## 1. What changed since that doc (read this before anything else)
 
 - **`khtpm_entity_menu_render.c` was renamed AND merged.** It's now
-  `khtpm_core_render.c` (`*.monads/*.livedesk-taskbar/ops/`), and as
+  `khtpm_core_render.c` (`_.monads/_.livedesk-taskbar/ops/`), and as
   of 2026-09-01 it also absorbed the taskbar strip parser's own duty
   (`khtpm_strip_parser.c` folded in verbatim). If you see the old name
   anywhere, it's stale — this is the same file, just renamed/expanded.

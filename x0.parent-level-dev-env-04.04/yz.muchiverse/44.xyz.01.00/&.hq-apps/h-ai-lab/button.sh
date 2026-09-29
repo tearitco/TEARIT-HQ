@@ -14,7 +14,7 @@ HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 XHTPM="$HERE/h-ai-lab.xhtpm"
-RENDER_OPS="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
+RENDER_OPS="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops"
 BIN="$RENDER_OPS/+x/khtpm_core_render.+x"
 
 chmod +x "$HERE/ai_lab_scan.sh" "$HERE/ai_lab_refresh.sh" "$HOUSE_ROOT/&.widgits/ai-lab/ops/ai_registry.sh" 2>/dev/null || true

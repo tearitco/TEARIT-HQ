@@ -35,7 +35,7 @@ if [ ! -d "$HOUSE_ROOT/#.desktop" ]; then
 fi
 HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 
-OPS_DIR="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
+OPS_DIR="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops"
 BIN="$OPS_DIR/+x/khtpm_core_render.+x"
 PROJECTOR="$PKG/ops/+x/pchq_board_projector.+x"
 # MILESTONE A: default is the sidebar+panel board window. Set

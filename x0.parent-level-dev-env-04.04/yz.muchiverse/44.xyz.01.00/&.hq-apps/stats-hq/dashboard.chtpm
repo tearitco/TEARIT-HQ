@@ -24,7 +24,7 @@
      misusing that same tag for what should always have been a session
      LIST, not a category switcher. -->
 <window class="database-window stats-hq" label="stats-hq">
-  <module src="*.monads/*.livedesk-taskbar/ops/+x/stats_hq_manager.+x" />
+  <module src="_.monads/_.livedesk-taskbar/ops/+x/stats_hq_manager.+x" />
   <sidebar id="sidebar" class="sidebar">
     <item label="(loading)"/>
   </sidebar>

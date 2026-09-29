@@ -26,7 +26,7 @@ git mv template-hq.css   myapp-hq.css
 
 Then wire the taskbar HQ menu (`#.desktop/livedesk_taskbar.pdl`): add
 `hq_menu_<N>_label | myapp` + `hq_menu_<N>_cmd | sh
-*.monads/*.livedesk-taskbar/ops/open_myapp.sh`, and drop a 3-line
+_.monads/_.livedesk-taskbar/ops/open_myapp.sh`, and drop a 3-line
 `open_myapp.sh` next to `open_mon.sh` that resolves `house_root` from
 `$0` and `exec`s this `button.sh` — the menu dispatch runs the cmd via
 `sh -c`, and a leading `&` in a path is shell job-control, so the app

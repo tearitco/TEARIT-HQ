@@ -36,7 +36,7 @@ Chooser CSS families (same for rmmv / piececraft / cdda / emojis):
 Generated thumbs: `&.widgits/palettes/sprites/{rmmv,pc,cdda,emoji}/`
 — **do not gitadd**.
 
-Manager: `*.monads/*.livedesk-taskbar/ops/palettes_manager.c`.
+Manager: `_.monads/_.livedesk-taskbar/ops/palettes_manager.c`.
 Projector: `&.widgits/palettes/ops/palettes_projector.c` (chooser-grid
 for rmmv|piececraft|cdda|emojis).
 

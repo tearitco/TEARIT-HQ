@@ -355,6 +355,51 @@ static void fe_clear_search(const char *package_dir) {
     fclose(f);
 }
 
+/* REAL, NEW 2026-09-28 (EVENT-MODULARITY-AND-BUILD-SPEED.md §1, direct
+ * instruction: events/pages "dont need to show up on pals... but they
+ * can, lets .pdl toggle as optional") - a 🎬️/⚙️/🧩 pal's own meta.pdl
+ * carries `STATE | event_object | 1`; house-wide default is HIDDEN from
+ * this listing unless #.desktop/hq_ui.pdl sets
+ * EVENT_OBJECTS_VISIBLE=1. This is the file-explorer's own directory
+ * listing per GROK's 2026-09-17 cursword-file-inventory-chat.md - the
+ * real, already-existing "browse a subdirectory of inventory/" viewer,
+ * no new inventory widget needed, so this is the one real place that
+ * enumeration needs to be filtered. */
+static char g_fe_house_root[MAX_PATH] = "";
+
+static int fe_event_objects_visible(void) {
+    if (!g_fe_house_root[0]) return 1; /* no house_root known yet: never hide, fail open */
+    char p[MAX_PATH];
+    snprintf(p, sizeof(p), "%s/#.desktop/hq_ui.pdl", g_fe_house_root);
+    FILE *f = fopen(p, "r");
+    if (!f) return 0; /* documented default: hidden */
+    char line[256];
+    int visible = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "EVENT_OBJECTS_VISIBLE=", 22) == 0) {
+            visible = atoi(line + 22);
+            break;
+        }
+    }
+    fclose(f);
+    return visible;
+}
+
+static int fe_is_hidden_event_object(const char *dir_path) {
+    char p[MAX_PATH];
+    snprintf(p, sizeof(p), "%s/meta.pdl", dir_path);
+    FILE *f = fopen(p, "r");
+    if (!f) return 0;
+    char line[256];
+    int is_event_object = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strstr(line, "event_object") && strstr(line, "| 1")) { is_event_object = 1; break; }
+    }
+    fclose(f);
+    if (!is_event_object) return 0;
+    return !fe_event_objects_visible();
+}
+
 void list_directory(const char *dir, State *state) {
     DIR *d = opendir(dir);
     if (!d) return;
@@ -375,6 +420,8 @@ void list_directory(const char *dir, State *state) {
 
         struct stat st;
         if (stat(full_path, &st) != 0) continue;
+
+        if (S_ISDIR(st.st_mode) && fe_is_hidden_event_object(full_path)) continue;
 
         state->entries[state->count].sprite[0] = '\0';
         strncpy(state->entries[state->count].name, entry->d_name, MAX_NAME - 1);
@@ -587,6 +634,7 @@ int main(int argc, char *argv[]) {
 
     const char *house_root = argv[1];
     const char *package_dir = argv[2];
+    snprintf(g_fe_house_root, sizeof(g_fe_house_root), "%s", house_root);
     char mode_buf[10];
     snprintf(mode_buf, sizeof(mode_buf), "%s", argv[3]);
     char start_buf[MAX_PATH] = "";
@@ -748,6 +796,58 @@ int main(int argc, char *argv[]) {
                         snprintf(msg, sizeof(msg), "error: cannot move into itself");
                     else if (rename(src, dst) == 0) snprintf(msg, sizeof(msg), "ok: %s -> %s", src, dst);
                     else snprintf(msg, sizeof(msg), "error: mv %s -> %s failed", src, dst);
+                } else snprintf(msg, sizeof(msg), "error: could not resolve source/destination");
+            }
+            {
+                char rp[MAX_PATH];
+                snprintf(rp, sizeof(rp), "%s/cliio_result.txt", package_dir);
+                FILE *rf = fopen(rp, "w");
+                if (rf) { fprintf(rf, "%s\n", msg); fclose(rf); }
+            }
+            list_directory(state.current_dir, &state);
+            write_ui_file(package_dir, &state, "", "");
+        } else if (strncmp(cmd, "CLIIO_CP:", 9) == 0) {
+            /* REAL, NEW 2026-09-28 (direct instruction: "how do we allow
+             * mv/cp style commands... its fine to allow others, since its
+             * just another cli"): Cli-io `cp <src-nav#> <dst-nav#>` -
+             * exact same resolved-spec shape as CLIIO_MV: above (renderer
+             * already did the nav-number resolution), only the final
+             * operation differs. Reuses the SAME safe pattern the existing
+             * CTX_PASTE copy branch already established below
+             * (fe_run_wait() + a literal argv array, `cp -a --  src dst` -
+             * never a shell string, never interpolating raw typed text) -
+             * not a new copy mechanism. */
+            char spec[2 * MAX_PATH + 4];
+            snprintf(spec, sizeof(spec), "%s", cmd + 9);
+            char *sep = strstr(spec, "|");
+            char src[MAX_PATH], dstdir[MAX_PATH], msg[MAX_PATH * 2 + 64];
+            src[0] = dstdir[0] = 0;
+            snprintf(msg, sizeof(msg), "error: bad spec");
+            if (sep) {
+                *sep = 0;
+                const char *a = spec, *b = sep + 1;
+                if (a[0] == 'e' && atoi(a + 1) >= 0 && atoi(a + 1) < state.count)
+                    snprintf(src, sizeof(src), "%s/%s", state.current_dir, state.entries[atoi(a + 1)].name);
+                else if (a[0] == 'p')
+                    snprintf(src, sizeof(src), "%s", a + 1);
+                if (b[0] == 'w')
+                    snprintf(dstdir, sizeof(dstdir), "%s", state.current_dir);
+                else if (b[0] == 'e' && atoi(b + 1) >= 0 && atoi(b + 1) < state.count &&
+                         is_dir_like(state.entries[atoi(b + 1)].type))
+                    snprintf(dstdir, sizeof(dstdir), "%s/%s", state.current_dir, state.entries[atoi(b + 1)].name);
+                if (src[0] && dstdir[0]) {
+                    const char *base = strrchr(src, '/');
+                    base = base ? base + 1 : src;
+                    char dst[MAX_PATH];
+                    snprintf(dst, sizeof(dst), "%s/%s", dstdir, base);
+                    if (!strcmp(src, dst)) snprintf(msg, sizeof(msg), "ok: already there");
+                    else if (!strncmp(dst, src, strlen(src)) && (dst[strlen(src)] == '/' || !dst[strlen(src)]))
+                        snprintf(msg, sizeof(msg), "error: cannot copy into itself");
+                    else {
+                        char *cpv[] = { "cp", "-a", "--", src, dst, NULL };
+                        if (fe_run_wait(cpv) == 0) snprintf(msg, sizeof(msg), "ok: %s -> %s", src, dst);
+                        else snprintf(msg, sizeof(msg), "error: cp %s -> %s failed", src, dst);
+                    }
                 } else snprintf(msg, sizeof(msg), "error: could not resolve source/destination");
             }
             {

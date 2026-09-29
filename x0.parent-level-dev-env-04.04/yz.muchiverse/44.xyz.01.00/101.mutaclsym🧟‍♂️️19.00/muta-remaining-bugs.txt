@@ -203,7 +203,7 @@ confidence level as "I read the current code and confirmed X"). A file-path look
 was attempted at the very end of the mutaclysm bug research above and was interrupted before
 completing - so as of this doc, the file hasn't even been LOCATED this session, let alone read.
 Before any real confidence claim can be made: locate the real, current tp_taskbar.c (or whatever
-its real current filename is - it may have moved/renamed, matching book-stack's own real "*.monads"
+its real current filename is - it may have moved/renamed, matching book-stack's own real "_.monads"
 prefix convention found elsewhere in the house this session), read its own real
 `poll_agent_relay()`/`agent_relay_dispatch()` functions in full, and get a concrete, reproducible
 description from the user of what specifically goes wrong (which menu, which key, what happens vs.

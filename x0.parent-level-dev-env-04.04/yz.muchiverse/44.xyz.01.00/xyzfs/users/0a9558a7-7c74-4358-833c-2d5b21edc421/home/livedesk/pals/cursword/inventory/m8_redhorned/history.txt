@@ -391,7 +391,7 @@ CHANGE_GOLD delta=+25 qolq: 10 -> 35
 [2026-08-10 19:53:56] LIVEDESK_INDEX=11
 [2026-08-10 21:10:41] WINDOW_OPEN
 [2026-08-10 21:10:41] LIVEDESK_INDEX=11
-[2026-08-10 21:14:22] CLICK method=Events (ez) action=*.monads/*.muchi-pet/ops/open_event_ez.sh
+[2026-08-10 21:14:22] CLICK method=Events (ez) action=_.monads/_.muchi-pet/ops/open_event_ez.sh
 [2026-08-10 22:55:25] INJECTED: CLOSE
 [2026-08-11 07:23:38] WINDOW_OPEN
 [2026-08-11 07:23:38] LIVEDESK_INDEX=11

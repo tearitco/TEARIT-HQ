@@ -5,7 +5,7 @@
 # also have an 'on/off' option incase i want it to stop auto running."
 #
 # 2026-08-11: legacy tp_taskbar.c retired (archived to
-# *.monads/*.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip, originals
+# _.monads/_.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip, originals
 # deleted). `run` below is UNCHANGED — it still just triggers
 # crypt_autostart against autostart.pdl, whose tool-bar LAUNCH row now
 # points at the real khtpm binaries — so "button.sh run" already does the
@@ -23,7 +23,7 @@ PDL="$SCRIPT_DIR/autostart.pdl"
 BIN="$SCRIPT_DIR/ops/+x/crypt_autostart.+x"
 RESTORE="$SCRIPT_DIR/restore-list.txt"
 HOUSE="$(cd "$SCRIPT_DIR/.." && pwd)"
-TB_DIR="$HOUSE/*.monads/*.livedesk-taskbar/ops"
+TB_DIR="$HOUSE/_.monads/_.livedesk-taskbar/ops"
 # REAL FIX 2026-09-01 - khtpm_strip_parser.+x retired as a separate
 # binary (folded verbatim into khtpm_core_render.c as strip_main(),
 # phase 1) and this build-sanity check was never updated to match -

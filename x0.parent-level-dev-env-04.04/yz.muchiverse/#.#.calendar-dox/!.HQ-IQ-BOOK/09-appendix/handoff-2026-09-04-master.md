@@ -37,7 +37,7 @@ Session: https://claude.ai/code/session_01P4rAhi6a7TzLBZdcaqfHXN
 
 ## State: DONE and pushed
 
-### Renderer primitives — `44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c`
+### Renderer primitives — `44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c`
 
 | primitive | what |
 |---|---|
@@ -488,7 +488,7 @@ tab→scope→Esc path.** It was element-pool exhaustion:
   gone with the rebuild.
 
 **Full stack relaunch + health check** (via
-`44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/run_khtpm_strip.sh new`):
+`44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/run_khtpm_strip.sh new`):
 manager **8953**, strip **8970**, `strip_ui.txt` populated
 (3202→5404→3280 bytes), parser log clean.
 
@@ -775,7 +775,7 @@ Active branch is `chtpm-delete-per-app-c` (off `chtpm-var-substitution`
   `hq_run_detached`, `input_disarm`, `generic_sbar_*`, the whole
   `layout_sidebar_panel` / swatch-grid / dock paths.
 - Before/with it: retire the **"db-hq (classic)"** menu row +
-  `*.monads/*.muchi-pet/ops/open_db_hq.sh` (the last live `g_is_db_hq`
+  `_.monads/_.muchi-pet/ops/open_db_hq.sh` (the last live `g_is_db_hq`
   entry point) — point at `db-hq-pal/button.sh` or drop.
 
 ### PARKED (after the deletion)
@@ -945,7 +945,7 @@ refs) — desktop is clean. `xyzfs/` is untracked so no commit.
 - On this branch: **`94d12680`** is the last commit with the working
   old C (before `9ce89904` neuter → `dce0f1f4` bodies → `81cedb8f`
   events-hq → `5efc32c4` sweep). Extract with
-  `git show 94d12680:44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c`.
+  `git show 94d12680:44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c`.
 - The **original standalone `khtpm_hq_render.c`** (older, more
   palette/HQ code — the "recovered from git" one earlier comments cite)
   was deleted in **`0dbcfccd`** — `0dbcfccd^` has it.

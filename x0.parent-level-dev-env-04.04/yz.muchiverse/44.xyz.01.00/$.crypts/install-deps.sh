@@ -6,7 +6,7 @@
 #   `sh button.sh r` printed "launch 'tool-bar' done (rc=0)" but no
 #   livedesk came up. Root cause traced to a COMPILE-TIME dep, not a
 #   runtime one: +x/khtpm_core_render.+x never existed in
-#   *.livedesk-taskbar/ops/+x/. build_core_render.sh compiles that
+#   _.livedesk-taskbar/ops/+x/. build_core_render.sh compiles that
 #   binary with `pkg-config --cflags xft` + -lX11 -lXext -lxft; on this
 #   box X11/Xext dev were installed but **libxft-dev was not**, so gcc
 #   failed (the script is `set -e`), the parser binary never landed, and
@@ -21,7 +21,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 HOUSE="$(cd "$SCRIPT_DIR/.." && pwd)"
-TASKBAR="$HOUSE/*.monads/*.livedesk-taskbar/ops"
+TASKBAR="$HOUSE/_.monads/_.livedesk-taskbar/ops"
 SUDO="${SUDO:-sudo}"
 
 echo "== livedesk taskbar (khtpm) build-dependency install =="
