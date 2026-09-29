@@ -93,16 +93,32 @@ to cover "the concerns sheet and its answers."
   `groks-thots.txt` moved into house docs 2026-09-29, from the user's
   personal folder to `08-roadmap/design-docs/robot-chat/` — same
   directory tier as `TERUMON-SPEC.md`/`PALCRAFT-DESIGN.md`.
-- **Still open / not yet done:** a HARNECIENT.SMOL "night class"
-  script that actually covers this thread's subject matter (NIGHT_29
-  missed the mark, see the drift warning above — it dramatized session
-  bug fixes instead; a real replacement class is the next step); an
-  outside agent's own weigh-in document (not yet requested/received).
+- **Night class done right:** NIGHT_30 ("The Attrition-Model") replaced
+  NIGHT_29 — covers the real architecture, the promotion bottleneck,
+  every game testbed's real blocker, and the two new categories
+  (see the drift warning above for why NIGHT_29 didn't count).
+- **⚠️ Correction, 2026-09-29 (after NIGHT_30):** the "real vs magic
+  entity" framing in §5/NIGHT_30 was misread as "some entities get no
+  body." That was never the intent — see §10 of
+  `AGENT_ROADMAP_ANSWERS.md`. The teru-test babysitter keeps a real
+  body (a 👻 ghost glyph) plus its own custom, user-editable GUI. This
+  also surfaced a genuinely new idea: **HQ-LAYOUT-STUDIO**, a visual
+  widget-layout editor, proposed to live as a sub-entity inside the ☁️
+  (cloud) entity from the DSR-test concerns, with layouts able to read
+  an existing event page or have one drag-and-dropped in as usual.
+  Seed doc: `08-roadmap/design-docs/HQ-LAYOUT-STUDIO-DESIGN.md`.
+- **Still open / not yet done:** an outside agent's own weigh-in
+  document (not yet requested/received); `HQ-LAYOUT-STUDIO-DESIGN.md`
+  is a seed doc only, real design work hasn't started; the ☁️ entity
+  itself doesn't exist yet either.
 - **Genuinely new ideas raised in this thread, not yet built or
   formally ratified anywhere else in the house:** the "real entity" vs
-  "magic entity/event" distinction; the `BOOK:SYSTEM` proposal
-  (a house-wide, non-user-owned book, for open-hai session pals and
-  eventually Claude/Grok's own persistent self-storage); the
+  "magic entity/event" distinction (both still get a body, per the
+  correction above); the `BOOK:SYSTEM` proposal (a house-wide,
+  non-user-owned book, for open-hai session pals and eventually
+  Claude/Grok's own persistent self-storage); the ☁️ cloud entity for
+  holding abstract/draggable things; **HQ-LAYOUT-STUDIO** (visual
+  widget-layout editor, sub-entity of the ☁️); the
   `AGENT-HIERARCHY-AND-PERMISSIONS.md` idea (a real tier distinction
   between manager and student agents in colab-hai/branch rules).
 

@@ -337,22 +337,25 @@ manage hunger.
     <tr><td>🏦 DSR-test</td><td class="designed" style="display:inline-block">🟡 paused</td>
       <td>Blocked on Cursword's inventory; real 1-corp toy shell already on disk; WSR_PAL-PREFERED already has the dividend/calendar math to port</td></tr>
     <tr><td>🐣 teru-test</td><td class="aspirational" style="display:inline-block">🔴 new idea</td>
-      <td>"Magic entity" babysitter has zero prior art — needs a design doc first</td></tr>
+      <td>Zero prior art — needs a design doc first. <strong>Keeps a body</strong>: 👻 ghost glyph, real pal, custom user-editable GUI (corrected 2026-09-29)</td></tr>
     <tr><td>⛏️ piececraft-hq</td><td class="designed" style="display:inline-block">🟡 designed in detail</td>
       <td>Raymarch/camera/voxel-removal work; block placement is the only missing symmetric piece</td></tr>
   </table>
 </div>
 
 <!-- NEW CATEGORIES -->
-<h2>🆕 Two categories this thread introduced, not yet ratified</h2>
+<h2>🆕 Three ideas this thread introduced, not yet fully built</h2>
 <div class="compare">
   <div class="compare-box">
-    <h4 style="color:var(--game)">"Real" vs "Magic" entity/event</h4>
+    <h4 style="color:var(--game)">"Real" vs "Magic" entity/event — ⚠️ corrected 2026-09-29</h4>
     <p style="font-size:0.88rem;color:var(--muted)">
       The house's existing binary is "real" (backed by actual state/process) vs "stub/placeholder" —
-      <strong>not</strong> "physically embodied" vs "magic" (time ticks, chat sessions, a fairy babysitter).
-      New and useful: a <strong>real entity</strong> has a body on a desk/page; a <strong>magic
-      entity/event</strong> has state and behavior but no body.
+      <strong>not</strong> "physically embodied" vs "magic". New and useful, but corrected: a
+      <strong>real entity</strong> has a full, complex body (walks, collides, occupies desk space);
+      a <strong>magic entity/event</strong> has real state and behavior but a <em>simpler</em> body —
+      <strong>not no body</strong>. Every entity still gets a body; this was only ever about how
+      complex it needs to be. The teru-test babysitter's body is a 👻 ghost glyph plus its own custom,
+      user-editable GUI. See <code>AGENT_ROADMAP_ANSWERS.md</code> §10.
     </p>
   </div>
   <div class="compare-box">
@@ -361,6 +364,17 @@ manage hunger.
       <code>BOOK:PAGE</code> is real and shipped, but every BOOK today is tied to a user login.
       There's no house-wide, unowned book. Proposed: <strong>BOOK:SYSTEM</strong> — would hold
       open-hai session pals and Claude/Grok's own self-storage pals under one system-owned book.
+    </p>
+  </div>
+  <div class="compare-box">
+    <h4 style="color:var(--live)">HQ-LAYOUT-STUDIO (new, proposed 2026-09-29)</h4>
+    <p style="font-size:0.88rem;color:var(--muted)">
+      A toy for <strong>visually creating and editing layouts</strong> for custom widgets — the
+      babysitter's dashboard is the first use case, not the only one. Lives as a
+      <strong>sub-entity inside the ☁️ (cloud) entity</strong> from the DSR-test concerns. A layout
+      can <strong>read an existing event page</strong>, or have an <strong>event drag-and-dropped
+      into it as usual</strong> — same convention every other event placement already uses. Needs
+      its own design doc, not started.
     </p>
   </div>
 </div>

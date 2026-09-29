@@ -225,21 +225,25 @@ then an event that yields something after that time passes.
 |---|---|---|
 | 🌱 civ-test / asa | 🔴 fully unbuilt | No survival mechanic of any kind exists; no per-entity clock exists anywhere in the house (only a per-*world* clock daemon in piececraft) |
 | 🏦 DSR-test | 🟡 paused, not abandoned | Blocked on Cursword's inventory substrate; real 1-corp toy shell already on disk (`&.hq-apps/dsr/`), ledger-driven multi-entity economy design already matches the DSR-TOY/DSR-desk synergy question exactly (`TEST-GAMES-ROADMAP.md` §6/6b); `WSR_PAL-PREFERED` already has the dividend/calendar math DSR should port from rather than re-derive |
-| 🐣 teru-test | 🔴 "magic entity" babysitter is a brand-new idea | Zero prior art for a multi-terumon dashboard/babysitter entity; needs a design doc before any code |
+| 🐣 teru-test | 🔴 babysitter idea is brand-new, **but it keeps a body** — 👻 ghost glyph, real pal, custom user-editable GUI (corrected 2026-09-29, see below) | Zero prior art for a multi-terumon dashboard/babysitter entity; needs a design doc before any code |
 | ⛏️ piececraft-hq | 🟡 designed in real detail (`PALCRAFT-DESIGN.md`) | Raymarch/camera/voxel-removal already work; **block placement is the only missing symmetric piece** — closest thing to "shovel-ready" in this whole diagram |
 
 ---
 
 ## 🆕 Two categories this thread introduced, not yet ratified
 
-### "Real entity" vs "magic entity/event"
+### "Real entity" vs "magic entity/event" — ⚠️ corrected 2026-09-29
 The house's existing binary is "real" (backed by actual state/process)
 vs "stub/placeholder" — **not** "physically embodied" vs "magic" (time
 ticks, chat sessions, a fairy babysitter). This is new, and useful: a
-**real entity** has a body on a desk/page; a **magic entity/event** has
-state and behavior but no body. Recommend ratifying this formally
-before building the teru-test babysitter or the open-hai session-pal
-idea, since both are really asking "does this need a body?"
+**real entity** has a full, complex body (walks, collides, occupies
+desk space, like a terumon); a **magic entity/event** has real state
+and behavior but a *simpler* body — **not no body.** Confirmed
+directly by the owner: **every entity still gets a body**, this
+distinction was only ever about *how complex* that body needs to be,
+never whether one exists. The teru-test babysitter's body is a 👻
+ghost glyph, plus its own custom, user-editable GUI. See
+`AGENT_ROADMAP_ANSWERS.md` §10 for the full correction.
 
 ### BOOK:SYSTEM (proposed, not built)
 `BOOK:PAGE` is real and shipped, but every BOOK today is tied to a user
@@ -247,6 +251,17 @@ login. There's no house-wide, unowned book (the `/bin`-or-`/sys`
 analogy). Proposed name: **`BOOK:SYSTEM`** — would hold open-hai
 session pals, and Claude/Grok's own self-storage pals, under one
 system-owned book rather than any one user's.
+
+### HQ-LAYOUT-STUDIO (new idea, proposed 2026-09-29, not designed)
+A toy/widget for **visually creating and editing layouts** for custom
+widgets — the babysitter's dashboard is the first real use case, not
+the only one. **Storage:** lives as a **sub-entity inside the ☁️
+(cloud) entity** already proposed in the DSR-test section of
+`0.my-concerns.md`. **Authoring:** a layout can **read an existing
+event page**, or have an **event drag-and-dropped into it as usual** —
+same drag-and-drop convention every other event placement already
+uses, no new interaction model. Needs its own design doc
+(`08-roadmap/design-docs/HQ-LAYOUT-STUDIO-DESIGN.md`) — not started.
 
 ---
 

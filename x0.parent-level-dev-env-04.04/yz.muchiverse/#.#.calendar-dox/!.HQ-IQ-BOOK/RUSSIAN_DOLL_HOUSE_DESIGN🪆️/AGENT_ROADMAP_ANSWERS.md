@@ -434,7 +434,9 @@ convention is wanted later, it should get its own, non-colliding name.
 | WSR_PAL-PREFERED | REAL, Phase 1 done | `WSR_PAL-PREFERED/docs/ROADMAP.md` |
 | Terumon babysitter/meta-agent | NOT DESIGNED — new idea | see §4 |
 | Piececraft Minecraft clone | DESIGNED IN DETAIL, placement is the gap | `PALCRAFT-DESIGN.md` |
-| Real vs magic entity/event | NOT AN EXISTING CATEGORY — new, recommend ratifying | see §5 |
+| Real vs magic entity/event | NOT AN EXISTING CATEGORY — new; means "simple vs complex body," NOT "no body" (corrected §10) | see §5, §10 |
+| Terumon babysitter's body | 👻 ghost glyph, real pal, custom user-editable GUI | see §10 |
+| HQ-LAYOUT-STUDIO (new idea) | NOT DESIGNED — visual widget-layout editor, lives as sub-entity in the ☁️ | see §10 |
 | OpenRouter delegation scope | REAL, narrow, honestly limited | delegation guide + competency doc |
 | Agent hierarchy (boss/manager/worker/student) | Pieces exist, no tier distinction | see §7 |
 | Claude/Grok persistent self-storage | DOES NOT EXIST | see §7 |
@@ -447,6 +449,70 @@ convention is wanted later, it should get its own, non-colliding name.
 read-only research passes over the real codebase. Handed to Grok next
 for review/edit; a "night class" script covering this material follows
 once Grok's pass is in.*
+
+---
+
+## 10. Owner correction (2026-09-29, after NIGHT_30): the babysitter keeps a body — the "real vs magic" framing was a communication gap, not a design decision
+
+**What went wrong in §4/§5 and in NIGHT_30:** this doc's "magic
+entity/event" language was read as "the terumon babysitter shouldn't
+have a physical form." **That was never the intent, and it's not what
+the owner wants.** The actual need was just vocabulary for entities
+that hold real, persistent state without needing a *complex* body
+(walking, colliding, occupying desk space the way a terumon does) — not
+license to skip embodiment altogether. Every entity in this house still
+gets a body. The real design question was only ever about how simple
+or elaborate that body needs to be, never whether one exists.
+
+**The actual answer, direct from the owner:** the babysitter gets a
+**👻 ghost glyph** as its body — a simple, real pal, same as every other
+entity, just with a form that fits a caretaker rather than a
+creature. It can also have its **own custom GUI**, and that GUI should
+be **user-customizable** — which is a bigger idea than just this one
+babysitter (see below).
+
+**New idea, needs its own document: "HQ-LAYOUT-STUDIO"** (working
+name, short on purpose — pick something shorter still if one comes up
+naturally). A toy/widget that lets a user **visually create and edit
+layouts** for their own custom widgets — the babysitter's dashboard
+being the first real use case, not the only one. Two real integration
+points, both given directly by the owner:
+- **Storage:** it should live in the **☁️ (cloud) entity** already
+  proposed in the DSR-test section of `0.my-concerns.md` ("maybe 1 ☁️
+  or 📦️ thing holding things like that for game can sit in upper right
+  corner of screen") — as a **sub-entity inside that one cloud entity**,
+  not a new top-level thing.
+- **Authoring:** a layout built in HQ-LAYOUT-STUDIO should be able to
+  **read an existing event page**, or have an **event drag-and-dropped
+  into it as usual**, using the exact same drag-and-drop convention
+  every other event placement in this house already uses. No new
+  interaction model — the novelty is the visual layout editor itself,
+  not how events get attached to it. (Confirmed directly by the owner
+  as a follow-up to this same correction.)
+
+**Correction to the summary table's "Real vs magic entity/event" row
+and to §5's framing:** the category itself (state-and-behavior without
+a *complex* physical presence) is still a real, useful distinction
+worth keeping — it correctly separates "a terumon walking around a
+desk" from "an elapsed-time tick" or "a chat session's turn history."
+It should NOT be read as "no body at all." Every future design doc or
+night class touching this should say so explicitly: **a simple body
+(a glyph, a small custom GUI) is still a body.** The terumon babysitter
+is a real pal with a 👻 glyph, not a bodyless process.
+
+**Follow-up work this correction opens, not yet done:**
+- Write `08-roadmap/design-docs/HQ-LAYOUT-STUDIO-DESIGN.md` — the
+  visual widget-layout editor, its ☁️-entity storage, and its
+  event-page read/drag-drop integration. Not started; this section is
+  the seed for that doc, not the doc itself.
+- Revisit `08-roadmap/design-docs/TERUMON-BABYSITTER-DESIGN.md` (still
+  not written, per §4) to specify the 👻 glyph and its HQ-LAYOUT-STUDIO
+  dashboard together, once that doc exists.
+- `NIGHT_30_THE_ATTRITION_MODEL.txt`'s "real vs magic entity" section
+  should be understood with this correction in mind — nothing in it
+  needs to be re-recorded as wrong, since the underlying distinction
+  still holds, but a future class or reader should not conclude
+  "magic" meant "bodyless." This paragraph is the fix for that reading.
 
 ---
 
