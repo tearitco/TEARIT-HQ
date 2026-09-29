@@ -701,23 +701,36 @@ static void send_to_openrouter(const char *prompt, const char *model_name) {
      * injection... to do tool calls with new api (if they do toolcalls
      * we can bypass tools harnesses used for gemma)") - real OpenAI-
      * style `tools` array, matching open-hai's own REAL local tool names
-     * (list_dir/read_file - see detect_tool()/tool_list_dir()/
-     * tool_read_file() elsewhere in this file) so a genuine API-native
-     * tool_calls response can be compared directly against what the
-     * local Harnecient-hack dispatcher already produces for the same
-     * request shape. Real, deliberate scope limit: this sends the
-     * tools param and the response gets a real tool_calls DETECTION
-     * (see extract_openrouter_content() below), but does NOT execute
-     * the tool or feed a result back yet - that's a real, separate,
-     * larger round-trip (system prompt needs a tool_call_id + role:
-     * tool follow-up message) not attempted in this pass. */
+     * (see detect_tool()/execute_pending_tool_into() elsewhere in this
+     * file - the SAME engine the local Harnecient-hack path uses, one
+     * execution engine, two ways to reach a PendingTool). Execution now
+     * real too (check_pending()'s OpenRouter branch), not detection-only.
+     * REAL, NEW 2026-09-29, direct instruction ("i want all the tools
+     * the api will need to read, write, edit code... etc"): extended
+     * from list_dir/read_file (read-only, auto-run) to also offer
+     * write_file/edit_file. tool_requires_approval() (unchanged, pre-
+     * existing) gates both behind a real human approve/deny in the
+     * sidebar every time - this is what makes offering write access to
+     * an API-originated request safe at all. edit_file's "search" is
+     * optional (see tool_edit_file()'s own real behavior: given, a
+     * find/replace against the file's current content; absent, a plain
+     * append) - not marked "required" below for exactly that reason.
+     * cmd_exec (shell execution) deliberately NOT added here - a
+     * separate, explicit decision for the owner, not bundled in with
+     * file edits. */
     fprintf(pf, "{\"model\":\"%s\",\"messages\":[{\"role\":\"user\",\"content\":\"%s\"}],"
                 "\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"list_dir\","
                 "\"description\":\"List files in a directory\",\"parameters\":{\"type\":\"object\","
                 "\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}}},"
                 "{\"type\":\"function\",\"function\":{\"name\":\"read_file\","
                 "\"description\":\"Read a file's contents\",\"parameters\":{\"type\":\"object\","
-                "\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}}}]}",
+                "\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}}},"
+                "{\"type\":\"function\",\"function\":{\"name\":\"write_file\","
+                "\"description\":\"Create a file or overwrite it entirely with new content. Requires human approval before it runs.\",\"parameters\":{\"type\":\"object\","
+                "\"properties\":{\"path\":{\"type\":\"string\"},\"content\":{\"type\":\"string\"}},\"required\":[\"path\",\"content\"]}}},"
+                "{\"type\":\"function\",\"function\":{\"name\":\"edit_file\","
+                "\"description\":\"Edit an existing file. If search is given, replaces the first occurrence of that exact text with content. If search is omitted, appends content to the end of the file. Requires human approval before it runs.\",\"parameters\":{\"type\":\"object\","
+                "\"properties\":{\"path\":{\"type\":\"string\"},\"search\":{\"type\":\"string\"},\"content\":{\"type\":\"string\"}},\"required\":[\"path\",\"content\"]}}}]}",
             model_name, esc);
     fclose(pf);
 
@@ -788,6 +801,20 @@ static void send_to_openrouter(const char *prompt, const char *model_name) {
  * string would silently mis-parse). One child process per dot-path
  * looked up - simple over clever, and a parser crash can never take
  * the long-running manager down with it. */
+/* REAL 2026-08-16, moved earlier in the file (was declared further
+ * down, right before its own original single use site) - the
+ * extractors just below need it too, to build a real PendingTool from
+ * an OpenRouter-native tool_calls response and hand it to the SAME
+ * real execution engine (start_tool_job()) the local Harnecient-hack
+ * path already uses. Forward declarations for the functions still
+ * defined later in this file (unmoved - only the type needed to
+ * move). */
+typedef struct {
+    char name[32];
+    char arg[TOOL_MAX_ARG];
+    char search[TOOL_MAX_ARG];
+    char content[MSG_LEN];
+} PendingTool;
 static int run_json_parser(const char *file, const char *dotpath, char *out, size_t outsz) {
     out[0] = '\0';
     char bin[PATH_BUF];
@@ -819,27 +846,47 @@ static int run_json_parser(const char *file, const char *dotpath, char *out, siz
  * itself a JSON-string-ENCODED JSON object, real OpenAI shape - a
  * second real parse pass on that extracted string, same real two-step
  * gem-dev's own manager already uses (function_call.tmp -> "name"/
- * "args") rather than a special-cased inline unescape. */
-static int extract_openrouter_tool_call_raw(const char *file, char *name_out, size_t name_outsz, char *path_out, size_t path_outsz) {
-    name_out[0] = '\0';
-    path_out[0] = '\0';
-    if (!run_json_parser(file, "choices[0].message.tool_calls[0].function.name", name_out, name_outsz))
+ * "args") rather than a special-cased inline unescape.
+ * REAL, NEW 2026-09-29 (extending the tools array beyond list_dir/
+ * read_file to write_file/edit_file/cmd_exec - see send_to_openrouter()
+ * below): fills the WHOLE PendingTool now, not just name+path, since
+ * those three real tools need more than a single "path" argument
+ * (tool_write_file()/tool_edit_file()'s own real "content"/"search"
+ * fields, cmd_exec's own "command"). Every key is looked up
+ * unconditionally and just comes back empty when a given tool's schema
+ * doesn't define it - cheap (one child process per key) and never
+ * wrong, since a model can never send an argument for a key its own
+ * tool schema didn't declare. */
+static int extract_openrouter_tool_call_raw(const char *file, PendingTool *pt) {
+    memset(pt, 0, sizeof(*pt));
+    if (!run_json_parser(file, "choices[0].message.tool_calls[0].function.name", pt->name, sizeof(pt->name)))
         return 0;
-    if (!name_out[0]) return 0;
-    char args_json[TOOL_MAX_ARG];
+    if (!pt->name[0]) return 0;
+    char args_json[MSG_LEN];
     if (!run_json_parser(file, "choices[0].message.tool_calls[0].function.arguments", args_json, sizeof(args_json)))
-        return 1; /* real tool call, just no path arg this pass */
+        return 1; /* real tool call, just no args this pass */
     char args_path[PATH_BUF];
     snprintf(args_path, sizeof(args_path), "%s/or-args-%d.json", g_audit_dir, (int)getpid());
     FILE *af = fopen(args_path, "w");
-    if (af) { fputs(args_json, af); fclose(af); run_json_parser(args_path, "path", path_out, path_outsz); unlink(args_path); }
+    if (af) {
+        fputs(args_json, af);
+        fclose(af);
+        char path_arg[TOOL_MAX_ARG] = "";
+        run_json_parser(args_path, "path", path_arg, sizeof(path_arg));
+        if (!path_arg[0] && strcmp(pt->name, "cmd_exec") == 0)
+            run_json_parser(args_path, "command", path_arg, sizeof(path_arg));
+        snprintf(pt->arg, sizeof(pt->arg), "%s", path_arg);
+        run_json_parser(args_path, "content", pt->content, sizeof(pt->content));
+        run_json_parser(args_path, "search", pt->search, sizeof(pt->search));
+        unlink(args_path);
+    }
     return 1;
 }
 
 static int extract_openrouter_tool_call(const char *file, char *out, size_t outsz) {
-    char name[128], args[512];
-    if (!extract_openrouter_tool_call_raw(file, name, sizeof(name), args, sizeof(args)) || !name[0]) return 0;
-    snprintf(out, outsz, "[tool_call requested by model] %s(%s) - real API-native tool call, NOT executed (detection only this pass)", name, args);
+    PendingTool pt;
+    if (!extract_openrouter_tool_call_raw(file, &pt) || !pt.name[0]) return 0;
+    snprintf(out, outsz, "[tool_call requested by model] %s(%s) - real API-native tool call, NOT executed (detection only this pass)", pt.name, pt.arg);
     return 1;
 }
 
@@ -1000,19 +1047,6 @@ static void extract_response_field(const char *json, char *out, size_t outsz) {
     out[o] = '\0';
 }
 
-/* REAL 2026-08-16, moved earlier in the file (was declared further
- * down, right before its own original single use site) - check_pending()
- * below now needs it too, to build a real PendingTool from an
- * OpenRouter-native tool_calls response and hand it to the SAME real
- * execution engine (start_tool_job()) the local Harnecient-hack path
- * already uses. Forward declarations for the functions still defined
- * later in this file (unmoved - only the type needed to move). */
-typedef struct {
-    char name[32];
-    char arg[TOOL_MAX_ARG];
-    char search[TOOL_MAX_ARG];
-    char content[MSG_LEN];
-} PendingTool;
 static int tool_requires_approval(const char *name);
 static void start_tool_job(PendingTool *pt);
 static void write_pending_tool_state(void);
@@ -1064,18 +1098,18 @@ static void check_pending(void) {
          * local Harnecient-hack path already uses, not just detected
          * and reported as inert. Same real approval gate
          * (tool_requires_approval()) applies - list_dir/read_file
-         * (the only 2 tools currently offered to the API, see
-         * send_to_openrouter()'s own tools array) are read-only and
-         * auto-run; if a future tools array ever adds write_file/
-         * cmd_exec, this same real gate stops it from silently
-         * auto-executing an API-originated request. */
-        char tool_name[32], tool_path[TOOL_MAX_ARG];
-        if (extract_openrouter_tool_call_raw(g_pending_outfile, tool_name, sizeof(tool_name), tool_path, sizeof(tool_path))) {
+         * auto-run (read-only); write_file/edit_file/cmd_exec (real,
+         * live in the tools array as of 2026-09-29, direct instruction
+         * "i want all the tools the api will need to read, write, edit
+         * code, run shell scripts etc") ALWAYS stop here for a human
+         * approve/deny in the sidebar first - tool_requires_approval()
+         * gates them exactly like the local Harnecient-hack path
+         * already did before this session, unchanged. This gate is
+         * what makes offering write/exec to an API-originated request
+         * safe at all - never auto-run un-approved. */
+        PendingTool pt;
+        if (extract_openrouter_tool_call_raw(g_pending_outfile, &pt)) {
             unlink(g_pending_outfile);
-            PendingTool pt;
-            memset(&pt, 0, sizeof(pt));
-            snprintf(pt.name, sizeof(pt.name), "%s", tool_name);
-            snprintf(pt.arg, sizeof(pt.arg), "%s", tool_path);
             if (tool_requires_approval(pt.name)) {
                 g_pending_tool = pt;
                 g_tool_pending = 1;
