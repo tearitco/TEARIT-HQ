@@ -1,0 +1,78 @@
+FINANCIAL PROFILE FOR DATACORE SYSTEMS (DCR)
+================================================
+FINANCIAL BALANCE SHEET: DATACORE SYSTEMS (DCR)
+--------------------------------------------------
+(Amounts in millions of U.S. Dollars, except per share amounts)
+
+ASSETS:
+  Free Cash and Equivalents:		468.94
+  Working Capital (A/R, Inven.):	426.13
+  Business Assets/Equipment:		1466.44
+  Stock in Subsidiary Cos.:		0.00
+  Options Long/Short: Net Value:	0.00
+  ---------------------------------------------
+  Total Assets:				2361.52
+  ---------------------------------------------
+
+LIABILITIES AND EQUITY:
+  Long-Term Bonds Issued:		0.00
+  Bank Loan:				63.09
+  Accrued Income Tax Payable:		0.00
+  ---------------------------------------------
+  Total Liabilities:			63.09
+  ---------------------------------------------
+  Equity (Net Worth):			2298.42
+  =============================================
+
+STOCK AND EARNINGS DATA:
+------------------------
+  Net Worth Per Share:			51.80
+  Current Stock Price:			74.71
+  52-Week High/Low Stock Price:		89.45 / 65.32
+  Shares of Stock Outstanding:		44.37 million
+  Total Stock Capitalization:		3314.87 million
+  2021 Earnings Per Share:		0.00 (Operating Earnings)
+  2022 Earnings Per Share:		0.00 (Operating Earnings)
+  2023 Earnings Per Share:		0.00 (Operating Earnings)
+  2024 Earnings Per Share:		0.00 (Operating Earnings)
+  2025 E/P/S through Qtr. #1:		(Not Yet Announced)
+  ---------------------------------------------
+
+VARIOUS FINANCIAL RATIOS:
+-------------------------
+  Price/Earnings Ratio:			NMF (No Meaningful Figure)
+  Dividend Yield:			0.00%
+  Debt to Equity Ratio:			0.03 to 1
+  Return on Equity (2024):		NMF (No Meaningful Figure)
+  ---------------------------------------------
+
+*** CREDIT INFO: ***
+-------------------
+  Credit Rating:			AA
+  Unused Bank Line of Credit:		2882.35 million
+  Borrowing Rate (Interest):		10.50% (Prime is: 10.00%)
+  Lending Bank:				MARTIAN TRUST BANK (MTB)
+  ---------------------------------------------
+
+VARIABLE SETTINGS (Changeable by controlling player):
+----------------------------------------------------
+  Dividend Payout Per Share:		0.00
+  Percent of Sales Spent on R & D:	4%
+  Growth Rate (Assets, Sales):		0%
+  ---------------------------------------------
+
+MISCELLANEOUS INFO:
+-------------------
+  Industry Group:			COMPUTER
+  Incorporated in:			Red African Union
+  Controlled (and actively managed) by:	public
+  Public Owns:			%
+  Accrued R&D and/or Investment Tax Credits:	$91.22 million
+  Annual CEO Salary (approx.):		$1.15 million (Plus possible bonuses)
+  Today's (Game) Date:			January 1, 2025
+  Next Earnings Report:			January 27, 2025
+  ---------------------------------------------
+
+FOOTNOTE TO FINANCIAL STATEMENT:
+-------------------------------
+[1] The company is not currently engaged in any interest rate swap transactions and has no undisclosed off-balance sheet liabilities.

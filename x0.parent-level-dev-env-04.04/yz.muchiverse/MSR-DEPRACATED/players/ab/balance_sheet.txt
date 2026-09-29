@@ -1,0 +1,6 @@
+My Balance Sheet:
+Cash (CD's)..		2000.00
+Other Assets....		0.00
+Total Assets.....		2000.00
+Less Debt....		-0.00
+Net Worth........		2000.00

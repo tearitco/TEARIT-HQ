@@ -1,0 +1,2 @@
+humanoid_bank 100 10000.0000
+humanoid_solos 10 1000.0000

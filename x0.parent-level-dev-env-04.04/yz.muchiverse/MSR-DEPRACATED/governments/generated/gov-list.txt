@@ -1,0 +1,8 @@
+Country pop gdp
+1	Solar Empire	10 2611
+3	Red African Union	10 426
+4	Robot State	10 396
+5	Sinder Rouge Monarchy	10 336
+6	United Clones	10 318
+7	Farland	10 287
+8	Inland	10 217

@@ -1,0 +1,115 @@
+WSR-PAL ROLLBACK & LOST CODE - 2026-07-17
+===========================================
+
+WHAT HAPPENED:
+We accidentally restored from wsr-pal-last-backup after a path confusion incident where I mistakenly changed correct paths (projects/wsr-pal/pieces/) to incorrect ones (pieces/), breaking all corp data lookups. The backup itself predates most of the feature work.
+
+WHAT WAS LOST (Implementation Work):
+====================================
+
+1. AUTO-ACTIVE CORP FEATURE (ops/corp_ipo.c modification)
+   - Added logic to automatically select newly created corporation
+   - Counted total corps via: popen("ls projects/wsr-pal/pieces | grep corp_", "r")
+   - Set active_corp_index = (corp_count - 1) in wsr_main_menu/state.txt after corp creation
+   - This made new corporations immediately selectable instead of requiring manual selection
+
+2. TRANSACTION LOGGING (ops/player_trade.c modification)
+   - Added #include <time.h>
+   - Added log_transaction() helper function appending to transactions.txt
+   - Format: TICKER|ACTION|SHARES|PRICE|DATE (e.g., "ORB|buy|100|50.00|2026-07-17")
+   - Called after every buy/sell/short/cover trade
+   - Calculated current cash and updated state.txt
+   - This was the foundation for portfolio cost-basis tracking
+
+3. NEW OPS (3 operations built from scratch):
+
+   a) ops/screener.c (~210 lines)
+      - Scanned all corp_*/state.txt files to collect corporation data
+      - Calculated fundamental value using real analysis_loop.c formula:
+        * book_value_per_share = book_value / shares_outstanding
+        * market_cap_multiplier = 1.0 + (log10(market_cap) - 3) * 0.05
+        * leverage_factor = 1.0 - (debt_to_equity - 1.0) * 0.1 [if debt > 1.0]
+        * bias_factor = 0.5 + (risk_bias / 100.0) * 1.0
+        * fundamental_value = book_value_per_share * multipliers
+      - Calculated upside_pct = ((fundamental_value - price) / price) * 100
+      - Sorted by upside percentage (best opportunities first)
+      - Displayed: Ticker | Price | Fundamental | Upside% | MktCap | P/E | Leverage
+      - Showed top 50 stocks
+      - Saved output to pieces/wsr_menu/screener_report.txt
+      - Output one-line message: "Screener report saved - view via `cat ...`"
+
+   b) ops/player_list_portfolio.c (~170 lines)
+      - Read transactions.txt (TICKER|ACTION|SHARES|PRICE|DATE format)
+      - Calculated current holdings per ticker (sum of buys/sells/shorts/covers)
+      - Calculated average cost basis (sum of buy costs / current shares)
+      - Read current stock prices from corp_*/state.txt
+      - Outputted formatted table: Ticker | Shares | Avg Cost | Current | Gain/Loss $ | Gain/Loss %
+      - Showed total portfolio value and aggregate gain/loss
+      - Saved output to pieces/wsr_menu/portfolio_report.txt
+      - Output one-line message: "Portfolio report saved - view via `cat ...`"
+
+   c) ops/wsr_search_input.c (~100 lines)
+      - Read/wrote search criteria from wsr_search_menu/state.txt
+      - Managed fields: high_roe, low_pe, price_pct_book, div_yield, min/max_market_cap, etc.
+      - Handled criterion 15 (Clear Criteria) to reset all filters to defaults
+      - Stub for interactive input (full stdin handling would require architectural change)
+
+   d) ops/display_search_results.c (~130 lines)
+      - Read search criteria from wsr_search_menu/state.txt
+      - Scanned all corp_*/state.txt files in projects/wsr-pal/pieces/
+      - Applied filters: market cap range, price as % of book value, publicly_traded flag, has_bonds flag
+      - Displayed matching corporations in table format
+      - Showed: Ticker | Price | BookValue | P/E | ROE | MktCap | Div
+      - Limited to 30 results
+
+4. NEW PIECE DEFINITIONS:
+
+   a) pieces_template/wsr_search_menu/piece.pdl (14 METHOD options)
+      - Options 1-13: individual criteria adjustments (ROE, P/E, Price/Book, etc.)
+      - Option 14: Display Results (called display_search_results.+x)
+      - Option 15: Clear Criteria (reset to defaults via wsr_search_input.+x 15)
+      - Back option to GOTO:wsr_main_menu
+
+   b) pieces_template/wsr_search_menu/state.txt (search filter defaults)
+      - Initial state: high_roe=20, low_pe=10, price_pct_book=95, div_yield=5, etc.
+
+5. MENU WIRING CHANGES (pieces_template/wsr_main_menu/piece.pdl):
+   - Option 23 (Research Report): STUB → RUN:./ops/+x/screener.+x
+   - Option 24 (List Portfolio):   STUB → RUN:./ops/+x/player_list_portfolio.+x
+   - Option 28 (DB Search):        STUB → GOTO:wsr_search_menu
+
+6. OTHER C MODIFICATIONS:
+   - ops/wsr_menu_input.c: Path references to projects/wsr-pal/pieces/ (correct location)
+   - system/keyboard_input.c: Changed quit keycode from 'q'/113 to keycode 3 (Ctrl-C)
+   - pal/main_loop.pal: Updated to use keycode 3 for quit check, added read_state for history_cursor
+
+7. default_op.txt ENTRIES ADDED:
+   - Lines 20-24: screener, display_search_results, wsr_search_input, player_list_portfolio ops
+
+ESTIMATED REIMPLEMENTATION TIME:
+- DB Search submenu + piece.pdl + state.txt: ~15 min
+- ops/screener.c: ~30 min (fundamental value formula is complex)
+- ops/player_list_portfolio.c: ~25 min (transaction parsing + cost basis)
+- ops/wsr_search_input.c: ~10 min (state field read/write)
+- ops/display_search_results.c: ~20 min (scanning + filtering)
+- Corp IPO auto-select: ~5 min
+- Transaction logging: ~10 min
+- Menu wiring & testing: ~15 min
+TOTAL: ~2.5-3 hours
+
+KEY INSIGHTS FROM THE WORK:
+===========================
+1. Data split: pieces/ (11 menus) vs projects/wsr-pal/pieces/ (57 game data) is intentional
+2. RUN: command handler in wsr_menu_input.c only reads first line; report output to files
+3. Screener formula ported from analysis_loop.c in the original WSR source
+4. Transaction log format (TICKER|ACTION|SHARES|PRICE|DATE) is the foundation for all portfolio calcs
+5. Bracket cursor UI [>] already working; menu navigation via GOTO: works properly
+
+NEXT STEPS:
+===========
+1. Re-add wsr_search_menu piece (just the .pdl and state.txt)
+2. Implement DB Search first (simplest, no historical data needed)
+3. Then transaction logging + portfolio listing
+4. Then screener (most complex formula)
+5. Then auto-active corp (1-liner in corp_ipo.c)
+6. Full keystroke injection testing via history.txt before considering "done"

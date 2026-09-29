@@ -1,0 +1,6 @@
+My Balance Sheet: Inland
+Cash (CD's)..		21.7000
+Other Assets....		17.3600
+Total Assets.....		71.6100
+Less Debt....		-43.4000
+Net Worth........		7.5950
