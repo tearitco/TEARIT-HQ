@@ -200,11 +200,30 @@ static char g_chtpm_path[PATH_BUF];  /* real, generic (2026-08-31) - the real .c
  * page name "main". Empty for every other window (HQ windows carry a
  * real <window label="...">, so they never hit this fallback). */
 static char g_entity_ident[128] = "";
-static void kh_compose_entity_ident(void) {
-    if (g_entity_ident[0] || !g_chtpm_path[0]) return;
+/* REAL, NEW 2026-09-28 (bug_bounty.md "OPEN 2026-09-28" entry, direct
+ * live report: "when always on top is not on context windows aren't
+ * popping 2 top, that's the one thing that should defy being hidden").
+ * Traced: this process (launch_khtpm_menu() spawns menu.chtpm through
+ * the exact same generic default-mode window-creation path as any HQ
+ * window) independently called load_override_redirect() and inherited
+ * the SAME house-wide always-on-top PDL every entity's own desktop
+ * window reads - not the calling entity's g_zorder_above leaking in,
+ * but this window's own equally-wrong default read of that shared
+ * global. A context menu is short-lived, transient popup UI, same
+ * class as g_dock_menu_win (the toys dropdown, ~line 3802), which
+ * already hardcodes override_redirect=True unconditionally for exactly
+ * this reason (03-pitfalls/X11-AND-SESSION-PITFALLS.md, 217d97eb) -
+ * this extends that same, already-proven precedent to the entity
+ * context-menu window itself instead of guessing at a new mechanism. */
+static int kh_is_entity_context_menu(void) {
     const char *slash = strrchr(g_chtpm_path, '/');
     const char *base = slash ? slash + 1 : g_chtpm_path;
-    if (strcmp(base, "menu.chtpm") != 0) return;   /* only entity menus */
+    return strcmp(base, "menu.chtpm") == 0;
+}
+static void kh_compose_entity_ident(void) {
+    if (g_entity_ident[0] || !g_chtpm_path[0]) return;
+    if (!kh_is_entity_context_menu()) return;   /* only entity menus */
+    const char *slash = strrchr(g_chtpm_path, '/');
     /* dir = g_chtpm_path without the trailing "/menu.chtpm" */
     char dir[PATH_BUF];
     size_t dl = (size_t)(slash - g_chtpm_path);
@@ -19219,7 +19238,13 @@ int main(int argc, char **argv) {
      * WM-managed like the dock. Only pchq-board sets the class. */
     int win_managed = dock_managed || elem_has_class(g_window, "managed");
     g_win_managed_focus = win_managed && !dock_managed;
-    swa.override_redirect = win_managed ? False : (Bool)g_override_redirect;
+    /* REAL FIX 2026-09-28, see kh_is_entity_context_menu()'s own header
+     * comment - an entity context menu must stay unconditionally
+     * override_redirect regardless of the shared always-on-top PDL
+     * (same real precedent as g_dock_menu_win), or it silently follows
+     * the entity's OWN "normal" setting and can render invisibly below
+     * other windows the instant it opens. */
+    swa.override_redirect = kh_is_entity_context_menu() ? True : (win_managed ? False : (Bool)g_override_redirect);
     /* REAL FIX 2026-08-29 (live report: "toolbar doesn't allow drag
      * repositioning") - this generic popup window (entity-menu popup AND
      * swatch-picker/Settings) never requested ButtonReleaseMask or
@@ -19236,7 +19261,11 @@ int main(int argc, char **argv) {
     win = XCreateWindow(dpy, RootWindow(dpy, screen), g_win_x, g_win_y, (unsigned)g_win_w, (unsigned)g_win_h, 0,
                          CopyFromParent, InputOutput, CopyFromParent, CWBackPixel | CWOverrideRedirect | CWEventMask, &swa);
     if (window_is_dock()) apply_dock_window_hints(dpy, win, g_win_x, g_win_y);
-    render_managed_wm_hints(dpy, win, win_managed || !g_override_redirect); /* REAL, NEW 2026-09-01 - managed branch; win_managed adds class="managed" 2026-09-08 */
+    /* kh_is_entity_context_menu() forced override_redirect=True just
+     * above regardless of g_override_redirect - never apply managed WM
+     * hints on top of that (2026-09-28, same fix as the override_redirect
+     * assignment above). */
+    render_managed_wm_hints(dpy, win, !kh_is_entity_context_menu() && (win_managed || !g_override_redirect)); /* REAL, NEW 2026-09-01 - managed branch; win_managed adds class="managed" 2026-09-08 */
     Atom motif_hints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
     long hints[5] = { 2, 0, 0, 0, 0 };
     XChangeProperty(dpy, win, motif_hints, motif_hints, 32, PropModeReplace, (unsigned char *)hints, 5);
