@@ -579,10 +579,26 @@ static void write_chtpm_projection(void) {
          * a very long message grows generously without ever repeating
          * the "everything else vanishes" failure mode. */
         {
+            /* REAL FIX 2026-09-29, direct live report with a real
+             * screenshot: 85 chars/line under-provisioned a real
+             * message, still overlapping the row below - "the pending
+             * is too transparent now. why? we never agreed on that."
+             * Root cause: word-wrap breaks at WORD boundaries, not a
+             * flat character count, so real wrapped lines run shorter
+             * than a naive chars/line estimate assumes - the exact
+             * amount varies with the message's own word-length
+             * distribution, so there is no single constant that's
+             * exactly right for every message. Biased hard toward
+             * over-provisioning instead (55 chars/line, well under the
+             * ~85 a dense/short-word message can actually reach) -
+             * empty space below a short message costs nothing, text
+             * overlap is the failure the owner explicitly does not
+             * want. Cap raised to 14 to match (12 was sized for the
+             * old, too-optimistic per-line estimate). */
             int pend_len = (int)strlen(pend_msg) + (int)strlen("PENDING (): ") + (int)strlen(pend_agent);
-            int needed_rows = (pend_len + 84) / 85;
+            int needed_rows = (pend_len + 54) / 55;
             if (needed_rows < 2) needed_rows = 2;
-            if (needed_rows > 12) needed_rows = 12;
+            if (needed_rows > 14) needed_rows = 14;
             CH_APPEND("pend_rows=%d\n", needed_rows);
         }
     }
