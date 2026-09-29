@@ -806,6 +806,58 @@ int main(int argc, char *argv[]) {
             }
             list_directory(state.current_dir, &state);
             write_ui_file(package_dir, &state, "", "");
+        } else if (strncmp(cmd, "CLIIO_CP:", 9) == 0) {
+            /* REAL, NEW 2026-09-28 (direct instruction: "how do we allow
+             * mv/cp style commands... its fine to allow others, since its
+             * just another cli"): Cli-io `cp <src-nav#> <dst-nav#>` -
+             * exact same resolved-spec shape as CLIIO_MV: above (renderer
+             * already did the nav-number resolution), only the final
+             * operation differs. Reuses the SAME safe pattern the existing
+             * CTX_PASTE copy branch already established below
+             * (fe_run_wait() + a literal argv array, `cp -a --  src dst` -
+             * never a shell string, never interpolating raw typed text) -
+             * not a new copy mechanism. */
+            char spec[2 * MAX_PATH + 4];
+            snprintf(spec, sizeof(spec), "%s", cmd + 9);
+            char *sep = strstr(spec, "|");
+            char src[MAX_PATH], dstdir[MAX_PATH], msg[MAX_PATH * 2 + 64];
+            src[0] = dstdir[0] = 0;
+            snprintf(msg, sizeof(msg), "error: bad spec");
+            if (sep) {
+                *sep = 0;
+                const char *a = spec, *b = sep + 1;
+                if (a[0] == 'e' && atoi(a + 1) >= 0 && atoi(a + 1) < state.count)
+                    snprintf(src, sizeof(src), "%s/%s", state.current_dir, state.entries[atoi(a + 1)].name);
+                else if (a[0] == 'p')
+                    snprintf(src, sizeof(src), "%s", a + 1);
+                if (b[0] == 'w')
+                    snprintf(dstdir, sizeof(dstdir), "%s", state.current_dir);
+                else if (b[0] == 'e' && atoi(b + 1) >= 0 && atoi(b + 1) < state.count &&
+                         is_dir_like(state.entries[atoi(b + 1)].type))
+                    snprintf(dstdir, sizeof(dstdir), "%s/%s", state.current_dir, state.entries[atoi(b + 1)].name);
+                if (src[0] && dstdir[0]) {
+                    const char *base = strrchr(src, '/');
+                    base = base ? base + 1 : src;
+                    char dst[MAX_PATH];
+                    snprintf(dst, sizeof(dst), "%s/%s", dstdir, base);
+                    if (!strcmp(src, dst)) snprintf(msg, sizeof(msg), "ok: already there");
+                    else if (!strncmp(dst, src, strlen(src)) && (dst[strlen(src)] == '/' || !dst[strlen(src)]))
+                        snprintf(msg, sizeof(msg), "error: cannot copy into itself");
+                    else {
+                        char *cpv[] = { "cp", "-a", "--", src, dst, NULL };
+                        if (fe_run_wait(cpv) == 0) snprintf(msg, sizeof(msg), "ok: %s -> %s", src, dst);
+                        else snprintf(msg, sizeof(msg), "error: cp %s -> %s failed", src, dst);
+                    }
+                } else snprintf(msg, sizeof(msg), "error: could not resolve source/destination");
+            }
+            {
+                char rp[MAX_PATH];
+                snprintf(rp, sizeof(rp), "%s/cliio_result.txt", package_dir);
+                FILE *rf = fopen(rp, "w");
+                if (rf) { fprintf(rf, "%s\n", msg); fclose(rf); }
+            }
+            list_directory(state.current_dir, &state);
+            write_ui_file(package_dir, &state, "", "");
         } else if (strncmp(cmd, "CRUMB:", 6) == 0) {
             /* REAL, NEW 2026-09-15 - jump straight to a real ancestor
              * path a breadcrumb button carries (build_crumbs()'s own
