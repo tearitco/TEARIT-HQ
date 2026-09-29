@@ -3973,6 +3973,64 @@ static int g_resize_start_xr = 0, g_resize_start_yr = 0, g_resize_start_w = 0, g
 #define KH_WIN_MIN_W   220
 #define KH_WIN_MIN_H   140
 
+/* REAL, NEW 2026-09-29, direct instruction ("id like the window to
+ * remember if it was resized even on close and reopen") - a
+ * class="user-resizable" window's size (g_win_w/g_win_h) only ever
+ * lived in-process; the ⌟ drag-resize grip mutates it live but nothing
+ * ever wrote it back to disk, so every relaunch fell back to the CSS/
+ * hq_ui.pdl default. Same real .hq_manager/ convention as kh_publish_
+ * cli_io_active() (below, once g_package_dir is available) - one
+ * small per-package state file, not a new subsystem. Only meaningful
+ * for g_user_resizable windows (a fixed-size window's g_win_w/g_win_h
+ * never changes, nothing to save). */
+static void kh_win_size_path(char *out, size_t outsz) {
+    out[0] = '\0';
+    if (!g_package_dir[0]) return;
+    char dir[PATH_BUF];
+    snprintf(dir, sizeof(dir), "%s/.hq_manager", g_package_dir);
+    mkdir(dir, 0777);
+    snprintf(out, outsz, "%s/win_size.txt", dir);
+}
+static void kh_save_win_size(void) {
+    if (!g_user_resizable) return;
+    char path[PATH_BUF];
+    kh_win_size_path(path, sizeof(path));
+    if (!path[0]) return;
+    FILE *f = fopen(path, "w");
+    if (f) { fprintf(f, "w=%d\nh=%d\n", g_win_w, g_win_h); fclose(f); }
+}
+/* Called once at startup, right after g_package_dir is known and
+ * before XCreateWindow - overrides whatever CSS/hq_ui.pdl default the
+ * g_user_resizable init block above already computed, same clamps
+ * (screen bounds, KH_WIN_MIN_W/H) so a saved size from a since-shrunk
+ * display or a hand-edited file can't produce an off-screen or
+ * degenerate window. Silently a no-op (keeps the CSS-derived default)
+ * if no file exists yet - the common case on a window's first ever
+ * launch. */
+static void kh_load_win_size(Display *dpy, int screen) {
+    if (!g_user_resizable) return;
+    char path[PATH_BUF];
+    kh_win_size_path(path, sizeof(path));
+    if (!path[0]) return;
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    int w = 0, h = 0;
+    char line[64];
+    while (fgets(line, sizeof(line), f)) {
+        if (!strncmp(line, "w=", 2)) w = atoi(line + 2);
+        else if (!strncmp(line, "h=", 2)) h = atoi(line + 2);
+    }
+    fclose(f);
+    if (w <= 0 || h <= 0) return;
+    int sw = DisplayWidth(dpy, screen), sh = DisplayHeight(dpy, screen);
+    if (w > sw - g_win_x - 60) w = sw - g_win_x - 60;
+    if (h > sh - g_win_y - 40) h = sh - g_win_y - 40;
+    if (w < KH_WIN_MIN_W) w = KH_WIN_MIN_W;
+    if (h < KH_WIN_MIN_H) h = KH_WIN_MIN_H;
+    g_win_w = w;
+    g_win_h = h;
+}
+
 /* REAL, NEW 2026-09-01 - the old chat-hai mode block (~2,500 lines,
  * chai_-prefixed: its own draw_elem/render_tree/CSS apply/layout/
  * handle_key/click handling) was fully deleted here, along with every
@@ -11600,6 +11658,7 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
              * plus a per-pass +2*KH_WIN_FRAME) and the window grows
              * without bound while you drag - the "infinite grow" bug. */
             g_win_resizing = 0;
+            kh_save_win_size();
             if (!g_quit) { assign_nav_and_layout(); redraw(); }
         }
         return;
@@ -19172,6 +19231,15 @@ int main(int argc, char **argv) {
         if (g_win_h > sh - g_win_y - 40)  g_win_h = sh - g_win_y - 40;
         if (g_win_w < KH_WIN_MIN_W) g_win_w = KH_WIN_MIN_W;
         if (g_win_h < KH_WIN_MIN_H) g_win_h = KH_WIN_MIN_H;
+        /* REAL, NEW 2026-09-29, direct instruction ("id like the window
+         * to remember if it was resized even on close and reopen") -
+         * g_user_resizable and g_package_dir are BOTH finally known at
+         * this exact point (the former from the class loop just above,
+         * the latter from argv[2] earlier) - overrides the CSS/hq_ui.pdl
+         * default just computed above if a previous session saved a
+         * real size. No-op (keeps that default) on a window's first
+         * ever launch. */
+        kh_load_win_size(dpy, screen);
     }
     reload_font_ui();  /* "Noto Sans CJK SC" / "DejaVu Sans" at pixelsize scaled(13)/scaled(12) - honours hq_ui.pdl font_scale, loaded just above */
     /* REAL, NEW 2026-08-25 (live report: bookmarks' own path labels
