@@ -1,0 +1,189 @@
+﻿FRAME_REPORT 20260806-1947 topic=gl-empty-rgb-receipts
+Project: 014.wsr-pal (Windows K3 capture)
+Guide:   house _.0.aigent-testing-k3.txt
+CWD:     C:\Users\jbro8\OneDrive\Desktop\MUCHI_DESK_PALS_WIN\NNEST-11.15+2\NNEST-11.15\x0.parent-level-dev-env-04.04\yz.muchiverse\44.xyz❤️‍🔥️00.10\014.wsr-pal💸️📌️+2
+
+=== R1 process health ===
+  LIVE  pid=110848 name=chtpm_parser_pal
+  LIVE  pid=91020 name=chtpm_rgb_render
+  LIVE  pid=73448 name=gl_mirror
+  LIVE  pid=53124 name=keyboard_input
+  LIVE  pid=78516 name=orchestrator
+  LIVE  pid=92520 name=prisc+x
+  LIVE  pid=66340 name=renderer
+
+=== artifact inventory ===
+  OK    pieces\display\current_frame.txt              size=    1569 mtime=8/6/2026 7:44:53 PM
+  OK    pieces\display\current_layout.txt             size=      42 mtime=8/6/2026 7:44:53 PM
+  OK    pieces\display\frame_history.txt              size=    1611 mtime=8/6/2026 7:44:52 PM
+  OK    pieces\display\frame_changed.txt              size=       3 mtime=8/6/2026 7:44:53 PM
+  OK    pieces\display\renderer_pulse.txt             size=       6 mtime=8/6/2026 7:44:53 PM
+  OK    pieces\display\rgb_frame.raw                  size= 1966080 mtime=8/6/2026 7:44:53 PM
+  OK    pieces\display\rgb_frame.receipt.txt          size=     177 mtime=8/6/2026 7:44:53 PM
+  OK    pieces\display\rgb_frame_changed.txt          size=   22121 mtime=8/6/2026 7:44:53 PM
+  OK    pieces\display\gl_display.receipt.txt         size=     573 mtime=8/6/2026 7:47:41 PM
+  OK    pieces\keyboard\history.txt                   size=       0 mtime=8/6/2026 7:44:52 PM
+  OK    pieces\apps\player_app\history.txt            size=       0 mtime=8/6/2026 7:44:52 PM
+  OK    pieces\apps\player_app\interact_relay.txt     size=       0 mtime=8/6/2026 7:44:52 PM
+  OK    debug.txt                                     size=     747 mtime=8/6/2026 7:44:53 PM
+
+=== R3 layout ===
+  pieces/chtpm/layouts/wsr_main_menu.chtpm
+
+=== BEFORE current_frame (head) ===
++==== W A L L   S T R E E T   R A I D E R ====================+
++============================================================+
++============================================================+
+|  wsr_main_menu   Turn:0   Active: corp_AFL                 |
++============================================================+
+|----------------------------------                          |
+|Your Wallet:                                                |
+|Cash..........           1613                               |
+|----------------------------------                          |
+|Active Corp Balance Sheet:                                  |
+|Cash (CD's)..            5000                               |
+|Stock Price...           115.04                             |
+|Owned By......           (independent)                      |
+|----------------------------------------------              |
+|FINANCIAL NEWS [CMZ: $0.10 (-99.38%)]                       |
+|                                                            |
+|WORLD STATUS                                                |
+|Population: 10000          Temperature: 15C                 |
+|                                                            |
+|  > Not yet available in this build.                        |
+
+=== BEFORE rgb_frame.receipt ===
+op=chtpm_rgb_render
+frame_w=640
+frame_h=768
+bytes_per_pixel=4
+byte_count=1966080
+expected_byte_count=1966080
+checksum_fnv1a64=e42900b1b1babe55
+max_text_cols=80
+max_text_rows=48
+
+=== BEFORE gl_display.receipt ===
+receipt_type=gl_display_upload
+generated_by=gl_mirror
+generated_at_epoch=1786070851
+generated_at_iso_utc=2026-08-07T02:47:31Z
+event=display_swap
+source_rgba32=./pieces/display/rgb_frame.raw
+texture_width_px=640
+texture_height_px=768
+expected_rgba_bytes=1966080
+loaded_rgba_bytes=1966080
+loaded_frame_partial=0
+loaded_rgba_checksum_fnv1a64=0xE42900B1B1BABE55
+window_w=640
+window_h=768
+texture_view_x=0
+texture_view_y=0
+texture_view_w=640
+texture_view_h=768
+display_scale_x=1.000000
+display_scale_y=1.000000
+render_origin=top_left_texture_to_gl_viewport
+
+=== RGB vs GL checksum gate ===
+  rgb checksum_fnv1a64          = e42900b1b1babe55
+  gl  loaded_rgba_checksum      = 0xE42900B1B1BABE55
+  VERDICT: PASS (GL uploaded same buffer rgb_render wrote)
+
+=== R2 key injection ===
+  injected: [2026-08-06 19:47:41] KEY_PRESSED: 13
+  waited 2s for parser/module cycle
+
+=== AFTER current_frame (head) ===
++==== W A L L   S T R E E T   R A I D E R ====================+
++============================================================+
++============================================================+
+|  wsr_main_menu   Turn:0   Active: corp_AFL                 |
++============================================================+
+|----------------------------------                          |
+|Your Wallet:                                                |
+|Cash..........           1613                               |
+|----------------------------------                          |
+|Active Corp Balance Sheet:                                  |
+|Cash (CD's)..            5000                               |
+|Stock Price...           115.04                             |
+|Owned By......           (independent)                      |
+|----------------------------------------------              |
+|FINANCIAL NEWS [CMZ: $0.10 (-99.38%)]                       |
+|                                                            |
+|WORLD STATUS                                                |
+|Population: 10000          Temperature: 15C                 |
+|                                                            |
+|  > Not yet available in this build.                        |
+
+=== AFTER rgb_frame.receipt ===
+op=chtpm_rgb_render
+frame_w=640
+frame_h=768
+bytes_per_pixel=4
+byte_count=1966080
+expected_byte_count=1966080
+checksum_fnv1a64=342ceb1e1c34ae6c
+max_text_cols=80
+max_text_rows=48
+
+=== AFTER gl_display.receipt ===
+receipt_type=gl_display_upload
+generated_by=gl_mirror
+generated_at_epoch=1786070863
+generated_at_iso_utc=2026-08-07T02:47:43Z
+event=display_swap
+source_rgba32=./pieces/display/rgb_frame.raw
+texture_width_px=640
+texture_height_px=768
+expected_rgba_bytes=1966080
+loaded_rgba_bytes=1966080
+loaded_frame_partial=0
+loaded_rgba_checksum_fnv1a64=0x342CEB1E1C34AE6C
+window_w=640
+window_h=768
+texture_view_x=0
+texture_view_y=0
+texture_view_w=640
+texture_view_h=768
+display_scale_x=1.000000
+display_scale_y=1.000000
+render_origin=top_left_texture_to_gl_viewport
+
+=== frame delta ===
+  current_frame changed: True
+
+=== rgb_frame.raw pixel gate ===
+  bytes=1966080 pixels=491520 black=467751 whiteish=23769
+  VERDICT: PASS (visible text pixels present in RGB buffer)
+
+=== keyboard history tail ===
+  [2026-08-06 19:47:41] KEY_PRESSED: 13
+
+=== frame_history tail (renderer audit) ===
+    [ ] 15. [End Turn  ]    [ ] 16. [Misc. Menu  ]    [ ] 17. [Chart  ]    [ ] 18. [Auto  ]    
+    [ ] 19. [Watchlist  ]    [ ] 20. [TICKER  ]    [ ] 21. [Research Report  ]    
+    [ ] 22. [List Portfolio  ]    [ ] 23. [Financial Profile  ]    
+    [ ] 24. [List Options  ]    [ ] 25. [Earnings Report  ]    
+    [ ] 26. [Shareholder List  ]    [ ] 27. [My Corporations  ]    [ ] 28. [New Game  ]    
+    --- Navigation ---    
+    [ ] 29. [Buy/Sell  ]    [ ] 30. [List Futures  ]    
+    [ ] 31. [Financing  ]    
+    [ ] 32. [Management  ]    [ ] 33. [DB Search  ]    
+    [ ] 34. [Back]    
+
+
++=========================================================+
+Active [^]:  (ESC to exit)
+
+
+=== verdicts ===
+  R1 stack live:           PASS
+  R3 frame non-empty:      PASS
+  RGB/GL checksum match:   (see gate above)
+  Key injection performed: YES
+    [2026-08-06 19:47:41] KEY_PRESSED: 13
+
+Safe to proceed with code changes: REVIEW THIS REPORT FIRST (K3 gate).
+End of FRAME_REPORT.

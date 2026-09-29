@@ -1,0 +1,52 @@
+Mars StreetRace Dynamic Stock Price Implementation Plan:
+
+Step 1: Add weights.txt during setup to set static 'biases' for each corporation
+- Modify setup_corporations.c to create a weights.txt file for each corporation during setup
+- The weights.txt file will contain risk appetite (1-100) for each corporation, including banks
+- Each weights.txt file will be created in the corporation's directory with format:
+  risk 50  (where 50 is a random value between 1-100)
+
+Step 2: Create analysis_loop.c module
+- This module will analyze each company and calculate stock price based on:
+  - Market cap (calculated from current stock price and shares outstanding)  
+  - Leverage (debt to equity ratio)
+  - Book value (equity/net worth)
+  - Bank bias (from weights.txt)
+- Calculate new stock price based on these fundamentals
+- Update the corporation's financial sheet with the new stock price
+
+Step 3: Update day_loop.c to call analysis_loop.c
+- Add system() call or fork to execute analysis_loop.c daily
+- This will recalculate stock prices for all companies
+
+Step 4: Update the schedule to include analysis_loop execution
+- Modify presets/schedule.txt to ensure analysis_loop runs daily
+
+Step 5: Create news ticker system that reads from data/news.txt 
+- Create a module that runs and reads from data/news.txt 
+- The module will have company names and prices recorded plus percentage change from previous day
+- Outputs this information to {ticker in user gui: FINANCIAL NEWS HEADLINES [<- scroll data 2 left here]}
+- Keep a file in corporate directory called price_history that records each price change 
+- Store percentage up or down when calculating new price
+
+ADDITIONAL IMPLEMENTATION DETAILS:
+
+Step 6: Update the corporation financial sheet format
+- Modify the generation functions to properly update stock price information
+- Preserve the existing format while using dynamic prices
+
+Step 7: Add price history tracking
+- Create price_history.txt in each corporation directory
+- Format: date, old_price, new_price, percentage_change
+
+Step 8: Modify stock price calculation algorithm
+- Implement realistic calculation based on fundamentals:
+  Stock Price = (Book Value per Share * P/B ratio) * (1 + Leverage factor) * (Bank Bias factor)
+
+IMPLEMENTATION SEQUENCE:
+1. Modify setup_corporations.c to add weights.txt creation
+2. Create analysis_loop.c module
+3. Update day_loop.c 
+4. Create news ticker module
+5. Update presets/schedule.txt 
+6. Test functionality

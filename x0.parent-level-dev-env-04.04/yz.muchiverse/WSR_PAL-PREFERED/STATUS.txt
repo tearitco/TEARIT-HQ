@@ -1,0 +1,26 @@
+WSR_PAL-PREFERED
+================
+
+The working tree. All improvements land here. Verified running on Windows
+after the 2026-09-28 rename: `button.ps1 check` green on all 10 binaries, and
+`keyboard_input` + `orchestrator` + `renderer` live, rendering the WALL STREET
+RAIDER frame. The app resolves every path relative to its own directory, so the
+rename is safe.
+
+Created as a byte-faithful copy of  44.xyz.01.00/014.wsr-pal💸️📌️+2
+(577/577 files verified) so improvements could be proven in isolation before
+they were trusted.
+
+  ORIGINAL / revert target:  ../44.xyz.01.00/014.wsr-pal💸️📌️+2  (untouched)
+  DEPRECATED legacy:         ../MSR-DEPRACATED
+  Map:                       ../WSR_PAL-README.md
+
+Do not assume anything here is better than the original. This is the experiment.
+
+QUEUED FIRST: the shareholder registry. It is the one gap the tree names about
+itself in `ops/corp_apply_finances.c`, and it is the prerequisite for dividends
+reaching anyone other than the owner, and for AI corps having real
+counterparties.
+
+  corp_AFL/state.txt has  shares_outstanding=15.15  shares_held=0  owned_by=
+  There is no set of holders anywhere. That is the hole.

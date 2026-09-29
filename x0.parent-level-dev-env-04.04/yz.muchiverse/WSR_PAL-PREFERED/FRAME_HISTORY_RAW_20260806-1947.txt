@@ -1,0 +1,77 @@
+
+--- FRAME at 2026-08-06 19:44:52 ---
++==== W A L L   S T R E E T   R A I D E R ====================+
++============================================================+
++============================================================+
+|  wsr_main_menu   Turn:0   Active: corp_AFL                 |
++============================================================+
+|----------------------------------                          |
+|Your Wallet:                                                |
+|Cash..........           1613                               |
+|----------------------------------                          |
+|Active Corp Balance Sheet:                                  |
+|Cash (CD's)..            5000                               |
+|Stock Price...           115.04                             |
+|Owned By......           (independent)                      |
+|----------------------------------------------              |
+|FINANCIAL NEWS [CMZ: $0.10 (-99.38%)]                       |
+|                                                            |
+|WORLD STATUS                                                |
+|Population: 10000          Temperature: 15C                 |
+|                                                            |
+|  > Not yet available in this build.                        |
+|  (type digit(s), Enter to select, ctrl+c to quit)          |
++============================================================+
++============================================================+
+
+[>] 1. [Actions [+]]
+
++=========================================================+
+Nav > _
+
+
+--- FRAME at 2026-08-06 19:47:41 ---
++==== W A L L   S T R E E T   R A I D E R ====================+
++============================================================+
++============================================================+
+|  wsr_main_menu   Turn:0   Active: corp_AFL                 |
++============================================================+
+|----------------------------------                          |
+|Your Wallet:                                                |
+|Cash..........           1613                               |
+|----------------------------------                          |
+|Active Corp Balance Sheet:                                  |
+|Cash (CD's)..            5000                               |
+|Stock Price...           115.04                             |
+|Owned By......           (independent)                      |
+|----------------------------------------------              |
+|FINANCIAL NEWS [CMZ: $0.10 (-99.38%)]                       |
+|                                                            |
+|WORLD STATUS                                                |
+|Population: 10000          Temperature: 15C                 |
+|                                                            |
+|  > Not yet available in this build.                        |
+|  (type digit(s), Enter to select, ctrl+c to quit)          |
++============================================================+
++============================================================+
+
+[^] 1. [Actions ]    
+    [>] 2. [File  ]    [ ] 3. [Game Options  ]    [ ] 4. [Settings  ]    [ ] 5. [Help  ]    
+    [ ] 6. [Select Player  ]    [ ] 7. [Culture  ]    [ ] 8. [Entity Info  ]    
+    [ ] 9. [Select Corp.  ]    [ ] 10. [History  ]    [ ] 11. [General  ]    
+    [ ] 12. [Tools  ]    [ ] 13. [Private  ]    [ ] 14. [Other Trans  ]    
+    [ ] 15. [End Turn  ]    [ ] 16. [Misc. Menu  ]    [ ] 17. [Chart  ]    [ ] 18. [Auto  ]    
+    [ ] 19. [Watchlist  ]    [ ] 20. [TICKER  ]    [ ] 21. [Research Report  ]    
+    [ ] 22. [List Portfolio  ]    [ ] 23. [Financial Profile  ]    
+    [ ] 24. [List Options  ]    [ ] 25. [Earnings Report  ]    
+    [ ] 26. [Shareholder List  ]    [ ] 27. [My Corporations  ]    [ ] 28. [New Game  ]    
+    --- Navigation ---    
+    [ ] 29. [Buy/Sell  ]    [ ] 30. [List Futures  ]    
+    [ ] 31. [Financing  ]    
+    [ ] 32. [Management  ]    [ ] 33. [DB Search  ]    
+    [ ] 34. [Back]    
+
+
++=========================================================+
+Active [^]:  (ESC to exit)
+

@@ -1,0 +1,37 @@
+FINANCIAL BALANCE SHEET: LUNAR FINANCE (LUN):
+---------------------------------------------
+(Amounts in millions of U.S. Dollars, except per share amounts)
+ASSETS:
+Free Cash and Equivalents		555.30
+Stock in Subsidiary Corps.		0.00
+Options Long/Short: Net Value		0.00
+Government Bonds (mkt. value)		0.00
+Corporate Bonds (mkt. value)		0.00
+Business Loan Portfolio		1879.00
+Consumer Loan Portfolio		435.42
+Mortgage Loans/Securities		944.86
+Less: Bad Debt Reserves:		-170.66
+----------------
+Total Assets:		3643.92
+----------------
+LIABILITIES AND EQUITY:
+Long-Term Bonds Issued		0.00
+Demand Deposits		382.83
+Certificates of Deposit		931.40
+Interbank Debt -- Fed Funds		0.00
+Accrued Income Tax Payable		0.00
+----------------
+Total Liabilities:		1314.23 [1]
+----------------
+Equity (Net Worth):		2329.69
+================
+STOCK AND EARNINGS DATA:
+--------------------------
+Net Worth Per Share:		61.33
+Current Stock Price:		52.63
+52-Week High/Low Stock Price:		59.14 / 27.68
+Shares of stock outstanding:		37.99 million
+Total stock capitalization:		1999.18 million
+MISCELLANEOUS INFO:
+-------------------
+Industry Group:		BANKING

@@ -1,0 +1,25 @@
+MSR-DEPRACATED
+==============
+
+Legacy k32 tree. Reference only. Do not invest further work here.
+
+Superseded by  ../WSR_PAL-PREFERED
+
+Retained for reference because it is still a directory the user has launched
+from on Windows, and because a few data files here are worth reading for their
+formats. The full inventory of what is wrong with it, with file:line evidence,
+is in  ../WSR_PAL-README.md  and is not duplicated here.
+
+Headline: the dividend, payroll and AI subsystems were never implemented.
+`dividend_loop.c` and `payroll_loop.c` are byte-for-byte copies of `game.c`,
+and the three `ai/*.c` files share SHA256 55D8471F... with each other and with a
+`game.c` clone. There is no market, no sell path and no share count anywhere.
+
+Also recorded there, so they are not rediscovered:
+  1. data/wsr_clock.txt truncated to 0 bytes by game_setup, while
+     wsr_clock.c:load_clock_state only defaults when the file is ABSENT, so a
+     fresh game starts at 0000-00-00.
+  2. db_search.c:113 parses "Dividend Yield:" with %d against a written
+     "0.00%", so every yield truncates to 0.
+  3. hour_loop.c writes data/day.txt, duplicating day_loop.c.
+  4. presets/schedule.txt invokes a salary_loop.+x that does not exist.

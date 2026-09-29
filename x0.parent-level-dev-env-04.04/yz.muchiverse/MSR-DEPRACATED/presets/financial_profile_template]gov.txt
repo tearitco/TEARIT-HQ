@@ -1,0 +1,90 @@
+FINANCIAL PROFILE FOR {{GOV_NAME}}
+====================================================
+FINANCIAL STATEMENT: {{GOV_NAME}} (CONSOLIDATED)
+----------------------------------------------------
+(Amounts in Martian Credits, to four decimal places)
+ASSETS:
+  Cash and Cash Equivalents:		{{CASH_EQUIVALENTS}}
+  Tax Receivables (Net):		{{TAX_RECEIVABLES}}
+  Loans (Colony Development):		{{LOANS}}
+  Physical Assets (Habitats, Rovers):	{{PHYSICAL_ASSETS}}
+  Investments (Trust Funds):		{{INVESTMENTS}}
+  ---------------------------------------------
+  Total Assets:				{{TOTAL_ASSETS}}
+  ---------------------------------------------
+LIABILITIES AND NET POSITION:
+  Public Debt Outstanding:		{{PUBLIC_DEBT}}
+  Intragovernmental Debt:		{{INTRAGOV_DEBT}}
+  Pension & Benefits Payable:		{{PENSIONS}}
+  Environmental & Legal Liabilities:	{{ENV_LIABILITIES}}
+  Accrued Interest Payable:		{{INTEREST_PAYABLE}}
+  ---------------------------------------------
+  Total Liabilities:			{{TOTAL_LIABILITIES}}
+  ---------------------------------------------
+  Net Position (Net Worth):		{{NET_WORTH}}
+  =============================================
+FISCAL OPERATIONS (FY 2024):
+----------------------------
+  Total Revenue:			{{TOTAL_REVENUE}}
+    - Individual Income Tax:		{{INDIVIDUAL_TAX}}
+    - Corporate Income Tax:		{{CORPORATE_TAX}}
+    - Payroll Taxes (Social Security):	{{PAYROLL_TAX}}
+    - Other Revenue:			0.0000
+  Net Cost of Operations:		{{NET_COST}}
+    - Social Security:			{{SOCIAL_SECURITY}}
+    - Health (Medicare, Clinics):	{{HEALTH}}
+    - Net Interest on Debt:		{{INTEREST}}
+    - Life Support Systems:		{{LIFE_SUPPORT}}
+    - Colony Defense:			{{DEFENSE}}
+    - Income Security:			{{INCOME_SECURITY}}
+    - Other Spending:			{{OTHER_SPENDING}}
+  Net Operating (Cost)/Revenue:		{{NET_OPERATING}}
+  ---------------------------------------------
+NET POSITION:
+-------------
+  Beginning of Period:			{{BEGINNING_NET_POSITION}}
+  Adjustments (Accounting Changes):	+0.5000
+  Net Operating (Cost)/Revenue:		{{NET_OPERATING}}
+  ---------------------------------------------
+  End of Period (Net Worth):		{{NET_WORTH}}
+  ---------------------------------------------
+VARIOUS FISCAL RATIOS:
+----------------------
+  Debt-to-GDP Ratio:			{{DEBT_TO_GDP}}
+  Deficit-to-Spending Ratio:		{{DEFICIT_TO_SPENDING}}
+  Interest-to-Revenue Ratio:		{{INTEREST_TO_REVENUE}}
+  Tax Revenue per Capita:		{{TAX_PER_CAPITA}}
+  Spending per Capita:			{{SPENDING_PER_CAPITA}}
+  ---------------------------------------------
+*** CREDIT INFO: ***
+-------------------
+  Sovereign Credit Rating:		AA+
+  Benchmark 10-Year Yield:		4.2100%
+  Effective Borrowing Rate:		3.8700%
+  Debt Ceiling Limit:			{{PUBLIC_DEBT}}
+  Current Debt Level:			{{PUBLIC_DEBT}}
+  ---------------------------------------------
+VARIABLE SETTINGS (Changeable by controlling player):
+----------------------------------------------------
+  % Change in Defense Spending:		0.0000%
+  % Change in Social Security:		0.0000%
+  Tax Rate Adjustment (Bracket Shift):	0.0000%
+  New Debt Issuance (Automatic):		YES (To Cover Deficit)
+  ---------------------------------------------
+MISCELLANEOUS INFO:
+-------------------
+  Government Type:			MARTIAN COLONY
+  Fiscal Year End:			September 30
+  Next Budget Deadline:			October 1, 2025
+  Next Debt Ceiling Vote:		TBD
+  Controlled (and actively managed) by:	Player_Name
+  Wholly owned by:			Citizens of {{GOV_NAME}}
+  Inflation Rate (2024):			3.1000%
+  Unemployment Rate (2024):		4.0000%
+  GDP (Nominal, 2024):			{{GDP}}
+  ---------------------------------------------
+FOOTNOTE TO FINANCIAL STATEMENT:
+-------------------------------
+[1] This statement is consolidated and includes all colonial agencies and trust funds. Intragovernmental transactions are eliminated.
+[2] "Net Position" is analogous to net worth or equity in colonial finance. A negative value indicates liabilities exceed assets.
+[3] Interest on debt is projected based on current yield curve and debt rollover schedule.

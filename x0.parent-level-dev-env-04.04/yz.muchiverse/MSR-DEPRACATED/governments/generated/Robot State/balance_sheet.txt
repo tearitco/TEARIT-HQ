@@ -1,0 +1,6 @@
+My Balance Sheet: Robot State
+Cash (CD's)..		39.6000
+Other Assets....		31.6800
+Total Assets.....		130.6800
+Less Debt....		-79.2000
+Net Worth........		13.8600
