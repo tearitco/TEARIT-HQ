@@ -53,8 +53,10 @@ own name.
 - **Grok's edit pass landed** as §9 of `AGENT_ROADMAP_ANSWERS.md`
   (2026-09-29) — corrected one claim (`ROBOT-CHAT-BLUEPRINT.md` does
   exist) and proposed "the attrition-model" as the umbrella name for
-  the whole AI effort (A TEARIT is the spec inside it) — **unconfirmed
-  by the user as of this index update**, do not treat as decided.
+  the whole AI effort (A TEARIT, tomom, IRL/FSM/GOAP, Concept Bank all
+  inside it). **User confirmed this directly** (§9a) — "attrition-model"
+  is now the settled general term; use it instead of listing every
+  piece by name each time.
 - `ROBOT-CHAT-BLUEPRINT.md` (+ its companion `groks-thots.txt`) moved
   into house docs 2026-09-29, from `XO/6.robot-blue-print/` (now
   removed) to `08-roadmap/design-docs/robot-chat/` — same directory
