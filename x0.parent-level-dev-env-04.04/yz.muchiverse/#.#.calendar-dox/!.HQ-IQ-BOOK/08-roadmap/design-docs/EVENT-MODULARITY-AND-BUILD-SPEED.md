@@ -439,7 +439,7 @@ separate content-addressing format later.
 
 ---
 
-## §1 remaining work: the drop-target handler (design, not yet built, 2026-09-28)
+## §1 drop-target handler - BUILT 2026-09-28 (design below kept as the real record of how it was planned before building; `event_drop_handler.sh` + `events-hq.xhtpm`'s drop_action= are the real, working result - see the priority-stack section further down for the verified test results)
 
 The one piece of §1's "automatic, both directions" still open: dropping
 a 🎬️/⚙️/🧩 onto a different entity auto-updates that target's live
