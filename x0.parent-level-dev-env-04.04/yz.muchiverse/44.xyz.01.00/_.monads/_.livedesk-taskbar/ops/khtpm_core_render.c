@@ -10313,9 +10313,23 @@ static void dispatch_relay_code(int code) {
         handle_key(sk, 0);
         g_key_shift = 0;
     }
+    /* REAL, NEW 2026-09-29 (AIGENT-TESTING-K9.txt's own same-date
+     * addendum: "the relay 'p' dump and an ARMED cli_io/text_area are
+     * mutually exclusive - there is no way to photograph an armed
+     * field's own caret with current tooling"). Code 206 (one of the
+     * "left free" codes the comment just below already reserved) forces
+     * dump_frame_png() unconditionally - it calls the function directly
+     * instead of going through handle_key(), so it never hits the
+     * g_default_input_elem armed-field check (handle_key()'s own
+     * `if (g_default_input_elem) { default_cli_io_handle_key(...); return; }`
+     * branch, which is exactly what swallows a relay 'p' as literal
+     * typed text while armed). Outside 0-126 so it can never collide
+     * with a real typed character, same reasoning the 200-205 arrow
+     * codes already use. */
+    else if (code == 206) dump_frame_png();
     /* Task 6/7 (2026-08-26) - db-hq-only cheap text state dump for
      * agent testing, see dbhq_dump_debug_state()'s own header comment.
-     * Code 210 (not a real keypress; 206-209 left free for any future
+     * Code 210 (not a real keypress; 207-209 left free for any future
      * debug-only codes in this same reserved band). */
     /* REAL, NEW 2026-08-28 (Phase C testing) - dbhq_dump_debug_state()'s
      * own g_n_nav/g_nav[] loop (the part that actually matters for
