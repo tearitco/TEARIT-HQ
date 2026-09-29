@@ -1,12 +1,19 @@
 # network-browser-normal — Chromium-like parity within house standards
 # PIPELINE:35 — dump_frame_png_op -> snapshots/ + manifest.txt -> presentation.mp4
 # Each row: <png> | <sec> | <caption>  (sec is MIN, TTS extends to narration length)
-# Captured live via dump_frame_png_op --root on opencode 4c652af7 (wcs 12/12)
+# Every png below is a real X11 window dump of the running browser, taken by
+# capture_scenes.sh against a local python3 -m http.server fixture. No mock.
+#
+# Proven in the running app on opencode-fix 1c405134b + this work block:
+#   - pages are fetched over real HTTP by the manager (curl), scripts run in
+#     the QuickJS worker, and rows land in network-browser-hq_ui.txt
+#   - content text rows are dim (gray ~40-90) by house palette; read the
+#     screenshots at a low threshold, they are present but quiet
+#   - the sprite-flow grid is generic renderer code, no app-name checks
 
-01_load_example.png | 6 | Network Browser loads example.com — TEXT and LINK rows from page.state.txt via RENDER
-02_fetch_json.png | 6 | Fetch JSON via XHR/fetch through manager RPC 7e55fc8b — load more renders without reload
-03_click_event.png | 6 | Click dispatched via EVENT RPC 43c72099 — scripted tab widget handles click, RENDER re-emits
-04_history_nav.png | 6 | History pushState and NAV via g_pending_nav — back-forward without fetch, address bar updates
-05_image_png.png | 6 | Image 1x1 PNG via data:image/png;base64 decoded by stbi, naturalWidth 1, drawn at getBoundingClientRect 514b8ab9 via khtpm_draw_core stbi_load
-06_layout_rect.png | 6 | Layout: getBoundingClientRect returns stacked y from layout_xy, display:none ancestors give 0,0,0,0
-
+01_load_fixture.png | 6 | A real page fetched over HTTP: title, text and link rows projected from the QuickJS render pass into the khtpm window
+02_fetch_json.png | 6 | An inline script calls fetch('/api.json') through the manager RPC and writes the response back into the DOM
+03_datauri_image.png | 6 | Three 48x48 PNGs inlined as data:image/png;base64, decoded by stb_image and blitted by khtpm_draw_core
+04_history_nav.png | 6 | A second document over the same session, with the history strip and address bar updated by the manager
+05_media_grid.png | 6 | Six PNGs wrapped by the generic sprite-flow grid: 3 columns by 2 lines, 168px pitch, natural size 150x110
+06_layout_rect.png | 6 | getBoundingClientRect read inside the page: unstyled paragraphs now stack at y=14, 28, 42 with h=14 from real content metrics

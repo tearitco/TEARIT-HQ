@@ -1,0 +1,16 @@
+Network Browser Normal 20260923
+===============================
+
+Full reproduction steps: REPRODUCE.md (same directory as this file).
+
+Video file: Network-Browser-Normal-20260923.mp4
+
+Chapters:
+  00:00  A real page fetched over HTTP: title, text and link rows projected from the QuickJS render pass into the khtpm window
+  00:06  An inline script calls fetch('/api.json') through the manager RPC and writes the response back into the DOM
+  00:12  Three 48x48 PNGs inlined as data:image/png;base64, decoded by stb_image and blitted by khtpm_draw_core
+  00:18  A second document over the same session, with the history strip and address bar updated by the manager
+  00:24  Six PNGs wrapped by the generic sprite-flow grid: 3 columns by 2 lines, 168px pitch, natural size 150x110
+  00:30  getBoundingClientRect read inside the page: unstyled paragraphs now stack at y=14, 28, 42 with h=14 from real content metrics
+
+Total runtime: 00:36
