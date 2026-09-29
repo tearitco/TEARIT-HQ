@@ -35,9 +35,14 @@
 #include "win-compat/khtpm_win_compat_prelude.h"
 
 /* The prelude routes fclose() through khtpm_fclose() so open_memstream can
- * publish its buffer on close. Inside this file we need the REAL fclose, so
- * drop the macro again after taking the declarations. */
+ * publish its buffer on close, and reroutes rename() through
+ * khtpm_win_rename() to restore POSIX replace-existing semantics (MinGW's
+ * CRT rename() returns EEXIST instead). Inside this file we need the REAL
+ * fclose/rename, so drop the macros again after taking the declarations -
+ * otherwise khtpm_fclose()'s own fclose() and khtpm_win_rename()'s
+ * MoveFileExA bridge would both self-recurse. */
 #undef fclose
+#undef rename
 
 /* ---------------------------------------------------------------- select */
 int select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
@@ -190,6 +195,40 @@ int khtpm_fclose(FILE *fp) {
         return fclose(fp);
     }
     return fclose(fp);
+}
+
+/* ----------------------------------------------------------------- rename */
+/* REAL. See win-compat/khtpm_win_compat_prelude.h's rename section for why
+ * this override exists. MinGW-w64's CRT rename() is the C89 CRT's: it
+ * returns EEXIST (errno 17) when the destination already exists, where
+ * POSIX rename(2) atomically replaces it. Every tmp-frame -> frame publish
+ * in this codebase relies on that POSIX behaviour - core_render.c's
+ * entity_menu_frame_<pid>.txt round trip and manager_main.c's
+ * write_small_file() both write a fresh .tmp every tick and rename it onto
+ * the live file. On Windows the first publish succeeds (no destination
+ * yet), every later one fails silently, and readers keep painting the very
+ * first snapshot - the 2026-09-28 report of a dock stuck on "empty sized
+ * cells". Implemented over MoveFileExA with MOVEFILE_REPLACE_EXISTING,
+ * which is the Win32 spelling of "rename the tmp over the live file,
+ * atomically, replacing it". Ordering follows POSIX rename's contract: the
+ * caller's oldp/newp lives in the same directory, so there is no
+ * cross-volume case to translate (and MOVEFILE_COPY_ALLOWED would be the
+ * wrong tool for that anyway - a copy is not an atomic rename). */
+int khtpm_win_rename(const char *oldp, const char *newp) {
+    if (!oldp || !newp || !oldp[0] || !newp[0]) { errno = EINVAL; return -1; }
+    if (MoveFileExA(oldp, newp, MOVEFILE_REPLACE_EXISTING)) return 0;
+    DWORD e = GetLastError();
+    if (e == ERROR_FILE_NOT_FOUND || e == ERROR_PATH_NOT_FOUND)
+        errno = ENOENT;
+    else if (e == ERROR_ACCESS_DENIED)
+        errno = EACCES;
+    else if (e == ERROR_SHARING_VIOLATION || e == ERROR_LOCK_VIOLATION)
+        errno = EBUSY;
+    else if (e == ERROR_ALREADY_EXISTS)
+        errno = EEXIST;
+    else
+        errno = EIO;
+    return -1;
 }
 
 /* ----------------------------------------------------------------- flock */

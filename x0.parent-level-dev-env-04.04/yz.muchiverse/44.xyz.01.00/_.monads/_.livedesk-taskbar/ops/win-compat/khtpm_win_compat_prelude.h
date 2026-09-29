@@ -109,6 +109,29 @@ int khtpm_fclose(FILE *fp);
 #define fclose(fp) khtpm_fclose(fp)
 #endif
 
+/* --- <stdio.h> rename ---------------------------------------------------
+ * MinGW-w64's CRT rename() does NOT atomically replace an existing
+ * destination: it returns EEXIST (errno 17) like the C89 CRT it wraps,
+ * where POSIX rename(2) is "the one real atomic job" the writers in this
+ * codebase rely on (khtpm_taskbar_manager_main.c's write_small_file(), and
+ * every tmp-frame -> frame publish in khtpm_core_render.c — the dock's
+ * entity_menu_frame_<pid>.txt round trip). On Windows each writer therefore
+ * publishes its tmp once (when no destination exists yet) and then every
+ * later tick silently FAILS to replace, freezing the final file at its
+ * very first snapshot. Direct live incident 2026-09-28: the bottom dock
+ * bar's frame sat pinned to its boot-time EMPTY snapshot while its .tmp
+ * grew the full 17 live items every tick — the cells rendered "empty sized
+ * cells" with only the live-tree separators, exactly the user's report.
+ *
+ * The POSIX spelling is preserved for every call site (the canonical
+ * sources keep calling rename(tmp, path) unmodified); the prelude reroutes
+ * the function call to khtpm_win_rename(), implemented for real over
+ * MoveFileExA(..., MOVEFILE_REPLACE_EXISTING) in khtpm_win_compat.c. */
+int khtpm_win_rename(const char *oldp, const char *newp);
+#ifndef rename
+#define rename khtpm_win_rename
+#endif
+
 /* --- <sys/wait.h> is shimmed by win-compat/sys/wait.h; <sys/select.h> and
  * <X11/*> by the rest of this directory. Nothing to declare here. */
 
