@@ -86,6 +86,19 @@ the actual architecture, or does it teach them what went wrong while
 writing the architecture doc? Only the first one satisfies a request
 to cover "the concerns sheet and its answers."
 
+## ⚠️ Sequencing warning (owner catch, 2026-09-30)
+
+After the pal-chain and HQ-LAYOUT-STUDIO docs landed, a "what's next in
+dev" answer left the actual AI leg (finishing the Concept Bank
+validator's other 3 EDIT record types) off the list entirely — caught
+directly by the owner. Full writeup: `AGENT_ROADMAP_ANSWERS.md` §11.
+**The general rule going forward:** when several fresh design docs
+exist in recent context, explicitly check whether the oldest, cheapest,
+most strategically-central open item got sequenced out, not just
+sequenced later. Corrected order: (1) the 3 missing EDIT record types,
+(2) gas metering in `prisc+x`, (3) wallet ownership binding, (4)
+per-entity elapsed time.
+
 ## Status of open items from this thread
 
 - **Settled:** "the attrition-model" is the confirmed umbrella term

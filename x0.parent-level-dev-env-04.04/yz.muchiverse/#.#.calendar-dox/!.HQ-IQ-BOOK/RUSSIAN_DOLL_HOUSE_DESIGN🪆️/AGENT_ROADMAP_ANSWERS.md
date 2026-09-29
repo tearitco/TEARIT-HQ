@@ -585,3 +585,67 @@ the runtime.
 **What I am not starting from this pass.** No civ-test C. No
 auto-promotion. No night-class script until this addendum has been
 seen. Kilo stays deprecated.
+
+---
+
+## 11. A real sequencing mistake, caught by the owner (2026-09-30) —
+## don't anchor next-steps on the freshest design docs
+
+**What happened:** after four new design docs landed in one session
+(the two attrition-model diagrams, `HQ-LAYOUT-STUDIO-DESIGN.md`,
+`PAL-CHAIN-META-AND-SUBCHAINS.md`), the owner asked what should come
+next in dev, holistically. The answer given was a three-item list:
+gas metering in `prisc+x`, wallet ownership binding, per-entity
+elapsed time. **The actual AI leg — finishing the other 3 Concept Bank
+EDIT record types in `concept_edit_validate.c`
+(`new_concept_node`, `fsm_transition_describe`,
+`goap_action_describe`) — was left off the list entirely.** The owner
+caught this directly: "the thing that surprises me is u never
+mentioned the ai leg."
+
+**Why this was a real mistake, not just a different valid ordering:**
+the whole point of the attrition-model, as named and confirmed in §9a,
+is winning independence from OpenRouter via a working learning loop.
+Gas metering, wallet binding, and per-entity clocks are all
+infrastructure **in service of** a richer world for that loop to
+eventually learn from. None of them touch the loop itself. Building
+world-richness while the promotion gap (§0) stays closed just produces
+more manual work for humans/OpenRouter to describe by hand — the
+opposite of what "attrition" is supposed to mean. Leaving the actual
+named strategic priority off a "what's next" list, right after writing
+four docs that don't touch it, is exactly the trap: the freshest work
+in context crowds out the oldest, cheapest, most central item.
+
+**Why the AI leg should have been listed first, concretely:**
+- Implementing the other 3 EDIT record types is **cheaper** than any
+  of the three infra items — additive validator code, same shape as
+  the one type that already exists, already fully speced in
+  `A-TEARIT-IS-ALL-YOU-NEED.md`. No new infrastructure, no retrofit,
+  no policy decision needed.
+- It is **fully independent** of gas metering, wallet binding, and
+  per-entity clocks — nothing forces it to wait, and nothing about it
+  was deliberately sequenced after something else. It was simply not
+  considered.
+- It directly unblocks the actual named bottleneck from §0: real
+  `pending_review.txt` volume across all four record types, which is
+  the prerequisite for designing promotion — the single biggest gap in
+  the whole roadmap, more central than anything raised today.
+
+**Corrected priority order, as of this correction:**
+1. **The other 3 Concept Bank EDIT record types** — cheap, independent,
+   directly serves the attrition-model's actual stated purpose.
+2. **Gas metering in `prisc+x`** (§11 of `PAL-CHAIN-META-AND-SUBCHAINS.md`)
+   — also serves the AI leg indirectly: gas-metered event invocations
+   are exactly the kind of structured observation the Watch Layer (§0,
+   step 1) wants. Also fixes the already-documented popen-freeze bug
+   class.
+3. **Wallet ownership binding** (pal-chain §9).
+4. **Per-entity elapsed time** (civ-test survival, §1).
+
+**The general lesson, worth carrying into every future "what's next"
+conversation in this house, not just this one:** when a pile of fresh
+design docs exists in recent context, check explicitly whether the
+oldest, cheapest, most strategically-central open item got sequenced
+out entirely — not just sequenced later. Recency in a conversation is
+not the same as priority in a roadmap, and the two are easy to
+conflate exactly when several new docs were just written.
