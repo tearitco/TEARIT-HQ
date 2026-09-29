@@ -32,15 +32,15 @@ The product is not a Gemma reply and not an OpenRouter chat.
    ai_fsm_transition is still not a registered command. The local
    learner does not take a turn yet. That is the thing to build.
 
-📞 Gemma (LAN, gemma3:270m) and open-hai's OpenRouter models are
-   tutors during bootstrap only.
-   They may DESCRIBE an observation, or draft a candidate line,
-   when asked. OpenRouter may also read a file or, after a human
-   approve, edit one file or run one command.
-   They do not own the weight, the promotion, or the live mechanic.
-   When the local bank can propose the next brick by itself, the
-   outside call is assistance we can turn off. The runtime that
-   ships is the file bank and the event page, not a network model.
+📞 Gemma (LAN, gemma3:270m) still fills the constrained bank line.
+   open-hai's OpenRouter models do more than describe. They help
+   bootstrap and finish tasks: train a bank layer, hand-tune a
+   tomom weight, place an event brick, and make tool calls.
+   Those calls are demonstrations. IRL learns from the trace the
+   same way it learns from a player's actions. A weight edit
+   stays an auditable record. OpenRouter does not become the
+   runtime. When the local bank can do the next brick itself,
+   the outside call can be turned off.
 
 🔁 Bootstrap loop, in that order:
    watch a real event → tutor writes TARGET | STRENGTH | REASON

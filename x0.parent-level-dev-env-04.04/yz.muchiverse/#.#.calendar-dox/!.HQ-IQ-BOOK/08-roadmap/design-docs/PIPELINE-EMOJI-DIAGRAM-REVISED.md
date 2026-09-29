@@ -61,9 +61,18 @@ and 3 change.
 
 ## 2️⃣ 🤖 Gemma — Constrained Selection, Not Free Description
 
-**Model:** `gemma3:270m` via the LAN Mac Ollama instance — same model
-already in production use by `my-lawyer`/`my-biotech` (see Evidence for
-why this choice is empirically justified, not arbitrary).
+**Model for this constrained bank line:** `gemma3:270m` via the LAN Mac
+Ollama instance — same model already in production use by
+`my-lawyer`/`my-biotech` (see Evidence for why this choice is
+empirically justified, not arbitrary).
+
+**OpenRouter does more than describe** (2026-09-29). Through open-hai
+it helps bootstrap and accomplish the work: train a bank layer,
+hand-tune a tomom weight, place an event-command brick, and make tool
+calls. Those calls are demonstrations IRL can learn from, same class
+of trace as a player's actions. A weight edit stays an auditable
+record. OpenRouter does not become the runtime. See
+`AI-PUSH-ROADMAP-AND-NUANCES.md` item 3b.
 
 **Prompt shape (real, tested):**
 ```
