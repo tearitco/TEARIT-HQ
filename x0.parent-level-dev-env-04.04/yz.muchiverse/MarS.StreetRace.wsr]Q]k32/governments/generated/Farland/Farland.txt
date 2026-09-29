@@ -1,4 +1,0 @@
-GOVERNMENT FINANCIAL DATA: Farland
----------------------------------------------
-GDP: 287
-Population: 10

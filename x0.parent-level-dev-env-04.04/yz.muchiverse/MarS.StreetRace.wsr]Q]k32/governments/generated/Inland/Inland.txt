@@ -1,4 +1,0 @@
-GOVERNMENT FINANCIAL DATA: Inland
----------------------------------------------
-GDP: 217
-Population: 10

@@ -1,2 +1,0 @@
-^ +x/main.+x
-+x/clockwise_loop.+x
