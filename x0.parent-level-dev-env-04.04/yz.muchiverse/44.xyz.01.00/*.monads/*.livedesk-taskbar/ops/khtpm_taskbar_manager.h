@@ -79,11 +79,10 @@ extern "C" {
  * entries the largest of these (HQMenuItem post_probe[], ~4.4KB/entry)
  * is ~1.1MB on the stack for the single call's lifetime, well inside an
  * 8MB thread stack. 256 covers the real 191+ pal count with headroom.
- * Real scroll+clip UI wiring for the "pals" dropdown itself is tracked
- * separately (see khtpm_core_render.c's dock-dropdown block comment,
- * 2026-09-22) - this line only removes the hard data-cap; it does not
- * by itself make all 256 reachable via the popup, which currently still
- * stacks every open row unconditionally with no clip/scroll (OPEN). */
+ * REAL, DONE 2026-09-23 (khtpm_core_render.c's dock-dropdown block) -
+ * the scroll+clip UI wiring flagged as still-needed below has landed:
+ * mouse wheel, scrollbar-arrow click, and Page_Up/Page_Down all reach
+ * the real 256-capacity list via the generic scrollbar machinery. */
 #define KTB_LIVEDESK_DYN_MAX 256
 #define KTB_LIVEDESK_MAX_OPEN 64
 /* REAL FIX 2026-08-12, direct report ("some showed up on bottom tb then
