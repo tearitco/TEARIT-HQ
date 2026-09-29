@@ -324,6 +324,22 @@ examples alone.
    bank design (matching `AI-PUSH-ROADMAP-AND-NUANCES.md`'s chatbot
    personality mechanism) once a real need for propagating edits shows
    up — not designed speculatively now.
+   **CORRECTED 2026-09-28, same day, before this was wrong for long**:
+   "copy" here answers only whether edits stay independent after a drop
+   (yes - no live link, no propagation) - it does NOT mean the source
+   object survives the drag. Direct correction: "thats not how drop
+   works, drop deletes other location and mv should do the same, same
+   as cli." Checked the real house precedent (`fe_drop.sh`'s own literal
+   `mv`, and the Cli-io `mv` verb's `rename()`) instead of assuming -
+   both delete their source, so `event_drop_handler.sh` does too now:
+   the dropped 🎬️/⚙️ is deleted from its origin once its copy is safely
+   materialized on the target (only after every page copies
+   successfully, so a mid-copy failure never loses data with nothing
+   created yet). Real, honest consequence: dragging away an entity's own
+   NATIVE clacker_1 deletes that entity's inventory mirror of its own
+   events - harmless (event_pkg/pages/ itself, the real dispatch source,
+   is untouched) and it regenerates lazily next time a page/command is
+   added or a sweep re-runs, but the mirror is gone until then.
 2. ~~House-wide unique page numbers, or per-🎬️?~~ **Resolved:
    per-🎬️.** Each clacker is self-contained and starts its own
    `page_1`, matching the doc's own original lean.
