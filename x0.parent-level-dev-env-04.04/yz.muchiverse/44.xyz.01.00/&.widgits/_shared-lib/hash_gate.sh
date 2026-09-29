@@ -58,7 +58,18 @@
 hash_gate_stale() {
     manifest="$1"; shift
     out_bin="$1"; shift
-    [ -x "$out_bin" ] || return 0
+    # REAL FIX 2026-09-28 (direct live report: "still no tbs" after a
+    # house reset left +x/khtpm_core_render.+x at 0 bytes, executable
+    # bit still set - exactly the dead-binary case run_khtpm_strip.sh's
+    # own 2026-09-23 fix already documented and worked around for the
+    # OLD mtime gate ("-x alone is true for a 0-byte file that still
+    # carries the executable bit... an interrupted build killed mid-
+    # link/mid-write leaves behind"). This gate reintroduced that exact
+    # bug: -x alone treated a corrupt 0-byte binary as "already built,
+    # skip" since nothing about ITS OWN check ever looks at the output
+    # file's actual contents, only the source hash. -s (non-empty)
+    # closes it the same way that fix did.
+    [ -s "$out_bin" ] && [ -x "$out_bin" ] || return 0
     combined=$(cat "$@" 2>/dev/null | sha256sum | cut -d' ' -f1)
     [ -n "$combined" ] || return 0
     [ -f "$manifest" ] || return 0
