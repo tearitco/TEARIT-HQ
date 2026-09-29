@@ -4037,6 +4037,25 @@ static int g_default_win_w = 0;
 static int g_default_win_h = 0;
 static int kh_default_win_w(void) { return g_default_win_w > 0 ? g_default_win_w : kh_screen_w() * WM_DEFAULT_PCT_W / 100; }
 static int kh_default_win_h(void) { return g_default_win_h > 0 ? g_default_win_h : kh_screen_h() * WM_DEFAULT_PCT_H / 100; }
+/* REAL, NEW 2026-09-28 (direct live report: a per-app window.css
+ * `width: 50%;` was silently read as a literal 50px, collapsing the
+ * panel - confirmed via frame-dump). `width_is_pct` was already
+ * parsed by khtpm_css_parser.c and already resolved for <sidebar>, but
+ * the window's OWN top-level width/height (g_win_w/g_win_h, the two
+ * call sites right below) never checked it at all - a real, genuine
+ * gap, not a workaround needed. Percent here is relative to the real
+ * screen (kh_screen_w/h), the same reference every other screen-
+ * relative sizing in this file (WM_FS_MAX_PCT, kh_default_win_w/h
+ * itself) already uses - not the window's own previous size, which
+ * would compound on every relayout. */
+static int kh_resolve_win_w(const CssStyle *st) {
+    if (!st->has_width) return kh_default_win_w();
+    return st->width_is_pct ? (kh_screen_w() * st->width / 100) : st->width;
+}
+static int kh_resolve_win_h(const CssStyle *st) {
+    if (!st->has_height) return kh_default_win_h();
+    return st->height_is_pct ? (kh_screen_h() * st->height / 100) : st->height;
+}
 
 static int g_default_sidebar_scroll = 0;
 /* g_default_scrolllist_scroll itself is forward-declared earlier, right
@@ -5057,8 +5076,8 @@ static int layout_sidebar_panel(Elem *page) {
          * relayout must NOT snap it back to the CSS/default ("resize
          * wont grow at all" report 2026-09-10). */
     } else {
-        g_win_w = g_window->style.has_width ? g_window->style.width : kh_default_win_w();
-        g_win_h = g_window->style.has_height ? g_window->style.height : kh_default_win_h();
+        g_win_w = kh_resolve_win_w(&g_window->style);
+        g_win_h = kh_resolve_win_h(&g_window->style);
     }
     g_window->w = g_win_w;
     g_window->h = g_win_h;
@@ -19133,8 +19152,8 @@ int main(int argc, char **argv) {
          * own resizable branch never snaps it back). */
         css_compute_style(&g_sheet, g_window->tag, g_window->id[0] ? g_window->id : NULL,
                           g_window->classes, g_window->n_classes, 0, &g_window->style);
-        g_win_w = g_window->style.has_width ? g_window->style.width : kh_default_win_w();
-        g_win_h = g_window->style.has_height ? g_window->style.height : kh_default_win_h();
+        g_win_w = kh_resolve_win_w(&g_window->style);
+        g_win_h = kh_resolve_win_h(&g_window->style);
         if (g_win_w > sw - g_win_x - 60)  g_win_w = sw - g_win_x - 60;
         if (g_win_h > sh - g_win_y - 40)  g_win_h = sh - g_win_y - 40;
         if (g_win_w < KH_WIN_MIN_W) g_win_w = KH_WIN_MIN_W;
