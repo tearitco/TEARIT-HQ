@@ -12,6 +12,44 @@ This file is what I actually know. It is not a claim that I read all
 834 commits between that tip and Claude's tip.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+0️⃣ 🎯 THE VISION (corrected 2026-09-29, same day)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The product is not a Gemma reply and not an OpenRouter chat.
+
+🧱 The AI is trained to bootstrap its own game mechanics.
+   A mechanic is an event-command brick. The same brick can sit on
+   an NPC, an enemy, a game manager, or a scaler. That is the
+   "AI for legos" line in H-AI-LAB-DESIGN.md Part 5, and the
+   one-rulebook line in DUSTOPIA-HACK.md: one command, many bodies.
+   Chemistry, battle, hunger, and a pet are content hung on that
+   switch. They are not separate AIs.
+
+🧠 The learner that remains is local, deterministic, and auditable.
+   FSM + tomom / IRL + the Concept Bank.
+   Weights live in files. Every change is an EDIT record.
+   A page looks, then acts. The model does not press the key.
+   ai_fsm_transition is still not a registered command. The local
+   learner does not take a turn yet. That is the thing to build.
+
+📞 Gemma (LAN, gemma3:270m) and open-hai's OpenRouter models are
+   tutors during bootstrap only.
+   They may DESCRIBE an observation, or draft a candidate line,
+   when asked. OpenRouter may also read a file or, after a human
+   approve, edit one file or run one command.
+   They do not own the weight, the promotion, or the live mechanic.
+   When the local bank can propose the next brick by itself, the
+   outside call is assistance we can turn off. The runtime that
+   ships is the file bank and the event page, not a network model.
+
+🔁 Bootstrap loop, in that order:
+   watch a real event → tutor writes TARGET | STRENGTH | REASON
+   → C scorer writes an EDIT → validator checks it → ledger promotes
+   → the new weight is a command another actor can carry.
+   Chat text and OpenRouter quizzes are fuel and a second tutor.
+   They are not the architecture.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1️⃣ 📦 WHAT LANDED SINCE THE LAST GROK SESSION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
