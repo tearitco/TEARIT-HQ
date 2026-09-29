@@ -174,8 +174,11 @@ int main(int argc, char **argv) {
         "if(b.clientHeight!==90)throw \"B4 ch\";\n"
         "var r=b.getBoundingClientRect();\n"
         "if(!r||r.width!==120||r.height!==90)throw \"B5 rect\";\n"
-        "if(r.x!==0||r.y!==0||r.top!==0||r.left!==0)throw \"B6 rect0\";\n"
-        "if(r.right!==120||r.bottom!==90)throw \"B7 rect2\";\n"
+        "if(r.x!==0||r.left!==0)throw \"B6 rect0\";\n"
+        /* B6b: #out precedes #box and has no declared height, so #box stacks
+         * below its one text line (14px baseline) instead of sitting at y=0. */
+        "if(r.y!==14||r.top!==14)throw \"B6b stack=\"+r.y;\n"
+        "if(r.right!==120||r.bottom!==90+14)throw \"B7 rect2\";\n"
         "var cs=getComputedStyle(b);\n"
         "if(cs.getPropertyValue(\"width\")!==\"120\")throw \"B8 gpw\";\n"
         "O.textContent=\"B-ok\";\n",
