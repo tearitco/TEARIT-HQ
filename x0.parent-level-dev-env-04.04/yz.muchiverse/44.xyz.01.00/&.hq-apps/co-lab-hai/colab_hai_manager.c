@@ -547,33 +547,44 @@ static void write_chtpm_projection(void) {
     CH_APPEND("has_pending=%d\n", n_pending > 0 ? 1 : 0);
     CH_APPEND("n_pending=%d\n", n_pending);
     {
-        /* REAL FIX 2026-09-29 (bug_bounty.md's OPEN co-lab-hai entry,
-         * direct live report: "approval view can sometimes be bigger
-         * than window for it"): pend_msg is a bare <text> in
-         * co-lab-hai.xhtpm (never wraps), so a long message rendered
-         * as one unbroken line wider than the panel/window itself.
-         * Tried <text_area> first (co-lab-hai.xhtpm's own header
-         * comment on this line has the full story) - confirmed live it
-         * doesn't get its own height in this panel's shape (a second
-         * multirow field collapses to the real composer's 1-row
-         * height). Truncating here instead: simple, robust, no fight
-         * with the layout engine. ~100 chars is comfortably inside the
-         * panel's real observed width (~700-720px) at this house's
-         * default font - the full message is still readable afterward
-         * in the real conversation feed once approved, this is only
-         * the preview the owner uses to decide approve/reject. */
-        char pend_msg_trunc[128];
-        size_t pend_msg_len = strlen(pend_msg);
-        if (pend_msg_len > 100) {
-            snprintf(pend_msg_trunc, sizeof(pend_msg_trunc), "%.100s...", pend_msg);
-        } else {
-            snprintf(pend_msg_trunc, sizeof(pend_msg_trunc), "%s", pend_msg);
-        }
+        /* REAL FIX 2026-09-29 (bug_bounty.md's OPEN co-lab-hai entry).
+         * An earlier pass here truncated pend_msg to ~100 chars - direct
+         * live correction, with a real screenshot: NOT acceptable,
+         * "user should be able to read the message they need to
+         * approve". Real fix landed in co-lab-hai.xhtpm instead
+         * (<text_area class="top">, see its own header comment) - the
+         * full message now genuinely wraps and is fully readable, so
+         * no truncation is needed here at all. Kept the full pend_msg
+         * untouched. */
         char esc_agent[128], esc_msg[1200];
         xml_escape(pend_agent, esc_agent, sizeof(esc_agent));
-        xml_escape(pend_msg_trunc, esc_msg, sizeof(esc_msg));
+        xml_escape(pend_msg, esc_msg, sizeof(esc_msg));
         CH_APPEND("pend_agent=%s\n", esc_agent);
         CH_APPEND("pend_msg=%s\n", esc_msg);
+        /* REAL FIX 2026-09-29, direct live instruction: "we should let
+         * the approval area be as long as it needs be" - a fixed rows=
+         * either overlapped the row below it (too small for a long
+         * message) or, at rows=8, looked like it broke the whole panel
+         * (that specific failure turned out to be an unrelated
+         * malformed-XML-comment bug, since fixed and confirmed rows=8
+         * on its own is fine) - fixed AT ALL is still the wrong shape
+         * when messages vary this much in real length. Compute real
+         * rows needed from the real message length instead of guessing
+         * one constant: ~85 chars/line is what this panel's real
+         * observed width (~720px) at this house's default font
+         * actually wraps to (confirmed live: a 330-char test message
+         * wrapped to exactly 4 lines). Clamped to [2,12] - 12 leaves at
+         * least ~6 of the panel's ~19 total rows for the toolbar,
+         * approve/reject, and a few real scrolllist rows below it, so
+         * a very long message grows generously without ever repeating
+         * the "everything else vanishes" failure mode. */
+        {
+            int pend_len = (int)strlen(pend_msg) + (int)strlen("PENDING (): ") + (int)strlen(pend_agent);
+            int needed_rows = (pend_len + 84) / 85;
+            if (needed_rows < 2) needed_rows = 2;
+            if (needed_rows > 12) needed_rows = 12;
+            CH_APPEND("pend_rows=%d\n", needed_rows);
+        }
     }
 
     CH_APPEND("newsession_action='%s/ops/colab_hai_action.sh' 'newsession'\n", g_package_dir);

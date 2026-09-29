@@ -28,27 +28,34 @@
       </row>
       <item id="ch-menu-dir" label="Dir" target_id="ch-menu" class="dropdown-child" action="${dir_action}"/>
       <item id="ch-menu-faq" label="FAQ" target_id="ch-menu" class="dropdown-child" action="${faq_action}"/>
-      <!-- REAL FIX 2026-09-29 (bug_bounty.md's OPEN co-lab-hai entry,
-           direct live report: "approval view can sometimes be bigger
-           than window for it"). Kilo's own 2026-09-23 plan (session
-           1790154594, never landed) was <text> -> <text_area> for
-           wrapping - tried that here first and confirmed live via
-           frame-dump it does NOT work in THIS panel's shape: this
-           panel already has both a <scrolllist> and a real bottom
-           <cli_io id="composer"> (khtpm_core_render.c's own "chat's
-           shape" branch, ~line 4869) - a second multirow field here
-           just inherits the SAME shared composer_h as the real
-           composer (1 row, since the composer sets no rows=), not its
-           own rows= value. That branch is deliberately scoped to ONE
-           multirow field per panel (text-edit-hq's bare, scrolllist-
-           less case) - exactly the concern Kilo's own header comment
-           already raised ("would verify... rather than assume") and
-           was right to. Real fix instead: truncate pend_msg itself,
-           server-side (colab_hai_manager.c), to a safe single-line
-           width with a trailing "..." - simpler and more robust than
-           fighting this layout branch's real constraints. Stayed a
-           plain <text>. -->
-      <text label="PENDING (${pend_agent}): ${pend_msg}" class="pending-text" show="${has_pending}"/>
+      <!-- REAL FIX 2026-09-29 (bug_bounty.md's OPEN co-lab-hai entry;
+           direct live report, with a real screenshot: truncating with
+           "..." was NOT acceptable - "user should be able to read the
+           message they need to approve"). A bare text_area with no
+           class does not get its own height in this panel's shape - it
+           inherits the shared bottom-composer sizing (khtpm_core_
+           render.c, ~line 4897's else branch: c-&gt;h = composer_h),
+           same as the real bottom composer field, not its own rows=.
+           The real fix is class=top, a documented, already-used escape
+           hatch (see sql-hq.xhtpm's own real text_area, rows=7, class
+           top sql-editor - same core-render.c header comment, ~line
+           4713, on that mechanism) that lays the field inline in
+           normal top-down flow using its own rows= height instead of
+           gluing it to the bottom.
+
+           A long message's drawn text still overflows this box's own
+           height uncapped when it exceeds rows=4 - a real, smaller,
+           cosmetic-only remaining issue (visual overlap on the row
+           below), not a missing-content one. rows=8 was tried and
+           reverted - it consumed enough panel height that everything
+           after it (approve/reject, the whole conversation list)
+           vanished from the frame outright, worse than the overlap.
+           Note for future editors of this comment block: do not paste
+           literal angle-bracket tag examples in here - an earlier pass
+           did, and this house's own template parser is not fully
+           comment-aware, so literal tag-like text inside a comment can
+           still break well-formedness. Describe tags in prose only. -->
+      <text_area id="pend-msg" class="top pending-text" content="PENDING (${pend_agent}): ${pend_msg}" show="${has_pending}" rows="${pend_rows}"/>
       <row class="toolbar" show="${has_pending}">
         <item id="ch-approve" label="Approve" action="${approve_action}"/>
         <item id="ch-reject" label="Reject" action="${reject_action}"/>
