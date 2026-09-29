@@ -35,3 +35,63 @@
 ## Open
 - `/tmp/nb_img_*.png` lifetime `MAX_IMG_DECODED 256` `draw cache 139` overflow — per `LOAD` vs `#.desktop/nb_sprites/`?
 
+
+## Status update (opencode-fix, after 1c405134b)
+
+F1-F4 are implemented and verified against the running app. What the live
+evidence actually shows, and the two things that are still not wired.
+
+### F1 — media wrap: DONE (commit 1c405134b)
+`class="sprite-flow"` is generic renderer code in `khtpm_core_render.c`; the
+template just opts its media `<item>`s in. A maximal run of consecutive sprite
+siblings becomes one wrapping grid over `SPRITE_GRID_TILE_W/H` with the same
+nav-row assignment and scroll span the media-grid-row path uses. Live proof:
+six 150x110 PNGs lay out 3 columns x 2 lines at a 168px pitch (x = 252/420/588,
+y = 170/266), and text after the run keeps its own row.
+
+### F2 — blit: was never missing
+`khtpm_draw_core.c` already had the `stbi_load` + `XPutImage` path behind a
+`const char *` sprite (a directory sprite is a `char *` too, which is what made
+this look absent). 48x48 PNGs from `data:` URIs render in the live window and
+`wcs[img-png]` / `wcs[img-html]` pass.
+
+### F3 — layout: partly done, and this block finished the honest part
+Two separate things were called "block layout":
+
+- The renderer's block/grid placement (`layout_sidebar_panel`, text as direct
+  children, bars): already present, `wcs` 9/9.
+- The worker's `getBoundingClientRect`: it only advanced y by *declared CSS*
+  height, so every unstyled paragraph reported `0,0,0,0` in the live app while
+  the suite passed (every rect assertion used an explicit `px` height). Added
+  `nb_content_h()` in `ops/nb_js_worker.c`: a declared height still wins,
+  otherwise a block sums its children and text gets one 14px line per full
+  640px column. Live now: `a y=14 b y=28 c y=42`, each `h=14`.
+
+  `wcs` B6 asserted `y===0` for a box with a preceding text sibling, i.e. it
+  encoded the stub. It now asserts the stacking (`y===14`) and B7 the matching
+  `bottom`. That is the one test expectation this block changed.
+
+### F4 — harness: DONE
+`presentations/network-browser-normal-20260923/capture_scenes.sh` replaces the
+placeholder flow. Six real `dump_frame_png_op` window dumps, a local
+`python3 -m http.server` fixture, `manifest.txt` with captions that match what
+was captured, and a rendered `Network-Browser-Normal-20260923.mp4`
+(1280x972, 36s).
+
+Two capture findings worth keeping:
+- The renderer reads `network-browser-hq_ui.txt` at startup and does not
+  reliably pick up a later atomic replace, so the scene must be navigated to
+  *first* and the renderer relaunched *second*; otherwise the dump shows the
+  previous frame. `capture_scenes.sh` does this per scene.
+- Content text rows are dim by house palette (gray ~40-90, not >170). A
+  threshold check that "proves the content area is blank" is a false negative.
+
+### Still open (not claimed as done)
+- `worker_send_event()` in `network_browser_manager.c:1400` is defined and
+  never called, so a khtpm click on a page element does not become a DOM EVENT.
+  There is no bridge from a renderer click to a selector. The old manifest
+  claimed an "EVENT RPC click" scene; that scene was dropped rather than faked.
+- The manager runs `ops/+x/nb_js_worker.+x`, not the dev `./nbjs` that `make`
+  produces. Editing `ops/nb_js_worker.c` and running `make nbjs` does **not**
+  change the live app; rebuild `ops/+x/nb_js_worker.+x` (build.sh line 43).
+- `/tmp/nb_img_*.png` lifetime / `MAX_IMG_DECODED` overflow: still open.
