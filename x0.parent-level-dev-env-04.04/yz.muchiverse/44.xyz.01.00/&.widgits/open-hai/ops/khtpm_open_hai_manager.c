@@ -787,9 +787,33 @@ static int extract_openrouter_tool_call_raw(const char *json, char *name_out, si
      * key. Searching for the unescaped form would never match real
      * live responses (confirmed live: the un-harnessed relay test
      * this fix was written to support). */
-    const char *path_key = strstr(name_key, "\\\"path\\\":\\\"");
+    /* REAL FIX 2026-09-29, live milestone testing before adding new
+     * free models to HQ-IQ-BOOK: dots-studio/dots-3-note-preview:free
+     * always resolved to the house root instead of the real requested
+     * path - not a model reliability problem (confirmed via a direct
+     * curl against openrouter.ai with the exact same request: the
+     * model's own "arguments" value was correct byte for byte). Root
+     * cause was this exact strstr - dots-studio serializes its escaped
+     * JSON with a space after the colon (\"path\": \" - legal JSON,
+     * this house's other tested models just happen not to emit it),
+     * which the old literal "\"path\\\":\\\"" pattern (no space
+     * allowed) never matches, silently leaving path_out empty. Search
+     * for the colon and name-quote separately, then skip any
+     * whitespace before the value's opening backslash-quote, so this
+     * works regardless of a given model's own JSON formatting style.
+     * Real, deliberate scope limit: this is a minimal patch, not the
+     * real fix - see 12.calendar/2026-09-29/2do.md's "desired API fix"
+     * section for the actual plan (port gem-dev's real, generic,
+     * whitespace-safe dot-notation json_parser op instead of hand-
+     * patching this strstr one byte-pattern at a time). */
+    const char *path_key = strstr(name_key, "\\\"path\\\":");
     if (path_key) {
-        path_key += strlen("\\\"path\\\":\\\"");
+        path_key += strlen("\\\"path\\\":");
+        while (*path_key == ' ' || *path_key == '\t') path_key++;
+        if (path_key[0] == '\\' && path_key[1] == '"') path_key += 2;
+        else path_key = NULL;
+    }
+    if (path_key) {
         size_t pi = 0;
         while (*path_key && pi + 1 < path_outsz) {
             if (path_key[0] == '\\' && path_key[1] == '"') break; /* end of the JSON-string-encoded value */
