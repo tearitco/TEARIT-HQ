@@ -13,6 +13,16 @@ This file is what I actually know. It is not a claim that I read all
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 0️⃣ 🎯 THE VISION (corrected 2026-09-29, same day)
+
+🏷️ Official name, owner decision later the same day: the
+   **attrition-model**.
+   It is the umbrella over the Concept Bank, A TEARIT, the
+   Harnecient hack, IRL, RL, FSM, and GOAP. A TEARIT remains the
+   spec file (`A-TEARIT-IS-ALL-YOU-NEED.md`). The spoken name is
+   the attrition-model: a war of attrition, wearing API dependence
+   down until an entity has a small offline autonomy, and entities
+   share trunked intelligence banks. It is meant to sound like
+   both TEARIT and Harnecient.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 The product is not a Gemma reply and not an OpenRouter chat.

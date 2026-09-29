@@ -52,7 +52,14 @@ The concrete first step, and it's small on purpose:
    per-project duplication convention, same shape `mylawyer_case_worker.c`'s
    own `gemma_ask()` already uses).
 3b. **OpenRouter, via open-hai, helps bootstrap and do the work.**
-   Added 2026-09-29. It is not limited to the DESCRIBE line. Uses that
+   Added 2026-09-29. The whole effort's official name, owner
+   decision the same day, is the **attrition-model**: the umbrella
+   over the Concept Bank, A TEARIT, the Harnecient hack, IRL, RL,
+   FSM, and GOAP. It names the war of attrition from API dependence
+   toward small offline autonomy, with entities sharing trunked
+   banks. A TEARIT stays the spec title
+   (`A-TEARIT-IS-ALL-YOU-NEED.md`), not the spoken name of the
+   whole. OpenRouter is not limited to the DESCRIBE line. Uses that
    are in scope: train a bank layer, hand-tune a tomom weight, draft
    or place an event-command brick, and make real tool calls
    (`list_dir`, `read_file`, and after a human approve `write_file`,
