@@ -129,10 +129,10 @@ x0.parent-level-dev-env-04.04_*.7z
 # above (regenerated every launch/tick, never "work"). Same convention:
 # files stay on disk, `git rm --cached` only, in the same commit that
 # adds this block.
-#.desktop/ascii_frames/
-#.desktop/strip_ascii_pulse.txt
-#.desktop/joystick_focused_pid.txt
-#.desktop/drop_poll.txt
+**/#.desktop/ascii_frames/
+**/#.desktop/strip_ascii_pulse.txt
+**/#.desktop/joystick_focused_pid.txt
+**/#.desktop/drop_poll.txt
 
 # PRISC-X-FORK-CONSOLIDATION.md — pal VM built from the ONE canonical
 # &.widgits/_shared-lib/system/prisc+x.c; no vendored per-project copy.
