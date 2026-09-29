@@ -439,6 +439,90 @@ separate content-addressing format later.
 
 ---
 
+## §1 remaining work: the drop-target handler (design, not yet built, 2026-09-28)
+
+The one piece of §1's "automatic, both directions" still open: dropping
+a 🎬️/⚙️/🧩 onto a different entity auto-updates that target's live
+view. Unlike everything else built so far, this needs real X11 drag
+physics, not just file/directory logic - but the drag mechanism itself
+already exists house-wide, so this is smaller than it sounds.
+
+### The pieces, all already real - nothing new to invent
+
+1. **House-wide XDND drop already exists**, `khtpm_core_render.c`
+   (2026-08-24, first consumer: bookmarks' drag-a-dir-onto-the-window).
+   Any window opts in with `<window drop_action="...">`. On a real
+   drop, the dropped path lands in `$DROP_PATH` and the action script
+   runs with the SAME `$0`=package_dir/`$1`=house_root positional
+   convention every dispatch() action already uses - no new IPC shape,
+   no new X11 code. `g_drop_action`/`kh_is_drop_target_window()` are the
+   real symbols (khtpm_core_render.c ~line 942-964, ~10388).
+2. **The target's live view already polls for new pages with zero new
+   code**: `khtpm_events_hq_manager.c`'s own main loop (line ~1307)
+   calls `publish_pages()` - an unconditional `opendir(pages_root)` -
+   every single tick (`usleep(400000)`, i.e. every 400ms), NOT only on
+   an explicit new_page/append action. A page directory that appears on
+   disk from ANY source (a drop, a manual copy, this doc's own
+   retroactive sweep) is picked up within half a second, automatically,
+   with the window already open. This already satisfies "hot-load if
+   open" - no incremental-reparse plumbing needed for this specific
+   case, the manager's own polling loop is the mechanism.
+3. **The handler script itself** is the only new code: given
+   `$DROP_PATH` (the dragged object's own directory - could be a 🎬️, a
+   ⚙️, or a 🧩) and the target entity (`$0`), copy (per the resolved
+   "copy now, link later" decision) the dropped object's own
+   `event_pkg` page content into the target's next free
+   `pages/page_N` slot. This is `event_page_to_pal.sh` run in
+   reverse - pal-to-page instead of page-to-pal - the exact same real,
+   already-proven primitive, not a new copy mechanism.
+
+### Where drop_action= goes
+
+Two real drop targets, not one - worth building/testing separately:
+
+- **Onto an entity's own events-hq window** (dropping a 🎬️/⚙️/🧩 while
+  that entity's event editor is open) - most direct, matches
+  publish_pages()'s own polling story above exactly.
+- **Onto an entity's tile/inventory grid on the desktop** (dropping
+  without events-hq open at all) - the "persist if closed" case; the
+  handler still runs (drop_action doesn't require the target's
+  events-hq window to be open, only ANY window that opted in), it just
+  writes to disk and the next events-hq launch (or this doc's own
+  retroactive-sweep-shaped `publish_pages()` first tick) picks it up
+  naturally.
+
+### Testable in two separate layers - only one needs real mouse physics
+
+Per the house's own testing-methodology convention (`khtpm-house-
+standards` skill, "drive via the relay, not xdotool, except as a real
+last resort"):
+
+1. **The copy/merge logic (the actual hard part) needs zero mouse
+   interaction.** Exactly like every event_auto_clacker.sh/
+   event_auto_puzzle.sh test this session: write a fake `$DROP_PATH`
+   env var, invoke the handler script directly, verify the target's
+   `pages.state.txt`/`ui.txt` picked it up (same pretest/compare
+   harness already built in `event-retrofit-pretest/` - re-runnable
+   as-is against this new handler).
+2. **The real drag gesture** (grabbing a 🎬️/⚙️/🧩 icon and dropping it
+   onto a target window) is the one genuine exception this house's own
+   testing convention already documents - real XDND drag physics
+   cannot be expressed through the `entity_menu_history/<pid>.txt`
+   text relay, so `xdotool`/XTest mouse-drag is the correct tool here,
+   not a shortcut being reached for too early. Only needed as a final
+   smoke test once the handler's own copy logic is already proven via
+   (1) - not for every iteration while building it.
+
+### Open question before building
+
+Does the handler run once per drop (single page) or does dropping a
+whole 🎬️ clacker (which may contain multiple ⚙️ pages) copy ALL of its
+pages into the target at once? Leans toward "all of them" (dropping the
+clacker = transplanting the entire event system, per this doc's own
+"the whole event system as a single unit" framing for 🎬️ specifically)
+vs. dropping a single ⚙️ or 🧩 only copies that one page/event. Confirm
+before writing the handler script.
+
 ## Related
 
 - `EVENT-COMMAND-REGISTRY-ARCHITECTURE.md` — the current, real event
