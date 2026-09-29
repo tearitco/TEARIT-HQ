@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-27
 **Status:** Planning document. Two items in this doc are ready to build; everything else is explicitly document-only, not started.
-**Also filed at:** `/home/no/Desktop/github/work/XO/5.Recent_roadmap/AI-PUSH-ROADMAP-AND-NUANCES.md`
+**Also filed at:** `/home/no/Desktop/github/work/XO/8.grok-s29/AI-PUSH-ROADMAP-AND-NUANCES.md`
 
 ---
 
@@ -51,6 +51,29 @@ The concrete first step, and it's small on purpose:
    `connect_op.c`/`json_parser.c` (matching this house's established
    per-project duplication convention, same shape `mylawyer_case_worker.c`'s
    own `gemma_ask()` already uses).
+3b. **OpenRouter, via open-hai, helps bootstrap and do the work.**
+   Added 2026-09-29. The whole effort's official name, owner
+   decision the same day, is the **attrition-model**: the umbrella
+   over the Concept Bank, A TEARIT, the Harnecient hack, IRL, RL,
+   FSM, and GOAP. It names the war of attrition from API dependence
+   toward small offline autonomy, with entities sharing trunked
+   banks. A TEARIT stays the spec title
+   (`A-TEARIT-IS-ALL-YOU-NEED.md`), not the spoken name of the
+   whole. OpenRouter is not limited to the DESCRIBE line. Uses that
+   are in scope: train a bank layer, hand-tune a tomom weight, draft
+   or place an event-command brick, and make real tool calls
+   (`list_dir`, `read_file`, and after a human approve `write_file`,
+   `edit_file`, `cmd_exec`). Those calls are demonstrations. IRL learns
+   from the trace, the same way it learns from a player's actions.
+   Gemma on the LAN still fills `TARGET | STRENGTH | REASON` for the
+   constrained bank step. The learner that remains is local: FSM,
+   tomom / IRL, Concept Bank, file weights, EDIT records, bricks an
+   NPC, enemy, manager, or scaler can carry. One hop per SEND. A
+   weight edit still leaves an auditable record. OpenRouter does not
+   become the runtime. When the local bank can do the next brick
+   itself, the outside call can be turned off. Mechanism:
+   `13.agent-coms/GROK/2026-09-29/open-hai-api-delegation-guide.md`.
+   Trust rules: `02-architecture/OPENROUTER-MODEL-COMPETENCY.md`.
 4. **Deliberately NOT done, matching established precedent**: does not
    call `concept_edit_validate.+x` or touch any real spoke/master file.
    Writes one line to the entity's own `pending_review.txt` — same
