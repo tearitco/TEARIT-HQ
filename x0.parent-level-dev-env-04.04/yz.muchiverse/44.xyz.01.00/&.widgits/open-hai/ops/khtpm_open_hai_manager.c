@@ -388,7 +388,19 @@ static const ModelEntry g_models[] = {
      * still live months from now. */
     { "nvidia/nemotron-3.5-lightning:free", BACKEND_OPENROUTER },
     { "cohere/north-mini-code:free", BACKEND_OPENROUTER },
-    { "qwen/qwen3.8-max-free", BACKEND_TOKENROUTER }
+    { "qwen/qwen3.8-max-free", BACKEND_TOKENROUTER },
+    /* REAL ADD 2026-09-29, from a user leads doc (XO/7.apis-2-openhai/
+     * open-hai-free-apis.md) proposing 4 models via OpenRouter's
+     * unified key. Live-verified against the SAME key already on disk
+     * here (curl, GET /api/v1/models + a real tool_calls request each)
+     * before adding - 3 of the doc's 4 slugs are real and current;
+     * the 4th, nex-agi/nex-n2.5-pro:free, does NOT exist on OpenRouter
+     * (the real slug, nex-agi/nex-n2.5-pro, has no free tier) and was
+     * left out. All 3 below returned a real, live
+     * finish_reason:"tool_calls" on first try. */
+    { "nvidia/nemotron-3-ultra-550b-a55b:free", BACKEND_OPENROUTER },
+    { "poolside/laguna-s-2.1:free", BACKEND_OPENROUTER },
+    { "dots-studio/dots-3-note-preview:free", BACKEND_OPENROUTER }
 };
 static const int g_n_models = sizeof(g_models) / sizeof(g_models[0]);
 
