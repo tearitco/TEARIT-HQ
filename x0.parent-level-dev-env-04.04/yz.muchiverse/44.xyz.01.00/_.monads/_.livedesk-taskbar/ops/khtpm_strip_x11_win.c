@@ -67,6 +67,11 @@ struct Xd {
     int content_w, content_h; /* last presented pixmap size (for mouse scale) */
     unsigned long bg;
     BYTE opacity;
+    int pixel_alpha;          /* REAL, NEW 2026-09-28 - ARGB-visual window:
+                               * created WS_EX_LAYERED and presented by
+                               * UpdateLayeredWindow (per-pixel alpha), not
+                               * GDI. See XMatchVisualInfo/XCreateWindow/
+                               * XPutImage. */
     KProp *props;             /* NEW 2026-09-26 - see KProp above */
     /* REAL, NEW 2026-09-26 - current X11 parent, NULL for a top-level
      * window. Only XReparentWindow() ever sets it, and only the entity's
@@ -80,6 +85,15 @@ struct Xd {
 struct Display {
     int sw, sh;
     Visual vis;
+    /* REAL, NEW 2026-09-28 - a DISTINCT second Visual address that ONLY
+     * XMatchVisualInfo returns for a 32-bit TrueColor request (the ARGB
+     * window pattern the entity's cursword uses). DefaultVisual keeps
+     * returning &dpy->vis, so XCreateWindow can tell "wants real per-pixel
+     * alpha" from "plain window" by pointer identity alone - the one bit
+     * of X11 state that maps to Windows' WS_EX_LAYERED /
+     * UpdateLayeredWindow difference. Both visuals carry identical masks;
+     * only the address differs. */
+    Visual vis_argb;
     XEvent q[EQMAX];
     int qh, qt;
     Atom next_atom;
@@ -381,6 +395,7 @@ Display *XOpenDisplay(const char *name) {
     d->vis.red_mask = 0xFF0000;
     d->vis.green_mask = 0x00FF00;
     d->vis.blue_mask = 0x0000FF;
+    d->vis_argb = d->vis; /* identical masks; distinct address = the ARGB request */
     d->next_atom = 1;
     d->font = CreateFontW(-13, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
                           0, 0, CLEARTYPE_QUALITY, FF_DONTCARE, L"Segoe UI");
@@ -418,23 +433,32 @@ static Window RootDummy(void) { return NULL; }
 Window XCreateWindow(Display *dpy, Window parent, int x, int y,
                      unsigned w, unsigned h, unsigned border, int depth, unsigned cls,
                      Visual *vis, unsigned long valuemask, XSetWindowAttributes *swa) {
-    (void)parent; (void)border; (void)depth; (void)cls; (void)vis; (void)valuemask;
+    (void)parent; (void)border; (void)depth; (void)cls; (void)valuemask;
     Xd *xd = (Xd *)calloc(1, sizeof(Xd));
     if (!xd) return NULL;
     clamp_to_work_area(&x, &y, &w, &h);
     xd->kind = KIND_WIN;
     xd->w = (int)w; xd->h = (int)h; xd->x = x; xd->y = y;
     xd->opacity = 255;
+    /* REAL, NEW 2026-09-28 - per-pixel alpha windows are the ones that
+     * asked XMatchVisualInfo for the shim's ARGB visual (the entity's
+     * cursword); the address returned there is EXACTLY &dpy->vis_argb,
+     * never &dpy->vis, so identity picks them out while every plain
+     * DefaultVisual window (everything else) stays a normal GDI window
+     * exactly as before. */
+    xd->pixel_alpha = (dpy && vis && vis == &dpy->vis_argb) ? 1 : 0;
     if (swa) xd->bg = swa->background_pixel;
     RECT wa;
     work_area(&wa);
+    DWORD ex_style = WS_EX_TOPMOST | WS_EX_TOOLWINDOW;
+    if (xd->pixel_alpha) ex_style |= WS_EX_LAYERED;
     HWND hwnd = CreateWindowExW(
-        WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+        ex_style,
         kCls, L"khtpm",
         WS_POPUP,
         wa.left + x, wa.top + y, (int)w, (int)h,
         NULL, NULL, GetModuleHandleW(NULL), NULL);
-        x11_trace("XCreateWindow(%ux%u@%d,%d) hwnd=%p", w, h, x, y, hwnd);
+        x11_trace("XCreateWindow(%ux%u@%d,%d) hwnd=%p alpha=%d", w, h, x, y, hwnd, xd->pixel_alpha);
         xd->hwnd = hwnd;
         if (hwnd)
             SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)xd);
@@ -909,6 +933,85 @@ XImage *XGetImage(Display *dpy, Drawable d, int x, int y, unsigned w, unsigned h
     return XCreateImage(dpy, NULL, 32, ZPixmap, 0, buf, w, h, 32, (int)w * 4);
 }
 
+/* REAL, NEW 2026-09-28 - the per-pixel-alpha present for ARGB-visual
+ * windows. The entity's cursword window comes in via XMatchVisualInfo's
+ * ARGB visual, XCreateWindow marks it pixel_alpha and gives it
+ * WS_EX_LAYERED, and every XPutImage onto it lands here instead of the
+ * StretchDIBits path below - because that path is GDI bitmap blit: it
+ * copies BGRX and silently discards the alpha byte, so a 0x00-alpha
+ * pixel (cursword's invisible halo disc) would have shown up as an
+ * opaque near-black disc. UpdateLayeredWindow is the per-pixel path: the
+ * whole window is rebuilt from one premultiplied BGRA DIB (ULW_ALPHA +
+ * AC_SRC_ALPHA), so a 0x00-alpha pixel is truly invisible and a
+ * semi-transparent sprite pixel really blends. The uniform opacity the
+ * parser sets via the _NET_WM_WINDOW_OPACITY atom is folded in as
+ * SourceConstantAlpha instead of SetLayeredWindowAttributes - that call
+ * would drop the window back into uniform-alpha mode and discard its
+ * AC_SRC_ALPHA per-pixel data for good. */
+static void xd_present_alpha_layered(Xd *w, XImage *img) {
+    if (!w || !w->hwnd || !img || !img->data) return;
+    RECT rc; GetClientRect(w->hwnd, &rc);
+    int cw = rc.right, ch = rc.bottom;
+    if (cw < 1) cw = img->width;  /* 0x0/unmapped window: present at image size */
+    if (ch < 1) ch = img->height;
+    BITMAPINFO bmi; memset(&bmi, 0, sizeof(bmi));
+    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bmi.bmiHeader.biWidth = cw;
+    bmi.bmiHeader.biHeight = -ch;      /* top-down, matches XGetImage */
+    bmi.bmiHeader.biPlanes = 1;
+    bmi.bmiHeader.biBitCount = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
+    HDC screen = GetDC(NULL);
+    HDC mem = CreateCompatibleDC(screen);
+    void *bits = NULL;
+    HBITMAP hb = CreateDIBSection(screen, &bmi, DIB_RGB_COLORS, &bits, NULL, 0);
+    ReleaseDC(NULL, screen);
+    if (!mem || !hb || !bits) {
+        if (hb) DeleteObject(hb);
+        if (mem) DeleteDC(mem);
+        return;
+    }
+    HBITMAP oldh = (HBITMAP)SelectObject(mem, hb);
+    /* Nearest-neighbour scale img (straight BGRA, alpha byte live) ->
+     * DIB (premultiplied BGRA, as UpdateLayeredWindow requires). */
+    const unsigned char *src = (const unsigned char *)img->data;
+    unsigned char *dst = (unsigned char *)bits;
+    {
+        int y, x;
+        for (y = 0; y < ch; y++) {
+            int sy = (int)((float)y * img->height / ch);
+            if (sy < 0) sy = 0; else if (sy >= img->height) sy = img->height - 1;
+            for (x = 0; x < cw; x++) {
+                int sx = (int)((float)x * img->width / cw);
+                if (sx < 0) sx = 0; else if (sx >= img->width) sx = img->width - 1;
+                const unsigned char *p = src + ((size_t)sy * (size_t)img->width + (size_t)sx) * 4;
+                unsigned a = p[3];
+                unsigned char *d8 = dst + ((size_t)y * (size_t)cw + (size_t)x) * 4;
+                d8[0] = (unsigned char)((p[0] * a) / 255);
+                d8[1] = (unsigned char)((p[1] * a) / 255);
+                d8[2] = (unsigned char)((p[2] * a) / 255);
+                d8[3] = (unsigned char)a;
+            }
+        }
+    }
+    POINT ptDst; RECT wr; GetWindowRect(w->hwnd, &wr);
+    ptDst.x = wr.left; ptDst.y = wr.top;
+    POINT ptSrc; ptSrc.x = 0; ptSrc.y = 0;
+    SIZE sz; sz.cx = cw; sz.cy = ch;
+    BLENDFUNCTION bf;
+    bf.BlendOp = AC_SRC_OVER; bf.BlendFlags = 0;
+    bf.SourceConstantAlpha = (BYTE)(w->opacity ? w->opacity : 255);
+    bf.AlphaFormat = AC_SRC_ALPHA;
+    UpdateLayeredWindow(w->hwnd, NULL, &ptDst, &sz, mem, &ptSrc, 0, &bf, ULW_ALPHA);
+    SelectObject(mem, oldh);
+    DeleteObject(hb);
+    DeleteDC(mem);
+    /* content_w/h mirror what the StretchDIBits path records, so the
+     * pixel->entity mouse-scale uses the last presented pixmap size. */
+    w->content_w = img->width;
+    w->content_h = img->height;
+}
+
 void XPutImage(Display *dpy, Drawable d, GC gc, XImage *img,
                int sx, int sy, int dx, int dy, unsigned w, unsigned h) {
     static int first_put = 0;
@@ -936,6 +1039,13 @@ void XPutImage(Display *dpy, Drawable d, GC gc, XImage *img,
         return;
     }
     if (d->kind == KIND_WIN && d->hwnd) {
+        /* REAL, NEW 2026-09-28 - a per-pixel window's content belongs
+         * entirely to UpdateLayeredWindow; the GDI StretchDIBits blit
+         * below would draw nothing on it (and writes no alpha anyway). */
+        if (d->pixel_alpha) {
+            xd_present_alpha_layered((Xd *)d, (XImage *)img);
+            return;
+        }
         static int dump_done = 0;
         if (!dump_done && img && img->data && w >= 1000) {
             char dp[MAX_PATH];
@@ -1116,7 +1226,13 @@ int XChangeProperty(Display *dpy, Window w, Atom prop, Atom type, int format,
         unsigned long val = *(const unsigned long *)data;
         BYTE a = (BYTE)(val / (0xFFFFFFFFul / 255ul));
         w->opacity = a;
-        SetLayeredWindowAttributes(w->hwnd, 0, a ? a : 1, LWA_ALPHA);
+        /* REAL, NEW 2026-09-28 - a per-pixel-alpha window must NOT be
+         * switched into SetLayeredWindowAttributes uniform-alpha mode:
+         * that discards its AC_SRC_ALPHA per-pixel data for good. The
+         * opacity is folded into the UpdateLayeredWindow present as
+         * SourceConstantAlpha instead (see xd_present_alpha_layered). */
+        if (!w->pixel_alpha)
+            SetLayeredWindowAttributes(w->hwnd, 0, a ? a : 1, LWA_ALPHA);
     }
     return 1;
 }
@@ -1255,6 +1371,26 @@ void XMapWindow(Display *dpy, Window w) { XMapRaised(dpy, w); }
 
 void XClearWindow(Display *dpy, Window w) {
     if (!xd_valid(w) || !w->hwnd) return;
+    /* REAL, NEW 2026-09-28 - a layered (per-pixel-alpha) window has no
+     * GDI surface to FillRect: its content only exists via
+     * UpdateLayeredWindow, and a GDI clear would silently do nothing on
+     * screen. Clear it by presenting an all-transparent DIB instead. */
+    if (w->pixel_alpha) {
+        RECT rc; GetClientRect(w->hwnd, &rc);
+        size_t n = (size_t)rc.right * (size_t)rc.bottom;
+        if (rc.right > 0 && rc.bottom > 0 && n < 4 * 1024 * 1024) {
+            XImage ci; memset(&ci, 0, sizeof(ci));
+            char *zero = (char *)calloc(1, n * 4);
+            if (zero) {
+                ci.data = zero;
+                ci.width = rc.right;
+                ci.height = rc.bottom;
+                xd_present_alpha_layered((Xd *)w, &ci);
+                free(zero);
+            }
+        }
+        return;
+    }
     RECT rc; GetClientRect(w->hwnd, &rc);
     HDC hdc = GetDC(w->hwnd);
     HBRUSH br = CreateSolidBrush(pix_to_cr(w->bg));
@@ -1389,19 +1525,29 @@ void XShapeCombineMask(Display *dpy, Window dest, int dest_kind, int xOff, int y
     int any = 0;
     int mw = mask->w, mh = mask->h;
     unsigned char *bits = (unsigned char *)mask->bits;
+    /* REAL, NEW 2026-09-28 - the inside-test is the three RGB channels ONLY,
+     * never the alpha byte. A 32-bit DIB in this shim is GDI's: any black
+     * fill (XFillRectangle with fg 0, the arc fallback, or a clear bit
+     * expanded by XCreateBitmapFromData) lands as 0xFF000000 - RGB 0 but
+     * alpha 0xFF. Testing "any byte non-zero" therefore read every cleared
+     * mask pixel as INSIDE and the whole window stayed an opaque rectangle
+     * (region came back full, nothing clipped). Masks here encode
+     * inside=non-zero RGB / outside=RGB 0 regardless of alpha, so test
+     * exactly that. */
+#define KH_MASK_INSIDE(p) ((p)[0] | (p)[1] | (p)[2])
     for (int y = 0; y < mh; y++) {
         int x = 0;
         while (x < mw) {
             while (x < mw) {
                 unsigned char *p = bits + (y * mw + x) * 4;
-                if (p[0] | p[1] | p[2] | p[3]) break;
+                if (KH_MASK_INSIDE(p)) break;
                 x++;
             }
             if (x >= mw) break;
             int x0 = x;
             while (x < mw) {
                 unsigned char *p = bits + (y * mw + x) * 4;
-                if (!(p[0] | p[1] | p[2] | p[3])) break;
+                if (!KH_MASK_INSIDE(p)) break;
                 x++;
             }
             HRGN r = CreateRectRgn(xOff + x0, yOff + y, xOff + x, yOff + y + 1);
@@ -1410,6 +1556,7 @@ void XShapeCombineMask(Display *dpy, Window dest, int dest_kind, int xOff, int y
             any = 1;
         }
     }
+#undef KH_MASK_INSIDE
     if (!any) {
         DeleteObject(acc);
         return;
@@ -1941,17 +2088,19 @@ void XReparentWindow(Display *dpy, Window w, Window parent, int x, int y) {
 Status XMatchVisualInfo(Display *dpy, int screen, int depth, int class,
                         XVisualInfo *vinfo_return) {
     if (!dpy || !vinfo_return) return 0;
-    /* The shim has exactly ONE visual - a 32-bit one, and 32-bit is what a
-     * TrueColor request wants. So: a 32-bit TrueColor request is satisfied
-     * with the display's own visual, and anything else honestly reports
-     * "no such visual" so the caller's own fallback runs. The entity writes
-     * that fallback deliberately (entity.c:4003-4004 falls back to
-     * DefaultVisual/DefaultDepth, which return the same visual and depth 32),
-     * so both branches land on identical rendering. */
+    /* The shim has exactly TWO visual addresses. A 32-bit TrueColor
+     * request - the classic way to find an ARGB32 visual, which the
+     * entity's cursword asks for - is satisfied with the DISTINCT
+     * ARGB visual &dpy->vis_argb (same masks, different address). Any
+     * other request honestly reports "no such visual" so the caller's
+     * own fallback runs (the entity falls back to DefaultVisual/Depth).
+     * XCreateWindow uses that pointer identity - "is my visual EXACTLY
+     * the ARGB one?" - to decide the window is WS_EX_LAYERED and gets
+     * per-pixel alpha via UpdateLayeredWindow instead of GDI. */
     if (depth != 32 || class != TrueColor) return 0;
     memset(vinfo_return, 0, sizeof(*vinfo_return));
-    vinfo_return->visual = &dpy->vis;
-    vinfo_return->visualid = 0;
+    vinfo_return->visual = &dpy->vis_argb;
+    vinfo_return->visualid = 1;
     vinfo_return->screen = screen;
     vinfo_return->depth = 32;
     vinfo_return->class = TrueColor;

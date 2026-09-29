@@ -4316,14 +4316,21 @@ static int tp_main(int argc, char **argv) {
      * see build_shape_mask()'s own header comment for why GL_BLEND
      * alone wasn't enough. */
     if (g_has_sprite) {
-#ifndef _WIN32
         Pixmap shape_mask = XCreatePixmap(dpy, win, WIN_PX, WIN_PX, 1);
         GC shape_gc = XCreateGC(dpy, shape_mask, 0, NULL);
         build_shape_mask(dpy, win, shape_gc, shape_mask);
         XFreeGC(dpy, shape_gc);
         XFreePixmap(dpy, shape_mask);
-#endif
-        /* Win: per-pixel alpha via UpdateLayeredWindow in XPutImage (XShape shim). */
+        /* REAL, NEW 2026-09-28 - the old #ifndef _WIN32 gate is gone: on
+         * Windows the shim's XShapeCombineMask maps this sprite-silhouette
+         * mask to a real SetWindowRgn, so every plain entity is a shaped
+         * disc (same visible behavior as Linux) instead of an opaque
+         * WIN_PX x WIN_PX theme-coloured square. cursword's window gets the
+         * disc-plus-sprite grab region AND true per-pixel alpha on top:
+         * its XMatchVisualInfo request now yields the shim's ARGB visual,
+         * which XCreateWindow turns into WS_EX_LAYERED and XPutImage
+         * presents via UpdateLayeredWindow (AC_SRC_ALPHA), so the halo's
+         * 0x00-alpha pixels are genuinely invisible there. */
     }
 
     /* REAL, NEW 2026-08-30, direct live report ("teh cursword is a
