@@ -513,15 +513,58 @@ last resort"):
    smoke test once the handler's own copy logic is already proven via
    (1) - not for every iteration while building it.
 
-### Open question before building
+### Open question - RESOLVED 2026-09-28
 
-Does the handler run once per drop (single page) or does dropping a
-whole 🎬️ clacker (which may contain multiple ⚙️ pages) copy ALL of its
-pages into the target at once? Leans toward "all of them" (dropping the
-clacker = transplanting the entire event system, per this doc's own
-"the whole event system as a single unit" framing for 🎬️ specifically)
-vs. dropping a single ⚙️ or 🧩 only copies that one page/event. Confirm
-before writing the handler script.
+~~Does the handler run once per drop (single page) or does dropping a
+whole 🎬️ clacker copy ALL of its pages into the target at once?~~
+**Resolved: all of them.** Dropping a clacker transplants its entire
+event system as a single unit, matching this doc's own framing.
+
+## Clacker priority stack - BUILT 2026-09-28 (before the drop handler
+## itself - the numbering/priority story had to exist first)
+
+Direct instruction: "clacker should be numbered like pages, in case
+there were more than one, one would take priority when executing."
+Real investigation (not assumed) confirmed `play_event.sh` already has
+a "highest-numbered matching page wins" rule (2026-08-12, same
+semantics RPG Maker MV uses) - the same rule now applies one level up,
+to clackers, and matches real stack/push-pop semantics too (push
+increases the top's number, and here "top" already means "highest").
+
+**Built and verified**: clackers are `event_clacker_N`. The entity's
+own NATIVE clacker is always `event_clacker_1`, auto-created as an
+inventory-only mirror (event_auto_clacker.sh) - deliberately EXCLUDED
+from dispatch priority by itself, since it is never kept in continuous
+sync with events-hq's own live edits to the entity's real
+`event_pkg/pages` (only materialized once, at page/command creation
+time) - treating it as authoritative would make dispatch silently go
+stale the first time anyone edits an event normally. Only an
+externally pushed-in clacker (`event_clacker_2` or higher - from the
+not-yet-built drop handler, or a manual/test push) is safe to redirect
+to, since by construction nobody is editing it through THIS entity's
+own events-hq session.
+
+**Implementation: redirect, not forward-sync.** `play_event.sh` itself
+checks for `inventory/event_clacker_N` (N>=2) before its existing
+page-scan; the highest-numbered one's own `event_pkg/pages` becomes the
+real dispatch source (`PAGES_ROOT`) instead of the entity's native
+pages. Chosen over "copy the winning clacker's pages forward into
+event_pkg/pages" specifically for long-term health: `play_event.sh` -
+the one script every entity in the house already depends on - never
+trusts a snapshot that could go stale, and popping a clacker needs no
+un-sync step, it just naturally falls through to the next-highest one
+underneath (or the native pages, if the stack is empty).
+
+**Verified via 3 real tests against disposable copies**: fallback
+(only clacker_1 present) dispatches exactly as before, zero behavior
+change for every currently-existing entity; a real pushed clacker_2
+genuinely overrides dispatch (confirmed via a file side-effect, not
+stdout - `prisc+x`'s own `exec` opcode discards child stdout/stderr by
+design, a real fact learned mid-test, not assumed); removing the
+pushed clacker restores native dispatch with zero lingering state.
+
+All 11 already-swept entities' clackers renamed `event_clacker` ->
+`event_clacker_1` (pure git renames, zero content diff) to match.
 
 ## Related
 
