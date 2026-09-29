@@ -1,23 +1,21 @@
 # RUSSIAN_DOLL_HOUSE_DESIGN 🪆️
 
-**What this is:** a single, shared, auditable place for a specific
-recurring conversation thread — the user's wholistic ai-house
-vision (boss/high-agents/OpenRouter-workers/student-agents/customers),
-the concerns it raises about the current dev roadmap, and successive
-agents' answers/edits to those concerns. It exists so the user can
-hand ONE folder to any outside agent (Grok, a browser-LLM, a future
-agent) and have it contain the full back-and-forth in one place,
-rather than scattered across chat history.
+**What this is:** the real, self-contained, in-house home for a
+specific recurring conversation thread — the user's wholistic
+ai-house vision (boss/high-agents/OpenRouter-workers/student-agents/
+customers), the concerns it raises about the current dev roadmap, and
+successive agents' answers/edits to those concerns. Everything an
+outside agent (Grok, a browser-LLM, a future agent) needs to pick up
+this thread cold lives in this one folder — no jumping outside the
+repo required.
 
-**This folder holds pointers, not the primary content.** The actual
-brainstorming and answers live in
-`/home/no/Desktop/github/work/XO/$.Brainstorm/sept-29-my-concerns/`
-(outside this repo, not under git) — that's where the user drafts
-concerns and where agents write full answers. This index exists so
-the house's own documentation tree (which agents already know to read
-first, per `08-roadmap/00-INDEX.md`) has a real pointer into that
-external thread, instead of the thread being invisible from inside
-the house.
+**This folder holds real content, not just pointers.** The user's
+personal brainstorm folder (`XO/$.Brainstorm/`, outside this repo, not
+under git) is where drafts start and stay — it's the user's own
+scratchpad and should be left alone by agents. Whenever a document from
+that thread reaches a state worth keeping, a real copy lands here.
+Don't treat `XO/` as the source of truth for this thread going
+forward; this folder is.
 
 **Naming note (read this before reusing "Russian doll" elsewhere):**
 "Russian doll" already means something else in this house — a
@@ -33,35 +31,49 @@ that collides with the existing, different, real meaning. If a
 general recursive-doc-index convention is wanted later, give it its
 own name.
 
-## Threads
+## Contents (2026-09-29 — AI-house architecture concerns)
 
-### 2026-09-29 — AI-house architecture concerns
+- **`0.my-concerns.md`** — the user's original concerns doc: the
+  attrition-model naming question, civ-test/asa survival mechanics,
+  the phymoji/embodiment question, DSR-TOY/WSR_PAL-PREFERED synergy,
+  teru-test's meta-agent babysitter idea, piececraft-hq's Minecraft-clone
+  ambition, in-house chat/OpenRouter delegation scope, and the
+  boss/manager/worker/student agent hierarchy vision.
+- **`AGENT_ROADMAP_ANSWERS.md`** — Claude's answer (§0–8), grounded in
+  four parallel read-only research passes over the real codebase, plus
+  Grok's edit-pass addendum (§9, corrected one claim, proposed "the
+  attrition-model" name) and the owner's direct confirmation of that
+  name (§9a). Includes a summary status table (REAL / DESIGNED /
+  ASPIRATIONAL) across every topic raised.
+- **`ATTRITION_DIAGRAM.md`** — emoji-heavy visual roadmap (same format
+  as `08-roadmap/design-docs/PIPELINE-EMOJI-DIAGRAM-REVISED.md`) laying
+  out the whole attrition-model tree: A TEARIT, Concept Bank, tomom,
+  FSM/GOAP, OpenRouter workers, the agent hierarchy, and all four game
+  testbeds, each tagged with real status and sourced.
+- **`ATTRITION-INTERACTIVE-DIAGRAM.html`** — the same roadmap as a
+  clickable, dark-theme interactive page (open directly in a browser) —
+  7 boxes with detail panels, plus FAQ-style toggles on the promotion
+  bottleneck, OpenRouter's delegation ceiling, and the DSR/WSR_PAL-PREFERED
+  relationship.
 
-- **User's concerns:** `XO/$.Brainstorm/sept-29-my-concerns/0.my-concerns.md`
-- **Claude's answer (first pass):** `XO/$.Brainstorm/sept-29-my-concerns/AGENT_ROADMAP_ANSWERS.md`
-  — covers: the TEARIT pipeline name, real vs aspirational learning
-  status, civ-test/asa survival mechanics (none built), the
-  "phymoji"/clacker-sweep naming mixup, the open-hai session-pal idea
-  and BOOK:SYSTEM proposal, DSR-test/WSR_PAL-PREFERED synergy,
-  the terumon-babysitter idea (new, undesigned), piececraft-hq's
-  Minecraft-clone ambition (already designed as PALCRAFT), OpenRouter
-  delegation's real scope/ceiling, and the boss/manager/worker/student
-  agent hierarchy (pieces exist, no tier distinction yet).
-- **Next in this thread:** Grok's edit pass on the Claude answer doc,
-  then a HARNECIENT.SMOL "night class" script covering this material,
-  then an outside agent's own weigh-in document.
-- **Grok's edit pass landed** as §9 of `AGENT_ROADMAP_ANSWERS.md`
-  (2026-09-29) — corrected one claim (`ROBOT-CHAT-BLUEPRINT.md` does
-  exist) and proposed "the attrition-model" as the umbrella name for
-  the whole AI effort (A TEARIT, tomom, IRL/FSM/GOAP, Concept Bank all
-  inside it). **User confirmed this directly** (§9a) — "attrition-model"
-  is now the settled general term; use it instead of listing every
-  piece by name each time.
-- `ROBOT-CHAT-BLUEPRINT.md` (+ its companion `groks-thots.txt`) moved
-  into house docs 2026-09-29, from `XO/6.robot-blue-print/` (now
-  removed) to `08-roadmap/design-docs/robot-chat/` — same directory
-  tier as `TERUMON-SPEC.md`/`PALCRAFT-DESIGN.md`.
+## Status of open items from this thread
 
-Update this index with one line per new document as the thread grows,
-newest-relevant-context-first is not required — just don't let a doc
-get added to that external folder without a pointer landing here.
+- **Settled:** "the attrition-model" is the confirmed umbrella term
+  (§9a of `AGENT_ROADMAP_ANSWERS.md`). `ROBOT-CHAT-BLUEPRINT.md` +
+  `groks-thots.txt` moved into house docs 2026-09-29, from the user's
+  personal folder to `08-roadmap/design-docs/robot-chat/` — same
+  directory tier as `TERUMON-SPEC.md`/`PALCRAFT-DESIGN.md`.
+- **Still open / not yet done:** a HARNECIENT.SMOL "night class"
+  script covering this whole thread; an outside agent's own weigh-in
+  document (not yet requested/received).
+- **Genuinely new ideas raised in this thread, not yet built or
+  formally ratified anywhere else in the house:** the "real entity" vs
+  "magic entity/event" distinction; the `BOOK:SYSTEM` proposal
+  (a house-wide, non-user-owned book, for open-hai session pals and
+  eventually Claude/Grok's own persistent self-storage); the
+  `AGENT-HIERARCHY-AND-PERMISSIONS.md` idea (a real tier distinction
+  between manager and student agents in colab-hai/branch rules).
+
+Update this index (contents list + status section) every time a new
+document in this thread reaches a keep-worthy state — copy it in here
+for real, don't just point at wherever it was drafted.
