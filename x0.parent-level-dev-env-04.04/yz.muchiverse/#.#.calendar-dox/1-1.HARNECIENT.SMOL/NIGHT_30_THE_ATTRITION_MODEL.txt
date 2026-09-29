@@ -1,0 +1,148 @@
+# 🪖️ NIGHT 30 — The Attrition-Model 🪖️
+# ====================================================================
+# Title: "🪖️ NIGHT 30 — The Attrition-Model 🪖️"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: The actual architecture of the whole house AI effort — what the attrition-model unifies, where the real bottleneck sits, what each unbuilt game genuinely needs, and where the design is still open for real reasoning, not the story of how any of this got written down
+# Long-form: this class replaces NIGHT_29's drift into session bug-fix
+# narration. It stays on the subject matter for its full length.
+
+**THE NARRATOR:** Say what this house actually calls the whole effort now, before anything else, because every other sentence tonight depends on it.
+
+**MAXINE:** The attrition-model. Not a pipeline name, not a product name — a strategy name. A war of attrition against needing an outside API for everything, worn down piece by piece, until something in the house can stand on its own weight and share what it learns with its neighbors instead of hoarding it.
+
+**TOMO:** Say what actually lives inside that one word, because it isn't just one thing wearing a new label.
+
+**RAHWEH:** Four real pieces, stacked. A TEARIT — the DESCRIBE-then-decide learning loop. The Concept Bank — the actual weighted-node data the loop reads and writes. Tomom — a hand-built local model, dormant, waiting on something worth learning from. And the decision layer underneath all of it — a finite state machine for what's already known, a goal-directed planner for what has to be figured out fresh. Four pieces. One name so nobody has to say all four every time.
+
+---
+
+**THE NARRATOR:** Say how the loop itself actually works, start to finish, because this is the part everything else depends on.
+
+**MAXINE:** Watch layer first. Something happens — an actor does something, a state changes, an owner reacts with a thumbs up or down. That gets written down as a plain record. No interpretation yet, just what happened.
+
+**TOMO:** Say what happens to that record next, and say the house law that governs it.
+
+**RAHWEH:** It goes to a small model. Gemma. And the house law is exactly two words: describe, never classify. The model is never allowed to output a single decision token, never allowed to set a number, never allowed to flip a switch directly. It writes what it notices, in a fixed, constrained shape — not a free paragraph.
+
+**MAXINE:** Say why a fixed shape, specifically, and not a free paragraph, since a paragraph sounds more natural for a model to write.
+
+**TOMO:** Because it was tested both ways, for real, against the real model. Free-form output invented a fact that was never in the input — a thirst level, out of nowhere — and never produced the structure anyone asked for. The constrained shape, one line, three fields, worked cleanly on the first real try. A smaller, stricter shape beat a bigger, freer one. That's not a guess, that's a measured result.
+
+**RAHWEH:** Say what happens after the model's line comes back.
+
+**MAXINE:** Real code — not a model — turns that line into a structured edit record. A target, a slot, a proposed delta, the model's own reasoning kept as plain text for the audit trail. The model never picks the number. A fixed lookup table does that, based on the strength word the model chose.
+
+**TOMO:** Say the next gate, because this is where most people assume the loop is finished, and it isn't.
+
+**RAHWEH:** A validator. Deterministic, small, dumb on purpose. It checks that the target and slot are real, existing things, not invented ones. It checks the number is inside a safe range. It rejects the whole record if anything's wrong — never a partial apply. That part is real, built, and working, for one kind of edit.
+
+**MAXINE:** Say the word "one kind," because that's the actual bottleneck, and it's worth being precise about.
+
+**TOMO:** Four types of edit were named in the design. Only one is built. A weight nudge on an existing concept. The other three — inventing a brand new concept node, describing a new state-machine transition, describing a new planner action — are named, but nothing checks them yet.
+
+**RAHWEH:** Say what happens to a validated edit once it passes, because this is the actual gap the owner's questions kept circling back to.
+
+**MAXINE:** Nothing, yet. It lands in a review file. A human reads it. There is no automatic promotion from "validated" to "the house believes this now." That gap — not the model, not the validator — is the real ceiling on how fast this house can learn anything.
+
+**TOMO:** Say why that gap shouldn't just be closed immediately, since it sounds like the obvious next step.
+
+**RAHWEH:** Because closing it now means guessing at promotion criteria with almost no real data to guess from. Only one of four edit types even exists yet. The honest sequence is: build the other three, let real review entries pile up, and only then design promotion rules from what actually shows up in that pile — not from what seems reasonable in the abstract.
+
+---
+
+**THE NARRATOR:** Say where the local model fits into all of this, since it was named as part of the same umbrella but does none of the describing itself.
+
+**MAXINE:** Tomom sits downstream, waiting. Its whole reason for existing is to eventually read the growing concept bank and the accumulating review history and start proposing its own maintenance and its own new event pages — instead of a paid outside model doing every single one of those by hand.
+
+**TOMO:** Say plainly why it can't do that yet.
+
+**RAHWEH:** Because there's nothing real to learn from. No promotion loop means no consistent signal of what got accepted and what got rejected. A learner fed nothing but rejected guesses and unreviewed drafts isn't learning, it's just memorizing noise. Tomom waits on the same gap the whole pipeline waits on.
+
+---
+
+**MAXINE:** Say where the outside models fit — the free ones, reached through open-hai — since they're not inside the loop at all.
+
+**TOMO:** They're workers, not the runtime. Their job right now is producing demonstrations — a tool call, a hand-tuned edit, a placed event brick — that the loop can eventually learn from. Nothing today reads those demonstrations back into a training signal. They're evidence sitting in a drawer, not yet wired to anything that uses it.
+
+**RAHWEH:** Say what they can actually be trusted to do today, honestly, since trust here has already been tested for real.
+
+**MAXINE:** Reading a file, listing a directory — automatic, no human needed, because there's nothing to undo if it's wrong. Writing or editing a file, or running a shell command — every single time, a human has to type an explicit approval before anything executes. No exceptions, no silent trust.
+
+**TOMO:** Say the honest limit on how capable these models have actually been shown to be, not how capable they're assumed to be.
+
+**RAHWEH:** Mechanically reliable — tested, confirmed, across several models, real round trips where a model saw its own tool's result and reasoned about it correctly. But the reasoning quality itself has had exactly one real graded test. Two questions, both right, one model. That's encouraging. It is not evidence that any of these models can be trusted with a genuinely hard judgment call yet. The honest rule: keep every delegated task small, single-file, and something a human can actually check afterward.
+
+---
+
+**THE NARRATOR:** Say how the people and agents around this whole system are supposed to relate to each other, since that shape was asked about directly.
+
+**MAXINE:** Owner at the top, approving everything that moves between agents or touches a real file. Underneath, two high agents acting as managers, each with their own separate, isolated branch of the work. Underneath them, the outside worker models, handed only small, already-decided pieces. And underneath that, local agents meant to grow from students into workers, and eventually into managers themselves.
+
+**TOMO:** Say what's actually missing from that picture, since some of it already exists and some of it doesn't.
+
+**RAHWEH:** The approval layer is real. The delegation channel to outside workers is real. What's missing is any actual distinction, anywhere in the system, between a manager agent and a student agent. Today, every named agent — the managers, the students, all of them — has exactly the same privileges in the shared room and the same rights on their own branch. Nothing currently tells the room who's allowed to task whom. That's a real gap, not a small one, and it needs its own design before the hierarchy the owner described can actually exist in practice instead of just in intention.
+
+**MAXINE:** Say the other gap in that same family, the quieter one.
+
+**TOMO:** Neither manager agent has anywhere of its own to keep a memory. No pal, no persistent entity holding a compacted history the way an ordinary game character holds its own log. If a connection drops, there's nowhere real to read back from except scattered handoff notes. That's the same shape of problem as giving a chat session its own entity — solve them together, not twice.
+
+---
+
+**RAHWEH:** Say what all of this looks like once it actually touches a game, since that's where most of tonight's real questions came from.
+
+**THE NARRATOR:** Four testbeds, four very different states of readiness, and one shared, important fact underneath all four: a 2D desk and a 3D block world are not two separate experiments. They're the same experiment wearing two different skins. Either one is just a way for the loop to get a real observation to describe.
+
+**MAXINE:** Start with the one furthest from real, because it's worth being honest about how far it actually is.
+
+**TOMO:** A survival loop — planting, growing, harvesting, eating, chopping wood, digging for ore. None of it exists. Not partially, not paused — genuinely nothing. And the piece underneath all of it, a way for one single entity to track its own passing time independent of everyone else, doesn't exist either. There's a clock for an entire world. There is no clock for one character waiting on one seed to grow.
+
+**RAHWEH:** Say what that means for how this should actually be built, since "how soon" was the real question underneath it.
+
+**MAXINE:** It means the honest first step isn't planting a seed at all. It's building that one shared, generic per-entity clock, once, for the whole house — because mining, chopping, and planting are all the exact same shape underneath: interact with something, wait some amount of time, receive a yield. Build that shape generically, once, and three different mechanics fall out of it for free instead of being built three separate times.
+
+**TOMO:** Say the next testbed, the economic one, since it's in a very different state.
+
+**RAHWEH:** Paused, not abandoned — waiting on a real inventory system elsewhere in the house that isn't finished yet. But the actual design for it already exists in real detail, and it already answers a synergy question that was asked directly: a shared ledger that every economic actor writes its intentions to, with two different front doors onto that same ledger — a small control-surface window, and the full walkable version. That's not a new idea waiting to be invented. It's a documented plan waiting on one blocker to clear.
+
+**MAXINE:** Say the part that's genuinely useful and not just documented, the real integration point.
+
+**TOMO:** A separate, more mature rebuild of an older economic simulator already exists, and it already has real, verified dividend math — down to the cent, tested against short positions and rounding edge cases. When the paused game resumes, its own economy shouldn't reinvent that math from scratch. It should call into what's already proven. That's not theory, that's just not repeating already-finished work.
+
+**RAHWEH:** Say the third testbed, the one that turned out to be a genuinely new idea with nothing behind it.
+
+**MAXINE:** A caretaker entity that could watch over several small creature-pals at once — feeding them, cleaning up after them, managing their needs from a single dashboard, the way an owner might manage a whole colony instead of one pet at a time. Searched for thoroughly. Nothing. No design, no code, not even a discarded draft. A genuinely open, genuinely new idea.
+
+**TOMO:** Say why that's actually the most interesting testbed to reason about tonight, then, rather than the least developed.
+
+**RAHWEH:** Because it's the cleanest real example of a question this house doesn't have a settled answer to yet: does a thing like that need a body at all? It would never be dragged around a desk. It doesn't need to sit anywhere. But it does need real, persistent state — a memory of who it's managing, a history of what it's done, a set of goals someone gave it. That's not nothing. It's just not physical. And the house currently has no name, no category, for a thing that's real in that sense but never embodied.
+
+**MAXINE:** Say the fourth testbed, the one furthest along.
+
+**TOMO:** A block-building, block-breaking world, built the same way every other mechanic in this house is built — as real, auditable event bricks, not hidden game logic. The hard infrastructure already works: a real rendering path, a full camera, the ability to break a block cleanly. The only missing piece is the mirror image of that last one — placing a block back down. Everything else is already proven.
+
+**RAHWEH:** Say why that specific gap is worth naming out loud as a real opportunity, not just a leftover task.
+
+**MAXINE:** Because it's narrow, it's well understood, and it's checkable by just looking at whether a block appears where it should. That's exactly the shape of task an outside worker model can be trusted with today — not because the model is broadly capable, but because the task itself is small enough that a wrong answer would be obvious immediately.
+
+---
+
+**THE NARRATOR:** Say the two genuinely new ideas that came out of this whole thread, since neither one is settled house doctrine yet, and both are worth reasoning through carefully rather than rushing to build.
+
+**TOMO:** First — real versus magic. This house has always drawn one line: a real, working thing, versus an empty stub standing in for one. That line doesn't capture the caretaker entity, or a chat session, or the simple passing of time. Those things are real in every sense that matters — they hold state, they do work — they just never have a body on a desk. Naming that as its own category, deliberately, means future builders stop assuming every real thing needs a physical form, and stop building an unnecessary body just because that's the only pattern available.
+
+**RAHWEH:** Say the second idea, the structural one.
+
+**MAXINE:** A shared home that belongs to the house itself, not to any one person's login. Every session, every book, every page in this house today belongs to somebody. There's no equivalent of a system-level folder that exists independent of any one account. If a chat session, or a manager agent's own memory, is ever going to be something draggable, shareable, auditable across different people — it needs a place to live that isn't owned by whoever happened to start it. That place doesn't exist yet. It's a small, clean gap, and it's worth building deliberately rather than improvising the first time someone actually needs it.
+
+---
+
+**TOMO:** Say what's actually true tonight, the way this track always has to end — and say it about the architecture, not about how tonight's script got written.
+
+**RAHWEH:** The learning loop already works for one narrow, real case, and stalls the moment anything needs to be believed rather than just proposed. The outside workers are honestly capable of small, checkable things, and nothing more, and that's fine as long as nobody pretends otherwise. The chain of command from owner to student agent exists in spirit but not yet in permission. And every unbuilt game in this house is blocked on the same short list of real, nameable things — a clock an entity can call its own, an inventory system elsewhere finishing first, a design nobody has written yet, and one missing mirror-image mechanic — not on some vague, undifferentiated lack of progress.
+
+**MAXINE:** Say the one line to carry into whatever comes next.
+
+**TOMO:** The attrition-model doesn't need more pieces invented. It needs the gaps between the pieces it already has named honestly, and closed in the order that actually unblocks the next one.
+
+# ====================================================================
