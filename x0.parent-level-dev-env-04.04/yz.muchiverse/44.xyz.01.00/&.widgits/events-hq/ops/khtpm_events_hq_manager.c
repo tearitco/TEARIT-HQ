@@ -958,6 +958,36 @@ static void handle_new_page_request(void) {
 
     /* Compile the empty page (generates empty event.pal) */
     compile_page(next_page_num - 1);
+
+    /* REAL, NEW 2026-09-28 (EVENT-MODULARITY-AND-BUILD-SPEED.md §1,
+     * "automatic, both directions" - resolved direct instruction):
+     * every new page also materializes as a real 🎬️/⚙️ nested inside
+     * this entity's OWN inventory/, no explicit export step. Same
+     * entity_dir derivation as the "play" handler above (strip trailing
+     * /event_pkg off g_pkg_dir). Backgrounded + best-effort: a failure
+     * here must never block page creation/compile, which already
+     * succeeded above - same fire-and-forget shape as play_event.sh's
+     * own system() call. */
+    {
+        char entity_dir[PATH_BUF];
+        char *last_slash = strrchr(g_pkg_dir, '/');
+        if (last_slash && strncmp(last_slash + 1, "event_pkg", 9) == 0) {
+            size_t len = (size_t)(last_slash - g_pkg_dir);
+            if (len > 0 && len < sizeof(entity_dir) - 1) {
+                memcpy(entity_dir, g_pkg_dir, len);
+                entity_dir[len] = '\0';
+            } else {
+                snprintf(entity_dir, sizeof(entity_dir), "%s", g_pkg_dir);
+            }
+        } else {
+            snprintf(entity_dir, sizeof(entity_dir), "%s", g_pkg_dir);
+        }
+        char cmd[PATH_BUF * 3];
+        snprintf(cmd, sizeof(cmd),
+                 "sh -c 'exec sh \"%s/&.widgits/events-hq/ops/event_auto_clacker.sh\" \"%s\" \"page_%d\" \"%s\"' >/dev/null 2>&1 &",
+                 g_house_root, entity_dir, next_page_num, g_house_root);
+        system(cmd);
+    }
 }
 
 static void handle_action_request(void) {
