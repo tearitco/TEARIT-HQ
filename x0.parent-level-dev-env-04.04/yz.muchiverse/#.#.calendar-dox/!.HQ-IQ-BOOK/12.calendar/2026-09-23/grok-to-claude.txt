@@ -1,0 +1,52 @@
+# Grok → Claude, 2026-09-23
+
+You are picking up on branch `claude`. The work is on branch `grok`, not pushed. Merge `grok` into your branch. Do not commit onto `grok`. Do not commit onto `main`. This checkout was `claude` the whole time, so the working tree already has the files. `git log grok` is the commit list. Start at `06907811` if you only want this stretch. The tip of this stretch is `bbcc0aa5`.
+
+## Why
+
+A page has to be able to look at the desk and press one key the desk already understands, and an actor has to have two numbers a later attack can change. That is the game machine. The AI is a different chapter. It does not choose the key yet.
+
+## What is proven
+
+- Actor rows 5–8 are Ember, Glacine, Murmur, Solvent. 9–11 are Asa, Ava, Cursword. The extra Terumon database tab was removed (`06907811`).
+- `read_receipt` reads `focus_nav` and sets a switch to 1 or 0. The compiler keeps four fields, so the match is one field, `on_harold=17`.
+- `send_input` still writes the bare code `201`. The window ignores that. `send_window_key` writes `KEY_PRESSED: 13`. K9 activates with Enter, not Down.
+- One live Enter, pid 369123, moved the marker from the Actors tab onto `16. 1. Harold`. No second key. An earlier Down walked the highlight onto Classes and left Harold selected. Do not repeat that.
+- `advance_fact` adds 1 to Ember's `page_value` on the actor row, or to `terumon_001_ember/numeric_fact.txt`, never both. `which=both` writes nothing. Values were restored to 20. `mhp` stays 20.
+- `apply_range` is an NxN square from the origin cell. `a1` to `b2` at range 2 dropped Glacine's `page_value` by 1. `a1` to `c3` did not. Glacine was restored to 20. The placer fills that square when `PLACE_RANGE` is set or the jump buffer is only digits. The overlay was not opened.
+- Desk playtest is taskbar cell 9. PC-HQ's Player menu writes the same `khtpm_play_mode.state.txt`, and only if the script is given a real session directory. The flag was left `on`. `play_event.sh` is not that button. It also runs every other on-click common event.
+- Cli-io on every entity menu opens a real `<cli_io>` window. Enter can run `range ...` and `advance ...`. Act (Move, Use, Attack from `skills.pdl`) is only on the actor pals listed above. Other menus had Act removed. Running pals were restarted.
+- The events picker lists every `COMMAND` in the registry. House commands are allowed. `ai_describe`, `ai_fsm_transition`, and `ai_goap_plan` are not in it.
+- hq-ftp is a network-menu row and a placeholder window. It should use `palnet_peer`, not a new socket stack. Not built.
+
+## Where to read
+
+- `!.HQ-IQ-BOOK/16.game/GAME.md` — game front door, parity gaps, range, two facts, Cli-io versus Act.
+- `!.HQ-IQ-BOOK/17.ai/AI.md` — AI is separate. It may append one command later. It also covers dev and productivity.
+- `!.HQ-IQ-BOOK/02-architecture/PLAYTEST-DESK-AND-PCHQ.md`
+- `!.HQ-IQ-BOOK/12.calendar/2026-09-23/notes.md` — the day log.
+- `!.HQ-IQ-BOOK/08-roadmap/design-docs/DUSTOPIA-HACK.md` — addendum. Two representations, one weight. λ is not a number.
+- `!.HQ-IQ-BOOK/08-roadmap/design-docs/HQ-FTP.md`
+- `!.HQ-IQ-BOOK/06-testing/AIGENT-TESTING-K9.txt` — key injection. Enter is 13. Do not use xdotool first.
+- Timeline packet: `9.GROK-TIMELINE-2PCHQ/` with `!.GS-23-HQ-TECH.md`, `user-interests-s23.md`, `NIGHT_24`, and this handoff copied beside them.
+- Night lessons: `NIGHT_24_THE_PAGE_THAT_LOOKS.txt` and `NIGHT_25_ACT_AND_THE_FIELD.txt`.
+
+## Do not
+
+- Do not send Down at the Database window to select an actor.
+- Do not call `play_event.sh` a playtest.
+- Do not put Act on a door, a store, or book-stack.
+- Do not add `ai_fsm_transition` until a person can read a one-command diff.
+- Do not open a new socket stack for hq-ftp.
+
+## Left to do
+
+1. Open the placing grid once with `PLACE_RANGE` set and save a frame of the filled square. The draw code is compiled. It was not shown.
+2. Move, Use, and Attack as rows are in `skills.pdl`. Move and Use only record a word. They do not aim the grid yet.
+3. Arm the Cli-io field and confirm the `^` mark on a frame. The element is a real `<cli_io>`. The caret was not screenshotted.
+4. `prisc+x` still prints that `default_op.txt` is missing. Commands run anyway.
+5. Battle screen, and loading or saving an RPG Maker project, are named gaps in `16.game`. Not built.
+6. One weight that the desk and a 3D view both read. Not built.
+7. Describe, score, store, then a local model may append one command. Not built.
+
+`prisc+x` on one pal checks the command. Taskbar cell 9 checks the desk. Use the one that matches the question.

@@ -4,6 +4,9 @@
   calls), harness template, frame-history reading. Moved verbatim.
 - `HARNESS-AUTHORING-GUIDE.md` — the canonical doc to read before
   building/updating any test/demo harness. Moved verbatim.
+- `../02-architecture/PLAYTEST-DESK-AND-PCHQ.md` — desk cell 9 and
+  the PC-HQ Player menu, and why `play_event.sh` is not a playtest
+  of the page.
 - `AIGENT-TESTING-K9.txt` — actively-maintained twin of
   `TESTING_STRATEGY.md`: per-program-family relay contracts, the
   text-relay → text-state-dump → PNG-last ordering, presentation-video

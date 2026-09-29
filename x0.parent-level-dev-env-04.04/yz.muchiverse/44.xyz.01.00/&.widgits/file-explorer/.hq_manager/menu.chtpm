@@ -1,0 +1,11 @@
+<window class="entity-menu" label="self">
+  <page name="main">
+    <item label="Cut" action="sh -c &apos;echo CUT &gt; &quot;/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&amp;.widgits/file-explorer/.hq_manager/cli_io_ctxmenu_action.txt&quot;&apos;"/>
+    <item label="Copy" action="sh -c &apos;echo COPY &gt; &quot;/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&amp;.widgits/file-explorer/.hq_manager/cli_io_ctxmenu_action.txt&quot;&apos;"/>
+    <item label="Paste" action="sh -c &apos;echo PASTE &gt; &quot;/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&amp;.widgits/file-explorer/.hq_manager/cli_io_ctxmenu_action.txt&quot;&apos;"/>
+    <item label="Delete" action="sh -c &apos;echo DELETE &gt; &quot;/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&amp;.widgits/file-explorer/.hq_manager/cli_io_ctxmenu_action.txt&quot;&apos;"/>
+    <item label="Place" action="sh -c &apos;echo PLACE &gt; &quot;/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/&amp;.widgits/file-explorer/.hq_manager/cli_io_ctxmenu_action.txt&quot;&apos;"/>
+    <item label="Cancel" action="void"/>
+    <cli_io id="cmd" target_id="cmd" label="Cli-io: " action="${HOUSE}/&amp;.widgits/entity-cli/ops/entity_cli_commit.sh"/>
+  </page>
+</window>

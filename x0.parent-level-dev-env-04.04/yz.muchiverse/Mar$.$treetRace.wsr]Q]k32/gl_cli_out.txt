@@ -1,0 +1,51 @@
+Running game setup...
+Executing: ./+x/day_loop.+x
+Hello, Multiverse!
+Executing: ./+x/tax_loop.+x
+Executing: ./+x/dividend_loop.+x
+Usage: ./game num_players game_length starting_cash [player_name player_type]...
+Executing: ./+x/payroll_loop.+x
+Usage: ./game num_players game_length starting_cash [player_name player_type]...
+Executing: ./+x/salary_loop.+x
+sh: 1: ./+x/salary_loop.+x: not found
+50 corporation sheets generated successfully.
+Running analysis to set initial stock prices...
+sh: 1: ./analysis_loop: not found
+Analysis failed. Initial prices may not be properly calculated.
+Corporation files updated and martian_corporations.txt created.
+Found starting_data.txt, loading settings.
+Executing: ./+x/game.+x 2 200 2000.00 "ab" 1 "ba" 0
+[?25l[2J[H_______________________________________________________
+0.^] 1.File] 2.Game Options] 3.Settings] 4.Help] +] -] 
+Active Entity Selected: 
+5.Select Player] 6.Culture] 7.Entity Info] 8.Select Corp.] 9.History] 10.General]
+11.Tools] 12.Buy/Sell] 13.Financing] 14.Private] 15.Management] 16.Other Trans]
+Stock Symbol.... N/A Go		Stock Price.......Start Game!
+Controlled By.....Start Game!		Acting Now.......ab
+Date: 00/00/0 00:00:00:00		Day Passage Speed: sec
+Player: ab
+17.End Turn] 18.Misc. Menu] 19.Chart] 20.Auto] 21.Watchlist]
+22.TICKER [OFF]
+----------------------------------
+My Balance Sheet:
+Cash (CD's)..		2000.00
+Other Assets....		0.00
+Total Assets.....		2000.00
+Less Debt....		-0.00
+Net Worth........		2000.00
+----------------------------------------------
+FINANCIAL NEWS HEADLINES [WASTELAND RECOVERY (WST): $23.32 (+0.00%)]
+
+-Quick Search Functions:-
+23.Research Report] 24.List Portfolio] 25.List Futures]
+26.Financial Profile] 27.List Options] 28.DB Search]
+29.Earnings Report] 30.Shareholder List] 31.My Corporations]
+----------------------------------
+Commodity Prices/Indexes/Indicators:
+Stock Index: Market closed		Prime Rate: 2.50%
+Long Bond: 7.25%		Short Bond: 6.50%
+Spot Crude: $100.00		Silver: $20.00
+Spot Gold: $1,200.00		Spot Wheat: $5.00
+GDP Growth: 2.5%		Spot Corn: $5.00
+------------------------------------------
+Enter your choice (or 'n' to quit): [?25h

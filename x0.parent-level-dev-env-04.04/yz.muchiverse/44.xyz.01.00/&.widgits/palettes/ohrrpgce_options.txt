@@ -1,0 +1,16 @@
+ACTIVE_DIR|stock
+ACTIVE_TILESET|320px-TS02_town.bmp
+ACTIVE_CATEGORY|320px-TS02_town.bmp
+DIR|stock|stock
+TILESET|320px-BG04_snow-bmp|320px-BG04_snow-bmp
+TILESET|320px-BG01_grass-bmp|320px-BG01_grass-bmp
+TILESET|320px-TS10_castle.bmp|320px-TS10_castle.bmp
+TILESET|320px-TS14_insides.bmp|320px-TS14_insides.bmp
+TILESET|320px-BG03_swamp-bmp|320px-BG03_swamp-bmp
+TILESET|320px-TS02_town.bmp|320px-TS02_town.bmp
+TILESET|320px-BG05_snowforest-bmp|320px-BG05_snowforest-bmp
+TILESET|320px-BG02_forest-bmp|320px-BG02_forest-bmp
+TILESET|320px-TS08_cave.bmp|320px-TS08_cave.bmp
+TILESET|320px-TS07_house.bmp|320px-TS07_house.bmp
+TILESET|320px-Fantasy_tileset0FINISHED.bmp|320px-Fantasy_tileset0FINISHED.bmp
+TILESET|320px-Vikings_tilemaps_000.bmp|320px-Vikings_tilemaps_000.bmp

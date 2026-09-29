@@ -1,5 +1,9 @@
 # 02 — Architecture
 
+- `PLAYTEST-DESK-AND-PCHQ.md` — how a book:page is playtested. Taskbar
+  cell 9 (play / stop / reset) and the PC-HQ Player dropdown write
+  the same `khtpm_play_mode.state.txt`. An entity's own play control
+  is the individual test. `play_event.sh` is not this button.
 - `CENTROID_GOLD_STD.md` — **the current gold-standard rendering
   architecture.** Read this before touching any khtpm-family
   renderer/manager code. Moved verbatim (`git mv`) from

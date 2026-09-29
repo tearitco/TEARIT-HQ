@@ -62,7 +62,10 @@ if [ "$OPEN_DESK_MODE" = "on" ]; then
             SESS_ROOT="$HOUSE_ROOT/xyzfs/users/$USER_UUID/home/livedesk/sessions"
             SESSION_ID="$(awk -F'|' '/active_session/{gsub(/ /,"",$3); print $3}' "$SESS_ROOT/session.pdl" 2>/dev/null)"
             [ -n "$SESSION_ID" ] || SESSION_ID=s1
-            "$TRANSFER" "$HOUSE_ROOT" "$SESSION_ID" "dsr" >/dev/null 2>&1 &
+            # dsr desk renamed to dsr-dev 2026-09-22 (experimental
+            # physical-layout sandbox); toy's front door now opens
+            # that desk until a separate coded spawn-target desk exists.
+            "$TRANSFER" "$HOUSE_ROOT" "$SESSION_ID" "dsr-dev" >/dev/null 2>&1 &
         fi
     fi
 fi

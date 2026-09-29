@@ -1,7 +1,7 @@
 entity_type=hero
 hp=20
-pos_x=7
-pos_y=7
+pos_x=2
+pos_y=5
 pos_z=17
 owner_id=player
 chunk_x=0

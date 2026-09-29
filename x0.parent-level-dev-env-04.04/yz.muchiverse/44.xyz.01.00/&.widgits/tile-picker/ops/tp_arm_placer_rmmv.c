@@ -60,6 +60,22 @@
  * Spawned detached (setsid) by palettes_menu.sh's arm_rmmv(). On a
  * real click, sets TP_INITIAL_X/Y and execs tp_place_desktop_rmmv.+x.
  * Escape cancels silently.
+ *
+ * 2026-09-26 RANGE-LIMITED VIEW + MOVE-THEN-CONFIRM (direct live
+ * report: a full-screen grid is "inconvenient when using the computer,
+ * clicking other things on screen"; direct instruction: "make the
+ * limits and features .pdl toggle/customizable"). Env TP_ORIGIN_X/
+ * TP_ORIGIN_Y (reference px - an entity's own desktop_pos.txt) limits
+ * the WHOLE overlay window to a small box of cells around that origin
+ * instead of the entire screen; TP_VIEW_RANGE overrides the radius for
+ * one call. Real, per-house config lives in desk_grid.pdl (not just an
+ * env var a human can't casually tune): `GRID | move_view_range | N`
+ * (cells each direction, 0 = unbounded/old full-screen) and
+ * `GRID | place_confirm | single_click` (opts back into the old
+ * one-click-places behavior; default is double_click - a single click
+ * now moves the target, same as an arrow key, and a second click on
+ * the SAME cell or Enter confirms). See g_view_range_default/
+ * g_confirm_double_click/load_grid_pdl_options() for the real reader.
  */
 #define _GNU_SOURCE
 #include <X11/Xlib.h>
@@ -115,6 +131,51 @@ static void resolve_settings_dir(const char *root, char *out, size_t outsz) {
 
 /* TP_PLACE_DEBUG=1: one stderr line per key event/edge (for diagnosing key delivery). */
 static int g_dbg = -1;
+static int g_range = 1; /* PLACE_RANGE: NxN fill, origin at the jumped cell */
+
+/* REAL FIX 2026-09-26, direct instruction ("make the limits and
+ * features .pdl toggle/customizable"): real per-house config, not a
+ * hardcoded constant or an env-var-only knob a human can't casually
+ * adjust - same real "PDL beats a baked-in constant" convention
+ * hq_ui.pdl's own header comment already states. Lives in
+ * desk_grid.pdl (already read here for GRID | cell_px), same
+ * `SECTION | KEY | VALUE` pipe convention every other real PDL file in
+ * this house uses (self-contained parser, matching this file's own
+ * "each tile-picker op parses its own config" convention - see
+ * tp_place_desktop_rmmv.c's read_pdl_kv() for the sibling precedent).
+ * A missing file or missing key keeps the built-in default - adding
+ * these rows is opt-in, no existing desk_grid.pdl needs to change. */
+static int g_view_range_default = 3;   /* GRID | move_view_range - cells visible each direction from an origin (TP_ORIGIN_X/Y) before the confirm/place window is limited. 0 = unbounded (old full-screen behavior). */
+static int g_confirm_double_click = 1; /* GRID | place_confirm - "double_click" (default, real): a click moves the target, a second click on the SAME cell (or Enter) places it. "single_click": old behavior, any click places immediately. */
+
+static void load_grid_pdl_options(const char *desktop_root) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/desk_grid.pdl", desktop_root);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        char *p = line, *tag, *key, *val, *nl;
+        while (*p == ' ' || *p == '\t') p++;
+        if (strncmp(p, "GRID", 4) != 0) continue;
+        tag = strtok(p, "|");
+        key = strtok(NULL, "|");
+        val = strtok(NULL, "|");
+        if (!tag || !key || !val) continue;
+        while (*key == ' ' || *key == '\t') key++;
+        { char *e = key + strlen(key); while (e > key && (e[-1] == ' ' || e[-1] == '\t')) *--e = '\0'; }
+        while (*val == ' ' || *val == '\t') val++;
+        nl = strchr(val, '\n'); if (nl) *nl = '\0';
+        { char *e = val + strlen(val); while (e > val && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\r')) *--e = '\0'; }
+        if (strcmp(key, "move_view_range") == 0) {
+            int n = atoi(val);
+            if (n >= 0) g_view_range_default = n;
+        } else if (strcmp(key, "place_confirm") == 0) {
+            g_confirm_double_click = (strcmp(val, "single_click") != 0);
+        }
+    }
+    fclose(f);
+}
 #define PDBG(...) do { if (g_dbg < 0) g_dbg = (getenv("TP_PLACE_DEBUG") && getenv("TP_PLACE_DEBUG")[0] == '1'); \
                        if (g_dbg) { fprintf(stderr, "[placer] " __VA_ARGS__); fputc('\n', stderr); } } while (0)
 
@@ -142,6 +203,17 @@ typedef struct {
     long long err_until;
     int use_zones, hover_pid;
     const char *root, *skip_dir, *place_name;
+    /* REAL FIX 2026-09-26, direct instruction ("its range should be
+     * reduced and i want the arrow controlled placer... we can do it
+     * now"): TP_ORIGIN_X/TP_ORIGIN_Y (reference px, e.g. an entity's
+     * own desktop_pos.txt) + PLACE_RANGE together limit the whole
+     * overlay to a small window of cells around that origin instead of
+     * the entire screen - real live report that a full-screen grid is
+     * "inconvenient when using the computer, clicking other things on
+     * screen". has_view=0 (no origin given) keeps the original
+     * full-screen behaviour exactly as before (the palette stamp tool's
+     * own real use, unaffected). */
+    int has_view, view_c0, view_r0, view_c1, view_r1;
 } Ov;
 
 static int ov_cell_valid(const Ov *o, int r, int c, int *cx, int *cy) {
@@ -155,7 +227,43 @@ static int ov_cell_valid(const Ov *o, int r, int c, int *cx, int *cy) {
     if (cx) *cx = mx;
     if (cy) *cy = my;
     if (o->hw > 0 && mx >= o->hx && mx < o->hx + o->hw && my >= o->hy && my < o->hy + o->hh) return 0;
+    if (o->has_view && (c < o->view_c0 || c > o->view_c1 || r < o->view_r0 || r > o->view_r1)) return 0;
     return 1;
+}
+
+/* Pull (row,col) back inside the real view window (a no-op when
+ * has_view is 0) - gj_step()'s own clamp only ever enforces a lower
+ * bound of 0 and an upper bound of the WHOLE grid (khtpm_grid_jump.c is
+ * intentionally generic/shared, no khtpm-specific concept of a
+ * sub-window lives there), so a real range limit needs this second,
+ * caller-side clamp on top of it. */
+/* REAL FIX 2026-09-26, direct instruction ("the focus worked when
+ * opened, but not after i clicked and moved placer, it should have
+ * kept focus after that for sure"): a mouse ButtonPress on an
+ * override_redirect window is not guaranteed to keep/reclaim real X
+ * input focus the way opening the window did - same real class of
+ * problem khtpm_core_render.c's own click-driven re-focus fix already
+ * handles for its popups (grep that file for "if (had_focus == win)").
+ * Short retry, same shape as the real one used at open time - called
+ * again after every real click here so focus does not silently drift
+ * away mid-session. */
+static void ov_reassert_focus(Display *dpy, Window w) {
+    for (int attempt = 0; attempt < 5; attempt++) {
+        XSetInputFocus(dpy, w, RevertToParent, CurrentTime);
+        XSync(dpy, False);
+        Window focused; int revert;
+        XGetInputFocus(dpy, &focused, &revert);
+        if (focused == w) break;
+        usleep(5000);
+    }
+}
+
+static void ov_clamp_view(const Ov *o, GjState *st) {
+    if (!o->has_view) return;
+    if (st->col < o->view_c0) st->col = o->view_c0;
+    if (st->col > o->view_c1) st->col = o->view_c1;
+    if (st->row < o->view_r0) st->row = o->view_r0;
+    if (st->row > o->view_r1) st->row = o->view_r1;
 }
 
 static void ov_cell_name(const Ov *o, int r, int c, char *out, size_t outsz) {
@@ -210,6 +318,30 @@ static void ov_draw_pane(Ov *o, int i) {
     }
     if (o->kb_active) {
         int r = o->gj.row, c = o->gj.col;
+        int n = g_range;
+        if (n < 1) n = 1;
+        /* Jump buffer of only digits previews that square (range 2 = 2x2
+         * with this cell at the top-left). PLACE_RANGE is the event's N. */
+        if (o->gj.jump[0]) {
+            const char *p = o->gj.jump;
+            int digits = 1;
+            for (; *p; p++) if (!isdigit((unsigned char)*p)) { digits = 0; break; }
+            if (digits) n = atoi(o->gj.jump);
+            if (n < 1) n = 1;
+        }
+        if (o->use_argb && n > 0) {
+            int dr, dc;
+            for (dr = 0; dr < n && r + dr < g_rows; dr++) {
+                for (dc = 0; dc < n && c + dc < g_cols; dc++) {
+                    int rr = r + dr, cc = c + dc;
+                    int x0 = cell_edge(cc) - ox, y0 = cell_edge(rr) - oy;
+                    int cw = cell_edge(cc + 1) - cell_edge(cc);
+                    int ch = cell_edge(rr + 1) - cell_edge(rr);
+                    XSetForeground(dpy, gc, o->c_okfill);
+                    XFillRectangle(dpy, w, gc, x0, y0, (unsigned)cw, (unsigned)ch);
+                }
+            }
+        }
         int ok = ov_cell_valid(o, r, c, NULL, NULL);
         int x0 = cell_edge(c) - ox, y0 = cell_edge(r) - oy;
         int cw = cell_edge(c + 1) - cell_edge(c), ch = cell_edge(r + 1) - cell_edge(r);
@@ -224,14 +356,16 @@ static void ov_draw_pane(Ov *o, int i) {
     }
     if (o->fs) {
         char l1[96], nm[24];
-        const char *l2 = "Enter = jump | Enter again = place | Esc = cancel | click = place";
+        const char *l2 = g_confirm_double_click
+            ? "Enter = jump | Enter again = place | Esc = cancel | click = move target | dbl-click = place"
+            : "Enter = jump | Enter again = place | Esc = cancel | click = place";
         int fh = o->fs->ascent + o->fs->descent, lx = o->pill_x - ox, ly = o->pill_y - oy;
         int bad = 0;
         if (o->err[0]) { snprintf(l1, sizeof(l1), "%s", o->err); bad = 1; }
         else if (o->gj.jump[0]) snprintf(l1, sizeof(l1), "jump: %s_", o->gj.jump);
         else if (o->kb_active) {
             ov_cell_name(o, o->gj.row, o->gj.col, nm, sizeof(nm));
-            snprintf(l1, sizeof(l1), "cell %s%s", nm, ov_cell_valid(o, o->gj.row, o->gj.col, NULL, NULL) ? "" : " (under the picker)");
+            snprintf(l1, sizeof(l1), "cell %s%s", nm, ov_cell_valid(o, o->gj.row, o->gj.col, NULL, NULL) ? "" : (o->hw > 0 ? " (under the picker)" : " (out of range)"));
             bad = !ov_cell_valid(o, o->gj.row, o->gj.col, NULL, NULL);
         } else snprintf(l1, sizeof(l1), "type a cell (e.g. c7) + Enter");
         XSetForeground(dpy, gc, o->c_band);
@@ -418,13 +552,27 @@ static int ov_key(Ov *o, GjKey k, char ch, int *cx, int *cy) {
     PDBG("ov_key key=%d ch=%c kb_active=%d jump='%s'", (int)k, ch ? ch : '-', o->kb_active, o->gj.jump);
     o->last_key_ms = now_ms();
     if (!o->kb_active) {
-        Window rr, cc; int rx, ry, wx, wy; unsigned int m;
         o->kb_active = 1;
-        if (XQueryPointer(o->dpy, DefaultRootWindow(o->dpy), &rr, &cc, &rx, &ry, &wx, &wy, &m)) {
-            o->ptr_x = rx; o->ptr_y = ry;
+        if (o->has_view) {
+            /* REAL FIX 2026-09-26, direct instruction ("placer should
+             * start at 0,0 on the showing grid, not main screen"): the
+             * real pointer position is almost certainly OUTSIDE this
+             * small view window (it's wherever the Act menu that
+             * launched this was) - start the target at the view's own
+             * LOCAL (0,0), i.e. its own top-left cell (view_c0,
+             * view_r0), not the absolute screen grid's (0,0) and not
+             * the view's centre either. */
+            o->gj.col = o->view_c0;
+            o->gj.row = o->view_r0;
+        } else {
+            Window rr, cc; int rx, ry, wx, wy; unsigned int m;
+            if (XQueryPointer(o->dpy, DefaultRootWindow(o->dpy), &rr, &cc, &rx, &ry, &wx, &wy, &m)) {
+                o->ptr_x = rx; o->ptr_y = ry;
+            }
+            o->gj.col = cell_at(o->ptr_x); o->gj.row = cell_at(o->ptr_y);
         }
-        o->gj.col = cell_at(o->ptr_x); o->gj.row = cell_at(o->ptr_y);
         gj_clamp(&o->gj);
+        ov_clamp_view(o, &o->gj);
         o->gj.jump[0] = '\0';
         ov_update_hover(o);
         ov_redraw(o);
@@ -433,12 +581,13 @@ static int ov_key(Ov *o, GjKey k, char ch, int *cx, int *cy) {
     o->last_key_ms = now_ms();
     snprintf(pending, sizeof(pending), "%s", o->gj.jump);
     a = gj_step(&o->gj, k, ch);
+    ov_clamp_view(o, &o->gj);
     switch (a) {
     case GJ_ENTER_CELL: {
         char nm[24], msg[64];
         if (!ov_cell_valid(o, o->gj.row, o->gj.col, cx, cy)) {
             ov_cell_name(o, o->gj.row, o->gj.col, nm, sizeof(nm));
-            snprintf(msg, sizeof(msg), "cell %s is under the picker", nm);
+            snprintf(msg, sizeof(msg), "cell %s is %s", nm, o->hw > 0 ? "under the picker" : "out of range");
             ov_set_err(o, msg);
             ov_redraw(o);
             return 0;
@@ -470,6 +619,8 @@ int main(int argc, char **argv) {
     }
     const char *widget_state_dir = argv[1];
     const char *desktop_root = argv[2];
+    if (getenv("PLACE_RANGE") && atoi(getenv("PLACE_RANGE")) > 0)
+        g_range = atoi(getenv("PLACE_RANGE"));
     /* REAL, NEW 2026-08-29 - the picker window's own real rect
      * (optional - a caller with no picker window at all, e.g. a future
      * non-palettes use of this same op, just gets one true full-screen
@@ -504,6 +655,38 @@ int main(int argc, char **argv) {
         g_cell_ref = (ce && atoi(ce) > 0) ? atoi(ce) : g_base_cell;
         for (g_cols = 1; g_cols < 4096 && cell_edge(g_cols) < sw; g_cols++) ;
         for (g_rows = 1; g_rows < 4096 && cell_edge(g_rows) < sh; g_rows++) ;
+    }
+    load_grid_pdl_options(desktop_root);
+
+    /* REAL FIX 2026-09-26 (see g_view_range_default/Ov.has_view's own
+     * comments) - TP_ORIGIN_X/TP_ORIGIN_Y (reference px, e.g. an
+     * entity's own desktop_pos.txt) limits the overlay to a real,
+     * small window of cells around that origin. TP_VIEW_RANGE
+     * overrides desk_grid.pdl's move_view_range for one real call
+     * (e.g. testing) without editing the file; range 0 = unbounded
+     * (falls back to the original, full-screen behavior even with an
+     * origin given). */
+    int has_view = 0, view_x0 = 0, view_y0 = 0, view_w = sw, view_h = sh;
+    int view_c0 = 0, view_r0 = 0, view_c1 = g_cols - 1, view_r1 = g_rows - 1;
+    if (getenv("TP_ORIGIN_X") && getenv("TP_ORIGIN_Y")) {
+        int view_range = g_view_range_default;
+        if (getenv("TP_VIEW_RANGE")) view_range = atoi(getenv("TP_VIEW_RANGE"));
+        if (view_range > 0) {
+            int oref_x = atoi(getenv("TP_ORIGIN_X"));
+            int oref_y = atoi(getenv("TP_ORIGIN_Y"));
+            int osx = kps_ref_to_screen(oref_x, g_base_cell, g_auto);
+            int osy = kps_ref_to_screen(oref_y, g_base_cell, g_auto);
+            int oc = cell_at(osx), orow = cell_at(osy);
+            view_c0 = oc - view_range; if (view_c0 < 0) view_c0 = 0;
+            view_r0 = orow - view_range; if (view_r0 < 0) view_r0 = 0;
+            view_c1 = oc + view_range; if (view_c1 > g_cols - 1) view_c1 = g_cols - 1;
+            view_r1 = orow + view_range; if (view_r1 > g_rows - 1) view_r1 = g_rows - 1;
+            view_x0 = cell_edge(view_c0);
+            view_y0 = cell_edge(view_r0);
+            view_w = cell_edge(view_c1 + 1) - view_x0;
+            view_h = cell_edge(view_r1 + 1) - view_y0;
+            has_view = 1;
+        }
     }
 
     /* REAL FIX 2026-08-29, direct live report ("maybe we can make the
@@ -556,6 +739,7 @@ int main(int argc, char **argv) {
     memset(&ov, 0, sizeof(ov));
     ov.dpy = dpy; ov.sw = sw; ov.sh = sh; ov.use_argb = use_argb;
     if (pw > 0 && ph > 0) { ov.hx = px; ov.hy = py; ov.hw = pw; ov.hh = ph; }
+    if (has_view) { ov.has_view = 1; ov.view_c0 = view_c0; ov.view_r0 = view_r0; ov.view_c1 = view_c1; ov.view_r1 = view_r1; }
     #define ADD_PANE(_x,_y,_w,_h) do { \
         if ((_w) > 0 && (_h) > 0) { \
             ov.panes[ov.n].x = (_x); ov.panes[ov.n].y = (_y); \
@@ -565,7 +749,15 @@ int main(int argc, char **argv) {
             ov.n++; \
         } \
     } while (0)
-    if (pw <= 0 || ph <= 0) {
+    if (has_view) {
+        /* A real, small window covering only the limited view - clicks
+         * anywhere else go straight to the real desktop untouched,
+         * same real reasoning the picker-hole exclusion below already
+         * uses for a DIFFERENT rect, just inverted (this window IS the
+         * hole in an otherwise-uncovered screen, rather than the other
+         * way around). */
+        ADD_PANE(view_x0, view_y0, view_w, view_h);
+    } else if (pw <= 0 || ph <= 0) {
         ADD_PANE(0, 0, sw, sh);
     } else {
         if (py > 0) ADD_PANE(0, 0, sw, py);
@@ -597,15 +789,29 @@ int main(int argc, char **argv) {
     if (ov.fs) {
         char wide[16];
         int fh = ov.fs->ascent + ov.fs->descent, ptw;
-        const char *hint = "Enter = jump | Enter again = place | Esc = cancel | click = place";
+        /* REAL FIX 2026-09-26: click semantics changed (see the
+         * ButtonPress handling below) - a single click now MOVES the
+         * target, same as an arrow key, instead of placing immediately;
+         * a second click on the same cell (or Enter) confirms. Hint
+         * text updated to match (g_confirm_double_click - the .pdl
+         * `place_confirm=single_click` opt-out keeps the old wording/
+         * behavior together). */
+        const char *hint = g_confirm_double_click
+            ? "Enter = jump | Enter again = place | Esc = cancel | click = move target | dbl-click = place"
+            : "Enter = jump | Enter again = place | Esc = cancel | click = place";
         snprintf(wide, sizeof(wide), "%d", g_rows);
         ov.lab_h = fh + 4;
         ov.lab_w = XTextWidth(ov.fs, wide, (int)strlen(wide)) + 10;
         ptw = XTextWidth(ov.fs, hint, (int)strlen(hint));
         ov.pill_w = ptw + 16;
         ov.pill_h = 2 * fh + 12;
-        /* first anchor that is not under the picker hole (labels/pill must stay visible) */
-        {
+        if (has_view) {
+            /* Anchor within the real, small view window, not the whole
+             * screen - there is no picker hole to dodge in this mode. */
+            ov.pill_x = view_x0 + 8;
+            ov.pill_y = view_y0 + ov.lab_h + 8;
+        } else {
+            /* first anchor that is not under the picker hole (labels/pill must stay visible) */
             int cand[3][2] = { { ov.lab_w + 8, ov.lab_h + 8 }, { sw - ov.pill_w - 8, ov.lab_h + 8 }, { ov.lab_w + 8, sh - ov.pill_h - 8 } };
             ov.pill_x = cand[0][0]; ov.pill_y = cand[0][1];
             for (int i = 0; i < 3; i++) {
@@ -626,6 +832,19 @@ int main(int argc, char **argv) {
         ov.gcs[i] = XCreateGC(dpy, ov.panes[i].w, 0, NULL);
         if (ov.fs) XSetFont(dpy, ov.gcs[i], ov.fs->fid);
     }
+    /* REAL FIX 2026-09-26, direct instruction ("i dont actually see it
+     * till i click grid"): the target highlight used to only draw once
+     * kb_active was set by the first real key/click - in has_view mode
+     * (Move), arm it immediately so the target is visible from the
+     * very first frame, at the view's own local (0,0) (view_c0,
+     * view_r0 - see ov_key()'s own matching comment). The unlimited/
+     * full-screen palette-stamp tool is unaffected (has_view false
+     * there) - its own pointer-driven activation is unchanged. */
+    if (ov.has_view) {
+        ov.kb_active = 1;
+        ov.gj.col = ov.view_c0;
+        ov.gj.row = ov.view_r0;
+    }
     ov_redraw(&ov);
     XFlush(dpy);
     /* Real keyboard grab still needed for Escape - InputOnly windows
@@ -645,6 +864,19 @@ int main(int argc, char **argv) {
         usleep(50000);
     }
     XSync(dpy, False);
+    /* REAL FIX 2026-09-26, direct instruction ("it should be taking
+     * arrow focus like any x11-hq window does when it opens for nav...
+     * which it isn't yet doing"): the XGrabKeyboard above should
+     * already deliver every key regardless of real X focus, but this
+     * house's own established convention for a human-triggered popup
+     * (khtpm_core_render.c's main(), "restores [XSetInputFocus] scoped
+     * to popups only... a short retry" - grep that file for
+     * "F-19: a bare call can silently fail") is a real, additional
+     * XSetInputFocus with a short retry, not relying on the grab alone
+     * - belt-and-suspenders, same real reasoning, applied here too so
+     * this window behaves the same way on open as every other real
+     * x11-hq popup in this house. */
+    if (ov.has_view && ov.n > 0) ov_reassert_focus(dpy, ov.panes[0].w);
 
     int click_x = -1, click_y = -1, cancelled = 0;
     const int use_zones = ov.use_zones;
@@ -712,9 +944,14 @@ int main(int argc, char **argv) {
                     /* the pointer moving away hands control back to the mouse. A motion event
                      * within 300 ms of a key is ignored: it is a late event from before the
                      * keyboard took over (seen once as an intermittent mode drop), and a real
-                     * mouse move keeps sending events, so it still takes effect a moment later. */
+                     * mouse move keeps sending events, so it still takes effect a moment later.
+                     * REAL FIX 2026-09-26, direct user report ("when i move mouse away
+                     * 'placer' disappears"): in has_view mode (Move), keep kb_active/highlight
+                     * visible always - the pointer should not hide it. In unlimited/full-screen
+                     * mode (palette stamp tool), the old behavior is preserved - the highlight
+                     * is pointer-driven only. */
                     if (abs(mx - ov.ptr_x) + abs(my - ov.ptr_y) < 6 || now_ms() - ov.last_key_ms < 300) moved = 0;
-                    else { ov.kb_active = 0; ov.gj.jump[0] = '\0'; ov.err[0] = '\0'; ov_update_hover(&ov); ov_redraw(&ov); }
+                    else if (!ov.has_view) { ov.kb_active = 0; ov.gj.jump[0] = '\0'; ov.err[0] = '\0'; ov_update_hover(&ov); ov_redraw(&ov); }
                 }
                 if (moved && use_zones) {
                     char zd[PATH_BUF];
@@ -749,11 +986,53 @@ int main(int argc, char **argv) {
                 }
                 if (!autorep) down[kc] = 0;
             } else if (xev.type == ButtonPress) {
-                click_x = xev.xbutton.x_root;
-                click_y = xev.xbutton.y_root;
-                if (use_zones)
-                    zone_pid = pz_hit(desktop_root, click_x, click_y, skip_dir, zone_dest, sizeof(zone_dest));
-                break;
+                /* REAL FIX 2026-09-26, direct instruction ("clicking
+                 * anywhere should 'move the target'... but not place
+                 * unless double clicked"): a single click used to place
+                 * immediately - now it just moves the same highlight
+                 * arrows already control (ov.gj), exactly like a
+                 * keyboard jump; a second click on the SAME cell within
+                 * DBL_CLICK_MS confirms, same as Enter would. The
+                 * desk_grid.pdl `place_confirm=single_click` opt-out
+                 * keeps the old one-click-places behavior for anyone
+                 * who preferred it. */
+                enum { DBL_CLICK_MS = 500 };
+                int mx = xev.xbutton.x_root, my = xev.xbutton.y_root;
+                int col = cell_at(mx), row = cell_at(my);
+                if (!g_confirm_double_click) {
+                    click_x = mx; click_y = my;
+                    if (use_zones)
+                        zone_pid = pz_hit(desktop_root, click_x, click_y, skip_dir, zone_dest, sizeof(zone_dest));
+                    break;
+                }
+                {
+                    static int last_col = -1, last_row = -1;
+                    static long long last_click_ms = 0;
+                    long long t = now_ms();
+                    int is_dbl = (col == last_col && row == last_row && (t - last_click_ms) < DBL_CLICK_MS);
+                    last_col = col; last_row = row; last_click_ms = t;
+                    ov.kb_active = 1;
+                    ov.gj.col = col; ov.gj.row = row;
+                    gj_clamp(&ov.gj);
+                    ov_clamp_view(&ov, &ov.gj);
+                    ov.gj.jump[0] = '\0';
+                    ov.err[0] = '\0';
+                    ov.last_key_ms = t;
+                    ov.ptr_x = mx; ov.ptr_y = my;
+                    ov_update_hover(&ov);
+                    /* REAL FIX 2026-09-26, direct instruction ("the
+                     * focus worked when opened, but not after i
+                     * clicked and moved placer, it should have kept
+                     * focus after that for sure") - re-assert every
+                     * click, not just at open. */
+                    if (ov.has_view) ov_reassert_focus(dpy, ov.panes[0].w);
+                    if (is_dbl && ov_cell_valid(&ov, ov.gj.row, ov.gj.col, &click_x, &click_y)) {
+                        if (use_zones)
+                            zone_pid = pz_hit(desktop_root, click_x, click_y, skip_dir, zone_dest, sizeof(zone_dest));
+                        break;
+                    }
+                    ov_redraw(&ov);
+                }
             }
         }
         if (place_req) {

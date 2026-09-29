@@ -12,6 +12,15 @@ close_combo=ctrl+q
 # Bump it if a window opens too high (into the top taskbar).
 win_top_y=96
 
+# default_win_w / default_win_h: exact default open size (px) for any
+# window with no CSS width/height of its own - the real per-machine
+# knob (2026-09-24 direct correction: a hardcoded compile-time constant
+# is exactly what this fix removed; set these instead of recompiling
+# for a smaller/larger screen). 0 or absent = auto (a percentage of the
+# real screen). Uncomment and set both to force an exact size:
+# default_win_w=1120
+# default_win_h=720
+
 # click_two_step: 1 = first click focuses, second activates (default).
 #   0 = one click activates.
 click_two_step=1

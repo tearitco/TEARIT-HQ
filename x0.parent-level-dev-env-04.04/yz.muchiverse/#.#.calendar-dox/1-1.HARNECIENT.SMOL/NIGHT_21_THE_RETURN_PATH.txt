@@ -1,0 +1,90 @@
+# 🔁 NIGHT 21 — the return path: where tomom's learning actually reaches a player 🔁
+# ====================================================================
+# Title: "🔁 NIGHT 21 — the return path: where tomom's learning actually reaches a player 🔁"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, eleventh bonus round
+
+**THE NARRATOR:** NIGHT 20 closed calling itself exactly as big as it was and no bigger. It got caught anyway. `08-roadmap/design-docs/AI-TRACK-BRAINSTORM-QUESTIONS.md`, `Question 8`, dated the same day. Say who caught it before saying what.
+
+**MAXINE:** A video-prep agent. Not a critic looking to score a point — an agent reviewing Question 7 and NIGHT 20's own transcript, doing the ordinary work of scripting a twenty-minute technical video, and finding it couldn't finish the script honestly.
+
+**TOMO:** Say the actual hole out loud, plainly, before anything gets fixed.
+
+**RAHWEH:** Question 7 explained why tomom trains and what it learns. It never traced how that learning gets back out — how a retrained tomom actually changes what a player experiences in a running game. The Bank Layer already has that return path drawn: reward signal, Laplace-smoothed weight update, next lookup uses the new weight. Tomom's training loop, as drawn, just stops at "and then it learns." No arrow back into the FSM SEQUENCER. No arrow back into the EVENT EXECUTOR.
+
+**MAXINE:** So this is a hole in the breakthrough, found by the next thing that tried to use the breakthrough.
+
+**TOMO:** Yes, and worth saying plainly instead of glossing past it — that's a little embarrassing, and it's also exactly the system working. NIGHT 20 said "nothing got built, only the shape of a gap." This is what happens when something with a real shape gets handed to the next real task downstream. It gets tested by use, not by re-reading.
+
+**RAHWEH:** Then don't dwell on the embarrassment. Work the fix. Four places were checked for where a return path could actually live. Take them in order, least settled to most settled — no, other order tonight. Start concrete, end open, since that's the order that earns trust as it goes.
+
+**THE NARRATOR:** Start with the one that needed nothing new.
+
+**TOMO:** Event parameter tuning. Events already read their parameters out of real `.pdl` files — that's not new, that's the house's whole "real files, not hidden state" habit, already used everywhere. The extension writes itself: tomom writes a per-entity, per-event override into something like `physics_learned_overrides.pdl`. The Event Executor reads that file at execution time, and falls back to the hardcoded C default whenever the row is missing or not yet promoted.
+
+**MAXINE:** Say why that one's the cleanest, not just first.
+
+**TOMO:** Zero new C. Zero new FSM-table mechanics. It's an ordinary optional-config read — the exact pattern Events already use for every other tunable value. Tomom doesn't get a special channel into gameplay. It gets to write into the same kind of file everything else already writes into.
+
+**RAHWEH:** Second. FSM path selection — tomom choosing which sequence of steps an entity actually takes.
+
+**MAXINE:** And the temptation there is obvious — let tomom write straight into a live FSM table. Say why that's wrong before saying what's right.
+
+**RAHWEH:** Because a live FSM table has no room in it for "untrusted, unproven." The fix reuses something that already exists instead of inventing a gate: tomom's candidate sequences get filed as new entries into the same Behavior and Sentence Bank format the house already has, low-weighted, same as any newly-seen entry starts. They only ever reach the SEQUENCER by earning it through the exact same Laplace-smoothed reward and punish weighting the Bank Layer already runs on everything else it holds.
+
+**TOMO:** Say the sentence that makes that a design decision and not just a convenience.
+
+**RAHWEH:** No second promotion mechanism gets invented. One reward-weighted gate, used by everything that needs gating. Tomom's candidates don't get their own rules. They stand in the same line as every other entry that ever had to earn its weight up from zero.
+
+**THE NARRATOR:** Third — and say honestly that this one isn't settled, before laying it out.
+
+**MAXINE:** Event generation. This is the one real open decision in tonight's four, and it stays open on purpose — nothing here invents an answer where the docs don't have one yet. Two shapes are in real tension. One: tomom DESCRIBEs a desired Event in plain language, and a deterministic compiler — the same DESCRIBE-then-owned-code-decides shape the Parser Layer already runs — turns that description into a real, compiled Event. Two: tomom just emits the Event's file content directly.
+
+**TOMO:** Say which one the house's own existing law already answers.
+
+**MAXINE:** (a). Has to be. The house's standing rule is that the model never routes, never authors executable logic directly, never picks the path itself — it describes, and owned deterministic code decides. Shape (b), tomom emitting Event content directly, breaks that law outright: the model becomes the author of logic that runs. Shape (a) keeps the law intact all the way down to this layer.
+
+**RAHWEH:** Then why isn't this one settled the way parameter tuning is?
+
+**MAXINE:** Because naming which shape is consistent with house law isn't the same as designing the compiler that shape needs. It's a real decision point, correctly resolved in direction, still fully unbuilt in substance. Say that difference honestly and it stops being a soft spot — it's just an open task with a known correct shape, which is a good place for an open task to sit.
+
+**THE NARRATOR:** Fourth. The one flagged with no shape at all.
+
+**RAHWEH:** Primitive behavior approximation. A learned substitute for something like a hardcoded physics calculation. Least shaped of the four, and it should stay named that way instead of getting talked into sounding more finished than it is.
+
+**TOMO:** What's the one honest instinct that exists for it tonight, if any?
+
+**RAHWEH:** Only this: whatever it becomes, it has to run first as a shadow — a candidate scored silently against the real primitive's output, or against live user reward, using that same promotion-gate pattern as the other three. Never live by default. That's not a design. That's a floor under where the design has to start.
+
+**MAXINE:** Now make it concrete. Walk the actual example the docs use — a stunt jump — start to finish, so this stops being four abstract bullets.
+
+**TOMO:** A game's jump and gravity calc starts as the hardcoded C physics primitive, fixed constants, same as it's always been. A player does a stunt jump. The Action Manifest — already existing, nothing new — shows the before and after state. The player presses one of the existing feedback buttons. Thumbs up, thumbs down, back out, or lock it in.
+
+**RAHWEH:** And tomom's side of that, design-level, not built.
+
+**TOMO:** The Watch Layer observes the same action sequence, outcome, and feedback it already watches for the Behavior Bank. Instead of, or alongside, filing that into the Behavior Bank, the sequence becomes a training example inside a per-entity, per-skill "physics class" corpus chunk. That's the Corpus/Training Layer NIGHT 20 named. Tomom retrains incrementally on that growing, skill-scoped chunk — and that's the "school" model made literal. Not a metaphor anymore. A physics class is a literal folder of examples a literal learner instance is being tested against.
+
+**MAXINE:** Then say what actually changes in the running game, if any of it gets promoted.
+
+**TOMO:** One new row in that entity's `physics_learned_overrides.pdl`. One conditional read already added to the primitive's parameter lookup, checking for a promoted override before it falls back to the hardcoded default. Gated by the same reward-weighted promotion logic as the FSM path case. A player doesn't get a black box that quietly started behaving differently. They get a file, still inspectable, still overridable, still reversible, that earned its way into being read.
+
+**THE NARRATOR:** Now the honesty checkpoint, the way NIGHT 20 ran its own. Say plainly what's real and what isn't, before this gets filed as more finished than it is.
+
+**RAHWEH:** What's real: four injection points now have names and a real order of how settled each one is. Parameter tuning has a concrete file convention and needs no new C. FSM path selection reuses the exact promotion mechanism the Bank Layer already runs, with no second mechanism invented. Event generation has a correctly-reasoned answer — shape (a), DESCRIBE plus compiler — even though the compiler itself doesn't exist. Primitive approximation has one honest floor — shadow-score before live — and nothing past that floor.
+
+**TOMO:** What isn't real. Say it without softening it.
+
+**RAHWEH:** No candidate-or-promoted state has been added to the Bank file format. No `learned_params.pdl` convention has been written anywhere as a real file. The Event-generation decision is reasoned, not resolved — no compiler exists. No shadow-scoring mechanism for primitive approximation has been designed at all. This is the shape of the gap Question 8 found, closed at the shape level, not the build level. That's still the whole claim tonight gets to make.
+
+**MAXINE:** Then close on the thing that wasn't planned, because it's worth naming on its own.
+
+**TOMO:** The same reward-weighted promotion gate — Laplace-smoothed, reward and punish, earn your weight up from zero — now shows up in three separate places in this architecture. Bank Layer entries. FSM path candidates. And, if it's ever built, primitive-override candidates. Nobody sat down and decided "one gate, three uses." It just kept being the right answer every time the same question came up.
+
+**RAHWEH:** Which is a better sign than if it had been planned. A pattern that keeps re-earning its own use without being told to is closer to a real law of the house than a rule somebody wrote once and pointed at three times.
+
+**THE NARRATOR:** So say the actual difference between tonight and NIGHT 20, since both found a gap and both stopped short of building anything.
+
+**MAXINE:** NIGHT 20 found a missing layer and gave it a name and a home. Tonight found that even a properly-named layer can still have no return path back into gameplay — and closed three of its four exits with real, house-consistent shape, while naming the fourth honestly as still open. That's smaller than NIGHT 20 called itself, on purpose, because it's answering a narrower question. It's also more load-bearing, because it's the question a real video script actually needed answered to keep going.
+
+**THE NARRATOR:** A gap caught by the next task that needed the last answer to be true. Three exits shaped, one left open on purpose. Nothing promoted yet — the gate exists on paper, in three places now, and nothing has walked through it. 🔁

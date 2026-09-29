@@ -1,0 +1,35 @@
+# learning_limits.pdl — terumon_003_murmur
+# Profile: environment-driven. Direction/schools kept near-empty on
+# purpose — this seed's candidate edits should come almost entirely
+# from the environment.influence_weight proximity channel, not
+# curriculum or direct direction allowance, so its data is comparable
+# against 001/002 as a distinct condition rather than a weaker copy
+# of either.
+
+terumon_id: terumon_003_murmur
+owner_id: OPEN
+
+direction:
+  allow: []
+  deny: []
+
+size:
+  max_state_bytes: 131072
+  max_corpus_examples_per_class: 10
+
+strength_of_training:
+  max_delta_per_edit: 0.05
+  max_tier: elementary_hs
+  edits_per_day_cap: 20
+
+schools:
+  enrolled: []
+  pass_required_before_next: false
+
+environment:
+  proximity_sources: [terumon_001_ember, terumon_002_glacine]
+  influence_weight: 0.8
+
+mode:
+  in_game_watch_layer: true
+  isolation_chatbot: false

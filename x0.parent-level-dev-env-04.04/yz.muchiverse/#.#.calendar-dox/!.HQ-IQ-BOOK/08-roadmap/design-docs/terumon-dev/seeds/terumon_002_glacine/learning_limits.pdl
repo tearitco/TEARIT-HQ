@@ -1,0 +1,32 @@
+# learning_limits.pdl — terumon_002_glacine
+# Profile: broad-direction, low-strength.
+
+terumon_id: terumon_002_glacine
+owner_id: OPEN
+
+direction:
+  allow: [force, motion, cooking, farming, chemistry_basics, science]
+  deny: [combat]
+
+size:
+  max_state_bytes: 65536
+  max_corpus_examples_per_class: 30
+
+strength_of_training:
+  max_delta_per_edit: 0.02
+  max_tier: preschool
+  edits_per_day_cap: 5
+
+schools:
+  enrolled:
+    - terumon-dev/seeds/terumon_002_glacine/schools/cooking_class
+    - terumon-dev/seeds/terumon_002_glacine/schools/farming_class
+  pass_required_before_next: true
+
+environment:
+  proximity_sources: []
+  influence_weight: 0.0
+
+mode:
+  in_game_watch_layer: true
+  isolation_chatbot: false

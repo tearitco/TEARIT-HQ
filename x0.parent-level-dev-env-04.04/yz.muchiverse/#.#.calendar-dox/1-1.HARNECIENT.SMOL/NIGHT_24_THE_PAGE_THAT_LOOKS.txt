@@ -1,0 +1,30 @@
+# 🌙 NIGHT 24 — the page that looks
+# ====================================================================
+# Title: "🌙 NIGHT 24 — the page that looks 🌙"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, technical catch-up after 2026-09-23
+
+**THE NARRATOR:** Tonight is a scope card, not a pitch. A customer-facing writeup of the same day lives outside the house, in the gemini timeline folder, file GS-23-HQ-REPORT.md. This session is how to prompt the next block without paying an agent to rediscover it.
+
+**MAXINE:** Start from the commit, not the mood. Branch grok, not pushed. The look-then-act page is 76cca6cd. The compile-and-run of read_receipt alone is 4b10b6e7. The command itself is 91051f70. The Terumon tab removal is 06907811.
+
+**TOMO:** Actors are rows, not a private table. Ids 5 through 8 are Ember, Glacine, Murmur, Solvent, page teru-test. Ids 9 through 11 are Asa, Ava, Cursword, page office. skills is the string 1, which is Attack on the Skills tab. stats.pdl points at db_hq_actors.state.txt. Nothing in play writes exp. body_state.pdl was absent on the live ember pal. Do not invent the organ clock in the same prompt as a menu item.
+
+**RAHWEH:** The receipt is ascii_frames, pid, receipt.pdl. focus_nav is the cursor row. png equals a dash when nobody dumped a picture. read_receipt copies one key into variables.txt. The fourth field is match, shaped switch=expect, because MAX_FIELDS in the events manager is 4. A fifth parameter is silently dropped. We learned that the hard way. The switch is 1 or 0, which is what the if command compares.
+
+**MAXINE:** The page that proves it is number-sign dot desktop, harnesses, read-receipt-ent. The manager compiled it the way it compiles Change Gold. event.ir.pdl, event.pal, cmd_1.sh, and cmd_5.sh. prisc plus x ran that pal alone. Receipt 32 wrote the characters 2 0 1 into agent_history.txt and left the switch at 0. Receipt 17 wrote nothing and left the switch at 1.
+
+**TOMO:** Do not use play_event.sh for this. It also runs every other on-click common event. palcraft_sign_onclick is a sign message. That fired once before we stopped using Play.
+
+**RAHWEH:** send_input writes the bare code. The live mailbox, entity_menu_history, pid, txt, wants the line KEY_PRESSED, colon, space, then the code. Until those match, do not aim this page at the Database window. Down on that window, when focus is in the detail column, walks nickname and class. It does not select the next actor. click_two_step in hq_ui.pdl is 1. First mouse click focuses. Second activates. Keyboard Enter does not read that key.
+
+**MAXINE:** ai_describe, ai_fsm_transition, and ai_goap_plan are still not in the registry. Sonnet confirmed no existing command read a file into a switch. read_receipt is that command. It is not the model. Tomom learns. It does not click. Kilo stays off the renderer. Co-lab session 1790154594 is the room. Long lines are clipped in the window. The bug is open in bug_bounty.md. Read the file the line names.
+
+**THE NARRATOR:** Prompt budget for the next sitting. One change. Make send_input write the line the window reads, prove it on the fixture history, and do not touch the live window in the same diff. After that, one live receipt, one key, stop. Level-up, hunger, battle, Gemma taking a turn, IRL, the store, and animated sprites are later nights. They are not shortcuts around the line format.
+
+**TOMO:** Clock, so nobody blends them. Event ops can pause the livedesk clock around a message. The organ clock that would move body_state is not in the tree. Move on a desktop pal is drag and the desk placer. An old context-menu layout has a Move screen. Do not promise it on the live entity menu. Do not promise a Minecraft you can play. The genre folders are intent. The event page is the substrate. The model does not append commands yet.
+
+**RAHWEH:** Customer report and this lesson are the pair. The report says what a Maker user would feel. This lesson says which file and which commit. If a prompt asks for both in one breath, write the page first.
+
+**MAXINE:** Stop there. The next paid token should buy the key line, or it should buy nothing.

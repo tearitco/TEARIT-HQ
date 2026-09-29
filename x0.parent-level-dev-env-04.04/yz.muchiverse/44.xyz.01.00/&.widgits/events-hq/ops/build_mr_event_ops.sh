@@ -29,7 +29,7 @@ mkdir -p +x
 CC=${CC:-gcc}
 CFLAGS="-std=c11 -Wall -O2"
 
-for src in mr_change_gold mr_character mr_actor_string mr_input_number \
+for src in mr_change_gold mr_character mr_actor_string mr_input_number mr_read_receipt \
            mr_select_item mr_scrolling_text mr_show_choices mr_show_text mr_world \
            mr_move_to_entity mr_transfer_desk; do
   echo "-- $src.c -> +x/$src.+x"

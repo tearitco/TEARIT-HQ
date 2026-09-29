@@ -30,13 +30,18 @@ MGR="$HOUSE_ROOT/&.widgits/events-hq/ops/+x/khtpm_events_hq_manager.+x"
 [ -x "$PRISC" ] || { echo "db-hq-pal: missing $PRISC" >&2; exit 1; }
 [ -x "$BRIDGE" ] || { echo "db-hq-pal: missing $BRIDGE" >&2; exit 1; }
 [ -f "$XHTPM" ] || { echo "db-hq-pal: missing $XHTPM" >&2; exit 1; }
-mkdir -p "$HERE/state"
+mkdir -p "$HERE/state" "$HERE/debug/frames"
 
 for p in $(pgrep -f "khtpm_core_render\.\+x .*dashboard\.xhtpm" 2>/dev/null || true) \
          $(pgrep -f "prisc\+x\.\+x .*dbhq_projector\.pal" 2>/dev/null || true); do
     kill "$p" 2>/dev/null || true
 done
+if [ -f "$HERE/debug/frame_history.pid" ]; then
+    kill "$(cat "$HERE/debug/frame_history.pid")" 2>/dev/null || true
+fi
 sleep 1
 
 setsid nohup "$BIN" "$HOUSE_ROOT" "$XHTPM" >/dev/null 2>&1 < /dev/null &
+setsid nohup sh "$HERE/ops/frame_history.sh" >/dev/null 2>&1 < /dev/null &
+echo $! > "$HERE/debug/frame_history.pid"
 echo "db-hq-pal launched (renderer + prisc+x projector, 15 tabs)"

@@ -1,0 +1,6 @@
+TRIGGER          | CONDITION              | EVENT_FUNCTION        | ARGS
+---------------------------------------------------------------------------
+entity_moved     | any entity position    | event_entity_moved    | entity_id old_x old_y new_x new_y
+zone_enter       | entity in zone bounds  | event_entity_zone_enter | entity_id zone_id
+entity_arrived   | entity animation done  | event_entity_arrived  | entity_id final_x final_y
+entity_interact  | entity touch target    | event_entity_interact | entity_id target_entity_id

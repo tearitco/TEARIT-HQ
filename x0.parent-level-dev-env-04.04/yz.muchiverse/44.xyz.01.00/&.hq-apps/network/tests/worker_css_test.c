@@ -274,6 +274,50 @@ int main(int argc, char **argv) {
         "O.textContent=\"I-ok\";\n",
         "I-ok");
 
+    /* J: img src triggers fetch and onload (Step 1, no decode yet) */
+    rc |= run_case(worker, tmpdir,
+        "wcs[img] Image src triggers load",
+        "<html><body><div id=\"out\">o</div></body></html>",
+        "",
+        "var O=document.getElementById(\"out\");\n"
+        "var img=new Image();\n"
+        "var fired=false;\n"
+        "img.onload=function(){ fired=true; };\n"
+        "img.onerror=function(){ throw \"J err\"; };\n"
+        "img.src=\"data:text/plain,hello\";\n"
+        "if(!fired) throw \"J1 not fired\";\n"
+        "O.textContent=\"img-ok\";\n",
+        "img-ok");
+
+    /* K: img 1x1 PNG decode via stb_image — naturalWidth/Height */
+    rc |= run_case(worker, tmpdir,
+        "wcs[img-png] 1x1 PNG decode naturalWidth",
+        "<html><body><div id=\"out\">o</div></body></html>",
+        "",
+        "var O=document.getElementById(\"out\");\n"
+        "var img=new Image();\n"
+        "var fired=false;\n"
+        "img.onload=function(){ fired=true; };\n"
+        "img.src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=\";\n"
+        "if(!fired) throw \"K1 not fired\";\n"
+        "if(img.naturalWidth!==1) throw \"K2 nw=\"+img.naturalWidth;\n"
+        "if(img.naturalHeight!==1) throw \"K3 nh=\"+img.naturalHeight;\n"
+        "if(!img.complete) throw \"K4 not complete\";\n"
+        "O.textContent=\"img-png-ok\";\n",
+        "img-png-ok");
+
+    /* L: HTML <img src=data:> — RENDER emits IMG with w/h via decoded file */
+    rc |= run_case(worker, tmpdir,
+        "wcs[img-html] HTML img data: PNG in RENDER",
+        "<html><body><div id=\"out\">o</div><img id=\"im\" src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=\" alt=\"x\"></body></html>",
+        "",
+        "var O=document.getElementById(\"out\");\n"
+        "var im=document.getElementById(\"im\");\n"
+        "if(im.naturalWidth!==1) throw \"L1 nw=\"+im.naturalWidth;\n"
+        "if(im.naturalHeight!==1) throw \"L2 nh=\"+im.naturalHeight;\n"
+        "O.textContent=\"img-html-ok\";\n",
+        "img-html-ok");
+
     printf("%s\n", rc ? "FAIL: worker_css_test" : "PASS: worker_css_test");
     return rc ? 1 : 0;
 }

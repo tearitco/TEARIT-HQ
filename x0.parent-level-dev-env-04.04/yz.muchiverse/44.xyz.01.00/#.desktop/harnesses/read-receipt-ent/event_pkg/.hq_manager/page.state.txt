@@ -1,0 +1,9 @@
+TRIGGER|on-click
+CMD|1|read_receipt|receipt=/tmp/rr.receipt.pdl|key=focus_nav|var_name=focus_nav|match=on_harold=17|key=focus_nav|var_name=focus_nav|match=on_harold=17|var_name=focus_nav|match=on_harold=17|match=on_harold=17
+CMD|2|if|switch_name=on_harold|compare=off|compare=off
+CMD|3|send_window_key|relay=/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/#.desktop/harnesses/read-receipt-ent/agent_history.txt|key=13|key=13
+CMD|4|end|
+CMD|5|read_receipt|receipt=/tmp/rr.receipt.pdl|key=focus_nav|var_name=focus_nav|match=on_harold=17|key=focus_nav|var_name=focus_nav|match=on_harold=17|var_name=focus_nav|match=on_harold=17|match=on_harold=17
+SCRATCHBLOCK|read_receipt|/tmp/rr.receipt.pdl
+SCRATCHBLOCK|sh|OK
+SCRATCHBLOCK|read_receipt|/tmp/rr.receipt.pdl

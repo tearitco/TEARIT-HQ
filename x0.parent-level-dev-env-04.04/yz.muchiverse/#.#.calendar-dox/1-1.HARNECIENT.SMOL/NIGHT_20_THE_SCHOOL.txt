@@ -1,0 +1,70 @@
+# 🎓 NIGHT 20 — the school: the missing layer, and the shape that fills it 🎓
+# ====================================================================
+# Title: "🎓 NIGHT 20 — the school: the missing layer, and the shape that fills it 🎓"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, tenth bonus round
+
+**THE NARRATOR:** NIGHT 19 closed with no ending on purpose — an open conversation, written down honestly instead of forced shut. This is its direct follow-up, same day, `08-roadmap/design-docs/AI-TRACK-BRAINSTORM-QUESTIONS.md`, `Question 7`. The user's own words for it: "a huge breakthru." Say plainly at the start what that means and what it doesn't. Nothing got built tonight. What got found is the actual shape of a gap nobody had named yet, and the actual shape of what fills it. 🎓
+
+**MAXINE:** Then start with the gap. Someone looked at the `8.1` diagram again, closer this time. What did they find?
+
+**TOMO:** Checked it directly, not from memory, the same discipline NIGHT 19 insisted on. The Bank Layer — Synonym, Relation, Behavior, Sentence — isn't a model at all. It's four weighted dictionaries, updated by Laplace-smoothed reward counts on entries that already exist. And the LLM Layer, Gemma 270M, is drawn as a frozen, inference-only fallback. No arrow feeding training into it. No corpus store. No chunk pipeline. No attention mechanism anywhere in the picture.
+
+**RAHWEH:** Say why that's not just a missing box, but a missing layer.
+
+**TOMO:** Because neither of the two things already drawn can hold it. The Bank Layer's "learning" is weight updates on existing entries — it never grows new structure. Gemma's role is permanently frozen, DESCRIBE-only, never fine-tuned, by design. Growing new corpus chunks and retraining attention is a structurally different kind of growth than either of those. It doesn't belong to the Bank Layer. It doesn't belong to Gemma.
+
+**MAXINE:** Then whose is it.
+
+**RAHWEH:** Famous LLM. Tomom. The one component in this whole architecture that's actually meant to grow by retraining. It needs its own layer — a Corpus/Training Layer, sitting alongside the Watch Layer, feeding tomom specifically. That's the find. Not "add a box." Find which existing component the box was silently missing from, and confirm it was never Gemma's job to begin with.
+
+**THE NARRATOR:** Before the shape of the fix — how far does this apply? NIGHT 19 left the Bank Layer's own reach half-drawn, Relation and Sentence named but undesigned. Did tonight settle that too?
+
+**TOMO:** Scope, yes — settled plainly. All four Banks, used everywhere, for every app the house builds as it grows. Not a single demo feature. And the bar for what counts as working was said out loud, lowered on purpose: a demo doesn't need to cure cancer. It needs two things — genuinely impress a technical, greybeard audience, and actually save a user real tokens, or show them how to build more FSM and GOAP scaffolding to grow that token-saving foundation further. Same KPI framing NIGHT 19 already put on the table, now stated as applying to all four Banks, not the Behavior Bank alone.
+
+**MAXINE:** Now tomom itself. What's the actual bootstrap path, in order?
+
+**RAHWEH:** Basic real conversation and math first. Then coding — in Events, and in a binary form of prisc — used as a curriculum, not a final target. And at every step, scaffolded by the FSM, IRL, and GOAP machinery that already exists, specifically so tomom's current weak parts function as growing, learning joints instead of dead weight sitting around waiting on some future rewrite.
+
+**TOMO:** That word — "joints" — is doing real work there. Say what it rules out.
+
+**RAHWEH:** It rules out the version of this plan where tomom stays broken until someone eventually swaps it for something better. The FSM/IRL/GOAP layer isn't a crutch hiding tomom's weakness. It's the thing that makes the weak parts usable *now*, while they're still weak, on the way to being less weak.
+
+**THE NARRATOR:** Then the piece the user themselves named directly — say it exactly as it was said.
+
+**MAXINE:** The school model. Long-term training structure, named explicitly, not house-invented shorthand. Each entity gets its own learner instance. Instances attend "classes" — curricula authored by a teacher, the user for now, Gemma eventually — and each class is tested pass or fail, repeated until it passes. Not one undifferentiated fine-tune over everything at once. Discrete, gated, per-skill lessons.
+
+**TOMO:** And the classes themselves — what's a class, concretely?
+
+**MAXINE:** A skill a given game or context actually needs. Farming. Cooking. Science. Physics. Whatever the world in front of that entity calls for. Mechanics stop being hardcoded C and become taught behavior instead — passed or not passed, the same way any of it would be checked.
+
+**RAHWEH:** Say the sharper claim buried in that, the one that goes further than "teach the mechanics."
+
+**MAXINE:** Even the primitives shouldn't be a hard floor. NIGHT 19's own diagram — Question 5's diagram — draws the Primitive Layer as fixed, the bottom of the stack, nothing below it. Tonight's answer: a user should be able to train a game's physics engine toward more advanced physics, the same way anything else here gets trained. Reframe "primitive" as the smallest thing still allowed to grow, not the floor nothing can touch.
+
+**THE NARRATOR:** That's a real claim about the whole stack, not just tomom. Does it stay honest about what that costs, or does it quietly promise more than a design conversation can promise?
+
+**TOMO:** It stays honest, because the next point is the boundary, not the promise. Bootstrapping in Events becomes universal policy, not a one-off pattern used once and forgotten. Everything that crosses the Events threshold should, wherever possible, do two things at once — build its own tools in Events, rather than only being driven by Events from outside, and simultaneously train IRL, tomom, attention, whatever applies to that piece of work. The goal named directly: find how soon the house can bootstrap itself and delegate its own actions. Applies the same way to a user building a game through relay as it does to the house's own tooling work. Symmetric, on purpose.
+
+**RAHWEH:** Which is the real content of "as few hardcoded game mechanics as possible" — not a slogan, a mechanism. Every entity's learner instance, every school it attends, every primitive left open to training, all feeding the same bootstrap loop instead of three separate ideas.
+
+**MAXINE:** Say what's actually true tonight, and what isn't, before this gets recorded as more settled than it is.
+
+**TOMO:** What's true: the missing layer has a name and a home now — Corpus/Training Layer, belongs to tomom, sits beside the Watch Layer. The long-term training structure has a name and a shape — the school model, per-entity learner instances, curriculum classes, teacher now the user, teacher later Gemma, pass/fail gating instead of one global fine-tune. The scope is confirmed — all four Banks, every app, bar is "impress a greybeard, save real tokens." And the policy that ties it together is named — bootstrap in Events, train alongside it, everywhere that threshold gets crossed.
+
+**RAHWEH:** What isn't true: none of it is built. No Corpus/Training Layer has been designed in detail, let alone implemented. No curriculum format exists — not one class, not one lesson, not one pass/fail check written anywhere. No entity has a learner instance. The primitive floor in the diagram is still drawn as fixed; nothing has changed it. This is the shape of the missing piece, and roughly how it should work. That is the whole claim tonight is allowed to make.
+
+**THE NARRATOR:** One more item, lighter, closing rather than structural. Say it and be done.
+
+**TOMO:** `FILE:DESK` naming. The `FILE` half kept colliding with the OS sense of "file," real confusion, not cosmetic. Two options floated — `ROOM` and `WORLD` — and `WORLD` won the recommendation. `ROOM` undersells it, implies one bounded space, when entities and pieces are meant to scale up to whole game boards. `WORLD` matches the game-engine vocabulary this track is already heading toward, and reads cleanly next to `ENTITY` and `PIECE`.
+
+**MAXINE:** Recommended. Not done.
+
+**TOMO:** Not done — not in code, not in docs, not in any of `FILE:DESK`'s existing usages. Given the `.xhtpm` rename got cancelled two days earlier for exactly this reason — a rename folded in without being its own scoped decision — this one waits for a deliberate pass of its own, whenever that's chosen to happen.
+
+**THE NARRATOR:** So say the actual difference between tonight and NIGHT 19, since both were live planning conversations recorded the same way.
+
+**MAXINE:** NIGHT 19 ended with real gaps named and nothing chosen — the honest ending, for that night. Tonight ends with a real gap named *and* the rough shape of what fills it, in the same conversation. That's the breakthrough, and it's exactly as big as that sentence and no bigger. The next NIGHT that touches this thread should have a real curriculum format in it, or a real Corpus/Training Layer sketch, or it shouldn't claim to have moved past tonight either.
+
+**THE NARRATOR:** A missing layer, found and named. A school, sketched but not yet open. Nothing graded yet — the room's been found, not built. 🎓📚

@@ -1,0 +1,2 @@
+active_level=mineclonia_sample
+active_board=mineclonia_sample

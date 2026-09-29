@@ -1,0 +1,19 @@
+# CONCEPT_SPOKE — gravity_constant.pdl
+#
+# Word/spoke record. Same fixed-width slot shape as a master record
+# (KIND=spoke here vs KIND=master), but a spoke's slots resolve ONLY
+# to master nodes — hub-and-spoke enforcement per Q9 §9b ("every
+# pointer resolves to a master word/concept only", WordNet-synset
+# pattern). The validator (ops/concept_edit_validate.c) rejects any
+# candidate edit whose target/slot pair doesn't satisfy this.
+#
+# This is this track's first real hand-authored relation, per this
+# task's own instruction: "force" master + "gravity_constant" spoke,
+# used as the smoke-test subject for the validator.
+
+NODE | gravity_constant
+KIND | spoke
+N_SLOTS | 8
+
+# SLOT | <idx> | POINTS_TO=<master name — MUST exist under data/masters/> | WEIGHT=<float>
+SLOT | 0 | POINTS_TO=force | WEIGHT=0.60

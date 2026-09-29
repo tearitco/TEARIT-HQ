@@ -5,32 +5,32 @@ FINANCIAL BALANCE SHEET: STARPATH TRANSIT (SPT)
 (Amounts in millions of U.S. Dollars, except per share amounts)
 
 ASSETS:
-  Free Cash and Equivalents:		520.50
-  Working Capital (A/R, Inven.):	58.07
-  Business Assets/Equipment:		988.38
+  Free Cash and Equivalents:		228.23
+  Working Capital (A/R, Inven.):	283.95
+  Business Assets/Equipment:		1639.21
   Stock in Subsidiary Cos.:		0.00
   Options Long/Short: Net Value:	0.00
   ---------------------------------------------
-  Total Assets:				1566.95
+  Total Assets:				2151.39
   ---------------------------------------------
 
 LIABILITIES AND EQUITY:
   Long-Term Bonds Issued:		0.00
-  Bank Loan:				3.94
+  Bank Loan:				431.62
   Accrued Income Tax Payable:		0.00
   ---------------------------------------------
-  Total Liabilities:			3.94
+  Total Liabilities:			431.62
   ---------------------------------------------
-  Equity (Net Worth):			1563.01
+  Equity (Net Worth):			1719.77
   =============================================
 
 STOCK AND EARNINGS DATA:
 ------------------------
-  Net Worth Per Share:			24.22
-  Current Stock Price:			33.94
-  52-Week High/Low Stock Price:		66.46 / 18.98
-  Shares of Stock Outstanding:		64.54 million
-  Total Stock Capitalization:		2190.78 million
+  Net Worth Per Share:			31.03
+  Current Stock Price:			45.52
+  52-Week High/Low Stock Price:		53.17 / 24.75
+  Shares of Stock Outstanding:		55.43 million
+  Total Stock Capitalization:		2523.12 million
   2021 Earnings Per Share:		0.00 (Operating Earnings)
   2022 Earnings Per Share:		0.00 (Operating Earnings)
   2023 Earnings Per Share:		0.00 (Operating Earnings)
@@ -42,16 +42,16 @@ VARIOUS FINANCIAL RATIOS:
 -------------------------
   Price/Earnings Ratio:			NMF (No Meaningful Figure)
   Dividend Yield:			0.00%
-  Debt to Equity Ratio:			0.00 to 1
+  Debt to Equity Ratio:			0.25 to 1
   Return on Equity (2024):		NMF (No Meaningful Figure)
   ---------------------------------------------
 
 *** CREDIT INFO: ***
 -------------------
   Credit Rating:			AA
-  Unused Bank Line of Credit:		2683.51 million
+  Unused Bank Line of Credit:		695.40 million
   Borrowing Rate (Interest):		10.50% (Prime is: 10.00%)
-  Lending Bank:				LUNAR FINANCE (LUN)
+  Lending Bank:				MARTIAN TRUST BANK (MTB)
   ---------------------------------------------
 
 VARIABLE SETTINGS (Changeable by controlling player):
@@ -67,8 +67,8 @@ MISCELLANEOUS INFO:
   Incorporated in:			Sinder Rouge Monarchy
   Controlled (and actively managed) by:	public
   Public Owns:			%
-  Accrued R&D and/or Investment Tax Credits:	$62.67 million
-  Annual CEO Salary (approx.):		$0.42 million (Plus possible bonuses)
+  Accrued R&D and/or Investment Tax Credits:	$178.00 million
+  Annual CEO Salary (approx.):		$0.66 million (Plus possible bonuses)
   Today's (Game) Date:			January 1, 2025
   Next Earnings Report:			January 27, 2025
   ---------------------------------------------

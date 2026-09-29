@@ -1,7 +1,8 @@
 /* khtpm_grid_jump.c - the PURE part of `<grid>` cell-jump navigation.
  *
- * Text-included canonical helper (house convention, like khtpm_ui_common.c):
- * no .so, no per-app copy. Plain C + <string.h>/<ctype.h>/<stdlib.h> only -
+ * Text-included canonical helper (house convention, for genuinely
+ * multi-consumer code): no .so, no per-app copy. Plain C +
+ * <string.h>/<ctype.h>/<stdlib.h> only -
  * no Elem, no X11, no khtpm globals - so khtpm_core_render.c's `<grid>` key
  * handler AND standalone X overlays (tp_arm_placer_rmmv.c's labelled wire
  * grid) can drive the SAME behaviour: arrows move a cell cursor, letters and

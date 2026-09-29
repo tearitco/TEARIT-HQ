@@ -1,0 +1,24 @@
+# main_module.pal - board-viewer's dedicated module.
+#
+# TPMOS DIAMOND loop (pchq-vs-tpmos.md APPENDIX A, plan P-5), ported
+# from 101.mutaclsym...19.00/pal/game_module.pal. The old pre-diamond
+# loop (one key per iteration, bv_menu_input + bv_render_3d + bv_compose
+# _frame + hit_frame every 30ms) is pal/main_module_legacy.pal, kept for
+# rollback.
+#
+# ops/+x/bv_dispatch.+x does the whole tick: drain EVERY pending key
+# from interact_relay.txt, run bv_menu_input per key, then bv_render_3d
+# + bv_compose_frame + frame_changed marker ONCE - and nothing at all on
+# an idle tick.
+li x1, 0
+
+# one unconditional render at boot so view.txt / the 3D overlay exist
+# before the first key
+bv_render_3d
+bv_compose_frame
+hit_frame
+
+loop:
+exec ./ops/+x/bv_dispatch.+x
+sleep 16667
+j loop

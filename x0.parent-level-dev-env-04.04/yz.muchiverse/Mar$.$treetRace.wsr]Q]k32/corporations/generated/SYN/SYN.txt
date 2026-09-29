@@ -5,32 +5,32 @@ FINANCIAL BALANCE SHEET: SYNERCHEM CORP. (SYN)
 (Amounts in millions of U.S. Dollars, except per share amounts)
 
 ASSETS:
-  Free Cash and Equivalents:		596.87
-  Working Capital (A/R, Inven.):	214.75
-  Business Assets/Equipment:		1790.17
+  Free Cash and Equivalents:		372.88
+  Working Capital (A/R, Inven.):	485.31
+  Business Assets/Equipment:		689.63
   Stock in Subsidiary Cos.:		0.00
   Options Long/Short: Net Value:	0.00
   ---------------------------------------------
-  Total Assets:				2601.78
+  Total Assets:				1547.81
   ---------------------------------------------
 
 LIABILITIES AND EQUITY:
   Long-Term Bonds Issued:		0.00
-  Bank Loan:				218.91
+  Bank Loan:				347.50
   Accrued Income Tax Payable:		0.00
   ---------------------------------------------
-  Total Liabilities:			218.91
+  Total Liabilities:			347.50
   ---------------------------------------------
-  Equity (Net Worth):			2382.87
+  Equity (Net Worth):			1200.31
   =============================================
 
 STOCK AND EARNINGS DATA:
 ------------------------
-  Net Worth Per Share:			43.80
-  Current Stock Price:			64.71
-  52-Week High/Low Stock Price:		125.31 / 44.78
-  Shares of Stock Outstanding:		54.41 million
-  Total Stock Capitalization:		3520.37 million
+  Net Worth Per Share:			15.80
+  Current Stock Price:			13.99
+  52-Week High/Low Stock Price:		22.83 / 9.52
+  Shares of Stock Outstanding:		75.95 million
+  Total Stock Capitalization:		1062.20 million
   2021 Earnings Per Share:		0.00 (Operating Earnings)
   2022 Earnings Per Share:		0.00 (Operating Earnings)
   2023 Earnings Per Share:		0.00 (Operating Earnings)
@@ -42,16 +42,16 @@ VARIOUS FINANCIAL RATIOS:
 -------------------------
   Price/Earnings Ratio:			NMF (No Meaningful Figure)
   Dividend Yield:			0.00%
-  Debt to Equity Ratio:			0.09 to 1
+  Debt to Equity Ratio:			0.29 to 1
   Return on Equity (2024):		NMF (No Meaningful Figure)
   ---------------------------------------------
 
 *** CREDIT INFO: ***
 -------------------
   Credit Rating:			AA
-  Unused Bank Line of Credit:		85.14 million
+  Unused Bank Line of Credit:		575.68 million
   Borrowing Rate (Interest):		10.50% (Prime is: 10.00%)
-  Lending Bank:				MARTIAN TRUST BANK (MTB)
+  Lending Bank:				LUNAR FINANCE (LUN)
   ---------------------------------------------
 
 VARIABLE SETTINGS (Changeable by controlling player):
@@ -67,8 +67,8 @@ MISCELLANEOUS INFO:
   Incorporated in:			Sinder Rouge Monarchy
   Controlled (and actively managed) by:	public
   Public Owns:			%
-  Accrued R&D and/or Investment Tax Credits:	$135.42 million
-  Annual CEO Salary (approx.):		$0.79 million (Plus possible bonuses)
+  Accrued R&D and/or Investment Tax Credits:	$139.65 million
+  Annual CEO Salary (approx.):		$0.86 million (Plus possible bonuses)
   Today's (Game) Date:			January 1, 2025
   Next Earnings Report:			January 27, 2025
   ---------------------------------------------

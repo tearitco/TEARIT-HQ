@@ -22,6 +22,8 @@
  * hot-path logic that needs direct access to the caller's own live X11
  * connection/drawable every single frame — real ops/fork-exec doesn't
  * fit here, this isn't a discrete one-shot action. */
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 /* Colour caches. cmap never changes after startup (DefaultColormap), so a
  * pixel/XftColor allocated for a given spec stays valid for the process
@@ -1184,7 +1186,25 @@ static void draw_elem(Elem *e, int hover_id_hash) {
      * matrix. Sprite draws BEFORE the badge (see above) so the badge is
      * never painted over. */
     int drew_sprite = 0;
-    if (e->sprite[0]) {
+    if (e->sprite[0] && strlen(e->sprite) > 4 && !strcmp(e->sprite + strlen(e->sprite) - 4, ".png")) {
+        int pw = 0, ph = 0, comp = 0;
+        unsigned char *rgba = stbi_load(e->sprite, &pw, &ph, &comp, 4);
+        if (rgba) {
+            int pad_s = e->style.has_padding ? e->style.padding : 4;
+            int box_w = e->w - 2 * pad_s, box_h = e->h - 2 * pad_s;
+            int dst_w = pw, dst_h = ph;
+            if (dst_w > box_w) dst_w = box_w;
+            if (dst_h > box_h) dst_h = box_h;
+            if (dst_w > 0 && dst_h > 0) {
+                int blit_x = e->x + (e->w - dst_w) / 2;
+                int blit_y = e->y + (e->h - dst_h) / 2;
+                XImage *xim = XCreateImage(dpy, DefaultVisual(dpy, screen), DefaultDepth(dpy, screen), ZPixmap, 0, (char *)rgba, dst_w, dst_h, 32, 0);
+                if (xim) { XPutImage(dpy, buf, gc, xim, 0, 0, blit_x, blit_y, dst_w, dst_h); XDestroyImage(xim); drew_sprite = 1; }
+                else free(rgba);
+            } else free(rgba);
+            if (!drew_sprite) free(rgba);
+        }
+    } else if (e->sprite[0]) {
         HqSprite *sp = hq_sprite(e->sprite);
         if (sp) {
             int pad_s = e->style.has_padding ? e->style.padding : 4;
@@ -1769,7 +1789,8 @@ static void draw_elem(Elem *e, int hover_id_hash) {
             XFillRectangle(dpy, buf, gc, chip_x0, chip_y0, (unsigned)chip_w, (unsigned)chip_h);
             chip_drawn = 1;
         } else if ((e->sprite[0] || is_swatch_tile) && e->y >= 16 && !elem_has_class(e, "dock-cell") &&
-                   !elem_has_class(e, "sprite-inline")) { /* sprite-inline rows keep the inline chip */
+                   !elem_has_class(e, "dropdown-child") &&
+                   !elem_has_class(e, "sprite-inline")) { /* sprite-inline rows keep the inline chip; REAL FIX 2026-09-23 (bug_bounty.md "tax_robot nav badge missing") - dropdown-child rows (khtpm_core_render.c's dock-menu popup, layout_dock_bar()'s stacking loop) pack with ZERO vertical gap exactly like dock-cell rows already excluded above on 2026-09-15, but that exclusion never covered this newer row class - a dropdown-child WITH a real (even if unloadable, e.g. tax_robot's sprite path pointing at a pal dir with no sprite.csv) e->sprite path fell into this above-tile bleed branch, shifting its badge chip up into the PREVIOUS row's box where it visually vanished. Every dropdown row shares this zero-gap packing, so exclude the whole class the same way dock-cell already is. */
             /* Sprite tiles and swatch-picker tiles: draw badge ABOVE the tile
              * with a dark backing chip for contrast.
              *

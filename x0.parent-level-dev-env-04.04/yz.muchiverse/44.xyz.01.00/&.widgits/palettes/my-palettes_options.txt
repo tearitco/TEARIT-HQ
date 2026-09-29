@@ -1,0 +1,14 @@
+ACTIVE_DIR|terumon
+ACTIVE_TILESET|terumon
+ACTIVE_CATEGORY|terumon
+DIR|terumon|terumon
+TILESET|teru_10_brown|teru_10_brown
+TILESET|teru_07_pink|teru_07_pink
+TILESET|teru_04_green|teru_04_green
+TILESET|teru_08_black|teru_08_black
+TILESET|teru_09_white|teru_09_white
+TILESET|teru_03_yellow|teru_03_yellow
+TILESET|teru_05_blue|teru_05_blue
+TILESET|teru_06_purple|teru_06_purple
+TILESET|teru_02_orange|teru_02_orange
+TILESET|teru_01_red|teru_01_red

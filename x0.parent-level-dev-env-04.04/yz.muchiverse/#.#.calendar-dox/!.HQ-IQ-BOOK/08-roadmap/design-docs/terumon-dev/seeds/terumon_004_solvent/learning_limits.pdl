@@ -1,0 +1,33 @@
+# learning_limits.pdl — terumon_004_solvent
+# Profile: isolation-mode-only. in_game_watch_layer is false, so
+# environment/schools (both Watch-Layer/curriculum-shaped) are
+# meaningless for this seed and left empty rather than populated with
+# placeholder values.
+
+terumon_id: terumon_004_solvent
+owner_id: OPEN
+
+direction:
+  allow: [conversation, general_knowledge, research]
+  deny: [combat]
+
+size:
+  max_state_bytes: 131072
+  max_corpus_examples_per_class: 50
+
+strength_of_training:
+  max_delta_per_edit: 0.06
+  max_tier: associate_bachelor
+  edits_per_day_cap: 15
+
+schools:
+  enrolled: []
+  pass_required_before_next: false
+
+environment:
+  proximity_sources: []
+  influence_weight: 0.0
+
+mode:
+  in_game_watch_layer: false
+  isolation_chatbot: true

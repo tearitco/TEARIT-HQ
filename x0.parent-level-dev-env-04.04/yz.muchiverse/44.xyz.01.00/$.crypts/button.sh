@@ -100,8 +100,19 @@ case "$ACTION" in
         # Kill all running toolbars and entities (no relaunch)
         all_khtpm_and_hq_pids | xargs -r kill -TERM
         sleep 1
+        # REAL, MERGED 2026-09-28: all_khtpm_and_hq_pids() (ee6afba47,
+        # main) generically catches every HQ app manager compiled to
+        # .../ops/+x/*.+x (colab_hai_manager, network_browser_manager,
+        # etc.) by path pattern - but NOT world_manager's own persistent
+        # loop, since that's `prisc+x` interpreting world_manager.pal,
+        # and the binary is literally named "prisc+x" (no "/+x/"
+        # directory segment in its path for the generic pattern to
+        # match). Both kills are needed for full coverage; neither
+        # alone is a superset of the other.
         all_khtpm_and_hq_pids | xargs -r kill -KILL 2>/dev/null || true
-        echo "closed all toolbars and entities"
+        [ -x "$HOUSE/&.hq-apps/world-manager/button.sh" ] && \
+            "$HOUSE/&.hq-apps/world-manager/button.sh" kill 2>/dev/null || true
+        echo "closed all toolbars, entities, HQ app managers, and world_manager"
         ;;
     reset)
         # Guaranteed-clean kill-everything-then-relaunch — for when the
@@ -115,6 +126,11 @@ case "$ACTION" in
         all_khtpm_and_hq_pids | xargs -r kill -TERM
         sleep 1
         all_khtpm_and_hq_pids | xargs -r kill -KILL 2>/dev/null || true
+        # world_manager's own prisc+x loop isn't caught by the generic
+        # scan above (see the `quit|close` case's own comment) - killed
+        # explicitly here too.
+        [ -x "$HOUSE/&.hq-apps/world-manager/button.sh" ] && \
+            "$HOUSE/&.hq-apps/world-manager/button.sh" kill 2>/dev/null || true
         # REAL FIX 2026-09-21, direct instruction ("i dont want it to run
         # the old binaries if theres a compile fail or it may mislead me
         # into thinking things are ok, when they aren't"): this used to

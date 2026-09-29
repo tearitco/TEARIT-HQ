@@ -11,3 +11,13 @@ SHOW_CHOICES result=0 (Say hello) (TIMED OUT, used default)
 CHANGE_GOLD delta=+5 qolq: 35 -> 40
 SHOW_CHOICES popup opened on /home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz❤️‍🔥️00.17/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/pals/m8_redhorned, choices=Say hello,Wave,Ignore default=0
 SHOW_CHOICES result=0 (Say hello) (TIMED OUT, used default)
+SHOW_CHOICES popup opened on /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/common_events/greet_player, choices=Say hello,Wave,Ignore default=0
+SHOW_CHOICES result=0 (Say hello) (TIMED OUT, used default)
+CHANGE_GOLD delta=+1 qolq: 40 -> 41
+CHANGE_GOLD delta=+777 qolq: 41 -> 818
+CHANGE_GOLD delta=+777 qolq: 818 -> 1595
+SHOW_CHOICES popup opened on /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/common_events/greet_player, choices=Say hello,Wave,Ignore default=0
+SHOW_CHOICES result=0 (Say hello) (TIMED OUT, used default)
+CHANGE_GOLD delta=+1 qolq: 1595 -> 1596
+CHANGE_GOLD delta=+777 qolq: 1596 -> 2373
+CHANGE_GOLD delta=+777 qolq: 2373 -> 3150

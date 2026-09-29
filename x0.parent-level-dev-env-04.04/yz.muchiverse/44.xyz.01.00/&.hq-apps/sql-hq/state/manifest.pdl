@@ -1,0 +1,2 @@
+# sql-hq workspace manifest
+SECTION | table:people | /tmp/people.csv|csv

@@ -116,7 +116,11 @@ SECTION      | palettes_menu_9_label  | paint colors
 SECTION      | palettes_menu_9_cmd    | livedesk:open-palette:paint
 SECTION      | palettes_menu_10_label | generate
 SECTION      | palettes_menu_10_cmd   | livedesk:open-palette:generate
-SECTION      | palettes_menu_11_label | cancel
+SECTION      | palettes_menu_11_label | my palettes
+SECTION      | palettes_menu_11_cmd   | livedesk:open-palette:my-palettes
+SECTION      | palettes_menu_12_label | terumon
+SECTION      | palettes_menu_12_cmd   | livedesk:open-palette:my-palettes
+SECTION      | palettes_menu_13_label | cancel
 
 # network cell (13.network, NETWORK-CELL-HQ-WINDOWS-DESIGN.md) - real
 # rows wired 2026-08-31, dispatching via livedesk:open-network:<key> to
@@ -130,7 +134,9 @@ SECTION      | network_menu_3_label  | Chain
 SECTION      | network_menu_3_cmd    | livedesk:open-network:chain
 SECTION      | network_menu_4_label  | Browser
 SECTION      | network_menu_4_cmd    | livedesk:open-network:browser
-SECTION      | network_menu_5_label  | cancel
+SECTION      | network_menu_5_label  | hq-ftp (LAN drop, not built)
+SECTION      | network_menu_5_cmd    | livedesk:open-network:hqftp
+SECTION      | network_menu_6_label  | cancel
 
 # top-left command strip (2do task #4). Defaults match what's written
 # below, so editing here is the only thing needed to change labels or

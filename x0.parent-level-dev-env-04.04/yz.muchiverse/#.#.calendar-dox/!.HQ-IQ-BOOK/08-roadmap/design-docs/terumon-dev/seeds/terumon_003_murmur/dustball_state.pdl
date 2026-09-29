@@ -1,0 +1,16 @@
+# dustball_state.pdl — terumon_003_murmur
+# Starting state: minimal, undifferentiated base form.
+
+terumon_id: terumon_003_murmur
+owner_id: OPEN
+canonical_name: terumon
+known_aliases: fuzzpets, dustpets, muchipets
+form: dustball
+color_hex: #b8b8b8
+size_units: 1
+visible_traits: []
+skills_promoted: []
+chemical_output_current: none
+mode: in_game_watch_layer=true, isolation_chatbot=false
+seeded: 2026-09-22
+experiment_role: environment-driven (proximity to 001, 002)

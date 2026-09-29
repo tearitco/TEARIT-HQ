@@ -66,6 +66,20 @@ static void ktb_self_heal_active_desk_registry(KtbState *s); /* real def + heade
  * technique ktb_self_heal_active_desk_registry()'s own registry-restore
  * half already trusts as its one source of truth. */
 static int ktb_find_live_pid_for_pal(const char *pal_path);
+/* fwd - real function bodies + full header comment near
+ * ktb_find_live_pid_for_pal() itself; batches that same /proc scan once
+ * per loop instead of once per entity (bug_bounty.md 2026-09-22,
+ * taskbar slow to populate). Struct defined here (not forward-declared
+ * opaque) since both the forward decl and the real definition need the
+ * exact same type - an opaque tag here and an anonymous struct there
+ * would be two different, conflicting types under one typedef name. */
+typedef struct {
+    int pid;
+    char *cmdline;
+} KtbProcSnapEntry;
+static int ktb_proc_snapshot(KtbProcSnapEntry **out);
+static void ktb_proc_snapshot_free(KtbProcSnapEntry *snap, int n);
+static int ktb_proc_snapshot_find(const KtbProcSnapEntry *snap, int n, const char *pal_path);
 #endif
 
 /* REAL, NEW 2026-09-01 - forward decl: ktb_reload() (defined before this
@@ -1862,11 +1876,17 @@ void ktb_get_username(const KtbState *s, char *out, size_t sz) {
  * this session, never wired to anything until now) — non-static so
  * khtpm_taskbar_manager_main.c can call them. */
 void ktb_get_file_label(const KtbState *s, char *out, size_t sz) {
+    /* "file:" -> "world:" -> "book:" 2026-09-22 (AI-TRACK-BRAINSTORM-
+     * QUESTIONS.md Q7 7f, superseded same day): BOOK:PAGE replaces the
+     * short-lived WORLD:DESK pair - a session (this label) is a BOOK,
+     * an individual desk (ktb_get_desks_label() below) is a PAGE.
+     * Function/variable names (livedesk_current_session_name, etc.)
+     * are left as-is - only the user-visible label text changes. */
     char name[256];
     if (livedesk_current_session_name(s->house_root, name, sizeof(name)) && name[0])
-        snprintf(out, sz, "file:%s", name);
+        snprintf(out, sz, "book:%s", name);
     else
-        snprintf(out, sz, "file");
+        snprintf(out, sz, "book");
 }
 
 /* Real gap fix (2026-08-11, direct request: "user should have a sprite at
@@ -1896,11 +1916,18 @@ void ktb_get_avatar_dir(const KtbState *s, char *out, size_t sz) {
 }
 
 void ktb_get_desks_label(const KtbState *s, char *out, size_t sz) {
+    /* "desks:" -> "desk:" -> "page:" 2026-09-22 (AI-TRACK-BRAINSTORM-
+     * QUESTIONS.md Q7 7f, superseded same day): BOOK:PAGE replaces the
+     * short-lived WORLD:DESK pair - an individual desk (this label) is
+     * a PAGE, a session (ktb_get_file_label() above) is a BOOK.
+     * Function/variable names (livedesk_current_desk_name, active_desk,
+     * desks/ dir) are left as-is - only the user-visible label text
+     * changes here. */
     char name[64];
     if (livedesk_current_desk_name(s->house_root, name, sizeof(name)) && name[0])
-        snprintf(out, sz, "desks:%s", name);
+        snprintf(out, sz, "page:%s", name);
     else
-        snprintf(out, sz, "desks");
+        snprintf(out, sz, "page");
 }
 
 static void livedesk_root_write(const char *sroot, const char *active, const char *last) {
@@ -2565,6 +2592,12 @@ static void livedesk_spawn_desk(const char *house_root, const char *sroot, const
     int live_pids[KTB_LIVEDESK_MAX_OPEN], live_idx[KTB_LIVEDESK_MAX_OPEN];
     char live_ents[KTB_LIVEDESK_MAX_OPEN][128], live_paths[KTB_LIVEDESK_MAX_OPEN][KTB_PATH_BUF];
     int n_live = livedesk_read_open(house_root, live_pids, live_ents, live_paths, live_idx, KTB_LIVEDESK_MAX_OPEN);
+#else
+    /* one /proc scan for this whole desk, not one per entity - see
+     * ktb_proc_snapshot()'s own header comment (bug_bounty.md
+     * 2026-09-22, taskbar slow to populate). */
+    KtbProcSnapEntry *proc_snap = NULL;
+    int n_proc_snap = ktb_proc_snapshot(&proc_snap);
 #endif
     while (fgets(line, sizeof(line), f)) {
         if (strncmp(line, "DESK", 4) != 0) continue;
@@ -2643,11 +2676,13 @@ static void livedesk_spawn_desk(const char *house_root, const char *sroot, const
              * kernel-maintained, unforgeable record of its own
              * identity, the same ground-truth technique this file's
              * own self-heal registry-restore already trusts as its
-             * one source of truth (ktb_find_live_pid_for_pal()) -
-             * reused here instead of duplicating the scan. No registry
-             * staleness window can exist if the decision never
-             * consults the registry at all. */
-            already_live = (ktb_find_live_pid_for_pal(pal) > 0);
+             * one source of truth (ktb_find_live_pid_for_pal(), now
+             * scanned once for the whole desk via ktb_proc_snapshot()
+             * above rather than re-scanned per entity) - reused here
+             * instead of duplicating the scan. No registry staleness
+             * window can exist if the decision never consults the
+             * registry at all. */
+            already_live = (ktb_proc_snapshot_find(proc_snap, n_proc_snap, pal) > 0);
 #else
             for (int i = 0; i < n_live; i++)
                 /* REAL FIX 2026-09-13, direct live report ("some
@@ -2725,6 +2760,9 @@ static void livedesk_spawn_desk(const char *house_root, const char *sroot, const
         (void)rc;
 #endif
     }
+#ifndef _WIN32
+    ktb_proc_snapshot_free(proc_snap, n_proc_snap);
+#endif
     fclose(f);
     /* Real, new 2026-08-30: whatever desk just (re)spawned its own real
      * entities above, cursword is never one of the DESK rows read from
@@ -2765,6 +2803,87 @@ static void livedesk_spawn_desk(const char *house_root, const char *sroot, const
  * Never spawns anything (that's livedesk_spawn_desk()'s job, called
  * once at startup/switch) - this only restores a registry line for a
  * process that already, verifiably, exists. */
+/* REAL, NEW 2026-09-22, direct live report ("it took a long time for
+ * tb to populate... desktop entities, which are larger, were instant")
+ * - bug_bounty.md's own root-cause entry: BOTH real callers of
+ * ktb_find_live_pid_for_pal() call it once PER ENTITY inside a loop
+ * over the active desk's own entity list (livedesk_spawn_desk()'s
+ * startup spawn loop, and ktb_self_heal_active_desk_registry()'s
+ * ~10s re-check) - so a desk with N entities did N full /proc scans,
+ * each opening+reading every process's own cmdline file, fully
+ * serialized, before the manager could even reach the point of
+ * publishing its own strip_ui.txt. Each individual entity spawn is
+ * cheap (fire-and-forget `setsid nohup ... &`), so entities visibly
+ * "pop in" fast - the taskbar itself was the one stuck behind the
+ * whole loop. Fix: scan /proc ONCE per loop (not once per entity) into
+ * a real snapshot, then look candidates up against that in memory.
+ * Same real information ktb_find_live_pid_for_pal() itself reads -
+ * this is purely "read it once, ask it N times" instead of "read it
+ * N times" - no behavior change for a genuinely-alive-vs-dead
+ * decision, only fewer redundant scans.
+ *
+ * Dynamically grown (realloc), never capped - a silently truncated
+ * snapshot missing one real live entity would make this file's own
+ * already_live check wrongly say "not running" and double-spawn it,
+ * exactly the failure class multiple comments in this file (2026-08-12,
+ * 2026-09-13) already document as a real, previously-fixed bug. Growing
+ * instead of capping keeps that same safety guarantee.
+ *
+ * cmdline is a space-joined /proc/<pid>/cmdline, only kept for a real
+ * khtpm_entity.+x/khtpm_core_render.+x match - everything else is
+ * scanned but not stored, same filter ktb_find_live_pid_for_pal()
+ * itself applies, just applied before storing instead of after.
+ * (KtbProcSnapEntry itself is defined at this function's own forward
+ * declaration near the top of the file - see that comment for why.) */
+static int ktb_proc_snapshot(KtbProcSnapEntry **out) {
+    *out = NULL;
+    DIR *pd = opendir("/proc");
+    if (!pd) return 0;
+    struct dirent *ent;
+    int n = 0, cap = 0;
+    KtbProcSnapEntry *snap = NULL;
+    while ((ent = readdir(pd)) != NULL) {
+        if (ent->d_name[0] < '0' || ent->d_name[0] > '9') continue;
+        char cpath[64];
+        snprintf(cpath, sizeof(cpath), "/proc/%s/cmdline", ent->d_name);
+        FILE *cf = fopen(cpath, "r");
+        if (!cf) continue;
+        char cmdbuf[KTB_PATH_BUF * 2];
+        size_t nb = fread(cmdbuf, 1, sizeof(cmdbuf) - 1, cf);
+        fclose(cf);
+        if (nb == 0) continue;
+        cmdbuf[nb] = '\0';
+        for (size_t i = 0; i < nb; i++) if (cmdbuf[i] == '\0') cmdbuf[i] = ' ';
+        if (!strstr(cmdbuf, "khtpm_entity.+x") && !strstr(cmdbuf, "khtpm_core_render.+x")) continue;
+        if (n >= cap) {
+            cap = cap ? cap * 2 : 16;
+            KtbProcSnapEntry *grown = (KtbProcSnapEntry *)realloc(snap, (size_t)cap * sizeof(*snap));
+            if (!grown) break; /* real OOM - keep what we have, never crash */
+            snap = grown;
+        }
+        snap[n].pid = atoi(ent->d_name);
+        snap[n].cmdline = strdup(cmdbuf);
+        if (snap[n].cmdline) n++;
+    }
+    closedir(pd);
+    *out = snap;
+    return n;
+}
+
+static void ktb_proc_snapshot_free(KtbProcSnapEntry *snap, int n) {
+    for (int i = 0; i < n; i++) free(snap[i].cmdline);
+    free(snap);
+}
+
+static int ktb_proc_snapshot_find(const KtbProcSnapEntry *snap, int n, const char *pal_path) {
+    for (int i = 0; i < n; i++)
+        if (snap[i].cmdline && strstr(snap[i].cmdline, pal_path)) return snap[i].pid;
+    return 0;
+}
+
+/* Single-shot version, unchanged - kept for any future one-off caller
+ * that doesn't already sit inside a loop over a pal list (there is
+ * currently none; both real callers use the batched snapshot above). */
 static int ktb_find_live_pid_for_pal(const char *pal_path) {
     DIR *pd = opendir("/proc");
     if (!pd) return 0;
@@ -2852,6 +2971,14 @@ static void ktb_self_heal_active_desk_registry(KtbState *s) {
     snprintf(dp, sizeof(dp), "%s/desks/%s.pdl", sdir, active_desk);
     FILE *f = fopen(dp, "r");
     if (!f) return;
+    /* one /proc scan for this whole reconcile pass, not one per entity -
+     * see ktb_proc_snapshot()'s own header comment (bug_bounty.md
+     * 2026-09-22, taskbar slow to populate). This function is already
+     * rate-limited to once per ~10s (the s_last guard above), so this
+     * isn't itself a hot loop, but it shared the exact same per-entity
+     * re-scan inefficiency livedesk_spawn_desk() had - same fix here. */
+    KtbProcSnapEntry *proc_snap = NULL;
+    int n_proc_snap = ktb_proc_snapshot(&proc_snap);
     char line[KTB_PATH_BUF * 2];
     while (fgets(line, sizeof(line), f)) {
         if (strncmp(line, "DESK", 4) != 0) continue;
@@ -2881,7 +3008,7 @@ static void ktb_self_heal_active_desk_registry(KtbState *s) {
         char pal[KTB_PATH_BUF];
         snprintf(pal, sizeof(pal), "%s/%s", pr, base);
 
-        int live_pid = ktb_find_live_pid_for_pal(pal);
+        int live_pid = ktb_proc_snapshot_find(proc_snap, n_proc_snap, pal);
         if (live_pid <= 0) continue; /* genuinely not running - not this function's job to spawn it */
 
         /* REAL FIX 2026-09-13, direct live report ("theres nothing
@@ -2941,6 +3068,7 @@ static void ktb_self_heal_active_desk_registry(KtbState *s) {
         if (rf) fclose(rf);
         registry_lock_release();
     }
+    ktb_proc_snapshot_free(proc_snap, n_proc_snap);
     fclose(f);
 }
 #endif
@@ -3348,6 +3476,25 @@ static int livedesk_build_pals_menu(const char *house_root, HQMenuItem *menu, in
      * hardcoded "Cancel" only when the pdl defines no post rows, so an
      * untouched house behaves exactly as before). */
     int n = livedesk_pdl_menu_rows_staged(house_root, "pals", "pre", menu, max);
+
+    /* REAL FIX 2026-09-22, direct live report ("no visible Cancel
+     * button in pals dropdown"). Root cause, confirmed live (dumped
+     * the running #.desktop/strip_var_hqitems.txt while the pals
+     * dropdown was actually open): KTB_LIVEDESK_DYN_MAX is 24, the
+     * real pals dir under xyzfs/users/<uuid>/home/livedesk/pals has
+     * 191 real entries today, and with zero pals_menu_post_N_* rows
+     * declared in the pdl, the scan loop below used to cap itself only
+     * against `max - n` (pre rows only) - so the alphabetical scan
+     * alone filled all 24 slots (item 23 was confirmed live to be a
+     * REAL pal, "tax_robot", not the "Cancel" fallback), and the
+     * `if (n < max)` guard at the bottom of this function was always
+     * false. Not a "just scroll further" discoverability issue - the
+     * array itself never had room for Cancel. Fix: do a real dry-run
+     * count of how many post rows the pdl actually defines BEFORE
+     * scanning, and reserve that many slots (at least 1, for the
+     * hardcoded Cancel fallback) off the scan cap up front, so the
+     * post/Cancel row(s) always have a guaranteed slot regardless of
+     * how many real pal directories exist. */
     HQMenuItem post_probe[KTB_LIVEDESK_DYN_MAX];
     int reserved = (max - n > 0)
         ? livedesk_pdl_menu_rows_staged(house_root, "pals", "post", post_probe, max - n)
@@ -3383,15 +3530,27 @@ static int livedesk_build_pals_menu(const char *house_root, HQMenuItem *menu, in
                 }
     }
     for (int i = 0; i < scan_n && n < max; i++, n++) {
-        char mp[KTB_PATH_BUF], glyph[64] = "", hash[128] = "";
+        char mp[KTB_PATH_BUF], hash[128] = "";
         snprintf(mp, sizeof(mp), "%s/%s/pal.pdl", pr, names[i]);
-        read_key_value(mp, "glyph", glyph, sizeof(glyph));
         read_key_value(mp, "hash", hash, sizeof(hash));
         char short_hash[16] = "";
         snprintf(short_hash, sizeof(short_hash), "%s", hash);
         short_hash[10] = '\0';
-        snprintf(menu[n].label, sizeof(menu[n].label), "%s %s #%s",
-                 glyph[0] ? glyph : "•", names[i], short_hash);
+        /* REAL FIX 2026-09-24, direct live report ("pals seems 2 try 2
+         * show 2 images. 1rst png is fine, second glyph by name") -
+         * the raw glyph character used to be embedded directly in the
+         * label TEXT, on top of the real per-pal icon the dropdown
+         * row already draws from its own directory path (hi_N_sprite,
+         * khtpm_taskbar_manager_main.c - fed to draw_elem() via
+         * e->sprite, hq_sprite()/the phymoji pipeline). Confirmed
+         * preexisting, not from today's merges. Two representations of
+         * the same glyph rendered on the same row - the raw Xft text
+         * glyph (often missing/tofu for less common emoji, the "failed"
+         * one) was pure redundancy once a real converted icon exists.
+         * Label now carries only the name/hash; the icon is real-image-
+         * or-nothing, not real-image-plus-raw-text-glyph. */
+        snprintf(menu[n].label, sizeof(menu[n].label), "%s #%s",
+                 names[i], short_hash);
         snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:pal:%s", names[i]);
     }
     if (n < max) {

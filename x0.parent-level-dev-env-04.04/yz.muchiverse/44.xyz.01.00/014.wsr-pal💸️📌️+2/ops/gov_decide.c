@@ -38,8 +38,53 @@
 #define MAX_FIELD 256
 
 static char project_root[MAX_PATH] = ".";
-static const char *GEMMA_LAN_URL = "http://10.0.0.144:11434";
-static const char *GEMMA_LAN_MODEL = "gemma3:270m";
+
+/* REAL FIX 2026-09-27 (AI-PUSH-ROADMAP-AND-NUANCES.md): was a hardcoded
+ * constant, duplicated house-wide. Now read from the house's one
+ * shared #.desktop/ai_backend.pdl at startup - falls back to this same
+ * default if the file/key is missing. Duplicated per-file on purpose,
+ * matching this file's own "self-contained, no shared headers"
+ * convention. Portable (no stat()/realpath()) so it builds under the
+ * _WIN32 leg this file already supports. */
+static char g_gemma_lan_url[256] = "http://10.0.0.144:11434";
+static char g_gemma_lan_model[64] = "gemma3:270m";
+
+static void kh_find_house_root(const char *start, char *out, size_t outsz) {
+    char cur[PATH_BUF];
+    snprintf(cur, sizeof(cur), "%s", (start && start[0]) ? start : ".");
+    for (;;) {
+        char probe_path[PATH_BUF];
+        snprintf(probe_path, sizeof(probe_path), "%s/#.desktop/ai_backend.pdl", cur);
+        FILE *probe = fopen(probe_path, "r");
+        if (probe) { fclose(probe); snprintf(out, outsz, "%s", cur); return; }
+        char *slash = strrchr(cur, '/');
+        if (!slash || slash == cur) break;
+        *slash = '\0';
+    }
+    snprintf(out, outsz, "%s", (start && start[0]) ? start : ".");
+}
+
+static void kh_load_gemma_lan_config(const char *project_root_in) {
+    char house_root[PATH_BUF];
+    kh_find_house_root(project_root_in, house_root, sizeof(house_root));
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/ai_backend.pdl", house_root);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        char *eq = strchr(line, '=');
+        if (!eq) continue;
+        *eq = '\0';
+        char *val = eq + 1;
+        val[strcspn(val, "\r\n")] = '\0';
+        if (strcmp(line, "gemma_lan_url") == 0 && val[0])
+            snprintf(g_gemma_lan_url, sizeof(g_gemma_lan_url), "%s", val);
+        else if (strcmp(line, "gemma_lan_model") == 0 && val[0])
+            snprintf(g_gemma_lan_model, sizeof(g_gemma_lan_model), "%s", val);
+    }
+    fclose(f);
+}
 
 static void resolve_root(void) {
     const char *env = getenv("PRISC_PROJECT_ROOT");
@@ -170,7 +215,7 @@ static int llm_choice(float revenue, float spending, float net_operating, float 
 
     FILE *pf = fopen(request_path, "w");
     if (!pf) { free(persona); return fallback; }
-    fprintf(pf, "{\"model\":\"%s\",\"stream\":false,\"messages\":[{\"role\":\"system\",\"content\":\"", GEMMA_LAN_MODEL);
+    fprintf(pf, "{\"model\":\"%s\",\"stream\":false,\"messages\":[{\"role\":\"system\",\"content\":\"", g_gemma_lan_model);
     json_escaped(pf, persona);
     fputs("\"},{\"role\":\"user\",\"content\":\"", pf);
     json_escaped(pf, user_turn);
@@ -179,7 +224,7 @@ static int llm_choice(float revenue, float spending, float net_operating, float 
     free(persona);
 
     char full_url[MAX_FIELD];
-    snprintf(full_url, sizeof(full_url), "%s/api/chat", GEMMA_LAN_URL);
+    snprintf(full_url, sizeof(full_url), "%s/api/chat", g_gemma_lan_url);
 
     char connect_cmd[PATH_BUF * 3];
 #pragma GCC diagnostic push
@@ -209,6 +254,7 @@ static int llm_choice(float revenue, float spending, float net_operating, float 
 
 int main(int argc, char *argv[]) {
     resolve_root();
+    kh_load_gemma_lan_config(project_root);
     if (argc < 2) return 1;
     char state_path[PATH_BUF];
     snprintf(state_path, sizeof(state_path), "%s/projects/wsr-pal/pieces/%s/state.txt", project_root, argv[1]);

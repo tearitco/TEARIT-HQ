@@ -1,0 +1,5 @@
+physics_class — curriculum folder placeholder, terumon_001_ember.
+No lesson/example format exists yet house-wide (TERUMON-SPEC.md §1,
+tomom/school-model row: NIGHT_20/21 name the shape, neither builds a
+curriculum format). This folder is reserved for that format once it
+exists. OPEN.

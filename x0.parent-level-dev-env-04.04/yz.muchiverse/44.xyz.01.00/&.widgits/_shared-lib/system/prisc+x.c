@@ -1309,8 +1309,44 @@ int main(int argc, char **argv) {
             else if (strlen(arg1) > 0) sprintf(cmd, "%s %s > /dev/null 2>&1", exec_target, arg1);
             else sprintf(cmd, "%s > /dev/null 2>&1", exec_target);
 
-            int exec_rc = system(cmd);
-            (void)exec_rc; /* exec op's own exit status isn't consulted here */
+            /* Use fork/execvp instead of system() to avoid shell interpretation
+             * of special characters (e.g., & in paths). This is critical for
+             * projects in directories like &.hq-apps/ where & would be
+             * interpreted as a background operator by the shell. */
+            pid_t exec_pid = fork();
+            if (exec_pid == 0) {
+                /* Child process: prepare args and exec */
+                char *argv_arr[4];
+                int argc = 1;
+                argv_arr[0] = exec_target;
+                
+                if (strlen(arg2) > 0) {
+                    argv_arr[1] = arg1;
+                    argv_arr[2] = arg2;
+                    argc = 3;
+                } else if (strlen(arg1) > 0) {
+                    argv_arr[1] = arg1;
+                    argc = 2;
+                }
+                argv_arr[argc] = NULL;
+                
+                /* Redirect stdout/stderr to /dev/null */
+                int devnull = open("/dev/null", O_WRONLY);
+                if (devnull >= 0) {
+                    dup2(devnull, STDOUT_FILENO);
+                    dup2(devnull, STDERR_FILENO);
+                    close(devnull);
+                }
+                
+                execvp(exec_target, argv_arr);
+                exit(1);  /* execvp only returns on error */
+            } else if (exec_pid > 0) {
+                /* Parent process: wait for child */
+                int exec_rc;
+                waitpid(exec_pid, &exec_rc, 0);
+                (void)exec_rc; /* exec op's own exit status isn't consulted here */
+            }
+
         } else if (i.op == OP_HIT_FRAME) {
             char *proj_root = getenv("PRISC_PROJECT_ROOT");
             char *path = NULL;

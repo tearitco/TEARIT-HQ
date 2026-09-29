@@ -1,0 +1,13 @@
+PAGE             | KEY                | VALUE
+----------------------------------------
+META             | page_id            | test_page_001
+META             | title              | Test Page - Page Manager Demo
+META             | description        | Simple page with one player, one NPC, one zone
+ENTITY           | entity_id          | player
+ENTITY           | entity_id          | npc_01
+ZONE             | zone_id            | zone_1
+ZONE             | zone_id            | zone_1
+ZONE             | x_min              | 140
+ZONE             | y_min              | 190
+ZONE             | x_max              | 160
+ZONE             | y_max              | 210

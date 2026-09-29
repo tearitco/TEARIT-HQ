@@ -1,0 +1,18 @@
+# dustball_state.pdl — terumon_004_solvent
+# Starting state: minimal, undifferentiated base form. Never enters
+# in-game Watch Layer observation (mode below) — this seed's whole
+# job is to produce comparable isolation-mode-only data.
+
+terumon_id: terumon_004_solvent
+owner_id: OPEN
+canonical_name: terumon
+known_aliases: fuzzpets, dustpets, muchipets
+form: dustball
+color_hex: #b8b8b8
+size_units: 1
+visible_traits: []
+skills_promoted: []
+chemical_output_current: none
+mode: in_game_watch_layer=false, isolation_chatbot=true
+seeded: 2026-09-22
+experiment_role: isolation-mode-only

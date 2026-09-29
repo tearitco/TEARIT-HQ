@@ -1,0 +1,1 @@
+EDIT | id=e0003-real-rejecttest | type=spoke_weight_delta | target=gravity_constant | slot=not_a_real_master | delta=+0.05 | reason="deliberately targets a slot name with no master file, to prove hub-and-spoke enforcement" | proposer=gemma | status=candidate

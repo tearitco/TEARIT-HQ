@@ -16,3 +16,10 @@
 [2026-08-26 00:46:58] Play triggered common event greet_player (page_1, trigger=on-click) via m8_redhorned
 [2026-09-03 12:32:00] Play: also triggered common event nested_inner (trigger=on-click)
 [2026-09-03 14:07:11] Play: also triggered common event nested_inner (trigger=on-click)
+[2026-09-14 11:39:48] Play: also triggered common event cdda_beartrap_touch (trigger=player-touch)
+[Prisc Error] Could not open ops file: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/101.mutaclsym🧟‍♂️️+18.0G/system/default_op.txt
+[2026-09-14 11:40:38] Play event page_1 (trigger=Autorun) for greet_player | inventory: qolq=1595 
+[Prisc Error] Could not open ops file: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/101.mutaclsym🧟‍♂️️+18.0G/system/default_op.txt
+[2026-09-14 11:41:08] Play triggered common event greet_player (page_1, trigger=Autorun) via greet_player
+[2026-09-14 11:41:08] Play: also triggered common event greet_player (trigger=Autorun)
+[2026-09-14 11:41:51] Play: also triggered common event cdda_beartrap_touch (trigger=player-touch)

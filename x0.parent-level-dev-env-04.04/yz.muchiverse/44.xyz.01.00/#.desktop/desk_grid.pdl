@@ -7,3 +7,18 @@ GRID | cell_px | 80
 # file's original, pre-existing behavior) until you pick real numbers.
 # GRID | map_cols | 40
 # GRID | map_rows | 25
+
+# move_view_range - real, per-house config for tp_arm_placer_rmmv.+x's
+# placing grid (direct live report 2026-09-26: a full-screen grid is
+# "inconvenient when using the computer, clicking other things on
+# screen"). Cells visible in each direction from an origin (an entity's
+# own desktop_pos.txt, when TP_ORIGIN_X/Y are set) before the grid
+# window is limited - 0 means unbounded/the old full-screen behavior.
+# Uncomment to change; default (built into the binary) is 3.
+# GRID | move_view_range | 3
+
+# place_confirm - "double_click" (default, real): a click moves the
+# target square, same as an arrow key, and a second click on the SAME
+# cell (or Enter) places it. "single_click": the old behavior, any
+# click places immediately. Uncomment to opt back into single_click.
+# GRID | place_confirm | double_click

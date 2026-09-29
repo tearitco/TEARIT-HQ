@@ -1,0 +1,54 @@
+# 🧾 NIGHT 19 — the unfinished ledger: what we're measuring, and what we still aren't 🧾
+# ====================================================================
+# Title: "🧾 NIGHT 19 — the unfinished ledger: what we're measuring, and what we still aren't 🧾"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, ninth bonus round
+
+**THE NARRATOR:** Every NIGHT so far has closed a loop — a mechanism proposed, checked, and left working. Tonight closes nothing. Tonight is `08-roadmap/design-docs/AI-TRACK-BRAINSTORM-QUESTIONS.md`, Questions 5 and 6, written the same day this episode was recorded — a live planning conversation that is still, honestly, open. If that sounds like a strange thing to put in an audiobook, that's the point. Say what actually happened before pretending it's more settled than it is. 🧾
+
+**MAXINE:** Start with the document that arrived from outside the house. Two files, external, not house-authored. What did they actually claim?
+
+**TOMO:** Two docs — `XO/LLMUD_CODE/8.0.JEV=class-4-describe.md` and `8.1.harn+jev-diagram.md`. The claim: there's an external product called JEV, sold by something called TypeSafe AI, non-autoregressive, structured decisions in seventy to five hundred milliseconds, and the house's own Bank layer — Synonym, Relation, Behavior, Sentence — is described as a local, free "mini-JEV" doing the same job.
+
+**RAHWEH:** And the diagram in `8.1` is genuinely useful, said plainly. It's the first single picture that puts User Input, the Synonym Bank lookup, the four-bank layer, the FSM sequencer, the event executor, the manifest, the feedback loop, the watch layer, and the primitive floor all on one page. Check it against what already exists and it holds up — the weight formula in the diagram is `LLMUD-HACK.md` `§5`'s own Laplace formula, `(rewardCount + 1) / (rewardCount + punishCount + 2)`, unchanged. The watch layer is `LLMUD-HACK.md` `§2`'s already-resolved design, relay history plus tool transcript, no new capture built. The primitive names — `ai_describe`, `ai_fsm_transition`, `ai_goap_plan` — are the exact three named in the kilo handoff two nights ago.
+
+**THE NARRATOR:** So it agrees with the house. Is that where tonight's episode ends?
+
+**MAXINE:** No — and that's the actual content of `Question 5`. An outside document agreeing with you is not, by itself, evidence of anything. Say the two places it doesn't get a pass.
+
+**TOMO:** First: "JEV the product" itself. Its pricing, its latency numbers, its three primitives called Choice, Score, and Noul — none of that was independently checked. It might be entirely accurate. It might not be. Either way, the house doesn't need it to be true. The only thing borrowed here is a name for an idea the house already had — fast, structured, calibrated decisions, kept outside the model. Kahneman's "System 1," if a shorthand is wanted. The analogy earns its keep on its own; the external product's spec sheet doesn't need to.
+
+**RAHWEH:** Second, and this one's sharper: the diagram draws all four banks as if they're equally real. They aren't. `DUSTOPIA-HACK.md` `§3` already has the honest table — Synonym Bank has a real smallest-first-step, named in `LLMUD-INTEGRATION-DESIGN.md`. Behavior Bank is fully specified, reusing `LLMUD-HACK.md`'s own schema without a single new design decision needed. Relation Bank and Sentence Bank are names. Nothing more. Zero house-side design work sits under either of them. A pretty diagram that flattens that difference is a diagram that's lying by omission, even when every individual box in it is correctly labeled.
+
+**TOMO:** So the review isn't "reject the outside document."
+
+**MAXINE:** It's "take the part that's load-bearing, discard the part that's decoration, and never let an external source's confidence stand in for the house's own verification." Which is, itself, just the DESCRIBE-not-CLASSIFY law again, one level up — don't let the outside model's fluent output collapse into a decision you didn't actually check.
+
+**THE NARRATOR:** Then the second half of tonight. Say the actual question that started it.
+
+**TOMO:** Asked directly by the user, `Question 6`: "so what are we actually measuring?" And the honest answer, recorded in the document itself — nobody knows yet. No KPI list exists. No training loop has started. That's not a gap in tonight's research. That's the actual content of tonight's research.
+
+**RAHWEH:** Four real, distinct pieces got named, though, even without a KPI list attached to any of them yet. First — the watch-and-learn loop the last three NIGHTs have been building toward isn't just an architecture exercise. Its stated success metric is measurable: real Claude-token savings over time, as the FSM and Behavior Bank layer take over minor jobs a model call used to have to do, iterating and stacking as they go. Second — parallel, human-facing documentation of the exact same harnesses. Not "the AI did this automatically" as the whole story, but "here is how a human operator drives the identical tool by hand" sitting right beside it. Named directly as a real, intended product angle for this house, not an afterthought.
+
+**MAXINE:** Say the third and fourth plainly, since they're the ones a listener might assume are already answered.
+
+**TOMO:** Third — transparency, as a standing requirement, not a one-time report. The user wants to know, at all times, what's being tested, what's being fixed, what's being trained, and why, tied back to that same token-saving number. Fourth — the actual long horizon this is all aimed at: real independence, first for understanding this codebase and its docs through chat and tool-use, then eventually minor bug fixes, then game programming, then agentic user-behavior emulation itself.
+
+**THE NARRATOR:** None of that is small. Does the document pretend otherwise?
+
+**RAHWEH:** It doesn't. It says so directly — nothing on that list has a number attached to it yet. Not "tokens saved per week," not "percent of bugs auto-fixable," not any of it. The document's own closing line says this is material for a conversation the user and the house's own agent still need to have directly, not a plan that's already running.
+
+**TOMO:** Then why record it at all, if nothing's decided?
+
+**MAXINE:** Because the house's own convention already answered that, several NIGHTs ago — an unfinished idea gets written down with its gaps named honestly, the same way `DUSTOPIA-HACK.md` named its own borrowed, unexplained lambda parameter instead of quietly inventing a fake justification for it. A real gap on paper is worth more than a fake resolution. This document does the same thing for a KPI list that doesn't exist yet: name that it doesn't exist, name exactly what it needs to cover, and stop there.
+
+**THE NARRATOR:** Say what actually has to happen before that conversation can produce real numbers instead of guesses.
+
+**RAHWEH:** Something to watch. `Question 6` names it directly — either WSR-CIV or DSR's pause needs lifting, giving the watch layer a real gameplay loop to sit on top of, or the robot-and-event bridge from item two, already built and committed the same day this document was written, gives it something smaller and closer at hand: one entity's event, run against a host, with a real before-and-after value to measure. Either one turns "we should have KPIs" into "here is one real number, from one real run."
+
+**TOMO:** So tonight's actual ending.
+
+**MAXINE:** Is that there isn't one. Two things got reviewed honestly instead of accepted wholesale, and one open conversation got written down instead of guessed at. That's the whole content. The next NIGHT that touches this thread should have real numbers in it, or it shouldn't claim to close the loop either.
+
+**THE NARRATOR:** An unfinished ledger, entered as one, on the day it was still unfinished. 🧾📋

@@ -1,0 +1,1 @@
+SHOW_PAGE:/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/common_events/greet_player/.show_choices_objects.tmp.pdl|/home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/common_events/greet_player/.show_choices_result.tmp.txt

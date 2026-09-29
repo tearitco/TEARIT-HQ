@@ -1,0 +1,30 @@
+# 🌙 NIGHT 25 — Act and the field
+# ====================================================================
+# Title: "🌙 NIGHT 25 — Act and the field 🌙"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, technical catch-up after the game and AI split
+
+**THE NARRATOR:** This lesson is the technical card for the stretch after NIGHT 24. The handoff for the next agent is grok-to-claude-2026-09-23.txt in the XO terumon handoff folder. Merge branch grok. Do not commit onto grok.
+
+**MAXINE:** Two chapters. 16.game is the machine. 17.ai is who may append a command, including for dev and productivity. They point at each other. AI is not a second play button.
+
+**TOMO:** Playtest of a desk is taskbar cell 9. The file is khtpm_play_mode.state.txt, mode equals on or off. PC-HQ's Player menu writes that same file, and only when the script is given a real session directory. play_event.sh is not that button. It runs one pal and every other on-click common event. Proofs in this stretch used prisc plus x on one event.pal.
+
+**RAHWEH:** Enter is the activate key. Code 13. The line is KEY_PRESSED, colon, space, 13. send_input still writes the bare code and the window ignores it. send_window_key writes the real line. One live Enter, pid 369123, moved the marker from the Actors tab onto row 16, Harold. A Down before that only walked the tab highlight onto Classes. Do not use Down to select an actor.
+
+**MAXINE:** Ember is actor 5. page_value is on that actor row and on actors.pdl. numeric_value is terumon_001_ember, numeric_fact.txt. advance_fact adds one to the side the weight file names. which equals both writes nothing. mhp stayed 20. Values were restored to 20.
+
+**TOMO:** apply_range is an N by N square from the origin cell. a1 to b2 at range 2 includes the cell. a1 to c3 does not. The hit dropped Glacine, actor 6, page_value from 20 to 19, then she was restored. The placer fills that square when PLACE_RANGE is set, or when the jump buffer is only digits. The overlay was not opened. There is no frame of the fill.
+
+**RAHWEH:** The events picker lists every COMMAND in the registry. Cap is 128. House commands are allowed. read_receipt, send_window_key, advance_fact, and apply_range are in it. ai_describe, ai_fsm_transition, and ai_goap_plan are not.
+
+**MAXINE:** Cli-io is every entity. The row opens entity-cli.xhtpm, a real cli_io element. Enter commits the typed line. range, then four arguments, calls apply_range. advance, then page or numeric, calls the advance script. The caret mark is the shared renderer's, when the field is armed. That armed frame was not saved.
+
+**TOMO:** Act is only an actor. The four terumon, Asa, Ava, and Cursword. Not a door, not a store, not book-stack. The official name for a nested menu in the legacy path is an object page. PAGE, OBJECT, GOTO, BACK, in objects.pdl. The menu you see is menu.chtpm. Act on that menu opens a window built from skills.pdl. Rows are Move, Use, and Attack. Attack calls the proven range hit. Move and Use only record the word. A pal reads menu.chtpm at startup. Restart it or the old rows stay.
+
+**RAHWEH:** hq-ftp is not this lesson's build. It is a network menu row and a placeholder window. The peer to use later is palnet_peer. It moves a line, not a file. Do not open a new socket stack.
+
+**THE NARRATOR:** Left open. A frame of the filled range square. Move and Use actually aiming. The caret confirmed on a frame. default_op.txt still missing under the mutaclsym system directory. The battle screen. Loading or saving an RPG Maker project. A weight the desk and a 3D view both read. Then, and only then, a model appending one command.
+
+**MAXINE:** Stop. The next prompt buys one of those, and names which one.

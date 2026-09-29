@@ -1,0 +1,5 @@
+wallet_id=jb
+password_hash=da114fe251e57acdab774919e86f16f09e9341d913db8ad4ae808ac63ea9f2c7
+created_at=1788687259
+cached_balance=0
+last_processed_block=13999

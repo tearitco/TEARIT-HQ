@@ -103,7 +103,68 @@
   house-wide "never write C for what an event can do" rule with its one
   exception (new `ai_*` event-command primitives), the DSR/WSR-CIV
   parallel-track multi-copy event-reuse experiment, and the confirmed
-  zero-recompile context-menu-as-event scaffolding.
+  zero-recompile context-menu-as-event scaffolding. Follow-up:
+  `1-1.HARNECIENT.SMOL/NIGHT_19_THE_UNFINISHED_LEDGER.txt`/`.mp3` —
+  an explicitly OPEN episode (no closed loop, unlike 16-18): reviews
+  the external JEV docs honestly (useful diagram, unverified external
+  product claims, banks table overstated vs `DUSTOPIA-HACK.md` §3's
+  real status) and records the user's KPI/token-saving/human-parity-
+  docs conversation from `AI-TRACK-BRAINSTORM-QUESTIONS.md` Questions
+  5-6 as still unresolved, on purpose. Direct follow-up, same day:
+  `1-1.HARNECIENT.SMOL/NIGHT_20_THE_SCHOOL.txt`/`.mp3` — a BREAKTHROUGH
+  episode: finds the missing Corpus/Training Layer (belongs to Famous
+  LLM/tomom, not the Bank Layer or frozen Gemma), confirms all-four-
+  Banks/every-app scope, and names the "school" model (per-entity
+  learner instances, curriculum classes, teacher now the user/Gemma
+  later, pass/fail gating, growable primitives) from
+  `AI-TRACK-BRAINSTORM-QUESTIONS.md` Question 7 — design shape found,
+  nothing built yet. Direct follow-up, same day:
+  `1-1.HARNECIENT.SMOL/NIGHT_21_THE_RETURN_PATH.txt`/`.mp3` — a
+  video-prep agent reviewing NIGHT_20 catches the real hole: no
+  return path from tomom's learning back into gameplay. Names and
+  orders four injection points (`AI-TRACK-BRAINSTORM-QUESTIONS.md`
+  Question 8) — `.pdl` parameter overrides (most concrete), FSM path
+  candidates promoted through the existing Bank reward-weight gate,
+  an unresolved DESCRIBE-vs-direct-emission decision for Event
+  generation, and an unshaped shadow-scored primitive approximation —
+  design shape found, nothing built yet. Direct follow-up, same day:
+  `1-1.HARNECIENT.SMOL/NIGHT_22_THE_CONCEPT_BANK.txt`/`.mp3` — opens
+  with a real, unplanned discovery (tomom's `chatbot_moe_v1.+x` binary
+  was a day stale behind its own already-fixed source; one rebuild,
+  verified live across all 10 real subject curricula), then designs
+  the Concept Bank (`AI-TRACK-BRAINSTORM-QUESTIONS.md` Question 9):
+  named z-nodes, fixed-slot pointer records, hub-and-spoke topology
+  (not a maze), weights living only at the spoke with a derived mirror
+  at the master, and the FSM/RL/GOAP meta-level extension — design
+  shape found through real back-and-forth, nothing built yet. Direct
+  follow-up, same day: `1-1.HARNECIENT.SMOL/
+  NIGHT_23_TERUMON_OPEN_THEIR_OWN_CLASSROOM.txt`/`.mp3` — a new
+  evolvable pet class (terumon, formerly circulated as fuzzpets/
+  dustpets/muchipets) checked directly against seven real house
+  pieces (entity system, tomom's school model, the `A-TEARIT-IS-ALL-
+  YOU-NEED.md` promotion loop, Watch Layer, chemistry tiles, Events
+  pipeline, chain-hq/myne-qrypto); designs the owner-set
+  `learning_limits.pdl` schema (direction/size/strength/schools/
+  environment) as a proposal-side filter sitting in front of the
+  existing validator, resolves isolation-chatbot mode as a second
+  proposer into the same learner instance rather than a separate one,
+  and opens `x0.parent-level-dev-env-04.04/yz.muchiverse/#.#.calendar-dox/!.HQ-IQ-BOOK/08-roadmap/design-docs/terumon-dev/` with four
+  seeded dustball terumon carrying meaningfully different learning
+  limits — design shape found and four experiment seeds filed, no
+  Watch Layer observation or promotion run yet.
+- `design-docs/A-TEARIT-IS-ALL-YOU-NEED.md` — **2026-09-22, real
+  technical spec, not a dramatization**: the full propose → validate →
+  replay → promote loop that lets Gemma (constant, cheap, DESCRIBE)
+  and Claude/tomom (occasional, deep judgment) jointly hand-tune the
+  Concept Bank from real feedback instead of GPU-brute-force training
+  — real record formats (`OBS`/`FEEDBACK`/`EDIT`), why FSM/GOAP
+  self-authoring reuses the existing Events compiler instead of a new
+  code-gen path, the bootstrapping/trust-tier order (mirrors the
+  grade-level curriculum idea), and where classic FF/BP/QKV-style
+  training still has a real, scoped role (magnitude-refinement within
+  an already-named topology only, routed through the same promotion
+  gate as any other proposer — never topology discovery). Explicit
+  OPEN vs. decided sections, not papered over.
 - `design-docs/RELAY-WINDOW-TARGETING-DESIGN.md` — **2026-09-18
   design, not started**: formalizes how a relay-driving agent picks
   the right window/PID. Real current mechanism confirmed by direct

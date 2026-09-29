@@ -64,8 +64,35 @@ def parse_meta_pdl(path: str):
     """Real SECTION|KEY|VALUE parse, same shape read_footprint_tiles()/
     read_menu_config() in tp_desktop_window_rgb.c already use. Returns
     a list of (label, action) tuples, in real file order - order matters,
-    it's the real menu order the human sees."""
+    it's the real menu order the human sees.
+
+    REAL, NEW 2026-09-22 (task 2 - per-entity Cli-io on/off), FLIPPED
+    same day (direct correction, "not just dsr, but all entities would
+    get the cli-io"): also reads a real `META | cli_io_default | off`
+    row, same convention this file's own header already declares for
+    METHOD rows (SECTION|KEY|VALUE, matched exactly - not a new
+    format). This is the menu.chtpm-path twin of khtpm_entity.c's
+    load_methods() runtime auto-append (that C function's own real
+    logic, used only for entities WITHOUT a menu.chtpm yet) - kept as
+    two real, separate, in-sync implementations because that's this
+    house's own already-established convention for this exact fork
+    (menu.chtpm vs the legacy runtime popup path), not a new pattern.
+    Default is ON for every entity now (absent field = on); an
+    explicit "off" row opts ONE entity out - matches load_methods()
+    exactly. When on and no explicit METHOD row already names Cli-io,
+    a real `<item label="Cli-io" action="CLI_IO"/>` is appended last,
+    the same action string khtpm_entity.c's own real armed/typed/
+    committed cli_io handling already recognizes on ITS OWN native
+    popup path (entities with no menu.chtpm yet). REAL, OPEN GAP found
+    while wiring this (2026-09-22): khtpm_core_render.c - the renderer
+    that actually PAINTS a menu.chtpm-based popup like this one - has
+    no "CLI_IO" case in its own action dispatch (grep confirms it).
+    So this row appears and is clickable, but clicking it on THIS path
+    does not yet arm the real text-input row; only entities still on
+    the legacy khtpm_entity.c-native popup (no menu.chtpm) get the full
+    working behavior today. Left OPEN - see report."""
     methods = []
+    cli_io_default_on = True
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
             line = line.rstrip("\n\r")
@@ -73,6 +100,9 @@ def parse_meta_pdl(path: str):
                 continue
             parts = [p.strip() for p in line.split("|")]
             if len(parts) < 3:
+                continue
+            if parts[0] == "META" and parts[1] == "cli_io_default":
+                cli_io_default_on = (parts[2].strip() != "off")
                 continue
             if parts[0] != "METHOD":
                 continue
@@ -88,6 +118,10 @@ def parse_meta_pdl(path: str):
             action = "|".join(parts[2:]).strip()
             if label and action:
                 methods.append((label, action))
+    if cli_io_default_on and not any(
+        lbl == "Cli-io" or act == "CLI_IO" for lbl, act in methods
+    ):
+        methods.append(("Cli-io", "CLI_IO"))
     return methods
 
 
@@ -158,12 +192,13 @@ def main(argv):
         return 1
     if argv[1] == "--all":
         if len(argv) < 3:
-            print("usage: meta_to_menu_chtpm.py --all <house_root>")
+            print("usage: meta_to_menu_chtpm.py --all <house_root> [--force]")
             return 1
         house_root = argv[2]
+        force_all = "--force" in argv
         converted = 0
         for d in find_all_candidates(house_root):
-            if convert_one(d):
+            if convert_one(d, force=force_all):
                 converted += 1
         print(f"--- done: {converted} real menu.chtpm written ---")
         return 0

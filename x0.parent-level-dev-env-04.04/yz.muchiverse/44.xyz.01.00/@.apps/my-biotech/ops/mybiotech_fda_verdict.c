@@ -65,11 +65,61 @@
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 #define PATH_BUF 4352
 
-static const char *GEMMA_LAN_URL = "http://10.0.0.144:11434";
-static const char *GEMMA_LAN_MODEL = "gemma3:270m";
+/* REAL FIX 2026-09-27 (AI-PUSH-ROADMAP-AND-NUANCES.md): was a hardcoded
+ * constant, duplicated across four files. Now read from the house's
+ * one shared #.desktop/ai_backend.pdl at startup - falls back to this
+ * same default if the file/key is missing. Duplicated per-file on
+ * purpose, matching this house's own established per-worker-file
+ * convention - not an oversight. */
+static char g_gemma_lan_url[256] = "http://10.0.0.144:11434";
+static char g_gemma_lan_model[64] = "gemma3:270m";
+
+static int kh_dir_exists(const char *path) {
+    struct stat st;
+    return stat(path, &st) == 0 && S_ISDIR(st.st_mode);
+}
+
+static void kh_find_house_root(const char *start, char *out, size_t outsz) {
+    char resolved[PATH_BUF];
+    if (!realpath(start, resolved)) { snprintf(out, outsz, "%s", start); return; }
+    char cur[PATH_BUF];
+    snprintf(cur, sizeof(cur), "%s", resolved);
+    for (;;) {
+        char marker[PATH_BUF];
+        snprintf(marker, sizeof(marker), "%s/#.desktop", cur);
+        if (kh_dir_exists(marker)) { snprintf(out, outsz, "%s", cur); return; }
+        char *slash = strrchr(cur, '/');
+        if (!slash || slash == cur) break;
+        *slash = '\0';
+    }
+    snprintf(out, outsz, "%s", start);
+}
+
+static void kh_load_gemma_lan_config(const char *project_root) {
+    char house_root[PATH_BUF];
+    kh_find_house_root(project_root, house_root, sizeof(house_root));
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/ai_backend.pdl", house_root);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        char *eq = strchr(line, '=');
+        if (!eq) continue;
+        *eq = '\0';
+        char *val = eq + 1;
+        val[strcspn(val, "\r\n")] = '\0';
+        if (strcmp(line, "gemma_lan_url") == 0 && val[0])
+            snprintf(g_gemma_lan_url, sizeof(g_gemma_lan_url), "%s", val);
+        else if (strcmp(line, "gemma_lan_model") == 0 && val[0])
+            snprintf(g_gemma_lan_model, sizeof(g_gemma_lan_model), "%s", val);
+    }
+    fclose(f);
+}
 
 static char *read_full_file(const char *path) {
     FILE *f = fopen(path, "r");
@@ -107,7 +157,7 @@ static char *gemma_ask(const char *root, const char *user_question) {
 
     FILE *pf = fopen(request_path, "w");
     if (!pf) { free(persona); return NULL; }
-    fprintf(pf, "{\"model\":\"%s\",\"stream\":false,\"messages\":[{\"role\":\"system\",\"content\":\"", GEMMA_LAN_MODEL);
+    fprintf(pf, "{\"model\":\"%s\",\"stream\":false,\"messages\":[{\"role\":\"system\",\"content\":\"", g_gemma_lan_model);
     json_escaped(pf, persona);
     fputs("\"},{\"role\":\"user\",\"content\":\"", pf);
     json_escaped(pf, user_question);
@@ -116,7 +166,7 @@ static char *gemma_ask(const char *root, const char *user_question) {
     free(persona);
 
     char full_url[256];
-    snprintf(full_url, sizeof(full_url), "%s/api/chat", GEMMA_LAN_URL);
+    snprintf(full_url, sizeof(full_url), "%s/api/chat", g_gemma_lan_url);
 
     char connect_cmd[PATH_BUF * 3];
 #pragma GCC diagnostic push
@@ -197,6 +247,7 @@ int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "Usage: mybiotech_fda_verdict.+x <project_root> <dossier_path>\n"); return 1; }
     const char *root = argv[1];
     const char *dossier_path = argv[2];
+    kh_load_gemma_lan_config(root);
 
     char *dossier_content = read_full_file(dossier_path);
     if (!dossier_content) { fprintf(stderr, "cannot read dossier: %s\n", dossier_path); return 1; }

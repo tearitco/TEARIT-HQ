@@ -1593,8 +1593,15 @@ static void read_active_kv(const char *stem, char *dir, size_t dsz, char *set, s
     fclose(af);
 }
 
-static void publish_grid_from_png(const char *png, int force_tw, int force_th, int ohr_scale,
-                                  const char *sprite_root, FILE *out) {
+/* glyph_override (2026-09-22, my-palettes real-thumbnails scoped fix):
+ * when non-NULL AND the crop resolves to exactly one tile (cols==1 &&
+ * rows==1 - the "whole image is one swatch" case, e.g. an individually
+ * imported terumon sprite), use it verbatim as the emitted glyph
+ * instead of the generic "<row>_<col>" naming every other caller of
+ * this function relies on. NULL for every existing caller (rmmv/
+ * tiled/ohr) - zero behavior change for them. */
+static void publish_grid_from_png_named(const char *png, int force_tw, int force_th, int ohr_scale,
+                                  const char *sprite_root, FILE *out, const char *glyph_override) {
     int w, h, ch;
     unsigned char *px = stbi_load(png, &w, &h, &ch, 4);
     if (!px) return;
@@ -1652,12 +1659,20 @@ static void publish_grid_from_png(const char *png, int force_tw, int force_th, i
                 }
             }
             char lab[64];
-            snprintf(lab, sizeof(lab), "%d_%d", r, c);
+            if (glyph_override && cols == 1 && rows == 1)
+                snprintf(lab, sizeof(lab), "%s", glyph_override);
+            else
+                snprintf(lab, sizeof(lab), "%d_%d", r, c);
             fprintf(out, "%s\t%s\t%s\n", lab, lab, dir);
         }
     }
     if (scaled) free(scaled);
     stbi_image_free(px);
+}
+
+static void publish_grid_from_png(const char *png, int force_tw, int force_th, int ohr_scale,
+                                  const char *sprite_root, FILE *out) {
+    publish_grid_from_png_named(png, force_tw, force_th, ohr_scale, sprite_root, out, NULL);
 }
 
 static int png_or_bmp(const char *name) {
@@ -1899,15 +1914,31 @@ static void publish_mypal(void) {
     snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", g_state_path);
     FILE *out = fopen(tmp_path, "w");
     if (!out) return;
-    char png[PATH_BUF] = "", try[PATH_BUF];
+    /* REAL, NEW 2026-09-22 (direct instruction: real thumbnail images
+     * per swatch, dense grid like RPG Maker Tiles - scoped to
+     * my-palettes only). Personal imports are individually-imported
+     * whole sprites (e.g. one teru_XX_color.png per file), NOT a
+     * tile-sheet to crop like rmmv/tiled - so every real image file in
+     * the active folder is its own swatch tile (glyph = its own stem,
+     * via publish_grid_from_png_named's glyph_override), not just the
+     * single "active_set" one. This replaces the old one-PNG-at-a-time
+     * model that left every other imported file as a bare-text
+     * TILESET chooser row and only the picked one as an image (the
+     * real bug behind the "bare text row" report) - reuses the exact
+     * same real crop/sprite.csv/hq_sprite() blit path rmmv already
+     * uses, just called once per file instead of once per grid. */
     const char *exts[] = { ".png", ".bmp", ".jpg", NULL };
-    for (int i = 0; exts[i]; i++) {
-        snprintf(try, sizeof(try), "%s/%s%s", folder, active_set, exts[i]);
-        if (access(try, R_OK) == 0) { snprintf(png, sizeof(png), "%s", try); break; }
+    for (int i = 0; i < ns; i++) {
+        char png[PATH_BUF] = "", try[PATH_BUF];
+        for (int e = 0; exts[e]; e++) {
+            snprintf(try, sizeof(try), "%s/%s%s", folder, sets[i], exts[e]);
+            if (access(try, R_OK) == 0) { snprintf(png, sizeof(png), "%s", try); break; }
+        }
+        if (!png[0]) continue;
+        char sprite_root[PATH_BUF];
+        snprintf(sprite_root, sizeof(sprite_root), "%s/sprites/mypal/%s/%s", g_package_dir, active_dir, sets[i]);
+        publish_grid_from_png_named(png, 0, 0, 0, sprite_root, out, sets[i]);
     }
-    char sprite_root[PATH_BUF];
-    snprintf(sprite_root, sizeof(sprite_root), "%s/sprites/mypal/%s/%s", g_package_dir, active_dir, active_set);
-    if (png[0]) publish_grid_from_png(png, 0, 0, 0, sprite_root, out);
     fclose(out);
     rename(tmp_path, g_state_path);
 }

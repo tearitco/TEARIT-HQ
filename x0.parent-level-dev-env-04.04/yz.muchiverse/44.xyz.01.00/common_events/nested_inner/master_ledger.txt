@@ -10,3 +10,5 @@
 [2026-09-03 12:32:00] Play triggered common event nested_inner (page_1, trigger=on-click) via greet_player
 [Prisc Error] Could not open ops file: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/101.mutaclsym🧟‍♂️️+18.0G/system/default_op.txt
 [2026-09-03 14:07:11] Play triggered common event nested_inner (page_1, trigger=on-click) via greet_player
+[Prisc Error] Could not open ops file: /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/101.mutaclsym🧟‍♂️️+18.0G/system/default_op.txt
+[2026-09-23 11:34:53] Play triggered common event nested_inner (page_1, trigger=on-click) via read-receipt-ent

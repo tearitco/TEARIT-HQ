@@ -1,0 +1,10 @@
+name=egg_17
+type=egg
+species_id=sp_lizard
+species_emoji=🦎
+species_name=Lizard
+rarity=1
+movement=ground
+serial=17
+owner=user_01
+hatched=0

@@ -1,0 +1,4 @@
+# world_manager operations - minimal prisc+x configuration
+# Format: name type handler {description}
+halt void builtin_halt {stop execution}
+out void builtin_out {print register to stdout}

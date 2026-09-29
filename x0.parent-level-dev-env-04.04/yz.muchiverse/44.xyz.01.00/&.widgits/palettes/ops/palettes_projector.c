@@ -270,6 +270,36 @@ int main(int argc, char **argv) {
                                     emitted, actual == 0 ? 1 : 0,
                                     actual > emitted ? 1 : 0);
             #undef KH_VAR_CAP
+
+            /* my-palettes ONLY (scoped, direct instruction: "give it to
+             * the others later once it's proven working") - echo the
+             * renderer's own generic focus-label file (see
+             * kh_write_focus_label() in khtpm_core_render.c) as
+             * ${hover_label} so the template's own chrome/status area
+             * can show whichever tile currently has nav focus, instead
+             * of a permanent per-tile text label. Named after THIS
+             * template's own vars file stem (palettes-my-palettes_ui
+             * -> palettes-my-palettes_focus.txt), so it never collides
+             * with a concurrently-open rmmv/tiled/etc. window sharing
+             * the same package_dir. */
+            if (strcmp(cat, "my-palettes") == 0) {
+                char hover_label[128] = "";
+                char fpath[PATH_MAX];
+                snprintf(fpath, sizeof(fpath), "%s/state/palettes-%s_focus.txt", pkg, cat);
+                FILE *ff = fopen(fpath, "r");
+                if (ff) {
+                    char l[256];
+                    while (fgets(l, sizeof(l), ff)) {
+                        if (strncmp(l, "focus_label=", 12) == 0) {
+                            snprintf(hover_label, sizeof(hover_label), "%s", l + 12);
+                            char *nl = strpbrk(hover_label, "\r\n"); if (nl) *nl = 0;
+                        }
+                    }
+                    fclose(ff);
+                }
+                off += (size_t)snprintf(ui + off, (off < UIBUF) ? UIBUF - off : 0,
+                                        "hover_label=%s\n", hover_label);
+            }
         } else {
             if (f) {
                 char line[PATH_MAX + 256];

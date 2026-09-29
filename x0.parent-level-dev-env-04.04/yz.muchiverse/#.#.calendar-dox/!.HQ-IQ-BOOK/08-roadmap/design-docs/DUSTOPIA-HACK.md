@@ -263,3 +263,60 @@ phase of work, not a unilateral decision.
   discipline §5 borrows explicitly.
 - `LLMUD-INTEGRATION-DESIGN.md` — where Synonym/Relation/Sentence Bank
   were first named in this house, real status per bank in §3's table.
+
+## Addendum 2026-09-23 — two representations, one weight, and the step that is actually done
+
+The product this hack serves is not "Gemma writes a cave." It is
+Dustopia: the same chemistry, astronomy, and mechanics fact held in
+two representations, and a weight that says which one is in force.
+
+- **RPG representation.** An event page. Discrete. An actor row, a
+  switch, a turn. This is what livedesk can run today.
+- **3D representation.** A numeric step. Positions, rates, a clock
+  that is fast for small things and slow for large things. This is
+  what PC-HQ is for. It is not built as a second game with a second
+  rulebook.
+- **The switch.** A bank weight, not a mode menu buried in C. The
+  event page reads the weight and either plays the discrete command
+  or asks the numeric step to advance. Describe, then score, then
+  store, from §2, is how a new weight gets into that bank. The model
+  describes. The harness scores. A person can read both.
+
+What is done, and what it is allowed to count as:
+
+- `read_receipt` plus `if` plus `send_input` on
+  `read-receipt-ent` (commits `91051f70`, `4b10b6e7`, `76cca6cd` on
+  `grok`). A page looked at `focus_nav` and pressed Down only when
+  the switch was off. That is KPI 0 of the ladder in
+  `GS-23-HQ-TECH.md` next to the short customer report. It is not
+  chemistry and it is not 3D.
+- `send_input` wrote the bare code `201`. The live window wants
+  `KEY_PRESSED: 201`. Do not call the desk "driven by the page"
+  until those match. **UPDATE 2026-09-24: met.** A separate
+  `send_window_key` command (registry + `mr_send_window_key.sh`,
+  commit `ff456637`) now writes the correct `KEY_PRESSED: <code>`
+  line; `read-receipt-ent`'s own page 1 node 3 already uses it
+  (commit `cf666582`), not the old bare-code `send_input`. Both
+  landed on `grok`, merged into `claude` 2026-09-24. `send_input`
+  itself is intentionally left unchanged as a lower-level primitive
+  for other uses, not a lingering bug.
+- λ is still undefined, as §4 says. Do not let a later doc treat the
+  receipt work as a definition of λ.
+- This pass did not re-open `xo-pets` or `Mar$.$treetRace` and did
+  not re-verify those binaries. The fable's claim that they exist
+  is not a 2026-09-23 test result.
+
+Accountability ladder, abstract and checkable, full writeup in the
+tech companion:
+
+1. A page branches on a receipt. **Met.**
+2. The key line matches the window mailbox. **Met 2026-09-24**
+   (`send_window_key`, commit `ff456637`/`cf666582`).
+3. One live window, one key, stop. **Not met.**
+4. One material id has both an event-page fact and a numeric fact.
+   **Not met.**
+5. A stored weight chooses which fact advances the tick. **Not met.**
+6. The same weight is readable on the desk and in a 3D view.
+   **Not met.**
+7. A local model describes, the harness scores, a person can reject
+   the store. **Not met.** `ai_describe` is not in the registry.

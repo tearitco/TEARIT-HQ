@@ -1,0 +1,218 @@
+# 2026-09-23 — Actors list, relay, frame history
+
+Desk pals Ember, Glacine, Murmur, Solvent, Asa, Ava, and Cursword are
+actor rows 5–11. The live Database window listed them (`Actors (11)`
+in `db-hq-pal/state/ui.txt`). Rows were written into `actors.pdl` and
+`db_hq_actors.state.txt`. Not fixed below; written down so the next
+pass can pick them up.
+
+## Frame history (done this pass, TPMOS pattern)
+
+`1.TPMOS_c_+rmmp.0103.0001/pieces/display/renderer.c` keeps two files.
+`pieces/display/current_frame.txt` is the live snapshot. On each real
+render it appends that snapshot to
+`pieces/debug/frames/session_frame_history.txt` under a
+`--- FRAME UPDATE at <time> ---` line. A new process truncates that
+log once and writes `=== NEW SESSION at <time> ===`. It does not
+truncate on every frame.
+
+db-hq-pal now does the same for its text frame. `state/ui.txt` stays
+the live snapshot. `ops/frame_history.sh`, started by `button.sh`,
+wipes `debug/frames/session_frame_history.txt` once per launch and
+appends only when `ui.txt` changes. The key mailbox
+`#.desktop/entity_menu_history/<pid>.txt` is still a different file
+and the renderer still truncates that one on startup.
+
+## Still open
+
+1. **No add-actor control.** `dashboard.xhtpm` can show a row and edit
+   a field. It cannot create an actor. The seven rows exist because
+   the data files were edited. There is no GUI gesture for IRL to
+   learn that step from.
+
+2. **Click count is a setting, not something to infer.**
+   `#.desktop/hq_ui.pdl` has `click_two_step=1`: first mouse click
+   focuses, second click activates. `0` would be one click. Keyboard
+   Enter does not read that key; one Return calls `activate_focused()`.
+   Eight Downs and one Enter opened States without a two-step click
+   on Actors. That is not a list-arrow bug, and it is not a reason to
+   edit tab code. The k9 addendum that said one activation locks the
+   sidebar was wrong and is corrected in the same file.
+
+## Intent 2026-09-23 — read a receipt so a page can branch
+
+**Intent.** An event page can already press Down (`send_input`). It
+cannot see where the cursor landed. Meta-AI / `ai_fsm_transition`
+stays unbuilt until a page can read `focus_nav` from a receipt and
+take one branch or the other with the `if` command that already
+exists. This is not a new AI stack and not a renderer change.
+
+**Steps.**
+1. Add command `read_receipt` to `event_commands.registry.pdl`. It
+   execs `mr_read_receipt.+x`.
+2. The op reads one `key=` line from a receipt path. It stores that
+   text in `variables.txt` under the name given. If an expected value
+   and a switch name are given, it writes that switch as `1` when the
+   text matches and `0` when it does not. `if` compares a switch to 1
+   or 0.
+3. Prove it on a fixture receipt in `/tmp`, not on the live Database
+   window. Missing file stores `NONE` and switch `0`, and exits 0.
+
+**KPI.** All three must pass before anyone adds `ai_fsm_transition`:
+- Fixture `focus_nav=17`, expect `17` → variable `17`, switch `1`.
+- Same file, expect `32` → variable `17`, switch `0`.
+- Missing receipt → variable `NONE`, switch `0`.
+
+**Passed 2026-09-23 through the compiler, not only the shell.**
+The events manager appended the node on
+`#.desktop/harnesses/read-receipt-ent` and wrote `event.pal` plus
+`cmd_1.sh`, same shape as Change Gold on `m8_redhorned`. The compiler
+keeps four fields (`MAX_FIELDS` is 4), so the fourth field is
+`match=on_harold=17` (switch name, then the value to compare). `prisc+x`
+ran that page alone. All three rows above passed. `play_event.sh` was
+not used for the recorded run: it also fires every other `on-click`
+common event (`palcraft_sign_onclick` is a sign message).
+
+**Not in this pass.** No live click. No `ai_describe`. No actor-row
+edits. Kilo's Co-lab wrap is a separate task.
+
+## Meta AI does not click. The FSM does.
+
+The click checks above are the kind of repeated action that should
+leave this chat. The architecture is already written. Do not start a
+second one.
+
+- New C is allowed only for AI event-command types in
+  `44.xyz.01.00/#.ref/menu/event_commands.registry.pdl`:
+  `ai_describe` (describe only, never classify), `ai_fsm_transition`,
+  `ai_goap_plan`. That permission is kilo's, in
+  `13.agent-coms/KILO/claude-2-kilo-9.17.md` §2b. The registry still
+  has zero `ai_*` commands. A behavior composed of those commands is
+  an event page, not a new `.c`.
+- tomom is the learner (school, corpus, return path into gameplay).
+  It is not the thing that issues the click. NIGHT_20 through NIGHT_23
+  in `08-roadmap/00-INDEX.md`. The return path is still design-only.
+- A harness player is the flag in that same kilo note: the turn is
+  driven by `ai_fsm_transition` / `ai_goap_plan` instead of a human
+  relay. The human-vs-harness flag can be scaffolded. The IRL
+  start/stop control is later, in hai-lab's game tab.
+- What the FSM would own for the Database window, once those
+  primitives exist: read `ascii_frames/<pid>.frame.txt` for the
+  `[>]` row and `state/ui.txt` for `detail_title`. If the marker is
+  not on the tab, click that tab's box from
+  `entity_menu_frame_<pid>.txt`. With `click_two_step=1`, the first
+  click only focuses, so the transition is "click the same box
+  again," then read the frame again. Down is a separate transition,
+  and it currently walks detail fields, not the actor list. The meta
+  layer may describe that frame. It does not emit the click, and it
+  does not decide that the GUI is broken.
+
+Checked 2026-09-23, not delegated yet: two clicks on the Actors tab
+box left `[>]` on a detail field and `sel` 0 (Harold). Escape moved
+`[>]` to `17. 1. Harold`. A click inside that row's published box
+moved `[>]` to the blank detail field. Down never changed the
+selected actor.
+
+3. **`db_hq_history.txt` does not drive this window.** The harness
+   `nav.sh` appends there for the old `g_is_db_hq` path.
+   `class="db-hq-pal"` leaves that path dormant. Keys for this window
+   go to `entity_menu_history/<pid>.txt`, and that file is truncated
+   when the renderer starts. The frame log above is the review copy.
+
+## Look, then one key — passed 2026-09-23
+
+`read-receipt-ent` page 1 now reads the receipt, and if `on_harold`
+is `0` it injects key `201` into that entity's `agent_history.txt`,
+then reads the receipt again. `prisc+x` only. Not `play_event.sh`.
+
+- Receipt `focus_nav=32` → switch `0`, history contains `201`.
+- Receipt `focus_nav=17` → switch `1`, history stays empty.
+
+`send_input` wrote the bare code `201`, not `KEY_PRESSED: 201`. The
+live window mailbox wants the longer line. This page proves the
+branch. It does not drive the Database window. `ai_fsm_transition`
+is still absent.
+
+**Window line, passed on the fixture the same day.** `send_input` was
+left alone. New command `send_window_key` runs
+`mr_send_window_key.sh`, which appends `KEY_PRESSED: <decimal>`.
+Non-decimal codes are rejected. The fixture page's third node now
+uses it. `prisc+x`: receipt 32 writes `KEY_PRESSED: 201` and switch
+0; receipt 17 writes nothing and switch 1.
+
+**One live key, 2026-09-23, then stop.** Database window pid 240948.
+Receipt before: `focus_nav=1`, ascii marker `[>] 1. * Actors`,
+detail Harold, `tab_title=Actors (11)`. The page was pointed at that
+receipt and at `entity_menu_history/240948.txt` for one `prisc+x`
+run, then pointed back at the fixture. `focus_nav` was 1, not 17, so
+the switch was 0 and one `KEY_PRESSED: 201` was written. After it,
+the marker was `[>] 2. Classes` and the receipt said `focus_nav=2`.
+`tab_title` was still Actors and the detail was still Harold. The
+key moved the tab highlight. It did not activate Classes and it did
+not change the selected actor. No second key. `prisc+x` also printed
+that it could not open `101.mutaclsym…/system/default_op.txt`. The
+shell commands in the page still ran. Down was the wrong key.
+K9 activates with Enter, code 13. The fixture page now writes
+`KEY_PRESSED: 13`. Proved on the fixture only: receipt 32 writes
+that line, receipt 17 writes nothing. Enter was not sent to pid
+240948. The highlight there is still on Classes.
+
+**Enter on Actors, pid 369123, one key.** The window was restarted.
+Receipt `focus_nav=1`, marker `[>] 1. * Actors`, detail Harold.
+The page wrote one `KEY_PRESSED: 13`. After it the marker was
+`[>] 16. 1. Harold` and `focus_nav=16`. Tab title stayed Actors (11).
+Detail stayed Harold. No second key. The fixture page was pointed
+back at `/tmp` and `agent_history.txt`.
+
+**Two facts.** `harnesses/two-facts/advance.sh` reads `which=` from
+`weight.txt` and increments only `page_value` or only
+`numeric_value` in `facts.txt`. Page then numeric went 20/20 →
+21/20 → 21/21. `which=both` exited 1 and left 21/21. Battle screen
+and RPG Maker project load/save stay named in `16.game/GAME.md` and
+were not built.
+
+**The page now advances the fact.** Command `advance_fact` execs
+`two-facts/advance.sh`. `prisc+x` on that page: `which=page` made
+20/20 into 21/20, `which=numeric` made 20/20 into 20/21, `which=both`
+left 20/20 and wrote no `advanced=` line. Fixture reset to 20/20
+and `which=page`. Ember's actor row was not modified.
+
+**Ember is the id.** `page_value` is on actor 5 in
+`db_hq_actors.state.txt` and `actors.pdl`. `numeric_value` is
+`terumon_001_ember/numeric_fact.txt`. The same `advance_fact` page
+moved only the actor field, then only the numeric file, then neither
+when `which=both`. `mhp` stayed 20. Values were restored to 20 and 20.
+
+**Range hit.** `apply_range` on `two-facts` page 2. Square is NxN from the origin cell. `a1` to `b2` at range 2 dropped Glacine's `page_value` from 20 to 19. `a1` to `c3` at range 2 left it at 20. Ember's page fact, `mhp`, and `numeric_value` stayed 20. Glacine restored to 20. `tp_arm_placer_rmmv` fills that square when `PLACE_RANGE` is set or the jump buffer is only digits. The overlay was not opened. Skill rows from a `.pdl` are not built. `prisc+x`
+still prints that `default_op.txt` is missing. The shell command
+ran anyway.
+
+**Playtest is the taskbar Player menu, not `play_event.sh`.** Cell 9
+of the livedesk taskbar (`which == 9`, `livedesk_build_player_menu`)
+is the desk's play / stop / reset. Rows in code: `1.play: ON/OFF`
+(`livedesk:play-toggle`), `stop` (`livedesk:play-stop`), `reset`
+(`livedesk:reset-entities`), Cancel. That is the RPG Maker play
+button for the book:page currently on the desk: start, stop, and
+reset playback for the entities and common events on that page.
+PC-HQ's `tb-player` dropdown was added 2026-09-15 to match it
+(`pchq-board.xhtpm`). Some entities also carry their own play
+control so one entity can be playtested without the rest of the
+page. `play_event.sh` is a harness that runs one `event.pal` and
+also every other on-click common event. It is not this menu. The
+receipt-page proofs used `prisc+x` on one pal. They did not flip
+taskbar play mode.
+
+**Both play paths write the same file. Checked 2026-09-23.** The
+file is `#.desktop/khtpm_play_mode.state.txt` (`mode=on` or
+`mode=off`). It started `on` and was put back to `on`.
+
+- Desk: taskbar strip pid 132125, cell nav 9 (`strip-cell-9`,
+  label player). Focus that cell and Enter, then Enter again.
+  `mode` went `on` → `off`. The same gesture restored `on`.
+- PC-HQ: `pchq_board_action.sh <session_dir> player stop` forced
+  `off`. `player toggle` brought it back to `on`. A second stop
+  and toggle did the same. Reset left the flag `on`. Calling
+  `player` without a real session directory exits before that
+  branch and does not touch the flag.
+
+A per-entity play control was not driven in this check.
