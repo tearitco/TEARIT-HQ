@@ -18,7 +18,7 @@
      list, the Add Command type picker, and the per-field editor (one
      <cli_io> per registry PARAM). evhq_action.sh is the only write
      path; the manager owns compile. -->
-<window label="${entity_label}" class="events-hq-pal database-window">
+<window label="${entity_label}" class="events-hq-pal database-window" drop_highlight="#88ff66" drop_action="sh -c 'exec sh &quot;$1/&amp;.widgits/events-hq/ops/event_drop_handler.sh&quot; &quot;$0&quot; &quot;$1&quot;'">
   <module src="&.widgits/events-hq/ops/+x/evhq_projector.+x"/>
   <page name="main">
 
