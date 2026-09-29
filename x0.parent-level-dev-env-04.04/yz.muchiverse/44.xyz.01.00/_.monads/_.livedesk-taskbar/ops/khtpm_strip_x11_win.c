@@ -7,9 +7,32 @@
  * angles onto the ellipse in XDrawArc. The -lm that goes with it is on both
  * the renderer and entity link lines in build_khtpm_strip_win.ps1. */
 #include <math.h>
-#include <tlhelp32.h>
-
-#define KIND_WIN 1
+  #include <tlhelp32.h>
+  
+  /* TEMPORARY DIAGNOSTIC 2026-09-27: trace the detached-launch crash. */
+  static void x11_trace(const char *fmt, ...) {
+      char p[MAX_PATH];
+      const char *t = getenv("TEMP");
+      if (!t) t = "C:\\Temp";
+      snprintf(p, sizeof(p), "%s\\khtpm_win_trace.log", t);
+      FILE *f = fopen(p, "a");
+      if (!f) return;
+      /* strip the recursive prefix off %TEMP%-relative paths */
+      va_list ap;
+      va_start(ap, fmt);
+      char buf[1024];
+      vsnprintf(buf, sizeof(buf), fmt, ap);
+      va_end(ap);
+      fprintf(f, "[pid=%lu] %s\n", (unsigned long)GetCurrentProcessId(), buf);
+      fclose(f);
+  }
+  static LONG WINAPI x11_trace_seh(PEXCEPTION_POINTERS ep) {
+      x11_trace("SEH code=0x%08lx addr=%p", ep ? (unsigned long)ep->ExceptionRecord->ExceptionCode : 0,
+                ep ? ep->ExceptionRecord->ExceptionAddress : NULL);
+      return EXCEPTION_CONTINUE_SEARCH;
+  }
+  
+  #define KIND_WIN 1
 #define KIND_PIX 2
 #define EQMAX 256
 #define XWMAX 64
@@ -215,6 +238,8 @@ static LRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
     }
     if (m == WM_ERASEBKGND) return 1;
     if (m == WM_PAINT) {
+        static int first_paint = 0;
+        if (first_paint < 3) { first_paint++; x11_trace("WM_PAINT hwnd=%p", h); }
         PAINTSTRUCT ps;
         BeginPaint(h, &ps);
         EndPaint(h, &ps);
@@ -333,6 +358,8 @@ static void dc_done(Drawable dr, HDC hdc) {
 
 Display *XOpenDisplay(const char *name) {
     (void)name;
+    SetUnhandledExceptionFilter(x11_trace_seh);
+    x11_trace("XOpenDisplay()");
     /* Match physical pixels to CreateWindow, or Windows will scale a
      * "fits the work area" header off the right edge. */
     {
@@ -407,6 +434,7 @@ Window XCreateWindow(Display *dpy, Window parent, int x, int y,
         WS_POPUP,
         wa.left + x, wa.top + y, (int)w, (int)h,
         NULL, NULL, GetModuleHandleW(NULL), NULL);
+        x11_trace("XCreateWindow(%ux%u@%d,%d) hwnd=%p", w, h, x, y, hwnd);
         xd->hwnd = hwnd;
         if (hwnd)
             SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)xd);
@@ -428,6 +456,7 @@ Window XCreateWindow(Display *dpy, Window parent, int x, int y,
 
 void XMapRaised(Display *dpy, Window w) {
     if (!xd_valid(w) || !w->hwnd) return;
+    x11_trace("XMapRaised hwnd=%p (owner pid=%lu)", w->hwnd, (unsigned long)GetCurrentProcessId());
     ShowWindow(w->hwnd, SW_SHOW);
     SetWindowPos(w->hwnd, HWND_TOPMOST, 0, 0, 0, 0,
                  SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
@@ -882,6 +911,8 @@ XImage *XGetImage(Display *dpy, Drawable d, int x, int y, unsigned w, unsigned h
 
 void XPutImage(Display *dpy, Drawable d, GC gc, XImage *img,
                int sx, int sy, int dx, int dy, unsigned w, unsigned h) {
+    static int first_put = 0;
+    if (first_put < 120) { first_put++; x11_trace("XPutImage(%ux%u at %d,%d kind=%d) w=%p", w, h, dx, dy, d ? d->kind : -1, d); }
     (void)dpy; (void)gc; (void)sx; (void)sy;
     if (!d || !img || !img->data) return;
     if (d->kind == KIND_PIX && d->bits) {
@@ -905,6 +936,20 @@ void XPutImage(Display *dpy, Drawable d, GC gc, XImage *img,
         return;
     }
     if (d->kind == KIND_WIN && d->hwnd) {
+        static int dump_done = 0;
+        if (!dump_done && img && img->data && w >= 1000) {
+            char dp[MAX_PATH];
+            const char *dt = getenv("TEMP");
+            if (!dt) dt = "C:\\Temp";
+            snprintf(dp, sizeof(dp), "%s\\khtpm_present_frame.raw", dt);
+            FILE *df = fopen(dp, "wb");
+            if (df) {
+                fwrite(img->data, 1, (size_t)img->height * (size_t)img->bytes_per_line, df);
+                fclose(df);
+                dump_done = 1;
+                x11_trace("PRESENT-DUMP %ux%u bpl=%d ih=%d iw=%d", (unsigned)img->width, (unsigned)img->height, img->bytes_per_line, img->height, img->width);
+            }
+        }
         BITMAPINFO bmi;
         memset(&bmi, 0, sizeof(bmi));
         bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
@@ -919,9 +964,33 @@ void XPutImage(Display *dpy, Drawable d, GC gc, XImage *img,
         d->content_w = (int)w;
         d->content_h = (int)h;
         SetStretchBltMode(hdc, HALFTONE);
-        StretchDIBits(hdc, 0, 0, rc.right, rc.bottom,
+        int sdib = StretchDIBits(hdc, 0, 0, rc.right, rc.bottom,
                       0, 0, img->width, img->height,
                       img->data, &bmi, DIB_RGB_COLORS, SRCCOPY);
+        {
+            static int readback_n = 0;
+            if (readback_n < 6) {
+                readback_n++;
+                int pxs[][2] = { {10,10},{100,15},{165,16},{555,16},{826,10},{18,18} };
+                x11_trace("PRESENT-POST hwnd=%p rect=%dx%d img=%dx%d", d->hwnd, rc.right, rc.bottom, img->width, img->height);
+                int i;
+                for (i = 0; i < 6; i++) {
+                    int qx = pxs[i][0], qy = pxs[i][1];
+                    if (qx > rc.right - 1) qx = rc.right - 1;
+                    if (qy > rc.bottom - 1) qy = rc.bottom - 1;
+                    COLORREF after = GetPixel(hdc, qx, qy);
+                    unsigned long sr=0, sg=0, sb=0, sa=0;
+                    if (img->data && img->width > 0) {
+                        size_t si = ((size_t)qy * (size_t)img->width + (size_t)qx) * 4;
+                        if (si + 3 < (size_t)img->width * (size_t)img->height * 4) {
+                            unsigned char *d8 = (unsigned char *)img->data;
+                            sb = d8[si]; sg = d8[si+1]; sr = d8[si+2]; sa = d8[si+3];
+                        }
+                    }
+                    x11_trace("PRESENT-POST(%d,%d) after=0x%08lX img=0x%02lX%02lX%02lX a=%02lX", qx, qy, (unsigned long)after, sr, sg, sb, sa);
+                }
+            }
+        }
         ReleaseDC(d->hwnd, hdc);
     }
 }
@@ -1148,6 +1217,14 @@ void XftColorFree(Display *dpy, Visual *v, Colormap cmap, XftColor *c) {
 
 void XftDrawStringUtf8(XftDraw *dr, const XftColor *col, XftFont *font,
                        int x, int y, const FcChar8 *s, int len) {
+    static int first_txt = 0;
+    if (first_txt < 120) {
+        char tmp[32];
+        int n = len < 31 ? len : 31;
+        memcpy(tmp, s, n); tmp[n] = 0;
+        first_txt++;
+        x11_trace("XftDrawStringUtf8(len=%d at %d,%d str=<%s>)", len, x, y, tmp);
+    }
     if (!dr || !dr->d || !s || len <= 0) return;
     HDC hdc = dc_of(dr->d);
     if (!hdc) return;
