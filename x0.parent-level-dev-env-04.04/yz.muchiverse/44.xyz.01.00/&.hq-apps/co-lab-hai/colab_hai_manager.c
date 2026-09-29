@@ -593,12 +593,24 @@ static void write_chtpm_projection(void) {
              * ~85 a dense/short-word message can actually reach) -
              * empty space below a short message costs nothing, text
              * overlap is the failure the owner explicitly does not
-             * want. Cap raised to 14 to match (12 was sized for the
-             * old, too-optimistic per-line estimate). */
+             * want.
+             * REAL FIX 2026-09-29 (later, real recurrence): a 14-row
+             * cap still overlapped on a real ~1400-char multi-topic
+             * message - any fixed cap just moves the same failure to a
+             * longer message, it doesn't fix it. Direct original
+             * instruction, taken literally now that it's actually
+             * possible: "we should let the approval area be as long as
+             * it needs be" - no cap at all. This window is already
+             * class="database-window" (real, automatic g_user_resizable
+             * - see khtpm_core_render.c's own class-detection loop),
+             * and a resizable window now REMEMBERS its size across
+             * relaunch (kh_save_win_size()/kh_load_win_size(),
+             * 2026-09-29) - so an exceptionally long pending message no
+             * longer needs to be fought with an arbitrary row limit;
+             * size the window once and it stays sized. */
             int pend_len = (int)strlen(pend_msg) + (int)strlen("PENDING (): ") + (int)strlen(pend_agent);
             int needed_rows = (pend_len + 54) / 55;
             if (needed_rows < 2) needed_rows = 2;
-            if (needed_rows > 14) needed_rows = 14;
             CH_APPEND("pend_rows=%d\n", needed_rows);
         }
     }
