@@ -149,4 +149,35 @@ if [ -x "$OPS/emoji_gen_atlas.+x" ] && [ -x "$OPS/emoji_xtract.+x" ]; then
     "$OPS/emoji_xtract.+x" "$NEW_CLACKER/atlas.png" 0 64 "$NEW_CLACKER/sprite.csv" >/dev/null 2>&1
 fi
 
-echo "event_drop_handler: pushed event_clacker_$NEXT onto $(basename "$ENT") from $DROP ($n page(s))" >&2
+# REAL, CORRECTED 2026-09-28 (direct instruction: "thats not how drop
+# works, drop deletes other location and mv should do the same, same as
+# cli. look deeper i think it already does this") - a drop is a MOVE,
+# not a copy: fe_drop.sh (the real, pre-existing house XDND precedent)
+# does a literal `mv "$DROP" "$DIR/$base"`, and the just-restored Cli-io
+# `mv` verb deletes its source via rename() too (verified live: "src_dir
+# should be GONE"). This handler originally left $DROP in place, which
+# was an unreviewed design choice, not grounded in house precedent - it
+# is now fixed to match. Only deletes after every page copied
+# successfully ($n > 0) so a mid-copy failure never loses data with
+# nothing created yet.
+#
+# Note on the "copy now, link later" decision this doesn't override:
+# that question was about whether edits STAY INDEPENDENT after the drop
+# (yes, copy, not a live link) - it was never about whether the source
+# object survives the drag. Those are separate axes; source deletion
+# here answers the second one, consistently with mv/drop everywhere
+# else in the house.
+#
+# Real, honest consequence: if $DROP was the entity's own NATIVE
+# clacker_1 (or a page nested inside it) rather than something pushed
+# in from elsewhere, dragging it away deletes that entity's own
+# inventory mirror of its own real events - harmless (it's only a
+# mirror, event_pkg/pages/ itself is untouched and remains the real
+# dispatch source per play_event.sh's own fallback), and it regenerates
+# lazily the next time a page/command is added (event_auto_clacker.sh)
+# or a retroactive sweep is re-run - but the mirror is gone until then.
+if [ "$n" -gt 0 ]; then
+    rm -rf "$DROP"
+fi
+
+echo "event_drop_handler: pushed event_clacker_$NEXT onto $(basename "$ENT") from $DROP ($n page(s), source removed)" >&2
