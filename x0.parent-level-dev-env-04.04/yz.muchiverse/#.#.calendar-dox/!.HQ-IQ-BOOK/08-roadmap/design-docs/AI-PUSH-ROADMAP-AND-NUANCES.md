@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-27
 **Status:** Planning document. Two items in this doc are ready to build; everything else is explicitly document-only, not started.
-**Also filed at:** `/home/no/Desktop/github/work/XO/5.Recent_roadmap/AI-PUSH-ROADMAP-AND-NUANCES.md`
+**Also filed at:** `/home/no/Desktop/github/work/XO/8.grok-s29/AI-PUSH-ROADMAP-AND-NUANCES.md`
 
 ---
 
