@@ -597,6 +597,31 @@ static BackendMode g_pending_backend_mode = BACKEND_OLLAMA_RAW;
  * slow" (drop + message) apart from "model changed since this was
  * sent" (cancel + proceed). */
 static char g_pending_model_name[128] = "";
+/* REAL, NEW 2026-09-29, direct instruction ("we need to impliment the
+ * round trip") - until now, an OpenRouter tool call executed for
+ * real but the model never saw its own tool's result: the raw output
+ * just got persist_msg()'d straight to the human, dead-ending the
+ * conversation right where a real agent would keep reasoning ("I read
+ * the file, now let me answer your actual question about it"). This
+ * closes that loop for exactly one hop (tool result -> model's real
+ * follow-up answer), matching the real OpenAI/OpenRouter multi-turn
+ * tool-call contract (a `role:"tool"` message referencing the
+ * original `tool_call_id`, appended after the assistant's own
+ * tool_calls message, sent back for one more completion) - not a full
+ * recursive agent loop (a follow-up that itself requests another tool
+ * falls back to content-or-nothing, see send_openrouter_followup()'s
+ * own header). g_pending_prompt/g_or_* below carry everything that
+ * one more request needs across the real async gap between "tool call
+ * detected" and "tool result ready" (which, for an approval-gated
+ * tool, can be an arbitrarily long human-timescale gap - these are
+ * plain globals, not stack state, specifically so they survive that). */
+static char g_pending_prompt[MSG_LEN] = "";
+static char g_or_assistant_msg[MSG_LEN] = "";
+static char g_or_tool_call_id[128] = "";
+static char g_or_followup_prompt[MSG_LEN] = "";
+static char g_or_followup_model[128] = "";
+static int g_or_tool_from_api = 0;
+static int g_pending_is_or_followup = 0;
 
 static void write_busy_state(void) {
     FILE *f = fopen(g_busy_state_path, "w");
@@ -684,6 +709,11 @@ static void send_to_openrouter(const char *prompt, const char *model_name) {
      * already cancels a stale pending request on a model switch. */
     if (g_pending) { persist_msg(0, "[dropped: previous request to this model is still in flight - wait for it, or switch models to cancel it]"); return; }
 
+    /* REAL, NEW 2026-09-29 - the real round-trip follow-up (see
+     * g_pending_prompt's own declaration comment) needs this exact
+     * original prompt again later, once a tool result is ready. */
+    snprintf(g_pending_prompt, sizeof(g_pending_prompt), "%s", prompt);
+
     char key[512];
     if (!load_openrouter_key(key, sizeof(key))) {
         persist_msg(0, "[error: no OpenRouter API key - create &.widgits/open-hai/state/openrouter_api_key.txt with a real key from https://openrouter.ai/keys]");
@@ -764,6 +794,75 @@ static void send_to_openrouter(const char *prompt, const char *model_name) {
         snprintf(g_pending_model_name, sizeof(g_pending_model_name), "%s", model_name);
         write_busy_state();
     }
+}
+
+/* REAL, NEW 2026-09-29 (g_pending_prompt's own declaration comment has
+ * the full why) - the real second half of an OpenRouter tool-calling
+ * round trip. Builds the real, documented 3-message follow-up shape
+ * (user's original prompt, the model's own prior assistant/tool_calls
+ * message VERBATIM, then a role:"tool" message carrying the real
+ * result keyed to the original tool_call_id) and sends it as a real,
+ * separate request - same fork+curl+execl shape as send_to_openrouter()
+ * itself, deliberately not shared as one bigger function (the actual
+ * messages array differs in shape, not just content, and forcing one
+ * function to build both was less readable than two small ones).
+ * g_or_assistant_msg is spliced in RAW, not re-escaped - it's already
+ * a complete, valid JSON object (the exact bytes OpenRouter itself
+ * sent, extracted via run_json_parser() by the caller), and escaping
+ * it again would double-escape every nested quote.
+ * Real, deliberate scope limit: this is ONE hop, not a recursive agent
+ * loop. If THIS response itself contains another tool_calls, check_
+ * pending()'s own g_pending_is_or_followup branch below does not
+ * re-detect it - it only ever extracts content, same real limit gem-
+ * dev's own manager documents for its own multi-turn handling. A
+ * model that tries to chain a second tool call off a follow-up will
+ * just get "[error: no 'content' field...]" for now - a real, further
+ * hop is a real, separate, larger piece of work if it's ever needed. */
+static void send_openrouter_followup(const char *tool_result) {
+    if (g_pending) { persist_msg(0, "[dropped: previous request still in flight - the model's follow-up reasoning over the tool result was not sent]"); g_or_tool_from_api = 0; return; }
+    char key[512];
+    if (!load_openrouter_key(key, sizeof(key))) { g_or_tool_from_api = 0; return; }
+
+    char esc_prompt[MSG_LEN * 2 + 4096], esc_result[MSG_LEN * 2 + 4096];
+    escape_json_string(g_or_followup_prompt, esc_prompt, sizeof(esc_prompt));
+    escape_json_string(tool_result, esc_result, sizeof(esc_result));
+
+    char payload_path[PATH_BUF];
+    snprintf(payload_path, sizeof(payload_path), "%s/or-followup-payload-%d.json", g_audit_dir, (int)getpid());
+    FILE *pf = fopen(payload_path, "w");
+    if (!pf) { g_or_tool_from_api = 0; return; }
+    fprintf(pf, "{\"model\":\"%s\",\"messages\":[{\"role\":\"user\",\"content\":\"%s\"},%s,"
+                "{\"role\":\"tool\",\"tool_call_id\":\"%s\",\"content\":\"%s\"}]}",
+            g_or_followup_model, esc_prompt, g_or_assistant_msg, g_or_tool_call_id, esc_result);
+    fclose(pf);
+
+    snprintf(g_pending_outfile, sizeof(g_pending_outfile), "%s/or-followup-response-%d.json", g_audit_dir, (int)getpid());
+    unlink(g_pending_outfile);
+
+    pid_t pid = fork();
+    if (pid == 0) {
+        int fd = open(g_pending_outfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (fd >= 0) { dup2(fd, 1); close(fd); }
+        char auth_hdr[600];
+        snprintf(auth_hdr, sizeof(auth_hdr), "Authorization: Bearer %s", key);
+        char data_arg[PATH_BUF + 2];
+        snprintf(data_arg, sizeof(data_arg), "@%s", payload_path);
+        execlp("curl", "curl", "-s", "-m", "60", "-X", "POST",
+               "https://openrouter.ai/api/v1/chat/completions",
+               "-H", "Content-Type: application/json",
+               "-H", auth_hdr,
+               "-d", data_arg,
+               (char *)NULL);
+        _exit(127);
+    } else if (pid > 0) {
+        g_pending = 1;
+        g_pending_pid = pid;
+        g_pending_backend_mode = BACKEND_OPENROUTER;
+        g_pending_is_or_followup = 1;
+        snprintf(g_pending_model_name, sizeof(g_pending_model_name), "%s", g_or_followup_model);
+        write_busy_state();
+    }
+    g_or_tool_from_api = 0; /* consumed - the next tool call gets its own fresh context */
 }
 
 /* REAL 2026-08-16, direct instruction ("test chat using relay
@@ -1076,6 +1175,15 @@ static void check_pending(void) {
         fclose(f);
         unlink(g_pending_outfile);
         persist_msg(0, buf[0] ? buf : "[tool: no output]");
+        /* REAL, NEW 2026-09-29 - the real round trip: only when THIS
+         * tool run originated from an OpenRouter tool_calls response
+         * (g_or_tool_from_api, set below when one was detected - never
+         * set for the local Harnecient-hack path, which also runs
+         * through this exact same g_pending_is_tool branch) does the
+         * model get a chance to see its own tool's real result and
+         * give a real follow-up answer, instead of the raw banner
+         * above being the last word. */
+        if (g_or_tool_from_api) send_openrouter_followup(buf[0] ? buf : "(no output)");
         return;
     }
 
@@ -1096,6 +1204,19 @@ static void check_pending(void) {
 
     char resp[MSG_LEN];
     if (g_pending_backend_mode == BACKEND_OPENROUTER) {
+        /* REAL, NEW 2026-09-29 - this in-flight request was itself the
+         * round-trip follow-up (send_openrouter_followup()), not a
+         * fresh user SEND - just extract its content and persist it,
+         * same real, deliberate one-hop scope limit send_openrouter_
+         * followup()'s own header explains (no tool re-detection here). */
+        if (g_pending_is_or_followup) {
+            g_pending_is_or_followup = 0;
+            extract_openrouter_content(g_pending_outfile, resp, sizeof(resp));
+            unlink(g_pending_outfile);
+            if (resp[0]) persist_msg(0, resp);
+            else persist_msg(0, "[error: no 'content' field in the model's follow-up reply - check or-followup-response-*.json under the audit dir]");
+            return;
+        }
         /* REAL 2026-08-16, direct instruction ("it says not executed.
          * pls do execution pass so i can see it in gui") - a real
          * tool_calls response now gets ACTUALLY EXECUTED via the same
@@ -1114,6 +1235,15 @@ static void check_pending(void) {
          * safe at all - never auto-run un-approved. */
         PendingTool pt;
         if (extract_openrouter_tool_call_raw(g_pending_outfile, &pt)) {
+            /* REAL, NEW 2026-09-29 - stash everything the real round-
+             * trip follow-up needs (see send_openrouter_followup()'s
+             * own header) BEFORE unlinking g_pending_outfile, since
+             * that's the only place any of this exists. */
+            run_json_parser(g_pending_outfile, "choices[0].message", g_or_assistant_msg, sizeof(g_or_assistant_msg));
+            run_json_parser(g_pending_outfile, "choices[0].message.tool_calls[0].id", g_or_tool_call_id, sizeof(g_or_tool_call_id));
+            snprintf(g_or_followup_prompt, sizeof(g_or_followup_prompt), "%s", g_pending_prompt);
+            snprintf(g_or_followup_model, sizeof(g_or_followup_model), "%s", g_pending_model_name);
+            g_or_tool_from_api = 1;
             unlink(g_pending_outfile);
             if (tool_requires_approval(pt.name)) {
                 g_pending_tool = pt;
