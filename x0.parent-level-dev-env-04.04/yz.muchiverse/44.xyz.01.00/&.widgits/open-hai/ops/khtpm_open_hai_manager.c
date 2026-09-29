@@ -715,9 +715,11 @@ static void send_to_openrouter(const char *prompt, const char *model_name) {
      * optional (see tool_edit_file()'s own real behavior: given, a
      * find/replace against the file's current content; absent, a plain
      * append) - not marked "required" below for exactly that reason.
-     * cmd_exec (shell execution) deliberately NOT added here - a
-     * separate, explicit decision for the owner, not bundled in with
-     * file edits. */
+     * REAL, NEW 2026-09-29, owner task TASK-add-cmd-exec-tool: cmd_exec
+     * is offered too. tool_requires_approval() already returns true for
+     * it, and execute_pending_tool_into() already runs tool_exec() only
+     * after APPROVE. The model can ask; it does not run until the
+     * sidebar says so. */
     fprintf(pf, "{\"model\":\"%s\",\"messages\":[{\"role\":\"user\",\"content\":\"%s\"}],"
                 "\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"list_dir\","
                 "\"description\":\"List files in a directory\",\"parameters\":{\"type\":\"object\","
@@ -730,7 +732,10 @@ static void send_to_openrouter(const char *prompt, const char *model_name) {
                 "\"properties\":{\"path\":{\"type\":\"string\"},\"content\":{\"type\":\"string\"}},\"required\":[\"path\",\"content\"]}}},"
                 "{\"type\":\"function\",\"function\":{\"name\":\"edit_file\","
                 "\"description\":\"Edit an existing file. If search is given, replaces the first occurrence of that exact text with content. If search is omitted, appends content to the end of the file. Requires human approval before it runs.\",\"parameters\":{\"type\":\"object\","
-                "\"properties\":{\"path\":{\"type\":\"string\"},\"search\":{\"type\":\"string\"},\"content\":{\"type\":\"string\"}},\"required\":[\"path\",\"content\"]}}}]}",
+                "\"properties\":{\"path\":{\"type\":\"string\"},\"search\":{\"type\":\"string\"},\"content\":{\"type\":\"string\"}},\"required\":[\"path\",\"content\"]}}},"
+                "{\"type\":\"function\",\"function\":{\"name\":\"cmd_exec\","
+                "\"description\":\"Run a shell command and return its combined output. Requires human approval before it runs - never assume it has executed until told so.\","
+                "\"parameters\":{\"type\":\"object\",\"properties\":{\"command\":{\"type\":\"string\"}},\"required\":[\"command\"]}}}]}",
             model_name, esc);
     fclose(pf);
 
