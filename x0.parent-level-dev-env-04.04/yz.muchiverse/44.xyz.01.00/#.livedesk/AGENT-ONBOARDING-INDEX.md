@@ -47,7 +47,7 @@
    - ~10 minutes
    - **Required:** Yes, for entity window work
 
-6. **`*.monads/*.livedesk-taskbar/ops/khtpm_entity.c` (the actual code)**
+6. **`_.monads/_.livedesk-taskbar/ops/khtpm_entity.c` (the actual code)**
    - Read lines 1-100 (file header + what it does)
    - Search for the specific feature you're working on
    - Read the handler/implementation

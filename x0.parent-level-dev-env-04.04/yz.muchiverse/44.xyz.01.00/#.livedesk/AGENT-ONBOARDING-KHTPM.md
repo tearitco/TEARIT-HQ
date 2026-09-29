@@ -233,7 +233,7 @@ If you still can't find the answer after step 4, THEN ask for help or create a t
 - `#.#.calendar-dox/!.HQ-IQ-BOOK/02-architecture/CENTROID_GOLD_STD.md` — The core rule
 - `#.#.calendar-dox/1.^V-hq/_.0.aigent-testing-k9.txt` — Testing methodology
 - `.claude/skills/khtpm-house-standards` — House rules for khtpm work
-- `*.monads/*.livedesk-taskbar/ops/khtpm_entity.c` — Entity window implementation
+- `_.monads/_.livedesk-taskbar/ops/khtpm_entity.c` — Entity window implementation
 - `history.txt` in entity package dir — Your best debugging tool (not user testing)
 
 ---

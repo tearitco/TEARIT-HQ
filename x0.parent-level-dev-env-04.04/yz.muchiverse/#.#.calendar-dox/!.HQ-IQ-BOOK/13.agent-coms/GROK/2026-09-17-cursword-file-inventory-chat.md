@@ -69,7 +69,7 @@ These still hardcode `<package_dir>/inventory.txt` and parse `qolq=`:
 - `&.widgits/events-hq/ops/mr_change_gold.c`
 - `&.widgits/events-hq/ops/mr_select_item.c`
 - `&.widgits/events-hq/ops/play_event.sh` (ledger line + gold.txt sync)
-- `*.monads/*.muchi-pet/ops/open_rp_menu.sh`
+- `_.monads/_.muchi-pet/ops/open_rp_menu.sh`
 
 Unrelated `inventory.txt` files also exist under muchi-pals /
 avatar-creation (`pieces/world_01/.../inventory.txt`,

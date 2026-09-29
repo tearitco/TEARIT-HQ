@@ -114,7 +114,7 @@ cd "$(dirname "$0")/../../.." || exit 1
 ENT="$PWD"
 D="$ENT"
 while [ "$D" != "/" ] && [ ! -d "$D/xyzfs" ]; do D="$(dirname "$D")"; done
-exec "$D/*.monads/*.muchi-pet/ops/+x/mr_change_gold.+x" "$ENT" '100'
+exec "$D/_.monads/_.muchi-pet/ops/+x/mr_change_gold.+x" "$ENT" '100'
 SCRIPT
   chmod +x "$p2/cmd_1.sh"
   cat > "$p2/event.pal" << 'EOF'
@@ -123,7 +123,7 @@ exec cmd_1.sh
 halt
 EOF
 
-  local PLAY="$HOUSE/*.monads/*.muchi-pet/ops/play_event.sh"
+  local PLAY="$HOUSE/_.monads/_.muchi-pet/ops/play_event.sh"
   echo "qolq=0" > "$ENTITY_DIR/inventory.txt"
   bash "$PLAY" "$ENTITY_DIR" "$HOUSE" "on-click" > "$RESULTS/multitrigger_onclick.txt" 2>&1
   local qolq_click
@@ -178,7 +178,7 @@ cd "$(dirname "$0")/../../.." || exit 1
 ENT="$PWD"
 D="$ENT"
 while [ "$D" != "/" ] && [ ! -d "$D/xyzfs" ]; do D="$(dirname "$D")"; done
-exec "$D/*.monads/*.muchi-pet/ops/+x/mr_change_gold.+x" "$ENT" '50'
+exec "$D/_.monads/_.muchi-pet/ops/+x/mr_change_gold.+x" "$ENT" '50'
 SCRIPT
   chmod +x "$COMMON_DIR/event_pkg/pages/page_1/cmd_1.sh"
   cat > "$COMMON_DIR/event_pkg/pages/page_1/event.pal" << 'EOF'
@@ -188,7 +188,7 @@ halt
 EOF
 
   echo "qolq=0" > "$COMMON_DIR/inventory.txt"
-  local PLAY="$HOUSE/*.monads/*.muchi-pet/ops/play_event.sh"
+  local PLAY="$HOUSE/_.monads/_.muchi-pet/ops/play_event.sh"
   # NOTE: no UI trigger point exists for common events yet (documented gap,
   # see EVENTS_RUNTIME.md) — direct script invocation here is the ONLY
   # existing path, not a relay-rule violation; there is no relay to use yet.

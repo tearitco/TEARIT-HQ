@@ -2,7 +2,7 @@
 # win-trip.sh - run BEFORE copying the house to Windows, and again AFTER
 # copying it back. Fixes the one thing that physically breaks every round
 # trip: NTFS cannot store names containing '*', but this house names its
-# monads/dirs with a leading '*.' (e.g. *.monads, *.START_BUTTON). The
+# monads/dirs with a leading '*.' (e.g. _.monads, _.START_BUTTON). The
 # Windows code aliases '*.' <-> '_.' at RESOLVE TIME (see crypt_autostart.c,
 # khtpm_strip_x11_win.c) - so only the on-disk NAMES ever need converting,
 # never file contents.

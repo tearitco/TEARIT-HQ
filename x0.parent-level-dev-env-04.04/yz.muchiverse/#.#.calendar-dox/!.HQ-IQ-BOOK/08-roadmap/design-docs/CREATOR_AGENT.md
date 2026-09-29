@@ -18,7 +18,7 @@ the map that was missing.
 | Renderer | `khtpm_strip_parser.c` draws it from `strip_var_hqitems.txt` | `khtpm_hq_render.+x <house> <file.chtpm>` (+ entity-menu/chat-hai variants) |
 | Rows/content source | manager builder publishes buttons to `#.desktop/strip_var_hqitems.txt` | the `.chtpm` IS the content (plus CSS beside it) |
 | Use when | choosing an ACTION or CATEGORY (few rows of commands) | showing CONTENT/tiles/grids (a picker surface, scrollable matrix) |
-| Lives in | `*.monads/*.livedesk-taskbar/ops/*.c` + `#.desktop/livedesk_taskbar.pdl` + `khtpm_strip_header.chtpm` | `&.widgits/<app>/` (composer script + `.chtpm` + `.css`) or `&.hq-apps/<app>/` |
+| Lives in | `_.monads/_.livedesk-taskbar/ops/*.c` + `#.desktop/livedesk_taskbar.pdl` + `khtpm_strip_header.chtpm` | `&.widgits/<app>/` (composer script + `.chtpm` + `.css`) or `&.hq-apps/<app>/` |
 
 They compose: a category dropdown row (A) launches a category window (B). Palettes
 does exactly this. Do NOT try to render content INSIDE a dropdown and do NOT nest a
@@ -44,7 +44,7 @@ row click i ──► code 5000+i ──► ktb_hq_activate(state,i) ──► d
 ### Wiring recipe (new cell menu)
 
 1. **Cell id**: add `N|<name>` to `#.desktop/livedesk_header_cell_ids.txt`.
-2. **Header template**: `*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm` —
+2. **Header template**: `_.monads/_.livedesk-taskbar/khtpm_strip_header.chtpm` —
    the cell button MUST be:
    ```xml
    <button label="palettes" onClick="ACTIVATE:6">
@@ -126,7 +126,7 @@ emoji_gen_atlas.+x "<glyph>"  "<dir>/atlas.png"
 emoji_xtract.+x  "<dir>/atlas.png" 0 64 "<dir>/sprite.csv"
 ```
 
-(prebuilt in `*.monads/*.livedesk-taskbar/ops/+x/`). `sprite.csv` =
+(prebuilt in `_.monads/_.livedesk-taskbar/ops/+x/`). `sprite.csv` =
 `# resolution=64` header + 64×64 `r,g,b,a` lines. Elements carry
 `sprite="<dir>"` (directory containing `sprite.csv`); `Elem.sprite` field +
 `draw_elem()` blit landed 2026-08-24 in the shared core (ported from
@@ -276,14 +276,14 @@ edge-triggered arrow-key auto-scroll from the start, not as a follow-up fix.
 
 | Thing | Path |
 |---|---|
-| header cells template | `*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm` |
+| header cells template | `_.monads/_.livedesk-taskbar/khtpm_strip_header.chtpm` |
 | cell ids | `44.xyz.01.00/#.desktop/livedesk_header_cell_ids.txt` |
 | dropdown rows (PDL) | `44.xyz.01.00/#.desktop/livedesk_taskbar.pdl` |
-| manager (builders/dispatch) | `*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c` |
+| manager (builders/dispatch) | `_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c` |
 | strip renderer (popup drawing) | `…ops/khtpm_strip_parser.c` (`draw_popup_win`, `tab_sprite`) |
 | hq window renderer | `…ops/khtpm_hq_render.c` (+ `_shared-lib/khtpm_render_core.c`, `khtpm_css_parser.c`) |
 | shared Elem/core CANONICAL SOURCE | `&.widgits/_shared-lib/` — builds COPY from here; editing the local copy is lost on rebuild |
-| emoji→sprite tools | `…/*.monads/*.livedesk-taskbar/ops/+x/emoji_{gen_atlas,xtract}.+x` |
+| emoji→sprite tools | `…/_.monads/_.livedesk-taskbar/ops/+x/emoji_{gen_atlas,xtract}.+x` |
 | palettes reference impl | `&.widgits/palettes/` (composer, css, sprites, audit log) |
 | design docs | `au11-hq/TASKBAR-MENU-ARCHITECTURE.md`, `#.ref/menu/palletes/pallette-design.txt` |
 

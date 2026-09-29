@@ -20,7 +20,7 @@ TEST MANUALLY (had session symlinks removed, needs user verification):
   P1: 041.pal-forum👥️              (8 symlinks removed, has users/)
   P1: 045.muchi-pal-agent🤖️+1++    (blanket loops removed)
   P1: 102.agy-txt                  (8 symlinks removed, has docs/)
-  P1: *.START_BUTTON               (6 symlinks removed, multi-session launcher)
+  P1: _.START_BUTTON               (6 symlinks removed, multi-session launcher)
 
 NO CHANGES NEEDED (already had 0 session symlinks):
   P2: $.crypts

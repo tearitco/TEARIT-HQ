@@ -64,11 +64,11 @@
 Legacy `tp_taskbar.c`/`tp_taskbar_win.c` (and an earlier abandoned
 `khtpm_taskbar_core.c`/`khtpm_taskbar_plat_win.c`/`khtpm_taskbar_plat_x11.c`
 split that never shipped either) are fully retired — archived to
-`*.monads/*.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip`, originals
+`_.monads/_.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip`, originals
 deleted. The real, current taskbar is `khtpm_strip_parser.c` (Linux, Xlib
 + real declarative-layout parser) + `khtpm_taskbar_manager.c`/
 `khtpm_taskbar_manager_main.c` (shared business logic, no Xlib) under
-`*.monads/*.livedesk-taskbar/ops/`.
+`_.monads/_.livedesk-taskbar/ops/`.
 
 **Windows 2026-08-21:** same `khtpm_strip_parser.c` + manager, compiled
 with `khtpm_strip_x11_win.c` (Xlib subset). Not a second strip. Nav,

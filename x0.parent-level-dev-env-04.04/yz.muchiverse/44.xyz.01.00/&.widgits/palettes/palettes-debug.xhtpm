@@ -11,7 +11,7 @@
      Verbs match palettes_menu.sh's existing case labels exactly
      (debug-toggle <N>, debug-clear). -->
 <window label="palettes: Debug" class="palettes-pal database-window" vars="state/palettes-debug_ui.txt">
-  <module src="*.monads/*.livedesk-taskbar/ops/+x/palettes_manager.+x" args="debug"/>
+  <module src="_.monads/_.livedesk-taskbar/ops/+x/palettes_manager.+x" args="debug"/>
   <module src="&.widgits/palettes/ops/+x/palettes_projector.+x" id="debug"/>
   <page name="main">
     <scrolllist>

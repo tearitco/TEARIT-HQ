@@ -15,7 +15,7 @@ HOUSE="$(cd "$(dirname "$0")" && pwd)"
 # difference between this demo and the actual house environment.
 mkdir -p "$HOUSE/#.desktop"
 
-if [ ! -x "$HOUSE/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x" ] || \
+if [ ! -x "$HOUSE/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x" ] || \
    [ ! -x "$HOUSE/&.hq-apps/network/+x/network_browser_manager.+x" ]; then
     echo "-- building --"
     sh "$HOUSE/build.sh"

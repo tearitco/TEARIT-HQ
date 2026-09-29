@@ -117,7 +117,7 @@ verified C processes alive, verified frame output produced.
 | `041.pal-forum👥️` | 8 | Has users/ |
 | `045.muchi-pal-agent🤖️+1++` | blanket loops | Multiple symlinks per loop |
 | `102.agy-txt` | 8 | Has docs/ |
-| `*.START_BUTTON` | 6 | Multi-session launcher |
+| `_.START_BUTTON` | 6 | Multi-session launcher |
 
 ### P2 — No changes needed (already had 0 session symlinks)
 

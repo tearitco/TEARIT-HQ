@@ -8,7 +8,7 @@ today" companion.*
   bookmarks, stats-hq, taskbar-settings, entity-menu popups, and as of
   2026-09-01 the taskbar strip itself) are all **one binary**,
   `khtpm_core_render.+x` (built from
-  `*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c`). Which mode a
+  `_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c`). Which mode a
   process runs is a `g_is_<mode>` flag set from argv/the `.chtpm` it
   launched against — genuinely one merged binary serving many roles.
   **This flag-per-mode shape is exactly what `CENTROID_GOLD_STD.md` §3

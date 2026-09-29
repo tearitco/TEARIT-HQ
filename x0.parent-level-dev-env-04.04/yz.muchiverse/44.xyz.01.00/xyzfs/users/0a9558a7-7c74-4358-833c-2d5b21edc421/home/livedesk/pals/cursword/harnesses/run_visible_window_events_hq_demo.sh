@@ -58,7 +58,7 @@ PAL_FILE="$PAL_DIR/visible_window_events_hq_demo.pal"
 PKG="/tmp/eventshw_visproof/event_pkg"          # DISPOSABLE entity pkg (ASCII-safe, like §3a-proof's /tmp rule)
 ENTITY="visproof-disposable"
 
-BIN="$HOUSE/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
+BIN="$HOUSE/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
 CHTPM="$HOUSE/&.widgits/events-hq/pieces/dashboard.chtpm"
 # REAL FIX 2026-09-14, direct instruction ("is retarget enough? can we
 # harden it") - RELAY used to be the fixed events_hq_history.txt, and

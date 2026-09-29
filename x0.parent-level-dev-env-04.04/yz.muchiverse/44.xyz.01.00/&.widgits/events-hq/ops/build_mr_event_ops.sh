@@ -7,7 +7,7 @@
 #
 # REAL FIX 2026-08-29 ("mr was just one project using events (probably
 # the first) but it doesn't own events"): these ops used to live under
-# *.monads/*.muchi-pet/ops/ - muchi-pet's own project dir - even though
+# _.monads/_.muchi-pet/ops/ - muchi-pet's own project dir - even though
 # every entity/project in the house (not just muchi-pet) compiles events
 # that call them, via #.ref/menu/event_commands.registry.pdl's TEMPLATE
 # exec lines. Moved here, events-hq's own shared ops dir, alongside

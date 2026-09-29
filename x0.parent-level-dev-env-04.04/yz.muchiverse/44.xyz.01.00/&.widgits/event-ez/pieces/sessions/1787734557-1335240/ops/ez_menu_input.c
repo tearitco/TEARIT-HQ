@@ -374,9 +374,9 @@ int main(int argc, char **argv) {
                              * ("../../ops/+x/", i.e. exactly 2 levels up
                              * from the entity root) - true ONLY for the
                              * original @.apps/MUCHI_RANCHER/entities/<name>/
-                             * and *.monads/*.muchi-pet/entities/<name>/
+                             * and _.monads/_.muchi-pet/entities/<name>/
                              * template layouts (entity's grandparent ==
-                             * MUCHI_RANCHER/*.muchi-pet, which has its own
+                             * MUCHI_RANCHER/_.muchi-pet, which has its own
                              * ops/+x/ sibling). Silently WRONG the moment
                              * an entity is deployed/migrated to
                              * xyzfs/users/<uuid>/home/livedesk/{pals,
@@ -397,7 +397,7 @@ int main(int argc, char **argv) {
                              * genuinely 3 levels above this wrapper - that
                              * part was always correct, matches
                              * inventory.txt's real location) searching for
-                             * the literal `*.monads` directory - a stable
+                             * the literal `_.monads` directory - a stable
                              * anchor that sits directly under house_root
                              * regardless of how deep the entity itself is
                              * nested. Same search-for-a-known-anchor
@@ -411,14 +411,14 @@ int main(int argc, char **argv) {
                              * instruction "migration makes sense now"):
                              * mr_change_gold.+x itself moved from the
                              * legacy per-game dev folder
-                             * (*.monads/*.muchi-pet/ops/+x/) to
-                             * *.monads/*.muchi-pet/ops/+x/ - a shared,
+                             * (_.monads/_.muchi-pet/ops/+x/) to
+                             * _.monads/_.muchi-pet/ops/+x/ - a shared,
                              * house-wide location (not per-user, not
                              * per-session), matching the stated direction
                              * that ops/code should be shared across all
                              * sessions/desks/users going forward (see
                              * au11-hq/EVENTS_RUNTIME.md's ops-vs-events
-                             * table). Anchor changed from `*.monads` to
+                             * table). Anchor changed from `_.monads` to
                              * `xyzfs` (also always a direct child of
                              * house_root) - still hardcodes
                              * mr_change_gold.+x's own name/relative
@@ -431,7 +431,7 @@ int main(int argc, char **argv) {
                             fprintf(wf, "ENT=\"$PWD\"\n");
                             fprintf(wf, "D=\"$ENT\"\n");
                             fprintf(wf, "while [ \"$D\" != \"/\" ] && [ ! -d \"$D/xyzfs\" ]; do D=\"$(dirname \"$D\")\"; done\n");
-                            fprintf(wf, "exec \"$D/*.monads/*.muchi-pet/ops/+x/mr_change_gold.+x\" \"$ENT\" '%s'\n", amt);
+                            fprintf(wf, "exec \"$D/_.monads/_.muchi-pet/ops/+x/mr_change_gold.+x\" \"$ENT\" '%s'\n", amt);
                             fclose(wf);
                             chmod(wrapper_path, 0755);
                         }
@@ -718,7 +718,7 @@ int main(int argc, char **argv) {
                             fprintf(wf, "ENT=\"$PWD\"\n");
                             fprintf(wf, "D=\"$ENT\"\n");
                             fprintf(wf, "while [ \"$D\" != \"/\" ] && [ ! -d \"$D/xyzfs\" ]; do D=\"$(dirname \"$D\")\"; done\n");
-                            fprintf(wf, "exec \"$D/*.monads/*.muchi-pet/ops/+x/mr_show_text.+x\" \"$ENT\" \"$HERE/msg_%d.txt\"\n", node_id);
+                            fprintf(wf, "exec \"$D/_.monads/_.muchi-pet/ops/+x/mr_show_text.+x\" \"$ENT\" \"$HERE/msg_%d.txt\"\n", node_id);
                             fclose(wf);
                             chmod(wrapper_path, 0755);
                         }
@@ -813,7 +813,7 @@ int main(int argc, char **argv) {
                             fprintf(wf, "ENT=\"$PWD\"\n");
                             fprintf(wf, "D=\"$ENT\"\n");
                             fprintf(wf, "while [ \"$D\" != \"/\" ] && [ ! -d \"$D/xyzfs\" ]; do D=\"$(dirname \"$D\")\"; done\n");
-                            fprintf(wf, "exec \"$D/*.monads/*.muchi-pet/ops/+x/mr_show_choices.+x\" \"$ENT\" '%s' %d\n", ch, def);
+                            fprintf(wf, "exec \"$D/_.monads/_.muchi-pet/ops/+x/mr_show_choices.+x\" \"$ENT\" '%s' %d\n", ch, def);
                             fclose(wf);
                             chmod(wrapper_path, 0755);
                         }

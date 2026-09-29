@@ -24,7 +24,7 @@ newer than this doc's own edits.
 
 ---
 
-## `*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c`
+## `_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c`
 
 The shared, generic Elem/CSS renderer — the single most-touched file
 in the house. Read `khtpm-house-standards` skill in full before any
@@ -80,7 +80,7 @@ need a relaunch to pick up a rebuild).
   guarantee a real icon draws. Don't assume "field is set" == "image
   will render."
 
-## `*.monads/*.livedesk-taskbar/ops/khtpm_taskbar_manager.c` + `khtpm_taskbar_manager_main.c`
+## `_.monads/_.livedesk-taskbar/ops/khtpm_taskbar_manager.c` + `khtpm_taskbar_manager_main.c`
 
 The taskbar manager (business logic) + its `main()`/event loop.
 
@@ -118,7 +118,7 @@ The taskbar manager (business logic) + its `main()`/event loop.
   instances separately, `bug_bounty.md`/`12.calendar/2026-09-24/
   notes.md`).
 
-## `*.monads/*.livedesk-taskbar/ops/khtpm_entity.c`
+## `_.monads/_.livedesk-taskbar/ops/khtpm_entity.c`
 
 The OLDER, still-live, hand-rolled popup renderer for entities with no
 `menu.chtpm` yet (its own X11 event loop, `open_context_menu()`, real

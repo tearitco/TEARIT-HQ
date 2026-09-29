@@ -39,7 +39,7 @@
 # (matches the FULL command line, not just the truncated process name -
 # reliable even with the emoji path) before launching, TERM then
 # escalate to KILL, and confirm exactly one real PID after launch -
-# same proven pattern as *.livedesk-taskbar/ops/run_khtpm_strip.sh's
+# same proven pattern as _.livedesk-taskbar/ops/run_khtpm_strip.sh's
 # own kill_khtpm().
 set -e
 HOUSE_ROOT="${1:-}"
@@ -58,7 +58,7 @@ XHTPM="$HERE/open-hai.xhtpm"
 # The shared renderer lives in the taskbar's own ops dir (khtpm_core_
 # render.+x is shared house-wide, not open-hai's own binary) - real,
 # same path every other default-mode consumer's own launcher uses.
-RENDER_OPS_DIR="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
+RENDER_OPS_DIR="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops"
 BIN="$RENDER_OPS_DIR/+x/khtpm_core_render.+x"
 MANAGER_BIN="$OPS_DIR/+x/khtpm_open_hai_manager.+x"
 

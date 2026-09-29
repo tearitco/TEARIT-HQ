@@ -1,8 +1,8 @@
 <!-- menu.chtpm - real, generated entity context menu (meta_to_menu_chtpm.py, 2026-08-28 permanent converter). Converted 1:1 from /home/no/Desktop/github/work/NNEST-12.00/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/xyzfs/users/0a9558a7-7c74-4358-833c-2d5b21edc421/home/livedesk/sessions/s4/entities/m8_redhorned/meta.pdl's own real METHOD rows - same real mechanical rule proven on ava/asa/book-stack's own hand conversions. Regenerate by deleting this file and re-running the converter; a real hand-edit here will be lost on the next regenerate, same tradeoff every generated file in this house already has. -->
 <window class="entity-menu">
   <page name="main">
-    <item label="Ledger" action="gedit &quot;*.monads/*.muchi-pet/entities/m8_redhorned/master_ledger.txt&quot;"/>
-    <item label="Events (ez)" action="*.monads/*.muchi-pet/ops/open_event_ez.sh"/>
+    <item label="Ledger" action="gedit &quot;_.monads/_.muchi-pet/entities/m8_redhorned/master_ledger.txt&quot;"/>
+    <item label="Events (ez)" action="_.monads/_.muchi-pet/ops/open_event_ez.sh"/>
     <item label="Dir" action="xdg-open"/>
     <item label="Inventory" action="sh -c 'H=&quot;$1&quot;; I=&quot;$H/&amp;.widgits/file-explorer/instances/inv-$(basename &quot;$(dirname &quot;$0&quot;)&quot;)-$(basename &quot;$0&quot;)&quot;; mkdir -p &quot;$0/inventory&quot; &quot;$I&quot;; printf &quot;mode=LOAD\nstart_dir=%s/inventory\n&quot; &quot;$0&quot; > &quot;$I/fe_request.txt&quot;; exec sh &quot;$H/&amp;.widgits/file-explorer/button.sh&quot; run-instance &quot;$I&quot;'"/>
     <item label="Close" action="CLOSE"/>

@@ -52,7 +52,7 @@ OUT="$HERE/state/act.xhtpm"
   echo '  </page>'
   echo '</window>'
 } > "$OUT"
-RENDER_OPS_DIR="$HOUSE"/*.monads/*.livedesk-taskbar/ops
+RENDER_OPS_DIR="$HOUSE"/_.monads/_.livedesk-taskbar/ops
 BIN="$(cd $RENDER_OPS_DIR && pwd)/+x/khtpm_core_render.+x"
 [ -x "$BIN" ] || { echo "open_entity_act.sh: no renderer" >&2; exit 1; }
 if [ -n "$X" ] && [ -n "$Y" ]; then

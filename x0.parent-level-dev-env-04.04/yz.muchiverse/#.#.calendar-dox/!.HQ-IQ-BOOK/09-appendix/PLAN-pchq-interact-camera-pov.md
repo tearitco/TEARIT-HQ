@@ -31,7 +31,7 @@ unprecedented work — flagged as such, not a port.
 Two different numeric key-code conventions coexist in this house:
 
 - **khtpm's own convention** — `khtpm_core_render.c:kh_key_history_code()`
-  (`*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c:5710-5719`):
+  (`_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c:5710-5719`):
   `Up=200, Down=201, Left=202, Right=203, PgUp=204, PgDn=205`. This is
   what the Interact Mode relay currently forwards for every keypress
   (`kh_key_history_code(ks, ch)` call at line ~5184).
@@ -209,7 +209,7 @@ natural default per `5-pov-widgit.md`'s own recommendation.
 
 ## Files referenced (for whoever implements this)
 
-- `44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c` —
+- `44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c` —
   `kh_key_history_code()` (~5710), `g_interact_relay_on` block (~5183),
   `kh_scan_interact_relay()`.
 - `44.xyz.01.00/&.widgits/board-viewer/ops/bv_menu_input.c` — camera/

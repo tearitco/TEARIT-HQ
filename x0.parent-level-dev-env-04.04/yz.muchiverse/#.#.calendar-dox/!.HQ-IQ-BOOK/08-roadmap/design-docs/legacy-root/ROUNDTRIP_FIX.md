@@ -55,7 +55,7 @@ gcc -Wall -O2 -o "$H/%.harnesses/file-menu+editor/ops/+x/hm_assert_file.+x" "$H/
 gcc -Wall -O2 -o "$H/%.harnesses/file-menu+editor/ops/+x/hm_assert_kv.+x" "$H/%.harnesses/file-menu+editor/ops/hm_assert_kv.c"
 
 # apply_theme_op (if missing):
-gcc -Wall -O2 -o "$H/*.monads/*.livedesk-taskbar/ops/+x/apply_theme_op.+x" "$H/*.monads/*.livedesk-taskbar/ops/apply_theme_op.c" $(pkg-config --cflags --libs freetype2 x11)
+gcc -Wall -O2 -o "$H/_.monads/_.livedesk-taskbar/ops/+x/apply_theme_op.+x" "$H/_.monads/_.livedesk-taskbar/ops/apply_theme_op.c" $(pkg-config --cflags --libs freetype2 x11)
 
 # khtpm_show_text (if missing — book-stack Read chain):
 gcc -Wall -O2 -o "$H/&.widgits/tile-picker/ops/+x/khtpm_show_text.+x" "$H/&.widgits/tile-picker/ops/khtpm_show_text.c"

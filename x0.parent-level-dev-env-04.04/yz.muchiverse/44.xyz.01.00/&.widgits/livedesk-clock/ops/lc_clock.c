@@ -581,7 +581,7 @@ static int daemon_running(const char *house) {
  * Scans known real app-root directories under house_root for a
  * subdirectory whose name contains app_name. */
 static int find_app_dir(const char *house_root, const char *app_name, char *out, size_t outsz) {
-    static const char *roots[] = { "*.monads", "&.widgits", "&.hq-apps", "@.apps", NULL };
+    static const char *roots[] = { "_.monads", "&.widgits", "&.hq-apps", "@.apps", NULL };
     for (int i = 0; roots[i]; i++) {
         char parent[PBUF];
         snprintf(parent, sizeof(parent), "%s/%s", house_root, roots[i]);

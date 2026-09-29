@@ -74,7 +74,7 @@ X="${1:-80}"; Y="${2:-80}"
 
 # The house uses literal '*' characters in these dir names, so this is a
 # real path, not a glob to expand - quote it everywhere.
-OPS="$HOUSE/*.monads/*.livedesk-taskbar/ops"
+OPS="$HOUSE/_.monads/_.livedesk-taskbar/ops"
 BIN="$OPS/+x/khtpm_core_render.+x"
 [ -x "$BIN" ] || { echo "$0: missing $BIN (run build_khtpm_strip.sh)" >&2; exit 1; }
 

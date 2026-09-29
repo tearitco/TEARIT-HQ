@@ -14,7 +14,7 @@ HOUSE_ROOT="${1:-}"
 [ -d "$HOUSE_ROOT" ] || { echo "dsr: cannot resolve house_root" >&2; exit 1; }
 HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 XHTPM="$HERE/dsr.xhtpm"
-RENDER_OPS="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
+RENDER_OPS="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops"
 BIN="$RENDER_OPS/+x/khtpm_core_render.+x"
 MGR="$HERE/ops/+x/dsr_manager.+x"
 

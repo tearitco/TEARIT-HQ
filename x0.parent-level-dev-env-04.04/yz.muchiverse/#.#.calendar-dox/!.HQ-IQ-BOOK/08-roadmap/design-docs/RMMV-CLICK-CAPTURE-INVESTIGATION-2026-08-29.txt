@@ -9,7 +9,7 @@ earlier this session).
 1. CODE READ — matches the task description, already includes an earlier
    self-fix
 --------------------------------------------------------------------------
-File: *.monads/*.livedesk-taskbar/ops/khtpm_entity_menu_render.c
+File: _.monads/_.livedesk-taskbar/ops/khtpm_entity_menu_render.c
 
 - g_pal_rmmv_armed declared at line 743.
 - Arm sequence (line ~3083-3118, inside the "exec:" onclick branch,

@@ -12,7 +12,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 # db-hq-actors.xhtpm is a STATIC template (x11-hq style); the .pal
 # projector writes state/ui.txt, never this file.
 XHTPM="$HERE/db-hq-actors.xhtpm"
-RENDER_OPS="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
+RENDER_OPS="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops"
 BIN="$RENDER_OPS/+x/khtpm_core_render.+x"
 PRISC="$HOUSE_ROOT/&.widgits/_shared-lib/system/+x/prisc+x.+x"
 

@@ -139,7 +139,7 @@ then chooser, close last.
 ## 6. Files to touch (when implementing)
 
 - `&.widgits/palettes/palettes_menu.sh` — `dir` merge + `set-rmmv-dir`
-- `*.monads/*.livedesk-taskbar/ops/palettes_manager.c` — dir scan + publish
+- `_.monads/_.livedesk-taskbar/ops/palettes_manager.c` — dir scan + publish
 - `khtpm_entity_menu_render.c` — options parse + inject dir row
 - `&.widgits/palettes/palettes-rmmv.css` — dir-tab width
 - `RMMV-ASSET-SOURCE-LOCATION.pdl` — optional `img_dir` key (not required)

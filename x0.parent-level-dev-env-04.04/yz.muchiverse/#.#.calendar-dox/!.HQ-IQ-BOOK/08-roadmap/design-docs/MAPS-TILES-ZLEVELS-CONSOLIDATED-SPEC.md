@@ -13,10 +13,10 @@ tile is a real `tp_desktop_window_rgb.c` entity, spawned on the
 existing 80px desktop grid, not a separate map-canvas renderer.** Real
 code already built and verified against it:
 
-- `*.monads/*.livedesk-taskbar/ops/tile_autotile.c` — RPG Maker's real
+- `_.monads/_.livedesk-taskbar/ops/tile_autotile.c` — RPG Maker's real
   48/16/4-row autotile quadrant tables, ported and pixel-verified
   against real `World_A2.png` assets.
-- `*.monads/*.livedesk-taskbar/ops/tile_registry.c` +
+- `_.monads/_.livedesk-taskbar/ops/tile_registry.c` +
   `&.widgits/palettes/tilesets/tileset_registry.pdl` — a real,
   working multi-tileset registry.
 - `desk_grid.pdl` support in `tp_desktop_window_rgb.c` — the 80px grid

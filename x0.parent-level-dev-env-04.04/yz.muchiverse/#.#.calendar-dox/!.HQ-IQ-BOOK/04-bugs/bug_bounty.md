@@ -830,7 +830,7 @@ non-collapsed selection range would render zero visible highlight.
 **Fixed**: added the same sel_lo/sel_hi band draw to the single-line
 cli_io path, same `#2f5f8f` fill, same scoping as the existing cursor
 bar (armed + unclipped label only). Rebuilt clean via
-`build_core_render.sh` in `*.monads/*.livedesk-taskbar/ops/` (pre-
+`build_core_render.sh` in `_.monads/_.livedesk-taskbar/ops/` (pre-
 existing snprintf-truncation warnings only, no new warnings, no
 errors). **Not independently re-verified against real hardware input**
 because of the keyboard-delivery bug documented in this same entry -
@@ -1705,6 +1705,6 @@ Once the pool is exhausted, every subsequent `elem_new()` call for the dock eith
 
 **Files**: `&.widgits/entity-cli/ops/move_entity_tick.c` (producer), `&.hq-apps/world-manager/ops/world_manager_tick.c` (consumer + `apply_ledger_deltas()` + `MAX_ENTITIES` split + malloc hardening), `ops/world_manager_init.c` + `ops/sync_entity_positions.c` (malloc hardening only).
 
-**Also found, real, house-wide, out of scope to fix tonight**: the undersized-realpath-buffer pattern in bug #2 above is NOT unique to world-manager - a house-wide grep found dozens of other files defining `MAX_PATH`/`PATH_BUF`-style macros well under 4096 (256/512/1024/2048, e.g. `101.ledger-player-npc-simple+3/ops/ledger_append.c` at 256, `014.wsr-pal.../system/chtpm_parser_pal.c` at 1024, `*.monads/*.livedesk-taskbar/ops/tile_registry.c` at 512) and passing them straight to `realpath()`. Every one of these is a latent, dormant crash that only manifests under a fortify-hardened build - exactly like this one did. Worth a dedicated house-wide sweep later; flagging here so it isn't lost, not fixing all of them under tonight's "#1 priority, we can't go forward" framing which was specifically about world_manager.
+**Also found, real, house-wide, out of scope to fix tonight**: the undersized-realpath-buffer pattern in bug #2 above is NOT unique to world-manager - a house-wide grep found dozens of other files defining `MAX_PATH`/`PATH_BUF`-style macros well under 4096 (256/512/1024/2048, e.g. `101.ledger-player-npc-simple+3/ops/ledger_append.c` at 256, `014.wsr-pal.../system/chtpm_parser_pal.c` at 1024, `_.monads/_.livedesk-taskbar/ops/tile_registry.c` at 512) and passing them straight to `realpath()`. Every one of these is a latent, dormant crash that only manifests under a fortify-hardened build - exactly like this one did. Worth a dedicated house-wide sweep later; flagging here so it isn't lost, not fixing all of them under tonight's "#1 priority, we can't go forward" framing which was specifically about world_manager.
 
 **Files**: `&.hq-apps/world-manager/world_manager.pal`, `button.sh`, `ops/{world_manager_tick,world_manager_init,sync_entity_positions}.c`; `pages/test_page_001/manager/page_manager.pal` (twin). Design doc for the ledger-trunking recommendation: TBD, not yet written up separately - this entry is the design of record until it is.

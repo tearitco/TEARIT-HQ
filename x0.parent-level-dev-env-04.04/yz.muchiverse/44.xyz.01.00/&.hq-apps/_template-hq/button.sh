@@ -13,10 +13,10 @@ HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 XHTPM="$HERE/$APP.xhtpm"
-BIN="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
+BIN="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
 
 chmod +x "$HERE"/*.sh 2>/dev/null || true
-[ -x "$BIN" ] || (cd "$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops" && sh build_core_render.sh) || true
+[ -x "$BIN" ] || (cd "$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops" && sh build_core_render.sh) || true
 [ -x "$BIN" ] || { echo "$APP: missing $BIN" >&2; exit 1; }
 [ -f "$XHTPM" ] || { echo "$APP: missing $XHTPM" >&2; exit 1; }
 mkdir -p "$HERE/state"

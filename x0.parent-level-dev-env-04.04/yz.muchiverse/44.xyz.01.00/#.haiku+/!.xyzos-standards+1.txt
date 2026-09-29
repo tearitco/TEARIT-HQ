@@ -4171,7 +4171,7 @@ Canonical examples (copy shape, not necessarily files):
   0.user-pal/00.login-signup/test-harn-same/
   0.user-pal/01.avatar-creation…/test-harn-same/
   102.editor-…/test-harn-same/
-  *.START_BUTTON/test-harn-same/
+  _.START_BUTTON/test-harn-same/
   @.apps/text-editor-xyz/test-harn-ed-app/  # combined editor+file-menu
                                              # app harness (2026-07-30)
                                              # — descriptive suffix,
@@ -4200,7 +4200,7 @@ Architecture of the harness itself (thin button.sh → ops → scenarios):
 | file-menu UI alone (chrome, browser, focus)  | &.widgits/file-menu/test-harn-same/ |
 | editor INTERACT canvas alone                 | 102.editor-…/test-harn-same/        |
 | login / signup alone                         | 0.user-pal/00.login-signup/test-harn-same/ |
-| START_BUTTON category list                   | *.START_BUTTON/test-harn-same/      |
+| START_BUTTON category list                   | _.START_BUTTON/test-harn-same/      |
 
 Each owns:
   - its own tk_* (or dd_*) ops copy or local variants

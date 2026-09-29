@@ -9,7 +9,7 @@ was actually hit, not a hypothetical.)
 ## 🗺️ 1. THE BIG PICTURE — who is who
 
 📦 **One binary to rule them all**: `khtpm_entity_menu_render.c`
-(under `*.monads/*.livedesk-taskbar/ops/`) is the SAME compiled program
+(under `_.monads/_.livedesk-taskbar/ops/`) is the SAME compiled program
 for db-hq, events-hq, stats-hq, bookmarks, palettes, chat-hai, and
 taskbar-settings. It figures out which app it's being at startup by
 reading the `<window class="...">` attribute off the `.chtpm` file it's

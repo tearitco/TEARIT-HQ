@@ -4,7 +4,7 @@
 
 **Last revised:** 2026-09-04  
 **Canonical sources:**  
-- xhtpm: `44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c` (parse, vars, actions, dispatch)
+- xhtpm: `44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c` (parse, vars, actions, dispatch)
 - xhtpm: `44.xyz.01.00/&.widgits/_shared-lib/khtpm_*.c` (Elem struct, CSS, draw)
 - tpmos: `44.xyz.01.00/101.ledger-player-npc-simple+3/system/chtpm_parser.c` (reference impl)
 
@@ -556,7 +556,7 @@ See `09-appendix/forensic-report-flicker.md` for detailed render timing analysis
 ## Appendix: File Locations
 
 **Main sources:**
-- Template parser: `/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c` (4300+ lines)
+- Template parser: `/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c` (4300+ lines)
 - Elem struct + basic tree ops: `/44.xyz.01.00/&.widgits/_shared-lib/khtpm_render_core.c` (shared, text-included, not linked)
 - CSS parser + compute: `/44.xyz.01.00/&.widgits/_shared-lib/khtpm_css_parser.c` (compiled separately)
 - Draw implementation: `/44.xyz.01.00/&.widgits/_shared-lib/khtpm_draw_core.c` (X11/Xft rendering)

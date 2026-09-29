@@ -1,7 +1,7 @@
 <!-- palettes-elements.chtpm — real TPMOS-compliant rebuild (2026-08-25),
      same shape as palettes-emojis.chtpm - see that file's own header. -->
 <window class="database-window palettes">
-  <module src="*.monads/*.livedesk-taskbar/ops/+x/palettes_manager.+x" args="elements" />
+  <module src="_.monads/_.livedesk-taskbar/ops/+x/palettes_manager.+x" args="elements" />
   <panel class="settings-block">
     <title class="block-title" label="palettes: Chemicals+Compounds"/>
     <text class="pal-hint" label="Chemicals+Compounds - click to place."/>

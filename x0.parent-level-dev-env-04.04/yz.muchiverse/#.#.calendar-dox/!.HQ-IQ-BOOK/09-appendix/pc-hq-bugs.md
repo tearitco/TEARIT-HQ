@@ -46,7 +46,7 @@ this branch also did today.
 Relevant live files for reproduction:
 - `44.xyz.01.00/@.apps/piececraft-hq/pchq-board.xhtpm` (template)
 - `44.xyz.01.00/@.apps/piececraft-hq/ops/pchq_board_projector.c` (state publisher)
-- `44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c` (renderer, `g_interact_relay_on`/`kh_scan_interact_relay()`/`handle_key()`)
+- `44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c` (renderer, `g_interact_relay_on`/`kh_scan_interact_relay()`/`handle_key()`)
 - `44.xyz.01.00/&.widgits/_shared-lib/khtpm_draw_core.c` (badge glyph logic, `is_scope`)
 - `44.xyz.01.00/&.widgits/board-viewer/pal/main_module.pal` + `ops/bv_menu_input.c` + `ops/bv_render_3d.c` (the actual live camera engine for a board-viewer session)
 - `44.xyz.01.00/&.widgits/_shared-lib/system/prisc+x.c` (`OP_READ_HISTORY` — the pal-script interpreter opcode that reads `interact_relay.txt`)
