@@ -10,4 +10,4 @@
  * capability (kh_resolve_win_w(), khtpm_core_render.c) - added the
  * same day after this rule first exposed the gap (a literal "50%" was
  * silently read as 50px before that fix). */
-window { width: 50%; }
+window { width: 25%; }
