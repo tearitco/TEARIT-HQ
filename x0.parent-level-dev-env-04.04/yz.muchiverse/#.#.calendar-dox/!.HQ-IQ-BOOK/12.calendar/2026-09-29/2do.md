@@ -135,7 +135,20 @@ committing there. **Lesson for next time this house does dual-branch
 work in one sitting**: `strings <binary> | grep <something-new>` before
 trusting ANY test result across a branch switch, not just a rebuild.
 
-## Desired API fix (documented now, not yet built - user: "we will do it")
+## Desired API fix - DONE (commit `c55ee17b9`, `claude` branch)
+
+Built. `ops/json_parser.c` ported verbatim from gem-dev, real generic
+dot-notation JSON parser run as its own forked binary (`execl` with a
+real argv array, never a shell string - this house's paths routinely
+contain a literal `&`). All three OpenRouter extractors
+(`extract_openrouter_tool_call_raw`/`extract_openrouter_tool_call`/
+`extract_openrouter_content`) now shell out to it instead of hand-
+parsing. Live re-verified through the real running manager (not just
+curl): nemotron plain content + tool call, dots-studio tool call now
+resolves the correct path, poolside correctly surfaces its real
+upstream 429. See the plan this replaces just below, kept for context.
+
+### Original plan (superseded by the above)
 
 The whitespace patch above is real and verified, but it's still a
 hand-rolled `strstr` byte-pattern match — the same class of fragility
