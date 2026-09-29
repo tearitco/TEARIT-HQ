@@ -107,6 +107,25 @@ foreach ($op in $gem_ops) {
     Compile-Piece "projects\gem-dev\ops\src\$op.c" "projects\gem-dev\ops\+x\$op.+x"
 }
 
+# --- slop-ed-dev ---
+# The last of the four, and the only one that COMPILED on Windows the whole
+# time. Unlike the LLM trio it was already partly ported in-place -- sys/wait.h
+# guarded, windows.h, a mkdir shim, a usleep shim and its own Windows asprintf
+# -- so it needed no compile fixes and was not portable in the sense that
+# mattered. Its run_command() had "#else return system(cmd)", which hands the
+# string to cmd.exe, and every one of its nine call sites was POSIX shell:
+# "mkdir -p", "cp -r", single-quoted paths, "> /dev/null 2>&1", "VAR=x cmd".
+# cmd.exe has none of those, so the whole app compiled clean and did nothing.
+# A green build was the only thing wrong with it, and it is the reason this
+# project's port could not be judged by whether it compiled.
+# No Ops of its own -- it calls the shared pieces/system/file_ops ones, already
+# ported for agy-text-editor.
+Compile-Piece "projects\slop-ed-dev\manager\slop-ed-dev_manager.c" "projects\slop-ed-dev\manager\+x\slop-ed-dev_manager.+x"
+# pal_editor.chtpm points at a SECOND module in the same directory, so building
+# only the manager would leave one of the six layouts pointing at a binary that
+# does not exist.
+Compile-Piece "projects\slop-ed-dev\manager\pal_editor_module.c" "projects\slop-ed-dev\manager\+x\pal_editor_module.+x"
+
 
 
 # --- Keyboard & Joystick ---
