@@ -87,3 +87,100 @@ already exists — built and reworked to a real `prisc+x` pal script
 earlier this same week (`&.widgits/robot-chat/`). Grok's stated "next
 build is the robot live chat window" may be redundant; flagged before
 Grok/Kilo start new construction on it.
+
+## Real tool-use milestone testing (before writing this up as done)
+
+Direct instruction before handing Grok anything: "make sure the api's
+can use the tools we expect it to use etc, b4 we add this to hq-iq-
+book, this is important milestone." Tested all 3 new models end to
+end through open-hai's real `SEND|` request protocol (not just a raw
+curl) with the exact 2-tool (`list_dir`/`read_file`) schema
+`send_to_openrouter()` actually sends:
+
+- **nvidia/nemotron-3-ultra-550b-a55b:free** — reliable. Real
+  `tool_calls`, correct tool, correct path argument, repeatable.
+- **poolside/laguna-s-2.1:free** — hit a real upstream 429 ("shared
+  pool" rate-limit, same class the house already documented for
+  gemma-4-26b-a4b-it:free back on 2026-08-18) on a retry. Not a code
+  or reliability problem — an expected free-tier congestion risk, same
+  as the existing entries. Worth knowing before leaning on it for
+  time-sensitive delegation.
+- **dots-studio/dots-3-note-preview:free** — found and fixed a REAL
+  bug (see the commit below): `extract_openrouter_tool_call_raw()`'s
+  path extraction required the model's escaped JSON to have no space
+  after the colon (`\"path\\\":\\\"`); dots-studio's own serialization
+  legally includes one (`\"path\": \"`), which silently defeated the
+  match and always resolved to the house root regardless of the real
+  requested path. Confirmed via a side-by-side raw curl against
+  OpenRouter (model's own argument was byte-for-byte correct - the
+  extractor was not). Fixed (`4ab519c49`, `claude` branch), rebuilt,
+  and re-verified live: correct tool, correct path.
+
+**Real process note, worth remembering**: most of this debugging chase
+happened on the WRONG branch by accident - I'd committed the new
+models on `claude`, then `git checkout main` to restore unrelated
+runtime-state files, and main's own copy of `khtpm_open_hai_manager.c`
+(pre-dating the `claude`-branch commit) silently came back with none
+of the new models. Every "dots-studio" test in that window was
+actually silently falling back to `g_models[0]` (`stable-code:latest`
+over local Ollama) - which is why the replies looked like real model
+misbehavior (wrong tool, wrong path, or outright unrelated prose)
+instead of a clean pass/fail. Root cause confirmed by `strings <binary>
+| grep dots-studio` coming back empty despite a "clean build" message -
+a build succeeding is not proof it built the file you think it did.
+Recovered with no lost work (`git stash` held the real fix the whole
+time) by fully stashing, switching to `claude`, popping, then
+re-applying just the real patch (minus a throwaway debug block) and
+committing there. **Lesson for next time this house does dual-branch
+work in one sitting**: `strings <binary> | grep <something-new>` before
+trusting ANY test result across a branch switch, not just a rebuild.
+
+## Desired API fix (documented now, not yet built - user: "we will do it")
+
+The whitespace patch above is real and verified, but it's still a
+hand-rolled `strstr` byte-pattern match — the same class of fragility
+that produced this exact bug, patched one symptom at a time. The real,
+better answer already exists elsewhere in this house's own history:
+
+**`1.TPMOS_c_+rmmp.0103.0001/projects/gem-dev`** (a different, older
+project tree, not in this repo) has a real, generic, structurally-
+correct dot-notation JSON parser: `ops/src/json_parser.c` (183 lines -
+tracks `{`/`[` nesting depth and string escapes properly, not another
+strstr hack). It's used as a real compiled op, e.g.:
+```
+json_parser <response-file> 'candidates[0].content.parts[0].functionCall'
+```
+This is genuinely whitespace-safe by construction — it would never
+have had the dots-studio bug in the first place.
+
+**Caveat found while checking this** (don't copy gem-dev's own usage
+wholesale): its own response-parsing call sites are hardcoded to
+**Gemini's** native response shape (`candidates[...].content.parts
+[...].functionCall`), not Ollama's or OpenRouter's. Its own handoff
+doc (`#.dox/groq-api-handoff.txt`) documents an unresolved bug from
+exactly this mismatch - pointing that same Gemini-shaped parser at an
+Ollama/llama3-groq-tool-use backend got back empty `{}` responses,
+because Ollama's real native shape is `message.tool_calls[...].
+function.{name,arguments}`, structurally different from Gemini's. That
+bug was never actually fixed there - there is no working "here's the
+Ollama tool-calls shape" reference to lift as-is.
+
+**The real plan**: port `json_parser.c` itself (the generic dot-
+notation engine, not gem-dev's Gemini-specific call sites) into
+open-hai's `ops/`, and replace `extract_openrouter_tool_call_raw()`
+entirely with calls shaped for OpenRouter's real, actual response
+schema: `choices[0].message.tool_calls[0].function.name` and
+`choices[0].message.tool_calls[0].function.arguments` (itself a JSON-
+string-encoded object - `arguments` come back as a string that needs a
+second parse pass, same as gem-dev's own `function_call.tmp` two-step
+in its manager). This removes the whole class of whitespace/escaping
+bugs this session just chased down, and gives every future OpenRouter
+model the same reliability nemotron already has, without model-by-
+model patching.
+
+**Not started. Next step when picked up**: read `json_parser.c` in
+full, confirm it handles the escaped-string-within-a-string case
+`arguments` needs (a value that is itself JSON, not a plain string),
+then port it + rewrite `extract_openrouter_tool_call_raw()`'s two call
+sites (name lookup + a second pass on the escaped `arguments` string)
+against it.
