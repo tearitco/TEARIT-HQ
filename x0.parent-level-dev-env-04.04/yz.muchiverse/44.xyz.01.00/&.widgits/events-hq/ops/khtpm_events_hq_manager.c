@@ -1251,6 +1251,38 @@ static void handle_action_request(void) {
     compile_page(g_current_page);
     publish_page_state();
 
+    /* REAL, NEW 2026-09-28 (EVENT-MODULARITY-AND-BUILD-SPEED.md §1 tier
+     * 3 - "all events go in here (in a page) as puzzle pieces, just for
+     * logical continuity of drag and drop"): every appended command also
+     * materializes as a real 🧩 nested inside its page's own ⚙️ item.
+     * Same entity_dir derivation and same fire-and-forget shape as the
+     * new_page hook above - never blocks the append, which already
+     * succeeded. g_current_page is an INDEX into g_pages[] (its real
+     * on-disk name), never assume/compute "page_N" from the index - see
+     * page_dir()'s own g_pages[page_idx] lookup, a plain index+1
+     * computation would be wrong the moment page numbering isn't
+     * contiguous (e.g. after a page delete). */
+    {
+        char entity_dir[PATH_BUF];
+        char *last_slash = strrchr(g_pkg_dir, '/');
+        if (last_slash && strncmp(last_slash + 1, "event_pkg", 9) == 0) {
+            size_t len = (size_t)(last_slash - g_pkg_dir);
+            if (len > 0 && len < sizeof(entity_dir) - 1) {
+                memcpy(entity_dir, g_pkg_dir, len);
+                entity_dir[len] = '\0';
+            } else {
+                snprintf(entity_dir, sizeof(entity_dir), "%s", g_pkg_dir);
+            }
+        } else {
+            snprintf(entity_dir, sizeof(entity_dir), "%s", g_pkg_dir);
+        }
+        char cmd[PATH_BUF * 3];
+        snprintf(cmd, sizeof(cmd),
+                 "sh -c 'exec sh \"%s/&.widgits/events-hq/ops/event_auto_puzzle.sh\" \"%s\" \"%s\" \"%d\" \"%s\"' >/dev/null 2>&1 &",
+                 g_house_root, entity_dir, g_pages[g_current_page], next_id, g_house_root);
+        system(cmd);
+    }
+
     FILE *cw = fopen(g_action_path, "w");
     if (cw) fclose(cw);
 }

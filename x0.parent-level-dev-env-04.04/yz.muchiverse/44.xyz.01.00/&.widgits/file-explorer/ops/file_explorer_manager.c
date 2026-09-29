@@ -355,6 +355,51 @@ static void fe_clear_search(const char *package_dir) {
     fclose(f);
 }
 
+/* REAL, NEW 2026-09-28 (EVENT-MODULARITY-AND-BUILD-SPEED.md §1, direct
+ * instruction: events/pages "dont need to show up on pals... but they
+ * can, lets .pdl toggle as optional") - a 🎬️/⚙️/🧩 pal's own meta.pdl
+ * carries `STATE | event_object | 1`; house-wide default is HIDDEN from
+ * this listing unless #.desktop/hq_ui.pdl sets
+ * EVENT_OBJECTS_VISIBLE=1. This is the file-explorer's own directory
+ * listing per GROK's 2026-09-17 cursword-file-inventory-chat.md - the
+ * real, already-existing "browse a subdirectory of inventory/" viewer,
+ * no new inventory widget needed, so this is the one real place that
+ * enumeration needs to be filtered. */
+static char g_fe_house_root[MAX_PATH] = "";
+
+static int fe_event_objects_visible(void) {
+    if (!g_fe_house_root[0]) return 1; /* no house_root known yet: never hide, fail open */
+    char p[MAX_PATH];
+    snprintf(p, sizeof(p), "%s/#.desktop/hq_ui.pdl", g_fe_house_root);
+    FILE *f = fopen(p, "r");
+    if (!f) return 0; /* documented default: hidden */
+    char line[256];
+    int visible = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "EVENT_OBJECTS_VISIBLE=", 22) == 0) {
+            visible = atoi(line + 22);
+            break;
+        }
+    }
+    fclose(f);
+    return visible;
+}
+
+static int fe_is_hidden_event_object(const char *dir_path) {
+    char p[MAX_PATH];
+    snprintf(p, sizeof(p), "%s/meta.pdl", dir_path);
+    FILE *f = fopen(p, "r");
+    if (!f) return 0;
+    char line[256];
+    int is_event_object = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strstr(line, "event_object") && strstr(line, "| 1")) { is_event_object = 1; break; }
+    }
+    fclose(f);
+    if (!is_event_object) return 0;
+    return !fe_event_objects_visible();
+}
+
 void list_directory(const char *dir, State *state) {
     DIR *d = opendir(dir);
     if (!d) return;
@@ -375,6 +420,8 @@ void list_directory(const char *dir, State *state) {
 
         struct stat st;
         if (stat(full_path, &st) != 0) continue;
+
+        if (S_ISDIR(st.st_mode) && fe_is_hidden_event_object(full_path)) continue;
 
         state->entries[state->count].sprite[0] = '\0';
         strncpy(state->entries[state->count].name, entry->d_name, MAX_NAME - 1);
@@ -587,6 +634,7 @@ int main(int argc, char *argv[]) {
 
     const char *house_root = argv[1];
     const char *package_dir = argv[2];
+    snprintf(g_fe_house_root, sizeof(g_fe_house_root), "%s", house_root);
     char mode_buf[10];
     snprintf(mode_buf, sizeof(mode_buf), "%s", argv[3]);
     char start_buf[MAX_PATH] = "";

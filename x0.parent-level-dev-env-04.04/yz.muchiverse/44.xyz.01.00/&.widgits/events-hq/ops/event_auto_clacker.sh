@@ -63,6 +63,7 @@ META         | piece_id           | $_name
 STATE        | kind                 | deskpal
 STATE        | glyph                | $_emoji
 STATE        | instance_id          | $_iid
+STATE        | event_object         | 1
 METHOD       | Events (hq)          | sh -c 'exec "\$1/&.widgits/events-hq/button.sh" "\$0" "\$1"'
 METHOD       | Dir                  | sh -c 'exec xdg-open "\$0"'
 METHOD       | Close                | CLOSE
