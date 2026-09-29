@@ -56,6 +56,36 @@ own name.
   bottleneck, OpenRouter's delegation ceiling, and the DSR/WSR_PAL-PREFERED
   relationship.
 
+## ⚠️ Night-class drift warning (owner feedback, 2026-09-29)
+
+NIGHT_29 was written and rejected: it dramatized the *session's own
+recent bug fixes and process incidents* (a wrong colab post path, a
+misremembered word, a folder becoming a real home instead of a
+pointer) instead of the actual subject matter this whole thread is
+about — the attrition-model's real architecture, the technical needs
+of each unbuilt system (civ-test survival, DSR's ledger economy, the
+terumon babysitter, piececraft's Minecraft clone), and reasoned
+theorizing about how they should be built. The owner named this as a
+**recurring drift**, not a one-off: night classes keep gravitating
+toward "here's the bug we just fixed" because that material is fresh,
+concrete, and easy to dramatize — while the actual standing subject
+matter (everything in this very folder, for example) gets skipped
+because it takes real synthesis work to dramatize well.
+
+**Rule for every future night class covering a thread like this one:**
+if the source material is a concerns/answers document (this folder is
+the canonical example), the class must dramatize the CONCERNS and
+their ANSWERS — the technical specs, the real-vs-aspirational status
+of each subsystem, the open design questions worth reasoning about —
+not the bug-fix/process story of how the answer document got written.
+A session incident (a wrong file path, a caught mistake) is legitimate
+material for a DIFFERENT class about house process, but it must not
+be substituted for the subject-matter class just because it's easier
+to write. When in doubt, check: does this script teach the listener
+the actual architecture, or does it teach them what went wrong while
+writing the architecture doc? Only the first one satisfies a request
+to cover "the concerns sheet and its answers."
+
 ## Status of open items from this thread
 
 - **Settled:** "the attrition-model" is the confirmed umbrella term
@@ -64,8 +94,10 @@ own name.
   personal folder to `08-roadmap/design-docs/robot-chat/` — same
   directory tier as `TERUMON-SPEC.md`/`PALCRAFT-DESIGN.md`.
 - **Still open / not yet done:** a HARNECIENT.SMOL "night class"
-  script covering this whole thread; an outside agent's own weigh-in
-  document (not yet requested/received).
+  script that actually covers this thread's subject matter (NIGHT_29
+  missed the mark, see the drift warning above — it dramatized session
+  bug fixes instead; a real replacement class is the next step); an
+  outside agent's own weigh-in document (not yet requested/received).
 - **Genuinely new ideas raised in this thread, not yet built or
   formally ratified anywhere else in the house:** the "real entity" vs
   "magic entity/event" distinction; the `BOOK:SYSTEM` proposal
