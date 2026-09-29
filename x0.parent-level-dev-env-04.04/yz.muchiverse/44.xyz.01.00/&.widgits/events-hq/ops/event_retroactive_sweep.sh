@@ -51,10 +51,11 @@ find "$HOUSE_ROOT/xyzfs/users" -type d -path "*/event_pkg/pages/page_*" 2>/dev/n
     # otherwise treats every ⚙️ item's OWN copied event_pkg/pages/page_N
     # as yet another source page needing its own clacker, recursing one
     # level deeper every single run, forever). Only a path this tool
-    # itself produced ever contains "/inventory/event_clacker/" - a
-    # genuine, never-yet-retrofitted source page never does.
+    # itself produced ever contains "/inventory/event_clacker_" (numbered
+    # 2026-09-28: "clacker should be numbered like pages") - a genuine,
+    # never-yet-retrofitted source page never does.
     case "$pagedir" in
-        */inventory/event_clacker/*)
+        */inventory/event_clacker_*)
             n_skip=$((n_skip + 1))
             continue
             ;;
@@ -65,7 +66,7 @@ find "$HOUSE_ROOT/xyzfs/users" -type d -path "*/event_pkg/pages/page_*" 2>/dev/n
     ent_dir="$(dirname "$pkg_dir")"
     ent_name="$(basename "$ent_dir")"
 
-    clacker_item="$ent_dir/inventory/event_clacker/inventory/$page_name"
+    clacker_item="$ent_dir/inventory/event_clacker_1/inventory/$page_name"
     if [ -d "$clacker_item" ]; then
         n_skip=$((n_skip + 1))
         continue

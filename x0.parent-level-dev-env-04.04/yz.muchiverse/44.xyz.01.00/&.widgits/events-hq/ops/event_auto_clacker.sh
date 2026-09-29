@@ -91,12 +91,25 @@ copy_page_into() {
     done
 }
 
-CLACKER_DIR="$ENT/inventory/event_clacker"
+# REAL, NEW 2026-09-28 (direct instruction: "clacker should be numbered
+# like pages, in case there were more than one, one would take priority
+# when executing"): clackers are event_clacker_N, highest N wins at
+# dispatch (see play_event.sh's own ACTIVE_CLACKER redirect - matches
+# the house's existing "highest-numbered matching page wins" rule and
+# real stack/push-pop semantics). This hook only ever creates/maintains
+# the entity's own NATIVE clacker, always event_clacker_1 - it mirrors
+# the entity's own pages for inventory/inspection/dragging purposes and
+# is deliberately NEVER authoritative for dispatch by itself (that would
+# make it go stale the moment events-hq edits the entity's real
+# event_pkg/pages directly). Only an externally pushed-in clacker
+# (event_clacker_2+, from the not-yet-built drop-target handler) ever
+# becomes the active dispatch source.
+CLACKER_DIR="$ENT/inventory/event_clacker_1"
 
 # --- Tier 1: the 🎬️ clacker itself, created once, lazily -----------------
 if [ ! -d "$CLACKER_DIR" ]; then
     echo "-- no event clacker yet for $ENT - creating one"
-    make_minimal_pal "$CLACKER_DIR" "event_clacker" "🎬️"
+    make_minimal_pal "$CLACKER_DIR" "event_clacker_1" "🎬️"
 else
     echo "-- event clacker already exists for $ENT ($CLACKER_DIR)"
 fi

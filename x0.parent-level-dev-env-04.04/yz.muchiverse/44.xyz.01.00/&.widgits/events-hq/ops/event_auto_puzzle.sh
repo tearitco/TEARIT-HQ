@@ -36,7 +36,7 @@ SRC_PAGE_DIR="$ENT/event_pkg/pages/$PAGE"
 # Tier 1 + 2 first (idempotent - skips instantly if already present).
 sh "$OPS_DIR/event_auto_clacker.sh" "$ENT" "$PAGE" "$HOUSE_ROOT" >/dev/null
 
-PIECE_DIR="$ENT/inventory/event_clacker/inventory/$PAGE/inventory/cmd_$CMD_ID"
+PIECE_DIR="$ENT/inventory/event_clacker_1/inventory/$PAGE/inventory/cmd_$CMD_ID"
 if [ -d "$PIECE_DIR" ]; then
     echo "-- 🧩 puzzle piece already exists: $PIECE_DIR (leaving as-is)"
     exit 0
