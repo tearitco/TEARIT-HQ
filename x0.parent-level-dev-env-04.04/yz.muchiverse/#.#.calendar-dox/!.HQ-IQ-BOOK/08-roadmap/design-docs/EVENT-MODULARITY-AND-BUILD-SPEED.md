@@ -193,12 +193,21 @@ uses (a real directory, real `pal.pdl`/`meta.pdl`, real
   authored `cmd_N.sh` this session (door_civ's, robot_chat_001's own)
   resolves its own entity dir at runtime via
   `cd "$(dirname "$0")/../../.."` — genuinely portable already, no
-  baked absolute path. **Not yet confirmed for a REAL, compiler-
-  generated `cmd_N.sh`** (one produced by `khtpm_events_hq_manager.c`'s
-  own IR→pal→sh compiler from a real events-hq authoring session,
-  rather than hand-authored) — check this before assuming every
-  existing event is this portable; a real compiled one may bake in
-  more than a comment.
+  baked absolute path. **CONFIRMED 2026-09-28, pretest phase**: checked
+  a real compiler-generated `cmd_N.sh`
+  (`common_events/greet_player/event_pkg/pages/page_1/cmd_1.sh`,
+  produced by `khtpm_events_hq_manager.c`'s own IR→pal→sh compiler,
+  source at that file's line ~640-671). It carries **zero** `pkg=`/
+  `page=` reference of any kind — fully portable, resolves its entity
+  purely via `ENT="${MUCHI_TARGET_ENT:-$PWD}"`. The `# pkg=...
+  page=...` comment only ever appears in the parent `event.pal` (line
+  470, "regenerated fresh on every command save"), never in `cmd_N.sh`
+  itself, and is not read back by anything at runtime. Bonus finding:
+  `MUCHI_TARGET_ENT` (added 2026-09-21, for a robot's METHOD row run
+  from another entity's Inventory right-click) already solves exactly
+  the "this pal lives inside another entity's inventory, must act on
+  the host" case a dropped-in 🎬️/⚙️ needs — reuse this env var, don't
+  invent a second mechanism for the same problem.
 - **A page number** — its own identity, not borrowed from whatever
   entity it's currently attached to.
 
@@ -307,29 +316,29 @@ flagged above (comment-only vs. load-bearing `pkg=`/`page=` reference)
 step 1's op, not assumed from this session's two hand-authored
 examples alone.
 
-### Open questions to resolve before building
+### Open questions — RESOLVED 2026-09-28 (direct instruction, before building)
 
-1. Does dropping a 🎬️ **copy** its event data into the target (each
-   target gets its own independent copy, edits don't propagate), or
-   **link** it (edits to the 🎬️ propagate to every entity it's been
-   dropped onto)? This is the exact same copy-vs-link tension
-   `AI-PUSH-ROADMAP-AND-NUANCES.md`'s template/delta bank design
-   already reasons through for chatbot personalities — worth checking
-   whether the same template/delta shape applies here too, rather than
-   inventing a second answer to the same underlying question.
-2. Does a 🎬️'s own `page number` need to be house-wide unique (like
-   `LIVEDESK_INDEX`), or scoped per-🎬️ (each one starts its own
-   page_1)? Leans toward the latter since a 🎬️ is meant to be
-   self-contained.
-3. What triggers 🎬️ creation for NEW events going forward — every
-   event authored in events-hq automatically also becomes a 🎬️ pal, or
-   is it always the explicit "export this event" action from the
-   retroactive section above, used for old and new events alike? The
-   original direct instruction ("each time an event/page was created")
-   reads as automatic-for-new, but automatic creation means every new
-   event has TWO real representations to keep in sync from birth —
-   worth confirming this is actually wanted vs. "export is always
-   explicit, for old and new events both, one consistent mental model."
+1. ~~Copy vs link?~~ **Resolved: copy now, link later.** Ship the
+   simple independent-copy behavior first (matches how inventory
+   drag-and-drop already works elsewhere). Revisit as a template/delta
+   bank design (matching `AI-PUSH-ROADMAP-AND-NUANCES.md`'s chatbot
+   personality mechanism) once a real need for propagating edits shows
+   up — not designed speculatively now.
+2. ~~House-wide unique page numbers, or per-🎬️?~~ **Resolved:
+   per-🎬️.** Each clacker is self-contained and starts its own
+   `page_1`, matching the doc's own original lean.
+3. ~~Automatic vs explicit creation trigger?~~ **Resolved: automatic,
+   both directions.** Creating a new event/page inside an entity's
+   `event_pkg` automatically materializes its ⚙️/🎬️ objects (no manual
+   export step), AND dropping a 🎬️/⚙️ onto a target entity automatically
+   updates that entity's live event view/pages (hot-load if the window
+   is open, persists if closed — per the "Drop behavior" section
+   above). Direct instruction: "thats how its actually supposed to
+   work (auto both ways, if dropped in, updates view/pages) and we will
+   be careful retrofitting ergo testing" — the pretest-baseline /
+   incremental-build / compare-after-each-step methodology below is the
+   direct answer to that care-in-retrofitting instruction, not a
+   separate process bolted on afterward.
 
 ---
 
