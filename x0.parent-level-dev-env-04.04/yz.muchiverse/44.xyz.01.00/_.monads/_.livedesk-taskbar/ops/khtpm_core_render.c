@@ -3194,9 +3194,16 @@ static int kh_claimed_tab_path(int nav, char *out, size_t outsz) {
 }
 
 static void kh_cliio_result(const char *msg) {
-    if (!g_package_dir[0]) return;
+    /* Prefer g_arg3_dir (the real per-instance dir, argv[3]) over
+     * g_package_dir (the shared .xhtpm template's own dir) when set -
+     * see the drop_action branch below for why. A no-op fallback change
+     * for any app that never populates g_arg3_dir (argc<5, e.g. File
+     * Explorer's own standalone launch), so this preserves the original
+     * 2026-09-19 verified behavior exactly for every existing caller. */
+    const char *dir = g_arg3_dir[0] ? g_arg3_dir : g_package_dir;
+    if (!dir[0]) return;
     char rp[PATH_BUF];
-    snprintf(rp, sizeof(rp), "%s/cliio_result.txt", g_package_dir);
+    snprintf(rp, sizeof(rp), "%s/cliio_result.txt", dir);
     FILE *f = fopen(rp, "w");
     if (f) { fprintf(f, "%s\n", msg); fclose(f); }
 }
@@ -3208,12 +3215,54 @@ static void kh_cliio_exec(const char *text) {
     int is_mv = strcmp(verb, "mv") == 0;
     int is_cp = strcmp(verb, "cp") == 0;
     if (!is_mv && !is_cp) { kh_cliio_result("error: unknown verb (only mv/cp <nav#> <nav#>)"); return; }
-    char af_path[PATH_BUF];
-    snprintf(af_path, sizeof(af_path), "%s/file_explorer_action.txt", g_package_dir);
     if (!g_package_dir[0]) return;
     char probe[PATH_BUF];
     snprintf(probe, sizeof(probe), "%s/file_explorer_ui.txt", g_package_dir);
-    if (access(probe, F_OK) != 0) { kh_cliio_result("error: this window has no mv/cp handler yet"); return; }
+    if (access(probe, F_OK) != 0) {
+        /* REAL, NEW 2026-09-28 (drop-action generalization, direct
+         * instruction: build the CLI equivalent of a real drop for ANY
+         * drop_action window, not just File Explorer) - this window
+         * isn't file-explorer-shaped, but if it opted into XDND
+         * (drop_action= on its <window>), treat mv/cp exactly like a
+         * genuine drop: resolve the source nav# to a real path via the
+         * SAME live nav-claim-pool lookup File Explorer's own "p..."
+         * source spec already uses below, then fire g_drop_action via
+         * the exact same setenv(DROP_PATH)+system() call
+         * xdnd_handle_selection() makes on a real XDND drop - not a
+         * second copy of that logic. Destination nav# (`b`) is
+         * meaningless here and ignored: a drop_action window's target
+         * is always "this whole window," there is no per-entry
+         * destination concept outside File Explorer's own list.
+         * mv and cp are genuinely equivalent for a drop target since
+         * event_drop_handler.sh (and any well-behaved drop_action
+         * script, per the house's own real mv/drop convention) already
+         * deletes its own source on success - there is nothing left for
+         * "cp" to preserve differently here, so both verbs just fire
+         * the same drop. */
+        if (!g_drop_action[0]) { kh_cliio_result("error: this window has no mv/cp handler yet"); return; }
+        char tab_path[PATH_BUF];
+        if (!kh_claimed_tab_path(a, tab_path, sizeof(tab_path))) { kh_cliio_result("error: source nav# not found (drop target only resolves live desk-pal/tab nav-claims)"); return; }
+        setenv("DROP_PATH", tab_path, 1);
+        char cmd[PATH_BUF * 3];
+        /* REAL BUG, caught here first: g_package_dir is "the directory
+         * containing the rendered .xhtpm template," which for a SHARED
+         * template (events-hq.xhtpm, used by every entity) is always the
+         * same app folder, never per-entity. The real per-instance dir
+         * (event_pkg, argv[3]) lives in g_arg3_dir - prefer it whenever
+         * set, matching the same fallback xdnd_handle_selection() itself
+         * now also uses (this bug was latent there too, never caught
+         * before because no earlier drop_action consumer combined XDND
+         * with the g_arg3_dir convention - events-hq is the first). */
+        snprintf(cmd, sizeof(cmd), "%s '%s' '%s' >/dev/null 2>&1 &", g_drop_action,
+                 g_arg3_dir[0] ? g_arg3_dir : g_package_dir, g_house_root);
+        int rc = system(cmd);
+        (void)rc;
+        unsetenv("DROP_PATH");
+        kh_cliio_result("ok: dropped via this window's own drop_action");
+        return;
+    }
+    char af_path[PATH_BUF];
+    snprintf(af_path, sizeof(af_path), "%s/file_explorer_action.txt", g_package_dir);
     char src[PATH_BUF + 2], dst[8];
     Elem *ea = kh_nav_elem(a), *eb = kh_nav_elem(b);
     int ia = kh_entry_idx_of(ea), ib = kh_entry_idx_of(eb);
@@ -10468,8 +10517,18 @@ static void xdnd_handle_selection(Display *dpy, Window win) {
     if (path[0]) {
         setenv("DROP_PATH", path, 1);
         char cmd[PATH_BUF * 3];
+        /* REAL BUG FIX 2026-09-28 (found while building the Cli-io
+         * drop_action generalization, same fix applied there): prefer
+         * g_arg3_dir (the real per-instance dir, argv[3]) over
+         * g_package_dir (the shared .xhtpm template's own dir) - a
+         * shared-template app opted into both XDND and the g_arg3_dir
+         * convention (events-hq) would otherwise fire its drop_action
+         * against the wrong, app-shared directory instead of the real
+         * per-entity one. No-op for every existing drop_action consumer
+         * that never populates g_arg3_dir (bookmarks, File Explorer's
+         * own standalone launch) - byte-for-byte unchanged there. */
         snprintf(cmd, sizeof(cmd), "%s '%s' '%s' >/dev/null 2>&1 &",
-                 g_drop_action, g_package_dir, g_house_root);
+                 g_drop_action, g_arg3_dir[0] ? g_arg3_dir : g_package_dir, g_house_root);
         int rc = system(cmd);
         (void)rc;
     } else {
