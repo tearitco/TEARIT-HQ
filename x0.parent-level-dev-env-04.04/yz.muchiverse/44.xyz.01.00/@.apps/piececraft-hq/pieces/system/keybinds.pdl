@@ -65,6 +65,20 @@ VERB         | 109                | CTX_MENU
 #   (mc-speed-algos.md §7, BV-GPU-RENDER-DESIGN.md).
 OPT          | multipress_compensator | 1
 
+# REAL, NEW 2026-09-29, direct instruction ("well its cause i minimized
+# the window... we will keep game logic alive, unless 'minimize set to
+# pause' on a .pdl file which we will let user toggle thru menu later"):
+# read by bv_dispatch.c right alongside multipress_compensator above
+# (same focused_project_root/keybinds.pdl read, real precedent, not a
+# new per-app config file). 0 (default): a minimized board window still
+# skips its own render step (real, unconditional - the render is never
+# worth doing when nothing can see it), but world ticks/input dispatch
+# keep running exactly as if the window were visible. 1: also skip
+# dispatch entirely while minimized - a real pause, not just "don't
+# bother drawing it." No menu wiring yet - the instruction was explicit
+# that the UI toggle is later, separate work.
+OPT          | minimize_pauses_game | 0
+
 # ── arrow-key on-screen direction (flip a sign if it feels backwards) ──
 AXIS         | left_dx            | -1
 AXIS         | right_dx           | 1

@@ -12045,8 +12045,20 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
          * the user reported. TPMOS's own reference renderer.c polls its
          * pulse marker at 60Hz (usleep(16667)); 33ms here is the same
          * marker/dirty idea, one cheap stat() per tick, no extra file. */
-        struct timeval tv = (g_has_canvas || window_is_dock() || g_drop_highlight
-                             || kh_is_drop_target_window())
+        /* REAL FIX 2026-09-29, direct live report ("well its cause i
+         * minimized the window, but for long game sessions that needs
+         * to be chill") - g_hq_minimized was already tracked (set by
+         * MINIMIZE, cleared on restore) but never actually consulted
+         * anywhere in this loop: a minimized <canvas> window (pc-hq's
+         * board, specifically) kept polling at the SAME 16667us/60Hz
+         * canvas rate as a visible one - stat()ing canvas_raw and
+         * attempting XPutImage on a window XUnmapWindow already made
+         * invisible. Real, unconditional exemption: minimized always
+         * gets the slow 150ms idle rate, regardless of g_has_canvas/
+         * dock/drop-highlight - there's nothing to repaint. */
+        struct timeval tv = (!g_hq_minimized &&
+                             (g_has_canvas || window_is_dock() || g_drop_highlight
+                             || kh_is_drop_target_window()))
                                 ? (struct timeval){ 0, 16667 }
                                 : (struct timeval){ 0, 150000 };
         select(xfd + 1, &fds, NULL, NULL, &tv);
@@ -12068,7 +12080,7 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
          * Marker-drive it: stat the live canvas_raw file and only repaint
          * when its size/mtime moved, plus a slow ~2Hz safety repaint
          * (late-appearing var, window resize, receipt swap). */
-        if (g_has_canvas && !g_quit) {
+        if (g_has_canvas && !g_quit && !g_hq_minimized) {
             static off_t  s_last_sz = -1;
             static time_t s_last_mt = 0;
             static time_t s_last_force = 0;

@@ -127,6 +127,48 @@ static void read_kv(const char *path, const char *key, char *out, size_t outsz) 
     fclose(f);
 }
 
+/* REAL, NEW 2026-09-29, direct live report ("well its cause i minimized
+ * the window, but for long game sessions that needs to be chill" ->
+ * "yes no need to render if minimized, also we will keep game logic
+ * alive, unless minimize-pauses-game is set"). khtpm_core_render.c's
+ * own MINIMIZE handler already publishes "minimized=1|0" as one field
+ * of a pipe-joined single-line record in
+ * #.desktop/livedesk_hq_windows_<renderer_pid>.txt (NOT the newline-
+ * separated key=value shape read_kv() parses - it's one line, several
+ * "|key=val|" fields) - that's the ONLY existing, already-real signal
+ * that this specific board window is minimized. This process is
+ * fork()ed directly by khtpm_core_render.c's launch_module() (no
+ * setsid in between), so getppid() here IS that renderer's own pid for
+ * as long as both are alive - the exact same assumption
+ * dock_poll_strip_state()-style per-pid registry lookups already make
+ * elsewhere in this house. Propagated into the live board-viewer
+ * session (not read directly by bv_dispatch.+x, which has no reason to
+ * know about khtpm registries) as a plain "1"/"0" file - see
+ * bv_dispatch.c's own read of it for the render-skip/pause logic. */
+static int renderer_says_minimized(const char *house) {
+    char path[PATH_MAX];
+    snprintf(path, sizeof(path), "%s/#.desktop/livedesk_hq_windows_%d.txt", house, (int)getppid());
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    char line[1024];
+    int minimized = 0;
+    if (fgets(line, sizeof(line), f)) {
+        if (strstr(line, "|minimized=1|")) minimized = 1;
+    }
+    fclose(f);
+    return minimized;
+}
+static void write_window_minimized_flag(const char *bv_session, int minimized) {
+    char path[PATH_MAX], tmp[PATH_MAX];
+    snprintf(path, sizeof(path), "%s/pieces/display/window_minimized.txt", bv_session);
+    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+    FILE *f = fopen(tmp, "w");
+    if (!f) return;
+    fprintf(f, "%d\n", minimized ? 1 : 0);
+    fclose(f);
+    rename(tmp, path);
+}
+
 /* game.pdl uses "SECTION | KEY | VALUE" pipe columns, not KEY=VALUE -
  * read_kv() above can't parse it (confirmed live: silently returned
  * empty for every key). Matches pc_generate_chunk.c's own
@@ -258,6 +300,7 @@ int main(int argc, char **argv) {
 
         char raw[PATH_MAX] = "", typing[PATH_MAX] = "", h1[PATH_MAX] = "", h2[PATH_MAX] = "";
         if (have) {
+            write_window_minimized_flag(bv, renderer_says_minimized(house));
             /* Pick the canvas source by render_mode (bv_state.txt):
              *   render_mode==1 -> rgb_frame_3d_overlay.raw  (bv_render_3d
              *       raymarch, no chrome - the khtpm window draws its own
