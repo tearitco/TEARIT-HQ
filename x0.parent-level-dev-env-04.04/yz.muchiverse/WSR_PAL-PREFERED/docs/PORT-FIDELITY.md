@@ -5,46 +5,70 @@ not. Every line here was checked against `MSR-DEPRACATED/` on 2026-09-29 by
 reading the original source, not inferred from names or from the port's own
 comments.
 
-**The rule being applied:** the original is the golden standard. Where wsr-pal
-diverges, the divergence is either (a) a bug, (b) an unexplained loss, or (c) a
-deliberate, named decision. Unnamed divergence is the thing this file exists to
-kill.
+**The rule being applied:** the user's direction wins; the legacy is a strong
+prior about what worked and what its author intended next, not an authority;
+arithmetic is not negotiable. See §0 for the full ordering, which supersedes the
+older framing of the legacy as "the golden standard" — that wording caused a
+real error on ROADMAP 2.2, which is recorded and corrected rather than quietly
+dropped.
+
+Where wsr-pal diverges from the legacy, the divergence is either (a) a bug,
+(b) an unexplained loss, (c) a deliberate, named decision, or (d) a **new
+mechanic the legacy has no answer for**, which is not a defect. Unnamed
+divergence is the thing this file exists to kill.
 
 Read this before "fixing" anything in this list. Several items look like obvious
 bugs and are actually faithful reproductions of the original's own quirks.
 
 ---
 
-## 0. The standing rule: ask the legacy before asking yourself
+## 0. How to decide what to build: the user, then the legacy, then arithmetic
 
-**Before implementing any mechanic in wsr-pal, read the original first and let
-its behaviour decide the design.** The legacy tree is now committed at
-`yz.muchiverse/MSR-DEPRACATED/` (branch `kilo-wsr-pal`, commit `ce8cacdf6`) —
-it used to be untracked, which is why a fresh clone could not check anything
-against it. It is the golden standard, so an unanswered question about
-"what should this do" is always answered there, and often the answer is
-"nothing, and that is correct."
+**The legacy is a good model, not the bible. What the user says overrides it,
+always.** The user owns this simulation and knows where it is going; the legacy
+is a strong prior about what worked in the original, not an authority.
 
-This is not a formality. It has already changed a decision once, and in the
-direction of *less* code:
+The order, highest first:
 
-- ROADMAP 2.2 said "compute real GDP from actual economic activity instead of
-  the template seed", on the reasoning that a static GDP read by policy but
-  written by nothing must be a bug. Reading `dev/setup_governments.c:131,215`
-  showed the original computes GDP **once at world generation** as
-  `population × cash_per_cap`, split across governments by a fixed percentage,
-  and never recomputes it. `Debt-to-GDP Ratio` is the literal constant
-  `25.0000` in *every* government file. So wsr-pal was already faithful, and
-  implementing 2.2 would have made it *less* faithful while breaking the fiscal
-  rule — see gap 11.
+1. **What the user asks for.** This wins, without exception. If the user says the
+   economy should have employment, the auction should have inter-bank flow, or
+   GDP should grow with the roster, that is the decision — even where the legacy
+   has nothing, and even where the legacy did something else.
+2. **The legacy's behaviour and its stated intent.** Consulted *first* for any
+   question of the form "how should this mechanic behave?", because it usually
+   has a real answer, often an unstated one, and frequently a roadmap for the
+   very thing being asked for. Two real cases:
+   - `marst-arch-j23.txt:580` stages price discovery and names per-trade
+     bid/ask supply-and-demand as the destination. Asking the legacy first is
+     what established the auction as *fulfilment* rather than invention.
+   - `setup_governments.c` computes GDP once at setup. Asking first is what
+     **prevented** an unfaithful "improvement" — and also what let the seeded
+     basis be discarded once the user said the roster grows. Both halves of that
+     were only available because the legacy had been read.
+3. **Arithmetic and internal consistency.** Not negotiable. If unbounded positive
+   feedback compounds to absurdity in a few hundred ticks, the sim is broken
+   regardless of what the user or the legacy asked for. When a bound is needed,
+   put it on the *mechanism that is fictional* (an analyst's rationality) rather
+   than on the *behaviour that is wanted* (a price that runs up), so the
+   mechanic survives intact. See gap 11's anchor, and the momentum clamp in
+   `wsr_market.h`.
 
-The pattern to watch for: a mechanic that looks obviously unfinished in the
-port is often a faithful copy of something the original also never finished.
-Fixing it unasked is a regression wearing the costume of progress.
+**What this is NOT.** "Ask the legacy first" is not "defer to the legacy." The
+failure mode of treating it as an authority is real and happened here: I struck
+"real GDP" as *never to be built* on legacy grounds, when the reason it mattered
+was that the roster was growing. Reading the legacy is what should have revealed
+that, not what should have closed the question. The legacy tells you what the
+original did and what its author intended next; it does not tell you whether
+that is right for a simulation that is going somewhere the original never went.
 
-When the legacy has no answer — genuinely new modelling, as with the tax and
-payroll systems — say so explicitly and record it as new, so nobody goes
-looking for an original to diff against.
+**When the legacy is silent, it is not permission to stop** — it is permission
+to build new, and to label it new. `ECONOMY-INTENT.md` §6 keeps that ledger
+honest, and it is worth updating it every time a mechanism is added, precisely
+so "port" and "new" never blur together.
+
+This is also why several items below are recorded as gaps *in the original*
+rather than omissions here. That framing is only correct because the user
+confirmed the direction — check it with them before treating it as settled.
 
 ---
 
@@ -232,9 +256,14 @@ from two balance-sheet lines. `ensure_entities` reads
 `Equity (Net Worth):` directly. These agree only if the source profiles are
 internally consistent; the original derived it, the port trusts it.
 
-### Gap 11 — GDP is a setup-time constant in the original: leave it seeded
+### Gap 11 — GDP is a setup-time constant in the original
 
-Checked 2026-09-29, and it reverses a roadmap item.
+> **Correction, 2026-09-29.** This entry originally concluded "leave it seeded,
+> do not implement," on legacy grounds. **That was wrong and has been reopened**
+> as ROADMAP 2.2: the roster is growing, so a constant GDP is wrong on its own
+> terms. What follows is kept because the *arithmetic* still holds and still
+> constrains any implementation — see the deficit-ratio table. Read this section
+> for the measured numbers, not for the verdict. Rule corrected in §0.
 
 **The original never computes GDP during play.** `dev/setup_governments.c` derives
 it once at world generation and writes it into the government file:
@@ -280,9 +309,18 @@ wrong:
    and swapping it for an honest-but-incommensurable number replaces one dead
    input with a more plausible-looking dead input.
 
-**Verdict: ROADMAP 2.2 is struck, not implemented.** The gap it was written to
-close is a gap in the original, in the same category as gap 4 (no taxes) and
-gap 5 (no working dividend/payroll loops).
+**Verdict: the legacy seeds GDP once, and that is what a fixed roster implies —
+but this roster is growing, so 2.2 is REOPENED rather than struck.** See the
+correction at the head of this section and ROADMAP 2.2. What survives from the
+original analysis is the constraint, not the verdict: a GDP derived as a naive
+sum of corporate book value is both the wrong basis and silently fatal to
+`gov_decide.c`'s fiscal rule, so whatever real GDP gets built has to be
+reconciled with that rule on purpose.
+
+Note what is *not* in this gap: the legacy's lack of taxes (gap 4) and its
+non-functional dividend/payroll loops (gap 5) are genuine holes in the original
+*and* are being filled as new mechanics under the user's direction — so they
+belong in `ECONOMY-INTENT.md` §6 as "new", not under a "never implement" verdict.
 
 This does not mean GDP is a good number. It means it is the *right* number for
 this game, and any real fiscal mechanic has to be compared against the

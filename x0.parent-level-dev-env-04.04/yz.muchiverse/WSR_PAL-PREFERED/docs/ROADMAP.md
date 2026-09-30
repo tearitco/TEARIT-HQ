@@ -134,9 +134,10 @@ game's own macro layer.
 ### Why the order below is this order
 
 Every later step is downstream of an earlier one, and the dependency runs
-calendar -> taxes -> bonds -> rate benchmark, not by appeal. **Real GDP was in
-this chain and has been struck** — see 2.2, which is the worked example of why
-the legacy gets asked first.
+calendar -> auction -> taxes -> bonds -> rate benchmark, not by appeal. **Real
+GDP was in this chain, was struck on legacy grounds, and has been REOPENED** —
+see 2.2, which is the worked example of why the legacy is a strong prior and
+not an authority.
 
 - [x] **2.1 Calendar** — `ops/econ_calendar.c`, the single writer of time.
       **DONE 2026-09-29.** The design changed mid-flight, deliberately: the
@@ -157,27 +158,38 @@ the legacy gets asked first.
       `PORT-FIDELITY.md` §3 for the full design and for the `ticker_speed`
       label trap (at `day`, one game day takes 24 real days — reproduced, not
       corrected, and `data/setting.txt` ships `hour`).
-- [x] **2.2 Real GDP — STRUCK, do not implement.** Originally written as
-      "computed from actual economic activity instead of seeded". **The legacy
-      says the opposite, and the legacy wins.** `dev/setup_governments.c:131,215`
-      computes GDP **once at world generation** as `population × cash_per_cap`,
-      splits it across governments by a fixed percentage, and never recomputes
-      it; `Debt-to-GDP Ratio` is the literal constant `25.0000` in every
-      government file. wsr-pal's `gdp=426.0` / `debt_to_gdp=25.0` are therefore
-      already faithful, and "static GDP read by policy but written by nothing" is
-      a description of the original, not a regression.
+- [ ] **2.2 Real GDP — REOPENED, deferred until the auction exists.** ~~Struck,
+      do not implement.~~ **That was wrong, and it is being corrected rather
+      than quietly dropped.**
 
-      It also would have broken the game. `gov_decide.c:134` acts only when
-      `deficit_ratio < -0.02`; the seed 426 sits *precisely* calibrated to trip
-      it, whereas the sum of 50 corps' `book_value` is 84,040 and drops the
-      ratio to -0.0001, permanently disabling every fiscal decision. And it is
-      the wrong basis regardless — GDP is a flow of output per period,
-      `book_value` is a balance-sheet stock, and no corp `state.txt` field
-      measures a flow (there is no `revenue` field at all).
+      The legacy computes GDP once at world generation
+      (`setup_governments.c:131,215`, `population × cash_per_cap`) and never
+      recomputes it; `Debt-to-GDP Ratio` is the constant `25.0000` in every
+      government file. On that basis I struck 2.2 as unfaithful, and it was
+      within the letter of "follow the legacy".
 
-      Full working in `PORT-FIDELITY.md` gap 11. **Standing rule adopted as a
-      result: ask the legacy before designing a mechanic.** See
-      `PORT-FIDELITY.md` §0.
+      **It was the wrong call, for a reason the legacy itself revealed.** The
+      user is adding banks and corporations over time. With a growing roster a
+      constant GDP is not faithful-to-the-original, it is simply *wrong* — the
+      same class of defect as a static `debt_to_gdp`. Total market value becomes
+      a sum over *discovered* live prices, so it grows as the roster grows.
+
+      Sequencing also inverts: the **auction must exist first**, because it is
+      what makes market value real rather than seeded. Computing GDP before
+      there is a market to measure would just be a second invented number. See
+      `ECONOMY-INTENT.md` §5.
+
+      Kept from the original analysis, because the arithmetic still holds: a
+      naive GDP as the sum of corporate `book_value` is 84,040 against a
+      `deficit_ratio` denominator calibrated around 426, which would put the
+      ratio at -0.0001 against a -0.02 threshold and **permanently disable every
+      fiscal decision** in `gov_decide.c`. Real GDP therefore has to be
+      reconciled with the fiscal rule deliberately. **The fix is not to invent a
+      GDP.**
+
+      **Rule corrected as a result:** `PORT-FIDELITY.md` §0 now reads
+      user > legacy > arithmetic, with the legacy as a strong prior and *not* as
+      an authority. Treating it as the bible is what produced this error.
 - [ ] **2.3 Yearly tax collection** — on the calendar's year boundary, debit
       corporations and the player at `tax_rate_adj` and credit the government.
       Revenue becomes real cash and the deficit becomes real. Replaces the
@@ -189,13 +201,13 @@ the legacy gets asked first.
       though the loop was never written.
 
       **UNITS WARNING, measured before starting.** Tax receipts will be real
-      money, but the `deficit_ratio` denominator is the original's *seeded* GDP
-      (426), not a real one, because 2.2 is struck. Real tax money is on a
-      completely different scale from 426, so a naive implementation drives
-      `deficit_ratio` deeply negative and `gov_decide.c` will raise taxes
-      forever. The tax amount and the ratio basis have to be reconciled
-      deliberately — do not discover this halfway through and "fix" it by
-      fudging GDP back into fiction.
+      money, but the `deficit_ratio` denominator is currently a *seeded* GDP
+      (426). Real tax money is on a completely different scale from 426, so a
+      naive implementation drives `deficit_ratio` deeply negative and
+      `gov_decide.c` will raise taxes forever. The tax amount and the ratio basis
+      have to be reconciled deliberately — and note that 2.2 is now **reopened**,
+      so the cleanest resolution is a real GDP built on the auction, not
+      preserving the fiction. Do not "fix" this by fudging GDP back into fiction.
 - [ ] **2.4 Government bonds** — treasury issuance, a yield curve driven by
       debt/GDP and a policy rate, annual coupons. The existing `debt_to_gdp`
       becomes live because issuing debt finally costs something. The original
