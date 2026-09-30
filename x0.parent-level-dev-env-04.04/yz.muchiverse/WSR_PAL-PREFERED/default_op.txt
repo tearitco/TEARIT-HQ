@@ -35,3 +35,4 @@ out void builtin_out {print register to stdout}
 wsr_menu_input void ops/+x/wsr_menu_input.+x {main menu digit/Enter accumulator - dispatches End Turn/Cycle Corp/New Game}
 compose_frame void ops/+x/wsr_compose_frame.+x {render the main game screen into current_frame.txt}
 update_history_cursor void ops/+x/update_history_cursor.+x {persist the history read cursor to prevent replay on process restart}
+market_quote void ops/+x/market_quote.+x {analysts post orders into the auction book: writes a per-ticker book_<TICKER>.txt from each live participant's own cash and fair-value view, spread widened by thin resting depth - it never sets a price, only intent, so price emerges from matched trades - not a .pal-dispatched FSM op, invoked directly}
