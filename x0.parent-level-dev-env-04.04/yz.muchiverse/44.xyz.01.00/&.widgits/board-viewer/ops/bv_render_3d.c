@@ -2627,12 +2627,12 @@ static int render_one_frame(void) {
                     g_ray_x + 0.96, g_ray_z + 0.96, g_ray_y + 0.96, 40, 220, 255);
         /* Debug placer: one magenta wire cube 3 units in front of the
          * camera, so it sits in the middle of the picture either way. */
-        ADDWIRE(cam.eye.x + cam.forward.x * 3.0 - 0.45,
-                cam.eye.y + cam.forward.y * 3.0 - 0.45,
-                cam.eye.z + cam.forward.z * 3.0 - 0.45,
-                cam.eye.x + cam.forward.x * 3.0 + 0.45,
-                cam.eye.y + cam.forward.y * 3.0 + 0.45,
-                cam.eye.z + cam.forward.z * 3.0 + 0.45,
+        ADDWIRE(cam.eye.x + cam.forward.x * 3.0 - 1.8,
+                cam.eye.y + cam.forward.y * 3.0 - 1.8,
+                cam.eye.z + cam.forward.z * 3.0 - 1.8,
+                cam.eye.x + cam.forward.x * 3.0 + 1.8,
+                cam.eye.y + cam.forward.y * 3.0 + 1.8,
+                cam.eye.z + cam.forward.z * 3.0 + 1.8,
                 255, 40, 220);
         /* Green wire voxels touching the hero. Not clamped to the
          * terrain grid, so a hero in the sky still gets the cube. */
