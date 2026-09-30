@@ -38,6 +38,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
 #include <math.h>
 #include <omp.h>
 
@@ -160,6 +161,87 @@ static void resolve_host_root(const char *raw, char *out, size_t out_sz) {
         return;
     }
     snprintf(out, out_sz, "%s", raw);
+}
+
+/* DESK rows of the active livedesk page. Same cell rule as bv_render_2d. */
+static void page_field_trim(char *s) {
+    char *a = s;
+    while (*a == ' ' || *a == '\t') a++;
+    if (a != s) memmove(s, a, strlen(a) + 1);
+    int n = (int)strlen(s);
+    while (n > 0 && (s[n - 1] == ' ' || s[n - 1] == '\t' || s[n - 1] == '\r')) s[--n] = '\0';
+}
+static int page_pdl_value(const char *path, const char *key, char *out, int n) {
+    FILE *f = host_fopen(path, "r");
+    out[0] = '\0';
+    if (!f) return 0;
+    char line[MAX_LINE];
+    while (fgets(line, sizeof(line), f)) {
+        char *p1 = strchr(line, '|');
+        if (!p1) continue;
+        char *p2 = strchr(p1 + 1, '|');
+        if (!p2) continue;
+        *p2 = '\0';
+        page_field_trim(p1 + 1);
+        if (strcmp(p1 + 1, key) != 0) continue;
+        char *val = p2 + 1;
+        page_field_trim(val);
+        char *bar = strchr(val, '|');
+        if (bar) *bar = '\0';
+        page_field_trim(val);
+        snprintf(out, n, "%s", val);
+        fclose(f);
+        return out[0] != '\0';
+    }
+    fclose(f);
+    return 0;
+}
+static void page_entity_cells(const char *house, int *xs, int *ys, int *n, int max) {
+    *n = 0;
+    if (!house || !house[0]) return;
+    char users[PATH_BUF];
+    snprintf(users, sizeof(users), "%s/xyzfs/users", house);
+    DIR *d = opendir(users);
+    if (!d) return;
+    struct dirent *e;
+    char pdl[PATH_BUF];
+    pdl[0] = '\0';
+    while ((e = readdir(d))) {
+        if (e->d_name[0] == '.') continue;
+        char sess[PATH_BUF], rootpdl[PATH_BUF], active[128], desk[128], sp[PATH_BUF];
+        snprintf(sess, sizeof(sess), "%s/%s/home/livedesk/sessions", users, e->d_name);
+        snprintf(rootpdl, sizeof(rootpdl), "%s/session.pdl", sess);
+        if (!page_pdl_value(rootpdl, "active_session", active, sizeof(active))) continue;
+        snprintf(sp, sizeof(sp), "%s/%s/session.pdl", sess, active);
+        if (!page_pdl_value(sp, "active_desk", desk, sizeof(desk))) continue;
+        snprintf(pdl, sizeof(pdl), "%s/%s/desks/%s.pdl", sess, active, desk);
+        break;
+    }
+    closedir(d);
+    if (!pdl[0]) return;
+    FILE *f = host_fopen(pdl, "r");
+    if (!f) return;
+    char line[MAX_LINE];
+    while (*n < max && fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "DESK", 4) != 0) continue;
+        char *fld[8];
+        int nf = 0;
+        char *p = line;
+        while (nf < 8 && (p = strchr(p, '|'))) { p++; fld[nf++] = p; }
+        if (nf < 6) continue;
+        for (int i = 0; i < nf; i++) {
+            char *bar = strchr(fld[i], '|');
+            if (bar) *bar = '\0';
+            page_field_trim(fld[i]);
+        }
+        int cx = atoi(fld[4]), cy = atoi(fld[5]);
+        int px = atoi(fld[2]), py = atoi(fld[3]);
+        if (cx == 0 && cy == 0 && (px >= 40 || py >= 40 || px <= -40 || py <= -40)) {
+            cx = px / 80; cy = py / 80;
+        }
+        xs[*n] = cx; ys[*n] = cy; (*n)++;
+    }
+    fclose(f);
 }
 
 static void read_kv_str(const char *path, const char *key, char *out, size_t out_sz) {
@@ -2714,18 +2796,12 @@ static int render_one_frame(void) {
             ADDWIRE(g_ray_x + 0.04, g_ray_z + 0.04, g_ray_y + 0.04,
                     g_ray_x + 0.96, g_ray_z + 0.96, g_ray_y + 0.96, 40, 220, 255);
         {
-            char sp[PATH_BUF];
-            snprintf(sp, sizeof(sp), "%s/pieces/display/synched_entities.txt", project_root);
-            FILE *sf = host_fopen(sp, "r");
-            if (sf) {
-                char line[128], name[64];
-                int x, y;
-                while (fgets(line, sizeof(line), sf)) {
-                    if (sscanf(line, "%63s %d %d", name, &x, &y) != 3) continue;
-                    ADDWIRE(x + 0.15, 1.05, y + 0.15, x + 0.85, 1.85, y + 0.85, 80, 200, 255);
-                }
-                fclose(sf);
-            }
+            /* Same page file the 2D view reads. Cyan wire per row. */
+            int xs[48], ys[48], pn = 0;
+            page_entity_cells(house_root, xs, ys, &pn, 48);
+            for (int i = 0; i < pn; i++)
+                ADDWIRE(xs[i] + 0.15, 1.05, ys[i] + 0.15,
+                        xs[i] + 0.85, 1.85, ys[i] + 0.85, 80, 200, 255);
         }
         /* Green selector. Arrows move it while armed. Escape clears it. */
         {

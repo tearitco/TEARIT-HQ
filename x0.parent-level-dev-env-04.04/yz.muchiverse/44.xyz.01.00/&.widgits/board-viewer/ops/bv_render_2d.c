@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <dirent.h>
 
 #include "bv_cjk_glyph.h"   /* view_2d_style=ascii: coloured CJK glyph per cell */
 
@@ -329,6 +330,97 @@ static void load_actor_list(const char *rel_path, int cur_z) {
     }
     fclose(f);
 }
+/* Active livedesk page: sessions/<id>/session.pdl names the desk,
+ * desks/<desk>.pdl holds DESK rows. Cell columns are the 6th and 7th
+ * fields. A pixel field at or above 40 is cells times 80. */
+static void field_trim(char *s) {
+    char *a = s;
+    while (*a == ' ' || *a == '\t') a++;
+    if (a != s) memmove(s, a, strlen(a) + 1);
+    int n = (int)strlen(s);
+    while (n > 0 && (s[n - 1] == ' ' || s[n - 1] == '\t' || s[n - 1] == '\r')) s[--n] = '\0';
+}
+static int read_pdl_value(const char *path, const char *key, char *out, int n) {
+    FILE *f = host_fopen(path, "r");
+    out[0] = '\0';
+    if (!f) return 0;
+    char line[MAX_LINE];
+    while (fgets(line, sizeof(line), f)) {
+        char *p1 = strchr(line, '|');
+        if (!p1) continue;
+        char *p2 = strchr(p1 + 1, '|');
+        if (!p2) continue;
+        *p2 = '\0';
+        field_trim(p1 + 1);
+        if (strcmp(p1 + 1, key) != 0) continue;
+        char *val = p2 + 1;
+        field_trim(val);
+        char *nl = strchr(val, '|');
+        if (nl) *nl = '\0';
+        field_trim(val);
+        snprintf(out, n, "%s", val);
+        fclose(f);
+        return out[0] != '\0';
+    }
+    fclose(f);
+    return 0;
+}
+static int page_file(const char *house, char *out, int n) {
+    char users[PATH_BUF];
+    snprintf(users, sizeof(users), "%s/xyzfs/users", house);
+    DIR *d = opendir(users);
+    if (!d) return 0;
+    struct dirent *e;
+    while ((e = readdir(d))) {
+        if (e->d_name[0] == '.') continue;
+        char sess[PATH_BUF], rootpdl[PATH_BUF], active[128];
+        snprintf(sess, sizeof(sess), "%s/%s/home/livedesk/sessions", users, e->d_name);
+        snprintf(rootpdl, sizeof(rootpdl), "%s/session.pdl", sess);
+        if (!read_pdl_value(rootpdl, "active_session", active, sizeof(active))) continue;
+        char sp[PATH_BUF], desk[128];
+        snprintf(sp, sizeof(sp), "%s/%s/session.pdl", sess, active);
+        if (!read_pdl_value(sp, "active_desk", desk, sizeof(desk))) continue;
+        snprintf(out, n, "%s/%s/desks/%s.pdl", sess, active, desk);
+        closedir(d);
+        return 1;
+    }
+    closedir(d);
+    return 0;
+}
+static void read_page_rows(const char *pdl, int cur_z) {
+    FILE *f = host_fopen(pdl, "r");
+    if (!f) return;
+    char line[MAX_LINE];
+    while (g_nent < MAX_ENT && fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "DESK", 4) != 0) continue;
+        char *fld[8];
+        int nf = 0;
+        char *p = line;
+        while (nf < 8 && (p = strchr(p, '|'))) {
+            p++;
+            fld[nf++] = p;
+        }
+        if (nf < 6) continue;
+        for (int i = 0; i < nf; i++) {
+            char *bar = strchr(fld[i], '|');
+            if (bar) *bar = '\0';
+            field_trim(fld[i]);
+        }
+        int cx = atoi(fld[4]);
+        int cy = atoi(fld[5]);
+        int px = atoi(fld[2]);
+        int py = atoi(fld[3]);
+        if (cx == 0 && cy == 0 && (px >= 40 || py >= 40 || px <= -40 || py <= -40)) {
+            cx = px / 80; cy = py / 80;
+        }
+        Ent *e = &g_ent[g_nent++];
+        memset(e, 0, sizeof(*e));
+        e->x = cx; e->y = cy; e->z = cur_z;
+        e->r = 80; e->g = 200; e->b = 255;
+        e->cjk[0] = fld[0][0]; e->cjk[1] = 0;
+    }
+    fclose(f);
+}
 static void load_actors(int cur_z) {
     /* hero */
     char p[PATH_BUF], b[32];
@@ -341,23 +433,11 @@ static void load_actors(int cur_z) {
     /* world props + animals (same "id,x,y,z" shape as bv_compose_frame) */
     load_actor_list("pieces/world_01/phymoji_entities.txt", cur_z);
     load_actor_list("pieces/world_01/animals.txt", cur_z);
-    /* Desk page copied by Player > Synch. One line: name x y */
-    char sp[PATH_BUF];
-    snprintf(sp, sizeof(sp), "%s/pieces/display/synched_entities.txt", project_root);
-    FILE *sf = host_fopen(sp, "r");
-    if (sf) {
-        char line[128], name[64];
-        int x, y;
-        while (g_nent < MAX_ENT && fgets(line, sizeof(line), sf)) {
-            if (sscanf(line, "%63s %d %d", name, &x, &y) != 3) continue;
-            Ent *e = &g_ent[g_nent++];
-            memset(e, 0, sizeof(*e));
-            e->x = x; e->y = y; e->z = cur_z;
-            e->r = 80; e->g = 200; e->b = 255;
-            e->cjk[0] = name[0]; e->cjk[1] = 0;
-        }
-        fclose(sf);
-    }
+    /* Livedesk page file, read every frame. The desk writes the row
+     * when a pal moves. Cyan, first letter of the name. */
+    char pdl[PATH_BUF];
+    if (house_root[0] && page_file(house_root, pdl, sizeof(pdl)))
+        read_page_rows(pdl, cur_z);
 }
 
 /* ---- board glyphs (one z-slice) ---- */
