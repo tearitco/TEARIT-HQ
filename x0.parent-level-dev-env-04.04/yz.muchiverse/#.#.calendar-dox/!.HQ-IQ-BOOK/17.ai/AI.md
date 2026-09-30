@@ -36,6 +36,15 @@ hq-ftp is the second kind: LAN peer drop, design only, row on the
 network menu. See `08-roadmap/design-docs/HQ-FTP.md` and `16.game`
 for the picker rule.
 
+## Which backend is which
+
+Three separate model backends exist in this house (a stock LAN Gemma,
+tomom's own from-scratch net, and OpenRouter) and none contain the
+others. `AI-BACKENDS-DISAMBIGUATION.md` in this same directory names
+exact files/paths for each and traces where "Gemma trains tomom"
+actually comes from (the TEARIT / Concept Bank pipeline — design only,
+promotion ledger not built).
+
 ## What stays next door
 
 Play, stop, reset, actors, event commands, and the two

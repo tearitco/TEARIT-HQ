@@ -24,6 +24,15 @@
  * step, same as every other honesty checkpoint in this house's AI
  * track has said.
  *
+ * REAL, NEW 2026-09-29 (ROBOT-CHAT-BLUEPRINT.md §4 build-order step 5,
+ * direct instruction "i want to build the pipeline now"): observation
+ * input now also includes the entity's own chat_history.txt (via
+ * load_recent_chat()), not just history.txt - a real conversation
+ * (robot_chat_001's "Chat-bank" button) now genuinely feeds this
+ * DESCRIBE step. Still writes only to pending_review.txt - the
+ * validator/promotion-ledger steps after this one remain exactly as
+ * unbuilt as this header already says above.
+ *
  * Self-contained, no shared headers - matches this house's own
  * established per-worker-file convention (duplicates gemma_ask()'s
  * shape from mylawyer_case_worker.c, connect_op.c/json_parser.c
@@ -121,6 +130,43 @@ static void load_recent_history(const char *entity_dir, char *out, size_t out_sz
         off += (size_t)written;
     }
     if (count == 0) snprintf(out, out_sz, "(history.txt empty)");
+}
+
+/* REAL, NEW 2026-09-29, ROBOT-CHAT-BLUEPRINT.md §4 build-order step 5
+ * ("wire the entity's own chat_history.txt/history.txt into ai_describe
+ * as real observation input - the plumbing already reads history.txt
+ * today, chat_history.txt is the same shape, not a new mechanism"),
+ * direct instruction ("i want to build the pipeline now"). Same real
+ * shape as load_recent_history() above, reused not duplicated in
+ * logic - just a different source file and label, kept as a separate
+ * function (not a parameterized one) to match this file's own
+ * established one-real-thing-per-function convention. */
+static void load_recent_chat(const char *entity_dir, char *out, size_t out_sz) {
+    out[0] = '\0';
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/chat_history.txt", entity_dir);
+    FILE *f = fopen(path, "r");
+    if (!f) { snprintf(out, out_sz, "(no chat yet)"); return; }
+    char lines[MAX_HISTORY_LINES][256];
+    int n = 0;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        line[strcspn(line, "\r\n")] = '\0';
+        if (!line[0]) continue;
+        snprintf(lines[n % MAX_HISTORY_LINES], sizeof(lines[0]), "%s", line);
+        n++;
+    }
+    fclose(f);
+    int start = n > MAX_HISTORY_LINES ? n % MAX_HISTORY_LINES : 0;
+    int count = n < MAX_HISTORY_LINES ? n : MAX_HISTORY_LINES;
+    size_t off = 0;
+    for (int i = 0; i < count && off < out_sz - 1; i++) {
+        int idx = (start + i) % MAX_HISTORY_LINES;
+        int written = snprintf(out + off, out_sz - off, "%s\n", lines[idx]);
+        if (written < 0) break;
+        off += (size_t)written;
+    }
+    if (count == 0) snprintf(out, out_sz, "(chat_history.txt empty)");
 }
 
 static void json_escaped(FILE *out, const char *s) {
@@ -249,14 +295,17 @@ int main(int argc, char **argv) {
 
     char observation[2048];
     load_recent_history(entity_dir, observation, sizeof(observation));
+    char chat_observation[2048];
+    load_recent_chat(entity_dir, chat_observation, sizeof(chat_observation));
 
     char prompt[4096];
     snprintf(prompt, sizeof(prompt),
         "OBSERVATION (this entity's own recent real history):\n%s\n\n"
+        "OBSERVATION (this entity's own recent real conversation):\n%s\n\n"
         "EXISTING CONCEPT NODES (pick ONLY from this exact list, never invent a new name):\n%s\n\n"
         "Respond with EXACTLY this format, one line per concept you think applies (1-3 lines), nothing else:\n"
         "TARGET: <node from the list> | STRENGTH: high|medium|low | REASON: <one short phrase>",
-        observation, node_list);
+        observation, chat_observation, node_list);
 
     char *response = gemma_ask(entity_dir, house_root, prompt);
     if (!response) {
