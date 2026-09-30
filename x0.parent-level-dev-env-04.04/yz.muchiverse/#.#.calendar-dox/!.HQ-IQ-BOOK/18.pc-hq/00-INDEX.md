@@ -12,6 +12,10 @@ chapter `16.game`. This chapter owns the board itself.
   book and page to every open pc-hq. A pc-hq Synch sends that
   board's book and page to the desk. Both then show that one page.
   Read this before changing Synch code.
+- `PAGE-FILE.md` — the storage change Synch depends on. pc-hq reads
+  the livedesk page file. The hero is one entity row. The camera
+  follows the xelector. The xelector and the camera become rows in
+  that file.
 - `../09-appendix/PC-HQ-BOOK-PAGE-SYNCH.md` — older notes. The
   2026-09-30 header on that file describes `079038706`, which is
   not the agreed direction. Trust `SYNCH.md`.
