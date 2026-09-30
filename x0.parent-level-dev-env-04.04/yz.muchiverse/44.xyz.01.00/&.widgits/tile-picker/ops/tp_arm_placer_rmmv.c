@@ -176,6 +176,54 @@ static void load_grid_pdl_options(const char *desktop_root) {
     }
     fclose(f);
 }
+
+/* REAL, NEW 2026-09-30, direct instruction ("placer should read
+ * placement layout from an external matrix.txt of '#' symbols to
+ * decide its shape instead of being hardcoded... an op can write that
+ * based on range of character, like a writer/renderer architecture"):
+ * this renderer owns ZERO shape math. tp_gen_range_matrix.+x (a
+ * separate op, run by move_entity_on_desk.sh before every arm) is the
+ * one and only writer of this file - see that op's own header for the
+ * current shape (diamond) and how to change it without touching this
+ * file at all. TP_RANGE_MATRIX (env, set by the same launcher) points
+ * at the file; missing/unset/unreadable means g_range_matrix_dim stays
+ * 0, which every reader below treats as "no shape restriction beyond
+ * the bounding box" - never "compute a default shape here instead". */
+#define RANGE_MATRIX_MAX 65
+static char g_range_matrix[RANGE_MATRIX_MAX][RANGE_MATRIX_MAX];
+static int g_range_matrix_dim = 0;    /* 0 = no matrix loaded */
+static int g_range_matrix_radius = 0; /* (dim-1)/2 - matrix is always centered on the origin cell */
+
+static void load_range_matrix(void) {
+    const char *path = getenv("TP_RANGE_MATRIX");
+    if (!path || !path[0]) return;
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[RANGE_MATRIX_MAX + 4];
+    int dim = 0;
+    while (dim < RANGE_MATRIX_MAX && fgets(line, sizeof(line), f)) {
+        int len = (int)strcspn(line, "\r\n");
+        if (len <= 0) continue; /* skip a stray blank line rather than counting it as a row */
+        for (int i = 0; i < len && i < RANGE_MATRIX_MAX; i++) g_range_matrix[dim][i] = line[i];
+        for (int i = len; i < RANGE_MATRIX_MAX; i++) g_range_matrix[dim][i] = '.';
+        dim++;
+    }
+    fclose(f);
+    if (dim <= 0) return;
+    g_range_matrix_dim = dim;
+    g_range_matrix_radius = (dim - 1) / 2;
+}
+
+/* True if (r,c) on the real desk grid falls on a '#' in the loaded
+ * matrix, centered on (origin_c, origin_r). No matrix loaded -> always
+ * true (the bounding-box check elsewhere is the only restriction). */
+static int range_matrix_allows(int origin_c, int origin_r, int r, int c) {
+    if (g_range_matrix_dim <= 0) return 1;
+    int mc = c - origin_c + g_range_matrix_radius;
+    int mr = r - origin_r + g_range_matrix_radius;
+    if (mc < 0 || mc >= g_range_matrix_dim || mr < 0 || mr >= g_range_matrix_dim) return 0;
+    return g_range_matrix[mr][mc] == '#';
+}
 #define PDBG(...) do { if (g_dbg < 0) g_dbg = (getenv("TP_PLACE_DEBUG") && getenv("TP_PLACE_DEBUG")[0] == '1'); \
                        if (g_dbg) { fprintf(stderr, "[placer] " __VA_ARGS__); fputc('\n', stderr); } } while (0)
 
@@ -214,6 +262,18 @@ typedef struct {
      * full-screen behaviour exactly as before (the palette stamp tool's
      * own real use, unaffected). */
     int has_view, view_c0, view_r0, view_c1, view_r1;
+    /* REAL FIX 2026-09-30, direct instruction ("placer should read
+     * placement layout from an external matrix.txt... writer/renderer
+     * architecture"): view_c0..r1 above stays a bounding BOX (the
+     * overlay window's own screen extent). origin_c/origin_r are the
+     * matrix's own center cell on the real desk grid - used with the
+     * g_range_matrix global (loaded once from TP_RANGE_MATRIX, written
+     * by tp_gen_range_matrix.+x, see that op's header) to test whether
+     * a given cell is inside the shape at all. No shape math lives in
+     * this file - g_range_matrix_dim==0 (no matrix file given) is the
+     * only fallback, and it means "no shape restriction beyond the
+     * box", not "compute some default shape here". */
+    int origin_c, origin_r;
 } Ov;
 
 static int ov_cell_valid(const Ov *o, int r, int c, int *cx, int *cy) {
@@ -228,6 +288,7 @@ static int ov_cell_valid(const Ov *o, int r, int c, int *cx, int *cy) {
     if (cy) *cy = my;
     if (o->hw > 0 && mx >= o->hx && mx < o->hx + o->hw && my >= o->hy && my < o->hy + o->hh) return 0;
     if (o->has_view && (c < o->view_c0 || c > o->view_c1 || r < o->view_r0 || r > o->view_r1)) return 0;
+    if (o->has_view && !range_matrix_allows(o->origin_c, o->origin_r, r, c)) return 0;
     return 1;
 }
 
@@ -281,13 +342,42 @@ static void ov_draw_pane(Ov *o, int i) {
     XClearWindow(dpy, w);
     XSetForeground(dpy, gc, o->c_line);
     XSetLineAttributes(dpy, gc, 1, LineSolid, CapButt, JoinMiter);
-    for (k = 0; k < g_cols + 1; k++) {
-        int x = cell_edge(k);
-        if (x >= ox && x < ox + ww) XDrawLine(dpy, w, gc, x - ox, 0, x - ox, wh);
-    }
-    for (k = 0; k < g_rows + 1; k++) {
-        int y = cell_edge(k);
-        if (y >= oy && y < oy + wh) XDrawLine(dpy, w, gc, 0, y - oy, ww, y - oy);
+    /* REAL FIX 2026-09-30, direct instruction ("placer should read
+     * placement layout from an external matrix.txt... writer/renderer
+     * architecture"): the overlay window's own background is already
+     * fully transparent (swa.background_pixel=0, "wireframe, not a
+     * wash" per this file's own design spec at the top) - the only
+     * thing that ever made this look like a square was drawing a full
+     * rectangular grid lattice across the whole bounding box. Skipping
+     * the grid for any cell the loaded matrix marks out-of-shape makes
+     * that cell genuinely invisible, not just unselectable - no
+     * XShape/window-shaping needed. Draws each in-shape cell's own 4
+     * edges rather than full-length lattice lines, since the lattice
+     * shortcut only works for a solid rectangle. No matrix loaded
+     * (g_range_matrix_dim==0) draws every cell in the box - same
+     * fallback range_matrix_allows() uses, kept in sync by construction
+     * since this calls that same function rather than its own check. */
+    if (o->has_view && g_range_matrix_dim > 0) {
+        for (int r = o->view_r0; r <= o->view_r1; r++) {
+            for (int c = o->view_c0; c <= o->view_c1; c++) {
+                if (!range_matrix_allows(o->origin_c, o->origin_r, r, c)) continue;
+                int x0 = cell_edge(c) - ox, x1 = cell_edge(c + 1) - ox;
+                int y0 = cell_edge(r) - oy, y1 = cell_edge(r + 1) - oy;
+                XDrawLine(dpy, w, gc, x0, y0, x1, y0);
+                XDrawLine(dpy, w, gc, x0, y1, x1, y1);
+                XDrawLine(dpy, w, gc, x0, y0, x0, y1);
+                XDrawLine(dpy, w, gc, x1, y0, x1, y1);
+            }
+        }
+    } else {
+        for (k = 0; k < g_cols + 1; k++) {
+            int x = cell_edge(k);
+            if (x >= ox && x < ox + ww) XDrawLine(dpy, w, gc, x - ox, 0, x - ox, wh);
+        }
+        for (k = 0; k < g_rows + 1; k++) {
+            int y = cell_edge(k);
+            if (y >= oy && y < oy + wh) XDrawLine(dpy, w, gc, 0, y - oy, ww, y - oy);
+        }
     }
     if (o->fs) {
         char s[16];
@@ -657,6 +747,7 @@ int main(int argc, char **argv) {
         for (g_rows = 1; g_rows < 4096 && cell_edge(g_rows) < sh; g_rows++) ;
     }
     load_grid_pdl_options(desktop_root);
+    load_range_matrix();
 
     /* REAL FIX 2026-09-26 (see g_view_range_default/Ov.has_view's own
      * comments) - TP_ORIGIN_X/TP_ORIGIN_Y (reference px, e.g. an
@@ -668,6 +759,7 @@ int main(int argc, char **argv) {
      * origin given). */
     int has_view = 0, view_x0 = 0, view_y0 = 0, view_w = sw, view_h = sh;
     int view_c0 = 0, view_r0 = 0, view_c1 = g_cols - 1, view_r1 = g_rows - 1;
+    int origin_c = 0, origin_r = 0;
     if (getenv("TP_ORIGIN_X") && getenv("TP_ORIGIN_Y")) {
         int view_range = g_view_range_default;
         if (getenv("TP_VIEW_RANGE")) view_range = atoi(getenv("TP_VIEW_RANGE"));
@@ -677,6 +769,7 @@ int main(int argc, char **argv) {
             int osx = kps_ref_to_screen(oref_x, g_base_cell, g_auto);
             int osy = kps_ref_to_screen(oref_y, g_base_cell, g_auto);
             int oc = cell_at(osx), orow = cell_at(osy);
+            origin_c = oc; origin_r = orow;
             view_c0 = oc - view_range; if (view_c0 < 0) view_c0 = 0;
             view_r0 = orow - view_range; if (view_r0 < 0) view_r0 = 0;
             view_c1 = oc + view_range; if (view_c1 > g_cols - 1) view_c1 = g_cols - 1;
@@ -739,7 +832,7 @@ int main(int argc, char **argv) {
     memset(&ov, 0, sizeof(ov));
     ov.dpy = dpy; ov.sw = sw; ov.sh = sh; ov.use_argb = use_argb;
     if (pw > 0 && ph > 0) { ov.hx = px; ov.hy = py; ov.hw = pw; ov.hh = ph; }
-    if (has_view) { ov.has_view = 1; ov.view_c0 = view_c0; ov.view_r0 = view_r0; ov.view_c1 = view_c1; ov.view_r1 = view_r1; }
+    if (has_view) { ov.has_view = 1; ov.view_c0 = view_c0; ov.view_r0 = view_r0; ov.view_c1 = view_c1; ov.view_r1 = view_r1; ov.origin_c = origin_c; ov.origin_r = origin_r; }
     #define ADD_PANE(_x,_y,_w,_h) do { \
         if ((_w) > 0 && (_h) > 0) { \
             ov.panes[ov.n].x = (_x); ov.panes[ov.n].y = (_y); \
