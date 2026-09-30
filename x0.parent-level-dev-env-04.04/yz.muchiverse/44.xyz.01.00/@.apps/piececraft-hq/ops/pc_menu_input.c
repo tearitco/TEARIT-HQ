@@ -1369,6 +1369,53 @@ int main(int argc, char **argv) {
                     snprintf(message, sizeof(message), "Clipboard empty - Copy something first");
             } else if (strcmp(verb, "PLACE") == 0) {
                 snprintf(message, sizeof(message), "Place: pick a block palette (todo)");
+            } else if (strcmp(verb, "EVENTS") == 0 || strcmp(verb, "INVENTORY") == 0 || strcmp(verb, "DIR") == 0) {
+                /* REAL FIX 2026-09-30, direct instruction ("when i click
+                 * their entity i expect to see same kind of context menu
+                 * that the desk entities get, nothing different") -
+                 * these three exactly mirror the real METHOD rows a desk
+                 * pal's own meta.pdl already uses (see e.g.
+                 * xyzfs/.../pals/door_civ/meta.pdl's Events (hq)/
+                 * Inventory/Dir rows) - same events-hq/button.sh call,
+                 * same file-explorer inventory-instance shape, same
+                 * xdg-open. Only reachable for entity-like kinds (hero/
+                 * tree/chicken/entity, see pc_entity_ctx.sh's VERBS) - a
+                 * bare voxel/air cell has no real pieces/<id> dir for
+                 * any of these three to act on. */
+                if (!id[0]) {
+                    snprintf(message, sizeof(message), "%s - no entity here", verb);
+                } else {
+                    char house_root_path[PATH_BUF], house_root[PATH_BUF] = "";
+                    snprintf(house_root_path, sizeof(house_root_path), "%s/pieces/system/house_root.txt", rr_c);
+                    FILE *hf = fopen(house_root_path, "r");
+                    if (hf) {
+                        if (fgets(house_root, sizeof(house_root), hf))
+                            house_root[strcspn(house_root, "\r\n")] = '\0';
+                        fclose(hf);
+                    }
+                    if (!house_root[0]) {
+                        snprintf(message, sizeof(message), "%s - no house_root.txt for this project", verb);
+                    } else {
+                        char ent_dir[PATH_BUF];
+                        snprintf(ent_dir, sizeof(ent_dir), "%s/pieces/%s", rr_c, id);
+#ifndef _WIN32
+                        char c[PATH_BUF * 3];
+                        if (strcmp(verb, "EVENTS") == 0) {
+                            snprintf(c, sizeof(c),
+                                "setsid sh -c 'exec \"%s/&.widgits/events-hq/button.sh\" \"%s\" \"%s\"' >/dev/null 2>&1 &",
+                                house_root, ent_dir, house_root);
+                        } else if (strcmp(verb, "INVENTORY") == 0) {
+                            snprintf(c, sizeof(c),
+                                "setsid sh -c 'H=\"%s\"; I=\"$H/&.widgits/file-explorer/instances/inv-pchq-%s\"; mkdir -p \"%s/inventory\" \"$I\"; printf \"mode=LOAD\\nstart_dir=%s/inventory\\n\" > \"$I/fe_request.txt\"; exec sh \"$H/&.widgits/file-explorer/button.sh\" run-instance \"$I\"' >/dev/null 2>&1 &",
+                                house_root, id, ent_dir, ent_dir);
+                        } else {
+                            snprintf(c, sizeof(c), "setsid xdg-open '%s' >/dev/null 2>&1 &", ent_dir);
+                        }
+                        int rc = system(c); (void)rc;
+#endif
+                        snprintf(message, sizeof(message), "%s: %s", verb, id);
+                    }
+                }
             } else {
                 snprintf(message, sizeof(message), "%s - not implemented yet", verb);
             }

@@ -56,9 +56,9 @@ echo "$(date '+%H:%M:%S') open  kind=$KIND id=${ID:-.} cell=$SX,$SY,$SZ  $NOTE" 
 case "$KIND" in
     none)          HEADER="nothing selected";        VERBS="EXIT" ;;
     air|"")        HEADER="nothing here @ $SX,$SY,$SZ"; VERBS="PLACE EXIT" ;;
-    hero)          HEADER="hero: ${ID:-hero_01}";     VERBS="INSPECT POSSESS EXIT" ;;
-    tree)          HEADER="tree: ${ID:-?}";           VERBS="INSPECT COPY PASTE DELETE TOENTITY EXIT" ;;
-    chicken|entity) HEADER="${KIND}: ${ID:-?}";       VERBS="INSPECT COPY PASTE DELETE EXIT" ;;
+    hero)          HEADER="hero: ${ID:-hero_01}";     VERBS="INSPECT POSSESS EVENTS INVENTORY DIR EXIT" ;;
+    tree)          HEADER="tree: ${ID:-?}";           VERBS="INSPECT COPY PASTE DELETE TOENTITY EVENTS INVENTORY DIR EXIT" ;;
+    chicken|entity) HEADER="${KIND}: ${ID:-?}";       VERBS="INSPECT COPY PASTE DELETE EVENTS INVENTORY DIR EXIT" ;;
     voxel)         HEADER="voxel '$GLYPH' @ $SX,$SY,$SZ"; VERBS="INSPECT COPY PASTE DELETE PLACE EXIT" ;;
     *)             HEADER="$KIND: ${ID:-?}";          VERBS="INSPECT EXIT" ;;
 esac
@@ -74,6 +74,14 @@ label_for() {
         DELETE) [ "$KIND" = voxel ] && echo "Mine (delete)" || echo "Delete" ;;
         PLACE) echo "Place..." ;; POSSESS) echo "Possess" ;;
         TOENTITY) echo "Convert to entity" ;; EXIT) echo "Exit" ;;
+        # REAL FIX 2026-09-30, direct instruction ("when i click theyre
+        # entity i expect to see same kind of context menu that the desk
+        # entities get, nothing different") - same three verbs a desk
+        # pal's meta.pdl already ships (Events (hq)/Inventory/Dir), only
+        # added to entity-like kinds above (hero/tree/chicken/entity),
+        # never voxel/air which have no real pieces/<id> dir.
+        EVENTS) echo "Events (hq)" ;; INVENTORY) echo "Inventory" ;;
+        DIR) echo "Dir" ;;
         *) echo "$1" ;;
     esac
 }
