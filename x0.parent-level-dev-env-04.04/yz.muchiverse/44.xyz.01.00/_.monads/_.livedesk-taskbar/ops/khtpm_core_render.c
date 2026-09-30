@@ -4977,6 +4977,45 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
         } else if (strcmp(c->tag, "cli_io") == 0 || strcmp(c->tag, "text_area") == 0) {
             int this_h = (c->rows > 0 ? c->rows : 1) * ROW_H;
             if (elem_has_class(c, "top")) {
+                /* REAL FIX 2026-09-29, direct live report ("why do
+                 * messages insist on overlapping over approve reject
+                 * bar?") - co-lab-hai's own pending banner sets rows=
+                 * from a manager-side character-count ESTIMATE
+                 * (colab_hai_manager.c's needed_rows, "message length /
+                 * 55 chars-per-line"), which can never exactly match
+                 * this renderer's own real word-boundary wrap at this
+                 * row's ACTUAL current width - a resizable window
+                 * (this one remembers its own size) can be narrower
+                 * than whatever width the manager assumed, or the
+                 * message's real word-length distribution can just
+                 * need more lines than a flat chars/line guess predicts
+                 * (same root cause already fought twice in that file's
+                 * own history, at 85 then 55 chars/line - a fixed
+                 * constant can't be exactly right for every window
+                 * width/message shape). Real fix: MEASURE it here, the
+                 * same way scroll_row_span() already measures a plain
+                 * <text> row's real wrap - never trust rows= as more
+                 * than a minimum. g_headless has no Xft to measure
+                 * with; falls back to the given rows=, same as
+                 * scroll_row_span()'s own g_headless guard. */
+                if (!g_headless && strcmp(c->tag, "text_area") == 0 && c->text_area_buffer[0]) {
+                    /* Fresh local style, not c->style - css_compute_style()
+                     * for THIS element's real, current frame doesn't run
+                     * until just below here (same reason scroll_row_span()
+                     * computes its own tmp_style rather than trusting
+                     * whatever c->style holds from the previous frame). */
+                    CssStyle tmp_style;
+                    css_compute_style(&g_sheet, c->tag, c->id, (char (*)[32])(void *)c->classes, c->n_classes, 0, &tmp_style);
+                    XftFont *font = font_for(&tmp_style);
+                    int pad = tmp_style.has_padding ? tmp_style.padding : 4;
+                    int avail_w = w - pad * 2;
+                    int lines = wrap_line_count(font, c->text_area_buffer, avail_w);
+                    int line_h = font->ascent - font->descent > 0 ? font->ascent - font->descent : 12;
+                    line_h += 4;
+                    int measured_rows = (lines * line_h + ROW_H - 1) / ROW_H;
+                    if (measured_rows > (c->rows > 0 ? c->rows : 1))
+                        this_h = measured_rows * ROW_H;
+                }
                 c->x = x; c->y = y_cursor; c->w = w; c->h = this_h;
                 y_cursor += this_h;
             } else if (strcmp(c->tag, "text_area") == 0 && !scrolllist) {
