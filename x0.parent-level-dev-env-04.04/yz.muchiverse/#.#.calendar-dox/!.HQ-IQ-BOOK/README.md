@@ -26,6 +26,7 @@ content.
 - **[09-appendix](09-appendix/00-INDEX.md)** — daily calendar log, cross-reference index, glossary appendix.
 - **[16.game](16.game/00-INDEX.md)** — the game machine: desks, actors, events, playtest. The AI that may append a command is chapter 17.
 - **[17.ai](17.ai/00-INDEX.md)** — AI across the house: game, dev, and productivity. The game it drives is chapter 16.
+- **[18.pc-hq](18.pc-hq/00-INDEX.md)** — the piececraft board: 2D and 3D drawers, the hero diamond, Book/Page, and Synch. The game machine is chapter 16.
 
 ## House path quick reference (as of 2026-09-01 migration)
 

@@ -478,16 +478,24 @@ int main(int argc, char **argv) {
         char player_label[32];
         snprintf(player_label, sizeof(player_label), "Player: %s",
                  strcmp(pm_mode, "on") == 0 ? "ON" : "OFF");
+        char book_label[80], page_label[80];
+        snprintf(book_label, sizeof(book_label), "book:%s", proj_id);
+        snprintf(page_label, sizeof(page_label), "page:%s",
+                 cur_desk_label[0] ? cur_desk_label : active_desk_id);
+        sanitize(book_label);
+        sanitize(page_label);
 
         size_t off = 0;
         off += (size_t)snprintf(ui + off, UIBUF - off,
             "bv_session=%s\ncanvas_raw=%s\nno_session=%s\n"
             "bv_h1=%s\nbv_h2=%s\ninteract_class=%s\ninteract_armed=%d\n"
             "interact_label=%s\nclock=%s\nplayer_label=%s\n"
+            "book_label=%s\npage_label=%s\n"
             "menu_open=%s\nfile_menu_open=%s\ndesk_menu_open=%s\n",
             bv, raw, have ? "" : "1",
             h1, h2, interact ? "interact-active" : "", interact ? 1 : 0,
             interact ? "ON" : "off", clock_s, player_label,
+            book_label, page_label,
             menu_open,
             strcmp(menu_open, "file") == 0 ? "1" : "",
             strcmp(menu_open, "desk") == 0 ? "1" : "");

@@ -228,6 +228,16 @@ COMMAND send_window_key
   TEMPLATE exec sh "$D/&.widgits/events-hq/ops/mr_send_window_key.sh" '{relay}' '{key}'
 END
 
+# ai_relay_key: attrition pages inject Enter only. Down (201) is refused
+# because it moves the Database highlight and does not lock the row.
+COMMAND ai_relay_key
+  LABEL AI Relay Key
+  FIELD1 Relay file path (absolute):
+  FIELD2 Key code (only 13):
+  PARAMS relay,key
+  TEMPLATE exec sh "$D/&.widgits/events-hq/ops/ai_relay_key.sh" '{relay}' '{key}'
+END
+
 # advance_fact: add 1 to page_value or numeric_value. weight file
 # which=page|numeric chooses. Unknown which exits 1 and does not write.
 COMMAND advance_fact

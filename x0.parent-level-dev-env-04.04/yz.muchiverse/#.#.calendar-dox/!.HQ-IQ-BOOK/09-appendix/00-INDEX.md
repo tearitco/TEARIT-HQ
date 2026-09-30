@@ -17,6 +17,10 @@
   be short additions here, or better, folded directly into whichever
   chapter (usually `04-bugs` or `08-roadmap`) the outcome matters to**,
   per this migration's own condense-don't-just-relocate principle.
+- `PC-HQ-BOOK-PAGE-SYNCH.md` — Player > Synch row (pc-hq tab 5 and
+  taskbar cell 9), why livedesk BOOK:PAGE and pc-hq Book/Page are
+  different files, and the open copy questions. The durable front
+  door is now `../18.pc-hq/00-INDEX.md`.
 - `GLOSSARY-APPENDIX.md` — pointer; the core glossary lives at
   `01-orientation/GLOSSARY.md` and didn't need a fuller version in this
   pass.

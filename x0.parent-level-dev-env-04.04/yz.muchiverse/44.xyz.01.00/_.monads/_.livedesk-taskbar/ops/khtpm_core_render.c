@@ -11930,6 +11930,21 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                         break;
                     }
                 }
+                if (hit && strcmp(hit->id, "view") == 0 && strstr(g_chtpm_path, "pchq-board.xhtpm")) {
+                    int rx = 0, ry = 0, wx = 0, wy = 0;
+                    Window child = 0;
+                    XTranslateCoordinates(dpy, win, DefaultRootWindow(dpy),
+                                          ev->xbutton.x, ev->xbutton.y, &rx, &ry, &child);
+                    XTranslateCoordinates(dpy, win, DefaultRootWindow(dpy), 0, 0, &wx, &wy, &child);
+                    int cx = ev->xbutton.x - hit->x, cy = ev->xbutton.y - hit->y;
+                    char cmd[PATH_BUF * 2];
+                    snprintf(cmd, sizeof(cmd),
+                             "sh '%s/@.apps/piececraft-hq/ops/pc_canvas_rclick.sh' %d %d %d %d %d %d %d %d %d %d",
+                             g_house_root, rx, ry, wx, wy, g_win_w, g_win_h,
+                             cx, cy, hit->w, hit->h);
+                    system(cmd);
+                    return;
+                }
                 kh_open_cli_io_context_menu(hit, ev->xbutton.x, ev->xbutton.y);
                 return;
             }

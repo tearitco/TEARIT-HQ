@@ -152,5 +152,9 @@ chmod +x "$PKG/append.sh"
 for p in $(pgrep -f "khtpm_core_render.+x .*ctx-menu\.xhtpm" 2>/dev/null); do
     [ "$(cat /proc/$p/comm 2>/dev/null)" = khtpm_core_rend ] && kill "$p" 2>/dev/null
 done
-setsid nohup "$BIN" "$HOUSE" "$PKG/ctx-menu.xhtpm" >/dev/null 2>&1 < /dev/null &
+if [ -n "${MENU_X:-}" ] && [ -n "${MENU_Y:-}" ]; then
+    setsid nohup "$BIN" "$HOUSE" "$PKG/ctx-menu.xhtpm" "$MENU_X" "$MENU_Y" >/dev/null 2>&1 < /dev/null &
+else
+    setsid nohup "$BIN" "$HOUSE" "$PKG/ctx-menu.xhtpm" >/dev/null 2>&1 < /dev/null &
+fi
 echo "pc_entity_ctx: menu up [$HEADER]  ->  $INBOX"

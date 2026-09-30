@@ -79,6 +79,12 @@ static const char *FS_SRC =
 "  return true;\n"
 "}\n"
 "\n"
+"bool on_edge(vec3 hp, vec3 bn, vec3 bx) {\n"
+"  vec3 q = min(abs(hp - bn), abs(hp - bx));\n"
+"  float e = 0.10;\n"
+"  return (int(q.x < e) + int(q.y < e) + int(q.z < e)) >= 2;\n"
+"}\n"
+"\n"
 "void main() {\n"
 "  float a = (gl_FragCoord.x - u_res.x * 0.5) / u_focal;\n"
 "  float b = (u_res.y * 0.5 - gl_FragCoord.y) / u_focal;\n"   /* flipped: GL row 0 = image top, so glReadPixels needs no row-flip */
@@ -95,6 +101,8 @@ static const char *FS_SRC =
 "    if (!slab(ro, rd, u_bmin[i], u_bmax[i], t, f) || t >= bestT) continue;\n"
 "    int mdl = u_bmdl[i];\n"
 "    if (mdl < 0) {\n"
+"      bool wire = (u_bcol[i].a > 0.12 && u_bcol[i].a < 0.4);\n"
+"      if (wire && !on_edge(ro + rd * t, u_bmin[i], u_bmax[i])) continue;\n"
 "      bestT = t; col = u_bcol[i].rgb; hit = true;\n"
 "      self_lit = (u_bcol[i].a < 0.5); face = f;\n"
 "      continue;\n"
@@ -499,7 +507,7 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
                 bmin[i*3+0]=s->box[i].min_x; bmin[i*3+1]=s->box[i].min_y; bmin[i*3+2]=s->box[i].min_z;
                 bmax[i*3+0]=s->box[i].max_x; bmax[i*3+1]=s->box[i].max_y; bmax[i*3+2]=s->box[i].max_z;
                 bcol[i*4+0]=s->box[i].r; bcol[i*4+1]=s->box[i].g; bcol[i*4+2]=s->box[i].b;
-                bcol[i*4+3]=s->box[i].self_lit ? 0.0f : 1.0f;
+                bcol[i*4+3]=s->box[i].wire ? 0.25f : (s->box[i].self_lit ? 0.0f : 1.0f);
                 bmdl[i] = (s->box[i].model >= 0 && s->box[i].model < BV_GPU_MAX_MODEL) ? s->box[i].model : -1;
             }
             glUniform3fv(s_u.bmin, nb, bmin);

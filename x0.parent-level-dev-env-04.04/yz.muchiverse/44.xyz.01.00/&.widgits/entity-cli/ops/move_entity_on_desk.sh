@@ -59,6 +59,22 @@ if [ -x "$GEN" ]; then
 fi
 [ -f "$MATRIX" ] && export TP_RANGE_MATRIX="$MATRIX"
 
+# A piececraft / pc-hq entity lives under pieces/. Its range is the
+# same '#' matrix, drawn as voxels inside the 3D window by
+# bv_render_3d.c. The desk X11 diamond must not open for that entity.
+case "$ENT" in
+  */pieces/*)
+    proj=${ENT%%/pieces/*}
+    disp="$proj/pieces/display"
+    mkdir -p "$disp"
+    if [ -f "$MATRIX" ]; then
+      cp "$MATRIX" "$disp/move_range_matrix.txt"
+    fi
+    echo "pc-hq range stays in the 3D window: $disp/move_range_matrix.txt"
+    exit 0
+    ;;
+esac
+
 ARM="$HOUSE/&.widgits/tile-picker/ops/+x/tp_arm_placer_rmmv.+x"
 [ -x "$ARM" ] || { echo "move_entity_on_desk.sh: no placer binary" >&2; exit 1; }
 "$ARM" "$ENT" "$HOUSE" || exit 1

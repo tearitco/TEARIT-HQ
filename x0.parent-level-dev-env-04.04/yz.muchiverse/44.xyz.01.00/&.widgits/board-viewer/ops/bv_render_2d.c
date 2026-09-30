@@ -31,6 +31,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <time.h>
 
 #include "bv_cjk_glyph.h"   /* view_2d_style=ascii: coloured CJK glyph per cell */
 
@@ -340,6 +341,23 @@ static void load_actors(int cur_z) {
     /* world props + animals (same "id,x,y,z" shape as bv_compose_frame) */
     load_actor_list("pieces/world_01/phymoji_entities.txt", cur_z);
     load_actor_list("pieces/world_01/animals.txt", cur_z);
+    /* Desk page copied by Player > Synch. One line: name x y */
+    char sp[PATH_BUF];
+    snprintf(sp, sizeof(sp), "%s/pieces/display/synched_entities.txt", project_root);
+    FILE *sf = host_fopen(sp, "r");
+    if (sf) {
+        char line[128], name[64];
+        int x, y;
+        while (g_nent < MAX_ENT && fgets(line, sizeof(line), sf)) {
+            if (sscanf(line, "%63s %d %d", name, &x, &y) != 3) continue;
+            Ent *e = &g_ent[g_nent++];
+            memset(e, 0, sizeof(*e));
+            e->x = x; e->y = y; e->z = cur_z;
+            e->r = 80; e->g = 200; e->b = 255;
+            e->cjk[0] = name[0]; e->cjk[1] = 0;
+        }
+        fclose(sf);
+    }
 }
 
 /* ---- board glyphs (one z-slice) ---- */
@@ -514,6 +532,12 @@ int main(void) {
     int oy = (side_mode || sel_y < 0) ? (bh / 2 - rows / 2) : (sel_y - rows / 2);
     if (bw > cols) { if (ox < 0) ox = 0; if (ox > bw - cols) ox = bw - cols; } else ox = -(cols - bw) / 2;
     if (bh > rows) { if (oy < 0) oy = 0; if (oy > bh - rows) oy = bh - rows; } else oy = -(rows - bh) / 2;
+    {
+        char vp[PATH_BUF];
+        snprintf(vp, sizeof(vp), "%s/pieces/display/view_map.txt", project_root);
+        FILE *vf = host_fopen(vp, "w");
+        if (vf) { fprintf(vf, "ox=%d\noy=%d\ncell=%d\nW=%d\nH=%d\n", ox, oy, cell, W, H); fclose(vf); }
+    }
 
     unsigned char *px = calloc((size_t)W * H, 4);
     if (!px) return 1;
@@ -649,6 +673,165 @@ int main(void) {
                         unsigned char *cc = VP_PXR(x0 + cell - 1 - t - xx, y);
                         a[0]=xr; a[1]=xg; a[2]=xb; a[3]=255; cc[0]=xr; cc[1]=xg; cc[2]=xb; cc[3]=255;
                     }
+            }
+        }
+    }
+
+    /* Magenta wire on the hero's own cell, one tile by one tile.
+     * A click adds a cyan square on the cell under the cursor. */
+    {
+        int hx = -1, hy = -1, hz = 0;
+        char hpath[PATH_BUF];
+        snprintf(hpath, sizeof(hpath), "%s/pieces/hero_01/state.txt", focused_root);
+        FILE *hf = host_fopen(hpath, "r");
+        if (hf) {
+            char line[128];
+            while (fgets(line, sizeof(line), hf)) {
+                if (strncmp(line, "pos_x=", 6) == 0) hx = atoi(line + 6);
+                else if (strncmp(line, "pos_y=", 6) == 0) hy = atoi(line + 6);
+                else if (strncmp(line, "pos_z=", 6) == 0) hz = atoi(line + 6);
+            }
+            fclose(hf);
+        }
+        if (hx >= 0 && hy >= 0) {
+            int scx, scy;
+            if (side_mode) {
+                scx = hx - ox;
+                scy = (side_zcount - 1 - hz) - oy;
+            } else {
+                scx = hx - ox;
+                scy = hy - oy;
+            }
+            if (scx >= 0 && scy >= 0 && scx < cols && scy < rows) {
+                int x0 = scx * cell, y0 = scy * cell;
+                for (int t = 0; t < 3; t++) {
+                    for (int x = x0; x < x0 + cell && x < W; x++) {
+                        unsigned char *a = VP_PXR(x, y0 + t);
+                        unsigned char *b = VP_PXR(x, y0 + cell - 1 - t);
+                        a[0]=255; a[1]=220; a[2]=40; a[3]=255;
+                        b[0]=255; b[1]=220; b[2]=40; b[3]=255;
+                    }
+                    for (int y = y0; y < y0 + cell && y < H; y++) {
+                        unsigned char *a = VP_PXR(x0 + t, y);
+                        unsigned char *b = VP_PXR(x0 + cell - 1 - t, y);
+                        a[0]=255; a[1]=220; a[2]=40; a[3]=255;
+                        b[0]=255; b[1]=220; b[2]=40; b[3]=255;
+                    }
+                }
+            }
+        }
+        /* Desk diamond: the same '#' file, one tile per '#', on the hero. */
+        if (hx >= 0 && hy >= 0) {
+            char mp[PATH_BUF];
+            snprintf(mp, sizeof(mp), "%s/pieces/display/move_range_matrix.txt", project_root);
+            FILE *mf = host_fopen(mp, "r");
+            if (mf) {
+                char rows[16][64];
+                int nr = 0, nc = 0;
+                while (nr < 16 && fgets(rows[nr], sizeof(rows[nr]), mf)) {
+                    rows[nr][strcspn(rows[nr], "\r\n")] = 0;
+                    if ((int)strlen(rows[nr]) > nc) nc = (int)strlen(rows[nr]);
+                    nr++;
+                }
+                fclose(mf);
+                int cx0 = nc / 2, cy0 = nr / 2;
+                for (int row = 0; row < nr; row++) {
+                    for (int col = 0; col < nc && rows[row][col]; col++) {
+                        if (rows[row][col] != '#') continue;
+                        int scx = (hx + col - cx0) - ox;
+                        int scy = side_mode ? ((side_zcount - 1 - hz) - oy) : ((hy + row - cy0) - oy);
+                        if (scx < 0 || scy < 0 || scx >= cols || scy >= rows) continue;
+                        int x0 = scx * cell, y0 = scy * cell;
+                        for (int t = 0; t < 2; t++) {
+                            for (int x = x0; x < x0 + cell && x < W; x++) {
+                                unsigned char *a = VP_PXR(x, y0 + t);
+                                unsigned char *b = VP_PXR(x, y0 + cell - 1 - t);
+                                a[0]=255; a[1]=220; a[2]=40; a[3]=255;
+                                b[0]=255; b[1]=220; b[2]=40; b[3]=255;
+                            }
+                            for (int y = y0; y < y0 + cell && y < H; y++) {
+                                unsigned char *a = VP_PXR(x0 + t, y);
+                                unsigned char *b = VP_PXR(x0 + cell - 1 - t, y);
+                                a[0]=255; a[1]=220; a[2]=40; a[3]=255;
+                                b[0]=255; b[1]=220; b[2]=40; b[3]=255;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        char cpath[PATH_BUF], seenp[PATH_BUF];
+        snprintf(cpath, sizeof(cpath), "%s/#.desktop/pchq_canvas_click.txt", house_root);
+        snprintf(seenp, sizeof(seenp), "%s/pieces/display/click_2d.seen", project_root);
+        FILE *cf = host_fopen(cpath, "r");
+        int cx = 0, cy = 0, cw = 0, ch = 0;
+        if (cf && fscanf(cf, "%d %d %d %d", &cx, &cy, &cw, &ch) == 4 && cw > 0 && ch > 0) {
+            char stamp[64], prev[64] = "";
+            snprintf(stamp, sizeof(stamp), "%d %d %d %d", cx, cy, cw, ch);
+            FILE *sf = host_fopen(seenp, "r");
+            if (sf) { if (fgets(prev, sizeof(prev), sf)) prev[strcspn(prev, "\r\n")] = 0; fclose(sf); }
+            if (strcmp(prev, stamp) != 0) {
+                int px = cx * W / cw, py = cy * H / ch;
+                int scx = px / cell, scy = py / cell;
+                if (scx >= 0 && scy >= 0 && scx < cols && scy < rows) {
+                    int bx = ox + scx;
+                    int by = side_mode ? hy : (oy + scy);
+                    int bz = side_mode ? (side_zcount - 1 - (oy + scy)) : cur_z;
+                    char pp[PATH_BUF];
+                    snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
+                    FILE *pf = host_fopen(pp, "w");
+                    if (pf) { fprintf(pf, "armed=1\nx=%d\ny=%d\nz=%d\n", bx, by, bz); fclose(pf); }
+                    time_t now = time(NULL);
+                    struct tm tmv; localtime_r(&now, &tmv);
+                    snprintf(pp, sizeof(pp), "%s/pieces/display/click_hud.txt", focused_root);
+                    pf = host_fopen(pp, "w");
+                    if (pf) {
+                        fprintf(pf, "pos=%d,%d,%d\ntime=%02d:%02d:%02d\n",
+                                bx, by, bz, tmv.tm_hour, tmv.tm_min, tmv.tm_sec);
+                        fclose(pf);
+                    }
+                }
+                sf = host_fopen(seenp, "w");
+                if (sf) { fputs(stamp, sf); fclose(sf); }
+            }
+        }
+        if (cf) fclose(cf);
+        /* Green selector tile, one cell, same file the 3D view reads. */
+        {
+            char pp[PATH_BUF];
+            snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
+            FILE *pf = host_fopen(pp, "r");
+            int armed = 0, sx = 0, sy = 0, sz = 0;
+            if (pf) {
+                char line[64];
+                while (fgets(line, sizeof(line), pf)) {
+                    if (strncmp(line, "armed=", 6) == 0) armed = atoi(line + 6);
+                    else if (strncmp(line, "x=", 2) == 0) sx = atoi(line + 2);
+                    else if (strncmp(line, "y=", 2) == 0) sy = atoi(line + 2);
+                    else if (strncmp(line, "z=", 2) == 0) sz = atoi(line + 2);
+                }
+                fclose(pf);
+            }
+            if (armed) {
+                int scx = sx - ox;
+                int scy = side_mode ? ((side_zcount - 1 - sz) - oy) : (sy - oy);
+                if (scx >= 0 && scy >= 0 && scx < cols && scy < rows) {
+                    int bx0 = scx * cell, by0 = scy * cell;
+                    for (int t = 0; t < 3; t++) {
+                        for (int x = bx0; x < bx0 + cell && x < W; x++) {
+                            unsigned char *a = VP_PXR(x, by0 + t);
+                            unsigned char *b = VP_PXR(x, by0 + cell - 1 - t);
+                            a[0]=40; a[1]=255; a[2]=80; a[3]=255;
+                            b[0]=40; b[1]=255; b[2]=80; b[3]=255;
+                        }
+                        for (int y = by0; y < by0 + cell && y < H; y++) {
+                            unsigned char *a = VP_PXR(bx0 + t, y);
+                            unsigned char *b = VP_PXR(bx0 + cell - 1 - t, y);
+                            a[0]=40; a[1]=255; a[2]=80; a[3]=255;
+                            b[0]=40; b[1]=255; b[2]=80; b[3]=255;
+                        }
+                    }
+                }
             }
         }
     }
