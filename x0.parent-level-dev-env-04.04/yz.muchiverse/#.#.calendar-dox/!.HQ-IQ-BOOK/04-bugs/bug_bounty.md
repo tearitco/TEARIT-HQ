@@ -2,6 +2,159 @@
 
 ---
 
+## ✅ CLOSED 2026-09-30 (real root causes found and fixed, not the merge): pc-hq board window resize didn't resize the 3D camera view; HUD/minimap got cut off small, black on big
+
+**Resolution, same day:**
+
+1. **"Bigger = black" was NOT a render failure - it was a deliberate,
+   undocumented-to-the-user hard pixel ceiling.** `bv_render_3d.c:61-64`
+   had `FRAME_MAX_W 1280`/`FRAME_MAX_H 960` - any canvas bigger than
+   that never grew `g_fw`/`g_fh` past the ceiling, so `kh_draw_canvas`
+   (khtpm_core_render.c) centered the smaller raw image inside the
+   bigger canvas and left the uncovered border unpainted (black). Direct
+   instruction on the real fix ("scale render to canvas, capped by cost
+   budget... is there a compromise, different step sizes?"): removed the
+   hard crop, raised the sanity ceiling to 3840x2160 (real monitors, not
+   a cost bound), and introduced `RAYMARCH_BUDGET_PX` - a real cost
+   budget enforced via `g_lod_step` (the SAME block-fill-then-upscale
+   mechanism a "moving" frame already used) instead of a crop. A canvas
+   past budget now raymarches at a coarser step (1/2/3/4, whichever the
+   larger of the size-driven step and the existing motion-driven step
+   needs) and covers the FULL requested canvas, never letterboxed.
+   Direct clarification honored ("it doesn't need to stretch image btw,
+   just have a bigger camera lens") - this is real coverage at native
+   resolution-minus-LOD, not a stretched/upscaled crop.
+2. **A real, separate crash-class bug found in the same code path,
+   fixed regardless of the ceiling above:** `bv_gpu_raymarch.c`'s LOD
+   downsample used a fixed `static unsigned char scratch[1280*960*4]`;
+   any request past that (which the ceiling above no longer prevents)
+   hit a guard that `goto done`'d with **zero frame written** - a real
+   black screen, not a letterbox. Fixed: `scratch` is now a
+   `realloc()`-grown persistent heap buffer, no cap.
+3. **HUD/minimap's "architecturally baked into the camera framebuffer"
+   finding (below, kept for the historical trail) turned out not to
+   need the bigger split-into-real-khtpm-elements redesign it first
+   looked like** - once (1) was fixed, they draw at the real, full
+   canvas resolution same as the camera view, so most of the original
+   "cut off" symptom was the same crop bug, not a separate architecture
+   problem. What WAS real and separate: `bv_draw_hud()`/
+   `bv_draw_minimap()`'s own pad/`minimap_px_per_col`/`minimap_max_px`
+   were flat `hud.pdl` constants with zero awareness of the real canvas
+   size, so a small window could still overlap or drop the minimap
+   outright (its own `mm_w > g_fw` guard). Fixed: a new
+   `bv_hud_canvas_scale()` (shrink-only, canvas-size-relative, floor
+   0.35x) scales `pad`/`max_px` so they shrink to fit instead of
+   vanishing. Known remaining limit, not fixed (documented honestly,
+   not silently claimed done): the bitmap HUD text font itself only
+   supports an integer `hud_scale` (1-4) from `hud.pdl` - true
+   sub-integer font shrinking on a very small window is a real,
+   separate, not-yet-built feature (would need a variable-scale glyph
+   renderer), not something this pass's canvas-scale multiplier can
+   reach.
+4. **A third, unrelated but real gap found while testing this live:**
+   the `bv_render_3d.c --daemon` process (the one that actually watches
+   `pchq_board_view.txt` for a live resize, independent of any
+   keypress) is only spawned by `bv_dispatch.c` the FIRST time a real
+   game key is drained from `interact_relay.txt` - a freshly-opened
+   board window that the user hasn't sent a movement key to yet has NO
+   daemon running at all, so resize (and therefore HUD/minimap) does
+   nothing until the first keypress. Worked around live this session
+   (manually started the daemon for the open test session) but **not
+   fixed at the root** - real fix belongs in `open_pchq_board.sh` or
+   `main_module.pal`'s own boot-time unconditional render block,
+   starting the daemon unconditionally at boot instead of waiting on
+   `bv_dispatch`'s any-key gate. Flagging as a new, separate, smaller
+   open item rather than silently folding it into this CLOSED entry.
+
+**Original report, false-alarm ruling-out, and the "architecturally not
+independent" framing kept verbatim below for the investigation trail:**
+
+## ⚠️ OPEN 2026-09-30 (superseded by the CLOSED entry directly above - kept for trail only): pc-hq board window resize doesn't resize the 3D camera view; HUD/minimap get cut off small, go black big
+
+**Reported:** direct live report, after ruling out a false alarm first
+(see below) - "if i resize the window smaller, it cuts off hud and mini
+map, also if i drag window bigger, it doesn't make 'camera lense wider'
+it just shows black. i thought we had fixed that specifically but maybe
+not? also the hud/mini map should size dynamically not be part of
+camera's view, right?"
+
+**False alarm ruled out first, for the record:** the SAME session
+originally reported "pc-hq view not filling frame, resize indicator
+gone" after the `grok`→`claude` merge, which looked alarming enough to
+consider reverting the merge. Full diff of every file the merge touched
+(`khtpm_core_render.c`, `khtpm_taskbar_manager.c`,
+`pchq_board_projector.c`, `pchq-board.xhtpm`, `pc_entity_ctx.sh`,
+`move_entity_on_desk.sh`, `bv_render_3d.c`) against pre-merge, PLUS a
+byte-level diff against a known-good local backup
+(`/home/no/Desktop/github/xdb/x0.parent-level-dev-env-04.04_20260929-033240/`),
+found **zero functional difference** in any canvas/resize/grip code -
+only cosmetic label renames (Book/Page, was File/Desk). Turned out to
+be a color-theme contrast issue (fixed by the user changing the theme),
+not a real regression, and NOT caused by the grok merge. Retracting
+that framing entirely - flagging here only as a lesson: don't assume
+"looks broken right after a merge" means "the merge broke it" without
+a real diff first.
+
+**The real, distinct bug, confirmed by direct code read:**
+
+1. **Camera view (the `<canvas id="view"/>` blit) genuinely IS supposed
+   to be dynamic.** `kh_layout_canvas_in_region()`
+   (`khtpm_core_render.c` ~line 5228) recomputes `cv->w`/`cv->h` to
+   fill its parent `<panel>` on every relayout and rewrites
+   `#.desktop/pchq_board_view.txt` with the new pixel size each time.
+   `bv_render_3d.c`'s `--daemon` loop (main(), ~line 3419) polls that
+   file and re-renders at the new resolution when it changes. This
+   mechanism is real, present, and byte-identical to the known-good
+   backup - not something this session broke. Live-reproduced symptom
+   ("bigger = black") is consistent with the daemon detecting
+   `view_changed` and re-requesting a frame, but the aspect/FOV math
+   (`build_camera()`/the `fov_rad`/`aspect` computation in
+   `bv_ray_click()`'s sibling raycasting code, ~line 2030) or the GPU
+   raymarch backend (`bv_gpu_raymarch.c`) not being told the new
+   width/height in time, producing a stale/blank buffer instead of a
+   properly re-projected wider view. **Not yet root-caused** - next
+   step is a live before/after frame-size dump (`cat
+   #.desktop/pchq_board_view.txt` immediately after a drag-resize) to
+   confirm whether the daemon side ever receives the new size at all,
+   vs. receives it but renders it wrong.
+
+2. **HUD/minimap are architecturally NOT independent of the camera
+   view - direct user intuition is correct, this is a real design
+   gap, not just a bug.** `bv_draw_hud()`/`bv_draw_minimap()`
+   (`bv_render_3d.c` ~line 1351/1643) draw text and the minimap
+   **directly onto the same raw pixel framebuffer** the 3D camera
+   render produces, at a fixed corner anchor + pixel padding
+   (`minimap_px_per_col`, `minimap_max_px`, from `hud.pdl`). There is
+   no separate khtpm `<panel>`/element for either - they are baked
+   into the one `<canvas>` blit the renderer treats as a single opaque
+   image. This means: shrinking the window shrinks the canvas region,
+   which crops the raw image (and whatever HUD/minimap pixels happen
+   to fall outside the new crop are just gone), and the HUD/minimap's
+   own on-screen size is entirely a function of the SAME resolution
+   the camera renders at, not a UI layer sized independently.
+
+**Real direction (not yet built):** HUD/minimap should not scale with
+canvas resize the same way the 3D view does - they need their own
+fixed real-screen-pixel size (or a house-standard scale factor,
+matching `g_ui_scale_pct`/font_scale convention elsewhere), computed
+in the SAME pass as the 3D camera resolution but independently, not as
+literal pixels burned into the one shared raw buffer. This likely means
+splitting `bv_render_3d.c`'s single "camera + HUD + minimap" framebuffer
+into either (a) two separate raw outputs blitted as two khtpm
+`<canvas>` elements, or (b) HUD/minimap becoming real generic khtpm
+elements (`<text>`/a dedicated `<minimap>` tag) drawn by the shared
+renderer on top of the camera canvas, not by the daemon at all - the
+second option is more consistent with this house's "no new per-project
+draw logic in the C daemon, let the generic renderer draw UI" standard
+(`CENTROID_GOLD_STD.md`) and is the one worth designing toward, not a
+quick pixel-math patch to the first.
+
+**Not yet done:** root-cause the resize-goes-black half (live frame-size
+dump before/after a drag-resize); decide (a) vs (b) above for HUD/
+minimap independence; neither started this session.
+
+---
+
 ## 💡 PARKED 2026-09-28: no house-wide way to self-catch a rogue/runaway loop, without asking an agent to hand-measure it
 
 **Why this is here at all:** the SAME session that fixed

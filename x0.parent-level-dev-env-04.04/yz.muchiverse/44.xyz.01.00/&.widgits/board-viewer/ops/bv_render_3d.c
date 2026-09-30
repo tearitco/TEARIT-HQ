@@ -60,8 +60,27 @@
 #define GLYPH_H 16
 #define FRAME_W 640      /* default / fallback frame size */
 #define FRAME_H 480
-#define FRAME_MAX_W 1280 /* raymarch cost ceiling (~4x the 640x480 default = ~0.5s/frame with omp on 8 cores); a larger canvas letterboxes (kh_draw_canvas centres) */
-#define FRAME_MAX_H 960
+/* REAL FIX 2026-09-30, direct live report ("drag window bigger... camera
+ * lens doesn't get wider... only the sides out of the size of the
+ * original screen [go black]"): FRAME_MAX_W/H used to be a hard pixel
+ * CROP - any canvas bigger than 1280x960 just never got g_fw/g_fh past
+ * that size at all, so kh_draw_canvas (khtpm_core_render.c) painted the
+ * smaller raw image centered in the bigger canvas and left the
+ * uncovered border black (the "sides"). Direct instruction on the fix:
+ * "scale render to canvas, capped by cost budget" - not a raised crop
+ * (still crops eventually) and not a cosmetic letterbox-color patch
+ * (still doesn't fill the canvas). g_fw/g_fh now track the REAL
+ * requested canvas size up to a generous sanity ceiling (real monitors,
+ * not a raymarch cost bound); RAYMARCH_BUDGET_PX below is the actual
+ * cost control - see its own comment where g_lod_step is computed. */
+#define FRAME_MAX_W 3840 /* sanity ceiling only (4K) - not a cost bound, see RAYMARCH_BUDGET_PX */
+#define FRAME_MAX_H 2160
+/* Real raymarch cost budget, in raymarched-sample pixels per frame -
+ * same real area FRAME_MAX_W/H used to hard-crop to (1280*960), now
+ * enforced via g_lod_step (below) instead of a crop, so the FULL
+ * requested canvas always gets covered, just blockier past this budget
+ * exactly the same way a "moving" frame already goes blockier today. */
+#define RAYMARCH_BUDGET_PX (1280 * 960)
 
 #define M_PI_LOCAL 3.14159265358979323846
 
@@ -1518,6 +1537,25 @@ static int (*g_mm_col_top)[MAX_BOARD_DIM] = NULL;
 static int g_mm_board_w = 0, g_mm_board_h = 0, g_mm_selx = 0, g_mm_sely = 0;
 static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int text_right_anchor, int text_block_h);
 
+/* REAL FIX 2026-09-30, direct live report ("hud/mini map still isn't
+ * moving to accommodate smaller window... they should size dynamically
+ * not be part of camera's view"). Text HUD used a fixed hud_scale
+ * (1-4, from hud.pdl only) and the minimap a fixed px_per_col/max_px -
+ * neither tracked the real canvas size at all, so a small window just
+ * clipped/dropped them (bv_draw_minimap's own existing "mm_w > g_fw ->
+ * return" guard). Real fix: a canvas-relative multiplier, shrink-only
+ * (never grows past the pdl-configured size on a big canvas - this is
+ * about not clipping small, not maximizing large), applied on top of
+ * whatever hud_scale/px_per_col/max_px the pdl already asks for. */
+static double bv_hud_canvas_scale(void) {
+    double sx = (double)g_fw / (double)FRAME_W;
+    double sy = (double)g_fh / (double)FRAME_H;
+    double s = sx < sy ? sx : sy;
+    if (s > 1.0) s = 1.0;
+    if (s < 0.35) s = 0.35;
+    return s;
+}
+
 static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely) {
     int fps = bv_hud_fps(); /* always call - keeps the fps clock ticking even when hidden */
     if (!g_fbuf || !game_root || !game_root[0]) return;
@@ -1598,7 +1636,9 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
         snprintf(lines[n++], sizeof(lines[0]), "click: %s %s", pos, tm);
     }
     if (n < 12) snprintf(lines[n++], sizeof(lines[0]), "pid %d", (int)getpid());
-    int pad = 6 * scale;
+    double cscale = bv_hud_canvas_scale();
+    int pad = (int)(6 * scale * cscale);
+    if (pad < 2) pad = 2;
     int row_h = GLYPH_PX_H * scale + 3 * scale;
     int top_anchor = !strstr(anchor, "bottom");
     int right_anchor = strstr(anchor, "right") != NULL;
@@ -1657,10 +1697,19 @@ static void bv_draw_minimap(const char *pdl, int pad, int text_top_anchor, int t
     int same_corner = (top_anchor == text_top_anchor) && (right_anchor == text_right_anchor);
     if (!same_corner) text_block_h = 0;
 
+    double cscale = bv_hud_canvas_scale();
     int px_per_col = hud_pdl_int(pdl, "minimap_px_per_col", 8);
     if (px_per_col < 1) px_per_col = 1;
     int max_px = hud_pdl_int(pdl, "minimap_max_px", 160);
     if (max_px < 8) max_px = 8;
+    /* REAL FIX 2026-09-30 (see bv_hud_canvas_scale()'s own header) -
+     * max_px used to be a flat pdl constant regardless of the real
+     * canvas size, so a small window either overlapped it or (via the
+     * caller's own mm_w > g_fw guard) dropped the minimap outright.
+     * Scaled down with the same canvas-relative factor the text HUD's
+     * pad now uses, so it shrinks to fit instead of vanishing. */
+    max_px = (int)(max_px * cscale);
+    if (max_px < 24) max_px = 24;
     int cellpx = px_per_col;
     while (cellpx > 1 && (g_mm_board_w * cellpx > max_px || g_mm_board_h * cellpx > max_px)) cellpx--;
 
@@ -2382,6 +2431,22 @@ static int render_one_frame(void) {
             if (step < 1) step = 1;
             if (step > 4) step = 4;
             g_lod_step = step;
+        }
+        /* REAL FIX 2026-09-30, direct instruction ("scale render to
+         * canvas, capped by cost budget... is there a compromise,
+         * different step sizes?") - a canvas past RAYMARCH_BUDGET_PX
+         * now raymarches at a coarser step instead of the old hard crop,
+         * same block-fill-then-upscale mechanism "moving" already uses
+         * above, just driven by size instead of motion. Whichever step
+         * is larger wins (a big AND moving canvas still gets the size
+         * floor, never finer than its own budget allows). size_step
+         * grows with the ratio, not a fixed jump, so a canvas just over
+         * budget only drops to step 2, not straight to 4. */
+        {
+            long px = (long)g_fw * (long)g_fh;
+            int size_step = 1;
+            while (size_step < 4 && px > (long)RAYMARCH_BUDGET_PX * size_step * size_step) size_step++;
+            if (size_step > g_lod_step) g_lod_step = size_step;
         }
     }
 
