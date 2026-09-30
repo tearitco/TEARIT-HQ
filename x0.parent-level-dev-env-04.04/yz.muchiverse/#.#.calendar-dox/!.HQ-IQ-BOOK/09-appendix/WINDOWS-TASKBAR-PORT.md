@@ -421,3 +421,62 @@ Fix: both branches now go through `dock_nav_step()`, which walks focus
 the relay + raise/refocus/regrab bookkeeping. Verified: a posted `VK_DOWN`
 now steps `6002 → 6003 → … → 6020` continuously across the header→bottom
 boundary, and `VK_UP` reverses cleanly.
+
+---
+
+## 9. "Half my entities lost transparency" was not a rendering bug
+
+Reported as *about half the pals on the desktop render as opaque
+rectangles while the rest are transparent.* There was no alpha bug to fix.
+Per-window probing (`GetWindowLong(GWL_EXSTYLE) & WS_EX_LAYERED` plus
+`GetWindowRgn`) showed the split exactly:
+
+```
+pid=15540 layered=no  rgnType=3 rgn=34x35 win=39x39   <- this house, correct
+pid=17884 layered=YES rgnType=3 rgn=30x31 win=39x39   <- cursword, correct
+pid=20260 layered=no  rgnType=0 rgn=0x0   win=51x51   <- NOT this house
+pid=13468 layered=no  rgnType=0 rgn=0x0   win=128x128 <- NOT this house
+```
+
+`rgnType=0` is `ERROR` — no window region at all — so those windows were
+genuinely opaque rectangles. Their command lines gave it away:
+
+```
+...\MUCHI_DESK_PALS_WIN\NNEST-11.17...\+x\tp_desktop_window_rgb.exe  <pal>
+```
+
+Three separate facts stacked up:
+
+1. **`tp_desktop_window_rgb.c` no longer exists in this repo.** Its code
+   was folded into `khtpm_core_render.c`; only historical mentions
+   survive in comments. So that `.exe` predates the per-pixel alpha work
+   entirely, which is precisely why its pals looked wrong.
+2. **It ran out of a different install tree**, `~/Desktop/MUCHI_DESK_PALS_WIN/…`,
+   not this worktree.
+3. **It was two days stale** and rendering `sessions/s4/entities/`
+   (`asa`, `ava`, `book-stack`, `m1_ninjadragon`, `m8_redhorned`, `self`)
+   — a scene this house is not even showing: `sessions/session.pdl` says
+   `active_session | s1`, and s1 has no entities. That install's manager
+   was already dead, so nothing was ever going to reap them.
+
+Why this house's own lifecycle never noticed: `Stop-Khtpm` only stops PIDs
+listed in `#.desktop/livedesk_taskbar.pid`, and the runner only ever writes
+*its own* PIDs there. A process belonging to another house is invisible to
+both, so it survives every `boot`/`new`/`stop` indefinitely.
+
+`run_khtpm_strip_win.ps1` now closes that hole: `Get-ForeignKhtpm()` finds
+any `khtpm_core_render` / `khtpm_taskbar_manager_main` / `khtpm_entity` /
+`tp_desktop_window_rgb` process whose `ExecutablePath` is not under this
+house, `boot` and `status` print a loud warning, and the new `clean`
+action removes them. `clean` deliberately never touches this house's own
+processes (`stop` owns those), so it is safe to run while the real
+taskbar is drawing.
+
+The prefix test uses `String.StartsWith(..., OrdinalIgnoreCase)`, **not**
+`-like`: a house path may legally contain `[`, `]` or `?`, which `-like`
+would treat as wildcards.
+
+Generalisation worth keeping: on Windows a stale binary from another
+install is a far more common cause of "the rendering is wrong on some
+windows" than an actual rendering bug, and it is invisible to any
+lifecycle that keys on PIDs it wrote itself. Check `status` first.

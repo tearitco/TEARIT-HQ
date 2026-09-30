@@ -32,12 +32,16 @@
 # build, help - and the same rule it exists to enforce: never trust a
 # bare exit code for a backgrounded GUI launch, always confirm real PIDs.
 #
-# DIVERGENCE FROM LINUX, deliberate, documented not accidental:
-# run_khtpm_strip.sh launches ONLY khtpm_strip_header.xhtpm. This one
-# launches the header AND khtpm_strip_bottom.xhtpm, because the bottom
-# bar is a real separate top-level window on this platform and nobody
-# else starts it. If Linux later grows a bottom launcher, drop the second
-# Spawn-Block here to match.
+# MATCHES LINUX as of the 2026-09-29 single-renderer fix: this launches
+# ONLY khtpm_strip_header.xhtpm, exactly like run_khtpm_strip.sh does.
+# The header process is the dock-header window, so it already builds the
+# bottom bar itself as its real g_dock_peer. An earlier revision of this
+# file launched khtpm_strip_bottom.xhtpm as a second process as well;
+# that drew a duplicate bottom bar AND, worse, a second independent
+# g_focus_nav - two nav selectors, each stuck at 1. It was only ever
+# needed to work around the g_package_dir dirname bug in
+# khtpm_core_render.c (fixed alongside it), so with the peer window real
+# the second launch is now commented out at its call site below.
 #
 # See ..\..\..\#.#.calendar-dox\!.HQ-IQ-BOOK\09-appendix\
 # WINDOWS-TASKBAR-PORT.md for the port notes this file belongs to.
@@ -96,6 +100,64 @@ function Get-KhtpmPids {
         if ($t -and (Test-Alive ([int]$t))) { $out += [int]$t }
     }
     return $out
+}
+
+# ---- stale/foreign process detection -----------------------------------
+# Real bug hit 2026-09-30: half the pals on the desktop rendered as OPAQUE
+# rectangles - no shape region, no WS_EX_LAYERED - sitting next to thirteen
+# correctly transparent ones. They were not this house's entities at all.
+# They were tp_desktop_window_rgb.exe processes: a binary whose SOURCE WAS
+# DELETED from this repo (its code was folded into khtpm_core_render.c),
+# running out of a completely different install tree
+# (~/Desktop/MUCHI_DESK_PALS_WIN/...) and started two days earlier. That
+# install's own manager was already dead, so nothing was ever going to reap
+# them, and they rendered session s4's six entity instances (asa, ava,
+# book-stack, m1_ninjadragon, m8_redhorned, self) - a scene this house is
+# not even showing, since sessions/session.pdl says active_session=s1.
+#
+# Why this house's own lifecycle never noticed: Stop-Khtpm only ever stops
+# PIDs listed in #.desktop/livedesk_taskbar.pid, and the runner only ever
+# writes ITS OWN pids there. A process belonging to some other house is
+# invisible to both, so it survives every boot/new/stop indefinitely. The
+# old binary also predates the per-pixel alpha work, which is exactly why
+# only its pals looked wrong - the symptom reads like "half my entities lost
+# transparency" and sends you hunting for a rendering bug that does not
+# exist. Detect them here instead, and give `clean` to remove them.
+$FOREIGN_NAMES = @(
+    "khtpm_core_render",
+    "khtpm_taskbar_manager_main",
+    "khtpm_entity",
+    "tp_desktop_window_rgb"
+)
+
+function Get-ForeignKhtpm {
+    $ours = @(Get-KhtpmPids)
+    $housePrefix = $HOUSE.TrimEnd('\')
+    $out = @()
+    foreach ($n in $FOREIGN_NAMES) {
+        $procs = @(Get-CimInstance Win32_Process -Filter "Name='$n.exe'" -ErrorAction SilentlyContinue)
+        foreach ($p in $procs) {
+            $path = $p.ExecutablePath
+            if (-not $path) { continue }
+            # Ordinal prefix compare, NOT -like: $HOUSE can legally contain
+            # [ ] * ? which -like would treat as wildcards.
+            if ($path.StartsWith($housePrefix, [System.StringComparison]::OrdinalIgnoreCase)) { continue }
+            if ($ours -contains [int]$p.ProcessId) { continue }
+            $out += [pscustomobject]@{ Pid = [int]$p.ProcessId; Name = $n; Path = $path }
+        }
+    }
+    return $out
+}
+
+function Show-ForeignKhtpm {
+    $f = @(Get-ForeignKhtpm)
+    if ($f.Count -eq 0) { return }
+    Write-Host ""
+    Write-Warning ("STALE khtpm processes from ANOTHER install are still running (" + $f.Count + "):")
+    foreach ($x in $f) { Write-Host ("  pid {0,-7} {1}" -f $x.Pid, $x.Path) }
+    Write-Warning "They draw pals with NO transparency and are not this house's entities."
+    Write-Warning 'Remove them with:  .\run_khtpm_strip_win.ps1 clean'
+    Write-Host ""
 }
 
 # Launch one process, fully detached, via WMI. Returns the new pid, or 0.
@@ -330,6 +392,11 @@ switch ($ACTION) {
         # uses. So: bars from here, entities from the manager. This also
         # matches run_khtpm_strip.sh, which launches only the header.
 
+        # Warn BEFORE reporting success, so a stale other-install process is
+        # the last thing on screen rather than something buried above the
+        # "OK - khtpm running" line the user is already looking away from.
+        Show-ForeignKhtpm
+
         Start-Sleep -Seconds 2
 
         # Never trust the return value alone - confirm the processes are
@@ -349,6 +416,35 @@ switch ($ACTION) {
 
     "stop" { Stop-Khtpm }
 
+    # Deliberately does NOT touch this house's own processes - `stop` owns
+    # those. `clean` only removes the orphans, so it is always safe to run
+    # while the real taskbar is up and drawing.
+    "clean" {
+        $f = @(Get-ForeignKhtpm)
+        if ($f.Count -eq 0) {
+            Write-Host "no stale khtpm processes from another install - nothing to clean"
+        } else {
+            Write-Host ("cleaning " + $f.Count + " stale khtpm process(es) from another install:")
+            foreach ($x in $f) {
+                Write-Host ("  killing pid {0,-7} {1}" -f $x.Pid, $x.Name)
+                Stop-Process -Id $x.Pid -Force -ErrorAction SilentlyContinue
+            }
+            # Same poll-for-real-death reasoning as Stop-Khtpm.
+            $i = 0
+            while ($i -lt 30) {
+                if (@(Get-ForeignKhtpm).Count -eq 0) { break }
+                Start-Sleep -Milliseconds 100
+                $i++
+            }
+            $left = @(Get-ForeignKhtpm)
+            if ($left.Count -eq 0) {
+                Write-Host "OK - all stale processes gone; this house's taskbar was not touched"
+            } else {
+                Write-Warning ("still alive: " + (($left | ForEach-Object { $_.Pid }) -join " "))
+            }
+        }
+    }
+
     "status" {
         $pids = @(Get-KhtpmPids)
         if ($pids.Count -gt 0) {
@@ -356,6 +452,7 @@ switch ($ACTION) {
         } else {
             Write-Host "khtpm: stopped"
         }
+        Show-ForeignKhtpm
     }
 
     "build" { & (Join-Path $SCRIPT_DIR "build_khtpm_strip_win.ps1") }
@@ -369,9 +466,16 @@ run_khtpm_strip_win.ps1 - Windows runner for the khtpm taskbar
   .\run_khtpm_strip_win.ps1 stop      # stop khtpm
   .\run_khtpm_strip_win.ps1 status    # is it running
   .\run_khtpm_strip_win.ps1 build     # build only, no process changes
+  .\run_khtpm_strip_win.ps1 clean     # kill STALE khtpm processes left by another
+                                      # install (they render pals with no
+                                      # transparency); never touches this house's
 
 Bars are launched through WMI, so they survive closing this terminal.
 Always ends with a real PID check, never a bare exit code.
+
+If pals ever show up as hard-edged opaque rectangles instead of sprite
+silhouettes, run 'status' - a stale process from another install is the
+first thing to rule out, and 'clean' removes it.
 "@
     }
 }
