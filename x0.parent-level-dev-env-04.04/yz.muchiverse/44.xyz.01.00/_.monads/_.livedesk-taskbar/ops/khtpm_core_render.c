@@ -2616,6 +2616,54 @@ static void ktb_toggle_zorder_apply(int raise) {
     }
     XFlush(dpy);
 }
+/* REAL FIX 2026-09-29, direct live report ("i have throttling issue
+ * again... did we introduce cpu leaks") - traced to real, un-reaped
+ * <defunct> zombies (24 found live, in groups matching one respawn
+ * burst each) parented by this exact process. Root cause: every
+ * ktb_toggle_zorder_respawn() call below fork()s once per still-running
+ * entity (plus once more for this process's own self-relaunch) and the
+ * child immediately execve()s - but nothing ever waitpid()s these
+ * specific children, so each one sits as a zombie for the rest of this
+ * process's life the moment its execve'd window eventually exits. NOT
+ * a crash leftover - confirmed live, this fires on totally ordinary
+ * "always on top" toggling, one permanent zombie per respawned window
+ * per toggle. Same real bug class, same real fix shape, as the
+ * g_khtpm_menu_pid leak fixed 2026-09-14 (see that reap's own header
+ * comment a few hundred lines below) - track the PIDs this function
+ * itself forks, then reap them opportunistically, once per tick,
+ * exactly like g_khtpm_menu_pid already does. Sized to found[64] (this
+ * function's own cap) plus 1 for the self-relaunch fork. */
+#define KH_MAX_RESPAWN_PIDS 65
+static pid_t g_respawn_pids[KH_MAX_RESPAWN_PIDS];
+static int g_n_respawn_pids = 0;
+static void kh_track_respawn_pid(pid_t pid) {
+    if (pid <= 0) return;
+    if (g_n_respawn_pids >= KH_MAX_RESPAWN_PIDS) {
+        /* array's own cap hit (should never happen - found[] shares the
+         * same 64-entry cap) - reap-on-next-tick still catches these
+         * via the generic waitpid(-1, WNOHANG) fallback in
+         * kh_reap_respawn_pids(), just not individually tracked. */
+        return;
+    }
+    g_respawn_pids[g_n_respawn_pids++] = pid;
+}
+/* Called once per tick (see this function's call site next to the
+ * pre-existing g_khtpm_menu_pid reap, same tick). Non-blocking, cheap
+ * (WNOHANG, at most KH_MAX_RESPAWN_PIDS syscalls, and the array is
+ * normally empty - only ever populated right after a z-order toggle). */
+static void kh_reap_respawn_pids(void) {
+    int i = 0;
+    while (i < g_n_respawn_pids) {
+        int wstatus;
+        pid_t r = waitpid(g_respawn_pids[i], &wstatus, WNOHANG);
+        if (r == g_respawn_pids[i]) {
+            /* reaped - compact by swapping the last tracked pid in */
+            g_respawn_pids[i] = g_respawn_pids[--g_n_respawn_pids];
+        } else {
+            i++;
+        }
+    }
+}
 static void ktb_toggle_zorder_respawn(void) {
     char bin0[PATH_BUF], bin1[PATH_BUF], bin2[PATH_BUF];
     const char *bins[3];
@@ -2775,6 +2823,7 @@ static void ktb_toggle_zorder_respawn(void) {
             }
             _exit(1);
         }
+        kh_track_respawn_pid(np); /* reaped opportunistically, see kh_reap_respawn_pids() */
     }
     for (i = 0; i < n_found; i++) {
         pid_t pid;
@@ -2798,6 +2847,7 @@ static void ktb_toggle_zorder_respawn(void) {
             execve(av[0], av, environ);
             _exit(1);
         }
+        kh_track_respawn_pid(pid); /* reaped opportunistically, see kh_reap_respawn_pids() */
     }
 }
 static GC gc;
@@ -10928,6 +10978,10 @@ static void hq_idle_tick(void) {
             g_khtpm_menu_pid = -1;
         }
     }
+    /* REAL, NEW 2026-09-29 - same reap-on-tick shape as g_khtpm_menu_pid
+     * just above, for ktb_toggle_zorder_respawn()'s own fork()ed
+     * children (see kh_reap_respawn_pids()'s own header comment). */
+    kh_reap_respawn_pids();
     /* REAL, NEW 2026-09-05 - age out the top-right "copied" tag: one
      * last repaint the moment it crosses ~2s old, then it stays cleared
      * (this block is a no-op once g_clip_copied_at is back to 0). */
