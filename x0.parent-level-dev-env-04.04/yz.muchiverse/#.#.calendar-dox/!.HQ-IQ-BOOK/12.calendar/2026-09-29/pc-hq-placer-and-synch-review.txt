@@ -102,14 +102,24 @@ Off screen is not.
 Not in that build: making the hero and a desk pal the same entity,
 and moving both from one place.
 
-6. Still need a yes or a correction
+6. Answers, 2026-09-29, not built
 
-  Is the 3D diamond one flat layer of bricks at the hero's height,
-  the desk '#' file stood up, or a stack of layers?
+  The 3D diamond is a stack of Z layers, stored and read the same way
+  a 3D map is stored: board_manifest.txt gives z_base and z_count,
+  and each layer is its own text grid. Each in-range cell on a layer
+  is a wire '#'. Not a phymoji model.
 
-  Does "3D glyphs" mean those wire bricks from the '#' file, or a
-  phymoji model on every cell?
+  Synch copies the whole book and the whole page, and the page holds
+  the entities. It is not a label change. One direction replaces the
+  desk's current page with the last active pc-hq page. The other
+  replaces the pc-hq page with the desk's current page.
 
-  Does Synch only copy Book and Page, with no entity move?
+  The row lives under the Menu dropdown. In pchq-board.xhtpm that
+  dropdown is tb-menu. Counted across the toolbar it is the 4th tab
+  (In, Book, Page, Menu, Player, clock). Player is the 5th. The rows
+  already under Menu are "Entities bar on/off", "Db (todo)", and
+  cancel. Synch would be a new row there, and the same row on the
+  livedesk taskbar's menu.
 
-  Should Synch be its own menu row, or a row inside Book?
+  Not started. One count is still open: Menu is tab 4 on this window,
+  and tab 5 is Player.
