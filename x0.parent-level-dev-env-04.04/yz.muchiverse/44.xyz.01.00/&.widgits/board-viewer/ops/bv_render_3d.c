@@ -2617,6 +2617,26 @@ static int render_one_frame(void) {
         if (g_ray_hit && camera_mode != 1)
             ADDBOX(g_ray_x+0.05, g_ray_z+0.05, g_ray_y+0.05,
                    g_ray_x+0.95, g_ray_z+0.95, g_ray_y+0.95, 255,255,255, 1);
+        /* Range finder: a 3x3x3 voxel cube on the hero, this window only.
+         * The hero's own cell stays empty. Neighbors are full voxels,
+         * solid or air. Put the hero in the sky and the cube is the test. */
+        {
+            int ox = g_hero_present ? g_hero_x : selector_x;
+            int oy = g_hero_present ? g_hero_y : selector_y;
+            int oz = g_hero_present ? g_hero_z : current_z;
+            for (int dz = -1; dz <= 1; dz++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dx = -1; dx <= 1; dx++) {
+                        if (dx == 0 && dy == 0 && dz == 0) continue;
+                        int vx = ox + dx, vy = oy + dy, gz = oz + dz;
+                        if (vx < 0 || vy < 0 || gz < 0 || vx >= board_w || vy >= board_h || gz >= z_count)
+                            continue;
+                        ADDBOX(vx + 0.08, gz + 0.08, vy + 0.08,
+                               vx + 0.92, gz + 0.92, vy + 0.92, 255, 196, 40, 1);
+                    }
+                }
+            }
+        }
         for (int i=0; i<g_entity_count; i++)
             ADDBOX(g_entities[i].pos_x+0.25, 0.0, g_entities[i].pos_y+0.25,
                    g_entities[i].pos_x+0.75, 1.0, g_entities[i].pos_y+0.75,
@@ -2669,49 +2689,6 @@ static int render_one_frame(void) {
             ADDBOX(we->x+0.5-wsx/2.0, we->z+0.0, we->y+0.5-wsz/2.0,
                    we->x+0.5+wsx/2.0, we->z+wsy, we->y+0.5+wsz/2.0, cr,cg,cb, 0);
             if (wm >= 0) sc.box[sc.box_n-1].model = wm;
-        }
-        /* 3D range finder: a cube of world voxels in this window.
-         * A cell is in range when max(|dx|,|dy|,|dz|) <= radius, so the
-         * mark is a grid stacked in X, height, and Z. Air cells are
-         * full voxels. Solid cells wear a thin cap on the top face so
-         * the same grid stays visible on the ground. */
-        {
-            int radius = 2;
-            char mp[PATH_BUF];
-            snprintf(mp, sizeof(mp), "%s/pieces/display/move_range_matrix.txt", focused_project_root);
-            FILE *mf = host_fopen(mp, "r");
-            if (mf) {
-                char line[128];
-                int nc = 0;
-                if (fgets(line, sizeof(line), mf)) nc = (int)strcspn(line, "\r\n");
-                fclose(mf);
-                if (nc >= 1) radius = nc / 2;
-            }
-            if (radius < 1) radius = 1;
-            if (radius > 2) radius = 2;
-            int room = BV_GPU_MAX_BOX - sc.box_n - 1;
-            if (room < 26) radius = 0;
-            else if ((2 * radius + 1) * (2 * radius + 1) * (2 * radius + 1) - 1 > room)
-                radius = 1;
-            int ox = g_hero_present ? g_hero_x : selector_x;
-            int oy = g_hero_present ? g_hero_y : selector_y;
-            int oz = g_hero_present ? g_hero_z : current_z;
-            for (int dz = -radius; dz <= radius; dz++) {
-                for (int dy = -radius; dy <= radius; dy++) {
-                    for (int dx = -radius; dx <= radius; dx++) {
-                        if (dx == 0 && dy == 0 && dz == 0) continue;
-                        int vx = ox + dx, vy = oy + dy, gz = oz + dz;
-                        if (vx < 0 || vy < 0 || gz < 0 || vx >= board_w || vy >= board_h || gz >= z_count)
-                            continue;
-                        if (voxel_is_air(board3d[gz][vy][vx]))
-                            ADDBOX(vx + 0.08, gz + 0.08, vy + 0.08,
-                                   vx + 0.92, gz + 0.92, vy + 0.92, 255, 196, 40, 1);
-                        else
-                            ADDBOX(vx + 0.06, gz + 0.88, vy + 0.06,
-                                   vx + 0.94, gz + 1.02, vy + 0.94, 255, 196, 40, 1);
-                    }
-                }
-            }
         }
         #undef GPU_ADD_MODEL
         #undef ADDBOX
