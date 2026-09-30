@@ -648,12 +648,23 @@ static int ov_key(Ov *o, GjKey k, char ch, int *cx, int *cy) {
              * start at 0,0 on the showing grid, not main screen"): the
              * real pointer position is almost certainly OUTSIDE this
              * small view window (it's wherever the Act menu that
-             * launched this was) - start the target at the view's own
-             * LOCAL (0,0), i.e. its own top-left cell (view_c0,
-             * view_r0), not the absolute screen grid's (0,0) and not
-             * the view's centre either. */
-            o->gj.col = o->view_c0;
-            o->gj.row = o->view_r0;
+             * launched this was) - start the target somewhere inside
+             * the view instead of the absolute screen grid's (0,0).
+             *
+             * REAL FIX 2026-09-30, direct instruction ("green place
+             * starts in unothorized red area... start it right on
+             * entity space"): (view_c0, view_r0) - the view's own
+             * top-left BOX corner - was a valid choice back when the
+             * range was a plain square, but is exactly one of the
+             * corners a diamond (or any non-square matrix) cuts away,
+             * so it now starts on an invalid/red cell. origin_c/
+             * origin_r (the entity's own current cell) is the one cell
+             * every possible shape must include by construction. Same
+             * fix as the has_view init block in main() above this
+             * function - keep both in sync if this ever changes
+             * again. */
+            o->gj.col = o->origin_c;
+            o->gj.row = o->origin_r;
         } else {
             Window rr, cc; int rx, ry, wx, wy; unsigned int m;
             if (XQueryPointer(o->dpy, DefaultRootWindow(o->dpy), &rr, &cc, &rx, &ry, &wx, &wy, &m)) {
@@ -929,14 +940,25 @@ int main(int argc, char **argv) {
      * till i click grid"): the target highlight used to only draw once
      * kb_active was set by the first real key/click - in has_view mode
      * (Move), arm it immediately so the target is visible from the
-     * very first frame, at the view's own local (0,0) (view_c0,
-     * view_r0 - see ov_key()'s own matching comment). The unlimited/
-     * full-screen palette-stamp tool is unaffected (has_view false
-     * there) - its own pointer-driven activation is unchanged. */
+     * very first frame. The unlimited/full-screen palette-stamp tool is
+     * unaffected (has_view false there) - its own pointer-driven
+     * activation is unchanged.
+     *
+     * REAL FIX 2026-09-30, direct instruction ("green place starts in
+     * unothorized red area... how bout starting it right on entity
+     * space?"): this used to start at (view_c0, view_r0) - the
+     * bounding BOX's own top-left corner, which was a valid square
+     * corner before the diamond-matrix work above, but is now one of
+     * the exact corners a diamond (or any non-square matrix) cuts away
+     * - hence starting red. origin_c/origin_r (the entity's own
+     * current cell) is the one cell every possible matrix shape must
+     * always include by construction (distance 0 from itself), so it's
+     * the only choice that can never start invalid regardless of
+     * shape. */
     if (ov.has_view) {
         ov.kb_active = 1;
-        ov.gj.col = ov.view_c0;
-        ov.gj.row = ov.view_r0;
+        ov.gj.col = ov.origin_c;
+        ov.gj.row = ov.origin_r;
     }
     ov_redraw(&ov);
     XFlush(dpy);
