@@ -130,7 +130,9 @@ static int emit_page_entities(char *ui, size_t *off, const char *house, const ch
                    name, path, &px, &py, &cx, &cy, glyph, &tail) != 8) continue;
         char *e = name + strlen(name);
         while (e > name && (e[-1] == ' ' || e[-1] == '\t')) *--e = '\0';
-        if (!strcmp(name, "camera_01") || !strcmp(name, "tree_small")) continue;
+        if (!strcmp(name, "camera_01") || !strcmp(name, "tree_small")
+            || !strcmp(name, "chicken") || !strcmp(name, "hero_01")
+            || !strcmp(name, "xelector_01")) continue;
         if (cx == 0 && cy == 0 && (px >= 40 || py >= 40 || px <= -40 || py <= -40)) {
             cx = px / 80; cy = py / 80;
         }

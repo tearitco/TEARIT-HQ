@@ -693,8 +693,8 @@ static void load_actors(int cur_z) {
     int desk_page = house_root[0] && page_bound_pdl(house_root, bound, sizeof(bound)) > 0;
     if (!desk_page && house_root[0] && page_file(house_root, pdl, sizeof(pdl)))
         page_seed_sprites(pdl);
-    int xs[16], ys[16], n;
-    n = page_named_cells(house_root, "hero_01", xs, ys, 16);
+    int xs[16], ys[16], n = 0;
+    if (!desk_page) n = page_named_cells(house_root, "hero_01", xs, ys, 16);
     if (n > 0) add_actor("hero_humanoid", xs[0], ys[0], cur_z);
     else if (!desk_page) {
         char p[PATH_BUF], b[32];
@@ -705,10 +705,12 @@ static void load_actors(int cur_z) {
         read_kv_str(p, "pos_z", b, sizeof(b)); if (b[0]) hz = atoi(b);
         if (hx >= 0 && hy >= 0 && actor_on_z(hz, cur_z)) add_actor("hero_humanoid", hx, hy, hz);
     }
-    n = page_named_cells(house_root, "tree_small", xs, ys, 16);
+    n = 0;
+    if (!desk_page) n = page_named_cells(house_root, "tree_small", xs, ys, 16);
     if (n > 0) { for (int i = 0; i < n; i++) add_actor("tree_small", xs[i], ys[i], cur_z); }
     else if (!desk_page) load_actor_list("pieces/world_01/phymoji_entities.txt", cur_z);
-    n = page_named_cells(house_root, "chicken", xs, ys, 16);
+    n = 0;
+    if (!desk_page) n = page_named_cells(house_root, "chicken", xs, ys, 16);
     if (n > 0) { for (int i = 0; i < n; i++) add_actor("chicken", xs[i], ys[i], cur_z); }
     else if (!desk_page) load_actor_list("pieces/world_01/animals.txt", cur_z);
     /* Livedesk page file, read every frame. The desk writes the row

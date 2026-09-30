@@ -934,6 +934,9 @@ static void load_camera_row(void) {
 
 static void load_hero(const char *root) {
     g_hero_present = 0;
+    char bound[PATH_BUF];
+    /* A desk page does not carry the piececraft hero. */
+    if (house_root[0] && page_bound_pdl(house_root, bound, sizeof(bound)) > 0) return;
     int xs[4], ys[4];
     if (page_named_cells(house_root, "hero_01", xs, ys, 4) > 0) {
         char sp[PATH_BUF];
@@ -1359,16 +1362,14 @@ static int load_sprite_template(const char *fullpath, const char *id) {
         if ((x % (res / 8)) != 0 || (y % (res / 8)) != 0) continue;
         int sx = x * 8 / res; if (sx > 7) sx = 7;
         int sy = y * 8 / res; if (sy > 7) sy = 7;
-        for (int thick = 0; thick < 2 && t->count < MAX_PHYMOJI_VOXELS; thick++) {
-            PhymojiVoxel *v = &t->voxels[t->count++];
-            v->lx = (unsigned char)sx;
-            v->ly = (unsigned char)thick;
-            v->lz = (unsigned char)(7 - sy);
-            v->r = (unsigned char)r; v->g = (unsigned char)g; v->b = (unsigned char)b;
-        }
+        /* One voxel tall: the picture lies flat, ly is height and stays 0. */
+        PhymojiVoxel *v = &t->voxels[t->count++];
+        v->lx = (unsigned char)sx;
+        v->ly = 0;
+        v->lz = (unsigned char)sy;
+        v->r = (unsigned char)r; v->g = (unsigned char)g; v->b = (unsigned char)b;
         if (sx > t->max_lx) t->max_lx = sx;
-        if (1 > t->max_ly) t->max_ly = 1;
-        if ((7 - sy) > t->max_lz) t->max_lz = 7 - sy;
+        if (sy > t->max_lz) t->max_lz = sy;
     }
     fclose(f);
     if (t->count <= 0) return -1;
@@ -1423,11 +1424,11 @@ static void load_phymoji_world_entities(const char *root) {
     snprintf(sp, sizeof(sp), "%s/pieces/system/bv_state.txt", project_root);
     int z = read_kv_int(sp, "current_z", 0);
     int desk_page = house_root[0] && page_bound_pdl(house_root, bound, sizeof(bound)) > 0;
-    if (page_named_cells(house_root, "tree_small", xs, ys, 16) > 0)
+    if (!desk_page && page_named_cells(house_root, "tree_small", xs, ys, 16) > 0)
         place_page_phymoji(root, "tree_small", z);
     else if (!desk_page)
         load_phymoji_world_entities_file(root, "pieces/world_01/phymoji_entities.txt");
-    if (page_named_cells(house_root, "chicken", xs, ys, 16) > 0)
+    if (!desk_page && page_named_cells(house_root, "chicken", xs, ys, 16) > 0)
         place_page_phymoji(root, "chicken", z);
     else if (!desk_page)
         load_phymoji_world_entities_file(root, "pieces/world_01/animals.txt");
@@ -3205,7 +3206,8 @@ static int render_one_frame(void) {
         for (int t=0; t<MAX_PHYMOJI_TEMPLATES; t++) tmpl_model[t] = -1;
         for (int wi=0; wi<g_phymoji_world_entity_count; wi++) {
             PhymojiWorldEntity *we = &g_phymoji_world_entities[wi];
-            double wsx=1.0, wsy=3.0, wsz=1.0; int cr=60,cg=140,cb=50;
+            double wsx=1.0, wsy=1.0, wsz=1.0; int cr=60,cg=140,cb=50;
+            if (strcmp(we->entity_id, "tree_small")==0) wsy = 3.0;
             if (strcmp(we->entity_id, "chicken")==0) { wsx=wsy=wsz=0.6; cr=cg=cb=210; }
             int ti = we->template_idx, wm = -1;
             if (ti >= 0 && ti < MAX_PHYMOJI_TEMPLATES && ti < g_phymoji_template_count) {
@@ -3452,7 +3454,8 @@ static int render_one_frame(void) {
                  * instruction "give the chicken ... just to walk
                  * randomly") would otherwise get squeezed into a tree's
                  * own tall, narrow box. */
-                double wsx = 1.0, wsy = 3.0, wsz = 1.0;
+                double wsx = 1.0, wsy = 1.0, wsz = 1.0;
+                if (strcmp(we->entity_id, "tree_small") == 0) wsy = 3.0;
                 if (strcmp(we->entity_id, "chicken") == 0) { wsx = 0.6; wsy = 0.6; wsz = 0.6; }
                 double wx0 = we->x + 0.5 - wsx / 2.0;
                 double wy0 = we->z + 0.0;
