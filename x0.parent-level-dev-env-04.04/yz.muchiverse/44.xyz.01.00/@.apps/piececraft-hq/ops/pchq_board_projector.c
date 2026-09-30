@@ -376,7 +376,14 @@ int main(int argc, char **argv) {
             read_pdl_kv(game_pdl, k_id, d_id, sizeof(d_id));
             read_pdl_kv(game_pdl, k_lbl, d_lbl, sizeof(d_lbl));
             if (!d_id[0]) snprintf(d_id, sizeof(d_id), "desk%d", di);
-            if (!d_lbl[0]) snprintf(d_lbl, sizeof(d_lbl), "Desk %d", di);
+            /* REAL FIX 2026-09-30, direct instruction ("FILE:DESK tb
+             * headers are old before BOOK PAGE RENAME"): default
+             * fallback label only, when game.pdl gives no desk_N_label
+             * of its own - d_id/desk_N_id/the "desk" key names
+             * themselves stay as-is, same precedent as everywhere else
+             * this rename touches (khtpm_taskbar_manager.c, the two
+             * pchq-board*.xhtpm tab labels). */
+            if (!d_lbl[0]) snprintf(d_lbl, sizeof(d_lbl), "Page %d", di);
             if (strcmp(d_id, active_desk_id) == 0)
                 snprintf(cur_desk_label, sizeof(cur_desk_label), "%s", d_lbl);
         }
@@ -483,7 +490,7 @@ int main(int argc, char **argv) {
             read_pdl_kv(game_pdl, k_id, d_id, sizeof(d_id));
             read_pdl_kv(game_pdl, k_lbl, d_lbl, sizeof(d_lbl));
             if (!d_id[0]) snprintf(d_id, sizeof(d_id), "desk%d", di);
-            if (!d_lbl[0]) snprintf(d_lbl, sizeof(d_lbl), "Desk %d", di);
+            if (!d_lbl[0]) snprintf(d_lbl, sizeof(d_lbl), "Page %d", di);
             off += (size_t)snprintf(ui + off, UIBUF - off,
                 "d_%d_id=%s\nd_%d_label=%s\nd_%d_active=%s\n",
                 di - 1, d_id, di - 1, d_lbl, di - 1,
