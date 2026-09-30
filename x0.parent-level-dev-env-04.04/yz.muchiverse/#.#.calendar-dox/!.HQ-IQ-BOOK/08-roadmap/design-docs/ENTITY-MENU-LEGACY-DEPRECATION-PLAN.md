@@ -20,7 +20,7 @@ book-stack's - caught immediately, fixed same session, re-verified).
 
 **Phase 1 (real, durable converter) - DONE, per user's explicit choice
 of design A (generate a real file) over design B (read meta.pdl
-live).** `meta_to_menu_chtpm.py` (`*.livedesk-taskbar/ops/`) - real,
+live).** `meta_to_menu_chtpm.py` (`_.livedesk-taskbar/ops/`) - real,
 permanent, mechanical METHOD-row -> `<item>` converter, replacing the
 lost one-off script from 2026-08-16/18. Wired into `tp_place_
 desktop.c` so every NEWLY placed entity gets a real `menu.chtpm` the
@@ -37,7 +37,7 @@ covered, not just the one originally known about:**
   separate convention (referenced by `@.apps/asa-&-ava/button.sh` and
   `$.crypts/ops/crypt_autostart.c`) this plan's original state-check
   missed - 5 more real instances, now converted.
-- Entity TYPE templates under `*.monads/*.<project>/entities/<name>/`
+- Entity TYPE templates under `_.monads/*.<project>/entities/<name>/`
   - 11 real templates (book-stack, cursword, self, 8 muchi-pet
   monsters) - converted too, so a FUTURE fresh copy of a template
   already carries a real menu.chtpm even before `tp_place_desktop.c`'s

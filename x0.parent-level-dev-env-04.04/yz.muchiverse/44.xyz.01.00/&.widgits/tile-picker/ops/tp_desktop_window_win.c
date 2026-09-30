@@ -291,15 +291,15 @@ static void ensure_taskbar(void) {
     /* Real fix, 2026-08-11, found while retiring legacy tp_taskbar.c
      * house-wide: TWO stale bugs on this one line — a pre-monad-
      * relocation path (&.widgits\livedesk-taskbar\... instead of
-     * *.monads\*.livedesk-taskbar\...) AND a reference to tp_taskbar.exe
+     * _.monads\_.livedesk-taskbar\...) AND a reference to tp_taskbar.exe
      * itself, which no longer exists at all (legacy retired, archived to
-     * *.monads/*.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip).
+     * _.monads/_.livedesk-taskbar/ops/LEGACY-ARCHIVE-20260811.zip).
      * Updated to khtpm's own binary name for consistency with the Linux
      * ensure_taskbar_running() fix — NOT independently build-tested on
      * Windows this session (no Windows build environment available
      * here), so verify this path once an actual khtpm Windows build
      * exists. */
-    join2(exe, sizeof(exe), g_house, "*.monads\\*.livedesk-taskbar\\ops\\+x\\khtpm_strip_parser.exe");
+    join2(exe, sizeof(exe), g_house, "_.monads\\_.livedesk-taskbar\\ops\\+x\\khtpm_strip_parser.exe");
     if (!path_exists_u8(exe)) return;
     char cmdline[PATH_BUF * 2];
     snprintf(cmdline, sizeof(cmdline), "\"%s\" \".\"", exe);

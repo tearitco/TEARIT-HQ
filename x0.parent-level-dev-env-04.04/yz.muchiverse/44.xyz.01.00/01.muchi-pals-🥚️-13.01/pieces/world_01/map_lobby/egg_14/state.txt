@@ -1,0 +1,10 @@
+name=egg_14
+type=egg
+species_id=sp_hamster
+species_emoji=🐹
+species_name=Hamster
+rarity=1
+movement=ground
+serial=14
+owner=user_01
+hatched=0

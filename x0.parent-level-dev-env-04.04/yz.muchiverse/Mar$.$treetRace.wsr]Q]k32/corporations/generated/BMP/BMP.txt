@@ -5,32 +5,32 @@ FINANCIAL BALANCE SHEET: BIOMARS PHARMA (BMP)
 (Amounts in millions of U.S. Dollars, except per share amounts)
 
 ASSETS:
-  Free Cash and Equivalents:		113.24
-  Working Capital (A/R, Inven.):	195.78
-  Business Assets/Equipment:		1226.25
+  Free Cash and Equivalents:		596.96
+  Working Capital (A/R, Inven.):	278.86
+  Business Assets/Equipment:		1871.42
   Stock in Subsidiary Cos.:		0.00
   Options Long/Short: Net Value:	0.00
   ---------------------------------------------
-  Total Assets:				1535.28
+  Total Assets:				2747.24
   ---------------------------------------------
 
 LIABILITIES AND EQUITY:
   Long-Term Bonds Issued:		0.00
-  Bank Loan:				17.34
+  Bank Loan:				252.67
   Accrued Income Tax Payable:		0.00
   ---------------------------------------------
-  Total Liabilities:			17.34
+  Total Liabilities:			252.67
   ---------------------------------------------
-  Equity (Net Worth):			1517.93
+  Equity (Net Worth):			2494.57
   =============================================
 
 STOCK AND EARNINGS DATA:
 ------------------------
-  Net Worth Per Share:			25.00
-  Current Stock Price:			32.15
-  52-Week High/Low Stock Price:		39.91 / 18.98
-  Shares of Stock Outstanding:		60.71 million
-  Total Stock Capitalization:		1951.81 million
+  Net Worth Per Share:			60.57
+  Current Stock Price:			55.38
+  52-Week High/Low Stock Price:		98.42 / 39.66
+  Shares of Stock Outstanding:		41.19 million
+  Total Stock Capitalization:		2280.71 million
   2021 Earnings Per Share:		0.00 (Operating Earnings)
   2022 Earnings Per Share:		0.00 (Operating Earnings)
   2023 Earnings Per Share:		0.00 (Operating Earnings)
@@ -42,14 +42,14 @@ VARIOUS FINANCIAL RATIOS:
 -------------------------
   Price/Earnings Ratio:			NMF (No Meaningful Figure)
   Dividend Yield:			0.00%
-  Debt to Equity Ratio:			0.01 to 1
+  Debt to Equity Ratio:			0.10 to 1
   Return on Equity (2024):		NMF (No Meaningful Figure)
   ---------------------------------------------
 
 *** CREDIT INFO: ***
 -------------------
   Credit Rating:			AA
-  Unused Bank Line of Credit:		691.77 million
+  Unused Bank Line of Credit:		2630.83 million
   Borrowing Rate (Interest):		10.50% (Prime is: 10.00%)
   Lending Bank:				MARTIAN TRUST BANK (MTB)
   ---------------------------------------------
@@ -64,11 +64,11 @@ VARIABLE SETTINGS (Changeable by controlling player):
 MISCELLANEOUS INFO:
 -------------------
   Industry Group:			PHARMACEUTICALS
-  Incorporated in:			Robot State
+  Incorporated in:			Solar Empire
   Controlled (and actively managed) by:	public
   Public Owns:			%
-  Accrued R&D and/or Investment Tax Credits:	$145.72 million
-  Annual CEO Salary (approx.):		$1.31 million (Plus possible bonuses)
+  Accrued R&D and/or Investment Tax Credits:	$177.05 million
+  Annual CEO Salary (approx.):		$0.93 million (Plus possible bonuses)
   Today's (Game) Date:			January 1, 2025
   Next Earnings Report:			January 27, 2025
   ---------------------------------------------

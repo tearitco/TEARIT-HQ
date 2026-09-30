@@ -247,7 +247,7 @@ Three connected deliverables, in order:
 ### 🕐 FAKE TIME — the big one, DO NOT FORGET
 
 - The **time toolbar (the "15." slot in the header, today just the non-interactive `${datetime}`
-  element in `*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm`)** will STOP showing real time.
+  element in `_.monads/_.livedesk-taskbar/khtpm_strip_header.chtpm`)** will STOP showing real time.
 - ⏳ It will show **FAKE TIME**, and fake time starts at **YEAR 0 AD** (0 A.D.) — a calendar from
   the start of everything, not the real wall clock.
 - ⏭️ Fake time advances by **TWO mechanisms**:

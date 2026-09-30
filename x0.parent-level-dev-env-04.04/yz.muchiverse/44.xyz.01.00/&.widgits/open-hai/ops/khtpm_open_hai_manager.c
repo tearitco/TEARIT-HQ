@@ -391,7 +391,37 @@ static const ModelEntry g_models[] = {
     { "qwen/qwen3.8-max-free", BACKEND_TOKENROUTER }
 };
 static const int g_n_models = sizeof(g_models) / sizeof(g_models[0]);
-static const char *g_ollama_host = "10.0.0.144:11434";
+
+/* REAL FIX 2026-09-27 (AI-PUSH-ROADMAP-AND-NUANCES.md): was a hardcoded
+ * constant, duplicated house-wide. Now read from the house's one
+ * shared #.desktop/ai_backend.pdl (g_house_root is already known by
+ * the time main() calls this, from argv[1] - no walk-up needed here,
+ * unlike the other fixed files in this same pass). Stored bare
+ * host:port here (this file's own existing usage), so the "http://"
+ * prefix on the shared config's gemma_lan_url value is stripped once
+ * at load time. */
+static char g_ollama_host[256] = "10.0.0.144:11434";
+
+static void kh_load_gemma_lan_config(const char *house_root) {
+    char path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/ai_backend.pdl", house_root);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        char *eq = strchr(line, '=');
+        if (!eq) continue;
+        *eq = '\0';
+        char *val = eq + 1;
+        val[strcspn(val, "\r\n")] = '\0';
+        if (strcmp(line, "gemma_lan_url") == 0 && val[0]) {
+            const char *host_port = val;
+            if (strncmp(host_port, "http://", 7) == 0) host_port += 7;
+            snprintf(g_ollama_host, sizeof(g_ollama_host), "%s", host_port);
+        }
+    }
+    fclose(f);
+}
 
 /* Real key loading - a plain local file, never hardcoded/committed
  * (matches every other real secret-adjacent convention in this house -
@@ -1870,6 +1900,7 @@ static int parent_still_alive(const char *package_dir) {
 int main(int argc, char **argv) {
     if (argc < 2) { fprintf(stderr, "khtpm_open_hai_manager: usage: <house_root> [--data-root <dir>]\n"); return 1; }
     snprintf(g_house_root, sizeof(g_house_root), "%s", argv[1]);
+    kh_load_gemma_lan_config(g_house_root);
     char g_parent_package_dir[PATH_BUF] = "";
     if (argc > 2 && strcmp(argv[2], "--data-root") != 0) {
         snprintf(g_parent_package_dir, sizeof(g_parent_package_dir), "%s", argv[2]);

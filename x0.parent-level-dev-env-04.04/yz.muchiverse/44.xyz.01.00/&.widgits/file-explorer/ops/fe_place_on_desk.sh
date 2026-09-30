@@ -64,7 +64,7 @@ if [ "$SRC" != "$DEST" ]; then
 fi
 printf 'x=%s\ny=%s\n' "$x" "$y" > "$DEST/desktop_pos.txt"
 
-ENT="$HOUSE/"*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity.+x
-[ -x "$ENT" ] || ENT="$HOUSE/"*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x
+ENT="$HOUSE/"_.monads/_.livedesk-taskbar/ops/+x/khtpm_entity.+x
+[ -x "$ENT" ] || ENT="$HOUSE/"_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x
 setsid nohup "$ENT" "$DEST" >/dev/null 2>&1 < /dev/null &
 exit 0

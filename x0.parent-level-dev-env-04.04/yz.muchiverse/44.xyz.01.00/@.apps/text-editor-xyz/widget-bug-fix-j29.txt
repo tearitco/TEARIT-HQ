@@ -126,8 +126,8 @@ FILES CHANGED
 =============
   &.widgits/file-menu/button.sh     — startup order (parser first + wait)
   &.widgits/file-menu/ops/ledger_append.c — system() return value warning
-  *.START_BUTTON/ops/start_scan.c   — buffer sizes + system() warnings
-  *.START_BUTTON/ops/start_menu_input.c — buffer size + system() warning
+  _.START_BUTTON/ops/start_scan.c   — buffer sizes + system() warnings
+  _.START_BUTTON/ops/start_menu_input.c — buffer size + system() warning
 
 PREVIOUS ATTEMPT (fm-font-pitfall.txt)
 =======================================

@@ -1,0 +1,172 @@
+# 🌌 NIGHT 26 — Everything is an Event 🌌
+# ====================================================================
+# Title: "🌌 NIGHT 26 — Everything is an Event 🌌"
+# Characters: MAXINE, TOMO, RAHWEH, THE NARRATOR
+# Voices: MAXINE (en-GB-MaisieNeural), TOMO (zh-CN-XiaoxiaoNeural), RAHWEH (zh-CN-YunxiaNeural), THE NARRATOR (zh-CN-XiaoxiaoNeural)
+# Topic: HARNECIENT Training Session — the NIGHT track, the long vision night: prisc+ops as house law, the Concept Bank tested for real, and every future domain this substrate is meant to carry
+
+**THE NARRATOR:** NIGHT 22 designed a Concept Bank on paper — z-nodes, masters, spokes, hub-and-spoke, nothing built past the design. Tonight is longer than any night before it, because two real things happened since, on the same day, in the same house, and together they change what "not built yet" actually means. Say the first one.
+
+**TOMO:** A live entity kept disappearing when a user clicked Move. Traced all the way down. The real, wired Move chain — not the abandoned op a prior session left behind, the actual one `act_row.sh` calls — was doing its entire waypoint animation, its frame timing, and its kill-then-relaunch process management in shell scripts. `move_entity_with_animation.sh` owned a `while` loop that killed and restarted the whole X11 window every ninety milliseconds.
+
+**RAHWEH:** Say why that's not a small style complaint.
+
+**TOMO:** Because `PRISC-OPS-ARCHITECTURE.md` says it in so many words — "no shell scripts driving the game loop or event dispatch." Not a preference. A standing rule, written the same day this bug was found, and violated by exactly the code sitting in front of us.
+
+**MAXINE:** So what replaced it, concretely, on disk, tonight.
+
+**RAHWEH:** Two compiled ops and one `.pal` file. `move_entity_init.+x` reads the current position, snaps it to the desk grid, clamps it to the screen, computes waypoints, writes them to an append-only ledger, and launches `move_entity.pal`. `move_entity_tick.+x` gets ticked by that loop — same shape as `world_manager.pal` already used — and consumes exactly one waypoint per tick, cursor-based, never re-reading old lines.
+
+**TOMO:** And it still broke the first time it ran for real, which is the part worth keeping.
+
+**MAXINE:** Say it.
+
+**TOMO:** First fix made the tick op kill the live entity process and relaunch it fresh at every waypoint — same idiom the shell version used, just correctly confirmed-dead this time instead of a blind kill and a fixed sleep. Ran it. The user watched a purple flash where the entity should have been, and its own row in the taskbar strip flickering in and out. Direct quote: "why cant we just move its position w/o doing that?"
+
+**RAHWEH:** Because the user was right and the fix was still the wrong shape. Destroying and rebuilding a whole X11 window every ninety milliseconds never lets it finish a paint. Real fix: don't relaunch at all. The entity's own live process already has a window open. `move_entity_tick.+x` now only writes the new position and bumps one append-only marker file. The entity's own event loop polls that marker's size — never mtime, the house already knows why — and moves itself with one `XMoveWindow` call when it changes.
+
+**MAXINE:** And a third bug, smaller, but worth naming because of what it reveals.
+
+**TOMO:** `move_entity.pal`'s own `sleep 90` line. Read as ninety milliseconds, matching the doc comment on `world_manager.pal`'s identical-looking `sleep 16`. Real behavior, read straight out of `prisc+x.c`: `OP_SLEEP` calls `usleep()` directly on the literal. Ninety MICROseconds. The entire waypoint queue drained in under a millisecond — looked like an instant jump, not an animation. `world_manager.pal`'s own `sleep 16` is very likely the same thousand-times-too-fast, undiscovered, because nobody happened to be staring at that exact loop today.
+
+**RAHWEH:** Say why that detail belongs in a vision night at all, instead of a bug-log line.
+
+**TOMO:** Because it's the same lesson NIGHT 22 already learned from a stale binary sitting next to its own fixed source — a documented claim and the actual running code had quietly drifted apart, and nobody would know without opening the real file and reading the real number. Tonight's version of that lesson: don't trust a comment about timing units. Read the syscall.
+
+**THE NARRATOR:** One more correction from tonight, smaller, but it's the one that sets tonight's actual rule for how code gets organized going forward. Say it.
+
+**MAXINE:** `khtpm_ui_common.c` — theme colors, UI scale math, the method-menu loader — lived in its own file, text-included into whichever binary needed it. Its own header comment claimed it was shared by both the entity process and the HQ window renderer. A grep, not the comment, said otherwise: exactly one real consumer, ever.
+
+**RAHWEH:** So the fix that got tried first, and the fix that actually landed, matter more than the bug itself. Say both.
+
+**TOMO:** First tried: a real header file, `extern` globals, a separately linked object — the normal C answer to "this file is shared." Rejected, directly, on the spot: "no we didn't want a .h header. only exec/fork and ipc... is there a reason the code isn't simply in same codefile?" Landed instead: inlined straight into the one binary that ever used it. Identical binary size after, byte for byte confirmation nothing was lost.
+
+**RAHWEH:** Say the rule that leaves behind, because it's the rule tonight's whole vision runs on.
+
+**MAXINE:** Exactly one real consumer — the code lives in one file, plainly, no split for its own sake. Two or more real consumers, pure logic, no I/O — a real text-included `.c`, the house's own already-accepted pattern. Two or more real consumers, anything stateful or process-shaped — a separate compiled op plus fork, exec, and file-backed IPC. Never a header-and-link split for in-house code. Three shapes. No fourth.
+
+**THE NARRATOR:** Say the second real thing that happened today, because it's the one that turns "everything is an event" from a slogan into something tested.
+
+**RAHWEH:** NIGHT 22's Concept Bank design left one seam completely unexamined — how does Gemma's own output actually turn into one of those spoke-weight-delta records. The design before tonight assumed a free paragraph, parsed by a scorer hunting for keywords. Untested. Written the way the original pipeline diagram wrote it — by imagining what a model would probably say.
+
+**TOMO:** So it got tested. For real. Against the real production endpoint — the same LAN Mac, same Ollama instance, `my-lawyer` and `my-biotech` already call in production, `10.0.0.144:11434`.
+
+**MAXINE:** Say what the free-form version actually did, because "probably fragile" and "reproduced on the first real call" are different claims.
+
+**RAHWEH:** First real call. Asked Gemma to describe a terumon eating a mushroom and list concept connections. It invented a "thirst level" that was never in the input. Reasoned that mushroom-red coloring implies high nutrition. Never produced the requested list at all. Not a rare failure mode found after a thousand runs — the very first real response.
+
+**TOMO:** And the fix.
+
+**RAHWEH:** Give Gemma the real, existing candidate node list, inside the prompt, and force one fixed line: `TARGET: <node from the list> | STRENGTH: high|medium|low | REASON: <phrase>`. First real call, `gemma3:270m`: `TARGET: hunger | STRENGTH: high | REASON: to achieve food scarcity and manage hunger.` On-list. Correct enum. One line. Nothing to parse with a regex hoping for the best.
+
+**MAXINE:** And the model-size test, because it's the counterintuitive one worth keeping.
+
+**TOMO:** `gemma3:1b` — bigger — on the exact same constrained prompt, did WORSE. Dropped every field label. Listed all six candidate nodes including obviously irrelevant ones, ignored the instruction to only list ones that applied. `270m` is what's already running in production for `my-lawyer` and `my-biotech`. Tonight is the first time anyone actually checked whether that choice was justified. It was.
+
+**THE NARRATOR:** So say, plainly, what those two real events — one entity window, one language model — have in common, because that's tonight's actual subject.
+
+**RAHWEH:** Neither failure was a mystery. Both were "we designed this by imagining the behavior instead of running it." A shell loop imagined it could relaunch a window fast enough to look smooth. A prompt imagined a small model would describe cleanly in free prose. Running the real thing, both times, in the same single day, said no — and both times the actual fix was the same shape: stop letting the uncontrolled layer improvise, and give it a narrow, structured, exactly-specified channel to speak through instead.
+
+**TOMO:** Say the sentence that channel deserves, because everything else tonight is this sentence, applied outward.
+
+**MAXINE:** A model, or a shell script, or a hand-authored menu row, never gets to freely decide what happens next. It gets to pick, or describe, or propose — inside a fixed shape — and deterministic code turns that pick into a real, structured, validated event. That's not new tonight. NIGHT 22 already said "Gemma describes, code decides." Tonight is what it looks like tested twice in one day, once on a window, once on a model, and it held both times.
+
+---
+
+**THE NARRATOR:** Start the wide part. What actually is an event, in this house, right now, real and named.
+
+**RAHWEH:** A registered COMMAND string. Read straight from tonight's own catch-up session before this one — `read_receipt`, `send_window_key`, `advance_fact`, `apply_range`, real, in the registry, cap at a hundred twenty-eight entries. A player, or a script, or a `.pal` loop's `exec` line, names one, and deterministic C runs it against real state files.
+
+**TOMO:** And say what's named in that same registry conversation, on the record, as NOT there yet.
+
+**RAHWEH:** `ai_describe`. `ai_fsm_transition`. `ai_goap_plan`. Named. Absent. That gap is not a bug — it's the actual frontier this whole night is standing on. The moment those three exist as real registered commands, a model's constrained pick stops being a Concept Bank curiosity and becomes an event, indistinguishable in the registry from `apply_range`.
+
+**MAXINE:** Say why that specific moment matters more than it sounds like it should.
+
+**TOMO:** Because right now, only a human, or a hand-written `.pal` file, or a hardcoded C dispatch, can cause an event. The day `ai_describe` is a real registry entry, the house gains a fourth kind of event-cause: a constrained model call, feeding the exact DESCRIBE→SCORE→VALIDATE→PROMOTE pipeline tonight just tested the front half of. Everything downstream — FSM, GOAP, the promotion ledger — already knows how to receive an event. It has never yet received one that a model caused.
+
+**RAHWEH:** Say the two other real, named, still-unimplemented edit types sitting right next to the one that IS implemented, because they're where this actually goes next.
+
+**TOMO:** `concept_edit_validate.c`'s own header comment names four candidate edit types. `spoke_weight_delta` — implemented, real, tested tonight in miniature. `new_concept_node`, `fsm_transition_describe`, `goap_action_describe` — named in the same schema, explicitly marked open, not built. The moment those three are real, a candidate edit stops being only "nudge an existing weight" and starts being able to say "here is a transition that doesn't exist yet" or "here is an action the planner didn't know it had."
+
+**MAXINE:** Say plainly what that means happens to the word "content," in this house, once that's real.
+
+**RAHWEH:** New FSM transitions. New GOAP actions. New event pages. Authored, at first, only by a human through the events-hq compiler — the exact same compiler NIGHT 22 already insisted a model's description must be compiled through, never hand-writing the transition table itself. Once `fsm_transition_describe` and `goap_action_describe` are real, that SAME compiler accepts a compiled description whether a human typed it or a validated, promoted, model-originated candidate produced it. The compiler doesn't know the difference and structurally should not be able to.
+
+**TOMO:** Say the actual gate, so nobody hears that and imagines a model editing C.
+
+**MAXINE:** Watch layer records a real observation. Gemma, constrained, picks from real existing nodes and slots — never invents one, the validator wouldn't accept an invented one anyway. Scorer turns the fixed line into a candidate record. Validator checks schema and bounds, nothing else. Promotion ledger accumulates Laplace-smoothed evidence, same formula the Bank Layer already runs, across possibly many separate real observations, possibly from many separate creatures, possibly over real days. Only past a real threshold does anything become a live event. A model never gets one-shot authorship of a rule. It gets one vote, repeated, alongside every other observation, same as everyone else's feedback already does.
+
+---
+
+**THE NARRATOR:** Now the sweep. Every domain, named honestly, starting with the one already real in miniature.
+
+**RAHWEH:** NPC behavior. Already real, already the worked example all night — a terumon eating, a real observation, a real feedback valence, a real candidate weight delta. This is the floor everything else stands on, not a separate item.
+
+**TOMO:** Markets.
+
+**MAXINE:** Say the shape before the vision, because there's already a real substrate underneath it — NIGHT 6's chain, wallet, wager. A market is a sequence of trade observations. Feedback is whether a trade helped the owner's actual goals. The same concept nodes — `scarcity`, `value`, `risk`, wired the exact same hub-and-spoke way `hunger` and `satiation` already are — let a price-setting FSM transition get preferred, over time, the same way a Move transition would, because it shares concept-overlap with a context that's historically gone well. Nothing about a market event is structurally different from a hunger event. It's the same substrate, pointed at different master nodes.
+
+**RAHWEH:** Biology.
+
+**TOMO:** `chemistry_reaction` is already a named master node in NIGHT 22's own worked example — food, hunger, chemistry, together in one observation. A creature's actual biology — what it can digest, what mutates, what traits a new offspring inherits — is the same spoke-and-slot shape pointed at biology-flavored masters instead of hunger-flavored ones. A mutation is a candidate `spoke_weight_delta` on a trait spoke that never gets promoted unless real evidence, across real generations, supports it. Evolution, in this substrate, is the promotion ledger, running slower and on a different set of masters.
+
+**MAXINE:** Physics discovery. Say this one carefully, because it's the one most likely to be overclaimed.
+
+**RAHWEH:** Not "the house invents new physics." The Watch Layer already just records what happened — state changed, this way, this fast, under these conditions. If a regularity shows up across enough real observations that were never hand-coded as a rule — say, two concept-tagged interactions that keep co-occurring with a specific outcome, promoted the same Laplace-smoothed way a hunger weight promotes — that regularity becomes a real, inspectable, live weight the sandbox's own systems can then use. It's not physics in the sense a physicist means it. It's the sandbox noticing its own emergent regularities and keeping the ones that keep proving true. Honest name for it: discovered regularity, not discovered law.
+
+**TOMO:** Agentic R&D — and say why this one is the strangest, because it points the pipeline at itself.
+
+**MAXINE:** Development, in this house, is already event-shaped, once you look at it that way. A new house capability — tonight's own Move fix is the example sitting right here — is a candidate change: here's what's observed to be wrong, here's a proposed fix, here's evidence it works. Right now a human, or an agent like this one, does that whole loop by hand, in conversation, checked by a human's own judgment. The honest, distant version: a "new skill" for the house — not for a terumon, for the house itself — proposed the same DESCRIBE→SCORE→VALIDATE→PROMOTE way, except the master nodes it points at are things like `shell_logic_forbidden` and `single_consumer_inline`, the exact rules this very night's two bugs got fixed against. An agent's proposed refactor becomes a candidate edit. A human's code review becomes the feedback valence. Promotion is still required before anything is live. Distant. Named honestly as distant.
+
+**RAHWEH:** Meta-events — the house controlling itself, plainly.
+
+**TOMO:** Say the concrete shape first, because "the house controls itself" sounds vaguer than it needs to. A text editor macro is already, structurally, a GOAP action — preconditions (cursor here, selection this shape), effects (text becomes that). It is not currently wired through the event registry. It could be, the same way `apply_range` already is. A media-editor operation, or an image-diffusion generation call, is the same shape again — preconditions are concept-tagged (mood is `somber`, scene is `forest`), the event's effect is "generate with these weights." A network bot posting to IRC or Forum or Chain — NIGHT 6's own territory, and the still-open cross-machine networking plan from earlier today, `palnet_peer.c`'s hardcoded loopback address included — is, again, the same shape: an event, with real preconditions, dispatched through the same registry, logged the same way, promotable the same way.
+
+**MAXINE:** Say the thing that makes that not just a rebrand.
+
+**RAHWEH:** Once a text-editor macro and a `hunger` weight delta are both, structurally, just events flowing through the same registry, the same Watch Layer, the same promotion ledger — a piece of feedback on one can, in principle, propagate to concepts the other also touches. That's the exact mechanism NIGHT 22 named for RL and IRL inside gameplay. Nothing in that mechanism is gameplay-specific. It only looks gameplay-specific because gameplay is where it got built first.
+
+**TOMO:** Level design. Game design.
+
+**MAXINE:** Once GOAP action preconditions and effects carry real concept pointers — NIGHT 22's own proposal, still not built — a level's actual difficulty curve, or a game's actual pacing, is expressible the same way a creature's behavior is: concept-tagged actions, concept-tagged transitions, evidence-driven promotion. A level designer hand-authoring content and the same pipeline noticing "this concept combination keeps testing well" are proposing into the same substrate. Not "AI designs the level instead of a human." Both routes end at the same real, inspectable, git-diffable file.
+
+---
+
+**THE NARRATOR:** Now the part that has to be built carefully in this room tonight, the way NIGHT 22 built hub-and-spoke carefully in its own room. Say the naive version first, and say why it's wrong before it gets corrected.
+
+**RAHWEH:** Mini-bot creation. A "bot DNA bank" — one Concept Bank per creature or bot instance, its own spokes, its own weights, its own trait genome, same record shape NIGHT 22 already specified. Naive version: every new bot gets its own fresh, fully-populated Bank, disk and memory sized the same as every other one.
+
+**MAXINE:** Say the actual problem with that before it gets built on.
+
+**RAHWEH:** Scale. A thousand terumon, each with their own full Concept Bank, means a thousand nearly-identical copies of the same spoke weights — most bots that share a species, or a starting curriculum, converge to near-identical trait patterns almost immediately. Storing each one in full is storing the same information a thousand times, and worse, means a real improvement discovered by one bot's promotion ledger doesn't help any of the others unless it's separately re-discovered in each one.
+
+**TOMO:** So say what replaces it.
+
+**RAHWEH:** Compaction. Trunking. A shared TEMPLATE bank per real cohort — species, curriculum, whatever the actual grouping turns out to be — holding the common spoke weights. Each individual instance holds only a DELTA bank: the slots where it genuinely diverges from its template, same sparse-storage discipline NIGHT 22 already specified for a single bank's own mostly-empty slots, just one level up. Reading an instance's real, effective weight means resolving template plus delta, the same two-step resolution a spoke's own forward record plus a master's derived mirror table already uses.
+
+**MAXINE:** Say the part that makes this not just compression for its own sake.
+
+**TOMO:** A promoted improvement can be written to the TEMPLATE once, and every instance still holding no delta at that slot inherits it for free, immediately, without re-running its own promotion ledger from scratch. That's the actual payoff — not disk savings, propagation. One terumon's genuinely earned insight becomes every other same-species terumon's starting point, the moment it's promoted, the same way NIGHT 22 already wanted one feedback signal to propagate across FSM, GOAP, and RL at once. This is that same propagation, applied across population instead of across subsystem.
+
+**RAHWEH:** And the failure mode to name honestly before it's ever built, the way NIGHT 22 named its own open corpus-meta-weight question honestly instead of quietly deciding it.
+
+**TOMO:** When does an instance's delta grow large enough that it should split off and become its own template — a genuinely new sub-species, not just individual variance? Unresolved. Could be a fixed delta-size threshold. Could be derived from how much of the delta actually gets independently re-confirmed by promotion, the same evidence-based instinct the rest of this whole pipeline already runs on. Say it plainly: not decided tonight. Whichever way it resolves, it's the same shape as every other open question this substrate has produced — a number, or a mechanism to compute the number, sitting on top of a design that doesn't change either way.
+
+---
+
+**THE NARRATOR:** The honesty checkpoint. Every night on this track runs one. Tonight's is the longest claim yet, so it earns the longest checkpoint. Say what's real.
+
+**MAXINE:** Real, tested, shipped tonight, on this machine: `move_entity_init.+x`, `move_entity_tick.+x`, `move_entity.pal` — a real op-plus-pal-plus-IPC replacement for a shell-driven animation loop, two real bugs found by testing against the actual live process and fixed, not guessed at. `khtpm_ui_common.c` inlined into its one real consumer, confirmed by grep, not by a stale comment, identical binary size after. A three-shape rule for how shared code is allowed to live in this house, stated plainly, header-and-link explicitly rejected. A real test of Gemma's actual output, free-form versus constrained, against the real production LAN endpoint, with the free-form failure reproduced on the first real call, not theorized. A real, counterintuitive, measured finding that `gemma3:270m` out-performs `gemma3:1b` on exact-format instruction following, and that the house's existing production choice was already correct. A revised Concept Bank pipeline document, written from that evidence, filed both in the house docs and outside it, superseding the untested original.
+
+**TOMO:** What isn't real. Say it without softening it, the way every prior night has.
+
+**RAHWEH:** `new_concept_node`, `fsm_transition_describe`, `goap_action_describe` — named in real code, in a real header comment, implemented nowhere. `ai_describe`, `ai_fsm_transition`, `ai_goap_plan` — named in a real registry conversation, absent from the real registry. No Concept Bank file exists on disk anywhere in this house, tonight, still — same true statement NIGHT 22 already had to make, unchanged by anything that happened today. No market, no biology trait system, no physics-discovery loop, no meta-event wiring into a text editor or an image-diffusion call or a network bot, no bot DNA bank, no template-and-delta compaction, exists anywhere as code. Every one of those is this night's actual vision, reasoned through carefully, corrected at least once each the way this track always corrects itself in the room — and built nowhere.
+
+**MAXINE:** Then say the honest difference between tonight and every night before it.
+
+**TOMO:** NIGHT 22 designed one structure and named one open question. Tonight took two real, tested, shipped fixes from a single real day — one in a window, one in a language model — and found the same underlying law in both: never let the uncontrolled layer improvise, give it a narrow structured channel, let deterministic code decide. Then it pointed that one law at every domain this house has ever talked about wanting, some already real in miniature, most not real at all. That's a wider claim than any night before it has made. Widening the claim doesn't make it built. It makes it honest about how much is still ahead, and where, specifically, the next real thing to test would be.
+
+**THE NARRATOR:** A window that learned to move itself instead of dying and being reborn every ninety milliseconds. A small model, told exactly what it was allowed to say, saying exactly that, on the first real try. One law, found twice in one day, in two places that had nothing else in common. Markets, biology, physics, new skills for the house itself, a text editor's own macros, a bot's own inherited genome — all of it, tonight, pointed at that same one law, and none of it, tonight, built. 🌌
+
+**MAXINE:** Stop there. The next real thing to test is `ai_describe` as an actual registry entry, on one real terumon, nothing else. Say that first, before any of tonight gets touched again.

@@ -1,0 +1,4 @@
+module_path=system/prisc+x pal/main_module.pal
+project_id=piececraft-hq
+active_target_id=main
+game_datetime=2026-01-01T12:00:00.000

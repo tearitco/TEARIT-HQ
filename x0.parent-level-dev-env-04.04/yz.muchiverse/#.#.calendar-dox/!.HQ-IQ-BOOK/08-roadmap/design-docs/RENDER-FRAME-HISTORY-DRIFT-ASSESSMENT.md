@@ -71,7 +71,7 @@ a performance optimization that happens to also help perf.
 WHAT khtpm_entity_menu_render.c ACTUALLY DOES TODAY — confirmed by
 reading the code, not assumed
 ============================================================
-File: `*.monads/*.livedesk-taskbar/ops/khtpm_entity_menu_render.c`,
+File: `_.monads/_.livedesk-taskbar/ops/khtpm_entity_menu_render.c`,
 **7742 lines**, one compiled binary covering 7 window modes in a
 single process (db-hq, events-hq, chat-hai, palettes, bookmarks,
 stats-hq, taskbar-settings/swatch-picker) — see `khtpm-merge-how2.md`

@@ -1,0 +1,10 @@
+name=egg_18
+type=egg
+species_id=sp_shark
+species_emoji=🦈
+species_name=Shark
+rarity=2
+movement=aquatic
+serial=18
+owner=user_01
+hatched=0

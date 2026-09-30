@@ -1,6 +1,6 @@
 <!-- Placeholder window. hq-ftp is not a transfer program yet.
      The network menu row exists so the name is not only in a doc. -->
-<window label="hq-ftp" class="hq-ftp">
+<window label="hq-ftp" class="hq-ftp database-window">
   <page name="main">
     <panel id="body" class="settings-block">
       <text label="hq-ftp — LAN peer drop. Not built."/>

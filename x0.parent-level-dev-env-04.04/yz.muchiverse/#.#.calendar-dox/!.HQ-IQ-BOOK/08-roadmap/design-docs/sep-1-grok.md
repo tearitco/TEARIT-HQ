@@ -48,7 +48,7 @@ should be measured against.
      wrapper that locates the house root (via walking up for an
      `xyzfs` marker dir) and execs the real op binary for that command
      kind (e.g. `cmd_1.sh` in the `greet_player` example execs
-     `*.monads/*.muchi-pet/ops/+x/mr_change_gold.+x` with the event's
+     `_.monads/_.muchi-pet/ops/+x/mr_change_gold.+x` with the event's
      own package dir + amount).
 5. Running the event is just executing `event.pal` top to bottom —
    each `exec cmd_N.sh` really runs, in order, and `halt` ends the

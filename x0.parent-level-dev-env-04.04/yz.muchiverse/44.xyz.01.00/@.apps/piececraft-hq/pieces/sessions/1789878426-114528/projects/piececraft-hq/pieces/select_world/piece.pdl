@@ -1,0 +1,6 @@
+SECTION      | KEY                | VALUE
+----------------------------------------
+META         | piece_id           | select_world
+
+METHOD       | Create New Seeded World    | CREATE_WORLD_SEEDED
+METHOD       | Create New Debug Flat      | CREATE_WORLD_DEBUG

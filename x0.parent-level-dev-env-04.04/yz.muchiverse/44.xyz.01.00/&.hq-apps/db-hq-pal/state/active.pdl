@@ -1,5 +1,5 @@
 SECTION | KEY   | VALUE
-FILE    | file  | db_hq_classes.state.txt
-TAG     | tag   | CLASS
-TITLE   | title | Classes
+FILE    | file  | db_hq_actors.state.txt
+TAG     | tag   | ACTOR
+TITLE   | title | Actors
 SEL     | sel   | 0

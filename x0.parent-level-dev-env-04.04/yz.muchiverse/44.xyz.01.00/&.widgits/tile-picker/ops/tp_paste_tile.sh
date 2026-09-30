@@ -50,4 +50,4 @@ fi
 [ -z "$PY" ] && PY=0
 printf 'x=%d\ny=%d\n' "$((PX + 80))" "$((PY + 80))" > "$NEW/desktop_pos.txt"
 
-setsid "$HOUSE/*.monads/*.livedesk-taskbar/ops/+x/khtpm_entity.+x" "$NEW" >/dev/null 2>&1 < /dev/null &
+setsid "$HOUSE/_.monads/_.livedesk-taskbar/ops/+x/khtpm_entity.+x" "$NEW" >/dev/null 2>&1 < /dev/null &

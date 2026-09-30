@@ -2,7 +2,7 @@
 #define SELF_EXE_H
 /* macOS leg (2026-08-22): /proc/self/exe does not exist on macOS, so
  * every "resolve my own binary path" readlink silently failed there.
- * Same helper shape as *.monads/*.livedesk-taskbar/ops/
+ * Same helper shape as _.monads/_.livedesk-taskbar/ops/
  * tp_desktop_window_rgb.c's own self_exe_path() - _NSGetExecutablePath
  * + realpath on Darwin, plain readlink elsewhere. Drop-in for the
  *   ssize_t n = readlink("/proc/self/exe", buf, sizeof(buf)-1);

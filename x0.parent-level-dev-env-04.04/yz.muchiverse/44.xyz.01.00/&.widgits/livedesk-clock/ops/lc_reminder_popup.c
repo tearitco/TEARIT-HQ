@@ -282,7 +282,7 @@ static void poll_agent_relay(void) {
  * discovery"). Same real precedent as play_event.sh's own upward
  * landmark search / khtpm_taskbar_manager.c's own toys_scan_one_root(). */
 static int find_app_dir(const char *house_root, const char *app_name, char *out, size_t outsz) {
-    static const char *roots[] = { "*.monads", "&.widgits", "&.hq-apps", "@.apps", NULL };
+    static const char *roots[] = { "_.monads", "&.widgits", "&.hq-apps", "@.apps", NULL };
     for (int i = 0; roots[i]; i++) {
         char parent[PATH_BUF];
         snprintf(parent, sizeof(parent), "%s/%s", house_root, roots[i]);

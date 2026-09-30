@@ -25,7 +25,7 @@ a live session.
 ## 1. The refactor in one paragraph
 
 The khtpm renderer
-`44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c`
+`44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c`
 (~18.6k lines) is ONE generic engine with ~10 per-app modes gated by
 `g_is_*` flags (`g_is_db_hq`, `g_is_events_hq`, `g_is_palettes`,
 `g_is_bookmarks`, `g_is_stats_hq`, `g_is_swatch_picker`, …), ~1300+
@@ -299,8 +299,8 @@ SEL     | sel   | 0
 ### Rebuild after editing the renderer
 
 ```sh
-cd "$(ls -d .../yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops)"
-sh build_core_render.sh          # dirs are literally named *.monads etc — cd needs absolute/globbed path
+cd "$(ls -d .../yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops)"
+sh build_core_render.sh          # dirs are literally named _.monads etc — cd needs absolute/globbed path
 ```
 `button.sh` also rebuilds on each launch. `build_khtpm_strip.sh` builds
 both the taskbar manager and the renderer.
@@ -351,7 +351,7 @@ never mutated; §9), content-hash reparse of `vars=` files,
 |---|---|
 | **events-hq finish** | per-field command editor (append/edit currently use empty params), delete-command, Scratch/Blueprints content swap, floating centered picker overlay. Then **delete `evhq_*` / `g_is_events_hq` (~676 refs in `khtpm_core_render.c`)** — its own PR, needs owner click-through sign-off (`EVENTS-HQ-XHTPM-PORT.md` §8 step 10). |
 | **db-hq-pal finish** | field editing + Common Events editor — reuse the events-hq picker/projector pointed at each event's `event_pkg` (`DB-EVENTS-HQ-PORT-DESIGN.md` §3–§5; do not fork the editor). |
-| **retire `dbhq_*` C** (~1350 lines) | after db-hq-pal signed off: point `*.monads/*.muchi-pet/ops/open_db_hq.sh` at `dashboard.xhtpm`, drop `class="db-hq"`, delete `dbhq_*`. Own branch. |
+| **retire `dbhq_*` C** (~1350 lines) | after db-hq-pal signed off: point `_.monads/_.muchi-pet/ops/open_db_hq.sh` at `dashboard.xhtpm`, drop `class="db-hq"`, delete `dbhq_*`. Own branch. |
 | **network_browser** | heterogeneous page content (TITLE/TEXT/LINK/IMG/VIDEO + sprite-grid wrap). Needs `<repeat>` v2 — one body, a `show="${c.is_X}"` per kind; projector sets exactly one `c_<i>_is_*`. |
 | **`CENTROID_GOLD_STD.md`** | document static-template + projector as the standard once the pass lands. |
 
@@ -381,7 +381,7 @@ c36f077b taskbar: restore the pid cell after the clock
   editors (other agents). Never stage runtime churn: `#.desktop/*`,
   `state/*.txt`, `*.pid`, `module_parent.pid`, `*.ledger`.
 - `+x` binaries are **not** tracked — rebuild after any pull.
-- Dirs are literally named `*.monads`, `*.livedesk-taskbar`,
+- Dirs are literally named `_.monads`, `_.livedesk-taskbar`,
   `&.hq-apps`, `&.widgits` — `cd` to an unexpanded glob path fails; use
   absolute paths. A bare `&` in a shell line = background operator
   (has broken menu wiring before).
@@ -507,7 +507,7 @@ dark frame). **Always** chip `#141414` behind the badge; force
 ### Pitfall 5 — `build_core_render.sh` overwrites ops `khtpm_draw_core.c`
 
 It `cp`s from `&.widgits/_shared-lib/khtpm_draw_core.c`. Edits only
-under `*.monads/*.livedesk-taskbar/ops/khtpm_draw_core.c` are **lost
+under `_.monads/_.livedesk-taskbar/ops/khtpm_draw_core.c` are **lost
 on the next build**. Edit shared-lib, then rebuild.
 
 ### Pitfall 6 — rebuild ≠ live

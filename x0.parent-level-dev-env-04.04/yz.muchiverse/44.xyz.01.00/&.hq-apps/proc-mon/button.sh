@@ -12,7 +12,7 @@
 # names, but never actually updated THIS file's own internal string
 # references to the old name - `git log --all -- button.sh` shows
 # zero commits since the rename ever touched its content. Same real
-# gap as *.livedesk-taskbar/ops/open_mon.sh, fixed in the same pass.
+# gap as _.livedesk-taskbar/ops/open_mon.sh, fixed in the same pass.
 #
 #   button.sh <house_root>
 set -u
@@ -22,7 +22,7 @@ HOUSE_ROOT="$(cd "$HOUSE_ROOT" && pwd)"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 XHTPM="$HERE/proc-mon.xhtpm"
-RENDER_OPS="$HOUSE_ROOT/*.monads/*.livedesk-taskbar/ops"
+RENDER_OPS="$HOUSE_ROOT/_.monads/_.livedesk-taskbar/ops"
 BIN="$RENDER_OPS/+x/khtpm_core_render.+x"
 
 chmod +x "$HERE/mon_scan.sh" "$HERE/mon_refresh.sh" 2>/dev/null || true

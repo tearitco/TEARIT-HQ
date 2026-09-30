@@ -6,7 +6,7 @@
      <repeat> exactly as it does for the C-projector apps. button.sh
      restores this file from the .bootstrap if the <module> tag goes
      missing. -->
-<window label="Actors (PAL)" class="db-hq-actors" vars="state/ui.txt">
+<window label="Actors (PAL)" class="db-hq-actors database-window" vars="state/ui.txt">
   <module src="&.widgits/_shared-lib/system/+x/prisc+x.+x pal/actors_projector.pal"/>
   <page name="main">
     <sidebar>

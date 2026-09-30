@@ -49,7 +49,7 @@ This section is research/evidence for the hand-off.
 ### Evidence (live, 2026-09-10)
 
 - Editing + BackSpace lives in `default_cli_io_handle_key()`:
-  `*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c` (XK_BackSpace at
+  `_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c` (XK_BackSpace at
   ~6499; text-area variant ~6602/6612; run-action ~6375).
 - It is reached ONLY when the address bar is armed:
   `if (g_default_input_elem) { default_cli_io_handle_key(ks, ch); return; }`
@@ -232,10 +232,10 @@ The browser's `<video>` today opens external `ffplay` (`write_chtpm_projection`
 
 ## 6. References
 
-- `*.monads/*.livedesk-taskbar/ops/khtpm_core_render.c` — cli_io arm
+- `_.monads/_.livedesk-taskbar/ops/khtpm_core_render.c` — cli_io arm
   (~6667), BackSpace (~6499/6602/6612), reparse disarm (~1738-1758),
   two-step gate (~2159), generic click path (~9108).
-- `*.monads/*.livedesk-taskbar/ops/khtpm_draw_core.c` — hq_sprite (~145),
+- `_.monads/_.livedesk-taskbar/ops/khtpm_draw_core.c` — hq_sprite (~145),
   hq_blit_sprite (~219), kh_draw_canvas (~533).
 - `&.hq-apps/network/` — nb_dom.c/h, nb_js_worker.c, network_browser_manager.c,
   ops/nb_media_to_sprite.c, ops/+x/nb_media_to_sprite.+x.

@@ -244,7 +244,7 @@ to rebuild Terms as a field grid. No Terms renderer/manager edits.
 ## 6. Files an Actors PR would touch (not this session except §1)
 
 - `&.hq-apps/db-hq/dashboard.chtpm` — active class on Actors (§1 now)
-- `*.monads/*.livedesk-taskbar/ops/khtpm_entity_menu_render.c` —
+- `_.monads/_.livedesk-taskbar/ops/khtpm_entity_menu_render.c` —
   default tab (§1 now); later Actors load/inject/panel (not CE/Terms)
 - NEW `actors_hq_manager.c` + `build_actors_hq_manager.sh`
 - `#.desktop/db_hq_actors.state.txt` (published)

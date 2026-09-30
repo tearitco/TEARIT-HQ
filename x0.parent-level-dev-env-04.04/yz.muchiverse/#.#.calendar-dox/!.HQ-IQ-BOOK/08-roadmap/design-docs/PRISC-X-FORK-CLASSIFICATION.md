@@ -44,7 +44,7 @@ From `cluster10.diff` (representative; the 10-project fork):
 
 | project(s) | variant md5 | verdict |
 |---|---|---|
-| `041.pal-chain`, `041.pal-forum`, `044.pal-chat-irc`, `102.editor-📄️00.00`, `0.user-pal/00.login-signup`, `0.user-pal/01.avatar-creation`, `@.apps/my-biotech`, `@.apps/my-lawyer`, `@.apps/myne-qrypto/qtc`, `*.START_BUTTON`, `002.zoo/…INK…PEN` | `30ab13606d3c` (1094 L) | **clean upgrade.** Behind + carries the `original[128]` path-trunc bug. |
+| `041.pal-chain`, `041.pal-forum`, `044.pal-chat-irc`, `102.editor-📄️00.00`, `0.user-pal/00.login-signup`, `0.user-pal/01.avatar-creation`, `@.apps/my-biotech`, `@.apps/my-lawyer`, `@.apps/myne-qrypto/qtc`, `_.START_BUTTON`, `002.zoo/…INK…PEN` | `30ab13606d3c` (1094 L) | **clean upgrade.** Behind + carries the `original[128]` path-trunc bug. |
 | `101.mutaclsym…19.00` (muta-neo), `@.apps/my-chara-txt` | `a2c7e1c2675a` (1176 L) | **clean upgrade.** Closer to canonical (has `original[512]`) but still no string ops / `g_pal_dir`. |
 | `045.muchi-pal-agent`, `101.ledger-player-npc-simple` | `d333b84ff495` (1119 L) | **clean upgrade.** |
 | `101.lpns+map+4` | `cd840d0777a2` (1130 L) | **clean upgrade.** |

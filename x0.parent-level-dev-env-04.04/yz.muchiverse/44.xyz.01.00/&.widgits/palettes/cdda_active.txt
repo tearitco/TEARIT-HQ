@@ -1,0 +1,2 @@
+dir=pngs_normal_32x32
+tileset=terrain

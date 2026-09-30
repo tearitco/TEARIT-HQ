@@ -153,7 +153,7 @@ some may genuinely be PDL-driven already.)
    indistinguishable from a real bug and wastes the most time of anything
    in this whole recipe:
    ```sh
-   cd "*.monads/*.livedesk-taskbar/ops"
+   cd "_.monads/_.livedesk-taskbar/ops"
    bash build_khtpm_strip.sh          # ~15s, warnings-only is a pass
    bash run_khtpm_strip.sh new        # kills old, rebuilds, launches, confirms PID
    ```

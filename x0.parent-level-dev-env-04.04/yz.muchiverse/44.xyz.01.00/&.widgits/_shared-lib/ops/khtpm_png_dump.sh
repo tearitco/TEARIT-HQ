@@ -36,7 +36,7 @@ OUT_DIR="${3:-/tmp}"
 mkdir -p "$OUT_DIR"
 STEM="$(basename "$CHTPM" | sed 's/\.[^.]*$//')"
 
-RENDER="$HOUSE/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
+RENDER="$HOUSE/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
 [ -x "$RENDER" ] || { echo "khtpm_png_dump: missing $RENDER (build it: cd .../ops && sh build_core_render.sh)" >&2; exit 1; }
 
 : "${DISPLAY:=:0}"; export DISPLAY

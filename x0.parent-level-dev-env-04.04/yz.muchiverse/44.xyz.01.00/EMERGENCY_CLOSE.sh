@@ -5,7 +5,7 @@
 # POSIX-compliant (works with sh and bash)
 #
 # STATUS UPDATE (2026-08-11): the normal quit path (khtpm's X.quit menu row
-# -> ktb_quit_and_save() in *.monads/*.livedesk-taskbar/ops/khtpm_taskbar_
+# -> ktb_quit_and_save() in _.monads/_.livedesk-taskbar/ops/khtpm_taskbar_
 # manager.c) now does this same SIGTERM-then-SIGKILL sweep automatically on
 # every quit - see that function's own header comment. This script should
 # no longer be load-bearing for routine quits; keep it only as a manual

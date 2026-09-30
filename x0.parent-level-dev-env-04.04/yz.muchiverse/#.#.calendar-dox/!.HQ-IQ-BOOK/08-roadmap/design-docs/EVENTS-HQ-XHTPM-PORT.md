@@ -23,7 +23,7 @@ This is the **standalone event editor**. db-hq’s Common Events pane is the **s
 | piece | path / fact |
 |---|---|
 | Launcher | `44.xyz.01.00/&.widgits/events-hq/button.sh` |
-| Binary | `*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x` |
+| Binary | `_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x` |
 | Layout | `&.widgits/events-hq/pieces/dashboard.chtpm` — `<window class="events-hq-window">` **trips `g_is_events_hq`** |
 | CSS | `&.widgits/events-hq/pieces/dashboard.css` |
 | Picker layout (C-filled) | `&.widgits/events-hq/pieces/picker.chtpm` |

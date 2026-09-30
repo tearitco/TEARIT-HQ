@@ -15,7 +15,7 @@
 
 set -u
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-PARSER="$ROOT/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
+PARSER="$ROOT/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x"
 LOG="$ROOT/#.desktop/tearit-hq.log"
 ACTION="${1:-start}"
 SETSID="setsid"; [ "$(uname)" = "Darwin" ] && SETSID=""

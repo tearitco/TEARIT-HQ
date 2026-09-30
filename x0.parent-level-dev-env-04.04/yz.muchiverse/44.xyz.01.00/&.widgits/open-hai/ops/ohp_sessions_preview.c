@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
     char sessions_path[PATH_BUF];
     snprintf(sessions_path, sizeof(sessions_path), "%s/&.widgits/open-hai/state/sessions.state.txt", house_root);
     char renderer_path[PATH_BUF];
-    snprintf(renderer_path, sizeof(renderer_path), "%s/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x", house_root);
+    snprintf(renderer_path, sizeof(renderer_path), "%s/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x", house_root);
 
     char chtpm_path[PATH_BUF];
     snprintf(chtpm_path, sizeof(chtpm_path), "/tmp/ohp_sessions_preview_%d.chtpm", (int)getpid());

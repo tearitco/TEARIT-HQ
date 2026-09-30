@@ -177,7 +177,7 @@ design), multi-cursor, bidi.
   <binary>`), and the frame file is `entity_menu_frame_<RENDER-pid>.txt`
   (render pid, not manager/shell pid).
 - **Shared render code changes** (`&.widgits/_shared-lib/khtpm_render_
-  core.c` / `khtpm_draw_core.c` / `*.monads/*.livedesk-taskbar/ops/
+  core.c` / `khtpm_draw_core.c` / `_.monads/_.livedesk-taskbar/ops/
   khtpm_core_render.c`) need `sh build_core_render.sh` AND `sh
   build_khtpm_strip.sh`, then a taskbar restart (`sh run_khtpm_strip.sh
   new`) for the live desktop to pick them up. Running app windows need

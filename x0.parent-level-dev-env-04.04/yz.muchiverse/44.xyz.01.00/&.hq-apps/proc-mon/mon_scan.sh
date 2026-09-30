@@ -64,6 +64,7 @@ khtpm_entity_menu_render
 khtpm_hq_manager\.\+x
 _hq_manager\.\+x
 swatch_picker_manager
+frame_history\.sh
 '
 
 # processes that ARE the desktop shell - never stray, never killed
@@ -214,7 +215,7 @@ classify_all() {
         case "$comm" in
             sh|bash|dash|zsh|ksh)
                 case "$cmd" in
-                    *"button.sh run"*|*"button.sh run-widget"*|*"/system/orchestrator"*) : ;;
+                    *"button.sh run"*|*"button.sh run-widget"*|*"/system/orchestrator"*|*"frame_history.sh"*) : ;;
                     *) continue ;;
                 esac
                 ;;

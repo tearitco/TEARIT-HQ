@@ -1,0 +1,8 @@
+sel_x=8
+sel_y=8
+sel_z=16
+kind=voxel
+id=
+template=
+glyph=.
+asset_hex=1F7EB

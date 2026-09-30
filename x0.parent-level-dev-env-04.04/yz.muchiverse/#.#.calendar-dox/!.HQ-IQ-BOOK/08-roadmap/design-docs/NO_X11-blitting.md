@@ -38,14 +38,14 @@ The closest example of this separation already exists in this codebase: the **3D
 
 **Real code citations**:
 - Compose: `&.widgits/board-viewer/ops/bv_render_3d.c:1168` (buffer declaration), `:1239` and `:2265` (writing pixels via plain array indexing), `:2275` (writing to raw file)
-- Present: `*.monads/*.livedesk-taskbar/ops/khtpm_entity_menu_render.c:10328-10329` (file paths), `:10335-10388` (X11 window setup), later lines doing `XPutImage()`
+- Present: `_.monads/_.livedesk-taskbar/ops/khtpm_entity_menu_render.c:10328-10329` (file paths), `:10335-10388` (X11 window setup), later lines doing `XPutImage()`
 
 
 ## Current Real Counter-Example: X11-Coupled Compose Logic
 
 Not all rendering functions in this codebase currently follow the clean separation. The most prominent counter-example is also in the same codebase:
 
-**Location**: `*.monads/*.livedesk-taskbar/ops/tp_desktop_window_rgb.c:draw_sprite_rgb()` at lines 1402-1420.
+**Location**: `_.monads/_.livedesk-taskbar/ops/tp_desktop_window_rgb.c:draw_sprite_rgb()` at lines 1402-1420.
 
 **What it does**: Composes per-pixel alpha-blended sprites, but embeds X11 calls inside the loop:
 
@@ -87,7 +87,7 @@ The algorithmic work (alpha blending) could be reused, but the X11-coupled struc
 
 The same codebase has a semi-separated pattern that's closer to the goal:
 
-**Location**: `*.monads/*.livedesk-taskbar/ops/tp_desktop_window_rgb.c:3680-3692` (the "Present:" comment and loop).
+**Location**: `_.monads/_.livedesk-taskbar/ops/tp_desktop_window_rgb.c:3680-3692` (the "Present:" comment and loop).
 
 **Pattern**:
 1. All drawing operations write to an offscreen X11 Pixmap (`g_buf`)
@@ -285,8 +285,8 @@ This document exists so that a future developer/agent working on a no-X11 port (
 
 ## References
 
-- **File-handoff pattern**: `*.monads/*.livedesk-taskbar/ops/khtpm_entity_menu_render.c:10269-10399` (run_pchq_board_mode, reads rgb_frame_3d_overlay.raw)
+- **File-handoff pattern**: `_.monads/_.livedesk-taskbar/ops/khtpm_entity_menu_render.c:10269-10399` (run_pchq_board_mode, reads rgb_frame_3d_overlay.raw)
 - **Portable raymarcher**: `&.widgits/board-viewer/ops/bv_render_3d.c:1168` (buffer), `:1239`, `:2265` (pixel writes), `:2275` (write to file)
-- **Counter-example (X11-coupled)**: `*.monads/*.livedesk-taskbar/ops/tp_desktop_window_rgb.c:1402-1420` (draw_sprite_rgb), `:3680-3692` (Present/readback pattern)
-- **Platform backend isolation precedent**: `*.monads/system/gl_mirror.c` (comments at lines 1-3, cites GRAND-ARCHITECTURE.md)
+- **Counter-example (X11-coupled)**: `_.monads/_.livedesk-taskbar/ops/tp_desktop_window_rgb.c:1402-1420` (draw_sprite_rgb), `:3680-3692` (Present/readback pattern)
+- **Platform backend isolation precedent**: `_.monads/system/gl_mirror.c` (comments at lines 1-3, cites GRAND-ARCHITECTURE.md)
 - **Governing rule**: `2.muchi-verse/GRAND-ARCHITECTURE.md` (GOVERNING CONSTRAINT section, explains why platform-specific API calls are isolated)

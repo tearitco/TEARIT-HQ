@@ -32,7 +32,7 @@ All other taskbar cells' dropdown builders remain C-hardcoded (documented debt).
 
 | Piece | Where | Proof |
 |---|---|---|
-| Palettes header-cell popup anchored+themed (nested `<row>${strip_hq_items}</row>` child added to ACTIVATE:6 button) | `*.monads/*.livedesk-taskbar/khtpm_strip_header.chtpm` | user confirmed "that ones perfect" |
+| Palettes header-cell popup anchored+themed (nested `<row>${strip_hq_items}</row>` child added to ACTIVATE:6 button) | `_.monads/_.livedesk-taskbar/khtpm_strip_header.chtpm` | user confirmed "that ones perfect" |
 | `palettes_menu_1..11_label/cmd` PDL rows incl. trailing cancel | `44.xyz.01.00/#.desktop/livedesk_taskbar.pdl` | published rows visible in `#.desktop/strip_var_hqitems.txt` after open; cancel dismisses w/o launching |
 | `livedesk_build_palettes_menu()` + dispatch branches `livedesk:open-palette:<cat>` | `…ops/khtpm_taskbar_manager.c` | mgrcode 5001 launched emojis window; audit log |
 | Dynamic row cap (was literal `i<=9`) | same file, hq menu builder comment | 11 rows publish fine |
@@ -124,7 +124,7 @@ Do NOT edit those cells' dead PDL rows before converting their builder.
 
 ```sh
 H="/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00"
-OPS="$H/*.monads/*.livedesk-taskbar/ops"
+OPS="$H/_.monads/_.livedesk-taskbar/ops"
 
 # rebuild renderer (copies _shared-lib over local core copies FIRST - edit shared-lib!)
 bash "$OPS/build_db_hq.sh"          # -> OK +x/khtpm_hq_render.+x

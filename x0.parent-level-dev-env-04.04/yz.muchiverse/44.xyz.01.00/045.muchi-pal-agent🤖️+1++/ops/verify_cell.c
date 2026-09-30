@@ -15,9 +15,44 @@
 #define MAX_PATH 4096
 #define PATH_BUF (MAX_PATH + 512)
 #define MAX_TEXT 40000
-#define API_1B "http://10.0.0.144:11434/api/generate"
 
 static char project_root[MAX_PATH] = ".";
+
+/* REAL FIX 2026-09-27 (AI-PUSH-ROADMAP-AND-NUANCES.md): g_api_1b used to
+ * be a hardcoded #define, duplicated house-wide. Now read from the
+ * house's one shared #.desktop/ai_backend.pdl at startup - falls back
+ * to this same default if the file/key is missing. Walks up from
+ * project_root (resolve_root()'s own PRISC_PROJECT_ROOT/CWD result)
+ * looking for the config file, same idiom the other fixed files in
+ * this pass use. */
+static char g_api_1b[256] = "http://10.0.0.144:11434/api/generate";
+
+static void kh_load_gemma_lan_config(const char *start) {
+    char cur[PATH_BUF];
+    snprintf(cur, sizeof(cur), "%s", (start && start[0]) ? start : ".");
+    for (;;) {
+        char probe_path[PATH_BUF];
+        snprintf(probe_path, sizeof(probe_path), "%s/#.desktop/ai_backend.pdl", cur);
+        FILE *f = fopen(probe_path, "r");
+        if (f) {
+            char line[256];
+            while (fgets(line, sizeof(line), f)) {
+                char *eq = strchr(line, '=');
+                if (!eq) continue;
+                *eq = '\0';
+                char *val = eq + 1;
+                val[strcspn(val, "\r\n")] = '\0';
+                if (strcmp(line, "gemma_lan_url") == 0 && val[0])
+                    snprintf(g_api_1b, sizeof(g_api_1b), "%s/api/generate", val);
+            }
+            fclose(f);
+            return;
+        }
+        char *slash = strrchr(cur, '/');
+        if (!slash || slash == cur) return;
+        *slash = '\0';
+    }
+}
 
 static void resolve_root(void) {
     const char *env = getenv("PRISC_PROJECT_ROOT");
@@ -70,6 +105,7 @@ static const char *REVIEW_PROMPT =
 
 int main(int argc, char **argv) {
     resolve_root();
+    kh_load_gemma_lan_config(project_root);
     if (argc < 4) { fprintf(stderr, "usage: verify_cell.+x <book> <chapter> <cell_id>\n"); return 1; }
     const char *book = argv[1], *chapter = argv[2], *cell_id = argv[3];
 
@@ -95,7 +131,7 @@ int main(int argc, char **argv) {
     snprintf(out_path, sizeof(out_path), "%s/%s.review.raw", cells_dir, cell_id);
     snprintf(cmd, sizeof(cmd),
         "curl -sS --max-time 300 -H 'Content-Type: application/json' '%s' -d @'%s' -o '%s'",
-        API_1B, req_path, out_path);
+        g_api_1b, req_path, out_path);
     int rc = system(cmd);
     if (rc != 0) { fprintf(stderr, "verify_cell: curl to 1b failed (rc=%d)\n", rc); free(passage); return 1; }
 

@@ -16,7 +16,7 @@ seem to take effect, or an old bug you already fixed "comes back."
 
 **Real cause:** `pkill -f <pattern>` is not reliable against this
 house's own emoji-laden, star-globbed paths (`44.xyz.01.00/`,
-`*.monads/*.livedesk-taskbar/`, etc.) — it silently fails to match in
+`_.monads/_.livedesk-taskbar/`, etc.) — it silently fails to match in
 some shells/environments, confirmed live more than once this session.
 A `pkill` call that reports success (or reports nothing, which looks
 like success) can leave the old process running untouched. The next
@@ -371,6 +371,29 @@ this kind of one-time default inside the function that already
 re-detects real content on every tick / every live reparse
 (`layout_sidebar_panel()`'s own `g_default_has_sidebar_panel` latch,
 here), never inside the one-shot `main()` startup sequence.
+
+**Real follow-up #3 (2026-09-23, a different session, same root cause
+class):** co-lab-hai's own long agent messages cut off at ~255 chars
+no matter what - four separate, individually-correct-in-isolation
+fixes to the DIRECT draw path (`render_tree()`/`draw_elem()` in
+`khtpm_draw_core.c`: `Elem.label` size, wrap-width padding drift,
+`label_decoded[]` size, floor-vs-ceiling `max_lines`) each verified
+against real live data and each had ZERO visible effect. Real cause:
+co-lab-hai is default/popup mode, so none of that code was ever being
+exercised for its actual repaint - the real bug was two INDEPENDENT
+`char foo[256]` buffers inside `kh_serialize_frame_elem()`/
+`kh_paint_frame_line()`'s own frame-file round trip (the write-escape
+and read-unescape steps), completely separate from `Elem.label`'s own
+struct size. **Sharper lesson than step 1 above:** don't just check
+which path a window uses ONCE at the start of a debugging session and
+then trust that memory for every fix that follows - if a fix to the
+"identified" path has no visible effect after a live rebuild+retest,
+STOP and re-confirm which path is actually live for this specific
+window before writing fix #2 in the same file, rather than continuing
+to patch plausible-looking buffers in the same wrong place. A
+`fprintf` placed at the ACTUAL draw call site the window uses (proven
+by watching it fire, not assumed) would have caught this after fix #1,
+not fix #4.
 
 ## 13. A `${var}` value with a bare `"` hangs the xhtpm parser at 100% CPU — the window never maps, looks "WM-related"
 

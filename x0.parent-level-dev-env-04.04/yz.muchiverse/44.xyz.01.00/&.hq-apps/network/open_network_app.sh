@@ -4,7 +4,7 @@
 # Opens one of the house networking apps (pal-chat-irc / pal-forum /
 # pal-chain) in a fresh gnome-terminal tab, same transport as the
 # taskbar's own open_cli.sh here:
-#   *.monads/*.livedesk-taskbar/ops/open_cli.sh
+#   _.monads/_.livedesk-taskbar/ops/open_cli.sh
 # Each app is a session-isolated chtpm app that renders ASCII frames in
 # a terminal under system/orchestrator (launched by `button.sh run`), so
 # a terminal tab IS its current UI until the Phase-2 khtpm-window

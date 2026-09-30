@@ -1,7 +1,22 @@
 /* events-hq.css - sibling-.css for events-hq.xhtpm, auto-merged by the
    shared renderer (same stem). Colour/border only; the generic layout
    engine owns geometry. Mirrors db-hq-pal/dashboard.css so the PAL-
-   driven events window matches the house look. */
+   driven events window matches the house look.
+
+   REAL FIX 2026-09-28 (direct live report: "is there a way to make
+   that events window less wide? it didn't used to be that big"). With
+   no window-level width set here, khtpm_core_render.c's
+   layout_sidebar_panel() falls through to kh_default_win_w()
+   (WM_DEFAULT_PCT_W=58% of the real screen, see khtpm_core_render.c
+   ~line 3848/4706) - a house-wide default that just tracks whatever
+   the real screen is, not a per-app choice. This is a two-pane
+   sidebar+list window (TRIGGER strip + one command list), never
+   needed anywhere near 58% of a wide screen even fully populated -
+   giving it its own explicit width here (which style.has_width
+   already takes priority over the percentage default, per that same
+   line 4706) fixes this window ONLY, without touching the shared
+   default other database-window consumers still rely on. */
+window { width: 620px; }
 
 .view-tabs, .page-tabs {
   background-color: #1a1a1a;

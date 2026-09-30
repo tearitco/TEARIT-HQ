@@ -1,0 +1,33 @@
+MSG|1784534066-0-446894|test-1|test-1|1784534066|test hi
+MSG|1784534095-0-450098|test-1|test-2|1784534095|hi back
+MSG|1784534792-0-546179|guest|guest|1784534792|hi 1
+MSG|1784534812-0-550922|guest|two|1784534812|hi 2
+MSG|1784535555-0-739135|t1|t1|1784535555|hi t1
+MSG|1784535578-0-747497|t1|t2|1784535578|hi t2
+MSG|1784553227-0-2526847|muchi-test|irc-agent-0000|1784553227|hi! I am irc-agent-0000 - say something and I will reply.
+MSG|1784553252-0-2538834|muchi-test|human-tester|1784553252|hello agent, how are you?
+MSG|1784553252-0-2538852|muchi-test|irc-agent-0000|1784553252|coffee journey mountain happy journey today
+MSG|1785099897-0-68231|guest|hi|1785099897|im new
+MSG|1785104077-0-91392|j26|j26|1785104077|hi
+MSG|1785104106-0-95113|j26|j25|1785104106|hi 2
+MSG|1785104909-0-127656|lobby|userA|1785104909|hello from real session A
+MSG|1785104951-0-132922|lobby|userA|1785104951|second message - proving live push to an idle session
+MSG|1785105923-0-145252|p2p_test_room_144726|testUserA|1785105923|p2p regression probe message
+MSG|1785106042-0-146968|p2p_test_room_146433|testUserA|1785106042|p2p regression probe message
+MSG|1785106097-0-148245|p2p_test_room_147703|testUserA|1785106097|p2p regression probe message
+MSG|1785108482-0-29948|lobby|bob|1785108482|hi alice, replying for real
+MSG|1785108671-0-35063|uxtest_31259|alice_31259|1785108671|hello bob, this is a real typed message
+MSG|1785108809-0-40365|uxtest_36868|alice_36868|1785108809|hello bob, this is a real typed message
+MSG|1785108815-0-41153|uxtest_36868|bob_36868|1785108815|hi alice, replying for real
+MSG|1785109595-0-48651|harness_room_44998|halice_44998|1785109595|hello from the ops-based test harness
+MSG|1785109601-0-49412|harness_room_44998|hbob_44998|1785109601|reply via the ops-based harness
+MSG|1785110060-0-53923|guest|hi1|1785110060|hi1-j26
+MSG|1785110093-0-58107|guest|hi2|1785110093|hi2-j26
+MSG|1785114595-0-471513|harness_room_468200|halice_468200|1785114595|hello from the ops-based test harness
+MSG|1785114601-0-472267|harness_room_468200|hbob_468200|1785114601|reply via the ops-based harness
+MSG|1785473922-0-1135960|harness_room_1132237|halice_1132237|1785473922|hello from the ops-based test harness
+MSG|1785473928-0-1136727|harness_room_1132237|hbob_1132237|1785473928|reply via the ops-based harness
+MSG|1785476756-0-1170335|p2p_test_room_1169816|testUserA|1785476756|p2p regression probe message
+MSG|1785485476-0-1690534|harness_room_1686816|halice_1686816|1785485476|hello from the ops-based test harness
+MSG|1785485482-0-1691296|harness_room_1686816|hbob_1686816|1785485482|reply via the ops-based harness
+MSG|1785485509-0-1692428|p2p_test_room_1691904|testUserA|1785485509|p2p regression probe message

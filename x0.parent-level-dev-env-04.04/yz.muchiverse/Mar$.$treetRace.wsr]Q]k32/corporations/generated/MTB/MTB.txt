@@ -5,38 +5,38 @@ FINANCIAL BALANCE SHEET: MARTIAN TRUST BANK (MTB)
 (Amounts in millions of U.S. Dollars, except per share amounts)
 
 ASSETS:
-  Free Cash and Equivalents:		1764.53
+  Free Cash and Equivalents:		1214.95
   Stock in Subsidiary Corps.:		0.00
   Options Long/Short: Net Value:	0.00
   Government Bonds (mkt. value):	0.00
   Corporate Bonds (mkt. value):	0.00
-  Business Loan Portfolio:		946.23
-  Consumer Loan Portfolio:		479.38
-  Mortgage Loans/Securities:		488.62
-  Less: Bad Debt Reserves:		-213.11
+  Business Loan Portfolio:		1694.09
+  Consumer Loan Portfolio:		216.28
+  Mortgage Loans/Securities:		975.46
+  Less: Bad Debt Reserves:		-105.37
   ---------------------------------------------
-  Total Assets:				3465.65
+  Total Assets:				3995.41
   ---------------------------------------------
 
 LIABILITIES AND EQUITY:
   Long-Term Bonds Issued:		0.00
-  Demand Deposits:			389.52
-  Certificates of Deposit:		602.33
+  Demand Deposits:			420.84
+  Certificates of Deposit:		793.94
   Interbank Debt -- Fed Funds:		0.00
   Accrued Income Tax Payable:		0.00
   ---------------------------------------------
-  Total Liabilities:			991.85
+  Total Liabilities:			1214.78
   ---------------------------------------------
-  Equity (Net Worth):			2473.80
+  Equity (Net Worth):			2780.63
   =============================================
 
 STOCK AND EARNINGS DATA:
 ------------------------
-  Net Worth Per Share:			51.48
-  Current Stock Price:			52.96
-  52-Week High/Low Stock Price:		75.36 / 42.38
-  Shares of Stock Outstanding:		48.05 million
-  Total Stock Capitalization:		2544.69 million
+  Net Worth Per Share:			66.14
+  Current Stock Price:			74.43
+  52-Week High/Low Stock Price:		138.64 / 58.10
+  Shares of Stock Outstanding:		42.04 million
+  Total Stock Capitalization:		3129.09 million
   2022 Earnings Per Share:		0.00 (Operating Earnings)
   2023 Earnings Per Share:		0.00 (Operating Earnings)
   2024 Earnings Per Share:		0.00 (Operating Earnings)
@@ -49,8 +49,8 @@ VARIOUS FINANCIAL RATIOS:
   Price/Earnings Ratio:			NMF (No Meaningful Figure)
   Dividend Yield:			0.00%
   Debt to Equity Ratio:			0.00 to 1
-  Bad Debt Reserve Ratio:		11.13%
-  Reserves to Deposits %:		21.49%
+  Bad Debt Reserve Ratio:		3.65%
+  Reserves to Deposits %:		8.67%
   Return on Equity (2025):		NMF (No Meaningful Figure)
   ---------------------------------------------
 
@@ -72,8 +72,8 @@ MISCELLANEOUS INFO:
   Incorporated in:			UNITED STATES
   Controlled (and actively managed) by:	test_acc
   Wholly owned by:			test_acc
-  Tax Loss Carryover:			$493.73 million
-  Annual CEO Salary (approx.):		$0.20 million (Plus possible bonuses)
+  Tax Loss Carryover:			$313.11 million
+  Annual CEO Salary (approx.):		$1.56 million (Plus possible bonuses)
   Today's (Game) Date:			January 1, 2026
   Next Earnings Report:			April 1, 2026
   ---------------------------------------------

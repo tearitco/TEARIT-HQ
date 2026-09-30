@@ -1,0 +1,30 @@
+# move_entity.pal - per-move animation loop (house prisc+ops standard,
+# PRISC-OPS-ARCHITECTURE.md 2026-09-27). Mirrors world_manager.pal's
+# own shape (&.hq-apps/world-manager/world_manager.pal).
+#
+# One instance is launched per Move action by move_entity_init.+x,
+# which sets ENTITY_DIR/HOUSE_ROOT env vars before exec'ing prisc+x
+# (same convention prisc+x itself already uses for
+# PRISC_PROJECT_ROOT/PRISC_PROJECT_ID - see prisc+x.c's OP_READ_STATE).
+#
+# move_entity_tick.+x consumes one waypoint per tick and moves the
+# already-running entity window via XMoveWindow (no relaunch). It
+# self-terminates this loop (SIGTERM to its own parent, i.e. this
+# running prisc+x) once the waypoint queue is drained - prisc+x's exec
+# does not consult an op's exit code for branching, so the op ending
+# the loop itself is the reliable path.
+#
+# REAL FIX 2026-09-27, direct live report ("it seemed to move a bit
+# too fast, not animated like before"): prisc+x's OP_SLEEP calls
+# usleep(i.imm) directly (see prisc+x.c) - its own literal argument is
+# MICROSECONDS, not milliseconds, despite PRISC-OPS-ARCHITECTURE.md's
+# doc comment claiming "sleep 16 = ~60fps" for world_manager.pal's own
+# identical-looking line. `sleep 90` here was therefore 90 MICROseconds
+# between waypoints, not ~90ms - the whole queue drained in under a
+# millisecond, which read as an instant jump, not an animation. Fixed
+# to the real microsecond value for a visible ~90ms-per-waypoint step.
+
+loop:
+  exec ./ops/move_entity_tick.+x
+  sleep 90000
+  j loop

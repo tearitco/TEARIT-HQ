@@ -71,10 +71,10 @@ STATE        | grab_keyboard      | 1    modal keyboard grab while a menu is ope
 - `grab_keyboard = 0` — turn off the keyboard grab. (Default keeps it
   ON so arrow keys always move the `[>]` cursor in a menu.)
 
-Example for book-stack (now living at `*.monads/*.book-stack/`):
+Example for book-stack (now living at `_.monads/_.book-stack/`):
 
 ```
-# *.monads/*.book-stack/entities/book-stack/meta.pdl
+# _.monads/_.book-stack/entities/book-stack/meta.pdl
 STATE        | menu_stay_open     | 1
 STATE        | grab_pointer       | 1
 STATE        | grab_keyboard      | 1
@@ -113,7 +113,7 @@ open windows:
   why menus shouldn't just vanish while another process is working. 👾
 - Clicking the header row (the entity id at the top of a menu) is a
   harmless no-op — it just refocuses the menu. Not a button.
-- book-stack now lives at `*.monads/*.book-stack/` (entity package in
+- book-stack now lives at `_.monads/_.book-stack/` (entity package in
   `entities/book-stack/`) — the old `@.apps/book-stack` and
   `#.desktop/entities/book-stack` paths are gone.
 - These notes describe Linux/X11 behavior. The Windows build

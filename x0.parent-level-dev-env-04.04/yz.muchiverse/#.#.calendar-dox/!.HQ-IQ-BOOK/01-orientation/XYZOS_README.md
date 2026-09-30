@@ -132,7 +132,7 @@ key / GL input
 | 🧟 | Games | `101.mutaclsym…` — maps, entities, GL mirror |
 | 📝 | Tools | `102.editor…` — INTERACT canvas, widget cmd bus |
 | 👤 | Identity | `0.user-pal…` — login, xyzfs users, avatars |
-| 🚀 | Loader | `*.START_BUTTON` — System / Widgets / Apps / App Store |
+| 🚀 | Loader | `_.START_BUTTON` — System / Widgets / Apps / App Store |
 | 🧩 | Widgets | `&.widgits/file-menu`, tile-picker, map-picker, **proc-monitor** |
 | 🧪 | Harnesses | `%.harnesses/file-menu+editor`, `file-menu+mutaclysm` |
 | 📦 | Future apps | `@.apps/`, `@.app-store/` (mostly empty — by design) |
@@ -166,7 +166,7 @@ Widget (file-menu ops)
 | Editor INTERACT canvas (type, arrows, BS, newline) | `102.editor…/test-harn-same` |
 | file-menu → editor LOAD / SAVE_AS / NEW | `%.harnesses/file-menu+editor` |
 | file-menu → mutaclysm user save slots + **demo-project** seed | `%.harnesses/file-menu+mutaclysm` |
-| START_BUTTON categories (System / Widgets / Apps / Store) | `*.START_BUTTON` + harness |
+| START_BUTTON categories (System / Widgets / Apps / Store) | `_.START_BUTTON` + harness |
 | Login / xyzfs identity trees | `0.user-pal/00.login-signup` |
 | Mutaclysm live world + GL culture | install game + docs |
 
@@ -305,7 +305,7 @@ If you’re about to register `@.apps` because the folder exists: stop. Read `#.
 102.editor-…/test-harn-same/button.sh demo
 
 # START_BUTTON catalog
-*.START_BUTTON/button.sh compile && # then run in a real TTY
+_.START_BUTTON/button.sh compile && # then run in a real TTY
 ```
 
 Read proof under each harness’s `proof/harness-…/`.

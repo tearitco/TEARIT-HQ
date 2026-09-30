@@ -1,0 +1,7 @@
+kind=chain_node
+project_id=pal-chain
+piece_id=hq1788687259101903
+host=127.0.0.1
+port=9950
+pid=101906
+last_seen=1788687269

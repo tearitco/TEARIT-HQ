@@ -32,8 +32,8 @@ NAME="$(basename "$PKG")"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 MR_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # REAL FIX (2026-08-11/12, ops migration: this script moved from
-# *.monads/*.muchi-pet/ops/ to xyzfs/bin/muchi-pet/ops/, a DIFFERENT depth
-# under house_root - *.monads/*.muchi-pet is 2 dirs deep, xyzfs/bin/
+# _.monads/_.muchi-pet/ops/ to xyzfs/bin/muchi-pet/ops/, a DIFFERENT depth
+# under house_root - _.monads/_.muchi-pet is 2 dirs deep, xyzfs/bin/
 # muchi-pet is 3, so the old fixed "../.." HOUSE_ROOT walk silently landed
 # one level short (house_root/xyzfs instead of house_root, breaking the
 # prisc+x lookup). Same anchor-search fix already applied to the compiled

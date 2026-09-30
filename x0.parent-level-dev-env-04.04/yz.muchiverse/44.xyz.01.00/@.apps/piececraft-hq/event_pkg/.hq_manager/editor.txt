@@ -1,0 +1,4 @@
+mode=fields
+type=change_gold
+edit_id=-1
+

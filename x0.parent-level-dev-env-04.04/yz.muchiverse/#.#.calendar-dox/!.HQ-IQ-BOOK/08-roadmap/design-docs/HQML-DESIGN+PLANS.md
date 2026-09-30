@@ -435,7 +435,7 @@ live window directly), same output format, just `XGetImage` instead of
 
 ```
 house_root/
-├── *.monads/*.livedesk-taskbar/ops/
+├── _.monads/_.livedesk-taskbar/ops/
 │   ├── khtpm_strip_parser.c   (ENHANCED: add CSS parsing + styling)
 │   ├── khtpm_strip_layout.c   (ENHANCED: support absolute positioning)
 │   └── khtpm_taskbar_manager.c (launch -hq apps)

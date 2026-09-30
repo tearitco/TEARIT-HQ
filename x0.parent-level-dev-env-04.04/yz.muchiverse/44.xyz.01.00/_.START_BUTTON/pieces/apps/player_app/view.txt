@@ -1,0 +1,11 @@
+╔═════════════════════════════════════════════════════════╗
+║   H O U S E   L O A D E R                               ║
+╠═════════════════════════════════════════════════════════╣
+║  Pre-screen — pick a category:                        ║
+║                                                         ║
+║    System     house programs under ./                   ║
+║    Widgets    &.widgits/ installed widgets              ║
+║    Apps       @.apps/ installed apps                    ║
+║    App Store  @.app-store/ available packages           ║
+║                                                         ║
+╚═════════════════════════════════════════════════════════╝

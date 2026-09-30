@@ -1,0 +1,18 @@
+# ai_backend.pdl - shared LAN Gemma/Ollama endpoint config, read by
+# every C op that calls out to a local model (my-lawyer's
+# mylawyer_case_worker.+x/mylawyer_judge_worker.+x, my-biotech's
+# mybiotech_research_worker.+x/mybiotech_fda_verdict.+x, and any future
+# ai_describe-family op). Plain key=value, same convention hq_ui.pdl
+# already uses.
+#
+# REAL FIX 2026-09-27 (AI-PUSH-ROADMAP-AND-NUANCES.md): GEMMA_LAN_URL
+# used to be a hardcoded C constant, duplicated across four separate
+# files. This file is the one real place it lives now - each op reads
+# it once at startup and falls back to the same default below if this
+# file or a key is missing, so an unmodified/missing file changes
+# nothing. MY_BIOTECH_DESIGN.md already flagged this IP as "NOT
+# guaranteed stable" - if the LAN Mac's address changes, edit it here
+# once, not in four C files.
+
+gemma_lan_url=http://10.0.0.144:11434
+gemma_lan_model=gemma3:270m

@@ -1,6 +1,17 @@
 /* proc-mon.css - sibling .css for proc-mon.xhtpm, auto-merged by the shared
    renderer (same stem). Colour/border only; the generic layout engine
-   owns geometry. Mirrors the house -hq look (stats-hq-pal.css). */
+   owns geometry. Mirrors the house -hq look (stats-hq-pal.css).
+
+   REAL FIX 2026-09-28 (direct live report: "x11-hq windows like proc
+   mon seem to be opening way bigger than they used to... can procmon
+   be smaller default same size as event?"). Same root cause events-hq
+   had: with no window-level width set here, khtpm_core_render.c's
+   layout_sidebar_panel() falls through to kh_default_win_w()
+   (WM_DEFAULT_PCT_W=58% of the real screen) - a house-wide default
+   that just tracks whatever the real screen is, not a per-app choice.
+   Matching events-hq.css's own real fix, same day, same value, per
+   direct request ("same size as event"). */
+window { width: 620px; }
 
 .settings-block {
   background-color: #181818;

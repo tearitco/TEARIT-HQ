@@ -15,7 +15,7 @@ current and complete for understanding where this merge effort stands today.
 **Stage 5 (literal single-binary merge) is DONE for all 5 window apps.**
 entity-menu, taskbar-settings (swatch-picker mode), db-hq, events-hq,
 and chat-hai all now live in ONE compiled binary,
-`*.livedesk-taskbar/ops/khtpm_entity_menu_render.c`, mode-selected via a
+`_.livedesk-taskbar/ops/khtpm_entity_menu_render.c`, mode-selected via a
 real `class=` attribute on each app's own `<window>` tag. Each app's own
 distinct logic (db-hq's tag/id `activate_elem()` + tabs/sidebar/panel,
 events-hq's live file-watch-poll + drag + modal overlay, chat-hai's

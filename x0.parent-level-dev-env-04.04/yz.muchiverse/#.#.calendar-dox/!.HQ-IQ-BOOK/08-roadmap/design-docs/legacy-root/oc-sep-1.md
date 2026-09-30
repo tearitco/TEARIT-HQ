@@ -16,7 +16,7 @@ The proper fix is to run a full toggle so the parser's respawn refreshes ALL win
 **Input:**
 ```json
 {
-  "path": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c",
+  "path": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_strip_parser.c",
   "pattern": "ZORDER_TOGGLE|hq-click|HQ_CLICK|action|relay|registry|dup"
 }
 ```
@@ -24,7 +24,7 @@ The proper fix is to run a full toggle so the parser's respawn refreshes ALL win
 **Output:**
 ```
 Found 55 matches
-/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c:
+/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_strip_parser.c:
   Line 18:  * strip_frame_changed.txt file-relay contract.
 
   Line 40: #include <dirent.h> /* REAL, NEW 2026-09-01 - zorder toggle reads nav_tab/<pid> registry dir (opendir/readdir) */
@@ -199,7 +199,7 @@ Let me find the exact relay/action injection path for ZORDER_TOGGLE:
 **Input:**
 ```json
 {
-  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c",
+  "filePath": "/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_strip_parser.c",
   "limit": 40,
   "offset": 1497
 }
@@ -207,7 +207,7 @@ Let me find the exact relay/action injection path for ZORDER_TOGGLE:
 
 **Output:**
 ```
-<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_strip_parser.c</path>
+<path>/home/no/Desktop/🤖️🪤️🏠️/🥡️🪜️/🪜️-00.00/NNEST_CLEAN_PARENT/NNEST-11.17/x0.parent-level-dev-env-04.04/yz.muchiverse/44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_strip_parser.c</path>
 <type>file</type>
 <content>
 1497: static long g_relay_cursor = -1; /* -1 = uninitialized; set to EOF on first poll (never replay backlog) */
@@ -272,7 +272,7 @@ Actually, let me directly answer the user's three questions rather than churn mo
 **Input:**
 ```json
 {
-  "command": "HR=\"$PWD/44.xyz.01.00\"; CORE=\"$HR/*.monads/*.livedesk-taskbar/ops/+x/khtpm_core_render.+x\"; CTHPM=\"$HR/&.hq-apps/db-hq/dashboard.chtpm\"\n# ensure pdl=managed so db-hq opens as a WM-managed surface (the case that lets opacity honor)\necho \"override_redirect=false\" > \"$HR/#.desktop/livedesk_override_redirect.pdl\"\nsetsid nohup \"$CORE\" \"$HR\" \"$CTHPM\" >/dev/null 2>&1 < /dev/null &\nsleep 2.5\necho \"=== db-hq window created under managed pdl ===\"\nwid=$(xwininfo -root -tree 2>/dev/null | grep -i muchiverselivedesk | grep -v '2496x36\\|2296x36\\|80x80\\|200x36' | head -1 | grep -o '0x[0-9a-f]*' | head -1)\necho \"wid=$wid\"; xwininfo -id \"$wid\" 2>/dev/null | grep 'Override Redirect State'\necho \"=== set opacity 50% and check _NET_WM_WINDOW_OPACITY sticks (what entities can do but old unmanaged windows could NOT) ===\"\nxprop -id \"$wid\" -f _NET_WM_WINDOW_OPACITY 32c -set _NET_WM_WINDOW_OPACITY $((0x80000000)) 2>&1 && echo \"opacity set; now read:\"\nxprop -id \"$wid\" _NET_WM_WINDOW_OPACITY 2>&1\npid=$(pgrep -f \"$CTHPM\" | head -1); kill \"$pid\" 2>/dev/null; echo \"closed test db-hq (pid $pid)\"",
+  "command": "HR=\"$PWD/44.xyz.01.00\"; CORE=\"$HR/_.monads/_.livedesk-taskbar/ops/+x/khtpm_core_render.+x\"; CTHPM=\"$HR/&.hq-apps/db-hq/dashboard.chtpm\"\n# ensure pdl=managed so db-hq opens as a WM-managed surface (the case that lets opacity honor)\necho \"override_redirect=false\" > \"$HR/#.desktop/livedesk_override_redirect.pdl\"\nsetsid nohup \"$CORE\" \"$HR\" \"$CTHPM\" >/dev/null 2>&1 < /dev/null &\nsleep 2.5\necho \"=== db-hq window created under managed pdl ===\"\nwid=$(xwininfo -root -tree 2>/dev/null | grep -i muchiverselivedesk | grep -v '2496x36\\|2296x36\\|80x80\\|200x36' | head -1 | grep -o '0x[0-9a-f]*' | head -1)\necho \"wid=$wid\"; xwininfo -id \"$wid\" 2>/dev/null | grep 'Override Redirect State'\necho \"=== set opacity 50% and check _NET_WM_WINDOW_OPACITY sticks (what entities can do but old unmanaged windows could NOT) ===\"\nxprop -id \"$wid\" -f _NET_WM_WINDOW_OPACITY 32c -set _NET_WM_WINDOW_OPACITY $((0x80000000)) 2>&1 && echo \"opacity set; now read:\"\nxprop -id \"$wid\" _NET_WM_WINDOW_OPACITY 2>&1\npid=$(pgrep -f \"$CTHPM\" | head -1); kill \"$pid\" 2>/dev/null; echo \"closed test db-hq (pid $pid)\"",
   "description": "Verify managed HQ window accepts opacity like entities"
 }
 ```

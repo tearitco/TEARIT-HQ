@@ -1,0 +1,421 @@
+=== Chatbot MOE Debug Log ===
+Prompt: what is a number
+Desired length: 15
+Temperature: 5.000000
+Using 10 training sets:
+  1. curriculum/Astronomy/Astronomy.txt
+  2. curriculum/Biology/Biology.txt
+  3. curriculum/Chemistry/Chemistry.txt
+  4. curriculum/Economics/Economics.txt
+  5. curriculum/Geography/Geography.txt
+  6. curriculum/History/History.txt
+  7. curriculum/Literature/Literature.txt
+  8. curriculum/Mathematics/Mathematics.txt
+  9. curriculum/Physics/Physics.txt
+  10. curriculum/Programming/Programming.txt
+========================
+
+
+Debug: Current word: start-token (index: 0, curriculum 0)
+Temperature: 5.000000
+Considering top 20 scores:
+  1. the (index: 4): 0.017016
+  2. billions (index: 12): 0.016994
+  3. millions (index: 25): 0.016985
+  4. holes (index: 34): 0.016977
+  5. end-token (index: 6): 0.016969
+  6. gazes (index: 2): 0.016967
+  7. traps (index: 37): 0.016964
+  8. cosmos (index: 5): 0.016962
+  9. shining (index: 10): 0.016961
+  10. suns (index: 27): 0.016958
+  11. spins (index: 19): 0.016957
+  12. nebulas (index: 31): 0.016947
+  13. daily (index: 20): 0.016919
+  14. it (index: 44): 0.016910
+  15. Planets (index: 16): 0.016909
+  16. Bang (index: 42): 0.016904
+  17. with (index: 24): 0.016894
+  18. where (index: 35): 0.016892
+  19. burn (index: 8): 0.016878
+  20. black (index: 33): 0.016875
+Chosen word: billions (index: 12)
+
+Debug: Current word: billions (index: 12, curriculum 0)
+Temperature: 5.000000
+Considering top 20 scores:
+  1. the (index: 4): 0.017017
+  2. billions (index: 12): 0.017009
+  3. millions (index: 25): 0.016997
+  4. holes (index: 34): 0.016991
+  5. end-token (index: 6): 0.016980
+  6. traps (index: 37): 0.016970
+  7. cosmos (index: 5): 0.016970
+  8. shining (index: 10): 0.016969
+  9. gazes (index: 2): 0.016969
+  10. suns (index: 27): 0.016967
+  11. nebulas (index: 31): 0.016959
+  12. spins (index: 19): 0.016959
+  13. it (index: 44): 0.016927
+  14. Bang (index: 42): 0.016917
+  15. daily (index: 20): 0.016917
+  16. Planets (index: 16): 0.016905
+  17. where (index: 35): 0.016893
+  18. with (index: 24): 0.016891
+  19. ago (index: 49): 0.016885
+  20. black (index: 33): 0.016884
+Chosen word: black (index: 33)
+
+Debug: Current word: black (index: 33, curriculum 0)
+Temperature: 5.000000
+Considering top 20 scores:
+  1. the (index: 4): 0.017088
+  2. billions (index: 12): 0.017086
+  3. millions (index: 25): 0.017082
+  4. holes (index: 34): 0.017082
+  5. traps (index: 37): 0.017059
+  6. suns (index: 27): 0.017044
+  7. end-token (index: 6): 0.017043
+  8. nebulas (index: 31): 0.017039
+  9. shining (index: 10): 0.017032
+  10. spins (index: 19): 0.017028
+  11. cosmos (index: 5): 0.017027
+  12. gazes (index: 2): 0.017023
+  13. it (index: 44): 0.017009
+  14. Bang (index: 42): 0.016993
+  15. daily (index: 20): 0.016975
+  16. ago (index: 49): 0.016958
+  17. where (index: 35): 0.016954
+  18. Planets (index: 16): 0.016954
+  19. years (index: 48): 0.016951
+  20. with (index: 24): 0.016943
+Chosen word: nebulas (index: 31)
+
+Debug: Current word: nebulas (index: 31, curriculum 0)
+Temperature: 5.000000
+Considering top 20 scores:
+  1. the (index: 4): 0.017106
+  2. millions (index: 25): 0.017097
+  3. holes (index: 34): 0.017097
+  4. billions (index: 12): 0.017097
+  5. traps (index: 37): 0.017078
+  6. suns (index: 27): 0.017058
+  7. nebulas (index: 31): 0.017052
+  8. end-token (index: 6): 0.017052
+  9. spins (index: 19): 0.017045
+  10. shining (index: 10): 0.017043
+  11. cosmos (index: 5): 0.017038
+  12. gazes (index: 2): 0.017037
+  13. it (index: 44): 0.017019
+  14. Bang (index: 42): 0.017004
+  15. daily (index: 20): 0.016992
+  16. Planets (index: 16): 0.016970
+  17. where (index: 35): 0.016970
+  18. ago (index: 49): 0.016969
+  19. years (index: 48): 0.016963
+  20. with (index: 24): 0.016959
+Chosen word: nebulas (index: 31)
+
+Debug: Current word: nebulas (index: 31, curriculum 0)
+Temperature: 5.000000
+Considering top 20 scores:
+  1. the (index: 4): 0.017106
+  2. millions (index: 25): 0.017097
+  3. holes (index: 34): 0.017097
+  4. billions (index: 12): 0.017097
+  5. traps (index: 37): 0.017078
+  6. suns (index: 27): 0.017058
+  7. nebulas (index: 31): 0.017052
+  8. end-token (index: 6): 0.017052
+  9. spins (index: 19): 0.017045
+  10. shining (index: 10): 0.017043
+  11. cosmos (index: 5): 0.017038
+  12. gazes (index: 2): 0.017037
+  13. it (index: 44): 0.017019
+  14. Bang (index: 42): 0.017004
+  15. daily (index: 20): 0.016992
+  16. Planets (index: 16): 0.016970
+  17. where (index: 35): 0.016970
+  18. ago (index: 49): 0.016969
+  19. years (index: 48): 0.016963
+  20. with (index: 24): 0.016959
+Chosen word: traps (index: 37)
+
+Debug: Current word: traps (index: 37, curriculum 0)
+Temperature: 5.000000
+Considering top 20 scores:
+  1. the (index: 4): 0.017083
+  2. billions (index: 12): 0.017073
+  3. millions (index: 25): 0.017070
+  4. holes (index: 34): 0.017069
+  5. traps (index: 37): 0.017051
+  6. suns (index: 27): 0.017034
+  7. end-token (index: 6): 0.017033
+  8. nebulas (index: 31): 0.017028
+  9. shining (index: 10): 0.017024
+  10. spins (index: 19): 0.017023
+  11. cosmos (index: 5): 0.017020
+  12. gazes (index: 2): 0.017019
+  13. it (index: 44): 0.016995
+  14. Bang (index: 42): 0.016981
+  15. daily (index: 20): 0.016974
+  16. Planets (index: 16): 0.016954
+  17. where (index: 35): 0.016950
+  18. ago (index: 49): 0.016947
+  19. with (index: 24): 0.016941
+  20. years (index: 48): 0.016941
+Chosen word: where (index: 35)
+
+Debug: Current word: where (index: 35, curriculum 0)
+Temperature: 5.000000
+Considering top 20 scores:
+  1. the (index: 4): 0.016953
+  2. billions (index: 12): 0.016943
+  3. end-token (index: 6): 0.016928
+  4. millions (index: 25): 0.016921
+  5. cosmos (index: 5): 0.016921
+  6. gazes (index: 2): 0.016921
+  7. shining (index: 10): 0.016916
+  8. holes (index: 34): 0.016913
+  9. suns (index: 27): 0.016901
+  10. spins (index: 19): 0.016899
+  11. traps (index: 37): 0.016894
+  12. nebulas (index: 31): 0.016891
+  13. daily (index: 20): 0.016869
+  14. Planets (index: 16): 0.016861
+  15. it (index: 44): 0.016858
+  16. Bang (index: 42): 0.016852
+  17. with (index: 24): 0.016844
+  18. Galaxies (index: 22): 0.016842
+  19. where (index: 35): 0.016840
+  20. burn (index: 8): 0.016837
+Chosen word: daily (index: 20)
+
+Debug: Current word: daily (index: 20, curriculum 0)
+Temperature: 5.000000
+Considering top 20 scores:
+  1. the (index: 4): 0.017088
+  2. billions (index: 12): 0.017080
+  3. millions (index: 25): 0.017078
+  4. holes (index: 34): 0.017077
+  5. traps (index: 37): 0.017057
+  6. suns (index: 27): 0.017041
+  7. end-token (index: 6): 0.017038
+  8. nebulas (index: 31): 0.017034
+  9. shining (index: 10): 0.017028
+  10. spins (index: 19): 0.017027
+  11. cosmos (index: 5): 0.017025
+  12. gazes (index: 2): 0.017023
+  13. it (index: 44): 0.017002
+  14. Bang (index: 42): 0.016988
+  15. daily (index: 20): 0.016976
+  16. Planets (index: 16): 0.016956
+  17. where (index: 35): 0.016954
+  18. ago (index: 49): 0.016953
+  19. years (index: 48): 0.016948
+  20. with (index: 24): 0.016945
+Chosen word: millions (index: 25)
+
+Debug: Current word: millions (index: 25, curriculum 0)
+Temperature: 5.000000
+Considering top 20 scores:
+  1. the (index: 4): 0.016960
+  2. billions (index: 12): 0.016948
+  3. end-token (index: 6): 0.016932
+  4. millions (index: 25): 0.016928
+  5. gazes (index: 2): 0.016926
+  6. cosmos (index: 5): 0.016925
+  7. shining (index: 10): 0.016921
+  8. holes (index: 34): 0.016919
+  9. suns (index: 27): 0.016907
+  10. spins (index: 19): 0.016906
+  11. traps (index: 37): 0.016902
+  12. nebulas (index: 31): 0.016897
+  13. daily (index: 20): 0.016875
+  14. Planets (index: 16): 0.016867
+  15. it (index: 44): 0.016863
+  16. Bang (index: 42): 0.016857
+  17. with (index: 24): 0.016850
+  18. where (index: 35): 0.016846
+  19. Galaxies (index: 22): 0.016845
+  20. burn (index: 8): 0.016843
+Chosen word: gazes (index: 2)
+
+Debug: Current word: gazes (index: 2, curriculum 0)
+Temperature: 5.000000
+Considering top 20 scores:
+  1. the (index: 4): 0.016979
+  2. billions (index: 12): 0.016955
+  3. millions (index: 25): 0.016941
+  4. gazes (index: 2): 0.016939
+  5. end-token (index: 6): 0.016938
+  6. cosmos (index: 5): 0.016934
+  7. holes (index: 34): 0.016931
+  8. shining (index: 10): 0.016929
+  9. spins (index: 19): 0.016922
+  10. traps (index: 37): 0.016919
+  11. suns (index: 27): 0.016919
+  12. nebulas (index: 31): 0.016907
+  13. daily (index: 20): 0.016890
+  14. Planets (index: 16): 0.016884
+  15. it (index: 44): 0.016869
+  16. with (index: 24): 0.016868
+  17. Bang (index: 42): 0.016865
+  18. burn (index: 8): 0.016862
+  19. where (index: 35): 0.016861
+  20. Galaxies (index: 22): 0.016851
+Chosen word: where (index: 35)
+
+Debug: Current word: where (index: 35, curriculum 0)
+Temperature: 5.000000
+Considering top 20 scores:
+  1. the (index: 4): 0.016953
+  2. billions (index: 12): 0.016943
+  3. end-token (index: 6): 0.016928
+  4. millions (index: 25): 0.016921
+  5. cosmos (index: 5): 0.016921
+  6. gazes (index: 2): 0.016921
+  7. shining (index: 10): 0.016916
+  8. holes (index: 34): 0.016913
+  9. suns (index: 27): 0.016901
+  10. spins (index: 19): 0.016899
+  11. traps (index: 37): 0.016894
+  12. nebulas (index: 31): 0.016891
+  13. daily (index: 20): 0.016869
+  14. Planets (index: 16): 0.016861
+  15. it (index: 44): 0.016858
+  16. Bang (index: 42): 0.016852
+  17. with (index: 24): 0.016844
+  18. Galaxies (index: 22): 0.016842
+  19. where (index: 35): 0.016840
+  20. burn (index: 8): 0.016837
+Chosen word: gazes (index: 2)
+
+Debug: Current word: gazes (index: 2, curriculum 0)
+Temperature: 5.000000
+Considering top 20 scores:
+  1. the (index: 4): 0.016979
+  2. billions (index: 12): 0.016955
+  3. millions (index: 25): 0.016941
+  4. gazes (index: 2): 0.016939
+  5. end-token (index: 6): 0.016938
+  6. cosmos (index: 5): 0.016934
+  7. holes (index: 34): 0.016931
+  8. shining (index: 10): 0.016929
+  9. spins (index: 19): 0.016922
+  10. traps (index: 37): 0.016919
+  11. suns (index: 27): 0.016919
+  12. nebulas (index: 31): 0.016907
+  13. daily (index: 20): 0.016890
+  14. Planets (index: 16): 0.016884
+  15. it (index: 44): 0.016869
+  16. with (index: 24): 0.016868
+  17. Bang (index: 42): 0.016865
+  18. burn (index: 8): 0.016862
+  19. where (index: 35): 0.016861
+  20. Galaxies (index: 22): 0.016851
+Chosen word: with (index: 24)
+
+Debug: Current word: with (index: 24, curriculum 0)
+Temperature: 5.000000
+Considering top 20 scores:
+  1. holes (index: 34): 0.017125
+  2. millions (index: 25): 0.017124
+  3. billions (index: 12): 0.017123
+  4. the (index: 4): 0.017121
+  5. traps (index: 37): 0.017100
+  6. suns (index: 27): 0.017080
+  7. nebulas (index: 31): 0.017077
+  8. end-token (index: 6): 0.017072
+  9. shining (index: 10): 0.017060
+  10. spins (index: 19): 0.017059
+  11. cosmos (index: 5): 0.017054
+  12. it (index: 44): 0.017049
+  13. gazes (index: 2): 0.017049
+  14. Bang (index: 42): 0.017030
+  15. daily (index: 20): 0.017000
+  16. ago (index: 49): 0.016993
+  17. years (index: 48): 0.016985
+  18. where (index: 35): 0.016982
+  19. Planets (index: 16): 0.016976
+  20. black (index: 33): 0.016967
+Chosen word: the (index: 4)
+
+Debug: Current word: the (index: 4, curriculum 0)
+Temperature: 5.000000
+Considering top 20 scores:
+  1. the (index: 4): 0.017045
+  2. billions (index: 12): 0.017034
+  3. millions (index: 25): 0.017027
+  4. holes (index: 34): 0.017022
+  5. traps (index: 37): 0.017003
+  6. end-token (index: 6): 0.017000
+  7. suns (index: 27): 0.016994
+  8. shining (index: 10): 0.016990
+  9. gazes (index: 2): 0.016990
+  10. cosmos (index: 5): 0.016990
+  11. nebulas (index: 31): 0.016986
+  12. spins (index: 19): 0.016985
+  13. it (index: 44): 0.016953
+  14. Bang (index: 42): 0.016943
+  15. daily (index: 20): 0.016939
+  16. Planets (index: 16): 0.016926
+  17. where (index: 35): 0.016916
+  18. with (index: 24): 0.016913
+  19. ago (index: 49): 0.016909
+  20. years (index: 48): 0.016905
+Chosen word: the (index: 4)
+
+Debug: Current word: the (index: 4, curriculum 0)
+Temperature: 5.000000
+Considering top 20 scores:
+  1. the (index: 4): 0.017045
+  2. billions (index: 12): 0.017034
+  3. millions (index: 25): 0.017027
+  4. holes (index: 34): 0.017022
+  5. traps (index: 37): 0.017003
+  6. end-token (index: 6): 0.017000
+  7. suns (index: 27): 0.016994
+  8. shining (index: 10): 0.016990
+  9. gazes (index: 2): 0.016990
+  10. cosmos (index: 5): 0.016990
+  11. nebulas (index: 31): 0.016986
+  12. spins (index: 19): 0.016985
+  13. it (index: 44): 0.016953
+  14. Bang (index: 42): 0.016943
+  15. daily (index: 20): 0.016939
+  16. Planets (index: 16): 0.016926
+  17. where (index: 35): 0.016916
+  18. with (index: 24): 0.016913
+  19. ago (index: 49): 0.016909
+  20. years (index: 48): 0.016905
+Chosen word: spins (index: 19)
+
+Debug: Current word: spins (index: 19, curriculum 0)
+Temperature: 5.000000
+Considering top 20 scores:
+  1. the (index: 4): 0.017088
+  2. billions (index: 12): 0.017083
+  3. millions (index: 25): 0.017080
+  4. holes (index: 34): 0.017079
+  5. traps (index: 37): 0.017057
+  6. suns (index: 27): 0.017042
+  7. end-token (index: 6): 0.017040
+  8. nebulas (index: 31): 0.017036
+  9. shining (index: 10): 0.017029
+  10. spins (index: 19): 0.017027
+  11. cosmos (index: 5): 0.017026
+  12. gazes (index: 2): 0.017023
+  13. it (index: 44): 0.017006
+  14. Bang (index: 42): 0.016991
+  15. daily (index: 20): 0.016974
+  16. ago (index: 49): 0.016955
+  17. Planets (index: 16): 0.016954
+  18. where (index: 35): 0.016953
+  19. years (index: 48): 0.016950
+  20. with (index: 24): 0.016943
+Chosen word: gazes (index: 2)
+
+=== Final Response ===
+billions black nebulas nebulas traps where daily millions gazes where gazes with the the spins 
+======================

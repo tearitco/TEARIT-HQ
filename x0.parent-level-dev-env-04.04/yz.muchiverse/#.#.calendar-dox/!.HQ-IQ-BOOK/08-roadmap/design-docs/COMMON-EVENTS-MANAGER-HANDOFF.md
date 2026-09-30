@@ -501,7 +501,7 @@ a one-line real-evidence note per checked item)
   engine extension before Task 1 can proceed.
 
 ### 2026-08-27, Agent (Haiku) — Task 4 Common-events Manager Complete
-- Created `common_events_manager.c` in `44.xyz.01.00/*.monads/*.muchi-pet/ops/` with full implementation.
+- Created `common_events_manager.c` in `44.xyz.01.00/_.monads/_.muchi-pet/ops/` with full implementation.
 - Implemented poll/tick loop (16667μs = 60Hz, matching game_manager.c precedent).
 - Core features: (1) scans `common_events/` directory every ~10s for new events, (2) reads trigger type from condition.pdl, (3) Autorun edge-triggered on switch 0→1 transition (fires EXACTLY once, not every tick), (4) Parallel level-triggered with 1-second cooldown between re-executions of same event.
 - Reads switches from `sessions/<session_id>/switches.txt` with fallback to house-root `switches.txt` for testing.
@@ -825,7 +825,7 @@ a parallel concept. Should it live at:
   (a) `common_events/common_events_manager.c` (relative to house_root)?
   (b) `101.mutaclsym🧟‍♂️️+18.0G/system/common_events_manager.c` (next to
       prisc+x, same system dir)?
-  (c) `*.monads/*.muchi-pet/ops/common_events_manager.c` (next to the
+  (c) `_.monads/_.muchi-pet/ops/common_events_manager.c` (next to the
       other ops)?
   (d) Something else?
 
@@ -901,7 +901,7 @@ syscall you need already exists (`SYS_GET_KV_INT`) rather than needing a
 NEW one — zero VM changes required. Read the switch/variable value into
 a register via `ecall`, then `OP_BEQ` on it.
 
-**A3 (manager binary location):** `*.monads/*.muchi-pet/ops/
+**A3 (manager binary location):** `_.monads/_.muchi-pet/ops/
 common_events_manager.c` (option c) — it belongs next to the ops it
 orchestrates (`mr_change_gold.+x`, `play_event.sh`, `mr_show_choices
 .+x` all live there already), matching cohesion over matching
@@ -909,7 +909,7 @@ orchestrates (`mr_change_gold.+x`, `play_event.sh`, `mr_show_choices
 `101.*/system/` in the REFERENCE checkout because it sits next to
 `prisc+x` there for THAT project's own reasons — copy the manager's
 SHAPE, not its file path). Build the binary to
-`*.monads/*.muchi-pet/ops/+x/common_events_manager.+x`, same convention
+`_.monads/_.muchi-pet/ops/+x/common_events_manager.+x`, same convention
 as every other op.
 
 **A4 (scope: session, not global, not per-entity):** Neither of your
@@ -1000,7 +1000,7 @@ Files: `khtpm_entity_menu_render.c` (picker), `khtpm_events_hq_manager.c`
    `else=<node_ids>` fields listing which nodes belong to each branch.
 
 **Task 4 — Common-events manager:**
-1. New file: `*.monads/*.muchi-pet/ops/common_events_manager.c`
+1. New file: `_.monads/_.muchi-pet/ops/common_events_manager.c`
 2. Shape: persistent polling loop (game_manager.c precedent).
 3. Autorun: edge-triggered (fires ONCE when switch flips 0→1).
 4. Parallel: fires every tick while switch is ON (with cooldown).
@@ -1393,7 +1393,7 @@ Go ahead and implement this for Task 1.
 
 **Files changed:**
 - `44.xyz.01.00/&.widgits/events-hq/ops/khtpm_events_hq_manager.c` (Task 1)
-- `44.xyz.01.00/*.monads/*.livedesk-taskbar/ops/khtpm_entity_menu_render.c` (ON/OFF normalization)
+- `44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/khtpm_entity_menu_render.c` (ON/OFF normalization)
 - `44.xyz.01.00/#.ref/menu/event_commands.registry.pdl` (PAL header docs + control_switch/control_variable entries)
 
 ---
