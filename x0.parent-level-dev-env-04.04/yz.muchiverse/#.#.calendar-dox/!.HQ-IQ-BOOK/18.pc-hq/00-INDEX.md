@@ -16,6 +16,8 @@ chapter `16.game`. This chapter owns the board itself.
   the livedesk page file. The hero is one entity row. The camera
   follows the xelector. The xelector and the camera become rows in
   that file.
+- `INTENDED.md` — what commit `38b775390` was supposed to do, the
+  check that passed, and the taskbar-binary hole if the rows vanish.
 - `../09-appendix/PC-HQ-BOOK-PAGE-SYNCH.md` — older notes. The
   2026-09-30 header on that file describes `079038706`, which is
   not the agreed direction. Trust `SYNCH.md`.
