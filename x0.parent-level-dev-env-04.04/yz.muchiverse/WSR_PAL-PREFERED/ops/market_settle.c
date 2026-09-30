@@ -186,6 +186,19 @@ static int get_holding(const char *path, const char *target_id) {
     return 0;
 }
 
+/* Holdings are "target_id|shares", ints, NEGATIVES ALLOWED for shorts - the
+ * registry documents that convention and shareholder_registry.c keeps shorts.
+ *
+ * The zero test below is "!=", not "> 0", and that distinction is load-bearing.
+ * The sibling helper in corp_buy_stake.c:110 tests `shares > 0`, which is
+ * correct THERE because that op only ever buys, and a row falling to zero is
+ * genuinely gone. Copying that guard here silently DROPPED every short: the
+ * buyer's +N was written while the seller's -N vanished, so each fill minted
+ * shares out of nothing. Measured on a scratch tree, ACME's total went
+ * 5000 -> 5823 and ZETA's 0 -> 2807 after a handful of ticks, with cash
+ * perfectly conserved throughout - which is exactly why only a share-total
+ * check catches this and a cash check never will. A short is a real position
+ * and must survive a rewrite. */
 static void set_holding(const char *path, const char *target_id, int shares) {
     FILE *f = fopen(path, "r");
     static char lines[256][MAXLINE];
@@ -200,13 +213,13 @@ static void set_holding(const char *path, const char *target_id, int shares) {
     int found = 0;
     for (int i = 0; i < nlines; i++) {
         if (strncmp(lines[i], target_id, tl) == 0 && lines[i][tl] == '|') {
-            if (shares > 0) fprintf(f, "%s|%d\n", target_id, shares);
+            if (shares != 0) fprintf(f, "%s|%d\n", target_id, shares);
             found = 1;
         } else {
             fputs(lines[i], f);
         }
     }
-    if (!found && shares > 0) fprintf(f, "%s|%d\n", target_id, shares);
+    if (!found && shares != 0) fprintf(f, "%s|%d\n", target_id, shares);
     fclose(f);
 }
 
@@ -400,21 +413,30 @@ static int settle_ticker(const char *ticker) {
         int ah = get_holding(hpath, asset);
         set_holding(hpath, asset, ah - whole);
 
-        /* Conservation is now a claim worth checking rather than assuming, so
-         * it is checked. A fill that does not balance the two sides is a bug
-         * that would otherwise surface much later as unexplainable share
-         * creation, and the whole point of this op is that it cannot happen.
-         *
-         * hpath is re-pointed at the BUYER first: both sides were just written
-         * and hpath still names the seller's file, so reading it here without
-         * re-resolving checks the wrong participant. */
-        piece_holdings(hpath, sizeof(hpath), b->who);
-        int bh2 = get_holding(hpath, asset);
-        if (bh2 != bh + whole) {
-            fprintf(stderr, "market_settle: HOLDINGS WRITE FAILED for %s "
-                            "(read back %d, expected %d) - aborting rather "
-                            "than leaving a half-applied fill\n",
-                    b->who, bh2, bh + whole);
+        /* Conservation is a claim worth checking rather than assuming. Both
+         * legs are read back, because a fill is balanced only if the buyer's
+         * +N and the seller's -N BOTH landed: checking one side passes while
+         * shares are being minted, which is precisely the bug the short-drop
+         * above caused. Cash is checked for the same reason. */
+        char chk[PATHBUF];
+        piece_holdings(chk, sizeof(chk), b->who);
+        int got_b = get_holding(chk, asset);
+        piece_holdings(chk, sizeof(chk), a->who);
+        int got_a = get_holding(chk, asset);
+        if (got_b != bh + whole || got_a != ah - whole) {
+            fprintf(stderr, "market_settle: HOLDINGS WRITE FAILED on %s/%s "
+                            "(buyer read %d want %d, seller read %d want %d) - "
+                            "aborting rather than leaving a half-applied fill\n",
+                    b->who, a->who, got_b, bh + whole, got_a, ah - whole);
+            return -1;
+        }
+        double got_bc = field_d(buyer_state, "cash");
+        double got_sc = field_d(seller_state, "cash");
+        if (fabs(got_bc - (buyer_cash - amount)) > 0.01 ||
+            fabs(got_sc - (seller_cash + amount)) > 0.01) {
+            fprintf(stderr, "market_settle: CASH WRITE FAILED on %s/%s - "
+                            "aborting rather than leaving a half-applied fill\n",
+                    b->who, a->who);
             return -1;
         }
 
