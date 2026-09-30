@@ -2037,6 +2037,7 @@ static int bv_ray_click(const char *house, const Camera *cam,
     if (dy == 0) dy = 1e-9;
     if (dz == 0) dz = 1e-9;
     int x = (int)floor(ox), y = (int)floor(oy), z = (int)floor(oz);
+    int eye_x = x, eye_y = y, eye_z = z;
     int step_x = dx > 0 ? 1 : -1, step_y = dy > 0 ? 1 : -1, step_z = dz > 0 ? 1 : -1;
     double tdx = fabs(1.0 / dx), tdy = fabs(1.0 / dy), tdz = fabs(1.0 / dz);
     double tmx = ((dx > 0 ? (x + 1) : x) - ox) / dx;
@@ -2045,9 +2046,13 @@ static int bv_ray_click(const char *house, const Camera *cam,
     if (tmx < 0) tmx = 0;
     if (tmy < 0) tmy = 0;
     if (tmz < 0) tmz = 0;
+    int steps = 0;
     for (int n = 0; n < 256; n++) {
-        if (x >= 0 && x < board_w && y >= 0 && y < board_h && z >= 0 && z < z_count) {
-            if (!voxel_is_air(board3d[z][y][x])) {
+        int eye_cell = (x == eye_x && y == eye_y && z == eye_z);
+        if (!eye_cell && x >= 0 && x < board_w && y >= 0 && y < board_h && z >= 0 && z < z_count) {
+            steps++;
+            int solid = !voxel_is_air(board3d[z][y][x]);
+            if (solid || steps >= 6) {
                 *hx = x; *hy = y; *hz = z;
                 f = host_fopen(seen_path, "w");
                 if (f) { fputs(stamp, f); fclose(f); }
@@ -2604,7 +2609,10 @@ static int render_one_frame(void) {
               B->min_x=(float)(x0); B->min_y=(float)(y0); B->min_z=(float)(z0); \
               B->max_x=(float)(x1); B->max_y=(float)(y1); B->max_z=(float)(z1); \
               B->r=(float)(cr)/255.0f; B->g=(float)(cg)/255.0f; B->b=(float)(cb)/255.0f; \
-              B->self_lit=(slit); B->model=-1; } } while (0)
+              B->self_lit=(slit); B->model=-1; B->wire=0; } } while (0)
+        #define ADDWIRE(x0,y0,z0,x1,y1,z1,cr,cg,cb) do { \
+            ADDBOX(x0,y0,z0,x1,y1,z1,cr,cg,cb,1); \
+            if (sc.box_n > 0) sc.box[sc.box_n-1].wire = 1; } while (0)
         if (sun_body.present)
             ADDBOX(sun_body.x-2.0, sun_body.y-2.0, sun_body.z-2.0,
                    sun_body.x+2.0, sun_body.y+2.0, sun_body.z+2.0, 255,220,120, 1);
@@ -2614,12 +2622,20 @@ static int render_one_frame(void) {
         if (g_xelector_present && camera_mode != 1)
             ADDBOX(g_xelector_x+0.15, g_xelector_z+0.15, g_xelector_y+0.15,
                    g_xelector_x+0.85, g_xelector_z+0.85, g_xelector_y+0.85, 60,220,220, 0);
-        if (g_ray_hit && camera_mode != 1)
-            ADDBOX(g_ray_x+0.05, g_ray_z+0.05, g_ray_y+0.05,
-                   g_ray_x+0.95, g_ray_z+0.95, g_ray_y+0.95, 255,255,255, 1);
-        /* Range finder: a 3x3x3 voxel cube on the hero, this window only.
-         * The hero's own cell stays empty. Neighbors are full voxels,
-         * solid or air. Put the hero in the sky and the cube is the test. */
+        if (g_ray_hit)
+            ADDWIRE(g_ray_x + 0.04, g_ray_z + 0.04, g_ray_y + 0.04,
+                    g_ray_x + 0.96, g_ray_z + 0.96, g_ray_y + 0.96, 40, 220, 255);
+        /* Debug placer: one magenta wire cube 3 units in front of the
+         * camera, so it sits in the middle of the picture either way. */
+        ADDWIRE(cam.eye.x + cam.forward.x * 3.0 - 0.45,
+                cam.eye.y + cam.forward.y * 3.0 - 0.45,
+                cam.eye.z + cam.forward.z * 3.0 - 0.45,
+                cam.eye.x + cam.forward.x * 3.0 + 0.45,
+                cam.eye.y + cam.forward.y * 3.0 + 0.45,
+                cam.eye.z + cam.forward.z * 3.0 + 0.45,
+                255, 40, 220);
+        /* Green wire voxels touching the hero. Not clamped to the
+         * terrain grid, so a hero in the sky still gets the cube. */
         {
             int ox = g_hero_present ? g_hero_x : selector_x;
             int oy = g_hero_present ? g_hero_y : selector_y;
@@ -2629,10 +2645,8 @@ static int render_one_frame(void) {
                     for (int dx = -1; dx <= 1; dx++) {
                         if (dx == 0 && dy == 0 && dz == 0) continue;
                         int vx = ox + dx, vy = oy + dy, gz = oz + dz;
-                        if (vx < 0 || vy < 0 || gz < 0 || vx >= board_w || vy >= board_h || gz >= z_count)
-                            continue;
-                        ADDBOX(vx + 0.08, gz + 0.08, vy + 0.08,
-                               vx + 0.92, gz + 0.92, vy + 0.92, 255, 196, 40, 1);
+                        ADDWIRE(vx + 0.08, gz + 0.08, vy + 0.08,
+                                vx + 0.92, gz + 0.92, vy + 0.92, 40, 255, 120);
                     }
                 }
             }
@@ -2691,6 +2705,7 @@ static int render_one_frame(void) {
             if (wm >= 0) sc.box[sc.box_n-1].model = wm;
         }
         #undef GPU_ADD_MODEL
+        #undef ADDWIRE
         #undef ADDBOX
         if (bv_gpu_raymarch(&sc, g_fbuf) == 0) gpu_done = 1;
         else fprintf(stderr, "bv_render_3d: GPU backend failed, using CPU\n");

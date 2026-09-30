@@ -652,6 +652,56 @@ int main(void) {
             }
         }
     }
+
+    /* Debug wireframe, always on screen: a magenta square in the
+     * top-left of the 2D frame. A click adds a cyan square on the
+     * cell under the cursor. */
+    {
+        int x0 = 12, y0 = 12, s = 56;
+        if (x0 + s < W && y0 + s < H) {
+            for (int t = 0; t < 3; t++) {
+                for (int x = x0; x < x0 + s; x++) {
+                    unsigned char *a = VP_PXR(x, y0 + t);
+                    unsigned char *b = VP_PXR(x, y0 + s - 1 - t);
+                    a[0]=255; a[1]=40; a[2]=220; a[3]=255;
+                    b[0]=255; b[1]=40; b[2]=220; b[3]=255;
+                }
+                for (int y = y0; y < y0 + s; y++) {
+                    unsigned char *a = VP_PXR(x0 + t, y);
+                    unsigned char *b = VP_PXR(x0 + s - 1 - t, y);
+                    a[0]=255; a[1]=40; a[2]=220; a[3]=255;
+                    b[0]=255; b[1]=40; b[2]=220; b[3]=255;
+                }
+            }
+        }
+        char cpath[PATH_BUF];
+        snprintf(cpath, sizeof(cpath), "%s/#.desktop/pchq_canvas_click.txt", house_root);
+        FILE *cf = host_fopen(cpath, "r");
+        int cx = 0, cy = 0, cw = 0, ch = 0;
+        if (cf && fscanf(cf, "%d %d %d %d", &cx, &cy, &cw, &ch) == 4 && cw > 0 && ch > 0) {
+            int px = cx * W / cw;
+            int py = cy * H / ch;
+            int scx = px / cell, scy = py / cell;
+            if (scx >= 0 && scy >= 0 && scx < cols && scy < rows) {
+                int bx0 = scx * cell, by0 = scy * cell;
+                for (int t = 0; t < 3; t++) {
+                    for (int x = bx0; x < bx0 + cell && x < W; x++) {
+                        unsigned char *a = VP_PXR(x, by0 + t);
+                        unsigned char *b = VP_PXR(x, by0 + cell - 1 - t);
+                        a[0]=40; a[1]=220; a[2]=255; a[3]=255;
+                        b[0]=40; b[1]=220; b[2]=255; b[3]=255;
+                    }
+                    for (int y = by0; y < by0 + cell && y < H; y++) {
+                        unsigned char *a = VP_PXR(bx0 + t, y);
+                        unsigned char *b = VP_PXR(bx0 + cell - 1 - t, y);
+                        a[0]=40; a[1]=220; a[2]=255; a[3]=255;
+                        b[0]=40; b[1]=220; b[2]=255; b[3]=255;
+                    }
+                }
+            }
+        }
+        if (cf) fclose(cf);
+    }
     #undef VP_PXR
 
     char out[PATH_BUF], rec[PATH_BUF];

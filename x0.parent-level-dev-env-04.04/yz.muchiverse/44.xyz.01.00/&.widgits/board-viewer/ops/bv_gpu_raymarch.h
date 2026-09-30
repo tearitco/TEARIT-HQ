@@ -32,6 +32,7 @@ typedef struct {
     float max_x, max_y, max_z;
     float r, g, b;               /* 0..1 flat colour (used when model < 0) */
     int   self_lit;              /* 1 = skip the ground-light multiply (sun/moon) */
+    int   wire;                  /* 1 = draw only the box edges */
     int   model;                 /* >=0 -> raymarch phymoji model[model] inside the box instead of a flat fill */
 } BvGpuBox;
 
