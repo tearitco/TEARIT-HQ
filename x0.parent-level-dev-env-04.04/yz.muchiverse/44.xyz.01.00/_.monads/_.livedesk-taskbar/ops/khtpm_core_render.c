@@ -12044,6 +12044,12 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
         return;
     }
     if (ev->type == KeyPress) {
+        /* X delivered this key to this window, so it has focus. A
+         * FocusOut that is not followed by FocusIn leaves
+         * g_x11_window_focused at 0, and handle_key then drops every
+         * camera key (1-4, wasd, qert, cv) instead of writing the
+         * interact relay. The In: tab still reads ON. */
+        g_x11_window_focused = 1;
         char buf8[8]; KeySym ks;
         int n = XLookupString(&ev->xkey, buf8, sizeof(buf8) - 1, &ks, NULL);
         buf8[n > 0 ? n : 0] = '\0';
