@@ -239,9 +239,10 @@ case "$VERB" in
                 printf 'mode=%s\n' "$NEXT" > "$PM"
                 ;;
             synch)
-                # Player tab. Records the request. Does not copy the page.
-                # 09-appendix/PC-HQ-BOOK-PAGE-SYNCH.md
-                sh "$PCHQ/ops/pc_synch_request.sh" pchq
+                # Snapshot the desk's current book and page onto this
+                # board. A later change on the desk does not move the
+                # board until Synch is clicked again.
+                sh "$PCHQ/ops/pc_synch_request.sh" taskbar
                 ;;
             stop)
                 # Explicit force-off, distinct from toggle - "make sure

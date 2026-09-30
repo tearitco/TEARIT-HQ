@@ -6784,16 +6784,22 @@ static int kh_page_has_relay_item(void) {
     return 0;
 }
 
-static Elem *kh_canvas_at(int px, int py) {
-    Elem *pg = find_page(g_current_page);
-    if (!pg) return NULL;
-    for (int i = 0; i < pg->n_children; i++) {
-        Elem *it = pg->children[i];
-        if (strcmp(it->tag, "canvas") != 0) continue;
-        if (px >= it->x && px < it->x + it->w && py >= it->y && py < it->y + it->h)
-            return it;
+static Elem *kh_canvas_under(Elem *e, int px, int py) {
+    if (!e) return NULL;
+    for (int i = 0; i < e->n_children; i++) {
+        Elem *h = kh_canvas_under(e->children[i], px, py);
+        if (h) return h;
     }
+    if (strcmp(e->tag, "canvas") == 0 && e->w > 0 && e->h > 0 &&
+        px >= e->x && px < e->x + e->w && py >= e->y && py < e->y + e->h)
+        return e;
     return NULL;
+}
+static Elem *kh_canvas_at(int px, int py) {
+    /* The board canvas sits inside <panel>, not as a direct page child.
+     * A page-only search never saw it, so a click wrote MOUSE_EVENT and
+     * never pchq_canvas_click.txt. */
+    return kh_canvas_under(find_page(g_current_page), px, py);
 }
 static int kh_canvas_hit(int px, int py) {
     return kh_canvas_at(px, py) != NULL;

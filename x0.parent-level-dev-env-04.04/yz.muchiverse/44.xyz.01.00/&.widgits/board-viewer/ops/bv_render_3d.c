@@ -2054,11 +2054,15 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
     if (n < 12) {
         char cp[PATH_BUF], pos[48] = "-", tm[16] = "-";
         snprintf(cp, sizeof(cp), "%s/pieces/display/click_hud.txt", game_root);
-        read_kv_str(cp, "pos", pos, sizeof(pos));
+        char ray[48] = "-";
+        read_kv_str(cp, "px", pos, sizeof(pos));
+        read_kv_str(cp, "ray", ray, sizeof(ray));
         read_kv_str(cp, "time", tm, sizeof(tm));
         if (!pos[0]) snprintf(pos, sizeof(pos), "-");
+        if (!ray[0]) snprintf(ray, sizeof(ray), "-");
         if (!tm[0]) snprintf(tm, sizeof(tm), "-");
-        snprintf(lines[n++], sizeof(lines[0]), "click: %s %s", pos, tm);
+        snprintf(lines[n++], sizeof(lines[0]), "click %s %s", pos, tm);
+        if (n < 12) snprintf(lines[n++], sizeof(lines[0]), "ray %s", ray);
     }
     if (n < 12) snprintf(lines[n++], sizeof(lines[0]), "pid %d", (int)getpid());
     double cscale = bv_hud_canvas_scale();
@@ -2493,7 +2497,7 @@ static Camera build_camera(int camera_mode, double yaw_deg, double pitch_deg,
 static int bv_ray_click(const char *house, const Camera *cam,
                         char board3d[MAX_VOXEL_Z][MAX_BOARD_DIM][MAX_BOARD_DIM],
                         int board_w, int board_h, int z_count,
-                        int *hx, int *hy, int *hz) {
+                        int *hx, int *hy, int *hz, int *pcx, int *pcy) {
     char path[PATH_BUF], seen_path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/#.desktop/pchq_canvas_click.txt", house);
     snprintf(seen_path, sizeof(seen_path), "%s/#.desktop/pchq_canvas_click.seen", house);
@@ -2511,6 +2515,8 @@ static int bv_ray_click(const char *house, const Camera *cam,
         fclose(f);
     }
     if (cw < 1 || ch < 1) return 0;
+    if (pcx) *pcx = cx;
+    if (pcy) *pcy = cy;
     /* Match the picture: screen x is mirrored so desk +x stays on the right. */
     double ndc_x = 1.0 - (2.0 * cx / (double)cw);
     double ndc_y = 1.0 - (2.0 * cy / (double)ch);
@@ -2556,7 +2562,7 @@ static int bv_ray_click(const char *house, const Camera *cam,
     }
     f = host_fopen(seen_path, "w");
     if (f) { fputs(stamp, f); fclose(f); }
-    return 0;
+    return -1; /* new click, ray missed the board */
 }
 
 static void write_file_atomic(const char *path, const void *data, size_t len) {
@@ -2910,24 +2916,32 @@ static int render_one_frame(void) {
                                tp_look_down_deg);
 
     {
-        int hx, hy, hz;
-        if (bv_ray_click(house_root, &cam, board3d, board_w, board_h, z_count, &hx, &hy, &hz)) {
+        int hx, hy, hz, cx = 0, cy = 0;
+        int hit = bv_ray_click(house_root, &cam, board3d, board_w, board_h, z_count,
+                               &hx, &hy, &hz, &cx, &cy);
+        if (hit != 0) {
+            time_t now = time(NULL);
+            struct tm tmv;
+            localtime_r(&now, &tmv);
+            char pp[PATH_BUF];
+            snprintf(pp, sizeof(pp), "%s/pieces/display/click_hud.txt", focused_project_root);
+            FILE *pf = host_fopen(pp, "w");
+            if (pf) {
+                char ray[32];
+                if (hit > 0) snprintf(ray, sizeof(ray), "%d,%d,%d", hx, hy, hz);
+                else snprintf(ray, sizeof(ray), "miss");
+                fprintf(pf, "px=%d,%d\nray=%s\ntime=%02d:%02d:%02d\n",
+                        cx, cy, ray, tmv.tm_hour, tmv.tm_min, tmv.tm_sec);
+                fclose(pf);
+            }
+        }
+        if (hit > 0) {
             g_ray_hit = 1; g_ray_x = hx; g_ray_y = hy; g_ray_z = hz;
             write_pick_txt(focused_project_root, board3d, board_w, board_h, z_count, hx, hy, hz);
             char pp[PATH_BUF];
             snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
             FILE *pf = host_fopen(pp, "w");
             if (pf) { fprintf(pf, "armed=1\nx=%d\ny=%d\nz=%d\n", hx, hy, hz); fclose(pf); }
-            time_t now = time(NULL);
-            struct tm tmv;
-            localtime_r(&now, &tmv);
-            snprintf(pp, sizeof(pp), "%s/pieces/display/click_hud.txt", focused_project_root);
-            pf = host_fopen(pp, "w");
-            if (pf) {
-                fprintf(pf, "pos=%d,%d,%d\ntime=%02d:%02d:%02d\n",
-                        hx, hy, hz, tmv.tm_hour, tmv.tm_min, tmv.tm_sec);
-                fclose(pf);
-            }
         }
     }
 
