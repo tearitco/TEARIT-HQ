@@ -541,6 +541,10 @@ static void load_entities(const char *root) {
  * an error. */
 static int g_xelector_present = 0;
 static int g_xelector_x = 0, g_xelector_y = 0, g_xelector_z = 0;
+/* Last canvas click that hit a solid voxel. Drawn apart from the cyan
+ * keyboard xelector. 0 until pchq_canvas_click.txt names a new click. */
+static int g_ray_hit = 0;
+static int g_ray_x = 0, g_ray_y = 0, g_ray_z = 0;
 static char g_xelector_possessed_id[64] = "";
 
 /* REAL, NEW 2026-08-04, direct instruction ("sun and moon will have
@@ -1529,7 +1533,7 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
 
     hud_ensure_font(game_root);
 
-    char lines[8][64];
+    char lines[12][64];
     int n = 0;
 
     if (hud_pdl_int(pdl, "hud_time", 1) && n < 8) {
@@ -1569,7 +1573,7 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
     {
         char hudtxt[PATH_BUF];
         snprintf(hudtxt, sizeof(hudtxt), "%s/pieces/display/hud.txt", game_root);
-        for (int li = 1; li <= 4 && n < 8; li++) {
+        for (int li = 1; li <= 4 && n < 12; li++) {
             char key[16], val[64] = "";
             snprintf(key, sizeof(key), "line%d", li);
             read_kv_str(hudtxt, key, val, sizeof(val));
@@ -1584,7 +1588,16 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
      * un-fakeable way to confirm which process a screenshot is actually
      * showing - the exact confusion a stale-session relaunch caused
      * earlier this same session). */
-    if (n < 8) snprintf(lines[n++], sizeof(lines[0]), "pid %d", (int)getpid());
+    if (n < 12) {
+        char cp[PATH_BUF], pos[48] = "-", tm[16] = "-";
+        snprintf(cp, sizeof(cp), "%s/pieces/display/click_hud.txt", game_root);
+        read_kv_str(cp, "pos", pos, sizeof(pos));
+        read_kv_str(cp, "time", tm, sizeof(tm));
+        if (!pos[0]) snprintf(pos, sizeof(pos), "-");
+        if (!tm[0]) snprintf(tm, sizeof(tm), "-");
+        snprintf(lines[n++], sizeof(lines[0]), "click: %s %s", pos, tm);
+    }
+    if (n < 12) snprintf(lines[n++], sizeof(lines[0]), "pid %d", (int)getpid());
     int pad = 6 * scale;
     int row_h = GLYPH_PX_H * scale + 3 * scale;
     int top_anchor = !strstr(anchor, "bottom");
@@ -1995,6 +2008,77 @@ static Camera build_camera(int camera_mode, double yaw_deg, double pitch_deg,
     return cam;
 }
 
+/* One canvas click -> one voxel. khtpm writes
+ * #.desktop/pchq_canvas_click.txt as "cx cy cw ch". World axes match
+ * the rasterizer: world (X, Y, Z) = (grid_x, height, grid_y). */
+static int bv_ray_click(const char *house, const Camera *cam,
+                        char board3d[MAX_VOXEL_Z][MAX_BOARD_DIM][MAX_BOARD_DIM],
+                        int board_w, int board_h, int z_count,
+                        int *hx, int *hy, int *hz) {
+    char path[PATH_BUF], seen_path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/pchq_canvas_click.txt", house);
+    snprintf(seen_path, sizeof(seen_path), "%s/#.desktop/pchq_canvas_click.seen", house);
+    FILE *f = host_fopen(path, "r");
+    if (!f) return 0;
+    int cx = 0, cy = 0, cw = 0, ch = 0;
+    if (fscanf(f, "%d %d %d %d", &cx, &cy, &cw, &ch) != 4) { fclose(f); return 0; }
+    fclose(f);
+    char stamp[64];
+    snprintf(stamp, sizeof(stamp), "%d %d %d %d\n", cx, cy, cw, ch);
+    f = host_fopen(seen_path, "r");
+    if (f) {
+        char prev[64] = "";
+        if (fgets(prev, sizeof(prev), f) && strcmp(prev, stamp) == 0) { fclose(f); return 0; }
+        fclose(f);
+    }
+    if (cw < 1 || ch < 1) return 0;
+    double ndc_x = (2.0 * cx / (double)cw) - 1.0;
+    double ndc_y = 1.0 - (2.0 * cy / (double)ch);
+    double fov_rad = g_fov_deg * M_PI_LOCAL / 180.0;
+    double t = tan(fov_rad / 2.0);
+    double aspect = (double)cw / (double)ch;
+    Vec3 dir = v3_norm(v3_add(cam->forward,
+        v3_add(v3_scale(cam->right, ndc_x * t * aspect),
+               v3_scale(cam->up, ndc_y * t))));
+    double ox = cam->eye.x, oy = cam->eye.z, oz = cam->eye.y;
+    double dx = dir.x, dy = dir.z, dz = dir.y;
+    if (dx == 0) dx = 1e-9;
+    if (dy == 0) dy = 1e-9;
+    if (dz == 0) dz = 1e-9;
+    int x = (int)floor(ox), y = (int)floor(oy), z = (int)floor(oz);
+    int eye_x = x, eye_y = y, eye_z = z;
+    int step_x = dx > 0 ? 1 : -1, step_y = dy > 0 ? 1 : -1, step_z = dz > 0 ? 1 : -1;
+    double tdx = fabs(1.0 / dx), tdy = fabs(1.0 / dy), tdz = fabs(1.0 / dz);
+    double tmx = ((dx > 0 ? (x + 1) : x) - ox) / dx;
+    double tmy = ((dy > 0 ? (y + 1) : y) - oy) / dy;
+    double tmz = ((dz > 0 ? (z + 1) : z) - oz) / dz;
+    if (tmx < 0) tmx = 0;
+    if (tmy < 0) tmy = 0;
+    if (tmz < 0) tmz = 0;
+    int steps = 0;
+    for (int n = 0; n < 256; n++) {
+        int eye_cell = (x == eye_x && y == eye_y && z == eye_z);
+        if (!eye_cell && x >= 0 && x < board_w && y >= 0 && y < board_h && z >= 0 && z < z_count) {
+            steps++;
+            int solid = !voxel_is_air(board3d[z][y][x]);
+            if (solid || steps >= 6) {
+                *hx = x; *hy = y; *hz = z;
+                f = host_fopen(seen_path, "w");
+                if (f) { fputs(stamp, f); fclose(f); }
+                return 1;
+            }
+        }
+        if (tmx <= tmy && tmx <= tmz) { x += step_x; tmx += tdx; }
+        else if (tmy <= tmz) { y += step_y; tmy += tdy; }
+        else { z += step_z; tmz += tdz; }
+        if (x < -2 || y < -2 || z < -2 || x > board_w + 2 || y > board_h + 2 || z > z_count + 8)
+            break;
+    }
+    f = host_fopen(seen_path, "w");
+    if (f) { fputs(stamp, f); fclose(f); }
+    return 0;
+}
+
 static void write_file_atomic(const char *path, const void *data, size_t len) {
     char tmp_path[PATH_BUF];
     snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", path);
@@ -2306,6 +2390,28 @@ static int render_one_frame(void) {
                                fp_face_dist, fp_eye_height, tp_distance, tp_height,
                                tp_look_down_deg);
 
+    {
+        int hx, hy, hz;
+        if (bv_ray_click(house_root, &cam, board3d, board_w, board_h, z_count, &hx, &hy, &hz)) {
+            g_ray_hit = 1; g_ray_x = hx; g_ray_y = hy; g_ray_z = hz;
+            write_pick_txt(focused_project_root, board3d, board_w, board_h, z_count, hx, hy, hz);
+            char pp[PATH_BUF];
+            snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
+            FILE *pf = host_fopen(pp, "w");
+            if (pf) { fprintf(pf, "armed=1\nx=%d\ny=%d\nz=%d\n", hx, hy, hz); fclose(pf); }
+            time_t now = time(NULL);
+            struct tm tmv;
+            localtime_r(&now, &tmv);
+            snprintf(pp, sizeof(pp), "%s/pieces/display/click_hud.txt", focused_project_root);
+            pf = host_fopen(pp, "w");
+            if (pf) {
+                fprintf(pf, "pos=%d,%d,%d\ntime=%02d:%02d:%02d\n",
+                        hx, hy, hz, tmv.tm_hour, tmv.tm_min, tmv.tm_sec);
+                fclose(pf);
+            }
+        }
+    }
+
     /* Real, live game clock read - see clear_sky()/compute_sun_light_
      * level()'s own header comments (xyz-ngn-plan.md §1/§2). A host
      * with no real world_01/state.txt yet (civ-txt/tactics-txt, or
@@ -2526,7 +2632,10 @@ static int render_one_frame(void) {
               B->min_x=(float)(x0); B->min_y=(float)(y0); B->min_z=(float)(z0); \
               B->max_x=(float)(x1); B->max_y=(float)(y1); B->max_z=(float)(z1); \
               B->r=(float)(cr)/255.0f; B->g=(float)(cg)/255.0f; B->b=(float)(cb)/255.0f; \
-              B->self_lit=(slit); B->model=-1; } } while (0)
+              B->self_lit=(slit); B->model=-1; B->wire=0; } } while (0)
+        #define ADDWIRE(x0,y0,z0,x1,y1,z1,cr,cg,cb) do { \
+            ADDBOX(x0,y0,z0,x1,y1,z1,cr,cg,cb,1); \
+            if (sc.box_n > 0) sc.box[sc.box_n-1].wire = 1; } while (0)
         if (sun_body.present)
             ADDBOX(sun_body.x-2.0, sun_body.y-2.0, sun_body.z-2.0,
                    sun_body.x+2.0, sun_body.y+2.0, sun_body.z+2.0, 255,220,120, 1);
@@ -2536,6 +2645,35 @@ static int render_one_frame(void) {
         if (g_xelector_present && camera_mode != 1)
             ADDBOX(g_xelector_x+0.15, g_xelector_z+0.15, g_xelector_y+0.15,
                    g_xelector_x+0.85, g_xelector_z+0.85, g_xelector_y+0.85, 60,220,220, 0);
+        if (g_ray_hit)
+            ADDWIRE(g_ray_x + 0.04, g_ray_z + 0.04, g_ray_y + 0.04,
+                    g_ray_x + 0.96, g_ray_z + 0.96, g_ray_y + 0.96, 40, 220, 255);
+        {
+            char sp[PATH_BUF];
+            snprintf(sp, sizeof(sp), "%s/pieces/display/synched_entities.txt", project_root);
+            FILE *sf = host_fopen(sp, "r");
+            if (sf) {
+                char line[128], name[64];
+                int x, y;
+                while (fgets(line, sizeof(line), sf)) {
+                    if (sscanf(line, "%63s %d %d", name, &x, &y) != 3) continue;
+                    ADDWIRE(x + 0.15, 1.05, y + 0.15, x + 0.85, 1.85, y + 0.85, 80, 200, 255);
+                }
+                fclose(sf);
+            }
+        }
+        /* Green selector. Arrows move it while armed. Escape clears it. */
+        {
+            char pp[PATH_BUF];
+            snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
+            if (read_kv_int(pp, "armed", 0)) {
+                int sx = read_kv_int(pp, "x", 0);
+                int sy = read_kv_int(pp, "y", 0);
+                int sz = read_kv_int(pp, "z", 0);
+                ADDWIRE(sx + 0.12, sz + 0.12, sy + 0.12,
+                        sx + 0.88, sz + 0.88, sy + 0.88, 40, 255, 80);
+            }
+        }
         for (int i=0; i<g_entity_count; i++)
             ADDBOX(g_entities[i].pos_x+0.25, 0.0, g_entities[i].pos_y+0.25,
                    g_entities[i].pos_x+0.75, 1.0, g_entities[i].pos_y+0.75,
@@ -2589,7 +2727,24 @@ static int render_one_frame(void) {
                    we->x+0.5+wsx/2.0, we->z+wsy, we->y+0.5+wsz/2.0, cr,cg,cb, 0);
             if (wm >= 0) sc.box[sc.box_n-1].model = wm;
         }
+        /* 3D diamond, range 2, on the hero only. A cell is in range
+         * when |dx|+|dy|+|dz| <= 2, so a higher layer has fewer squares. */
+        if (g_hero_present) {
+            int rad = 2;
+            for (int dz = -rad; dz <= rad; dz++) {
+                for (int dy = -rad; dy <= rad; dy++) {
+                    for (int dx = -rad; dx <= rad; dx++) {
+                        int man = (dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy) + (dz < 0 ? -dz : dz);
+                        if (man == 0 || man > rad) continue;
+                        ADDWIRE(g_hero_x + dx + 0.08, g_hero_z + dz + 0.08, g_hero_y + dy + 0.08,
+                                g_hero_x + dx + 0.92, g_hero_z + dz + 0.92, g_hero_y + dy + 0.92,
+                                255, 220, 40);
+                    }
+                }
+            }
+        }
         #undef GPU_ADD_MODEL
+        #undef ADDWIRE
         #undef ADDBOX
         if (bv_gpu_raymarch(&sc, g_fbuf) == 0) gpu_done = 1;
         else fprintf(stderr, "bv_render_3d: GPU backend failed, using CPU\n");
@@ -3268,7 +3423,22 @@ int main(int argc, char **argv) {
         if (vf0) { if (fscanf(vf0, "%d %d", &last_vw, &last_vh) != 2) { last_vw = last_vh = 0; } fclose(vf0); }
     }
 
-    int idle_ticks = 0;                 /* 3ms each; ~90000 = 270s with no request -> exit (orphan cleanup) */
+    /* REAL, NEW 2026-09-30, direct live report ("pc-hq... i suspect
+     * something is up, stray sleep or something") - this loop's idle
+     * branch was polling the request file's size AND re-opening/
+     * re-scanning pchq_board_view.txt every 3ms, forever, whenever
+     * genuinely idle (no new frame requested) - two real file opens
+     * ~333 times/sec for no responsiveness benefit (even a human-
+     * imperceptible 30ms idle poll is still far faster than any real
+     * input latency budget). Compare khtpm_core_render.c's own dock
+     * canvas poll (16.7ms active / 150ms idle) and khtpm_entity.c's
+     * 200ms idle poll - this daemon was polling 50-65x more
+     * aggressively than anything else in the house while sitting
+     * completely idle. Bumped to 30ms; IDLE_EXIT_TICKS recomputed to
+     * keep the same real ~270s orphan-cleanup exit at the new rate. */
+    #define BV_IDLE_POLL_USEC 30000
+    #define BV_IDLE_EXIT_TICKS (270000000 / BV_IDLE_POLL_USEC)
+    int idle_ticks = 0;
     while (!g_daemon_stop) {
         long long now = bv_file_size(reqp);
         int vw = last_vw, vh = last_vh, view_changed = 0;
@@ -3294,8 +3464,8 @@ int main(int argc, char **argv) {
             { FILE *af = fopen(ackp, "w"); if (af) { fprintf(af, "%lld\n", served); fclose(af); } }
             if (rc == 0) { FILE *mf = fopen(mkp, "a"); if (mf) { fputc('F', mf); fputc('\n', mf); fclose(mf); } }
         } else {
-            usleep(3000);
-            if (++idle_ticks > 90000) { fprintf(stderr, "bv_gpu daemon: idle timeout, exiting\n"); break; }
+            usleep(BV_IDLE_POLL_USEC);
+            if (++idle_ticks > BV_IDLE_EXIT_TICKS) { fprintf(stderr, "bv_gpu daemon: idle timeout, exiting\n"); break; }
         }
     }
 
