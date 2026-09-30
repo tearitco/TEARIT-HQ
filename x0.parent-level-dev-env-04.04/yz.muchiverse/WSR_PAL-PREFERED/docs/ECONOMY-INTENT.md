@@ -83,7 +83,7 @@ mechanic stays; only the arithmetic blow-up is prevented.
 
 ---
 
-## 3. Participants — all discovered, never a roster
+## 3. Participants - all discovered, never a roster
 
 Every participant and every traded ticker is found by **directory scan**, the way
 the legacy's `analysis_loop.c:288-318` uses `opendir`. No fixed entity count
@@ -181,7 +181,213 @@ The macro layer is not decoration; it is downstream of §2 and §4.
 
 ---
 
-## 6. Fidelity ledger — what is port vs. what is new
+## 6. Where the numbers come from - and where they don't
+
+> **The legacy's financial figures are NOT the source. They are placeholder
+> scaffolding.** Stated explicitly on 2026-09-29 because they look authoritative
+> and are not, and because I initially treated them as data.
+
+The legacy ships `financial_profile.txt`, `balance_sheet.txt` and the
+`Equity (Net Worth):` field as if they were real accounts. They are not, and
+they do not reconcile. Worked example —
+`MSR-DEPRACATED/governments/generated/Red African Union/balance_sheet.txt`:
+
+| line | value |
+|---|---|
+| Cash | 42.60 |
+| Other Assets | 34.08 |
+| **Cash + Other Assets** | **76.68** |
+| **Total Assets (as stated)** | **140.58** |
+| Total Assets − Debt (85.20) | 55.38 |
+| **Net Worth (as stated)** | **14.91** |
+
+The assets do not sum, and the net worth does not follow from them. Every
+government in the legacy is like this. These numbers may be used for **shape** —
+what fields a statement has, roughly what order of magnitude is plausible — and
+for nothing else.
+
+**All accounting in wsr-pal is computed, and the identity is asserted.** From
+here on, book value is a *derived* quantity that satisfies
+`Assets = Liabilities + Equity` by construction, and an imbalance is a bug that
+is reported loudly rather than smoothed. The scraped `Equity (Net Worth):` field
+is treated as a seed for the opening balance only, never as a live value.
+
+This is the difference between a scaffold and a simulation, and it is why
+`PORT-FIDELITY.md` gap 10 ("`book_value` is sourced differently") is a symptom
+rather than the disease.
+
+---
+
+## 7. Information asymmetry is the source of alpha
+
+**Banks do not share one valuation. They each hold a view, and the views
+differ.** This is the single most important property of the market design, and
+it is what makes the auction a market rather than a formula.
+
+In the real world, banks seek *alpha*: return above what the information
+supports, earned because they know something others do not, or because they
+model risk differently, or because they are first and better-informed. The
+realistic simulation of that is straightforward and is how this sim does it:
+
+- **Each bank maintains its OWN fair-value estimate per ticker**, produced by
+  its own model over its own inputs, with its own error.
+- **Different methods produce different numbers.** A bank weighting recent
+  momentum, one weighting book assets, one weighting margin, one modelling
+  cyclicality — they will disagree, and *they should*.
+- **The disagreement is the profit opportunity.** A bank whose view is
+  genuinely better than the crowd's discovers it by trading against the crowd
+  and finding out it was right.
+- **The market converges on the views that were RIGHT, and punishes the ones
+  that were wrong.** That convergence is emergent — nothing computes a "fair"
+  price. It falls out of banks bidding on their own beliefs and being shown to
+  be mistaken when the price moves against them.
+
+So: **there is no single authoritative fundamental.** Valuation is per-analyst.
+The `fair` value in `market_quote.c` is *that bank's* view, and it must not
+become a shared constant again — a shared fundamental is precisely the thing
+that made the old formula incapable of expressing disagreement, below-book
+clearing, or alpha.
+
+This also resolves how momentum and valuation coexist honestly: momentum is what
+one bank sees in recent flow, valuation is what another sees in the accounts.
+A bank weighting momentum bids a name up; a bank weighting assets does not. The
+spread between them *is* the market.
+
+---
+
+## 8. Dividends reduce retained earnings, not just cash
+
+**A dividend is a distribution from equity.** Under GAAP it reduces retained
+earnings within shareholders' equity, and cash leaves the balance sheet. A
+dividend that only debits cash leaves equity untouched, so book value per share
+never falls, and a stock can pay dividends forever while its book value stays
+inflated.
+
+That is not a stylistic point — it is fatal to this simulation. Valuation is
+BVP-based, so a dividend that does not touch equity inflates every future
+valuation, and the auction converges on a number that drifts upward with every
+payout. The dividend path must debit equity as well as cash, or the whole market
+slows becomes fictional.
+
+Implemented in `shareholder_registry.c` and `corp_apply_finances.c`.
+
+---
+
+## 9. BVPS follows the SEC/Yahoo convention
+
+```
+BVPS = total common equity attributable to common shareholders
+       --------------------------------------------------
+                shares outstanding
+```
+
+Real-world specifics that this sim adopts:
+
+- **The numerator is COMMON equity.** Preferred equity is excluded. Only the
+  common/ordinary share class participates in book value per share.
+- **The denominator is shares OUTSTANDING** — the actual count of common shares
+  in existence, not a weighted average and not an authorised figure.
+- **Treasury stock is excluded from the denominator** (US GAAP treats it as a
+  contra-equity account, and it is not outstanding). So a buyback that retires
+  shares raises BVPS mechanically, which is the correct real-world result.
+- **Issued vs outstanding is a real distinction.** A corporation may have issued
+  shares that are not yet outstanding; only outstanding ones divide.
+- **The legacy's `shares_outstanding` is millions-scaled and is NOT a share
+  count** (`PORT-FIDELITY.md` gap 8). It cannot be used as-is for this ratio.
+
+So the sim needs a genuine **share count** distinct from the legacy's
+millions-scaled market-profile figure. Once entity count and issuance grow, the
+two must be reconciled deliberately, and the registry's cap table is the natural
+home for the real count. This is a prerequisite for a correct BVPS, not a
+refinement.
+
+**Shorts** (per the user's direction, modelled on real practice): a short
+position is a **marginable liability of the seller to the buyer**, marked to
+market, not an asset. It does not create equity. So shorting does not change
+BVPS by itself — it changes the *price* the market clears at, and it changes the
+seller's balance sheet. This is why shorts can push a price below book without
+any accounting inconsistency: the price is a market fact, not a book fact.
+
+---
+
+## 10. Spend is investment in earning power, and should compound
+
+Three distinct spends, three distinct accounting treatments, chosen to match
+real practice:
+
+- **R&D** — investment in developing new or better products and systems. Under
+  GAAP this is **expensed as incurred** (US GAAP, since ASC 730) unless it
+  qualifies for capitalisation. Default here: **expensed**, hitting the income
+  statement immediately. Its return is not immediate revenue; it raises future
+  *earning power*.
+- **Marketing** — builds **goodwill and demand**, and is what lets a company
+  charge a *higher price for the same product*. So marketing's measurable payoff
+  is a **pricing premium**: it raises the price the firm can charge, which shows
+  up in revenue and margin, not in a one-off cash kick.
+- **Growth** — investment in **increasing assets and employees**. Capitalised:
+  it adds to assets on the balance sheet (and brings headcount, which feeds
+  employment and payroll). It is not an expense.
+
+**Earning power, not a fudge factor.** The current code nudges `book_value` by
+`growth_pct / 1000` and pokes the price by `marketing_pct / 1000`. Those are
+placeholders of exactly the kind §0 rejects. Real mechanics:
+
+- Spend → **assets, headcount, or goodwill** on the balance sheet (a real entry).
+- Spend → **capability**: R&D and marketing raise a firm's *pricing power* and
+  *cost efficiency*, which then show up in **revenue and margin on the income
+  statement**.
+- Earnings power is **persistent and cumulative** — a firm that has invested
+  keeps earning more, which is why incumbents compound and why a one-tick bonus
+  is not a model of investment at all.
+
+The honest constraint: the sim must not let spend create earnings with no
+mechanism behind it. Every dollar has to be traceable from a cash outflow to a
+balance-sheet entry to a later income-statement effect, or it is decoration.
+
+---
+
+## 11. Abstraction should be switchable, at both levels
+
+> **The sim will have BOTH an abstracted economy and an explicit one, and the
+> switch is a first-class feature. Documented as intent because it is a big
+> deal: it determines the data model, not just a rendering setting.**
+
+**Level 1 — the economy's abstraction switch.** Corporations will eventually own
+**real things**: real estate, food, computers, commodities, machinery. They sell
+to other corporations, to governments, and to the public pool.
+
+- **Abstract mode (default first):** a corporation is an earnings engine with no
+  inventory. It sells a *quantity of output* it produces from capital and
+  labour, at a price its market power allows, into a single aggregated demand
+  pool. Fast, tractable, and enough to make the auction and macro layers real.
+- **Explicit mode:** actual goods with names, quantities, perishable/lumpy
+  supply, individual buyers, and a spot market for each. Corporations can
+  actually run out of wheat, and a shortage means something specific.
+
+Both must produce the **same income statement shape** — revenue is revenue — so
+that switching modes does not invalidate any accounting, the ledger, or the
+auction. That means the abstraction has to live *behind* the income statement,
+not in it. Designing the interface so the switch is real, and building the
+abstract side first, is the intent.
+
+**Level 2 — governance's ambition.** Governments are to be *accurately*
+simulated and prepared for the heavier layer once the basics hold:
+
+- treaties, tariffs, tax changes, wars, **drafts**, policy, **elections**
+- **government type changes** (in the vein of Civilization)
+- **government bankruptcy** — a government can fail, default, or be restructured
+
+Their books must therefore be real three-statement accounts from the start,
+because every one of those acts is a balance-sheet event. A government that can
+go bankrupt is a government whose debt is real, and whose `debt_to_gdp` is a
+measurement rather than the hardcoded `25.0` the legacy ships.
+
+This is why the accounting foundation is not optional groundwork — it is the
+substrate the entire macro layer is written against.
+
+---
+
+## 12. Fidelity ledger - what is port vs. what is new
 
 Kept explicit so nobody goes looking for an original to diff against.
 
