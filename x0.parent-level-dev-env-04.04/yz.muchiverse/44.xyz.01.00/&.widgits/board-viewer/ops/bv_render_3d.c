@@ -46,6 +46,7 @@
 #include "bv_gpu_raymarch.h"   /* Path A - GPU raymarch backend (BV-GPU-RENDER-DESIGN.md) */
 #include <signal.h>
 #include <unistd.h>
+#include "../../_shared-lib/house_wait.h"
 #include <sys/stat.h>
 #include <time.h>
 #endif
@@ -1252,8 +1253,8 @@ static int test_phymoji_hit(double ox, double oy, double oz, double dirx, double
  * every placed instance sharing that template - matches this file's
  * own g_entities[]/voxel-cache precedent just below (one real load,
  * many real placements), not a per-instance reload. */
-#define MAX_PHYMOJI_ENTITIES 32
-#define MAX_PHYMOJI_TEMPLATES 8
+#define MAX_PHYMOJI_ENTITIES 40
+#define MAX_PHYMOJI_TEMPLATES 24
 typedef struct {
     char entity_id[64];
     int x, y, z;
@@ -1328,22 +1329,109 @@ static void place_page_phymoji(const char *root, const char *id, int z) {
     }
 }
 
-/* Page rows win when that name is already on the open desk file.
- * The private txt lists remain only until the first seed writes the rows. */
+/* sprite.csv stood up: 8x8 of the pal picture, two voxels thick. */
+static int load_sprite_template(const char *fullpath, const char *id) {
+    for (int i = 0; i < g_phymoji_template_count; i++)
+        if (strcmp(g_phymoji_templates[i].entity_id, id) == 0) return i;
+    if (g_phymoji_template_count >= MAX_PHYMOJI_TEMPLATES) return -1;
+    FILE *f = host_fopen(fullpath, "r");
+    if (!f) return -1;
+    PhymojiTemplate *t = &g_phymoji_templates[g_phymoji_template_count];
+    memset(t, 0, sizeof(*t));
+    snprintf(t->entity_id, sizeof(t->entity_id), "%s", id);
+    int res = 64, data = 0, i = 0;
+    if (res < 8) res = 8;
+    char line[128];
+    while (t->count < MAX_PHYMOJI_VOXELS && fgets(line, sizeof(line), f)) {
+        if (line[0] == '#') {
+            int r = 0;
+            if (sscanf(line, "# resolution=%d", &r) == 1 && r > 0) res = r;
+            continue;
+        }
+        if (!data) { if (strncmp(line, "r,g,b", 5) == 0) data = 1; continue; }
+        int r, g, b, a;
+        if (sscanf(line, "%d,%d,%d,%d", &r, &g, &b, &a) != 4) continue;
+        int x = i % res, y = i / res;
+        i++;
+        if (y >= res) break;
+        if (a < 16) continue;
+        if (res < 8) res = 8;
+        if ((x % (res / 8)) != 0 || (y % (res / 8)) != 0) continue;
+        int sx = x * 8 / res; if (sx > 7) sx = 7;
+        int sy = y * 8 / res; if (sy > 7) sy = 7;
+        for (int thick = 0; thick < 2 && t->count < MAX_PHYMOJI_VOXELS; thick++) {
+            PhymojiVoxel *v = &t->voxels[t->count++];
+            v->lx = (unsigned char)sx;
+            v->ly = (unsigned char)thick;
+            v->lz = (unsigned char)(7 - sy);
+            v->r = (unsigned char)r; v->g = (unsigned char)g; v->b = (unsigned char)b;
+        }
+        if (sx > t->max_lx) t->max_lx = sx;
+        if (1 > t->max_ly) t->max_ly = 1;
+        if ((7 - sy) > t->max_lz) t->max_lz = 7 - sy;
+    }
+    fclose(f);
+    if (t->count <= 0) return -1;
+    t->column_count = build_phymoji_columns(t->voxels, t->count, t->columns, MAX_PHYMOJI_COLUMNS);
+    build_phymoji_col_grid(t->columns, t->column_count, t->col_grid);
+    return g_phymoji_template_count++;
+}
+
+static void place_desk_sprites(int z) {
+    char pdl[PATH_BUF];
+    if (page_bound_pdl(house_root, pdl, sizeof(pdl)) <= 0) return;
+    FILE *f = host_fopen(pdl, "r");
+    if (!f) return;
+    char line[MAX_LINE];
+    while (g_phymoji_world_entity_count < MAX_PHYMOJI_ENTITIES && fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "DESK", 4) != 0) continue;
+        char *fld[8];
+        int nf = 0;
+        char *p = line;
+        while (nf < 8 && (p = strchr(p, '|'))) { p++; fld[nf++] = p; }
+        if (nf < 6) continue;
+        for (int i = 0; i < nf; i++) {
+            char *bar = strchr(fld[i], '|');
+            if (bar) *bar = '\0';
+            page_field_trim(fld[i]);
+        }
+        if (!strcmp(fld[0], "hero_01") || !strcmp(fld[0], "tree_small") || !strcmp(fld[0], "chicken")
+            || !strcmp(fld[0], "xelector_01") || !strcmp(fld[0], "camera_01"))
+            continue;
+        int cx = atoi(fld[4]), cy = atoi(fld[5]);
+        int px = atoi(fld[2]), py = atoi(fld[3]);
+        if (cx == 0 && cy == 0 && (px >= 40 || py >= 40 || px <= -40 || py <= -40)) {
+            cx = px / 80; cy = py / 80;
+        }
+        char full[PATH_BUF];
+        snprintf(full, sizeof(full), "%s/%s/sprite.csv", house_root, fld[1]);
+        int tpl = load_sprite_template(full, fld[0]);
+        if (tpl < 0) continue;
+        PhymojiWorldEntity *e = &g_phymoji_world_entities[g_phymoji_world_entity_count++];
+        snprintf(e->entity_id, sizeof(e->entity_id), "%s", fld[0]);
+        e->x = cx; e->y = cy; e->z = z; e->template_idx = tpl;
+    }
+    fclose(f);
+}
+
+/* A desk page owns the list. No tree_small or chicken row means those
+ * shapes leave. The private txt files are only the piececraft map. */
 static void load_phymoji_world_entities(const char *root) {
     g_phymoji_world_entity_count = 0;
-    char sp[PATH_BUF];
+    char sp[PATH_BUF], bound[PATH_BUF];
     int xs[16], ys[16];
     snprintf(sp, sizeof(sp), "%s/pieces/system/bv_state.txt", project_root);
     int z = read_kv_int(sp, "current_z", 0);
+    int desk_page = house_root[0] && page_bound_pdl(house_root, bound, sizeof(bound)) > 0;
     if (page_named_cells(house_root, "tree_small", xs, ys, 16) > 0)
         place_page_phymoji(root, "tree_small", z);
-    else
+    else if (!desk_page)
         load_phymoji_world_entities_file(root, "pieces/world_01/phymoji_entities.txt");
     if (page_named_cells(house_root, "chicken", xs, ys, 16) > 0)
         place_page_phymoji(root, "chicken", z);
-    else
+    else if (!desk_page)
         load_phymoji_world_entities_file(root, "pieces/world_01/animals.txt");
+    if (desk_page) place_desk_sprites(z);
 }
 
 /* fwd - real definition ~line 1532 (Windows-safe atomic rename) */
@@ -3066,14 +3154,6 @@ static int render_one_frame(void) {
         if (g_ray_hit)
             ADDWIRE(g_ray_x + 0.04, g_ray_z + 0.04, g_ray_y + 0.04,
                     g_ray_x + 0.96, g_ray_z + 0.96, g_ray_y + 0.96, 40, 220, 255);
-        {
-            /* Same page file the 2D view reads. Cyan wire per row. */
-            int xs[48], ys[48], pn = 0;
-            page_entity_cells(house_root, xs, ys, &pn, 48);
-            for (int i = 0; i < pn; i++)
-                ADDWIRE(xs[i] + 0.15, 1.05, ys[i] + 0.15,
-                        xs[i] + 0.85, 1.85, ys[i] + 0.85, 80, 200, 255);
-        }
         /* Green selector. Arrows move it while armed. Escape clears it. */
         {
             char pp[PATH_BUF];
@@ -3882,11 +3962,9 @@ int main(int argc, char **argv) {
             fprintf(stderr, "bv_gpu daemon: idle timeout, exiting\n");
             break;
         }
-        /* The wait is not optional. A request file or a view file that
-         * changes every pass used to skip this sleep and raymarch with
-         * no gap. That is the pc-hq peg. 30ms is the idle poll already
-         * next to this loop; do not use a shorter one. */
-        usleep(BV_IDLE_POLL_USEC);
+        /* Bottom of every pass, not the idle else. house_wait_us
+         * refuses a zero wait. 30ms is this loop's own floor. */
+        house_wait_us(BV_IDLE_POLL_USEC);
     }
 
     remove(pidp);

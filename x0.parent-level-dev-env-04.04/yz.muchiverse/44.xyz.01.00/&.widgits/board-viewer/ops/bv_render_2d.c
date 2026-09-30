@@ -210,6 +210,51 @@ static void blit_emoji(unsigned char *frame, int W, int dx, int dy, int cell, co
     }
 }
 
+/* Pal picture. sprite.csv is "r,g,b,a" after a # resolution line.
+ * Samples an 8x8 of the opaque pixels into the cell. Returns 1 when
+ * any pixel was drawn. */
+static int blit_sprite_csv(unsigned char *frame, int W, int dx, int dy, int cell, const char *path) {
+    FILE *f = host_fopen(path, "r");
+    if (!f) return 0;
+    int res = 64, data = 0, i = 0, any = 0;
+    unsigned char tile[8][8][4];
+    memset(tile, 0, sizeof(tile));
+    char line[128];
+    while (fgets(line, sizeof(line), f)) {
+        if (line[0] == '#') {
+            int r = 0;
+            if (sscanf(line, "# resolution=%d", &r) == 1 && r > 0) res = r;
+            continue;
+        }
+        if (!data) { if (strncmp(line, "r,g,b", 5) == 0) data = 1; continue; }
+        int r, g, b, a;
+        if (sscanf(line, "%d,%d,%d,%d", &r, &g, &b, &a) != 4) continue;
+        int x = i % res, y = i / res;
+        i++;
+        if (y >= res) break;
+        int sx = x * 8 / res; if (sx > 7) sx = 7;
+        int sy = y * 8 / res; if (sy > 7) sy = 7;
+        if (a > tile[sy][sx][3]) {
+            tile[sy][sx][0] = (unsigned char)r; tile[sy][sx][1] = (unsigned char)g;
+            tile[sy][sx][2] = (unsigned char)b; tile[sy][sx][3] = (unsigned char)a;
+            if (a) any = 1;
+        }
+    }
+    fclose(f);
+    if (!any) return 0;
+    for (int yy = 0; yy < cell; yy++) {
+        int sy = yy * 8 / cell; if (sy > 7) sy = 7;
+        for (int xx = 0; xx < cell; xx++) {
+            int sx = xx * 8 / cell; if (sx > 7) sx = 7;
+            unsigned char *s = tile[sy][sx];
+            if (s[3] == 0) continue;
+            unsigned char *d = frame + ((size_t)(dy + yy) * W + (dx + xx)) * 4;
+            d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; d[3] = 255;
+        }
+    }
+    return 1;
+}
+
 /* ---- ascii/CJK view: one tinted coverage glyph filling the cell ---- */
 static void blit_cjk(unsigned char *frame, int W, int dx, int dy, int cell,
                      unsigned int cp, unsigned char r, unsigned char g, unsigned char b) {
@@ -229,7 +274,7 @@ static void blit_cjk(unsigned char *frame, int W, int dx, int dy, int cell,
 }
 
 /* ---- entities: pos + colour ---- */
-typedef struct { int x, y, z; unsigned char r, g, b; char hex[16]; char cjk[8]; } Ent;
+typedef struct { int x, y, z; unsigned char r, g, b; char hex[16]; char cjk[8]; char spr[180]; } Ent;
 static Ent g_ent[MAX_ENT];
 static int g_nent = 0;
 
@@ -483,6 +528,10 @@ static void read_page_rows(const char *pdl, int cur_z) {
         memset(e, 0, sizeof(*e));
         e->x = cx; e->y = cy; e->z = cur_z;
         e->r = 80; e->g = 200; e->b = 255;
+        if (nf > 6 && fld[6][0] && strcmp(fld[6], ".") != 0)
+            utf8_first_hex(fld[6], e->hex, sizeof(e->hex));
+        if (nf > 1 && fld[1][0] && house_root[0])
+            snprintf(e->spr, sizeof(e->spr), "%s/%s/sprite.csv", house_root, fld[1]);
     }
     fclose(f);
 }
@@ -637,13 +686,17 @@ static int page_row_meta(const char *house, const char *want, int *cx, int *cy,
     return found;
 }
 static void load_actors(int cur_z) {
-    char pdl[PATH_BUF];
-    if (house_root[0] && page_file(house_root, pdl, sizeof(pdl)))
+    char pdl[PATH_BUF], bound[PATH_BUF];
+    /* A desk page is the whole list. Missing tree_small / chicken
+     * means they left with the old book. Do not seed them back in,
+     * and do not read the private txt files. */
+    int desk_page = house_root[0] && page_bound_pdl(house_root, bound, sizeof(bound)) > 0;
+    if (!desk_page && house_root[0] && page_file(house_root, pdl, sizeof(pdl)))
         page_seed_sprites(pdl);
     int xs[16], ys[16], n;
     n = page_named_cells(house_root, "hero_01", xs, ys, 16);
     if (n > 0) add_actor("hero_humanoid", xs[0], ys[0], cur_z);
-    else {
+    else if (!desk_page) {
         char p[PATH_BUF], b[32];
         snprintf(p, sizeof(p), "%s/pieces/hero_01/state.txt", focused_root);
         int hx = -1, hy = -1, hz = -999;
@@ -654,10 +707,10 @@ static void load_actors(int cur_z) {
     }
     n = page_named_cells(house_root, "tree_small", xs, ys, 16);
     if (n > 0) { for (int i = 0; i < n; i++) add_actor("tree_small", xs[i], ys[i], cur_z); }
-    else load_actor_list("pieces/world_01/phymoji_entities.txt", cur_z);
+    else if (!desk_page) load_actor_list("pieces/world_01/phymoji_entities.txt", cur_z);
     n = page_named_cells(house_root, "chicken", xs, ys, 16);
     if (n > 0) { for (int i = 0; i < n; i++) add_actor("chicken", xs[i], ys[i], cur_z); }
-    else load_actor_list("pieces/world_01/animals.txt", cur_z);
+    else if (!desk_page) load_actor_list("pieces/world_01/animals.txt", cur_z);
     /* Livedesk page file, read every frame. The desk writes the row
      * when a pal moves. Cyan square. hero_01, tree_small, and chicken
      * are rows too, drawn above as their own sprites. */
@@ -951,6 +1004,8 @@ int main(void) {
         const unsigned char *e16 = g_ent[i].hex[0] ? load_emoji16(g_ent[i].hex) : NULL;
         if (e16) {
             blit_emoji(px, W, scx*cell, scy*cell, cell, e16);
+        } else if (g_ent[i].spr[0] && blit_sprite_csv(px, W, scx*cell, scy*cell, cell, g_ent[i].spr)) {
+            /* pal sprite.csv, the picture the desk already shows */
         } else {
             int m = cell / 5;
             for (int yy = m; yy < cell - m; yy++)
