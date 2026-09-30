@@ -47,8 +47,8 @@
            inside it) already map naturally onto BOOK (a session/
            container) and PAGE (a view inside it) - this isn't a forced
            relabel, the concepts genuinely correspond. -->
-      <tab id="tb-file" class="pchq-tb" label="Book ▾" onclick="ACTIVATE" target_id="tb-file"/>
-      <tab id="tb-desk" class="pchq-tb" label="Page ▾" onclick="ACTIVATE" target_id="tb-desk"/>
+      <tab id="tb-file" class="pchq-tb" label="${book_label} ▾" onclick="ACTIVATE" target_id="tb-file"/>
+      <tab id="tb-desk" class="pchq-tb" label="${page_label} ▾" onclick="ACTIVATE" target_id="tb-desk"/>
       <tab id="tb-menu" class="pchq-tb" label="Menu ▾" onclick="ACTIVATE" target_id="tb-menu"/>
       <!-- REAL FIX 2026-09-15, direct live correction ("player should
            have dropdown that says play, reset, stop, notes-db, cancel
