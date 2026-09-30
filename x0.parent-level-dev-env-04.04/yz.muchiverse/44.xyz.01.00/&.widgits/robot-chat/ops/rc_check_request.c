@@ -17,11 +17,27 @@
  * Checks <entity_dir>/.hq_manager/request.txt for a composer's own
  * SEND|<text> line (written by rc_write_send.sh, the robot-chat.xhtpm
  * composer's cli_io action=). On a real one, unescapes it and runs the
- * already-proven ai_chat.+x <entity_dir> <house_root> "<text>" (the
- * real chat backend swap this whole rework was about - unchanged from
- * before), then consumes request.txt. A safe, cheap no-op when there
- * is nothing pending.
- */
+ * chat backend, then consumes request.txt. A safe, cheap no-op when
+ * there is nothing pending.
+ *
+ * REAL FIX 2026-09-30, direct live report ("chat-api, chat-bank were
+ * meant to open the same open-hai style layout robot-chat was using
+ * but have the openrouter-api or pipeline bank backend, instead it's
+ * opening a real linux terminal window, very out of character") - the
+ * ONLY backend this op ever called was ai_chat.+x (Gemma/LAN), same as
+ * the original single "Chat" button. Chat-api/Chat-bank's own
+ * terminal-loop scripts (chat_openrouter_loop.sh/chat_bank_loop.sh)
+ * were a wrong, disconnected shortcut - this house never opens a bare
+ * gnome-terminal for anything, every chat surface is a real khtpm
+ * window (this one). Real fix: <entity_dir>/.hq_manager/
+ * chat_backend.txt (written by the meta.pdl METHOD row before this
+ * SAME robot-chat window launches, see button.sh/rc_write_backend.sh)
+ * selects which binary this op runs - "gemma" (default, absent file =
+ * unchanged prior behavior) -> ai_chat.+x, "openrouter" ->
+ * ai_chat_openrouter.+x, "bank" -> ai_chat.+x followed by a real
+ * ai_describe.+x pass (the actual TEARIT-pipeline entry point
+ * ROBOT-CHAT-BLUEPRINT.md §4 describes - Chat-bank's whole point is
+ * feeding chat_history.txt into DESCRIBE, not a different LLM). */
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -66,11 +82,41 @@ int main(void) {
         if (*p == '\'') { memcpy(esc + o, "'\\''", 4); o += 4; } else esc[o++] = (char)*p;
     } esc[o] = '\0'; }
 
+    char backend[32] = "gemma";
+    {
+        char bpath[PATH_BUF];
+        snprintf(bpath, sizeof(bpath), "%s/.hq_manager/chat_backend.txt", entity_dir);
+        FILE *bf = fopen(bpath, "r");
+        if (bf) {
+            if (fgets(backend, sizeof(backend), bf)) backend[strcspn(backend, "\r\n")] = '\0';
+            fclose(bf);
+        }
+        if (!backend[0]) snprintf(backend, sizeof(backend), "gemma");
+    }
+
+    /* "bank" uses the SAME OpenRouter round trip as "openrouter" - the
+     * two loop scripts this replaces (chat_openrouter_loop.sh/
+     * chat_bank_loop.sh) both called ai_chat_openrouter.+x; bank's own
+     * distinction is the ai_describe.+x follow-up below, not a
+     * different chat model. */
     char bin[PATH_BUF];
-    snprintf(bin, sizeof(bin), "%s/&.widgits/entity-cli/ops/+x/ai_chat.+x", house_root);
+    if (strcmp(backend, "openrouter") == 0 || strcmp(backend, "bank") == 0)
+        snprintf(bin, sizeof(bin), "%s/&.widgits/entity-cli/ops/+x/ai_chat_openrouter.+x", house_root);
+    else
+        snprintf(bin, sizeof(bin), "%s/&.widgits/entity-cli/ops/+x/ai_chat.+x", house_root);
+
     char cmd[PATH_BUF * 3];
     snprintf(cmd, sizeof(cmd), "'%s' '%s' '%s' '%s' >/dev/null 2>&1", bin, entity_dir, house_root, esc);
     int rc = system(cmd);
     (void)rc;
+
+    if (strcmp(backend, "bank") == 0) {
+        char dbin[PATH_BUF];
+        snprintf(dbin, sizeof(dbin), "%s/&.widgits/entity-cli/ops/+x/ai_describe.+x", house_root);
+        char dcmd[PATH_BUF * 2];
+        snprintf(dcmd, sizeof(dcmd), "'%s' '%s' '%s' >/dev/null 2>&1", dbin, entity_dir, house_root);
+        int rc2 = system(dcmd);
+        (void)rc2;
+    }
     return 0;
 }

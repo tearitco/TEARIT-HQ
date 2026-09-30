@@ -531,9 +531,30 @@ int bv_gpu_raymarch(const BvGpuScene *s, unsigned char *out) {
     if (step == 1) {
         glReadPixels(0, 0, s->w, s->h, GL_RGBA, GL_UNSIGNED_BYTE, out);   /* shader renders top-down -> no flip */
     } else {
-        /* read the reduced frame, then nearest-upscale into the full out */
-        static unsigned char scratch[1280 * 960 * 4];
-        if ((size_t)rw * rh * 4 > sizeof(scratch)) { fprintf(stderr, "bv_gpu: LOD scratch too small\n"); goto done; }
+        /* read the reduced frame, then nearest-upscale into the full out.
+         * REAL FIX 2026-09-30, direct live report ("drag window bigger,
+         * doesn't make camera lens wider, it just shows black") - this
+         * used to be a fixed `scratch[1280*960*4]`, sized for whatever
+         * window dimensions someone tested against at the time. Any
+         * window resize big enough that rw*rh (the LOD-reduced render,
+         * still s->w/h / lod_step - a live drag-resize runs through
+         * THIS branch every frame, since resizing counts as motion,
+         * g_lod_step>1) exceeded that fixed cap hit the guard below and
+         * bailed with zero frame written - the exact black screen
+         * reported. A resizable window has no real upper bound, so
+         * there is no correct fixed constant here; grown on demand
+         * instead, persisted across calls (same `static` lifetime the
+         * fixed buffer had, just heap-backed and resizable) so a normal
+         * fixed-size session pays one allocation, not one per frame. */
+        static unsigned char *scratch = NULL;
+        static size_t scratch_cap = 0;
+        size_t need = (size_t)rw * rh * 4;
+        if (need > scratch_cap) {
+            unsigned char *grown = realloc(scratch, need);
+            if (!grown) { fprintf(stderr, "bv_gpu: LOD scratch realloc failed (%zu bytes)\n", need); goto done; }
+            scratch = grown;
+            scratch_cap = need;
+        }
         glReadPixels(0, 0, rw, rh, GL_RGBA, GL_UNSIGNED_BYTE, scratch);
         for (int y = 0; y < s->h; y++) {
             int sy = y * rh / s->h; if (sy >= rh) sy = rh - 1;

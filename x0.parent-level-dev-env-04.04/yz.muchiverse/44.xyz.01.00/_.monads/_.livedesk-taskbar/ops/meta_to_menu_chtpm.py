@@ -144,7 +144,14 @@ def extract_real_cli_io_lines(menu_path: str):
     if not os.path.isfile(menu_path):
         return []
     with open(menu_path, "r", encoding="utf-8") as f:
-        return [line.strip() for line in f if "<cli_io" in line]
+        # REAL FIX 2026-09-30, found regenerating robot_chat_001: this
+        # file's own header comment literally contains the substring
+        # "<cli_io" (quoting this very function's name/behavior) - a
+        # plain substring match on every line falsely "preserved" the
+        # HEADER COMMENT as if it were a real cli_io element, duplicating
+        # it verbatim right before the real one. A real element always
+        # starts the (stripped) line with the tag - anchor on that.
+        return [line.strip() for line in f if line.strip().startswith("<cli_io")]
 
 
 def write_menu_chtpm(package_dir: str, methods, source_meta: str, preserved_cli_io=None):
