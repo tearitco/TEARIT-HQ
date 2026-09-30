@@ -3032,6 +3032,18 @@ static int g_click_two_step = 1;
  * font-size, row heights, paddings) picks this up for free. Settings
  * 'Size -'/'Size +' step it via the UI_SCALE_MINUS/PLUS verbs. */
 static int g_ui_scale_pct = 100;
+/* REAL, NEW 2026-09-29, direct instruction ("can we do from pdl, so we
+ * can stop restarting entire house each time") - the dock pager +/-
+ * button width/gap (dock_place_pager()) used to be a baked-in scaled()
+ * literal that needed a full rebuild+relaunch for every pixel tweak.
+ * Same hq_ui.pdl key=value/live-reload convention as font_scale above -
+ * `pager_btn_w`/`pager_btn_gap` in #.desktop/hq_ui.pdl, picked up by
+ * hq_ui_pdl_reload_if_changed() with no rebuild or relaunch needed.
+ * Defaults match the last live-confirmed values (64/8, direct live
+ * report "cut off more than last 7% wide" on 56/8 - re-verified via a
+ * direct window frame dump that 64/8 renders clean). */
+static int g_pager_btn_w = 64;
+static int g_pager_btn_gap = 8;
 /* REAL, NEW 2026-09-10, direct instruction ("when should we add font
  * picker to settings") - house-wide DEFAULT font family, same real
  * role font_scale already plays for size. Any window/CSS that sets its
@@ -5722,7 +5734,8 @@ static int layout_sidebar_panel(Elem *page) {
  * 30s - two digits - and the old margin left the pair cramped against
  * the last cell. Widened; dock_place_pager() below now centers the
  * pair within this margin instead of hugging the right edge. */
-#define DOCK_PAGER_W 128 /* REAL, NEW 2026-09-29, direct live report ("bottom tb fix is pretty good but that space for both could be about 15% wider") - was 110 */
+#define DOCK_PAGER_W 145 /* REAL, NEW 2026-09-29, direct live report ("bottom tb fix is pretty good but that space for both could be about 15% wider") - was 110, then 128.
+                          * REAL, NEW 2026-09-29 (pdl pass) - g_pager_btn_w/gap default rose to 64/8 (content_w 136), widened again so this reserved margin keeps real headroom instead of nearly matching content_w exactly. If pager_btn_w/gap are tuned larger via hq_ui.pdl beyond this margin's headroom, widen this constant too (it is not itself pdl-driven - the reserved layout margin, unlike the button's own size, isn't expected to need frequent tuning). */
 /* DOCK_MAX_PACK removed 2026-09-14 (DOCK-BAR-GENERIC-LAYOUT-MIGRATION.md
  * phase 1) - was the fixed-size bound for the bottom bar's own
  * hand-packed pack[] array, deleted along with it now that
@@ -5929,8 +5942,11 @@ static void dock_place_pager(int win_w, int after_x) {
      * space for both could be about 15% wider") - +15% on both aw and
      * gap (45->52, 6->7), DOCK_PAGER_W widened to match just above. */
     /* REAL, NEW 2026-09-29 (second pass), direct live report ("could
-     * still be about 7% wider") - +7% again on both (52->56, 7->8). */
-    int aw = scaled(56), gap = scaled(8);
+     * still be about 7% wider") - +7% again on both (52->56, 7->8).
+     * REAL, NEW 2026-09-29 (third pass) - now g_pager_btn_w/gap, live
+     * from #.desktop/hq_ui.pdl (see that global's own header comment) so
+     * further tweaks need no rebuild/relaunch. */
+    int aw = scaled(g_pager_btn_w), gap = scaled(g_pager_btn_gap);
     int left_bias = scaled(10);
     int need = (g_dock_packed_rows > 1) || (g_dock_visible_rows > 1);
 
@@ -11044,23 +11060,56 @@ static int pchq_theme_changed_dirty(const char *house_root) {
  * establishes the baseline without reloading - the real settings were
  * already read once at startup via desktop_load_click_two_step()). */
 static long g_hq_ui_pdl_marker_sz = -1;
+/* REAL, NEW 2026-09-29, direct instruction ("can we do from pdl, so we
+ * can stop restarting entire house each time") - the marker-file path
+ * above only fires when a Settings button writes it
+ * (hq_ui_pdl_touch_marker()'s own callers); a plain hand-edit of
+ * hq_ui.pdl in a text editor never touches that marker, so it would
+ * still need a full relaunch to take effect. hq_ui.pdl is a rarely-
+ * touched, human-edited settings file (not a hot per-frame data file -
+ * the DIAMOND/marker-not-mtime rule this house otherwise holds to is
+ * about detecting fast, automated, same-size-rewrite content changes,
+ * which doesn't apply to an editor's own save), so its own mtime is a
+ * real, sufficient, separate second trigger here - checked in ADDITION
+ * to the marker, never instead of it. */
+static time_t g_hq_ui_pdl_mtime = 0;
+static void hq_ui_pdl_apply_and_diff(const char *house_root) {
+    int old_scale = g_ui_scale_pct;
+    int old_pager_w = g_pager_btn_w, old_pager_gap = g_pager_btn_gap;
+    desktop_load_click_two_step(house_root);
+    if (g_ui_scale_pct != old_scale) {
+        /* font_scale changed in Settings while this window is open:
+         * re-size the chrome font, relayout (box metrics changed,
+         * not just a colour), repaint. */
+        reload_font_ui();
+        assign_nav_and_layout();
+        hq_request_redraw();
+    } else if (g_pager_btn_w != old_pager_w || g_pager_btn_gap != old_pager_gap) {
+        /* REAL, NEW 2026-09-29 - pager_btn_w/gap changed: relayout+
+         * repaint, no font/scale work needed. */
+        assign_nav_and_layout();
+        hq_request_redraw();
+    }
+}
 static void hq_ui_pdl_reload_if_changed(const char *house_root) {
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/#.desktop/hq_ui_pdl_changed.txt", house_root);
     struct stat st;
-    if (stat(path, &st) != 0) return;
-    if (g_hq_ui_pdl_marker_sz < 0) { g_hq_ui_pdl_marker_sz = (long)st.st_size; return; }
-    if ((long)st.st_size > g_hq_ui_pdl_marker_sz) {
-        g_hq_ui_pdl_marker_sz = (long)st.st_size;
-        int old_scale = g_ui_scale_pct;
-        desktop_load_click_two_step(house_root);
-        if (g_ui_scale_pct != old_scale) {
-            /* font_scale changed in Settings while this window is open:
-             * re-size the chrome font, relayout (box metrics changed,
-             * not just a colour), repaint. */
-            reload_font_ui();
-            assign_nav_and_layout();
-            hq_request_redraw();
+    if (stat(path, &st) == 0) {
+        if (g_hq_ui_pdl_marker_sz < 0) g_hq_ui_pdl_marker_sz = (long)st.st_size;
+        else if ((long)st.st_size > g_hq_ui_pdl_marker_sz) {
+            g_hq_ui_pdl_marker_sz = (long)st.st_size;
+            hq_ui_pdl_apply_and_diff(house_root);
+        }
+    }
+    char pdl_path[PATH_BUF];
+    snprintf(pdl_path, sizeof(pdl_path), "%s/#.desktop/hq_ui.pdl", house_root);
+    struct stat pst;
+    if (stat(pdl_path, &pst) == 0) {
+        if (g_hq_ui_pdl_mtime == 0) g_hq_ui_pdl_mtime = pst.st_mtime;
+        else if (pst.st_mtime != g_hq_ui_pdl_mtime) {
+            g_hq_ui_pdl_mtime = pst.st_mtime;
+            hq_ui_pdl_apply_and_diff(house_root);
         }
     }
 }
@@ -12526,6 +12575,14 @@ static void desktop_load_click_two_step(const char *house_root) {
          * comment. 0 (absent) keeps the percentage-of-screen fallback. */
         else if (strcmp(line, "default_win_w") == 0) g_default_win_w = atoi(val);
         else if (strcmp(line, "default_win_h") == 0) g_default_win_h = atoi(val);
+        else if (strcmp(line, "pager_btn_w") == 0) {
+            int v = atoi(val);
+            if (v > 0) g_pager_btn_w = v;
+        }
+        else if (strcmp(line, "pager_btn_gap") == 0) {
+            int v = atoi(val);
+            if (v >= 0) g_pager_btn_gap = v;
+        }
     }
     fclose(f);
 }

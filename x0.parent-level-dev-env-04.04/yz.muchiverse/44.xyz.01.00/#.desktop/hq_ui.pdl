@@ -36,6 +36,17 @@ win_top_y=96
 click_two_step=1
 font_scale=1.25
 
+# pager_btn_w / pager_btn_gap: dock taskbar's bottom-right "-"/"+" pager
+# button width and the gap between them (px, pre-scale). Direct live
+# report 2026-09-29 ("could we do from pdl, so we can stop restarting
+# entire house each time") - live-reloaded (both the marker-file path
+# and a plain save of this file itself now trigger a reload+relayout,
+# no rebuild or relaunch needed - see hq_ui_pdl_reload_if_changed()).
+pager_btn_w=64
+pager_btn_gap=8
+# 2026-09-29: 56/8 was still cut off; 64/8 verified clean via a direct
+# window frame dump. Tune here and save - no rebuild/relaunch needed.
+
 # Screen-relative UI scale (2026-09-19). On top of font_scale, taskbar size,
 # entity/grid size and the strip's left margin scale with the monitor:
 #   auto = min(screen_w / ui_ref_width, screen_h / ui_ref_height), 0.5-3.0
