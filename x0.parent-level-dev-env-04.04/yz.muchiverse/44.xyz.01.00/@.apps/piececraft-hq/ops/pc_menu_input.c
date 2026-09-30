@@ -31,6 +31,7 @@
 #include <fcntl.h>
 #include <time.h>
 #include <signal.h>
+#include <sys/stat.h>
 #include "win_posix_shim.h"
 
 #define MAX_LINE 512
@@ -1369,6 +1370,19 @@ int main(int argc, char **argv) {
                     snprintf(message, sizeof(message), "Clipboard empty - Copy something first");
             } else if (strcmp(verb, "PLACE") == 0) {
                 snprintf(message, sizeof(message), "Place: pick a block palette (todo)");
+            } else if (strcmp(verb, "STOP") == 0) {
+                /* REAL, NEW 2026-09-29 - matches asa/ava's own meta.pdl:
+                 * Stop is a real, deliberate `void` everywhere in this
+                 * house (no pal anywhere implements a real Stop yet) -
+                 * matched here, not invented as a fake promise this menu
+                 * doesn't keep. (ACT used to be handled in this same
+                 * branch via the CTX_ inbox - removed 2026-09-29: Act is
+                 * a pure UI launch now wired directly as the menu item's
+                 * own action= via act_menu_row.sh, same real
+                 * dispatch_action() path a desk entity's Act uses,
+                 * bypassing this inbox entirely - see pc_entity_ctx.sh's
+                 * own header comment on that item.) */
+                snprintf(message, sizeof(message), "Stop: not implemented (house-wide - see asa/meta.pdl's own Stop=void)");
             } else if (strcmp(verb, "EVENTS") == 0 || strcmp(verb, "INVENTORY") == 0 || strcmp(verb, "DIR") == 0) {
                 /* REAL FIX 2026-09-30, direct instruction ("when i click
                  * their entity i expect to see same kind of context menu

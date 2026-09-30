@@ -5945,8 +5945,32 @@ static void dock_place_pager(int win_w, int after_x) {
      * still be about 7% wider") - +7% again on both (52->56, 7->8).
      * REAL, NEW 2026-09-29 (third pass) - now g_pager_btn_w/gap, live
      * from #.desktop/hq_ui.pdl (see that global's own header comment) so
-     * further tweaks need no rebuild/relaunch. */
+     * further tweaks need no rebuild/relaunch.
+     * REAL, NEW 2026-09-29 (fourth pass), direct live report ("do u see
+     * 18 spilling out of the confines of the cell? is there any way to
+     * standardize this?") - every previous pass here was still a manual
+     * pixel guess re-done by hand each time a real nav index got wider
+     * (single- vs two-digit "[ ]N."/"[ ]NN." changes the real badge
+     * width). Standardized the same way scroll_row_span() already
+     * solved this exact class of bug: MEASURE the real "[ ]99. -" glyph
+     * run at this element's own real font/style instead of guessing a
+     * constant, then take the wider of that measurement and the
+     * pdl-configured g_pager_btn_w (a floor, not a fixed value anymore -
+     * hq_ui.pdl can still force it wider, never narrower than what the
+     * real badge needs to not overlap). */
     int aw = scaled(g_pager_btn_w), gap = scaled(g_pager_btn_gap);
+    {
+        CssStyle btn_style;
+        css_compute_style(&g_sheet, "item", "dock-page-minus", NULL, 0, 0, &btn_style);
+        XftFont *bfont = font_for(&btn_style);
+        if (bfont) {
+            int bpad = btn_style.has_padding ? btn_style.padding : 4;
+            XGlyphInfo ext;
+            XftTextExtentsUtf8(dpy, bfont, (const FcChar8 *)"[ ]99. -", 8, &ext);
+            int measured_w = ext.xOff + bpad * 2;
+            if (measured_w > aw) aw = measured_w;
+        }
+    }
     int left_bias = scaled(10);
     int need = (g_dock_packed_rows > 1) || (g_dock_visible_rows > 1);
 

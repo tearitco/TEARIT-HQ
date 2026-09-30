@@ -56,9 +56,9 @@ echo "$(date '+%H:%M:%S') open  kind=$KIND id=${ID:-.} cell=$SX,$SY,$SZ  $NOTE" 
 case "$KIND" in
     none)          HEADER="nothing selected";        VERBS="EXIT" ;;
     air|"")        HEADER="nothing here @ $SX,$SY,$SZ"; VERBS="PLACE EXIT" ;;
-    hero)          HEADER="hero: ${ID:-hero_01}";     VERBS="INSPECT POSSESS EVENTS INVENTORY DIR EXIT" ;;
-    tree)          HEADER="tree: ${ID:-?}";           VERBS="INSPECT COPY PASTE DELETE TOENTITY EVENTS INVENTORY DIR EXIT" ;;
-    chicken|entity) HEADER="${KIND}: ${ID:-?}";       VERBS="INSPECT COPY PASTE DELETE EVENTS INVENTORY DIR EXIT" ;;
+    hero)          HEADER="hero: ${ID:-hero_01}";     VERBS="INSPECT POSSESS ACT STOP EVENTS INVENTORY DIR EXIT" ;;
+    tree)          HEADER="tree: ${ID:-?}";           VERBS="INSPECT COPY PASTE DELETE TOENTITY ACT STOP EVENTS INVENTORY DIR EXIT" ;;
+    chicken|entity) HEADER="${KIND}: ${ID:-?}";       VERBS="INSPECT COPY PASTE DELETE ACT STOP EVENTS INVENTORY DIR EXIT" ;;
     voxel)         HEADER="voxel '$GLYPH' @ $SX,$SY,$SZ"; VERBS="INSPECT COPY PASTE DELETE PLACE EXIT" ;;
     *)             HEADER="$KIND: ${ID:-?}";          VERBS="INSPECT EXIT" ;;
 esac
@@ -82,6 +82,14 @@ label_for() {
         # never voxel/air which have no real pieces/<id> dir.
         EVENTS) echo "Events (hq)" ;; INVENTORY) echo "Inventory" ;;
         DIR) echo "Dir" ;;
+        # REAL, NEW 2026-09-29, direct instruction ("give it all the
+        # context options asa has... act and its sub options") - same
+        # real Play/Stop METHOD rows a desk pal's meta.pdl already has
+        # (asa/ava's own: Play runs <ent_dir>/event_pkg/pages/page_1/
+        # event.pal via prisc+x if it exists, else no-ops; Stop is a
+        # real, deliberate `void` stub house-wide - no pal actually
+        # implements a real Stop yet, this matches that exactly).
+        ACT) echo "Act" ;; STOP) echo "Stop" ;;
         *) echo "$1" ;;
     esac
 }
@@ -98,6 +106,28 @@ label_for() {
     [ -n "$NOTE" ] && printf '    <text label="%s" />\n' "$NOTE"
     for v in $VERBS; do
         [ "$v" = EXIT ] && continue
+        # REAL FIX 2026-09-29, direct live report ("act submenu doesn't
+        # open sub context menu like it does on desk") - a desk entity's
+        # own menu.chtpm wires Act straight to entity-cli/
+        # open_entity_act.sh as its action= (a real, synchronous UI
+        # launch the shared renderer's own dispatch_action() runs
+        # directly - see that file's own header: it opens a NEW
+        # khtpm_core_render window built from the entity's skills.pdl,
+        # e.g. "move/use/attack/back"). Every OTHER verb here goes
+        # through append.sh -> the game's own CTX_<VERB> inbox because
+        # it's a real game-state mutation pc_menu_input.c's tick loop
+        # must own - Act is not one of those, it's a pure UI launch, so
+        # routing it through that same async inbox could only ever run a
+        # background command, never pop a window. Same real distinction,
+        # not an inconsistency: STOP still routes through the inbox
+        # (kept a real, dispatchable game verb, matching asa/ava's own
+        # meta.pdl shape) even though it's a stub today.
+        if [ "$v" = ACT ]; then
+            ENT_DIR="$ROOT/pieces/${ID:-$KIND}"
+            mkdir -p "$ENT_DIR"
+            sh "$HOUSE/&.widgits/entity-cli/act_menu_row.sh" "$ENT_DIR" "$HOUSE" "$(label_for "$v")"
+            continue
+        fi
         printf '    <item label="%s" action="sh %s/append.sh %s %s %s %s %s %s %s %s"/>\n' \
             "$(label_for "$v")" "$PKG" "$v" "$SX" "$SY" "$SZ" "${ID:-_}" \
             "${KIND:-_}" "${GLYPH:-_}" "${TMPL:-_}"
