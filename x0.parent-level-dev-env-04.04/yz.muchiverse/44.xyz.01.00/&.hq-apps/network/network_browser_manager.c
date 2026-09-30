@@ -1059,7 +1059,7 @@ static int merge_render_rows(void) {
             while (L > 0 && (row[L-1]=='\n' || row[L-1]=='\r')) row[--L] = 0;
             if (strncmp(row, "TITLE|", 6) == 0 || strncmp(row, "TEXT|", 5) == 0 ||
                 strncmp(row, "LINK|", 5) == 0 || strncmp(row, "IMG|", 4) == 0 ||
-                strncmp(row, "MEDIA|", 6) == 0)
+                strncmp(row, "MEDIA|", 6) == 0 || strncmp(row, "SEL|", 4) == 0)
                 continue;
             fprintf(wf, "%s\n", row);
         }
@@ -1692,13 +1692,32 @@ static int worker_load(const char *js_path, const char *dom_path,
  * RENDER rows (overlaid onto page.state.txt via merge_render_rows) and
  * stashes any NAV the snippet triggered (consumed next main-loop tick,
  * same as a page-triggered NAV). Returns 1 on "STATUS ok". */
+static int worker_pump_reply(int quiet_ms);
+
 static int worker_eval(const char *js) {
     worker_spawn();
     if (g_worker_fd < 0) { publish_status("error: no worker"); return 0; }
     char payload[8192];
     int n = snprintf(payload, sizeof(payload), "EVAL\n%s", js ? js : "");
     if (!worker_send(payload, (size_t)n)) { worker_close(); return 0; }
+    return worker_pump_reply(WORKER_LOAD_QUIET_MS);
+}
 
+/* Dispatch a real DOM event on the worker (EVENT|<selector>|<type>) and wait
+ * for its reply, so the RENDER rows captured here are the POST-event ones.
+ * worker_send_event() only writes the request; without this pump the caller
+ * would merge the previous page's rows and the click would look like a no-op. */
+static int worker_event(const char *selector, const char *type) {
+    worker_spawn();
+    if (g_worker_fd < 0) { publish_status("error: no worker"); return 0; }
+    char payload[4096];
+    int n = snprintf(payload, sizeof(payload), "EVENT\n%s\n%s",
+                     selector ? selector : "", type && *type ? type : "click");
+    if (!worker_send(payload, (size_t)n)) { worker_close(); return 0; }
+    return worker_pump_reply(WORKER_LOAD_QUIET_MS);
+}
+
+static int worker_pump_reply(int quiet_ms) {
     char resp[65536];
     for (;;) {
         /* A console command can run the page's own handlers (input/click),
@@ -3171,6 +3190,27 @@ static void handle_request(void) {
     } else if (strncmp(line, "eval:", 5) == 0) {
         publish_status(worker_eval(line + 5) ? "ready" : "eval error");
         (void)merge_render_rows();
+    } else if (strncmp(line, "click:", 6) == 0) {
+        /* khtpm click on a rendered content row -> a real DOM event in the
+         * worker. Payload: "click:<selector>[:<type>]". The worker resolves the
+         * selector with document.querySelector and dispatches a bubbling
+         * Event, then re-renders, so whatever the page's handler changed shows
+         * up in the projection without a reload. */
+        char *sel = line + 6;
+        char *colon = strchr(sel, ':');
+        char type[32] = "click";
+        if (colon) {
+            *colon = 0;
+            snprintf(type, sizeof(type), "%s", colon + 1);
+            if (!type[0]) snprintf(type, sizeof(type), "click");
+        }
+        if (worker_event(sel, type)) {
+            publish_status("ready");
+            (void)merge_render_rows();
+            write_ui_projection();
+        } else {
+            publish_status("event failed");
+        }
     } else if (strncmp(line, "go:", 3) == 0) {
         char target[PATH_BUF];
         go_target_or_search(target, sizeof(target), line + 3);
@@ -3877,6 +3917,10 @@ static void write_ui_projection(void) {
             int nrow = 0;
             while (nrow < NB_UI_ROWS_MAX && fgets(rows[nrow], sizeof(rows[0]), pf)) nrow++;
             fclose(pf);
+            /* SEL rows are emitted by the worker immediately before the row they
+             * belong to; the projector carries the selector forward so each
+             * rendered row can offer a real DOM click. */
+            char pending_sel[96] = "";
             for (int ri = 0; ri < nrow && rc < 400; ri++) {
                 char *line = rows[ri];
                 size_t n = strlen(line);
@@ -3888,12 +3932,29 @@ static void write_ui_projection(void) {
                 const char *kind = line;
                 char t[1024], s1[1024], s2[700];
 
+                if (strcmp(kind, "SEL") == 0) {
+                    snprintf(pending_sel, sizeof(pending_sel), "%s", rest);
+                    continue;
+                }
+                /* click action for a row that has a selector; links keep their
+                 * go: action instead, since a link click navigates. */
+                char click_action[PATH_BUF * 2] = "";
+                if (pending_sel[0] && strcmp(kind, "LINK") != 0) {
+                    char sel_sq[256];
+                    shell_escape_squote(pending_sel, sel_sq, sizeof(sel_sq));
+                    snprintf(click_action, sizeof(click_action),
+                             "'%s/ops/nb_write_click.sh' 'click' '%s' 'click'\n",
+                             g_package_dir, sel_sq);
+                }
+
                 if (strcmp(kind, "TITLE") == 0) {
                     uisan(rest, t, sizeof(t));
                     UI_PUT("c_%d_kind=title\nc_%d_is_title=1\nc_%d_text=%s\n", rc, rc, rc, t);
+                    if (click_action[0]) UI_PUT("c_%d_sel=%s\nc_%d_click_action=%s", rc, pending_sel, rc, click_action);
                 } else if (strcmp(kind, "TEXT") == 0) {
                     uisan(rest, t, sizeof(t));
                     UI_PUT("c_%d_kind=text\nc_%d_is_text=1\nc_%d_text=%s\n", rc, rc, rc, t);
+                    if (click_action[0]) UI_PUT("c_%d_sel=%s\nc_%d_click_action=%s", rc, pending_sel, rc, click_action);
                 } else if (strcmp(kind, "LINK") == 0) {
                     char *b2 = strchr(rest, '|');
                     if (b2) { *b2 = 0; snprintf(s2, sizeof(s2), "%s", b2 + 1); } else s2[0] = 0;
@@ -3926,6 +3987,7 @@ static void write_ui_projection(void) {
                     }
                     char lab_s[700]; uisan(s2[0] ? s2 : " ", lab_s, sizeof(lab_s));
                     UI_PUT("c_%d_kind=img\nc_%d_is_media=1\nc_%d_sprite=%s\nc_%d_label=%s\n", rc, rc, rc, s1, rc, lab_s);
+                    if (click_action[0]) UI_PUT("c_%d_sel=%s\nc_%d_click_action=%s", rc, pending_sel, rc, click_action);
                     /* V4 2026-09-12: an IMG immediately tailed by a LINK
                      * row is the tile's action (watch-page related videos
                      * arrive as IMG+LINK pairs) - emit the go: and consume

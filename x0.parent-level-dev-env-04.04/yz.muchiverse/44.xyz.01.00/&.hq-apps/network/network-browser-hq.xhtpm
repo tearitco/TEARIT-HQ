@@ -71,8 +71,8 @@
       <text id="status" class="nb-status" label="${status}"/>
       <scrolllist class="from-top nb-content">
         <repeat count="${content_count}" bind="c">
-          <text id="ct${c.#}" class="page-title" label="${c.text}"                          show="${c.is_title}"/>
-          <text id="cx${c.#}"                    label="${c.text}"                          show="${c.is_text}"/>
+          <text id="ct${c.#}" class="page-title" label="${c.text}" action="${c.click_action}"        show="${c.is_title}"/>
+          <text id="cx${c.#}"                    label="${c.text}" action="${c.click_action}"        show="${c.is_text}"/>
           <item id="cl${c.#}" label="${c.text}"  action="${c.action}"                       show="${c.is_link}"/>
           <item id="cm${c.#}" class="quiet sprite-flow" label="${c.label}" sprite="${c.sprite}" action="${c.action}"  show="${c.is_media}"/>
           <!-- V3 video (nb_video_play): live canvas row inside the content

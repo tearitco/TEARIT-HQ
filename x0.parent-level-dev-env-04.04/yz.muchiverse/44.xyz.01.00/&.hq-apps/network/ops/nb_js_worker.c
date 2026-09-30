@@ -506,16 +506,48 @@ static void rw_row(SB *b, const char *key, const char *val) {
     buf[o] = 0;
     if (o) { sb_put(b, key); sb_put(b, "|"); sb_put(b, buf); sb_put(b, "\n"); }
 }
-static void rw_wrap(SB *b, char *s) {
+static void rw_sel(SB *b, const NbNode *n);
+
+/* Long text is split into several TEXT rows; each one gets its own SEL row so
+ * every rendered row is independently clickable back to its element. */
+static void rw_wrap(SB *b, char *s, const NbNode *n) {
     while (s && *s) {
         size_t L = strlen(s);
-        if (L <= RWS_TEXT) { rw_row(b, "TEXT", s); break; }
+        if (L <= RWS_TEXT) { rw_sel(b, n); rw_row(b, "TEXT", s); break; }
         size_t cut = RWS_TEXT;
         while (cut > RWS_TEXT / 2 && s[cut] && s[cut] != ' ') cut--;
-        if (s[cut] == ' ') { char save = s[cut]; s[cut] = 0; rw_row(b, "TEXT", s); s[cut] = save; s += cut + 1; }
-        else { char save = s[RWS_TEXT]; s[RWS_TEXT] = 0; rw_row(b, "TEXT", s); s[RWS_TEXT] = save; s += RWS_TEXT; }
+        if (s[cut] == ' ') { char save = s[cut]; s[cut] = 0; rw_sel(b, n); rw_row(b, "TEXT", s); s[cut] = save; s += cut + 1; }
+        else { char save = s[RWS_TEXT]; s[RWS_TEXT] = 0; rw_sel(b, n); rw_row(b, "TEXT", s); s[RWS_TEXT] = save; s += RWS_TEXT; }
     }
 }
+static char *attrs_set(const NbNode *n, const char *name, const char *val);
+
+/* Every row the walk emits is preceded by a SEL row naming a selector that
+ * document.querySelector() can resolve back to the same element, so the
+ * manager can turn a khtpm click on a rendered row into a real DOM EVENT.
+ * Elements that already carry an id use it; the rest get a stable synthetic
+ * id written into the raw attribute blob (nb_attr_get reads that blob, not
+ * n->id, so setting n->id alone would not be findable). */
+static int g_auto_id_seq;
+static void rw_sel(SB *b, const NbNode *n) {
+    if (!n) return;
+    const char *id = nb_attr_get(n, "id");
+    char auto_id[48];
+    if (!id || !id[0]) {
+        snprintf(auto_id, sizeof(auto_id), "nb-auto-%d", ++g_auto_id_seq);
+        NbNode *w = (NbNode *)n;
+        char *na = attrs_set(w, "id", auto_id);
+        free(w->attrs);
+        w->attrs = na;
+        if (w->id) { free(w->id); }
+        w->id = strdup(auto_id);
+        id = auto_id;
+    }
+    char sel[96];
+    snprintf(sel, sizeof(sel), "#%s", id);
+    rw_row(b, "SEL", sel);
+}
+
 static void dom_walk_render(const NbNode *n, int *titled, SB *b) {
     if (!n) return;
     const char *tg = n->tag;
@@ -523,6 +555,7 @@ static void dom_walk_render(const NbNode *n, int *titled, SB *b) {
     if (tg && !strcasecmp(tg, "title") && !*titled) {
         SB t = {0, 0, 0};
         node_text_content(n, &t);
+        rw_sel(b, n);
         rw_row(b, "TITLE", t.s ? t.s : "");
         free(t.s);
         *titled = 1;
@@ -534,6 +567,7 @@ static void dom_walk_render(const NbNode *n, int *titled, SB *b) {
             node_text_content(n, &t);
             char linkbuf[2048];
             snprintf(linkbuf, sizeof(linkbuf), "%s|%s", href, t.s && t.s[0] ? t.s : href);
+            rw_sel(b, n);
             rw_row(b, "LINK", linkbuf);
             free(t.s);
             caption_used = 1;
@@ -572,6 +606,7 @@ static void dom_walk_render(const NbNode *n, int *titled, SB *b) {
             } else {
                 snprintf(imgbuf, sizeof(imgbuf), "%s|%s", srcbuf, altbuf);
             }
+            rw_sel(b, n);
             rw_row(b, "IMG", imgbuf);
             caption_used = 1;
         }
@@ -582,7 +617,7 @@ static void dom_walk_render(const NbNode *n, int *titled, SB *b) {
     if (!caption_used && n->text && n->text[0] && strspn(n->text, " \t\r\n") < strlen(n->text)) {
         size_t L = strlen(n->text);
         char *copy = malloc(L + 1);
-        if (copy) { memcpy(copy, n->text, L + 1); rw_wrap(b, copy); free(copy); }
+        if (copy) { memcpy(copy, n->text, L + 1); rw_wrap(b, copy, n); free(copy); }
     }
     for (const NbNode *c = n->first_child; c; c = c->next_sibling)
         dom_walk_render(c, titled, b);
