@@ -4924,6 +4924,22 @@ static int tp_main(int argc, char **argv) {
 
     TP_TIMING_MARK("setup-complete->entering event loop");
     while (running && !g_shutdown_requested) {
+        /* REAL, NEW 2026-09-29, direct live report ("any zombies, that
+         * has to be fixed... never throttle") - found via a live zombie
+         * scan: this process's own g_khtpm_menu_pid reap only ever ran
+         * right after SIGTERM (close_khtpm_menu(), ~line 461/6932) -
+         * almost never fast enough to actually catch the child before
+         * it exits, same exact gap khtpm_core_render.c's own
+         * kh_reap_respawn_pids()/g_khtpm_menu_pid comment already
+         * documented and fixed there on 2026-09-14 for ITS own copy of
+         * this pattern - this file (a separate binary) never got the
+         * same fix. One opportunistic non-blocking reap per loop
+         * iteration, same shape. */
+        if (g_khtpm_menu_pid > 0) {
+            int wstatus;
+            if (waitpid(g_khtpm_menu_pid, &wstatus, WNOHANG) == g_khtpm_menu_pid)
+                g_khtpm_menu_pid = -1;
+        }
         {
             struct stat pst;
             if (stat(pos_marker_path, &pst) == 0 && (long)pst.st_size != pos_marker_size) {
