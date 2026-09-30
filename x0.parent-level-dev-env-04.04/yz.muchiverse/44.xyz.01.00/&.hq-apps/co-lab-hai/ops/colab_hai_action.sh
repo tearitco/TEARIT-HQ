@@ -49,4 +49,12 @@ if [ -z "$HOUSE_ROOT" ] || [ ! -d "$HOUSE_ROOT" ]; then
     echo "colab_hai_action.sh: bad house_root" >&2
     exit 1
 fi
-printf "%s\n" "$REQ_LINE" > "$HOUSE_ROOT/#.desktop/colab_hai/request.txt"
+# REAL FIX 2026-09-29, direct live report ("it keeps asking for
+# approval for an old message u sent that i appended a note to") -
+# request.txt is now a real append-only queue (colab_hai_manager.c's
+# handle_request() drains every queued line per tick, same shape as
+# drain_incoming()), not a single-slot mailbox. It used to be `>`
+# (whole-file overwrite) - clicking Approve then submitting a composer
+# note before the manager's next poll tick silently clobbered the
+# still-unread approve line, so it never actually cleared.
+printf "%s\n" "$REQ_LINE" >> "$HOUSE_ROOT/#.desktop/colab_hai/request.txt"

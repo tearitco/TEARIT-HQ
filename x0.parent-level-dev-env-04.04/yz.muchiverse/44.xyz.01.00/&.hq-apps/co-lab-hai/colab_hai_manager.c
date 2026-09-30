@@ -116,6 +116,22 @@
 
 #define PATH_BUF 4352
 #define MAX_LINES 4096
+/* REAL FIX 2026-09-29, direct live report (screenshot: "Sonnet's new
+ * line has two parts, and the second one is cut off in the log") -
+ * root cause: every line[]/tmp[]/lines[][] buffer in this file was a
+ * fixed 2048 bytes, but a real posted message (a long combined status
+ * update) ran well past that. fgets() silently stops at the buffer
+ * limit, not at the real newline, so the remainder of that ONE
+ * message came back on the NEXT fgets() call with no "agent|" prefix
+ * of its own - drain_incoming()/the pending/conversation parsers all
+ * assume one fgets() = one complete pipe-delimited record, so that
+ * orphaned second half was silently dropped, not merely "not
+ * displayed." Same "let it be as long as it needs" decision already
+ * made for the pending-banner's own display height (see this file's
+ * needed_rows comment) - the underlying storage needs to actually
+ * hold what it decided to allow. 16 KiB is a real, generous multiple
+ * of the longest message posted so far, not a guess at "big enough". */
+#define CH_LINE_BUF 16384
 #define MAX_PARTICIPANTS 16
 
 static char g_house[PATH_BUF];
@@ -220,13 +236,13 @@ static void drain_incoming(void) {
 
     FILE *pf = fopen(g_pending_path, "a");
     if (!pf) { fclose(inf); return; }
-    char line[2048];
+    char line[CH_LINE_BUF];
     time_t now = time(NULL);
     while (fgets(line, sizeof(line), inf)) {
         chomp(line);
         if (!line[0]) continue;
         char *agent, *msg;
-        char tmp[2048];
+        char tmp[CH_LINE_BUF];
         snprintf(tmp, sizeof(tmp), "%s", line);
         if (!split2(tmp, &agent, &msg)) continue;
         fprintf(pf, "%ld|%s|%s\n", (long)now, agent, msg);
@@ -255,7 +271,7 @@ static int pop_pending(const char *dest_path) {
      * edge case. `static` moves it to BSS instead of the stack - the
      * real fix, not just a smaller MAX_LINES (this function is not
      * reentrant/threaded, a static buffer is safe here). */
-    static char lines[MAX_LINES][2048];
+    static char lines[MAX_LINES][CH_LINE_BUF];
     int n = 0;
     while (n < MAX_LINES && fgets(lines[n], sizeof(lines[n]), pf)) {
         chomp(lines[n]);
@@ -348,28 +364,47 @@ static void post_owner_message(const char *msg) {
     fclose(cf);
 }
 
-/* One pending action line, same contract as every other manager's own
- * request.txt. */
+/* REAL FIX 2026-09-29, direct live report ("it keeps asking for
+ * approval for an old message u sent that i appended a note to") -
+ * root cause: colab_hai_action.sh wrote each action with a plain `>`
+ * (whole-file overwrite), and this function only ever read+processed
+ * the FIRST line before truncating - a single-slot mailbox, not a
+ * queue. Approve a message, then submit a composer note before this
+ * function's next poll tick sees it, and the "post:" write clobbers
+ * the still-unread "approve:" line outright - the approve is silently
+ * lost, the message never leaves pending.txt, and it keeps re-showing
+ * forever even though the owner genuinely clicked Approve. Same real
+ * race drain_incoming() already solved for incoming.txt (see its own
+ * header comment) - applied here too: read+process EVERY queued line
+ * in order, truncate once at the end. colab_hai_action.sh now appends
+ * (`>>`) instead of overwriting, so two quick actions queue instead of
+ * racing. */
 static void handle_request(void) {
     FILE *f = fopen(g_request_path, "r");
     if (!f) return;
-    char line[2048];
-    if (!fgets(line, sizeof(line), f)) { fclose(f); return; }
-    fclose(f);
-    chomp(line);
-    if (!line[0]) return;
+    fseek(f, 0, SEEK_END);
+    long sz = ftell(f);
+    if (sz <= 0) { fclose(f); return; }
+    fseek(f, 0, SEEK_SET);
 
-    if (strcmp(line, "approve:") == 0) {
-        pop_pending(g_conversation_path);
-    } else if (strcmp(line, "reject:") == 0) {
-        pop_pending(g_rejected_path);
-    } else if (strncmp(line, "post:", 5) == 0 && line[5]) {
-        post_owner_message(line + 5);
-    } else if (strcmp(line, "newsession:") == 0) {
-        start_new_session();
-    } else if (strncmp(line, "loadsession:", 12) == 0 && line[12]) {
-        switch_session(line + 12);
+    char line[CH_LINE_BUF];
+    while (fgets(line, sizeof(line), f)) {
+        chomp(line);
+        if (!line[0]) continue;
+
+        if (strcmp(line, "approve:") == 0) {
+            pop_pending(g_conversation_path);
+        } else if (strcmp(line, "reject:") == 0) {
+            pop_pending(g_rejected_path);
+        } else if (strncmp(line, "post:", 5) == 0 && line[5]) {
+            post_owner_message(line + 5);
+        } else if (strcmp(line, "newsession:") == 0) {
+            start_new_session();
+        } else if (strncmp(line, "loadsession:", 12) == 0 && line[12]) {
+            switch_session(line + 12);
+        }
     }
+    fclose(f);
 
     FILE *clr = fopen(g_request_path, "w");
     if (clr) fclose(clr);
@@ -444,11 +479,11 @@ static void write_agent_feeds(void) {
         if (!wf) continue;
         FILE *cf = fopen(g_conversation_path, "r");
         if (cf) {
-            char line[2048];
+            char line[CH_LINE_BUF];
             while (fgets(line, sizeof(line), cf)) {
                 chomp(line);
                 if (!line[0]) continue;
-                char tmpline[2048];
+                char tmpline[CH_LINE_BUF];
                 snprintf(tmpline, sizeof(tmpline), "%s", line);
                 char *ts, *agent, *msg;
                 if (!split3(tmpline, &ts, &agent, &msg)) continue;
@@ -496,12 +531,12 @@ static void write_chtpm_projection(void) {
     {
         FILE *pf = fopen(g_pending_path, "r");
         if (pf) {
-            char line[2048];
+            char line[CH_LINE_BUF];
             while (fgets(line, sizeof(line), pf)) {
                 chomp(line);
                 if (!line[0]) continue;
                 if (n_pending == 0) {
-                    char tmp[2048];
+                    char tmp[CH_LINE_BUF];
                     snprintf(tmp, sizeof(tmp), "%s", line);
                     char *ts, *agent, *msg;
                     if (split3(tmp, &ts, &agent, &msg)) {
@@ -522,11 +557,11 @@ static void write_chtpm_projection(void) {
         const char *path = pass == 0 ? g_conversation_path : g_pending_path;
         FILE *f = fopen(path, "r");
         if (!f) continue;
-        char line[2048];
+        char line[CH_LINE_BUF];
         while (fgets(line, sizeof(line), f)) {
             chomp(line);
             if (!line[0]) continue;
-            char tmp[2048];
+            char tmp[CH_LINE_BUF];
             snprintf(tmp, sizeof(tmp), "%s", line);
             char *ts, *agent, *msg;
             if (split3(tmp, &ts, &agent, &msg)) participant_index(agent);
@@ -642,11 +677,11 @@ static void write_chtpm_projection(void) {
     {
         FILE *f = fopen(g_conversation_path, "r");
         if (f) {
-            char line[2048];
+            char line[CH_LINE_BUF];
             while (fgets(line, sizeof(line), f)) {
                 chomp(line);
                 if (!line[0]) continue;
-                char tmp[2048];
+                char tmp[CH_LINE_BUF];
                 snprintf(tmp, sizeof(tmp), "%s", line);
                 char *ts, *agent, *msg;
                 if (!split3(tmp, &ts, &agent, &msg)) continue;
