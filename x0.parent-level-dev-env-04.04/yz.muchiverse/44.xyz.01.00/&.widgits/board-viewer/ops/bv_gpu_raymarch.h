@@ -23,7 +23,7 @@
 
 #define BV_GPU_MAX_LEGEND 64
 #define BV_GPU_MAX_BOX    128
-#define BV_GPU_MAX_MODEL  8      /* distinct phymoji models (hero, chicken, tree_small, ...) */
+#define BV_GPU_MAX_MODEL  24     /* one model per desk pal; the old 8 left the rest a flat green box */
 #define BV_GPU_MDL_DIM    32     /* max local grid side */
 #define BV_GPU_MDL_DEPTH  8      /* phymoji lz is always 0..7 */
 

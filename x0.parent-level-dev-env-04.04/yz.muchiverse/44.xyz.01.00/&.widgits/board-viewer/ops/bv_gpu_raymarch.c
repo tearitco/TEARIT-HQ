@@ -58,8 +58,8 @@ static const char *FS_SRC =
 "uniform vec3  u_bmax[128];\n"
 "uniform vec4  u_bcol[128];\n"     /* .rgb colour, .a: 1 = apply light, 0 = self-lit */
 "uniform int   u_bmdl[128];\n"     /* >=0 -> raymarch phymoji model u_bmdl[i] inside the box */
-"uniform highp sampler3D u_mdl;\n" /* 32x32x(8*8): model m at z [m*8, m*8+8) */
-"uniform ivec3 u_mdim[8];\n"       /* per-model (lx,ly,lz) counts */
+"uniform highp sampler3D u_mdl;\n" /* 32x32x(8*24): model m at z [m*8, m*8+8) */
+"uniform ivec3 u_mdim[24];\n"      /* per-model (lx,ly,lz) counts */
 "\n"
 "bool slab(vec3 ro, vec3 rd, vec3 bn, vec3 bx, out float t, out int face) {\n"
 "  float tmin = -1e30, tmax = 1e30; face = -1;\n"

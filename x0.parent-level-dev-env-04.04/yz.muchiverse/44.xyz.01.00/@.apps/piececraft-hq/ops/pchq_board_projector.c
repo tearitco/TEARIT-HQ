@@ -88,9 +88,10 @@ static int emit_page_entities(char *ui, size_t *off, const char *house, const ch
                 char line[256];
                 active[0] = '\0';
                 while (fgets(line, sizeof(line), sf)) {
-                    char *k = strstr(line, "| active_session |");
+                    const char *mark = "| active_session |";
+                    char *k = strstr(line, mark);
                     if (!k) continue;
-                    sscanf(k + 18, " %127s", active);
+                    sscanf(k + strlen(mark), " %127s", active);
                     break;
                 }
                 fclose(sf);
@@ -100,12 +101,17 @@ static int emit_page_entities(char *ui, size_t *off, const char *house, const ch
                 FILE *df = fopen(sp, "r");
                 if (!df) continue;
                 while (fgets(line, sizeof(line), df)) {
-                    char *k = strstr(line, "| active_desk |");
+                    const char *mark = "| active_desk |";
+                    char *k = strstr(line, mark);
                     if (!k) continue;
-                    sscanf(k + 14, " %127s", desk);
+                    /* k+14 used to land on the marker's own '|', so the
+                     * page name became "|" and the desk file never opened.
+                     * The footer then kept the private hero/tree/chicken list. */
+                    sscanf(k + strlen(mark), " %127s", desk);
                     break;
                 }
                 fclose(df);
+                if (desk[0] == '|') desk[0] = '\0';
                 if (!desk[0]) continue;
                 snprintf(pdl, sizeof(pdl), "%s/%s/home/livedesk/sessions/%s/desks/%s.pdl",
                          users, e->d_name, active, desk);
@@ -122,7 +128,7 @@ static int emit_page_entities(char *ui, size_t *off, const char *house, const ch
         "ent_0_x=0\nent_0_y=0\nent_0_z=0\n");
     n = 1;
     char line[512];
-    while (n < 16 && fgets(line, sizeof(line), f)) {
+    while (n < 24 && fgets(line, sizeof(line), f)) {
         if (strncmp(line, "DESK", 4) != 0) continue;
         char name[64], path[256], glyph[64];
         int px, py, cx, cy, tail;
