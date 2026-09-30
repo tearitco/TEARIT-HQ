@@ -119,6 +119,8 @@ static void kh_grab_keyboard_retry(void);
 static void kh_capture_click(int x, int y, int button);
 static void kh_capture_key(KeySym ks, char ch);
 static void redraw(void); /* REAL, forward declaration needed for dispatch()'s OPACITY_MINUS/OPACITY_PLUS handlers (NEW 2026-08-29 TASK 2) */
+static void kh_hq_reg_bump_marker(const char *new_line); /* fwd - MINIMIZE handler uses it, defined near redraw() (hq-windows change marker, grok handoff 2026-09-30) */
+static void kh_hq_reg_mark_removed(void); /* fwd - cleanup_hq_window_registry() uses it, same marker mechanism */
 static void kh_raise_and_focus(Window w); /* fwd - dispatch()'s FOCUSWIN handler uses it, defined near hq_dispatch_xevent */
 static void kh_open_cli_io_context_menu(Elem *target, int win_px, int win_py); /* fwd - hq_dispatch_xevent's ButtonPress (button 3) uses it, defined near close_context_menu */
 static void kh_poll_cli_io_ctxmenu_action(void); /* fwd - hq_idle_tick() polls this; defined near kh_open_cli_io_context_menu */
@@ -7861,14 +7863,23 @@ static void dispatch(const char *action) {
                 snprintf(reg_path, sizeof(reg_path), "%s/#.desktop/livedesk_hq_windows_%d.txt",
                          g_house_root, (int)getpid());
                 snprintf(reg_tmp, sizeof(reg_tmp), "%s.tmp", reg_path);
+                char reg_line[512];
+                snprintf(reg_line, sizeof(reg_line),
+                        "win=0x%lx|pid=%d|title=%s|x=%d|y=%d|w=%d|h=%d|minimized=1|focused=0\n",
+                        (unsigned long)win, (int)getpid(), title_raw,
+                        g_win_x, g_win_y, g_win_w, g_win_h);
                 FILE *rf = fopen(reg_tmp, "w");
                 if (rf) {
-                    fprintf(rf, "win=0x%lx|pid=%d|title=%s|x=%d|y=%d|w=%d|h=%d|minimized=1|focused=0\n",
-                            (unsigned long)win, (int)getpid(), title_raw,
-                            g_win_x, g_win_y, g_win_w, g_win_h);
+                    fputs(reg_line, rf);
                     fclose(rf);
                     rename(reg_tmp, reg_path);
                 }
+                /* REAL, NEW 2026-09-30 (grok handoff) - a minimize
+                 * changes the registry's real content (minimized=1) but
+                 * this is a SEPARATE write from redraw()'s own reg_line
+                 * write above; without going through the same helper the
+                 * marker the reader relies on would never bump here. */
+                kh_hq_reg_bump_marker(reg_line);
             }
             XUnmapWindow(dpy, win);
             XFlush(dpy);
@@ -9358,6 +9369,47 @@ static void kh_ascii_frame_unregister(void) {
     kh_drop_zone_unregister();
 }
 
+/* REAL, NEW 2026-09-30 (grok handoff, CPU-loop analysis, HANDOFF STEP 1
+ * ONLY - HQ WINDOW MARKER): the writer side of the hq-windows change
+ * marker. #.desktop/hq_windows_changed.txt is a real, append-only,
+ * house-standard marker file (same shape as strip_frame_changed.txt/
+ * hq_ui_pdl_changed.txt) - ktb_merge_hq_windows()
+ * (khtpm_taskbar_manager.c) stats its SIZE instead of opendir/readdir-
+ * ing #.desktop (2616+ entries) on every reload. One line per real
+ * change: "<pid> <add|update|remove>\n". Only THIS process's own pid
+ * is ever named by a call from this process, so a plain static
+ * last-written-line compare is correct and sufficient - no other
+ * process can race it. */
+static char g_hq_reg_last_line[512] = "";
+static int g_hq_reg_ever_bumped = 0;
+static void kh_hq_reg_append_marker(const char *event) {
+    char mpath[PATH_BUF];
+    snprintf(mpath, sizeof(mpath), "%s/#.desktop/hq_windows_changed.txt", g_house_root);
+    FILE *mf = fopen(mpath, "a");
+    if (!mf) return;
+    fprintf(mf, "%d %s\n", (int)getpid(), event);
+    fclose(mf);
+}
+static void kh_hq_reg_bump_marker(const char *new_line) {
+    if (g_hq_reg_ever_bumped && strcmp(new_line, g_hq_reg_last_line) == 0) return;
+    kh_hq_reg_append_marker(g_hq_reg_ever_bumped ? "update" : "add");
+    snprintf(g_hq_reg_last_line, sizeof(g_hq_reg_last_line), "%s", new_line);
+    g_hq_reg_ever_bumped = 1;
+}
+/* Called once from cleanup_hq_window_registry() after this process's
+ * own registry file is unlinked - the "remove" half of add/update/
+ * remove. Also the minimize write (a separate real code path, not this
+ * redraw tick's own reg_line write) must call kh_hq_reg_bump_marker()
+ * through the same registry-write helper rather than writing the file
+ * directly, or a minimize would change the registry's real content
+ * without ever bumping the marker the reader relies on. */
+static void kh_hq_reg_mark_removed(void) {
+    if (!g_hq_reg_ever_bumped) return;   /* never registered - nothing to remove */
+    kh_hq_reg_append_marker("remove");
+    g_hq_reg_ever_bumped = 0;
+    g_hq_reg_last_line[0] = '\0';
+}
+
 static void redraw(void) {
     /* --headless: there is no window to blit to. redraw() is the one
      * choke point every "something changed, repaint" path funnels
@@ -9558,14 +9610,30 @@ static void redraw(void) {
             char reg_path[PATH_BUF], reg_tmp[PATH_BUF];
             snprintf(reg_path, sizeof(reg_path), "%s/#.desktop/livedesk_hq_windows_%d.txt", g_house_root, (int)getpid());
             snprintf(reg_tmp, sizeof(reg_tmp), "%s.tmp", reg_path);
+            char reg_line[512];
+            snprintf(reg_line, sizeof(reg_line),
+                    "win=0x%lx|pid=%d|title=%s|x=%d|y=%d|w=%d|h=%d|minimized=%d|focused=%d\n",
+                    (unsigned long)win, (int)getpid(), title_raw, g_win_x, g_win_y, g_win_w, g_win_h,
+                    g_hq_minimized ? 1 : 0, (focus_win == win) ? 1 : 0);
             FILE *rf = fopen(reg_tmp, "w");
             if (rf) {
-                fprintf(rf, "win=0x%lx|pid=%d|title=%s|x=%d|y=%d|w=%d|h=%d|minimized=%d|focused=%d\n",
-                        (unsigned long)win, (int)getpid(), title_raw, g_win_x, g_win_y, g_win_w, g_win_h,
-                        g_hq_minimized ? 1 : 0, (focus_win == win) ? 1 : 0);
+                fputs(reg_line, rf);
                 fclose(rf);
                 rename(reg_tmp, reg_path);
             }
+            /* REAL, NEW 2026-09-30 (grok handoff, CPU-loop analysis) -
+             * ktb_merge_hq_windows() (khtpm_taskbar_manager.c) used to
+             * open+readdir #.desktop on every reload to notice this file
+             * - 2616+ entries scanned for the sake of one line that
+             * changes maybe once every few seconds. This line was ALSO
+             * rewritten every redraw tick regardless of whether its
+             * content changed at all, which meant even a real marker
+             * would have bumped every tick and defeated its own purpose.
+             * kh_hq_reg_bump_marker() below only appends when the text
+             * actually differs from what THIS window last wrote -
+             * strcmp against a per-process static, correct because only
+             * one process ever writes this pid's own line. */
+            kh_hq_reg_bump_marker(reg_line);
         }
     }
 
@@ -19051,6 +19119,10 @@ static void cleanup_hq_window_registry(void) {
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/#.desktop/livedesk_hq_windows_%d.txt", g_house_root, (int)getpid());
     unlink(path);
+    /* REAL, NEW 2026-09-30 (grok handoff) - the "remove" half of the
+     * add/update/remove marker; lets ktb_merge_hq_windows() drop this
+     * pid from its cache without re-scanning #.desktop. */
+    kh_hq_reg_mark_removed();
 }
 
 /* --headless main loop. Entered from main() just before it would
