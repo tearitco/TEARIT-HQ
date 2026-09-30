@@ -137,7 +137,32 @@ int main(void) {
         int is_user = strcmp(lines[i].speaker, "USER") == 0;
         write_kv(f, key, is_user ? "msg-user" : "msg-hai");
     }
-    write_kv(f, "status", "");
+    /* REAL FIX 2026-09-30, direct live request ("it should say which
+     * backend its using somewhere in robot-chat") - status was always
+     * blank; this is the one already-wired label slot
+     * (robot-chat.xhtpm's <text id="status">) with nothing in it.
+     * Mirrors rc_check_request.c's own real switch/default exactly -
+     * same file, same fallback - so this can never claim a backend
+     * that file isn't actually using. */
+    {
+        char backend[32] = "gemma";
+        char bpath[PATH_BUF];
+        snprintf(bpath, sizeof(bpath), "%s/.hq_manager/chat_backend.txt", entity_dir);
+        FILE *bf = fopen(bpath, "r");
+        if (bf) {
+            if (fgets(backend, sizeof(backend), bf)) backend[strcspn(backend, "\r\n")] = '\0';
+            fclose(bf);
+        }
+        if (!backend[0]) snprintf(backend, sizeof(backend), "gemma");
+        char status[64];
+        if (strcmp(backend, "openrouter") == 0)
+            snprintf(status, sizeof(status), "backend: OpenRouter");
+        else if (strcmp(backend, "bank") == 0)
+            snprintf(status, sizeof(status), "backend: OpenRouter -> pipeline");
+        else
+            snprintf(status, sizeof(status), "backend: Gemma (LAN)");
+        write_kv(f, "status", status);
+    }
     char label[128];
     load_entity_label(entity_dir, label, sizeof(label));
     write_kv(f, "entity_label", label);
