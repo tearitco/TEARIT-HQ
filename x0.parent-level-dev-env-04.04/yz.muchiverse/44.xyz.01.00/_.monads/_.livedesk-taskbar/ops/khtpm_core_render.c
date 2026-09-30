@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L /* CLOCK_MONOTONIC + getline() under -std=c11 strict mode - bumped from 199309L 2026-08-16 for chai_load_ledger()'s real getline() fix, see that function's own header comment */
 #include <stdarg.h> /* 2026-09-11 - kh_focus_debug_log()'s va_list, TEMPORARY diagnostic logging */
+#include "house_wait.h"
 /* khtpm_entity_menu_render.c — entity context menu, Stage 2c PROOF
  * (2026-08-16, direct instruction: "oh use chtpm. its standard" -
  * overriding the smaller module-only-bolt-on option initially
@@ -12367,6 +12368,11 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
             if (nowt - s_last_force >= 1) { s_last_force = nowt; g_frame_dirty = 1; }
         }
         if (g_frame_dirty && !g_quit) { g_frame_dirty = 0; redraw(); }
+        /* Bottom of every pass. select() above returns at once when a
+         * canvas redraw queues another Expose, so its 16ms timeout
+         * never elapses and this window pegs a core. house_wait_us
+         * floors at 30ms and this call is not in an else. */
+        house_wait_us(HOUSE_WAIT_FLOOR_US);
     }
 }
 
