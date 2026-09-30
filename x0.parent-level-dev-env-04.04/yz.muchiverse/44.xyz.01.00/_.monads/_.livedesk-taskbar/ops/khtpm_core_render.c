@@ -5928,7 +5928,9 @@ static void dock_place_pager(int win_w, int after_x) {
     /* REAL, NEW 2026-09-29, direct live report ("pretty good but that
      * space for both could be about 15% wider") - +15% on both aw and
      * gap (45->52, 6->7), DOCK_PAGER_W widened to match just above. */
-    int aw = scaled(52), gap = scaled(7);
+    /* REAL, NEW 2026-09-29 (second pass), direct live report ("could
+     * still be about 7% wider") - +7% again on both (52->56, 7->8). */
+    int aw = scaled(56), gap = scaled(8);
     int left_bias = scaled(10);
     int need = (g_dock_packed_rows > 1) || (g_dock_visible_rows > 1);
 
