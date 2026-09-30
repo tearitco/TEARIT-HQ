@@ -114,12 +114,10 @@ and moving both from one place.
   desk's current page with the last active pc-hq page. The other
   replaces the pc-hq page with the desk's current page.
 
-  The row lives under the Menu dropdown. In pchq-board.xhtpm that
-  dropdown is tb-menu. Counted across the toolbar it is the 4th tab
-  (In, Book, Page, Menu, Player, clock). Player is the 5th. The rows
-  already under Menu are "Entities bar on/off", "Db (todo)", and
-  cancel. Synch would be a new row there, and the same row on the
-  livedesk taskbar's menu.
+  Synch is a row under Player, not under Menu. Menu stays free for
+  dynamic entries. In pc-hq, Player is the 5th toolbar tab
+  (tb-player: Play, Stop, Reset, Notes, cancel). On the livedesk
+  taskbar, Player is cell 9. The same Synch row goes in both Player
+  menus.
 
-  Not started. One count is still open: Menu is tab 4 on this window,
-  and tab 5 is Player.
+  Not started.
