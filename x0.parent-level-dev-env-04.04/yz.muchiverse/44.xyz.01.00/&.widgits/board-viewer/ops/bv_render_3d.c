@@ -197,31 +197,9 @@ static int page_pdl_value(const char *path, const char *key, char *out, int n) {
     fclose(f);
     return 0;
 }
-/* 1 = follow the live desk page, -1 = the board owns its map, 0 = no pin. */
-static int page_live_desk(const char *house, char *out, int n) {
-    char users[PATH_BUF];
-    snprintf(users, sizeof(users), "%s/xyzfs/users", house);
-    DIR *d = opendir(users);
-    if (!d) return 0;
-    struct dirent *e;
-    while ((e = readdir(d))) {
-        if (e->d_name[0] == '.') continue;
-        char sess[PATH_BUF], rootpdl[PATH_BUF], active[128], desk[128], sp[PATH_BUF];
-        snprintf(sess, sizeof(sess), "%s/%s/home/livedesk/sessions", users, e->d_name);
-        snprintf(rootpdl, sizeof(rootpdl), "%s/session.pdl", sess);
-        if (!page_pdl_value(rootpdl, "active_session", active, sizeof(active))) continue;
-        snprintf(sp, sizeof(sp), "%s/%s/session.pdl", sess, active);
-        if (!page_pdl_value(sp, "active_desk", desk, sizeof(desk))) continue;
-        snprintf(out, n, "%s/%s/desks/%s.pdl", sess, active, desk);
-        closedir(d);
-        FILE *t = host_fopen(out, "r");
-        if (!t) return 0;
-        fclose(t);
-        return 1;
-    }
-    closedir(d);
-    return 0;
-}
+/* 1 = the synch pin's desk file, -1 = the board owns its map, 0 = no pin.
+ * A later livedesk page change does not move this view. Synch writes
+ * a new pdl= line; that is the only time the desk page changes here. */
 static int page_bound_pdl(const char *house, char *out, int n) {
     char ob[PATH_BUF], line[PATH_BUF], source[32] = "", stored[PATH_BUF] = "";
     snprintf(ob, sizeof(ob), "%s/@.apps/piececraft-hq/pieces/display/open_book_page.txt", house);
@@ -242,7 +220,6 @@ static int page_bound_pdl(const char *house, char *out, int n) {
         return -1;
     }
     if (strcmp(source, "desk") != 0 && !stored[0]) return 0;
-    if (page_live_desk(house, out, n)) return 1;
     if (!stored[0]) return 0;
     FILE *t = host_fopen(stored, "r");
     if (!t) return 0;
@@ -2027,10 +2004,44 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
         snprintf(hudtxt, sizeof(hudtxt), "%s/pieces/display/hud.txt", game_root);
         for (int li = 1; li <= 4 && n < 12; li++) {
             char key[16], val[64] = "";
+            if (li == 2) continue; /* line2 is the stale world map:desk */
             snprintf(key, sizeof(key), "line%d", li);
             read_kv_str(hudtxt, key, val, sizeof(val));
             if (val[0]) snprintf(lines[n++], sizeof(lines[0]), "%s", val);
         }
+    }
+    /* Book and page from the pin, every frame. hud.txt line2 only
+     * rewrote world_01 map_id when the menu op ran, so a Synch left
+     * the debug line on the old map. */
+    if (n < 12 && house_root[0]) {
+        char ob[PATH_BUF], line[PATH_BUF];
+        char book[40] = "", page[40] = "", source[16] = "";
+        snprintf(ob, sizeof(ob), "%s/@.apps/piececraft-hq/pieces/display/open_book_page.txt", house_root);
+        FILE *bf = host_fopen(ob, "r");
+        if (bf) {
+            while (fgets(line, sizeof(line), bf)) {
+                if (!strncmp(line, "source=", 7)) {
+                    snprintf(source, sizeof(source), "%s", line + 7);
+                    source[strcspn(source, "\r\n")] = '\0';
+                } else if (!strncmp(line, "book=", 5)) {
+                    snprintf(book, sizeof(book), "%s", line + 5);
+                    book[strcspn(book, "\r\n")] = '\0';
+                } else if (!strncmp(line, "page=", 5)) {
+                    snprintf(page, sizeof(page), "%s", line + 5);
+                    page[strcspn(page, "\r\n")] = '\0';
+                }
+            }
+            fclose(bf);
+        }
+        if (strcmp(source, "board") == 0 || !book[0] || !page[0]) {
+            char worldp[PATH_BUF];
+            snprintf(worldp, sizeof(worldp), "%s/pieces/world_01/state.txt", game_root);
+            read_kv_str(worldp, "map_id", book, sizeof(book));
+            read_kv_str(worldp, "desk_id", page, sizeof(page));
+        }
+        if (!book[0]) snprintf(book, sizeof(book), "-");
+        if (!page[0]) snprintf(page, sizeof(page), "-");
+        snprintf(lines[n++], sizeof(lines[0]), "%s:%s", book, page);
     }
     /* REAL, NEW 2026-09-15 (4), direct live request ("the hud changes
      * aren't in pc-hq yet, i could prove it if we had pid in
@@ -2500,7 +2511,8 @@ static int bv_ray_click(const char *house, const Camera *cam,
         fclose(f);
     }
     if (cw < 1 || ch < 1) return 0;
-    double ndc_x = (2.0 * cx / (double)cw) - 1.0;
+    /* Match the picture: screen x is mirrored so desk +x stays on the right. */
+    double ndc_x = 1.0 - (2.0 * cx / (double)cw);
     double ndc_y = 1.0 - (2.0 * cy / (double)ch);
     double fov_rad = g_fov_deg * M_PI_LOCAL / 180.0;
     double t = tan(fov_rad / 2.0);

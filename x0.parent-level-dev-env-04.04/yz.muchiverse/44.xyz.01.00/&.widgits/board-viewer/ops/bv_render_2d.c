@@ -411,37 +411,12 @@ static int read_pdl_value(const char *path, const char *key, char *out, int n) {
     return 0;
 }
 /* open_book_page.txt:
- *   source=desk  — follow the desk's live page (Synch copied once;
- *                   a later desk switch moves this view with it)
+ *   source=desk  — the pdl= path Synch wrote. A later desk switch
+ *                   does not move this view until the next Synch.
  *   source=board — the board's own map; do not read a desk file
  *   no source, but pdl= — older Synch pin; same as source=desk
  * Returns 1 and writes the desk path, -1 when the board owns the
  * page, 0 when this file does not decide (caller may use active_desk). */
-static int page_live_desk(const char *house, char *out, int n) {
-    char users[PATH_BUF];
-    snprintf(users, sizeof(users), "%s/xyzfs/users", house);
-    DIR *d = opendir(users);
-    if (!d) return 0;
-    struct dirent *e;
-    while ((e = readdir(d))) {
-        if (e->d_name[0] == '.') continue;
-        char sess[PATH_BUF], rootpdl[PATH_BUF], active[128];
-        snprintf(sess, sizeof(sess), "%s/%s/home/livedesk/sessions", users, e->d_name);
-        snprintf(rootpdl, sizeof(rootpdl), "%s/session.pdl", sess);
-        if (!read_pdl_value(rootpdl, "active_session", active, sizeof(active))) continue;
-        char sp[PATH_BUF], desk[128];
-        snprintf(sp, sizeof(sp), "%s/%s/session.pdl", sess, active);
-        if (!read_pdl_value(sp, "active_desk", desk, sizeof(desk))) continue;
-        snprintf(out, n, "%s/%s/desks/%s.pdl", sess, active, desk);
-        closedir(d);
-        FILE *t = host_fopen(out, "r");
-        if (!t) return 0;
-        fclose(t);
-        return 1;
-    }
-    closedir(d);
-    return 0;
-}
 static int page_bound_pdl(const char *house, char *out, int n) {
     char ob[PATH_BUF], line[PATH_BUF], source[32] = "", stored[PATH_BUF] = "";
     snprintf(ob, sizeof(ob), "%s/@.apps/piececraft-hq/pieces/display/open_book_page.txt", house);
@@ -462,7 +437,6 @@ static int page_bound_pdl(const char *house, char *out, int n) {
         return -1;
     }
     if (strcmp(source, "desk") != 0 && !stored[0]) return 0;
-    if (page_live_desk(house, out, n)) return 1;
     if (!stored[0]) return 0;
     FILE *t = host_fopen(stored, "r");
     if (!t) return 0;

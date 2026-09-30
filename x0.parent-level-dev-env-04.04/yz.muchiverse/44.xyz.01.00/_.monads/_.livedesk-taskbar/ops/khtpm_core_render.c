@@ -11766,9 +11766,12 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                 g_x11_window_focused = 1;
                 /* Play-screen engage: canvas bbox, not g_nav. Never
                  * verb interact (toggle-off). */
-                if (g_win_managed_focus && kh_page_has_relay_item() &&
-                    kh_canvas_hit(ev->xbutton.x, ev->xbutton.y)) {
-                    kh_interact_engage_if_needed();
+                if (kh_canvas_hit(ev->xbutton.x, ev->xbutton.y)) {
+                    if (g_win_managed_focus && kh_page_has_relay_item())
+                        kh_interact_engage_if_needed();
+                    /* The board window is not managed-focus, so the old
+                     * gate never wrote pchq_canvas_click.txt and the
+                     * debug click line stayed "-". */
                     kh_publish_canvas_click(ev->xbutton.x, ev->xbutton.y, ev->xbutton.button);
                 }
             }

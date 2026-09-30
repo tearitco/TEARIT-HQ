@@ -62,10 +62,11 @@ static int read_pdl_opt(const char *path, const char *name, int def) {
 
 static void read_kv(const char *path, const char *key, char *out, size_t outsz);
 
-/* Footer rows from the live desk page while source=desk (or an older
- * pin that still has pdl=). source=board means the board picked its
- * own map: return -1 so the private lists are the strip. One "map"
- * row stands for the solid floor. tree_small stays off this bar. */
+/* Footer rows from the synch pin's pdl= while source=desk (or an older
+ * pin that still has pdl=). A later livedesk page change does not
+ * move this strip. source=board means the board picked its own map:
+ * return -1 so the private lists are the strip. One "map" row stands
+ * for the solid floor. tree_small stays off this bar. */
 static int emit_page_entities(char *ui, size_t *off, const char *house, const char *host_app_root) {
     char ob[PATH_MAX], pdl[PATH_MAX], source[32] = "";
     snprintf(ob, sizeof(ob), "%s/pieces/display/open_book_page.txt", host_app_root);
@@ -73,53 +74,7 @@ static int emit_page_entities(char *ui, size_t *off, const char *house, const ch
     read_kv(ob, "pdl", pdl, sizeof(pdl));
     if (!strcmp(source, "board")) return -1;
     if (strcmp(source, "desk") != 0 && !pdl[0]) return -1;
-    if (house && house[0]) {
-        char users[PATH_MAX];
-        snprintf(users, sizeof(users), "%s/xyzfs/users", house);
-        DIR *d = opendir(users);
-        if (d) {
-            struct dirent *e;
-            while ((e = readdir(d))) {
-                if (e->d_name[0] == '.') continue;
-                char rootpdl[PATH_MAX], active[128];
-                snprintf(rootpdl, sizeof(rootpdl), "%s/%s/home/livedesk/sessions/session.pdl", users, e->d_name);
-                FILE *sf = fopen(rootpdl, "r");
-                if (!sf) continue;
-                char line[256];
-                active[0] = '\0';
-                while (fgets(line, sizeof(line), sf)) {
-                    const char *mark = "| active_session |";
-                    char *k = strstr(line, mark);
-                    if (!k) continue;
-                    sscanf(k + strlen(mark), " %127s", active);
-                    break;
-                }
-                fclose(sf);
-                if (!active[0]) continue;
-                char sp[PATH_MAX], desk[128] = "";
-                snprintf(sp, sizeof(sp), "%s/%s/home/livedesk/sessions/%s/session.pdl", users, e->d_name, active);
-                FILE *df = fopen(sp, "r");
-                if (!df) continue;
-                while (fgets(line, sizeof(line), df)) {
-                    const char *mark = "| active_desk |";
-                    char *k = strstr(line, mark);
-                    if (!k) continue;
-                    /* k+14 used to land on the marker's own '|', so the
-                     * page name became "|" and the desk file never opened.
-                     * The footer then kept the private hero/tree/chicken list. */
-                    sscanf(k + strlen(mark), " %127s", desk);
-                    break;
-                }
-                fclose(df);
-                if (desk[0] == '|') desk[0] = '\0';
-                if (!desk[0]) continue;
-                snprintf(pdl, sizeof(pdl), "%s/%s/home/livedesk/sessions/%s/desks/%s.pdl",
-                         users, e->d_name, active, desk);
-                break;
-            }
-            closedir(d);
-        }
-    }
+    (void)house;
     FILE *f = fopen(pdl, "r");
     if (!f) return -1;
     int n = 0;
@@ -609,9 +564,9 @@ int main(int argc, char **argv) {
             char ob_src[32] = "";
             read_kv(ob, "source", ob_src, sizeof(ob_src));
             /* source=board is a later pick inside pc-hq. The name
-             * stays on this board's own map. source=desk still shares
-             * the desk's book and page, and a desk switch updates it
-             * because the strip reads the live active_desk. */
+             * stays on this board's own map. source=desk shows the
+             * book and page Synch wrote. A later desk switch does
+             * not move them until the next Synch. */
             if (strcmp(ob_src, "board") != 0 && ob_book[0] && ob_page[0]) {
                 snprintf(book_label, sizeof(book_label), "book:%s", ob_book);
                 snprintf(page_label, sizeof(page_label), "page:%s", ob_page);
