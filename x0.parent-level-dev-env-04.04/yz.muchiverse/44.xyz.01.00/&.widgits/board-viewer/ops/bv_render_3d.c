@@ -2648,57 +2648,6 @@ static int render_one_frame(void) {
         if (g_ray_hit)
             ADDWIRE(g_ray_x + 0.04, g_ray_z + 0.04, g_ray_y + 0.04,
                     g_ray_x + 0.96, g_ray_z + 0.96, g_ray_y + 0.96, 40, 220, 255);
-        /* One magenta wire brick on the hero's own cell. Same size as
-         * a terrain voxel: 1 by 1 by 1. */
-        {
-            int ox = g_hero_present ? g_hero_x : selector_x;
-            int oy = g_hero_present ? g_hero_y : selector_y;
-            int oz = g_hero_present ? g_hero_z : current_z;
-            ADDWIRE(ox + 0.02, oz + 0.02, oy + 0.02,
-                    ox + 0.98, oz + 0.98, oy + 0.98, 255, 220, 40);
-        }
-        /* Yellow diamond from the same '#' file the desk placer reads,
-         * stacked on every Z layer within the diamond's radius. */
-        {
-            int ox = g_hero_present ? g_hero_x : selector_x;
-            int oy = g_hero_present ? g_hero_y : selector_y;
-            int oz = g_hero_present ? g_hero_z : current_z;
-            char rows[16][64];
-            int nr = 0, nc = 0;
-            char mp[PATH_BUF];
-            snprintf(mp, sizeof(mp), "%s/pieces/display/move_range_matrix.txt", focused_project_root);
-            FILE *mf = host_fopen(mp, "r");
-            if (!mf) snprintf(mp, sizeof(mp), "%s/pieces/display/move_range_matrix.txt", project_root);
-            if (!mf) mf = host_fopen(mp, "r");
-            if (mf) {
-                while (nr < 16 && fgets(rows[nr], sizeof(rows[nr]), mf)) {
-                    rows[nr][strcspn(rows[nr], "\r\n")] = 0;
-                    if ((int)strlen(rows[nr]) > nc) nc = (int)strlen(rows[nr]);
-                    nr++;
-                }
-                fclose(mf);
-            }
-            if (nr < 1) {
-                snprintf(rows[0], sizeof(rows[0]), ".#.");
-                snprintf(rows[1], sizeof(rows[1]), "###");
-                snprintf(rows[2], sizeof(rows[2]), ".#.");
-                nr = 3; nc = 3;
-            }
-            int cx0 = nc / 2, cy0 = nr / 2, rad = cx0 > cy0 ? cx0 : cy0;
-            if (rad < 1) rad = 1;
-            if (rad > 3) rad = 3;
-            for (int dz = -rad; dz <= rad; dz++) {
-                for (int row = 0; row < nr; row++) {
-                    for (int col = 0; col < nc && rows[row][col]; col++) {
-                        if (rows[row][col] != '#') continue;
-                        int vx = ox + col - cx0, vy = oy + row - cy0, gz = oz + dz;
-                        if (vx == ox && vy == oy && gz == oz) continue;
-                        ADDWIRE(vx + 0.08, gz + 0.08, vy + 0.08,
-                                vx + 0.92, gz + 0.92, vy + 0.92, 255, 220, 40);
-                    }
-                }
-            }
-        }
         {
             char sp[PATH_BUF];
             snprintf(sp, sizeof(sp), "%s/pieces/display/synched_entities.txt", project_root);
@@ -2777,6 +2726,22 @@ static int render_one_frame(void) {
             ADDBOX(we->x+0.5-wsx/2.0, we->z+0.0, we->y+0.5-wsz/2.0,
                    we->x+0.5+wsx/2.0, we->z+wsy, we->y+0.5+wsz/2.0, cr,cg,cb, 0);
             if (wm >= 0) sc.box[sc.box_n-1].model = wm;
+        }
+        /* 3D diamond, range 2, on the hero only. A cell is in range
+         * when |dx|+|dy|+|dz| <= 2, so a higher layer has fewer squares. */
+        if (g_hero_present) {
+            int rad = 2;
+            for (int dz = -rad; dz <= rad; dz++) {
+                for (int dy = -rad; dy <= rad; dy++) {
+                    for (int dx = -rad; dx <= rad; dx++) {
+                        int man = (dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy) + (dz < 0 ? -dz : dz);
+                        if (man == 0 || man > rad) continue;
+                        ADDWIRE(g_hero_x + dx + 0.08, g_hero_z + dz + 0.08, g_hero_y + dy + 0.08,
+                                g_hero_x + dx + 0.92, g_hero_z + dz + 0.92, g_hero_y + dy + 0.92,
+                                255, 220, 40);
+                    }
+                }
+            }
         }
         #undef GPU_ADD_MODEL
         #undef ADDWIRE
