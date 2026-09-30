@@ -3,7 +3,7 @@
 > **Companion to:** `AGENT_ROADMAP_ANSWERS.md` (the prose answers this
 > diagram summarizes) and `0.my-concerns.md` (the original questions),
 > same directory. Also mirrored/pointed-at from
-> `#.#.calendar-dox/!.HQ-IQ-BOOK/RUSSIAN_DOLL_HOUSE_DESIGN🪆️/00-INDEX.md`.
+> `#.#.calendar-dox/!.HQ-IQ-BOOK/RUSSIAN_DOLL_HOUSE_DESIGN/00-INDEX.md`.
 > Same format as `2.BOTTLE_PIPE_VISUALIZED/PIPELINE-EMOJI-DIAGRAM-REVISED.md`,
 > scaled up from one pipeline to the whole house AI roadmap.
 > Also available as interactive HTML: `ATTRITION-INTERACTIVE-DIAGRAM.html`.

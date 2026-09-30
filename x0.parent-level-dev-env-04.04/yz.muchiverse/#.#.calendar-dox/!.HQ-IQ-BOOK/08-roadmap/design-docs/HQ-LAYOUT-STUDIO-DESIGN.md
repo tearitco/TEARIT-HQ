@@ -8,7 +8,7 @@ code against it.
 
 **Origin:** raised while correcting a miscommunication about the
 teru-test "babysitter" entity (see
-`RUSSIAN_DOLL_HOUSE_DESIGN🪆️/AGENT_ROADMAP_ANSWERS.md` §10) — the
+`RUSSIAN_DOLL_HOUSE_DESIGN/AGENT_ROADMAP_ANSWERS.md` §10) — the
 babysitter needs its own custom GUI, and that GUI should be
 user-customizable. The owner generalized that immediately: a visual
 layout editor is a bigger, reusable idea, not something built once for

@@ -3,7 +3,7 @@
 **Moved into house docs 2026-09-29** from
 `XO/6.robot-blue-print/ROBOT-CHAT-BLUEPRINT.md` (original location,
 now removed) — referenced by name in Grok's addendum to
-`RUSSIAN_DOLL_HOUSE_DESIGN🪆️/00-INDEX.md`'s 2026-09-29 thread, and
+`RUSSIAN_DOLL_HOUSE_DESIGN/00-INDEX.md`'s 2026-09-29 thread, and
 worth a permanent home alongside the other design-docs (`TERUMON-SPEC.md`,
 `PALCRAFT-DESIGN.md`) it's a sibling of. Content unchanged from the
 original below.

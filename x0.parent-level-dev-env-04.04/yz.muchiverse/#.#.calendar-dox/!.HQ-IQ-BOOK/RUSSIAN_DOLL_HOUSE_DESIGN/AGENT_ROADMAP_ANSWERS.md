@@ -1,7 +1,7 @@
 # Answers to 2026-09-29 Concerns
 
 **Companion to:** `0.my-concerns.md` (this directory)
-**Also filed at:** `#.#.calendar-dox/!.HQ-IQ-BOOK/RUSSIAN_DOLL_HOUSE_DESIGN🪆️/00-INDEX.md` (pointer only)
+**Also filed at:** `#.#.calendar-dox/!.HQ-IQ-BOOK/RUSSIAN_DOLL_HOUSE_DESIGN/00-INDEX.md` (pointer only)
 **Method:** four parallel read-only research passes over the actual house
 codebase and HQ-IQ-BOOK, then synthesized here. Every claim below is
 sourced to a real file. Where something doesn't exist, that's stated
@@ -406,7 +406,7 @@ new** — reusing "Russian doll" for a documentation convention risks
 real confusion with the existing, different, already-real meaning.
 
 Given that collision, this answer doc's own home
-(`RUSSIAN_DOLL_HOUSE_DESIGN🪆️/`) should be understood as **the specific
+(`RUSSIAN_DOLL_HOUSE_DESIGN/`) should be understood as **the specific
 container for this brainstorming thread and its descendants** — not a
 general house-wide doc-nesting convention. If a general nested-index
 convention is wanted later, it should get its own, non-colliding name.

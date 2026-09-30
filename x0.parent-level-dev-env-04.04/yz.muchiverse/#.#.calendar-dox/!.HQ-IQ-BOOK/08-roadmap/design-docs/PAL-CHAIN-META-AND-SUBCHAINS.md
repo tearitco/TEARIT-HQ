@@ -8,7 +8,7 @@ in git history or on disk). Part II is NEW design, 🔴 not built,
 written top-down per the owner's direct request: meta-chain first,
 then sub-chains, then sync, then the exchange.**
 
-**Also relevant:** `RUSSIAN_DOLL_HOUSE_DESIGN🪆️/ATTRITION_DIAGRAM.md`'s
+**Also relevant:** `RUSSIAN_DOLL_HOUSE_DESIGN/ATTRITION_DIAGRAM.md`'s
 BOOK:SYSTEM proposal — this doc's exchange-rate work is what would
 actually give a BOOK:PAGE a value, per the owner's stated goal.
 
