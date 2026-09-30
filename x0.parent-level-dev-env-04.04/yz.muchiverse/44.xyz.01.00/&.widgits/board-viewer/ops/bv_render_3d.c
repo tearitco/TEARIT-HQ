@@ -3254,7 +3254,8 @@ static int render_one_frame(void) {
         for (int sx = 0; sx < g_fw; sx += g_lod_step) {
             /* sample the block centre so the coarse frame keeps the
              * same field of view (no-op when g_lod_step == 1) */
-            double a = (sx + (g_lod_step - 1) * 0.5 - g_fw / 2.0) / cam.focal;
+            /* Same horizontal flip as the GPU ray: desk +x is screen-right. */
+            double a = (g_fw / 2.0 - (sx + (g_lod_step - 1) * 0.5)) / cam.focal;
             double b = (g_fh / 2.0 - (sy + (g_lod_step - 1) * 0.5)) / cam.focal;
             Vec3 ray_dir = v3_norm(v3_add(cam.forward, v3_add(v3_scale(cam.right, a), v3_scale(cam.up, b))));
 

@@ -86,7 +86,7 @@ static const char *FS_SRC =
 "}\n"
 "\n"
 "void main() {\n"
-"  float a = (gl_FragCoord.x - u_res.x * 0.5) / u_focal;\n"
+"  float a = (u_res.x * 0.5 - gl_FragCoord.x) / u_focal;\n" /* desk +x is screen-right; this facing would put it on the left */
 "  float b = (u_res.y * 0.5 - gl_FragCoord.y) / u_focal;\n"   /* flipped: GL row 0 = image top, so glReadPixels needs no row-flip */
 "  vec3 rd = normalize(u_fwd + a * u_right + b * u_up);\n"
 "  vec3 ro = u_eye;\n"
