@@ -338,7 +338,7 @@ static void field_trim(char *s) {
     while (*a == ' ' || *a == '\t') a++;
     if (a != s) memmove(s, a, strlen(a) + 1);
     int n = (int)strlen(s);
-    while (n > 0 && (s[n - 1] == ' ' || s[n - 1] == '\t' || s[n - 1] == '\r')) s[--n] = '\0';
+    while (n > 0 && (s[n - 1] == ' ' || s[n - 1] == '\t' || s[n - 1] == '\r' || s[n - 1] == '\n')) s[--n] = '\0';
 }
 static int read_pdl_value(const char *path, const char *key, char *out, int n) {
     FILE *f = host_fopen(path, "r");
@@ -417,7 +417,6 @@ static void read_page_rows(const char *pdl, int cur_z) {
         memset(e, 0, sizeof(*e));
         e->x = cx; e->y = cy; e->z = cur_z;
         e->r = 80; e->g = 200; e->b = 255;
-        e->cjk[0] = fld[0][0]; e->cjk[1] = 0;
     }
     fclose(f);
 }

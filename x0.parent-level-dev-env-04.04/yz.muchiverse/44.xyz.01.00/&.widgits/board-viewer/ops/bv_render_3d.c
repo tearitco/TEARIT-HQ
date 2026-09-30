@@ -169,7 +169,7 @@ static void page_field_trim(char *s) {
     while (*a == ' ' || *a == '\t') a++;
     if (a != s) memmove(s, a, strlen(a) + 1);
     int n = (int)strlen(s);
-    while (n > 0 && (s[n - 1] == ' ' || s[n - 1] == '\t' || s[n - 1] == '\r')) s[--n] = '\0';
+    while (n > 0 && (s[n - 1] == ' ' || s[n - 1] == '\t' || s[n - 1] == '\r' || s[n - 1] == '\n')) s[--n] = '\0';
 }
 static int page_pdl_value(const char *path, const char *key, char *out, int n) {
     FILE *f = host_fopen(path, "r");
