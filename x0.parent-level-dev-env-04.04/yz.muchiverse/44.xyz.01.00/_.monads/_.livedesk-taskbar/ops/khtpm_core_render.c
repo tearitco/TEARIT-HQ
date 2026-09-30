@@ -3044,6 +3044,16 @@ static int g_ui_scale_pct = 100;
  * direct window frame dump that 64/8 renders clean). */
 static int g_pager_btn_w = 64;
 static int g_pager_btn_gap = 8;
+/* REAL, NEW 2026-09-29 (second pdl pass), direct live report ("way
+ * about the width of the cell container... is there a way to add that
+ * to the pdl widener") - the dock pager's own reserved right-margin
+ * "cell" (DOCK_PAGER_W, below) was still a #define baked at compile
+ * time; promoted to this pdl-driven global once button width/gap
+ * became tunable enough (including negative gap) that the fixed value
+ * stopped matching what the buttons actually need. Default matches the
+ * last hardcoded value (145). See DOCK_PAGER_W's own header comment
+ * for why it's still spelled that way in the rest of this file. */
+static int g_pager_cell_w = 145;
 /* REAL, NEW 2026-09-10, direct instruction ("when should we add font
  * picker to settings") - house-wide DEFAULT font family, same real
  * role font_scale already plays for size. Any window/CSS that sets its
@@ -5734,8 +5744,10 @@ static int layout_sidebar_panel(Elem *page) {
  * 30s - two digits - and the old margin left the pair cramped against
  * the last cell. Widened; dock_place_pager() below now centers the
  * pair within this margin instead of hugging the right edge. */
-#define DOCK_PAGER_W 145 /* REAL, NEW 2026-09-29, direct live report ("bottom tb fix is pretty good but that space for both could be about 15% wider") - was 110, then 128.
-                          * REAL, NEW 2026-09-29 (pdl pass) - g_pager_btn_w/gap default rose to 64/8 (content_w 136), widened again so this reserved margin keeps real headroom instead of nearly matching content_w exactly. If pager_btn_w/gap are tuned larger via hq_ui.pdl beyond this margin's headroom, widen this constant too (it is not itself pdl-driven - the reserved layout margin, unlike the button's own size, isn't expected to need frequent tuning). */
+/* REAL, NEW 2026-09-29, direct live report ("bottom tb fix is pretty good but that space for both could be about 15% wider") - was 110, then 128, then 145.
+ * REAL, NEW 2026-09-29 (pdl pass) - g_pager_btn_w/gap default rose to 64/8 (content_w 136), widened again so this reserved margin keeps real headroom instead of nearly matching content_w exactly.
+ * REAL, NEW 2026-09-29 (second pdl pass), direct live report ("way about the width of the cell container... is there a way to add that to the pdl widener") - promoted from a #define to g_pager_cell_w, live-reloaded from hq_ui.pdl's pager_cell_w key same as pager_btn_w/gap, once the button size/gap themselves became tunable enough (including negative gap) that the fixed 145 margin stopped matching. */
+#define DOCK_PAGER_W g_pager_cell_w
 /* DOCK_MAX_PACK removed 2026-09-14 (DOCK-BAR-GENERIC-LAYOUT-MIGRATION.md
  * phase 1) - was the fixed-size bound for the bottom bar's own
  * hand-packed pack[] array, deleted along with it now that
@@ -6772,16 +6784,40 @@ static int kh_page_has_relay_item(void) {
     return 0;
 }
 
-static int kh_canvas_hit(int px, int py) {
+static Elem *kh_canvas_at(int px, int py) {
     Elem *pg = find_page(g_current_page);
-    if (!pg) return 0;
+    if (!pg) return NULL;
     for (int i = 0; i < pg->n_children; i++) {
         Elem *it = pg->children[i];
         if (strcmp(it->tag, "canvas") != 0) continue;
         if (px >= it->x && px < it->x + it->w && py >= it->y && py < it->y + it->h)
-            return 1;
+            return it;
     }
-    return 0;
+    return NULL;
+}
+static int kh_canvas_hit(int px, int py) {
+    return kh_canvas_at(px, py) != NULL;
+}
+/* Generic click coords for a <canvas>. The shared renderer does not
+ * raycast. bv_render_3d reads pchq_canvas_click.txt and does the math.
+ * CANVAS_CLICK on the per-pid relay is the same numbers, for the log. */
+static void kh_publish_canvas_click(int px, int py, int button) {
+    Elem *cv = kh_canvas_at(px, py);
+    if (!cv || cv->w < 1 || cv->h < 1) return;
+    int cx = px - cv->x, cy = py - cv->y;
+    char path[PATH_BUF];
+    history_path(path, sizeof(path));
+    FILE *f = fopen(path, "a");
+    if (f) {
+        fprintf(f, "CANVAS_CLICK: %d %d %d 1\n", button, cx, cy);
+        fclose(f);
+    }
+    if (!g_house_root[0]) return;
+    snprintf(path, sizeof(path), "%s/#.desktop/pchq_canvas_click.txt", g_house_root);
+    f = fopen(path, "w");
+    if (!f) return;
+    fprintf(f, "%d %d %d %d\n", cx, cy, cv->w, cv->h);
+    fclose(f);
 }
 
 static void assign_nav_and_layout(void) {
@@ -11099,7 +11135,7 @@ static long g_hq_ui_pdl_marker_sz = -1;
 static time_t g_hq_ui_pdl_mtime = 0;
 static void hq_ui_pdl_apply_and_diff(const char *house_root) {
     int old_scale = g_ui_scale_pct;
-    int old_pager_w = g_pager_btn_w, old_pager_gap = g_pager_btn_gap;
+    int old_pager_w = g_pager_btn_w, old_pager_gap = g_pager_btn_gap, old_pager_cell = g_pager_cell_w;
     desktop_load_click_two_step(house_root);
     if (g_ui_scale_pct != old_scale) {
         /* font_scale changed in Settings while this window is open:
@@ -11108,9 +11144,9 @@ static void hq_ui_pdl_apply_and_diff(const char *house_root) {
         reload_font_ui();
         assign_nav_and_layout();
         hq_request_redraw();
-    } else if (g_pager_btn_w != old_pager_w || g_pager_btn_gap != old_pager_gap) {
-        /* REAL, NEW 2026-09-29 - pager_btn_w/gap changed: relayout+
-         * repaint, no font/scale work needed. */
+    } else if (g_pager_btn_w != old_pager_w || g_pager_btn_gap != old_pager_gap || g_pager_cell_w != old_pager_cell) {
+        /* REAL, NEW 2026-09-29 - pager_btn_w/gap/cell_w changed:
+         * relayout+repaint, no font/scale work needed. */
         assign_nav_and_layout();
         hq_request_redraw();
     }
@@ -11731,8 +11767,10 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                 /* Play-screen engage: canvas bbox, not g_nav. Never
                  * verb interact (toggle-off). */
                 if (g_win_managed_focus && kh_page_has_relay_item() &&
-                    kh_canvas_hit(ev->xbutton.x, ev->xbutton.y))
+                    kh_canvas_hit(ev->xbutton.x, ev->xbutton.y)) {
                     kh_interact_engage_if_needed();
+                    kh_publish_canvas_click(ev->xbutton.x, ev->xbutton.y, ev->xbutton.button);
+                }
             }
             if (window_is_dock() && g_dock_menu_win && cw == g_dock_menu_win &&
                 ev->xbutton.button == 1 && g_dock_drop_lo >= 1) {
@@ -12604,8 +12642,22 @@ static void desktop_load_click_two_step(const char *house_root) {
             if (v > 0) g_pager_btn_w = v;
         }
         else if (strcmp(line, "pager_btn_gap") == 0) {
+            /* REAL, NEW 2026-09-29, direct live report ("can it go
+             * negative, it did move but its still too far away") - most
+             * of the "-"/"+" boxes' real apparent width is each item's
+             * own "[ ]NN. " nav-badge reservation (aw), not this gap;
+             * pulling gap negative overlaps that dead padding, not the
+             * glyphs themselves, which is exactly what's wanted here.
+             * Floored at -aw (scaled g_pager_btn_w) so plus can't be
+             * pushed fully behind/past minus's own left edge. */
             int v = atoi(val);
-            if (v >= 0) g_pager_btn_gap = v;
+            int floor = -g_pager_btn_w;
+            if (v < floor) v = floor;
+            g_pager_btn_gap = v;
+        }
+        else if (strcmp(line, "pager_cell_w") == 0) {
+            int v = atoi(val);
+            if (v > 0) g_pager_cell_w = v;
         }
     }
     fclose(f);

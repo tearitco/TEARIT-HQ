@@ -43,9 +43,18 @@ font_scale=1.25
 # and a plain save of this file itself now trigger a reload+relayout,
 # no rebuild or relaunch needed - see hq_ui_pdl_reload_if_changed()).
 pager_btn_w=64
-pager_btn_gap=8
+pager_btn_gap=-20
+# pager_cell_w: width of the reserved right-margin "cell" both pager
+# buttons sit inside (the solid rectangle around them) - was a fixed
+# 145px compile-time constant, now tunable too since button size/gap
+# no longer match it 1:1. Shrink this along with pager_btn_gap.
+pager_cell_w=145
 # 2026-09-29: 56/8 was still cut off; 64/8 verified clean via a direct
 # window frame dump. Tune here and save - no rebuild/relaunch needed.
+# Lowered gap 8->4 (direct live report "still not quite right, could be
+# closer together") - pager_btn_w is a FLOOR now (the real measured
+# nav-badge width wins if bigger), so it's safe to leave as-is; only
+# pager_btn_gap controls the space between "-" and "+" now.
 
 # Screen-relative UI scale (2026-09-19). On top of font_scale, taskbar size,
 # entity/grid size and the strip's left margin scale with the monitor:
