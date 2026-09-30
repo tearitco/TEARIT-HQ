@@ -1,5 +1,13 @@
 # Book, page, and Synch
 
+2026-09-30, later the same day. The direction is agreed and written
+in `../18.pc-hq/SYNCH.md`. Taskbar Synch sends the desk's book and
+page to every open pc-hq. A pc-hq Synch sends that board's book and
+page to the desk. Both then show that one page. The desk draws the
+2D slice. The taskbar press does not write `hero_01`. The paragraph
+under this one describes commit `079038706`, which is not that
+direction. Do not build from it.
+
 2026-09-30. Synch now binds both windows to one page file: the active
 livedesk desk `.pdl`, named by that session's `session.pdl`. From
 pc-hq, the board draws that desk's entities and the toolbar book/page

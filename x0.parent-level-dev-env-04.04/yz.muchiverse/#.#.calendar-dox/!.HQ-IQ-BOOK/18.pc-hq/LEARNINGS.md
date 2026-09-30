@@ -120,6 +120,9 @@ into the other.
 
 ## Synch
 
+The agreed direction is `SYNCH.md`. The table below is what the
+code on `079038706` does, and that behavior is not the target.
+
 The row is under Player, not Menu. Menu stays for dynamic entries.
 
 | Place | Control | What the press does today |

@@ -8,8 +8,13 @@ chapter `16.game`. This chapter owns the board itself.
 - `LEARNINGS.md` — start here. What a later agent keeps having to
   rediscover: the diamond, the daemon, the dump, Book/Page, Synch,
   and the canvas right-click.
-- `../09-appendix/PC-HQ-BOOK-PAGE-SYNCH.md` — the Synch row and the
-  two BOOK:PAGE stores, in more detail.
+- `SYNCH.md` — the agreed direction. Taskbar Synch sends the desk's
+  book and page to every open pc-hq. A pc-hq Synch sends that
+  board's book and page to the desk. Both then show that one page.
+  Read this before changing Synch code.
+- `../09-appendix/PC-HQ-BOOK-PAGE-SYNCH.md` — older notes. The
+  2026-09-30 header on that file describes `079038706`, which is
+  not the agreed direction. Trust `SYNCH.md`.
 - `../02-architecture/PLAYTEST-DESK-AND-PCHQ.md` — taskbar cell 9 and
   the Player menu as a playtest button. Synch on that same menu is
   not the playtest.
