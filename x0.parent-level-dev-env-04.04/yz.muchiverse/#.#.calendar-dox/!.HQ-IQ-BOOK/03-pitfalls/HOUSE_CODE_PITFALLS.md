@@ -1170,3 +1170,33 @@ proved nothing here.
 4. `kh_focus_debug.log` now records `x_focus` and `_NET_ACTIVE_WINDOW` on every
    HQ click and logs a failed dock grab - read it first next time.
 
+---
+
+## 25. A wait that does not sleep pegs the CPU, and this machine cannot take that (2026-09-30)
+
+**Symptom:** the desktop freezes or the session dies while a board or a
+daemon is running. It looks like a random crash. The box is a weak CPU.
+One core at 100% for long enough is a crash of the whole house. The
+codebase does not matter if the machine is down.
+
+**Real cause:** a poll loop with no sleep, a `sleep(0)` / `usleep(0)`, or
+a sleep that the loop skips because it treats its own write as new work.
+`bv_render_3d.+x --daemon` sleeps 30ms (`BV_IDLE_POLL_USEC`) only on the
+idle branch. If `pchq_board_view.txt` looks changed on every check, that
+branch never runs and the daemon renders as fast as it can. The same
+class of bug is pitfall 13 (a bare quote spinning the xhtpm parser) and
+the leaked engine stacks in this chapter's index.
+
+**Rules:**
+1. Every wait sleeps. Do not add a new `sleep` or `usleep` on a path that
+   can be skipped, and do not add one shorter than the sleeps already
+   next to it. This daemon's idle poll is 30ms. The dock canvas is 16.7ms
+   while active and 150ms while idle. `khtpm_entity.c` idles at 200ms.
+2. A loop must not treat a file it just wrote, or a file rewritten every
+   tick by the window, as a reason to skip the sleep.
+3. Do not start a second `bv_render_3d.+x --daemon`, projector, or
+   orchestrator to "see if it works." An old one keeps the CPU after the
+   window is closed. `proc-mon` (`mon` on the taskbar HQ menu, or
+   `sh 44.xyz.01.00/&.hq-apps/proc-mon/mon_scan.sh list`) shows strays.
+   Kill those by pid. Do not `pkill -f` a pattern that is also your shell.
+
