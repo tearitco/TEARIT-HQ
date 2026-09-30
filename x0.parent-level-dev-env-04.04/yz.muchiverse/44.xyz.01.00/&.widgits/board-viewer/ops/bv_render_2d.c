@@ -365,7 +365,28 @@ static int read_pdl_value(const char *path, const char *key, char *out, int n) {
     fclose(f);
     return 0;
 }
+/* A Synch writes this file on the inheritor. While it names a real
+ * desk file, that file is the page. Otherwise the open livedesk page. */
+static int page_bound_pdl(const char *house, char *out, int n) {
+    char ob[PATH_BUF], line[PATH_BUF];
+    snprintf(ob, sizeof(ob), "%s/@.apps/piececraft-hq/pieces/display/open_book_page.txt", house);
+    FILE *f = host_fopen(ob, "r");
+    if (!f) return 0;
+    out[0] = '\0';
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "pdl=", 4) != 0) continue;
+        snprintf(out, n, "%s", line + 4);
+        out[strcspn(out, "\r\n")] = '\0';
+    }
+    fclose(f);
+    if (!out[0]) return 0;
+    FILE *t = host_fopen(out, "r");
+    if (!t) return 0;
+    fclose(t);
+    return 1;
+}
 static int page_file(const char *house, char *out, int n) {
+    if (page_bound_pdl(house, out, n)) return 1;
     char users[PATH_BUF];
     snprintf(users, sizeof(users), "%s/xyzfs/users", house);
     DIR *d = opendir(users);
@@ -406,7 +427,8 @@ static void read_page_rows(const char *pdl, int cur_z) {
             if (bar) *bar = '\0';
             field_trim(fld[i]);
         }
-        if (!strcmp(fld[0], "hero_01") || !strcmp(fld[0], "tree_small") || !strcmp(fld[0], "chicken"))
+        if (!strcmp(fld[0], "hero_01") || !strcmp(fld[0], "tree_small") || !strcmp(fld[0], "chicken")
+            || !strcmp(fld[0], "xelector_01") || !strcmp(fld[0], "camera_01"))
             continue;
         int cx = atoi(fld[4]);
         int cy = atoi(fld[5]);
@@ -440,11 +462,12 @@ static int page_has_name(const char *pdl, const char *want) {
     fclose(f);
     return found;
 }
-static void page_append_row(const char *pdl, const char *name, const char *path, int cx, int cy) {
+static void page_append_row(const char *pdl, const char *name, const char *path, int cx, int cy,
+                            const char *glyph, int tail) {
     FILE *f = host_fopen(pdl, "a");
     if (!f) return;
-    fprintf(f, "DESK | %s | %s | %d | %d | %d | %d | . | 0\n",
-            name, path, cx * 80, cy * 80, cx, cy);
+    fprintf(f, "DESK | %s | %s | %d | %d | %d | %d | %s | %d\n",
+            name, path, cx * 80, cy * 80, cx, cy, glyph && glyph[0] ? glyph : ".", tail);
     fclose(f);
 }
 /* One pass over the old lists. Writes a row only when that name is absent. */
@@ -455,7 +478,7 @@ static void page_seed_sprites(const char *pdl) {
     snprintf(path, sizeof(path), "%s/pieces/hero_01/state.txt", focused_root);
     read_kv_str(path, "pos_x", b, sizeof(b)); if (b[0]) hx = atoi(b);
     read_kv_str(path, "pos_y", b, sizeof(b)); if (b[0]) hy = atoi(b);
-    page_append_row(pdl, "hero_01", "@.apps/piececraft-hq/pieces/hero_01", hx, hy);
+    page_append_row(pdl, "hero_01", "@.apps/piececraft-hq/pieces/hero_01", hx, hy, ".", 0);
 trees:
     if (!page_has_name(pdl, "tree_small")) {
         snprintf(path, sizeof(path), "%s/pieces/world_01/phymoji_entities.txt", focused_root);
@@ -465,7 +488,7 @@ trees:
             while (fgets(line, sizeof(line), f)) {
                 char id[64]; int x, y, z;
                 if (sscanf(line, "%63[^,],%d,%d,%d", id, &x, &y, &z) != 4) continue;
-                page_append_row(pdl, id, "@.apps/piececraft-hq/pieces/world_01", x, y);
+                page_append_row(pdl, id, "@.apps/piececraft-hq/pieces/world_01", x, y, ".", 0);
             }
             fclose(f);
         }
@@ -478,10 +501,35 @@ trees:
             while (fgets(line, sizeof(line), f)) {
                 char id[64]; int x, y, z;
                 if (sscanf(line, "%63[^,],%d,%d,%d", id, &x, &y, &z) != 4) continue;
-                page_append_row(pdl, id, "@.apps/piececraft-hq/pieces/world_01", x, y);
+                page_append_row(pdl, id, "@.apps/piececraft-hq/pieces/world_01", x, y, ".", z);
             }
             fclose(f);
         }
+    }
+    if (!page_has_name(pdl, "xelector_01")) {
+        int xx = 0, xy = 0, xz = 0;
+        char poss[64] = ".";
+        snprintf(path, sizeof(path), "%s/pieces/xelector_01/state.txt", focused_root);
+        read_kv_str(path, "pos_x", b, sizeof(b)); if (b[0]) xx = atoi(b);
+        read_kv_str(path, "pos_y", b, sizeof(b)); if (b[0]) xy = atoi(b);
+        read_kv_str(path, "pos_z", b, sizeof(b)); if (b[0]) xz = atoi(b);
+        read_kv_str(path, "possessed_id", poss, sizeof(poss));
+        if (!poss[0]) snprintf(poss, sizeof(poss), ".");
+        page_append_row(pdl, "xelector_01", "@.apps/piececraft-hq/pieces/xelector_01", xx, xy, poss, xz);
+    }
+    if (!page_has_name(pdl, "camera_01")) {
+        int mode = 2, yaw = 180, pitch = 6, panx = 0, pany = 0, panz = 0, zl = 0;
+        char g[96];
+        snprintf(path, sizeof(path), "%s/pieces/system/bv_state.txt", project_root);
+        read_kv_str(path, "camera_mode", b, sizeof(b)); if (b[0]) mode = atoi(b);
+        read_kv_str(path, "cam_yaw", b, sizeof(b)); if (b[0]) yaw = atoi(b);
+        read_kv_str(path, "cam_pitch", b, sizeof(b)); if (b[0]) pitch = atoi(b);
+        read_kv_str(path, "cam_pan_x", b, sizeof(b)); if (b[0]) panx = atoi(b);
+        read_kv_str(path, "cam_pan_y", b, sizeof(b)); if (b[0]) pany = atoi(b);
+        read_kv_str(path, "cam_pan_z", b, sizeof(b)); if (b[0]) panz = atoi(b);
+        read_kv_str(path, "cam_z_level", b, sizeof(b)); if (b[0]) zl = atoi(b);
+        snprintf(g, sizeof(g), "m=%d,y=%d,p=%d,z=%d,h=%d", mode, yaw, pitch, panz, zl);
+        page_append_row(pdl, "camera_01", "@.apps/piececraft-hq/pieces/display", panx, pany, g, 0);
     }
 }
 static int page_named_cells(const char *house, const char *want, int *xs, int *ys, int max) {
@@ -513,6 +561,38 @@ static int page_named_cells(const char *house, const char *want, int *xs, int *y
     }
     fclose(f);
     return n;
+}
+/* glyph is field 7 (possessed id, or the camera's m,y,p,z,h pack).
+ * tail is field 8 (xelector z). */
+static int page_row_meta(const char *house, const char *want, int *cx, int *cy,
+                         char *glyph, int glen, int *tail) {
+    char pdl[PATH_BUF];
+    if (!house || !house[0] || !page_file(house, pdl, sizeof(pdl))) return 0;
+    FILE *f = host_fopen(pdl, "r");
+    if (!f) return 0;
+    char line[MAX_LINE];
+    int found = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "DESK", 4) != 0) continue;
+        char *fld[8];
+        int nf = 0;
+        char *p = line;
+        while (nf < 8 && (p = strchr(p, '|'))) { p++; fld[nf++] = p; }
+        if (nf < 6) continue;
+        for (int i = 0; i < nf; i++) {
+            char *bar = strchr(fld[i], '|');
+            if (bar) *bar = '\0';
+            field_trim(fld[i]);
+        }
+        if (strcmp(fld[0], want) != 0) continue;
+        *cx = atoi(fld[4]); *cy = atoi(fld[5]);
+        if (glyph && glen > 0) snprintf(glyph, glen, "%s", nf > 6 ? fld[6] : ".");
+        if (tail) *tail = nf > 7 ? atoi(fld[7]) : 0;
+        found = 1;
+        break;
+    }
+    fclose(f);
+    return found;
 }
 static void load_actors(int cur_z) {
     char pdl[PATH_BUF];
@@ -860,21 +940,24 @@ int main(void) {
         }
     }
 
-    /* Magenta wire on the hero's own cell, one tile by one tile.
-     * A click adds a cyan square on the cell under the cursor. */
+    /* Yellow wire on the xelector's cell. Possessing an entity
+     * puts the xelector on that entity's cell. */
     {
         int hx = -1, hy = -1, hz = 0;
-        char hpath[PATH_BUF];
-        snprintf(hpath, sizeof(hpath), "%s/pieces/hero_01/state.txt", focused_root);
-        FILE *hf = host_fopen(hpath, "r");
-        if (hf) {
-            char line[128];
-            while (fgets(line, sizeof(line), hf)) {
-                if (strncmp(line, "pos_x=", 6) == 0) hx = atoi(line + 6);
-                else if (strncmp(line, "pos_y=", 6) == 0) hy = atoi(line + 6);
-                else if (strncmp(line, "pos_z=", 6) == 0) hz = atoi(line + 6);
+        char glyph[64] = "";
+        if (!page_row_meta(house_root, "xelector_01", &hx, &hy, glyph, sizeof(glyph), &hz)) {
+            char hpath[PATH_BUF], b[32];
+            snprintf(hpath, sizeof(hpath), "%s/pieces/xelector_01/state.txt", focused_root);
+            read_kv_str(hpath, "pos_x", b, sizeof(b)); if (b[0]) hx = atoi(b);
+            read_kv_str(hpath, "pos_y", b, sizeof(b)); if (b[0]) hy = atoi(b);
+            read_kv_str(hpath, "pos_z", b, sizeof(b)); if (b[0]) hz = atoi(b);
+            read_kv_str(hpath, "possessed_id", glyph, sizeof(glyph));
+        }
+        if (glyph[0] && strcmp(glyph, ".") != 0) {
+            int pxs[4], pys[4];
+            if (page_named_cells(house_root, glyph, pxs, pys, 4) > 0) {
+                hx = pxs[0]; hy = pys[0];
             }
-            fclose(hf);
         }
         if (hx >= 0 && hy >= 0) {
             int scx, scy;

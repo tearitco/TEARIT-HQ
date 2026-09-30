@@ -36,10 +36,14 @@ After a taskbar Synch, every open board shows `pre-design` /
 `teru-test` and draws that grid. After a pc-hq Synch, the desk
 shows `test_walls` / `Desk 1` and draws the 2D slice of that grid.
 
-## What the running code does instead
+## What the script does now
 
-`pc_synch_request.sh` on `079038706` still treats the two stores as
-a name list. The pc-hq press reads the desk `.pdl` into
-`synched_entities.txt` and can retitle the board. The taskbar press
-rewrites a `hero_01` row in the desk file. That is not this page.
-Do not extend that script until this direction is what gets built.
+`pc_synch_request.sh` follows the table above. A taskbar press
+writes the desk's book and page into
+`@.apps/piececraft-hq/pieces/display/open_book_page.txt`. The
+drawers read that file when it names a real desk file. A pc-hq
+press writes the board's page into the desk session's
+`active_desk`, and takes the board's book only when that session
+directory is already on disk. It does not write a `hero_01` row.
+`079038706` was the older name-list script. It is not what a press
+runs now.

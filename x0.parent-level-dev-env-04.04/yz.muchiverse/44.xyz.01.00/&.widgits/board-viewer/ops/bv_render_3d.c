@@ -196,6 +196,24 @@ static int page_pdl_value(const char *path, const char *key, char *out, int n) {
     fclose(f);
     return 0;
 }
+static int page_bound_pdl(const char *house, char *out, int n) {
+    char ob[PATH_BUF], line[PATH_BUF];
+    snprintf(ob, sizeof(ob), "%s/@.apps/piececraft-hq/pieces/display/open_book_page.txt", house);
+    FILE *f = host_fopen(ob, "r");
+    if (!f) return 0;
+    out[0] = '\0';
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "pdl=", 4) != 0) continue;
+        snprintf(out, n, "%s", line + 4);
+        out[strcspn(out, "\r\n")] = '\0';
+    }
+    fclose(f);
+    if (!out[0]) return 0;
+    FILE *t = host_fopen(out, "r");
+    if (!t) return 0;
+    fclose(t);
+    return 1;
+}
 static void page_entity_cells(const char *house, int *xs, int *ys, int *n, int max) {
     *n = 0;
     if (!house || !house[0]) return;
@@ -218,7 +236,7 @@ static void page_entity_cells(const char *house, int *xs, int *ys, int *n, int m
         break;
     }
     closedir(d);
-    if (!pdl[0]) return;
+    if (!page_bound_pdl(house, pdl, sizeof(pdl)) && !pdl[0]) return;
     FILE *f = host_fopen(pdl, "r");
     if (!f) return;
     char line[MAX_LINE];
@@ -234,7 +252,8 @@ static void page_entity_cells(const char *house, int *xs, int *ys, int *n, int m
             if (bar) *bar = '\0';
             page_field_trim(fld[i]);
         }
-        if (!strcmp(fld[0], "hero_01") || !strcmp(fld[0], "tree_small") || !strcmp(fld[0], "chicken"))
+        if (!strcmp(fld[0], "hero_01") || !strcmp(fld[0], "tree_small") || !strcmp(fld[0], "chicken")
+            || !strcmp(fld[0], "xelector_01") || !strcmp(fld[0], "camera_01"))
             continue;
         int cx = atoi(fld[4]), cy = atoi(fld[5]);
         int px = atoi(fld[2]), py = atoi(fld[3]);
@@ -682,9 +701,28 @@ static CelestialBody load_celestial_body(const char *root, const char *entity_id
     return b;
 }
 
+static int page_row_meta(const char *house, const char *want, int *cx, int *cy,
+                         char *glyph, int glen, int *tail);
+static int page_named_cells(const char *house, const char *want, int *xs, int *ys, int max);
 static void load_xelector(const char *root) {
     g_xelector_present = 0;
     g_xelector_possessed_id[0] = '\0';
+    int cx = 0, cy = 0, cz = 0;
+    char glyph[64] = "";
+    if (page_row_meta(house_root, "xelector_01", &cx, &cy, glyph, sizeof(glyph), &cz)) {
+        g_xelector_x = cx; g_xelector_y = cy; g_xelector_z = cz;
+        if (glyph[0] && strcmp(glyph, ".") != 0)
+            snprintf(g_xelector_possessed_id, sizeof(g_xelector_possessed_id), "%s", glyph);
+        if (g_xelector_possessed_id[0]) {
+            int xs[4], ys[4];
+            if (page_named_cells(house_root, g_xelector_possessed_id, xs, ys, 4) > 0) {
+                g_xelector_x = xs[0];
+                g_xelector_y = ys[0];
+            }
+        }
+        g_xelector_present = 1;
+        return;
+    }
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/pieces/xelector_01/state.txt", root);
     FILE *f = host_fopen(path, "r");
@@ -746,7 +784,7 @@ static int page_named_cells(const char *house, const char *want, int *xs, int *y
         break;
     }
     closedir(d);
-    if (!pdl[0]) return 0;
+    if (!page_bound_pdl(house, pdl, sizeof(pdl)) && !pdl[0]) return 0;
     FILE *f = host_fopen(pdl, "r");
     if (!f) return 0;
     char line[MAX_LINE];
@@ -772,6 +810,78 @@ static int page_named_cells(const char *house, const char *want, int *xs, int *y
     }
     fclose(f);
     return n;
+}
+
+static int page_row_meta(const char *house, const char *want, int *cx, int *cy,
+                         char *glyph, int glen, int *tail) {
+    int xs[1], ys[1];
+    (void)xs; (void)ys;
+    char pdl[PATH_BUF];
+    if (!house || !house[0]) return 0;
+    /* Reuse the same bound-or-active lookup by asking for one named cell's file. */
+    int n = 0;
+    char users[PATH_BUF];
+    snprintf(users, sizeof(users), "%s/xyzfs/users", house);
+    DIR *d = opendir(users);
+    if (!d) return 0;
+    struct dirent *e;
+    pdl[0] = '\0';
+    while ((e = readdir(d))) {
+        if (e->d_name[0] == '.') continue;
+        char sess[PATH_BUF], rootpdl[PATH_BUF], active[128], desk[128], sp[PATH_BUF];
+        snprintf(sess, sizeof(sess), "%s/%s/home/livedesk/sessions", users, e->d_name);
+        snprintf(rootpdl, sizeof(rootpdl), "%s/session.pdl", sess);
+        if (!page_pdl_value(rootpdl, "active_session", active, sizeof(active))) continue;
+        snprintf(sp, sizeof(sp), "%s/%s/session.pdl", sess, active);
+        if (!page_pdl_value(sp, "active_desk", desk, sizeof(desk))) continue;
+        snprintf(pdl, sizeof(pdl), "%s/%s/desks/%s.pdl", sess, active, desk);
+        break;
+    }
+    closedir(d);
+    if (!page_bound_pdl(house, pdl, sizeof(pdl)) && !pdl[0]) return 0;
+    FILE *f = host_fopen(pdl, "r");
+    if (!f) return 0;
+    char line[MAX_LINE];
+    int found = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "DESK", 4) != 0) continue;
+        char *fld[8];
+        int nf = 0;
+        char *p = line;
+        while (nf < 8 && (p = strchr(p, '|'))) { p++; fld[nf++] = p; }
+        if (nf < 6) continue;
+        for (int i = 0; i < nf; i++) {
+            char *bar = strchr(fld[i], '|');
+            if (bar) *bar = '\0';
+            page_field_trim(fld[i]);
+        }
+        if (strcmp(fld[0], want) != 0) continue;
+        if (cx) *cx = atoi(fld[4]);
+        if (cy) *cy = atoi(fld[5]);
+        if (glyph && glen > 0) snprintf(glyph, glen, "%s", nf > 6 ? fld[6] : ".");
+        if (tail) *tail = nf > 7 ? atoi(fld[7]) : 0;
+        found = 1;
+        break;
+    }
+    fclose(f);
+    (void)n;
+    return found;
+}
+
+static int g_cam_from_page = 0;
+static int g_cam_mode = 2, g_cam_yaw = 180, g_cam_pitch = 6;
+static int g_cam_pan_x = 0, g_cam_pan_y = 0, g_cam_pan_z = 0, g_cam_z_level = 0;
+
+static void load_camera_row(void) {
+    g_cam_from_page = 0;
+    int cx = 0, cy = 0;
+    char glyph[128];
+    if (!page_row_meta(house_root, "camera_01", &cx, &cy, glyph, sizeof(glyph), NULL)) return;
+    int mode = 0, yaw = 0, pitch = 0, panz = 0, zl = 0;
+    if (sscanf(glyph, "m=%d,y=%d,p=%d,z=%d,h=%d", &mode, &yaw, &pitch, &panz, &zl) != 5) return;
+    g_cam_from_page = 1;
+    g_cam_mode = mode; g_cam_yaw = yaw; g_cam_pitch = pitch;
+    g_cam_pan_x = cx; g_cam_pan_y = cy; g_cam_pan_z = panz; g_cam_z_level = zl;
 }
 
 static void load_hero(const char *root) {
@@ -2013,6 +2123,11 @@ static void bv_write_scene_receipt(const char *game_root, int board_w, int board
     fprintf(r, "cam_eye_x=%.2f\ncam_eye_y=%.2f\ncam_eye_z=%.2f\n", eye_x, eye_y, eye_z);
     fprintf(r, "hero_present=%d\n", g_hero_present);
     if (g_hero_present) fprintf(r, "hero_x=%d\nhero_y=%d\nhero_z=%d\n", g_hero_x, g_hero_y, g_hero_z);
+    fprintf(r, "xelector_present=%d\n", g_xelector_present);
+    if (g_xelector_present)
+        fprintf(r, "xelector_x=%d\nxelector_y=%d\nxelector_z=%d\npossessed_id=%s\n",
+                g_xelector_x, g_xelector_y, g_xelector_z,
+                g_xelector_possessed_id[0] ? g_xelector_possessed_id : ".");
     {
         char pickp[PATH_BUF], kind[32] = "-", id[64] = "-";
         snprintf(pickp, sizeof(pickp), "%s/pieces/display/pick.txt", game_root);
@@ -2489,7 +2604,9 @@ static int render_one_frame(void) {
     write_pick_txt(focused_project_root, board3d, board_w, board_h, z_count,
                    selector_x, selector_y, current_z);
 
-    int camera_mode = read_kv_int(state_path, "camera_mode", default_camera_mode(focused_project_root));
+    load_camera_row();
+    int camera_mode = g_cam_from_page ? g_cam_mode
+        : read_kv_int(state_path, "camera_mode", default_camera_mode(focused_project_root));
     /* REAL PARITY FIX 2026-08-07: fresh cam_pitch used to default to
      * -90 (straight down) in EVERY mode, so even the config-driven
      * "default_camera_mode=2 (third-person)" open rendered top-down,
@@ -2499,14 +2616,14 @@ static int render_one_frame(void) {
      * bv_menu_input.c's own header comment) and 'f' reset handlers (6
      * for modes 1/2, -90 for free-roam 3 / bird's-eye 4). */
     int default_cam_pitch = (camera_mode == 1 || camera_mode == 2) ? 6 : -90;
-    int cam_yaw = read_kv_int(state_path, "cam_yaw", 180);
-    int cam_pitch = read_kv_int(state_path, "cam_pitch", default_cam_pitch);
+    int cam_yaw = g_cam_from_page ? g_cam_yaw : read_kv_int(state_path, "cam_yaw", 180);
+    int cam_pitch = g_cam_from_page ? g_cam_pitch : read_kv_int(state_path, "cam_pitch", default_cam_pitch);
     /* Default cam_pan_x/y to the SELECTOR's own position (matches
      * where the 2D view actually starts) - see &.widgits/
      * view-vs-muta.md, real user-caught bug, fixed 2026-08-02. */
-    int cam_pan_x = read_kv_int(state_path, "cam_pan_x", selector_x);
-    int cam_pan_y = read_kv_int(state_path, "cam_pan_y", selector_y);
-    int cam_pan_z = read_kv_int(state_path, "cam_pan_z", 0);
+    int cam_pan_x = g_cam_from_page ? g_cam_pan_x : read_kv_int(state_path, "cam_pan_x", selector_x);
+    int cam_pan_y = g_cam_from_page ? g_cam_pan_y : read_kv_int(state_path, "cam_pan_y", selector_y);
+    int cam_pan_z = g_cam_from_page ? g_cam_pan_z : read_kv_int(state_path, "cam_pan_z", 0);
     /* REAL FIX 2026-08-04, direct user report ("still blank - map
      * screens are black"): mode 3/4's own eye.y = 12.0 + z_level*2.0
      * formula (build_camera(), deliberately anchor_h-FREE per this
@@ -2522,9 +2639,15 @@ static int render_one_frame(void) {
      * board (current_z small) still gets 0, matching old behavior
      * exactly; a tall one gets real overhead clearance. */
     int default_z_level = (current_z > 12) ? ((current_z - 12 + 6) / 2) : 0;
-    int cam_z_level = read_kv_int(state_path, "cam_z_level", default_z_level);
+    int cam_z_level = g_cam_from_page ? g_cam_z_level : read_kv_int(state_path, "cam_z_level", default_z_level);
 
     double anchor_x = selector_x + 0.5, anchor_z = selector_y + 0.5;
+    /* Modes 1 and 2 follow the xelector. Possessing an entity already
+     * moved g_xelector_x/y onto that entity. Modes 3 and 4 stay detached. */
+    if ((camera_mode == 1 || camera_mode == 2) && g_xelector_present) {
+        anchor_x = g_xelector_x + 0.5;
+        anchor_z = g_xelector_y + 0.5;
+    }
     /* REAL FIX 2026-08-03 (direct user diagnosis: "why doesn't it look
      * like a 3d game"): anchor_h used to come from terrain_height() of
      * a single glyph (the OLD single-slice extrusion model's own
@@ -2954,17 +3077,20 @@ static int render_one_frame(void) {
                    we->x+0.5+wsx/2.0, we->z+wsy, we->y+0.5+wsz/2.0, cr,cg,cb, 0);
             if (wm >= 0) sc.box[sc.box_n-1].model = wm;
         }
-        /* 3D diamond, range 2, on the hero only. A cell is in range
-         * when |dx|+|dy|+|dz| <= 2, so a higher layer has fewer squares. */
-        if (g_hero_present) {
+        /* 3D diamond, range 2, on the xelector's cell. That cell is
+         * the possessed entity when possessed_id names one. */
+        if (g_xelector_present || g_hero_present) {
+            int ox = g_xelector_present ? g_xelector_x : g_hero_x;
+            int oy = g_xelector_present ? g_xelector_y : g_hero_y;
+            int oz = g_xelector_present ? g_xelector_z : g_hero_z;
             int rad = 2;
             for (int dz = -rad; dz <= rad; dz++) {
                 for (int dy = -rad; dy <= rad; dy++) {
                     for (int dx = -rad; dx <= rad; dx++) {
                         int man = (dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy) + (dz < 0 ? -dz : dz);
                         if (man == 0 || man > rad) continue;
-                        ADDWIRE(g_hero_x + dx + 0.08, g_hero_z + dz + 0.08, g_hero_y + dy + 0.08,
-                                g_hero_x + dx + 0.92, g_hero_z + dz + 0.92, g_hero_y + dy + 0.92,
+                        ADDWIRE(ox + dx + 0.08, oz + dz + 0.08, oy + dy + 0.08,
+                                ox + dx + 0.92, oz + dz + 0.92, oy + dy + 0.92,
                                 255, 220, 40);
                     }
                 }

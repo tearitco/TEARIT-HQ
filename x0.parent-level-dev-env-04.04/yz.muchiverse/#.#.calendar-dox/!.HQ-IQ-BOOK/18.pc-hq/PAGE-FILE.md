@@ -1,8 +1,8 @@
 # pc-hq reads the livedesk page file
 
-Design change, 2026-09-30. Steps 1 and 2 are in the drawers. Synch
-stays as written in `SYNCH.md`. This page is the storage that makes
-that Synch show one map in both windows.
+Design change, 2026-09-30. Steps 1 through 6 are in the drawers
+and in `pc_synch_request.sh`. `SYNCH.md` is the direction that
+script now follows.
 
 Book and session are the same thing. Page and map are the same thing.
 A book holds many map pages. The livedesk page file is the older
@@ -117,6 +117,28 @@ frames read those rows. `pieces/hero_01/state.txt` stayed at cell
 5,12. Moving only the `hero_01` row from cell 5 to cell 6 moved the
 hero sprite from screen cell 7 to screen cell 8 (1845 and 1925
 pixels, RGBA frame 1685x1102, view ox=-2 oy=3 cell=80). The row was
-put back to 5,12. The range diamond still reads `state.txt`. That
-move is step 4. House checks for this are C. A Python pixel script
-is not part of the house.
+put back to 5,12. House checks for this are C.
+
+## Steps 3 to 6, proved
+
+The same first frame appends `xelector_01` (cell, z, and
+`possessed_id` in the glyph field) and `camera_01` (mode, yaw,
+pitch, pan, height packed in the glyph field). While
+`possessed_id` is `hero_01`, the xelector cell is the hero cell.
+A 2D frame then had 1216 yellow pixels in screen cell 7,9 and none
+in screen cell 10,5. Clearing `possessed_id` and moving only that
+row to cell 8,8 put 924 yellow pixels in screen cell 10,5. One 3D
+frame on that same detached row kept `selector_x=5` and wrote
+`cam_eye_x=8.50`. The row was put back to cell 5,12 possessing
+`hero_01`. Modes 3 and 4 still ignore that cell.
+
+A taskbar Synch wrote `book=pre-design` `page=teru-test` into
+`open_book_page.txt` and left the hero row alone. A pc-hq Synch
+with the board on `office` set the desk `active_desk` to `office`.
+That session file was put back to `teru-test` after the check.
+The desk is not switched to a page that has no desk file. The
+running taskbar binary does not yet contain the snapshot change
+that copies `hero_01`, `tree_small`, `chicken`, `xelector_01`, and
+`camera_01` back onto the page when it rewrites window rows. That
+change is in `khtpm_taskbar_manager.c` and takes effect the next
+time that binary is built.

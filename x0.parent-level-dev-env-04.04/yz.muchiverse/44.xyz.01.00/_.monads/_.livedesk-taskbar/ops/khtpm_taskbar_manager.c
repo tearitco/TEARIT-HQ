@@ -2261,6 +2261,23 @@ static void livedesk_ensure_pal(const char *pals_root, const char *name, const c
     fclose(f);
 }
 
+/* Page rows the board owns. A desk snapshot rewrites window rows and
+ * must copy these back or the next save drops the hero, trees, chicken,
+ * xelector, and camera. */
+static int livedesk_page_entity_name(const char *line) {
+    const char *bar = strchr(line, '|');
+    if (!bar) return 0;
+    char name[64];
+    snprintf(name, sizeof(name), "%s", bar + 1);
+    char *b2 = strchr(name, '|');
+    if (b2) *b2 = '\0';
+    char *e = name + strlen(name);
+    while (e > name && (e[-1] == ' ' || e[-1] == '\t')) *--e = '\0';
+    char *s = name;
+    while (*s == ' ' || *s == '\t') s++;
+    return !strcmp(s, "hero_01") || !strcmp(s, "tree_small") || !strcmp(s, "chicken")
+        || !strcmp(s, "xelector_01") || !strcmp(s, "camera_01");
+}
 static void livedesk_snapshot_desk(const char *house_root, const char *sroot, const char *id) {
     char active[64] = "";
     livedesk_active_desk(sroot, id, active, sizeof(active));
@@ -2305,10 +2322,27 @@ static void livedesk_snapshot_desk(const char *house_root, const char *sroot, co
             char cline[256];
             int existing_rows = 0;
             while (fgets(cline, sizeof(cline), check)) {
-                if (strncmp(cline, "DESK", 4) == 0) existing_rows++;
+                if (strncmp(cline, "DESK", 4) != 0) continue;
+                if (livedesk_page_entity_name(cline)) continue;
+                existing_rows++;
             }
             fclose(check);
             if (n < existing_rows) return;
+        }
+    }
+    char kept[48][256];
+    int nkept = 0;
+    {
+        FILE *old = fopen(sp, "r");
+        if (old) {
+            char cline[256];
+            while (nkept < 48 && fgets(cline, sizeof(cline), old)) {
+                if (strncmp(cline, "DESK", 4) != 0) continue;
+                if (!livedesk_page_entity_name(cline)) continue;
+                snprintf(kept[nkept], sizeof(kept[0]), "%s", cline);
+                nkept++;
+            }
+            fclose(old);
         }
     }
     FILE *w = fopen(sp, "w");
@@ -2324,6 +2358,7 @@ static void livedesk_snapshot_desk(const char *house_root, const char *sroot, co
                 ents[i], rel, x, y, x / KTB_LIVEDESK_GRID_PX, y / KTB_LIVEDESK_GRID_PX,
                 glyph, indexes[i]);
     }
+    for (int k = 0; k < nkept; k++) fputs(kept[k], w);
     fclose(w);
     /* §4.8/§4.9: register every live entity into the user's pals registry.
      * New-model live entities already RUN from the pal copy, so this is a
