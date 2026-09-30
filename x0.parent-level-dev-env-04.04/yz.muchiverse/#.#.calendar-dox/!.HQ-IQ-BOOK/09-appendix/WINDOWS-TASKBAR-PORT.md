@@ -342,44 +342,82 @@ Two changes in `ops/khtpm_strip_x11_win.c`:
    `KeyPress`/`KeyRelease` with `xkey.keycode` set to the raw Windows
    virtual-key code, which is exactly what the existing
    `XLookupKeysym()`/`XSetInputFocus` path already expects.
-2. `XGetInputFocus()` now returns the held grab window while grabbed,
-   mirroring X11 grab semantics. **Without this the grab cancelled
-   itself on the very first tick**: the renderer polls
-   `dock_release_keyboard_if_left()`, saw `XGetInputFocus() == NULL`
-   (nothing was focused, because the bars are `WS_EX_NOACTIVATE`), and
-   immediately released the grab it had just taken.
+2. `XSetInputFocus()` also calls `SetForegroundWindow()`, but **only if
+   the human clicked one of our bars in the last 2s** (`g_bar_click_ms`,
+   stamped in `WndProc` on `WM_LBUTTONDOWN`). `SetFocus()` alone only
+   moves focus within our own thread and can never make our bar the
+   desktop foreground, so without this the grab was unobservable. The
+   click gate is required: the renderer also calls `XSetInputFocus` from
+   post-map retry loops, and this repo forbids a merely-mapping bar from
+   stealing focus while the human is doing something else.
+3. `XGetInputFocus()` reports the **true** `GetForegroundWindow()`,
+   mapped onto one of our `Window` values, so
+   `dock_release_keyboard_if_left()` sees exactly what it sees on X11.
 
-#### The hook is deliberately *not* a full exclusive grab
+### 8b-i. Do NOT "fix" the grab self-cancel by lying about focus
 
-A literal `XGrabKeyboard` equivalent would swallow **all** keyboard
-input for the whole session. This hook intercepts only the nav keys —
-`Left Right Up Down Return Escape Back Tab` — and returns `CallNextHookEx`
-for everything else, so ordinary typing in other apps still works.
-`Return` **is** swallowed, because the taskbar uses it to activate the
-focused item rather than to insert a newline; `Tab` likewise, for
-`DockNav` cycling. If a new dock action ever needs its own key, add it
-to `x11_ll_kbd_wants()` in the same file.
+The first attempt at 8b made `XGetInputFocus()` return the *grabbed*
+window unconditionally, on the reasoning that an X server redirects key
+events to the grabbing client so it "should" report the grab window. That
+is wrong, and it is the direct cause of a **key-stealing bug**: the
+renderer's `dock_release_keyboard_if_left()` then never saw focus leave,
+so the `WH_KEYBOARD_LL` hook stayed installed for the life of the process,
+permanently swallowing `Left Right Up Down Return Escape Backspace Tab`
+for the entire desktop — including while the human was typing in an
+unrelated window. Symptom: constant typos, missing backspaces.
+
+`bug_bounty.md` (2026-09-13) already documents the shape of this from the
+Linux side: the grab is bounded by focus, and the release path is the
+whole point.
+
+**Rule: `XGetInputFocus()` must report reality.** The self-cancel is
+fixed by making the bar *actually* take focus (item 2 above), never by
+faking the answer.
+
+#### The hook is a fallback, not the primary path
+
+Once `SetForegroundWindow()` succeeds, keys arrive through the ordinary
+`WM_KEYDOWN` → `WndProc` route and the LL hook must keep its hands off or
+every arrow press would move the selection **two** steps. Hence
+`fg_is_our_window()`: when a bar really holds focus the hook passes
+through, and only injects when Windows refused activation. It still
+intercepts only the nav keys and returns `CallNextHookEx` for everything
+else, so ordinary typing elsewhere is never swallowed.
 
 #### Proving it, given `SendInput` is blocked here
 
 `SendInput` returns 0 in this session, so the low-level callback cannot
-be exercised with synthetic system input. What *is* provable, and was
-proven: a posted `WM_KEYDOWN VK_DOWN` moves `g_focus_nav`
-(17 → 18 → 19 → 20) and the renderer writes the corresponding
-`6000 + nav` code into the shared `#.desktop/strip_history.txt`
-(`6018` seen on the wire).
+be exercised with synthetic system input, and — importantly — a synthetic
+`PostMessage` click does **not** win Windows' foreground rights. So
+synthetic clicks correctly install *and immediately release* the grab
+(verified in the trace), while a real click holds it. What is provable
+synthetically is the nav math itself, via the shared
+`#.desktop/strip_history.txt` relay (`6000 + nav`).
 
-**Human-verified 2026-09-29:** with the bars live, clicking the taskbar
-and pressing real arrow keys moves the selection. That closes the only
-link synthetic input could not reach.
+**Human-verified 2026-09-29:** clicking the taskbar and pressing real
+arrow keys moves the selection.
 
-#### Unverified-by-design: ungrab lifecycle
+### 8c. Arrows snapped back to 1 — a real bug, shared with Linux
 
-Because `XGetInputFocus()` now reports the grab window rather than the
-true foreground window, `dock_release_keyboard_if_left()` cannot detect
-the user genuinely leaving the taskbar, and the hook is released only via
-the normal `kh_ungrab_kbd()` disarm paths. That matches X11 exclusive-grab
-semantics, and is why the hook only swallows nav keys — but it does mean
-arrows stay captured while the taskbar considers itself engaged. Watch
-for a stuck-grab report; the fix would be a foreground-window check that
-is not currently implemented.
+Reported as "arrows just keep jumping back to 1". This is the same
+`assign_nav_and_layout()` drop-zone clamp `bug_bounty.md` recorded on
+2026-09-13, and it is **canonical** code, so the Linux build had it too.
+
+Mechanism: the dock's `Up`/`Down` handlers had two branches. The plain
+one did all the bookkeeping (relay `6000 + nav`, raise + refocus + regrab
+the bar that owns the row). The **open-dropdown** branch did *none* of
+it and returned early — and it stepped `g_focus_nav` while focus was
+still *outside* `[g_dock_drop_lo, g_dock_drop_hi]`, because a bar click
+opens the dropdown with focus still on the header cell that triggered it.
+The layout clamp then yanked focus back to `g_dock_drop_lo` on the very
+next layout pass. Arrow handler and clamp fighting each other is the
+visible "jumping back to 1".
+
+`kh_apply_scope_confine()` cannot cover this — it returns early for
+`window_is_dock()`, so the dock relies on that clamp alone.
+
+Fix: both branches now go through `dock_nav_step()`, which walks focus
+*into* the dropdown at its first row when it is outside, and always runs
+the relay + raise/refocus/regrab bookkeeping. Verified: a posted `VK_DOWN`
+now steps `6002 → 6003 → … → 6020` continuously across the header→bottom
+boundary, and `VK_UP` reverses cleanly.

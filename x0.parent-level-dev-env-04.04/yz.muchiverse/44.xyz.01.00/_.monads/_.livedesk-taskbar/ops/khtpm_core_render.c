@@ -8766,6 +8766,47 @@ static void dump_frame_png(void) {
     }
 }
 
+/* REAL FIX 2026-09-29 (Windows live report: "arrows just keep jumping back
+ * to 1"; the same class of bug the Linux build already hit - see
+ * bug_bounty.md 2026-09-13, "the VERY NEXT arrow-key press snapped straight
+ * back to nav1", traced there to assign_nav_and_layout()'s drop-zone clamp).
+ *
+ * Both arrow branches below move g_focus_nav, and both must then tell the
+ * manager where the shared selector now sits and make sure the bar OWNING
+ * that row is the one raised, focused and holding the keyboard grab. The
+ * plain branch already did all three inline; the open-dropdown branch did
+ * NONE of them. Worse, that branch stepped a focus that was still OUTSIDE
+ * [g_dock_drop_lo, g_dock_drop_hi] (a bar click opens the dropdown while
+ * focus is still on the header cell that triggered it), and the layout
+ * clamp then yanked focus back to g_dock_drop_lo on the very next layout
+ * pass. Arrow handler and clamp fighting each other is the visible
+ * "jumping back to 1". kh_apply_scope_confine() cannot cover this: it
+ * returns early for window_is_dock(), so the dock relies on that clamp
+ * alone. */
+static void dock_nav_after_step(void) {
+    if (!window_is_dock()) return;
+    dock_relay_focus_code(6000 + g_focus_nav);
+    if (g_dock_peer_win && g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
+        Window want = (g_focus_nav > g_dock_header_nav_hi) ? g_dock_peer_win : win;
+        XRaiseWindow(dpy, want);
+        XSetInputFocus(dpy, want, RevertToParent, CurrentTime);
+        dock_grab_keyboard(want);
+    }
+}
+
+static void dock_nav_step(int dir) {
+    if (g_dock_drop_lo && g_default_active_scope_id[0]) {
+        /* Enter the open dropdown at its first row if focus is still
+         * outside it; only step once it is genuinely inside. */
+        if (g_focus_nav < g_dock_drop_lo)       g_focus_nav = g_dock_drop_lo;
+        else if (g_focus_nav > g_dock_drop_lo)  g_focus_nav += dir;
+        dock_nav_after_step();
+        return;
+    }
+    kh_nav_step(dir);
+    dock_nav_after_step();
+}
+
 static void handle_key(KeySym ks, char ch) {
     /* PDL-configurable window close (#.desktop/hq_ui.pdl close_combo,
      * default ctrl+c). The deliberate close gesture for a focused
@@ -9040,33 +9081,12 @@ static void handle_key(KeySym ks, char ch) {
         if (focused->backspace_action[0]) { dispatch_no_quit(focused->backspace_action); return; }
     }
     if (ks == XK_Up || ks == XK_Left) {
-        if (g_dock_drop_lo && g_default_active_scope_id[0]) {
-            if (g_focus_nav > g_dock_drop_lo) g_focus_nav--;
-            return;
-        }
-        kh_nav_step(-1);
-        if (window_is_dock()) dock_relay_focus_code(6000 + g_focus_nav);  /* snap the manager's strip_focus_cell to the new highlight (absolute, no drift) */
-        if (window_is_dock() && g_dock_peer_win && g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
-            Window want = (g_focus_nav > g_dock_header_nav_hi) ? g_dock_peer_win : win;
-            XRaiseWindow(dpy, want);
-            XSetInputFocus(dpy, want, RevertToParent, CurrentTime);
-            dock_grab_keyboard(want);
-        }
+        dock_nav_step(-1);
         return;
     }
     if (ks == XK_Down || ks == XK_Right) {
-        if (g_dock_drop_lo && g_default_active_scope_id[0]) {
-            if (g_focus_nav < g_dock_drop_hi) g_focus_nav++;
-            return;
-        }
-        kh_nav_step(1);
-        if (window_is_dock()) dock_relay_focus_code(6000 + g_focus_nav);
-        if (window_is_dock() && g_dock_peer_win && g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
-            Window want = (g_focus_nav > g_dock_header_nav_hi) ? g_dock_peer_win : win;
-            XRaiseWindow(dpy, want);
-            XSetInputFocus(dpy, want, RevertToParent, CurrentTime);
-            dock_grab_keyboard(want);
-        }
+        dock_nav_step(1);
+        return;
         return;
     }
     /* REAL, NEW 2026-08-31 - generic sidebar+panel scroll (see that

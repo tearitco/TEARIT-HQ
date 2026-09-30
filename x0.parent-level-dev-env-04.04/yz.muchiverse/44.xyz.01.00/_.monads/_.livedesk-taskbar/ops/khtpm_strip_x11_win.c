@@ -118,6 +118,13 @@ struct Display {
 };
 
 static Display *g_dpy = NULL;
+/* REAL, NEW 2026-09-29 (Windows focus parity) - GetTickCount() stamp of the
+ * last left-click that landed on one of our own windows, set in WndProc.
+ * XSetInputFocus() uses it to decide whether the human actually clicked a
+ * bar (activate it) or whether this is a silent post-map retry (do NOT
+ * activate). That is the same "only the window the human just touched may
+ * take focus" rule the X11 build follows. */
+static DWORD g_bar_click_ms = 0;
 static const wchar_t *kCls = L"KhtpmStripX11";
 
 static COLORREF pix_to_cr(unsigned long p) {
@@ -210,7 +217,12 @@ static LRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
             ev.xbutton.x_root = scr.x; ev.xbutton.y_root = scr.y;
         }
         qpush(d, &ev);
-        if (m == WM_LBUTTONDOWN) SetCapture(h);
+        if (m == WM_LBUTTONDOWN) {
+            /* REAL, NEW 2026-09-29 - arm XSetInputFocus()'s foreground
+             * activation. See g_bar_click_ms. */
+            g_bar_click_ms = GetTickCount();
+            SetCapture(h);
+        }
         if (m == WM_LBUTTONUP) ReleaseCapture();
         return 0;
     }
@@ -632,6 +644,26 @@ void XMoveResizeWindow(Display *dpy, Window w, int x, int y, unsigned width, uns
 void XSetInputFocus(Display *dpy, Window w, int revert, unsigned long time) {
     (void)dpy; (void)revert; (void)time;
     if (xd_valid(w) && w->hwnd) SetFocus(w->hwnd);
+    /* REAL FIX 2026-09-29 (Windows parity with XSetInputFocus) - SetFocus()
+     * alone only moves keyboard focus WITHIN our own thread, so it can never
+     * make our bar the desktop foreground window. GetForegroundWindow()
+     * kept naming the human's editor, XGetInputFocus() below reported "not
+     * ours", and the renderer's dock_release_keyboard_if_left() dropped the
+     * grab it had just taken - which is why the bar could never keep a
+     * keyboard grab the way the X11 build does.
+     *
+     * SetForegroundWindow() is the real activation, but calling it
+     * unconditionally would break this repo's documented rule that a bar
+     * must NOT steal focus while it merely maps (see the post-map
+     * XSetInputFocus retry loops in khtpm_core_render.c, and
+     * HQ-WINDOW-MAP-AND-AGENT-INPUT.md). Windows only grants it to a
+     * process that owns the last input event, which is exactly the X11 rule
+     * too - so activate only when the human just clicked one of our bars
+     * (WndProc stamps g_bar_click_ms on WM_LBUTTONDOWN). A startup
+     * post-map retry has no recent click, so it stays silent. */
+    if (xd_valid(w) && w->hwnd && g_bar_click_ms &&
+        (DWORD)(GetTickCount() - g_bar_click_ms) < 2000)
+        SetForegroundWindow(w->hwnd);
 }
 
 void XFlush(Display *dpy) { pump(dpy); GdiFlush(); }
@@ -1494,23 +1526,51 @@ int XGrabPointer(Display *dpy, Window w, int owner, unsigned mask, int pmode, in
  *
  * WH_KEYBOARD_LL is the one Win32 hook that genuinely sees input before
  * the system dispatches it to the foreground window, from any process.
- * That is the faithful stand-in for XGrabKeyboard: translate the raw
- * VK into the same KeyPress/KeyRelease XEvent the focused-window path
- * would have produced, push it at the grabbing window, and return 1 so
- * the key is NOT also delivered downstream - the same exclusive,
- * swallow-and-own behaviour XGrabKeyboard gives on Linux. XLookupKeysym
- * below already maps VK_LEFT/RIGHT/UP/DOWN to XK_Left/Right/Up/Down, so
- * the renderer's handle_key() sees exactly what it sees on Linux. */
+ * It is the stand-in for XGrabKeyboard when XSetInputFocus() could NOT
+ * make our bar the foreground window: translate the raw VK into the same
+ * KeyPress/KeyRelease XEvent the focused-window path would have produced,
+ * push it at the grabbing window, and return 1 so the key is NOT also
+ * delivered downstream. XLookupKeysym below already maps
+ * VK_LEFT/RIGHT/UP/DOWN to XK_Left/Right/Up/Down, so the renderer's
+ * handle_key() sees exactly what it sees on Linux.
+ *
+ * It is only a FALLBACK. Once XSetInputFocus() has really activated a bar
+ * (the normal case, since our bars are not WS_EX_NOACTIVATE), keys arrive
+ * through the ordinary WM_KEYDOWN path and this hook stays out of the way
+ * - see fg_is_our_window() below. And XGetInputFocus() reports the true
+ * foreground window, so dock_release_keyboard_if_left() uninstalls this
+ * hook as soon as the human clicks away from the bars. Without that
+ * release it eats arrows/Enter/Escape/Backspace for the whole desktop. */
 static Display *g_kbd_grab_dpy = NULL;
 static Window   g_kbd_grab_win = 0;
 static HHOOK    g_kbd_grab_hook = NULL;
+
+/* Is the desktop's real foreground window one of our own windows? */
+static int fg_is_our_window(Display *d) {
+    HWND fg = GetForegroundWindow();
+    int i;
+    if (!d) return 0;
+    for (i = 0; i < d->nwins; i++)
+        if (d->wins[i]->hwnd == fg) return 1;
+    return 0;
+}
 
 static LRESULT CALLBACK x11_ll_kbd_hook(int code, WPARAM wparam, LPARAM lparam) {
     if (code == HC_ACTION && g_kbd_grab_dpy && xd_valid(g_kbd_grab_win)) {
         KBDLLHOOKSTRUCT *hs = (KBDLLHOOKSTRUCT *)lparam;
         int down = (wparam == WM_KEYDOWN || wparam == WM_SYSKEYDOWN);
         int up   = (wparam == WM_KEYUP   || wparam == WM_SYSKEYUP);
-        if (hs && (down || up)) {
+        /* REAL FIX 2026-09-29 - do NOT double-deliver. Once
+         * XSetInputFocus() genuinely made one of our bars the foreground
+         * window (see the click-gated SetForegroundWindow there), Windows
+         * delivers WM_KEYDOWN to that bar normally and WndProc already
+         * queues the identical XEvent. Injecting here as well would make
+         * every arrow press move the selection TWO steps. So when the bar
+         * really holds focus, this hook keeps its hands off and lets the
+         * ordinary focused-window path do the work - which is exactly how
+         * Linux behaves once XSetInputFocus has succeeded. The hook is a
+         * fallback for the case where Windows refused activation. */
+        if (hs && (down || up) && !fg_is_our_window(g_kbd_grab_dpy)) {
             /* XLookupKeysym only knows these - it returns 0 for anything
              * else, so anything we don't recognise would be delivered as
              * a meaningless keycode 0 and then dropped by the renderer
@@ -1563,7 +1623,12 @@ int XGrabKeyboard(Display *dpy, Window w, int owner, int pmode, int kmode, unsig
 int XUngrabPointer(Display *dpy, unsigned long time) { (void)dpy; (void)time; ReleaseCapture(); return 0; }
 int XUngrabKeyboard(Display *dpy, unsigned long time) {
     (void)dpy; (void)time;
-    if (g_kbd_grab_hook) { UnhookWindowsHookEx(g_kbd_grab_hook); g_kbd_grab_hook = NULL; }
+    if (g_kbd_grab_hook) {
+        x11_trace("XUngrabKeyboard hook REMOVED - arrows/Enter/Escape/"
+                  "Backspace/Tab released back to the foreground app");
+        UnhookWindowsHookEx(g_kbd_grab_hook);
+        g_kbd_grab_hook = NULL;
+    }
     g_kbd_grab_dpy = NULL;
     g_kbd_grab_win = 0;
     return 0;
@@ -1762,22 +1827,40 @@ int XSetWMProtocols(Display *dpy, Window w, Atom *protocols, int n) { (void)dpy;
         return 1;
     }
 int XGetInputFocus(Display *dpy, Window *w, int *revert) {
-    (void)dpy;
-    /* REAL, NEW 2026-09-29 - mirror X11 grab semantics. On a real X
-     * server, while a client holds XGrabKeyboard every key event is
-     * redirected to the grabbing client, so XGetInputFocus reports the
-     * GRAB WINDOW, not whatever the WM last focused. This shim used to
-     * hard-return NULL, which made the renderer's own
-     * dock_release_keyboard_if_left() conclude "focus left the dock"
-     * and immediately drop the grab it had just taken - which is why
-     * the LL keyboard hook below could never survive long enough to
-     * deliver a real arrow key. Reporting the grabbed window while a
-     * grab is held is both the faithful emulation and what keeps
-     * dock_release_keyboard_if_left() from self-cancelling. Release
-     * still happens through the renderer's own kh_ungrab_kbd() ->
-     * XUngrabKeyboard() disarm paths, which clear this below. */
-    if (w) *w = g_kbd_grab_win;
+    int i;
+    HWND fg;
+    POINT pt;
+    HWND under;
     if (revert) *revert = RevertToParent;
+    if (!dpy) return 0;
+    /* REAL FIX 2026-09-29 (Windows focus parity) - report the REAL
+     * foreground window, mapped onto one of our Window values, so the
+     * renderer's dock_release_keyboard_if_left() sees exactly what it sees
+     * on X11: "is focus still on one of my bars?".
+     *
+     * This previously returned the held grab window unconditionally. That
+     * was wrong, and it was the cause of the reported "it is stealing
+     * keys and I get constant typos": dock_release_keyboard_if_left()
+     * therefore never saw focus leave, so the WH_KEYBOARD_LL hook stayed
+     * installed forever, permanently swallowing Left/Right/Up/Down/Return/
+     * Escape/Backspace/Tab for the whole desktop - including while the
+     * human was typing in a completely unrelated window. On X11 the grab
+     * is bounded by focus, so it releases the moment you click away; this
+     * now does too. */
+    if (w) *w = None;
+    fg = GetForegroundWindow();
+    for (i = 0; i < dpy->nwins; i++)
+        if (dpy->wins[i]->hwnd == fg) { if (w) *w = dpy->wins[i]; return 1; }
+    /* Fallback for the case where Windows REFUSED SetForegroundWindow
+     * (focus-stealing prevention) but the human is demonstrably working
+     * the taskbar with the mouse: hover counts as ours. This keeps arrow
+     * nav usable in that case while still releasing the grab as soon as
+     * the pointer moves off the bars - which is the moment the human goes
+     * back to typing elsewhere. */
+    GetCursorPos(&pt);
+    under = WindowFromPoint(pt);
+    for (i = 0; i < dpy->nwins; i++)
+        if (dpy->wins[i]->hwnd == under) { if (w) *w = dpy->wins[i]; return 1; }
     return 1;
 }
 unsigned long XGetPixel(XImage *img, int x, int y) {
