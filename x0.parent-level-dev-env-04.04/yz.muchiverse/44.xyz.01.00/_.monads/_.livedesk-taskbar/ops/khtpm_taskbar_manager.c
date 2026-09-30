@@ -4113,6 +4113,7 @@ static int livedesk_build_player_menu(const char *house_root, HQMenuItem *menu, 
      * handler. */
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "stop"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:play-stop"); n++; }
     if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "reset"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:reset-entities"); n++; }
+    if (n < max) { snprintf(menu[n].label, sizeof(menu[n].label), "Synch"); snprintf(menu[n].command, sizeof(menu[n].command), "livedesk:synch-from-pchq"); n++; }
     /* REAL FIX 2026-09-15, direct live correction ("u gave player in tb
      * another notes-db (it already had one)") - a "notes-db" row here
      * duplicated the real, already-existing GENERIC "notes-<cell>" row
@@ -4988,6 +4989,17 @@ void ktb_hq_activate(KtbState *s, int row) {
          * Same re-open-in-place UX as play-toggle, same real reason
          * and same ktb_cell_pos_by_id() fix. */
         khtpm_save_play_mode(s->house_root, 0);
+        ktb_hq_open(s, ktb_cell_pos_by_id(s, "player", 9));
+        return;
+    }
+    if (strcmp(m->command, "livedesk:synch-from-pchq") == 0) {
+        /* Player cell 9. Records a request. The page copy is not wired.
+         * See HQ-IQ-BOOK 09-appendix/PC-HQ-BOOK-PAGE-SYNCH.md. */
+        char fx[KTB_PATH_BUF * 2];
+        snprintf(fx, sizeof(fx),
+                 "sh '%s/@.apps/piececraft-hq/ops/pc_synch_request.sh' taskbar",
+                 s->house_root);
+        system(fx);
         ktb_hq_open(s, ktb_cell_pos_by_id(s, "player", 9));
         return;
     }

@@ -238,6 +238,11 @@ case "$VERB" in
                 [ "$CUR" = on ] && NEXT=off
                 printf 'mode=%s\n' "$NEXT" > "$PM"
                 ;;
+            synch)
+                # Player tab. Records the request. Does not copy the page.
+                # 09-appendix/PC-HQ-BOOK-PAGE-SYNCH.md
+                sh "$PCHQ/ops/pc_synch_request.sh" pchq
+                ;;
             stop)
                 # Explicit force-off, distinct from toggle - "make sure
                 # it's definitely stopped" without needing to read the
