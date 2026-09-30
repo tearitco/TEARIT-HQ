@@ -365,28 +365,70 @@ static int read_pdl_value(const char *path, const char *key, char *out, int n) {
     fclose(f);
     return 0;
 }
-/* A Synch writes this file on the inheritor. While it names a real
- * desk file, that file is the page. Otherwise the open livedesk page. */
+/* open_book_page.txt:
+ *   source=desk  — follow the desk's live page (Synch copied once;
+ *                   a later desk switch moves this view with it)
+ *   source=board — the board's own map; do not read a desk file
+ *   no source, but pdl= — older Synch pin; same as source=desk
+ * Returns 1 and writes the desk path, -1 when the board owns the
+ * page, 0 when this file does not decide (caller may use active_desk). */
+static int page_live_desk(const char *house, char *out, int n) {
+    char users[PATH_BUF];
+    snprintf(users, sizeof(users), "%s/xyzfs/users", house);
+    DIR *d = opendir(users);
+    if (!d) return 0;
+    struct dirent *e;
+    while ((e = readdir(d))) {
+        if (e->d_name[0] == '.') continue;
+        char sess[PATH_BUF], rootpdl[PATH_BUF], active[128];
+        snprintf(sess, sizeof(sess), "%s/%s/home/livedesk/sessions", users, e->d_name);
+        snprintf(rootpdl, sizeof(rootpdl), "%s/session.pdl", sess);
+        if (!read_pdl_value(rootpdl, "active_session", active, sizeof(active))) continue;
+        char sp[PATH_BUF], desk[128];
+        snprintf(sp, sizeof(sp), "%s/%s/session.pdl", sess, active);
+        if (!read_pdl_value(sp, "active_desk", desk, sizeof(desk))) continue;
+        snprintf(out, n, "%s/%s/desks/%s.pdl", sess, active, desk);
+        closedir(d);
+        FILE *t = host_fopen(out, "r");
+        if (!t) return 0;
+        fclose(t);
+        return 1;
+    }
+    closedir(d);
+    return 0;
+}
 static int page_bound_pdl(const char *house, char *out, int n) {
-    char ob[PATH_BUF], line[PATH_BUF];
+    char ob[PATH_BUF], line[PATH_BUF], source[32] = "", stored[PATH_BUF] = "";
     snprintf(ob, sizeof(ob), "%s/@.apps/piececraft-hq/pieces/display/open_book_page.txt", house);
     FILE *f = host_fopen(ob, "r");
     if (!f) return 0;
-    out[0] = '\0';
     while (fgets(line, sizeof(line), f)) {
-        if (strncmp(line, "pdl=", 4) != 0) continue;
-        snprintf(out, n, "%s", line + 4);
-        out[strcspn(out, "\r\n")] = '\0';
+        if (strncmp(line, "source=", 7) == 0) {
+            snprintf(source, sizeof(source), "%s", line + 7);
+            source[strcspn(source, "\r\n")] = '\0';
+        } else if (strncmp(line, "pdl=", 4) == 0) {
+            snprintf(stored, sizeof(stored), "%s", line + 4);
+            stored[strcspn(stored, "\r\n")] = '\0';
+        }
     }
     fclose(f);
-    if (!out[0]) return 0;
-    FILE *t = host_fopen(out, "r");
+    if (strcmp(source, "board") == 0) {
+        if (n > 0) out[0] = '\0';
+        return -1;
+    }
+    if (strcmp(source, "desk") != 0 && !stored[0]) return 0;
+    if (page_live_desk(house, out, n)) return 1;
+    if (!stored[0]) return 0;
+    FILE *t = host_fopen(stored, "r");
     if (!t) return 0;
     fclose(t);
+    snprintf(out, n, "%s", stored);
     return 1;
 }
 static int page_file(const char *house, char *out, int n) {
-    if (page_bound_pdl(house, out, n)) return 1;
+    int bound = page_bound_pdl(house, out, n);
+    if (bound < 0) return 0;
+    if (bound > 0) return 1;
     char users[PATH_BUF];
     snprintf(users, sizeof(users), "%s/xyzfs/users", house);
     DIR *d = opendir(users);
@@ -745,8 +787,24 @@ int main(void) {
     g_any_z = side_mode;
     load_actors(cur_z);          /* hero_01 + world_01 animals - all heights in side_mode, this z-slice otherwise */
     int side_zcount = 0;
-    if (side_mode) load_side_board(fixed_row, &side_zcount);
-    else           load_board(cur_z);
+    char bound_pdl[PATH_BUF];
+    int desk_page = house_root[0] && page_bound_pdl(house_root, bound_pdl, sizeof(bound_pdl)) > 0;
+    if (desk_page) {
+        /* The desk page is the map. The piececraft chunk (grass, rock)
+         * stays out. A 16x16 floor keeps pals off the void without
+         * filling the view. source=board brings the chunk back. */
+        memset(g_board, 0, sizeof(g_board));
+        g_bw = 16;
+        g_bh = 16;
+        for (int y = 0; y < 16; y++)
+            for (int x = 0; x < 16; x++)
+                g_board[y][x] = '.';
+        side_zcount = 1;
+    } else if (side_mode) {
+        load_side_board(fixed_row, &side_zcount);
+    } else {
+        load_board(cur_z);
+    }
 
     /* Empty / not-yet-generated board -> still show a grid so `0` isn't blank. */
     int bw = g_bw > 0 ? g_bw : 20;

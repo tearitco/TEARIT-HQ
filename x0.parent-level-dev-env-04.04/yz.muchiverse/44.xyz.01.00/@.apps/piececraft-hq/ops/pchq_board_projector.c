@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <limits.h>
+#include <dirent.h>
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
@@ -61,16 +62,65 @@ static int read_pdl_opt(const char *path, const char *name, int def) {
 
 static void read_kv(const char *path, const char *key, char *out, size_t outsz);
 
-/* Footer rows from the desk page named by open_book_page.txt.
- * Returns the number written, or -1 when that page is not open. */
-static int emit_page_entities(char *ui, size_t *off, const char *host_app_root) {
-    char ob[PATH_MAX], pdl[PATH_MAX];
+/* Footer rows from the live desk page while source=desk (or an older
+ * pin that still has pdl=). source=board means the board picked its
+ * own map: return -1 so the private lists are the strip. One "map"
+ * row stands for the solid floor. tree_small stays off this bar. */
+static int emit_page_entities(char *ui, size_t *off, const char *house, const char *host_app_root) {
+    char ob[PATH_MAX], pdl[PATH_MAX], source[32] = "";
     snprintf(ob, sizeof(ob), "%s/pieces/display/open_book_page.txt", host_app_root);
+    read_kv(ob, "source", source, sizeof(source));
     read_kv(ob, "pdl", pdl, sizeof(pdl));
-    if (!pdl[0]) return -1;
+    if (!strcmp(source, "board")) return -1;
+    if (strcmp(source, "desk") != 0 && !pdl[0]) return -1;
+    if (house && house[0]) {
+        char users[PATH_MAX];
+        snprintf(users, sizeof(users), "%s/xyzfs/users", house);
+        DIR *d = opendir(users);
+        if (d) {
+            struct dirent *e;
+            while ((e = readdir(d))) {
+                if (e->d_name[0] == '.') continue;
+                char rootpdl[PATH_MAX], active[128];
+                snprintf(rootpdl, sizeof(rootpdl), "%s/%s/home/livedesk/sessions/session.pdl", users, e->d_name);
+                FILE *sf = fopen(rootpdl, "r");
+                if (!sf) continue;
+                char line[256];
+                active[0] = '\0';
+                while (fgets(line, sizeof(line), sf)) {
+                    char *k = strstr(line, "| active_session |");
+                    if (!k) continue;
+                    sscanf(k + 18, " %127s", active);
+                    break;
+                }
+                fclose(sf);
+                if (!active[0]) continue;
+                char sp[PATH_MAX], desk[128] = "";
+                snprintf(sp, sizeof(sp), "%s/%s/home/livedesk/sessions/%s/session.pdl", users, e->d_name, active);
+                FILE *df = fopen(sp, "r");
+                if (!df) continue;
+                while (fgets(line, sizeof(line), df)) {
+                    char *k = strstr(line, "| active_desk |");
+                    if (!k) continue;
+                    sscanf(k + 14, " %127s", desk);
+                    break;
+                }
+                fclose(df);
+                if (!desk[0]) continue;
+                snprintf(pdl, sizeof(pdl), "%s/%s/home/livedesk/sessions/%s/desks/%s.pdl",
+                         users, e->d_name, active, desk);
+                break;
+            }
+            closedir(d);
+        }
+    }
     FILE *f = fopen(pdl, "r");
     if (!f) return -1;
     int n = 0;
+    *off += (size_t)snprintf(ui + *off, UIBUF - *off,
+        "ent_0_label=map\nent_0_id=map\nent_0_kind=page\n"
+        "ent_0_x=0\nent_0_y=0\nent_0_z=0\n");
+    n = 1;
     char line[512];
     while (n < 16 && fgets(line, sizeof(line), f)) {
         if (strncmp(line, "DESK", 4) != 0) continue;
@@ -80,7 +130,7 @@ static int emit_page_entities(char *ui, size_t *off, const char *host_app_root) 
                    name, path, &px, &py, &cx, &cy, glyph, &tail) != 8) continue;
         char *e = name + strlen(name);
         while (e > name && (e[-1] == ' ' || e[-1] == '\t')) *--e = '\0';
-        if (!strcmp(name, "camera_01")) continue;
+        if (!strcmp(name, "camera_01") || !strcmp(name, "tree_small")) continue;
         if (cx == 0 && cy == 0 && (px >= 40 || py >= 40 || px <= -40 || py <= -40)) {
             cx = px / 80; cy = py / 80;
         }
@@ -101,8 +151,8 @@ static int emit_page_entities(char *ui, size_t *off, const char *host_app_root) 
 /* MILESTONE C - append entities-bar rows for the <footer>.
  * The open desk page wins. The private hero/animal lists are only
  * the fallback when no page file is bound. Capped at 16. */
-static size_t emit_entities(char *ui, size_t off, const char *host_app_root, int on) {
-    int n = emit_page_entities(ui, &off, host_app_root);
+static size_t emit_entities(char *ui, size_t off, const char *house, const char *host_app_root, int on) {
+    int n = emit_page_entities(ui, &off, house, host_app_root);
     if (n >= 0) {
         off += (size_t)snprintf(ui + off, UIBUF - off,
             "n_ent=%d\nentities_bar_on=%s\n", n, on ? "1" : "");
@@ -548,7 +598,13 @@ int main(int argc, char **argv) {
                      "%s/@.apps/%s/pieces/display/open_book_page.txt", house, host_id);
             read_kv(ob, "book", ob_book, sizeof(ob_book));
             read_kv(ob, "page", ob_page, sizeof(ob_page));
-            if (ob_book[0] && ob_page[0]) {
+            char ob_src[32] = "";
+            read_kv(ob, "source", ob_src, sizeof(ob_src));
+            /* source=board is a later pick inside pc-hq. The name
+             * stays on this board's own map. source=desk still shares
+             * the desk's book and page, and a desk switch updates it
+             * because the strip reads the live active_desk. */
+            if (strcmp(ob_src, "board") != 0 && ob_book[0] && ob_page[0]) {
                 snprintf(book_label, sizeof(book_label), "book:%s", ob_book);
                 snprintf(page_label, sizeof(page_label), "page:%s", ob_page);
             }
@@ -625,7 +681,7 @@ int main(int argc, char **argv) {
             snprintf(host_app, sizeof(host_app), "%s/@.apps/%s", house, host_id);
             snprintf(pdl, sizeof(pdl), "%s/pieces/system/pchq.pdl", host_app);
             int ebar = read_pdl_opt(pdl, "entities_bar", 0);
-            off = emit_entities(ui, off, host_app, ebar);
+            off = emit_entities(ui, off, house, host_app, ebar);
         }
 
         if (strcmp(ui, last) != 0) {

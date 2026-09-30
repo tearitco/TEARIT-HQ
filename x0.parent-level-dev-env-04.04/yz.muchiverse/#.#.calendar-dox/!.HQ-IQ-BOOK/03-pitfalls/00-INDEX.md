@@ -46,7 +46,9 @@ forever — ~10 % of a core, per stack, indefinitely. Two of them survived
   weak-box symptom: a producer/consumer file-handoff gap).
 - `HOUSE_CODE_PITFALLS.md` #25 — a wait that does not sleep pegs the
   CPU. No new `sleep`/`usleep` that the loop can skip. No second
-  render daemon.
+  render daemon. Open suggestion, not built: one shared wait in
+  `04-bugs/bug_bounty.md` ("one house wait") so a C poll loop cannot
+  put `usleep` in an idle-only else.
 - `44.xyz.01.00/_.monads/_.livedesk-taskbar/ops/kill_hq_windows.sh` —
   the ledger-pgid emergency reaper behind the `!kill hq` row; blind
   (kills by registry, shows nothing). `proc-mon` is the observable,

@@ -1200,3 +1200,8 @@ the leaked engine stacks in this chapter's index.
    `sh 44.xyz.01.00/&.hq-apps/proc-mon/mon_scan.sh list`) shows strays.
    Kill those by pid. Do not `pkill -f` a pattern that is also your shell.
 
+The 3D daemon's 30ms wait now runs at the bottom of every pass, including
+after a frame. A shared `house_wait_us` so the next loop cannot hide its
+sleep in an else is an open bounty, not a header yet
+(`04-bugs/bug_bounty.md`, "one house wait").
+

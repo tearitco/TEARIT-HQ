@@ -1084,6 +1084,15 @@ int main(int argc, char **argv) {
              * itself was the break). Fixed to the real, counted length
              * (18) - cmd+18 (not +19) just below for the same reason. */
             write_kv(config_path, "game_state", "playing");
+            /* This pick is the board's own page. Synch's pin must not
+             * keep the name and the strip on the desk page. */
+            {
+                char pin_root[PATH_BUF], pin_path[PATH_BUF];
+                resolve_real_root(project_root, pin_root, sizeof(pin_root));
+                snprintf(pin_path, sizeof(pin_path), "%s/pieces/display/open_book_page.txt", pin_root);
+                FILE *pf = fopen(pin_path, "w");
+                if (pf) { fputs("source=board\n", pf); fclose(pf); }
+            }
 
             char map_id_arg[128];
             snprintf(map_id_arg, sizeof(map_id_arg), "%s", cmd + 18);
@@ -1140,6 +1149,13 @@ int main(int argc, char **argv) {
                 snprintf(message, sizeof(message), "No map loaded - nothing to switch desks on.");
             } else {
                 write_kv(config_path, "game_state", "playing");
+                {
+                    char pin_root[PATH_BUF], pin_path[PATH_BUF];
+                    resolve_real_root(project_root, pin_root, sizeof(pin_root));
+                    snprintf(pin_path, sizeof(pin_path), "%s/pieces/display/open_book_page.txt", pin_root);
+                    FILE *pf = fopen(pin_path, "w");
+                    if (pf) { fputs("source=board\n", pf); fclose(pf); }
+                }
                 char desk_id_arg[64];
                 snprintf(desk_id_arg, sizeof(desk_id_arg), "%s", cmd + (sizeof("CONFIRM_SET_DESK:") - 1));
                 unsigned int world_seed = (unsigned int)time(NULL) ^ (unsigned int)getpid();

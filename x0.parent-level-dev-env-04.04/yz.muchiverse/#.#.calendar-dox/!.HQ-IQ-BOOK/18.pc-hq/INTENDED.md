@@ -150,6 +150,16 @@ The private lists remain only when that file is absent. Cap is 16
 rows. The projector process must be the new binary; a running one
 keeps the old text.
 
+## Desk page, floor, and the pin
+
+While `open_book_page.txt` says `source=desk` (or is an older pin that still has `pdl=`), the 2D and 3D drawers do not draw the piececraft chunk. Grass and rock leave. A 16 by 16 floor glyph `.` is drawn so pals are not over a void. It does not fill the view. `source=board` brings the chunk back.
+
+The bottom strip, in desk mode, starts with one row named `map` and skips `tree_small` and `camera_01`. Desk pals stay. A book or page pick inside pc-hq (`CONFIRM_START_MAP`, `CONFIRM_SET_DESK`) writes `source=board` and drops the pin, so the name and the strip follow that pick. A later desk switch is read from the live `active_desk`, not from the frozen `pdl=` line. Synch still copies once: the taskbar press writes `source=desk`, and a successful pc-hq press writes it again after the desk has moved.
+
+## The 3D wait
+
+`bv_render_3d.+x --daemon` used to sleep 30ms only when the request file and the view size were unchanged. A view file that changed every pass skipped the wait and raymarched with no gap. That was the pc-hq peg. The 30ms wait now runs at the bottom of every pass, including after a frame. Do not put it back in the else. Do not add a shorter wait beside it.
+
 ## Click, not fixed
 
 2026-09-30: a click on the pc-hq view does not register a position.

@@ -2,6 +2,26 @@
 
 ---
 
+## OPEN 2026-09-30: one house wait, so a poll loop cannot skip its sleep
+
+**Suggestion, not built.** Pitfall 25 already says every wait sleeps, and
+that a file changing every pass is not a reason to skip it.
+`bv_render_3d.+x --daemon` was the live case: `usleep(30000)` sat in the
+idle `else`, so a view file that changed every pass raymarched with no
+gap and pegged the CPU. That one loop now sleeps at the bottom of every
+pass. The bounty is the general fix.
+
+A header in `&.widgits/_shared-lib` (something like `house_wait.h`) with
+one function, `house_wait_us(int usec)`, that always calls `usleep` and
+refuses a 0. Pal loops keep their existing `sleep` line; they do not get
+a second, shorter one. A C poll loop calls that function on every pass,
+after the work, never inside an `else` that means "only when idle."
+Do not add a new daemon or a new sleep shorter than the one already next
+to the loop (board daemon 30ms, dock canvas 16.7ms active / 150ms idle,
+entity idle 200ms).
+
+---
+
 ## ✅ CLOSED 2026-09-30 (real root causes found and fixed, not the merge): pc-hq board window resize didn't resize the 3D camera view; HUD/minimap got cut off small, black on big
 
 **Resolution, same day:**

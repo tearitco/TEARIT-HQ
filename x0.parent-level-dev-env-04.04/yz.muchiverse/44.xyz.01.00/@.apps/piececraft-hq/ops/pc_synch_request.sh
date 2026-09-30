@@ -46,7 +46,7 @@ set_state_field() {
 
 if [ "$FROM" = taskbar ]; then
     # The desk is the sender. Every board of this app is an inheritor.
-    printf 'book=%s\npage=%s\npdl=%s\n' "$BOOK" "$DESK" "$PDL" > "$OPEN"
+    printf 'source=desk\nbook=%s\npage=%s\npdl=%s\n' "$BOOK" "$DESK" "$PDL" > "$OPEN"
     STATUS=board-follows-desk
 else
     # The board is the sender. Its page is open_book_page when that
@@ -55,7 +55,13 @@ else
     BB=$BOOK
     BP=$DESK
     BPDL=$PDL
+    SRC=""
     if [ -f "$OPEN" ]; then
+        SRC=$(sed -n 's/^source=//p' "$OPEN" | head -1 | tr -d ' \r')
+    fi
+    # source=board means the user picked a book or page inside pc-hq
+    # after Synch. That pick is the sender. The old desk pin is not.
+    if [ -f "$OPEN" ] && [ "$SRC" != board ]; then
         ob=$(sed -n 's/^book=//p' "$OPEN" | head -1)
         op=$(sed -n 's/^page=//p' "$OPEN" | head -1)
         od=$(sed -n 's/^pdl=//p' "$OPEN" | head -1)
@@ -64,7 +70,7 @@ else
         [ -n "$od" ] && BPDL=$od
     fi
     WS="$PCHQ/pieces/world_01/state.txt"
-    if [ ! -f "$OPEN" ] && [ -f "$WS" ]; then
+    if { [ ! -f "$OPEN" ] || [ "$SRC" = board ]; } && [ -f "$WS" ]; then
         mid=$(sed -n 's/^map_id=//p' "$WS" | head -1 | tr -d ' \r')
         did=$(sed -n 's/^desk_id=//p' "$WS" | head -1 | tr -d ' \r')
         [ -n "$mid" ] && BB=$mid
@@ -96,6 +102,9 @@ else
         DESK=$base
     else
         STATUS=page-not-in-book
+    fi
+    if [ "$STATUS" = desk-follows-board ]; then
+        printf 'source=desk\nbook=%s\npage=%s\npdl=%s\n' "$BOOK" "$DESK" "$PDL" > "$OPEN"
     fi
 fi
 

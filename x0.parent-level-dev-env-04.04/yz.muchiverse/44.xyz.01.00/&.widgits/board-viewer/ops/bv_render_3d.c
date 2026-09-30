@@ -196,22 +196,57 @@ static int page_pdl_value(const char *path, const char *key, char *out, int n) {
     fclose(f);
     return 0;
 }
+/* 1 = follow the live desk page, -1 = the board owns its map, 0 = no pin. */
+static int page_live_desk(const char *house, char *out, int n) {
+    char users[PATH_BUF];
+    snprintf(users, sizeof(users), "%s/xyzfs/users", house);
+    DIR *d = opendir(users);
+    if (!d) return 0;
+    struct dirent *e;
+    while ((e = readdir(d))) {
+        if (e->d_name[0] == '.') continue;
+        char sess[PATH_BUF], rootpdl[PATH_BUF], active[128], desk[128], sp[PATH_BUF];
+        snprintf(sess, sizeof(sess), "%s/%s/home/livedesk/sessions", users, e->d_name);
+        snprintf(rootpdl, sizeof(rootpdl), "%s/session.pdl", sess);
+        if (!page_pdl_value(rootpdl, "active_session", active, sizeof(active))) continue;
+        snprintf(sp, sizeof(sp), "%s/%s/session.pdl", sess, active);
+        if (!page_pdl_value(sp, "active_desk", desk, sizeof(desk))) continue;
+        snprintf(out, n, "%s/%s/desks/%s.pdl", sess, active, desk);
+        closedir(d);
+        FILE *t = host_fopen(out, "r");
+        if (!t) return 0;
+        fclose(t);
+        return 1;
+    }
+    closedir(d);
+    return 0;
+}
 static int page_bound_pdl(const char *house, char *out, int n) {
-    char ob[PATH_BUF], line[PATH_BUF];
+    char ob[PATH_BUF], line[PATH_BUF], source[32] = "", stored[PATH_BUF] = "";
     snprintf(ob, sizeof(ob), "%s/@.apps/piececraft-hq/pieces/display/open_book_page.txt", house);
     FILE *f = host_fopen(ob, "r");
     if (!f) return 0;
-    out[0] = '\0';
     while (fgets(line, sizeof(line), f)) {
-        if (strncmp(line, "pdl=", 4) != 0) continue;
-        snprintf(out, n, "%s", line + 4);
-        out[strcspn(out, "\r\n")] = '\0';
+        if (strncmp(line, "source=", 7) == 0) {
+            snprintf(source, sizeof(source), "%s", line + 7);
+            source[strcspn(source, "\r\n")] = '\0';
+        } else if (strncmp(line, "pdl=", 4) == 0) {
+            snprintf(stored, sizeof(stored), "%s", line + 4);
+            stored[strcspn(stored, "\r\n")] = '\0';
+        }
     }
     fclose(f);
-    if (!out[0]) return 0;
-    FILE *t = host_fopen(out, "r");
+    if (strcmp(source, "board") == 0) {
+        if (n > 0) out[0] = '\0';
+        return -1;
+    }
+    if (strcmp(source, "desk") != 0 && !stored[0]) return 0;
+    if (page_live_desk(house, out, n)) return 1;
+    if (!stored[0]) return 0;
+    FILE *t = host_fopen(stored, "r");
     if (!t) return 0;
     fclose(t);
+    snprintf(out, n, "%s", stored);
     return 1;
 }
 static void page_entity_cells(const char *house, int *xs, int *ys, int *n, int max) {
@@ -236,7 +271,11 @@ static void page_entity_cells(const char *house, int *xs, int *ys, int *n, int m
         break;
     }
     closedir(d);
-    if (!page_bound_pdl(house, pdl, sizeof(pdl)) && !pdl[0]) return;
+    {
+        int page_pick = page_bound_pdl(house, pdl, sizeof(pdl));
+        if (page_pick < 0) return;
+        if (page_pick == 0 && !pdl[0]) return;
+    }
     FILE *f = host_fopen(pdl, "r");
     if (!f) return;
     char line[MAX_LINE];
@@ -784,7 +823,11 @@ static int page_named_cells(const char *house, const char *want, int *xs, int *y
         break;
     }
     closedir(d);
-    if (!page_bound_pdl(house, pdl, sizeof(pdl)) && !pdl[0]) return 0;
+    {
+        int page_pick = page_bound_pdl(house, pdl, sizeof(pdl));
+        if (page_pick < 0) return 0;
+        if (page_pick == 0 && !pdl[0]) return 0;
+    }
     FILE *f = host_fopen(pdl, "r");
     if (!f) return 0;
     char line[MAX_LINE];
@@ -838,7 +881,11 @@ static int page_row_meta(const char *house, const char *want, int *cx, int *cy,
         break;
     }
     closedir(d);
-    if (!page_bound_pdl(house, pdl, sizeof(pdl)) && !pdl[0]) return 0;
+    {
+        int page_pick = page_bound_pdl(house, pdl, sizeof(pdl));
+        if (page_pick < 0) return 0;
+        if (page_pick == 0 && !pdl[0]) return 0;
+    }
     FILE *f = host_fopen(pdl, "r");
     if (!f) return 0;
     char line[MAX_LINE];
@@ -2509,8 +2556,23 @@ static int render_one_frame(void) {
      * the stack. */
     static char board3d[MAX_VOXEL_Z][MAX_BOARD_DIM][MAX_BOARD_DIM];
     int board_w = 0, board_h = 0;
-    int z_count = load_voxel_chunk(focused_project_root, board3d, &board_w, &board_h);
-    if (z_count == 0) { free(g_fbuf); g_fbuf = NULL; return 2; }
+    int z_count = 0;
+    char bound_pdl[PATH_BUF];
+    int desk_page = house_root[0] && page_bound_pdl(house_root, bound_pdl, sizeof(bound_pdl)) > 0;
+    if (desk_page) {
+        /* Same rule as the 2D painter: a desk page is not the chunk
+         * grid. One 16x16 floor layer, air everywhere else. */
+        memset(board3d, '_', sizeof(board3d));
+        board_w = 16;
+        board_h = 16;
+        z_count = 1;
+        for (int row = 0; row < 16; row++)
+            for (int col = 0; col < 16; col++)
+                board3d[0][row][col] = '.';
+    } else {
+        z_count = load_voxel_chunk(focused_project_root, board3d, &board_w, &board_h);
+        if (z_count == 0) { free(g_fbuf); g_fbuf = NULL; return 2; }
+    }
 
     /* Real empty-space-skipping precompute - see mc-speed-algos.md for
      * the full writeup (real perf fix, 2026-08-03, direct user report:
@@ -3816,10 +3878,15 @@ int main(int argc, char **argv) {
             served++;
             { FILE *af = fopen(ackp, "w"); if (af) { fprintf(af, "%lld\n", served); fclose(af); } }
             if (rc == 0) { FILE *mf = fopen(mkp, "a"); if (mf) { fputc('F', mf); fputc('\n', mf); fclose(mf); } }
-        } else {
-            usleep(BV_IDLE_POLL_USEC);
-            if (++idle_ticks > BV_IDLE_EXIT_TICKS) { fprintf(stderr, "bv_gpu daemon: idle timeout, exiting\n"); break; }
+        } else if (++idle_ticks > BV_IDLE_EXIT_TICKS) {
+            fprintf(stderr, "bv_gpu daemon: idle timeout, exiting\n");
+            break;
         }
+        /* The wait is not optional. A request file or a view file that
+         * changes every pass used to skip this sleep and raymarch with
+         * no gap. That is the pc-hq peg. 30ms is the idle poll already
+         * next to this loop; do not use a shorter one. */
+        usleep(BV_IDLE_POLL_USEC);
     }
 
     remove(pidp);
