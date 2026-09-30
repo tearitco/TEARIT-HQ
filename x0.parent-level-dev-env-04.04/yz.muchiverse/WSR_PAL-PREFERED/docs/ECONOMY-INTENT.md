@@ -113,10 +113,20 @@ Every fill appends to `projects/wsr-pal/data/market_ledger.txt` in the
 Time: YYYY-MM-DD HH:MM:SS | Debit: <payer> | Credit: <receiver> | Amount: N.00 Dollars | ...
 ```
 
-A fill is two lines summing to zero. The original also replayed every event
-through `master_reader.+x`; here `market_settle.c` is the equivalent and is the
-**only** thing that moves cash or holdings. Quoting never writes balances, so an
-order cannot create money by existing.
+A fill is **one** line, not two. The original's format already carries both
+sides of the entry on a single row - `Debit: <payer> | Credit: <receiver> |
+Amount: N.00 Dollars` - so a single line *is* the balanced entry. An earlier
+draft of this document said "a fill is two lines summing to zero", which
+contradicted the very source it cited; the source wins, per the fidelity
+hierarchy. The share transfer is deliberately *not* a second ledger row: it
+moves a position, not money, and inventing a cash row for it would create
+money out of nothing. Shares move in `holdings.txt`, conservation held by
+construction (buyer +N, seller -N).
+
+The original replayed every event through `master_reader.+x`; here
+`market_settle.c` is the equivalent and is the **only** thing that moves cash
+or holdings. Quoting never writes balances, so an order cannot create money by
+existing.
 
 ---
 
