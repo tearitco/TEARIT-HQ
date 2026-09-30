@@ -6576,16 +6576,37 @@ static int kh_page_has_relay_item(void) {
     return 0;
 }
 
-static int kh_canvas_hit(int px, int py) {
+static Elem *kh_canvas_at(int px, int py) {
     Elem *pg = find_page(g_current_page);
-    if (!pg) return 0;
+    if (!pg) return NULL;
     for (int i = 0; i < pg->n_children; i++) {
         Elem *it = pg->children[i];
         if (strcmp(it->tag, "canvas") != 0) continue;
         if (px >= it->x && px < it->x + it->w && py >= it->y && py < it->y + it->h)
-            return 1;
+            return it;
     }
-    return 0;
+    return NULL;
+}
+static int kh_canvas_hit(int px, int py) {
+    return kh_canvas_at(px, py) != NULL;
+}
+static void kh_publish_canvas_click(int px, int py, int button) {
+    Elem *cv = kh_canvas_at(px, py);
+    if (!cv || cv->w < 1 || cv->h < 1) return;
+    int cx = px - cv->x, cy = py - cv->y;
+    char path[PATH_BUF];
+    history_path(path, sizeof(path));
+    FILE *f = fopen(path, "a");
+    if (f) {
+        fprintf(f, "CANVAS_CLICK: %d %d %d 1\n", button, cx, cy);
+        fclose(f);
+    }
+    if (!g_house_root[0]) return;
+    snprintf(path, sizeof(path), "%s/#.desktop/pchq_canvas_click.txt", g_house_root);
+    f = fopen(path, "w");
+    if (!f) return;
+    fprintf(f, "%d %d %d %d\n", cx, cy, cv->w, cv->h);
+    fclose(f);
 }
 
 static void assign_nav_and_layout(void) {
@@ -11477,8 +11498,10 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                 /* Play-screen engage: canvas bbox, not g_nav. Never
                  * verb interact (toggle-off). */
                 if (g_win_managed_focus && kh_page_has_relay_item() &&
-                    kh_canvas_hit(ev->xbutton.x, ev->xbutton.y))
+                    kh_canvas_hit(ev->xbutton.x, ev->xbutton.y)) {
                     kh_interact_engage_if_needed();
+                    kh_publish_canvas_click(ev->xbutton.x, ev->xbutton.y, ev->xbutton.button);
+                }
             }
             if (window_is_dock() && g_dock_menu_win && cw == g_dock_menu_win &&
                 ev->xbutton.button == 1 && g_dock_drop_lo >= 1) {

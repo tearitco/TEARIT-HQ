@@ -541,6 +541,10 @@ static void load_entities(const char *root) {
  * an error. */
 static int g_xelector_present = 0;
 static int g_xelector_x = 0, g_xelector_y = 0, g_xelector_z = 0;
+/* Last canvas click that hit a solid voxel. Drawn apart from the cyan
+ * keyboard xelector. 0 until pchq_canvas_click.txt names a new click. */
+static int g_ray_hit = 0;
+static int g_ray_x = 0, g_ray_y = 0, g_ray_z = 0;
 static char g_xelector_possessed_id[64] = "";
 
 /* REAL, NEW 2026-08-04, direct instruction ("sun and moon will have
@@ -1995,6 +1999,72 @@ static Camera build_camera(int camera_mode, double yaw_deg, double pitch_deg,
     return cam;
 }
 
+/* One canvas click -> one voxel. khtpm writes
+ * #.desktop/pchq_canvas_click.txt as "cx cy cw ch". World axes match
+ * the rasterizer: world (X, Y, Z) = (grid_x, height, grid_y). */
+static int bv_ray_click(const char *house, const Camera *cam,
+                        char board3d[MAX_VOXEL_Z][MAX_BOARD_DIM][MAX_BOARD_DIM],
+                        int board_w, int board_h, int z_count,
+                        int *hx, int *hy, int *hz) {
+    char path[PATH_BUF], seen_path[PATH_BUF];
+    snprintf(path, sizeof(path), "%s/#.desktop/pchq_canvas_click.txt", house);
+    snprintf(seen_path, sizeof(seen_path), "%s/#.desktop/pchq_canvas_click.seen", house);
+    FILE *f = host_fopen(path, "r");
+    if (!f) return 0;
+    int cx = 0, cy = 0, cw = 0, ch = 0;
+    if (fscanf(f, "%d %d %d %d", &cx, &cy, &cw, &ch) != 4) { fclose(f); return 0; }
+    fclose(f);
+    char stamp[64];
+    snprintf(stamp, sizeof(stamp), "%d %d %d %d\n", cx, cy, cw, ch);
+    f = host_fopen(seen_path, "r");
+    if (f) {
+        char prev[64] = "";
+        if (fgets(prev, sizeof(prev), f) && strcmp(prev, stamp) == 0) { fclose(f); return 0; }
+        fclose(f);
+    }
+    if (cw < 1 || ch < 1) return 0;
+    double ndc_x = (2.0 * cx / (double)cw) - 1.0;
+    double ndc_y = 1.0 - (2.0 * cy / (double)ch);
+    double fov_rad = g_fov_deg * M_PI_LOCAL / 180.0;
+    double t = tan(fov_rad / 2.0);
+    double aspect = (double)cw / (double)ch;
+    Vec3 dir = v3_norm(v3_add(cam->forward,
+        v3_add(v3_scale(cam->right, ndc_x * t * aspect),
+               v3_scale(cam->up, ndc_y * t))));
+    double ox = cam->eye.x, oy = cam->eye.z, oz = cam->eye.y;
+    double dx = dir.x, dy = dir.z, dz = dir.y;
+    if (dx == 0) dx = 1e-9;
+    if (dy == 0) dy = 1e-9;
+    if (dz == 0) dz = 1e-9;
+    int x = (int)floor(ox), y = (int)floor(oy), z = (int)floor(oz);
+    int step_x = dx > 0 ? 1 : -1, step_y = dy > 0 ? 1 : -1, step_z = dz > 0 ? 1 : -1;
+    double tdx = fabs(1.0 / dx), tdy = fabs(1.0 / dy), tdz = fabs(1.0 / dz);
+    double tmx = ((dx > 0 ? (x + 1) : x) - ox) / dx;
+    double tmy = ((dy > 0 ? (y + 1) : y) - oy) / dy;
+    double tmz = ((dz > 0 ? (z + 1) : z) - oz) / dz;
+    if (tmx < 0) tmx = 0;
+    if (tmy < 0) tmy = 0;
+    if (tmz < 0) tmz = 0;
+    for (int n = 0; n < 256; n++) {
+        if (x >= 0 && x < board_w && y >= 0 && y < board_h && z >= 0 && z < z_count) {
+            if (!voxel_is_air(board3d[z][y][x])) {
+                *hx = x; *hy = y; *hz = z;
+                f = host_fopen(seen_path, "w");
+                if (f) { fputs(stamp, f); fclose(f); }
+                return 1;
+            }
+        }
+        if (tmx <= tmy && tmx <= tmz) { x += step_x; tmx += tdx; }
+        else if (tmy <= tmz) { y += step_y; tmy += tdy; }
+        else { z += step_z; tmz += tdz; }
+        if (x < -2 || y < -2 || z < -2 || x > board_w + 2 || y > board_h + 2 || z > z_count + 8)
+            break;
+    }
+    f = host_fopen(seen_path, "w");
+    if (f) { fputs(stamp, f); fclose(f); }
+    return 0;
+}
+
 static void write_file_atomic(const char *path, const void *data, size_t len) {
     char tmp_path[PATH_BUF];
     snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", path);
@@ -2306,6 +2376,14 @@ static int render_one_frame(void) {
                                fp_face_dist, fp_eye_height, tp_distance, tp_height,
                                tp_look_down_deg);
 
+    {
+        int hx, hy, hz;
+        if (bv_ray_click(house_root, &cam, board3d, board_w, board_h, z_count, &hx, &hy, &hz)) {
+            g_ray_hit = 1; g_ray_x = hx; g_ray_y = hy; g_ray_z = hz;
+            write_pick_txt(focused_project_root, board3d, board_w, board_h, z_count, hx, hy, hz);
+        }
+    }
+
     /* Real, live game clock read - see clear_sky()/compute_sun_light_
      * level()'s own header comments (xyz-ngn-plan.md §1/§2). A host
      * with no real world_01/state.txt yet (civ-txt/tactics-txt, or
@@ -2536,6 +2614,40 @@ static int render_one_frame(void) {
         if (g_xelector_present && camera_mode != 1)
             ADDBOX(g_xelector_x+0.15, g_xelector_z+0.15, g_xelector_y+0.15,
                    g_xelector_x+0.85, g_xelector_z+0.85, g_xelector_y+0.85, 60,220,220, 0);
+        if (g_ray_hit && camera_mode != 1)
+            ADDBOX(g_ray_x+0.05, g_ray_z+0.05, g_ray_y+0.05,
+                   g_ray_x+0.95, g_ray_z+0.95, g_ray_y+0.95, 255,255,255, 1);
+        /* Range matrix is the same '#' diamond the desk reads. Here it
+         * is voxels in this window, centered on the hero (or the
+         * selector). The desk X11 overlay is not opened for /pieces/. */
+        {
+            char mp[PATH_BUF];
+            snprintf(mp, sizeof(mp), "%s/pieces/display/move_range_matrix.txt", focused_project_root);
+            FILE *mf = host_fopen(mp, "r");
+            if (mf) {
+                char rows[33][96];
+                int nr = 0, nc = 0;
+                while (nr < 33 && fgets(rows[nr], sizeof(rows[nr]), mf)) {
+                    int n = (int)strcspn(rows[nr], "\r\n");
+                    rows[nr][n] = 0;
+                    if (n > nc) nc = n;
+                    if (n > 0) nr++;
+                }
+                fclose(mf);
+                int ox = g_hero_present ? g_hero_x : selector_x;
+                int oy = g_hero_present ? g_hero_y : selector_y;
+                int oz = g_hero_present ? g_hero_z : current_z;
+                int cx0 = nc / 2, cy0 = nr / 2;
+                for (int r = 0; r < nr; r++) {
+                    for (int c = 0; rows[r][c]; c++) {
+                        if (rows[r][c] != '#') continue;
+                        int vx = ox + (c - cx0), vy = oy + (r - cy0);
+                        if (vx < 0 || vy < 0 || vx >= board_w || vy >= board_h) continue;
+                        ADDBOX(vx+0.2, oz+0.2, vy+0.2, vx+0.8, oz+0.8, vy+0.8, 255, 196, 40, 1);
+                    }
+                }
+            }
+        }
         for (int i=0; i<g_entity_count; i++)
             ADDBOX(g_entities[i].pos_x+0.25, 0.0, g_entities[i].pos_y+0.25,
                    g_entities[i].pos_x+0.75, 1.0, g_entities[i].pos_y+0.75,
