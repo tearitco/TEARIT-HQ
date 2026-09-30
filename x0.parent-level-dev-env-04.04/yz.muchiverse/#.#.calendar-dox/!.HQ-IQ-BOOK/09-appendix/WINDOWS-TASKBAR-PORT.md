@@ -122,13 +122,24 @@ confirms real live PIDs after launch and only then writes
 `#.desktop/livedesk_taskbar.pid`. `status` and `stop` work from any
 shell, which is the practical test that detachment actually happened.
 
-### Deliberate divergence from Linux
+### Deliberate divergence from Linux: none left in process count
 
-`run_khtpm_strip.sh` launches **only** `khtpm_strip_header.xhtpm`. The
-Windows runner launches the header **and** `khtpm_strip_bottom.xhtpm`,
-because the bottom bar is a real separate top-level window on this
-platform and nothing else starts it. If Linux ever grows a bottom
-launcher, delete the second `Start-Detached` call to match.
+`run_khtpm_strip.sh` launches **only** `khtpm_strip_header.xhtpm`, and so
+does the Windows runner now. The header template is
+`<window class="dock-header">`, so that one renderer already parses
+`khtpm_strip_bottom.xhtpm` as its `g_dock_peer` and builds a real peer
+window for it — the bottom bar is drawn by the *same* process.
+
+The Windows runner used to launch the bottom as a second process. That
+was a workaround for a Windows-only path bug, not a real platform
+difference; see §8. The workaround is removed, because a second renderer
+carries its own independent `g_focus_nav` counter — two bars, two nav
+selectors, each starting at `1.HQ` and moving only under its own
+keyboard grab. That is the whole class of "the arrow keys move the wrong
+bar" / "nav is stuck at 1" reports.
+
+Verify with `run_khtpm_strip_win.ps1 status`: the renderer PID count
+must be **1**, and that one PID owns both bars.
 
 ---
 
@@ -284,3 +295,88 @@ ops/run_khtpm_strip_win.ps1    Windows runner twin
 Everything else — `khtpm_core_render.c`, the shared modules in
 `&.widgits/_shared-lib`, both templates, the CSS, the manager — is the
 one canonical copy shared with Linux.
+
+---
+
+## 8. Two real Windows bugs behind "nav is stuck at 1"
+
+Both of these produced the same user-visible report, so they are
+recorded together.
+
+### 8a. `g_package_dir` dirname only stripped `/`
+
+`khtpm_core_render.c` derived its package directory with
+
+```c
+{ char *slash = strrchr(g_package_dir, '/'); if (slash) *slash = '\0'; }
+```
+
+The Windows runner passes `\`-separated argv paths, so `strrchr`
+returned `NULL` and `g_package_dir` stayed as the **full
+`khtpm_strip_header.xhtpm` file path**. Every `"%s/<something>"` built
+from it was then a path *underneath a file* and failed silently. The
+one that mattered: `g_dock_peer_path` became
+`...\khtpm_strip_header.xhtpm\khtpm_strip_bottom.xhtpm`, so
+`parse_chtpm()` left `g_dock_peer` `NULL`, and
+`kh_ensure_dock_peer_window()` bailed at its `if (!g_dock_peer) return;`.
+
+Fix: strip whichever of `/` or `\` is actually last, so both path
+styles work. **This is a canonical-source fix, not a Windows one** — the
+renderer is shared with Linux and had simply never been handed a
+backslash path before.
+
+### 8b. `XGrabKeyboard` was a no-op that cancelled itself
+
+On X11, `XGrabKeyboard` routes key events to the grab window no matter
+what has focus, which is what makes the taskbar's arrows global. The
+Win32 shim only did `SetFocus()`, which cannot move focus to another
+thread's window, and real key events kept arriving as `WM_KEYDOWN` to
+whatever the foreground window was — the focused renderer window never
+saw them.
+
+Two changes in `ops/khtpm_strip_x11_win.c`:
+
+1. A **`WH_KEYBOARD_LL`** low-level hook installed from
+   `XGrabKeyboard` and removed in `XUngrabKeyboard`. It translates
+   `WM_KEYDOWN`/`WM_SYSKEYDOWN`/`WM_KEYUP`/`WM_SYSKEYUP` into X11
+   `KeyPress`/`KeyRelease` with `xkey.keycode` set to the raw Windows
+   virtual-key code, which is exactly what the existing
+   `XLookupKeysym()`/`XSetInputFocus` path already expects.
+2. `XGetInputFocus()` now returns the held grab window while grabbed,
+   mirroring X11 grab semantics. **Without this the grab cancelled
+   itself on the very first tick**: the renderer polls
+   `dock_release_keyboard_if_left()`, saw `XGetInputFocus() == NULL`
+   (nothing was focused, because the bars are `WS_EX_NOACTIVATE`), and
+   immediately released the grab it had just taken.
+
+#### The hook is deliberately *not* a full exclusive grab
+
+A literal `XGrabKeyboard` equivalent would swallow **all** keyboard
+input for the whole session. This hook intercepts only the nav keys —
+`Left Right Up Down Return Escape Back Tab` — and returns `CallNextHookEx`
+for everything else, so ordinary typing in other apps still works.
+`Return` **is** swallowed, because the taskbar uses it to activate the
+focused item rather than to insert a newline; `Tab` likewise, for
+`DockNav` cycling. If a new dock action ever needs its own key, add it
+to `x11_ll_kbd_wants()` in the same file.
+
+#### Proving it, given `SendInput` is blocked here
+
+`SendInput` returns 0 in this session, so the low-level callback cannot
+be exercised with synthetic system input. What *is* provable, and was
+proven: a posted `WM_KEYDOWN VK_DOWN` moves `g_focus_nav`
+(17 → 18 → 19 → 20) and the renderer writes the corresponding
+`6000 + nav` code into the shared `#.desktop/strip_history.txt`
+(`6018` seen on the wire). **A real human pressing a real arrow key is
+still the one unverified link.**
+
+#### Unverified-by-design: ungrab lifecycle
+
+Because `XGetInputFocus()` now reports the grab window rather than the
+true foreground window, `dock_release_keyboard_if_left()` cannot detect
+the user genuinely leaving the taskbar, and the hook is released only via
+the normal `kh_ungrab_kbd()` disarm paths. That matches X11 exclusive-grab
+semantics, and is why the hook only swallows nav keys — but it does mean
+arrows stay captured while the taskbar considers itself engaged. Watch
+for a stuck-grab report; the fix would be a foreground-window check that
+is not currently implemented.

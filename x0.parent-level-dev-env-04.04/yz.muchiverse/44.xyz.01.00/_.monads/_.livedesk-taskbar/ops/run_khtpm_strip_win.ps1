@@ -276,8 +276,22 @@ switch ($ACTION) {
 
         $hp = Start-Detached $RENDER @($HOUSE, $HEADER)
         if ($hp) { $new += $hp }
-        $bp = Start-Detached $RENDER @($HOUSE, $BOTTOM)
-        if ($bp) { $new += $bp }
+        # REAL FIX 2026-09-29 (Windows port, option-1 single renderer): the
+        # separate $BOTTOM launch is removed. The header.xhtpm process is a
+        # "dock-header" window, so it ALREADY parses khtpm_strip_bottom.xhtpm
+        # as its g_dock_peer and builds a real peer window for it - the
+        # bottom bar is drawn by THIS one process, not a rival one. That was
+        # broken only because of the g_package_dir dirname bug in
+        # khtpm_core_render.c (fixed alongside this), which left g_dock_peer
+        # NULL so the peer window never built; the workaround here launched
+        # the bottom as a second process. With the peer window real, that
+        # second process only drew a duplicate, stacked bottom bar AND, more
+        # importantly, a second independent g_focus_nav - two nav selectors,
+        # each stuck at 1. One renderer owning both bars keeps the single
+        # shared-selector state Linux relies on (run_khtpm_strip.sh only ever
+        # launched the header).
+        # $bp = Start-Detached $RENDER @($HOUSE, $BOTTOM)
+        # if ($bp) { $new += $bp }
 
         if (Test-Path -LiteralPath $MANAGER) {
             $mp = Start-Detached $MANAGER @($HOUSE)

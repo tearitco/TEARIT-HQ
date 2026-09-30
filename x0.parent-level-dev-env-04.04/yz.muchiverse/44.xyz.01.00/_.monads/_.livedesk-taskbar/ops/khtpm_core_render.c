@@ -11473,7 +11473,26 @@ int main(int argc, char **argv) {
     desktop_load_click_two_step(g_house_root);
     snprintf(g_chtpm_path, sizeof(g_chtpm_path), "%s", argv[2]);
     snprintf(g_package_dir, sizeof(g_package_dir), "%s", g_chtpm_path);
-    { char *slash = strrchr(g_package_dir, '/'); if (slash) *slash = '\0'; }
+    /* REAL FIX 2026-09-29 (Windows port, single-renderer taskbar) - the
+     * dirname strip below looked for '/' only. On Windows the launcher
+     * passes '\\'-separated argv paths, so strrchr(g_package_dir,'/')
+     * returned NULL and g_package_dir was left as the FULL
+     * "...\khtpm_strip_header.xhtpm" FILE path instead of its own
+     * directory. Every "%s/<something>" built from g_package_dir was then
+     * a path *underneath a file* and silently failed - most visibly
+     * g_dock_peer_path ("<...>.xhtpm\khtpm_strip_bottom.xhtpm"), so
+     * parse_chtpm() left g_dock_peer NULL, kh_ensure_dock_peer_window()
+     * bailed at its `if (!g_dock_peer) return;`, and the shared nav
+     * selector that g_dock_peer_win drives never activated - which is
+     * why run_khtpm_strip_win.ps1 had to launch a separate
+     * bottom.xhtpm process, giving two renderers with two independent
+     * g_focus_nav counters (nav stuck at 1.HQ, and the bottom bar's
+     * arrows moving a different selector than the top's). Strip whichever
+     * of '/' or '\\' is actually last so both path styles work. */
+    { char *slash = strrchr(g_package_dir, '/');
+      char *bslash = strrchr(g_package_dir, '\\');
+      char *cut = slash ? (bslash ? (slash > bslash ? slash : bslash) : slash) : bslash;
+      if (cut) *cut = '\0'; }
 
     /* generic argv[3] instance-dir hook (see g_arg3_dir decl). Must run
      * BEFORE parse_chtpm so g_extra_vars_path is picked up by the

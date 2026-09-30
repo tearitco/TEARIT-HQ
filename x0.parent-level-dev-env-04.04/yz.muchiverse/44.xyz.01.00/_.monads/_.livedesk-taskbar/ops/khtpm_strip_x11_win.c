@@ -1477,13 +1477,97 @@ int XGrabPointer(Display *dpy, Window w, int owner, unsigned mask, int pmode, in
     if (xd_valid(w) && w->hwnd) SetCapture(w->hwnd);
     return GrabSuccess;
 }
+/* REAL, NEW 2026-09-29 - a real global keyboard grab. X11's
+ * XGrabKeyboard is a SERVER-side grab: once the dock calls it, every
+ * keystroke in the session is delivered to the grabbing client and
+ * withheld from whatever app currently has the X input focus, which is
+ * why the Linux taskbar can drive g_focus_nav from real arrow keys no
+ * matter which window is focused.
+ *
+ * Win32 has no equivalent of that server-side grab. SetFocus() (what
+ * this used to be, and all it could be) only redirects input among the
+ * windows of the calling thread AND only takes effect while that window
+ * is the foreground window's focus - a taskbar is an override-redirect
+ * top-level strip that is never the foreground app, so real arrow keys
+ * went straight to the user's editor/browser and the selector sat at
+ * 1.HQ forever.
+ *
+ * WH_KEYBOARD_LL is the one Win32 hook that genuinely sees input before
+ * the system dispatches it to the foreground window, from any process.
+ * That is the faithful stand-in for XGrabKeyboard: translate the raw
+ * VK into the same KeyPress/KeyRelease XEvent the focused-window path
+ * would have produced, push it at the grabbing window, and return 1 so
+ * the key is NOT also delivered downstream - the same exclusive,
+ * swallow-and-own behaviour XGrabKeyboard gives on Linux. XLookupKeysym
+ * below already maps VK_LEFT/RIGHT/UP/DOWN to XK_Left/Right/Up/Down, so
+ * the renderer's handle_key() sees exactly what it sees on Linux. */
+static Display *g_kbd_grab_dpy = NULL;
+static Window   g_kbd_grab_win = 0;
+static HHOOK    g_kbd_grab_hook = NULL;
+
+static LRESULT CALLBACK x11_ll_kbd_hook(int code, WPARAM wparam, LPARAM lparam) {
+    if (code == HC_ACTION && g_kbd_grab_dpy && xd_valid(g_kbd_grab_win)) {
+        KBDLLHOOKSTRUCT *hs = (KBDLLHOOKSTRUCT *)lparam;
+        int down = (wparam == WM_KEYDOWN || wparam == WM_SYSKEYDOWN);
+        int up   = (wparam == WM_KEYUP   || wparam == WM_SYSKEYUP);
+        if (hs && (down || up)) {
+            /* XLookupKeysym only knows these - it returns 0 for anything
+             * else, so anything we don't recognise would be delivered as
+             * a meaningless keycode 0 and then dropped by the renderer
+             * anyway. Don't swallow those: let CallNextHookEx pass them
+             * to the foreground app untouched. */
+            static const unsigned want[] = { VK_LEFT, VK_RIGHT, VK_UP, VK_DOWN,
+                                             VK_RETURN, VK_ESCAPE, VK_BACK, VK_TAB };
+            int known = 0;
+            for (size_t i = 0; i < sizeof(want) / sizeof(want[0]); i++)
+                if (hs->vkCode == want[i]) { known = 1; break; }
+            if (known) {
+                XEvent ev;
+                memset(&ev, 0, sizeof(ev));
+                ev.type = down ? KeyPress : KeyRelease;
+                ev.xkey.window = g_kbd_grab_win;
+                /* same spelling the WM_KEYDOWN path uses (line ~217):
+                 * raw Windows VK as the "keycode", resolved to a keysym
+                 * by XLookupKeysym(). */
+                ev.xkey.keycode = (unsigned)hs->vkCode;
+                qpush(g_kbd_grab_dpy, &ev);
+                /* 1 = handled: withhold it from the foreground app, the
+                 * way an X11 exclusive keyboard grab withholds it. */
+                return 1;
+            }
+        }
+    }
+    return CallNextHookEx(NULL, code, wparam, lparam);
+}
+
 int XGrabKeyboard(Display *dpy, Window w, int owner, int pmode, int kmode, unsigned long time) {
-    (void)dpy; (void)owner; (void)pmode; (void)kmode; (void)time;
-    if (xd_valid(w) && w->hwnd) SetFocus(w->hwnd);
+    (void)owner; (void)pmode; (void)kmode; (void)time;
+    if (!xd_valid(w) || !w->hwnd) return 2; /* GrabBadWindow */
+    g_kbd_grab_dpy = dpy;
+    g_kbd_grab_win = w;
+    if (!g_kbd_grab_hook) {
+        g_kbd_grab_hook = SetWindowsHookExW(WH_KEYBOARD_LL, x11_ll_kbd_hook,
+                                            GetModuleHandleW(NULL), 0);
+        if (!g_kbd_grab_hook)
+            x11_trace("XGrabKeyboard SetWindowsHookEx FAILED err=%lu",
+                      (unsigned long)GetLastError());
+        else
+            x11_trace("XGrabKeyboard hook installed hwnd=%p", (void *)w->hwnd);
+    }
+    /* keep the old best-effort focus behaviour too: it is what routes
+     * keys while the taskbar IS the focused window, and the two paths
+     * agree because both push the same KeyPress shape. */
+    SetFocus(w->hwnd);
     return GrabSuccess;
 }
 int XUngrabPointer(Display *dpy, unsigned long time) { (void)dpy; (void)time; ReleaseCapture(); return 0; }
-int XUngrabKeyboard(Display *dpy, unsigned long time) { (void)dpy; (void)time; return 0; }
+int XUngrabKeyboard(Display *dpy, unsigned long time) {
+    (void)dpy; (void)time;
+    if (g_kbd_grab_hook) { UnhookWindowsHookEx(g_kbd_grab_hook); g_kbd_grab_hook = NULL; }
+    g_kbd_grab_dpy = NULL;
+    g_kbd_grab_win = 0;
+    return 0;
+}
 
 void x11_apply_alpha_shape(Window dest, const unsigned char *rgba, int res, int win_px) {
     if (!dest || !dest->hwnd || !rgba || res <= 0 || win_px <= 0) return;
@@ -1679,7 +1763,20 @@ int XSetWMProtocols(Display *dpy, Window w, Atom *protocols, int n) { (void)dpy;
     }
 int XGetInputFocus(Display *dpy, Window *w, int *revert) {
     (void)dpy;
-    if (w) *w = NULL;
+    /* REAL, NEW 2026-09-29 - mirror X11 grab semantics. On a real X
+     * server, while a client holds XGrabKeyboard every key event is
+     * redirected to the grabbing client, so XGetInputFocus reports the
+     * GRAB WINDOW, not whatever the WM last focused. This shim used to
+     * hard-return NULL, which made the renderer's own
+     * dock_release_keyboard_if_left() conclude "focus left the dock"
+     * and immediately drop the grab it had just taken - which is why
+     * the LL keyboard hook below could never survive long enough to
+     * deliver a real arrow key. Reporting the grabbed window while a
+     * grab is held is both the faithful emulation and what keeps
+     * dock_release_keyboard_if_left() from self-cancelling. Release
+     * still happens through the renderer's own kh_ungrab_kbd() ->
+     * XUngrabKeyboard() disarm paths, which clear this below. */
+    if (w) *w = g_kbd_grab_win;
     if (revert) *revert = RevertToParent;
     return 1;
 }
