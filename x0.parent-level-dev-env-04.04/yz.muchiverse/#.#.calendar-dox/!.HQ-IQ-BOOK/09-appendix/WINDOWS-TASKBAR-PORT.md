@@ -367,8 +367,11 @@ be exercised with synthetic system input. What *is* provable, and was
 proven: a posted `WM_KEYDOWN VK_DOWN` moves `g_focus_nav`
 (17 → 18 → 19 → 20) and the renderer writes the corresponding
 `6000 + nav` code into the shared `#.desktop/strip_history.txt`
-(`6018` seen on the wire). **A real human pressing a real arrow key is
-still the one unverified link.**
+(`6018` seen on the wire).
+
+**Human-verified 2026-09-29:** with the bars live, clicking the taskbar
+and pressing real arrow keys moves the selection. That closes the only
+link synthetic input could not reach.
 
 #### Unverified-by-design: ungrab lifecycle
 
