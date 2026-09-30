@@ -59,11 +59,56 @@ static int read_pdl_opt(const char *path, const char *name, int def) {
     return v;
 }
 
-/* MILESTONE C - append entities-bar rows for the <footer> from
- * world_01/{animals,phymoji_entities}.txt + hero_01. host_app_root =
- * "<house>/@.apps/<host>". Capped at 16. */
-static size_t emit_entities(char *ui, size_t off, const char *host_app_root, int on) {
+static void read_kv(const char *path, const char *key, char *out, size_t outsz);
+
+/* Footer rows from the desk page named by open_book_page.txt.
+ * Returns the number written, or -1 when that page is not open. */
+static int emit_page_entities(char *ui, size_t *off, const char *host_app_root) {
+    char ob[PATH_MAX], pdl[PATH_MAX];
+    snprintf(ob, sizeof(ob), "%s/pieces/display/open_book_page.txt", host_app_root);
+    read_kv(ob, "pdl", pdl, sizeof(pdl));
+    if (!pdl[0]) return -1;
+    FILE *f = fopen(pdl, "r");
+    if (!f) return -1;
     int n = 0;
+    char line[512];
+    while (n < 16 && fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "DESK", 4) != 0) continue;
+        char name[64], path[256], glyph[64];
+        int px, py, cx, cy, tail;
+        if (sscanf(line, "DESK | %63[^|] | %255[^|] | %d | %d | %d | %d | %63[^|] | %d",
+                   name, path, &px, &py, &cx, &cy, glyph, &tail) != 8) continue;
+        char *e = name + strlen(name);
+        while (e > name && (e[-1] == ' ' || e[-1] == '\t')) *--e = '\0';
+        if (!strcmp(name, "camera_01")) continue;
+        if (cx == 0 && cy == 0 && (px >= 40 || py >= 40 || px <= -40 || py <= -40)) {
+            cx = px / 80; cy = py / 80;
+        }
+        int z = 0;
+        if (!strcmp(name, "hero_01") || !strcmp(name, "tree_small")
+            || !strcmp(name, "chicken") || !strcmp(name, "xelector_01"))
+            z = tail;
+        *off += (size_t)snprintf(ui + *off, UIBUF - *off,
+            "ent_%d_label=%s\nent_%d_id=%s\nent_%d_kind=page\n"
+            "ent_%d_x=%d\nent_%d_y=%d\nent_%d_z=%d\n",
+            n, name, n, name, n, n, cx, n, cy, n, z);
+        n++;
+    }
+    fclose(f);
+    return n;
+}
+
+/* MILESTONE C - append entities-bar rows for the <footer>.
+ * The open desk page wins. The private hero/animal lists are only
+ * the fallback when no page file is bound. Capped at 16. */
+static size_t emit_entities(char *ui, size_t off, const char *host_app_root, int on) {
+    int n = emit_page_entities(ui, &off, host_app_root);
+    if (n >= 0) {
+        off += (size_t)snprintf(ui + off, UIBUF - off,
+            "n_ent=%d\nentities_bar_on=%s\n", n, on ? "1" : "");
+        return off;
+    }
+    n = 0;
     char hp[PATH_MAX];
     snprintf(hp, sizeof(hp), "%s/pieces/hero_01/state.txt", host_app_root);
     FILE *hf = fopen(hp, "r");

@@ -139,6 +139,26 @@ directories have no `active_session`. The lookup keeps going until
 one `session.pdl` has it. `field_trim` strips the newline. Leaving
 it makes the desk path miss and the page draws nothing.
 
+## Footer entities
+
+The pc-hq bottom strip is not the desk taskbar. `emit_entities()`
+in `pchq_board_projector.c` used to read `hero_01/state.txt`,
+`animals.txt`, and `phymoji_entities.txt` even after Synch had
+changed the book and page labels. The strip now reads the desk
+file named by `open_book_page.txt` `pdl=`. `camera_01` is skipped.
+The private lists remain only when that file is absent. Cap is 16
+rows. The projector process must be the new binary; a running one
+keeps the old text.
+
+## Click, not fixed
+
+2026-09-30: a click on the pc-hq view does not register a position.
+Debug shows no cell, with the raycast on or off. Not diagnosed.
+The click is supposed to land in
+`#.desktop/pchq_canvas_click.txt` (`cx cy cw ch`), and
+`bv_render_3d.c` reads that into `pieces/display/placer.txt`.
+Start there. Do not treat this as part of the page-file work.
+
 ## Known hole
 
 `khtpm_taskbar_manager.c` has the snapshot copy. The running
