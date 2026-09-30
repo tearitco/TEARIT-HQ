@@ -550,6 +550,31 @@ int main(void) {
 
     if (g_ledger) fclose(g_ledger);
 
+    /* Keep the derived shareholder registry in step with the holdings this op
+     * just moved. shareholders.txt is not a second store of ownership - it is a
+     * reverse index REBUILT from every piece's holdings.txt (see
+     * shareholder_registry.c:247 and its `rebuild` mode). Leaving it stale after
+     * a fill is how the two disagree: found on a real playthrough, where the
+     * registry still advertised player_you holding 55 shares after settlement
+     * had traded them away, and a dividend would have been paid to the wrong
+     * holder. Rebuilding is cheap (one pass over the pieces directory) and it is
+     * the only thing that makes the index trustworthy.
+     *
+     * Invoked as another .+x, the established inter-op path. Windows quoting
+     * matches system/prisc+x.c:1092-1097, because cmd.exe does not treat ' as a
+     * quote character, so the single-quoted form silently fails to spawn. */
+    if (total > 0) {
+#ifdef _WIN32
+        int rc = system("\"ops\\+x\\shareholder_registry.+x\" rebuild");
+#else
+        int rc = system("'./+x/shareholder_registry.+x' rebuild");
+#endif
+        if (rc != 0)
+            fprintf(stderr, "market_settle: WARNING - could not rebuild the "
+                            "shareholder registry; dividends will use a stale "
+                            "index until it is rebuilt\n");
+    }
+
     printf("market_settle: %d ticker(s) considered, %d fill(s) total\n", nt, total);
     return 0;
 }

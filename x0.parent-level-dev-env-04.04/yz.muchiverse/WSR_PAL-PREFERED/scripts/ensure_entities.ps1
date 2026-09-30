@@ -3,11 +3,28 @@
 
 $ErrorActionPreference = "Continue"
 $SCRIPT_DIR = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-# Source tree renamed 2026-09-26 to drop the $ metacharacters; still match
-# ensure_entities.sh path literally, and the house's ] is not a glob char.
-$CORP_SRC = Join-Path $SCRIPT_DIR 'MarS.StreetRace.wsr]Q]k32\corporations\generated'
-$GOV_SRC  = Join-Path $SCRIPT_DIR 'MarS.StreetRace.wsr]Q]k32\governments\generated'
+# The entity source trees are SIBLINGS of this project, not children of it.
+# SCRIPT_DIR is WSR_PAL-PREFERED, so the data lives one level up in
+# ../MSR-DEPRACATED. The old path pointed INSIDE this project at
+# 'MarS.StreetRace.wsr]Q]k32\corporations\generated', a directory that was
+# renamed away on 2026-09-26 (it used to carry a $ metacharacter) and never
+# existed here afterwards. The failure was silent: the script created zero
+# corporations, printed "0 created, 0 already existed", and the world came up
+# empty, so no playthrough was possible and nothing reported an error. The
+# sibling MarS.StreetRace.wsr]Q]k32 tree still exists but its generated/
+# subtrees are empty; the 50 corporations and 7 governments live in
+# MSR-DEPRACATED.
+$CORP_SRC = Join-Path (Split-Path -Parent $SCRIPT_DIR) 'MSR-DEPRACATED\corporations\generated'
+$GOV_SRC  = Join-Path (Split-Path -Parent $SCRIPT_DIR) 'MSR-DEPRACATED\governments\generated'
 $DEST     = Join-Path $SCRIPT_DIR "projects\wsr-pal\pieces"
+
+# Fail loudly rather than silently producing an empty world again.
+foreach ($src in @($CORP_SRC, $GOV_SRC)) {
+    if (-not (Test-Path $src)) {
+        Write-Error "entity source missing: $src - the world would come up EMPTY. Fix the path above."
+        exit 1
+    }
+}
 
 function Get-FirstDecimal([string]$text, [string]$label) {
     if (-not $text) { return $null }
