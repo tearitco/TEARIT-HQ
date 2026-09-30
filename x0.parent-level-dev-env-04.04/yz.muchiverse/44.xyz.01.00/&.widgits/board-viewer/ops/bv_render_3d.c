@@ -2491,6 +2491,15 @@ static Camera build_camera(int camera_mode, double yaw_deg, double pitch_deg,
     return cam;
 }
 
+/* Last frame's camera and floor, so a click can update the debug
+ * line without waiting for the next full raymarch. */
+static char (*g_click_board)[MAX_BOARD_DIM][MAX_BOARD_DIM];
+static int g_click_bw, g_click_bh, g_click_zc;
+static int g_click_z, g_click_sx, g_click_sy;
+static Camera g_click_cam;
+static int g_click_ready;
+static char g_click_focus[PATH_BUF];
+
 /* One canvas click -> one voxel. khtpm writes
  * #.desktop/pchq_canvas_click.txt as "cx cy cw ch". World axes match
  * the rasterizer: world (X, Y, Z) = (grid_x, height, grid_y). */
@@ -2563,6 +2572,24 @@ static int bv_ray_click(const char *house, const Camera *cam,
     f = host_fopen(seen_path, "w");
     if (f) { fputs(stamp, f); fclose(f); }
     return -1; /* new click, ray missed the board */
+}
+
+static void bv_write_click_hud(const char *focus, int hit,
+                               int hx, int hy, int hz, int cx, int cy) {
+    if (hit == 0 || !focus || !focus[0]) return;
+    time_t now = time(NULL);
+    struct tm tmv;
+    localtime_r(&now, &tmv);
+    char pp[PATH_BUF];
+    snprintf(pp, sizeof(pp), "%s/pieces/display/click_hud.txt", focus);
+    FILE *pf = host_fopen(pp, "w");
+    if (!pf) return;
+    char ray[32];
+    if (hit > 0) snprintf(ray, sizeof(ray), "%d,%d,%d", hx, hy, hz);
+    else snprintf(ray, sizeof(ray), "miss");
+    fprintf(pf, "px=%d,%d\nray=%s\ntime=%02d:%02d:%02d\n",
+            cx, cy, ray, tmv.tm_hour, tmv.tm_min, tmv.tm_sec);
+    fclose(pf);
 }
 
 static void write_file_atomic(const char *path, const void *data, size_t len) {
@@ -2915,26 +2942,17 @@ static int render_one_frame(void) {
                                fp_face_dist, fp_eye_height, tp_distance, tp_height,
                                tp_look_down_deg);
 
+    g_click_board = board3d;
+    g_click_bw = board_w; g_click_bh = board_h; g_click_zc = z_count;
+    g_click_z = current_z; g_click_sx = selector_x; g_click_sy = selector_y;
+    g_click_cam = cam;
+    g_click_ready = 1;
+    snprintf(g_click_focus, sizeof(g_click_focus), "%s", focused_project_root);
     {
         int hx, hy, hz, cx = 0, cy = 0;
         int hit = bv_ray_click(house_root, &cam, board3d, board_w, board_h, z_count,
                                &hx, &hy, &hz, &cx, &cy);
-        if (hit != 0) {
-            time_t now = time(NULL);
-            struct tm tmv;
-            localtime_r(&now, &tmv);
-            char pp[PATH_BUF];
-            snprintf(pp, sizeof(pp), "%s/pieces/display/click_hud.txt", focused_project_root);
-            FILE *pf = host_fopen(pp, "w");
-            if (pf) {
-                char ray[32];
-                if (hit > 0) snprintf(ray, sizeof(ray), "%d,%d,%d", hx, hy, hz);
-                else snprintf(ray, sizeof(ray), "miss");
-                fprintf(pf, "px=%d,%d\nray=%s\ntime=%02d:%02d:%02d\n",
-                        cx, cy, ray, tmv.tm_hour, tmv.tm_min, tmv.tm_sec);
-                fclose(pf);
-            }
-        }
+        bv_write_click_hud(focused_project_root, hit, hx, hy, hz, cx, cy);
         if (hit > 0) {
             g_ray_hit = 1; g_ray_x = hx; g_ray_y = hy; g_ray_z = hz;
             write_pick_txt(focused_project_root, board3d, board_w, board_h, z_count, hx, hy, hz);
@@ -3900,6 +3918,37 @@ static long long bv_file_size(const char *p) {
     return (stat(p, &st) == 0) ? (long long)st.st_size : -1;
 }
 
+/* Paint the debug lines onto the overlay already on disk. A click
+ * must not wait for the next full 1656-wide raymarch. */
+static void bv_repaint_hud_only(void) {
+    if (!g_click_ready || !g_click_focus[0] || !project_root[0] || !house_root[0]) return;
+    char vsz[PATH_BUF];
+    snprintf(vsz, sizeof(vsz), "%s/#.desktop/pchq_board_view.txt", house_root);
+    int a = g_fw, b = g_fh;
+    FILE *vf = fopen(vsz, "r");
+    if (vf) { if (fscanf(vf, "%d %d", &a, &b) != 2) { a = g_fw; b = g_fh; } fclose(vf); }
+    if (a < 160) a = 160;
+    if (b < 120) b = 120;
+    if (a > FRAME_MAX_W) a = FRAME_MAX_W;
+    if (b > FRAME_MAX_H) b = FRAME_MAX_H;
+    size_t bytes = (size_t)a * (size_t)b * 4;
+    unsigned char *buf = (unsigned char *)calloc(bytes, 1);
+    if (!buf) return;
+    char overlay[PATH_BUF], receipt[PATH_BUF];
+    snprintf(overlay, sizeof(overlay), "%s/pieces/display/rgb_frame_3d_overlay.raw", project_root);
+    snprintf(receipt, sizeof(receipt), "%s/pieces/display/rgb_frame_3d_overlay.receipt.txt", project_root);
+    FILE *of = fopen(overlay, "rb");
+    if (of) { fread(buf, 1, bytes, of); fclose(of); }
+    g_fbuf = buf; g_fw = a; g_fh = b;
+    g_mm_board3d = g_click_board;
+    g_mm_board_w = g_click_bw; g_mm_board_h = g_click_bh;
+    g_mm_selx = g_click_sx; g_mm_sely = g_click_sy;
+    bv_draw_hud(g_click_focus, g_click_z, g_click_sx, g_click_sy);
+    write_file_atomic(overlay, g_fbuf, bytes);
+    write_overlay_receipt(receipt, g_fw, g_fh);
+    free(g_fbuf); g_fbuf = NULL;
+}
+
 /* Path A v2 - resident GPU renderer. EGL context + shader + textures
  * are created once; each frame is a bv_state re-read + grid upload +
  * draw + readback (~1-5ms). bv_dispatch bumps .gpu_render_req (append)
@@ -3972,6 +4021,25 @@ int main(int argc, char **argv) {
             if (vf) { if (fscanf(vf, "%d %d", &vw, &vh) == 2 &&
                           (vw != last_vw || vh != last_vh)) view_changed = 1;
                       fclose(vf); }
+        }
+        if (g_click_ready && house_root[0]) {
+            char cp[PATH_BUF], stamp[64] = "";
+            snprintf(cp, sizeof(cp), "%s/#.desktop/pchq_canvas_click.txt", house_root);
+            FILE *cf = fopen(cp, "r");
+            if (cf) { if (!fgets(stamp, sizeof(stamp), cf)) stamp[0] = '\0'; fclose(cf); }
+            static char last_click[64];
+            if (stamp[0] && strcmp(stamp, last_click) != 0) {
+                int hx = 0, hy = 0, hz = 0, cx = 0, cy = 0;
+                int hit = bv_ray_click(house_root, &g_click_cam, g_click_board,
+                                       g_click_bw, g_click_bh, g_click_zc,
+                                       &hx, &hy, &hz, &cx, &cy);
+                snprintf(last_click, sizeof(last_click), "%s", stamp);
+                if (hit != 0) {
+                    bv_write_click_hud(g_click_focus, hit, hx, hy, hz, cx, cy);
+                    bv_repaint_hud_only();
+                    idle_ticks = 0;
+                }
+            }
         }
         if (now != last_req || view_changed) {
             idle_ticks = 0;
