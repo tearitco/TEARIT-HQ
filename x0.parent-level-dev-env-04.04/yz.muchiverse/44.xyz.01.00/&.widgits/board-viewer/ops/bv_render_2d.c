@@ -31,6 +31,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <time.h>
 
 #include "bv_cjk_glyph.h"   /* view_2d_style=ascii: coloured CJK glyph per cell */
 
@@ -684,45 +685,92 @@ int main(void) {
                     for (int x = x0; x < x0 + cell && x < W; x++) {
                         unsigned char *a = VP_PXR(x, y0 + t);
                         unsigned char *b = VP_PXR(x, y0 + cell - 1 - t);
-                        a[0]=255; a[1]=40; a[2]=220; a[3]=255;
-                        b[0]=255; b[1]=40; b[2]=220; b[3]=255;
+                        a[0]=255; a[1]=220; a[2]=40; a[3]=255;
+                        b[0]=255; b[1]=220; b[2]=40; b[3]=255;
                     }
                     for (int y = y0; y < y0 + cell && y < H; y++) {
                         unsigned char *a = VP_PXR(x0 + t, y);
                         unsigned char *b = VP_PXR(x0 + cell - 1 - t, y);
-                        a[0]=255; a[1]=40; a[2]=220; a[3]=255;
-                        b[0]=255; b[1]=40; b[2]=220; b[3]=255;
+                        a[0]=255; a[1]=220; a[2]=40; a[3]=255;
+                        b[0]=255; b[1]=220; b[2]=40; b[3]=255;
                     }
                 }
             }
         }
-        char cpath[PATH_BUF];
+        char cpath[PATH_BUF], seenp[PATH_BUF];
         snprintf(cpath, sizeof(cpath), "%s/#.desktop/pchq_canvas_click.txt", house_root);
+        snprintf(seenp, sizeof(seenp), "%s/pieces/display/click_2d.seen", project_root);
         FILE *cf = host_fopen(cpath, "r");
         int cx = 0, cy = 0, cw = 0, ch = 0;
         if (cf && fscanf(cf, "%d %d %d %d", &cx, &cy, &cw, &ch) == 4 && cw > 0 && ch > 0) {
-            int px = cx * W / cw;
-            int py = cy * H / ch;
-            int scx = px / cell, scy = py / cell;
-            if (scx >= 0 && scy >= 0 && scx < cols && scy < rows) {
-                int bx0 = scx * cell, by0 = scy * cell;
-                for (int t = 0; t < 3; t++) {
-                    for (int x = bx0; x < bx0 + cell && x < W; x++) {
-                        unsigned char *a = VP_PXR(x, by0 + t);
-                        unsigned char *b = VP_PXR(x, by0 + cell - 1 - t);
-                        a[0]=40; a[1]=220; a[2]=255; a[3]=255;
-                        b[0]=40; b[1]=220; b[2]=255; b[3]=255;
+            char stamp[64], prev[64] = "";
+            snprintf(stamp, sizeof(stamp), "%d %d %d %d", cx, cy, cw, ch);
+            FILE *sf = host_fopen(seenp, "r");
+            if (sf) { if (fgets(prev, sizeof(prev), sf)) prev[strcspn(prev, "\r\n")] = 0; fclose(sf); }
+            if (strcmp(prev, stamp) != 0) {
+                int px = cx * W / cw, py = cy * H / ch;
+                int scx = px / cell, scy = py / cell;
+                if (scx >= 0 && scy >= 0 && scx < cols && scy < rows) {
+                    int bx = ox + scx;
+                    int by = side_mode ? hy : (oy + scy);
+                    int bz = side_mode ? (side_zcount - 1 - (oy + scy)) : cur_z;
+                    char pp[PATH_BUF];
+                    snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
+                    FILE *pf = host_fopen(pp, "w");
+                    if (pf) { fprintf(pf, "armed=1\nx=%d\ny=%d\nz=%d\n", bx, by, bz); fclose(pf); }
+                    time_t now = time(NULL);
+                    struct tm tmv; localtime_r(&now, &tmv);
+                    snprintf(pp, sizeof(pp), "%s/pieces/display/click_hud.txt", focused_root);
+                    pf = host_fopen(pp, "w");
+                    if (pf) {
+                        fprintf(pf, "pos=%d,%d,%d\ntime=%02d:%02d:%02d\n",
+                                bx, by, bz, tmv.tm_hour, tmv.tm_min, tmv.tm_sec);
+                        fclose(pf);
                     }
-                    for (int y = by0; y < by0 + cell && y < H; y++) {
-                        unsigned char *a = VP_PXR(bx0 + t, y);
-                        unsigned char *b = VP_PXR(bx0 + cell - 1 - t, y);
-                        a[0]=40; a[1]=220; a[2]=255; a[3]=255;
-                        b[0]=40; b[1]=220; b[2]=255; b[3]=255;
+                }
+                sf = host_fopen(seenp, "w");
+                if (sf) { fputs(stamp, sf); fclose(sf); }
+            }
+        }
+        if (cf) fclose(cf);
+        /* Green selector tile, one cell, same file the 3D view reads. */
+        {
+            char pp[PATH_BUF];
+            snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
+            FILE *pf = host_fopen(pp, "r");
+            int armed = 0, sx = 0, sy = 0, sz = 0;
+            if (pf) {
+                char line[64];
+                while (fgets(line, sizeof(line), pf)) {
+                    if (strncmp(line, "armed=", 6) == 0) armed = atoi(line + 6);
+                    else if (strncmp(line, "x=", 2) == 0) sx = atoi(line + 2);
+                    else if (strncmp(line, "y=", 2) == 0) sy = atoi(line + 2);
+                    else if (strncmp(line, "z=", 2) == 0) sz = atoi(line + 2);
+                }
+                fclose(pf);
+            }
+            if (armed) {
+                int scx = sx - ox;
+                int scy = side_mode ? ((side_zcount - 1 - sz) - oy) : (sy - oy);
+                if (scx >= 0 && scy >= 0 && scx < cols && scy < rows) {
+                    int bx0 = scx * cell, by0 = scy * cell;
+                    for (int t = 0; t < 3; t++) {
+                        for (int x = bx0; x < bx0 + cell && x < W; x++) {
+                            unsigned char *a = VP_PXR(x, by0 + t);
+                            unsigned char *b = VP_PXR(x, by0 + cell - 1 - t);
+                            a[0]=40; a[1]=255; a[2]=80; a[3]=255;
+                            b[0]=40; b[1]=255; b[2]=80; b[3]=255;
+                        }
+                        for (int y = by0; y < by0 + cell && y < H; y++) {
+                            unsigned char *a = VP_PXR(bx0 + t, y);
+                            unsigned char *b = VP_PXR(bx0 + cell - 1 - t, y);
+                            a[0]=40; a[1]=255; a[2]=80; a[3]=255;
+                            b[0]=40; b[1]=255; b[2]=80; b[3]=255;
+                        }
                     }
                 }
             }
         }
-        if (cf) fclose(cf);
     }
     #undef VP_PXR
 

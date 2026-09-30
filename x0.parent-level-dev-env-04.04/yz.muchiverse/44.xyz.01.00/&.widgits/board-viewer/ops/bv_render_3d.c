@@ -1533,7 +1533,7 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
 
     hud_ensure_font(game_root);
 
-    char lines[8][64];
+    char lines[12][64];
     int n = 0;
 
     if (hud_pdl_int(pdl, "hud_time", 1) && n < 8) {
@@ -1573,7 +1573,7 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
     {
         char hudtxt[PATH_BUF];
         snprintf(hudtxt, sizeof(hudtxt), "%s/pieces/display/hud.txt", game_root);
-        for (int li = 1; li <= 4 && n < 8; li++) {
+        for (int li = 1; li <= 4 && n < 12; li++) {
             char key[16], val[64] = "";
             snprintf(key, sizeof(key), "line%d", li);
             read_kv_str(hudtxt, key, val, sizeof(val));
@@ -1588,7 +1588,16 @@ static void bv_draw_hud(const char *game_root, int current_z, int selx, int sely
      * un-fakeable way to confirm which process a screenshot is actually
      * showing - the exact confusion a stale-session relaunch caused
      * earlier this same session). */
-    if (n < 8) snprintf(lines[n++], sizeof(lines[0]), "pid %d", (int)getpid());
+    if (n < 12) {
+        char cp[PATH_BUF], pos[48] = "-", tm[16] = "-";
+        snprintf(cp, sizeof(cp), "%s/pieces/display/click_hud.txt", game_root);
+        read_kv_str(cp, "pos", pos, sizeof(pos));
+        read_kv_str(cp, "time", tm, sizeof(tm));
+        if (!pos[0]) snprintf(pos, sizeof(pos), "-");
+        if (!tm[0]) snprintf(tm, sizeof(tm), "-");
+        snprintf(lines[n++], sizeof(lines[0]), "click: %s %s", pos, tm);
+    }
+    if (n < 12) snprintf(lines[n++], sizeof(lines[0]), "pid %d", (int)getpid());
     int pad = 6 * scale;
     int row_h = GLYPH_PX_H * scale + 3 * scale;
     int top_anchor = !strstr(anchor, "bottom");
@@ -2386,6 +2395,20 @@ static int render_one_frame(void) {
         if (bv_ray_click(house_root, &cam, board3d, board_w, board_h, z_count, &hx, &hy, &hz)) {
             g_ray_hit = 1; g_ray_x = hx; g_ray_y = hy; g_ray_z = hz;
             write_pick_txt(focused_project_root, board3d, board_w, board_h, z_count, hx, hy, hz);
+            char pp[PATH_BUF];
+            snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
+            FILE *pf = host_fopen(pp, "w");
+            if (pf) { fprintf(pf, "armed=1\nx=%d\ny=%d\nz=%d\n", hx, hy, hz); fclose(pf); }
+            time_t now = time(NULL);
+            struct tm tmv;
+            localtime_r(&now, &tmv);
+            snprintf(pp, sizeof(pp), "%s/pieces/display/click_hud.txt", focused_project_root);
+            pf = host_fopen(pp, "w");
+            if (pf) {
+                fprintf(pf, "pos=%d,%d,%d\ntime=%02d:%02d:%02d\n",
+                        hx, hy, hz, tmv.tm_hour, tmv.tm_min, tmv.tm_sec);
+                fclose(pf);
+            }
         }
     }
 
@@ -2632,7 +2655,7 @@ static int render_one_frame(void) {
             int oy = g_hero_present ? g_hero_y : selector_y;
             int oz = g_hero_present ? g_hero_z : current_z;
             ADDWIRE(ox + 0.02, oz + 0.02, oy + 0.02,
-                    ox + 0.98, oz + 0.98, oy + 0.98, 255, 40, 220);
+                    ox + 0.98, oz + 0.98, oy + 0.98, 255, 220, 40);
         }
         /* Green wire voxels touching the hero. Not clamped to the
          * terrain grid, so a hero in the sky still gets the cube. */
@@ -2646,9 +2669,21 @@ static int render_one_frame(void) {
                         if (dx == 0 && dy == 0 && dz == 0) continue;
                         int vx = ox + dx, vy = oy + dy, gz = oz + dz;
                         ADDWIRE(vx + 0.08, gz + 0.08, vy + 0.08,
-                                vx + 0.92, gz + 0.92, vy + 0.92, 40, 255, 120);
+                                vx + 0.92, gz + 0.92, vy + 0.92, 255, 220, 40);
                     }
                 }
+            }
+        }
+        /* Green selector. Arrows move it while armed. Escape clears it. */
+        {
+            char pp[PATH_BUF];
+            snprintf(pp, sizeof(pp), "%s/pieces/display/placer.txt", project_root);
+            if (read_kv_int(pp, "armed", 0)) {
+                int sx = read_kv_int(pp, "x", 0);
+                int sy = read_kv_int(pp, "y", 0);
+                int sz = read_kv_int(pp, "z", 0);
+                ADDWIRE(sx + 0.12, sz + 0.12, sy + 0.12,
+                        sx + 0.88, sz + 0.88, sy + 0.88, 40, 255, 80);
             }
         }
         for (int i=0; i<g_entity_count; i++)
