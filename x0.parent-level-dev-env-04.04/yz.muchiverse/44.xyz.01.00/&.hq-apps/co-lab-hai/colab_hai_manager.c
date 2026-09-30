@@ -525,8 +525,18 @@ static void write_chtpm_projection(void) {
         if (_n > 0) len += (size_t)_n < cap - len ? (size_t)_n : cap - len - 1; \
     } while (0)
 
-    /* oldest pending line + count (approval gate) */
-    char pend_agent[128] = "", pend_msg[1024] = "";
+    /* oldest pending line + count (approval gate).
+     * REAL FIX 2026-09-29, direct live report ("if u do a png dump u
+     * will see once again ur message is pending cutoff") - a SECOND,
+     * separate fixed-size truncation site missed by the earlier
+     * CH_LINE_BUF pass (that one only touched literal [2048] buffers;
+     * this one was already a different, smaller [1024]/[1200] pair,
+     * left over from an even older truncate-to-~100-chars fix).
+     * Confirmed live: pend_msg in state/ui.txt measured 1033 bytes
+     * against a real ~2150-byte pending message. Same fix, same
+     * reasoning, applied to the buffers actually in the pend_msg path
+     * this time. */
+    char pend_agent[128] = "", pend_msg[CH_LINE_BUF] = "";
     int n_pending = 0;
     {
         FILE *pf = fopen(g_pending_path, "r");
@@ -591,7 +601,7 @@ static void write_chtpm_projection(void) {
          * full message now genuinely wraps and is fully readable, so
          * no truncation is needed here at all. Kept the full pend_msg
          * untouched. */
-        char esc_agent[128], esc_msg[1200];
+        char esc_agent[128], esc_msg[CH_LINE_BUF + 256];
         xml_escape(pend_agent, esc_agent, sizeof(esc_agent));
         xml_escape(pend_msg, esc_msg, sizeof(esc_msg));
         CH_APPEND("pend_agent=%s\n", esc_agent);
@@ -685,10 +695,27 @@ static void write_chtpm_projection(void) {
                 snprintf(tmp, sizeof(tmp), "%s", line);
                 char *ts, *agent, *msg;
                 if (!split3(tmp, &ts, &agent, &msg)) continue;
-                (void)ts;
                 int idx = participant_index(agent);
-                char row_raw[1800], row_esc[2200];
-                snprintf(row_raw, sizeof(row_raw), "%s: %s", agent, msg);
+                /* REAL, NEW 2026-09-29, direct live report ("do you
+                 * also see how your last message is cut off? (why dont
+                 * we use timestamps?)") - ts was already parsed off
+                 * every real conversation.txt line and then discarded;
+                 * every row showed only "agent: text" with nothing to
+                 * anchor which real moment it was from, or (per the
+                 * live incident this same session) tell an old re-
+                 * shown message apart from a genuinely new one at a
+                 * glance. Same HH:MM shape session_label() already
+                 * uses for the sidebar. Buffers bumped to CH_LINE_BUF
+                 * too - the 2048-byte truncation bug fixed earlier this
+                 * session for the pending banner applied equally here,
+                 * just not yet hit by a message long enough to show it. */
+                char row_raw[CH_LINE_BUF], row_esc[CH_LINE_BUF + 256], hhmm[8] = "";
+                {
+                    time_t tv = (time_t)atol(ts);
+                    struct tm tmv;
+                    if (tv > 0 && localtime_r(&tv, &tmv)) strftime(hhmm, sizeof(hhmm), "%H:%M", &tmv);
+                }
+                snprintf(row_raw, sizeof(row_raw), "%s%s%s: %s", hhmm, hhmm[0] ? " " : "", agent, msg);
                 xml_escape(row_raw, row_esc, sizeof(row_esc));
                 CH_APPEND("msg_%d_text=%s\n", convn, row_esc);
                 CH_APPEND("msg_%d_class=%s\n", convn, agent_css_class(idx));

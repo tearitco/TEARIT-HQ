@@ -55,7 +55,17 @@
            did, and this house's own template parser is not fully
            comment-aware, so literal tag-like text inside a comment can
            still break well-formedness. Describe tags in prose only. -->
-      <text_area id="pend-msg" class="top pending-text" content="PENDING (${pend_agent}): ${pend_msg}" show="${has_pending}" rows="${pend_rows}"/>
+      <!-- REAL FIX 2026-09-29, direct live report ("it keeps asking
+           for approval for an old message... [hi x.com!]") - class=
+           "no-persist" (khtpm_core_render.c's default_text_area_save()/
+           kh_text_areas_reload()) opts this OUT of the generic "restore
+           a text_area's typed buffer across reparse" mechanism - this
+           field is 100% server-driven (content= above), never user-
+           edited, and without this it can get permanently stuck on
+           whatever was last saved to text_area_pend-msg.txt (which is
+           exactly what happened here) regardless of any later content=
+           change, restart, or rebuild. -->
+      <text_area id="pend-msg" class="top pending-text no-persist" content="PENDING (${pend_agent}): ${pend_msg}" show="${has_pending}" rows="${pend_rows}"/>
       <row class="toolbar" show="${has_pending}">
         <item id="ch-approve" label="Approve" action="${approve_action}"/>
         <item id="ch-reject" label="Reject" action="${reject_action}"/>

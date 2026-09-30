@@ -1567,8 +1567,23 @@ static void draw_elem(Elem *e, int hover_id_hash) {
              * ~2047 bytes now (matches Elem.label[2048]), so THIS
              * snprintf was silently re-truncating before a single word
              * got wrapped, independent of both earlier fixes. Sized to
-             * match Elem.label exactly, same reasoning as that bump. */
-            char buf[2048];
+             * match Elem.label exactly, same reasoning as that bump.
+             *
+             * REAL FIX 2026-09-29, direct live report + real screenshot
+             * ("do u see how the message was cut off even tho there
+             * was plenty of space") - a THIRD occurrence of this exact
+             * bug class, missed by the fix just above: shown_label for
+             * a <text_area> comes from text_area_shown (4396 bytes, see
+             * its own declaration comment - "text_area's own shown_
+             * label (up to ~4400 bytes)"), not from the smaller
+             * Elem.label[2048] this buf was actually sized to match.
+             * A real ~2170-byte pending-approval message sailed straight
+             * past this 2048 cap - every fix so far (content= sourcing,
+             * text_area_buffer, text_area_shown, the layout-side wrap
+             * measurement) was already correct all the way up to this
+             * exact line, which then quietly cut it again right before
+             * drawing. Matched to text_area_shown's own real size. */
+            char buf[4096 + 300];
             snprintf(buf, sizeof(buf), "%s", shown_label);
             /* REAL FIX 2026-09-23 - scroll_row_span() (khtpm_core_render.c)
              * sizes e->h via CEILING division (lines*line_h+ROW_H-1)/ROW_H

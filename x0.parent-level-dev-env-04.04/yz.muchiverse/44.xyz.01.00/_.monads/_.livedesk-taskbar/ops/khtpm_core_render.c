@@ -1247,7 +1247,21 @@ static const char *parse_element(const char *p, Elem *parent) {
         }
         attr[an] = '\0';
         skip_ws(&p);
-        char val[1024] = "";
+        /* REAL FIX 2026-09-29, direct live report + real screenshot
+         * ("do u see how the message was cut off even tho there was
+         * plenty of space") - THE actual root cause, found after three
+         * wrong layers (co-lab-hai's own buffers, this file's KH_VAR_
+         * VALUE, khtpm_draw_core.c's shown_label copy - all real bugs,
+         * none of them this one): this is the GENERIC attribute-value
+         * parser, called for every attr= on every tag in every .xhtpm/
+         * .chtpm this house ever parses. By the time kh_substitute_vars()
+         * hands this function a fully-substituted content="PENDING
+         * (...): <long text>" string, THIS 1024-byte cap is what
+         * actually threw the tail away - upstream of the Elem tree
+         * entirely, so no draw-side or layout-side fix could ever have
+         * touched it. Matched to this session's own CH_LINE_BUF/
+         * KH_VAR_VALUE convention rather than guessing a new number. */
+        char val[16384] = "";
         if (*p == '=') { p++; parse_attr_value(&p, val, sizeof(val)); }
         if (attr[0]) {
             if (strcmp(attr, "show") == 0)
@@ -1319,7 +1333,22 @@ static const char *parse_element(const char *p, Elem *parent) {
                              * truncation in kh_set_var() made every count var
                              * that landed after the overflow resolve to 0 */
 #define KH_VAR_NAME   64
-#define KH_VAR_VALUE  2048
+/* REAL FIX 2026-09-29, direct live report + real screenshot ("do u see
+ * how the message was cut off even tho there was plenty of space") -
+ * this is the ACTUAL root cause of a bug fought all night across
+ * several wrong layers (co-lab-hai's own pend_msg buffers, this file's
+ * layout-side wrap measurement, khtpm_draw_core.c's own draw-time
+ * shown_label copy) - every one of those was correctly processing an
+ * ALREADY-TRUNCATED value, because every single ${var} substitution
+ * house-wide is capped here, at var-LOAD time, before the template
+ * engine ever splices it into content=/label=/anything else. A ~2170-
+ * byte pend_msg was silently cut to 2048 the moment kh_load_vars() read
+ * it - no amount of fixing the draw or layout side downstream could
+ * ever have found this, since the data was already gone by then.
+ * Bumped to match this session's own CH_LINE_BUF convention
+ * (co-lab-hai's message-pipeline fix, same night) - one real, generic,
+ * house-wide fix instead of three separate wrong ones. */
+#define KH_VAR_VALUE  16384
 typedef struct { char name[KH_VAR_NAME]; char value[KH_VAR_VALUE]; } KhVar;
 static KhVar g_kh_vars[KH_MAX_VARS];
 static int g_kh_nvars = 0;
@@ -5016,6 +5045,22 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
                     if (measured_rows > (c->rows > 0 ? c->rows : 1))
                         this_h = measured_rows * ROW_H;
                 }
+                /* REAL FIX 2026-09-29, direct live report ("full screen
+                 * is 2 long and i cant even see the accept/decline
+                 * buttons any more") - the measured-wrap growth above is
+                 * correct and stays (it's what makes the box big enough
+                 * for whatever a message really needs), but with zero
+                 * ceiling a long enough message can still grow past the
+                 * whole window and push Approve/Reject off screen
+                 * entirely. Real cap: never take more than half this
+                 * container's own height - a generic layout ceiling for
+                 * ANY "top" text_area (network-browser's address bar is
+                 * a cli_io, unaffected; sql-hq's own editor benefits
+                 * too), not a co-lab-hai-specific number. Never caps
+                 * below one real row. */
+                int max_h = h / 2;
+                if (max_h < ROW_H) max_h = ROW_H;
+                if (this_h > max_h) this_h = max_h;
                 c->x = x; c->y = y_cursor; c->w = w; c->h = this_h;
                 y_cursor += this_h;
             } else if (strcmp(c->tag, "text_area") == 0 && !scrolllist) {
@@ -5677,7 +5722,7 @@ static int layout_sidebar_panel(Elem *page) {
  * 30s - two digits - and the old margin left the pair cramped against
  * the last cell. Widened; dock_place_pager() below now centers the
  * pair within this margin instead of hugging the right edge. */
-#define DOCK_PAGER_W 110
+#define DOCK_PAGER_W 128 /* REAL, NEW 2026-09-29, direct live report ("bottom tb fix is pretty good but that space for both could be about 15% wider") - was 110 */
 /* DOCK_MAX_PACK removed 2026-09-14 (DOCK-BAR-GENERIC-LAYOUT-MIGRATION.md
  * phase 1) - was the fixed-size bound for the bottom bar's own
  * hand-packed pack[] array, deleted along with it now that
@@ -5862,8 +5907,28 @@ static void dock_place_pager(int win_w, int after_x) {
     /* REAL, NEW 2026-09-15, direct live report ("could be a bit more
      * 'left' and spaced between the 2") - widened the -/+ gap and
      * biased the centered position a bit left of dead-center in the
-     * DOCK_PAGER_W margin, both real, cosmetic pixel tweaks only. */
-    int aw = scaled(22), gap = scaled(10);
+     * DOCK_PAGER_W margin, both real, cosmetic pixel tweaks only.
+     *
+     * REAL FIX 2026-09-29, direct live report ("the +- buttons on
+     * bottom tb far right are a bit too close together and are
+     * overlapping") - confirmed live via a direct window dump: aw=22
+     * was sized for a bare "-"/"+" glyph, but khtpm_draw_core.c's own
+     * 2026-09-02 rule draws a real "[ ]NN."/"[>]NN." nav badge in front
+     * of EVERY nav-indexed item's label, unconditionally ("Digit-jump
+     * and AI control of the window need the visible brackets" - not
+     * something to remove here). At a real two-digit nav index that
+     * badge alone is already wider than the whole 22px box, so the "+"
+     * button's own badge+label visibly ran into the "-" button's box
+     * right next to it. Widened aw to fit a real "[>]99. -" at the
+     * badge font's own size instead of guessing - same
+     * "[ ]99. " reservation estimate scroll_row_span() already uses
+     * for exactly this problem elsewhere in this file, applied here.
+     * DOCK_PAGER_W (110) has plenty of headroom for this - old
+     * content_w was 54, well under half the reserved margin. */
+    /* REAL, NEW 2026-09-29, direct live report ("pretty good but that
+     * space for both could be about 15% wider") - +15% on both aw and
+     * gap (45->52, 6->7), DOCK_PAGER_W widened to match just above. */
+    int aw = scaled(52), gap = scaled(7);
     int left_bias = scaled(10);
     int need = (g_dock_packed_rows > 1) || (g_dock_visible_rows > 1);
 
@@ -7923,6 +7988,25 @@ static void default_text_area_state_path(const char *key, char *out, size_t outs
     snprintf(out, outsz, "%s/text_area_%s.txt", g_package_dir, key);
 }
 static void default_text_area_save(Elem *e) {
+    /* REAL FIX 2026-09-29, direct live report ("it keeps asking for
+     * approval for an old message... [hi x.com!]") - real root cause,
+     * confirmed byte-for-byte: co-lab-hai's PENDING banner (<text_area
+     * id="pend-msg">) is a pure, read-only, server-driven display
+     * (content="PENDING (${pend_agent}): ${pend_msg}") - it was never
+     * meant to be user-editable. But this save/reload pair treats every
+     * <text_area> the same, with no way to opt out - once ANYTHING got
+     * saved into text_area_pend-msg.txt (an old annotation the owner
+     * typed into it, apparently believing it was editable), kh_text_
+     * areas_reload() re-hydrated that exact stale buffer on EVERY
+     * reparse forever after, silently overriding the live content=
+     * value - no restart, rebuild, or manager fix could ever touch it,
+     * because nothing was actually stale in the render pipeline; this
+     * function kept re-saving the same frozen text right back out too.
+     * Real, minimal, generic fix: class="no-persist" opts a text_area
+     * OUT of this save/reload pair entirely - for a field whose whole
+     * point is "the server always owns this content," not a co-lab-hai-
+     * specific hack. */
+    if (elem_has_class(e, "no-persist")) return;
     const char *key = e->target_id[0] ? e->target_id : e->id;
     if (!key[0]) return;
     char path[PATH_BUF];
@@ -7939,7 +8023,9 @@ static void default_text_area_save(Elem *e) {
  * If the save file is absent the elem keeps its content="" attr value. */
 static void kh_text_areas_reload(Elem *root) {
     if (!root || !g_package_dir[0]) return;
-    if (strcmp(root->tag, "text_area") == 0) {
+    /* class="no-persist" - see default_text_area_save()'s own header
+     * comment (the co-lab-hai PENDING-banner incident this exempts). */
+    if (strcmp(root->tag, "text_area") == 0 && !elem_has_class(root, "no-persist")) {
         const char *key = root->target_id[0] ? root->target_id : root->id;
         if (key[0]) {
             char path[PATH_BUF];
