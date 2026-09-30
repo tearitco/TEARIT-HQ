@@ -2,6 +2,20 @@
 
 ---
 
+## ✅ CLOSED 2026-09-30 (grok handoff, HANDOFF STEP 1 ONLY, real regression caught and fixed same session): taskbar's HQ-window discovery opendir/readdir'd 2616 entries every reload
+
+**Reported (as data, not live user report):** `/home/no/Desktop/github/xer/cpu_loop_analysis.txt`, a CPU-throttling investigation shared across agents this session. Live measurement: `ktb_merge_hq_windows()` (khtpm_taskbar_manager.c) scanned all of `#.desktop` (2616 entries live) every reload just to find the one `livedesk_hq_windows_<pid>.txt` line that actually changed - a real, confirmed ~18-19% CPU contributor on the board window's renderer PID, on top of a taskbar manager already correctly gated to a 250ms-1s reload cadence.
+
+**Fix (grok's own precise handoff, implemented by Claude):** same house-standard marker-file convention as `strip_frame_changed.txt`/`hq_ui_pdl_changed.txt`. `khtpm_core_render.c`'s `kh_hq_reg_bump_marker()`/`kh_hq_reg_mark_removed()` append one line (`"<pid> add|update|remove"`) to `#.desktop/hq_windows_changed.txt` only when a window's own registry line text actually changes - wired into the redraw-tick write, the separate MINIMIZE write site, and `cleanup_hq_window_registry()`'s exit-time unlink. `ktb_merge_hq_windows()` now stats the marker first: unchanged size returns a cached list (no scan at all); a grown marker reads only the new lines and touches only the named pids' own files; missing/first-seen still does one full scan to seed the cache.
+
+**Real regression caught live, same session, fixed before commit:** a SIGKILL'd (uncleanly killed) window never runs the `atexit` cleanup that appends a "remove" line - the marker legitimately never changes, but the pid is dead. The OLD code's full-scan path re-verified every entry's liveness (`ktb_pid_is_hq_renderer()`) on every single reload, self-healing a stale entry for free; the new fast path skipped that liveness check entirely. **Direct live report, caught in the act:** "it killed board, but its still on bottom tb, clicking it should re open it if its on bottom tb. why doesn't it... this happened before 2 and i thought it weird" - a `run_khtpm_strip.sh new` restart had killed the real pc-hq window, and its taskbar cell survived indefinitely, clicking it silently raising a dead X window id. This is very likely the same "weird" recurrence the user had already half-noticed before this session, now root-caused. Fixed: the SAME liveness check now also runs over the small cached list (≤32 entries, never the 2616-entry directory) on both the unchanged- and grown-marker paths - keeps the whole perf win, restores the self-healing.
+
+**Live-verified, both halves:** marker size stable across 5s of genuine idle (no phantom bumps); manager CPU ~3.5%→~1.1%, strip renderer ~18-19%→~1-3%; deliberately `kill -9`'d the real pc-hq window, confirmed its registry file survived (no remove line ever written, matching the bug's own mechanism), confirmed its cell dropped out of the published `strip_ui.txt` (`n_hqwins`) within one reload cycle instead of surviving forever.
+
+**Not in this pass** (explicitly out of scope per grok's own handoff note): `entities_changed.txt` for entity discovery, `load_tabs` self-heal, `house_wait.h`/the 30ms board wait, inotify, caching `/proc`, a shutdown relay, or tying the manager's process group to the renderer. Real, separate, listed follow-ups if CPU is still an issue after this lands.
+
+---
+
 ## OPEN 2026-09-30: one house wait, so a poll loop cannot skip its sleep
 
 **Header is in.** `&.widgits/_shared-lib/house_wait.h` defines
