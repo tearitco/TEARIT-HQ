@@ -65,6 +65,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <sys/stat.h>
 
 #ifdef _WIN32
@@ -106,6 +107,22 @@
 /* Largest fraction of a participant's cash one order may commit, so no single
  * participant can clear the market in a tick. */
 #define WSR_MAX_ORDER_FRACTION 0.25f
+
+/* Widest a single participant's view may sit from the analyst fair value,
+ * before its own skill scales it. This is the dispersion that makes the market
+ * a market: with every participant holding an identical view there is nothing
+ * to disagree about, every bid lands below every ask, and the book can never
+ * cross - the auction direction is inert. The dispersion is what creates
+ * genuine buyers and sellers.
+ *
+ * A second purpose, and the reason it is not simply zero: the spread and the
+ * momentum anchor alone cannot express uncertainty, so they cannot express a
+ * participant who is unsure. Skill carries that. */
+#define WSR_VIEW_DISPERSION 0.30f
+
+/* A view within this fraction of fair value counts as no view at all, and the
+ * participant sits the tick out rather than posting a coin-flip order. */
+#define WSR_VIEW_DEADBAND 0.01f
 
 /* How many prior prints inform the momentum term. */
 #define WSR_MOMENTUM_LOOKBACK 3
@@ -205,7 +222,8 @@ typedef struct {
     char id[MAXPIECE];
     float cash;
     int is_bank;
-} Participant;
+    float skill;   /* how tight this participant's view is, 1.0 = baseline */
+  } Participant;
 
 static Participant g_parts[MAXPART];
 static int g_nparts = 0;
@@ -265,6 +283,7 @@ static void load_participants(void) {
     while ((e = readdir(d)) != NULL && g_nparts < MAXPART) {
         int match = 0;
         char state[PATHBUF], industry[64];
+        float skill;
         for (int i = 0; prefixes[i]; i++) {
             size_t pl = strlen(prefixes[i]);
             if (strncmp(e->d_name, prefixes[i], pl) == 0) { match = 1; break; }
@@ -283,6 +302,22 @@ static void load_participants(void) {
         snprintf(g_parts[g_nparts].id, MAXPIECE, "%s", e->d_name);
         g_parts[g_nparts].cash = field_f(state, "cash");
         g_parts[g_nparts].is_bank = (strcmp(industry, "bank") == 0);
+
+        /* Information asymmetry, by participant type. A bank runs a real
+         * valuation model; a population piece has no model at all and is
+         * guessing from rumour. ECONOMY-INTENT.md calls for exactly this -
+         * "disagreement and information asymmetry create alpha" - so the
+         * quality of a participant's view is a property of WHO IS ASKING, not
+         * a global constant applied to everyone. Lower skill means the view
+         * wanders further from the fundamental. */
+        g_parts[g_nparts].skill = 1.0f;
+        if (g_parts[g_nparts].is_bank)                    skill = 0.45f;
+        else if (strncmp(e->d_name, "corp_", 5) == 0)     skill = 0.80f;
+        else if (strncmp(e->d_name, "player_", 7) == 0)  skill = 1.50f;
+        else if (strncmp(e->d_name, "pop_", 4) == 0)     skill = 2.20f;
+        else                                              skill = 1.20f;  /* gov_ */
+        g_parts[g_nparts].skill = skill;
+
         g_nparts++;
     }
     closedir(d);
@@ -376,6 +411,28 @@ static float order_size(float cash, float price) {
  * root-relative paths as the helpers above, so narrowing the scope to the
  * helpers just moves the warnings rather than fixing anything. */
 
+/* This participant's OWN view of a ticker, as a multiplier on the analyst
+ * fair value. Dispersion is a deterministic hash of the piece id, NOT a random
+ * number: the same participant must hold the same view on every run, or the
+ * market would be unfalsifiable and a divergence could never be diagnosed. The
+ * hash is stable across machines and runs, which rand()/time() would not be.
+ *
+ * The hash is folded to [-1,+1] and scaled by both the global dispersion
+ * ceiling and this participant's skill, so a bank's view sits close to the
+ * fundamental and a population piece's is wide. */
+static float view_multiplier(const char *id, float skill) {
+    unsigned h = 2166136261u;
+    for (const char *q = id; *q; q++) {
+        h ^= (unsigned char)*q;
+        h *= 16777619u;
+    }
+    /* Top 24 bits -> [0,1), then to [-1,+1]. */
+    float u = (float)((h >> 8) & 0xFFFFFF) / (float)0xFFFFFF;
+    float signed_bias = (u * 2.0f) - 1.0f;
+    float m = 1.0f + signed_bias * WSR_VIEW_DISPERSION * skill;
+    return (m < 0.05f) ? 0.05f : m;
+}
+
 int main(void) {
     FILE *bf;
     int posted = 0, skipped = 0;
@@ -407,8 +464,15 @@ int main(void) {
     for (int t = 0; t < g_ntickers; t++) {
         const char *ticker = g_tickers[t];
         char path[PATHBUF], state[PATHBUF];
-        float fair, mom, target, bid, ask, spread, lo, hi;
+        float fair, mom, target, spread, lo, hi;
         float last_price;
+        /* best_ask must start ABOVE every possible price. Starting it at 0 made
+         * the "keep the smaller" comparison below never fire, so the summary
+         * printed ask=0.00 on a book that plainly had asks on it. best_bid
+         * starts at 0 because bids are positive and "keep the larger" works
+         * from there. */
+        float best_bid = 0.0f, best_ask = 1e30f;
+        int n_bid = 0, n_ask = 0, no_view = 0;
 
         fair = fair_value(ticker);
         if (fair <= 0.0f) {
@@ -436,17 +500,13 @@ int main(void) {
 
         /* Thin book -> wide spread. This is the mechanism that lets a stock sit
          * below book: if no one has shown a bid, the spread opens up and the
-         * offer lands far under fair value. */
+         * offer lands far under fair value. It is applied to each participant's
+         * OWN view below, not to one shared price. */
         float bid_depth = resting_depth(ticker, WSR_SIDE_BID);
         float ask_depth = resting_depth(ticker, WSR_SIDE_ASK);
         spread = (bid_depth < WSR_THIN_DEPTH || ask_depth < WSR_THIN_DEPTH)
                      ? WSR_SPREAD_THIN
                      : WSR_SPREAD_BASE;
-
-        bid = target * (1.0f - spread);
-        ask = target * (1.0f + spread);
-        if (bid < 0.01f) bid = 0.01f;
-        if (ask <= bid) ask = bid * 1.01f;
 
         snprintf(path, sizeof(path), "%s/projects/wsr-pal/data/book_%s.txt", g_root, ticker);
         bf = fopen(path, "w");
@@ -459,21 +519,60 @@ int main(void) {
         last_price = field_f(state, "stock_price");
 
         for (int i = 0; i < g_nparts; i++) {
-            float sz = order_size(g_parts[i].cash, bid);
-            if (sz <= 0.0f) continue;
-            fprintf(bf, "bid|1|%.4f|%.2f|%s\n", bid, sz, g_parts[i].id);
-            posted++;
+            /* Each participant quotes from ITS OWN view, and posts on the ONE
+             * side that view implies. A participant that thinks the stock is
+             * cheap bids; one that thinks it is dear asks. It does not post
+             * both sides at once: that is how the previous version ended up
+             * with a book where every bid sat below every ask and nothing
+             * could ever trade. One side, chosen by conviction, is also what
+             * actually happens - a participant is either a buyer or a seller,
+             * and market_settle refuses self-trades anyway. */
+            float m = view_multiplier(g_parts[i].id, g_parts[i].skill);
+            float view = target * m;
 
-            sz = order_size(g_parts[i].cash, ask);
+            if (fabsf(view - target) <= target * WSR_VIEW_DEADBAND) {
+                no_view++;
+                continue;   /* genuinely undecided - not a view, so no order */
+            }
+
+            int side = (view > target) ? 1 : -1;
+            float px = (side == 1) ? view * (1.0f - spread)
+                                   : view * (1.0f + spread);
+            if (px < 0.01f) px = 0.01f;
+
+            float sz = order_size(g_parts[i].cash, px);
             if (sz <= 0.0f) continue;
-            fprintf(bf, "ask|-1|%.4f|%.2f|%s\n", ask, sz, g_parts[i].id);
+
+            fprintf(bf, "%s|%d|%.4f|%.2f|%s\n",
+                    (side == 1) ? "bid" : "ask", side, px, sz, g_parts[i].id);
             posted++;
+            if (side == 1) {
+                n_bid++;
+                if (px > best_bid) best_bid = px;
+            } else {
+                n_ask++;
+                if (px < best_ask) best_ask = px;
+            }
         }
         fclose(bf);
 
-        printf("%-6s fair=%8.2f target=%8.2f bid=%8.2f ask=%8.2f mom=%+6.2f%% last=%8.2f%s\n",
-               ticker, fair, target, bid, ask, mom * 100.0f, last_price,
+        /* Report the crossing explicitly. "Could these orders trade?" is the
+         * single most useful thing to know about a book, and when the answer
+         * is no the reason is worth naming rather than leaving the operator to
+         * work out that every bid is below every ask. */
+        printf("%-6s fair=%8.2f target=%8.2f mom=%+6.2f%% bid=%8.2f ask=%8.2f "
+               "n=%d/%d last=%8.2f%s\n",
+               ticker, fair, target, mom * 100.0f,
+               (n_bid > 0) ? best_bid : 0.0f,
+               (n_ask > 0) ? best_ask : 0.0f,
+               n_bid, n_ask, last_price,
                (last_price > 0.0f && last_price < fair * 0.98f) ? "  [below BVP]" : "");
+        if (no_view)
+            printf("%-6s   %d participant(s) had no view and sat the tick out\n",
+                   ticker, no_view);
+        if (n_bid > 0 && n_ask > 0 && best_bid < best_ask)
+            printf("%-6s   book is NOT crossed (best bid %.2f < best ask %.2f) "
+                   "- nothing will trade\n", ticker, best_bid, best_ask);
     }
 
     printf("market_quote: %d participant(s), %d ticker(s) quoted, %d skipped, "
