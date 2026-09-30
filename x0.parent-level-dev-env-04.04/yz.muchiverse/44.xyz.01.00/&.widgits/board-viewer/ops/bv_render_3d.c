@@ -234,6 +234,8 @@ static void page_entity_cells(const char *house, int *xs, int *ys, int *n, int m
             if (bar) *bar = '\0';
             page_field_trim(fld[i]);
         }
+        if (!strcmp(fld[0], "hero_01") || !strcmp(fld[0], "tree_small") || !strcmp(fld[0], "chicken"))
+            continue;
         int cx = atoi(fld[4]), cy = atoi(fld[5]);
         int px = atoi(fld[2]), py = atoi(fld[3]);
         if (cx == 0 && cy == 0 && (px >= 40 || py >= 40 || px <= -40 || py <= -40)) {
@@ -722,8 +724,68 @@ static int ray_aabb_hit_3d(double ox, double oy, double oz, double dx, double dy
                             double bx0, double bx1, double by0, double by1, double bz0, double bz1,
                             double *out_t, int *out_face);
 
+static int page_named_cells(const char *house, const char *want, int *xs, int *ys, int max) {
+    int n = 0;
+    if (!house || !house[0]) return 0;
+    char users[PATH_BUF];
+    snprintf(users, sizeof(users), "%s/xyzfs/users", house);
+    DIR *d = opendir(users);
+    if (!d) return 0;
+    struct dirent *e;
+    char pdl[PATH_BUF];
+    pdl[0] = '\0';
+    while ((e = readdir(d))) {
+        if (e->d_name[0] == '.') continue;
+        char sess[PATH_BUF], rootpdl[PATH_BUF], active[128], desk[128], sp[PATH_BUF];
+        snprintf(sess, sizeof(sess), "%s/%s/home/livedesk/sessions", users, e->d_name);
+        snprintf(rootpdl, sizeof(rootpdl), "%s/session.pdl", sess);
+        if (!page_pdl_value(rootpdl, "active_session", active, sizeof(active))) continue;
+        snprintf(sp, sizeof(sp), "%s/%s/session.pdl", sess, active);
+        if (!page_pdl_value(sp, "active_desk", desk, sizeof(desk))) continue;
+        snprintf(pdl, sizeof(pdl), "%s/%s/desks/%s.pdl", sess, active, desk);
+        break;
+    }
+    closedir(d);
+    if (!pdl[0]) return 0;
+    FILE *f = host_fopen(pdl, "r");
+    if (!f) return 0;
+    char line[MAX_LINE];
+    while (n < max && fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "DESK", 4) != 0) continue;
+        char *fld[8];
+        int nf = 0;
+        char *p = line;
+        while (nf < 8 && (p = strchr(p, '|'))) { p++; fld[nf++] = p; }
+        if (nf < 6) continue;
+        for (int i = 0; i < nf; i++) {
+            char *bar = strchr(fld[i], '|');
+            if (bar) *bar = '\0';
+            page_field_trim(fld[i]);
+        }
+        if (strcmp(fld[0], want) != 0) continue;
+        int cx = atoi(fld[4]), cy = atoi(fld[5]);
+        int px = atoi(fld[2]), py = atoi(fld[3]);
+        if (cx == 0 && cy == 0 && (px >= 40 || py >= 40 || px <= -40 || py <= -40)) {
+            cx = px / 80; cy = py / 80;
+        }
+        xs[n] = cx; ys[n] = cy; n++;
+    }
+    fclose(f);
+    return n;
+}
+
 static void load_hero(const char *root) {
     g_hero_present = 0;
+    int xs[4], ys[4];
+    if (page_named_cells(house_root, "hero_01", xs, ys, 4) > 0) {
+        char sp[PATH_BUF];
+        snprintf(sp, sizeof(sp), "%s/pieces/system/bv_state.txt", project_root);
+        g_hero_x = xs[0];
+        g_hero_y = ys[0];
+        g_hero_z = read_kv_int(sp, "current_z", 0);
+        g_hero_present = 1;
+        return;
+    }
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/pieces/hero_01/state.txt", root);
     FILE *f = host_fopen(path, "r");
@@ -1097,10 +1159,34 @@ static void load_phymoji_world_entities_file(const char *root, const char *rel_p
  * split). Same "entity_id,x,y,z" line format for both, so one shared
  * loader covers both real files - a host with neither (or only one)
  * is a real, graceful no-op per file. */
+static void place_page_phymoji(const char *root, const char *id, int z) {
+    int xs[16], ys[16];
+    int n = page_named_cells(house_root, id, xs, ys, 16);
+    for (int i = 0; i < n && g_phymoji_world_entity_count < MAX_PHYMOJI_ENTITIES; i++) {
+        int tpl = get_or_load_phymoji_template(root, id);
+        if (tpl < 0) return;
+        PhymojiWorldEntity *e = &g_phymoji_world_entities[g_phymoji_world_entity_count++];
+        snprintf(e->entity_id, sizeof(e->entity_id), "%s", id);
+        e->x = xs[i]; e->y = ys[i]; e->z = z; e->template_idx = tpl;
+    }
+}
+
+/* Page rows win when that name is already on the open desk file.
+ * The private txt lists remain only until the first seed writes the rows. */
 static void load_phymoji_world_entities(const char *root) {
     g_phymoji_world_entity_count = 0;
-    load_phymoji_world_entities_file(root, "pieces/world_01/phymoji_entities.txt");
-    load_phymoji_world_entities_file(root, "pieces/world_01/animals.txt");
+    char sp[PATH_BUF];
+    int xs[16], ys[16];
+    snprintf(sp, sizeof(sp), "%s/pieces/system/bv_state.txt", project_root);
+    int z = read_kv_int(sp, "current_z", 0);
+    if (page_named_cells(house_root, "tree_small", xs, ys, 16) > 0)
+        place_page_phymoji(root, "tree_small", z);
+    else
+        load_phymoji_world_entities_file(root, "pieces/world_01/phymoji_entities.txt");
+    if (page_named_cells(house_root, "chicken", xs, ys, 16) > 0)
+        place_page_phymoji(root, "chicken", z);
+    else
+        load_phymoji_world_entities_file(root, "pieces/world_01/animals.txt");
 }
 
 /* fwd - real definition ~line 1532 (Windows-safe atomic rename) */

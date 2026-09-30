@@ -1,8 +1,8 @@
 # pc-hq reads the livedesk page file
 
-Design change, 2026-09-30. Not built. Synch stays as written in
-`SYNCH.md`. This page is the storage that makes that Synch show one
-map in both windows.
+Design change, 2026-09-30. Steps 1 and 2 are in the drawers. Synch
+stays as written in `SYNCH.md`. This page is the storage that makes
+that Synch show one map in both windows.
 
 Book and session are the same thing. Page and map are the same thing.
 A book holds many map pages. The livedesk page file is the older
@@ -108,3 +108,15 @@ Otherwise it is the next pass. It is not a third storage format.
 6. Synch, as `SYNCH.md` already says: the inheritor takes the
    sender's page, and the sender's book too when the books differ.
    Both windows are then on one page file, so a later move mirrors.
+
+## Step 2, proved
+
+The first 2D frame appends `hero_01`, each `tree_small`, and
+`chicken` onto the open desk file when that name is absent. Later
+frames read those rows. `pieces/hero_01/state.txt` stayed at cell
+5,12. Moving only the `hero_01` row from cell 5 to cell 6 moved the
+hero sprite from screen cell 7 to screen cell 8 (1845 and 1925
+pixels, RGBA frame 1685x1102, view ox=-2 oy=3 cell=80). The row was
+put back to 5,12. The range diamond still reads `state.txt`. That
+move is step 4. House checks for this are C. A Python pixel script
+is not part of the house.

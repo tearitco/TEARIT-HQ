@@ -406,6 +406,8 @@ static void read_page_rows(const char *pdl, int cur_z) {
             if (bar) *bar = '\0';
             field_trim(fld[i]);
         }
+        if (!strcmp(fld[0], "hero_01") || !strcmp(fld[0], "tree_small") || !strcmp(fld[0], "chicken"))
+            continue;
         int cx = atoi(fld[4]);
         int cy = atoi(fld[5]);
         int px = atoi(fld[2]);
@@ -420,21 +422,123 @@ static void read_page_rows(const char *pdl, int cur_z) {
     }
     fclose(f);
 }
-static void load_actors(int cur_z) {
-    /* hero */
-    char p[PATH_BUF], b[32];
-    snprintf(p, sizeof(p), "%s/pieces/hero_01/state.txt", focused_root);
-    int hx = -1, hy = -1, hz = -999;
-    read_kv_str(p, "pos_x", b, sizeof(b)); if (b[0]) hx = atoi(b);
-    read_kv_str(p, "pos_y", b, sizeof(b)); if (b[0]) hy = atoi(b);
-    read_kv_str(p, "pos_z", b, sizeof(b)); if (b[0]) hz = atoi(b);
-    if (hx >= 0 && hy >= 0 && actor_on_z(hz, cur_z)) add_actor("hero_humanoid", hx, hy, hz);
-    /* world props + animals (same "id,x,y,z" shape as bv_compose_frame) */
-    load_actor_list("pieces/world_01/phymoji_entities.txt", cur_z);
-    load_actor_list("pieces/world_01/animals.txt", cur_z);
-    /* Livedesk page file, read every frame. The desk writes the row
-     * when a pal moves. Cyan, first letter of the name. */
+static int page_has_name(const char *pdl, const char *want) {
+    FILE *f = host_fopen(pdl, "r");
+    if (!f) return 0;
+    char line[MAX_LINE], name[64];
+    int found = 0;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "DESK", 4) != 0) continue;
+        char *bar = strchr(line, '|');
+        if (!bar) continue;
+        snprintf(name, sizeof(name), "%s", bar + 1);
+        char *bar2 = strchr(name, '|');
+        if (bar2) *bar2 = '\0';
+        field_trim(name);
+        if (strcmp(name, want) == 0) { found = 1; break; }
+    }
+    fclose(f);
+    return found;
+}
+static void page_append_row(const char *pdl, const char *name, const char *path, int cx, int cy) {
+    FILE *f = host_fopen(pdl, "a");
+    if (!f) return;
+    fprintf(f, "DESK | %s | %s | %d | %d | %d | %d | . | 0\n",
+            name, path, cx * 80, cy * 80, cx, cy);
+    fclose(f);
+}
+/* One pass over the old lists. Writes a row only when that name is absent. */
+static void page_seed_sprites(const char *pdl) {
+    char path[PATH_BUF], b[32];
+    int hx = 0, hy = 0;
+    if (page_has_name(pdl, "hero_01")) goto trees;
+    snprintf(path, sizeof(path), "%s/pieces/hero_01/state.txt", focused_root);
+    read_kv_str(path, "pos_x", b, sizeof(b)); if (b[0]) hx = atoi(b);
+    read_kv_str(path, "pos_y", b, sizeof(b)); if (b[0]) hy = atoi(b);
+    page_append_row(pdl, "hero_01", "@.apps/piececraft-hq/pieces/hero_01", hx, hy);
+trees:
+    if (!page_has_name(pdl, "tree_small")) {
+        snprintf(path, sizeof(path), "%s/pieces/world_01/phymoji_entities.txt", focused_root);
+        FILE *f = host_fopen(path, "r");
+        if (f) {
+            char line[128];
+            while (fgets(line, sizeof(line), f)) {
+                char id[64]; int x, y, z;
+                if (sscanf(line, "%63[^,],%d,%d,%d", id, &x, &y, &z) != 4) continue;
+                page_append_row(pdl, id, "@.apps/piececraft-hq/pieces/world_01", x, y);
+            }
+            fclose(f);
+        }
+    }
+    if (!page_has_name(pdl, "chicken")) {
+        snprintf(path, sizeof(path), "%s/pieces/world_01/animals.txt", focused_root);
+        FILE *f = host_fopen(path, "r");
+        if (f) {
+            char line[128];
+            while (fgets(line, sizeof(line), f)) {
+                char id[64]; int x, y, z;
+                if (sscanf(line, "%63[^,],%d,%d,%d", id, &x, &y, &z) != 4) continue;
+                page_append_row(pdl, id, "@.apps/piececraft-hq/pieces/world_01", x, y);
+            }
+            fclose(f);
+        }
+    }
+}
+static int page_named_cells(const char *house, const char *want, int *xs, int *ys, int max) {
     char pdl[PATH_BUF];
+    int n = 0;
+    if (!house || !house[0] || !page_file(house, pdl, sizeof(pdl))) return 0;
+    FILE *f = host_fopen(pdl, "r");
+    if (!f) return 0;
+    char line[MAX_LINE];
+    while (n < max && fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "DESK", 4) != 0) continue;
+        char *fld[8];
+        int nf = 0;
+        char *p = line;
+        while (nf < 8 && (p = strchr(p, '|'))) { p++; fld[nf++] = p; }
+        if (nf < 6) continue;
+        for (int i = 0; i < nf; i++) {
+            char *bar = strchr(fld[i], '|');
+            if (bar) *bar = '\0';
+            field_trim(fld[i]);
+        }
+        if (strcmp(fld[0], want) != 0) continue;
+        int cx = atoi(fld[4]), cy = atoi(fld[5]);
+        int px = atoi(fld[2]), py = atoi(fld[3]);
+        if (cx == 0 && cy == 0 && (px >= 40 || py >= 40 || px <= -40 || py <= -40)) {
+            cx = px / 80; cy = py / 80;
+        }
+        xs[n] = cx; ys[n] = cy; n++;
+    }
+    fclose(f);
+    return n;
+}
+static void load_actors(int cur_z) {
+    char pdl[PATH_BUF];
+    if (house_root[0] && page_file(house_root, pdl, sizeof(pdl)))
+        page_seed_sprites(pdl);
+    int xs[16], ys[16], n;
+    n = page_named_cells(house_root, "hero_01", xs, ys, 16);
+    if (n > 0) add_actor("hero_humanoid", xs[0], ys[0], cur_z);
+    else {
+        char p[PATH_BUF], b[32];
+        snprintf(p, sizeof(p), "%s/pieces/hero_01/state.txt", focused_root);
+        int hx = -1, hy = -1, hz = -999;
+        read_kv_str(p, "pos_x", b, sizeof(b)); if (b[0]) hx = atoi(b);
+        read_kv_str(p, "pos_y", b, sizeof(b)); if (b[0]) hy = atoi(b);
+        read_kv_str(p, "pos_z", b, sizeof(b)); if (b[0]) hz = atoi(b);
+        if (hx >= 0 && hy >= 0 && actor_on_z(hz, cur_z)) add_actor("hero_humanoid", hx, hy, hz);
+    }
+    n = page_named_cells(house_root, "tree_small", xs, ys, 16);
+    if (n > 0) { for (int i = 0; i < n; i++) add_actor("tree_small", xs[i], ys[i], cur_z); }
+    else load_actor_list("pieces/world_01/phymoji_entities.txt", cur_z);
+    n = page_named_cells(house_root, "chicken", xs, ys, 16);
+    if (n > 0) { for (int i = 0; i < n; i++) add_actor("chicken", xs[i], ys[i], cur_z); }
+    else load_actor_list("pieces/world_01/animals.txt", cur_z);
+    /* Livedesk page file, read every frame. The desk writes the row
+     * when a pal moves. Cyan square. hero_01, tree_small, and chicken
+     * are rows too, drawn above as their own sprites. */
     if (house_root[0] && page_file(house_root, pdl, sizeof(pdl)))
         read_page_rows(pdl, cur_z);
 }
