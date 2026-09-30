@@ -125,7 +125,29 @@ def parse_meta_pdl(path: str):
     return methods
 
 
-def write_menu_chtpm(package_dir: str, methods, source_meta: str):
+def extract_real_cli_io_lines(menu_path: str):
+    """REAL, NEW 2026-09-29, direct live incident: this converter used to
+    silently DESTROY a real, working `<cli_io .../>` element (door_civ's
+    own real one, byte-for-byte copied into robot_chat_001 when that pal
+    was created from door_civ's skeleton) on a --force regenerate,
+    replacing it with the generic `<item label="Cli-io" action="CLI_IO"/>`
+    fallback below - which is NOT the same thing (a plain item, not a
+    real cli_io element) and does not actually arm a working text-input
+    row (confirmed live: "it doesn't even look like the working cli
+    ios... just a text placeholder"). ANY entity with a real <cli_io> tag
+    (asa/door_civ/ava/book-stack) was one --force away from this same
+    silent regression. Real fix: read any EXISTING menu.chtpm before
+    overwriting it and carry its real <cli_io ...> line(s) forward
+    verbatim - this converter still can't SOURCE a new one (there's no
+    METHOD-row shape for it), but it must never delete one that already
+    exists."""
+    if not os.path.isfile(menu_path):
+        return []
+    with open(menu_path, "r", encoding="utf-8") as f:
+        return [line.strip() for line in f if "<cli_io" in line]
+
+
+def write_menu_chtpm(package_dir: str, methods, source_meta: str, preserved_cli_io=None):
     out_path = os.path.join(package_dir, "menu.chtpm")
     lines = []
     lines.append(
@@ -136,12 +158,20 @@ def write_menu_chtpm(package_dir: str, methods, source_meta: str):
         "hand conversions. Regenerate by deleting this file and "
         "re-running the converter; a real hand-edit here will be lost "
         "on the next regenerate, same tradeoff every generated file in "
-        "this house already has. -->"
+        "this house already has (an existing real <cli_io> element is "
+        "the one exception - see extract_real_cli_io_lines()'s own "
+        "header - it is carried forward automatically, not lost). -->"
     )
     lines.append('<window class="entity-menu">')
     lines.append('  <page name="main">')
     for label, action in methods:
+        # A real, preserved <cli_io> element already covers this -
+        # never emit the generic fallback item alongside/instead of it.
+        if preserved_cli_io and (label == "Cli-io" or action == "CLI_IO"):
+            continue
         lines.append(f'    <item label="{label}" action="{escape_action(action)}"/>')
+    for cli_io_line in preserved_cli_io or []:
+        lines.append(f"    {cli_io_line}")
     lines.append("  </page>")
     lines.append("</window>")
     with open(out_path, "w", encoding="utf-8") as f:
@@ -158,12 +188,14 @@ def convert_one(package_dir: str, force: bool = False) -> bool:
     if os.path.isfile(menu_path) and not force:
         print(f"skip (menu.chtpm already exists): {package_dir}")
         return False
+    preserved_cli_io = extract_real_cli_io_lines(menu_path)
     methods = parse_meta_pdl(meta_path)
     if not methods:
         print(f"skip (no real METHOD rows found): {package_dir}")
         return False
-    out = write_menu_chtpm(package_dir, methods, meta_path)
-    print(f"wrote {out} ({len(methods)} items)")
+    out = write_menu_chtpm(package_dir, methods, meta_path, preserved_cli_io)
+    note = ", preserved real <cli_io>" if preserved_cli_io else ""
+    print(f"wrote {out} ({len(methods)} items{note})")
     return True
 
 
