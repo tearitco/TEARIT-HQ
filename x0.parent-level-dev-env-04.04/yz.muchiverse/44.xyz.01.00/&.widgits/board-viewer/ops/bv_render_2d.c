@@ -653,24 +653,46 @@ int main(void) {
         }
     }
 
-    /* Debug wireframe, always on screen: a magenta square in the
-     * top-left of the 2D frame. A click adds a cyan square on the
-     * cell under the cursor. */
+    /* Magenta wire on the hero's own cell, one tile by one tile.
+     * A click adds a cyan square on the cell under the cursor. */
     {
-        int x0 = 12, y0 = 12, s = 56;
-        if (x0 + s < W && y0 + s < H) {
-            for (int t = 0; t < 3; t++) {
-                for (int x = x0; x < x0 + s; x++) {
-                    unsigned char *a = VP_PXR(x, y0 + t);
-                    unsigned char *b = VP_PXR(x, y0 + s - 1 - t);
-                    a[0]=255; a[1]=40; a[2]=220; a[3]=255;
-                    b[0]=255; b[1]=40; b[2]=220; b[3]=255;
-                }
-                for (int y = y0; y < y0 + s; y++) {
-                    unsigned char *a = VP_PXR(x0 + t, y);
-                    unsigned char *b = VP_PXR(x0 + s - 1 - t, y);
-                    a[0]=255; a[1]=40; a[2]=220; a[3]=255;
-                    b[0]=255; b[1]=40; b[2]=220; b[3]=255;
+        int hx = -1, hy = -1, hz = 0;
+        char hpath[PATH_BUF];
+        snprintf(hpath, sizeof(hpath), "%s/pieces/hero_01/state.txt", focused_root);
+        FILE *hf = host_fopen(hpath, "r");
+        if (hf) {
+            char line[128];
+            while (fgets(line, sizeof(line), hf)) {
+                if (strncmp(line, "pos_x=", 6) == 0) hx = atoi(line + 6);
+                else if (strncmp(line, "pos_y=", 6) == 0) hy = atoi(line + 6);
+                else if (strncmp(line, "pos_z=", 6) == 0) hz = atoi(line + 6);
+            }
+            fclose(hf);
+        }
+        if (hx >= 0 && hy >= 0) {
+            int scx, scy;
+            if (side_mode) {
+                scx = hx - ox;
+                scy = (side_zcount - 1 - hz) - oy;
+            } else {
+                scx = hx - ox;
+                scy = hy - oy;
+            }
+            if (scx >= 0 && scy >= 0 && scx < cols && scy < rows) {
+                int x0 = scx * cell, y0 = scy * cell;
+                for (int t = 0; t < 3; t++) {
+                    for (int x = x0; x < x0 + cell && x < W; x++) {
+                        unsigned char *a = VP_PXR(x, y0 + t);
+                        unsigned char *b = VP_PXR(x, y0 + cell - 1 - t);
+                        a[0]=255; a[1]=40; a[2]=220; a[3]=255;
+                        b[0]=255; b[1]=40; b[2]=220; b[3]=255;
+                    }
+                    for (int y = y0; y < y0 + cell && y < H; y++) {
+                        unsigned char *a = VP_PXR(x0 + t, y);
+                        unsigned char *b = VP_PXR(x0 + cell - 1 - t, y);
+                        a[0]=255; a[1]=40; a[2]=220; a[3]=255;
+                        b[0]=255; b[1]=40; b[2]=220; b[3]=255;
+                    }
                 }
             }
         }

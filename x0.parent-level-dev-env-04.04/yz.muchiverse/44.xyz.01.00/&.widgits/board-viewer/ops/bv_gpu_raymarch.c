@@ -81,7 +81,7 @@ static const char *FS_SRC =
 "\n"
 "bool on_edge(vec3 hp, vec3 bn, vec3 bx) {\n"
 "  vec3 q = min(abs(hp - bn), abs(hp - bx));\n"
-"  float e = 0.16;\n"
+"  float e = 0.10;\n"
 "  return (int(q.x < e) + int(q.y < e) + int(q.z < e)) >= 2;\n"
 "}\n"
 "\n"

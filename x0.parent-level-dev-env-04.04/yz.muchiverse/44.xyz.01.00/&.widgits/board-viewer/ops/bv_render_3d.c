@@ -2625,15 +2625,15 @@ static int render_one_frame(void) {
         if (g_ray_hit)
             ADDWIRE(g_ray_x + 0.04, g_ray_z + 0.04, g_ray_y + 0.04,
                     g_ray_x + 0.96, g_ray_z + 0.96, g_ray_y + 0.96, 40, 220, 255);
-        /* Debug placer: one magenta wire cube 3 units in front of the
-         * camera, so it sits in the middle of the picture either way. */
-        ADDWIRE(cam.eye.x + cam.forward.x * 3.0 - 1.8,
-                cam.eye.y + cam.forward.y * 3.0 - 1.8,
-                cam.eye.z + cam.forward.z * 3.0 - 1.8,
-                cam.eye.x + cam.forward.x * 3.0 + 1.8,
-                cam.eye.y + cam.forward.y * 3.0 + 1.8,
-                cam.eye.z + cam.forward.z * 3.0 + 1.8,
-                255, 40, 220);
+        /* One magenta wire brick on the hero's own cell. Same size as
+         * a terrain voxel: 1 by 1 by 1. */
+        {
+            int ox = g_hero_present ? g_hero_x : selector_x;
+            int oy = g_hero_present ? g_hero_y : selector_y;
+            int oz = g_hero_present ? g_hero_z : current_z;
+            ADDWIRE(ox + 0.02, oz + 0.02, oy + 0.02,
+                    ox + 0.98, oz + 0.98, oy + 0.98, 255, 40, 220);
+        }
         /* Green wire voxels touching the hero. Not clamped to the
          * terrain grid, so a hero in the sky still gets the cube. */
         {
