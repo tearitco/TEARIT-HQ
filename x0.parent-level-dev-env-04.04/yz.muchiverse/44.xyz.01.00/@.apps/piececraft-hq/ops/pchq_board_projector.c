@@ -479,9 +479,35 @@ int main(int argc, char **argv) {
         snprintf(player_label, sizeof(player_label), "Player: %s",
                  strcmp(pm_mode, "on") == 0 ? "ON" : "OFF");
         char book_label[80], page_label[80];
-        snprintf(book_label, sizeof(book_label), "book:%s", proj_id);
-        snprintf(page_label, sizeof(page_label), "page:%s",
+        char own_page[64];
+        snprintf(own_page, sizeof(own_page), "%s",
                  cur_desk_label[0] ? cur_desk_label : active_desk_id);
+        /* The board's own map and desk, even after Synch retargets the
+         * labels. Taskbar Synch reads this to know which pc-hq was open. */
+        {
+            char lastp[PATH_MAX];
+            snprintf(lastp, sizeof(lastp), "%s/#.desktop/last_pchq_book_page.txt", house);
+            FILE *lf = fopen(lastp, "w");
+            if (lf) {
+                fprintf(lf, "book=%s\npage=%s\n", proj_id, own_page);
+                fclose(lf);
+            }
+        }
+        snprintf(book_label, sizeof(book_label), "book:%s", proj_id);
+        snprintf(page_label, sizeof(page_label), "page:%s", own_page);
+        /* Player > Synch writes this from the same session.pdl the
+         * taskbar reads. While it exists, both bars show one book and page. */
+        {
+            char ob[PATH_MAX], ob_book[80] = "", ob_page[80] = "";
+            snprintf(ob, sizeof(ob),
+                     "%s/@.apps/%s/pieces/display/open_book_page.txt", house, host_id);
+            read_kv(ob, "book", ob_book, sizeof(ob_book));
+            read_kv(ob, "page", ob_page, sizeof(ob_page));
+            if (ob_book[0] && ob_page[0]) {
+                snprintf(book_label, sizeof(book_label), "book:%s", ob_book);
+                snprintf(page_label, sizeof(page_label), "page:%s", ob_page);
+            }
+        }
         sanitize(book_label);
         sanitize(page_label);
 

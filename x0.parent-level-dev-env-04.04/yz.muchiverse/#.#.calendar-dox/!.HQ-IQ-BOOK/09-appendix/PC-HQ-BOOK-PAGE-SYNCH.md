@@ -1,5 +1,15 @@
 # Book, page, and Synch
 
+2026-09-30. Synch now binds both windows to one page file: the active
+livedesk desk `.pdl`, named by that session's `session.pdl`. From
+pc-hq, the board draws that desk's entities and the toolbar book/page
+switches to the same strings the taskbar already shows. From the
+taskbar, `hero_01` is written into that same desk file at the hero's
+current cell, replacing an older hero row. The projector keeps the
+board's own map in `#.desktop/last_pchq_book_page.txt`. Neither
+direction relaunches pals, and neither copies map grids onto the desk.
+The sections below are the earlier notes.
+
 Indexed notes for the next agent. Player > Synch from pc-hq reads the
 active livedesk desk `.pdl` and writes
 `@.apps/piececraft-hq/pieces/display/synched_entities.txt`. The board
