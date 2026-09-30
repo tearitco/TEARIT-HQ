@@ -893,22 +893,6 @@ static int page_row_meta(const char *house, const char *want, int *cx, int *cy,
     return found;
 }
 
-static int g_cam_from_page = 0;
-static int g_cam_mode = 2, g_cam_yaw = 180, g_cam_pitch = 6;
-static int g_cam_pan_x = 0, g_cam_pan_y = 0, g_cam_pan_z = 0, g_cam_z_level = 0;
-
-static void load_camera_row(void) {
-    g_cam_from_page = 0;
-    int cx = 0, cy = 0;
-    char glyph[128];
-    if (!page_row_meta(house_root, "camera_01", &cx, &cy, glyph, sizeof(glyph), NULL)) return;
-    int mode = 0, yaw = 0, pitch = 0, panz = 0, zl = 0;
-    if (sscanf(glyph, "m=%d,y=%d,p=%d,z=%d,h=%d", &mode, &yaw, &pitch, &panz, &zl) != 5) return;
-    g_cam_from_page = 1;
-    g_cam_mode = mode; g_cam_yaw = yaw; g_cam_pitch = pitch;
-    g_cam_pan_x = cx; g_cam_pan_y = cy; g_cam_pan_z = panz; g_cam_z_level = zl;
-}
-
 static void load_hero(const char *root) {
     g_hero_present = 0;
     char bound[PATH_BUF];
@@ -2800,9 +2784,12 @@ static int render_one_frame(void) {
     write_pick_txt(focused_project_root, board3d, board_w, board_h, z_count,
                    selector_x, selector_y, current_z);
 
-    load_camera_row();
-    int camera_mode = g_cam_from_page ? g_cam_mode
-        : read_kv_int(state_path, "camera_mode", default_camera_mode(focused_project_root));
+    /* camera_01's glyph is a snapshot. Reading it every frame froze
+     * yaw, pitch, pan, height, and POV on m=2,y=180,p=6 while 1-4 and
+     * q/e/r/t/wasd/c/v only wrote bv_state. Arrows, z/x, and 0 still
+     * moved the picture because they do not go through that glyph.
+     * The keyboard state wins. The desk row stays where it is. */
+    int camera_mode = read_kv_int(state_path, "camera_mode", default_camera_mode(focused_project_root));
     /* REAL PARITY FIX 2026-08-07: fresh cam_pitch used to default to
      * -90 (straight down) in EVERY mode, so even the config-driven
      * "default_camera_mode=2 (third-person)" open rendered top-down,
@@ -2812,14 +2799,14 @@ static int render_one_frame(void) {
      * bv_menu_input.c's own header comment) and 'f' reset handlers (6
      * for modes 1/2, -90 for free-roam 3 / bird's-eye 4). */
     int default_cam_pitch = (camera_mode == 1 || camera_mode == 2) ? 6 : -90;
-    int cam_yaw = g_cam_from_page ? g_cam_yaw : read_kv_int(state_path, "cam_yaw", 180);
-    int cam_pitch = g_cam_from_page ? g_cam_pitch : read_kv_int(state_path, "cam_pitch", default_cam_pitch);
+    int cam_yaw = read_kv_int(state_path, "cam_yaw", 180);
+    int cam_pitch = read_kv_int(state_path, "cam_pitch", default_cam_pitch);
     /* Default cam_pan_x/y to the SELECTOR's own position (matches
      * where the 2D view actually starts) - see &.widgits/
      * view-vs-muta.md, real user-caught bug, fixed 2026-08-02. */
-    int cam_pan_x = g_cam_from_page ? g_cam_pan_x : read_kv_int(state_path, "cam_pan_x", selector_x);
-    int cam_pan_y = g_cam_from_page ? g_cam_pan_y : read_kv_int(state_path, "cam_pan_y", selector_y);
-    int cam_pan_z = g_cam_from_page ? g_cam_pan_z : read_kv_int(state_path, "cam_pan_z", 0);
+    int cam_pan_x = read_kv_int(state_path, "cam_pan_x", selector_x);
+    int cam_pan_y = read_kv_int(state_path, "cam_pan_y", selector_y);
+    int cam_pan_z = read_kv_int(state_path, "cam_pan_z", 0);
     /* REAL FIX 2026-08-04, direct user report ("still blank - map
      * screens are black"): mode 3/4's own eye.y = 12.0 + z_level*2.0
      * formula (build_camera(), deliberately anchor_h-FREE per this
@@ -2835,7 +2822,7 @@ static int render_one_frame(void) {
      * board (current_z small) still gets 0, matching old behavior
      * exactly; a tall one gets real overhead clearance. */
     int default_z_level = (current_z > 12) ? ((current_z - 12 + 6) / 2) : 0;
-    int cam_z_level = g_cam_from_page ? g_cam_z_level : read_kv_int(state_path, "cam_z_level", default_z_level);
+    int cam_z_level = read_kv_int(state_path, "cam_z_level", default_z_level);
 
     double anchor_x = selector_x + 0.5, anchor_z = selector_y + 0.5;
     /* Modes 1 and 2 follow the xelector. Possessing an entity already
