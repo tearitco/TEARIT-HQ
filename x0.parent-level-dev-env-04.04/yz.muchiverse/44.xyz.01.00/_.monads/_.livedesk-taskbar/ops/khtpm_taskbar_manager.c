@@ -5028,14 +5028,15 @@ void ktb_hq_activate(KtbState *s, int row) {
         return;
     }
     if (strcmp(m->command, "livedesk:synch-from-pchq") == 0) {
-        /* Player cell 9. Records a request. The page copy is not wired.
-         * See HQ-IQ-BOOK 09-appendix/PC-HQ-BOOK-PAGE-SYNCH.md. */
+        /* The desk is the sender. The press records the desk's book
+         * and page for pc-hq. It does not reopen this menu: doing that
+         * left hq_open on the Player cell and the strip nav stuck on 9. */
         char fx[KTB_PATH_BUF * 2];
         snprintf(fx, sizeof(fx),
                  "sh '%s/@.apps/piececraft-hq/ops/pc_synch_request.sh' taskbar",
                  s->house_root);
         system(fx);
-        ktb_hq_open(s, ktb_cell_pos_by_id(s, "player", 9));
+        ktb_hq_close(s);
         return;
     }
     if (strncmp(m->command, "widget:", 7) == 0) {

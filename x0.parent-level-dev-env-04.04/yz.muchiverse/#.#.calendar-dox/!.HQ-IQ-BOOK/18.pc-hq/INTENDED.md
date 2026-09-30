@@ -98,6 +98,14 @@ row is somewhere else, the anchor change did not take.
 
 ## Synch
 
+The Player Synch row used to call `ktb_hq_open` on cell 9 after the
+script returned. That left `strip_state.txt` at `hq_open=9` and the
+strip nav stuck on Player. The desk is the sender, so that press
+must not hold the menu. It now calls `ktb_hq_close`. Play and Stop
+still reopen the Player menu on purpose. A running manager keeps
+the old text until it is replaced. The live one was replaced
+2026-09-30 after this fix, and `hq_open` went back to 0.
+
 `pc_synch_request.sh taskbar` is the desk sending. It writes
 
 ```
