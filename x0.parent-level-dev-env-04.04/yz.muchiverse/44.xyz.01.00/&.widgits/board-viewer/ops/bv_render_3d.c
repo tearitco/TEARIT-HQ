@@ -2657,21 +2657,60 @@ static int render_one_frame(void) {
             ADDWIRE(ox + 0.02, oz + 0.02, oy + 0.02,
                     ox + 0.98, oz + 0.98, oy + 0.98, 255, 220, 40);
         }
-        /* Green wire voxels touching the hero. Not clamped to the
-         * terrain grid, so a hero in the sky still gets the cube. */
+        /* Yellow diamond from the same '#' file the desk placer reads,
+         * stacked on every Z layer within the diamond's radius. */
         {
             int ox = g_hero_present ? g_hero_x : selector_x;
             int oy = g_hero_present ? g_hero_y : selector_y;
             int oz = g_hero_present ? g_hero_z : current_z;
-            for (int dz = -1; dz <= 1; dz++) {
-                for (int dy = -1; dy <= 1; dy++) {
-                    for (int dx = -1; dx <= 1; dx++) {
-                        if (dx == 0 && dy == 0 && dz == 0) continue;
-                        int vx = ox + dx, vy = oy + dy, gz = oz + dz;
+            char rows[16][64];
+            int nr = 0, nc = 0;
+            char mp[PATH_BUF];
+            snprintf(mp, sizeof(mp), "%s/pieces/display/move_range_matrix.txt", focused_project_root);
+            FILE *mf = host_fopen(mp, "r");
+            if (!mf) snprintf(mp, sizeof(mp), "%s/pieces/display/move_range_matrix.txt", project_root);
+            if (!mf) mf = host_fopen(mp, "r");
+            if (mf) {
+                while (nr < 16 && fgets(rows[nr], sizeof(rows[nr]), mf)) {
+                    rows[nr][strcspn(rows[nr], "\r\n")] = 0;
+                    if ((int)strlen(rows[nr]) > nc) nc = (int)strlen(rows[nr]);
+                    nr++;
+                }
+                fclose(mf);
+            }
+            if (nr < 1) {
+                snprintf(rows[0], sizeof(rows[0]), ".#.");
+                snprintf(rows[1], sizeof(rows[1]), "###");
+                snprintf(rows[2], sizeof(rows[2]), ".#.");
+                nr = 3; nc = 3;
+            }
+            int cx0 = nc / 2, cy0 = nr / 2, rad = cx0 > cy0 ? cx0 : cy0;
+            if (rad < 1) rad = 1;
+            if (rad > 3) rad = 3;
+            for (int dz = -rad; dz <= rad; dz++) {
+                for (int row = 0; row < nr; row++) {
+                    for (int col = 0; col < nc && rows[row][col]; col++) {
+                        if (rows[row][col] != '#') continue;
+                        int vx = ox + col - cx0, vy = oy + row - cy0, gz = oz + dz;
+                        if (vx == ox && vy == oy && gz == oz) continue;
                         ADDWIRE(vx + 0.08, gz + 0.08, vy + 0.08,
                                 vx + 0.92, gz + 0.92, vy + 0.92, 255, 220, 40);
                     }
                 }
+            }
+        }
+        {
+            char sp[PATH_BUF];
+            snprintf(sp, sizeof(sp), "%s/pieces/display/synched_entities.txt", project_root);
+            FILE *sf = host_fopen(sp, "r");
+            if (sf) {
+                char line[128], name[64];
+                int x, y;
+                while (fgets(line, sizeof(line), sf)) {
+                    if (sscanf(line, "%63s %d %d", name, &x, &y) != 3) continue;
+                    ADDWIRE(x + 0.15, 1.05, y + 0.15, x + 0.85, 1.85, y + 0.85, 80, 200, 255);
+                }
+                fclose(sf);
             }
         }
         /* Green selector. Arrows move it while armed. Escape clears it. */

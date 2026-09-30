@@ -1247,7 +1247,21 @@ static const char *parse_element(const char *p, Elem *parent) {
         }
         attr[an] = '\0';
         skip_ws(&p);
-        char val[1024] = "";
+        /* REAL FIX 2026-09-29, direct live report + real screenshot
+         * ("do u see how the message was cut off even tho there was
+         * plenty of space") - THE actual root cause, found after three
+         * wrong layers (co-lab-hai's own buffers, this file's KH_VAR_
+         * VALUE, khtpm_draw_core.c's shown_label copy - all real bugs,
+         * none of them this one): this is the GENERIC attribute-value
+         * parser, called for every attr= on every tag in every .xhtpm/
+         * .chtpm this house ever parses. By the time kh_substitute_vars()
+         * hands this function a fully-substituted content="PENDING
+         * (...): <long text>" string, THIS 1024-byte cap is what
+         * actually threw the tail away - upstream of the Elem tree
+         * entirely, so no draw-side or layout-side fix could ever have
+         * touched it. Matched to this session's own CH_LINE_BUF/
+         * KH_VAR_VALUE convention rather than guessing a new number. */
+        char val[16384] = "";
         if (*p == '=') { p++; parse_attr_value(&p, val, sizeof(val)); }
         if (attr[0]) {
             if (strcmp(attr, "show") == 0)
@@ -1319,7 +1333,22 @@ static const char *parse_element(const char *p, Elem *parent) {
                              * truncation in kh_set_var() made every count var
                              * that landed after the overflow resolve to 0 */
 #define KH_VAR_NAME   64
-#define KH_VAR_VALUE  2048
+/* REAL FIX 2026-09-29, direct live report + real screenshot ("do u see
+ * how the message was cut off even tho there was plenty of space") -
+ * this is the ACTUAL root cause of a bug fought all night across
+ * several wrong layers (co-lab-hai's own pend_msg buffers, this file's
+ * layout-side wrap measurement, khtpm_draw_core.c's own draw-time
+ * shown_label copy) - every one of those was correctly processing an
+ * ALREADY-TRUNCATED value, because every single ${var} substitution
+ * house-wide is capped here, at var-LOAD time, before the template
+ * engine ever splices it into content=/label=/anything else. A ~2170-
+ * byte pend_msg was silently cut to 2048 the moment kh_load_vars() read
+ * it - no amount of fixing the draw or layout side downstream could
+ * ever have found this, since the data was already gone by then.
+ * Bumped to match this session's own CH_LINE_BUF convention
+ * (co-lab-hai's message-pipeline fix, same night) - one real, generic,
+ * house-wide fix instead of three separate wrong ones. */
+#define KH_VAR_VALUE  16384
 typedef struct { char name[KH_VAR_NAME]; char value[KH_VAR_VALUE]; } KhVar;
 static KhVar g_kh_vars[KH_MAX_VARS];
 static int g_kh_nvars = 0;
@@ -2616,6 +2645,54 @@ static void ktb_toggle_zorder_apply(int raise) {
     }
     XFlush(dpy);
 }
+/* REAL FIX 2026-09-29, direct live report ("i have throttling issue
+ * again... did we introduce cpu leaks") - traced to real, un-reaped
+ * <defunct> zombies (24 found live, in groups matching one respawn
+ * burst each) parented by this exact process. Root cause: every
+ * ktb_toggle_zorder_respawn() call below fork()s once per still-running
+ * entity (plus once more for this process's own self-relaunch) and the
+ * child immediately execve()s - but nothing ever waitpid()s these
+ * specific children, so each one sits as a zombie for the rest of this
+ * process's life the moment its execve'd window eventually exits. NOT
+ * a crash leftover - confirmed live, this fires on totally ordinary
+ * "always on top" toggling, one permanent zombie per respawned window
+ * per toggle. Same real bug class, same real fix shape, as the
+ * g_khtpm_menu_pid leak fixed 2026-09-14 (see that reap's own header
+ * comment a few hundred lines below) - track the PIDs this function
+ * itself forks, then reap them opportunistically, once per tick,
+ * exactly like g_khtpm_menu_pid already does. Sized to found[64] (this
+ * function's own cap) plus 1 for the self-relaunch fork. */
+#define KH_MAX_RESPAWN_PIDS 65
+static pid_t g_respawn_pids[KH_MAX_RESPAWN_PIDS];
+static int g_n_respawn_pids = 0;
+static void kh_track_respawn_pid(pid_t pid) {
+    if (pid <= 0) return;
+    if (g_n_respawn_pids >= KH_MAX_RESPAWN_PIDS) {
+        /* array's own cap hit (should never happen - found[] shares the
+         * same 64-entry cap) - reap-on-next-tick still catches these
+         * via the generic waitpid(-1, WNOHANG) fallback in
+         * kh_reap_respawn_pids(), just not individually tracked. */
+        return;
+    }
+    g_respawn_pids[g_n_respawn_pids++] = pid;
+}
+/* Called once per tick (see this function's call site next to the
+ * pre-existing g_khtpm_menu_pid reap, same tick). Non-blocking, cheap
+ * (WNOHANG, at most KH_MAX_RESPAWN_PIDS syscalls, and the array is
+ * normally empty - only ever populated right after a z-order toggle). */
+static void kh_reap_respawn_pids(void) {
+    int i = 0;
+    while (i < g_n_respawn_pids) {
+        int wstatus;
+        pid_t r = waitpid(g_respawn_pids[i], &wstatus, WNOHANG);
+        if (r == g_respawn_pids[i]) {
+            /* reaped - compact by swapping the last tracked pid in */
+            g_respawn_pids[i] = g_respawn_pids[--g_n_respawn_pids];
+        } else {
+            i++;
+        }
+    }
+}
 static void ktb_toggle_zorder_respawn(void) {
     char bin0[PATH_BUF], bin1[PATH_BUF], bin2[PATH_BUF];
     const char *bins[3];
@@ -2775,6 +2852,7 @@ static void ktb_toggle_zorder_respawn(void) {
             }
             _exit(1);
         }
+        kh_track_respawn_pid(np); /* reaped opportunistically, see kh_reap_respawn_pids() */
     }
     for (i = 0; i < n_found; i++) {
         pid_t pid;
@@ -2798,6 +2876,7 @@ static void ktb_toggle_zorder_respawn(void) {
             execve(av[0], av, environ);
             _exit(1);
         }
+        kh_track_respawn_pid(pid); /* reaped opportunistically, see kh_reap_respawn_pids() */
     }
 }
 static GC gc;
@@ -2953,6 +3032,28 @@ static int g_click_two_step = 1;
  * font-size, row heights, paddings) picks this up for free. Settings
  * 'Size -'/'Size +' step it via the UI_SCALE_MINUS/PLUS verbs. */
 static int g_ui_scale_pct = 100;
+/* REAL, NEW 2026-09-29, direct instruction ("can we do from pdl, so we
+ * can stop restarting entire house each time") - the dock pager +/-
+ * button width/gap (dock_place_pager()) used to be a baked-in scaled()
+ * literal that needed a full rebuild+relaunch for every pixel tweak.
+ * Same hq_ui.pdl key=value/live-reload convention as font_scale above -
+ * `pager_btn_w`/`pager_btn_gap` in #.desktop/hq_ui.pdl, picked up by
+ * hq_ui_pdl_reload_if_changed() with no rebuild or relaunch needed.
+ * Defaults match the last live-confirmed values (64/8, direct live
+ * report "cut off more than last 7% wide" on 56/8 - re-verified via a
+ * direct window frame dump that 64/8 renders clean). */
+static int g_pager_btn_w = 64;
+static int g_pager_btn_gap = 8;
+/* REAL, NEW 2026-09-29 (second pdl pass), direct live report ("way
+ * about the width of the cell container... is there a way to add that
+ * to the pdl widener") - the dock pager's own reserved right-margin
+ * "cell" (DOCK_PAGER_W, below) was still a #define baked at compile
+ * time; promoted to this pdl-driven global once button width/gap
+ * became tunable enough (including negative gap) that the fixed value
+ * stopped matching what the buttons actually need. Default matches the
+ * last hardcoded value (145). See DOCK_PAGER_W's own header comment
+ * for why it's still spelled that way in the rest of this file. */
+static int g_pager_cell_w = 145;
 /* REAL, NEW 2026-09-10, direct instruction ("when should we add font
  * picker to settings") - house-wide DEFAULT font family, same real
  * role font_scale already plays for size. Any window/CSS that sets its
@@ -4927,6 +5028,61 @@ static void layout_fixed_rows_and_scrolllist(Elem *container, int x, int y, int 
         } else if (strcmp(c->tag, "cli_io") == 0 || strcmp(c->tag, "text_area") == 0) {
             int this_h = (c->rows > 0 ? c->rows : 1) * ROW_H;
             if (elem_has_class(c, "top")) {
+                /* REAL FIX 2026-09-29, direct live report ("why do
+                 * messages insist on overlapping over approve reject
+                 * bar?") - co-lab-hai's own pending banner sets rows=
+                 * from a manager-side character-count ESTIMATE
+                 * (colab_hai_manager.c's needed_rows, "message length /
+                 * 55 chars-per-line"), which can never exactly match
+                 * this renderer's own real word-boundary wrap at this
+                 * row's ACTUAL current width - a resizable window
+                 * (this one remembers its own size) can be narrower
+                 * than whatever width the manager assumed, or the
+                 * message's real word-length distribution can just
+                 * need more lines than a flat chars/line guess predicts
+                 * (same root cause already fought twice in that file's
+                 * own history, at 85 then 55 chars/line - a fixed
+                 * constant can't be exactly right for every window
+                 * width/message shape). Real fix: MEASURE it here, the
+                 * same way scroll_row_span() already measures a plain
+                 * <text> row's real wrap - never trust rows= as more
+                 * than a minimum. g_headless has no Xft to measure
+                 * with; falls back to the given rows=, same as
+                 * scroll_row_span()'s own g_headless guard. */
+                if (!g_headless && strcmp(c->tag, "text_area") == 0 && c->text_area_buffer[0]) {
+                    /* Fresh local style, not c->style - css_compute_style()
+                     * for THIS element's real, current frame doesn't run
+                     * until just below here (same reason scroll_row_span()
+                     * computes its own tmp_style rather than trusting
+                     * whatever c->style holds from the previous frame). */
+                    CssStyle tmp_style;
+                    css_compute_style(&g_sheet, c->tag, c->id, (char (*)[32])(void *)c->classes, c->n_classes, 0, &tmp_style);
+                    XftFont *font = font_for(&tmp_style);
+                    int pad = tmp_style.has_padding ? tmp_style.padding : 4;
+                    int avail_w = w - pad * 2;
+                    int lines = wrap_line_count(font, c->text_area_buffer, avail_w);
+                    int line_h = font->ascent - font->descent > 0 ? font->ascent - font->descent : 12;
+                    line_h += 4;
+                    int measured_rows = (lines * line_h + ROW_H - 1) / ROW_H;
+                    if (measured_rows > (c->rows > 0 ? c->rows : 1))
+                        this_h = measured_rows * ROW_H;
+                }
+                /* REAL FIX 2026-09-29, direct live report ("full screen
+                 * is 2 long and i cant even see the accept/decline
+                 * buttons any more") - the measured-wrap growth above is
+                 * correct and stays (it's what makes the box big enough
+                 * for whatever a message really needs), but with zero
+                 * ceiling a long enough message can still grow past the
+                 * whole window and push Approve/Reject off screen
+                 * entirely. Real cap: never take more than half this
+                 * container's own height - a generic layout ceiling for
+                 * ANY "top" text_area (network-browser's address bar is
+                 * a cli_io, unaffected; sql-hq's own editor benefits
+                 * too), not a co-lab-hai-specific number. Never caps
+                 * below one real row. */
+                int max_h = h / 2;
+                if (max_h < ROW_H) max_h = ROW_H;
+                if (this_h > max_h) this_h = max_h;
                 c->x = x; c->y = y_cursor; c->w = w; c->h = this_h;
                 y_cursor += this_h;
             } else if (strcmp(c->tag, "text_area") == 0 && !scrolllist) {
@@ -5588,7 +5744,10 @@ static int layout_sidebar_panel(Elem *page) {
  * 30s - two digits - and the old margin left the pair cramped against
  * the last cell. Widened; dock_place_pager() below now centers the
  * pair within this margin instead of hugging the right edge. */
-#define DOCK_PAGER_W 110
+/* REAL, NEW 2026-09-29, direct live report ("bottom tb fix is pretty good but that space for both could be about 15% wider") - was 110, then 128, then 145.
+ * REAL, NEW 2026-09-29 (pdl pass) - g_pager_btn_w/gap default rose to 64/8 (content_w 136), widened again so this reserved margin keeps real headroom instead of nearly matching content_w exactly.
+ * REAL, NEW 2026-09-29 (second pdl pass), direct live report ("way about the width of the cell container... is there a way to add that to the pdl widener") - promoted from a #define to g_pager_cell_w, live-reloaded from hq_ui.pdl's pager_cell_w key same as pager_btn_w/gap, once the button size/gap themselves became tunable enough (including negative gap) that the fixed 145 margin stopped matching. */
+#define DOCK_PAGER_W g_pager_cell_w
 /* DOCK_MAX_PACK removed 2026-09-14 (DOCK-BAR-GENERIC-LAYOUT-MIGRATION.md
  * phase 1) - was the fixed-size bound for the bottom bar's own
  * hand-packed pack[] array, deleted along with it now that
@@ -5773,8 +5932,57 @@ static void dock_place_pager(int win_w, int after_x) {
     /* REAL, NEW 2026-09-15, direct live report ("could be a bit more
      * 'left' and spaced between the 2") - widened the -/+ gap and
      * biased the centered position a bit left of dead-center in the
-     * DOCK_PAGER_W margin, both real, cosmetic pixel tweaks only. */
-    int aw = scaled(22), gap = scaled(10);
+     * DOCK_PAGER_W margin, both real, cosmetic pixel tweaks only.
+     *
+     * REAL FIX 2026-09-29, direct live report ("the +- buttons on
+     * bottom tb far right are a bit too close together and are
+     * overlapping") - confirmed live via a direct window dump: aw=22
+     * was sized for a bare "-"/"+" glyph, but khtpm_draw_core.c's own
+     * 2026-09-02 rule draws a real "[ ]NN."/"[>]NN." nav badge in front
+     * of EVERY nav-indexed item's label, unconditionally ("Digit-jump
+     * and AI control of the window need the visible brackets" - not
+     * something to remove here). At a real two-digit nav index that
+     * badge alone is already wider than the whole 22px box, so the "+"
+     * button's own badge+label visibly ran into the "-" button's box
+     * right next to it. Widened aw to fit a real "[>]99. -" at the
+     * badge font's own size instead of guessing - same
+     * "[ ]99. " reservation estimate scroll_row_span() already uses
+     * for exactly this problem elsewhere in this file, applied here.
+     * DOCK_PAGER_W (110) has plenty of headroom for this - old
+     * content_w was 54, well under half the reserved margin. */
+    /* REAL, NEW 2026-09-29, direct live report ("pretty good but that
+     * space for both could be about 15% wider") - +15% on both aw and
+     * gap (45->52, 6->7), DOCK_PAGER_W widened to match just above. */
+    /* REAL, NEW 2026-09-29 (second pass), direct live report ("could
+     * still be about 7% wider") - +7% again on both (52->56, 7->8).
+     * REAL, NEW 2026-09-29 (third pass) - now g_pager_btn_w/gap, live
+     * from #.desktop/hq_ui.pdl (see that global's own header comment) so
+     * further tweaks need no rebuild/relaunch.
+     * REAL, NEW 2026-09-29 (fourth pass), direct live report ("do u see
+     * 18 spilling out of the confines of the cell? is there any way to
+     * standardize this?") - every previous pass here was still a manual
+     * pixel guess re-done by hand each time a real nav index got wider
+     * (single- vs two-digit "[ ]N."/"[ ]NN." changes the real badge
+     * width). Standardized the same way scroll_row_span() already
+     * solved this exact class of bug: MEASURE the real "[ ]99. -" glyph
+     * run at this element's own real font/style instead of guessing a
+     * constant, then take the wider of that measurement and the
+     * pdl-configured g_pager_btn_w (a floor, not a fixed value anymore -
+     * hq_ui.pdl can still force it wider, never narrower than what the
+     * real badge needs to not overlap). */
+    int aw = scaled(g_pager_btn_w), gap = scaled(g_pager_btn_gap);
+    {
+        CssStyle btn_style;
+        css_compute_style(&g_sheet, "item", "dock-page-minus", NULL, 0, 0, &btn_style);
+        XftFont *bfont = font_for(&btn_style);
+        if (bfont) {
+            int bpad = btn_style.has_padding ? btn_style.padding : 4;
+            XGlyphInfo ext;
+            XftTextExtentsUtf8(dpy, bfont, (const FcChar8 *)"[ ]99. -", 8, &ext);
+            int measured_w = ext.xOff + bpad * 2;
+            if (measured_w > aw) aw = measured_w;
+        }
+    }
     int left_bias = scaled(10);
     int need = (g_dock_packed_rows > 1) || (g_dock_visible_rows > 1);
 
@@ -6590,6 +6798,9 @@ static Elem *kh_canvas_at(int px, int py) {
 static int kh_canvas_hit(int px, int py) {
     return kh_canvas_at(px, py) != NULL;
 }
+/* Generic click coords for a <canvas>. The shared renderer does not
+ * raycast. bv_render_3d reads pchq_canvas_click.txt and does the math.
+ * CANVAS_CLICK on the per-pid relay is the same numbers, for the log. */
 static void kh_publish_canvas_click(int px, int py, int button) {
     Elem *cv = kh_canvas_at(px, py);
     if (!cv || cv->w < 1 || cv->h < 1) return;
@@ -7855,6 +8066,25 @@ static void default_text_area_state_path(const char *key, char *out, size_t outs
     snprintf(out, outsz, "%s/text_area_%s.txt", g_package_dir, key);
 }
 static void default_text_area_save(Elem *e) {
+    /* REAL FIX 2026-09-29, direct live report ("it keeps asking for
+     * approval for an old message... [hi x.com!]") - real root cause,
+     * confirmed byte-for-byte: co-lab-hai's PENDING banner (<text_area
+     * id="pend-msg">) is a pure, read-only, server-driven display
+     * (content="PENDING (${pend_agent}): ${pend_msg}") - it was never
+     * meant to be user-editable. But this save/reload pair treats every
+     * <text_area> the same, with no way to opt out - once ANYTHING got
+     * saved into text_area_pend-msg.txt (an old annotation the owner
+     * typed into it, apparently believing it was editable), kh_text_
+     * areas_reload() re-hydrated that exact stale buffer on EVERY
+     * reparse forever after, silently overriding the live content=
+     * value - no restart, rebuild, or manager fix could ever touch it,
+     * because nothing was actually stale in the render pipeline; this
+     * function kept re-saving the same frozen text right back out too.
+     * Real, minimal, generic fix: class="no-persist" opts a text_area
+     * OUT of this save/reload pair entirely - for a field whose whole
+     * point is "the server always owns this content," not a co-lab-hai-
+     * specific hack. */
+    if (elem_has_class(e, "no-persist")) return;
     const char *key = e->target_id[0] ? e->target_id : e->id;
     if (!key[0]) return;
     char path[PATH_BUF];
@@ -7871,7 +8101,9 @@ static void default_text_area_save(Elem *e) {
  * If the save file is absent the elem keeps its content="" attr value. */
 static void kh_text_areas_reload(Elem *root) {
     if (!root || !g_package_dir[0]) return;
-    if (strcmp(root->tag, "text_area") == 0) {
+    /* class="no-persist" - see default_text_area_save()'s own header
+     * comment (the co-lab-hai PENDING-banner incident this exempts). */
+    if (strcmp(root->tag, "text_area") == 0 && !elem_has_class(root, "no-persist")) {
         const char *key = root->target_id[0] ? root->target_id : root->id;
         if (key[0]) {
             char path[PATH_BUF];
@@ -10888,23 +11120,56 @@ static int pchq_theme_changed_dirty(const char *house_root) {
  * establishes the baseline without reloading - the real settings were
  * already read once at startup via desktop_load_click_two_step()). */
 static long g_hq_ui_pdl_marker_sz = -1;
+/* REAL, NEW 2026-09-29, direct instruction ("can we do from pdl, so we
+ * can stop restarting entire house each time") - the marker-file path
+ * above only fires when a Settings button writes it
+ * (hq_ui_pdl_touch_marker()'s own callers); a plain hand-edit of
+ * hq_ui.pdl in a text editor never touches that marker, so it would
+ * still need a full relaunch to take effect. hq_ui.pdl is a rarely-
+ * touched, human-edited settings file (not a hot per-frame data file -
+ * the DIAMOND/marker-not-mtime rule this house otherwise holds to is
+ * about detecting fast, automated, same-size-rewrite content changes,
+ * which doesn't apply to an editor's own save), so its own mtime is a
+ * real, sufficient, separate second trigger here - checked in ADDITION
+ * to the marker, never instead of it. */
+static time_t g_hq_ui_pdl_mtime = 0;
+static void hq_ui_pdl_apply_and_diff(const char *house_root) {
+    int old_scale = g_ui_scale_pct;
+    int old_pager_w = g_pager_btn_w, old_pager_gap = g_pager_btn_gap, old_pager_cell = g_pager_cell_w;
+    desktop_load_click_two_step(house_root);
+    if (g_ui_scale_pct != old_scale) {
+        /* font_scale changed in Settings while this window is open:
+         * re-size the chrome font, relayout (box metrics changed,
+         * not just a colour), repaint. */
+        reload_font_ui();
+        assign_nav_and_layout();
+        hq_request_redraw();
+    } else if (g_pager_btn_w != old_pager_w || g_pager_btn_gap != old_pager_gap || g_pager_cell_w != old_pager_cell) {
+        /* REAL, NEW 2026-09-29 - pager_btn_w/gap/cell_w changed:
+         * relayout+repaint, no font/scale work needed. */
+        assign_nav_and_layout();
+        hq_request_redraw();
+    }
+}
 static void hq_ui_pdl_reload_if_changed(const char *house_root) {
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/#.desktop/hq_ui_pdl_changed.txt", house_root);
     struct stat st;
-    if (stat(path, &st) != 0) return;
-    if (g_hq_ui_pdl_marker_sz < 0) { g_hq_ui_pdl_marker_sz = (long)st.st_size; return; }
-    if ((long)st.st_size > g_hq_ui_pdl_marker_sz) {
-        g_hq_ui_pdl_marker_sz = (long)st.st_size;
-        int old_scale = g_ui_scale_pct;
-        desktop_load_click_two_step(house_root);
-        if (g_ui_scale_pct != old_scale) {
-            /* font_scale changed in Settings while this window is open:
-             * re-size the chrome font, relayout (box metrics changed,
-             * not just a colour), repaint. */
-            reload_font_ui();
-            assign_nav_and_layout();
-            hq_request_redraw();
+    if (stat(path, &st) == 0) {
+        if (g_hq_ui_pdl_marker_sz < 0) g_hq_ui_pdl_marker_sz = (long)st.st_size;
+        else if ((long)st.st_size > g_hq_ui_pdl_marker_sz) {
+            g_hq_ui_pdl_marker_sz = (long)st.st_size;
+            hq_ui_pdl_apply_and_diff(house_root);
+        }
+    }
+    char pdl_path[PATH_BUF];
+    snprintf(pdl_path, sizeof(pdl_path), "%s/#.desktop/hq_ui.pdl", house_root);
+    struct stat pst;
+    if (stat(pdl_path, &pst) == 0) {
+        if (g_hq_ui_pdl_mtime == 0) g_hq_ui_pdl_mtime = pst.st_mtime;
+        else if (pst.st_mtime != g_hq_ui_pdl_mtime) {
+            g_hq_ui_pdl_mtime = pst.st_mtime;
+            hq_ui_pdl_apply_and_diff(house_root);
         }
     }
 }
@@ -10949,6 +11214,10 @@ static void hq_idle_tick(void) {
             g_khtpm_menu_pid = -1;
         }
     }
+    /* REAL, NEW 2026-09-29 - same reap-on-tick shape as g_khtpm_menu_pid
+     * just above, for ktb_toggle_zorder_respawn()'s own fork()ed
+     * children (see kh_reap_respawn_pids()'s own header comment). */
+    kh_reap_respawn_pids();
     /* REAL, NEW 2026-09-05 - age out the top-right "copied" tag: one
      * last repaint the moment it crosses ~2s old, then it stays cleared
      * (this block is a no-op once g_clip_copied_at is back to 0). */
@@ -11661,6 +11930,21 @@ static void hq_dispatch_xevent(XEvent *ev, Atom wm_delete, int is_popup) {
                         break;
                     }
                 }
+                if (hit && strcmp(hit->id, "view") == 0 && strstr(g_chtpm_path, "pchq-board.xhtpm")) {
+                    int rx = 0, ry = 0, wx = 0, wy = 0;
+                    Window child = 0;
+                    XTranslateCoordinates(dpy, win, DefaultRootWindow(dpy),
+                                          ev->xbutton.x, ev->xbutton.y, &rx, &ry, &child);
+                    XTranslateCoordinates(dpy, win, DefaultRootWindow(dpy), 0, 0, &wx, &wy, &child);
+                    int cx = ev->xbutton.x - hit->x, cy = ev->xbutton.y - hit->y;
+                    char cmd[PATH_BUF * 2];
+                    snprintf(cmd, sizeof(cmd),
+                             "sh '%s/@.apps/piececraft-hq/ops/pc_canvas_rclick.sh' %d %d %d %d %d %d %d %d %d %d",
+                             g_house_root, rx, ry, wx, wy, g_win_w, g_win_h,
+                             cx, cy, hit->w, hit->h);
+                    system(cmd);
+                    return;
+                }
                 kh_open_cli_io_context_menu(hit, ev->xbutton.x, ev->xbutton.y);
                 return;
             }
@@ -12014,8 +12298,20 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
          * the user reported. TPMOS's own reference renderer.c polls its
          * pulse marker at 60Hz (usleep(16667)); 33ms here is the same
          * marker/dirty idea, one cheap stat() per tick, no extra file. */
-        struct timeval tv = (g_has_canvas || window_is_dock() || g_drop_highlight
-                             || kh_is_drop_target_window())
+        /* REAL FIX 2026-09-29, direct live report ("well its cause i
+         * minimized the window, but for long game sessions that needs
+         * to be chill") - g_hq_minimized was already tracked (set by
+         * MINIMIZE, cleared on restore) but never actually consulted
+         * anywhere in this loop: a minimized <canvas> window (pc-hq's
+         * board, specifically) kept polling at the SAME 16667us/60Hz
+         * canvas rate as a visible one - stat()ing canvas_raw and
+         * attempting XPutImage on a window XUnmapWindow already made
+         * invisible. Real, unconditional exemption: minimized always
+         * gets the slow 150ms idle rate, regardless of g_has_canvas/
+         * dock/drop-highlight - there's nothing to repaint. */
+        struct timeval tv = (!g_hq_minimized &&
+                             (g_has_canvas || window_is_dock() || g_drop_highlight
+                             || kh_is_drop_target_window()))
                                 ? (struct timeval){ 0, 16667 }
                                 : (struct timeval){ 0, 150000 };
         select(xfd + 1, &fds, NULL, NULL, &tv);
@@ -12037,7 +12333,7 @@ static void hq_run_event_loop(Atom wm_delete, int is_popup) {
          * Marker-drive it: stat the live canvas_raw file and only repaint
          * when its size/mtime moved, plus a slow ~2Hz safety repaint
          * (late-appearing var, window resize, receipt swap). */
-        if (g_has_canvas && !g_quit) {
+        if (g_has_canvas && !g_quit && !g_hq_minimized) {
             static off_t  s_last_sz = -1;
             static time_t s_last_mt = 0;
             static time_t s_last_force = 0;
@@ -12356,6 +12652,28 @@ static void desktop_load_click_two_step(const char *house_root) {
          * comment. 0 (absent) keeps the percentage-of-screen fallback. */
         else if (strcmp(line, "default_win_w") == 0) g_default_win_w = atoi(val);
         else if (strcmp(line, "default_win_h") == 0) g_default_win_h = atoi(val);
+        else if (strcmp(line, "pager_btn_w") == 0) {
+            int v = atoi(val);
+            if (v > 0) g_pager_btn_w = v;
+        }
+        else if (strcmp(line, "pager_btn_gap") == 0) {
+            /* REAL, NEW 2026-09-29, direct live report ("can it go
+             * negative, it did move but its still too far away") - most
+             * of the "-"/"+" boxes' real apparent width is each item's
+             * own "[ ]NN. " nav-badge reservation (aw), not this gap;
+             * pulling gap negative overlaps that dead padding, not the
+             * glyphs themselves, which is exactly what's wanted here.
+             * Floored at -aw (scaled g_pager_btn_w) so plus can't be
+             * pushed fully behind/past minus's own left edge. */
+            int v = atoi(val);
+            int floor = -g_pager_btn_w;
+            if (v < floor) v = floor;
+            g_pager_btn_gap = v;
+        }
+        else if (strcmp(line, "pager_cell_w") == 0) {
+            int v = atoi(val);
+            if (v > 0) g_pager_cell_w = v;
+        }
     }
     fclose(f);
 }

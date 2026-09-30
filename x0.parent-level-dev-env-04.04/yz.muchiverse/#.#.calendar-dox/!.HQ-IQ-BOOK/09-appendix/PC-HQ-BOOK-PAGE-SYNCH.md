@@ -1,9 +1,10 @@
 # Book, page, and Synch
 
-Indexed notes for the next agent. The Player > Synch row exists on
-both menus. It does not copy a page yet. It writes
-`#.desktop/pc_synch_request.txt` with `from=taskbar` or `from=pchq`
-and `status=row-only`.
+Indexed notes for the next agent. Player > Synch from pc-hq reads the
+active livedesk desk `.pdl` and writes
+`@.apps/piececraft-hq/pieces/display/synched_entities.txt`. The board
+draws those names. Synch from the taskbar appends `hero_01` to that
+desk file if it is not already a row. It does not relaunch desk pals.
 
 ## Where the row is
 
