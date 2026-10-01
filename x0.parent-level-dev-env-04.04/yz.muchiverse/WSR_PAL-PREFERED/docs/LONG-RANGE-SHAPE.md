@@ -1,0 +1,187 @@
+# LONG-RANGE SHAPE — the civilization arc
+
+Written 2026-10-01 at the user's direction, while the economy was mid-build. This
+is **not** a work plan. It records the destination and the seams that already
+exist for it, so that decisions made today do not quietly rule it out.
+
+The short version: this is not a stock simulator that happens to have a menu. It
+is a civilization simulation whose economy is one of its systems — and the
+trajectory runs from **BC, no tech tree, no governments, no companies**, through
+territory and war, to spaceflight.
+
+Everything below is aspirational unless marked **[BUILT]**. Nothing here is
+implemented, and no part of it should be read as a promise of sequencing.
+
+---
+
+## 0. The four data domains
+
+The whole game rests on four domains. This is the load-bearing taxonomy, because
+it tells you what a new feature is really a feature *of*:
+
+1. **Technology** — what is knowable, and who knows it. **[BUILT, partially]**
+2. **Territory & Polity** — who holds land, who governs it, who fights.
+3. **Economy** — production, trade, finance, price discovery. **[BUILT]**
+4. **Demography & Ecology** — people, households, and later animals.
+
+A "company level" is (1)+(3). A war is (2)+(4). A credit rating is (1)+(3). An
+animal is (4). Keeping these separate is what stops the sim becoming one giant
+coupled function — each domain gets its own state files and its own ops, and they
+communicate only through data contracts, per the existing house rule that ops are
+self-contained.
+
+---
+
+## 1. Technology trees — governments and companies both
+
+**[BUILT, partially]** Company tech exists: `ops/goods_sink.c` runs an RPG
+level-up curve where breakthrough cost is `250 * 1.6^n`, tracked per corp as
+`rd_pool`, `generation`, and a derived `tech_level` label.
+
+**Not built, and the shape that matters:**
+
+- **Government tech trees.** Governments research too, and they research
+  *different* things — administration, military doctrine, sanitation, legal
+  systems. Government research should not compete with companies for the same
+  `rd_pool`.
+- **A real tree, not a ladder.** Today a breakthrough is one undifferentiated
+  step up. A tree needs prerequisites: you cannot research the transistor before
+  you can research vacuum tubes. This is the single biggest change to the tech
+  model and it should be a **data file** (`data/tech_tree.txt`), not code, so
+  scenarios can ship different trees.
+- **Discovery vs. exploitation.** A firm that researches one path hard should not
+  be able to research everything. Currently every breakthrough advances the one
+  good the firm already produces.
+- **BC start.** A BC world has no tech tree *at all* — everything is
+  `PROTOTYPE` and the only way forward is grinding the curve. The tier names
+  already start at `PROTOTYPE`, which is a lucky fit.
+
+---
+
+## 2. Territory, governments, war
+
+This is the largest unbuilt domain, and `gov_*` pieces already exist as a
+skeleton (7 governments, `gov_decide`/`gov_trade` with real fiscal policy).
+
+- **Real estate is already a piece type** (`realestate_*`) — territory is
+  partly scaffolded.
+- **War must cost something real**, or it is theatre. That means a government
+  balance sheet that can fund an army, and a territory model where losing land
+  costs you the land's output. Do not add a `at_war=` flag.
+- **Treaties** were named in the original design. Same discipline: they should
+  move real resources, not just a relationship bit.
+- **Sovereignty conflicts with the current entity model.** Governments are
+  currently peers of corporations with their own `state.txt`. Territory implies
+  governments *contain* pieces. Expect a real refactor here and do it before
+  building war on top.
+
+### 2.1 Spatial position — xyz on a planet/country
+
+Explicitly requested, and worth taking seriously because it is load-bearing for
+everything above.
+
+A single `x,y` on a flat map is a trap: it silently pretends the world is a
+plane and makes distance meaningless (you cannot wrap around a sphere, and you
+cannot have two places at once). The shape that will not need throwing away:
+
+- **`x, y, z` are not three flat coordinates.** They are a *hierarchical*
+  position: **planet → region → territory → parcel**. That is what lets the same
+  model serve a BC village and a space station without a rewrite.
+- So: `planet_id`, `region_id`, `x/y` local coordinates **plus an altitude or
+  orbit band** — because "space travel" is not a bigger map, it is a different
+  *place*, and the domain model must allow a location to be off-world.
+- **Distance becomes a real cost**, so logistics (SHIPPING, AIR_FREIGHT) stop
+  being decorative industry labels and start being route problems.
+- **Resources should be spatially located**, not per-corp. A mine sits somewhere.
+  That is what turns BASE_METALS_MINING from a good into a place.
+
+Cost of doing this later instead of now: moderate. Cost of doing it now: low,
+because almost nothing depends on coordinates yet. This is the rare case where
+the *cheap* move is the early one — but only if it stays a data contract
+(`data/locations.txt`) rather than a refactor of every op.
+
+---
+
+## 3. Companies graded — and credit ratings that mean something
+
+Explicitly requested: companies levelled, tied to credit ratings, stats for
+companies and people.
+
+**[BUILT, partially]** `generation` and `tech_level` are on every corp.
+
+- **Ratings AAA → CCC should be DERIVED, never stored as an opinion.** A rating
+  is a *conclusion about* financial position, so it must be a pure function of
+  real fields that already exist: `debt_to_equity`, `cash`, `book_value`,
+  margins, and `generation`. If someone can edit a rating, the rating is
+  decorative and every downstream use of it (bond pricing, lending) is a lie.
+- **This is the same rule as the rest of this project.** Price is discovered, not
+  computed; so a rating must be derived, not asserted. The one thing a rating
+  legitimately *is* is an opinion — which is exactly why the investor's
+  rating should differ from the issuer's, and why a bank marking its own paper
+  AAA is a *behaviour worth simulating*.
+- **Tech level belongs in the rating.** A firm at generation 5 with a weak balance
+  sheet is not AAA; a firm at generation 0 with iron cash might be. That is what
+  makes levelling up economically *consequential* rather than cosmetic.
+
+### 3.1 Stats — companies, people, and later animals
+
+The user named stat blocks for companies, people, and eventually animals
+(breeding, feeding). Worth stating the generalisation now, before it is built
+three times:
+
+- **Stats should be a data-driven block, not per-entity code.** One
+  `stats.txt` contract with typed keys, read by whoever cares. A breeding system
+  that is statistically similar to an R&D system should reuse the R&D shape.
+- **Stats must be disclosed asymmetrically.** Each participant holds a private
+  view with noise, exactly like `view_bias()` in `market_quote.c` — that is where
+  the game's alpha already lives, and stats are the natural extension. A
+  perfectly-known stat block is a solved game.
+- Animals are a big honest addition, not a joke: breeding and feeding are the
+  same mechanics as production and consumption with a generation time. If the
+  sinks generalize, livestock nearly free.
+
+---
+
+## 4. Spaceflight
+
+Named as the far end of the arc. Recording only the constraint that matters:
+
+**Space must be a new PLACE in the domain model, not a larger map.** That is why
+§2.1 wants a hierarchical location with an orbit band. If coordinates are flat
+`x,y,z` on a plane, space is unimplementable later without a rewrite, and the
+rewrite will happen at the worst possible time.
+
+---
+
+## 5. What this costs the current build, and what it does not
+
+Honest accounting, because long-range shape is only worth recording if it does not
+distort what is being built now:
+
+- **Nothing above requires changing the economy's design.** The auction, the
+  ledger, the sinks, the discovery of price — all survive intact. They are the
+  layer that the others are *built on*.
+- **The tech tree (§1) is the one item that will touch what already works.** A
+  tree with prerequisites is not a refactor of `goods_sink.c`, but it will
+  replace its flat curve. Do it as a data change, and do it when there is time —
+  not mid-build.
+- **Risk of the vision distorting the sim: real.** A civilization game's failure
+  mode is a spreadsheet with a theme. The economy being real, conserving money
+  and discovering prices is the thing that keeps it honest. Every item above is
+  worth adding *only because* that foundation is real; none of them justify
+  weakening it.
+
+---
+
+## 6. Near-term order (unchanged by this document)
+
+The vision does not reorder the actual work. These are still the priorities, and
+they are still small:
+
+1. Income-sized household bids (households still liquidate opening wealth).
+2. Menu items — 21 of 27 are stubs; that is the gap between a sim and a game.
+3. Equity `market_quote`/`market_settle` into the turn loop.
+4. B2B goods/services, same book, same ledger.
+
+Then the medium ones: real tech tree with prerequisites (§1), government research
+(§1), derived credit ratings (§3), spatial locations (§2.1).
