@@ -142,3 +142,66 @@ human_decision=
 
 Write-Host "corporations: $corp_created created, $corp_skipped already existed"
 Write-Host "governments:  $gov_created created, $gov_skipped already existed"
+
+# ---------------------------------------------------------------------------
+# HOUSEHOLDS
+#
+# The household layer did not exist in a live world at all. pop_tick_idle.c,
+# pop_update.c and market_quote.c all DISCOVER pop_* pieces, and there was one
+# template (pop_downtown) that nothing ever instantiated - so every one of those
+# ops had nothing to act on. It is the missing half of the economy: a goods
+# market needs buyers with cash, wages need recipients, and the population
+# feedback loop needs pieces to grow.
+#
+# A household is a pop_* piece representing a district (total_population), not
+# an individual, so it buys in bulk and holds aggregate savings.
+#
+# cash is seeded, not derived: the legacy specifies no starting household
+# wealth, exactly as it specifies none for share ownership. This default is a
+# NEW rule and is meant to be replaced by seed_cash_household from the scenario
+# file. It is a parameter so the complexity tiers can drive it later without
+# editing this script.
+#
+# Idempotent, like the rest: a household whose state.txt exists is left alone.
+# ---------------------------------------------------------------------------
+$pop_src  = Join-Path $SCRIPT_DIR "projects\wsr-pal\pieces_template\pop_downtown\state.txt"
+$pop_count   = 24
+$pop_cash    = 5000
+if ($env:WSR_PAL_HOUSEHOLDS)    { $pop_count = [int]$env:WSR_PAL_HOUSEHOLDS }
+if ($env:WSR_PAL_HOUSEHOLD_CASH){ $pop_cash  = [double]$env:WSR_PAL_HOUSEHOLD_CASH }
+
+if (-not (Test-Path $pop_src)) {
+    Write-Error "household template missing: $pop_src"
+    exit 1
+}
+
+$pop_created = 0; $pop_skipped = 0
+for ($i = 1; $i -le $pop_count; $i++) {
+    $piece_dir = Join-Path $DEST ("pop_household{0:d2}" -f $i)
+    $state     = Join-Path $piece_dir "state.txt"
+    if (Test-Path $state) { $pop_skipped++; continue }
+
+    New-Item -ItemType Directory -Force -Path $piece_dir | Out-Null
+    # Start from the template so every household carries the same field set the
+    # pop ops already read (food_supply, food_demand, unemployment_rate,
+    # avg_wage, ...), then override the one seeded value.
+    #
+    # The source is the template's state.txt, NOT the directory: Get-Content on
+    # a directory throws, and because ErrorActionPreference is Continue that
+    # throw was swallowed - the first run happily reported "24 created" having
+    # written 24 EMPTY state files. Read the file, and verify it parsed.
+    $tmpl = @(Get-Content -Path $pop_src -ErrorAction Stop)
+    if ($tmpl.Count -lt 3) {
+        Write-Error "household template looks wrong ($($tmpl.Count) lines): $pop_src"
+        exit 1
+    }
+    # -NoNewline is WRONG here. Piping an ARRAY to Set-Content -NoNewline
+    # concatenates every element with no separator, which produced a single
+    # unparseable line - "current_state=0decision_mode=1cash=5000..." - while
+    # still reporting success. The corp and government writers above get away
+    # with -NoNewline because they pass ONE here-string containing real
+    # newlines; an array needs a real newline between elements.
+    $tmpl -replace '^cash=.*$', "cash=$pop_cash" | Set-Content -Path $state
+    $pop_created++
+}
+Write-Host "households:   $pop_created created, $pop_skipped already existed"
