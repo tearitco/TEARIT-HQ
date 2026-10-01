@@ -164,3 +164,11 @@ x0.parent-level-dev-env-04.04_*.7z
 **/&.widgits/open-hai/state/*_api_key.txt
 **/state/*_api_key.txt
 **/*_api_key.txt
+
+# Provider keys whose filenames do not follow the *_api_key.txt naming
+# convention. raw_poolside.txt is a DIRECT Poolside key (prefix "sky-"),
+# which cannot authenticate against OpenRouter - see the Poolside backend
+# in ^.hai-horn. Untracked as of 2026-10-01, matched explicitly here so a
+# stray `git add -A` cannot publish it.
+**/state/raw_poolside.txt
+**/raw_poolside.txt
