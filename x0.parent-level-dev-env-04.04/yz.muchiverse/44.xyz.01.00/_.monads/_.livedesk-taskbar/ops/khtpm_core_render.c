@@ -46,9 +46,6 @@
 #include "khtpm_css_parser.h"
 #include "khtpm_render_core.c" /* real .c, not a header - see that file's own comment */
 #include "khtpm_reparse_diff.c" /* 2026-09-11 - real keyed tree diff/patch, see 08-roadmap/design-docs/CHTPM-INCREMENTAL-REPARSE-DESIGN.md. Wired in behind g_use_incremental_reparse, OFF by default - see that flag's own declaration comment. */
-static int kh_auto_px(int base_px) {
-    return (base_px * 70 + 50) / 100;
-}
 /* khtpm_taskbar_manager.h/.c removed 2026-09-01 - real, confirmed dead
  * linkage: ktb_init()/ktb_quit_and_save() (the only reason db-hq mode
  * ever needed it) were already removed from this file in an earlier
@@ -3057,6 +3054,19 @@ static int g_pager_btn_gap = 8;
  * last hardcoded value (145). See DOCK_PAGER_W's own header comment
  * for why it's still spelled that way in the rest of this file. */
 static int g_pager_cell_w = 145;
+/* Screen-relative half of the scale (LIVEDESK-UI-SCALE.md). The real
+ * screen-relative system - g_ui_user_pct (hq_ui.pdl font_scale) times
+ * g_ui_auto_pct - lived in &.widgits/_shared-lib/khtpm_ui_common.c before
+ * the claude merge; khtpm_entity.c still carries its own copy of the same
+ * globals. This file had it reduced to a dead flat-70% kh_auto_px(), which
+ * is what made the dock render unscaled (bare 24/16/36/64/110 literals)
+ * while every entity stayed shrunk. Restored to match khtpm_entity.c:142. */
+static int g_ui_user_pct = 100;
+static int g_ui_auto_pct = 100;
+static int g_ui_ref_w = 2496, g_ui_ref_h = 1664;
+static int g_ui_override_pct = 0; /* hq_ui.pdl ui_scale (0 = auto) */
+static int g_ui_scale_ready = 0;   /* set once the auto factor is computed */
+static void kh_ui_apply_scale(void);
 /* REAL, NEW 2026-09-10, direct instruction ("when should we add font
  * picker to settings") - house-wide DEFAULT font family, same real
  * role font_scale already plays for size. Any window/CSS that sets its
@@ -3201,6 +3211,50 @@ static int scaled(int base_px) {
  * goes through these two so headless layout has a sane viewport. */
 static int kh_screen_w(void) { return g_headless ? 1920 : DisplayWidth(dpy, screen); }
 static int kh_screen_h(void) { return g_headless ? 1080 : DisplayHeight(dpy, screen); }
+
+/* Screen-relative UI scale, restored to the pre-claude-merge behaviour
+ * (&.widgits/_shared-lib/khtpm_ui_common.c kh_ui_apply_scale()/kh_auto_px(),
+ * 2026-09 commit 64d95a799b "UI scales to the monitor"). kps_auto_pct() is
+ * static inside the linked khtpm_ui_scale.c, so it is mirrored here exactly
+ * as khtpm_entity.c:318 does: min(screen/ref) clamped 50..300, or the
+ * ui_scale override when > 0. */
+static int kh_auto_pct_now(void) {
+    int a = 100;
+    if (g_ui_override_pct > 0) {
+        a = g_ui_override_pct;
+    } else if (!g_headless && !dpy) {
+        return g_ui_auto_pct; /* X not open yet (config loads early) - keep the last value */
+    } else {
+        int sw = kh_screen_w(), sh = kh_screen_h();
+        if (sw > 0 && sh > 0 && g_ui_ref_w > 0 && g_ui_ref_h > 0) {
+            int rw = (int)((long)sw * 100 / g_ui_ref_w);
+            int rh = (int)((long)sh * 100 / g_ui_ref_h);
+            a = rw < rh ? rw : rh;
+        }
+    }
+    if (a < 50) a = 50;
+    if (a > 300) a = 300;
+    return a;
+}
+
+static void kh_ui_apply_scale(void) {
+    g_ui_auto_pct = kh_auto_pct_now();
+    int p = (g_ui_user_pct * g_ui_auto_pct + 50) / 100;
+    if (p < 25) p = 25;
+    if (p > 400) p = 400;
+    g_ui_scale_pct = p;
+    g_ui_scale_ready = 1;
+}
+
+/* Screen-relative px (entity grid/window sizes, which font_scale must not
+ * change): base * auto / 100, min 1. */
+static int kh_auto_px(int base_px) {
+    if (!g_ui_scale_ready) kh_ui_apply_scale();
+    if (g_ui_auto_pct == 100) return base_px;
+    int v = (base_px * g_ui_auto_pct + 50) / 100;
+    return (base_px > 0 && v < 1) ? 1 : v;
+}
+
 /* REAL Stage 5 (2026-08-16, khtpm-merge-how2.md §5d) - shared, generic
  * draw_elem()/render_tree()/font_for() (was hand-rolled, per-app pixel
  * drawing - see khtpm_draw_core.c's own header comment). Included here
@@ -5744,11 +5798,46 @@ static int layout_sidebar_panel(Elem *page) {
 }
 /* ============ end generic sidebar+panel scroll ============ */
 
+/* ============ end generic sidebar+panel scroll ============ */
+
 #define DOCK_BAR_H scaled(36)  /* UI-scaled, LIVEDESK-UI-SCALE.md (base 36) */
-#define DOCK_SPRITE_PX 24
-#define DOCK_CELL_GAP 16
-#define DOCK_NAV_BADGE_PX 36
-#define DOCK_FOCUS_BOX_W 64
+
+/* Dock cell metrics - base (reference screen) values; scaled at load time
+ * and re-applied whenever UI scale changes. Defaults match e748edbb8. */
+static int g_dock_font_px = 0; /* 0 = use the shared UI font */
+static int g_dock_cell_sprite_base = 24;
+static int g_dock_cell_gap_base    = 6;
+static int g_dock_cell_pad_base    = 6;
+static int g_dock_sprite_gap_base  = 4;
+static int g_dock_text_pad_base    = 10;
+static int g_dock_cell_min_base    = 52;
+static int g_dock_status_min_base  = 40;
+static int g_dock_font_base        = 12;
+static int g_dock_cell_max_base    = 180;
+static int g_dock_hq_max_base      = 240;
+static int g_dock_nav_badge_base   = 30;
+static int g_dock_focus_box_base   = 64;
+static int g_dock_pager_base       = 110;
+
+static int g_dock_cell_sprite_px = 0;
+static int g_dock_cell_gap_px    = 0;
+static int g_dock_cell_pad_px    = 0;
+static int g_dock_sprite_gap_px  = 0;
+static int g_dock_text_pad_px    = 0;
+static int g_dock_cell_min_px    = 0;
+static int g_dock_status_min_px  = 0;
+static int g_dock_cell_max_px    = 0;
+static int g_dock_hq_max_px      = 0;
+static int g_dock_nav_badge_px   = 0;
+static int g_dock_focus_box_px   = 0;
+static int g_dock_pager_px       = 0;
+
+/* Backward-compatible macros for call sites that still reference them */
+#define DOCK_SPRITE_PX    g_dock_cell_sprite_px
+#define DOCK_CELL_GAP     g_dock_cell_gap_px
+#define DOCK_NAV_BADGE_PX g_dock_nav_badge_px
+#define DOCK_FOCUS_BOX_W  g_dock_focus_box_px
+#define DOCK_PAGER_W      g_dock_pager_px
 /* REAL FIX 2026-09-14, direct live report ("the +- is not centered in
  * the space for it either... u may want to make the space for it
  * wider to accomodate"): 80px was sized back when nav badges on this
@@ -5805,7 +5894,7 @@ static void load_dock_strip_offset(int *out_x, int *out_y) {
     char path[PATH_BUF];
     snprintf(path, sizeof(path), "%s/#.desktop/livedesk_taskbar.pdl", g_house_root);
     FILE *f = fopen(path, "r");
-    if (!f) return;
+    if (f) {
     char line[PATH_BUF];
     while (fgets(line, sizeof(line), f)) {
         if (strncmp(line, "SECTION", 7) != 0) continue;
@@ -5827,13 +5916,59 @@ static void load_dock_strip_offset(int *out_x, int *out_y) {
         v[strcspn(v, "\r\n")] = '\0';
         if (strcmp(key, "strip_x_offset") == 0) *out_x = atoi(v);
         else if (strcmp(key, "strip_y_offset") == 0) *out_y = atoi(v);
+        else if (strcmp(key, "dock_cell_sprite_px") == 0) g_dock_cell_sprite_base = atoi(v);
+        else if (strcmp(key, "dock_cell_gap_px") == 0) g_dock_cell_gap_base = atoi(v);
+        else if (strcmp(key, "dock_cell_pad_px") == 0) g_dock_cell_pad_base = atoi(v);
+        else if (strcmp(key, "dock_sprite_gap_px") == 0) g_dock_sprite_gap_base = atoi(v);
+        else if (strcmp(key, "dock_text_pad_px") == 0) g_dock_text_pad_base = atoi(v);
+        else if (strcmp(key, "dock_cell_min_px") == 0) g_dock_cell_min_base = atoi(v);
+        else if (strcmp(key, "dock_status_min_px") == 0) g_dock_status_min_base = atoi(v);
+        else if (strcmp(key, "dock_font_px") == 0) g_dock_font_base = atoi(v);
+        else if (strcmp(key, "dock_cell_max_px") == 0) g_dock_cell_max_base = atoi(v);
+        else if (strcmp(key, "dock_hq_max_px") == 0) g_dock_hq_max_base = atoi(v);
+        else if (strcmp(key, "dock_nav_badge_px") == 0) g_dock_nav_badge_base = atoi(v);
+        else if (strcmp(key, "dock_focus_box_px") == 0) g_dock_focus_box_base = atoi(v);
+        else if (strcmp(key, "dock_pager_px") == 0) g_dock_pager_base = atoi(v);
     }
     fclose(f);
+    }
+    kh_ui_apply_scale();
+    g_dock_cell_sprite_px = kh_auto_px(g_dock_cell_sprite_base);
+    g_dock_cell_gap_px    = kh_auto_px(g_dock_cell_gap_base);
+    g_dock_cell_pad_px    = kh_auto_px(g_dock_cell_pad_base);
+    g_dock_sprite_gap_px  = kh_auto_px(g_dock_sprite_gap_base);
+    g_dock_text_pad_px    = kh_auto_px(g_dock_text_pad_base);
+    g_dock_cell_min_px    = kh_auto_px(g_dock_cell_min_base);
+    g_dock_status_min_px  = kh_auto_px(g_dock_status_min_base);
+    g_dock_font_px        = scaled(g_dock_font_base);
+    g_dock_cell_max_px    = kh_auto_px(g_dock_cell_max_base);
+    g_dock_hq_max_px      = kh_auto_px(g_dock_hq_max_base);
+    g_dock_nav_badge_px   = kh_auto_px(g_dock_nav_badge_base);
+    g_dock_focus_box_px   = kh_auto_px(g_dock_focus_box_base);
+    g_dock_pager_px       = kh_auto_px(g_dock_pager_base);
+}
+
+static XftFont *dock_font(void) {
+    if (!dpy) return NULL;
+    if (g_dock_font_px <= 0) return font_ui;
+    static int cached_px = -1;
+    static XftFont *cached = NULL;
+    if (cached && cached_px == g_dock_font_px) return cached;
+    if (cached) XftFontClose(dpy, cached);
+    char spec[128];
+    snprintf(spec, sizeof(spec), "%s:pixelsize=%d", g_ui_font_family, g_dock_font_px);
+    XftFont *f = XftFontOpenName(dpy, screen, spec);
+    if (!f) f = XftFontOpenName(dpy, screen, "DejaVu Sans:pixelsize=9");
+    cached = f;
+    cached_px = g_dock_font_px;
+    return f;
 }
 
 static int dock_text_px(const char *s) {
     if (!s || !s[0]) return 0;
     {
+        XftFont *df = dock_font();
+        if (!df) df = font_ui;
         int w = 0;
         const unsigned char *p = (const unsigned char *)s;
         const unsigned char *run = p;
@@ -5843,9 +5978,9 @@ static int dock_text_px(const char *s) {
             const EmojiTile *t = (cp == 0xFE0F || cp == 0x200D) ? NULL : khtpm_emoji_for_cp(cp);
             if (t) {
                 if (p > run) {
-                    if (dpy && font_ui) {
+                    if (dpy && df) {
                         XGlyphInfo ext;
-                        XftTextExtentsUtf8(dpy, font_ui, (const FcChar8 *)run, (int)(p - run), &ext);
+                        XftTextExtentsUtf8(dpy, df, (const FcChar8 *)run, (int)(p - run), &ext);
                         w += ext.xOff;
                     } else w += (int)(p - run) * 7;
                 }
@@ -5855,9 +5990,9 @@ static int dock_text_px(const char *s) {
             } else p += clen;
         }
         if (p > run) {
-            if (dpy && font_ui) {
+            if (dpy && df) {
                 XGlyphInfo ext;
-                XftTextExtentsUtf8(dpy, font_ui, (const FcChar8 *)run, (int)(p - run), &ext);
+                XftTextExtentsUtf8(dpy, df, (const FcChar8 *)run, (int)(p - run), &ext);
                 w += ext.xOff;
             } else w += (int)(p - run) * 7;
         }
@@ -5866,6 +6001,8 @@ static int dock_text_px(const char *s) {
 }
 
 /* Compact left-packed cells (old strip), not equal-split across the screen. */
+static int dock_item_cw(Elem *t);
+
 static int layout_dock_toolbar_row(Elem *row, int x, int y, int max_w) {
     int j, col_x = x, used = 0;
     row->x = x; row->y = y; row->h = DOCK_BAR_H; row->nav_index = 0;
@@ -5881,8 +6018,8 @@ static int layout_dock_toolbar_row(Elem *row, int x, int y, int max_w) {
          * readout after the clock): laid out and drawn, but no nav
          * index, so it gets no "[ ]N." badge and arrows/digits skip it. */
         if (elem_has_class(t, "no-nav")) {
-            cw = 6 + dock_text_px(t->label) + 10;
-            if (cw < 40) cw = 40;
+            cw = g_dock_cell_pad_px + dock_text_px(t->label) + g_dock_text_pad_px;
+            if (cw < g_dock_status_min_px) cw = g_dock_status_min_px;
             t->x = col_x; t->y = y; t->w = cw; t->h = DOCK_BAR_H; t->nav_index = 0;
             css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
             col_x += cw + DOCK_CELL_GAP;
@@ -5890,16 +6027,13 @@ static int layout_dock_toolbar_row(Elem *row, int x, int y, int max_w) {
             if (used > max_w) used = max_w;
             continue;
         }
-        cw = 6 + DOCK_NAV_BADGE_PX;
-        if (t->sprite[0]) cw += DOCK_SPRITE_PX + 4;
-        cw += dock_text_px(t->label) + 10;
-        if (cw < 52) cw = 52;
-        if (cw > 180) cw = 180;
+        cw = dock_item_cw(t);
         t->x = col_x;
         t->y = y;
         t->w = cw;
         t->h = DOCK_BAR_H;
         css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
+        if (g_dock_font_px > 0) { t->style.has_font_size = 1; t->style.font_size = g_dock_font_px; }
         t->nav_index = ++g_n_nav;
         g_nav[g_n_nav - 1] = t;
         col_x += cw + DOCK_CELL_GAP;
@@ -5911,13 +6045,13 @@ static int layout_dock_toolbar_row(Elem *row, int x, int y, int max_w) {
 }
 
 static int dock_item_cw(Elem *t) {
-    int cw = 6 + DOCK_NAV_BADGE_PX;
-    if (t->sprite[0]) cw += DOCK_SPRITE_PX + 4;
-    cw += dock_text_px(t->label) + 10;
-    if (cw < 52) cw = 52;
+    int cw = g_dock_cell_pad_px + DOCK_NAV_BADGE_PX;
+    if (t->sprite[0]) cw += DOCK_SPRITE_PX + g_dock_sprite_gap_px;
+    cw += dock_text_px(t->label) + g_dock_text_pad_px;
+    if (cw < g_dock_cell_min_px) cw = g_dock_cell_min_px;
     if (elem_has_class(t, "hqwin")) {
-        if (cw > 240) cw = 240;
-    } else if (cw > 180) cw = 180;
+        if (cw > g_dock_hq_max_px) cw = g_dock_hq_max_px;
+    } else if (cw > g_dock_cell_max_px) cw = g_dock_cell_max_px;
     return cw;
 }
 
@@ -6065,6 +6199,7 @@ static void dock_draw_separators(Elem *page) {
 static int layout_dock_bar(Elem *page) {
     int is_bottom, sw, sh, y, i, ox, oy, row_w, content_w = 0;
     if (!page || !window_is_dock()) return 0;
+    kh_ui_apply_scale(); /* every DOCK_* constant below is scale-derived */
     is_bottom = elem_has_class(g_window, "dock-bottom");
     g_default_has_sidebar_panel = 1; /* persistent: dispatch must not quit */
     generic_sbar_reset();
@@ -6113,6 +6248,7 @@ static int layout_dock_bar(Elem *page) {
                     continue;
                 }
                 css_compute_style(&g_sheet, t->tag, t->id, t->classes, t->n_classes, 0, &t->style);
+                if (g_dock_font_px > 0) { t->style.has_font_size = 1; t->style.font_size = g_dock_font_px; }
                 t->w = dock_item_cw(t);
                 t->h = DOCK_BAR_H;
             }
@@ -6178,7 +6314,6 @@ static int layout_dock_bar(Elem *page) {
             row_max = (is_bottom ? g_win_w : (sw - ox * 2)) - DOCK_FOCUS_BOX_W;
             if (row_max < 40) row_max = 40;
             row_w = layout_dock_toolbar_row(c, DOCK_FOCUS_BOX_W, y, row_max);
-            row_w += DOCK_FOCUS_BOX_W;
             if (row_w > content_w) content_w = row_w;
             y += DOCK_BAR_H;
         } else if (strcmp(c->tag, "cli_io") == 0) {
@@ -6316,7 +6451,10 @@ static int layout_dock_bar(Elem *page) {
     } else {
         g_win_x = ox;
         g_win_y = oy;
-        g_win_w = content_w + 8;
+        /* row_w is measured from where the row STARTS (x = DOCK_FOCUS_BOX_W),
+         * not from 0, so the focus-box offset has to be added here or the
+         * rightmost cell (the no-nav status cell) gets clipped. */
+        g_win_w = DOCK_FOCUS_BOX_W + content_w + 8;
         if (g_win_w < 80) g_win_w = 80;
         if (g_win_x + g_win_w > sw - ox) g_win_w = sw - ox - g_win_x;
         if (g_win_w < 40) g_win_w = 40;
@@ -12952,7 +13090,20 @@ static void desktop_load_click_two_step(const char *house_root) {
             int p = (int)(atof(val) * 100.0 + 0.5);
             if (p < 50) p = 50;      /* the hq_ui.pdl comment's own 0.5-3.0 range */
             if (p > 300) p = 300;
-            g_ui_scale_pct = p;
+            g_ui_user_pct = p;       /* font_scale is one factor of two (see kh_ui_apply_scale) */
+            kh_ui_apply_scale();
+        }
+        else if (strcmp(line, "ui_scale") == 0) {
+            g_ui_override_pct = (int)(atof(val) * 100.0 + 0.5);
+            kh_ui_apply_scale();
+        }
+        else if (strcmp(line, "ui_ref_width") == 0 && atoi(val) > 0) {
+            g_ui_ref_w = atoi(val);
+            kh_ui_apply_scale();
+        }
+        else if (strcmp(line, "ui_ref_height") == 0 && atoi(val) > 0) {
+            g_ui_ref_h = atoi(val);
+            kh_ui_apply_scale();
         }
         else if (strcmp(line, "font_family") == 0 && val[0]) {
             snprintf(g_ui_font_family, sizeof(g_ui_font_family), "%s", val);
