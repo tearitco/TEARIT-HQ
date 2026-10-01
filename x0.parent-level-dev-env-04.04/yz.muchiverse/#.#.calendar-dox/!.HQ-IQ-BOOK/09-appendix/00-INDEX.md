@@ -21,6 +21,20 @@
   taskbar cell 9), why livedesk BOOK:PAGE and pc-hq Book/Page are
   different files, and the open copy questions. The durable front
   door is now `../18.pc-hq/00-INDEX.md`.
+- `WINDOWS-TASKBAR-PORT.md` — **the khtpm taskbar on Windows.** Read this
+  before changing the taskbar on Linux, or after a Linux change, to get
+  Windows back up to speed. Covers the header-funnel port (why
+  `khtpm_core_render.c` compiles unmodified and must stay that way), the
+  `build_khtpm_strip_win.ps1` / `run_khtpm_strip_win.ps1` twins, the
+  two load-bearing gcc flags, why WMI `Win32_Process.Create` is the only
+  bulletproof Windows `setsid`, the shim's real limits, and why the
+  bottom bar looks empty (it is a data fact: `n_tabs=1`). **§8 is the
+  one to read before touching navigation**: it documents the
+  `g_package_dir` dirname bug (backslash paths left it pointing at a
+  *file*, killing the bottom-bar peer window and forcing a second
+  renderer process with its own stuck-at-1 `g_focus_nav`) and the
+  `WH_KEYBOARD_LL` nav-key hook plus the `XGetInputFocus()` fix, without
+  which the grab cancels itself on the first tick.
 - `GLOSSARY-APPENDIX.md` — pointer; the core glossary lives at
   `01-orientation/GLOSSARY.md` and didn't need a fuller version in this
   pass.

@@ -164,6 +164,27 @@ static volatile sig_atomic_t g_running = 1;
 static void on_sigterm(int sig) { (void)sig; g_running = 0; }
 #endif
 
+/* POSIX rename(2) atomically REPLACES an existing destination. MinGW's CRT
+ * rename() does not - it returns EEXIST when the destination exists, so a
+ * bare rename(tmp, path) publishes the tmp exactly once (first tick) and
+ * then silently fails forever, freezing the live file at its first
+ * snapshot. write_small_file() below (strip_ui.txt, written every manager
+ * tick) is the direct victim: the 2026-09-28 incident had strip_ui.txt
+ * pinned to boot-time content while the manager kept writing fresh .tmp
+ * files. MoveFileExA's MOVEFILE_REPLACE_EXISTING is the faithful Win32
+ * spelling of POSIX rename's replace-existing contract, so route the
+ * rename through it on Windows and keep the plain rename everywhere else. */
+#ifdef _WIN32
+static int ktb_atomic_rename(const char *oldp, const char *newp) {
+    if (MoveFileExA(oldp, newp, MOVEFILE_REPLACE_EXISTING)) return 0;
+    return -1;
+}
+#else
+static int ktb_atomic_rename(const char *oldp, const char *newp) {
+    return rename(oldp, newp);
+}
+#endif
+
 static void path_join2(char *out, size_t n, const char *root, const char *rel) {
     size_t rl = strlen(root);
     if (rl > 0 && (root[rl - 1] == '/' || root[rl - 1] == '\\'))
@@ -288,7 +309,7 @@ static void write_small_file(const char *house_root, const char *rel_path, const
      * already does the correct fopen+rename-only pattern; this was the
      * one outlier. Real fix: drop the redundant remove(), let rename()
      * do its one real atomic job. */
-    rename(tmp, path);
+    ktb_atomic_rename(tmp, path);
 }
 
 static void format_datetime(char *out, size_t out_sz, const char *lang) {
@@ -297,11 +318,11 @@ static void format_datetime(char *out, size_t out_sz, const char *lang) {
     if (!tm_info) { snprintf(out, out_sz, "??:??"); return; }
 
     if (lang && strcmp(lang, "zh") == 0) {
-        static const char *zh_wday[] = {"日", "一", "二", "三", "四", "五", "六"};
+          static const char *zh_wday[] = { "\xe6\x97\xa5", "\xe4\xb8\x80", "\xe4\xba\x8c", "\xe4\xb8\x89", "\xe5\x9b\x9b", "\xe4\xba\x94", "\xe5\x85\xad" };
         int year = tm_info->tm_year + 1900;
         int mon = tm_info->tm_mon + 1;
         int mday = tm_info->tm_mday;
-        snprintf(out, out_sz, "%04d年%02d月%02d日 周%s %02d:%02d",
+        snprintf(out, out_sz, "%04d\xe5\xb9\xb4%02d\xe6\x9c\x88%02d\xe6\x97\xa5 \xe6\x98\x9f\xe6\x9c\x9f%s %02d:%02d",
                  year, mon, mday,
                  zh_wday[tm_info->tm_wday],
                  tm_info->tm_hour, tm_info->tm_min);
@@ -494,8 +515,7 @@ static void write_strip_state(const char *house_root, const char *buf) {
     if (!f) return;
     fputs(buf, f);
     fclose(f);
-    remove(path);
-    rename(tmp, path);
+    ktb_atomic_rename(tmp, path);
 }
 
 /* Mirrors CHTPM's frame_changed.txt touch-signal (chtpm_parser.c's four

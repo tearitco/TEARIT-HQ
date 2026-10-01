@@ -3106,8 +3106,18 @@ static void dock_relay_focus_code(int code) {
 static int click_focus_then_activate(Elem *hit) {
     if (!hit) return 0;
     /* Out-of-scope rows stay numbered and drawn, but a click must not
-     * steal focus or fire — same as chtpm_parser.c is_navigable(). */
-    if (!kh_elem_in_scope(hit)) return 0;
+     * steal focus or fire - same as chtpm_parser.c is_navigable().
+     * REAL FIX 2026-09-30 (live report: "tried opening pc-hq from toys
+     * dropdown, didn't open"): the dock is exempt for the same reason
+     * kh_nav_step() and kh_apply_scope_confine() are - see kh_nav_step's
+     * own comment. The dock's scope_id is the strip-cell's own id, so
+     * kh_elem_in_scope()'s scope-root / parent-chain / scope-id checks
+     * match NOTHING among the dropdown rows, this returned 0, and the
+     * click was silently dropped: row highlighted or not, pc-hq never
+     * opened. The dropdown-child check inside kh_elem_in_scope() is the
+     * one branch that legitimately matches dock dropdown rows, so let the
+     * dock through and keep that structure doing the real work. */
+    if (!window_is_dock() && !kh_elem_in_scope(hit)) return 0;
     /* Dock: bottom-strip HQ window cells (class hqwin / onclick
      * FOCUSWIN:) are the same shape as a taskbar button — first click
      * must raise/restore, not merely focus (Enter already activated;
@@ -6599,12 +6609,45 @@ static int kh_elem_arrow_stop(Elem *e) {
 static void kh_nav_step(int dir) {
     int prev, n;
     if (g_n_nav < 1) return;
-    if (!g_default_scope_confine) {
-        /* REAL FIX 2026-09-27, direct user request ("loop around index
-         * mod we wanted to do? it should loop both ways"): navigation now
-         * wraps at both boundaries instead of clamping - going below 1
-         * wraps to max, going above max wraps to 1, works in both
-         * directions. */
+    /* REAL FIX 2026-09-27, direct user request ("loop around index
+     * mod we wanted to do? it should loop both ways"): navigation now
+     * wraps at both boundaries instead of clamping - going below 1
+     * wraps to max, going above max wraps to 1, works in both
+     * directions. */
+    /* REAL FIX 2026-09-30 (live report: "after they keys seem to replay,
+     * they get stuck? is it reconsuming last key over and over?", plus
+     * "tried opening pc-hq from toys dropdown, didn't open") - the dock
+     * must NOT be scope-confined here, exactly like
+     * kh_apply_scope_confine()'s own `&& !window_is_dock()` guard.
+     *
+     * Linux parity: chtpm_parser.c's is_navigable() is the only gate its
+     * up/down loop (chtpm_parser.c:1721) consults, and that predicate knows
+     * nothing about page scopes - scope confinement there is expressed
+     * purely by which rows end up in elements[]. This port instead kept a
+     * process-global g_default_scope_confine + kh_elem_arrow_stop(), which
+     * is correct for a real window but poison for the dock: the dock's
+     * scope_id is the strip-cell's own id (set on every dropdown open),
+     * so kh_elem_arrow_stop() returns 0 for the root and the scope_id row
+     * and 1 for everything else. When the in-scope candidate set ends up
+     * empty - which is the normal state for a closed dropdown, since
+     * assign_nav_and_layout()'s own clamp at the top of this file has
+     * already collapsed focus onto g_dock_drop_lo - the
+     * `while (g_focus_nav != prev && !kh_elem_arrow_stop(...))` loop walks
+     * all the way around the ring and exits on `g_focus_nav == prev`, i.e.
+     * focus NEVER changes. One keypress in, one identical relay code out
+     * (dock_nav_after_step()'s 6000+nav), forever - which is precisely the
+     * "keys replaying the same thing then getting stuck" report, and also
+     * why the click path's own kh_elem_in_scope() guard in
+     * click_focus_then_activate() refuses the toys dropdown rows so pc-hq
+     * never fires.
+     *
+     * In the dock every laid-out row is navigable, so take the plain
+     * clamped step. The dropdown clamp above stays the single owner of
+     * "focus may not leave the open dropdown", and because
+     * dock_nav_step() now moves focus a real step at a time it lands
+     * INSIDE [g_dock_drop_lo, g_dock_drop_hi] and the clamp stops firing -
+     * the two no longer fight. */
+    if (window_is_dock() || !g_default_scope_confine) {
         int nv = g_focus_nav + dir;
         if (nv < 1) nv = g_n_nav;
         if (nv > g_n_nav) nv = 1;
@@ -6860,12 +6903,41 @@ static void assign_nav_and_layout(void) {
         g_dock_header_nav_hi = g_n_nav;
         if (g_dock_peer) {
             int hx = g_win_x, hy = g_win_y, hw = g_win_w, hh = g_win_h;
+            /* REAL FIX 2026-09-30 (live report: "after i clicked pc-hq,
+             * it seemed to freeze. and take multiple pressed 2 respond/
+             * close. then nav reset to one 1 but jumped back to 12 on
+             * focus and is stuck") - the peer (bottom) bar's layout pass
+             * ran with the HEADER bar's dropdown range still live in
+             * g_dock_drop_lo/_hi, and both dropdown layouters write those
+             * globals: `g_dock_drop_hi = c->nav_index` is UNCONDITIONAL
+             * (only _lo guards on `if (!g_dock_drop_lo)`). So opening any
+             * dropdown in the BOTTOM bar made the bottom bar's last row
+             * become g_dock_drop_hi while g_dock_drop_lo stayed the
+             * HEADER's, i.e. a range spanning two different bars.
+             *
+             * Every consumer of that range then disagreed with the
+             * screen: the clamp just below yanks focus into it
+             * ("nav reset to 1 but jumped back to 12"), dock_nav_step()'s
+             * own in-range step refuses to move because focus is pinned,
+             * and dock_hit_test()'s i0/i1 window (g_dock_click_menu ->
+             * [drop_lo-1, drop_hi)) scans rows belonging to the other bar
+             * so a click either hits nothing or hits a row whose activate
+             * re-enters this same layout and fights the click - the
+             * "freeze / needs several presses to respond or close".
+             *
+             * g_dock_drop_lo/_hi mean ONE specific thing: the range of rows
+             * drawn in the popup MENU window (g_dock_menu_win). Only the
+             * non-bottom bar builds that window (its own `if (!is_bottom)`
+             * block), so only the non-bottom bar may own those globals.
+             * Save and restore them across the peer pass. */
+            int hlo = g_dock_drop_lo, hhi = g_dock_drop_hi;
             Elem *hold = g_window;
             g_window = g_dock_peer;
             {
                 Elem *pp = find_page(g_current_page);
                 if (pp) layout_dock_bar(pp);
             }
+            g_dock_drop_lo = hlo; g_dock_drop_hi = hhi;
             g_dock_peer_x = g_win_x; g_dock_peer_y = g_win_y;
             g_dock_peer_w = g_win_w; g_dock_peer_h = g_win_h;
             g_window = hold;
@@ -7941,6 +8013,80 @@ static void dispatch(const char *action) {
         if (g_page_stack_n > 0) { switch_page(g_page_stack[--g_page_stack_n]); }
         return;
     }
+    /* REAL FIX 2026-09-30 (live report: "tried opening pc-hq from toys
+     * dropdown, didn't open", then "after i clicked pc-hq, it seemed to
+     * freeze. and take multiple pressed 2 respond / close") - handle the
+     * dock's own strip-relay action in-process instead of shelling out.
+     *
+     * The manager builds every toys/pals/palettes dropdown row's command
+     * as "'<...>/strip_relay.sh' <5000+row>" (see
+     * khtpm_taskbar_manager_main.c's own KSC_HQ_ITEM_BASE / hi_%d_cmd
+     * writer). That script's entire job is one line: append the code to
+     * #.desktop/strip_history.txt, which the manager then polls. On
+     * Linux, `sh` exists and this works. On Windows there is no `sh` on
+     * PATH (verified: Get-Command sh fails; only Git's bash.exe exists at
+     * a hardcoded path this code has no business knowing), so cmd.exe
+     * answered "'C:/.../strip_relay.sh' is not recognized" / "The system
+     * cannot find the path specified" - the row did nothing at all. That
+     * is why NO toys item opened, not just pc-hq.
+     *
+     * Worse, the two failure modes the user actually saw both come from
+     * reaching system() at all:
+     *   - "froze / needs several presses": on Windows system() BLOCKS
+     *     until the child exits, and this runs inside the click handler
+     *     on the event loop, so the entire UI stalls for the duration.
+     *     The trailing `&` is a POSIX background operator that cmd.exe
+     *     does not give the same non-blocking meaning.
+     *   - the dropdown staying open across those retries: activate path
+     *     re-ran assign_nav_and_layout() + redraw() per click while the
+     *     action silently failed.
+     *
+     * This renderer ALREADY writes that exact file in-process for nav
+     * relays (dock_relay_focus_code()), and already owns every other
+     * Windows-shell concern in this port. Writing one integer here is
+     * strictly less work than the shell-out and removes the whole
+     * dependency: no sh, no PATH, no blocking, no freeze.
+     *
+     * Matched narrowly - only when the action is exactly a quoted path
+     * ending in strip_relay.sh followed by a bare integer code, which is
+     * the manager's own generated form. Anything else still falls
+     * through to the real shell branch below, so genuine shell actions
+     * are untouched. The `submit` form (used by cli_io) takes a 3rd argv
+     * and a different code path and is NOT matched here. */
+    {
+        const char *a = action;
+        char relay[PATH_BUF];
+        relay[0] = '\0';
+        while (*a == ' ') a++;
+        if (*a == '\'') {
+            const char *close = strchr(a + 1, '\'');
+            if (close) {
+                size_t n = (size_t)(close - (a + 1));
+                if (n < sizeof(relay)) {
+                    memcpy(relay, a + 1, n);
+                    relay[n] = '\0';
+                }
+                a = close + 1;
+            }
+        }
+        const char *base = relay;
+        for (const char *q = relay; *q; q++)
+            if (*q == '/' || *q == '\\') base = q + 1;
+        const char *code = a;
+        while (*code == ' ') code++;
+        if (relay[0] && strcmp(base, "strip_relay.sh") == 0) {
+            const char *end = code;
+            while (*end >= '0' && *end <= '9') end++;
+            if (end != code) {
+                int only_spaces = 1;
+                for (const char *p = end; *p; p++) if (*p != ' ') { only_spaces = 0; break; }
+                if (only_spaces) {
+                    dock_relay_focus_code(atoi(code));
+                    return;
+                }
+            }
+        }
+    }
     char cmd[PATH_BUF * 3];
     snprintf(cmd, sizeof(cmd), "%s '%s' '%s' >/dev/null 2>&1 &", action, g_package_dir, g_house_root);
     int rc = system(cmd);
@@ -8698,7 +8844,29 @@ static void default_grid_handle_key(KeySym ks, char ch) {
 static void activate_focused(void) {
     if (g_focus_nav < 1 || g_focus_nav > g_n_nav) return;
     Elem *item = g_nav[g_focus_nav - 1];
-    if (!kh_elem_in_scope(item)) return;
+    /* REAL FIX 2026-09-30 (live report: "after i clicked pc-hq, it
+     * seemed to freeze. and take multiple presses 2 respond / close") -
+     * this is the SAME dock scope bug that click_focus_then_activate()
+     * carried, reached here instead: click_focus_then_activate() pins
+     * g_focus_nav to the clicked row, then the click handler calls
+     * activate_focused(), and THIS guard is the one that ran. The dock's
+     * scope_id is the strip-cell's own id, so kh_elem_in_scope()'s
+     * scope-root / parent-chain / scope-id tests match none of the
+     * dropdown rows, it returned 0, and activate_focused() returned
+     * silently - no launch, no error, nothing on screen. That is
+     * precisely "froze, needs several presses to respond".
+     *
+     * It was worse than a dead click: dock_hit_test()'s click handler
+     * calls assign_nav_and_layout() + redraw() after every click
+     * regardless, so each attempt relaid out and redrew the bar while
+     * the dropdown stayed open - the visible part of the "freeze".
+     *
+     * The dock is exempt for the same reason as everywhere else in this
+     * file (kh_nav_step, kh_apply_scope_confine, dock_nav_step,
+     * click_focus_then_activate): page-scope confinement is a real-window
+     * concept, meaningless for the dock, whose dropdown range is already
+     * fenced by g_dock_drop_lo/_hi in dock_nav_step(). */
+    if (!window_is_dock() && !kh_elem_in_scope(item)) return;
     /* REAL FIX 2026-08-31 - see default_cli_io_handle_key()'s own
      * Escape-branch comment for the full real diagnosis. Grab taken
      * HERE (arm time), released on every real disarm path. */
@@ -9989,6 +10157,81 @@ static void dump_frame_png(void) {
     }
 }
 
+/* REAL FIX 2026-09-29 (Windows live report: "arrows just keep jumping back
+ * to 1"; the same class of bug the Linux build already hit - see
+ * bug_bounty.md 2026-09-13, "the VERY NEXT arrow-key press snapped straight
+ * back to nav1", traced there to assign_nav_and_layout()'s drop-zone clamp).
+ *
+ * Both arrow branches below move g_focus_nav, and both must then tell the
+ * manager where the shared selector now sits and make sure the bar OWNING
+ * that row is the one raised, focused and holding the keyboard grab. The
+ * plain branch already did all three inline; the open-dropdown branch did
+ * NONE of them. Worse, that branch stepped a focus that was still OUTSIDE
+ * [g_dock_drop_lo, g_dock_drop_hi] (a bar click opens the dropdown while
+ * focus is still on the header cell that triggered it), and the layout
+ * clamp then yanked focus back to g_dock_drop_lo on the very next layout
+ * pass. Arrow handler and clamp fighting each other is the visible
+ * "jumping back to 1". kh_apply_scope_confine() cannot cover this: it
+ * returns early for window_is_dock(), so the dock relies on that clamp
+ * alone. */
+static void dock_nav_after_step(void) {
+    if (!window_is_dock()) return;
+    dock_relay_focus_code(6000 + g_focus_nav);
+    if (g_dock_peer_win && g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
+        Window want = (g_focus_nav > g_dock_header_nav_hi) ? g_dock_peer_win : win;
+        XRaiseWindow(dpy, want);
+        XSetInputFocus(dpy, want, RevertToParent, CurrentTime);
+        dock_grab_keyboard(want);
+    }
+}
+
+static void dock_nav_step(int dir) {
+    /* REAL FIX 2026-09-30 (live report: "nav is still getting stuck, maybe
+     * after opening / closing a dropdown") - this used to hand-roll the
+     * whole step instead of calling kh_nav_step():
+     *
+     *   if (g_focus_nav < g_dock_drop_lo)      g_focus_nav = g_dock_drop_lo;
+     *   else if (g_focus_nav > g_dock_drop_lo) g_focus_nav += dir;
+     *
+     * which has NO branch for g_focus_nav == g_dock_drop_lo, so the arrow
+     * key was a total no-op on exactly the row the snap above lands on.
+     * That row is also where assign_nav_and_layout()'s own drop-zone clamp
+     * forces focus whenever the dropdown is open (its
+     * `g_focus_nav < g_dock_drop_lo || > g_dock_drop_hi` test), so you
+     * arrive there, both arrow directions do nothing, and nav is stuck
+     * until the dropdown is closed again - reported as "stuck from arrow
+     * AND from click", since the click path pins focus the same way.
+     * The bare `g_focus_nav += dir` was also unclamped: it could walk past
+     * g_dock_drop_hi and past g_n_nav entirely, whereas kh_nav_step()
+     * bounds-checks to [1, g_n_nav], wraps, and honours
+     * kh_elem_arrow_stop() rows under scope confinement.
+     *
+     * The 2026-09-13 8c fix's actual intent - "walks focus INTO the
+     * dropdown at its first row when it is outside" - only needs the snap
+     * pre-step, so keep that and delegate the real stepping to the one
+     * function that already does it correctly. Bookkeeping
+     * (dock_nav_after_step: relay 6000+nav, raise/refocus/regrab) still
+     * runs on both paths, which is the other half of the 8c fix. */
+    if (g_dock_drop_lo && g_default_active_scope_id[0] &&
+        g_focus_nav < g_dock_drop_lo)
+        g_focus_nav = g_dock_drop_lo;
+    else if (!g_dock_drop_lo || !g_default_active_scope_id[0])
+        kh_nav_step(dir);
+    else {
+        /* Dropdown is open: step freely, but stay inside its rows. The
+         * clamp at the top of this file (assign_nav_and_layout) enforces
+         * the same range on every layout pass; doing it here as well
+         * means a step past the last/first row leaves focus IN the
+         * dropdown instead of briefly landing outside and being yanked
+         * back on the next ~400ms projector tick, which is what read as
+         * "the key got stuck" (kh_nav_step's own wrap would otherwise
+         * carry focus out of the dropdown entirely). */
+        int nv = g_focus_nav + dir;
+        if (nv >= g_dock_drop_lo && nv <= g_dock_drop_hi) g_focus_nav = nv;
+    }
+    dock_nav_after_step();
+}
+
 static void handle_key(KeySym ks, char ch) {
     /* PDL-configurable window close (#.desktop/hq_ui.pdl close_combo,
      * default ctrl+c). The deliberate close gesture for a focused
@@ -10246,33 +10489,12 @@ static void handle_key(KeySym ks, char ch) {
         if (focused->backspace_action[0]) { dispatch_no_quit(focused->backspace_action); return; }
     }
     if (ks == XK_Up || ks == XK_Left) {
-        if (g_dock_drop_lo && g_default_active_scope_id[0]) {
-            if (g_focus_nav > g_dock_drop_lo) g_focus_nav--;
-            return;
-        }
-        kh_nav_step(-1);
-        if (window_is_dock()) dock_relay_focus_code(6000 + g_focus_nav);  /* snap the manager's strip_focus_cell to the new highlight (absolute, no drift) */
-        if (window_is_dock() && g_dock_peer_win && g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
-            Window want = (g_focus_nav > g_dock_header_nav_hi) ? g_dock_peer_win : win;
-            XRaiseWindow(dpy, want);
-            XSetInputFocus(dpy, want, RevertToParent, CurrentTime);
-            dock_grab_keyboard(want);
-        }
+        dock_nav_step(-1);
         return;
     }
     if (ks == XK_Down || ks == XK_Right) {
-        if (g_dock_drop_lo && g_default_active_scope_id[0]) {
-            if (g_focus_nav < g_dock_drop_hi) g_focus_nav++;
-            return;
-        }
-        kh_nav_step(1);
-        if (window_is_dock()) dock_relay_focus_code(6000 + g_focus_nav);
-        if (window_is_dock() && g_dock_peer_win && g_focus_nav >= 1 && g_focus_nav <= g_n_nav) {
-            Window want = (g_focus_nav > g_dock_header_nav_hi) ? g_dock_peer_win : win;
-            XRaiseWindow(dpy, want);
-            XSetInputFocus(dpy, want, RevertToParent, CurrentTime);
-            dock_grab_keyboard(want);
-        }
+        dock_nav_step(1);
+        return;
         return;
     }
     /* REAL, NEW 2026-08-31 - generic sidebar+panel scroll (see that
@@ -19346,7 +19568,26 @@ int main(int argc, char **argv) {
     desktop_load_click_two_step(g_house_root);
     snprintf(g_chtpm_path, sizeof(g_chtpm_path), "%s", argv[2]);
     snprintf(g_package_dir, sizeof(g_package_dir), "%s", g_chtpm_path);
-    { char *slash = strrchr(g_package_dir, '/'); if (slash) *slash = '\0'; }
+    /* REAL FIX 2026-09-29 (Windows port, single-renderer taskbar) - the
+     * dirname strip below looked for '/' only. On Windows the launcher
+     * passes '\\'-separated argv paths, so strrchr(g_package_dir,'/')
+     * returned NULL and g_package_dir was left as the FULL
+     * "...\khtpm_strip_header.xhtpm" FILE path instead of its own
+     * directory. Every "%s/<something>" built from g_package_dir was then
+     * a path *underneath a file* and silently failed - most visibly
+     * g_dock_peer_path ("<...>.xhtpm\khtpm_strip_bottom.xhtpm"), so
+     * parse_chtpm() left g_dock_peer NULL, kh_ensure_dock_peer_window()
+     * bailed at its `if (!g_dock_peer) return;`, and the shared nav
+     * selector that g_dock_peer_win drives never activated - which is
+     * why run_khtpm_strip_win.ps1 had to launch a separate
+     * bottom.xhtpm process, giving two renderers with two independent
+     * g_focus_nav counters (nav stuck at 1.HQ, and the bottom bar's
+     * arrows moving a different selector than the top's). Strip whichever
+     * of '/' or '\\' is actually last so both path styles work. */
+    { char *slash = strrchr(g_package_dir, '/');
+      char *bslash = strrchr(g_package_dir, '\\');
+      char *cut = slash ? (bslash ? (slash > bslash ? slash : bslash) : slash) : bslash;
+      if (cut) *cut = '\0'; }
 
     /* generic argv[3] instance-dir hook (see g_arg3_dir decl). Must run
      * BEFORE parse_chtpm so g_extra_vars_path is picked up by the

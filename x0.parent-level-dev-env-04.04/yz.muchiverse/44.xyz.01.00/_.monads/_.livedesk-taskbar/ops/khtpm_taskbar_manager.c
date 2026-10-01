@@ -493,8 +493,47 @@ static int ktb_pid_is_this_pal(int pid, const char *pal_path) {
     for (size_t i = 0; i < nb; i++) if (cmdbuf[i] == '\0') cmdbuf[i] = ' ';
     return strstr(cmdbuf, pal_path) != NULL;
 #else
+    /* Windows identity check - REAL FIX 2026-09-28 (the flicker). The
+     * Linux branch above reads /proc/<pid>/cmdline and requires the pal's
+     * own package_dir to be in it. The old Windows branch returned 1 for
+     * ANY alive pid. With ~690 stale PID lines in livedesk_open.txt (17
+     * entities, ~40 lines each) and Windows freely recycling PIDs onto
+     * unrelated live processes (observed live: powershell, conhost and
+     * MoUsoCoreWorker each got a stale pal PID), n_tabs flapped 0<->2 on
+     * every reload and the bottom dock cells flickered in and out - which
+     * the user reported verbatim as "flickering in and out of existence,
+     * sometimes smushed together, sometimes extended, and keep deleting".
+     * The check must be about identity, not just liveness.
+     *
+     * Windows has no /proc, so the faithful equivalent is the process
+     * image: a pal IS khtpm_entity.exe <package_dir> (see
+     * build_khtpm_strip_win.ps1:175-180 - one khtpm_entity process per
+     * pal, invoked with the pal's own package_dir). Requiring the image
+     * basename to be that pal binary excludes every recycled unrelated
+     * PID in one cheap query. pal_path itself is deliberately NOT
+     * compared: on Windows every pal shares one dedicated exe, so the
+     * image name IS the identity (Linux needs the cmdline because its
+     * pal binary doubles as the taskbar renderer - khtpm_core_render is
+     * excluded here exactly so a stale PID recycled onto the live bottom
+     * renderer's own PID cannot become a ghost tab either).
+     *
+     * QueryFullProcessImageNameA (kernel32, Vista+) works off the same
+     * PROCESS_QUERY_LIMITED_INFORMATION handle ktb_pid_alive() already
+     * uses. Same-user processes are always queryable, so a failure here
+     * races an exit and is failed CLOSED - a ghost tab is worse than a
+     * transiently-missing one. */
     (void)pal_path;
-    return 1;
+    HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, (DWORD)pid);
+    if (!h) return 0;
+    char img[KTB_PATH_BUF];
+    DWORD cb = sizeof(img);
+    BOOL ok = QueryFullProcessImageNameA(h, 0, img, &cb);
+    CloseHandle(h);
+    if (!ok) return 0;
+    const char *base = img;
+    for (const char *p = img; *p; p++)
+        if (*p == '\\' || *p == '/') base = p + 1;
+    return strcasecmp(base, "khtpm_entity.exe") == 0;
 #endif
 }
 

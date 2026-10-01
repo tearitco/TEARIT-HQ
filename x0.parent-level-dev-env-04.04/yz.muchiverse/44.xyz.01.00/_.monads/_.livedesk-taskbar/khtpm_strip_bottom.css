@@ -1,0 +1,49 @@
+/* khtpm_strip_bottom.css - sibling-.css, auto-merged by the shared
+   renderer (same stem as khtpm_strip_bottom.xhtpm).
+
+   REAL, NEW 2026-09-27 - this file exists because of a PORT divergence,
+   not because the rule is new. The rule itself is not an invention: it
+   is a verbatim copy of the .dock-flexrow rule that already lives in
+   khtpm_strip_header.css, and it is here for the same reason the header
+   file documents at length.
+
+   Read khtpm_strip_header.css's own lines 14-24 before touching this.
+   Its short version: upstream, the header and the bottom bar are ONE
+   process sharing ONE ruleset (g_sheet), and CSS auto-load is keyed off
+   main()'s own startup g_chtpm_path - the HEADER's path - so the bottom
+   bar's sibling .css was never a load site and never needed to exist.
+   That file even records that an earlier attempt to put this exact rule
+   in khtpm_strip_bottom.css "silently never took effect for exactly
+   this reason".
+
+   That reasoning holds for the one-process design and is inverted for
+   THIS port. run_khtpm_strip_win.ps1 runs the header and the bottom bar
+   as two separate khtpm_core_render.exe processes, one per template
+   (the bottom bar is a real second top-level window on Windows and
+   nothing else starts it). Each process therefore auto-loads the CSS
+   keyed off ITS OWN template's stem - so the bottom process looks for
+   khtpm_strip_bottom.css and, before this file existed, found nothing.
+
+   The measured symptom, from a live report ("the bottom tb is jumbled
+   together") plus a pixel scan of the running bar: the 17 entity cells
+   were laid out with no flex rule at all, so the generic engine packed
+   them on top of each other instead of advancing column by column. The
+   published state was never at fault - strip_ui.txt carried all 17
+   tab_N_label/tab_N_sprite pairs correctly throughout.
+
+   So this file restores the ONE rule the bottom bar's layout needs. It
+   is deliberately identical to the header's copy rather than a
+   "cleaned up" variant: the two bars must agree on what .dock-flexrow
+   means, and a divergent second definition would be a new bug.
+
+   Cell width/height still come from C (dock_item_cw()/DOCK_BAR_H in
+   khtpm_core_render.c) exactly as the header copy's own comment states -
+   a plain CSS rule cannot express those content-driven sizes, which is
+   why there are no width/height properties here and why adding some
+   would fight the C sizing rather than help it. */
+
+.dock-flexrow {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
